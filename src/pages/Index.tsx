@@ -226,7 +226,7 @@ export default function Index() {
               <span className="font-montserrat font-black text-white text-sm">R</span>
             </div>
             <div>
-              <span className="font-montserrat font-black text-base tracking-wide">РУМ<span className="text-orange-400">ЭКСПЕРТ</span></span>
+              <span className="font-montserrat font-black text-base tracking-wide">MOS<span className="text-orange-400">POTOLKI</span></span>
               <div className="text-[10px] text-white/30 leading-none hidden sm:block">Натяжные потолки с 2009 года</div>
             </div>
           </div>
@@ -236,12 +236,12 @@ export default function Index() {
             ))}
           </nav>
           <div className="flex items-center gap-3">
-            <a href="https://wa.me/74951350036" target="_blank" rel="noreferrer" className="hidden sm:flex items-center justify-center w-9 h-9 rounded-xl bg-green-500/20 border border-green-500/30 hover:bg-green-500/30 transition-colors">
+            <a href="https://wa.me/79776068901" target="_blank" rel="noreferrer" className="hidden sm:flex items-center justify-center w-9 h-9 rounded-xl bg-green-500/20 border border-green-500/30 hover:bg-green-500/30 transition-colors">
               <Icon name="MessageCircle" size={16} className="text-green-400" />
             </a>
-            <a href="tel:+74951350036" className="flex items-center gap-2 bg-gradient-to-r from-orange-500 to-rose-500 text-white text-sm font-montserrat font-bold px-4 py-2 rounded-xl hover:scale-105 transition-transform shadow-lg shadow-orange-500/20 animate-pulse-glow">
+            <a href="tel:+79776068901" className="flex items-center gap-2 bg-gradient-to-r from-orange-500 to-rose-500 text-white text-sm font-montserrat font-bold px-4 py-2 rounded-xl hover:scale-105 transition-transform shadow-lg shadow-orange-500/20 animate-pulse-glow">
               <Icon name="Phone" size={14} />
-              <span className="hidden sm:inline">+7 (495) 135-00-36</span>
+              <span className="hidden sm:inline">+7 (977) 606-89-01</span>
               <span className="sm:hidden">Звонок</span>
             </a>
           </div>
@@ -320,8 +320,8 @@ export default function Index() {
                     </div>
                   ))}
                 </div>
-                <a href="tel:+74951350036" className="flex items-center justify-center gap-2 w-full bg-white/8 border border-white/15 text-white font-montserrat font-bold py-3 rounded-xl hover:bg-white/15 transition-colors text-sm">
-                  <Icon name="Phone" size={16} className="text-orange-400" /> Позвонить: +7 (495) 135-00-36
+                <a href="tel:+79776068901" className="flex items-center justify-center gap-2 w-full bg-white/8 border border-white/15 text-white font-montserrat font-bold py-3 rounded-xl hover:bg-white/15 transition-colors text-sm">
+                  <Icon name="Phone" size={16} className="text-orange-400" /> Позвонить: +7 (977) 606-89-01
                 </a>
               </div>
             </div>
@@ -607,9 +607,9 @@ export default function Index() {
           <div className={`grid grid-cols-1 lg:grid-cols-5 gap-8 transition-all duration-700 delay-200 ${contactRef.inView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6"}`}>
             <div className="lg:col-span-2 space-y-5">
               {[
-                { icon: "Phone", title: "Телефон", val: "+7 (495) 135-00-36", sub: "Ежедневно 8:00–22:00", href: "tel:+74951350036" },
-                { icon: "MessageCircle", title: "WhatsApp", val: "Написать в WhatsApp", sub: "Отвечаем за 5 минут", href: "https://wa.me/74951350036" },
-                { icon: "MapPin", title: "Работаем", val: "Москва и вся область", sub: "Выезд бесплатный до 30 км от МКАД", href: "#" },
+                { icon: "Phone", title: "Телефон", val: "+7 (977) 606-89-01", sub: "Ежедневно 8:00–22:00", href: "tel:+79776068901" },
+                { icon: "MessageCircle", title: "WhatsApp", val: "Написать в WhatsApp", sub: "Отвечаем за 5 минут", href: "https://wa.me/79776068901" },
+                { icon: "MapPin", title: "Адрес", val: "Мытищи, Пограничная 24", sub: "Выезд бесплатный до 30 км от МКАД", href: "#" },
               ].map((item, i) => (
                 <a key={i} href={item.href} target={item.href.startsWith("http") ? "_blank" : undefined} rel="noreferrer"
                   className="flex items-center gap-4 p-4 rounded-2xl border border-white/8 bg-white/3 hover:border-orange-500/25 hover:bg-white/5 transition-all group">
@@ -643,7 +643,7 @@ export default function Index() {
                       <Icon name="Check" size={36} className="text-white" />
                     </div>
                     <h3 className="font-montserrat font-black text-2xl mb-2">Заявка принята!</h3>
-                    <p className="text-white/50">Перезвоним вам в течение 15 минут.<br />Или звоните сами: <a href="tel:+74951350036" className="text-orange-400 font-semibold">+7 (495) 135-00-36</a></p>
+                    <p className="text-white/50">Перезвоним вам в течение 15 минут.<br />Или звоните сами: <a href="tel:+79776068901" className="text-orange-400 font-semibold">+7 (977) 606-89-01</a></p>
                   </div>
                 ) : (
                   <form onSubmit={e => { e.preventDefault(); setSent(true); }} className="space-y-4">
@@ -692,7 +692,7 @@ export default function Index() {
               <span className="text-white font-montserrat font-black text-xs">R</span>
             </div>
             <div>
-              <span className="font-montserrat font-bold text-sm">РУМ<span className="text-orange-400">ЭКСПЕРТ</span></span>
+              <span className="font-montserrat font-bold text-sm">MOS<span className="text-orange-400">POTOLKI</span></span>
               <div className="text-white/25 text-[11px]">Натяжные потолки с 2009 года</div>
             </div>
           </div>
@@ -701,9 +701,9 @@ export default function Index() {
               <a key={h} href={h} className="hover:text-white/60 transition-colors">{l}</a>
             ))}
           </div>
-          <a href="tel:+74951350036" className="font-montserrat font-bold text-white/60 hover:text-orange-400 transition-colors text-sm">+7 (495) 135-00-36</a>
+          <a href="tel:+79776068901" className="font-montserrat font-bold text-white/60 hover:text-orange-400 transition-colors text-sm">+7 (977) 606-89-01</a>
         </div>
-        <div className="text-center text-white/15 text-[11px] mt-6">© 2009–2026 РУМЭКСПЕРТ · Натяжные потолки в Москве и МО · Все права защищены</div>
+        <div className="text-center text-white/15 text-[11px] mt-6">© 2009–2026 MOSPOTOLKI · Натяжные потолки в Москве и МО · Мытищи, Пограничная 24</div>
       </footer>
     </div>
   );
