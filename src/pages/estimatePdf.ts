@@ -13,26 +13,25 @@ interface ParsedEstimate {
   finalPhrase: string;
 }
 
-let cachedFont: string | null = null;
+let cachedFonts: { regular: string; bold?: string } | null = null;
 
 async function ensureFont() {
-  if (cachedFont) return;
+  if (cachedFonts) return;
   const resp = await fetch(func2url["get-font"]);
   const data = await resp.json();
-  if (data.font) cachedFont = data.font;
+  if (data.font) cachedFonts = { regular: data.font, bold: data.bold };
 }
 
 function setup(doc: jsPDF): string {
-  if (!cachedFont) return "helvetica";
-  doc.addFileToVFS("Roboto.ttf", cachedFont);
-  doc.addFont("Roboto.ttf", "Roboto", "normal");
+  if (!cachedFonts) return "helvetica";
+  doc.addFileToVFS("Roboto-Regular.ttf", cachedFonts.regular);
+  doc.addFont("Roboto-Regular.ttf", "Roboto", "normal");
+  if (cachedFonts.bold) {
+    doc.addFileToVFS("Roboto-Black.ttf", cachedFonts.bold);
+    doc.addFont("Roboto-Black.ttf", "Roboto", "bold");
+  }
   doc.setFont("Roboto", "normal");
   return "Roboto";
-}
-
-function boldText(doc: jsPDF, text: string, x: number, y: number, opts?: { align?: "right" | "center" }) {
-  doc.text(text, x, y, opts);
-  doc.text(text, x + 0.22, y, opts);
 }
 
 export async function generateEstimatePdf(parsed: ParsedEstimate) {
@@ -46,16 +45,19 @@ export async function generateEstimatePdf(parsed: ParsedEstimate) {
 
   doc.setFillColor(20, 20, 30);
   doc.rect(0, 0, pageW, 38, "F");
-  doc.setFont(f, "normal");
+  doc.setFont(f, "bold");
   doc.setFontSize(20);
   doc.setTextColor(255, 140, 50);
-  boldText(doc, "MOSPOTOLKI", 15, 17);
+  doc.text("MOSPOTOLKI", 15, 17);
+  doc.setFont(f, "normal");
   doc.setFontSize(8);
   doc.setTextColor(200, 200, 210);
   doc.text("Натяжные потолки | +7 (977) 606-89-01 | mospotolki.net", 15, 25);
+  doc.setFont(f, "bold");
   doc.setFontSize(14);
   doc.setTextColor(255, 255, 255);
-  boldText(doc, "СМЕТА", pageW - 15, 17, { align: "right" });
+  doc.text("СМЕТА", pageW - 15, 17, { align: "right" });
+  doc.setFont(f, "normal");
   doc.setFontSize(8);
   doc.setTextColor(180, 180, 190);
   doc.text("от " + today, pageW - 15, 25, { align: "right" });
@@ -82,38 +84,17 @@ export async function generateEstimatePdf(parsed: ParsedEstimate) {
       },
       headStyles: {
         font: f,
-        fontStyle: "normal",
+        fontStyle: "bold",
         fontSize: 10,
         textColor: [180, 60, 0],
-        fillColor: [240, 237, 245],
+        fillColor: [240, 238, 245],
         lineWidth: 0.3,
-      },
-      bodyStyles: {
-        textColor: [0, 0, 0],
       },
       columnStyles: {
         0: { cellWidth: "auto" },
-        1: { cellWidth: 42, halign: "right" },
+        1: { cellWidth: 42, halign: "right", fontStyle: "bold" },
       },
       margin: { left: 14, right: 14 },
-      didDrawCell: (data) => {
-        if (data.section === "head") {
-          const cell = data.cell;
-          doc.setFont(f, "normal");
-          doc.setFontSize(10);
-          doc.setTextColor(180, 60, 0);
-          doc.text(cell.text.join(" "), cell.x + cell.padding("left") + 0.2, cell.y + cell.padding("top") + cell.contentHeight / 1.2);
-        }
-        if (data.section === "body" && data.column.index === 1) {
-          const cell = data.cell;
-          doc.setFont(f, "normal");
-          doc.setFontSize(9);
-          doc.setTextColor(0, 0, 0);
-          const tx = cell.x + cell.width - cell.padding("right");
-          const ty = cell.y + cell.padding("top") + cell.contentHeight / 1.2;
-          doc.text(cell.text.join(" "), tx + 0.2, ty, { align: "right" });
-        }
-      },
     });
 
     y = (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 3;
@@ -132,10 +113,10 @@ export async function generateEstimatePdf(parsed: ParsedEstimate) {
     doc.roundedRect(14, y, pageW - 28, boxH, 2, 2, "S");
 
     y += 8;
-    doc.setFont(f, "normal");
+    doc.setFont(f, "bold");
     doc.setFontSize(10);
     doc.setTextColor(0, 0, 0);
-    boldText(doc, "ИТОГО:", 19, y);
+    doc.text("ИТОГО:", 19, y);
 
     for (const t of parsed.totals) {
       y += 9;
@@ -144,11 +125,11 @@ export async function generateEstimatePdf(parsed: ParsedEstimate) {
       const val = parts.slice(1).join(":").trim();
       const isSt = /standard/i.test(label);
 
-      doc.setFont(f, "normal");
+      doc.setFont(f, "bold");
       doc.setFontSize(isSt ? 13 : 10);
       doc.setTextColor(isSt ? 180 : 0, isSt ? 60 : 0, 0);
-      boldText(doc, label + ":", 19, y);
-      boldText(doc, val, pageW - 19, y, { align: "right" });
+      doc.text(label + ":", 19, y);
+      doc.text(val, pageW - 19, y, { align: "right" });
     }
     y += 12;
   }
