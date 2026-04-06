@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import Icon from "@/components/ui/icon";
+import func2url from "@/../backend/func2url.json";
 
 interface Message {
   id: number;
@@ -14,10 +15,8 @@ const QUICK_QUESTIONS = [
   "Сделайте расчёт на 3 комнаты",
 ];
 
-const STUB_ANSWERS: Record<string, string> = {
-  default:
-    "Спасибо за вопрос! Сейчас я работаю в демо-режиме. Совсем скоро подключу базу знаний и смогу мгновенно считать стоимость, подбирать тип потолка и формировать коммерческое предложение. А пока — оставьте заявку или позвоните нам: +7 (977) 606-89-01",
-};
+const AI_CHAT_URL = func2url["ai-chat"];
+const FALLBACK_ANSWER = "Извините, сейчас помощник недоступен. Позвоните нам: +7 (977) 606-89-01 — посчитаем всё по телефону!";
 
 interface Props {
   assistantRef: { ref: React.RefObject<HTMLDivElement>; inView: boolean };
@@ -50,12 +49,33 @@ export default function AiAssistant({ assistantRef }: Props) {
     setInput("");
     setIsTyping(true);
 
-    setTimeout(() => {
-      const answer = STUB_ANSWERS.default;
-      const botMsg: Message = { id: Date.now() + 1, role: "assistant", text: answer };
-      setMessages((prev) => [...prev, botMsg]);
-      setIsTyping(false);
-    }, 1200);
+    const allMessages = [...messages, userMsg];
+
+    fetch(AI_CHAT_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        messages: allMessages
+          .filter((m) => m.role === "user" || m.role === "assistant")
+          .map((m) => ({ role: m.role, text: m.text })),
+      }),
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        const botMsg: Message = {
+          id: Date.now() + 1,
+          role: "assistant",
+          text: data.answer || FALLBACK_ANSWER,
+        };
+        setMessages((prev) => [...prev, botMsg]);
+      })
+      .catch(() => {
+        setMessages((prev) => [
+          ...prev,
+          { id: Date.now() + 1, role: "assistant", text: FALLBACK_ANSWER },
+        ]);
+      })
+      .finally(() => setIsTyping(false));
   };
 
   return (

@@ -1,0 +1,30 @@
+{
+  "tests": [
+    {
+      "name": "OPTIONS preflight",
+      "method": "OPTIONS",
+      "path": "/",
+      "expectedStatus": 200
+    },
+    {
+      "name": "POST with message",
+      "method": "POST",
+      "path": "/",
+      "body": {
+        "messages": [
+          {"role": "user", "text": "Сколько стоит матовый потолок на 20 м²?"}
+        ]
+      },
+      "expectedStatus": 200,
+      "expectedBody": {"answer": "string"},
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "POST empty messages",
+      "method": "POST",
+      "path": "/",
+      "body": {"messages": []},
+      "expectedStatus": 400
+    }
+  ]
+}
