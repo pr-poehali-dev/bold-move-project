@@ -13,50 +13,56 @@ interface ParsedEstimate {
   finalPhrase: string;
 }
 
-let fontBase64: string | null = null;
+let cachedFonts: { regular: string; bold: string } | null = null;
 
-async function ensureFont() {
-  if (fontBase64) return;
+async function ensureFonts() {
+  if (cachedFonts) return;
   const resp = await fetch(func2url["get-font"]);
   const data = await resp.json();
   if (data.font) {
-    fontBase64 = data.font;
+    cachedFonts = { regular: data.font, bold: data.bold || data.font };
   }
 }
 
+function setupFonts(doc: jsPDF): string {
+  if (!cachedFonts) return "helvetica";
+  doc.addFileToVFS("Roboto-Regular.ttf", cachedFonts.regular);
+  doc.addFont("Roboto-Regular.ttf", "Roboto", "normal");
+  doc.addFileToVFS("Roboto-Bold.ttf", cachedFonts.bold);
+  doc.addFont("Roboto-Bold.ttf", "Roboto", "bold");
+  doc.setFont("Roboto", "normal");
+  return "Roboto";
+}
+
 export async function generateEstimatePdf(parsed: ParsedEstimate) {
-  await ensureFont();
+  await ensureFonts();
 
   const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
-
-  let f = "helvetica";
-  if (fontBase64) {
-    doc.addFileToVFS("Roboto-Regular.ttf", fontBase64);
-    doc.addFont("Roboto-Regular.ttf", "RobotoCyr", "normal");
-    doc.setFont("RobotoCyr", "normal");
-    f = "RobotoCyr";
-  }
+  const f = setupFonts(doc);
 
   const pageW = doc.internal.pageSize.getWidth();
   const today = new Date().toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit", year: "numeric" });
 
   doc.setFillColor(20, 20, 30);
-  doc.rect(0, 0, pageW, 38, "F");
-  doc.setFont(f, "normal");
-  doc.setFontSize(20);
+  doc.rect(0, 0, pageW, 40, "F");
+  doc.setFont(f, "bold");
+  doc.setFontSize(22);
   doc.setTextColor(255, 140, 50);
-  doc.text("MOSPOTOLKI", 15, 16);
-  doc.setFontSize(8);
-  doc.setTextColor(180, 180, 190);
-  doc.text("Натяжные потолки | +7 (977) 606-89-01 | mospotolki.net", 15, 24);
-  doc.setFontSize(13);
+  doc.text("MOSPOTOLKI", 15, 18);
+  doc.setFont(f, "normal");
+  doc.setFontSize(9);
+  doc.setTextColor(200, 200, 210);
+  doc.text("Натяжные потолки | +7 (977) 606-89-01 | mospotolki.net", 15, 27);
+  doc.setFont(f, "bold");
+  doc.setFontSize(16);
   doc.setTextColor(255, 255, 255);
-  doc.text("СМЕТА", pageW - 15, 16, { align: "right" });
-  doc.setFontSize(8);
-  doc.setTextColor(150, 150, 160);
-  doc.text("от " + today, pageW - 15, 24, { align: "right" });
+  doc.text("СМЕТА", pageW - 15, 18, { align: "right" });
+  doc.setFont(f, "normal");
+  doc.setFontSize(9);
+  doc.setTextColor(180, 180, 190);
+  doc.text("от " + today, pageW - 15, 27, { align: "right" });
 
-  let y = 46;
+  let y = 50;
 
   for (let bi = 0; bi < parsed.blocks.length; bi++) {
     const block = parsed.blocks[bi];
@@ -70,76 +76,81 @@ export async function generateEstimatePdf(parsed: ParsedEstimate) {
       styles: {
         font: f,
         fontStyle: "normal",
-        fontSize: 9,
-        cellPadding: 3,
+        fontSize: 11,
+        cellPadding: 3.5,
         textColor: [0, 0, 0],
-        lineColor: [180, 180, 190],
-        lineWidth: 0.2,
+        lineColor: [160, 160, 170],
+        lineWidth: 0.3,
       },
       headStyles: {
         font: f,
+        fontStyle: "bold",
+        fontSize: 12,
+        textColor: [200, 80, 0],
+        fillColor: [240, 238, 245],
+        lineWidth: 0.3,
+      },
+      bodyStyles: {
+        font: f,
         fontStyle: "normal",
-        fontSize: 10,
-        textColor: [220, 100, 20],
-        fillColor: [245, 243, 248],
-        lineWidth: 0.2,
+        textColor: [0, 0, 0],
       },
       columnStyles: {
         0: { cellWidth: "auto" },
-        1: { cellWidth: 42, halign: "right", textColor: [0, 0, 0] },
+        1: { cellWidth: 45, halign: "right", fontStyle: "bold", textColor: [0, 0, 0] },
       },
       margin: { left: 14, right: 14 },
     });
 
-    y = (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 3;
-    if (y > 255) { doc.addPage(); y = 15; }
+    y = (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 4;
+    if (y > 250) { doc.addPage(); y = 15; }
   }
 
   if (parsed.totals.length > 0) {
-    y += 3;
-    const boxH = 10 + parsed.totals.length * 9;
-    if (y + boxH > 280) { doc.addPage(); y = 15; }
+    y += 4;
+    const boxH = 14 + parsed.totals.length * 11;
+    if (y + boxH > 275) { doc.addPage(); y = 15; }
 
-    doc.setFillColor(255, 248, 240);
-    doc.roundedRect(14, y, pageW - 28, boxH, 2, 2, "F");
-    doc.setDrawColor(255, 140, 50);
-    doc.setLineWidth(0.4);
-    doc.roundedRect(14, y, pageW - 28, boxH, 2, 2, "S");
+    doc.setFillColor(255, 248, 238);
+    doc.roundedRect(14, y, pageW - 28, boxH, 3, 3, "F");
+    doc.setDrawColor(255, 130, 40);
+    doc.setLineWidth(0.5);
+    doc.roundedRect(14, y, pageW - 28, boxH, 3, 3, "S");
 
-    y += 7;
-    doc.setFont(f, "normal");
-    doc.setFontSize(10);
+    y += 9;
+    doc.setFont(f, "bold");
+    doc.setFontSize(12);
     doc.setTextColor(0, 0, 0);
-    doc.text("ИТОГО:", 19, y);
+    doc.text("ИТОГО:", 20, y);
 
     for (const t of parsed.totals) {
-      y += 9;
+      y += 10;
       const parts = t.split(":");
       const label = parts[0].trim();
       const val = parts.slice(1).join(":").trim();
       const isSt = /standard/i.test(label);
 
-      doc.setFont(f, "normal");
-      doc.setFontSize(isSt ? 13 : 10);
-      doc.setTextColor(isSt ? 200 : 0, isSt ? 80 : 0, isSt ? 10 : 0);
-      doc.text(label + ":", 19, y);
-      doc.text(val, pageW - 19, y, { align: "right" });
+      doc.setFont(f, "bold");
+      doc.setFontSize(isSt ? 15 : 12);
+      doc.setTextColor(isSt ? 200 : 0, isSt ? 80 : 0, isSt ? 0 : 0);
+      doc.text(label + ":", 20, y);
+      doc.text(val, pageW - 20, y, { align: "right" });
     }
-    y += 10;
+    y += 14;
   }
 
   if (parsed.finalPhrase) {
-    if (y > 270) { doc.addPage(); y = 15; }
+    if (y > 265) { doc.addPage(); y = 15; }
     doc.setFont(f, "normal");
-    doc.setFontSize(8);
-    doc.setTextColor(80, 80, 90);
+    doc.setFontSize(9);
+    doc.setTextColor(60, 60, 70);
     const fLines = doc.splitTextToSize(parsed.finalPhrase, pageW - 28);
     doc.text(fLines, 14, y);
   }
 
   doc.setFont(f, "normal");
-  doc.setFontSize(7);
-  doc.setTextColor(100, 100, 110);
+  doc.setFontSize(8);
+  doc.setTextColor(80, 80, 90);
   doc.text("MosPotolki | Мытищи, Пограничная 24 | +7 (977) 606-89-01 | wa.me/79776068901", pageW / 2, 288, { align: "center" });
 
   doc.save("Смета_MosPotolki_" + today.replace(/\./g, "-") + ".pdf");
