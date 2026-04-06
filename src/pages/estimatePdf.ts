@@ -1,5 +1,6 @@
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+import func2url from "@/../backend/func2url.json";
 
 interface EstimateBlock {
   title: string;
@@ -12,55 +13,29 @@ interface ParsedEstimate {
   finalPhrase: string;
 }
 
-const FONT_URLS = [
-  "https://cdn.jsdelivr.net/gh/AryaBhatt/Fonts@master/Roboto/Roboto-Regular.ttf",
-  "https://cdn.jsdelivr.net/gh/googlefonts/roboto-classic@main/src/hinted/Roboto-Regular.ttf",
-];
-
 let fontBase64: string | null = null;
-let fontLoaded = false;
 
 async function ensureFont() {
-  if (fontLoaded) return;
-  for (const url of FONT_URLS) {
-    try {
-      const resp = await fetch(url);
-      if (!resp.ok) continue;
-      const buf = await resp.arrayBuffer();
-      if (buf.byteLength < 50000) continue;
-      const bytes = new Uint8Array(buf);
-      let binary = "";
-      for (let i = 0; i < bytes.length; i++) {
-        binary += String.fromCharCode(bytes[i]);
-      }
-      fontBase64 = btoa(binary);
-      fontLoaded = true;
-      return;
-    } catch {
-      continue;
-    }
+  if (fontBase64) return;
+  const resp = await fetch(func2url["get-font"]);
+  const data = await resp.json();
+  if (data.font) {
+    fontBase64 = data.font;
   }
-}
-
-function setupFont(doc: jsPDF): string {
-  if (fontBase64) {
-    try {
-      doc.addFileToVFS("Roboto-Regular.ttf", fontBase64);
-      doc.addFont("Roboto-Regular.ttf", "RobotoCyr", "normal");
-      doc.setFont("RobotoCyr", "normal");
-      return "RobotoCyr";
-    } catch {
-      return "helvetica";
-    }
-  }
-  return "helvetica";
 }
 
 export async function generateEstimatePdf(parsed: ParsedEstimate) {
   await ensureFont();
 
   const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
-  const f = setupFont(doc);
+
+  let f = "helvetica";
+  if (fontBase64) {
+    doc.addFileToVFS("Roboto-Regular.ttf", fontBase64);
+    doc.addFont("Roboto-Regular.ttf", "RobotoCyr", "normal");
+    doc.setFont("RobotoCyr", "normal");
+    f = "RobotoCyr";
+  }
 
   const pageW = doc.internal.pageSize.getWidth();
   const today = new Date().toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit", year: "numeric" });
@@ -73,13 +48,13 @@ export async function generateEstimatePdf(parsed: ParsedEstimate) {
   doc.text("MOSPOTOLKI", 15, 16);
   doc.setFontSize(8);
   doc.setTextColor(180, 180, 190);
-  doc.text("+7 (977) 606-89-01 | mospotolki.net", 15, 24);
+  doc.text("Натяжные потолки | +7 (977) 606-89-01 | mospotolki.net", 15, 24);
   doc.setFontSize(13);
   doc.setTextColor(255, 255, 255);
-  doc.text("SMETA", pageW - 15, 16, { align: "right" });
+  doc.text("СМЕТА", pageW - 15, 16, { align: "right" });
   doc.setFontSize(8);
   doc.setTextColor(150, 150, 160);
-  doc.text(today, pageW - 15, 24, { align: "right" });
+  doc.text("от " + today, pageW - 15, 24, { align: "right" });
 
   let y = 46;
 
@@ -89,7 +64,7 @@ export async function generateEstimatePdf(parsed: ParsedEstimate) {
 
     autoTable(doc, {
       startY: y,
-      head: [[bi + 1 + ". " + block.title, ""]],
+      head: [[bi + 1 + ". " + block.title, "Сумма"]],
       body: rows,
       theme: "grid",
       styles: {
@@ -135,7 +110,7 @@ export async function generateEstimatePdf(parsed: ParsedEstimate) {
     doc.setFont(f, "normal");
     doc.setFontSize(8);
     doc.setTextColor(100, 100, 110);
-    doc.text("TOTAL:", 19, y);
+    doc.text("ИТОГО:", 19, y);
 
     for (const t of parsed.totals) {
       y += 8;
@@ -165,9 +140,9 @@ export async function generateEstimatePdf(parsed: ParsedEstimate) {
   doc.setFont(f, "normal");
   doc.setFontSize(6.5);
   doc.setTextColor(160, 160, 170);
-  doc.text("MosPotolki | +7 (977) 606-89-01 | wa.me/79776068901", pageW / 2, 288, { align: "center" });
+  doc.text("MosPotolki | Мытищи, Пограничная 24 | +7 (977) 606-89-01", pageW / 2, 288, { align: "center" });
 
-  doc.save("Smeta_MosPotolki_" + today.replace(/\./g, "-") + ".pdf");
+  doc.save("Смета_MosPotolki_" + today.replace(/\./g, "-") + ".pdf");
 }
 
 export default generateEstimatePdf;
