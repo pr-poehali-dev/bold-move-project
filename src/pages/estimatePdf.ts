@@ -70,23 +70,23 @@ export async function generateEstimatePdf(parsed: ParsedEstimate) {
       styles: {
         font: f,
         fontStyle: "normal",
-        fontSize: 8,
-        cellPadding: 2.5,
-        textColor: [50, 50, 60],
-        lineColor: [210, 210, 220],
-        lineWidth: 0.15,
+        fontSize: 9,
+        cellPadding: 3,
+        textColor: [0, 0, 0],
+        lineColor: [180, 180, 190],
+        lineWidth: 0.2,
       },
       headStyles: {
         font: f,
         fontStyle: "normal",
-        fontSize: 9,
-        textColor: [255, 130, 40],
-        fillColor: [248, 248, 252],
-        lineWidth: 0.15,
+        fontSize: 10,
+        textColor: [220, 100, 20],
+        fillColor: [245, 243, 248],
+        lineWidth: 0.2,
       },
       columnStyles: {
         0: { cellWidth: "auto" },
-        1: { cellWidth: 40, halign: "right" },
+        1: { cellWidth: 42, halign: "right", textColor: [0, 0, 0] },
       },
       margin: { left: 14, right: 14 },
     });
@@ -108,20 +108,20 @@ export async function generateEstimatePdf(parsed: ParsedEstimate) {
 
     y += 7;
     doc.setFont(f, "normal");
-    doc.setFontSize(8);
-    doc.setTextColor(100, 100, 110);
+    doc.setFontSize(10);
+    doc.setTextColor(0, 0, 0);
     doc.text("ИТОГО:", 19, y);
 
     for (const t of parsed.totals) {
-      y += 8;
+      y += 9;
       const parts = t.split(":");
       const label = parts[0].trim();
       const val = parts.slice(1).join(":").trim();
       const isSt = /standard/i.test(label);
 
       doc.setFont(f, "normal");
-      doc.setFontSize(isSt ? 11 : 9);
-      doc.setTextColor(isSt ? 220 : 70, isSt ? 100 : 70, isSt ? 20 : 80);
+      doc.setFontSize(isSt ? 13 : 10);
+      doc.setTextColor(isSt ? 200 : 0, isSt ? 80 : 0, isSt ? 10 : 0);
       doc.text(label + ":", 19, y);
       doc.text(val, pageW - 19, y, { align: "right" });
     }
@@ -131,16 +131,16 @@ export async function generateEstimatePdf(parsed: ParsedEstimate) {
   if (parsed.finalPhrase) {
     if (y > 270) { doc.addPage(); y = 15; }
     doc.setFont(f, "normal");
-    doc.setFontSize(7);
-    doc.setTextColor(140, 140, 150);
+    doc.setFontSize(8);
+    doc.setTextColor(80, 80, 90);
     const fLines = doc.splitTextToSize(parsed.finalPhrase, pageW - 28);
     doc.text(fLines, 14, y);
   }
 
   doc.setFont(f, "normal");
-  doc.setFontSize(6.5);
-  doc.setTextColor(160, 160, 170);
-  doc.text("MosPotolki | Мытищи, Пограничная 24 | +7 (977) 606-89-01", pageW / 2, 288, { align: "center" });
+  doc.setFontSize(7);
+  doc.setTextColor(100, 100, 110);
+  doc.text("MosPotolki | Мытищи, Пограничная 24 | +7 (977) 606-89-01 | wa.me/79776068901", pageW / 2, 288, { align: "center" });
 
   doc.save("Смета_MosPotolki_" + today.replace(/\./g, "-") + ".pdf");
 }
