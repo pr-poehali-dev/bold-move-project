@@ -45,7 +45,7 @@ export const PORTFOLIO_ITEMS: { tab: string; img: string; room: string; district
   { tab: "bedroom", img: BASE + "4b3b5817-00c3-40e1-a754-4016758657a7.jpg", room: "Спальня", district: "Балашиха", type: "Звёздное небо, ночное фото", area: 16, year: 2025 },
   { tab: "bedroom", img: BASE + "13164d09-0ca0-4318-ba61-e85d4074cb79.jpg", room: "Спальня", district: "Химки", type: "Двухуровневый с LED кольцом", area: 24, year: 2026 },
   { tab: "bedroom", img: BASE + "8877951e-5b49-4301-ac3b-5000ee98fb12.jpg", room: "Спальня", district: "Люберцы", type: "Глянец шампань", area: 19, year: 2026 },
-  { tab: "bedroom", img: BASE + "fecbbb94-3039-4a6c-a726-fe4975919e7c.jpg", room: "Спальня", district: "Домодедово", type: "Двухуровневый, круг с LED", area: 21, year: 2025 },
+  { tab: "bedroom", img: BASE + "1e27bad3-8cff-47c9-a745-30c964abd6e8.jpg", room: "Спальня", district: "Домодедово", type: "Двухуровневый, круг с LED", area: 21, year: 2025 },
   { tab: "kitchen", img: BASE + "e8dda2cd-04e3-49c7-91f4-d8b92e30a3cf.jpg", room: "Кухня", district: "Мытищи", type: "Матовый белый", area: 11, year: 2026 },
   { tab: "kitchen", img: BASE + "06a75dd1-fb6f-404a-8138-0c63d97262cc.jpg", room: "Ванная", district: "Строгино", type: "Глянец влагостойкий", area: 6, year: 2026 },
   { tab: "kitchen", img: BASE + "72a8fa42-aa99-43a1-8b7e-ecd3bfb883c5.jpg", room: "Кухня", district: "Видное", type: "Матовый + глянец, две зоны", area: 14, year: 2025 },
