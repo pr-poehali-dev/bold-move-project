@@ -35,15 +35,56 @@ const ROOMS = [
   { name: "Офис", koef: 1.0, avg: 35 },
 ];
 
-const PORTFOLIO_ITEMS = [
-  { room: "Гостиная", district: "Выхино", type: "Двухуровневый глянец", area: 32, color: "#1e3a5f", accent: "#3b82f6", year: 2025 },
-  { room: "Спальня", district: "Красногорск", type: "Звёздное небо", area: 18, color: "#1a1535", accent: "#7c3aed", year: 2025 },
-  { room: "Кухня", district: "Домодедово", type: "Матовый белый", area: 11, color: "#2d2018", accent: "#f59e0b", year: 2026 },
-  { room: "Детская", district: "Одинцово", type: "Фотопечать «Космос»", area: 15, color: "#0f2027", accent: "#06b6d4", year: 2026 },
-  { room: "Гостиная+кухня", district: "Строгино", type: "Тканевый кремовый", area: 42, color: "#1c1a14", accent: "#84cc16", year: 2025 },
-  { room: "Офис", district: "Видное", type: "Глянец белый", area: 65, color: "#0f1923", accent: "#f97316", year: 2026 },
-  { room: "Ванная", district: "Щёлково", type: "Влагостойкий глянец", area: 6, color: "#0c2032", accent: "#22d3ee", year: 2026 },
-  { room: "Спальня", district: "Балашиха", type: "Сатин сиреневый", area: 20, color: "#1f1030", accent: "#e879f9", year: 2025 },
+const BASE = "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/files/";
+
+const PORTFOLIO_TABS = {
+  all: "Все работы",
+  living: "Гостиные",
+  bedroom: "Спальни",
+  kitchen: "Кухни и ванные",
+  design: "Дизайнерские",
+};
+
+const PORTFOLIO_ITEMS: { tab: string; img: string; room: string; district: string; type: string; area: number; year: number }[] = [
+  // Гостиные (living)
+  { tab: "living", img: BASE + "5cbb3001-881b-47d0-b352-73d6dfccd0b0.jpg", room: "Гостиная", district: "Выхино", type: "Глянец белый", area: 28, year: 2026 },
+  { tab: "living", img: BASE + "498ea57e-ae97-4e1e-823a-f7a750371ae6.jpg", room: "Гостиная", district: "Мытищи", type: "Двухуровневый с подсветкой", area: 34, year: 2026 },
+  { tab: "living", img: BASE + "0dd40549-59ca-45aa-9a98-495a4d56d3f3.jpg", room: "Гостиная", district: "Красногорск", type: "Сатин кремовый", area: 30, year: 2025 },
+  { tab: "living", img: BASE + "774db6c9-4b83-4bbe-9b03-b765e91a889a.jpg", room: "Гостиная", district: "Строгино", type: "Фотопечать «Небо»", area: 26, year: 2026 },
+  { tab: "living", img: BASE + "dfa4ca64-1b32-4328-8934-b452a744364f.jpg", room: "Гостиная", district: "Балашиха", type: "Матовый белый", area: 32, year: 2026 },
+  { tab: "living", img: BASE + "1685497d-a563-4643-a73c-443fc882da1c.jpg", room: "Гостиная + кухня", district: "Домодедово", type: "Матовый, единый потолок", area: 52, year: 2025 },
+  { tab: "living", img: BASE + "6628ba9f-6527-4084-a0ac-79601a86211b.jpg", room: "Гостиная / столовая", district: "Одинцово", type: "Двухуровневый, обеденная зона", area: 38, year: 2026 },
+  { tab: "living", img: BASE + "c1e17ed3-a58b-48a4-9977-b771e71bd8e6.jpg", room: "Гостиная", district: "Видное", type: "Тканевый натуральный", area: 24, year: 2025 },
+
+  // Спальни (bedroom)
+  { tab: "bedroom", img: BASE + "5f2e4020-15a0-4148-85b4-9e922037aa83.jpg", room: "Спальня", district: "Щёлково", type: "Матовый бежевый", area: 18, year: 2026 },
+  { tab: "bedroom", img: BASE + "562206bb-d134-4b72-9886-482be2594e49.jpg", room: "Спальня", district: "Мытищи", type: "Глянец чёрный", area: 20, year: 2026 },
+  { tab: "bedroom", img: BASE + "2c9e1f18-60ac-4204-8d1f-7dec7c1b88e9.jpg", room: "Детская", district: "Одинцово", type: "Звёздное небо", area: 14, year: 2025 },
+  { tab: "bedroom", img: BASE + "3ae7e8a1-433c-40f6-9665-e93d7280f5a2.jpg", room: "Спальня", district: "Красногорск", type: "Сатин тёмно-фиолетовый", area: 22, year: 2026 },
+  { tab: "bedroom", img: BASE + "4b3b5817-00c3-40e1-a754-4016758657a7.jpg", room: "Спальня", district: "Балашиха", type: "Звёздное небо, ночное фото", area: 16, year: 2025 },
+  { tab: "bedroom", img: BASE + "13164d09-0ca0-4318-ba61-e85d4074cb79.jpg", room: "Спальня", district: "Химки", type: "Двухуровневый с LED кольцом", area: 24, year: 2026 },
+  { tab: "bedroom", img: BASE + "8877951e-5b49-4301-ac3b-5000ee98fb12.jpg", room: "Спальня", district: "Люберцы", type: "Глянец шампань", area: 19, year: 2026 },
+  { tab: "bedroom", img: BASE + "fecbbb94-3039-4a6c-a726-fe4975919e7c.jpg", room: "Спальня", district: "Домодедово", type: "Двухуровневый, круг с LED", area: 21, year: 2025 },
+
+  // Кухни и ванные (kitchen)
+  { tab: "kitchen", img: BASE + "e8dda2cd-04e3-49c7-91f4-d8b92e30a3cf.jpg", room: "Кухня", district: "Мытищи", type: "Матовый белый", area: 11, year: 2026 },
+  { tab: "kitchen", img: BASE + "06a75dd1-fb6f-404a-8138-0c63d97262cc.jpg", room: "Ванная", district: "Строгино", type: "Глянец влагостойкий", area: 6, year: 2026 },
+  { tab: "kitchen", img: BASE + "72a8fa42-aa99-43a1-8b7e-ecd3bfb883c5.jpg", room: "Кухня", district: "Видное", type: "Матовый + глянец, две зоны", area: 14, year: 2025 },
+  { tab: "kitchen", img: BASE + "488fae8a-2d11-4ad1-a8ea-7a881958ba59.jpg", room: "Ванная", district: "Щёлково", type: "Глянец синий", area: 5, year: 2026 },
+  { tab: "kitchen", img: BASE + "eee0a1a1-6603-4309-bb13-976247210892.jpg", room: "Коридор", district: "Выхино", type: "Глянец, расширяет пространство", area: 8, year: 2026 },
+  { tab: "kitchen", img: BASE + "79a890e0-9cfa-45b3-b765-a06d1f5283b6.jpg", room: "Коридор", district: "Мытищи", type: "Глянец серебро", area: 7, year: 2025 },
+  { tab: "kitchen", img: BASE + "2a76c9d0-1b97-45e6-9a50-45ff2d979cf7.jpg", room: "Ванная", district: "Красногорск", type: "Фотопечать «Мрамор»", area: 8, year: 2026 },
+  { tab: "kitchen", img: BASE + "3f40e914-aed6-4159-ac2c-7d1a55ffb98e.jpg", room: "Кухня", district: "Одинцово", type: "Глянец, крупный план монтажа", area: 12, year: 2026 },
+
+  // Дизайнерские (design)
+  { tab: "design", img: BASE + "56a4af24-7efc-4e23-b4d3-63cec47b2902.jpg", room: "Гостиная", district: "Мытищи", type: "Фотопечать «Абстракция»", area: 30, year: 2026 },
+  { tab: "design", img: BASE + "a04d3ce2-4917-475e-9971-372a34c995ca.jpg", room: "Столовая", district: "Химки", type: "Фотопечать «Тропики»", area: 18, year: 2025 },
+  { tab: "design", img: BASE + "20bc927b-9d06-4a79-9e60-1b964d6678c3.jpg", room: "Гостиная", district: "Балашиха", type: "Двухуровневый минимализм", area: 36, year: 2026 },
+  { tab: "design", img: BASE + "e4ea078e-c5bc-4bae-b4ed-2c110336acd4.jpg", room: "Офис", district: "Видное", type: "Глянец белый, опенспейс", area: 65, year: 2026 },
+  { tab: "design", img: BASE + "8d728f04-33de-41c3-853f-d5b5a1571425.jpg", room: "Кинотеатр", district: "Строгино", type: "Матовый тёмно-серый", area: 25, year: 2025 },
+  { tab: "design", img: BASE + "740ec26e-caf3-4c62-b2bb-977bcfe43c48.jpg", room: "Дача / дом", district: "Мытищи", type: "Тканевый, деревянный интерьер", area: 40, year: 2025 },
+  { tab: "design", img: BASE + "e7d1774c-bb7b-405d-bdc6-413394b0532f.jpg", room: "Детская", district: "Домодедово", type: "Матовый белый, игровая", area: 15, year: 2026 },
+  { tab: "design", img: BASE + "51904f1a-0b4b-4ad2-9d84-3a4023dd2562.jpg", room: "Детская / nursery", district: "Одинцово", type: "Матовый, детская кроватка", area: 12, year: 2026 },
 ];
 
 const REVIEWS = [
@@ -188,7 +229,8 @@ export default function Index() {
   const [phone, setPhone] = useState("");
   const [comment, setComment] = useState("");
   const [sent, setSent] = useState(false);
-  const [activeTab, setActiveTab] = useState<"all" | "living" | "bedroom" | "kitchen">("all");
+  const [activeTab, setActiveTab] = useState<"all" | "living" | "bedroom" | "kitchen" | "design">("all");
+  const [lightboxImg, setLightboxImg] = useState<string | null>(null);
 
   useEffect(() => {
     const fn = () => setScrollY(window.scrollY);
@@ -207,13 +249,7 @@ export default function Index() {
   const citiesRef = useInView(0.1);
   const contactRef = useInView(0.05);
 
-  const filteredPortfolio = PORTFOLIO_ITEMS.filter(p => {
-    if (activeTab === "all") return true;
-    if (activeTab === "living") return p.room.includes("Гостин");
-    if (activeTab === "bedroom") return p.room.includes("Спальн");
-    if (activeTab === "kitchen") return p.room.includes("Кухн");
-    return true;
-  });
+  const filteredPortfolio = activeTab === "all" ? PORTFOLIO_ITEMS : PORTFOLIO_ITEMS.filter(p => p.tab === activeTab);
 
   return (
     <div className="bg-[#08080d] text-white font-rubik overflow-x-hidden">
@@ -450,11 +486,11 @@ export default function Index() {
                 <div className="w-8 h-px bg-violet-400" />Портфолио
               </div>
               <h2 className="font-montserrat font-black text-4xl md:text-5xl">
-                Наши реальные работы<br /><span className="text-white/30">по Москве и области</span>
+                Наши реальные работы<br /><span className="text-white/30">фото с объектов</span>
               </h2>
             </div>
             <div className="flex flex-wrap gap-2">
-              {[["all", "Все"], ["living", "Гостиные"], ["bedroom", "Спальни"], ["kitchen", "Кухни"]].map(([tab, label]) => (
+              {(Object.entries(PORTFOLIO_TABS) as [string, string][]).map(([tab, label]) => (
                 <button key={tab} onClick={() => setActiveTab(tab as typeof activeTab)}
                   className={`px-4 py-2 rounded-xl text-xs font-montserrat font-semibold transition-all ${activeTab === tab ? "bg-orange-500 text-white" : "bg-white/5 text-white/50 hover:bg-white/10 hover:text-white"}`}>
                   {label}
@@ -462,37 +498,65 @@ export default function Index() {
               ))}
             </div>
           </div>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
             {filteredPortfolio.map((p, i) => (
-              <div key={i}
+              <div key={`${activeTab}-${i}`}
+                onClick={() => setLightboxImg(p.img)}
                 className={`relative rounded-2xl overflow-hidden group cursor-pointer transition-all duration-500 ${portfolioRef.inView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6"}`}
-                style={{ transitionDelay: `${i * 60}ms`, aspectRatio: i % 5 === 0 ? "1.6/1" : "1/1" }}>
-                <div className="absolute inset-0 transition-transform duration-700 group-hover:scale-110" style={{ background: `radial-gradient(circle at 30% 30%, ${p.accent}40, ${p.color})` }} />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
-                <div className="absolute top-1/3 left-1/3 w-1/2 h-1/2 rounded-full blur-2xl pointer-events-none" style={{ background: `${p.accent}30` }} />
-                <div className="absolute inset-0 flex flex-col justify-end p-4">
-                  <div className="font-montserrat font-black text-sm leading-snug">{p.room}</div>
-                  <div className="text-white/60 text-xs">{p.type}</div>
+                style={{ transitionDelay: `${Math.min(i, 7) * 55}ms`, aspectRatio: "4/3" }}>
+                <img
+                  src={p.img}
+                  alt={`${p.room} — ${p.type}, ${p.district}`}
+                  loading="lazy"
+                  className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-108"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/10 to-transparent opacity-80 group-hover:opacity-100 transition-opacity" />
+                <div className="absolute inset-0 flex flex-col justify-end p-3.5">
+                  <div className="font-montserrat font-bold text-[13px] leading-snug text-white drop-shadow">{p.room}</div>
+                  <div className="text-white/65 text-[11px] leading-tight">{p.type}</div>
                   <div className="flex items-center justify-between mt-1">
-                    <div className="text-white/40 text-[10px]">{p.district}</div>
-                    <div className="text-[10px] font-montserrat font-bold" style={{ color: p.accent }}>{p.area} м²</div>
+                    <div className="flex items-center gap-1 text-white/45 text-[10px]">
+                      <Icon name="MapPin" size={9} className="text-orange-400" />{p.district}
+                    </div>
+                    <div className="text-[10px] font-montserrat font-black text-orange-400">{p.area} м²</div>
                   </div>
                 </div>
-                <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                  <div className="w-10 h-10 rounded-full bg-white/20 backdrop-blur flex items-center justify-center">
-                    <Icon name="Expand" size={18} className="text-white" />
-                  </div>
+                <div className="absolute top-2.5 right-2.5 w-8 h-8 rounded-full bg-black/40 backdrop-blur flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                  <Icon name="ZoomIn" size={14} className="text-white" />
                 </div>
               </div>
             ))}
           </div>
+
           <div className="text-center mt-8">
             <a href="#contact" className="inline-flex items-center gap-2 border border-white/12 text-white/50 font-montserrat font-semibold px-6 py-3 rounded-2xl hover:bg-white/5 hover:text-white transition-all text-sm">
-              Посмотреть все 15 000+ работ <Icon name="ArrowRight" size={14} />
+              Обсудить ваш проект <Icon name="ArrowRight" size={14} />
             </a>
           </div>
         </div>
       </section>
+
+      {/* ─── LIGHTBOX ─── */}
+      {lightboxImg && (
+        <div
+          className="fixed inset-0 z-[100] bg-black/92 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in"
+          onClick={() => setLightboxImg(null)}
+        >
+          <button
+            className="absolute top-5 right-5 w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 transition-colors flex items-center justify-center"
+            onClick={() => setLightboxImg(null)}
+          >
+            <Icon name="X" size={20} className="text-white" />
+          </button>
+          <img
+            src={lightboxImg}
+            alt="Фото работы"
+            className="max-w-full max-h-[90vh] rounded-2xl object-contain shadow-2xl"
+            onClick={e => e.stopPropagation()}
+          />
+        </div>
+      )}
 
       {/* ─── REVIEWS ─── */}
       <section id="reviews" className="py-24">
