@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import SectionsTop from "./SectionsTop";
 import ProductionSection from "./ProductionSection";
+import AiAssistant from "./AiAssistant";
 import SectionsBottom from "./SectionsBottom";
 
 function useInView(threshold = 0.12) {
@@ -38,6 +39,7 @@ export default function Index() {
   const faqRef = useInView(0.05);
   const citiesRef = useInView(0.1);
   const contactRef = useInView(0.05);
+  const assistantRef = useInView(0.05);
 
   return (
     <div className="bg-[#08080d] text-white font-rubik overflow-x-hidden">
@@ -50,6 +52,7 @@ export default function Index() {
         processRef={processRef}
       />
       <ProductionSection productionRef={productionRef} />
+      <AiAssistant assistantRef={assistantRef} />
       <SectionsBottom
         portfolioRef={portfolioRef}
         reviewsRef={reviewsRef}

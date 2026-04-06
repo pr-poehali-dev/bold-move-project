@@ -29,7 +29,7 @@ export default function SectionsTop({ scrollY, heroRef, statsRef, catalogRef, ca
             </div>
           </div>
           <nav className="hidden lg:flex items-center gap-7 text-sm text-white/60">
-            {[["#catalog", "Каталог"], ["#calc", "Калькулятор"], ["#portfolio", "Портфолио"], ["#reviews", "Отзывы"], ["#faq", "FAQ"], ["#contact", "Контакты"]].map(([href, label]) => (
+            {[["#catalog", "Каталог"], ["#calc", "Калькулятор"], ["#portfolio", "Портфолио"], ["#ai-assistant", "AI"], ["#reviews", "Отзывы"], ["#faq", "FAQ"], ["#contact", "Контакты"]].map(([href, label]) => (
               <a key={href} href={href} className="hover:text-orange-400 transition-colors font-medium">{label}</a>
             ))}
           </nav>
