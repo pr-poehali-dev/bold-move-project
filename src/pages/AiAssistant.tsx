@@ -2,6 +2,13 @@ import { useState, useRef, useEffect, useMemo } from "react";
 import Icon from "@/components/ui/icon";
 import func2url from "@/../backend/func2url.json";
 
+declare global {
+  interface Window {
+    SpeechRecognition: typeof SpeechRecognition;
+    webkitSpeechRecognition: typeof SpeechRecognition;
+  }
+}
+
 function isEstimate(text: string) {
   return (
     (text.includes("Econom") || text.includes("Standard") || text.includes("Premium")) &&
@@ -202,8 +209,43 @@ export default function AiAssistant({ assistantRef }: Props) {
   ]);
   const [input, setInput] = useState("");
   const [isTyping, setIsTyping] = useState(false);
+  const [isListening, setIsListening] = useState(false);
   const chatRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const recognitionRef = useRef<SpeechRecognition | null>(null);
+
+  const hasSpeech = typeof window !== "undefined" && ("SpeechRecognition" in window || "webkitSpeechRecognition" in window);
+
+  const toggleVoice = () => {
+    if (isListening) {
+      recognitionRef.current?.stop();
+      setIsListening(false);
+      return;
+    }
+
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SR) return;
+
+    const recognition = new SR();
+    recognition.lang = "ru-RU";
+    recognition.interimResults = true;
+    recognition.continuous = false;
+    recognitionRef.current = recognition;
+
+    recognition.onresult = (e: SpeechRecognitionEvent) => {
+      let transcript = "";
+      for (let i = 0; i < e.results.length; i++) {
+        transcript += e.results[i][0].transcript;
+      }
+      setInput(transcript);
+    };
+
+    recognition.onend = () => setIsListening(false);
+    recognition.onerror = () => setIsListening(false);
+
+    recognition.start();
+    setIsListening(true);
+  };
 
   useEffect(() => {
     if (chatRef.current) {
@@ -359,9 +401,18 @@ export default function AiAssistant({ assistantRef }: Props) {
                   type="text"
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
-                  placeholder="Напишите вопрос..."
-                  className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white text-sm placeholder-white/25 focus:outline-none focus:border-violet-500/50 focus:bg-white/7 transition-all"
+                  placeholder={isListening ? "Говорите..." : "Напишите или надиктуйте..."}
+                  className={`flex-1 bg-white/5 border rounded-xl px-4 py-3 text-white text-sm placeholder-white/25 focus:outline-none focus:bg-white/7 transition-all ${isListening ? "border-red-500/50 bg-red-500/5" : "border-white/10 focus:border-violet-500/50"}`}
                 />
+                {hasSpeech && (
+                  <button
+                    type="button"
+                    onClick={toggleVoice}
+                    className={`w-11 h-11 rounded-xl flex items-center justify-center transition-all shrink-0 ${isListening ? "bg-red-500 animate-pulse shadow-lg shadow-red-500/30" : "bg-white/8 border border-white/10 hover:bg-white/15 hover:border-violet-500/30"}`}
+                  >
+                    <Icon name={isListening ? "MicOff" : "Mic"} size={18} className="text-white" />
+                  </button>
+                )}
                 <button
                   type="submit"
                   disabled={!input.trim() || isTyping}
