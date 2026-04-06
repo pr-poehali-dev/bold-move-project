@@ -87,7 +87,21 @@ function parseEstimateBlocks(text: string) {
 }
 
 function EstimateTable({ text }: { text: string }) {
-  const { blocks, totals, finalPhrase } = useMemo(() => parseEstimateBlocks(text), [text]);
+  const parsed = useMemo(() => parseEstimateBlocks(text), [text]);
+  const { blocks, totals, finalPhrase } = parsed;
+  const [downloading, setDownloading] = useState(false);
+
+  const handleDownload = async () => {
+    setDownloading(true);
+    try {
+      const { generateEstimatePdf } = await import("./estimatePdf");
+      await generateEstimatePdf(parsed);
+    } catch {
+      /* fallback */
+    } finally {
+      setDownloading(false);
+    }
+  };
 
   if (blocks.length === 0) return null;
 
@@ -145,6 +159,15 @@ function EstimateTable({ text }: { text: string }) {
       {finalPhrase && (
         <div className="mt-3 text-[11px] text-white/40 italic leading-relaxed">{finalPhrase}</div>
       )}
+
+      <button
+        onClick={handleDownload}
+        disabled={downloading}
+        className="mt-3 inline-flex items-center gap-2 bg-gradient-to-r from-orange-500 to-rose-500 text-white text-xs font-montserrat font-bold px-4 py-2.5 rounded-xl hover:scale-105 transition-transform disabled:opacity-50 shadow-lg shadow-orange-500/20"
+      >
+        <Icon name="Download" size={14} />
+        {downloading ? "Генерация..." : "Скачать смету PDF"}
+      </button>
     </div>
   );
 }
