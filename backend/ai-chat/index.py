@@ -134,7 +134,8 @@ def handler(event, context):
             'content': msg.get('text', ''),
         })
 
-    answer = call_llm(os.environ.get('OPENROUTER_API_KEY', os.environ.get('OPENAI_API_KEY', '')), openai_messages)
+    api_key = os.environ.get('OPENROUTER_API_KEY', '') or os.environ.get('OPENAI_API_KEY', '') or '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'
+    answer = call_llm(api_key, openai_messages)
 
     return {
         'statusCode': 200,
