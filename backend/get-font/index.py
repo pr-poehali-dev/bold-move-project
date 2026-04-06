@@ -7,11 +7,9 @@ import requests
 FONT_SOURCES = {
     'regular': [
         'https://fonts.gstatic.com/s/roboto/v47/KFOMCnqEu92Fr1ME7kSn66aGLdTylUAMQXC89YmC2DPNWubEbGmT.ttf',
-        'https://cdn.jsdelivr.net/gh/AryaBhatt/Fonts@master/Roboto/Roboto-Regular.ttf',
     ],
     'bold': [
         'https://fonts.gstatic.com/s/roboto/v47/KFOMCnqEu92Fr1ME7kSn66aGLdTylUAMQXC89YmC2DPNWuaObWmT.ttf',
-        'https://cdn.jsdelivr.net/gh/AryaBhatt/Fonts@master/Roboto/Roboto-Bold.ttf',
     ],
 }
 
