@@ -147,22 +147,46 @@ Premium: сумма ₽ (+27%, без формулы)
 - Ежедневно 8:00–22:00
 - Отвечай на русском"""
 
+OPENROUTER_KEY = os.environ.get('OPENROUTER_API_KEY', '')
 HF_TOKEN = os.environ.get('HF_TOKEN', '')
+
+OR_MODELS = [
+    'meta-llama/llama-3.3-70b-instruct:free',
+    'mistralai/mistral-7b-instruct:free',
+    'google/gemma-3-27b-it:free',
+]
+
 HF_ENDPOINTS = [
     {'url': 'https://router.huggingface.co/sambanova/v1/chat/completions', 'model': 'Meta-Llama-3.3-70B-Instruct'},
     {'url': 'https://router.huggingface.co/novita/v3/openai/chat/completions', 'model': 'meta-llama/llama-3.3-70b-instruct'},
-    {'url': 'https://router.huggingface.co/fireworks-ai/v1/chat/completions', 'model': 'accounts/fireworks/models/llama-v3p3-70b-instruct'},
 ]
 
 
 def call_llm(messages):
-    """Вызывает LLM через HuggingFace — пробует несколько провайдеров."""
+    """Вызывает LLM — сначала OpenRouter бесплатные модели, потом HuggingFace."""
+    last_error = None
+
+    if OPENROUTER_KEY:
+        headers = {
+            'Authorization': f'Bearer {OPENROUTER_KEY}',
+            'Content-Type': 'application/json',
+            'HTTP-Referer': 'https://mospotolki.ru',
+        }
+        for model in OR_MODELS:
+            payload = {'model': model, 'messages': messages, 'max_tokens': 2000, 'temperature': 0.7}
+            try:
+                resp = requests.post('https://openrouter.ai/api/v1/chat/completions', json=payload, headers=headers, timeout=25)
+                if resp.status_code == 200:
+                    return resp.json()['choices'][0]['message']['content']
+                last_error = f"OpenRouter {model}: {resp.status_code} {resp.text[:200]}"
+            except Exception as e:
+                last_error = f"OpenRouter {model}: {str(e)}"
+
     headers = {
         'Authorization': f'Bearer {HF_TOKEN}',
         'Content-Type': 'application/json',
     }
 
-    last_error = None
     for ep in HF_ENDPOINTS:
         payload = {
             'model': ep['model'],
