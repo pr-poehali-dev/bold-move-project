@@ -151,7 +151,7 @@ HF_TOKEN = os.environ.get('HF_TOKEN', '')
 HF_ENDPOINTS = [
     {'url': 'https://router.huggingface.co/sambanova/v1/chat/completions', 'model': 'Meta-Llama-3.3-70B-Instruct'},
     {'url': 'https://router.huggingface.co/novita/v3/openai/chat/completions', 'model': 'meta-llama/llama-3.3-70b-instruct'},
-    {'url': 'https://router.huggingface.co/cerebras/v1/chat/completions', 'model': 'llama-3.3-70b'},
+    {'url': 'https://router.huggingface.co/fireworks-ai/v1/chat/completions', 'model': 'accounts/fireworks/models/llama-v3p3-70b-instruct'},
 ]
 
 
