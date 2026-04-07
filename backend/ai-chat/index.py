@@ -203,7 +203,8 @@ def call_llm(messages):
         except Exception as e:
             last_error = f"{ep['url']}: {str(e)}"
 
-    raise Exception(f'All HF endpoints failed. Last: {last_error}')
+    keys_debug = f"OR_KEY_2={bool(os.environ.get('OPENROUTER_API_KEY_2'))}, OR_KEY={bool(os.environ.get('OPENROUTER_API_KEY'))}, OR_USED={bool(OPENROUTER_KEY)}"
+    raise Exception(f'All endpoints failed. {keys_debug}. Last: {last_error}')
 
 
 def handler(event, context):
