@@ -147,7 +147,7 @@ Premium: сумма ₽ (+27%, без формулы)
 - Ежедневно 8:00–22:00
 - Отвечай на русском"""
 
-OPENROUTER_KEY = os.environ.get('OPENROUTER_API_KEY_2') or os.environ.get('OPENROUTER_API_KEY', '')
+OPENROUTER_KEY = os.environ.get('OPENROUTER_API_KEY_2', '') or os.environ.get('OPENROUTER_API_KEY', '')
 HF_TOKEN = os.environ.get('HF_TOKEN', '')
 
 OR_MODELS = [
