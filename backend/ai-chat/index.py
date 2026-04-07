@@ -147,7 +147,7 @@ Premium: сумма ₽ (+27%, без формулы)
 - Ежедневно 8:00–22:00
 - Отвечай на русском"""
 
-HF_TOKEN = os.environ.get('HF_TOKEN_2') or os.environ.get('HF_TOKEN', '')
+HF_TOKEN = os.environ.get('HF_TOKEN', '')
 HF_ENDPOINTS = [
     {'url': 'https://router.huggingface.co/sambanova/v1/chat/completions', 'model': 'Meta-Llama-3.3-70B-Instruct'},
     {'url': 'https://router.huggingface.co/novita/v3/openai/chat/completions', 'model': 'meta-llama/llama-3.3-70b-instruct'},
