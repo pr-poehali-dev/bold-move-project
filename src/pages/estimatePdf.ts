@@ -107,11 +107,21 @@ export async function generateEstimatePdf(parsed: ParsedEstimate) {
     const block = parsed.blocks[bi];
     if (block.numbered) numCounter++;
     const blockLabel = block.numbered ? `${numCounter}. ${block.title}` : block.title;
-    const rows = block.items.map((item) => [item.name, item.value]);
+    // Разбиваем value: если есть "= итог", показываем формулу и итог отдельно
+    const rows = block.items.map((item) => {
+      const val = item.value;
+      const eqIdx = val.lastIndexOf("=");
+      if (eqIdx > 0) {
+        const formula = val.slice(0, eqIdx).trim();   // "42 м² × 350 Р/м²"
+        const total = val.slice(eqIdx + 1).trim();    // "14 700 Р"
+        return [item.name, formula, total];
+      }
+      return [item.name, "", val];
+    });
 
     autoTable(doc, {
       startY: y,
-      head: [[blockLabel, "Сумма"]],
+      head: [[blockLabel, "Расчёт", "Сумма"]],
       body: rows,
       theme: "grid",
       styles: {
@@ -133,7 +143,8 @@ export async function generateEstimatePdf(parsed: ParsedEstimate) {
       },
       columnStyles: {
         0: { cellWidth: "auto" },
-        1: { cellWidth: 42, halign: "right", fontStyle: "normal" },
+        1: { cellWidth: 52, halign: "right", textColor: [80, 80, 90], fontSize: 8 },
+        2: { cellWidth: 32, halign: "right", fontStyle: "normal" },
       },
       margin: { left: 14, right: 14 },
     });
