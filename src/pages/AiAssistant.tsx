@@ -193,8 +193,10 @@ export default function AiAssistant({ assistantRef }: Props) {
                   value={input}
                   onChange={(e) => {
                     setInput(e.target.value);
-                    e.target.style.height = "auto";
-                    e.target.style.height = Math.min(e.target.scrollHeight, 96) + "px";
+                    e.target.style.height = "44px";
+                    const newH = Math.min(e.target.scrollHeight, 120);
+                    e.target.style.height = newH + "px";
+                    e.target.style.overflowY = e.target.scrollHeight > 120 ? "auto" : "hidden";
                   }}
                   onKeyDown={(e) => {
                     if (e.key === "Enter" && !e.shiftKey) {
@@ -204,7 +206,8 @@ export default function AiAssistant({ assistantRef }: Props) {
                   }}
                   placeholder={isListening ? "Говорите..." : "Напишите или надиктуйте..."}
                   rows={1}
-                  className={`flex-1 bg-white/5 border rounded-xl px-4 py-3 text-white text-sm placeholder-white/25 focus:outline-none focus:bg-white/7 transition-all resize-none overflow-y-auto leading-relaxed max-h-24 ${isListening ? "border-red-500/50 bg-red-500/5" : "border-white/10 focus:border-violet-500/50"}`}
+                  style={{ height: "44px", overflowY: "hidden" }}
+                  className={`flex-1 bg-white/5 border rounded-xl px-4 py-3 text-white text-sm placeholder-white/25 focus:outline-none focus:bg-white/7 transition-all resize-none leading-relaxed ${isListening ? "border-red-500/50 bg-red-500/5" : "border-white/10 focus:border-violet-500/50"}`}
                 />
                 {hasSpeech && (
                   <button
