@@ -127,16 +127,16 @@ export async function generateEstimatePdf(parsed: ParsedEstimate) {
         return { qty: m[1].trim(), price: m[2].trim() };
       };
 
-      // Случай 1: item.value содержит формулу с × 
+      // Случай 1: item.value содержит формулу с ×
       if (/[×xх]/.test(item.value)) {
         const qp = extractQtyPrice(item.value);
         const total = extractTotal(item.value);
         return [item.name, qp?.qty ?? "", qp?.price ?? "", total];
       }
 
-      // Случай 2: item.name содержит "Название: формула"
+      // Случай 2: item.name содержит "Название: формула" (через двоеточие)
       const colonIdx = item.name.indexOf(":");
-      if (colonIdx > 0) {
+      if (colonIdx > 0 && /[×xх]/.test(item.name)) {
         const name = item.name.slice(0, colonIdx).trim();
         const rest = item.name.slice(colonIdx + 1).trim();
         if (/[×xх]/.test(rest)) {
@@ -146,7 +146,23 @@ export async function generateEstimatePdf(parsed: ParsedEstimate) {
         }
       }
 
-      // Случай 3: только итог
+      // Случай 3: item.name содержит формулу без двоеточия ("Название — 42 м² × 399 Р")
+      if (/[×xх]/.test(item.name)) {
+        // Ищем первый × и берём всё после него как формулу
+        const mulIdx = item.name.search(/[×xх]/);
+        // Ищем начало числа перед ×
+        const beforeMul = item.name.slice(0, mulIdx);
+        const numStart = beforeMul.search(/[\d,.]+\s*[^\d\s,.]?\s*$/);
+        if (numStart >= 0) {
+          const name = beforeMul.slice(0, numStart).replace(/[-–—:,\s]+$/, "").trim();
+          const formula = item.name.slice(numStart).trim();
+          const qp = extractQtyPrice(formula);
+          const total = item.value || extractTotal(formula);
+          return [name, qp?.qty ?? "", qp?.price ?? "", total];
+        }
+      }
+
+      // Случай 4: только итог в item.value
       return [item.name, "", "", item.value];
     });
 
