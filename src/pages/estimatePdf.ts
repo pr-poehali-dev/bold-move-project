@@ -89,15 +89,15 @@ export async function generateEstimatePdf(parsed: ParsedEstimate) {
   doc.setFontSize(20);
   doc.setTextColor(255, 140, 50);
   doc.text("MOSPOTOLKI", 15, 17);
-  doc.setFontSize(8);
-  doc.setTextColor(200, 200, 210);
+  doc.setFontSize(9);
+  doc.setTextColor(220, 220, 230);
   doc.text("Натяжные потолки | +7 (977) 606-89-01 | mospotolki.net", 15, 25);
-  doc.setFontSize(14);
+  doc.setFontSize(16);
   doc.setTextColor(255, 255, 255);
   doc.text("СМЕТА", pageW - 15, 17, { align: "right" });
   doc.setFont(f, "normal");
-  doc.setFontSize(8);
-  doc.setTextColor(180, 180, 190);
+  doc.setFontSize(9);
+  doc.setTextColor(220, 220, 230);
   doc.text("от " + today, pageW - 15, 25, { align: "right" });
 
   let y = 46;
@@ -158,24 +158,24 @@ export async function generateEstimatePdf(parsed: ParsedEstimate) {
       styles: {
         font: f,
         fontStyle: "normal",
-        fontSize: 9,
-        cellPadding: 3,
+        fontSize: 10,
+        cellPadding: 4,
         textColor: [0, 0, 0],
-        lineColor: [150, 150, 160],
-        lineWidth: 0.3,
+        lineColor: [100, 100, 110],
+        lineWidth: 0.4,
       },
       headStyles: {
         font: f,
         fontStyle: "normal",
-        fontSize: 10,
+        fontSize: 11,
         textColor: [180, 60, 0],
-        fillColor: [240, 238, 245],
-        lineWidth: 0.3,
+        fillColor: [235, 232, 245],
+        lineWidth: 0.4,
       },
       columnStyles: {
         0: { cellWidth: "auto" },
-        1: { cellWidth: 28, halign: "right", textColor: [60, 60, 70] },
-        2: { cellWidth: 32, halign: "right", textColor: [60, 60, 70] },
+        1: { cellWidth: 28, halign: "right", textColor: [0, 0, 0] },
+        2: { cellWidth: 34, halign: "right", textColor: [0, 0, 0] },
         3: { cellWidth: 28, halign: "right", textColor: [0, 0, 0] },
       },
       margin: { left: 14, right: 14 },
@@ -187,7 +187,7 @@ export async function generateEstimatePdf(parsed: ParsedEstimate) {
 
   if (parsed.totals.length > 0) {
     y += 3;
-    const boxH = 12 + parsed.totals.length * 10;
+    const boxH = 14 + parsed.totals.length * 11;
     if (y + boxH > 275) { doc.addPage(); y = 15; }
 
     doc.setFillColor(255, 248, 238);
@@ -198,19 +198,19 @@ export async function generateEstimatePdf(parsed: ParsedEstimate) {
 
     y += 8;
     doc.setFont(f, "normal");
-    doc.setFontSize(10);
+    doc.setFontSize(11);
     doc.setTextColor(0, 0, 0);
     doc.text("ИТОГО:", 19, y);
 
     for (const t of parsed.totals) {
-      y += 9;
+      y += 10;
       const parts = t.split(":");
       const label = parts[0].trim();
       const val = parts.slice(1).join(":").trim();
       const isSt = /standard/i.test(label);
 
       doc.setFont(f, "normal");
-      doc.setFontSize(isSt ? 13 : 10);
+      doc.setFontSize(isSt ? 14 : 11);
       doc.setTextColor(isSt ? 180 : 0, isSt ? 60 : 0, 0);
       doc.text(label + ":", 19, y);
       doc.text(val, pageW - 19, y, { align: "right" });
@@ -228,8 +228,8 @@ export async function generateEstimatePdf(parsed: ParsedEstimate) {
   }
 
   doc.setFont(f, "normal");
-  doc.setFontSize(7);
-  doc.setTextColor(80, 80, 90);
+  doc.setFontSize(8);
+  doc.setTextColor(30, 30, 30);
   doc.text("MosPotolki | Мытищи, Пограничная 24 | +7 (977) 606-89-01 | wa.me/79776068901", pageW / 2, 288, { align: "center" });
 
   doc.save("Смета_MosPotolki_" + today.replace(/\./g, "-") + ".pdf");
