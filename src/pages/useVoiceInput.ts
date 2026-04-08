@@ -10,6 +10,7 @@ declare global {
 export default function useVoiceInput(setInput: (value: string) => void) {
   const [isListening, setIsListening] = useState(false);
   const recognitionRef = useRef<SpeechRecognition | null>(null);
+  const isMobile = typeof navigator !== "undefined" && /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
 
   const toggleVoice = () => {
     if (isListening) {
@@ -29,7 +30,9 @@ export default function useVoiceInput(setInput: (value: string) => void) {
     const recognition = new SR();
     recognition.lang = "ru-RU";
     recognition.interimResults = true;
-    recognition.continuous = true;
+    // На мобильных continuous не работает — используем разовый режим
+    recognition.continuous = !isMobile;
+    recognition.maxAlternatives = 1;
     recognitionRef.current = recognition;
 
     recognition.onresult = (e: SpeechRecognitionEvent) => {
@@ -40,18 +43,28 @@ export default function useVoiceInput(setInput: (value: string) => void) {
       setInput(transcript);
     };
 
-    // При continuous=true перезапускаем если остановился не по кнопке
     recognition.onend = () => {
       if (recognitionRef.current) {
-        try { recognitionRef.current.start(); } catch { setIsListening(false); }
+        // На мобильных перезапускаем вручную после каждой фразы
+        if (isMobile) {
+          try { recognitionRef.current.start(); } catch { setIsListening(false); recognitionRef.current = null; }
+        } else {
+          try { recognitionRef.current.start(); } catch { setIsListening(false); }
+        }
       }
     };
-    recognition.onerror = (e) => {
+
+    recognition.onerror = (e: SpeechRecognitionErrorEvent) => {
       console.error("[Voice] error:", e.error);
       if (e.error === "not-allowed") {
         alert("Доступ к микрофону запрещён. Разрешите доступ в настройках браузера.");
+        recognitionRef.current = null;
       }
-      setIsListening(false);
+      // aborted / no-speech — не сбрасываем, просто ждём onend для перезапуска
+      if (e.error !== "aborted" && e.error !== "no-speech") {
+        setIsListening(false);
+        recognitionRef.current = null;
+      }
     };
 
     try {
