@@ -10,13 +10,13 @@ export default function FaqSection({ faqRef }: Props) {
   const [activeFaq, setActiveFaq] = useState<number | null>(null);
 
   return (
-    <section id="faq" className="py-24 bg-gradient-to-b from-transparent via-white/2 to-transparent">
-      <div ref={faqRef.ref} className="max-w-4xl mx-auto px-5">
-        <div className={`mb-12 text-center transition-all duration-700 ${faqRef.inView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6"}`}>
+    <section id="faq" className="py-16 md:py-24 bg-gradient-to-b from-transparent via-white/2 to-transparent">
+      <div ref={faqRef.ref} className="max-w-4xl mx-auto px-4">
+        <div className={`mb-10 text-center transition-all duration-700 ${faqRef.inView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6"}`}>
           <div className="inline-flex items-center gap-2 text-orange-400 text-xs font-montserrat font-bold uppercase tracking-[0.2em] mb-4">
             <div className="w-8 h-px bg-orange-400" />Частые вопросы<div className="w-8 h-px bg-orange-400" />
           </div>
-          <h2 className="font-montserrat font-black text-4xl md:text-5xl">
+          <h2 className="font-montserrat font-black text-3xl md:text-5xl">
             Отвечаем на<br /><span className="text-white/30">ваши вопросы</span>
           </h2>
         </div>

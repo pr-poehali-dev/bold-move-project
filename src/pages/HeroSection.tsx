@@ -15,34 +15,34 @@ export default function HeroSection({ heroRef }: Props) {
       <div className="absolute top-1/3 right-10 w-[480px] h-[480px] bg-orange-500/8 rounded-full blur-3xl animate-float pointer-events-none" />
       <div className="absolute bottom-1/4 left-0 w-[320px] h-[320px] bg-violet-600/10 rounded-full blur-3xl pointer-events-none" />
 
-      <div ref={heroRef.ref} className="relative max-w-7xl mx-auto px-5 py-16 grid grid-cols-1 lg:grid-cols-2 gap-12 items-center w-full">
+      <div ref={heroRef.ref} className="relative max-w-7xl mx-auto px-4 py-10 md:py-16 grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12 items-center w-full">
         <div className={`transition-all duration-1000 ${heroRef.inView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-10"}`}>
-          <div className="inline-flex items-center gap-2 bg-orange-500/15 border border-orange-500/30 text-orange-300 rounded-full px-4 py-1.5 text-xs font-montserrat font-semibold mb-6 uppercase tracking-widest">
+          <div className="inline-flex items-center gap-2 bg-orange-500/15 border border-orange-500/30 text-orange-300 rounded-full px-3 py-1.5 text-[11px] font-montserrat font-semibold mb-5 uppercase tracking-widest">
             <span className="w-2 h-2 bg-orange-400 rounded-full animate-pulse" />
             Производитель №1 в Москве и МО
           </div>
-          <h1 className="font-montserrat font-black text-5xl md:text-6xl xl:text-7xl leading-[0.95] mb-6">
+          <h1 className="font-montserrat font-black text-4xl sm:text-5xl md:text-6xl xl:text-7xl leading-[0.95] mb-5">
             Натяжные<br />
             <span className="bg-gradient-to-r from-orange-400 via-rose-400 to-violet-400 bg-clip-text text-transparent">потолки</span>
             <br />
-            <span className="text-white/25 text-4xl md:text-5xl">от производителя</span>
+            <span className="text-white/25 text-3xl sm:text-4xl md:text-5xl">от производителя</span>
           </h1>
-          <p className="text-white/55 text-lg leading-relaxed mb-8 max-w-lg">
+          <p className="text-white/55 text-base md:text-lg leading-relaxed mb-7 max-w-lg">
             15 лет устанавливаем натяжные потолки в Москве и области. Монтаж за 1 день, гарантия 12 лет. Бесплатный замер с 3D-визуализацией.
           </p>
-          <div className="flex flex-wrap gap-3 mb-10">
-            <a href="#contact" className="inline-flex items-center gap-2 bg-gradient-to-r from-orange-500 to-rose-500 text-white font-montserrat font-bold px-7 py-4 rounded-2xl text-base hover:scale-105 transition-transform shadow-xl shadow-orange-500/25">
+          <div className="flex flex-col sm:flex-row gap-3 mb-8">
+            <a href="#contact" className="inline-flex items-center justify-center gap-2 bg-gradient-to-r from-orange-500 to-rose-500 text-white font-montserrat font-bold px-6 py-4 rounded-2xl text-base hover:scale-105 transition-transform shadow-xl shadow-orange-500/25">
               Вызвать замерщика бесплатно <Icon name="ArrowRight" size={18} />
             </a>
-            <a href="#calc" className="inline-flex items-center gap-2 border border-white/15 text-white/70 font-montserrat font-semibold px-6 py-4 rounded-2xl text-base hover:bg-white/8 hover:text-white transition-all">
+            <a href="#calc" className="inline-flex items-center justify-center gap-2 border border-white/15 text-white/70 font-montserrat font-semibold px-6 py-4 rounded-2xl text-base hover:bg-white/8 hover:text-white transition-all">
               <Icon name="Calculator" size={18} /> Рассчитать цену
             </a>
           </div>
-          <div className="flex flex-wrap gap-6">
+          <div className="grid grid-cols-4 gap-3 sm:flex sm:flex-wrap sm:gap-6">
             {[["15 000+", "проектов"], ["12 лет", "гарантия"], ["1 день", "монтаж"], ["0 ₽", "замер"]].map(([n, l]) => (
               <div key={n} className="flex flex-col">
-                <span className="font-montserrat font-black text-2xl text-orange-400">{n}</span>
-                <span className="text-white/40 text-xs">{l}</span>
+                <span className="font-montserrat font-black text-xl sm:text-2xl text-orange-400">{n}</span>
+                <span className="text-white/40 text-[10px] sm:text-xs">{l}</span>
               </div>
             ))}
           </div>

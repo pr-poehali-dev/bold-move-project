@@ -92,21 +92,21 @@ export default function AiAssistant({ assistantRef }: Props) {
   };
 
   return (
-    <section id="ai-assistant" className="py-24">
-      <div ref={assistantRef.ref} className="max-w-4xl mx-auto px-5">
+    <section id="ai-assistant" className="py-16 md:py-24">
+      <div ref={assistantRef.ref} className="max-w-4xl mx-auto px-4">
         <div
-          className={`mb-10 text-center transition-all duration-700 ${assistantRef.inView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6"}`}
+          className={`mb-8 text-center transition-all duration-700 ${assistantRef.inView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6"}`}
         >
           <div className="inline-flex items-center gap-2 text-violet-400 text-xs font-montserrat font-bold uppercase tracking-[0.2em] mb-4">
             <div className="w-8 h-px bg-violet-400" />
             AI-помощник
             <div className="w-8 h-px bg-violet-400" />
           </div>
-          <h2 className="font-montserrat font-black text-4xl md:text-5xl mb-3">
+          <h2 className="font-montserrat font-black text-3xl md:text-5xl mb-3">
             Спросите у AI<br />
             <span className="text-white/30">мгновенный расчёт и подбор</span>
           </h2>
-          <p className="text-white/50 text-base max-w-xl mx-auto">
+          <p className="text-white/50 text-sm md:text-base max-w-xl mx-auto">
             Задайте вопрос — помощник рассчитает стоимость, подберёт тип потолка и сформирует предложение за секунды.
           </p>
         </div>
@@ -137,7 +137,7 @@ export default function AiAssistant({ assistantRef }: Props) {
               </div>
             </div>
 
-            <div ref={chatRef} className="h-[500px] overflow-y-auto px-6 py-5 space-y-4 scroll-smooth">
+            <div ref={chatRef} className="h-[340px] sm:h-[440px] md:h-[500px] overflow-y-auto px-4 md:px-6 py-5 space-y-4 scroll-smooth">
               {messages.map((msg) => (
                 <div
                   key={msg.id}
@@ -173,7 +173,7 @@ export default function AiAssistant({ assistantRef }: Props) {
             </div>
 
             {messages.length === 1 && !isTyping && (
-              <div className="px-6 pb-3">
+              <div className="px-4 md:px-6 pb-3">
                 <div className="text-white/30 text-[11px] font-montserrat uppercase tracking-widest mb-2">Популярные вопросы</div>
                 <div className="flex flex-wrap gap-2">
                   {QUICK_QUESTIONS.map((q, i) => (

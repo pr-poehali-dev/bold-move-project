@@ -6,14 +6,14 @@ interface Props {
 
 export default function ReviewsSection({ reviewsRef }: Props) {
   return (
-    <section id="reviews" className="py-24">
-      <div ref={reviewsRef.ref} className="max-w-7xl mx-auto px-5">
-        <div className={`flex flex-wrap items-end justify-between gap-6 mb-12 transition-all duration-700 ${reviewsRef.inView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6"}`}>
+    <section id="reviews" className="py-16 md:py-24">
+      <div ref={reviewsRef.ref} className="max-w-7xl mx-auto px-4">
+        <div className={`flex flex-col md:flex-row md:items-end justify-between gap-5 mb-10 transition-all duration-700 ${reviewsRef.inView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6"}`}>
           <div>
             <div className="inline-flex items-center gap-2 text-rose-400 text-xs font-montserrat font-bold uppercase tracking-[0.2em] mb-4">
               <div className="w-8 h-px bg-rose-400" />Отзывы клиентов
             </div>
-            <h2 className="font-montserrat font-black text-4xl md:text-5xl">
+            <h2 className="font-montserrat font-black text-3xl md:text-5xl">
               Реальные отзывы<br /><span className="text-white/30">с Яндекс.Карт и 2ГИС</span>
             </h2>
           </div>

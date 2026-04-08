@@ -41,7 +41,7 @@ export default function Index() {
   const assistantRef = useInView(0.05);
 
   return (
-    <div className="bg-[#08080d] text-white font-rubik overflow-x-hidden">
+    <div className="bg-[#08080d] text-white font-rubik overflow-x-hidden pb-16 md:pb-0">
       <SectionsTop
         scrollY={scrollY}
         heroRef={heroRef}
@@ -52,6 +52,19 @@ export default function Index() {
         assistantRef={assistantRef}
       />
       <ProductionSection productionRef={productionRef} />
+      {/* Mobile sticky CTA */}
+      <div className="fixed bottom-0 inset-x-0 z-40 md:hidden bg-[#08080d]/95 backdrop-blur border-t border-white/10 px-4 py-3 flex gap-2">
+        <a href="tel:+79776068901" className="flex-1 flex items-center justify-center gap-2 bg-gradient-to-r from-orange-500 to-rose-500 text-white font-montserrat font-bold py-3 rounded-xl text-sm">
+          Позвонить
+        </a>
+        <a href="#contact" className="flex-1 flex items-center justify-center gap-2 border border-white/15 text-white/80 font-montserrat font-semibold py-3 rounded-xl text-sm hover:bg-white/8 transition-colors">
+          Заявка
+        </a>
+        <a href="https://wa.me/79776068901" target="_blank" rel="noreferrer" className="w-12 flex items-center justify-center bg-green-500/20 border border-green-500/30 rounded-xl">
+          <span className="text-green-400 text-lg">💬</span>
+        </a>
+      </div>
+
       <SectionsBottom
         portfolioRef={portfolioRef}
         reviewsRef={reviewsRef}

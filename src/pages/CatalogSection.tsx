@@ -7,13 +7,13 @@ interface Props {
 
 export default function CatalogSection({ catalogRef }: Props) {
   return (
-    <section id="catalog" className="py-24">
-      <div ref={catalogRef.ref} className="max-w-7xl mx-auto px-5">
-        <div className={`mb-14 transition-all duration-700 ${catalogRef.inView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6"}`}>
+    <section id="catalog" className="py-16 md:py-24">
+      <div ref={catalogRef.ref} className="max-w-7xl mx-auto px-4">
+        <div className={`mb-10 md:mb-14 transition-all duration-700 ${catalogRef.inView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6"}`}>
           <div className="inline-flex items-center gap-2 text-orange-400 text-xs font-montserrat font-bold uppercase tracking-[0.2em] mb-4">
             <div className="w-8 h-px bg-orange-400" />Каталог потолков
           </div>
-          <h2 className="font-montserrat font-black text-4xl md:text-5xl mb-3">
+          <h2 className="font-montserrat font-black text-3xl md:text-5xl mb-3">
             8 видов натяжных потолков<br /><span className="text-white/30">с ценами от производителя</span>
           </h2>
           <p className="text-white/50 text-base max-w-xl">Все виды полотна у нас в наличии. Работаем с проверенными производителями Франции, Германии и России.</p>

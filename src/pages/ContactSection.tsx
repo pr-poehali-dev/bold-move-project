@@ -21,8 +21,8 @@ export default function ContactSection({
   return (
     <>
       {/* ─── CITIES ─── */}
-      <section className="py-16 border-y border-white/5">
-        <div ref={citiesRef.ref} className="max-w-7xl mx-auto px-5">
+      <section className="py-12 md:py-16 border-y border-white/5">
+        <div ref={citiesRef.ref} className="max-w-7xl mx-auto px-4">
           <div className={`transition-all duration-700 ${citiesRef.inView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6"}`}>
             <div className="text-center mb-8">
               <div className="inline-flex items-center gap-2 text-white/40 text-xs font-montserrat font-bold uppercase tracking-[0.2em] mb-3">
@@ -42,14 +42,14 @@ export default function ContactSection({
       </section>
 
       {/* ─── CONTACT ─── */}
-      <section id="contact" className="py-24 relative overflow-hidden">
+      <section id="contact" className="py-16 md:py-24 relative overflow-hidden">
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_70%_50%_at_50%_50%,rgba(234,88,12,0.12),transparent)]" />
-        <div ref={contactRef.ref} className="relative max-w-7xl mx-auto px-5">
-          <div className={`mb-12 text-center transition-all duration-700 ${contactRef.inView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6"}`}>
+        <div ref={contactRef.ref} className="relative max-w-7xl mx-auto px-4">
+          <div className={`mb-10 text-center transition-all duration-700 ${contactRef.inView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6"}`}>
             <div className="inline-flex items-center gap-2 text-orange-400 text-xs font-montserrat font-bold uppercase tracking-[0.2em] mb-4">
               <div className="w-8 h-px bg-orange-400" />Бесплатный замер<div className="w-8 h-px bg-orange-400" />
             </div>
-            <h2 className="font-montserrat font-black text-4xl md:text-5xl mb-3">Получите расчёт за 15 минут</h2>
+            <h2 className="font-montserrat font-black text-3xl md:text-5xl mb-3">Получите расчёт за 15 минут</h2>
             <p className="text-white/40 text-base">Замерщик приедет на следующий день. Расчёт и 3D-визуализация — бесплатно.</p>
           </div>
           <div className={`grid grid-cols-1 lg:grid-cols-5 gap-8 transition-all duration-700 delay-200 ${contactRef.inView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6"}`}>
@@ -84,7 +84,7 @@ export default function ContactSection({
             </div>
             <div className="lg:col-span-3 relative">
               <div className="absolute -inset-1 bg-gradient-to-r from-orange-500/15 to-violet-500/15 rounded-3xl blur-xl" />
-              <div className="relative p-8 rounded-3xl border border-white/10 bg-[#08080d]/90 backdrop-blur">
+              <div className="relative p-5 md:p-8 rounded-3xl border border-white/10 bg-[#08080d]/90 backdrop-blur">
                 {sent ? (
                   <div className="text-center py-10">
                     <div className="w-20 h-20 rounded-full bg-gradient-to-br from-orange-500 to-rose-500 flex items-center justify-center mx-auto mb-5 shadow-xl shadow-orange-500/30 animate-scale-in">

@@ -15,14 +15,14 @@ export default function PortfolioSection({ portfolioRef }: Props) {
   return (
     <>
       {/* ─── PORTFOLIO ─── */}
-      <section id="portfolio" className="py-24 bg-gradient-to-b from-transparent via-violet-950/10 to-transparent">
-        <div ref={portfolioRef.ref} className="max-w-7xl mx-auto px-5">
-          <div className={`flex flex-wrap items-end justify-between gap-6 mb-10 transition-all duration-700 ${portfolioRef.inView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6"}`}>
+      <section id="portfolio" className="py-16 md:py-24 bg-gradient-to-b from-transparent via-violet-950/10 to-transparent">
+        <div ref={portfolioRef.ref} className="max-w-7xl mx-auto px-4">
+          <div className={`flex flex-col gap-5 mb-8 transition-all duration-700 ${portfolioRef.inView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6"}`}>
             <div>
               <div className="inline-flex items-center gap-2 text-violet-400 text-xs font-montserrat font-bold uppercase tracking-[0.2em] mb-4">
                 <div className="w-8 h-px bg-violet-400" />Портфолио
               </div>
-              <h2 className="font-montserrat font-black text-4xl md:text-5xl">
+              <h2 className="font-montserrat font-black text-3xl md:text-5xl">
                 Наши реальные работы<br /><span className="text-white/30">фото с объектов</span>
               </h2>
             </div>
@@ -36,7 +36,7 @@ export default function PortfolioSection({ portfolioRef }: Props) {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 md:gap-3">
             {filteredPortfolio.map((p, i) => (
               <div key={`${activeTab}-${i}`}
                 onClick={() => setLightboxImg(p.img)}

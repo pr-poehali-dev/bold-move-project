@@ -7,13 +7,13 @@ interface Props {
 
 export default function ProcessSection({ processRef }: Props) {
   return (
-    <section className="py-24">
-      <div ref={processRef.ref} className="max-w-7xl mx-auto px-5">
-        <div className={`mb-14 transition-all duration-700 ${processRef.inView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6"}`}>
+    <section className="py-16 md:py-24">
+      <div ref={processRef.ref} className="max-w-7xl mx-auto px-4">
+        <div className={`mb-10 md:mb-14 transition-all duration-700 ${processRef.inView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6"}`}>
           <div className="inline-flex items-center gap-2 text-violet-400 text-xs font-montserrat font-bold uppercase tracking-[0.2em] mb-4">
             <div className="w-8 h-px bg-violet-400" />Как мы работаем
           </div>
-          <h2 className="font-montserrat font-black text-4xl md:text-5xl">
+          <h2 className="font-montserrat font-black text-3xl md:text-5xl">
             5 шагов от заявки<br /><span className="text-white/30">до готового потолка</span>
           </h2>
         </div>
