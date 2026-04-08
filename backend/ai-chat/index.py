@@ -147,13 +147,12 @@ Premium: сумма ₽ (+27%, без формулы)
 - Ежедневно 8:00–22:00
 - Отвечай на русском"""
 
-OPENROUTER_KEY = os.environ.get('OPENROUTER_API_KEY_2', '') or os.environ.get('OPENROUTER_API_KEY', '')
 HF_TOKEN = os.environ.get('HF_TOKEN', '')
 
 OR_MODELS = [
+    'openai/gpt-4o-mini',
     'meta-llama/llama-3.3-70b-instruct:free',
     'mistralai/mistral-7b-instruct:free',
-    'google/gemma-3-27b-it:free',
 ]
 
 HF_ENDPOINTS = [
@@ -165,10 +164,11 @@ HF_ENDPOINTS = [
 def call_llm(messages):
     """Вызывает LLM — сначала OpenRouter бесплатные модели, потом HuggingFace."""
     last_error = None
+    openrouter_key = os.environ.get('OPENROUTER_API_KEY_2', '') or os.environ.get('OPENROUTER_API_KEY', '')
 
-    if OPENROUTER_KEY:
+    if openrouter_key:
         headers = {
-            'Authorization': f'Bearer {OPENROUTER_KEY}',
+            'Authorization': f'Bearer {openrouter_key}',
             'Content-Type': 'application/json',
             'HTTP-Referer': 'https://mospotolki.ru',
         }
@@ -177,7 +177,9 @@ def call_llm(messages):
             try:
                 resp = requests.post('https://openrouter.ai/api/v1/chat/completions', json=payload, headers=headers, timeout=25)
                 if resp.status_code == 200:
-                    return resp.json()['choices'][0]['message']['content']
+                    content = resp.json()['choices'][0]['message']['content']
+                    if content:
+                        return content
                 last_error = f"OpenRouter {model}: {resp.status_code} {resp.text[:200]}"
             except Exception as e:
                 last_error = f"OpenRouter {model}: {str(e)}"
@@ -203,8 +205,7 @@ def call_llm(messages):
         except Exception as e:
             last_error = f"{ep['url']}: {str(e)}"
 
-    keys_debug = f"OR_KEY_2={bool(os.environ.get('OPENROUTER_API_KEY_2'))}, OR_KEY={bool(os.environ.get('OPENROUTER_API_KEY'))}, OR_USED={bool(OPENROUTER_KEY)}"
-    raise Exception(f'All endpoints failed. {keys_debug}. Last: {last_error}')
+    raise Exception(f'All endpoints failed. Last: {last_error}')
 
 
 def handler(event, context):
