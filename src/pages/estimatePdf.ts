@@ -215,8 +215,8 @@ export async function generateEstimatePdf(parsed: ParsedEstimate) {
         fontStyle: "normal",
         fontSize: 10,
         cellPadding: 4,
-        textColor: [0, 0, 0],
-        lineColor: [100, 100, 110],
+        textColor: [10, 10, 10],
+        lineColor: [180, 180, 200],
         lineWidth: 0.4,
       },
       headStyles: {
@@ -227,11 +227,16 @@ export async function generateEstimatePdf(parsed: ParsedEstimate) {
         fillColor: [235, 232, 245],
         lineWidth: 0.4,
       },
+      bodyStyles: {
+        textColor: [10, 10, 10],
+        font: f.bold,
+        fontStyle: "normal",
+      },
       columnStyles: {
-        0: { cellWidth: "auto" },
-        1: { cellWidth: 28, halign: "right", textColor: [0, 0, 0] },
-        2: { cellWidth: 34, halign: "right", textColor: [0, 0, 0] },
-        3: { cellWidth: 28, halign: "right", textColor: [0, 0, 0] },
+        0: { cellWidth: "auto", textColor: [10, 10, 10] },
+        1: { cellWidth: 28, halign: "right", textColor: [10, 10, 10] },
+        2: { cellWidth: 34, halign: "right", textColor: [10, 10, 10] },
+        3: { cellWidth: 28, halign: "right", textColor: [10, 10, 10] },
       },
       margin: { left: 14, right: 14 },
     });
