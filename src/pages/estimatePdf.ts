@@ -107,35 +107,39 @@ export async function generateEstimatePdf(parsed: ParsedEstimate) {
     const block = parsed.blocks[bi];
     if (block.numbered) numCounter++;
     const blockLabel = block.numbered ? `${numCounter}. ${block.title}` : block.title;
-    // Название слева, итоговая сумма справа
+    // 4 колонки: Название | Кол-во | Цена/ед | Итог
     const rows = block.items.map((item) => {
       const val = item.value;
 
-      // Если есть "= итог" — берём итог
-      const eqMatch = val.match(/=\s*([\d\s,.]+\s*[₽Р][^=]*)$/);
-      if (eqMatch) {
-        const formula = val.slice(0, val.lastIndexOf("=")).trim();
-        const total = eqMatch[1].trim();
-        return [`${item.name}: ${formula}`, total];
+      // Формат: "кол ед × цена Р/ед = итог Р"
+      const fullMatch = val.match(/^([\d\s,.]+\s*[^\d×x=]+?)\s*[×x]\s*([\d\s,.]+\s*[₽Р][^=×x]*?)\s*=\s*([\d\s,.]+\s*[₽Р].*)$/);
+      if (fullMatch) {
+        return [item.name, fullMatch[1].trim(), fullMatch[2].trim(), fullMatch[3].trim()];
       }
 
-      // Если есть "кол × цена" — вычисляем итог сами
-      const mulMatch = val.match(/^([\d\s,.]+)\s*[×x]\s*([\d\s,.]+)\s*[₽Р]/);
+      // Формат: "кол ед × цена Р/ед" (без итога — вычисляем)
+      const mulMatch = val.match(/^([\d\s,.]+\s*[^\d×x]+?)\s*[×x]\s*([\d\s,.]+)\s*([₽Р][^\s]*)(.*)$/);
       if (mulMatch) {
-        const qty = parseFloat(mulMatch[1].replace(/\s/g, "").replace(",", "."));
-        const price = parseFloat(mulMatch[2].replace(/\s/g, "").replace(",", "."));
+        const qtyStr = mulMatch[1].match(/[\d,.]+/)?.[0] ?? "";
+        const priceStr = mulMatch[2];
+        const qty = parseFloat(qtyStr.replace(/\s/g, "").replace(",", "."));
+        const price = parseFloat(priceStr.replace(/\s/g, "").replace(",", "."));
+        const unit = mulMatch[3] + mulMatch[4].trim();
+        const qtyPart = mulMatch[1].trim();
+        const priceDisplay = `${priceStr} ${unit}`.trim();
         if (!isNaN(qty) && !isNaN(price)) {
           const total = Math.round(qty * price).toLocaleString("ru-RU") + " Р";
-          return [`${item.name}: ${val}`, total];
+          return [item.name, qtyPart, priceDisplay, total];
         }
       }
 
-      return [item.name, val];
+      // Нет формулы — просто название и значение
+      return [item.name, "", "", val];
     });
 
     autoTable(doc, {
       startY: y,
-      head: [[blockLabel, "Сумма"]],
+      head: [[blockLabel, "Кол-во", "Цена/ед", "Итог"]],
       body: rows,
       theme: "grid",
       styles: {
@@ -157,7 +161,9 @@ export async function generateEstimatePdf(parsed: ParsedEstimate) {
       },
       columnStyles: {
         0: { cellWidth: "auto" },
-        1: { cellWidth: 38, halign: "right" },
+        1: { cellWidth: 28, halign: "right", textColor: [60, 60, 70] },
+        2: { cellWidth: 32, halign: "right", textColor: [60, 60, 70] },
+        3: { cellWidth: 28, halign: "right", textColor: [0, 0, 0] },
       },
       margin: { left: 14, right: 14 },
     });
