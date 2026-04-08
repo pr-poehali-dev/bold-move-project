@@ -1,5 +1,4 @@
 import jsPDF from "jspdf";
-import autoTable from "jspdf-autotable";
 import func2url from "@/../backend/func2url.json";
 
 interface EstimateBlock {
@@ -14,326 +13,260 @@ interface ParsedEstimate {
   finalPhrase: string;
 }
 
-let cachedFonts: { regular: string; bold?: string } | null = null;
-// Сбрасываем кеш при каждом вызове чтобы шрифт регистрировался в новом doc
-function clearFontCache() { cachedFonts = null; }
-
-async function arrayBufferToBase64(buffer: ArrayBuffer): Promise<string> {
-  const bytes = new Uint8Array(buffer);
-  let binary = "";
-  for (let i = 0; i < bytes.byteLength; i++) binary += String.fromCharCode(bytes[i]);
-  return btoa(binary);
-}
-
-async function fetchFontBase64(url: string): Promise<string | null> {
-  try {
-    const resp = await fetch(url);
-    if (!resp.ok) return null;
-    const buf = await resp.arrayBuffer();
-    return await arrayBufferToBase64(buf);
-  } catch {
-    return null;
-  }
-}
+let cachedFont: string | null = null;
 
 async function ensureFont() {
-  if (cachedFonts) return;
-  // Сначала пробуем бэкенд (уже кешировано в S3)
+  if (cachedFont) return;
   try {
     const resp = await fetch(func2url["get-font"]);
     if (resp.ok) {
       const data = await resp.json();
-      if (data.font) {
-        cachedFonts = { regular: data.font, bold: data.bold };
-        return;
-      }
+      if (data.font) { cachedFont = data.font; return; }
     }
-  } catch { /* продолжаем */ }
-
-  // Фолбэк: грузим напрямую с Google Fonts CDN
-  const regular = await fetchFontBase64(
-    "https://fonts.gstatic.com/s/roboto/v47/KFOMCnqEu92Fr1ME7kSn66aGLdTylUAMQXC89YmC2DPNWubEbGmT.ttf"
-  );
-  const bold = await fetchFontBase64(
-    "https://fonts.gstatic.com/s/roboto/v47/KFOMCnqEu92Fr1ME7kSn66aGLdTylUAMQXC89YmC2DPNWuYJb2mT.ttf"
-  );
-  if (regular) cachedFonts = { regular, bold: bold ?? undefined };
+  } catch { /* ignore */ }
+  // fallback: грузим напрямую
+  try {
+    const resp = await fetch("https://fonts.gstatic.com/s/roboto/v47/KFOMCnqEu92Fr1ME7kSn66aGLdTylUAMQXC89YmC2DPNWubEbGmT.ttf");
+    if (resp.ok) {
+      const buf = await resp.arrayBuffer();
+      const bytes = new Uint8Array(buf);
+      let bin = "";
+      for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+      cachedFont = btoa(bin);
+    }
+  } catch { /* ignore */ }
 }
 
-function setup(doc: jsPDF): { regular: string; bold: string } {
-  if (!cachedFonts) {
-    console.warn("[PDF] no fonts — using helvetica");
-    return { regular: "helvetica", bold: "helvetica" };
-  }
-  const uid = Date.now();
-  const rFile = `R-${uid}.ttf`;
-  const bFile = `B-${uid}.ttf`;
+function registerFont(doc: jsPDF): string {
+  if (!cachedFont) return "helvetica";
   try {
-    // Регистрируем regular и как normal и как bold (fallback)
-    doc.addFileToVFS(rFile, cachedFonts.regular);
-    doc.addFont(rFile, "PdfF", "normal");
-    doc.addFont(rFile, "PdfF", "bold");
-
-    if (cachedFonts.bold) {
-      // Если есть отдельный bold — регистрируем его
-      doc.addFileToVFS(bFile, cachedFonts.bold);
-      doc.addFont(bFile, "PdfF", "bold");
-      console.log("[PDF] bold font loaded OK");
-    } else {
-      console.warn("[PDF] bold not available, using regular for bold");
-    }
-    doc.setFont("PdfF", "normal");
-    return { regular: "PdfF", bold: "PdfF" };
-  } catch(e) {
-    console.error("[PDF] font register error:", e);
-    return { regular: "helvetica", bold: "helvetica" };
+    const name = `F${Date.now()}`;
+    doc.addFileToVFS(`${name}.ttf`, cachedFont);
+    doc.addFont(`${name}.ttf`, name, "normal");
+    return name;
+  } catch {
+    return "helvetica";
   }
+}
+
+// Рисует одну строку таблицы, возвращает новый y
+function drawRow(
+  doc: jsPDF, font: string,
+  cols: string[], x: number, y: number, colWidths: number[],
+  rowH: number, isHead: boolean, pageH: number,
+  addPage: () => void
+) {
+  if (y + rowH > pageH - 15) { addPage(); y = 20; }
+
+  // Фон заголовка
+  if (isHead) {
+    doc.setFillColor(235, 232, 245);
+    doc.rect(x, y, colWidths.reduce((a, b) => a + b, 0), rowH, "F");
+  }
+
+  // Рамка строки
+  doc.setDrawColor(180, 180, 200);
+  doc.setLineWidth(0.3);
+  let cx = x;
+  for (const w of colWidths) {
+    doc.rect(cx, y, w, rowH);
+    cx += w;
+  }
+
+  // Текст — ВСЕГДА чёрный
+  doc.setFont(font, "normal");
+  doc.setFontSize(isHead ? 10 : 9.5);
+  doc.setTextColor(0, 0, 0); // чёрный — нативный вызов без autoTable
+
+  cx = x;
+  for (let i = 0; i < cols.length; i++) {
+    const w = colWidths[i];
+    const text = (cols[i] || "").replace(/\*\*/g, "");
+    const align = i === 0 ? "left" : "right";
+    const tx = align === "right" ? cx + w - 2 : cx + 2;
+    // Обрезаем длинный текст
+    const maxW = w - 4;
+    const lines = doc.splitTextToSize(text, maxW);
+    doc.text(lines[0] || "", tx, y + rowH / 2 + 1.5, { align, baseline: "middle" });
+    cx += w;
+  }
+
+  return y + rowH;
 }
 
 export async function generateEstimatePdf(parsed: ParsedEstimate) {
-  clearFontCache();
+  cachedFont = null;
   await ensureFont();
 
   const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
-  const f = setup(doc);
-
+  const font = registerFont(doc);
   const pageW = doc.internal.pageSize.getWidth();
+  const pageH = doc.internal.pageSize.getHeight();
   const today = new Date().toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit", year: "numeric" });
+  const margin = 14;
+  const tableW = pageW - margin * 2;
+  const colWidths = [tableW - 28 - 34 - 28, 28, 34, 28]; // name, qty, price, sum
 
+  // Шапка документа
   doc.setFillColor(20, 20, 30);
-  doc.rect(0, 0, pageW, 38, "F");
-  doc.setFont(f.bold, "normal");
-  doc.setFontSize(20);
+  doc.rect(0, 0, pageW, 36, "F");
+  doc.setFont(font, "normal");
+  doc.setFontSize(18);
   doc.setTextColor(255, 140, 50);
-  doc.text("MOSPOTOLKI", 15, 17);
-  doc.setFontSize(9);
-  doc.setFont(f.regular, "normal");
-  doc.setTextColor(220, 220, 230);
-  doc.text("Натяжные потолки | +7 (977) 606-89-01 | mospotolki.net", 15, 25);
-  doc.setFont(f.bold, "normal");
-  doc.setFontSize(16);
+  doc.text("MOSPOTOLKI", 15, 15);
+  doc.setFontSize(8);
+  doc.setTextColor(200, 200, 215);
+  doc.text("Натяжные потолки | +7 (977) 606-89-01", 15, 23);
+  doc.setFontSize(14);
   doc.setTextColor(255, 255, 255);
-  doc.text("СМЕТА", pageW - 15, 17, { align: "right" });
-  doc.setFont(f.regular, "normal");
-  doc.setFontSize(9);
-  doc.setTextColor(220, 220, 230);
-  doc.text("от " + today, pageW - 15, 25, { align: "right" });
+  doc.text("СМЕТА", pageW - 15, 15, { align: "right" });
+  doc.setFontSize(8);
+  doc.setTextColor(200, 200, 215);
+  doc.text("от " + today, pageW - 15, 23, { align: "right" });
 
-  let y = 46;
+  let y = 44;
   let numCounter = 0;
+  let pageNum = 1;
 
-  for (let bi = 0; bi < parsed.blocks.length; bi++) {
-    const block = parsed.blocks[bi];
-    if (block.numbered) numCounter++;
-    const blockLabel = (block.numbered ? `${numCounter}. ${block.title}` : block.title).replace(/\*\*/g, "");
-    // Универсальный разбор строки: извлекает название, кол-во, цену, итог
-    const parseLine = (name: string, value: string): [string, string, string, string] => {
-      const hasMul = (s: string) => /[×xх]/.test(s);
-      const hasCurrency = (s: string) => /[₽Р]/.test(s);
+  const addPage = () => {
+    doc.addPage();
+    pageNum++;
+    y = 20;
+  };
 
-      // Вычисляем итог из кол-ва и цены
-      const compute = (qty: string, price: string): string => {
-        const q = parseFloat(qty.replace(/[^\d.]/g, ""));
-        const p = parseFloat(price.replace(/[^\d.]/g, ""));
-        return (!isNaN(q) && !isNaN(p) && p > 0)
-          ? Math.round(q * p).toLocaleString("ru-RU") + " Р"
-          : "";
-      };
+  const parseLine = (name: string, value: string): [string, string, string, string] => {
+    const clean = (s: string) => s.replace(/\*\*/g, "").trim();
+    const hasMul = (s: string) => /[×xх]/.test(s);
 
-      // Разбиваем формулу на qty и price по последнему ×
-      // Итог берём после последнего "= число Р"
-      const splitMul = (s: string): { qty: string; price: string; preTotal?: string } | null => {
-        const lastMul = Math.max(s.lastIndexOf("×"), s.lastIndexOf("x"), s.lastIndexOf("х"));
-        if (lastMul < 0) return null;
-
-        const lastEq = s.lastIndexOf("=");
-        let price = s.slice(lastMul + 1).trim();
-        let preTotal: string | undefined;
-        if (lastEq > lastMul) {
-          price = s.slice(lastMul + 1, lastEq).trim();
-          preTotal = s.slice(lastEq + 1).trim().replace(/\*\*/g, "").trim();
-        }
-        // Очищаем price от лишнего (берём только первое число + единицу)
-        price = price.replace(/\*\*/g, "").trim();
-        const priceNum = price.match(/[\d\s,.]+\s*[₽Рм²шт\w]*/)?.[0]?.trim() || price;
-
-        // qty: берём часть до последнего ×, затем только число после последнего =
-        const beforeMul = s.slice(0, lastMul).trim();
-        const lastEqBefore = beforeMul.lastIndexOf("=");
-        let qty = lastEqBefore >= 0 ? beforeMul.slice(lastEqBefore + 1).trim() : beforeMul;
-        // Оставляем только число + единицу измерения (убираем промежуточные формулы)
-        qty = qty.replace(/\*\*/g, "").trim();
-        const qtyClean = qty.match(/[\d,.]+\s*[м²шткгмlp]*/)?.[0]?.trim() || qty;
-
-        return { qty: qtyClean, price: priceNum, preTotal };
-      };
-
-      // Случай 1: name = "Название: формула" (через двоеточие)
-      const colonIdx = name.indexOf(":");
-      if (colonIdx > 0 && hasMul(name)) {
-        const title = name.slice(0, colonIdx).trim();
-        const formula = name.slice(colonIdx + 1).trim();
-        const sp = splitMul(formula);
-        if (sp) {
-          const total = value || sp.preTotal || compute(sp.qty, sp.price);
-          return [title, sp.qty, sp.price, total];
-        }
-      }
-
-      // Случай 2: value содержит формулу
-      if (hasMul(value) && hasCurrency(value)) {
-        const sp = splitMul(value);
-        if (sp) {
-          const total = sp.preTotal || compute(sp.qty, sp.price);
-          return [name, sp.qty, sp.price, total];
-        }
-      }
-
-      // Случай 3: name содержит формулу без двоеточия
-      if (hasMul(name) && hasCurrency(name)) {
-        const sp = splitMul(name);
-        if (sp) {
-          const total = value || sp.preTotal || compute(sp.qty, sp.price);
-          return ["", sp.qty, sp.price, total];
-        }
-      }
-
-      // Случай 4: название + итог без формулы
-      return [name, "", "", value];
+    const compute = (qty: string, price: string) => {
+      const q = parseFloat(qty.replace(/[^\d.]/g, ""));
+      const p = parseFloat(price.replace(/[^\d.]/g, ""));
+      return (!isNaN(q) && !isNaN(p) && p > 0) ? Math.round(q * p).toLocaleString("ru-RU") + " Р" : "";
     };
 
-    // Объединяем пары: если строка без цены, а следующая — формула
-    const rows: string[][] = [];
+    const splitMul = (s: string) => {
+      const lastMul = Math.max(s.lastIndexOf("×"), s.lastIndexOf("x"), s.lastIndexOf("х"));
+      if (lastMul < 0) return null;
+      const lastEq = s.lastIndexOf("=");
+      let price = s.slice(lastMul + 1).trim();
+      let preTotal: string | undefined;
+      if (lastEq > lastMul) {
+        price = s.slice(lastMul + 1, lastEq).trim();
+        preTotal = clean(s.slice(lastEq + 1));
+      }
+      price = clean(price).match(/[\d\s,.]+\s*[₽Рм²шт\w]*/)?.[0]?.trim() || clean(price);
+      const beforeMul = s.slice(0, lastMul).trim();
+      const lastEqB = beforeMul.lastIndexOf("=");
+      let qty = lastEqB >= 0 ? beforeMul.slice(lastEqB + 1).trim() : beforeMul;
+      qty = clean(qty).match(/[\d,.]+\s*[м²шткгмlp]*/)?.[0]?.trim() || clean(qty);
+      return { qty, price, preTotal };
+    };
+
+    const colonIdx = name.indexOf(":");
+    if (colonIdx > 0 && hasMul(name)) {
+      const sp = splitMul(name.slice(colonIdx + 1));
+      if (sp) return [clean(name.slice(0, colonIdx)), sp.qty, sp.price, value || sp.preTotal || compute(sp.qty, sp.price)];
+    }
+    if (hasMul(value)) {
+      const sp = splitMul(value);
+      if (sp) return [clean(name), sp.qty, sp.price, sp.preTotal || compute(sp.qty, sp.price)];
+    }
+    if (hasMul(name)) {
+      const sp = splitMul(name);
+      if (sp) return ["", sp.qty, sp.price, value || sp.preTotal || compute(sp.qty, sp.price)];
+    }
+    return [clean(name), "", "", clean(value)];
+  };
+
+  for (const block of parsed.blocks) {
+    if (block.numbered) numCounter++;
+    const label = ((block.numbered ? `${numCounter}. ` : "") + block.title).replace(/\*\*/g, "");
+
+    // Заголовок блока
+    y = drawRow(doc, font, [label, "Кол-во", "Цена/ед", "Сумма"], margin, y, colWidths, 8, true, pageH, addPage);
+
+    // Строки
     let i = 0;
     while (i < block.items.length) {
       const cur = block.items[i];
       const next = block.items[i + 1];
-      const isJustName = !cur.value && !/[×xх₽Рру]/.test(cur.name);
-
-      const clean = (s: string) => s.replace(/\*\*/g, "").trim();
-      if (isJustName && next && /[×xх]/.test(next.name)) {
+      const isJustName = !cur.value && !/[×xх₽Р]/.test(cur.name);
+      let row: string[];
+      if (isJustName && next) {
         const [n, qty, price, total] = parseLine(next.name, next.value);
-        rows.push([clean(cur.name || n), qty, price, total]);
+        row = [cur.name.replace(/\*\*/g, "") || n, qty, price, total];
         i += 2;
       } else {
         const [n, qty, price, total] = parseLine(cur.name, cur.value);
-        rows.push([clean(n), qty, price, total]);
-        i += 1;
+        row = [n, qty, price, total];
+        i++;
       }
+      y = drawRow(doc, font, row, margin, y, colWidths, 7, false, pageH, addPage);
     }
-
-    autoTable(doc, {
-      startY: y,
-      head: [[blockLabel, "Кол-во", "Цена/ед", "Сумма"]],
-      body: rows,
-      theme: "grid",
-      styles: {
-        font: f.regular,
-        fontStyle: "normal",
-        fontSize: 10,
-        cellPadding: 4,
-        textColor: 0,
-        lineColor: 180,
-        lineWidth: 0.4,
-      },
-      headStyles: {
-        font: f.regular,
-        fontStyle: "normal",
-        fontSize: 11,
-        textColor: [180, 60, 0],
-        fillColor: [235, 232, 245],
-        lineWidth: 0.4,
-      },
-      bodyStyles: {
-        textColor: 0,
-        font: f.regular,
-        fontStyle: "normal",
-        fillColor: false,
-      },
-      alternateRowStyles: {
-        fillColor: [248, 248, 252],
-        textColor: 0,
-      },
-      columnStyles: {
-        0: { cellWidth: "auto" },
-        1: { cellWidth: 28, halign: "right" },
-        2: { cellWidth: 34, halign: "right" },
-        3: { cellWidth: 28, halign: "right" },
-      },
-      margin: { left: 14, right: 14 },
-    });
-
-    y = (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 3;
-    if (y > 255) { doc.addPage(); y = 15; }
+    y += 4;
   }
 
+  // Итого
   if (parsed.totals.length > 0) {
-    y += 3;
-    const boxH = 14 + parsed.totals.length * 11;
-    if (y + boxH > 275) { doc.addPage(); y = 15; }
-
-    doc.setFillColor(255, 248, 238);
-    doc.roundedRect(14, y, pageW - 28, boxH, 2, 2, "F");
-    doc.setDrawColor(255, 130, 40);
-    doc.setLineWidth(0.5);
-    doc.roundedRect(14, y, pageW - 28, boxH, 2, 2, "S");
-
-    y += 8;
-    doc.setFont(f.bold, "normal");
-    doc.setFontSize(11);
-    doc.setTextColor(0, 0, 0);
-    doc.text("ИТОГО:", 19, y);
-
-    // Чистим totals: убираем markdown **, формулы (оставляем только итоговое число)
+    y += 2;
     const cleanTotals = parsed.totals
       .map(t => t.replace(/\*\*/g, "").trim())
-      .filter(t => t && !/^[-–—]{2,}$/.test(t));
+      .filter(t => t && !/^[-–—]{2,}$/.test(t))
+      .map(t => {
+        const ci = t.indexOf(":");
+        if (ci < 0) return t;
+        let val = t.slice(ci + 1).trim();
+        if (/[+=]/.test(val)) {
+          const nums = val.match(/[\d\s]+[₽Р]/g);
+          val = nums ? nums[nums.length - 1].trim() : val;
+        }
+        return t.slice(0, ci).trim() + ": " + val;
+      });
 
-    // Оставляем только строки вида "Название: число Р" — без формул с +/×
-    const simpleTotals = cleanTotals.map(t => {
-      const colonIdx = t.indexOf(":");
-      if (colonIdx < 0) return t;
-      const label = t.slice(0, colonIdx).trim();
-      let val = t.slice(colonIdx + 1).trim();
-      // Если в значении есть формула (содержит + или =), берём последнее число
-      if (/[+=]/.test(val)) {
-        const nums = val.match(/[\d\s]+[₽Р]/g);
-        val = nums ? nums[nums.length - 1].trim() : val;
-      }
-      return label + ": " + val;
-    });
+    const boxH = 10 + cleanTotals.length * 8;
+    if (y + boxH > pageH - 15) { addPage(); }
 
-    for (const t of simpleTotals) {
-      y += 10;
-      const colonIdx = t.indexOf(":");
-      const label = colonIdx >= 0 ? t.slice(0, colonIdx).trim() : t;
-      const val = colonIdx >= 0 ? t.slice(colonIdx + 1).trim() : "";
-      const isSt = /standard/i.test(label);
+    doc.setFillColor(255, 248, 238);
+    doc.setDrawColor(255, 130, 40);
+    doc.setLineWidth(0.5);
+    doc.roundedRect(margin, y, tableW, boxH, 2, 2, "FD");
 
-      doc.setFont(f.bold, "normal");
-      doc.setFontSize(isSt ? 14 : 11);
+    y += 7;
+    doc.setFont(font, "normal");
+    doc.setFontSize(10);
+    doc.setTextColor(0, 0, 0);
+    doc.text("ИТОГО:", margin + 3, y);
+
+    for (const t of cleanTotals) {
+      y += 8;
+      const ci = t.indexOf(":");
+      const lbl = ci >= 0 ? t.slice(0, ci).trim() : t;
+      const val = ci >= 0 ? t.slice(ci + 1).trim() : "";
+      const isSt = /standard/i.test(lbl);
+      doc.setFontSize(isSt ? 11 : 9.5);
       doc.setTextColor(isSt ? 180 : 0, isSt ? 60 : 0, 0);
-      doc.text(label + ":", 19, y);
-      if (val) doc.text(val, pageW - 19, y, { align: "right" });
+      doc.text(lbl + ":", margin + 3, y);
+      if (val) doc.text(val, margin + tableW - 3, y, { align: "right" });
     }
-    y += 12;
+    y += 10;
   }
 
   if (parsed.finalPhrase) {
-    if (y > 268) { doc.addPage(); y = 15; }
-    doc.setFont(f.regular, "normal");
+    if (y > pageH - 20) addPage();
+    doc.setFont(font, "normal");
     doc.setFontSize(8);
-    doc.setTextColor(50, 50, 60);
-    const fLines = doc.splitTextToSize(parsed.finalPhrase, pageW - 28);
-    doc.text(fLines, 14, y);
+    doc.setTextColor(80, 80, 80);
+    const lines = doc.splitTextToSize(parsed.finalPhrase.replace(/\*\*/g, ""), tableW);
+    doc.text(lines, margin, y);
   }
 
-  doc.setFont(f.regular, "normal");
-  doc.setFontSize(8);
-  doc.setTextColor(30, 30, 30);
-  doc.text("MosPotolki | Мытищи, Пограничная 24 | +7 (977) 606-89-01 | wa.me/79776068901", pageW / 2, 288, { align: "center" });
+  // Футер
+  doc.setFont(font, "normal");
+  doc.setFontSize(7);
+  doc.setTextColor(150, 150, 150);
+  doc.text("MosPotolki | Мытищи, Пограничная 24 | +7 (977) 606-89-01", pageW / 2, pageH - 8, { align: "center" });
 
-  doc.save("Смета_MosPotolki_" + today.replace(/\./g, "-") + ".pdf");
+  doc.save(`Смета_MosPotolki_${today.replace(/\./g, "-")}.pdf`);
 }
 
 export default generateEstimatePdf;
