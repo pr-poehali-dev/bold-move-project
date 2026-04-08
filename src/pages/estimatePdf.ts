@@ -69,16 +69,21 @@ function setup(doc: jsPDF): { regular: string; bold: string } {
   const rFile = `R-${uid}.ttf`;
   const bFile = `B-${uid}.ttf`;
   try {
+    // Регистрируем regular и как normal и как bold (fallback)
     doc.addFileToVFS(rFile, cachedFonts.regular);
-    doc.addFont(rFile, "PdfR", "normal");
+    doc.addFont(rFile, "PdfF", "normal");
+    doc.addFont(rFile, "PdfF", "bold");
+
     if (cachedFonts.bold) {
+      // Если есть отдельный bold — регистрируем его
       doc.addFileToVFS(bFile, cachedFonts.bold);
-      doc.addFont(bFile, "PdfB", "normal");
+      doc.addFont(bFile, "PdfF", "bold");
+      console.log("[PDF] bold font loaded OK");
+    } else {
+      console.warn("[PDF] bold not available, using regular for bold");
     }
-    doc.setFont("PdfR", "normal");
-    const boldName = cachedFonts.bold ? "PdfB" : "PdfR";
-    console.log("[PDF] fonts OK, bold=", boldName);
-    return { regular: "PdfR", bold: boldName };
+    doc.setFont("PdfF", "normal");
+    return { regular: "PdfF", bold: "PdfF" };
   } catch(e) {
     console.error("[PDF] font register error:", e);
     return { regular: "helvetica", bold: "helvetica" };
@@ -223,8 +228,8 @@ export async function generateEstimatePdf(parsed: ParsedEstimate) {
       body: rows,
       theme: "grid",
       styles: {
-        font: f.bold,
-        fontStyle: "normal",
+        font: f.regular,
+        fontStyle: "bold",
         fontSize: 10,
         cellPadding: 4,
         textColor: [10, 10, 10],
@@ -232,8 +237,8 @@ export async function generateEstimatePdf(parsed: ParsedEstimate) {
         lineWidth: 0.4,
       },
       headStyles: {
-        font: f.bold,
-        fontStyle: "normal",
+        font: f.regular,
+        fontStyle: "bold",
         fontSize: 11,
         textColor: [180, 60, 0],
         fillColor: [235, 232, 245],
@@ -241,18 +246,19 @@ export async function generateEstimatePdf(parsed: ParsedEstimate) {
       },
       bodyStyles: {
         textColor: [0, 0, 0],
-        font: f.bold,
-        fontStyle: "normal",
+        font: f.regular,
+        fontStyle: "bold",
         fillColor: [255, 255, 255],
       },
       alternateRowStyles: {
         fillColor: [248, 248, 252],
         textColor: [0, 0, 0],
       },
-      didParseCell: (data: {section: string; cell: {styles: {textColor: number[]; font: string}}}) => {
+      didParseCell: (data: {section: string; cell: {styles: {textColor: number[]; font: string; fontStyle: string}}}) => {
         if (data.section === "body") {
           data.cell.styles.textColor = [0, 0, 0];
-          data.cell.styles.font = f.bold;
+          data.cell.styles.font = f.regular;
+          data.cell.styles.fontStyle = "bold";
         }
       },
       columnStyles: {
