@@ -15,6 +15,8 @@ interface ParsedEstimate {
 }
 
 let cachedFonts: { regular: string; bold?: string } | null = null;
+// Сбрасываем кеш при каждом вызове чтобы шрифт регистрировался в новом doc
+function clearFontCache() { cachedFonts = null; }
 
 async function arrayBufferToBase64(buffer: ArrayBuffer): Promise<string> {
   const bytes = new Uint8Array(buffer);
@@ -75,6 +77,7 @@ function setup(doc: jsPDF): { regular: string; bold: string } {
 }
 
 export async function generateEstimatePdf(parsed: ParsedEstimate) {
+  clearFontCache();
   await ensureFont();
 
   const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
@@ -237,9 +240,10 @@ export async function generateEstimatePdf(parsed: ParsedEstimate) {
         fillColor: [248, 248, 252],
         textColor: [0, 0, 0],
       },
-      willDrawCell: (data: {section: string; cell: {styles: {textColor: number[]}}}) => {
+      didParseCell: (data: {section: string; cell: {styles: {textColor: number[]; font: string}}}) => {
         if (data.section === "body") {
           data.cell.styles.textColor = [0, 0, 0];
+          data.cell.styles.font = f.bold;
         }
       },
       columnStyles: {
