@@ -24,7 +24,7 @@ export default function Header({ scrollY }: Props) {
         <div className="max-w-7xl mx-auto px-4 flex items-center justify-between gap-4">
           <div className="flex items-center gap-2 shrink-0">
             <img
-              src="https://cdn.poehali.dev/files/0c6874e4-b08b-460c-96f8-5340abe4e6a4.png"
+              src="https://cdn.poehali.dev/files/7105828c-c33e-48f9-ac90-02134e3cd4d7.png"
               alt="MOSPOTOLKI PRO"
               className="h-10 w-auto object-contain"
             />
