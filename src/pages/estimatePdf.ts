@@ -107,52 +107,75 @@ export async function generateEstimatePdf(parsed: ParsedEstimate) {
     const block = parsed.blocks[bi];
     if (block.numbered) numCounter++;
     const blockLabel = block.numbered ? `${numCounter}. ${block.title}` : block.title;
-    // Разбираем каждую строку: ищем "кол × цена" в name или value
-    const extractQtyPrice = (s: string) => {
-      const m = s.match(/^([\d,.]+\s*[а-яёa-z²³.]*\s*)\s*[×xх]\s*([\d\s,.]+\s*[₽Р][^\s×xх]*)/i);
-      if (!m) return null;
-      return { qty: m[1].trim(), price: m[2].trim() };
-    };
+    // Универсальный разбор строки: извлекает название, кол-во, цену, итог
+    const parseLine = (name: string, value: string): [string, string, string, string] => {
+      const hasMul = (s: string) => /[×xх]/.test(s);
+      const hasCurrency = (s: string) => /[₽Р]/.test(s);
 
-    // Вычисляем итог из формулы "кол × цена"
-    const calcTotal = (qty: string, price: string): string => {
-      const q = parseFloat(qty.replace(/[^\d.,]/g, "").replace(",", "."));
-      const p = parseFloat(price.replace(/[^\d.,]/g, "").replace(",", "."));
-      if (!isNaN(q) && !isNaN(p) && p > 0) {
-        return Math.round(q * p).toLocaleString("ru-RU") + " Р";
+      // Вычисляем итог из кол-ва и цены
+      const compute = (qty: string, price: string): string => {
+        const q = parseFloat(qty.replace(/[^\d.]/g, ""));
+        const p = parseFloat(price.replace(/[^\d.]/g, ""));
+        return (!isNaN(q) && !isNaN(p) && p > 0)
+          ? Math.round(q * p).toLocaleString("ru-RU") + " Р"
+          : "";
+      };
+
+      // Разбиваем формулу "X ед × Y Р/ед" на qty и price
+      const splitMul = (s: string): { qty: string; price: string } | null => {
+        const parts = s.split(/[×xх]/);
+        if (parts.length < 2) return null;
+        return { qty: parts[0].trim(), price: parts.slice(1).join("×").trim() };
+      };
+
+      // Случай 1: name = "Название: формула" (через двоеточие)
+      const colonIdx = name.indexOf(":");
+      if (colonIdx > 0 && hasMul(name)) {
+        const title = name.slice(0, colonIdx).trim();
+        const formula = name.slice(colonIdx + 1).trim();
+        const sp = splitMul(formula);
+        if (sp) {
+          const total = value || compute(sp.qty, sp.price);
+          return [title, sp.qty, sp.price, total];
+        }
       }
-      return "";
+
+      // Случай 2: value содержит формулу
+      if (hasMul(value) && hasCurrency(value)) {
+        const sp = splitMul(value);
+        if (sp) {
+          const total = compute(sp.qty, sp.price);
+          return [name, sp.qty, sp.price, total];
+        }
+      }
+
+      // Случай 3: name содержит формулу без двоеточия
+      if (hasMul(name) && hasCurrency(name)) {
+        const sp = splitMul(name);
+        if (sp) {
+          const total = value || compute(sp.qty, sp.price);
+          return ["", sp.qty, sp.price, total];
+        }
+      }
+
+      // Случай 4: просто название + итог
+      return [name, "", "", value];
     };
 
-    // Объединяем пары: название + следующая строка с формулой
+    // Объединяем пары: если строка без цены, а следующая — формула
     const rows: string[][] = [];
     let i = 0;
     while (i < block.items.length) {
       const cur = block.items[i];
       const next = block.items[i + 1];
-      const hasFormula = (s: string) => /[×xх]/.test(s) && /[₽Р]/.test(s);
+      const isJustName = !cur.value && !/[×xх₽Рру]/.test(cur.name);
 
-      if (!hasFormula(cur.name) && !hasFormula(cur.value) && next && hasFormula(next.name)) {
-        // Пара: название + следующая строка с формулой
-        const qp = extractQtyPrice(next.name);
-        const total = next.value || (qp ? calcTotal(qp.qty, qp.price) : "");
-        rows.push([cur.name, qp?.qty ?? "", qp?.price ?? "", total]);
+      if (isJustName && next && /[×xх]/.test(next.name)) {
+        const [, qty, price, total] = parseLine(next.name, next.value);
+        rows.push([cur.name, qty, price, total]);
         i += 2;
-      } else if (hasFormula(cur.name)) {
-        // Строка сама является формулой
-        const qp = extractQtyPrice(cur.name);
-        const total = cur.value || (qp ? calcTotal(qp.qty, qp.price) : "");
-        rows.push(["", qp?.qty ?? cur.name, qp?.price ?? "", total]);
-        i += 1;
-      } else if (hasFormula(cur.value)) {
-        // value содержит формулу
-        const qp = extractQtyPrice(cur.value);
-        const total = qp ? calcTotal(qp.qty, qp.price) : cur.value;
-        rows.push([cur.name, qp?.qty ?? "", qp?.price ?? "", total]);
-        i += 1;
       } else {
-        // Просто название + сумма
-        rows.push([cur.name, "", "", cur.value]);
+        rows.push(parseLine(cur.name, cur.value));
         i += 1;
       }
     }
