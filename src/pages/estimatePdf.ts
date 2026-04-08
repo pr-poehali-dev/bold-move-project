@@ -85,15 +85,13 @@ export async function generateEstimatePdf(parsed: ParsedEstimate) {
 
   doc.setFillColor(20, 20, 30);
   doc.rect(0, 0, pageW, 38, "F");
-  doc.setFont(f, "bold");
+  doc.setFont(f, "normal");
   doc.setFontSize(20);
   doc.setTextColor(255, 140, 50);
   doc.text("MOSPOTOLKI", 15, 17);
-  doc.setFont(f, "normal");
   doc.setFontSize(8);
   doc.setTextColor(200, 200, 210);
   doc.text("Натяжные потолки | +7 (977) 606-89-01 | mospotolki.net", 15, 25);
-  doc.setFont(f, "bold");
   doc.setFontSize(14);
   doc.setTextColor(255, 255, 255);
   doc.text("СМЕТА", pageW - 15, 17, { align: "right" });
@@ -127,7 +125,7 @@ export async function generateEstimatePdf(parsed: ParsedEstimate) {
       },
       headStyles: {
         font: f,
-        fontStyle: "bold",
+        fontStyle: "normal",
         fontSize: 10,
         textColor: [180, 60, 0],
         fillColor: [240, 238, 245],
@@ -135,7 +133,7 @@ export async function generateEstimatePdf(parsed: ParsedEstimate) {
       },
       columnStyles: {
         0: { cellWidth: "auto" },
-        1: { cellWidth: 42, halign: "right", fontStyle: "bold" },
+        1: { cellWidth: 42, halign: "right", fontStyle: "normal" },
       },
       margin: { left: 14, right: 14 },
     });
@@ -156,7 +154,7 @@ export async function generateEstimatePdf(parsed: ParsedEstimate) {
     doc.roundedRect(14, y, pageW - 28, boxH, 2, 2, "S");
 
     y += 8;
-    doc.setFont(f, "bold");
+    doc.setFont(f, "normal");
     doc.setFontSize(10);
     doc.setTextColor(0, 0, 0);
     doc.text("ИТОГО:", 19, y);
@@ -168,7 +166,7 @@ export async function generateEstimatePdf(parsed: ParsedEstimate) {
       const val = parts.slice(1).join(":").trim();
       const isSt = /standard/i.test(label);
 
-      doc.setFont(f, "bold");
+      doc.setFont(f, "normal");
       doc.setFontSize(isSt ? 13 : 10);
       doc.setTextColor(isSt ? 180 : 0, isSt ? 60 : 0, 0);
       doc.text(label + ":", 19, y);
