@@ -114,6 +114,16 @@ export async function generateEstimatePdf(parsed: ParsedEstimate) {
       return { qty: m[1].trim(), price: m[2].trim() };
     };
 
+    // Вычисляем итог из формулы "кол × цена"
+    const calcTotal = (qty: string, price: string): string => {
+      const q = parseFloat(qty.replace(/[^\d.,]/g, "").replace(",", "."));
+      const p = parseFloat(price.replace(/[^\d.,]/g, "").replace(",", "."));
+      if (!isNaN(q) && !isNaN(p) && p > 0) {
+        return Math.round(q * p).toLocaleString("ru-RU") + " Р";
+      }
+      return "";
+    };
+
     // Объединяем пары: название + следующая строка с формулой
     const rows: string[][] = [];
     let i = 0;
@@ -125,17 +135,20 @@ export async function generateEstimatePdf(parsed: ParsedEstimate) {
       if (!hasFormula(cur.name) && !hasFormula(cur.value) && next && hasFormula(next.name)) {
         // Пара: название + следующая строка с формулой
         const qp = extractQtyPrice(next.name);
-        rows.push([cur.name, qp?.qty ?? "", qp?.price ?? "", next.value]);
+        const total = next.value || (qp ? calcTotal(qp.qty, qp.price) : "");
+        rows.push([cur.name, qp?.qty ?? "", qp?.price ?? "", total]);
         i += 2;
       } else if (hasFormula(cur.name)) {
         // Строка сама является формулой
         const qp = extractQtyPrice(cur.name);
-        rows.push(["", qp?.qty ?? cur.name, qp?.price ?? "", cur.value]);
+        const total = cur.value || (qp ? calcTotal(qp.qty, qp.price) : "");
+        rows.push(["", qp?.qty ?? cur.name, qp?.price ?? "", total]);
         i += 1;
       } else if (hasFormula(cur.value)) {
         // value содержит формулу
         const qp = extractQtyPrice(cur.value);
-        rows.push([cur.name, qp?.qty ?? "", qp?.price ?? "", cur.value]);
+        const total = qp ? calcTotal(qp.qty, qp.price) : cur.value;
+        rows.push([cur.name, qp?.qty ?? "", qp?.price ?? "", total]);
         i += 1;
       } else {
         // Просто название + сумма
