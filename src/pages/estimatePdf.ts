@@ -108,34 +108,48 @@ export async function generateEstimatePdf(parsed: ParsedEstimate) {
     if (block.numbered) numCounter++;
     const blockLabel = block.numbered ? `${numCounter}. ${block.title}` : block.title;
     // 4 колонки: Название | Кол-во | Цена/ед | Сумма
-    // Источник данных — item.name содержит "Название: кол ед × цена Р/ед"
-    // item.value содержит итог если он есть
+    // item.name = "MSD Classic: 42 м² × 399 Р" ИЛИ просто "Стеновой алюминий"
+    // item.value = итог "16 758 Р" ИЛИ формула "42 м² × 399 Р/м²" ИЛИ пусто
     const rows = block.items.map((item) => {
-      const raw = item.name; // "MSD Classic: 42 м² × 399 Р"
-
-      // "Название: кол ед × цена Р[/ед]"
-      const m = raw.match(/^(.+?):\s*([\d,.]+\s*[^\d×x]+?)\s*[×x]\s*([\d\s,.]+\s*[₽РРуб][^\s]*)(.*)$/);
-      if (m) {
-        const name = m[1].trim();
-        const qty = m[2].trim();           // "42 м²"
-        const priceRaw = m[3].trim();      // "399 Р" или "399 Р/м²"
-        const rest = m[4].trim();          // остаток
-
-        // Итог: из item.value или вычисляем
-        let total = item.value.trim();
+      // Пробуем разобрать item.value как "кол ед × цена [= итог]"
+      const parseFormula = (s: string): { qty: string; price: string; total: string } | null => {
+        // "кол ед × цена Р[/ед] [= итог Р]"
+        const m = s.match(/^([\d,.]+\s*[^\d×xх=]+?)\s*[×xх]\s*([\d\s,.]+\s*[₽Р][^\s=]*)(.*?)(?:=\s*([\d\s,.]+\s*[₽Р].*))?$/);
+        if (!m) return null;
+        const qty = m[1].trim();
+        const price = m[2].trim();
+        const eqTotal = m[4]?.trim() ?? "";
+        let total = eqTotal;
         if (!total) {
-          const qNum = parseFloat(qty.replace(/[^\d,.]/g, "").replace(",", "."));
-          const pNum = parseFloat(priceRaw.replace(/[^\d,.]/g, "").replace(",", "."));
-          if (!isNaN(qNum) && !isNaN(pNum)) {
+          const qNum = parseFloat(qty.replace(/[^\d.]/g, ""));
+          const pNum = parseFloat(price.replace(/[^\d.]/g, ""));
+          if (!isNaN(qNum) && !isNaN(pNum) && pNum > 0) {
             total = Math.round(qNum * pNum).toLocaleString("ru-RU") + " Р";
           }
         }
-        const priceDisplay = (priceRaw + " " + rest).trim();
-        return [name, qty, priceDisplay, total];
+        return { qty, price, total };
+      };
+
+      // Случай 1: item.value содержит формулу "кол × цена"
+      const fromValue = parseFormula(item.value);
+      if (fromValue) {
+        return [item.name, fromValue.qty, fromValue.price, fromValue.total];
       }
 
-      // Нет формулы — только название и сумма
-      return [raw, "", "", item.value];
+      // Случай 2: item.name содержит "Название: кол × цена"
+      const colonIdx = item.name.indexOf(":");
+      if (colonIdx > 0) {
+        const name = item.name.slice(0, colonIdx).trim();
+        const rest = item.name.slice(colonIdx + 1).trim();
+        const fromName = parseFormula(rest);
+        if (fromName) {
+          const total = fromName.total || item.value;
+          return [name, fromName.qty, fromName.price, total];
+        }
+      }
+
+      // Случай 3: только итог в item.value (нет формулы)
+      return [item.name, "", "", item.value];
     });
 
     autoTable(doc, {
