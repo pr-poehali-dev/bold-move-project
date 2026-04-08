@@ -111,6 +111,7 @@ export async function generateEstimatePdf(parsed: ParsedEstimate) {
     // item.name = "MSD Classic: 42 м² × 399 Р" ИЛИ просто "Стеновой алюминий"
     // item.value = итог "16 758 Р" ИЛИ формула "42 м² × 399 Р/м²" ИЛИ пусто
     const rows = block.items.map((item) => {
+      console.log(`[PDF] name="${item.name}" value="${item.value}"`);
       // Извлекаем последний итог из строки (после последнего "=")
       const extractTotal = (s: string): string => {
         const parts = s.split("=");
