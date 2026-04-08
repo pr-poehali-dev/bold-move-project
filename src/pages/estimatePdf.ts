@@ -173,7 +173,11 @@ export async function generateEstimatePdf(parsed: ParsedEstimate) {
         }
       }
 
-      // Случай 4: просто название + итог
+      // Случай 4: название + итог без формулы → ставим 1 шт и цену = итогу
+      if (value && hasCurrency(value)) {
+        return [name, "1 шт.", value, value];
+      }
+
       return [name, "", "", value];
     };
 
