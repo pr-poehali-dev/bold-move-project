@@ -17,21 +17,38 @@ let cachedFonts: { regular: string; bold?: string } | null = null;
 
 async function ensureFont() {
   if (cachedFonts) return;
-  const resp = await fetch(func2url["get-font"]);
-  const data = await resp.json();
-  if (data.font) cachedFonts = { regular: data.font, bold: data.bold };
+  try {
+    const resp = await fetch(func2url["get-font"]);
+    if (!resp.ok) return;
+    const data = await resp.json();
+    if (data.font) cachedFonts = { regular: data.font, bold: data.bold };
+  } catch {
+    // fallback
+  }
 }
 
 function setup(doc: jsPDF): string {
-  if (!cachedFonts) return "helvetica";
-  doc.addFileToVFS("Roboto-Regular.ttf", cachedFonts.regular);
-  doc.addFont("Roboto-Regular.ttf", "Roboto", "normal");
-  if (cachedFonts.bold) {
-    doc.addFileToVFS("Roboto-Black.ttf", cachedFonts.bold);
-    doc.addFont("Roboto-Black.ttf", "Roboto", "bold");
+  if (!cachedFonts) {
+    console.warn("[PDF] No fonts loaded, using helvetica (no cyrillic)");
+    doc.setFont("helvetica", "normal");
+    return "helvetica";
   }
-  doc.setFont("Roboto", "normal");
-  return "Roboto";
+  try {
+    const reg = cachedFonts.regular.replace(/^data:[^;]+;base64,/, "");
+    doc.addFileToVFS("Roboto-Regular.ttf", reg);
+    doc.addFont("Roboto-Regular.ttf", "Roboto", "normal");
+    if (cachedFonts.bold) {
+      const bld = cachedFonts.bold.replace(/^data:[^;]+;base64,/, "");
+      doc.addFileToVFS("Roboto-Black.ttf", bld);
+      doc.addFont("Roboto-Black.ttf", "Roboto", "bold");
+    }
+    doc.setFont("Roboto", "normal");
+    console.log("[PDF] Roboto font loaded OK");
+    return "Roboto";
+  } catch (e) {
+    console.error("[PDF] Font setup error:", e);
+    return "helvetica";
+  }
 }
 
 export async function generateEstimatePdf(parsed: ParsedEstimate) {
