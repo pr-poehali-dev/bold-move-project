@@ -13,7 +13,9 @@ export default function useVoiceInput(setInput: (value: string) => void) {
 
   const toggleVoice = () => {
     if (isListening) {
-      recognitionRef.current?.stop();
+      const r = recognitionRef.current;
+      recognitionRef.current = null;
+      r?.stop();
       setIsListening(false);
       return;
     }
@@ -27,7 +29,7 @@ export default function useVoiceInput(setInput: (value: string) => void) {
     const recognition = new SR();
     recognition.lang = "ru-RU";
     recognition.interimResults = true;
-    recognition.continuous = false;
+    recognition.continuous = true;
     recognitionRef.current = recognition;
 
     recognition.onresult = (e: SpeechRecognitionEvent) => {
@@ -38,7 +40,12 @@ export default function useVoiceInput(setInput: (value: string) => void) {
       setInput(transcript);
     };
 
-    recognition.onend = () => setIsListening(false);
+    // При continuous=true перезапускаем если остановился не по кнопке
+    recognition.onend = () => {
+      if (recognitionRef.current) {
+        try { recognitionRef.current.start(); } catch { setIsListening(false); }
+      }
+    };
     recognition.onerror = (e) => {
       console.error("[Voice] error:", e.error);
       if (e.error === "not-allowed") {
