@@ -108,7 +108,7 @@ export async function generateEstimatePdf(parsed: ParsedEstimate) {
   for (let bi = 0; bi < parsed.blocks.length; bi++) {
     const block = parsed.blocks[bi];
     if (block.numbered) numCounter++;
-    const blockLabel = block.numbered ? `${numCounter}. ${block.title}` : block.title;
+    const blockLabel = (block.numbered ? `${numCounter}. ${block.title}` : block.title).replace(/\*\*/g, "");
     // Универсальный разбор строки: извлекает название, кол-во, цену, итог
     const parseLine = (name: string, value: string): [string, string, string, string] => {
       const hasMul = (s: string) => /[×xх]/.test(s);
@@ -187,12 +187,14 @@ export async function generateEstimatePdf(parsed: ParsedEstimate) {
       const next = block.items[i + 1];
       const isJustName = !cur.value && !/[×xх₽Рру]/.test(cur.name);
 
+      const clean = (s: string) => s.replace(/\*\*/g, "").trim();
       if (isJustName && next && /[×xх]/.test(next.name)) {
-        const [, qty, price, total] = parseLine(next.name, next.value);
-        rows.push([cur.name, qty, price, total]);
+        const [n, qty, price, total] = parseLine(next.name, next.value);
+        rows.push([clean(cur.name || n), qty, price, total]);
         i += 2;
       } else {
-        rows.push(parseLine(cur.name, cur.value));
+        const [n, qty, price, total] = parseLine(cur.name, cur.value);
+        rows.push([clean(n), qty, price, total]);
         i += 1;
       }
     }
@@ -249,18 +251,37 @@ export async function generateEstimatePdf(parsed: ParsedEstimate) {
     doc.setTextColor(0, 0, 0);
     doc.text("ИТОГО:", 19, y);
 
-    for (const t of parsed.totals) {
+    // Чистим totals: убираем markdown **, формулы (оставляем только итоговое число)
+    const cleanTotals = parsed.totals
+      .map(t => t.replace(/\*\*/g, "").trim())
+      .filter(t => t && !/^[-–—]{2,}$/.test(t));
+
+    // Оставляем только строки вида "Название: число Р" — без формул с +/×
+    const simpleTotals = cleanTotals.map(t => {
+      const colonIdx = t.indexOf(":");
+      if (colonIdx < 0) return t;
+      const label = t.slice(0, colonIdx).trim();
+      let val = t.slice(colonIdx + 1).trim();
+      // Если в значении есть формула (содержит + или =), берём последнее число
+      if (/[+=]/.test(val)) {
+        const nums = val.match(/[\d\s]+[₽Р]/g);
+        val = nums ? nums[nums.length - 1].trim() : val;
+      }
+      return label + ": " + val;
+    });
+
+    for (const t of simpleTotals) {
       y += 10;
-      const parts = t.split(":");
-      const label = parts[0].trim();
-      const val = parts.slice(1).join(":").trim();
+      const colonIdx = t.indexOf(":");
+      const label = colonIdx >= 0 ? t.slice(0, colonIdx).trim() : t;
+      const val = colonIdx >= 0 ? t.slice(colonIdx + 1).trim() : "";
       const isSt = /standard/i.test(label);
 
       doc.setFont(f.bold, "normal");
       doc.setFontSize(isSt ? 14 : 11);
       doc.setTextColor(isSt ? 180 : 0, isSt ? 60 : 0, 0);
       doc.text(label + ":", 19, y);
-      doc.text(val, pageW - 19, y, { align: "right" });
+      if (val) doc.text(val, pageW - 19, y, { align: "right" });
     }
     y += 12;
   }
