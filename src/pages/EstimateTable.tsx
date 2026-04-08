@@ -134,8 +134,8 @@ export default function EstimateTable({ text }: { text: string }) {
         <table className="w-full text-xs">
           <thead>
             <tr className="bg-white/8">
-              <th className="text-left px-3 py-2 text-white/50 font-montserrat font-semibold">Позиция</th>
-              <th className="text-right px-3 py-2 text-white/50 font-montserrat font-semibold w-[180px]">Стоимость</th>
+              <th className="text-left px-3 py-2 text-white font-montserrat font-black">Позиция</th>
+              <th className="text-right px-3 py-2 text-white font-montserrat font-black w-[180px]">Стоимость</th>
             </tr>
           </thead>
           <tbody>
@@ -147,14 +147,14 @@ export default function EstimateTable({ text }: { text: string }) {
                 return (
                   <>
                     <tr key={`h-${bi}`} className="bg-white/4">
-                      <td colSpan={2} className="px-3 py-2 font-montserrat font-bold text-orange-400 text-xs">
+                      <td colSpan={2} className="px-3 py-2 font-montserrat font-black text-orange-400 text-xs">
                         {label}
                       </td>
                     </tr>
                     {block.items.map((item, ii) => (
                       <tr key={`r-${bi}-${ii}`} className="border-t border-white/5 hover:bg-white/3 transition-colors">
-                        <td className="px-3 py-1.5 text-white/70">{item.name}</td>
-                        <td className="px-3 py-1.5 text-right text-white/90 font-montserrat font-semibold text-xs leading-snug">{item.value}</td>
+                        <td className="px-3 py-1.5 text-white font-semibold">{item.name}</td>
+                        <td className="px-3 py-1.5 text-right text-white font-montserrat font-black text-xs leading-snug">{item.value}</td>
                       </tr>
                     ))}
                   </>
