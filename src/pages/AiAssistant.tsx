@@ -194,7 +194,7 @@ export default function AiAssistant({ assistantRef }: Props) {
                   onChange={(e) => {
                     setInput(e.target.value);
                     e.target.style.height = "auto";
-                    e.target.style.height = Math.min(e.target.scrollHeight, 120) + "px";
+                    e.target.style.height = Math.min(e.target.scrollHeight, 96) + "px";
                   }}
                   onKeyDown={(e) => {
                     if (e.key === "Enter" && !e.shiftKey) {
@@ -204,7 +204,7 @@ export default function AiAssistant({ assistantRef }: Props) {
                   }}
                   placeholder={isListening ? "Говорите..." : "Напишите или надиктуйте..."}
                   rows={1}
-                  className={`flex-1 bg-white/5 border rounded-xl px-4 py-3 text-white text-sm placeholder-white/25 focus:outline-none focus:bg-white/7 transition-all resize-none overflow-hidden leading-relaxed ${isListening ? "border-red-500/50 bg-red-500/5" : "border-white/10 focus:border-violet-500/50"}`}
+                  className={`flex-1 bg-white/5 border rounded-xl px-4 py-3 text-white text-sm placeholder-white/25 focus:outline-none focus:bg-white/7 transition-all resize-none overflow-y-auto leading-relaxed max-h-24 ${isListening ? "border-red-500/50 bg-red-500/5" : "border-white/10 focus:border-violet-500/50"}`}
                 />
                 {hasSpeech && (
                   <button
