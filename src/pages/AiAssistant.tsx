@@ -35,9 +35,18 @@ export default function AiAssistant({ assistantRef }: Props) {
   const [input, setInput] = useState("");
   const [isTyping, setIsTyping] = useState(false);
   const chatRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
 
   const { isListening, hasSpeech, toggleVoice } = useVoiceInput(setInput);
+
+  useEffect(() => {
+    const el = inputRef.current;
+    if (!el) return;
+    el.style.height = "44px";
+    const newH = Math.min(el.scrollHeight, 120);
+    el.style.height = newH + "px";
+    el.style.overflowY = el.scrollHeight > 120 ? "auto" : "hidden";
+  }, [input]);
 
   useEffect(() => {
     if (chatRef.current) {
@@ -189,15 +198,9 @@ export default function AiAssistant({ assistantRef }: Props) {
                 className="flex items-end gap-3"
               >
                 <textarea
-                  ref={inputRef as React.RefObject<HTMLTextAreaElement>}
+                  ref={inputRef}
                   value={input}
-                  onChange={(e) => {
-                    setInput(e.target.value);
-                    e.target.style.height = "44px";
-                    const newH = Math.min(e.target.scrollHeight, 120);
-                    e.target.style.height = newH + "px";
-                    e.target.style.overflowY = e.target.scrollHeight > 120 ? "auto" : "hidden";
-                  }}
+                  onChange={(e) => setInput(e.target.value)}
                   onKeyDown={(e) => {
                     if (e.key === "Enter" && !e.shiftKey) {
                       e.preventDefault();
