@@ -34,13 +34,13 @@ async function ensureFont() {
 function setupDoc(doc: jsPDF): { fontName: string; hasBold: boolean } {
   if (!cachedFont) return { fontName: "helvetica", hasBold: false };
   try {
-    doc.addFileToVFS("Roboto-Regular.ttf", cachedFont);
-    doc.addFont("Roboto-Regular.ttf", "Roboto", "normal");
+    doc.addFileToVFS("PTSans-Regular.ttf", cachedFont);
+    doc.addFont("PTSans-Regular.ttf", "PTSans", "normal");
     if (cachedBold) {
-      doc.addFileToVFS("Roboto-Bold.ttf", cachedBold);
-      doc.addFont("Roboto-Bold.ttf", "Roboto", "bold");
+      doc.addFileToVFS("PTSans-Bold.ttf", cachedBold);
+      doc.addFont("PTSans-Bold.ttf", "PTSans", "bold");
     }
-    return { fontName: "Roboto", hasBold: !!cachedBold };
+    return { fontName: "PTSans", hasBold: !!cachedBold };
   } catch {
     return { fontName: "helvetica", hasBold: false };
   }
@@ -83,7 +83,7 @@ function textCell(
 ) {
   doc.setFont(fontName, "normal");
   doc.setFontSize(fontSize);
-  doc.setTextColor("#000000");
+  doc.setTextColor(0, 0, 0);
   const tx = align === "right" ? x + w - 2 : x + 2;
   const maxW = w - 4;
   const lines = doc.splitTextToSize(text, maxW);

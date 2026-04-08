@@ -1,4 +1,4 @@
-"""Возвращает Roboto Regular + Black TTF в base64 для PDF-генератора."""
+"""Возвращает PT Sans Regular + Bold TTF в base64 для PDF-генератора."""
 
 import json
 import base64
@@ -10,17 +10,19 @@ import boto3
 BUCKET = 'files'
 FONT_FILES = {
     'regular': {
-        'key': 'fonts/Roboto-Regular-v3.ttf',
+        'key': 'fonts/PTSans-Regular.ttf',
         'sources': [
-            'https://raw.githubusercontent.com/openmaptiles/fonts/master/roboto/Roboto-Regular.ttf',
-            'https://raw.githubusercontent.com/johnkil/Android-RobotoTextView/master/robototextview/src/main/assets/fonts/Roboto-Regular.ttf',
+            'https://raw.githubusercontent.com/openmaptiles/fonts/master/pt-sans/PTSans-Regular.ttf',
+            'https://raw.githubusercontent.com/shower/ribbon/main/source/fonts/pt-sans-regular.ttf',
+            'https://fonts.gstatic.com/s/ptsans/v17/jizaRExUiTo99u79D0KExQ.ttf',
         ],
     },
     'bold': {
-        'key': 'fonts/Roboto-Bold-v3.ttf',
+        'key': 'fonts/PTSans-Bold.ttf',
         'sources': [
-            'https://raw.githubusercontent.com/openmaptiles/fonts/master/roboto/Roboto-Bold.ttf',
-            'https://raw.githubusercontent.com/johnkil/Android-RobotoTextView/master/robototextview/src/main/assets/fonts/Roboto-Bold.ttf',
+            'https://raw.githubusercontent.com/openmaptiles/fonts/master/pt-sans/PTSans-Bold.ttf',
+            'https://raw.githubusercontent.com/shower/ribbon/main/source/fonts/pt-sans-bold.ttf',
+            'https://fonts.gstatic.com/s/ptsans/v17/jizfRExUiTo99u79B_mh4OmnLD0Z4zM.ttf',
         ],
     },
 }
@@ -42,10 +44,11 @@ def get_font_data(s3, cfg):
     except Exception:
         pass
 
+    headers = {'User-Agent': 'Mozilla/5.0 (compatible; FontLoader/1.0)'}
     for url in cfg['sources']:
         try:
-            resp = requests.get(url, timeout=10, allow_redirects=True)
-            if resp.status_code == 200 and len(resp.content) > 30000:
+            resp = requests.get(url, timeout=15, allow_redirects=True, headers=headers)
+            if resp.status_code == 200 and len(resp.content) > 10000:
                 s3.put_object(Bucket=BUCKET, Key=cfg['key'], Body=resp.content, ContentType='font/ttf')
                 return resp.content
         except Exception:
