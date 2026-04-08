@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import SectionsTop from "./SectionsTop";
 import ProductionSection from "./ProductionSection";
-import AiAssistant from "./AiAssistant";
 import SectionsBottom from "./SectionsBottom";
 
 function useInView(threshold = 0.12) {
@@ -50,9 +49,9 @@ export default function Index() {
         catalogRef={catalogRef}
         calcRef={calcRef}
         processRef={processRef}
+        assistantRef={assistantRef}
       />
       <ProductionSection productionRef={productionRef} />
-      <AiAssistant assistantRef={assistantRef} />
       <SectionsBottom
         portfolioRef={portfolioRef}
         reviewsRef={reviewsRef}

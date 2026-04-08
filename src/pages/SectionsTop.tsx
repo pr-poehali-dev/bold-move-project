@@ -5,6 +5,7 @@ import Header from "./Header";
 import HeroSection from "./HeroSection";
 import CatalogSection from "./CatalogSection";
 import ProcessSection from "./ProcessSection";
+import AiAssistant from "./AiAssistant";
 
 type InViewResult = { ref: React.RefObject<HTMLDivElement>; inView: boolean };
 
@@ -15,9 +16,10 @@ interface Props {
   catalogRef: InViewResult;
   calcRef: InViewResult;
   processRef: InViewResult;
+  assistantRef: InViewResult;
 }
 
-export default function SectionsTop({ scrollY, heroRef, statsRef, catalogRef, calcRef, processRef }: Props) {
+export default function SectionsTop({ scrollY, heroRef, statsRef, catalogRef, calcRef, processRef, assistantRef }: Props) {
   return (
     <>
       <Header scrollY={scrollY} />
@@ -39,6 +41,8 @@ export default function SectionsTop({ scrollY, heroRef, statsRef, catalogRef, ca
           </div>
         </div>
       </section>
+
+      <AiAssistant assistantRef={assistantRef} />
 
       <CatalogSection catalogRef={catalogRef} />
 
