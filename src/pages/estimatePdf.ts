@@ -110,61 +110,44 @@ export async function generateEstimatePdf(parsed: ParsedEstimate) {
     // 4 колонки: Название | Кол-во | Цена/ед | Сумма
     // item.name = "MSD Classic: 42 м² × 399 Р" ИЛИ просто "Стеновой алюминий"
     // item.value = итог "16 758 Р" ИЛИ формула "42 м² × 399 Р/м²" ИЛИ пусто
-    const rows = block.items.map((item) => {
-      console.log(`[PDF] name="${item.name}" value="${item.value}"`);
-      // Извлекаем последний итог из строки (после последнего "=")
-      const extractTotal = (s: string): string => {
-        const parts = s.split("=");
-        const last = parts[parts.length - 1].trim();
-        // Проверяем что это число с валютой
-        if (/[\d]/.test(last) && /[₽Р]/.test(last)) return last;
-        return s.trim();
-      };
+    // Парсер фронтенда чередует строки:
+    // строка 1: name="Монтаж полотна ПВХ"  value=""
+    // строка 2: name="26 м² × 350 ₽/м²"   value="9100 ₽"
+    // Объединяем пары в одну строку таблицы
+    const merged: { name: string; formula: string; total: string }[] = [];
+    let i = 0;
+    while (i < block.items.length) {
+      const cur = block.items[i];
+      const next = block.items[i + 1];
+      const isFormula = (s: string) => /[×xх]/.test(s);
 
-      // Извлекаем первое "кол ед" и первую "цену" из формулы
-      const extractQtyPrice = (s: string): { qty: string; price: string } | null => {
-        const m = s.match(/^([\d,.]+\s*[^\d×xх=₽Р]{1,10}?)\s*[×xх]\s*([\d\s,.]+\s*[₽Р][^\s×xх=]*)/);
-        if (!m) return null;
-        return { qty: m[1].trim(), price: m[2].trim() };
-      };
-
-      // Случай 1: item.value содержит формулу с ×
-      if (/[×xх]/.test(item.value)) {
-        const qp = extractQtyPrice(item.value);
-        const total = extractTotal(item.value);
-        return [item.name, qp?.qty ?? "", qp?.price ?? "", total];
+      if (!isFormula(cur.name) && next && isFormula(next.name)) {
+        // cur = название, next = формула
+        merged.push({ name: cur.name, formula: next.name, total: next.value });
+        i += 2;
+      } else if (isFormula(cur.name)) {
+        // формула без названия
+        merged.push({ name: "", formula: cur.name, total: cur.value });
+        i += 1;
+      } else {
+        // обычная строка без формулы
+        merged.push({ name: cur.name, formula: "", total: cur.value });
+        i += 1;
       }
+    }
 
-      // Случай 2: item.name содержит "Название: формула" (через двоеточие)
-      const colonIdx = item.name.indexOf(":");
-      if (colonIdx > 0 && /[×xх]/.test(item.name)) {
-        const name = item.name.slice(0, colonIdx).trim();
-        const rest = item.name.slice(colonIdx + 1).trim();
-        if (/[×xх]/.test(rest)) {
-          const qp = extractQtyPrice(rest);
-          const total = item.value || extractTotal(rest);
-          return [name, qp?.qty ?? "", qp?.price ?? "", total];
-        }
+    const extractQtyPrice = (s: string): { qty: string; price: string } | null => {
+      const m = s.match(/^([\d,.\s]+\s*[^\d×xх=₽₽\s]{1,8}?)\s*[×xх]\s*([\d\s,.]+\s*[₽₽][^\s×xх=]*)/);
+      if (!m) return null;
+      return { qty: m[1].trim(), price: m[2].trim() };
+    };
+
+    const rows = merged.map(({ name, formula, total }) => {
+      if (formula) {
+        const qp = extractQtyPrice(formula);
+        return [name, qp?.qty ?? "", qp?.price ?? "", total];
       }
-
-      // Случай 3: item.name содержит формулу без двоеточия ("Название — 42 м² × 399 Р")
-      if (/[×xх]/.test(item.name)) {
-        // Ищем первый × и берём всё после него как формулу
-        const mulIdx = item.name.search(/[×xх]/);
-        // Ищем начало числа перед ×
-        const beforeMul = item.name.slice(0, mulIdx);
-        const numStart = beforeMul.search(/[\d,.]+\s*[^\d\s,.]?\s*$/);
-        if (numStart >= 0) {
-          const name = beforeMul.slice(0, numStart).replace(/[-–—:,\s]+$/, "").trim();
-          const formula = item.name.slice(numStart).trim();
-          const qp = extractQtyPrice(formula);
-          const total = item.value || extractTotal(formula);
-          return [name, qp?.qty ?? "", qp?.price ?? "", total];
-        }
-      }
-
-      // Случай 4: только итог в item.value
-      return [item.name, "", "", item.value];
+      return [name, "", "", total];
     });
 
     autoTable(doc, {
