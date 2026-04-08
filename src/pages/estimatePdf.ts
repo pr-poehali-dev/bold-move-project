@@ -61,17 +61,26 @@ async function ensureFont() {
 }
 
 function setup(doc: jsPDF): { regular: string; bold: string } {
-  if (!cachedFonts) return { regular: "helvetica", bold: "helvetica" };
+  if (!cachedFonts) {
+    console.warn("[PDF] no fonts — using helvetica");
+    return { regular: "helvetica", bold: "helvetica" };
+  }
+  const uid = Date.now();
+  const rFile = `R-${uid}.ttf`;
+  const bFile = `B-${uid}.ttf`;
   try {
-    doc.addFileToVFS("Roboto-Regular.ttf", cachedFonts.regular);
-    doc.addFont("Roboto-Regular.ttf", "RobotoR", "normal");
+    doc.addFileToVFS(rFile, cachedFonts.regular);
+    doc.addFont(rFile, "PdfR", "normal");
     if (cachedFonts.bold) {
-      doc.addFileToVFS("Roboto-Bold.ttf", cachedFonts.bold);
-      doc.addFont("Roboto-Bold.ttf", "RobotoB", "normal");
+      doc.addFileToVFS(bFile, cachedFonts.bold);
+      doc.addFont(bFile, "PdfB", "normal");
     }
-    doc.setFont("RobotoR", "normal");
-    return { regular: "RobotoR", bold: cachedFonts.bold ? "RobotoB" : "RobotoR" };
-  } catch {
+    doc.setFont("PdfR", "normal");
+    const boldName = cachedFonts.bold ? "PdfB" : "PdfR";
+    console.log("[PDF] fonts OK, bold=", boldName);
+    return { regular: "PdfR", bold: boldName };
+  } catch(e) {
+    console.error("[PDF] font register error:", e);
     return { regular: "helvetica", bold: "helvetica" };
   }
 }
