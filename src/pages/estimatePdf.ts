@@ -107,39 +107,40 @@ export async function generateEstimatePdf(parsed: ParsedEstimate) {
     const block = parsed.blocks[bi];
     if (block.numbered) numCounter++;
     const blockLabel = block.numbered ? `${numCounter}. ${block.title}` : block.title;
-    // 4 колонки: Название | Кол-во | Цена/ед | Итог
+    // 4 колонки: Название | Кол-во | Цена/ед | Сумма
+    // Источник данных — item.name содержит "Название: кол ед × цена Р/ед"
+    // item.value содержит итог если он есть
     const rows = block.items.map((item) => {
-      const val = item.value;
+      const raw = item.name; // "MSD Classic: 42 м² × 399 Р"
 
-      // Формат: "кол ед × цена Р/ед = итог Р"
-      const fullMatch = val.match(/^([\d\s,.]+\s*[^\d×x=]+?)\s*[×x]\s*([\d\s,.]+\s*[₽Р][^=×x]*?)\s*=\s*([\d\s,.]+\s*[₽Р].*)$/);
-      if (fullMatch) {
-        return [item.name, fullMatch[1].trim(), fullMatch[2].trim(), fullMatch[3].trim()];
-      }
+      // "Название: кол ед × цена Р[/ед]"
+      const m = raw.match(/^(.+?):\s*([\d,.]+\s*[^\d×x]+?)\s*[×x]\s*([\d\s,.]+\s*[₽РРуб][^\s]*)(.*)$/);
+      if (m) {
+        const name = m[1].trim();
+        const qty = m[2].trim();           // "42 м²"
+        const priceRaw = m[3].trim();      // "399 Р" или "399 Р/м²"
+        const rest = m[4].trim();          // остаток
 
-      // Формат: "кол ед × цена Р/ед" (без итога — вычисляем)
-      const mulMatch = val.match(/^([\d\s,.]+\s*[^\d×x]+?)\s*[×x]\s*([\d\s,.]+)\s*([₽Р][^\s]*)(.*)$/);
-      if (mulMatch) {
-        const qtyStr = mulMatch[1].match(/[\d,.]+/)?.[0] ?? "";
-        const priceStr = mulMatch[2];
-        const qty = parseFloat(qtyStr.replace(/\s/g, "").replace(",", "."));
-        const price = parseFloat(priceStr.replace(/\s/g, "").replace(",", "."));
-        const unit = mulMatch[3] + mulMatch[4].trim();
-        const qtyPart = mulMatch[1].trim();
-        const priceDisplay = `${priceStr} ${unit}`.trim();
-        if (!isNaN(qty) && !isNaN(price)) {
-          const total = Math.round(qty * price).toLocaleString("ru-RU") + " Р";
-          return [item.name, qtyPart, priceDisplay, total];
+        // Итог: из item.value или вычисляем
+        let total = item.value.trim();
+        if (!total) {
+          const qNum = parseFloat(qty.replace(/[^\d,.]/g, "").replace(",", "."));
+          const pNum = parseFloat(priceRaw.replace(/[^\d,.]/g, "").replace(",", "."));
+          if (!isNaN(qNum) && !isNaN(pNum)) {
+            total = Math.round(qNum * pNum).toLocaleString("ru-RU") + " Р";
+          }
         }
+        const priceDisplay = (priceRaw + " " + rest).trim();
+        return [name, qty, priceDisplay, total];
       }
 
-      // Нет формулы — просто название и значение
-      return [item.name, "", "", val];
+      // Нет формулы — только название и сумма
+      return [raw, "", "", item.value];
     });
 
     autoTable(doc, {
       startY: y,
-      head: [[blockLabel, "Кол-во", "Цена/ед", "Итог"]],
+      head: [[blockLabel, "Кол-во", "Цена/ед", "Сумма"]],
       body: rows,
       theme: "grid",
       styles: {
