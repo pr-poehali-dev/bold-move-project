@@ -22,14 +22,13 @@ export default function Header({ scrollY }: Props) {
     <>
       <header className={`fixed top-0 inset-x-0 z-50 transition-all duration-300 ${scrollY > 60 ? "bg-[#08080d]/96 backdrop-blur-xl shadow-2xl shadow-black/50 py-3" : "py-4"}`}>
         <div className="max-w-7xl mx-auto px-4 flex items-center justify-between gap-4">
-          <div className="flex items-center gap-3 shrink-0">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-orange-400 to-rose-600 flex items-center justify-center shadow-lg shadow-orange-500/30">
-              <span className="font-montserrat font-black text-white text-sm">R</span>
-            </div>
-            <div>
-              <span className="font-montserrat font-black text-base tracking-wide">MOS<span className="text-orange-400">POTOLKI</span></span>
-              <div className="text-[10px] text-white/30 leading-none hidden sm:block">Натяжные потолки с 2009 года</div>
-            </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <img
+              src="https://cdn.poehali.dev/files/0c6874e4-b08b-460c-96f8-5340abe4e6a4.png"
+              alt="MOSPOTOLKI PRO"
+              className="h-10 w-auto object-contain"
+              style={{ filter: "invert(1) brightness(1.1)" }}
+            />
           </div>
 
           <nav className="hidden lg:flex items-center gap-7 text-sm text-white/60">
