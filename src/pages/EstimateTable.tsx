@@ -66,19 +66,30 @@ export function parseEstimateBlocks(text: string) {
     }
 
     if (current) {
-      const priceMatch = line.match(/^[-–—•·]?\s*(.+?)\s*[-–—]\s*([\d\s,.]+\s*₽.*)$/);
-      if (priceMatch) {
-        current.items.push({ name: priceMatch[1].trim(), value: priceMatch[2].trim() });
+      const cleanLine = line.replace(/^[-–—•·]\s*/, "");
+
+      // Формат: "Название: кол × цена = итог Р" или "Название кол × цена = итог Р"
+      const calcMatch = cleanLine.match(/^(.+?)[:\s]+(\d[\d\s,.]*[×x].+=\s*[\d\s,.]+\s*[₽Р].*)$/);
+      if (calcMatch) {
+        current.items.push({ name: calcMatch[1].trim().replace(/:$/, ""), value: calcMatch[2].trim() });
       } else {
-        const eqMatch = line.match(/^[-–—•·]?\s*(.+?)\s*=\s*([\d\s,.]+\s*₽.*)$/);
-        if (eqMatch) {
-          current.items.push({ name: eqMatch[1].trim(), value: eqMatch[2].trim() });
+        // Формат: "Название — цена" или "Название – цена"
+        const dashMatch = cleanLine.match(/^(.+?)\s*[-–—]\s*([\d][\d\s,.]*\s*[₽Р].*)$/);
+        if (dashMatch) {
+          current.items.push({ name: dashMatch[1].trim(), value: dashMatch[2].trim() });
         } else {
-          const simplePrice = line.match(/^[-–—•·]?\s*(.+?)\s+([\d\s,.]+\s*₽.*)$/);
-          if (simplePrice && simplePrice[2].includes("₽")) {
-            current.items.push({ name: simplePrice[1].trim().replace(/[-–—:]+$/, "").trim(), value: simplePrice[2].trim() });
+          // Формат: "Название = итог Р"
+          const eqMatch = cleanLine.match(/^(.+?)\s*=\s*([\d][\d\s,.]*\s*[₽Р].*)$/);
+          if (eqMatch) {
+            current.items.push({ name: eqMatch[1].trim(), value: eqMatch[2].trim() });
           } else {
-            current.items.push({ name: line.replace(/^[-–—•·]\s*/, ""), value: "" });
+            // Формат: "Название: кол × цена" (без итога) — показываем всё как value
+            const unitMatch = cleanLine.match(/^(.+?)[:\s]+(\d.+[₽Р].*)$/);
+            if (unitMatch) {
+              current.items.push({ name: unitMatch[1].trim().replace(/:$/, ""), value: unitMatch[2].trim() });
+            } else {
+              current.items.push({ name: cleanLine, value: "" });
+            }
           }
         }
       }
@@ -123,7 +134,7 @@ export default function EstimateTable({ text }: { text: string }) {
           <thead>
             <tr className="bg-white/8">
               <th className="text-left px-3 py-2 text-white/50 font-montserrat font-semibold">Позиция</th>
-              <th className="text-right px-3 py-2 text-white/50 font-montserrat font-semibold w-[110px]">Стоимость</th>
+              <th className="text-right px-3 py-2 text-white/50 font-montserrat font-semibold w-[180px]">Стоимость</th>
             </tr>
           </thead>
           <tbody>
@@ -142,7 +153,7 @@ export default function EstimateTable({ text }: { text: string }) {
                     {block.items.map((item, ii) => (
                       <tr key={`r-${bi}-${ii}`} className="border-t border-white/5 hover:bg-white/3 transition-colors">
                         <td className="px-3 py-1.5 text-white/70">{item.name}</td>
-                        <td className="px-3 py-1.5 text-right text-white/90 font-montserrat font-semibold whitespace-nowrap">{item.value}</td>
+                        <td className="px-3 py-1.5 text-right text-white/90 font-montserrat font-semibold text-xs leading-snug">{item.value}</td>
                       </tr>
                     ))}
                   </>
