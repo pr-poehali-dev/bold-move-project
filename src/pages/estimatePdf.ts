@@ -144,22 +144,22 @@ export async function generateEstimatePdf(parsed: ParsedEstimate) {
 
   doc.setFont(fontName, hasBold ? "bold" : "normal");
   doc.setFontSize(18);
-  doc.setTextColor("#FF8C32");
+  doc.setTextColor(255, 140, 50);
   doc.text("MOSPOTOLKI", 14, 14);
 
   doc.setFont(fontName, "normal");
   doc.setFontSize(8);
-  doc.setTextColor("#C8C8D7");
+  doc.setTextColor(200, 200, 215);
   doc.text("Натяжные потолки | +7 (977) 606-89-01 | mospotolki.net", 14, 22);
 
   doc.setFont(fontName, hasBold ? "bold" : "normal");
   doc.setFontSize(14);
-  doc.setTextColor("#FFFFFF");
+  doc.setTextColor(255, 255, 255);
   doc.text("СМЕТА", pageW - 14, 14, { align: "right" });
 
   doc.setFont(fontName, "normal");
   doc.setFontSize(8);
-  doc.setTextColor("#C8C8D7");
+  doc.setTextColor(200, 200, 215);
   doc.text("от " + today, pageW - 14, 22, { align: "right" });
 
   let y = 42;
@@ -211,7 +211,7 @@ export async function generateEstimatePdf(parsed: ParsedEstimate) {
 
       doc.setFont(fontName, (hasBold && isHL) ? "bold" : "normal");
       doc.setFontSize(isHL ? 11 : 9);
-      doc.setTextColor(isHL ? "#D35400" : "#000000");
+      doc.setTextColor(isHL ? 211 : 0, isHL ? 84 : 0, 0);
       doc.text(lbl + (ci >= 0 ? ":" : ""), margin + 3, y);
       if (val) doc.text(val, margin + tableW - 3, y, { align: "right" });
       y += 7;
@@ -223,14 +223,14 @@ export async function generateEstimatePdf(parsed: ParsedEstimate) {
     if (y > pageH - 20) y = doAddPage();
     doc.setFont(fontName, "normal");
     doc.setFontSize(8);
-    doc.setTextColor("#505050");
+    doc.setTextColor(80, 80, 80);
     const lines = doc.splitTextToSize(clean(parsed.finalPhrase), tableW);
     doc.text(lines, margin, y);
   }
 
   doc.setFont(fontName, "normal");
   doc.setFontSize(7);
-  doc.setTextColor("#969696");
+  doc.setTextColor(150, 150, 150);
   doc.text("MosPotolki | Мытищи, Пограничная 24 | +7 (977) 606-89-01", pageW / 2, pageH - 8, { align: "center" });
 
   doc.save(`Смета_MosPotolki_${today.replace(/\./g, "-")}.pdf`);
