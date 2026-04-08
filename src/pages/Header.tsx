@@ -27,8 +27,11 @@ export default function Header({ scrollY }: Props) {
               src="https://cdn.poehali.dev/files/0c6874e4-b08b-460c-96f8-5340abe4e6a4.png"
               alt="MOSPOTOLKI PRO"
               className="h-10 w-auto object-contain"
-              style={{ filter: "invert(1) brightness(1.1)" }}
             />
+            <div>
+              <span className="font-montserrat font-black text-base tracking-wide">MOS<span className="text-orange-400">POTOLKI</span></span>
+              <div className="text-[10px] text-white/30 leading-none hidden sm:block">Натяжные потолки с 2009 года</div>
+            </div>
           </div>
 
           <nav className="hidden lg:flex items-center gap-7 text-sm text-white/60">
