@@ -7,10 +7,6 @@ declare global {
   }
 }
 
-export const hasSpeech =
-  typeof window !== "undefined" &&
-  ("SpeechRecognition" in window || "webkitSpeechRecognition" in window);
-
 export default function useVoiceInput(setInput: (value: string) => void) {
   const [isListening, setIsListening] = useState(false);
   const recognitionRef = useRef<SpeechRecognition | null>(null);
@@ -23,7 +19,10 @@ export default function useVoiceInput(setInput: (value: string) => void) {
     }
 
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SR) return;
+    if (!SR) {
+      alert("Ваш браузер не поддерживает голосовой ввод. Используйте Chrome.");
+      return;
+    }
 
     const recognition = new SR();
     recognition.lang = "ru-RU";
@@ -40,11 +39,24 @@ export default function useVoiceInput(setInput: (value: string) => void) {
     };
 
     recognition.onend = () => setIsListening(false);
-    recognition.onerror = () => setIsListening(false);
+    recognition.onerror = (e) => {
+      console.error("[Voice] error:", e.error);
+      if (e.error === "not-allowed") {
+        alert("Доступ к микрофону запрещён. Разрешите доступ в настройках браузера.");
+      }
+      setIsListening(false);
+    };
 
-    recognition.start();
-    setIsListening(true);
+    try {
+      recognition.start();
+      setIsListening(true);
+    } catch (e) {
+      console.error("[Voice] start failed:", e);
+    }
   };
+
+  const hasSpeech = typeof window !== "undefined" &&
+    ("SpeechRecognition" in window || "webkitSpeechRecognition" in window);
 
   return { isListening, hasSpeech, toggleVoice };
 }
