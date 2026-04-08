@@ -58,19 +58,19 @@ async function ensureFont() {
   if (regular) cachedFonts = { regular, bold: bold ?? undefined };
 }
 
-function setup(doc: jsPDF): string {
-  if (!cachedFonts) return "helvetica";
+function setup(doc: jsPDF): { regular: string; bold: string } {
+  if (!cachedFonts) return { regular: "helvetica", bold: "helvetica" };
   try {
     doc.addFileToVFS("Roboto-Regular.ttf", cachedFonts.regular);
-    doc.addFont("Roboto-Regular.ttf", "Roboto", "normal");
+    doc.addFont("Roboto-Regular.ttf", "RobotoR", "normal");
     if (cachedFonts.bold) {
       doc.addFileToVFS("Roboto-Bold.ttf", cachedFonts.bold);
-      doc.addFont("Roboto-Bold.ttf", "Roboto", "bold");
+      doc.addFont("Roboto-Bold.ttf", "RobotoB", "normal");
     }
-    doc.setFont("Roboto", "normal");
-    return "Roboto";
+    doc.setFont("RobotoR", "normal");
+    return { regular: "RobotoR", bold: cachedFonts.bold ? "RobotoB" : "RobotoR" };
   } catch {
-    return "helvetica";
+    return { regular: "helvetica", bold: "helvetica" };
   }
 }
 
@@ -85,17 +85,19 @@ export async function generateEstimatePdf(parsed: ParsedEstimate) {
 
   doc.setFillColor(20, 20, 30);
   doc.rect(0, 0, pageW, 38, "F");
-  doc.setFont(f, "normal");
+  doc.setFont(f.bold, "normal");
   doc.setFontSize(20);
   doc.setTextColor(255, 140, 50);
   doc.text("MOSPOTOLKI", 15, 17);
   doc.setFontSize(9);
+  doc.setFont(f.regular, "normal");
   doc.setTextColor(220, 220, 230);
   doc.text("Натяжные потолки | +7 (977) 606-89-01 | mospotolki.net", 15, 25);
+  doc.setFont(f.bold, "normal");
   doc.setFontSize(16);
   doc.setTextColor(255, 255, 255);
   doc.text("СМЕТА", pageW - 15, 17, { align: "right" });
-  doc.setFont(f, "normal");
+  doc.setFont(f.regular, "normal");
   doc.setFontSize(9);
   doc.setTextColor(220, 220, 230);
   doc.text("от " + today, pageW - 15, 25, { align: "right" });
@@ -201,8 +203,8 @@ export async function generateEstimatePdf(parsed: ParsedEstimate) {
       body: rows,
       theme: "grid",
       styles: {
-        font: f,
-        fontStyle: "bold",
+        font: f.bold,
+        fontStyle: "normal",
         fontSize: 10,
         cellPadding: 4,
         textColor: [0, 0, 0],
@@ -210,8 +212,8 @@ export async function generateEstimatePdf(parsed: ParsedEstimate) {
         lineWidth: 0.4,
       },
       headStyles: {
-        font: f,
-        fontStyle: "bold",
+        font: f.bold,
+        fontStyle: "normal",
         fontSize: 11,
         textColor: [180, 60, 0],
         fillColor: [235, 232, 245],
@@ -219,9 +221,9 @@ export async function generateEstimatePdf(parsed: ParsedEstimate) {
       },
       columnStyles: {
         0: { cellWidth: "auto" },
-        1: { cellWidth: 28, halign: "right", textColor: [0, 0, 0], fontStyle: "bold" },
-        2: { cellWidth: 34, halign: "right", textColor: [0, 0, 0], fontStyle: "bold" },
-        3: { cellWidth: 28, halign: "right", textColor: [0, 0, 0], fontStyle: "bold" },
+        1: { cellWidth: 28, halign: "right", textColor: [0, 0, 0] },
+        2: { cellWidth: 34, halign: "right", textColor: [0, 0, 0] },
+        3: { cellWidth: 28, halign: "right", textColor: [0, 0, 0] },
       },
       margin: { left: 14, right: 14 },
     });
@@ -242,7 +244,7 @@ export async function generateEstimatePdf(parsed: ParsedEstimate) {
     doc.roundedRect(14, y, pageW - 28, boxH, 2, 2, "S");
 
     y += 8;
-    doc.setFont(f, "normal");
+    doc.setFont(f.bold, "normal");
     doc.setFontSize(11);
     doc.setTextColor(0, 0, 0);
     doc.text("ИТОГО:", 19, y);
@@ -254,7 +256,7 @@ export async function generateEstimatePdf(parsed: ParsedEstimate) {
       const val = parts.slice(1).join(":").trim();
       const isSt = /standard/i.test(label);
 
-      doc.setFont(f, "normal");
+      doc.setFont(f.bold, "normal");
       doc.setFontSize(isSt ? 14 : 11);
       doc.setTextColor(isSt ? 180 : 0, isSt ? 60 : 0, 0);
       doc.text(label + ":", 19, y);
@@ -265,14 +267,14 @@ export async function generateEstimatePdf(parsed: ParsedEstimate) {
 
   if (parsed.finalPhrase) {
     if (y > 268) { doc.addPage(); y = 15; }
-    doc.setFont(f, "normal");
+    doc.setFont(f.regular, "normal");
     doc.setFontSize(8);
     doc.setTextColor(50, 50, 60);
     const fLines = doc.splitTextToSize(parsed.finalPhrase, pageW - 28);
     doc.text(fLines, 14, y);
   }
 
-  doc.setFont(f, "normal");
+  doc.setFont(f.regular, "normal");
   doc.setFontSize(8);
   doc.setTextColor(30, 30, 30);
   doc.text("MosPotolki | Мытищи, Пограничная 24 | +7 (977) 606-89-01 | wa.me/79776068901", pageW / 2, 288, { align: "center" });
