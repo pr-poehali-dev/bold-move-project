@@ -111,44 +111,42 @@ export async function generateEstimatePdf(parsed: ParsedEstimate) {
     // item.name = "MSD Classic: 42 м² × 399 Р" ИЛИ просто "Стеновой алюминий"
     // item.value = итог "16 758 Р" ИЛИ формула "42 м² × 399 Р/м²" ИЛИ пусто
     const rows = block.items.map((item) => {
-      // Пробуем разобрать item.value как "кол ед × цена [= итог]"
-      const parseFormula = (s: string): { qty: string; price: string; total: string } | null => {
-        // "кол ед × цена Р[/ед] [= итог Р]"
-        const m = s.match(/^([\d,.]+\s*[^\d×xх=]+?)\s*[×xх]\s*([\d\s,.]+\s*[₽Р][^\s=]*)(.*?)(?:=\s*([\d\s,.]+\s*[₽Р].*))?$/);
-        if (!m) return null;
-        const qty = m[1].trim();
-        const price = m[2].trim();
-        const eqTotal = m[4]?.trim() ?? "";
-        let total = eqTotal;
-        if (!total) {
-          const qNum = parseFloat(qty.replace(/[^\d.]/g, ""));
-          const pNum = parseFloat(price.replace(/[^\d.]/g, ""));
-          if (!isNaN(qNum) && !isNaN(pNum) && pNum > 0) {
-            total = Math.round(qNum * pNum).toLocaleString("ru-RU") + " Р";
-          }
-        }
-        return { qty, price, total };
+      // Извлекаем последний итог из строки (после последнего "=")
+      const extractTotal = (s: string): string => {
+        const parts = s.split("=");
+        const last = parts[parts.length - 1].trim();
+        // Проверяем что это число с валютой
+        if (/[\d]/.test(last) && /[₽Р]/.test(last)) return last;
+        return s.trim();
       };
 
-      // Случай 1: item.value содержит формулу "кол × цена"
-      const fromValue = parseFormula(item.value);
-      if (fromValue) {
-        return [item.name, fromValue.qty, fromValue.price, fromValue.total];
+      // Извлекаем первое "кол ед" и первую "цену" из формулы
+      const extractQtyPrice = (s: string): { qty: string; price: string } | null => {
+        const m = s.match(/^([\d,.]+\s*[^\d×xх=₽Р]{1,10}?)\s*[×xх]\s*([\d\s,.]+\s*[₽Р][^\s×xх=]*)/);
+        if (!m) return null;
+        return { qty: m[1].trim(), price: m[2].trim() };
+      };
+
+      // Случай 1: item.value содержит формулу с × 
+      if (/[×xх]/.test(item.value)) {
+        const qp = extractQtyPrice(item.value);
+        const total = extractTotal(item.value);
+        return [item.name, qp?.qty ?? "", qp?.price ?? "", total];
       }
 
-      // Случай 2: item.name содержит "Название: кол × цена"
+      // Случай 2: item.name содержит "Название: формула"
       const colonIdx = item.name.indexOf(":");
       if (colonIdx > 0) {
         const name = item.name.slice(0, colonIdx).trim();
         const rest = item.name.slice(colonIdx + 1).trim();
-        const fromName = parseFormula(rest);
-        if (fromName) {
-          const total = fromName.total || item.value;
-          return [name, fromName.qty, fromName.price, total];
+        if (/[×xх]/.test(rest)) {
+          const qp = extractQtyPrice(rest);
+          const total = item.value || extractTotal(rest);
+          return [name, qp?.qty ?? "", qp?.price ?? "", total];
         }
       }
 
-      // Случай 3: только итог в item.value (нет формулы)
+      // Случай 3: только итог
       return [item.name, "", "", item.value];
     });
 
