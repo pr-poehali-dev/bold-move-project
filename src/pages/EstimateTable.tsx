@@ -69,31 +69,45 @@ export function parseEstimateBlocks(text: string) {
     if (current) {
       const cleanLine = line.replace(/^[-–—•·]\s*/, "");
 
-      // Формат: "Название: кол × цена = итог Р" или "Название кол × цена = итог Р"
-      const calcMatch = cleanLine.match(/^(.+?)[:\s]+(\d[\d\s,.]*[×x].+=\s*[\d\s,.]+\s*[₽Р].*)$/);
-      if (calcMatch) {
-        current.items.push({ name: calcMatch[1].trim().replace(/:$/, ""), value: calcMatch[2].trim() });
-      } else {
-        // Формат: "Название — цена" или "Название – цена"
-        const dashMatch = cleanLine.match(/^(.+?)\s*[-–—]\s*([\d][\d\s,.]*\s*[₽Р].*)$/);
-        if (dashMatch) {
-          current.items.push({ name: dashMatch[1].trim(), value: dashMatch[2].trim() });
-        } else {
-          // Формат: "Название = итог Р"
-          const eqMatch = cleanLine.match(/^(.+?)\s*=\s*([\d][\d\s,.]*\s*[₽Р].*)$/);
-          if (eqMatch) {
-            current.items.push({ name: eqMatch[1].trim(), value: eqMatch[2].trim() });
-          } else {
-            // Формат: "Название: кол × цена" (без итога) — показываем всё как value
-            const unitMatch = cleanLine.match(/^(.+?)[:\s]+(\d.+[₽Р].*)$/);
-            if (unitMatch) {
-              current.items.push({ name: unitMatch[1].trim().replace(/:$/, ""), value: unitMatch[2].trim() });
-            } else {
-              current.items.push({ name: cleanLine, value: "" });
-            }
-          }
-        }
+      // MUL = любой знак умножения: × (U+00D7), x (latin), х (cyrillic)
+      const MUL = "[×xх]";
+
+      // 1) "Название: qty × price = total Р" (через двоеточие)
+      const calcColon = cleanLine.match(new RegExp(`^(.+?):\\s*(\\d[\\d\\s,.]*\\s*[м²шткгмlp.]*\\s*${MUL}.+)$`));
+      if (calcColon) {
+        current.items.push({ name: calcColon[1].trim(), value: calcColon[2].trim() });
+        continue;
       }
+
+      // 2) "Название qty × price = total Р" (без двоеточия, через пробел)
+      const calcSpace = cleanLine.match(new RegExp(`^(.+?)\\s+(\\d[\\d\\s,.]*\\s*[м²шткгмlp.]*\\s*${MUL}\\s*[\\d\\s,.]+\\s*[₽Рруб].*)$`));
+      if (calcSpace) {
+        current.items.push({ name: calcSpace[1].trim(), value: calcSpace[2].trim() });
+        continue;
+      }
+
+      // 3) "Название = итог Р" (результат без формулы)
+      const eqMatch = cleanLine.match(/^(.+?)\s*=\s*([\d][\d\s,.]*\s*[₽Рруб].*)$/);
+      if (eqMatch) {
+        current.items.push({ name: eqMatch[1].trim(), value: eqMatch[2].trim() });
+        continue;
+      }
+
+      // 4) "Название — цена" или "Название – цена"
+      const dashMatch = cleanLine.match(/^(.+?)\s*[-–—]\s*([\d][\d\s,.]*\s*[₽Рруб].*)$/);
+      if (dashMatch) {
+        current.items.push({ name: dashMatch[1].trim(), value: dashMatch[2].trim() });
+        continue;
+      }
+
+      // 5) "Название: число Р" (через двоеточие, просто цена)
+      const unitMatch = cleanLine.match(/^(.+?)[:\s]+(\d.+[₽Рруб].*)$/);
+      if (unitMatch) {
+        current.items.push({ name: unitMatch[1].trim().replace(/:$/, ""), value: unitMatch[2].trim() });
+        continue;
+      }
+
+      current.items.push({ name: cleanLine, value: "" });
     } else {
       if (line.includes("₽")) {
         if (!current) current = { title: "Позиции", items: [] };
