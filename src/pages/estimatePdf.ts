@@ -126,23 +126,29 @@ export async function generateEstimatePdf(parsed: ParsedEstimate) {
       // Разбиваем формулу на qty и price по последнему ×
       // Итог берём после последнего "= число Р"
       const splitMul = (s: string): { qty: string; price: string; preTotal?: string } | null => {
-        // Ищем последний × в строке
         const lastMul = Math.max(s.lastIndexOf("×"), s.lastIndexOf("x"), s.lastIndexOf("х"));
         if (lastMul < 0) return null;
-        // Итог — после последнего "="
+
         const lastEq = s.lastIndexOf("=");
         let price = s.slice(lastMul + 1).trim();
         let preTotal: string | undefined;
         if (lastEq > lastMul) {
           price = s.slice(lastMul + 1, lastEq).trim();
-          preTotal = s.slice(lastEq + 1).trim();
+          preTotal = s.slice(lastEq + 1).trim().replace(/\*\*/g, "").trim();
         }
-        // Кол-во — часть до последнего ×, берём последний числовой блок
+        // Очищаем price от лишнего (берём только первое число + единицу)
+        price = price.replace(/\*\*/g, "").trim();
+        const priceNum = price.match(/[\d\s,.]+\s*[₽Рм²шт\w]*/)?.[0]?.trim() || price;
+
+        // qty: берём часть до последнего ×, затем только число после последнего =
         const beforeMul = s.slice(0, lastMul).trim();
-        // Убираем промежуточные вычисления (всё после последнего "=")
         const lastEqBefore = beforeMul.lastIndexOf("=");
-        const qty = lastEqBefore >= 0 ? beforeMul.slice(lastEqBefore + 1).trim() : beforeMul;
-        return { qty, price, preTotal };
+        let qty = lastEqBefore >= 0 ? beforeMul.slice(lastEqBefore + 1).trim() : beforeMul;
+        // Оставляем только число + единицу измерения (убираем промежуточные формулы)
+        qty = qty.replace(/\*\*/g, "").trim();
+        const qtyClean = qty.match(/[\d,.]+\s*[м²шткгмlp]*/)?.[0]?.trim() || qty;
+
+        return { qty: qtyClean, price: priceNum, preTotal };
       };
 
       // Случай 1: name = "Название: формула" (через двоеточие)
