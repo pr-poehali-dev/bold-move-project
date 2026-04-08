@@ -107,48 +107,42 @@ export async function generateEstimatePdf(parsed: ParsedEstimate) {
     const block = parsed.blocks[bi];
     if (block.numbered) numCounter++;
     const blockLabel = block.numbered ? `${numCounter}. ${block.title}` : block.title;
-    // 4 колонки: Название | Кол-во | Цена/ед | Сумма
-    // item.name = "MSD Classic: 42 м² × 399 Р" ИЛИ просто "Стеновой алюминий"
-    // item.value = итог "16 758 Р" ИЛИ формула "42 м² × 399 Р/м²" ИЛИ пусто
-    // Парсер фронтенда чередует строки:
-    // строка 1: name="Монтаж полотна ПВХ"  value=""
-    // строка 2: name="26 м² × 350 ₽/м²"   value="9100 ₽"
-    // Объединяем пары в одну строку таблицы
-    const merged: { name: string; formula: string; total: string }[] = [];
-    let i = 0;
-    while (i < block.items.length) {
-      const cur = block.items[i];
-      const next = block.items[i + 1];
-      const isFormula = (s: string) => /[×xх]/.test(s);
-
-      if (!isFormula(cur.name) && next && isFormula(next.name)) {
-        // cur = название, next = формула
-        merged.push({ name: cur.name, formula: next.name, total: next.value });
-        i += 2;
-      } else if (isFormula(cur.name)) {
-        // формула без названия
-        merged.push({ name: "", formula: cur.name, total: cur.value });
-        i += 1;
-      } else {
-        // обычная строка без формулы
-        merged.push({ name: cur.name, formula: "", total: cur.value });
-        i += 1;
-      }
-    }
-
-    const extractQtyPrice = (s: string): { qty: string; price: string } | null => {
-      const m = s.match(/^([\d,.\s]+\s*[^\d×xх=₽₽\s]{1,8}?)\s*[×xх]\s*([\d\s,.]+\s*[₽₽][^\s×xх=]*)/);
+    // Разбираем каждую строку: ищем "кол × цена" в name или value
+    const extractQtyPrice = (s: string) => {
+      const m = s.match(/^([\d,.]+\s*[а-яёa-z²³.]*\s*)\s*[×xх]\s*([\d\s,.]+\s*[₽Р][^\s×xх]*)/i);
       if (!m) return null;
       return { qty: m[1].trim(), price: m[2].trim() };
     };
 
-    const rows = merged.map(({ name, formula, total }) => {
-      if (formula) {
-        const qp = extractQtyPrice(formula);
-        return [name, qp?.qty ?? "", qp?.price ?? "", total];
+    // Объединяем пары: название + следующая строка с формулой
+    const rows: string[][] = [];
+    let i = 0;
+    while (i < block.items.length) {
+      const cur = block.items[i];
+      const next = block.items[i + 1];
+      const hasFormula = (s: string) => /[×xх]/.test(s) && /[₽Р]/.test(s);
+
+      if (!hasFormula(cur.name) && !hasFormula(cur.value) && next && hasFormula(next.name)) {
+        // Пара: название + следующая строка с формулой
+        const qp = extractQtyPrice(next.name);
+        rows.push([cur.name, qp?.qty ?? "", qp?.price ?? "", next.value]);
+        i += 2;
+      } else if (hasFormula(cur.name)) {
+        // Строка сама является формулой
+        const qp = extractQtyPrice(cur.name);
+        rows.push(["", qp?.qty ?? cur.name, qp?.price ?? "", cur.value]);
+        i += 1;
+      } else if (hasFormula(cur.value)) {
+        // value содержит формулу
+        const qp = extractQtyPrice(cur.value);
+        rows.push([cur.name, qp?.qty ?? "", qp?.price ?? "", cur.value]);
+        i += 1;
+      } else {
+        // Просто название + сумма
+        rows.push([cur.name, "", "", cur.value]);
+        i += 1;
       }
-      return [name, "", "", total];
-    });
+    }
 
     autoTable(doc, {
       startY: y,
