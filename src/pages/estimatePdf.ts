@@ -16,38 +16,60 @@ interface ParsedEstimate {
 
 let cachedFonts: { regular: string; bold?: string } | null = null;
 
-async function ensureFont() {
-  if (cachedFonts) return;
+async function arrayBufferToBase64(buffer: ArrayBuffer): Promise<string> {
+  const bytes = new Uint8Array(buffer);
+  let binary = "";
+  for (let i = 0; i < bytes.byteLength; i++) binary += String.fromCharCode(bytes[i]);
+  return btoa(binary);
+}
+
+async function fetchFontBase64(url: string): Promise<string | null> {
   try {
-    const resp = await fetch(func2url["get-font"]);
-    if (!resp.ok) return;
-    const data = await resp.json();
-    if (data.font) cachedFonts = { regular: data.font, bold: data.bold };
+    const resp = await fetch(url);
+    if (!resp.ok) return null;
+    const buf = await resp.arrayBuffer();
+    return await arrayBufferToBase64(buf);
   } catch {
-    // fallback
+    return null;
   }
 }
 
-function setup(doc: jsPDF): string {
-  if (!cachedFonts) {
-    console.warn("[PDF] No fonts loaded, using helvetica (no cyrillic)");
-    doc.setFont("helvetica", "normal");
-    return "helvetica";
-  }
+async function ensureFont() {
+  if (cachedFonts) return;
+  // Сначала пробуем бэкенд (уже кешировано в S3)
   try {
-    const reg = cachedFonts.regular.replace(/^data:[^;]+;base64,/, "");
-    doc.addFileToVFS("Roboto-Regular.ttf", reg);
+    const resp = await fetch(func2url["get-font"]);
+    if (resp.ok) {
+      const data = await resp.json();
+      if (data.font) {
+        cachedFonts = { regular: data.font, bold: data.bold };
+        return;
+      }
+    }
+  } catch { /* продолжаем */ }
+
+  // Фолбэк: грузим напрямую с Google Fonts CDN
+  const regular = await fetchFontBase64(
+    "https://fonts.gstatic.com/s/roboto/v47/KFOMCnqEu92Fr1ME7kSn66aGLdTylUAMQXC89YmC2DPNWubEbGmT.ttf"
+  );
+  const bold = await fetchFontBase64(
+    "https://fonts.gstatic.com/s/roboto/v47/KFOMCnqEu92Fr1ME7kSn66aGLdTylUAMQXC89YmC2DPNWuYJb2mT.ttf"
+  );
+  if (regular) cachedFonts = { regular, bold: bold ?? undefined };
+}
+
+function setup(doc: jsPDF): string {
+  if (!cachedFonts) return "helvetica";
+  try {
+    doc.addFileToVFS("Roboto-Regular.ttf", cachedFonts.regular);
     doc.addFont("Roboto-Regular.ttf", "Roboto", "normal");
     if (cachedFonts.bold) {
-      const bld = cachedFonts.bold.replace(/^data:[^;]+;base64,/, "");
-      doc.addFileToVFS("Roboto-Black.ttf", bld);
-      doc.addFont("Roboto-Black.ttf", "Roboto", "bold");
+      doc.addFileToVFS("Roboto-Bold.ttf", cachedFonts.bold);
+      doc.addFont("Roboto-Bold.ttf", "Roboto", "bold");
     }
     doc.setFont("Roboto", "normal");
-    console.log("[PDF] Roboto font loaded OK");
     return "Roboto";
-  } catch (e) {
-    console.error("[PDF] Font setup error:", e);
+  } catch {
     return "helvetica";
   }
 }
