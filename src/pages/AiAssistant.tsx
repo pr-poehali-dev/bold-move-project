@@ -118,8 +118,8 @@ export default function AiAssistant({ assistantRef }: Props) {
           <div className="relative rounded-3xl border border-white/10 bg-[#0c0c14]/95 backdrop-blur overflow-hidden">
             <div className="flex items-center gap-3 px-6 py-4 border-b border-white/8">
               <div className="relative">
-                <div className="w-10 h-10 rounded-xl overflow-hidden bg-white flex items-center justify-center shadow-lg shadow-violet-500/20">
-                  <img src="https://cdn.poehali.dev/files/7105828c-c33e-48f9-ac90-02134e3cd4d7.png" alt="logo" className="w-full h-full object-contain" />
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center shadow-lg shadow-violet-500/20">
+                  <img src="https://cdn.poehali.dev/files/7105828c-c33e-48f9-ac90-02134e3cd4d7.png" alt="logo" className="w-full h-full object-contain" style={{ mixBlendMode: "screen" }} />
                 </div>
                 <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-400 rounded-full border-2 border-[#0c0c14]" />
               </div>

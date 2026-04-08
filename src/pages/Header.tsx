@@ -27,6 +27,7 @@ export default function Header({ scrollY }: Props) {
               src="https://cdn.poehali.dev/files/7105828c-c33e-48f9-ac90-02134e3cd4d7.png"
               alt="MOSPOTOLKI PRO"
               className="h-10 w-auto object-contain"
+              style={{ mixBlendMode: "screen" }}
             />
             <div>
               <span className="font-montserrat font-black text-base tracking-wide">MOS<span className="text-orange-400">POTOLKI</span></span>
