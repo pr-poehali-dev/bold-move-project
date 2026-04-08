@@ -107,15 +107,29 @@ export async function generateEstimatePdf(parsed: ParsedEstimate) {
     const block = parsed.blocks[bi];
     if (block.numbered) numCounter++;
     const blockLabel = block.numbered ? `${numCounter}. ${block.title}` : block.title;
-    // Название + формула в левой колонке, итоговая сумма — в правой
+    // Название слева, итоговая сумма справа
     const rows = block.items.map((item) => {
       const val = item.value;
-      const eqIdx = val.lastIndexOf("=");
-      if (eqIdx > 0) {
-        const formula = val.slice(0, eqIdx).trim();  // "42 м² × 350 Р/м²"
-        const total = val.slice(eqIdx + 1).trim();   // "14 700 Р"
+
+      // Если есть "= итог" — берём итог
+      const eqMatch = val.match(/=\s*([\d\s,.]+\s*[₽Р][^=]*)$/);
+      if (eqMatch) {
+        const formula = val.slice(0, val.lastIndexOf("=")).trim();
+        const total = eqMatch[1].trim();
         return [`${item.name}: ${formula}`, total];
       }
+
+      // Если есть "кол × цена" — вычисляем итог сами
+      const mulMatch = val.match(/^([\d\s,.]+)\s*[×x]\s*([\d\s,.]+)\s*[₽Р]/);
+      if (mulMatch) {
+        const qty = parseFloat(mulMatch[1].replace(/\s/g, "").replace(",", "."));
+        const price = parseFloat(mulMatch[2].replace(/\s/g, "").replace(",", "."));
+        if (!isNaN(qty) && !isNaN(price)) {
+          const total = Math.round(qty * price).toLocaleString("ru-RU") + " Р";
+          return [`${item.name}: ${val}`, total];
+        }
+      }
+
       return [item.name, val];
     });
 
