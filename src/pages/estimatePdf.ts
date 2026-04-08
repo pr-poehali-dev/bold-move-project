@@ -121,11 +121,26 @@ export async function generateEstimatePdf(parsed: ParsedEstimate) {
           : "";
       };
 
-      // Разбиваем формулу "X ед × Y Р/ед" на qty и price
-      const splitMul = (s: string): { qty: string; price: string } | null => {
-        const parts = s.split(/[×xх]/);
-        if (parts.length < 2) return null;
-        return { qty: parts[0].trim(), price: parts.slice(1).join("×").trim() };
+      // Разбиваем формулу на qty и price по последнему ×
+      // Итог берём после последнего "= число Р"
+      const splitMul = (s: string): { qty: string; price: string; preTotal?: string } | null => {
+        // Ищем последний × в строке
+        const lastMul = Math.max(s.lastIndexOf("×"), s.lastIndexOf("x"), s.lastIndexOf("х"));
+        if (lastMul < 0) return null;
+        // Итог — после последнего "="
+        const lastEq = s.lastIndexOf("=");
+        let price = s.slice(lastMul + 1).trim();
+        let preTotal: string | undefined;
+        if (lastEq > lastMul) {
+          price = s.slice(lastMul + 1, lastEq).trim();
+          preTotal = s.slice(lastEq + 1).trim();
+        }
+        // Кол-во — часть до последнего ×, берём последний числовой блок
+        const beforeMul = s.slice(0, lastMul).trim();
+        // Убираем промежуточные вычисления (всё после последнего "=")
+        const lastEqBefore = beforeMul.lastIndexOf("=");
+        const qty = lastEqBefore >= 0 ? beforeMul.slice(lastEqBefore + 1).trim() : beforeMul;
+        return { qty, price, preTotal };
       };
 
       // Случай 1: name = "Название: формула" (через двоеточие)
@@ -135,7 +150,7 @@ export async function generateEstimatePdf(parsed: ParsedEstimate) {
         const formula = name.slice(colonIdx + 1).trim();
         const sp = splitMul(formula);
         if (sp) {
-          const total = value || compute(sp.qty, sp.price);
+          const total = value || sp.preTotal || compute(sp.qty, sp.price);
           return [title, sp.qty, sp.price, total];
         }
       }
@@ -144,7 +159,7 @@ export async function generateEstimatePdf(parsed: ParsedEstimate) {
       if (hasMul(value) && hasCurrency(value)) {
         const sp = splitMul(value);
         if (sp) {
-          const total = compute(sp.qty, sp.price);
+          const total = sp.preTotal || compute(sp.qty, sp.price);
           return [name, sp.qty, sp.price, total];
         }
       }
@@ -153,7 +168,7 @@ export async function generateEstimatePdf(parsed: ParsedEstimate) {
       if (hasMul(name) && hasCurrency(name)) {
         const sp = splitMul(name);
         if (sp) {
-          const total = value || compute(sp.qty, sp.price);
+          const total = value || sp.preTotal || compute(sp.qty, sp.price);
           return ["", sp.qty, sp.price, total];
         }
       }
