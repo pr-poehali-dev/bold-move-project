@@ -73,21 +73,19 @@ function drawRow(
     cx += w;
   }
 
-  // Текст — ВСЕГДА чёрный
-  doc.setFont(font, "normal");
-  doc.setFontSize(isHead ? 10 : 9.5);
-  doc.setTextColor(0, 0, 0); // чёрный — нативный вызов без autoTable
-
   cx = x;
   for (let i = 0; i < cols.length; i++) {
     const w = colWidths[i];
     const text = (cols[i] || "").replace(/\*\*/g, "");
     const align = i === 0 ? "left" : "right";
     const tx = align === "right" ? cx + w - 2 : cx + 2;
-    // Обрезаем длинный текст
     const maxW = w - 4;
     const lines = doc.splitTextToSize(text, maxW);
-    doc.text(lines[0] || "", tx, y + rowH / 2 + 1.5, { align, baseline: "middle" });
+    // Принудительно ставим шрифт и цвет ПЕРЕД КАЖДОЙ ячейкой
+    doc.setFont(font, "normal");
+    doc.setFontSize(isHead ? 10 : 9.5);
+    doc.setTextColor("#000000");
+    doc.text(lines[0] || "", tx, y + rowH / 2 + 1.5, { align });
     cx += w;
   }
 
@@ -112,16 +110,16 @@ export async function generateEstimatePdf(parsed: ParsedEstimate) {
   doc.rect(0, 0, pageW, 36, "F");
   doc.setFont(font, "normal");
   doc.setFontSize(18);
-  doc.setTextColor(255, 140, 50);
+  doc.setTextColor("#FF8C32");
   doc.text("MOSPOTOLKI", 15, 15);
   doc.setFontSize(8);
-  doc.setTextColor(200, 200, 215);
+  doc.setTextColor("#C8C8D7");
   doc.text("Натяжные потолки | +7 (977) 606-89-01", 15, 23);
   doc.setFontSize(14);
-  doc.setTextColor(255, 255, 255);
+  doc.setTextColor("#FFFFFF");
   doc.text("СМЕТА", pageW - 15, 15, { align: "right" });
   doc.setFontSize(8);
-  doc.setTextColor(200, 200, 215);
+  doc.setTextColor("#C8C8D7");
   doc.text("от " + today, pageW - 15, 23, { align: "right" });
 
   let y = 44;
@@ -234,7 +232,7 @@ export async function generateEstimatePdf(parsed: ParsedEstimate) {
     y += 7;
     doc.setFont(font, "normal");
     doc.setFontSize(10);
-    doc.setTextColor(0, 0, 0);
+    doc.setTextColor("#000000");
     doc.text("ИТОГО:", margin + 3, y);
 
     for (const t of cleanTotals) {
@@ -244,7 +242,7 @@ export async function generateEstimatePdf(parsed: ParsedEstimate) {
       const val = ci >= 0 ? t.slice(ci + 1).trim() : "";
       const isSt = /standard/i.test(lbl);
       doc.setFontSize(isSt ? 11 : 9.5);
-      doc.setTextColor(isSt ? 180 : 0, isSt ? 60 : 0, 0);
+      doc.setTextColor(isSt ? "#B43C00" : "#000000");
       doc.text(lbl + ":", margin + 3, y);
       if (val) doc.text(val, margin + tableW - 3, y, { align: "right" });
     }
@@ -255,7 +253,7 @@ export async function generateEstimatePdf(parsed: ParsedEstimate) {
     if (y > pageH - 20) addPage();
     doc.setFont(font, "normal");
     doc.setFontSize(8);
-    doc.setTextColor(80, 80, 80);
+    doc.setTextColor("#505050");
     const lines = doc.splitTextToSize(parsed.finalPhrase.replace(/\*\*/g, ""), tableW);
     doc.text(lines, margin, y);
   }
@@ -263,7 +261,7 @@ export async function generateEstimatePdf(parsed: ParsedEstimate) {
   // Футер
   doc.setFont(font, "normal");
   doc.setFontSize(7);
-  doc.setTextColor(150, 150, 150);
+  doc.setTextColor("#969696");
   doc.text("MosPotolki | Мытищи, Пограничная 24 | +7 (977) 606-89-01", pageW / 2, pageH - 8, { align: "center" });
 
   doc.save(`Смета_MosPotolki_${today.replace(/\./g, "-")}.pdf`);
