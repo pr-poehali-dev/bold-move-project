@@ -1,0 +1,1 @@
+{"tests": [{"name": "Generate PDF", "method": "POST", "path": "/", "body": {"blocks": [{"title": "Тест", "numbered": true, "items": [{"name": "Позиция 1", "value": "10 м² × 100 Р = 1000 Р"}]}], "totals": ["Standard: 1000 Р"], "finalPhrase": "Тестовая смета"}, "expectedStatus": 200, "expectedBody": {"pdf": "string"}, "bodyMatcher": "partial"}]}
