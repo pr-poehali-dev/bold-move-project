@@ -10,16 +10,16 @@ import boto3
 BUCKET = 'files'
 FONT_FILES = {
     'regular': {
-        'key': 'fonts/Roboto-Regular.ttf',
+        'key': 'fonts/Roboto-Regular-v2.ttf',
         'sources': [
-            'https://fonts.gstatic.com/s/roboto/v47/KFOMCnqEu92Fr1ME7kSn66aGLdTylUAMQXC89YmC2DPNWubEbGmT.ttf',
+            'https://fonts.gstatic.com/s/roboto/v30/KFOmCnqEu92Fr1Mu4mxKKTU1Kg.ttf',
+            'https://github.com/googlefonts/roboto/raw/main/src/hinted/Roboto-Regular.ttf',
         ],
     },
     'bold': {
-        'key': 'fonts/Roboto-Bold.ttf',
+        'key': 'fonts/Roboto-Bold-v2.ttf',
         'sources': [
             'https://fonts.gstatic.com/s/roboto/v30/KFOlCnqEu92Fr1MmWUlfBBc4.ttf',
-            'https://fonts.gstatic.com/s/roboto/v47/KFOMCnqEu92Fr1ME7kSn66aGLdTylUAMQXC89YmC2DPNWuYJb2mT.ttf',
             'https://github.com/googlefonts/roboto/raw/main/src/hinted/Roboto-Bold.ttf',
         ],
     },

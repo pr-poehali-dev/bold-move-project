@@ -24,9 +24,9 @@ async function ensureFont() {
       if (data.font) { cachedFont = data.font; return; }
     }
   } catch { /* ignore */ }
-  // fallback: грузим напрямую
+  // fallback: грузим настоящий Roboto Regular напрямую
   try {
-    const resp = await fetch("https://fonts.gstatic.com/s/roboto/v47/KFOMCnqEu92Fr1ME7kSn66aGLdTylUAMQXC89YmC2DPNWubEbGmT.ttf");
+    const resp = await fetch("https://fonts.gstatic.com/s/roboto/v30/KFOmCnqEu92Fr1Mu4mxKKTU1Kg.ttf");
     if (resp.ok) {
       const buf = await resp.arrayBuffer();
       const bytes = new Uint8Array(buf);
