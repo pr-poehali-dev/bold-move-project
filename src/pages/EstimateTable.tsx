@@ -19,6 +19,7 @@ export function parseEstimateBlocks(text: string) {
   for (const raw of lines) {
     const line = raw.trim();
     if (!line) continue;
+    if (/^[-–—]{2,}$/.test(line)) continue;
 
     if (/^(Econom|Standard|Premium)/i.test(line) || inTotals) {
       inTotals = true;
