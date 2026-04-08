@@ -228,9 +228,19 @@ export async function generateEstimatePdf(parsed: ParsedEstimate) {
         lineWidth: 0.4,
       },
       bodyStyles: {
-        textColor: [10, 10, 10],
+        textColor: [0, 0, 0],
         font: f.bold,
         fontStyle: "normal",
+        fillColor: [255, 255, 255],
+      },
+      alternateRowStyles: {
+        fillColor: [248, 248, 252],
+        textColor: [0, 0, 0],
+      },
+      willDrawCell: (data: {section: string; cell: {styles: {textColor: number[]}}}) => {
+        if (data.section === "body") {
+          data.cell.styles.textColor = [0, 0, 0];
+        }
       },
       columnStyles: {
         0: { cellWidth: "auto", textColor: [10, 10, 10] },
