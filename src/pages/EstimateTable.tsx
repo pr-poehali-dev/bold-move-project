@@ -10,8 +10,8 @@ export function isEstimate(text: string) {
 
 export function parseEstimateBlocks(text: string) {
   const lines = text.split("\n");
-  const blocks: { title: string; items: { name: string; value: string }[] }[] = [];
-  let current: { title: string; items: { name: string; value: string }[] } | null = null;
+  const blocks: { title: string; numbered: boolean; items: { name: string; value: string }[] }[] = [];
+  let current: { title: string; numbered: boolean; items: { name: string; value: string }[] } | null = null;
   const totals: string[] = [];
   let finalPhrase = "";
   let inTotals = false;
@@ -46,14 +46,22 @@ export function parseEstimateBlocks(text: string) {
     const headerMatch = line.match(/^(\d+)\.\s*(.+?):\s*$/);
     if (headerMatch) {
       if (current) blocks.push(current);
-      current = { title: headerMatch[2], items: [] };
+      current = { title: headerMatch[2], numbered: true, items: [] };
       continue;
     }
 
     const headerMatch2 = line.match(/^(\d+)\.\s*(.+?)$/);
     if (headerMatch2 && !line.includes("₽") && !line.includes("руб") && line.length < 50) {
       if (current) blocks.push(current);
-      current = { title: headerMatch2[2].replace(/:$/, ""), items: [] };
+      current = { title: headerMatch2[2].replace(/:$/, ""), numbered: true, items: [] };
+      continue;
+    }
+
+    // Подзаголовок без номера: "Услуги монтажа:" — создаём новый блок
+    const subHeaderMatch = line.match(/^([А-ЯЁа-яёA-Za-z][^₽\d:]{2,50}):\s*$/);
+    if (subHeaderMatch && !line.includes("₽") && !line.includes("руб")) {
+      if (current) blocks.push(current);
+      current = { title: subHeaderMatch[1].trim(), numbered: false, items: [] };
       continue;
     }
 
@@ -119,21 +127,28 @@ export default function EstimateTable({ text }: { text: string }) {
             </tr>
           </thead>
           <tbody>
-            {blocks.map((block, bi) => (
-              <>
-                <tr key={`h-${bi}`} className="bg-white/4">
-                  <td colSpan={2} className="px-3 py-2 font-montserrat font-bold text-orange-400 text-xs">
-                    {bi + 1}. {block.title}
-                  </td>
-                </tr>
-                {block.items.map((item, ii) => (
-                  <tr key={`r-${bi}-${ii}`} className="border-t border-white/5 hover:bg-white/3 transition-colors">
-                    <td className="px-3 py-1.5 text-white/70">{item.name}</td>
-                    <td className="px-3 py-1.5 text-right text-white/90 font-montserrat font-semibold whitespace-nowrap">{item.value}</td>
-                  </tr>
-                ))}
-              </>
-            ))}
+            {(() => {
+              let numCounter = 0;
+              return blocks.map((block, bi) => {
+                if (block.numbered) numCounter++;
+                const label = block.numbered ? `${numCounter}. ${block.title}` : block.title;
+                return (
+                  <>
+                    <tr key={`h-${bi}`} className="bg-white/4">
+                      <td colSpan={2} className="px-3 py-2 font-montserrat font-bold text-orange-400 text-xs">
+                        {label}
+                      </td>
+                    </tr>
+                    {block.items.map((item, ii) => (
+                      <tr key={`r-${bi}-${ii}`} className="border-t border-white/5 hover:bg-white/3 transition-colors">
+                        <td className="px-3 py-1.5 text-white/70">{item.name}</td>
+                        <td className="px-3 py-1.5 text-right text-white/90 font-montserrat font-semibold whitespace-nowrap">{item.value}</td>
+                      </tr>
+                    ))}
+                  </>
+                );
+              });
+            })()}
           </tbody>
         </table>
 

@@ -4,6 +4,7 @@ import func2url from "@/../backend/func2url.json";
 
 interface EstimateBlock {
   title: string;
+  numbered: boolean;
   items: { name: string; value: string }[];
 }
 
@@ -80,14 +81,17 @@ export async function generateEstimatePdf(parsed: ParsedEstimate) {
   doc.text("от " + today, pageW - 15, 25, { align: "right" });
 
   let y = 46;
+  let numCounter = 0;
 
   for (let bi = 0; bi < parsed.blocks.length; bi++) {
     const block = parsed.blocks[bi];
+    if (block.numbered) numCounter++;
+    const blockLabel = block.numbered ? `${numCounter}. ${block.title}` : block.title;
     const rows = block.items.map((item) => [item.name, item.value]);
 
     autoTable(doc, {
       startY: y,
-      head: [[bi + 1 + ". " + block.title, "Сумма"]],
+      head: [[blockLabel, "Сумма"]],
       body: rows,
       theme: "grid",
       styles: {
