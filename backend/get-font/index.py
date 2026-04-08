@@ -10,17 +10,17 @@ import boto3
 BUCKET = 'files'
 FONT_FILES = {
     'regular': {
-        'key': 'fonts/Roboto-Regular-v2.ttf',
+        'key': 'fonts/Roboto-Regular-v3.ttf',
         'sources': [
-            'https://fonts.gstatic.com/s/roboto/v30/KFOmCnqEu92Fr1Mu4mxKKTU1Kg.ttf',
-            'https://github.com/googlefonts/roboto/raw/main/src/hinted/Roboto-Regular.ttf',
+            'https://raw.githubusercontent.com/openmaptiles/fonts/master/roboto/Roboto-Regular.ttf',
+            'https://raw.githubusercontent.com/johnkil/Android-RobotoTextView/master/robototextview/src/main/assets/fonts/Roboto-Regular.ttf',
         ],
     },
     'bold': {
-        'key': 'fonts/Roboto-Bold-v2.ttf',
+        'key': 'fonts/Roboto-Bold-v3.ttf',
         'sources': [
-            'https://fonts.gstatic.com/s/roboto/v30/KFOlCnqEu92Fr1MmWUlfBBc4.ttf',
-            'https://github.com/googlefonts/roboto/raw/main/src/hinted/Roboto-Bold.ttf',
+            'https://raw.githubusercontent.com/openmaptiles/fonts/master/roboto/Roboto-Bold.ttf',
+            'https://raw.githubusercontent.com/johnkil/Android-RobotoTextView/master/robototextview/src/main/assets/fonts/Roboto-Bold.ttf',
         ],
     },
 }
