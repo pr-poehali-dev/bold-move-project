@@ -229,43 +229,36 @@ export async function generateEstimatePdf(parsed: ParsedEstimate) {
       theme: "grid",
       styles: {
         font: f.regular,
-        fontStyle: "bold",
+        fontStyle: "normal",
         fontSize: 10,
         cellPadding: 4,
-        textColor: [10, 10, 10],
-        lineColor: [180, 180, 200],
+        textColor: 0,
+        lineColor: 180,
         lineWidth: 0.4,
       },
       headStyles: {
         font: f.regular,
-        fontStyle: "bold",
+        fontStyle: "normal",
         fontSize: 11,
         textColor: [180, 60, 0],
         fillColor: [235, 232, 245],
         lineWidth: 0.4,
       },
       bodyStyles: {
-        textColor: [0, 0, 0],
+        textColor: 0,
         font: f.regular,
-        fontStyle: "bold",
-        fillColor: [255, 255, 255],
+        fontStyle: "normal",
+        fillColor: false,
       },
       alternateRowStyles: {
         fillColor: [248, 248, 252],
-        textColor: [0, 0, 0],
-      },
-      didParseCell: (data: {section: string; cell: {styles: {textColor: number[]; font: string; fontStyle: string}}}) => {
-        if (data.section === "body") {
-          data.cell.styles.textColor = [0, 0, 0];
-          data.cell.styles.font = f.regular;
-          data.cell.styles.fontStyle = "bold";
-        }
+        textColor: 0,
       },
       columnStyles: {
-        0: { cellWidth: "auto", textColor: [10, 10, 10] },
-        1: { cellWidth: 28, halign: "right", textColor: [10, 10, 10] },
-        2: { cellWidth: 34, halign: "right", textColor: [10, 10, 10] },
-        3: { cellWidth: 28, halign: "right", textColor: [10, 10, 10] },
+        0: { cellWidth: "auto" },
+        1: { cellWidth: 28, halign: "right" },
+        2: { cellWidth: 34, halign: "right" },
+        3: { cellWidth: 28, halign: "right" },
       },
       margin: { left: 14, right: 14 },
     });
