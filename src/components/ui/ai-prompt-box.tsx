@@ -2,23 +2,24 @@ import React from "react";
 import { ArrowUp, Mic, Square, StopCircle } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
-const cn = (...classes: (string | undefined | null | false)[]) =>
-  classes.filter(Boolean).join(" ");
+const cn = (...c: (string | undefined | null | false)[]) => c.filter(Boolean).join(" ");
 
-interface PromptInputBoxProps {
+interface Props {
   value: string;
   onValueChange: (v: string) => void;
   onSubmit: () => void;
   isLoading?: boolean;
   placeholder?: string;
-  className?: string;
 }
 
-export const PromptInputBox = React.forwardRef<HTMLDivElement, PromptInputBoxProps>(
-  ({ value, onValueChange, onSubmit, isLoading = false, placeholder = "Спросите Женю о потолках…", className }, ref) => {
+export const PromptInputBox = React.forwardRef<HTMLDivElement, Props>(
+  ({ value, onValueChange, onSubmit, isLoading = false, placeholder = "Спросите Женю о потолках…" }, ref) => {
     const textareaRef = React.useRef<HTMLTextAreaElement>(null);
     const [isRecording, setIsRecording] = React.useState(false);
-    const [recTime, setRecTime]         = React.useState(0);
+    const [recTime, setRecTime] = React.useState(0);
+    const [bars] = React.useState(() =>
+      Array.from({ length: 26 }, () => 0.2 + Math.random() * 0.8)
+    );
     const timerRef = React.useRef<ReturnType<typeof setInterval>>();
 
     // Авторесайз textarea
@@ -26,7 +27,7 @@ export const PromptInputBox = React.forwardRef<HTMLDivElement, PromptInputBoxPro
       const el = textareaRef.current;
       if (!el) return;
       el.style.height = "auto";
-      el.style.height = Math.min(el.scrollHeight, 160) + "px";
+      el.style.height = Math.min(el.scrollHeight, 120) + "px";
     }, [value]);
 
     // Таймер записи
@@ -48,14 +49,14 @@ export const PromptInputBox = React.forwardRef<HTMLDivElement, PromptInputBoxPro
     const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
       if (e.key === "Enter" && !e.shiftKey) {
         e.preventDefault();
-        if (hasContent && !isLoading) onSubmit();
+        if (hasContent && !isLoading && !isRecording) onSubmit();
       }
     };
 
     const handleAction = () => {
-      if (isLoading)     return;
-      if (isRecording)   { setIsRecording(false); return; }
-      if (hasContent)    { onSubmit(); return; }
+      if (isLoading) return;
+      if (isRecording) { setIsRecording(false); return; }
+      if (hasContent) { onSubmit(); return; }
       setIsRecording(true);
     };
 
@@ -63,49 +64,62 @@ export const PromptInputBox = React.forwardRef<HTMLDivElement, PromptInputBoxPro
       <div
         ref={ref}
         className={cn(
-          "rounded-2xl border bg-white/[0.04] transition-all duration-300",
-          isLoading    ? "border-orange-500/50" : "border-white/[0.07]",
-          isRecording  ? "border-red-500/50"    : "",
-          "focus-within:border-orange-500/30",
-          className
+          "rounded-2xl border transition-all duration-300",
+          isRecording
+            ? "border-red-500/40 bg-white/[0.04]"
+            : isLoading
+            ? "border-orange-500/40 bg-white/[0.04]"
+            : "border-white/[0.07] bg-white/[0.04] focus-within:border-orange-500/30"
         )}
       >
-        {/* Recording UI */}
+        {/* Визуализация записи */}
         <AnimatePresence>
           {isRecording && (
             <motion.div
+              key="recording"
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: "auto" }}
               exit={{ opacity: 0, height: 0 }}
-              className="flex flex-col items-center py-3 px-4 overflow-hidden"
+              transition={{ duration: 0.22 }}
+              className="overflow-hidden"
             >
-              <div className="flex items-center gap-2 mb-2">
-                <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-                <span className="font-mono text-sm text-white/70">{fmt(recTime)}</span>
-              </div>
-              <div className="w-full h-8 flex items-center justify-center gap-0.5">
-                {Array.from({ length: 28 }).map((_, i) => (
-                  <motion.div
-                    key={i}
-                    className="w-0.5 rounded-full bg-white/40"
-                    animate={{ scaleY: [0.3, 1, 0.3] }}
-                    transition={{ duration: 0.6 + Math.random() * 0.4, repeat: Infinity, delay: i * 0.04 }}
-                    style={{ height: "100%" }}
-                  />
-                ))}
+              <div className="flex flex-col items-center pt-3 pb-1 px-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+                  <span className="font-mono text-xs text-white/60">{fmt(recTime)}</span>
+                  <span className="text-white/25 text-[11px]">· говорите сейчас</span>
+                </div>
+                <div className="w-full h-8 flex items-end justify-center gap-[3px]">
+                  {bars.map((h, i) => (
+                    <motion.div
+                      key={i}
+                      className="w-[3px] rounded-full bg-gradient-to-t from-orange-500 to-rose-400"
+                      animate={{ scaleY: [h, 1, h * 0.4, 0.9, h] }}
+                      transition={{
+                        duration: 0.7 + h * 0.5,
+                        repeat: Infinity,
+                        delay: i * 0.035,
+                        ease: "easeInOut",
+                      }}
+                      style={{ height: "100%", transformOrigin: "bottom" }}
+                    />
+                  ))}
+                </div>
               </div>
             </motion.div>
           )}
         </AnimatePresence>
 
         {/* Textarea */}
-        <AnimatePresence>
+        <AnimatePresence initial={false}>
           {!isRecording && (
             <motion.div
+              key="textarea"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="px-3 pt-2.5"
+              transition={{ duration: 0.15 }}
+              className="flex items-end gap-2 px-3 pt-2.5 pb-0"
             >
               <textarea
                 ref={textareaRef}
@@ -115,43 +129,68 @@ export const PromptInputBox = React.forwardRef<HTMLDivElement, PromptInputBoxPro
                 placeholder={placeholder}
                 rows={1}
                 disabled={isLoading}
-                style={{ resize: "none", minHeight: 42, maxHeight: 160 }}
-                className="w-full bg-transparent text-white text-[13px] outline-none placeholder:text-white/20 overflow-y-auto py-1"
+                style={{ resize: "none", minHeight: 38, maxHeight: 120 }}
+                className="flex-1 bg-transparent text-white text-[13px] outline-none placeholder:text-white/20 overflow-y-auto py-1 leading-relaxed"
               />
             </motion.div>
           )}
         </AnimatePresence>
 
-        {/* Actions bar */}
-        <div className="flex items-center justify-between px-2 pb-2 pt-1">
-          {/* Подсказка */}
-          <span className="text-[10px] text-white/15 pl-1 select-none">
-            {isRecording ? "Идёт запись…" : "Enter — отправить · Shift+Enter — перенос"}
+        {/* Нижняя панель */}
+        <div className="flex items-center justify-between px-2.5 py-2">
+          {/* Подсказка — только на десктопе */}
+          <span className="text-[10px] text-white/15 pl-0.5 select-none hidden sm:block">
+            {isRecording
+              ? "Нажмите ■ чтобы остановить"
+              : hasContent
+              ? "Enter — отправить · Shift+Enter — перенос"
+              : "Нажмите 🎤 для голосового ввода"}
           </span>
+          <span className="sm:hidden" />
 
-          {/* Кнопка отправки / записи */}
+          {/* Кнопка действия */}
           <motion.button
             onClick={handleAction}
-            disabled={isLoading && !hasContent}
-            whileTap={{ scale: 0.9 }}
+            disabled={isLoading && !isRecording}
+            whileTap={{ scale: 0.85 }}
+            whileHover={{ scale: 1.06 }}
+            transition={{ type: "spring", stiffness: 400, damping: 18 }}
             className={cn(
-              "w-9 h-9 rounded-xl flex items-center justify-center transition-all duration-200",
+              "w-9 h-9 rounded-xl flex items-center justify-center shrink-0 transition-colors duration-200",
               isRecording
                 ? "bg-red-500/20 text-red-400 hover:bg-red-500/30"
                 : hasContent || isLoading
-                ? "bg-gradient-to-br from-orange-500 to-rose-500 text-white shadow-lg shadow-orange-500/20"
-                : "bg-white/[0.06] text-white/30 hover:bg-white/[0.1] hover:text-white/60"
+                ? "bg-gradient-to-br from-orange-500 to-rose-500 text-white shadow-md shadow-orange-500/20"
+                : "bg-white/[0.06] text-white/30 hover:bg-white/[0.1] hover:text-white/50"
             )}
           >
-            {isLoading ? (
-              <Square size={14} className="fill-white animate-pulse" />
-            ) : isRecording ? (
-              <StopCircle size={16} />
-            ) : hasContent ? (
-              <ArrowUp size={16} />
-            ) : (
-              <Mic size={15} />
-            )}
+            <AnimatePresence mode="wait" initial={false}>
+              {isLoading ? (
+                <motion.span key="stop"
+                  initial={{ scale: 0, rotate: 90 }} animate={{ scale: 1, rotate: 0 }} exit={{ scale: 0 }}
+                  transition={{ duration: 0.15 }}>
+                  <Square size={13} className="fill-white" />
+                </motion.span>
+              ) : isRecording ? (
+                <motion.span key="stoprec"
+                  initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 0 }}
+                  transition={{ duration: 0.15 }}>
+                  <StopCircle size={16} />
+                </motion.span>
+              ) : hasContent ? (
+                <motion.span key="send"
+                  initial={{ scale: 0, rotate: -90 }} animate={{ scale: 1, rotate: 0 }} exit={{ scale: 0, rotate: 90 }}
+                  transition={{ duration: 0.15 }}>
+                  <ArrowUp size={16} />
+                </motion.span>
+              ) : (
+                <motion.span key="mic"
+                  initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 0 }}
+                  transition={{ duration: 0.15 }}>
+                  <Mic size={15} />
+                </motion.span>
+              )}
+            </AnimatePresence>
           </motion.button>
         </div>
       </div>
