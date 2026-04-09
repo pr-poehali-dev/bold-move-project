@@ -67,6 +67,11 @@ export default function Index() {
         <img src="https://cdn.poehali.dev/files/7105828c-c33e-48f9-ac90-02134e3cd4d7.png" alt="" className="w-6 h-6 object-contain mr-2.5" style={{ mixBlendMode: "screen" }} />
         <span className="font-montserrat font-black text-sm tracking-wide">MOS<span className="text-orange-400">POTOLKI</span></span>
         <div className="ml-auto flex items-center gap-1.5">
+          <button
+            onClick={() => setPanel(panel === "contacts" ? "none" : "contacts")}
+            className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-orange-500/10 border border-orange-500/20 text-orange-400 text-[11px] font-medium hover:bg-orange-500/15 transition-all">
+            <Icon name="MapPin" size={12} /> <span>Контакты</span>
+          </button>
           <a href="tel:+79776068901"
             className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-orange-500/10 border border-orange-500/20 text-orange-400 text-[11px] font-medium hover:bg-orange-500/15 transition-all">
             <Icon name="Phone" size={12} /> <span className="hidden sm:inline">Позвонить</span>
