@@ -63,9 +63,9 @@ export default function ChatUI({ messages, input, typing, panel, onInput, onSend
         )}
       </div>
 
-      {/* Input + кнопка менеджера */}
-      <div className="shrink-0 px-4 md:px-8 pb-2 pt-2 flex items-end gap-2">
-        <form onSubmit={(e) => { e.preventDefault(); onSend(input); }} className="flex-1 flex items-end gap-2 bg-white/[0.04] border border-white/[0.07] focus-within:border-orange-500/30 rounded-2xl px-3 py-2 transition-all">
+      {/* Input */}
+      <div className="shrink-0 px-4 md:px-8 pb-2 pt-2">
+        <form onSubmit={(e) => { e.preventDefault(); onSend(input); }} className="flex items-end gap-2 bg-white/[0.04] border border-white/[0.07] focus-within:border-orange-500/30 rounded-2xl px-3 py-2 transition-all">
           <img src={AVATAR} alt="" className="w-7 h-7 rounded-full object-cover shrink-0 opacity-60 hidden sm:block" />
           <textarea
             ref={inputRef} value={input}
@@ -80,20 +80,6 @@ export default function ChatUI({ messages, input, typing, panel, onInput, onSend
             <Icon name="ArrowUp" size={16} className="text-white" />
           </button>
         </form>
-
-        {/* Кнопка Менеджер — справа от инпута */}
-        <button
-          onClick={() => onPanel(panel === "livechat" ? "none" : "livechat")}
-          className={`shrink-0 flex flex-col items-center justify-center gap-1 w-14 rounded-2xl transition-all duration-200 active:scale-95 ${
-            panel === "livechat"
-              ? "bg-gradient-to-b from-orange-500 to-rose-600 text-white shadow-lg shadow-orange-500/30"
-              : "bg-gradient-to-b from-orange-500/15 to-rose-600/15 border border-orange-500/25 text-orange-400"
-          }`}
-          style={{ height: 54 }}
-        >
-          <Icon name="MessageCircle" size={16} />
-          <span className="text-[9px] font-semibold leading-none">Менеджер</span>
-        </button>
       </div>
 
       {/* Nav — 4 кнопки */}
