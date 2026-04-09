@@ -77,7 +77,7 @@ export default function Index() {
             className="hidden md:flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-orange-500/10 border border-orange-500/20 text-orange-400 text-[11px] font-medium hover:bg-orange-500/15 transition-all">
             <Icon name="Send" size={12} /> Telegram
           </a>
-          <a href="https://web.max.ru/#/chat/phone/79776068901" target="_blank" rel="noreferrer"
+          <a href="https://max.ru/u/f9LHodD0cOImGR_bXwRjzpNeWQv7qzBR-lP0W9lvbuzV8iU1J5lngmKBGgA" target="_blank" rel="noreferrer"
             className="hidden md:flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-orange-500/10 border border-orange-500/20 text-orange-400 text-[11px] font-medium hover:bg-orange-500/15 transition-all">
             <Icon name="MessageSquare" size={12} /> MAX
           </a>
@@ -233,7 +233,7 @@ export default function Index() {
           className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-orange-500/15 border border-orange-500/20 text-orange-400 text-[11px] font-medium">
           <Icon name="Send" size={13} /> Telegram
         </a>
-        <a href="https://web.max.ru/#/chat/phone/79776068901" target="_blank" rel="noreferrer"
+        <a href="https://max.ru/u/f9LHodD0cOImGR_bXwRjzpNeWQv7qzBR-lP0W9lvbuzV8iU1J5lngmKBGgA" target="_blank" rel="noreferrer"
           className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-orange-500/15 border border-orange-500/20 text-orange-400 text-[11px] font-medium">
           <Icon name="MessageSquare" size={13} /> MAX
         </a>

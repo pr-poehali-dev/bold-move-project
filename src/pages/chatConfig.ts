@@ -41,7 +41,7 @@ export const TIPS: { icon: string; q: string }[] = [
 export const CONTACTS: { icon: string; label: string; val: string; href: string }[] = [
   { icon: "Phone",         label: "Телефон",  val: "+7 (977) 606-89-01",    href: "tel:+79776068901" },
   { icon: "Send",          label: "Telegram", val: "Написать в Telegram",   href: "https://t.me/JoniKras" },
-  { icon: "MessageSquare", label: "MAX",      val: "Написать в MAX",        href: "https://web.max.ru/#/chat/phone/79776068901" },
+  { icon: "MessageSquare", label: "MAX",      val: "Написать в MAX",        href: "https://max.ru/u/f9LHodD0cOImGR_bXwRjzpNeWQv7qzBR-lP0W9lvbuzV8iU1J5lngmKBGgA" },
   { icon: "MapPin",        label: "Адрес",    val: "Мытищи, Пограничная 24", href: "#" },
   { icon: "Clock",         label: "Часы",     val: "Пн–Вс 8:00–22:00",     href: "#" },
 ];
