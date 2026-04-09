@@ -19,7 +19,7 @@ export const GREETING: Msg = {
 };
 
 export const NAV: { id: Panel; label: string; icon: string }[] = [
-  { id: "booking",    label: "Записаться",   icon: "CalendarCheck" },
+  { id: "booking",    label: "Заказать",     icon: "CalendarCheck" },
   { id: "production", label: "Производство", icon: "Factory"    },
   { id: "contacts",   label: "Контакты",      icon: "Phone"      },
   { id: "portfolio",  label: "Портфолио",    icon: "Image"      },

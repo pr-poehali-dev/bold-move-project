@@ -23,7 +23,7 @@ export function PanelBooking({ onClose }: { onClose: () => void }) {
 
   return (
     <div className="h-full flex flex-col">
-      <PanelHeader icon="CalendarCheck" title="Записаться на замер" onClose={onClose} />
+      <PanelHeader icon="CalendarCheck" title="Заказать замер" onClose={onClose} />
       <div className="flex-1 overflow-y-auto p-4">
         {sent ? (
           <div className="h-full flex flex-col items-center justify-center gap-3 text-center">
@@ -88,7 +88,7 @@ export function PanelBooking({ onClose }: { onClose: () => void }) {
               <button type="submit"
                 className="w-full bg-gradient-to-r from-orange-500 to-rose-500 hover:brightness-110 text-white font-semibold py-3 rounded-xl text-sm transition-all active:scale-[0.98] flex items-center justify-center gap-2">
                 <Icon name="CalendarCheck" size={16} />
-                Записаться на бесплатный замер
+                Заказать бесплатный замер
               </button>
               <p className="text-center text-white/20 text-[10px]">Замерщик приедет в удобное для вас время</p>
             </form>
