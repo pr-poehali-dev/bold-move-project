@@ -107,13 +107,13 @@ def handler(event, context):
         cur.execute(f"SELECT telegram_message_id FROM {SCHEMA}.live_chats WHERE session_id = %s", (session_id,))
         row = cur.fetchone()
 
-        is_new = row is None
+        is_new = (row is None) or (row[0] == 0)
 
-        if is_new:
-            # Первое сообщение — создаём сессию с заглушкой
+        if row is None:
+            # Совсем новая сессия
             cur.execute(
-                f"INSERT INTO {SCHEMA}.live_chats (session_id, client_name, telegram_message_id) VALUES (%s, %s, %s)",
-                (session_id, client_name, 0)
+                f"INSERT INTO {SCHEMA}.live_chats (session_id, client_name, telegram_message_id) VALUES (%s, %s, 0)",
+                (session_id, client_name)
             )
             conn.commit()
 
@@ -128,16 +128,21 @@ def handler(event, context):
         )
         conn.commit()
 
-        # Шлём в Telegram — каждое сообщение отдельным
+        # Шлём в Telegram
         if is_new:
-            tg_text = f"💬 <b>Новый чат с сайта</b>\n👤 <b>{client_name}</b>\n\n{text}\n\n<i>↩️ Reply на любое сообщение клиента чтобы ответить</i>"
+            tg_text = (
+                f"💬 <b>Новый чат с сайта</b>\n"
+                f"👤 <b>{client_name}</b>\n\n"
+                f"{text}\n\n"
+                f"<i>↩️ Нажми Reply на это сообщение чтобы ответить клиенту</i>"
+            )
         else:
             tg_text = f"👤 <b>{client_name}</b>:\n{text}"
 
         msg_id = tg_send(tg_text)
-        print(f"Sent to TG, msg_id={msg_id}, is_new={is_new}")
+        print(f"Sent to TG, msg_id={msg_id}, is_new={is_new}, session={session_id}")
 
-        # Обновляем telegram_message_id чтобы webhook знал куда привязывать ответы
+        # Сохраняем msg_id для привязки reply
         if msg_id:
             cur.execute(
                 f"UPDATE {SCHEMA}.live_chats SET telegram_message_id = %s WHERE session_id = %s",
