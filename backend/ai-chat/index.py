@@ -500,6 +500,7 @@ def handler(event, context):
     answer = answer.strip()
 
     # Картинки из Tavily — только для запросов про тренды/вдохновение
+    print(f"[img] query='{last_user_text[:60]}' tavily_images={len(search['images'])} visual={bool(SEARCH_VISUAL.search(last_user_text))} imagegen={bool(IMAGE_GEN.search(last_user_text))}")
     if search['images'] and SEARCH_VISUAL.search(last_user_text):
         img_block = '\n' + '\n'.join(f"![фото]({url})" for url in search['images'])
         answer = answer + img_block
@@ -507,6 +508,7 @@ def handler(event, context):
     # Генерация дизайна через FLUX по запросу клиента
     if IMAGE_GEN.search(last_user_text):
         gen_url = generate_image(last_user_text)
+        print(f"[flux] gen_url={gen_url}")
         if gen_url:
             answer = answer + f"\n\n![сгенерированный дизайн]({gen_url})"
 
