@@ -8,9 +8,9 @@ import func2url from "@/../backend/func2url.json";
 type Panel = "none" | "production" | "portfolio" | "tips" | "reviews" | "faq";
 interface Msg { id: number; role: "user" | "assistant"; text: string; }
 
-const AVATAR = "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/files/ccbf2c15-829b-4295-9f12-5691f81cf726.jpg";
+const AVATAR = "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/files/b12f254a-ee38-4ef7-abc3-2517a55b4909.jpg";
 const AI_URL = func2url["ai-chat"];
-const GREETING: Msg = { id: 0, role: "assistant", text: "Привет! Я Алиса — ваш персональный консультант по натяжным потолкам 👋\n\nЗнаю предложения 50+ компаний Москвы. Спросите что угодно — найду лучшую цену, сравню варианты и рассчитаю стоимость." };
+const GREETING: Msg = { id: 0, role: "assistant", text: "Привет! Я Женя — ваш персональный консультант по натяжным потолкам 👋\n\nЗнаю предложения 50+ компаний Москвы. Спросите что угодно — найду лучшую цену, сравню варианты и рассчитаю стоимость." };
 
 const NAV: { id: Panel; label: string; icon: string }[] = [
   { id: "production", label: "Производство", icon: "Factory"    },
@@ -22,7 +22,7 @@ const NAV: { id: Panel; label: string; icon: string }[] = [
 
 function localAnswer(t: string): string {
   const s = t.toLowerCase();
-  if (s.includes("привет") || s.includes("здравств")) return "Рада знакомству! Расскажите, какой потолок вам нужен — помогу найти лучший вариант на рынке.";
+  if (s.includes("привет") || s.includes("здравств")) return "Рад знакомству! Расскажите, какой потолок вам нужен — помогу найти лучший вариант на рынке.";
   if (s.includes("каталог") || s.includes("вид"))     return "Смотрите — на рынке 8 основных типов потолков. Матовый от 249 ₽/м² — самый популярный. Глянец от 299 ₽. Звёздное небо — премиум от 1200 ₽. Что ближе вам?";
   if (s.includes("калькулятор") || s.includes("рассч")) return "Конечно! Откройте калькулятор в меню — там я сравню нашу цену со средней по Москве. Вы увидите экономию.";
   if (s.includes("цена") || s.includes("стоим") || s.includes("сколько")) return "По данным рынка Москвы: матовый от 249 ₽/м², глянец от 299 ₽/м², тканевый от 399 ₽/м². Назовите площадь — посчитаю точнее и покажу, сколько сэкономите.";
@@ -45,7 +45,7 @@ function PanelProduction({ onClose }: { onClose: () => void }) {
     <div className="h-full flex flex-col">
       <div className="shrink-0 flex items-center justify-between px-5 py-3 border-b border-white/[0.06]">
         <div className="flex items-center gap-2">
-          <Icon name="Factory" size={15} className="text-emerald-400" />
+          <Icon name="Factory" size={15} className="text-orange-400" />
           <span className="text-sm font-semibold text-white/80">Собственное производство</span>
         </div>
         <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-white/5 text-white/30 hover:text-white/60 transition-all">
@@ -69,8 +69,8 @@ function PanelProduction({ onClose }: { onClose: () => void }) {
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
           {features.map((f, i) => (
             <div key={i} className="flex items-center gap-2 bg-white/[0.03] border border-white/[0.05] rounded-xl px-3 py-2.5">
-              <div className="w-7 h-7 rounded-lg bg-emerald-500/10 flex items-center justify-center shrink-0">
-                <Icon name={f.icon} size={13} className="text-emerald-400" />
+              <div className="w-7 h-7 rounded-lg bg-orange-500/10 flex items-center justify-center shrink-0">
+                <Icon name={f.icon} size={13} className="text-orange-400" />
               </div>
               <span className="text-white/50 text-[11px] font-medium leading-tight">{f.label}</span>
             </div>
@@ -86,7 +86,7 @@ function PanelPortfolio({ onClose }: { onClose: () => void }) {
     <div className="h-full flex flex-col">
       <div className="shrink-0 flex items-center justify-between px-5 py-3 border-b border-white/[0.06]">
         <div className="flex items-center gap-2">
-          <Icon name="Image" size={15} className="text-emerald-400" />
+          <Icon name="Image" size={15} className="text-orange-400" />
           <span className="text-sm font-semibold text-white/80">Наши работы</span>
         </div>
         <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-white/5 text-white/30 hover:text-white/60 transition-all"><Icon name="X" size={16} /></button>
@@ -124,8 +124,8 @@ function PanelTips({ onAsk, onClose }: { onAsk: (q: string) => void; onClose: ()
     <div className="h-full flex flex-col">
       <div className="shrink-0 flex items-center justify-between px-5 py-3 border-b border-white/[0.06]">
         <div className="flex items-center gap-2">
-          <Icon name="Sparkles" size={15} className="text-emerald-400" />
-          <span className="text-sm font-semibold text-white/80">Спросите Алису</span>
+          <Icon name="Sparkles" size={15} className="text-orange-400" />
+          <span className="text-sm font-semibold text-white/80">Спросите Женю</span>
         </div>
         <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-white/5 text-white/30 hover:text-white/60 transition-all"><Icon name="X" size={16} /></button>
       </div>
@@ -133,9 +133,9 @@ function PanelTips({ onAsk, onClose }: { onAsk: (q: string) => void; onClose: ()
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
           {tips.map((t, i) => (
             <button key={i} onClick={() => onAsk(t.q)}
-              className="flex items-center gap-3 bg-white/[0.03] hover:bg-white/[0.06] border border-white/[0.05] hover:border-emerald-500/20 rounded-xl px-4 py-3 text-left transition-all group">
-              <div className="w-8 h-8 rounded-lg bg-white/[0.04] group-hover:bg-emerald-500/10 flex items-center justify-center shrink-0 transition-colors">
-                <Icon name={t.icon} size={14} className="text-white/30 group-hover:text-emerald-400 transition-colors" />
+              className="flex items-center gap-3 bg-white/[0.03] hover:bg-white/[0.06] border border-white/[0.05] hover:border-orange-500/20 rounded-xl px-4 py-3 text-left transition-all group">
+              <div className="w-8 h-8 rounded-lg bg-white/[0.04] group-hover:bg-orange-500/10 flex items-center justify-center shrink-0 transition-colors">
+                <Icon name={t.icon} size={14} className="text-white/30 group-hover:text-orange-400 transition-colors" />
               </div>
               <span className="text-white/50 group-hover:text-white/80 text-xs transition-colors">{t.q}</span>
             </button>
@@ -151,7 +151,7 @@ function PanelReviews({ onClose }: { onClose: () => void }) {
     <div className="h-full flex flex-col">
       <div className="shrink-0 flex items-center justify-between px-5 py-3 border-b border-white/[0.06]">
         <div className="flex items-center gap-2">
-          <Icon name="Heart" size={15} className="text-emerald-400" />
+          <Icon name="Heart" size={15} className="text-orange-400" />
           <span className="text-sm font-semibold text-white/80">Отзывы клиентов</span>
         </div>
         <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-white/5 text-white/30 hover:text-white/60 transition-all"><Icon name="X" size={16} /></button>
@@ -159,7 +159,7 @@ function PanelReviews({ onClose }: { onClose: () => void }) {
       <div className="flex-1 overflow-y-auto p-4 space-y-2.5">
         {REVIEWS.slice(0, 5).map((r, i) => (
           <div key={i} className="rounded-xl border border-white/[0.05] bg-white/[0.02] p-3.5 flex gap-3">
-            <div className="w-9 h-9 rounded-full bg-gradient-to-br from-emerald-500/50 to-teal-500/50 flex items-center justify-center text-white font-bold text-xs shrink-0">{r.name.charAt(0)}</div>
+            <div className="w-9 h-9 rounded-full bg-gradient-to-br from-orange-500/60 to-rose-500/60 flex items-center justify-center text-white font-bold text-xs shrink-0">{r.name.charAt(0)}</div>
             <div className="flex-1 min-w-0">
               <div className="flex items-center justify-between mb-0.5">
                 <span className="text-white font-medium text-xs">{r.name}</span>
@@ -181,7 +181,7 @@ function PanelFaq({ onClose }: { onClose: () => void }) {
     <div className="h-full flex flex-col">
       <div className="shrink-0 flex items-center justify-between px-5 py-3 border-b border-white/[0.06]">
         <div className="flex items-center gap-2">
-          <Icon name="HelpCircle" size={15} className="text-emerald-400" />
+          <Icon name="HelpCircle" size={15} className="text-orange-400" />
           <span className="text-sm font-semibold text-white/80">Частые вопросы</span>
         </div>
         <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-white/5 text-white/30 hover:text-white/60 transition-all"><Icon name="X" size={16} /></button>
@@ -242,14 +242,14 @@ export default function Index() {
       {/* ── Header ─────────────────────────────────────────────────── */}
       <header className="shrink-0 flex items-center h-12 px-4 md:px-6 border-b border-white/[0.05] bg-[#0d0d14]/80 backdrop-blur-xl z-30">
         <img src="https://cdn.poehali.dev/files/7105828c-c33e-48f9-ac90-02134e3cd4d7.png" alt="" className="w-6 h-6 object-contain mr-2.5" style={{ mixBlendMode: "screen" }} />
-        <span className="font-montserrat font-black text-sm tracking-wide">MOS<span className="text-emerald-400">POTOLKI</span></span>
+        <span className="font-montserrat font-black text-sm tracking-wide">MOS<span className="text-orange-400">POTOLKI</span></span>
 
         <div className="ml-auto flex items-center gap-2.5">
           <a href="tel:+79776068901" className="hidden sm:flex items-center gap-1.5 text-white/30 hover:text-white/60 text-[11px] transition-colors">
             <Icon name="Phone" size={12} /> +7 (977) 606-89-01
           </a>
           <a href="https://wa.me/79776068901" target="_blank" rel="noreferrer"
-            className="hidden md:flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-500/8 border border-emerald-500/15 text-emerald-400 text-[11px] font-medium hover:bg-emerald-500/12 transition-all">
+            className="hidden md:flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-orange-500/10 border border-orange-500/20 text-orange-400 text-[11px] font-medium hover:bg-orange-500/15 transition-all">
             <Icon name="MessageCircle" size={12} /> WhatsApp
           </a>
         </div>
@@ -260,7 +260,7 @@ export default function Index() {
 
         {/* Background glow */}
         <div className="absolute inset-0 pointer-events-none overflow-hidden">
-          <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[400px] bg-emerald-500/[0.04] rounded-full blur-[120px]" />
+          <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[400px] bg-orange-500/[0.04] rounded-full blur-[120px]" />
         </div>
 
         {/* ── Chat Area (центр — основа) ──────────────────────────── */}
@@ -271,7 +271,7 @@ export default function Index() {
             {messages.map((m) => (
               <div key={m.id} className={`flex items-end gap-2.5 ${m.role === "user" ? "flex-row-reverse" : ""}`}>
                 {m.role === "assistant" && (
-                  <img src={AVATAR} alt="Алиса" className="w-8 h-8 rounded-full object-cover shrink-0 border-2 border-emerald-500/20 shadow-lg shadow-emerald-500/10" />
+                  <img src={AVATAR} alt="Женя" className="w-8 h-8 rounded-full object-cover shrink-0 border-2 border-orange-500/20 shadow-lg shadow-orange-500/10" />
                 )}
                 <div className={`rounded-2xl px-4 py-3 text-[13px] leading-relaxed ${
                   m.role === "user"
@@ -291,10 +291,10 @@ export default function Index() {
 
             {typing && (
               <div className="flex items-end gap-2.5">
-                <img src={AVATAR} alt="Алиса" className="w-8 h-8 rounded-full object-cover shrink-0 border-2 border-emerald-500/20" />
+                <img src={AVATAR} alt="Женя" className="w-8 h-8 rounded-full object-cover shrink-0 border-2 border-orange-500/20" />
                 <div className="bg-white/[0.04] border border-white/[0.06] rounded-2xl rounded-bl-md px-4 py-3 flex items-center gap-2">
-                  <Icon name="Loader2" size={14} className="text-emerald-400 animate-spin" />
-                  <span className="text-white/25 text-xs">Алиса анализирует…</span>
+                  <Icon name="Loader2" size={14} className="text-orange-400 animate-spin" />
+                  <span className="text-white/25 text-xs">Женя анализирует…</span>
                 </div>
               </div>
             )}
@@ -304,7 +304,7 @@ export default function Index() {
               <div className="flex flex-wrap gap-2 pt-1 pl-11">
                 {["Сколько стоит потолок?", "Сравни с конкурентами", "Расчёт на 20 м²"].map((q) => (
                   <button key={q} onClick={() => sendMsg(q)}
-                    className="text-[11px] bg-white/[0.04] hover:bg-white/[0.07] border border-white/[0.06] hover:border-emerald-500/25 text-white/40 hover:text-white/70 px-3.5 py-2 rounded-xl transition-all">
+                    className="text-[11px] bg-white/[0.04] hover:bg-white/[0.07] border border-white/[0.06] hover:border-orange-500/25 text-white/40 hover:text-white/70 px-3.5 py-2 rounded-xl transition-all">
                     {q}
                   </button>
                 ))}
@@ -322,7 +322,7 @@ export default function Index() {
                     onClick={() => setPanel(isActive ? "none" : n.id)}
                     className={`shrink-0 flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-medium transition-all ${
                       isActive
-                        ? "bg-emerald-500/15 text-emerald-400 border border-emerald-500/25 shadow-lg shadow-emerald-500/5"
+                        ? "bg-orange-500/15 text-orange-400 border border-orange-500/25 shadow-lg shadow-orange-500/5"
                         : "bg-white/[0.04] text-white/35 border border-white/[0.05] hover:text-white/55 hover:bg-white/[0.06]"
                     }`}>
                     <Icon name={n.icon} size={14} />
@@ -336,18 +336,18 @@ export default function Index() {
           {/* ── Input ─────────────────────────────────────────────── */}
           <div className="shrink-0 px-4 md:px-8 pb-3 pt-1">
             <form onSubmit={(e) => { e.preventDefault(); sendMsg(input); }}
-              className="flex items-end gap-2 bg-white/[0.04] border border-white/[0.07] focus-within:border-emerald-500/30 rounded-2xl px-3 py-2 transition-all">
+              className="flex items-end gap-2 bg-white/[0.04] border border-white/[0.07] focus-within:border-orange-500/30 rounded-2xl px-3 py-2 transition-all">
               <img src={AVATAR} alt="" className="w-7 h-7 rounded-full object-cover shrink-0 opacity-60 hidden sm:block" />
               <textarea
                 ref={inputRef} value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMsg(input); } }}
-                placeholder="Спросите Алису о потолках…"
+                placeholder="Спросите Женю о потолках…"
                 rows={1} style={{ height: 42, maxHeight: 100, resize: "none" }}
                 className="flex-1 bg-transparent text-white text-[13px] outline-none placeholder:text-white/20 overflow-y-auto py-1.5"
               />
               <button type="submit" disabled={!input.trim() || typing}
-                className="shrink-0 w-9 h-9 flex items-center justify-center bg-gradient-to-br from-emerald-500 to-teal-500 hover:brightness-110 disabled:opacity-20 rounded-xl transition-all active:scale-95">
+                className="shrink-0 w-9 h-9 flex items-center justify-center bg-gradient-to-br from-orange-500 to-rose-500 hover:brightness-110 disabled:opacity-20 rounded-xl transition-all active:scale-95">
                 <Icon name="ArrowUp" size={16} className="text-white" />
               </button>
             </form>
@@ -384,7 +384,7 @@ export default function Index() {
           <Icon name="Phone" size={13} /> Позвонить
         </a>
         <a href="https://wa.me/79776068901" target="_blank" rel="noreferrer"
-          className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-emerald-500/15 border border-emerald-500/20 text-emerald-400 text-[11px] font-medium">
+          className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-orange-500/15 border border-orange-500/20 text-orange-400 text-[11px] font-medium">
           <Icon name="MessageCircle" size={13} /> WhatsApp
         </a>
       </div>
