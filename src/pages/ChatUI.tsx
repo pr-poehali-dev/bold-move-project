@@ -86,19 +86,19 @@ export default function ChatUI({ messages, input, typing, panel, onInput, onSend
       </div>
 
       {/* Dock nav */}
-      <div className="shrink-0 px-4 md:px-8 pt-1 pb-3 flex flex-col items-center gap-1.5">
+      <div className="shrink-0 px-4 md:px-8 pt-1 pb-3 flex flex-col items-center gap-2">
         {/* Подпись активного пункта */}
-        <div className="h-6 flex items-center justify-center">
+        <div className="w-full flex items-center justify-center min-h-[22px]">
           {NAV.map((n) => panel === n.id && (
-            <div key={n.id} className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-orange-500/8 border border-orange-500/15">
+            <div key={n.id} className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-orange-500/10 border border-orange-500/20">
               <Icon name={n.icon} size={11} className="text-orange-400 shrink-0" />
-              <span className="text-orange-300 text-[11px] font-medium leading-none">{n.label}</span>
-              <span className="text-white/30 text-[10px] leading-none">·</span>
-              <span className="text-white/40 text-[10px] leading-none truncate max-w-[200px]">{n.hint}</span>
+              <span className="text-orange-300 text-[11px] font-semibold leading-none">{n.label}</span>
+              <span className="text-white/25 text-[10px] leading-none">—</span>
+              <span className="text-white/50 text-[10px] leading-none">{n.hint}</span>
             </div>
           ))}
           {panel === "none" && (
-            <span className="text-white/15 text-[10px]">Выберите раздел</span>
+            <span className="text-white/20 text-[11px]">Нажмите на раздел ниже</span>
           )}
         </div>
 

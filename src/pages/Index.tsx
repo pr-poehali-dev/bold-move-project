@@ -223,12 +223,12 @@ export default function Index() {
 
       {/* Mobile bottom CTA */}
       <div className="sm:hidden shrink-0 flex items-center gap-2 px-3 py-2 border-t border-white/[0.05] bg-[#0d0d14]/95 backdrop-blur-xl">
-        <a href="tel:+79776068901" className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-white/[0.05] text-white/50 text-[11px] font-medium">
+        <a href="tel:+79776068901" className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-orange-500/15 border border-orange-500/20 text-orange-400 text-[11px] font-medium">
           <Icon name="Phone" size={13} /> Позвонить
         </a>
         <button onClick={() => setPanel(panel === "livechat" ? "none" : "livechat")}
           className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-orange-500/15 border border-orange-500/20 text-orange-400 text-[11px] font-medium">
-          <Icon name="Headphones" size={13} /> Чат
+          <Icon name="MessageCircle" size={13} /> Чат
         </button>
         <a href="https://t.me/JoniKras" target="_blank" rel="noreferrer"
           className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-orange-500/15 border border-orange-500/20 text-orange-400 text-[11px] font-medium">
