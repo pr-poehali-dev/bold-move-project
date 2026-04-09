@@ -2,7 +2,30 @@
 
 import json
 import os
+import re
 import requests
+
+# Кэш частых вопросов — не тратим токены на LLM
+FAQ_CACHE = {
+    r"(гарантия|сколько служит|срок службы)": "Гарантия на натяжные потолки MosPotolki — 10 лет. Срок службы полотна — 25–30 лет при правильной эксплуатации.\n\nЕсть вопросы по замеру? Записываем бесплатно: +7 (977) 606-89-01",
+    r"(сколько времени|сколько дней|как долго|срок монтаж|когда будет готов)": "Монтаж стандартной комнаты занимает 1–3 часа. Полотно устанавливается в день замера или через 1–3 рабочих дня после него.\n\nЗаписаться на замер: +7 (977) 606-89-01",
+    r"(телефон|номер|контакт|связаться|позвонить|whatsapp|вотсап|telegram|телеграм)": "Контакты MosPotolki:\n📞 +7 (977) 606-89-01\n💬 WhatsApp: wa.me/79776068901\n✈️ Telegram: @JoniKras\n\nРаботаем ежедневно 8:00–22:00",
+    r"(адрес|офис|шоурум|где находит|мытищ)": "Мы работаем по Москве и Московской области. Офис и шоурум — Мытищи.\n\nТочный адрес и схему проезда пришлём при записи на замер: +7 (977) 606-89-01",
+    r"(скидк|акци|промокод|дешевле|специальн предложен)": "Актуальные акции уточняйте у менеджера — они меняются.\n📞 +7 (977) 606-89-01 (ежедневно 8:00–22:00)\n\nМогу рассчитать стоимость вашего потолка прямо сейчас — назовите площадь и тип полотна.",
+    r"(привет|здравствуй|добрый день|добрый вечер|добрый утр|здаров|хай|hi\b|hello)": "Привет! Я AI-помощник MosPotolki 👋\n\nРасскажите о вашем проекте — рассчитаю стоимость натяжного потолка. Назовите площадь комнаты и пожелания по дизайну.",
+    r"(спасибо|благодарю|спасиб|отлично|super|супер|класс|👍)": "Рад помочь! Если нужен точный замер и финальный расчёт — наш технолог приедет бесплатно.\n\nЗаписаться: +7 (977) 606-89-01",
+    r"(замер|выезд|приедет|технолог)": "Замер бесплатный — технолог приедет в удобное для вас время, сделает точный расчёт и 3D-проект.\n\nЗаписаться: +7 (977) 606-89-01 (ежедневно 8:00–22:00)",
+    r"(цвет|цветной|глянец|матов|сатин|tкань|тканевый|фотопечать|принт)": "Основные варианты полотен:\n• Матовый белый (MSD) — от 399 ₽/м²\n• Цветной матовый — от 900 ₽/м²\n• Тканевый ДЕСКОР — от 2200 ₽/м²\n• Глянцевый — уточнить у менеджера\n\nРассчитать стоимость для вашей комнаты? Назовите площадь!",
+}
+
+
+def get_cached_answer(text: str) -> str | None:
+    """Проверяет кэш частых вопросов. Возвращает ответ или None."""
+    text_lower = text.lower().strip()
+    for pattern, answer in FAQ_CACHE.items():
+        if re.search(pattern, text_lower):
+            return answer
+    return None
 
 SYSTEM_PROMPT = """#РОЛЬ
 Ты сметчик технолог в компании "MosPotolki"
@@ -173,7 +196,7 @@ def call_llm(messages):
             'HTTP-Referer': 'https://mospotolki.ru',
         }
         for model in OR_MODELS:
-            payload = {'model': model, 'messages': messages, 'max_tokens': 2000, 'temperature': 0.7}
+            payload = {'model': model, 'messages': messages, 'max_tokens': 1200, 'temperature': 0.5}
             try:
                 resp = requests.post('https://openrouter.ai/api/v1/chat/completions', json=payload, headers=headers, timeout=25)
                 if resp.status_code == 200:
@@ -193,8 +216,8 @@ def call_llm(messages):
         payload = {
             'model': ep['model'],
             'messages': messages,
-            'max_tokens': 2000,
-            'temperature': 0.7,
+            'max_tokens': 1200,
+            'temperature': 0.5,
         }
         try:
             resp = requests.post(ep['url'], json=payload, headers=headers, timeout=25)
@@ -233,8 +256,20 @@ def handler(event, context):
     if not messages:
         return {'statusCode': 400, 'headers': cors, 'body': json.dumps({'error': 'No messages provided'})}
 
+    # Кэш: отвечаем мгновенно без вызова LLM
+    last_user_text = ''
+    for msg in reversed(messages):
+        if msg.get('role') == 'user':
+            last_user_text = msg.get('text', '')
+            break
+
+    cached = get_cached_answer(last_user_text)
+    if cached:
+        return {'statusCode': 200, 'headers': cors, 'body': json.dumps({'answer': cached})}
+
+    # Передаём только последние 6 сообщений — экономим токены
     openai_messages = [{'role': 'system', 'content': SYSTEM_PROMPT}]
-    for msg in messages[-10:]:
+    for msg in messages[-6:]:
         openai_messages.append({
             'role': msg.get('role', 'user'),
             'content': msg.get('text', ''),

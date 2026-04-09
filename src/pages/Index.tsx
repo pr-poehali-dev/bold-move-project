@@ -45,7 +45,7 @@ export default function Index() {
     setMessages((p) => [...p, userMsg]);
     setInput("");
     setTyping(true);
-    const history = [...messages, userMsg].map((m) => ({ role: m.role, text: m.text }));
+    const history = [...messages, userMsg].slice(-6).map((m) => ({ role: m.role, text: m.text }));
     fetch(AI_URL, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ messages: history }) })
       .then((r) => r.json())
       .then((d) => setMessages((p) => [...p, { id: Date.now() + 1, role: "assistant", text: d.answer || localAnswer(text) }]))

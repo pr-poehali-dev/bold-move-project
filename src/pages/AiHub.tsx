@@ -31,7 +31,7 @@ export default function AiHub() {
     setInput("");
     setTyping(true);
 
-    const history = [...messages, userMsg].map((m) => ({ role: m.role, text: m.text }));
+    const history = [...messages, userMsg].slice(-6).map((m) => ({ role: m.role, text: m.text }));
 
     fetch(AI_URL, {
       method: "POST",
