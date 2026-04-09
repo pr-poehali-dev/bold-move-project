@@ -60,16 +60,7 @@ export default function ChatUI({ messages, input, typing, panel, onInput, onSend
           </div>
         )}
 
-        {messages.length <= 1 && !typing && (
-          <div className="flex flex-wrap gap-2 pt-1 pl-11">
-            {["Сколько стоит потолок?", "Сравни с конкурентами", "Расчёт на 20 м²"].map((q) => (
-              <button key={q} onClick={() => onSend(q)}
-                className="text-[11px] bg-white/[0.04] hover:bg-white/[0.07] border border-white/[0.06] hover:border-orange-500/25 text-white/40 hover:text-white/70 px-3.5 py-2 rounded-xl transition-all">
-                {q}
-              </button>
-            ))}
-          </div>
-        )}
+
       </div>
 
       {/* Nav pills */}
