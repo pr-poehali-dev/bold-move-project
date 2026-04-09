@@ -67,9 +67,13 @@ export default function Index() {
           <a href="tel:+79776068901" className="hidden sm:flex items-center gap-1.5 text-white/30 hover:text-white/60 text-[11px] transition-colors">
             <Icon name="Phone" size={12} /> +7 (977) 606-89-01
           </a>
-          <a href="https://t.me/mospotolki" target="_blank" rel="noreferrer"
+          <a href="https://t.me/JoniKras" target="_blank" rel="noreferrer"
             className="hidden md:flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-orange-500/10 border border-orange-500/20 text-orange-400 text-[11px] font-medium hover:bg-orange-500/15 transition-all">
             <Icon name="Send" size={12} /> Telegram
+          </a>
+          <a href="https://web.max.ru/#/chat/phone/79776068901" target="_blank" rel="noreferrer"
+            className="hidden md:flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-orange-500/10 border border-orange-500/20 text-orange-400 text-[11px] font-medium hover:bg-orange-500/15 transition-all">
+            <Icon name="MessageSquare" size={12} /> MAX
           </a>
         </div>
       </header>
@@ -214,9 +218,13 @@ export default function Index() {
         <a href="tel:+79776068901" className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-white/[0.05] text-white/50 text-[11px] font-medium">
           <Icon name="Phone" size={13} /> Позвонить
         </a>
-        <a href="https://t.me/mospotolki" target="_blank" rel="noreferrer"
+        <a href="https://t.me/JoniKras" target="_blank" rel="noreferrer"
           className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-orange-500/15 border border-orange-500/20 text-orange-400 text-[11px] font-medium">
           <Icon name="Send" size={13} /> Telegram
+        </a>
+        <a href="https://web.max.ru/#/chat/phone/79776068901" target="_blank" rel="noreferrer"
+          className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-orange-500/15 border border-orange-500/20 text-orange-400 text-[11px] font-medium">
+          <Icon name="MessageSquare" size={13} /> MAX
         </a>
       </div>
     </div>

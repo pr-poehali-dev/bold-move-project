@@ -265,7 +265,8 @@ export function PanelFaq({ onClose }: { onClose: () => void }) {
 // ─── Contacts ─────────────────────────────────────────────────────────────────
 const CONTACT_ITEMS = [
   { icon: "Phone",         label: "Телефон",  val: "+7 (977) 606-89-01",    href: "tel:+79776068901" },
-  { icon: "Send",          label: "Telegram",  val: "Написать в Telegram",  href: "https://t.me/mospotolki" },
+  { icon: "Send",          label: "Telegram",  val: "Написать в Telegram",  href: "https://t.me/JoniKras" },
+  { icon: "MessageSquare", label: "MAX",       val: "Написать в MAX",        href: "https://web.max.ru/#/chat/phone/79776068901" },
   { icon: "MapPin",        label: "Адрес",    val: "Мытищи, Пограничная 24", href: "#" },
   { icon: "Clock",         label: "Часы",     val: "Пн–Вс 8:00–22:00",     href: "#" },
 ];
