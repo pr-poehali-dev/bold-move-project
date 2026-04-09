@@ -1,5 +1,8 @@
 import Icon from "@/components/ui/icon";
 import { CITIES } from "./data";
+import func2url from "@/../backend/func2url.json";
+
+const LIVE_CHAT_URL = func2url["live-chat"];
 
 interface Props {
   citiesRef: { ref: React.RefObject<HTMLDivElement>; inView: boolean };
@@ -94,7 +97,14 @@ export default function ContactSection({
                     <p className="text-white/50">Перезвоним вам в течение 15 минут.<br />Или звоните сами: <a href="tel:+79776068901" className="text-orange-400 font-semibold">+7 (977) 606-89-01</a></p>
                   </div>
                 ) : (
-                  <form onSubmit={e => { e.preventDefault(); setSent(true); }} className="space-y-4">
+                  <form onSubmit={e => {
+                    e.preventDefault();
+                    fetch(`${LIVE_CHAT_URL}?action=booking`, {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ name, phone, date: "", time: "", comment }),
+                    }).finally(() => setSent(true));
+                  }} className="space-y-4">
                     <div className="flex items-center justify-between mb-6">
                       <h3 className="font-montserrat font-black text-xl">Оставить заявку</h3>
                       <div className="flex items-center gap-1.5 text-green-400 text-xs font-montserrat font-semibold">

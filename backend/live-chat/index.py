@@ -211,21 +211,22 @@ def handler(event, context):
         phone = (body.get("phone") or "").strip()
         date = (body.get("date") or "").strip()
         time = (body.get("time") or "").strip()
+        comment = (body.get("comment") or "").strip()
 
         if not name or not phone:
             return {"statusCode": 400, "headers": CORS, "body": json.dumps({"error": "name and phone required"})}
 
-        date_str = f"📅 {date}" if date else "📅 Дата не указана"
-        time_str = f"🕐 {time}" if time else ""
-
-        tg_text = (
-            f"📋 <b>Новая заявка на замер</b>\n\n"
-            f"👤 <b>{name}</b>\n"
-            f"📞 <b>{phone}</b>\n"
-            f"{date_str}"
-            + (f"\n{time_str}" if time_str else "") +
-            f"\n\n<i>Заявка с сайта mospotolki.ru</i>"
-        )
+        lines = [
+            "📋 <b>Новая заявка на замер</b>\n",
+            f"👤 <b>{name}</b>",
+            f"📞 <b>{phone}</b>",
+        ]
+        if date:
+            lines.append(f"📅 {date}" + (f" в {time}" if time else ""))
+        if comment:
+            lines.append(f"💬 {comment}")
+        lines.append("\n<i>Заявка с сайта mospotolki.ru</i>")
+        tg_text = "\n".join(lines)
 
         tg_send(tg_text)
         return {"statusCode": 200, "headers": CORS, "body": json.dumps({"ok": True})}
