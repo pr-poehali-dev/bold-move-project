@@ -256,6 +256,50 @@ Premium: X ₽  (+27% от Standard, без указания процента)
 """
 
 HF_TOKEN = os.environ.get('HF_TOKEN', '')
+TAVILY_KEY = os.environ.get('TAVILY_API_KEY', '')
+
+# Запросы, при которых поиск не нужен (смета, базовые вопросы)
+SEARCH_SKIP = re.compile(
+    r'(привет|здравствуй|спасибо|замер|гарантия|адрес|телефон|контакт|'
+    r'\d+\s*м[²2]|площадь|смета|рассчитай|посчитай|сколько стоит\s+\d)',
+    re.IGNORECASE
+)
+
+
+def web_search(query: str) -> str:
+    """Поиск через Tavily. Возвращает краткий текст с результатами или пустую строку."""
+    if not TAVILY_KEY:
+        return ''
+    if SEARCH_SKIP.search(query):
+        return ''
+    try:
+        resp = requests.post(
+            'https://api.tavily.com/search',
+            json={
+                'api_key': TAVILY_KEY,
+                'query': query,
+                'search_depth': 'basic',
+                'max_results': 4,
+                'include_answer': True,
+                'include_images': False,
+            },
+            timeout=8,
+        )
+        if resp.status_code != 200:
+            return ''
+        data = resp.json()
+        parts = []
+        if data.get('answer'):
+            parts.append(f"Краткий ответ: {data['answer']}")
+        for r in data.get('results', [])[:3]:
+            title = r.get('title', '')
+            content = r.get('content', '')[:300]
+            url = r.get('url', '')
+            parts.append(f"• {title}\n  {content}\n  Источник: {url}")
+        return '\n\n'.join(parts)
+    except Exception as e:
+        print(f"[search] error: {e}")
+        return ''
 
 OR_MODELS = [
     'openai/gpt-4o-mini',
@@ -355,6 +399,11 @@ def handler(event, context):
     system_content = SYSTEM_PROMPT
     if knowledge:
         system_content += f"\n\n=== БАЗА ЗНАНИЙ О ТОВАРАХ И ЦЕНАХ ===\n{knowledge}"
+
+    # Веб-поиск для актуальной информации
+    search_results = web_search(last_user_text)
+    if search_results:
+        system_content += f"\n\n=== АКТУАЛЬНАЯ ИНФОРМАЦИЯ ИЗ ИНТЕРНЕТА ===\n{search_results}\nИспользуй эти данные для ответа, указывай источники если уместно."
 
     # Передаём только последние 6 сообщений — экономим токены
     openai_messages = [{'role': 'system', 'content': system_content}]
