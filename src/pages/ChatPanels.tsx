@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { usePhone } from "@/hooks/use-phone";
 import Icon from "@/components/ui/icon";
 import Lightbox from "@/components/ui/lightbox";
 import { REVIEWS, FAQ, PRODUCTION } from "./data/content";
@@ -10,7 +11,7 @@ const LIVE_CHAT_URL = func2url["live-chat"];
 
 export function PanelBooking({ onClose }: { onClose: () => void }) {
   const [name, setName]   = useState("");
-  const [phone, setPhone] = useState("");
+  const { phone, handleChange: handlePhone, isValid: phoneValid } = usePhone();
   const [date, setDate]   = useState("");
   const [time, setTime]   = useState("");
   const [sent, setSent]   = useState(false);
@@ -20,7 +21,7 @@ export function PanelBooking({ onClose }: { onClose: () => void }) {
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name || !phone) return;
+    if (!name || !phoneValid) return;
     setLoading(true);
     fetch(`${LIVE_CHAT_URL}?action=booking`, {
       method: "POST",
@@ -74,9 +75,10 @@ export function PanelBooking({ onClose }: { onClose: () => void }) {
               <div className="grid grid-cols-2 gap-3">
                 <input type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="Ваше имя" required
                   className="w-full bg-white/[0.04] border border-white/[0.07] focus:border-orange-500/40 rounded-xl px-3 py-2.5 text-white text-sm outline-none transition-all placeholder:text-white/20" />
-                <input type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="Телефон" required
-                  className="w-full bg-white/[0.04] border border-white/[0.07] focus:border-orange-500/40 rounded-xl px-3 py-2.5 text-white text-sm outline-none transition-all placeholder:text-white/20" />
+                <input type="tel" value={phone} onChange={handlePhone} placeholder="+7 (___) ___-__-__" required
+                  className={`w-full bg-white/[0.04] border rounded-xl px-3 py-2.5 text-white text-sm outline-none transition-all placeholder:text-white/20 ${phone && !phoneValid ? "border-rose-500/60 focus:border-rose-500" : "border-white/[0.07] focus:border-orange-500/40"}`} />
               </div>
+              {phone && !phoneValid && <p className="text-rose-400 text-[10px] -mt-1">Введите 10 цифр номера</p>}
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
@@ -285,14 +287,14 @@ export function PanelFaq({ onClose }: { onClose: () => void }) {
 // ─── Contacts ─────────────────────────────────────────────────────────────────
 export function PanelContacts({ onClose, onPanel }: { onClose: () => void; onPanel?: (p: string) => void }) {
   const [name, setName] = useState("");
-  const [phone, setPhone] = useState("");
+  const { phone, handleChange: handlePhone, isValid: phoneValid } = usePhone();
   const [msg, setMsg] = useState("");
   const [sent, setSent] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name || !phone) return;
+    if (!name || !phoneValid) return;
     setLoading(true);
     fetch(`${LIVE_CHAT_URL}?action=booking`, {
       method: "POST",
@@ -345,9 +347,10 @@ export function PanelContacts({ onClose, onPanel }: { onClose: () => void; onPan
               <div className="grid grid-cols-2 gap-2.5">
                 <input type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="Ваше имя" required
                   className="w-full bg-white/[0.04] border border-white/[0.07] focus:border-orange-500/40 rounded-xl px-3 py-2.5 text-white text-sm outline-none transition-all placeholder:text-white/20" />
-                <input type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="Телефон" required
-                  className="w-full bg-white/[0.04] border border-white/[0.07] focus:border-orange-500/40 rounded-xl px-3 py-2.5 text-white text-sm outline-none transition-all placeholder:text-white/20" />
+                <input type="tel" value={phone} onChange={handlePhone} placeholder="+7 (___) ___-__-__" required
+                  className={`w-full bg-white/[0.04] border rounded-xl px-3 py-2.5 text-white text-sm outline-none transition-all placeholder:text-white/20 ${phone && !phoneValid ? "border-rose-500/60 focus:border-rose-500" : "border-white/[0.07] focus:border-orange-500/40"}`} />
               </div>
+              {phone && !phoneValid && <p className="text-rose-400 text-[10px] -mt-1">Введите 10 цифр номера</p>}
               <textarea value={msg} onChange={(e) => setMsg(e.target.value)} placeholder="Комментарий (необязательно)" rows={2}
                 className="w-full bg-white/[0.04] border border-white/[0.07] focus:border-orange-500/40 rounded-xl px-3 py-2.5 text-white text-sm outline-none transition-all placeholder:text-white/20 resize-none" />
               <button type="submit" disabled={loading}
