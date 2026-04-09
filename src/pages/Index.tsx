@@ -1,11 +1,11 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import Icon from "@/components/ui/icon";
-import { CATALOG, ROOMS } from "./data/catalog";
-import { REVIEWS, FAQ } from "./data/content";
+import { REVIEWS, FAQ, PRODUCTION } from "./data/content";
 import { PORTFOLIO_ITEMS } from "./data/portfolio";
+import EstimateTable, { isEstimate } from "./EstimateTable";
 import func2url from "@/../backend/func2url.json";
 
-type Panel = "none" | "calc" | "portfolio" | "tips" | "reviews" | "faq";
+type Panel = "none" | "production" | "portfolio" | "tips" | "reviews" | "faq";
 interface Msg { id: number; role: "user" | "assistant"; text: string; }
 
 const AVATAR = "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/files/ccbf2c15-829b-4295-9f12-5691f81cf726.jpg";
@@ -13,11 +13,11 @@ const AI_URL = func2url["ai-chat"];
 const GREETING: Msg = { id: 0, role: "assistant", text: "Привет! Я Алиса — ваш персональный консультант по натяжным потолкам 👋\n\nЗнаю предложения 50+ компаний Москвы. Спросите что угодно — найду лучшую цену, сравню варианты и рассчитаю стоимость." };
 
 const NAV: { id: Panel; label: string; icon: string }[] = [
-  { id: "calc",      label: "Калькулятор", icon: "Calculator" },
-  { id: "portfolio", label: "Портфолио",   icon: "Image"      },
-  { id: "tips",      label: "AI-советы",   icon: "Sparkles"   },
-  { id: "reviews",   label: "Отзывы",      icon: "Heart"      },
-  { id: "faq",       label: "FAQ",          icon: "HelpCircle" },
+  { id: "production", label: "Производство", icon: "Factory"    },
+  { id: "portfolio",  label: "Портфолио",    icon: "Image"      },
+  { id: "tips",       label: "AI-советы",    icon: "Sparkles"   },
+  { id: "reviews",    label: "Отзывы",       icon: "Heart"      },
+  { id: "faq",        label: "FAQ",           icon: "HelpCircle" },
 ];
 
 function localAnswer(t: string): string {
@@ -34,76 +34,47 @@ function localAnswer(t: string): string {
 
 // ─── Panels ──────────────────────────────────────────────────────────────────
 
-function PanelCalc({ onClose }: { onClose: () => void }) {
-  const [area, setArea] = useState("");
-  const [roomIdx, setRoomIdx] = useState(0);
-  const [typeId, setTypeId] = useState("matte");
-  const [result, setResult] = useState<{ ours: number; market: number; save: number } | null>(null);
-
-  const calc = () => {
-    const a = parseFloat(area);
-    if (!a || a <= 0) return;
-    const item = CATALOG.find((c) => c.id === typeId) ?? CATALOG[1];
-    const room = ROOMS[roomIdx];
-    const ours = Math.round(a * room.koef * (item.price + 350));
-    const market = Math.round(ours * 1.22);
-    setResult({ ours, market, save: market - ours });
-  };
-
+function PanelProduction({ onClose }: { onClose: () => void }) {
+  const features = [
+    { icon: "Award",    label: "Плёнка MSD Premium" },
+    { icon: "Ruler",    label: "Точность до 1 мм" },
+    { icon: "FileCheck", label: "Сертификаты ISO" },
+    { icon: "Truck",    label: "Доставка за 1 день" },
+  ];
   return (
     <div className="h-full flex flex-col">
       <div className="shrink-0 flex items-center justify-between px-5 py-3 border-b border-white/[0.06]">
         <div className="flex items-center gap-2">
-          <Icon name="Calculator" size={15} className="text-emerald-400" />
-          <span className="text-sm font-semibold text-white/80">Калькулятор с анализом рынка</span>
+          <Icon name="Factory" size={15} className="text-emerald-400" />
+          <span className="text-sm font-semibold text-white/80">Собственное производство</span>
         </div>
         <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-white/5 text-white/30 hover:text-white/60 transition-all">
           <Icon name="X" size={16} />
         </button>
       </div>
-      <div className="flex-1 overflow-y-auto p-5">
-        <div className="max-w-md mx-auto space-y-3">
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="text-[10px] text-white/35 uppercase tracking-wider block mb-1.5">Площадь, м²</label>
-              <input type="number" value={area} onChange={(e) => { setArea(e.target.value); setResult(null); }} placeholder="18"
-                className="w-full bg-white/[0.04] border border-white/[0.06] focus:border-emerald-500/40 rounded-xl px-4 py-2.5 text-white text-sm outline-none transition-all placeholder:text-white/15" />
-            </div>
-            <div>
-              <label className="text-[10px] text-white/35 uppercase tracking-wider block mb-1.5">Помещение</label>
-              <select value={roomIdx} onChange={(e) => { setRoomIdx(+e.target.value); setResult(null); }}
-                className="w-full bg-white/[0.04] border border-white/[0.06] focus:border-emerald-500/40 rounded-xl px-4 py-2.5 text-white text-sm outline-none transition-all">
-                {ROOMS.map((r, i) => <option key={r.name} value={i} className="bg-[#111118]">{r.name}</option>)}
-              </select>
-            </div>
-          </div>
-          <div>
-            <label className="text-[10px] text-white/35 uppercase tracking-wider block mb-1.5">Тип потолка</label>
-            <select value={typeId} onChange={(e) => { setTypeId(e.target.value); setResult(null); }}
-              className="w-full bg-white/[0.04] border border-white/[0.06] focus:border-emerald-500/40 rounded-xl px-4 py-2.5 text-white text-sm outline-none transition-all">
-              {CATALOG.map((c) => <option key={c.id} value={c.id} className="bg-[#111118]">{c.name} — от {c.price} ₽/м²</option>)}
-            </select>
-          </div>
-          <button onClick={calc}
-            className="w-full bg-gradient-to-r from-emerald-500 to-teal-500 hover:brightness-110 text-white font-semibold py-3 rounded-xl text-sm transition-all active:scale-[0.98]">
-            Рассчитать
-          </button>
-          {result && (
-            <div className="grid grid-cols-3 gap-2 pt-1">
-              <div className="rounded-xl bg-white/[0.03] border border-white/[0.05] p-3 text-center">
-                <div className="text-[9px] text-white/30 mb-1">Рынок</div>
-                <div className="text-sm font-bold text-white/40 line-through">{result.market.toLocaleString("ru-RU")} ₽</div>
+      <div className="flex-1 overflow-y-auto p-4">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mb-4">
+          {PRODUCTION.map((item, i) => (
+            <div key={i} className="rounded-xl border border-white/[0.06] bg-white/[0.02] overflow-hidden group">
+              <div className="aspect-[4/3] overflow-hidden">
+                <img src={item.img} alt={item.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
               </div>
-              <div className="rounded-xl bg-emerald-500/[0.08] border border-emerald-500/20 p-3 text-center">
-                <div className="text-[9px] text-emerald-400/70 mb-1">Наша цена</div>
-                <div className="text-lg font-bold text-emerald-400">{result.ours.toLocaleString("ru-RU")} ₽</div>
-              </div>
-              <div className="rounded-xl bg-amber-500/[0.06] border border-amber-500/15 p-3 text-center">
-                <div className="text-[9px] text-amber-400/70 mb-1">Экономия</div>
-                <div className="text-sm font-bold text-amber-400">{result.save.toLocaleString("ru-RU")} ₽</div>
+              <div className="p-2.5">
+                <div className="text-white font-medium text-xs mb-1">{item.title}</div>
+                <div className="text-white/35 text-[10px] leading-relaxed line-clamp-2">{item.desc}</div>
               </div>
             </div>
-          )}
+          ))}
+        </div>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+          {features.map((f, i) => (
+            <div key={i} className="flex items-center gap-2 bg-white/[0.03] border border-white/[0.05] rounded-xl px-3 py-2.5">
+              <div className="w-7 h-7 rounded-lg bg-emerald-500/10 flex items-center justify-center shrink-0">
+                <Icon name={f.icon} size={13} className="text-emerald-400" />
+              </div>
+              <span className="text-white/50 text-[11px] font-medium leading-tight">{f.label}</span>
+            </div>
+          ))}
         </div>
       </div>
     </div>
@@ -302,12 +273,18 @@ export default function Index() {
                 {m.role === "assistant" && (
                   <img src={AVATAR} alt="Алиса" className="w-8 h-8 rounded-full object-cover shrink-0 border-2 border-emerald-500/20 shadow-lg shadow-emerald-500/10" />
                 )}
-                <div className={`max-w-[75%] md:max-w-[60%] rounded-2xl px-4 py-3 text-[13px] leading-relaxed whitespace-pre-wrap ${
+                <div className={`rounded-2xl px-4 py-3 text-[13px] leading-relaxed ${
                   m.role === "user"
-                    ? "bg-white/[0.08] border border-white/[0.08] text-white/90 rounded-br-md"
-                    : "bg-gradient-to-br from-white/[0.05] to-white/[0.02] border border-white/[0.06] text-white/70 rounded-bl-md"
+                    ? "max-w-[75%] md:max-w-[60%] bg-white/[0.08] border border-white/[0.08] text-white/90 rounded-br-md whitespace-pre-wrap"
+                    : m.role === "assistant" && isEstimate(m.text)
+                      ? "max-w-[90%] md:max-w-[75%] w-full bg-white/[0.03] border border-white/[0.06] rounded-bl-md"
+                      : "max-w-[75%] md:max-w-[60%] bg-gradient-to-br from-white/[0.05] to-white/[0.02] border border-white/[0.06] text-white/70 rounded-bl-md whitespace-pre-wrap"
                 }`}>
-                  {m.text}
+                  {m.role === "assistant" && isEstimate(m.text) ? (
+                    <EstimateTable text={m.text} />
+                  ) : (
+                    m.text
+                  )}
                 </div>
               </div>
             ))}
@@ -387,7 +364,7 @@ export default function Index() {
         }`}
           style={{ height: "55%", maxHeight: "55%" }}>
           <div className="h-full bg-[#0e0e15]/98 backdrop-blur-2xl border-t border-white/[0.08] rounded-t-2xl overflow-hidden shadow-2xl shadow-black/50">
-            {panel === "calc"      && <PanelCalc onClose={closePanel} />}
+            {panel === "production" && <PanelProduction onClose={closePanel} />}
             {panel === "portfolio" && <PanelPortfolio onClose={closePanel} />}
             {panel === "tips"      && <PanelTips onAsk={askFromPanel} onClose={closePanel} />}
             {panel === "reviews"   && <PanelReviews onClose={closePanel} />}
