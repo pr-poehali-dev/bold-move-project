@@ -278,7 +278,8 @@ SEARCH_VISUAL = re.compile(
 IMAGE_GEN = re.compile(
     r'(нарисуй|сгенерируй|визуализ|покажи как (будет|выглядит)|создай изображен|'
     r'сделай дизайн|придумай дизайн|как (будет )?выглядеть|покажи дизайн|'
-    r'хочу (увидеть|посмотреть)|пример дизайна|покажи.*профил|покажи.*потолок)',
+    r'хочу (увидеть|посмотреть)|пример дизайна|покажи.*профил|покажи.*потолок|'
+    r'как выглядит|как он выглядит|что из себя представляет)',
     re.IGNORECASE
 )
 
@@ -364,25 +365,17 @@ def web_search(query: str) -> dict:
             url = r.get('url', '')
             parts.append(f"• {title}\n  {content}\n  Источник: {url}")
 
-        # Картинки — извлекаем URL отдельно, фильтруем мусор
+        # Картинки — извлекаем URL, фильтруем только явный спам по URL
         images = []
         for img in data.get('images', []):
             if isinstance(img, dict):
-                img_url = img.get('url', '')
-                img_desc = (img.get('description', '') + img.get('title', '')).lower()
+                img_url = img.get('url') or ''
             else:
                 img_url = str(img)
-                img_desc = ''
             if not img_url or not img_url.startswith('http'):
                 continue
-            # Пропускаем если URL или описание содержит спам-ключи
             url_lower = img_url.lower()
-            if any(s in url_lower or s in img_desc for s in SPAM_DOMAINS):
-                continue
-            # Пропускаем если в описании нет связи с потолками/профилями/интерьером
-            CEILING_WORDS = ('ceiling', 'потолок', 'потолк', 'профил', 'interior',
-                             'room', 'living', 'bedroom', 'kitchen', 'дизайн', 'interer')
-            if img_desc and not any(w in img_desc for w in CEILING_WORDS):
+            if any(s in url_lower for s in SPAM_DOMAINS):
                 continue
             images.append(img_url)
             if len(images) >= 3:
