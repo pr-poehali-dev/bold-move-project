@@ -116,7 +116,7 @@ export default function Index() {
             {panel === "tips"       && <PanelTips       onAsk={askFromPanel} onClose={closePanel} />}
             {panel === "reviews"    && <PanelReviews    onClose={closePanel} />}
             {panel === "faq"        && <PanelFaq        onClose={closePanel} />}
-            {panel === "contacts"   && <PanelContacts   onClose={closePanel} />}
+            {panel === "contacts"   && <PanelContacts   onClose={closePanel} onPanel={setPanel} />}
           </div>
         </div>
 

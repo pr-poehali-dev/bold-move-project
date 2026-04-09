@@ -246,7 +246,7 @@ export function PanelFaq({ onClose }: { onClose: () => void }) {
 }
 
 // ─── Contacts ─────────────────────────────────────────────────────────────────
-export function PanelContacts({ onClose }: { onClose: () => void }) {
+export function PanelContacts({ onClose, onPanel }: { onClose: () => void; onPanel?: (p: string) => void }) {
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [msg, setMsg] = useState("");
@@ -277,18 +277,25 @@ export function PanelContacts({ onClose }: { onClose: () => void }) {
         ) : (
           <div className="max-w-md mx-auto space-y-4">
             <div className="grid grid-cols-2 gap-2.5">
-              {CONTACTS.map((c, i) => (
-                <a key={i} href={c.href} target={c.href.startsWith("http") ? "_blank" : undefined} rel="noreferrer"
-                  className="flex items-start gap-2.5 bg-white/[0.03] hover:bg-white/[0.05] border border-white/[0.06] hover:border-orange-500/20 rounded-xl p-3 transition-all group">
-                  <div className="w-7 h-7 rounded-lg bg-orange-500/10 flex items-center justify-center shrink-0">
-                    <Icon name={c.icon} size={13} className="text-orange-400" />
-                  </div>
-                  <div>
-                    <div className="text-white/30 text-[9px] uppercase tracking-wider">{c.label}</div>
-                    <div className="text-white text-[11px] font-medium mt-0.5 group-hover:text-orange-300 transition-colors">{c.val}</div>
-                  </div>
-                </a>
-              ))}
+              {CONTACTS.map((c, i) => {
+                const isLiveChat = c.href === "#livechat";
+                const Tag = isLiveChat ? "button" : "a";
+                const extra = isLiveChat
+                  ? { onClick: () => { onPanel?.("livechat"); } }
+                  : { href: c.href, target: c.href.startsWith("http") ? "_blank" : undefined, rel: "noreferrer" };
+                return (
+                  <Tag key={i} {...(extra as object)}
+                    className="flex items-start gap-2.5 bg-white/[0.03] hover:bg-white/[0.05] border border-white/[0.06] hover:border-orange-500/20 rounded-xl p-3 transition-all group text-left w-full">
+                    <div className="w-7 h-7 rounded-lg bg-orange-500/10 flex items-center justify-center shrink-0">
+                      <Icon name={c.icon} size={13} className="text-orange-400" />
+                    </div>
+                    <div>
+                      <div className="text-white/30 text-[9px] uppercase tracking-wider">{c.label}</div>
+                      <div className="text-white text-[11px] font-medium mt-0.5 group-hover:text-orange-300 transition-colors">{c.val}</div>
+                    </div>
+                  </Tag>
+                );
+              })}
             </div>
             <form onSubmit={submit} className="space-y-2.5">
               <div className="text-[10px] text-white/30 uppercase tracking-wider">Обратная связь</div>
