@@ -47,21 +47,21 @@ export default function MobileContactBar({ panel, setPanel }: Props) {
       >
         <div className="flex items-center gap-2 px-3 pb-3">
           <a href="tel:+79776068901"
-            className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-orange-500/15 border border-orange-500/20 text-orange-400 text-[11px] font-medium active:scale-95 transition-transform">
-            <Icon name="Phone" size={13} /> Позвонить
+            className="flex-1 flex items-center justify-center gap-1 py-2.5 rounded-xl bg-orange-500/15 border border-orange-500/20 text-orange-400 text-[10px] font-medium active:scale-95 transition-transform">
+            <Icon name="Phone" size={12} /> Позвонить
           </a>
           <button
             onClick={() => setPanel(panel === "livechat" ? "none" : "livechat")}
-            className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-orange-500/15 border border-orange-500/20 text-orange-400 text-[11px] font-medium active:scale-95 transition-transform">
-            <Icon name="MessageCircle" size={13} /> Чат
+            className="flex-1 flex items-center justify-center gap-1 py-2.5 rounded-xl bg-orange-500/15 border border-orange-500/20 text-orange-400 text-[10px] font-medium active:scale-95 transition-transform">
+            <Icon name="MessageCircle" size={12} /> Чат
           </button>
           <a href="https://t.me/JoniKras" target="_blank" rel="noreferrer"
-            className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-orange-500/15 border border-orange-500/20 text-orange-400 text-[11px] font-medium active:scale-95 transition-transform">
-            <Icon name="Send" size={13} /> Telegram
+            className="flex-1 flex items-center justify-center gap-1 py-2.5 rounded-xl bg-orange-500/15 border border-orange-500/20 text-orange-400 text-[10px] font-medium active:scale-95 transition-transform">
+            <Icon name="Send" size={12} /> Telegram
           </a>
           <a href="https://max.ru/u/f9LHodD0cOImGR_bXwRjzpNeWQv7qzBR-lP0W9lvbuzV8iU1J5lngmKBGgA" target="_blank" rel="noreferrer"
-            className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-orange-500/15 border border-orange-500/20 text-orange-400 text-[11px] font-medium active:scale-95 transition-transform">
-            <Icon name="MessageSquare" size={13} /> MAX
+            className="flex-1 flex items-center justify-center gap-1 py-2.5 rounded-xl bg-orange-500/15 border border-orange-500/20 text-orange-400 text-[10px] font-medium active:scale-95 transition-transform">
+            <Icon name="MessageSquare" size={12} /> MAX
           </a>
         </div>
       </div>
