@@ -1,5 +1,6 @@
 import { useState, useCallback } from "react";
 import { Section, Msg, MENU, AI_URL, localAnswer } from "./AiHubTypes";
+import Icon from "@/components/ui/icon";
 import AiHubChat from "./AiHubChat";
 import {
   PanelCatalog,
@@ -82,22 +83,24 @@ export default function AiHub() {
       {/* ── Body ─────────────────────────────────────────────────────── */}
       <div className="flex flex-1 min-h-0">
 
-        {/* ── Sidebar (desktop left) ───────────────────────────── */}
-        <nav className="hidden lg:flex shrink-0 w-[90px] flex-col items-center py-4 gap-1.5 border-r border-white/8 bg-[#0c0c16]/60 overflow-y-auto">
+        {/* ── Sidebar (desktop left) — dock-style ──────────────── */}
+        <nav className="hidden lg:flex shrink-0 w-[76px] flex-col items-center py-4 gap-2 border-r border-white/8 bg-[#0c0c16]/60 overflow-y-auto">
           {MENU.map((item) => {
             const active = section === item.id;
             return (
               <button
                 key={item.id}
                 onClick={() => setSection(item.id)}
-                className={`w-16 flex flex-col items-center gap-1.5 py-3 rounded-2xl text-center transition-all ${
+                aria-label={item.label}
+                className={`dock-btn group relative w-12 h-12 grid place-items-center rounded-xl ring-1 backdrop-blur-xl shadow-lg transition-all duration-200 hover:scale-105 ${
                   active
-                    ? "bg-gradient-to-b from-violet-600/30 to-orange-500/20 border border-violet-500/40 text-white"
-                    : "text-white/40 hover:text-white/70 hover:bg-white/5"
+                    ? "bg-gradient-to-b from-violet-600/40 to-orange-500/30 ring-violet-500/50 text-white"
+                    : "bg-gradient-to-b from-neutral-800/60 to-neutral-900/70 ring-white/10 text-white/50 hover:text-white"
                 }`}
               >
-                <span className="text-2xl leading-none">{item.emoji}</span>
-                <span className="text-[9px] font-montserrat font-semibold uppercase tracking-wide leading-tight">
+                <Icon name={item.icon} size={16} />
+                {active && <span className="absolute -right-1 top-1/2 -translate-y-1/2 w-1 h-4 rounded-full bg-violet-400" />}
+                <span className="dock-tooltip pointer-events-none absolute left-full ml-2 whitespace-nowrap rounded-md bg-neutral-900 px-1.5 py-0.5 text-[9px] text-white/70 ring-1 ring-white/10 opacity-0 -translate-x-1 transition-all duration-200 group-hover:opacity-100 group-hover:translate-x-0">
                   {item.label}
                 </span>
               </button>
@@ -124,21 +127,25 @@ export default function AiHub() {
             <div className="shrink-0 flex items-center gap-2 px-4 py-2 border-b border-white/8 bg-[#0e0e1a]/40">
               <span className="text-base leading-none">{activeItem.emoji}</span>
               <span className="text-xs font-semibold text-white/80">{activeItem.label}</span>
-              <div className="ml-auto flex items-center gap-1">
-                {MENU.map((m) => (
-                  <button
-                    key={m.id}
-                    onClick={() => setSection(m.id)}
-                    title={m.label}
-                    className={`px-2 py-1 rounded-lg text-[10px] font-montserrat transition-all ${
-                      section === m.id
-                        ? "bg-violet-600/40 border border-violet-500/50 text-violet-300"
-                        : "text-white/25 hover:text-white/50"
-                    }`}
-                  >
-                    {m.emoji}
-                  </button>
-                ))}
+              <div className="ml-auto flex items-center gap-1.5 rounded-2xl bg-neutral-900/70 ring-1 ring-white/8 px-2 py-1.5 backdrop-blur">
+                {MENU.map((m) => {
+                  const active = section === m.id;
+                  return (
+                    <button
+                      key={m.id}
+                      onClick={() => setSection(m.id)}
+                      aria-label={m.label}
+                      title={m.label}
+                      className={`grid h-7 w-7 place-items-center rounded-lg ring-1 transition-all duration-200 ${
+                        active
+                          ? "bg-gradient-to-b from-violet-600/40 to-orange-500/30 ring-violet-500/40 text-white"
+                          : "bg-neutral-800/50 ring-white/8 text-white/40 hover:text-white/70 hover:bg-neutral-700/50"
+                      }`}
+                    >
+                      <Icon name={m.icon} size={12} />
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
@@ -172,33 +179,33 @@ export default function AiHub() {
         </div>
       </div>
 
-      {/* ── Bottom tab bar (mobile / tablet) ─────────────────────────── */}
-      <nav className="lg:hidden shrink-0 flex items-stretch border-t border-white/8 bg-[#0c0c16]/95 backdrop-blur overflow-x-auto">
-        {MENU.map((item) => {
-          const active = section === item.id;
-          return (
-            <button
-              key={item.id}
-              onClick={() => setSection(item.id)}
-              className={`flex-1 flex flex-col items-center justify-center gap-0.5 py-2 min-w-[48px] transition-all ${
-                active ? "text-white" : "text-white/35 hover:text-white/60"
-              }`}
-            >
-              {active && (
-                <span className="absolute bottom-0 w-6 h-0.5 bg-gradient-to-r from-violet-500 to-orange-500 rounded-full" />
-              )}
-              <span className="text-lg leading-none relative">
-                {item.emoji}
+      {/* ── Bottom dock bar (mobile / tablet) ────────────────────────── */}
+      <nav className="lg:hidden shrink-0 flex justify-center items-center gap-1.5 px-3 py-2.5 border-t border-white/8 bg-[#0c0c16]/95 backdrop-blur-lg overflow-x-auto" style={{ scrollbarWidth: "none" }}>
+        <div className="flex items-center gap-1.5 rounded-[28px] bg-neutral-900/80 px-3 py-2 shadow-2xl ring-1 ring-white/10 backdrop-blur-lg">
+          {MENU.map((item) => {
+            const active = section === item.id;
+            return (
+              <button
+                key={item.id}
+                onClick={() => setSection(item.id)}
+                aria-label={item.label}
+                className={`dock-btn group relative grid h-10 w-10 place-items-center rounded-xl ring-1 backdrop-blur-xl shadow-lg transition-all duration-200 hover:-translate-y-1 hover:scale-105 ${
+                  active
+                    ? "bg-gradient-to-b from-violet-600/40 to-orange-500/30 ring-violet-500/50 text-white"
+                    : "bg-gradient-to-b from-neutral-800/60 to-neutral-900/70 ring-white/10 text-white/50 hover:text-white"
+                }`}
+              >
+                <Icon name={item.icon} size={15} />
                 {active && (
-                  <span className="absolute -top-1 -right-1 w-1.5 h-1.5 bg-violet-400 rounded-full" />
+                  <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-violet-400" />
                 )}
-              </span>
-              <span className="text-[8px] font-montserrat font-semibold uppercase tracking-wide leading-none">
-                {item.label.length > 6 ? item.label.slice(0, 6) : item.label}
-              </span>
-            </button>
-          );
-        })}
+                <span className="dock-tooltip pointer-events-none absolute -top-8 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-md bg-neutral-900 px-1.5 py-0.5 text-[9px] text-white/70 ring-1 ring-white/10 opacity-0 translate-y-1 transition-all duration-200 group-hover:opacity-100 group-hover:translate-y-0">
+                  {item.label}
+                </span>
+              </button>
+            );
+          })}
+        </div>
       </nav>
     </div>
   );

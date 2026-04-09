@@ -65,20 +65,29 @@ export default function ChatUI({ messages, input, typing, panel, onInput, onSend
 
       </div>
 
-      {/* Nav pills */}
-      <div className="shrink-0 px-4 md:px-8 pb-2">
-        <div className="flex items-center gap-1.5 overflow-x-auto py-1" style={{ scrollbarWidth: "none" }}>
+      {/* Dock nav */}
+      <div className="shrink-0 px-4 md:px-8 pb-3 pt-2 flex justify-center">
+        <div className="flex items-center gap-2 rounded-[28px] bg-neutral-900/80 px-3 py-2 shadow-2xl ring-1 ring-white/10 backdrop-blur-lg overflow-x-auto overflow-y-visible" style={{ scrollbarWidth: "none" }}>
           {NAV.map((n) => {
             const isActive = panel === n.id;
             return (
-              <button key={n.id} onClick={() => onPanel(isActive ? "none" : n.id)}
-                className={`shrink-0 flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-medium transition-all ${
+              <button
+                key={n.id}
+                onClick={() => onPanel(isActive ? "none" : n.id)}
+                aria-label={n.label}
+                className={`dock-btn group relative shrink-0 grid h-10 w-10 place-items-center rounded-xl ring-1 backdrop-blur-xl shadow-lg transition-all duration-200 hover:-translate-y-1 hover:scale-105 ${
                   isActive
-                    ? "bg-orange-500/15 text-orange-400 border border-orange-500/25 shadow-lg shadow-orange-500/5"
-                    : "bg-white/[0.04] text-white/35 border border-white/[0.05] hover:text-white/55 hover:bg-white/[0.06]"
-                }`}>
-                <Icon name={n.icon} size={14} />
-                {n.label}
+                    ? "bg-gradient-to-b from-orange-500/40 to-rose-600/40 ring-orange-500/50 text-orange-300"
+                    : "bg-gradient-to-b from-neutral-800/60 to-neutral-900/70 ring-white/10 text-white/70 hover:text-white"
+                }`}
+              >
+                <Icon name={n.icon} size={15} />
+                {isActive && (
+                  <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-orange-400" />
+                )}
+                <span className="dock-tooltip pointer-events-none absolute -bottom-7 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-md bg-neutral-900 px-1.5 py-0.5 text-[9px] text-white/70 ring-1 ring-white/10 opacity-0 translate-y-1 transition-all duration-200 group-hover:opacity-100 group-hover:translate-y-0">
+                  {n.label}
+                </span>
               </button>
             );
           })}

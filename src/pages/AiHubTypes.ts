@@ -10,14 +10,14 @@ export interface Msg {
 }
 
 // ─── menu config ──────────────────────────────────────────────────────────────
-export const MENU: { id: Section; label: string; emoji: string }[] = [
-  { id: "catalog",   label: "Каталог",      emoji: "📁" },
-  { id: "calc",      label: "Калькулятор",  emoji: "🧮" },
-  { id: "portfolio", label: "Портфолио",    emoji: "🖼️" },
-  { id: "ai",        label: "AI-советы",    emoji: "🤖" },
-  { id: "reviews",   label: "Отзывы",       emoji: "⭐" },
-  { id: "faq",       label: "FAQ",          emoji: "❓" },
-  { id: "contacts",  label: "Контакты",     emoji: "📞" },
+export const MENU: { id: Section; label: string; emoji: string; icon: string }[] = [
+  { id: "catalog",   label: "Каталог",      emoji: "📁", icon: "LayoutGrid"   },
+  { id: "calc",      label: "Калькулятор",  emoji: "🧮", icon: "Calculator"   },
+  { id: "portfolio", label: "Портфолио",    emoji: "🖼️", icon: "Image"        },
+  { id: "ai",        label: "AI-советы",    emoji: "🤖", icon: "Sparkles"     },
+  { id: "reviews",   label: "Отзывы",       emoji: "⭐", icon: "Star"         },
+  { id: "faq",       label: "FAQ",          emoji: "❓", icon: "HelpCircle"   },
+  { id: "contacts",  label: "Контакты",     emoji: "📞", icon: "Phone"        },
 ];
 
 export const AI_URL = func2url["ai-chat"];
