@@ -5,7 +5,7 @@ import { PORTFOLIO_ITEMS } from "./data/portfolio";
 import EstimateTable, { isEstimate } from "./EstimateTable";
 import func2url from "@/../backend/func2url.json";
 
-type Panel = "none" | "production" | "portfolio" | "tips" | "reviews" | "faq";
+type Panel = "none" | "production" | "portfolio" | "tips" | "reviews" | "faq" | "contacts";
 interface Msg { id: number; role: "user" | "assistant"; text: string; }
 
 const AVATAR = "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/files/b12f254a-ee38-4ef7-abc3-2517a55b4909.jpg";
@@ -18,6 +18,7 @@ const NAV: { id: Panel; label: string; icon: string }[] = [
   { id: "tips",       label: "AI-советы",    icon: "Sparkles"   },
   { id: "reviews",    label: "Отзывы",       icon: "Heart"      },
   { id: "faq",        label: "FAQ",           icon: "HelpCircle" },
+  { id: "contacts",   label: "Контакты",      icon: "Phone"      },
 ];
 
 function localAnswer(t: string): string {
@@ -204,6 +205,85 @@ function PanelFaq({ onClose }: { onClose: () => void }) {
   );
 }
 
+function PanelContacts({ onClose }: { onClose: () => void }) {
+  const [name, setName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [msg, setMsg] = useState("");
+  const [sent, setSent] = useState(false);
+
+  const submit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!name || !phone) return;
+    setSent(true);
+  };
+
+  return (
+    <div className="h-full flex flex-col">
+      <div className="shrink-0 flex items-center justify-between px-5 py-3 border-b border-white/[0.06]">
+        <div className="flex items-center gap-2">
+          <Icon name="Phone" size={15} className="text-orange-400" />
+          <span className="text-sm font-semibold text-white/80">Контакты</span>
+        </div>
+        <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-white/5 text-white/30 hover:text-white/60 transition-all">
+          <Icon name="X" size={16} />
+        </button>
+      </div>
+      <div className="flex-1 overflow-y-auto p-4">
+        {sent ? (
+          <div className="h-full flex flex-col items-center justify-center gap-3 text-center">
+            <div className="w-14 h-14 rounded-2xl bg-orange-500/10 border border-orange-500/20 flex items-center justify-center">
+              <Icon name="CheckCircle" size={28} className="text-orange-400" />
+            </div>
+            <div className="text-white font-semibold">Заявка отправлена!</div>
+            <div className="text-white/40 text-sm">Перезвоним в течение 15 минут</div>
+            <button onClick={() => { setSent(false); setName(""); setPhone(""); setMsg(""); }}
+              className="mt-1 text-orange-400 text-xs hover:text-orange-300 underline">
+              Отправить ещё
+            </button>
+          </div>
+        ) : (
+          <div className="max-w-md mx-auto space-y-4">
+            <div className="grid grid-cols-2 gap-2.5">
+              {[
+                { icon: "Phone",       label: "Телефон",  val: "+7 (977) 606-89-01",    href: "tel:+79776068901" },
+                { icon: "MessageCircle", label: "WhatsApp", val: "Написать в WhatsApp", href: "https://wa.me/79776068901" },
+                { icon: "MapPin",      label: "Адрес",    val: "Мытищи, Пограничная 24", href: "#" },
+                { icon: "Clock",       label: "Часы",     val: "Пн–Вс 8:00–22:00",     href: "#" },
+              ].map((c, i) => (
+                <a key={i} href={c.href} target={c.href.startsWith("http") ? "_blank" : undefined} rel="noreferrer"
+                  className="flex items-start gap-2.5 bg-white/[0.03] hover:bg-white/[0.05] border border-white/[0.06] hover:border-orange-500/20 rounded-xl p-3 transition-all group">
+                  <div className="w-7 h-7 rounded-lg bg-orange-500/10 flex items-center justify-center shrink-0">
+                    <Icon name={c.icon} size={13} className="text-orange-400" />
+                  </div>
+                  <div>
+                    <div className="text-white/30 text-[9px] uppercase tracking-wider">{c.label}</div>
+                    <div className="text-white text-[11px] font-medium mt-0.5 group-hover:text-orange-300 transition-colors">{c.val}</div>
+                  </div>
+                </a>
+              ))}
+            </div>
+            <form onSubmit={submit} className="space-y-2.5">
+              <div className="text-[10px] text-white/30 uppercase tracking-wider">Обратная связь</div>
+              <div className="grid grid-cols-2 gap-2.5">
+                <input type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="Ваше имя" required
+                  className="w-full bg-white/[0.04] border border-white/[0.07] focus:border-orange-500/40 rounded-xl px-3 py-2.5 text-white text-sm outline-none transition-all placeholder:text-white/20" />
+                <input type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="Телефон" required
+                  className="w-full bg-white/[0.04] border border-white/[0.07] focus:border-orange-500/40 rounded-xl px-3 py-2.5 text-white text-sm outline-none transition-all placeholder:text-white/20" />
+              </div>
+              <textarea value={msg} onChange={(e) => setMsg(e.target.value)} placeholder="Комментарий (необязательно)" rows={2}
+                className="w-full bg-white/[0.04] border border-white/[0.07] focus:border-orange-500/40 rounded-xl px-3 py-2.5 text-white text-sm outline-none transition-all placeholder:text-white/20 resize-none" />
+              <button type="submit"
+                className="w-full bg-gradient-to-r from-orange-500 to-rose-500 hover:brightness-110 text-white font-semibold py-2.5 rounded-xl text-sm transition-all active:scale-[0.98]">
+                Отправить заявку
+              </button>
+            </form>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ─── Main ────────────────────────────────────────────────────────────────────
 
 export default function Index() {
@@ -369,6 +449,7 @@ export default function Index() {
             {panel === "tips"      && <PanelTips onAsk={askFromPanel} onClose={closePanel} />}
             {panel === "reviews"   && <PanelReviews onClose={closePanel} />}
             {panel === "faq"       && <PanelFaq onClose={closePanel} />}
+            {panel === "contacts"  && <PanelContacts onClose={closePanel} />}
           </div>
         </div>
 
