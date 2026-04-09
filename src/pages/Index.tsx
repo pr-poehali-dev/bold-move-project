@@ -72,10 +72,7 @@ export default function Index() {
             className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-orange-500/10 border border-orange-500/20 text-orange-400 text-[11px] font-medium hover:bg-orange-500/15 transition-all">
             <Icon name="MapPin" size={12} /> <span>Контакты</span>
           </button>
-          <a href="tel:+79776068901"
-            className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-orange-500/10 border border-orange-500/20 text-orange-400 text-[11px] font-medium hover:bg-orange-500/15 transition-all">
-            <Icon name="Phone" size={12} /> <span className="hidden sm:inline">Позвонить</span>
-          </a>
+
           <button
             onClick={() => setPanel(panel === "livechat" ? "none" : "livechat")}
             className="hidden md:flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-orange-500/10 border border-orange-500/20 text-orange-400 text-[11px] font-medium hover:bg-orange-500/15 transition-all">
