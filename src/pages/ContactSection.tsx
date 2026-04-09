@@ -121,7 +121,7 @@ export default function ContactSection({
                       </div>
                       <div>
                         <label className="block text-white/40 text-[11px] font-montserrat uppercase tracking-widest mb-2">Телефон</label>
-                        <input type="tel" value={phone} onChange={e => setPhone(formatPhone(e.target.value))} placeholder="+7 (___) ___-__-__" required
+                        <input type="tel" value={phone} onChange={e => setPhone(formatPhone(e.target.value))} onFocus={() => { if (!phone) setPhone("+7 ("); }} onBlur={() => { if (phone === "+7 (") setPhone(""); }} placeholder="+7 (___) ___-__-__" required
                           className={`w-full bg-white/5 border rounded-xl px-4 py-3 text-white placeholder-white/20 focus:outline-none focus:bg-white/7 transition-all text-sm ${phone && !isPhoneValid(phone) ? "border-rose-500/60 focus:border-rose-500" : "border-white/10 focus:border-orange-500/50"}`} />
                         {phone && !isPhoneValid(phone) && <p className="text-rose-400 text-[11px] mt-1">Введите 10 цифр номера</p>}
                       </div>

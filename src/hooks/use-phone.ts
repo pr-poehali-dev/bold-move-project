@@ -23,8 +23,22 @@ export function usePhone(initial = "") {
   }, []);
 
   const handleChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    setPhoneRaw(formatPhone(e.target.value));
+    const val = e.target.value;
+    // Если стёрли всё до "+7 (" или меньше — сбрасываем в пустую строку
+    if (val.replace(/\D/g, "").length <= 1) {
+      setPhoneRaw("");
+    } else {
+      setPhoneRaw(formatPhone(val));
+    }
   }, []);
 
-  return { phone, setPhone, handleChange, isValid: isPhoneValid(phone) };
+  const handleFocus = useCallback(() => {
+    setPhoneRaw((prev) => prev || "+7 (");
+  }, []);
+
+  const handleBlur = useCallback(() => {
+    setPhoneRaw((prev) => (prev === "+7 (" ? "" : prev));
+  }, []);
+
+  return { phone, setPhone, handleChange, handleFocus, handleBlur, isValid: isPhoneValid(phone) };
 }
