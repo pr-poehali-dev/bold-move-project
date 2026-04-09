@@ -67,7 +67,7 @@ export default function ChatUI({ messages, input, typing, panel, onInput, onSend
 
       {/* Dock nav */}
       <div className="shrink-0 px-4 md:px-8 pb-3 pt-2 flex justify-center">
-        <div className="flex items-center gap-2 rounded-[28px] bg-neutral-900/80 px-3 py-2 shadow-2xl ring-1 ring-white/10 backdrop-blur-lg overflow-visible" style={{ scrollbarWidth: "none" }}>
+        <div className="flex items-center gap-1.5 rounded-[24px] bg-neutral-900/80 px-2.5 py-2 shadow-2xl ring-1 ring-white/10 backdrop-blur-lg overflow-visible" style={{ scrollbarWidth: "none" }}>
           {NAV.map((n) => {
             const isActive = panel === n.id;
             return (
@@ -75,13 +75,13 @@ export default function ChatUI({ messages, input, typing, panel, onInput, onSend
                 key={n.id}
                 onClick={() => onPanel(isActive ? "none" : n.id)}
                 aria-label={n.label}
-                className={`dock-btn group relative shrink-0 grid h-10 w-10 place-items-center rounded-xl ring-1 backdrop-blur-xl shadow-lg transition-all duration-200 hover:-translate-y-1 hover:scale-105 ${
+                className={`dock-btn group relative shrink-0 grid h-9 w-9 place-items-center rounded-xl ring-1 backdrop-blur-xl shadow-lg transition-all duration-200 hover:-translate-y-1 hover:scale-105 ${
                   isActive
                     ? "bg-gradient-to-b from-orange-500/40 to-rose-600/40 ring-orange-500/50 text-orange-300"
                     : "bg-gradient-to-b from-neutral-800/60 to-neutral-900/70 ring-white/10 text-white/70 hover:text-white"
                 }`}
               >
-                <Icon name={n.icon} size={15} />
+                <Icon name={n.icon} size={14} />
                 {isActive && (
                   <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-orange-400" />
                 )}
