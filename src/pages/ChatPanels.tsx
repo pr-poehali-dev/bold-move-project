@@ -288,11 +288,17 @@ export function PanelContacts({ onClose, onPanel }: { onClose: () => void; onPan
   const [phone, setPhone] = useState("");
   const [msg, setMsg] = useState("");
   const [sent, setSent] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!name || !phone) return;
-    setSent(true);
+    setLoading(true);
+    fetch(`${LIVE_CHAT_URL}?action=booking`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name, phone, comment: msg }),
+    }).finally(() => { setLoading(false); setSent(true); });
   };
 
   return (
@@ -344,9 +350,10 @@ export function PanelContacts({ onClose, onPanel }: { onClose: () => void; onPan
               </div>
               <textarea value={msg} onChange={(e) => setMsg(e.target.value)} placeholder="Комментарий (необязательно)" rows={2}
                 className="w-full bg-white/[0.04] border border-white/[0.07] focus:border-orange-500/40 rounded-xl px-3 py-2.5 text-white text-sm outline-none transition-all placeholder:text-white/20 resize-none" />
-              <button type="submit"
-                className="w-full bg-gradient-to-r from-orange-500 to-rose-500 hover:brightness-110 text-white font-semibold py-2.5 rounded-xl text-sm transition-all active:scale-[0.98]">
-                Отправить заявку
+              <button type="submit" disabled={loading}
+                className="w-full bg-gradient-to-r from-orange-500 to-rose-500 hover:brightness-110 text-white font-semibold py-2.5 rounded-xl text-sm transition-all active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2">
+                <Icon name={loading ? "Loader" : "Send"} size={14} className={loading ? "animate-spin" : ""} />
+                {loading ? "Отправляем..." : "Отправить заявку"}
               </button>
             </form>
           </div>
