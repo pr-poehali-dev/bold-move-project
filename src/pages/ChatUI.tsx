@@ -86,23 +86,9 @@ export default function ChatUI({ messages, input, typing, panel, onInput, onSend
       </div>
 
       {/* Dock nav */}
-      <div className="shrink-0 px-4 md:px-8 pt-1 pb-3 flex flex-col items-center gap-2">
-        {/* Подпись активного пункта */}
-        <div className="w-full flex items-center justify-center min-h-[22px]">
-          {NAV.map((n) => panel === n.id && (
-            <div key={n.id} className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-orange-500/10 border border-orange-500/20">
-              <Icon name={n.icon} size={11} className="text-orange-400 shrink-0" />
-              <span className="text-orange-300 text-[11px] font-semibold leading-none">{n.label}</span>
-              <span className="text-white/25 text-[10px] leading-none">—</span>
-              <span className="text-white/50 text-[10px] leading-none">{n.hint}</span>
-            </div>
-          ))}
-          {panel === "none" && (
-            <span className="text-white/20 text-[11px]">Нажмите на раздел ниже</span>
-          )}
-        </div>
+      <div className="shrink-0 px-4 md:px-8 pt-1 pb-3 flex flex-col items-center">
 
-        <div className="flex items-center gap-1.5 rounded-[24px] bg-neutral-900/80 px-2.5 py-2 shadow-2xl ring-1 ring-white/10 backdrop-blur-lg">
+        <div className="flex items-center gap-1 rounded-[24px] bg-neutral-900/80 px-2.5 py-2 shadow-2xl ring-1 ring-white/10 backdrop-blur-lg">
           {NAV.map((n) => {
             const isActive = panel === n.id;
             return (
@@ -110,16 +96,16 @@ export default function ChatUI({ messages, input, typing, panel, onInput, onSend
                 key={n.id}
                 onClick={() => onPanel(isActive ? "none" : n.id)}
                 aria-label={n.label}
-                className={`relative shrink-0 grid h-9 w-9 place-items-center rounded-xl ring-1 shadow-lg transition-all duration-200 ${
+                className={`relative shrink-0 flex flex-col items-center justify-center gap-1 h-12 w-12 rounded-xl ring-1 shadow-lg transition-all duration-200 ${
                   isActive
                     ? "bg-gradient-to-b from-orange-500/40 to-rose-600/40 ring-orange-500/50 text-orange-300"
                     : "bg-gradient-to-b from-neutral-800/60 to-neutral-900/70 ring-white/10 text-white/50 hover:text-white/80"
                 }`}
               >
                 <Icon name={n.icon} size={14} />
-                {isActive && (
-                  <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-orange-400" />
-                )}
+                <span className={`text-[8px] font-medium leading-none ${isActive ? "text-orange-300" : "text-white/40"}`}>
+                  {n.label}
+                </span>
               </button>
             );
           })}
