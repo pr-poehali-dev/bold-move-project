@@ -8,7 +8,7 @@ export interface Msg {
   text: string;
 }
 
-export const AVATAR = "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/files/b12f254a-ee38-4ef7-abc3-2517a55b4909.jpg";
+export const AVATAR = "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/files/60e2335c-4916-41e5-b894-7f4d9ca6a923.jpg";
 
 export const AI_URL = func2url["ai-chat"];
 
