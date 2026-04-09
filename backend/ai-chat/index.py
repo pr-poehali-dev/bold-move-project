@@ -327,14 +327,23 @@ def web_search(query: str) -> dict:
         return empty
     if SEARCH_SKIP.search(query):
         return empty
+
+    # Обогащаем запрос чтобы Tavily искал именно про натяжные потолки
+    search_query = f"натяжной потолок {query} фото"
+
+    # Домены которых стоит избегать (не про потолки)
+    SPAM_DOMAINS = ('passport', 'document', 'госуслуг', 'visa', 'мвд',
+                    'avito.ru', 'ozon.ru', 'wildberries', 'instagram',
+                    'facebook', 'vk.com', 'youtube', 'tiktok')
+
     try:
         resp = requests.post(
             'https://api.tavily.com/search',
             json={
                 'api_key': TAVILY_KEY,
-                'query': query,
+                'query': search_query,
                 'search_depth': 'basic',
-                'max_results': 4,
+                'max_results': 5,
                 'include_answer': True,
                 'include_images': True,
                 'include_image_descriptions': True,
@@ -355,15 +364,29 @@ def web_search(query: str) -> dict:
             url = r.get('url', '')
             parts.append(f"• {title}\n  {content}\n  Источник: {url}")
 
-        # Картинки — извлекаем URL отдельно
+        # Картинки — извлекаем URL отдельно, фильтруем мусор
         images = []
-        for img in data.get('images', [])[:3]:
+        for img in data.get('images', []):
             if isinstance(img, dict):
-                url = img.get('url', '')
+                img_url = img.get('url', '')
+                img_desc = (img.get('description', '') + img.get('title', '')).lower()
             else:
-                url = str(img)
-            if url and url.startswith('http'):
-                images.append(url)
+                img_url = str(img)
+                img_desc = ''
+            if not img_url or not img_url.startswith('http'):
+                continue
+            # Пропускаем если URL или описание содержит спам-ключи
+            url_lower = img_url.lower()
+            if any(s in url_lower or s in img_desc for s in SPAM_DOMAINS):
+                continue
+            # Пропускаем если в описании нет связи с потолками/профилями/интерьером
+            CEILING_WORDS = ('ceiling', 'потолок', 'потолк', 'профил', 'interior',
+                             'room', 'living', 'bedroom', 'kitchen', 'дизайн', 'interer')
+            if img_desc and not any(w in img_desc for w in CEILING_WORDS):
+                continue
+            images.append(img_url)
+            if len(images) >= 3:
+                break
 
         return {'text': '\n\n'.join(parts), 'images': images}
     except Exception as e:
