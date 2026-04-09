@@ -142,62 +142,72 @@ export const PromptInputBox = React.forwardRef<HTMLDivElement, Props>(
           )}
         </AnimatePresence>
 
-        {/* Нижняя панель */}
-        <div className="flex items-center justify-between px-2.5 py-2">
-          {/* Подсказка — только на десктопе */}
-          <span className="text-[10px] text-white/15 pl-0.5 select-none hidden sm:block">
-            {isRecording
-              ? "Нажмите ■ чтобы остановить"
-              : hasContent
-              ? "Enter — отправить · Shift+Enter — перенос"
-              : "Нажмите 🎤 для голосового ввода"}
-          </span>
-          <span className="sm:hidden" />
+        {/* Нижняя панель — две кнопки */}
+        <div className="flex items-center justify-end gap-2 px-2.5 py-2">
 
-          {/* Кнопка действия */}
+          {/* Кнопка микрофон */}
           <motion.button
-            onClick={handleAction}
-            disabled={isLoading && !isRecording}
+            onClick={() => { if (!isLoading) setIsRecording((r) => !r); }}
             whileTap={{ scale: 0.85 }}
             whileHover={{ scale: 1.06 }}
             transition={{ type: "spring", stiffness: 400, damping: 18 }}
+            title={isRecording ? "Остановить запись" : "Надиктовать голосом"}
             className={cn(
               "w-9 h-9 rounded-xl flex items-center justify-center shrink-0 transition-colors duration-200",
               isRecording
-                ? "bg-red-500/20 text-red-400 hover:bg-red-500/30"
-                : hasContent || isLoading
-                ? "bg-gradient-to-br from-orange-500 to-rose-500 text-white shadow-md shadow-orange-500/20"
-                : "bg-white/[0.06] text-white/30 hover:bg-white/[0.1] hover:text-white/50"
+                ? "bg-red-500/20 text-red-400"
+                : "bg-white/[0.06] text-white/30 hover:bg-white/[0.1] hover:text-white/60"
             )}
           >
             <AnimatePresence mode="wait" initial={false}>
-              {isLoading ? (
-                <motion.span key="stop"
-                  initial={{ scale: 0, rotate: 90 }} animate={{ scale: 1, rotate: 0 }} exit={{ scale: 0 }}
-                  transition={{ duration: 0.15 }}>
-                  <Square size={13} className="fill-white" />
-                </motion.span>
-              ) : isRecording ? (
+              {isRecording ? (
                 <motion.span key="stoprec"
                   initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 0 }}
-                  transition={{ duration: 0.15 }}>
+                  transition={{ duration: 0.12 }}>
                   <StopCircle size={16} />
-                </motion.span>
-              ) : hasContent ? (
-                <motion.span key="send"
-                  initial={{ scale: 0, x: -4 }} animate={{ scale: 1, x: 0 }} exit={{ scale: 0, x: 4 }}
-                  transition={{ duration: 0.15 }}>
-                  <Send size={15} className="-translate-x-px" />
                 </motion.span>
               ) : (
                 <motion.span key="mic"
                   initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 0 }}
-                  transition={{ duration: 0.15 }}>
+                  transition={{ duration: 0.12 }}>
                   <Mic size={15} />
                 </motion.span>
               )}
             </AnimatePresence>
           </motion.button>
+
+          {/* Кнопка отправить */}
+          <motion.button
+            onClick={handleSend}
+            disabled={!hasContent || isLoading || isRecording}
+            whileTap={{ scale: 0.85 }}
+            whileHover={{ scale: 1.06 }}
+            transition={{ type: "spring", stiffness: 400, damping: 18 }}
+            title="Отправить"
+            className={cn(
+              "w-9 h-9 rounded-xl flex items-center justify-center shrink-0 transition-colors duration-200",
+              hasContent && !isLoading && !isRecording
+                ? "bg-gradient-to-br from-orange-500 to-rose-500 text-white shadow-md shadow-orange-500/20"
+                : "bg-white/[0.06] text-white/20"
+            )}
+          >
+            <AnimatePresence mode="wait" initial={false}>
+              {isLoading ? (
+                <motion.span key="loading"
+                  initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 0 }}
+                  transition={{ duration: 0.12 }}>
+                  <Square size={13} className="fill-white" />
+                </motion.span>
+              ) : (
+                <motion.span key="send"
+                  initial={{ scale: 0, x: -3 }} animate={{ scale: 1, x: 0 }} exit={{ scale: 0 }}
+                  transition={{ duration: 0.12 }}>
+                  <Send size={15} className="-translate-x-px" />
+                </motion.span>
+              )}
+            </AnimatePresence>
+          </motion.button>
+
         </div>
       </div>
     );
