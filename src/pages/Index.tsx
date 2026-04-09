@@ -1,5 +1,6 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import Icon from "@/components/ui/icon";
+import { isEstimate } from "./EstimateTable";
 import { Panel, Msg, GREETING, AI_URL, localAnswer } from "./chatConfig";
 import ChatUI from "./ChatUI";
 import {
@@ -13,10 +14,22 @@ import {
 } from "./ChatPanels";
 
 export default function Index() {
-  const [panel, setPanel]     = useState<Panel>("none");
+  const [panel, setPanel]       = useState<Panel>("none");
   const [messages, setMessages] = useState<Msg[]>([GREETING]);
-  const [input, setInput]     = useState("");
-  const [typing, setTyping]   = useState(false);
+  const [input, setInput]       = useState("");
+  const [typing, setTyping]     = useState(false);
+  const [bookingToast, setBookingToast] = useState(false);
+  const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Показываем тост через 3 сек после получения сметы
+  useEffect(() => {
+    const last = messages[messages.length - 1];
+    if (last?.role === "assistant" && isEstimate(last.text)) {
+      if (toastTimer.current) clearTimeout(toastTimer.current);
+      toastTimer.current = setTimeout(() => setBookingToast(true), 3000);
+    }
+    return () => { if (toastTimer.current) clearTimeout(toastTimer.current); };
+  }, [messages]);
 
   const sendMsg = useCallback((text: string) => {
     if (!text.trim() || typing) return;
@@ -92,6 +105,45 @@ export default function Index() {
         {hasPanel && (
           <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" onClick={closePanel} style={{ zIndex: 15 }} />
         )}
+
+        {/* Booking toast */}
+        <div className={`absolute bottom-4 inset-x-4 md:inset-x-auto md:right-4 md:left-auto md:w-80 z-30 transition-all duration-500 ease-out ${
+          bookingToast && !hasPanel ? "translate-y-0 opacity-100" : "translate-y-4 opacity-0 pointer-events-none"
+        }`}>
+          <div className="rounded-2xl border border-orange-500/25 bg-[#1a1008]/95 backdrop-blur-xl shadow-2xl shadow-orange-500/10 overflow-hidden">
+            {/* Accent bar */}
+            <div className="h-1 bg-gradient-to-r from-orange-500 to-rose-500" />
+            <div className="p-4">
+              <div className="flex items-start gap-3">
+                <div className="w-10 h-10 rounded-xl bg-orange-500/15 border border-orange-500/25 flex items-center justify-center shrink-0">
+                  <Icon name="CalendarCheck" size={18} className="text-orange-400" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="text-white font-semibold text-sm leading-snug mb-0.5">Расчёт готов!</div>
+                  <div className="text-white/45 text-xs leading-relaxed">
+                    Запишитесь на бесплатный замер — уточним цену и сделаем 3D-визуализацию
+                  </div>
+                </div>
+                <button onClick={() => setBookingToast(false)}
+                  className="shrink-0 p-1 text-white/20 hover:text-white/50 transition-colors">
+                  <Icon name="X" size={14} />
+                </button>
+              </div>
+              <div className="flex gap-2 mt-3">
+                <button
+                  onClick={() => { setBookingToast(false); setPanel("booking"); }}
+                  className="flex-1 bg-gradient-to-r from-orange-500 to-rose-500 hover:brightness-110 text-white font-semibold py-2 rounded-xl text-xs transition-all active:scale-95 flex items-center justify-center gap-1.5">
+                  <Icon name="CalendarCheck" size={13} />
+                  Записаться на замер
+                </button>
+                <button onClick={() => setBookingToast(false)}
+                  className="px-3 py-2 rounded-xl bg-white/[0.05] text-white/40 text-xs hover:bg-white/[0.08] transition-all">
+                  Позже
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Mobile bottom CTA */}
