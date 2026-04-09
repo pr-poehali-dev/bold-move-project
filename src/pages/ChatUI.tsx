@@ -65,8 +65,43 @@ export default function ChatUI({ messages, input, typing, panel, onInput, onSend
 
       </div>
 
+      {/* Input */}
+      <div className="shrink-0 px-4 md:px-8 pb-2 pt-2">
+        <form onSubmit={(e) => { e.preventDefault(); onSend(input); }}
+          className="flex items-end gap-2 bg-white/[0.04] border border-white/[0.07] focus-within:border-orange-500/30 rounded-2xl px-3 py-2 transition-all">
+          <img src={AVATAR} alt="" className="w-7 h-7 rounded-full object-cover shrink-0 opacity-60 hidden sm:block" />
+          <textarea
+            ref={inputRef} value={input}
+            onChange={(e) => onInput(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); onSend(input); } }}
+            placeholder="Спросите Женю о потолках…"
+            rows={1} style={{ height: 42, maxHeight: 100, resize: "none" }}
+            className="flex-1 bg-transparent text-white text-[13px] outline-none placeholder:text-white/20 overflow-y-auto py-1.5"
+          />
+          <button type="submit" disabled={!input.trim() || typing}
+            className="shrink-0 w-9 h-9 flex items-center justify-center bg-gradient-to-br from-orange-500 to-rose-500 hover:brightness-110 disabled:opacity-20 rounded-xl transition-all active:scale-95">
+            <Icon name="ArrowUp" size={16} className="text-white" />
+          </button>
+        </form>
+      </div>
+
       {/* Dock nav */}
-      <div className="shrink-0 px-4 md:px-8 pt-2 pb-1 flex flex-col items-center gap-2">
+      <div className="shrink-0 px-4 md:px-8 pt-1 pb-3 flex flex-col items-center gap-1.5">
+        {/* Подпись активного пункта */}
+        <div className="h-6 flex items-center justify-center">
+          {NAV.map((n) => panel === n.id && (
+            <div key={n.id} className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-orange-500/8 border border-orange-500/15">
+              <Icon name={n.icon} size={11} className="text-orange-400 shrink-0" />
+              <span className="text-orange-300 text-[11px] font-medium leading-none">{n.label}</span>
+              <span className="text-white/30 text-[10px] leading-none">·</span>
+              <span className="text-white/40 text-[10px] leading-none truncate max-w-[200px]">{n.hint}</span>
+            </div>
+          ))}
+          {panel === "none" && (
+            <span className="text-white/15 text-[10px]">Выберите раздел</span>
+          )}
+        </div>
+
         <div className="flex items-center gap-1.5 rounded-[24px] bg-neutral-900/80 px-2.5 py-2 shadow-2xl ring-1 ring-white/10 backdrop-blur-lg">
           {NAV.map((n) => {
             const isActive = panel === n.id;
@@ -88,45 +123,6 @@ export default function ChatUI({ messages, input, typing, panel, onInput, onSend
               </button>
             );
           })}
-        </div>
-
-        {/* Подпись активного пункта */}
-        <div className="h-7 flex items-center justify-center">
-          {NAV.map((n) => panel === n.id && (
-            <div key={n.id} className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-orange-500/8 border border-orange-500/15">
-              <Icon name={n.icon} size={11} className="text-orange-400 shrink-0" />
-              <span className="text-orange-300 text-[11px] font-medium leading-none">{n.label}</span>
-              <span className="text-white/30 text-[10px] leading-none">·</span>
-              <span className="text-white/40 text-[10px] leading-none truncate max-w-[200px]">{n.hint}</span>
-            </div>
-          ))}
-          {panel === "none" && (
-            <span className="text-white/15 text-[10px]">Выберите раздел</span>
-          )}
-        </div>
-      </div>
-
-      {/* Input */}
-      <div className="shrink-0 px-4 md:px-8 pb-3 pt-1">
-        <form onSubmit={(e) => { e.preventDefault(); onSend(input); }}
-          className="flex items-end gap-2 bg-white/[0.04] border border-white/[0.07] focus-within:border-orange-500/30 rounded-2xl px-3 py-2 transition-all">
-          <img src={AVATAR} alt="" className="w-7 h-7 rounded-full object-cover shrink-0 opacity-60 hidden sm:block" />
-          <textarea
-            ref={inputRef} value={input}
-            onChange={(e) => onInput(e.target.value)}
-            onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); onSend(input); } }}
-            placeholder="Спросите Женю о потолках…"
-            rows={1} style={{ height: 42, maxHeight: 100, resize: "none" }}
-            className="flex-1 bg-transparent text-white text-[13px] outline-none placeholder:text-white/20 overflow-y-auto py-1.5"
-          />
-          <button type="submit" disabled={!input.trim() || typing}
-            className="shrink-0 w-9 h-9 flex items-center justify-center bg-gradient-to-br from-orange-500 to-rose-500 hover:brightness-110 disabled:opacity-20 rounded-xl transition-all active:scale-95">
-            <Icon name="ArrowUp" size={16} className="text-white" />
-          </button>
-        </form>
-        <div className="flex items-center justify-center gap-2 mt-2 text-[10px] text-white/15">
-          <Icon name="Shield" size={10} />
-          <span>AI-консультант · Анализ 50+ компаний Москвы</span>
         </div>
       </div>
     </div>
