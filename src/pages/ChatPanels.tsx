@@ -1,5 +1,6 @@
 import { useState } from "react";
 import Icon from "@/components/ui/icon";
+import Lightbox from "@/components/ui/lightbox";
 import { REVIEWS, FAQ, PRODUCTION } from "./data/content";
 import { PORTFOLIO_ITEMS } from "./data/portfolio";
 import { TIPS, CONTACTS, PROD_FEATURES, BOOKING_TIMES, Panel } from "./chatConfig";
@@ -114,13 +115,17 @@ function PanelHeader({ icon, title, onClose }: { icon: string; title: string; on
 
 // ─── Production ───────────────────────────────────────────────────────────────
 export function PanelProduction({ onClose }: { onClose: () => void }) {
+  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
+  const prodImages = PRODUCTION.map((item) => ({ src: item.img, alt: item.title }));
+
   return (
     <div className="h-full flex flex-col">
       <PanelHeader icon="Factory" title="Собственное производство" onClose={onClose} />
       <div className="flex-1 overflow-y-auto p-4">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mb-4">
           {PRODUCTION.map((item, i) => (
-            <div key={i} className="rounded-xl border border-white/[0.06] bg-white/[0.02] overflow-hidden group">
+            <div key={i} className="rounded-xl border border-white/[0.06] bg-white/[0.02] overflow-hidden group cursor-pointer"
+              onClick={() => setLightboxIndex(i)}>
               <div className="aspect-[4/3] overflow-hidden">
                 <img src={item.img} alt={item.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
               </div>
@@ -131,6 +136,15 @@ export function PanelProduction({ onClose }: { onClose: () => void }) {
             </div>
           ))}
         </div>
+        {lightboxIndex !== null && (
+          <Lightbox
+            images={prodImages}
+            index={lightboxIndex}
+            onClose={() => setLightboxIndex(null)}
+            onPrev={() => setLightboxIndex((lightboxIndex - 1 + prodImages.length) % prodImages.length)}
+            onNext={() => setLightboxIndex((lightboxIndex + 1) % prodImages.length)}
+          />
+        )}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
           {PROD_FEATURES.map((f, i) => (
             <div key={i} className="flex items-center gap-2 bg-white/[0.03] border border-white/[0.05] rounded-xl px-3 py-2.5">
@@ -148,14 +162,18 @@ export function PanelProduction({ onClose }: { onClose: () => void }) {
 
 // ─── Portfolio ────────────────────────────────────────────────────────────────
 export function PanelPortfolio({ onClose }: { onClose: () => void }) {
+  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
+  const portfolioSlice = PORTFOLIO_ITEMS.slice(0, 12);
+  const portImages = portfolioSlice.map((item) => ({ src: item.img, alt: `${item.room} · ${item.type}` }));
+
   return (
     <div className="h-full flex flex-col">
       <PanelHeader icon="Image" title="Наши работы" onClose={onClose} />
       <div className="flex-1 overflow-y-auto p-3">
         <div className="grid grid-cols-3 md:grid-cols-4 gap-2">
-          {PORTFOLIO_ITEMS.slice(0, 12).map((item, i) => (
+          {portfolioSlice.map((item, i) => (
             <div key={i} className="relative rounded-xl overflow-hidden aspect-square cursor-pointer group"
-              onClick={() => alert(`${item.room} • ${item.district}\n${item.type} • ${item.area} м²`)}>
+              onClick={() => setLightboxIndex(i)}>
               <img src={item.img} alt={item.room} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
               <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-2">
                 <div>
@@ -166,6 +184,15 @@ export function PanelPortfolio({ onClose }: { onClose: () => void }) {
             </div>
           ))}
         </div>
+        {lightboxIndex !== null && (
+          <Lightbox
+            images={portImages}
+            index={lightboxIndex}
+            onClose={() => setLightboxIndex(null)}
+            onPrev={() => setLightboxIndex((lightboxIndex - 1 + portImages.length) % portImages.length)}
+            onNext={() => setLightboxIndex((lightboxIndex + 1) % portImages.length)}
+          />
+        )}
       </div>
     </div>
   );
