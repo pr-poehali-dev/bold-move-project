@@ -20,11 +20,11 @@ export const GREETING: Msg = {
 
 export const NAV: { id: Panel; label: string; icon: string }[] = [
   { id: "production", label: "Производство", icon: "Factory"    },
+  { id: "contacts",   label: "Контакты",      icon: "Phone"      },
   { id: "portfolio",  label: "Портфолио",    icon: "Image"      },
   { id: "tips",       label: "AI-советы",    icon: "Sparkles"   },
   { id: "reviews",    label: "Отзывы",       icon: "Heart"      },
   { id: "faq",        label: "FAQ",           icon: "HelpCircle" },
-  { id: "contacts",   label: "Контакты",      icon: "Phone"      },
 ];
 
 export function localAnswer(t: string): string {
