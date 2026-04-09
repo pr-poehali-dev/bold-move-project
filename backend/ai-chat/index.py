@@ -267,11 +267,17 @@ SEARCH_SKIP = re.compile(
     re.IGNORECASE
 )
 
-# Запросы на генерацию изображения
+# Запросы про вдохновение/тренды — только для них показываем картинки из Tavily
+SEARCH_VISUAL = re.compile(
+    r'(тренд|модн|популярн|вдохновени|идеи|примеры|стил|интерьер|фото|какие бывают)',
+    re.IGNORECASE
+)
+
+# Запросы на генерацию изображения через FLUX
 IMAGE_GEN = re.compile(
     r'(нарисуй|сгенерируй|визуализ|покажи как (будет|выглядит)|создай изображен|'
     r'сделай дизайн|придумай дизайн|как (будет )?выглядеть|покажи дизайн|'
-    r'хочу (увидеть|посмотреть)|пример дизайна)',
+    r'хочу (увидеть|посмотреть)|пример дизайна|покажи.*профил|покажи.*потолок)',
     re.IGNORECASE
 )
 
@@ -477,12 +483,12 @@ def handler(event, context):
 
     answer = call_llm(openai_messages)
 
-    # Добавляем картинки из поиска прямо в текст ответа
-    if search['images']:
+    # Картинки из Tavily — только для запросов про тренды/вдохновение
+    if search['images'] and SEARCH_VISUAL.search(last_user_text):
         img_block = '\n' + '\n'.join(f"![фото]({url})" for url in search['images'])
         answer = answer + img_block
 
-    # Генерация дизайна по запросу клиента
+    # Генерация дизайна через FLUX по запросу клиента
     if IMAGE_GEN.search(last_user_text):
         gen_url = generate_image(last_user_text)
         if gen_url:
