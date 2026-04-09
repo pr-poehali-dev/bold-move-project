@@ -1,0 +1,120 @@
+import { useRef, useEffect } from "react";
+import Icon from "@/components/ui/icon";
+import EstimateTable, { isEstimate } from "./EstimateTable";
+import { Msg, Panel, NAV, AVATAR } from "./chatConfig";
+
+interface Props {
+  messages: Msg[];
+  input: string;
+  typing: boolean;
+  panel: Panel;
+  onInput: (v: string) => void;
+  onSend: (text: string) => void;
+  onPanel: (p: Panel) => void;
+}
+
+export default function ChatUI({ messages, input, typing, panel, onInput, onSend, onPanel }: Props) {
+  const chatRef  = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    if (chatRef.current) chatRef.current.scrollTop = chatRef.current.scrollHeight;
+  }, [messages, typing]);
+
+  useEffect(() => {
+    const el = inputRef.current;
+    if (!el) return;
+    el.style.height = "42px";
+    el.style.height = Math.min(el.scrollHeight, 100) + "px";
+  }, [input]);
+
+  return (
+    <div className="flex-1 min-h-0 flex flex-col relative z-10">
+
+      {/* Messages */}
+      <div ref={chatRef} className="flex-1 overflow-y-auto px-4 md:px-8 py-4 space-y-3 scroll-smooth">
+        {messages.map((m) => (
+          <div key={m.id} className={`flex items-end gap-2.5 ${m.role === "user" ? "flex-row-reverse" : ""}`}>
+            {m.role === "assistant" && (
+              <img src={AVATAR} alt="Женя" className="w-8 h-8 rounded-full object-cover shrink-0 border-2 border-orange-500/20 shadow-lg shadow-orange-500/10" />
+            )}
+            <div className={`rounded-2xl px-4 py-3 text-[13px] leading-relaxed ${
+              m.role === "user"
+                ? "max-w-[75%] md:max-w-[60%] bg-white/[0.08] border border-white/[0.08] text-white/90 rounded-br-md whitespace-pre-wrap"
+                : isEstimate(m.text)
+                  ? "max-w-[90%] md:max-w-[75%] w-full bg-white/[0.03] border border-white/[0.06] rounded-bl-md"
+                  : "max-w-[75%] md:max-w-[60%] bg-gradient-to-br from-white/[0.05] to-white/[0.02] border border-white/[0.06] text-white/70 rounded-bl-md whitespace-pre-wrap"
+            }`}>
+              {m.role === "assistant" && isEstimate(m.text) ? <EstimateTable text={m.text} /> : m.text}
+            </div>
+          </div>
+        ))}
+
+        {typing && (
+          <div className="flex items-end gap-2.5">
+            <img src={AVATAR} alt="Женя" className="w-8 h-8 rounded-full object-cover shrink-0 border-2 border-orange-500/20" />
+            <div className="bg-white/[0.04] border border-white/[0.06] rounded-2xl rounded-bl-md px-4 py-3 flex items-center gap-2">
+              <Icon name="Loader2" size={14} className="text-orange-400 animate-spin" />
+              <span className="text-white/25 text-xs">Женя анализирует…</span>
+            </div>
+          </div>
+        )}
+
+        {messages.length <= 1 && !typing && (
+          <div className="flex flex-wrap gap-2 pt-1 pl-11">
+            {["Сколько стоит потолок?", "Сравни с конкурентами", "Расчёт на 20 м²"].map((q) => (
+              <button key={q} onClick={() => onSend(q)}
+                className="text-[11px] bg-white/[0.04] hover:bg-white/[0.07] border border-white/[0.06] hover:border-orange-500/25 text-white/40 hover:text-white/70 px-3.5 py-2 rounded-xl transition-all">
+                {q}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Nav pills */}
+      <div className="shrink-0 px-4 md:px-8 pb-2">
+        <div className="flex items-center gap-1.5 overflow-x-auto py-1" style={{ scrollbarWidth: "none" }}>
+          {NAV.map((n) => {
+            const isActive = panel === n.id;
+            return (
+              <button key={n.id} onClick={() => onPanel(isActive ? "none" : n.id)}
+                className={`shrink-0 flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-medium transition-all ${
+                  isActive
+                    ? "bg-orange-500/15 text-orange-400 border border-orange-500/25 shadow-lg shadow-orange-500/5"
+                    : "bg-white/[0.04] text-white/35 border border-white/[0.05] hover:text-white/55 hover:bg-white/[0.06]"
+                }`}>
+                <Icon name={n.icon} size={14} />
+                {n.label}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Input */}
+      <div className="shrink-0 px-4 md:px-8 pb-3 pt-1">
+        <form onSubmit={(e) => { e.preventDefault(); onSend(input); }}
+          className="flex items-end gap-2 bg-white/[0.04] border border-white/[0.07] focus-within:border-orange-500/30 rounded-2xl px-3 py-2 transition-all">
+          <img src={AVATAR} alt="" className="w-7 h-7 rounded-full object-cover shrink-0 opacity-60 hidden sm:block" />
+          <textarea
+            ref={inputRef} value={input}
+            onChange={(e) => onInput(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); onSend(input); } }}
+            placeholder="Спросите Женю о потолках…"
+            rows={1} style={{ height: 42, maxHeight: 100, resize: "none" }}
+            className="flex-1 bg-transparent text-white text-[13px] outline-none placeholder:text-white/20 overflow-y-auto py-1.5"
+          />
+          <button type="submit" disabled={!input.trim() || typing}
+            className="shrink-0 w-9 h-9 flex items-center justify-center bg-gradient-to-br from-orange-500 to-rose-500 hover:brightness-110 disabled:opacity-20 rounded-xl transition-all active:scale-95">
+            <Icon name="ArrowUp" size={16} className="text-white" />
+          </button>
+        </form>
+        <div className="flex items-center justify-center gap-2 mt-2 text-[10px] text-white/15">
+          <Icon name="Shield" size={10} />
+          <span>AI-консультант · Анализ 50+ компаний Москвы</span>
+        </div>
+      </div>
+    </div>
+  );
+}

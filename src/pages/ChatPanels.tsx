@@ -1,0 +1,241 @@
+import { useState } from "react";
+import Icon from "@/components/ui/icon";
+import { REVIEWS, FAQ, PRODUCTION } from "./data/content";
+import { PORTFOLIO_ITEMS } from "./data/portfolio";
+
+// ─── Shared panel header ──────────────────────────────────────────────────────
+function PanelHeader({ icon, title, onClose }: { icon: string; title: string; onClose: () => void }) {
+  return (
+    <div className="shrink-0 flex items-center justify-between px-5 py-3 border-b border-white/[0.06]">
+      <div className="flex items-center gap-2">
+        <Icon name={icon} size={15} className="text-orange-400" />
+        <span className="text-sm font-semibold text-white/80">{title}</span>
+      </div>
+      <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-white/5 text-white/30 hover:text-white/60 transition-all">
+        <Icon name="X" size={16} />
+      </button>
+    </div>
+  );
+}
+
+// ─── Production ───────────────────────────────────────────────────────────────
+export function PanelProduction({ onClose }: { onClose: () => void }) {
+  const features = [
+    { icon: "Award",     label: "Плёнка MSD Premium" },
+    { icon: "Ruler",     label: "Точность до 1 мм"   },
+    { icon: "FileCheck", label: "Сертификаты ISO"     },
+    { icon: "Truck",     label: "Доставка за 1 день"  },
+  ];
+  return (
+    <div className="h-full flex flex-col">
+      <PanelHeader icon="Factory" title="Собственное производство" onClose={onClose} />
+      <div className="flex-1 overflow-y-auto p-4">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mb-4">
+          {PRODUCTION.map((item, i) => (
+            <div key={i} className="rounded-xl border border-white/[0.06] bg-white/[0.02] overflow-hidden group">
+              <div className="aspect-[4/3] overflow-hidden">
+                <img src={item.img} alt={item.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+              </div>
+              <div className="p-2.5">
+                <div className="text-white font-medium text-xs mb-1">{item.title}</div>
+                <div className="text-white/35 text-[10px] leading-relaxed line-clamp-2">{item.desc}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+          {features.map((f, i) => (
+            <div key={i} className="flex items-center gap-2 bg-white/[0.03] border border-white/[0.05] rounded-xl px-3 py-2.5">
+              <div className="w-7 h-7 rounded-lg bg-orange-500/10 flex items-center justify-center shrink-0">
+                <Icon name={f.icon} size={13} className="text-orange-400" />
+              </div>
+              <span className="text-white/50 text-[11px] font-medium leading-tight">{f.label}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Portfolio ────────────────────────────────────────────────────────────────
+export function PanelPortfolio({ onClose }: { onClose: () => void }) {
+  return (
+    <div className="h-full flex flex-col">
+      <PanelHeader icon="Image" title="Наши работы" onClose={onClose} />
+      <div className="flex-1 overflow-y-auto p-3">
+        <div className="grid grid-cols-3 md:grid-cols-4 gap-2">
+          {PORTFOLIO_ITEMS.slice(0, 12).map((item, i) => (
+            <div key={i} className="relative rounded-xl overflow-hidden aspect-square cursor-pointer group"
+              onClick={() => alert(`${item.room} • ${item.district}\n${item.type} • ${item.area} м²`)}>
+              <img src={item.img} alt={item.room} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-2">
+                <div>
+                  <div className="text-white text-[10px] font-semibold">{item.type}</div>
+                  <div className="text-white/50 text-[9px]">{item.district} · {item.area} м²</div>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Tips ─────────────────────────────────────────────────────────────────────
+const TIPS = [
+  { icon: "TrendingDown", q: "Сравни цены на матовый потолок" },
+  { icon: "Search",       q: "Какой потолок лучше для ванной?" },
+  { icon: "BarChart3",    q: "Средние цены по Москве" },
+  { icon: "Shield",       q: "Расскажи про гарантию" },
+  { icon: "Zap",          q: "Кто делает монтаж за 1 день?" },
+  { icon: "Calculator",   q: "Рассчитай потолок на 3 комнаты" },
+];
+
+export function PanelTips({ onAsk, onClose }: { onAsk: (q: string) => void; onClose: () => void }) {
+  return (
+    <div className="h-full flex flex-col">
+      <PanelHeader icon="Sparkles" title="Спросите Женю" onClose={onClose} />
+      <div className="flex-1 overflow-y-auto p-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          {TIPS.map((t, i) => (
+            <button key={i} onClick={() => onAsk(t.q)}
+              className="flex items-center gap-3 bg-white/[0.03] hover:bg-white/[0.06] border border-white/[0.05] hover:border-orange-500/20 rounded-xl px-4 py-3 text-left transition-all group">
+              <div className="w-8 h-8 rounded-lg bg-white/[0.04] group-hover:bg-orange-500/10 flex items-center justify-center shrink-0 transition-colors">
+                <Icon name={t.icon} size={14} className="text-white/30 group-hover:text-orange-400 transition-colors" />
+              </div>
+              <span className="text-white/50 group-hover:text-white/80 text-xs transition-colors">{t.q}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Reviews ──────────────────────────────────────────────────────────────────
+export function PanelReviews({ onClose }: { onClose: () => void }) {
+  return (
+    <div className="h-full flex flex-col">
+      <PanelHeader icon="Heart" title="Отзывы клиентов" onClose={onClose} />
+      <div className="flex-1 overflow-y-auto p-4 space-y-2.5">
+        {REVIEWS.slice(0, 5).map((r, i) => (
+          <div key={i} className="rounded-xl border border-white/[0.05] bg-white/[0.02] p-3.5 flex gap-3">
+            <div className="w-9 h-9 rounded-full bg-gradient-to-br from-orange-500/60 to-rose-500/60 flex items-center justify-center text-white font-bold text-xs shrink-0">
+              {r.name.charAt(0)}
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center justify-between mb-0.5">
+                <span className="text-white font-medium text-xs">{r.name}</span>
+                <span className="text-white/20 text-[10px]">{r.date}</span>
+              </div>
+              <div className="text-amber-400 text-[10px] mb-1.5">
+                {"★".repeat(r.rating)} <span className="text-white/20 ml-1">{r.city}</span>
+              </div>
+              <p className="text-white/40 text-[11px] leading-relaxed line-clamp-2">{r.text}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ─── FAQ ──────────────────────────────────────────────────────────────────────
+export function PanelFaq({ onClose }: { onClose: () => void }) {
+  const [open, setOpen] = useState<number | null>(0);
+  return (
+    <div className="h-full flex flex-col">
+      <PanelHeader icon="HelpCircle" title="Частые вопросы" onClose={onClose} />
+      <div className="flex-1 overflow-y-auto p-4 space-y-2">
+        {FAQ.map((item, i) => (
+          <div key={i} className="rounded-xl border border-white/[0.05] bg-white/[0.02] overflow-hidden">
+            <button onClick={() => setOpen(open === i ? null : i)}
+              className="w-full flex items-center justify-between gap-3 px-4 py-3 text-left hover:bg-white/[0.02] transition-colors">
+              <span className="text-white text-xs font-medium">{item.q}</span>
+              <Icon name={open === i ? "ChevronUp" : "ChevronDown"} size={14} className="text-white/25 shrink-0" />
+            </button>
+            <div className={`overflow-hidden transition-all duration-200 ${open === i ? "max-h-40" : "max-h-0"}`}>
+              <p className="px-4 pb-3 text-white/35 text-[11px] leading-relaxed">{item.a}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ─── Contacts ─────────────────────────────────────────────────────────────────
+const CONTACT_ITEMS = [
+  { icon: "Phone",         label: "Телефон",  val: "+7 (977) 606-89-01",    href: "tel:+79776068901" },
+  { icon: "MessageCircle", label: "WhatsApp", val: "Написать в WhatsApp",   href: "https://wa.me/79776068901" },
+  { icon: "MapPin",        label: "Адрес",    val: "Мытищи, Пограничная 24", href: "#" },
+  { icon: "Clock",         label: "Часы",     val: "Пн–Вс 8:00–22:00",     href: "#" },
+];
+
+export function PanelContacts({ onClose }: { onClose: () => void }) {
+  const [name, setName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [msg, setMsg] = useState("");
+  const [sent, setSent] = useState(false);
+
+  const submit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!name || !phone) return;
+    setSent(true);
+  };
+
+  return (
+    <div className="h-full flex flex-col">
+      <PanelHeader icon="Phone" title="Контакты" onClose={onClose} />
+      <div className="flex-1 overflow-y-auto p-4">
+        {sent ? (
+          <div className="h-full flex flex-col items-center justify-center gap-3 text-center">
+            <div className="w-14 h-14 rounded-2xl bg-orange-500/10 border border-orange-500/20 flex items-center justify-center">
+              <Icon name="CheckCircle" size={28} className="text-orange-400" />
+            </div>
+            <div className="text-white font-semibold">Заявка отправлена!</div>
+            <div className="text-white/40 text-sm">Перезвоним в течение 15 минут</div>
+            <button onClick={() => { setSent(false); setName(""); setPhone(""); setMsg(""); }}
+              className="mt-1 text-orange-400 text-xs hover:text-orange-300 underline">
+              Отправить ещё
+            </button>
+          </div>
+        ) : (
+          <div className="max-w-md mx-auto space-y-4">
+            <div className="grid grid-cols-2 gap-2.5">
+              {CONTACT_ITEMS.map((c, i) => (
+                <a key={i} href={c.href} target={c.href.startsWith("http") ? "_blank" : undefined} rel="noreferrer"
+                  className="flex items-start gap-2.5 bg-white/[0.03] hover:bg-white/[0.05] border border-white/[0.06] hover:border-orange-500/20 rounded-xl p-3 transition-all group">
+                  <div className="w-7 h-7 rounded-lg bg-orange-500/10 flex items-center justify-center shrink-0">
+                    <Icon name={c.icon} size={13} className="text-orange-400" />
+                  </div>
+                  <div>
+                    <div className="text-white/30 text-[9px] uppercase tracking-wider">{c.label}</div>
+                    <div className="text-white text-[11px] font-medium mt-0.5 group-hover:text-orange-300 transition-colors">{c.val}</div>
+                  </div>
+                </a>
+              ))}
+            </div>
+            <form onSubmit={submit} className="space-y-2.5">
+              <div className="text-[10px] text-white/30 uppercase tracking-wider">Обратная связь</div>
+              <div className="grid grid-cols-2 gap-2.5">
+                <input type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="Ваше имя" required
+                  className="w-full bg-white/[0.04] border border-white/[0.07] focus:border-orange-500/40 rounded-xl px-3 py-2.5 text-white text-sm outline-none transition-all placeholder:text-white/20" />
+                <input type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="Телефон" required
+                  className="w-full bg-white/[0.04] border border-white/[0.07] focus:border-orange-500/40 rounded-xl px-3 py-2.5 text-white text-sm outline-none transition-all placeholder:text-white/20" />
+              </div>
+              <textarea value={msg} onChange={(e) => setMsg(e.target.value)} placeholder="Комментарий (необязательно)" rows={2}
+                className="w-full bg-white/[0.04] border border-white/[0.07] focus:border-orange-500/40 rounded-xl px-3 py-2.5 text-white text-sm outline-none transition-all placeholder:text-white/20 resize-none" />
+              <button type="submit"
+                className="w-full bg-gradient-to-r from-orange-500 to-rose-500 hover:brightness-110 text-white font-semibold py-2.5 rounded-xl text-sm transition-all active:scale-[0.98]">
+                Отправить заявку
+              </button>
+            </form>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
