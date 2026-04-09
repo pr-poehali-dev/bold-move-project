@@ -33,10 +33,13 @@ def tg_send(text: str, reply_to: int = None) -> int:
     try:
         r = requests.post(f"https://api.telegram.org/bot{token}/sendMessage", json=payload, timeout=10)
         data = r.json()
+        print(f"TG response: {data}")
         if data.get("ok"):
             return data["result"]["message_id"]
-    except Exception:
-        pass
+        else:
+            print(f"TG error: {data}")
+    except Exception as e:
+        print(f"TG exception: {e}")
     return 0
 
 

@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import Icon from "@/components/ui/icon";
 import func2url from "@/../backend/func2url.json";
 
@@ -21,7 +21,7 @@ export default function LiveChat({ onClose }: Props) {
   const [messages, setMessages] = useState<LiveMsg[]>([]);
   const [sessionId] = useState(() => crypto.randomUUID());
   const [sending, setSending] = useState(false);
-  const [lastId, setLastId] = useState(0);
+  const lastIdRef = useRef(0);
   const chatRef = useRef<HTMLDivElement>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -30,21 +30,25 @@ export default function LiveChat({ onClose }: Props) {
     if (chatRef.current) chatRef.current.scrollTop = chatRef.current.scrollHeight;
   }, [messages]);
 
-  // Polling ответов оператора
+  // Polling ответов оператора — ref вместо state чтобы не пересоздавать интервал
+  const poll = useCallback(async () => {
+    try {
+      const r = await fetch(`${LIVE_URL}?action=poll&session_id=${sessionId}&since_id=${lastIdRef.current}`);
+      const data = await r.json();
+      if (data.messages?.length) {
+        lastIdRef.current = data.messages[data.messages.length - 1].id;
+        setMessages((prev) => [...prev, ...data.messages.map((m: { id: number; text: string }) => ({
+          id: m.id, role: "operator" as const, text: m.text,
+        }))]);
+      }
+    } catch { /* silent */ }
+  }, [sessionId]);
+
   useEffect(() => {
     if (step !== "chat") return;
-    pollRef.current = setInterval(async () => {
-      try {
-        const r = await fetch(`${LIVE_URL}?action=poll&session_id=${sessionId}&since_id=${lastId}`);
-        const data = await r.json();
-        if (data.messages?.length) {
-          setMessages((prev) => [...prev, ...data.messages.map((m: { id: number; text: string }) => ({ id: m.id, role: "operator" as const, text: m.text }))]);
-          setLastId(data.messages[data.messages.length - 1].id);
-        }
-      } catch { /* silent */ }
-    }, 3000);
+    pollRef.current = setInterval(poll, 3000);
     return () => { if (pollRef.current) clearInterval(pollRef.current); };
-  }, [step, sessionId, lastId]);
+  }, [step, poll]);
 
   const startChat = async (e: React.FormEvent) => {
     e.preventDefault();
