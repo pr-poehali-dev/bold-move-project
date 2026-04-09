@@ -4,6 +4,31 @@ import json
 import os
 import re
 import requests
+import psycopg2
+
+SCHEMA = os.environ.get('MAIN_DB_SCHEMA', 'public')
+
+
+def get_knowledge(query: str) -> str:
+    """Загружает все активные записи из faq_items и возвращает как контекст."""
+    try:
+        conn = psycopg2.connect(os.environ['DATABASE_URL'])
+        cur = conn.cursor()
+        cur.execute(
+            f"SELECT title, content FROM {SCHEMA}.faq_items WHERE used = true ORDER BY id"
+        )
+        rows = cur.fetchall()
+        cur.close()
+        conn.close()
+        if not rows:
+            return ''
+        parts = []
+        for title, content in rows:
+            parts.append(f"=== {title} ===\n{content}")
+        return '\n\n'.join(parts)
+    except Exception as e:
+        print(f"[KB] error: {e}")
+        return ''
 
 # Кэш частых вопросов — не тратим токены на LLM
 FAQ_CACHE = {
@@ -325,8 +350,14 @@ def handler(event, context):
     if cached:
         return {'statusCode': 200, 'headers': cors, 'body': json.dumps({'answer': cached})}
 
+    # Загружаем базу знаний из БД
+    knowledge = get_knowledge(last_user_text)
+    system_content = SYSTEM_PROMPT
+    if knowledge:
+        system_content += f"\n\n=== БАЗА ЗНАНИЙ О ТОВАРАХ И ЦЕНАХ ===\n{knowledge}"
+
     # Передаём только последние 6 сообщений — экономим токены
-    openai_messages = [{'role': 'system', 'content': SYSTEM_PROMPT}]
+    openai_messages = [{'role': 'system', 'content': system_content}]
     for msg in messages[-6:]:
         openai_messages.append({
             'role': msg.get('role', 'user'),
