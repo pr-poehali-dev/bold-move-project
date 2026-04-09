@@ -10,14 +10,14 @@ export interface Msg {
 }
 
 // ─── menu config ──────────────────────────────────────────────────────────────
-export const MENU: { id: Section; label: string; emoji: string; icon: string }[] = [
-  { id: "catalog",   label: "Каталог",      emoji: "📁", icon: "LayoutGrid"   },
-  { id: "calc",      label: "Калькулятор",  emoji: "🧮", icon: "Calculator"   },
-  { id: "portfolio", label: "Портфолио",    emoji: "🖼️", icon: "Image"        },
-  { id: "ai",        label: "AI-советы",    emoji: "🤖", icon: "Sparkles"     },
-  { id: "reviews",   label: "Отзывы",       emoji: "⭐", icon: "Star"         },
-  { id: "faq",       label: "FAQ",          emoji: "❓", icon: "HelpCircle"   },
-  { id: "contacts",  label: "Контакты",     emoji: "📞", icon: "Phone"        },
+export const MENU: { id: Section; label: string; emoji: string; icon: string; hint: string }[] = [
+  { id: "catalog",   label: "Каталог",     emoji: "📁", icon: "LayoutGrid",  hint: "Все виды потолков с ценами и фото"            },
+  { id: "calc",      label: "Калькулятор", emoji: "🧮", icon: "Calculator",  hint: "Введите площадь — получите смету за секунду"  },
+  { id: "portfolio", label: "Портфолио",   emoji: "🖼️", icon: "Image",       hint: "Фото наших работ — квартиры, офисы, дома"    },
+  { id: "ai",        label: "AI-советы",   emoji: "🤖", icon: "Sparkles",    hint: "Готовые вопросы для умного расчёта"           },
+  { id: "reviews",   label: "Отзывы",      emoji: "⭐", icon: "Star",        hint: "2800+ отзывов, рейтинг 4.9 на Яндексе"       },
+  { id: "faq",       label: "FAQ",         emoji: "❓", icon: "HelpCircle",  hint: "Частые вопросы о монтаже и гарантии"          },
+  { id: "contacts",  label: "Контакты",    emoji: "📞", icon: "Phone",       hint: "Телефон, WhatsApp, Telegram и адрес офиса"   },
 ];
 
 export const AI_URL = func2url["ai-chat"];

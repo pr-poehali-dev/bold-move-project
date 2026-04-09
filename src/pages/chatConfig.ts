@@ -18,15 +18,15 @@ export const GREETING: Msg = {
   text: "Привет! Я Женя — ваш персональный консультант по натяжным потолкам 👋\n\nЗнаю предложения 50+ компаний Москвы. Спросите что угодно — найду лучшую цену, сравню варианты и рассчитаю стоимость.",
 };
 
-export const NAV: { id: Panel; label: string; icon: string }[] = [
-  { id: "livechat",   label: "Менеджер",     icon: "Headphones"    },
-  { id: "booking",    label: "Заказать",     icon: "CalendarCheck" },
-  { id: "production", label: "Производство", icon: "Factory"    },
-  { id: "portfolio",  label: "Портфолио",    icon: "Image"      },
-  { id: "contacts",   label: "Контакты",      icon: "Phone"      },
-  { id: "tips",       label: "AI-советы",    icon: "Sparkles"   },
-  { id: "reviews",    label: "Отзывы",       icon: "Heart"      },
-  { id: "faq",        label: "FAQ",           icon: "HelpCircle" },
+export const NAV: { id: Panel; label: string; icon: string; hint: string }[] = [
+  { id: "livechat",   label: "Менеджер",     icon: "Headphones",   hint: "Чат с живым менеджером — ответим за 5 минут"   },
+  { id: "booking",    label: "Заказать",     icon: "CalendarCheck",hint: "Записаться на бесплатный замер и 3D-проект"     },
+  { id: "production", label: "Производство", icon: "Factory",      hint: "Собственное производство в Мытищах с 2009 года"},
+  { id: "portfolio",  label: "Портфолио",    icon: "Image",        hint: "Фото готовых работ — квартиры, офисы, дома"    },
+  { id: "contacts",   label: "Контакты",     icon: "Phone",        hint: "Телефон, WhatsApp, Telegram и адрес офиса"     },
+  { id: "tips",       label: "AI-советы",    icon: "Sparkles",     hint: "Умные подсказки — что спросить у Жени"         },
+  { id: "reviews",    label: "Отзывы",       icon: "Heart",        hint: "2800+ отзывов на Яндекс.Картах, рейтинг 4.9"  },
+  { id: "faq",        label: "FAQ",          icon: "HelpCircle",   hint: "Частые вопросы о потолках, монтаже и гарантии" },
 ];
 
 export const TIPS: { icon: string; q: string }[] = [

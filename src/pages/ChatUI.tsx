@@ -67,7 +67,7 @@ export default function ChatUI({ messages, input, typing, panel, onInput, onSend
 
       {/* Dock nav */}
       <div className="shrink-0 px-4 md:px-8 pb-3 pt-2 flex justify-center">
-        <div className="flex items-center gap-2 rounded-[28px] bg-neutral-900/80 px-3 py-2 shadow-2xl ring-1 ring-white/10 backdrop-blur-lg overflow-x-auto overflow-y-visible" style={{ scrollbarWidth: "none" }}>
+        <div className="flex items-center gap-2 rounded-[28px] bg-neutral-900/80 px-3 py-2 shadow-2xl ring-1 ring-white/10 backdrop-blur-lg overflow-visible" style={{ scrollbarWidth: "none" }}>
           {NAV.map((n) => {
             const isActive = panel === n.id;
             return (
@@ -85,8 +85,10 @@ export default function ChatUI({ messages, input, typing, panel, onInput, onSend
                 {isActive && (
                   <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-orange-400" />
                 )}
-                <span className="dock-tooltip pointer-events-none absolute -bottom-7 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-md bg-neutral-900 px-1.5 py-0.5 text-[9px] text-white/70 ring-1 ring-white/10 opacity-0 translate-y-1 transition-all duration-200 group-hover:opacity-100 group-hover:translate-y-0">
-                  {n.label}
+                <span className="pointer-events-none absolute -top-14 left-1/2 -translate-x-1/2 w-max max-w-[160px] rounded-xl bg-neutral-900/95 px-3 py-2 text-center ring-1 ring-white/10 shadow-xl opacity-0 translate-y-1 transition-all duration-200 group-hover:opacity-100 group-hover:translate-y-0 z-50">
+                  <span className="block text-[11px] font-semibold text-white leading-tight">{n.label}</span>
+                  <span className="block text-[9px] text-white/50 leading-snug mt-0.5">{n.hint}</span>
+                  <span className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-2.5 h-2.5 bg-neutral-900/95 ring-1 ring-white/10 rotate-45 rounded-sm" />
                 </span>
               </button>
             );
