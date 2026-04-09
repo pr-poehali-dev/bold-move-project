@@ -19,16 +19,23 @@ export default function Index() {
   const [input, setInput]       = useState("");
   const [typing, setTyping]     = useState(false);
   const [bookingToast, setBookingToast] = useState(false);
+  const [estimateModal, setEstimateModal] = useState(false);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const modalTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Показываем тост через 3 сек после получения сметы
+  // Через 3 сек после сметы: тост + модальный оверлей
   useEffect(() => {
     const last = messages[messages.length - 1];
     if (last?.role === "assistant" && isEstimate(last.text)) {
       if (toastTimer.current) clearTimeout(toastTimer.current);
+      if (modalTimer.current) clearTimeout(modalTimer.current);
       toastTimer.current = setTimeout(() => setBookingToast(true), 3000);
+      modalTimer.current = setTimeout(() => setEstimateModal(true), 3000);
     }
-    return () => { if (toastTimer.current) clearTimeout(toastTimer.current); };
+    return () => {
+      if (toastTimer.current) clearTimeout(toastTimer.current);
+      if (modalTimer.current) clearTimeout(modalTimer.current);
+    };
   }, [messages]);
 
   const sendMsg = useCallback((text: string) => {
@@ -104,6 +111,62 @@ export default function Index() {
         {/* Overlay */}
         {hasPanel && (
           <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" onClick={closePanel} style={{ zIndex: 15 }} />
+        )}
+
+        {/* Estimate modal — перекрывает смету, требует действия */}
+        {estimateModal && (
+          <div className="absolute inset-0 z-40 flex items-center justify-center p-4" style={{ backdropFilter: "blur(6px)", background: "rgba(0,0,0,0.65)" }}>
+            <div className="w-full max-w-sm rounded-3xl border border-orange-500/25 bg-[#16100a]/98 shadow-2xl shadow-orange-500/15 overflow-hidden">
+              {/* Top gradient bar */}
+              <div className="h-1.5 bg-gradient-to-r from-orange-500 to-rose-500" />
+
+              <div className="p-6">
+                {/* Avatar + title */}
+                <div className="flex flex-col items-center text-center mb-5">
+                  <div className="relative mb-3">
+                    <img src="https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/files/b12f254a-ee38-4ef7-abc3-2517a55b4909.jpg"
+                      alt="Женя" className="w-16 h-16 rounded-2xl object-cover border-2 border-orange-500/30 shadow-lg shadow-orange-500/15" />
+                    <span className="absolute -bottom-1 -right-1 w-5 h-5 bg-orange-500 rounded-full border-2 border-[#16100a] flex items-center justify-center">
+                      <Icon name="Check" size={10} className="text-white" />
+                    </span>
+                  </div>
+                  <div className="text-white font-bold text-base mb-1">Смета готова!</div>
+                  <div className="text-white/45 text-sm leading-relaxed">
+                    Женя подготовил расчёт. Запишитесь на бесплатный замер — уточним все детали и сделаем 3D-проект
+                  </div>
+                </div>
+
+                {/* Benefits */}
+                <div className="grid grid-cols-3 gap-2 mb-5">
+                  {[
+                    { icon: "Ruler",       label: "Точный замер" },
+                    { icon: "Box",         label: "3D-проект"    },
+                    { icon: "BadgeCheck",  label: "Бесплатно"    },
+                  ].map((b, i) => (
+                    <div key={i} className="flex flex-col items-center gap-1.5 bg-white/[0.04] border border-white/[0.06] rounded-xl py-3 px-2">
+                      <div className="w-8 h-8 rounded-lg bg-orange-500/12 flex items-center justify-center">
+                        <Icon name={b.icon} size={15} className="text-orange-400" />
+                      </div>
+                      <span className="text-white/45 text-[10px] text-center leading-tight">{b.label}</span>
+                    </div>
+                  ))}
+                </div>
+
+                {/* CTA buttons */}
+                <button
+                  onClick={() => { setEstimateModal(false); setBookingToast(false); setPanel("booking"); }}
+                  className="w-full bg-gradient-to-r from-orange-500 to-rose-500 hover:brightness-110 text-white font-bold py-3.5 rounded-2xl text-sm transition-all active:scale-[0.98] flex items-center justify-center gap-2 shadow-lg shadow-orange-500/25 mb-2">
+                  <Icon name="CalendarCheck" size={16} />
+                  Записаться на замер
+                </button>
+                <button
+                  onClick={() => setEstimateModal(false)}
+                  className="w-full py-2.5 rounded-2xl text-white/35 text-sm hover:text-white/55 transition-colors text-center">
+                  Посмотреть смету
+                </button>
+              </div>
+            </div>
+          </div>
         )}
 
         {/* Booking toast */}
