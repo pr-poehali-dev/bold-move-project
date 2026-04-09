@@ -4,6 +4,9 @@ import Lightbox from "@/components/ui/lightbox";
 import { REVIEWS, FAQ, PRODUCTION } from "./data/content";
 import { PORTFOLIO_ITEMS } from "./data/portfolio";
 import { TIPS, CONTACTS, PROD_FEATURES, BOOKING_TIMES, Panel } from "./chatConfig";
+import func2url from "@/../backend/func2url.json";
+
+const LIVE_CHAT_URL = func2url["live-chat"];
 
 export function PanelBooking({ onClose }: { onClose: () => void }) {
   const [name, setName]   = useState("");
@@ -11,13 +14,20 @@ export function PanelBooking({ onClose }: { onClose: () => void }) {
   const [date, setDate]   = useState("");
   const [time, setTime]   = useState("");
   const [sent, setSent]   = useState(false);
+  const [loading, setLoading] = useState(false);
 
   const minDate = new Date().toISOString().split("T")[0];
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!name || !phone) return;
-    setSent(true);
+    setLoading(true);
+    fetch(`${LIVE_CHAT_URL}?action=booking`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name, phone, date, time }),
+    })
+      .finally(() => { setLoading(false); setSent(true); });
   };
 
   return (
@@ -84,10 +94,10 @@ export function PanelBooking({ onClose }: { onClose: () => void }) {
                 </div>
               </div>
 
-              <button type="submit"
-                className="w-full bg-gradient-to-r from-orange-500 to-rose-500 hover:brightness-110 text-white font-semibold py-3 rounded-xl text-sm transition-all active:scale-[0.98] flex items-center justify-center gap-2">
-                <Icon name="CalendarCheck" size={16} />
-                Заказать бесплатный замер
+              <button type="submit" disabled={loading}
+                className="w-full bg-gradient-to-r from-orange-500 to-rose-500 hover:brightness-110 text-white font-semibold py-3 rounded-xl text-sm transition-all active:scale-[0.98] flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed">
+                <Icon name={loading ? "Loader" : "CalendarCheck"} size={16} className={loading ? "animate-spin" : ""} />
+                {loading ? "Отправляем..." : "Заказать бесплатный замер"}
               </button>
               <p className="text-center text-white/20 text-[10px]">Замерщик приедет в удобное для вас время</p>
             </form>

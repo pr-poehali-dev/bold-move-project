@@ -205,4 +205,29 @@ def handler(event, context):
         messages = [{"id": r[0], "role": r[1], "text": r[2], "created_at": r[3].isoformat()} for r in rows]
         return {"statusCode": 200, "headers": CORS, "body": json.dumps({"messages": messages})}
 
+    # ── Заявка на замер из формы ─────────────────────────────────────────────
+    if method == "POST" and action == "booking":
+        name = (body.get("name") or "").strip()
+        phone = (body.get("phone") or "").strip()
+        date = (body.get("date") or "").strip()
+        time = (body.get("time") or "").strip()
+
+        if not name or not phone:
+            return {"statusCode": 400, "headers": CORS, "body": json.dumps({"error": "name and phone required"})}
+
+        date_str = f"📅 {date}" if date else "📅 Дата не указана"
+        time_str = f"🕐 {time}" if time else ""
+
+        tg_text = (
+            f"📋 <b>Новая заявка на замер</b>\n\n"
+            f"👤 <b>{name}</b>\n"
+            f"📞 <b>{phone}</b>\n"
+            f"{date_str}"
+            + (f"\n{time_str}" if time_str else "") +
+            f"\n\n<i>Заявка с сайта mospotolki.ru</i>"
+        )
+
+        tg_send(tg_text)
+        return {"statusCode": 200, "headers": CORS, "body": json.dumps({"ok": True})}
+
     return {"statusCode": 404, "headers": CORS, "body": json.dumps({"error": "not found"})}
