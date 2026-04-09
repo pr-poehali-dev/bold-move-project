@@ -166,7 +166,7 @@ export default function LiveChat({ onClose }: { onClose: () => void }) {
       <div className="shrink-0 flex items-center gap-3 px-4 py-3 border-b border-white/[0.06]">
         <div className="relative">
           <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-orange-500/20 to-rose-500/20 border border-orange-500/20 flex items-center justify-center">
-            <Icon name="Headphones" size={16} className="text-orange-400" />
+            <Icon name="MessageCircle" size={16} className="text-orange-400" />
           </div>
           <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-green-400 rounded-full border-2 border-[#0e0e15]" />
         </div>

@@ -19,7 +19,7 @@ export const GREETING: Msg = {
 };
 
 export const NAV: { id: Panel; label: string; icon: string; hint: string }[] = [
-  { id: "livechat",   label: "Менеджер",     icon: "Headphones",   hint: "Чат с живым менеджером — ответим за 5 минут"   },
+  { id: "livechat",   label: "Менеджер",     icon: "MessageCircle", hint: "Чат с живым менеджером — ответим за 5 минут"   },
   { id: "booking",    label: "Заказать",     icon: "CalendarCheck",hint: "Записаться на бесплатный замер и 3D-проект"     },
   { id: "production", label: "Производство", icon: "Factory",      hint: "Собственное производство в Мытищах с 2009 года"},
   { id: "portfolio",  label: "Портфолио",    icon: "Image",        hint: "Фото готовых работ — квартиры, офисы, дома"    },

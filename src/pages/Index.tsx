@@ -71,7 +71,7 @@ export default function Index() {
           <button
             onClick={() => setPanel(panel === "livechat" ? "none" : "livechat")}
             className="hidden md:flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-orange-500/10 border border-orange-500/20 text-orange-400 text-[11px] font-medium hover:bg-orange-500/15 transition-all">
-            <Icon name="Headphones" size={12} /> Чат на сайте
+            <Icon name="MessageCircle" size={12} /> Чат на сайте
           </button>
           <a href="https://t.me/JoniKras" target="_blank" rel="noreferrer"
             className="hidden md:flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-orange-500/10 border border-orange-500/20 text-orange-400 text-[11px] font-medium hover:bg-orange-500/15 transition-all">
