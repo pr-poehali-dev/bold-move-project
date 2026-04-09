@@ -1,6 +1,5 @@
 import { useRef, useEffect } from "react";
 import Icon from "@/components/ui/icon";
-import { PromptInputBox } from "@/components/ui/ai-prompt-box";
 import EstimateTable, { isEstimate } from "./EstimateTable";
 import { Msg, Panel, NAV, AVATAR } from "./chatConfig";
 
@@ -15,11 +14,19 @@ interface Props {
 }
 
 export default function ChatUI({ messages, input, typing, panel, onInput, onSend, onPanel }: Props) {
-  const chatRef = useRef<HTMLDivElement>(null);
+  const chatRef  = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
     if (chatRef.current) chatRef.current.scrollTop = chatRef.current.scrollHeight;
   }, [messages, typing]);
+
+  useEffect(() => {
+    const el = inputRef.current;
+    if (!el) return;
+    el.style.height = "42px";
+    el.style.height = Math.min(el.scrollHeight, 100) + "px";
+  }, [input]);
 
   return (
     <div className="flex-1 min-h-0 flex flex-col relative z-10">
@@ -58,13 +65,21 @@ export default function ChatUI({ messages, input, typing, panel, onInput, onSend
 
       {/* Input */}
       <div className="shrink-0 px-4 md:px-8 pb-2 pt-2">
-        <PromptInputBox
-          value={input}
-          onValueChange={onInput}
-          onSubmit={() => onSend(input)}
-          isLoading={typing}
-          placeholder="Спросите Женю о потолках…"
-        />
+        <form onSubmit={(e) => { e.preventDefault(); onSend(input); }} className="flex items-end gap-2 bg-white/[0.04] border border-white/[0.07] focus-within:border-orange-500/30 rounded-2xl px-3 py-2 transition-all">
+          <img src={AVATAR} alt="" className="w-7 h-7 rounded-full object-cover shrink-0 opacity-60 hidden sm:block" />
+          <textarea
+            ref={inputRef} value={input}
+            onChange={(e) => onInput(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); onSend(input); } }}
+            placeholder="Спросите Женю о потолках…"
+            rows={1} style={{ height: 42, maxHeight: 100, resize: "none" }}
+            className="flex-1 bg-transparent text-white text-[13px] outline-none placeholder:text-white/20 overflow-y-auto py-1.5"
+          />
+          <button type="submit" disabled={!input.trim() || typing}
+            className="shrink-0 w-9 h-9 flex items-center justify-center bg-gradient-to-br from-orange-500 to-rose-500 hover:brightness-110 disabled:opacity-20 rounded-xl transition-all active:scale-95">
+            <Icon name="ArrowUp" size={16} className="text-white" />
+          </button>
+        </form>
       </div>
 
       {/* Nav — 4 кнопки */}
