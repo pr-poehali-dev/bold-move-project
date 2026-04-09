@@ -21,8 +21,8 @@ export const GREETING: Msg = {
 export const NAV: { id: Panel; label: string; icon: string }[] = [
   { id: "booking",    label: "Заказать",     icon: "CalendarCheck" },
   { id: "production", label: "Производство", icon: "Factory"    },
-  { id: "contacts",   label: "Контакты",      icon: "Phone"      },
   { id: "portfolio",  label: "Портфолио",    icon: "Image"      },
+  { id: "contacts",   label: "Контакты",      icon: "Phone"      },
   { id: "tips",       label: "AI-советы",    icon: "Sparkles"   },
   { id: "reviews",    label: "Отзывы",       icon: "Heart"      },
   { id: "faq",        label: "FAQ",           icon: "HelpCircle" },
