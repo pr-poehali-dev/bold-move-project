@@ -4,7 +4,6 @@ import { isEstimate } from "./EstimateTable";
 import { Panel, Msg, GREETING, AI_URL, localAnswer } from "./chatConfig";
 import ChatUI from "./ChatUI";
 import LiveChat from "./LiveChat";
-import PortfolioMarquee from "./PortfolioMarquee";
 import {
   PanelBooking,
   PanelProduction,
@@ -84,11 +83,6 @@ export default function Index() {
           </a>
         </div>
       </header>
-
-      {/* Portfolio marquee */}
-      <div className="shrink-0 border-b border-white/[0.05]">
-        <PortfolioMarquee />
-      </div>
 
       {/* Body */}
       <div className="flex-1 min-h-0 flex flex-col relative">
