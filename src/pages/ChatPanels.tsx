@@ -3,6 +3,102 @@ import Icon from "@/components/ui/icon";
 import { REVIEWS, FAQ, PRODUCTION } from "./data/content";
 import { PORTFOLIO_ITEMS } from "./data/portfolio";
 
+// ─── Booking ──────────────────────────────────────────────────────────────────
+const TIMES = ["9:00", "10:00", "11:00", "12:00", "13:00", "14:00", "15:00", "16:00", "17:00", "18:00", "19:00", "20:00"];
+
+export function PanelBooking({ onClose }: { onClose: () => void }) {
+  const [name, setName]   = useState("");
+  const [phone, setPhone] = useState("");
+  const [date, setDate]   = useState("");
+  const [time, setTime]   = useState("");
+  const [sent, setSent]   = useState(false);
+
+  const minDate = new Date().toISOString().split("T")[0];
+
+  const submit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!name || !phone) return;
+    setSent(true);
+  };
+
+  return (
+    <div className="h-full flex flex-col">
+      <PanelHeader icon="CalendarCheck" title="Записаться на замер" onClose={onClose} />
+      <div className="flex-1 overflow-y-auto p-4">
+        {sent ? (
+          <div className="h-full flex flex-col items-center justify-center gap-3 text-center">
+            <div className="w-16 h-16 rounded-2xl bg-orange-500/10 border border-orange-500/20 flex items-center justify-center">
+              <Icon name="CalendarCheck" size={30} className="text-orange-400" />
+            </div>
+            <div className="text-white font-semibold text-base">Замер записан!</div>
+            <div className="text-white/40 text-sm max-w-xs">
+              {date ? `${date.split("-").reverse().join(".")}${time ? ` в ${time}` : ""}` : "Дата будет согласована"}
+              <br />Замерщик свяжется с вами за час до приезда
+            </div>
+            <div className="mt-1 px-4 py-2 bg-white/[0.03] border border-white/[0.06] rounded-xl text-white/30 text-xs">
+              Замер бесплатный · 20–30 минут · 3D-визуализация в подарок
+            </div>
+            <button onClick={() => { setSent(false); setName(""); setPhone(""); setDate(""); setTime(""); }}
+              className="mt-1 text-orange-400 text-xs hover:text-orange-300 underline">
+              Записаться ещё раз
+            </button>
+          </div>
+        ) : (
+          <div className="max-w-md mx-auto space-y-4">
+            {/* Benefits */}
+            <div className="grid grid-cols-3 gap-2">
+              {[
+                { icon: "Ruler",       label: "Точные замеры" },
+                { icon: "Box",         label: "3D-визуализация" },
+                { icon: "BadgeCheck",  label: "Бесплатно" },
+              ].map((b, i) => (
+                <div key={i} className="flex flex-col items-center gap-1.5 bg-white/[0.03] border border-white/[0.05] rounded-xl py-3 px-2 text-center">
+                  <div className="w-8 h-8 rounded-lg bg-orange-500/10 flex items-center justify-center">
+                    <Icon name={b.icon} size={15} className="text-orange-400" />
+                  </div>
+                  <span className="text-white/50 text-[10px] leading-tight">{b.label}</span>
+                </div>
+              ))}
+            </div>
+
+            <form onSubmit={submit} className="space-y-3">
+              <div className="grid grid-cols-2 gap-3">
+                <input type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="Ваше имя" required
+                  className="w-full bg-white/[0.04] border border-white/[0.07] focus:border-orange-500/40 rounded-xl px-3 py-2.5 text-white text-sm outline-none transition-all placeholder:text-white/20" />
+                <input type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="Телефон" required
+                  className="w-full bg-white/[0.04] border border-white/[0.07] focus:border-orange-500/40 rounded-xl px-3 py-2.5 text-white text-sm outline-none transition-all placeholder:text-white/20" />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-[10px] text-white/30 uppercase tracking-wider block mb-1.5">Дата</label>
+                  <input type="date" value={date} min={minDate} onChange={(e) => setDate(e.target.value)}
+                    className="w-full bg-white/[0.04] border border-white/[0.07] focus:border-orange-500/40 rounded-xl px-3 py-2.5 text-white text-sm outline-none transition-all" />
+                </div>
+                <div>
+                  <label className="text-[10px] text-white/30 uppercase tracking-wider block mb-1.5">Время</label>
+                  <select value={time} onChange={(e) => setTime(e.target.value)}
+                    className="w-full bg-white/[0.04] border border-white/[0.07] focus:border-orange-500/40 rounded-xl px-3 py-2.5 text-white text-sm outline-none transition-all">
+                    <option value="" className="bg-[#111118]">Любое</option>
+                    {TIMES.map((t) => <option key={t} value={t} className="bg-[#111118]">{t}</option>)}
+                  </select>
+                </div>
+              </div>
+
+              <button type="submit"
+                className="w-full bg-gradient-to-r from-orange-500 to-rose-500 hover:brightness-110 text-white font-semibold py-3 rounded-xl text-sm transition-all active:scale-[0.98] flex items-center justify-center gap-2">
+                <Icon name="CalendarCheck" size={16} />
+                Записаться на бесплатный замер
+              </button>
+              <p className="text-center text-white/20 text-[10px]">Замерщик приедет в удобное для вас время</p>
+            </form>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ─── Shared panel header ──────────────────────────────────────────────────────
 function PanelHeader({ icon, title, onClose }: { icon: string; title: string; onClose: () => void }) {
   return (

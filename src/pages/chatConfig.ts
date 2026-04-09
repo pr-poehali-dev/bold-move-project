@@ -1,6 +1,6 @@
 import func2url from "@/../backend/func2url.json";
 
-export type Panel = "none" | "production" | "portfolio" | "tips" | "reviews" | "faq" | "contacts";
+export type Panel = "none" | "production" | "portfolio" | "tips" | "reviews" | "faq" | "contacts" | "booking";
 
 export interface Msg {
   id: number;
@@ -19,6 +19,7 @@ export const GREETING: Msg = {
 };
 
 export const NAV: { id: Panel; label: string; icon: string }[] = [
+  { id: "booking",    label: "Записаться",   icon: "CalendarCheck" },
   { id: "production", label: "Производство", icon: "Factory"    },
   { id: "contacts",   label: "Контакты",      icon: "Phone"      },
   { id: "portfolio",  label: "Портфолио",    icon: "Image"      },

@@ -3,6 +3,7 @@ import Icon from "@/components/ui/icon";
 import { Panel, Msg, GREETING, AI_URL, localAnswer } from "./chatConfig";
 import ChatUI from "./ChatUI";
 import {
+  PanelBooking,
   PanelProduction,
   PanelPortfolio,
   PanelTips,
@@ -77,6 +78,7 @@ export default function Index() {
           hasPanel ? "translate-y-0 opacity-100" : "translate-y-full opacity-0 pointer-events-none"
         }`} style={{ height: "55%", maxHeight: "55%" }}>
           <div className="h-full bg-[#0e0e15]/98 backdrop-blur-2xl border-t border-white/[0.08] rounded-t-2xl overflow-hidden shadow-2xl shadow-black/50">
+            {panel === "booking"    && <PanelBooking    onClose={closePanel} />}
             {panel === "production" && <PanelProduction onClose={closePanel} />}
             {panel === "portfolio"  && <PanelPortfolio  onClose={closePanel} />}
             {panel === "tips"       && <PanelTips       onAsk={askFromPanel} onClose={closePanel} />}
