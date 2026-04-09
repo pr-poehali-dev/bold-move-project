@@ -257,8 +257,6 @@ Premium: X ₽  (+27% от Standard, без указания процента)
 
 HF_TOKEN = os.environ.get('HF_TOKEN', '')
 TAVILY_KEY = os.environ.get('TAVILY_API_KEY', '')
-AWS_KEY = os.environ.get('AWS_ACCESS_KEY_ID', '')
-AWS_SECRET = os.environ.get('AWS_SECRET_ACCESS_KEY', '')
 
 # Запросы, при которых поиск не нужен (смета, базовые вопросы)
 SEARCH_SKIP = re.compile(
@@ -266,57 +264,6 @@ SEARCH_SKIP = re.compile(
     r'\d+\s*м[²2]|площадь|смета|рассчитай|посчитай|сколько стоит\s+\d)',
     re.IGNORECASE
 )
-
-# Запросы про вдохновение/тренды — только для них показываем картинки из Tavily
-SEARCH_VISUAL = re.compile(
-    r'(тренд|модн|популярн|вдохновени|идеи|примеры|стил|интерьер|фото|какие бывают)',
-    re.IGNORECASE
-)
-
-# Запросы на генерацию изображения через FLUX
-IMAGE_GEN = re.compile(
-    r'(нарисуй|сгенерируй|визуализ|покажи как (будет|выглядит)|создай изображен|'
-    r'сделай дизайн|придумай дизайн|как (будет )?выглядеть|покажи дизайн|'
-    r'хочу (увидеть|посмотреть)|пример дизайна|покажи.*профил|покажи.*потолок)',
-    re.IGNORECASE
-)
-
-
-def generate_image(prompt_ru: str) -> str | None:
-    """Генерирует изображение через FLUX и загружает в S3. Возвращает CDN URL или None."""
-    import base64, uuid, boto3
-    try:
-        # Переводим описание в английский промпт для FLUX
-        en_prompt = (
-            f"stretch ceiling interior design, {prompt_ru}, "
-            "photorealistic, modern room, high quality, 4k, interior photography"
-        )
-        # Генерируем через HuggingFace FLUX
-        resp = requests.post(
-            'https://router.huggingface.co/hf-inference/models/black-forest-labs/FLUX.1-schnell',
-            headers={'Authorization': f'Bearer {HF_TOKEN}'},
-            json={'inputs': en_prompt},
-            timeout=30,
-        )
-        if resp.status_code != 200:
-            print(f"[flux] error {resp.status_code}: {resp.text[:200]}")
-            return None
-
-        # Загружаем в S3
-        img_bytes = resp.content
-        key = f"ai-designs/{uuid.uuid4()}.jpg"
-        s3 = boto3.client(
-            's3',
-            endpoint_url='https://bucket.poehali.dev',
-            aws_access_key_id=AWS_KEY,
-            aws_secret_access_key=AWS_SECRET,
-        )
-        s3.put_object(Bucket='files', Key=key, Body=img_bytes, ContentType='image/jpeg')
-        cdn_url = f"https://cdn.poehali.dev/projects/{AWS_KEY}/bucket/{key}"
-        return cdn_url
-    except Exception as e:
-        print(f"[flux] exception: {e}")
-        return None
 
 
 def web_search(query: str) -> dict:
@@ -483,16 +430,10 @@ def handler(event, context):
 
     answer = call_llm(openai_messages)
 
-    # Картинки из Tavily — только для запросов про тренды/вдохновение
-    if search['images'] and SEARCH_VISUAL.search(last_user_text):
+    # Добавляем картинки из поиска прямо в текст ответа
+    if search['images']:
         img_block = '\n' + '\n'.join(f"![фото]({url})" for url in search['images'])
         answer = answer + img_block
-
-    # Генерация дизайна через FLUX по запросу клиента
-    if IMAGE_GEN.search(last_user_text):
-        gen_url = generate_image(last_user_text)
-        if gen_url:
-            answer = answer + f"\n\n![сгенерированный дизайн]({gen_url})"
 
     return {
         'statusCode': 200,
