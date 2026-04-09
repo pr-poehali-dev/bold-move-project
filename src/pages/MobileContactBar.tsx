@@ -56,7 +56,7 @@ export default function MobileContactBar({ panel, setPanel }: Props) {
             <Icon name="MessageCircle" size={13} /> Чат
           </button>
           <a href="https://t.me/JoniKras" target="_blank" rel="noreferrer"
-            className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-[#229ED9]/15 border border-[#229ED9]/30 text-[#229ED9] text-[11px] font-medium active:scale-95 transition-transform">
+            className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-orange-500/15 border border-orange-500/20 text-orange-400 text-[11px] font-medium active:scale-95 transition-transform">
             <Icon name="Send" size={13} /> Telegram
           </a>
           <a href="https://max.ru/u/f9LHodD0cOImGR_bXwRjzpNeWQv7qzBR-lP0W9lvbuzV8iU1J5lngmKBGgA" target="_blank" rel="noreferrer"
