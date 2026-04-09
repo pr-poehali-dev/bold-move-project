@@ -267,9 +267,10 @@ SEARCH_SKIP = re.compile(
     re.IGNORECASE
 )
 
-# Запросы про вдохновение/тренды — только для них показываем картинки из Tavily
+# Запросы где нужны картинки из Tavily (реальные фото товара/дизайна)
 SEARCH_VISUAL = re.compile(
-    r'(тренд|модн|популярн|вдохновени|идеи|примеры|стил|интерьер|фото|какие бывают)',
+    r'(тренд|модн|популярн|вдохновени|идеи|примеры|стил|интерьер|фото|какие бывают|'
+    r'как выглядит|покажи|что такое|как смотрится|хочу посмотреть на|вид профил)',
     re.IGNORECASE
 )
 
@@ -338,7 +339,7 @@ def web_search(query: str) -> dict:
                 'include_images': True,
                 'include_image_descriptions': True,
             },
-            timeout=8,
+            timeout=15,
         )
         if resp.status_code != 200:
             return empty
