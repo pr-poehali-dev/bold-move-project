@@ -3,8 +3,9 @@ import Icon from "@/components/ui/icon";
 import func2url from "@/../backend/func2url.json";
 
 const LIVE_URL = func2url["live-chat"];
+const LS_SESSION = "livechat_session_id";
+const LS_NAME    = "livechat_name";
 
-// Генерация ID без crypto.randomUUID (совместимость)
 function makeId() {
   return Math.random().toString(36).slice(2) + Date.now().toString(36);
 }
@@ -16,41 +17,80 @@ interface LiveMsg {
 }
 
 export default function LiveChat({ onClose }: { onClose: () => void }) {
-  const [step, setStep]   = useState<"name" | "chat">("name");
-  const [name, setName]   = useState("");
-  const [input, setInput] = useState("");
-  const [msgs, setMsgs]   = useState<LiveMsg[]>([]);
-  const [busy, setBusy]   = useState(false);
-  const [error, setError] = useState("");
+  const savedSession = localStorage.getItem(LS_SESSION);
+  const savedName    = localStorage.getItem(LS_NAME);
 
-  const sessionRef = useRef(makeId());
+  const [step, setStep]       = useState<"name" | "loading" | "chat">(savedSession ? "loading" : "name");
+  const [name, setName]       = useState(savedName || "");
+  const [input, setInput]     = useState("");
+  const [msgs, setMsgs]       = useState<LiveMsg[]>([]);
+  const [busy, setBusy]       = useState(false);
+  const [error, setError]     = useState("");
+
+  const sessionRef = useRef(savedSession || makeId());
   const lastIdRef  = useRef(0);
   const chatRef    = useRef<HTMLDivElement>(null);
   const pollRef    = useRef<ReturnType<typeof setInterval>>();
 
+  // Скролл вниз при новых сообщениях
   useEffect(() => {
     if (chatRef.current) chatRef.current.scrollTop = chatRef.current.scrollHeight;
   }, [msgs]);
 
-  // Polling — пауза при скрытой вкладке, интервал 8с
+  // Загрузка истории при восстановлении сессии
+  useEffect(() => {
+    if (step !== "loading") return;
+    const load = async () => {
+      try {
+        const res  = await fetch(`${LIVE_URL}?action=history&session_id=${sessionRef.current}`);
+        const data = await res.json();
+        if (res.ok && data.messages) {
+          const loaded: LiveMsg[] = data.messages.map((m: { id: number; role: string; text: string }) => ({
+            role: m.role as "client" | "operator",
+            text: m.text,
+            ts:   m.id,
+          }));
+          setMsgs(loaded);
+          if (loaded.length > 0) {
+            lastIdRef.current = Math.max(...loaded.filter(m => m.role === "operator").map(m => m.ts), 0);
+          }
+          setStep("chat");
+        } else {
+          // Сессия не найдена — начинаем заново
+          localStorage.removeItem(LS_SESSION);
+          localStorage.removeItem(LS_NAME);
+          sessionRef.current = makeId();
+          setName("");
+          setStep("name");
+        }
+      } catch {
+        localStorage.removeItem(LS_SESSION);
+        localStorage.removeItem(LS_NAME);
+        sessionRef.current = makeId();
+        setName("");
+        setStep("name");
+      }
+    };
+    load();
+  }, [step]);
+
+  // Polling новых сообщений от оператора
   useEffect(() => {
     if (step !== "chat") return;
-
     const poll = async () => {
       if (document.hidden) return;
       try {
-        const url = `${LIVE_URL}?action=poll&session_id=${sessionRef.current}&since_id=${lastIdRef.current}`;
-        const res = await fetch(url);
+        const url  = `${LIVE_URL}?action=poll&session_id=${sessionRef.current}&since_id=${lastIdRef.current}`;
+        const res  = await fetch(url);
         const data = await res.json();
         if (data.messages?.length) {
           lastIdRef.current = data.messages[data.messages.length - 1].id;
-          setMsgs(prev => [...prev, ...data.messages.map((m: {id: number; text: string}) => ({
+          setMsgs(prev => [...prev, ...data.messages.map((m: { id: number; text: string }) => ({
             role: "operator" as const, text: m.text, ts: m.id,
           }))]);
         }
       } catch { /* ignore */ }
     };
-
     pollRef.current = setInterval(poll, 8000);
     return () => clearInterval(pollRef.current);
   }, [step]);
@@ -59,15 +99,20 @@ export default function LiveChat({ onClose }: { onClose: () => void }) {
     setError("");
     setBusy(true);
     try {
-      const res = await fetch(`${LIVE_URL}?action=send`, {
-        method: "POST",
+      const res  = await fetch(`${LIVE_URL}?action=send`, {
+        method:  "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ session_id: sessionRef.current, text, name }),
+        body:    JSON.stringify({ session_id: sessionRef.current, text, name }),
       });
       const data = await res.json();
       if (data.ok) {
         setMsgs(prev => [...prev, { role: "client", text, ts: Date.now() }]);
-        if (isFirst) setStep("chat");
+        if (isFirst) {
+          // Сохраняем сессию в localStorage
+          localStorage.setItem(LS_SESSION, sessionRef.current);
+          localStorage.setItem(LS_NAME, name.trim());
+          setStep("chat");
+        }
       } else {
         setError("Ошибка отправки, попробуйте ещё раз");
       }
@@ -92,6 +137,16 @@ export default function LiveChat({ onClose }: { onClose: () => void }) {
     doSend(text);
   }
 
+  function handleReset() {
+    localStorage.removeItem(LS_SESSION);
+    localStorage.removeItem(LS_NAME);
+    sessionRef.current = makeId();
+    lastIdRef.current  = 0;
+    setMsgs([]);
+    setName("");
+    setStep("name");
+  }
+
   return (
     <div className="h-full flex flex-col">
       {/* Header */}
@@ -106,12 +161,29 @@ export default function LiveChat({ onClose }: { onClose: () => void }) {
           <div className="text-sm font-semibold text-white">Чат с менеджером</div>
           <div className="text-[10px] text-green-400">● Онлайн · ответим за 5 минут</div>
         </div>
-        <button onClick={onClose} className="ml-auto p-1.5 rounded-lg hover:bg-white/5 text-white/30 hover:text-white/60 transition-all">
-          <Icon name="X" size={16} />
-        </button>
+        <div className="ml-auto flex items-center gap-1">
+          {step === "chat" && (
+            <button onClick={handleReset} title="Начать новый чат"
+              className="p-1.5 rounded-lg hover:bg-white/5 text-white/20 hover:text-white/50 transition-all">
+              <Icon name="RotateCcw" size={13} />
+            </button>
+          )}
+          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-white/5 text-white/30 hover:text-white/60 transition-all">
+            <Icon name="X" size={16} />
+          </button>
+        </div>
       </div>
 
-      {step === "name" ? (
+      {/* Loading */}
+      {step === "loading" && (
+        <div className="flex-1 flex items-center justify-center gap-2 text-white/30 text-sm">
+          <Icon name="Loader2" size={16} className="animate-spin" />
+          Загружаем историю…
+        </div>
+      )}
+
+      {/* Форма имени */}
+      {step === "name" && (
         <div className="flex-1 flex flex-col items-center justify-center p-6">
           <div className="w-full max-w-xs space-y-4">
             <div className="text-center">
@@ -132,12 +204,15 @@ export default function LiveChat({ onClose }: { onClose: () => void }) {
             </form>
           </div>
         </div>
-      ) : (
+      )}
+
+      {/* Чат */}
+      {step === "chat" && (
         <>
           <div ref={chatRef} className="flex-1 overflow-y-auto px-4 py-3 space-y-2.5">
             <div className="flex justify-center">
               <span className="text-[10px] text-white/20 bg-white/[0.03] border border-white/[0.05] px-3 py-1 rounded-full">
-                ✓ Сообщение отправлено менеджеру
+                ✓ Переписка восстановлена
               </span>
             </div>
             {msgs.map((m, i) => (
@@ -149,7 +224,7 @@ export default function LiveChat({ onClose }: { onClose: () => void }) {
                 }`}>{m.text}</div>
               </div>
             ))}
-            {msgs[msgs.length - 1]?.role === "client" && (
+            {msgs.length > 0 && msgs[msgs.length - 1]?.role === "client" && (
               <div className="flex justify-start">
                 <div className="bg-white/[0.04] border border-white/[0.06] rounded-2xl rounded-bl-sm px-3.5 py-2.5 flex items-center gap-2">
                   <Icon name="Clock" size={12} className="text-white/25" />

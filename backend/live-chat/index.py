@@ -150,6 +150,39 @@ def handler(event, context):
         conn.close()
         return {"statusCode": 200, "headers": CORS, "body": json.dumps({"session_id": session_id, "ok": True})}
 
+    # ── Загрузка полной истории сессии ───────────────────────────────────────
+    if method == "GET" and action == "history":
+        session_id = params.get("session_id", "")
+        if not session_id:
+            return {"statusCode": 400, "headers": CORS, "body": json.dumps({"error": "no session"})}
+
+        conn = db()
+        cur = conn.cursor()
+        # Проверяем что сессия существует и получаем имя
+        cur.execute(
+            f"SELECT client_name FROM {SCHEMA}.live_chats WHERE session_id = %s",
+            (session_id,)
+        )
+        row = cur.fetchone()
+        if not row:
+            cur.close()
+            conn.close()
+            return {"statusCode": 404, "headers": CORS, "body": json.dumps({"error": "session not found"})}
+
+        client_name = row[0]
+        # Все сообщения сессии
+        cur.execute(
+            f"SELECT id, role, text, created_at FROM {SCHEMA}.live_messages "
+            f"WHERE session_id = %s ORDER BY id",
+            (session_id,)
+        )
+        rows = cur.fetchall()
+        cur.close()
+        conn.close()
+
+        messages = [{"id": r[0], "role": r[1], "text": r[2], "created_at": r[3].isoformat()} for r in rows]
+        return {"statusCode": 200, "headers": CORS, "body": json.dumps({"messages": messages, "client_name": client_name})}
+
     # ── Клиент опрашивает новые сообщения от оператора (polling) ─────────────
     if method == "GET" and action == "poll":
         session_id = params.get("session_id", "")
