@@ -7,6 +7,8 @@ import psycopg2
 import requests
 
 SCHEMA = os.environ.get("MAIN_DB_SCHEMA", "public")
+TG_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "8615143005:AAGOff-1ZwjnxZgWQWozXEW6Ie0_ecIDGtA")
+TG_CHAT_ID = os.environ.get("TELEGRAM_OWNER_CHAT_ID", "516608589")
 CORS = {
     "Access-Control-Allow-Origin": "*",
     "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
@@ -21,8 +23,8 @@ def db():
 
 def tg_send(text: str, reply_to: int = None) -> int:
     """Отправляет сообщение в Telegram, возвращает message_id."""
-    token = os.environ.get("TELEGRAM_BOT_TOKEN", "")
-    chat_id = os.environ.get("TELEGRAM_OWNER_CHAT_ID", "")
+    token = TG_TOKEN
+    chat_id = TG_CHAT_ID
     if not token or not chat_id:
         return 0
     payload = {"chat_id": chat_id, "text": text, "parse_mode": "HTML"}
