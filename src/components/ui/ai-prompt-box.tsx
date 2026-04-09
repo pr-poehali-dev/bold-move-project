@@ -7,7 +7,7 @@ const cn = (...c: (string | undefined | null | false)[]) => c.filter(Boolean).jo
 interface Props {
   value: string;
   onValueChange: (v: string) => void;
-  onSubmit: () => void;
+  onSubmit: (text: string) => void;
   isLoading?: boolean;
   placeholder?: string;
 }
@@ -46,17 +46,23 @@ export const PromptInputBox = React.forwardRef<HTMLDivElement, Props>(
 
     const hasContent = value.trim().length > 0;
 
+    const handleSend = () => {
+      const text = value.trim();
+      if (!text || isLoading || isRecording) return;
+      onSubmit(text);
+    };
+
     const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
       if (e.key === "Enter" && !e.shiftKey) {
         e.preventDefault();
-        if (hasContent && !isLoading && !isRecording) onSubmit();
+        handleSend();
       }
     };
 
     const handleAction = () => {
       if (isLoading) return;
       if (isRecording) { setIsRecording(false); return; }
-      if (hasContent) { onSubmit(); return; }
+      if (hasContent) { handleSend(); return; }
       setIsRecording(true);
     };
 

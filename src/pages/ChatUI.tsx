@@ -61,7 +61,7 @@ export default function ChatUI({ messages, input, typing, panel, onInput, onSend
         <PromptInputBox
           value={input}
           onValueChange={onInput}
-          onSubmit={() => { if (input.trim()) onSend(input); }}
+          onSubmit={(text) => onSend(text)}
           isLoading={typing}
           placeholder="Спросите Женю о потолках…"
         />
