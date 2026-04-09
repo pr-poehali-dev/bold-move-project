@@ -1,8 +1,44 @@
-import { useRef, useEffect } from "react";
+import { useRef, useEffect, useState } from "react";
 import Icon from "@/components/ui/icon";
 import { PromptInputBox } from "@/components/ui/ai-prompt-box";
 import EstimateTable, { isEstimate } from "./EstimateTable";
 import { Msg, Panel, NAV, AVATAR } from "./chatConfig";
+
+// Парсит текст: разбивает на обычный текст и картинки ![alt](url)
+function MsgContent({ text }: { text: string }) {
+  const parts = text.split(/(!\[.*?\]\(.*?\))/g);
+  return (
+    <>
+      {parts.map((part, i) => {
+        const img = part.match(/^!\[(.*?)\]\((.*?)\)$/);
+        if (img) {
+          return <SearchImage key={i} src={img[2]} alt={img[1]} />;
+        }
+        return <span key={i} className="whitespace-pre-wrap">{part}</span>;
+      })}
+    </>
+  );
+}
+
+function SearchImage({ src, alt }: { src: string; alt: string }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <img
+        src={src}
+        alt={alt}
+        onClick={() => setOpen(true)}
+        className="block w-full max-w-[220px] rounded-xl mt-2 cursor-pointer hover:opacity-90 transition-opacity object-cover"
+        onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+      />
+      {open && (
+        <div className="fixed inset-0 z-[200] bg-black/90 flex items-center justify-center" onClick={() => setOpen(false)}>
+          <img src={src} alt={alt} className="max-w-[90vw] max-h-[85vh] rounded-xl object-contain" onClick={e => e.stopPropagation()} />
+        </div>
+      )}
+    </>
+  );
+}
 
 interface Props {
   messages: Msg[];
@@ -38,7 +74,7 @@ export default function ChatUI({ messages, input, typing, panel, onInput, onSend
                   ? "max-w-[90%] md:max-w-[75%] w-full bg-white/[0.03] border border-white/[0.06] rounded-bl-md"
                   : "max-w-[75%] md:max-w-[60%] bg-gradient-to-br from-white/[0.05] to-white/[0.02] border border-white/[0.06] text-white/70 rounded-bl-md whitespace-pre-wrap"
             }`}>
-              {m.role === "assistant" && isEstimate(m.text) ? <EstimateTable text={m.text} /> : m.text}
+              {m.role === "assistant" && isEstimate(m.text) ? <EstimateTable text={m.text} /> : <MsgContent text={m.text} />}
             </div>
           </div>
         ))}

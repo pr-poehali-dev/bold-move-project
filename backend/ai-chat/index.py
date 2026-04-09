@@ -281,7 +281,8 @@ def web_search(query: str) -> str:
                 'search_depth': 'basic',
                 'max_results': 4,
                 'include_answer': True,
-                'include_images': False,
+                'include_images': True,
+                'include_image_descriptions': True,
             },
             timeout=8,
         )
@@ -291,6 +292,21 @@ def web_search(query: str) -> str:
         parts = []
         if data.get('answer'):
             parts.append(f"Краткий ответ: {data['answer']}")
+        # Изображения
+        images = data.get('images', [])[:2]
+        if images:
+            img_lines = []
+            for img in images:
+                if isinstance(img, dict):
+                    img_url = img.get('url', '')
+                    img_desc = img.get('description', '')
+                else:
+                    img_url = str(img)
+                    img_desc = ''
+                if img_url:
+                    img_lines.append(f"![{img_desc}]({img_url})")
+            if img_lines:
+                parts.append("Фото:\n" + "\n".join(img_lines))
         for r in data.get('results', [])[:3]:
             title = r.get('title', '')
             content = r.get('content', '')[:300]
