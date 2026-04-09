@@ -61,8 +61,6 @@ export default function ChatUI({ messages, input, typing, panel, onInput, onSend
             </div>
           </div>
         )}
-
-
       </div>
 
       {/* Input */}
@@ -85,10 +83,27 @@ export default function ChatUI({ messages, input, typing, panel, onInput, onSend
         </form>
       </div>
 
-      {/* Dock nav */}
-      <div className="shrink-0 px-4 md:px-8 pt-1 pb-3 flex flex-col items-center">
+      {/* Nav */}
+      <div className="shrink-0 px-3 md:px-8 pb-3 pt-1 flex items-center justify-center gap-2">
 
-        <div className="flex items-center gap-1 rounded-[24px] bg-neutral-900/80 px-2.5 py-2 shadow-2xl ring-1 ring-white/10 backdrop-blur-lg">
+        {/* Плавающая кнопка Менеджер */}
+        <button
+          onClick={() => onPanel(panel === "livechat" ? "none" : "livechat")}
+          className={`shrink-0 flex flex-col items-center justify-center gap-1 h-14 w-14 rounded-2xl shadow-lg transition-all duration-200 active:scale-95 ${
+            panel === "livechat"
+              ? "bg-gradient-to-b from-orange-500 to-rose-600 text-white shadow-orange-500/30"
+              : "bg-gradient-to-b from-orange-500/20 to-rose-600/20 border border-orange-500/30 text-orange-400"
+          }`}
+        >
+          <Icon name="MessageCircle" size={18} />
+          <span className="text-[9px] font-semibold leading-none">Менеджер</span>
+        </button>
+
+        {/* Разделитель */}
+        <div className="w-px h-8 bg-white/10 shrink-0" />
+
+        {/* Основные 5 кнопок */}
+        <div className="flex items-center gap-1.5">
           {NAV.map((n) => {
             const isActive = panel === n.id;
             return (
@@ -96,14 +111,14 @@ export default function ChatUI({ messages, input, typing, panel, onInput, onSend
                 key={n.id}
                 onClick={() => onPanel(isActive ? "none" : n.id)}
                 aria-label={n.label}
-                className={`relative shrink-0 flex flex-col items-center justify-center gap-1 h-12 w-12 rounded-xl ring-1 shadow-lg transition-all duration-200 ${
+                className={`shrink-0 flex flex-col items-center justify-center gap-1 h-14 w-14 rounded-2xl ring-1 shadow-md transition-all duration-200 active:scale-95 ${
                   isActive
                     ? "bg-gradient-to-b from-orange-500/40 to-rose-600/40 ring-orange-500/50 text-orange-300"
-                    : "bg-gradient-to-b from-neutral-800/60 to-neutral-900/70 ring-white/10 text-white/50 hover:text-white/80"
+                    : "bg-gradient-to-b from-neutral-800/60 to-neutral-900/70 ring-white/8 text-white/45 hover:text-white/75"
                 }`}
               >
-                <Icon name={n.icon} size={14} />
-                <span className={`text-[8px] font-medium leading-none ${isActive ? "text-orange-300" : "text-white/40"}`}>
+                <Icon name={n.icon} size={15} />
+                <span className={`text-[9px] font-medium leading-none text-center px-0.5 ${isActive ? "text-orange-300" : "text-white/35"}`}>
                   {n.label}
                 </span>
               </button>

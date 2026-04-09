@@ -12,6 +12,7 @@ import {
   PanelReviews,
   PanelFaq,
   PanelContacts,
+  PanelOther,
 } from "./ChatPanels";
 
 export default function Index() {
@@ -117,6 +118,7 @@ export default function Index() {
             {panel === "reviews"    && <PanelReviews    onClose={closePanel} />}
             {panel === "faq"        && <PanelFaq        onClose={closePanel} />}
             {panel === "contacts"   && <PanelContacts   onClose={closePanel} onPanel={setPanel} />}
+            {panel === "other"      && <PanelOther      onClose={closePanel} onPanel={setPanel} />}
           </div>
         </div>
 
