@@ -14,6 +14,7 @@ import {
   PanelContacts,
   PanelOther,
 } from "./ChatPanels";
+import MobileContactBar from "./MobileContactBar";
 
 export default function Index() {
   const [panel, setPanel]       = useState<Panel>("none");
@@ -223,24 +224,8 @@ export default function Index() {
         </div>
       </div>
 
-      {/* Mobile bottom CTA */}
-      <div className="sm:hidden shrink-0 flex items-center gap-2 px-3 py-2 border-t border-white/[0.05] bg-[#0d0d14]/95 backdrop-blur-xl">
-        <a href="tel:+79776068901" className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-orange-500/15 border border-orange-500/20 text-orange-400 text-[11px] font-medium">
-          <Icon name="Phone" size={13} /> Позвонить
-        </a>
-        <button onClick={() => setPanel(panel === "livechat" ? "none" : "livechat")}
-          className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-orange-500/15 border border-orange-500/20 text-orange-400 text-[11px] font-medium">
-          <Icon name="MessageCircle" size={13} /> Чат
-        </button>
-        <a href="https://t.me/JoniKras" target="_blank" rel="noreferrer"
-          className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-orange-500/15 border border-orange-500/20 text-orange-400 text-[11px] font-medium">
-          <Icon name="Send" size={13} /> Telegram
-        </a>
-        <a href="https://max.ru/u/f9LHodD0cOImGR_bXwRjzpNeWQv7qzBR-lP0W9lvbuzV8iU1J5lngmKBGgA" target="_blank" rel="noreferrer"
-          className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-orange-500/15 border border-orange-500/20 text-orange-400 text-[11px] font-medium">
-          <Icon name="MessageSquare" size={13} /> MAX
-        </a>
-      </div>
+      {/* Mobile bottom CTA — свайп вверх/вниз */}
+      <MobileContactBar panel={panel} setPanel={setPanel} />
     </div>
   );
 }
