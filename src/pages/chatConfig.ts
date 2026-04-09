@@ -29,6 +29,32 @@ export const NAV: { id: Panel; label: string; icon: string }[] = [
   { id: "faq",        label: "FAQ",           icon: "HelpCircle" },
 ];
 
+export const TIPS: { icon: string; q: string }[] = [
+  { icon: "TrendingDown", q: "Сравни цены на матовый потолок" },
+  { icon: "Search",       q: "Какой потолок лучше для ванной?" },
+  { icon: "BarChart3",    q: "Средние цены по Москве" },
+  { icon: "Shield",       q: "Расскажи про гарантию" },
+  { icon: "Zap",          q: "Кто делает монтаж за 1 день?" },
+  { icon: "Calculator",   q: "Рассчитай потолок на 3 комнаты" },
+];
+
+export const CONTACTS: { icon: string; label: string; val: string; href: string }[] = [
+  { icon: "Phone",         label: "Телефон",  val: "+7 (977) 606-89-01",    href: "tel:+79776068901" },
+  { icon: "Send",          label: "Telegram", val: "Написать в Telegram",   href: "https://t.me/JoniKras" },
+  { icon: "MessageSquare", label: "MAX",      val: "Написать в MAX",        href: "https://web.max.ru/#/chat/phone/79776068901" },
+  { icon: "MapPin",        label: "Адрес",    val: "Мытищи, Пограничная 24", href: "#" },
+  { icon: "Clock",         label: "Часы",     val: "Пн–Вс 8:00–22:00",     href: "#" },
+];
+
+export const PROD_FEATURES: { icon: string; label: string }[] = [
+  { icon: "Award",     label: "Плёнка MSD Premium" },
+  { icon: "Ruler",     label: "Точность до 1 мм"   },
+  { icon: "FileCheck", label: "Сертификаты ISO"     },
+  { icon: "Truck",     label: "Доставка за 1 день"  },
+];
+
+export const BOOKING_TIMES = ["9:00","10:00","11:00","12:00","13:00","14:00","15:00","16:00","17:00","18:00","19:00","20:00"];
+
 export function localAnswer(t: string): string {
   const s = t.toLowerCase();
   if (s.includes("привет") || s.includes("здравств")) return "Рад знакомству! Расскажите, какой потолок вам нужен — помогу найти лучший вариант на рынке.";

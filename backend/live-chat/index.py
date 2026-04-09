@@ -2,6 +2,7 @@
 
 import json
 import os
+import uuid
 import psycopg2
 import requests
 

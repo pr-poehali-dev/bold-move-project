@@ -2,9 +2,7 @@ import { useState } from "react";
 import Icon from "@/components/ui/icon";
 import { REVIEWS, FAQ, PRODUCTION } from "./data/content";
 import { PORTFOLIO_ITEMS } from "./data/portfolio";
-
-// ─── Booking ──────────────────────────────────────────────────────────────────
-const TIMES = ["9:00", "10:00", "11:00", "12:00", "13:00", "14:00", "15:00", "16:00", "17:00", "18:00", "19:00", "20:00"];
+import { TIPS, CONTACTS, PROD_FEATURES, BOOKING_TIMES } from "./chatConfig";
 
 export function PanelBooking({ onClose }: { onClose: () => void }) {
   const [name, setName]   = useState("");
@@ -80,7 +78,7 @@ export function PanelBooking({ onClose }: { onClose: () => void }) {
                   <select value={time} onChange={(e) => setTime(e.target.value)}
                     className="w-full bg-white/[0.04] border border-white/[0.07] focus:border-orange-500/40 rounded-xl px-3 py-2.5 text-white text-sm outline-none transition-all">
                     <option value="" className="bg-[#111118]">Любое</option>
-                    {TIMES.map((t) => <option key={t} value={t} className="bg-[#111118]">{t}</option>)}
+                    {BOOKING_TIMES.map((t) => <option key={t} value={t} className="bg-[#111118]">{t}</option>)}
                   </select>
                 </div>
               </div>
@@ -116,12 +114,6 @@ function PanelHeader({ icon, title, onClose }: { icon: string; title: string; on
 
 // ─── Production ───────────────────────────────────────────────────────────────
 export function PanelProduction({ onClose }: { onClose: () => void }) {
-  const features = [
-    { icon: "Award",     label: "Плёнка MSD Premium" },
-    { icon: "Ruler",     label: "Точность до 1 мм"   },
-    { icon: "FileCheck", label: "Сертификаты ISO"     },
-    { icon: "Truck",     label: "Доставка за 1 день"  },
-  ];
   return (
     <div className="h-full flex flex-col">
       <PanelHeader icon="Factory" title="Собственное производство" onClose={onClose} />
@@ -140,7 +132,7 @@ export function PanelProduction({ onClose }: { onClose: () => void }) {
           ))}
         </div>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-          {features.map((f, i) => (
+          {PROD_FEATURES.map((f, i) => (
             <div key={i} className="flex items-center gap-2 bg-white/[0.03] border border-white/[0.05] rounded-xl px-3 py-2.5">
               <div className="w-7 h-7 rounded-lg bg-orange-500/10 flex items-center justify-center shrink-0">
                 <Icon name={f.icon} size={13} className="text-orange-400" />
@@ -180,15 +172,6 @@ export function PanelPortfolio({ onClose }: { onClose: () => void }) {
 }
 
 // ─── Tips ─────────────────────────────────────────────────────────────────────
-const TIPS = [
-  { icon: "TrendingDown", q: "Сравни цены на матовый потолок" },
-  { icon: "Search",       q: "Какой потолок лучше для ванной?" },
-  { icon: "BarChart3",    q: "Средние цены по Москве" },
-  { icon: "Shield",       q: "Расскажи про гарантию" },
-  { icon: "Zap",          q: "Кто делает монтаж за 1 день?" },
-  { icon: "Calculator",   q: "Рассчитай потолок на 3 комнаты" },
-];
-
 export function PanelTips({ onAsk, onClose }: { onAsk: (q: string) => void; onClose: () => void }) {
   return (
     <div className="h-full flex flex-col">
@@ -263,14 +246,6 @@ export function PanelFaq({ onClose }: { onClose: () => void }) {
 }
 
 // ─── Contacts ─────────────────────────────────────────────────────────────────
-const CONTACT_ITEMS = [
-  { icon: "Phone",         label: "Телефон",  val: "+7 (977) 606-89-01",    href: "tel:+79776068901" },
-  { icon: "Send",          label: "Telegram",  val: "Написать в Telegram",  href: "https://t.me/JoniKras" },
-  { icon: "MessageSquare", label: "MAX",       val: "Написать в MAX",        href: "https://web.max.ru/#/chat/phone/79776068901" },
-  { icon: "MapPin",        label: "Адрес",    val: "Мытищи, Пограничная 24", href: "#" },
-  { icon: "Clock",         label: "Часы",     val: "Пн–Вс 8:00–22:00",     href: "#" },
-];
-
 export function PanelContacts({ onClose }: { onClose: () => void }) {
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
@@ -302,7 +277,7 @@ export function PanelContacts({ onClose }: { onClose: () => void }) {
         ) : (
           <div className="max-w-md mx-auto space-y-4">
             <div className="grid grid-cols-2 gap-2.5">
-              {CONTACT_ITEMS.map((c, i) => (
+              {CONTACTS.map((c, i) => (
                 <a key={i} href={c.href} target={c.href.startsWith("http") ? "_blank" : undefined} rel="noreferrer"
                   className="flex items-start gap-2.5 bg-white/[0.03] hover:bg-white/[0.05] border border-white/[0.06] hover:border-orange-500/20 rounded-xl p-3 transition-all group">
                   <div className="w-7 h-7 rounded-lg bg-orange-500/10 flex items-center justify-center shrink-0">
