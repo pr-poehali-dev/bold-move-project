@@ -1,5 +1,5 @@
 import React from "react";
-import { ArrowUp, Mic, Square, StopCircle } from "lucide-react";
+import { Send, Mic, Square, StopCircle } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
 const cn = (...c: (string | undefined | null | false)[]) => c.filter(Boolean).join(" ");
@@ -185,9 +185,9 @@ export const PromptInputBox = React.forwardRef<HTMLDivElement, Props>(
                 </motion.span>
               ) : hasContent ? (
                 <motion.span key="send"
-                  initial={{ scale: 0, rotate: -90 }} animate={{ scale: 1, rotate: 0 }} exit={{ scale: 0, rotate: 90 }}
+                  initial={{ scale: 0, x: -4 }} animate={{ scale: 1, x: 0 }} exit={{ scale: 0, x: 4 }}
                   transition={{ duration: 0.15 }}>
-                  <ArrowUp size={16} />
+                  <Send size={15} className="-translate-x-px" />
                 </motion.span>
               ) : (
                 <motion.span key="mic"
