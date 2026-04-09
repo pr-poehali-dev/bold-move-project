@@ -70,7 +70,7 @@ export default function Index() {
           <button
             onClick={() => setPanel(panel === "contacts" ? "none" : "contacts")}
             className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-orange-500/10 border border-orange-500/20 text-orange-400 text-[11px] font-medium hover:bg-orange-500/15 transition-all">
-            <Icon name="MapPin" size={12} /> <span className="hidden xs:inline sm:inline">Контакты</span>
+            <Icon name="MapPin" size={12} /> <span>Контакты</span>
           </button>
 
           <button
