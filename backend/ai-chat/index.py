@@ -266,12 +266,13 @@ SEARCH_SKIP = re.compile(
 )
 
 
-def web_search(query: str) -> str:
-    """Поиск через Tavily. Возвращает краткий текст с результатами или пустую строку."""
+def web_search(query: str) -> dict:
+    """Поиск через Tavily. Возвращает {'text': str, 'images': [str]}."""
+    empty = {'text': '', 'images': []}
     if not TAVILY_KEY:
-        return ''
+        return empty
     if SEARCH_SKIP.search(query):
-        return ''
+        return empty
     try:
         resp = requests.post(
             'https://api.tavily.com/search',
@@ -287,35 +288,33 @@ def web_search(query: str) -> str:
             timeout=8,
         )
         if resp.status_code != 200:
-            return ''
+            return empty
         data = resp.json()
+
+        # Текстовая часть для LLM
         parts = []
         if data.get('answer'):
             parts.append(f"Краткий ответ: {data['answer']}")
-        # Изображения
-        images = data.get('images', [])[:2]
-        if images:
-            img_lines = []
-            for img in images:
-                if isinstance(img, dict):
-                    img_url = img.get('url', '')
-                    img_desc = img.get('description', '')
-                else:
-                    img_url = str(img)
-                    img_desc = ''
-                if img_url:
-                    img_lines.append(f"![{img_desc}]({img_url})")
-            if img_lines:
-                parts.append("Фото:\n" + "\n".join(img_lines))
         for r in data.get('results', [])[:3]:
             title = r.get('title', '')
             content = r.get('content', '')[:300]
             url = r.get('url', '')
             parts.append(f"• {title}\n  {content}\n  Источник: {url}")
-        return '\n\n'.join(parts)
+
+        # Картинки — извлекаем URL отдельно
+        images = []
+        for img in data.get('images', [])[:3]:
+            if isinstance(img, dict):
+                url = img.get('url', '')
+            else:
+                url = str(img)
+            if url and url.startswith('http'):
+                images.append(url)
+
+        return {'text': '\n\n'.join(parts), 'images': images}
     except Exception as e:
         print(f"[search] error: {e}")
-        return ''
+        return empty
 
 OR_MODELS = [
     'openai/gpt-4o-mini',
@@ -417,9 +416,9 @@ def handler(event, context):
         system_content += f"\n\n=== БАЗА ЗНАНИЙ О ТОВАРАХ И ЦЕНАХ ===\n{knowledge}"
 
     # Веб-поиск для актуальной информации
-    search_results = web_search(last_user_text)
-    if search_results:
-        system_content += f"\n\n=== АКТУАЛЬНАЯ ИНФОРМАЦИЯ ИЗ ИНТЕРНЕТА ===\n{search_results}\nИспользуй эти данные для ответа, указывай источники если уместно."
+    search = web_search(last_user_text)
+    if search['text']:
+        system_content += f"\n\n=== АКТУАЛЬНАЯ ИНФОРМАЦИЯ ИЗ ИНТЕРНЕТА ===\n{search['text']}\nИспользуй эти данные для ответа, указывай источники если уместно."
 
     # Передаём только последние 6 сообщений — экономим токены
     openai_messages = [{'role': 'system', 'content': system_content}]
@@ -430,6 +429,11 @@ def handler(event, context):
         })
 
     answer = call_llm(openai_messages)
+
+    # Добавляем картинки из поиска прямо в текст ответа
+    if search['images']:
+        img_block = '\n' + '\n'.join(f"![фото]({url})" for url in search['images'])
+        answer = answer + img_block
 
     return {
         'statusCode': 200,
