@@ -357,7 +357,7 @@ export function PanelOther({ onClose, onPanel }: { onClose: () => void; onPanel:
   return (
     <div className="h-full flex flex-col">
       <PanelHeader icon="LayoutGrid" title="Другое" onClose={onClose} />
-      <div className="flex-1 flex flex-col justify-center gap-3 p-5">
+      <div className="flex-1 overflow-y-auto flex flex-col gap-3 p-5">
         {ITEMS.map((item) => (
           <button key={item.id} onClick={() => onPanel(item.id)}
             className="flex items-center gap-4 bg-white/[0.03] hover:bg-white/[0.06] border border-white/[0.07] hover:border-orange-500/25 rounded-2xl px-4 py-4 transition-all group text-left w-full">
