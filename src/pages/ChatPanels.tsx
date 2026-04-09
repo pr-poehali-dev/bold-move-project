@@ -265,7 +265,7 @@ export function PanelFaq({ onClose }: { onClose: () => void }) {
 // ─── Contacts ─────────────────────────────────────────────────────────────────
 const CONTACT_ITEMS = [
   { icon: "Phone",         label: "Телефон",  val: "+7 (977) 606-89-01",    href: "tel:+79776068901" },
-  { icon: "MessageCircle", label: "WhatsApp", val: "Написать в WhatsApp",   href: "https://wa.me/79776068901" },
+  { icon: "Send",          label: "Telegram",  val: "Написать в Telegram",  href: "https://t.me/mospotolki" },
   { icon: "MapPin",        label: "Адрес",    val: "Мытищи, Пограничная 24", href: "#" },
   { icon: "Clock",         label: "Часы",     val: "Пн–Вс 8:00–22:00",     href: "#" },
 ];
