@@ -24,23 +24,18 @@ def db():
 
 def tg_send(text: str, reply_to: int = None) -> int:
     """Отправляет сообщение в Telegram, возвращает message_id."""
-    token = TG_TOKEN
-    chat_id = TG_CHAT_ID
-    print(f"[TG_DEBUG] token_len={len(token)}, token_prefix={token[:10] if token else 'EMPTY'}, chat_id={chat_id}")
-    if not token or not chat_id:
-        print(f"[TG_DEBUG] SKIP: token={bool(token)}, chat_id={bool(chat_id)}")
+    if not TG_TOKEN or not TG_CHAT_ID:
         return 0
-    payload = {"chat_id": chat_id, "text": text, "parse_mode": "HTML"}
+    payload = {"chat_id": TG_CHAT_ID, "text": text, "parse_mode": "HTML"}
     if reply_to:
         payload["reply_to_message_id"] = reply_to
     try:
-        r = requests.post(f"https://api.telegram.org/bot{token}/sendMessage", json=payload, timeout=10)
+        r = requests.post(f"https://api.telegram.org/bot{TG_TOKEN}/sendMessage", json=payload, timeout=10)
         data = r.json()
-        print(f"[TG_DEBUG] status={r.status_code}, response={data}")
         if data.get("ok"):
             return data["result"]["message_id"]
-    except Exception as e:
-        print(f"[TG_DEBUG] exception: {e}")
+    except Exception:
+        pass
     return 0
 
 
