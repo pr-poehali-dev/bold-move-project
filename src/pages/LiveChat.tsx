@@ -10,6 +10,19 @@ function makeId() {
   return Math.random().toString(36).slice(2) + Date.now().toString(36);
 }
 
+function fmtTime(ts: number): string {
+  const d = new Date(ts > 1e12 ? ts : ts * 1000);
+  const now = new Date();
+  const isToday = d.toDateString() === now.toDateString();
+  const yesterday = new Date(now);
+  yesterday.setDate(now.getDate() - 1);
+  const isYesterday = d.toDateString() === yesterday.toDateString();
+  const hm = d.toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" });
+  if (isToday) return hm;
+  if (isYesterday) return `вчера ${hm}`;
+  return d.toLocaleDateString("ru-RU", { day: "numeric", month: "short" }) + " " + hm;
+}
+
 interface LiveMsg {
   role: "client" | "operator";
   text: string;
@@ -216,12 +229,13 @@ export default function LiveChat({ onClose }: { onClose: () => void }) {
               </span>
             </div>
             {msgs.map((m, i) => (
-              <div key={i} className={`flex ${m.role === "client" ? "justify-end" : "justify-start"}`}>
+              <div key={i} className={`flex flex-col gap-0.5 ${m.role === "client" ? "items-end" : "items-start"}`}>
                 <div className={`max-w-[80%] rounded-2xl px-3.5 py-2.5 text-[13px] leading-relaxed ${
                   m.role === "client"
                     ? "bg-gradient-to-r from-orange-500 to-rose-500 text-white rounded-br-sm"
                     : "bg-white/[0.06] border border-white/[0.08] text-white/80 rounded-bl-sm"
                 }`}>{m.text}</div>
+                <span className="text-[10px] text-white/20 px-1">{fmtTime(m.ts)}</span>
               </div>
             ))}
             {msgs.length > 0 && msgs[msgs.length - 1]?.role === "client" && (
