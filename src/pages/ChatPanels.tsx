@@ -322,9 +322,10 @@ export function PanelContacts({ onClose, onPanel }: { onClose: () => void; onPan
 // ─── Other (Отзывы + AI-советы + FAQ) ─────────────────────────────────────────
 export function PanelOther({ onClose, onPanel }: { onClose: () => void; onPanel: (p: Panel) => void }) {
   const ITEMS = [
-    { id: "reviews" as Panel,  icon: "Heart",      label: "Отзывы",    desc: "2800+ отзывов, рейтинг 4.9★" },
-    { id: "tips"    as Panel,  icon: "Sparkles",   label: "AI-советы", desc: "Умные подсказки для расчёта" },
-    { id: "faq"     as Panel,  icon: "HelpCircle", label: "FAQ",       desc: "Частые вопросы о потолках"   },
+    { id: "contacts" as Panel, icon: "Phone",      label: "Контакты",  desc: "Телефон, WhatsApp, Telegram, адрес" },
+    { id: "reviews"  as Panel, icon: "Heart",      label: "Отзывы",    desc: "2800+ отзывов, рейтинг 4.9★"       },
+    { id: "tips"     as Panel, icon: "Sparkles",   label: "AI-советы", desc: "Умные подсказки для расчёта"       },
+    { id: "faq"      as Panel, icon: "HelpCircle", label: "FAQ",       desc: "Частые вопросы о потолках"         },
   ];
   return (
     <div className="h-full flex flex-col">

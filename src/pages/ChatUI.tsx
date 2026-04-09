@@ -63,10 +63,9 @@ export default function ChatUI({ messages, input, typing, panel, onInput, onSend
         )}
       </div>
 
-      {/* Input */}
-      <div className="shrink-0 px-4 md:px-8 pb-2 pt-2">
-        <form onSubmit={(e) => { e.preventDefault(); onSend(input); }}
-          className="flex items-end gap-2 bg-white/[0.04] border border-white/[0.07] focus-within:border-orange-500/30 rounded-2xl px-3 py-2 transition-all">
+      {/* Input + кнопка менеджера */}
+      <div className="shrink-0 px-4 md:px-8 pb-2 pt-2 flex items-end gap-2">
+        <form onSubmit={(e) => { e.preventDefault(); onSend(input); }} className="flex-1 flex items-end gap-2 bg-white/[0.04] border border-white/[0.07] focus-within:border-orange-500/30 rounded-2xl px-3 py-2 transition-all">
           <img src={AVATAR} alt="" className="w-7 h-7 rounded-full object-cover shrink-0 opacity-60 hidden sm:block" />
           <textarea
             ref={inputRef} value={input}
@@ -81,50 +80,44 @@ export default function ChatUI({ messages, input, typing, panel, onInput, onSend
             <Icon name="ArrowUp" size={16} className="text-white" />
           </button>
         </form>
-      </div>
 
-      {/* Nav */}
-      <div className="shrink-0 px-3 md:px-8 pb-3 pt-1 flex items-center justify-center gap-2">
-
-        {/* Плавающая кнопка Менеджер */}
+        {/* Кнопка Менеджер — справа от инпута */}
         <button
           onClick={() => onPanel(panel === "livechat" ? "none" : "livechat")}
-          className={`shrink-0 flex flex-col items-center justify-center gap-1 h-14 w-14 rounded-2xl shadow-lg transition-all duration-200 active:scale-95 ${
+          className={`shrink-0 flex flex-col items-center justify-center gap-1 w-14 rounded-2xl transition-all duration-200 active:scale-95 ${
             panel === "livechat"
-              ? "bg-gradient-to-b from-orange-500 to-rose-600 text-white shadow-orange-500/30"
-              : "bg-gradient-to-b from-orange-500/20 to-rose-600/20 border border-orange-500/30 text-orange-400"
+              ? "bg-gradient-to-b from-orange-500 to-rose-600 text-white shadow-lg shadow-orange-500/30"
+              : "bg-gradient-to-b from-orange-500/15 to-rose-600/15 border border-orange-500/25 text-orange-400"
           }`}
+          style={{ height: 54 }}
         >
-          <Icon name="MessageCircle" size={18} />
+          <Icon name="MessageCircle" size={16} />
           <span className="text-[9px] font-semibold leading-none">Менеджер</span>
         </button>
+      </div>
 
-        {/* Разделитель */}
-        <div className="w-px h-8 bg-white/10 shrink-0" />
-
-        {/* Основные 5 кнопок */}
-        <div className="flex items-center gap-1.5">
-          {NAV.map((n) => {
-            const isActive = panel === n.id;
-            return (
-              <button
-                key={n.id}
-                onClick={() => onPanel(isActive ? "none" : n.id)}
-                aria-label={n.label}
-                className={`shrink-0 flex flex-col items-center justify-center gap-1 h-14 w-14 rounded-2xl ring-1 shadow-md transition-all duration-200 active:scale-95 ${
-                  isActive
-                    ? "bg-gradient-to-b from-orange-500/40 to-rose-600/40 ring-orange-500/50 text-orange-300"
-                    : "bg-gradient-to-b from-neutral-800/60 to-neutral-900/70 ring-white/8 text-white/45 hover:text-white/75"
-                }`}
-              >
-                <Icon name={n.icon} size={15} />
-                <span className={`text-[9px] font-medium leading-none text-center px-0.5 ${isActive ? "text-orange-300" : "text-white/35"}`}>
-                  {n.label}
-                </span>
-              </button>
-            );
-          })}
-        </div>
+      {/* Nav — 4 кнопки */}
+      <div className="shrink-0 px-4 md:px-8 pb-3 pt-1 flex items-center justify-center gap-1.5">
+        {NAV.map((n) => {
+          const isActive = panel === n.id;
+          return (
+            <button
+              key={n.id}
+              onClick={() => onPanel(isActive ? "none" : n.id)}
+              aria-label={n.label}
+              className={`flex-1 flex flex-col items-center justify-center gap-1 h-14 rounded-2xl ring-1 shadow-md transition-all duration-200 active:scale-95 ${
+                isActive
+                  ? "bg-gradient-to-b from-orange-500/40 to-rose-600/40 ring-orange-500/50 text-orange-300"
+                  : "bg-gradient-to-b from-neutral-800/60 to-neutral-900/70 ring-white/8 text-white/45 hover:text-white/75"
+              }`}
+            >
+              <Icon name={n.icon} size={15} />
+              <span className={`text-[9px] font-medium leading-none text-center ${isActive ? "text-orange-300" : "text-white/35"}`}>
+                {n.label}
+              </span>
+            </button>
+          );
+        })}
       </div>
     </div>
   );

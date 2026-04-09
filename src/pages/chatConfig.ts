@@ -22,8 +22,7 @@ export const NAV: { id: Panel; label: string; icon: string; hint: string }[] = [
   { id: "booking",    label: "Заказать",     icon: "CalendarCheck", hint: "Записаться на бесплатный замер и 3D-проект"     },
   { id: "production", label: "Производство", icon: "Factory",       hint: "Собственное производство в Мытищах с 2009 года" },
   { id: "portfolio",  label: "Портфолио",    icon: "Image",         hint: "Фото готовых работ — квартиры, офисы, дома"     },
-  { id: "contacts",   label: "Контакты",     icon: "Phone",         hint: "Телефон, WhatsApp, Telegram и адрес офиса"      },
-  { id: "other",      label: "Другое",       icon: "LayoutGrid",    hint: "Отзывы, AI-советы и частые вопросы"             },
+  { id: "other",      label: "Другое",       icon: "LayoutGrid",    hint: "Контакты, отзывы, советы и вопросы"             },
 ];
 
 export const TIPS: { icon: string; q: string }[] = [
