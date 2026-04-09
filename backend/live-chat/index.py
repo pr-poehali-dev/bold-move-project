@@ -8,10 +8,8 @@ import requests
 
 SCHEMA = os.environ.get("MAIN_DB_SCHEMA", "public")
 # Токен берём из секрета, если он заполнен — иначе хардкод
-_tg_env = os.environ.get("TELEGRAM_BOT_TOKEN", "")
-TG_TOKEN = _tg_env if _tg_env else "8615143005:AAGOff-1ZwjnxZgWQWozXEW6Ie0_ecIDGtA"
-_cid_env = os.environ.get("TELEGRAM_OWNER_CHAT_ID", "")
-TG_CHAT_ID = _cid_env if _cid_env else "516608589"
+TG_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "")
+TG_CHAT_ID = os.environ.get("TELEGRAM_OWNER_CHAT_ID", "")
 CORS = {
     "Access-Control-Allow-Origin": "*",
     "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
