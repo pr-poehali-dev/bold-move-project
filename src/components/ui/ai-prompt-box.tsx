@@ -4,6 +4,14 @@ import { motion, AnimatePresence } from "framer-motion";
 
 const cn = (...c: (string | undefined | null | false)[]) => c.filter(Boolean).join(" ");
 
+// Расширяем window для SpeechRecognition
+declare global {
+  interface Window {
+    SpeechRecognition: new () => SpeechRecognition;
+    webkitSpeechRecognition: new () => SpeechRecognition;
+  }
+}
+
 interface Props {
   value: string;
   onValueChange: (v: string) => void;
@@ -17,10 +25,12 @@ export const PromptInputBox = React.forwardRef<HTMLDivElement, Props>(
     const textareaRef = React.useRef<HTMLTextAreaElement>(null);
     const [isRecording, setIsRecording] = React.useState(false);
     const [recTime, setRecTime] = React.useState(0);
+    const [speechError, setSpeechError] = React.useState("");
     const [bars] = React.useState(() =>
       Array.from({ length: 26 }, () => 0.2 + Math.random() * 0.8)
     );
     const timerRef = React.useRef<ReturnType<typeof setInterval>>();
+    const recognitionRef = React.useRef<SpeechRecognition | null>(null);
 
     // Авторесайз textarea
     React.useEffect(() => {
@@ -40,6 +50,63 @@ export const PromptInputBox = React.forwardRef<HTMLDivElement, Props>(
       }
       return () => clearInterval(timerRef.current);
     }, [isRecording]);
+
+    const startRecording = () => {
+      setSpeechError("");
+      const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (!SR) {
+        setSpeechError("Браузер не поддерживает голосовой ввод");
+        return;
+      }
+      const recognition = new SR();
+      recognition.lang = "ru-RU";
+      recognition.continuous = true;
+      recognition.interimResults = true;
+
+      let finalText = value;
+
+      recognition.onresult = (e: SpeechRecognitionEvent) => {
+        let interim = "";
+        let final = "";
+        for (let i = e.resultIndex; i < e.results.length; i++) {
+          const t = e.results[i][0].transcript;
+          if (e.results[i].isFinal) {
+            final += t;
+          } else {
+            interim += t;
+          }
+        }
+        if (final) {
+          finalText = (finalText + " " + final).trim();
+          onValueChange(finalText);
+        } else if (interim) {
+          onValueChange((finalText + " " + interim).trim());
+        }
+      };
+
+      recognition.onerror = (e: SpeechRecognitionErrorEvent) => {
+        if (e.error === "not-allowed") {
+          setSpeechError("Нет доступа к микрофону");
+        } else if (e.error !== "aborted") {
+          setSpeechError("Ошибка записи: " + e.error);
+        }
+        setIsRecording(false);
+      };
+
+      recognition.onend = () => {
+        setIsRecording(false);
+      };
+
+      recognitionRef.current = recognition;
+      recognition.start();
+      setIsRecording(true);
+    };
+
+    const stopRecording = () => {
+      recognitionRef.current?.stop();
+      recognitionRef.current = null;
+      setIsRecording(false);
+    };
 
     const fmt = (s: number) =>
       `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
@@ -61,9 +128,9 @@ export const PromptInputBox = React.forwardRef<HTMLDivElement, Props>(
 
     const handleAction = () => {
       if (isLoading) return;
-      if (isRecording) { setIsRecording(false); return; }
+      if (isRecording) { stopRecording(); return; }
       if (hasContent) { handleSend(); return; }
-      setIsRecording(true);
+      startRecording();
     };
 
     return (
@@ -142,12 +209,19 @@ export const PromptInputBox = React.forwardRef<HTMLDivElement, Props>(
           )}
         </AnimatePresence>
 
+        {/* Ошибка микрофона */}
+        {speechError && (
+          <div className="px-3 pb-1">
+            <span className="text-[10px] text-red-400">{speechError}</span>
+          </div>
+        )}
+
         {/* Нижняя панель — две кнопки */}
         <div className="flex items-center justify-end gap-2 px-2.5 py-2">
 
           {/* Кнопка микрофон */}
           <motion.button
-            onClick={() => { if (!isLoading) setIsRecording((r) => !r); }}
+            onClick={() => { if (isLoading) return; if (isRecording) stopRecording(); else startRecording(); }}
             whileTap={{ scale: 0.85 }}
             whileHover={{ scale: 1.06 }}
             transition={{ type: "spring", stiffness: 400, damping: 18 }}
