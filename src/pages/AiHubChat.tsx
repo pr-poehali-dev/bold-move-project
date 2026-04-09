@@ -66,9 +66,9 @@ export default function AiHubChat({ messages, input, typing, onInput, onSend, on
         {typing && (
           <div className="flex justify-start">
             <div className="bg-white/6 border border-white/8 rounded-2xl rounded-bl-sm px-3 py-2 flex gap-1">
-              {[0, 150, 300].map((d) => (
-                <span key={d} style={{ animationDelay: `${d}ms` }} className="w-1.5 h-1.5 bg-violet-400 rounded-full animate-bounce" />
-              ))}
+              <span className="typing-dot" style={{ background: "rgb(167 139 250)" }} />
+              <span className="typing-dot" style={{ background: "rgb(167 139 250)", animationDelay: "0.15s" }} />
+              <span className="typing-dot" style={{ background: "rgb(167 139 250)", animationDelay: "0.3s" }} />
             </div>
           </div>
         )}

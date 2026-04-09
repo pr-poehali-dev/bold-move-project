@@ -45,7 +45,7 @@ export default function Header({ scrollY }: Props) {
             <a href="https://wa.me/79776068901" target="_blank" rel="noreferrer" className="hidden sm:flex items-center justify-center w-9 h-9 rounded-xl bg-green-500/20 border border-green-500/30 hover:bg-green-500/30 transition-colors">
               <Icon name="MessageCircle" size={16} className="text-green-400" />
             </a>
-            <a href="tel:+79776068901" className="flex items-center gap-2 bg-gradient-to-r from-orange-500 to-rose-500 text-white text-sm font-montserrat font-bold px-4 py-2 rounded-xl hover:scale-105 transition-transform shadow-lg shadow-orange-500/20 animate-pulse-glow">
+            <a href="tel:+79776068901" className="flex items-center gap-2 bg-gradient-to-r from-orange-500 to-rose-500 text-white text-sm font-montserrat font-bold px-4 py-2 rounded-xl hover:scale-105 transition-transform shadow-lg shadow-orange-500/20">
               <Icon name="Phone" size={14} />
               <span className="hidden sm:inline">+7 (977) 606-89-01</span>
               <span className="sm:hidden">Звонок</span>

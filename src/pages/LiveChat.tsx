@@ -32,10 +32,12 @@ export default function LiveChat({ onClose }: { onClose: () => void }) {
     if (chatRef.current) chatRef.current.scrollTop = chatRef.current.scrollHeight;
   }, [msgs]);
 
-  // Запускаем polling когда перешли в чат
+  // Polling — пауза при скрытой вкладке, интервал 8с
   useEffect(() => {
     if (step !== "chat") return;
-    pollRef.current = setInterval(async () => {
+
+    const poll = async () => {
+      if (document.hidden) return;
       try {
         const url = `${LIVE_URL}?action=poll&session_id=${sessionRef.current}&since_id=${lastIdRef.current}`;
         const res = await fetch(url);
@@ -47,7 +49,9 @@ export default function LiveChat({ onClose }: { onClose: () => void }) {
           }))]);
         }
       } catch { /* ignore */ }
-    }, 3000);
+    };
+
+    pollRef.current = setInterval(poll, 8000);
     return () => clearInterval(pollRef.current);
   }, [step]);
 

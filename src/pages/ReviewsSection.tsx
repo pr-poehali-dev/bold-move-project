@@ -20,7 +20,7 @@ export default function ReviewsSection({ reviewsRef }: Props) {
           <div className="flex items-center gap-4 p-4 rounded-2xl border border-white/8 bg-white/3">
             <div>
               <div className="font-montserrat font-black text-4xl text-orange-400">4.9</div>
-              <div className="flex gap-0.5 mt-1">{"★★★★★".split("").map((s, i) => <span key={i} className="text-orange-400 text-sm">{s}</span>)}</div>
+              <div className="text-orange-400 text-sm tracking-wider mt-1">★★★★★</div>
             </div>
             <div>
               <div className="text-white/60 text-xs">Средняя оценка</div>
@@ -37,7 +37,7 @@ export default function ReviewsSection({ reviewsRef }: Props) {
             <div key={i}
               className={`p-6 rounded-3xl border border-white/7 bg-white/2 hover:border-rose-500/20 hover:bg-white/4 transition-all duration-300 ${reviewsRef.inView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"}`}
               style={{ transitionDelay: `${i * 80}ms`, transitionProperty: "opacity, transform, border, background" }}>
-              <div className="flex gap-0.5 mb-3">{"★★★★★".split("").map((s, j) => <span key={j} className="text-orange-400">{s}</span>)}</div>
+              <div className="text-orange-400 tracking-wider mb-3">★★★★★</div>
               <p className="text-white/65 text-sm leading-relaxed mb-5 italic">"{r.text}"</p>
               <div className="pt-4 border-t border-white/6 flex items-center justify-between">
                 <div>

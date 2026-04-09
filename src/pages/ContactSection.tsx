@@ -98,7 +98,7 @@ export default function ContactSection({
                     <div className="flex items-center justify-between mb-6">
                       <h3 className="font-montserrat font-black text-xl">Оставить заявку</h3>
                       <div className="flex items-center gap-1.5 text-green-400 text-xs font-montserrat font-semibold">
-                        <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />Скидка 10% онлайн
+                        <span className="w-2 h-2 bg-green-400 rounded-full" />Скидка 10% онлайн
                       </div>
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

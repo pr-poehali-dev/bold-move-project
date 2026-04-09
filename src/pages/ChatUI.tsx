@@ -54,7 +54,9 @@ export default function ChatUI({ messages, input, typing, panel, onInput, onSend
           <div className="flex items-end gap-2.5">
             <img src={AVATAR} alt="Женя" className="w-8 h-8 rounded-full object-cover shrink-0 border-2 border-orange-500/20" />
             <div className="bg-white/[0.04] border border-white/[0.06] rounded-2xl rounded-bl-md px-4 py-3 flex items-center gap-2">
-              <Icon name="Loader2" size={14} className="text-orange-400 animate-spin" />
+              <span className="typing-dot" style={{ background: "rgb(251 146 60)" }} />
+              <span className="typing-dot" style={{ background: "rgb(251 146 60)", animationDelay: "0.15s" }} />
+              <span className="typing-dot" style={{ background: "rgb(251 146 60)", animationDelay: "0.3s" }} />
               <span className="text-white/25 text-xs">Женя анализирует…</span>
             </div>
           </div>

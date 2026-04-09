@@ -12,13 +12,13 @@ export default function HeroSection({ heroRef }: Props) {
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_60%_50%_at_80%_80%,rgba(139,92,246,0.1),transparent)]" />
         <div className="absolute inset-0" style={{ backgroundImage: "radial-gradient(rgba(255,255,255,0.025) 1px, transparent 1px)", backgroundSize: "32px 32px" }} />
       </div>
-      <div className="absolute top-1/3 right-10 w-[480px] h-[480px] bg-orange-500/8 rounded-full blur-3xl animate-float pointer-events-none" />
+      <div className="absolute top-1/3 right-10 w-[480px] h-[480px] bg-orange-500/8 rounded-full blur-3xl pointer-events-none" />
       <div className="absolute bottom-1/4 left-0 w-[320px] h-[320px] bg-violet-600/10 rounded-full blur-3xl pointer-events-none" />
 
       <div ref={heroRef.ref} className="relative max-w-7xl mx-auto px-4 py-10 md:py-16 grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12 items-center w-full">
         <div className={`transition-all duration-1000 ${heroRef.inView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-10"}`}>
           <div className="inline-flex items-center gap-2 bg-orange-500/15 border border-orange-500/30 text-orange-300 rounded-full px-3 py-1.5 text-[11px] font-montserrat font-semibold mb-5 uppercase tracking-widest">
-            <span className="w-2 h-2 bg-orange-400 rounded-full animate-pulse" />
+            <span className="w-2 h-2 bg-orange-400 rounded-full" />
             Производитель №1 в Москве и МО
           </div>
           <h1 className="font-montserrat font-black text-4xl sm:text-5xl md:text-6xl xl:text-7xl leading-[0.95] mb-5">

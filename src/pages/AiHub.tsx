@@ -74,7 +74,7 @@ export default function AiHub() {
           </span>
         </div>
         <div className="ml-auto flex items-center gap-1.5">
-          <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
+          <span className="w-2 h-2 bg-green-400 rounded-full" />
           <span className="text-green-400 text-xs">AI онлайн</span>
         </div>
       </header>

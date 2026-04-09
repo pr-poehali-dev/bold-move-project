@@ -126,7 +126,7 @@ export default function AiAssistant({ assistantRef }: Props) {
               <div>
                 <div className="font-montserrat font-bold text-sm">AI-помощник MOSPOTOLKI</div>
                 <div className="flex items-center gap-1.5 text-green-400 text-xs">
-                  <span className="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse" />
+                  <span className="w-1.5 h-1.5 bg-green-400 rounded-full" />
                   Онлайн
                 </div>
               </div>
@@ -164,9 +164,9 @@ export default function AiAssistant({ assistantRef }: Props) {
               {isTyping && (
                 <div className="flex justify-start">
                   <div className="bg-white/6 border border-white/8 rounded-2xl rounded-bl-md px-4 py-3 flex items-center gap-1.5">
-                    <span className="w-2 h-2 bg-violet-400 rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
-                    <span className="w-2 h-2 bg-violet-400 rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
-                    <span className="w-2 h-2 bg-violet-400 rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
+                    <span className="typing-dot" style={{ background: "rgb(167 139 250)" }} />
+                    <span className="typing-dot" style={{ background: "rgb(167 139 250)", animationDelay: "0.15s" }} />
+                    <span className="typing-dot" style={{ background: "rgb(167 139 250)", animationDelay: "0.3s" }} />
                   </div>
                 </div>
               )}
