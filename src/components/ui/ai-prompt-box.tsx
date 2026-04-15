@@ -38,30 +38,23 @@ export const PromptInputBox = React.forwardRef<HTMLDivElement, Props>(
     const fileInputRef = React.useRef<HTMLInputElement>(null);
     const [uploadState, setUploadState] = React.useState<"idle" | "loading" | "done" | "error">("idle");
 
-    const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
       const file = e.target.files?.[0];
       if (!file) return;
       setUploadState("loading");
-      const reader = new FileReader();
-      reader.onload = async () => {
-        const base64 = (reader.result as string).split(",")[1];
-        try {
-          const res = await fetch(`${UPLOAD_URL}?action=upload`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              file: base64,
-              filename: file.name,
-              caption: `📎 Клиент прислал файл: ${file.name}`,
-            }),
-          });
-          setUploadState(res.ok ? "done" : "error");
-        } catch {
-          setUploadState("error");
-        }
-        setTimeout(() => { setUploadState("idle"); if (fileInputRef.current) fileInputRef.current.value = ""; }, 3000);
-      };
-      reader.readAsDataURL(file);
+      try {
+        const form = new FormData();
+        form.append("file", file, file.name);
+        form.append("caption", `📎 Клиент прислал файл: ${file.name}`);
+        const res = await fetch(`${UPLOAD_URL}?action=upload`, {
+          method: "POST",
+          body: form,
+        });
+        setUploadState(res.ok ? "done" : "error");
+      } catch {
+        setUploadState("error");
+      }
+      setTimeout(() => { setUploadState("idle"); if (fileInputRef.current) fileInputRef.current.value = ""; }, 3000);
     };
 
     // Авторесайз textarea
