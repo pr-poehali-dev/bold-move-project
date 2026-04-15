@@ -190,7 +190,8 @@ def build_pdf(data):
         y = draw_row(y, [label, 'Кол-во', 'Цена/ед', 'Сумма'], is_head=True, row_h=8*mm)
 
         for item in block.get('items', []):
-            name = item.get('name', '').replace('**', '').strip()
+            import re as _re
+            name = _re.sub(r'\s*[-–—]\s*$', '', item.get('name', '').replace('**', '').strip())
             value = item.get('value', '').replace('**', '').strip()
             qty, price, total = split_value(value)
 
