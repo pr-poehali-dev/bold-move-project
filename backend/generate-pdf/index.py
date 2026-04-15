@@ -228,17 +228,12 @@ def build_pdf(data):
             ty -= 7 * mm
         y = ty
 
-    if final_phrase:
-        y -= 5 * mm
-        y = check_space(y, 10 * mm)
-        c.setFont('PTSans', 7.5)
-        c.setFillColor(Color(80/255, 80/255, 80/255))
-        txt = final_phrase.replace('**', '').strip()
-        if len(txt) > 120:
-            c.drawString(margin, y, txt[:120])
-            c.drawString(margin, y - 3.5*mm, txt[120:240])
-        else:
-            c.drawString(margin, y, txt)
+    y -= 5 * mm
+    y = check_space(y, 10 * mm)
+    c.setFont('PTSans', 7.5)
+    c.setFillColor(Color(80/255, 80/255, 80/255))
+    note = 'Данная смета является предварительной. Точная стоимость будет рассчитана на бесплатном замере.'
+    c.drawString(margin, y, note)
 
     # Футер
     c.setFont('PTSans', 7)
