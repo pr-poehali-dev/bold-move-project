@@ -1,6 +1,9 @@
 import React from "react";
-import { Send, Mic, Square, StopCircle } from "lucide-react";
+import { Send, Mic, Square, StopCircle, Paperclip, CheckCircle2, Loader2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import func2url from "@/../backend/func2url.json";
+
+const UPLOAD_URL = func2url["live-chat"];
 
 const cn = (...c: (string | undefined | null | false)[]) => c.filter(Boolean).join(" ");
 
@@ -32,6 +35,34 @@ export const PromptInputBox = React.forwardRef<HTMLDivElement, Props>(
     const timerRef = React.useRef<ReturnType<typeof setInterval>>();
     const recognitionRef = React.useRef<SpeechRecognition | null>(null);
     const stoppedByUserRef = React.useRef(false);
+    const fileInputRef = React.useRef<HTMLInputElement>(null);
+    const [uploadState, setUploadState] = React.useState<"idle" | "loading" | "done" | "error">("idle");
+
+    const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      setUploadState("loading");
+      const reader = new FileReader();
+      reader.onload = async () => {
+        const base64 = (reader.result as string).split(",")[1];
+        try {
+          const res = await fetch(`${UPLOAD_URL}?action=upload`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              file: base64,
+              filename: file.name,
+              caption: `📎 Клиент прислал файл: ${file.name}`,
+            }),
+          });
+          setUploadState(res.ok ? "done" : "error");
+        } catch {
+          setUploadState("error");
+        }
+        setTimeout(() => { setUploadState("idle"); if (fileInputRef.current) fileInputRef.current.value = ""; }, 3000);
+      };
+      reader.readAsDataURL(file);
+    };
 
     // Авторесайз textarea
     React.useEffect(() => {
@@ -232,8 +263,34 @@ export const PromptInputBox = React.forwardRef<HTMLDivElement, Props>(
           </div>
         )}
 
-        {/* Нижняя панель — две кнопки */}
+        {/* Нижняя панель */}
         <div className="flex items-center justify-end gap-2 px-2.5 py-2">
+
+          {/* Кнопка загрузки файла */}
+          <input ref={fileInputRef} type="file" className="hidden" onChange={handleFileUpload}
+            accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.dwg,.dxf" />
+          <motion.button
+            onClick={() => uploadState === "idle" && fileInputRef.current?.click()}
+            whileTap={{ scale: 0.92 }}
+            title="Загрузить проект"
+            className={cn(
+              "flex items-center gap-1.5 px-3 h-9 rounded-xl text-[11px] font-medium shrink-0 transition-all duration-200",
+              uploadState === "done"  ? "bg-green-500/20 text-green-400"
+              : uploadState === "error"  ? "bg-red-500/20 text-red-400"
+              : uploadState === "loading" ? "bg-white/[0.06] text-white/40 cursor-wait"
+              : "bg-white/[0.06] text-white/40 hover:bg-orange-500/10 hover:text-orange-400"
+            )}
+          >
+            {uploadState === "loading" ? <Loader2 size={13} className="animate-spin" />
+              : uploadState === "done" ? <CheckCircle2 size={13} />
+              : <Paperclip size={13} />}
+            <span>
+              {uploadState === "loading" ? "Отправка…"
+                : uploadState === "done" ? "Отправлено!"
+                : uploadState === "error" ? "Ошибка"
+                : "Загрузить проект"}
+            </span>
+          </motion.button>
 
           {/* Кнопка микрофон */}
           <motion.button

@@ -231,4 +231,34 @@ def handler(event, context):
         tg_send(tg_text)
         return {"statusCode": 200, "headers": CORS, "body": json.dumps({"ok": True})}
 
+    # ── Загрузка файла от клиента → Telegram ─────────────────────────────────
+    if method == "POST" and action == "upload":
+        import base64
+        file_b64 = (body.get("file") or "").strip()
+        filename  = (body.get("filename") or "file").strip()
+        caption   = (body.get("caption") or "📎 Клиент прислал проект с сайта").strip()
+
+        if not file_b64:
+            return {"statusCode": 400, "headers": CORS, "body": json.dumps({"error": "no file"})}
+        if not TG_TOKEN or not TG_CHAT_ID:
+            return {"statusCode": 500, "headers": CORS, "body": json.dumps({"error": "telegram not configured"})}
+
+        try:
+            file_bytes = base64.b64decode(file_b64)
+        except Exception:
+            return {"statusCode": 400, "headers": CORS, "body": json.dumps({"error": "invalid base64"})}
+
+        try:
+            r = requests.post(
+                f"https://api.telegram.org/bot{TG_TOKEN}/sendDocument",
+                data={"chat_id": TG_CHAT_ID, "caption": caption},
+                files={"document": (filename, file_bytes)},
+                timeout=30,
+            )
+            if r.json().get("ok"):
+                return {"statusCode": 200, "headers": CORS, "body": json.dumps({"ok": True})}
+            return {"statusCode": 500, "headers": CORS, "body": json.dumps({"error": r.text})}
+        except Exception as e:
+            return {"statusCode": 500, "headers": CORS, "body": json.dumps({"error": str(e)})}
+
     return {"statusCode": 404, "headers": CORS, "body": json.dumps({"error": "not found"})}
