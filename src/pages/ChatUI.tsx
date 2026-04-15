@@ -47,10 +47,11 @@ interface Props {
   panel: Panel;
   onInput: (v: string) => void;
   onSend: (text: string) => void;
+  onPreset: (text: string) => void;
   onPanel: (p: Panel) => void;
 }
 
-export default function ChatUI({ messages, input, typing, panel, onInput, onSend, onPanel }: Props) {
+export default function ChatUI({ messages, input, typing, panel, onInput, onSend, onPreset, onPanel }: Props) {
   const chatRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -84,7 +85,7 @@ export default function ChatUI({ messages, input, typing, panel, onInput, onSend
           <div className="flex items-end gap-2.5">
             <div className="w-8 shrink-0" />
             <button
-              onClick={() => onSend("Потолок 12 кв.м., 1 люстра, 4 светильника и ниша для шторы ПК-14")}
+              onClick={() => onPreset("Потолок 12 кв.м., 1 люстра, 4 светильника и ниша для шторы ПК-14")}
               className="group flex items-center gap-2.5 px-3.5 py-2.5 rounded-2xl rounded-bl-md bg-white/[0.04] border border-orange-500/20 hover:border-orange-500/40 hover:bg-orange-500/[0.06] transition-all duration-200 active:scale-[0.97] text-left"
             >
               <span className="text-base shrink-0">⚡</span>

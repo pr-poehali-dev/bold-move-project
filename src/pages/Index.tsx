@@ -23,23 +23,29 @@ export default function Index() {
   const [typing, setTyping]     = useState(false);
   const [bookingToast, setBookingToast] = useState(false);
   const [estimateModal, setEstimateModal] = useState(false);
+  const isPresetMsg = useRef(false);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const modalTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Через 3 сек после сметы: тост + модальный оверлей
+  // Через 3 сек после сметы: модальный оверлей (только если не пресет)
   useEffect(() => {
     const last = messages[messages.length - 1];
     if (last?.role === "assistant" && isEstimate(last.text)) {
       if (toastTimer.current) clearTimeout(toastTimer.current);
       if (modalTimer.current) clearTimeout(modalTimer.current);
-      toastTimer.current = setTimeout(() => setBookingToast(true), 3000);
-      modalTimer.current = setTimeout(() => setEstimateModal(true), 3000);
+      if (!isPresetMsg.current) {
+        toastTimer.current = setTimeout(() => setBookingToast(true), 3000);
+        modalTimer.current = setTimeout(() => setEstimateModal(true), 3000);
+      }
+      isPresetMsg.current = false;
     }
     return () => {
       if (toastTimer.current) clearTimeout(toastTimer.current);
       if (modalTimer.current) clearTimeout(modalTimer.current);
     };
   }, [messages]);
+
+  const sendPreset = (text: string) => { isPresetMsg.current = true; sendMsg(text); };
 
   const sendMsg = useCallback((text: string) => {
     if (!text.trim() || typing) return;
@@ -105,6 +111,7 @@ export default function Index() {
           panel={panel}
           onInput={setInput}
           onSend={sendMsg}
+          onPreset={sendPreset}
           onPanel={setPanel}
         />
 
