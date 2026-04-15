@@ -231,39 +231,23 @@ def handler(event, context):
         tg_send(tg_text)
         return {"statusCode": 200, "headers": CORS, "body": json.dumps({"ok": True})}
 
-    # ── Загрузка файла от клиента → Telegram (multipart) ─────────────────────
+    # ── Загрузка файла от клиента → Telegram (base64 JSON) ───────────────────
     if method == "POST" and action == "upload":
-        import cgi, io
+        import base64 as _b64
         if not TG_TOKEN or not TG_CHAT_ID:
             return {"statusCode": 500, "headers": CORS, "body": json.dumps({"error": "telegram not configured"})}
 
-        # Разбираем multipart/form-data
-        raw_body = event.get("body", "")
-        is_b64 = event.get("isBase64Encoded", False)
-        content_type = (event.get("headers") or {}).get("content-type", "") or \
-                       (event.get("headers") or {}).get("Content-Type", "")
+        file_b64 = (body.get("file") or "").strip()
+        filename  = (body.get("filename") or "file").strip()
+        caption   = (body.get("caption") or "📎 Клиент прислал файл с сайта").strip()
 
-        if is_b64:
-            import base64 as _b64
-            raw_bytes = _b64.b64decode(raw_body)
-        else:
-            raw_bytes = raw_body.encode("latin-1") if isinstance(raw_body, str) else raw_body
-
-        environ = {
-            "REQUEST_METHOD": "POST",
-            "CONTENT_TYPE": content_type,
-            "CONTENT_LENGTH": str(len(raw_bytes)),
-        }
-        form = cgi.FieldStorage(fp=io.BytesIO(raw_bytes), environ=environ, keep_blank_values=True)
-
-        file_item = form.get("file")
-        caption = (form.getvalue("caption") or "📎 Клиент прислал файл с сайта").strip()
-
-        if not file_item or not hasattr(file_item, "filename"):
+        if not file_b64:
             return {"statusCode": 400, "headers": CORS, "body": json.dumps({"error": "no file"})}
 
-        file_bytes = file_item.file.read()
-        filename = file_item.filename or "file"
+        try:
+            file_bytes = _b64.b64decode(file_b64)
+        except Exception:
+            return {"statusCode": 400, "headers": CORS, "body": json.dumps({"error": "invalid base64"})}
 
         try:
             r = requests.post(

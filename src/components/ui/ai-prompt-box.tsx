@@ -43,12 +43,25 @@ export const PromptInputBox = React.forwardRef<HTMLDivElement, Props>(
       if (!file) return;
       setUploadState("loading");
       try {
-        const form = new FormData();
-        form.append("file", file, file.name);
-        form.append("caption", `📎 Клиент прислал файл: ${file.name}`);
+        // Шаг 1: читаем файл как base64 чанками — ограничение 4MB на chunk
+        const MAX = 3 * 1024 * 1024; // 3MB
+        if (file.size > MAX) {
+          alert(`Файл слишком большой (${(file.size/1024/1024).toFixed(1)} МБ). Максимум 3 МБ.`);
+          setUploadState("idle");
+          if (fileInputRef.current) fileInputRef.current.value = "";
+          return;
+        }
+        const toBase64 = (f: File) => new Promise<string>((resolve, reject) => {
+          const r = new FileReader();
+          r.onload = () => resolve((r.result as string).split(",")[1]);
+          r.onerror = reject;
+          r.readAsDataURL(f);
+        });
+        const base64 = await toBase64(file);
         const res = await fetch(`${UPLOAD_URL}?action=upload`, {
           method: "POST",
-          body: form,
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ file: base64, filename: file.name, caption: `📎 Клиент прислал файл: ${file.name}` }),
         });
         setUploadState(res.ok ? "done" : "error");
       } catch {
