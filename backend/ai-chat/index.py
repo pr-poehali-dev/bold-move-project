@@ -61,11 +61,13 @@ def try_simple_estimate(text: str) -> str | None:
     # Не перехватываем сложные случаи: лента, двухуровневые, керамогранит
     has_complex = re.search(r'(лента|двухуровн|керамогран|теневой|вентил|блок питани)', t)
     if has_complex:
+        print(f"[calc] skip: complex keyword in '{t[:60]}'")
         return None
 
     # Ищем площадь — обязательный параметр
-    m = re.search(r'(\d+(?:[.,]\d+)?)\s*(?:м²|м2|кв\.?\s*м|квадрат)', t)
+    m = re.search(r'(\d+(?:[.,]\d+)?)\s*(?:м²|м2|кв\.?\s*м|квадрат|кв\s*м)', t)
     if not m:
+        print(f"[calc] skip: no area in '{t[:60]}'")
         return None
     area = float(m.group(1).replace(',', '.'))
     if area < 1 or area > 500:
@@ -228,6 +230,7 @@ def get_cached_answer(text: str) -> str | None:
 
     # Сначала пробуем простой расчёт по площади
     estimate = try_simple_estimate(text_lower)
+    print(f"[calc] text='{text_lower[:80]}' estimate={'YES' if estimate else 'NO'}")
     if estimate:
         return estimate
 
