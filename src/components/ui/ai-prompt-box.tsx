@@ -31,6 +31,7 @@ export const PromptInputBox = React.forwardRef<HTMLDivElement, Props>(
     );
     const timerRef = React.useRef<ReturnType<typeof setInterval>>();
     const recognitionRef = React.useRef<SpeechRecognition | null>(null);
+    const stoppedByUserRef = React.useRef(false);
 
     // Авторесайз textarea
     React.useEffect(() => {
@@ -62,29 +63,28 @@ export const PromptInputBox = React.forwardRef<HTMLDivElement, Props>(
 
       const recognition = new SR();
       recognition.lang = "ru-RU";
-      // На Android continuous вызывает дубли — используем разовый режим
       recognition.continuous = !isMobile;
-      recognition.interimResults = !isMobile;
+      recognition.interimResults = true;
 
       const finalTextRef = { current: value };
-      const sentRef = { current: false };
+      stoppedByUserRef.current = false;
+
+      const restartIfNeeded = () => {
+        if (stoppedByUserRef.current) return;
+        try { recognition.start(); } catch { /* уже запущен */ }
+      };
 
       recognition.onresult = (e: SpeechRecognitionEvent) => {
-        if (sentRef.current) return;
         let interim = "";
         let final = "";
         for (let i = e.resultIndex; i < e.results.length; i++) {
           const t = e.results[i][0].transcript;
-          if (e.results[i].isFinal) {
-            final += t;
-          } else {
-            interim += t;
-          }
+          if (e.results[i].isFinal) final += t;
+          else interim += t;
         }
         if (final) {
           finalTextRef.current = (finalTextRef.current + " " + final).trim();
           onValueChange(finalTextRef.current);
-          if (isMobile) sentRef.current = true;
         } else if (interim) {
           onValueChange((finalTextRef.current + " " + interim).trim());
         }
@@ -93,14 +93,23 @@ export const PromptInputBox = React.forwardRef<HTMLDivElement, Props>(
       recognition.onerror = (e: SpeechRecognitionErrorEvent) => {
         if (e.error === "not-allowed") {
           setSpeechError("Нет доступа к микрофону");
-        } else if (e.error !== "aborted") {
-          setSpeechError("Ошибка записи: " + e.error);
+          stoppedByUserRef.current = true;
+          setIsRecording(false);
+        } else if (e.error === "no-speech" || e.error === "aborted") {
+          // Пауза или прерывание — перезапустим в onend
+        } else {
+          stoppedByUserRef.current = true;
+          setIsRecording(false);
         }
-        setIsRecording(false);
       };
 
       recognition.onend = () => {
-        setIsRecording(false);
+        if (stoppedByUserRef.current) {
+          setIsRecording(false);
+          return;
+        }
+        // Перезапускаем после паузы — пользователь ещё не нажал стоп
+        setTimeout(restartIfNeeded, 100);
       };
 
       recognitionRef.current = recognition;
@@ -109,6 +118,7 @@ export const PromptInputBox = React.forwardRef<HTMLDivElement, Props>(
     };
 
     const stopRecording = () => {
+      stoppedByUserRef.current = true;
       recognitionRef.current?.stop();
       recognitionRef.current = null;
       setIsRecording(false);
