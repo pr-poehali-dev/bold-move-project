@@ -72,6 +72,16 @@ export function parseEstimateBlocks(text: string) {
       // MUL = любой знак умножения: × (U+00D7), x (latin), х (cyrillic)
       const MUL = "[×xх]";
 
+      // 0) "Название ПРОБЕЛ qty(ед) × price₽ = total₽" — формат нашего бэкенда
+      //    Название заканчивается перед числом+единицей измерения
+      const calcBackend = cleanLine.match(new RegExp(
+        `^(.+?)\\s+(\\d[\\d\\s,.]*\\s*(?:м²|м2|шт\\.?|пм|м)\\s*${MUL}\\s*[\\d\\s,.]+\\s*[₽Рруб].*)`
+      ));
+      if (calcBackend) {
+        current.items.push({ name: calcBackend[1].trim(), value: calcBackend[2].trim() });
+        continue;
+      }
+
       // 1) "Название: qty × price = total Р" (через двоеточие)
       const calcColon = cleanLine.match(new RegExp(`^(.+?):\\s*(\\d[\\d\\s,.]*\\s*[м²шткгмlp.]*\\s*${MUL}.+)$`));
       if (calcColon) {
