@@ -64,8 +64,8 @@ def try_simple_estimate(text: str) -> str | None:
         print(f"[calc] skip: complex keyword in '{t[:60]}'")
         return None
 
-    # Ищем площадь — обязательный параметр
-    m = re.search(r'(\d+(?:[.,]\d+)?)\s*(?:м²|м2|кв\.?\s*м|квадрат|кв\s*м)', t)
+    # Ищем площадь — обязательный параметр (кв, кв.м, м², квадратов, просто число + "кв")
+    m = re.search(r'(\d+(?:[.,]\d+)?)\s*(?:м²|м2|кв\.?\s*м?|квадрат|кв\b)', t)
     if not m:
         print(f"[calc] skip: no area in '{t[:60]}'")
         return None
@@ -625,6 +625,28 @@ def handler(event, context):
     for _p in _no_photo:
         answer = re.sub(_p, '', answer)
     answer = answer.strip()
+
+    # Разбиваем "Светильники GX-53 + лампа N шт × P = T" на две строки
+    def split_lamp_line(text: str) -> str:
+        lines_out = []
+        for ln in text.split('\n'):
+            m_lamp = re.match(
+                r'^(\s*)(Светильники?\s+GX[-\s]?53)\s*\+\s*лампа?\s*(\d+)\s*шт\.?\s*[×xх]\s*([\d\s]+)\s*[₽Рруб](.*)$',
+                ln, re.IGNORECASE
+            )
+            if m_lamp:
+                indent, svet_name, qty, price, rest = m_lamp.groups()
+                qty_i = int(qty); price_i = int(re.sub(r'\s', '', price))
+                lampa_price = 100
+                svet_total_i = qty_i * price_i
+                lamp_total_i = qty_i * lampa_price
+                lines_out.append(f"{indent}{svet_name} {qty_i} шт. × {price_i} ₽ = {svet_total_i:,} ₽".replace(',', ' '))
+                lines_out.append(f"{indent}Лампа GX-53 {qty_i} шт. × {lampa_price} ₽ = {lamp_total_i:,} ₽".replace(',', ' '))
+            else:
+                lines_out.append(ln)
+        return '\n'.join(lines_out)
+
+    answer = split_lamp_line(answer)
 
     # Картинки из Tavily — только для запросов про тренды/вдохновение
     print(f"[img] query='{last_user_text[:60]}' tavily_images={len(search['images'])} visual={bool(SEARCH_VISUAL.search(last_user_text))} imagegen={bool(IMAGE_GEN.search(last_user_text))}")
