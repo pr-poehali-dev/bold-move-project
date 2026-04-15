@@ -165,12 +165,22 @@ export default function EstimateTable({ text }: { text: string }) {
                         {label}
                       </td>
                     </tr>
-                    {block.items.map((item, ii) => (
-                      <tr key={`r-${bi}-${ii}`} className="border-t border-white/5 hover:bg-white/3 transition-colors">
-                        <td className="px-3 py-1.5 text-white/70">{item.name}</td>
-                        <td className="px-3 py-1.5 text-right text-white/90 font-montserrat font-semibold text-xs leading-snug">{item.value}</td>
-                      </tr>
-                    ))}
+                    {block.items.map((item, ii) => {
+                      const cleanName = item.name.replace(/\s*[-–—]\s*$/, "");
+                      // Разбиваем "12 м² × 399 ₽ = 4 788 ₽" на формулу и итог
+                      const eqIdx = item.value.lastIndexOf("=");
+                      const formula = eqIdx > 0 ? item.value.slice(0, eqIdx).trim() : "";
+                      const total   = eqIdx > 0 ? item.value.slice(eqIdx + 1).trim() : item.value;
+                      return (
+                        <tr key={`r-${bi}-${ii}`} className="border-t border-white/5 hover:bg-white/3 transition-colors">
+                          <td className="px-3 py-1.5 text-white/70">{cleanName}</td>
+                          <td className="px-3 py-1.5 text-right">
+                            {formula && <div className="text-white/50 text-[11px] font-montserrat leading-snug">{formula}</div>}
+                            <div className="text-orange-400 font-montserrat font-bold text-xs leading-snug">{total}</div>
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </>
                 );
               });
