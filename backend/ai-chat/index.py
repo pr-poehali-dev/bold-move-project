@@ -630,6 +630,8 @@ def handler(event, context):
     for _p in _junk:
         answer = re.sub(_p, '', answer, flags=re.MULTILINE)
     answer = answer.strip()
+    if answer:
+        answer = answer[0].upper() + answer[1:]
 
     # Разбиваем "Светильники GX-53 + лампа N шт × P = T" на две строки
     def split_lamp_line(text: str) -> str:
