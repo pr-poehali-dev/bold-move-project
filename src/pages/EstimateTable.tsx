@@ -170,8 +170,8 @@ export default function EstimateTable({ text }: { text: string }) {
                 const label = block.numbered ? `${numCounter}. ${block.title}` : block.title;
                 return (
                   <>
-                    <tr key={`h-${bi}`} className="bg-white/4">
-                      <td colSpan={2} className="px-3 py-2 font-montserrat font-bold text-orange-400 text-xs">
+                    <tr key={`h-${bi}`} className={`bg-white/[0.06] ${bi > 0 ? "border-t-2 border-[#0b0b11]" : ""}`}>
+                      <td colSpan={2} className="px-3 pt-2.5 pb-2 font-montserrat font-bold text-orange-400 text-xs">
                         {label}
                       </td>
                     </tr>
@@ -203,7 +203,7 @@ export default function EstimateTable({ text }: { text: string }) {
                       formula = formula.replace(/\s*=\s*[\d\s]+[₽Рруб].*$/, "").trim();
 
                       return (
-                        <tr key={`r-${bi}-${ii}`} className="border-t border-white/5 hover:bg-white/3 transition-colors">
+                        <tr key={`r-${bi}-${ii}`} className={`hover:bg-white/3 transition-colors ${ii > 0 ? "border-t border-white/5" : ""}`}>
                           <td className="px-3 py-1.5 text-white/70">{cleanName}</td>
                           <td className="px-3 py-1.5 text-right">
                             {formula && <div className="text-white/50 text-[11px] font-montserrat leading-snug">{formula}</div>}
