@@ -231,36 +231,34 @@ def handler(event, context):
         tg_send(tg_text)
         return {"statusCode": 200, "headers": CORS, "body": json.dumps({"ok": True})}
 
-    # ── Загрузка файла от клиента → Telegram (base64 JSON) ───────────────────
-    if method == "POST" and action == "upload":
-        import base64 as _b64
-        if not TG_TOKEN or not TG_CHAT_ID:
-            return {"statusCode": 500, "headers": CORS, "body": json.dumps({"error": "telegram not configured"})}
+    # ── Presigned URL для прямой загрузки файла в S3 ─────────────────────────
+    if method == "POST" and action == "presign":
+        import boto3
+        filename = (body.get("filename") or "file").strip()
+        key = f"client-uploads/{uuid.uuid4()}/{filename}"
+        aws_key    = os.environ.get("AWS_ACCESS_KEY_ID", "")
+        aws_secret = os.environ.get("AWS_SECRET_ACCESS_KEY", "")
+        s3 = boto3.client(
+            "s3",
+            endpoint_url="https://bucket.poehali.dev",
+            aws_access_key_id=aws_key,
+            aws_secret_access_key=aws_secret,
+        )
+        presigned = s3.generate_presigned_url(
+            "put_object",
+            Params={"Bucket": "files", "Key": key},
+            ExpiresIn=600,
+        )
+        cdn_url = f"https://cdn.poehali.dev/projects/{aws_key}/bucket/{key}"
+        return {"statusCode": 200, "headers": CORS, "body": json.dumps({"upload_url": presigned, "cdn_url": cdn_url})}
 
-        file_b64 = (body.get("file") or "").strip()
-        filename  = (body.get("filename") or "file").strip()
-        caption   = (body.get("caption") or "📎 Клиент прислал файл с сайта").strip()
-
-        if not file_b64:
-            return {"statusCode": 400, "headers": CORS, "body": json.dumps({"error": "no file"})}
-
-        try:
-            file_bytes = _b64.b64decode(file_b64)
-        except Exception:
-            return {"statusCode": 400, "headers": CORS, "body": json.dumps({"error": "invalid base64"})}
-
-        try:
-            r = requests.post(
-                f"https://api.telegram.org/bot{TG_TOKEN}/sendDocument",
-                data={"chat_id": TG_CHAT_ID, "caption": caption},
-                files={"document": (filename, file_bytes)},
-                timeout=60,
-            )
-            if r.json().get("ok"):
-                return {"statusCode": 200, "headers": CORS, "body": json.dumps({"ok": True})}
-            print(f"[upload] TG error: {r.text}")
-            return {"statusCode": 500, "headers": CORS, "body": json.dumps({"error": r.text})}
-        except Exception as e:
-            return {"statusCode": 500, "headers": CORS, "body": json.dumps({"error": str(e)})}
+    # ── Уведомление в Telegram после загрузки файла в S3 ─────────────────────
+    if method == "POST" and action == "notify":
+        cdn_url  = (body.get("cdn_url") or "").strip()
+        filename = (body.get("filename") or "файл").strip()
+        if not cdn_url:
+            return {"statusCode": 400, "headers": CORS, "body": json.dumps({"error": "no cdn_url"})}
+        tg_send(f"📎 <b>Клиент загрузил файл с сайта</b>\n📄 {filename}\n🔗 {cdn_url}")
+        return {"statusCode": 200, "headers": CORS, "body": json.dumps({"ok": True})}
 
     return {"statusCode": 404, "headers": CORS, "body": json.dumps({"error": "not found"})}

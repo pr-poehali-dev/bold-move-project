@@ -43,27 +43,30 @@ export const PromptInputBox = React.forwardRef<HTMLDivElement, Props>(
       if (!file) return;
       setUploadState("loading");
       try {
-        // Шаг 1: читаем файл как base64 чанками — ограничение 4MB на chunk
-        const MAX = 3 * 1024 * 1024; // 3MB
-        if (file.size > MAX) {
-          alert(`Файл слишком большой (${(file.size/1024/1024).toFixed(1)} МБ). Максимум 3 МБ.`);
-          setUploadState("idle");
-          if (fileInputRef.current) fileInputRef.current.value = "";
-          return;
-        }
-        const toBase64 = (f: File) => new Promise<string>((resolve, reject) => {
-          const r = new FileReader();
-          r.onload = () => resolve((r.result as string).split(",")[1]);
-          r.onerror = reject;
-          r.readAsDataURL(f);
-        });
-        const base64 = await toBase64(file);
-        const res = await fetch(`${UPLOAD_URL}?action=upload`, {
+        // Шаг 1: получаем presigned URL для загрузки в S3
+        const presignRes = await fetch(`${UPLOAD_URL}?action=presign`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ file: base64, filename: file.name, caption: `📎 Клиент прислал файл: ${file.name}` }),
+          body: JSON.stringify({ filename: file.name }),
         });
-        setUploadState(res.ok ? "done" : "error");
+        if (!presignRes.ok) throw new Error("presign failed");
+        const { upload_url, cdn_url } = await presignRes.json();
+
+        // Шаг 2: загружаем файл напрямую в S3 (без ограничений по размеру)
+        const uploadRes = await fetch(upload_url, {
+          method: "PUT",
+          body: file,
+        });
+        if (!uploadRes.ok) throw new Error("s3 upload failed");
+
+        // Шаг 3: уведомляем бэкенд — он шлёт ссылку в Telegram
+        await fetch(`${UPLOAD_URL}?action=notify`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ cdn_url, filename: file.name }),
+        });
+
+        setUploadState("done");
       } catch {
         setUploadState("error");
       }
