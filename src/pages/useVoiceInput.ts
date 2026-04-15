@@ -37,20 +37,27 @@ export default function useVoiceInput(setInput: (value: string) => void) {
 
     recognition.onresult = (e: SpeechRecognitionEvent) => {
       let transcript = "";
-      for (let i = 0; i < e.results.length; i++) {
+      // Берём только результаты начиная с resultIndex — только новые
+      for (let i = e.resultIndex; i < e.results.length; i++) {
         transcript += e.results[i][0].transcript;
       }
-      setInput(transcript);
+      setInput((prev: string) => {
+        // Если interim — заменяем последнее слово, если final — добавляем
+        if (e.results[e.results.length - 1]?.isFinal) {
+          return (prev + " " + transcript).trim();
+        }
+        return transcript;
+      });
     };
 
     recognition.onend = () => {
-      if (recognitionRef.current) {
-        // На мобильных перезапускаем вручную после каждой фразы
-        if (isMobile) {
-          try { recognitionRef.current.start(); } catch { setIsListening(false); recognitionRef.current = null; }
-        } else {
-          try { recognitionRef.current.start(); } catch { setIsListening(false); }
-        }
+      if (!recognitionRef.current) return;
+      // На мобильных НЕ перезапускаем — один раз сказал, поле заполнено
+      if (!isMobile) {
+        try { recognitionRef.current.start(); } catch { setIsListening(false); }
+      } else {
+        setIsListening(false);
+        recognitionRef.current = null;
       }
     };
 

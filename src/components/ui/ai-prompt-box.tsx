@@ -58,14 +58,19 @@ export const PromptInputBox = React.forwardRef<HTMLDivElement, Props>(
         setSpeechError("Браузер не поддерживает голосовой ввод");
         return;
       }
+      const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+
       const recognition = new SR();
       recognition.lang = "ru-RU";
-      recognition.continuous = true;
-      recognition.interimResults = true;
+      // На Android continuous вызывает дубли — используем разовый режим
+      recognition.continuous = !isMobile;
+      recognition.interimResults = !isMobile;
 
-      let finalText = value;
+      const finalTextRef = { current: value };
+      const sentRef = { current: false };
 
       recognition.onresult = (e: SpeechRecognitionEvent) => {
+        if (sentRef.current) return;
         let interim = "";
         let final = "";
         for (let i = e.resultIndex; i < e.results.length; i++) {
@@ -77,10 +82,11 @@ export const PromptInputBox = React.forwardRef<HTMLDivElement, Props>(
           }
         }
         if (final) {
-          finalText = (finalText + " " + final).trim();
-          onValueChange(finalText);
+          finalTextRef.current = (finalTextRef.current + " " + final).trim();
+          onValueChange(finalTextRef.current);
+          if (isMobile) sentRef.current = true;
         } else if (interim) {
-          onValueChange((finalText + " " + interim).trim());
+          onValueChange((finalTextRef.current + " " + interim).trim());
         }
       };
 
