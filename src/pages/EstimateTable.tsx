@@ -176,7 +176,7 @@ export default function EstimateTable({ text }: { text: string }) {
                       </td>
                     </tr>
                     {block.items.map((item, ii) => {
-                      const cleanName = item.name.replace(/\s*[-–—]\s*$/, "").replace(/\s*\([\d.,\s]+\s*(?:м²|м2|шт\.?|мп|пм|м)\)/g, "").trim();
+                      const cleanName = item.name.replace(/\s*[-–—]\s*$/, "").replace(/\s*\([^)]*\)\s*$/, "").trim();
                       const val = item.value.trim();
                       let formula = "";
                       let total = val;

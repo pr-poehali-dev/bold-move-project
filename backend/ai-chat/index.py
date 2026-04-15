@@ -146,8 +146,9 @@ def try_simple_estimate(text: str) -> str | None:
     zakl_svet      = n_svetilnik * 350
     zakl_total     = zakl_lyustra + zakl_svet
 
-    # 4. Освещение (светильники GX-53)
-    svet_total = n_svetilnik * 400
+    # 4. Освещение (светильники GX-53 + лампы отдельно)
+    svet_total  = n_svetilnik * 400
+    lampa_total = n_svetilnik * 100
 
     # 5. Монтаж
     mount_canvas   = round(area * (350 if is_pvh else 500))
@@ -158,7 +159,7 @@ def try_simple_estimate(text: str) -> str | None:
     mount_razv     = (n_lyustra + n_svetilnik) * 700 if (n_lyustra + n_svetilnik) > 0 else 0
 
     standard = (canvas_total + raskroy + ogarp + profile_total + nisha_total +
-                zakl_total + svet_total +
+                zakl_total + svet_total + lampa_total +
                 mount_canvas + mount_profile + mount_nisha + mount_zakl + mount_svet + mount_razv)
     econom        = round(standard * 0.77)
     premium_price = round(standard * 1.27)
@@ -201,6 +202,7 @@ def try_simple_estimate(text: str) -> str | None:
         sec += 1
         lines.append(f"\n{sec}. Освещение:")
         lines.append(f"  Светильники GX-53 {n_svetilnik} шт. × 400 ₽ = {fmt(svet_total)} ₽")
+        lines.append(f"  Лампа GX-53 {n_svetilnik} шт. × 100 ₽ = {fmt(lampa_total)} ₽")
 
     # Монтаж
     sec += 1
