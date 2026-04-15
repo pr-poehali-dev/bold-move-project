@@ -522,12 +522,12 @@ def handler(event, context):
         img_block = '\n' + '\n'.join(f"![фото]({url})" for url in search['images'])
         answer = answer + img_block
 
-    # Генерация дизайна через FLUX по запросу клиента
-    if IMAGE_GEN.search(last_user_text):
-        gen_url = generate_image(last_user_text)
-        print(f"[flux] gen_url={gen_url}")
-        if gen_url:
-            answer = answer + f"\n\n![сгенерированный дизайн]({gen_url})"
+    # Генерация дизайна через FLUX — временно отключена
+    # if IMAGE_GEN.search(last_user_text):
+    #     gen_url = generate_image(last_user_text)
+    #     print(f"[flux] gen_url={gen_url}")
+    #     if gen_url:
+    #         answer = answer + f"\n\n![сгенерированный дизайн]({gen_url})"
 
     return {
         'statusCode': 200,
