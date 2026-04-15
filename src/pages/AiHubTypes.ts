@@ -1,13 +1,9 @@
-import func2url from "@/../backend/func2url.json";
-
 // ─── types ────────────────────────────────────────────────────────────────────
 export type Section = "catalog" | "calc" | "portfolio" | "ai" | "reviews" | "faq" | "contacts";
 
-export interface Msg {
-  id: number;
-  role: "user" | "assistant";
-  text: string;
-}
+// Re-export Msg and AI_URL from the canonical source
+export type { Msg } from "./chatConfig";
+export { AI_URL } from "./chatConfig";
 
 // ─── menu config ──────────────────────────────────────────────────────────────
 export const MENU: { id: Section; label: string; emoji: string; icon: string; hint: string }[] = [
@@ -20,7 +16,6 @@ export const MENU: { id: Section; label: string; emoji: string; icon: string; hi
   { id: "contacts",  label: "Контакты",    emoji: "📞", icon: "Phone",       hint: "Телефон, WhatsApp, Telegram и адрес офиса"   },
 ];
 
-export const AI_URL = func2url["ai-chat"];
 export const FALLBACK = "Извините, сейчас помощник недоступен. Позвоните: +7 (977) 606-89-01";
 
 // ─── AI responses (fallback) ──────────────────────────────────────────────────

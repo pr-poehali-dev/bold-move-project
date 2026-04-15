@@ -2,7 +2,8 @@ import { useState } from "react";
 import { usePhone } from "@/hooks/use-phone";
 import Icon from "@/components/ui/icon";
 import Lightbox from "@/components/ui/lightbox";
-import { REVIEWS, FAQ, PRODUCTION } from "./data/content";
+import { PRODUCTION } from "./data/content";
+import { SharedPanelReviews, SharedPanelFaq } from "./sharedPanels";
 import { PORTFOLIO_ITEMS } from "./data/portfolio";
 import { TIPS, CONTACTS, PROD_FEATURES, BOOKING_TIMES, Panel } from "./chatConfig";
 import func2url from "@/../backend/func2url.json";
@@ -237,24 +238,8 @@ export function PanelReviews({ onClose }: { onClose: () => void }) {
   return (
     <div className="h-full flex flex-col">
       <PanelHeader icon="Heart" title="Отзывы клиентов" onClose={onClose} />
-      <div className="flex-1 overflow-y-auto p-4 space-y-2.5">
-        {REVIEWS.slice(0, 5).map((r, i) => (
-          <div key={i} className="rounded-xl border border-white/[0.05] bg-white/[0.02] p-3.5 flex gap-3">
-            <div className="w-9 h-9 rounded-full bg-gradient-to-br from-orange-500/60 to-rose-500/60 flex items-center justify-center text-white font-bold text-xs shrink-0">
-              {r.name.charAt(0)}
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center justify-between mb-0.5">
-                <span className="text-white font-medium text-xs">{r.name}</span>
-                <span className="text-white/20 text-[10px]">{r.date}</span>
-              </div>
-              <div className="text-amber-400 text-[10px] mb-1.5">
-                {"★".repeat(r.rating)} <span className="text-white/20 ml-1">{r.city}</span>
-              </div>
-              <p className="text-white/40 text-[11px] leading-relaxed line-clamp-2">{r.text}</p>
-            </div>
-          </div>
-        ))}
+      <div className="flex-1 min-h-0 overflow-hidden">
+        <SharedPanelReviews />
       </div>
     </div>
   );
@@ -262,23 +247,11 @@ export function PanelReviews({ onClose }: { onClose: () => void }) {
 
 // ─── FAQ ──────────────────────────────────────────────────────────────────────
 export function PanelFaq({ onClose }: { onClose: () => void }) {
-  const [open, setOpen] = useState<number | null>(0);
   return (
     <div className="h-full flex flex-col">
       <PanelHeader icon="HelpCircle" title="Частые вопросы" onClose={onClose} />
-      <div className="flex-1 overflow-y-auto p-4 space-y-2">
-        {FAQ.map((item, i) => (
-          <div key={i} className="rounded-xl border border-white/[0.05] bg-white/[0.02] overflow-hidden">
-            <button onClick={() => setOpen(open === i ? null : i)}
-              className="w-full flex items-center justify-between gap-3 px-4 py-3 text-left hover:bg-white/[0.02] transition-colors">
-              <span className="text-white text-xs font-medium">{item.q}</span>
-              <Icon name={open === i ? "ChevronUp" : "ChevronDown"} size={14} className="text-white/25 shrink-0" />
-            </button>
-            <div className={`overflow-hidden transition-all duration-200 ${open === i ? "max-h-40" : "max-h-0"}`}>
-              <p className="px-4 pb-3 text-white/35 text-[11px] leading-relaxed">{item.a}</p>
-            </div>
-          </div>
-        ))}
+      <div className="flex-1 min-h-0 overflow-hidden">
+        <SharedPanelFaq />
       </div>
     </div>
   );
