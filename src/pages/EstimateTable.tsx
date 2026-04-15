@@ -176,11 +176,32 @@ export default function EstimateTable({ text }: { text: string }) {
                       </td>
                     </tr>
                     {block.items.map((item, ii) => {
-                      const cleanName = item.name.replace(/\s*[-–—]\s*$/, "");
-                      // Разбиваем "12 м² × 399 ₽ = 4 788 ₽" на формулу и итог
-                      const eqIdx = item.value.lastIndexOf("=");
-                      const formula = eqIdx > 0 ? item.value.slice(0, eqIdx).trim() : "";
-                      const total   = eqIdx > 0 ? item.value.slice(eqIdx + 1).trim() : item.value;
+                      const cleanName = item.name.replace(/\s*[-–—]\s*$/, "").replace(/\s*\([\d.,\s]+\s*(?:м²|м2|шт\.?|мп|пм|м)\)/g, "").trim();
+                      const val = item.value.trim();
+                      let formula = "";
+                      let total = val;
+
+                      // Вариант 1: есть "= ИТОГ" — берём последний "="
+                      const eqIdx = val.lastIndexOf("=");
+                      if (eqIdx > 0) {
+                        formula = val.slice(0, eqIdx).trim();
+                        total   = val.slice(eqIdx + 1).trim();
+                      } else {
+                        // Вариант 2: "A × B ₽" без итога — вычисляем сами
+                        const mulMatch = val.match(/^([\d.,\s]+)\s*[×xх]\s*([\d.,\s]+)\s*[₽Рруб]/);
+                        if (mulMatch) {
+                          const a = parseFloat(mulMatch[1].replace(/\s/g, "").replace(",", "."));
+                          const b = parseFloat(mulMatch[2].replace(/\s/g, "").replace(",", "."));
+                          if (!isNaN(a) && !isNaN(b)) {
+                            formula = val.replace(/\s*[₽Рруб].*$/, " ₽").trim();
+                            total   = new Intl.NumberFormat("ru-RU").format(Math.round(a * b)) + " ₽";
+                          }
+                        }
+                      }
+
+                      // Чистим формулу от лишнего "= ..." в конце если осталось
+                      formula = formula.replace(/\s*=\s*[\d\s]+[₽Рруб].*$/, "").trim();
+
                       return (
                         <tr key={`r-${bi}-${ii}`} className="border-t border-white/5 hover:bg-white/3 transition-colors">
                           <td className="px-3 py-1.5 text-white/70">{cleanName}</td>
