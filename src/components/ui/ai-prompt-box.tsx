@@ -42,30 +42,29 @@ export const PromptInputBox = React.forwardRef<HTMLDivElement, Props>(
       const file = e.target.files?.[0];
       if (!file) return;
       setUploadState("loading");
+
+      const CHUNK = 700 * 1024; // 700 КБ — с учётом base64 overhead ~960КБ JSON
+      const total = Math.ceil(file.size / CHUNK);
+      const fileId = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+
       try {
-        // Шаг 1: получаем presigned URL для загрузки в S3
-        const presignRes = await fetch(`${UPLOAD_URL}?action=presign`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ filename: file.name }),
-        });
-        if (!presignRes.ok) throw new Error("presign failed");
-        const { upload_url, cdn_url } = await presignRes.json();
-
-        // Шаг 2: загружаем файл напрямую в S3 (без ограничений по размеру)
-        const uploadRes = await fetch(upload_url, {
-          method: "PUT",
-          body: file,
-        });
-        if (!uploadRes.ok) throw new Error("s3 upload failed");
-
-        // Шаг 3: уведомляем бэкенд — он шлёт ссылку в Telegram
-        await fetch(`${UPLOAD_URL}?action=notify`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ cdn_url, filename: file.name }),
-        });
-
+        for (let i = 0; i < total; i++) {
+          const slice = file.slice(i * CHUNK, (i + 1) * CHUNK);
+          const buf = await slice.arrayBuffer();
+          const b64 = btoa(String.fromCharCode(...new Uint8Array(buf)));
+          const res = await fetch(`${UPLOAD_URL}?action=chunk`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              file_id: fileId,
+              filename: file.name,
+              chunk_index: i,
+              total_chunks: total,
+              data: b64,
+            }),
+          });
+          if (!res.ok) throw new Error(`chunk ${i} failed`);
+        }
         setUploadState("done");
       } catch {
         setUploadState("error");

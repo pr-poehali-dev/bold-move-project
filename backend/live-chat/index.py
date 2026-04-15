@@ -231,34 +231,55 @@ def handler(event, context):
         tg_send(tg_text)
         return {"statusCode": 200, "headers": CORS, "body": json.dumps({"ok": True})}
 
-    # ── Presigned URL для прямой загрузки файла в S3 ─────────────────────────
-    if method == "POST" and action == "presign":
-        import boto3
-        filename = (body.get("filename") or "file").strip()
-        key = f"client-uploads/{uuid.uuid4()}/{filename}"
+    # ── Загрузка чанка файла ──────────────────────────────────────────────────
+    # Клиент шлёт файл по кускам: chunk_index, total_chunks, file_id, filename, data (base64)
+    # Последний чанк (chunk_index == total_chunks-1) собирает файл и шлёт в Telegram
+    if method == "POST" and action == "chunk":
+        import base64 as _b64, boto3
+        file_id     = (body.get("file_id") or "").strip()
+        filename    = (body.get("filename") or "file").strip()
+        chunk_index = int(body.get("chunk_index", 0))
+        total       = int(body.get("total_chunks", 1))
+        data_b64    = (body.get("data") or "").strip()
+
+        if not file_id or not data_b64:
+            return {"statusCode": 400, "headers": CORS, "body": json.dumps({"error": "missing fields"})}
+
+        chunk_bytes = _b64.b64decode(data_b64)
+
         aws_key    = os.environ.get("AWS_ACCESS_KEY_ID", "")
         aws_secret = os.environ.get("AWS_SECRET_ACCESS_KEY", "")
-        s3 = boto3.client(
-            "s3",
-            endpoint_url="https://bucket.poehali.dev",
-            aws_access_key_id=aws_key,
-            aws_secret_access_key=aws_secret,
-        )
-        presigned = s3.generate_presigned_url(
-            "put_object",
-            Params={"Bucket": "files", "Key": key},
-            ExpiresIn=600,
-        )
-        cdn_url = f"https://cdn.poehali.dev/projects/{aws_key}/bucket/{key}"
-        return {"statusCode": 200, "headers": CORS, "body": json.dumps({"upload_url": presigned, "cdn_url": cdn_url})}
+        s3 = boto3.client("s3", endpoint_url="https://bucket.poehali.dev",
+                          aws_access_key_id=aws_key, aws_secret_access_key=aws_secret)
 
-    # ── Уведомление в Telegram после загрузки файла в S3 ─────────────────────
-    if method == "POST" and action == "notify":
-        cdn_url  = (body.get("cdn_url") or "").strip()
-        filename = (body.get("filename") or "файл").strip()
-        if not cdn_url:
-            return {"statusCode": 400, "headers": CORS, "body": json.dumps({"error": "no cdn_url"})}
-        tg_send(f"📎 <b>Клиент загрузил файл с сайта</b>\n📄 {filename}\n🔗 {cdn_url}")
-        return {"statusCode": 200, "headers": CORS, "body": json.dumps({"ok": True})}
+        # Сохраняем чанк в S3
+        chunk_key = f"client-uploads/chunks/{file_id}/{chunk_index:04d}"
+        s3.put_object(Bucket="files", Key=chunk_key, Body=chunk_bytes)
+        print(f"[chunk] {file_id} {chunk_index+1}/{total} {len(chunk_bytes)}b saved")
+
+        # Если это последний чанк — собираем и шлём в Telegram
+        if chunk_index == total - 1:
+            parts = []
+            for i in range(total):
+                obj = s3.get_object(Bucket="files", Key=f"client-uploads/chunks/{file_id}/{i:04d}")
+                parts.append(obj["Body"].read())
+            file_bytes = b"".join(parts)
+            print(f"[chunk] assembled {len(file_bytes)} bytes, sending to TG")
+
+            # Удаляем чанки
+            for i in range(total):
+                try: s3.delete_object(Bucket="files", Key=f"client-uploads/chunks/{file_id}/{i:04d}")
+                except: pass
+
+            if TG_TOKEN and TG_CHAT_ID:
+                r = requests.post(
+                    f"https://api.telegram.org/bot{TG_TOKEN}/sendDocument",
+                    data={"chat_id": TG_CHAT_ID, "caption": f"📎 Клиент загрузил файл с сайта: {filename}"},
+                    files={"document": (filename, file_bytes)},
+                    timeout=120,
+                )
+                print(f"[chunk] TG ok={r.json().get('ok')}")
+
+        return {"statusCode": 200, "headers": CORS, "body": json.dumps({"ok": True, "received": chunk_index})}
 
     return {"statusCode": 404, "headers": CORS, "body": json.dumps({"error": "not found"})}
