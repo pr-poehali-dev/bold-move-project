@@ -170,8 +170,8 @@ export default function EstimateTable({ text }: { text: string }) {
                 const label = block.numbered ? `${numCounter}. ${block.title}` : block.title;
                 return (
                   <>
-                    <tr key={`h-${bi}`} className={`bg-white/[0.06] ${bi > 0 ? "border-t-2 border-[#0b0b11]" : ""}`}>
-                      <td colSpan={2} className="px-3 pt-2.5 pb-2 font-montserrat font-bold text-orange-400 text-xs">
+                    <tr key={`h-${bi}`} className={bi > 0 ? "border-t border-white/10" : ""}>
+                      <td colSpan={2} className="px-3 pt-3 pb-1.5 font-montserrat font-bold text-orange-400 text-xs">
                         {label}
                       </td>
                     </tr>
