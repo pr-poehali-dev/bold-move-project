@@ -169,54 +169,54 @@ def try_simple_estimate(text: str) -> str | None:
 
     # Полотно
     lines.append(f"{sec}. Полотно:")
-    lines.append(f"  {canvas_name} {area}м² × {canvas_price}₽ = {fmt(canvas_total)}₽")
+    lines.append(f"  {canvas_name} {area} м² × {canvas_price} ₽ = {fmt(canvas_total)} ₽")
     if is_pvh:
-        lines.append(f"  Раскрой ПВХ {area}м² × 100₽ = {fmt(raskroy)}₽")
-        lines.append(f"  Огарпунивание {area}м² × 100₽ = {fmt(ogarp)}₽")
+        lines.append(f"  Раскрой ПВХ {area} м² × 100 ₽ = {fmt(raskroy)} ₽")
+        lines.append(f"  Огарпунивание {area} м² × 100 ₽ = {fmt(ogarp)} ₽")
 
     # Профиль
     sec += 1
     lines.append(f"\n{sec}. Профиль:")
-    lines.append(f"  Стеновой алюминиевый {profile_len}пм × 200₽ = {fmt(profile_total)}₽")
+    lines.append(f"  Стеновой алюминиевый {profile_len} мп × 200 ₽ = {fmt(profile_total)} ₽")
 
     # Ниша
     if has_nisha:
         sec += 1
         lines.append(f"\n{sec}. Ниши для штор:")
-        lines.append(f"  Ниша {nisha_label} {nisha_len}пм × {nisha_price}₽ = {fmt(nisha_total)}₽")
+        lines.append(f"  Ниша {nisha_label} {nisha_len} мп × {nisha_price} ₽ = {fmt(nisha_total)} ₽")
 
     # Закладные
     if zakl_total > 0:
         sec += 1
         lines.append(f"\n{sec}. Закладные:")
         if n_lyustra > 0:
-            lines.append(f"  Под люстру {n_lyustra}шт. × 700₽ = {fmt(zakl_lyustra)}₽")
+            lines.append(f"  Под люстру {n_lyustra} шт. × 700 ₽ = {fmt(zakl_lyustra)} ₽")
         if n_svetilnik > 0:
-            lines.append(f"  Под светильники {n_svetilnik}шт. × 350₽ = {fmt(zakl_svet)}₽")
+            lines.append(f"  Под светильники {n_svetilnik} шт. × 350 ₽ = {fmt(zakl_svet)} ₽")
 
     # Освещение
     if svet_total > 0:
         sec += 1
         lines.append(f"\n{sec}. Освещение:")
-        lines.append(f"  Светильники GX-53 {n_svetilnik}шт. × 400₽ = {fmt(svet_total)}₽")
+        lines.append(f"  Светильники GX-53 {n_svetilnik} шт. × 400 ₽ = {fmt(svet_total)} ₽")
 
     # Монтаж
     sec += 1
     lines.append(f"\n{sec}. Услуги монтажа:")
-    lines.append(f"  Монтаж полотна {'ПВХ' if is_pvh else 'ткань'} {area}м² × {350 if is_pvh else 500}₽ = {fmt(mount_canvas)}₽")
-    lines.append(f"  Монтаж профиля {profile_len}пм × 200₽ = {fmt(mount_profile)}₽")
+    lines.append(f"  Монтаж полотна {'ПВХ' if is_pvh else 'ткань'} {area} м² × {350 if is_pvh else 500} ₽ = {fmt(mount_canvas)} ₽")
+    lines.append(f"  Монтаж профиля {profile_len} мп × 200 ₽ = {fmt(mount_profile)} ₽")
     if has_nisha:
-        lines.append(f"  Монтаж ниши {nisha_len}пм × 350₽ = {fmt(mount_nisha)}₽")
+        lines.append(f"  Монтаж ниши {nisha_len} мп × 350 ₽ = {fmt(mount_nisha)} ₽")
     if mount_zakl > 0:
-        lines.append(f"  Монтаж закладных {n_lyustra + n_svetilnik}шт. × 350₽ = {fmt(mount_zakl)}₽")
+        lines.append(f"  Монтаж закладных {n_lyustra + n_svetilnik} шт. × 350 ₽ = {fmt(mount_zakl)} ₽")
     if mount_svet > 0:
-        lines.append(f"  Монтаж светильников {n_svetilnik}шт. × 500₽ = {fmt(mount_svet)}₽")
+        lines.append(f"  Монтаж светильников {n_svetilnik} шт. × 500 ₽ = {fmt(mount_svet)} ₽")
     if mount_razv > 0:
-        lines.append(f"  Монтаж разводки ГОСТ {n_lyustra + n_svetilnik}шт. × 700₽ = {fmt(mount_razv)}₽")
+        lines.append(f"  Монтаж разводки ГОСТ {n_lyustra + n_svetilnik} шт. × 700 ₽ = {fmt(mount_razv)} ₽")
 
-    lines.append(f"\nEconom:   {fmt(econom)}₽")
-    lines.append(f"Standard: {fmt(standard)}₽")
-    lines.append(f"Premium:  {fmt(premium_price)}₽")
+    lines.append(f"\nEconom:   {fmt(econom)} ₽")
+    lines.append(f"Standard: {fmt(standard)} ₽")
+    lines.append(f"Premium:  {fmt(premium_price)} ₽")
     lines.append(f"\nНа какой день вас записать на бесплатный замер?")
 
     return '\n'.join(lines)
