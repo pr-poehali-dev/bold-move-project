@@ -43,15 +43,22 @@ export const PromptInputBox = React.forwardRef<HTMLDivElement, Props>(
       if (!file) return;
       setUploadState("loading");
 
-      const CHUNK = 700 * 1024; // 700 КБ — с учётом base64 overhead ~960КБ JSON
+      const CHUNK = 700 * 1024;
       const total = Math.ceil(file.size / CHUNK);
       const fileId = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+
+      const toB64 = (buf: ArrayBuffer): string => {
+        const bytes = new Uint8Array(buf);
+        let bin = "";
+        for (let j = 0; j < bytes.length; j++) bin += String.fromCharCode(bytes[j]);
+        return btoa(bin);
+      };
 
       try {
         for (let i = 0; i < total; i++) {
           const slice = file.slice(i * CHUNK, (i + 1) * CHUNK);
           const buf = await slice.arrayBuffer();
-          const b64 = btoa(String.fromCharCode(...new Uint8Array(buf)));
+          const b64 = toB64(buf);
           const res = await fetch(`${UPLOAD_URL}?action=chunk`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
