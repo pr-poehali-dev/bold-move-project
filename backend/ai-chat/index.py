@@ -55,27 +55,23 @@ CANVAS_PRICES = {
 }
 
 def try_simple_estimate(text: str) -> str | None:
-    """Перехватываем ТОЛЬКО совсем простые запросы без доп. позиций."""
+    """Детерминированный расчёт сметы: площадь + светильники + люстра + ниши + парящий профиль."""
     t = text.lower()
-    # Не перехватываем если есть дополнительные позиции
-    has_extras = re.search(
-        r'(светильник|лента|закладн|ниш|шторн|парящ|теневой|двухуровн|керамогран|вентил|люстр|блок питани)',
-        t
-    )
-    if has_extras:
+
+    # Не перехватываем сложные случаи: лента, двухуровневые, керамогранит
+    has_complex = re.search(r'(лента|двухуровн|керамогран|теневой|вентил|блок питани)', t)
+    if has_complex:
         return None
-    # Ищем площадь
+
+    # Ищем площадь — обязательный параметр
     m = re.search(r'(\d+(?:[.,]\d+)?)\s*(?:м²|м2|кв\.?\s*м|квадрат)', t)
     if not m:
         return None
     area = float(m.group(1).replace(',', '.'))
     if area < 1 or area > 500:
         return None
-    # Только если запрос очень простой (площадь + тип полотна максимум)
-    word_count = len(t.split())
-    if word_count > 12:
-        return None
 
+    # Тип полотна
     canvas_key = 'classic'
     if re.search(r'(ткань|тканев|дескор)', t):
         canvas_key = 'ткань'
@@ -92,31 +88,136 @@ def try_simple_estimate(text: str) -> str | None:
     perim = round(area * 1.3, 1)
     is_pvh = canvas_key != 'ткань'
 
-    canvas_total = round(area * canvas_price)
-    raskroy = round(area * 100) if is_pvh else 0
-    ogarp = round(area * 100) if is_pvh else 0
-    profile = round(perim * 200)
-    mount_canvas = round(area * (350 if is_pvh else 500))
-    mount_profile = round(perim * 200)
+    # Светильники GX-53
+    svetilnik_m = re.search(r'(\d+)\s*светильник', t)
+    n_svetilnik = int(svetilnik_m.group(1)) if svetilnik_m else 0
 
-    standard = canvas_total + raskroy + ogarp + profile + mount_canvas + mount_profile
-    econom = round(standard * 0.77)
+    # Люстра
+    lyustra_m = re.search(r'(\d+)?\s*люстр', t)
+    n_lyustra = int(lyustra_m.group(1)) if (lyustra_m and lyustra_m.group(1)) else (1 if lyustra_m else 0)
+
+    # Ниша для штор — ищем метраж или берём 1/4 периметра по умолчанию
+    nisha_m = re.search(r'ниш[аеуы]?\s+(?:для\s+штор\s+)?(?:пк[- ]?(\d+)|(\d+))', t)
+    nisha_type_m = re.search(r'(?:ниш[аеуы]?\s+(?:для\s+штор\s+)?)(пк[- ]?(\d+))', t)
+    has_nisha = bool(re.search(r'ниш[аеуы]?\s*(?:для\s*штор)?', t))
+
+    # Длина ниши: ищем "X м ниша" или "ниша X м" или дефолт
+    nisha_len_m = re.search(r'(\d+(?:[.,]\d+)?)\s*(?:м|пм|погон)\s+(?:ниш|шторн)', t) or \
+                  re.search(r'ниш[аеуы]?\s+(?:для\s+штор\s+)?(?:пк[- ]?\d+\s+)?(\d+(?:[.,]\d+)?)\s*(?:м|пм|погон)', t)
+    nisha_len = float(nisha_len_m.group(1).replace(',', '.')) if nisha_len_m else round(area ** 0.5 + 0.5, 1)
+
+    # Тип ниши
+    nisha_price = 0
+    nisha_label = ''
+    if has_nisha:
+        pk_m = re.search(r'пк[- ]?(\d+)', t)
+        pk = int(pk_m.group(1)) if pk_m else 0
+        if pk in (12, 14, 15):
+            nisha_price = 3600
+            nisha_label = f'ПК-{pk}'
+        elif pk == 6:
+            nisha_price = 1300
+            nisha_label = 'Парящий ПК-6'
+        elif re.search(r'sigma\s*led', t):
+            nisha_price = 1650; nisha_label = 'Sigma LED'
+        elif re.search(r'sigma', t):
+            nisha_price = 1400; nisha_label = 'Sigma'
+        elif re.search(r'брус|бп.?40', t):
+            nisha_price = 850; nisha_label = 'Брус БП-40'
+        else:
+            nisha_price = 1700; nisha_label = 'Стандартная'
+
+    # ─── РАСЧЁТ ───────────────────────────────────────────────────────────────
+    # 1. Полотно
+    canvas_total  = round(area * canvas_price)
+    raskroy       = round(area * 100) if is_pvh else 0
+    ogarp         = round(area * 100) if is_pvh else 0
+
+    # 2. Профиль (вычитаем длину ниши из стандартного, если она парящая/ПК)
+    is_nisha_special = has_nisha and nisha_price >= 1300  # ПК-12/14/15/парящий
+    profile_len = max(0, round(perim - (nisha_len if is_nisha_special else 0), 1))
+    profile_total = round(profile_len * 200)
+    nisha_total   = round(nisha_len * nisha_price) if has_nisha else 0
+
+    # 3. Закладные
+    zakl_lyustra   = n_lyustra * 700
+    zakl_svet      = n_svetilnik * 350
+    zakl_total     = zakl_lyustra + zakl_svet
+
+    # 4. Освещение (светильники GX-53)
+    svet_total = n_svetilnik * 400
+
+    # 5. Монтаж
+    mount_canvas   = round(area * (350 if is_pvh else 500))
+    mount_profile  = round(profile_len * 200)
+    mount_nisha    = round(nisha_len * 350) if has_nisha else 0
+    mount_zakl     = (n_lyustra + n_svetilnik) * 350 if (n_lyustra + n_svetilnik) > 0 else 0
+    mount_svet     = n_svetilnik * 500
+    mount_razv     = (n_lyustra + n_svetilnik) * 700 if (n_lyustra + n_svetilnik) > 0 else 0
+
+    standard = (canvas_total + raskroy + ogarp + profile_total + nisha_total +
+                zakl_total + svet_total +
+                mount_canvas + mount_profile + mount_nisha + mount_zakl + mount_svet + mount_razv)
+    econom        = round(standard * 0.77)
     premium_price = round(standard * 1.27)
 
-    lines = ["1. Полотно:"]
-    lines.append(f"  {canvas_name} {area}м² = {canvas_total}₽")
+    def fmt(n): return f"{n:,}".replace(',', ' ')
+
+    # ─── ВЫВОД ────────────────────────────────────────────────────────────────
+    sec = 1
+    lines = []
+
+    # Полотно
+    lines.append(f"{sec}. Полотно:")
+    lines.append(f"  {canvas_name} {area}м² × {canvas_price}₽ = {fmt(canvas_total)}₽")
     if is_pvh:
-        lines.append(f"  Раскрой ПВХ {area}м² = {raskroy}₽")
-        lines.append(f"  Огарпунивание {area}м² = {ogarp}₽")
-    lines.append(f"\n2. Профиль:")
-    lines.append(f"  Стеновой алюм {perim}пм = {profile}₽")
-    lines.append(f"\n3. Услуги монтажа:")
-    lines.append(f"  {'Монтаж ПВХ' if is_pvh else 'Монтаж ткани'} {area}м² = {mount_canvas}₽")
-    lines.append(f"  Монтаж профиля {perim}пм = {mount_profile}₽")
-    lines.append(f"\nEconom:  {econom:,}₽".replace(',', ' '))
-    lines.append(f"Standard: {standard:,}₽".replace(',', ' '))
-    lines.append(f"Premium:  {premium_price:,}₽".replace(',', ' '))
-    lines.append(f"\nНа какой день вас записать\nна бесплатный замер?")
+        lines.append(f"  Раскрой ПВХ {area}м² × 100₽ = {fmt(raskroy)}₽")
+        lines.append(f"  Огарпунивание {area}м² × 100₽ = {fmt(ogarp)}₽")
+
+    # Профиль
+    sec += 1
+    lines.append(f"\n{sec}. Профиль:")
+    lines.append(f"  Стеновой алюминиевый {profile_len}пм × 200₽ = {fmt(profile_total)}₽")
+
+    # Ниша
+    if has_nisha:
+        sec += 1
+        lines.append(f"\n{sec}. Ниши для штор:")
+        lines.append(f"  Ниша {nisha_label} {nisha_len}пм × {nisha_price}₽ = {fmt(nisha_total)}₽")
+
+    # Закладные
+    if zakl_total > 0:
+        sec += 1
+        lines.append(f"\n{sec}. Закладные:")
+        if n_lyustra > 0:
+            lines.append(f"  Под люстру {n_lyustra}шт. × 700₽ = {fmt(zakl_lyustra)}₽")
+        if n_svetilnik > 0:
+            lines.append(f"  Под светильники {n_svetilnik}шт. × 350₽ = {fmt(zakl_svet)}₽")
+
+    # Освещение
+    if svet_total > 0:
+        sec += 1
+        lines.append(f"\n{sec}. Освещение:")
+        lines.append(f"  Светильники GX-53 {n_svetilnik}шт. × 400₽ = {fmt(svet_total)}₽")
+
+    # Монтаж
+    sec += 1
+    lines.append(f"\n{sec}. Услуги монтажа:")
+    lines.append(f"  Монтаж полотна {'ПВХ' if is_pvh else 'ткань'} {area}м² × {350 if is_pvh else 500}₽ = {fmt(mount_canvas)}₽")
+    lines.append(f"  Монтаж профиля {profile_len}пм × 200₽ = {fmt(mount_profile)}₽")
+    if has_nisha:
+        lines.append(f"  Монтаж ниши {nisha_len}пм × 350₽ = {fmt(mount_nisha)}₽")
+    if mount_zakl > 0:
+        lines.append(f"  Монтаж закладных {n_lyustra + n_svetilnik}шт. × 350₽ = {fmt(mount_zakl)}₽")
+    if mount_svet > 0:
+        lines.append(f"  Монтаж светильников {n_svetilnik}шт. × 500₽ = {fmt(mount_svet)}₽")
+    if mount_razv > 0:
+        lines.append(f"  Монтаж разводки ГОСТ {n_lyustra + n_svetilnik}шт. × 700₽ = {fmt(mount_razv)}₽")
+
+    lines.append(f"\nEconom:   {fmt(econom)}₽")
+    lines.append(f"Standard: {fmt(standard)}₽")
+    lines.append(f"Premium:  {fmt(premium_price)}₽")
+    lines.append(f"\nНа какой день вас записать на бесплатный замер?")
 
     return '\n'.join(lines)
 
