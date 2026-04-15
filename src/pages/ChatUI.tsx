@@ -79,6 +79,26 @@ export default function ChatUI({ messages, input, typing, panel, onInput, onSend
           </div>
         ))}
 
+        {/* Пресет — показываем только пока нет сообщений от пользователя */}
+        {messages.length === 1 && !typing && (
+          <div className="flex items-end gap-2.5">
+            <div className="w-8 shrink-0" />
+            <button
+              onClick={() => onSend("Потолок 12 кв.м., 1 люстра, 4 светильника и ниша для шторы ПК-14")}
+              className="group flex items-center gap-2.5 px-3.5 py-2.5 rounded-2xl rounded-bl-md bg-white/[0.04] border border-orange-500/20 hover:border-orange-500/40 hover:bg-orange-500/[0.06] transition-all duration-200 active:scale-[0.97] text-left"
+            >
+              <span className="text-base shrink-0">⚡</span>
+              <div>
+                <div className="text-[11px] text-white/35 mb-0.5">Пример расчёта</div>
+                <div className="text-[12px] text-orange-300/80 group-hover:text-orange-300 font-medium leading-snug transition-colors">
+                  Потолок 12 м² · люстра · 4 светильника · ниша ПК-14
+                </div>
+              </div>
+              <Icon name="ArrowRight" size={13} className="text-orange-500/40 group-hover:text-orange-400 shrink-0 ml-1 transition-colors" />
+            </button>
+          </div>
+        )}
+
         {typing && (
           <div className="flex items-end gap-2.5">
             <img src={AVATAR} alt="Женя" className="w-8 h-8 rounded-full object-cover shrink-0 border-2 border-orange-500/20" />
