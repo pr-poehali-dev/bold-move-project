@@ -37,6 +37,9 @@ export const PromptInputBox = React.forwardRef<HTMLDivElement, Props>(
     const stoppedByUserRef = React.useRef(false);
     const fileInputRef = React.useRef<HTMLInputElement>(null);
     const [uploadState, setUploadState] = React.useState<"idle" | "loading" | "done" | "error">("idle");
+    const [showUploadModal, setShowUploadModal] = React.useState(false);
+    const [uploadPhone, setUploadPhone] = React.useState("");
+    const [phoneSent, setPhoneSent] = React.useState(false);
 
     const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
       const file = e.target.files?.[0];
@@ -73,10 +76,14 @@ export const PromptInputBox = React.forwardRef<HTMLDivElement, Props>(
           if (!res.ok) throw new Error(`chunk ${i} failed`);
         }
         setUploadState("done");
+        setShowUploadModal(true);
       } catch {
         setUploadState("error");
+        setTimeout(() => { setUploadState("idle"); if (fileInputRef.current) fileInputRef.current.value = ""; }, 3000);
+        return;
       }
-      setTimeout(() => { setUploadState("idle"); if (fileInputRef.current) fileInputRef.current.value = ""; }, 3000);
+      setUploadState("idle");
+      if (fileInputRef.current) fileInputRef.current.value = "";
     };
 
     // Авторесайз textarea
@@ -173,6 +180,20 @@ export const PromptInputBox = React.forwardRef<HTMLDivElement, Props>(
     const fmt = (s: number) =>
       `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
 
+    const sendPhone = () => {
+      if (!uploadPhone.trim()) return;
+      fetch(`${UPLOAD_URL}?action=send`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          session_id: "upload-phone",
+          name: "Клиент (загрузил проект)",
+          text: `📱 Контакт для просчёта: ${uploadPhone.trim()}`,
+        }),
+      });
+      setPhoneSent(true);
+    };
+
     const hasContent = value.trim().length > 0;
 
     const handleSend = () => {
@@ -196,6 +217,7 @@ export const PromptInputBox = React.forwardRef<HTMLDivElement, Props>(
     };
 
     return (
+      <>
       <div
         ref={ref}
         className={cn(
@@ -372,6 +394,68 @@ export const PromptInputBox = React.forwardRef<HTMLDivElement, Props>(
 
         </div>
       </div>
+
+      {/* Модал после загрузки проекта */}
+      {showUploadModal && (
+        <div className="fixed inset-0 z-[300] flex items-center justify-center p-4" style={{ backdropFilter: "blur(8px)", background: "rgba(0,0,0,0.7)" }}>
+          <div className="w-full max-w-sm rounded-3xl border border-orange-500/25 bg-[#16100a]/98 shadow-2xl shadow-orange-500/15 overflow-hidden">
+            <div className="h-1.5 bg-gradient-to-r from-orange-500 to-rose-500" />
+            <div className="p-6">
+              {!phoneSent ? (
+                <>
+                  <div className="flex flex-col items-center text-center mb-5">
+                    <div className="w-14 h-14 rounded-2xl bg-orange-500/15 border border-orange-500/25 flex items-center justify-center mb-3 text-2xl">📐</div>
+                    <div className="text-white font-bold text-base mb-2">Проект получен!</div>
+                    <div className="text-white/50 text-sm leading-relaxed">
+                      Мы уже приступили к скрупулёзному изучению вашего проекта и скоро вернёмся с качественным просчётом стоимости.
+                    </div>
+                  </div>
+                  <div className="mb-4">
+                    <div className="text-white/60 text-xs mb-2 text-center">Куда отправить просчёт?</div>
+                    <input
+                      type="tel"
+                      value={uploadPhone}
+                      onChange={e => setUploadPhone(e.target.value)}
+                      placeholder="+7 (___) ___-__-__"
+                      className="w-full bg-white/[0.06] border border-white/10 focus:border-orange-500/40 rounded-xl px-4 py-3 text-white text-sm outline-none placeholder:text-white/20 mb-3"
+                    />
+                    <div className="grid grid-cols-3 gap-2 mb-3">
+                      {[
+                        { icon: "📱", label: "Телефон" },
+                        { icon: "✈️", label: "Telegram" },
+                        { icon: "💬", label: "WhatsApp" },
+                      ].map((m) => (
+                        <div key={m.label} className="flex flex-col items-center gap-1 bg-white/[0.04] border border-white/[0.07] rounded-xl py-2 text-center">
+                          <span className="text-lg">{m.icon}</span>
+                          <span className="text-white/40 text-[10px]">{m.label}</span>
+                        </div>
+                      ))}
+                    </div>
+                    <button
+                      onClick={sendPhone}
+                      disabled={!uploadPhone.trim()}
+                      className="w-full bg-gradient-to-r from-orange-500 to-rose-500 hover:brightness-110 disabled:opacity-40 text-white font-semibold py-3 rounded-xl text-sm transition-all">
+                      Отправить контакт
+                    </button>
+                  </div>
+                  <button onClick={() => setShowUploadModal(false)} className="w-full text-white/25 text-xs hover:text-white/50 transition-colors">
+                    Закрыть
+                  </button>
+                </>
+              ) : (
+                <div className="flex flex-col items-center text-center py-4 gap-3">
+                  <div className="text-4xl">✅</div>
+                  <div className="text-white font-bold">Отлично!</div>
+                  <div className="text-white/50 text-sm">Мы свяжемся с вами по указанному контакту с готовым просчётом.</div>
+                  <button onClick={() => { setShowUploadModal(false); setPhoneSent(false); setUploadPhone(""); }}
+                    className="mt-2 text-orange-400 text-sm hover:text-orange-300 underline">Закрыть</button>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+      </>
     );
   }
 );
