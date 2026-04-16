@@ -420,16 +420,28 @@ export const PromptInputBox = React.forwardRef<HTMLDivElement, Props>(
                       className="w-full bg-white/[0.06] border border-white/10 focus:border-orange-500/40 rounded-xl px-4 py-3 text-white text-sm outline-none placeholder:text-white/20 mb-3"
                     />
                     <div className="grid grid-cols-3 gap-2 mb-3">
-                      {[
-                        { icon: "📱", label: "Телефон" },
-                        { icon: "✈️", label: "Telegram" },
-                        { icon: "💬", label: "WhatsApp" },
-                      ].map((m) => (
-                        <div key={m.label} className="flex flex-col items-center gap-1 bg-white/[0.04] border border-white/[0.07] rounded-xl py-2 text-center">
-                          <span className="text-lg">{m.icon}</span>
-                          <span className="text-white/40 text-[10px]">{m.label}</span>
-                        </div>
-                      ))}
+                      {/* Telegram */}
+                      <div className="flex flex-col items-center gap-1 bg-white/[0.04] border border-white/[0.07] rounded-xl py-2.5 text-center">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                          <circle cx="12" cy="12" r="12" fill="url(#tg-grad)"/>
+                          <defs><linearGradient id="tg-grad" x1="12" y1="0" x2="12" y2="24" gradientUnits="userSpaceOnUse"><stop stopColor="#2AABEE"/><stop offset="1" stopColor="#229ED9"/></linearGradient></defs>
+                          <path d="M5.5 11.5L17 7l-2 9.5-3.5-2.5-1.5 1.5V13l5-4.5-6.5 3.5L5.5 11.5z" fill="white"/>
+                        </svg>
+                        <span className="text-white/40 text-[10px]">Telegram</span>
+                      </div>
+                      {/* MAX */}
+                      <div className="flex flex-col items-center gap-1 bg-white/[0.04] border border-white/[0.07] rounded-xl py-2.5 text-center">
+                        <img src="https://cdn.poehali.dev/files/dc3bd406-b8e7-4faf-a027-22420f5483ee.png" alt="MAX" className="w-6 h-6 rounded-md object-cover" />
+                        <span className="text-white/40 text-[10px]">MAX</span>
+                      </div>
+                      {/* WhatsApp */}
+                      <div className="flex flex-col items-center gap-1 bg-white/[0.04] border border-white/[0.07] rounded-xl py-2.5 text-center">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                          <circle cx="12" cy="12" r="12" fill="#25D366"/>
+                          <path d="M17.5 14.4c-.3-.1-1.7-.8-1.9-.9-.3-.1-.5-.1-.7.1-.2.3-.7.9-.9 1-.2.2-.3.2-.6.1-.3-.2-1.2-.4-2.3-1.4-.8-.7-1.4-1.6-1.5-1.9-.2-.3 0-.4.1-.6l.4-.5c.1-.2.2-.3.2-.5 0-.2-.6-1.5-.9-2-.2-.5-.5-.5-.7-.5h-.6c-.2 0-.5.1-.8.4C8 8.5 7.3 9.2 7.3 10.6s1 2.7 1.1 2.9c.2.2 2 3 4.8 4.2.7.3 1.2.4 1.6.5.7.2 1.3.2 1.8.1.5-.1 1.7-.7 1.9-1.4.2-.6.2-1.2.1-1.3-.1-.1-.3-.2-.6-.3z" fill="white"/>
+                        </svg>
+                        <span className="text-white/40 text-[10px]">WhatsApp</span>
+                      </div>
                     </div>
                     <button
                       onClick={sendPhone}
