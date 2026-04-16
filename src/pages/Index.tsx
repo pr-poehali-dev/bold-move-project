@@ -239,7 +239,17 @@ export default function Index() {
                         type="tel"
                         placeholder="+7 (___) ___-__-__"
                         value={regPhone}
-                        onChange={(e) => setRegPhone(e.target.value)}
+                        onFocus={() => { if (!regPhone) setRegPhone("+7 ("); }}
+                        onChange={(e) => {
+                          const raw = e.target.value;
+                          const digits = raw.replace(/\D/g, "").replace(/^7/, "").replace(/^8/, "");
+                          let masked = "+7 (";
+                          if (digits.length > 0) masked += digits.slice(0, 3);
+                          if (digits.length >= 3) masked += ") " + digits.slice(3, 6);
+                          if (digits.length >= 6) masked += "-" + digits.slice(6, 8);
+                          if (digits.length >= 8) masked += "-" + digits.slice(8, 10);
+                          setRegPhone(masked);
+                        }}
                         className="w-full bg-white/[0.05] border border-white/[0.10] rounded-xl px-4 py-3 text-white text-sm placeholder:text-white/25 focus:outline-none focus:border-orange-500/50 transition-colors"
                       />
                     </div>
