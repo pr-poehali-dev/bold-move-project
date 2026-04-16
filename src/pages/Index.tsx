@@ -33,7 +33,7 @@ export default function Index() {
   const regTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    regTimer.current = setTimeout(() => setRegModal(true), 60000);
+    regTimer.current = setTimeout(() => setRegModal(true), 120000);
     return () => { if (regTimer.current) clearTimeout(regTimer.current); };
   }, []);
 
