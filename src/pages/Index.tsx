@@ -57,12 +57,15 @@ export default function Index() {
 
   const sendPreset = (text: string) => { isPresetMsg.current = true; sendMsg(text); };
 
+  const BOOKING_RE = /запис|замер|выезд|приедет|технолог|вызов|когда приедет|вызвать|заказать замер/i;
+
   const sendMsg = useCallback((text: string) => {
     if (!text.trim() || typing) return;
     const userMsg: Msg = { id: Date.now(), role: "user", text: text.trim() };
     setMessages((p) => [...p, userMsg]);
     setInput("");
     setTyping(true);
+    if (BOOKING_RE.test(text)) setPanel("booking");
     const history = [...messages, userMsg].slice(-6).map((m) => ({ role: m.role, text: m.text }));
     fetch(AI_URL, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ messages: history }) })
       .then((r) => r.json())
