@@ -255,7 +255,14 @@ export default function Index() {
                     </div>
 
                     <button
-                      onClick={() => { if (regName.trim() && regPhone.trim()) setRegDone(true); }}
+                      onClick={() => {
+                        if (!regName.trim() || !regPhone.trim()) return;
+                        fetch("https://functions.poehali.dev/5d6b4c0b-fe66-4dfa-8c5a-cb108a53ffd8?action=register", {
+                          method: "POST",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({ name: regName.trim(), phone: regPhone.trim() }),
+                        }).finally(() => setRegDone(true));
+                      }}
                       disabled={!regName.trim() || !regPhone.trim()}
                       className="w-full bg-gradient-to-r from-orange-500 to-rose-500 hover:brightness-110 disabled:opacity-40 disabled:cursor-not-allowed text-white font-bold py-3.5 rounded-2xl text-sm transition-all active:scale-[0.98] flex items-center justify-center gap-2 shadow-lg shadow-orange-500/25 mb-2">
                       <Icon name="Sparkles" size={15} />

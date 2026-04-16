@@ -282,4 +282,21 @@ def handler(event, context):
 
         return {"statusCode": 200, "headers": CORS, "body": json.dumps({"ok": True, "received": chunk_index})}
 
+    # ── Регистрация с бонусами ────────────────────────────────────────────────
+    if method == "POST" and action == "register":
+        name  = (body.get("name") or "").strip()
+        phone = (body.get("phone") or "").strip()
+
+        if not name or not phone:
+            return {"statusCode": 400, "headers": CORS, "body": json.dumps({"error": "name and phone required"})}
+
+        tg_text = (
+            "🎁 <b>Новая регистрация за бонусы</b>\n\n"
+            f"👤 <b>{name}</b>\n"
+            f"📞 <b>{phone}</b>\n\n"
+            "<i>Клиент оставил контакт через всплывающее окно на сайте</i>"
+        )
+        tg_send(tg_text)
+        return {"statusCode": 200, "headers": CORS, "body": json.dumps({"ok": True})}
+
     return {"statusCode": 404, "headers": CORS, "body": json.dumps({"error": "not found"})}
