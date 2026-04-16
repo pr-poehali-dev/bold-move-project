@@ -23,9 +23,19 @@ export default function Index() {
   const [typing, setTyping]     = useState(false);
   const [bookingToast, setBookingToast] = useState(false);
   const [estimateModal, setEstimateModal] = useState(false);
+  const [regModal, setRegModal] = useState(false);
+  const [regName, setRegName] = useState("");
+  const [regPhone, setRegPhone] = useState("");
+  const [regDone, setRegDone] = useState(false);
   const isPresetMsg = useRef(false);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const modalTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const regTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    regTimer.current = setTimeout(() => setRegModal(true), 60000);
+    return () => { if (regTimer.current) clearTimeout(regTimer.current); };
+  }, []);
 
   // Через 3 сек после сметы: модальный оверлей (только если не пресет)
   useEffect(() => {
@@ -188,6 +198,81 @@ export default function Index() {
                   className="w-full py-2.5 rounded-2xl text-white/35 text-sm hover:text-white/55 transition-colors text-center">
                   Посмотреть смету
                 </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Registration modal — через 1 минуту */}
+        {regModal && (
+          <div className="absolute inset-0 z-50 flex items-center justify-center p-4" style={{ backdropFilter: "blur(8px)", background: "rgba(0,0,0,0.7)" }}>
+            <div className="w-full max-w-sm rounded-3xl border border-orange-500/25 bg-[#16100a]/98 shadow-2xl shadow-orange-500/15 overflow-hidden animate-fade-in">
+              <div className="h-1.5 bg-gradient-to-r from-orange-500 to-rose-500" />
+              <div className="p-6">
+                <button
+                  onClick={() => setRegModal(false)}
+                  className="absolute top-4 right-4 p-1.5 text-white/20 hover:text-white/50 transition-colors rounded-lg">
+                  <Icon name="X" size={16} />
+                </button>
+
+                {!regDone ? (
+                  <>
+                    <div className="flex flex-col items-center text-center mb-6">
+                      <div className="w-14 h-14 rounded-2xl bg-orange-500/15 border border-orange-500/25 flex items-center justify-center mb-3">
+                        <Icon name="Gift" size={26} className="text-orange-400" />
+                      </div>
+                      <div className="text-white font-bold text-lg mb-1">Авторизуйтесь</div>
+                      <div className="text-white/45 text-sm leading-relaxed">
+                        чтобы получить дополнительные бонусы и скидку на первый заказ
+                      </div>
+                    </div>
+
+                    <div className="space-y-3 mb-4">
+                      <input
+                        type="text"
+                        placeholder="Ваше имя"
+                        value={regName}
+                        onChange={(e) => setRegName(e.target.value)}
+                        className="w-full bg-white/[0.05] border border-white/[0.10] rounded-xl px-4 py-3 text-white text-sm placeholder:text-white/25 focus:outline-none focus:border-orange-500/50 transition-colors"
+                      />
+                      <input
+                        type="tel"
+                        placeholder="+7 (___) ___-__-__"
+                        value={regPhone}
+                        onChange={(e) => setRegPhone(e.target.value)}
+                        className="w-full bg-white/[0.05] border border-white/[0.10] rounded-xl px-4 py-3 text-white text-sm placeholder:text-white/25 focus:outline-none focus:border-orange-500/50 transition-colors"
+                      />
+                    </div>
+
+                    <button
+                      onClick={() => { if (regName.trim() && regPhone.trim()) setRegDone(true); }}
+                      disabled={!regName.trim() || !regPhone.trim()}
+                      className="w-full bg-gradient-to-r from-orange-500 to-rose-500 hover:brightness-110 disabled:opacity-40 disabled:cursor-not-allowed text-white font-bold py-3.5 rounded-2xl text-sm transition-all active:scale-[0.98] flex items-center justify-center gap-2 shadow-lg shadow-orange-500/25 mb-2">
+                      <Icon name="Sparkles" size={15} />
+                      Получить бонусы
+                    </button>
+                    <button
+                      onClick={() => setRegModal(false)}
+                      className="w-full py-2 text-white/30 text-sm hover:text-white/50 transition-colors text-center">
+                      Не сейчас
+                    </button>
+                  </>
+                ) : (
+                  <div className="flex flex-col items-center text-center py-4">
+                    <div className="w-16 h-16 rounded-2xl bg-green-500/15 border border-green-500/25 flex items-center justify-center mb-4">
+                      <Icon name="CheckCircle" size={32} className="text-green-400" />
+                    </div>
+                    <div className="text-white font-bold text-lg mb-2">Готово, {regName}!</div>
+                    <div className="text-white/45 text-sm leading-relaxed mb-5">
+                      Ваши бонусы активированы. Наш менеджер свяжется с вами в ближайшее время
+                    </div>
+                    <button
+                      onClick={() => setRegModal(false)}
+                      className="w-full bg-gradient-to-r from-orange-500 to-rose-500 hover:brightness-110 text-white font-bold py-3.5 rounded-2xl text-sm transition-all">
+                      Отлично!
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
           </div>
