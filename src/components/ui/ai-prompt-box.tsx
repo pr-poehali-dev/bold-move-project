@@ -459,7 +459,7 @@ export const PromptInputBox = React.forwardRef<HTMLDivElement, Props>(
                   <div className="text-4xl">✅</div>
                   <div className="text-white font-bold">Отлично!</div>
                   <div className="text-white/50 text-sm">Мы свяжемся с вами по указанному контакту с готовым просчётом.</div>
-                  <button onClick={() => { setShowUploadModal(false); setPhoneSent(false); setUploadPhone(""); }}
+                  <button onClick={() => { setShowUploadModal(false); setPhoneSent(false); }}
                     className="mt-2 text-orange-400 text-sm hover:text-orange-300 underline">Закрыть</button>
                 </div>
               )}
