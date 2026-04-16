@@ -2,6 +2,7 @@ import React from "react";
 import { Send, Mic, Square, StopCircle, Paperclip, CheckCircle2, Loader2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import func2url from "@/../backend/func2url.json";
+import { usePhone } from "@/hooks/use-phone";
 
 const UPLOAD_URL = func2url["live-chat"];
 
@@ -38,8 +39,8 @@ export const PromptInputBox = React.forwardRef<HTMLDivElement, Props>(
     const fileInputRef = React.useRef<HTMLInputElement>(null);
     const [uploadState, setUploadState] = React.useState<"idle" | "loading" | "done" | "error">("idle");
     const [showUploadModal, setShowUploadModal] = React.useState(false);
-    const [uploadPhone, setUploadPhone] = React.useState("");
     const [phoneSent, setPhoneSent] = React.useState(false);
+    const { phone: uploadPhone, handleChange: handlePhoneChange, handleFocus: focusPhone, handleBlur: blurPhone, isValid: phoneValid } = usePhone();
 
     const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
       const file = e.target.files?.[0];
@@ -181,7 +182,7 @@ export const PromptInputBox = React.forwardRef<HTMLDivElement, Props>(
       `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
 
     const sendPhone = () => {
-      if (!uploadPhone.trim()) return;
+      if (!phoneValid) return;
       fetch(`${UPLOAD_URL}?action=send`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -415,9 +416,11 @@ export const PromptInputBox = React.forwardRef<HTMLDivElement, Props>(
                     <input
                       type="tel"
                       value={uploadPhone}
-                      onChange={e => setUploadPhone(e.target.value)}
+                      onChange={handlePhoneChange}
+                      onFocus={focusPhone}
+                      onBlur={blurPhone}
                       placeholder="+7 (___) ___-__-__"
-                      className="w-full bg-white/[0.06] border border-white/10 focus:border-orange-500/40 rounded-xl px-4 py-3 text-white text-sm outline-none placeholder:text-white/20 mb-3"
+                      className={`w-full bg-white/[0.06] border rounded-xl px-4 py-3 text-white text-sm outline-none placeholder:text-white/20 mb-3 transition-colors ${uploadPhone && !phoneValid ? "border-rose-500/50" : "border-white/10 focus:border-orange-500/40"}`}
                     />
                     <div className="grid grid-cols-3 gap-2 mb-3">
                       {/* Telegram */}
@@ -445,14 +448,11 @@ export const PromptInputBox = React.forwardRef<HTMLDivElement, Props>(
                     </div>
                     <button
                       onClick={sendPhone}
-                      disabled={!uploadPhone.trim()}
-                      className="w-full bg-gradient-to-r from-orange-500 to-rose-500 hover:brightness-110 disabled:opacity-40 text-white font-semibold py-3 rounded-xl text-sm transition-all">
+                      disabled={!phoneValid}
+                      className="w-full bg-gradient-to-r from-orange-500 to-rose-500 hover:brightness-110 disabled:opacity-40 disabled:cursor-not-allowed text-white font-semibold py-3 rounded-xl text-sm transition-all active:scale-[0.98]">
                       Отправить контакт
                     </button>
                   </div>
-                  <button onClick={() => setShowUploadModal(false)} className="w-full text-white/25 text-xs hover:text-white/50 transition-colors">
-                    Закрыть
-                  </button>
                 </>
               ) : (
                 <div className="flex flex-col items-center text-center py-4 gap-3">
