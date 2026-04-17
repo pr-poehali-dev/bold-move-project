@@ -21,6 +21,7 @@ const TABS: { id: AdminTab; label: string; icon: string }[] = [
 export default function AdminPanel() {
   const [token, setToken] = useState(() => sessionStorage.getItem("admin_token") || "");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [tab, setTab] = useState<AdminTab>("prices");
   const [newItemHint, setNewItemHint] = useState<string | null>(null);
@@ -48,12 +49,18 @@ export default function AdminPanel() {
             <Icon name="ShieldCheck" size={22} className="text-violet-400" />
             <span className="text-white font-semibold text-lg">Вход для администратора</span>
           </div>
-          <input
-            type="password" placeholder="Пароль" value={password}
-            onChange={e => setPassword(e.target.value)}
-            onKeyDown={e => e.key === "Enter" && login()}
-            className="bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 text-white outline-none focus:border-violet-500 transition"
-          />
+          <div className="relative">
+            <input
+              type={showPassword ? "text" : "password"} placeholder="Пароль" value={password}
+              onChange={e => setPassword(e.target.value)}
+              onKeyDown={e => e.key === "Enter" && login()}
+              className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 pr-11 text-white outline-none focus:border-violet-500 transition"
+            />
+            <button type="button" onClick={() => setShowPassword(p => !p)}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-white/30 hover:text-white/70 transition">
+              <Icon name={showPassword ? "EyeOff" : "Eye"} size={17} />
+            </button>
+          </div>
           {error && <p className="text-red-400 text-sm">{error}</p>}
           <button onClick={login} className="bg-violet-600 hover:bg-violet-700 text-white rounded-lg py-2.5 font-medium transition">
             Войти

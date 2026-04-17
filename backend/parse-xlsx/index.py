@@ -67,9 +67,10 @@ def handler(event: dict, context) -> dict:
     if r == 'login' and method == 'POST':
         body = json.loads(body_str)
         password = body.get('password', '')
-        pw_hash = hashlib.sha256(password.encode()).hexdigest()
-        if pw_hash == hashlib.sha256(ADMIN_PASSWORD.encode()).hexdigest():
-            return resp(200, {'token': password})
+        stored = ADMIN_PASSWORD.strip()
+        print(f"[login] pwd_len={len(password)} stored_len={len(stored)} stored_empty={not stored}")
+        if stored and password.strip() == stored:
+            return resp(200, {'token': password.strip()})
         return resp(401, {'error': 'Неверный пароль'})
 
     # --- GET ?r=prompt
