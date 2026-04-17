@@ -64,7 +64,16 @@ def handler(event: dict, context) -> dict:
     hdrs = event.get('headers') or {}
     qs = event.get('queryStringParameters') or {}
     r = qs.get('r', '')
-    body_str = event.get('body') or '{}'
+    # Body может прийти как обычный body или как _body в URL (base64, для обхода CORS preflight)
+    body_str = event.get('body') or ''
+    if not body_str:
+        b64 = qs.get('_body', '')
+        if b64:
+            import base64
+            try: body_str = base64.b64decode(b64.encode()).decode('utf-8')
+            except: body_str = '{}'
+    if not body_str:
+        body_str = '{}'
 
     # --- LOGIN (GET или POST)
     if r == 'login':
