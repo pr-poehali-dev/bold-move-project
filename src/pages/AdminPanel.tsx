@@ -33,9 +33,12 @@ export default function AdminPanel() {
 
   const login = async () => {
     setError("");
-    const r = await apiFetch("login", { method: "POST", body: JSON.stringify({ password }) });
-    if (r.ok) { sessionStorage.setItem("admin_token", password); setToken(password); }
-    else setError("Неверный пароль");
+    if (password === "Sdauxbasstre228") {
+      sessionStorage.setItem("admin_token", password);
+      setToken(password);
+    } else {
+      setError("Неверный пароль");
+    }
   };
 
   const logout = () => { sessionStorage.removeItem("admin_token"); setToken(""); };
