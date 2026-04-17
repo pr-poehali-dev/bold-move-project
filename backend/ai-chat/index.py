@@ -287,16 +287,10 @@ def try_simple_estimate(text: str) -> str | None:
 
 
 def get_cached_answer(text: str) -> str | None:
-    """Проверяет кэш и простой расчёт. Возвращает ответ или None."""
+    """Проверяет только FAQ-кэш. Расчёт сметы — всегда через LLM."""
     text_lower = text.lower().strip()
 
-    # Сначала пробуем простой расчёт по площади
-    estimate = try_simple_estimate(text_lower)
-    print(f"[calc] text='{text_lower[:80]}' estimate={'YES' if estimate else 'NO'}")
-    if estimate:
-        return estimate
-
-    # Потом — кэш FAQ (из БД или fallback)
+    # Только кэш FAQ (из БД или fallback) — без калькулятора
     dynamic_cache = get_faq_cache(fallback=FAQ_CACHE)
     for pattern, answer in dynamic_cache.items():
         if re.search(pattern, text_lower):
