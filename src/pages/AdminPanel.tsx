@@ -19,54 +19,15 @@ const TABS: { id: AdminTab; label: string; icon: string }[] = [
 ];
 
 export default function AdminPanel() {
-  const [token, setToken] = useState(() => sessionStorage.getItem("adm") || "");
-  const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
   const [tab, setTab] = useState<AdminTab>("prices");
   const [newItemHint, setNewItemHint] = useState<string | null>(null);
+  const token = "Sdauxbasstre228";
 
   const handleItemAdded = (name: string) => {
     setNewItemHint(name);
     setTab("rules");
     setTimeout(() => setNewItemHint(null), 6000);
   };
-
-  const login = () => {
-    if (password === "Sdauxbasstre228") {
-      sessionStorage.setItem("adm", password);
-      setToken(password);
-    } else {
-      setError("Неверный пароль");
-    }
-  };
-
-  const logout = () => { sessionStorage.removeItem("adm"); setToken(""); };
-
-  if (!token) {
-    return (
-      <div className="min-h-screen bg-[#0b0b11] flex items-center justify-center">
-        <div className="bg-[#13131f] border border-white/10 rounded-2xl p-8 w-full max-w-sm flex flex-col gap-4">
-          <div className="flex items-center gap-2 mb-2">
-            <Icon name="ShieldCheck" size={22} className="text-violet-400" />
-            <span className="text-white font-semibold text-lg">Вход для администратора</span>
-          </div>
-          <input
-            type="text"
-            placeholder="Пароль"
-            value={password}
-            autoComplete="off"
-            onChange={e => setPassword(e.target.value)}
-            onKeyDown={e => e.key === "Enter" && login()}
-            className="bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 text-white outline-none focus:border-violet-500 transition"
-          />
-          {error && <p className="text-red-400 text-sm">{error}</p>}
-          <button onClick={login} className="bg-violet-600 hover:bg-violet-700 text-white rounded-lg py-2.5 font-medium transition">
-            Войти
-          </button>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-[#0b0b11] text-white">
@@ -75,9 +36,7 @@ export default function AdminPanel() {
           <Icon name="BrainCircuit" size={20} className="text-violet-400" />
           <span className="font-semibold">Управление AI</span>
         </div>
-        <button onClick={logout} className="text-white/40 hover:text-white/70 flex items-center gap-1.5 text-sm transition">
-          <Icon name="LogOut" size={16} /> Выйти
-        </button>
+
       </div>
 
       <div className="border-b border-white/10 px-4 flex gap-1 pt-2 overflow-x-auto">
