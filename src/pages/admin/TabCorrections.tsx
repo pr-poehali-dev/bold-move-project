@@ -56,7 +56,7 @@ function HighlightedText({ text, words }: { text: string; words: string[] }) {
 }
 
 function AddSynonymPanel({ word, prices, token, onAdded }: {
-  word: string; prices: PriceItem[]; token: string; onAdded: () => void;
+  word: string; prices: PriceItem[]; token: string; onAdded: (priceName: string) => void;
 }) {
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [saving, setSaving] = useState(false);
@@ -81,7 +81,7 @@ function AddSynonymPanel({ word, prices, token, onAdded }: {
     }, token, price.id);
     setSaving(false);
     setDone(true);
-    onAdded();
+    onAdded(price.name);
   };
 
   if (done) {
@@ -219,7 +219,10 @@ export default function TabCorrections({ token }: Props) {
                 word={addingWord.word}
                 prices={prices}
                 token={token}
-                onAdded={() => { setAddingWord(null); load(); }}
+                onAdded={async () => {
+                  setAddingWord(null);
+                  await update(item.id, "approved");
+                }}
               />
             )}
           </div>
