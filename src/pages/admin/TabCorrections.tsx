@@ -67,6 +67,7 @@ function AddSynonymPanel({ word, prices, token, onAdded }: {
   const [done, setDone] = useState(false);
   const [search, setSearch] = useState("");
   const [mode, setMode] = useState<"select" | "create">("select");
+  const [editedWord, setEditedWord] = useState(word);
 
   // Поля новой позиции
   const categories = [...new Set(prices.map(p => p.category))];
@@ -86,8 +87,9 @@ function AddSynonymPanel({ word, prices, token, onAdded }: {
     const price = prices.find(p => p.id === selectedId);
     if (!price) return;
     setSaving(true);
+    const syn = editedWord.trim() || word;
     const existing = price.synonyms ? price.synonyms.split(",").map(s => s.trim()).filter(Boolean) : [];
-    if (!existing.includes(word)) existing.push(word);
+    if (!existing.includes(syn)) existing.push(syn);
     await apiFetch("prices", {
       method: "PUT",
       body: JSON.stringify({ ...price, synonyms: existing.join(", ") }),
@@ -102,6 +104,7 @@ function AddSynonymPanel({ word, prices, token, onAdded }: {
     const category = newCategoryCustom.trim() || newCategory;
     if (!name || !category) return;
     setSaving(true);
+    const syn = editedWord.trim() || word;
     const r = await apiFetch("prices", {
       method: "POST",
       body: JSON.stringify({
@@ -110,7 +113,7 @@ function AddSynonymPanel({ word, prices, token, onAdded }: {
         price: parseInt(newPrice) || 0,
         unit: newUnit,
         description: "",
-        synonyms: word !== name ? word : "",
+        synonyms: syn !== name ? syn : "",
       }),
     }, token);
     setSaving(false);
@@ -128,9 +131,14 @@ function AddSynonymPanel({ word, prices, token, onAdded }: {
 
   return (
     <div className="bg-white/[0.02] border border-violet-500/20 rounded-xl p-4 flex flex-col gap-3 mt-3">
-      <p className="text-sm text-white/60">
-        Слово <span className="text-red-300 font-medium bg-red-500/20 px-1.5 py-0.5 rounded">«{word}»</span> — к какой позиции оно относится?
-      </p>
+      <div className="flex flex-col gap-1">
+        <p className="text-xs text-white/40">Синоним для сохранения — отредактируй если нужно:</p>
+        <input
+          value={editedWord}
+          onChange={e => setEditedWord(e.target.value)}
+          className="bg-white/5 border border-red-500/30 rounded-lg px-3 py-2 text-red-300 text-sm font-medium outline-none focus:border-violet-500 transition"
+        />
+      </div>
 
       {/* Переключатель режима */}
       <div className="flex gap-1 bg-white/5 rounded-lg p-1">
@@ -165,7 +173,7 @@ function AddSynonymPanel({ word, prices, token, onAdded }: {
           <button onClick={saveSynonym} disabled={!selectedId || saving}
             className="bg-violet-600 hover:bg-violet-700 disabled:opacity-40 text-white text-sm py-2 rounded-lg transition flex items-center justify-center gap-2">
             <Icon name="Tag" size={14} />
-            {saving ? "Сохраняю..." : `Добавить «${word}» как синоним`}
+            {saving ? "Сохраняю..." : `Добавить «${editedWord || word}» как синоним`}
           </button>
         </>
       ) : (
