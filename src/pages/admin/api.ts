@@ -2,15 +2,18 @@ import func2url from "@/../backend/func2url.json";
 
 const BASE = (func2url as Record<string, string>)["parse-xlsx"];
 
-export function apiFetch(resource: string, opts?: RequestInit, token?: string, id?: number) {
+export async function apiFetch(resource: string, opts?: RequestInit, token?: string, id?: number) {
+  // Берём токен из localStorage если не передан явно
+  const t = token ?? localStorage.getItem("admin_token") ?? "";
   let url = `${BASE}?r=${resource}`;
   if (id !== undefined) url += `&id=${id}`;
-  return fetch(url, {
+  const res = await fetch(url, {
     ...opts,
     headers: {
       "Content-Type": "application/json",
-      ...(token ? { "X-Admin-Token": token } : {}),
+      ...(t ? { "X-Admin-Token": t } : {}),
       ...(opts?.headers || {}),
     },
   });
+  return res;
 }
