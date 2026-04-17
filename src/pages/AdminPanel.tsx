@@ -34,7 +34,9 @@ export default function AdminPanel() {
 
   const login = async () => {
     setError("");
-    const r = await apiFetch("login", { method: "POST", body: JSON.stringify({ password }) });
+    // GET запрос с паролем в URL — не вызывает CORS preflight
+    const BASE = (await import("@/../backend/func2url.json")).default["parse-xlsx"];
+    const r = await fetch(`${BASE}?r=login&pwd=${encodeURIComponent(password)}`);
     if (r.ok) { setToken(password); }
     else setError("Неверный пароль");
   };

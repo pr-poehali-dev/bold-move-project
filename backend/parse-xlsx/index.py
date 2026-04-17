@@ -66,12 +66,15 @@ def handler(event: dict, context) -> dict:
     r = qs.get('r', '')
     body_str = event.get('body') or '{}'
 
-    # --- POST ?r=login
-    if r == 'login' and method == 'POST':
-        body = json.loads(body_str)
-        password = body.get('password', '')
+    # --- LOGIN (GET или POST)
+    if r == 'login':
+        if method == 'GET':
+            password = qs.get('pwd', '')
+        else:
+            body = json.loads(body_str)
+            password = body.get('password', '')
         stored = ADMIN_PASSWORD.strip()
-        print(f"[login] pwd_len={len(password)} stored_len={len(stored)} stored_empty={not stored}")
+        print(f"[login] method={method} pwd_len={len(password)} stored_len={len(stored)}")
         if stored and password.strip() == stored:
             return resp(200, {'token': password.strip()})
         return resp(401, {'error': 'Неверный пароль'})
