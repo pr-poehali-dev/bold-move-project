@@ -38,7 +38,7 @@ def try_simple_estimate(text: str) -> str | None:
         print(f"[calc] skip: complex keyword in '{t[:60]}'")
         return None
 
-    # Ищем площадь — обязательный параметр (кв, кв.м, м², квадратов, просто число + "кв")
+    # Ищем площадь — обязательный параметр
     m = re.search(r'(\d+(?:[.,]\d+)?)\s*(?:м²|м2|кв\.?\s*м?|квадрат|кв\b)', t)
     if not m:
         print(f"[calc] skip: no area in '{t[:60]}'")
@@ -65,45 +65,47 @@ def try_simple_estimate(text: str) -> str | None:
     perim = round(area * 1.3, 1)
     is_pvh = canvas_key != 'ткань'
 
-    # Загружаем правила из БД
+    # Загружаем ВСЕ позиции из БД — цены + правила
     _rules = get_price_rules()
-    _id_to_rule = {r['name']: r for r in _rules}
+    _by_name = {r['name']: r for r in _rules}
+
+    def p(name: str, fallback: int) -> int:
+        """Цена позиции из БД, с fallback если не найдена."""
+        return int(_by_name[name]['price']) if name in _by_name else fallback
+
+    # ─── ЦЕНЫ ИЗ БД (с fallback на старые значения) ────────────────────────
+    price_raskroy        = p('Раскрой ПВХ', 100)
+    price_ogarp          = p('Огарпунивание ПВХ', 100)
+    price_profile        = p('Стеновой алюминий', 200)
+    price_zakl_lyustra   = p('Закладная под люстру', 700)
+    price_zakl_svet      = p('Закладная под светильник', 350)
+    price_svetilnik      = p('Светильник GX-53 + лампа', 400)
+    price_lampa          = p('Лампа GX53', 100)
+    price_mount_pvh      = p('Монтаж полотна ПВХ', 350)
+    price_mount_tkань    = p('Монтаж полотна ТКАНЬ', 500)
+    price_mount_profile  = p('Монтаж профиля стандарт', 200)
+    price_mount_nisha    = p('Монтаж парящего профиля', 350)
+    price_mount_zakl     = p('Монтаж закладной', 350)
+    price_mount_svet     = p('Монтаж светильника GX53', 500)
+    price_mount_razv     = p('Монтаж разводки ГОСТ 0.75', 700)
 
     # Светильники GX-53
     svetilnik_m = re.search(r'(\d+)\s*светильник', t)
     n_svetilnik = int(svetilnik_m.group(1)) if svetilnik_m else 0
 
-    # Комплект к светильнику из БД
-    _svet_rule = _id_to_rule.get('Светильник GX-53 + лампа', {})
-    _svet_bundle_ids = []
-    try:
-        _svet_bundle_ids = json.loads(_svet_rule.get('bundle', '[]'))
-    except Exception:
-        pass
-    # Добавляем позиции из комплекта к светильнику
-    _bundle_extra = {}  # name -> (qty, price)
-    if n_svetilnik > 0 and _svet_bundle_ids:
-        for _bid in _svet_bundle_ids:
-            _br = next((r for r in _rules if r['id'] == _bid), None)
-            if _br:
-                _bqty_rule = eval_calc_rule(_br['calc_rule'], area, perim)
-                _bqty = int(_bqty_rule) if _bqty_rule is not None else n_svetilnik
-                _bundle_extra[_br['name']] = (_bqty * n_svetilnik, _br['price'])
-
     # Люстра
     lyustra_m = re.search(r'(\d+)?\s*люстр', t)
     n_lyustra = int(lyustra_m.group(1)) if (lyustra_m and lyustra_m.group(1)) else (1 if lyustra_m else 0)
 
-    # Ниша для штор — ищем метраж или берём дефолт из правила БД
+    # Ниша для штор
     has_nisha = bool(re.search(r'ниш[аеуы]?\s*(?:для\s*штор)?', t))
 
-    # Длина ниши: ищем "X м ниша" или "ниша X м" или дефолт из calc_rule
+    # Длина ниши: явная или дефолт из calc_rule БД
     nisha_len_m = re.search(r'(\d+(?:[.,]\d+)?)\s*(?:м|пм|погон)\s+(?:ниш|шторн)', t) or \
                   re.search(r'ниш[аеуы]?\s+(?:для\s+штор\s+)?(?:пк[- ]?\d+\s+)?(\d+(?:[.,]\d+)?)\s*(?:м|пм|погон)', t)
     if nisha_len_m:
         nisha_len = float(nisha_len_m.group(1).replace(',', '.'))
     else:
-        # Берём правило из БД для первой категории "Ниши для штор"
         _nisha_rule_item = next((r for r in _rules if r['category'] == 'Ниши для штор' and r['calc_rule']), None)
         _nisha_default = eval_calc_rule(
             _nisha_rule_item['calc_rule'] if _nisha_rule_item else 'perimeter*0.25',
@@ -111,55 +113,54 @@ def try_simple_estimate(text: str) -> str | None:
         )
         nisha_len = round(_nisha_default if _nisha_default is not None else perim * 0.25, 1)
 
-    # Тип ниши
+    # Тип и цена ниши — ищем сначала в БД по имени, fallback на хардкод
     nisha_price = 0
     nisha_label = ''
     if has_nisha:
         pk_m = re.search(r'пк[- ]?(\d+)', t)
         pk = int(pk_m.group(1)) if pk_m else 0
         if pk in (12, 14, 15):
-            nisha_price = 3600
-            nisha_label = f'ПК-{pk}'
+            nisha_price = p(f'ПК-{pk}', 3600); nisha_label = f'ПК-{pk}'
         elif pk == 6:
-            nisha_price = 1300
-            nisha_label = 'Парящий ПК-6'
+            nisha_price = p('Парящий ПК-6', 1300); nisha_label = 'Парящий ПК-6'
         elif re.search(r'sigma\s*led', t):
-            nisha_price = 1650; nisha_label = 'Sigma LED'
+            nisha_price = p('Sigma LED', 1650); nisha_label = 'Sigma LED'
         elif re.search(r'sigma', t):
-            nisha_price = 1400; nisha_label = 'Sigma'
+            nisha_price = p('Sigma', 1400); nisha_label = 'Sigma'
         elif re.search(r'брус|бп.?40', t):
-            nisha_price = 850; nisha_label = 'Брус БП-40'
+            nisha_price = p('Брус БП-40', 850); nisha_label = 'Брус БП-40'
         else:
-            nisha_price = 1700; nisha_label = 'Стандартная'
+            nisha_price = p('Ниша стандартная', 1700); nisha_label = 'Стандартная'
 
     # ─── РАСЧЁТ ───────────────────────────────────────────────────────────────
     # 1. Полотно
-    canvas_total  = round(area * canvas_price)
-    raskroy       = round(area * 100) if is_pvh else 0
-    ogarp         = round(area * 100) if is_pvh else 0
+    canvas_total = round(area * canvas_price)
+    raskroy      = round(area * price_raskroy) if is_pvh else 0
+    ogarp        = round(area * price_ogarp) if is_pvh else 0
 
-    # 2. Профиль (вычитаем длину ниши из стандартного, если она парящая/ПК)
-    is_nisha_special = has_nisha and nisha_price >= 1300  # ПК-12/14/15/парящий
-    profile_len = max(0, round(perim - (nisha_len if is_nisha_special else 0), 1))
-    profile_total = round(profile_len * 200)
+    # 2. Профиль (вычитаем длину ниши если она заменяет стандартный профиль)
+    is_nisha_special = has_nisha and nisha_price >= 1300
+    profile_len   = max(0, round(perim - (nisha_len if is_nisha_special else 0), 1))
+    profile_total = round(profile_len * price_profile)
     nisha_total   = round(nisha_len * nisha_price) if has_nisha else 0
 
     # 3. Закладные
-    zakl_lyustra   = n_lyustra * 700
-    zakl_svet      = n_svetilnik * 350
-    zakl_total     = zakl_lyustra + zakl_svet
+    zakl_lyustra = n_lyustra * price_zakl_lyustra
+    zakl_svet    = n_svetilnik * price_zakl_svet
+    zakl_total   = zakl_lyustra + zakl_svet
 
-    # 4. Освещение (светильники GX-53 + лампы отдельно)
-    svet_total  = n_svetilnik * 400
-    lampa_total = n_svetilnik * 100
+    # 4. Освещение
+    svet_total  = n_svetilnik * price_svetilnik
+    lampa_total = n_svetilnik * price_lampa
 
     # 5. Монтаж
-    mount_canvas   = round(area * (350 if is_pvh else 500))
-    mount_profile  = round(profile_len * 200)
-    mount_nisha    = round(nisha_len * 350) if has_nisha else 0
-    mount_zakl     = (n_lyustra + n_svetilnik) * 350 if (n_lyustra + n_svetilnik) > 0 else 0
-    mount_svet     = n_svetilnik * 500
-    mount_razv     = (n_lyustra + n_svetilnik) * 700 if (n_lyustra + n_svetilnik) > 0 else 0
+    price_mount_canvas = price_mount_pvh if is_pvh else price_mount_tkань
+    mount_canvas  = round(area * price_mount_canvas)
+    mount_profile = round(profile_len * price_mount_profile)
+    mount_nisha   = round(nisha_len * price_mount_nisha) if has_nisha else 0
+    mount_zakl    = (n_lyustra + n_svetilnik) * price_mount_zakl if (n_lyustra + n_svetilnik) > 0 else 0
+    mount_svet    = n_svetilnik * price_mount_svet
+    mount_razv    = (n_lyustra + n_svetilnik) * price_mount_razv if (n_lyustra + n_svetilnik) > 0 else 0
 
     standard = (canvas_total + raskroy + ogarp + profile_total + nisha_total +
                 zakl_total + svet_total + lampa_total +
@@ -177,13 +178,13 @@ def try_simple_estimate(text: str) -> str | None:
     lines.append(f"{sec}. Полотно:")
     lines.append(f"  {canvas_name} {area} м² × {canvas_price} ₽ = {fmt(canvas_total)} ₽")
     if is_pvh:
-        lines.append(f"  Раскрой ПВХ {area} м² × 100 ₽ = {fmt(raskroy)} ₽")
-        lines.append(f"  Огарпунивание {area} м² × 100 ₽ = {fmt(ogarp)} ₽")
+        lines.append(f"  Раскрой ПВХ {area} м² × {price_raskroy} ₽ = {fmt(raskroy)} ₽")
+        lines.append(f"  Огарпунивание {area} м² × {price_ogarp} ₽ = {fmt(ogarp)} ₽")
 
     # Профиль
     sec += 1
     lines.append(f"\n{sec}. Профиль:")
-    lines.append(f"  Стеновой алюминиевый {profile_len} мп × 200 ₽ = {fmt(profile_total)} ₽")
+    lines.append(f"  Стеновой алюминиевый {profile_len} мп × {price_profile} ₽ = {fmt(profile_total)} ₽")
 
     # Ниша
     if has_nisha:
@@ -196,30 +197,30 @@ def try_simple_estimate(text: str) -> str | None:
         sec += 1
         lines.append(f"\n{sec}. Закладные:")
         if n_lyustra > 0:
-            lines.append(f"  Под люстру {n_lyustra} шт. × 700 ₽ = {fmt(zakl_lyustra)} ₽")
+            lines.append(f"  Под люстру {n_lyustra} шт. × {price_zakl_lyustra} ₽ = {fmt(zakl_lyustra)} ₽")
         if n_svetilnik > 0:
-            lines.append(f"  Под светильники {n_svetilnik} шт. × 350 ₽ = {fmt(zakl_svet)} ₽")
+            lines.append(f"  Под светильники {n_svetilnik} шт. × {price_zakl_svet} ₽ = {fmt(zakl_svet)} ₽")
 
     # Освещение
     if svet_total > 0:
         sec += 1
         lines.append(f"\n{sec}. Освещение:")
-        lines.append(f"  Светильники GX-53 {n_svetilnik} шт. × 400 ₽ = {fmt(svet_total)} ₽")
-        lines.append(f"  Лампа GX-53 {n_svetilnik} шт. × 100 ₽ = {fmt(lampa_total)} ₽")
+        lines.append(f"  Светильники GX-53 {n_svetilnik} шт. × {price_svetilnik} ₽ = {fmt(svet_total)} ₽")
+        lines.append(f"  Лампа GX-53 {n_svetilnik} шт. × {price_lampa} ₽ = {fmt(lampa_total)} ₽")
 
     # Монтаж
     sec += 1
     lines.append(f"\n{sec}. Услуги монтажа:")
-    lines.append(f"  Монтаж полотна {'ПВХ' if is_pvh else 'ткань'} {area} м² × {350 if is_pvh else 500} ₽ = {fmt(mount_canvas)} ₽")
-    lines.append(f"  Монтаж профиля {profile_len} мп × 200 ₽ = {fmt(mount_profile)} ₽")
+    lines.append(f"  Монтаж полотна {'ПВХ' if is_pvh else 'ткань'} {area} м² × {price_mount_canvas} ₽ = {fmt(mount_canvas)} ₽")
+    lines.append(f"  Монтаж профиля {profile_len} мп × {price_mount_profile} ₽ = {fmt(mount_profile)} ₽")
     if has_nisha:
-        lines.append(f"  Монтаж ниши {nisha_len} мп × 350 ₽ = {fmt(mount_nisha)} ₽")
+        lines.append(f"  Монтаж ниши {nisha_len} мп × {price_mount_nisha} ₽ = {fmt(mount_nisha)} ₽")
     if mount_zakl > 0:
-        lines.append(f"  Монтаж закладных {n_lyustra + n_svetilnik} шт. × 350 ₽ = {fmt(mount_zakl)} ₽")
+        lines.append(f"  Монтаж закладных {n_lyustra + n_svetilnik} шт. × {price_mount_zakl} ₽ = {fmt(mount_zakl)} ₽")
     if mount_svet > 0:
-        lines.append(f"  Монтаж светильников {n_svetilnik} шт. × 500 ₽ = {fmt(mount_svet)} ₽")
+        lines.append(f"  Монтаж светильников {n_svetilnik} шт. × {price_mount_svet} ₽ = {fmt(mount_svet)} ₽")
     if mount_razv > 0:
-        lines.append(f"  Монтаж разводки ГОСТ {n_lyustra + n_svetilnik} шт. × 700 ₽ = {fmt(mount_razv)} ₽")
+        lines.append(f"  Монтаж разводки ГОСТ {n_lyustra + n_svetilnik} шт. × {price_mount_razv} ₽ = {fmt(mount_razv)} ₽")
 
     lines.append(f"\nEconom:   {fmt(econom)} ₽")
     lines.append(f"Standard: {fmt(standard)} ₽")
