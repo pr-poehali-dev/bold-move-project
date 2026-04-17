@@ -20,13 +20,18 @@ export default function TabPrices({ token, onItemAdded }: Props) {
   const [editingCatVal, setEditingCatVal] = useState("");
 
   const load = useCallback(async () => {
+    const cached = sessionStorage.getItem("adm_prices");
+    if (cached) { setPrices(JSON.parse(cached)); return; }
     setLoading(true);
     try {
       const r = await apiFetch("prices");
-      if (r.ok) { const d = await r.json(); setPrices(d.items); }
-    } finally {
-      setLoading(false);
-    }
+      if (r.ok) {
+        const d = await r.json();
+        sessionStorage.setItem("adm_prices", JSON.stringify(d.items));
+        setPrices(d.items);
+      }
+    } catch(e) { console.error(e); }
+    finally { setLoading(false); }
   }, []);
 
   useEffect(() => { load(); }, [load]);

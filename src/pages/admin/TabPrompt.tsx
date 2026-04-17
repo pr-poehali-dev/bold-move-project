@@ -14,8 +14,14 @@ export default function TabPrompt({ token }: Props) {
   const [showPrices, setShowPrices] = useState(false);
 
   useEffect(() => {
-    apiFetch("prompt").then(r => r.ok && r.json().then(d => setContent(d.content)));
-    apiFetch("prices").then(r => r.ok && r.json().then(d => setPrices(d.items.filter((p: PriceItem) => p.active))));
+    const cp = sessionStorage.getItem("adm_prompt");
+    if (cp) { setContent(cp); } else {
+      apiFetch("prompt").then(r => r.ok && r.json().then(d => { setContent(d.content); sessionStorage.setItem("adm_prompt", d.content); }));
+    }
+    const cpr = sessionStorage.getItem("adm_prices");
+    if (cpr) { setPrices(JSON.parse(cpr).filter((p: PriceItem) => p.active)); } else {
+      apiFetch("prices").then(r => r.ok && r.json().then(d => setPrices(d.items.filter((p: PriceItem) => p.active))));
+    }
   }, []);
 
   const save = async () => {

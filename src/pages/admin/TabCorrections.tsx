@@ -222,10 +222,15 @@ export default function TabCorrections({ token }: Props) {
   });
 
   const load = useCallback(async () => {
+    const cp = sessionStorage.getItem("adm_prices");
+    if (cp) setPrices(JSON.parse(cp));
     setLoading(true);
-    const [cr, pr] = await Promise.all([apiFetch("corrections"), apiFetch("prices")]);
-    if (cr.ok) { const d = await cr.json(); setItems(d.items); }
-    if (pr.ok) { const d = await pr.json(); setPrices(d.items); }
+    const r = await apiFetch("corrections");
+    if (r.ok) { const d = await r.json(); setItems(d.items); }
+    if (!cp) {
+      const pr = await apiFetch("prices");
+      if (pr.ok) { const d = await pr.json(); setPrices(d.items); sessionStorage.setItem("adm_prices", JSON.stringify(d.items)); }
+    }
     setLoading(false);
   }, []);
 
