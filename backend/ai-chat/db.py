@@ -130,7 +130,7 @@ def get_price_rules() -> list:
         conn = psycopg2.connect(os.environ['DATABASE_URL'])
         cur = conn.cursor()
         cur.execute(f"""
-            SELECT id, category, name, price, unit, calc_rule, bundle
+            SELECT id, category, name, price, unit, calc_rule, bundle, synonyms
             FROM {SCHEMA}.ai_prices
             WHERE active = true
             ORDER BY sort_order, id
@@ -142,7 +142,8 @@ def get_price_rules() -> list:
             result.append({
                 'id': row[0], 'category': row[1], 'name': row[2],
                 'price': row[3], 'unit': row[4],
-                'calc_rule': row[5] or '', 'bundle': row[6] or '[]'
+                'calc_rule': row[5] or '', 'bundle': row[6] or '[]',
+                'synonyms': row[7] or ''
             })
         return result
     except Exception as e:
@@ -165,6 +166,20 @@ def eval_calc_rule(rule: str, area: float, perim: float) -> float | None:
         return round(float(val), 2)
     except Exception:
         return None
+
+
+def save_correction(user_text: str, recognized_json: dict | None, session_id: str = '') -> None:
+    """Сохраняет нераспознанный/неточный запрос клиента для обучения."""
+    try:
+        conn = psycopg2.connect(os.environ['DATABASE_URL'])
+        cur = conn.cursor()
+        cur.execute(
+            f"INSERT INTO {SCHEMA}.bot_corrections (session_id, user_text, recognized_json, status) VALUES (%s, %s, %s, 'pending')",
+            (session_id, user_text, json.dumps(recognized_json, ensure_ascii=False) if recognized_json else None)
+        )
+        conn.commit(); cur.close(); conn.close()
+    except Exception as e:
+        print(f"[corrections] save error: {e}")
 
 
 def build_rules_prompt(rules: list) -> str:

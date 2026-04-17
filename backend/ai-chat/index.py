@@ -10,7 +10,7 @@ from services import generate_image, web_search, call_llm, SEARCH_VISUAL, IMAGE_
 from db import (
     get_knowledge, get_system_prompt, get_faq_cache,
     get_prices_block, get_canvas_prices, get_price_rules,
-    build_rules_prompt, eval_calc_rule, CANVAS_PRICES,
+    build_rules_prompt, eval_calc_rule, save_correction, CANVAS_PRICES,
 )
 
 # Встроенный кэш частых вопросов (fallback если БД недоступна)
@@ -115,13 +115,23 @@ def try_simple_estimate(text: str) -> str | None:
     perim = round(area * 1.3, 1)
     is_pvh = canvas_key != 'ткань'
 
-    # Загружаем ВСЕ позиции из БД — цены + правила
+    # Загружаем ВСЕ позиции из БД — цены + правила + синонимы
     _rules = get_price_rules()
     _by_name = {r['name']: r for r in _rules}
 
     def p(name: str, fallback: int) -> int:
         """Цена позиции из БД, с fallback если не найдена."""
         return int(_by_name[name]['price']) if name in _by_name else fallback
+
+    def _synonyms_pattern(name: str, base_pattern: str) -> str:
+        """Строит regex с учётом синонимов из БД для данной позиции."""
+        item = _by_name.get(name)
+        if not item or not item.get('synonyms'):
+            return base_pattern
+        extras = [s.strip() for s in item['synonyms'].split(',') if s.strip()]
+        if not extras:
+            return base_pattern
+        return base_pattern + '|' + '|'.join(re.escape(s) for s in extras)
 
     # ─── ЦЕНЫ ИЗ БД (с fallback на старые значения) ────────────────────────
     price_raskroy        = p('Раскрой ПВХ', 100)
@@ -139,8 +149,10 @@ def try_simple_estimate(text: str) -> str | None:
     price_mount_svet     = p('Монтаж светильника GX53', 500)
     price_mount_razv     = p('Монтаж разводки ГОСТ 0.75', 700)
 
-    # Светильники GX-53 — суммируем ВСЕ числа (цифры и слова)
-    all_svet_nums = re.findall(_NUM_WORD_PAT + r'\s*(?:точечн\w*\s*)?(?:светильник|gx.?53|вклейк)', t)
+    # Светильники GX-53 — базовые слова + синонимы из БД
+    _svet_base = r'светильник|gx.?53|вклейк'
+    _svet_syn = _synonyms_pattern('Светильник GX-53 + лампа', _svet_base)
+    all_svet_nums = re.findall(_NUM_WORD_PAT + r'\s*(?:точечн\w*\s*)?(?:' + _svet_syn + r')', t)
     all_svet_nums += re.findall(r'добавить\s+(?:ещё\s+)?' + _NUM_WORD_PAT + r'\s*(?:точечн|светильник)?', t)
     n_svetilnik = sum(int(_w2n(x)) for x in all_svet_nums)
 
@@ -151,8 +163,10 @@ def try_simple_estimate(text: str) -> str | None:
     else:
         n_lyustra = 1 if lyustra_m else 0
 
-    # Ниша для штор — «ниша», «карниз», «штора», «гардина», «карниз возле шторы»
-    has_nisha = bool(re.search(r'ниш[аеуы]?\s*(?:для\s*штор)?|карниз|шторн|штор[аыуе]|гардин', t))
+    # Ниша для штор — базовые слова + синонимы из БД
+    _nisha_base = r'ниш[аеуы]?\s*(?:для\s*штор)?|карниз|шторн|штор[аыуе]|гардин'
+    _nisha_pat = _synonyms_pattern('Ниша без перегиба', _nisha_base)
+    has_nisha = bool(re.search(_nisha_pat, t))
 
     # Длина ниши: явная (цифра или слово) рядом с любым ключевым словом ниши/карниза
     _nisha_kw = r'(?:ниш[аеуы]?|карниз|штор[аыуе]?|шторн|гардин\w*)'
@@ -427,9 +441,14 @@ def handler(event, context):
             last_user_text = msg.get('text', '')
             break
 
+    session_id = event.get('headers', {}).get('x-session-id', '') or event.get('headers', {}).get('X-Session-Id', '')
+
     cached = get_cached_answer(last_user_text)
     if cached:
         return {'statusCode': 200, 'headers': cors, 'body': json.dumps({'answer': cached})}
+
+    # Сохраняем в обучение — запрос ушёл в LLM (не удалось посчитать автоматически)
+    save_correction(last_user_text, None, session_id)
 
     # Загружаем базу знаний и цены из БД
     knowledge = get_knowledge(last_user_text)

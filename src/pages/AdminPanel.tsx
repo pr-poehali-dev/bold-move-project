@@ -6,6 +6,7 @@ import TabRules from "./admin/TabRules";
 import TabPrompt from "./admin/TabPrompt";
 import TabFaq from "./admin/TabFaq";
 import TabQuestions from "./admin/TabQuestions";
+import TabCorrections from "./admin/TabCorrections";
 import type { AdminTab } from "./admin/types";
 
 const TABS: { id: AdminTab; label: string; icon: string }[] = [
@@ -13,7 +14,8 @@ const TABS: { id: AdminTab; label: string; icon: string }[] = [
   { id: "rules",     label: "Правила расчёта",  icon: "SlidersHorizontal" },
   { id: "prompt",    label: "Промпт",           icon: "BrainCircuit" },
   { id: "faq",       label: "База знаний",      icon: "Database" },
-  { id: "questions", label: "Быстрые ответы",   icon: "MessageCircle" },
+  { id: "questions",   label: "Быстрые ответы",   icon: "MessageCircle" },
+  { id: "corrections", label: "Обучение",          icon: "GraduationCap" },
 ];
 
 export default function AdminPanel() {
@@ -92,7 +94,8 @@ export default function AdminPanel() {
         {tab === "rules"     && <TabRules     token={token} hint={newItemHint} />}
         {tab === "prompt"    && <TabPrompt    token={token} />}
         {tab === "faq"       && <TabFaq       token={token} />}
-        {tab === "questions" && <TabQuestions token={token} />}
+        {tab === "questions"   && <TabQuestions   token={token} />}
+        {tab === "corrections" && <TabCorrections token={token} />}
       </div>
     </div>
   );

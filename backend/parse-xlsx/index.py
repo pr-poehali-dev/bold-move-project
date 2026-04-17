@@ -188,10 +188,10 @@ def handler(event: dict, context) -> dict:
     # --- GET ?r=prices
     if r == 'prices' and method == 'GET':
         conn = get_conn(); cur = conn.cursor()
-        cur.execute(f"SELECT id, category, name, price, unit, description, sort_order, active, calc_rule, bundle FROM {SCHEMA}.ai_prices ORDER BY sort_order, id")
+        cur.execute(f"SELECT id, category, name, price, unit, description, sort_order, active, calc_rule, bundle, synonyms FROM {SCHEMA}.ai_prices ORDER BY sort_order, id")
         rows = cur.fetchall()
         cur.close(); conn.close()
-        return resp(200, {'items': [{'id': row[0], 'category': row[1], 'name': row[2], 'price': row[3], 'unit': row[4], 'description': row[5], 'sort_order': row[6], 'active': row[7], 'calc_rule': row[8] or '', 'bundle': row[9] or '[]'} for row in rows]})
+        return resp(200, {'items': [{'id': row[0], 'category': row[1], 'name': row[2], 'price': row[3], 'unit': row[4], 'description': row[5], 'sort_order': row[6], 'active': row[7], 'calc_rule': row[8] or '', 'bundle': row[9] or '[]', 'synonyms': row[10] or ''} for row in rows]})
 
     # --- POST ?r=prices  (добавление позиции)
     if r == 'prices' and method == 'POST':
@@ -223,8 +223,8 @@ def handler(event: dict, context) -> dict:
         body = json.loads(body_str)
         conn = get_conn(); cur = conn.cursor()
         cur.execute(
-            f"UPDATE {SCHEMA}.ai_prices SET name=%s, price=%s, unit=%s, description=%s, active=%s, calc_rule=%s, bundle=%s, updated_at=now() WHERE id=%s",
-            (body.get('name',''), int(body.get('price', 0)), body.get('unit',''), body.get('description',''), body.get('active', True), body.get('calc_rule',''), body.get('bundle','[]'), price_id)
+            f"UPDATE {SCHEMA}.ai_prices SET name=%s, price=%s, unit=%s, description=%s, active=%s, calc_rule=%s, bundle=%s, synonyms=%s, updated_at=now() WHERE id=%s",
+            (body.get('name',''), int(body.get('price', 0)), body.get('unit',''), body.get('description',''), body.get('active', True), body.get('calc_rule',''), body.get('bundle','[]'), body.get('synonyms',''), price_id)
         )
         conn.commit(); cur.close(); conn.close()
         return resp(200, {'ok': True})
@@ -250,6 +250,30 @@ def handler(event: dict, context) -> dict:
         price_id = int(qs.get('id', '0'))
         conn = get_conn(); cur = conn.cursor()
         cur.execute(f"DELETE FROM {SCHEMA}.ai_prices WHERE id = %s", (price_id,))
+        conn.commit(); cur.close(); conn.close()
+        return resp(200, {'ok': True})
+
+    # --- GET ?r=corrections
+    if r == 'corrections' and method == 'GET':
+        conn = get_conn(); cur = conn.cursor()
+        cur.execute(f"SELECT id, session_id, user_text, recognized_json, corrected_json, status, created_at FROM {SCHEMA}.bot_corrections ORDER BY created_at DESC LIMIT 200")
+        rows = cur.fetchall()
+        cur.close(); conn.close()
+        return resp(200, {'items': [{'id': row[0], 'session_id': row[1] or '', 'user_text': row[2], 'recognized_json': row[3], 'corrected_json': row[4], 'status': row[5], 'created_at': str(row[6])} for row in rows]})
+
+    # --- PUT ?r=corrections&id=X
+    if r == 'corrections' and method == 'PUT':
+        if not check_auth(hdrs):
+            return resp(401, {'error': 'Unauthorized'})
+        body = json.loads(body_str)
+        corr_id = int(qs.get('id', body.get('id', 0)))
+        status = body.get('status', 'pending')
+        corrected = body.get('corrected_json')
+        conn = get_conn(); cur = conn.cursor()
+        cur.execute(
+            f"UPDATE {SCHEMA}.bot_corrections SET status=%s, corrected_json=%s, reviewed_at=now() WHERE id=%s",
+            (status, json.dumps(corrected, ensure_ascii=False) if corrected else None, corr_id)
+        )
         conn.commit(); cur.close(); conn.close()
         return resp(200, {'ok': True})
 

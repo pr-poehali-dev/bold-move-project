@@ -120,7 +120,8 @@ export default function TabPrices({ token, onItemAdded }: Props) {
                   <th className="text-left text-white/30 font-normal px-4 py-2.5 w-[34%]">Название</th>
                   <th className="text-right text-white/30 font-normal px-4 py-2.5 w-[9%]">Цена ₽</th>
                   <th className="text-left text-white/30 font-normal px-4 py-2.5 w-[7%]">Ед.</th>
-                  <th className="text-left text-white/30 font-normal px-4 py-2.5">Описание (как AI понимает)</th>
+                  <th className="text-left text-white/30 font-normal px-4 py-2.5 w-[22%]">Описание (как AI понимает)</th>
+                  <th className="text-left text-white/30 font-normal px-4 py-2.5">Синонимы (через запятую)</th>
                   <th className="px-3 py-2.5 w-12" />
                 </tr>
               </thead>
@@ -148,6 +149,9 @@ export default function TabPrices({ token, onItemAdded }: Props) {
                     </td>
                     <td className="px-4 py-2.5 text-white/40 text-xs">
                       <EditableCell value={item.description} onSave={v => saveField(item, "description", v)} />
+                    </td>
+                    <td className="px-4 py-2.5 text-amber-400/60 text-xs">
+                      <EditableCell value={item.synonyms || ""} onSave={v => saveField(item, "synonyms", v)} placeholder="карниз, гардина, штора..." />
                     </td>
                     <td className="px-3 py-2.5">
                       <div className="flex items-center gap-1.5">

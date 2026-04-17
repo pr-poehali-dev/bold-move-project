@@ -1,4 +1,4 @@
-export type AdminTab = "prices" | "rules" | "prompt" | "faq" | "questions";
+export type AdminTab = "prices" | "rules" | "prompt" | "faq" | "questions" | "corrections";
 
 export interface FaqItem {
   id: number;
@@ -21,5 +21,16 @@ export interface PriceItem {
   price: number;
   unit: string;
   description: string;
+  synonyms: string;
   active: boolean;
+}
+
+export interface BotCorrection {
+  id: number;
+  session_id: string;
+  user_text: string;
+  recognized_json: Record<string, unknown> | null;
+  corrected_json: Record<string, unknown> | null;
+  status: "pending" | "approved" | "rejected";
+  created_at: string;
 }
