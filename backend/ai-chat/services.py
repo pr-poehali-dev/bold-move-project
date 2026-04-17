@@ -12,7 +12,8 @@ AWS_SECRET = os.environ.get('AWS_SECRET_ACCESS_KEY', '')
 # Запросы, при которых поиск не нужен (смета, базовые вопросы)
 SEARCH_SKIP = re.compile(
     r'(привет|здравствуй|спасибо|замер|гарантия|адрес|телефон|контакт|'
-    r'\d+\s*м[²2]|площадь|смета|рассчитай|посчитай|сколько стоит\s+\d)',
+    r'\d+\s*м[²2]|квадрат|площадь|смета|рассчитай|посчитай|сколько стоит|'
+    r'люстр|светильник|профил|полотно|закладн|монтаж|потолок|ниш|карниз|штор)',
     re.IGNORECASE
 )
 
@@ -34,7 +35,6 @@ IMAGE_GEN = re.compile(
 
 OR_MODELS = [
     'openai/gpt-4o-mini',
-    'mistralai/mistral-7b-instruct:free',
 ]
 
 HF_ENDPOINTS = [
@@ -157,7 +157,7 @@ def call_llm(messages):
             'HTTP-Referer': 'https://mospotolki.ru',
         }
         for model in OR_MODELS:
-            payload = {'model': model, 'messages': messages, 'max_tokens': 1800, 'temperature': 0.1}
+            payload = {'model': model, 'messages': messages, 'max_tokens': 1800, 'temperature': 0}
             try:
                 resp = requests.post('https://openrouter.ai/api/v1/chat/completions', json=payload, headers=headers, timeout=25)
                 if resp.status_code == 200:
@@ -178,7 +178,7 @@ def call_llm(messages):
             'model': ep['model'],
             'messages': messages,
             'max_tokens': 1800,
-            'temperature': 0.1,
+            'temperature': 0,
         }
         try:
             resp = requests.post(ep['url'], json=payload, headers=headers, timeout=25)

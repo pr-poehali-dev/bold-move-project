@@ -276,9 +276,7 @@ def try_simple_estimate(text: str) -> str | None:
     if mount_razv > 0:
         lines.append(f"  Монтаж разводки ГОСТ {n_svetilnik} шт. × {price_mount_razv} ₽ = {fmt(mount_razv)} ₽")
 
-    lines.append(f"\nEconom:   {fmt(econom)} ₽")
-    lines.append(f"Standard: {fmt(standard)} ₽")
-    lines.append(f"Premium:  {fmt(premium_price)} ₽")
+    lines.append(f"\nИТОГО: {fmt(standard)} ₽")
     lines.append(f"\nНа какой день вас записать на бесплатный замер?")
 
     return '\n'.join(lines)
@@ -376,10 +374,8 @@ N. Услуги монтажа:
 
 ВАЖНО: каждый блок — отдельный заголовок. Никогда не смешивай позиции из разных категорий в одном блоке!
 
-Итоговая стоимость — 3 варианта:
-Econom: X ₽
-Standard: X ₽
-Premium: X ₽
+Итоговая стоимость — одна сумма (сложи все позиции):
+ИТОГО: X ₽
 
 Финальная фраза ВСЕГДА:
 "На какой день вас записать на бесплатный замер?"
