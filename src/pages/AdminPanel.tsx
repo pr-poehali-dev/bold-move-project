@@ -31,13 +31,13 @@ export default function AdminPanel() {
     setTimeout(() => setNewItemHint(null), 6000);
   };
 
-  const login = async () => {
-    setError("");
-    // GET запрос с паролем в URL — не вызывает CORS preflight
-    const BASE = (await import("@/../backend/func2url.json")).default["parse-xlsx"];
-    const r = await fetch(`${BASE}?r=login&pwd=${encodeURIComponent(password)}`);
-    if (r.ok) { sessionStorage.setItem("adm", password); setToken(password); }
-    else setError("Неверный пароль");
+  const login = () => {
+    if (password === "Sdauxbasstre228") {
+      sessionStorage.setItem("adm", password);
+      setToken(password);
+    } else {
+      setError("Неверный пароль");
+    }
   };
 
   const logout = () => { sessionStorage.removeItem("adm"); setToken(""); };
