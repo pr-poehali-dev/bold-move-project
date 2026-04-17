@@ -136,7 +136,7 @@ def try_simple_estimate(text: str) -> str | None:
         elif re.search(r'брус|бп.?40', t):
             nisha_price = p('Брус БП-40', 850); nisha_label = 'Брус БП-40'
         else:
-            nisha_price = p('Ниша стандартная', 1700); nisha_label = 'Стандартная'
+            nisha_price = p('Ниша без перегиба', 1700); nisha_label = 'Ниша без перегиба'
 
     # ─── РАСЧЁТ ───────────────────────────────────────────────────────────────
     # 1. Полотно
