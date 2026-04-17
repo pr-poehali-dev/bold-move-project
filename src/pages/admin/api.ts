@@ -8,14 +8,18 @@ export async function apiFetch(resource: string, opts?: RequestInit, token?: str
   let url = `${BASE}?r=${resource}`;
   if (id !== undefined) url += `&id=${id}`;
   if (t) url += `&_token=${encodeURIComponent(t)}`;
-  // Метод передаём через URL чтобы не было preflight
-  if (method !== "GET") url += `&_method=${method}`;
 
-  // Данные передаём через URL параметр — полностью избегаем preflight
-  if (opts?.body) {
-    url += `&_body=${encodeURIComponent(opts.body as string)}`;
+  if (method === "GET") {
+    return fetch(url);
   }
 
-  // Всегда GET — нет preflight, нет CORS проблем
-  return fetch(url);
+  // POST/PUT/DELETE: отправляем как POST с text/plain — НЕ вызывает preflight
+  // Метод передаём в URL, тело как есть
+  url += `&_method=${method}`;
+  return fetch(url, {
+    method: "POST",
+    body: opts?.body,
+    // НЕ ставим Content-Type: application/json — это вызывает preflight
+    // text/plain или без заголовка — preflight не нужен
+  });
 }

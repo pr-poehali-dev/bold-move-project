@@ -63,9 +63,9 @@ def handler(event: dict, context) -> dict:
     hdrs = event.get('headers') or {}
     qs = event.get('queryStringParameters') or {}
     r = qs.get('r', '')
-    # Метод может прийти через _method в URL (все запросы идут как GET для обхода CORS)
+    # Реальный метод: из _method в URL или из httpMethod
     method = qs.get('_method', event.get('httpMethod', 'GET'))
-    # Body может прийти как обычный body или как _body в URL
+    # Body: из тела запроса или из _body в URL
     body_str = event.get('body') or qs.get('_body', '') or '{}'
 
     # --- LOGIN (GET или POST)
