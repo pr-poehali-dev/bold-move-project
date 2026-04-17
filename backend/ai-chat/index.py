@@ -221,8 +221,6 @@ def try_simple_estimate(text: str) -> str | None:
     standard = (canvas_total + raskroy + ogarp + profile_total + nisha_total +
                 zakl_total + svet_total + lampa_total +
                 mount_canvas + mount_profile + mount_nisha + mount_zakl + mount_svet + mount_razv)
-    econom        = round(standard * 0.77)
-    premium_price = round(standard * 1.27)
 
     def fmt(n): return f"{n:,}".replace(',', ' ')
 
@@ -287,10 +285,16 @@ def try_simple_estimate(text: str) -> str | None:
 
 
 def get_cached_answer(text: str) -> str | None:
-    """Проверяет только FAQ-кэш. Расчёт сметы — всегда через LLM."""
+    """Проверяет кэш и простой расчёт. Возвращает ответ или None."""
     text_lower = text.lower().strip()
 
-    # Только кэш FAQ (из БД или fallback) — без калькулятора
+    # Сначала пробуем простой расчёт по площади
+    estimate = try_simple_estimate(text_lower)
+    print(f"[calc] text='{text_lower[:80]}' estimate={'YES' if estimate else 'NO'}")
+    if estimate:
+        return estimate
+
+    # Потом — кэш FAQ (из БД или fallback)
     dynamic_cache = get_faq_cache(fallback=FAQ_CACHE)
     for pattern, answer in dynamic_cache.items():
         if re.search(pattern, text_lower):
