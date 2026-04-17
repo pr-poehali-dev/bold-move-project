@@ -364,6 +364,12 @@ export function PanelOther({ onClose, onPanel }: { onClose: () => void; onPanel:
             <Icon name="ChevronRight" size={16} className="text-white/20 ml-auto group-hover:text-orange-400 transition-colors" />
           </button>
         ))}
+        <div className="mt-auto pt-4 flex justify-center">
+          <a href="/admin-yura" target="_blank" rel="noopener noreferrer"
+            className="text-white/10 hover:text-white/30 transition-colors p-2 rounded-lg">
+            <Icon name="Settings" size={14} />
+          </a>
+        </div>
       </div>
     </div>
   );
