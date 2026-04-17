@@ -73,18 +73,33 @@ def _w2n(s: str) -> float:
     return float(s.replace(',', '.'))
 
 
+_COMPLEX_WORDS = [
+    'лента', 'двухуровн', 'керамогран', 'вентил', 'блок питани', 'парящ',
+    'теневой', 'тенев', 'краб', 'плитк', 'диффузор', 'дифузор',
+    'без монт', 'вклейк', 'высота',
+]
+_COMPLEX_PAT = re.compile(r'(' + '|'.join(re.escape(w) for w in _COMPLEX_WORDS) + r')')
+
+
+def get_skip_reason(text: str) -> dict:
+    """Возвращает причину почему бот отказался считать сам."""
+    t = text.lower()
+    m = _COMPLEX_PAT.search(t)
+    if m:
+        word = m.group(1)
+        return {'reason': 'complex_keyword', 'unknown_word': word, 'unknown_words': _COMPLEX_PAT.findall(t)}
+    area_m = re.search(_NUM_WORD_PAT + r'\s*(?:м²|м2|кв\.?\s*м?|квадрат|кв\b)', t)
+    if not area_m:
+        return {'reason': 'no_area', 'unknown_word': None, 'unknown_words': []}
+    return {'reason': 'unknown', 'unknown_word': None, 'unknown_words': []}
+
+
 def try_simple_estimate(text: str) -> tuple[str, dict] | None:
     """Детерминированный расчёт сметы. Возвращает (текст_ответа, recognized_dict) или None."""
     t = text.lower()
 
     # Не перехватываем сложные случаи — отдаём в LLM
-    has_complex = re.search(
-        r'(лента|двухуровн|керамогран|вентил|блок питани|парящ'
-        r'|теневой|тенев|краб|плитк|диффузор|дифузор'
-        r'|без монт|без\s+монт|вклейк|высота)',
-        t
-    )
-    if has_complex:
+    if _COMPLEX_PAT.search(t):
         print(f"[calc] skip: complex keyword in '{t[:60]}'")
         return None
 
@@ -465,7 +480,8 @@ def handler(event, context):
         return {'statusCode': 200, 'headers': cors, 'body': json.dumps({'answer': answer})}
 
     # Сохраняем в обучение — запрос ушёл в LLM (не удалось посчитать автоматически)
-    save_correction(last_user_text, None, session_id)
+    skip_info = get_skip_reason(last_user_text.lower().strip())
+    save_correction(last_user_text, skip_info, session_id)
 
     # Загружаем базу знаний и цены из БД
     knowledge = get_knowledge(last_user_text)
