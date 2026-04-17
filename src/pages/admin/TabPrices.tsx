@@ -110,7 +110,7 @@ export default function TabPrices({ token, onItemAdded }: Props) {
                         className="bg-transparent text-white/50 text-sm outline-none cursor-pointer hover:text-white transition appearance-none">
                         <option value="м²" className="bg-[#0b0b11]">м²</option>
                         <option value="шт" className="bg-[#0b0b11]">шт</option>
-                        <option value="пм" className="bg-[#0b0b11]">пм</option>
+                        <option value="пог.м" className="bg-[#0b0b11]">пог.м</option>
                         <option value="уп" className="bg-[#0b0b11]">уп</option>
                         <option value="катушка" className="bg-[#0b0b11]">катушка</option>
                       </select>
@@ -154,7 +154,7 @@ export default function TabPrices({ token, onItemAdded }: Props) {
                     className="bg-white/5 border border-white/15 rounded-lg px-3 py-1.5 text-white text-sm outline-none focus:border-violet-500 cursor-pointer">
                     <option value="м²">м²</option>
                     <option value="шт">шт</option>
-                    <option value="пм">пм</option>
+                    <option value="пог.м">пог.м</option>
                     <option value="уп">уп</option>
                     <option value="катушка">катушка</option>
                   </select>
@@ -221,7 +221,7 @@ export default function TabPrices({ token, onItemAdded }: Props) {
                 className="bg-white/5 border border-white/15 rounded-lg px-3 py-2 text-white text-sm outline-none focus:border-violet-500 cursor-pointer">
                 <option value="м²">м²</option>
                 <option value="шт">шт</option>
-                <option value="пм">пм</option>
+                <option value="пог.м">пог.м</option>
                 <option value="уп">уп</option>
                 <option value="катушка">катушка</option>
               </select>
