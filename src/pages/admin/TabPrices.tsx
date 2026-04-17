@@ -16,6 +16,8 @@ export default function TabPrices({ token, onItemAdded }: Props) {
   const [newItem, setNewItem] = useState(EMPTY_NEW);
   const [addingCat, setAddingCat] = useState(false);
   const [newCat, setNewCat] = useState(EMPTY_CAT);
+  const [editingCat, setEditingCat] = useState<string | null>(null);
+  const [editingCatVal, setEditingCatVal] = useState("");
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -53,6 +55,16 @@ export default function TabPrices({ token, onItemAdded }: Props) {
     setPrices(prev => prev.filter(p => p.id !== id));
   };
 
+  const renameCategory = async (oldName: string) => {
+    const newName = editingCatVal.trim();
+    if (!newName || newName === oldName) { setEditingCat(null); return; }
+    const r = await apiFetch("prices&rename_category", { method: "PUT", body: JSON.stringify({ old_name: oldName, new_name: newName }) }, token);
+    if (r.ok) {
+      setPrices(prev => prev.map(p => p.category === oldName ? { ...p, category: newName } : p));
+    }
+    setEditingCat(null);
+  };
+
   const addCategory = async () => {
     if (!newCat.name.trim() || !newCat.firstItem.trim()) return;
     const r = await apiFetch("prices", {
@@ -81,7 +93,26 @@ export default function TabPrices({ token, onItemAdded }: Props) {
 
       {Object.entries(byCategory).map(([category, items]) => (
         <div key={category}>
-          <h3 className="text-violet-300 text-xs font-semibold uppercase tracking-wider mb-2 px-1">{category}</h3>
+          <div className="flex items-center gap-2 mb-2 px-1 group">
+            {editingCat === category ? (
+              <input
+                autoFocus
+                value={editingCatVal}
+                onChange={e => setEditingCatVal(e.target.value)}
+                onBlur={() => renameCategory(category)}
+                onKeyDown={e => { if (e.key === "Enter") renameCategory(category); if (e.key === "Escape") setEditingCat(null); }}
+                className="text-violet-300 text-xs font-semibold uppercase tracking-wider bg-violet-500/10 border border-violet-500/40 rounded px-2 py-0.5 outline-none w-64"
+              />
+            ) : (
+              <h3
+                className="text-violet-300 text-xs font-semibold uppercase tracking-wider cursor-pointer hover:text-violet-200 transition flex items-center gap-1.5"
+                onClick={() => { setEditingCat(category); setEditingCatVal(category); }}
+                title="Нажмите чтобы переименовать группу">
+                {category}
+                <Icon name="Pencil" size={10} className="opacity-0 group-hover:opacity-40 transition" />
+              </h3>
+            )}
+          </div>
           <div className="bg-white/[0.03] border border-white/10 rounded-xl overflow-hidden">
             <table className="w-full text-sm">
               <thead>

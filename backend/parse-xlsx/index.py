@@ -229,6 +229,20 @@ def handler(event: dict, context) -> dict:
         conn.commit(); cur.close(); conn.close()
         return resp(200, {'ok': True})
 
+    # --- PUT ?r=prices&rename_category  (переименование категории)
+    if r == 'prices' and method == 'PUT' and 'rename_category' in qs:
+        if not check_auth(hdrs):
+            return resp(401, {'error': 'Unauthorized'})
+        body = json.loads(body_str)
+        old_name = body.get('old_name', '').strip()
+        new_name = body.get('new_name', '').strip()
+        if not old_name or not new_name:
+            return resp(400, {'error': 'old_name and new_name required'})
+        conn = get_conn(); cur = conn.cursor()
+        cur.execute(f"UPDATE {SCHEMA}.ai_prices SET category=%s WHERE category=%s", (new_name, old_name))
+        conn.commit(); cur.close(); conn.close()
+        return resp(200, {'ok': True})
+
     # --- DELETE ?r=prices&id=X
     if r == 'prices' and method == 'DELETE':
         if not check_auth(hdrs):
