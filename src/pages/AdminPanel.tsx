@@ -51,21 +51,15 @@ export default function AdminPanel() {
             <Icon name="ShieldCheck" size={22} className="text-violet-400" />
             <span className="text-white font-semibold text-lg">Вход для администратора</span>
           </div>
-          <div className="relative">
-            <input
-              type={showPassword ? "text" : "password"}
-              placeholder="Пароль"
-              value={password}
-              autoComplete="off"
-              onChange={e => setPassword(e.target.value)}
-              onKeyDown={e => e.key === "Enter" && login()}
-              className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 pr-11 text-white outline-none focus:border-violet-500 transition"
-            />
-            <button type="button" onClick={() => setShowPassword(p => !p)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-white/50 hover:text-white transition">
-              <Icon name={showPassword ? "EyeOff" : "Eye"} size={17} />
-            </button>
-          </div>
+          <input
+            type="password"
+            placeholder="Пароль"
+            value={password}
+            autoComplete="off"
+            onChange={e => setPassword(e.target.value)}
+            onKeyDown={e => e.key === "Enter" && login()}
+            className="bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 text-white outline-none focus:border-violet-500 transition"
+          />
           {error && <p className="text-red-400 text-sm">{error}</p>}
           <button onClick={login} className="bg-violet-600 hover:bg-violet-700 text-white rounded-lg py-2.5 font-medium transition">
             Войти
