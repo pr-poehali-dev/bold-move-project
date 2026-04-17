@@ -221,6 +221,8 @@ def try_simple_estimate(text: str) -> str | None:
     standard = (canvas_total + raskroy + ogarp + profile_total + nisha_total +
                 zakl_total + svet_total + lampa_total +
                 mount_canvas + mount_profile + mount_nisha + mount_zakl + mount_svet + mount_razv)
+    econom        = round(standard * 0.77)
+    premium_price = round(standard * 1.27)
 
     def fmt(n): return f"{n:,}".replace(',', ' ')
 
@@ -276,7 +278,9 @@ def try_simple_estimate(text: str) -> str | None:
     if mount_razv > 0:
         lines.append(f"  Монтаж разводки ГОСТ {n_svetilnik} шт. × {price_mount_razv} ₽ = {fmt(mount_razv)} ₽")
 
-    lines.append(f"\nИТОГО: {fmt(standard)} ₽")
+    lines.append(f"\nEconom:   {fmt(econom)} ₽")
+    lines.append(f"Standard: {fmt(standard)} ₽")
+    lines.append(f"Premium:  {fmt(premium_price)} ₽")
     lines.append(f"\nНа какой день вас записать на бесплатный замер?")
 
     return '\n'.join(lines)
@@ -374,8 +378,10 @@ N. Услуги монтажа:
 
 ВАЖНО: каждый блок — отдельный заголовок. Никогда не смешивай позиции из разных категорий в одном блоке!
 
-Итоговая стоимость — одна сумма (сложи все позиции):
-ИТОГО: X ₽
+Итоговая стоимость — 3 варианта (считай математически точно из позиций выше):
+Econom:   X ₽  (Standard × 0.77)
+Standard: X ₽  (сумма всех позиций)
+Premium:  X ₽  (Standard × 1.27)
 
 Финальная фраза ВСЕГДА:
 "На какой день вас записать на бесплатный замер?"
