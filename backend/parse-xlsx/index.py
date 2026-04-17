@@ -22,10 +22,10 @@ def resp(status, body):
     return {'statusCode': status, 'headers': {**CORS, 'Content-Type': 'application/json'}, 'body': json.dumps(body, ensure_ascii=False)}
 
 def check_auth(headers: dict) -> bool:
-    token = headers.get('x-admin-token', '') or headers.get('X-Admin-Token', '')
+    token = (headers.get('x-admin-token', '') or headers.get('X-Admin-Token', '')).strip()
     if not token or not ADMIN_PASSWORD:
         return False
-    return hashlib.sha256(token.encode()).hexdigest() == hashlib.sha256(ADMIN_PASSWORD.encode()).hexdigest()
+    return token == ADMIN_PASSWORD
 
 def get_conn():
     return psycopg2.connect(os.environ['DATABASE_URL'])
