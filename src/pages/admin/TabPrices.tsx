@@ -5,6 +5,7 @@ import { apiFetch } from "./api";
 import type { PriceItem } from "./types";
 
 const EMPTY_NEW = { name: "", price: "", unit: "шт", description: "" };
+const EMPTY_CAT = { name: "", firstItem: "", price: "", unit: "шт", description: "" };
 
 interface Props { token: string; }
 
@@ -13,6 +14,8 @@ export default function TabPrices({ token }: Props) {
   const [loading, setLoading] = useState(false);
   const [addingInCat, setAddingInCat] = useState<string | null>(null);
   const [newItem, setNewItem] = useState(EMPTY_NEW);
+  const [addingCat, setAddingCat] = useState(false);
+  const [newCat, setNewCat] = useState(EMPTY_CAT);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -48,6 +51,21 @@ export default function TabPrices({ token }: Props) {
     if (!confirm("Удалить позицию?")) return;
     await apiFetch("prices", { method: "DELETE" }, token, id);
     setPrices(prev => prev.filter(p => p.id !== id));
+  };
+
+  const addCategory = async () => {
+    if (!newCat.name.trim() || !newCat.firstItem.trim()) return;
+    const r = await apiFetch("prices", {
+      method: "POST",
+      body: JSON.stringify({
+        category: newCat.name.trim(),
+        name: newCat.firstItem.trim(),
+        price: parseInt(newCat.price) || 0,
+        unit: newCat.unit,
+        description: newCat.description,
+      }),
+    }, token);
+    if (r.ok) { setAddingCat(false); setNewCat(EMPTY_CAT); load(); }
   };
 
   const byCategory = prices.reduce<Record<string, PriceItem[]>>((acc, p) => {
@@ -155,6 +173,65 @@ export default function TabPrices({ token }: Props) {
           </div>
         </div>
       ))}
+
+      {/* Новая категория */}
+      {addingCat ? (
+        <div className="bg-white/[0.03] border border-violet-500/30 rounded-xl p-5 flex flex-col gap-4">
+          <h3 className="text-violet-300 text-sm font-semibold flex items-center gap-2">
+            <Icon name="FolderPlus" size={16} /> Новая категория
+          </h3>
+          <div className="flex gap-3 flex-wrap">
+            <div className="flex flex-col gap-1 flex-1 min-w-[160px]">
+              <span className="text-white/30 text-xs">Название категории</span>
+              <input autoFocus value={newCat.name} onChange={e => setNewCat(p => ({ ...p, name: e.target.value }))}
+                placeholder="Например: Акции, Доп. услуги..."
+                className="bg-white/5 border border-white/15 rounded-lg px-3 py-2 text-white text-sm outline-none focus:border-violet-500" />
+            </div>
+            <div className="flex flex-col gap-1 flex-[2] min-w-[160px]">
+              <span className="text-white/30 text-xs">Первая позиция</span>
+              <input value={newCat.firstItem} onChange={e => setNewCat(p => ({ ...p, firstItem: e.target.value }))}
+                placeholder="Название первого товара/услуги..."
+                className="bg-white/5 border border-white/15 rounded-lg px-3 py-2 text-white text-sm outline-none focus:border-violet-500" />
+            </div>
+          </div>
+          <div className="flex gap-3 flex-wrap">
+            <div className="flex flex-col gap-1 w-28">
+              <span className="text-white/30 text-xs">Цена ₽</span>
+              <input type="number" value={newCat.price} onChange={e => setNewCat(p => ({ ...p, price: e.target.value }))}
+                placeholder="0"
+                className="bg-white/5 border border-white/15 rounded-lg px-3 py-2 text-white text-sm outline-none focus:border-violet-500 font-mono" />
+            </div>
+            <div className="flex flex-col gap-1 w-24">
+              <span className="text-white/30 text-xs">Единица</span>
+              <input value={newCat.unit} onChange={e => setNewCat(p => ({ ...p, unit: e.target.value }))}
+                placeholder="шт"
+                className="bg-white/5 border border-white/15 rounded-lg px-3 py-2 text-white text-sm outline-none focus:border-violet-500" />
+            </div>
+            <div className="flex flex-col gap-1 flex-1 min-w-[160px]">
+              <span className="text-white/30 text-xs">Описание для AI</span>
+              <input value={newCat.description} onChange={e => setNewCat(p => ({ ...p, description: e.target.value }))}
+                placeholder="Как AI понимает эту позицию..."
+                className="bg-white/5 border border-white/15 rounded-lg px-3 py-2 text-white text-sm outline-none focus:border-violet-500" />
+            </div>
+          </div>
+          <div className="flex gap-2">
+            <button onClick={addCategory}
+              className="bg-violet-600 hover:bg-violet-700 text-white rounded-lg px-5 py-2 text-sm font-medium transition">
+              Создать категорию
+            </button>
+            <button onClick={() => { setAddingCat(false); setNewCat(EMPTY_CAT); }}
+              className="text-white/40 hover:text-white/70 text-sm transition">
+              Отмена
+            </button>
+          </div>
+        </div>
+      ) : (
+        <button onClick={() => setAddingCat(true)}
+          className="flex items-center gap-2 text-white/30 hover:text-violet-400 text-sm transition border border-dashed border-white/10 hover:border-violet-500/40 rounded-xl py-4 justify-center hover:bg-violet-500/5">
+          <Icon name="FolderPlus" size={16} />
+          Создать новую категорию
+        </button>
+      )}
     </div>
   );
 }
