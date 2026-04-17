@@ -21,6 +21,13 @@ export default function AdminPanel() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [tab, setTab] = useState<AdminTab>("prices");
+  const [newItemHint, setNewItemHint] = useState<string | null>(null);
+
+  const handleItemAdded = (name: string) => {
+    setNewItemHint(name);
+    setTab("rules");
+    setTimeout(() => setNewItemHint(null), 6000);
+  };
 
   const login = async () => {
     setError("");
@@ -81,8 +88,8 @@ export default function AdminPanel() {
       </div>
 
       <div className="p-4 max-w-6xl mx-auto">
-        {tab === "prices"    && <TabPrices    token={token} />}
-        {tab === "rules"     && <TabRules     token={token} />}
+        {tab === "prices"    && <TabPrices    token={token} onItemAdded={handleItemAdded} />}
+        {tab === "rules"     && <TabRules     token={token} hint={newItemHint} />}
         {tab === "prompt"    && <TabPrompt    token={token} />}
         {tab === "faq"       && <TabFaq       token={token} />}
         {tab === "questions" && <TabQuestions token={token} />}

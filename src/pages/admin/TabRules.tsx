@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect } from "react";
+import Icon from "@/components/ui/icon";
 import EditableCell from "./EditableCell";
 import { apiFetch } from "./api";
 import type { PriceItem } from "./types";
@@ -8,9 +9,9 @@ interface RuleItem extends PriceItem {
   bundle: string;
 }
 
-interface Props { token: string; }
+interface Props { token: string; hint?: string | null; }
 
-export default function TabRules({ token }: Props) {
+export default function TabRules({ token, hint }: Props) {
   const [items, setItems] = useState<RuleItem[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -39,6 +40,16 @@ export default function TabRules({ token }: Props) {
   return (
     <div className="flex flex-col gap-6">
       <p className="text-white/50 text-sm">Нажмите на ячейку — редактируется как обычный текст, сохраняется мгновенно. Пишите инструкцию для AI в свободной форме.</p>
+
+      {hint && (
+        <div className="flex items-start gap-3 bg-violet-500/10 border border-violet-500/30 rounded-xl px-4 py-3">
+          <Icon name="ArrowDown" size={16} className="text-violet-400 mt-0.5 flex-shrink-0" />
+          <div className="text-sm">
+            <span className="text-violet-300 font-medium">Позиция «{hint}» добавлена.</span>
+            <span className="text-white/50 ml-1">Найдите её ниже и заполните правила расчёта если нужно.</span>
+          </div>
+        </div>
+      )}
 
       {Object.entries(byCategory).map(([category, catItems]) => (
         <div key={category}>

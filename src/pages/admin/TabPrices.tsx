@@ -7,9 +7,9 @@ import type { PriceItem } from "./types";
 const EMPTY_NEW = { name: "", price: "", unit: "шт", description: "" };
 const EMPTY_CAT = { name: "", firstItem: "", price: "", unit: "шт", description: "" };
 
-interface Props { token: string; }
+interface Props { token: string; onItemAdded?: (name: string) => void; }
 
-export default function TabPrices({ token }: Props) {
+export default function TabPrices({ token, onItemAdded }: Props) {
   const [prices, setPrices] = useState<PriceItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [addingInCat, setAddingInCat] = useState<string | null>(null);
@@ -44,7 +44,7 @@ export default function TabPrices({ token }: Props) {
       method: "POST",
       body: JSON.stringify({ ...newItem, category, price: parseInt(newItem.price) || 0 }),
     }, token);
-    if (r.ok) { setAddingInCat(null); setNewItem(EMPTY_NEW); load(); }
+    if (r.ok) { setAddingInCat(null); setNewItem(EMPTY_NEW); load(); onItemAdded?.(newItem.name.trim()); }
   };
 
   const deleteItem = async (id: number) => {
