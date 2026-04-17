@@ -1,4 +1,4 @@
-"""AI-помощник MOSPOTOLKI — отвечает на вопросы о натяжных потолках и считает стоимость."""
+"""AI-помощник MOSPOTOLKI — отвечает на вопросы о натяжных потолках и считает стоимость. v3."""
 
 import json
 import os
@@ -6,118 +6,12 @@ import re
 import requests
 import psycopg2
 
-SCHEMA = os.environ.get('MAIN_DB_SCHEMA', 'public')
-
-
-def get_knowledge(query: str) -> str:
-    """Загружает все активные записи из faq_items и возвращает как контекст."""
-    try:
-        conn = psycopg2.connect(os.environ['DATABASE_URL'])
-        cur = conn.cursor()
-        cur.execute(
-            f"SELECT title, content FROM {SCHEMA}.faq_items WHERE used = true ORDER BY id"
-        )
-        rows = cur.fetchall()
-        cur.close()
-        conn.close()
-        if not rows:
-            return ''
-        parts = []
-        for title, content in rows:
-            parts.append(f"=== {title} ===\n{content}")
-        return '\n\n'.join(parts)
-    except Exception as e:
-        print(f"[KB] error: {e}")
-        return ''
-
-
-def get_system_prompt() -> str:
-    """Загружает системный промпт из БД. Если нет — возвращает встроенный."""
-    try:
-        conn = psycopg2.connect(os.environ['DATABASE_URL'])
-        cur = conn.cursor()
-        cur.execute(f"SELECT content FROM {SCHEMA}.ai_system_prompt ORDER BY id LIMIT 1")
-        row = cur.fetchone()
-        cur.close()
-        conn.close()
-        if row and row[0]:
-            return row[0]
-    except Exception as e:
-        print(f"[prompt] error: {e}")
-    return SYSTEM_PROMPT
-
-
-def get_prices_block() -> str:
-    """Загружает цены из БД и формирует блок для SYSTEM_PROMPT. Если нет — возвращает пустую строку."""
-    try:
-        conn = psycopg2.connect(os.environ['DATABASE_URL'])
-        cur = conn.cursor()
-        cur.execute(f"SELECT category, name, price, unit FROM {SCHEMA}.ai_prices WHERE active = true ORDER BY sort_order, id")
-        rows = cur.fetchall()
-        cur.close()
-        conn.close()
-        if not rows:
-            return ''
-        from itertools import groupby
-        lines = []
-        for cat, items in groupby(rows, key=lambda x: x[0]):
-            lines.append(f"\n{cat.upper()} (за {list(items)[0][3]}):")
-            # перечитаем items (groupby исчерпал итератор), поэтому фильтруем заново
-        # Повторяем правильно
-        lines = []
-        current_cat = None
-        for category, name, price, unit in rows:
-            if category != current_cat:
-                current_cat = category
-                lines.append(f"\n{category.upper()} (за {unit}):")
-            lines.append(f"{name} — {price}")
-        return '\n'.join(lines)
-    except Exception as e:
-        print(f"[prices] error: {e}")
-        return ''
-
-
-def get_canvas_prices() -> dict:
-    """Загружает цены на полотна из БД для детерминированного расчёта."""
-    try:
-        conn = psycopg2.connect(os.environ['DATABASE_URL'])
-        cur = conn.cursor()
-        cur.execute(f"SELECT name, price FROM {SCHEMA}.ai_prices WHERE category = 'Полотна' AND active = true ORDER BY sort_order")
-        rows = cur.fetchall()
-        cur.close()
-        conn.close()
-        if not rows:
-            return CANVAS_PRICES
-        mapping = {}
-        for name, price in rows:
-            nl = name.lower()
-            if 'classic' in nl:        mapping['classic']  = (name, price)
-            elif 'premium' in nl:      mapping['premium']  = (name, price)
-            elif 'evolution' in nl:    mapping['evolution'] = (name, price)
-            elif 'bauf' in nl or 'германия' in nl: mapping['bauf'] = (name, price)
-            elif 'цветной' in nl:      mapping['цветной']  = (name, price)
-            elif 'тканев' in nl or 'дескор' in nl: mapping['ткань'] = (name, price)
-        return {**CANVAS_PRICES, **mapping} if mapping else CANVAS_PRICES
-    except Exception as e:
-        print(f"[canvas_prices] error: {e}")
-        return CANVAS_PRICES
-
-
-def get_faq_cache() -> dict:
-    """Загружает быстрые ответы из БД. Если нет — возвращает встроенный кэш."""
-    try:
-        conn = psycopg2.connect(os.environ['DATABASE_URL'])
-        cur = conn.cursor()
-        cur.execute(f"SELECT pattern, answer FROM {SCHEMA}.ai_quick_questions WHERE active = true ORDER BY id")
-        rows = cur.fetchall()
-        cur.close()
-        conn.close()
-        if rows:
-            return {r[0]: r[1] for r in rows}
-    except Exception as e:
-        print(f"[faq_cache] error: {e}")
-    return FAQ_CACHE
-
+from services import generate_image, web_search, call_llm, SEARCH_VISUAL, IMAGE_GEN
+from db import (
+    get_knowledge, get_system_prompt, get_faq_cache,
+    get_prices_block, get_canvas_prices, get_price_rules,
+    build_rules_prompt, eval_calc_rule, CANVAS_PRICES,
+)
 
 # Встроенный кэш частых вопросов (fallback если БД недоступна)
 FAQ_CACHE = {
@@ -133,15 +27,6 @@ FAQ_CACHE = {
     r"^(цены|прайс|расценки|прайс-лист)$": "Цены от:\n• Матовый белый — от 399 ₽/м²\n• Цветной — от 900 ₽/м²\n• Тканевый — от 2200 ₽/м²\n\nДля точного расчёта назовите площадь комнаты.",
 }
 
-# Простой расчёт базовой сметы без LLM (только площадь + тип полотна)
-CANVAS_PRICES = {
-    'classic': ('MSD Classic матовый', 399),
-    'premium': ('MSD Premium матовый', 460),
-    'evolution': ('MSD Evolution матовый', 490),
-    'bauf': ('BAUF Германия матовый', 499),
-    'цветной': ('Цветной MSD', 900),
-    'ткань': ('Тканевый ДЕСКОР', 2200),
-}
 
 def try_simple_estimate(text: str) -> str | None:
     """Детерминированный расчёт сметы: площадь + светильники + люстра + ниши + парящий профиль."""
@@ -180,23 +65,51 @@ def try_simple_estimate(text: str) -> str | None:
     perim = round(area * 1.3, 1)
     is_pvh = canvas_key != 'ткань'
 
+    # Загружаем правила из БД
+    _rules = get_price_rules()
+    _id_to_rule = {r['name']: r for r in _rules}
+
     # Светильники GX-53
     svetilnik_m = re.search(r'(\d+)\s*светильник', t)
     n_svetilnik = int(svetilnik_m.group(1)) if svetilnik_m else 0
+
+    # Комплект к светильнику из БД
+    _svet_rule = _id_to_rule.get('Светильник GX-53 + лампа', {})
+    _svet_bundle_ids = []
+    try:
+        _svet_bundle_ids = json.loads(_svet_rule.get('bundle', '[]'))
+    except Exception:
+        pass
+    # Добавляем позиции из комплекта к светильнику
+    _bundle_extra = {}  # name -> (qty, price)
+    if n_svetilnik > 0 and _svet_bundle_ids:
+        for _bid in _svet_bundle_ids:
+            _br = next((r for r in _rules if r['id'] == _bid), None)
+            if _br:
+                _bqty_rule = eval_calc_rule(_br['calc_rule'], area, perim)
+                _bqty = int(_bqty_rule) if _bqty_rule is not None else n_svetilnik
+                _bundle_extra[_br['name']] = (_bqty * n_svetilnik, _br['price'])
 
     # Люстра
     lyustra_m = re.search(r'(\d+)?\s*люстр', t)
     n_lyustra = int(lyustra_m.group(1)) if (lyustra_m and lyustra_m.group(1)) else (1 if lyustra_m else 0)
 
-    # Ниша для штор — ищем метраж или берём 1/4 периметра по умолчанию
-    nisha_m = re.search(r'ниш[аеуы]?\s+(?:для\s+штор\s+)?(?:пк[- ]?(\d+)|(\d+))', t)
-    nisha_type_m = re.search(r'(?:ниш[аеуы]?\s+(?:для\s+штор\s+)?)(пк[- ]?(\d+))', t)
+    # Ниша для штор — ищем метраж или берём дефолт из правила БД
     has_nisha = bool(re.search(r'ниш[аеуы]?\s*(?:для\s*штор)?', t))
 
-    # Длина ниши: ищем "X м ниша" или "ниша X м" или дефолт
+    # Длина ниши: ищем "X м ниша" или "ниша X м" или дефолт из calc_rule
     nisha_len_m = re.search(r'(\d+(?:[.,]\d+)?)\s*(?:м|пм|погон)\s+(?:ниш|шторн)', t) or \
                   re.search(r'ниш[аеуы]?\s+(?:для\s+штор\s+)?(?:пк[- ]?\d+\s+)?(\d+(?:[.,]\d+)?)\s*(?:м|пм|погон)', t)
-    nisha_len = float(nisha_len_m.group(1).replace(',', '.')) if nisha_len_m else round(area ** 0.5 + 0.5, 1)
+    if nisha_len_m:
+        nisha_len = float(nisha_len_m.group(1).replace(',', '.'))
+    else:
+        # Берём правило из БД для первой категории "Ниши для штор"
+        _nisha_rule_item = next((r for r in _rules if r['category'] == 'Ниши для штор' and r['calc_rule']), None)
+        _nisha_default = eval_calc_rule(
+            _nisha_rule_item['calc_rule'] if _nisha_rule_item else 'perimeter*0.25',
+            area, perim
+        )
+        nisha_len = round(_nisha_default if _nisha_default is not None else perim * 0.25, 1)
 
     # Тип ниши
     nisha_price = 0
@@ -327,11 +240,12 @@ def get_cached_answer(text: str) -> str | None:
         return estimate
 
     # Потом — кэш FAQ (из БД или fallback)
-    dynamic_cache = get_faq_cache()
+    dynamic_cache = get_faq_cache(fallback=FAQ_CACHE)
     for pattern, answer in dynamic_cache.items():
         if re.search(pattern, text_lower):
             return answer
     return None
+
 
 SYSTEM_PROMPT = """Ты сметчик-технолог компании MosPotolki (натяжные потолки, Мытищи, с 2009г). Отвечай по-русски. Тел:+7(977)606-89-01.
 
@@ -456,193 +370,6 @@ Premium: X ₽  (+27% от Standard, без указания процента)
 КОМПАНИЯ: MosPotolki, Мытищи, с 2009г. Тел: +7(977)606-89-01. Ежедневно 8:00–22:00. Сайт: mospotolki.net
 """
 
-HF_TOKEN = os.environ.get('HF_TOKEN', '')
-TAVILY_KEY = os.environ.get('TAVILY_API_KEY', '')
-AWS_KEY = os.environ.get('AWS_ACCESS_KEY_ID', '')
-AWS_SECRET = os.environ.get('AWS_SECRET_ACCESS_KEY', '')
-
-# Запросы, при которых поиск не нужен (смета, базовые вопросы)
-SEARCH_SKIP = re.compile(
-    r'(привет|здравствуй|спасибо|замер|гарантия|адрес|телефон|контакт|'
-    r'\d+\s*м[²2]|площадь|смета|рассчитай|посчитай|сколько стоит\s+\d)',
-    re.IGNORECASE
-)
-
-# Запросы где нужны картинки из Tavily (реальные фото товара/дизайна)
-SEARCH_VISUAL = re.compile(
-    r'(тренд|модн|популярн|вдохновени|идеи|примеры|стил|интерьер|фото|какие бывают|'
-    r'как выглядит|покажи|что такое|как смотрится|хочу посмотреть на|вид профил)',
-    re.IGNORECASE
-)
-
-# Запросы на генерацию изображения через FLUX
-IMAGE_GEN = re.compile(
-    r'(нарисуй|сгенерируй|визуализ|покажи как (будет|выглядит)|создай изображен|'
-    r'сделай дизайн|придумай дизайн|как (будет )?выглядеть|покажи дизайн|'
-    r'хочу (увидеть|посмотреть)|пример дизайна|покажи.*профил|покажи.*потолок|'
-    r'как выглядит|как он выглядит|что из себя представляет)',
-    re.IGNORECASE
-)
-
-
-def generate_image(prompt_ru: str) -> str | None:
-    """Генерирует изображение через FLUX и загружает в S3. Возвращает CDN URL или None."""
-    import base64, uuid, boto3
-    try:
-        # Переводим описание в английский промпт для FLUX
-        en_prompt = (
-            f"stretch ceiling interior design, {prompt_ru}, "
-            "photorealistic, modern room, high quality, 4k, interior photography"
-        )
-        # Генерируем через HuggingFace FLUX
-        resp = requests.post(
-            'https://router.huggingface.co/hf-inference/models/black-forest-labs/FLUX.1-schnell',
-            headers={'Authorization': f'Bearer {HF_TOKEN}'},
-            json={'inputs': en_prompt},
-            timeout=30,
-        )
-        if resp.status_code != 200:
-            print(f"[flux] error {resp.status_code}: {resp.text[:200]}")
-            return None
-
-        # Загружаем в S3
-        img_bytes = resp.content
-        key = f"ai-designs/{uuid.uuid4()}.jpg"
-        s3 = boto3.client(
-            's3',
-            endpoint_url='https://bucket.poehali.dev',
-            aws_access_key_id=AWS_KEY,
-            aws_secret_access_key=AWS_SECRET,
-        )
-        s3.put_object(Bucket='files', Key=key, Body=img_bytes, ContentType='image/jpeg')
-        cdn_url = f"https://cdn.poehali.dev/projects/{AWS_KEY}/bucket/{key}"
-        return cdn_url
-    except Exception as e:
-        print(f"[flux] exception: {e}")
-        return None
-
-
-def web_search(query: str) -> dict:
-    """Поиск через Tavily. Возвращает {'text': str, 'images': [str]}."""
-    empty = {'text': '', 'images': []}
-    if not TAVILY_KEY:
-        return empty
-    if SEARCH_SKIP.search(query):
-        return empty
-
-    # Обогащаем запрос чтобы Tavily искал именно про натяжные потолки
-    search_query = f"натяжной потолок {query} фото"
-
-    # Домены которых стоит избегать (не про потолки)
-    SPAM_DOMAINS = ('passport', 'document', 'госуслуг', 'visa', 'мвд',
-                    'avito.ru', 'ozon.ru', 'wildberries', 'instagram',
-                    'facebook', 'vk.com', 'youtube', 'tiktok')
-
-    try:
-        resp = requests.post(
-            'https://api.tavily.com/search',
-            json={
-                'api_key': TAVILY_KEY,
-                'query': search_query,
-                'search_depth': 'basic',
-                'max_results': 5,
-                'include_answer': True,
-                'include_images': True,
-                'include_image_descriptions': True,
-            },
-            timeout=15,
-        )
-        if resp.status_code != 200:
-            return empty
-        data = resp.json()
-
-        # Текстовая часть для LLM
-        parts = []
-        if data.get('answer'):
-            parts.append(f"Краткий ответ: {data['answer']}")
-        for r in data.get('results', [])[:3]:
-            title = r.get('title', '')
-            content = r.get('content', '')[:300]
-            url = r.get('url', '')
-            parts.append(f"• {title}\n  {content}")
-
-        # Картинки — извлекаем URL, фильтруем только явный спам по URL
-        images = []
-        for img in data.get('images', []):
-            if isinstance(img, dict):
-                img_url = img.get('url') or ''
-            else:
-                img_url = str(img)
-            if not img_url or not img_url.startswith('http'):
-                continue
-            url_lower = img_url.lower()
-            if any(s in url_lower for s in SPAM_DOMAINS):
-                continue
-            images.append(img_url)
-            if len(images) >= 3:
-                break
-
-        return {'text': '\n\n'.join(parts), 'images': images}
-    except Exception as e:
-        print(f"[search] error: {e}")
-        return empty
-
-OR_MODELS = [
-    'openai/gpt-4o-mini',
-    'mistralai/mistral-7b-instruct:free',
-]
-
-HF_ENDPOINTS = [
-    {'url': 'https://router.huggingface.co/sambanova/v1/chat/completions', 'model': 'Meta-Llama-3.3-70B-Instruct'},
-]
-
-
-def call_llm(messages):
-    """Вызывает LLM — сначала OpenRouter бесплатные модели, потом HuggingFace."""
-    last_error = None
-    openrouter_key = os.environ.get('OPENROUTER_API_KEY_2', '') or os.environ.get('OPENROUTER_API_KEY', '')
-
-    if openrouter_key:
-        headers = {
-            'Authorization': f'Bearer {openrouter_key}',
-            'Content-Type': 'application/json',
-            'HTTP-Referer': 'https://mospotolki.ru',
-        }
-        for model in OR_MODELS:
-            payload = {'model': model, 'messages': messages, 'max_tokens': 1800, 'temperature': 0.1}
-            try:
-                resp = requests.post('https://openrouter.ai/api/v1/chat/completions', json=payload, headers=headers, timeout=25)
-                if resp.status_code == 200:
-                    content = resp.json()['choices'][0]['message']['content']
-                    if content:
-                        return content
-                last_error = f"OpenRouter {model}: {resp.status_code} {resp.text[:200]}"
-            except Exception as e:
-                last_error = f"OpenRouter {model}: {str(e)}"
-
-    headers = {
-        'Authorization': f'Bearer {HF_TOKEN}',
-        'Content-Type': 'application/json',
-    }
-
-    for ep in HF_ENDPOINTS:
-        payload = {
-            'model': ep['model'],
-            'messages': messages,
-            'max_tokens': 1800,
-            'temperature': 0.1,
-        }
-        try:
-            resp = requests.post(ep['url'], json=payload, headers=headers, timeout=25)
-            if resp.status_code == 200:
-                data = resp.json()
-                return data['choices'][0]['message']['content']
-            last_error = f"{ep['url']}: {resp.status_code} {resp.text[:200]}"
-        except Exception as e:
-            last_error = f"{ep['url']}: {str(e)}"
-
-    raise Exception(f'All endpoints failed. Last: {last_error}')
-
 
 def handler(event, context):
     """Обрабатывает запросы к AI-чату MOSPOTOLKI."""
@@ -680,12 +407,16 @@ def handler(event, context):
     if cached:
         return {'statusCode': 200, 'headers': cors, 'body': json.dumps({'answer': cached})}
 
-    # Загружаем базу знаний и цены из БД
+    # Загружаем базу знаний, цены и правила из БД
     knowledge = get_knowledge(last_user_text)
-    system_content = get_system_prompt()
+    system_content = get_system_prompt(fallback=SYSTEM_PROMPT)
     prices_block = get_prices_block()
     if prices_block:
         system_content += f"\n\n=== АКТУАЛЬНЫЙ ПРАЙС-ЛИСТ (ПРИОРИТЕТ НАД ВСТРОЕННЫМ) ==={prices_block}"
+    rules = get_price_rules()
+    rules_block = build_rules_prompt(rules)
+    if rules_block:
+        system_content += rules_block
     if knowledge:
         system_content += f"\n\n=== БАЗА ЗНАНИЙ О ТОВАРАХ И ЦЕНАХ ===\n{knowledge}"
 

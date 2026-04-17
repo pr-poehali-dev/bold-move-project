@@ -2,6 +2,7 @@ import { useState } from "react";
 import Icon from "@/components/ui/icon";
 import { apiFetch } from "./admin/api";
 import TabPrices from "./admin/TabPrices";
+import TabRules from "./admin/TabRules";
 import TabPrompt from "./admin/TabPrompt";
 import TabFaq from "./admin/TabFaq";
 import TabQuestions from "./admin/TabQuestions";
@@ -9,6 +10,7 @@ import type { AdminTab } from "./admin/types";
 
 const TABS: { id: AdminTab; label: string; icon: string }[] = [
   { id: "prices",    label: "Цены",            icon: "Tag" },
+  { id: "rules",     label: "Правила расчёта",  icon: "SlidersHorizontal" },
   { id: "prompt",    label: "Промпт",           icon: "BrainCircuit" },
   { id: "faq",       label: "База знаний",      icon: "Database" },
   { id: "questions", label: "Быстрые ответы",   icon: "MessageCircle" },
@@ -80,6 +82,7 @@ export default function AdminPanel() {
 
       <div className="p-4 max-w-6xl mx-auto">
         {tab === "prices"    && <TabPrices    token={token} />}
+        {tab === "rules"     && <TabRules     token={token} />}
         {tab === "prompt"    && <TabPrompt    token={token} />}
         {tab === "faq"       && <TabFaq       token={token} />}
         {tab === "questions" && <TabQuestions token={token} />}

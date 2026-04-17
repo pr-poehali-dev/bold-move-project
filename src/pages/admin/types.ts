@@ -1,4 +1,4 @@
-export type AdminTab = "prices" | "prompt" | "faq" | "questions";
+export type AdminTab = "prices" | "rules" | "prompt" | "faq" | "questions";
 
 export interface FaqItem {
   id: number;
