@@ -73,8 +73,8 @@ def _w2n(s: str) -> float:
     return float(s.replace(',', '.'))
 
 
-def try_simple_estimate(text: str) -> str | None:
-    """Детерминированный расчёт сметы: площадь + светильники + люстра + ниши + парящий профиль."""
+def try_simple_estimate(text: str) -> tuple[str, dict] | None:
+    """Детерминированный расчёт сметы. Возвращает (текст_ответа, recognized_dict) или None."""
     t = text.lower()
 
     # Не перехватываем сложные случаи — отдаём в LLM
@@ -302,18 +302,34 @@ def try_simple_estimate(text: str) -> str | None:
     lines.append(f"Premium:  {fmt(premium_price)} ₽")
     lines.append(f"\nНа какой день вас записать на бесплатный замер?")
 
-    return '\n'.join(lines)
+    recognized = {
+        'area': area,
+        'canvas': canvas_name,
+        'canvas_type': canvas_key,
+        'perim': perim,
+        'n_lyustra': n_lyustra,
+        'n_svetilnik': n_svetilnik,
+        'has_nisha': has_nisha,
+        'nisha_label': nisha_label if has_nisha else None,
+        'nisha_len': nisha_len if has_nisha else None,
+        'profile_len': profile_len,
+        'standard_total': standard,
+    }
+
+    return '\n'.join(lines), recognized
 
 
-def get_cached_answer(text: str) -> str | None:
-    """Проверяет кэш и простой расчёт. Возвращает ответ или None."""
+def get_cached_answer(text: str, session_id: str = '') -> tuple[str, dict] | str | None:
+    """Проверяет кэш и простой расчёт. Возвращает (ответ, recognized) или строку или None."""
     text_lower = text.lower().strip()
 
     # Сначала пробуем простой расчёт по площади
-    estimate = try_simple_estimate(text_lower)
-    print(f"[calc] text='{text_lower[:80]}' estimate={'YES' if estimate else 'NO'}")
-    if estimate:
-        return estimate
+    result = try_simple_estimate(text_lower)
+    print(f"[calc] text='{text_lower[:80]}' estimate={'YES' if result else 'NO'}")
+    if result:
+        answer, recognized = result
+        save_correction(text, recognized, session_id)
+        return answer, recognized
 
     # Потом — кэш FAQ (из БД или fallback)
     dynamic_cache = get_faq_cache(fallback=FAQ_CACHE)
@@ -443,9 +459,10 @@ def handler(event, context):
 
     session_id = event.get('headers', {}).get('x-session-id', '') or event.get('headers', {}).get('X-Session-Id', '')
 
-    cached = get_cached_answer(last_user_text)
+    cached = get_cached_answer(last_user_text, session_id)
     if cached:
-        return {'statusCode': 200, 'headers': cors, 'body': json.dumps({'answer': cached})}
+        answer = cached[0] if isinstance(cached, tuple) else cached
+        return {'statusCode': 200, 'headers': cors, 'body': json.dumps({'answer': answer})}
 
     # Сохраняем в обучение — запрос ушёл в LLM (не удалось посчитать автоматически)
     save_correction(last_user_text, None, session_id)
