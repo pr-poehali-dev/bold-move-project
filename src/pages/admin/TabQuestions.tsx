@@ -12,10 +12,8 @@ export default function TabQuestions({ token }: Props) {
   const [newItem, setNewItem] = useState({ pattern: "", answer: "" });
 
   const load = useCallback(async () => {
-    const cached = sessionStorage.getItem("adm_questions");
-    if (cached) { setItems(JSON.parse(cached)); return; }
     const r = await apiFetch("questions");
-    if (r.ok) { const d = await r.json(); setItems(d.items); sessionStorage.setItem("adm_questions", JSON.stringify(d.items)); }
+    if (r.ok) { const d = await r.json(); setItems(d.items); }
   }, []);
 
   useEffect(() => { load(); }, [load]);

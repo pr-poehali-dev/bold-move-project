@@ -17,10 +17,8 @@ export default function TabRules({ token, hint }: Props) {
 
   const load = useCallback(async () => {
     setLoading(true);
-    const cached = sessionStorage.getItem("adm_rules");
-    if (cached) { setItems(JSON.parse(cached)); setLoading(false); return; }
     const r = await apiFetch("prices");
-    if (r.ok) { const d = await r.json(); setItems(d.items); sessionStorage.setItem("adm_rules", JSON.stringify(d.items)); }
+    if (r.ok) { const d = await r.json(); setItems(d.items); }
     setLoading(false);
   }, []);
 

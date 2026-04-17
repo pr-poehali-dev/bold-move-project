@@ -13,11 +13,9 @@ export default function TabFaq({ token }: Props) {
   const [newItem, setNewItem] = useState({ title: "", content: "" });
 
   const load = useCallback(async () => {
-    const cached = sessionStorage.getItem("adm_faq");
-    if (cached) { setItems(JSON.parse(cached)); return; }
     setLoading(true);
     const r = await apiFetch("faq");
-    if (r.ok) { const d = await r.json(); setItems(d.items); sessionStorage.setItem("adm_faq", JSON.stringify(d.items)); }
+    if (r.ok) { const d = await r.json(); setItems(d.items); }
     setLoading(false);
   }, []);
 
