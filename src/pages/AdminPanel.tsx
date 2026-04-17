@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import Icon from "@/components/ui/icon";
 import { apiFetch } from "./admin/api";
 import TabPrices from "./admin/TabPrices";
@@ -19,21 +19,12 @@ const TABS: { id: AdminTab; label: string; icon: string }[] = [
 ];
 
 export default function AdminPanel() {
-  const [token, setToken] = useState("");
+  const [token, setToken] = useState(() => localStorage.getItem("admin_token") || "");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [tab, setTab] = useState<AdminTab>("prices");
   const [newItemHint, setNewItemHint] = useState<string | null>(null);
-
-  // Проверяем сохранённый токен при загрузке
-  useEffect(() => {
-    const saved = localStorage.getItem("admin_token");
-    if (!saved) return;
-    apiFetch("login", { method: "POST", body: JSON.stringify({ password: saved }) })
-      .then(r => { if (r.ok) setToken(saved); else localStorage.removeItem("admin_token"); })
-      .catch(() => localStorage.removeItem("admin_token"));
-  }, []);
 
   const handleItemAdded = (name: string) => {
     setNewItemHint(name);
