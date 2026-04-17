@@ -51,13 +51,16 @@ export default function AdminPanel() {
           </div>
           <div className="relative">
             <input
-              type={showPassword ? "text" : "password"} placeholder="Пароль" value={password}
+              type={showPassword ? "text" : "password"}
+              placeholder="Пароль"
+              value={password}
+              autoComplete="off"
               onChange={e => setPassword(e.target.value)}
               onKeyDown={e => e.key === "Enter" && login()}
               className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 pr-11 text-white outline-none focus:border-violet-500 transition"
             />
             <button type="button" onClick={() => setShowPassword(p => !p)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-white/30 hover:text-white/70 transition">
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-white/50 hover:text-white transition">
               <Icon name={showPassword ? "EyeOff" : "Eye"} size={17} />
             </button>
           </div>
