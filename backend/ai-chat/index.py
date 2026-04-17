@@ -28,6 +28,24 @@ FAQ_CACHE = {
 }
 
 
+_WORDS_TO_NUM = {
+    'ноль': 0, 'один': 1, 'одна': 1, 'одно': 1, 'два': 2, 'две': 2,
+    'три': 3, 'четыре': 4, 'пять': 5, 'шесть': 6, 'семь': 7,
+    'восемь': 8, 'девять': 9, 'десять': 10, 'одиннадцать': 11,
+    'двенадцать': 12, 'тринадцать': 13, 'четырнадцать': 14,
+    'пятнадцать': 15, 'шестнадцать': 16, 'семнадцать': 17,
+    'восемнадцать': 18, 'девятнадцать': 19, 'двадцать': 20,
+}
+_NUM_WORD_PAT = r'(\d+(?:[.,]\d+)?|' + '|'.join(_WORDS_TO_NUM) + r')'
+
+def _w2n(s: str) -> float:
+    """Конвертирует строку (цифру или слово) в число."""
+    s = s.lower().strip()
+    if s in _WORDS_TO_NUM:
+        return float(_WORDS_TO_NUM[s])
+    return float(s.replace(',', '.'))
+
+
 def try_simple_estimate(text: str) -> str | None:
     """Детерминированный расчёт сметы: площадь + светильники + люстра + ниши + парящий профиль."""
     t = text.lower()
@@ -43,12 +61,12 @@ def try_simple_estimate(text: str) -> str | None:
         print(f"[calc] skip: complex keyword in '{t[:60]}'")
         return None
 
-    # Ищем площадь — обязательный параметр
-    m = re.search(r'(\d+(?:[.,]\d+)?)\s*(?:м²|м2|кв\.?\s*м?|квадрат|кв\b)', t)
+    # Ищем площадь — цифрой или словом
+    m = re.search(_NUM_WORD_PAT + r'\s*(?:м²|м2|кв\.?\s*м?|квадрат|кв\b)', t)
     if not m:
         print(f"[calc] skip: no area in '{t[:60]}'")
         return None
-    area = float(m.group(1).replace(',', '.'))
+    area = _w2n(m.group(1))
     if area < 1 or area > 500:
         return None
 
@@ -95,33 +113,25 @@ def try_simple_estimate(text: str) -> str | None:
     price_mount_razv     = p('Монтаж разводки ГОСТ 0.75', 700)
 
     # Светильники GX-53 — суммируем ВСЕ числа (цифры и слова)
-    _num_pat = r'(\d+|один|одна|два|две|три|четыре|пять|шесть|семь|восемь|девять|десять)'
-    def _to_int(s):
-        _wm = {'один': 1, 'одна': 1, 'два': 2, 'две': 2, 'три': 3, 'четыре': 4,
-               'пять': 5, 'шесть': 6, 'семь': 7, 'восемь': 8, 'девять': 9, 'десять': 10}
-        return _wm.get(s, int(s) if s.isdigit() else 0)
-    all_svet_nums = re.findall(_num_pat + r'\s*(?:точечн\w*\s*)?(?:светильник|gx.?53|вклейк)', t)
-    all_svet_nums += re.findall(r'добавить\s+(?:ещё\s+)?' + _num_pat + r'\s*(?:точечн|светильник)?', t)
-    n_svetilnik = sum(_to_int(x) for x in all_svet_nums)
+    all_svet_nums = re.findall(_NUM_WORD_PAT + r'\s*(?:точечн\w*\s*)?(?:светильник|gx.?53|вклейк)', t)
+    all_svet_nums += re.findall(r'добавить\s+(?:ещё\s+)?' + _NUM_WORD_PAT + r'\s*(?:точечн|светильник)?', t)
+    n_svetilnik = sum(int(_w2n(x)) for x in all_svet_nums)
 
     # Люстра — цифрой или словом
-    _words_map = {'один': 1, 'одна': 1, 'два': 2, 'две': 2, 'три': 3, 'четыре': 4,
-                  'пять': 5, 'шесть': 6, 'семь': 7, 'восемь': 8, 'девять': 9, 'десять': 10}
-    lyustra_m = re.search(r'(\d+|один|одна|два|две|три|четыре|пять|шесть|семь|восемь|девять|десять)?\s*люстр', t)
+    lyustra_m = re.search(_NUM_WORD_PAT + r'?\s*люстр', t)
     if lyustra_m and lyustra_m.group(1):
-        _g = lyustra_m.group(1)
-        n_lyustra = _words_map.get(_g, int(_g) if _g.isdigit() else 1)
+        n_lyustra = int(_w2n(lyustra_m.group(1)))
     else:
         n_lyustra = 1 if lyustra_m else 0
 
     # Ниша для штор — «ниша», «карниз», «штора», «карниз возле шторы»
     has_nisha = bool(re.search(r'ниш[аеуы]?\s*(?:для\s*штор)?|карниз|шторн|штор[аыуе]', t))
 
-    # Длина ниши: явная или дефолт из calc_rule БД
-    nisha_len_m = re.search(r'(\d+(?:[.,]\d+)?)\s*(?:м|пм|погон)\s+(?:ниш|шторн)', t) or \
-                  re.search(r'ниш[аеуы]?\s+(?:для\s+штор\s+)?(?:пк[- ]?\d+\s+)?(\d+(?:[.,]\d+)?)\s*(?:м|пм|погон)', t)
+    # Длина ниши: явная (цифра или слово) или дефолт из calc_rule БД
+    nisha_len_m = re.search(_NUM_WORD_PAT + r'\s*(?:м|пм|погон)\s+(?:ниш|шторн)', t) or \
+                  re.search(r'ниш[аеуы]?\s+(?:для\s+штор\s+)?(?:пк[- ]?\d+\s+)?' + _NUM_WORD_PAT + r'\s*(?:м|пм|погон)', t)
     if nisha_len_m:
-        nisha_len = float(nisha_len_m.group(1).replace(',', '.'))
+        nisha_len = _w2n(nisha_len_m.group(1))
     else:
         _nisha_rule_item = next((r for r in _rules if r['category'] == 'Ниши для штор' and r['calc_rule']), None)
         _nisha_default = eval_calc_rule(
