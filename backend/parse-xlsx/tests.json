@@ -1,10 +1,37 @@
 {
   "tests": [
     {
-      "name": "Parse XLSX",
-      "method": "GET",
+      "name": "OPTIONS CORS",
+      "method": "OPTIONS",
       "path": "/",
       "expectedStatus": 200
+    },
+    {
+      "name": "GET prompt",
+      "method": "GET",
+      "path": "/?r=prompt",
+      "expectedStatus": 200,
+      "expectedBody": {"content": "string"},
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "GET faq items",
+      "method": "GET",
+      "path": "/?r=faq",
+      "expectedStatus": 200
+    },
+    {
+      "name": "GET quick questions",
+      "method": "GET",
+      "path": "/?r=questions",
+      "expectedStatus": 200
+    },
+    {
+      "name": "POST login wrong password",
+      "method": "POST",
+      "path": "/?r=login",
+      "body": {"password": "wrongpass"},
+      "expectedStatus": 401
     }
   ]
 }

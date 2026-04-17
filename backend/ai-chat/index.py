@@ -30,7 +30,40 @@ def get_knowledge(query: str) -> str:
         print(f"[KB] error: {e}")
         return ''
 
-# Кэш частых вопросов — не тратим токены на LLM
+
+def get_system_prompt() -> str:
+    """Загружает системный промпт из БД. Если нет — возвращает встроенный."""
+    try:
+        conn = psycopg2.connect(os.environ['DATABASE_URL'])
+        cur = conn.cursor()
+        cur.execute(f"SELECT content FROM {SCHEMA}.ai_system_prompt ORDER BY id LIMIT 1")
+        row = cur.fetchone()
+        cur.close()
+        conn.close()
+        if row and row[0]:
+            return row[0]
+    except Exception as e:
+        print(f"[prompt] error: {e}")
+    return SYSTEM_PROMPT
+
+
+def get_faq_cache() -> dict:
+    """Загружает быстрые ответы из БД. Если нет — возвращает встроенный кэш."""
+    try:
+        conn = psycopg2.connect(os.environ['DATABASE_URL'])
+        cur = conn.cursor()
+        cur.execute(f"SELECT pattern, answer FROM {SCHEMA}.ai_quick_questions WHERE active = true ORDER BY id")
+        rows = cur.fetchall()
+        cur.close()
+        conn.close()
+        if rows:
+            return {r[0]: r[1] for r in rows}
+    except Exception as e:
+        print(f"[faq_cache] error: {e}")
+    return FAQ_CACHE
+
+
+# Встроенный кэш частых вопросов (fallback если БД недоступна)
 FAQ_CACHE = {
     r"(гарантия|сколько служит|срок службы)": "Гарантия — 10 лет. Срок службы полотна — 25–30 лет.\n\nЗаписаться на замер: +7 (977) 606-89-01",
     r"(сколько времени|как долго|срок монтаж|когда будет готов|сколько дней)": "Монтаж комнаты — 1–3 часа. Готово в день замера или через 1–3 рабочих дня.\n\n+7 (977) 606-89-01",
@@ -236,8 +269,9 @@ def get_cached_answer(text: str) -> str | None:
     if estimate:
         return estimate
 
-    # Потом — кэш FAQ
-    for pattern, answer in FAQ_CACHE.items():
+    # Потом — кэш FAQ (из БД или fallback)
+    dynamic_cache = get_faq_cache()
+    for pattern, answer in dynamic_cache.items():
         if re.search(pattern, text_lower):
             return answer
     return None
@@ -591,7 +625,7 @@ def handler(event, context):
 
     # Загружаем базу знаний из БД
     knowledge = get_knowledge(last_user_text)
-    system_content = SYSTEM_PROMPT
+    system_content = get_system_prompt()
     if knowledge:
         system_content += f"\n\n=== БАЗА ЗНАНИЙ О ТОВАРАХ И ЦЕНАХ ===\n{knowledge}"
 

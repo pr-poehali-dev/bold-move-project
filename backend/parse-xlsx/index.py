@@ -1,7 +1,8 @@
-"""Парсит XLSX файл с базой знаний и импортирует в таблицу faq_items."""
+"""Управление AI: системный промпт, база знаний, быстрые вопросы + импорт XLSX."""
 
 import json
 import os
+import hashlib
 import requests
 import openpyxl
 import psycopg2
@@ -9,107 +10,209 @@ from io import BytesIO
 
 XLSX_URL = 'https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/c04d82f2-0303-48f7-b069-9c96c191ffb8.xlsx'
 SCHEMA = os.environ.get('MAIN_DB_SCHEMA', 'public')
+ADMIN_PASSWORD = os.environ.get('ADMIN_PASSWORD', '')
 
+CORS = {
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, X-Admin-Token',
+}
 
-def db():
+def resp(status, body):
+    return {'statusCode': status, 'headers': {**CORS, 'Content-Type': 'application/json'}, 'body': json.dumps(body, ensure_ascii=False)}
+
+def check_auth(headers: dict) -> bool:
+    token = headers.get('x-admin-token', '') or headers.get('X-Admin-Token', '')
+    if not token or not ADMIN_PASSWORD:
+        return False
+    return hashlib.sha256(token.encode()).hexdigest() == hashlib.sha256(ADMIN_PASSWORD.encode()).hexdigest()
+
+def get_conn():
     return psycopg2.connect(os.environ['DATABASE_URL'])
 
-
 def load_xlsx():
-    """Скачивает и парсит XLSX, возвращает список словарей."""
-    resp = requests.get(XLSX_URL, timeout=15)
-    wb = openpyxl.load_workbook(BytesIO(resp.content), data_only=True)
+    r = requests.get(XLSX_URL, timeout=15)
+    wb = openpyxl.load_workbook(BytesIO(r.content), data_only=True)
     ws = wb[wb.sheetnames[0]]
-
     rows = list(ws.iter_rows(values_only=True))
     if not rows:
-        return []
-
-    # Первая строка — заголовки
-    headers = [str(h).strip().lower() if h else '' for h in rows[0]]
+        return [], []
+    hdrs = [str(h).strip().lower() if h else '' for h in rows[0]]
     items = []
     for row in rows[1:]:
         if not any(row):
             continue
         item = {}
-        for i, h in enumerate(headers):
+        for i, h in enumerate(hdrs):
             val = row[i] if i < len(row) else None
             item[h] = str(val).strip() if val is not None else ''
         items.append(item)
-    return items, headers
+    return items, hdrs
 
 
-def handler(event, context):
-    """Парсит XLSX и по запросу импортирует в БД."""
+def handler(event: dict, context) -> dict:
+    """Управление AI-конфигурацией: промпт, база знаний, быстрые вопросы, импорт XLSX.
+    Маршрутизация через query-параметр: ?r=prompt|faq|questions|login
+    """
     if event.get('httpMethod') == 'OPTIONS':
-        return {
-            'statusCode': 200,
-            'headers': {
-                'Access-Control-Allow-Origin': '*',
-                'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-                'Access-Control-Allow-Headers': 'Content-Type',
-                'Access-Control-Max-Age': '86400',
-            },
-            'body': '',
-        }
+        return {'statusCode': 200, 'headers': CORS, 'body': ''}
 
-    cors = {'Access-Control-Allow-Origin': '*', 'Content-Type': 'application/json'}
+    method = event.get('httpMethod', 'GET')
+    hdrs = event.get('headers') or {}
     qs = event.get('queryStringParameters') or {}
-    action = qs.get('action', 'read')
+    r = qs.get('r', '')
+    body_str = event.get('body') or '{}'
 
-    result = load_xlsx()
-    if not result:
-        return {'statusCode': 200, 'headers': cors, 'body': json.dumps({'total': 0, 'items': []})}
+    # --- POST ?r=login
+    if r == 'login' and method == 'POST':
+        body = json.loads(body_str)
+        password = body.get('password', '')
+        pw_hash = hashlib.sha256(password.encode()).hexdigest()
+        if pw_hash == hashlib.sha256(ADMIN_PASSWORD.encode()).hexdigest():
+            return resp(200, {'token': password})
+        return resp(401, {'error': 'Неверный пароль'})
 
-    items, headers = result
+    # --- GET ?r=prompt
+    if r == 'prompt' and method == 'GET':
+        conn = get_conn(); cur = conn.cursor()
+        cur.execute(f"SELECT id, content, updated_at FROM {SCHEMA}.ai_system_prompt ORDER BY id LIMIT 1")
+        row = cur.fetchone()
+        cur.close(); conn.close()
+        if not row:
+            return resp(404, {'error': 'Not found'})
+        return resp(200, {'id': row[0], 'content': row[1], 'updated_at': str(row[2])})
 
-    # Просто прочитать
-    if action == 'read':
-        page = int(qs.get('page', '0'))
-        per_page = int(qs.get('per_page', '50'))
-        start = page * per_page
-        chunk = items[start:start + per_page]
-        return {
-            'statusCode': 200,
-            'headers': cors,
-            'body': json.dumps({'total': len(items), 'page': page, 'headers': headers, 'items': chunk}, ensure_ascii=False),
-        }
+    # --- PUT ?r=prompt
+    if r == 'prompt' and method == 'PUT':
+        if not check_auth(hdrs):
+            return resp(401, {'error': 'Unauthorized'})
+        body = json.loads(body_str)
+        content = body.get('content', '').strip()
+        if not content:
+            return resp(400, {'error': 'content required'})
+        conn = get_conn(); cur = conn.cursor()
+        cur.execute(f"UPDATE {SCHEMA}.ai_system_prompt SET content = %s, updated_at = now() WHERE id = (SELECT id FROM {SCHEMA}.ai_system_prompt ORDER BY id LIMIT 1)", (content,))
+        conn.commit(); cur.close(); conn.close()
+        return resp(200, {'ok': True})
 
-    # Импорт в БД
-    if action == 'import':
-        conn = db()
-        cur = conn.cursor()
+    # --- GET ?r=faq
+    if r == 'faq' and method == 'GET':
+        conn = get_conn(); cur = conn.cursor()
+        cur.execute(f"SELECT id, title, content, used, created_at FROM {SCHEMA}.faq_items ORDER BY id")
+        rows = cur.fetchall()
+        cur.close(); conn.close()
+        return resp(200, {'items': [{'id': row[0], 'title': row[1], 'content': row[2], 'used': row[3], 'created_at': str(row[4])} for row in rows]})
 
-        # Очищаем старые данные
-        cur.execute(f"TRUNCATE TABLE {SCHEMA}.faq_items RESTART IDENTITY")
+    # --- POST ?r=faq
+    if r == 'faq' and method == 'POST':
+        if not check_auth(hdrs):
+            return resp(401, {'error': 'Unauthorized'})
+        body = json.loads(body_str)
+        title = body.get('title', '').strip()
+        content = body.get('content', '').strip()
+        if not title or not content:
+            return resp(400, {'error': 'title and content required'})
+        conn = get_conn(); cur = conn.cursor()
+        cur.execute(f"INSERT INTO {SCHEMA}.faq_items (title, content, used) VALUES (%s, %s, true) RETURNING id", (title, content))
+        new_id = cur.fetchone()[0]
+        conn.commit(); cur.close(); conn.close()
+        return resp(200, {'id': new_id, 'ok': True})
 
-        imported = 0
-        for item in items:
-            # Определяем колонки по возможным названиям заголовков
-            title        = item.get('title', item.get('заголовок', item.get('название', '')))
-            search_title = item.get('search title', item.get('search_title', item.get('поиск', title)))
-            content      = item.get('content', item.get('содержимое', item.get('описание', '')))
-            used_raw     = item.get('used', item.get('активен', 'True'))
-            used         = str(used_raw).strip().lower() not in ('false', '0', 'нет', 'no', '')
+    # --- PUT ?r=faq&id=X
+    if r == 'faq' and method == 'PUT':
+        if not check_auth(hdrs):
+            return resp(401, {'error': 'Unauthorized'})
+        faq_id = int(qs.get('id', '0'))
+        body = json.loads(body_str)
+        conn = get_conn(); cur = conn.cursor()
+        cur.execute(f"UPDATE {SCHEMA}.faq_items SET title=%s, content=%s, used=%s WHERE id=%s",
+                    (body.get('title',''), body.get('content',''), body.get('used', True), faq_id))
+        conn.commit(); cur.close(); conn.close()
+        return resp(200, {'ok': True})
 
-            if not title and not content:
-                continue
+    # --- DELETE ?r=faq&id=X
+    if r == 'faq' and method == 'DELETE':
+        if not check_auth(hdrs):
+            return resp(401, {'error': 'Unauthorized'})
+        faq_id = int(qs.get('id', '0'))
+        conn = get_conn(); cur = conn.cursor()
+        cur.execute(f"DELETE FROM {SCHEMA}.faq_items WHERE id = %s", (faq_id,))
+        conn.commit(); cur.close(); conn.close()
+        return resp(200, {'ok': True})
 
-            cur.execute(
-                f"""INSERT INTO {SCHEMA}.faq_items (title, search_title, content, used)
-                    VALUES (%s, %s, %s, %s)""",
-                (title, search_title or title, content, used)
-            )
-            imported += 1
+    # --- GET ?r=questions
+    if r == 'questions' and method == 'GET':
+        conn = get_conn(); cur = conn.cursor()
+        cur.execute(f"SELECT id, pattern, answer, active FROM {SCHEMA}.ai_quick_questions ORDER BY id")
+        rows = cur.fetchall()
+        cur.close(); conn.close()
+        return resp(200, {'items': [{'id': row[0], 'pattern': row[1], 'answer': row[2], 'active': row[3]} for row in rows]})
 
-        conn.commit()
-        cur.close()
-        conn.close()
+    # --- POST ?r=questions
+    if r == 'questions' and method == 'POST':
+        if not check_auth(hdrs):
+            return resp(401, {'error': 'Unauthorized'})
+        body = json.loads(body_str)
+        pattern = body.get('pattern', '').strip()
+        answer = body.get('answer', '').strip()
+        if not pattern or not answer:
+            return resp(400, {'error': 'pattern and answer required'})
+        conn = get_conn(); cur = conn.cursor()
+        cur.execute(f"INSERT INTO {SCHEMA}.ai_quick_questions (pattern, answer, active) VALUES (%s, %s, true) RETURNING id", (pattern, answer))
+        new_id = cur.fetchone()[0]
+        conn.commit(); cur.close(); conn.close()
+        return resp(200, {'id': new_id, 'ok': True})
 
-        return {
-            'statusCode': 200,
-            'headers': cors,
-            'body': json.dumps({'ok': True, 'imported': imported}, ensure_ascii=False),
-        }
+    # --- PUT ?r=questions&id=X
+    if r == 'questions' and method == 'PUT':
+        if not check_auth(hdrs):
+            return resp(401, {'error': 'Unauthorized'})
+        q_id = int(qs.get('id', '0'))
+        body = json.loads(body_str)
+        conn = get_conn(); cur = conn.cursor()
+        cur.execute(f"UPDATE {SCHEMA}.ai_quick_questions SET pattern=%s, answer=%s, active=%s WHERE id=%s",
+                    (body.get('pattern',''), body.get('answer',''), body.get('active', True), q_id))
+        conn.commit(); cur.close(); conn.close()
+        return resp(200, {'ok': True})
 
-    return {'statusCode': 400, 'headers': cors, 'body': json.dumps({'error': 'unknown action'})}
+    # --- DELETE ?r=questions&id=X
+    if r == 'questions' and method == 'DELETE':
+        if not check_auth(hdrs):
+            return resp(401, {'error': 'Unauthorized'})
+        q_id = int(qs.get('id', '0'))
+        conn = get_conn(); cur = conn.cursor()
+        cur.execute(f"DELETE FROM {SCHEMA}.ai_quick_questions WHERE id = %s", (q_id,))
+        conn.commit(); cur.close(); conn.close()
+        return resp(200, {'ok': True})
+
+    # --- XLSX import (legacy, ?action=read|import)
+    action = qs.get('action', '')
+    if action in ('read', 'import'):
+        items, headers_list = load_xlsx()
+        if not items:
+            return resp(200, {'total': 0, 'items': []})
+        if action == 'read':
+            page = int(qs.get('page', '0'))
+            per_page = int(qs.get('per_page', '50'))
+            start = page * per_page
+            return resp(200, {'total': len(items), 'page': page, 'headers': headers_list, 'items': items[start:start+per_page]})
+        if action == 'import':
+            if not check_auth(hdrs):
+                return resp(401, {'error': 'Unauthorized'})
+            conn = get_conn(); cur = conn.cursor()
+            cur.execute(f"TRUNCATE TABLE {SCHEMA}.faq_items RESTART IDENTITY")
+            imported = 0
+            for item in items:
+                title   = item.get('title', item.get('заголовок', item.get('название', '')))
+                s_title = item.get('search title', item.get('search_title', item.get('поиск', title)))
+                content = item.get('content', item.get('содержимое', item.get('описание', '')))
+                used    = str(item.get('used', item.get('активен', 'True'))).strip().lower() not in ('false', '0', 'нет', 'no', '')
+                if not title and not content:
+                    continue
+                cur.execute(f"INSERT INTO {SCHEMA}.faq_items (title, search_title, content, used) VALUES (%s, %s, %s, %s)",
+                            (title, s_title or title, content, used))
+                imported += 1
+            conn.commit(); cur.close(); conn.close()
+            return resp(200, {'ok': True, 'imported': imported})
+
+    return resp(400, {'error': 'unknown resource. Use ?r=prompt|faq|questions|login'})

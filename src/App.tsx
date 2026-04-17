@@ -6,9 +6,10 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 
-const Index    = lazy(() => import("./pages/Index"));
-const AiHub    = lazy(() => import("./pages/AiHub"));
-const NotFound = lazy(() => import("./pages/NotFound"));
+const Index      = lazy(() => import("./pages/Index"));
+const AiHub      = lazy(() => import("./pages/AiHub"));
+const AdminPanel = lazy(() => import("./pages/AdminPanel"));
+const NotFound   = lazy(() => import("./pages/NotFound"));
 
 const queryClient = new QueryClient();
 
@@ -22,6 +23,7 @@ const App = () => (
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/hub" element={<AiHub />} />
+            <Route path="/admin-yura" element={<AdminPanel />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
