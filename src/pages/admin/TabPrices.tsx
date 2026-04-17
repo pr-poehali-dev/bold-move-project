@@ -104,7 +104,16 @@ export default function TabPrices({ token, onItemAdded }: Props) {
                       <EditableCell value={item.price} type="number" onSave={v => saveField(item, "price", v)} className="text-right" />
                     </td>
                     <td className="px-4 py-2.5 text-white/50">
-                      <EditableCell value={item.unit} onSave={v => saveField(item, "unit", v)} />
+                      <select
+                        value={item.unit}
+                        onChange={e => saveField(item, "unit", e.target.value)}
+                        className="bg-transparent text-white/50 text-sm outline-none cursor-pointer hover:text-white transition appearance-none">
+                        <option value="м²" className="bg-[#0b0b11]">м²</option>
+                        <option value="шт" className="bg-[#0b0b11]">шт</option>
+                        <option value="пм" className="bg-[#0b0b11]">пм</option>
+                        <option value="уп" className="bg-[#0b0b11]">уп</option>
+                        <option value="катушка" className="bg-[#0b0b11]">катушка</option>
+                      </select>
                     </td>
                     <td className="px-4 py-2.5 text-white/40 text-xs">
                       <EditableCell value={item.description} onSave={v => saveField(item, "description", v)} />
@@ -139,11 +148,16 @@ export default function TabPrices({ token, onItemAdded }: Props) {
                     placeholder="0"
                     className="bg-white/5 border border-white/15 rounded-lg px-3 py-1.5 text-white text-sm outline-none focus:border-violet-500 font-mono" />
                 </div>
-                <div className="flex flex-col gap-1 w-20">
+                <div className="flex flex-col gap-1 w-24">
                   <span className="text-white/30 text-xs">Единица</span>
-                  <input value={newItem.unit} onChange={e => setNewItem(p => ({ ...p, unit: e.target.value }))}
-                    placeholder="шт"
-                    className="bg-white/5 border border-white/15 rounded-lg px-3 py-1.5 text-white text-sm outline-none focus:border-violet-500" />
+                  <select value={newItem.unit} onChange={e => setNewItem(p => ({ ...p, unit: e.target.value }))}
+                    className="bg-white/5 border border-white/15 rounded-lg px-3 py-1.5 text-white text-sm outline-none focus:border-violet-500 cursor-pointer">
+                    <option value="м²">м²</option>
+                    <option value="шт">шт</option>
+                    <option value="пм">пм</option>
+                    <option value="уп">уп</option>
+                    <option value="катушка">катушка</option>
+                  </select>
                 </div>
                 <div className="flex flex-col gap-1 flex-[2] min-w-[150px]">
                   <span className="text-white/30 text-xs">Описание для AI</span>
@@ -203,9 +217,14 @@ export default function TabPrices({ token, onItemAdded }: Props) {
             </div>
             <div className="flex flex-col gap-1 w-24">
               <span className="text-white/30 text-xs">Единица</span>
-              <input value={newCat.unit} onChange={e => setNewCat(p => ({ ...p, unit: e.target.value }))}
-                placeholder="шт"
-                className="bg-white/5 border border-white/15 rounded-lg px-3 py-2 text-white text-sm outline-none focus:border-violet-500" />
+              <select value={newCat.unit} onChange={e => setNewCat(p => ({ ...p, unit: e.target.value }))}
+                className="bg-white/5 border border-white/15 rounded-lg px-3 py-2 text-white text-sm outline-none focus:border-violet-500 cursor-pointer">
+                <option value="м²">м²</option>
+                <option value="шт">шт</option>
+                <option value="пм">пм</option>
+                <option value="уп">уп</option>
+                <option value="катушка">катушка</option>
+              </select>
             </div>
             <div className="flex flex-col gap-1 flex-1 min-w-[160px]">
               <span className="text-white/30 text-xs">Описание для AI</span>
