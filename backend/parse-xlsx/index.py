@@ -60,20 +60,13 @@ def handler(event: dict, context) -> dict:
     if event.get('httpMethod') == 'OPTIONS':
         return {'statusCode': 200, 'headers': CORS, 'body': ''}
 
-    method = event.get('httpMethod', 'GET')
     hdrs = event.get('headers') or {}
     qs = event.get('queryStringParameters') or {}
     r = qs.get('r', '')
-    # Body может прийти как обычный body или как _body в URL (base64, для обхода CORS preflight)
-    body_str = event.get('body') or ''
-    if not body_str:
-        b64 = qs.get('_body', '')
-        if b64:
-            import base64
-            try: body_str = base64.b64decode(b64.encode()).decode('utf-8')
-            except: body_str = '{}'
-    if not body_str:
-        body_str = '{}'
+    # Метод может прийти через _method в URL (все запросы идут как GET для обхода CORS)
+    method = qs.get('_method', event.get('httpMethod', 'GET'))
+    # Body может прийти как обычный body или как _body в URL
+    body_str = event.get('body') or qs.get('_body', '') or '{}'
 
     # --- LOGIN (GET или POST)
     if r == 'login':

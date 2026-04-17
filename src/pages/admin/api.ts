@@ -8,22 +8,14 @@ export async function apiFetch(resource: string, opts?: RequestInit, token?: str
   let url = `${BASE}?r=${resource}`;
   if (id !== undefined) url += `&id=${id}`;
   if (t) url += `&_token=${encodeURIComponent(t)}`;
+  // Метод передаём через URL чтобы не было preflight
+  if (method !== "GET") url += `&_method=${method}`;
 
-  // Все запросы делаем простыми (no preflight):
-  // GET — без body и заголовков
-  // POST/PUT/DELETE — body в параметре _body (base64), Content-Type не ставим
-  if (method === "GET") {
-    return fetch(url);
-  }
-
-  let bodyParam = "";
+  // Данные передаём через URL параметр — полностью избегаем preflight
   if (opts?.body) {
-    try {
-      bodyParam = encodeURIComponent(btoa(unescape(encodeURIComponent(opts.body as string))));
-    } catch {
-      bodyParam = encodeURIComponent(opts.body as string);
-    }
+    url += `&_body=${encodeURIComponent(opts.body as string)}`;
   }
 
-  return fetch(bodyParam ? `${url}&_body=${bodyParam}` : url, { method });
+  // Всегда GET — нет preflight, нет CORS проблем
+  return fetch(url);
 }
