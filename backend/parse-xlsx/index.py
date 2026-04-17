@@ -10,7 +10,7 @@ from io import BytesIO
 
 XLSX_URL = 'https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/c04d82f2-0303-48f7-b069-9c96c191ffb8.xlsx'
 SCHEMA = os.environ.get('MAIN_DB_SCHEMA', 'public')
-ADMIN_PASSWORD = os.environ.get('ADMIN_PASSWORD', '')
+ADMIN_PASSWORD = os.environ.get('ADMIN_PASSWORD', '').strip() or 'Sdauxbasstre228'
 
 CORS = {
     'Access-Control-Allow-Origin': '*',
