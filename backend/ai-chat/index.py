@@ -47,6 +47,62 @@ def get_system_prompt() -> str:
     return SYSTEM_PROMPT
 
 
+def get_prices_block() -> str:
+    """Загружает цены из БД и формирует блок для SYSTEM_PROMPT. Если нет — возвращает пустую строку."""
+    try:
+        conn = psycopg2.connect(os.environ['DATABASE_URL'])
+        cur = conn.cursor()
+        cur.execute(f"SELECT category, name, price, unit FROM {SCHEMA}.ai_prices WHERE active = true ORDER BY sort_order, id")
+        rows = cur.fetchall()
+        cur.close()
+        conn.close()
+        if not rows:
+            return ''
+        from itertools import groupby
+        lines = []
+        for cat, items in groupby(rows, key=lambda x: x[0]):
+            lines.append(f"\n{cat.upper()} (за {list(items)[0][3]}):")
+            # перечитаем items (groupby исчерпал итератор), поэтому фильтруем заново
+        # Повторяем правильно
+        lines = []
+        current_cat = None
+        for category, name, price, unit in rows:
+            if category != current_cat:
+                current_cat = category
+                lines.append(f"\n{category.upper()} (за {unit}):")
+            lines.append(f"{name} — {price}")
+        return '\n'.join(lines)
+    except Exception as e:
+        print(f"[prices] error: {e}")
+        return ''
+
+
+def get_canvas_prices() -> dict:
+    """Загружает цены на полотна из БД для детерминированного расчёта."""
+    try:
+        conn = psycopg2.connect(os.environ['DATABASE_URL'])
+        cur = conn.cursor()
+        cur.execute(f"SELECT name, price FROM {SCHEMA}.ai_prices WHERE category = 'Полотна' AND active = true ORDER BY sort_order")
+        rows = cur.fetchall()
+        cur.close()
+        conn.close()
+        if not rows:
+            return CANVAS_PRICES
+        mapping = {}
+        for name, price in rows:
+            nl = name.lower()
+            if 'classic' in nl:        mapping['classic']  = (name, price)
+            elif 'premium' in nl:      mapping['premium']  = (name, price)
+            elif 'evolution' in nl:    mapping['evolution'] = (name, price)
+            elif 'bauf' in nl or 'германия' in nl: mapping['bauf'] = (name, price)
+            elif 'цветной' in nl:      mapping['цветной']  = (name, price)
+            elif 'тканев' in nl or 'дескор' in nl: mapping['ткань'] = (name, price)
+        return {**CANVAS_PRICES, **mapping} if mapping else CANVAS_PRICES
+    except Exception as e:
+        print(f"[canvas_prices] error: {e}")
+        return CANVAS_PRICES
+
+
 def get_faq_cache() -> dict:
     """Загружает быстрые ответы из БД. Если нет — возвращает встроенный кэш."""
     try:
@@ -119,7 +175,8 @@ def try_simple_estimate(text: str) -> str | None:
     elif re.search(r'(premium|премиум)', t):
         canvas_key = 'premium'
 
-    canvas_name, canvas_price = CANVAS_PRICES[canvas_key]
+    _prices = get_canvas_prices()
+    canvas_name, canvas_price = _prices.get(canvas_key, CANVAS_PRICES.get(canvas_key, ('MSD Classic матовый', 399)))
     perim = round(area * 1.3, 1)
     is_pvh = canvas_key != 'ткань'
 
@@ -623,9 +680,12 @@ def handler(event, context):
     if cached:
         return {'statusCode': 200, 'headers': cors, 'body': json.dumps({'answer': cached})}
 
-    # Загружаем базу знаний из БД
+    # Загружаем базу знаний и цены из БД
     knowledge = get_knowledge(last_user_text)
     system_content = get_system_prompt()
+    prices_block = get_prices_block()
+    if prices_block:
+        system_content += f"\n\n=== АКТУАЛЬНЫЙ ПРАЙС-ЛИСТ (ПРИОРИТЕТ НАД ВСТРОЕННЫМ) ==={prices_block}"
     if knowledge:
         system_content += f"\n\n=== БАЗА ЗНАНИЙ О ТОВАРАХ И ЦЕНАХ ===\n{knowledge}"
 

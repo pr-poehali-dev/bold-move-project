@@ -185,6 +185,28 @@ def handler(event: dict, context) -> dict:
         conn.commit(); cur.close(); conn.close()
         return resp(200, {'ok': True})
 
+    # --- GET ?r=prices
+    if r == 'prices' and method == 'GET':
+        conn = get_conn(); cur = conn.cursor()
+        cur.execute(f"SELECT id, category, name, price, unit, description, sort_order, active FROM {SCHEMA}.ai_prices ORDER BY sort_order, id")
+        rows = cur.fetchall()
+        cur.close(); conn.close()
+        return resp(200, {'items': [{'id': row[0], 'category': row[1], 'name': row[2], 'price': row[3], 'unit': row[4], 'description': row[5], 'sort_order': row[6], 'active': row[7]} for row in rows]})
+
+    # --- PUT ?r=prices&id=X  (обновление цены)
+    if r == 'prices' and method == 'PUT':
+        if not check_auth(hdrs):
+            return resp(401, {'error': 'Unauthorized'})
+        price_id = int(qs.get('id', '0'))
+        body = json.loads(body_str)
+        conn = get_conn(); cur = conn.cursor()
+        cur.execute(
+            f"UPDATE {SCHEMA}.ai_prices SET name=%s, price=%s, unit=%s, description=%s, active=%s, updated_at=now() WHERE id=%s",
+            (body.get('name',''), int(body.get('price', 0)), body.get('unit',''), body.get('description',''), body.get('active', True), price_id)
+        )
+        conn.commit(); cur.close(); conn.close()
+        return resp(200, {'ok': True})
+
     # --- XLSX import (legacy, ?action=read|import)
     action = qs.get('action', '')
     if action in ('read', 'import'):
