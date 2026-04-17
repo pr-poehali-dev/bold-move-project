@@ -5,16 +5,19 @@ const BASE = (func2url as Record<string, string>)["parse-xlsx"];
 export async function apiFetch(resource: string, opts?: RequestInit, token?: string, id?: number) {
   const isLogin = resource === "login";
   const t = isLogin ? "" : (token ?? localStorage.getItem("admin_token") ?? "");
+  const method = opts?.method?.toUpperCase() || "GET";
   let url = `${BASE}?r=${resource}`;
   if (id !== undefined) url += `&id=${id}`;
-  // Передаём токен через query-параметр чтобы избежать CORS preflight
   if (t) url += `&_token=${encodeURIComponent(t)}`;
+
+  // Для GET запросов убираем Content-Type чтобы не было preflight
+  const headers: Record<string, string> = method !== "GET"
+    ? { "Content-Type": "text/plain" }  // text/plain не вызывает preflight
+    : {};
+
   const res = await fetch(url, {
     ...opts,
-    headers: {
-      "Content-Type": "application/json",
-      ...(opts?.headers || {}),
-    },
+    headers: { ...headers, ...(opts?.headers as Record<string, string> || {}) },
   });
   return res;
 }
