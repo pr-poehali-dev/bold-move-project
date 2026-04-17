@@ -40,15 +40,19 @@ const RECOGNIZED_LABELS: { key: string; label: string; unit: string; icon: strin
   { key: "standard_total", label: "Итого Standard",     unit: "₽",  icon: "Banknote" },
 ];
 
-function HighlightedText({ text, words }: { text: string; words: string[] }) {
-  if (!words.length) return <span className="text-white text-sm font-medium">«{text}»</span>;
-  const pattern = new RegExp(`(${words.map(w => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|')})`, 'gi');
+function HighlightedText({ text, pending, done }: { text: string; pending: string[]; done: string[] }) {
+  const all = [...pending, ...done];
+  if (!all.length) return <span className="text-white text-sm font-medium">«{text}»</span>;
+  const pattern = new RegExp(`(${all.map(w => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|')})`, 'gi');
+  const doneSet = new Set(done.map(w => w.toLowerCase()));
   const parts = text.split(pattern);
   return (
     <span className="text-white text-sm font-medium leading-relaxed">
       «{parts.map((part, i) =>
         pattern.test(part)
-          ? <mark key={i} className="bg-red-500/30 text-red-300 rounded px-0.5 not-italic">{part}</mark>
+          ? doneSet.has(part.toLowerCase())
+            ? <mark key={i} className="bg-green-500/20 text-green-300 rounded px-0.5 not-italic">{part}</mark>
+            : <mark key={i} className="bg-red-500/30 text-red-300 rounded px-0.5 not-italic">{part}</mark>
           : part
       )}»
     </span>
@@ -132,6 +136,7 @@ export default function TabCorrections({ token }: Props) {
   const [loading, setLoading] = useState(false);
   const [expandedId, setExpandedId] = useState<number | null>(null);
   const [addingWord, setAddingWord] = useState<{ corrId: number; word: string } | null>(null);
+  const [doneWords, setDoneWords] = useState<Record<number, string[]>>({});
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -160,9 +165,10 @@ export default function TabCorrections({ token }: Props) {
     const isExpanded = expandedId === item.id;
     const isLLM = !data || "reason" in (data ?? {});
     const skipInfo = isLLM ? (data as SkipInfo | null) : null;
-    const unknownWords: string[] = skipInfo?.unknown_words?.length
+    const allUnknownWords: string[] = skipInfo?.unknown_words?.length
       ? skipInfo.unknown_words
       : skipInfo?.unknown_word ? [skipInfo.unknown_word] : [];
+    const unknownWords = allUnknownWords.filter(w => !(doneWords[item.id] ?? []).includes(w));
 
     return (
       <div key={item.id} className={`bg-white/[0.03] border rounded-xl overflow-hidden ${
@@ -189,7 +195,7 @@ export default function TabCorrections({ token }: Props) {
             </div>
 
             {isLLM
-              ? <HighlightedText text={item.user_text} words={unknownWords} />
+              ? <HighlightedText text={item.user_text} pending={unknownWords} done={doneWords[item.id] ?? []} />
               : <p className="text-white text-sm font-medium">«{item.user_text}»</p>
             }
 
@@ -220,8 +226,12 @@ export default function TabCorrections({ token }: Props) {
                 prices={prices}
                 token={token}
                 onAdded={async () => {
+                  const word = addingWord!.word;
+                  const newDone = [...(doneWords[item.id] ?? []), word];
+                  setDoneWords(prev => ({ ...prev, [item.id]: newDone }));
                   setAddingWord(null);
-                  await update(item.id, "approved");
+                  const remaining = allUnknownWords.filter(w => !newDone.includes(w));
+                  if (remaining.length === 0) await update(item.id, "approved");
                 }}
               />
             )}
