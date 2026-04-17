@@ -66,7 +66,7 @@ export default function TabRules({ token }: Props) {
                     </td>
                     <td className="px-4 py-2.5 text-white/50 text-xs">
                       <EditableCell
-                        value={item.bundle}
+                        value={item.bundle === '[]' ? '' : item.bundle}
                         onSave={v => saveField(item, "bundle", v)}
                         placeholder="Например: добавить Лампа GX53 и Закладная под светильник"
                       />
