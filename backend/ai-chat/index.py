@@ -94,14 +94,25 @@ def try_simple_estimate(text: str) -> str | None:
     price_mount_svet     = p('Монтаж светильника GX53', 500)
     price_mount_razv     = p('Монтаж разводки ГОСТ 0.75', 700)
 
-    # Светильники GX-53 — суммируем ВСЕ числа перед/после слов "точечных/светильник/добавить"
-    all_svet_nums = re.findall(r'(\d+)\s*(?:точечн\w*\s*)?(?:светильник|gx.?53|вклейк)', t)
-    all_svet_nums += re.findall(r'добавить\s+(?:ещё\s+)?(\d+)\s*(?:точечн|светильник)?', t)
-    n_svetilnik = sum(int(x) for x in all_svet_nums)
+    # Светильники GX-53 — суммируем ВСЕ числа (цифры и слова)
+    _num_pat = r'(\d+|один|одна|два|две|три|четыре|пять|шесть|семь|восемь|девять|десять)'
+    def _to_int(s):
+        _wm = {'один': 1, 'одна': 1, 'два': 2, 'две': 2, 'три': 3, 'четыре': 4,
+               'пять': 5, 'шесть': 6, 'семь': 7, 'восемь': 8, 'девять': 9, 'десять': 10}
+        return _wm.get(s, int(s) if s.isdigit() else 0)
+    all_svet_nums = re.findall(_num_pat + r'\s*(?:точечн\w*\s*)?(?:светильник|gx.?53|вклейк)', t)
+    all_svet_nums += re.findall(r'добавить\s+(?:ещё\s+)?' + _num_pat + r'\s*(?:точечн|светильник)?', t)
+    n_svetilnik = sum(_to_int(x) for x in all_svet_nums)
 
-    # Люстра
-    lyustra_m = re.search(r'(\d+)?\s*люстр', t)
-    n_lyustra = int(lyustra_m.group(1)) if (lyustra_m and lyustra_m.group(1)) else (1 if lyustra_m else 0)
+    # Люстра — цифрой или словом
+    _words_map = {'один': 1, 'одна': 1, 'два': 2, 'две': 2, 'три': 3, 'четыре': 4,
+                  'пять': 5, 'шесть': 6, 'семь': 7, 'восемь': 8, 'девять': 9, 'десять': 10}
+    lyustra_m = re.search(r'(\d+|один|одна|два|две|три|четыре|пять|шесть|семь|восемь|девять|десять)?\s*люстр', t)
+    if lyustra_m and lyustra_m.group(1):
+        _g = lyustra_m.group(1)
+        n_lyustra = _words_map.get(_g, int(_g) if _g.isdigit() else 1)
+    else:
+        n_lyustra = 1 if lyustra_m else 0
 
     # Ниша для штор — «ниша», «карниз», «штора», «карниз возле шторы»
     has_nisha = bool(re.search(r'ниш[аеуы]?\s*(?:для\s*штор)?|карниз|шторн|штор[аыуе]', t))
