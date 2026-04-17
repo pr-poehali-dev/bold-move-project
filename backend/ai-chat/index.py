@@ -151,14 +151,17 @@ def try_simple_estimate(text: str) -> str | None:
     else:
         n_lyustra = 1 if lyustra_m else 0
 
-    print(f"[calc] area={area} perim={perim} canvas={canvas_key} n_lyustra={n_lyustra} n_svetilnik={n_svetilnik} svet_raw={all_svet_nums}")
-
     # Ниша для штор — «ниша», «карниз», «штора», «карниз возле шторы»
     has_nisha = bool(re.search(r'ниш[аеуы]?\s*(?:для\s*штор)?|карниз|шторн|штор[аыуе]', t))
 
-    # Длина ниши: явная (цифра или слово) или дефолт из calc_rule БД
-    nisha_len_m = re.search(_NUM_WORD_PAT + r'\s*(?:м|пм|погон)\s+(?:ниш|шторн)', t) or \
-                  re.search(r'ниш[аеуы]?\s+(?:для\s+штор\s+)?(?:пк[- ]?\d+\s+)?' + _NUM_WORD_PAT + r'\s*(?:м|пм|погон)', t)
+    # Длина ниши: явная (цифра или слово) рядом с любым ключевым словом ниши/карниза
+    _nisha_kw = r'(?:ниш[аеуы]?|карниз|штор[аыуе]?|шторн)'
+    nisha_len_m = (
+        re.search(_NUM_WORD_PAT + r'\s*(?:м|пм|погон)\s+' + _nisha_kw, t) or
+        re.search(_nisha_kw + r'\s+(?:для\s+штор\s+)?(?:пк[- ]?\d+\s+)?' + _NUM_WORD_PAT + r'\s*(?:м|пм|погон)', t) or
+        re.search(_nisha_kw + r'\s+' + _NUM_WORD_PAT + r'\s*(?:м|пм|погон)', t) or
+        re.search(_NUM_WORD_PAT + r'\s*(?:м|пм|погон)\s*(?:для\s*)?' + _nisha_kw, t)
+    )
     if nisha_len_m:
         nisha_len = _w2n(nisha_len_m.group(1))
     else:
@@ -187,6 +190,8 @@ def try_simple_estimate(text: str) -> str | None:
             nisha_price = p('Брус БП-40', 850); nisha_label = 'Брус БП-40'
         else:
             nisha_price = p('Ниша без перегиба', 1700); nisha_label = 'Ниша без перегиба'
+
+    print(f"[calc] area={area} perim={perim} n_lyustra={n_lyustra} n_svetilnik={n_svetilnik} has_nisha={has_nisha} nisha_len={nisha_len if has_nisha else '-'} nisha_price={nisha_price}")
 
     # ─── РАСЧЁТ ───────────────────────────────────────────────────────────────
     # 1. Полотно
