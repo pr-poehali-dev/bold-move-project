@@ -54,12 +54,12 @@ export default function AdminPanel() {
       </div>
 
       <div className="p-4 max-w-6xl mx-auto">
-        <div className={tab === "prices"      ? "" : "hidden"}><TabPrices      token={token} onItemAdded={handleItemAdded} /></div>
-        <div className={tab === "rules"       ? "" : "hidden"}><TabRules       token={token} hint={newItemHint} /></div>
-        <div className={tab === "prompt"      ? "" : "hidden"}><TabPrompt      token={token} /></div>
-        <div className={tab === "faq"         ? "" : "hidden"}><TabFaq         token={token} /></div>
-        <div className={tab === "questions"   ? "" : "hidden"}><TabQuestions   token={token} /></div>
-        <div className={tab === "corrections" ? "" : "hidden"}><TabCorrections token={token} /></div>
+        {tab === "prices"      && <TabPrices      token={token} onItemAdded={handleItemAdded} />}
+        {tab === "rules"       && <TabRules       token={token} hint={newItemHint} />}
+        {tab === "prompt"      && <TabPrompt      token={token} />}
+        {tab === "faq"         && <TabFaq         token={token} />}
+        {tab === "questions"   && <TabQuestions   token={token} />}
+        {tab === "corrections" && <TabCorrections token={token} />}
       </div>
     </div>
   );

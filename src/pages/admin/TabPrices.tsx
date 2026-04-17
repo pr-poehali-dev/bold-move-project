@@ -23,7 +23,14 @@ export default function TabPrices({ token, onItemAdded }: Props) {
     setLoading(true);
     try {
       const r = await apiFetch("prices");
-      if (r.ok) { const d = await r.json(); setPrices(d.items); }
+      console.log("[prices] status:", r.status, r.ok);
+      if (r.ok) {
+        const d = await r.json();
+        console.log("[prices] items:", d.items?.length);
+        setPrices(d.items);
+      }
+    } catch(e) {
+      console.error("[prices] error:", e);
     } finally {
       setLoading(false);
     }
