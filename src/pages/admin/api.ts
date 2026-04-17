@@ -9,13 +9,21 @@ export async function apiFetch(resource: string, opts?: RequestInit, token?: str
   if (id !== undefined) url += `&id=${id}`;
   if (t) url += `&_token=${encodeURIComponent(t)}`;
 
+  // Все запросы делаем простыми (no preflight):
+  // GET — без body и заголовков
+  // POST/PUT/DELETE — body в параметре _body (base64), Content-Type не ставим
   if (method === "GET") {
-    // GET — нет preflight, нет кастомных заголовков
     return fetch(url);
   }
 
-  // POST/PUT/DELETE — данные кладём в URL как base64 чтобы избежать preflight
-  const body = opts?.body ? btoa(unescape(encodeURIComponent(opts.body as string))) : "";
-  const fullUrl = body ? `${url}&_body=${encodeURIComponent(body)}` : url;
-  return fetch(fullUrl, { method });
+  let bodyParam = "";
+  if (opts?.body) {
+    try {
+      bodyParam = encodeURIComponent(btoa(unescape(encodeURIComponent(opts.body as string))));
+    } catch {
+      bodyParam = encodeURIComponent(opts.body as string);
+    }
+  }
+
+  return fetch(bodyParam ? `${url}&_body=${bodyParam}` : url, { method });
 }
