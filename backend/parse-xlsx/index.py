@@ -65,10 +65,6 @@ def handler(event: dict, context) -> dict:
     qs = event.get('queryStringParameters') or {}
     r = qs.get('r', '')
     body_str = event.get('body') or '{}'
-    # Принимаем text/plain как JSON (чтобы избежать CORS preflight)
-    content_type = hdrs.get('content-type', '') or hdrs.get('Content-Type', '')
-    if not body_str.strip().startswith('{') and not body_str.strip().startswith('['):
-        body_str = '{}'
 
     # --- POST ?r=login
     if r == 'login' and method == 'POST':

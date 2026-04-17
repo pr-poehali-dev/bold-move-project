@@ -2,22 +2,15 @@ import func2url from "@/../backend/func2url.json";
 
 const BASE = (func2url as Record<string, string>)["parse-xlsx"];
 
-export async function apiFetch(resource: string, opts?: RequestInit, token?: string, id?: number) {
-  const isLogin = resource === "login";
-  const t = isLogin ? "" : (token ?? localStorage.getItem("admin_token") ?? "");
-  const method = opts?.method?.toUpperCase() || "GET";
+export function apiFetch(resource: string, opts?: RequestInit, token?: string, id?: number) {
   let url = `${BASE}?r=${resource}`;
   if (id !== undefined) url += `&id=${id}`;
-  if (t) url += `&_token=${encodeURIComponent(t)}`;
-
-  // Для GET запросов убираем Content-Type чтобы не было preflight
-  const headers: Record<string, string> = method !== "GET"
-    ? { "Content-Type": "text/plain" }  // text/plain не вызывает preflight
-    : {};
-
-  const res = await fetch(url, {
+  return fetch(url, {
     ...opts,
-    headers: { ...headers, ...(opts?.headers as Record<string, string> || {}) },
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { "X-Admin-Token": token } : {}),
+      ...(opts?.headers || {}),
+    },
   });
-  return res;
 }
