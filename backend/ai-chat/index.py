@@ -94,16 +94,17 @@ def try_simple_estimate(text: str) -> str | None:
     price_mount_svet     = p('Монтаж светильника GX53', 500)
     price_mount_razv     = p('Монтаж разводки ГОСТ 0.75', 700)
 
-    # Светильники GX-53
-    svetilnik_m = re.search(r'(\d+)\s*светильник', t)
-    n_svetilnik = int(svetilnik_m.group(1)) if svetilnik_m else 0
+    # Светильники GX-53 — суммируем ВСЕ числа перед/после слов "точечных/светильник/добавить"
+    all_svet_nums = re.findall(r'(\d+)\s*(?:точечн\w*\s*)?(?:светильник|gx.?53|вклейк)', t)
+    all_svet_nums += re.findall(r'добавить\s+(?:ещё\s+)?(\d+)\s*(?:точечн|светильник)?', t)
+    n_svetilnik = sum(int(x) for x in all_svet_nums)
 
     # Люстра
     lyustra_m = re.search(r'(\d+)?\s*люстр', t)
     n_lyustra = int(lyustra_m.group(1)) if (lyustra_m and lyustra_m.group(1)) else (1 if lyustra_m else 0)
 
-    # Ниша для штор
-    has_nisha = bool(re.search(r'ниш[аеуы]?\s*(?:для\s*штор)?', t))
+    # Ниша для штор — «ниша», «карниз», «штора», «карниз возле шторы»
+    has_nisha = bool(re.search(r'ниш[аеуы]?\s*(?:для\s*штор)?|карниз|шторн|штор[аыуе]', t))
 
     # Длина ниши: явная или дефолт из calc_rule БД
     nisha_len_m = re.search(r'(\d+(?:[.,]\d+)?)\s*(?:м|пм|погон)\s+(?:ниш|шторн)', t) or \
@@ -165,7 +166,7 @@ def try_simple_estimate(text: str) -> str | None:
     mount_nisha   = round(nisha_len * price_mount_nisha) if has_nisha else 0
     mount_zakl    = (n_lyustra + n_svetilnik) * price_mount_zakl if (n_lyustra + n_svetilnik) > 0 else 0
     mount_svet    = n_svetilnik * price_mount_svet
-    mount_razv    = (n_lyustra + n_svetilnik) * price_mount_razv if (n_lyustra + n_svetilnik) > 0 else 0
+    mount_razv    = n_svetilnik * price_mount_razv if n_svetilnik > 0 else 0
 
     standard = (canvas_total + raskroy + ogarp + profile_total + nisha_total +
                 zakl_total + svet_total + lampa_total +
@@ -225,7 +226,7 @@ def try_simple_estimate(text: str) -> str | None:
     if mount_svet > 0:
         lines.append(f"  Монтаж светильников {n_svetilnik} шт. × {price_mount_svet} ₽ = {fmt(mount_svet)} ₽")
     if mount_razv > 0:
-        lines.append(f"  Монтаж разводки ГОСТ {n_lyustra + n_svetilnik} шт. × {price_mount_razv} ₽ = {fmt(mount_razv)} ₽")
+        lines.append(f"  Монтаж разводки ГОСТ {n_svetilnik} шт. × {price_mount_razv} ₽ = {fmt(mount_razv)} ₽")
 
     lines.append(f"\nEconom:   {fmt(econom)} ₽")
     lines.append(f"Standard: {fmt(standard)} ₽")
