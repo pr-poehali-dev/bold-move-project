@@ -21,7 +21,6 @@ const TABS: { id: AdminTab; label: string; icon: string }[] = [
 export default function AdminPanel() {
   const [token, setToken] = useState(() => sessionStorage.getItem("adm") || "");
   const [password, setPassword] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [tab, setTab] = useState<AdminTab>("prices");
   const [newItemHint, setNewItemHint] = useState<string | null>(null);
@@ -52,7 +51,7 @@ export default function AdminPanel() {
             <span className="text-white font-semibold text-lg">Вход для администратора</span>
           </div>
           <input
-            type="password"
+            type="text"
             placeholder="Пароль"
             value={password}
             autoComplete="off"
