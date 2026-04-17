@@ -79,15 +79,25 @@ _COMPLEX_WORDS = [
     'без монт', 'вклейк', 'высота',
 ]
 _COMPLEX_PAT = re.compile(r'(' + '|'.join(re.escape(w) for w in _COMPLEX_WORDS) + r')')
+# Паттерн для захвата полного слова содержащего стоп-подстроку
+_FULL_WORD_PAT = re.compile(r'[а-яёa-z0-9]+(?:[- ][а-яёa-z0-9]+)*', re.IGNORECASE)
 
 
 def get_skip_reason(text: str) -> dict:
-    """Возвращает причину почему бот отказался считать сам."""
+    """Возвращает причину почему бот отказался считать сам. Возвращает ПОЛНЫЕ слова."""
     t = text.lower()
-    m = _COMPLEX_PAT.search(t)
-    if m:
-        word = m.group(1)
-        return {'reason': 'complex_keyword', 'unknown_word': word, 'unknown_words': _COMPLEX_PAT.findall(t)}
+    # Собираем все полные слова из текста которые содержат стоп-паттерн
+    all_words = _FULL_WORD_PAT.findall(t)
+    matched_full = []
+    seen = set()
+    for word in all_words:
+        if word in seen:
+            continue
+        if _COMPLEX_PAT.search(word):
+            matched_full.append(word)
+            seen.add(word)
+    if matched_full:
+        return {'reason': 'complex_keyword', 'unknown_word': matched_full[0], 'unknown_words': matched_full}
     area_m = re.search(_NUM_WORD_PAT + r'\s*(?:м²|м2|кв\.?\s*м?|квадрат|кв\b)', t)
     if not area_m:
         return {'reason': 'no_area', 'unknown_word': None, 'unknown_words': []}
