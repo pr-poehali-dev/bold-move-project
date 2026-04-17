@@ -195,7 +195,6 @@ def handler(event: dict, context) -> dict:
         return resp(200, {'ok': True})
 
     # --- GET ?r=prices
-    print(f"[request] r={r} method={method} qs_keys={list(qs.keys())}")
     if r == 'prices' and method == 'GET':
         conn = get_conn(); cur = conn.cursor()
         cur.execute(f"SELECT id, category, name, price, unit, description, sort_order, active, calc_rule, bundle, synonyms FROM {SCHEMA}.ai_prices ORDER BY sort_order, id")
