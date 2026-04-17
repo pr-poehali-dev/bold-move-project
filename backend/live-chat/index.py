@@ -299,4 +299,63 @@ def handler(event, context):
         tg_send(tg_text)
         return {"statusCode": 200, "headers": CORS, "body": json.dumps({"ok": True})}
 
+    # ── Оператор: список всех чатов ───────────────────────────────────────────
+    if method == "GET" and action == "op_sessions":
+        token = (event.get("headers") or {}).get("x-admin-token") or (event.get("headers") or {}).get("X-Admin-Token", "")
+        import hashlib
+        admin_pwd = os.environ.get("ADMIN_PASSWORD", "")
+        if not token or not admin_pwd or hashlib.sha256(token.encode()).hexdigest() != hashlib.sha256(admin_pwd.encode()).hexdigest():
+            return {"statusCode": 401, "headers": CORS, "body": json.dumps({"error": "Unauthorized"})}
+        conn = db(); cur = conn.cursor()
+        cur.execute(f"""
+            SELECT s.session_id, s.client_name, s.created_at, s.last_message_at,
+                   (SELECT text FROM {SCHEMA}.live_messages WHERE session_id=s.session_id ORDER BY id DESC LIMIT 1) as last_text,
+                   (SELECT COUNT(*) FROM {SCHEMA}.live_messages WHERE session_id=s.session_id AND role='client') as msg_count
+            FROM {SCHEMA}.live_chats s
+            ORDER BY s.last_message_at DESC NULLS LAST
+            LIMIT 100
+        """)
+        rows = cur.fetchall()
+        cur.close(); conn.close()
+        return {"statusCode": 200, "headers": CORS, "body": json.dumps({"sessions": [
+            {"session_id": r[0], "client_name": r[1], "created_at": str(r[2]), "last_message_at": str(r[3]), "last_text": r[4] or "", "msg_count": r[5]}
+            for r in rows
+        ]})}
+
+    # ── Оператор: ответить клиенту ────────────────────────────────────────────
+    if method == "POST" and action == "op_reply":
+        token = (event.get("headers") or {}).get("x-admin-token") or (event.get("headers") or {}).get("X-Admin-Token", "")
+        import hashlib
+        admin_pwd = os.environ.get("ADMIN_PASSWORD", "")
+        if not token or not admin_pwd or hashlib.sha256(token.encode()).hexdigest() != hashlib.sha256(admin_pwd.encode()).hexdigest():
+            return {"statusCode": 401, "headers": CORS, "body": json.dumps({"error": "Unauthorized"})}
+        session_id = body.get("session_id", "")
+        text = (body.get("text") or "").strip()
+        if not session_id or not text:
+            return {"statusCode": 400, "headers": CORS, "body": json.dumps({"error": "session_id and text required"})}
+        conn = db(); cur = conn.cursor()
+        cur.execute(f"INSERT INTO {SCHEMA}.live_messages (session_id, role, text) VALUES (%s, 'operator', %s)", (session_id, text))
+        cur.execute(f"UPDATE {SCHEMA}.live_chats SET last_message_at=NOW() WHERE session_id=%s", (session_id,))
+        conn.commit(); cur.close(); conn.close()
+        return {"statusCode": 200, "headers": CORS, "body": json.dumps({"ok": True})}
+
+    # ── Клиент: создать сессию из AdminPanel (обращение) ─────────────────────
+    if method == "POST" and action == "request":
+        session_id = body.get("session_id") or str(uuid.uuid4())
+        text = (body.get("text") or "").strip()
+        client_name = (body.get("name") or "Клиент из AdminPanel").strip()
+        if not text:
+            return {"statusCode": 400, "headers": CORS, "body": json.dumps({"error": "empty"})}
+        conn = db(); cur = conn.cursor()
+        cur.execute(f"SELECT id FROM {SCHEMA}.live_chats WHERE session_id=%s", (session_id,))
+        if not cur.fetchone():
+            cur.execute(f"INSERT INTO {SCHEMA}.live_chats (session_id, client_name, telegram_message_id) VALUES (%s,%s,0)", (session_id, client_name))
+            conn.commit()
+        cur.execute(f"INSERT INTO {SCHEMA}.live_messages (session_id, role, text) VALUES (%s,'client',%s)", (session_id, text))
+        cur.execute(f"UPDATE {SCHEMA}.live_chats SET last_message_at=NOW() WHERE session_id=%s", (session_id,))
+        conn.commit()
+        tg_send(f"📬 <b>Обращение из AdminPanel</b>\n👤 <b>{client_name}</b>\n\n{text}\n\n<i>↩️ Reply чтобы ответить</i>")
+        cur.close(); conn.close()
+        return {"statusCode": 200, "headers": CORS, "body": json.dumps({"session_id": session_id, "ok": True})}
+
     return {"statusCode": 404, "headers": CORS, "body": json.dumps({"error": "not found"})}
