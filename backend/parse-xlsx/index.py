@@ -193,6 +193,28 @@ def handler(event: dict, context) -> dict:
         cur.close(); conn.close()
         return resp(200, {'items': [{'id': row[0], 'category': row[1], 'name': row[2], 'price': row[3], 'unit': row[4], 'description': row[5], 'sort_order': row[6], 'active': row[7]} for row in rows]})
 
+    # --- POST ?r=prices  (добавление позиции)
+    if r == 'prices' and method == 'POST':
+        if not check_auth(hdrs):
+            return resp(401, {'error': 'Unauthorized'})
+        body = json.loads(body_str)
+        category = body.get('category', '').strip()
+        name = body.get('name', '').strip()
+        if not category or not name:
+            return resp(400, {'error': 'category and name required'})
+        conn = get_conn(); cur = conn.cursor()
+        cur.execute(
+            f"SELECT COALESCE(MAX(sort_order), 0) + 10 FROM {SCHEMA}.ai_prices WHERE category = %s", (category,)
+        )
+        sort_order = cur.fetchone()[0]
+        cur.execute(
+            f"INSERT INTO {SCHEMA}.ai_prices (category, name, price, unit, description, sort_order, active) VALUES (%s,%s,%s,%s,%s,%s,true) RETURNING id",
+            (category, name, int(body.get('price', 0)), body.get('unit', 'шт'), body.get('description', ''), sort_order)
+        )
+        new_id = cur.fetchone()[0]
+        conn.commit(); cur.close(); conn.close()
+        return resp(200, {'id': new_id, 'ok': True})
+
     # --- PUT ?r=prices&id=X  (обновление цены)
     if r == 'prices' and method == 'PUT':
         if not check_auth(hdrs):
@@ -204,6 +226,16 @@ def handler(event: dict, context) -> dict:
             f"UPDATE {SCHEMA}.ai_prices SET name=%s, price=%s, unit=%s, description=%s, active=%s, updated_at=now() WHERE id=%s",
             (body.get('name',''), int(body.get('price', 0)), body.get('unit',''), body.get('description',''), body.get('active', True), price_id)
         )
+        conn.commit(); cur.close(); conn.close()
+        return resp(200, {'ok': True})
+
+    # --- DELETE ?r=prices&id=X
+    if r == 'prices' and method == 'DELETE':
+        if not check_auth(hdrs):
+            return resp(401, {'error': 'Unauthorized'})
+        price_id = int(qs.get('id', '0'))
+        conn = get_conn(); cur = conn.cursor()
+        cur.execute(f"DELETE FROM {SCHEMA}.ai_prices WHERE id = %s", (price_id,))
         conn.commit(); cur.close(); conn.close()
         return resp(200, {'ok': True})
 

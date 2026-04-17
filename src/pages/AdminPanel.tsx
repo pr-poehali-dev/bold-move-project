@@ -105,6 +105,8 @@ export default function AdminPanel() {
   // Prices
   const [prices, setPrices] = useState<PriceItem[]>([]);
   const [pricesLoading, setPricesLoading] = useState(false);
+  const [addingInCat, setAddingInCat] = useState<string | null>(null);
+  const [newPrice, setNewPrice] = useState({ name: "", price: "", unit: "шт", description: "" });
 
   // Prompt
   const [prompt, setPrompt] = useState("");
@@ -175,6 +177,22 @@ export default function AdminPanel() {
     const updated = { ...item, active: !item.active };
     await apiFetch("prices", { method: "PUT", body: JSON.stringify(updated) }, token, item.id);
     setPrices(prev => prev.map(p => p.id === item.id ? updated : p));
+  };
+
+  const addPriceItem = async (category: string) => {
+    if (!newPrice.name.trim()) return;
+    const r = await apiFetch("prices", { method: "POST", body: JSON.stringify({ ...newPrice, category, price: parseInt(newPrice.price) || 0 }) }, token);
+    if (r.ok) {
+      setAddingInCat(null);
+      setNewPrice({ name: "", price: "", unit: "шт", description: "" });
+      loadPrices();
+    }
+  };
+
+  const deletePriceItem = async (id: number) => {
+    if (!confirm("Удалить позицию?")) return;
+    await apiFetch("prices", { method: "DELETE" }, token, id);
+    setPrices(prev => prev.filter(p => p.id !== id));
   };
 
   const savePrompt = async () => {
@@ -312,14 +330,67 @@ export default function AdminPanel() {
                                 <EditableCell value={item.description} onSave={v => savePriceField(item, "description", v)} />
                               </td>
                               <td className="px-3 py-2.5">
-                                <button onClick={() => togglePriceActive(item)}
-                                  title={item.active ? "Отключить" : "Включить"}
-                                  className={`w-4 h-4 rounded-full border transition ${item.active ? "bg-green-400 border-green-400" : "border-white/20 hover:border-white/40"}`} />
+                                <div className="flex items-center gap-1">
+                                  <button onClick={() => togglePriceActive(item)}
+                                    title={item.active ? "Отключить" : "Включить"}
+                                    className={`w-4 h-4 rounded-full border transition flex-shrink-0 ${item.active ? "bg-green-400 border-green-400" : "border-white/20 hover:border-white/40"}`} />
+                                  <button onClick={() => deletePriceItem(item.id)}
+                                    title="Удалить"
+                                    className="text-white/20 hover:text-red-400 transition p-0.5">
+                                    <Icon name="X" size={13} />
+                                  </button>
+                                </div>
                               </td>
                             </tr>
                           ))}
                         </tbody>
                       </table>
+
+                      {/* Форма добавления */}
+                      {addingInCat === category ? (
+                        <div className="border-t border-white/10 px-4 py-3 flex gap-2 items-end flex-wrap bg-violet-500/5">
+                          <div className="flex flex-col gap-1 flex-1 min-w-[160px]">
+                            <span className="text-white/30 text-xs">Название</span>
+                            <input autoFocus value={newPrice.name} onChange={e => setNewPrice(p => ({ ...p, name: e.target.value }))}
+                              placeholder="Новая позиция..."
+                              className="bg-white/5 border border-white/15 rounded-lg px-3 py-1.5 text-white text-sm outline-none focus:border-violet-500" />
+                          </div>
+                          <div className="flex flex-col gap-1 w-24">
+                            <span className="text-white/30 text-xs">Цена ₽</span>
+                            <input type="number" value={newPrice.price} onChange={e => setNewPrice(p => ({ ...p, price: e.target.value }))}
+                              placeholder="0"
+                              className="bg-white/5 border border-white/15 rounded-lg px-3 py-1.5 text-white text-sm outline-none focus:border-violet-500 font-mono" />
+                          </div>
+                          <div className="flex flex-col gap-1 w-20">
+                            <span className="text-white/30 text-xs">Единица</span>
+                            <input value={newPrice.unit} onChange={e => setNewPrice(p => ({ ...p, unit: e.target.value }))}
+                              placeholder="шт"
+                              className="bg-white/5 border border-white/15 rounded-lg px-3 py-1.5 text-white text-sm outline-none focus:border-violet-500" />
+                          </div>
+                          <div className="flex flex-col gap-1 flex-[2] min-w-[160px]">
+                            <span className="text-white/30 text-xs">Описание для AI</span>
+                            <input value={newPrice.description} onChange={e => setNewPrice(p => ({ ...p, description: e.target.value }))}
+                              placeholder="Как AI понимает эту позицию..."
+                              className="bg-white/5 border border-white/15 rounded-lg px-3 py-1.5 text-white text-sm outline-none focus:border-violet-500" />
+                          </div>
+                          <div className="flex gap-2 pb-0.5">
+                            <button onClick={() => addPriceItem(category)}
+                              className="bg-violet-600 hover:bg-violet-700 text-white rounded-lg px-4 py-1.5 text-sm transition whitespace-nowrap">
+                              Добавить
+                            </button>
+                            <button onClick={() => { setAddingInCat(null); setNewPrice({ name: "", price: "", unit: "шт", description: "" }); }}
+                              className="text-white/40 hover:text-white/70 text-sm transition">
+                              Отмена
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <button onClick={() => { setAddingInCat(category); setNewPrice({ name: "", price: "", unit: "шт", description: "" }); }}
+                          className="w-full py-2.5 text-violet-400/60 hover:text-violet-400 text-xs flex items-center justify-center gap-1.5 border-t border-white/5 transition hover:bg-violet-500/5">
+                          <Icon name="Plus" size={13} />
+                          Добавить позицию в «{category}»
+                        </button>
+                      )}
                     </div>
                   </div>
                 ))}
