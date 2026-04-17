@@ -5,9 +5,10 @@ interface Props {
   type?: "text" | "number";
   onSave: (val: string) => void;
   className?: string;
+  placeholder?: string;
 }
 
-export default function EditableCell({ value, type = "text", onSave, className = "" }: Props) {
+export default function EditableCell({ value, type = "text", onSave, className = "", placeholder = "" }: Props) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(String(value));
   const [saving, setSaving] = useState(false);
@@ -45,9 +46,9 @@ export default function EditableCell({ value, type = "text", onSave, className =
     <span
       onClick={() => setEditing(true)}
       title="Нажмите для редактирования"
-      className={`cursor-pointer hover:text-violet-300 transition-colors rounded px-1 -mx-1 ${saving ? "opacity-50" : ""} ${className}`}
+      className={`cursor-pointer hover:text-violet-300 transition-colors rounded px-1 -mx-1 ${saving ? "opacity-50" : ""} ${!value ? "text-white/20 italic" : ""} ${className}`}
     >
-      {saving ? "…" : value}
+      {saving ? "…" : value || placeholder}
     </span>
   );
 }
