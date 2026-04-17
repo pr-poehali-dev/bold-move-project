@@ -217,7 +217,9 @@ export default function TabCorrections({ token }: Props) {
   const [loading, setLoading] = useState(false);
   const [expandedId, setExpandedId] = useState<number | null>(null);
   const [addingWord, setAddingWord] = useState<{ corrId: number; word: string } | null>(null);
-  const [doneWords, setDoneWords] = useState<Record<number, string[]>>({});
+  const [doneWords, setDoneWords] = useState<Record<number, string[]>>(() => {
+    try { return JSON.parse(localStorage.getItem("corrections_done") || "{}"); } catch { return {}; }
+  });
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -234,6 +236,14 @@ export default function TabCorrections({ token }: Props) {
     setItems(prev => prev.map(c => c.id === id ? { ...c, status: status as BotCorrection["status"] } : c));
     setExpandedId(null);
     setAddingWord(null);
+    if (status === "approved" || status === "rejected") {
+      setDoneWords(prev => {
+        const next = { ...prev };
+        delete next[id];
+        localStorage.setItem("corrections_done", JSON.stringify(next));
+        return next;
+      });
+    }
   };
 
   const pending = items.filter(i => i.status === "pending");
@@ -309,7 +319,9 @@ export default function TabCorrections({ token }: Props) {
                 onAdded={async () => {
                   const word = addingWord!.word;
                   const newDone = [...(doneWords[item.id] ?? []), word];
-                  setDoneWords(prev => ({ ...prev, [item.id]: newDone }));
+                  const updated = { ...doneWords, [item.id]: newDone };
+                  setDoneWords(updated);
+                  localStorage.setItem("corrections_done", JSON.stringify(updated));
                   setAddingWord(null);
                   const remaining = allUnknownWords.filter(w => !newDone.includes(w));
                   if (remaining.length === 0) await update(item.id, "approved");
