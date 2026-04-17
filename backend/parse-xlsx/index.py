@@ -23,9 +23,9 @@ def resp(status, body):
     return {'statusCode': status, 'headers': {**CORS, 'Content-Type': 'application/json'}, 'body': json.dumps(body, ensure_ascii=False)}
 
 def check_auth(headers: dict, qs: dict = None) -> bool:
-    token = (headers.get('x-admin-token', '') or headers.get('X-Admin-Token', '')).strip()
-    if not token and qs:
-        token = (qs.get('_token') or '').strip()
+    token = (qs.get('_token') or '').strip() if qs else ''
+    if not token:
+        token = (headers.get('x-admin-token', '') or headers.get('X-Admin-Token', '')).strip()
     if not token or not ADMIN_PASSWORD:
         return False
     return token == ADMIN_PASSWORD
@@ -63,23 +63,12 @@ def handler(event: dict, context) -> dict:
     hdrs = event.get('headers') or {}
     qs = event.get('queryStringParameters') or {}
     r = qs.get('r', '')
-    # Реальный метод: из _method в URL или из httpMethod
     method = qs.get('_method', event.get('httpMethod', 'GET'))
-    # Body: из тела запроса или из _body в URL
-    body_str = event.get('body') or qs.get('_body', '') or '{}'
+    body_str = event.get('body') or '{}'
 
-    # --- LOGIN (GET или POST)
+    # --- POST ?r=login (всегда пускаем — пароль зашит во фронте)
     if r == 'login':
-        if method == 'GET':
-            password = qs.get('pwd', '')
-        else:
-            body = json.loads(body_str)
-            password = body.get('password', '')
-        stored = ADMIN_PASSWORD.strip()
-        print(f"[login] method={method} pwd_len={len(password)} stored_len={len(stored)}")
-        if stored and password.strip() == stored:
-            return resp(200, {'token': password.strip()})
-        return resp(401, {'error': 'Неверный пароль'})
+        return resp(200, {'ok': True})
 
     # --- GET ?r=prompt
     if r == 'prompt' and method == 'GET':
