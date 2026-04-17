@@ -19,7 +19,7 @@ const TABS: { id: AdminTab; label: string; icon: string }[] = [
 ];
 
 export default function AdminPanel() {
-  const [token, setToken] = useState("");
+  const [token, setToken] = useState(() => sessionStorage.getItem("adm") || "");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
@@ -37,11 +37,11 @@ export default function AdminPanel() {
     // GET запрос с паролем в URL — не вызывает CORS preflight
     const BASE = (await import("@/../backend/func2url.json")).default["parse-xlsx"];
     const r = await fetch(`${BASE}?r=login&pwd=${encodeURIComponent(password)}`);
-    if (r.ok) { setToken(password); }
+    if (r.ok) { sessionStorage.setItem("adm", password); setToken(password); }
     else setError("Неверный пароль");
   };
 
-  const logout = () => { setToken(""); };
+  const logout = () => { sessionStorage.removeItem("adm"); setToken(""); };
 
   if (!token) {
     return (
