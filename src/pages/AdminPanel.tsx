@@ -19,7 +19,7 @@ const TABS: { id: AdminTab; label: string; icon: string }[] = [
 ];
 
 export default function AdminPanel() {
-  const [token, setToken] = useState(() => sessionStorage.getItem("admin_token") || "");
+  const [token, setToken] = useState(() => localStorage.getItem("admin_token") || "");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
@@ -35,11 +35,11 @@ export default function AdminPanel() {
   const login = async () => {
     setError("");
     const r = await apiFetch("login", { method: "POST", body: JSON.stringify({ password }) });
-    if (r.ok) { sessionStorage.setItem("admin_token", password); setToken(password); }
+    if (r.ok) { localStorage.setItem("admin_token", password); setToken(password); }
     else setError("Неверный пароль");
   };
 
-  const logout = () => { sessionStorage.removeItem("admin_token"); setToken(""); };
+  const logout = () => { localStorage.removeItem("admin_token"); setToken(""); };
 
   if (!token) {
     return (
