@@ -79,75 +79,25 @@ _COMPLEX_WORDS = [
     'без монт', 'вклейк', 'высота',
 ]
 _COMPLEX_PAT = re.compile(r'(' + '|'.join(re.escape(w) for w in _COMPLEX_WORDS) + r')')
-# Паттерн для захвата одного слова (без пробелов)
-_SINGLE_WORD_PAT = re.compile(r'[а-яёa-z0-9]+(?:-[а-яёa-z0-9]+)*', re.IGNORECASE)
-
-# Слова/фразы которые бот умеет распознавать — НЕ подсвечиваем их
-_KNOWN_PAT = re.compile(
-    r'^\d+$|^[а-яё]+$'  # просто числа или простые слова — пропускаем отдельно ниже
-)
-
-# Слова которые заведомо известны боту (не нужно подсвечивать)
-_KNOWN_WORDS = {
-    'натяжной', 'потолок', 'потолка', 'потолке', 'потолки', 'потолков',
-    'площадь', 'комната', 'кухня', 'ванна', 'ванная', 'спальня', 'коридор', 'зал',
-    'однушка', 'двушка', 'однокомнатная', 'двухкомнатная',
-    'профиль', 'обычный', 'стандартный', 'алюминий', 'стеновой',
-    'люстра', 'люстры', 'светильник', 'светильники', 'лампа', 'лампы',
-    'ниша', 'карниз', 'штора', 'гардина', 'пк', 'пк-12', 'пк-14', 'пк-15',
-    'установка', 'монтаж', 'замер', 'бесплатный',
-    'белый', 'матовый', 'глянцевый', 'цветной', 'ткань', 'тканевый',
-    'квадрат', 'квадратов', 'квадратный', 'метр', 'метров',
-    'на', 'в', 'с', 'и', 'по', 'из', 'для', 'под', 'от', 'до', 'или',
-    'шт', 'штук', 'штуки', 'мп', 'пм', 'погонный', 'погонных',
-    'есть', 'нет', 'нужно', 'можно', 'хочу', 'хотим', 'делаем', 'сделать',
-    'рассказовка', 'понедельник', 'вторник', 'среда', 'четверг', 'пятница',
-    'аккуратный', 'монтаж', 'стены', 'светлые', 'углы', 'угол', 'зазор',
-    'кровать', 'двигать', 'поставить', 'гипсовый', 'панель', 'панели',
-    'вставка', 'закладная', 'профиль',
-}
+# Паттерн для захвата полного слова содержащего стоп-подстроку
+_FULL_WORD_PAT = re.compile(r'[а-яёa-z0-9]+(?:[- ][а-яёa-z0-9]+)*', re.IGNORECASE)
 
 
 def get_skip_reason(text: str) -> dict:
-    """Возвращает причину почему бот отказался считать сам.
-    Возвращает стоп-слова (полные) + все неизвестные слова из текста."""
+    """Возвращает причину почему бот отказался считать сам. Возвращает ПОЛНЫЕ слова."""
     t = text.lower()
-    words = _SINGLE_WORD_PAT.findall(t)
-
-    # 1. Стоп-слова которые заставили бота уйти в LLM
-    stop_words = []
+    # Собираем все полные слова из текста которые содержат стоп-паттерн
+    all_words = _FULL_WORD_PAT.findall(t)
+    matched_full = []
     seen = set()
-    for word in words:
+    for word in all_words:
         if word in seen:
             continue
-        seen.add(word)
         if _COMPLEX_PAT.search(word):
-            stop_words.append(word)
-
-    # 2. Все слова которые бот не знает (не в известном словаре, не числа, не короткие)
-    unknown_words = list(stop_words)  # стоп-слова уже включены
-    seen_unknown = set(stop_words)
-    for word in words:
-        if word in seen_unknown:
-            continue
-        if len(word) <= 2:
-            continue
-        if word.isdigit():
-            continue
-        if word in _KNOWN_WORDS:
-            continue
-        # Проверяем что это не число с единицей (16шт, 3м и т.д.)
-        if re.match(r'^\d+[а-яa-z]{1,3}$', word):
-            continue
-        unknown_words.append(word)
-        seen_unknown.add(word)
-
-    if stop_words or unknown_words:
-        return {
-            'reason': 'complex_keyword',
-            'unknown_word': (stop_words or unknown_words)[0],
-            'unknown_words': unknown_words,
-        }
+            matched_full.append(word)
+            seen.add(word)
+    if matched_full:
+        return {'reason': 'complex_keyword', 'unknown_word': matched_full[0], 'unknown_words': matched_full}
     area_m = re.search(_NUM_WORD_PAT + r'\s*(?:м²|м2|кв\.?\s*м?|квадрат|кв\b)', t)
     if not area_m:
         return {'reason': 'no_area', 'unknown_word': None, 'unknown_words': []}

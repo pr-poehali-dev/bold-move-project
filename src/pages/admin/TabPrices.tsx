@@ -21,12 +21,9 @@ export default function TabPrices({ token, onItemAdded }: Props) {
 
   const load = useCallback(async () => {
     setLoading(true);
-    try {
-      const r = await apiFetch("prices");
-      if (r.ok) { const d = await r.json(); setPrices(d.items); }
-    } finally {
-      setLoading(false);
-    }
+    const r = await apiFetch("prices");
+    if (r.ok) { const d = await r.json(); setPrices(d.items); }
+    setLoading(false);
   }, []);
 
   useEffect(() => { load(); }, [load]);

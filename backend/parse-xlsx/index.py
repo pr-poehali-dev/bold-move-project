@@ -1,4 +1,4 @@
-"""Управление AI: системный промпт, база знаний, быстрые вопросы + импорт XLSX. v4"""
+"""Управление AI: системный промпт, база знаний, быстрые вопросы + импорт XLSX."""
 
 import json
 import os
@@ -10,25 +10,22 @@ from io import BytesIO
 
 XLSX_URL = 'https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/c04d82f2-0303-48f7-b069-9c96c191ffb8.xlsx'
 SCHEMA = os.environ.get('MAIN_DB_SCHEMA', 'public')
-ADMIN_PASSWORD = os.environ.get('ADMIN_PASSWORD', '').strip() or 'Sdauxbasstre228'
+ADMIN_PASSWORD = os.environ.get('ADMIN_PASSWORD', '')
 
 CORS = {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Admin-Token, X-User-Id, X-Auth-Token, X-Session-Id',
-    'Access-Control-Max-Age': '86400',
+    'Access-Control-Allow-Headers': 'Content-Type, X-Admin-Token',
 }
 
 def resp(status, body):
     return {'statusCode': status, 'headers': {**CORS, 'Content-Type': 'application/json'}, 'body': json.dumps(body, ensure_ascii=False)}
 
-def check_auth(headers: dict, qs: dict = None) -> bool:
-    token = (qs.get('_token') or '').strip() if qs else ''
-    if not token:
-        token = (headers.get('x-admin-token', '') or headers.get('X-Admin-Token', '')).strip()
+def check_auth(headers: dict) -> bool:
+    token = headers.get('x-admin-token', '') or headers.get('X-Admin-Token', '')
     if not token or not ADMIN_PASSWORD:
         return False
-    return token == ADMIN_PASSWORD
+    return hashlib.sha256(token.encode()).hexdigest() == hashlib.sha256(ADMIN_PASSWORD.encode()).hexdigest()
 
 def get_conn():
     return psycopg2.connect(os.environ['DATABASE_URL'])
@@ -60,15 +57,20 @@ def handler(event: dict, context) -> dict:
     if event.get('httpMethod') == 'OPTIONS':
         return {'statusCode': 200, 'headers': CORS, 'body': ''}
 
+    method = event.get('httpMethod', 'GET')
     hdrs = event.get('headers') or {}
     qs = event.get('queryStringParameters') or {}
     r = qs.get('r', '')
-    method = qs.get('_method', event.get('httpMethod', 'GET'))
     body_str = event.get('body') or '{}'
 
-    # --- POST ?r=login (всегда пускаем — пароль зашит во фронте)
-    if r == 'login':
-        return resp(200, {'ok': True})
+    # --- POST ?r=login
+    if r == 'login' and method == 'POST':
+        body = json.loads(body_str)
+        password = body.get('password', '')
+        pw_hash = hashlib.sha256(password.encode()).hexdigest()
+        if pw_hash == hashlib.sha256(ADMIN_PASSWORD.encode()).hexdigest():
+            return resp(200, {'token': password})
+        return resp(401, {'error': 'Неверный пароль'})
 
     # --- GET ?r=prompt
     if r == 'prompt' and method == 'GET':
@@ -82,7 +84,7 @@ def handler(event: dict, context) -> dict:
 
     # --- PUT ?r=prompt
     if r == 'prompt' and method == 'PUT':
-        if not check_auth(hdrs, qs):
+        if not check_auth(hdrs):
             return resp(401, {'error': 'Unauthorized'})
         body = json.loads(body_str)
         content = body.get('content', '').strip()
@@ -103,7 +105,7 @@ def handler(event: dict, context) -> dict:
 
     # --- POST ?r=faq
     if r == 'faq' and method == 'POST':
-        if not check_auth(hdrs, qs):
+        if not check_auth(hdrs):
             return resp(401, {'error': 'Unauthorized'})
         body = json.loads(body_str)
         title = body.get('title', '').strip()
@@ -118,7 +120,7 @@ def handler(event: dict, context) -> dict:
 
     # --- PUT ?r=faq&id=X
     if r == 'faq' and method == 'PUT':
-        if not check_auth(hdrs, qs):
+        if not check_auth(hdrs):
             return resp(401, {'error': 'Unauthorized'})
         faq_id = int(qs.get('id', '0'))
         body = json.loads(body_str)
@@ -130,7 +132,7 @@ def handler(event: dict, context) -> dict:
 
     # --- DELETE ?r=faq&id=X
     if r == 'faq' and method == 'DELETE':
-        if not check_auth(hdrs, qs):
+        if not check_auth(hdrs):
             return resp(401, {'error': 'Unauthorized'})
         faq_id = int(qs.get('id', '0'))
         conn = get_conn(); cur = conn.cursor()
@@ -148,7 +150,7 @@ def handler(event: dict, context) -> dict:
 
     # --- POST ?r=questions
     if r == 'questions' and method == 'POST':
-        if not check_auth(hdrs, qs):
+        if not check_auth(hdrs):
             return resp(401, {'error': 'Unauthorized'})
         body = json.loads(body_str)
         pattern = body.get('pattern', '').strip()
@@ -163,7 +165,7 @@ def handler(event: dict, context) -> dict:
 
     # --- PUT ?r=questions&id=X
     if r == 'questions' and method == 'PUT':
-        if not check_auth(hdrs, qs):
+        if not check_auth(hdrs):
             return resp(401, {'error': 'Unauthorized'})
         q_id = int(qs.get('id', '0'))
         body = json.loads(body_str)
@@ -175,7 +177,7 @@ def handler(event: dict, context) -> dict:
 
     # --- DELETE ?r=questions&id=X
     if r == 'questions' and method == 'DELETE':
-        if not check_auth(hdrs, qs):
+        if not check_auth(hdrs):
             return resp(401, {'error': 'Unauthorized'})
         q_id = int(qs.get('id', '0'))
         conn = get_conn(); cur = conn.cursor()
@@ -193,7 +195,7 @@ def handler(event: dict, context) -> dict:
 
     # --- POST ?r=prices  (добавление позиции)
     if r == 'prices' and method == 'POST':
-        if not check_auth(hdrs, qs):
+        if not check_auth(hdrs):
             return resp(401, {'error': 'Unauthorized'})
         body = json.loads(body_str)
         category = body.get('category', '').strip()
@@ -215,7 +217,7 @@ def handler(event: dict, context) -> dict:
 
     # --- PUT ?r=prices&id=X  (обновление цены)
     if r == 'prices' and method == 'PUT':
-        if not check_auth(hdrs, qs):
+        if not check_auth(hdrs):
             return resp(401, {'error': 'Unauthorized'})
         price_id = int(qs.get('id', '0'))
         body = json.loads(body_str)
@@ -229,7 +231,7 @@ def handler(event: dict, context) -> dict:
 
     # --- PUT ?r=prices&rename_category  (переименование категории)
     if r == 'prices' and method == 'PUT' and 'rename_category' in qs:
-        if not check_auth(hdrs, qs):
+        if not check_auth(hdrs):
             return resp(401, {'error': 'Unauthorized'})
         body = json.loads(body_str)
         old_name = body.get('old_name', '').strip()
@@ -243,7 +245,7 @@ def handler(event: dict, context) -> dict:
 
     # --- DELETE ?r=prices&id=X
     if r == 'prices' and method == 'DELETE':
-        if not check_auth(hdrs, qs):
+        if not check_auth(hdrs):
             return resp(401, {'error': 'Unauthorized'})
         price_id = int(qs.get('id', '0'))
         conn = get_conn(); cur = conn.cursor()
@@ -261,7 +263,7 @@ def handler(event: dict, context) -> dict:
 
     # --- PUT ?r=corrections&id=X
     if r == 'corrections' and method == 'PUT':
-        if not check_auth(hdrs, qs):
+        if not check_auth(hdrs):
             return resp(401, {'error': 'Unauthorized'})
         body = json.loads(body_str)
         corr_id = int(qs.get('id', body.get('id', 0)))

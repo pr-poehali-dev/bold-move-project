@@ -217,9 +217,7 @@ export default function TabCorrections({ token }: Props) {
   const [loading, setLoading] = useState(false);
   const [expandedId, setExpandedId] = useState<number | null>(null);
   const [addingWord, setAddingWord] = useState<{ corrId: number; word: string } | null>(null);
-  const [doneWords, setDoneWords] = useState<Record<number, string[]>>(() => {
-    try { return JSON.parse(localStorage.getItem("corrections_done") || "{}"); } catch { return {}; }
-  });
+  const [doneWords, setDoneWords] = useState<Record<number, string[]>>({});
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -236,23 +234,6 @@ export default function TabCorrections({ token }: Props) {
     setItems(prev => prev.map(c => c.id === id ? { ...c, status: status as BotCorrection["status"] } : c));
     setExpandedId(null);
     setAddingWord(null);
-    setDoneWords(prev => {
-      const next = { ...prev };
-      delete next[id];
-      localStorage.setItem("corrections_done", JSON.stringify(next));
-      return next;
-    });
-  };
-
-  const deleteItem = async (id: number) => {
-    await apiFetch("corrections", { method: "PUT", body: JSON.stringify({ id, status: "rejected" }) }, token, id);
-    setItems(prev => prev.filter(c => c.id !== id));
-    setDoneWords(prev => {
-      const next = { ...prev };
-      delete next[id];
-      localStorage.setItem("corrections_done", JSON.stringify(next));
-      return next;
-    });
   };
 
   const pending = items.filter(i => i.status === "pending");
@@ -279,6 +260,12 @@ export default function TabCorrections({ token }: Props) {
         <div className="p-4 flex items-start justify-between gap-3">
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-2 flex-wrap">
+              <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                item.status === "pending" ? "bg-amber-500/20 text-amber-300" :
+                item.status === "approved" ? "bg-green-500/20 text-green-300" : "bg-white/10 text-white/40"
+              }`}>
+                {item.status === "pending" ? "Ожидает" : item.status === "approved" ? "Одобрено" : "Отклонено"}
+              </span>
               <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${isLLM ? "bg-red-500/10 text-red-400" : "bg-green-500/10 text-green-400"}`}>
                 {isLLM ? "Передан в LLM" : "Авторасчёт"}
               </span>
@@ -322,9 +309,7 @@ export default function TabCorrections({ token }: Props) {
                 onAdded={async () => {
                   const word = addingWord!.word;
                   const newDone = [...(doneWords[item.id] ?? []), word];
-                  const updated = { ...doneWords, [item.id]: newDone };
-                  setDoneWords(updated);
-                  localStorage.setItem("corrections_done", JSON.stringify(updated));
+                  setDoneWords(prev => ({ ...prev, [item.id]: newDone }));
                   setAddingWord(null);
                   const remaining = allUnknownWords.filter(w => !newDone.includes(w));
                   if (remaining.length === 0) await update(item.id, "approved");
@@ -333,16 +318,10 @@ export default function TabCorrections({ token }: Props) {
             )}
           </div>
 
-          <div className="flex items-center gap-2 flex-shrink-0 mt-1">
-            <button onClick={() => deleteItem(item.id)} title="Удалить"
-              className="text-white/20 hover:text-red-400 transition">
-              <Icon name="Trash2" size={15} />
-            </button>
-            <button onClick={() => setExpandedId(isExpanded ? null : item.id)}
-              className="text-white/30 hover:text-white/60 transition">
-              <Icon name={isExpanded ? "ChevronUp" : "ChevronDown"} size={16} />
-            </button>
-          </div>
+          <button onClick={() => setExpandedId(isExpanded ? null : item.id)}
+            className="text-white/30 hover:text-white/60 transition mt-1 flex-shrink-0">
+            <Icon name={isExpanded ? "ChevronUp" : "ChevronDown"} size={16} />
+          </button>
         </div>
 
         {/* Детали авторасчёта */}
@@ -387,7 +366,19 @@ export default function TabCorrections({ token }: Props) {
           </div>
         )}
 
-
+        {/* Кнопки действий */}
+        {item.status === "pending" && (
+          <div className="border-t border-white/10 px-4 py-3 flex gap-2">
+            <button onClick={() => update(item.id, "approved")}
+              className="flex-1 bg-green-600/20 hover:bg-green-600/30 text-green-300 text-sm py-2 rounded-lg transition flex items-center justify-center gap-1.5">
+              <Icon name="Check" size={14} /> Принять
+            </button>
+            <button onClick={() => update(item.id, "rejected")}
+              className="flex-1 bg-red-600/10 hover:bg-red-600/20 text-red-400 text-sm py-2 rounded-lg transition flex items-center justify-center gap-1.5">
+              <Icon name="X" size={14} /> Пропустить
+            </button>
+          </div>
+        )}
       </div>
     );
   };
@@ -408,8 +399,15 @@ export default function TabCorrections({ token }: Props) {
 
       {pending.length > 0 && (
         <div className="flex flex-col gap-3">
-          <h3 className="text-amber-300 text-xs font-semibold uppercase tracking-wider">Ожидают обработки ({pending.length})</h3>
+          <h3 className="text-amber-300 text-xs font-semibold uppercase tracking-wider">Ожидают проверки ({pending.length})</h3>
           {pending.map(renderCard)}
+        </div>
+      )}
+
+      {reviewed.length > 0 && (
+        <div className="flex flex-col gap-3">
+          <h3 className="text-white/30 text-xs font-semibold uppercase tracking-wider">Проверенные ({reviewed.length})</h3>
+          {reviewed.map(renderCard)}
         </div>
       )}
     </div>
