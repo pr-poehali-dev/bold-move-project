@@ -79,7 +79,7 @@ def get_prices_block() -> str:
     try:
         conn = psycopg2.connect(os.environ['DATABASE_URL'])
         cur = conn.cursor()
-        cur.execute(f"SELECT category, name, price, unit, description FROM {SCHEMA}.ai_prices WHERE active = true ORDER BY sort_order, id")
+        cur.execute(f"SELECT category, name, price, unit FROM {SCHEMA}.ai_prices WHERE active = true ORDER BY sort_order, id")
         rows = cur.fetchall()
         cur.close()
         conn.close()
@@ -87,12 +87,11 @@ def get_prices_block() -> str:
             return ''
         lines = []
         current_cat = None
-        for category, name, price, unit, description in rows:
+        for category, name, price, unit in rows:
             if category != current_cat:
                 current_cat = category
-                lines.append(f"\n{category.upper()}:")
-            desc_part = f" ({description})" if description and description.strip() else ''
-            lines.append(f"{name} — {price} ₽/{unit}{desc_part}")
+                lines.append(f"\n{category.upper()} (за {unit}):")
+            lines.append(f"{name} — {price}")
         return '\n'.join(lines)
     except Exception as e:
         print(f"[prices] error: {e}")
