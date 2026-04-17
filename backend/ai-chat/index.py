@@ -151,6 +151,8 @@ def try_simple_estimate(text: str) -> str | None:
     else:
         n_lyustra = 1 if lyustra_m else 0
 
+    print(f"[calc] area={area} perim={perim} canvas={canvas_key} n_lyustra={n_lyustra} n_svetilnik={n_svetilnik} svet_raw={all_svet_nums}")
+
     # Ниша для штор — «ниша», «карниз», «штора», «карниз возле шторы»
     has_nisha = bool(re.search(r'ниш[аеуы]?\s*(?:для\s*штор)?|карниз|шторн|штор[аыуе]', t))
 
