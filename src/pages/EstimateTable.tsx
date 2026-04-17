@@ -3,7 +3,7 @@ import Icon from "@/components/ui/icon";
 
 export function isEstimate(text: string) {
   return (
-    (text.includes("Econom") || text.includes("Standard") || text.includes("Premium")) &&
+    (text.includes("ИТОГО") || text.includes("Econom") || text.includes("Standard") || text.includes("Premium")) &&
     (text.includes("₽") || text.includes("руб"))
   );
 }
@@ -41,6 +41,7 @@ export function parseEstimateBlocks(text: string) {
 
     if (/итого/i.test(line)) {
       inTotals = true;
+      totals.push(line);
       continue;
     }
 
@@ -224,9 +225,9 @@ export default function EstimateTable({ text }: { text: string }) {
             <div className="text-[11px] text-white/40 font-montserrat uppercase tracking-widest mb-2">Итого</div>
             <div className="space-y-1">
               {totals.map((t, i) => {
-                const isStandard = /standard/i.test(t);
+                const isHighlight = /standard|итого/i.test(t);
                 return (
-                  <div key={i} className={`flex justify-between text-xs ${isStandard ? "text-orange-400 font-montserrat font-black text-sm" : "text-white/70"}`}>
+                  <div key={i} className={`flex justify-between text-xs ${isHighlight ? "text-orange-400 font-montserrat font-black text-sm" : "text-white/70"}`}>
                     <span>{t.split(":")[0]}:</span>
                     <span className="font-montserrat font-bold">{t.split(":").slice(1).join(":").trim()}</span>
                   </div>
