@@ -236,6 +236,11 @@ export default function TabCorrections({ token }: Props) {
     setAddingWord(null);
   };
 
+  const remove = async (id: number) => {
+    await apiFetch("corrections", { method: "DELETE", body: JSON.stringify({ id }) }, token, id);
+    setItems(prev => prev.filter(c => c.id !== id));
+  };
+
   const pending = items.filter(i => i.status === "pending");
   const reviewed = items.filter(i => i.status !== "pending");
 
@@ -318,11 +323,39 @@ export default function TabCorrections({ token }: Props) {
             )}
           </div>
 
-          <button onClick={() => setExpandedId(isExpanded ? null : item.id)}
-            className="text-white/30 hover:text-white/60 transition mt-1 flex-shrink-0">
-            <Icon name={isExpanded ? "ChevronUp" : "ChevronDown"} size={16} />
-          </button>
+          <div className="flex items-start gap-1 flex-shrink-0">
+            <button onClick={() => setExpandedId(isExpanded ? null : item.id)}
+              className="text-white/30 hover:text-white/60 transition mt-1">
+              <Icon name={isExpanded ? "ChevronUp" : "ChevronDown"} size={16} />
+            </button>
+            <button onClick={() => remove(item.id)}
+              className="text-white/20 hover:text-red-400 transition mt-1 ml-1">
+              <Icon name="X" size={14} />
+            </button>
+          </div>
         </div>
+
+        {/* Детали LLM */}
+        {isExpanded && isLLM && skipInfo && (
+          <div className="border-t border-white/10 p-4 flex flex-col gap-2">
+            {skipInfo.reason && (
+              <div className="flex items-center gap-2 text-xs text-white/50">
+                <Icon name="AlertCircle" size={13} className="text-red-400 flex-shrink-0" />
+                <span>Причина: <span className="text-white/70">{
+                  skipInfo.reason === "complex_keyword" ? "Сложное ключевое слово"
+                  : skipInfo.reason === "no_area" ? "Не указана площадь"
+                  : "Неизвестная причина"
+                }</span></span>
+              </div>
+            )}
+            {allUnknownWords.length > 0 && (
+              <div className="flex items-start gap-2 text-xs text-white/50">
+                <Icon name="Tag" size={13} className="text-amber-400 flex-shrink-0 mt-0.5" />
+                <span>Нераспознанные слова: <span className="text-amber-300">{allUnknownWords.join(", ")}</span></span>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Детали авторасчёта */}
         {isExpanded && !isLLM && data && (

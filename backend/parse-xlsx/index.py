@@ -277,6 +277,17 @@ def handler(event: dict, context) -> dict:
         conn.commit(); cur.close(); conn.close()
         return resp(200, {'ok': True})
 
+    # --- DELETE ?r=corrections&id=X
+    if r == 'corrections' and method == 'DELETE':
+        if not check_auth(hdrs):
+            return resp(401, {'error': 'Unauthorized'})
+        body = json.loads(body_str)
+        corr_id = int(qs.get('id', body.get('id', 0)))
+        conn = get_conn(); cur = conn.cursor()
+        cur.execute(f"DELETE FROM {SCHEMA}.bot_corrections WHERE id = %s", (corr_id,))
+        conn.commit(); cur.close(); conn.close()
+        return resp(200, {'ok': True})
+
     # --- XLSX import (legacy, ?action=read|import)
     action = qs.get('action', '')
     if action in ('read', 'import'):
