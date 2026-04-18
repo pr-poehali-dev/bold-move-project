@@ -82,6 +82,56 @@ _COMPLEX_PAT = re.compile(r'(' + '|'.join(re.escape(w) for w in _COMPLEX_WORDS) 
 # Паттерн для захвата полного слова содержащего стоп-подстроку
 _FULL_WORD_PAT = re.compile(r'[а-яёa-z0-9]+(?:[- ][а-яёa-z0-9]+)*', re.IGNORECASE)
 
+# Паттерны «известных» частей запроса — то что бот уже умеет считать/игнорировать
+_KNOWN_PARTS_PAT = re.compile(
+    r'\d+(?:[.,]\d+)?\s*(?:м²|м2|кв\.?\s*м?|квадрат|кв\b)'  # площадь
+    r'|(?:однушка|двушка|трёшка|студия|комната|зал|спальня|кухня|коридор|прихожая|санузел|ванная|туалет)'  # типы помещений
+    r'|(?:матов|глянц|сатин|текстур|белый|белая|белое|цветн|ткань|тканев|бауф|bauf|evolution|эволюц|premium|премиум|дескор)'  # типы полотна
+    r'|(?:профиль\s*(?:обычный|стандарт|алюминий)?|алюминиев|стеновой)'  # профиль
+    r'|\d+\s*(?:шт|люстр|светильник|gx|закладн)'  # кол-во изделий
+    r'|(?:люстр\w*|светильник\w*|закладн\w*)'  # изделия без кол-ва
+    r'|(?:ниша|карниз|шторн|гардин|штор\w*)'  # ниши
+    r'|(?:пк[- ]?\d+|sigma|брус|бп-?\d+)'  # типы ниш
+    r'|(?:\d+\s*(?:м\.п\.|мп|пм|погон\w*))'  # метраж профиля/ниши
+    r'|(?:вставка|рассказовка|рассказовк\w*)'  # служебные слова
+    r'|(?:есть|нет|да|нет|без|с\b|и\b|в\b|на\b|по\b|из\b|для\b|от\b)',  # стоп-слова
+    re.IGNORECASE
+)
+
+# Паттерны «нюансов» — фраз которые явно описывают сложность работ
+_NUANCE_PAT = re.compile(
+    r'(?:'
+    r'(?:есть|имеется?|будет?)\s+нюанс\w*'
+    r'|сложн\w+\s+монтаж\w*'
+    r'|монтаж\s+сложн\w+'
+    r'|обход\s+\w+'
+    r'|угол\w*\s+(?:кухн|сте|ком)'
+    r'|(?:кухн|мебел)\w*\s+углом'
+    r'|зазор\s+\d+'
+    r'|гипсов\w+\s+панел'
+    r'|угл[ыиа]\s+по\s+\d+'
+    r'|аккуратн\w+\s+монтаж'
+    r'|стены?\s+светл\w+'
+    r'|кровать\s+(?:можно|нельзя|нужно)'
+    r')',
+    re.IGNORECASE
+)
+
+
+def _extract_nuance_phrases(text: str) -> list[str]:
+    """Извлекает фразы-нюансы из текста которые не попадают в стандартный расчёт."""
+    # 1. Явные паттерны нюансов
+    found = [m.group(0).strip() for m in _NUANCE_PAT.finditer(text)]
+
+    # 2. Часть текста после «Есть нюансы» / «Нюансы:» — берём как единый кандидат
+    nuance_block = re.search(r'есть\s+нюанс\w*[:\s]+(.{10,120}?)(?:\.|$)', text, re.IGNORECASE)
+    if nuance_block:
+        block = nuance_block.group(1).strip()
+        if block and block not in found:
+            found.append(block)
+
+    return found
+
 
 def get_skip_reason(text: str) -> dict:
     """Возвращает причину почему бот отказался считать сам. Возвращает ПОЛНЫЕ слова."""
@@ -96,11 +146,18 @@ def get_skip_reason(text: str) -> dict:
         if _COMPLEX_PAT.search(word):
             matched_full.append(word)
             seen.add(word)
+
+    # Добавляем фразы-нюансы как дополнительные кандидаты для обучения
+    nuance_phrases = _extract_nuance_phrases(text)
+    all_candidates = matched_full + [p for p in nuance_phrases if p.lower() not in seen]
+
     if matched_full:
-        return {'reason': 'complex_keyword', 'unknown_word': matched_full[0], 'unknown_words': matched_full}
+        return {'reason': 'complex_keyword', 'unknown_word': matched_full[0], 'unknown_words': all_candidates}
     area_m = re.search(_NUM_WORD_PAT + r'\s*(?:м²|м2|кв\.?\s*м?|квадрат|кв\b)', t)
     if not area_m:
-        return {'reason': 'no_area', 'unknown_word': None, 'unknown_words': []}
+        return {'reason': 'no_area', 'unknown_word': None, 'unknown_words': all_candidates}
+    if all_candidates:
+        return {'reason': 'complex_keyword', 'unknown_word': all_candidates[0], 'unknown_words': all_candidates}
     return {'reason': 'unknown', 'unknown_word': None, 'unknown_words': []}
 
 
