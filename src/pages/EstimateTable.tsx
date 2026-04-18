@@ -104,6 +104,30 @@ export function parseEstimateBlocks(text: string) {
         continue;
       }
 
+      // 3b) "Название × N ед." без цены — LLM пишет qty без price
+      // Пример: "MSD Classic матовый × 41 м²   16 359 ₽" (цена в конце после пробелов)
+      const mulNoPrice = cleanLine.match(new RegExp(
+        `^(.+?)\\s+[×xх]\\s+([\\d][\\d\\s,.]*)\\s*(м²|м2|мп|пм|шт\\.?|м)?\\s+(\\d[\\d\\s]*)\\s*[₽Рруб]`
+      ));
+      if (mulNoPrice) {
+        const name = mulNoPrice[1].trim();
+        const qty = mulNoPrice[2].trim();
+        const unit = mulNoPrice[3] ?? "";
+        const total = mulNoPrice[4].replace(/\s/g, "");
+        current.items.push({ name, value: `${qty} ${unit} = ${total} ₽`.trim() });
+        continue;
+      }
+
+      // 3c) "Название × N ед." — только количество, без итога (вычислить нельзя — показываем как есть)
+      const mulQtyOnly = cleanLine.match(new RegExp(`^(.+?)\\s+[×xх]\\s+([\\d][\\d\\s,.]*)\\s*(м²|м2|мп|пм|шт\\.?|м)?\\s*$`));
+      if (mulQtyOnly) {
+        const name = mulQtyOnly[1].trim();
+        const qty = mulQtyOnly[2].trim();
+        const unit = mulQtyOnly[3] ?? "";
+        current.items.push({ name, value: `${qty} ${unit}`.trim() });
+        continue;
+      }
+
       // 4) "Название — цена" или "Название – цена"
       const dashMatch = cleanLine.match(/^(.+?)\s*[-–—]\s*([\d][\d\s,.]*\s*[₽Рруб].*)$/);
       if (dashMatch) {
