@@ -73,6 +73,20 @@ export function parseEstimateBlocks(text: string) {
       // MUL = любой знак умножения: × (U+00D7), x (latin), х (cyrillic)
       const MUL = "[×xх]";
 
+      // -1) "Название × qty ед.  ИТОГО ₽" — LLM формат без цены
+      // Пример: "MSD Classic матовый × 70 м²  27 930 ₽"
+      const llmFormat = cleanLine.match(new RegExp(
+        `^(.+?)\\s*${MUL}\\s*([\\d][\\d\\s,.]*)\\s*(м²|м2|мп|пм|шт\\.?|шт|м\\.п\\.?|м)?[\\s\\t]+([\\d][\\d\\s]*)\\s*[₽Рруб]`
+      ));
+      if (llmFormat) {
+        const name = llmFormat[1].trim();
+        const qty = llmFormat[2].trim();
+        const unit = (llmFormat[3] ?? "").trim();
+        const totalRaw = llmFormat[4].replace(/\s/g, "");
+        current.items.push({ name, value: `${qty}${unit ? " " + unit : ""} = ${totalRaw} ₽` });
+        continue;
+      }
+
       // 0) "Название ПРОБЕЛ qty(ед) × price ₽ = total ₽" — формат нашего бэкенда
       //    Название заканчивается перед числом+единицей измерения (мп, пм, м², шт.)
       const calcBackend = cleanLine.match(new RegExp(
@@ -225,6 +239,8 @@ export default function EstimateTable({ text }: { text: string }) {
 
                       // Чистим формулу от лишнего "= ..." в конце если осталось
                       formula = formula.replace(/\s*=\s*[\d\s]+[₽Рруб].*$/, "").trim();
+                      // Показываем формулу только если она содержит × (цена × кол-во)
+                      if (formula && !/[×xх]/.test(formula)) formula = "";
 
                       return (
                         <tr key={`r-${bi}-${ii}`} className={`hover:bg-white/3 transition-colors ${ii > 0 ? "border-t border-white/5" : ""}`}>
