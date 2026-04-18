@@ -183,11 +183,12 @@ export default function TabPrices({ token, onItemAdded }: Props) {
                           onClick={() => generateSynonyms(item)}
                           disabled={aiLoadingId === item.id}
                           title="Сгенерировать синонимы через AI"
-                          className="flex-shrink-0 text-white/20 hover:text-violet-400 disabled:opacity-40 transition">
+                          className="flex-shrink-0 bg-violet-600/20 hover:bg-violet-600/40 border border-violet-500/30 text-violet-400 rounded px-1.5 py-0.5 disabled:opacity-40 transition flex items-center gap-1">
                           {aiLoadingId === item.id
-                            ? <Icon name="Loader" size={12} className="animate-spin" />
-                            : <Icon name="Sparkles" size={12} />
+                            ? <Icon name="Loader" size={11} className="animate-spin" />
+                            : <Icon name="Sparkles" size={11} />
                           }
+                          <span className="text-[10px]">AI</span>
                         </button>
                       </div>
                     </td>
