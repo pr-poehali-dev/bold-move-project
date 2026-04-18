@@ -55,11 +55,11 @@ export default function Index() {
     };
   }, [messages]);
 
-  const sendPreset = (text: string) => { isPresetMsg.current = true; sendMsg(text); };
+  const sendPreset = (text: string) => { isPresetMsg.current = true; sendMsg(text, true); };
 
   const BOOKING_RE = /запис|замер|выезд|приедет|технолог|вызов|когда приедет|вызвать|заказать замер/i;
 
-  const sendMsg = useCallback((text: string) => {
+  const sendMsg = useCallback((text: string, fast = false) => {
     if (!text.trim() || typing) return;
     const userMsg: Msg = { id: Date.now(), role: "user", text: text.trim() };
     setMessages((p) => [...p, userMsg]);
@@ -69,7 +69,7 @@ export default function Index() {
     const history = [...messages, userMsg].slice(-6).map((m) => ({ role: m.role, text: m.text }));
     const ctrl = new AbortController();
     const timer = setTimeout(() => ctrl.abort(), 90000);
-    fetch(AI_URL, { method: "POST", headers: { "Content-Type": "application/json", "X-Session-Id": sessionStorage.getItem("sid") || "" }, body: JSON.stringify({ messages: history }), signal: ctrl.signal })
+    fetch(AI_URL, { method: "POST", headers: { "Content-Type": "application/json", "X-Session-Id": sessionStorage.getItem("sid") || "" }, body: JSON.stringify({ messages: history, fast }), signal: ctrl.signal })
       .then((r) => r.json())
       .then((d) => setMessages((p) => [...p, { id: Date.now() + 1, role: "assistant", text: d.answer || localAnswer(text), items: d.items }]))
       .catch(() => setMessages((p) => [...p, { id: Date.now() + 1, role: "assistant", text: localAnswer(text) }]))

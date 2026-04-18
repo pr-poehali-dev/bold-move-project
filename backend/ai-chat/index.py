@@ -946,11 +946,11 @@ def handler(event, context):
 
     body = json.loads(event.get('body', '{}'))
     messages = body.get('messages', [])
+    fast = body.get('fast', False)
 
     if not messages:
         return {'statusCode': 400, 'headers': cors, 'body': json.dumps({'error': 'No messages provided'})}
 
-    # Кэш: отвечаем мгновенно без вызова LLM
     last_user_text = ''
     for msg in reversed(messages):
         if msg.get('role') == 'user':
@@ -959,8 +959,14 @@ def handler(event, context):
 
     session_id = event.get('headers', {}).get('x-session-id', '') or event.get('headers', {}).get('X-Session-Id', '')
 
-    # Автоматический расчёт отключён — все запросы идут в LLM
-    # Сохраняем в обучение факт что запрос ушёл в LLM
+    # fast=True — кнопка "Пример расчёта", используем авто-расчёт
+    if fast:
+        cached = get_cached_answer(last_user_text, session_id)
+        if cached:
+            answer = cached[0] if isinstance(cached, tuple) else cached
+            return {'statusCode': 200, 'headers': cors, 'body': json.dumps({'answer': answer})}
+
+    # Обычные запросы — всегда в LLM
     skip_info = get_skip_reason(last_user_text.lower().strip())
     save_correction(last_user_text, skip_info, session_id)
 
