@@ -1,1 +1,7 @@
-{}
+{
+  "live-chat": "https://functions.poehali.dev/5d6b4c0b-fe66-4dfa-8c5a-cb108a53ffd8",
+  "generate-pdf": "https://functions.poehali.dev/813ac55a-206a-4da9-9183-7f2860590654",
+  "whisper-transcribe": "https://functions.poehali.dev/30aa899c-e961-461c-822b-d0eff073c5a3",
+  "parse-xlsx": "https://functions.poehali.dev/c5547f30-5c45-41ed-a836-fc238cc5e794",
+  "ai-chat": "https://functions.poehali.dev/f05382e5-8616-4209-bce6-00d9bcf86686"
+}

@@ -256,6 +256,15 @@ def _text_covered_by_synonyms(text: str, known: set[str]) -> bool:
 
 def try_simple_estimate(text: str) -> tuple[str, dict] | None:
     """Детерминированный расчёт сметы. Возвращает (текст_ответа, recognized_dict) или None."""
+    try:
+        return _try_simple_estimate_inner(text)
+    except Exception as e:
+        print(f"[calc] EXCEPTION in try_simple_estimate: {e}")
+        import traceback; traceback.print_exc()
+        return None
+
+
+def _try_simple_estimate_inner(text: str) -> tuple[str, dict] | None:
     t = text.lower()
 
     # ── ПРОСТОЙ РЕЖИМ: авторасчёт только для коротких простых запросов ────────
@@ -961,10 +970,14 @@ def handler(event, context):
 
     # fast=True — кнопка "Пример расчёта", используем авто-расчёт
     if fast:
-        cached = get_cached_answer(last_user_text, session_id)
-        if cached:
-            answer = cached[0] if isinstance(cached, tuple) else cached
-            return {'statusCode': 200, 'headers': cors, 'body': json.dumps({'answer': answer})}
+        try:
+            cached = get_cached_answer(last_user_text, session_id)
+            if cached:
+                answer = cached[0] if isinstance(cached, tuple) else cached
+                return {'statusCode': 200, 'headers': cors, 'body': json.dumps({'answer': answer})}
+        except Exception as e:
+            print(f"[fast] error in get_cached_answer: {e}")
+            import traceback; traceback.print_exc()
 
     # Обычные запросы — всегда в LLM
     skip_info = get_skip_reason(last_user_text.lower().strip())
