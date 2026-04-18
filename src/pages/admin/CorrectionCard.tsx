@@ -56,7 +56,8 @@ export default function CorrectionCard({
     ...baseUnknownWords.filter(w => !extraWords.some(e => e.includes(w) && e !== w)),
     ...extraWords,
   ];
-  const unknownWords = allUnknownWords.filter(w => !doneWords.includes(w));
+  // Показываем все теги — done подсвечиваются зелёным, не убираются
+  const unknownWords = allUnknownWords;
 
   const isMergeMode = mergeFirst?.corrId === item.id;
 
@@ -137,26 +138,36 @@ export default function CorrectionCard({
               {unknownWords.map(w => {
                 const isMergeSelected = isMergeMode && mergeFirst?.word === w;
                 const isSelected = selectedWords.includes(w);
-                const known = isKnown(w);
+                const isDone = doneWords.includes(w);
+                const known = !isDone && isKnown(w);
+
+                // Зелёный: сохранено в этой сессии или уже есть в прайсе
+                const isGreen = isDone || known;
+
+                if (isGreen) {
+                  return (
+                    <div key={w} className="flex items-center gap-0.5">
+                      <span className="text-xs px-2.5 py-1 rounded-full border bg-green-500/10 border-green-500/30 text-green-300 flex items-center gap-1.5">
+                        <Icon name="Check" size={10} />
+                        «{w}»
+                      </span>
+                    </div>
+                  );
+                }
 
                 return (
                   <div key={w} className="flex items-center gap-0.5">
                     <button
                       onClick={() => handleTagClick(w)}
-                      title={known ? "Уже обучен — есть в прайсе" : undefined}
                       className={`text-xs px-2.5 py-1 rounded-full border transition flex items-center gap-1.5 ${
                         isMergeSelected
                           ? "bg-amber-500/20 border-amber-500/50 text-amber-300"
                           : isSelected
                           ? "bg-violet-600/30 border-violet-500/50 text-violet-300"
-                          : known
-                          ? "bg-green-500/10 border-green-500/30 text-green-300 hover:bg-green-500/20"
                           : "bg-red-500/10 border-red-500/30 text-red-300 hover:bg-red-500/20"
                       }`}>
                       {isSelected
                         ? <Icon name="CheckSquare" size={10} />
-                        : known
-                        ? <Icon name="Check" size={10} />
                         : <Icon name="Tag" size={10} />
                       }
                       «{w}»
@@ -192,7 +203,8 @@ export default function CorrectionCard({
                 onDoneWordsChange(newDone);
                 setSelectedWords([]);
                 setPanelOpen(false);
-                const remaining = allUnknownWords.filter(w => !newDone.includes(w));
+                // remaining — только те которые не зелёные и не игнорированы
+                const remaining = allUnknownWords.filter(w => !newDone.includes(w) && !isKnown(w));
                 if (remaining.length === 0) await onUpdate("approved");
               }}
             />
