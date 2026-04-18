@@ -317,22 +317,22 @@ export default function EstimateTable({ text, items }: { text: string; items?: L
         </table>
 
         {totals.length > 0 && (
-          <div className="border-t border-orange-500/30 bg-gradient-to-r from-orange-500/10 to-rose-500/10 px-3 py-3 flex justify-end">
-            <div className="space-y-1 min-w-[260px]">
+          <div className="border-t border-orange-500/30 bg-gradient-to-r from-orange-500/10 to-rose-500/10 px-3 py-3">
+            <div className="space-y-1">
               {totals.map((t, i) => {
                 const isHeader = /итогов|итого стоим/i.test(t) && !t.includes("Econom") && !t.includes("Standard") && !t.includes("Premium");
                 const isHighlight = /standard/i.test(t);
                 if (isHeader) {
                   return (
-                    <div key={i} className="text-white/50 text-[11px] font-montserrat uppercase tracking-widest mb-1">
+                    <div key={i} className="text-white/50 text-[11px] font-montserrat uppercase tracking-widest mb-1 text-right">
                       {t.replace(/:$/, "")}
                     </div>
                   );
                 }
                 return (
-                  <div key={i} className={`flex justify-between gap-6 text-xs ${isHighlight ? "text-orange-400 font-montserrat font-black text-sm" : "text-white/70"}`}>
+                  <div key={i} className={`flex justify-end gap-4 text-xs ${isHighlight ? "text-orange-400 font-montserrat font-black text-sm" : "text-white/70"}`}>
                     <span>{t.split(":")[0]}:</span>
-                    <span className="font-montserrat font-bold text-right">{t.split(":").slice(1).join(":").trim()}</span>
+                    <span className="font-montserrat font-bold w-24 text-right">{t.split(":").slice(1).join(":").trim()}</span>
                   </div>
                 );
               })}
