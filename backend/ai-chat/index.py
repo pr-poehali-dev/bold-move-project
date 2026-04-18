@@ -194,10 +194,25 @@ def try_simple_estimate(text: str) -> tuple[str, dict] | None:
     """Детерминированный расчёт сметы. Возвращает (текст_ответа, recognized_dict) или None."""
     t = text.lower()
 
-    # Не перехватываем сложные случаи — отдаём в LLM
+    # Сложные слова — отдаём в LLM, ЕСЛИ хотя бы одно не покрыто синонимом из прайса.
+    # Если все сложные слова уже есть в прайсе как синонимы — считаем детерминировано
+    # (dynamic_extras подхватит их ниже при загрузке правил).
     if _COMPLEX_PAT.search(t):
-        print(f"[calc] skip: complex keyword in '{t[:60]}'")
-        return None
+        known = _get_known_synonyms()
+        # Извлекаем полные слова/фразы из текста содержащие стоп-подстроки
+        all_words = _FULL_WORD_PAT.findall(t)
+        complex_words = []
+        seen = set()
+        for w in all_words:
+            if w not in seen and _COMPLEX_PAT.search(w):
+                complex_words.append(w)
+                seen.add(w)
+        uncovered = [w for w in complex_words
+                     if not any(w in syn or syn in w for syn in known)]
+        if uncovered:
+            print(f"[calc] skip: uncovered complex words {uncovered} in '{t[:60]}'")
+            return None
+        print(f"[calc] all complex words covered by synonyms, proceeding '{t[:60]}'")
 
 
     # Ищем площадь — цифрой или словом
