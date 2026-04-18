@@ -25,6 +25,13 @@ export interface PriceItem {
   active: boolean;
 }
 
+export interface SuggestedItem {
+  name: string;
+  qty: number;
+  price: number;
+  total: number;
+}
+
 export interface BotCorrection {
   id: number;
   session_id: string;
@@ -33,4 +40,5 @@ export interface BotCorrection {
   corrected_json: Record<string, unknown> | null;
   status: "pending" | "approved" | "rejected";
   created_at: string;
+  suggested_items: SuggestedItem[] | null;
 }

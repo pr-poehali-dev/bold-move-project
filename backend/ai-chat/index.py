@@ -496,6 +496,80 @@ def try_simple_estimate(text: str) -> tuple[str, dict] | None:
     return '\n'.join(lines), recognized
 
 
+def _parse_llm_items(answer: str) -> list[dict]:
+    """Парсит текстовый ответ LLM и извлекает позиции сметы.
+    Ищет строки вида: 'Название позиции N ед. × P ₽ = T ₽'
+    """
+    items = []
+    # Паттерн: название × цифра ед × цена = итого
+    line_pat = re.compile(
+        r'^[\s\-•]*(.+?)\s+'
+        r'(\d+(?:[.,]\d+)?)\s*(?:шт\.?|м\.?п?\.?|м²|пог\.?м?|уп\.?|кат\.?)?\s*'
+        r'[×xх]\s*(\d[\d\s]*)\s*₽\s*=\s*(\d[\d\s]*)\s*₽',
+        re.MULTILINE | re.IGNORECASE
+    )
+    for m in line_pat.finditer(answer):
+        name = m.group(1).strip().rstrip(':').strip()
+        if len(name) < 3 or len(name) > 80:
+            continue
+        try:
+            qty = float(m.group(2).replace(',', '.'))
+            price = int(re.sub(r'\s', '', m.group(3)))
+            total = int(re.sub(r'\s', '', m.group(4)))
+        except Exception:
+            continue
+        items.append({'name': name, 'qty': qty, 'price': price, 'total': total})
+    return items
+
+
+def _extract_and_save_suggestions(answer: str, user_text: str, session_id: str, rules: list) -> None:
+    """Извлекает из ответа LLM позиции которых нет в прайсе и сохраняет как suggested_items."""
+    items = _parse_llm_items(answer)
+    if not items:
+        return
+
+    # Все известные имена и синонимы из прайса
+    known = set()
+    for r in rules:
+        known.add(r['name'].lower())
+        if r.get('synonyms'):
+            for s in r['synonyms'].split(','):
+                s = s.strip().lower()
+                if s:
+                    known.add(s)
+
+    # Фильтруем — оставляем только то чего нет в прайсе
+    new_items = []
+    for item in items:
+        nl = item['name'].lower()
+        is_known = any(nl == k or nl in k or k in nl for k in known)
+        if not is_known:
+            new_items.append(item)
+            print(f"[suggestions] new item: {item['name']} {item['price']}₽")
+
+    if not new_items:
+        return
+
+    # Обновляем последнюю запись bot_corrections для этой сессии
+    try:
+        conn = psycopg2.connect(os.environ['DATABASE_URL'])
+        cur = conn.cursor()
+        cur.execute(
+            f"""UPDATE {SCHEMA}.bot_corrections
+                SET suggested_items = %s
+                WHERE id = (
+                    SELECT id FROM {SCHEMA}.bot_corrections
+                    WHERE session_id = %s AND user_text = %s
+                    ORDER BY created_at DESC LIMIT 1
+                )""",
+            (json.dumps(new_items, ensure_ascii=False), session_id, user_text)
+        )
+        conn.commit(); cur.close(); conn.close()
+        print(f"[suggestions] saved {len(new_items)} suggestions for session {session_id}")
+    except Exception as e:
+        print(f"[suggestions] db error: {e}")
+
+
 def get_cached_answer(text: str, session_id: str = '') -> tuple[str, dict] | str | None:
     """Проверяет кэш и простой расчёт. Возвращает (ответ, recognized) или строку или None."""
     text_lower = text.lower().strip()
@@ -649,10 +723,14 @@ def handler(event, context):
     knowledge = get_knowledge(last_user_text)
     system_content = get_system_prompt(fallback=SYSTEM_PROMPT)
     prices_block = get_prices_block()
+    _rules_for_suggestions = get_price_rules()
     if prices_block:
         system_content += f"\n\n=== АКТУАЛЬНЫЙ ПРАЙС-ЛИСТ ==={prices_block}"
     if knowledge:
         system_content += f"\n\n=== БАЗА ЗНАНИЙ ===\n{knowledge}"
+    rules_hint = build_rules_prompt(_rules_for_suggestions)
+    if rules_hint:
+        system_content += rules_hint
 
     # Веб-поиск для актуальной информации
     search = web_search(last_user_text)
@@ -668,6 +746,12 @@ def handler(event, context):
         })
 
     answer = call_llm(openai_messages)
+
+    # ─── АВТО-ОБУЧЕНИЕ: извлекаем позиции из ответа LLM ──────────────────────
+    try:
+        _extract_and_save_suggestions(answer, last_user_text, session_id, _rules_for_suggestions)
+    except Exception as e:
+        print(f"[suggestions] error: {e}")
 
     # Убираем мусорные фразы от LLM
     _junk = [

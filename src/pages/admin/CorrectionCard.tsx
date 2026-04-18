@@ -2,6 +2,7 @@ import { useState } from "react";
 import Icon from "@/components/ui/icon";
 import HighlightedText from "./HighlightedText";
 import AddSynonymPanel from "./AddSynonymPanel";
+import SuggestedItemsPanel from "./SuggestedItemsPanel";
 import type { BotCorrection, PriceItem } from "./types";
 import type { SkipInfo, RecognizedData } from "./corrections.types";
 import { RECOGNIZED_LABELS } from "./corrections.types";
@@ -272,6 +273,17 @@ export default function CorrectionCard({
             </table>
           </div>
         </div>
+      )}
+
+      {/* Предложения LLM — новые позиции для прайса */}
+      {item.status === "pending" && item.suggested_items && item.suggested_items.length > 0 && (
+        <SuggestedItemsPanel
+          correctionId={item.id}
+          items={item.suggested_items}
+          prices={prices}
+          token={token}
+          onDone={() => onUpdate("approved")}
+        />
       )}
 
       {/* Кнопки действий — только для авторасчёта */}
