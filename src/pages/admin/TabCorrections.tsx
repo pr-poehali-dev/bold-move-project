@@ -35,25 +35,15 @@ export default function TabCorrections({ token }: Props) {
     });
   };
 
-  const [threshold, setThreshold] = useState(0);
-  const [thresholdSaving, setThresholdSaving] = useState(false);
-
   const load = useCallback(async () => {
     setLoading(true);
-    const [cr, pr, st] = await Promise.all([apiFetch("corrections"), apiFetch("prices"), apiFetch("settings")]);
+    const [cr, pr] = await Promise.all([apiFetch("corrections"), apiFetch("prices")]);
     if (cr.ok) { const d = await cr.json(); setItems(d.items); }
     if (pr.ok) { const d = await pr.json(); setPrices(d.items); }
-    if (st.ok) { const d = await st.json(); setThreshold(parseInt(d.llm_threshold ?? "0")); }
     setLoading(false);
   }, []);
 
   useEffect(() => { load(); }, [load]);
-
-  const saveThreshold = async (val: number) => {
-    setThresholdSaving(true);
-    await apiFetch("settings", { method: "PUT", body: JSON.stringify({ llm_threshold: val }) }, token);
-    setThresholdSaving(false);
-  };
 
   const update = async (id: number, status: string) => {
     await apiFetch("corrections", { method: "PUT", body: JSON.stringify({ id, status }) }, token, id);
@@ -78,36 +68,6 @@ export default function TabCorrections({ token }: Props) {
         <div className="text-sm">
           <span className="text-amber-300 font-medium">Обучение бота.</span>
           <span className="text-white/50 ml-1">Красным выделены слова которые бот не знает. Нажмите на слово → выберите позицию → бот запомнит синоним и в следующий раз распознает сам.</span>
-        </div>
-      </div>
-
-      {/* Ползунок LLM / Авторасчёт */}
-      <div className="bg-white/[0.03] border border-white/10 rounded-xl px-4 py-3 flex flex-col gap-2">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Icon name="SlidersHorizontal" size={14} className="text-white/40" />
-            <span className="text-xs text-white/60 font-medium">Режим расчёта</span>
-          </div>
-          <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
-            threshold === 0 ? "bg-blue-500/20 text-blue-300"
-            : threshold === 100 ? "bg-green-500/20 text-green-300"
-            : "bg-violet-500/20 text-violet-300"
-          }`}>
-            {threshold < 100 ? `LLM для сложных (${threshold})` : "Всё в Авторасчёт"}
-          </span>
-        </div>
-        <input
-          type="range" min={0} max={100} step={10}
-          value={threshold}
-          onChange={e => setThreshold(parseInt(e.target.value))}
-          onMouseUp={e => saveThreshold(parseInt((e.target as HTMLInputElement).value))}
-          onTouchEnd={e => saveThreshold(parseInt((e.target as HTMLInputElement).value))}
-          className="w-full accent-violet-500 cursor-pointer"
-        />
-        <div className="flex justify-between text-xs text-white/25">
-          <span>← Сложные → LLM</span>
-          <span className="text-violet-400/60">{thresholdSaving ? "Сохраняю..." : ""}</span>
-          <span>Всё в Авторасчёт →</span>
         </div>
       </div>
 
