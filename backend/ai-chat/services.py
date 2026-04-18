@@ -157,7 +157,7 @@ def call_llm(messages):
             'HTTP-Referer': 'https://mospotolki.ru',
         }
         for model in OR_MODELS:
-            payload = {'model': model, 'messages': messages, 'max_tokens': 1800, 'temperature': 0}
+            payload = {'model': model, 'messages': messages, 'max_tokens': 3000, 'temperature': 0}
             try:
                 resp = requests.post('https://openrouter.ai/api/v1/chat/completions', json=payload, headers=headers, timeout=55)
                 if resp.status_code == 200:
