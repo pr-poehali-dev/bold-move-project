@@ -289,11 +289,20 @@ def try_simple_estimate(text: str) -> tuple[str, dict] | None:
     _svet_syn = _synonyms_pattern('Светильник GX-53 + лампа', _svet_base)
     all_svet_nums = re.findall(_NUM_WORD_PAT + r'\s*(?:точечн\w*\s*)?(?:' + _svet_syn + r')', t)
     all_svet_nums += re.findall(r'добавить\s+(?:ещё\s+)?' + _NUM_WORD_PAT + r'\s*(?:точечн|светильник)?', t)
+    # Формат: "8шт закладная под светильник" или "8 закладных под светильник"
+    all_svet_nums += re.findall(_NUM_WORD_PAT + r'\s*шт\.?\s*закладн\w*\s+под\s+(?:точечн\w*\s*)?светильник', t)
+    all_svet_nums += re.findall(_NUM_WORD_PAT + r'\s*закладн\w*\s+под\s+(?:точечн\w*\s*)?светильник', t)
     n_svetilnik = sum(int(_w2n(x)) for x in all_svet_nums)
 
     # Люстра — цифрой или словом
     lyustra_m = re.search(_NUM_WORD_PAT + r'?\s*люстр', t)
-    if lyustra_m and lyustra_m.group(1):
+    # Формат: "4шт закладная под люстру" или "4 закладных под люстру/подвесной"
+    lyustra_zakl_m = re.search(_NUM_WORD_PAT + r'\s*шт\.?\s*закладн\w*\s+под\s+люстр', t)
+    if not lyustra_zakl_m:
+        lyustra_zakl_m = re.search(_NUM_WORD_PAT + r'\s*закладн\w*\s+под\s+люстр', t)
+    if lyustra_zakl_m and lyustra_zakl_m.group(1):
+        n_lyustra = int(_w2n(lyustra_zakl_m.group(1)))
+    elif lyustra_m and lyustra_m.group(1):
         n_lyustra = int(_w2n(lyustra_m.group(1)))
     else:
         n_lyustra = 1 if lyustra_m else 0
