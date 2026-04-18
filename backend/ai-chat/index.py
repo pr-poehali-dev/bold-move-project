@@ -195,13 +195,9 @@ def try_simple_estimate(text: str) -> tuple[str, dict] | None:
     t = text.lower()
 
     # Не перехватываем сложные случаи — отдаём в LLM
-    # НО: если сложное слово уже есть как синоним в прайсе — считаем сами
     if _COMPLEX_PAT.search(t):
-        known = _get_known_synonyms()
-        if not _text_covered_by_synonyms(t, known):
-            print(f"[calc] skip: complex keyword not in synonyms '{t[:60]}'")
-            return None
-        print(f"[calc] complex keyword covered by synonym, proceeding '{t[:60]}'")
+        print(f"[calc] skip: complex keyword in '{t[:60]}'")
+        return None
 
 
     # Ищем площадь — цифрой или словом

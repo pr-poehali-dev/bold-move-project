@@ -183,10 +183,11 @@ def save_correction(user_text: str, recognized_json: dict | None, session_id: st
 
 
 def build_rules_prompt(rules: list) -> str:
-    """Строит блок для SYSTEM_PROMPT с правилами расчёта и комплектами."""
+    """Строит блок для SYSTEM_PROMPT с правилами расчёта, синонимами и комплектами."""
     lines = ['\n=== ПРАВИЛА РАСЧЁТА ПО УМОЛЧАНИЮ (если клиент не указал количество) ===']
     id_to_name = {r['id']: r['name'] for r in rules}
 
+    synonym_lines = []
     for r in rules:
         parts = []
         if r['calc_rule']:
@@ -202,4 +203,14 @@ def build_rules_prompt(rules: list) -> str:
         if parts:
             lines.append(f"• {r['name']}: {'; '.join(parts)}")
 
-    return '\n'.join(lines) if len(lines) > 1 else ''
+        # Синонимы — подсказываем LLM как распознавать позицию
+        if r.get('synonyms'):
+            syns = [s.strip() for s in r['synonyms'].split(',') if s.strip()]
+            if syns:
+                synonym_lines.append(f"• «{r['name']}» распознаётся также как: {', '.join(syns)}")
+
+    result = '\n'.join(lines) if len(lines) > 1 else ''
+    if synonym_lines:
+        result += '\n\n=== СИНОНИМЫ ПОЗИЦИЙ (используй для распознавания в запросе клиента) ===\n'
+        result += '\n'.join(synonym_lines)
+    return result
