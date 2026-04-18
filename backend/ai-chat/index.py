@@ -156,7 +156,11 @@ def get_skip_reason(text: str) -> dict:
 
     if matched_full:
         return {'reason': 'complex_keyword', 'unknown_word': matched_full[0], 'unknown_words': all_candidates}
-    area_m = re.search(_NUM_WORD_PAT + r'\s*(?:м²|м2|кв\.?\s*м?|квадрат|кв\b)', t)
+    area_m = (
+        re.search(_NUM_WORD_PAT + r'\s*(?:м²|м2|кв\.?\s*м?|квадрат|кв\b)', t) or
+        re.search(r'(?:санузел|комнат|зал|спальн|кухн|прихожа|гостин|студи|детск|коридор|ванн|туалет)[^0-9а-яё]{0,20}?' + _NUM_WORD_PAT + r'\s*м\b', t) or
+        re.search(r'[-–]\s*' + _NUM_WORD_PAT + r'\s*м\b', t)
+    )
     if not area_m:
         return {'reason': 'no_area', 'unknown_word': None, 'unknown_words': all_candidates}
     if all_candidates:
@@ -230,11 +234,21 @@ def try_simple_estimate(text: str) -> tuple[str, dict] | None:
             print(f"[calc] all complex covered by exceptions, proceeding '{t[:60]}'")
 
 
-    # Ищем площадь — цифрой или словом
+    # Ищем площадь — цифрой или словом (м², м2, кв.м, квадрат)
     m = re.search(_NUM_WORD_PAT + r'\s*(?:м²|м2|кв\.?\s*м?|квадрат|кв\b)', t)
     if not m:
-        print(f"[calc] skip: no area in '{t[:60]}'")
-        return None
+        # Fallback: число + "м" рядом с названием помещения (санузел 26м, комната 20м)
+        m = re.search(
+            r'(?:санузел|комнат|зал|спальн|кухн|прихожа|гостин|студи|детск|коридор|ванн|туалет)'
+            r'[^0-9а-яё]{0,20}?' + _NUM_WORD_PAT + r'\s*м\b',
+            t
+        )
+        if not m:
+            # Fallback 2: просто "- 26м" или "S - 26м" (формат обозначения площади)
+            m = re.search(r'[-–]\s*' + _NUM_WORD_PAT + r'\s*м\b', t)
+        if not m:
+            print(f"[calc] skip: no area in '{t[:60]}'")
+            return None
     area = _w2n(m.group(1))
     if area < 1 or area > 500:
         return None
