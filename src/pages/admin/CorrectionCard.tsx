@@ -212,10 +212,12 @@ export default function CorrectionCard({
         </div>
 
         <div className="flex items-start gap-1 flex-shrink-0">
-          <button onClick={onToggleExpand}
-            className="text-white/30 hover:text-white/60 transition mt-1">
-            <Icon name={isExpanded ? "ChevronUp" : "ChevronDown"} size={16} />
-          </button>
+          {!isLLM && (
+            <button onClick={onToggleExpand}
+              className="text-white/30 hover:text-white/60 transition mt-1">
+              <Icon name={isExpanded ? "ChevronUp" : "ChevronDown"} size={16} />
+            </button>
+          )}
           <button onClick={onRemove}
             className="text-white/20 hover:text-red-400 transition mt-1 ml-1">
             <Icon name="X" size={14} />
