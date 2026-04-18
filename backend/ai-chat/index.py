@@ -1003,16 +1003,35 @@ def handler(event, context):
 
     answer = call_llm(openai_messages)
 
-    # ─── АВТО-ОБУЧЕНИЕ: извлекаем JSON-блок из ответа LLM ────────────────────
+    # ─── ИЗВЛЕКАЕМ %%ITEMS%% если LLM добавила ────────────────────────────────
     llm_items_json = None
     items_match = re.search(r'%%ITEMS%%(.+?)%%END%%', answer, re.DOTALL)
     if items_match:
         answer = answer.replace(items_match.group(0), '').strip()
         try:
             llm_items_json = json.loads(items_match.group(1).strip())
-            print(f"[suggestions] parsed JSON items: {len(llm_items_json.get('items', []))} items")
+            print(f"[items] from %%ITEMS%%: {len(llm_items_json.get('items', []))} items")
         except Exception as e:
-            print(f"[suggestions] JSON parse error: {e}")
+            print(f"[items] JSON parse error: {e}")
+
+    # ─── ЕСЛИ %%ITEMS%% нет — второй быстрый вызов для структурирования ───────
+    if not llm_items_json and ('₽' in answer or 'руб' in answer.lower()):
+        try:
+            struct_prompt = f"""Из текста сметы извлеки все позиции в JSON.
+Отвечай ТОЛЬКО валидным JSON, без пояснений:
+{{"items":[{{"name":"Название","qty":1,"price":399,"unit":"м²"}}]}}
+
+Текст сметы:
+{answer[:2000]}"""
+            struct_msgs = [{'role': 'user', 'content': struct_prompt}]
+            struct_answer = call_llm(struct_msgs)
+            # Ищем JSON в ответе
+            json_match = re.search(r'\{.+\}', struct_answer, re.DOTALL)
+            if json_match:
+                llm_items_json = json.loads(json_match.group(0))
+                print(f"[items] from 2nd call: {len(llm_items_json.get('items', []))} items")
+        except Exception as e:
+            print(f"[items] 2nd call error: {e}")
 
     # ─── ПАТЧ ТЕКСТА: заменяем строки без цены используя данные из JSON ──────
     if llm_items_json and llm_items_json.get('items'):
