@@ -1,0 +1,161 @@
+import { useState } from "react";
+import Icon from "@/components/ui/icon";
+import { apiFetch } from "./api";
+import type { PriceItem } from "./types";
+
+interface Props {
+  word: string;
+  prices: PriceItem[];
+  token: string;
+  onAdded: (priceName: string) => void;
+}
+
+export default function AddSynonymPanel({ word, prices, token, onAdded }: Props) {
+  const [selectedId, setSelectedId] = useState<number | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [done, setDone] = useState(false);
+  const [search, setSearch] = useState("");
+  const [mode, setMode] = useState<"select" | "create">("select");
+  const [editedWord, setEditedWord] = useState(word);
+
+  const categories = [...new Set(prices.map(p => p.category))];
+  const [newName, setNewName] = useState(word);
+  const [newPrice, setNewPrice] = useState("");
+  const [newUnit, setNewUnit] = useState("шт");
+  const [newCategory, setNewCategory] = useState(categories[0] ?? "");
+  const [newCategoryCustom, setNewCategoryCustom] = useState("");
+
+  const filtered = prices.filter(p =>
+    p.name.toLowerCase().includes(search.toLowerCase()) ||
+    p.category.toLowerCase().includes(search.toLowerCase())
+  );
+
+  const saveSynonym = async () => {
+    if (!selectedId) return;
+    const price = prices.find(p => p.id === selectedId);
+    if (!price) return;
+    setSaving(true);
+    const syn = editedWord.trim() || word;
+    const existing = price.synonyms ? price.synonyms.split(",").map(s => s.trim()).filter(Boolean) : [];
+    if (!existing.includes(syn)) existing.push(syn);
+    await apiFetch("prices", {
+      method: "PUT",
+      body: JSON.stringify({ ...price, synonyms: existing.join(", ") }),
+    }, token, price.id);
+    setSaving(false);
+    setDone(true);
+    onAdded(price.name);
+  };
+
+  const createAndSave = async () => {
+    const name = newName.trim();
+    const category = newCategoryCustom.trim() || newCategory;
+    if (!name || !category) return;
+    setSaving(true);
+    const syn = editedWord.trim() || word;
+    const r = await apiFetch("prices", {
+      method: "POST",
+      body: JSON.stringify({
+        name,
+        category,
+        price: parseInt(newPrice) || 0,
+        unit: newUnit,
+        description: "",
+        synonyms: syn !== name ? syn : "",
+      }),
+    }, token);
+    setSaving(false);
+    if (r.ok) { setDone(true); onAdded(name); }
+  };
+
+  if (done) {
+    return (
+      <div className="flex items-center gap-2 bg-green-500/10 border border-green-500/20 rounded-xl px-4 py-3 mt-3">
+        <Icon name="CheckCircle" size={15} className="text-green-400" />
+        <span className="text-green-300 text-sm">«{word}» добавлен — бот запомнил</span>
+      </div>
+    );
+  }
+
+  return (
+    <div className="bg-white/[0.02] border border-violet-500/20 rounded-xl p-4 flex flex-col gap-3 mt-3">
+      <div className="flex flex-col gap-1">
+        <p className="text-xs text-white/40">Синоним для сохранения — отредактируй если нужно:</p>
+        <input
+          value={editedWord}
+          onChange={e => setEditedWord(e.target.value)}
+          className="bg-white/5 border border-red-500/30 rounded-lg px-3 py-2 text-red-300 text-sm font-medium outline-none focus:border-violet-500 transition"
+        />
+      </div>
+
+      <div className="flex gap-1 bg-white/5 rounded-lg p-1">
+        <button onClick={() => setMode("select")}
+          className={`flex-1 text-xs py-1.5 rounded-md transition ${mode === "select" ? "bg-violet-600 text-white" : "text-white/50 hover:text-white"}`}>
+          Выбрать из прайса
+        </button>
+        <button onClick={() => setMode("create")}
+          className={`flex-1 text-xs py-1.5 rounded-md transition ${mode === "create" ? "bg-violet-600 text-white" : "text-white/50 hover:text-white"}`}>
+          Создать новую позицию
+        </button>
+      </div>
+
+      {mode === "select" ? (
+        <>
+          <input value={search} onChange={e => setSearch(e.target.value)}
+            placeholder="Поиск позиции..."
+            className="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm outline-none focus:border-violet-500 transition" />
+          <div className="max-h-44 overflow-y-auto flex flex-col gap-1">
+            {filtered.slice(0, 40).map(p => (
+              <button key={p.id} onClick={() => setSelectedId(p.id)}
+                className={`text-left px-3 py-2 rounded-lg text-xs transition flex items-center justify-between gap-2 ${
+                  selectedId === p.id
+                    ? "bg-violet-600/30 border border-violet-500/40 text-white"
+                    : "bg-white/[0.02] border border-white/5 text-white/60 hover:text-white hover:border-white/20"
+                }`}>
+                <span>{p.name}</span>
+                <span className="text-white/30 flex-shrink-0">{p.category}</span>
+              </button>
+            ))}
+          </div>
+          <button onClick={saveSynonym} disabled={!selectedId || saving}
+            className="bg-violet-600 hover:bg-violet-700 disabled:opacity-40 text-white text-sm py-2 rounded-lg transition flex items-center justify-center gap-2">
+            <Icon name="Tag" size={14} />
+            {saving ? "Сохраняю..." : `Добавить «${editedWord || word}» как синоним`}
+          </button>
+        </>
+      ) : (
+        <>
+          <div className="flex flex-col gap-2">
+            <input value={newName} onChange={e => setNewName(e.target.value)}
+              placeholder="Название позиции"
+              className="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm outline-none focus:border-violet-500 transition" />
+            <div className="flex gap-2">
+              <input value={newPrice} onChange={e => setNewPrice(e.target.value)}
+                placeholder="Цена ₽"
+                type="number"
+                className="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm outline-none focus:border-violet-500 transition w-28" />
+              <select value={newUnit} onChange={e => setNewUnit(e.target.value)}
+                className="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm outline-none focus:border-violet-500 transition">
+                {["шт", "м²", "пог.м", "уп", "катушка"].map(u => (
+                  <option key={u} value={u} className="bg-[#0b0b11]">{u}</option>
+                ))}
+              </select>
+            </div>
+            <select value={newCategory} onChange={e => setNewCategory(e.target.value)}
+              className="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm outline-none focus:border-violet-500 transition">
+              {categories.map(c => <option key={c} value={c} className="bg-[#0b0b11]">{c}</option>)}
+            </select>
+            <input value={newCategoryCustom} onChange={e => setNewCategoryCustom(e.target.value)}
+              placeholder="Или новая категория..."
+              className="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm outline-none focus:border-violet-500 transition" />
+          </div>
+          <button onClick={createAndSave} disabled={!newName.trim() || saving}
+            className="bg-violet-600 hover:bg-violet-700 disabled:opacity-40 text-white text-sm py-2 rounded-lg transition flex items-center justify-center gap-2">
+            <Icon name="Plus" size={14} />
+            {saving ? "Создаю..." : "Создать позицию и добавить синоним"}
+          </button>
+        </>
+      )}
+    </div>
+  );
+}
