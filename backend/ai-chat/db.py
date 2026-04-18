@@ -182,6 +182,19 @@ def save_correction(user_text: str, recognized_json: dict | None, session_id: st
         print(f"[corrections] save error: {e}")
 
 
+def get_llm_threshold() -> int:
+    """Возвращает порог LLM: 0=всё в LLM, 100=всё в авторасчёт. Default=0."""
+    try:
+        conn = psycopg2.connect(os.environ['DATABASE_URL'])
+        cur = conn.cursor()
+        cur.execute(f"SELECT value FROM {SCHEMA}.ai_settings WHERE key = 'llm_threshold'")
+        row = cur.fetchone()
+        cur.close(); conn.close()
+        return int(row[0]) if row else 0
+    except Exception:
+        return 0
+
+
 def build_rules_prompt(rules: list) -> str:
     """Строит блок для SYSTEM_PROMPT с правилами расчёта, синонимами и комплектами."""
     lines = ['\n=== ПРАВИЛА РАСЧЁТА ПО УМОЛЧАНИЮ (если клиент не указал количество) ===']

@@ -11,6 +11,7 @@ from db import (
     get_knowledge, get_system_prompt, get_faq_cache,
     get_prices_block, get_canvas_prices, get_price_rules,
     build_rules_prompt, eval_calc_rule, save_correction, CANVAS_PRICES, SCHEMA,
+    get_llm_threshold,
 )
 
 # Встроенный кэш частых вопросов (fallback если БД недоступна)
@@ -194,25 +195,33 @@ def try_simple_estimate(text: str) -> tuple[str, dict] | None:
     """Детерминированный расчёт сметы. Возвращает (текст_ответа, recognized_dict) или None."""
     t = text.lower()
 
-    # Сложные слова — отдаём в LLM, ЕСЛИ хотя бы одно не покрыто синонимом из прайса.
-    # Если все сложные слова уже есть в прайсе как синонимы — считаем детерминировано
-    # (dynamic_extras подхватит их ниже при загрузке правил).
+    # Порог LLM: 0=всё в LLM, 100=всё в авторасчёт
+    threshold = get_llm_threshold()
+
+    # Если threshold < 100 — сложные запросы идут в LLM
     if _COMPLEX_PAT.search(t):
-        known = _get_known_synonyms()
-        # Извлекаем полные слова/фразы из текста содержащие стоп-подстроки
-        all_words = _FULL_WORD_PAT.findall(t)
-        complex_words = []
-        seen = set()
-        for w in all_words:
-            if w not in seen and _COMPLEX_PAT.search(w):
-                complex_words.append(w)
-                seen.add(w)
-        uncovered = [w for w in complex_words
-                     if not any(w in syn or syn in w for syn in known)]
-        if uncovered:
-            print(f"[calc] skip: uncovered complex words {uncovered} in '{t[:60]}'")
+        if threshold >= 100:
+            print(f"[calc] threshold=100, forcing auto for '{t[:60]}'")
+        elif threshold <= 0:
+            print(f"[calc] skip: threshold=0, all complex → LLM '{t[:60]}'")
             return None
-        print(f"[calc] all complex words covered by synonyms, proceeding '{t[:60]}'")
+        else:
+            # Промежуточный режим: только если ВСЕ сложные слова покрыты синонимами
+            known = _get_known_synonyms()
+            all_words = _FULL_WORD_PAT.findall(t)
+            complex_words = []
+            seen = set()
+            for w in all_words:
+                if w not in seen and _COMPLEX_PAT.search(w):
+                    complex_words.append(w)
+                    seen.add(w)
+            uncovered = [w for w in complex_words
+                         if not any(w in syn or syn in w for syn in known)]
+            # При threshold < 50 — даже покрытые слова отправляем в LLM
+            if uncovered or threshold < 50:
+                print(f"[calc] skip: complex words {uncovered} threshold={threshold} '{t[:60]}'")
+                return None
+            print(f"[calc] complex covered, threshold={threshold}, proceeding '{t[:60]}'")
 
 
     # Ищем площадь — цифрой или словом

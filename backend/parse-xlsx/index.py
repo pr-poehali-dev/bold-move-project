@@ -288,6 +288,27 @@ def handler(event: dict, context) -> dict:
         conn.commit(); cur.close(); conn.close()
         return resp(200, {'ok': True})
 
+    # --- GET/PUT ?r=settings
+    if r == 'settings' and method == 'GET':
+        conn = get_conn(); cur = conn.cursor()
+        cur.execute(f"SELECT key, value FROM {SCHEMA}.ai_settings")
+        rows_s = cur.fetchall()
+        cur.close(); conn.close()
+        return resp(200, {row[0]: row[1] for row in rows_s})
+
+    if r == 'settings' and method == 'PUT':
+        if not check_auth(hdrs):
+            return resp(401, {'error': 'Unauthorized'})
+        body = json.loads(body_str)
+        conn = get_conn(); cur = conn.cursor()
+        for key, value in body.items():
+            cur.execute(
+                f"INSERT INTO {SCHEMA}.ai_settings (key, value, updated_at) VALUES (%s, %s, now()) ON CONFLICT (key) DO UPDATE SET value=%s, updated_at=now()",
+                (key, str(value), str(value))
+            )
+        conn.commit(); cur.close(); conn.close()
+        return resp(200, {'ok': True})
+
     # --- POST ?r=match-synonym  { word, prices: [{id,name,category,synonyms}] }
     if r == 'match-synonym' and method == 'POST':
         if not check_auth(hdrs):
