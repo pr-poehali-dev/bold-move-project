@@ -113,61 +113,62 @@ export const PromptInputBox = React.forwardRef<HTMLDivElement, Props>(
         setSpeechError("Браузер не поддерживает голосовой ввод");
         return;
       }
-      const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-
-      const recognition = new SR();
-      recognition.lang = "ru-RU";
-      recognition.continuous = !isMobile;
-      recognition.interimResults = true;
 
       const finalTextRef = { current: value };
       stoppedByUserRef.current = false;
 
-      const restartIfNeeded = () => {
+      const createAndStart = () => {
         if (stoppedByUserRef.current) return;
-        try { recognition.start(); } catch { /* уже запущен */ }
+
+        const recognition = new SR();
+        recognition.lang = "ru-RU";
+        recognition.continuous = false;
+        recognition.interimResults = true;
+
+        recognition.onresult = (e: SpeechRecognitionEvent) => {
+          let interim = "";
+          let final = "";
+          for (let i = e.resultIndex; i < e.results.length; i++) {
+            const t = e.results[i][0].transcript;
+            if (e.results[i].isFinal) final += t;
+            else interim += t;
+          }
+          if (final) {
+            finalTextRef.current = (finalTextRef.current + " " + final).trim();
+            onValueChange(finalTextRef.current);
+          } else if (interim) {
+            onValueChange((finalTextRef.current + " " + interim).trim());
+          }
+        };
+
+        recognition.onerror = (e: SpeechRecognitionErrorEvent) => {
+          if (e.error === "not-allowed") {
+            setSpeechError("Нет доступа к микрофону");
+            stoppedByUserRef.current = true;
+            setIsRecording(false);
+          }
+          // no-speech / aborted / network — просто ждём onend и перезапустим
+        };
+
+        recognition.onend = () => {
+          recognitionRef.current = null;
+          if (stoppedByUserRef.current) {
+            setIsRecording(false);
+            return;
+          }
+          // Пауза — создаём новый экземпляр и запускаем заново
+          setTimeout(createAndStart, 150);
+        };
+
+        recognitionRef.current = recognition;
+        try {
+          recognition.start();
+        } catch {
+          setTimeout(createAndStart, 300);
+        }
       };
 
-      recognition.onresult = (e: SpeechRecognitionEvent) => {
-        let interim = "";
-        let final = "";
-        for (let i = e.resultIndex; i < e.results.length; i++) {
-          const t = e.results[i][0].transcript;
-          if (e.results[i].isFinal) final += t;
-          else interim += t;
-        }
-        if (final) {
-          finalTextRef.current = (finalTextRef.current + " " + final).trim();
-          onValueChange(finalTextRef.current);
-        } else if (interim) {
-          onValueChange((finalTextRef.current + " " + interim).trim());
-        }
-      };
-
-      recognition.onerror = (e: SpeechRecognitionErrorEvent) => {
-        if (e.error === "not-allowed") {
-          setSpeechError("Нет доступа к микрофону");
-          stoppedByUserRef.current = true;
-          setIsRecording(false);
-        } else if (e.error === "no-speech" || e.error === "aborted") {
-          // Пауза или прерывание — перезапустим в onend
-        } else {
-          stoppedByUserRef.current = true;
-          setIsRecording(false);
-        }
-      };
-
-      recognition.onend = () => {
-        if (stoppedByUserRef.current) {
-          setIsRecording(false);
-          return;
-        }
-        // Перезапускаем после паузы — пользователь ещё не нажал стоп
-        setTimeout(restartIfNeeded, 100);
-      };
-
-      recognitionRef.current = recognition;
-      recognition.start();
+      createAndStart();
       setIsRecording(true);
     };
 
