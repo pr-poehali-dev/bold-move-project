@@ -18,6 +18,35 @@ export default function AddSynonymPanel({ words, prices, token, onAdded }: Props
   const [search, setSearch] = useState("");
   const [mode, setMode] = useState<"select" | "create">("select");
   const [editedWords, setEditedWords] = useState<string[]>(words);
+  const [aiMatching, setAiMatching] = useState(false);
+  const [aiMatchedName, setAiMatchedName] = useState<string | null>(null);
+
+  const matchWithAI = async () => {
+    setAiMatching(true);
+    setAiMatchedName(null);
+    try {
+      const r = await apiFetch("match-synonym", {
+        method: "POST",
+        body: JSON.stringify({
+          word: editedWords.join(", "),
+          prices: prices.map(p => ({ id: p.id, name: p.name, category: p.category, synonyms: p.synonyms })),
+        }),
+      }, token);
+      if (r.ok) {
+        const data = await r.json();
+        if (data.matched_id && data.matched_id !== 0) {
+          setSelectedId(data.matched_id);
+          const matched = prices.find(p => p.id === data.matched_id);
+          if (matched) setAiMatchedName(matched.name);
+        } else {
+          setAiMatchedName("Не найдено — создай новую позицию");
+          setMode("create");
+        }
+      }
+    } finally {
+      setAiMatching(false);
+    }
+  };
 
   const categories = [...new Set(prices.map(p => p.category))];
   const [newName, setNewName] = useState(primaryWord);
@@ -97,6 +126,27 @@ export default function AddSynonymPanel({ words, prices, token, onAdded }: Props
           />
         ))}
       </div>
+
+      {/* Кнопка AI-подбора */}
+      <button
+        onClick={matchWithAI}
+        disabled={aiMatching}
+        className="w-full bg-violet-600/20 hover:bg-violet-600/30 disabled:opacity-50 border border-violet-500/30 text-violet-300 text-xs py-2 rounded-lg transition flex items-center justify-center gap-2">
+        {aiMatching
+          ? <><Icon name="Loader" size={13} className="animate-spin" /> Подбираю позицию...</>
+          : <><Icon name="Sparkles" size={13} /> Подобрать позицию через AI</>
+        }
+      </button>
+      {aiMatchedName && (
+        <div className={`flex items-center gap-2 text-xs px-3 py-2 rounded-lg border ${
+          selectedId
+            ? "bg-green-500/10 border-green-500/30 text-green-300"
+            : "bg-amber-500/10 border-amber-500/30 text-amber-300"
+        }`}>
+          <Icon name={selectedId ? "CheckCircle" : "AlertCircle"} size={13} />
+          {selectedId ? `AI выбрал: «${aiMatchedName}»` : aiMatchedName}
+        </div>
+      )}
 
       <div className="flex gap-1 bg-white/5 rounded-lg p-1">
         <button onClick={() => setMode("select")}

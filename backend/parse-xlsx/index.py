@@ -288,6 +288,61 @@ def handler(event: dict, context) -> dict:
         conn.commit(); cur.close(); conn.close()
         return resp(200, {'ok': True})
 
+    # --- POST ?r=match-synonym  { word, prices: [{id,name,category,synonyms}] }
+    if r == 'match-synonym' and method == 'POST':
+        if not check_auth(hdrs):
+            return resp(401, {'error': 'Unauthorized'})
+        body = json.loads(body_str)
+        word = body.get('word', '').strip()
+        prices_list = body.get('prices', [])
+        if not word or not prices_list:
+            return resp(400, {'error': 'word and prices required'})
+
+        openrouter_key = os.environ.get('OPENROUTER_API_KEY_2', '')
+        if not openrouter_key:
+            return resp(500, {'error': 'No LLM key'})
+
+        # Строим список позиций для LLM
+        prices_text = '\n'.join(
+            f"{p['id']}. {p['name']} ({p['category']})"
+            + (f" [синонимы: {p['synonyms']}]" if p.get('synonyms') else '')
+            for p in prices_list[:80]
+        )
+
+        prompt = f"""Ты помощник сметчика натяжных потолков. 
+Тебе дано слово/фраза из запроса клиента: «{word}»
+
+Из списка позиций прайса найди ОДНУ наиболее подходящую позицию для этого слова.
+Отвечай ТОЛЬКО числом — ID позиции. Если ни одна не подходит — ответь 0.
+
+Список позиций:
+{prices_text}
+
+Ответ (только число):"""
+
+        try:
+            llm_resp = requests.post(
+                'https://openrouter.ai/api/v1/chat/completions',
+                json={
+                    'model': 'openai/gpt-4o-mini',
+                    'messages': [{'role': 'user', 'content': prompt}],
+                    'max_tokens': 10,
+                    'temperature': 0,
+                },
+                headers={
+                    'Authorization': f'Bearer {openrouter_key}',
+                    'Content-Type': 'application/json',
+                },
+                timeout=15,
+            )
+            if llm_resp.status_code != 200:
+                return resp(500, {'error': f'LLM error {llm_resp.status_code}'})
+            content = llm_resp.json()['choices'][0]['message']['content'].strip()
+            matched_id = int(''.join(filter(str.isdigit, content)) or '0')
+            return resp(200, {'matched_id': matched_id})
+        except Exception as e:
+            return resp(500, {'error': str(e)})
+
     # --- XLSX import (legacy, ?action=read|import)
     action = qs.get('action', '')
     if action in ('read', 'import'):
