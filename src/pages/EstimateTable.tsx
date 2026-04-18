@@ -324,7 +324,7 @@ export default function EstimateTable({ text, items }: { text: string; items?: L
                 const isHighlight = /standard/i.test(t);
                 if (isHeader) {
                   return (
-                    <div key={i} className="text-white/70 font-montserrat text-xs mb-0.5 text-right">
+                    <div key={i} className="text-white/40 font-montserrat text-[10px] mb-0.5 text-right">
                       {t.replace(/:$/, "")}
                     </div>
                   );
