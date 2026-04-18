@@ -161,10 +161,36 @@ export default function CorrectionCard({
                 if (isGreen) {
                   return (
                     <div key={w} className="flex items-center gap-0.5">
-                      <span className="text-xs px-2.5 py-1 rounded-full border bg-green-500/10 border-green-500/30 text-green-300 flex items-center gap-1.5">
-                        <Icon name="Check" size={10} />
+                      <button
+                        onClick={() => handleTagClick(w)}
+                        title="Нажми чтобы выбрать или объединить"
+                        className={`text-xs px-2.5 py-1 rounded-full border transition flex items-center gap-1.5 ${
+                          isMergeSelected
+                            ? "bg-amber-500/20 border-amber-500/50 text-amber-300"
+                            : isSelected
+                            ? "bg-violet-600/30 border-violet-500/50 text-violet-300"
+                            : "bg-green-500/10 border-green-500/30 text-green-300 hover:bg-green-500/20"
+                        }`}>
+                        {isSelected
+                          ? <Icon name="CheckSquare" size={10} />
+                          : <Icon name="Check" size={10} />
+                        }
                         «{w}»
-                      </span>
+                      </button>
+                      {!isMergeMode && (
+                        <button
+                          onClick={() => onMergeFirstChange({ corrId: item.id, word: w })}
+                          title="Объединить с другим тегом"
+                          className="text-white/15 hover:text-amber-400 transition flex-shrink-0 px-0.5">
+                          <Icon name="Link" size={11} />
+                        </button>
+                      )}
+                      <button
+                        onClick={() => handleIgnore(w)}
+                        title="Не учитывать"
+                        className="text-white/15 hover:text-white/50 transition flex-shrink-0">
+                        <Icon name="X" size={11} />
+                      </button>
                     </div>
                   );
                 }
@@ -219,20 +245,12 @@ export default function CorrectionCard({
                       «{w}»
                     </button>
                     {!isMergeMode && (
-                      <>
-                        <button
-                          onClick={() => { setEditingTag(w); setEditingTagVal(w); }}
-                          title="Редактировать тег"
-                          className="text-white/15 hover:text-white/50 transition flex-shrink-0 px-0.5">
-                          <Icon name="Pencil" size={10} />
-                        </button>
-                        <button
-                          onClick={() => onMergeFirstChange({ corrId: item.id, word: w })}
-                          title="Объединить с другим тегом"
-                          className="text-white/15 hover:text-amber-400 transition flex-shrink-0 px-0.5">
-                          <Icon name="Link" size={11} />
-                        </button>
-                      </>
+                      <button
+                        onClick={() => onMergeFirstChange({ corrId: item.id, word: w })}
+                        title="Объединить с другим тегом"
+                        className="text-white/15 hover:text-amber-400 transition flex-shrink-0 px-0.5">
+                        <Icon name="Link" size={11} />
+                      </button>
                     )}
                     <button
                       onClick={() => handleIgnore(w)}
