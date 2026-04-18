@@ -324,13 +324,13 @@ export default function EstimateTable({ text, items }: { text: string; items?: L
                 const isHighlight = /standard/i.test(t);
                 if (isHeader) {
                   return (
-                    <div key={i} className="text-white/50 text-[11px] font-montserrat uppercase tracking-widest mb-1 text-right">
+                    <div key={i} className="text-white/40 text-[10px] font-montserrat mb-1 text-right">
                       {t.replace(/:$/, "")}
                     </div>
                   );
                 }
                 return (
-                  <div key={i} className={`flex justify-end gap-4 text-xs ${isHighlight ? "text-orange-400 font-montserrat font-black text-sm" : "text-white/70"}`}>
+                  <div key={i} className={`flex justify-end gap-2 text-xs ${isHighlight ? "text-orange-400 font-montserrat font-black text-sm" : "text-white/70"}`}>
                     <span>{t.split(":")[0]}:</span>
                     <span className="font-montserrat font-bold w-24 text-right">{t.split(":").slice(1).join(":").trim()}</span>
                   </div>
