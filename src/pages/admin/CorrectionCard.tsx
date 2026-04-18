@@ -32,6 +32,17 @@ export default function CorrectionCard({
   const [selectedWords, setSelectedWords] = useState<string[]>([]);
   const [panelOpen, setPanelOpen] = useState(false);
 
+  const knownSynonyms = new Set(
+    prices.flatMap(p => {
+      const syns = p.synonyms ? p.synonyms.split(",").map(s => s.trim().toLowerCase()).filter(Boolean) : [];
+      return [p.name.toLowerCase(), ...syns];
+    })
+  );
+  const isKnown = (w: string) => {
+    const wl = w.toLowerCase();
+    return knownSynonyms.has(wl) || [...knownSynonyms].some(s => s === wl || s.includes(wl) || wl.includes(s));
+  };
+
   const data = item.recognized_json as RecognizedData | null;
   const isLLM = !data || "reason" in (data ?? {});
   const skipInfo = isLLM ? (data as SkipInfo | null) : null;
@@ -125,20 +136,26 @@ export default function CorrectionCard({
               {unknownWords.map(w => {
                 const isMergeSelected = isMergeMode && mergeFirst?.word === w;
                 const isSelected = selectedWords.includes(w);
+                const known = isKnown(w);
 
                 return (
                   <div key={w} className="flex items-center gap-0.5">
                     <button
                       onClick={() => handleTagClick(w)}
+                      title={known ? "Уже обучен — есть в прайсе" : undefined}
                       className={`text-xs px-2.5 py-1 rounded-full border transition flex items-center gap-1.5 ${
                         isMergeSelected
                           ? "bg-amber-500/20 border-amber-500/50 text-amber-300"
                           : isSelected
                           ? "bg-violet-600/30 border-violet-500/50 text-violet-300"
+                          : known
+                          ? "bg-green-500/10 border-green-500/30 text-green-300 hover:bg-green-500/20"
                           : "bg-red-500/10 border-red-500/30 text-red-300 hover:bg-red-500/20"
                       }`}>
                       {isSelected
                         ? <Icon name="CheckSquare" size={10} />
+                        : known
+                        ? <Icon name="Check" size={10} />
                         : <Icon name="Tag" size={10} />
                       }
                       «{w}»
