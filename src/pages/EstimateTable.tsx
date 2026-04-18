@@ -320,7 +320,7 @@ export default function EstimateTable({ text, items }: { text: string; items?: L
           <div className="border-t border-orange-500/30 bg-gradient-to-r from-orange-500/10 to-rose-500/10 px-3 py-3">
             <div className="space-y-1">
               {totals.map((t, i) => {
-                const isHeader = /итогов|итого стоим/i.test(t) && !t.includes("Econom") && !t.includes("Standard") && !t.includes("Premium");
+                const isHeader = /итогов|итого\s*стоим/i.test(t) && !t.includes("Econom") && !t.includes("Standard") && !t.includes("Premium");
                 const isHighlight = /standard/i.test(t);
                 if (isHeader) {
                   return (

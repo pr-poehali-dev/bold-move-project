@@ -557,7 +557,8 @@ def _try_simple_estimate_inner(text: str) -> tuple[str, dict] | None:
         for name, qty, unit_price, total, unit in dynamic_extras:
             lines.append(f"  {name} {qty} {unit} × {unit_price} ₽ = {fmt(total)} ₽")
 
-    lines.append(f"\nEconom:   {fmt(econom)} ₽")
+    lines.append(f"\nИтоговая стоимость:")
+    lines.append(f"Econom:   {fmt(econom)} ₽")
     lines.append(f"Standard: {fmt(standard)} ₽")
     lines.append(f"Premium:  {fmt(premium_price)} ₽")
     lines.append(f"\nНа какой день вас записать на бесплатный замер?")
