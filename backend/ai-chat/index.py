@@ -483,7 +483,7 @@ def _try_simple_estimate_inner(text: str) -> tuple[str, dict] | None:
     price_mount_canvas = price_mount_pvh if is_pvh else price_mount_tkань
     mount_canvas  = round(area * price_mount_canvas)
     mount_profile = round(profile_len * price_mount_profile)
-    mount_nisha   = round(nisha_len * price_mount_nisha) if has_nisha else 0
+    mount_nisha   = 0  # Монтаж ниши не выставляется отдельно
     mount_zakl    = (n_lyustra + n_svetilnik) * price_mount_zakl if (n_lyustra + n_svetilnik) > 0 else 0
     mount_svet    = n_svetilnik * price_mount_svet
     mount_razv    = n_svetilnik * price_mount_razv if n_svetilnik > 0 else 0
@@ -541,8 +541,7 @@ def _try_simple_estimate_inner(text: str) -> tuple[str, dict] | None:
     lines.append(f"\n{sec}. Услуги монтажа:")
     lines.append(f"  Монтаж полотна {'ПВХ' if is_pvh else 'ткань'} {area} м² × {price_mount_canvas} ₽ = {fmt(mount_canvas)} ₽")
     lines.append(f"  Монтаж профиля {profile_len} мп × {price_mount_profile} ₽ = {fmt(mount_profile)} ₽")
-    if has_nisha:
-        lines.append(f"  Монтаж ниши {nisha_len} мп × {price_mount_nisha} ₽ = {fmt(mount_nisha)} ₽")
+
     if mount_zakl > 0:
         lines.append(f"  Монтаж закладных {n_lyustra + n_svetilnik} шт. × {price_mount_zakl} ₽ = {fmt(mount_zakl)} ₽")
     if mount_svet > 0:
