@@ -233,12 +233,18 @@ export default function EstimateTable({ text, items }: { text: string; items?: L
                       </td>
                     </tr>
                     {block.items.map((item, ii) => {
-                      // Убираем хвост "× N ед." из названия если парсер его туда засунул
+                      // Если в name есть "× цена ₽" — вытаскиваем формулу из name
+                      const nameHasFormula = /[×xх]\s*[\d][\d\s,.]*\s*[₽Рруб]/i.test(item.name);
                       const cleanName = item.name
+                        .replace(/\s*[×xх]\s*[\d][\d\s,.]*\s*[₽Рруб].*$/i, "")
                         .replace(/\s*[×xх]\s*[\d][\d\s,.]*\s*(м²|м2|мп|пм|шт\.?|шт|м\.п\.?|м)?\s*$/i, "")
                         .replace(/\s*[-–—]\s*$/, "")
                         .trim();
-                      const val = item.value.trim();
+                      // Если формула была в name — используем её как val
+                      const nameFormulaPart = nameHasFormula
+                        ? item.name.replace(/^.*?([×xх]\s*[\d][\d\s,.]*\s*[₽Рруб].*)$/i, "$1").trim()
+                        : "";
+                      const val = (item.value || nameFormulaPart).trim();
                       let formula = "";
                       let total = val;
 
@@ -248,14 +254,26 @@ export default function EstimateTable({ text, items }: { text: string; items?: L
                         formula = val.slice(0, eqIdx).trim();
                         total   = val.slice(eqIdx + 1).trim();
                       } else {
-                        // Вариант 2: "A × B ₽" без итога — вычисляем сами
-                        const mulMatch = val.match(/^([\d.,\s]+)\s*[×xх]\s*([\d.,\s]+)\s*[₽Рруб]/);
-                        if (mulMatch) {
-                          const a = parseFloat(mulMatch[1].replace(/\s/g, "").replace(",", "."));
-                          const b = parseFloat(mulMatch[2].replace(/\s/g, "").replace(",", "."));
-                          if (!isNaN(a) && !isNaN(b)) {
-                            formula = val.replace(/\s*[₽Рруб].*$/, " ₽").trim();
-                            total   = new Intl.NumberFormat("ru-RU").format(Math.round(a * b)) + " ₽";
+                        // Вариант 2: "qty ед. × price ₽" — с единицей измерения перед ×
+                        const mulWithUnit = val.match(/^([\d.,\s]+)\s*(м²|м2|мп|пм|шт\.?|шт|м\.п\.?|пог\.м|м)?\s*[×xх]\s*([\d.,\s]+)\s*[₽Рруб]/i);
+                        if (mulWithUnit) {
+                          const qty = parseFloat(mulWithUnit[1].replace(/\s/g, "").replace(",", "."));
+                          const unit = (mulWithUnit[2] ?? "").trim();
+                          const price = parseFloat(mulWithUnit[3].replace(/\s/g, "").replace(",", "."));
+                          if (!isNaN(qty) && !isNaN(price)) {
+                            formula = `${qty}${unit ? " " + unit : ""} × ${price.toLocaleString("ru-RU")} ₽`;
+                            total   = new Intl.NumberFormat("ru-RU").format(Math.round(qty * price)) + " ₽";
+                          }
+                        } else {
+                          // Вариант 3: "A × B ₽" без единицы — вычисляем сами
+                          const mulMatch = val.match(/^([\d.,\s]+)\s*[×xх]\s*([\d.,\s]+)\s*[₽Рруб]/);
+                          if (mulMatch) {
+                            const a = parseFloat(mulMatch[1].replace(/\s/g, "").replace(",", "."));
+                            const b = parseFloat(mulMatch[2].replace(/\s/g, "").replace(",", "."));
+                            if (!isNaN(a) && !isNaN(b)) {
+                              formula = val.replace(/\s*[₽Рруб].*$/, " ₽").trim();
+                              total   = new Intl.NumberFormat("ru-RU").format(Math.round(a * b)) + " ₽";
+                            }
                           }
                         }
                       }
