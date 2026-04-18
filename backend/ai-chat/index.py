@@ -334,21 +334,20 @@ def _try_simple_estimate_inner(text: str) -> tuple[str, dict] | None:
             return base_pattern
         return base_pattern + '|' + '|'.join(re.escape(s) for s in extras)
 
-    # ─── ЦЕНЫ ИЗ БД (с fallback на старые значения) ────────────────────────
-    price_raskroy        = p('Раскрой ПВХ', 100)
-    price_ogarp          = p('Огарпунивание ПВХ', 100)
-    price_profile        = p('Стеновой алюминий', 200)
-    price_zakl_lyustra   = p('Закладная под люстру', 700)
-    price_zakl_svet      = p('Закладная под светильник', 350)
-    price_svetilnik      = p('Светильник GX-53 + лампа', 400)
-    price_lampa          = p('Лампа GX53', 100)
-    price_mount_pvh      = p('Монтаж полотна ПВХ', 350)
-    price_mount_tkань    = p('Монтаж полотна ТКАНЬ', 500)
-    price_mount_profile  = p('Монтаж профиля стандарт', 200)
-    price_mount_nisha    = p('Монтаж парящего профиля', 350)
-    price_mount_zakl     = p('Монтаж закладной', 350)
-    price_mount_svet     = p('Монтаж светильника GX53', 500)
-    price_mount_razv     = p('Монтаж разводки ГОСТ 0.75', 700)
+    # ─── ЦЕНЫ ИЗ БД — только из прайса, без придуманных позиций ────────────
+    price_raskroy        = p('Раскрой ПВХ', 0)
+    price_ogarp          = p('Огарпунивание ПВХ', 0)
+    price_profile        = p('Стеновой алюминий', 0)
+    price_zakl_lyustra   = p('Закладная под люстру', 0)
+    price_zakl_svet      = p('Закладная под светильник', 0)
+    price_svetilnik      = p('Светильник GX-53 + лампа', 0)
+    price_lampa          = p('Лампа GX53', 0)
+    price_mount_pvh      = p('Монтаж полотна ПВХ', 0)
+    price_mount_tkань    = p('Монтаж полотна ТКАНЬ', 0)
+    price_mount_profile  = p('Монтаж профиля стандарт', 0)
+    price_mount_zakl     = p('Монтаж закладной', 0)
+    price_mount_svet     = p('Монтаж светильника GX53', 0)
+    price_mount_razv     = p('Монтаж разводки ГОСТ 0.75', 0)
 
     # Светильники GX-53 — базовые слова + синонимы из БД
     _svet_base = r'светильник|gx.?53|вклейк'
@@ -483,7 +482,6 @@ def _try_simple_estimate_inner(text: str) -> tuple[str, dict] | None:
     price_mount_canvas = price_mount_pvh if is_pvh else price_mount_tkань
     mount_canvas  = round(area * price_mount_canvas)
     mount_profile = round(profile_len * price_mount_profile)
-    mount_nisha   = 0  # Монтаж ниши не выставляется отдельно
     mount_zakl    = (n_lyustra + n_svetilnik) * price_mount_zakl if (n_lyustra + n_svetilnik) > 0 else 0
     mount_svet    = n_svetilnik * price_mount_svet
     mount_razv    = n_svetilnik * price_mount_razv if n_svetilnik > 0 else 0
@@ -491,7 +489,7 @@ def _try_simple_estimate_inner(text: str) -> tuple[str, dict] | None:
     dynamic_total = sum(x[3] for x in dynamic_extras)
     standard = (canvas_total + raskroy + ogarp + profile_total + nisha_total +
                 zakl_total + svet_total + lampa_total +
-                mount_canvas + mount_profile + mount_nisha + mount_zakl + mount_svet + mount_razv +
+                mount_canvas + mount_profile + mount_zakl + mount_svet + mount_razv +
                 dynamic_total)
     econom        = round(standard * 0.77)
     premium_price = round(standard * 1.27)
@@ -506,13 +504,14 @@ def _try_simple_estimate_inner(text: str) -> tuple[str, dict] | None:
     lines.append(f"{sec}. Полотно:")
     lines.append(f"  {canvas_name} {area} м² × {canvas_price} ₽ = {fmt(canvas_total)} ₽")
     if is_pvh:
-        lines.append(f"  Раскрой ПВХ {area} м² × {price_raskroy} ₽ = {fmt(raskroy)} ₽")
-        lines.append(f"  Огарпунивание {area} м² × {price_ogarp} ₽ = {fmt(ogarp)} ₽")
+        if price_raskroy: lines.append(f"  Раскрой ПВХ {area} м² × {price_raskroy} ₽ = {fmt(raskroy)} ₽")
+        if price_ogarp:   lines.append(f"  Огарпунивание ПВХ {area} м² × {price_ogarp} ₽ = {fmt(ogarp)} ₽")
 
     # Профиль
-    sec += 1
-    lines.append(f"\n{sec}. Профиль:")
-    lines.append(f"  Стеновой алюминий {profile_len} мп × {price_profile} ₽ = {fmt(profile_total)} ₽")
+    if price_profile:
+        sec += 1
+        lines.append(f"\n{sec}. Профиль:")
+        lines.append(f"  Стеновой алюминий {profile_len} мп × {price_profile} ₽ = {fmt(profile_total)} ₽")
 
     # Ниша
     if has_nisha:
@@ -524,30 +523,32 @@ def _try_simple_estimate_inner(text: str) -> tuple[str, dict] | None:
     if zakl_total > 0:
         sec += 1
         lines.append(f"\n{sec}. Закладные:")
-        if n_lyustra > 0:
-            lines.append(f"  Под люстру {n_lyustra} шт. × {price_zakl_lyustra} ₽ = {fmt(zakl_lyustra)} ₽")
-        if n_svetilnik > 0:
-            lines.append(f"  Под светильники {n_svetilnik} шт. × {price_zakl_svet} ₽ = {fmt(zakl_svet)} ₽")
+        if n_lyustra > 0 and price_zakl_lyustra:
+            lines.append(f"  Закладная под люстру {n_lyustra} шт. × {price_zakl_lyustra} ₽ = {fmt(zakl_lyustra)} ₽")
+        if n_svetilnik > 0 and price_zakl_svet:
+            lines.append(f"  Закладная под светильник {n_svetilnik} шт. × {price_zakl_svet} ₽ = {fmt(zakl_svet)} ₽")
 
     # Освещение
-    if svet_total > 0:
+    if svet_total > 0 and price_svetilnik:
         sec += 1
         lines.append(f"\n{sec}. Освещение:")
-        lines.append(f"  Светильники GX-53 {n_svetilnik} шт. × {price_svetilnik} ₽ = {fmt(svet_total)} ₽")
-        lines.append(f"  Лампа GX-53 {n_svetilnik} шт. × {price_lampa} ₽ = {fmt(lampa_total)} ₽")
+        lines.append(f"  Светильник GX-53 + лампа {n_svetilnik} шт. × {price_svetilnik} ₽ = {fmt(svet_total)} ₽")
+        if price_lampa:
+            lines.append(f"  Лампа GX53 {n_svetilnik} шт. × {price_lampa} ₽ = {fmt(lampa_total)} ₽")
 
     # Монтаж
     sec += 1
     lines.append(f"\n{sec}. Услуги монтажа:")
-    lines.append(f"  Монтаж полотна {'ПВХ' if is_pvh else 'ткань'} {area} м² × {price_mount_canvas} ₽ = {fmt(mount_canvas)} ₽")
-    lines.append(f"  Монтаж профиля {profile_len} мп × {price_mount_profile} ₽ = {fmt(mount_profile)} ₽")
-
-    if mount_zakl > 0:
-        lines.append(f"  Монтаж закладных {n_lyustra + n_svetilnik} шт. × {price_mount_zakl} ₽ = {fmt(mount_zakl)} ₽")
-    if mount_svet > 0:
-        lines.append(f"  Монтаж светильников {n_svetilnik} шт. × {price_mount_svet} ₽ = {fmt(mount_svet)} ₽")
-    if mount_razv > 0:
-        lines.append(f"  Монтаж разводки ГОСТ {n_svetilnik} шт. × {price_mount_razv} ₽ = {fmt(mount_razv)} ₽")
+    if price_mount_canvas:
+        lines.append(f"  Монтаж полотна {'ПВХ' if is_pvh else 'ТКАНЬ'} {area} м² × {price_mount_canvas} ₽ = {fmt(mount_canvas)} ₽")
+    if price_mount_profile:
+        lines.append(f"  Монтаж профиля стандарт {profile_len} мп × {price_mount_profile} ₽ = {fmt(mount_profile)} ₽")
+    if mount_zakl > 0 and price_mount_zakl:
+        lines.append(f"  Монтаж закладной {n_lyustra + n_svetilnik} шт. × {price_mount_zakl} ₽ = {fmt(mount_zakl)} ₽")
+    if mount_svet > 0 and price_mount_svet:
+        lines.append(f"  Монтаж светильника GX53 {n_svetilnik} шт. × {price_mount_svet} ₽ = {fmt(mount_svet)} ₽")
+    if mount_razv > 0 and price_mount_razv:
+        lines.append(f"  Монтаж разводки ГОСТ 0.75 {n_svetilnik} шт. × {price_mount_razv} ₽ = {fmt(mount_razv)} ₽")
 
     # Дополнительные позиции из прайса (обученные)
     if dynamic_extras:
