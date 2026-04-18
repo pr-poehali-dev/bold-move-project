@@ -118,9 +118,21 @@ export default function CorrectionCard({
           </div>
 
           {isLLM
-            ? <HighlightedText text={item.user_text} pending={unknownWords} done={doneWords} />
+            ? <HighlightedText
+                text={item.user_text}
+                pending={unknownWords}
+                done={doneWords}
+                onAddSelection={item.status === "pending" ? (word) => {
+                  if (!extraWords.includes(word) && !doneWords.includes(word) && !unknownWords.includes(word)) {
+                    onExtraWordsChange([...extraWords, word]);
+                  }
+                } : undefined}
+              />
             : <p className="text-white text-sm font-medium">«{item.user_text}»</p>
           }
+          {item.status === "pending" && isLLM && (
+            <p className="text-xs text-white/20 mt-1 select-none">Выдели текст мышкой чтобы добавить в обучение</p>
+          )}
 
           {/* Кнопки нераспознанных слов */}
           {isLLM && unknownWords.length > 0 && item.status === "pending" && (
