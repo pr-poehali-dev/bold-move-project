@@ -67,11 +67,13 @@ export default function Index() {
     setTyping(true);
     if (BOOKING_RE.test(text)) setPanel("booking");
     const history = [...messages, userMsg].slice(-6).map((m) => ({ role: m.role, text: m.text }));
-    fetch(AI_URL, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ messages: history }) })
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 90000);
+    fetch(AI_URL, { method: "POST", headers: { "Content-Type": "application/json", "X-Session-Id": sessionStorage.getItem("sid") || "" }, body: JSON.stringify({ messages: history }), signal: ctrl.signal })
       .then((r) => r.json())
       .then((d) => setMessages((p) => [...p, { id: Date.now() + 1, role: "assistant", text: d.answer || localAnswer(text) }]))
       .catch(() => setMessages((p) => [...p, { id: Date.now() + 1, role: "assistant", text: localAnswer(text) }]))
-      .finally(() => setTyping(false));
+      .finally(() => { clearTimeout(timer); setTyping(false); });
   }, [messages, typing]);
 
   const askFromPanel = (q: string) => { setPanel("none"); setTimeout(() => sendMsg(q), 100); };

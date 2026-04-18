@@ -159,7 +159,7 @@ def call_llm(messages):
         for model in OR_MODELS:
             payload = {'model': model, 'messages': messages, 'max_tokens': 1800, 'temperature': 0}
             try:
-                resp = requests.post('https://openrouter.ai/api/v1/chat/completions', json=payload, headers=headers, timeout=25)
+                resp = requests.post('https://openrouter.ai/api/v1/chat/completions', json=payload, headers=headers, timeout=55)
                 if resp.status_code == 200:
                     content = resp.json()['choices'][0]['message']['content']
                     if content:
@@ -181,7 +181,7 @@ def call_llm(messages):
             'temperature': 0,
         }
         try:
-            resp = requests.post(ep['url'], json=payload, headers=headers, timeout=25)
+            resp = requests.post(ep['url'], json=payload, headers=headers, timeout=55)
             if resp.status_code == 200:
                 data = resp.json()
                 return data['choices'][0]['message']['content']
