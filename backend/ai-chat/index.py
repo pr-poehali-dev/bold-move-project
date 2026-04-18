@@ -152,7 +152,27 @@ def get_skip_reason(text: str) -> dict:
 
     # Добавляем фразы-нюансы как дополнительные кандидаты для обучения
     nuance_phrases = _extract_nuance_phrases(text)
-    all_candidates = matched_full + [p for p in nuance_phrases if p.lower() not in seen]
+
+    # Захватываем неизвестные аббревиатуры с числами: ПДК 80, Бх 53, Ам 1, Евро краб 40 м2
+    # Паттерн: 1-4 заглавных/латинских буквы + опционально слово + число
+    unknown_abbr = re.findall(
+        r'\b([А-ЯЁA-Z][а-яёa-zA-Z]{0,10}(?:\s+[а-яёa-zA-Z]{1,10}){0,2}\s+\d+(?:\s*м[²2]?)?)\b',
+        text
+    )
+    # Фильтруем — оставляем только те что реально неизвестны (не обычные числа площадей)
+    _skip_abbr = {'м2', 'м²', 'шт', 'метр', 'пог', 'мп', 'гост', 'на', 'по', 'до', 'от'}
+    abbr_candidates = []
+    for phrase in unknown_abbr:
+        phrase = phrase.strip()
+        pl = phrase.lower()
+        if any(s in pl for s in _skip_abbr):
+            continue
+        if pl in seen:
+            continue
+        seen.add(pl)
+        abbr_candidates.append(phrase)
+
+    all_candidates = matched_full + [p for p in nuance_phrases if p.lower() not in seen] + abbr_candidates
 
     if matched_full:
         return {'reason': 'complex_keyword', 'unknown_word': matched_full[0], 'unknown_words': all_candidates}
@@ -882,6 +902,13 @@ def handler(event, context):
     rules_hint = build_rules_prompt(_rules_for_suggestions)
     if rules_hint:
         system_content += rules_hint
+
+    # Всегда добавляем инструкцию по JSON — независимо от промпта в БД
+    system_content += """
+
+ОБЯЗАТЕЛЬНО: В конце каждого ответа со сметой добавь одну строку:
+%%ITEMS%%{"items":[{"name":"...","qty":1,"price":0},...],"area":0}%%END%%
+Включи ВСЕ позиции сметы. Клиент этот блок не видит."""
 
     # Веб-поиск для актуальной информации
     search = web_search(last_user_text)
