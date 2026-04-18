@@ -176,9 +176,11 @@ export default function TabPrices({ token, onItemAdded }: Props) {
                     <td className="px-4 py-2.5 text-white/40 text-xs">
                       <EditableCell value={item.description} onSave={v => saveField(item, "description", v)} />
                     </td>
-                    <td className="px-4 py-2.5 text-amber-400/60 text-xs">
-                      <div className="flex items-center gap-1">
-                        <EditableCell value={item.synonyms || ""} onSave={v => saveField(item, "synonyms", v)} placeholder="карниз, гардина, штора..." />
+                    <td className="px-4 py-2.5 text-amber-400/60 text-xs w-[180px] max-w-[180px]">
+                      <div className="flex items-center gap-1 min-w-0">
+                        <div className="flex-1 min-w-0 overflow-hidden">
+                          <EditableCell value={item.synonyms || ""} onSave={v => saveField(item, "synonyms", v)} placeholder="карниз, гардина, штора..." className="truncate block w-full" />
+                        </div>
                         <button
                           onClick={() => generateSynonyms(item)}
                           disabled={aiLoadingId === item.id}
