@@ -959,12 +959,8 @@ def handler(event, context):
 
     session_id = event.get('headers', {}).get('x-session-id', '') or event.get('headers', {}).get('X-Session-Id', '')
 
-    cached = get_cached_answer(last_user_text, session_id)
-    if cached:
-        answer = cached[0] if isinstance(cached, tuple) else cached
-        return {'statusCode': 200, 'headers': cors, 'body': json.dumps({'answer': answer})}
-
-    # Сохраняем в обучение — запрос ушёл в LLM (не удалось посчитать автоматически)
+    # Автоматический расчёт отключён — все запросы идут в LLM
+    # Сохраняем в обучение факт что запрос ушёл в LLM
     skip_info = get_skip_reason(last_user_text.lower().strip())
     save_correction(last_user_text, skip_info, session_id)
 
