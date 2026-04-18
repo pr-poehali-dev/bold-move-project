@@ -638,6 +638,80 @@ def _extract_and_save_suggestions(answer: str, user_text: str, session_id: str, 
         print(f"[suggestions] db error: {e}")
 
 
+def _save_suggestions_from_json(items: list, user_text: str, session_id: str, rules: list) -> None:
+    """Сохраняет предложения из структурированного JSON ответа LLM."""
+    if not items:
+        return
+
+    # Стоп-слова — базовые позиции которые всегда есть
+    BUILTIN_STOP_WORDS = {
+        'раскрой', 'огарпун', 'монтаж', 'профил', 'закладн',
+        'светильник', 'лампа', 'люстра', 'ниша', 'карниз', 'штора',
+        'стандарт', 'econom', 'standard', 'premium', 'итого', 'всего',
+        'услуги', 'установк', 'разводк', 'гост', 'полотно',
+    }
+
+    def _is_builtin(name: str) -> bool:
+        nl = name.lower()
+        return any(stop in nl for stop in BUILTIN_STOP_WORDS)
+
+    # Все известные имена и синонимы из прайса
+    known = set()
+    for r in rules:
+        known.add(r['name'].lower())
+        if r.get('synonyms'):
+            for s in r['synonyms'].split(','):
+                s = s.strip().lower()
+                if s:
+                    known.add(s)
+
+    def _words(s: str) -> set:
+        return set(re.findall(r'[а-яёa-z0-9]+', s.lower()))
+
+    new_items = []
+    for item in items:
+        name = item.get('name', '').strip()
+        if not name or _is_builtin(name):
+            continue
+        item_words = _words(name)
+        if not item_words:
+            continue
+        is_known = any(
+            len(item_words & _words(k)) / max(len(item_words), len(_words(k))) >= 0.5
+            for k in known if _words(k)
+        )
+        if not is_known:
+            new_items.append({
+                'name': name,
+                'qty': item.get('qty', 1),
+                'price': item.get('price', 0),
+                'total': round(item.get('qty', 1) * item.get('price', 0)),
+            })
+            print(f"[suggestions] json new item: {name} {item.get('price', 0)}₽")
+
+    if not new_items:
+        print(f"[suggestions] json: all items known, nothing to suggest")
+        return
+
+    try:
+        conn = psycopg2.connect(os.environ['DATABASE_URL'])
+        cur = conn.cursor()
+        cur.execute(
+            f"""UPDATE {SCHEMA}.bot_corrections
+                SET suggested_items = %s
+                WHERE id = (
+                    SELECT id FROM {SCHEMA}.bot_corrections
+                    WHERE session_id = %s AND user_text = %s
+                    ORDER BY created_at DESC LIMIT 1
+                )""",
+            (json.dumps(new_items, ensure_ascii=False), session_id, user_text)
+        )
+        conn.commit(); cur.close(); conn.close()
+        print(f"[suggestions] json: saved {len(new_items)} items")
+    except Exception as e:
+        print(f"[suggestions] json db error: {e}")
+
+
 def get_cached_answer(text: str, session_id: str = '') -> tuple[str, dict] | str | None:
     """Проверяет кэш и простой расчёт. Возвращает (ответ, recognized) или строку или None."""
     text_lower = text.lower().strip()
@@ -741,6 +815,15 @@ Premium:  X ₽  (Standard × 1.27)
 "На какой день вас записать на бесплатный замер?"
 
 КОМПАНИЯ: MosPotolki, Мытищи, с 2009г. Тел: +7(977)606-89-01. Ежедневно 8:00–22:00. Сайт: mospotolki.net
+
+ФОРМАТ ОТВЕТА СИСТЕМЕ (обязательно):
+После текста сметы добавь блок JSON на отдельной строке:
+%%ITEMS%%{"items":[{"name":"Название позиции","qty":1,"price":350,"unit":"шт"},...],"area":20.84}%%END%%
+
+Правила JSON:
+- Включай ВСЕ позиции из сметы (полотно, профиль, закладные, освещение, ниши, монтаж и др.)
+- qty — количество (число), price — цена за единицу из прайса, unit — единица измерения
+- Клиент НЕ видит этот блок, он только для системы
 """
 
 
@@ -815,9 +898,25 @@ def handler(event, context):
 
     answer = call_llm(openai_messages)
 
-    # ─── АВТО-ОБУЧЕНИЕ: извлекаем позиции из ответа LLM ──────────────────────
+    # ─── АВТО-ОБУЧЕНИЕ: извлекаем JSON-блок из ответа LLM ────────────────────
+    llm_items_json = None
+    items_match = re.search(r'%%ITEMS%%(.+?)%%END%%', answer, re.DOTALL)
+    if items_match:
+        # Вырезаем блок из ответа — клиент его не увидит
+        answer = answer.replace(items_match.group(0), '').strip()
+        try:
+            llm_items_json = json.loads(items_match.group(1).strip())
+            print(f"[suggestions] parsed JSON items: {len(llm_items_json.get('items', []))} items")
+        except Exception as e:
+            print(f"[suggestions] JSON parse error: {e}")
+
     try:
-        _extract_and_save_suggestions(answer, last_user_text, session_id, _rules_for_suggestions)
+        if llm_items_json and llm_items_json.get('items'):
+            # Используем структурированные данные из JSON
+            _save_suggestions_from_json(llm_items_json['items'], last_user_text, session_id, _rules_for_suggestions)
+        else:
+            # Fallback: парсим текст как раньше
+            _extract_and_save_suggestions(answer, last_user_text, session_id, _rules_for_suggestions)
     except Exception as e:
         print(f"[suggestions] error: {e}")
 
