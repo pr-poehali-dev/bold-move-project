@@ -66,12 +66,17 @@ export default function CorrectionCard({
   const handleTagClick = (w: string) => {
     const isMergeSelected = isMergeMode && mergeFirst?.word === w;
     if (isMergeMode && !isMergeSelected) {
-      const merged = mergeFirst!.word + " " + w;
+      const first = mergeFirst!.word;
+      const merged = first + " " + w;
+      // Убираем оба исходных слова из extraWords, добавляем объединённое
       const newExtras = [
-        ...extraWords.filter(e => e !== mergeFirst!.word && e !== w),
+        ...extraWords.filter(e => e !== first && e !== w),
         merged,
       ];
       onExtraWordsChange(newExtras);
+      // Оба слова помечаем как done чтобы они не показывались отдельно
+      const newDone = [...doneWords.filter(d => d !== first && d !== w), first, w];
+      onDoneWordsChange(newDone);
       onMergeFirstChange(null);
       setSelectedWords([]);
       setPanelOpen(false);
@@ -156,7 +161,8 @@ export default function CorrectionCard({
                 const known = !isDone && isKnown(w);
 
                 // Зелёный: сохранено в этой сессии или уже есть в прайсе
-                const isGreen = isDone || known;
+                // В режиме объединения не делаем разницы — все теги кликабельны одинаково
+                const isGreen = (isDone || known) && !isMergeMode;
 
                 if (isGreen) {
                   return (
