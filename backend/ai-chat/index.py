@@ -10,7 +10,7 @@ from services import generate_image, web_search, call_llm, SEARCH_VISUAL, IMAGE_
 from db import (
     get_knowledge, get_system_prompt, get_faq_cache,
     get_prices_block, get_canvas_prices, get_price_rules,
-    build_rules_prompt, eval_calc_rule, save_correction, CANVAS_PRICES,
+    build_rules_prompt, eval_calc_rule, save_correction, CANVAS_PRICES, SCHEMA,
 )
 
 # Встроенный кэш частых вопросов (fallback если БД недоступна)
@@ -538,11 +538,26 @@ def _extract_and_save_suggestions(answer: str, user_text: str, session_id: str, 
                 if s:
                     known.add(s)
 
+    def _words(s: str) -> set:
+        return set(re.findall(r'[а-яёa-z0-9]+', s.lower()))
+
     # Фильтруем — оставляем только то чего нет в прайсе
+    # Считаем "известным" если пересечение слов >= 60% слов из item name
     new_items = []
     for item in items:
-        nl = item['name'].lower()
-        is_known = any(nl == k or nl in k or k in nl for k in known)
+        item_words = _words(item['name'])
+        if not item_words:
+            continue
+        is_known = False
+        for k in known:
+            k_words = _words(k)
+            if not k_words:
+                continue
+            overlap = len(item_words & k_words)
+            # Известно если хотя бы 60% слов совпадают с любой стороны
+            if overlap / max(len(item_words), len(k_words)) >= 0.6:
+                is_known = True
+                break
         if not is_known:
             new_items.append(item)
             print(f"[suggestions] new item: {item['name']} {item['price']}₽")
