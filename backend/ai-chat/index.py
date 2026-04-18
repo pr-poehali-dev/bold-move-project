@@ -338,15 +338,15 @@ def _try_simple_estimate_inner(text: str) -> tuple[str, dict] | None:
     price_raskroy        = p('Раскрой ПВХ', 0)
     price_ogarp          = p('Огарпунивание ПВХ', 0)
     price_profile        = p('Стеновой алюминий', 0)
-    price_zakl_lyustra   = p('Закладная под люстру', 0)
-    price_zakl_svet      = p('Закладная под светильник', 0)
+    price_zakl_lyustra   = p('Под люстру планка', 0)
+    price_zakl_svet      = p('Под светильник ∅90', 0)
     price_svetilnik      = p('Светильник GX-53 + лампа', 0)
     price_lampa          = p('Лампа GX53', 0)
     price_mount_pvh      = p('Монтаж полотна ПВХ', 0)
     price_mount_tkань    = p('Монтаж полотна ТКАНЬ', 0)
     price_mount_profile  = p('Монтаж профиля стандарт', 0)
     price_mount_zakl     = p('Монтаж закладной', 0)
-    price_mount_svet     = p('Монтаж светильника GX53', 0)
+    price_mount_svet     = p('Монтаж светильников GX-53', 0)
     price_mount_razv     = p('Монтаж разводки ГОСТ 0.75', 0)
 
     # Светильники GX-53 — базовые слова + синонимы из БД
@@ -524,9 +524,9 @@ def _try_simple_estimate_inner(text: str) -> tuple[str, dict] | None:
         sec += 1
         lines.append(f"\n{sec}. Закладные:")
         if n_lyustra > 0 and price_zakl_lyustra:
-            lines.append(f"  Закладная под люстру {n_lyustra} шт. × {price_zakl_lyustra} ₽ = {fmt(zakl_lyustra)} ₽")
+            lines.append(f"  Под люстру планка {n_lyustra} шт. × {price_zakl_lyustra} ₽ = {fmt(zakl_lyustra)} ₽")
         if n_svetilnik > 0 and price_zakl_svet:
-            lines.append(f"  Закладная под светильник {n_svetilnik} шт. × {price_zakl_svet} ₽ = {fmt(zakl_svet)} ₽")
+            lines.append(f"  Под светильник ∅90 {n_svetilnik} шт. × {price_zakl_svet} ₽ = {fmt(zakl_svet)} ₽")
 
     # Освещение
     if svet_total > 0 and price_svetilnik:
@@ -546,7 +546,7 @@ def _try_simple_estimate_inner(text: str) -> tuple[str, dict] | None:
     if mount_zakl > 0 and price_mount_zakl:
         lines.append(f"  Монтаж закладной {n_lyustra + n_svetilnik} шт. × {price_mount_zakl} ₽ = {fmt(mount_zakl)} ₽")
     if mount_svet > 0 and price_mount_svet:
-        lines.append(f"  Монтаж светильника GX53 {n_svetilnik} шт. × {price_mount_svet} ₽ = {fmt(mount_svet)} ₽")
+        lines.append(f"  Монтаж светильников GX-53 {n_svetilnik} шт. × {price_mount_svet} ₽ = {fmt(mount_svet)} ₽")
     if mount_razv > 0 and price_mount_razv:
         lines.append(f"  Монтаж разводки ГОСТ 0.75 {n_svetilnik} шт. × {price_mount_razv} ₽ = {fmt(mount_razv)} ₽")
 
