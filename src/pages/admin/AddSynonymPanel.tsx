@@ -4,22 +4,23 @@ import { apiFetch } from "./api";
 import type { PriceItem } from "./types";
 
 interface Props {
-  word: string;
+  words: string[];
   prices: PriceItem[];
   token: string;
   onAdded: (priceName: string) => void;
 }
 
-export default function AddSynonymPanel({ word, prices, token, onAdded }: Props) {
+export default function AddSynonymPanel({ words, prices, token, onAdded }: Props) {
+  const primaryWord = words[0] ?? "";
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [saving, setSaving] = useState(false);
   const [done, setDone] = useState(false);
   const [search, setSearch] = useState("");
   const [mode, setMode] = useState<"select" | "create">("select");
-  const [editedWord, setEditedWord] = useState(word);
+  const [editedWords, setEditedWords] = useState<string[]>(words);
 
   const categories = [...new Set(prices.map(p => p.category))];
-  const [newName, setNewName] = useState(word);
+  const [newName, setNewName] = useState(primaryWord);
   const [newPrice, setNewPrice] = useState("");
   const [newUnit, setNewUnit] = useState("шт");
   const [newCategory, setNewCategory] = useState(categories[0] ?? "");
@@ -35,9 +36,11 @@ export default function AddSynonymPanel({ word, prices, token, onAdded }: Props)
     const price = prices.find(p => p.id === selectedId);
     if (!price) return;
     setSaving(true);
-    const syn = editedWord.trim() || word;
     const existing = price.synonyms ? price.synonyms.split(",").map(s => s.trim()).filter(Boolean) : [];
-    if (!existing.includes(syn)) existing.push(syn);
+    for (const syn of editedWords) {
+      const s = syn.trim();
+      if (s && !existing.includes(s)) existing.push(s);
+    }
     await apiFetch("prices", {
       method: "PUT",
       body: JSON.stringify({ ...price, synonyms: existing.join(", ") }),
@@ -52,7 +55,7 @@ export default function AddSynonymPanel({ word, prices, token, onAdded }: Props)
     const category = newCategoryCustom.trim() || newCategory;
     if (!name || !category) return;
     setSaving(true);
-    const syn = editedWord.trim() || word;
+    const syns = editedWords.map(w => w.trim()).filter(w => w && w !== name);
     const r = await apiFetch("prices", {
       method: "POST",
       body: JSON.stringify({
@@ -61,7 +64,7 @@ export default function AddSynonymPanel({ word, prices, token, onAdded }: Props)
         price: parseInt(newPrice) || 0,
         unit: newUnit,
         description: "",
-        synonyms: syn !== name ? syn : "",
+        synonyms: syns.join(", "),
       }),
     }, token);
     setSaving(false);
@@ -72,20 +75,27 @@ export default function AddSynonymPanel({ word, prices, token, onAdded }: Props)
     return (
       <div className="flex items-center gap-2 bg-green-500/10 border border-green-500/20 rounded-xl px-4 py-3 mt-3">
         <Icon name="CheckCircle" size={15} className="text-green-400" />
-        <span className="text-green-300 text-sm">«{word}» добавлен — бот запомнил</span>
+        <span className="text-green-300 text-sm">
+          {words.length > 1 ? `${words.length} синонима добавлены` : `«${primaryWord}» добавлен`} — бот запомнил
+        </span>
       </div>
     );
   }
 
   return (
     <div className="bg-white/[0.02] border border-violet-500/20 rounded-xl p-4 flex flex-col gap-3 mt-3">
-      <div className="flex flex-col gap-1">
-        <p className="text-xs text-white/40">Синоним для сохранения — отредактируй если нужно:</p>
-        <input
-          value={editedWord}
-          onChange={e => setEditedWord(e.target.value)}
-          className="bg-white/5 border border-red-500/30 rounded-lg px-3 py-2 text-red-300 text-sm font-medium outline-none focus:border-violet-500 transition"
-        />
+      <div className="flex flex-col gap-2">
+        <p className="text-xs text-white/40">
+          {words.length > 1 ? `Синонимы для сохранения (${words.length}) — отредактируй если нужно:` : "Синоним для сохранения — отредактируй если нужно:"}
+        </p>
+        {editedWords.map((w, i) => (
+          <input
+            key={i}
+            value={w}
+            onChange={e => setEditedWords(prev => prev.map((x, j) => j === i ? e.target.value : x))}
+            className="bg-white/5 border border-red-500/30 rounded-lg px-3 py-2 text-red-300 text-sm font-medium outline-none focus:border-violet-500 transition"
+          />
+        ))}
       </div>
 
       <div className="flex gap-1 bg-white/5 rounded-lg p-1">
@@ -120,7 +130,7 @@ export default function AddSynonymPanel({ word, prices, token, onAdded }: Props)
           <button onClick={saveSynonym} disabled={!selectedId || saving}
             className="bg-violet-600 hover:bg-violet-700 disabled:opacity-40 text-white text-sm py-2 rounded-lg transition flex items-center justify-center gap-2">
             <Icon name="Tag" size={14} />
-            {saving ? "Сохраняю..." : `Добавить «${editedWord || word}» как синоним`}
+            {saving ? "Сохраняю..." : words.length > 1 ? `Добавить ${words.length} синонима` : `Добавить «${editedWords[0] || primaryWord}» как синоним`}
           </button>
         </>
       ) : (

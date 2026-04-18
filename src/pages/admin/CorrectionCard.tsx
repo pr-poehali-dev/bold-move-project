@@ -29,7 +29,8 @@ export default function CorrectionCard({
   extraWords, onExtraWordsChange,
   mergeFirst, onMergeFirstChange,
 }: Props) {
-  const [addingWord, setAddingWord] = useState<string | null>(null);
+  const [selectedWords, setSelectedWords] = useState<string[]>([]);
+  const [panelOpen, setPanelOpen] = useState(false);
 
   const data = item.recognized_json as RecognizedData | null;
   const isLLM = !data || "reason" in (data ?? {});
@@ -57,18 +58,23 @@ export default function CorrectionCard({
       ];
       onExtraWordsChange(newExtras);
       onMergeFirstChange(null);
-      setAddingWord(null);
+      setSelectedWords([]);
+      setPanelOpen(false);
     } else if (isMergeSelected) {
       onMergeFirstChange(null);
     } else {
-      setAddingWord(addingWord === w ? null : w);
+      // Мультивыбор: toggle слово в selectedWords
+      const isSelected = selectedWords.includes(w);
+      const next = isSelected ? selectedWords.filter(x => x !== w) : [...selectedWords, w];
+      setSelectedWords(next);
+      setPanelOpen(next.length > 0);
     }
   };
 
   const handleIgnore = (w: string) => {
     const newDone = [...doneWords, w];
     onDoneWordsChange(newDone);
-    if (addingWord === w) setAddingWord(null);
+    setSelectedWords(prev => prev.filter(x => x !== w));
     if (mergeFirst?.word === w && mergeFirst.corrId === item.id) onMergeFirstChange(null);
     const remaining = allUnknownWords.filter(x => !newDone.includes(x));
     if (remaining.length === 0) onUpdate("approved");
@@ -111,9 +117,14 @@ export default function CorrectionCard({
                   Выбери второй тег для объединения с «{mergeFirst!.word}»
                 </span>
               )}
+              {!isMergeMode && unknownWords.length > 1 && (
+                <span className="text-xs text-white/30 w-full -mb-1">
+                  Нажми на теги чтобы выбрать, затем назначь одной позицией
+                </span>
+              )}
               {unknownWords.map(w => {
                 const isMergeSelected = isMergeMode && mergeFirst?.word === w;
-                const isActive = addingWord === w;
+                const isSelected = selectedWords.includes(w);
 
                 return (
                   <div key={w} className="flex items-center gap-0.5">
@@ -122,11 +133,14 @@ export default function CorrectionCard({
                       className={`text-xs px-2.5 py-1 rounded-full border transition flex items-center gap-1.5 ${
                         isMergeSelected
                           ? "bg-amber-500/20 border-amber-500/50 text-amber-300"
-                          : isActive
+                          : isSelected
                           ? "bg-violet-600/30 border-violet-500/50 text-violet-300"
                           : "bg-red-500/10 border-red-500/30 text-red-300 hover:bg-red-500/20"
                       }`}>
-                      <Icon name="Tag" size={10} />
+                      {isSelected
+                        ? <Icon name="CheckSquare" size={10} />
+                        : <Icon name="Tag" size={10} />
+                      }
                       «{w}»
                     </button>
                     {!isMergeMode && (
@@ -150,16 +164,16 @@ export default function CorrectionCard({
           )}
 
           {/* Панель назначения синонима */}
-          {addingWord && (
+          {panelOpen && selectedWords.length > 0 && (
             <AddSynonymPanel
-              word={addingWord}
+              words={selectedWords}
               prices={prices}
               token={token}
               onAdded={async () => {
-                const word = addingWord!;
-                const newDone = [...doneWords, word];
+                const newDone = [...doneWords, ...selectedWords];
                 onDoneWordsChange(newDone);
-                setAddingWord(null);
+                setSelectedWords([]);
+                setPanelOpen(false);
                 const remaining = allUnknownWords.filter(w => !newDone.includes(w));
                 if (remaining.length === 0) await onUpdate("approved");
               }}
