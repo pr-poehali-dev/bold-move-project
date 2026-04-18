@@ -251,12 +251,9 @@ export default function TabCorrections({ token }: Props) {
     const isExpanded = expandedId === item.id;
     const isLLM = !data || "reason" in (data ?? {});
     const skipInfo = isLLM ? (data as SkipInfo | null) : null;
-    const rawUnknownWords: string[] = skipInfo?.unknown_words?.length
+    const allUnknownWords: string[] = skipInfo?.unknown_words?.length
       ? skipInfo.unknown_words
       : skipInfo?.unknown_word ? [skipInfo.unknown_word] : [];
-    const allUnknownWords: string[] = [...new Set(
-      rawUnknownWords.flatMap(phrase => phrase.split(/\s+/).filter(w => w.length > 1))
-    )];
     const unknownWords = allUnknownWords.filter(w => !(doneWords[item.id] ?? []).includes(w));
 
     return (
