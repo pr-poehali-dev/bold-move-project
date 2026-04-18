@@ -33,6 +33,10 @@ export default function AddSynonymPanel({ words, prices, token, onAdded }: Props
   const [search, setSearch] = useState("");
   const [saving, setSaving] = useState(false);
   const [done, setDone] = useState(false);
+  // Групповой режим — все слова → одна позиция
+  const [groupMode, setGroupMode] = useState(false);
+  const [groupSelectedId, setGroupSelectedId] = useState<number | null>(null);
+  const [groupSearch, setGroupSearch] = useState("");
 
   const [rows, setRows] = useState<WordRow[]>(() =>
     words.map(w => ({
@@ -132,10 +136,36 @@ export default function AddSynonymPanel({ words, prices, token, onAdded }: Props
     p.category.toLowerCase().includes(search.toLowerCase())
   );
 
-  const canSave = rows.some(r =>
-    (r.mode === "found" && r.selectedId) ||
-    (r.mode === "notfound-manual" && (r.createMode ? r.newName.trim() : r.selectedId))
+  const groupFiltered = prices.filter(p =>
+    p.name.toLowerCase().includes(groupSearch.toLowerCase()) ||
+    p.category.toLowerCase().includes(groupSearch.toLowerCase())
   );
+
+  const saveGroup = async () => {
+    if (!groupSelectedId) return;
+    const price = prices.find(p => p.id === groupSelectedId);
+    if (!price) return;
+    setSaving(true);
+    const existing = price.synonyms ? price.synonyms.split(",").map(s => s.trim()).filter(Boolean) : [];
+    for (const w of words) {
+      const syn = w.trim();
+      if (syn && !existing.includes(syn)) existing.push(syn);
+    }
+    await apiFetch("prices", {
+      method: "PUT",
+      body: JSON.stringify({ ...price, synonyms: existing.join(", ") }),
+    }, token, price.id);
+    setSaving(false);
+    setDone(true);
+    onAdded(price.name);
+  };
+
+  const canSave = groupMode
+    ? !!groupSelectedId
+    : rows.some(r =>
+        (r.mode === "found" && r.selectedId) ||
+        (r.mode === "notfound-manual" && (r.createMode ? r.newName.trim() : r.selectedId))
+      );
 
   if (done) {
     return (
@@ -150,7 +180,51 @@ export default function AddSynonymPanel({ words, prices, token, onAdded }: Props
 
   return (
     <div className="bg-white/[0.02] border border-violet-500/20 rounded-xl p-4 flex flex-col gap-2 mt-3">
-      {rows.map((row, i) => {
+
+      {/* Переключатель режима — только при нескольких словах */}
+      {words.length > 1 && (
+        <div className="flex gap-1 bg-white/5 rounded-lg p-0.5 mb-1">
+          <button onClick={() => setGroupMode(false)}
+            className={`flex-1 text-xs py-1.5 rounded-md transition ${!groupMode ? "bg-violet-600 text-white" : "text-white/40 hover:text-white"}`}>
+            Каждому слову — своя позиция
+          </button>
+          <button onClick={() => setGroupMode(true)}
+            className={`flex-1 text-xs py-1.5 rounded-md transition ${groupMode ? "bg-violet-600 text-white" : "text-white/40 hover:text-white"}`}>
+            Все слова → одна позиция
+          </button>
+        </div>
+      )}
+
+      {/* Групповой режим */}
+      {groupMode && (
+        <div className="flex flex-col gap-2">
+          <div className="flex flex-wrap gap-1.5 mb-1">
+            {words.map(w => (
+              <span key={w} className="text-xs px-2 py-0.5 rounded-full bg-red-500/10 border border-red-500/20 text-red-300">«{w}»</span>
+            ))}
+            <span className="text-xs text-white/30 self-center">→ одна позиция</span>
+          </div>
+          <input value={groupSearch} onChange={e => setGroupSearch(e.target.value)}
+            placeholder="Поиск позиции..."
+            className="bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-white text-xs outline-none focus:border-violet-500 transition" />
+          <div className="max-h-40 overflow-y-auto flex flex-col gap-0.5">
+            {groupFiltered.slice(0, 40).map(p => (
+              <button key={p.id} onClick={() => setGroupSelectedId(p.id)}
+                className={`text-left px-3 py-1.5 rounded-lg text-xs transition flex items-center justify-between gap-2 ${
+                  groupSelectedId === p.id
+                    ? "bg-violet-600/30 border border-violet-500/40 text-white"
+                    : "bg-white/[0.02] border border-white/5 text-white/60 hover:text-white"
+                }`}>
+                <span>{p.name}</span>
+                <span className="text-white/30 flex-shrink-0">{p.category}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Индивидуальный режим */}
+      {!groupMode && rows.map((row, i) => {  
         const matchedPrice = row.selectedId ? prices.find(p => p.id === row.selectedId) : null;
         return (
           <div key={i} className="border border-white/10 rounded-xl overflow-hidden">
@@ -237,14 +311,19 @@ export default function AddSynonymPanel({ words, prices, token, onAdded }: Props
       })}
 
       <div className="flex gap-2 mt-1">
-        <button onClick={rematchAll} disabled={saving}
-          className="bg-white/5 hover:bg-white/10 text-white/40 text-xs py-2 px-3 rounded-lg transition flex items-center gap-1.5">
-          <Icon name="RefreshCw" size={12} /> Перезапустить AI
-        </button>
-        <button onClick={saveAll} disabled={!canSave || saving}
+        {!groupMode && (
+          <button onClick={rematchAll} disabled={saving}
+            className="bg-white/5 hover:bg-white/10 text-white/40 text-xs py-2 px-3 rounded-lg transition flex items-center gap-1.5">
+            <Icon name="RefreshCw" size={12} /> Перезапустить AI
+          </button>
+        )}
+        <button onClick={groupMode ? saveGroup : saveAll} disabled={!canSave || saving}
           className="flex-1 bg-violet-600 hover:bg-violet-700 disabled:opacity-40 text-white text-sm py-2 rounded-lg transition flex items-center justify-center gap-2">
           <Icon name="Tag" size={14} />
-          {saving ? "Сохраняю..." : `Сохранить${rows.length > 1 ? ` все (${rows.length})` : ""}`}
+          {saving ? "Сохраняю..." : groupMode
+            ? `Добавить все ${words.length} как синонимы`
+            : `Сохранить${rows.length > 1 ? ` все (${rows.length})` : ""}`
+          }
         </button>
       </div>
     </div>
