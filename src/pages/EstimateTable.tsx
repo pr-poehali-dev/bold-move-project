@@ -104,27 +104,26 @@ export function parseEstimateBlocks(text: string) {
         continue;
       }
 
-      // 3b) "Название × N ед." без цены — LLM пишет qty без price
-      // Пример: "MSD Classic матовый × 41 м²   16 359 ₽" (цена в конце после пробелов)
+      // 3b) "Название × N ед.  ИТОГО ₽" — LLM пишет qty без цены, итог в конце
       const mulNoPrice = cleanLine.match(new RegExp(
-        `^(.+?)\\s+[×xх]\\s+([\\d][\\d\\s,.]*)\\s*(м²|м2|мп|пм|шт\\.?|м)?\\s+(\\d[\\d\\s]*)\\s*[₽Рруб]`
+        `^(.+?)\\s*[×xх]\\s*([\\d][\\d\\s,.]*)\\s*(м²|м2|мп|пм|шт\\.?|шт|м\\.п\\.?|м\\b)?[\\s.]*([\\d][\\d\\s]*)\\s*[₽Рруб]`
       ));
       if (mulNoPrice) {
         const name = mulNoPrice[1].trim();
         const qty = mulNoPrice[2].trim();
-        const unit = mulNoPrice[3] ?? "";
+        const unit = (mulNoPrice[3] ?? "").trim();
         const total = mulNoPrice[4].replace(/\s/g, "");
-        current.items.push({ name, value: `${qty} ${unit} = ${total} ₽`.trim() });
+        current.items.push({ name, value: `${qty}${unit ? " " + unit : ""} = ${total} ₽`.trim() });
         continue;
       }
 
-      // 3c) "Название × N ед." — только количество, без итога (вычислить нельзя — показываем как есть)
-      const mulQtyOnly = cleanLine.match(new RegExp(`^(.+?)\\s+[×xх]\\s+([\\d][\\d\\s,.]*)\\s*(м²|м2|мп|пм|шт\\.?|м)?\\s*$`));
+      // 3c) "Название × N ед." — только количество без итога
+      const mulQtyOnly = cleanLine.match(new RegExp(`^(.+?)\\s*[×xх]\\s*([\\d][\\d\\s,.]*)\\s*(м²|м2|мп|пм|шт\\.?|шт|м\\.п\\.?|м\\b)?\\s*$`));
       if (mulQtyOnly) {
         const name = mulQtyOnly[1].trim();
         const qty = mulQtyOnly[2].trim();
-        const unit = mulQtyOnly[3] ?? "";
-        current.items.push({ name, value: `${qty} ${unit}`.trim() });
+        const unit = (mulQtyOnly[3] ?? "").trim();
+        current.items.push({ name, value: `${qty}${unit ? " " + unit : ""}`.trim() });
         continue;
       }
 
