@@ -748,6 +748,47 @@ def _save_suggestions_from_json(items: list, user_text: str, session_id: str, ru
         print(f"[suggestions] json db error: {e}")
 
 
+def _patch_answer_with_prices(answer: str, items: list) -> str:
+    """Патчит ответ LLM — заменяет строки 'Название × N ед.' на полный формат с ценой и итогом."""
+    # Строим словарь name→{qty,price,unit} из JSON
+    item_map = {}
+    for it in items:
+        name = it.get('name', '').strip()
+        if name:
+            item_map[name.lower()] = it
+
+    def fmt(n: int) -> str:
+        return f"{n:,}".replace(',', ' ')
+
+    MUL = r'[×xх]'
+    result_lines = []
+    for line in answer.split('\n'):
+        # Ищем строки вида "Название × N ед." (без цены)
+        m = re.match(r'^(\s*)(.*?)\s*' + MUL + r'\s*([\d][\d\s,.]*)\s*(м²|м2|мп|пм|шт\.?|шт|м\.п\.?|м\b)?\s*$', line)
+        if m:
+            indent, name, qty_str, unit = m.group(1), m.group(2).strip(), m.group(3).strip(), (m.group(4) or '').strip()
+            # Ищем в item_map
+            match_data = None
+            for k, v in item_map.items():
+                if name.lower() == k or name.lower() in k or k in name.lower():
+                    match_data = v
+                    break
+            if match_data:
+                try:
+                    qty = float(qty_str.replace(',', '.').replace(' ', ''))
+                    price = int(match_data.get('price', 0))
+                    unit_from_json = match_data.get('unit', unit) or unit
+                    total = round(qty * price)
+                    qty_display = int(qty) if qty == int(qty) else qty
+                    result_lines.append(f"{indent}{name}  {qty_display} {unit_from_json} × {fmt(price)} ₽ = {fmt(total)} ₽")
+                    print(f"[patch] fixed: {name} {qty_display} {unit_from_json} × {price} = {total}")
+                    continue
+                except Exception:
+                    pass
+        result_lines.append(line)
+    return '\n'.join(result_lines)
+
+
 def get_cached_answer(text: str, session_id: str = '') -> tuple[str, dict] | str | None:
     """Проверяет кэш и простой расчёт. Возвращает (ответ, recognized) или строку или None."""
     text_lower = text.lower().strip()
@@ -966,13 +1007,16 @@ def handler(event, context):
     llm_items_json = None
     items_match = re.search(r'%%ITEMS%%(.+?)%%END%%', answer, re.DOTALL)
     if items_match:
-        # Вырезаем блок из ответа — клиент его не увидит
         answer = answer.replace(items_match.group(0), '').strip()
         try:
             llm_items_json = json.loads(items_match.group(1).strip())
             print(f"[suggestions] parsed JSON items: {len(llm_items_json.get('items', []))} items")
         except Exception as e:
             print(f"[suggestions] JSON parse error: {e}")
+
+    # ─── ПАТЧ ТЕКСТА: заменяем строки без цены используя данные из JSON ──────
+    if llm_items_json and llm_items_json.get('items'):
+        answer = _patch_answer_with_prices(answer, llm_items_json['items'])
 
     try:
         if llm_items_json and llm_items_json.get('items'):
