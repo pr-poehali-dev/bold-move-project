@@ -28,6 +28,32 @@ export default function TabPrices({ token, onItemAdded }: Props) {
 
   useEffect(() => { load(); }, [load]);
 
+  const [aiLoadingId, setAiLoadingId] = useState<number | null>(null);
+
+  const generateSynonyms = async (item: PriceItem) => {
+    setAiLoadingId(item.id);
+    try {
+      const r = await apiFetch("match-synonym", {
+        method: "POST",
+        body: JSON.stringify({
+          word: `GENERATE_SYNONYMS:${item.name}|${item.description || ""}|${item.category}`,
+          prices: [],
+        }),
+      }, token);
+      if (r.ok) {
+        const d = await r.json();
+        if (d.synonyms) {
+          const existing = item.synonyms ? item.synonyms.split(",").map(s => s.trim()).filter(Boolean) : [];
+          const newSyns = d.synonyms.split(",").map((s: string) => s.trim()).filter((s: string) => s && !existing.includes(s));
+          const merged = [...existing, ...newSyns].join(", ");
+          await saveField(item, "synonyms", merged);
+        }
+      }
+    } finally {
+      setAiLoadingId(null);
+    }
+  };
+
   const saveField = async (item: PriceItem, field: keyof PriceItem, val: string) => {
     const updated = { ...item, [field]: field === "price" ? parseInt(val) || 0 : val };
     await apiFetch("prices", { method: "PUT", body: JSON.stringify(updated) }, token, item.id);
@@ -151,7 +177,19 @@ export default function TabPrices({ token, onItemAdded }: Props) {
                       <EditableCell value={item.description} onSave={v => saveField(item, "description", v)} />
                     </td>
                     <td className="px-4 py-2.5 text-amber-400/60 text-xs">
-                      <EditableCell value={item.synonyms || ""} onSave={v => saveField(item, "synonyms", v)} placeholder="карниз, гардина, штора..." />
+                      <div className="flex items-center gap-1">
+                        <EditableCell value={item.synonyms || ""} onSave={v => saveField(item, "synonyms", v)} placeholder="карниз, гардина, штора..." />
+                        <button
+                          onClick={() => generateSynonyms(item)}
+                          disabled={aiLoadingId === item.id}
+                          title="Сгенерировать синонимы через AI"
+                          className="flex-shrink-0 text-white/20 hover:text-violet-400 disabled:opacity-40 transition">
+                          {aiLoadingId === item.id
+                            ? <Icon name="Loader" size={12} className="animate-spin" />
+                            : <Icon name="Sparkles" size={12} />
+                          }
+                        </button>
+                      </div>
                     </td>
                     <td className="px-3 py-2.5">
                       <div className="flex items-center gap-1.5">

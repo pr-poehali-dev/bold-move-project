@@ -332,19 +332,51 @@ def handler(event: dict, context) -> dict:
         conn.commit(); cur.close(); conn.close()
         return resp(200, {'ok': True})
 
-    # --- POST ?r=match-synonym  { word, prices: [{id,name,category,synonyms}] }
+    # --- POST ?r=match-synonym  { word, prices: [...] }
     if r == 'match-synonym' and method == 'POST':
         if not check_auth(hdrs):
             return resp(401, {'error': 'Unauthorized'})
         body = json.loads(body_str)
         word = body.get('word', '').strip()
         prices_list = body.get('prices', [])
-        if not word or not prices_list:
-            return resp(400, {'error': 'word and prices required'})
+        if not word:
+            return resp(400, {'error': 'word required'})
 
         openrouter_key = os.environ.get('OPENROUTER_API_KEY_2', '')
         if not openrouter_key:
             return resp(500, {'error': 'No LLM key'})
+
+        # ── Режим генерации синонимов ─────────────────────────────────────────
+        if word.startswith('GENERATE_SYNONYMS:'):
+            parts = word[len('GENERATE_SYNONYMS:'):].split('|')
+            item_name = parts[0].strip() if parts else word
+            item_desc = parts[1].strip() if len(parts) > 1 else ''
+            item_cat  = parts[2].strip() if len(parts) > 2 else ''
+            syn_prompt = f"""Ты эксперт по натяжным потолкам. 
+Позиция прайса: «{item_name}» (категория: {item_cat})
+{f'Описание: {item_desc}' if item_desc else ''}
+
+Придумай 5-10 синонимов — разные способы как клиент может написать эту позицию в запросе.
+Например сокращения, разговорные формы, ошибочные написания, варианты с числами.
+
+Отвечай ТОЛЬКО через запятую, без пояснений:"""
+            try:
+                llm_r = requests.post(
+                    'https://openrouter.ai/api/v1/chat/completions',
+                    json={'model': 'openai/gpt-4o-mini', 'messages': [{'role': 'user', 'content': syn_prompt}], 'max_tokens': 150, 'temperature': 0.7},
+                    headers={'Authorization': f'Bearer {openrouter_key}', 'Content-Type': 'application/json'},
+                    timeout=20,
+                )
+                if llm_r.status_code == 200:
+                    synonyms = llm_r.json()['choices'][0]['message']['content'].strip()
+                    return resp(200, {'synonyms': synonyms})
+            except Exception as e:
+                return resp(500, {'error': str(e)})
+            return resp(500, {'error': 'LLM failed'})
+
+        # ── Режим подбора позиции из прайса ──────────────────────────────────
+        if not prices_list:
+            return resp(400, {'error': 'prices required'})
 
         # Строим список позиций для LLM
         prices_text = '\n'.join(
