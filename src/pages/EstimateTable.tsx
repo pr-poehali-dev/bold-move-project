@@ -73,12 +73,13 @@ export function parseEstimateBlocks(text: string) {
       // MUL = любой знак умножения: × (U+00D7), x (latin), х (cyrillic)
       const MUL = "[×xх]";
 
-      // -1) "Название × qty ед.  ИТОГО ₽" — LLM формат без цены
+      // -1) "Название × qty ед.  ИТОГО ₽" — LLM формат без цены за единицу
       // Пример: "MSD Classic матовый × 70 м²  27 930 ₽"
+      // НЕ должен срабатывать если после × идёт "qty ед × цена" (это calcBackend формат)
       const llmFormat = cleanLine.match(new RegExp(
         `^(.+?)\\s*${MUL}\\s*([\\d][\\d\\s,.]*)\\s*(м²|м2|мп|пм|шт\\.?|шт|м\\.п\\.?|м)?[\\s\\t]+([\\d][\\d\\s]*)\\s*[₽Рруб]`
       ));
-      if (llmFormat) {
+      if (llmFormat && !cleanLine.includes("= ")) {
         const name = llmFormat[1].trim();
         const qty = llmFormat[2].trim();
         const unit = (llmFormat[3] ?? "").trim();
