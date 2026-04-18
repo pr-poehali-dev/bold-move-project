@@ -233,7 +233,11 @@ export default function EstimateTable({ text, items }: { text: string; items?: L
                       </td>
                     </tr>
                     {block.items.map((item, ii) => {
-                      const cleanName = item.name.replace(/\s*[-–—]\s*$/, "").replace(/\s*\([^)]*\)\s*$/, "").trim();
+                      // Убираем хвост "× N ед." из названия если парсер его туда засунул
+                      const cleanName = item.name
+                        .replace(/\s*[×xх]\s*[\d][\d\s,.]*\s*(м²|м2|мп|пм|шт\.?|шт|м\.п\.?|м)?\s*$/i, "")
+                        .replace(/\s*[-–—]\s*$/, "")
+                        .trim();
                       const val = item.value.trim();
                       let formula = "";
                       let total = val;
