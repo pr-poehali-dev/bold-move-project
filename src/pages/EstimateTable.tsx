@@ -300,14 +300,14 @@ export default function EstimateTable({ text, items }: { text: string; items?: L
 
         {totals.length > 0 && (
           <div className="border-t border-orange-500/30 bg-gradient-to-r from-orange-500/10 to-rose-500/10 px-3 py-3">
-            <div className="text-[11px] text-white/40 font-montserrat uppercase tracking-widest mb-2">Итого</div>
+            <div className="text-[11px] text-white/40 font-montserrat uppercase tracking-widest mb-2 text-right">Итого</div>
             <div className="space-y-1">
               {totals.map((t, i) => {
                 const isHighlight = /standard|итого/i.test(t);
                 return (
-                  <div key={i} className={`flex justify-between text-xs ${isHighlight ? "text-orange-400 font-montserrat font-black text-sm" : "text-white/70"}`}>
+                  <div key={i} className={`flex justify-end gap-6 text-xs ${isHighlight ? "text-orange-400 font-montserrat font-black text-sm" : "text-white/70"}`}>
                     <span>{t.split(":")[0]}:</span>
-                    <span className="font-montserrat font-bold">{t.split(":").slice(1).join(":").trim()}</span>
+                    <span className="font-montserrat font-bold w-28 text-right">{t.split(":").slice(1).join(":").trim()}</span>
                   </div>
                 );
               })}
