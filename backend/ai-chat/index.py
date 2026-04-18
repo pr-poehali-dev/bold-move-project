@@ -136,6 +136,32 @@ def _extract_nuance_phrases(text: str) -> list[str]:
     return found
 
 
+_SIMPLE_ALLOWED_PAT = re.compile(
+    r'^[\s\d,./•·\-–—«»()]+$|'
+    r'(м²|м2|кв\.?м?|квадрат|кв\b|'
+    r'матов|глянц|сатин|белый|белая|цветн|ткань|тканев|bauf|бауф|evolution|premium|премиум|'
+    r'люстр|светильник|gx.?53|точечн|'
+    r'ниш|карниз|штор|гардин|пк.?\d+|sigma|брус|'
+    r'потолок|комнат|зал|спальн|кухн|прихожа|гостин|студи|однушк|двушк|трёшк|'
+    r'профил|вставка|рассказовк|классик|матовый)',
+    re.IGNORECASE
+)
+
+
+def _get_whitelist_unknown(text: str) -> list[str]:
+    """Возвращает слова из текста которые не входят в whitelist авторасчёта."""
+    words = re.findall(r'[а-яёa-z]+', text.lower())
+    seen = set()
+    result = []
+    for w in words:
+        if len(w) <= 2 or w in seen:
+            continue
+        seen.add(w)
+        if not _SIMPLE_ALLOWED_PAT.search(w):
+            result.append(w)
+    return result
+
+
 def get_skip_reason(text: str) -> dict:
     """Возвращает причину почему бот отказался считать сам. Возвращает ПОЛНЫЕ слова."""
     t = text.lower()
@@ -149,6 +175,13 @@ def get_skip_reason(text: str) -> dict:
         if _COMPLEX_PAT.search(word):
             matched_full.append(word)
             seen.add(word)
+
+    # Добавляем слова не из whitelist — это и есть то что бот не знает
+    whitelist_unknown = _get_whitelist_unknown(text)
+    for w in whitelist_unknown:
+        if w not in seen:
+            seen.add(w)
+            matched_full.append(w)
 
     # Добавляем фразы-нюансы как дополнительные кандидаты для обучения
     nuance_phrases = _extract_nuance_phrases(text)
@@ -222,22 +255,7 @@ def try_simple_estimate(text: str) -> tuple[str, dict] | None:
     t = text.lower()
 
     # ── ПРОСТОЙ РЕЖИМ: авторасчёт только для коротких простых запросов ────────
-    # Разрешённые слова для авторасчёта — всё остальное → LLM
-    _SIMPLE_ALLOWED = re.compile(
-        r'^[\s\d,./•·\-–—«»()]+$|'
-        r'(м²|м2|кв\.?м?|квадрат|кв\b|'
-        r'матов|глянц|сатин|белый|белая|цветн|ткань|тканев|bauf|бауф|evolution|premium|премиум|'
-        r'люстр|светильник|gx.?53|точечн|'
-        r'ниш|карниз|штор|гардин|пк.?\d+|sigma|брус|'
-        r'потолок|комнат|зал|спальн|кухн|прихожа|гостин|студи|однушк|двушк|трёшк|'
-        r'профил|вставка|рассказовк|классик|матовый)',
-        re.IGNORECASE
-    )
-
-    # Разбиваем текст на слова и проверяем каждое
-    words_in_text = re.findall(r'[а-яёa-z]+', t)
-    unknown_words = [w for w in words_in_text if len(w) > 2 and not _SIMPLE_ALLOWED.search(w)]
-
+    unknown_words = _get_whitelist_unknown(t)
     if unknown_words:
         print(f"[calc] skip: unknown words {unknown_words[:5]} → LLM '{t[:60]}'")
         return None
