@@ -464,9 +464,8 @@ def _try_simple_estimate_inner(text: str) -> tuple[str, dict] | None:
     raskroy      = round(area * price_raskroy) if is_pvh else 0
     ogarp        = round(area * price_ogarp) if is_pvh else 0
 
-    # 2. Профиль (вычитаем длину ниши если она заменяет стандартный профиль)
-    is_nisha_special = has_nisha and nisha_price >= 1300
-    profile_len   = max(0, round(perim - (nisha_len if is_nisha_special else 0), 1))
+    # 2. Профиль — всегда полный периметр
+    profile_len   = perim
     profile_total = round(profile_len * price_profile)
     nisha_total   = round(nisha_len * nisha_price) if has_nisha else 0
 
