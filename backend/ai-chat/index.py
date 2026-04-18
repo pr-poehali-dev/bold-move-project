@@ -337,7 +337,7 @@ def _try_simple_estimate_inner(text: str) -> tuple[str, dict] | None:
     # ─── ЦЕНЫ ИЗ БД (с fallback на старые значения) ────────────────────────
     price_raskroy        = p('Раскрой ПВХ', 100)
     price_ogarp          = p('Огарпунивание ПВХ', 100)
-    price_profile        = p('Стеновой ПВХ', 150)
+    price_profile        = p('Стеновой алюминий', 200)
     price_zakl_lyustra   = p('Закладная под люстру', 700)
     price_zakl_svet      = p('Закладная под светильник', 350)
     price_svetilnik      = p('Светильник GX-53 + лампа', 400)
@@ -512,7 +512,7 @@ def _try_simple_estimate_inner(text: str) -> tuple[str, dict] | None:
     # Профиль
     sec += 1
     lines.append(f"\n{sec}. Профиль:")
-    lines.append(f"  Стеновой ПВХ {profile_len} мп × {price_profile} ₽ = {fmt(profile_total)} ₽")
+    lines.append(f"  Стеновой алюминий {profile_len} мп × {price_profile} ₽ = {fmt(profile_total)} ₽")
 
     # Ниша
     if has_nisha:
