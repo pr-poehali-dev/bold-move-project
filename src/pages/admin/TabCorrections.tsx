@@ -11,9 +11,29 @@ export default function TabCorrections({ token }: Props) {
   const [prices, setPrices] = useState<PriceItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [expandedId, setExpandedId] = useState<number | null>(null);
-  const [doneWords, setDoneWords] = useState<Record<number, string[]>>({});
+  const [doneWords, setDoneWords] = useState<Record<number, string[]>>(() => {
+    try { return JSON.parse(localStorage.getItem("corr_done") ?? "{}"); } catch { return {}; }
+  });
   const [mergeFirst, setMergeFirst] = useState<{ corrId: number; word: string } | null>(null);
-  const [extraWords, setExtraWords] = useState<Record<number, string[]>>({});
+  const [extraWords, setExtraWords] = useState<Record<number, string[]>>(() => {
+    try { return JSON.parse(localStorage.getItem("corr_extra") ?? "{}"); } catch { return {}; }
+  });
+
+  const setDoneWordsPersist = (fn: (prev: Record<number, string[]>) => Record<number, string[]>) => {
+    setDoneWords(prev => {
+      const next = fn(prev);
+      localStorage.setItem("corr_done", JSON.stringify(next));
+      return next;
+    });
+  };
+
+  const setExtraWordsPersist = (fn: (prev: Record<number, string[]>) => Record<number, string[]>) => {
+    setExtraWords(prev => {
+      const next = fn(prev);
+      localStorage.setItem("corr_extra", JSON.stringify(next));
+      return next;
+    });
+  };
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -69,9 +89,9 @@ export default function TabCorrections({ token }: Props) {
               onRemove={() => remove(item.id)}
               onUpdate={(status) => update(item.id, status)}
               doneWords={doneWords[item.id] ?? []}
-              onDoneWordsChange={(words) => setDoneWords(prev => ({ ...prev, [item.id]: words }))}
+              onDoneWordsChange={(words) => setDoneWordsPersist(prev => ({ ...prev, [item.id]: words }))}
               extraWords={extraWords[item.id] ?? []}
-              onExtraWordsChange={(words) => setExtraWords(prev => ({ ...prev, [item.id]: words }))}
+              onExtraWordsChange={(words) => setExtraWordsPersist(prev => ({ ...prev, [item.id]: words }))}
               mergeFirst={mergeFirst}
               onMergeFirstChange={setMergeFirst}
             />
@@ -93,9 +113,9 @@ export default function TabCorrections({ token }: Props) {
               onRemove={() => remove(item.id)}
               onUpdate={(status) => update(item.id, status)}
               doneWords={doneWords[item.id] ?? []}
-              onDoneWordsChange={(words) => setDoneWords(prev => ({ ...prev, [item.id]: words }))}
+              onDoneWordsChange={(words) => setDoneWordsPersist(prev => ({ ...prev, [item.id]: words }))}
               extraWords={extraWords[item.id] ?? []}
-              onExtraWordsChange={(words) => setExtraWords(prev => ({ ...prev, [item.id]: words }))}
+              onExtraWordsChange={(words) => setExtraWordsPersist(prev => ({ ...prev, [item.id]: words }))}
               mergeFirst={mergeFirst}
               onMergeFirstChange={setMergeFirst}
             />
