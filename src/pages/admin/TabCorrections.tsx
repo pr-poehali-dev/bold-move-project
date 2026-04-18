@@ -93,7 +93,7 @@ export default function TabCorrections({ token }: Props) {
             : threshold === 100 ? "bg-green-500/20 text-green-300"
             : "bg-violet-500/20 text-violet-300"
           }`}>
-            {threshold === 0 ? "Всё в LLM" : threshold === 100 ? "Всё в Авторасчёт" : `Смешанный (${threshold})`}
+            {threshold < 100 ? `LLM для сложных (${threshold})` : "Всё в Авторасчёт"}
           </span>
         </div>
         <input
@@ -105,9 +105,9 @@ export default function TabCorrections({ token }: Props) {
           className="w-full accent-violet-500 cursor-pointer"
         />
         <div className="flex justify-between text-xs text-white/25">
-          <span>← Всё в LLM (точнее)</span>
-          <span>{thresholdSaving ? "Сохраняю..." : ""}</span>
-          <span>(быстрее) Всё в Авторасчёт →</span>
+          <span>← Сложные → LLM</span>
+          <span className="text-violet-400/60">{thresholdSaving ? "Сохраняю..." : ""}</span>
+          <span>Всё в Авторасчёт →</span>
         </div>
       </div>
 
