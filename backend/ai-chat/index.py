@@ -1086,8 +1086,12 @@ def handler(event, context):
     #     if gen_url:
     #         answer = answer + f"\n\n![сгенерированный дизайн]({gen_url})"
 
+    response_body = {'answer': answer}
+    if llm_items_json and llm_items_json.get('items'):
+        response_body['items'] = llm_items_json['items']
+
     return {
         'statusCode': 200,
         'headers': cors,
-        'body': json.dumps({'answer': answer}),
+        'body': json.dumps(response_body),
     }

@@ -75,7 +75,7 @@ export default function ChatUI({ messages, input, typing, panel, onInput, onSend
                   ? "max-w-[90%] md:max-w-[75%] w-full bg-white/[0.03] border border-white/[0.06] rounded-bl-md"
                   : "max-w-[75%] md:max-w-[60%] bg-gradient-to-br from-white/[0.05] to-white/[0.02] border border-white/[0.06] text-white/70 rounded-bl-md whitespace-pre-wrap"
             }`}>
-              {m.role === "assistant" && isEstimate(m.text) ? <EstimateTable text={m.text} /> : <MsgContent text={m.text} />}
+              {m.role === "assistant" && isEstimate(m.text) ? <EstimateTable text={m.text} items={m.items} /> : <MsgContent text={m.text} />}
             </div>
           </div>
         ))}

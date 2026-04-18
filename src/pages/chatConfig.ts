@@ -2,10 +2,18 @@ import func2url from "@/../backend/func2url.json";
 
 export type Panel = "none" | "production" | "portfolio" | "tips" | "reviews" | "faq" | "contacts" | "booking" | "livechat" | "other";
 
+export interface EstimateItem {
+  name: string;
+  qty: number;
+  price: number;
+  unit?: string;
+}
+
 export interface Msg {
   id: number;
   role: "user" | "assistant";
   text: string;
+  items?: EstimateItem[];
 }
 
 export const AVATAR = "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/files/60e2335c-4916-41e5-b894-7f4d9ca6a923.jpg";

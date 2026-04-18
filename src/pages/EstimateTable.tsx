@@ -167,8 +167,27 @@ export function parseEstimateBlocks(text: string) {
   return { blocks, totals, finalPhrase };
 }
 
-export default function EstimateTable({ text }: { text: string }) {
+interface LLMItem { name: string; qty: number; price: number; unit?: string; }
+
+export default function EstimateTable({ text, items }: { text: string; items?: LLMItem[] }) {
   const parsed = useMemo(() => parseEstimateBlocks(text), [text]);
+
+  // Строим карту name→{qty,price} из items для формулы
+  const itemMap = useMemo(() => {
+    if (!items) return new Map<string, LLMItem>();
+    const m = new Map<string, LLMItem>();
+    for (const it of items) m.set(it.name.toLowerCase(), it);
+    return m;
+  }, [items]);
+
+  const findItem = (name: string): LLMItem | undefined => {
+    const nl = name.toLowerCase();
+    if (itemMap.has(nl)) return itemMap.get(nl);
+    for (const [k, v] of itemMap) {
+      if (nl.includes(k) || k.includes(nl)) return v;
+    }
+    return undefined;
+  };
   const { blocks, totals, finalPhrase } = parsed;
   const [downloading, setDownloading] = useState(false);
 
@@ -233,6 +252,22 @@ export default function EstimateTable({ text }: { text: string }) {
                           if (!isNaN(a) && !isNaN(b)) {
                             formula = val.replace(/\s*[₽Рруб].*$/, " ₽").trim();
                             total   = new Intl.NumberFormat("ru-RU").format(Math.round(a * b)) + " ₽";
+                          }
+                        }
+                      }
+
+                      // Вариант 3: нет формулы с × — ищем в items из JSON
+                      if (!formula.includes("×") && !formula.includes("x") && !formula.includes("х")) {
+                        const llmItem = findItem(cleanName);
+                        if (llmItem && llmItem.price > 0 && llmItem.qty > 0) {
+                          const qty = llmItem.qty;
+                          const price = llmItem.price;
+                          const unit = llmItem.unit || "";
+                          const computed = Math.round(qty * price);
+                          formula = `${qty}${unit ? " " + unit : ""} × ${price.toLocaleString("ru")} ₽`;
+                          // Если total пустой или равен имени — вычисляем
+                          if (!total || total === val) {
+                            total = computed.toLocaleString("ru") + " ₽";
                           }
                         }
                       }

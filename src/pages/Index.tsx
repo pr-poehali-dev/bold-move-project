@@ -71,7 +71,7 @@ export default function Index() {
     const timer = setTimeout(() => ctrl.abort(), 90000);
     fetch(AI_URL, { method: "POST", headers: { "Content-Type": "application/json", "X-Session-Id": sessionStorage.getItem("sid") || "" }, body: JSON.stringify({ messages: history }), signal: ctrl.signal })
       .then((r) => r.json())
-      .then((d) => setMessages((p) => [...p, { id: Date.now() + 1, role: "assistant", text: d.answer || localAnswer(text) }]))
+      .then((d) => setMessages((p) => [...p, { id: Date.now() + 1, role: "assistant", text: d.answer || localAnswer(text), items: d.items }]))
       .catch(() => setMessages((p) => [...p, { id: Date.now() + 1, role: "assistant", text: localAnswer(text) }]))
       .finally(() => { clearTimeout(timer); setTyping(false); });
   }, [messages, typing]);
