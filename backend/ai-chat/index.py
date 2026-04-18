@@ -221,37 +221,31 @@ def try_simple_estimate(text: str) -> tuple[str, dict] | None:
     """Детерминированный расчёт сметы. Возвращает (текст_ответа, recognized_dict) или None."""
     t = text.lower()
 
-    # Нумерованный список позиций — всегда в LLM, regex не справится
-    if _NUMBERED_LIST_PAT.search(t):
-        print(f"[calc] skip: numbered list detected → LLM '{t[:60]}'")
+    # ── ПРОСТОЙ РЕЖИМ: авторасчёт только для коротких простых запросов ────────
+    # Разрешённые слова для авторасчёта — всё остальное → LLM
+    _SIMPLE_ALLOWED = re.compile(
+        r'^[\s\d,./•·\-–—«»()]+$|'
+        r'(м²|м2|кв\.?м?|квадрат|кв\b|'
+        r'матов|глянц|сатин|белый|белая|цветн|ткань|тканев|bauf|бауф|evolution|premium|премиум|'
+        r'люстр|светильник|gx.?53|точечн|'
+        r'ниш|карниз|штор|гардин|пк.?\d+|sigma|брус|'
+        r'потолок|комнат|зал|спальн|кухн|прихожа|гостин|студи|однушк|двушк|трёшк|'
+        r'профил|вставка|рассказовк|классик|матовый)',
+        re.IGNORECASE
+    )
+
+    # Разбиваем текст на слова и проверяем каждое
+    words_in_text = re.findall(r'[а-яёa-z]+', t)
+    unknown_words = [w for w in words_in_text if len(w) > 2 and not _SIMPLE_ALLOWED.search(w)]
+
+    if unknown_words:
+        print(f"[calc] skip: unknown words {unknown_words[:5]} → LLM '{t[:60]}'")
         return None
 
-    # Порог LLM: 0-99=сложные запросы → LLM, 100=всё в авторасчёт
-    threshold = get_llm_threshold()
-
-    if _COMPLEX_PAT.search(t):
-        if threshold >= 100:
-            print(f"[calc] threshold=100, forcing auto for '{t[:60]}'")
-        else:
-            # Проверяем — все ли сложные слова в тексте уже исключены (обучены)
-            exceptions = get_complex_exceptions()
-            all_words = _FULL_WORD_PAT.findall(t)
-            still_complex = []
-            seen = set()
-            for w in all_words:
-                if w in seen:
-                    continue
-                seen.add(w)
-                if not _COMPLEX_PAT.search(w):
-                    continue
-                # Слово сложное — проверяем покрыто ли исключением
-                covered = any(exc in w or w in exc for exc in exceptions)
-                if not covered:
-                    still_complex.append(w)
-            if still_complex:
-                print(f"[calc] skip: still complex {still_complex} threshold={threshold} → LLM '{t[:60]}'")
-                return None
-            print(f"[calc] all complex covered by exceptions, proceeding '{t[:60]}'")
+    # Нумерованный список — всегда в LLM
+    if _NUMBERED_LIST_PAT.search(t):
+        print(f"[calc] skip: numbered list → LLM '{t[:60]}'")
+        return None
 
 
     # Ищем площадь — цифрой или словом (м², м2, кв.м, квадрат)
