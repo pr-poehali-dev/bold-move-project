@@ -50,6 +50,25 @@ def load_xlsx():
     return items, hdrs
 
 
+_COMPLEX_STOP_WORDS = [
+    'лента', 'двухуровн', 'керамогран', 'вентил', 'блок питани', 'парящ',
+    'теневой', 'тенев', 'краб', 'плитк', 'диффузор', 'дифузор', 'без монт', 'вклейк',
+]
+
+def _save_complex_exceptions(conn, cur, synonyms_str: str, name: str):
+    """Если синоним/имя покрывает стоп-слово — добавляем исключение в БД."""
+    all_texts = [name] + [s.strip() for s in (synonyms_str or '').split(',') if s.strip()]
+    for text in all_texts:
+        tl = text.lower()
+        for cw in _COMPLEX_STOP_WORDS:
+            if cw in tl:
+                cur.execute(
+                    f"INSERT INTO {SCHEMA}.complex_word_exceptions (word) VALUES (%s) ON CONFLICT DO NOTHING",
+                    (cw,)
+                )
+    conn.commit()
+
+
 def handler(event: dict, context) -> dict:
     """Управление AI-конфигурацией: промпт, база знаний, быстрые вопросы, импорт XLSX.
     Маршрутизация через query-параметр: ?r=prompt|faq|questions|login
@@ -184,27 +203,6 @@ def handler(event: dict, context) -> dict:
         cur.execute(f"DELETE FROM {SCHEMA}.ai_quick_questions WHERE id = %s", (q_id,))
         conn.commit(); cur.close(); conn.close()
         return resp(200, {'ok': True})
-
-    # ── helpers ──────────────────────────────────────────────────────────────
-def _complex_words():
-    return [
-        'лента', 'двухуровн', 'керамогран', 'вентил', 'блок питани', 'парящ',
-        'теневой', 'тенев', 'краб', 'плитк', 'диффузор', 'дифузор', 'без монт', 'вклейк',
-    ]
-
-def _save_complex_exceptions(conn, cur, synonyms_str: str, name: str):
-    """Если синоним/имя покрывает стоп-слово — добавляем исключение."""
-    import re as _re
-    all_texts = [name] + [s.strip() for s in (synonyms_str or '').split(',') if s.strip()]
-    for text in all_texts:
-        tl = text.lower()
-        for cw in _complex_words():
-            if cw in tl:
-                cur.execute(
-                    f"INSERT INTO {SCHEMA}.complex_word_exceptions (word) VALUES (%s) ON CONFLICT DO NOTHING",
-                    (cw,)
-                )
-    conn.commit()
 
     # --- GET ?r=prices
     if r == 'prices' and method == 'GET':
