@@ -528,6 +528,18 @@ def _extract_and_save_suggestions(answer: str, user_text: str, session_id: str, 
     if not items:
         return
 
+    # Стоп-слова: позиции которые ВСЕГДА есть в стандартной смете — не предлагаем
+    BUILTIN_STOP_WORDS = {
+        'раскрой', 'огарпун', 'полотно', 'монтаж', 'профил', 'закладн',
+        'светильник', 'лампа', 'люстра', 'ниша', 'карниз', 'штора',
+        'стандарт', 'econom', 'standard', 'premium', 'итого', 'всего',
+        'услуги', 'установк', 'разводк', 'гост',
+    }
+
+    def _is_builtin(name: str) -> bool:
+        nl = name.lower()
+        return any(stop in nl for stop in BUILTIN_STOP_WORDS)
+
     # Все известные имена и синонимы из прайса
     known = set()
     for r in rules:
@@ -542,9 +554,12 @@ def _extract_and_save_suggestions(answer: str, user_text: str, session_id: str, 
         return set(re.findall(r'[а-яёa-z0-9]+', s.lower()))
 
     # Фильтруем — оставляем только то чего нет в прайсе
-    # Считаем "известным" если пересечение слов >= 60% слов из item name
+    # Считаем "известным" если пересечение слов >= 50% слов из item name
     new_items = []
     for item in items:
+        if _is_builtin(item['name']):
+            print(f"[suggestions] skip builtin: {item['name']}")
+            continue
         item_words = _words(item['name'])
         if not item_words:
             continue
@@ -554,8 +569,8 @@ def _extract_and_save_suggestions(answer: str, user_text: str, session_id: str, 
             if not k_words:
                 continue
             overlap = len(item_words & k_words)
-            # Известно если хотя бы 60% слов совпадают с любой стороны
-            if overlap / max(len(item_words), len(k_words)) >= 0.6:
+            # Известно если хотя бы 50% слов совпадают с любой стороны
+            if overlap / max(len(item_words), len(k_words)) >= 0.5:
                 is_known = True
                 break
         if not is_known:
