@@ -328,7 +328,7 @@ def try_simple_estimate(text: str) -> tuple[str, dict] | None:
     # ─── ЦЕНЫ ИЗ БД (с fallback на старые значения) ────────────────────────
     price_raskroy        = p('Раскрой ПВХ', 100)
     price_ogarp          = p('Огарпунивание ПВХ', 100)
-    price_profile        = p('Стеновой алюминий', 200)
+    price_profile        = p('Стеновой ПВХ', 150)
     price_zakl_lyustra   = p('Закладная под люстру', 700)
     price_zakl_svet      = p('Закладная под светильник', 350)
     price_svetilnik      = p('Светильник GX-53 + лампа', 400)
@@ -409,7 +409,7 @@ def try_simple_estimate(text: str) -> tuple[str, dict] | None:
     # ─── ДИНАМИЧЕСКИЕ ПОЗИЦИИ ИЗ ПРАЙСА (синонимы + calc_rule) ─────────────────
     # Все позиции у которых есть синонимы — проверяем совпадение в тексте
     _BUILTIN_NAMES = {
-        'Раскрой ПВХ', 'Огарпунивание ПВХ', 'Стеновой алюминий',
+        'Раскрой ПВХ', 'Огарпунивание ПВХ', 'Стеновой алюминий', 'Стеновой ПВХ',
         'Закладная под люстру', 'Закладная под светильник',
         'Светильник GX-53 + лампа', 'Лампа GX53',
         'Монтаж полотна ПВХ', 'Монтаж полотна ТКАНЬ',
@@ -503,7 +503,7 @@ def try_simple_estimate(text: str) -> tuple[str, dict] | None:
     # Профиль
     sec += 1
     lines.append(f"\n{sec}. Профиль:")
-    lines.append(f"  Стеновой алюминиевый {profile_len} мп × {price_profile} ₽ = {fmt(profile_total)} ₽")
+    lines.append(f"  Стеновой ПВХ {profile_len} мп × {price_profile} ₽ = {fmt(profile_total)} ₽")
 
     # Ниша
     if has_nisha:
