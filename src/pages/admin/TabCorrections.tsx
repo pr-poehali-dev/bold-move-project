@@ -218,6 +218,9 @@ export default function TabCorrections({ token }: Props) {
   const [expandedId, setExpandedId] = useState<number | null>(null);
   const [addingWord, setAddingWord] = useState<{ corrId: number; word: string } | null>(null);
   const [doneWords, setDoneWords] = useState<Record<number, string[]>>({});
+  const [mergeFirst, setMergeFirst] = useState<{ corrId: number; word: string } | null>(null);
+  // extraWords — дополнительные теги добавленные объединением, per item
+  const [extraWords, setExtraWords] = useState<Record<number, string[]>>({});
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -251,9 +254,14 @@ export default function TabCorrections({ token }: Props) {
     const isExpanded = expandedId === item.id;
     const isLLM = !data || "reason" in (data ?? {});
     const skipInfo = isLLM ? (data as SkipInfo | null) : null;
-    const allUnknownWords: string[] = skipInfo?.unknown_words?.length
+    const baseUnknownWords: string[] = skipInfo?.unknown_words?.length
       ? skipInfo.unknown_words
       : skipInfo?.unknown_word ? [skipInfo.unknown_word] : [];
+    // Применяем объединения: убираем исходные слова, добавляем объединённые
+    const allUnknownWords: string[] = [
+      ...baseUnknownWords.filter(w => !(extraWords[item.id] ?? []).some(e => e.includes(w) && e !== w)),
+      ...(extraWords[item.id] ?? []),
+    ];
     const unknownWords = allUnknownWords.filter(w => !(doneWords[item.id] ?? []).includes(w));
 
     return (
@@ -288,34 +296,74 @@ export default function TabCorrections({ token }: Props) {
             {/* Кнопки нераспознанных слов */}
             {isLLM && unknownWords.length > 0 && item.status === "pending" && (
               <div className="flex flex-wrap gap-2 mt-3">
-                {unknownWords.map(w => (
-                  <div key={w} className="flex items-center gap-1">
-                    <button
-                      onClick={() => setAddingWord(
-                        addingWord?.word === w && addingWord.corrId === item.id ? null : { corrId: item.id, word: w }
+                {mergeFirst?.corrId === item.id && (
+                  <span className="text-xs text-amber-400/70 w-full -mb-1">
+                    Выбери второй тег для объединения с «{mergeFirst.word}»
+                  </span>
+                )}
+                {unknownWords.map(w => {
+                  const isMergeSelected = mergeFirst?.corrId === item.id && mergeFirst.word === w;
+                  const isActive = addingWord?.word === w && addingWord.corrId === item.id;
+                  const isMergeMode = mergeFirst?.corrId === item.id;
+
+                  const handleClick = () => {
+                    if (isMergeMode && !isMergeSelected) {
+                      // Объединяем mergeFirst.word + w
+                      const merged = mergeFirst!.word + " " + w;
+                      const oldExtras = extraWords[item.id] ?? [];
+                      const newExtras = [
+                        ...oldExtras.filter(e => e !== mergeFirst!.word && e !== w),
+                        merged,
+                      ];
+                      setExtraWords(prev => ({ ...prev, [item.id]: newExtras }));
+                      setMergeFirst(null);
+                      if (addingWord?.corrId === item.id) setAddingWord(null);
+                    } else if (isMergeSelected) {
+                      setMergeFirst(null);
+                    } else {
+                      setAddingWord(isActive ? null : { corrId: item.id, word: w });
+                    }
+                  };
+
+                  return (
+                    <div key={w} className="flex items-center gap-0.5">
+                      <button
+                        onClick={handleClick}
+                        className={`text-xs px-2.5 py-1 rounded-full border transition flex items-center gap-1.5 ${
+                          isMergeSelected
+                            ? "bg-amber-500/20 border-amber-500/50 text-amber-300"
+                            : isActive
+                            ? "bg-violet-600/30 border-violet-500/50 text-violet-300"
+                            : "bg-red-500/10 border-red-500/30 text-red-300 hover:bg-red-500/20"
+                        }`}>
+                        <Icon name="Tag" size={10} />
+                        «{w}»
+                      </button>
+                      {/* Кнопка объединить — только если не в режиме объединения */}
+                      {!isMergeMode && (
+                        <button
+                          onClick={() => setMergeFirst({ corrId: item.id, word: w })}
+                          title="Объединить с другим тегом"
+                          className="text-white/15 hover:text-amber-400 transition flex-shrink-0 px-0.5">
+                          <Icon name="Link" size={11} />
+                        </button>
                       )}
-                      className={`text-xs px-2.5 py-1 rounded-full border transition flex items-center gap-1.5 ${
-                        addingWord?.word === w && addingWord.corrId === item.id
-                          ? "bg-violet-600/30 border-violet-500/50 text-violet-300"
-                          : "bg-red-500/10 border-red-500/30 text-red-300 hover:bg-red-500/20"
-                      }`}>
-                      <Icon name="Tag" size={10} />
-                      «{w}»
-                    </button>
-                    <button
-                      onClick={() => {
-                        const newDone = [...(doneWords[item.id] ?? []), w];
-                        setDoneWords(prev => ({ ...prev, [item.id]: newDone }));
-                        if (addingWord?.word === w && addingWord.corrId === item.id) setAddingWord(null);
-                        const remaining = allUnknownWords.filter(x => !newDone.includes(x));
-                        if (remaining.length === 0) update(item.id, "approved");
-                      }}
-                      title="Не учитывать это слово"
-                      className="text-white/20 hover:text-white/50 transition flex-shrink-0">
-                      <Icon name="X" size={12} />
-                    </button>
-                  </div>
-                ))}
+                      <button
+                        onClick={() => {
+                          const newDone = [...(doneWords[item.id] ?? []), w];
+                          setDoneWords(prev => ({ ...prev, [item.id]: newDone }));
+                          if (addingWord?.word === w && addingWord.corrId === item.id) setAddingWord(null);
+                          if (mergeFirst?.word === w && mergeFirst.corrId === item.id) setMergeFirst(null);
+                          const remaining = allUnknownWords.filter(x => !newDone.includes(x));
+                          if (remaining.length === 0) update(item.id, "approved");
+                        }}
+                        title="Не учитывать"
+                        className="text-white/15 hover:text-white/50 transition flex-shrink-0">
+                        <Icon name="X" size={11} />
+                      </button>
+                    </div>
+                  );
+                })}
               </div>
             )}
 
