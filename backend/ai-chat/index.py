@@ -82,6 +82,8 @@ _COMPLEX_WORDS = [
 _COMPLEX_PAT = re.compile(r'(' + '|'.join(re.escape(w) for w in _COMPLEX_WORDS) + r')')
 # Паттерн для захвата полного слова содержащего стоп-подстроку
 _FULL_WORD_PAT = re.compile(r'[а-яёa-z0-9]+(?:[- ][а-яёa-z0-9]+)*', re.IGNORECASE)
+# Нумерованный список позиций — всегда в LLM (слишком сложная структура для regex)
+_NUMBERED_LIST_PAT = re.compile(r'\b[1-9]\s*[\.\)]\s+\S', re.IGNORECASE)
 
 # Паттерны «известных» частей запроса — то что бот уже умеет считать/игнорировать
 _KNOWN_PARTS_PAT = re.compile(
@@ -194,6 +196,11 @@ def _text_covered_by_synonyms(text: str, known: set[str]) -> bool:
 def try_simple_estimate(text: str) -> tuple[str, dict] | None:
     """Детерминированный расчёт сметы. Возвращает (текст_ответа, recognized_dict) или None."""
     t = text.lower()
+
+    # Нумерованный список позиций — всегда в LLM, regex не справится
+    if _NUMBERED_LIST_PAT.search(t):
+        print(f"[calc] skip: numbered list detected → LLM '{t[:60]}'")
+        return None
 
     # Порог LLM: 0-99=сложные запросы → LLM, 100=всё в авторасчёт
     threshold = get_llm_threshold()
