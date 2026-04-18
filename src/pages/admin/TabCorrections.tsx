@@ -300,7 +300,7 @@ export default function TabCorrections({ token }: Props) {
                           : "bg-red-500/10 border-red-500/30 text-red-300 hover:bg-red-500/20"
                       }`}>
                       <Icon name="Tag" size={10} />
-                      «{w}» — назначить позицию
+                      «{w}»
                     </button>
                     <button
                       onClick={() => {
