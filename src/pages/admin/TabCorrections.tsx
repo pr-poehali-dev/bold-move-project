@@ -251,9 +251,12 @@ export default function TabCorrections({ token }: Props) {
     const isExpanded = expandedId === item.id;
     const isLLM = !data || "reason" in (data ?? {});
     const skipInfo = isLLM ? (data as SkipInfo | null) : null;
-    const allUnknownWords: string[] = skipInfo?.unknown_words?.length
+    const rawUnknownWords: string[] = skipInfo?.unknown_words?.length
       ? skipInfo.unknown_words
       : skipInfo?.unknown_word ? [skipInfo.unknown_word] : [];
+    const allUnknownWords: string[] = [...new Set(
+      rawUnknownWords.flatMap(phrase => phrase.split(/\s+/).filter(w => w.length > 1))
+    )];
     const unknownWords = allUnknownWords.filter(w => !(doneWords[item.id] ?? []).includes(w));
 
     return (
@@ -399,8 +402,8 @@ export default function TabCorrections({ token }: Props) {
           </div>
         )}
 
-        {/* Кнопки действий */}
-        {item.status === "pending" && (
+        {/* Кнопки действий — только для авторасчёта */}
+        {item.status === "pending" && !isLLM && (
           <div className="border-t border-white/10 px-4 py-3 flex gap-2">
             <button onClick={() => update(item.id, "approved")}
               className="flex-1 bg-green-600/20 hover:bg-green-600/30 text-green-300 text-sm py-2 rounded-lg transition flex items-center justify-center gap-1.5">
