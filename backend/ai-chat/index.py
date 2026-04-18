@@ -161,14 +161,48 @@ def get_skip_reason(text: str) -> dict:
     return {'reason': 'unknown', 'unknown_word': None, 'unknown_words': []}
 
 
+def _get_known_synonyms() -> set[str]:
+    """Возвращает все синонимы и имена позиций из прайса (lowercase)."""
+    try:
+        rules = get_price_rules()
+        result = set()
+        for r in rules:
+            result.add(r['name'].lower())
+            if r.get('synonyms'):
+                for s in r['synonyms'].split(','):
+                    s = s.strip().lower()
+                    if s:
+                        result.add(s)
+        return result
+    except Exception:
+        return set()
+
+
+def _text_covered_by_synonyms(text: str, known: set[str]) -> bool:
+    """Проверяет — все сложные слова в тексте уже покрыты синонимами из прайса."""
+    matches = _COMPLEX_PAT.findall(text.lower())
+    if not matches:
+        return True
+    for match in matches:
+        covered = any(match in syn or syn in match for syn in known)
+        if not covered:
+            return False
+    return True
+
+
 def try_simple_estimate(text: str) -> tuple[str, dict] | None:
     """Детерминированный расчёт сметы. Возвращает (текст_ответа, recognized_dict) или None."""
     t = text.lower()
 
     # Не перехватываем сложные случаи — отдаём в LLM
+    # НО: если сложное слово уже есть как синоним в прайсе — считаем сами
     if _COMPLEX_PAT.search(t):
-        print(f"[calc] skip: complex keyword in '{t[:60]}'")
-        return None
+        known = _get_known_synonyms()
+        if not _text_covered_by_synonyms(t, known):
+            print(f"[calc] skip: complex keyword not in synonyms '{t[:60]}'")
+            return None
+        print(f"[calc] complex keyword covered by synonym, proceeding '{t[:60]}'")
+
 
     # Ищем площадь — цифрой или словом
     m = re.search(_NUM_WORD_PAT + r'\s*(?:м²|м2|кв\.?\s*м?|квадрат|кв\b)', t)
@@ -287,7 +321,48 @@ def try_simple_estimate(text: str) -> tuple[str, dict] | None:
         else:
             nisha_price = p('Ниша без перегиба', 1700); nisha_label = 'Ниша без перегиба'
 
-    print(f"[calc] area={area} perim={perim} n_lyustra={n_lyustra} n_svetilnik={n_svetilnik} has_nisha={has_nisha} nisha_len={nisha_len if has_nisha else '-'} nisha_price={nisha_price}")
+    # ─── ДИНАМИЧЕСКИЕ ПОЗИЦИИ ИЗ ПРАЙСА (синонимы + calc_rule) ─────────────────
+    # Все позиции у которых есть синонимы — проверяем совпадение в тексте
+    _BUILTIN_NAMES = {
+        'Раскрой ПВХ', 'Огарпунивание ПВХ', 'Стеновой алюминий',
+        'Закладная под люстру', 'Закладная под светильник',
+        'Светильник GX-53 + лампа', 'Лампа GX53',
+        'Монтаж полотна ПВХ', 'Монтаж полотна ТКАНЬ',
+        'Монтаж профиля стандарт', 'Монтаж парящего профиля',
+        'Монтаж закладной', 'Монтаж светильника GX53',
+        'Монтаж разводки ГОСТ 0.75',
+        'Ниша без перегиба', 'ПК-12', 'ПК-14', 'ПК-15', 'Парящий ПК-6',
+        'Sigma LED', 'Sigma', 'Брус БП-40',
+    }
+    dynamic_extras = []  # [(name, qty, unit_price, total)]
+    for rule in _rules:
+        if rule['name'] in _BUILTIN_NAMES:
+            continue
+        syns = [s.strip() for s in rule['synonyms'].split(',') if s.strip()] if rule['synonyms'] else []
+        kws = [rule['name']] + syns
+        pat = '|'.join(re.escape(k) for k in kws)
+        if not re.search(pat, t, re.IGNORECASE):
+            continue
+        unit_price = int(rule['price']) if rule['price'] else 0
+        calc = rule['calc_rule'] or ''
+        # Ищем явное количество рядом с синонимом
+        qty_m = re.search(_NUM_WORD_PAT + r'\s*(?:' + pat + r')', t, re.IGNORECASE)
+        if not qty_m:
+            qty_m = re.search(r'(?:' + pat + r')\s*' + _NUM_WORD_PAT, t, re.IGNORECASE)
+        if qty_m:
+            try:
+                qty = _w2n(qty_m.group(1))
+            except Exception:
+                qty = 1
+        elif calc:
+            qty = eval_calc_rule(calc, area, perim) or 1
+        else:
+            qty = 1
+        total = round(qty * unit_price)
+        dynamic_extras.append((rule['name'], qty, unit_price, total, rule['unit'] or 'шт'))
+        print(f"[calc] dynamic: {rule['name']} qty={qty} price={unit_price} total={total}")
+
+    print(f"[calc] area={area} perim={perim} n_lyustra={n_lyustra} n_svetilnik={n_svetilnik} has_nisha={has_nisha} nisha_len={nisha_len if has_nisha else '-'} nisha_price={nisha_price} dynamic={len(dynamic_extras)}")
 
     # ─── РАСЧЁТ ───────────────────────────────────────────────────────────────
     # 1. Полотно
@@ -319,9 +394,11 @@ def try_simple_estimate(text: str) -> tuple[str, dict] | None:
     mount_svet    = n_svetilnik * price_mount_svet
     mount_razv    = n_svetilnik * price_mount_razv if n_svetilnik > 0 else 0
 
+    dynamic_total = sum(x[3] for x in dynamic_extras)
     standard = (canvas_total + raskroy + ogarp + profile_total + nisha_total +
                 zakl_total + svet_total + lampa_total +
-                mount_canvas + mount_profile + mount_nisha + mount_zakl + mount_svet + mount_razv)
+                mount_canvas + mount_profile + mount_nisha + mount_zakl + mount_svet + mount_razv +
+                dynamic_total)
     econom        = round(standard * 0.77)
     premium_price = round(standard * 1.27)
 
@@ -378,6 +455,13 @@ def try_simple_estimate(text: str) -> tuple[str, dict] | None:
         lines.append(f"  Монтаж светильников {n_svetilnik} шт. × {price_mount_svet} ₽ = {fmt(mount_svet)} ₽")
     if mount_razv > 0:
         lines.append(f"  Монтаж разводки ГОСТ {n_svetilnik} шт. × {price_mount_razv} ₽ = {fmt(mount_razv)} ₽")
+
+    # Дополнительные позиции из прайса (обученные)
+    if dynamic_extras:
+        sec += 1
+        lines.append(f"\n{sec}. Дополнительно:")
+        for name, qty, unit_price, total, unit in dynamic_extras:
+            lines.append(f"  {name} {qty} {unit} × {unit_price} ₽ = {fmt(total)} ₽")
 
     lines.append(f"\nEconom:   {fmt(econom)} ₽")
     lines.append(f"Standard: {fmt(standard)} ₽")
