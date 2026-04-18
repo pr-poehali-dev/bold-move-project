@@ -341,7 +341,6 @@ def _try_simple_estimate_inner(text: str) -> tuple[str, dict] | None:
     price_zakl_lyustra   = p('Под люстру планка', 0)
     price_zakl_svet      = p('Под светильник ∅90', 0)
     price_svetilnik      = p('Светильник GX-53 + лампа', 0)
-    price_lampa          = p('Лампа GX53', 0)
     price_mount_pvh      = p('Монтаж полотна ПВХ', 0)
     price_mount_tkань    = p('Монтаж полотна ТКАНЬ', 0)
     price_mount_profile  = p('Монтаж профиля стандарт', 0)
@@ -401,31 +400,39 @@ def _try_simple_estimate_inner(text: str) -> tuple[str, dict] | None:
     if has_nisha:
         pk_m = re.search(r'пк[- ]?(\d+)', t)
         pk = int(pk_m.group(1)) if pk_m else 0
-        if pk in (12, 14, 15):
-            nisha_price = p(f'ПК-{pk}', 3600); nisha_label = f'ПК-{pk}'
+        if pk == 12:
+            nisha_price = p('Ниша ПК-12 (3 ряда)', 0); nisha_label = 'Ниша ПК-12 (3 ряда)'
+        elif pk == 14:
+            nisha_price = p('Ниша ПК-14 (2 ряда)', 0); nisha_label = 'Ниша ПК-14 (2 ряда)'
+        elif pk == 15:
+            nisha_price = p('Ниша ПК-15 (2 ряда)', 0); nisha_label = 'Ниша ПК-15 (2 ряда)'
         elif pk == 6:
-            nisha_price = p('Парящий ПК-6', 1300); nisha_label = 'Парящий ПК-6'
+            nisha_price = p('Парящий ПК-6 без рассеивателя', 0); nisha_label = 'Парящий ПК-6 без рассеивателя'
         elif re.search(r'sigma\s*led', t):
-            nisha_price = p('Sigma LED', 1650); nisha_label = 'Sigma LED'
+            nisha_price = p('Sigma LED', 0); nisha_label = 'Sigma LED'
         elif re.search(r'sigma', t):
-            nisha_price = p('Sigma', 1400); nisha_label = 'Sigma'
+            nisha_price = p('Sigma', 0); nisha_label = 'Sigma'
         elif re.search(r'брус|бп.?40', t):
-            nisha_price = p('Брус БП-40', 850); nisha_label = 'Брус БП-40'
+            nisha_price = p('БП-40', 0); nisha_label = 'БП-40'
         else:
-            nisha_price = p('Ниша без перегиба', 1700); nisha_label = 'Ниша без перегиба'
+            nisha_price = p('Ниша без перегиба', 0); nisha_label = 'Ниша без перегиба'
 
     # ─── ДИНАМИЧЕСКИЕ ПОЗИЦИИ ИЗ ПРАЙСА (синонимы + calc_rule) ─────────────────
     # Все позиции у которых есть синонимы — проверяем совпадение в тексте
     _BUILTIN_NAMES = {
-        'Раскрой ПВХ', 'Огарпунивание ПВХ', 'Стеновой алюминий', 'Стеновой ПВХ',
-        'Закладная под люстру', 'Закладная под светильник',
-        'Светильник GX-53 + лампа', 'Лампа GX53',
+        'Раскрой ПВХ', 'Огарпунивание ПВХ',
+        'Стеновой алюминий', 'Стеновой ПВХ',
+        'Под люстру планка', 'Под люстру крюк', 'Под люстру крестовина',
+        'Под светильник ∅90', 'Под светильник ∅100-300', 'Под светильник ∅300-600',
+        'Светильник GX-53 + лампа',
         'Монтаж полотна ПВХ', 'Монтаж полотна ТКАНЬ',
         'Монтаж профиля стандарт', 'Монтаж парящего профиля',
-        'Монтаж закладной', 'Монтаж светильника GX53',
+        'Монтаж закладной', 'Монтаж светильников GX-53',
         'Монтаж разводки ГОСТ 0.75',
-        'Ниша без перегиба', 'ПК-12', 'ПК-14', 'ПК-15', 'Парящий ПК-6',
-        'Sigma LED', 'Sigma', 'Брус БП-40',
+        'Ниша без перегиба', 'Ниша с перегибом',
+        'Ниша ПК-12 (3 ряда)', 'Ниша ПК-14 (2 ряда)', 'Ниша ПК-15 (2 ряда)',
+        'Парящий ПК-6 без рассеивателя',
+        'Sigma LED', 'Sigma', 'БП-40',
     }
     dynamic_extras = []  # [(name, qty, unit_price, total)]
     for rule in _rules:
@@ -474,9 +481,8 @@ def _try_simple_estimate_inner(text: str) -> tuple[str, dict] | None:
     zakl_svet    = n_svetilnik * price_zakl_svet
     zakl_total   = zakl_lyustra + zakl_svet
 
-    # 4. Освещение
+    # 4. Освещение (лампа уже включена в цену светильника)
     svet_total  = n_svetilnik * price_svetilnik
-    lampa_total = n_svetilnik * price_lampa
 
     # 5. Монтаж
     price_mount_canvas = price_mount_pvh if is_pvh else price_mount_tkань
@@ -488,7 +494,7 @@ def _try_simple_estimate_inner(text: str) -> tuple[str, dict] | None:
 
     dynamic_total = sum(x[3] for x in dynamic_extras)
     standard = (canvas_total + raskroy + ogarp + profile_total + nisha_total +
-                zakl_total + svet_total + lampa_total +
+                zakl_total + svet_total +
                 mount_canvas + mount_profile + mount_zakl + mount_svet + mount_razv +
                 dynamic_total)
     econom        = round(standard * 0.77)
@@ -533,8 +539,6 @@ def _try_simple_estimate_inner(text: str) -> tuple[str, dict] | None:
         sec += 1
         lines.append(f"\n{sec}. Освещение:")
         lines.append(f"  Светильник GX-53 + лампа {n_svetilnik} шт. × {price_svetilnik} ₽ = {fmt(svet_total)} ₽")
-        if price_lampa:
-            lines.append(f"  Лампа GX53 {n_svetilnik} шт. × {price_lampa} ₽ = {fmt(lampa_total)} ₽")
 
     # Монтаж
     sec += 1
