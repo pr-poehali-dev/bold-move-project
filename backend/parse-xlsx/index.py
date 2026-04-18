@@ -185,6 +185,27 @@ def handler(event: dict, context) -> dict:
         conn.commit(); cur.close(); conn.close()
         return resp(200, {'ok': True})
 
+    # ── helpers ──────────────────────────────────────────────────────────────
+def _complex_words():
+    return [
+        'лента', 'двухуровн', 'керамогран', 'вентил', 'блок питани', 'парящ',
+        'теневой', 'тенев', 'краб', 'плитк', 'диффузор', 'дифузор', 'без монт', 'вклейк',
+    ]
+
+def _save_complex_exceptions(conn, cur, synonyms_str: str, name: str):
+    """Если синоним/имя покрывает стоп-слово — добавляем исключение."""
+    import re as _re
+    all_texts = [name] + [s.strip() for s in (synonyms_str or '').split(',') if s.strip()]
+    for text in all_texts:
+        tl = text.lower()
+        for cw in _complex_words():
+            if cw in tl:
+                cur.execute(
+                    f"INSERT INTO {SCHEMA}.complex_word_exceptions (word) VALUES (%s) ON CONFLICT DO NOTHING",
+                    (cw,)
+                )
+    conn.commit()
+
     # --- GET ?r=prices
     if r == 'prices' and method == 'GET':
         conn = get_conn(); cur = conn.cursor()
@@ -207,12 +228,14 @@ def handler(event: dict, context) -> dict:
             f"SELECT COALESCE(MAX(sort_order), 0) + 10 FROM {SCHEMA}.ai_prices WHERE category = %s", (category,)
         )
         sort_order = cur.fetchone()[0]
+        synonyms = body.get('synonyms', '')
         cur.execute(
-            f"INSERT INTO {SCHEMA}.ai_prices (category, name, price, unit, description, sort_order, active) VALUES (%s,%s,%s,%s,%s,%s,true) RETURNING id",
-            (category, name, int(body.get('price', 0)), body.get('unit', 'шт'), body.get('description', ''), sort_order)
+            f"INSERT INTO {SCHEMA}.ai_prices (category, name, price, unit, description, sort_order, active, synonyms) VALUES (%s,%s,%s,%s,%s,%s,true,%s) RETURNING id",
+            (category, name, int(body.get('price', 0)), body.get('unit', 'шт'), body.get('description', ''), sort_order, synonyms)
         )
         new_id = cur.fetchone()[0]
-        conn.commit(); cur.close(); conn.close()
+        _save_complex_exceptions(conn, cur, synonyms, name)
+        cur.close(); conn.close()
         return resp(200, {'id': new_id, 'ok': True})
 
     # --- PUT ?r=prices&id=X  (обновление цены)
@@ -222,11 +245,13 @@ def handler(event: dict, context) -> dict:
         price_id = int(qs.get('id', '0'))
         body = json.loads(body_str)
         conn = get_conn(); cur = conn.cursor()
+        synonyms = body.get('synonyms', '')
         cur.execute(
             f"UPDATE {SCHEMA}.ai_prices SET name=%s, price=%s, unit=%s, description=%s, active=%s, calc_rule=%s, bundle=%s, synonyms=%s, updated_at=now() WHERE id=%s",
-            (body.get('name',''), int(body.get('price', 0)), body.get('unit',''), body.get('description',''), body.get('active', True), body.get('calc_rule',''), body.get('bundle','[]'), body.get('synonyms',''), price_id)
+            (body.get('name',''), int(body.get('price', 0)), body.get('unit',''), body.get('description',''), body.get('active', True), body.get('calc_rule',''), body.get('bundle','[]'), synonyms, price_id)
         )
-        conn.commit(); cur.close(); conn.close()
+        _save_complex_exceptions(conn, cur, synonyms, body.get('name', ''))
+        cur.close(); conn.close()
         return resp(200, {'ok': True})
 
     # --- PUT ?r=prices&rename_category  (переименование категории)

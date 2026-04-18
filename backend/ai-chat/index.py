@@ -11,7 +11,7 @@ from db import (
     get_knowledge, get_system_prompt, get_faq_cache,
     get_prices_block, get_canvas_prices, get_price_rules,
     build_rules_prompt, eval_calc_rule, save_correction, CANVAS_PRICES, SCHEMA,
-    get_llm_threshold,
+    get_llm_threshold, get_complex_exceptions,
 )
 
 # Встроенный кэш частых вопросов (fallback если БД недоступна)
@@ -200,12 +200,27 @@ def try_simple_estimate(text: str) -> tuple[str, dict] | None:
 
     if _COMPLEX_PAT.search(t):
         if threshold >= 100:
-            # Только при 100 — авторасчёт для всего
             print(f"[calc] threshold=100, forcing auto for '{t[:60]}'")
         else:
-            # При любом значении < 100 — сложные запросы идут в LLM
-            print(f"[calc] skip: complex keyword, threshold={threshold} → LLM '{t[:60]}'")
-            return None
+            # Проверяем — все ли сложные слова в тексте уже исключены (обучены)
+            exceptions = get_complex_exceptions()
+            all_words = _FULL_WORD_PAT.findall(t)
+            still_complex = []
+            seen = set()
+            for w in all_words:
+                if w in seen:
+                    continue
+                seen.add(w)
+                if not _COMPLEX_PAT.search(w):
+                    continue
+                # Слово сложное — проверяем покрыто ли исключением
+                covered = any(exc in w or w in exc for exc in exceptions)
+                if not covered:
+                    still_complex.append(w)
+            if still_complex:
+                print(f"[calc] skip: still complex {still_complex} threshold={threshold} → LLM '{t[:60]}'")
+                return None
+            print(f"[calc] all complex covered by exceptions, proceeding '{t[:60]}'")
 
 
     # Ищем площадь — цифрой или словом

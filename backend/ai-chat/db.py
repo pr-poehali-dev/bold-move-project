@@ -182,6 +182,19 @@ def save_correction(user_text: str, recognized_json: dict | None, session_id: st
         print(f"[corrections] save error: {e}")
 
 
+def get_complex_exceptions() -> set:
+    """Возвращает стоп-слова которые уже обучены и не должны блокировать авторасчёт."""
+    try:
+        conn = psycopg2.connect(os.environ['DATABASE_URL'])
+        cur = conn.cursor()
+        cur.execute(f"SELECT word FROM {SCHEMA}.complex_word_exceptions")
+        rows = cur.fetchall()
+        cur.close(); conn.close()
+        return {row[0] for row in rows}
+    except Exception:
+        return set()
+
+
 def get_llm_threshold() -> int:
     """Возвращает порог LLM: 0=всё в LLM, 100=всё в авторасчёт. Default=0."""
     try:
