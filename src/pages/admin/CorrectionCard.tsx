@@ -32,6 +32,8 @@ export default function CorrectionCard({
 }: Props) {
   const [selectedWords, setSelectedWords] = useState<string[]>([]);
   const [panelOpen, setPanelOpen] = useState(false);
+  const [editingTag, setEditingTag] = useState<string | null>(null);
+  const [editingTagVal, setEditingTagVal] = useState("");
 
   const knownSynonyms = new Set(
     prices.flatMap(p => {
@@ -167,6 +169,38 @@ export default function CorrectionCard({
                   );
                 }
 
+                // Режим редактирования тега
+                if (editingTag === w) {
+                  return (
+                    <div key={w} className="flex items-center gap-1">
+                      <input
+                        autoFocus
+                        value={editingTagVal}
+                        onChange={e => setEditingTagVal(e.target.value)}
+                        onKeyDown={e => {
+                          if (e.key === "Enter") {
+                            const newVal = editingTagVal.trim();
+                            if (newVal && newVal !== w) {
+                              const newExtras = extraWords.includes(w)
+                                ? extraWords.map(x => x === w ? newVal : x)
+                                : [...extraWords.filter(x => x !== w), newVal];
+                              onExtraWordsChange(newExtras);
+                              setSelectedWords(prev => prev.map(x => x === w ? newVal : x));
+                            }
+                            setEditingTag(null);
+                          }
+                          if (e.key === "Escape") setEditingTag(null);
+                        }}
+                        onBlur={() => setEditingTag(null)}
+                        className="text-xs px-2 py-0.5 rounded-full border border-violet-500/50 bg-violet-600/20 text-violet-200 outline-none w-32"
+                      />
+                      <button onClick={() => setEditingTag(null)} className="text-white/30 hover:text-white/60">
+                        <Icon name="X" size={11} />
+                      </button>
+                    </div>
+                  );
+                }
+
                 return (
                   <div key={w} className="flex items-center gap-0.5">
                     <button
@@ -185,12 +219,20 @@ export default function CorrectionCard({
                       «{w}»
                     </button>
                     {!isMergeMode && (
-                      <button
-                        onClick={() => onMergeFirstChange({ corrId: item.id, word: w })}
-                        title="Объединить с другим тегом"
-                        className="text-white/15 hover:text-amber-400 transition flex-shrink-0 px-0.5">
-                        <Icon name="Link" size={11} />
-                      </button>
+                      <>
+                        <button
+                          onClick={() => { setEditingTag(w); setEditingTagVal(w); }}
+                          title="Редактировать тег"
+                          className="text-white/15 hover:text-white/50 transition flex-shrink-0 px-0.5">
+                          <Icon name="Pencil" size={10} />
+                        </button>
+                        <button
+                          onClick={() => onMergeFirstChange({ corrId: item.id, word: w })}
+                          title="Объединить с другим тегом"
+                          className="text-white/15 hover:text-amber-400 transition flex-shrink-0 px-0.5">
+                          <Icon name="Link" size={11} />
+                        </button>
+                      </>
                     )}
                     <button
                       onClick={() => handleIgnore(w)}
