@@ -1,7 +1,9 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState } from "react";
 import Icon from "@/components/ui/icon";
 import EditableCell from "./EditableCell";
+import { usePriceList } from "./usePriceList";
 import { apiFetch } from "./api";
+import { PRICE_UNITS } from "./constants";
 import type { PriceItem } from "./types";
 
 const EMPTY_NEW = { name: "", price: "", unit: "шт", description: "" };
@@ -10,8 +12,7 @@ const EMPTY_CAT = { name: "", firstItem: "", price: "", unit: "шт", descriptio
 interface Props { token: string; onItemAdded?: (name: string) => void; }
 
 export default function TabPrices({ token, onItemAdded }: Props) {
-  const [prices, setPrices] = useState<PriceItem[]>([]);
-  const [loading, setLoading] = useState(false);
+  const { prices, loading, aiLoadingId, byCategory, saveField, toggleActive, deleteItem, renameCategory, generateSynonyms, load } = usePriceList(token);
   const [addingInCat, setAddingInCat] = useState<string | null>(null);
   const [newItem, setNewItem] = useState(EMPTY_NEW);
   const [addingCat, setAddingCat] = useState(false);
@@ -19,54 +20,7 @@ export default function TabPrices({ token, onItemAdded }: Props) {
   const [editingCat, setEditingCat] = useState<string | null>(null);
   const [editingCatVal, setEditingCatVal] = useState("");
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    const r = await apiFetch("prices");
-    if (r.ok) { const d = await r.json(); setPrices(d.items); }
-    setLoading(false);
-  }, []);
-
-  useEffect(() => { load(); }, [load]);
-
-  const [aiLoadingId, setAiLoadingId] = useState<number | null>(null);
-
-  const generateSynonyms = async (item: PriceItem) => {
-    setAiLoadingId(item.id);
-    try {
-      const r = await apiFetch("match-synonym", {
-        method: "POST",
-        body: JSON.stringify({
-          word: `GENERATE_SYNONYMS:${item.name}|${item.description || ""}|${item.category}`,
-          prices: [],
-        }),
-      }, token);
-      if (r.ok) {
-        const d = await r.json();
-        if (d.synonyms) {
-          const existing = item.synonyms ? item.synonyms.split(",").map(s => s.trim()).filter(Boolean) : [];
-          const newSyns = d.synonyms.split(",").map((s: string) => s.trim()).filter((s: string) => s && !existing.includes(s));
-          const merged = [...existing, ...newSyns].join(", ");
-          await saveField(item, "synonyms", merged);
-        }
-      }
-    } finally {
-      setAiLoadingId(null);
-    }
-  };
-
-  const saveField = async (item: PriceItem, field: keyof PriceItem, val: string) => {
-    const updated = { ...item, [field]: field === "price" ? parseInt(val) || 0 : val };
-    await apiFetch("prices", { method: "PUT", body: JSON.stringify(updated) }, token, item.id);
-    setPrices(prev => prev.map(p => p.id === item.id ? updated : p));
-  };
-
-  const toggleActive = async (item: PriceItem) => {
-    const updated = { ...item, active: !item.active };
-    await apiFetch("prices", { method: "PUT", body: JSON.stringify(updated) }, token, item.id);
-    setPrices(prev => prev.map(p => p.id === item.id ? updated : p));
-  };
-
-  const addItem = async (category: string) => {
+  const handleAddItem = async (category: string) => {
     if (!newItem.name.trim()) return;
     const r = await apiFetch("prices", {
       method: "POST",
@@ -75,41 +29,29 @@ export default function TabPrices({ token, onItemAdded }: Props) {
     if (r.ok) { setAddingInCat(null); setNewItem(EMPTY_NEW); load(); onItemAdded?.(newItem.name.trim()); }
   };
 
-  const deleteItem = async (id: number) => {
-    if (!confirm("Удалить позицию?")) return;
-    await apiFetch("prices", { method: "DELETE" }, token, id);
-    setPrices(prev => prev.filter(p => p.id !== id));
-  };
-
-  const renameCategory = async (oldName: string) => {
-    const newName = editingCatVal.trim();
-    if (!newName || newName === oldName) { setEditingCat(null); return; }
-    const r = await apiFetch("prices&rename_category", { method: "PUT", body: JSON.stringify({ old_name: oldName, new_name: newName }) }, token);
-    if (r.ok) {
-      setPrices(prev => prev.map(p => p.category === oldName ? { ...p, category: newName } : p));
-    }
-    setEditingCat(null);
-  };
-
-  const addCategory = async () => {
+  const handleAddCategory = async () => {
     if (!newCat.name.trim() || !newCat.firstItem.trim()) return;
     const r = await apiFetch("prices", {
       method: "POST",
       body: JSON.stringify({
-        category: newCat.name.trim(),
-        name: newCat.firstItem.trim(),
-        price: parseInt(newCat.price) || 0,
-        unit: newCat.unit,
-        description: newCat.description,
+        category: newCat.name.trim(), name: newCat.firstItem.trim(),
+        price: parseInt(newCat.price) || 0, unit: newCat.unit, description: newCat.description,
       }),
     }, token);
     if (r.ok) { setAddingCat(false); setNewCat(EMPTY_CAT); load(); }
   };
 
-  const byCategory = prices.reduce<Record<string, PriceItem[]>>((acc, p) => {
-    (acc[p.category] ??= []).push(p);
-    return acc;
-  }, {});
+  const handleRenameCategory = async (category: string) => {
+    const newName = editingCatVal.trim();
+    if (!newName || newName === category) { setEditingCat(null); return; }
+    await renameCategory(category, newName);
+    setEditingCat(null);
+  };
+
+  const handleDeleteItem = async (item: PriceItem) => {
+    if (!confirm("Удалить позицию?")) return;
+    await deleteItem(item.id);
+  };
 
   if (loading) return <p className="text-white/30 text-sm">Загрузка...</p>;
 
@@ -121,17 +63,14 @@ export default function TabPrices({ token, onItemAdded }: Props) {
         <div key={category}>
           <div className="flex items-center gap-2 mb-2 px-1 group">
             {editingCat === category ? (
-              <input
-                autoFocus
-                value={editingCatVal}
+              <input autoFocus value={editingCatVal}
                 onChange={e => setEditingCatVal(e.target.value)}
-                onBlur={() => renameCategory(category)}
-                onKeyDown={e => { if (e.key === "Enter") renameCategory(category); if (e.key === "Escape") setEditingCat(null); }}
+                onBlur={() => handleRenameCategory(category)}
+                onKeyDown={e => { if (e.key === "Enter") handleRenameCategory(category); if (e.key === "Escape") setEditingCat(null); }}
                 className="text-violet-300 text-xs font-semibold uppercase tracking-wider bg-violet-500/10 border border-violet-500/40 rounded px-2 py-0.5 outline-none w-64"
               />
             ) : (
-              <h3
-                className="text-violet-300 text-xs font-semibold uppercase tracking-wider cursor-pointer hover:text-violet-200 transition flex items-center gap-1.5"
+              <h3 className="text-violet-300 text-xs font-semibold uppercase tracking-wider cursor-pointer hover:text-violet-200 transition flex items-center gap-1.5"
                 onClick={() => { setEditingCat(category); setEditingCatVal(category); }}
                 title="Нажмите чтобы переименовать группу">
                 {category}
@@ -139,6 +78,7 @@ export default function TabPrices({ token, onItemAdded }: Props) {
               </h3>
             )}
           </div>
+
           <div className="bg-white/[0.03] border border-white/10 rounded-xl overflow-hidden">
             <table className="w-full text-sm">
               <thead>
@@ -162,15 +102,9 @@ export default function TabPrices({ token, onItemAdded }: Props) {
                       <EditableCell value={item.price} type="number" onSave={v => saveField(item, "price", v)} className="text-right" />
                     </td>
                     <td className="px-4 py-2.5 text-white/50">
-                      <select
-                        value={item.unit}
-                        onChange={e => saveField(item, "unit", e.target.value)}
+                      <select value={item.unit} onChange={e => saveField(item, "unit", e.target.value)}
                         className="bg-transparent text-white/50 text-sm outline-none cursor-pointer hover:text-white transition appearance-none">
-                        <option value="м²" className="bg-[#0b0b11]">м²</option>
-                        <option value="шт" className="bg-[#0b0b11]">шт</option>
-                        <option value="пог.м" className="bg-[#0b0b11]">пог.м</option>
-                        <option value="уп" className="bg-[#0b0b11]">уп</option>
-                        <option value="катушка" className="bg-[#0b0b11]">катушка</option>
+                        {PRICE_UNITS.map(u => <option key={u} value={u} className="bg-[#0b0b11]">{u}</option>)}
                       </select>
                     </td>
                     <td className="px-4 py-2.5 text-white/40 text-xs">
@@ -179,17 +113,14 @@ export default function TabPrices({ token, onItemAdded }: Props) {
                     <td className="px-4 py-2.5 text-amber-400/60 text-xs w-[180px] max-w-[180px]">
                       <div className="flex items-center gap-1 min-w-0">
                         <div className="flex-1 min-w-0 overflow-hidden">
-                          <EditableCell value={item.synonyms || ""} onSave={v => saveField(item, "synonyms", v)} placeholder="карниз, гардина, штора..." className="truncate block w-full" />
+                          <EditableCell value={item.synonyms || ""} onSave={v => saveField(item, "synonyms", v)} placeholder="карниз, гардина..." className="truncate block w-full" />
                         </div>
-                        <button
-                          onClick={() => generateSynonyms(item)}
-                          disabled={aiLoadingId === item.id}
+                        <button onClick={() => generateSynonyms(item)} disabled={aiLoadingId === item.id}
                           title="Сгенерировать синонимы через AI"
                           className="flex-shrink-0 bg-violet-600/20 hover:bg-violet-600/40 border border-violet-500/30 text-violet-400 rounded px-1.5 py-0.5 disabled:opacity-40 transition flex items-center gap-1">
                           {aiLoadingId === item.id
                             ? <Icon name="Loader" size={11} className="animate-spin" />
-                            : <Icon name="Sparkles" size={11} />
-                          }
+                            : <Icon name="Sparkles" size={11} />}
                           <span className="text-[10px]">AI</span>
                         </button>
                       </div>
@@ -198,7 +129,7 @@ export default function TabPrices({ token, onItemAdded }: Props) {
                       <div className="flex items-center gap-1.5">
                         <button onClick={() => toggleActive(item)} title={item.active ? "Отключить" : "Включить"}
                           className={`w-4 h-4 rounded-full border transition flex-shrink-0 ${item.active ? "bg-green-400 border-green-400" : "border-white/20 hover:border-white/40"}`} />
-                        <button onClick={() => deleteItem(item.id)} title="Удалить"
+                        <button onClick={() => handleDeleteItem(item)} title="Удалить"
                           className="text-white/20 hover:text-red-400 transition">
                           <Icon name="X" size={13} />
                         </button>
@@ -214,7 +145,7 @@ export default function TabPrices({ token, onItemAdded }: Props) {
                 <div className="flex flex-col gap-1 flex-1 min-w-[150px]">
                   <span className="text-white/30 text-xs">Название</span>
                   <input autoFocus value={newItem.name} onChange={e => setNewItem(p => ({ ...p, name: e.target.value }))}
-                    onKeyDown={e => e.key === "Enter" && addItem(category)}
+                    onKeyDown={e => e.key === "Enter" && handleAddItem(category)}
                     placeholder="Новая позиция..."
                     className="bg-white/5 border border-white/15 rounded-lg px-3 py-1.5 text-white text-sm outline-none focus:border-violet-500" />
                 </div>
@@ -228,11 +159,7 @@ export default function TabPrices({ token, onItemAdded }: Props) {
                   <span className="text-white/30 text-xs">Единица</span>
                   <select value={newItem.unit} onChange={e => setNewItem(p => ({ ...p, unit: e.target.value }))}
                     className="bg-white/5 border border-white/15 rounded-lg px-3 py-1.5 text-white text-sm outline-none focus:border-violet-500 cursor-pointer">
-                    <option value="м²">м²</option>
-                    <option value="шт">шт</option>
-                    <option value="пог.м">пог.м</option>
-                    <option value="уп">уп</option>
-                    <option value="катушка">катушка</option>
+                    {PRICE_UNITS.map(u => <option key={u} value={u}>{u}</option>)}
                   </select>
                 </div>
                 <div className="flex flex-col gap-1 flex-[2] min-w-[150px]">
@@ -242,22 +169,16 @@ export default function TabPrices({ token, onItemAdded }: Props) {
                     className="bg-white/5 border border-white/15 rounded-lg px-3 py-1.5 text-white text-sm outline-none focus:border-violet-500" />
                 </div>
                 <div className="flex gap-2 pb-0.5">
-                  <button onClick={() => addItem(category)}
-                    className="bg-violet-600 hover:bg-violet-700 text-white rounded-lg px-4 py-1.5 text-sm transition">
-                    Добавить
-                  </button>
+                  <button onClick={() => handleAddItem(category)}
+                    className="bg-violet-600 hover:bg-violet-700 text-white rounded-lg px-4 py-1.5 text-sm transition">Добавить</button>
                   <button onClick={() => { setAddingInCat(null); setNewItem(EMPTY_NEW); }}
-                    className="text-white/40 hover:text-white/70 text-sm transition">
-                    Отмена
-                  </button>
+                    className="text-white/40 hover:text-white/70 text-sm transition">Отмена</button>
                 </div>
               </div>
             ) : (
-              <button
-                onClick={() => { setAddingInCat(category); setNewItem(EMPTY_NEW); }}
+              <button onClick={() => { setAddingInCat(category); setNewItem(EMPTY_NEW); }}
                 className="w-full py-2.5 text-violet-400/60 hover:text-violet-400 text-xs flex items-center justify-center gap-1.5 border-t border-white/5 transition hover:bg-violet-500/5">
-                <Icon name="Plus" size={13} />
-                Добавить позицию в «{category}»
+                <Icon name="Plus" size={13} /> Добавить позицию в «{category}»
               </button>
             )}
           </div>
@@ -295,11 +216,7 @@ export default function TabPrices({ token, onItemAdded }: Props) {
               <span className="text-white/30 text-xs">Единица</span>
               <select value={newCat.unit} onChange={e => setNewCat(p => ({ ...p, unit: e.target.value }))}
                 className="bg-white/5 border border-white/15 rounded-lg px-3 py-2 text-white text-sm outline-none focus:border-violet-500 cursor-pointer">
-                <option value="м²">м²</option>
-                <option value="шт">шт</option>
-                <option value="пог.м">пог.м</option>
-                <option value="уп">уп</option>
-                <option value="катушка">катушка</option>
+                {PRICE_UNITS.map(u => <option key={u} value={u}>{u}</option>)}
               </select>
             </div>
             <div className="flex flex-col gap-1 flex-1 min-w-[160px]">
@@ -310,21 +227,16 @@ export default function TabPrices({ token, onItemAdded }: Props) {
             </div>
           </div>
           <div className="flex gap-2">
-            <button onClick={addCategory}
-              className="bg-violet-600 hover:bg-violet-700 text-white rounded-lg px-5 py-2 text-sm font-medium transition">
-              Создать категорию
-            </button>
+            <button onClick={handleAddCategory}
+              className="bg-violet-600 hover:bg-violet-700 text-white rounded-lg px-5 py-2 text-sm font-medium transition">Создать категорию</button>
             <button onClick={() => { setAddingCat(false); setNewCat(EMPTY_CAT); }}
-              className="text-white/40 hover:text-white/70 text-sm transition">
-              Отмена
-            </button>
+              className="text-white/40 hover:text-white/70 text-sm transition">Отмена</button>
           </div>
         </div>
       ) : (
         <button onClick={() => setAddingCat(true)}
-          className="flex items-center gap-2 text-white/30 hover:text-violet-400 text-sm transition border border-dashed border-white/10 hover:border-violet-500/40 rounded-xl py-4 justify-center hover:bg-violet-500/5">
-          <Icon name="FolderPlus" size={16} />
-          Создать новую категорию
+          className="border border-dashed border-violet-500/30 hover:border-violet-500/60 rounded-xl py-3 text-violet-400/60 hover:text-violet-400 text-sm flex items-center justify-center gap-2 transition">
+          <Icon name="FolderPlus" size={15} /> Добавить новую категорию
         </button>
       )}
     </div>
