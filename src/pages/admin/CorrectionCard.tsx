@@ -61,7 +61,6 @@ export default function CorrectionCard({
 
   const dragWord = useRef<string | null>(null);
   const [dragOverWord, setDragOverWord] = useState<string | null>(null);
-  const [menuWord, setMenuWord] = useState<string | null>(null);
 
   const handleMerge = (first: string, second: string) => {
     if (first === second) return;
@@ -139,12 +138,33 @@ export default function CorrectionCard({
 
           {/* Теги нераспознанных слов */}
           {isLLM && unknownWords.length > 0 && item.status === "pending" && (
-            <div className="flex flex-wrap gap-2 mt-3">
-              {unknownWords.length > 1 && (
-                <span className="text-xs text-white/30 w-full -mb-1">
-                  Нажми чтобы выбрать · Перетащи тег на другой чтобы объединить
-                </span>
+            <div className="flex flex-col gap-2 mt-3">
+              {/* Панель действий — появляется когда выбран хотя бы один тег */}
+              {selectedWords.length > 0 && !panelOpen && (
+                <div className="flex items-center gap-1 bg-[#12121e] border border-white/15 rounded-lg px-1 py-1 w-fit">
+                  <span className="text-white/30 text-[10px] px-2">
+                    {selectedWords.length > 1 ? `${selectedWords.length} тега` : `«${selectedWords[0]}»`}
+                  </span>
+                  <div className="w-px h-4 bg-white/10" />
+                  <button
+                    onClick={() => { selectedWords.forEach(w => handleIgnore(w)); setSelectedWords([]); setPanelOpen(false); }}
+                    className="flex items-center gap-1.5 px-2.5 py-1 text-white/60 hover:text-white hover:bg-white/10 rounded-md transition text-[10px] whitespace-nowrap">
+                    <Icon name="X" size={10} />
+                    Удалить тег
+                  </button>
+                  <button
+                    onClick={async () => { for (const w of selectedWords) await handleStopWord(w); setSelectedWords([]); setPanelOpen(false); }}
+                    className="flex items-center gap-1.5 px-2.5 py-1 text-white/60 hover:text-red-300 hover:bg-red-500/10 rounded-md transition text-[10px] whitespace-nowrap">
+                    <Icon name="Ban" size={10} />
+                    Игнорировать
+                  </button>
+                </div>
               )}
+
+              <div className="flex flex-wrap gap-2">
+              <span className="text-xs text-white/30 w-full -mb-1">
+                Нажми чтобы выбрать · Перетащи тег на другой чтобы объединить
+              </span>
               {unknownWords.map(w => {
                 const isSelected = selectedWords.includes(w);
                 const isDone = doneWords.includes(w);
@@ -189,10 +209,8 @@ export default function CorrectionCard({
                 return (
                   <div
                     key={w}
-                    className="relative inline-flex"
+                    className="inline-flex"
                     draggable
-                    onMouseEnter={() => setMenuWord(w)}
-                    onMouseLeave={() => setMenuWord(null)}
                     onDragStart={() => { dragWord.current = w; }}
                     onDragEnter={() => setDragOverWord(w)}
                     onDragLeave={() => setDragOverWord(null)}
@@ -204,32 +222,6 @@ export default function CorrectionCard({
                     }}
                     onDragEnd={() => { dragWord.current = null; setDragOverWord(null); }}
                   >
-                    {/* Меню — absolute, с padding-bottom как мост к тегу */}
-                    {menuWord === w && (
-                      <div
-                        className="absolute bottom-full left-1/2 -translate-x-1/2 z-30 pb-2"
-                        onMouseEnter={() => setMenuWord(w)}
-                        onMouseLeave={() => setMenuWord(null)}
-                      >
-                        <div className="flex items-center bg-[#12121e] border border-white/20 rounded-lg shadow-xl overflow-hidden">
-                          <button
-                            onClick={e => { e.stopPropagation(); setMenuWord(null); handleIgnore(w); }}
-                            className="flex items-center gap-1.5 px-3 py-1.5 text-white/70 hover:text-white hover:bg-white/10 transition text-[10px] whitespace-nowrap">
-                            <Icon name="X" size={10} />
-                            <span>Удалить тег</span>
-                          </button>
-                          <div className="w-px h-4 bg-white/15 flex-shrink-0" />
-                          <button
-                            onClick={e => { e.stopPropagation(); setMenuWord(null); handleStopWord(w); }}
-                            className="flex items-center gap-1.5 px-3 py-1.5 text-white/70 hover:text-red-300 hover:bg-red-500/10 transition text-[10px] whitespace-nowrap">
-                            <Icon name="Ban" size={10} />
-                            <span>Игнорировать</span>
-                          </button>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Тег */}
                     <button
                       onClick={() => handleTagClick(w)}
                       className={`text-xs px-2.5 py-1 rounded-full border transition flex items-center gap-1.5 cursor-grab active:cursor-grabbing ${
@@ -249,6 +241,7 @@ export default function CorrectionCard({
                   </div>
                 );
               })}
+              </div>
             </div>
           )}
 
