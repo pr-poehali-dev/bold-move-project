@@ -140,25 +140,26 @@ export default function CorrectionCard({
           {isLLM && unknownWords.length > 0 && item.status === "pending" && (
             <div className="flex flex-col gap-2 mt-3">
               {/* Строка подсказки + кнопки действий */}
-              <div className="flex items-center gap-2 flex-wrap">
+              <div className="flex items-center gap-3 flex-wrap">
                 <span className="text-xs text-white/30">
                   Нажми чтобы выбрать · Перетащи на другой чтобы объединить
                 </span>
                 {selectedWords.length > 0 && (
-                  <>
+                  <div className="flex items-center gap-px border border-white/15 rounded-lg overflow-hidden">
                     <button
                       onClick={() => { selectedWords.forEach(w => handleIgnore(w)); setSelectedWords([]); setPanelOpen(false); }}
-                      className="flex items-center gap-1.5 px-2.5 py-1 bg-white/10 hover:bg-white/20 text-white text-xs rounded-lg transition">
-                      <Icon name="X" size={11} />
+                      className="flex items-center gap-2 px-3 py-1.5 bg-white/5 hover:bg-white/15 text-white/80 hover:text-white text-xs transition">
+                      <Icon name="X" size={12} />
                       Удалить тег
                     </button>
+                    <div className="w-px h-5 bg-white/10" />
                     <button
                       onClick={async () => { for (const w of selectedWords) await handleStopWord(w); setSelectedWords([]); setPanelOpen(false); }}
-                      className="flex items-center gap-1.5 px-2.5 py-1 bg-red-500/20 hover:bg-red-500/30 text-red-300 text-xs rounded-lg transition">
-                      <Icon name="Ban" size={11} />
+                      className="flex items-center gap-2 px-3 py-1.5 bg-white/5 hover:bg-red-500/20 text-white/80 hover:text-red-300 text-xs transition">
+                      <Icon name="Ban" size={12} />
                       Игнорировать
                     </button>
-                  </>
+                  </div>
                 )}
               </div>
 
