@@ -318,6 +318,37 @@ def handler(event: dict, context) -> dict:
         conn.commit(); cur.close(); conn.close()
         return resp(200, {'ok': True})
 
+    # --- GET ?r=stop-words
+    if r == 'stop-words' and method == 'GET':
+        conn = get_conn(); cur = conn.cursor()
+        cur.execute(f"SELECT id, word, created_at FROM {SCHEMA}.stop_words ORDER BY created_at DESC")
+        rows = cur.fetchall()
+        cur.close(); conn.close()
+        return resp(200, {'items': [{'id': r[0], 'word': r[1], 'created_at': str(r[2])} for r in rows]})
+
+    # --- POST ?r=stop-words  { word }
+    if r == 'stop-words' and method == 'POST':
+        if not check_auth(hdrs):
+            return resp(401, {'error': 'Unauthorized'})
+        body = json.loads(body_str)
+        word = body.get('word', '').strip().lower()
+        if not word:
+            return resp(400, {'error': 'word required'})
+        conn = get_conn(); cur = conn.cursor()
+        cur.execute(f"INSERT INTO {SCHEMA}.stop_words (word) VALUES (%s) ON CONFLICT DO NOTHING", (word,))
+        conn.commit(); cur.close(); conn.close()
+        return resp(200, {'ok': True})
+
+    # --- DELETE ?r=stop-words&id=X
+    if r == 'stop-words' and method == 'DELETE':
+        if not check_auth(hdrs):
+            return resp(401, {'error': 'Unauthorized'})
+        word_id = int(qs.get('id', '0'))
+        conn = get_conn(); cur = conn.cursor()
+        cur.execute(f"DELETE FROM {SCHEMA}.stop_words WHERE id = %s", (word_id,))
+        conn.commit(); cur.close(); conn.close()
+        return resp(200, {'ok': True})
+
     # --- GET/PUT ?r=settings
     if r == 'settings' and method == 'GET':
         conn = get_conn(); cur = conn.cursor()

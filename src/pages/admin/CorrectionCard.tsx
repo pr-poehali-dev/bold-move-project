@@ -3,6 +3,7 @@ import Icon from "@/components/ui/icon";
 import HighlightedText from "./HighlightedText";
 import AddSynonymPanel from "./AddSynonymPanel";
 import SuggestedItemsPanel from "./SuggestedItemsPanel";
+import { apiFetch } from "./api";
 import type { BotCorrection, PriceItem } from "./types";
 import type { SkipInfo, RecognizedData } from "./corrections.types";
 import { RECOGNIZED_LABELS } from "./corrections.types";
@@ -100,6 +101,11 @@ export default function CorrectionCard({
     if (remaining.length === 0) onUpdate("approved");
   };
 
+  const handleStopWord = async (w: string) => {
+    await apiFetch("stop-words", { method: "POST", body: JSON.stringify({ word: w }) }, token);
+    handleIgnore(w);
+  };
+
   return (
     <div className={`bg-white/[0.03] border rounded-xl overflow-hidden ${
       item.status === "pending" ? (isLLM ? "border-red-500/30" : "border-amber-500/30") :
@@ -184,12 +190,20 @@ export default function CorrectionCard({
                         «{w}»
                       </button>
                       {!isMergeMode && (
-                        <button
-                          onClick={() => onMergeFirstChange({ corrId: item.id, word: w })}
-                          title="Объединить с другим тегом"
-                          className="text-white/15 hover:text-amber-400 transition flex-shrink-0 px-0.5">
-                          <Icon name="Link" size={11} />
-                        </button>
+                        <>
+                          <button
+                            onClick={() => onMergeFirstChange({ corrId: item.id, word: w })}
+                            title="Объединить с другим тегом"
+                            className="text-white/15 hover:text-amber-400 transition flex-shrink-0 px-0.5">
+                            <Icon name="Link" size={11} />
+                          </button>
+                          <button
+                            onClick={() => handleStopWord(w)}
+                            title="Стоп-слово — больше никогда не выделять"
+                            className="text-white/15 hover:text-slate-400 transition flex-shrink-0">
+                            <Icon name="Ban" size={11} />
+                          </button>
+                        </>
                       )}
                       <button
                         onClick={() => handleIgnore(w)}
@@ -251,12 +265,20 @@ export default function CorrectionCard({
                       «{w}»
                     </button>
                     {!isMergeMode && (
-                      <button
-                        onClick={() => onMergeFirstChange({ corrId: item.id, word: w })}
-                        title="Объединить с другим тегом"
-                        className="text-white/15 hover:text-amber-400 transition flex-shrink-0 px-0.5">
-                        <Icon name="Link" size={11} />
-                      </button>
+                      <>
+                        <button
+                          onClick={() => onMergeFirstChange({ corrId: item.id, word: w })}
+                          title="Объединить с другим тегом"
+                          className="text-white/15 hover:text-amber-400 transition flex-shrink-0 px-0.5">
+                          <Icon name="Link" size={11} />
+                        </button>
+                        <button
+                          onClick={() => handleStopWord(w)}
+                          title="Стоп-слово — больше никогда не выделять"
+                          className="text-white/15 hover:text-slate-400 transition flex-shrink-0">
+                          <Icon name="Ban" size={11} />
+                        </button>
+                      </>
                     )}
                     <button
                       onClick={() => handleIgnore(w)}

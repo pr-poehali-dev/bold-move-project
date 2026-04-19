@@ -11,7 +11,7 @@ from db import (
     get_knowledge, get_system_prompt, get_faq_cache,
     get_prices_block, get_canvas_prices, get_price_rules,
     build_rules_prompt, eval_calc_rule, save_correction, CANVAS_PRICES, SCHEMA,
-    get_llm_threshold, get_complex_exceptions,
+    get_llm_threshold, get_complex_exceptions, get_stop_words,
 )
 
 # Встроенный кэш частых вопросов (fallback если БД недоступна)
@@ -168,6 +168,7 @@ def _get_whitelist_unknown(text: str) -> list[str]:
 
 def get_skip_reason(text: str) -> dict:
     """Возвращает причину почему бот отказался считать сам. Возвращает ПОЛНЫЕ слова."""
+    stop_words = get_stop_words()
     t = text.lower()
     # Собираем все полные слова из текста которые содержат стоп-паттерн
     all_words = _FULL_WORD_PAT.findall(t)
@@ -210,6 +211,10 @@ def get_skip_reason(text: str) -> dict:
         abbr_candidates.append(phrase)
 
     all_candidates = matched_full + [p for p in nuance_phrases if p.lower() not in seen] + abbr_candidates
+
+    # Фильтруем стоп-слова — их не показываем как теги обучения
+    all_candidates = [w for w in all_candidates if w.lower().strip() not in stop_words]
+    matched_full = [w for w in matched_full if w.lower().strip() not in stop_words]
 
     if matched_full:
         return {'reason': 'complex_keyword', 'unknown_word': matched_full[0], 'unknown_words': all_candidates}

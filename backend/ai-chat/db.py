@@ -195,6 +195,19 @@ def get_complex_exceptions() -> set:
         return set()
 
 
+def get_stop_words() -> set:
+    """Возвращает стоп-слова (служебные слова) которые не нужно показывать как теги обучения."""
+    try:
+        conn = psycopg2.connect(os.environ['DATABASE_URL'])
+        cur = conn.cursor()
+        cur.execute(f"SELECT word FROM {SCHEMA}.stop_words")
+        rows = cur.fetchall()
+        cur.close(); conn.close()
+        return {row[0].lower().strip() for row in rows}
+    except Exception:
+        return set()
+
+
 def get_llm_threshold() -> int:
     """Возвращает порог LLM: 0=всё в LLM, 100=всё в авторасчёт. Default=0."""
     try:
