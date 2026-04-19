@@ -104,13 +104,6 @@ export default function TabPrompt({ token }: Props) {
   const [showRules, setShowRules] = useState(false);
   const [activeTab, setActiveTab] = useState<"general" | "system" | "format">("general");
   const [dirty, setDirty] = useState(false);
-  const contentRef = useRef(content);
-  const dirtyRef = useRef(dirty);
-  const savingRef = useRef(saving);
-
-  contentRef.current = content;
-  dirtyRef.current = dirty;
-  savingRef.current = saving;
 
   useEffect(() => {
     apiFetch("prompt").then(r => r.ok && r.json().then(d => setContent(d.content)));
@@ -120,38 +113,19 @@ export default function TabPrompt({ token }: Props) {
   }, []);
 
   const save = useCallback(async (contentToSave?: string) => {
-    const val = contentToSave ?? contentRef.current;
-    if (savingRef.current) return;
+    const val = contentToSave ?? content;
     setSaving(true); setMsg("");
     const r = await apiFetch("prompt", { method: "PUT", body: JSON.stringify({ content: val }) }, token);
     setMsg(r.ok ? "Сохранено" : "Ошибка");
     setDirty(false);
     setSaving(false);
     setTimeout(() => setMsg(""), 2000);
-  }, [token]);
+  }, [token, content]);
 
-  // Автосохранение через 1.5с после последнего изменения
-  const autoSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const handleContentChange = (val: string) => {
     setContent(val);
     setDirty(true);
-    if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current);
-    autoSaveTimer.current = setTimeout(() => {
-      if (dirtyRef.current) save(val);
-    }, 1500);
   };
-
-  // Сохранение при клике вне textarea (blur на документе)
-  useEffect(() => {
-    const onBlur = (e: FocusEvent) => {
-      const target = e.target as HTMLElement;
-      if (target.tagName === "TEXTAREA" && dirtyRef.current && !savingRef.current) {
-        save();
-      }
-    };
-    document.addEventListener("focusout", onBlur);
-    return () => document.removeEventListener("focusout", onBlur);
-  }, [save]);
 
   const byCategory = prices.reduce<Record<string, PriceItem[]>>((acc, p) => {
     (acc[p.category] ??= []).push(p);
@@ -294,7 +268,7 @@ export default function TabPrompt({ token }: Props) {
             </span>
           )}
           {dirty && !saving && !msg && (
-            <span className="text-white/30 text-xs">Автосохранение через 1.5с...</span>
+            <span className="text-white/30 text-xs">Есть несохранённые изменения</span>
           )}
         </div>
       </div>
