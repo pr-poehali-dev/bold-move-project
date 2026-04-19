@@ -114,6 +114,14 @@ export default function TabRules({ token, hint }: Props) {
     setExpandedId(null);
   };
 
+  const pasteBundle = async (item: RuleItem, bundleJson: string) => {
+    try {
+      const parsed = JSON.parse(bundleJson);
+      if (!Array.isArray(parsed)) return;
+      await saveField(item, "bundle", bundleJson);
+    } catch { /* ignore invalid json */ }
+  };
+
   const saveCustomValue = async (priceId: number, ruleTypeId: number, value: string) => {
     await apiFetch("rule-values", {
       method: "POST",
@@ -207,6 +215,7 @@ export default function TabRules({ token, hint }: Props) {
           onOpenBundleModal={openBundleModal}
           onSaveField={(item, field, val) => saveField(item as PriceItem, field as keyof PriceItem, val)}
           onSaveCustomValue={saveCustomValue}
+          onPasteBundle={pasteBundle}
         />
       ))}
 

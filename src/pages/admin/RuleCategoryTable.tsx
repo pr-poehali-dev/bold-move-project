@@ -33,6 +33,7 @@ interface Props {
   onOpenBundleModal: (item: RuleItem, e: { stopPropagation: () => void }) => void;
   onSaveField: (item: PriceItem, field: string, val: string) => void;
   onSaveCustomValue: (priceId: number, ruleTypeId: number, value: string) => void;
+  onPasteBundle?: (item: RuleItem, bundleJson: string) => void;
 }
 
 export default function RuleCategoryTable({
@@ -43,7 +44,7 @@ export default function RuleCategoryTable({
   onDeleteItem, onSetConfirmDeleteItemId,
   onDeleteRuleType, onSetConfirmDeleteId,
   onStartEditLabel, onEditLabelChange, onSaveLabel, onCancelEditLabel,
-  onOpenBundleModal, onSaveField, onSaveCustomValue,
+  onOpenBundleModal, onSaveField, onSaveCustomValue, onPasteBundle,
 }: Props) {
   const colTemplate = `1.2fr 1fr 1fr repeat(${activeRuleTypes.length}, 1fr) 32px`;
 
@@ -148,13 +149,31 @@ export default function RuleCategoryTable({
                     const ids = parseBundleIds(item.bundle || "");
                     const idToName = Object.fromEntries(prices.map(p => [p.id, p.name]));
                     return (
-                      <div key={rt.id} className="min-w-0 overflow-hidden">
+                      <div key={rt.id} className="min-w-0 overflow-hidden group/bundlecell relative pr-4">
                         <div
                           onClick={e => onOpenBundleModal(item, e)}
-                          className={`text-xs truncate cursor-pointer rounded px-1.5 py-1 -mx-1.5 transition hover:bg-white/5
+                          className={`text-xs truncate cursor-pointer rounded transition hover:bg-white/5
                             ${ids.length > 0 ? "text-white/50" : "text-white/15 italic"}`}>
                           {ids.length > 0 ? ids.map(id => idToName[id]).filter(Boolean).join(", ") : "не задано"}
                         </div>
+                        {ids.length > 0 && (
+                          <button
+                            onClick={e => { e.stopPropagation(); navigator.clipboard.writeText(item.bundle); }}
+                            title="Скопировать комплект"
+                            className="absolute right-0 top-1/2 -translate-y-1/2 opacity-0 group-hover/bundlecell:opacity-100 transition text-white/25 hover:text-violet-400"
+                          >
+                            <Icon name="Copy" size={10} />
+                          </button>
+                        )}
+                        {ids.length === 0 && onPasteBundle && (
+                          <button
+                            onClick={async e => { e.stopPropagation(); const text = await navigator.clipboard.readText(); onPasteBundle(item, text); }}
+                            title="Вставить скопированный комплект"
+                            className="absolute right-0 top-1/2 -translate-y-1/2 opacity-0 group-hover/bundlecell:opacity-100 transition text-white/25 hover:text-green-400"
+                          >
+                            <Icon name="ClipboardPaste" size={10} />
+                          </button>
+                        )}
                       </div>
                     );
                   }
