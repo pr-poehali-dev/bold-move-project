@@ -79,13 +79,41 @@ export function usePriceList(token: string) {
     }
   };
 
+  const moveItem = async (item: PriceItem, direction: "up" | "down") => {
+    const siblings = prices
+      .filter(p => p.category === item.category)
+      .sort((a, b) => a.sort_order - b.sort_order || a.id - b.id);
+    const idx = siblings.findIndex(p => p.id === item.id);
+    const swapIdx = direction === "up" ? idx - 1 : idx + 1;
+    if (swapIdx < 0 || swapIdx >= siblings.length) return;
+    const other = siblings[swapIdx];
+    const newOrderA = other.sort_order;
+    const newOrderB = item.sort_order;
+    await Promise.all([
+      apiFetch("prices", { method: "PUT", body: JSON.stringify({ ...item, sort_order: newOrderA }) }, token, item.id),
+      apiFetch("prices", { method: "PUT", body: JSON.stringify({ ...other, sort_order: newOrderB }) }, token, other.id),
+    ]);
+    setPrices(prev => prev.map(p => {
+      if (p.id === item.id) return { ...p, sort_order: newOrderA };
+      if (p.id === other.id) return { ...p, sort_order: newOrderB };
+      return p;
+    }));
+  };
+
   const byCategory = prices.reduce<Record<string, PriceItem[]>>((acc, p) => {
     (acc[p.category] ??= []).push(p);
     return acc;
   }, {});
 
+  const byCategorySorted = Object.fromEntries(
+    Object.entries(byCategory).map(([cat, items]) => [
+      cat,
+      [...items].sort((a, b) => a.sort_order - b.sort_order || a.id - b.id),
+    ])
+  );
+
   return {
-    prices, loading, aiLoadingId, byCategory,
-    load, saveField, toggleActive, addItem, deleteItem, renameCategory, generateSynonyms,
+    prices, loading, aiLoadingId, byCategory: byCategorySorted,
+    load, saveField, toggleActive, addItem, deleteItem, renameCategory, generateSynonyms, moveItem,
   };
 }

@@ -23,6 +23,7 @@ export interface PriceItem {
   description: string;
   synonyms: string;
   active: boolean;
+  sort_order: number;
 }
 
 export interface SuggestedItem {

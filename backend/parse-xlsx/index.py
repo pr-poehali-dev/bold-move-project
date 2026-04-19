@@ -244,10 +244,17 @@ def handler(event: dict, context) -> dict:
         body = json.loads(body_str)
         conn = get_conn(); cur = conn.cursor()
         synonyms = body.get('synonyms', '')
-        cur.execute(
-            f"UPDATE {SCHEMA}.ai_prices SET name=%s, price=%s, unit=%s, description=%s, active=%s, calc_rule=%s, bundle=%s, synonyms=%s, updated_at=now() WHERE id=%s",
-            (body.get('name',''), int(body.get('price', 0)), body.get('unit',''), body.get('description',''), body.get('active', True), body.get('calc_rule',''), body.get('bundle','[]'), synonyms, price_id)
-        )
+        sort_order = body.get('sort_order')
+        if sort_order is not None:
+            cur.execute(
+                f"UPDATE {SCHEMA}.ai_prices SET name=%s, price=%s, unit=%s, description=%s, active=%s, calc_rule=%s, bundle=%s, synonyms=%s, sort_order=%s, updated_at=now() WHERE id=%s",
+                (body.get('name',''), int(body.get('price', 0)), body.get('unit',''), body.get('description',''), body.get('active', True), body.get('calc_rule',''), body.get('bundle','[]'), synonyms, int(sort_order), price_id)
+            )
+        else:
+            cur.execute(
+                f"UPDATE {SCHEMA}.ai_prices SET name=%s, price=%s, unit=%s, description=%s, active=%s, calc_rule=%s, bundle=%s, synonyms=%s, updated_at=now() WHERE id=%s",
+                (body.get('name',''), int(body.get('price', 0)), body.get('unit',''), body.get('description',''), body.get('active', True), body.get('calc_rule',''), body.get('bundle','[]'), synonyms, price_id)
+            )
         _save_complex_exceptions(conn, cur, synonyms, body.get('name', ''))
         cur.close(); conn.close()
         return resp(200, {'ok': True})

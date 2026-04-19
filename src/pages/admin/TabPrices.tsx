@@ -12,7 +12,7 @@ const EMPTY_CAT = { name: "", firstItem: "", price: "", unit: "шт", descriptio
 interface Props { token: string; onItemAdded?: (name: string) => void; }
 
 export default function TabPrices({ token, onItemAdded }: Props) {
-  const { prices, loading, aiLoadingId, byCategory, saveField, toggleActive, deleteItem, renameCategory, generateSynonyms, load } = usePriceList(token);
+  const { prices, loading, aiLoadingId, byCategory, saveField, toggleActive, deleteItem, renameCategory, generateSynonyms, moveItem, load } = usePriceList(token);
   const [addingInCat, setAddingInCat] = useState<string | null>(null);
   const [newItem, setNewItem] = useState(EMPTY_NEW);
   const [addingCat, setAddingCat] = useState(false);
@@ -83,10 +83,11 @@ export default function TabPrices({ token, onItemAdded }: Props) {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-white/10">
-                  <th className="text-left text-white/30 font-normal px-4 py-2.5 w-[34%]">Название</th>
+                  <th className="px-2 py-2.5 w-8" />
+                  <th className="text-left text-white/30 font-normal px-4 py-2.5 w-[32%]">Название</th>
                   <th className="text-right text-white/30 font-normal px-4 py-2.5 w-[9%]">Цена ₽</th>
                   <th className="text-left text-white/30 font-normal px-4 py-2.5 w-[7%]">Ед.</th>
-                  <th className="text-left text-white/30 font-normal px-4 py-2.5 w-[22%]">Описание (как AI понимает)</th>
+                  <th className="text-left text-white/30 font-normal px-4 py-2.5 w-[20%]">Описание (как AI понимает)</th>
                   <th className="text-left text-white/30 font-normal px-4 py-2.5">Синонимы (через запятую)</th>
                   <th className="px-3 py-2.5 w-12" />
                 </tr>
@@ -95,6 +96,21 @@ export default function TabPrices({ token, onItemAdded }: Props) {
                 {items.map((item, idx) => (
                   <tr key={item.id}
                     className={`border-b border-white/5 last:border-0 ${!item.active ? "opacity-40" : ""} ${idx % 2 ? "bg-white/[0.01]" : ""}`}>
+                    <td className="px-2 py-2.5 w-8">
+                      <div className="flex flex-col items-center gap-0.5">
+                        <button onClick={() => moveItem(item, "up")} disabled={idx === 0}
+                          className="text-white/15 hover:text-white/50 disabled:opacity-0 transition"
+                          title="Переместить выше">
+                          <Icon name="ChevronUp" size={13} />
+                        </button>
+                        <Icon name="GripVertical" size={13} className="text-white/15" />
+                        <button onClick={() => moveItem(item, "down")} disabled={idx === items.length - 1}
+                          className="text-white/15 hover:text-white/50 disabled:opacity-0 transition"
+                          title="Переместить ниже">
+                          <Icon name="ChevronDown" size={13} />
+                        </button>
+                      </div>
+                    </td>
                     <td className="px-4 py-2.5 text-white">
                       <EditableCell value={item.name} onSave={v => saveField(item, "name", v)} />
                     </td>
