@@ -126,21 +126,17 @@ export default function TabRules({ token, hint }: Props) {
             <div className="flex flex-col gap-1 flex-1 min-w-[180px]">
               <span className="text-white/40 text-xs">Название колонки</span>
               <input autoFocus value={newRule.label} onChange={e => setNewRule(p => ({ ...p, label: e.target.value }))}
+                onKeyDown={e => e.key === "Enter" && addRuleType()}
                 placeholder="Например: Минимальная площадь"
                 className="bg-white/5 border border-white/15 rounded-lg px-3 py-1.5 text-white text-sm outline-none focus:border-violet-500" />
             </div>
             <div className="flex flex-col gap-1 flex-[2] min-w-[200px]">
-              <span className="text-white/40 text-xs">Подсказка для заполнения</span>
-              <input value={newRule.placeholder} onChange={e => setNewRule(p => ({ ...p, placeholder: e.target.value }))}
-                placeholder="Например: Мин. 3 м²"
+              <span className="text-white/40 text-xs">Как AI использует это правило</span>
+              <input value={newRule.description} onChange={e => setNewRule(p => ({ ...p, description: e.target.value }))}
+                onKeyDown={e => e.key === "Enter" && addRuleType()}
+                placeholder="Например: если площадь меньше указанной — применять минимальную стоимость"
                 className="bg-white/5 border border-white/15 rounded-lg px-3 py-1.5 text-white text-sm outline-none focus:border-violet-500" />
             </div>
-          </div>
-          <div className="flex flex-col gap-1">
-            <span className="text-white/40 text-xs">Описание (как AI использует это правило)</span>
-            <input value={newRule.description} onChange={e => setNewRule(p => ({ ...p, description: e.target.value }))}
-              placeholder="Например: Если площадь меньше указанной — применять минимальную стоимость"
-              className="bg-white/5 border border-white/15 rounded-lg px-3 py-1.5 text-white text-sm outline-none focus:border-violet-500" />
           </div>
           <div className="flex gap-2">
             <button onClick={addRuleType} disabled={saving || !newRule.label.trim()}
