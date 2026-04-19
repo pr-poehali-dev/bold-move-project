@@ -170,6 +170,72 @@ export function parseEstimateBlocks(text: string) {
 
 interface LLMItem { name: string; qty: number; price: number; unit?: string; }
 
+const MUL_RE = /[×xх]/;
+const UNITS = "м²|м2|мп|пм|пог\\.м|шт\\.?|шт|м\\.п\\.?|м";
+
+function resolveItem(
+  item: { name: string; value: string },
+  findItem: (name: string) => LLMItem | undefined
+): { cleanName: string; formula: string; total: string } {
+  // Чистим название от формул которые туда попали
+  const cleanName = item.name
+    .replace(new RegExp(`\\s*[×xх]\\s*[\\d][\\d\\s,.]*\\s*[₽Рруб].*$`, "i"), "")
+    .replace(new RegExp(`\\s*[×xх]\\s*[\\d][\\d\\s,.]*\\s*(${UNITS})?\\s*$`, "i"), "")
+    .replace(/\s*[-–—]\s*$/, "")
+    .trim();
+
+  // Если в name была формула — вытаскиваем её
+  const nameFormulaMatch = item.name.match(new RegExp(`([×xх]\\s*[\\d][\\d\\s,.]*\\s*[₽Рруб].*)$`, "i"));
+  const rawVal = (item.value || (nameFormulaMatch ? nameFormulaMatch[1] : "")).trim();
+
+  if (!rawVal) {
+    // Нет формулы в тексте — ищем в JSON items
+    const llm = findItem(cleanName);
+    if (llm && llm.qty > 0 && llm.price > 0) {
+      const unit = llm.unit || "";
+      const formula = `${llm.qty}${unit ? " " + unit : ""} × ${llm.price.toLocaleString("ru")} ₽`;
+      const total = Math.round(llm.qty * llm.price).toLocaleString("ru") + " ₽";
+      return { cleanName, formula, total };
+    }
+    return { cleanName, formula: "", total: "" };
+  }
+
+  // Есть "= ИТОГ" — разбиваем по последнему "="
+  const eqIdx = rawVal.lastIndexOf("=");
+  if (eqIdx > 0) {
+    let formula = rawVal.slice(0, eqIdx).trim();
+    const total = rawVal.slice(eqIdx + 1).trim();
+    // Убираем мусор из формулы
+    formula = formula.replace(/\s*=\s*[\d\s]+[₽Рруб].*$/, "").trim();
+    if (!MUL_RE.test(formula)) formula = "";
+    return { cleanName, formula, total: ensureRub(total) };
+  }
+
+  // "qty ед × price" — считаем итог
+  const mulMatch = rawVal.match(new RegExp(
+    `^([\\d.,\\s]+)\\s*(${UNITS})?\\s*[×xх]\\s*([\\d.,\\s]+)\\s*[₽Рруб]`, "i"
+  ));
+  if (mulMatch) {
+    const qty = parseFloat(mulMatch[1].replace(/\s/g, "").replace(",", "."));
+    const unit = (mulMatch[2] ?? "").trim();
+    const price = parseFloat(mulMatch[3].replace(/\s/g, "").replace(",", "."));
+    if (!isNaN(qty) && !isNaN(price)) {
+      const formula = `${qty}${unit ? " " + unit : ""} × ${price.toLocaleString("ru-RU")} ₽`;
+      const total = Math.round(qty * price).toLocaleString("ru-RU") + " ₽";
+      return { cleanName, formula, total };
+    }
+  }
+
+  // Просто итог без формулы
+  return { cleanName, formula: "", total: ensureRub(rawVal) };
+}
+
+function ensureRub(s: string): string {
+  if (!s) return s;
+  // Нормализуем: убираем двойные пробелы, оставляем цифры + ₽
+  return s.replace(/\s+/g, " ").trim();
+}
+
 export default function EstimateTable({ text, items }: { text: string; items?: LLMItem[] }) {
   const parsed = useMemo(() => parseEstimateBlocks(text), [text]);
 
@@ -215,9 +281,9 @@ export default function EstimateTable({ text, items }: { text: string; items?: L
       <div className="rounded-xl border border-white/10 overflow-hidden">
         <table className="w-full text-xs">
           <thead>
-            <tr className="bg-white/8">
-              <th className="text-left px-3 py-2 text-white/50 font-montserrat font-semibold">Позиция</th>
-              <th className="text-right px-3 py-2 text-white/50 font-montserrat font-semibold w-[180px]">Стоимость</th>
+            <tr className="bg-white/[0.06] border-b border-white/10">
+              <th className="text-left px-3 py-2 text-white/40 font-montserrat font-semibold text-[11px] uppercase tracking-wider">Позиция</th>
+              <th className="text-right px-3 py-2 text-white/40 font-montserrat font-semibold text-[11px] uppercase tracking-wider w-[160px]">Стоимость</th>
             </tr>
           </thead>
           <tbody>
@@ -228,84 +294,19 @@ export default function EstimateTable({ text, items }: { text: string; items?: L
                 const label = block.numbered ? `${numCounter}. ${block.title}` : block.title;
                 return (
                   <>
-                    <tr key={`h-${bi}`} className={bi > 0 ? "border-t border-white/10" : ""}>
-                      <td colSpan={2} className="px-3 pt-3 pb-1.5 font-montserrat font-bold text-orange-400 text-xs">
+                    <tr key={`h-${bi}`} className={`${bi > 0 ? "border-t border-white/15" : ""} bg-white/[0.02]`}>
+                      <td colSpan={2} className="px-3 pt-3 pb-2 font-montserrat font-bold text-orange-400 text-[13px]">
                         {label}
                       </td>
                     </tr>
                     {block.items.map((item, ii) => {
-                      // Если в name есть "× цена ₽" — вытаскиваем формулу из name
-                      const nameHasFormula = /[×xх]\s*[\d][\d\s,.]*\s*[₽Рруб]/i.test(item.name);
-                      const cleanName = item.name
-                        .replace(/\s*[×xх]\s*[\d][\d\s,.]*\s*[₽Рруб].*$/i, "")
-                        .replace(/\s*[×xх]\s*[\d][\d\s,.]*\s*(м²|м2|мп|пм|шт\.?|шт|м\.п\.?|м)?\s*$/i, "")
-                        .replace(/\s*[-–—]\s*$/, "")
-                        .trim();
-                      // Если формула была в name — используем её как val
-                      const nameFormulaPart = nameHasFormula
-                        ? item.name.replace(/^.*?([×xх]\s*[\d][\d\s,.]*\s*[₽Рруб].*)$/i, "$1").trim()
-                        : "";
-                      const val = (item.value || nameFormulaPart).trim();
-                      let formula = "";
-                      let total = val;
-
-                      // Вариант 1: есть "= ИТОГ" — берём последний "="
-                      const eqIdx = val.lastIndexOf("=");
-                      if (eqIdx > 0) {
-                        formula = val.slice(0, eqIdx).trim();
-                        total   = val.slice(eqIdx + 1).trim();
-                      } else {
-                        // Вариант 2: "qty ед. × price ₽" — с единицей измерения перед ×
-                        const mulWithUnit = val.match(/^([\d.,\s]+)\s*(м²|м2|мп|пм|шт\.?|шт|м\.п\.?|пог\.м|м)?\s*[×xх]\s*([\d.,\s]+)\s*[₽Рруб]/i);
-                        if (mulWithUnit) {
-                          const qty = parseFloat(mulWithUnit[1].replace(/\s/g, "").replace(",", "."));
-                          const unit = (mulWithUnit[2] ?? "").trim();
-                          const price = parseFloat(mulWithUnit[3].replace(/\s/g, "").replace(",", "."));
-                          if (!isNaN(qty) && !isNaN(price)) {
-                            formula = `${qty}${unit ? " " + unit : ""} × ${price.toLocaleString("ru-RU")} ₽`;
-                            total   = new Intl.NumberFormat("ru-RU").format(Math.round(qty * price)) + " ₽";
-                          }
-                        } else {
-                          // Вариант 3: "A × B ₽" без единицы — вычисляем сами
-                          const mulMatch = val.match(/^([\d.,\s]+)\s*[×xх]\s*([\d.,\s]+)\s*[₽Рруб]/);
-                          if (mulMatch) {
-                            const a = parseFloat(mulMatch[1].replace(/\s/g, "").replace(",", "."));
-                            const b = parseFloat(mulMatch[2].replace(/\s/g, "").replace(",", "."));
-                            if (!isNaN(a) && !isNaN(b)) {
-                              formula = val.replace(/\s*[₽Рруб].*$/, " ₽").trim();
-                              total   = new Intl.NumberFormat("ru-RU").format(Math.round(a * b)) + " ₽";
-                            }
-                          }
-                        }
-                      }
-
-                      // Вариант 3: нет формулы с × — ищем в items из JSON
-                      if (!formula.includes("×") && !formula.includes("x") && !formula.includes("х")) {
-                        const llmItem = findItem(cleanName);
-                        if (llmItem && llmItem.price > 0 && llmItem.qty > 0) {
-                          const qty = llmItem.qty;
-                          const price = llmItem.price;
-                          const unit = llmItem.unit || "";
-                          const computed = Math.round(qty * price);
-                          formula = `${qty}${unit ? " " + unit : ""} × ${price.toLocaleString("ru")} ₽`;
-                          // Если total пустой или равен имени — вычисляем
-                          if (!total || total === val) {
-                            total = computed.toLocaleString("ru") + " ₽";
-                          }
-                        }
-                      }
-
-                      // Чистим формулу от лишнего "= ..." в конце если осталось
-                      formula = formula.replace(/\s*=\s*[\d\s]+[₽Рруб].*$/, "").trim();
-                      // Показываем формулу только если она содержит × (цена × кол-во)
-                      if (formula && !/[×xх]/.test(formula)) formula = "";
-
+                      const { cleanName, formula, total } = resolveItem(item, findItem);
                       return (
                         <tr key={`r-${bi}-${ii}`} className={`hover:bg-white/3 transition-colors ${ii > 0 ? "border-t border-white/5" : ""}`}>
-                          <td className="px-3 py-1.5 text-white/70">{cleanName}</td>
-                          <td className="px-3 py-1.5 text-right">
-                            {formula && <div className="text-white/50 text-[11px] font-montserrat leading-snug">{formula}</div>}
-                            <div className="text-orange-400 font-montserrat font-bold text-xs leading-snug">{total}</div>
+                          <td className="px-3 py-2 text-white/80 text-xs leading-snug">{cleanName}</td>
+                          <td className="px-3 py-2 text-right whitespace-nowrap">
+                            {formula && <div className="text-white/40 text-[11px] font-montserrat leading-snug">{formula}</div>}
+                            {total && <div className="text-orange-400 font-montserrat font-bold text-xs leading-snug">{total}</div>}
                           </td>
                         </tr>
                       );
