@@ -275,7 +275,8 @@ def build_rules_prompt(rules: list) -> str:
     synonym_lines = []
 
     for r in rules:
-        has_rule = r.get('calc_rule') or r.get('when_condition') or r.get('bundle', '[]') not in ('[]', '', None)
+        has_rule = (r.get('calc_rule') or r.get('when_condition') or r.get('when_not_condition')
+                    or r.get('bundle', '[]') not in ('[]', '', None))
         if not has_rule:
             # Синонимы собираем всегда
             if r.get('synonyms'):
@@ -306,7 +307,7 @@ def build_rules_prompt(rules: list) -> str:
             pass
 
         if parts:
-            rule_lines.append(f"• {r['name']}:\n    " + '\n    '.join(parts))
+            rule_lines.append(f"• {r['name']} [{r['category']}]: " + '; '.join(parts))
 
         # Синонимы
         if r.get('synonyms'):
