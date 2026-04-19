@@ -192,15 +192,24 @@ export default function AddSynonymPanel({ words, prices, token, onAdded, onRemov
                 <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Сменить позицию..."
                   className="bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-white text-xs outline-none focus:border-violet-500 transition" />
                 <div className="max-h-32 overflow-y-auto flex flex-col gap-0.5">
-                  {filtered.slice(0, 40).map(p => (
+                  {[
+                    // Выбранная позиция всегда первой
+                    ...filtered.filter(p => p.id === row.selectedId),
+                    ...filtered.filter(p => p.id !== row.selectedId),
+                  ].slice(0, 40).map(p => (
                     <button key={p.id} onClick={() => {
                       const existingBundle = parseBundle(p as PriceItem & { bundle?: string });
                       updateRow(i, { selectedId: p.id, bundleIds: existingBundle });
                     }}
                       className={`text-left px-3 py-1.5 rounded-lg text-xs transition flex items-center justify-between gap-2 ${
-                        row.selectedId === p.id ? "bg-violet-600/30 border border-violet-500/40 text-white" : "bg-white/[0.02] border border-white/5 text-white/60 hover:text-white"
+                        row.selectedId === p.id
+                          ? "bg-violet-600/30 border border-violet-500/40 text-white"
+                          : "bg-white/[0.02] border border-white/5 text-white/60 hover:text-white"
                       }`}>
-                      <span>{p.name}</span>
+                      <div className="flex items-center gap-2 min-w-0">
+                        {row.selectedId === p.id && <Icon name="Check" size={10} className="text-violet-400 flex-shrink-0" />}
+                        <span className="truncate">{p.name}</span>
+                      </div>
                       <span className="text-white/30 flex-shrink-0">{p.category}</span>
                     </button>
                   ))}
@@ -238,7 +247,10 @@ export default function AddSynonymPanel({ words, prices, token, onAdded, onRemov
                     <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Поиск позиции..."
                       className="bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-white text-xs outline-none focus:border-violet-500 transition" />
                     <div className="max-h-32 overflow-y-auto flex flex-col gap-0.5">
-                      {filtered.slice(0, 40).map(p => (
+                      {[
+                        ...filtered.filter(p => p.id === row.selectedId),
+                        ...filtered.filter(p => p.id !== row.selectedId),
+                      ].slice(0, 40).map(p => (
                         <button key={p.id} onClick={() => {
                           const existing = parseBundle(p as PriceItem & { bundle?: string });
                           updateRow(i, { selectedId: p.id, mode: "found", bundleIds: existing });
@@ -246,7 +258,10 @@ export default function AddSynonymPanel({ words, prices, token, onAdded, onRemov
                           className={`text-left px-3 py-1.5 rounded-lg text-xs transition flex items-center justify-between gap-2 ${
                             row.selectedId === p.id ? "bg-violet-600/30 border border-violet-500/40 text-white" : "bg-white/[0.02] border border-white/5 text-white/60 hover:text-white"
                           }`}>
-                          <span>{p.name}</span>
+                          <div className="flex items-center gap-2 min-w-0">
+                            {row.selectedId === p.id && <Icon name="Check" size={10} className="text-violet-400 flex-shrink-0" />}
+                            <span className="truncate">{p.name}</span>
+                          </div>
                           <span className="text-white/30 flex-shrink-0">{p.category}</span>
                         </button>
                       ))}
