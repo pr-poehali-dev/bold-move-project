@@ -128,7 +128,7 @@ export default function CorrectionCard({
             ? <HighlightedText
                 text={item.user_text}
                 pending={unknownWords}
-                done={doneWords}
+                done={[...doneWords, ...unknownWords.filter(w => isKnown(w))]}
                 onAddSelection={item.status === "pending" ? (word) => {
                   if (!extraWords.includes(word) && !doneWords.includes(word) && !unknownWords.includes(word)) {
                     onExtraWordsChange([...extraWords, word]);
