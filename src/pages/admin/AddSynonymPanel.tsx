@@ -174,12 +174,28 @@ export default function AddSynonymPanel({ words, prices, token, onAdded }: Props
               </div>
             </div>
 
-            {/* Тело: found */}
+            {/* Тело: found — показываем синоним + возможность сменить позицию */}
             {row.manualOpen && row.mode === "found" && matchedPrice && (
-              <div className="px-3 pb-3 border-t border-white/5 pt-2">
+              <div className="p-3 flex flex-col gap-2 border-t border-white/5">
                 <div className="flex items-center gap-1.5 text-xs text-white/30">
                   <Icon name="Tag" size={11} className="text-violet-400" />
                   <span>Синоним <span className="text-violet-300 font-medium">«{row.edited}»</span> будет добавлен к позиции</span>
+                </div>
+                <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Сменить позицию..."
+                  className="bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-white text-xs outline-none focus:border-violet-500 transition" />
+                <div className="max-h-32 overflow-y-auto flex flex-col gap-0.5">
+                  {filtered.slice(0, 40).map(p => (
+                    <button key={p.id} onClick={() => {
+                      const existingBundle = parseBundle(p as PriceItem & { bundle?: string });
+                      updateRow(i, { selectedId: p.id, bundleIds: existingBundle });
+                    }}
+                      className={`text-left px-3 py-1.5 rounded-lg text-xs transition flex items-center justify-between gap-2 ${
+                        row.selectedId === p.id ? "bg-violet-600/30 border border-violet-500/40 text-white" : "bg-white/[0.02] border border-white/5 text-white/60 hover:text-white"
+                      }`}>
+                      <span>{p.name}</span>
+                      <span className="text-white/30 flex-shrink-0">{p.category}</span>
+                    </button>
+                  ))}
                 </div>
                 <BundleSelector
                   prices={prices} selectedPriceId={row.selectedId}
