@@ -273,6 +273,7 @@ export default function CorrectionCard({
           {/* Панель назначения синонима */}
           {panelOpen && selectedWords.length > 0 && (
             <AddSynonymPanel
+              key={selectedWords.join(",")}
               words={selectedWords}
               prices={prices}
               token={token}
