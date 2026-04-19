@@ -808,6 +808,73 @@ def _patch_answer_with_prices(answer: str, items: list) -> str:
     return '\n'.join(result_lines)
 
 
+def _apply_surcharges(answer: str, rules: list) -> str:
+    """Применяет надбавки с unit='%': заменяет их строки на правильную сумму от итога монтажа."""
+    # Позиции с % из прайса
+    pct_names = {r['name'].lower(): r['price'] for r in rules if r.get('unit') == '%'}
+    if not pct_names:
+        return answer
+
+    def fmt(n: int) -> str:
+        return f"{n:,}".replace(',', ' ')
+
+    # Паттерн строки сметы: Название  N ед × P ₽ = T ₽
+    line_pat = re.compile(
+        r'^(?P<indent>\s*)(?P<name>.+?)\s+(?P<qty>[\d.,]+)\s*(?P<unit>\S+)?\s*[×xх]\s*(?P<price>[\d\s]+)\s*₽\s*=\s*(?P<total>[\d\s]+)\s*₽',
+        re.IGNORECASE
+    )
+
+    lines = answer.split('\n')
+
+    # 1. Считаем сумму строк монтажа (блок "Услуги монтажа")
+    in_mounting = False
+    mounting_total = 0
+    grand_total = 0
+    for line in lines:
+        low = line.lower()
+        if 'услуги монтажа' in low or 'монтаж' in low and ':' in line:
+            in_mounting = True
+        m = line_pat.match(line)
+        if m:
+            try:
+                total_val = int(re.sub(r'\s', '', m.group('total')))
+                grand_total += total_val
+                name_low = m.group('name').strip().lower()
+                # Не считаем строки которые сами являются надбавками
+                if not any(pct in name_low or name_low in pct for pct in pct_names):
+                    if in_mounting:
+                        mounting_total += total_val
+            except Exception:
+                pass
+
+    if mounting_total == 0:
+        return answer
+
+    # 2. Заменяем строки с % на правильные суммы
+    result_lines = []
+    for line in lines:
+        m = line_pat.match(line)
+        if m:
+            name_low = m.group('name').strip().lower()
+            matched_pct = None
+            for pct_name, pct_val in pct_names.items():
+                if pct_name in name_low or name_low in pct_name:
+                    matched_pct = pct_val
+                    break
+            if matched_pct is not None:
+                surcharge = round(mounting_total * matched_pct / 100)
+                indent = m.group('indent')
+                name = m.group('name').strip()
+                result_lines.append(
+                    f"{indent}{name}  {matched_pct}% от монтажа × {fmt(mounting_total)} ₽ = {fmt(surcharge)} ₽"
+                )
+                print(f"[surcharge] {name}: {matched_pct}% of {mounting_total} = {surcharge}")
+                continue
+        result_lines.append(line)
+
+    return '\n'.join(result_lines)
+
+
 def get_cached_answer(text: str, session_id: str = '') -> tuple[str, dict] | str | None:
     """Проверяет кэш и простой расчёт. Возвращает (ответ, recognized) или строку или None."""
     text_lower = text.lower().strip()
@@ -1063,6 +1130,9 @@ def handler(event, context):
     # ─── ПАТЧ ТЕКСТА: заменяем строки без цены используя данные из JSON ──────
     if llm_items_json and llm_items_json.get('items'):
         answer = _patch_answer_with_prices(answer, llm_items_json['items'])
+
+    # ─── НАДБАВКИ: позиции с unit='%' пересчитываем от суммы монтажа ─────────
+    answer = _apply_surcharges(answer, _rules_for_suggestions)
 
     try:
         if llm_items_json and llm_items_json.get('items'):
