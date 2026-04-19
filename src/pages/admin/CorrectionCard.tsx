@@ -61,6 +61,7 @@ export default function CorrectionCard({
 
   const dragWord = useRef<string | null>(null);
   const [dragOverWord, setDragOverWord] = useState<string | null>(null);
+  const [menuWord, setMenuWord] = useState<string | null>(null);
 
   const handleMerge = (first: string, second: string) => {
     if (first === second) return;
@@ -185,8 +186,10 @@ export default function CorrectionCard({
                 return (
                   <div
                     key={w}
-                    className="relative group/tag inline-flex"
+                    className="relative inline-flex"
                     draggable
+                    onMouseEnter={() => setMenuWord(w)}
+                    onMouseLeave={() => setMenuWord(null)}
                     onDragStart={() => { dragWord.current = w; }}
                     onDragEnter={() => setDragOverWord(w)}
                     onDragLeave={() => setDragOverWord(null)}
@@ -198,26 +201,24 @@ export default function CorrectionCard({
                     }}
                     onDragEnd={() => { dragWord.current = null; setDragOverWord(null); }}
                   >
-                    {/* Всплывашка сверху — появляется при наведении */}
-                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 hidden group-hover/tag:flex items-center gap-px bg-[#12121e] border border-white/20 rounded-lg shadow-xl z-30 overflow-hidden">
-                      <button
-                        onClick={e => { e.stopPropagation(); handleIgnore(w); }}
-                        className="flex items-center gap-1 px-2.5 py-1.5 text-white/60 hover:text-white hover:bg-white/10 transition text-[10px] whitespace-nowrap">
-                        <Icon name="X" size={10} />
-                        <span>Удалить тег</span>
-                      </button>
-                      <div className="w-px h-4 bg-white/10 flex-shrink-0" />
-                      <button
-                        onClick={e => { e.stopPropagation(); handleStopWord(w); }}
-                        className="flex items-center gap-1 px-2.5 py-1.5 text-white/60 hover:text-red-300 hover:bg-red-500/10 transition text-[10px] whitespace-nowrap">
-                        <Icon name="Ban" size={10} />
-                        <span>Игнорировать</span>
-                      </button>
-                      {/* стрелочка вниз */}
-                      <div className="absolute top-full left-1/2 -translate-x-1/2 w-2 h-1 overflow-hidden">
-                        <div className="w-2 h-2 bg-[#12121e] border-r border-b border-white/20 rotate-45 -translate-y-1" />
+                    {/* Всплывашка сверху */}
+                    {menuWord === w && (
+                      <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 flex items-center bg-[#12121e] border border-white/20 rounded-lg shadow-xl z-30 overflow-hidden">
+                        <button
+                          onClick={e => { e.stopPropagation(); setMenuWord(null); handleIgnore(w); }}
+                          className="flex items-center gap-1.5 px-3 py-1.5 text-white/70 hover:text-white hover:bg-white/10 transition text-[10px] whitespace-nowrap">
+                          <Icon name="X" size={10} />
+                          <span>Удалить тег</span>
+                        </button>
+                        <div className="w-px h-4 bg-white/15 flex-shrink-0" />
+                        <button
+                          onClick={e => { e.stopPropagation(); setMenuWord(null); handleStopWord(w); }}
+                          className="flex items-center gap-1.5 px-3 py-1.5 text-white/70 hover:text-red-300 hover:bg-red-500/10 transition text-[10px] whitespace-nowrap">
+                          <Icon name="Ban" size={10} />
+                          <span>Игнорировать</span>
+                        </button>
                       </div>
-                    </div>
+                    )}
 
                     {/* Тег */}
                     <button
