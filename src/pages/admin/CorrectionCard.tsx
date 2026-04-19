@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef } from "react";
 import Icon from "@/components/ui/icon";
 import HighlightedText from "./HighlightedText";
 import AddSynonymPanel from "./AddSynonymPanel";
@@ -185,7 +185,7 @@ export default function CorrectionCard({
                 return (
                   <div
                     key={w}
-                    className="flex items-center gap-0.5"
+                    className="relative group/tag flex items-center"
                     draggable
                     onDragStart={() => { dragWord.current = w; }}
                     onDragEnter={() => setDragOverWord(w)}
@@ -193,9 +193,7 @@ export default function CorrectionCard({
                     onDragOver={e => e.preventDefault()}
                     onDrop={() => {
                       setDragOverWord(null);
-                      if (dragWord.current && dragWord.current !== w) {
-                        handleMerge(dragWord.current, w);
-                      }
+                      if (dragWord.current && dragWord.current !== w) handleMerge(dragWord.current, w);
                       dragWord.current = null;
                     }}
                     onDragEnd={() => { dragWord.current = null; setDragOverWord(null); }}
@@ -211,20 +209,34 @@ export default function CorrectionCard({
                           ? "bg-green-500/10 border-green-500/30 text-green-300 hover:bg-green-500/20"
                           : "bg-red-500/10 border-red-500/30 text-red-300 hover:bg-red-500/20"
                       }`}>
-                      {isSelected
-                        ? <Icon name="CheckSquare" size={10} />
-                        : isGreen
-                        ? <Icon name="Check" size={10} />
-                        : <Icon name="Tag" size={10} />
-                      }
+                      {isSelected ? <Icon name="CheckSquare" size={10} />
+                        : isGreen ? <Icon name="Check" size={10} />
+                        : <Icon name="Tag" size={10} />}
                       «{w}»
                     </button>
-                    <button
-                      onClick={() => handleIgnore(w)}
-                      title="Убрать тег"
-                      className="text-white/15 hover:text-white/50 transition flex-shrink-0">
-                      <Icon name="X" size={11} />
-                    </button>
+
+                    {/* Контекстное меню при наведении */}
+                    <div className="absolute left-0 top-full mt-1 z-20 hidden group-hover/tag:flex flex-col bg-[#1a1a2e] border border-white/15 rounded-lg shadow-xl overflow-hidden min-w-[160px]">
+                      <button
+                        onClick={() => handleIgnore(w)}
+                        className="flex items-center gap-2 px-3 py-2 text-xs text-white/70 hover:bg-white/10 hover:text-white transition text-left">
+                        <Icon name="EyeOff" size={12} className="text-white/40 flex-shrink-0" />
+                        <div>
+                          <div className="font-medium">Игнорировать</div>
+                          <div className="text-white/30 text-[10px]">убрать тег, добавить снова можно</div>
+                        </div>
+                      </button>
+                      <div className="border-t border-white/10" />
+                      <button
+                        onClick={() => handleStopWord(w)}
+                        className="flex items-center gap-2 px-3 py-2 text-xs text-white/70 hover:bg-white/10 hover:text-white transition text-left">
+                        <Icon name="Ban" size={12} className="text-red-400/60 flex-shrink-0" />
+                        <div>
+                          <div className="font-medium">Стоп-слово</div>
+                          <div className="text-white/30 text-[10px]">больше никогда не выделять</div>
+                        </div>
+                      </button>
+                    </div>
                   </div>
                 );
               })}
