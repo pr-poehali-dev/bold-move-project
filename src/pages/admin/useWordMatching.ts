@@ -93,7 +93,7 @@ export function useWordMatching(words: string[], prices: PriceItem[], token: str
     const savedNames: string[] = [];
     for (let i = 0; i < rows.length; i++) {
       const row = rows[i];
-      if (row.mode === "found" && row.selectedId) {
+      if (row.mode === "found" && !row.createMode && row.selectedId) {
         const price = prices.find(p => p.id === row.selectedId) as (PriceItem & { bundle?: string; calc_rule?: string }) | undefined;
         if (!price) continue;
         const updatedSynonyms = addSynonym(price.synonyms, row.edited);
@@ -102,7 +102,7 @@ export function useWordMatching(words: string[], prices: PriceItem[], token: str
           body: JSON.stringify({ ...price, synonyms: updatedSynonyms, bundle: JSON.stringify(row.bundleIds) }),
         }, token, price.id);
         savedNames.push(price.name);
-      } else if (row.mode === "notfound-manual") {
+      } else if ((row.mode === "found" && row.createMode) || row.mode === "notfound-manual") {
         if (row.createMode && row.newName.trim()) {
           const name = row.newName.trim();
           const syn = row.edited.trim() !== name ? row.edited.trim() : "";

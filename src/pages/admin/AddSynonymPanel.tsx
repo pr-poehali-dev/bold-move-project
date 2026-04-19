@@ -39,7 +39,8 @@ export default function AddSynonymPanel({ words, prices, token, onAdded, onRemov
   const canSave = groupMode
     ? !!groupSelectedId
     : rows.some(r =>
-        (r.mode === "found" && r.selectedId) ||
+        (r.mode === "found" && !r.createMode && r.selectedId) ||
+        (r.mode === "found" && r.createMode && r.newName.trim()) ||
         (r.mode === "notfound-manual" && (r.createMode ? r.newName.trim() : r.selectedId))
       );
 
@@ -182,38 +183,69 @@ export default function AddSynonymPanel({ words, prices, token, onAdded, onRemov
               </div>
             </div>
 
-            {/* Тело: found — показываем синоним + возможность сменить позицию */}
-            {row.manualOpen && row.mode === "found" && matchedPrice && (
+            {/* Тело: found — показываем синоним + возможность сменить позицию или создать новую */}
+            {row.manualOpen && row.mode === "found" && (
               <div className="p-3 flex flex-col gap-2 border-t border-white/5">
-                <div className="flex items-center gap-1.5 text-xs text-white/30">
-                  <Icon name="Tag" size={11} className="text-violet-400" />
-                  <span>Синоним <span className="text-violet-300 font-medium">«{row.edited}»</span> будет добавлен к позиции</span>
+                <div className="flex gap-1 bg-white/5 rounded-lg p-0.5">
+                  <button onClick={() => updateRow(i, { createMode: false })}
+                    className={`flex-1 text-xs py-1 rounded-md transition ${!row.createMode ? "bg-violet-600 text-white" : "text-white/40 hover:text-white"}`}>
+                    Выбрать из прайса
+                  </button>
+                  <button onClick={() => updateRow(i, { createMode: true })}
+                    className={`flex-1 text-xs py-1 rounded-md transition ${row.createMode ? "bg-violet-600 text-white" : "text-white/40 hover:text-white"}`}>
+                    Создать позицию
+                  </button>
                 </div>
-                <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Сменить позицию..."
-                  className="bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-white text-xs outline-none focus:border-violet-500 transition" />
-                <div className="max-h-32 overflow-y-auto flex flex-col gap-0.5">
-                  {[
-                    // Выбранная позиция всегда первой
-                    ...filtered.filter(p => p.id === row.selectedId),
-                    ...filtered.filter(p => p.id !== row.selectedId),
-                  ].slice(0, 40).map(p => (
-                    <button key={p.id} onClick={() => {
-                      const existingBundle = parseBundle(p as PriceItem & { bundle?: string });
-                      updateRow(i, { selectedId: p.id, bundleIds: existingBundle });
-                    }}
-                      className={`text-left px-3 py-1.5 rounded-lg text-xs transition flex items-center justify-between gap-2 ${
-                        row.selectedId === p.id
-                          ? "bg-violet-600/30 border border-violet-500/40 text-white"
-                          : "bg-white/[0.02] border border-white/5 text-white/60 hover:text-white"
-                      }`}>
-                      <div className="flex items-center gap-2 min-w-0">
-                        {row.selectedId === p.id && <Icon name="Check" size={10} className="text-violet-400 flex-shrink-0" />}
-                        <span className="truncate">{p.name}</span>
-                      </div>
-                      <span className="text-white/30 flex-shrink-0">{p.category}</span>
-                    </button>
-                  ))}
-                </div>
+                {!row.createMode ? (
+                  <>
+                    <div className="flex items-center gap-1.5 text-xs text-white/30">
+                      <Icon name="Tag" size={11} className="text-violet-400" />
+                      <span>Синоним <span className="text-violet-300 font-medium">«{row.edited}»</span> будет добавлен к позиции</span>
+                    </div>
+                    <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Сменить позицию..."
+                      className="bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-white text-xs outline-none focus:border-violet-500 transition" />
+                    <div className="max-h-32 overflow-y-auto flex flex-col gap-0.5">
+                      {[
+                        ...filtered.filter(p => p.id === row.selectedId),
+                        ...filtered.filter(p => p.id !== row.selectedId),
+                      ].slice(0, 40).map(p => (
+                        <button key={p.id} onClick={() => {
+                          const existingBundle = parseBundle(p as PriceItem & { bundle?: string });
+                          updateRow(i, { selectedId: p.id, bundleIds: existingBundle });
+                        }}
+                          className={`text-left px-3 py-1.5 rounded-lg text-xs transition flex items-center justify-between gap-2 ${
+                            row.selectedId === p.id
+                              ? "bg-violet-600/30 border border-violet-500/40 text-white"
+                              : "bg-white/[0.02] border border-white/5 text-white/60 hover:text-white"
+                          }`}>
+                          <div className="flex items-center gap-2 min-w-0">
+                            {row.selectedId === p.id && <Icon name="Check" size={10} className="text-violet-400 flex-shrink-0" />}
+                            <span className="truncate">{p.name}</span>
+                          </div>
+                          <span className="text-white/30 flex-shrink-0">{p.category}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                ) : (
+                  <div className="flex flex-col gap-1.5">
+                    <input value={row.newName} onChange={e => updateRow(i, { newName: e.target.value })} placeholder="Название позиции"
+                      className="bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-white text-xs outline-none focus:border-violet-500 transition" />
+                    <div className="flex gap-1.5">
+                      <input value={row.newPrice} onChange={e => updateRow(i, { newPrice: e.target.value })} placeholder="Цена ₽" type="number"
+                        className="bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-white text-xs outline-none focus:border-violet-500 transition w-24" />
+                      <select value={row.newUnit} onChange={e => updateRow(i, { newUnit: e.target.value })}
+                        className="bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 text-white text-xs outline-none focus:border-violet-500 transition">
+                        {PRICE_UNITS.map(u => <option key={u} value={u} className="bg-[#0b0b11]">{u}</option>)}
+                      </select>
+                      <select value={row.newCategory} onChange={e => updateRow(i, { newCategory: e.target.value })}
+                        className="flex-1 bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 text-white text-xs outline-none focus:border-violet-500 transition">
+                        {categories.map(c => <option key={c} value={c} className="bg-[#0b0b11]">{c}</option>)}
+                        <option value="Дополнительно" className="bg-[#0b0b11]">Дополнительно</option>
+                      </select>
+                    </div>
+                  </div>
+                )}
                 <BundleSelector
                   prices={prices} selectedPriceId={row.selectedId}
                   bundleIds={row.bundleIds} bundleSearch={row.bundleSearch} bundleOpen={row.bundleOpen}
