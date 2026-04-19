@@ -448,7 +448,7 @@ export default function TabRules({ token, hint }: Props) {
 
       {/* Модальное окно выбора комплекта */}
       {bundleModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={() => setBundleModal(null)}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
           <div
             className="relative bg-[#13131f] border border-violet-500/30 rounded-2xl shadow-2xl w-full max-w-lg flex flex-col gap-4 p-6"
