@@ -250,12 +250,16 @@ export default function CorrectionCard({
               words={selectedWords}
               prices={prices}
               token={token}
+              onRemoveWord={w => {
+                const next = selectedWords.filter(x => x !== w);
+                setSelectedWords(next);
+                if (next.length === 0) setPanelOpen(false);
+              }}
               onAdded={async () => {
                 const newDone = [...doneWords, ...selectedWords];
                 onDoneWordsChange(newDone);
                 setSelectedWords([]);
                 setPanelOpen(false);
-                // remaining — только те которые не зелёные и не игнорированы
                 const remaining = allUnknownWords.filter(w => !newDone.includes(w) && !isKnown(w));
                 if (remaining.length === 0) await onUpdate("approved");
               }}

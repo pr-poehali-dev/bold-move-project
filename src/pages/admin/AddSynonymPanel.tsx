@@ -12,9 +12,10 @@ interface Props {
   prices: PriceItem[];
   token: string;
   onAdded: (priceName: string) => void;
+  onRemoveWord?: (word: string) => void;
 }
 
-export default function AddSynonymPanel({ words, prices, token, onAdded }: Props) {
+export default function AddSynonymPanel({ words, prices, token, onAdded, onRemoveWord }: Props) {
   const { rows, updateRow, matchOne, rematchAll, saveAll, categories, defaultCategory } = useWordMatching(words, prices, token);
   const [search, setSearch] = useState("");
   const [saving, setSaving] = useState(false);
@@ -82,7 +83,14 @@ export default function AddSynonymPanel({ words, prices, token, onAdded }: Props
         <>
           <div className="flex flex-wrap gap-1.5 mb-0.5">
             {words.map(w => (
-              <span key={w} className="text-xs px-2 py-0.5 rounded-full bg-violet-500/15 border border-violet-500/30 text-violet-300">«{w}»</span>
+              <span key={w} className="flex items-center gap-1 text-xs pl-2 pr-1 py-0.5 rounded-full bg-violet-500/15 border border-violet-500/30 text-violet-300">
+                «{w}»
+                {onRemoveWord && (
+                  <button onClick={() => onRemoveWord(w)} className="text-violet-400/50 hover:text-violet-200 transition ml-0.5">
+                    <Icon name="X" size={10} />
+                  </button>
+                )}
+              </span>
             ))}
           </div>
           <div className="flex gap-1 bg-white/5 rounded-lg p-0.5 mb-1">
