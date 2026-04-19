@@ -1005,6 +1005,8 @@ def handler(event, context):
     rules_hint = build_rules_prompt(_rules_for_suggestions)
     if rules_hint:
         system_content += rules_hint
+    print(f"[system] prompt_len={len(system_content)} rules_hint_len={len(rules_hint)} rules_count={len(_rules_for_suggestions)}")
+    print(f"[system] rules_hint_preview={rules_hint[:300]}")
 
     # Всегда добавляем инструкцию по JSON — независимо от промпта в БД
     system_content += """
