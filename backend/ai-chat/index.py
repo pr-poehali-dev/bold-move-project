@@ -1,4 +1,4 @@
-"""AI-помощник MOSPOTOLKI — отвечает на вопросы о натяжных потолках и считает стоимость. v3."""
+"""AI-помощник MOSPOTOLKI — отвечает на вопросы о натяжных потолках и считает стоимость. v4."""
 
 import json
 import os
@@ -786,20 +786,43 @@ def _build_price_map(rules: list) -> dict:
 
 
 def _find_in_price_map(name: str, price_map: dict) -> dict | None:
-    """Ищет позицию в прайсе по точному совпадению, потом по подстроке."""
+    """Ищет позицию в прайсе. Приоритет: точное > начало строки > по словам (мин 2 уникальных слова)."""
     nl = name.lower().strip()
     # 1. Точное совпадение
     if nl in price_map:
         return price_map[nl]
-    # 2. Имя из прайса содержится в строке LLM (LLM мог добавить пояснение)
+    # 2. LLM-строка начинается с имени из прайса (LLM мог добавить пояснение после)
+    best = None
+    best_len = 0
     for k, v in price_map.items():
-        if k and k in nl:
-            return v
-    # 3. Строка LLM содержится в имени из прайса
+        if not k:
+            continue
+        if nl.startswith(k) and len(k) > best_len:
+            best = v
+            best_len = len(k)
+    if best:
+        return best
+    # 3. Имя из прайса начинается со строки LLM (LLM написал короче)
     for k, v in price_map.items():
-        if k and nl in k:
-            return v
-    return None
+        if k and k.startswith(nl) and len(nl) > best_len:
+            best = v
+            best_len = len(nl)
+    if best:
+        return best
+    # 4. Совпадение по словам — нужно минимум 2 совпадающих значимых слова
+    nl_words = set(w for w in re.findall(r'[а-яёa-z0-9]+', nl) if len(w) > 2)
+    if len(nl_words) >= 2:
+        best_overlap = 0
+        for k, v in price_map.items():
+            k_words = set(w for w in re.findall(r'[а-яёa-z0-9]+', k) if len(w) > 2)
+            overlap = len(nl_words & k_words)
+            if overlap >= 2 and overlap > best_overlap:
+                # Проверяем что совпадение покрывает большинство слов обоих названий
+                coverage = overlap / max(len(nl_words), len(k_words))
+                if coverage >= 0.7:
+                    best_overlap = overlap
+                    best = v
+    return best
 
 
 def _patch_answer_with_prices(answer: str, llm_items: list, rules: list | None = None) -> str:
@@ -929,35 +952,27 @@ def _apply_surcharges(answer: str, rules: list) -> str:
     if mounting_total == 0:
         return answer
 
-    # 2. Заменяем строки надбавок на правильные суммы
+    # 2. Заменяем строки надбавок — ищем по началу строки (имя позиции)
     result_lines = []
     for line in lines:
-        m = line_pat.match(line)
-        if m:
-            name_low = m.group('name').strip().lower()
-            matched = None
-            for pct_name, pct_val in pct_items.items():
-                # Точное совпадение: название строки должно содержать название позиции из прайса
-                # (без слова "монтаж" как ложного триггера)
-                pct_core = pct_name.replace('монтаж', '').strip()
-                name_core = name_low.replace('монтаж', '').strip()
-                if pct_core and pct_core in name_core:
-                    matched = (pct_name, pct_val)
-                    break
-                # Точное совпадение по полному имени
-                if pct_name == name_low or name_low.startswith(pct_name):
-                    matched = (pct_name, pct_val)
-                    break
-            if matched:
-                _, pct_val = matched
-                surcharge = round(mounting_total * pct_val / 100)
-                indent = m.group('indent')
-                name = m.group('name').strip()
-                # Клиент видит только название и итог — без формулы расчёта
-                result_lines.append(f"{indent}{name}  1 шт. × {fmt(surcharge)} ₽ = {fmt(surcharge)} ₽")
-                print(f"[surcharge] {name}: {pct_val}% of {mounting_total} = {surcharge}")
-            else:
-                result_lines.append(line)
+        stripped = line.strip()
+        matched_pct = None
+        matched_name = None
+        for pct_name, pct_val in pct_items.items():
+            # Строка начинается с имени позиции из прайса (без учёта регистра)
+            if stripped.lower().startswith(pct_name):
+                matched_pct = pct_val
+                matched_name = pct_name
+                break
+        if matched_pct is not None:
+            surcharge = round(mounting_total * matched_pct / 100)
+            indent = line[:len(line) - len(line.lstrip())]
+            # Берём оригинальное красивое имя из прайса
+            original_name = next((r['name'] for r in rules if r['name'].lower() == matched_name), matched_name)
+            result_lines.append(f"{indent}{original_name}  1 шт. × {fmt(surcharge)} ₽ = {fmt(surcharge)} ₽")
+            print(f"[surcharge] {original_name}: {matched_pct}% of {mounting_total} = {surcharge}")
+        else:
+            result_lines.append(line)
         else:
             result_lines.append(line)
 

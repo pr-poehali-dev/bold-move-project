@@ -1,4 +1,4 @@
-"""Database helpers: knowledge base, system prompt, FAQ cache, prices, rules."""
+"""Database helpers: knowledge base, system prompt, FAQ cache, prices, rules. v2."""
 
 import os
 import re
