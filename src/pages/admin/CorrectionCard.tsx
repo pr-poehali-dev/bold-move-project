@@ -139,32 +139,31 @@ export default function CorrectionCard({
           {/* Теги нераспознанных слов */}
           {isLLM && unknownWords.length > 0 && item.status === "pending" && (
             <div className="flex flex-col gap-2 mt-3">
-              {/* Панель действий — появляется когда выбран хотя бы один тег */}
-              {selectedWords.length > 0 && !panelOpen && (
-                <div className="flex items-center gap-1 bg-[#12121e] border border-white/15 rounded-lg px-1 py-1 w-fit">
-                  <span className="text-white/30 text-[10px] px-2">
-                    {selectedWords.length > 1 ? `${selectedWords.length} тега` : `«${selectedWords[0]}»`}
-                  </span>
-                  <div className="w-px h-4 bg-white/10" />
-                  <button
-                    onClick={() => { selectedWords.forEach(w => handleIgnore(w)); setSelectedWords([]); setPanelOpen(false); }}
-                    className="flex items-center gap-1.5 px-2.5 py-1 text-white/60 hover:text-white hover:bg-white/10 rounded-md transition text-[10px] whitespace-nowrap">
-                    <Icon name="X" size={10} />
-                    Удалить тег
-                  </button>
-                  <button
-                    onClick={async () => { for (const w of selectedWords) await handleStopWord(w); setSelectedWords([]); setPanelOpen(false); }}
-                    className="flex items-center gap-1.5 px-2.5 py-1 text-white/60 hover:text-red-300 hover:bg-red-500/10 rounded-md transition text-[10px] whitespace-nowrap">
-                    <Icon name="Ban" size={10} />
-                    Игнорировать
-                  </button>
-                </div>
-              )}
+              {/* Строка подсказки + кнопки действий */}
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-xs text-white/30">
+                  Нажми чтобы выбрать · Перетащи на другой чтобы объединить
+                </span>
+                {selectedWords.length > 0 && (
+                  <>
+                    <div className="w-px h-3 bg-white/15" />
+                    <button
+                      onClick={() => { selectedWords.forEach(w => handleIgnore(w)); setSelectedWords([]); setPanelOpen(false); }}
+                      className="flex items-center gap-1 text-white/50 hover:text-white transition text-[10px]">
+                      <Icon name="X" size={10} />
+                      Удалить тег
+                    </button>
+                    <button
+                      onClick={async () => { for (const w of selectedWords) await handleStopWord(w); setSelectedWords([]); setPanelOpen(false); }}
+                      className="flex items-center gap-1 text-white/50 hover:text-red-300 transition text-[10px]">
+                      <Icon name="Ban" size={10} />
+                      Игнорировать
+                    </button>
+                  </>
+                )}
+              </div>
 
               <div className="flex flex-wrap gap-2">
-              <span className="text-xs text-white/30 w-full -mb-1">
-                Нажми чтобы выбрать · Перетащи тег на другой чтобы объединить
-              </span>
               {unknownWords.map(w => {
                 const isSelected = selectedWords.includes(w);
                 const isDone = doneWords.includes(w);
