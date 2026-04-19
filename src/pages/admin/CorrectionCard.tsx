@@ -74,11 +74,16 @@ export default function CorrectionCard({
     setPanelOpen(false);
   };
 
-  const handleTagClick = (w: string) => {
+  const handleCheckbox = (w: string) => {
     const isSelected = selectedWords.includes(w);
     const next = isSelected ? selectedWords.filter(x => x !== w) : [...selectedWords, w];
     setSelectedWords(next);
-    setPanelOpen(next.length > 0);
+    if (next.length === 0) setPanelOpen(false);
+  };
+
+  const handleTagOpen = (w: string) => {
+    setSelectedWords([w]);
+    setPanelOpen(true);
   };
 
   const handleIgnore = (w: string) => {
@@ -208,7 +213,7 @@ export default function CorrectionCard({
                 return (
                   <div
                     key={w}
-                    className="inline-flex"
+                    className="inline-flex items-center gap-0.5"
                     draggable
                     onDragStart={() => { dragWord.current = w; }}
                     onDragEnter={() => setDragOverWord(w)}
@@ -221,20 +226,29 @@ export default function CorrectionCard({
                     }}
                     onDragEnd={() => { dragWord.current = null; setDragOverWord(null); }}
                   >
+                    {/* Чекбокс */}
                     <button
-                      onClick={() => handleTagClick(w)}
-                      className={`text-xs px-2.5 py-1 rounded-full border transition flex items-center gap-1.5 cursor-grab active:cursor-grabbing ${
+                      onClick={e => { e.stopPropagation(); handleCheckbox(w); }}
+                      title="Выбрать тег"
+                      className={`w-4 h-4 rounded flex items-center justify-center border transition flex-shrink-0 ${
+                        isSelected
+                          ? "bg-violet-600 border-violet-500"
+                          : "border-white/25 hover:border-violet-400 bg-transparent"
+                      }`}>
+                      {isSelected && <Icon name="Check" size={10} className="text-white" />}
+                    </button>
+
+                    {/* Тег */}
+                    <button
+                      onClick={() => handleTagOpen(w)}
+                      className={`text-xs px-2.5 py-1 rounded-full border transition flex items-center gap-1 cursor-pointer ${
                         isDragOver
                           ? "bg-amber-500/20 border-amber-500/50 text-amber-300 scale-105"
-                          : isSelected
-                          ? "bg-violet-600/30 border-violet-500/50 text-violet-300"
                           : isGreen
                           ? "bg-green-500/10 border-green-500/30 text-green-300 hover:bg-green-500/20"
                           : "bg-red-500/10 border-red-500/30 text-red-300 hover:bg-red-500/20"
                       }`}>
-                      {isSelected ? <Icon name="CheckSquare" size={10} />
-                        : isGreen ? <Icon name="Check" size={10} />
-                        : <Icon name="Tag" size={10} />}
+                      {isGreen ? <Icon name="Check" size={10} /> : <Icon name="Tag" size={10} />}
                       «{w}»
                     </button>
                   </div>
