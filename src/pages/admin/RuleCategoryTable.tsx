@@ -1,0 +1,289 @@
+import Icon from "@/components/ui/icon";
+import BundleSelector from "./BundleSelector";
+import InlineEditCell from "./InlineEditCell";
+import type { RuleItem, RuleType, DraftMap } from "./RuleTypes";
+import { parseBundleIds } from "./RuleTypes";
+import type { PriceItem } from "./types";
+
+interface Props {
+  category: string;
+  items: RuleItem[];
+  prices: PriceItem[];
+  activeRuleTypes: RuleType[];
+  ruleValues: Record<number, Record<number, string>>;
+  expandedId: number | null;
+  drafts: DraftMap;
+  saving: number | null;
+  confirmDeleteItemId: number | null;
+  confirmDeleteId: number | null;
+  editingLabelId: number | null;
+  editingLabelVal: string;
+  onOpenRow: (item: RuleItem) => void;
+  onSaveRow: (item: RuleItem) => void;
+  onCloseRow: () => void;
+  onPatchDraft: (id: number, patch: Partial<DraftMap[number]>) => void;
+  onDeleteItem: (id: number) => void;
+  onSetConfirmDeleteItemId: (id: number | null) => void;
+  onDeleteRuleType: (id: number) => void;
+  onSetConfirmDeleteId: (id: number | null) => void;
+  onStartEditLabel: (rt: RuleType) => void;
+  onEditLabelChange: (val: string) => void;
+  onSaveLabel: (rt: RuleType) => void;
+  onCancelEditLabel: () => void;
+  onOpenBundleModal: (item: RuleItem, e: { stopPropagation: () => void }) => void;
+  onSaveField: (item: PriceItem, field: string, val: string) => void;
+  onSaveCustomValue: (priceId: number, ruleTypeId: number, value: string) => void;
+}
+
+export default function RuleCategoryTable({
+  category, items, prices, activeRuleTypes, ruleValues,
+  expandedId, drafts, saving, confirmDeleteItemId, confirmDeleteId,
+  editingLabelId, editingLabelVal,
+  onOpenRow, onSaveRow, onCloseRow, onPatchDraft,
+  onDeleteItem, onSetConfirmDeleteItemId,
+  onDeleteRuleType, onSetConfirmDeleteId,
+  onStartEditLabel, onEditLabelChange, onSaveLabel, onCancelEditLabel,
+  onOpenBundleModal, onSaveField, onSaveCustomValue,
+}: Props) {
+  const colTemplate = `1.2fr 1fr 1fr repeat(${activeRuleTypes.length}, 1fr) 32px`;
+
+  return (
+    <div>
+      <h3 className="text-violet-300 text-xs font-semibold uppercase tracking-wider mb-2 px-1">{category}</h3>
+      <div className="bg-white/[0.03] border border-white/10 rounded-xl overflow-hidden">
+
+        {/* Заголовок */}
+        <div className="grid border-b border-white/10 px-4 py-2.5" style={{ gridTemplateColumns: colTemplate }}>
+          <span className="text-white/30 text-xs">Позиция</span>
+          <span className="text-white/30 text-xs">Добавляется если...</span>
+          <span className="text-white/30 text-xs">НЕ добавляется если...</span>
+          {activeRuleTypes.map(rt => (
+            <div key={rt.id} className="flex items-center gap-1.5 group/col min-w-0">
+              {editingLabelId === rt.id ? (
+                <input
+                  autoFocus
+                  value={editingLabelVal}
+                  onChange={e => onEditLabelChange(e.target.value)}
+                  onBlur={() => onSaveLabel(rt)}
+                  onKeyDown={e => {
+                    if (e.key === "Enter") onSaveLabel(rt);
+                    if (e.key === "Escape") onCancelEditLabel();
+                  }}
+                  className="text-white text-xs bg-violet-500/10 border border-violet-500/40 rounded px-2 py-0.5 outline-none w-full"
+                />
+              ) : (
+                <>
+                  <span className="text-white/30 text-xs truncate" title={rt.description}>{rt.label}</span>
+                  {rt.name !== "calc_rule" && rt.name !== "bundle" && (
+                    <>
+                      <button
+                        onClick={() => onStartEditLabel(rt)}
+                        className="opacity-0 group-hover/col:opacity-60 hover:!opacity-100 transition text-white/40 hover:text-violet-400 flex-shrink-0">
+                        <Icon name="Pencil" size={10} />
+                      </button>
+                      {confirmDeleteId === rt.id ? (
+                        <div className="flex items-center gap-1 flex-shrink-0">
+                          <span className="text-red-400 text-[10px]">Удалить?</span>
+                          <button onClick={() => onDeleteRuleType(rt.id)}
+                            className="text-red-400 hover:text-red-300 text-[10px] px-1.5 py-0.5 bg-red-500/20 rounded transition">Да</button>
+                          <button onClick={() => onSetConfirmDeleteId(null)}
+                            className="text-white/40 hover:text-white/70 text-[10px] px-1.5 py-0.5 bg-white/5 rounded transition">Нет</button>
+                        </div>
+                      ) : (
+                        <button onClick={() => onSetConfirmDeleteId(rt.id)}
+                          className="opacity-0 group-hover/col:opacity-100 transition text-white/25 hover:text-red-400 flex-shrink-0">
+                          <Icon name="X" size={11} />
+                        </button>
+                      )}
+                    </>
+                  )}
+                </>
+              )}
+            </div>
+          ))}
+          <span />
+        </div>
+
+        {/* Строки */}
+        {items.map((item, idx) => {
+          const isExpanded = expandedId === item.id;
+          const d = drafts[item.id];
+          const isSaving = saving === item.id;
+
+          return (
+            <div key={item.id} className={`border-b border-white/5 last:border-0 ${!item.active ? "opacity-40" : ""}`}>
+
+              {/* Строка-превью */}
+              <div
+                className={`grid px-4 py-2.5 transition items-start gap-2
+                  ${idx % 2 ? "bg-white/[0.01]" : ""}
+                  ${isExpanded ? "bg-violet-500/10 border-b border-violet-500/20" : "hover:bg-white/[0.02]"}
+                `}
+                style={{ gridTemplateColumns: colTemplate }}
+              >
+                <div className="flex items-center gap-1.5 min-w-0 cursor-pointer py-0.5" onClick={() => onOpenRow(item)}>
+                  <Icon name={isExpanded ? "ChevronUp" : "ChevronDown"} size={12} className="text-white/20 flex-shrink-0" />
+                  <span className="text-white/80 text-xs font-medium truncate">{item.name}</span>
+                </div>
+
+                <InlineEditCell
+                  value={item.when_condition || ""}
+                  onSave={v => onSaveField(item, "when_condition", v)}
+                  placeholder="не задано"
+                />
+
+                <InlineEditCell
+                  value={item.when_not_condition || ""}
+                  onSave={v => onSaveField(item, "when_not_condition", v)}
+                  placeholder="не задано"
+                  colorClass="text-red-400/60"
+                />
+
+                {activeRuleTypes.map(rt => {
+                  if (rt.name === "bundle") {
+                    const ids = parseBundleIds(item.bundle || "");
+                    const idToName = Object.fromEntries(prices.map(p => [p.id, p.name]));
+                    return (
+                      <div key={rt.id}
+                        onClick={e => onOpenBundleModal(item, e)}
+                        className={`text-xs truncate cursor-pointer rounded px-1.5 py-1 -mx-1.5 transition hover:bg-white/5
+                          ${ids.length > 0 ? "text-white/50" : "text-white/15 italic"}`}>
+                        {ids.length > 0 ? ids.map(id => idToName[id]).filter(Boolean).join(", ") : "не задано"}
+                      </div>
+                    );
+                  }
+                  if (rt.name === "calc_rule") {
+                    return (
+                      <InlineEditCell key={rt.id}
+                        value={item.calc_rule || ""}
+                        onSave={v => onSaveField(item, "calc_rule", v)}
+                        placeholder={rt.placeholder || "не задано"}
+                      />
+                    );
+                  }
+                  return (
+                    <InlineEditCell key={rt.id}
+                      value={ruleValues[item.id]?.[rt.id] ?? ""}
+                      onSave={v => onSaveCustomValue(item.id, rt.id, v)}
+                      placeholder={rt.placeholder || "—"}
+                    />
+                  );
+                })}
+
+                <div className="flex items-center gap-1 justify-self-end pt-0.5" onClick={e => e.stopPropagation()}>
+                  {confirmDeleteItemId === item.id ? (
+                    <>
+                      <button onClick={() => { onDeleteItem(item.id); onSetConfirmDeleteItemId(null); }}
+                        className="text-red-400 hover:text-red-300 text-[10px] px-1.5 py-0.5 bg-red-500/20 rounded transition">Да</button>
+                      <button onClick={() => onSetConfirmDeleteItemId(null)}
+                        className="text-white/40 hover:text-white/70 text-[10px] px-1.5 py-0.5 bg-white/5 rounded transition">Нет</button>
+                    </>
+                  ) : (
+                    <button onClick={() => onSetConfirmDeleteItemId(item.id)}
+                      className="text-white/15 hover:text-red-400 transition p-1">
+                      <Icon name="X" size={13} />
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Раскрытый редактор */}
+              {isExpanded && d && (
+                <div className="bg-white/[0.02] border-b border-white/5 px-5 py-4 flex flex-col gap-4">
+                  <p className="text-white/40 text-xs">Правила для <span className="text-violet-300 font-medium">{item.name}</span></p>
+
+                  <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+                    <div className="flex flex-col gap-1.5">
+                      <label className="text-white/60 text-xs font-medium flex items-center gap-1.5">
+                        <Icon name="CircleCheck" size={11} className="text-green-400" />
+                        1. Добавляется если...
+                      </label>
+                      <textarea
+                        value={d.when_condition}
+                        onChange={e => onPatchDraft(item.id, { when_condition: e.target.value })}
+                        placeholder={"Например:\n• клиент выбрал ПВХ полотно\n• в смете есть точечные светильники\n• клиент упомянул люстру\n• всегда добавлять"}
+                        rows={5}
+                        className="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-xs outline-none focus:border-green-500/60 resize-none transition placeholder-white/20"
+                      />
+                    </div>
+
+                    <div className="flex flex-col gap-1.5">
+                      <label className="text-white/60 text-xs font-medium flex items-center gap-1.5">
+                        <Icon name="CircleX" size={11} className="text-red-400" />
+                        2. НЕ добавляется если...
+                      </label>
+                      <textarea
+                        value={d.when_not_condition}
+                        onChange={e => onPatchDraft(item.id, { when_not_condition: e.target.value })}
+                        placeholder={"Например:\n• клиент выбрал тканевое полотно\n• в смете уже есть теневой профиль\n• клиент написал «без монтажа»"}
+                        rows={5}
+                        className="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-xs outline-none focus:border-red-500/60 resize-none transition placeholder-white/20"
+                      />
+                    </div>
+
+                    <div className="flex flex-col gap-1.5">
+                      <label className="text-white/60 text-xs font-medium flex items-center gap-1.5">
+                        <Icon name="Calculator" size={11} className="text-violet-400" />
+                        3. Логика расчёта
+                      </label>
+                      <textarea
+                        value={d.calc_rule}
+                        onChange={e => onPatchDraft(item.id, { calc_rule: e.target.value })}
+                        placeholder={"Сколько добавлять и при каких условиях:\n• площадь комнаты\n• периметр × 1.3\n• 1 шт на каждый светильник\n• длина ниши (спросить у клиента)\n• площадь + 30% если высота > 3м"}
+                        rows={5}
+                        className="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-xs outline-none focus:border-violet-500 resize-none transition placeholder-white/20"
+                      />
+                    </div>
+                  </div>
+
+                  {activeRuleTypes.filter(rt => rt.name !== "calc_rule" && rt.name !== "bundle").map(rt => (
+                    <div key={rt.id} className="flex flex-col gap-1.5">
+                      <label className="text-white/60 text-xs font-medium">{rt.label}</label>
+                      <textarea
+                        value={d.custom[rt.id] ?? ""}
+                        onChange={e => onPatchDraft(item.id, { custom: { ...d.custom, [rt.id]: e.target.value } })}
+                        placeholder={rt.placeholder || "—"}
+                        rows={2}
+                        className="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-xs outline-none focus:border-violet-500 resize-none transition"
+                      />
+                    </div>
+                  ))}
+
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-white/60 text-xs font-medium flex items-center gap-1.5">
+                      <Icon name="Package" size={11} className="text-green-400" />
+                      Вместе добавить позиции
+                    </label>
+                    <BundleSelector
+                      prices={prices}
+                      selectedPriceId={item.id}
+                      excludeId={item.id}
+                      bundleIds={d.bundleIds}
+                      bundleSearch={d.bundleSearch}
+                      bundleOpen={d.bundleOpen}
+                      onToggleOpen={() => onPatchDraft(item.id, { bundleOpen: !d.bundleOpen })}
+                      onBundleSearchChange={v => onPatchDraft(item.id, { bundleSearch: v })}
+                      onToggleItem={id => onPatchDraft(item.id, {
+                        bundleIds: d.bundleIds.includes(id) ? d.bundleIds.filter(x => x !== id) : [...d.bundleIds, id]
+                      })}
+                      onRemoveItem={id => onPatchDraft(item.id, { bundleIds: d.bundleIds.filter(x => x !== id) })}
+                    />
+                  </div>
+
+                  <div className="flex gap-2 pt-1 border-t border-white/5">
+                    <button onClick={() => onSaveRow(item)} disabled={isSaving}
+                      className="bg-violet-600 hover:bg-violet-700 disabled:opacity-40 text-white text-xs px-4 py-2 rounded-lg transition flex items-center gap-1.5">
+                      {isSaving ? <Icon name="Loader" size={12} className="animate-spin" /> : <Icon name="Check" size={12} />}
+                      Сохранить
+                    </button>
+                    <button onClick={onCloseRow} className="text-white/40 hover:text-white/70 text-xs transition px-3 py-2">Отмена</button>
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
