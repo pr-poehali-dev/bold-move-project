@@ -36,7 +36,7 @@ export default function AddSynonymPanel({ words, prices, token, onAdded }: Props
   const [search, setSearch] = useState("");
   const [saving, setSaving] = useState(false);
   const [done, setDone] = useState(false);
-  const [groupMode, setGroupMode] = useState(false);
+  const [groupMode, setGroupMode] = useState(words.length > 1);
   const [groupSelectedId, setGroupSelectedId] = useState<number | null>(null);
   const [groupSearch, setGroupSearch] = useState("");
   const [groupBundleIds, setGroupBundleIds] = useState<number[]>([]);
