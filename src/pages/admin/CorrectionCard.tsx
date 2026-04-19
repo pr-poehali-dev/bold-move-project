@@ -216,23 +216,22 @@ export default function CorrectionCard({
                       «{w}»
                     </button>
 
-                    {/* Кнопки действий — показываются при наведении */}
-                    <div className={`flex items-center overflow-hidden max-w-0 group-hover/tag:max-w-[64px] transition-all duration-150 rounded-r-full border-y border-r ${
-                      isGreen ? "border-green-500/30 bg-green-500/10"
-                      : "border-red-500/30 bg-red-500/10"
+                    {/* Кнопки: удалить и игнорировать */}
+                    <div className={`flex items-stretch rounded-r-full border-y border-r divide-x divide-white/10 ${
+                      isGreen ? "border-green-500/30" : "border-red-500/30"
                     }`}>
                       <button
                         onClick={e => { e.stopPropagation(); handleIgnore(w); }}
-                        title="Удалить тег — ошибочно добавлен"
-                        className="flex items-center gap-1 px-2 py-1 text-white/40 hover:text-white/80 hover:bg-white/10 transition h-full text-[10px] whitespace-nowrap border-r border-white/10">
-                        <Icon name="X" size={10} />
+                        title="Удалить тег (добавлен ошибочно)"
+                        className="flex items-center gap-1 px-2 py-1 text-white/35 hover:text-white hover:bg-white/10 transition text-[10px] whitespace-nowrap">
+                        <Icon name="X" size={9} />
                         <span>удалить</span>
                       </button>
                       <button
                         onClick={e => { e.stopPropagation(); handleStopWord(w); }}
-                        title="Игнорировать — слово не нужно боту, больше не выделять"
-                        className="flex items-center gap-1 px-2 py-1 text-white/40 hover:text-red-300 hover:bg-red-500/10 transition h-full text-[10px] whitespace-nowrap">
-                        <Icon name="Ban" size={10} />
+                        title="Игнорировать навсегда (больше не выделять это слово)"
+                        className="flex items-center gap-1 px-2 py-1 text-white/35 hover:text-red-300 hover:bg-red-500/10 transition text-[10px] whitespace-nowrap">
+                        <Icon name="Ban" size={9} />
                         <span>игнор</span>
                       </button>
                     </div>
