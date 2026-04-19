@@ -141,9 +141,6 @@ export default function CorrectionCard({
             <div className="flex flex-col gap-2 mt-3">
               {/* Строка подсказки + кнопки действий */}
               <div className="flex items-center gap-3 flex-wrap">
-                <span className="text-xs text-white/30">
-                  Нажми чтобы выбрать · Перетащи на другой чтобы объединить
-                </span>
                 {selectedWords.length > 0 && (
                   <div className="flex items-center gap-px border border-white/15 rounded-lg overflow-hidden">
                     <button
@@ -161,6 +158,9 @@ export default function CorrectionCard({
                     </button>
                   </div>
                 )}
+                <span className="text-xs text-white/30">
+                  Нажми чтобы выбрать · Перетащи на другой чтобы объединить
+                </span>
               </div>
 
               <div className="flex flex-wrap gap-2">
