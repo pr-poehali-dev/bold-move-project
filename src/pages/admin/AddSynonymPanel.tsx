@@ -43,10 +43,11 @@ export default function AddSynonymPanel({ words, prices, token, onAdded }: Props
   const [groupBundleSearch, setGroupBundleSearch] = useState("");
   const [groupBundleOpen, setGroupBundleOpen] = useState(false);
 
+  const autoOpen = words.length === 1;
   const [rows, setRows] = useState<WordRow[]>(() =>
     words.map(w => ({
       word: w, edited: w, mode: "ai-loading" as RowMode,
-      selectedId: null, manualOpen: false,
+      selectedId: null, manualOpen: autoOpen,
       newName: w, newPrice: "", newUnit: "шт",
       newCategory: defaultCategory, createMode: false,
       bundleIds: [], bundleSearch: "", bundleOpen: false,
@@ -90,7 +91,7 @@ export default function AddSynonymPanel({ words, prices, token, onAdded }: Props
   useEffect(() => {
     const initial = words.map(w => ({
       word: w, edited: w, mode: "ai-loading" as RowMode,
-      selectedId: null, manualOpen: false,
+      selectedId: null, manualOpen: autoOpen,
       newName: w, newPrice: "", newUnit: "шт",
       newCategory: defaultCategory, createMode: false,
       bundleIds: [], bundleSearch: "", bundleOpen: false,
@@ -407,16 +408,24 @@ export default function AddSynonymPanel({ words, prices, token, onAdded }: Props
                 <span className="text-xs text-green-300 truncate">{matchedPrice.name}</span>
               )}
               {row.mode === "notfound-manual" && <span className="text-xs text-amber-300/70">Не найдено — укажи вручную</span>}
-              {row.mode !== "ai-loading" && (
-                <button onClick={() => matchOne(i, rows)} title="Перезапустить AI"
-                  className="ml-auto text-white/20 hover:text-violet-400 transition flex-shrink-0">
-                  <Icon name="Sparkles" size={11} />
-                </button>
-              )}
+              <div className="ml-auto flex items-center gap-1.5 flex-shrink-0">
+                {row.mode !== "ai-loading" && (
+                  <button onClick={() => matchOne(i, rows)} title="Перезапустить AI"
+                    className="text-white/20 hover:text-violet-400 transition">
+                    <Icon name="Sparkles" size={11} />
+                  </button>
+                )}
+                {row.mode !== "ai-loading" && (
+                  <button onClick={() => updateRow(i, { manualOpen: !row.manualOpen })}
+                    className="text-white/20 hover:text-white/50 transition">
+                    <Icon name={row.manualOpen ? "ChevronUp" : "ChevronDown"} size={13} />
+                  </button>
+                )}
+              </div>
             </div>
 
-            {/* Тело строки — всегда раскрыто (не скрывается) */}
-            {row.mode === "found" && matchedPrice && (
+            {/* Тело строки — показываем если раскрыто */}
+            {row.manualOpen && row.mode === "found" && matchedPrice && (
               <div className="px-3 pb-3 border-t border-white/5 pt-2">
                 <div className="flex items-center gap-1.5 text-xs text-white/30">
                   <Icon name="Tag" size={11} className="text-violet-400" />
@@ -439,7 +448,7 @@ export default function AddSynonymPanel({ words, prices, token, onAdded }: Props
               </div>
             )}
 
-            {row.mode === "notfound-manual" && (
+            {row.manualOpen && row.mode === "notfound-manual" && (
               <div className="p-3 flex flex-col gap-2 border-t border-white/5">
                 <div className="flex items-center gap-1.5">
                   <Icon name="Tag" size={11} className="text-violet-400 flex-shrink-0" />
