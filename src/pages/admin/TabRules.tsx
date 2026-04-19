@@ -192,7 +192,7 @@ export default function TabRules({ token, hint }: Props) {
             <div className="grid border-b border-white/10 px-4 py-2.5"
               style={{ gridTemplateColumns: `1.2fr 1.5fr repeat(${activeRuleTypes.length}, 1fr) 32px` }}>
               <span className="text-white/30 text-xs">Позиция</span>
-              <span className="text-white/30 text-xs">Добавляется если</span>
+              <span className="text-white/30 text-xs">Добавляется если...</span>
               {activeRuleTypes.map(rt => (
                 <div key={rt.id} className="flex items-center gap-2 group/col">
                   <span className="text-white/30 text-xs" title={rt.description}>{rt.label}</span>
@@ -230,12 +230,15 @@ export default function TabRules({ token, hint }: Props) {
                       ${idx % 2 ? "bg-white/[0.01]" : ""}
                       ${isExpanded ? "bg-violet-500/10 border-b border-violet-500/20" : "hover:bg-white/[0.04]"}
                     `}
-                    style={{ gridTemplateColumns: `1fr repeat(${activeRuleTypes.length}, 1fr) 32px` }}
+                    style={{ gridTemplateColumns: `1.2fr 1.5fr repeat(${activeRuleTypes.length}, 1fr) 32px` }}
                   >
                     <div className="flex items-center gap-1.5 min-w-0">
                       <Icon name={isExpanded ? "ChevronUp" : "ChevronDown"} size={12} className="text-white/20 flex-shrink-0" />
                       <span className="text-white/80 text-xs font-medium truncate">{item.name}</span>
                     </div>
+                    <span className={`text-xs truncate ${item.when_condition ? "text-white/50" : "text-white/15 italic"}`}>
+                      {item.when_condition || "не задано"}
+                    </span>
                     {activeRuleTypes.map(rt => {
                       let val = "";
                       if (rt.name === "calc_rule") val = item.calc_rule || "";
