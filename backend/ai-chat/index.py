@@ -1,4 +1,4 @@
-"""AI-помощник MOSPOTOLKI — отвечает на вопросы о натяжных потолках и считает стоимость. v4."""
+"""AI-помощник MOSPOTOLKI — отвечает на вопросы о натяжных потолках и считает стоимость. v5."""
 
 import json
 import os
@@ -967,12 +967,9 @@ def _apply_surcharges(answer: str, rules: list) -> str:
         if matched_pct is not None:
             surcharge = round(mounting_total * matched_pct / 100)
             indent = line[:len(line) - len(line.lstrip())]
-            # Берём оригинальное красивое имя из прайса
             original_name = next((r['name'] for r in rules if r['name'].lower() == matched_name), matched_name)
             result_lines.append(f"{indent}{original_name}  1 шт. × {fmt(surcharge)} ₽ = {fmt(surcharge)} ₽")
             print(f"[surcharge] {original_name}: {matched_pct}% of {mounting_total} = {surcharge}")
-        else:
-            result_lines.append(line)
         else:
             result_lines.append(line)
 
