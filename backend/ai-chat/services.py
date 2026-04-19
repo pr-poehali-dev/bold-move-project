@@ -1,4 +1,4 @@
-"""External service helpers: image generation, web search, LLM calls."""
+"""External service helpers: image generation, web search, LLM calls. v2."""
 
 import os
 import re
