@@ -12,6 +12,51 @@ interface RuleItem extends PriceItem {
 
 interface Props { token: string; hint?: string | null; }
 
+function parseBundleIds(bundle: string): number[] {
+  try {
+    const parsed = JSON.parse(bundle);
+    if (Array.isArray(parsed) && parsed.every(x => typeof x === "number")) return parsed;
+  } catch { /* */ }
+  return [];
+}
+
+function BundleCell({ item, prices, onSave }: {
+  item: RuleItem;
+  prices: PriceItem[];
+  onSave: (v: string) => void;
+}) {
+  const bundleIds = parseBundleIds(item.bundle);
+  const isJsonBundle = bundleIds.length > 0;
+  const idToName = Object.fromEntries(prices.map(p => [p.id, p.name]));
+
+  if (isJsonBundle) {
+    const names = bundleIds.map(id => idToName[id]).filter(Boolean);
+    return (
+      <div className="flex flex-wrap gap-1">
+        {names.map(name => (
+          <span key={name} className="inline-flex items-center gap-1 text-[10px] bg-violet-500/10 border border-violet-500/20 text-violet-300 px-2 py-0.5 rounded-full">
+            <Icon name="Package" size={9} />
+            {name}
+          </span>
+        ))}
+        {names.length === 0 && (
+          <span className="text-white/20 text-xs italic">позиции не найдены</span>
+        )}
+      </div>
+    );
+  }
+
+  // Текстовый формат — редактируемая ячейка
+  const textVal = item.bundle === EMPTY_BUNDLE ? "" : (item.bundle || "");
+  return (
+    <EditableCell
+      value={textVal}
+      onSave={onSave}
+      placeholder="Например: добавить Лампа GX53 и Закладная под светильник"
+    />
+  );
+}
+
 export default function TabRules({ token, hint }: Props) {
   const { prices, loading, byCategory } = usePriceList(token);
 
@@ -61,8 +106,7 @@ export default function TabRules({ token, hint }: Props) {
                         placeholder="Например: взять 1/4 периметра" />
                     </td>
                     <td className="px-4 py-2.5 text-white/50 text-xs">
-                      <EditableCell value={item.bundle === EMPTY_BUNDLE ? "" : (item.bundle || "")} onSave={v => saveField(item, "bundle", v)}
-                        placeholder="Например: добавить Лампа GX53 и Закладная под светильник" />
+                      <BundleCell item={item} prices={prices} onSave={v => saveField(item, "bundle", v)} />
                     </td>
                   </tr>
                 ))}
