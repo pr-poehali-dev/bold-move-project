@@ -853,19 +853,27 @@ def _apply_surcharges(answer: str, rules: list) -> str:
         m = line_pat.match(line)
         if m:
             name_low = m.group('name').strip().lower()
+            matched = None
             for pct_name, pct_val in pct_items.items():
-                # Нечёткое совпадение по ключевым словам
-                pct_words = set(re.findall(r'[а-яёa-z]+', pct_name))
-                name_words = set(re.findall(r'[а-яёa-z]+', name_low))
-                if pct_words & name_words:
-                    surcharge = round(mounting_total * pct_val / 100)
-                    indent = m.group('indent')
-                    name = m.group('name').strip()
-                    result_lines.append(
-                        f"{indent}{name}  {pct_val}% от монтажа × {fmt(mounting_total)} ₽ = {fmt(surcharge)} ₽"
-                    )
-                    print(f"[surcharge] {name}: {pct_val}% of {mounting_total} = {surcharge}")
+                # Точное совпадение: название строки должно содержать название позиции из прайса
+                # (без слова "монтаж" как ложного триггера)
+                pct_core = pct_name.replace('монтаж', '').strip()
+                name_core = name_low.replace('монтаж', '').strip()
+                if pct_core and pct_core in name_core:
+                    matched = (pct_name, pct_val)
                     break
+                # Точное совпадение по полному имени
+                if pct_name == name_low or name_low.startswith(pct_name):
+                    matched = (pct_name, pct_val)
+                    break
+            if matched:
+                _, pct_val = matched
+                surcharge = round(mounting_total * pct_val / 100)
+                indent = m.group('indent')
+                name = m.group('name').strip()
+                # Клиент видит только название и итог — без формулы расчёта
+                result_lines.append(f"{indent}{name}  1 шт. × {fmt(surcharge)} ₽ = {fmt(surcharge)} ₽")
+                print(f"[surcharge] {name}: {pct_val}% of {mounting_total} = {surcharge}")
             else:
                 result_lines.append(line)
         else:
