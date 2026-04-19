@@ -190,8 +190,9 @@ export default function TabRules({ token, hint }: Props) {
           <div className="bg-white/[0.03] border border-white/10 rounded-xl overflow-hidden">
             {/* Заголовок таблицы */}
             <div className="grid border-b border-white/10 px-4 py-2.5"
-              style={{ gridTemplateColumns: `1fr repeat(${activeRuleTypes.length}, 1fr) 32px` }}>
+              style={{ gridTemplateColumns: `1.2fr 1.5fr repeat(${activeRuleTypes.length}, 1fr) 32px` }}>
               <span className="text-white/30 text-xs">Позиция</span>
+              <span className="text-white/30 text-xs">Добавляется если</span>
               {activeRuleTypes.map(rt => (
                 <div key={rt.id} className="flex items-center gap-2 group/col">
                   <span className="text-white/30 text-xs" title={rt.description}>{rt.label}</span>
