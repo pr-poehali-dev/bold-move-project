@@ -152,6 +152,9 @@ export default function CorrectionCard({
                 const isGreen = isDone || known;
                 const isDragOver = dragOverWord === w;
 
+                // Скрываем тег если он уже обработан (нажали удалить/игнор)
+                if (isDone) return null;
+
                 if (editingTag === w) {
                   return (
                     <div key={w} className="flex items-center gap-1">
@@ -186,7 +189,7 @@ export default function CorrectionCard({
                 return (
                   <div
                     key={w}
-                    className="inline-flex flex-col items-center gap-1"
+                    className="relative inline-flex"
                     draggable
                     onMouseEnter={() => setMenuWord(w)}
                     onMouseLeave={() => setMenuWord(null)}
@@ -201,22 +204,30 @@ export default function CorrectionCard({
                     }}
                     onDragEnd={() => { dragWord.current = null; setDragOverWord(null); }}
                   >
-                    {/* Кнопки сверху — видны при наведении */}
-                    <div className={`flex items-center bg-[#12121e] border border-white/15 rounded-lg overflow-hidden transition-all duration-100 ${menuWord === w ? "opacity-100 scale-100" : "opacity-0 scale-95 pointer-events-none"}`}>
-                      <button
-                        onClick={e => { e.stopPropagation(); setMenuWord(null); handleIgnore(w); }}
-                        className="flex items-center gap-1.5 px-3 py-1.5 text-white/70 hover:text-white hover:bg-white/10 transition text-[10px] whitespace-nowrap">
-                        <Icon name="X" size={10} />
-                        <span>Удалить тег</span>
-                      </button>
-                      <div className="w-px h-4 bg-white/15 flex-shrink-0" />
-                      <button
-                        onClick={e => { e.stopPropagation(); setMenuWord(null); handleStopWord(w); }}
-                        className="flex items-center gap-1.5 px-3 py-1.5 text-white/70 hover:text-red-300 hover:bg-red-500/10 transition text-[10px] whitespace-nowrap">
-                        <Icon name="Ban" size={10} />
-                        <span>Игнорировать</span>
-                      </button>
-                    </div>
+                    {/* Меню — absolute, с padding-bottom как мост к тегу */}
+                    {menuWord === w && (
+                      <div
+                        className="absolute bottom-full left-1/2 -translate-x-1/2 z-30 pb-2"
+                        onMouseEnter={() => setMenuWord(w)}
+                        onMouseLeave={() => setMenuWord(null)}
+                      >
+                        <div className="flex items-center bg-[#12121e] border border-white/20 rounded-lg shadow-xl overflow-hidden">
+                          <button
+                            onClick={e => { e.stopPropagation(); setMenuWord(null); handleIgnore(w); }}
+                            className="flex items-center gap-1.5 px-3 py-1.5 text-white/70 hover:text-white hover:bg-white/10 transition text-[10px] whitespace-nowrap">
+                            <Icon name="X" size={10} />
+                            <span>Удалить тег</span>
+                          </button>
+                          <div className="w-px h-4 bg-white/15 flex-shrink-0" />
+                          <button
+                            onClick={e => { e.stopPropagation(); setMenuWord(null); handleStopWord(w); }}
+                            className="flex items-center gap-1.5 px-3 py-1.5 text-white/70 hover:text-red-300 hover:bg-red-500/10 transition text-[10px] whitespace-nowrap">
+                            <Icon name="Ban" size={10} />
+                            <span>Игнорировать</span>
+                          </button>
+                        </div>
+                      </div>
+                    )}
 
                     {/* Тег */}
                     <button
