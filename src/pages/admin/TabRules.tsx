@@ -68,6 +68,7 @@ export default function TabRules({ token, hint }: Props) {
       ...prev,
       [item.id]: {
         calc_rule: item.calc_rule || "",
+        when_condition: item.when_condition || "",
         bundle: item.bundle || "",
         bundleIds: parseBundleIds(item.bundle || ""),
         bundleSearch: "",
@@ -90,7 +91,8 @@ export default function TabRules({ token, hint }: Props) {
 
     const bundleVal = d.bundleIds.length > 0 ? JSON.stringify(d.bundleIds) : d.bundle;
     await saveField(item, "calc_rule", d.calc_rule);
-    await saveField({ ...item, calc_rule: d.calc_rule }, "bundle", bundleVal);
+    await saveField({ ...item, calc_rule: d.calc_rule }, "when_condition", d.when_condition || "");
+    await saveField({ ...item, calc_rule: d.calc_rule, when_condition: d.when_condition || "" }, "bundle", bundleVal);
 
     for (const [rtIdStr, value] of Object.entries(d.custom)) {
       await apiFetch("rule-values", {
@@ -273,62 +275,78 @@ export default function TabRules({ token, hint }: Props) {
                   {/* Раскрытый редактор */}
                   {isExpanded && d && (
                     <div className="bg-white/[0.02] border-b border-white/5 px-5 py-4 flex flex-col gap-4">
-                      <p className="text-white/40 text-xs">Редактирование правил для <span className="text-violet-300 font-medium">{item.name}</span></p>
+                      <p className="text-white/40 text-xs">Правила для <span className="text-violet-300 font-medium">{item.name}</span></p>
 
-                      {/* Поля для каждого rule type */}
-                      <div className="flex flex-col gap-3">
-                        {activeRuleTypes.map(rt => {
-                          if (rt.name === "calc_rule") {
-                            return (
-                              <div key={rt.id} className="flex flex-col gap-1">
-                                <label className="text-white/40 text-xs">{rt.label}</label>
-                                <textarea
-                                  value={d.calc_rule}
-                                  onChange={e => patchDraft(item.id, { calc_rule: e.target.value })}
-                                  placeholder={rt.placeholder || "Например: area * 1.0"}
-                                  rows={3}
-                                  className="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-xs outline-none focus:border-violet-500 resize-none transition"
-                                />
-                              </div>
-                            );
-                          }
-                          if (rt.name === "bundle") {
-                            return (
-                              <div key={rt.id} className="flex flex-col gap-1">
-                                <label className="text-white/40 text-xs">{rt.label}</label>
-                                <BundleSelector
-                                  prices={prices}
-                                  selectedPriceId={item.id}
-                                  excludeId={item.id}
-                                  bundleIds={d.bundleIds}
-                                  bundleSearch={d.bundleSearch}
-                                  bundleOpen={d.bundleOpen}
-                                  onToggleOpen={() => patchDraft(item.id, { bundleOpen: !d.bundleOpen })}
-                                  onBundleSearchChange={v => patchDraft(item.id, { bundleSearch: v })}
-                                  onToggleItem={id => patchDraft(item.id, {
-                                    bundleIds: d.bundleIds.includes(id) ? d.bundleIds.filter(x => x !== id) : [...d.bundleIds, id]
-                                  })}
-                                  onRemoveItem={id => patchDraft(item.id, { bundleIds: d.bundleIds.filter(x => x !== id) })}
-                                />
-                              </div>
-                            );
-                          }
-                          return (
-                            <div key={rt.id} className="flex flex-col gap-1">
-                              <label className="text-white/40 text-xs">{rt.label}</label>
-                              <textarea
-                                value={d.custom[rt.id] ?? ""}
-                                onChange={e => patchDraft(item.id, { custom: { ...d.custom, [rt.id]: e.target.value } })}
-                                placeholder={rt.placeholder || "—"}
-                                rows={2}
-                                className="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-xs outline-none focus:border-violet-500 resize-none transition"
-                              />
-                            </div>
-                          );
-                        })}
+                      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+
+                        {/* Когда добавляется */}
+                        <div className="flex flex-col gap-1.5">
+                          <label className="text-white/60 text-xs font-medium flex items-center gap-1.5">
+                            <Icon name="GitBranch" size={11} className="text-amber-400" />
+                            Добавляется если...
+                          </label>
+                          <textarea
+                            value={d.when_condition}
+                            onChange={e => patchDraft(item.id, { when_condition: e.target.value })}
+                            placeholder={"Например:\n• клиент выбрал ПВХ полотно\n• в смете есть точечные светильники\n• клиент упомянул люстру\n• всегда добавлять"}
+                            rows={4}
+                            className="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-xs outline-none focus:border-amber-500/60 resize-none transition placeholder-white/20"
+                          />
+                        </div>
+
+                        {/* Сколько добавляется */}
+                        <div className="flex flex-col gap-1.5">
+                          <label className="text-white/60 text-xs font-medium flex items-center gap-1.5">
+                            <Icon name="Calculator" size={11} className="text-violet-400" />
+                            Количество / расчёт
+                          </label>
+                          <textarea
+                            value={d.calc_rule}
+                            onChange={e => patchDraft(item.id, { calc_rule: e.target.value })}
+                            placeholder={"Например:\n• площадь комнаты\n• периметр × 1.3\n• площадь + 30%\n• длина ниши (указывает клиент)\n• 1 штука на каждый светильник\n• площадь ÷ 5, кратно вверх"}
+                            rows={4}
+                            className="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-xs outline-none focus:border-violet-500 resize-none transition placeholder-white/20"
+                          />
+                        </div>
                       </div>
 
-                      <div className="flex gap-2 pt-1">
+                      {/* Кастомные rule types */}
+                      {activeRuleTypes.filter(rt => rt.name !== "calc_rule" && rt.name !== "bundle").map(rt => (
+                        <div key={rt.id} className="flex flex-col gap-1.5">
+                          <label className="text-white/60 text-xs font-medium">{rt.label}</label>
+                          <textarea
+                            value={d.custom[rt.id] ?? ""}
+                            onChange={e => patchDraft(item.id, { custom: { ...d.custom, [rt.id]: e.target.value } })}
+                            placeholder={rt.placeholder || "—"}
+                            rows={2}
+                            className="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-xs outline-none focus:border-violet-500 resize-none transition"
+                          />
+                        </div>
+                      ))}
+
+                      {/* Комплект */}
+                      <div className="flex flex-col gap-1.5">
+                        <label className="text-white/60 text-xs font-medium flex items-center gap-1.5">
+                          <Icon name="Package" size={11} className="text-green-400" />
+                          Вместе добавить позиции
+                        </label>
+                        <BundleSelector
+                          prices={prices}
+                          selectedPriceId={item.id}
+                          excludeId={item.id}
+                          bundleIds={d.bundleIds}
+                          bundleSearch={d.bundleSearch}
+                          bundleOpen={d.bundleOpen}
+                          onToggleOpen={() => patchDraft(item.id, { bundleOpen: !d.bundleOpen })}
+                          onBundleSearchChange={v => patchDraft(item.id, { bundleSearch: v })}
+                          onToggleItem={id => patchDraft(item.id, {
+                            bundleIds: d.bundleIds.includes(id) ? d.bundleIds.filter(x => x !== id) : [...d.bundleIds, id]
+                          })}
+                          onRemoveItem={id => patchDraft(item.id, { bundleIds: d.bundleIds.filter(x => x !== id) })}
+                        />
+                      </div>
+
+                      <div className="flex gap-2 pt-1 border-t border-white/5">
                         <button onClick={() => saveRow(item)} disabled={isSaving}
                           className="bg-violet-600 hover:bg-violet-700 disabled:opacity-40 text-white text-xs px-4 py-2 rounded-lg transition flex items-center gap-1.5">
                           {isSaving ? <Icon name="Loader" size={12} className="animate-spin" /> : <Icon name="Check" size={12} />}

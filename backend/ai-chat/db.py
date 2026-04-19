@@ -125,12 +125,12 @@ def get_canvas_prices() -> dict:
 
 
 def get_price_rules() -> list:
-    """Загружает все активные позиции с calc_rule и bundle из БД."""
+    """Загружает все активные позиции с calc_rule, when_condition и bundle из БД."""
     try:
         conn = psycopg2.connect(os.environ['DATABASE_URL'])
         cur = conn.cursor()
         cur.execute(f"""
-            SELECT id, category, name, price, unit, calc_rule, bundle, synonyms
+            SELECT id, category, name, price, unit, calc_rule, bundle, synonyms, when_condition
             FROM {SCHEMA}.ai_prices
             WHERE active = true
             ORDER BY sort_order, id
@@ -143,7 +143,7 @@ def get_price_rules() -> list:
                 'id': row[0], 'category': row[1], 'name': row[2],
                 'price': row[3], 'unit': row[4],
                 'calc_rule': row[5] or '', 'bundle': row[6] or '[]',
-                'synonyms': row[7] or ''
+                'synonyms': row[7] or '', 'when_condition': row[8] or ''
             })
         return result
     except Exception as e:
@@ -152,17 +152,63 @@ def get_price_rules() -> list:
 
 
 def eval_calc_rule(rule: str, area: float, perim: float) -> float | None:
-    """Вычисляет количество по правилу. Возвращает None если правило пустое."""
+    """Вычисляет количество по правилу — понимает свободный текст и формулы.
+
+    Поддерживаемые форматы (клиент пишет в свободной форме):
+      - «площадь» / «= площадь» → area
+      - «периметр» / «= периметр» → perim
+      - «площадь × 1.3» / «площадь * 1.3» → area * 1.3
+      - «периметр + 10%» → perim * 1.1
+      - «площадь + стандартный профиль» → просто area (LLM разберёт остаток)
+      - «1 штука» / «фиксированно 1» / «всегда 1» → 1.0
+      - «area * 1.3» / «perimeter» (старый формат) → тоже работает
+    """
     if not rule:
         return None
-    rule = rule.strip()
-    # const:N
-    m = re.match(r'const:(\d+(?:\.\d+)?)', rule)
+    r = rule.strip().lower()
+
+    # Нормализуем текстовые синонимы → переменные
+    r = re.sub(r'площадь\s*комнаты|площадь\s*полотна|площадь', 'area', r)
+    r = re.sub(r'периметр\s*комнаты|периметр', 'perimeter', r)
+    r = re.sub(r'perimetr|периметр', 'perimeter', r)
+
+    # «фиксированно N» / «всегда N» / «N штук» / «= N»
+    m = re.search(r'(?:фиксированно|всегда|const:|=\s*)(\d+(?:[.,]\d+)?)\s*(?:шт|штук)?', r)
     if m:
-        return float(m.group(1))
+        return float(m.group(1).replace(',', '.'))
+
+    # «X%» прибавка: «площадь + 30%» → area * 1.3
+    m = re.search(r'(area|perimeter)\s*[+]\s*(\d+(?:[.,]\d+)?)\s*%', r)
+    if m:
+        base = area if m.group(1) == 'area' else perim
+        pct = float(m.group(2).replace(',', '.'))
+        return round(base * (1 + pct / 100), 2)
+
+    # «площадь × 1.3» / «area * 1.3»
+    m = re.search(r'(area|perimeter)\s*[×x*]\s*(\d+(?:[.,]\d+)?)', r)
+    if m:
+        base = area if m.group(1) == 'area' else perim
+        factor = float(m.group(2).replace(',', '.'))
+        return round(base * factor, 2)
+
+    # «area / 5» — деление (например катушки ленты)
+    m = re.search(r'(area|perimeter)\s*/\s*(\d+(?:[.,]\d+)?)', r)
+    if m:
+        base = area if m.group(1) == 'area' else perim
+        divisor = float(m.group(2).replace(',', '.'))
+        if divisor:
+            return round(base / divisor, 2)
+
+    # Просто «площадь» или «периметр» без операций
+    if 'area' in r and 'perimeter' not in r:
+        return round(area, 2)
+    if 'perimeter' in r and 'area' not in r:
+        return round(perim, 2)
+
+    # Попытка eval старого формата (area * 1.3)
     try:
-        val = eval(rule.replace('area', str(area)).replace('perimeter', str(perim)),
-                   {"__builtins__": {}})
+        val = eval(r.replace('area', str(area)).replace('perimeter', str(perim)),
+                   {"__builtins__": {}, "round": round})
         return round(float(val), 2)
     except Exception:
         return None
@@ -222,34 +268,56 @@ def get_llm_threshold() -> int:
 
 
 def build_rules_prompt(rules: list) -> str:
-    """Строит блок для SYSTEM_PROMPT с правилами расчёта, синонимами и комплектами."""
-    lines = ['\n=== ПРАВИЛА РАСЧЁТА ПО УМОЛЧАНИЮ (если клиент не указал количество) ===']
+    """Строит блок для SYSTEM_PROMPT с правилами расчёта, условиями и комплектами."""
     id_to_name = {r['id']: r['name'] for r in rules}
-
+    rule_lines = []
     synonym_lines = []
+
     for r in rules:
+        has_rule = r.get('calc_rule') or r.get('when_condition') or r.get('bundle', '[]') not in ('[]', '', None)
+        if not has_rule:
+            # Синонимы собираем всегда
+            if r.get('synonyms'):
+                syns = [s.strip() for s in r['synonyms'].split(',') if s.strip()]
+                if syns:
+                    synonym_lines.append(f"• «{r['name']}» = {', '.join(syns)}")
+            continue
+
         parts = []
-        if r['calc_rule']:
-            rule_human = r['calc_rule'].replace('area', 'площадь').replace('perimeter', 'периметр')
-            parts.append(f"кол-во = {rule_human}")
+
+        # Условие добавления
+        if r.get('when_condition'):
+            parts.append(f"добавляется если: {r['when_condition']}")
+
+        # Количество / расчёт
+        if r.get('calc_rule'):
+            parts.append(f"количество: {r['calc_rule']}")
+
+        # Комплект — что добавить вместе
         try:
             bundle_ids = json.loads(r['bundle'])
             if bundle_ids:
                 names = [id_to_name.get(i, f'#{i}') for i in bundle_ids]
-                parts.append(f"авто-добавить: {', '.join(names)}")
+                parts.append(f"вместе добавить: {', '.join(names)}")
         except Exception:
             pass
-        if parts:
-            lines.append(f"• {r['name']}: {'; '.join(parts)}")
 
-        # Синонимы — подсказываем LLM как распознавать позицию
+        if parts:
+            rule_lines.append(f"• {r['name']}:\n    " + '\n    '.join(parts))
+
+        # Синонимы
         if r.get('synonyms'):
             syns = [s.strip() for s in r['synonyms'].split(',') if s.strip()]
             if syns:
-                synonym_lines.append(f"• «{r['name']}» распознаётся также как: {', '.join(syns)}")
+                synonym_lines.append(f"• «{r['name']}» = {', '.join(syns)}")
 
-    result = '\n'.join(lines) if len(lines) > 1 else ''
+    result = ''
+    if rule_lines:
+        result += '\n=== ПРАВИЛА ПО ПОЗИЦИЯМ ===\n'
+        result += '\n'.join(rule_lines)
+
     if synonym_lines:
-        result += '\n\n=== СИНОНИМЫ ПОЗИЦИЙ (используй для распознавания в запросе клиента) ===\n'
+        result += '\n\n=== СИНОНИМЫ ПОЗИЦИЙ ===\n'
         result += '\n'.join(synonym_lines)
+
     return result

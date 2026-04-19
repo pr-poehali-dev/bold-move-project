@@ -26,6 +26,7 @@ export interface PriceItem {
   sort_order: number;
   calc_rule: string;
   bundle: string;
+  when_condition: string;
 }
 
 export interface SuggestedItem {
