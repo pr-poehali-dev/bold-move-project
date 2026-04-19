@@ -320,16 +320,23 @@ export default function AddSynonymPanel({ words, prices, token, onAdded }: Props
     <div className="bg-white/[0.02] border border-violet-500/20 rounded-xl p-4 flex flex-col gap-2 mt-3">
 
       {words.length > 1 && (
-        <div className="flex gap-1 bg-white/5 rounded-lg p-0.5 mb-1">
-          <button onClick={() => setGroupMode(false)}
-            className={`flex-1 text-xs py-1.5 rounded-md transition ${!groupMode ? "bg-violet-600 text-white" : "text-white/40 hover:text-white"}`}>
-            Каждому слову — своя позиция
-          </button>
-          <button onClick={() => setGroupMode(true)}
-            className={`flex-1 text-xs py-1.5 rounded-md transition ${groupMode ? "bg-violet-600 text-white" : "text-white/40 hover:text-white"}`}>
-            Все слова → одна позиция
-          </button>
-        </div>
+        <>
+          <div className="flex flex-wrap gap-1.5 mb-0.5">
+            {words.map(w => (
+              <span key={w} className="text-xs px-2 py-0.5 rounded-full bg-violet-500/15 border border-violet-500/30 text-violet-300">«{w}»</span>
+            ))}
+          </div>
+          <div className="flex gap-1 bg-white/5 rounded-lg p-0.5 mb-1">
+            <button onClick={() => setGroupMode(false)}
+              className={`flex-1 text-xs py-1.5 rounded-md transition ${!groupMode ? "bg-violet-600 text-white" : "text-white/40 hover:text-white"}`}>
+              Каждому слову — своя позиция
+            </button>
+            <button onClick={() => setGroupMode(true)}
+              className={`flex-1 text-xs py-1.5 rounded-md transition ${groupMode ? "bg-violet-600 text-white" : "text-white/40 hover:text-white"}`}>
+              Все слова → одна позиция
+            </button>
+          </div>
+        </>
       )}
 
       {/* Групповой режим */}
@@ -376,6 +383,11 @@ export default function AddSynonymPanel({ words, prices, token, onAdded }: Props
       )}
 
       {/* Индивидуальный режим */}
+      {!groupMode && rows.length > 1 && (
+        <p className="text-xs text-white/30 -mb-1">
+          Обрабатываю {rows.length} слова — каждому нужна своя позиция
+        </p>
+      )}
       {!groupMode && rows.map((row, i) => {
         const matchedPrice = row.selectedId ? prices.find(p => p.id === row.selectedId) : null;
         return (
@@ -408,10 +420,10 @@ export default function AddSynonymPanel({ words, prices, token, onAdded }: Props
               </div>
             </div>
 
-            {/* Синоним + комплект — показываем если found */}
+            {/* Синоним + комплект — показываем если found и панель не раскрыта вручную */}
             {row.mode === "found" && matchedPrice && !row.manualOpen && (
-              <div className="px-3 pb-3">
-                <div className="flex items-center gap-1.5 mt-2 text-xs text-white/30">
+              <div className="px-3 pb-3 border-t border-white/5 pt-2">
+                <div className="flex items-center gap-1.5 text-xs text-white/30">
                   <Icon name="Tag" size={11} className="text-violet-400" />
                   <span>Синоним <span className="text-violet-300 font-medium">«{row.edited}»</span> будет добавлен к позиции</span>
                 </div>
