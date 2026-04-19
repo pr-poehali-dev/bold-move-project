@@ -192,9 +192,24 @@ export default function TabPrompt({ token }: Props) {
   const rebuildContent = (gen: string, sys: string, fmt: string) =>
     `${SEP_G}\n${gen}\n${SEP_S}\n${sys}\n${SEP_F}\n${fmt}`;
 
-  const handleGeneralChange = (val: string) => handleContentChange(rebuildContent(val, systemPart, formatPart));
-  const handleSystemChange  = (val: string) => handleContentChange(rebuildContent(generalPart, val, formatPart));
-  const handleFormatChange  = (val: string) => handleContentChange(rebuildContent(generalPart, systemPart, val));
+  // Используем ref чтобы handlers всегда видели актуальные части
+  const partsRef = useRef({ generalPart, systemPart, formatPart });
+  partsRef.current = { generalPart, systemPart, formatPart };
+
+  const handleGeneralChange = useCallback((val: string) => {
+    const { systemPart: s, formatPart: f } = partsRef.current;
+    handleContentChange(rebuildContent(val, s, f));
+  }, [handleContentChange]);
+
+  const handleSystemChange = useCallback((val: string) => {
+    const { generalPart: g, formatPart: f } = partsRef.current;
+    handleContentChange(rebuildContent(g, val, f));
+  }, [handleContentChange]);
+
+  const handleFormatChange = useCallback((val: string) => {
+    const { generalPart: g, systemPart: s } = partsRef.current;
+    handleContentChange(rebuildContent(g, s, val));
+  }, [handleContentChange]);
 
   return (
     <div className="flex flex-col gap-6">
