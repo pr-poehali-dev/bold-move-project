@@ -8,6 +8,83 @@ interface PriceItem { category: string; name: string; price: number; unit: strin
 interface RuleItem { name: string; category: string; when_condition: string; when_not_condition: string; calc_rule: string; bundle: string; }
 interface RuleType { id: number; name: string; label: string; }
 
+const TEMPLATE_GENERAL = `Ты сметчик-технолог компании MosPotolki (натяжные потолки, Мытищи, с 2009г). Отвечай по-русски. Тел:+7(977)606-89-01.
+
+КОМПАНИЯ: MosPotolki, Мытищи, с 2009г. Тел: +7(977)606-89-01. Ежедневно 8:00–22:00. Сайт: mospotolki.net`;
+
+const TEMPLATE_SYSTEM = `ВАЖНО: Все названия позиций и цены берёшь СТРОГО из блока "АКТУАЛЬНЫЙ ПРАЙС-ЛИСТ" ниже.
+Не используй никакие другие цены кроме тех что в прайс-листе.
+Если позиции нет в прайс-листе — её не существует, не выдумывай.
+
+ПРАВИЛА ПО КАЖДОЙ ПОЗИЦИИ — смотри блок "ПРАВИЛА ПО ПОЗИЦИЯМ" ниже.
+Каждая запись содержит: условие добавления, исключения, формулу расчёта количества, что добавить вместе.
+Следуй этим правилам строго.
+
+ОБЩИЕ ПРИНЦИПЫ (применяются всегда):
+- Периметр = площадь × 1.3 если клиент не указал иное
+- Если клиент указал P= или P- — использовать это значение напрямую, не вычислять
+- Лента кратна 5м: нужно 6м → 2 катушки (10м)
+- НЕ добавляй стандартный и теневой профиль на одну и ту же длину
+- НИКОГДА не добавляй все виды закладных сразу — только нужный тип
+- Каждой позиции — свой монтаж в последнем блоке "Услуги монтажа"
+- "Без монта" = НЕ добавлять монтаж к этой позиции
+
+ОГРАНИЧЕНИЯ:
+- СТРОГО: добавляй только позиции которые явно указал клиент или следуют из правил
+- Не задавай уточняющих вопросов до расчёта — считай по данным
+- Не пиши более 44 символов в одной строке
+- Не показывай клиенту формулу расчёта периметра
+- НИКОГДА не указывай ссылки, URL и гиперссылки
+- НИКОГДА не рекомендуй сторонние сайты, студии или компании — только mospotolki.net
+- НИКОГДА не пиши "предварительный расчёт" или "точную стоимость назовёт технолог"`;
+
+const TEMPLATE_FORMAT = `ФОРМАТ КАЖДОЙ ПОЗИЦИИ — СТРОГО:
+Название  КОЛ-ВО ЕД × ЦЕНА ₽ = ИТОГО ₽
+
+ФОРМАТ ОТВЕТА — СТРОГО отдельными блоками:
+
+1. Полотно:
+[полотно + раскрой + огарпунивание — всё здесь]
+
+2. Профиль:
+[стандартный и/или теневой и/или парящий]
+
+3. Закладные:   ← только если есть
+4. Ниши:        ← только если есть
+5. Освещение:   ← только если есть
+6. Работы на высоте: ← только если есть
+
+Последний блок ВСЕГДА:
+N. Услуги монтажа:
+[монтаж КАЖДОЙ позиции из всех блоков выше]
+
+Итоговая стоимость — 3 варианта:
+Econom:   X ₽  (Standard × 0.77)
+Standard: X ₽  (сумма всех позиций)
+Premium:  X ₽  (Standard × 1.27)
+
+Финальная фраза ТОЛЬКО после создания сметы:
+"На какой день вас записать на бесплатный замер?"`;
+
+function TemplateButton({ template, onApply }: { template: string; onApply: (val: string) => void }) {
+  const [confirm, setConfirm] = useState(false);
+  return confirm ? (
+    <div className="flex items-center gap-2 flex-shrink-0">
+      <span className="text-white/40 text-xs">Заменить текущий текст шаблоном?</span>
+      <button onClick={() => { onApply(template); setConfirm(false); }}
+        className="text-xs bg-violet-600 hover:bg-violet-700 text-white px-2.5 py-1 rounded-lg transition">Да</button>
+      <button onClick={() => setConfirm(false)}
+        className="text-xs text-white/40 hover:text-white/70 px-2 py-1 transition">Нет</button>
+    </div>
+  ) : (
+    <button onClick={() => setConfirm(true)}
+      className="flex-shrink-0 flex items-center gap-1.5 px-2.5 py-1 bg-violet-600/15 hover:bg-violet-600/30 border border-violet-500/30 text-violet-300 text-xs rounded-lg transition">
+      <span className="text-[10px] font-bold">AI</span>
+      Заполнить шаблоном
+    </button>
+  );
+}
+
 function parseBundleNames(bundle: string, nameMap: Record<number, string>): string {
   try {
     const ids = JSON.parse(bundle);
@@ -142,7 +219,10 @@ export default function TabPrompt({ token }: Props) {
 
         {activeTab === "general" && (
           <div className="flex flex-col gap-2">
-            <p className="text-white/30 text-xs">Роль бота, название компании, контакты, общее представление. Эта часть идёт первой в промпте.</p>
+            <div className="flex items-center justify-between">
+              <p className="text-white/30 text-xs">Роль бота, название компании, контакты, общее представление. Эта часть идёт первой в промпте.</p>
+              <TemplateButton onApply={handleGeneralChange} template={TEMPLATE_GENERAL} />
+            </div>
             <textarea
               value={generalPart}
               onChange={e => handleGeneralChange(e.target.value)}
@@ -154,7 +234,10 @@ export default function TabPrompt({ token }: Props) {
 
         {activeTab === "system" && (
           <div className="flex flex-col gap-2">
-            <p className="text-white/30 text-xs">Общие принципы расчёта, ограничения. <span className="text-amber-400">Правила по конкретным позициям — во вкладке «Правила».</span></p>
+            <div className="flex items-center justify-between">
+              <p className="text-white/30 text-xs">Общие принципы расчёта, ограничения. <span className="text-amber-400">Правила по конкретным позициям — во вкладке «Правила».</span></p>
+              <TemplateButton onApply={handleSystemChange} template={TEMPLATE_SYSTEM} />
+            </div>
             <textarea
               value={systemPart}
               onChange={e => handleSystemChange(e.target.value)}
@@ -166,7 +249,10 @@ export default function TabPrompt({ token }: Props) {
 
         {activeTab === "format" && (
           <div className="flex flex-col gap-2">
-            <p className="text-white/30 text-xs">Формат каждой позиции, структура блоков ответа, итоговая стоимость.</p>
+            <div className="flex items-center justify-between">
+              <p className="text-white/30 text-xs">Формат каждой позиции, структура блоков ответа, итоговая стоимость.</p>
+              <TemplateButton onApply={handleFormatChange} template={TEMPLATE_FORMAT} />
+            </div>
             <textarea
               value={formatPart}
               onChange={e => handleFormatChange(e.target.value)}
