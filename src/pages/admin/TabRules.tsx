@@ -23,7 +23,6 @@ interface RuleType {
 
 interface Props { token: string; hint?: string | null; }
 
-const BUILTIN = new Set(["calc_rule", "bundle"]);
 
 function parseBundleIds(bundle: string): number[] {
   try {
@@ -184,21 +183,19 @@ export default function TabRules({ token, hint }: Props) {
                     <th key={rt.id} className="text-left text-white/30 font-normal px-4 py-2.5">
                       <div className="flex items-center gap-2 group/col">
                         <span title={rt.description} className="leading-tight">{rt.label}</span>
-                        {!BUILTIN.has(rt.name) && (
-                          confirmDeleteId === rt.id ? (
-                            <div className="flex items-center gap-1 ml-1 flex-shrink-0">
-                              <span className="text-red-400 text-[10px]">Удалить?</span>
-                              <button onClick={() => deleteRuleType(rt.id)}
-                                className="text-red-400 hover:text-red-300 text-[10px] px-1.5 py-0.5 bg-red-500/20 rounded transition">Да</button>
-                              <button onClick={() => setConfirmDeleteId(null)}
-                                className="text-white/40 hover:text-white/70 text-[10px] px-1.5 py-0.5 bg-white/5 rounded transition">Нет</button>
-                            </div>
-                          ) : (
-                            <button onClick={() => setConfirmDeleteId(rt.id)}
-                              className="opacity-0 group-hover/col:opacity-100 transition text-white/25 hover:text-red-400 flex-shrink-0">
-                              <Icon name="X" size={11} />
-                            </button>
-                          )
+                        {confirmDeleteId === rt.id ? (
+                          <div className="flex items-center gap-1 ml-1 flex-shrink-0">
+                            <span className="text-red-400 text-[10px]">Удалить?</span>
+                            <button onClick={() => deleteRuleType(rt.id)}
+                              className="text-red-400 hover:text-red-300 text-[10px] px-1.5 py-0.5 bg-red-500/20 rounded transition">Да</button>
+                            <button onClick={() => setConfirmDeleteId(null)}
+                              className="text-white/40 hover:text-white/70 text-[10px] px-1.5 py-0.5 bg-white/5 rounded transition">Нет</button>
+                          </div>
+                        ) : (
+                          <button onClick={() => setConfirmDeleteId(rt.id)}
+                            className="opacity-0 group-hover/col:opacity-100 transition text-white/25 hover:text-red-400 flex-shrink-0">
+                            <Icon name="X" size={11} />
+                          </button>
                         )}
                       </div>
                     </th>
