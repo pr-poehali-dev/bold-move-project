@@ -13,7 +13,6 @@ export function useCorrectionsList(token: string) {
   const [prices, setPrices] = useState<PriceItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [expandedId, setExpandedId] = useState<number | null>(null);
-  const [mergeFirst, setMergeFirst] = useState<{ corrId: number; word: string } | null>(null);
 
   const [doneWords, setDoneWords] = useState<Record<number, string[]>>(() =>
     readStorage(STORAGE_KEYS.DONE_WORDS, {})
@@ -72,7 +71,6 @@ export function useCorrectionsList(token: string) {
     items, prices, loading,
     pending, reviewed,
     expandedId, setExpandedId,
-    mergeFirst, setMergeFirst,
     doneWords, extraWords,
     setItemDoneWords, setItemExtraWords,
     update, remove,

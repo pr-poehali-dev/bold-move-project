@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import Icon from "@/components/ui/icon";
 import HighlightedText from "./HighlightedText";
 import AddSynonymPanel from "./AddSynonymPanel";
@@ -20,8 +20,6 @@ interface Props {
   onDoneWordsChange: (words: string[]) => void;
   extraWords: string[];
   onExtraWordsChange: (words: string[]) => void;
-  mergeFirst: { corrId: number; word: string } | null;
-  onMergeFirstChange: (val: { corrId: number; word: string } | null) => void;
 }
 
 export default function CorrectionCard({
@@ -29,7 +27,6 @@ export default function CorrectionCard({
   isExpanded, onToggleExpand, onRemove, onUpdate,
   doneWords, onDoneWordsChange,
   extraWords, onExtraWordsChange,
-  mergeFirst, onMergeFirstChange,
 }: Props) {
   const [selectedWords, setSelectedWords] = useState<string[]>([]);
   const [panelOpen, setPanelOpen] = useState(false);
@@ -62,34 +59,26 @@ export default function CorrectionCard({
   // Показываем все теги — done подсвечиваются зелёным, не убираются
   const unknownWords = allUnknownWords;
 
-  const isMergeMode = mergeFirst?.corrId === item.id;
+  const dragWord = useRef<string | null>(null);
+  const [dragOverWord, setDragOverWord] = useState<string | null>(null);
+
+  const handleMerge = (first: string, second: string) => {
+    if (first === second) return;
+    const merged = first + " " + second;
+    const newExtras = [...extraWords.filter(e => e !== first && e !== second), merged];
+    onExtraWordsChange(newExtras);
+    const newDone = [...doneWords.filter(d => d !== first && d !== second), first, second];
+    onDoneWordsChange(newDone);
+    onMergeFirstChange(null);
+    setSelectedWords([]);
+    setPanelOpen(false);
+  };
 
   const handleTagClick = (w: string) => {
-    const isMergeSelected = isMergeMode && mergeFirst?.word === w;
-    if (isMergeMode && !isMergeSelected) {
-      const first = mergeFirst!.word;
-      const merged = first + " " + w;
-      // Убираем оба исходных слова из extraWords, добавляем объединённое
-      const newExtras = [
-        ...extraWords.filter(e => e !== first && e !== w),
-        merged,
-      ];
-      onExtraWordsChange(newExtras);
-      // Оба слова помечаем как done чтобы они не показывались отдельно
-      const newDone = [...doneWords.filter(d => d !== first && d !== w), first, w];
-      onDoneWordsChange(newDone);
-      onMergeFirstChange(null);
-      setSelectedWords([]);
-      setPanelOpen(false);
-    } else if (isMergeSelected) {
-      onMergeFirstChange(null);
-    } else {
-      // Мультивыбор: toggle слово в selectedWords
-      const isSelected = selectedWords.includes(w);
-      const next = isSelected ? selectedWords.filter(x => x !== w) : [...selectedWords, w];
-      setSelectedWords(next);
-      setPanelOpen(next.length > 0);
-    }
+    const isSelected = selectedWords.includes(w);
+    const next = isSelected ? selectedWords.filter(x => x !== w) : [...selectedWords, w];
+    setSelectedWords(next);
+    setPanelOpen(next.length > 0);
   };
 
   const handleIgnore = (w: string) => {
@@ -147,75 +136,21 @@ export default function CorrectionCard({
             <p className="text-xs text-white/20 mt-1 select-none">Выдели текст мышкой чтобы добавить в обучение</p>
           )}
 
-          {/* Кнопки нераспознанных слов */}
+          {/* Теги нераспознанных слов */}
           {isLLM && unknownWords.length > 0 && item.status === "pending" && (
             <div className="flex flex-wrap gap-2 mt-3">
-              {isMergeMode && (
-                <span className="text-xs text-amber-400/70 w-full -mb-1">
-                  Выбери второй тег для объединения с «{mergeFirst!.word}»
-                </span>
-              )}
-              {!isMergeMode && unknownWords.length > 1 && (
+              {unknownWords.length > 1 && (
                 <span className="text-xs text-white/30 w-full -mb-1">
-                  Нажми на теги чтобы выбрать, затем назначь одной позицией
+                  Нажми чтобы выбрать · Перетащи тег на другой чтобы объединить
                 </span>
               )}
               {unknownWords.map(w => {
-                const isMergeSelected = isMergeMode && mergeFirst?.word === w;
                 const isSelected = selectedWords.includes(w);
                 const isDone = doneWords.includes(w);
                 const known = !isDone && isKnown(w);
+                const isGreen = isDone || known;
+                const isDragOver = dragOverWord === w;
 
-                // Зелёный: сохранено в этой сессии или уже есть в прайсе
-                // В режиме объединения не делаем разницы — все теги кликабельны одинаково
-                const isGreen = (isDone || known) && !isMergeMode;
-
-                if (isGreen) {
-                  return (
-                    <div key={w} className="flex items-center gap-0.5">
-                      <button
-                        onClick={() => handleTagClick(w)}
-                        title="Нажми чтобы выбрать или объединить"
-                        className={`text-xs px-2.5 py-1 rounded-full border transition flex items-center gap-1.5 ${
-                          isMergeSelected
-                            ? "bg-amber-500/20 border-amber-500/50 text-amber-300"
-                            : isSelected
-                            ? "bg-violet-600/30 border-violet-500/50 text-violet-300"
-                            : "bg-green-500/10 border-green-500/30 text-green-300 hover:bg-green-500/20"
-                        }`}>
-                        {isSelected
-                          ? <Icon name="CheckSquare" size={10} />
-                          : <Icon name="Check" size={10} />
-                        }
-                        «{w}»
-                      </button>
-                      {!isMergeMode && (
-                        <>
-                          <button
-                            onClick={() => onMergeFirstChange({ corrId: item.id, word: w })}
-                            title="Объединить с другим тегом"
-                            className="text-white/15 hover:text-amber-400 transition flex-shrink-0 px-0.5">
-                            <Icon name="Link" size={11} />
-                          </button>
-                          <button
-                            onClick={() => handleStopWord(w)}
-                            title="Стоп-слово — больше никогда не выделять"
-                            className="text-white/15 hover:text-slate-400 transition flex-shrink-0">
-                            <Icon name="Ban" size={11} />
-                          </button>
-                        </>
-                      )}
-                      <button
-                        onClick={() => handleIgnore(w)}
-                        title="Не учитывать"
-                        className="text-white/15 hover:text-white/50 transition flex-shrink-0">
-                        <Icon name="X" size={11} />
-                      </button>
-                    </div>
-                  );
-                }
-
-                // Режим редактирования тега
                 if (editingTag === w) {
                   return (
                     <div key={w} className="flex items-center gap-1">
@@ -248,41 +183,45 @@ export default function CorrectionCard({
                 }
 
                 return (
-                  <div key={w} className="flex items-center gap-0.5">
+                  <div
+                    key={w}
+                    className="flex items-center gap-0.5"
+                    draggable
+                    onDragStart={() => { dragWord.current = w; }}
+                    onDragEnter={() => setDragOverWord(w)}
+                    onDragLeave={() => setDragOverWord(null)}
+                    onDragOver={e => e.preventDefault()}
+                    onDrop={() => {
+                      setDragOverWord(null);
+                      if (dragWord.current && dragWord.current !== w) {
+                        handleMerge(dragWord.current, w);
+                      }
+                      dragWord.current = null;
+                    }}
+                    onDragEnd={() => { dragWord.current = null; setDragOverWord(null); }}
+                  >
                     <button
                       onClick={() => handleTagClick(w)}
-                      className={`text-xs px-2.5 py-1 rounded-full border transition flex items-center gap-1.5 ${
-                        isMergeSelected
-                          ? "bg-amber-500/20 border-amber-500/50 text-amber-300"
+                      className={`text-xs px-2.5 py-1 rounded-full border transition flex items-center gap-1.5 cursor-grab active:cursor-grabbing ${
+                        isDragOver
+                          ? "bg-amber-500/20 border-amber-500/50 text-amber-300 scale-105"
                           : isSelected
                           ? "bg-violet-600/30 border-violet-500/50 text-violet-300"
+                          : isGreen
+                          ? "bg-green-500/10 border-green-500/30 text-green-300 hover:bg-green-500/20"
                           : "bg-red-500/10 border-red-500/30 text-red-300 hover:bg-red-500/20"
                       }`}>
                       {isSelected
                         ? <Icon name="CheckSquare" size={10} />
+                        : isGreen
+                        ? <Icon name="Check" size={10} />
                         : <Icon name="Tag" size={10} />
                       }
                       «{w}»
                     </button>
-                    {!isMergeMode && (
-                      <>
-                        <button
-                          onClick={() => onMergeFirstChange({ corrId: item.id, word: w })}
-                          title="Объединить с другим тегом"
-                          className="text-white/15 hover:text-amber-400 transition flex-shrink-0 px-0.5">
-                          <Icon name="Link" size={11} />
-                        </button>
-                        <button
-                          onClick={() => handleStopWord(w)}
-                          title="Стоп-слово — больше никогда не выделять"
-                          className="text-white/15 hover:text-slate-400 transition flex-shrink-0">
-                          <Icon name="Ban" size={11} />
-                        </button>
-                      </>
-                    )}
                     <button
                       onClick={() => handleIgnore(w)}
-                      title="Не учитывать"
+                      title="Убрать тег"
                       className="text-white/15 hover:text-white/50 transition flex-shrink-0">
                       <Icon name="X" size={11} />
                     </button>

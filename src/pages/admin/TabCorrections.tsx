@@ -9,7 +9,6 @@ export default function TabCorrections({ token }: Props) {
     prices, loading,
     pending, reviewed,
     expandedId, setExpandedId,
-    mergeFirst, setMergeFirst,
     doneWords, extraWords,
     setItemDoneWords, setItemExtraWords,
     update, remove,
@@ -31,8 +30,6 @@ export default function TabCorrections({ token }: Props) {
       onDoneWordsChange={words => setItemDoneWords(item.id, words)}
       extraWords={extraWords[item.id] ?? []}
       onExtraWordsChange={words => setItemExtraWords(item.id, words)}
-      mergeFirst={mergeFirst}
-      onMergeFirstChange={setMergeFirst}
     />
   );
 
