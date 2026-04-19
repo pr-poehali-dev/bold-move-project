@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import Icon from "@/components/ui/icon";
 import { apiFetch } from "./api";
 
@@ -26,6 +26,14 @@ export default function TabPrompt({ token }: Props) {
   const [showPrices, setShowPrices] = useState(false);
   const [showRules, setShowRules] = useState(false);
   const [activeTab, setActiveTab] = useState<"general" | "system" | "format">("general");
+  const [dirty, setDirty] = useState(false);
+  const contentRef = useRef(content);
+  const dirtyRef = useRef(dirty);
+  const savingRef = useRef(saving);
+
+  contentRef.current = content;
+  dirtyRef.current = dirty;
+  savingRef.current = saving;
 
   useEffect(() => {
     apiFetch("prompt").then(r => r.ok && r.json().then(d => setContent(d.content)));
@@ -34,13 +42,39 @@ export default function TabPrompt({ token }: Props) {
     apiFetch("rule-types").then(r => r.ok && r.json().then(d => setRuleTypes(d.items)));
   }, []);
 
-  const save = async () => {
+  const save = useCallback(async (contentToSave?: string) => {
+    const val = contentToSave ?? contentRef.current;
+    if (savingRef.current) return;
     setSaving(true); setMsg("");
-    const r = await apiFetch("prompt", { method: "PUT", body: JSON.stringify({ content }) }, token);
-    setMsg(r.ok ? "Сохранено!" : "Ошибка сохранения");
+    const r = await apiFetch("prompt", { method: "PUT", body: JSON.stringify({ content: val }) }, token);
+    setMsg(r.ok ? "Сохранено" : "Ошибка");
+    setDirty(false);
     setSaving(false);
-    setTimeout(() => setMsg(""), 3000);
+    setTimeout(() => setMsg(""), 2000);
+  }, [token]);
+
+  // Автосохранение через 1.5с после последнего изменения
+  const autoSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const handleContentChange = (val: string) => {
+    setContent(val);
+    setDirty(true);
+    if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current);
+    autoSaveTimer.current = setTimeout(() => {
+      if (dirtyRef.current) save(val);
+    }, 1500);
   };
+
+  // Сохранение при клике вне textarea (blur на документе)
+  useEffect(() => {
+    const onBlur = (e: FocusEvent) => {
+      const target = e.target as HTMLElement;
+      if (target.tagName === "TEXTAREA" && dirtyRef.current && !savingRef.current) {
+        save();
+      }
+    };
+    document.addEventListener("focusout", onBlur);
+    return () => document.removeEventListener("focusout", onBlur);
+  }, [save]);
 
   const byCategory = prices.reduce<Record<string, PriceItem[]>>((acc, p) => {
     (acc[p.category] ??= []).push(p);
@@ -76,9 +110,9 @@ export default function TabPrompt({ token }: Props) {
     return [gen, sys, fmt].filter(Boolean).join("\n\n");
   };
 
-  const handleGeneralChange = (val: string) => setContent(rebuildContent(val, systemPart, formatPart));
-  const handleSystemChange  = (val: string) => setContent(rebuildContent(generalPart, val, formatPart));
-  const handleFormatChange  = (val: string) => setContent(rebuildContent(generalPart, systemPart, val));
+  const handleGeneralChange = (val: string) => handleContentChange(rebuildContent(val, systemPart, formatPart));
+  const handleSystemChange  = (val: string) => handleContentChange(rebuildContent(generalPart, val, formatPart));
+  const handleFormatChange  = (val: string) => handleContentChange(rebuildContent(generalPart, systemPart, val));
 
   return (
     <div className="flex flex-col gap-6">
@@ -143,11 +177,19 @@ export default function TabPrompt({ token }: Props) {
         )}
 
         <div className="flex items-center gap-3">
-          <button onClick={save} disabled={saving}
+          <button onClick={() => save()} disabled={saving}
             className="bg-violet-600 hover:bg-violet-700 disabled:opacity-50 text-white rounded-lg px-6 py-2 font-medium transition flex items-center gap-2">
             {saving ? <><Icon name="Loader" size={14} className="animate-spin" /> Сохраняю...</> : "Сохранить"}
           </button>
-          {msg && <span className={`text-sm ${msg.includes("Ошибка") ? "text-red-400" : "text-green-400"}`}>{msg}</span>}
+          {msg && (
+            <span className={`text-sm flex items-center gap-1 ${msg.includes("Ошибка") ? "text-red-400" : "text-green-400"}`}>
+              {!msg.includes("Ошибка") && <Icon name="Check" size={13} />}
+              {msg}
+            </span>
+          )}
+          {dirty && !saving && !msg && (
+            <span className="text-white/30 text-xs">Автосохранение через 1.5с...</span>
+          )}
         </div>
       </div>
 
