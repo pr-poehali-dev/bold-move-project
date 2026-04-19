@@ -219,12 +219,6 @@ export default function AddSynonymPanel({ words, prices, token, onAdded, onRemov
             {/* Тело: not found */}
             {row.manualOpen && row.mode === "notfound-manual" && (
               <div className="p-3 flex flex-col gap-2 border-t border-white/5">
-                <div className="flex items-center gap-1.5">
-                  <Icon name="Tag" size={11} className="text-violet-400 flex-shrink-0" />
-                  <input value={row.edited} onChange={e => updateRow(i, { edited: e.target.value })}
-                    className="flex-1 bg-white/5 border border-red-500/30 rounded-lg px-3 py-1.5 text-red-300 text-xs font-medium outline-none focus:border-violet-500 transition"
-                    placeholder="Синоним" />
-                </div>
                 <div className="flex gap-1 bg-white/5 rounded-lg p-0.5">
                   <button onClick={() => updateRow(i, { createMode: false })}
                     className={`flex-1 text-xs py-1 rounded-md transition ${!row.createMode ? "bg-violet-600 text-white" : "text-white/40 hover:text-white"}`}>
@@ -237,6 +231,10 @@ export default function AddSynonymPanel({ words, prices, token, onAdded, onRemov
                 </div>
                 {!row.createMode ? (
                   <>
+                    <div className="flex items-center gap-1.5 text-[10px] text-white/30">
+                      <Icon name="Tag" size={10} className="text-violet-400" />
+                      <span>Синоним <span className="text-violet-300">«{row.word}»</span> будет добавлен к выбранной позиции</span>
+                    </div>
                     <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Поиск позиции..."
                       className="bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-white text-xs outline-none focus:border-violet-500 transition" />
                     <div className="max-h-32 overflow-y-auto flex flex-col gap-0.5">
