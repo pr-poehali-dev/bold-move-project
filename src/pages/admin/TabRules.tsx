@@ -36,7 +36,7 @@ export default function TabRules({ token, hint }: Props) {
   const [ruleTypes, setRuleTypes] = useState<RuleType[]>([]);
   const [ruleValues, setRuleValues] = useState<Record<number, Record<number, string>>>({});
   const [expandedId, setExpandedId] = useState<number | null>(null);
-  const [drafts, setDrafts] = useState<Record<number, { calc_rule: string; bundle: string; custom: Record<string, string>; bundleIds: number[]; bundleSearch: string; bundleOpen: boolean }>>({});
+  const [drafts, setDrafts] = useState<Record<number, { calc_rule: string; when_condition: string; when_not_condition: string; bundle: string; custom: Record<string, string>; bundleIds: number[]; bundleSearch: string; bundleOpen: boolean }>>({});
   const [saving, setSaving] = useState<number | null>(null);
 
   const [addingRule, setAddingRule] = useState(false);
@@ -95,6 +95,7 @@ export default function TabRules({ token, hint }: Props) {
       [item.id]: {
         calc_rule: item.calc_rule || "",
         when_condition: item.when_condition || "",
+        when_not_condition: item.when_not_condition || "",
         bundle: item.bundle || "",
         bundleIds: parseBundleIds(item.bundle || ""),
         bundleSearch: "",
@@ -116,9 +117,11 @@ export default function TabRules({ token, hint }: Props) {
     setSaving(item.id);
 
     const bundleVal = d.bundleIds.length > 0 ? JSON.stringify(d.bundleIds) : d.bundle;
+    const updated = { ...item, calc_rule: d.calc_rule, when_condition: d.when_condition || "", when_not_condition: d.when_not_condition || "" };
     await saveField(item, "calc_rule", d.calc_rule);
-    await saveField({ ...item, calc_rule: d.calc_rule }, "when_condition", d.when_condition || "");
-    await saveField({ ...item, calc_rule: d.calc_rule, when_condition: d.when_condition || "" }, "bundle", bundleVal);
+    await saveField(updated, "when_condition", d.when_condition || "");
+    await saveField(updated, "when_not_condition", d.when_not_condition || "");
+    await saveField(updated, "bundle", bundleVal);
 
     for (const [rtIdStr, value] of Object.entries(d.custom)) {
       await apiFetch("rule-values", {
@@ -216,9 +219,10 @@ export default function TabRules({ token, hint }: Props) {
           <div className="bg-white/[0.03] border border-white/10 rounded-xl overflow-hidden">
             {/* Заголовок таблицы */}
             <div className="grid border-b border-white/10 px-4 py-2.5"
-              style={{ gridTemplateColumns: `1.2fr 1.5fr repeat(${activeRuleTypes.length}, 1fr) 32px` }}>
+              style={{ gridTemplateColumns: `1.2fr 1fr 1fr repeat(${activeRuleTypes.length}, 1fr) 32px` }}>
               <span className="text-white/30 text-xs">Позиция</span>
               <span className="text-white/30 text-xs">Добавляется если...</span>
+              <span className="text-white/30 text-xs">НЕ добавляется если...</span>
               {activeRuleTypes.map(rt => (
                 <div key={rt.id} className="flex items-center gap-1.5 group/col min-w-0">
                   {editingLabelId === rt.id ? (
@@ -277,14 +281,17 @@ export default function TabRules({ token, hint }: Props) {
                       ${idx % 2 ? "bg-white/[0.01]" : ""}
                       ${isExpanded ? "bg-violet-500/10 border-b border-violet-500/20" : "hover:bg-white/[0.04]"}
                     `}
-                    style={{ gridTemplateColumns: `1.2fr 1.5fr repeat(${activeRuleTypes.length}, 1fr) 32px` }}
+                    style={{ gridTemplateColumns: `1.2fr 1fr 1fr repeat(${activeRuleTypes.length}, 1fr) 32px` }}
                   >
                     <div className="flex items-center gap-1.5 min-w-0">
                       <Icon name={isExpanded ? "ChevronUp" : "ChevronDown"} size={12} className="text-white/20 flex-shrink-0" />
                       <span className="text-white/80 text-xs font-medium truncate">{item.name}</span>
                     </div>
                     <span className={`text-xs truncate ${item.when_condition ? "text-white/50" : "text-white/15 italic"}`}>
-                      {item.when_condition || "не задано"}
+                      {item.when_condition || "—"}
+                    </span>
+                    <span className={`text-xs truncate ${item.when_not_condition ? "text-red-400/60" : "text-white/15 italic"}`}>
+                      {item.when_not_condition || "—"}
                     </span>
                     {activeRuleTypes.map(rt => {
                       if (rt.name === "bundle") {
@@ -334,34 +341,49 @@ export default function TabRules({ token, hint }: Props) {
                     <div className="bg-white/[0.02] border-b border-white/5 px-5 py-4 flex flex-col gap-4">
                       <p className="text-white/40 text-xs">Правила для <span className="text-violet-300 font-medium">{item.name}</span></p>
 
-                      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                      <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
 
-                        {/* Когда добавляется */}
+                        {/* 1. Добавляется если */}
                         <div className="flex flex-col gap-1.5">
                           <label className="text-white/60 text-xs font-medium flex items-center gap-1.5">
-                            <Icon name="GitBranch" size={11} className="text-amber-400" />
-                            Добавляется если...
+                            <Icon name="CircleCheck" size={11} className="text-green-400" />
+                            1. Добавляется если...
                           </label>
                           <textarea
                             value={d.when_condition}
                             onChange={e => patchDraft(item.id, { when_condition: e.target.value })}
                             placeholder={"Например:\n• клиент выбрал ПВХ полотно\n• в смете есть точечные светильники\n• клиент упомянул люстру\n• всегда добавлять"}
-                            rows={4}
-                            className="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-xs outline-none focus:border-amber-500/60 resize-none transition placeholder-white/20"
+                            rows={5}
+                            className="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-xs outline-none focus:border-green-500/60 resize-none transition placeholder-white/20"
                           />
                         </div>
 
-                        {/* Сколько добавляется */}
+                        {/* 2. НЕ добавляется если */}
+                        <div className="flex flex-col gap-1.5">
+                          <label className="text-white/60 text-xs font-medium flex items-center gap-1.5">
+                            <Icon name="CircleX" size={11} className="text-red-400" />
+                            2. НЕ добавляется если...
+                          </label>
+                          <textarea
+                            value={d.when_not_condition}
+                            onChange={e => patchDraft(item.id, { when_not_condition: e.target.value })}
+                            placeholder={"Например:\n• клиент выбрал тканевое полотно\n• в смете уже есть теневой профиль\n• клиент написал «без монтажа»"}
+                            rows={5}
+                            className="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-xs outline-none focus:border-red-500/60 resize-none transition placeholder-white/20"
+                          />
+                        </div>
+
+                        {/* 3. Логика расчёта */}
                         <div className="flex flex-col gap-1.5">
                           <label className="text-white/60 text-xs font-medium flex items-center gap-1.5">
                             <Icon name="Calculator" size={11} className="text-violet-400" />
-                            Количество / расчёт
+                            3. Логика расчёта
                           </label>
                           <textarea
                             value={d.calc_rule}
                             onChange={e => patchDraft(item.id, { calc_rule: e.target.value })}
-                            placeholder={"Например:\n• площадь комнаты\n• периметр × 1.3\n• площадь + 30%\n• длина ниши (указывает клиент)\n• 1 штука на каждый светильник\n• площадь ÷ 5, кратно вверх"}
-                            rows={4}
+                            placeholder={"Сколько добавлять и при каких условиях:\n• площадь комнаты\n• периметр × 1.3\n• 1 шт на каждый светильник\n• длина ниши (спросить у клиента)\n• площадь + 30% если высота > 3м"}
+                            rows={5}
                             className="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-xs outline-none focus:border-violet-500 resize-none transition placeholder-white/20"
                           />
                         </div>

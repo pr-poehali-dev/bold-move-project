@@ -27,6 +27,7 @@ export interface PriceItem {
   calc_rule: string;
   bundle: string;
   when_condition: string;
+  when_not_condition: string;
 }
 
 export interface SuggestedItem {

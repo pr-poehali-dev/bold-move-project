@@ -207,10 +207,10 @@ def handler(event: dict, context) -> dict:
     # --- GET ?r=prices
     if r == 'prices' and method == 'GET':
         conn = get_conn(); cur = conn.cursor()
-        cur.execute(f"SELECT id, category, name, price, unit, description, sort_order, active, calc_rule, bundle, synonyms, when_condition FROM {SCHEMA}.ai_prices ORDER BY sort_order, id")
+        cur.execute(f"SELECT id, category, name, price, unit, description, sort_order, active, calc_rule, bundle, synonyms, when_condition, when_not_condition FROM {SCHEMA}.ai_prices ORDER BY sort_order, id")
         rows = cur.fetchall()
         cur.close(); conn.close()
-        return resp(200, {'items': [{'id': row[0], 'category': row[1], 'name': row[2], 'price': row[3], 'unit': row[4], 'description': row[5], 'sort_order': row[6], 'active': row[7], 'calc_rule': row[8] or '', 'bundle': row[9] or '[]', 'synonyms': row[10] or '', 'when_condition': row[11] or ''} for row in rows]})
+        return resp(200, {'items': [{'id': row[0], 'category': row[1], 'name': row[2], 'price': row[3], 'unit': row[4], 'description': row[5], 'sort_order': row[6], 'active': row[7], 'calc_rule': row[8] or '', 'bundle': row[9] or '[]', 'synonyms': row[10] or '', 'when_condition': row[11] or '', 'when_not_condition': row[12] or ''} for row in rows]})
 
     # --- POST ?r=prices  (добавление позиции)
     if r == 'prices' and method == 'POST':
@@ -246,15 +246,16 @@ def handler(event: dict, context) -> dict:
         synonyms = body.get('synonyms', '')
         sort_order = body.get('sort_order')
         when_condition = body.get('when_condition', '')
+        when_not_condition = body.get('when_not_condition', '')
         if sort_order is not None:
             cur.execute(
-                f"UPDATE {SCHEMA}.ai_prices SET name=%s, price=%s, unit=%s, description=%s, active=%s, calc_rule=%s, bundle=%s, synonyms=%s, when_condition=%s, sort_order=%s, updated_at=now() WHERE id=%s",
-                (body.get('name',''), int(body.get('price', 0)), body.get('unit',''), body.get('description',''), body.get('active', True), body.get('calc_rule',''), body.get('bundle','[]'), synonyms, when_condition, int(sort_order), price_id)
+                f"UPDATE {SCHEMA}.ai_prices SET name=%s, price=%s, unit=%s, description=%s, active=%s, calc_rule=%s, bundle=%s, synonyms=%s, when_condition=%s, when_not_condition=%s, sort_order=%s, updated_at=now() WHERE id=%s",
+                (body.get('name',''), int(body.get('price', 0)), body.get('unit',''), body.get('description',''), body.get('active', True), body.get('calc_rule',''), body.get('bundle','[]'), synonyms, when_condition, when_not_condition, int(sort_order), price_id)
             )
         else:
             cur.execute(
-                f"UPDATE {SCHEMA}.ai_prices SET name=%s, price=%s, unit=%s, description=%s, active=%s, calc_rule=%s, bundle=%s, synonyms=%s, when_condition=%s, updated_at=now() WHERE id=%s",
-                (body.get('name',''), int(body.get('price', 0)), body.get('unit',''), body.get('description',''), body.get('active', True), body.get('calc_rule',''), body.get('bundle','[]'), synonyms, when_condition, price_id)
+                f"UPDATE {SCHEMA}.ai_prices SET name=%s, price=%s, unit=%s, description=%s, active=%s, calc_rule=%s, bundle=%s, synonyms=%s, when_condition=%s, when_not_condition=%s, updated_at=now() WHERE id=%s",
+                (body.get('name',''), int(body.get('price', 0)), body.get('unit',''), body.get('description',''), body.get('active', True), body.get('calc_rule',''), body.get('bundle','[]'), synonyms, when_condition, when_not_condition, price_id)
             )
         _save_complex_exceptions(conn, cur, synonyms, body.get('name', ''))
         cur.close(); conn.close()
