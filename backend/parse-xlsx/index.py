@@ -349,6 +349,73 @@ def handler(event: dict, context) -> dict:
         conn.commit(); cur.close(); conn.close()
         return resp(200, {'ok': True})
 
+    # --- GET ?r=rule-types  (список типов правил)
+    if r == 'rule-types' and method == 'GET':
+        conn = get_conn(); cur = conn.cursor()
+        cur.execute(f"SELECT id, name, label, description, placeholder, sort_order, active FROM {SCHEMA}.ai_rule_types ORDER BY sort_order, id")
+        rows = cur.fetchall()
+        cur.close(); conn.close()
+        return resp(200, {'items': [{'id': r[0], 'name': r[1], 'label': r[2], 'description': r[3], 'placeholder': r[4], 'sort_order': r[5], 'active': r[6]} for r in rows]})
+
+    # --- POST ?r=rule-types  (создать тип правила)
+    if r == 'rule-types' and method == 'POST':
+        if not check_auth(hdrs):
+            return resp(401, {'error': 'Unauthorized'})
+        body = json.loads(body_str)
+        label = body.get('label', '').strip()
+        name = body.get('name', '').strip() or label.lower().replace(' ', '_').replace('-', '_')[:30]
+        if not label:
+            return resp(400, {'error': 'label required'})
+        conn = get_conn(); cur = conn.cursor()
+        cur.execute(f"SELECT COALESCE(MAX(sort_order), 0) + 10 FROM {SCHEMA}.ai_rule_types")
+        sort_order = cur.fetchone()[0]
+        cur.execute(
+            f"INSERT INTO {SCHEMA}.ai_rule_types (name, label, description, placeholder, sort_order) VALUES (%s,%s,%s,%s,%s) RETURNING id",
+            (name, label, body.get('description', ''), body.get('placeholder', ''), sort_order)
+        )
+        new_id = cur.fetchone()[0]
+        conn.commit(); cur.close(); conn.close()
+        return resp(200, {'id': new_id, 'ok': True})
+
+    # --- PUT ?r=rule-types&id=X  (обновить тип правила)
+    if r == 'rule-types' and method == 'PUT':
+        if not check_auth(hdrs):
+            return resp(401, {'error': 'Unauthorized'})
+        rule_id = int(qs.get('id', '0'))
+        body = json.loads(body_str)
+        conn = get_conn(); cur = conn.cursor()
+        cur.execute(
+            f"UPDATE {SCHEMA}.ai_rule_types SET label=%s, description=%s, placeholder=%s, active=%s WHERE id=%s",
+            (body.get('label', ''), body.get('description', ''), body.get('placeholder', ''), body.get('active', True), rule_id)
+        )
+        conn.commit(); cur.close(); conn.close()
+        return resp(200, {'ok': True})
+
+    # --- GET ?r=rule-values&price_id=X  (значения правил для позиции)
+    if r == 'rule-values' and method == 'GET':
+        price_id = int(qs.get('price_id', '0'))
+        conn = get_conn(); cur = conn.cursor()
+        cur.execute(f"SELECT rule_type_id, value FROM {SCHEMA}.ai_rule_values WHERE price_id = %s", (price_id,))
+        rows = cur.fetchall()
+        cur.close(); conn.close()
+        return resp(200, {'values': {str(r[0]): r[1] for r in rows}})
+
+    # --- POST ?r=rule-values  (сохранить значение правила)
+    if r == 'rule-values' and method == 'POST':
+        if not check_auth(hdrs):
+            return resp(401, {'error': 'Unauthorized'})
+        body = json.loads(body_str)
+        price_id = int(body.get('price_id', 0))
+        rule_type_id = int(body.get('rule_type_id', 0))
+        value = body.get('value', '')
+        conn = get_conn(); cur = conn.cursor()
+        cur.execute(
+            f"INSERT INTO {SCHEMA}.ai_rule_values (price_id, rule_type_id, value, updated_at) VALUES (%s,%s,%s,now()) ON CONFLICT (price_id, rule_type_id) DO UPDATE SET value=%s, updated_at=now()",
+            (price_id, rule_type_id, value, value)
+        )
+        conn.commit(); cur.close(); conn.close()
+        return resp(200, {'ok': True})
+
     # --- GET/PUT ?r=settings
     if r == 'settings' and method == 'GET':
         conn = get_conn(); cur = conn.cursor()
