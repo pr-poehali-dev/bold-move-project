@@ -159,7 +159,7 @@ export default function CorrectionCard({
                   </div>
                 )}
                 <span className="text-xs text-white/30">
-                  Нажми чтобы выбрать · Перетащи на другой чтобы объединить
+                  Нажми чтобы выбрать (можно несколько) · Перетащи на другой чтобы объединить
                 </span>
               </div>
 
