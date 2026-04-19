@@ -126,47 +126,57 @@ export default function RuleCategoryTable({
                   <span className="text-white/80 text-xs font-medium truncate">{item.name}</span>
                 </div>
 
-                <InlineEditCell
-                  value={item.when_condition || ""}
-                  onSave={v => onSaveField(item, "when_condition", v)}
-                  placeholder="не задано"
-                />
+                <div className="min-w-0 overflow-hidden">
+                  <InlineEditCell
+                    value={item.when_condition || ""}
+                    onSave={v => onSaveField(item, "when_condition", v)}
+                    placeholder="не задано"
+                  />
+                </div>
 
-                <InlineEditCell
-                  value={item.when_not_condition || ""}
-                  onSave={v => onSaveField(item, "when_not_condition", v)}
-                  placeholder="не задано"
-                  colorClass="text-red-400/60"
-                />
+                <div className="min-w-0 overflow-hidden">
+                  <InlineEditCell
+                    value={item.when_not_condition || ""}
+                    onSave={v => onSaveField(item, "when_not_condition", v)}
+                    placeholder="не задано"
+                    colorClass="text-red-400/60"
+                  />
+                </div>
 
                 {activeRuleTypes.map(rt => {
                   if (rt.name === "bundle") {
                     const ids = parseBundleIds(item.bundle || "");
                     const idToName = Object.fromEntries(prices.map(p => [p.id, p.name]));
                     return (
-                      <div key={rt.id}
-                        onClick={e => onOpenBundleModal(item, e)}
-                        className={`text-xs truncate cursor-pointer rounded px-1.5 py-1 -mx-1.5 transition hover:bg-white/5
-                          ${ids.length > 0 ? "text-white/50" : "text-white/15 italic"}`}>
-                        {ids.length > 0 ? ids.map(id => idToName[id]).filter(Boolean).join(", ") : "не задано"}
+                      <div key={rt.id} className="min-w-0 overflow-hidden">
+                        <div
+                          onClick={e => onOpenBundleModal(item, e)}
+                          className={`text-xs truncate cursor-pointer rounded px-1.5 py-1 -mx-1.5 transition hover:bg-white/5
+                            ${ids.length > 0 ? "text-white/50" : "text-white/15 italic"}`}>
+                          {ids.length > 0 ? ids.map(id => idToName[id]).filter(Boolean).join(", ") : "не задано"}
+                        </div>
                       </div>
                     );
                   }
                   if (rt.name === "calc_rule") {
                     return (
-                      <InlineEditCell key={rt.id}
-                        value={item.calc_rule || ""}
-                        onSave={v => onSaveField(item, "calc_rule", v)}
-                        placeholder={rt.placeholder || "не задано"}
-                      />
+                      <div key={rt.id} className="min-w-0 overflow-hidden">
+                        <InlineEditCell
+                          value={item.calc_rule || ""}
+                          onSave={v => onSaveField(item, "calc_rule", v)}
+                          placeholder={rt.placeholder || "не задано"}
+                        />
+                      </div>
                     );
                   }
                   return (
-                    <InlineEditCell key={rt.id}
-                      value={ruleValues[item.id]?.[rt.id] ?? ""}
-                      onSave={v => onSaveCustomValue(item.id, rt.id, v)}
-                      placeholder={rt.placeholder || "—"}
-                    />
+                    <div key={rt.id} className="min-w-0 overflow-hidden">
+                      <InlineEditCell
+                        value={ruleValues[item.id]?.[rt.id] ?? ""}
+                        onSave={v => onSaveCustomValue(item.id, rt.id, v)}
+                        placeholder={rt.placeholder || "—"}
+                      />
+                    </div>
                   );
                 })}
 

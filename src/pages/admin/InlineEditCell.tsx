@@ -44,17 +44,17 @@ export default function InlineEditCell({ value, onSave, placeholder = "—", col
   return (
     <>
       <div
-        className="group/cell relative flex items-center gap-1 min-h-[20px] cursor-pointer"
+        className="group/cell relative min-h-[20px] cursor-pointer overflow-hidden pr-4"
         onClick={() => { setDraft(value); setOpen(true); }}
       >
-        <span className={`text-xs truncate flex-1 ${value ? (colorClass || "text-white/50") : "text-white/15 italic"}`}>
+        <span className={`text-xs block truncate ${value ? (colorClass || "text-white/50") : "text-white/15 italic"}`}>
           {value || placeholder}
         </span>
         {value && (
           <button
             onClick={copy}
             title="Скопировать"
-            className="flex-shrink-0 opacity-0 group-hover/cell:opacity-100 transition text-white/25 hover:text-violet-400 p-0.5"
+            className="absolute right-0 top-1/2 -translate-y-1/2 opacity-0 group-hover/cell:opacity-100 transition text-white/25 hover:text-violet-400"
           >
             {copied
               ? <Icon name="Check" size={10} className="text-green-400" />
