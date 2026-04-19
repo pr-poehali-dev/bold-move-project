@@ -45,6 +45,21 @@ export default function TabRules({ token, hint }: Props) {
   const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null);
   const [editingLabelId, setEditingLabelId] = useState<number | null>(null);
   const [editingLabelVal, setEditingLabelVal] = useState("");
+  const [bundlePopupId, setBundlePopupId] = useState<number | null>(null);
+  const [bundlePopupState, setBundlePopupState] = useState<{ ids: number[]; search: string; open: boolean }>({ ids: [], search: "", open: true });
+
+  const openBundlePopup = (item: RuleItem, e: { stopPropagation: () => void }) => {
+    e.stopPropagation();
+    const ids = parseBundleIds(item.bundle || "");
+    setBundlePopupId(item.id);
+    setBundlePopupState({ ids, search: "", open: true });
+  };
+
+  const saveBundlePopup = async (item: RuleItem) => {
+    const val = JSON.stringify(bundlePopupState.ids);
+    await saveField(item, "bundle", val);
+    setBundlePopupId(null);
+  };
 
   const saveLabel = async (rt: RuleType) => {
     const val = editingLabelVal.trim();
@@ -142,7 +157,7 @@ export default function TabRules({ token, hint }: Props) {
   if (loading) return <p className="text-white/30 text-sm">Загрузка...</p>;
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-6" onClick={() => bundlePopupId && setBundlePopupId(null)}>
       <div className="flex items-start justify-between gap-4">
         <p className="text-white/50 text-sm">Нажмите на строку — откроется редактор правил для этой позиции.</p>
         <button onClick={() => setAddingRule(true)}
@@ -271,19 +286,55 @@ export default function TabRules({ token, hint }: Props) {
                       {item.when_condition || "не задано"}
                     </span>
                     {activeRuleTypes.map(rt => {
+                      if (rt.name === "bundle") {
+                        const ids = parseBundleIds(item.bundle || "");
+                        const idToName = Object.fromEntries(prices.map(p => [p.id, p.name]));
+                        const isOpen = bundlePopupId === item.id;
+                        return (
+                          <div key={rt.id} className="relative min-w-0">
+                            <div
+                              onClick={e => isOpen ? (e.stopPropagation(), setBundlePopupId(null)) : openBundlePopup(item, e)}
+                              className={`text-xs truncate cursor-pointer rounded px-1.5 py-1 -mx-1.5 transition
+                                ${isOpen ? "bg-violet-500/20 text-violet-300" : "hover:bg-white/5"}
+                                ${ids.length > 0 ? "text-white/50" : "text-white/15 italic"}`}
+                            >
+                              {ids.length > 0
+                                ? ids.map(id => idToName[id]).filter(Boolean).join(", ")
+                                : "не задано"}
+                            </div>
+                            {isOpen && (
+                              <div
+                                className="absolute top-full left-0 z-50 mt-1 w-72 bg-[#1a1a2e] border border-violet-500/30 rounded-xl shadow-2xl p-3 flex flex-col gap-2"
+                                onClick={e => e.stopPropagation()}
+                              >
+                                <BundleSelector
+                                  prices={prices}
+                                  selectedPriceId={item.id}
+                                  excludeId={item.id}
+                                  bundleIds={bundlePopupState.ids}
+                                  bundleSearch={bundlePopupState.search}
+                                  bundleOpen={bundlePopupState.open}
+                                  onToggleOpen={() => setBundlePopupState(s => ({ ...s, open: !s.open }))}
+                                  onBundleSearchChange={v => setBundlePopupState(s => ({ ...s, search: v }))}
+                                  onToggleItem={id => setBundlePopupState(s => ({ ...s, ids: s.ids.includes(id) ? s.ids.filter(x => x !== id) : [...s.ids, id] }))}
+                                  onRemoveItem={id => setBundlePopupState(s => ({ ...s, ids: s.ids.filter(x => x !== id) }))}
+                                />
+                                <div className="flex gap-2 pt-1 border-t border-white/5">
+                                  <button onClick={() => saveBundlePopup(item)}
+                                    className="flex-1 bg-violet-600 hover:bg-violet-700 text-white text-xs py-1.5 rounded-lg transition flex items-center justify-center gap-1">
+                                    <Icon name="Check" size={11} /> Сохранить
+                                  </button>
+                                  <button onClick={() => setBundlePopupId(null)}
+                                    className="text-white/40 hover:text-white/70 text-xs transition px-2">Отмена</button>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      }
                       let val = "";
                       if (rt.name === "calc_rule") val = item.calc_rule || "";
-                      else if (rt.name === "bundle") {
-                        const ids = parseBundleIds(item.bundle || "");
-                        if (ids.length > 0) {
-                          const idToName = Object.fromEntries(prices.map(p => [p.id, p.name]));
-                          val = ids.map(id => idToName[id]).filter(Boolean).join(", ");
-                        } else {
-                          val = item.bundle || "";
-                        }
-                      } else {
-                        val = ruleValues[item.id]?.[rt.id] ?? "";
-                      }
+                      else val = ruleValues[item.id]?.[rt.id] ?? "";
                       return (
                         <span key={rt.id} className={`text-xs truncate ${val ? "text-white/50" : "text-white/15 italic"}`}>
                           {val || (rt.placeholder || "—")}
