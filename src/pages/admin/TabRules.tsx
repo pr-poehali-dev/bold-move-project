@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect } from "react";
 import Icon from "@/components/ui/icon";
 import BundleSelector from "./BundleSelector";
+import InlineEditCell from "./InlineEditCell";
 import { apiFetch } from "./api";
 import { usePriceList } from "./usePriceList";
 import type { PriceItem } from "./types";
@@ -280,23 +281,36 @@ export default function TabRules({ token, hint }: Props) {
                 <div key={item.id} className={`border-b border-white/5 last:border-0 ${!item.active ? "opacity-40" : ""}`}>
                   {/* Строка-превью */}
                   <div
-                    onClick={() => openRow(item)}
-                    className={`grid px-4 py-3 cursor-pointer transition items-center gap-2
+                    className={`grid px-4 py-2.5 transition items-start gap-2
                       ${idx % 2 ? "bg-white/[0.01]" : ""}
-                      ${isExpanded ? "bg-violet-500/10 border-b border-violet-500/20" : "hover:bg-white/[0.04]"}
+                      ${isExpanded ? "bg-violet-500/10 border-b border-violet-500/20" : "hover:bg-white/[0.02]"}
                     `}
                     style={{ gridTemplateColumns: `1.2fr 1fr 1fr repeat(${activeRuleTypes.length}, 1fr) 32px` }}
                   >
-                    <div className="flex items-center gap-1.5 min-w-0">
+                    {/* Название — клик открывает раскрытый блок */}
+                    <div
+                      className="flex items-center gap-1.5 min-w-0 cursor-pointer py-0.5"
+                      onClick={() => openRow(item)}
+                    >
                       <Icon name={isExpanded ? "ChevronUp" : "ChevronDown"} size={12} className="text-white/20 flex-shrink-0" />
                       <span className="text-white/80 text-xs font-medium truncate">{item.name}</span>
                     </div>
-                    <span className={`text-xs truncate ${item.when_condition ? "text-white/50" : "text-white/15 italic"}`}>
-                      {item.when_condition || "—"}
-                    </span>
-                    <span className={`text-xs truncate ${item.when_not_condition ? "text-red-400/60" : "text-white/15 italic"}`}>
-                      {item.when_not_condition || "—"}
-                    </span>
+
+                    {/* Добавляется если — inline редактирование */}
+                    <InlineEditCell
+                      value={item.when_condition || ""}
+                      onSave={v => saveField(item, "when_condition", v)}
+                      placeholder="не задано"
+                    />
+
+                    {/* НЕ добавляется если — inline редактирование */}
+                    <InlineEditCell
+                      value={item.when_not_condition || ""}
+                      onSave={v => saveField(item, "when_not_condition", v)}
+                      placeholder="не задано"
+                      colorClass="text-red-400/60"
+                    />
+
                     {activeRuleTypes.map(rt => {
                       if (rt.name === "bundle") {
                         const ids = parseBundleIds(item.bundle || "");
@@ -314,16 +328,27 @@ export default function TabRules({ token, hint }: Props) {
                           </div>
                         );
                       }
-                      let val = "";
-                      if (rt.name === "calc_rule") val = item.calc_rule || "";
-                      else val = ruleValues[item.id]?.[rt.id] ?? "";
+                      if (rt.name === "calc_rule") {
+                        return (
+                          <InlineEditCell
+                            key={rt.id}
+                            value={item.calc_rule || ""}
+                            onSave={v => saveField(item, "calc_rule", v)}
+                            placeholder={rt.placeholder || "не задано"}
+                          />
+                        );
+                      }
                       return (
-                        <span key={rt.id} className={`text-xs truncate ${val ? "text-white/50" : "text-white/15 italic"}`}>
-                          {val || (rt.placeholder || "—")}
-                        </span>
+                        <InlineEditCell
+                          key={rt.id}
+                          value={ruleValues[item.id]?.[rt.id] ?? ""}
+                          onSave={v => saveCustomValue(item.id, rt.id, v)}
+                          placeholder={rt.placeholder || "—"}
+                        />
                       );
                     })}
-                    <div className="flex items-center gap-1 justify-self-end" onClick={e => e.stopPropagation()}>
+
+                    <div className="flex items-center gap-1 justify-self-end pt-0.5" onClick={e => e.stopPropagation()}>
                       {confirmDeleteItemId === item.id ? (
                         <>
                           <button onClick={() => { deleteItem(item.id); setConfirmDeleteItemId(null); }}
