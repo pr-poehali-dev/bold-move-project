@@ -25,7 +25,7 @@ export default function TabPrompt({ token }: Props) {
   const [ruleTypes, setRuleTypes] = useState<RuleType[]>([]);
   const [showPrices, setShowPrices] = useState(false);
   const [showRules, setShowRules] = useState(false);
-  const [activeTab, setActiveTab] = useState<"system" | "format">("system");
+  const [activeTab, setActiveTab] = useState<"general" | "system" | "format">("general");
 
   useEffect(() => {
     apiFetch("prompt").then(r => r.ok && r.json().then(d => setContent(d.content)));
@@ -59,19 +59,26 @@ export default function TabPrompt({ token }: Props) {
     return [item.id, r.name];
   }));
 
-  // Делим промпт на две части по маркеру
-  const MARKER = "ФОРМАТ КАЖДОЙ ПОЗИЦИИ";
-  const markerIdx = content.indexOf(MARKER);
-  const systemPart = markerIdx >= 0 ? content.slice(0, markerIdx).trimEnd() : content;
-  const formatPart = markerIdx >= 0 ? content.slice(markerIdx) : "";
+  // Делим промпт на три части по маркерам
+  const MARKER_SYSTEM = "ВАЖНО:";
+  const MARKER_FORMAT = "ФОРМАТ КАЖДОЙ ПОЗИЦИИ";
 
-  const handleSystemChange = (val: string) => {
-    setContent(formatPart ? val + "\n\n" + formatPart : val);
+  const idxSystem = content.indexOf(MARKER_SYSTEM);
+  const idxFormat = content.indexOf(MARKER_FORMAT);
+
+  const generalPart = idxSystem >= 0 ? content.slice(0, idxSystem).trimEnd() : content;
+  const systemPart  = idxSystem >= 0 && idxFormat >= 0
+    ? content.slice(idxSystem, idxFormat).trimEnd()
+    : idxSystem >= 0 ? content.slice(idxSystem) : "";
+  const formatPart  = idxFormat >= 0 ? content.slice(idxFormat) : "";
+
+  const rebuildContent = (gen: string, sys: string, fmt: string) => {
+    return [gen, sys, fmt].filter(Boolean).join("\n\n");
   };
 
-  const handleFormatChange = (val: string) => {
-    setContent(systemPart ? systemPart + "\n\n" + val : val);
-  };
+  const handleGeneralChange = (val: string) => setContent(rebuildContent(val, systemPart, formatPart));
+  const handleSystemChange  = (val: string) => setContent(rebuildContent(generalPart, val, formatPart));
+  const handleFormatChange  = (val: string) => setContent(rebuildContent(generalPart, systemPart, val));
 
   return (
     <div className="flex flex-col gap-6">
@@ -84,9 +91,13 @@ export default function TabPrompt({ token }: Props) {
             <p className="text-white/40 text-xs mt-0.5">Прайс и правила расчёта подставляются автоматически — здесь только общие инструкции и формат.</p>
           </div>
           <div className="flex gap-1 bg-white/5 rounded-lg p-0.5 flex-shrink-0">
+            <button onClick={() => setActiveTab("general")}
+              className={`text-xs px-3 py-1.5 rounded-md transition ${activeTab === "general" ? "bg-violet-600 text-white" : "text-white/40 hover:text-white"}`}>
+              Общее
+            </button>
             <button onClick={() => setActiveTab("system")}
               className={`text-xs px-3 py-1.5 rounded-md transition ${activeTab === "system" ? "bg-violet-600 text-white" : "text-white/40 hover:text-white"}`}>
-              Системные инструкции
+              Инструкции
             </button>
             <button onClick={() => setActiveTab("format")}
               className={`text-xs px-3 py-1.5 rounded-md transition ${activeTab === "format" ? "bg-violet-600 text-white" : "text-white/40 hover:text-white"}`}>
@@ -95,9 +106,21 @@ export default function TabPrompt({ token }: Props) {
           </div>
         </div>
 
+        {activeTab === "general" && (
+          <div className="flex flex-col gap-2">
+            <p className="text-white/30 text-xs">Роль бота, название компании, контакты, общее представление. Эта часть идёт первой в промпте.</p>
+            <textarea
+              value={generalPart}
+              onChange={e => handleGeneralChange(e.target.value)}
+              rows={18}
+              className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white font-mono resize-y outline-none focus:border-violet-500 transition"
+            />
+          </div>
+        )}
+
         {activeTab === "system" && (
           <div className="flex flex-col gap-2">
-            <p className="text-white/30 text-xs">Роль бота, общие принципы расчёта, ограничения. <span className="text-amber-400">Правила по конкретным позициям — во вкладке «Правила».</span></p>
+            <p className="text-white/30 text-xs">Общие принципы расчёта, ограничения. <span className="text-amber-400">Правила по конкретным позициям — во вкладке «Правила».</span></p>
             <textarea
               value={systemPart}
               onChange={e => handleSystemChange(e.target.value)}
