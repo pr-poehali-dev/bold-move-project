@@ -98,6 +98,14 @@ export default function TabRules({ token, hint }: Props) {
     setSaving(false);
   };
 
+  const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null);
+
+  const deleteRuleType = async (id: number) => {
+    await apiFetch("rule-types", { method: "DELETE" }, token, id);
+    setConfirmDeleteId(null);
+    await loadRuleTypes();
+  };
+
   const customRules = ruleTypes.filter(rt => !BUILTIN.has(rt.name) && rt.active);
   const rulesByCategory = Object.fromEntries(
     Object.entries(byCategory).map(([cat, items]) => [cat, items as RuleItem[]])
@@ -171,7 +179,28 @@ export default function TabRules({ token, hint }: Props) {
                   <th className="text-left text-white/30 font-normal px-4 py-2.5 w-[25%]">Логика привязки комплектов</th>
                   {customRules.map(rt => (
                     <th key={rt.id} className="text-left text-white/30 font-normal px-4 py-2.5">
-                      <span title={rt.description}>{rt.label}</span>
+                      <div className="flex items-center gap-2 group/col">
+                        <span title={rt.description}>{rt.label}</span>
+                        {confirmDeleteId === rt.id ? (
+                          <div className="flex items-center gap-1 ml-1">
+                            <span className="text-red-400 text-[10px]">Удалить?</span>
+                            <button onClick={() => deleteRuleType(rt.id)}
+                              className="text-red-400 hover:text-red-300 text-[10px] px-1.5 py-0.5 bg-red-500/20 rounded transition">
+                              Да
+                            </button>
+                            <button onClick={() => setConfirmDeleteId(null)}
+                              className="text-white/40 hover:text-white/70 text-[10px] px-1.5 py-0.5 bg-white/5 rounded transition">
+                              Нет
+                            </button>
+                          </div>
+                        ) : (
+                          <button
+                            onClick={() => setConfirmDeleteId(rt.id)}
+                            className="opacity-0 group-hover/col:opacity-100 transition text-white/25 hover:text-red-400">
+                            <Icon name="X" size={11} />
+                          </button>
+                        )}
+                      </div>
                     </th>
                   ))}
                 </tr>

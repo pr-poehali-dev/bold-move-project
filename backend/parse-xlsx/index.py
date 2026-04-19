@@ -391,6 +391,17 @@ def handler(event: dict, context) -> dict:
         conn.commit(); cur.close(); conn.close()
         return resp(200, {'ok': True})
 
+    # --- DELETE ?r=rule-types&id=X  (удалить тип правила)
+    if r == 'rule-types' and method == 'DELETE':
+        if not check_auth(hdrs):
+            return resp(401, {'error': 'Unauthorized'})
+        rule_id = int(qs.get('id', '0'))
+        conn = get_conn(); cur = conn.cursor()
+        cur.execute(f"DELETE FROM {SCHEMA}.ai_rule_values WHERE rule_type_id = %s", (rule_id,))
+        cur.execute(f"DELETE FROM {SCHEMA}.ai_rule_types WHERE id = %s", (rule_id,))
+        conn.commit(); cur.close(); conn.close()
+        return resp(200, {'ok': True})
+
     # --- GET ?r=rule-values&price_id=X  (значения правил для позиции)
     if r == 'rule-values' and method == 'GET':
         price_id = int(qs.get('price_id', '0'))
