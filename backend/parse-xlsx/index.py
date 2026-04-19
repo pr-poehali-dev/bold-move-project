@@ -353,6 +353,29 @@ def handler(event: dict, context) -> dict:
         if not openrouter_key:
             return resp(500, {'error': 'No LLM key'})
 
+        # ── Режим генерации описания ──────────────────────────────────────────
+        if word.startswith('GENERATE_DESCRIPTION:'):
+            parts = word[len('GENERATE_DESCRIPTION:'):].split('|')
+            item_name = parts[0].strip() if parts else word
+            item_cat  = parts[1].strip() if len(parts) > 1 else ''
+            desc_prompt = f"""Ты эксперт по натяжным потолкам.
+Напиши короткое описание (1 предложение, максимум 10 слов) для позиции прайса: «{item_name}» (категория: {item_cat}).
+Описание должно объяснять что это такое — для понимания AI-бота, не для клиента.
+Отвечай ТОЛЬКО описанием, без кавычек и пояснений:"""
+            try:
+                llm_r = requests.post(
+                    'https://openrouter.ai/api/v1/chat/completions',
+                    json={'model': 'openai/gpt-4o-mini', 'messages': [{'role': 'user', 'content': desc_prompt}], 'max_tokens': 60, 'temperature': 0.5},
+                    headers={'Authorization': f'Bearer {openrouter_key}', 'Content-Type': 'application/json'},
+                    timeout=20,
+                )
+                if llm_r.status_code == 200:
+                    description = llm_r.json()['choices'][0]['message']['content'].strip().strip('"').strip("'")
+                    return resp(200, {'description': description})
+            except Exception as e:
+                return resp(500, {'error': str(e)})
+            return resp(500, {'error': 'LLM failed'})
+
         # ── Режим генерации синонимов ─────────────────────────────────────────
         if word.startswith('GENERATE_SYNONYMS:'):
             parts = word[len('GENERATE_SYNONYMS:'):].split('|')

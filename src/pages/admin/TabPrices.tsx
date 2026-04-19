@@ -12,7 +12,7 @@ const EMPTY_CAT = { name: "", firstItem: "", price: "", unit: "шт", descriptio
 interface Props { token: string; onItemAdded?: (name: string) => void; }
 
 export default function TabPrices({ token, onItemAdded }: Props) {
-  const { prices, loading, aiLoadingId, byCategory, saveField, toggleActive, deleteItem, renameCategory, generateSynonyms, moveItem, load } = usePriceList(token);
+  const { prices, loading, aiLoadingId, aiDescLoadingId, byCategory, saveField, toggleActive, deleteItem, renameCategory, generateSynonyms, generateDescription, moveItem, load } = usePriceList(token);
   const dragItem = useRef<PriceItem | null>(null);
   const dragOver = useRef<PriceItem | null>(null);
   const [dragOverId, setDragOverId] = useState<number | null>(null);
@@ -145,7 +145,19 @@ export default function TabPrices({ token, onItemAdded }: Props) {
                       </select>
                     </td>
                     <td className="px-4 py-2.5 text-white/40 text-xs">
-                      <EditableCell value={item.description} onSave={v => saveField(item, "description", v)} placeholder="Как AI понимает позицию..." />
+                      <div className="flex items-center gap-1 min-w-0">
+                        <div className="flex-1 min-w-0">
+                          <EditableCell value={item.description} onSave={v => saveField(item, "description", v)} placeholder="Как AI понимает позицию..." />
+                        </div>
+                        <button onClick={() => generateDescription(item)} disabled={aiDescLoadingId === item.id}
+                          title="Сгенерировать описание через AI"
+                          className="flex-shrink-0 bg-violet-600/20 hover:bg-violet-600/40 border border-violet-500/30 text-violet-400 rounded px-1.5 py-0.5 disabled:opacity-40 transition flex items-center gap-1">
+                          {aiDescLoadingId === item.id
+                            ? <Icon name="Loader" size={11} className="animate-spin" />
+                            : <Icon name="Sparkles" size={11} />}
+                          <span className="text-[10px]">AI</span>
+                        </button>
+                      </div>
                     </td>
                     <td className="px-4 py-2.5 text-amber-400/60 text-xs w-[180px] max-w-[180px]">
                       <div className="flex items-center gap-1 min-w-0">

@@ -6,6 +6,7 @@ export function usePriceList(token: string) {
   const [prices, setPrices] = useState<PriceItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [aiLoadingId, setAiLoadingId] = useState<number | null>(null);
+  const [aiDescLoadingId, setAiDescLoadingId] = useState<number | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -79,6 +80,25 @@ export function usePriceList(token: string) {
     }
   };
 
+  const generateDescription = async (item: PriceItem) => {
+    setAiDescLoadingId(item.id);
+    try {
+      const r = await apiFetch("match-synonym", {
+        method: "POST",
+        body: JSON.stringify({
+          word: `GENERATE_DESCRIPTION:${item.name}|${item.category}`,
+          prices: [],
+        }),
+      }, token);
+      if (r.ok) {
+        const d = await r.json();
+        if (d.description) await saveField(item, "description", d.description);
+      }
+    } finally {
+      setAiDescLoadingId(null);
+    }
+  };
+
   const moveItem = async (item: PriceItem, target: PriceItem) => {
     if (item.id === target.id) return;
     // Переставляем sort_order местами
@@ -108,7 +128,8 @@ export function usePriceList(token: string) {
   );
 
   return {
-    prices, loading, aiLoadingId, byCategory: byCategorySorted,
-    load, saveField, toggleActive, addItem, deleteItem, renameCategory, generateSynonyms, moveItem,
+    prices, loading, aiLoadingId, aiDescLoadingId, byCategory: byCategorySorted,
+    load, saveField, toggleActive, addItem, deleteItem, renameCategory,
+    generateSynonyms, generateDescription, moveItem,
   };
 }
