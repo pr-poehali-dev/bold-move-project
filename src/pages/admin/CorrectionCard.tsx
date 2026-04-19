@@ -152,8 +152,8 @@ export default function CorrectionCard({
                 const isGreen = isDone || known;
                 const isDragOver = dragOverWord === w;
 
-                // Скрываем тег если он уже обработан (нажали удалить/игнор)
-                if (isDone) return null;
+                // Скрываем тег если явно удалён/проигнорирован (но не если просто known)
+                if (isDone && !known) return null;
 
                 if (editingTag === w) {
                   return (
