@@ -170,22 +170,27 @@ export default function TabPrompt({ token }: Props) {
     return [item.id, r.name];
   }));
 
-  // Делим промпт на три части по маркерам
-  const MARKER_SYSTEM = "ВАЖНО:";
-  const MARKER_FORMAT = "ФОРМАТ КАЖДОЙ ПОЗИЦИИ";
+  // Делим промпт на три части по уникальным маркерам
+  const SEP_G = "##GENERAL##";
+  const SEP_S = "##SYSTEM##";
+  const SEP_F = "##FORMAT##";
 
-  const idxSystem = content.indexOf(MARKER_SYSTEM);
-  const idxFormat = content.indexOf(MARKER_FORMAT);
+  const idxG = content.indexOf(SEP_G);
+  const idxS = content.indexOf(SEP_S);
+  const idxF = content.indexOf(SEP_F);
 
-  const generalPart = idxSystem >= 0 ? content.slice(0, idxSystem).trimEnd() : content;
-  const systemPart  = idxSystem >= 0 && idxFormat >= 0
-    ? content.slice(idxSystem, idxFormat).trimEnd()
-    : idxSystem >= 0 ? content.slice(idxSystem) : "";
-  const formatPart  = idxFormat >= 0 ? content.slice(idxFormat) : "";
+  const generalPart = idxS >= 0
+    ? content.slice(idxG >= 0 ? idxG + SEP_G.length : 0, idxS).trim()
+    : content.slice(idxG >= 0 ? idxG + SEP_G.length : 0).trim();
+  const systemPart  = idxS >= 0
+    ? content.slice(idxS + SEP_S.length, idxF >= 0 ? idxF : undefined).trim()
+    : "";
+  const formatPart  = idxF >= 0
+    ? content.slice(idxF + SEP_F.length).trim()
+    : "";
 
-  const rebuildContent = (gen: string, sys: string, fmt: string) => {
-    return [gen, sys, fmt].filter(Boolean).join("\n\n");
-  };
+  const rebuildContent = (gen: string, sys: string, fmt: string) =>
+    `${SEP_G}\n${gen}\n${SEP_S}\n${sys}\n${SEP_F}\n${fmt}`;
 
   const handleGeneralChange = (val: string) => handleContentChange(rebuildContent(val, systemPart, formatPart));
   const handleSystemChange  = (val: string) => handleContentChange(rebuildContent(generalPart, val, formatPart));

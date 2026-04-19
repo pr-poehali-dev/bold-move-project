@@ -50,7 +50,11 @@ def get_system_prompt(fallback: str = '') -> str:
         cur.close()
         conn.close()
         if row and row[0]:
-            return row[0]
+            # Убираем служебные маркеры разделов — они нужны только редактору
+            content = row[0]
+            for marker in ('##GENERAL##', '##SYSTEM##', '##FORMAT##'):
+                content = content.replace(marker, '')
+            return content.strip()
     except Exception as e:
         print(f"[prompt] error: {e}")
     return fallback
