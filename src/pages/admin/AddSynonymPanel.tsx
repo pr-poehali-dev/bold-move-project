@@ -392,6 +392,7 @@ export default function AddSynonymPanel({ words, prices, token, onAdded }: Props
         const matchedPrice = row.selectedId ? prices.find(p => p.id === row.selectedId) : null;
         return (
           <div key={i} className="border border-white/10 rounded-xl overflow-hidden">
+            {/* Заголовок строки — всегда виден */}
             <div className="flex items-center gap-2 px-3 py-2 bg-white/[0.02]">
               {row.mode === "ai-loading"
                 ? <Icon name="Loader" size={13} className="text-violet-400 animate-spin flex-shrink-0" />
@@ -406,22 +407,16 @@ export default function AddSynonymPanel({ words, prices, token, onAdded }: Props
                 <span className="text-xs text-green-300 truncate">{matchedPrice.name}</span>
               )}
               {row.mode === "notfound-manual" && <span className="text-xs text-amber-300/70">Не найдено — укажи вручную</span>}
-              <div className="ml-auto flex items-center gap-1.5 flex-shrink-0">
-                {row.mode !== "ai-loading" && (
-                  <button onClick={() => matchOne(i, rows)} title="Перезапустить AI"
-                    className="text-white/20 hover:text-violet-400 transition">
-                    <Icon name="Sparkles" size={11} />
-                  </button>
-                )}
-                <button onClick={() => updateRow(i, { manualOpen: !row.manualOpen })}
-                  className="text-white/20 hover:text-white/50 transition">
-                  <Icon name={row.manualOpen ? "ChevronUp" : "ChevronDown"} size={13} />
+              {row.mode !== "ai-loading" && (
+                <button onClick={() => matchOne(i, rows)} title="Перезапустить AI"
+                  className="ml-auto text-white/20 hover:text-violet-400 transition flex-shrink-0">
+                  <Icon name="Sparkles" size={11} />
                 </button>
-              </div>
+              )}
             </div>
 
-            {/* Синоним + комплект — показываем если found и панель не раскрыта вручную */}
-            {row.mode === "found" && matchedPrice && !row.manualOpen && (
+            {/* Тело строки — всегда раскрыто (не скрывается) */}
+            {row.mode === "found" && matchedPrice && (
               <div className="px-3 pb-3 border-t border-white/5 pt-2">
                 <div className="flex items-center gap-1.5 text-xs text-white/30">
                   <Icon name="Tag" size={11} className="text-violet-400" />
@@ -444,7 +439,7 @@ export default function AddSynonymPanel({ words, prices, token, onAdded }: Props
               </div>
             )}
 
-            {row.manualOpen && (
+            {row.mode === "notfound-manual" && (
               <div className="p-3 flex flex-col gap-2 border-t border-white/5">
                 <div className="flex items-center gap-1.5">
                   <Icon name="Tag" size={11} className="text-violet-400 flex-shrink-0" />
