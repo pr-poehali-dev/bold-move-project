@@ -146,17 +146,16 @@ export default function CorrectionCard({
                 </span>
                 {selectedWords.length > 0 && (
                   <>
-                    <div className="w-px h-3 bg-white/15" />
                     <button
                       onClick={() => { selectedWords.forEach(w => handleIgnore(w)); setSelectedWords([]); setPanelOpen(false); }}
-                      className="flex items-center gap-1 text-white/50 hover:text-white transition text-[10px]">
-                      <Icon name="X" size={10} />
+                      className="flex items-center gap-1.5 px-2.5 py-1 bg-white/10 hover:bg-white/20 text-white text-xs rounded-lg transition">
+                      <Icon name="X" size={11} />
                       Удалить тег
                     </button>
                     <button
                       onClick={async () => { for (const w of selectedWords) await handleStopWord(w); setSelectedWords([]); setPanelOpen(false); }}
-                      className="flex items-center gap-1 text-white/50 hover:text-red-300 transition text-[10px]">
-                      <Icon name="Ban" size={10} />
+                      className="flex items-center gap-1.5 px-2.5 py-1 bg-red-500/20 hover:bg-red-500/30 text-red-300 text-xs rounded-lg transition">
+                      <Icon name="Ban" size={11} />
                       Игнорировать
                     </button>
                   </>
