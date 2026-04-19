@@ -24,6 +24,8 @@ export interface PriceItem {
   synonyms: string;
   active: boolean;
   sort_order: number;
+  calc_rule: string;
+  bundle: string;
 }
 
 export interface SuggestedItem {

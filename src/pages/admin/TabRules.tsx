@@ -52,7 +52,7 @@ function BundleCell({ item, prices, onSave }: { item: RuleItem; prices: PriceIte
 }
 
 export default function TabRules({ token, hint }: Props) {
-  const { prices, loading, byCategory } = usePriceList(token);
+  const { prices, loading, byCategory, saveField } = usePriceList(token);
   const [ruleTypes, setRuleTypes] = useState<RuleType[]>([]);
   const [ruleValues, setRuleValues] = useState<Record<number, Record<number, string>>>({});
   const [addingRule, setAddingRule] = useState(false);
@@ -76,7 +76,7 @@ export default function TabRules({ token, hint }: Props) {
   };
 
   const saveBuiltin = async (item: RuleItem, field: "calc_rule" | "bundle", val: string) => {
-    await apiFetch("prices", { method: "PUT", body: JSON.stringify({ ...item, [field]: val }) }, token, item.id);
+    await saveField(item, field, val);
   };
 
   const saveCustomValue = async (priceId: number, ruleTypeId: number, value: string) => {
@@ -169,11 +169,17 @@ export default function TabRules({ token, hint }: Props) {
       {Object.entries(rulesByCategory).map(([category, catItems]) => (
         <div key={category}>
           <h3 className="text-violet-300 text-xs font-semibold uppercase tracking-wider mb-2 px-1">{category}</h3>
-          <div className="bg-white/[0.03] border border-white/10 rounded-xl overflow-hidden">
-            <table className="w-full text-sm">
+          <div className="bg-white/[0.03] border border-white/10 rounded-xl overflow-x-auto">
+            <table className="w-full text-sm table-fixed min-w-[600px]">
+              <colgroup>
+                <col style={{ width: "18%" }} />
+                {ruleTypes.filter(rt => rt.active).map((rt, i, arr) => (
+                  <col key={rt.id} style={{ width: `${Math.floor(82 / arr.length)}%` }} />
+                ))}
+              </colgroup>
               <thead>
                 <tr className="border-b border-white/10">
-                  <th className="text-left text-white/30 font-normal px-4 py-2.5 w-[18%]">Позиция</th>
+                  <th className="text-left text-white/30 font-normal px-4 py-2.5">Позиция</th>
                   {ruleTypes.filter(rt => rt.active).map(rt => (
                     <th key={rt.id} className="text-left text-white/30 font-normal px-4 py-2.5">
                       <div className="flex items-center gap-2 group/col">

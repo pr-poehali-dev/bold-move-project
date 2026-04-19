@@ -397,6 +397,14 @@ def handler(event: dict, context) -> dict:
             return resp(401, {'error': 'Unauthorized'})
         rule_id = int(qs.get('id', '0'))
         conn = get_conn(); cur = conn.cursor()
+        cur.execute(f"SELECT name FROM {SCHEMA}.ai_rule_types WHERE id = %s", (rule_id,))
+        row = cur.fetchone()
+        if not row:
+            cur.close(); conn.close()
+            return resp(404, {'error': 'Not found'})
+        if row[0] in ('calc_rule', 'bundle'):
+            cur.close(); conn.close()
+            return resp(403, {'error': 'Встроенные правила нельзя удалять'})
         cur.execute(f"DELETE FROM {SCHEMA}.ai_rule_values WHERE rule_type_id = %s", (rule_id,))
         cur.execute(f"DELETE FROM {SCHEMA}.ai_rule_types WHERE id = %s", (rule_id,))
         conn.commit(); cur.close(); conn.close()
