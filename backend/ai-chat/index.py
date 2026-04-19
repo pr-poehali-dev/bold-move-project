@@ -767,14 +767,57 @@ def _save_suggestions_from_json(items: list, user_text: str, session_id: str, ru
         print(f"[suggestions] json db error: {e}")
 
 
-def _patch_answer_with_prices(answer: str, items: list) -> str:
-    """Патчит ответ LLM — заменяет строки 'Название × N ед.' на полный формат с ценой и итогом."""
-    # Строим словарь name→{qty,price,unit} из JSON
-    item_map = {}
-    for it in items:
-        name = it.get('name', '').strip()
-        if name:
-            item_map[name.lower()] = it
+def _build_price_map(rules: list) -> dict:
+    """Строит словарь name_lower → {price, unit} из актуального прайса в БД.
+    Также добавляет синонимы как дополнительные ключи.
+    """
+    price_map = {}
+    for r in rules:
+        name_low = r['name'].lower().strip()
+        entry = {'price': r['price'], 'unit': r['unit'], 'name': r['name']}
+        price_map[name_low] = entry
+        # Синонимы — тоже добавляем как ключи
+        if r.get('synonyms'):
+            for syn in r['synonyms'].split(','):
+                syn = syn.strip().lower()
+                if syn:
+                    price_map[syn] = entry
+    return price_map
+
+
+def _find_in_price_map(name: str, price_map: dict) -> dict | None:
+    """Ищет позицию в прайсе по точному совпадению, потом по подстроке."""
+    nl = name.lower().strip()
+    # 1. Точное совпадение
+    if nl in price_map:
+        return price_map[nl]
+    # 2. Имя из прайса содержится в строке LLM (LLM мог добавить пояснение)
+    for k, v in price_map.items():
+        if k and k in nl:
+            return v
+    # 3. Строка LLM содержится в имени из прайса
+    for k, v in price_map.items():
+        if k and nl in k:
+            return v
+    return None
+
+
+def _patch_answer_with_prices(answer: str, llm_items: list, rules: list | None = None) -> str:
+    """Патчит ответ LLM — заменяет цены на актуальные из БД.
+
+    Приоритет: цены из БД (rules) > цены из JSON LLM.
+    Если позиция найдена в прайсе — берём цену оттуда.
+    Если не найдена — оставляем как есть (LLM цена).
+    """
+    # Прайс из БД — главный источник цен
+    price_map = _build_price_map(rules) if rules else {}
+
+    # JSON от LLM — fallback для qty и unit
+    llm_map = {}
+    for it in llm_items:
+        n = it.get('name', '').strip()
+        if n:
+            llm_map[n.lower()] = it
 
     def fmt(n: int) -> str:
         return f"{n:,}".replace(',', ' ')
@@ -782,25 +825,64 @@ def _patch_answer_with_prices(answer: str, items: list) -> str:
     MUL = r'[×xх]'
     result_lines = []
     for line in answer.split('\n'):
-        # Ищем строки вида "Название × N ед." (без цены)
+        # Строки вида "Название N ед × P ₽ = T ₽" — уже есть цена
+        full_m = re.match(
+            r'^(\s*)(.*?)\s+(\d+(?:[.,]\d+)?)\s*(\S+)?\s*[×xх]\s*([\d\s]+)\s*₽\s*=\s*([\d\s]+)\s*₽\s*$',
+            line
+        )
+        if full_m:
+            indent = full_m.group(1)
+            name = full_m.group(2).strip()
+            qty_str = full_m.group(3)
+            unit_str = (full_m.group(4) or '').strip()
+            db_entry = _find_in_price_map(name, price_map)
+            if db_entry:
+                try:
+                    qty = float(qty_str.replace(',', '.'))
+                    price = int(db_entry['price'])
+                    unit_out = db_entry['unit'] or unit_str
+                    total = round(qty * price)
+                    qty_display = int(qty) if qty == int(qty) else qty
+                    result_lines.append(f"{indent}{name}  {qty_display} {unit_out} × {fmt(price)} ₽ = {fmt(total)} ₽")
+                    print(f"[patch] db price: {name} {qty_display} {unit_out} × {price} = {total}")
+                    continue
+                except Exception:
+                    pass
+            result_lines.append(line)
+            continue
+
+        # Строки вида "Название × N ед." (без цены)
         m = re.match(r'^(\s*)(.*?)\s*' + MUL + r'\s*([\d][\d\s,.]*)\s*(м²|м2|мп|пм|шт\.?|шт|м\.п\.?|м\b)?\s*$', line)
         if m:
             indent, name, qty_str, unit = m.group(1), m.group(2).strip(), m.group(3).strip(), (m.group(4) or '').strip()
-            # Ищем в item_map
-            match_data = None
-            for k, v in item_map.items():
-                if name.lower() == k or name.lower() in k or k in name.lower():
-                    match_data = v
-                    break
-            if match_data:
+            db_entry = _find_in_price_map(name, price_map)
+            if db_entry:
                 try:
                     qty = float(qty_str.replace(',', '.').replace(' ', ''))
-                    price = int(match_data.get('price', 0))
-                    unit_from_json = match_data.get('unit', unit) or unit
+                    price = int(db_entry['price'])
+                    unit_out = db_entry['unit'] or unit
+                    total = round(qty * price)
+                    qty_display = int(qty) if qty == int(qty) else qty
+                    result_lines.append(f"{indent}{name}  {qty_display} {unit_out} × {fmt(price)} ₽ = {fmt(total)} ₽")
+                    print(f"[patch] db price (no-price line): {name} {qty_display} {unit_out} × {price} = {total}")
+                    continue
+                except Exception:
+                    pass
+            # Fallback: используем цену из JSON LLM
+            llm_data = None
+            for k, v in llm_map.items():
+                if name.lower() == k or name.lower() in k or k in name.lower():
+                    llm_data = v
+                    break
+            if llm_data:
+                try:
+                    qty = float(qty_str.replace(',', '.').replace(' ', ''))
+                    price = int(llm_data.get('price', 0))
+                    unit_from_json = llm_data.get('unit', unit) or unit
                     total = round(qty * price)
                     qty_display = int(qty) if qty == int(qty) else qty
                     result_lines.append(f"{indent}{name}  {qty_display} {unit_from_json} × {fmt(price)} ₽ = {fmt(total)} ₽")
-                    print(f"[patch] fixed: {name} {qty_display} {unit_from_json} × {price} = {total}")
+                    print(f"[patch] llm fallback: {name} {qty_display} {unit_from_json} × {price} = {total}")
                     continue
                 except Exception:
                     pass
@@ -1134,9 +1216,9 @@ def handler(event, context):
         except Exception as e:
             print(f"[items] 2nd call error: {e}")
 
-    # ─── ПАТЧ ТЕКСТА: заменяем строки без цены используя данные из JSON ──────
-    if llm_items_json and llm_items_json.get('items'):
-        answer = _patch_answer_with_prices(answer, llm_items_json['items'])
+    # ─── ПАТЧ ТЕКСТА: цены из БД приоритетнее JSON LLM ───────────────────────
+    llm_items_list = llm_items_json.get('items', []) if llm_items_json else []
+    answer = _patch_answer_with_prices(answer, llm_items_list, _rules_for_suggestions)
 
     # ─── НАДБАВКИ: позиции с unit='%' пересчитываем от суммы монтажа ─────────
     answer = _apply_surcharges(answer, _rules_for_suggestions)

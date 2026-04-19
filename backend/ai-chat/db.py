@@ -94,8 +94,8 @@ def get_prices_block() -> str:
         for category, name, price, unit in rows:
             if category != current_cat:
                 current_cat = category
-                lines.append(f"\n{category.upper()} (за {unit}):")
-            lines.append(f"{name} — {price}")
+                lines.append(f"\n{category.upper()}:")
+            lines.append(f"{name} — {price} ₽/{unit}")
         return '\n'.join(lines)
     except Exception as e:
         print(f"[prices] error: {e}")
