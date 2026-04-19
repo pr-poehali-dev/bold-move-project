@@ -43,6 +43,16 @@ export default function TabRules({ token, hint }: Props) {
   const [newRule, setNewRule] = useState({ label: "", description: "", placeholder: "" });
   const [addingRuleSaving, setAddingRuleSaving] = useState(false);
   const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null);
+  const [editingLabelId, setEditingLabelId] = useState<number | null>(null);
+  const [editingLabelVal, setEditingLabelVal] = useState("");
+
+  const saveLabel = async (rt: RuleType) => {
+    const val = editingLabelVal.trim();
+    if (!val || val === rt.label) { setEditingLabelId(null); return; }
+    await apiFetch("rule-types", { method: "PUT", body: JSON.stringify({ label: val, description: rt.description, placeholder: rt.placeholder, active: rt.active }) }, token, rt.id);
+    setRuleTypes(prev => prev.map(r => r.id === rt.id ? { ...r, label: val } : r));
+    setEditingLabelId(null);
+  };
 
   const loadRuleTypes = useCallback(async () => {
     const r = await apiFetch("rule-types");
@@ -194,21 +204,42 @@ export default function TabRules({ token, hint }: Props) {
               <span className="text-white/30 text-xs">Позиция</span>
               <span className="text-white/30 text-xs">Добавляется если...</span>
               {activeRuleTypes.map(rt => (
-                <div key={rt.id} className="flex items-center gap-2 group/col">
-                  <span className="text-white/30 text-xs" title={rt.description}>{rt.label}</span>
-                  {confirmDeleteId === rt.id ? (
-                    <div className="flex items-center gap-1 flex-shrink-0">
-                      <span className="text-red-400 text-[10px]">Удалить?</span>
-                      <button onClick={() => deleteRuleType(rt.id)}
-                        className="text-red-400 hover:text-red-300 text-[10px] px-1.5 py-0.5 bg-red-500/20 rounded transition">Да</button>
-                      <button onClick={() => setConfirmDeleteId(null)}
-                        className="text-white/40 hover:text-white/70 text-[10px] px-1.5 py-0.5 bg-white/5 rounded transition">Нет</button>
-                    </div>
+                <div key={rt.id} className="flex items-center gap-1.5 group/col min-w-0">
+                  {editingLabelId === rt.id ? (
+                    <input
+                      autoFocus
+                      value={editingLabelVal}
+                      onChange={e => setEditingLabelVal(e.target.value)}
+                      onBlur={() => saveLabel(rt)}
+                      onKeyDown={e => {
+                        if (e.key === "Enter") saveLabel(rt);
+                        if (e.key === "Escape") setEditingLabelId(null);
+                      }}
+                      className="text-white text-xs bg-violet-500/10 border border-violet-500/40 rounded px-2 py-0.5 outline-none w-full"
+                    />
                   ) : (
-                    <button onClick={() => setConfirmDeleteId(rt.id)}
-                      className="opacity-0 group-hover/col:opacity-100 transition text-white/25 hover:text-red-400 flex-shrink-0">
-                      <Icon name="X" size={11} />
-                    </button>
+                    <>
+                      <span className="text-white/30 text-xs truncate" title={rt.description}>{rt.label}</span>
+                      <button
+                        onClick={() => { setEditingLabelId(rt.id); setEditingLabelVal(rt.label); }}
+                        className="opacity-0 group-hover/col:opacity-60 hover:!opacity-100 transition text-white/40 hover:text-violet-400 flex-shrink-0">
+                        <Icon name="Pencil" size={10} />
+                      </button>
+                      {confirmDeleteId === rt.id ? (
+                        <div className="flex items-center gap-1 flex-shrink-0">
+                          <span className="text-red-400 text-[10px]">Удалить?</span>
+                          <button onClick={() => deleteRuleType(rt.id)}
+                            className="text-red-400 hover:text-red-300 text-[10px] px-1.5 py-0.5 bg-red-500/20 rounded transition">Да</button>
+                          <button onClick={() => setConfirmDeleteId(null)}
+                            className="text-white/40 hover:text-white/70 text-[10px] px-1.5 py-0.5 bg-white/5 rounded transition">Нет</button>
+                        </div>
+                      ) : (
+                        <button onClick={() => setConfirmDeleteId(rt.id)}
+                          className="opacity-0 group-hover/col:opacity-100 transition text-white/25 hover:text-red-400 flex-shrink-0">
+                          <Icon name="X" size={11} />
+                        </button>
+                      )}
+                    </>
                   )}
                 </div>
               ))}
