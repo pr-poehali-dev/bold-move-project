@@ -185,7 +185,7 @@ export default function CorrectionCard({
                 return (
                   <div
                     key={w}
-                    className="relative group/tag flex items-center"
+                    className="group/tag flex items-center"
                     draggable
                     onDragStart={() => { dragWord.current = w; }}
                     onDragEnter={() => setDragOverWord(w)}
@@ -198,16 +198,17 @@ export default function CorrectionCard({
                     }}
                     onDragEnd={() => { dragWord.current = null; setDragOverWord(null); }}
                   >
+                    {/* Тег */}
                     <button
                       onClick={() => handleTagClick(w)}
-                      className={`text-xs px-2.5 py-1 rounded-full border transition flex items-center gap-1.5 cursor-grab active:cursor-grabbing ${
+                      className={`text-xs px-2.5 py-1 rounded-l-full border-y border-l transition flex items-center gap-1.5 cursor-grab active:cursor-grabbing ${
                         isDragOver
                           ? "bg-amber-500/20 border-amber-500/50 text-amber-300 scale-105"
                           : isSelected
                           ? "bg-violet-600/30 border-violet-500/50 text-violet-300"
                           : isGreen
-                          ? "bg-green-500/10 border-green-500/30 text-green-300 hover:bg-green-500/20"
-                          : "bg-red-500/10 border-red-500/30 text-red-300 hover:bg-red-500/20"
+                          ? "bg-green-500/10 border-green-500/30 text-green-300"
+                          : "bg-red-500/10 border-red-500/30 text-red-300"
                       }`}>
                       {isSelected ? <Icon name="CheckSquare" size={10} />
                         : isGreen ? <Icon name="Check" size={10} />
@@ -215,26 +216,24 @@ export default function CorrectionCard({
                       «{w}»
                     </button>
 
-                    {/* Контекстное меню при наведении */}
-                    <div className="absolute left-0 top-full mt-1 z-20 hidden group-hover/tag:flex flex-col bg-[#1a1a2e] border border-white/15 rounded-lg shadow-xl overflow-hidden min-w-[160px]">
+                    {/* Кнопки действий — показываются при наведении */}
+                    <div className={`flex items-center overflow-hidden max-w-0 group-hover/tag:max-w-[64px] transition-all duration-150 rounded-r-full border-y border-r ${
+                      isGreen ? "border-green-500/30 bg-green-500/10"
+                      : "border-red-500/30 bg-red-500/10"
+                    }`}>
                       <button
-                        onClick={() => handleIgnore(w)}
-                        className="flex items-center gap-2 px-3 py-2 text-xs text-white/70 hover:bg-white/10 hover:text-white transition text-left">
-                        <Icon name="EyeOff" size={12} className="text-white/40 flex-shrink-0" />
-                        <div>
-                          <div className="font-medium">Игнорировать</div>
-                          <div className="text-white/30 text-[10px]">убрать тег, добавить снова можно</div>
-                        </div>
+                        onClick={e => { e.stopPropagation(); handleIgnore(w); }}
+                        title="Удалить тег — ошибочно добавлен"
+                        className="flex items-center gap-1 px-2 py-1 text-white/40 hover:text-white/80 hover:bg-white/10 transition h-full text-[10px] whitespace-nowrap border-r border-white/10">
+                        <Icon name="X" size={10} />
+                        <span>удалить</span>
                       </button>
-                      <div className="border-t border-white/10" />
                       <button
-                        onClick={() => handleStopWord(w)}
-                        className="flex items-center gap-2 px-3 py-2 text-xs text-white/70 hover:bg-white/10 hover:text-white transition text-left">
-                        <Icon name="Ban" size={12} className="text-red-400/60 flex-shrink-0" />
-                        <div>
-                          <div className="font-medium">Стоп-слово</div>
-                          <div className="text-white/30 text-[10px]">больше никогда не выделять</div>
-                        </div>
+                        onClick={e => { e.stopPropagation(); handleStopWord(w); }}
+                        title="Игнорировать — слово не нужно боту, больше не выделять"
+                        className="flex items-center gap-1 px-2 py-1 text-white/40 hover:text-red-300 hover:bg-red-500/10 transition h-full text-[10px] whitespace-nowrap">
+                        <Icon name="Ban" size={10} />
+                        <span>игнор</span>
                       </button>
                     </div>
                   </div>
