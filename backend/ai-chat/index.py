@@ -976,6 +976,62 @@ def _apply_surcharges(answer: str, rules: list) -> str:
     return '\n'.join(result_lines)
 
 
+def _recalc_totals(answer: str) -> str:
+    """Пересчитывает итоговую стоимость из актуальных строк сметы.
+    Заменяет блок Econom/Standard/Premium на правильные значения.
+    """
+    def fmt(n: int) -> str:
+        return f"{n:,}".replace(',', ' ')
+
+    # Паттерн строки позиции: Название N ед × P ₽ = T ₽
+    item_pat = re.compile(
+        r'^\s*.+?\s+[\d.,]+\s*\S*\s*[×xх]\s*[\d\s]+\s*₽\s*=\s*([\d\s]+)\s*₽',
+        re.IGNORECASE
+    )
+    # Паттерн строки итога: Econom/Standard/Premium: X ₽
+    total_pat = re.compile(
+        r'^(Econom|Standard|Premium)\s*:\s*[\d\s]+\s*₽',
+        re.IGNORECASE
+    )
+
+    lines = answer.split('\n')
+
+    # Суммируем все позиции кроме строк Econom/Standard/Premium
+    standard = 0
+    for line in lines:
+        if total_pat.match(line.strip()):
+            continue
+        m = item_pat.match(line)
+        if m:
+            try:
+                standard += int(re.sub(r'\s', '', m.group(1)))
+            except Exception:
+                pass
+
+    if standard == 0:
+        return answer
+
+    econom = round(standard * 0.77 / 100) * 100
+    premium = round(standard * 1.27 / 100) * 100
+    standard_rounded = round(standard / 100) * 100
+
+    # Заменяем строки итогов
+    result_lines = []
+    for line in lines:
+        stripped = line.strip()
+        if re.match(r'^Econom\s*:', stripped, re.IGNORECASE):
+            result_lines.append(f"Econom:   {fmt(econom)} ₽")
+        elif re.match(r'^Standard\s*:', stripped, re.IGNORECASE):
+            result_lines.append(f"Standard: {fmt(standard_rounded)} ₽")
+        elif re.match(r'^Premium\s*:', stripped, re.IGNORECASE):
+            result_lines.append(f"Premium:  {fmt(premium)} ₽")
+        else:
+            result_lines.append(line)
+
+    print(f"[totals] recalc: econom={econom} standard={standard_rounded} premium={premium}")
+    return '\n'.join(result_lines)
+
+
 def get_cached_answer(text: str, session_id: str = '') -> tuple[str, dict] | str | None:
     """Проверяет кэш и простой расчёт. Возвращает (ответ, recognized) или строку или None."""
     text_lower = text.lower().strip()
@@ -1234,6 +1290,9 @@ def handler(event, context):
 
     # ─── НАДБАВКИ: позиции с unit='%' пересчитываем от суммы монтажа ─────────
     answer = _apply_surcharges(answer, _rules_for_suggestions)
+
+    # ─── ПЕРЕСЧЁТ ИТОГОВ: Econom/Standard/Premium из реальных строк ──────────
+    answer = _recalc_totals(answer)
 
     try:
         if llm_items_json and llm_items_json.get('items'):
