@@ -31,7 +31,8 @@ function parseBundleIds(bundle: string): number[] {
 }
 
 export default function TabRules({ token, hint }: Props) {
-  const { prices, loading, byCategory, saveField } = usePriceList(token);
+  const { prices, loading, byCategory, saveField, deleteItem } = usePriceList(token);
+  const [confirmDeleteItemId, setConfirmDeleteItemId] = useState<number | null>(null);
   const [ruleTypes, setRuleTypes] = useState<RuleType[]>([]);
   const [ruleValues, setRuleValues] = useState<Record<number, Record<number, string>>>({});
   const [expandedId, setExpandedId] = useState<number | null>(null);
@@ -228,7 +229,10 @@ export default function TabRules({ token, hint }: Props) {
                     `}
                     style={{ gridTemplateColumns: `1fr repeat(${activeRuleTypes.length}, 1fr) 32px` }}
                   >
-                    <span className="text-white/80 text-xs font-medium truncate">{item.name}</span>
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <Icon name={isExpanded ? "ChevronUp" : "ChevronDown"} size={12} className="text-white/20 flex-shrink-0" />
+                      <span className="text-white/80 text-xs font-medium truncate">{item.name}</span>
+                    </div>
                     {activeRuleTypes.map(rt => {
                       let val = "";
                       if (rt.name === "calc_rule") val = item.calc_rule || "";
@@ -249,7 +253,21 @@ export default function TabRules({ token, hint }: Props) {
                         </span>
                       );
                     })}
-                    <Icon name={isExpanded ? "ChevronUp" : "ChevronDown"} size={14} className="text-white/25 justify-self-end" />
+                    <div className="flex items-center gap-1 justify-self-end" onClick={e => e.stopPropagation()}>
+                      {confirmDeleteItemId === item.id ? (
+                        <>
+                          <button onClick={() => { deleteItem(item.id); setConfirmDeleteItemId(null); }}
+                            className="text-red-400 hover:text-red-300 text-[10px] px-1.5 py-0.5 bg-red-500/20 rounded transition">Да</button>
+                          <button onClick={() => setConfirmDeleteItemId(null)}
+                            className="text-white/40 hover:text-white/70 text-[10px] px-1.5 py-0.5 bg-white/5 rounded transition">Нет</button>
+                        </>
+                      ) : (
+                        <button onClick={() => setConfirmDeleteItemId(item.id)}
+                          className="text-white/15 hover:text-red-400 transition p-1">
+                          <Icon name="X" size={13} />
+                        </button>
+                      )}
+                    </div>
                   </div>
 
                   {/* Раскрытый редактор */}
