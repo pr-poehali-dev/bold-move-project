@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import Icon from "@/components/ui/icon";
 import EditableCell from "./EditableCell";
 import { usePriceList } from "./usePriceList";
@@ -13,6 +13,22 @@ interface Props { token: string; onItemAdded?: (name: string) => void; }
 
 export default function TabPrices({ token, onItemAdded }: Props) {
   const { prices, loading, aiLoadingId, byCategory, saveField, toggleActive, deleteItem, renameCategory, generateSynonyms, moveItem, load } = usePriceList(token);
+  const dragItem = useRef<PriceItem | null>(null);
+  const dragOver = useRef<PriceItem | null>(null);
+  const [dragOverId, setDragOverId] = useState<number | null>(null);
+
+  const handleDragStart = (item: PriceItem) => { dragItem.current = item; };
+  const handleDragEnter = (item: PriceItem) => { dragOver.current = item; setDragOverId(item.id); };
+  const handleDragEnd = async () => {
+    setDragOverId(null);
+    if (!dragItem.current || !dragOver.current) return;
+    if (dragItem.current.id === dragOver.current.id) return;
+    if (dragItem.current.category !== dragOver.current.category) return;
+    await moveItem(dragItem.current, dragOver.current);
+    dragItem.current = null;
+    dragOver.current = null;
+  };
+
   const [addingInCat, setAddingInCat] = useState<string | null>(null);
   const [newItem, setNewItem] = useState(EMPTY_NEW);
   const [addingCat, setAddingCat] = useState(false);
@@ -83,36 +99,41 @@ export default function TabPrices({ token, onItemAdded }: Props) {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-white/10">
-                  <th className="px-2 py-2.5 w-8" />
+                  <th className="px-2 py-2.5 w-6" />
                   <th className="text-left text-white/30 font-normal px-4 py-2.5 w-[32%]">Название</th>
                   <th className="text-right text-white/30 font-normal px-4 py-2.5 w-[9%]">Цена ₽</th>
                   <th className="text-left text-white/30 font-normal px-4 py-2.5 w-[7%]">Ед.</th>
                   <th className="text-left text-white/30 font-normal px-4 py-2.5 w-[20%]">Описание (как AI понимает)</th>
                   <th className="text-left text-white/30 font-normal px-4 py-2.5">Синонимы (через запятую)</th>
-                  <th className="px-3 py-2.5 w-12" />
+                  <th className="px-3 py-2.5 w-8" />
                 </tr>
               </thead>
               <tbody>
                 {items.map((item, idx) => (
-                  <tr key={item.id}
-                    className={`border-b border-white/5 last:border-0 ${!item.active ? "opacity-40" : ""} ${idx % 2 ? "bg-white/[0.01]" : ""}`}>
-                    <td className="px-2 py-2.5 w-8">
-                      <div className="flex flex-col items-center gap-0.5">
-                        <button onClick={() => moveItem(item, "up")} disabled={idx === 0}
-                          className="text-white/15 hover:text-white/50 disabled:opacity-0 transition"
-                          title="Переместить выше">
-                          <Icon name="ChevronUp" size={13} />
-                        </button>
-                        <Icon name="GripVertical" size={13} className="text-white/15" />
-                        <button onClick={() => moveItem(item, "down")} disabled={idx === items.length - 1}
-                          className="text-white/15 hover:text-white/50 disabled:opacity-0 transition"
-                          title="Переместить ниже">
-                          <Icon name="ChevronDown" size={13} />
-                        </button>
-                      </div>
+                  <tr
+                    key={item.id}
+                    draggable
+                    onDragStart={() => handleDragStart(item)}
+                    onDragEnter={() => handleDragEnter(item)}
+                    onDragEnd={handleDragEnd}
+                    onDragOver={e => e.preventDefault()}
+                    className={`border-b border-white/5 last:border-0 transition-colors cursor-grab active:cursor-grabbing
+                      ${!item.active ? "opacity-40" : ""}
+                      ${idx % 2 ? "bg-white/[0.01]" : ""}
+                      ${dragOverId === item.id ? "bg-violet-500/10 border-violet-500/30" : ""}
+                    `}>
+                    {/* Drag handle */}
+                    <td className="px-2 py-2.5 w-6">
+                      <Icon name="GripVertical" size={14} className="text-white/15 hover:text-white/40 transition mx-auto" />
                     </td>
+                    {/* Название + кружок активности */}
                     <td className="px-4 py-2.5 text-white">
-                      <EditableCell value={item.name} onSave={v => saveField(item, "name", v)} />
+                      <div className="flex items-center gap-2">
+                        <button onClick={e => { e.stopPropagation(); toggleActive(item); }}
+                          title={item.active ? "Отключить" : "Включить"}
+                          className={`w-3 h-3 rounded-full border flex-shrink-0 transition ${item.active ? "bg-green-400 border-green-400" : "border-white/20 hover:border-white/40"}`} />
+                        <EditableCell value={item.name} onSave={v => saveField(item, "name", v)} />
+                      </div>
                     </td>
                     <td className="px-4 py-2.5 text-right font-mono text-green-400">
                       <EditableCell value={item.price} type="number" onSave={v => saveField(item, "price", v)} className="text-right" />
@@ -124,7 +145,7 @@ export default function TabPrices({ token, onItemAdded }: Props) {
                       </select>
                     </td>
                     <td className="px-4 py-2.5 text-white/40 text-xs">
-                      <EditableCell value={item.description} onSave={v => saveField(item, "description", v)} />
+                      <EditableCell value={item.description} onSave={v => saveField(item, "description", v)} placeholder="Как AI понимает позицию..." />
                     </td>
                     <td className="px-4 py-2.5 text-amber-400/60 text-xs w-[180px] max-w-[180px]">
                       <div className="flex items-center gap-1 min-w-0">
@@ -141,15 +162,12 @@ export default function TabPrices({ token, onItemAdded }: Props) {
                         </button>
                       </div>
                     </td>
-                    <td className="px-3 py-2.5">
-                      <div className="flex items-center gap-1.5">
-                        <button onClick={() => toggleActive(item)} title={item.active ? "Отключить" : "Включить"}
-                          className={`w-4 h-4 rounded-full border transition flex-shrink-0 ${item.active ? "bg-green-400 border-green-400" : "border-white/20 hover:border-white/40"}`} />
-                        <button onClick={() => handleDeleteItem(item)} title="Удалить"
-                          className="text-white/20 hover:text-red-400 transition">
-                          <Icon name="X" size={13} />
-                        </button>
-                      </div>
+                    {/* Только удаление — активность теперь в колонке названия */}
+                    <td className="px-3 py-2.5 w-8">
+                      <button onClick={() => handleDeleteItem(item)} title="Удалить"
+                        className="text-white/20 hover:text-red-400 transition">
+                        <Icon name="X" size={13} />
+                      </button>
                     </td>
                   </tr>
                 ))}

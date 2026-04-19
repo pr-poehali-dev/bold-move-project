@@ -79,23 +79,18 @@ export function usePriceList(token: string) {
     }
   };
 
-  const moveItem = async (item: PriceItem, direction: "up" | "down") => {
-    const siblings = prices
-      .filter(p => p.category === item.category)
-      .sort((a, b) => a.sort_order - b.sort_order || a.id - b.id);
-    const idx = siblings.findIndex(p => p.id === item.id);
-    const swapIdx = direction === "up" ? idx - 1 : idx + 1;
-    if (swapIdx < 0 || swapIdx >= siblings.length) return;
-    const other = siblings[swapIdx];
-    const newOrderA = other.sort_order;
+  const moveItem = async (item: PriceItem, target: PriceItem) => {
+    if (item.id === target.id) return;
+    // Переставляем sort_order местами
+    const newOrderA = target.sort_order;
     const newOrderB = item.sort_order;
     await Promise.all([
       apiFetch("prices", { method: "PUT", body: JSON.stringify({ ...item, sort_order: newOrderA }) }, token, item.id),
-      apiFetch("prices", { method: "PUT", body: JSON.stringify({ ...other, sort_order: newOrderB }) }, token, other.id),
+      apiFetch("prices", { method: "PUT", body: JSON.stringify({ ...target, sort_order: newOrderB }) }, token, target.id),
     ]);
     setPrices(prev => prev.map(p => {
       if (p.id === item.id) return { ...p, sort_order: newOrderA };
-      if (p.id === other.id) return { ...p, sort_order: newOrderB };
+      if (p.id === target.id) return { ...p, sort_order: newOrderB };
       return p;
     }));
   };

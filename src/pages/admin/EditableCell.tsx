@@ -46,9 +46,9 @@ export default function EditableCell({ value, type = "text", onSave, className =
     <span
       onClick={() => setEditing(true)}
       title="Нажмите для редактирования"
-      className={`cursor-pointer hover:text-violet-300 transition-colors rounded px-1 -mx-1 ${saving ? "opacity-50" : ""} ${!value ? "text-white/20 italic" : ""} ${className}`}
+      className={`cursor-pointer hover:text-violet-300 transition-colors rounded px-1 -mx-1 min-h-[1.25rem] inline-block w-full ${saving ? "opacity-50" : ""} ${!value ? "text-white/20 italic" : ""} ${className}`}
     >
-      {saving ? "…" : value || placeholder}
+      {saving ? "…" : value || placeholder || <>&nbsp;</>}
     </span>
   );
 }
