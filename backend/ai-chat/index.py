@@ -809,68 +809,67 @@ def _patch_answer_with_prices(answer: str, items: list) -> str:
 
 
 def _apply_surcharges(answer: str, rules: list) -> str:
-    """Применяет надбавки с unit='%': заменяет их строки на правильную сумму от итога монтажа."""
-    # Позиции с % из прайса
-    pct_names = {r['name'].lower(): r['price'] for r in rules if r.get('unit') == '%'}
-    if not pct_names:
+    """Применяет надбавки с unit='%': заменяет их строки на правильную сумму от всего монтажа."""
+    pct_items = {r['name'].lower(): r['price'] for r in rules if r.get('unit') == '%'}
+    if not pct_items:
         return answer
 
     def fmt(n: int) -> str:
         return f"{n:,}".replace(',', ' ')
 
-    # Паттерн строки сметы: Название  N ед × P ₽ = T ₽
+    # Паттерн строки: Название N ед × P ₽ = T ₽  (или без единицы)
     line_pat = re.compile(
-        r'^(?P<indent>\s*)(?P<name>.+?)\s+(?P<qty>[\d.,]+)\s*(?P<unit>\S+)?\s*[×xх]\s*(?P<price>[\d\s]+)\s*₽\s*=\s*(?P<total>[\d\s]+)\s*₽',
+        r'^(?P<indent>[ \t]*)(?P<name>[^\d×xх]+?)\s+'
+        r'(?P<qty>[\d.,]+)\s*(?P<unit>[а-яёa-z%²\.]*)\s*'
+        r'[×xх]\s*(?P<price>[\d\s]+)\s*₽\s*=\s*(?P<total>[\d\s]+)\s*₽',
         re.IGNORECASE
     )
 
     lines = answer.split('\n')
 
-    # 1. Считаем сумму строк монтажа (блок "Услуги монтажа")
-    in_mounting = False
+    # 1. Считаем сумму позиций монтажа (строки содержащие слово "монтаж" в названии)
     mounting_total = 0
-    grand_total = 0
     for line in lines:
-        low = line.lower()
-        if 'услуги монтажа' in low or 'монтаж' in low and ':' in line:
-            in_mounting = True
         m = line_pat.match(line)
-        if m:
+        if not m:
+            continue
+        name_low = m.group('name').strip().lower()
+        # Пропускаем сами надбавки
+        if any(pct in name_low or name_low in pct for pct in pct_items):
+            continue
+        if 'монтаж' in name_low:
             try:
-                total_val = int(re.sub(r'\s', '', m.group('total')))
-                grand_total += total_val
-                name_low = m.group('name').strip().lower()
-                # Не считаем строки которые сами являются надбавками
-                if not any(pct in name_low or name_low in pct for pct in pct_names):
-                    if in_mounting:
-                        mounting_total += total_val
+                mounting_total += int(re.sub(r'\s', '', m.group('total')))
             except Exception:
                 pass
 
+    print(f"[surcharge] mounting_total={mounting_total}")
     if mounting_total == 0:
         return answer
 
-    # 2. Заменяем строки с % на правильные суммы
+    # 2. Заменяем строки надбавок на правильные суммы
     result_lines = []
     for line in lines:
         m = line_pat.match(line)
         if m:
             name_low = m.group('name').strip().lower()
-            matched_pct = None
-            for pct_name, pct_val in pct_names.items():
-                if pct_name in name_low or name_low in pct_name:
-                    matched_pct = pct_val
+            for pct_name, pct_val in pct_items.items():
+                # Нечёткое совпадение по ключевым словам
+                pct_words = set(re.findall(r'[а-яёa-z]+', pct_name))
+                name_words = set(re.findall(r'[а-яёa-z]+', name_low))
+                if pct_words & name_words:
+                    surcharge = round(mounting_total * pct_val / 100)
+                    indent = m.group('indent')
+                    name = m.group('name').strip()
+                    result_lines.append(
+                        f"{indent}{name}  {pct_val}% от монтажа × {fmt(mounting_total)} ₽ = {fmt(surcharge)} ₽"
+                    )
+                    print(f"[surcharge] {name}: {pct_val}% of {mounting_total} = {surcharge}")
                     break
-            if matched_pct is not None:
-                surcharge = round(mounting_total * matched_pct / 100)
-                indent = m.group('indent')
-                name = m.group('name').strip()
-                result_lines.append(
-                    f"{indent}{name}  {matched_pct}% от монтажа × {fmt(mounting_total)} ₽ = {fmt(surcharge)} ₽"
-                )
-                print(f"[surcharge] {name}: {matched_pct}% of {mounting_total} = {surcharge}")
-                continue
-        result_lines.append(line)
+            else:
+                result_lines.append(line)
+        else:
+            result_lines.append(line)
 
     return '\n'.join(result_lines)
 
