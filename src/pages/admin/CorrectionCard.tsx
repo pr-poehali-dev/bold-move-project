@@ -78,7 +78,7 @@ export default function CorrectionCard({
     const isSelected = selectedWords.includes(w);
     const next = isSelected ? selectedWords.filter(x => x !== w) : [...selectedWords, w];
     setSelectedWords(next);
-    if (next.length === 0) setPanelOpen(false);
+    setPanelOpen(next.length > 0);
   };
 
   const handleTagOpen = (w: string) => {
@@ -230,12 +230,12 @@ export default function CorrectionCard({
                     <button
                       onClick={e => { e.stopPropagation(); handleCheckbox(w); }}
                       title="Выбрать тег"
-                      className={`w-4 h-4 rounded flex items-center justify-center border transition flex-shrink-0 ${
+                      className={`w-3.5 h-3.5 rounded-sm flex items-center justify-center border transition flex-shrink-0 ${
                         isSelected
-                          ? "bg-violet-600 border-violet-500"
-                          : "border-white/25 hover:border-violet-400 bg-transparent"
+                          ? "bg-violet-600 border-violet-400"
+                          : "border-white/20 hover:border-violet-400/60 bg-white/5"
                       }`}>
-                      {isSelected && <Icon name="Check" size={10} className="text-white" />}
+                      {isSelected && <Icon name="Check" size={9} className="text-white" />}
                     </button>
 
                     {/* Тег */}
