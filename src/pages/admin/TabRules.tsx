@@ -240,24 +240,28 @@ export default function TabRules({ token, hint }: Props) {
                   ) : (
                     <>
                       <span className="text-white/30 text-xs truncate" title={rt.description}>{rt.label}</span>
-                      <button
-                        onClick={() => { setEditingLabelId(rt.id); setEditingLabelVal(rt.label); }}
-                        className="opacity-0 group-hover/col:opacity-60 hover:!opacity-100 transition text-white/40 hover:text-violet-400 flex-shrink-0">
-                        <Icon name="Pencil" size={10} />
-                      </button>
-                      {confirmDeleteId === rt.id ? (
-                        <div className="flex items-center gap-1 flex-shrink-0">
-                          <span className="text-red-400 text-[10px]">Удалить?</span>
-                          <button onClick={() => deleteRuleType(rt.id)}
-                            className="text-red-400 hover:text-red-300 text-[10px] px-1.5 py-0.5 bg-red-500/20 rounded transition">Да</button>
-                          <button onClick={() => setConfirmDeleteId(null)}
-                            className="text-white/40 hover:text-white/70 text-[10px] px-1.5 py-0.5 bg-white/5 rounded transition">Нет</button>
-                        </div>
-                      ) : (
-                        <button onClick={() => setConfirmDeleteId(rt.id)}
-                          className="opacity-0 group-hover/col:opacity-100 transition text-white/25 hover:text-red-400 flex-shrink-0">
-                          <Icon name="X" size={11} />
-                        </button>
+                      {rt.name !== "calc_rule" && rt.name !== "bundle" && (
+                        <>
+                          <button
+                            onClick={() => { setEditingLabelId(rt.id); setEditingLabelVal(rt.label); }}
+                            className="opacity-0 group-hover/col:opacity-60 hover:!opacity-100 transition text-white/40 hover:text-violet-400 flex-shrink-0">
+                            <Icon name="Pencil" size={10} />
+                          </button>
+                          {confirmDeleteId === rt.id ? (
+                            <div className="flex items-center gap-1 flex-shrink-0">
+                              <span className="text-red-400 text-[10px]">Удалить?</span>
+                              <button onClick={() => deleteRuleType(rt.id)}
+                                className="text-red-400 hover:text-red-300 text-[10px] px-1.5 py-0.5 bg-red-500/20 rounded transition">Да</button>
+                              <button onClick={() => setConfirmDeleteId(null)}
+                                className="text-white/40 hover:text-white/70 text-[10px] px-1.5 py-0.5 bg-white/5 rounded transition">Нет</button>
+                            </div>
+                          ) : (
+                            <button onClick={() => setConfirmDeleteId(rt.id)}
+                              className="opacity-0 group-hover/col:opacity-100 transition text-white/25 hover:text-red-400 flex-shrink-0">
+                              <Icon name="X" size={11} />
+                            </button>
+                          )}
+                        </>
                       )}
                     </>
                   )}

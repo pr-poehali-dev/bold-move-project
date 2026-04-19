@@ -1,0 +1,2 @@
+UPDATE t_p45929761_bold_move_project.ai_rule_types SET label = 'Логика расчёта' WHERE name = 'calc_rule';
+UPDATE t_p45929761_bold_move_project.ai_rule_types SET label = 'Вместе добавить' WHERE name = 'bundle';
