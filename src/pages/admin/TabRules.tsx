@@ -94,7 +94,7 @@ export default function TabRules({ token, hint }: Props) {
     const d = drafts[item.id];
     if (!d) return;
     setSaving(item.id);
-    const bundleVal = d.bundleIds.length > 0 ? JSON.stringify(d.bundleIds) : d.bundle;
+    const bundleVal = JSON.stringify(d.bundleIds);
     const updated = { ...item, calc_rule: d.calc_rule, when_condition: d.when_condition || "", when_not_condition: d.when_not_condition || "" };
     await saveField(item, "calc_rule", d.calc_rule);
     await saveField(updated, "when_condition", d.when_condition || "");
