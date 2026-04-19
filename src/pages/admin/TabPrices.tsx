@@ -1,6 +1,7 @@
 import { useState, useRef } from "react";
 import Icon from "@/components/ui/icon";
 import EditableCell from "./EditableCell";
+import TruncatedCell from "./TruncatedCell";
 import { usePriceList } from "./usePriceList";
 import { apiFetch } from "./api";
 import { PRICE_UNITS } from "./constants";
@@ -147,7 +148,7 @@ export default function TabPrices({ token, onItemAdded }: Props) {
                     <td className="px-4 py-2.5 text-white/40 text-xs">
                       <div className="flex items-center gap-1 min-w-0">
                         <div className="flex-1 min-w-0">
-                          <EditableCell value={item.description} onSave={v => saveField(item, "description", v)} placeholder="Как AI понимает позицию..." />
+                          <TruncatedCell value={item.description} onSave={v => saveField(item, "description", v)} placeholder="Как AI понимает позицию..." maxChars={28} />
                         </div>
                         <button onClick={() => generateDescription(item)} disabled={aiDescLoadingId === item.id}
                           title="Сгенерировать описание через AI"
@@ -162,7 +163,7 @@ export default function TabPrices({ token, onItemAdded }: Props) {
                     <td className="px-4 py-2.5 text-amber-400/60 text-xs w-[180px] max-w-[180px]">
                       <div className="flex items-center gap-1 min-w-0">
                         <div className="flex-1 min-w-0 overflow-hidden">
-                          <EditableCell value={item.synonyms || ""} onSave={v => saveField(item, "synonyms", v)} placeholder="карниз, гардина..." className="truncate block w-full" />
+                          <TruncatedCell value={item.synonyms || ""} onSave={v => saveField(item, "synonyms", v)} placeholder="карниз, гардина..." maxChars={25} />
                         </div>
                         <button onClick={() => generateSynonyms(item)} disabled={aiLoadingId === item.id}
                           title="Сгенерировать синонимы через AI"
