@@ -1,9 +1,8 @@
 import { useState, useCallback, useEffect } from "react";
 import Icon from "@/components/ui/icon";
-import EditableCell from "./EditableCell";
+import BundleSelector from "./BundleSelector";
 import { apiFetch } from "./api";
 import { usePriceList } from "./usePriceList";
-import { EMPTY_BUNDLE } from "./constants";
 import type { PriceItem } from "./types";
 
 interface RuleItem extends PriceItem {
@@ -23,7 +22,6 @@ interface RuleType {
 
 interface Props { token: string; hint?: string | null; }
 
-
 function parseBundleIds(bundle: string): number[] {
   try {
     const parsed = JSON.parse(bundle);
@@ -32,31 +30,18 @@ function parseBundleIds(bundle: string): number[] {
   return [];
 }
 
-function BundleCell({ item, prices, onSave }: { item: RuleItem; prices: PriceItem[]; onSave: (v: string) => void }) {
-  const ids = parseBundleIds(item.bundle);
-  if (ids.length > 0) {
-    const idToName = Object.fromEntries(prices.map(p => [p.id, p.name]));
-    const names = ids.map(id => idToName[id]).filter(Boolean);
-    return (
-      <div className="flex flex-wrap gap-1">
-        {names.map(n => (
-          <span key={n} className="inline-flex items-center gap-1 text-[10px] bg-violet-500/10 border border-violet-500/20 text-violet-300 px-2 py-0.5 rounded-full">
-            <Icon name="Package" size={9} />{n}
-          </span>
-        ))}
-      </div>
-    );
-  }
-  return <EditableCell value={item.bundle === EMPTY_BUNDLE ? "" : (item.bundle || "")} onSave={onSave} placeholder="Например: добавить Лампа GX53" />;
-}
-
 export default function TabRules({ token, hint }: Props) {
   const { prices, loading, byCategory, saveField } = usePriceList(token);
   const [ruleTypes, setRuleTypes] = useState<RuleType[]>([]);
   const [ruleValues, setRuleValues] = useState<Record<number, Record<number, string>>>({});
+  const [expandedId, setExpandedId] = useState<number | null>(null);
+  const [drafts, setDrafts] = useState<Record<number, { calc_rule: string; bundle: string; custom: Record<string, string>; bundleIds: number[]; bundleSearch: string; bundleOpen: boolean }>>({});
+  const [saving, setSaving] = useState<number | null>(null);
+
   const [addingRule, setAddingRule] = useState(false);
   const [newRule, setNewRule] = useState({ label: "", description: "", placeholder: "" });
-  const [saving, setSaving] = useState(false);
+  const [addingRuleSaving, setAddingRuleSaving] = useState(false);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null);
 
   const loadRuleTypes = useCallback(async () => {
     const r = await apiFetch("rule-types");
@@ -66,7 +51,7 @@ export default function TabRules({ token, hint }: Props) {
   useEffect(() => { loadRuleTypes(); }, [loadRuleTypes]);
 
   const loadValuesForPrice = async (priceId: number) => {
-    if (ruleValues[priceId]) return;
+    if (ruleValues[priceId] !== undefined) return;
     const r = await apiFetch("rule-values", {}, token, priceId);
     if (r.ok) {
       const d = await r.json();
@@ -74,30 +59,60 @@ export default function TabRules({ token, hint }: Props) {
     }
   };
 
-  const saveBuiltin = async (item: RuleItem, field: "calc_rule" | "bundle", val: string) => {
-    await saveField(item, field, val);
+  const openRow = async (item: RuleItem) => {
+    if (expandedId === item.id) { setExpandedId(null); return; }
+    await loadValuesForPrice(item.id);
+    setExpandedId(item.id);
+    setDrafts(prev => ({
+      ...prev,
+      [item.id]: {
+        calc_rule: item.calc_rule || "",
+        bundle: item.bundle || "",
+        bundleIds: parseBundleIds(item.bundle || ""),
+        bundleSearch: "",
+        bundleOpen: false,
+        custom: ruleValues[item.id] ? { ...ruleValues[item.id] } : {},
+      },
+    }));
   };
 
-  const saveCustomValue = async (priceId: number, ruleTypeId: number, value: string) => {
-    await apiFetch("rule-values", {
-      method: "POST",
-      body: JSON.stringify({ price_id: priceId, rule_type_id: ruleTypeId, value }),
-    }, token);
+  const getDraft = (id: number) => drafts[id];
+
+  const patchDraft = (id: number, patch: Partial<typeof drafts[number]>) => {
+    setDrafts(prev => ({ ...prev, [id]: { ...prev[id], ...patch } }));
+  };
+
+  const saveRow = async (item: RuleItem) => {
+    const d = getDraft(item.id);
+    if (!d) return;
+    setSaving(item.id);
+
+    const bundleVal = d.bundleIds.length > 0 ? JSON.stringify(d.bundleIds) : d.bundle;
+    await saveField(item, "calc_rule", d.calc_rule);
+    await saveField({ ...item, calc_rule: d.calc_rule }, "bundle", bundleVal);
+
+    for (const [rtIdStr, value] of Object.entries(d.custom)) {
+      await apiFetch("rule-values", {
+        method: "POST",
+        body: JSON.stringify({ price_id: item.id, rule_type_id: parseInt(rtIdStr), value }),
+      }, token);
+    }
     setRuleValues(prev => ({
       ...prev,
-      [priceId]: { ...(prev[priceId] ?? {}), [ruleTypeId]: value },
+      [item.id]: { ...(prev[item.id] ?? {}), ...Object.fromEntries(Object.entries(d.custom).map(([k, v]) => [k, v])) },
     }));
+
+    setSaving(null);
+    setExpandedId(null);
   };
 
   const addRuleType = async () => {
     if (!newRule.label.trim()) return;
-    setSaving(true);
+    setAddingRuleSaving(true);
     const r = await apiFetch("rule-types", { method: "POST", body: JSON.stringify(newRule) }, token);
     if (r.ok) { await loadRuleTypes(); setAddingRule(false); setNewRule({ label: "", description: "", placeholder: "" }); }
-    setSaving(false);
+    setAddingRuleSaving(false);
   };
-
-  const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null);
 
   const deleteRuleType = async (id: number) => {
     await apiFetch("rule-types", { method: "DELETE" }, token, id);
@@ -109,12 +124,14 @@ export default function TabRules({ token, hint }: Props) {
     Object.entries(byCategory).map(([cat, items]) => [cat, items as RuleItem[]])
   );
 
+  const activeRuleTypes = ruleTypes.filter(rt => rt.active);
+
   if (loading) return <p className="text-white/30 text-sm">Загрузка...</p>;
 
   return (
     <div className="flex flex-col gap-6">
       <div className="flex items-start justify-between gap-4">
-        <p className="text-white/50 text-sm">Нажмите на ячейку — редактируется мгновенно. Пишите инструкцию для AI в свободной форме.</p>
+        <p className="text-white/50 text-sm">Нажмите на строку — откроется редактор правил для этой позиции.</p>
         <button onClick={() => setAddingRule(true)}
           className="flex items-center gap-2 px-3 py-1.5 bg-violet-600/20 hover:bg-violet-600/30 border border-violet-500/30 text-violet-300 text-xs rounded-lg transition flex-shrink-0">
           <Icon name="Plus" size={13} />
@@ -122,7 +139,6 @@ export default function TabRules({ token, hint }: Props) {
         </button>
       </div>
 
-      {/* Форма добавления нового правила */}
       {addingRule && (
         <div className="bg-white/[0.03] border border-violet-500/30 rounded-xl p-4 flex flex-col gap-3">
           <h3 className="text-violet-300 text-sm font-semibold flex items-center gap-2">
@@ -145,9 +161,9 @@ export default function TabRules({ token, hint }: Props) {
             </div>
           </div>
           <div className="flex gap-2">
-            <button onClick={addRuleType} disabled={saving || !newRule.label.trim()}
+            <button onClick={addRuleType} disabled={addingRuleSaving || !newRule.label.trim()}
               className="bg-violet-600 hover:bg-violet-700 disabled:opacity-40 text-white text-sm px-4 py-1.5 rounded-lg transition flex items-center gap-1.5">
-              {saving ? <Icon name="Loader" size={13} className="animate-spin" /> : <Icon name="Check" size={13} />}
+              {addingRuleSaving ? <Icon name="Loader" size={13} className="animate-spin" /> : <Icon name="Check" size={13} />}
               Создать правило
             </button>
             <button onClick={() => setAddingRule(false)} className="text-white/40 hover:text-white/70 text-sm transition px-3 py-1.5">Отмена</button>
@@ -168,65 +184,145 @@ export default function TabRules({ token, hint }: Props) {
       {Object.entries(rulesByCategory).map(([category, catItems]) => (
         <div key={category}>
           <h3 className="text-violet-300 text-xs font-semibold uppercase tracking-wider mb-2 px-1">{category}</h3>
-          <div className="bg-white/[0.03] border border-white/10 rounded-xl overflow-x-auto">
-            <table className="w-full text-sm table-fixed min-w-[600px]">
-              <colgroup>
-                <col style={{ width: "18%" }} />
-                {ruleTypes.filter(rt => rt.active).map((rt, i, arr) => (
-                  <col key={rt.id} style={{ width: `${Math.floor(82 / arr.length)}%` }} />
-                ))}
-              </colgroup>
-              <thead>
-                <tr className="border-b border-white/10">
-                  <th className="text-left text-white/30 font-normal px-4 py-2.5">Позиция</th>
-                  {ruleTypes.filter(rt => rt.active).map(rt => (
-                    <th key={rt.id} className="text-left text-white/30 font-normal px-4 py-2.5">
-                      <div className="flex items-center gap-2 group/col">
-                        <span title={rt.description} className="leading-tight">{rt.label}</span>
-                        {confirmDeleteId === rt.id ? (
-                          <div className="flex items-center gap-1 ml-1 flex-shrink-0">
-                            <span className="text-red-400 text-[10px]">Удалить?</span>
-                            <button onClick={() => deleteRuleType(rt.id)}
-                              className="text-red-400 hover:text-red-300 text-[10px] px-1.5 py-0.5 bg-red-500/20 rounded transition">Да</button>
-                            <button onClick={() => setConfirmDeleteId(null)}
-                              className="text-white/40 hover:text-white/70 text-[10px] px-1.5 py-0.5 bg-white/5 rounded transition">Нет</button>
-                          </div>
-                        ) : (
-                          <button onClick={() => setConfirmDeleteId(rt.id)}
-                            className="opacity-0 group-hover/col:opacity-100 transition text-white/25 hover:text-red-400 flex-shrink-0">
-                            <Icon name="X" size={11} />
-                          </button>
-                        )}
+          <div className="bg-white/[0.03] border border-white/10 rounded-xl overflow-hidden">
+            {/* Заголовок таблицы */}
+            <div className="grid border-b border-white/10 px-4 py-2.5"
+              style={{ gridTemplateColumns: `1fr repeat(${activeRuleTypes.length}, 1fr) 32px` }}>
+              <span className="text-white/30 text-xs">Позиция</span>
+              {activeRuleTypes.map(rt => (
+                <div key={rt.id} className="flex items-center gap-2 group/col">
+                  <span className="text-white/30 text-xs" title={rt.description}>{rt.label}</span>
+                  {confirmDeleteId === rt.id ? (
+                    <div className="flex items-center gap-1 flex-shrink-0">
+                      <span className="text-red-400 text-[10px]">Удалить?</span>
+                      <button onClick={() => deleteRuleType(rt.id)}
+                        className="text-red-400 hover:text-red-300 text-[10px] px-1.5 py-0.5 bg-red-500/20 rounded transition">Да</button>
+                      <button onClick={() => setConfirmDeleteId(null)}
+                        className="text-white/40 hover:text-white/70 text-[10px] px-1.5 py-0.5 bg-white/5 rounded transition">Нет</button>
+                    </div>
+                  ) : (
+                    <button onClick={() => setConfirmDeleteId(rt.id)}
+                      className="opacity-0 group-hover/col:opacity-100 transition text-white/25 hover:text-red-400 flex-shrink-0">
+                      <Icon name="X" size={11} />
+                    </button>
+                  )}
+                </div>
+              ))}
+              <span />
+            </div>
+
+            {/* Строки */}
+            {catItems.map((item, idx) => {
+              const isExpanded = expandedId === item.id;
+              const d = getDraft(item.id);
+              const isSaving = saving === item.id;
+
+              return (
+                <div key={item.id} className={`border-b border-white/5 last:border-0 ${!item.active ? "opacity-40" : ""}`}>
+                  {/* Строка-превью */}
+                  <div
+                    onClick={() => openRow(item)}
+                    className={`grid px-4 py-3 cursor-pointer transition items-center gap-2
+                      ${idx % 2 ? "bg-white/[0.01]" : ""}
+                      ${isExpanded ? "bg-violet-500/10 border-b border-violet-500/20" : "hover:bg-white/[0.04]"}
+                    `}
+                    style={{ gridTemplateColumns: `1fr repeat(${activeRuleTypes.length}, 1fr) 32px` }}
+                  >
+                    <span className="text-white/80 text-xs font-medium truncate">{item.name}</span>
+                    {activeRuleTypes.map(rt => {
+                      let val = "";
+                      if (rt.name === "calc_rule") val = item.calc_rule || "";
+                      else if (rt.name === "bundle") {
+                        const ids = parseBundleIds(item.bundle || "");
+                        if (ids.length > 0) {
+                          const idToName = Object.fromEntries(prices.map(p => [p.id, p.name]));
+                          val = ids.map(id => idToName[id]).filter(Boolean).join(", ");
+                        } else {
+                          val = item.bundle || "";
+                        }
+                      } else {
+                        val = ruleValues[item.id]?.[rt.id] ?? "";
+                      }
+                      return (
+                        <span key={rt.id} className={`text-xs truncate ${val ? "text-white/50" : "text-white/15 italic"}`}>
+                          {val || (rt.placeholder || "—")}
+                        </span>
+                      );
+                    })}
+                    <Icon name={isExpanded ? "ChevronUp" : "ChevronDown"} size={14} className="text-white/25 justify-self-end" />
+                  </div>
+
+                  {/* Раскрытый редактор */}
+                  {isExpanded && d && (
+                    <div className="bg-white/[0.02] border-b border-white/5 px-5 py-4 flex flex-col gap-4">
+                      <p className="text-white/40 text-xs">Редактирование правил для <span className="text-violet-300 font-medium">{item.name}</span></p>
+
+                      {/* Поля для каждого rule type */}
+                      <div className="flex flex-col gap-3">
+                        {activeRuleTypes.map(rt => {
+                          if (rt.name === "calc_rule") {
+                            return (
+                              <div key={rt.id} className="flex flex-col gap-1">
+                                <label className="text-white/40 text-xs">{rt.label}</label>
+                                <textarea
+                                  value={d.calc_rule}
+                                  onChange={e => patchDraft(item.id, { calc_rule: e.target.value })}
+                                  placeholder={rt.placeholder || "Например: area * 1.0"}
+                                  rows={3}
+                                  className="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-xs outline-none focus:border-violet-500 resize-none transition"
+                                />
+                              </div>
+                            );
+                          }
+                          if (rt.name === "bundle") {
+                            return (
+                              <div key={rt.id} className="flex flex-col gap-1">
+                                <label className="text-white/40 text-xs">{rt.label}</label>
+                                <BundleSelector
+                                  prices={prices}
+                                  selectedPriceId={item.id}
+                                  excludeId={item.id}
+                                  bundleIds={d.bundleIds}
+                                  bundleSearch={d.bundleSearch}
+                                  bundleOpen={d.bundleOpen}
+                                  onToggleOpen={() => patchDraft(item.id, { bundleOpen: !d.bundleOpen })}
+                                  onBundleSearchChange={v => patchDraft(item.id, { bundleSearch: v })}
+                                  onToggleItem={id => patchDraft(item.id, {
+                                    bundleIds: d.bundleIds.includes(id) ? d.bundleIds.filter(x => x !== id) : [...d.bundleIds, id]
+                                  })}
+                                  onRemoveItem={id => patchDraft(item.id, { bundleIds: d.bundleIds.filter(x => x !== id) })}
+                                />
+                              </div>
+                            );
+                          }
+                          return (
+                            <div key={rt.id} className="flex flex-col gap-1">
+                              <label className="text-white/40 text-xs">{rt.label}</label>
+                              <textarea
+                                value={d.custom[rt.id] ?? ""}
+                                onChange={e => patchDraft(item.id, { custom: { ...d.custom, [rt.id]: e.target.value } })}
+                                placeholder={rt.placeholder || "—"}
+                                rows={2}
+                                className="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-xs outline-none focus:border-violet-500 resize-none transition"
+                              />
+                            </div>
+                          );
+                        })}
                       </div>
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {catItems.map((item, idx) => (
-                  <tr key={item.id}
-                    onMouseEnter={() => loadValuesForPrice(item.id)}
-                    className={`border-b border-white/5 last:border-0 ${!item.active ? "opacity-40" : ""} ${idx % 2 ? "bg-white/[0.01]" : ""}`}>
-                    <td className="px-4 py-2.5 text-white/70 text-xs">{item.name}</td>
-                    {ruleTypes.filter(rt => rt.active).map(rt => (
-                      <td key={rt.id} className="px-4 py-2.5 text-white/50 text-xs">
-                        {rt.name === "calc_rule" ? (
-                          <EditableCell value={item.calc_rule || ""} onSave={v => saveBuiltin(item, "calc_rule", v)} placeholder={rt.placeholder || "—"} />
-                        ) : rt.name === "bundle" ? (
-                          <BundleCell item={item} prices={prices} onSave={v => saveBuiltin(item, "bundle", v)} />
-                        ) : (
-                          <EditableCell
-                            value={ruleValues[item.id]?.[rt.id] ?? ""}
-                            onSave={v => saveCustomValue(item.id, rt.id, v)}
-                            placeholder={rt.placeholder || "—"}
-                          />
-                        )}
-                      </td>
-                    ))}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+
+                      <div className="flex gap-2 pt-1">
+                        <button onClick={() => saveRow(item)} disabled={isSaving}
+                          className="bg-violet-600 hover:bg-violet-700 disabled:opacity-40 text-white text-xs px-4 py-2 rounded-lg transition flex items-center gap-1.5">
+                          {isSaving ? <Icon name="Loader" size={12} className="animate-spin" /> : <Icon name="Check" size={12} />}
+                          Сохранить
+                        </button>
+                        <button onClick={() => setExpandedId(null)} className="text-white/40 hover:text-white/70 text-xs transition px-3 py-2">Отмена</button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         </div>
       ))}
