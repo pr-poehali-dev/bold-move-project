@@ -3,6 +3,7 @@ import type { PriceItem } from "./types";
 export interface RuleItem extends PriceItem {
   calc_rule: string;
   bundle: string;
+  client_changes: string;
 }
 
 export interface RuleType {
@@ -20,6 +21,7 @@ export type DraftMap = Record<number, {
   when_condition: string;
   when_not_condition: string;
   bundle: string;
+  client_changes: string;
   custom: Record<string, string>;
   bundleIds: number[];
   bundleSearch: string;

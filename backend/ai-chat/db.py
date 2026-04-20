@@ -134,7 +134,7 @@ def get_price_rules() -> list:
         conn = psycopg2.connect(os.environ['DATABASE_URL'])
         cur = conn.cursor()
         cur.execute(f"""
-            SELECT id, category, name, price, unit, calc_rule, bundle, synonyms, when_condition, when_not_condition
+            SELECT id, category, name, price, unit, calc_rule, bundle, synonyms, when_condition, when_not_condition, client_changes
             FROM {SCHEMA}.ai_prices
             WHERE active = true
             ORDER BY sort_order, id
@@ -148,7 +148,7 @@ def get_price_rules() -> list:
                 'price': row[3], 'unit': row[4],
                 'calc_rule': row[5] or '', 'bundle': row[6] or '[]',
                 'synonyms': row[7] or '', 'when_condition': row[8] or '',
-                'when_not_condition': row[9] or ''
+                'when_not_condition': row[9] or '', 'client_changes': row[10] or ''
             })
         return result
     except Exception as e:
@@ -294,6 +294,7 @@ def build_rules_prompt(rules: list) -> str:
 
     for r in rules:
         has_rule = (r.get('calc_rule') or r.get('when_condition') or r.get('when_not_condition')
+                    or r.get('client_changes')
                     or r.get('bundle', '[]') not in ('[]', '', None))
         if not has_rule:
             # Синонимы собираем всегда
@@ -314,6 +315,10 @@ def build_rules_prompt(rules: list) -> str:
         # Количество / расчёт
         if r.get('calc_rule'):
             parts.append(f"количество: {r['calc_rule']}")
+
+        # Изменения клиента
+        if r.get('client_changes'):
+            parts.append(f"ИЗМЕНЕНИЯ КЛИЕНТА: {r['client_changes']}")
 
         # Комплект — что добавить вместе
         try:

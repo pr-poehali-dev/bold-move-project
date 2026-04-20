@@ -78,6 +78,7 @@ export default function TabRules({ token, hint }: Props) {
         when_condition: item.when_condition || "",
         when_not_condition: item.when_not_condition || "",
         bundle: item.bundle || "",
+        client_changes: item.client_changes || "",
         bundleIds: parseBundleIds(item.bundle || ""),
         bundleSearch: "",
         bundleOpen: false,
@@ -95,11 +96,12 @@ export default function TabRules({ token, hint }: Props) {
     if (!d) return;
     setSaving(item.id);
     const bundleVal = JSON.stringify(d.bundleIds);
-    const updated = { ...item, calc_rule: d.calc_rule, when_condition: d.when_condition || "", when_not_condition: d.when_not_condition || "" };
+    const updated = { ...item, calc_rule: d.calc_rule, when_condition: d.when_condition || "", when_not_condition: d.when_not_condition || "", client_changes: d.client_changes || "" };
     await saveField(item, "calc_rule", d.calc_rule);
     await saveField(updated, "when_condition", d.when_condition || "");
     await saveField(updated, "when_not_condition", d.when_not_condition || "");
     await saveField(updated, "bundle", bundleVal);
+    await saveField(updated, "client_changes", d.client_changes || "");
     for (const [rtIdStr, value] of Object.entries(d.custom)) {
       await apiFetch("rule-values", {
         method: "POST",

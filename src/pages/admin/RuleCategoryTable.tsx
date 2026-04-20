@@ -46,7 +46,7 @@ export default function RuleCategoryTable({
   onStartEditLabel, onEditLabelChange, onSaveLabel, onCancelEditLabel,
   onOpenBundleModal, onSaveField, onSaveCustomValue, onPasteBundle,
 }: Props) {
-  const colTemplate = `1.2fr 1fr 1fr repeat(${activeRuleTypes.length}, 1fr) 32px`;
+  const colTemplate = `1.2fr 1fr 1fr 1fr repeat(${activeRuleTypes.length}, 1fr) 32px`;
 
   return (
     <div>
@@ -58,6 +58,7 @@ export default function RuleCategoryTable({
           <span className="text-white/30 text-xs">Позиция</span>
           <span className="text-white/30 text-xs">Добавляется если...</span>
           <span className="text-white/30 text-xs">НЕ добавляется если...</span>
+          <span className="text-white/30 text-xs text-amber-400/60">Изменения клиента</span>
           {activeRuleTypes.map(rt => (
             <div key={rt.id} className="flex items-center gap-1.5 group/col min-w-0">
               {editingLabelId === rt.id ? (
@@ -141,6 +142,15 @@ export default function RuleCategoryTable({
                     onSave={v => onSaveField(item, "when_not_condition", v)}
                     placeholder="не задано"
                     colorClass="text-red-400/60"
+                  />
+                </div>
+
+                <div className="min-w-0 overflow-hidden">
+                  <InlineEditCell
+                    value={item.client_changes || ""}
+                    onSave={v => onSaveField(item, "client_changes", v)}
+                    placeholder="не задано"
+                    colorClass="text-amber-400/70"
                   />
                 </div>
 
