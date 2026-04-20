@@ -534,8 +534,9 @@ export default function CorrectionCard({
                       {/* Общая правка */}
                       <div className="px-5 pb-5 pt-3 border-t border-white/[0.07]">
                         <div className="flex items-center gap-2 mb-2">
-                          <Icon name="Plus" size={12} className="text-white/30" />
-                          <span className="text-white/30 text-xs">Общая правка — добавить позицию или изменить параметры</span>
+                          <Icon name="BookOpen" size={12} className="text-violet-400/60" />
+                          <span className="text-white/40 text-xs">Общая правка</span>
+                          <span className="text-violet-400/60 text-xs">— сохранится в инструкцию AI навсегда</span>
                         </div>
                         <input
                           type="text"

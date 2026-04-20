@@ -1,7 +1,8 @@
-"""Редактирование сметы через AI — принимает смету + правки, возвращает обновлённый llm_answer."""
+"""Редактирование сметы через AI — принимает смету + правки, возвращает обновлённый llm_answer. v3"""
 
 import json
 import os
+import datetime
 import psycopg2
 import requests
 
@@ -67,8 +68,20 @@ def get_prices_block() -> str:
         return ''
 
 
+def append_to_system_prompt(conn, cur, general_change: str):
+    cur.execute(f"SELECT id, content FROM {SCHEMA}.ai_system_prompt ORDER BY id LIMIT 1")
+    row = cur.fetchone()
+    today = datetime.date.today().strftime('%d.%m.%Y')
+    note = f'\n\n// Правка {today}: {general_change}'
+    if row:
+        new_content = (row[1] or '').rstrip() + note
+        cur.execute(f"UPDATE {SCHEMA}.ai_system_prompt SET content = %s WHERE id = %s", (new_content, row[0]))
+    else:
+        cur.execute(f"INSERT INTO {SCHEMA}.ai_system_prompt (content) VALUES (%s)", (general_change,))
+
+
 def handler(event: dict, context) -> dict:
-    """Принимает смету + правки по позициям, отправляет в LLM, сохраняет обновлённый llm_answer."""
+    """Принимает смету + правки, пересчитывает через AI, сохраняет. Общая правка — в системный промпт."""
 
     if event.get('httpMethod') == 'OPTIONS':
         return {'statusCode': 200, 'headers': CORS, 'body': ''}
@@ -81,21 +94,22 @@ def handler(event: dict, context) -> dict:
     correction_id = body.get('correction_id')
     original_answer = body.get('original_answer', '')
     user_text = body.get('user_text', '')
-    comments = body.get('comments', {})  # {позиция: комментарий}
+    comments = dict(body.get('comments', {}))
 
     if not correction_id or not original_answer:
         return resp(400, {'error': 'correction_id и original_answer обязательны'})
 
-    # Формируем список правок
-    changes_lines = []
-    for position, comment in comments.items():
-        if comment and comment.strip():
-            changes_lines.append(f'• {position}: {comment.strip()}')
+    # Общая правка — идёт в системный промпт
+    general_change = (comments.pop('__general__', '') or '').strip()
+
+    # Правки по позициям
+    changes_lines = [f'• {pos}: {cmt.strip()}' for pos, cmt in comments.items() if cmt and cmt.strip()]
+    if general_change:
+        changes_lines.append(f'• (общее): {general_change}')
 
     if not changes_lines:
         return resp(400, {'error': 'Нет правок для применения'})
 
-    changes_text = '\n'.join(changes_lines)
     prices_block = get_prices_block()
 
     system_prompt = f"""Ты сметчик-технолог компании MosPotolki (натяжные потолки).
@@ -116,26 +130,25 @@ def handler(event: dict, context) -> dict:
 {original_answer}
 
 Правки:
-{changes_text}
+{chr(10).join(changes_lines)}
 
 Верни обновлённую смету."""
 
-    messages = [
+    new_answer = call_llm([
         {'role': 'system', 'content': system_prompt},
         {'role': 'user', 'content': user_prompt},
-    ]
+    ])
 
-    new_answer = call_llm(messages)
-
-    # Сохраняем в БД
     conn = psycopg2.connect(os.environ['DATABASE_URL'])
     cur = conn.cursor()
-    cur.execute(
-        f"UPDATE {SCHEMA}.bot_corrections SET llm_answer = %s WHERE id = %s",
-        (new_answer, correction_id)
-    )
+
+    cur.execute(f"UPDATE {SCHEMA}.bot_corrections SET llm_answer = %s WHERE id = %s", (new_answer, correction_id))
+
+    if general_change:
+        append_to_system_prompt(conn, cur, general_change)
+
     conn.commit()
     cur.close()
     conn.close()
 
-    return resp(200, {'ok': True, 'new_answer': new_answer})
+    return resp(200, {'ok': True, 'new_answer': new_answer, 'prompt_updated': bool(general_change)})
