@@ -46,4 +46,5 @@ export interface BotCorrection {
   status: "pending" | "approved" | "rejected";
   created_at: string;
   suggested_items: SuggestedItem[] | null;
+  llm_answer: string | null;
 }

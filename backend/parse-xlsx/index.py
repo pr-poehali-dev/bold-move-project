@@ -288,10 +288,10 @@ def handler(event: dict, context) -> dict:
     # --- GET ?r=corrections
     if r == 'corrections' and method == 'GET':
         conn = get_conn(); cur = conn.cursor()
-        cur.execute(f"SELECT id, session_id, user_text, recognized_json, corrected_json, status, created_at, suggested_items FROM {SCHEMA}.bot_corrections ORDER BY created_at DESC LIMIT 200")
+        cur.execute(f"SELECT id, session_id, user_text, recognized_json, corrected_json, status, created_at, suggested_items, llm_answer FROM {SCHEMA}.bot_corrections ORDER BY created_at DESC LIMIT 200")
         rows = cur.fetchall()
         cur.close(); conn.close()
-        return resp(200, {'items': [{'id': row[0], 'session_id': row[1] or '', 'user_text': row[2], 'recognized_json': row[3], 'corrected_json': row[4], 'status': row[5], 'created_at': str(row[6]), 'suggested_items': row[7]} for row in rows]})
+        return resp(200, {'items': [{'id': row[0], 'session_id': row[1] or '', 'user_text': row[2], 'recognized_json': row[3], 'corrected_json': row[4], 'status': row[5], 'created_at': str(row[6]), 'suggested_items': row[7], 'llm_answer': row[8]} for row in rows]})
 
     # --- PUT ?r=corrections&id=X
     if r == 'corrections' and method == 'PUT':

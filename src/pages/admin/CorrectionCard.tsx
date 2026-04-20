@@ -4,7 +4,6 @@ import HighlightedText from "./HighlightedText";
 import AddSynonymPanel from "./AddSynonymPanel";
 import SuggestedItemsPanel from "./SuggestedItemsPanel";
 import { apiFetch } from "./api";
-import func2url from "@/../backend/func2url.json";
 import type { BotCorrection, PriceItem } from "./types";
 import type { SkipInfo, RecognizedData } from "./corrections.types";
 import { RECOGNIZED_LABELS } from "./corrections.types";
@@ -33,8 +32,7 @@ export default function CorrectionCard({
   const [panelOpen, setPanelOpen] = useState(false);
   const [editingTag, setEditingTag] = useState<string | null>(null);
   const [editingTagVal, setEditingTagVal] = useState("");
-  const [llmAnswer, setLlmAnswer] = useState<string | null>(null);
-  const [llmLoading, setLlmLoading] = useState(false);
+  const [llmAnswerVisible, setLlmAnswerVisible] = useState(false);
 
   const knownSynonyms = new Set(
     prices.flatMap(p => {
@@ -61,28 +59,6 @@ export default function CorrectionCard({
   ];
   // Показываем все теги — done подсвечиваются зелёным, не убираются
   const unknownWords = allUnknownWords;
-
-  const handleGetLlmAnswer = async () => {
-    setLlmLoading(true);
-    setLlmAnswer(null);
-    try {
-      const aiUrl = (func2url as Record<string, string>)["ai-chat"];
-      const res = await fetch(aiUrl, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          messages: [{ role: "user", text: item.user_text }],
-          session_id: "admin-preview-" + item.id,
-        }),
-      });
-      const data = await res.json();
-      setLlmAnswer(data.answer ?? data.text ?? JSON.stringify(data));
-    } catch {
-      setLlmAnswer("Ошибка при запросе к LLM");
-    } finally {
-      setLlmLoading(false);
-    }
-  };
 
   const dragWord = useRef<string | null>(null);
   const [dragOverWord, setDragOverWord] = useState<string | null>(null);
@@ -166,16 +142,16 @@ export default function CorrectionCard({
             <p className="text-xs text-white/20 mt-1 select-none">Выдели текст мышкой чтобы добавить в обучение</p>
           )}
 
-          {llmAnswer && (
+          {llmAnswerVisible && item.llm_answer && (
             <div className="mt-3 rounded-xl border border-violet-500/20 bg-violet-500/5 p-3">
               <div className="flex items-center gap-1.5 mb-2">
                 <Icon name="Sparkles" size={12} className="text-violet-400" />
-                <span className="text-xs text-violet-400 font-medium">Ответ LLM</span>
-                <button onClick={() => setLlmAnswer(null)} className="ml-auto text-white/20 hover:text-white/50 transition">
+                <span className="text-xs text-violet-400 font-medium">Ответ который получил клиент</span>
+                <button onClick={() => setLlmAnswerVisible(false)} className="ml-auto text-white/20 hover:text-white/50 transition">
                   <Icon name="X" size={12} />
                 </button>
               </div>
-              <p className="text-white/80 text-sm whitespace-pre-wrap leading-relaxed">{llmAnswer}</p>
+              <p className="text-white/80 text-sm whitespace-pre-wrap leading-relaxed">{item.llm_answer}</p>
             </div>
           )}
 
@@ -321,17 +297,13 @@ export default function CorrectionCard({
         </div>
 
         <div className="flex items-start gap-1 flex-shrink-0">
-          {isLLM && (
+          {isLLM && item.llm_answer && (
             <button
-              onClick={handleGetLlmAnswer}
-              disabled={llmLoading}
-              title="Получить реальный ответ LLM"
-              className="flex items-center gap-1 px-2 py-1 rounded-lg bg-violet-500/15 hover:bg-violet-500/30 text-violet-300 hover:text-violet-200 text-xs transition disabled:opacity-50 mt-0.5">
-              {llmLoading
-                ? <Icon name="Loader" size={12} className="animate-spin" />
-                : <Icon name="Sparkles" size={12} />
-              }
-              <span className="hidden sm:inline">{llmLoading ? "Запрос..." : "Ответ LLM"}</span>
+              onClick={() => setLlmAnswerVisible(v => !v)}
+              title="Показать ответ который получил клиент"
+              className="flex items-center gap-1 px-2 py-1 rounded-lg bg-violet-500/15 hover:bg-violet-500/30 text-violet-300 hover:text-violet-200 text-xs transition mt-0.5">
+              <Icon name="Sparkles" size={12} />
+              <span className="hidden sm:inline">{llmAnswerVisible ? "Скрыть" : "Ответ LLM"}</span>
             </button>
           )}
           {!isLLM && (

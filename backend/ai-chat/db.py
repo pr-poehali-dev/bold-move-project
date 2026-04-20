@@ -233,6 +233,20 @@ def save_correction(user_text: str, recognized_json: dict | None, session_id: st
         print(f"[corrections] save error: {e}")
 
 
+def save_correction_answer(user_text: str, session_id: str, answer: str) -> None:
+    """Сохраняет ответ LLM в запись обучения по session_id и user_text."""
+    try:
+        conn = psycopg2.connect(os.environ['DATABASE_URL'])
+        cur = conn.cursor()
+        cur.execute(
+            f"UPDATE {SCHEMA}.bot_corrections SET llm_answer = %s WHERE session_id = %s AND user_text = %s AND id = (SELECT id FROM {SCHEMA}.bot_corrections WHERE session_id = %s AND user_text = %s ORDER BY created_at DESC LIMIT 1)",
+            (answer, session_id, user_text, session_id, user_text)
+        )
+        conn.commit(); cur.close(); conn.close()
+    except Exception as e:
+        print(f"[corrections] save_answer error: {e}")
+
+
 def get_complex_exceptions() -> set:
     """Возвращает стоп-слова которые уже обучены и не должны блокировать авторасчёт."""
     try:

@@ -10,7 +10,7 @@ from services import generate_image, web_search, call_llm, SEARCH_VISUAL, IMAGE_
 from db import (
     get_knowledge, get_system_prompt, get_faq_cache,
     get_prices_block, get_canvas_prices, get_price_rules,
-    build_rules_prompt, eval_calc_rule, save_correction, CANVAS_PRICES, SCHEMA,
+    build_rules_prompt, eval_calc_rule, save_correction, save_correction_answer, CANVAS_PRICES, SCHEMA,
     get_llm_threshold, get_complex_exceptions, get_stop_words,
 )
 
@@ -1361,6 +1361,11 @@ def handler(event, context):
     #     print(f"[flux] gen_url={gen_url}")
     #     if gen_url:
     #         answer = answer + f"\n\n![сгенерированный дизайн]({gen_url})"
+
+    try:
+        save_correction_answer(last_user_text, session_id, answer)
+    except Exception as e:
+        print(f"[corrections] save_answer error: {e}")
 
     response_body = {'answer': answer}
     if llm_items_json and llm_items_json.get('items'):
