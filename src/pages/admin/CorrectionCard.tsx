@@ -480,8 +480,8 @@ export default function CorrectionCard({
                           <thead>
                             <tr className="bg-white/[0.06] border-b border-white/10">
                               <th className="text-left px-3 py-2 text-white/40 font-montserrat font-semibold text-[11px] uppercase tracking-wider">Позиция</th>
-                              <th className="text-right px-3 py-2 text-white/40 font-montserrat font-semibold text-[11px] uppercase tracking-wider w-[120px]">Стоимость</th>
-                              <th className="text-left px-3 py-2 text-orange-400/60 font-montserrat font-semibold text-[11px] uppercase tracking-wider w-[260px]">✏ Правка</th>
+                              <th className="text-right px-3 py-2 text-white/40 font-montserrat font-semibold text-[11px] uppercase tracking-wider w-[160px]">Стоимость</th>
+                              <th className="text-left px-3 py-2 text-orange-400/60 font-montserrat font-semibold text-[11px] uppercase tracking-wider w-[200px]">✏ Правка</th>
                             </tr>
                           </thead>
                           <tbody>
@@ -501,34 +501,23 @@ export default function CorrectionCard({
                                     const hasComment = !!(aiEditComments[cleanName] || '').trim();
                                     return (
                                       <tr key={`r-${bi}-${ii}`} className={`group/row transition-colors ${hasComment ? 'bg-orange-500/10' : 'hover:bg-white/[0.03]'} ${ii > 0 ? 'border-t border-white/5' : ''}`}>
-                                        {/* Позиция + формула в одну строку */}
-                                        <td className="px-3 py-2 whitespace-nowrap">
-                                          <span className="text-white/80 text-xs">{cleanName}</span>
-                                          {formula && <span className="text-white/30 text-[11px] font-montserrat ml-2">{formula}</span>}
+                                        <td className="px-3 py-2 text-white/80 text-xs leading-snug">{cleanName}</td>
+                                        <td className="px-3 py-2 text-right whitespace-nowrap">
+                                          {formula && <div className="text-white/40 text-[11px] font-montserrat leading-snug">{formula}</div>}
+                                          {total && <div className="text-orange-400 font-montserrat font-bold text-xs leading-snug">{total}</div>}
                                         </td>
-                                        {/* Стоимость — только итог */}
-                                        <td className="px-3 py-2 text-right whitespace-nowrap w-[120px]">
-                                          {total && <span className="text-orange-400 font-montserrat font-bold text-xs">{total}</span>}
-                                        </td>
-                                        {/* Правка — раскрывается при клике */}
-                                        <td className="px-2 py-1.5 w-[260px]">
-                                          {hasComment ? (
-                                            <input
-                                              autoFocus
-                                              type="text"
-                                              placeholder="правка..."
-                                              value={aiEditComments[cleanName] || ''}
-                                              onChange={e => setAiEditComments(prev => ({ ...prev, [cleanName]: e.target.value }))}
-                                              className="w-full rounded-lg px-2.5 py-1 text-[11px] outline-none transition bg-orange-500/15 border border-orange-500/40 text-orange-200 placeholder:text-orange-400/30"
-                                            />
-                                          ) : (
-                                            <button
-                                              onClick={() => setAiEditComments(prev => ({ ...prev, [cleanName]: ' ' }))}
-                                              className="w-full text-left px-2.5 py-1 text-[11px] text-white/15 hover:text-orange-400/60 transition rounded-lg hover:bg-white/5 group-hover/row:text-white/25"
-                                            >
-                                              правка...
-                                            </button>
-                                          )}
+                                        <td className="px-2 py-1.5">
+                                          <input
+                                            type="text"
+                                            placeholder="правка..."
+                                            value={aiEditComments[cleanName] || ''}
+                                            onChange={e => setAiEditComments(prev => ({ ...prev, [cleanName]: e.target.value }))}
+                                            className={`w-full rounded-lg px-2.5 py-1 text-[11px] outline-none transition placeholder:text-white/15
+                                              ${hasComment
+                                                ? 'bg-orange-500/15 border border-orange-500/40 text-orange-200'
+                                                : 'bg-transparent border border-transparent group-hover/row:border-white/10 group-hover/row:bg-white/5 text-white/70 focus:border-orange-500/40 focus:bg-orange-500/5'
+                                              }`}
+                                          />
                                         </td>
                                       </tr>
                                     );
