@@ -1,0 +1,17 @@
+{
+  "tests": [
+    {
+      "name": "OPTIONS preflight",
+      "method": "OPTIONS",
+      "path": "/",
+      "expectedStatus": 200
+    },
+    {
+      "name": "Unauthorized request",
+      "method": "POST",
+      "path": "/",
+      "body": {"correction_id": 1, "original_answer": "test", "user_text": "test", "comments": {}},
+      "expectedStatus": 401
+    }
+  ]
+}

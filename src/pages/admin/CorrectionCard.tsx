@@ -5,10 +5,13 @@ import HighlightedText from "./HighlightedText";
 import AddSynonymPanel from "./AddSynonymPanel";
 import SuggestedItemsPanel from "./SuggestedItemsPanel";
 import { apiFetch } from "./api";
-import EstimateTable, { isEstimate } from "@/pages/EstimateTable";
+import EstimateTable, { isEstimate, parseEstimateBlocks } from "@/pages/EstimateTable";
 import type { BotCorrection, PriceItem } from "./types";
 import type { SkipInfo, RecognizedData } from "./corrections.types";
 import { RECOGNIZED_LABELS } from "./corrections.types";
+import func2url from "@/../backend/func2url.json";
+
+const AI_EDIT_URL = (func2url as Record<string, string>)["ai-edit"];
 
 interface Props {
   item: BotCorrection;
@@ -35,6 +38,10 @@ export default function CorrectionCard({
   const [editingTag, setEditingTag] = useState<string | null>(null);
   const [editingTagVal, setEditingTagVal] = useState("");
   const [splitViewOpen, setSplitViewOpen] = useState(false);
+  const [aiEditOpen, setAiEditOpen] = useState(false);
+  const [aiEditComments, setAiEditComments] = useState<Record<string, string>>({});
+  const [aiEditLoading, setAiEditLoading] = useState(false);
+  const [aiEditDone, setAiEditDone] = useState(false);
 
   const knownSynonyms = new Set(
     prices.flatMap(p => {
@@ -290,13 +297,22 @@ export default function CorrectionCard({
 
         <div className="flex items-start gap-1 flex-shrink-0">
           {isLLM && item.llm_answer && (
-            <button
-              onClick={() => setSplitViewOpen(v => !v)}
-              title="Сравнить: ответ LLM vs что увидел клиент"
-              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs transition mt-0.5 ${splitViewOpen ? "bg-violet-500/30 text-violet-200" : "bg-violet-500/15 hover:bg-violet-500/25 text-violet-300 hover:text-violet-200"}`}>
-              <Icon name="Columns2" size={12} />
-              <span className="hidden sm:inline">Что увидел клиент</span>
-            </button>
+            <>
+              <button
+                onClick={() => setSplitViewOpen(v => !v)}
+                title="Сравнить: ответ LLM vs что увидел клиент"
+                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs transition mt-0.5 ${splitViewOpen ? "bg-violet-500/30 text-violet-200" : "bg-violet-500/15 hover:bg-violet-500/25 text-violet-300 hover:text-violet-200"}`}>
+                <Icon name="Columns2" size={12} />
+                <span className="hidden sm:inline">Что увидел клиент</span>
+              </button>
+              <button
+                onClick={() => { setAiEditOpen(true); setAiEditDone(false); setAiEditComments({}); }}
+                title="Изменить смету через AI"
+                className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs transition mt-0.5 bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 hover:text-amber-200">
+                <Icon name="Wand2" size={12} />
+                <span className="hidden sm:inline">Изменить AI</span>
+              </button>
+            </>
           )}
           {!isLLM && (
             <button onClick={onToggleExpand}
@@ -400,6 +416,117 @@ export default function CorrectionCard({
         </div>
       )}
     </div>
+
+    {/* Модалка «Изменить AI» */}
+    {aiEditOpen && item.llm_answer && createPortal(
+      <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/70 backdrop-blur-sm p-6">
+        <div className="flex flex-col w-full max-w-[900px] max-h-[90vh] rounded-2xl border border-white/10 bg-[#111] overflow-hidden shadow-2xl">
+          {/* Шапка */}
+          <div className="flex items-center justify-between px-5 py-3 border-b border-white/10 bg-white/[0.02] flex-shrink-0">
+            <div className="flex items-center gap-2">
+              <Icon name="Wand2" size={14} className="text-amber-400" />
+              <span className="text-white/80 text-sm font-medium">Изменить смету через AI</span>
+            </div>
+            <button onClick={() => setAiEditOpen(false)}
+              className="text-white/30 hover:text-white/60 transition">
+              <Icon name="X" size={16} />
+            </button>
+          </div>
+
+          {/* Тело */}
+          <div className="flex-1 overflow-auto p-5 flex flex-col gap-4">
+            <p className="text-white/40 text-xs">Напиши правку рядом с нужной позицией и нажми «Сохранить» — AI применит изменения.</p>
+
+            {aiEditDone ? (
+              <div className="flex flex-col items-center justify-center gap-3 py-12">
+                <Icon name="CheckCircle" size={40} className="text-green-400" />
+                <p className="text-green-300 text-sm font-medium">Смета обновлена!</p>
+                <button onClick={() => setAiEditOpen(false)}
+                  className="mt-2 px-4 py-2 bg-white/10 hover:bg-white/15 text-white/70 text-sm rounded-lg transition">
+                  Закрыть
+                </button>
+              </div>
+            ) : (
+              <>
+                {/* Позиции сметы */}
+                {(() => {
+                  const parsed = parseEstimateBlocks(item.llm_answer!);
+                  const allItems: string[] = [];
+                  parsed.blocks.forEach(block => {
+                    block.items.forEach(i => allItems.push(i.name));
+                  });
+                  if (allItems.length === 0) {
+                    return (
+                      <div className="text-white/30 text-xs text-center py-6">
+                        Позиции сметы не распознаны. Введи общий комментарий:
+                        <textarea
+                          placeholder="Например: убрать профиль, добавить 2 светильника..."
+                          value={aiEditComments['__general__'] || ''}
+                          onChange={e => setAiEditComments(prev => ({ ...prev, '__general__': e.target.value }))}
+                          className="mt-2 w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white/70 text-xs resize-none outline-none focus:border-amber-500/40"
+                          rows={3}
+                        />
+                      </div>
+                    );
+                  }
+                  return (
+                    <div className="flex flex-col gap-2">
+                      {allItems.map((name, idx) => (
+                        <div key={idx} className="flex items-start gap-3 group">
+                          <span className="text-white/60 text-xs pt-2 min-w-[200px] max-w-[260px] truncate flex-shrink-0" title={name}>{name}</span>
+                          <input
+                            type="text"
+                            placeholder="правка (необязательно)"
+                            value={aiEditComments[name] || ''}
+                            onChange={e => setAiEditComments(prev => ({ ...prev, [name]: e.target.value }))}
+                            className="flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-white/70 text-xs outline-none focus:border-amber-500/40 transition placeholder:text-white/20"
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  );
+                })()}
+              </>
+            )}
+          </div>
+
+          {/* Футер */}
+          {!aiEditDone && (
+            <div className="flex items-center justify-end gap-3 px-5 py-3 border-t border-white/10 flex-shrink-0">
+              <button onClick={() => setAiEditOpen(false)}
+                className="px-4 py-2 text-white/40 hover:text-white/60 text-sm transition">
+                Отмена
+              </button>
+              <button
+                disabled={aiEditLoading || Object.values(aiEditComments).every(v => !v.trim())}
+                onClick={async () => {
+                  setAiEditLoading(true);
+                  try {
+                    const r = await fetch(AI_EDIT_URL, {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json', 'X-Auth-Token': token },
+                      body: JSON.stringify({
+                        correction_id: item.id,
+                        original_answer: item.llm_answer,
+                        user_text: item.user_text,
+                        comments: aiEditComments,
+                      }),
+                    });
+                    if (r.ok) setAiEditDone(true);
+                  } finally {
+                    setAiEditLoading(false);
+                  }
+                }}
+                className="flex items-center gap-2 px-5 py-2 bg-amber-500/20 hover:bg-amber-500/30 disabled:opacity-40 disabled:cursor-not-allowed text-amber-300 text-sm rounded-lg transition">
+                {aiEditLoading ? <Icon name="Loader2" size={14} className="animate-spin" /> : <Icon name="Wand2" size={14} />}
+                {aiEditLoading ? 'Обрабатывается...' : 'Сохранить'}
+              </button>
+            </div>
+          )}
+        </div>
+      </div>,
+      document.body
+    )}
 
     {/* Полноэкранный сплит-вью — через портал поверх всего */}
     {splitViewOpen && item.llm_answer && createPortal(
