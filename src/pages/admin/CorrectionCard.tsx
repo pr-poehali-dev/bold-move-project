@@ -465,39 +465,52 @@ export default function CorrectionCard({
                     );
                   }
 
+                  // фильтруем технический заголовок "Смета на..."
+                  const visibleBlocks = parsed.blocks.filter(b =>
+                    !(b.items.length === 0 && /смета/i.test(b.title))
+                  );
+
                   return (
                     <div className="flex flex-col">
-                      {/* Заголовок таблицы */}
-                      <div className="grid px-5 py-2 border-b border-white/10 bg-white/[0.02]" style={{ gridTemplateColumns: '1fr auto 280px' }}>
-                        <span className="text-white/30 text-[11px] uppercase tracking-wider">Позиция</span>
-                        <span className="text-white/30 text-[11px] uppercase tracking-wider text-right pr-6">Стоимость</span>
-                        <span className="text-amber-400/50 text-[11px] uppercase tracking-wider">Правка</span>
+                      {/* Заголовок колонок */}
+                      <div className="grid px-5 py-2 border-b border-white/[0.07] bg-white/[0.03] sticky top-0 z-10" style={{ gridTemplateColumns: '1fr 180px 220px' }}>
+                        <span className="text-white/25 text-[10px] uppercase tracking-widest">Позиция</span>
+                        <span className="text-white/25 text-[10px] uppercase tracking-widest text-right">Стоимость</span>
+                        <span className="text-amber-500/60 text-[10px] uppercase tracking-widest pl-4">✏ Правка</span>
                       </div>
 
-                      {parsed.blocks.map((block, bi) => (
+                      {visibleBlocks.map((block, bi) => (
                         <div key={bi}>
-                          {/* Заголовок блока */}
-                          <div className="px-5 py-2 bg-white/[0.02] border-b border-white/5">
-                            <span className="text-amber-400 text-xs font-semibold">
+                          {/* Заголовок секции */}
+                          <div className="px-5 pt-4 pb-1.5 flex items-center gap-2">
+                            <span className="text-amber-400 text-xs font-bold uppercase tracking-wide">
                               {block.numbered ? `${bi + 1}. ${block.title}` : block.title}
                             </span>
+                            <div className="flex-1 h-px bg-amber-500/10" />
                           </div>
+
                           {/* Позиции */}
                           {block.items.map((it, ii) => {
                             const hasComment = !!(aiEditComments[it.name] || '').trim();
                             return (
                               <div key={ii}
-                                className={`grid px-5 py-2.5 border-b border-white/5 items-center gap-3 transition ${hasComment ? 'bg-amber-500/5' : 'hover:bg-white/[0.015]'}`}
-                                style={{ gridTemplateColumns: '1fr auto 280px' }}>
-                                <span className="text-white/80 text-sm">{it.name}</span>
-                                <span className="text-white/40 text-xs text-right pr-6 whitespace-nowrap">{it.value}</span>
-                                <input
-                                  type="text"
-                                  placeholder="правка..."
-                                  value={aiEditComments[it.name] || ''}
-                                  onChange={e => setAiEditComments(prev => ({ ...prev, [it.name]: e.target.value }))}
-                                  className="bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-white/70 text-xs outline-none focus:border-amber-500/50 focus:bg-amber-500/5 transition placeholder:text-white/15 w-full"
-                                />
+                                className={`grid px-5 py-2 items-center gap-3 border-b border-white/[0.04] transition-colors ${hasComment ? 'bg-amber-500/[0.06]' : 'hover:bg-white/[0.02]'}`}
+                                style={{ gridTemplateColumns: '1fr 180px 220px' }}>
+                                <span className={`text-sm ${hasComment ? 'text-white' : 'text-white/70'}`}>{it.name}</span>
+                                <span className="text-white/35 text-xs text-right tabular-nums whitespace-nowrap">{it.value}</span>
+                                <div className="pl-3">
+                                  <input
+                                    type="text"
+                                    placeholder="правка..."
+                                    value={aiEditComments[it.name] || ''}
+                                    onChange={e => setAiEditComments(prev => ({ ...prev, [it.name]: e.target.value }))}
+                                    className={`w-full rounded-lg px-3 py-1.5 text-xs outline-none transition placeholder:text-white/15
+                                      ${hasComment
+                                        ? 'bg-amber-500/10 border border-amber-500/40 text-amber-200'
+                                        : 'bg-white/[0.04] border border-white/[0.08] text-white/60 focus:border-amber-500/40 focus:bg-amber-500/5'
+                                      }`}
+                                  />
+                                </div>
                               </div>
                             );
                           })}
@@ -506,22 +519,23 @@ export default function CorrectionCard({
 
                       {/* Итоги */}
                       {parsed.totals.length > 0 && (
-                        <div className="px-5 py-3 border-t border-white/10 flex flex-col items-end gap-1">
+                        <div className="px-5 py-4 border-t border-white/10 flex flex-col items-end gap-1.5">
+                          <span className="text-white/25 text-[10px] uppercase tracking-widest mb-1">Итоговая стоимость</span>
                           {parsed.totals.map((t, i) => (
-                            <span key={i} className={`text-xs ${t.includes('Standard') ? 'text-amber-400 font-semibold' : 'text-white/40'}`}>{t}</span>
+                            <span key={i} className={`text-sm tabular-nums ${t.includes('Standard') ? 'text-amber-400 font-bold text-base' : 'text-white/40'}`}>{t}</span>
                           ))}
                         </div>
                       )}
 
                       {/* Общая правка */}
-                      <div className="px-5 py-3 border-t border-white/10">
-                        <p className="text-white/30 text-xs mb-1.5">Общая правка (необязательно):</p>
+                      <div className="px-5 pb-4 pt-2 border-t border-white/[0.07]">
+                        <p className="text-white/25 text-[10px] uppercase tracking-widest mb-2">Общая правка</p>
                         <input
                           type="text"
-                          placeholder="Например: добавить 2 светильника, убрать закладные..."
+                          placeholder="Добавить позицию, изменить площадь, другие пожелания..."
                           value={aiEditComments['__general__'] || ''}
                           onChange={e => setAiEditComments(prev => ({ ...prev, '__general__': e.target.value }))}
-                          className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white/70 text-xs outline-none focus:border-amber-500/40 transition placeholder:text-white/15"
+                          className="w-full bg-white/[0.04] border border-white/[0.08] rounded-lg px-3 py-2.5 text-white/60 text-sm outline-none focus:border-amber-500/40 focus:bg-amber-500/5 transition placeholder:text-white/15"
                         />
                       </div>
                     </div>
