@@ -419,109 +419,155 @@ export default function CorrectionCard({
 
     {/* Модалка «Изменить AI» */}
     {aiEditOpen && item.llm_answer && createPortal(
-      <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/70 backdrop-blur-sm p-6">
-        <div className="flex flex-col w-full max-w-[900px] max-h-[90vh] rounded-2xl border border-white/10 bg-[#111] overflow-hidden shadow-2xl">
+      <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
+        <div className="flex flex-col w-full max-w-[960px] max-h-[92vh] rounded-2xl border border-white/10 bg-[#0f0f0f] overflow-hidden shadow-2xl">
+
           {/* Шапка */}
           <div className="flex items-center justify-between px-5 py-3 border-b border-white/10 bg-white/[0.02] flex-shrink-0">
             <div className="flex items-center gap-2">
               <Icon name="Wand2" size={14} className="text-amber-400" />
               <span className="text-white/80 text-sm font-medium">Изменить смету через AI</span>
+              <span className="text-white/30 text-xs ml-1">— напиши правку рядом с позицией</span>
             </div>
-            <button onClick={() => setAiEditOpen(false)}
-              className="text-white/30 hover:text-white/60 transition">
+            <button onClick={() => setAiEditOpen(false)} className="text-white/30 hover:text-white/60 transition">
               <Icon name="X" size={16} />
             </button>
           </div>
 
-          {/* Тело */}
-          <div className="flex-1 overflow-auto p-5 flex flex-col gap-4">
-            <p className="text-white/40 text-xs">Напиши правку рядом с нужной позицией и нажми «Сохранить» — AI применит изменения.</p>
-
-            {aiEditDone ? (
-              <div className="flex flex-col items-center justify-center gap-3 py-12">
-                <Icon name="CheckCircle" size={40} className="text-green-400" />
-                <p className="text-green-300 text-sm font-medium">Смета обновлена!</p>
-                <button onClick={() => setAiEditOpen(false)}
-                  className="mt-2 px-4 py-2 bg-white/10 hover:bg-white/15 text-white/70 text-sm rounded-lg transition">
-                  Закрыть
-                </button>
-              </div>
-            ) : (
-              <>
-                {/* Позиции сметы */}
+          {aiEditDone ? (
+            <div className="flex flex-col items-center justify-center gap-3 py-16">
+              <Icon name="CheckCircle" size={44} className="text-green-400" />
+              <p className="text-green-300 text-sm font-medium">Смета обновлена!</p>
+              <button onClick={() => setAiEditOpen(false)}
+                className="mt-2 px-5 py-2 bg-white/10 hover:bg-white/15 text-white/70 text-sm rounded-lg transition">
+                Закрыть
+              </button>
+            </div>
+          ) : (
+            <>
+              {/* Тело — таблица сметы */}
+              <div className="flex-1 overflow-auto">
                 {(() => {
                   const parsed = parseEstimateBlocks(item.llm_answer!);
-                  const allItems: string[] = [];
-                  parsed.blocks.forEach(block => {
-                    block.items.forEach(i => allItems.push(i.name));
-                  });
-                  if (allItems.length === 0) {
+
+                  if (parsed.blocks.length === 0) {
                     return (
-                      <div className="text-white/30 text-xs text-center py-6">
-                        Позиции сметы не распознаны. Введи общий комментарий:
+                      <div className="p-5 flex flex-col gap-3">
+                        <p className="text-white/30 text-xs">Позиции сметы не распознаны. Введи общий комментарий:</p>
                         <textarea
                           placeholder="Например: убрать профиль, добавить 2 светильника..."
                           value={aiEditComments['__general__'] || ''}
                           onChange={e => setAiEditComments(prev => ({ ...prev, '__general__': e.target.value }))}
-                          className="mt-2 w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white/70 text-xs resize-none outline-none focus:border-amber-500/40"
-                          rows={3}
+                          className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white/70 text-xs resize-none outline-none focus:border-amber-500/40"
+                          rows={4}
                         />
                       </div>
                     );
                   }
+
                   return (
-                    <div className="flex flex-col gap-2">
-                      {allItems.map((name, idx) => (
-                        <div key={idx} className="flex items-start gap-3 group">
-                          <span className="text-white/60 text-xs pt-2 min-w-[200px] max-w-[260px] truncate flex-shrink-0" title={name}>{name}</span>
-                          <input
-                            type="text"
-                            placeholder="правка (необязательно)"
-                            value={aiEditComments[name] || ''}
-                            onChange={e => setAiEditComments(prev => ({ ...prev, [name]: e.target.value }))}
-                            className="flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-white/70 text-xs outline-none focus:border-amber-500/40 transition placeholder:text-white/20"
-                          />
+                    <div className="flex flex-col">
+                      {/* Заголовок таблицы */}
+                      <div className="grid px-5 py-2 border-b border-white/10 bg-white/[0.02]" style={{ gridTemplateColumns: '1fr auto 280px' }}>
+                        <span className="text-white/30 text-[11px] uppercase tracking-wider">Позиция</span>
+                        <span className="text-white/30 text-[11px] uppercase tracking-wider text-right pr-6">Стоимость</span>
+                        <span className="text-amber-400/50 text-[11px] uppercase tracking-wider">Правка</span>
+                      </div>
+
+                      {parsed.blocks.map((block, bi) => (
+                        <div key={bi}>
+                          {/* Заголовок блока */}
+                          <div className="px-5 py-2 bg-white/[0.02] border-b border-white/5">
+                            <span className="text-amber-400 text-xs font-semibold">
+                              {block.numbered ? `${bi + 1}. ${block.title}` : block.title}
+                            </span>
+                          </div>
+                          {/* Позиции */}
+                          {block.items.map((it, ii) => {
+                            const hasComment = !!(aiEditComments[it.name] || '').trim();
+                            return (
+                              <div key={ii}
+                                className={`grid px-5 py-2.5 border-b border-white/5 items-center gap-3 transition ${hasComment ? 'bg-amber-500/5' : 'hover:bg-white/[0.015]'}`}
+                                style={{ gridTemplateColumns: '1fr auto 280px' }}>
+                                <span className="text-white/80 text-sm">{it.name}</span>
+                                <span className="text-white/40 text-xs text-right pr-6 whitespace-nowrap">{it.value}</span>
+                                <input
+                                  type="text"
+                                  placeholder="правка..."
+                                  value={aiEditComments[it.name] || ''}
+                                  onChange={e => setAiEditComments(prev => ({ ...prev, [it.name]: e.target.value }))}
+                                  className="bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-white/70 text-xs outline-none focus:border-amber-500/50 focus:bg-amber-500/5 transition placeholder:text-white/15 w-full"
+                                />
+                              </div>
+                            );
+                          })}
                         </div>
                       ))}
+
+                      {/* Итоги */}
+                      {parsed.totals.length > 0 && (
+                        <div className="px-5 py-3 border-t border-white/10 flex flex-col items-end gap-1">
+                          {parsed.totals.map((t, i) => (
+                            <span key={i} className={`text-xs ${t.includes('Standard') ? 'text-amber-400 font-semibold' : 'text-white/40'}`}>{t}</span>
+                          ))}
+                        </div>
+                      )}
+
+                      {/* Общая правка */}
+                      <div className="px-5 py-3 border-t border-white/10">
+                        <p className="text-white/30 text-xs mb-1.5">Общая правка (необязательно):</p>
+                        <input
+                          type="text"
+                          placeholder="Например: добавить 2 светильника, убрать закладные..."
+                          value={aiEditComments['__general__'] || ''}
+                          onChange={e => setAiEditComments(prev => ({ ...prev, '__general__': e.target.value }))}
+                          className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white/70 text-xs outline-none focus:border-amber-500/40 transition placeholder:text-white/15"
+                        />
+                      </div>
                     </div>
                   );
                 })()}
-              </>
-            )}
-          </div>
+              </div>
 
-          {/* Футер */}
-          {!aiEditDone && (
-            <div className="flex items-center justify-end gap-3 px-5 py-3 border-t border-white/10 flex-shrink-0">
-              <button onClick={() => setAiEditOpen(false)}
-                className="px-4 py-2 text-white/40 hover:text-white/60 text-sm transition">
-                Отмена
-              </button>
-              <button
-                disabled={aiEditLoading || Object.values(aiEditComments).every(v => !v.trim())}
-                onClick={async () => {
-                  setAiEditLoading(true);
-                  try {
-                    const r = await fetch(AI_EDIT_URL, {
-                      method: 'POST',
-                      headers: { 'Content-Type': 'application/json', 'X-Auth-Token': token },
-                      body: JSON.stringify({
-                        correction_id: item.id,
-                        original_answer: item.llm_answer,
-                        user_text: item.user_text,
-                        comments: aiEditComments,
-                      }),
-                    });
-                    if (r.ok) setAiEditDone(true);
-                  } finally {
-                    setAiEditLoading(false);
-                  }
-                }}
-                className="flex items-center gap-2 px-5 py-2 bg-amber-500/20 hover:bg-amber-500/30 disabled:opacity-40 disabled:cursor-not-allowed text-amber-300 text-sm rounded-lg transition">
-                {aiEditLoading ? <Icon name="Loader2" size={14} className="animate-spin" /> : <Icon name="Wand2" size={14} />}
-                {aiEditLoading ? 'Обрабатывается...' : 'Сохранить'}
-              </button>
-            </div>
+              {/* Футер */}
+              <div className="flex items-center justify-between gap-3 px-5 py-3 border-t border-white/10 flex-shrink-0 bg-white/[0.02]">
+                <span className="text-white/25 text-xs">
+                  {Object.values(aiEditComments).filter(v => v.trim()).length > 0
+                    ? `${Object.values(aiEditComments).filter(v => v.trim()).length} правок`
+                    : 'Нет правок'}
+                </span>
+                <div className="flex gap-2">
+                  <button onClick={() => setAiEditOpen(false)}
+                    className="px-4 py-2 text-white/40 hover:text-white/60 text-sm transition">
+                    Отмена
+                  </button>
+                  <button
+                    disabled={aiEditLoading || Object.values(aiEditComments).every(v => !v.trim())}
+                    onClick={async () => {
+                      setAiEditLoading(true);
+                      try {
+                        const r = await fetch(AI_EDIT_URL, {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json', 'X-Auth-Token': token },
+                          body: JSON.stringify({
+                            correction_id: item.id,
+                            original_answer: item.llm_answer,
+                            user_text: item.user_text,
+                            comments: aiEditComments,
+                          }),
+                        });
+                        if (r.ok) setAiEditDone(true);
+                      } finally {
+                        setAiEditLoading(false);
+                      }
+                    }}
+                    className="flex items-center gap-2 px-5 py-2 bg-amber-500/20 hover:bg-amber-500/30 disabled:opacity-40 disabled:cursor-not-allowed text-amber-300 text-sm rounded-lg transition font-medium">
+                    {aiEditLoading ? <Icon name="Loader2" size={14} className="animate-spin" /> : <Icon name="Wand2" size={14} />}
+                    {aiEditLoading ? 'Обрабатывается...' : 'Сохранить'}
+                  </button>
+                </div>
+              </div>
+            </>
           )}
         </div>
       </div>,
