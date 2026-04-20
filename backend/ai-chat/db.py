@@ -318,7 +318,7 @@ def build_rules_prompt(rules: list) -> str:
 
         # Изменения клиента
         if r.get('client_changes'):
-            parts.append(f"изменения клиента: {r['client_changes']}")
+            parts.append(f"‼️ ПРИОРИТЕТНОЕ ИЗМЕНЕНИЕ (исполнять СТРОГО, важнее всех других правил): {r['client_changes']}")
 
         # Комплект — что добавить вместе
         try:
