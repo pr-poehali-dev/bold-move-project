@@ -1,0 +1,24 @@
+{
+  "tests": [
+    {
+      "name": "OPTIONS preflight",
+      "method": "OPTIONS",
+      "path": "/",
+      "expectedStatus": 200
+    },
+    {
+      "name": "Send feedback",
+      "method": "POST",
+      "path": "/",
+      "body": {
+        "estimate_text": "Смета на натяжные потолки\n1. Полотно:\n- MSD Classic матовый 35 м² × 399 = 13 965 ₽",
+        "comments": {
+          "0-0": "Хочу глянцевое вместо матового"
+        }
+      },
+      "expectedStatus": 200,
+      "expectedBody": "{\"ok\": true}",
+      "bodyMatcher": "partial"
+    }
+  ]
+}
