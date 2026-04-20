@@ -4,6 +4,7 @@ import HighlightedText from "./HighlightedText";
 import AddSynonymPanel from "./AddSynonymPanel";
 import SuggestedItemsPanel from "./SuggestedItemsPanel";
 import { apiFetch } from "./api";
+import EstimateTable, { isEstimate } from "@/pages/EstimateTable";
 import type { BotCorrection, PriceItem } from "./types";
 import type { SkipInfo, RecognizedData } from "./corrections.types";
 import { RECOGNIZED_LABELS } from "./corrections.types";
@@ -33,6 +34,7 @@ export default function CorrectionCard({
   const [editingTag, setEditingTag] = useState<string | null>(null);
   const [editingTagVal, setEditingTagVal] = useState("");
   const [llmAnswerVisible, setLlmAnswerVisible] = useState(false);
+  const [clientViewVisible, setClientViewVisible] = useState(false);
 
   const knownSynonyms = new Set(
     prices.flatMap(p => {
@@ -146,12 +148,30 @@ export default function CorrectionCard({
             <div className="mt-3 rounded-xl border border-violet-500/20 bg-violet-500/5 p-3">
               <div className="flex items-center gap-1.5 mb-2">
                 <Icon name="Sparkles" size={12} className="text-violet-400" />
-                <span className="text-xs text-violet-400 font-medium">Ответ который получил клиент</span>
+                <span className="text-xs text-violet-400 font-medium">Сырой текст ответа LLM</span>
                 <button onClick={() => setLlmAnswerVisible(false)} className="ml-auto text-white/20 hover:text-white/50 transition">
                   <Icon name="X" size={12} />
                 </button>
               </div>
               <p className="text-white/80 text-sm whitespace-pre-wrap leading-relaxed">{item.llm_answer}</p>
+            </div>
+          )}
+
+          {clientViewVisible && item.llm_answer && (
+            <div className="mt-3 rounded-xl border border-amber-500/20 bg-black/30 overflow-hidden">
+              <div className="flex items-center gap-1.5 px-3 py-2 border-b border-amber-500/20">
+                <Icon name="Eye" size={12} className="text-amber-400" />
+                <span className="text-xs text-amber-400 font-medium">Что увидел клиент</span>
+                <button onClick={() => setClientViewVisible(false)} className="ml-auto text-white/20 hover:text-white/50 transition">
+                  <Icon name="X" size={12} />
+                </button>
+              </div>
+              <div className="p-1">
+                {isEstimate(item.llm_answer)
+                  ? <EstimateTable text={item.llm_answer} items={item.suggested_items?.map(i => ({ name: i.name, qty: i.qty, price: i.price })) ?? undefined} />
+                  : <p className="text-white/80 text-sm whitespace-pre-wrap leading-relaxed p-3">{item.llm_answer}</p>
+                }
+              </div>
             </div>
           )}
 
@@ -298,13 +318,22 @@ export default function CorrectionCard({
 
         <div className="flex items-start gap-1 flex-shrink-0">
           {isLLM && item.llm_answer && (
-            <button
-              onClick={() => setLlmAnswerVisible(v => !v)}
-              title="Показать ответ который получил клиент"
-              className="flex items-center gap-1 px-2 py-1 rounded-lg bg-violet-500/15 hover:bg-violet-500/30 text-violet-300 hover:text-violet-200 text-xs transition mt-0.5">
-              <Icon name="Sparkles" size={12} />
-              <span className="hidden sm:inline">{llmAnswerVisible ? "Скрыть" : "Ответ LLM"}</span>
-            </button>
+            <div className="flex items-center gap-1 mt-0.5">
+              <button
+                onClick={() => { setLlmAnswerVisible(v => !v); setClientViewVisible(false); }}
+                title="Показать сырой текст ответа LLM"
+                className={`flex items-center gap-1 px-2 py-1 rounded-lg text-xs transition ${llmAnswerVisible ? "bg-violet-500/30 text-violet-200" : "bg-violet-500/15 hover:bg-violet-500/30 text-violet-300 hover:text-violet-200"}`}>
+                <Icon name="Sparkles" size={12} />
+                <span className="hidden sm:inline">Ответ LLM</span>
+              </button>
+              <button
+                onClick={() => { setClientViewVisible(v => !v); setLlmAnswerVisible(false); }}
+                title="Показать как видел клиент"
+                className={`flex items-center gap-1 px-2 py-1 rounded-lg text-xs transition ${clientViewVisible ? "bg-amber-500/30 text-amber-200" : "bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 hover:text-amber-300"}`}>
+                <Icon name="Eye" size={12} />
+                <span className="hidden sm:inline">Что увидел клиент</span>
+              </button>
+            </div>
           )}
           {!isLLM && (
             <button onClick={onToggleExpand}
