@@ -5,7 +5,7 @@ import HighlightedText from "./HighlightedText";
 import AddSynonymPanel from "./AddSynonymPanel";
 import SuggestedItemsPanel from "./SuggestedItemsPanel";
 import { apiFetch } from "./api";
-import EstimateTable, { isEstimate, parseEstimateBlocks } from "@/pages/EstimateTable";
+import EstimateTable, { isEstimate, parseEstimateBlocks, resolveItem } from "@/pages/EstimateTable";
 import type { BotCorrection, PriceItem } from "./types";
 import type { SkipInfo, RecognizedData } from "./corrections.types";
 import { RECOGNIZED_LABELS } from "./corrections.types";
@@ -465,74 +465,90 @@ export default function CorrectionCard({
                     );
                   }
 
-                  // фильтруем технический заголовок "Смета на..."
-                  const visibleBlocks = parsed.blocks.filter(b =>
-                    !(b.items.length === 0 && /смета/i.test(b.title)) &&
-                    !(b.items.length === 0 && b.title.length < 6)
-                  );
+                  const findItem = (name: string) => {
+                    const items = item.suggested_items ?? [];
+                    const nl = name.toLowerCase();
+                    return items.find(i => i.name.toLowerCase() === nl || i.name.toLowerCase().includes(nl) || nl.includes(i.name.toLowerCase()));
+                  };
+
+                  let numCounter = 0;
 
                   return (
                     <div className="flex flex-col">
-                      {/* Заголовок колонок */}
-                      <div className="grid px-5 py-2.5 border-b border-white/[0.07] bg-white/[0.03] sticky top-0 z-10" style={{ gridTemplateColumns: '1fr 220px' }}>
-                        <span className="text-white/25 text-[10px] uppercase tracking-widest">Позиция / Стоимость</span>
-                        <span className="text-amber-500/50 text-[10px] uppercase tracking-widest pl-5">✏ Правка</span>
+                      <div className="rounded-xl border border-white/10 overflow-hidden mx-4 mt-4">
+                        <table className="w-full text-xs">
+                          <thead>
+                            <tr className="bg-white/[0.06] border-b border-white/10">
+                              <th className="text-left px-3 py-2 text-white/40 font-montserrat font-semibold text-[11px] uppercase tracking-wider">Позиция</th>
+                              <th className="text-right px-3 py-2 text-white/40 font-montserrat font-semibold text-[11px] uppercase tracking-wider w-[160px]">Стоимость</th>
+                              <th className="text-left px-3 py-2 text-orange-400/60 font-montserrat font-semibold text-[11px] uppercase tracking-wider w-[200px]">✏ Правка</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {parsed.blocks.map((block, bi) => {
+                              if (block.numbered) numCounter++;
+                              const label = block.numbered ? `${numCounter}. ${block.title}` : block.title;
+                              if (/смета/i.test(label) && block.items.length === 0) return null;
+                              return (
+                                <>
+                                  <tr key={`h-${bi}`} className={`${bi > 0 ? 'border-t border-white/15' : ''} bg-white/[0.02]`}>
+                                    <td colSpan={3} className="px-3 pt-3 pb-2 font-montserrat font-bold text-orange-400 text-[13px]">
+                                      {label}
+                                    </td>
+                                  </tr>
+                                  {block.items.map((it, ii) => {
+                                    const { cleanName, formula, total } = resolveItem(it, findItem);
+                                    const hasComment = !!(aiEditComments[cleanName] || '').trim();
+                                    return (
+                                      <tr key={`r-${bi}-${ii}`} className={`group/row transition-colors ${hasComment ? 'bg-orange-500/10' : 'hover:bg-white/[0.03]'} ${ii > 0 ? 'border-t border-white/5' : ''}`}>
+                                        <td className="px-3 py-2 text-white/80 text-xs leading-snug">{cleanName}</td>
+                                        <td className="px-3 py-2 text-right whitespace-nowrap">
+                                          {formula && <div className="text-white/40 text-[11px] font-montserrat leading-snug">{formula}</div>}
+                                          {total && <div className="text-orange-400 font-montserrat font-bold text-xs leading-snug">{total}</div>}
+                                        </td>
+                                        <td className="px-2 py-1.5">
+                                          <input
+                                            type="text"
+                                            placeholder="правка..."
+                                            value={aiEditComments[cleanName] || ''}
+                                            onChange={e => setAiEditComments(prev => ({ ...prev, [cleanName]: e.target.value }))}
+                                            className={`w-full rounded-lg px-2.5 py-1 text-[11px] outline-none transition placeholder:text-white/15
+                                              ${hasComment
+                                                ? 'bg-orange-500/15 border border-orange-500/40 text-orange-200'
+                                                : 'bg-transparent border border-transparent group-hover/row:border-white/10 group-hover/row:bg-white/5 text-white/70 focus:border-orange-500/40 focus:bg-orange-500/5'
+                                              }`}
+                                          />
+                                        </td>
+                                      </tr>
+                                    );
+                                  })}
+                                </>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+
+                        {parsed.totals.length > 0 && (
+                          <div className="border-t border-orange-500/30 bg-gradient-to-r from-orange-500/10 to-rose-500/10 px-3 py-3">
+                            <div className="space-y-1">
+                              {parsed.totals.map((t, i) => {
+                                const isHeader = /итогов|итого\s*стоим/i.test(t) && !t.includes('Econom') && !t.includes('Standard') && !t.includes('Premium');
+                                const isHighlight = /standard/i.test(t);
+                                if (isHeader) return <div key={i} className="text-white/40 font-montserrat text-[10px] mb-0.5 text-right">{t.replace(/:$/, '')}</div>;
+                                return (
+                                  <div key={i} className={`flex justify-end text-xs ${isHighlight ? 'text-orange-400 font-montserrat font-black text-sm' : 'text-white/70'}`}>
+                                    <span className="text-right mr-3">{t.split(':')[0]}:</span>
+                                    <span className="font-montserrat font-bold">{t.split(':').slice(1).join(':').trim()}</span>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        )}
                       </div>
 
-                      {visibleBlocks.map((block, bi) => (
-                        <div key={bi}>
-                          {/* Заголовок секции */}
-                          <div className="px-5 pt-4 pb-2 flex items-center gap-3">
-                            <span className="text-amber-400 text-xs font-bold uppercase tracking-wider">
-                              {block.numbered ? `${bi + 1}. ${block.title}` : block.title}
-                            </span>
-                            <div className="flex-1 h-px bg-amber-500/10" />
-                          </div>
-
-                          {/* Позиции */}
-                          {block.items.map((it, ii) => {
-                            const hasComment = !!(aiEditComments[it.name] || '').trim();
-                            return (
-                              <div key={ii}
-                                className={`grid px-5 py-2.5 border-b border-white/[0.04] items-start gap-3 group/row transition-colors ${hasComment ? 'bg-amber-500/[0.06]' : 'hover:bg-white/[0.02]'}`}
-                                style={{ gridTemplateColumns: '1fr 220px' }}>
-                                {/* Левая колонка: название + стоимость под ним */}
-                                <div className="flex flex-col gap-0.5 min-w-0">
-                                  <span className={`text-sm leading-snug ${hasComment ? 'text-white' : 'text-white/80'}`}>{it.name}</span>
-                                  {it.value && <span className="text-white/30 text-xs tabular-nums">{it.value}</span>}
-                                </div>
-                                {/* Правая колонка: поле правки */}
-                                <div className="pl-4 pt-0.5">
-                                  <input
-                                    type="text"
-                                    placeholder="добавить правку..."
-                                    value={aiEditComments[it.name] || ''}
-                                    onChange={e => setAiEditComments(prev => ({ ...prev, [it.name]: e.target.value }))}
-                                    className={`w-full rounded-lg px-3 py-1.5 text-xs outline-none transition
-                                      ${hasComment
-                                        ? 'bg-amber-500/10 border border-amber-500/40 text-amber-200 placeholder:text-amber-500/30'
-                                        : 'bg-transparent border border-transparent group-hover/row:border-white/[0.1] group-hover/row:bg-white/[0.03] text-white/70 focus:border-amber-500/40 focus:bg-amber-500/5 placeholder:text-white/15 focus:placeholder:text-white/25'
-                                      }`}
-                                  />
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      ))}
-
-                      {/* Итоги */}
-                      {parsed.totals.length > 0 && (
-                        <div className="px-5 py-4 border-t border-white/10 flex flex-col items-end gap-1">
-                          <span className="text-white/20 text-[10px] uppercase tracking-widest mb-1">Итоговая стоимость</span>
-                          {parsed.totals.map((t, i) => (
-                            <span key={i} className={`tabular-nums ${t.includes('Standard') ? 'text-amber-400 font-bold text-sm' : 'text-white/35 text-xs'}`}>{t}</span>
-                          ))}
-                        </div>
-                      )}
-
                       {/* Общая правка */}
-                      <div className="px-5 pb-5 pt-3 border-t border-white/[0.07]">
+                      <div className="px-4 pb-4 pt-3 border-t border-white/[0.07] mt-4">
                         <div className="flex items-center gap-2 mb-2">
                           <Icon name="BookOpen" size={12} className="text-violet-400/60" />
                           <span className="text-white/40 text-xs">Общая правка</span>
@@ -543,7 +559,7 @@ export default function CorrectionCard({
                           placeholder="Например: добавить 3 светильника, площадь 25м², убрать закладные..."
                           value={aiEditComments['__general__'] || ''}
                           onChange={e => setAiEditComments(prev => ({ ...prev, '__general__': e.target.value }))}
-                          className="w-full bg-white/[0.04] border border-white/[0.08] rounded-lg px-3 py-2.5 text-white/70 text-sm outline-none focus:border-amber-500/40 focus:bg-amber-500/5 transition placeholder:text-white/20"
+                          className="w-full bg-white/[0.04] border border-white/[0.08] rounded-lg px-3 py-2.5 text-white/70 text-sm outline-none focus:border-orange-500/40 focus:bg-orange-500/5 transition placeholder:text-white/20"
                         />
                       </div>
                     </div>

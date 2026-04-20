@@ -173,7 +173,7 @@ interface LLMItem { name: string; qty: number; price: number; unit?: string; }
 const MUL_RE = /[×xх]/;
 const UNITS = "м²|м2|мп|пм|пог\\.м|шт\\.?|шт|м\\.п\\.?|м";
 
-function resolveItem(
+export function resolveItem(
   item: { name: string; value: string },
   findItem: (name: string) => LLMItem | undefined
 ): { cleanName: string; formula: string; total: string } {
