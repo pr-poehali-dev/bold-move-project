@@ -5,7 +5,7 @@ import { apiFetch } from "./api";
 interface Props { token: string; }
 
 interface PriceItem { category: string; name: string; price: number; unit: string; description: string; active: boolean; }
-interface RuleItem { name: string; category: string; when_condition: string; when_not_condition: string; calc_rule: string; bundle: string; }
+interface RuleItem { name: string; category: string; when_condition: string; when_not_condition: string; calc_rule: string; bundle: string; client_changes: string; }
 interface RuleType { id: number; name: string; label: string; }
 
 const TEMPLATE_GENERAL = `Ты сметчик-технолог компании MosPotolki (натяжные потолки, Мытищи, с 2009г). Отвечай по-русски. Тел:+7(977)606-89-01.
@@ -133,7 +133,7 @@ export default function TabPrompt({ token }: Props) {
   }, {});
 
   const rulesByCategory = rules.reduce<Record<string, RuleItem[]>>((acc, r) => {
-    if (r.when_condition || r.when_not_condition || r.calc_rule || (r.bundle && r.bundle !== "[]")) {
+    if (r.when_condition || r.when_not_condition || r.calc_rule || r.client_changes || (r.bundle && r.bundle !== "[]")) {
       (acc[r.category] ??= []).push(r);
     }
     return acc;
@@ -316,6 +316,11 @@ export default function TabPrompt({ token }: Props) {
                       {parseBundleNames(item.bundle, idToName) && (
                         <span className="text-white/40">
                           <span className="text-amber-400/70">вместе добавить:</span> {parseBundleNames(item.bundle, idToName)}
+                        </span>
+                      )}
+                      {item.client_changes && (
+                        <span className="text-white/40">
+                          <span className="text-orange-400/70">изменения клиента:</span> {item.client_changes}
                         </span>
                       )}
                     </div>
