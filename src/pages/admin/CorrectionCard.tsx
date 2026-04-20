@@ -467,23 +467,23 @@ export default function CorrectionCard({
 
                   // фильтруем технический заголовок "Смета на..."
                   const visibleBlocks = parsed.blocks.filter(b =>
-                    !(b.items.length === 0 && /смета/i.test(b.title))
+                    !(b.items.length === 0 && /смета/i.test(b.title)) &&
+                    !(b.items.length === 0 && b.title.length < 6)
                   );
 
                   return (
                     <div className="flex flex-col">
                       {/* Заголовок колонок */}
-                      <div className="grid px-5 py-2 border-b border-white/[0.07] bg-white/[0.03] sticky top-0 z-10" style={{ gridTemplateColumns: '1fr 180px 220px' }}>
-                        <span className="text-white/25 text-[10px] uppercase tracking-widest">Позиция</span>
-                        <span className="text-white/25 text-[10px] uppercase tracking-widest text-right">Стоимость</span>
-                        <span className="text-amber-500/60 text-[10px] uppercase tracking-widest pl-4">✏ Правка</span>
+                      <div className="grid px-5 py-2.5 border-b border-white/[0.07] bg-white/[0.03] sticky top-0 z-10" style={{ gridTemplateColumns: '1fr 220px' }}>
+                        <span className="text-white/25 text-[10px] uppercase tracking-widest">Позиция / Стоимость</span>
+                        <span className="text-amber-500/50 text-[10px] uppercase tracking-widest pl-5">✏ Правка</span>
                       </div>
 
                       {visibleBlocks.map((block, bi) => (
                         <div key={bi}>
                           {/* Заголовок секции */}
-                          <div className="px-5 pt-4 pb-1.5 flex items-center gap-2">
-                            <span className="text-amber-400 text-xs font-bold uppercase tracking-wide">
+                          <div className="px-5 pt-4 pb-2 flex items-center gap-3">
+                            <span className="text-amber-400 text-xs font-bold uppercase tracking-wider">
                               {block.numbered ? `${bi + 1}. ${block.title}` : block.title}
                             </span>
                             <div className="flex-1 h-px bg-amber-500/10" />
@@ -494,20 +494,24 @@ export default function CorrectionCard({
                             const hasComment = !!(aiEditComments[it.name] || '').trim();
                             return (
                               <div key={ii}
-                                className={`grid px-5 py-2 items-center gap-3 border-b border-white/[0.04] transition-colors ${hasComment ? 'bg-amber-500/[0.06]' : 'hover:bg-white/[0.02]'}`}
-                                style={{ gridTemplateColumns: '1fr 180px 220px' }}>
-                                <span className={`text-sm ${hasComment ? 'text-white' : 'text-white/70'}`}>{it.name}</span>
-                                <span className="text-white/35 text-xs text-right tabular-nums whitespace-nowrap">{it.value}</span>
-                                <div className="pl-3">
+                                className={`grid px-5 py-2.5 border-b border-white/[0.04] items-start gap-3 group/row transition-colors ${hasComment ? 'bg-amber-500/[0.06]' : 'hover:bg-white/[0.02]'}`}
+                                style={{ gridTemplateColumns: '1fr 220px' }}>
+                                {/* Левая колонка: название + стоимость под ним */}
+                                <div className="flex flex-col gap-0.5 min-w-0">
+                                  <span className={`text-sm leading-snug ${hasComment ? 'text-white' : 'text-white/80'}`}>{it.name}</span>
+                                  {it.value && <span className="text-white/30 text-xs tabular-nums">{it.value}</span>}
+                                </div>
+                                {/* Правая колонка: поле правки */}
+                                <div className="pl-4 pt-0.5">
                                   <input
                                     type="text"
-                                    placeholder="правка..."
+                                    placeholder="добавить правку..."
                                     value={aiEditComments[it.name] || ''}
                                     onChange={e => setAiEditComments(prev => ({ ...prev, [it.name]: e.target.value }))}
-                                    className={`w-full rounded-lg px-3 py-1.5 text-xs outline-none transition placeholder:text-white/15
+                                    className={`w-full rounded-lg px-3 py-1.5 text-xs outline-none transition
                                       ${hasComment
-                                        ? 'bg-amber-500/10 border border-amber-500/40 text-amber-200'
-                                        : 'bg-white/[0.04] border border-white/[0.08] text-white/60 focus:border-amber-500/40 focus:bg-amber-500/5'
+                                        ? 'bg-amber-500/10 border border-amber-500/40 text-amber-200 placeholder:text-amber-500/30'
+                                        : 'bg-transparent border border-transparent group-hover/row:border-white/[0.1] group-hover/row:bg-white/[0.03] text-white/70 focus:border-amber-500/40 focus:bg-amber-500/5 placeholder:text-white/15 focus:placeholder:text-white/25'
                                       }`}
                                   />
                                 </div>
@@ -519,23 +523,26 @@ export default function CorrectionCard({
 
                       {/* Итоги */}
                       {parsed.totals.length > 0 && (
-                        <div className="px-5 py-4 border-t border-white/10 flex flex-col items-end gap-1.5">
-                          <span className="text-white/25 text-[10px] uppercase tracking-widest mb-1">Итоговая стоимость</span>
+                        <div className="px-5 py-4 border-t border-white/10 flex flex-col items-end gap-1">
+                          <span className="text-white/20 text-[10px] uppercase tracking-widest mb-1">Итоговая стоимость</span>
                           {parsed.totals.map((t, i) => (
-                            <span key={i} className={`text-sm tabular-nums ${t.includes('Standard') ? 'text-amber-400 font-bold text-base' : 'text-white/40'}`}>{t}</span>
+                            <span key={i} className={`tabular-nums ${t.includes('Standard') ? 'text-amber-400 font-bold text-sm' : 'text-white/35 text-xs'}`}>{t}</span>
                           ))}
                         </div>
                       )}
 
                       {/* Общая правка */}
-                      <div className="px-5 pb-4 pt-2 border-t border-white/[0.07]">
-                        <p className="text-white/25 text-[10px] uppercase tracking-widest mb-2">Общая правка</p>
+                      <div className="px-5 pb-5 pt-3 border-t border-white/[0.07]">
+                        <div className="flex items-center gap-2 mb-2">
+                          <Icon name="Plus" size={12} className="text-white/30" />
+                          <span className="text-white/30 text-xs">Общая правка — добавить позицию или изменить параметры</span>
+                        </div>
                         <input
                           type="text"
-                          placeholder="Добавить позицию, изменить площадь, другие пожелания..."
+                          placeholder="Например: добавить 3 светильника, площадь 25м², убрать закладные..."
                           value={aiEditComments['__general__'] || ''}
                           onChange={e => setAiEditComments(prev => ({ ...prev, '__general__': e.target.value }))}
-                          className="w-full bg-white/[0.04] border border-white/[0.08] rounded-lg px-3 py-2.5 text-white/60 text-sm outline-none focus:border-amber-500/40 focus:bg-amber-500/5 transition placeholder:text-white/15"
+                          className="w-full bg-white/[0.04] border border-white/[0.08] rounded-lg px-3 py-2.5 text-white/70 text-sm outline-none focus:border-amber-500/40 focus:bg-amber-500/5 transition placeholder:text-white/20"
                         />
                       </div>
                     </div>
