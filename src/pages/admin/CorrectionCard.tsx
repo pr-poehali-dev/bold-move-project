@@ -33,8 +33,7 @@ export default function CorrectionCard({
   const [panelOpen, setPanelOpen] = useState(false);
   const [editingTag, setEditingTag] = useState<string | null>(null);
   const [editingTagVal, setEditingTagVal] = useState("");
-  const [llmAnswerVisible, setLlmAnswerVisible] = useState(false);
-  const [clientViewVisible, setClientViewVisible] = useState(false);
+  const [splitViewOpen, setSplitViewOpen] = useState(false);
 
   const knownSynonyms = new Set(
     prices.flatMap(p => {
@@ -144,33 +143,38 @@ export default function CorrectionCard({
             <p className="text-xs text-white/20 mt-1 select-none">Выдели текст мышкой чтобы добавить в обучение</p>
           )}
 
-          {llmAnswerVisible && item.llm_answer && (
-            <div className="mt-3 rounded-xl border border-violet-500/20 bg-violet-500/5 p-3">
-              <div className="flex items-center gap-1.5 mb-2">
-                <Icon name="Sparkles" size={12} className="text-violet-400" />
-                <span className="text-xs text-violet-400 font-medium">Сырой текст ответа LLM</span>
-                <button onClick={() => setLlmAnswerVisible(false)} className="ml-auto text-white/20 hover:text-white/50 transition">
-                  <Icon name="X" size={12} />
-                </button>
+          {splitViewOpen && item.llm_answer && (
+            <div className="mt-3 rounded-xl border border-white/10 overflow-hidden">
+              {/* Заголовок сплита */}
+              <div className="grid grid-cols-2 border-b border-white/10">
+                <div className="flex items-center gap-1.5 px-3 py-2 border-r border-white/10 bg-violet-500/5">
+                  <Icon name="Sparkles" size={12} className="text-violet-400" />
+                  <span className="text-xs text-violet-400 font-medium">Что пришло с LLM</span>
+                </div>
+                <div className="flex items-center gap-1.5 px-3 py-2 bg-amber-500/5">
+                  <Icon name="Eye" size={12} className="text-amber-400" />
+                  <span className="text-xs text-amber-400 font-medium">Что отдали клиенту</span>
+                  <button onClick={() => setSplitViewOpen(false)} className="ml-auto text-white/20 hover:text-white/50 transition">
+                    <Icon name="X" size={12} />
+                  </button>
+                </div>
               </div>
-              <p className="text-white/80 text-sm whitespace-pre-wrap leading-relaxed">{item.llm_answer}</p>
-            </div>
-          )}
-
-          {clientViewVisible && item.llm_answer && (
-            <div className="mt-3 rounded-xl border border-amber-500/20 bg-black/30 overflow-hidden">
-              <div className="flex items-center gap-1.5 px-3 py-2 border-b border-amber-500/20">
-                <Icon name="Eye" size={12} className="text-amber-400" />
-                <span className="text-xs text-amber-400 font-medium">Что увидел клиент</span>
-                <button onClick={() => setClientViewVisible(false)} className="ml-auto text-white/20 hover:text-white/50 transition">
-                  <Icon name="X" size={12} />
-                </button>
-              </div>
-              <div className="p-1">
-                {isEstimate(item.llm_answer)
-                  ? <EstimateTable text={item.llm_answer} items={item.suggested_items?.map(i => ({ name: i.name, qty: i.qty, price: i.price })) ?? undefined} />
-                  : <p className="text-white/80 text-sm whitespace-pre-wrap leading-relaxed p-3">{item.llm_answer}</p>
-                }
+              {/* Тело сплита */}
+              <div className="grid grid-cols-2">
+                {/* Левая: сырой текст */}
+                <div className="border-r border-white/10 p-3 bg-violet-500/[0.03] overflow-auto max-h-[500px]">
+                  <p className="text-white/75 text-xs whitespace-pre-wrap leading-relaxed font-mono">{item.llm_answer}</p>
+                </div>
+                {/* Правая: рендер как у клиента */}
+                <div className="overflow-auto max-h-[500px] bg-black/20">
+                  {isEstimate(item.llm_answer)
+                    ? <EstimateTable
+                        text={item.llm_answer}
+                        items={item.suggested_items?.map(i => ({ name: i.name, qty: i.qty, price: i.price })) ?? undefined}
+                      />
+                    : <p className="text-white/80 text-sm whitespace-pre-wrap leading-relaxed p-3">{item.llm_answer}</p>
+                  }
+                </div>
               </div>
             </div>
           )}
@@ -318,22 +322,13 @@ export default function CorrectionCard({
 
         <div className="flex items-start gap-1 flex-shrink-0">
           {isLLM && item.llm_answer && (
-            <div className="flex items-center gap-1 mt-0.5">
-              <button
-                onClick={() => { setLlmAnswerVisible(v => !v); setClientViewVisible(false); }}
-                title="Показать сырой текст ответа LLM"
-                className={`flex items-center gap-1 px-2 py-1 rounded-lg text-xs transition ${llmAnswerVisible ? "bg-violet-500/30 text-violet-200" : "bg-violet-500/15 hover:bg-violet-500/30 text-violet-300 hover:text-violet-200"}`}>
-                <Icon name="Sparkles" size={12} />
-                <span className="hidden sm:inline">Ответ LLM</span>
-              </button>
-              <button
-                onClick={() => { setClientViewVisible(v => !v); setLlmAnswerVisible(false); }}
-                title="Показать как видел клиент"
-                className={`flex items-center gap-1 px-2 py-1 rounded-lg text-xs transition ${clientViewVisible ? "bg-amber-500/30 text-amber-200" : "bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 hover:text-amber-300"}`}>
-                <Icon name="Eye" size={12} />
-                <span className="hidden sm:inline">Что увидел клиент</span>
-              </button>
-            </div>
+            <button
+              onClick={() => setSplitViewOpen(v => !v)}
+              title="Сравнить: ответ LLM vs что увидел клиент"
+              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs transition mt-0.5 ${splitViewOpen ? "bg-violet-500/30 text-violet-200" : "bg-violet-500/15 hover:bg-violet-500/25 text-violet-300 hover:text-violet-200"}`}>
+              <Icon name="Columns2" size={12} />
+              <span className="hidden sm:inline">Что увидел клиент</span>
+            </button>
           )}
           {!isLLM && (
             <button onClick={onToggleExpand}
