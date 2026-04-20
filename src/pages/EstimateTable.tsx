@@ -236,10 +236,6 @@ function ensureRub(s: string): string {
   return s.replace(/\s+/g, " ").trim();
 }
 
-import FUNC2URL from "../../backend/func2url.json";
-
-const ESTIMATE_FEEDBACK_URL = (FUNC2URL as Record<string, string>)["estimate-feedback"] ?? "";
-
 export default function EstimateTable({ text, items }: { text: string; items?: LLMItem[] }) {
   const parsed = useMemo(() => parseEstimateBlocks(text), [text]);
 
@@ -262,12 +258,6 @@ export default function EstimateTable({ text, items }: { text: string; items?: L
   const { blocks, totals, finalPhrase } = parsed;
   const [downloading, setDownloading] = useState(false);
 
-  // Режим «Изменить AI»
-  const [editMode, setEditMode] = useState(false);
-  const [comments, setComments] = useState<Record<string, string>>({});
-  const [sending, setSending] = useState(false);
-  const [sent, setSent] = useState(false);
-
   const handleDownload = async () => {
     setDownloading(true);
     try {
@@ -280,26 +270,6 @@ export default function EstimateTable({ text, items }: { text: string; items?: L
     }
   };
 
-  const handleSendFeedback = async () => {
-    const entries = Object.entries(comments).filter(([, v]) => v.trim());
-    if (entries.length === 0) return;
-    setSending(true);
-    try {
-      await fetch(ESTIMATE_FEEDBACK_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ estimate_text: text, comments: Object.fromEntries(entries) }),
-      });
-      setSent(true);
-      setEditMode(false);
-      setComments({});
-    } catch {
-      /* ignore */
-    } finally {
-      setSending(false);
-    }
-  };
-
   if (blocks.length === 0) return null;
 
   return (
@@ -308,13 +278,11 @@ export default function EstimateTable({ text, items }: { text: string; items?: L
         <Icon name="FileSpreadsheet" size={16} className="text-orange-400" />
         <span className="font-montserrat font-bold text-sm text-white">Смета на натяжные потолки</span>
       </div>
-
       <div className="rounded-xl border border-white/10 overflow-hidden">
         <table className="w-full text-xs">
           <thead>
             <tr className="bg-white/[0.06] border-b border-white/10">
               <th className="text-left px-3 py-2 text-white/40 font-montserrat font-semibold text-[11px] uppercase tracking-wider">Позиция</th>
-              {editMode && <th className="px-3 py-2 text-white/40 font-montserrat font-semibold text-[11px] uppercase tracking-wider w-[180px]">Комментарий</th>}
               <th className="text-right px-3 py-2 text-white/40 font-montserrat font-semibold text-[11px] uppercase tracking-wider w-[160px]">Стоимость</th>
             </tr>
           </thead>
@@ -327,27 +295,15 @@ export default function EstimateTable({ text, items }: { text: string; items?: L
                 return (
                   <>
                     <tr key={`h-${bi}`} className={`${bi > 0 ? "border-t border-white/15" : ""} bg-white/[0.02]`}>
-                      <td colSpan={editMode ? 3 : 2} className="px-3 pt-3 pb-2 font-montserrat font-bold text-orange-400 text-[13px]">
+                      <td colSpan={2} className="px-3 pt-3 pb-2 font-montserrat font-bold text-orange-400 text-[13px]">
                         {label}
                       </td>
                     </tr>
                     {block.items.map((item, ii) => {
                       const { cleanName, formula, total } = resolveItem(item, findItem);
-                      const key = `${bi}-${ii}`;
                       return (
-                        <tr key={`r-${key}`} className={`hover:bg-white/3 transition-colors ${ii > 0 ? "border-t border-white/5" : ""}`}>
+                        <tr key={`r-${bi}-${ii}`} className={`hover:bg-white/3 transition-colors ${ii > 0 ? "border-t border-white/5" : ""}`}>
                           <td className="px-3 py-2 text-white/80 text-xs leading-snug">{cleanName}</td>
-                          {editMode && (
-                            <td className="px-3 py-2">
-                              <input
-                                type="text"
-                                placeholder="Что изменить?"
-                                value={comments[key] ?? ""}
-                                onChange={e => setComments(p => ({ ...p, [key]: e.target.value }))}
-                                className="w-full bg-white/5 border border-white/10 focus:border-orange-400/50 rounded-lg px-2.5 py-1.5 text-[11px] text-white/80 placeholder-white/20 outline-none transition"
-                              />
-                            </td>
-                          )}
                           <td className="px-3 py-2 text-right whitespace-nowrap">
                             {formula && <div className="text-white/40 text-[11px] font-montserrat leading-snug">{formula}</div>}
                             {total && <div className="text-orange-400 font-montserrat font-bold text-xs leading-snug">{total}</div>}
@@ -391,54 +347,14 @@ export default function EstimateTable({ text, items }: { text: string; items?: L
         <div className="mt-3 text-[11px] text-white/40 italic leading-relaxed">{finalPhrase}</div>
       )}
 
-      {/* Кнопки */}
-      <div className="mt-3 flex flex-wrap gap-2">
-        <button
-          onClick={handleDownload}
-          disabled={downloading}
-          className="inline-flex items-center gap-2 bg-gradient-to-r from-orange-500 to-rose-500 text-white text-xs font-montserrat font-bold px-4 py-2.5 rounded-xl hover:scale-105 transition-transform disabled:opacity-50 shadow-lg shadow-orange-500/20"
-        >
-          <Icon name="Download" size={14} />
-          {downloading ? "Генерация..." : "Скачать смету PDF"}
-        </button>
-
-        {!sent && !editMode && (
-          <button
-            onClick={() => setEditMode(true)}
-            className="inline-flex items-center gap-2 bg-white/5 border border-white/10 hover:border-orange-400/40 hover:bg-orange-500/10 text-white/60 hover:text-orange-400 text-xs font-montserrat font-bold px-4 py-2.5 rounded-xl transition-all"
-          >
-            <Icon name="Pencil" size={14} />
-            Изменить AI
-          </button>
-        )}
-
-        {editMode && (
-          <>
-            <button
-              onClick={handleSendFeedback}
-              disabled={sending || Object.values(comments).every(v => !v.trim())}
-              className="inline-flex items-center gap-2 bg-gradient-to-r from-violet-500 to-indigo-500 text-white text-xs font-montserrat font-bold px-4 py-2.5 rounded-xl hover:scale-105 transition-transform disabled:opacity-40 shadow-lg shadow-violet-500/20"
-            >
-              <Icon name="Send" size={14} />
-              {sending ? "Отправляем..." : "Отправить правки"}
-            </button>
-            <button
-              onClick={() => { setEditMode(false); setComments({}); }}
-              className="inline-flex items-center gap-2 bg-white/5 border border-white/10 text-white/40 hover:text-white/70 text-xs font-montserrat font-bold px-4 py-2.5 rounded-xl transition-all"
-            >
-              <Icon name="X" size={14} />
-              Отмена
-            </button>
-          </>
-        )}
-
-        {sent && (
-          <div className="inline-flex items-center gap-2 text-green-400 text-xs font-montserrat font-bold px-4 py-2.5 rounded-xl bg-green-500/10 border border-green-500/20">
-            <Icon name="CheckCircle" size={14} />
-            Правки отправлены! Скоро свяжемся.
-          </div>
-        )}
-      </div>
+      <button
+        onClick={handleDownload}
+        disabled={downloading}
+        className="mt-3 inline-flex items-center gap-2 bg-gradient-to-r from-orange-500 to-rose-500 text-white text-xs font-montserrat font-bold px-4 py-2.5 rounded-xl hover:scale-105 transition-transform disabled:opacity-50 shadow-lg shadow-orange-500/20"
+      >
+        <Icon name="Download" size={14} />
+        {downloading ? "Генерация..." : "Скачать смету PDF"}
+      </button>
     </div>
   );
 }
