@@ -294,7 +294,6 @@ def build_rules_prompt(rules: list) -> str:
 
     for r in rules:
         has_rule = (r.get('calc_rule') or r.get('when_condition') or r.get('when_not_condition')
-                    or r.get('client_changes')
                     or r.get('bundle', '[]') not in ('[]', '', None))
         if not has_rule:
             # Синонимы собираем всегда
@@ -315,10 +314,6 @@ def build_rules_prompt(rules: list) -> str:
         # Количество / расчёт
         if r.get('calc_rule'):
             parts.append(f"количество: {r['calc_rule']}")
-
-        # Изменения клиента
-        if r.get('client_changes'):
-            parts.append(f"ИЗМЕНЕНИЯ КЛИЕНТА: {r['client_changes']}")
 
         # Комплект — что добавить вместе
         try:
