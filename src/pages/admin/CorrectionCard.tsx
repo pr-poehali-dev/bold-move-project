@@ -1,4 +1,5 @@
 import { useState, useRef } from "react";
+import { createPortal } from "react-dom";
 import Icon from "@/components/ui/icon";
 import HighlightedText from "./HighlightedText";
 import AddSynonymPanel from "./AddSynonymPanel";
@@ -103,6 +104,7 @@ export default function CorrectionCard({
   };
 
   return (
+    <>
     <div className={`bg-white/[0.03] border rounded-xl overflow-hidden ${
       item.status === "pending" ? (isLLM ? "border-red-500/30" : "border-amber-500/30") :
       item.status === "approved" ? "border-green-500/20" : "border-white/10"
@@ -143,41 +145,7 @@ export default function CorrectionCard({
             <p className="text-xs text-white/20 mt-1 select-none">Выдели текст мышкой чтобы добавить в обучение</p>
           )}
 
-          {splitViewOpen && item.llm_answer && (
-            <div className="mt-3 rounded-xl border border-white/10 overflow-hidden">
-              {/* Заголовок сплита */}
-              <div className="grid grid-cols-2 border-b border-white/10">
-                <div className="flex items-center gap-1.5 px-3 py-2 border-r border-white/10 bg-violet-500/5">
-                  <Icon name="Sparkles" size={12} className="text-violet-400" />
-                  <span className="text-xs text-violet-400 font-medium">Что пришло с LLM</span>
-                </div>
-                <div className="flex items-center gap-1.5 px-3 py-2 bg-amber-500/5">
-                  <Icon name="Eye" size={12} className="text-amber-400" />
-                  <span className="text-xs text-amber-400 font-medium">Что отдали клиенту</span>
-                  <button onClick={() => setSplitViewOpen(false)} className="ml-auto text-white/20 hover:text-white/50 transition">
-                    <Icon name="X" size={12} />
-                  </button>
-                </div>
-              </div>
-              {/* Тело сплита */}
-              <div className="grid grid-cols-2">
-                {/* Левая: сырой текст */}
-                <div className="border-r border-white/10 p-3 bg-violet-500/[0.03] overflow-auto max-h-[500px]">
-                  <p className="text-white/75 text-xs whitespace-pre-wrap leading-relaxed font-mono">{item.llm_answer}</p>
-                </div>
-                {/* Правая: рендер как у клиента */}
-                <div className="overflow-auto max-h-[500px] bg-black/20">
-                  {isEstimate(item.llm_answer)
-                    ? <EstimateTable
-                        text={item.llm_answer}
-                        items={item.suggested_items?.map(i => ({ name: i.name, qty: i.qty, price: i.price })) ?? undefined}
-                      />
-                    : <p className="text-white/80 text-sm whitespace-pre-wrap leading-relaxed p-3">{item.llm_answer}</p>
-                  }
-                </div>
-              </div>
-            </div>
-          )}
+
 
           {/* Теги нераспознанных слов */}
           {isLLM && unknownWords.length > 0 && item.status === "pending" && (
@@ -432,5 +400,51 @@ export default function CorrectionCard({
         </div>
       )}
     </div>
+
+    {/* Полноэкранный сплит-вью — через портал поверх всего */}
+    {splitViewOpen && item.llm_answer && createPortal(
+      <div className="fixed inset-0 z-[9999] flex flex-col bg-[#0e0e0e]">
+        {/* Шапка */}
+        <div className="flex items-center gap-3 px-4 py-2.5 border-b border-white/10 bg-white/[0.02] flex-shrink-0">
+          <span className="text-white/50 text-xs truncate max-w-[50%]">«{item.user_text}»</span>
+          <button
+            onClick={() => setSplitViewOpen(false)}
+            className="ml-auto flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-white/50 hover:text-white text-xs transition">
+            <Icon name="X" size={13} /> Закрыть
+          </button>
+        </div>
+        {/* Тело: два столбца */}
+        <div className="flex flex-1 min-h-0">
+          {/* Левая панель — сырой текст LLM */}
+          <div className="flex flex-col w-1/2 border-r border-white/10 min-h-0">
+            <div className="flex items-center gap-2 px-4 py-2 border-b border-white/10 bg-violet-500/5 flex-shrink-0">
+              <Icon name="Sparkles" size={13} className="text-violet-400" />
+              <span className="text-xs text-violet-400 font-medium">Что пришло с LLM</span>
+            </div>
+            <div className="flex-1 overflow-auto p-4">
+              <pre className="text-white/70 text-xs leading-relaxed whitespace-pre-wrap font-mono">{item.llm_answer}</pre>
+            </div>
+          </div>
+          {/* Правая панель — рендер как у клиента */}
+          <div className="flex flex-col w-1/2 min-h-0">
+            <div className="flex items-center gap-2 px-4 py-2 border-b border-white/10 bg-amber-500/5 flex-shrink-0">
+              <Icon name="Eye" size={13} className="text-amber-400" />
+              <span className="text-xs text-amber-400 font-medium">Что отдали клиенту</span>
+            </div>
+            <div className="flex-1 overflow-auto">
+              {isEstimate(item.llm_answer)
+                ? <EstimateTable
+                    text={item.llm_answer}
+                    items={item.suggested_items?.map(i => ({ name: i.name, qty: i.qty, price: i.price })) ?? undefined}
+                  />
+                : <p className="text-white/80 text-sm whitespace-pre-wrap leading-relaxed p-4">{item.llm_answer}</p>
+              }
+            </div>
+          </div>
+        </div>
+      </div>,
+      document.body
+    )}
+    </>
   );
 }
