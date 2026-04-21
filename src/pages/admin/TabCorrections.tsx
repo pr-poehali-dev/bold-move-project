@@ -97,7 +97,7 @@ export default function TabCorrections({ token }: Props) {
           <Icon name="CheckCircle" size={16} className="text-green-400 mt-0.5 flex-shrink-0" />
           <div className="text-sm">
             <span className="text-green-300 font-medium">LLM всё понял.</span>
-            <span className="text-white/50 ml-1">Эти сметы рассчитаны корректно. Если заметишь ошибку — нажми «Обучить AI» рядом с нужной позицией.</span>
+            <span className="text-white/50 ml-1">Зелёные слова уже известны боту. Если нужно поменять синоним — нажми на слово и переназначь. Если смета посчитана неверно — нажми «Обучить AI».</span>
           </div>
         </div>
       )}
