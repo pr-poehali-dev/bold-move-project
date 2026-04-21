@@ -1308,13 +1308,29 @@ def handler(event, context):
     if search['text']:
         system_content += f"\n\n=== АКТУАЛЬНАЯ ИНФОРМАЦИЯ ИЗ ИНТЕРНЕТА ===\n{search['text']}\nИспользуй эти данные для ответа, указывай источники если уместно."
 
-    # Передаём только последние 6 сообщений — экономим токены
+    # Определяем: это запрос на смету?
+    # Если да — передаём ТОЛЬКО последнее сообщение без истории.
+    # Temperature=0 + одинаковый system prompt + одинаковый текст = одинаковый ответ.
+    _ESTIMATE_RE = re.compile(
+        r'\d+\s*(?:м²|м2|кв\.?\s*м?|квадрат|кв\b|м\b)|'
+        r'(?:санузел|комнат|зал|спальн|кухн|прихожа|гостин|студи|детск|коридор|ванн|туалет|однушк|двушк|трёшк|трешк)\w*\s+\d+|'
+        r'(?:светильник|люстр|ниш[аеу]|карниз|профил|полотн|монтаж|замер|смет)',
+        re.IGNORECASE
+    )
+    is_estimate_request = bool(_ESTIMATE_RE.search(last_user_text))
+
     openai_messages = [{'role': 'system', 'content': system_content}]
-    for msg in messages[-6:]:
-        openai_messages.append({
-            'role': msg.get('role', 'user'),
-            'content': msg.get('text', ''),
-        })
+    if is_estimate_request:
+        # Только последнее сообщение — детерминированный ответ
+        print(f"[estimate] detected → sending only last message, no history")
+        openai_messages.append({'role': 'user', 'content': last_user_text})
+    else:
+        # Обычный вопрос — передаём последние 6 сообщений с историей
+        for msg in messages[-6:]:
+            openai_messages.append({
+                'role': msg.get('role', 'user'),
+                'content': msg.get('text', ''),
+            })
 
     answer = call_llm(openai_messages)
 
