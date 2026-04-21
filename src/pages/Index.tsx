@@ -3,6 +3,7 @@ import Icon from "@/components/ui/icon";
 import { isEstimate } from "./EstimateTable";
 import { Panel, Msg, GREETING, AI_URL, localAnswer } from "./chatConfig";
 import { applyEstimateEdit, buildEstimateText } from "./estimateEditor";
+import { usePrices } from "./usePrices";
 import ChatUI from "./ChatUI";
 import LiveChat from "./LiveChat";
 import {
@@ -29,6 +30,7 @@ export default function Index() {
   const [regName, setRegName] = useState("");
   const [regPhone, setRegPhone] = useState("");
   const [regDone, setRegDone] = useState(false);
+  const prices = usePrices();
   const messagesRef = useRef<Msg[]>([GREETING]);
   useEffect(() => { messagesRef.current = messages; }, [messages]);
   const isPresetMsg = useRef(false);
@@ -70,7 +72,7 @@ export default function Index() {
     // Перехватываем редактирование сметы локально — без AI
     const estimateMsg = messagesRef.current.findLast((m) => m.role === "assistant" && isEstimate(m.text) && m.items?.length);
     if (estimateMsg?.items) {
-      const result = applyEstimateEdit(estimateMsg.items, text);
+      const result = applyEstimateEdit(estimateMsg.items, text, prices);
       if (result.handled && result.items) {
         const newItems = result.items;
         const newText = buildEstimateText(newItems, estimateMsg.text);

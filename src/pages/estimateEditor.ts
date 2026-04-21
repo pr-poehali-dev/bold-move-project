@@ -1,4 +1,5 @@
 import { EstimateItem } from "./chatConfig";
+import { PriceItem, findPriceByName } from "./usePrices";
 
 export interface EditResult {
   handled: boolean;
@@ -75,7 +76,7 @@ export function buildEstimateText(items: EstimateItem[], oldText: string): strin
   return lines.join("\n");
 }
 
-export function applyEstimateEdit(items: EstimateItem[], text: string): EditResult {
+export function applyEstimateEdit(items: EstimateItem[], text: string, prices: PriceItem[] = []): EditResult {
   const t = norm(text);
 
   // ──── УДАЛИТЬ ПОЗИЦИЮ ────
@@ -95,10 +96,16 @@ export function applyEstimateEdit(items: EstimateItem[], text: string): EditResu
     const qty = numMatch ? parseFloat(numMatch[1]) : 1;
     const name = numMatch ? numMatch[2].trim() : raw;
     const unit = parseUnit(raw);
-    // Ищем такую же позицию уже в смете — берём её цену
-    const existing = findIdx(items, name);
-    const price = existing !== -1 ? items[existing].price : 0;
-    return { handled: true, items: [...items, { name, qty, price, unit }], reply: "Готово ✅" };
+    // 1. Ищем такую же позицию уже в смете
+    const existingIdx = findIdx(items, name);
+    if (existingIdx !== -1) {
+      return { handled: true, items: [...items, { name, qty, price: items[existingIdx].price, unit: unit ?? items[existingIdx].unit }], reply: "Готово ✅" };
+    }
+    // 2. Ищем в прайсе из БД
+    const fromPrice = findPriceByName(prices, name);
+    const price = fromPrice ? fromPrice.price : 0;
+    const resolvedUnit = unit ?? fromPrice?.unit;
+    return { handled: true, items: [...items, { name, qty, price, unit: resolvedUnit }], reply: "Готово ✅" };
   }
 
   // ──── ИЗМЕНИТЬ ПЛОЩАДЬ ────

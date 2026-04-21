@@ -1,0 +1,12 @@
+{
+  "tests": [
+    {
+      "name": "Получить прайс",
+      "method": "GET",
+      "path": "/",
+      "expectedStatus": 200,
+      "expectedBody": {"prices": [{"id": 1}]},
+      "bodyMatcher": "partial"
+    }
+  ]
+}
