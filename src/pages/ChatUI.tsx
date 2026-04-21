@@ -63,22 +63,29 @@ export default function ChatUI({ messages, input, typing, panel, onInput, onSend
 
       {/* Messages */}
       <div ref={chatRef} className="flex-1 overflow-y-auto px-4 md:px-8 py-4 space-y-3 scroll-smooth">
-        {messages.map((m) => (
-          <div key={m.id} className={`flex items-end gap-2.5 ${m.role === "user" ? "flex-row-reverse" : ""}`}>
-            {m.role === "assistant" && (
-              <img src={AVATAR} alt="Женя" className="w-8 h-8 rounded-full object-cover shrink-0 border-2 border-orange-500/20 shadow-lg shadow-orange-500/10" />
-            )}
-            <div className={`rounded-2xl px-4 py-3 text-[13px] leading-relaxed ${
-              m.role === "user"
-                ? "max-w-[75%] md:max-w-[60%] bg-white/[0.08] border border-white/[0.08] text-white/90 rounded-br-md whitespace-pre-wrap"
-                : isEstimate(m.text)
-                  ? "max-w-[90%] md:max-w-[75%] w-full bg-white/[0.03] border border-white/[0.06] rounded-bl-md"
-                  : "max-w-[75%] md:max-w-[60%] bg-gradient-to-br from-white/[0.05] to-white/[0.02] border border-white/[0.06] text-white/70 rounded-bl-md whitespace-pre-wrap"
-            }`}>
-              {m.role === "assistant" && isEstimate(m.text) ? <EstimateTable text={m.text} items={m.items} /> : <MsgContent text={m.text} />}
+        {messages.map((m, idx) => {
+          const isFirst = idx === 0 && m.role === "assistant";
+          const showAvatar = m.role === "assistant" && isFirst;
+          const estimate = m.role === "assistant" && isEstimate(m.text);
+          return (
+            <div key={m.id} className={`flex items-end gap-2.5 ${m.role === "user" ? "flex-row-reverse" : ""}`}>
+              {m.role === "assistant" && (
+                showAvatar
+                  ? <img src={AVATAR} alt="Женя" className="w-8 h-8 rounded-full object-cover shrink-0 border-2 border-orange-500/20 shadow-lg shadow-orange-500/10" />
+                  : <div className="w-8 shrink-0" />
+              )}
+              <div className={`rounded-2xl px-4 py-3 text-[13px] leading-relaxed ${
+                m.role === "user"
+                  ? "max-w-[75%] md:max-w-[60%] bg-white/[0.08] border border-white/[0.08] text-white/90 rounded-br-md whitespace-pre-wrap"
+                  : estimate
+                    ? "w-full bg-white/[0.03] border border-white/[0.06] rounded-bl-md"
+                    : "max-w-[75%] md:max-w-[60%] bg-gradient-to-br from-white/[0.05] to-white/[0.02] border border-white/[0.06] text-white/70 rounded-bl-md whitespace-pre-wrap"
+              }`}>
+                {estimate ? <EstimateTable text={m.text} items={m.items} /> : <MsgContent text={m.text} />}
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
 
         {/* Пресет — показываем только пока нет сообщений от пользователя */}
         {messages.length === 1 && !typing && (
