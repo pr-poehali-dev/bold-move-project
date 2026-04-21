@@ -307,10 +307,10 @@ export default function CorrectionCard({
               </button>
               <button
                 onClick={() => { setAiEditOpen(true); setAiEditDone(false); setAiEditComments({}); }}
-                title="Изменить смету через AI"
-                className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs transition mt-0.5 bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 hover:text-amber-200">
-                <Icon name="Wand2" size={12} />
-                <span className="hidden sm:inline">Изменить AI</span>
+                title="Исправить ответ AI — обучить систему"
+                className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs transition mt-0.5 bg-violet-500/15 hover:bg-violet-500/25 text-violet-300 hover:text-violet-200">
+                <Icon name="GraduationCap" size={12} />
+                <span className="hidden sm:inline">Обучить AI</span>
               </button>
             </>
           )}
@@ -417,29 +417,46 @@ export default function CorrectionCard({
       )}
     </div>
 
-    {/* Модалка «Изменить AI» */}
+    {/* Модалка «Обучить AI» */}
     {aiEditOpen && item.llm_answer && createPortal(
       <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
-        <div className="flex flex-col w-full max-w-[960px] max-h-[92vh] rounded-2xl border border-white/10 bg-[#0f0f0f] overflow-hidden shadow-2xl">
+        <div className="flex flex-col w-full max-w-[960px] max-h-[92vh] rounded-2xl border border-violet-500/20 bg-[#0f0f0f] overflow-hidden shadow-2xl">
 
           {/* Шапка */}
           <div className="flex items-center justify-between px-5 py-3 border-b border-white/10 bg-white/[0.02] flex-shrink-0">
-            <div className="flex items-center gap-2">
-              <Icon name="Wand2" size={14} className="text-amber-400" />
-              <span className="text-white/80 text-sm font-medium">Изменить смету через AI</span>
-              <span className="text-white/30 text-xs ml-1">— напиши правку рядом с позицией</span>
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2">
+                <Icon name="GraduationCap" size={15} className="text-violet-400" />
+                <span className="text-white/80 text-sm font-medium">Исправить ответ AI</span>
+              </div>
+              <div className="h-4 w-px bg-white/10" />
+              <span className="text-white/25 text-xs">Запрос: «{item.user_text.slice(0, 60)}{item.user_text.length > 60 ? '…' : ''}»</span>
             </div>
             <button onClick={() => setAiEditOpen(false)} className="text-white/30 hover:text-white/60 transition">
               <Icon name="X" size={16} />
             </button>
           </div>
 
+          {/* Подсказка */}
+          <div className="px-5 py-2.5 border-b border-white/[0.06] bg-violet-500/[0.04] flex items-start gap-2.5 flex-shrink-0">
+            <Icon name="Lightbulb" size={13} className="text-violet-400/70 mt-0.5 flex-shrink-0" />
+            <p className="text-white/40 text-xs leading-relaxed">
+              Укажи что AI посчитал неверно — система запомнит это как пример и будет учитывать при похожих запросах в будущем.
+              <span className="text-violet-400/60 ml-1">Это не меняет текущую смету, а обучает систему.</span>
+            </p>
+          </div>
+
           {aiEditDone ? (
-            <div className="flex flex-col items-center justify-center gap-3 py-16">
-              <Icon name="CheckCircle" size={44} className="text-green-400" />
-              <p className="text-green-300 text-sm font-medium">Смета обновлена!</p>
+            <div className="flex flex-col items-center justify-center gap-4 py-16">
+              <div className="w-14 h-14 rounded-full bg-violet-500/15 flex items-center justify-center">
+                <Icon name="GraduationCap" size={28} className="text-violet-400" />
+              </div>
+              <div className="text-center">
+                <p className="text-white/80 text-sm font-medium">AI запомнил исправление</p>
+                <p className="text-white/30 text-xs mt-1">При похожих запросах система учтёт этот пример</p>
+              </div>
               <button onClick={() => setAiEditOpen(false)}
-                className="mt-2 px-5 py-2 bg-white/10 hover:bg-white/15 text-white/70 text-sm rounded-lg transition">
+                className="mt-1 px-5 py-2 bg-white/10 hover:bg-white/15 text-white/70 text-sm rounded-lg transition">
                 Закрыть
               </button>
             </div>
@@ -453,12 +470,12 @@ export default function CorrectionCard({
                   if (parsed.blocks.length === 0) {
                     return (
                       <div className="p-5 flex flex-col gap-3">
-                        <p className="text-white/30 text-xs">Позиции сметы не распознаны. Введи общий комментарий:</p>
+                        <p className="text-white/30 text-xs">Позиции сметы не распознаны. Опиши что было неверно:</p>
                         <textarea
-                          placeholder="Например: убрать профиль, добавить 2 светильника..."
+                          placeholder="Например: площадь должна быть 25м², не нужны закладные под светильники..."
                           value={aiEditComments['__general__'] || ''}
                           onChange={e => setAiEditComments(prev => ({ ...prev, '__general__': e.target.value }))}
-                          className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white/70 text-xs resize-none outline-none focus:border-amber-500/40"
+                          className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white/70 text-xs resize-none outline-none focus:border-violet-500/40"
                           rows={4}
                         />
                       </div>
@@ -481,7 +498,12 @@ export default function CorrectionCard({
                             <tr className="bg-white/[0.06] border-b border-white/10">
                               <th className="text-left px-3 py-2 text-white/40 font-montserrat font-semibold text-[11px] uppercase tracking-wider">Позиция</th>
                               <th className="text-right px-3 py-2 text-white/40 font-montserrat font-semibold text-[11px] uppercase tracking-wider w-[120px]">Стоимость</th>
-                              <th className="text-left px-3 py-2 text-orange-400/60 font-montserrat font-semibold text-[11px] uppercase tracking-wider w-[260px]">✏ Правка</th>
+                              <th className="text-left px-3 py-2 text-violet-400/60 font-montserrat font-semibold text-[11px] uppercase tracking-wider w-[280px]">
+                                <span className="flex items-center gap-1.5">
+                                  <Icon name="AlertCircle" size={11} />
+                                  Что было неверно?
+                                </span>
+                              </th>
                             </tr>
                           </thead>
                           <tbody>
@@ -500,7 +522,7 @@ export default function CorrectionCard({
                                     const { cleanName, formula, total } = resolveItem(it, findItem);
                                     const hasComment = !!(aiEditComments[cleanName] || '').trim();
                                     return (
-                                      <tr key={`r-${bi}-${ii}`} className={`group/row transition-colors ${hasComment ? 'bg-orange-500/10' : 'hover:bg-white/[0.03]'} ${ii > 0 ? 'border-t border-white/5' : ''}`}>
+                                      <tr key={`r-${bi}-${ii}`} className={`group/row transition-colors ${hasComment ? 'bg-violet-500/10' : 'hover:bg-white/[0.03]'} ${ii > 0 ? 'border-t border-white/5' : ''}`}>
                                         {/* Позиция + формула в одну строку */}
                                         <td className="px-3 py-2 whitespace-nowrap">
                                           <span className="text-white/80 text-xs">{cleanName}</span>
@@ -510,23 +532,23 @@ export default function CorrectionCard({
                                         <td className="px-3 py-2 text-right whitespace-nowrap w-[120px]">
                                           {total && <span className="text-orange-400 font-montserrat font-bold text-xs">{total}</span>}
                                         </td>
-                                        {/* Правка — раскрывается при клике */}
-                                        <td className="px-2 py-1.5 w-[260px]">
+                                        {/* Исправление */}
+                                        <td className="px-2 py-1.5 w-[280px]">
                                           {hasComment ? (
                                             <input
                                               autoFocus
                                               type="text"
-                                              placeholder="правка..."
+                                              placeholder="что не так..."
                                               value={aiEditComments[cleanName] || ''}
                                               onChange={e => setAiEditComments(prev => ({ ...prev, [cleanName]: e.target.value }))}
-                                              className="w-full rounded-lg px-2.5 py-1 text-[11px] outline-none transition bg-orange-500/15 border border-orange-500/40 text-orange-200 placeholder:text-orange-400/30"
+                                              className="w-full rounded-lg px-2.5 py-1 text-[11px] outline-none transition bg-violet-500/15 border border-violet-500/40 text-violet-200 placeholder:text-violet-400/30"
                                             />
                                           ) : (
                                             <button
                                               onClick={() => setAiEditComments(prev => ({ ...prev, [cleanName]: ' ' }))}
-                                              className="w-full text-left px-2.5 py-1 text-[11px] text-white/15 hover:text-orange-400/60 transition rounded-lg hover:bg-white/5 group-hover/row:text-white/25"
+                                              className="w-full text-left px-2.5 py-1 text-[11px] text-white/15 hover:text-violet-400/60 transition rounded-lg hover:bg-white/5 group-hover/row:text-white/20"
                                             >
-                                              правка...
+                                              указать ошибку...
                                             </button>
                                           )}
                                         </td>
@@ -558,19 +580,19 @@ export default function CorrectionCard({
                         )}
                       </div>
 
-                      {/* Общая правка */}
+                      {/* Общий комментарий */}
                       <div className="px-4 pb-4 pt-3 border-t border-white/[0.07] mt-4">
                         <div className="flex items-center gap-2 mb-2">
-                          <Icon name="BookOpen" size={12} className="text-violet-400/60" />
-                          <span className="text-white/40 text-xs">Общая правка</span>
-                          <span className="text-violet-400/60 text-xs">— сохранится в инструкцию AI навсегда</span>
+                          <Icon name="MessageSquare" size={12} className="text-violet-400/60" />
+                          <span className="text-white/40 text-xs">Общий комментарий</span>
+                          <span className="text-violet-400/60 text-xs">— что в целом было неправильно в этом ответе</span>
                         </div>
                         <input
                           type="text"
-                          placeholder="Например: добавить 3 светильника, площадь 25м², убрать закладные..."
+                          placeholder="Например: площадь посчитана неверно, не нужно было добавлять закладные..."
                           value={aiEditComments['__general__'] || ''}
                           onChange={e => setAiEditComments(prev => ({ ...prev, '__general__': e.target.value }))}
-                          className="w-full bg-white/[0.04] border border-white/[0.08] rounded-lg px-3 py-2.5 text-white/70 text-sm outline-none focus:border-orange-500/40 focus:bg-orange-500/5 transition placeholder:text-white/20"
+                          className="w-full bg-white/[0.04] border border-white/[0.08] rounded-lg px-3 py-2.5 text-white/70 text-sm outline-none focus:border-violet-500/40 focus:bg-violet-500/5 transition placeholder:text-white/20"
                         />
                       </div>
                     </div>
@@ -580,11 +602,18 @@ export default function CorrectionCard({
 
               {/* Футер */}
               <div className="flex items-center justify-between gap-3 px-5 py-3 border-t border-white/10 flex-shrink-0 bg-white/[0.02]">
-                <span className="text-white/25 text-xs">
-                  {Object.values(aiEditComments).filter(v => v.trim()).length > 0
-                    ? `${Object.values(aiEditComments).filter(v => v.trim()).length} правок`
-                    : 'Нет правок'}
-                </span>
+                <div className="flex items-center gap-2">
+                  {Object.values(aiEditComments).filter(v => v.trim()).length > 0 ? (
+                    <>
+                      <div className="w-1.5 h-1.5 rounded-full bg-violet-400 animate-pulse" />
+                      <span className="text-violet-300/70 text-xs">
+                        {Object.values(aiEditComments).filter(v => v.trim()).length} исправлений готово к сохранению
+                      </span>
+                    </>
+                  ) : (
+                    <span className="text-white/20 text-xs">Нажми на позицию чтобы указать ошибку</span>
+                  )}
+                </div>
                 <div className="flex gap-2">
                   <button onClick={() => setAiEditOpen(false)}
                     className="px-4 py-2 text-white/40 hover:text-white/60 text-sm transition">
@@ -610,9 +639,9 @@ export default function CorrectionCard({
                         setAiEditLoading(false);
                       }
                     }}
-                    className="flex items-center gap-2 px-5 py-2 bg-amber-500/20 hover:bg-amber-500/30 disabled:opacity-40 disabled:cursor-not-allowed text-amber-300 text-sm rounded-lg transition font-medium">
-                    {aiEditLoading ? <Icon name="Loader2" size={14} className="animate-spin" /> : <Icon name="Wand2" size={14} />}
-                    {aiEditLoading ? 'Обрабатывается...' : 'Сохранить'}
+                    className="flex items-center gap-2 px-5 py-2 bg-violet-500/20 hover:bg-violet-500/30 disabled:opacity-40 disabled:cursor-not-allowed text-violet-300 text-sm rounded-lg transition font-medium">
+                    {aiEditLoading ? <Icon name="Loader2" size={14} className="animate-spin" /> : <Icon name="GraduationCap" size={14} />}
+                    {aiEditLoading ? 'Сохраняю...' : 'Обучить AI'}
                   </button>
                 </div>
               </div>
