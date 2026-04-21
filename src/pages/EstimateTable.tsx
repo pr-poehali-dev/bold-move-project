@@ -258,69 +258,16 @@ export default function EstimateTable({ text, items }: { text: string; items?: L
   const { blocks, totals, finalPhrase } = parsed;
   const [downloading, setDownloading] = useState(false);
 
-  // Когда есть items — рендерим напрямую из них (после редактирования)
-  if (items && items.length > 0) {
+  // Пересчитываем итоги из items если они есть (после редактирования)
+  const overrideTotals = useMemo(() => {
+    if (!items || items.length === 0) return null;
     const standard = Math.round(items.reduce((s, it) => s + it.qty * it.price, 0));
-    const econom   = Math.round(standard * 0.85);
-    const premium  = Math.round(standard * 1.27);
-
-    const handleDl = async () => {
-      setDownloading(true);
-      try { const { generateEstimatePdf } = await import("./estimatePdf"); await generateEstimatePdf(parsed); }
-      catch { /* ok */ } finally { setDownloading(false); }
+    return {
+      econom: Math.round(standard * 0.85),
+      standard,
+      premium: Math.round(standard * 1.27),
     };
-
-    return (
-      <div className="w-full">
-        <div className="flex items-center gap-2 mb-3">
-          <Icon name="FileSpreadsheet" size={16} className="text-orange-400" />
-          <span className="font-montserrat font-bold text-sm text-white">Смета на натяжные потолки</span>
-        </div>
-        <div className="rounded-xl border border-white/10 overflow-hidden">
-          <table className="w-full text-xs">
-            <thead>
-              <tr className="bg-white/[0.06] border-b border-white/10">
-                <th className="text-left px-3 py-2 text-white/40 font-montserrat font-semibold text-[11px] uppercase tracking-wider">Позиция</th>
-                <th className="text-right px-3 py-2 text-white/40 font-montserrat font-semibold text-[11px] uppercase tracking-wider w-[160px]">Стоимость</th>
-              </tr>
-            </thead>
-            <tbody>
-              {items.map((it, i) => {
-                const total = Math.round(it.qty * it.price);
-                const unitStr = it.unit ? ` ${it.unit}` : "";
-                return (
-                  <tr key={i} className={`hover:bg-white/3 transition-colors ${i > 0 ? "border-t border-white/5" : ""}`}>
-                    <td className="px-3 py-2 text-white/80 text-xs leading-snug">{it.name}</td>
-                    <td className="px-3 py-2 text-right whitespace-nowrap">
-                      <div className="text-white/40 text-[11px] font-montserrat leading-snug">
-                        {it.qty}{unitStr} × {it.price.toLocaleString("ru")} ₽
-                      </div>
-                      <div className="text-orange-400 font-montserrat font-bold text-xs leading-snug">
-                        {total.toLocaleString("ru")} ₽
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-          <div className="border-t border-orange-500/30 bg-gradient-to-r from-orange-500/10 to-rose-500/10 px-3 py-3">
-            <div className="space-y-1">
-              <div className="text-white/40 font-montserrat text-[10px] mb-0.5 text-right">Итоговая стоимость</div>
-              <div className="flex justify-end text-xs text-white/70"><span className="mr-3">Econom:</span><span className="font-montserrat font-bold">{econom.toLocaleString("ru")} ₽</span></div>
-              <div className="flex justify-end text-sm text-orange-400"><span className="mr-3">Standard:</span><span className="font-montserrat font-black">{standard.toLocaleString("ru")} ₽</span></div>
-              <div className="flex justify-end text-xs text-white/70"><span className="mr-3">Premium:</span><span className="font-montserrat font-bold">{premium.toLocaleString("ru")} ₽</span></div>
-            </div>
-          </div>
-        </div>
-        <button onClick={handleDl} disabled={downloading}
-          className="mt-3 inline-flex items-center gap-2 bg-gradient-to-r from-orange-500 to-rose-500 text-white text-xs font-montserrat font-bold px-4 py-2.5 rounded-xl hover:scale-105 transition-transform disabled:opacity-50 shadow-lg shadow-orange-500/20">
-          <Icon name="Download" size={14} />
-          {downloading ? "Генерация..." : "Скачать смету PDF"}
-        </button>
-      </div>
-    );
-  }
+  }, [items]);
 
   const handleDownload = async () => {
     setDownloading(true);
@@ -382,18 +329,21 @@ export default function EstimateTable({ text, items }: { text: string; items?: L
           </tbody>
         </table>
 
-        {totals.length > 0 && (
+        {(overrideTotals || totals.length > 0) && (
           <div className="border-t border-orange-500/30 bg-gradient-to-r from-orange-500/10 to-rose-500/10 px-3 py-3">
             <div className="space-y-1">
-              {totals.map((t, i) => {
+              {overrideTotals ? (
+                <>
+                  <div className="text-white/40 font-montserrat text-[10px] mb-0.5 text-right">Итоговая стоимость</div>
+                  <div className="flex justify-end text-xs text-white/70"><span className="mr-3">Econom:</span><span className="font-montserrat font-bold">{overrideTotals.econom.toLocaleString("ru")} ₽</span></div>
+                  <div className="flex justify-end text-sm text-orange-400"><span className="mr-3">Standard:</span><span className="font-montserrat font-black">{overrideTotals.standard.toLocaleString("ru")} ₽</span></div>
+                  <div className="flex justify-end text-xs text-white/70"><span className="mr-3">Premium:</span><span className="font-montserrat font-bold">{overrideTotals.premium.toLocaleString("ru")} ₽</span></div>
+                </>
+              ) : totals.map((t, i) => {
                 const isHeader = /итогов|итого\s*стоим/i.test(t) && !t.includes("Econom") && !t.includes("Standard") && !t.includes("Premium");
                 const isHighlight = /standard/i.test(t);
                 if (isHeader) {
-                  return (
-                    <div key={i} className="text-white/40 font-montserrat text-[10px] mb-0.5 text-right">
-                      {t.replace(/:$/, "")}
-                    </div>
-                  );
+                  return <div key={i} className="text-white/40 font-montserrat text-[10px] mb-0.5 text-right">{t.replace(/:$/, "")}</div>;
                 }
                 return (
                   <div key={i} className={`flex justify-end text-xs ${isHighlight ? "text-orange-400 font-montserrat font-black text-sm" : "text-white/70"}`}>
