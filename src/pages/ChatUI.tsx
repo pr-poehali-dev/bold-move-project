@@ -63,17 +63,21 @@ export default function ChatUI({ messages, input, typing, panel, onInput, onSend
     if (chatRef.current) chatRef.current.scrollTop = chatRef.current.scrollHeight;
   }, [messages, typing]);
 
-  // Скролл к смете при создании/редактировании
+  // Скролл к смете — сначала показываем "Готово ✅", через 1.5 сек скроллим к началу сметы
   useEffect(() => {
     if (!scrollTarget || !chatRef.current) return;
-    const targetId = scrollTarget.id;
-    const el = targetId
-      ? chatRef.current.querySelector(`[data-msg-id="${targetId}"]`)
-      : chatRef.current.querySelector("[data-estimate]");
-    if (el) {
-      el.scrollIntoView({ behavior: "smooth", block: "start" });
-    }
     onScrollDone?.();
+    const timer = setTimeout(() => {
+      if (!chatRef.current) return;
+      const targetId = scrollTarget.id;
+      const el = targetId
+        ? chatRef.current.querySelector(`[data-msg-id="${targetId}"]`)
+        : chatRef.current.querySelector("[data-estimate]");
+      if (el) {
+        el.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
+    }, 1500);
+    return () => clearTimeout(timer);
   }, [scrollTarget]);
 
   return (
