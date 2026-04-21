@@ -64,9 +64,8 @@ export default function ChatUI({ messages, input, typing, panel, onInput, onSend
       {/* Messages */}
       <div ref={chatRef} className="flex-1 overflow-y-auto px-4 md:px-8 py-4 space-y-3 scroll-smooth">
         {messages.map((m, idx) => {
-          const isFirst = idx === 0 && m.role === "assistant";
-          const showAvatar = m.role === "assistant" && isFirst;
           const estimate = m.role === "assistant" && isEstimate(m.text);
+          const showAvatar = m.role === "assistant" && !estimate;
           return (
             <div key={m.id} className={`flex items-end ${estimate ? "" : "gap-2.5"} ${m.role === "user" ? "flex-row-reverse" : ""}`}>
               {m.role === "assistant" && !estimate && (
