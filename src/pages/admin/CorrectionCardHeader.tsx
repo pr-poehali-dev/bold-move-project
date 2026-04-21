@@ -102,7 +102,7 @@ export default function CorrectionCardHeader({
           {skipInfo?.reason === "no_area" && (
             <span className="text-xs px-2 py-0.5 rounded-full bg-orange-500/10 text-orange-400">Нет площади</span>
           )}
-          <span className="text-white/30 text-xs">{new Date(item.created_at).toLocaleString("ru")}</span>
+          <span className="text-white/30 text-xs">{new Date(item.created_at).toLocaleString("ru", { timeZone: "Europe/Moscow" })}</span>
         </div>
 
         {isLLM

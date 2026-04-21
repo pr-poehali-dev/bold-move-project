@@ -17,10 +17,11 @@ function fmtTime(ts: number): string {
   const yesterday = new Date(now);
   yesterday.setDate(now.getDate() - 1);
   const isYesterday = d.toDateString() === yesterday.toDateString();
-  const hm = d.toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" });
+  const tz = { timeZone: "Europe/Moscow" };
+  const hm = d.toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit", ...tz });
   if (isToday) return hm;
   if (isYesterday) return `вчера ${hm}`;
-  return d.toLocaleDateString("ru-RU", { day: "numeric", month: "short" }) + " " + hm;
+  return d.toLocaleDateString("ru-RU", { day: "numeric", month: "short", ...tz }) + " " + hm;
 }
 
 interface LiveMsg {
