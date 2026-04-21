@@ -42,6 +42,7 @@ export default function CorrectionCard({
   const [aiEditComments, setAiEditComments] = useState<Record<string, string>>({});
   const [aiEditLoading, setAiEditLoading] = useState(false);
   const [aiEditDone, setAiEditDone] = useState(false);
+  const [aiEditResult, setAiEditResult] = useState<{saved: string[], not_found: string[]} | null>(null);
 
   const knownSynonyms = new Set(
     prices.flatMap(p => {
@@ -306,7 +307,7 @@ export default function CorrectionCard({
                 <span className="hidden sm:inline">Что увидел клиент</span>
               </button>
               <button
-                onClick={() => { setAiEditOpen(true); setAiEditDone(false); setAiEditComments({}); }}
+                onClick={() => { setAiEditOpen(true); setAiEditDone(false); setAiEditComments({}); setAiEditResult(null); }}
                 title="Исправить ответ AI — обучить систему"
                 className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs transition mt-0.5 bg-violet-500/15 hover:bg-violet-500/25 text-violet-300 hover:text-violet-200">
                 <Icon name="GraduationCap" size={12} />
@@ -447,14 +448,40 @@ export default function CorrectionCard({
           </div>
 
           {aiEditDone ? (
-            <div className="flex flex-col items-center justify-center gap-4 py-16">
+            <div className="flex flex-col items-center justify-center gap-4 py-12 px-8">
               <div className="w-14 h-14 rounded-full bg-violet-500/15 flex items-center justify-center">
                 <Icon name="GraduationCap" size={28} className="text-violet-400" />
               </div>
               <div className="text-center">
-                <p className="text-white/80 text-sm font-medium">AI запомнил исправление</p>
-                <p className="text-white/30 text-xs mt-1">При похожих запросах система учтёт этот пример</p>
+                <p className="text-white/80 text-sm font-medium">AI запомнил исправления</p>
+                <p className="text-white/30 text-xs mt-1">При похожих запросах система учтёт эти примеры</p>
               </div>
+              {aiEditResult && (
+                <div className="w-full max-w-sm flex flex-col gap-2 mt-1">
+                  {aiEditResult.saved.length > 0 && (
+                    <div className="bg-green-500/10 border border-green-500/20 rounded-lg px-4 py-3">
+                      <p className="text-green-400 text-xs font-medium mb-1.5">Сохранено в правилах расчёта:</p>
+                      {aiEditResult.saved.map(n => (
+                        <div key={n} className="flex items-center gap-2 text-xs text-green-300/70">
+                          <Icon name="Check" size={11} />
+                          {n}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {aiEditResult.not_found.length > 0 && (
+                    <div className="bg-amber-500/10 border border-amber-500/20 rounded-lg px-4 py-3">
+                      <p className="text-amber-400 text-xs font-medium mb-1.5">Позиции не найдены в прайсе:</p>
+                      {aiEditResult.not_found.map(n => (
+                        <div key={n} className="flex items-center gap-2 text-xs text-amber-300/70">
+                          <Icon name="AlertCircle" size={11} />
+                          {n}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
               <button onClick={() => setAiEditOpen(false)}
                 className="mt-1 px-5 py-2 bg-white/10 hover:bg-white/15 text-white/70 text-sm rounded-lg transition">
                 Закрыть
@@ -629,12 +656,15 @@ export default function CorrectionCard({
                           headers: { 'Content-Type': 'application/json', 'X-Auth-Token': token },
                           body: JSON.stringify({
                             correction_id: item.id,
-                            original_answer: item.llm_answer,
                             user_text: item.user_text,
                             comments: aiEditComments,
                           }),
                         });
-                        if (r.ok) setAiEditDone(true);
+                        if (r.ok) {
+                          const data = await r.json();
+                          setAiEditResult({ saved: data.saved || [], not_found: data.not_found || [] });
+                          setAiEditDone(true);
+                        }
                       } finally {
                         setAiEditLoading(false);
                       }
