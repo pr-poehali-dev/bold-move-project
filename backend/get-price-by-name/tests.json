@@ -1,0 +1,13 @@
+{
+  "tests": [
+    {
+      "name": "Цена светильника из БД",
+      "method": "POST",
+      "path": "/",
+      "body": {"name": "светильник"},
+      "expectedStatus": 200,
+      "expectedBody": {"source": "db"},
+      "bodyMatcher": "partial"
+    }
+  ]
+}

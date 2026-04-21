@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from "react";
+import func2url from "@/../backend/func2url.json";
 
-const PRICES_URL = "https://functions.poehali.dev/4a60d7e9-3b52-4eaa-b9f9-38653c3ef837";
+const PRICES_URL = func2url["get-prices"];
+const PRICE_BY_NAME_URL = func2url["get-price-by-name"];
 
 export interface PriceItem {
   id: number;
@@ -61,4 +63,19 @@ export function findPriceByName(prices: PriceItem[], query: string): PriceItem |
     if (score > bestScore) { bestScore = score; best = p; }
   }
   return bestScore >= 1 ? best : null;
+}
+
+// Async: спрашивает backend (БД → LLM) если локальный поиск не дал результата
+export async function fetchPriceByName(name: string): Promise<{ price: number; unit: string }> {
+  try {
+    const r = await fetch(PRICE_BY_NAME_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name }),
+    });
+    const d = await r.json();
+    return { price: d.price ?? 0, unit: d.unit ?? '' };
+  } catch {
+    return { price: 0, unit: '' };
+  }
 }

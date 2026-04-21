@@ -1,4 +1,5 @@
 {
+  "get-price-by-name": "https://functions.poehali.dev/2d0b68a0-6f9f-4cc7-a8ad-a2102a7b4d87",
   "get-prices": "https://functions.poehali.dev/4a60d7e9-3b52-4eaa-b9f9-38653c3ef837",
   "ai-edit": "https://functions.poehali.dev/2ca14225-5fad-4aea-97a0-79656033c1e2",
   "estimate-feedback": "https://functions.poehali.dev/18c077f9-1b1c-49cc-8a6d-446fa8025170",
