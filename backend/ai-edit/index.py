@@ -77,6 +77,8 @@ def handler(event: dict, context) -> dict:
     user_text = body.get('user_text', '')
     comments = dict(body.get('comments', {}))
 
+    print(f"[ai-edit] correction_id={correction_id} comments_keys={list(comments.keys())}")
+
     if not correction_id:
         return resp(400, {'error': 'correction_id обязателен'})
 
@@ -84,6 +86,7 @@ def handler(event: dict, context) -> dict:
 
     # Правки по позициям — должна быть хотя бы одна
     position_comments = {k: v.strip() for k, v in comments.items() if v and v.strip()}
+    print(f"[ai-edit] general='{general_change}' position_comments={position_comments}")
     if not position_comments and not general_change:
         return resp(400, {'error': 'Нет правок для сохранения'})
 
@@ -96,6 +99,7 @@ def handler(event: dict, context) -> dict:
     # Сохраняем правки по позициям → в ai_prices.client_changes
     for pos_name, change_text in position_comments.items():
         price_id = find_price_id(cur, pos_name)
+        print(f"[ai-edit] pos='{pos_name}' → price_id={price_id} change='{change_text}'")
         if price_id:
             append_client_change(cur, price_id, change_text)
             saved.append(pos_name)
