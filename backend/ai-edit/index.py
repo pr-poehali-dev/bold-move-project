@@ -20,10 +20,10 @@ def resp(status: int, body: dict) -> dict:
 def check_auth(headers: dict) -> bool:
     import hashlib
     token = headers.get('x-auth-token') or headers.get('X-Auth-Token', '')
-    pwd_hash = os.environ.get('ADMIN_PASSWORD_HASH', '')
-    if not token or not pwd_hash:
+    password = os.environ.get('ADMIN_PASSWORD', '')
+    if not token or not password:
         return False
-    return hashlib.sha256(token.encode()).hexdigest() == pwd_hash
+    return hashlib.sha256(token.encode()).hexdigest() == hashlib.sha256(password.encode()).hexdigest()
 
 
 def find_price_id(cur, name: str) -> int | None:
