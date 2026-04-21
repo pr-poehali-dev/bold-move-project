@@ -68,8 +68,8 @@ export default function ChatUI({ messages, input, typing, panel, onInput, onSend
           const showAvatar = m.role === "assistant" && isFirst;
           const estimate = m.role === "assistant" && isEstimate(m.text);
           return (
-            <div key={m.id} className={`flex items-end gap-2.5 ${m.role === "user" ? "flex-row-reverse" : ""}`}>
-              {m.role === "assistant" && (
+            <div key={m.id} className={`flex items-end ${estimate ? "" : "gap-2.5"} ${m.role === "user" ? "flex-row-reverse" : ""}`}>
+              {m.role === "assistant" && !estimate && (
                 showAvatar
                   ? <img src={AVATAR} alt="Женя" className="w-8 h-8 rounded-full object-cover shrink-0 border-2 border-orange-500/20 shadow-lg shadow-orange-500/10" />
                   : <div className="w-8 shrink-0" />
