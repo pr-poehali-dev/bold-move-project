@@ -825,69 +825,6 @@ def _find_in_price_map(name: str, price_map: dict) -> dict | None:
     return best
 
 
-def _reparse_items_from_answer(answer: str, original_items: list) -> list:
-    """Перепарсивает items из финального патчнутого текста.
-    Берёт цены и qty из текста (они прошли патч из БД), group — из оригинального LLM JSON.
-    """
-    # Строим карту name→group из оригинала
-    group_map = {}
-    for it in original_items:
-        name = it.get('name', '').strip()
-        group = it.get('group', '')
-        if name:
-            group_map[name.lower()] = group
-
-    def find_group(name: str) -> str:
-        nl = name.lower()
-        if nl in group_map:
-            return group_map[nl]
-        for k, g in group_map.items():
-            if nl in k or k in nl:
-                return g
-        return ''
-
-    result = []
-    current_group = ''
-    # Паттерн: "Название  N ед × P ₽ = T ₽"
-    line_re = re.compile(
-        r'^[\s\-–—•]*(.+?)\s{2,}([\d.,]+)\s*(м²|м2|мп|пм|шт\.?|шт|м\.п\.?|м\b)?\s*[×xх]\s*([\d\s]+)\s*₽\s*=\s*([\d\s]+)\s*₽',
-        re.IGNORECASE
-    )
-    # Паттерн заголовка группы: "1. Полотно:" или "Услуги монтажа:"
-    header_re = re.compile(r'^(?:\d+\.\s*)?([А-ЯЁа-яё][А-ЯЁа-яёA-Za-z\s]{2,40}):?\s*$')
-
-    for line in answer.split('\n'):
-        h = header_re.match(line.strip())
-        if h:
-            current_group = h.group(1).strip()
-            continue
-        m = line_re.match(line)
-        if m:
-            name = m.group(1).strip()
-            qty_str = m.group(2).replace(',', '.')
-            unit = (m.group(3) or '').strip()
-            price_str = m.group(4).replace(' ', '')
-            try:
-                qty = float(qty_str)
-                price = int(price_str)
-                group = current_group or find_group(name)
-                result.append({
-                    'name': name,
-                    'qty': qty,
-                    'price': price,
-                    'unit': unit,
-                    'group': group,
-                })
-            except Exception:
-                pass
-
-    # Fallback: если не распарсили — вернём оригинал
-    if not result:
-        return original_items
-    print(f"[reparse] {len(result)} items from patched answer")
-    return result
-
-
 def _patch_answer_with_prices(answer: str, llm_items: list, rules: list | None = None) -> str:
     """Патчит ответ LLM — заменяет цены на актуальные из БД.
 
@@ -1222,12 +1159,11 @@ Premium:  X ₽  (Standard × 1.27)
 
 ФОРМАТ ОТВЕТА СИСТЕМЕ (обязательно):
 После текста сметы добавь блок JSON на отдельной строке:
-%%ITEMS%%{"items":[{"name":"Название позиции","qty":1,"price":350,"unit":"шт","group":"Полотно"},...],"area":20.84}%%END%%
+%%ITEMS%%{"items":[{"name":"Название позиции","qty":1,"price":350,"unit":"шт"},...],"area":20.84}%%END%%
 
 Правила JSON:
 - Включай ВСЕ позиции из сметы (полотно, профиль, закладные, освещение, ниши, монтаж и др.)
 - qty — количество (число), price — цена за единицу из прайса, unit — единица измерения
-- group — название раздела к которому относится позиция (Полотно, Профиль, Закладные, Освещение, Ниши, Работы на высоте, Услуги монтажа)
 - Клиент НЕ видит этот блок, он только для системы
 """
 
@@ -1433,9 +1369,7 @@ def handler(event, context):
 
     response_body = {'answer': answer}
     if llm_items_json and llm_items_json.get('items'):
-        # Перепарсим цены/qty из патчнутого текста — они точнее чем LLM JSON
-        llm_items_patched = _reparse_items_from_answer(answer, llm_items_json['items'])
-        response_body['items'] = llm_items_patched
+        response_body['items'] = llm_items_json['items']
 
     return {
         'statusCode': 200,

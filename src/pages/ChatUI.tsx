@@ -50,43 +50,15 @@ interface Props {
   onPreset: (text: string) => void;
   onPanel: (p: Panel) => void;
   onNewEstimate?: () => void;
-  scrollTarget?: { type: "estimate" | "bottom"; id?: number } | null;
-  onScrollDone?: () => void;
 }
 
-export default function ChatUI({ messages, input, typing, panel, onInput, onSend, onPreset, onPanel, onNewEstimate, scrollTarget, onScrollDone }: Props) {
+export default function ChatUI({ messages, input, typing, panel, onInput, onSend, onPreset, onPanel, onNewEstimate }: Props) {
   const hasEstimate = messages.some((m) => m.role === "assistant" && isEstimate(m.text));
   const chatRef = useRef<HTMLDivElement>(null);
 
-  const scrollTargetRef = useRef(scrollTarget);
-  scrollTargetRef.current = scrollTarget;
-
-  // Скролл вниз — только когда нет активного scrollTarget
   useEffect(() => {
-    if (scrollTargetRef.current) return;
     if (chatRef.current) chatRef.current.scrollTop = chatRef.current.scrollHeight;
   }, [messages, typing]);
-
-  // Скролл к смете — сначала показываем "Готово ✅", через 1.5 сек скроллим к началу сметы
-  useEffect(() => {
-    if (!scrollTarget) return;
-    const capturedId = scrollTarget.id;
-    // Сначала скроллим вниз чтобы показать "Готово ✅"
-    if (chatRef.current) chatRef.current.scrollTop = chatRef.current.scrollHeight;
-    const timer = setTimeout(() => {
-      onScrollDone?.();
-      const container = chatRef.current;
-      if (!container) return;
-      const el = capturedId
-        ? container.querySelector(`[data-msg-id="${capturedId}"]`)
-        : container.querySelector("[data-estimate]");
-      if (el) {
-        const top = (el as HTMLElement).offsetTop - 8;
-        container.scrollTo({ top, behavior: "smooth" });
-      }
-    }, 1500);
-    return () => clearTimeout(timer);
-  }, [scrollTarget]);
 
   return (
     <div className="flex-1 min-h-0 flex flex-col relative z-10">
@@ -97,12 +69,7 @@ export default function ChatUI({ messages, input, typing, panel, onInput, onSend
           const estimate = m.role === "assistant" && isEstimate(m.text);
           const showAvatar = m.role === "assistant" && !estimate;
           return (
-            <div
-              key={m.id}
-              data-msg-id={m.id}
-              {...(estimate ? { "data-estimate": "true" } : {})}
-              className={`flex items-end ${estimate ? "" : "gap-2.5"} ${m.role === "user" ? "flex-row-reverse" : ""}`}
-            >
+            <div key={m.id} className={`flex items-end ${estimate ? "" : "gap-2.5"} ${m.role === "user" ? "flex-row-reverse" : ""}`}>
               {m.role === "assistant" && !estimate && (
                 showAvatar
                   ? <img src={AVATAR} alt="Женя" className="w-8 h-8 rounded-full object-cover shrink-0 border-2 border-orange-500/20 shadow-lg shadow-orange-500/10" />
