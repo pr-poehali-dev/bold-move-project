@@ -72,17 +72,52 @@ export function useCorrectionsList(token: string) {
     return isLLM;
   };
 
+  // Синонимы из прайса для проверки isKnown
+  const knownSynonyms = new Set(
+    prices.flatMap(p => {
+      const syns = p.synonyms ? p.synonyms.split(",").map(s => s.trim().toLowerCase()).filter(Boolean) : [];
+      return [p.name.toLowerCase(), ...syns];
+    })
+  );
+  const isKnown = (w: string) => {
+    const wl = w.toLowerCase();
+    return knownSynonyms.has(wl) || [...knownSynonyms].some(s => s === wl || s.includes(wl) || wl.includes(s));
+  };
+
+  // Получить список unknown слов для записи
+  const getUnknownWords = (i: BotCorrection): string[] => {
+    const d = i.recognized_json as { unknown_word?: string | null; unknown_words?: string[] } | null;
+    const base = d?.unknown_words?.length ? d.unknown_words : d?.unknown_word ? [d.unknown_word] : [];
+    const extra = extraWords[i.id] ?? [];
+    return [
+      ...base.filter(w => !extra.some(e => e.includes(w) && e !== w)),
+      ...extra,
+    ];
+  };
+
+  // Все слова карточки обработаны — в doneWords или isKnown
+  const allWordsResolved = (i: BotCorrection): boolean => {
+    const words = getUnknownWords(i);
+    if (words.length === 0) return true;
+    const done = doneWords[i.id] ?? [];
+    return words.every(w => done.includes(w) || isKnown(w));
+  };
+
   // Бот не понял — есть нераспознанные слова
   const hasUnknownWords = (i: BotCorrection) => {
     const d = i.recognized_json as { unknown_word?: string | null; unknown_words?: string[] } | null;
     return (d?.unknown_words?.length ?? 0) > 0 || !!d?.unknown_word;
   };
 
-  // "Нужно обучить" — есть смета, но бот чего-то не понял
-  const needsTraining = items.filter(i => i.status === "pending" && hasEstimate(i) && hasUnknownWords(i));
+  // "Нужно обучить" — есть смета, есть unknown слова, и НЕ все обработаны
+  const needsTraining = items.filter(i =>
+    i.status === "pending" && hasEstimate(i) && hasUnknownWords(i) && !allWordsResolved(i)
+  );
 
-  // "Всё понятно боту" — есть смета, нераспознанных слов нет (бот справился)
-  const allGood = items.filter(i => i.status === "pending" && hasEstimate(i) && !hasUnknownWords(i));
+  // "Всё понятно LLM" — нет unknown слов, или все слова уже обработаны
+  const allGood = items.filter(i =>
+    i.status === "pending" && hasEstimate(i) && (!hasUnknownWords(i) || allWordsResolved(i))
+  );
 
   // Проверенные (для совместимости)
   const pending = needsTraining;

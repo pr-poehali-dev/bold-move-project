@@ -70,7 +70,7 @@ export default function TabCorrections({ token }: Props) {
           }`}
         >
           <Icon name="CheckCircle" size={14} />
-          Всё понятно боту
+          Всё понятно LLM
           {allGood.length > 0 && (
             <span className={`text-xs px-1.5 py-0.5 rounded-full font-medium ${
               activeTab === "good" ? "bg-green-500/30 text-green-200" : "bg-white/10 text-white/40"
@@ -96,7 +96,7 @@ export default function TabCorrections({ token }: Props) {
         <div className="flex items-start gap-3 bg-green-500/10 border border-green-500/20 rounded-xl px-4 py-3">
           <Icon name="CheckCircle" size={16} className="text-green-400 mt-0.5 flex-shrink-0" />
           <div className="text-sm">
-            <span className="text-green-300 font-medium">Бот всё понял.</span>
+            <span className="text-green-300 font-medium">LLM всё понял.</span>
             <span className="text-white/50 ml-1">Эти сметы рассчитаны корректно. Если заметишь ошибку — нажми «Обучить AI» рядом с нужной позицией.</span>
           </div>
         </div>
