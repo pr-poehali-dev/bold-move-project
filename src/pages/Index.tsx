@@ -71,8 +71,22 @@ export default function Index() {
     const timer = setTimeout(() => ctrl.abort(), 90000);
     fetch(AI_URL, { method: "POST", headers: { "Content-Type": "application/json", "X-Session-Id": sessionStorage.getItem("sid") || "" }, body: JSON.stringify({ messages: history, fast }), signal: ctrl.signal })
       .then((r) => r.json())
-      .then((d) => setMessages((p) => [...p, { id: Date.now() + 1, role: "assistant", text: d.answer || localAnswer(text), items: d.items }]))
-      .catch(() => setMessages((p) => [...p, { id: Date.now() + 1, role: "assistant", text: localAnswer(text) }]))
+      .then((d) => {
+        const newMsg = { id: Date.now() + 1, role: "assistant" as const, text: d.answer || localAnswer(text), items: d.items };
+        const isNewEstimate = isEstimate(newMsg.text) || !!d.items?.length;
+        setMessages((p) => {
+          if (isNewEstimate) {
+            const estimateIdx = p.findLastIndex((m) => m.role === "assistant" && isEstimate(m.text));
+            if (estimateIdx !== -1) {
+              const updated = [...p];
+              updated[estimateIdx] = newMsg;
+              return updated;
+            }
+          }
+          return [...p, newMsg];
+        });
+      })
+      .catch(() => setMessages((p) => [...p, { id: Date.now() + 1, role: "assistant" as const, text: localAnswer(text) }]))
       .finally(() => { clearTimeout(timer); setTyping(false); });
   }, [messages, typing]);
 
