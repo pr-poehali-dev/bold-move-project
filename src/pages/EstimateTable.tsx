@@ -88,10 +88,9 @@ export function parseEstimateBlocks(text: string) {
         continue;
       }
 
-      // 0) "Название ПРОБЕЛ qty(ед) × price ₽ = total ₽" — формат нашего бэкенда
-      //    Название заканчивается перед числом+единицей измерения (мп, пм, м², шт.)
+      // 0) "Название  qty ед × price ₽ = total ₽" — формат нашего бэкенда (двойной пробел между именем и qty)
       const calcBackend = cleanLine.match(new RegExp(
-        `^(.+?)\\s+(\\d[\\d\\s,.]*\\s*(?:м²|м2|мп|пм|пог\\.?м|шт\\.?|шт|%|м)\\s*${MUL}\\s*[\\d\\s,.]+\\s*[₽Рруб].*)`
+        `^(.+?)\\s{2,}(\\d[\\d\\s,.]*\\s*(?:м²|м2|мп|пм|пог\\.?м|шт\\.?|шт|%|м\\.п\\.?|м)?\\s*${MUL}\\s*[\\d\\s,.]+\\s*[₽Рруб].*)`
       ));
       if (calcBackend) {
         current.items.push({ name: calcBackend[1].trim(), value: calcBackend[2].trim() });
