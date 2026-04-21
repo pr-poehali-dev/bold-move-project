@@ -98,19 +98,7 @@ export default function CorrectionCardDetails({
         />
       )}
 
-      {/* Кнопки действий — только для авторасчёта */}
-      {item.status === "pending" && !isLLM && (
-        <div className="border-t border-white/10 px-4 py-3 flex gap-2">
-          <button onClick={() => onUpdate("approved")}
-            className="flex-1 bg-green-600/20 hover:bg-green-600/30 text-green-300 text-sm py-2 rounded-lg transition flex items-center justify-center gap-1.5">
-            <Icon name="Check" size={14} /> Принять
-          </button>
-          <button onClick={() => onUpdate("rejected")}
-            className="flex-1 bg-red-600/10 hover:bg-red-600/20 text-red-400 text-sm py-2 rounded-lg transition flex items-center justify-center gap-1.5">
-            <Icon name="X" size={14} /> Пропустить
-          </button>
-        </div>
-      )}
+
     </>
   );
 }
