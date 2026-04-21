@@ -13,10 +13,8 @@ function norm(s: string) {
 function findIdx(items: EstimateItem[], query: string): number {
   const q = norm(query);
   if (!q || q.length < 2) return -1;
-  // Точное вхождение
   const exact = items.findIndex((it) => norm(it.name).includes(q));
   if (exact !== -1) return exact;
-  // По словам длиннее 2 символов
   const words = q.split(/\s+/).filter((w) => w.length > 2);
   if (words.length === 0) return -1;
   let best = -1, bestScore = 0;
@@ -41,28 +39,28 @@ function parseUnit(s: string): string | undefined {
   return m ? m[0] : undefined;
 }
 
+// Генерируем минимальный текст-заглушку для isEstimate() — рендер идёт из items
 export function buildEstimateText(items: EstimateItem[], oldText: string): string {
-  const lines: string[] = [];
-  const origLines = oldText.split("\n");
+  const standard = Math.round(items.reduce((s, it) => s + it.qty * it.price, 0));
+  const econom   = Math.round(standard * 0.85);
+  const premium  = Math.round(standard * 1.27);
 
-  // Заголовок — строки до первой позиции с ₽
+  // Сохраняем заголовок из оригинала (до первой строки с ₽)
+  const origLines = oldText.split("\n");
+  const headerLines: string[] = [];
   for (const l of origLines) {
     const tr = l.trim();
     if (tr.includes("₽") && !tr.startsWith("Econom") && !tr.startsWith("Standard") && !tr.startsWith("Premium") && !/итого/i.test(tr)) break;
     if (/^[-•]\s/.test(tr) && tr.includes("×")) break;
-    lines.push(l);
+    headerLines.push(l);
   }
 
+  const lines = [...headerLines];
   for (const item of items) {
     const unitStr = item.unit ? ` ${item.unit}` : "";
     const total = Math.round(item.qty * item.price);
     lines.push(`- ${item.name} ${item.qty}${unitStr} × ${item.price} ₽ = ${total} ₽`);
   }
-
-  const standard = Math.round(items.reduce((s, it) => s + it.qty * it.price, 0));
-  const econom   = Math.round(standard * 0.85);
-  const premium  = Math.round(standard * 1.27);
-
   lines.push("");
   lines.push("ИТОГО стоимость:");
   lines.push(`Econom: ${econom.toLocaleString("ru")} ₽`);
@@ -70,9 +68,7 @@ export function buildEstimateText(items: EstimateItem[], oldText: string): strin
   lines.push(`Premium: ${premium.toLocaleString("ru")} ₽`);
 
   const finalLine = origLines.find((l) =>
-    l.toLowerCase().includes("на какой день") ||
-    l.toLowerCase().includes("замер") ||
-    l.toLowerCase().includes("предварительн")
+    l.toLowerCase().includes("на какой день") || l.toLowerCase().includes("замер")
   );
   if (finalLine) lines.push("", finalLine);
 
@@ -99,62 +95,67 @@ export function applyEstimateEdit(items: EstimateItem[], text: string): EditResu
     const qty = numMatch ? parseFloat(numMatch[1]) : 1;
     const name = numMatch ? numMatch[2].trim() : raw;
     const unit = parseUnit(raw);
-    const avgPrice = items.length > 0
-      ? Math.round(items.reduce((s, it) => s + it.price, 0) / items.length)
-      : 500;
-    return { handled: true, items: [...items, { name, qty, price: avgPrice, unit }], reply: "Готово ✅" };
+    // Ищем такую же позицию уже в смете — берём её цену
+    const existing = findIdx(items, name);
+    const price = existing !== -1 ? items[existing].price : 0;
+    return { handled: true, items: [...items, { name, qty, price, unit }], reply: "Готово ✅" };
   }
 
   // ──── ИЗМЕНИТЬ ПЛОЩАДЬ ────
-  // "площадь 15", "15 м²", "потолок 20 кв.м"
-  const areaMatch = t.match(/(?:площадь|потолок|комнат[а-я]*)[^\d]*(\d+[\d.,]*)\s*(?:м²|кв\.?м|м2|кв)?/) ||
-                    t.match(/(\d+[\d.,]*)\s*(?:м²|кв\.?м|м2)\s*(?:площадь|потолок)?/);
+  // Меняем ВСЕ позиции с единицей м² (полотно, раскрой, огарпунивание, монтаж полотна)
+  const areaMatch =
+    t.match(/(?:площадь|потолок|комнат[а-я]*)[^\d]*(\d+[\d.,]*)\s*(?:м²|кв\.?м|м2|кв)?/) ||
+    t.match(/(\d+[\d.,]*)\s*(?:м²|кв\.?м|м2)\s*(?:площадь|потолок)?/);
   if (areaMatch) {
     const area = parseFloat(areaMatch[1].replace(",", "."));
-    if (!isNaN(area)) {
-      const idx = items.findIndex((it) =>
+    if (!isNaN(area) && area > 0 && area < 1000) {
+      const sqmItems = items.filter((it) =>
         it.unit === "м²" || it.unit === "м2" ||
         norm(it.name).includes("полотн") ||
-        norm(it.name).includes("плёнк") ||
+        norm(it.name).includes("раскрой") ||
+        norm(it.name).includes("огарпун") ||
         norm(it.name).includes("монтаж полотн")
       );
-      if (idx !== -1) {
-        const updated = items.map((it, i) => i === idx ? { ...it, qty: area, unit: "м²" } : it);
+      if (sqmItems.length > 0) {
+        const updated = items.map((it) => {
+          const isArea =
+            it.unit === "м²" || it.unit === "м2" ||
+            norm(it.name).includes("полотн") ||
+            norm(it.name).includes("раскрой") ||
+            norm(it.name).includes("огарпун") ||
+            norm(it.name).includes("монтаж полотн");
+          return isArea ? { ...it, qty: area, unit: "м²" } : it;
+        });
         return { handled: true, items: updated, reply: "Готово ✅" };
       }
     }
   }
 
   // ──── ИЗМЕНИТЬ КОЛИЧЕСТВО — явные команды ────
-  // "сделай 6 светильников", "поменяй светильники на 6", "6 светильников вместо 4"
-  const patterns: RegExp[] = [
-    /(?:сделай|поставь|измени|поменяй|установи|хочу|нужно)\s+(\d+[\d.,]*)\s+(.+)/,
-    /(?:поменяй|измени|сделай)\s+(.+?)\s+(?:на|=)\s*(\d+[\d.,]*)/,
-    /(\d+[\d.,]*)\s+(.+?)\s+вместо\s+\d+/,
-    /вместо\s+\d+\s+(.+?)\s+(?:сделай|поставь|нужно)\s+(\d+[\d.,]*)/,
+  const patterns: [RegExp, (m: RegExpMatchArray) => { qty: number | null; nameQuery: string }][] = [
+    [
+      /(?:сделай|поставь|измени|поменяй|установи|хочу|нужно)\s+(\d+[\d.,]*)\s+(.+)/,
+      (m) => ({ qty: parseNum(m[1]), nameQuery: m[2]?.trim() ?? "" }),
+    ],
+    [
+      /(?:поменяй|измени|сделай)\s+(.+?)\s+(?:на|=)\s*(\d+[\d.,]*)/,
+      (m) => ({ qty: parseNum(m[2]), nameQuery: m[1]?.trim() ?? "" }),
+    ],
+    [
+      /(\d+[\d.,]*)\s+(.+?)\s+вместо\s+\d+/,
+      (m) => ({ qty: parseNum(m[1]), nameQuery: m[2]?.trim() ?? "" }),
+    ],
+    [
+      /вместо\s+\d+\s+(.+?)\s+(?:сделай|поставь|нужно)\s+(\d+[\d.,]*)/,
+      (m) => ({ qty: parseNum(m[2]), nameQuery: m[1]?.trim() ?? "" }),
+    ],
   ];
 
-  for (const re of patterns) {
+  for (const [re, extract] of patterns) {
     const m = t.match(re);
     if (!m) continue;
-
-    // Определяем qty и nameQuery в зависимости от паттерна
-    let qty: number | null = null;
-    let nameQuery = "";
-
-    const n1 = parseNum(m[1]);
-    const n2 = m[2] ? parseNum(m[2]) : null;
-
-    if (n1 !== null && n2 === null) {
-      qty = n1; nameQuery = m[2]?.trim() ?? "";
-    } else if (n1 === null && n2 !== null) {
-      qty = n2; nameQuery = m[1]?.trim() ?? "";
-    } else if (n1 !== null && n2 !== null) {
-      // оба числа — первый паттерн: qty=n1, name=m[2]
-      qty = n1; nameQuery = m[2]?.trim() ?? "";
-    }
-
-    if (qty === null || !nameQuery) continue;
+    const { qty, nameQuery } = extract(m);
+    if (qty === null || qty <= 0 || !nameQuery) continue;
     const idx = findIdx(items, nameQuery);
     if (idx !== -1) {
       const updated = items.map((it, i) => i === idx ? { ...it, qty } : it);
@@ -162,21 +163,21 @@ export function applyEstimateEdit(items: EstimateItem[], text: string): EditResu
     }
   }
 
-  // ──── ПРОСТОЙ ФОРМАТ: "6 светильников" (число + название позиции из сметы) ────
-  // Только если название точно совпадает с позицией в смете
-  const simpleMatch = t.match(/^(\d+[\d.,]*)\s+(.+)$/);
+  // ──── ПРОСТОЙ ФОРМАТ: "6 светильников" — только если слово точно совпадает с позицией ────
+  const simpleMatch = t.match(/^(\d+[\d.,]*)\s+(.{3,})$/);
   if (simpleMatch) {
     const qty = parseFloat(simpleMatch[1].replace(",", "."));
     const nameQuery = simpleMatch[2].trim();
-    const idx = findIdx(items, nameQuery);
-    // Дополнительная проверка — совпадение должно быть достаточно точным
-    if (idx !== -1 && !isNaN(qty)) {
-      const name = norm(items[idx].name);
-      const words = norm(nameQuery).split(/\s+/).filter(w => w.length > 2);
-      const matchScore = words.filter(w => name.includes(w)).length;
-      if (matchScore >= 1 && words.length > 0) {
-        const updated = items.map((it, i) => i === idx ? { ...it, qty } : it);
-        return { handled: true, items: updated, reply: "Готово ✅" };
+    if (!isNaN(qty) && qty > 0) {
+      const idx = findIdx(items, nameQuery);
+      if (idx !== -1) {
+        const name = norm(items[idx].name);
+        const words = norm(nameQuery).split(/\s+/).filter((w) => w.length > 2);
+        const matchScore = words.filter((w) => name.includes(w)).length;
+        if (matchScore >= 1) {
+          const updated = items.map((it, i) => i === idx ? { ...it, qty } : it);
+          return { handled: true, items: updated, reply: "Готово ✅" };
+        }
       }
     }
   }
