@@ -1289,8 +1289,9 @@ def handler(event, context):
     skip_info = get_skip_reason(last_user_text.lower().strip())
     save_correction(last_user_text, skip_info, session_id)
 
-    # Кэш смет: если такой же текст уже считался — возвращаем готовый ответ
+    # Кэш смет: если такой же текст уже считался с текущей версией правил — возвращаем готовый ответ
     import hashlib
+    _CACHE_RULES_VERSION = 47  # Увеличивать при изменении прайса/правил в БД
     _estimate_text_hash = hashlib.sha256(last_user_text.strip().lower().encode()).hexdigest()
     _is_estimate_req = bool(re.search(
         r'\d+\s*(?:м²|м2|кв\.?\s*м?|квадрат|кв\b|м\b)|'
@@ -1302,18 +1303,18 @@ def handler(event, context):
             conn = psycopg2.connect(os.environ['DATABASE_URL'])
             cur = conn.cursor()
             cur.execute(
-                f"SELECT answer, items FROM {SCHEMA}.estimate_cache WHERE text_hash = %s",
-                (_estimate_text_hash,)
+                f"SELECT answer, items FROM {SCHEMA}.estimate_cache WHERE text_hash = %s AND rules_version = %s",
+                (_estimate_text_hash, _CACHE_RULES_VERSION)
             )
             cached = cur.fetchone()
             cur.close(); conn.close()
             if cached:
-                print(f"[cache] HIT for hash {_estimate_text_hash[:8]}")
+                print(f"[cache] HIT v{_CACHE_RULES_VERSION} for hash {_estimate_text_hash[:8]}")
                 body = {'answer': cached[0]}
                 if cached[1]:
                     body['items'] = cached[1]
                 return {'statusCode': 200, 'headers': cors, 'body': json.dumps(body)}
-            print(f"[cache] MISS for hash {_estimate_text_hash[:8]}")
+            print(f"[cache] MISS v{_CACHE_RULES_VERSION} for hash {_estimate_text_hash[:8]}")
         except Exception as e:
             print(f"[cache] read error: {e}")
 
@@ -1496,18 +1497,19 @@ def handler(event, context):
             conn = psycopg2.connect(os.environ['DATABASE_URL'])
             cur = conn.cursor()
             cur.execute(
-                f"""INSERT INTO {SCHEMA}.estimate_cache (text_hash, request_text, answer, items)
-                    VALUES (%s, %s, %s, %s)
-                    ON CONFLICT (text_hash) DO UPDATE SET answer=EXCLUDED.answer, items=EXCLUDED.items""",
+                f"""INSERT INTO {SCHEMA}.estimate_cache (text_hash, request_text, answer, items, rules_version)
+                    VALUES (%s, %s, %s, %s, %s)
+                    ON CONFLICT (text_hash) DO UPDATE SET answer=EXCLUDED.answer, items=EXCLUDED.items, rules_version=EXCLUDED.rules_version""",
                 (
                     _estimate_text_hash,
                     last_user_text.strip(),
                     answer,
                     _json.dumps(response_body.get('items')) if response_body.get('items') else None,
+                    _CACHE_RULES_VERSION,
                 )
             )
             conn.commit(); cur.close(); conn.close()
-            print(f"[cache] SAVED hash {_estimate_text_hash[:8]}")
+            print(f"[cache] SAVED v{_CACHE_RULES_VERSION} hash {_estimate_text_hash[:8]}")
         except Exception as e:
             print(f"[cache] write error: {e}")
 
