@@ -518,94 +518,68 @@ export default function CorrectionCard({
                   let numCounter = 0;
 
                   return (
-                    <div className="flex flex-col">
-                      <div className="rounded-xl border border-white/10 overflow-hidden mx-4 mt-4">
-                        <table className="w-full text-xs">
-                          <thead>
-                            <tr className="bg-white/[0.06] border-b border-white/10">
-                              <th className="text-left px-3 py-2 text-white/40 font-montserrat font-semibold text-[11px] uppercase tracking-wider">Позиция</th>
-                              <th className="text-right px-3 py-2 text-white/40 font-montserrat font-semibold text-[11px] uppercase tracking-wider w-[120px]">Стоимость</th>
-                              <th className="text-left px-3 py-2 text-violet-400/60 font-montserrat font-semibold text-[11px] uppercase tracking-wider w-[280px]">
-                                <span className="flex items-center gap-1.5">
-                                  <Icon name="AlertCircle" size={11} />
-                                  Что было неверно?
-                                </span>
-                              </th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {parsed.blocks.map((block, bi) => {
-                              if (block.numbered) numCounter++;
-                              const label = block.numbered ? `${numCounter}. ${block.title}` : block.title;
-                              if (/смета/i.test(label) && block.items.length === 0) return null;
-                              return (
-                                <>
-                                  <tr key={`h-${bi}`} className={`${bi > 0 ? 'border-t border-white/15' : ''} bg-white/[0.02]`}>
-                                    <td colSpan={3} className="px-3 pt-3 pb-2 font-montserrat font-bold text-orange-400 text-[13px]">
-                                      {label}
-                                    </td>
-                                  </tr>
-                                  {block.items.map((it, ii) => {
-                                    const { cleanName, formula, total } = resolveItem(it, findItem);
-                                    const hasComment = !!(aiEditComments[cleanName] || '').trim();
-                                    return (
-                                      <tr key={`r-${bi}-${ii}`} className={`group/row transition-colors ${hasComment ? 'bg-violet-500/10' : 'hover:bg-white/[0.03]'} ${ii > 0 ? 'border-t border-white/5' : ''}`}>
-                                        {/* Позиция + формула в одну строку */}
-                                        <td className="px-3 py-2 whitespace-nowrap">
-                                          <span className="text-white/80 text-xs">{cleanName}</span>
-                                          {formula && <span className="text-white/30 text-[11px] font-montserrat ml-2">{formula}</span>}
-                                        </td>
-                                        {/* Стоимость — только итог */}
-                                        <td className="px-3 py-2 text-right whitespace-nowrap w-[120px]">
-                                          {total && <span className="text-orange-400 font-montserrat font-bold text-xs">{total}</span>}
-                                        </td>
-                                        {/* Исправление */}
-                                        <td className="px-2 py-1.5 w-[280px]">
-                                          {hasComment ? (
-                                            <input
-                                              autoFocus
-                                              type="text"
-                                              placeholder="что не так..."
-                                              value={aiEditComments[cleanName] || ''}
-                                              onChange={e => setAiEditComments(prev => ({ ...prev, [cleanName]: e.target.value }))}
-                                              className="w-full rounded-lg px-2.5 py-1 text-[11px] outline-none transition bg-violet-500/15 border border-violet-500/40 text-violet-200 placeholder:text-violet-400/30"
-                                            />
-                                          ) : (
-                                            <button
-                                              onClick={() => setAiEditComments(prev => ({ ...prev, [cleanName]: ' ' }))}
-                                              className="w-full text-left px-2.5 py-1 text-[11px] text-white/15 hover:text-violet-400/60 transition rounded-lg hover:bg-white/5 group-hover/row:text-white/20"
-                                            >
-                                              указать ошибку...
-                                            </button>
-                                          )}
-                                        </td>
-                                      </tr>
-                                    );
-                                  })}
-                                </>
-                              );
-                            })}
-                          </tbody>
-                        </table>
-
-                        {parsed.totals.length > 0 && (
-                          <div className="border-t border-orange-500/30 bg-gradient-to-r from-orange-500/10 to-rose-500/10 px-3 py-3">
-                            <div className="space-y-1">
-                              {parsed.totals.map((t, i) => {
-                                const isHeader = /итогов|итого\s*стоим/i.test(t) && !t.includes('Econom') && !t.includes('Standard') && !t.includes('Premium');
-                                const isHighlight = /standard/i.test(t);
-                                if (isHeader) return <div key={i} className="text-white/40 font-montserrat text-[10px] mb-0.5 text-right">{t.replace(/:$/, '')}</div>;
+                    <div className="flex flex-col px-5 py-4 gap-1">
+                      {parsed.blocks.map((block, bi) => {
+                        if (block.numbered) numCounter++;
+                        const label = block.numbered ? `${numCounter}. ${block.title}` : block.title;
+                        if (/смета/i.test(label) && block.items.length === 0) return null;
+                        return (
+                          <div key={`b-${bi}`} className={bi > 0 ? 'mt-3' : ''}>
+                            <div className="text-orange-400 font-montserrat font-bold text-[13px] mb-1.5 px-1">{label}</div>
+                            <div className="flex flex-col gap-0.5">
+                              {block.items.map((it, ii) => {
+                                const { cleanName, formula, total } = resolveItem(it, findItem);
+                                const isOpen = cleanName in aiEditComments;
+                                const val = aiEditComments[cleanName] ?? '';
                                 return (
-                                  <div key={i} className={`flex justify-end text-xs ${isHighlight ? 'text-orange-400 font-montserrat font-black text-sm' : 'text-white/70'}`}>
-                                    <span className="text-right mr-3">{t.split(':')[0]}:</span>
-                                    <span className="font-montserrat font-bold">{t.split(':').slice(1).join(':').trim()}</span>
+                                  <div
+                                    key={`r-${bi}-${ii}`}
+                                    className={`flex items-center gap-3 rounded-lg px-3 py-2 transition-colors ${isOpen ? 'bg-violet-500/10 border border-violet-500/25' : 'hover:bg-white/[0.04] border border-transparent'}`}
+                                  >
+                                    {/* Позиция */}
+                                    <div className="flex-1 min-w-0">
+                                      <span className="text-white/80 text-xs">{cleanName}</span>
+                                      {formula && <span className="text-white/25 text-[11px] font-montserrat ml-2">{formula}</span>}
+                                    </div>
+                                    {/* Итог */}
+                                    {total && (
+                                      <span className="text-orange-400 font-montserrat font-bold text-xs flex-shrink-0">{total}</span>
+                                    )}
+                                    {/* Поле исправления */}
+                                    <div className="flex-shrink-0 w-[260px]">
+                                      {isOpen ? (
+                                        <div className="flex items-center gap-1.5">
+                                          <input
+                                            autoFocus
+                                            type="text"
+                                            placeholder="что было неверно..."
+                                            value={val}
+                                            onChange={e => setAiEditComments(prev => ({ ...prev, [cleanName]: e.target.value }))}
+                                            className="flex-1 w-full rounded-lg px-2.5 py-1.5 text-[11px] outline-none transition bg-violet-500/10 border border-violet-500/40 text-violet-100 placeholder:text-violet-400/40"
+                                          />
+                                          <button
+                                            onClick={() => setAiEditComments(prev => { const n = {...prev}; delete n[cleanName]; return n; })}
+                                            className="text-white/20 hover:text-white/50 transition flex-shrink-0"
+                                          >
+                                            <Icon name="X" size={12} />
+                                          </button>
+                                        </div>
+                                      ) : (
+                                        <button
+                                          onClick={() => setAiEditComments(prev => ({ ...prev, [cleanName]: '' }))}
+                                          className="w-full text-left px-2.5 py-1.5 text-[11px] text-white/20 hover:text-violet-400 transition rounded-lg hover:bg-violet-500/10 border border-transparent hover:border-violet-500/20"
+                                        >
+                                          + указать ошибку
+                                        </button>
+                                      )}
+                                    </div>
                                   </div>
                                 );
                               })}
                             </div>
                           </div>
-                        )}
-                      </div>
+                        );
+                      })}
 
                       {/* Общий комментарий */}
                       <div className="px-4 pb-4 pt-3 border-t border-white/[0.07] mt-4">
