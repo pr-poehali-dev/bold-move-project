@@ -3,7 +3,6 @@ import Icon from "@/components/ui/icon";
 import { isEstimate } from "./EstimateTable";
 import { Panel, Msg, GREETING, AI_URL, localAnswer } from "./chatConfig";
 import { applyEstimateEdit, buildEstimateText } from "./estimateEditor";
-import { usePrices, fetchPriceByName } from "./usePrices";
 import ChatUI from "./ChatUI";
 import LiveChat from "./LiveChat";
 import {
@@ -30,7 +29,6 @@ export default function Index() {
   const [regName, setRegName] = useState("");
   const [regPhone, setRegPhone] = useState("");
   const [regDone, setRegDone] = useState(false);
-  const prices = usePrices();
   const messagesRef = useRef<Msg[]>([GREETING]);
   useEffect(() => { messagesRef.current = messages; }, [messages]);
   const isPresetMsg = useRef(false);
@@ -72,41 +70,22 @@ export default function Index() {
     // Перехватываем редактирование сметы локально — без AI
     const estimateMsg = messagesRef.current.findLast((m) => m.role === "assistant" && isEstimate(m.text) && m.items?.length);
     if (estimateMsg?.items) {
-      const result = applyEstimateEdit(estimateMsg.items, text, prices);
+      const result = applyEstimateEdit(estimateMsg.items, text);
       if (result.handled && result.items) {
-        const applyItems = (finalItems: Msg["items"]) => {
-          const newText = buildEstimateText(finalItems!, estimateMsg.text);
-          setMessages((prev) => {
-            const updated = prev.map((m) =>
-              m.id === estimateMsg.id ? { ...estimateMsg, items: finalItems, text: newText } : m
-            );
-            return [...updated, userMsg, { id: Date.now() + 2, role: "assistant" as const, text: result.reply ?? "Готово ✅" }];
-          });
-          setScrollTarget({ type: "estimate", id: estimateMsg.id });
-        };
-
-        // Если новая позиция добавлена с ценой 0 — запрашиваем цену у backend (БД → LLM)
-        const addedWithZero = result.items.find((it) => it.price === 0 && !estimateMsg.items!.find((old) => old.name === it.name));
-        if (addedWithZero) {
-          applyItems(result.items); // Сразу показываем с 0, потом обновим
-          fetchPriceByName(addedWithZero.name).then(({ price, unit }) => {
-            if (price > 0) {
-              setMessages((prev) => prev.map((m) => {
-                if (m.id !== estimateMsg.id) return m;
-                const patched = (m.items ?? []).map((it) =>
-                  it.name === addedWithZero.name && it.price === 0
-                    ? { ...it, price, unit: it.unit || unit || "шт" }
-                    : it
-                );
-                return { ...m, items: patched, text: buildEstimateText(patched, m.text) };
-              }));
-            }
-          });
-        } else {
-          applyItems(result.items);
-        }
-
+        const newItems = result.items;
+        const newText = buildEstimateText(newItems, estimateMsg.text);
+        setMessages((prev) => {
+          const updated = prev.map((m) =>
+            m.id === estimateMsg.id ? { ...estimateMsg, items: newItems, text: newText } : m
+          );
+          return [
+            ...updated,
+            userMsg,
+            { id: Date.now() + 2, role: "assistant" as const, text: result.reply ?? "Готово ✅" },
+          ];
+        });
         setInput("");
+        setScrollTarget({ type: "estimate", id: estimateMsg.id });
         return;
       }
     }

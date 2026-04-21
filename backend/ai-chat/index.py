@@ -825,14 +825,6 @@ def _find_in_price_map(name: str, price_map: dict) -> dict | None:
     return best
 
 
-def isEstimate(text: str) -> bool:
-    """Проверяет что текст содержит смету."""
-    return (
-        ('ИТОГО' in text or 'Econom' in text or 'Standard' in text or 'Premium' in text) and
-        ('₽' in text or 'руб' in text.lower())
-    )
-
-
 def _reparse_items_from_answer(answer: str, original_items: list) -> list:
     """Перепарсивает items из финального патчнутого текста.
     Берёт цены и qty из текста (они прошли патч из БД), group — из оригинального LLM JSON.
@@ -1289,35 +1281,6 @@ def handler(event, context):
     skip_info = get_skip_reason(last_user_text.lower().strip())
     save_correction(last_user_text, skip_info, session_id)
 
-    # Кэш смет: если такой же текст уже считался с текущей версией правил — возвращаем готовый ответ
-    import hashlib
-    _CACHE_RULES_VERSION = 47  # Увеличивать при изменении прайса/правил в БД
-    _estimate_text_hash = hashlib.sha256(last_user_text.strip().lower().encode()).hexdigest()
-    _is_estimate_req = bool(re.search(
-        r'\d+\s*(?:м²|м2|кв\.?\s*м?|квадрат|кв\b|м\b)|'
-        r'(?:санузел|комнат|зал|спальн|кухн|прихожа|гостин|студи|детск|коридор|ванн|туалет|однушк|двушк|трёшк|трешк)\w*\s+\d+',
-        last_user_text, re.IGNORECASE
-    ))
-    if _is_estimate_req:
-        try:
-            conn = psycopg2.connect(os.environ['DATABASE_URL'])
-            cur = conn.cursor()
-            cur.execute(
-                f"SELECT answer, items FROM {SCHEMA}.estimate_cache WHERE text_hash = %s AND rules_version = %s",
-                (_estimate_text_hash, _CACHE_RULES_VERSION)
-            )
-            cached = cur.fetchone()
-            cur.close(); conn.close()
-            if cached:
-                print(f"[cache] HIT v{_CACHE_RULES_VERSION} for hash {_estimate_text_hash[:8]}")
-                body = {'answer': cached[0]}
-                if cached[1]:
-                    body['items'] = cached[1]
-                return {'statusCode': 200, 'headers': cors, 'body': json.dumps(body)}
-            print(f"[cache] MISS v{_CACHE_RULES_VERSION} for hash {_estimate_text_hash[:8]}")
-        except Exception as e:
-            print(f"[cache] read error: {e}")
-
     # Загружаем базу знаний и цены из БД
     knowledge = get_knowledge(last_user_text)
     system_content = get_system_prompt(fallback=SYSTEM_PROMPT)
@@ -1345,29 +1308,13 @@ def handler(event, context):
     if search['text']:
         system_content += f"\n\n=== АКТУАЛЬНАЯ ИНФОРМАЦИЯ ИЗ ИНТЕРНЕТА ===\n{search['text']}\nИспользуй эти данные для ответа, указывай источники если уместно."
 
-    # Определяем: это запрос на смету?
-    # Если да — передаём ТОЛЬКО последнее сообщение без истории.
-    # Temperature=0 + одинаковый system prompt + одинаковый текст = одинаковый ответ.
-    _ESTIMATE_RE = re.compile(
-        r'\d+\s*(?:м²|м2|кв\.?\s*м?|квадрат|кв\b|м\b)|'
-        r'(?:санузел|комнат|зал|спальн|кухн|прихожа|гостин|студи|детск|коридор|ванн|туалет|однушк|двушк|трёшк|трешк)\w*\s+\d+|'
-        r'(?:светильник|люстр|ниш[аеу]|карниз|профил|полотн|монтаж|замер|смет)',
-        re.IGNORECASE
-    )
-    is_estimate_request = bool(_ESTIMATE_RE.search(last_user_text))
-
+    # Передаём только последние 6 сообщений — экономим токены
     openai_messages = [{'role': 'system', 'content': system_content}]
-    if is_estimate_request:
-        # Только последнее сообщение — детерминированный ответ
-        print(f"[estimate] detected → sending only last message, no history")
-        openai_messages.append({'role': 'user', 'content': last_user_text})
-    else:
-        # Обычный вопрос — передаём последние 6 сообщений с историей
-        for msg in messages[-6:]:
-            openai_messages.append({
-                'role': msg.get('role', 'user'),
-                'content': msg.get('text', ''),
-            })
+    for msg in messages[-6:]:
+        openai_messages.append({
+            'role': msg.get('role', 'user'),
+            'content': msg.get('text', ''),
+        })
 
     answer = call_llm(openai_messages)
 
@@ -1489,29 +1436,6 @@ def handler(event, context):
         # Перепарсим цены/qty из патчнутого текста — они точнее чем LLM JSON
         llm_items_patched = _reparse_items_from_answer(answer, llm_items_json['items'])
         response_body['items'] = llm_items_patched
-
-    # Сохраняем смету в кэш для следующих одинаковых запросов
-    if _is_estimate_req and isEstimate(answer):
-        try:
-            import json as _json
-            conn = psycopg2.connect(os.environ['DATABASE_URL'])
-            cur = conn.cursor()
-            cur.execute(
-                f"""INSERT INTO {SCHEMA}.estimate_cache (text_hash, request_text, answer, items, rules_version)
-                    VALUES (%s, %s, %s, %s, %s)
-                    ON CONFLICT (text_hash) DO UPDATE SET answer=EXCLUDED.answer, items=EXCLUDED.items, rules_version=EXCLUDED.rules_version""",
-                (
-                    _estimate_text_hash,
-                    last_user_text.strip(),
-                    answer,
-                    _json.dumps(response_body.get('items')) if response_body.get('items') else None,
-                    _CACHE_RULES_VERSION,
-                )
-            )
-            conn.commit(); cur.close(); conn.close()
-            print(f"[cache] SAVED v{_CACHE_RULES_VERSION} hash {_estimate_text_hash[:8]}")
-        except Exception as e:
-            print(f"[cache] write error: {e}")
 
     return {
         'statusCode': 200,
