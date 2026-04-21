@@ -264,10 +264,9 @@ export default function CorrectionCardHeader({
           <>
             <button
               onClick={onSplitViewToggle}
-              title="Сравнить: ответ LLM vs что увидел клиент"
-              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs transition mt-0.5 ${splitViewOpen ? "bg-violet-500/30 text-violet-200" : "bg-violet-500/15 hover:bg-violet-500/25 text-violet-300 hover:text-violet-200"}`}>
-              <Icon name="Columns2" size={12} />
-              <span className="hidden sm:inline">Что увидел клиент</span>
+              title="Что увидел клиент"
+              className={`flex items-center justify-center w-7 h-7 rounded-lg transition mt-0.5 ${splitViewOpen ? "bg-violet-500/30 text-violet-200" : "text-white/30 hover:text-white/60 hover:bg-white/5"}`}>
+              <Icon name="Eye" size={14} />
             </button>
             <button
               onClick={onAiEditOpen}
