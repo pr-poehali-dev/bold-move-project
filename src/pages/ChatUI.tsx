@@ -58,17 +58,23 @@ export default function ChatUI({ messages, input, typing, panel, onInput, onSend
   const hasEstimate = messages.some((m) => m.role === "assistant" && isEstimate(m.text));
   const chatRef = useRef<HTMLDivElement>(null);
 
-  // Скролл вниз по умолчанию при новых сообщениях
+  const scrollTargetRef = useRef(scrollTarget);
+  scrollTargetRef.current = scrollTarget;
+
+  // Скролл вниз — только когда нет активного scrollTarget
   useEffect(() => {
+    if (scrollTargetRef.current) return;
     if (chatRef.current) chatRef.current.scrollTop = chatRef.current.scrollHeight;
   }, [messages, typing]);
 
   // Скролл к смете — сначала показываем "Готово ✅", через 1.5 сек скроллим к началу сметы
   useEffect(() => {
-    if (!scrollTarget || !chatRef.current) return;
+    if (!scrollTarget) return;
     const capturedId = scrollTarget.id;
-    onScrollDone?.();
+    // Сначала скроллим вниз чтобы показать "Готово ✅"
+    if (chatRef.current) chatRef.current.scrollTop = chatRef.current.scrollHeight;
     const timer = setTimeout(() => {
+      onScrollDone?.();
       const container = chatRef.current;
       if (!container) return;
       const el = capturedId
