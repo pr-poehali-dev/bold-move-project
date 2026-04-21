@@ -128,7 +128,7 @@ export default function ChatUI({ messages, input, typing, panel, onInput, onSend
           onValueChange={onInput}
           onSubmit={(text) => onSend(text)}
           isLoading={typing}
-          placeholder={hasEstimate ? "Что изменить?" : "Спросите Женю о потолках…"}
+          placeholder={hasEstimate ? "Что изменить в текущей смете?" : "Спросите Женю о потолках…"}
           hasEstimate={hasEstimate}
           onNewEstimate={onNewEstimate}
         />
