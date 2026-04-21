@@ -2,6 +2,7 @@ import { useState, useCallback, useEffect, useRef } from "react";
 import Icon from "@/components/ui/icon";
 import { isEstimate } from "./EstimateTable";
 import { Panel, Msg, GREETING, AI_URL, localAnswer } from "./chatConfig";
+import { applyEstimateEdit, buildEstimateText } from "./estimateEditor";
 import ChatUI from "./ChatUI";
 import LiveChat from "./LiveChat";
 import {
@@ -62,6 +63,28 @@ export default function Index() {
   const sendMsg = useCallback((text: string, fast = false) => {
     if (!text.trim() || typing) return;
     const userMsg: Msg = { id: Date.now(), role: "user", text: text.trim() };
+
+    // Перехватываем редактирование сметы локально — без AI
+    const estimateMsg = messages.findLast((m) => m.role === "assistant" && isEstimate(m.text) && m.items?.length);
+    if (estimateMsg?.items) {
+      const result = applyEstimateEdit(estimateMsg.items, text);
+      if (result.handled && result.items) {
+        const newText = buildEstimateText(result.items, estimateMsg.text);
+        setMessages((prev) => {
+          const updated = prev.map((m) =>
+            m.id === estimateMsg.id ? { ...estimateMsg, items: result.items, text: newText } : m
+          );
+          return [
+            ...updated,
+            userMsg,
+            { id: Date.now() + 2, role: "assistant" as const, text: result.reply ?? "Готово ✅" },
+          ];
+        });
+        setInput("");
+        return;
+      }
+    }
+
     setMessages((p) => [...p, userMsg]);
     setInput("");
     setTyping(true);
