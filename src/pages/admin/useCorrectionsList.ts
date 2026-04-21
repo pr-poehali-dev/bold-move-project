@@ -114,9 +114,12 @@ export function useCorrectionsList(token: string) {
     i.status === "pending" && hasEstimate(i) && hasUnknownWords(i) && !allWordsResolved(i)
   );
 
-  // "Всё понятно LLM" — нет unknown слов, или все слова уже обработаны
+  // "Всё понятно LLM" — нет unknown слов, все слова обработаны, или уже approved
   const allGood = items.filter(i =>
-    i.status === "pending" && hasEstimate(i) && (!hasUnknownWords(i) || allWordsResolved(i))
+    hasEstimate(i) && (
+      i.status === "approved" ||
+      (i.status === "pending" && (!hasUnknownWords(i) || allWordsResolved(i)))
+    )
   );
 
   // Проверенные (для совместимости)
