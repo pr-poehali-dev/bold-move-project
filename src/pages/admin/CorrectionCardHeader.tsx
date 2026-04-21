@@ -259,30 +259,30 @@ export default function CorrectionCardHeader({
         )}
       </div>
 
-      <div className="flex items-start gap-1 flex-shrink-0">
+      <div className="flex items-center gap-1 flex-shrink-0">
         {isLLM && item.llm_answer && (
-          <>
-            <button
-              onClick={onSplitViewToggle}
-              title="Что увидел клиент"
-              className={`flex items-center justify-center w-7 h-7 rounded-lg transition mt-0.5 ${splitViewOpen ? "bg-violet-500/30 text-violet-200" : "text-white/30 hover:text-white/60 hover:bg-white/5"}`}>
-              <Icon name="Eye" size={14} />
-            </button>
-            <button
-              onClick={onAiEditOpen}
-              title="Исправить ответ AI — обучить систему"
-              className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs transition mt-0.5 bg-violet-500/15 hover:bg-violet-500/25 text-violet-300 hover:text-violet-200">
-              <Icon name="GraduationCap" size={12} />
-              <span className="hidden sm:inline">Обучить AI</span>
-            </button>
-          </>
+          <button
+            onClick={onAiEditOpen}
+            title="Исправить ответ AI — обучить систему"
+            className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs transition bg-violet-500/15 hover:bg-violet-500/25 text-violet-300 hover:text-violet-200">
+            <Icon name="GraduationCap" size={12} />
+            <span className="hidden sm:inline">Обучить AI</span>
+          </button>
         )}
         {!isLLM && (
-          <button onClick={onToggleExpand} className="text-white/30 hover:text-white/60 transition mt-1">
+          <button onClick={onToggleExpand} className="text-white/30 hover:text-white/60 transition">
             <Icon name={isExpanded ? "ChevronUp" : "ChevronDown"} size={16} />
           </button>
         )}
-        <button onClick={onRemove} className="text-white/20 hover:text-red-400 transition mt-1 ml-1">
+        {isLLM && item.llm_answer && (
+          <button
+            onClick={onSplitViewToggle}
+            title="Что увидел клиент"
+            className={`flex items-center justify-center w-6 h-6 rounded transition ${splitViewOpen ? "text-violet-300" : "text-white/25 hover:text-white/60"}`}>
+            <Icon name="Eye" size={14} />
+          </button>
+        )}
+        <button onClick={onRemove} className="text-white/20 hover:text-red-400 transition">
           <Icon name="X" size={14} />
         </button>
       </div>
