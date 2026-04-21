@@ -106,15 +106,12 @@ export function applyEstimateEdit(items: EstimateItem[], text: string): EditResu
   }
 
   // ──── ИЗМЕНИТЬ ПЛОЩАДЬ ────
-  // Только явные команды изменения: "измени площадь на 15", "площадь 15 м²", "поменяй на 20 кв.м"
-  // НЕ перехватываем: "потолок в комнате 20 м²", "что такое 15 кв.м"
-  const areaChangeMatch =
-    t.match(/(?:измени|поменяй|сделай|укажи|обнови)\s+(?:площадь|размер)[^\d]*(\d+[\d.,]*)/) ||
-    t.match(/площадь\s+(\d+[\d.,]*)\s*(?:м²|кв\.?м|м2|кв\b)/) ||
-    t.match(/^(\d+[\d.,]*)\s*(?:м²|м2|кв\.?м)\s*$/);
-  if (areaChangeMatch) {
-    const area = parseFloat(areaChangeMatch[1].replace(",", "."));
-    if (!isNaN(area) && area > 0 && area < 1000) {
+  // "площадь 15", "15 м²", "потолок 20 кв.м"
+  const areaMatch = t.match(/(?:площадь|потолок|комнат[а-я]*)[^\d]*(\d+[\d.,]*)\s*(?:м²|кв\.?м|м2|кв)?/) ||
+                    t.match(/(\d+[\d.,]*)\s*(?:м²|кв\.?м|м2)\s*(?:площадь|потолок)?/);
+  if (areaMatch) {
+    const area = parseFloat(areaMatch[1].replace(",", "."));
+    if (!isNaN(area)) {
       const idx = items.findIndex((it) =>
         it.unit === "м²" || it.unit === "м2" ||
         norm(it.name).includes("полотн") ||
@@ -130,18 +127,18 @@ export function applyEstimateEdit(items: EstimateItem[], text: string): EditResu
 
   // ──── ИЗМЕНИТЬ КОЛИЧЕСТВО — явные команды ────
   // "сделай 6 светильников", "поменяй светильники на 6", "6 светильников вместо 4"
-  // Убраны "хочу" и "нужно" — они слишком часто встречаются в обычных вопросах
   const patterns: RegExp[] = [
-    /(?:сделай|поставь|измени|поменяй|установи)\s+(\d+[\d.,]*)\s+(.+)/,
+    /(?:сделай|поставь|измени|поменяй|установи|хочу|нужно)\s+(\d+[\d.,]*)\s+(.+)/,
     /(?:поменяй|измени|сделай)\s+(.+?)\s+(?:на|=)\s*(\d+[\d.,]*)/,
     /(\d+[\d.,]*)\s+(.+?)\s+вместо\s+\d+/,
-    /вместо\s+\d+\s+(.+?)\s+(?:сделай|поставь)\s+(\d+[\d.,]*)/,
+    /вместо\s+\d+\s+(.+?)\s+(?:сделай|поставь|нужно)\s+(\d+[\d.,]*)/,
   ];
 
   for (const re of patterns) {
     const m = t.match(re);
     if (!m) continue;
 
+    // Определяем qty и nameQuery в зависимости от паттерна
     let qty: number | null = null;
     let nameQuery = "";
 
@@ -153,6 +150,7 @@ export function applyEstimateEdit(items: EstimateItem[], text: string): EditResu
     } else if (n1 === null && n2 !== null) {
       qty = n2; nameQuery = m[1]?.trim() ?? "";
     } else if (n1 !== null && n2 !== null) {
+      // оба числа — первый паттерн: qty=n1, name=m[2]
       qty = n1; nameQuery = m[2]?.trim() ?? "";
     }
 
@@ -164,20 +162,19 @@ export function applyEstimateEdit(items: EstimateItem[], text: string): EditResu
     }
   }
 
-  // ──── ПРОСТОЙ ФОРМАТ: "6 светильников" — ТОЛЬКО если слово точно есть в смете ────
-  // Короткие фразы типа "2 комнаты" или "3 варианта" НЕ перехватываем
-  const simpleMatch = t.match(/^(\d+[\d.,]*)\s+(.{4,})$/);
+  // ──── ПРОСТОЙ ФОРМАТ: "6 светильников" (число + название позиции из сметы) ────
+  // Только если название точно совпадает с позицией в смете
+  const simpleMatch = t.match(/^(\d+[\d.,]*)\s+(.+)$/);
   if (simpleMatch) {
     const qty = parseFloat(simpleMatch[1].replace(",", "."));
     const nameQuery = simpleMatch[2].trim();
     const idx = findIdx(items, nameQuery);
+    // Дополнительная проверка — совпадение должно быть достаточно точным
     if (idx !== -1 && !isNaN(qty)) {
       const name = norm(items[idx].name);
       const words = norm(nameQuery).split(/\s+/).filter(w => w.length > 2);
-      // Требуем совпадение минимум 2 слов ИЛИ одного длинного (>5 символов)
       const matchScore = words.filter(w => name.includes(w)).length;
-      const hasLongWord = words.some(w => w.length > 5 && name.includes(w));
-      if ((matchScore >= 2 || hasLongWord) && words.length > 0) {
+      if (matchScore >= 1 && words.length > 0) {
         const updated = items.map((it, i) => i === idx ? { ...it, qty } : it);
         return { handled: true, items: updated, reply: "Готово ✅" };
       }
