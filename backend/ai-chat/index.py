@@ -825,6 +825,56 @@ def _find_in_price_map(name: str, price_map: dict) -> dict | None:
     return best
 
 
+def _ensure_profile(items: list, area: float) -> list:
+    """Гарантирует наличие стенового профиля и монтажа профиля в смете.
+    Если AI их не добавил — вставляем принудительно с расчётом по периметру.
+    Профиль нужен всегда: без него монтаж натяжного потолка невозможен.
+    """
+    names = [it.get('name', '').lower() for it in items]
+
+    def has(keyword: str) -> bool:
+        return any(keyword in n for n in names)
+
+    # Профиль есть если в items встречается алюминиевый / теневой / парящий / БП / Sigma
+    has_profile = has('алюминиев') or has('теневой') or has('парящий') or has('бп-') or has('sigma') or has('брус')
+    # Монтаж профиля есть если явно упомянут
+    has_mount = has('монтаж профил') or has('монтаж теневого') or has('монтаж парящего')
+
+    if has_profile and has_mount:
+        return items  # всё в порядке
+
+    # Вычисляем периметр
+    perim = round(area * 1.3, 1) if area and area > 0 else 0
+
+    # Определяем group — берём из первой позиции монтажа
+    mount_group = next((it.get('group', '') for it in items if 'монтаж' in it.get('name', '').lower()), 'Монтаж')
+    profile_group = next((it.get('group', '') for it in items if 'алюмин' in it.get('name', '').lower() or 'профил' in it.get('name', '').lower()), 'Профиль')
+
+    result = list(items)
+
+    if not has_profile and perim > 0:
+        result.append({
+            'name': 'Стеновой алюминиевый',
+            'qty': perim,
+            'price': 200,
+            'unit': 'пог.м',
+            'group': profile_group or 'Профиль',
+        })
+        print(f"[ensure_profile] added Стеновой алюминиевый {perim} пог.м")
+
+    if not has_mount and perim > 0:
+        result.append({
+            'name': 'Монтаж профиля стандарт',
+            'qty': perim,
+            'price': 200,
+            'unit': 'пог.м',
+            'group': mount_group or 'Монтаж',
+        })
+        print(f"[ensure_profile] added Монтаж профиля стандарт {perim} пог.м")
+
+    return result
+
+
 def _reparse_items_from_answer(answer: str, original_items: list) -> list:
     """Перепарсивает items из финального патчнутого текста.
     Берёт цены и qty из текста (они прошли патч из БД), group — из оригинального LLM JSON.
@@ -1435,6 +1485,8 @@ def handler(event, context):
     if llm_items_json and llm_items_json.get('items'):
         # Перепарсим цены/qty из патчнутого текста — они точнее чем LLM JSON
         llm_items_patched = _reparse_items_from_answer(answer, llm_items_json['items'])
+        # Гарантируем наличие профиля — монтаж без него невозможен
+        llm_items_patched = _ensure_profile(llm_items_patched, llm_items_json.get('area', 0))
         response_body['items'] = llm_items_patched
 
     return {
