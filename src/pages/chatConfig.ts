@@ -7,6 +7,7 @@ export interface EstimateItem {
   qty: number;
   price: number;
   unit?: string;
+  group?: string;
 }
 
 export interface Msg {

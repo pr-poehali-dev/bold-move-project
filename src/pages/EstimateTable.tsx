@@ -236,53 +236,13 @@ function ensureRub(s: string): string {
   return s.replace(/\s+/g, " ").trim();
 }
 
-export default function EstimateTable({ text, items }: { text: string; items?: LLMItem[] }) {
-  const parsed = useMemo(() => parseEstimateBlocks(text), [text]);
-
-  // Строим карту name→{qty,price} из items для формулы
-  const itemMap = useMemo(() => {
-    if (!items) return new Map<string, LLMItem>();
-    const m = new Map<string, LLMItem>();
-    for (const it of items) m.set(it.name.toLowerCase(), it);
-    return m;
-  }, [items]);
-
-  const findItem = (name: string): LLMItem | undefined => {
-    const nl = name.toLowerCase();
-    if (itemMap.has(nl)) return itemMap.get(nl);
-    for (const [k, v] of itemMap) {
-      if (nl.includes(k) || k.includes(nl)) return v;
-    }
-    return undefined;
-  };
-  const { blocks, totals, finalPhrase } = parsed;
-  const [downloading, setDownloading] = useState(false);
-
-  // Пересчитываем итоги из items если они есть (после редактирования)
-  const overrideTotals = useMemo(() => {
-    if (!items || items.length === 0) return null;
-    const standard = Math.round(items.reduce((s, it) => s + it.qty * it.price, 0));
-    return {
-      econom: Math.round(standard * 0.85),
-      standard,
-      premium: Math.round(standard * 1.27),
-    };
-  }, [items]);
-
-  const handleDownload = async () => {
-    setDownloading(true);
-    try {
-      const { generateEstimatePdf } = await import("./estimatePdf");
-      await generateEstimatePdf(parsed);
-    } catch {
-      /* fallback */
-    } finally {
-      setDownloading(false);
-    }
-  };
-
-  if (blocks.length === 0) return null;
-
+// Рендер шапки + кнопки — общий для обоих режимов
+function EstimateShell({ children, onDownload, downloading, finalPhrase }: {
+  children: React.ReactNode;
+  onDownload: () => void;
+  downloading: boolean;
+  finalPhrase?: string;
+}) {
   return (
     <div className="w-full">
       <div className="flex items-center gap-2 mb-3">
@@ -297,78 +257,159 @@ export default function EstimateTable({ text, items }: { text: string; items?: L
               <th className="text-right px-3 py-2 text-white/40 font-montserrat font-semibold text-[11px] uppercase tracking-wider w-[160px]">Стоимость</th>
             </tr>
           </thead>
-          <tbody>
-            {(() => {
-              let numCounter = 0;
-              return blocks.map((block, bi) => {
-                if (block.numbered) numCounter++;
-                const label = block.numbered ? `${numCounter}. ${block.title}` : block.title;
-                return (
-                  <React.Fragment key={`block-${bi}`}>
-                    <tr className={`${bi > 0 ? "border-t border-white/15" : ""} bg-white/[0.02]`}>
-                      <td colSpan={2} className="px-3 pt-3 pb-2 font-montserrat font-bold text-orange-400 text-[13px]">
-                        {label}
-                      </td>
-                    </tr>
-                    {block.items.map((item, ii) => {
-                      const { cleanName, formula, total } = resolveItem(item, findItem);
-                      return (
-                        <tr key={`r-${bi}-${ii}`} className={`hover:bg-white/3 transition-colors ${ii > 0 ? "border-t border-white/5" : ""}`}>
-                          <td className="px-3 py-2 text-white/80 text-xs leading-snug">{cleanName}</td>
-                          <td className="px-3 py-2 text-right whitespace-nowrap">
-                            {formula && <div className="text-white/40 text-[11px] font-montserrat leading-snug">{formula}</div>}
-                            {total && <div className="text-orange-400 font-montserrat font-bold text-xs leading-snug">{total}</div>}
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </React.Fragment>
-                );
-              });
-            })()}
-          </tbody>
+          <tbody>{children}</tbody>
         </table>
-
-        {(overrideTotals || totals.length > 0) && (
-          <div className="border-t border-orange-500/30 bg-gradient-to-r from-orange-500/10 to-rose-500/10 px-3 py-3">
-            <div className="space-y-1">
-              {overrideTotals ? (
-                <>
-                  <div className="text-white/40 font-montserrat text-[10px] mb-0.5 text-right">Итоговая стоимость</div>
-                  <div className="flex justify-end text-xs text-white/70"><span className="mr-3">Econom:</span><span className="font-montserrat font-bold">{overrideTotals.econom.toLocaleString("ru")} ₽</span></div>
-                  <div className="flex justify-end text-sm text-orange-400"><span className="mr-3">Standard:</span><span className="font-montserrat font-black">{overrideTotals.standard.toLocaleString("ru")} ₽</span></div>
-                  <div className="flex justify-end text-xs text-white/70"><span className="mr-3">Premium:</span><span className="font-montserrat font-bold">{overrideTotals.premium.toLocaleString("ru")} ₽</span></div>
-                </>
-              ) : totals.map((t, i) => {
-                const isHeader = /итогов|итого\s*стоим/i.test(t) && !t.includes("Econom") && !t.includes("Standard") && !t.includes("Premium");
-                const isHighlight = /standard/i.test(t);
-                if (isHeader) {
-                  return <div key={i} className="text-white/40 font-montserrat text-[10px] mb-0.5 text-right">{t.replace(/:$/, "")}</div>;
-                }
-                return (
-                  <div key={i} className={`flex justify-end text-xs ${isHighlight ? "text-orange-400 font-montserrat font-black text-sm" : "text-white/70"}`}>
-                    <span className="text-right mr-3">{t.split(":")[0]}:</span>
-                    <span className="font-montserrat font-bold">{t.split(":").slice(1).join(":").trim()}</span>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
       </div>
-
       {finalPhrase && (
         <div className="mt-3 text-[11px] text-white/40 italic leading-relaxed">{finalPhrase}</div>
       )}
-
-      <button
-        onClick={handleDownload}
-        disabled={downloading}
-        className="mt-3 inline-flex items-center gap-2 bg-gradient-to-r from-orange-500 to-rose-500 text-white text-xs font-montserrat font-bold px-4 py-2.5 rounded-xl hover:scale-105 transition-transform disabled:opacity-50 shadow-lg shadow-orange-500/20"
-      >
+      <button onClick={onDownload} disabled={downloading}
+        className="mt-3 inline-flex items-center gap-2 bg-gradient-to-r from-orange-500 to-rose-500 text-white text-xs font-montserrat font-bold px-4 py-2.5 rounded-xl hover:scale-105 transition-transform disabled:opacity-50 shadow-lg shadow-orange-500/20">
         <Icon name="Download" size={14} />
         {downloading ? "Генерация..." : "Скачать смету PDF"}
       </button>
     </div>
+  );
+}
+
+function TotalsBlock({ standard }: { standard: number }) {
+  const econom  = Math.round(standard * 0.85);
+  const premium = Math.round(standard * 1.27);
+  return (
+    <tr>
+      <td colSpan={2} className="p-0">
+        <div className="border-t border-orange-500/30 bg-gradient-to-r from-orange-500/10 to-rose-500/10 px-3 py-3">
+          <div className="space-y-1">
+            <div className="text-white/40 font-montserrat text-[10px] mb-0.5 text-right">Итоговая стоимость</div>
+            <div className="flex justify-end text-xs text-white/70"><span className="mr-3">Econom:</span><span className="font-montserrat font-bold">{econom.toLocaleString("ru")} ₽</span></div>
+            <div className="flex justify-end text-sm text-orange-400"><span className="mr-3">Standard:</span><span className="font-montserrat font-black">{standard.toLocaleString("ru")} ₽</span></div>
+            <div className="flex justify-end text-xs text-white/70"><span className="mr-3">Premium:</span><span className="font-montserrat font-bold">{premium.toLocaleString("ru")} ₽</span></div>
+          </div>
+        </div>
+      </td>
+    </tr>
+  );
+}
+
+export default function EstimateTable({ text, items }: { text: string; items?: LLMItem[] }) {
+  const [downloading, setDownloading] = useState(false);
+  const parsed = useMemo(() => parseEstimateBlocks(text), [text]);
+
+  const handleDownload = async () => {
+    setDownloading(true);
+    try { const { generateEstimatePdf } = await import("./estimatePdf"); await generateEstimatePdf(parsed); }
+    catch { /* ok */ } finally { setDownloading(false); }
+  };
+
+  const { blocks, totals, finalPhrase } = parsed;
+  const emptyFindItem = (_: string): LLMItem | undefined => undefined;
+  const textStandard = useMemo(() => {
+    const match = totals.find(t => /standard/i.test(t));
+    if (!match) return 0;
+    const num = match.replace(/[^\d]/g, '');
+    return parseInt(num) || 0;
+  }, [totals]);
+
+  // ── РЕЖИМ 1: есть items — рендерим из них с группировкой по group ──────────
+  if (items && items.length > 0) {
+    // Группируем по полю group (сохраняем порядок первого появления)
+    const groupOrder: string[] = [];
+    const groupMap = new Map<string, LLMItem[]>();
+    for (const it of items) {
+      const g = it.group || "Прочее";
+      if (!groupMap.has(g)) { groupOrder.push(g); groupMap.set(g, []); }
+      groupMap.get(g)!.push(it);
+    }
+    const standard = Math.round(items.reduce((s, it) => s + it.qty * it.price, 0));
+
+    return (
+      <EstimateShell onDownload={handleDownload} downloading={downloading}>
+        {groupOrder.map((group, gi) => (
+          <React.Fragment key={group}>
+            <tr className={`${gi > 0 ? "border-t border-white/15" : ""} bg-white/[0.02]`}>
+              <td colSpan={2} className="px-3 pt-3 pb-2 font-montserrat font-bold text-orange-400 text-[13px]">
+                {gi + 1}. {group}
+              </td>
+            </tr>
+            {groupMap.get(group)!.map((it, ii) => {
+              const total = Math.round(it.qty * it.price);
+              const unitStr = it.unit ? ` ${it.unit}` : "";
+              return (
+                <tr key={ii} className={`hover:bg-white/3 transition-colors ${ii > 0 ? "border-t border-white/5" : ""}`}>
+                  <td className="px-3 py-2 text-white/80 text-xs leading-snug">{it.name}</td>
+                  <td className="px-3 py-2 text-right whitespace-nowrap">
+                    <div className="text-white/40 text-[11px] font-montserrat leading-snug">
+                      {it.qty}{unitStr} × {it.price.toLocaleString("ru")} ₽
+                    </div>
+                    <div className="text-orange-400 font-montserrat font-bold text-xs leading-snug">
+                      {total.toLocaleString("ru")} ₽
+                    </div>
+                  </td>
+                </tr>
+              );
+            })}
+          </React.Fragment>
+        ))}
+        <TotalsBlock standard={standard} />
+      </EstimateShell>
+    );
+  }
+
+  // ── РЕЖИМ 2: нет items — фоллбек через парсинг текста ─────────────────────
+  if (blocks.length === 0) return null;
+
+  return (
+    <EstimateShell onDownload={handleDownload} downloading={downloading} finalPhrase={finalPhrase}>
+      {(() => {
+        let numCounter = 0;
+        return blocks.map((block, bi) => {
+          if (block.numbered) numCounter++;
+          const label = block.numbered ? `${numCounter}. ${block.title}` : block.title;
+          return (
+            <React.Fragment key={`block-${bi}`}>
+              <tr className={`${bi > 0 ? "border-t border-white/15" : ""} bg-white/[0.02]`}>
+                <td colSpan={2} className="px-3 pt-3 pb-2 font-montserrat font-bold text-orange-400 text-[13px]">
+                  {label}
+                </td>
+              </tr>
+              {block.items.map((item, ii) => {
+                const { cleanName, formula, total } = resolveItem(item, emptyFindItem);
+                return (
+                  <tr key={`r-${bi}-${ii}`} className={`hover:bg-white/3 transition-colors ${ii > 0 ? "border-t border-white/5" : ""}`}>
+                    <td className="px-3 py-2 text-white/80 text-xs leading-snug">{cleanName}</td>
+                    <td className="px-3 py-2 text-right whitespace-nowrap">
+                      {formula && <div className="text-white/40 text-[11px] font-montserrat leading-snug">{formula}</div>}
+                      {total && <div className="text-orange-400 font-montserrat font-bold text-xs leading-snug">{total}</div>}
+                    </td>
+                  </tr>
+                );
+              })}
+            </React.Fragment>
+          );
+        });
+      })()}
+      {textStandard > 0
+        ? <TotalsBlock standard={textStandard} />
+        : totals.length > 0 && (
+          <tr><td colSpan={2} className="p-0">
+            <div className="border-t border-orange-500/30 bg-gradient-to-r from-orange-500/10 to-rose-500/10 px-3 py-3">
+              <div className="space-y-1">
+                {totals.map((t, i) => {
+                  const isHeader = /итогов|итого\s*стоим/i.test(t) && !t.includes("Econom") && !t.includes("Standard") && !t.includes("Premium");
+                  const isHighlight = /standard/i.test(t);
+                  if (isHeader) return <div key={i} className="text-white/40 font-montserrat text-[10px] mb-0.5 text-right">{t.replace(/:$/, "")}</div>;
+                  return (
+                    <div key={i} className={`flex justify-end text-xs ${isHighlight ? "text-orange-400 font-montserrat font-black text-sm" : "text-white/70"}`}>
+                      <span className="text-right mr-3">{t.split(":")[0]}:</span>
+                      <span className="font-montserrat font-bold">{t.split(":").slice(1).join(":").trim()}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </td></tr>
+        )
+      }
+    </EstimateShell>
   );
 }
