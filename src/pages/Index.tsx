@@ -94,7 +94,7 @@ export default function Index() {
     setInput("");
     setTyping(true);
     if (BOOKING_RE.test(text)) setPanel("booking");
-    const history = [...messagesRef.current, userMsg].slice(-6).map((m) => ({ role: m.role, text: m.text }));
+    const history = [...messages, userMsg].slice(-6).map((m) => ({ role: m.role, text: m.text }));
     const ctrl = new AbortController();
     const timer = setTimeout(() => ctrl.abort(), 90000);
     fetch(AI_URL, { method: "POST", headers: { "Content-Type": "application/json", "X-Session-Id": sessionStorage.getItem("sid") || "" }, body: JSON.stringify({ messages: history, fast }), signal: ctrl.signal })
