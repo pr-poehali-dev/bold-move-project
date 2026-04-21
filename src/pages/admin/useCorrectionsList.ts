@@ -64,23 +64,34 @@ export function useCorrectionsList(token: string) {
   const setItemExtraWords = (id: number, words: string[]) =>
     persistExtraWords(prev => ({ ...prev, [id]: words }));
 
-  // Нужны только LLM-записи где бот реально чего-то не понял (есть нераспознанные слова)
-  // Исключаем: авторасчёт, уточняющие вопросы без сметы, записи без unknown_words
-  const isTrainable = (i: BotCorrection) => {
+  // Запись со сметой — LLM ответил и есть llm_answer с расчётом
+  const hasEstimate = (i: BotCorrection) => {
+    if (!i.llm_answer) return false;
     const d = i.recognized_json as Record<string, unknown> | null;
     const isLLM = !d || "reason" in (d ?? {});
-    if (!isLLM) return false; // авторасчёт — не нужен
-    const skipInfo = d as { unknown_word?: string | null; unknown_words?: string[] } | null;
-    const hasUnknown = (skipInfo?.unknown_words?.length ?? 0) > 0 || !!skipInfo?.unknown_word;
-    return hasUnknown; // только те где есть нераспознанные слова
+    return isLLM;
   };
 
-  const pending = items.filter(i => i.status === "pending" && isTrainable(i));
-  const reviewed = items.filter(i => i.status !== "pending" && isTrainable(i));
+  // Бот не понял — есть нераспознанные слова
+  const hasUnknownWords = (i: BotCorrection) => {
+    const d = i.recognized_json as { unknown_word?: string | null; unknown_words?: string[] } | null;
+    return (d?.unknown_words?.length ?? 0) > 0 || !!d?.unknown_word;
+  };
+
+  // "Нужно обучить" — есть смета, но бот чего-то не понял
+  const needsTraining = items.filter(i => i.status === "pending" && hasEstimate(i) && hasUnknownWords(i));
+
+  // "Всё понятно боту" — есть смета, нераспознанных слов нет (бот справился)
+  const allGood = items.filter(i => i.status === "pending" && hasEstimate(i) && !hasUnknownWords(i));
+
+  // Проверенные (для совместимости)
+  const pending = needsTraining;
+  const reviewed = items.filter(i => i.status !== "pending" && hasEstimate(i));
 
   return {
     items, prices, loading,
     pending, reviewed,
+    needsTraining, allGood,
     expandedId, setExpandedId,
     doneWords, extraWords,
     setItemDoneWords, setItemExtraWords,
