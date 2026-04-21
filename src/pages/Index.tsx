@@ -22,12 +22,15 @@ export default function Index() {
   const [messages, setMessages] = useState<Msg[]>([GREETING]);
   const [input, setInput]       = useState("");
   const [typing, setTyping]     = useState(false);
+  const [scrollTarget, setScrollTarget] = useState<{ type: "estimate" | "bottom"; id?: number } | null>(null);
   const [bookingToast, setBookingToast] = useState(false);
   const [estimateModal, setEstimateModal] = useState(false);
   const [regModal, setRegModal] = useState(false);
   const [regName, setRegName] = useState("");
   const [regPhone, setRegPhone] = useState("");
   const [regDone, setRegDone] = useState(false);
+  const messagesRef = useRef<Msg[]>([GREETING]);
+  useEffect(() => { messagesRef.current = messages; }, [messages]);
   const isPresetMsg = useRef(false);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const modalTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -65,14 +68,15 @@ export default function Index() {
     const userMsg: Msg = { id: Date.now(), role: "user", text: text.trim() };
 
     // Перехватываем редактирование сметы локально — без AI
-    const estimateMsg = messages.findLast((m) => m.role === "assistant" && isEstimate(m.text) && m.items?.length);
+    const estimateMsg = messagesRef.current.findLast((m) => m.role === "assistant" && isEstimate(m.text) && m.items?.length);
     if (estimateMsg?.items) {
       const result = applyEstimateEdit(estimateMsg.items, text);
       if (result.handled && result.items) {
-        const newText = buildEstimateText(result.items, estimateMsg.text);
+        const newItems = result.items;
+        const newText = buildEstimateText(newItems, estimateMsg.text);
         setMessages((prev) => {
           const updated = prev.map((m) =>
-            m.id === estimateMsg.id ? { ...estimateMsg, items: result.items, text: newText } : m
+            m.id === estimateMsg.id ? { ...estimateMsg, items: newItems, text: newText } : m
           );
           return [
             ...updated,
@@ -81,6 +85,7 @@ export default function Index() {
           ];
         });
         setInput("");
+        setScrollTarget({ type: "estimate", id: estimateMsg.id });
         return;
       }
     }
@@ -108,6 +113,7 @@ export default function Index() {
           }
           return [...p, newMsg];
         });
+        if (isNewEstimate) setScrollTarget({ type: "estimate", id: newMsg.id });
       })
       .catch(() => setMessages((p) => [...p, { id: Date.now() + 1, role: "assistant" as const, text: localAnswer(text) }]))
       .finally(() => { clearTimeout(timer); setTyping(false); });
@@ -173,6 +179,8 @@ export default function Index() {
           onPreset={sendPreset}
           onPanel={setPanel}
           onNewEstimate={handleNewEstimate}
+          scrollTarget={scrollTarget}
+          onScrollDone={() => setScrollTarget(null)}
         />
 
         {/* Slide-up panel */}

@@ -50,15 +50,31 @@ interface Props {
   onPreset: (text: string) => void;
   onPanel: (p: Panel) => void;
   onNewEstimate?: () => void;
+  scrollTarget?: { type: "estimate" | "bottom"; id?: number } | null;
+  onScrollDone?: () => void;
 }
 
-export default function ChatUI({ messages, input, typing, panel, onInput, onSend, onPreset, onPanel, onNewEstimate }: Props) {
+export default function ChatUI({ messages, input, typing, panel, onInput, onSend, onPreset, onPanel, onNewEstimate, scrollTarget, onScrollDone }: Props) {
   const hasEstimate = messages.some((m) => m.role === "assistant" && isEstimate(m.text));
   const chatRef = useRef<HTMLDivElement>(null);
 
+  // Скролл вниз по умолчанию при новых сообщениях
   useEffect(() => {
     if (chatRef.current) chatRef.current.scrollTop = chatRef.current.scrollHeight;
   }, [messages, typing]);
+
+  // Скролл к смете при создании/редактировании
+  useEffect(() => {
+    if (!scrollTarget || !chatRef.current) return;
+    const targetId = scrollTarget.id;
+    const el = targetId
+      ? chatRef.current.querySelector(`[data-msg-id="${targetId}"]`)
+      : chatRef.current.querySelector("[data-estimate]");
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+    onScrollDone?.();
+  }, [scrollTarget]);
 
   return (
     <div className="flex-1 min-h-0 flex flex-col relative z-10">
@@ -69,7 +85,12 @@ export default function ChatUI({ messages, input, typing, panel, onInput, onSend
           const estimate = m.role === "assistant" && isEstimate(m.text);
           const showAvatar = m.role === "assistant" && !estimate;
           return (
-            <div key={m.id} className={`flex items-end ${estimate ? "" : "gap-2.5"} ${m.role === "user" ? "flex-row-reverse" : ""}`}>
+            <div
+              key={m.id}
+              data-msg-id={m.id}
+              {...(estimate ? { "data-estimate": "true" } : {})}
+              className={`flex items-end ${estimate ? "" : "gap-2.5"} ${m.role === "user" ? "flex-row-reverse" : ""}`}
+            >
               {m.role === "assistant" && !estimate && (
                 showAvatar
                   ? <img src={AVATAR} alt="Женя" className="w-8 h-8 rounded-full object-cover shrink-0 border-2 border-orange-500/20 shadow-lg shadow-orange-500/10" />
