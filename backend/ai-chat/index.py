@@ -983,9 +983,10 @@ def _recalc_totals(answer: str) -> str:
     def fmt(n: int) -> str:
         return f"{n:,}".replace(',', ' ')
 
-    # Паттерн строки позиции: Название N ед × P ₽ = T ₽
+    # Паттерн строки позиции: "Название  N ед × P ₽ = T ₽"
+    # Патчер пишет двойной пробел между названием и qty — учитываем \s+
     item_pat = re.compile(
-        r'^\s*.+?\s+[\d.,]+\s*\S*\s*[×xх]\s*[\d\s]+\s*₽\s*=\s*([\d\s]+)\s*₽',
+        r'^\s*.+?\s{1,10}[\d.,]+\s*\S*\s*[×xх]\s*[\d\s]+\s*₽\s*=\s*([\d\s]+)\s*₽',
         re.IGNORECASE
     )
     # Паттерн строки итога: Econom/Standard/Premium: X ₽
@@ -1011,9 +1012,9 @@ def _recalc_totals(answer: str) -> str:
     if standard == 0:
         return answer
 
-    econom = round(standard * 0.77 / 100) * 100
-    premium = round(standard * 1.27 / 100) * 100
-    standard_rounded = round(standard / 100) * 100
+    econom = round(standard * 0.77)
+    premium = round(standard * 1.27)
+    standard_rounded = standard
 
     # Заменяем строки итогов
     result_lines = []
