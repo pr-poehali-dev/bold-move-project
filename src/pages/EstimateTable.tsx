@@ -283,7 +283,7 @@ export default function EstimateTable({ text, items }: { text: string; items?: L
           <thead>
             <tr className="bg-white/[0.06] border-b border-white/10">
               <th className="text-left px-3 py-2 text-white/40 font-montserrat font-semibold text-[11px] uppercase tracking-wider">Позиция</th>
-              <th className="text-right px-3 py-2 text-white/40 font-montserrat font-semibold text-[11px] uppercase tracking-wider w-[120px] sm:w-[160px]">Стоимость</th>
+              <th className="text-right px-3 py-2 text-white/40 font-montserrat font-semibold text-[11px] uppercase tracking-wider w-[160px]">Стоимость</th>
             </tr>
           </thead>
           <tbody>
@@ -303,13 +303,9 @@ export default function EstimateTable({ text, items }: { text: string; items?: L
                       const { cleanName, formula, total } = resolveItem(item, findItem);
                       return (
                         <tr key={`r-${bi}-${ii}`} className={`hover:bg-white/3 transition-colors ${ii > 0 ? "border-t border-white/5" : ""}`}>
-                          {/* Мобильный: название + формула в одной ячейке, итог справа */}
-                          <td className="px-3 py-2 text-white/80 text-xs leading-snug">
-                            <span>{cleanName}</span>
-                            {formula && <span className="block sm:hidden text-white/35 text-[10px] font-montserrat mt-0.5">{formula}</span>}
-                          </td>
+                          <td className="px-3 py-2 text-white/80 text-xs leading-snug">{cleanName}</td>
                           <td className="px-3 py-2 text-right whitespace-nowrap">
-                            {formula && <div className="hidden sm:block text-white/40 text-[11px] font-montserrat leading-snug">{formula}</div>}
+                            {formula && <div className="text-white/40 text-[11px] font-montserrat leading-snug">{formula}</div>}
                             {total && <div className="text-orange-400 font-montserrat font-bold text-xs leading-snug">{total}</div>}
                           </td>
                         </tr>
