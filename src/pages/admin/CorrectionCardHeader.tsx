@@ -110,20 +110,20 @@ export default function CorrectionCardHeader({
               text={item.user_text}
               pending={unknownWords}
               done={[...doneWords, ...unknownWords.filter(w => isKnown(w))]}
-              onAddSelection={item.status === "pending" ? (word) => {
+              onAddSelection={(word) => {
                 if (!extraWords.includes(word) && !doneWords.includes(word) && !unknownWords.includes(word)) {
                   onExtraWordsChange([...extraWords, word]);
                 }
-              } : undefined}
+              }}
             />
           : <p className="text-white text-sm font-medium">«{item.user_text}»</p>
         }
-        {item.status === "pending" && isLLM && (
+        {isLLM && (
           <p className="text-xs text-white/20 mt-1 select-none">Выдели текст мышкой чтобы добавить в обучение</p>
         )}
 
         {/* Теги нераспознанных слов */}
-        {isLLM && unknownWords.length > 0 && item.status === "pending" && (
+        {isLLM && unknownWords.length > 0 && (
           <div className="flex flex-col gap-2 mt-3">
             <div className="flex items-center gap-3 flex-wrap">
               {selectedWords.length > 0 && (

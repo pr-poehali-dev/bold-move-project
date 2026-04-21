@@ -88,7 +88,7 @@ export default function CorrectionCardDetails({
       )}
 
       {/* Предложения LLM — новые позиции для прайса */}
-      {item.status === "pending" && item.suggested_items && item.suggested_items.length > 0 && (
+      {item.suggested_items && item.suggested_items.length > 0 && (
         <SuggestedItemsPanel
           correctionId={item.id}
           items={item.suggested_items}
