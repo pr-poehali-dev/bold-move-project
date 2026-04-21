@@ -80,6 +80,13 @@ export default function Index() {
   const closePanel   = () => setPanel("none");
   const hasPanel     = panel !== "none";
 
+  const handleNewEstimate = () => {
+    setMessages([GREETING]);
+    setInput("");
+    setBookingToast(false);
+    setEstimateModal(false);
+  };
+
   return (
     <div className="bg-[#0b0b11] text-white font-rubik flex flex-col select-none" style={{ height: "100dvh", overflow: "hidden" }}>
 
@@ -128,6 +135,7 @@ export default function Index() {
           onSend={sendMsg}
           onPreset={sendPreset}
           onPanel={setPanel}
+          onNewEstimate={handleNewEstimate}
         />
 
         {/* Slide-up panel */}

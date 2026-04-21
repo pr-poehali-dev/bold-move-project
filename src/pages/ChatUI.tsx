@@ -49,9 +49,11 @@ interface Props {
   onSend: (text: string) => void;
   onPreset: (text: string) => void;
   onPanel: (p: Panel) => void;
+  onNewEstimate?: () => void;
 }
 
-export default function ChatUI({ messages, input, typing, panel, onInput, onSend, onPreset, onPanel }: Props) {
+export default function ChatUI({ messages, input, typing, panel, onInput, onSend, onPreset, onPanel, onNewEstimate }: Props) {
+  const hasEstimate = messages.some((m) => m.role === "assistant" && isEstimate(m.text));
   const chatRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -127,6 +129,8 @@ export default function ChatUI({ messages, input, typing, panel, onInput, onSend
           onSubmit={(text) => onSend(text)}
           isLoading={typing}
           placeholder="Спросите Женю о потолках…"
+          hasEstimate={hasEstimate}
+          onNewEstimate={onNewEstimate}
         />
       </div>
 

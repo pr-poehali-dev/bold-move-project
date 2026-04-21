@@ -22,10 +22,12 @@ interface Props {
   onSubmit: (text: string) => void;
   isLoading?: boolean;
   placeholder?: string;
+  hasEstimate?: boolean;
+  onNewEstimate?: () => void;
 }
 
 export const PromptInputBox = React.forwardRef<HTMLDivElement, Props>(
-  ({ value, onValueChange, onSubmit, isLoading = false, placeholder = "Спросите Женю о потолках…" }, ref) => {
+  ({ value, onValueChange, onSubmit, isLoading = false, placeholder = "Спросите Женю о потолках…", hasEstimate = false, onNewEstimate }, ref) => {
     const textareaRef = React.useRef<HTMLTextAreaElement>(null);
     const [isRecording, setIsRecording] = React.useState(false);
     const [recTime, setRecTime] = React.useState(0);
@@ -305,31 +307,43 @@ export const PromptInputBox = React.forwardRef<HTMLDivElement, Props>(
         {/* Нижняя панель */}
         <div className="flex items-center justify-end gap-2 px-2.5 py-2">
 
-          {/* Кнопка загрузки файла */}
+          {/* Кнопка загрузки файла / новая смета */}
           <input ref={fileInputRef} type="file" className="hidden" onChange={handleFileUpload}
             accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.dwg,.dxf" />
-          <motion.button
-            onClick={() => uploadState === "idle" && fileInputRef.current?.click()}
-            whileTap={{ scale: 0.92 }}
-            title="Загрузить проект"
-            className={cn(
-              "flex items-center gap-1.5 px-3 h-9 rounded-xl text-[11px] font-medium shrink-0 transition-all duration-200",
-              uploadState === "done"  ? "bg-green-500/20 text-green-400"
-              : uploadState === "error"  ? "bg-red-500/20 text-red-400"
-              : uploadState === "loading" ? "bg-white/[0.06] text-white/40 cursor-wait"
-              : "bg-white/[0.06] text-white/40 hover:bg-orange-500/10 hover:text-orange-400"
-            )}
-          >
-            {uploadState === "loading" ? <Loader2 size={13} className="animate-spin" />
-              : uploadState === "done" ? <CheckCircle2 size={13} />
-              : <Paperclip size={13} />}
-            <span>
-              {uploadState === "loading" ? "Отправка…"
-                : uploadState === "done" ? "Отправлено!"
-                : uploadState === "error" ? "Ошибка"
-                : "Загрузить проект"}
-            </span>
-          </motion.button>
+          {hasEstimate ? (
+            <motion.button
+              onClick={onNewEstimate}
+              whileTap={{ scale: 0.92 }}
+              title="Создать новую смету"
+              className="flex items-center gap-1.5 px-3 h-9 rounded-xl text-[11px] font-medium shrink-0 transition-all duration-200 bg-orange-500/15 text-orange-400 hover:bg-orange-500/25"
+            >
+              <CheckCircle2 size={13} />
+              <span>Создать новую смету</span>
+            </motion.button>
+          ) : (
+            <motion.button
+              onClick={() => uploadState === "idle" && fileInputRef.current?.click()}
+              whileTap={{ scale: 0.92 }}
+              title="Загрузить проект"
+              className={cn(
+                "flex items-center gap-1.5 px-3 h-9 rounded-xl text-[11px] font-medium shrink-0 transition-all duration-200",
+                uploadState === "done"  ? "bg-green-500/20 text-green-400"
+                : uploadState === "error"  ? "bg-red-500/20 text-red-400"
+                : uploadState === "loading" ? "bg-white/[0.06] text-white/40 cursor-wait"
+                : "bg-white/[0.06] text-white/40 hover:bg-orange-500/10 hover:text-orange-400"
+              )}
+            >
+              {uploadState === "loading" ? <Loader2 size={13} className="animate-spin" />
+                : uploadState === "done" ? <CheckCircle2 size={13} />
+                : <Paperclip size={13} />}
+              <span>
+                {uploadState === "loading" ? "Отправка…"
+                  : uploadState === "done" ? "Отправлено!"
+                  : uploadState === "error" ? "Ошибка"
+                  : "Загрузить проект"}
+              </span>
+            </motion.button>
+          )}
 
           {/* Кнопка микрофон */}
           <motion.button
