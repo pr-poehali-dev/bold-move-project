@@ -547,7 +547,7 @@ export default function CorrectionCard({
                                   </tr>
                                   {block.items.map((it, ii) => {
                                     const { cleanName, formula, total } = resolveItem(it, findItem);
-                                    const hasComment = !!(aiEditComments[cleanName] || '').trim();
+                                    const hasComment = cleanName in aiEditComments;
                                     return (
                                       <tr key={`r-${bi}-${ii}`} className={`group/row transition-colors ${hasComment ? 'bg-violet-500/10' : 'hover:bg-white/[0.03]'} ${ii > 0 ? 'border-t border-white/5' : ''}`}>
                                         {/* Позиция + формула в одну строку */}
@@ -562,17 +562,25 @@ export default function CorrectionCard({
                                         {/* Исправление */}
                                         <td className="px-2 py-1.5 w-[280px]">
                                           {hasComment ? (
-                                            <input
-                                              autoFocus
-                                              type="text"
-                                              placeholder="что не так..."
-                                              value={aiEditComments[cleanName] || ''}
-                                              onChange={e => setAiEditComments(prev => ({ ...prev, [cleanName]: e.target.value }))}
-                                              className="w-full rounded-lg px-2.5 py-1 text-[11px] outline-none transition bg-violet-500/15 border border-violet-500/40 text-violet-200 placeholder:text-violet-400/30"
-                                            />
+                                            <div className="flex items-center gap-1">
+                                              <input
+                                                autoFocus
+                                                type="text"
+                                                placeholder="что не так..."
+                                                value={aiEditComments[cleanName] || ''}
+                                                onChange={e => setAiEditComments(prev => ({ ...prev, [cleanName]: e.target.value }))}
+                                                className="w-full rounded-lg px-2.5 py-1 text-[11px] outline-none transition bg-violet-500/15 border border-violet-500/40 text-violet-200 placeholder:text-violet-400/30"
+                                              />
+                                              <button
+                                                onClick={() => setAiEditComments(prev => { const n = {...prev}; delete n[cleanName]; return n; })}
+                                                className="text-white/20 hover:text-white/50 transition flex-shrink-0 ml-1"
+                                              >
+                                                <Icon name="X" size={11} />
+                                              </button>
+                                            </div>
                                           ) : (
                                             <button
-                                              onClick={() => setAiEditComments(prev => ({ ...prev, [cleanName]: ' ' }))}
+                                              onClick={() => setAiEditComments(prev => ({ ...prev, [cleanName]: '' }))}
                                               className="w-full text-left px-2.5 py-1 text-[11px] text-white/15 hover:text-violet-400/60 transition rounded-lg hover:bg-white/5 group-hover/row:text-white/20"
                                             >
                                               указать ошибку...
