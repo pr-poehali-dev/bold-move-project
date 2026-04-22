@@ -128,26 +128,24 @@ export const PromptInputBox = React.forwardRef<HTMLDivElement, Props>(
         recognition.continuous = true;
         recognition.interimResults = true;
 
-        // Запоминаем сколько результатов было в начале сессии — новые только сверх этого
-        let sessionOffset = -1;
+        // Текст накопленный внутри текущей сессии
+        let sessionText = "";
 
         recognition.onresult = (e: SpeechRecognitionEvent) => {
-          // При первом событии фиксируем offset — всё до него уже в savedText
-          if (sessionOffset === -1) {
-            sessionOffset = e.resultIndex;
-          }
-          let sessionFinals = "";
+          let lastFinal = "";
           let interim = "";
-          for (let i = sessionOffset; i < e.results.length; i++) {
+          for (let i = e.results.length - 1; i >= 0; i--) {
             if (e.results[i].isFinal) {
-              sessionFinals = (sessionFinals + " " + e.results[i][0].transcript).trim();
+              lastFinal = e.results[i][0].transcript.trim();
+              break;
             } else {
-              interim += e.results[i][0].transcript;
+              interim = e.results[i][0].transcript + interim;
             }
           }
-          const recognized = (savedText.current + " " + sessionFinals).trim();
-          if (sessionFinals) savedText.current = recognized;
-          dbg(`offset=${sessionOffset} sessionFinals="${sessionFinals}" interim="${interim}"`);
+          // lastFinal — это ВЕСЬ текст сессии до сих пор (Chrome накапливает)
+          if (lastFinal) sessionText = lastFinal;
+          const recognized = (savedText.current + " " + sessionText).trim();
+          dbg(`saved="${savedText.current}" session="${sessionText}" interim="${interim}"`);
           onValueChange(interim ? (recognized + " " + interim).trim() : recognized);
         };
 
@@ -166,7 +164,9 @@ export const PromptInputBox = React.forwardRef<HTMLDivElement, Props>(
             setIsRecording(false);
             return;
           }
-          // savedText уже обновлён в onresult — просто перезапускаем
+          // Фиксируем текст сессии в savedText перед новой сессией
+          if (sessionText) savedText.current = (savedText.current + " " + sessionText).trim();
+          sessionText = "";
           try { createAndStart(); } catch { setIsRecording(false); }
         };
 
