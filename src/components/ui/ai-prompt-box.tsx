@@ -32,6 +32,8 @@ export const PromptInputBox = React.forwardRef<HTMLDivElement, Props>(
     const [isRecording, setIsRecording] = React.useState(false);
     const [recTime, setRecTime] = React.useState(0);
     const [speechError, setSpeechError] = React.useState("");
+    const [debugLog, setDebugLog] = React.useState<string[]>([]);
+    const dbg = (msg: string) => setDebugLog(p => [...p.slice(-8), msg]);
     const [bars] = React.useState(() =>
       Array.from({ length: 26 }, () => 0.2 + Math.random() * 0.8)
     );
@@ -126,10 +128,12 @@ export const PromptInputBox = React.forwardRef<HTMLDivElement, Props>(
       recognition.interimResults = true;
 
       recognition.onresult = (e: SpeechRecognitionEvent) => {
+        dbg(`res: rIdx=${e.resultIndex} len=${e.results.length} proc=${processedCount.current}`);
         let interim = "";
         for (let i = processedCount.current; i < e.results.length; i++) {
           const t = e.results[i][0].transcript;
           if (e.results[i].isFinal) {
+            dbg(`FINAL i=${i}: "${t}"`);
             accumulatedText.current = (accumulatedText.current + " " + t).trim();
             processedCount.current = i + 1;
           } else {
@@ -143,6 +147,7 @@ export const PromptInputBox = React.forwardRef<HTMLDivElement, Props>(
       };
 
       recognition.onerror = (e: SpeechRecognitionErrorEvent) => {
+        dbg(`ERR: ${e.error}`);
         if (e.error === "not-allowed") {
           setSpeechError("Нет доступа к микрофону");
           stoppedByUserRef.current = true;
@@ -151,6 +156,7 @@ export const PromptInputBox = React.forwardRef<HTMLDivElement, Props>(
       };
 
       recognition.onend = () => {
+        dbg(`END stopped=${stoppedByUserRef.current}`);
         if (stoppedByUserRef.current) {
           setIsRecording(false);
         }
@@ -292,6 +298,13 @@ export const PromptInputBox = React.forwardRef<HTMLDivElement, Props>(
         {speechError && (
           <div className="px-3 pb-1">
             <span className="text-[10px] text-red-400">{speechError}</span>
+          </div>
+        )}
+
+        {/* DEBUG LOG */}
+        {debugLog.length > 0 && (
+          <div className="px-2 pb-1 font-mono text-[9px] text-yellow-400 bg-black/40 rounded">
+            {debugLog.map((l, i) => <div key={i}>{l}</div>)}
           </div>
         )}
 
