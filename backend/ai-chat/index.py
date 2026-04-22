@@ -1315,58 +1315,75 @@ def handler(event, context):
                 if add_item.get('unknown') or int(add_item.get('price', 0)) == 0:
                     unknown_name = add_item['name']
                     try:
-                        price_result = search_price(unknown_name)
+                        # Извлекаем qty из запроса клиента (метры/штуки)
+                        user_qty = add_item.get('qty', 1)
+                        user_unit_hint = add_item.get('unit', 'шт')
+                        qty_m = re.search(r'(\d+(?:[.,]\d+)?)\s*(?:пог\.?м|пм|м\.п\.?|м(?!²|2))', last_user_text, re.IGNORECASE)
+                        qty_pcs = re.search(r'(\d+)\s*(?:шт|штук)', last_user_text, re.IGNORECASE)
+                        client_qty_meters = float(qty_m.group(1).replace(',', '.')) if qty_m else None
+                        client_qty_pcs = int(qty_pcs.group(1)) if qty_pcs else None
+
+                        price_result = search_price(f"{unknown_name} цена за метр пог.м")
                         search_text = price_result.get('text', '')
-                        classify_prompt = f"""Контекст: смета на натяжные потолки. Клиент добавил позицию: "{unknown_name}"
+
+                        classify_prompt = f"""Контекст: смета на натяжные потолки.
+Позиция: "{unknown_name}"
+Клиент указал количество: {f"{client_qty_meters} м (погонных метров)" if client_qty_meters else f"{client_qty_pcs} шт" if client_qty_pcs else "не указал"}
 Данные из интернета: {search_text[:800]}
 
-Определи и верни ТОЛЬКО JSON (без пояснений):
+Верни ТОЛЬКО JSON (без пояснений):
 {{
-  "category": "Профиль",
+  "category": "Ниши",
   "unit": "пог.м",
-  "price": 1200,
+  "price_per_unit": 760,
   "mounting_name": "Монтаж профиля стандарт",
   "mounting_unit": "пог.м"
 }}
 
-Правила определения category:
-- "Профиль" — если это алюминиевый/пластиковый профиль, багет, рейка, Flexy, ALTEZA, теневой/парящий профиль
-- "Полотно" — если это плёнка ПВХ, ткань для потолка
-- "Освещение" — если это LED лента, светильник, блок питания, лампа
-- "Закладные" — если это закладная под люстру/светильник
-- "Ниши" — если это карниз, ниша для штор, ПК-14
-- "Услуги монтажа" — если это работа/услуга
+Правила category:
+- "Профиль" — алюминиевый/пластиковый профиль, багет, рейка, Flexy, ALTEZA, теневой/парящий профиль
+- "Полотно" — плёнка ПВХ, ткань для потолка
+- "Освещение" — LED лента, светильник, блок питания, лампа
+- "Закладные" — закладная под люстру/светильник
+- "Ниши" — карниз, ниша для штор, ПК-14, KARNIZ
+- "Услуги монтажа" — работа/услуга
 - "Прочее" — всё остальное
 
-Правила:
-- unit: пог.м для профилей и лент, м² для полотна, шт для всего остального
-- price: розничная цена в рублях за единицу (только целое число, без 0)
-- mounting_name: точное название монтажа из списка: Монтаж профиля стандарт / Монтаж теневого профиля / Монтаж парящего профиля / Монтаж ленты / Монтаж блока питания / null
-- mounting_unit: пог.м или шт"""
+Правила unit и price_per_unit:
+- Профили, ленты, карнизы — unit="пог.м", price_per_unit = цена за 1 пог.м
+- Если в интернете цена за штуку/планку (например 3810₽/шт) — пересчитай в цену за пог.м: планка обычно 3м, значит price_per_unit = цена_шт / 3
+- Полотно — unit="м²", price_per_unit = цена за 1 м²
+- Всё остальное — unit="шт", price_per_unit = цена за 1 шт
+- price_per_unit: только целое число > 100
+
+mounting_name — из списка: Монтаж профиля стандарт / Монтаж теневого профиля / Монтаж парящего профиля / Монтаж ленты / Монтаж блока питания / null
+mounting_unit: пог.м или шт"""
+
                         cl_answer = call_llm([{'role': 'user', 'content': classify_prompt}])
                         cl_match = re.search(r'\{.+\}', cl_answer, re.DOTALL)
                         if cl_match:
                             cl = json.loads(cl_match.group(0))
                             add_item['category'] = cl.get('category', 'Прочее')
-                            # unit из классификатора приоритетнее чем LLM-патч
-                            add_item['unit'] = cl.get('unit', add_item.get('unit', 'шт'))
-                            raw_price = int(cl.get('price', 0))
-                            # Цена < 100 ₽ — явный мусор из поиска, обнуляем
+                            add_item['unit'] = cl.get('unit', 'шт')
+                            raw_price = int(cl.get('price_per_unit', 0))
                             add_item['price'] = raw_price if raw_price >= 100 else 0
-                            # qty: если unit=пог.м/м — берём число из оригинального запроса клиента
-                            if add_item['unit'] in ('пог.м', 'м', 'м²') and add_item.get('qty', 1) == 1:
-                                qty_match = re.search(r'(\d+(?:[.,]\d+)?)\s*(?:м|пм|пог)', last_user_text, re.IGNORECASE)
-                                if qty_match:
-                                    add_item['qty'] = float(qty_match.group(1).replace(',', '.'))
-                                    print(f"[edit] qty from user text: {add_item['qty']} {add_item['unit']}")
-                            # mounting_name: 'null' строка → None
+
+                            # qty: берём из запроса клиента с учётом unit
+                            if add_item['unit'] in ('пог.м', 'м') and client_qty_meters:
+                                add_item['qty'] = client_qty_meters
+                            elif add_item['unit'] == 'м²' and client_qty_meters:
+                                add_item['qty'] = client_qty_meters
+                            elif add_item['unit'] == 'шт' and client_qty_pcs:
+                                add_item['qty'] = client_qty_pcs
+                            # иначе оставляем qty из патча LLM
+
                             raw_mounting = cl.get('mounting_name')
                             mounting_name = raw_mounting if raw_mounting and raw_mounting.lower() != 'null' else None
                             if mounting_name:
                                 add_item['_mounting_name'] = mounting_name
                                 raw_mu = cl.get('mounting_unit', 'шт')
                                 add_item['_mounting_unit'] = raw_mu if raw_mu and raw_mu.lower() != 'null' else 'шт'
-                            print(f"[edit] classified+priced '{unknown_name}': {cl}")
+                            print(f"[edit] classified+priced '{unknown_name}': category={add_item['category']} unit={add_item['unit']} price={add_item['price']} qty={add_item['qty']}")
                     except Exception as ce:
                         print(f"[edit] classify error: {ce}")
                     add_item.pop('unknown', None)
