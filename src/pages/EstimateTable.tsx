@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import React, { useState, useMemo } from "react";
 import Icon from "@/components/ui/icon";
 
 export function isEstimate(text: string) {
@@ -306,8 +306,8 @@ export default function EstimateTable({ text, items }: { text: string; items?: L
                 if (block.numbered) numCounter++;
                 const label = block.numbered ? `${numCounter}. ${block.title}` : block.title;
                 return (
-                  <>
-                    <tr key={`h-${bi}`} className={`${bi > 0 ? "border-t border-white/15" : ""} bg-white/[0.02]`}>
+                  <React.Fragment key={`block-${bi}`}>
+                    <tr className={`${bi > 0 ? "border-t border-white/15" : ""} bg-white/[0.02]`}>
                       <td colSpan={2} className="px-3 pt-3 pb-2 font-montserrat font-bold text-orange-400 text-[13px]">
                         {label}
                       </td>
@@ -324,7 +324,7 @@ export default function EstimateTable({ text, items }: { text: string; items?: L
                         </tr>
                       );
                     })}
-                  </>
+                  </React.Fragment>
                 );
               });
             })()}
