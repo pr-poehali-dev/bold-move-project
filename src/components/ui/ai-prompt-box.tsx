@@ -110,60 +110,65 @@ export const PromptInputBox = React.forwardRef<HTMLDivElement, Props>(
       return () => clearInterval(timerRef.current);
     }, [isRecording]);
 
+    const isIOS = React.useMemo(() =>
+      typeof navigator !== "undefined" && /iPhone|iPad|iPod/i.test(navigator.userAgent), []);
+
     const startRecording = () => {
       setSpeechError("");
+
+      if (isIOS) {
+        setSpeechError("Голосовой ввод недоступен в Safari. Используйте микрофон на клавиатуре 🎤");
+        return;
+      }
+
       const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
       if (!SR) {
         setSpeechError("Браузер не поддерживает голосовой ввод");
         return;
       }
+
       accumulatedRef.current = value;
       stoppedByUserRef.current = false;
 
-      const createAndStart = () => {
-        if (stoppedByUserRef.current) return;
-        const recognition = new SR();
-        recognition.lang = "ru-RU";
-        recognition.continuous = false;
-        recognition.interimResults = true;
-        recognition.maxAlternatives = 1;
+      const recognition = new SR();
+      recognition.lang = "ru-RU";
+      recognition.continuous = true;
+      recognition.interimResults = true;
+      recognition.maxAlternatives = 1;
 
-        recognition.onresult = (e: SpeechRecognitionEvent) => {
-          let interim = "";
-          let final = "";
-          for (let i = e.resultIndex; i < e.results.length; i++) {
-            const t = e.results[i][0].transcript;
-            if (e.results[i].isFinal) final += t;
-            else interim += t;
-          }
-          if (final) {
-            accumulatedRef.current = (accumulatedRef.current + " " + final).trim();
-            onValueChange(accumulatedRef.current);
-          } else if (interim) {
-            onValueChange((accumulatedRef.current + " " + interim).trim());
-          }
-        };
-
-        recognition.onerror = (e: SpeechRecognitionErrorEvent) => {
-          if (e.error === "not-allowed") {
-            setSpeechError("Нет доступа к микрофону");
-            stoppedByUserRef.current = true;
-            setIsRecording(false);
-          }
-        };
-
-        recognition.onend = () => {
-          recognitionRef.current = null;
-          if (stoppedByUserRef.current) { setIsRecording(false); return; }
-          clearTimeout(restartTimerRef.current);
-          restartTimerRef.current = setTimeout(createAndStart, 100);
-        };
-
-        recognitionRef.current = recognition;
-        try { recognition.start(); } catch { /* уже запущен */ }
+      recognition.onresult = (e: SpeechRecognitionEvent) => {
+        let interim = "";
+        let final = "";
+        for (let i = e.resultIndex; i < e.results.length; i++) {
+          const t = e.results[i][0].transcript;
+          if (e.results[i].isFinal) final += t;
+          else interim += t;
+        }
+        if (final) {
+          accumulatedRef.current = (accumulatedRef.current + " " + final).trim();
+          onValueChange(accumulatedRef.current);
+        } else if (interim) {
+          onValueChange((accumulatedRef.current + " " + interim).trim());
+        }
       };
 
-      createAndStart();
+      recognition.onerror = (e: SpeechRecognitionErrorEvent) => {
+        if (e.error === "not-allowed") {
+          setSpeechError("Нет доступа к микрофону");
+          setIsRecording(false);
+        }
+      };
+
+      recognition.onend = () => {
+        if (!stoppedByUserRef.current) {
+          try { recognition.start(); } catch { /* уже идёт */ }
+        } else {
+          setIsRecording(false);
+        }
+      };
+
+      recognitionRef.current = recognition;
+      recognition.start();
       setIsRecording(true);
     };
 
