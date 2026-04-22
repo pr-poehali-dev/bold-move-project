@@ -128,10 +128,17 @@ export const PromptInputBox = React.forwardRef<HTMLDivElement, Props>(
         recognition.continuous = true;
         recognition.interimResults = true;
 
+        // Запоминаем сколько результатов было в начале сессии — новые только сверх этого
+        let sessionOffset = -1;
+
         recognition.onresult = (e: SpeechRecognitionEvent) => {
+          // При первом событии фиксируем offset — всё до него уже в savedText
+          if (sessionOffset === -1) {
+            sessionOffset = e.resultIndex;
+          }
           let sessionFinals = "";
           let interim = "";
-          for (let i = 0; i < e.results.length; i++) {
+          for (let i = sessionOffset; i < e.results.length; i++) {
             if (e.results[i].isFinal) {
               sessionFinals = (sessionFinals + " " + e.results[i][0].transcript).trim();
             } else {
@@ -139,9 +146,8 @@ export const PromptInputBox = React.forwardRef<HTMLDivElement, Props>(
             }
           }
           const recognized = (savedText.current + " " + sessionFinals).trim();
-          // Обновляем savedText сразу как появился финальный результат
           if (sessionFinals) savedText.current = recognized;
-          dbg(`saved="${savedText.current}" interim="${interim}"`);
+          dbg(`offset=${sessionOffset} sessionFinals="${sessionFinals}" interim="${interim}"`);
           onValueChange(interim ? (recognized + " " + interim).trim() : recognized);
         };
 
