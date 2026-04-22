@@ -55,9 +55,18 @@ interface Props {
 export default function ChatUI({ messages, input, typing, panel, onInput, onSend, onPreset, onPanel, onNewEstimate }: Props) {
   const hasEstimate = messages.some((m) => m.role === "assistant" && isEstimate(m.text));
   const chatRef = useRef<HTMLDivElement>(null);
+  const estimateRef = useRef<HTMLDivElement>(null);
+
+  // id последней сметы в чате
+  const lastEstimateId = messages.findLast?.((m) => m.role === "assistant" && isEstimate(m.text))?.id ?? null;
 
   useEffect(() => {
-    if (chatRef.current) chatRef.current.scrollTop = chatRef.current.scrollHeight;
+    // Если есть смета — скроллим к ней, иначе скроллим вниз
+    if (lastEstimateId && estimateRef.current) {
+      estimateRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
+    } else if (chatRef.current) {
+      chatRef.current.scrollTop = chatRef.current.scrollHeight;
+    }
   }, [messages, typing]);
 
   return (
@@ -69,7 +78,7 @@ export default function ChatUI({ messages, input, typing, panel, onInput, onSend
           const estimate = m.role === "assistant" && isEstimate(m.text);
           const showAvatar = m.role === "assistant" && !estimate;
           return (
-            <div key={m.id} className={`flex items-end ${estimate ? "" : "gap-2.5"} ${m.role === "user" ? "flex-row-reverse" : ""}`}>
+            <div key={m.id} ref={estimate && m.id === lastEstimateId ? estimateRef : null} className={`flex items-end ${estimate ? "" : "gap-2.5"} ${m.role === "user" ? "flex-row-reverse" : ""}`}>
               {m.role === "assistant" && !estimate && (
                 showAvatar
                   ? <img src={AVATAR} alt="Женя" className="w-8 h-8 rounded-full object-cover shrink-0 border-2 border-orange-500/20 shadow-lg shadow-orange-500/10" />
