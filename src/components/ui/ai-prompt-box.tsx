@@ -116,62 +116,52 @@ export const PromptInputBox = React.forwardRef<HTMLDivElement, Props>(
         return;
       }
 
-      const finalTextRef = { current: value };
+      const accumulatedText = { current: value };
       stoppedByUserRef.current = false;
 
-      const createAndStart = () => {
-        if (stoppedByUserRef.current) return;
+      const recognition = new SR();
+      recognition.lang = "ru-RU";
+      recognition.continuous = true;
+      recognition.interimResults = true;
 
-        const recognition = new SR();
-        recognition.lang = "ru-RU";
-        recognition.continuous = true;
-        recognition.interimResults = true;
-
-        recognition.onresult = (e: SpeechRecognitionEvent) => {
-          let interim = "";
-          let final = "";
-          for (let i = e.resultIndex; i < e.results.length; i++) {
-            const t = e.results[i][0].transcript;
-            if (e.results[i].isFinal) final += t;
-            else interim += t;
-          }
-          if (final) {
-            finalTextRef.current = (finalTextRef.current + " " + final).trim();
-            onValueChange(finalTextRef.current);
-          } else if (interim) {
-            onValueChange((finalTextRef.current + " " + interim).trim());
-          }
-        };
-
-        recognition.onerror = (e: SpeechRecognitionErrorEvent) => {
-          if (e.error === "not-allowed") {
-            setSpeechError("Нет доступа к микрофону");
-            stoppedByUserRef.current = true;
-            setIsRecording(false);
-          }
-          // no-speech / aborted / network — просто ждём onend и перезапустим
-        };
-
-        recognition.onend = () => {
-          recognitionRef.current = null;
-          if (stoppedByUserRef.current) {
-            setIsRecording(false);
-            return;
-          }
-          // Пауза — создаём новый экземпляр и запускаем заново
-          setTimeout(createAndStart, 150);
-        };
-
-        recognitionRef.current = recognition;
-        try {
-          recognition.start();
-        } catch {
-          setTimeout(createAndStart, 300);
+      recognition.onresult = (e: SpeechRecognitionEvent) => {
+        let interim = "";
+        let final = "";
+        for (let i = e.resultIndex; i < e.results.length; i++) {
+          const t = e.results[i][0].transcript;
+          if (e.results[i].isFinal) final += t;
+          else interim += t;
+        }
+        if (final) {
+          accumulatedText.current = (accumulatedText.current + " " + final).trim();
+          onValueChange(accumulatedText.current);
+        } else if (interim) {
+          onValueChange((accumulatedText.current + " " + interim).trim());
         }
       };
 
-      createAndStart();
-      setIsRecording(true);
+      recognition.onerror = (e: SpeechRecognitionErrorEvent) => {
+        if (e.error === "not-allowed") {
+          setSpeechError("Нет доступа к микрофону");
+          stoppedByUserRef.current = true;
+          setIsRecording(false);
+        }
+      };
+
+      recognition.onend = () => {
+        if (stoppedByUserRef.current) {
+          setIsRecording(false);
+        }
+        // не перезапускаем — Chrome сам продолжит при continuous=true
+      };
+
+      recognitionRef.current = recognition;
+      try {
+        recognition.start();
+        setIsRecording(true);
+      } catch {
+        setSpeechError("Не удалось запустить микрофон");
+      }
     };
 
     const stopRecording = () => {
