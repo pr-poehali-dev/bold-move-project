@@ -1205,6 +1205,7 @@ def handler(event, context):
     body = json.loads(event.get('body', '{}'))
     messages = body.get('messages', [])
     fast = body.get('fast', False)
+    prev_items = body.get('prev_items', None)  # items предыдущей сметы для точного редактирования
 
     if not messages:
         return {'statusCode': 400, 'headers': cors, 'body': json.dumps({'error': 'No messages provided'})}
@@ -1246,6 +1247,24 @@ def handler(event, context):
         system_content += rules_hint
     print(f"[system] prompt_len={len(system_content)} rules_hint_len={len(rules_hint)} rules_count={len(_rules_for_suggestions)}")
     print(f"[system] rules_hint_preview={rules_hint[:300]}")
+
+    # Если есть предыдущие items — передаём LLM для точного редактирования
+    if prev_items:
+        prev_lines = '\n'.join([
+            f"- {it['name']}  {it['qty']} {it.get('unit','шт')} × {it['price']} ₽"
+            for it in prev_items
+        ])
+        system_content += f"""
+
+=== ТЕКУЩИЙ СОСТАВ СМЕТЫ (ТОЧНЫЕ ДАННЫЕ) ===
+{prev_lines}
+
+КРИТИЧЕСКИ ВАЖНО ПРИ РЕДАКТИРОВАНИИ:
+- Выше указан ТОЧНЫЙ состав предыдущей сметы с количествами и ценами
+- Меняй ТОЛЬКО то что явно просит клиент в последнем сообщении
+- ВСЕ остальные позиции воспроизводи с ТОЧНО ТАКИМИ ЖЕ количествами как выше
+- НЕ пересчитывай и НЕ изменяй позиции которых клиент не касался
+- Пример: "убери монтаж диффузора" → убери только эту строку, всё остальное 1-в-1 как выше"""
 
     # Всегда добавляем инструкцию по JSON — независимо от промпта в БД
     system_content += """

@@ -67,9 +67,12 @@ export default function Index() {
     setTyping(true);
     if (BOOKING_RE.test(text)) setPanel("booking");
     const history = [...messages, userMsg].slice(-6).map((m) => ({ role: m.role, text: m.text }));
+    // Передаём items последней сметы — бэкенд использует при редактировании
+    const lastEstimateMsg = [...messages].reverse().find((m) => m.role === "assistant" && m.items?.length);
+    const prevItems = lastEstimateMsg?.items ?? null;
     const ctrl = new AbortController();
     const timer = setTimeout(() => ctrl.abort(), 90000);
-    fetch(AI_URL, { method: "POST", headers: { "Content-Type": "application/json", "X-Session-Id": sessionStorage.getItem("sid") || "" }, body: JSON.stringify({ messages: history, fast }), signal: ctrl.signal })
+    fetch(AI_URL, { method: "POST", headers: { "Content-Type": "application/json", "X-Session-Id": sessionStorage.getItem("sid") || "" }, body: JSON.stringify({ messages: history, fast, prev_items: prevItems }), signal: ctrl.signal })
       .then((r) => r.json())
       .then((d) => {
         const newMsg = { id: Date.now() + 1, role: "assistant" as const, text: d.answer || localAnswer(text), items: d.items };
