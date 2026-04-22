@@ -35,6 +35,7 @@ export const PromptInputBox = React.forwardRef<HTMLDivElement, Props>(
     const [speechError, setSpeechError] = React.useState("");
     const mediaRecorderRef = React.useRef<MediaRecorder | null>(null);
     const audioChunksRef = React.useRef<Blob[]>([]);
+
     const WHISPER_URL = func2url["whisper-transcribe"];
     const [bars] = React.useState(() =>
       Array.from({ length: 26 }, () => 0.2 + Math.random() * 0.8)
@@ -242,8 +243,9 @@ export const PromptInputBox = React.forwardRef<HTMLDivElement, Props>(
             setIsRecording(false);
             return;
           }
+          // Всегда перезапускаем — только явный стоп от пользователя останавливает
           clearTimeout(restartTimerRef.current);
-          restartTimerRef.current = setTimeout(createAndStart, 400);
+          restartTimerRef.current = setTimeout(createAndStart, 150);
         };
 
         recognitionRef.current = recognition;
