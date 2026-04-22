@@ -1533,10 +1533,11 @@ def handler(event, context):
 
     answer = split_lamp_line(answer)
 
-    # Картинки из Tavily — только для запросов про тренды/вдохновение
-    print(f"[img] query='{last_user_text[:60]}' tavily_images={len(search['images'])} visual={bool(SEARCH_VISUAL.search(last_user_text))} imagegen={bool(IMAGE_GEN.search(last_user_text))}")
-    if search['images'] and SEARCH_VISUAL.search(last_user_text):
-        img_block = '\n' + '\n'.join(f"![фото]({url})" for url in search['images'])
+    # Картинки из Tavily — только для запросов про тренды/вдохновение (не в режиме редактирования)
+    _search_images = search['images'] if 'search' in dir() and isinstance(search, dict) else []
+    print(f"[img] query='{last_user_text[:60]}' tavily_images={len(_search_images)} visual={bool(SEARCH_VISUAL.search(last_user_text))} imagegen={bool(IMAGE_GEN.search(last_user_text))}")
+    if _search_images and SEARCH_VISUAL.search(last_user_text):
+        img_block = '\n' + '\n'.join(f"![фото]({url})" for url in _search_images)
         answer = answer + img_block
 
     # Генерация дизайна через FLUX — временно отключена
