@@ -46,7 +46,7 @@ export const PromptInputBox = React.forwardRef<HTMLDivElement, Props>(
     const errorCountRef = React.useRef(0);
     const restartTimerRef = React.useRef<ReturnType<typeof setTimeout>>();
     const isIOS = React.useMemo(() =>
-      typeof navigator !== "undefined" && /iPhone|iPad|iPod/i.test(navigator.userAgent), []);
+      typeof navigator !== "undefined" && /iPhone|iPad|iPod|Android/i.test(navigator.userAgent), []);
     const fileInputRef = React.useRef<HTMLInputElement>(null);
     const [uploadState, setUploadState] = React.useState<"idle" | "loading" | "done" | "error">("idle");
     const [showUploadModal, setShowUploadModal] = React.useState(false);
@@ -124,7 +124,9 @@ export const PromptInputBox = React.forwardRef<HTMLDivElement, Props>(
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
         audioChunksRef.current = [];
 
-        const mimeType = MediaRecorder.isTypeSupported("audio/mp4;codecs=mp4a")
+        const mimeType = MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
+          ? "audio/webm;codecs=opus"
+          : MediaRecorder.isTypeSupported("audio/mp4;codecs=mp4a")
           ? "audio/mp4;codecs=mp4a"
           : MediaRecorder.isTypeSupported("audio/mp4")
           ? "audio/mp4"
@@ -142,7 +144,7 @@ export const PromptInputBox = React.forwardRef<HTMLDivElement, Props>(
           setIsRecording(false);
           setIsTranscribing(true);
           try {
-            const blob = new Blob(audioChunksRef.current, { type: "audio/mp4" });
+            const blob = new Blob(audioChunksRef.current, { type: mimeType.split(";")[0] });
             // FileReader — надёжный способ base64 на iOS Safari
             const b64 = await new Promise<string>((resolve, reject) => {
               const reader = new FileReader();
@@ -157,7 +159,7 @@ export const PromptInputBox = React.forwardRef<HTMLDivElement, Props>(
             const res = await fetch(WHISPER_URL, {
               method: "POST",
               headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ audio: b64, mimeType: "audio/mp4" }),
+              body: JSON.stringify({ audio: b64, mimeType: mimeType.split(";")[0] }),
             });
             const data = await res.json();
             if (data.text?.trim()) {
@@ -348,10 +350,8 @@ export const PromptInputBox = React.forwardRef<HTMLDivElement, Props>(
                   ) : (
                     <>
                       <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-                      {isIOS
-                        ? <span className="text-white/40 text-[11px]">говорите, затем нажмите ⏹</span>
-                        : <><span className="font-mono text-xs text-white/60">{fmt(recTime)}</span><span className="text-white/25 text-[11px]">· говорите сейчас</span></>
-                      }
+                      <span className="font-mono text-xs text-white/60">{fmt(recTime)}</span>
+                      <span className="text-white/25 text-[11px]">· говорите, затем нажмите ⏹</span>
                     </>
                   )}
                 </div>
