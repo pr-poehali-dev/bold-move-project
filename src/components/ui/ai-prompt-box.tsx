@@ -30,10 +30,12 @@ export const PromptInputBox = React.forwardRef<HTMLDivElement, Props>(
   ({ value, onValueChange, onSubmit, isLoading = false, placeholder = "Спросите Женю о потолках…", hasEstimate = false, onNewEstimate }, ref) => {
     const textareaRef = React.useRef<HTMLTextAreaElement>(null);
     const [isRecording, setIsRecording] = React.useState(false);
+    const [isTranscribing, setIsTranscribing] = React.useState(false);
     const [recTime, setRecTime] = React.useState(0);
     const [speechError, setSpeechError] = React.useState("");
-    const [debugLog, setDebugLog] = React.useState<string[]>([]);
-    const dbg = (msg: string) => setDebugLog(p => [...p.slice(-6), msg]);
+    const mediaRecorderRef = React.useRef<MediaRecorder | null>(null);
+    const audioChunksRef = React.useRef<Blob[]>([]);
+    const WHISPER_URL = func2url["whisper-transcribe"];
     const [bars] = React.useState(() =>
       Array.from({ length: 26 }, () => 0.2 + Math.random() * 0.8)
     );
@@ -114,11 +116,77 @@ export const PromptInputBox = React.forwardRef<HTMLDivElement, Props>(
       return () => clearInterval(timerRef.current);
     }, [isRecording]);
 
+    // iOS: MediaRecorder → Whisper
+    const startIOSRecording = async () => {
+      setSpeechError("");
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        audioChunksRef.current = [];
+
+        const mimeType = MediaRecorder.isTypeSupported("audio/mp4;codecs=mp4a")
+          ? "audio/mp4;codecs=mp4a"
+          : MediaRecorder.isTypeSupported("audio/mp4")
+          ? "audio/mp4"
+          : "audio/mp4";
+
+        const recorder = new MediaRecorder(stream, { mimeType });
+        mediaRecorderRef.current = recorder;
+
+        recorder.ondataavailable = (e) => {
+          if (e.data && e.data.size > 0) audioChunksRef.current.push(e.data);
+        };
+
+        recorder.onstop = async () => {
+          stream.getTracks().forEach(t => t.stop());
+          setIsRecording(false);
+          setIsTranscribing(true);
+          try {
+            const blob = new Blob(audioChunksRef.current, { type: "audio/mp4" });
+            // FileReader — надёжный способ base64 на iOS Safari
+            const b64 = await new Promise<string>((resolve, reject) => {
+              const reader = new FileReader();
+              reader.onload = () => {
+                const dataUrl = reader.result as string;
+                resolve(dataUrl.split(",")[1]);
+              };
+              reader.onerror = reject;
+              reader.readAsDataURL(blob);
+            });
+
+            const res = await fetch(WHISPER_URL, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ audio: b64, mimeType: "audio/mp4" }),
+            });
+            const data = await res.json();
+            if (data.text?.trim()) {
+              onValueChange((value + " " + data.text).trim());
+            } else {
+              setSpeechError("Не удалось распознать речь");
+            }
+          } catch (e) {
+            setSpeechError("Ошибка отправки аудио");
+          } finally {
+            setIsTranscribing(false);
+          }
+        };
+
+        recorder.start();
+        setIsRecording(true);
+      } catch {
+        setSpeechError("Нет доступа к микрофону");
+      }
+    };
+
+    const stopIOSRecording = () => {
+      mediaRecorderRef.current?.stop();
+      mediaRecorderRef.current = null;
+    };
+
+    // Android/Desktop: Web Speech Recognition
     const startSpeechRecognition = () => {
       setSpeechError("");
-      setDebugLog([]);
       const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-      dbg(`SR: ${SR ? "ok" : "NO"}, iOS: ${isIOS}`);
       if (!SR) {
         setSpeechError("Браузер не поддерживает голосовой ввод");
         return;
@@ -146,7 +214,6 @@ export const PromptInputBox = React.forwardRef<HTMLDivElement, Props>(
             if (e.results[i].isFinal) finalText += t;
             else interimText += t;
           }
-          dbg(`result: final="${finalText}" interim="${interimText}"`);
           if (finalText) {
             accumulatedRef.current = (accumulatedRef.current + " " + finalText).trim();
             onValueChange(accumulatedRef.current);
@@ -156,7 +223,6 @@ export const PromptInputBox = React.forwardRef<HTMLDivElement, Props>(
         };
 
         recognition.onerror = (e: SpeechRecognitionErrorEvent) => {
-          dbg(`error: ${e.error}`);
           if (e.error === "not-allowed") {
             setSpeechError("Нет доступа к микрофону");
             stoppedByUserRef.current = true;
@@ -169,7 +235,6 @@ export const PromptInputBox = React.forwardRef<HTMLDivElement, Props>(
         };
 
         recognition.onend = () => {
-          dbg(`end, stopped=${stoppedByUserRef.current}, errCnt=${errorCountRef.current}`);
           recognitionRef.current = null;
           if (stoppedByUserRef.current) { setIsRecording(false); return; }
           if (errorCountRef.current >= 3) {
@@ -177,7 +242,6 @@ export const PromptInputBox = React.forwardRef<HTMLDivElement, Props>(
             setIsRecording(false);
             return;
           }
-          if (isIOS) { setIsRecording(false); return; }
           clearTimeout(restartTimerRef.current);
           restartTimerRef.current = setTimeout(createAndStart, 400);
         };
@@ -185,9 +249,7 @@ export const PromptInputBox = React.forwardRef<HTMLDivElement, Props>(
         recognitionRef.current = recognition;
         try {
           recognition.start();
-          dbg("started ok");
-        } catch(err) {
-          dbg(`start error: ${err}`);
+        } catch {
           clearTimeout(restartTimerRef.current);
           restartTimerRef.current = setTimeout(createAndStart, 500);
         }
@@ -197,9 +259,13 @@ export const PromptInputBox = React.forwardRef<HTMLDivElement, Props>(
       setIsRecording(true);
     };
 
-    const startRecording = () => startSpeechRecognition();
+    const startRecording = () => {
+      if (isIOS) startIOSRecording();
+      else startSpeechRecognition();
+    };
 
     const stopRecording = () => {
+      if (isIOS) { stopIOSRecording(); return; }
       stoppedByUserRef.current = true;
       clearTimeout(restartTimerRef.current);
       recognitionRef.current?.stop();
@@ -259,9 +325,9 @@ export const PromptInputBox = React.forwardRef<HTMLDivElement, Props>(
             : "border-white/[0.07] bg-white/[0.04] focus-within:border-orange-500/30"
         )}
       >
-        {/* Визуализация записи */}
+        {/* Визуализация записи / расшифровки */}
         <AnimatePresence>
-          {isRecording && (
+          {(isRecording || isTranscribing) && (
             <motion.div
               key="recording"
               initial={{ opacity: 0, height: 0 }}
@@ -272,19 +338,28 @@ export const PromptInputBox = React.forwardRef<HTMLDivElement, Props>(
             >
               <div className="flex flex-col items-center pt-3 pb-1 px-4">
                 <div className="flex items-center gap-2 mb-2">
-                  <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-                  {isIOS
-                    ? <span className="text-white/40 text-[11px]">говорите, затем нажмите ⏹</span>
-                    : <><span className="font-mono text-xs text-white/60">{fmt(recTime)}</span><span className="text-white/25 text-[11px]">· говорите сейчас</span></>
-                  }
+                  {isTranscribing ? (
+                    <>
+                      <Loader2 size={12} className="text-orange-400 animate-spin" />
+                      <span className="text-orange-400/70 text-[11px]">расшифровываю...</span>
+                    </>
+                  ) : (
+                    <>
+                      <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+                      {isIOS
+                        ? <span className="text-white/40 text-[11px]">говорите, затем нажмите ⏹</span>
+                        : <><span className="font-mono text-xs text-white/60">{fmt(recTime)}</span><span className="text-white/25 text-[11px]">· говорите сейчас</span></>
+                      }
+                    </>
+                  )}
                 </div>
                 <div className="w-full h-8 flex items-end justify-center gap-[3px]">
                   {bars.map((h, i) => (
                     <motion.div
                       key={i}
                       className="w-[3px] rounded-full bg-gradient-to-t from-orange-500 to-rose-400"
-                      animate={{ scaleY: [h, 1, h * 0.4, 0.9, h] }}
-                      transition={{
+                      animate={isTranscribing ? { scaleY: 0.15 } : { scaleY: [h, 1, h * 0.4, 0.9, h] }}
+                      transition={isTranscribing ? { duration: 0.4 } : {
                         duration: 0.7 + h * 0.5,
                         repeat: Infinity,
                         delay: i * 0.035,
@@ -301,7 +376,7 @@ export const PromptInputBox = React.forwardRef<HTMLDivElement, Props>(
 
         {/* Textarea */}
         <AnimatePresence initial={false}>
-          {!isRecording && (
+          {!isRecording && !isTranscribing && (
             <motion.div
               key="textarea"
               initial={{ opacity: 0 }}
@@ -329,15 +404,6 @@ export const PromptInputBox = React.forwardRef<HTMLDivElement, Props>(
         {speechError && (
           <div className="px-3 pb-1">
             <span className="text-[10px] text-red-400">{speechError}</span>
-          </div>
-        )}
-
-        {/* DEBUG лог — временно для диагностики iOS */}
-        {debugLog.length > 0 && (
-          <div className="px-3 pb-1 space-y-0.5">
-            {debugLog.map((l, i) => (
-              <div key={i} className="text-[9px] text-yellow-400/70 font-mono">{l}</div>
-            ))}
           </div>
         )}
 
@@ -384,20 +450,26 @@ export const PromptInputBox = React.forwardRef<HTMLDivElement, Props>(
 
           {/* Кнопка микрофон */}
           <motion.button
-            onClick={() => { if (isLoading) return; if (isRecording) stopRecording(); else startRecording(); }}
+            onClick={() => { if (isLoading || isTranscribing) return; if (isRecording) stopRecording(); else startRecording(); }}
             whileTap={{ scale: 0.85 }}
             whileHover={{ scale: 1.06 }}
             transition={{ type: "spring", stiffness: 400, damping: 18 }}
             title={isRecording ? "Остановить запись" : "Надиктовать голосом"}
             className={cn(
               "w-9 h-9 rounded-xl flex items-center justify-center shrink-0 transition-colors duration-200",
-              isRecording
-                ? "bg-red-500/20 text-red-400"
-                : "bg-white/[0.06] text-white/30 hover:bg-white/[0.1] hover:text-white/60"
+              isRecording ? "bg-red-500/20 text-red-400"
+              : isTranscribing ? "bg-orange-500/10 text-orange-400"
+              : "bg-white/[0.06] text-white/30 hover:bg-white/[0.1] hover:text-white/60"
             )}
           >
             <AnimatePresence mode="wait" initial={false}>
-              {isRecording ? (
+              {isTranscribing ? (
+                <motion.span key="spin"
+                  initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 0 }}
+                  transition={{ duration: 0.12 }}>
+                  <Loader2 size={15} className="animate-spin" />
+                </motion.span>
+              ) : isRecording ? (
                 <motion.span key="stoprec"
                   initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 0 }}
                   transition={{ duration: 0.12 }}>
