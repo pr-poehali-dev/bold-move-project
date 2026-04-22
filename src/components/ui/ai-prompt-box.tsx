@@ -126,16 +126,16 @@ export const PromptInputBox = React.forwardRef<HTMLDivElement, Props>(
 
       recognition.onresult = (e: SpeechRecognitionEvent) => {
         let interim = "";
-        // Обрабатываем только новые результаты начиная с e.resultIndex
         for (let i = e.resultIndex; i < e.results.length; i++) {
           const t = e.results[i][0].transcript;
-          if (e.results[i].isFinal) {
+          const isFinal = e.results[i].isFinal;
+          console.log(`result i=${i} resultIndex=${e.resultIndex} isFinal=${isFinal} text="${t}"`);
+          if (isFinal) {
             accumulatedText.current = (accumulatedText.current + " " + t).trim();
           } else {
             interim += t;
           }
         }
-        // Показываем накопленный финальный текст + текущий interim
         onValueChange(interim
           ? (accumulatedText.current + " " + interim).trim()
           : accumulatedText.current
