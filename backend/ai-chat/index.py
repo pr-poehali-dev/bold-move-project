@@ -855,7 +855,7 @@ def _patch_answer_with_prices(answer: str, llm_items: list, rules: list | None =
         )
         if full_m:
             indent = full_m.group(1)
-            name = full_m.group(2).strip()
+            name = full_m.group(2).strip().lstrip('-–—•').strip()
             qty_str = full_m.group(3)
             unit_str = (full_m.group(4) or '').strip()
             db_entry = _find_in_price_map(name, price_map)
@@ -877,7 +877,7 @@ def _patch_answer_with_prices(answer: str, llm_items: list, rules: list | None =
         # Строки вида "Название × N ед." (без цены)
         m = re.match(r'^(\s*)(.*?)\s*' + MUL + r'\s*([\d][\d\s,.]*)\s*(м²|м2|мп|пм|шт\.?|шт|м\.п\.?|м\b)?\s*$', line)
         if m:
-            indent, name, qty_str, unit = m.group(1), m.group(2).strip(), m.group(3).strip(), (m.group(4) or '').strip()
+            indent, name, qty_str, unit = m.group(1), m.group(2).strip().lstrip('-–—•').strip(), m.group(3).strip(), (m.group(4) or '').strip()
             db_entry = _find_in_price_map(name, price_map)
             if db_entry:
                 try:
