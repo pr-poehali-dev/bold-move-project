@@ -124,7 +124,7 @@ export const PromptInputBox = React.forwardRef<HTMLDivElement, Props>(
         if (stoppedByUserRef.current) return;
         const recognition = new SR();
         recognition.lang = "ru-RU";
-        recognition.continuous = true;
+        recognition.continuous = false;
         recognition.interimResults = true;
         recognition.maxAlternatives = 1;
 
