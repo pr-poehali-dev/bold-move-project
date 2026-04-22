@@ -983,10 +983,9 @@ def _recalc_totals(answer: str) -> str:
     def fmt(n: int) -> str:
         return f"{n:,}".replace(',', ' ')
 
-    # Паттерн строки позиции: "Название  N ед × P ₽ = T ₽"
-    # Патчер пишет двойной пробел между названием и qty — учитываем \s+
+    # Паттерн строки позиции: любая строка с "= T ₽" в конце (итог позиции)
     item_pat = re.compile(
-        r'^\s*.+?\s{1,10}[\d.,]+\s*\S*\s*[×xх]\s*[\d\s]+\s*₽\s*=\s*([\d\s]+)\s*₽',
+        r'=\s*([\d][\d\s]*)\s*₽\s*$',
         re.IGNORECASE
     )
     # Паттерн строки итога: Econom/Standard/Premium: X ₽
