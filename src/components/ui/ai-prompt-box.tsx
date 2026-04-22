@@ -338,7 +338,7 @@ export const PromptInputBox = React.forwardRef<HTMLDivElement, Props>(
 
           {/* Кнопка микрофон */}
           <motion.button
-            onClick={() => { if (isLoading) return; if (isRecording) stopRecording(); else startRecording(); }}
+            onPointerDown={(e) => { e.preventDefault(); if (isLoading) return; if (isRecording) stopRecording(); else startRecording(); }}
             whileTap={{ scale: 0.85 }}
             whileHover={{ scale: 1.06 }}
             transition={{ type: "spring", stiffness: 400, damping: 18 }}
