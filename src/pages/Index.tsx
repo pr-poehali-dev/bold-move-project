@@ -181,8 +181,8 @@ export default function Index() {
 
         {/* Estimate modal — перекрывает смету, требует действия */}
         {estimateModal && (
-          <div className="absolute inset-0 z-40 flex items-center justify-center p-4" style={{ backdropFilter: "blur(6px)", background: "rgba(0,0,0,0.65)" }}>
-            <div className="w-full max-w-sm rounded-3xl border border-orange-500/25 bg-[#16100a]/98 shadow-2xl shadow-orange-500/15 overflow-hidden">
+          <div className="absolute inset-0 z-40 flex items-center justify-center p-4 bg-black/75 backdrop-blur-md [-webkit-backdrop-filter:blur(10px)]">
+            <div className="w-full max-w-sm rounded-3xl border border-orange-500/25 bg-[#16100a] shadow-2xl shadow-orange-500/15 overflow-hidden">
               {/* Top gradient bar */}
               <div className="h-1.5 bg-gradient-to-r from-orange-500 to-rose-500" />
 
@@ -237,8 +237,8 @@ export default function Index() {
 
         {/* Registration modal — через 1 минуту */}
         {regModal && (
-          <div className="absolute inset-0 z-50 flex items-center justify-center p-4" style={{ backdropFilter: "blur(8px)", background: "rgba(0,0,0,0.7)" }}>
-            <div className="w-full max-w-sm rounded-3xl border border-orange-500/25 bg-[#16100a]/98 shadow-2xl shadow-orange-500/15 overflow-hidden animate-fade-in">
+          <div className="absolute inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md [-webkit-backdrop-filter:blur(12px)]">
+            <div className="w-full max-w-sm rounded-3xl border border-orange-500/25 bg-[#16100a] shadow-2xl shadow-orange-500/15 overflow-hidden animate-fade-in">
               <div className="h-1.5 bg-gradient-to-r from-orange-500 to-rose-500" />
               <div className="p-6">
                 <button
