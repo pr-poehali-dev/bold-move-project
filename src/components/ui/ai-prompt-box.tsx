@@ -1,5 +1,5 @@
 import React from "react";
-import { Send, Mic, StopCircle, Paperclip, CheckCircle2, Loader2 } from "lucide-react";
+import { Send, Mic, Square, StopCircle, Paperclip, CheckCircle2, Loader2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import func2url from "@/../backend/func2url.json";
 import { usePhone } from "@/hooks/use-phone";
@@ -38,10 +38,6 @@ export const PromptInputBox = React.forwardRef<HTMLDivElement, Props>(
     const timerRef = React.useRef<ReturnType<typeof setInterval>>();
     const recognitionRef = React.useRef<SpeechRecognition | null>(null);
     const stoppedByUserRef = React.useRef(false);
-    const restartTimerRef = React.useRef<ReturnType<typeof setTimeout>>();
-    const accumulatedRef = React.useRef("");
-    const isIOS = React.useMemo(() =>
-      typeof navigator !== "undefined" && /iPhone|iPad|iPod/i.test(navigator.userAgent), []);
     const fileInputRef = React.useRef<HTMLInputElement>(null);
     const [uploadState, setUploadState] = React.useState<"idle" | "loading" | "done" | "error">("idle");
     const [showUploadModal, setShowUploadModal] = React.useState(false);
@@ -114,81 +110,72 @@ export const PromptInputBox = React.forwardRef<HTMLDivElement, Props>(
 
     const startRecording = () => {
       setSpeechError("");
-
-      if (isIOS) {
-        setSpeechError("На iOS используйте микрофон на клавиатуре");
-        return;
-      }
-
       const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
       if (!SR) {
         setSpeechError("Браузер не поддерживает голосовой ввод");
         return;
       }
 
-      accumulatedRef.current = value;
+      const finalTextRef = { current: value };
       stoppedByUserRef.current = false;
 
-      const recognition = new SR();
-      recognition.lang = "ru-RU";
-      recognition.continuous = true;
-      recognition.interimResults = true;
-      recognition.maxAlternatives = 1;
+      const createAndStart = () => {
+        if (stoppedByUserRef.current) return;
 
-      recognition.onresult = (e: SpeechRecognitionEvent) => {
-        let interim = "";
-        let final = "";
-        for (let i = e.resultIndex; i < e.results.length; i++) {
-          const t = e.results[i][0].transcript;
-          if (e.results[i].isFinal) final += t;
-          else interim += t;
-        }
-        if (final) {
-          accumulatedRef.current = (accumulatedRef.current + " " + final).trim();
-          onValueChange(accumulatedRef.current);
-        } else if (interim) {
-          onValueChange((accumulatedRef.current + " " + interim).trim());
+        const recognition = new SR();
+        recognition.lang = "ru-RU";
+        recognition.continuous = false;
+        recognition.interimResults = true;
+
+        recognition.onresult = (e: SpeechRecognitionEvent) => {
+          let interim = "";
+          let final = "";
+          for (let i = e.resultIndex; i < e.results.length; i++) {
+            const t = e.results[i][0].transcript;
+            if (e.results[i].isFinal) final += t;
+            else interim += t;
+          }
+          if (final) {
+            finalTextRef.current = (finalTextRef.current + " " + final).trim();
+            onValueChange(finalTextRef.current);
+          } else if (interim) {
+            onValueChange((finalTextRef.current + " " + interim).trim());
+          }
+        };
+
+        recognition.onerror = (e: SpeechRecognitionErrorEvent) => {
+          if (e.error === "not-allowed") {
+            setSpeechError("Нет доступа к микрофону");
+            stoppedByUserRef.current = true;
+            setIsRecording(false);
+          }
+          // no-speech / aborted / network — просто ждём onend и перезапустим
+        };
+
+        recognition.onend = () => {
+          recognitionRef.current = null;
+          if (stoppedByUserRef.current) {
+            setIsRecording(false);
+            return;
+          }
+          // Пауза — создаём новый экземпляр и запускаем заново
+          setTimeout(createAndStart, 150);
+        };
+
+        recognitionRef.current = recognition;
+        try {
+          recognition.start();
+        } catch {
+          setTimeout(createAndStart, 300);
         }
       };
 
-      recognition.onerror = (e: SpeechRecognitionErrorEvent) => {
-        if (e.error === "not-allowed") {
-          setSpeechError("Нет доступа к микрофону");
-          stoppedByUserRef.current = true;
-          setIsRecording(false);
-        }
-      };
-
-      recognition.onend = () => {
-        recognitionRef.current = null;
-        if (stoppedByUserRef.current) { setIsRecording(false); return; }
-        // перезапуск только если не остановили вручную
-        restartTimerRef.current = setTimeout(() => {
-          if (stoppedByUserRef.current) return;
-          const r2 = new SR();
-          r2.lang = "ru-RU";
-          r2.continuous = true;
-          r2.interimResults = true;
-          r2.onresult = recognition.onresult;
-          r2.onerror = recognition.onerror;
-          r2.onend = recognition.onend;
-          recognitionRef.current = r2;
-          try { r2.start(); } catch { setIsRecording(false); }
-        }, 300);
-      };
-
-      recognitionRef.current = recognition;
-      try {
-        recognition.start();
-        setIsRecording(true);
-      } catch {
-        setSpeechError("Не удалось запустить микрофон");
-      }
+      createAndStart();
+      setIsRecording(true);
     };
 
     const stopRecording = () => {
       stoppedByUserRef.current = true;
-      clearTimeout(restartTimerRef.current);
       recognitionRef.current?.stop();
       recognitionRef.current = null;
       setIsRecording(false);
@@ -215,7 +202,7 @@ export const PromptInputBox = React.forwardRef<HTMLDivElement, Props>(
 
     const handleSend = () => {
       const text = value.trim();
-      if (!text || isLoading) return;
+      if (!text || isLoading || isRecording) return;
       onSubmit(text);
     };
 
@@ -246,7 +233,7 @@ export const PromptInputBox = React.forwardRef<HTMLDivElement, Props>(
             : "border-white/[0.07] bg-white/[0.04] focus-within:border-orange-500/30"
         )}
       >
-        {/* Визуализация записи / расшифровки */}
+        {/* Визуализация записи */}
         <AnimatePresence>
           {isRecording && (
             <motion.div
@@ -259,19 +246,17 @@ export const PromptInputBox = React.forwardRef<HTMLDivElement, Props>(
             >
               <div className="flex flex-col items-center pt-3 pb-1 px-4">
                 <div className="flex items-center gap-2 mb-2">
-                  <>
-                    <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-                    <span className="font-mono text-xs text-white/60">{fmt(recTime)}</span>
-                    <span className="text-white/25 text-[11px]">· говорите</span>
-                  </>
+                  <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+                  <span className="font-mono text-xs text-white/60">{fmt(recTime)}</span>
+                  <span className="text-white/25 text-[11px]">· говорите сейчас</span>
                 </div>
                 <div className="w-full h-8 flex items-end justify-center gap-[3px]">
                   {bars.map((h, i) => (
                     <motion.div
                       key={i}
                       className="w-[3px] rounded-full bg-gradient-to-t from-orange-500 to-rose-400"
-                      animate={isTranscribing ? { scaleY: 0.15 } : { scaleY: [h, 1, h * 0.4, 0.9, h] }}
-                      transition={isTranscribing ? { duration: 0.4 } : {
+                      animate={{ scaleY: [h, 1, h * 0.4, 0.9, h] }}
+                      transition={{
                         duration: 0.7 + h * 0.5,
                         repeat: Infinity,
                         delay: i * 0.035,
@@ -369,8 +354,9 @@ export const PromptInputBox = React.forwardRef<HTMLDivElement, Props>(
             title={isRecording ? "Остановить запись" : "Надиктовать голосом"}
             className={cn(
               "w-9 h-9 rounded-xl flex items-center justify-center shrink-0 transition-colors duration-200",
-              isRecording ? "bg-red-500/20 text-red-400"
-              : "bg-white/[0.06] text-white/30 hover:bg-white/[0.1] hover:text-white/60"
+              isRecording
+                ? "bg-red-500/20 text-red-400"
+                : "bg-white/[0.06] text-white/30 hover:bg-white/[0.1] hover:text-white/60"
             )}
           >
             <AnimatePresence mode="wait" initial={false}>
@@ -393,14 +379,14 @@ export const PromptInputBox = React.forwardRef<HTMLDivElement, Props>(
           {/* Кнопка отправить */}
           <motion.button
             onClick={handleSend}
-            disabled={!hasContent || isLoading}
+            disabled={!hasContent || isLoading || isRecording}
             whileTap={{ scale: 0.85 }}
             whileHover={{ scale: 1.06 }}
             transition={{ type: "spring", stiffness: 400, damping: 18 }}
             title="Отправить"
             className={cn(
               "w-9 h-9 rounded-xl flex items-center justify-center shrink-0 transition-colors duration-200",
-              hasContent && !isLoading
+              hasContent && !isLoading && !isRecording
                 ? "bg-gradient-to-br from-orange-500 to-rose-500 text-white shadow-md shadow-orange-500/20"
                 : "bg-white/[0.06] text-white/20"
             )}
