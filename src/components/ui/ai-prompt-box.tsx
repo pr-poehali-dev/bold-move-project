@@ -46,7 +46,7 @@ export const PromptInputBox = React.forwardRef<HTMLDivElement, Props>(
     const errorCountRef = React.useRef(0);
     const restartTimerRef = React.useRef<ReturnType<typeof setTimeout>>();
     const isIOS = React.useMemo(() =>
-      typeof navigator !== "undefined" && /iPhone|iPad|iPod|Android/i.test(navigator.userAgent), []);
+      typeof navigator !== "undefined" && /iPhone|iPad|iPod/i.test(navigator.userAgent), []);
     const fileInputRef = React.useRef<HTMLInputElement>(null);
     const [uploadState, setUploadState] = React.useState<"idle" | "loading" | "done" | "error">("idle");
     const [showUploadModal, setShowUploadModal] = React.useState(false);
@@ -124,9 +124,7 @@ export const PromptInputBox = React.forwardRef<HTMLDivElement, Props>(
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
         audioChunksRef.current = [];
 
-        const mimeType = MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
-          ? "audio/webm;codecs=opus"
-          : MediaRecorder.isTypeSupported("audio/mp4;codecs=mp4a")
+        const mimeType = MediaRecorder.isTypeSupported("audio/mp4;codecs=mp4a")
           ? "audio/mp4;codecs=mp4a"
           : MediaRecorder.isTypeSupported("audio/mp4")
           ? "audio/mp4"
@@ -204,7 +202,7 @@ export const PromptInputBox = React.forwardRef<HTMLDivElement, Props>(
 
         const recognition = new SR();
         recognition.lang = "ru-RU";
-        recognition.continuous = false;
+        recognition.continuous = true;
         recognition.interimResults = true;
         recognition.maxAlternatives = 1;
 
@@ -298,7 +296,7 @@ export const PromptInputBox = React.forwardRef<HTMLDivElement, Props>(
 
     const handleSend = () => {
       const text = value.trim();
-      if (!text || isLoading || isRecording) return;
+      if (!text || isLoading) return;
       onSubmit(text);
     };
 
