@@ -120,7 +120,8 @@ export const PromptInputBox = React.forwardRef<HTMLDivElement, Props>(
         return;
       }
 
-      const finalTextRef = { current: value };
+      // Храним накопленный финальный текст в ref чтобы не терять между перезапусками
+      const accumulatedRef = { current: value };
       stoppedByUserRef.current = false;
       errorCountRef.current = 0;
 
@@ -130,22 +131,25 @@ export const PromptInputBox = React.forwardRef<HTMLDivElement, Props>(
         const recognition = new SR();
         recognition.lang = "ru-RU";
         recognition.continuous = false;
-        recognition.interimResults = true;
+        // iOS Safari: interimResults=false — иначе onresult может не вызваться совсем
+        recognition.interimResults = !isIOS;
+        recognition.maxAlternatives = 1;
 
         recognition.onresult = (e: SpeechRecognitionEvent) => {
           errorCountRef.current = 0;
-          let interim = "";
-          let final = "";
+          let interimText = "";
+          let finalText = "";
           for (let i = e.resultIndex; i < e.results.length; i++) {
             const t = e.results[i][0].transcript;
-            if (e.results[i].isFinal) final += t;
-            else interim += t;
+            if (e.results[i].isFinal) finalText += t;
+            else interimText += t;
           }
-          if (final) {
-            finalTextRef.current = (finalTextRef.current + " " + final).trim();
-            onValueChange(finalTextRef.current);
-          } else if (interim) {
-            onValueChange((finalTextRef.current + " " + interim).trim());
+          if (finalText) {
+            accumulatedRef.current = (accumulatedRef.current + " " + finalText).trim();
+            onValueChange(accumulatedRef.current);
+          } else if (interimText) {
+            // только на Android/Desktop где interimResults=true
+            onValueChange((accumulatedRef.current + " " + interimText).trim());
           }
         };
 
@@ -159,7 +163,6 @@ export const PromptInputBox = React.forwardRef<HTMLDivElement, Props>(
           if (e.error === "network" || e.error === "service-not-available") {
             errorCountRef.current += 1;
           }
-          // aborted / no-speech — ждём onend
         };
 
         recognition.onend = () => {
@@ -168,18 +171,17 @@ export const PromptInputBox = React.forwardRef<HTMLDivElement, Props>(
             setIsRecording(false);
             return;
           }
-          // Слишком много сетевых ошибок подряд — останавливаем
           if (errorCountRef.current >= 3) {
             setSpeechError("Нет связи с сервисом распознавания");
             setIsRecording(false);
             return;
           }
-          // iOS: после onend не перезапускаем — пользователь сам нажимает снова
+          // iOS: одна сессия = одна фраза, останавливаемся сами
           if (isIOS) {
             setIsRecording(false);
             return;
           }
-          // Android/Desktop: пауза увеличена до 400ms чтобы не прерывать
+          // Android/Desktop: перезапускаем с паузой
           clearTimeout(restartTimerRef.current);
           restartTimerRef.current = setTimeout(createAndStart, 400);
         };
@@ -271,32 +273,31 @@ export const PromptInputBox = React.forwardRef<HTMLDivElement, Props>(
               <div className="flex flex-col items-center pt-3 pb-1 px-4">
                 <div className="flex items-center gap-2 mb-2">
                   <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-                  <span className="font-mono text-xs text-white/60">{fmt(recTime)}</span>
-                  <span className="text-white/25 text-[11px]">· говорите сейчас</span>
+                  {isIOS ? (
+                    <span className="text-white/40 text-[11px]">говорите, затем нажмите ⏹</span>
+                  ) : (
+                    <>
+                      <span className="font-mono text-xs text-white/60">{fmt(recTime)}</span>
+                      <span className="text-white/25 text-[11px]">· говорите сейчас</span>
+                    </>
+                  )}
                 </div>
-                {/* На iOS показываем распознанный текст прямо во время записи */}
-                {isIOS && value ? (
-                  <div className="w-full px-1 pb-1 text-[13px] text-white/80 leading-relaxed break-words">
-                    {value}
-                  </div>
-                ) : (
-                  <div className="w-full h-8 flex items-end justify-center gap-[3px]">
-                    {bars.map((h, i) => (
-                      <motion.div
-                        key={i}
-                        className="w-[3px] rounded-full bg-gradient-to-t from-orange-500 to-rose-400"
-                        animate={{ scaleY: [h, 1, h * 0.4, 0.9, h] }}
-                        transition={{
-                          duration: 0.7 + h * 0.5,
-                          repeat: Infinity,
-                          delay: i * 0.035,
-                          ease: "easeInOut",
-                        }}
-                        style={{ height: "100%", transformOrigin: "bottom" }}
-                      />
-                    ))}
-                  </div>
-                )}
+                <div className="w-full h-8 flex items-end justify-center gap-[3px]">
+                  {bars.map((h, i) => (
+                    <motion.div
+                      key={i}
+                      className="w-[3px] rounded-full bg-gradient-to-t from-orange-500 to-rose-400"
+                      animate={{ scaleY: [h, 1, h * 0.4, 0.9, h] }}
+                      transition={{
+                        duration: 0.7 + h * 0.5,
+                        repeat: Infinity,
+                        delay: i * 0.035,
+                        ease: "easeInOut",
+                      }}
+                      style={{ height: "100%", transformOrigin: "bottom" }}
+                    />
+                  ))}
+                </div>
               </div>
             </motion.div>
           )}
