@@ -120,6 +120,7 @@ export const PromptInputBox = React.forwardRef<HTMLDivElement, Props>(
 
       const accumulatedText = { current: value };
       const processedCount = { current: 0 };
+      const lastFinal = { current: "" };
       stoppedByUserRef.current = false;
 
       const recognition = new SR();
@@ -133,8 +134,11 @@ export const PromptInputBox = React.forwardRef<HTMLDivElement, Props>(
         for (let i = processedCount.current; i < e.results.length; i++) {
           const t = e.results[i][0].transcript;
           if (e.results[i].isFinal) {
-            dbg(`FINAL i=${i}: "${t}"`);
-            accumulatedText.current = (accumulatedText.current + " " + t).trim();
+            dbg(`FINAL i=${i}: "${t}" last="${lastFinal.current}"`);
+            if (t.trim() !== lastFinal.current) {
+              lastFinal.current = t.trim();
+              accumulatedText.current = (accumulatedText.current + " " + t).trim();
+            }
             processedCount.current = i + 1;
           } else {
             interim += t;
