@@ -6,7 +6,7 @@ import re
 import requests
 import psycopg2
 
-from services import generate_image, web_search, call_llm, SEARCH_VISUAL, IMAGE_GEN
+from services import generate_image, web_search, search_price, call_llm, SEARCH_VISUAL, IMAGE_GEN
 from db import (
     get_knowledge, get_system_prompt, get_faq_cache,
     get_prices_block, get_canvas_prices, get_price_rules,
@@ -1419,28 +1419,31 @@ def handler(event, context):
             patch = json.loads(json_match.group(0))
             comment = patch.get('comment', 'Готово ✅')
 
-            # Для unknown-позиций — ищем цену в интернете и определяем категорию
+            # Для unknown-позиций — ищем цену на rum-opt.ru / интернет, определяем категорию
             for add_item in patch.get('add', []):
                 if add_item.get('unknown'):
                     unknown_name = add_item['name']
                     try:
-                        # Веб-поиск цены
-                        search_result = web_search(f"{unknown_name} цена купить")
-                        search_text = search_result.get('text', '')
-                        classify_prompt = f"""Товар: "{unknown_name}"
-Информация из интернета: {search_text[:800]}
+                        price_result = search_price(unknown_name)
+                        search_text = price_result.get('text', '')
+                        classify_prompt = f"""Товар/материал: "{unknown_name}"
+Данные о цене из интернета: {search_text[:800]}
 
-Определи и верни ТОЛЬКО JSON:
+Определи и верни ТОЛЬКО JSON (без пояснений):
 {{
   "category": "Освещение",
   "unit": "м",
-  "price": 1500
+  "price": 1500,
+  "mounting_name": "Монтаж ленты",
+  "mounting_unit": "пог.м"
 }}
 
 Правила:
-- category: одно из Полотно / Профиль / Закладные / Освещение / Ниши / Услуги монтажа / Прочее
+- category: Полотно / Профиль / Закладные / Освещение / Ниши / Услуги монтажа / Прочее
 - unit: шт / м / м² / пог.м
-- price: средняя розничная цена в рублях за единицу (только число, без знака рубля)"""
+- price: розничная цена в рублях за единицу (только целое число)
+- mounting_name: как называется монтаж этого товара (или null если монтаж не нужен)
+- mounting_unit: единица монтажа (шт / м / пог.м)"""
                         cl_answer = call_llm([{'role': 'user', 'content': classify_prompt}])
                         cl_match = re.search(r'\{.+\}', cl_answer, re.DOTALL)
                         if cl_match:
@@ -1448,13 +1451,43 @@ def handler(event, context):
                             add_item['category'] = cl.get('category', 'Прочее')
                             add_item['unit'] = cl.get('unit', add_item.get('unit', 'шт'))
                             add_item['price'] = int(cl.get('price', 0))
-                            print(f"[edit] classified+priced unknown '{unknown_name}': {cl}")
+                            # Запоминаем монтаж для добавления после патча
+                            if cl.get('mounting_name'):
+                                add_item['_mounting_name'] = cl['mounting_name']
+                                add_item['_mounting_unit'] = cl.get('mounting_unit', 'шт')
+                            print(f"[edit] classified+priced '{unknown_name}': {cl}")
                     except Exception as ce:
                         print(f"[edit] classify error: {ce}")
                     add_item.pop('unknown', None)
 
             # Применяем патч к prev_items
             new_items = _apply_edit_patch(prev_items, patch, price_map)
+
+            # Добавляем монтаж для новых позиций
+            for add_item in patch.get('add', []):
+                mounting_name = add_item.get('_mounting_name')
+                if not mounting_name:
+                    continue
+                mounting_unit = add_item.get('_mounting_unit', 'шт')
+                qty = add_item['qty']
+                # Ищем монтаж в прайсе
+                db_mounting = price_map.get(mounting_name.lower()) or _find_in_price_map(mounting_name, price_map)
+                mounting_price = db_mounting['price'] if db_mounting else 0
+                actual_mounting_name = db_mounting['name'] if db_mounting else mounting_name
+                # Проверяем — есть ли уже монтаж в смете, обновляем или добавляем
+                existing = next((it for it in new_items if it['name'].lower() == actual_mounting_name.lower()), None)
+                if existing:
+                    existing['qty'] = existing['qty'] + qty
+                    print(f"[edit] mounting updated: {actual_mounting_name} qty+={qty}")
+                else:
+                    new_items.append({
+                        'name': actual_mounting_name,
+                        'qty': qty,
+                        'price': mounting_price,
+                        'unit': mounting_unit,
+                        'category': 'Услуги монтажа',
+                    })
+                    print(f"[edit] mounting added: {actual_mounting_name} qty={qty} price={mounting_price}")
 
             # Рендерим текст сметы детерминированно
             answer = f"{comment}\n\n" + _render_estimate_from_items(new_items)

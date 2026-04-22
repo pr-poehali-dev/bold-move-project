@@ -79,6 +79,55 @@ def generate_image(prompt_ru: str) -> str | None:
         return None
 
 
+def search_price(item_name: str) -> dict:
+    """Ищет цену товара — сначала на rum-opt.ru, потом по всему интернету.
+    Возвращает {'text': str, 'price_hint': str} без упоминания источника.
+    """
+    empty = {'text': '', 'price_hint': ''}
+    if not TAVILY_KEY:
+        return empty
+
+    SPAM_DOMAINS = ('passport', 'document', 'госуслуг', 'avito.ru',
+                    'instagram', 'facebook', 'vk.com', 'youtube', 'tiktok')
+
+    def _do_search(query: str, domains: list | None = None) -> list:
+        payload = {
+            'api_key': TAVILY_KEY,
+            'query': query,
+            'search_depth': 'basic',
+            'max_results': 5,
+            'include_answer': True,
+        }
+        if domains:
+            payload['include_domains'] = domains
+        try:
+            resp = requests.post('https://api.tavily.com/search', json=payload, timeout=15)
+            if resp.status_code != 200:
+                return []
+            data = resp.json()
+            parts = []
+            if data.get('answer'):
+                parts.append(data['answer'])
+            for r in data.get('results', [])[:3]:
+                url = r.get('url', '')
+                if any(s in url.lower() for s in SPAM_DOMAINS):
+                    continue
+                parts.append(r.get('content', '')[:400])
+            return parts
+        except Exception as e:
+            print(f"[price_search] error: {e}")
+            return []
+
+    # Сначала ищем на rum-opt.ru
+    parts = _do_search(f"{item_name} цена", ['rum-opt.ru'])
+    if not parts:
+        # Fallback — любые сайты
+        parts = _do_search(f"{item_name} цена купить рублей")
+
+    text = '\n'.join(parts)
+    return {'text': text, 'price_hint': text}
+
+
 def web_search(query: str) -> dict:
     """Поиск через Tavily. Возвращает {'text': str, 'images': [str]}."""
     empty = {'text': '', 'images': []}
@@ -120,7 +169,6 @@ def web_search(query: str) -> dict:
         for r in data.get('results', [])[:3]:
             title = r.get('title', '')
             content = r.get('content', '')[:300]
-            url = r.get('url', '')
             parts.append(f"• {title}\n  {content}")
 
         # Картинки — извлекаем URL, фильтруем только явный спам по URL
