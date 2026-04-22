@@ -921,21 +921,28 @@ def _apply_edit_patch(prev_items: list, patch: dict, price_map: dict) -> list:
                 print(f"[patch] updated qty: {upd['name']} → {upd['qty']}")
                 break
 
-    # Добавляем новые
+    # Добавляем новые (только если позиции ещё нет в result)
+    existing_names = {it['name'].lower().strip() for it in result}
     for new_it in patch.get('add', []):
         name_low = new_it['name'].lower().strip()
-        # Цена из БД приоритетнее
-        db_entry = price_map.get(name_low)
+        # Если уже есть — пропускаем (LLM иногда дублирует add+update)
+        if name_low in existing_names:
+            print(f"[patch] skip add (already exists): {new_it['name']}")
+            continue
+        # Ищем в прайсе — сначала точно, потом нечётко
+        db_entry = price_map.get(name_low) or _find_in_price_map(new_it['name'], price_map)
         price = db_entry['price'] if db_entry else new_it.get('price', 0)
         unit = db_entry['unit'] if db_entry else new_it.get('unit', 'шт')
+        actual_name = db_entry['name'] if db_entry else new_it['name']
         result.append({
-            'name': new_it['name'],
+            'name': actual_name,
             'qty': new_it['qty'],
             'price': price,
             'unit': unit,
             'category': new_it.get('category', ''),
         })
-        print(f"[patch] added: {new_it['name']} qty={new_it['qty']} price={price}")
+        existing_names.add(actual_name.lower().strip())
+        print(f"[patch] added: {actual_name} qty={new_it['qty']} price={price}")
 
     return result
 
@@ -1384,10 +1391,12 @@ def handler(event, context):
 }}
 
 Правила:
-- В "remove" — точные названия из списка выше
-- В "add" — новые позиции которых нет в списке (price=0 если не знаешь, подберём из прайса)
-- В "update" — позиции из списка с изменённым qty
-- Если клиент просит убрать — только "remove", не трогай остальные поля
+- "remove" — точные названия позиций из списка выше которые нужно убрать
+- "add" — ТОЛЬКО новые позиции которых НЕТ в списке выше. Не дублируй позиции из "update"
+- "update" — позиции которые УЖЕ ЕСТЬ в списке выше, но нужно изменить qty
+- Никогда не ставь одну и ту же позицию одновременно в "add" и "update"
+- Если клиент просит добавить N штук к существующей позиции — используй "update" с новым итоговым qty
+- Если клиент просит добавить позицию которой нет — используй "add"
 - Если ничего менять не нужно — верни пустые массивы"""
 
         patch_msgs = [{'role': 'user', 'content': patch_prompt}]
