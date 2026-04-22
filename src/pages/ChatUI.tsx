@@ -59,12 +59,22 @@ export default function ChatUI({ messages, input, typing, panel, onInput, onSend
 
   // id последней сметы в чате
   const lastEstimateId = messages.findLast?.((m) => m.role === "assistant" && isEstimate(m.text))?.id ?? null;
+  const prevEstimateIdRef = useRef<string | null>(null);
 
   useEffect(() => {
-    // Если есть смета — скроллим к ней, иначе скроллим вниз
-    if (lastEstimateId && estimateRef.current) {
-      estimateRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
-    } else if (chatRef.current) {
+    const estimateChanged = lastEstimateId !== prevEstimateIdRef.current;
+
+    if (estimateChanged && lastEstimateId) {
+      // Смета появилась/обновилась — ждём отрисовки и скроллим к ней
+      prevEstimateIdRef.current = lastEstimateId;
+      const timer = setTimeout(() => {
+        estimateRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      }, 150);
+      return () => clearTimeout(timer);
+    }
+
+    // Сметы нет или она не изменилась — скроллим вниз как обычно
+    if (!lastEstimateId && chatRef.current) {
       chatRef.current.scrollTop = chatRef.current.scrollHeight;
     }
   }, [messages, typing]);
