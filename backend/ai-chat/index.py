@@ -1419,26 +1419,36 @@ def handler(event, context):
             patch = json.loads(json_match.group(0))
             comment = patch.get('comment', 'Готово ✅')
 
-            # Для unknown-позиций — спрашиваем у LLM что это и в какую категорию
+            # Для unknown-позиций — ищем цену в интернете и определяем категорию
             for add_item in patch.get('add', []):
                 if add_item.get('unknown'):
                     unknown_name = add_item['name']
-                    classify_prompt = f"""Что такое "{unknown_name}" в контексте натяжных потолков и освещения?
-Определи:
-1. Это товар/материал или услуга?
-2. В какую категорию относится: Полотно / Профиль / Закладные / Освещение / Ниши / Услуги монтажа / Прочее
-3. Какая единица измерения: шт / м² / пог.м / м
-
-Ответь ТОЛЬКО JSON:
-{{"category": "Освещение", "unit": "м", "description": "LED лента/профиль"}}"""
                     try:
+                        # Веб-поиск цены
+                        search_result = web_search(f"{unknown_name} цена купить")
+                        search_text = search_result.get('text', '')
+                        classify_prompt = f"""Товар: "{unknown_name}"
+Информация из интернета: {search_text[:800]}
+
+Определи и верни ТОЛЬКО JSON:
+{{
+  "category": "Освещение",
+  "unit": "м",
+  "price": 1500
+}}
+
+Правила:
+- category: одно из Полотно / Профиль / Закладные / Освещение / Ниши / Услуги монтажа / Прочее
+- unit: шт / м / м² / пог.м
+- price: средняя розничная цена в рублях за единицу (только число, без знака рубля)"""
                         cl_answer = call_llm([{'role': 'user', 'content': classify_prompt}])
                         cl_match = re.search(r'\{.+\}', cl_answer, re.DOTALL)
                         if cl_match:
                             cl = json.loads(cl_match.group(0))
                             add_item['category'] = cl.get('category', 'Прочее')
                             add_item['unit'] = cl.get('unit', add_item.get('unit', 'шт'))
-                            print(f"[edit] classified unknown '{unknown_name}': {cl}")
+                            add_item['price'] = int(cl.get('price', 0))
+                            print(f"[edit] classified+priced unknown '{unknown_name}': {cl}")
                     except Exception as ce:
                         print(f"[edit] classify error: {ce}")
                     add_item.pop('unknown', None)
