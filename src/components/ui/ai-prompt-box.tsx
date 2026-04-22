@@ -169,9 +169,8 @@ export const PromptInputBox = React.forwardRef<HTMLDivElement, Props>(
         recognition.start();
       };
 
-      recognitionRef.current = recognition;
       try {
-        recognition.start();
+        createAndStart();
         setIsRecording(true);
       } catch {
         setSpeechError("Не удалось запустить микрофон");
