@@ -983,9 +983,9 @@ def _recalc_totals(answer: str) -> str:
     def fmt(n: int) -> str:
         return f"{n:,}".replace(',', ' ')
 
-    # Паттерн строки позиции: любая строка с "= X ₽" (допускаем * и пробелы после ₽)
+    # Паттерн строки позиции: "= X ₽" или "= X.XX ₽" (допускаем дробные и пробелы-разделители)
     item_pat = re.compile(
-        r'=\s*([\d][\d\s]*)\s*₽\s*\**\s*$',
+        r'=\s*([\d][\d\s]*(?:[.,]\d+)?)\s*₽\s*\**\s*$',
         re.IGNORECASE
     )
     # Паттерн строки итога: Econom/Standard/Premium: X ₽
@@ -1004,7 +1004,8 @@ def _recalc_totals(answer: str) -> str:
         m = item_pat.search(line)
         if m:
             try:
-                standard += int(re.sub(r'\s', '', m.group(1)))
+                val_str = re.sub(r'\s', '', m.group(1))
+                standard += round(float(val_str.replace(',', '.')))
             except Exception:
                 pass
 
