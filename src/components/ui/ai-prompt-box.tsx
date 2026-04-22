@@ -118,9 +118,7 @@ export const PromptInputBox = React.forwardRef<HTMLDivElement, Props>(
         return;
       }
 
-      const accumulatedText = { current: value };
-      const processedCount = { current: 0 };
-      const lastFinal = { current: "" };
+      const baseText = value;
       stoppedByUserRef.current = false;
 
       const recognition = new SR();
@@ -129,25 +127,18 @@ export const PromptInputBox = React.forwardRef<HTMLDivElement, Props>(
       recognition.interimResults = true;
 
       recognition.onresult = (e: SpeechRecognitionEvent) => {
-        dbg(`res: rIdx=${e.resultIndex} len=${e.results.length} proc=${processedCount.current}`);
+        let finals = "";
         let interim = "";
-        for (let i = processedCount.current; i < e.results.length; i++) {
-          const t = e.results[i][0].transcript;
+        for (let i = 0; i < e.results.length; i++) {
           if (e.results[i].isFinal) {
-            dbg(`FINAL i=${i}: "${t}" last="${lastFinal.current}"`);
-            if (t.trim() !== lastFinal.current) {
-              lastFinal.current = t.trim();
-              accumulatedText.current = (accumulatedText.current + " " + t).trim();
-            }
-            processedCount.current = i + 1;
+            finals += " " + e.results[i][0].transcript;
           } else {
-            interim += t;
+            interim += e.results[i][0].transcript;
           }
         }
-        onValueChange(interim
-          ? (accumulatedText.current + " " + interim).trim()
-          : accumulatedText.current
-        );
+        const recognized = (baseText + finals).trim();
+        dbg(`res: finals="${finals.trim()}" interim="${interim}"`);
+        onValueChange(interim ? (recognized + " " + interim).trim() : recognized);
       };
 
       recognition.onerror = (e: SpeechRecognitionErrorEvent) => {
