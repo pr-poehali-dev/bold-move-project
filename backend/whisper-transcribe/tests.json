@@ -12,8 +12,8 @@
       "path": "/",
       "body": {},
       "expectedStatus": 400,
-      "expectedBody": "audio required",
-      "bodyMatcher": "contains"
+      "expectedBody": {"error": "audio required"},
+      "bodyMatcher": "partial"
     }
   ]
 }
