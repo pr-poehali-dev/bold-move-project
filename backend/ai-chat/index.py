@@ -1402,7 +1402,7 @@ def handler(event, context):
 - "remove" — точные названия позиций из текущей сметы которые нужно убрать
 - "add" — ТОЛЬКО позиции из ПРАЙС-ЛИСТА выше которых нет в текущей смете. Используй точное название из прайса
 - "update" — позиции которые УЖЕ ЕСТЬ в смете, но нужно изменить qty
-- НИКОГДА не выдумывай позиции которых нет в прайс-листе
+- Если позиции нет в прайс-листе но клиент её чётко назвал — добавь с полем "unknown": true, name как написал клиент, qty указанное клиентом, price=0
 - Никогда не ставь одну позицию одновременно в "add" и "update"
 - Если клиент просит добавить N штук к существующей позиции — "update" с итоговым qty
 - Если запрос слишком расплывчатый и непонятно что именно добавить — верни пустые массивы и в comment попроси уточнить
@@ -1418,6 +1418,30 @@ def handler(event, context):
                 raise ValueError("no json in patch response")
             patch = json.loads(json_match.group(0))
             comment = patch.get('comment', 'Готово ✅')
+
+            # Для unknown-позиций — спрашиваем у LLM что это и в какую категорию
+            for add_item in patch.get('add', []):
+                if add_item.get('unknown'):
+                    unknown_name = add_item['name']
+                    classify_prompt = f"""Что такое "{unknown_name}" в контексте натяжных потолков и освещения?
+Определи:
+1. Это товар/материал или услуга?
+2. В какую категорию относится: Полотно / Профиль / Закладные / Освещение / Ниши / Услуги монтажа / Прочее
+3. Какая единица измерения: шт / м² / пог.м / м
+
+Ответь ТОЛЬКО JSON:
+{{"category": "Освещение", "unit": "м", "description": "LED лента/профиль"}}"""
+                    try:
+                        cl_answer = call_llm([{'role': 'user', 'content': classify_prompt}])
+                        cl_match = re.search(r'\{.+\}', cl_answer, re.DOTALL)
+                        if cl_match:
+                            cl = json.loads(cl_match.group(0))
+                            add_item['category'] = cl.get('category', 'Прочее')
+                            add_item['unit'] = cl.get('unit', add_item.get('unit', 'шт'))
+                            print(f"[edit] classified unknown '{unknown_name}': {cl}")
+                    except Exception as ce:
+                        print(f"[edit] classify error: {ce}")
+                    add_item.pop('unknown', None)
 
             # Применяем патч к prev_items
             new_items = _apply_edit_patch(prev_items, patch, price_map)
