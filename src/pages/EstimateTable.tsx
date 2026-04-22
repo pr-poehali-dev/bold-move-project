@@ -192,8 +192,8 @@ export function resolveItem(
     const llm = findItem(cleanName);
     if (llm && llm.qty > 0 && llm.price > 0) {
       const unit = llm.unit || "";
-      const formula = `${llm.qty}${unit ? " " + unit : ""} × ${llm.price.toLocaleString("ru")} ₽`;
-      const total = Math.round(llm.qty * llm.price).toLocaleString("ru") + " ₽";
+      const formula = `${fmtQty(llm.qty)}${unit ? " " + unit : ""} × ${fmtNum(llm.price)} ₽`;
+      const total = fmtNum(llm.qty * llm.price) + " ₽";
       return { cleanName, formula, total };
     }
     return { cleanName, formula: "", total: "" };
@@ -219,8 +219,8 @@ export function resolveItem(
     const unit = (mulMatch[2] ?? "").trim();
     const price = parseFloat(mulMatch[3].replace(/\s/g, "").replace(",", "."));
     if (!isNaN(qty) && !isNaN(price)) {
-      const formula = `${qty}${unit ? " " + unit : ""} × ${price.toLocaleString("ru-RU")} ₽`;
-      const total = Math.round(qty * price).toLocaleString("ru-RU") + " ₽";
+      const formula = `${fmtQty(qty)}${unit ? " " + unit : ""} × ${fmtNum(price)} ₽`;
+      const total = fmtNum(qty * price) + " ₽";
       return { cleanName, formula, total };
     }
   }
@@ -231,8 +231,17 @@ export function resolveItem(
 
 function ensureRub(s: string): string {
   if (!s) return s;
-  // Нормализуем: убираем двойные пробелы, оставляем цифры + ₽
   return s.replace(/\s+/g, " ").trim();
+}
+
+function fmtNum(n: number): string {
+  return Number.isInteger(n) ? n.toLocaleString("ru-RU") : Math.round(n).toLocaleString("ru-RU");
+}
+
+function fmtQty(n: number): string {
+  // Для количества оставляем до 2 знаков, но убираем лишние нули
+  const rounded = Math.round(n * 100) / 100;
+  return rounded % 1 === 0 ? String(rounded) : rounded.toString().replace(".", ",");
 }
 
 export default function EstimateTable({ text, items }: { text: string; items?: LLMItem[] }) {
