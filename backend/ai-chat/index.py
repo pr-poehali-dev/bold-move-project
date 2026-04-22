@@ -1316,26 +1316,30 @@ def handler(event, context):
                     unknown_name = add_item['name']
                     try:
                         # Извлекаем qty из запроса клиента (метры/штуки)
-                        user_qty = add_item.get('qty', 1)
-                        user_unit_hint = add_item.get('unit', 'шт')
                         qty_m = re.search(r'(\d+(?:[.,]\d+)?)\s*(?:пог\.?м|пм|м\.п\.?|м(?!²|2))', last_user_text, re.IGNORECASE)
                         qty_pcs = re.search(r'(\d+)\s*(?:шт|штук)', last_user_text, re.IGNORECASE)
                         client_qty_meters = float(qty_m.group(1).replace(',', '.')) if qty_m else None
                         client_qty_pcs = int(qty_pcs.group(1)) if qty_pcs else None
 
-                        price_result = search_price(f"{unknown_name} цена за метр пог.м")
+                        price_result = search_price(f"{unknown_name} длина размер цена")
                         search_text = price_result.get('text', '')
+
+                        client_need = f"{client_qty_meters} пог.м" if client_qty_meters else (f"{client_qty_pcs} шт" if client_qty_pcs else "не указал")
 
                         classify_prompt = f"""Контекст: смета на натяжные потолки.
 Позиция: "{unknown_name}"
-Клиент указал количество: {f"{client_qty_meters} м (погонных метров)" if client_qty_meters else f"{client_qty_pcs} шт" if client_qty_pcs else "не указал"}
-Данные из интернета: {search_text[:800]}
+Клиент указал: {client_need}
+Данные из интернета: {search_text[:1000]}
 
 Верни ТОЛЬКО JSON (без пояснений):
 {{
   "category": "Ниши",
-  "unit": "пог.м",
-  "price_per_unit": 760,
+  "unit": "шт",
+  "price_per_piece": 4415,
+  "piece_length_m": 3.2,
+  "available_lengths_m": [2.2, 3.2],
+  "qty_pieces": 2,
+  "total_length_m": 5.4,
   "mounting_name": "Монтаж профиля стандарт",
   "mounting_unit": "пог.м"
 }}
@@ -1349,12 +1353,19 @@ def handler(event, context):
 - "Услуги монтажа" — работа/услуга
 - "Прочее" — всё остальное
 
-Правила unit и price_per_unit:
-- Профили, ленты, карнизы — unit="пог.м", price_per_unit = цена за 1 пог.м
-- Если в интернете цена за штуку/планку (например 3810₽/шт) — пересчитай в цену за пог.м: планка обычно 3м, значит price_per_unit = цена_шт / 3
-- Полотно — unit="м²", price_per_unit = цена за 1 м²
-- Всё остальное — unit="шт", price_per_unit = цена за 1 шт
-- price_per_unit: только целое число > 100
+Правила для штучных товаров с фиксированной длиной (профили, карнизы, рейки):
+- unit всегда "шт"
+- price_per_piece — цена за 1 штуку (целое число)
+- available_lengths_m — список доступных длин из характеристик товара (например [2.2, 3.2])
+- piece_length_m — наибольшая доступная длина
+- qty_pieces и total_length_m — подбери минимальный набор штук чтобы покрыть {client_qty_meters or 0} пог.м:
+  * Используй комбинацию доступных длин с минимальным перерасходом
+  * Например нужно 5м, есть 2.2м и 3.2м → 1×2.2 + 1×3.2 = 5.4м (2 шт)
+  * Например нужно 8м, есть 3.2м → 3×3.2 = 9.6м (3 шт)
+- Если клиент указал штуки а не метры — qty_pieces = кол-во штук, total_length_m = qty × piece_length_m
+
+Для товаров продающихся за пог.м (LED лента, обычный профиль без фиксированной длины):
+- unit = "пог.м", price_per_piece = цена за 1 пог.м, piece_length_m = 1, qty_pieces = нужное кол-во метров
 
 mounting_name — из списка: Монтаж профиля стандарт / Монтаж теневого профиля / Монтаж парящего профиля / Монтаж ленты / Монтаж блока питания / null
 mounting_unit: пог.м или шт"""
@@ -1365,17 +1376,14 @@ mounting_unit: пог.м или шт"""
                             cl = json.loads(cl_match.group(0))
                             add_item['category'] = cl.get('category', 'Прочее')
                             add_item['unit'] = cl.get('unit', 'шт')
-                            raw_price = int(cl.get('price_per_unit', 0))
+                            raw_price = int(cl.get('price_per_piece', 0))
                             add_item['price'] = raw_price if raw_price >= 100 else 0
+                            add_item['qty'] = cl.get('qty_pieces', add_item.get('qty', 1))
 
-                            # qty: берём из запроса клиента с учётом unit
-                            if add_item['unit'] in ('пог.м', 'м') and client_qty_meters:
-                                add_item['qty'] = client_qty_meters
-                            elif add_item['unit'] == 'м²' and client_qty_meters:
-                                add_item['qty'] = client_qty_meters
-                            elif add_item['unit'] == 'шт' and client_qty_pcs:
-                                add_item['qty'] = client_qty_pcs
-                            # иначе оставляем qty из патча LLM
+                            # Сохраняем total_length_m для монтажа (монтаж считается в пог.м)
+                            total_length = cl.get('total_length_m')
+                            if total_length:
+                                add_item['_total_length_m'] = float(total_length)
 
                             raw_mounting = cl.get('mounting_name')
                             mounting_name = raw_mounting if raw_mounting and raw_mounting.lower() != 'null' else None
@@ -1383,7 +1391,7 @@ mounting_unit: пог.м или шт"""
                                 add_item['_mounting_name'] = mounting_name
                                 raw_mu = cl.get('mounting_unit', 'шт')
                                 add_item['_mounting_unit'] = raw_mu if raw_mu and raw_mu.lower() != 'null' else 'шт'
-                            print(f"[edit] classified+priced '{unknown_name}': category={add_item['category']} unit={add_item['unit']} price={add_item['price']} qty={add_item['qty']}")
+                            print(f"[edit] classified+priced '{unknown_name}': cat={add_item['category']} unit={add_item['unit']} price={add_item['price']} qty={add_item['qty']} total_m={total_length}")
                     except Exception as ce:
                         print(f"[edit] classify error: {ce}")
                     add_item.pop('unknown', None)
@@ -1397,7 +1405,11 @@ mounting_unit: пог.м или шт"""
                 if not mounting_name:
                     continue
                 mounting_unit = add_item.get('_mounting_unit', 'шт')
-                qty = add_item['qty']
+                # Для монтажа профилей/карнизов — используем реальную длину в пог.м, не кол-во штук
+                if mounting_unit in ('пог.м', 'м') and add_item.get('_total_length_m'):
+                    qty = add_item['_total_length_m']
+                else:
+                    qty = add_item['qty']
                 # Ищем монтаж в прайсе
                 db_mounting = price_map.get(mounting_name.lower()) or _find_in_price_map(mounting_name, price_map)
                 mounting_price = db_mounting['price'] if db_mounting else 0
@@ -1405,7 +1417,7 @@ mounting_unit: пог.м или шт"""
                 # Проверяем — есть ли уже монтаж в смете, обновляем или добавляем
                 existing = next((it for it in new_items if it['name'].lower() == actual_mounting_name.lower()), None)
                 if existing:
-                    existing['qty'] = existing['qty'] + qty
+                    existing['qty'] = round(existing['qty'] + qty, 2)
                     print(f"[edit] mounting updated: {actual_mounting_name} qty+={qty}")
                 else:
                     new_items.append({
