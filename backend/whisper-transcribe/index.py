@@ -35,7 +35,7 @@ def handler(event: dict, context) -> dict:
     }
     ext = ext_map.get(mime_type.split(";")[0].strip(), ".mp4")
 
-    client = Groq(api_key=os.environ["GROQ_API_KEY"])
+    client = Groq(api_key=os.environ["GROQ_API_KEY2"])
 
     with tempfile.NamedTemporaryFile(suffix=ext, delete=False) as f:
         f.write(audio_bytes)
