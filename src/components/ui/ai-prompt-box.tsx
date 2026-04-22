@@ -118,48 +118,55 @@ export const PromptInputBox = React.forwardRef<HTMLDivElement, Props>(
         return;
       }
 
-      const baseText = value;
       stoppedByUserRef.current = false;
+      // savedText хранит весь накопленный текст между перезапусками сессий
+      const savedText = { current: value };
 
-      const recognition = new SR();
-      recognition.lang = "ru-RU";
-      recognition.continuous = true;
-      recognition.interimResults = true;
+      const createAndStart = () => {
+        const recognition = new SR();
+        recognition.lang = "ru-RU";
+        recognition.continuous = true;
+        recognition.interimResults = true;
 
-      recognition.onresult = (e: SpeechRecognitionEvent) => {
-        // Найти последний финальный результат — он содержит весь накопленный текст
-        let lastFinalText = "";
-        let interim = "";
-        for (let i = e.results.length - 1; i >= 0; i--) {
-          if (e.results[i].isFinal) {
-            lastFinalText = e.results[i][0].transcript.trim();
-            break;
-          } else {
-            interim = e.results[i][0].transcript + interim;
+        recognition.onresult = (e: SpeechRecognitionEvent) => {
+          // Берём последний финальный результат текущей сессии
+          let sessionFinal = "";
+          let interim = "";
+          for (let i = e.results.length - 1; i >= 0; i--) {
+            if (e.results[i].isFinal) {
+              sessionFinal = e.results[i][0].transcript.trim();
+              break;
+            } else {
+              interim = e.results[i][0].transcript + interim;
+            }
           }
-        }
-        const recognized = (baseText + " " + lastFinalText).trim();
-        dbg(`last="${lastFinalText}" interim="${interim}"`);
-        onValueChange(interim ? (recognized + " " + interim).trim() : recognized);
-      };
+          const recognized = (savedText.current + " " + sessionFinal).trim();
+          dbg(`saved="${savedText.current}" session="${sessionFinal}" interim="${interim}"`);
+          onValueChange(interim ? (recognized + " " + interim).trim() : recognized);
+        };
 
-      recognition.onerror = (e: SpeechRecognitionErrorEvent) => {
-        dbg(`ERR: ${e.error}`);
-        if (e.error === "not-allowed") {
-          setSpeechError("Нет доступа к микрофону");
-          stoppedByUserRef.current = true;
-          setIsRecording(false);
-        }
-      };
+        recognition.onerror = (e: SpeechRecognitionErrorEvent) => {
+          dbg(`ERR: ${e.error}`);
+          if (e.error === "not-allowed") {
+            setSpeechError("Нет доступа к микрофону");
+            stoppedByUserRef.current = true;
+            setIsRecording(false);
+          }
+        };
 
-      recognition.onend = () => {
-        dbg(`END stopped=${stoppedByUserRef.current}`);
-        if (stoppedByUserRef.current) {
-          setIsRecording(false);
-        } else {
-          // Chrome остановил сам (пауза) — перезапускаем
-          try { recognition.start(); } catch { setIsRecording(false); }
-        }
+        recognition.onend = () => {
+          dbg(`END stopped=${stoppedByUserRef.current}`);
+          if (stoppedByUserRef.current) {
+            setIsRecording(false);
+            return;
+          }
+          // Сохраняем текущий текст поля перед перезапуском новой сессии
+          savedText.current = (document.querySelector("textarea,input[type=text]") as HTMLInputElement | null)?.value ?? savedText.current;
+          try { createAndStart(); } catch { setIsRecording(false); }
+        };
+
+        recognitionRef.current = recognition;
+        recognition.start();
       };
 
       recognitionRef.current = recognition;
