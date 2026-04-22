@@ -74,22 +74,14 @@ export default function Index() {
       .then((d) => {
         const newMsg = { id: Date.now() + 1, role: "assistant" as const, text: d.answer || localAnswer(text), items: d.items };
         const isNewEstimate = isEstimate(newMsg.text) || !!d.items?.length;
-        const isDone = !isNewEstimate && (d.answer || "").includes("✅");
         setMessages((p) => {
           if (isNewEstimate) {
             const estimateIdx = p.findLastIndex((m) => m.role === "assistant" && isEstimate(m.text));
             if (estimateIdx !== -1) {
+              // Смета уже была — обновляем её и добавляем "Готово ✅" (скролл сработает по новому id)
               const updated = [...p];
-              updated[estimateIdx] = newMsg;
-              return updated;
-            }
-          }
-          // "Готово ✅" после редактирования сметы — обновляем id сметы чтобы скролл к ней сработал
-          if (isDone) {
-            const estimateIdx = p.findLastIndex((m) => m.role === "assistant" && isEstimate(m.text));
-            if (estimateIdx !== -1) {
-              const updated = [...p, newMsg];
-              updated[estimateIdx] = { ...updated[estimateIdx], id: Date.now() + 2 };
+              updated[estimateIdx] = { ...newMsg, id: Date.now() + 2 };
+              updated.push({ id: Date.now() + 3, role: "assistant" as const, text: "Готово ✅" });
               return updated;
             }
           }
