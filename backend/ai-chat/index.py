@@ -825,6 +825,121 @@ def _find_in_price_map(name: str, price_map: dict) -> dict | None:
     return best
 
 
+def _render_estimate_from_items(items: list, area: float = 0) -> str:
+    """Рендерит текст сметы из списка позиций детерминированно.
+    Группирует по category (если есть), иначе по типу позиции.
+    Возвращает готовый текст сметы с итогами.
+    """
+    def fmt(n) -> str:
+        return f"{int(round(n)):,}".replace(',', ' ')
+
+    # Группируем позиции по блокам
+    BLOCK_ORDER = ['Полотно', 'Профиль', 'Закладные', 'Освещение', 'Ниши', 'Работы на высоте', 'Услуги монтажа', 'Прочее']
+
+    def _guess_block(name: str) -> str:
+        n = name.lower()
+        if any(w in n for w in ['полотно', 'раскрой', 'огарпунивание', 'ткань', 'msd', 'halead', 'глянец', 'матов', 'сатин']):
+            return 'Полотно'
+        if any(w in n for w in ['профиль', 'алюминий', 'алюминиевый', 'стеновой', 'потолочный', 'теневой', 'flexy', 'парящий', 'fly', 'брус']):
+            return 'Профиль'
+        if any(w in n for w in ['закладная', 'под люстру', 'под светильник', 'под вентилятор', 'под пожар']):
+            return 'Закладные'
+        if any(w in n for w in ['светильник', 'лента', 'блок питания', 'диммер', 'gx-53']):
+            return 'Освещение'
+        if any(w in n for w in ['ниша', 'карниз', 'пк-14', 'штора']):
+            return 'Ниши'
+        if any(w in n for w in ['высота', 'лестниц']):
+            return 'Работы на высоте'
+        if any(w in n for w in ['монтаж', 'установка', 'разводка']):
+            return 'Услуги монтажа'
+        return 'Прочее'
+
+    blocks = {}
+    for it in items:
+        block = it.get('category') or _guess_block(it['name'])
+        if block not in blocks:
+            blocks[block] = []
+        blocks[block].append(it)
+
+    lines = []
+    block_num = 1
+    standard = 0
+
+    for block_name in BLOCK_ORDER:
+        if block_name not in blocks:
+            continue
+        lines.append(f"{block_num}. {block_name}:")
+        for it in blocks[block_name]:
+            qty = it['qty']
+            price = int(it['price'])
+            unit = it.get('unit', 'шт')
+            total = round(qty * price)
+            standard += total
+            qty_display = int(qty) if float(qty) == int(qty) else qty
+            lines.append(f"{it['name']}  {qty_display} {unit} × {fmt(price)} ₽ = {fmt(total)} ₽")
+        lines.append('')
+        block_num += 1
+
+    econom = round(standard * 0.77)
+    premium = round(standard * 1.27)
+
+    lines.append(f"Econom:   {fmt(econom)} ₽")
+    lines.append(f"Standard: {fmt(standard)} ₽")
+    lines.append(f"Premium:  {fmt(premium)} ₽")
+    lines.append('')
+    lines.append("На какой день вас записать на бесплатный замер?")
+
+    print(f"[render] standard={standard} econom={econom} premium={premium} items={len(items)}")
+    return '\n'.join(lines)
+
+
+def _apply_edit_patch(prev_items: list, patch: dict, price_map: dict) -> list:
+    """Применяет JSON-патч редактирования к предыдущему списку позиций.
+
+    patch = {
+      "remove": ["Монтаж диффузора"],          # имена позиций которые убрать
+      "add": [{"name":"...", "qty":1}],         # позиции которые добавить
+      "update": [{"name":"...", "qty":2}]       # позиции где изменить qty
+    }
+    Цены берём из price_map (БД) или из prev_items (если нет в БД).
+    """
+    import copy
+    result = copy.deepcopy(prev_items)
+
+    # Удаляем
+    for name_to_remove in patch.get('remove', []):
+        name_low = name_to_remove.lower().strip()
+        result = [it for it in result if it['name'].lower().strip() != name_low]
+        print(f"[patch] removed: {name_to_remove}")
+
+    # Обновляем qty
+    for upd in patch.get('update', []):
+        name_low = upd['name'].lower().strip()
+        for it in result:
+            if it['name'].lower().strip() == name_low:
+                it['qty'] = upd['qty']
+                print(f"[patch] updated qty: {upd['name']} → {upd['qty']}")
+                break
+
+    # Добавляем новые
+    for new_it in patch.get('add', []):
+        name_low = new_it['name'].lower().strip()
+        # Цена из БД приоритетнее
+        db_entry = price_map.get(name_low)
+        price = db_entry['price'] if db_entry else new_it.get('price', 0)
+        unit = db_entry['unit'] if db_entry else new_it.get('unit', 'шт')
+        result.append({
+            'name': new_it['name'],
+            'qty': new_it['qty'],
+            'price': price,
+            'unit': unit,
+            'category': new_it.get('category', ''),
+        })
+        print(f"[patch] added: {new_it['name']} qty={new_it['qty']} price={price}")
+
+    return result
+
+
 def _patch_answer_with_prices(answer: str, llm_items: list, rules: list | None = None) -> str:
     """Патчит ответ LLM — заменяет цены на актуальные из БД.
 
@@ -1248,85 +1363,120 @@ def handler(event, context):
     print(f"[system] prompt_len={len(system_content)} rules_hint_len={len(rules_hint)} rules_count={len(_rules_for_suggestions)}")
     print(f"[system] rules_hint_preview={rules_hint[:300]}")
 
-    # Если есть предыдущие items — передаём LLM для точного редактирования
+    # ─── РЕЖИМ РЕДАКТИРОВАНИЯ: если есть prev_items — LLM возвращает только патч ──
     if prev_items:
+        price_map = _build_price_map(_rules_for_suggestions)
         prev_lines = '\n'.join([
-            f"- {it['name']}  {it['qty']} {it.get('unit','шт')} × {it['price']} ₽"
-            for it in prev_items
+            f"{i+1}. {it['name']}  qty={it['qty']} unit={it.get('unit','шт')} price={it['price']}"
+            for i, it in enumerate(prev_items)
         ])
-        system_content += f"""
+        patch_prompt = f"""Клиент хочет изменить смету. Его запрос: "{last_user_text}"
 
-=== ТЕКУЩИЙ СОСТАВ СМЕТЫ (ТОЧНЫЕ ДАННЫЕ) ===
+Текущий состав сметы:
 {prev_lines}
 
-КРИТИЧЕСКИ ВАЖНО ПРИ РЕДАКТИРОВАНИИ:
-- Выше указан ТОЧНЫЙ состав предыдущей сметы с количествами и ценами
-- Меняй ТОЛЬКО то что явно просит клиент в последнем сообщении
-- ВСЕ остальные позиции воспроизводи с ТОЧНО ТАКИМИ ЖЕ количествами как выше
-- НЕ пересчитывай и НЕ изменяй позиции которых клиент не касался
-- Пример: "убери монтаж диффузора" → убери только эту строку, всё остальное 1-в-1 как выше"""
+Верни ТОЛЬКО JSON-патч (без пояснений, без текста, только JSON):
+{{
+  "comment": "Краткое подтверждение что сделано (1 строка для клиента)",
+  "remove": ["Точное название позиции для удаления"],
+  "add": [{{"name": "Название", "qty": 1, "unit": "шт", "price": 0}}],
+  "update": [{{"name": "Название", "qty": 2}}]
+}}
 
-    # Всегда добавляем инструкцию по JSON — независимо от промпта в БД
-    system_content += """
+Правила:
+- В "remove" — точные названия из списка выше
+- В "add" — новые позиции которых нет в списке (price=0 если не знаешь, подберём из прайса)
+- В "update" — позиции из списка с изменённым qty
+- Если клиент просит убрать — только "remove", не трогай остальные поля
+- Если ничего менять не нужно — верни пустые массивы"""
+
+        patch_msgs = [{'role': 'user', 'content': patch_prompt}]
+        patch_answer = call_llm(patch_msgs)
+        print(f"[edit] llm patch raw: {patch_answer[:300]}")
+
+        try:
+            json_match = re.search(r'\{.+\}', patch_answer, re.DOTALL)
+            if not json_match:
+                raise ValueError("no json in patch response")
+            patch = json.loads(json_match.group(0))
+            comment = patch.get('comment', 'Готово ✅')
+
+            # Применяем патч к prev_items
+            new_items = _apply_edit_patch(prev_items, patch, price_map)
+
+            # Рендерим текст сметы детерминированно
+            answer = f"{comment}\n\n" + _render_estimate_from_items(new_items)
+            llm_items_json = {'items': new_items, 'area': 0}
+            print(f"[edit] patch applied, new items={len(new_items)}")
+
+        except Exception as e:
+            print(f"[edit] patch error: {e}, falling back to full LLM")
+            prev_items = None  # fallback — генерируем смету обычным путём
+
+    if not prev_items:
+        # ─── ОБЫЧНЫЙ РЕЖИМ: LLM генерирует смету полностью ───────────────────
+        # Всегда добавляем инструкцию по JSON — независимо от промпта в БД
+        system_content += """
 
 ОБЯЗАТЕЛЬНО: В конце каждого ответа со сметой добавь одну строку:
 %%ITEMS%%{"items":[{"name":"...","qty":1,"price":0},...],"area":0}%%END%%
 Включи ВСЕ позиции сметы. Клиент этот блок не видит."""
 
-    # Веб-поиск для актуальной информации
-    search = web_search(last_user_text)
-    if search['text']:
-        system_content += f"\n\n=== АКТУАЛЬНАЯ ИНФОРМАЦИЯ ИЗ ИНТЕРНЕТА ===\n{search['text']}\nИспользуй эти данные для ответа, указывай источники если уместно."
+        # Веб-поиск для актуальной информации
+        search = web_search(last_user_text)
+        if search['text']:
+            system_content += f"\n\n=== АКТУАЛЬНАЯ ИНФОРМАЦИЯ ИЗ ИНТЕРНЕТА ===\n{search['text']}\nИспользуй эти данные для ответа, указывай источники если уместно."
 
-    # Передаём только последние 6 сообщений — экономим токены
-    openai_messages = [{'role': 'system', 'content': system_content}]
-    for msg in messages[-6:]:
-        openai_messages.append({
-            'role': msg.get('role', 'user'),
-            'content': msg.get('text', ''),
-        })
+        # Передаём только последние 6 сообщений — экономим токены
+        openai_messages = [{'role': 'system', 'content': system_content}]
+        for msg in messages[-6:]:
+            openai_messages.append({
+                'role': msg.get('role', 'user'),
+                'content': msg.get('text', ''),
+            })
 
-    answer = call_llm(openai_messages)
+        answer = call_llm(openai_messages)
+        llm_items_json = None
 
-    # ─── ИЗВЛЕКАЕМ %%ITEMS%% если LLM добавила ────────────────────────────────
-    llm_items_json = None
-    items_match = re.search(r'%%ITEMS%%(.+?)%%END%%', answer, re.DOTALL)
-    if items_match:
-        answer = answer.replace(items_match.group(0), '').strip()
-        try:
-            llm_items_json = json.loads(items_match.group(1).strip())
-            print(f"[items] from %%ITEMS%%: {len(llm_items_json.get('items', []))} items")
-        except Exception as e:
-            print(f"[items] JSON parse error: {e}")
+    if not prev_items:
+        # ─── ОБЫЧНЫЙ РЕЖИМ: извлекаем %%ITEMS%% из ответа LLM ─────────────────
+        llm_items_json = None
+        items_match = re.search(r'%%ITEMS%%(.+?)%%END%%', answer, re.DOTALL)
+        if items_match:
+            answer = answer.replace(items_match.group(0), '').strip()
+            try:
+                llm_items_json = json.loads(items_match.group(1).strip())
+                print(f"[items] from %%ITEMS%%: {len(llm_items_json.get('items', []))} items")
+            except Exception as e:
+                print(f"[items] JSON parse error: {e}")
 
-    # ─── ЕСЛИ %%ITEMS%% нет — второй быстрый вызов для структурирования ───────
-    if not llm_items_json and ('₽' in answer or 'руб' in answer.lower()):
-        try:
-            struct_prompt = f"""Из текста сметы извлеки все позиции в JSON.
+        # ─── ЕСЛИ %%ITEMS%% нет — второй быстрый вызов для структурирования ──
+        if not llm_items_json and ('₽' in answer or 'руб' in answer.lower()):
+            try:
+                struct_prompt = f"""Из текста сметы извлеки все позиции в JSON.
 Отвечай ТОЛЬКО валидным JSON, без пояснений:
 {{"items":[{{"name":"Название","qty":1,"price":399,"unit":"м²"}}]}}
 
 Текст сметы:
 {answer[:2000]}"""
-            struct_msgs = [{'role': 'user', 'content': struct_prompt}]
-            struct_answer = call_llm(struct_msgs)
-            # Ищем JSON в ответе
-            json_match = re.search(r'\{.+\}', struct_answer, re.DOTALL)
-            if json_match:
-                llm_items_json = json.loads(json_match.group(0))
-                print(f"[items] from 2nd call: {len(llm_items_json.get('items', []))} items")
-        except Exception as e:
-            print(f"[items] 2nd call error: {e}")
+                struct_msgs = [{'role': 'user', 'content': struct_prompt}]
+                struct_answer = call_llm(struct_msgs)
+                json_match = re.search(r'\{.+\}', struct_answer, re.DOTALL)
+                if json_match:
+                    llm_items_json = json.loads(json_match.group(0))
+                    print(f"[items] from 2nd call: {len(llm_items_json.get('items', []))} items")
+            except Exception as e:
+                print(f"[items] 2nd call error: {e}")
 
-    # ─── ПАТЧ ТЕКСТА: цены из БД приоритетнее JSON LLM ───────────────────────
-    llm_items_list = llm_items_json.get('items', []) if llm_items_json else []
-    answer = _patch_answer_with_prices(answer, llm_items_list, _rules_for_suggestions)
+        # ─── ПАТЧ ТЕКСТА: цены из БД приоритетнее JSON LLM ──────────────────
+        llm_items_list = llm_items_json.get('items', []) if llm_items_json else []
+        answer = _patch_answer_with_prices(answer, llm_items_list, _rules_for_suggestions)
 
-    # ─── НАДБАВКИ: позиции с unit='%' пересчитываем от суммы монтажа ─────────
-    answer = _apply_surcharges(answer, _rules_for_suggestions)
+        # ─── НАДБАВКИ: позиции с unit='%' пересчитываем от суммы монтажа ────
+        answer = _apply_surcharges(answer, _rules_for_suggestions)
 
-    # ─── ПЕРЕСЧИТЫВАЕМ ИТОГ: после всех патчей цен суммируем позиции заново ──
-    answer = _recalc_totals(answer)
+        # ─── ПЕРЕСЧИТЫВАЕМ ИТОГ: после всех патчей суммируем позиции заново ─
+        answer = _recalc_totals(answer)
 
     try:
         if llm_items_json and llm_items_json.get('items'):
