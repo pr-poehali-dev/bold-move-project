@@ -1001,13 +1001,14 @@ def _recalc_totals(answer: str) -> str:
     for line in lines:
         if total_pat.match(line.strip()):
             continue
-        m = item_pat.match(line)
+        m = item_pat.search(line)
         if m:
             try:
                 standard += int(re.sub(r'\s', '', m.group(1)))
             except Exception:
                 pass
 
+    print(f"[totals] parsed standard={standard}")
     if standard == 0:
         return answer
 
