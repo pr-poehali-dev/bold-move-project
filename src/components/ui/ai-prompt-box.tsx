@@ -40,6 +40,8 @@ export const PromptInputBox = React.forwardRef<HTMLDivElement, Props>(
     const stoppedByUserRef = React.useRef(false);
     const restartTimerRef = React.useRef<ReturnType<typeof setTimeout>>();
     const accumulatedRef = React.useRef("");
+    const isIOS = React.useMemo(() =>
+      typeof navigator !== "undefined" && /iPhone|iPad|iPod/i.test(navigator.userAgent), []);
     const fileInputRef = React.useRef<HTMLInputElement>(null);
     const [uploadState, setUploadState] = React.useState<"idle" | "loading" | "done" | "error">("idle");
     const [showUploadModal, setShowUploadModal] = React.useState(false);
@@ -110,14 +112,11 @@ export const PromptInputBox = React.forwardRef<HTMLDivElement, Props>(
       return () => clearInterval(timerRef.current);
     }, [isRecording]);
 
-    const isIOS = React.useMemo(() =>
-      typeof navigator !== "undefined" && /iPhone|iPad|iPod/i.test(navigator.userAgent), []);
-
     const startRecording = () => {
       setSpeechError("");
 
       if (isIOS) {
-        setSpeechError("Голосовой ввод недоступен в Safari. Используйте микрофон на клавиатуре 🎤");
+        setSpeechError("На iOS используйте микрофон на клавиатуре");
         return;
       }
 
@@ -155,21 +154,36 @@ export const PromptInputBox = React.forwardRef<HTMLDivElement, Props>(
       recognition.onerror = (e: SpeechRecognitionErrorEvent) => {
         if (e.error === "not-allowed") {
           setSpeechError("Нет доступа к микрофону");
+          stoppedByUserRef.current = true;
           setIsRecording(false);
         }
       };
 
       recognition.onend = () => {
-        if (!stoppedByUserRef.current) {
-          try { recognition.start(); } catch { /* уже идёт */ }
-        } else {
-          setIsRecording(false);
-        }
+        recognitionRef.current = null;
+        if (stoppedByUserRef.current) { setIsRecording(false); return; }
+        // перезапуск только если не остановили вручную
+        restartTimerRef.current = setTimeout(() => {
+          if (stoppedByUserRef.current) return;
+          const r2 = new SR();
+          r2.lang = "ru-RU";
+          r2.continuous = true;
+          r2.interimResults = true;
+          r2.onresult = recognition.onresult;
+          r2.onerror = recognition.onerror;
+          r2.onend = recognition.onend;
+          recognitionRef.current = r2;
+          try { r2.start(); } catch { setIsRecording(false); }
+        }, 300);
       };
 
       recognitionRef.current = recognition;
-      recognition.start();
-      setIsRecording(true);
+      try {
+        recognition.start();
+        setIsRecording(true);
+      } catch {
+        setSpeechError("Не удалось запустить микрофон");
+      }
     };
 
     const stopRecording = () => {
