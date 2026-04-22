@@ -231,7 +231,12 @@ export function resolveItem(
 
 function ensureRub(s: string): string {
   if (!s) return s;
-  return s.replace(/\s+/g, " ").trim();
+  // Убираем копейки у цен (ровно 2 знака после точки/запятой): "8 307.16 ₽" → "8 307 ₽"
+  // НЕ трогаем дроби в qty типа "20,84 м²"
+  return s
+    .replace(/(\d{3,})[.,]\d{2}(?=\s*[₽Рруб\s]|$)/g, "$1")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 function fmtNum(n: number): string {
@@ -313,8 +318,8 @@ export default function EstimateTable({ text, items }: { text: string; items?: L
                         <tr key={`r-${bi}-${ii}`} className={`hover:bg-white/3 transition-colors ${ii > 0 ? "border-t border-white/5" : ""}`}>
                           <td className="px-3 py-2 text-white/80 text-xs leading-snug">{cleanName}</td>
                           <td className="px-3 py-2 text-right whitespace-nowrap">
-                            {formula && <div className="text-white/40 text-[11px] font-montserrat leading-snug">{formula}</div>}
-                            {total && <div className="text-orange-400 font-montserrat font-bold text-xs leading-snug">{total}</div>}
+                            {formula && <div className="text-white/40 text-[11px] font-montserrat leading-snug">{ensureRub(formula)}</div>}
+                            {total && <div className="text-orange-400 font-montserrat font-bold text-xs leading-snug">{ensureRub(total)}</div>}
                           </td>
                         </tr>
                       );
