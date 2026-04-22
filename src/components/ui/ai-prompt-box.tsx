@@ -156,6 +156,9 @@ export const PromptInputBox = React.forwardRef<HTMLDivElement, Props>(
         dbg(`END stopped=${stoppedByUserRef.current}`);
         if (stoppedByUserRef.current) {
           setIsRecording(false);
+        } else {
+          // Chrome остановил сам (пауза) — перезапускаем
+          try { recognition.start(); } catch { setIsRecording(false); }
         }
       };
 
