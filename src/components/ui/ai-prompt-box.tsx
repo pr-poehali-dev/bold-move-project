@@ -38,6 +38,10 @@ export const PromptInputBox = React.forwardRef<HTMLDivElement, Props>(
     const timerRef = React.useRef<ReturnType<typeof setInterval>>();
     const recognitionRef = React.useRef<SpeechRecognition | null>(null);
     const stoppedByUserRef = React.useRef(false);
+    const errorCountRef = React.useRef(0);
+    const restartTimerRef = React.useRef<ReturnType<typeof setTimeout>>();
+    const isIOS = React.useMemo(() =>
+      typeof navigator !== "undefined" && /iPhone|iPad|iPod/i.test(navigator.userAgent), []);
     const fileInputRef = React.useRef<HTMLInputElement>(null);
     const [uploadState, setUploadState] = React.useState<"idle" | "loading" | "done" | "error">("idle");
     const [showUploadModal, setShowUploadModal] = React.useState(false);
@@ -118,6 +122,7 @@ export const PromptInputBox = React.forwardRef<HTMLDivElement, Props>(
 
       const finalTextRef = { current: value };
       stoppedByUserRef.current = false;
+      errorCountRef.current = 0;
 
       const createAndStart = () => {
         if (stoppedByUserRef.current) return;
@@ -128,6 +133,7 @@ export const PromptInputBox = React.forwardRef<HTMLDivElement, Props>(
         recognition.interimResults = true;
 
         recognition.onresult = (e: SpeechRecognitionEvent) => {
+          errorCountRef.current = 0;
           let interim = "";
           let final = "";
           for (let i = e.resultIndex; i < e.results.length; i++) {
@@ -148,8 +154,12 @@ export const PromptInputBox = React.forwardRef<HTMLDivElement, Props>(
             setSpeechError("Нет доступа к микрофону");
             stoppedByUserRef.current = true;
             setIsRecording(false);
+            return;
           }
-          // no-speech / aborted / network — просто ждём onend и перезапустим
+          if (e.error === "network" || e.error === "service-not-available") {
+            errorCountRef.current += 1;
+          }
+          // aborted / no-speech — ждём onend
         };
 
         recognition.onend = () => {
@@ -158,15 +168,28 @@ export const PromptInputBox = React.forwardRef<HTMLDivElement, Props>(
             setIsRecording(false);
             return;
           }
-          // Пауза — создаём новый экземпляр и запускаем заново
-          setTimeout(createAndStart, 150);
+          // Слишком много сетевых ошибок подряд — останавливаем
+          if (errorCountRef.current >= 3) {
+            setSpeechError("Нет связи с сервисом распознавания");
+            setIsRecording(false);
+            return;
+          }
+          // iOS: после onend не перезапускаем — пользователь сам нажимает снова
+          if (isIOS) {
+            setIsRecording(false);
+            return;
+          }
+          // Android/Desktop: пауза увеличена до 400ms чтобы не прерывать
+          clearTimeout(restartTimerRef.current);
+          restartTimerRef.current = setTimeout(createAndStart, 400);
         };
 
         recognitionRef.current = recognition;
         try {
           recognition.start();
         } catch {
-          setTimeout(createAndStart, 300);
+          clearTimeout(restartTimerRef.current);
+          restartTimerRef.current = setTimeout(createAndStart, 500);
         }
       };
 
@@ -176,6 +199,7 @@ export const PromptInputBox = React.forwardRef<HTMLDivElement, Props>(
 
     const stopRecording = () => {
       stoppedByUserRef.current = true;
+      clearTimeout(restartTimerRef.current);
       recognitionRef.current?.stop();
       recognitionRef.current = null;
       setIsRecording(false);
@@ -250,22 +274,29 @@ export const PromptInputBox = React.forwardRef<HTMLDivElement, Props>(
                   <span className="font-mono text-xs text-white/60">{fmt(recTime)}</span>
                   <span className="text-white/25 text-[11px]">· говорите сейчас</span>
                 </div>
-                <div className="w-full h-8 flex items-end justify-center gap-[3px]">
-                  {bars.map((h, i) => (
-                    <motion.div
-                      key={i}
-                      className="w-[3px] rounded-full bg-gradient-to-t from-orange-500 to-rose-400"
-                      animate={{ scaleY: [h, 1, h * 0.4, 0.9, h] }}
-                      transition={{
-                        duration: 0.7 + h * 0.5,
-                        repeat: Infinity,
-                        delay: i * 0.035,
-                        ease: "easeInOut",
-                      }}
-                      style={{ height: "100%", transformOrigin: "bottom" }}
-                    />
-                  ))}
-                </div>
+                {/* На iOS показываем распознанный текст прямо во время записи */}
+                {isIOS && value ? (
+                  <div className="w-full px-1 pb-1 text-[13px] text-white/80 leading-relaxed break-words">
+                    {value}
+                  </div>
+                ) : (
+                  <div className="w-full h-8 flex items-end justify-center gap-[3px]">
+                    {bars.map((h, i) => (
+                      <motion.div
+                        key={i}
+                        className="w-[3px] rounded-full bg-gradient-to-t from-orange-500 to-rose-400"
+                        animate={{ scaleY: [h, 1, h * 0.4, 0.9, h] }}
+                        transition={{
+                          duration: 0.7 + h * 0.5,
+                          repeat: Infinity,
+                          delay: i * 0.035,
+                          ease: "easeInOut",
+                        }}
+                        style={{ height: "100%", transformOrigin: "bottom" }}
+                      />
+                    ))}
+                  </div>
+                )}
               </div>
             </motion.div>
           )}
