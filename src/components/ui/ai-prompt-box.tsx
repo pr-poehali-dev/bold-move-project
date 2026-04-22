@@ -120,26 +120,44 @@ export const PromptInputBox = React.forwardRef<HTMLDivElement, Props>(
 
       const baseText = value;
       stoppedByUserRef.current = false;
+      let isSpeaking = false;
+      let restartTimer: ReturnType<typeof setTimeout> | null = null;
+      let accumulatedFinals = "";
+
+      const clearRestartTimer = () => {
+        if (restartTimer) { clearTimeout(restartTimer); restartTimer = null; }
+      };
 
       const recognition = new SR();
       recognition.lang = "ru-RU";
       recognition.continuous = true;
       recognition.interimResults = true;
 
+      recognition.onspeechstart = () => {
+        isSpeaking = true;
+        clearRestartTimer();
+        dbg("speechstart");
+      };
+
+      recognition.onspeechend = () => {
+        isSpeaking = false;
+        dbg("speechend");
+      };
+
       recognition.onresult = (e: SpeechRecognitionEvent) => {
-        // Найти последний финальный результат — он содержит весь накопленный текст
-        let lastFinalText = "";
         let interim = "";
-        for (let i = e.results.length - 1; i >= 0; i--) {
+        for (let i = 0; i < e.results.length; i++) {
           if (e.results[i].isFinal) {
-            lastFinalText = e.results[i][0].transcript.trim();
-            break;
+            const t = e.results[i][0].transcript.trim();
+            if (!accumulatedFinals.endsWith(t)) {
+              accumulatedFinals = (accumulatedFinals + " " + t).trim();
+            }
           } else {
-            interim = e.results[i][0].transcript + interim;
+            interim += e.results[i][0].transcript;
           }
         }
-        const recognized = (baseText + " " + lastFinalText).trim();
-        dbg(`last="${lastFinalText}" interim="${interim}"`);
+        const recognized = (baseText + " " + accumulatedFinals).trim();
+        dbg(`finals="${accumulatedFinals}" interim="${interim}"`);
         onValueChange(interim ? (recognized + " " + interim).trim() : recognized);
       };
 
@@ -153,12 +171,22 @@ export const PromptInputBox = React.forwardRef<HTMLDivElement, Props>(
       };
 
       recognition.onend = () => {
-        dbg(`END stopped=${stoppedByUserRef.current}`);
+        dbg(`END stopped=${stoppedByUserRef.current} speaking=${isSpeaking}`);
         if (stoppedByUserRef.current) {
+          clearRestartTimer();
           setIsRecording(false);
-        } else {
-          // Chrome остановил сам (пауза) — перезапускаем
+          return;
+        }
+        if (isSpeaking) {
+          // Остановился прямо во время речи — перезапускаем сразу
           try { recognition.start(); } catch { setIsRecording(false); }
+        } else {
+          // Пауза — ждём 300мс, вдруг пользователь снова заговорит
+          restartTimer = setTimeout(() => {
+            if (!stoppedByUserRef.current) {
+              try { recognition.start(); } catch { setIsRecording(false); }
+            }
+          }, 300);
         }
       };
 
