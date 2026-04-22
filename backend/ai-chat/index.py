@@ -1010,6 +1010,10 @@ def _recalc_totals(answer: str) -> str:
 
     print(f"[totals] parsed standard={standard}")
     if standard == 0:
+        # Логируем строки чтобы понять почему не распарсились
+        for l in lines[:30]:
+            if '₽' in l:
+                print(f"[totals] unmatched: {repr(l)}")
         return answer
 
     econom = round(standard * 0.77)
