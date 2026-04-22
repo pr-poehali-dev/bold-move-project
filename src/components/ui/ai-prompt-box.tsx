@@ -129,19 +129,19 @@ export const PromptInputBox = React.forwardRef<HTMLDivElement, Props>(
         recognition.interimResults = true;
 
         recognition.onresult = (e: SpeechRecognitionEvent) => {
-          // Берём последний финальный результат текущей сессии
-          let sessionFinal = "";
+          let sessionFinals = "";
           let interim = "";
-          for (let i = e.results.length - 1; i >= 0; i--) {
+          for (let i = 0; i < e.results.length; i++) {
             if (e.results[i].isFinal) {
-              sessionFinal = e.results[i][0].transcript.trim();
-              break;
+              sessionFinals = (sessionFinals + " " + e.results[i][0].transcript).trim();
             } else {
-              interim = e.results[i][0].transcript + interim;
+              interim += e.results[i][0].transcript;
             }
           }
-          const recognized = (savedText.current + " " + sessionFinal).trim();
-          dbg(`saved="${savedText.current}" session="${sessionFinal}" interim="${interim}"`);
+          const recognized = (savedText.current + " " + sessionFinals).trim();
+          // Обновляем savedText сразу как появился финальный результат
+          if (sessionFinals) savedText.current = recognized;
+          dbg(`saved="${savedText.current}" interim="${interim}"`);
           onValueChange(interim ? (recognized + " " + interim).trim() : recognized);
         };
 
@@ -160,8 +160,7 @@ export const PromptInputBox = React.forwardRef<HTMLDivElement, Props>(
             setIsRecording(false);
             return;
           }
-          // Сохраняем текущий текст поля перед перезапуском новой сессии
-          savedText.current = (document.querySelector("textarea,input[type=text]") as HTMLInputElement | null)?.value ?? savedText.current;
+          // savedText уже обновлён в onresult — просто перезапускаем
           try { createAndStart(); } catch { setIsRecording(false); }
         };
 
