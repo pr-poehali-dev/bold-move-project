@@ -1292,9 +1292,6 @@ def handler(event, context):
     # ─── НАДБАВКИ: позиции с unit='%' пересчитываем от суммы монтажа ─────────
     answer = _apply_surcharges(answer, _rules_for_suggestions)
 
-    # ─── ПЕРЕСЧЁТ ИТОГОВ: Econom/Standard/Premium из реальных строк ──────────
-    answer = _recalc_totals(answer)
-
     try:
         if llm_items_json and llm_items_json.get('items'):
             # Используем структурированные данные из JSON
