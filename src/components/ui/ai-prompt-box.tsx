@@ -32,6 +32,8 @@ export const PromptInputBox = React.forwardRef<HTMLDivElement, Props>(
     const [isRecording, setIsRecording] = React.useState(false);
     const [recTime, setRecTime] = React.useState(0);
     const [speechError, setSpeechError] = React.useState("");
+    const [debugLog, setDebugLog] = React.useState<string[]>([]);
+    const dbg = (msg: string) => setDebugLog(p => [...p.slice(-6), msg]);
     const [bars] = React.useState(() =>
       Array.from({ length: 26 }, () => 0.2 + Math.random() * 0.8)
     );
@@ -114,7 +116,9 @@ export const PromptInputBox = React.forwardRef<HTMLDivElement, Props>(
 
     const startSpeechRecognition = () => {
       setSpeechError("");
+      setDebugLog([]);
       const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+      dbg(`SR: ${SR ? "ok" : "NO"}, iOS: ${isIOS}`);
       if (!SR) {
         setSpeechError("Браузер не поддерживает голосовой ввод");
         return;
@@ -142,6 +146,7 @@ export const PromptInputBox = React.forwardRef<HTMLDivElement, Props>(
             if (e.results[i].isFinal) finalText += t;
             else interimText += t;
           }
+          dbg(`result: final="${finalText}" interim="${interimText}"`);
           if (finalText) {
             accumulatedRef.current = (accumulatedRef.current + " " + finalText).trim();
             onValueChange(accumulatedRef.current);
@@ -151,6 +156,7 @@ export const PromptInputBox = React.forwardRef<HTMLDivElement, Props>(
         };
 
         recognition.onerror = (e: SpeechRecognitionErrorEvent) => {
+          dbg(`error: ${e.error}`);
           if (e.error === "not-allowed") {
             setSpeechError("Нет доступа к микрофону");
             stoppedByUserRef.current = true;
@@ -163,6 +169,7 @@ export const PromptInputBox = React.forwardRef<HTMLDivElement, Props>(
         };
 
         recognition.onend = () => {
+          dbg(`end, stopped=${stoppedByUserRef.current}, errCnt=${errorCountRef.current}`);
           recognitionRef.current = null;
           if (stoppedByUserRef.current) { setIsRecording(false); return; }
           if (errorCountRef.current >= 3) {
@@ -170,7 +177,6 @@ export const PromptInputBox = React.forwardRef<HTMLDivElement, Props>(
             setIsRecording(false);
             return;
           }
-          // iOS: не перезапускаем — одна фраза за раз, Safari не держит сессию
           if (isIOS) { setIsRecording(false); return; }
           clearTimeout(restartTimerRef.current);
           restartTimerRef.current = setTimeout(createAndStart, 400);
@@ -179,7 +185,9 @@ export const PromptInputBox = React.forwardRef<HTMLDivElement, Props>(
         recognitionRef.current = recognition;
         try {
           recognition.start();
-        } catch {
+          dbg("started ok");
+        } catch(err) {
+          dbg(`start error: ${err}`);
           clearTimeout(restartTimerRef.current);
           restartTimerRef.current = setTimeout(createAndStart, 500);
         }
@@ -321,6 +329,15 @@ export const PromptInputBox = React.forwardRef<HTMLDivElement, Props>(
         {speechError && (
           <div className="px-3 pb-1">
             <span className="text-[10px] text-red-400">{speechError}</span>
+          </div>
+        )}
+
+        {/* DEBUG лог — временно для диагностики iOS */}
+        {debugLog.length > 0 && (
+          <div className="px-3 pb-1 space-y-0.5">
+            {debugLog.map((l, i) => (
+              <div key={i} className="text-[9px] text-yellow-400/70 font-mono">{l}</div>
+            ))}
           </div>
         )}
 
