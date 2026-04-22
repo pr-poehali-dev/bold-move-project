@@ -1348,14 +1348,24 @@ def handler(event, context):
                         if cl_match:
                             cl = json.loads(cl_match.group(0))
                             add_item['category'] = cl.get('category', 'Прочее')
+                            # unit из классификатора приоритетнее чем LLM-патч
                             add_item['unit'] = cl.get('unit', add_item.get('unit', 'шт'))
                             raw_price = int(cl.get('price', 0))
                             # Цена < 100 ₽ — явный мусор из поиска, обнуляем
                             add_item['price'] = raw_price if raw_price >= 100 else 0
-                            # Запоминаем монтаж для добавления после патча
-                            if cl.get('mounting_name'):
-                                add_item['_mounting_name'] = cl['mounting_name']
-                                add_item['_mounting_unit'] = cl.get('mounting_unit', 'шт')
+                            # qty: если unit=пог.м/м — берём число из оригинального запроса клиента
+                            if add_item['unit'] in ('пог.м', 'м', 'м²') and add_item.get('qty', 1) == 1:
+                                qty_match = re.search(r'(\d+(?:[.,]\d+)?)\s*(?:м|пм|пог)', last_user_text, re.IGNORECASE)
+                                if qty_match:
+                                    add_item['qty'] = float(qty_match.group(1).replace(',', '.'))
+                                    print(f"[edit] qty from user text: {add_item['qty']} {add_item['unit']}")
+                            # mounting_name: 'null' строка → None
+                            raw_mounting = cl.get('mounting_name')
+                            mounting_name = raw_mounting if raw_mounting and raw_mounting.lower() != 'null' else None
+                            if mounting_name:
+                                add_item['_mounting_name'] = mounting_name
+                                raw_mu = cl.get('mounting_unit', 'шт')
+                                add_item['_mounting_unit'] = raw_mu if raw_mu and raw_mu.lower() != 'null' else 'шт'
                             print(f"[edit] classified+priced '{unknown_name}': {cl}")
                     except Exception as ce:
                         print(f"[edit] classify error: {ce}")
