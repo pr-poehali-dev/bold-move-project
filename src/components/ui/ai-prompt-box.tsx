@@ -117,6 +117,7 @@ export const PromptInputBox = React.forwardRef<HTMLDivElement, Props>(
       }
 
       const accumulatedText = { current: value };
+      const processedCount = { current: 0 };
       stoppedByUserRef.current = false;
 
       const recognition = new SR();
@@ -126,12 +127,11 @@ export const PromptInputBox = React.forwardRef<HTMLDivElement, Props>(
 
       recognition.onresult = (e: SpeechRecognitionEvent) => {
         let interim = "";
-        for (let i = e.resultIndex; i < e.results.length; i++) {
+        for (let i = processedCount.current; i < e.results.length; i++) {
           const t = e.results[i][0].transcript;
-          const isFinal = e.results[i].isFinal;
-          console.log(`result i=${i} resultIndex=${e.resultIndex} isFinal=${isFinal} text="${t}"`);
-          if (isFinal) {
+          if (e.results[i].isFinal) {
             accumulatedText.current = (accumulatedText.current + " " + t).trim();
+            processedCount.current = i + 1;
           } else {
             interim += t;
           }
@@ -154,7 +154,6 @@ export const PromptInputBox = React.forwardRef<HTMLDivElement, Props>(
         if (stoppedByUserRef.current) {
           setIsRecording(false);
         }
-        // не перезапускаем — Chrome сам продолжит при continuous=true
       };
 
       recognitionRef.current = recognition;
