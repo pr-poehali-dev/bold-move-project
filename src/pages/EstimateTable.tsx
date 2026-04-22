@@ -347,7 +347,7 @@ export default function EstimateTable({ text, items }: { text: string; items?: L
                 return (
                   <div key={i} className={`flex justify-end text-xs ${isHighlight ? "text-orange-400 font-montserrat font-black text-sm" : "text-white/70"}`}>
                     <span className="text-right mr-3">{t.split(":")[0]}:</span>
-                    <span className="font-montserrat font-bold">{t.split(":").slice(1).join(":").trim()}</span>
+                    <span className="font-montserrat font-bold">{ensureRub(t.split(":").slice(1).join(":").trim())}</span>
                   </div>
                 );
               })}
