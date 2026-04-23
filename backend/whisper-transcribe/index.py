@@ -2,10 +2,10 @@ import os
 import json
 import base64
 import tempfile
-from groq import Groq
+import requests
 
 def handler(event: dict, context) -> dict:
-    """Транскрибирует аудио через Groq Whisper API. Принимает base64-аудио, возвращает текст."""
+    """Транскрибирует аудио через AssemblyAI. Принимает base64-аудио, возвращает текст."""
     headers = {
         "Access-Control-Allow-Origin": "*",
         "Access-Control-Allow-Methods": "POST, OPTIONS",
@@ -17,42 +17,41 @@ def handler(event: dict, context) -> dict:
 
     body = json.loads(event.get("body") or "{}")
     audio_b64 = body.get("audio")
-    mime_type = body.get("mimeType", "audio/webm")
 
     if not audio_b64:
         return {"statusCode": 400, "headers": headers, "body": json.dumps({"error": "audio required"})}
 
     audio_bytes = base64.b64decode(audio_b64)
+    api_key = os.environ["ASSEMBLYAI_API_KEY"]
+    aai_headers = {"authorization": api_key}
 
-    ext_map = {
-        "audio/webm": ".webm",
-        "audio/ogg": ".ogg",
-        "audio/mp4": ".mp4",
-        "audio/mpeg": ".mp3",
-        "audio/wav": ".wav",
-        "audio/x-m4a": ".m4a",
-    }
-    ext = ext_map.get(mime_type.split(";")[0].strip(), ".mp4")
+    # 1. Загружаем аудио
+    upload_res = requests.post(
+        "https://api.assemblyai.com/v2/upload",
+        headers={**aai_headers, "content-type": "application/octet-stream"},
+        data=audio_bytes,
+    )
+    upload_url = upload_res.json()["upload_url"]
 
-    # Пробуем GROQ_API_KEY, если нет — GROQ_API_KEY2
-    api_key = os.environ.get("GROQ_API_KEY2") or os.environ.get("GROQ_API_KEY")
-    client = Groq(api_key=api_key)
+    # 2. Запускаем транскрипцию
+    transcript_res = requests.post(
+        "https://api.assemblyai.com/v2/transcript",
+        headers={**aai_headers, "content-type": "application/json"},
+        json={"audio_url": upload_url, "language_code": "ru"},
+    )
+    transcript_id = transcript_res.json()["id"]
 
-    with tempfile.NamedTemporaryFile(suffix=ext, delete=False) as f:
-        f.write(audio_bytes)
-        tmp_path = f.name
+    # 3. Polling до готовности
+    import time
+    for _ in range(30):
+        poll = requests.get(
+            f"https://api.assemblyai.com/v2/transcript/{transcript_id}",
+            headers=aai_headers,
+        ).json()
+        if poll["status"] == "completed":
+            return {"statusCode": 200, "headers": headers, "body": json.dumps({"text": poll["text"]})}
+        if poll["status"] == "error":
+            return {"statusCode": 500, "headers": headers, "body": json.dumps({"error": poll.get("error")})}
+        time.sleep(1)
 
-    with open(tmp_path, "rb") as audio_file:
-        transcript = client.audio.transcriptions.create(
-            model="whisper-large-v3-turbo",
-            file=audio_file,
-            language="ru",
-        )
-
-    os.unlink(tmp_path)
-
-    return {
-        "statusCode": 200,
-        "headers": headers,
-        "body": json.dumps({"text": transcript.text}),
-    }
+    return {"statusCode": 504, "headers": headers, "body": json.dumps({"error": "timeout"})}
