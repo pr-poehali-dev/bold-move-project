@@ -305,8 +305,8 @@ def build_pdf(data, logo_bytes=None):
         c.setFont('PTSans-Bold', 9)
         c.setFillColor(TEXT_SECTION)
         c.drawString(card_mg + 6*mm, yy - sh + 2.4*mm, label)
-        # верхняя и нижняя границы секции — жирнее
-        c.setStrokeColor(BORDER_OUTER)
+        # верхняя и нижняя границы секции — тёмные
+        c.setStrokeColor(HexColor('#888888'))
         c.setLineWidth(0.8)
         c.line(card_mg, yy, card_mg + tw, yy)           # верхняя
         c.line(card_mg, yy - sh, card_mg + tw, yy - sh) # нижняя
