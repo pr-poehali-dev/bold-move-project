@@ -122,34 +122,21 @@ export const PromptInputBox = React.forwardRef<HTMLDivElement, Props>(
     }, [isRecording]);
 
 
-    // Шаг 1: async — получаем stream и держим живым
-    const prepareStream = async () => {
-      const existing = iosStreamRef.current;
-      if (existing && existing.getAudioTracks()[0]?.readyState === "live") {
-        dbg(`stream reuse state=${existing.getAudioTracks()[0].readyState}`);
-        return true;
-      }
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        iosStreamRef.current = stream;
-        dbg(`stream new tracks=${stream.getAudioTracks().length} state=${stream.getAudioTracks()[0]?.readyState}`);
-        return true;
-      } catch (err) {
-        dbg(`mic err: ${err}`);
-        setSpeechError("Нет доступа к микрофону");
-        return false;
-      }
-    };
-
-    // Шаг 2: синхронный — стартуем запись на уже живом stream
-    const startIosRecording = () => {
-      const stream = iosStreamRef.current;
-      if (!stream || stream.getAudioTracks()[0]?.readyState !== "live") {
-        // stream не готов — запрашиваем и ставим флаг чтобы при следующем тапе начать запись
-        prepareStream();
-        return;
-      }
+    // Safari iOS: MediaRecorder → Deepgram
+    const startIosRecording = async () => {
       setSpeechError("");
+      let stream = iosStreamRef.current;
+      if (!stream || stream.getAudioTracks()[0]?.readyState === "ended") {
+        try {
+          stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+          iosStreamRef.current = stream;
+          dbg(`stream ok tracks=${stream.getAudioTracks().length}`);
+        } catch (err) {
+          dbg(`mic err: ${err}`);
+          setSpeechError("Нет доступа к микрофону");
+          return;
+        }
+      }
       const formats = ["audio/webm;codecs=opus", "audio/webm", "audio/mp4", "audio/ogg", ""];
       const mimeType = formats.find(m => m === "" || MediaRecorder.isTypeSupported(m)) ?? "";
       dbg(`mimeType="${mimeType}" trackState=${stream.getAudioTracks()[0]?.readyState}`);
