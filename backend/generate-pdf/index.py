@@ -362,16 +362,15 @@ def build_pdf(data, logo_bytes=None):
     for ly in sorted(set(row_lines), reverse=True):
         c.line(card_mg, ly, card_mg + tw, ly)
 
-    # Вертикальные разделители колонок — только через строки, не через секции
+    # Вертикальные разделители колонок — тоньше
+    c.setLineWidth(0.25)
     for i in range(1, 4):
         x = cx(i)
         seg_top = table_top[0]
         for (st, sb) in sorted(sec_lines, reverse=True):
             if seg_top > st:
-                # рисуем отрезок выше секции
                 c.line(x, st, x, seg_top)
             seg_top = sb
-        # последний отрезок до низа таблицы
         if seg_top > y:
             c.line(x, y, x, seg_top)
 
