@@ -518,58 +518,58 @@ def _try_simple_estimate_inner(text: str) -> tuple[str, dict] | None:
 
     # Полотно
     lines.append(f"{sec}. Полотно:")
-    lines.append(f"  {canvas_name} {area} м² × {canvas_price} ₽ = {fmt(canvas_total)} ₽")
+    lines.append(f"  {canvas_name}  {area} м² × {canvas_price} ₽ = {fmt(canvas_total)} ₽")
     if is_pvh:
-        if price_raskroy: lines.append(f"  Раскрой ПВХ {area} м² × {price_raskroy} ₽ = {fmt(raskroy)} ₽")
-        if price_ogarp:   lines.append(f"  Огарпунивание ПВХ {area} м² × {price_ogarp} ₽ = {fmt(ogarp)} ₽")
+        if price_raskroy: lines.append(f"  Раскрой ПВХ  {area} м² × {price_raskroy} ₽ = {fmt(raskroy)} ₽")
+        if price_ogarp:   lines.append(f"  Огарпунивание ПВХ  {area} м² × {price_ogarp} ₽ = {fmt(ogarp)} ₽")
 
     # Профиль
     if price_profile:
         sec += 1
         lines.append(f"\n{sec}. Профиль:")
-        lines.append(f"  Стеновой алюминий {profile_len} мп × {price_profile} ₽ = {fmt(profile_total)} ₽")
+        lines.append(f"  Стеновой алюминий  {profile_len} мп × {price_profile} ₽ = {fmt(profile_total)} ₽")
 
     # Ниша
     if has_nisha:
         sec += 1
         lines.append(f"\n{sec}. Ниши для штор:")
-        lines.append(f"  {nisha_label} {nisha_len} мп × {nisha_price} ₽ = {fmt(nisha_total)} ₽")
+        lines.append(f"  {nisha_label}  {nisha_len} мп × {nisha_price} ₽ = {fmt(nisha_total)} ₽")
 
     # Закладные
     if zakl_total > 0:
         sec += 1
         lines.append(f"\n{sec}. Закладные:")
         if n_lyustra > 0 and price_zakl_lyustra:
-            lines.append(f"  Под люстру планка {n_lyustra} шт. × {price_zakl_lyustra} ₽ = {fmt(zakl_lyustra)} ₽")
+            lines.append(f"  Под люстру планка  {n_lyustra} шт. × {price_zakl_lyustra} ₽ = {fmt(zakl_lyustra)} ₽")
         if n_svetilnik > 0 and price_zakl_svet:
-            lines.append(f"  Под светильник ∅90 {n_svetilnik} шт. × {price_zakl_svet} ₽ = {fmt(zakl_svet)} ₽")
+            lines.append(f"  Под светильник ∅90  {n_svetilnik} шт. × {price_zakl_svet} ₽ = {fmt(zakl_svet)} ₽")
 
     # Освещение
     if svet_total > 0 and price_svetilnik:
         sec += 1
         lines.append(f"\n{sec}. Освещение:")
-        lines.append(f"  Светильник GX-53 + лампа {n_svetilnik} шт. × {price_svetilnik} ₽ = {fmt(svet_total)} ₽")
+        lines.append(f"  Светильник GX-53 + лампа  {n_svetilnik} шт. × {price_svetilnik} ₽ = {fmt(svet_total)} ₽")
 
     # Монтаж
     sec += 1
     lines.append(f"\n{sec}. Услуги монтажа:")
     if price_mount_canvas:
-        lines.append(f"  Монтаж полотна {'ПВХ' if is_pvh else 'ТКАНЬ'} {area} м² × {price_mount_canvas} ₽ = {fmt(mount_canvas)} ₽")
+        lines.append(f"  Монтаж полотна {'ПВХ' if is_pvh else 'ТКАНЬ'}  {area} м² × {price_mount_canvas} ₽ = {fmt(mount_canvas)} ₽")
     if price_mount_profile:
-        lines.append(f"  Монтаж профиля стандарт {profile_len} мп × {price_mount_profile} ₽ = {fmt(mount_profile)} ₽")
+        lines.append(f"  Монтаж профиля стандарт  {profile_len} мп × {price_mount_profile} ₽ = {fmt(mount_profile)} ₽")
     if mount_zakl > 0 and price_mount_zakl:
-        lines.append(f"  Монтаж закладной {n_lyustra + n_svetilnik} шт. × {price_mount_zakl} ₽ = {fmt(mount_zakl)} ₽")
+        lines.append(f"  Монтаж закладной  {n_lyustra + n_svetilnik} шт. × {price_mount_zakl} ₽ = {fmt(mount_zakl)} ₽")
     if mount_svet > 0 and price_mount_svet:
-        lines.append(f"  Монтаж светильников GX-53 {n_svetilnik} шт. × {price_mount_svet} ₽ = {fmt(mount_svet)} ₽")
+        lines.append(f"  Монтаж светильников GX-53  {n_svetilnik} шт. × {price_mount_svet} ₽ = {fmt(mount_svet)} ₽")
     if mount_razv > 0 and price_mount_razv:
-        lines.append(f"  Монтаж разводки ГОСТ 0.75 {n_svetilnik} шт. × {price_mount_razv} ₽ = {fmt(mount_razv)} ₽")
+        lines.append(f"  Монтаж разводки ГОСТ 0.75  {n_svetilnik} шт. × {price_mount_razv} ₽ = {fmt(mount_razv)} ₽")
 
     # Дополнительные позиции из прайса (обученные)
     if dynamic_extras:
         sec += 1
         lines.append(f"\n{sec}. Дополнительно:")
         for name, qty, unit_price, total, unit in dynamic_extras:
-            lines.append(f"  {name} {qty} {unit} × {unit_price} ₽ = {fmt(total)} ₽")
+            lines.append(f"  {name}  {qty} {unit} × {unit_price} ₽ = {fmt(total)} ₽")
 
     lines.append(f"\nИтоговая стоимость:")
     lines.append(f"Econom:   {fmt(econom)} ₽")
