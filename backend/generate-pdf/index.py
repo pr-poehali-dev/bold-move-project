@@ -1,4 +1,4 @@
-"""Генерирует PDF-смету в тёмном стиле — идентично рендеру в редакторе."""
+"""Генерирует PDF-смету — белый профессиональный стиль как деловой документ."""
 
 import json
 import os
@@ -9,7 +9,7 @@ import requests
 import boto3
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.units import mm
-from reportlab.lib.colors import Color, white, HexColor
+from reportlab.lib.colors import Color, HexColor
 from reportlab.pdfgen import canvas
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
@@ -19,25 +19,23 @@ from datetime import date
 
 BUCKET = 'files'
 
-# Цвета — тёмная тема как в редакторе
-BG_PAGE       = HexColor('#0b0b11')      # фон страницы
-BG_HEADER     = HexColor('#0d0d18')      # шапка документа
-BG_SECTION    = HexColor('#12121c')      # строка-заголовок секции
-BG_ROW        = HexColor('#0e0e16')      # обычная строка
-BG_ROW_ALT    = HexColor('#0b0b13')      # чередование строк
-BG_TOTALS     = HexColor('#13100a')      # блок итогов
-BORDER        = HexColor('#ffffff14')    # граница (белая 8% прозрачность)
-BORDER_ORANGE = HexColor('#ff6b0044')    # граница секции
-COL_ORANGE    = HexColor('#fb923c')      # оранжевый (заголовки, цены)
-COL_WHITE     = HexColor('#e5e5f0')      # белый текст
-COL_DIM       = HexColor('#8888aa')      # приглушённый текст
-COL_FORMULA   = HexColor('#666688')      # формула (серый)
-COL_STANDARD  = HexColor('#fb923c')      # Standard — оранжевый жирный
-COL_OTHER     = HexColor('#aaaacc')      # Econom / Premium
-COL_HEAD_COL  = HexColor('#555577')      # заголовки колонок
+# Цвета — белая деловая тема
+WHITE        = HexColor('#ffffff')
+BG_PAGE      = HexColor('#ffffff')
+BG_HEADER    = HexColor('#1a1a2e')   # тёмно-синяя шапка (как логотип)
+ORANGE       = HexColor('#f97316')   # оранжевый акцент
+ORANGE_DARK  = HexColor('#c2500a')   # тёмно-оранжевый для Standard
+BG_SEC_HEAD  = HexColor('#f5f5f8')   # фон заголовка секции
+TEXT_MAIN    = HexColor('#1a1a2e')   # основной текст
+TEXT_DIM     = HexColor('#6b7280')   # приглушённый текст
+TEXT_HEAD    = HexColor('#374151')   # заголовки колонок
+BORDER_LIGHT = HexColor('#e5e7eb')   # светлая граница строк
+BORDER_SEC   = HexColor('#d1d5db')   # граница секций
+BG_TOTAL     = HexColor('#fff7ed')   # фон блока итогов
+BORDER_TOT   = HexColor('#fed7aa')   # граница итогов
 
-LOGO_URL = 'https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/1dc8a36d-819a-489e-bdcb-25aaa523b7d9.png'
-LOGO_S3_KEY = 'assets/mospotolki-logo.png'
+LOGO_URL     = 'https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/1dc8a36d-819a-489e-bdcb-25aaa523b7d9.png'
+LOGO_S3_KEY  = 'assets/mospotolki-logo.png'
 
 FONT_URLS = {
     'regular': {
@@ -57,7 +55,7 @@ FONT_URLS = {
 }
 
 fonts_registered = False
-logo_cache = [None]  # [bytes or None]
+logo_cache = [None]
 
 
 def get_s3():
@@ -87,29 +85,6 @@ def download_font(s3, cfg):
     return None
 
 
-def load_logo(s3):
-    if logo_cache[0] is not None:
-        return logo_cache[0]
-    # Пробуем из S3 кэша
-    try:
-        obj = s3.get_object(Bucket=BUCKET, Key=LOGO_S3_KEY)
-        logo_cache[0] = obj['Body'].read()
-        return logo_cache[0]
-    except Exception:
-        pass
-    # Скачиваем из CDN
-    try:
-        resp = requests.get(LOGO_URL, timeout=10)
-        if resp.status_code == 200 and len(resp.content) > 100:
-            data = resp.content
-            s3.put_object(Bucket=BUCKET, Key=LOGO_S3_KEY, Body=data, ContentType='image/png')
-            logo_cache[0] = data
-            return data
-    except Exception:
-        pass
-    return None
-
-
 def ensure_fonts(s3):
     global fonts_registered
     if fonts_registered:
@@ -125,18 +100,35 @@ def ensure_fonts(s3):
     return True
 
 
+def load_logo(s3):
+    if logo_cache[0] is not None:
+        return logo_cache[0]
+    try:
+        obj = s3.get_object(Bucket=BUCKET, Key=LOGO_S3_KEY)
+        logo_cache[0] = obj['Body'].read()
+        return logo_cache[0]
+    except Exception:
+        pass
+    try:
+        resp = requests.get(LOGO_URL, timeout=10)
+        if resp.status_code == 200 and len(resp.content) > 100:
+            s3.put_object(Bucket=BUCKET, Key=LOGO_S3_KEY, Body=resp.content, ContentType='image/png')
+            logo_cache[0] = resp.content
+            return resp.content
+    except Exception:
+        pass
+    return None
+
+
 def split_value(value):
-    """Разбивает строку значения на (формула, итог)."""
-    v = value.replace('**', '').strip()
+    v = (value or '').replace('**', '').strip()
     if not v:
         return '', ''
-    # "qty ед × price ₽ = total ₽"
-    m = re.match(
-        r'^(.+?[₽Рруб])\s*=\s*([\d\s,.]+\s*[₽Рруб]?)$', v
-    )
+    # "... ₽ = total ₽"
+    m = re.match(r'^(.+?[₽Рруб])\s*=\s*([\d\s,.]+\s*[₽Рруб]?)$', v)
     if m:
         return m.group(1).strip(), m.group(2).strip()
-    # "qty × price" без итога — считаем
+    # "qty × price" без итога
     m2 = re.match(
         r'^([\d\s,.]+\s*(?:м²|м2|мп|пм|шт\.?|шт|м\.п\.?|м)?)\s*[×xх]\s*([\d\s,.]+)\s*[₽Рруб]?$', v
     )
@@ -144,11 +136,10 @@ def split_value(value):
         try:
             q = float(re.sub(r'[^\d.,]', '', m2.group(1)).replace(',', '.'))
             p = float(re.sub(r'[^\d.,]', '', m2.group(2)).replace(',', '.'))
-            total = f"{round(q * p):,}".replace(',', '\u202f') + '\u202f\u20bd'
+            total = f"{round(q * p):,}".replace(',', ' ') + ' ₽'
             return v, total
         except Exception:
             pass
-    # просто итог
     if re.search(r'[₽Рруб]', v):
         return '', v
     return '', v
@@ -175,17 +166,14 @@ def build_pdf(data, logo_bytes=None):
     c = canvas.Canvas(buf, pagesize=A4)
     w, h = A4
 
-    margin = 12 * mm
+    margin = 15 * mm
     table_w = w - 2 * margin
-
-    # Колонки: Позиция | (формула справа + итог)
-    # В редакторе — 2 колонки: левая (название) + правая (формула сверху, цена снизу)
-    col_name_w  = table_w * 0.62
-    col_price_w = table_w * 0.38
-
     today = date.today().strftime('%d.%m.%Y')
 
-    page_num = [1]
+    # Колонки: Позиция (широкая) | Кол-во | Цена/ед | Сумма
+    COL = [table_w * 0.48, table_w * 0.16, table_w * 0.16, table_w * 0.20]
+
+    # ── helpers ──────────────────────────────────────────────────────────────
 
     def fill_bg():
         c.setFillColor(BG_PAGE)
@@ -193,246 +181,257 @@ def build_pdf(data, logo_bytes=None):
 
     def new_page():
         c.showPage()
-        page_num[0] += 1
         fill_bg()
-        # Тонкий футер
-        c.setFont('PTSans', 6.5)
-        c.setFillColor(COL_DIM)
-        c.drawCentredString(w / 2, 6 * mm, 'MosPotolki | +7 (977) 606-89-01 | mospotolki.net')
-        return h - 14 * mm
+        draw_footer()
+        return h - 12 * mm
 
+    def draw_footer():
+        c.setFont('PTSans', 6.5)
+        c.setFillColor(TEXT_DIM)
+        c.line(margin, 11 * mm, w - margin, 11 * mm)
+        c.setStrokeColor(BORDER_LIGHT)
+        c.setLineWidth(0.3)
+        c.drawCentredString(w / 2, 7 * mm, 'MosPotolki  ·  Мытищи, Пограничная 24  ·  +7 (977) 606-89-01  ·  mospotolki.net')
+
+    def check_space(y_pos, needed):
+        if y_pos - needed < 18 * mm:
+            return new_page()
+        return y_pos
+
+    def col_x(i):
+        x = margin
+        for k in range(i):
+            x += COL[k]
+        return x
+
+    # ── Страница 1 ────────────────────────────────────────────────────────────
     fill_bg()
 
     # ── Шапка ────────────────────────────────────────────────────────────────
-    header_h = 30 * mm
+    header_h = 22 * mm
     c.setFillColor(BG_HEADER)
     c.rect(0, h - header_h, w, header_h, fill=1, stroke=0)
 
-    # Оранжевая полоска снизу шапки
-    c.setFillColor(COL_ORANGE)
-    c.rect(0, h - header_h, w, 0.7 * mm, fill=1, stroke=0)
-
-    # Логотип (если загружен)
-    logo_h = 10 * mm
-    logo_y = h - header_h / 2 - logo_h / 2
+    # Логотип
+    logo_draw_w = 0
     if logo_bytes:
         try:
             logo_img = ImageReader(io.BytesIO(logo_bytes))
             iw, ih = logo_img.getSize()
-            aspect = iw / ih
-            logo_draw_h = logo_h
-            logo_draw_w = logo_draw_h * aspect
-            c.drawImage(logo_img, margin, logo_y, width=logo_draw_w, height=logo_draw_h, mask='auto')
-            text_x = margin + logo_draw_w + 5 * mm
+            logo_draw_h = 9 * mm
+            logo_draw_w = logo_draw_h * (iw / ih)
+            c.drawImage(logo_img, margin, h - header_h / 2 - logo_draw_h / 2,
+                        width=logo_draw_w, height=logo_draw_h, mask='auto')
         except Exception:
-            text_x = margin
-    else:
-        text_x = margin
+            logo_draw_w = 0
 
-    # "Смета на натяжные потолки" — справа от логотипа
-    c.setFont('PTSans-Bold', 12)
-    c.setFillColor(COL_WHITE)
-    c.drawString(text_x, logo_y + logo_h * 0.45, 'Смета на натяжные потолки')
-
-    c.setFont('PTSans', 7)
-    c.setFillColor(COL_DIM)
-    c.drawString(text_x, logo_y + logo_h * 0.1, 'Мытищи, Пограничная 24  ·  +7 (977) 606-89-01  ·  mospotolki.net')
-
+    # Дата справа
     c.setFont('PTSans', 7.5)
-    c.setFillColor(COL_DIM)
-    c.drawRightString(w - margin, logo_y + logo_h * 0.45, f'от {today}')
+    c.setFillColor(HexColor('#9ca3af'))
+    c.drawRightString(w - margin, h - header_h / 2 + 1 * mm, f'от {today}')
+    c.drawRightString(w - margin, h - header_h / 2 - 4 * mm, 'г. Мытищи, ул. Пограничная 24')
 
-    y = h - header_h - 4 * mm
+    # ── Подзаголовок документа ───────────────────────────────────────────────
+    sub_h = 10 * mm
+    c.setFillColor(WHITE)
+    c.rect(0, h - header_h - sub_h, w, sub_h, fill=1, stroke=0)
+    # оранжевая линия под шапкой
+    c.setFillColor(ORANGE)
+    c.rect(0, h - header_h - 0.8 * mm, w, 0.8 * mm, fill=1, stroke=0)
 
-    # ── Заголовок таблицы ─────────────────────────────────────────────────
-    col_head_h = 7 * mm
-    c.setFillColor(HexColor('#0f0f1a'))
-    c.rect(margin, y - col_head_h, table_w, col_head_h, fill=1, stroke=0)
-    # нижняя граница
-    c.setStrokeColor(BORDER)
-    c.setLineWidth(0.4)
-    c.line(margin, y - col_head_h, margin + table_w, y - col_head_h)
+    c.setFont('PTSans-Bold', 12)
+    c.setFillColor(TEXT_MAIN)
+    txt_x = margin + logo_draw_w + (4 * mm if logo_draw_w else 0)
+    c.drawString(margin, h - header_h - sub_h + 3.2 * mm, 'СМЕТА НА НАТЯЖНЫЕ ПОТОЛКИ')
+
+    y = h - header_h - sub_h - 6 * mm
+
+    # ── Заголовок таблицы ─────────────────────────────────────────────────────
+    th = 7 * mm
+    c.setFillColor(HexColor('#374151'))
+    c.rect(margin, y - th, table_w, th, fill=1, stroke=0)
 
     c.setFont('PTSans-Bold', 7.5)
-    c.setFillColor(COL_HEAD_COL)
-    c.drawString(margin + 3 * mm, y - col_head_h + 2.3 * mm, 'ПОЗИЦИЯ')
-    c.drawRightString(margin + table_w - 3 * mm, y - col_head_h + 2.3 * mm, 'СТОИМОСТЬ')
+    c.setFillColor(WHITE)
+    labels = ['ПОЗИЦИЯ', 'КОЛ-ВО', 'ЦЕНА/ЕД', 'СУММА']
+    for i, lbl in enumerate(labels):
+        x = col_x(i)
+        if i == 0:
+            c.drawString(x + 2.5 * mm, y - th + 2.3 * mm, lbl)
+        else:
+            c.drawRightString(x + COL[i] - 2 * mm, y - th + 2.3 * mm, lbl)
 
-    y -= col_head_h
+    y -= th
 
-    def check_space(y_pos, needed):
-        if y_pos - needed < 16 * mm:
-            return new_page()
-        return y_pos
-
-    # ── Строки таблицы ────────────────────────────────────────────────────
+    # ── Строки ────────────────────────────────────────────────────────────────
     num_counter = 0
-    row_idx = [0]
+    row_parity = [0]
 
-    def draw_section_header(y_pos, label):
-        sh = 9 * mm
-        y_pos = check_space(y_pos, sh + 2 * mm)
+    def draw_section(y_pos, label):
+        sh = 8 * mm
+        y_pos = check_space(y_pos, sh + 4 * mm)
 
-        # фон секции
-        c.setFillColor(BG_SECTION)
+        c.setFillColor(BG_SEC_HEAD)
         c.rect(margin, y_pos - sh, table_w, sh, fill=1, stroke=0)
 
-        # левая оранжевая полоска
-        c.setFillColor(COL_ORANGE)
-        c.rect(margin, y_pos - sh, 1.5 * mm, sh, fill=1, stroke=0)
+        # левая цветная полоска
+        c.setFillColor(ORANGE)
+        c.rect(margin, y_pos - sh, 2 * mm, sh, fill=1, stroke=0)
 
-        # нижняя граница
-        c.setStrokeColor(BORDER_ORANGE)
+        c.setFont('PTSans-Bold', 9)
+        c.setFillColor(TEXT_MAIN)
+        c.drawString(margin + 4 * mm, y_pos - sh + 2.3 * mm, label)
+
+        # нижняя граница секции
+        c.setStrokeColor(BORDER_SEC)
         c.setLineWidth(0.4)
         c.line(margin, y_pos - sh, margin + table_w, y_pos - sh)
 
-        c.setFont('PTSans-Bold', 9)
-        c.setFillColor(COL_ORANGE)
-        c.drawString(margin + 4 * mm, y_pos - sh + 2.8 * mm, label)
-
+        row_parity[0] = 0
         return y_pos - sh
 
-    def draw_item_row(y_pos, name, formula, total, alt=False):
-        rh = 12 * mm if formula else 8 * mm
+    def parse_qty_price(formula):
+        """Вытаскивает qty+unit и price из строки формулы."""
+        if not formula:
+            return '', ''
+        m = re.match(
+            r'^([\d,.\s]+\s*(?:м²|м2|мп|пм|пог\.?м|шт\.?|шт|м\.п\.?|м|%)?)\s*[×xх]\s*([\d\s,.]+\s*[₽Рруб]?)(.*)$',
+            formula, re.I
+        )
+        if m:
+            return m.group(1).strip(), ensure_rub(m.group(2).strip())
+        return formula, ''
+
+    def draw_item(y_pos, name, formula, total):
+        rh = 8 * mm
         y_pos = check_space(y_pos, rh)
 
-        bg = BG_ROW_ALT if alt else BG_ROW
+        # чередование фона
+        bg = HexColor('#fafafa') if row_parity[0] % 2 == 1 else WHITE
         c.setFillColor(bg)
         c.rect(margin, y_pos - rh, table_w, rh, fill=1, stroke=0)
 
         # нижняя граница
-        c.setStrokeColor(BORDER)
-        c.setLineWidth(0.3)
+        c.setStrokeColor(BORDER_LIGHT)
+        c.setLineWidth(0.25)
         c.line(margin, y_pos - rh, margin + table_w, y_pos - rh)
 
-        # Название (левая колонка)
+        text_y = y_pos - rh + 2.3 * mm
+
+        # Название
         c.setFont('PTSans', 8.5)
-        c.setFillColor(COL_WHITE)
-        # обрезаем если не влезает
-        max_chars = int(col_name_w / (8.5 * 0.22 * mm))
-        txt = name if len(name) <= max_chars else name[:max_chars - 1] + '…'
-        if formula:
-            text_y = y_pos - 5 * mm
-        else:
-            text_y = y_pos - rh + 2.5 * mm
-        c.drawString(margin + 3 * mm, text_y, txt)
+        c.setFillColor(TEXT_MAIN)
+        max_ch = int(COL[0] / (8.5 * 0.21 * mm))
+        nm = name if len(name) <= max_ch else name[:max_ch - 1] + '…'
+        c.drawString(margin + 2.5 * mm, text_y, nm)
 
-        # Правая колонка: формула (серая, мелкая) + итог (оранжевый, жирный)
-        rx = margin + table_w - 3 * mm
-        if formula:
-            c.setFont('PTSans', 7)
-            c.setFillColor(COL_FORMULA)
-            c.drawRightString(rx, y_pos - 4.5 * mm, ensure_rub(formula))
+        # Кол-во и цена/ед из формулы
+        qty_str, price_str = parse_qty_price(formula)
 
-            c.setFont('PTSans-Bold', 9)
-            c.setFillColor(COL_ORANGE)
-            c.drawRightString(rx, y_pos - 9.5 * mm, ensure_rub(total))
-        elif total:
-            c.setFont('PTSans-Bold', 9)
-            c.setFillColor(COL_ORANGE)
-            c.drawRightString(rx, text_y, ensure_rub(total))
+        c.setFont('PTSans', 8)
+        c.setFillColor(TEXT_DIM)
+        if qty_str:
+            c.drawRightString(col_x(1) + COL[1] - 2 * mm, text_y, ensure_rub(qty_str))
+        if price_str:
+            c.drawRightString(col_x(2) + COL[2] - 2 * mm, text_y, ensure_rub(price_str))
 
-        row_idx[0] += 1
+        # Сумма — жирная, цветная
+        if total:
+            c.setFont('PTSans-Bold', 8.5)
+            c.setFillColor(ORANGE_DARK)
+            c.drawRightString(col_x(3) + COL[3] - 2 * mm, text_y, ensure_rub(total))
+
+        # вертикальные разделители колонок
+        c.setStrokeColor(BORDER_LIGHT)
+        c.setLineWidth(0.25)
+        for i in range(1, 4):
+            x = col_x(i)
+            c.line(x, y_pos - rh, x, y_pos)
+
+        row_parity[0] += 1
         return y_pos - rh
 
-    # Рендерим блоки
+    # ── Рендер блоков ────────────────────────────────────────────────────────
     for block in blocks:
         if block.get('numbered', False):
             num_counter += 1
         title = clean(block.get('title', ''))
         label = f'{num_counter}. {title}' if block.get('numbered') else title
+        y = draw_section(y, label)
 
-        y = draw_section_header(y, label)
-
-        for i, item in enumerate(block.get('items', [])):
+        for item in block.get('items', []):
             name = re.sub(r'\s*[-–—]\s*$', '', clean(item.get('name', '')))
             value = clean(item.get('value', ''))
             formula, total = split_value(value)
-            y = draw_item_row(y, name, formula, total, alt=(i % 2 == 1))
+            y = draw_item(y, name, formula, total)
 
-    # ── Итого ─────────────────────────────────────────────────────────────
+    # ── Итого ─────────────────────────────────────────────────────────────────
     if totals:
-        clean_totals = [clean(t) for t in totals if clean(t) and not re.fullmatch(r'[-–—]+', clean(t))]
+        clean_totals = [clean(t) for t in totals
+                        if clean(t) and not re.fullmatch(r'[-–—]+', clean(t))]
         if clean_totals:
-            box_h = (6 + len(clean_totals) * 8) * mm
-            y -= 4 * mm
-            y = check_space(y, box_h + 6 * mm)
+            box_h = (9 + len(clean_totals) * 8) * mm
+            y -= 5 * mm
+            y = check_space(y, box_h + 8 * mm)
 
-            # фон блока итогов
-            c.setFillColor(BG_TOTALS)
-            c.rect(margin, y - box_h, table_w, box_h, fill=1, stroke=0)
+            # Фон и рамка блока итогов
+            c.setFillColor(BG_TOTAL)
+            c.setStrokeColor(BORDER_TOT)
+            c.setLineWidth(0.5)
+            c.roundRect(margin, y - box_h, table_w, box_h, 2 * mm, fill=1, stroke=1)
 
-            # верхняя граница
-            c.setStrokeColor(BORDER)
-            c.setLineWidth(0.4)
-            c.line(margin, y, margin + table_w, y)
-            c.line(margin, y - box_h, margin + table_w, y - box_h)
+            # Заголовок блока
+            c.setFont('PTSans-Bold', 8)
+            c.setFillColor(TEXT_DIM)
+            c.drawRightString(w - margin - 3 * mm, y - 6 * mm, 'Итоговая стоимость:')
 
-            # Надпись "Итоговая стоимость:"
-            c.setFont('PTSans', 7.5)
-            c.setFillColor(COL_DIM)
-            c.drawRightString(margin + table_w - 3 * mm, y - 4.5 * mm, 'Итоговая стоимость:')
-
-            ty = y - 11 * mm
+            ty = y - 13 * mm
             for t in clean_totals:
                 ci = t.find(':')
                 lbl = t[:ci].strip() if ci >= 0 else t
                 val = ensure_rub(t[ci + 1:].strip()) if ci >= 0 else ''
-
                 is_standard = 'standard' in lbl.lower()
-                is_total_line = 'итог' in lbl.lower()
+                is_header   = 'итог' in lbl.lower() and not val
 
-                if is_total_line:
-                    c.setFont('PTSans-Bold', 8)
-                    c.setFillColor(COL_DIM)
-                    c.drawRightString(margin + table_w - 3 * mm, ty, lbl + ':' if ci >= 0 else lbl)
-                    if val:
-                        c.drawRightString(margin + table_w - 3 * mm, ty - 5 * mm, val)
-                    ty -= 8 * mm
+                if is_header:
+                    ty -= 2 * mm
                     continue
 
+                lbl_txt = lbl + (':' if ci >= 0 else '')
+
                 if is_standard:
-                    c.setFont('PTSans-Bold', 11)
-                    c.setFillColor(COL_STANDARD)
+                    c.setFont('PTSans-Bold', 12)
+                    c.setFillColor(ORANGE)
+                    c.drawRightString(w - margin - 3 * mm - 38 * mm, ty, lbl_txt)
+                    c.setFont('PTSans-Bold', 12)
+                    c.setFillColor(ORANGE_DARK)
+                    c.drawRightString(w - margin - 3 * mm, ty, val)
                 else:
                     c.setFont('PTSans', 8.5)
-                    c.setFillColor(COL_OTHER)
-
-                lbl_txt = lbl + ':'
-                c.drawRightString(margin + table_w - 3 * mm - 60 * mm, ty, lbl_txt)
-
-                if val:
-                    if is_standard:
-                        c.setFont('PTSans-Bold', 11)
-                        c.setFillColor(COL_STANDARD)
-                    else:
-                        c.setFont('PTSans', 8.5)
-                        c.setFillColor(COL_OTHER)
-                    c.drawRightString(margin + table_w - 3 * mm, ty, val)
+                    c.setFillColor(TEXT_DIM)
+                    c.drawRightString(w - margin - 3 * mm - 38 * mm, ty, lbl_txt)
+                    c.setFont('PTSans', 8.5)
+                    c.setFillColor(TEXT_MAIN)
+                    c.drawRightString(w - margin - 3 * mm, ty, val)
 
                 ty -= 8 * mm
+            y = ty - 3 * mm
 
-            y = ty - 2 * mm
-
-    # Дисклеймер
-    y -= 4 * mm
+    # ── Дисклеймер ────────────────────────────────────────────────────────────
+    y -= 5 * mm
     y = check_space(y, 8 * mm)
     c.setFont('PTSans', 7)
-    c.setFillColor(COL_FORMULA)
+    c.setFillColor(TEXT_DIM)
     note = final_phrase or 'Данная смета является предварительной. Точная стоимость будет рассчитана на бесплатном замере.'
     c.drawString(margin, y, note)
 
-    # Футер
-    c.setFont('PTSans', 6.5)
-    c.setFillColor(COL_DIM)
-    c.drawCentredString(w / 2, 6 * mm, 'MosPotolki | Мытищи, Пограничная 24 | +7 (977) 606-89-01 | mospotolki.net')
-
+    draw_footer()
     c.save()
     return buf.getvalue()
 
 
 def handler(event, context):
-    """Генерирует PDF-смету в тёмном стиле и возвращает base64."""
+    """Генерирует PDF-смету в белом профессиональном стиле."""
     if event.get('httpMethod') == 'OPTIONS':
         return {
             'statusCode': 200,
@@ -446,9 +445,7 @@ def handler(event, context):
         }
 
     cors = {'Access-Control-Allow-Origin': '*', 'Content-Type': 'application/json'}
-
-    body = event.get('body', '{}')
-    data = json.loads(body)
+    data = json.loads(event.get('body', '{}'))
 
     s3 = get_s3()
     if not ensure_fonts(s3):
