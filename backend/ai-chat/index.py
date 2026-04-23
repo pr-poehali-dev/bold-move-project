@@ -1199,9 +1199,13 @@ def get_cached_answer(text: str, session_id: str = '') -> tuple[str, dict] | str
         return answer, recognized
 
     # Потом — кэш FAQ (из БД или fallback)
+    # Если пользователь просит конкретную скидку в % — не перехватываем FAQ, идём в LLM
+    is_discount_request = bool(re.search(r'скидк.{0,20}\d+\s*%|убер|сниз|уменьш|пересчита', text_lower))
     dynamic_cache = get_faq_cache(fallback=FAQ_CACHE)
     for pattern, answer in dynamic_cache.items():
         if re.search(pattern, text_lower):
+            if is_discount_request:
+                continue
             return answer
     return None
 
