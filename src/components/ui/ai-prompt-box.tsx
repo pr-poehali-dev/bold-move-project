@@ -32,13 +32,16 @@ export const PromptInputBox = React.forwardRef<HTMLDivElement, Props>(
     const [isRecording, setIsRecording] = React.useState(false);
     const [recTime, setRecTime] = React.useState(0);
     const [speechError, setSpeechError] = React.useState("");
-    const dbg = (_msg: string) => {};
+    const [debugLog, setDebugLog] = React.useState<string[]>([]);
+    const dbg = (msg: string) => setDebugLog(p => [...p.slice(-10), msg]);
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as unknown as Record<string, unknown>).MSStream;
     const [bars] = React.useState(() =>
       Array.from({ length: 26 }, () => 0.2 + Math.random() * 0.8)
     );
     const timerRef = React.useRef<ReturnType<typeof setInterval>>();
     const recognitionRef = React.useRef<SpeechRecognition | null>(null);
     const stoppedByUserRef = React.useRef(false);
+    const lastInterimRef = React.useRef("");
     const fileInputRef = React.useRef<HTMLInputElement>(null);
     const [uploadState, setUploadState] = React.useState<"idle" | "loading" | "done" | "error">("idle");
     const [showUploadModal, setShowUploadModal] = React.useState(false);
@@ -129,6 +132,7 @@ export const PromptInputBox = React.forwardRef<HTMLDivElement, Props>(
 
         // Текст накопленный внутри текущей сессии
         let sessionText = "";
+        lastInterimRef.current = "";
 
         recognition.onresult = (e: SpeechRecognitionEvent) => {
           let lastFinal = "";
@@ -141,10 +145,18 @@ export const PromptInputBox = React.forwardRef<HTMLDivElement, Props>(
               interim = e.results[i][0].transcript + interim;
             }
           }
-          // lastFinal — это ВЕСЬ текст сессии до сих пор (Chrome накапливает)
-          if (lastFinal) sessionText = lastFinal;
+          // на iOS isFinal всегда false — накапливаем interim как sessionText
+          if (isIOS) {
+            if (interim) {
+              sessionText = interim;
+              lastInterimRef.current = interim;
+            }
+          } else {
+            // Chrome/Android: lastFinal содержит ВЕСЬ текст сессии накопленно
+            if (lastFinal) sessionText = lastFinal;
+          }
           const recognized = (savedText.current + " " + sessionText).trim();
-          dbg(`saved="${savedText.current}" session="${sessionText}" interim="${interim}"`);
+          dbg(`iOS=${isIOS} saved="${savedText.current}" session="${sessionText}" interim="${interim}" isFinal=${lastFinal ? "YES" : "NO"}`);
           onValueChange(interim ? (recognized + " " + interim).trim() : recognized);
         };
 
@@ -183,6 +195,13 @@ export const PromptInputBox = React.forwardRef<HTMLDivElement, Props>(
 
     const stopRecording = () => {
       stoppedByUserRef.current = true;
+      // iOS: isFinal никогда не приходит — фиксируем последний interim как финальный
+      if (isIOS && lastInterimRef.current) {
+        const fixed = (value.trim() + " " + lastInterimRef.current).trim();
+        dbg(`iOS STOP fix: "${lastInterimRef.current}"`);
+        onValueChange(fixed);
+        lastInterimRef.current = "";
+      }
       recognitionRef.current?.stop();
       recognitionRef.current = null;
       setIsRecording(false);
@@ -308,6 +327,13 @@ export const PromptInputBox = React.forwardRef<HTMLDivElement, Props>(
         {speechError && (
           <div className="px-3 pb-1">
             <span className="text-[10px] text-red-400">{speechError}</span>
+          </div>
+        )}
+
+        {/* DEBUG LOG */}
+        {debugLog.length > 0 && (
+          <div className="px-2 pb-1 font-mono text-[9px] text-yellow-400 bg-black/60 rounded max-h-32 overflow-y-auto">
+            {debugLog.map((l, i) => <div key={i}>{l}</div>)}
           </div>
         )}
 
