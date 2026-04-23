@@ -5,7 +5,8 @@ import func2url from "@/../backend/func2url.json";
 import { usePhone } from "@/hooks/use-phone";
 
 const UPLOAD_URL = func2url["live-chat"];
-const WHISPER_URL = func2url["whisper-transcribe"];
+const WHISPER_URL = func2url["whisper-transcribe"]; // резерв — AssemblyAI
+const TRANSCRIBE_URL = func2url["deepgram-transcribe"];
 
 const cn = (...c: (string | undefined | null | false)[]) => c.filter(Boolean).join(" ");
 
@@ -155,13 +156,22 @@ export const PromptInputBox = React.forwardRef<HTMLDivElement, Props>(
           let bin = "";
           for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
           const b64 = btoa(bin);
-          const res = await fetch(WHISPER_URL, {
+          // Пробуем Deepgram (быстро), при ошибке — AssemblyAI (резерв)
+          let data: { text?: string; error?: string } = {};
+          let res = await fetch(TRANSCRIBE_URL, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ audio: b64, mimeType: blob.type || "audio/mp4" }),
           });
-          const data = await res.json();
-          dbg(`Whisper status=${res.status} text="${data.text}" err="${data.error}"`);
+          data = await res.json();
+          if (!data.text && res.status !== 200) {
+            res = await fetch(WHISPER_URL, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ audio: b64, mimeType: blob.type || "audio/mp4" }),
+            });
+            data = await res.json();
+          }
           if (data.text) onValueChange((value.trim() + " " + data.text).trim());
           else if (data.error) setSpeechError(`Ошибка: ${data.error}`);
         } catch (err) {
