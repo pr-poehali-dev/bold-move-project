@@ -293,7 +293,8 @@ def build_pdf(data, logo_bytes=None):
     table_top[0] = y
     y -= th
 
-    row_idx = [0]
+    row_lines = []   # y-координаты горизонтальных линий строк
+    sec_lines = []   # (y_top, y_bot) секций — для исключения вертикалей
 
     def draw_section(yy, label):
         sh = 8*mm
@@ -305,32 +306,25 @@ def build_pdf(data, logo_bytes=None):
         c.setFont('PTSans-Bold', 9)
         c.setFillColor(TEXT_SECTION)
         c.drawString(card_mg + 6*mm, yy - sh + 2.4*mm, label)
-        # верхняя и нижняя границы секции
-        c.setStrokeColor(HexColor('#888888'))
-        c.setLineWidth(0.35)
-        c.line(card_mg, yy, card_mg + tw, yy)           # верхняя
-        c.line(card_mg, yy - sh, card_mg + tw, yy - sh) # нижняя
-        row_idx[0] = 0
+        sec_lines.append((yy, yy - sh))
+        row_lines.append(yy)        # верхняя граница секции
+        row_lines.append(yy - sh)   # нижняя граница секции
         return yy - sh
 
     def draw_row(yy, name, qty, price, total):
         rh = 8*mm
         yy = check(yy, rh)
-
-        # Белая заливка строки (без stroke — линии рисуем отдельно)
         c.setFillColor(WHITE)
         c.rect(card_mg, yy - rh, tw, rh, fill=1, stroke=0)
 
         ry = yy - rh + 2.5*mm
 
-        # Название
         c.setFont('PTSans', 8.5)
         c.setFillColor(BLACK)
         max_ch = int(CW[0] / (8.5 * 0.195 * mm))
         nm = name[:max_ch-1] + '…' if len(name) > max_ch else name
         c.drawString(cx(0) + 4*mm, ry, nm)
 
-        # Кол-во / Цена
         c.setFont('PTSans', 8)
         c.setFillColor(BLACK)
         if qty:
@@ -338,18 +332,12 @@ def build_pdf(data, logo_bytes=None):
         if price:
             c.drawCentredString(cx(2) + CW[2]/2, ry, rub(price))
 
-        # Сумма
         if total:
             c.setFont('PTSans-Bold', 8.5)
             c.setFillColor(ACCENT_DARK)
             c.drawRightString(cx(3) + CW[3] - 4*mm, ry, rub(total))
 
-        # Линия снизу строки — рисуем ПОСЛЕ текста поверх белого фона
-        c.setStrokeColor(HexColor('#888888'))
-        c.setLineWidth(0.35)
-        c.line(card_mg, yy - rh, card_mg + tw, yy - rh)
-
-        row_idx[0] += 1
+        row_lines.append(yy - rh)   # нижняя граница строки
         return yy - rh
 
     # ── Рендер данных ─────────────────────────────────────────────────────────
@@ -366,15 +354,30 @@ def build_pdf(data, logo_bytes=None):
             qty_, price_, total_ = split_value(value)
             y = draw_row(y, name, qty_, price_, total_)
 
-    # Внешняя рамка таблицы
-    table_h = table_top[0] - y
+    # ── Все линии таблицы рисуем В КОНЦЕ поверх всего содержимого ────────────
     c.setStrokeColor(HexColor('#888888'))
     c.setLineWidth(0.35)
-    c.roundRect(card_mg, y, tw, table_h, 2.5*mm, fill=0, stroke=1)
 
-    # Вертикальные разделители колонок на всю высоту таблицы
+    # Горизонтальные линии (дедупликация)
+    for ly in sorted(set(row_lines), reverse=True):
+        c.line(card_mg, ly, card_mg + tw, ly)
+
+    # Вертикальные разделители колонок — только через строки, не через секции
     for i in range(1, 4):
-        c.line(cx(i), y, cx(i), table_top[0])
+        x = cx(i)
+        seg_top = table_top[0]
+        for (st, sb) in sorted(sec_lines, reverse=True):
+            if seg_top > st:
+                # рисуем отрезок выше секции
+                c.line(x, st, x, seg_top)
+            seg_top = sb
+        # последний отрезок до низа таблицы
+        if seg_top > y:
+            c.line(x, y, x, seg_top)
+
+    # Внешняя рамка
+    table_h = table_top[0] - y
+    c.roundRect(card_mg, y, tw, table_h, 2.5*mm, fill=0, stroke=1)
 
     # ── БЛОК ИТОГОВ ───────────────────────────────────────────────────────────
     if totals_raw:
