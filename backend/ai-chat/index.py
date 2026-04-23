@@ -394,7 +394,9 @@ def _try_simple_estimate_inner(text: str) -> tuple[str, dict] | None:
     )
     if nisha_len_m:
         nisha_len = _w2n(nisha_len_m.group(1))
+        print(f"[nisha] MATCH pattern={nisha_len_m.re.pattern[:60]} group={nisha_len_m.group(0)!r} len={nisha_len}")
     else:
+        print(f"[nisha] NO MATCH → default")
         _nisha_rule_item = next((r for r in _rules if r['category'] == 'Ниши для штор' and r['calc_rule']), None)
         _nisha_default = eval_calc_rule(
             _nisha_rule_item['calc_rule'] if _nisha_rule_item else 'perimeter*0.25',
