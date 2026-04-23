@@ -134,7 +134,7 @@ def get_price_rules() -> list:
         conn = psycopg2.connect(os.environ['DATABASE_URL'])
         cur = conn.cursor()
         cur.execute(f"""
-            SELECT id, category, name, price, unit, calc_rule, bundle, synonyms, when_condition, when_not_condition, client_changes
+            SELECT id, category, name, price, unit, calc_rule, bundle, synonyms, when_condition, when_not_condition, client_changes, mounting_id
             FROM {SCHEMA}.ai_prices
             WHERE active = true
             ORDER BY sort_order, id
@@ -148,7 +148,8 @@ def get_price_rules() -> list:
                 'price': row[3], 'unit': row[4],
                 'calc_rule': row[5] or '', 'bundle': row[6] or '[]',
                 'synonyms': row[7] or '', 'when_condition': row[8] or '',
-                'when_not_condition': row[9] or '', 'client_changes': row[10] or ''
+                'when_not_condition': row[9] or '', 'client_changes': row[10] or '',
+                'mounting_id': row[11]
             })
         return result
     except Exception as e:
