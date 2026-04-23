@@ -65,10 +65,15 @@ export default function ChatUI({ messages, input, typing, panel, onInput, onSend
     const estimateChanged = lastEstimateId !== prevEstimateIdRef.current;
 
     if (estimateChanged && lastEstimateId) {
-      // Смета появилась/обновилась — ждём отрисовки и скроллим к ней
       prevEstimateIdRef.current = lastEstimateId;
       const timer = setTimeout(() => {
-        estimateRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+        // Скроллим внутри контейнера — не трогаем window/viewport (Android не прыгает)
+        if (estimateRef.current && chatRef.current) {
+          const containerTop = chatRef.current.getBoundingClientRect().top;
+          const elemTop = estimateRef.current.getBoundingClientRect().top;
+          const offset = elemTop - containerTop + chatRef.current.scrollTop;
+          chatRef.current.scrollTo({ top: offset, behavior: "smooth" });
+        }
       }, 150);
       return () => clearTimeout(timer);
     }
