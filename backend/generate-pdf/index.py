@@ -414,35 +414,29 @@ def build_pdf(data, logo_bytes=None):
             c.setLineWidth(0.4)
             c.line(box_x + 5*mm, y - HEAD_H, box_x + box_w - 5*mm, y - HEAD_H)
 
-            val_x = box_x + box_w - 6*mm
-            lbl_x = box_x + box_w * 0.46
+            # Правый край значений и левый край меток — оба внутри карточки
+            val_x = box_x + box_w - 5*mm
+            # Метки: от правого края отступаем на ширину самого длинного значения + зазор
+            # Делаем проще: метка прижата к середине карточки
+            lbl_x = box_x + box_w * 0.52
             ty = y - HEAD_H
 
             for lbl_, val_ in rows:
                 is_std = 'standard' in lbl_.lower()
                 rh = STD_ROW_H if is_std else NORM_ROW_H
-
-                # Точное вертикальное центрирование текста в строке
-                font_size_std  = 13
-                font_size_norm = 9
-                # Baseline = низ строки + (высота строки - размер шрифта) / 2
-                if is_std:
-                    mid_y = ty - rh + (rh - font_size_std * 0.352 * mm) / 2
-                else:
-                    mid_y = ty - rh + (rh - font_size_norm * 0.352 * mm) / 2
+                font_size = 13 if is_std else 9
+                mid_y = ty - rh + (rh - font_size * 0.352 * mm) / 2
 
                 if is_std:
-                    # Подсветка — занимает всю высоту строки без зазоров
                     c.setFillColor(TOTAL_STD_BG)
-                    c.rect(box_x + 1*mm, ty - rh + 0.5*mm, box_w - 2*mm, rh - 1*mm, fill=1, stroke=0)
-
-                    c.setFont('PTSans-Bold', font_size_std)
+                    c.rect(box_x + 1*mm, ty - rh + 0.3*mm, box_w - 2*mm, rh - 0.6*mm, fill=1, stroke=0)
+                    c.setFont('PTSans-Bold', font_size)
                     c.setFillColor(ACCENT)
                     c.drawRightString(lbl_x, mid_y, lbl_ + ':')
                     c.setFillColor(ACCENT_DARK)
                     c.drawRightString(val_x, mid_y, val_)
                 else:
-                    c.setFont('PTSans', font_size_norm)
+                    c.setFont('PTSans', font_size)
                     c.setFillColor(TEXT_MUTED)
                     c.drawRightString(lbl_x, mid_y, lbl_ + ':')
                     c.setFillColor(BLACK)
@@ -450,57 +444,63 @@ def build_pdf(data, logo_bytes=None):
 
                 ty -= rh
 
-            y = box_y - 6*mm
+            y = box_y - 4*mm
 
-            # ── Блок-CTA: серая плашка во всю ширину таблицы ─────────────────
-            y -= 5*mm
-            cta_h = 11 * mm
-            y = check(y, cta_h + 6*mm)
+            # ── Блок-CTA ──────────────────────────────────────────────────────
+            y -= 3*mm
+            cta_h = 10 * mm
+            y = check(y, cta_h + 4*mm)
 
-            # Серый фон
+            cta_y = y - cta_h
+
+            # Светло-серый фон
             c.setFillColor(HexColor('#f1f3f5'))
-            c.setStrokeColor(HexColor('#dee2e6'))
+            c.setStrokeColor(HexColor('#ced4da'))
             c.setLineWidth(0.5)
-            c.roundRect(card_mg, y - cta_h, tw, cta_h, 2*mm, fill=1, stroke=1)
+            c.roundRect(card_mg, cta_y, tw, cta_h, 2*mm, fill=1, stroke=1)
 
-            # Левый текст
-            text_y = y - cta_h + (cta_h - 8.5 * 0.352 * mm) / 2
-            c.setFont('PTSans', 8.5)
-            c.setFillColor(BLACK)
-            c.drawString(card_mg + 4*mm, text_y,
-                'Технолог готов приехать к вам ')
-            c.setFont('PTSans-Bold', 8.5)
-            c.setFillColor(ACCENT)
-            # Измеряем ширину первой части
-            first_part_w = c.stringWidth('Технолог готов приехать к вам ', 'PTSans', 8.5)
-            c.drawString(card_mg + 4*mm + first_part_w, text_y, 'БЕСПЛАТНО')
-            free_w = c.stringWidth('БЕСПЛАТНО', 'PTSans-Bold', 8.5)
-            c.setFont('PTSans', 8.5)
-            c.setFillColor(BLACK)
-            c.drawString(card_mg + 4*mm + first_part_w + free_w, text_y,
-                '  На какой день вас записать?')
-
-            # Кнопка "Записаться" справа — оранжевая с гиперссылкой
-            btn_w = 30 * mm
-            btn_h = 7 * mm
+            # Кнопка — рисуем первой чтобы текст был поверх
+            btn_w = 28 * mm
+            btn_h = 6.5 * mm
             btn_x = card_mg + tw - btn_w - 4*mm
-            btn_y = y - cta_h + (cta_h - btn_h) / 2
+            btn_y = cta_y + (cta_h - btn_h) / 2
 
             c.setFillColor(ACCENT)
             c.roundRect(btn_x, btn_y, btn_w, btn_h, 1.5*mm, fill=1, stroke=0)
-
-            btn_text_y = btn_y + (btn_h - 8 * 0.352 * mm) / 2
             c.setFont('PTSans-Bold', 8)
             c.setFillColor(WHITE)
-            c.drawCentredString(btn_x + btn_w / 2, btn_text_y, 'Записаться')
+            c.drawCentredString(btn_x + btn_w / 2,
+                btn_y + (btn_h - 8 * 0.352 * mm) / 2, 'Записаться')
 
-            # Гиперссылка на звонок
-            from reportlab.lib.pdfencrypt import StandardEncryption
+            # Ссылка на звонок поверх кнопки
             c.linkURL('tel:+79776068901',
-                (btn_x, btn_y, btn_x + btn_w, btn_y + btn_h),
-                relative=0)
+                      (btn_x, btn_y, btn_x + btn_w, btn_y + btn_h),
+                      relative=0)
 
-            y = y - cta_h
+            # Текст слева
+            fs = 8.0
+            tx = card_mg + 4*mm
+            text_y = cta_y + (cta_h - fs * 0.352 * mm) / 2
+
+            part1 = 'Технолог готов приехать к вам '
+            part2 = 'БЕСПЛАТНО'
+            part3 = '  На какой день вас записать?'
+
+            c.setFont('PTSans', fs)
+            c.setFillColor(BLACK)
+            c.drawString(tx, text_y, part1)
+            tx += c.stringWidth(part1, 'PTSans', fs)
+
+            c.setFont('PTSans-Bold', fs)
+            c.setFillColor(ACCENT)
+            c.drawString(tx, text_y, part2)
+            tx += c.stringWidth(part2, 'PTSans-Bold', fs)
+
+            c.setFont('PTSans', fs)
+            c.setFillColor(BLACK)
+            c.drawString(tx, text_y, part3)
+
+            y = cta_y - 2*mm
 
     draw_footer()
     c.save()
