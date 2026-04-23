@@ -1,5 +1,5 @@
 import React from "react";
-import { Send, Mic, StopCircle, Paperclip, CheckCircle2, Loader2 } from "lucide-react";
+import { Send, Mic, StopCircle, Square, Paperclip, CheckCircle2, Loader2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import func2url from "@/../backend/func2url.json";
 import { usePhone } from "@/hooks/use-phone";
