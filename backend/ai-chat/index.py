@@ -528,7 +528,7 @@ def _try_simple_estimate_inner(text: str) -> tuple[str, dict] | None:
     if has_nisha:
         sec += 1
         lines.append(f"\n{sec}. Ниши для штор:")
-        lines.append(f"  Ниша {nisha_label} {nisha_len} мп × {nisha_price} ₽ = {fmt(nisha_total)} ₽")
+        lines.append(f"  {nisha_label} {nisha_len} мп × {nisha_price} ₽ = {fmt(nisha_total)} ₽")
 
     # Закладные
     if zakl_total > 0:
