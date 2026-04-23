@@ -264,7 +264,7 @@ def build_pdf(data, logo_bytes=None):
         cy -= 4.5*mm
 
     # ── ТАБЛИЦА ───────────────────────────────────────────────────────────────
-    y = h - mg - header_h - 6*mm
+    y = h - mg - header_h - 10*mm
 
     # Заголовок таблицы — только верхние углы скруглены (кривые Безье)
     th = 8.5*mm
@@ -343,12 +343,16 @@ def build_pdf(data, logo_bytes=None):
     # ── Рендер данных ─────────────────────────────────────────────────────────
     num_counter = 0
     for block in blocks:
+        items = block.get('items', [])
+        title = clean(block.get('title', ''))
+        # Пропускаем пустые блоки-заголовки без позиций
+        if not items:
+            continue
         if block.get('numbered', False):
             num_counter += 1
-        title = clean(block.get('title', ''))
         label = f'{num_counter}. {title}' if block.get('numbered') else title
         y = draw_section(y, label)
-        for item in block.get('items', []):
+        for item in items:
             name = re.sub(r'\s*[-–—]\s*$', '', clean(item.get('name', '')))
             value = clean(item.get('value', ''))
             qty_, price_, total_ = split_value(value)
