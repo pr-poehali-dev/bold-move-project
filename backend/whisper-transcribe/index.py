@@ -44,16 +44,19 @@ def handler(event: dict, context) -> dict:
         return {"statusCode": 502, "headers": headers, "body": json.dumps({"error": f"AAI error: {transcript_data}"})}
     transcript_id = transcript_data["id"]
 
-    # 3. Polling до готовности
-    for _ in range(30):
+    # 3. Polling до готовности (макс 25 сек)
+    for i in range(25):
+        time.sleep(1)
         poll = requests.get(
             f"https://api.assemblyai.com/v2/transcript/{transcript_id}",
             headers=aai_headers,
         ).json()
-        if poll["status"] == "completed":
-            return {"statusCode": 200, "headers": headers, "body": json.dumps({"text": poll["text"]})}
-        if poll["status"] == "error":
+        status = poll.get("status")
+        print(f"poll {i}: status={status}")
+        if status == "completed":
+            text = poll.get("text") or ""
+            return {"statusCode": 200, "headers": headers, "body": json.dumps({"text": text})}
+        if status == "error":
             return {"statusCode": 500, "headers": headers, "body": json.dumps({"error": poll.get("error")})}
-        time.sleep(1)
 
-    return {"statusCode": 504, "headers": headers, "body": json.dumps({"error": "timeout"})}
+    return {"statusCode": 504, "headers": headers, "body": json.dumps({"error": "timeout", "text": ""})}

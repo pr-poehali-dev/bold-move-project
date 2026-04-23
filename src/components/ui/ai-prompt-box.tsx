@@ -162,8 +162,9 @@ export const PromptInputBox = React.forwardRef<HTMLDivElement, Props>(
             body: JSON.stringify({ audio: b64, mimeType: blob.type || "audio/mp4" }),
           });
           const data = await res.json();
-          dbg(`Whisper="${data.text}"`);
+          dbg(`Whisper status=${res.status} text="${data.text}" err="${data.error}"`);
           if (data.text) onValueChange((value.trim() + " " + data.text).trim());
+          else if (data.error) setSpeechError(`Ошибка: ${data.error}`);
         } catch (err) {
           dbg(`Whisper err: ${err}`);
           setSpeechError("Ошибка распознавания");
