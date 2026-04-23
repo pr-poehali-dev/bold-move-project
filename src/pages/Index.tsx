@@ -28,7 +28,6 @@ export default function Index() {
   const [regPhone, setRegPhone] = useState("");
   const [regDone, setRegDone] = useState(false);
   const isPresetMsg = useRef(false);
-  const hasEstimate = messages.some((m) => m.role === "assistant" && isEstimate(m.text));
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const modalTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const regTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -108,7 +107,7 @@ export default function Index() {
   };
 
   return (
-    <div className="bg-[#0b0b11] text-white font-rubik flex flex-col select-none" style={{ height: "100dvh", overflow: "hidden" }}>
+    <div className="bg-[#0b0b11] text-white font-rubik flex flex-col select-none" style={{ height: "100dvh", overflow: "hidden", paddingBottom: "env(safe-area-inset-bottom)" }}>
 
       {/* Header */}
       <header className="shrink-0 flex items-center h-12 px-4 md:px-6 border-b border-white/[0.05] bg-[#0d0d14]/80 backdrop-blur-xl z-30">
@@ -368,8 +367,8 @@ export default function Index() {
         </div>
       </div>
 
-      {/* Mobile bottom CTA — свайп вверх/вниз, скрываем когда есть смета */}
-      {!hasEstimate && <MobileContactBar panel={panel} setPanel={setPanel} />}
+      {/* Mobile bottom CTA — свайп вверх/вниз */}
+      <MobileContactBar panel={panel} setPanel={setPanel} />
     </div>
   );
 }
