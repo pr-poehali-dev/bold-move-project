@@ -357,6 +357,10 @@ def build_pdf(data, logo_bytes=None):
             qty_, price_, total_ = split_value(value)
             y = draw_row(y, name, qty_, price_, total_)
 
+    # Тень под таблицей
+    c.setFillColor(HexColor('#00000012'))
+    c.roundRect(card_mg + 0.8*mm, y - 1.5*mm, tw, table_top[0] - y, 2*mm, fill=1, stroke=0)
+
     # Нижняя рамка таблицы + боковые линии
     c.setStrokeColor(BORDER_OUTER)
     c.setLineWidth(0.6)
@@ -379,10 +383,14 @@ def build_pdf(data, logo_bytes=None):
             rows.append((lbl_, val_))
 
         if rows:
-            ROW_H  = 11 * mm
-            HEAD_H = 9  * mm
-            PAD    = 5  * mm
-            box_h  = HEAD_H + len(rows) * ROW_H + PAD
+            # Компактные высоты строк
+            STD_ROW_H  = 12 * mm   # строка Standard — чуть выше
+            NORM_ROW_H = 8  * mm   # Econom / Premium — компактно
+            HEAD_H     = 8  * mm   # заголовок "Итоговая стоимость"
+            PAD_V      = 4  * mm   # паддинг снизу
+
+            total_rows_h = sum(STD_ROW_H if 'standard' in r[0].lower() else NORM_ROW_H for r in rows)
+            box_h = HEAD_H + total_rows_h + PAD_V
 
             y -= 7*mm
             y = check(y, box_h + 14*mm)
@@ -394,7 +402,7 @@ def build_pdf(data, logo_bytes=None):
 
             # Тень
             c.setFillColor(HexColor('#00000010'))
-            c.roundRect(box_x + 0.7*mm, box_y - 0.7*mm, box_w, box_h, 2.5*mm, fill=1, stroke=0)
+            c.roundRect(box_x + 0.8*mm, box_y - 0.8*mm, box_w, box_h, 2.5*mm, fill=1, stroke=0)
 
             # Белая карточка
             c.setFillColor(TOTAL_BG)
@@ -402,12 +410,12 @@ def build_pdf(data, logo_bytes=None):
             c.setLineWidth(0.6)
             c.roundRect(box_x, box_y, box_w, box_h, 2.5*mm, fill=1, stroke=1)
 
-            # "Итоговая стоимость:" — заголовок
+            # "Итоговая стоимость:" — прижато к правому краю
             c.setFont('PTSans-Bold', 7.5)
             c.setFillColor(TEXT_MUTED)
-            c.drawRightString(box_x + box_w - 5*mm, y - 6*mm, 'Итоговая стоимость:')
+            c.drawRightString(box_x + box_w - 5*mm, y - 5.5*mm, 'Итоговая стоимость:')
 
-            # Тонкий разделитель
+            # Разделитель под заголовком
             c.setStrokeColor(BORDER_INNER)
             c.setLineWidth(0.4)
             c.line(box_x + 5*mm, y - HEAD_H, box_x + box_w - 5*mm, y - HEAD_H)
@@ -418,28 +426,35 @@ def build_pdf(data, logo_bytes=None):
 
             for lbl_, val_ in rows:
                 is_std = 'standard' in lbl_.lower()
-                mid_y  = ty - ROW_H / 2 + 1.5*mm
+                rh = STD_ROW_H if is_std else NORM_ROW_H
+
+                # Точное вертикальное центрирование текста в строке
+                font_size_std  = 13
+                font_size_norm = 9
+                # Baseline = низ строки + (высота строки - размер шрифта) / 2
+                if is_std:
+                    mid_y = ty - rh + (rh - font_size_std * 0.352 * mm) / 2
+                else:
+                    mid_y = ty - rh + (rh - font_size_norm * 0.352 * mm) / 2
 
                 if is_std:
-                    # Фоновая подсветка строки Standard
+                    # Подсветка — занимает всю высоту строки без зазоров
                     c.setFillColor(TOTAL_STD_BG)
-                    c.rect(box_x + 1*mm, ty - ROW_H + 0.5*mm, box_w - 2*mm, ROW_H - 1*mm, fill=1, stroke=0)
+                    c.rect(box_x + 1*mm, ty - rh + 0.5*mm, box_w - 2*mm, rh - 1*mm, fill=1, stroke=0)
 
-                    c.setFont('PTSans-Bold', 13)
+                    c.setFont('PTSans-Bold', font_size_std)
                     c.setFillColor(ACCENT)
                     c.drawRightString(lbl_x, mid_y, lbl_ + ':')
-                    c.setFont('PTSans-Bold', 13)
                     c.setFillColor(ACCENT_DARK)
                     c.drawRightString(val_x, mid_y, val_)
                 else:
-                    c.setFont('PTSans', 9)
+                    c.setFont('PTSans', font_size_norm)
                     c.setFillColor(TEXT_MUTED)
                     c.drawRightString(lbl_x, mid_y, lbl_ + ':')
-                    c.setFont('PTSans', 9)
                     c.setFillColor(BLACK)
                     c.drawRightString(val_x, mid_y, val_)
 
-                ty -= ROW_H
+                ty -= rh
 
             y = box_y - 6*mm
 
