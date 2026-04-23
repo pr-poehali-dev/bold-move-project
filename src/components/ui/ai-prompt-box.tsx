@@ -34,7 +34,11 @@ export const PromptInputBox = React.forwardRef<HTMLDivElement, Props>(
     const [isRecording, setIsRecording] = React.useState(false);
     const [recTime, setRecTime] = React.useState(0);
     const [speechError, setSpeechError] = React.useState("");
-    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as unknown as Record<string, unknown>).MSStream;
+    // iOS = iPhone/iPad/iPod ИЛИ Mac с тачскрином (iPad в десктоп-режиме)
+    // Chrome на iOS тоже WebKit — Speech API не работает, используем MediaRecorder
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent)
+      || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
+      || (/CriOS|FxiOS|OPiOS|mercury/i.test(navigator.userAgent)); // Chrome/Firefox/Opera на iOS
     const [bars] = React.useState(() =>
       Array.from({ length: 26 }, () => 0.2 + Math.random() * 0.8)
     );
@@ -116,21 +120,25 @@ export const PromptInputBox = React.forwardRef<HTMLDivElement, Props>(
     }, [isRecording]);
 
 
-    // iOS: получаем stream и сразу начинаем запись в одном тапе
+    // iOS/Chrome-iOS: получаем stream и сразу начинаем запись в одном тапе
     const startIosRecording = async () => {
       setSpeechError("");
       let stream = iosStreamRef.current;
       if (!stream || stream.getAudioTracks()[0]?.readyState === "ended") {
+        setIsTranscribing(true); // показываем спиннер пока ждём разрешение
         try {
           stream = await navigator.mediaDevices.getUserMedia({ audio: true });
           iosStreamRef.current = stream;
-        } catch (err) {
+        } catch {
           setSpeechError("Нет доступа к микрофону");
+          setIsTranscribing(false);
           return;
         }
+        setIsTranscribing(false);
       }
 
-      const mimeType = MediaRecorder.isTypeSupported("audio/mp4") ? "audio/mp4" : "";
+      const mimeType = MediaRecorder.isTypeSupported("audio/mp4") ? "audio/mp4"
+        : MediaRecorder.isTypeSupported("audio/webm") ? "audio/webm" : "";
       const recorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
       audioChunksRef.current = [];
 
