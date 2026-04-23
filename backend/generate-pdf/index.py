@@ -396,21 +396,7 @@ def build_pdf(data, logo_bytes=None):
 
             total_rows_h = sum(STD_ROW_H if 'standard' in r[0].lower() else NORM_ROW_H for r in rows)
             box_h = HEAD_H + total_rows_h + PAD_V
-
-            # Считаем реальную ширину: макс(метка + зазор + цифра) по всем строкам
-            head_w = c.stringWidth('Итоговая стоимость:', 'PTSans', 7) + 2 * PAD_H
-            max_row_w = head_w
-            for lbl_, val_ in rows:
-                is_std = 'standard' in lbl_.lower()
-                fs = 12 if is_std else 9
-                fn = 'PTSans-Bold' if is_std else 'PTSans'
-                row_w = c.stringWidth(lbl_ + ':', fn, fs) + GAP + c.stringWidth(val_, fn, fs) + 2 * PAD_H
-                if row_w > max_row_w:
-                    max_row_w = row_w
-
-            box_w = max_row_w + 2 * mm   # небольшой запас
-            # Не меньше 45% и не больше 65% ширины таблицы
-            box_w = max(tw * 0.42, min(box_w, tw * 0.65))
+            box_w = tw * 0.55
 
             y -= 7*mm
             y = check(y, box_h + 14*mm)
