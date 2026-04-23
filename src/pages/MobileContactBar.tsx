@@ -26,6 +26,7 @@ export default function MobileContactBar({ panel, setPanel }: Props) {
   return (
     <div
       className="sm:hidden shrink-0 select-none"
+      style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
     >
