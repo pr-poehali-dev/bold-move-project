@@ -125,20 +125,20 @@ export const PromptInputBox = React.forwardRef<HTMLDivElement, Props>(
       setSpeechError("");
       let stream = iosStreamRef.current;
       if (!stream || stream.getAudioTracks()[0]?.readyState === "ended") {
-        setIsTranscribing(true); // показываем спиннер пока ждём разрешение
         try {
+          // requestAnimationFrame даёт браузеру отрисовать UI до блокирующего await
+          await new Promise(r => requestAnimationFrame(r));
           stream = await navigator.mediaDevices.getUserMedia({ audio: true });
           iosStreamRef.current = stream;
         } catch {
           setSpeechError("Нет доступа к микрофону");
-          setIsTranscribing(false);
           return;
         }
-        setIsTranscribing(false);
       }
 
-      const mimeType = MediaRecorder.isTypeSupported("audio/mp4") ? "audio/mp4"
-        : MediaRecorder.isTypeSupported("audio/webm") ? "audio/webm" : "";
+      // Chrome iOS: webm, Safari iOS: mp4
+      const mimeType = ["audio/webm;codecs=opus", "audio/webm", "audio/mp4", ""]
+        .find(m => m === "" || MediaRecorder.isTypeSupported(m)) ?? "";
       const recorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
       audioChunksRef.current = [];
 
