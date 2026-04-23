@@ -313,9 +313,16 @@ def build_rules_prompt(rules: list) -> str:
         if r.get('when_not_condition'):
             parts.append(f"НЕ добавляется если: {r['when_not_condition']}")
 
-        # Количество / расчёт
+        # Количество / расчёт — формулы переводим в человекочитаемый текст для LLM
+        _formula_human = {
+            'perimeter*0.25': 'длину указывает клиент; если не указана — взять 1 сторону (периметр ÷ 4)',
+            'perimeter*0.5':  'длину указывает клиент; если не указана — взять 2 стороны (периметр ÷ 2)',
+            'perimeter':      'равно периметру комнаты',
+            'area':           'равно площади комнаты',
+        }
         if r.get('calc_rule'):
-            parts.append(f"количество: {r['calc_rule']}")
+            human = _formula_human.get(r['calc_rule'].strip(), r['calc_rule'])
+            parts.append(f"количество: {human}")
 
         # Изменения клиента
         if r.get('client_changes'):
