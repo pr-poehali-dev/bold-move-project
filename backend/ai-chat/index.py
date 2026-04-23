@@ -934,13 +934,26 @@ def _apply_edit_patch(prev_items: list, patch: dict, price_map: dict) -> list:
                 print(f"[patch] updated qty: {upd['name']} → {upd['qty']}")
                 break
 
-    # Добавляем новые (только если позиции ещё нет в result)
+    # Добавляем новые; если позиция уже есть — складываем qty (LLM может слать add вместо update)
     existing_names = {it['name'].lower().strip() for it in result}
     for new_it in patch.get('add', []):
         name_low = new_it['name'].lower().strip()
-        # Если уже есть — пропускаем (LLM иногда дублирует add+update)
+        # Если уже есть — ищем нечётко и складываем qty
         if name_low in existing_names:
-            print(f"[patch] skip add (already exists): {new_it['name']}")
+            for it in result:
+                if it['name'].lower().strip() == name_low:
+                    it['qty'] = round(it['qty'] + new_it.get('qty', 1), 2)
+                    print(f"[patch] merged add→qty: {it['name']} now qty={it['qty']}")
+                    break
+            continue
+        # Нечёткий поиск — вдруг имя чуть отличается
+        fuzzy = _find_in_price_map(new_it['name'], {it['name'].lower(): it for it in result})
+        if fuzzy:
+            for it in result:
+                if it['name'].lower().strip() == fuzzy['name'].lower().strip():
+                    it['qty'] = round(it['qty'] + new_it.get('qty', 1), 2)
+                    print(f"[patch] merged fuzzy add→qty: {it['name']} now qty={it['qty']}")
+                    break
             continue
         # Ищем в прайсе — сначала точно, потом нечётко
         db_entry = price_map.get(name_low) or _find_in_price_map(new_it['name'], price_map)
@@ -1299,8 +1312,9 @@ def handler(event, context):
 - "update" — позиции которые УЖЕ ЕСТЬ в смете, но нужно изменить qty
 - Если позиции нет в прайс-листе но клиент её чётко назвал — добавь с name как написал клиент, qty указанное клиентом, price=0
 - Никогда не ставь одну позицию одновременно в "add" и "update"
-- Если клиент просит добавить N штук к существующей позиции — "update" с итоговым qty
+- Если клиент просит добавить N штук к существующей позиции — "update" с итоговым qty (текущее + добавляемое)
 - qty в "add" — точное количество из запроса клиента (если клиент написал "8м" то qty=8)
+- ВАЖНО: при добавлении/изменении количества светильников GX-53 — кол-во "Под светильник ∅90" и "Монтаж светильников GX-53" ВСЕГДА должно совпадать с кол-вом светильников. Обновляй их через "update" если они уже есть, или добавляй через "add" если нет
 - Если запрос слишком расплывчатый — верни пустые массивы и в comment попроси уточнить
 - Если ничего менять не нужно — верни пустые массивы"""
 
@@ -1410,6 +1424,37 @@ mounting_unit: пог.м или шт"""
 
             # Применяем патч к prev_items
             new_items = _apply_edit_patch(prev_items, patch, price_map)
+
+            # ── Синхронизируем закладные, светильники и монтаж ──────────────
+            # Правило: кол-во закладных ∅90 = кол-во светильников GX-53
+            # Ищем светильник и закладную в новых позициях
+            svetilnik_item = next((it for it in new_items if 'gx-53' in it['name'].lower() or ('светильник' in it['name'].lower() and 'монтаж' not in it['name'].lower())), None)
+            zakl_svet_item = next((it for it in new_items if '∅90' in it['name'] or ('закладн' in it['name'].lower() and 'светильник' in it['name'].lower())), None)
+            mount_svet_item = next((it for it in new_items if 'монтаж светильник' in it['name'].lower()), None)
+
+            if svetilnik_item:
+                n_svet = svetilnik_item['qty']
+                # Синхронизируем закладную под светильник
+                if zakl_svet_item:
+                    if zakl_svet_item['qty'] != n_svet:
+                        print(f"[edit] sync zakl_svet: {zakl_svet_item['qty']} → {n_svet}")
+                        zakl_svet_item['qty'] = n_svet
+                else:
+                    # Закладной нет — добавляем
+                    db_zakl = _find_in_price_map('Под светильник ∅90', price_map)
+                    if db_zakl:
+                        new_items.append({'name': db_zakl['name'], 'qty': n_svet, 'price': db_zakl['price'], 'unit': db_zakl.get('unit', 'шт'), 'category': 'Закладные'})
+                        print(f"[edit] auto-added zakl_svet: qty={n_svet}")
+                # Синхронизируем монтаж светильников
+                if mount_svet_item:
+                    if mount_svet_item['qty'] != n_svet:
+                        print(f"[edit] sync mount_svet: {mount_svet_item['qty']} → {n_svet}")
+                        mount_svet_item['qty'] = n_svet
+                else:
+                    db_ms = _find_in_price_map('Монтаж светильников GX-53', price_map)
+                    if db_ms:
+                        new_items.append({'name': db_ms['name'], 'qty': n_svet, 'price': db_ms['price'], 'unit': db_ms.get('unit', 'шт'), 'category': 'Услуги монтажа'})
+                        print(f"[edit] auto-added mount_svet: qty={n_svet}")
 
             # Добавляем монтаж для новых позиций
             for add_item in patch.get('add', []):
