@@ -112,12 +112,25 @@ export const PromptInputBox = React.forwardRef<HTMLDivElement, Props>(
       return () => clearInterval(timerRef.current);
     }, [isRecording]);
 
-    const startRecording = () => {
+    const startRecording = async () => {
       setSpeechError("");
       const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
       if (!SR) {
         setSpeechError("Браузер не поддерживает голосовой ввод");
         return;
+      }
+
+      // iOS Safari: явно запрашиваем доступ к микрофону до Speech API
+      if (isIOS) {
+        try {
+          const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+          dbg(`iOS mic granted tracks=${stream.getTracks().length}`);
+          stream.getTracks().forEach(t => t.stop());
+        } catch (err) {
+          dbg(`iOS mic denied: ${err}`);
+          setSpeechError("Нет доступа к микрофону");
+          return;
+        }
       }
 
       stoppedByUserRef.current = false;
