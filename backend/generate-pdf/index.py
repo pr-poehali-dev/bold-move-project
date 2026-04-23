@@ -396,7 +396,7 @@ def build_pdf(data, logo_bytes=None):
 
             total_rows_h = sum(STD_ROW_H if 'standard' in r[0].lower() else NORM_ROW_H for r in rows)
             box_h = HEAD_H + total_rows_h + PAD_V
-            box_w = tw * 0.55
+            box_w = tw * 0.38
 
             y -= 7*mm
             y = check(y, box_h + 14*mm)
