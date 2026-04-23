@@ -36,10 +36,8 @@ export const PromptInputBox = React.forwardRef<HTMLDivElement, Props>(
     const [speechError, setSpeechError] = React.useState("");
     const [debugLog, setDebugLog] = React.useState<string[]>([]);
     const dbg = (msg: string) => { console.log(msg); setDebugLog(p => [...p.slice(-12), msg]); };
-    // Safari iOS не поддерживает Web Speech API — используем MediaRecorder+Deepgram
-    // Chrome iOS поддерживает Web Speech API — используем его как Android
-    const isChromeIOS = /CriOS/i.test(navigator.userAgent);
-    const isIOS = !isChromeIOS && (
+    // Safari iOS: MediaRecorder+Deepgram. Chrome iOS (CriOS): Web Speech API как Android
+    const isIOS = !/CriOS/i.test(navigator.userAgent) && (
       /iPad|iPhone|iPod/.test(navigator.userAgent)
       || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
     );
@@ -125,7 +123,7 @@ export const PromptInputBox = React.forwardRef<HTMLDivElement, Props>(
 
 
     // Шаг 1: async — получаем stream и держим живым
-    const prepareStream = async (): Promise<boolean> => {
+    const prepareStream = async () => {
       const existing = iosStreamRef.current;
       if (existing && existing.getAudioTracks()[0]?.readyState === "live") {
         dbg(`stream reuse state=${existing.getAudioTracks()[0].readyState}`);
