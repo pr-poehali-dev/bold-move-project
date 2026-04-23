@@ -379,11 +379,8 @@ export const PromptInputBox = React.forwardRef<HTMLDivElement, Props>(
           )}
 
           {/* Кнопка микрофон */}
-          <motion.button
+          <button
             onClick={() => { if (isLoading) return; if (isRecording) stopRecording(); else startRecording(); }}
-            whileTap={{ scale: 0.85 }}
-            whileHover={{ scale: 1.06 }}
-            transition={{ type: "spring", stiffness: 400, damping: 18 }}
             title={isRecording ? "Остановить запись" : "Надиктовать голосом"}
             className={cn(
               "w-9 h-9 rounded-xl flex items-center justify-center shrink-0 transition-colors duration-200",
@@ -392,22 +389,8 @@ export const PromptInputBox = React.forwardRef<HTMLDivElement, Props>(
                 : "bg-white/[0.06] text-white/30 hover:bg-white/[0.1] hover:text-white/60"
             )}
           >
-            <AnimatePresence mode="wait" initial={false}>
-              {isRecording ? (
-                <motion.span key="stoprec"
-                  initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 0 }}
-                  transition={{ duration: 0.12 }}>
-                  <StopCircle size={16} />
-                </motion.span>
-              ) : (
-                <motion.span key="mic"
-                  initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 0 }}
-                  transition={{ duration: 0.12 }}>
-                  <Mic size={15} />
-                </motion.span>
-              )}
-            </AnimatePresence>
-          </motion.button>
+            {isRecording ? <StopCircle size={16} /> : <Mic size={15} />}
+          </button>
 
           {/* Кнопка отправить */}
           <motion.button
