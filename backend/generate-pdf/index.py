@@ -305,10 +305,11 @@ def build_pdf(data, logo_bytes=None):
         c.setFont('PTSans-Bold', 9)
         c.setFillColor(TEXT_SECTION)
         c.drawString(card_mg + 6*mm, yy - sh + 2.4*mm, label)
-        # нижняя линия секции
-        c.setStrokeColor(BORDER_INNER)
-        c.setLineWidth(0.35)
-        c.line(card_mg, yy - sh, card_mg + tw, yy - sh)
+        # верхняя и нижняя границы секции — жирнее
+        c.setStrokeColor(BORDER_OUTER)
+        c.setLineWidth(0.8)
+        c.line(card_mg, yy, card_mg + tw, yy)           # верхняя
+        c.line(card_mg, yy - sh, card_mg + tw, yy - sh) # нижняя
         row_idx[0] = 0
         return yy - sh
 
