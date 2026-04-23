@@ -1,10 +1,11 @@
 import os
 import json
 import base64
+import time
 import requests
 
 def handler(event: dict, context) -> dict:
-    """Транскрибирует аудио через AssemblyAI v3 (синхронно). Принимает base64-аудио, возвращает текст."""
+    """Транскрибирует аудио через AssemblyAI. Принимает base64-аудио, возвращает текст."""
     headers = {
         "Access-Control-Allow-Origin": "*",
         "Access-Control-Allow-Methods": "POST, OPTIONS",
@@ -22,39 +23,42 @@ def handler(event: dict, context) -> dict:
 
     audio_bytes = base64.b64decode(audio_b64)
     api_key = os.environ["ASSEMBLYAI_API_KEY"]
-    aai_headers = {"authorization": api_key, "content-type": "application/json"}
+    auth = {"authorization": api_key}
 
-    # Синхронная транскрипция через v3 — результат сразу без polling
-    res = requests.post(
-        "https://api.assemblyai.com/v3/transcripts",
-        headers=aai_headers,
+    # 1. Загружаем аудио
+    upload = requests.post(
+        "https://api.assemblyai.com/v2/upload",
+        headers={**auth, "content-type": "application/octet-stream"},
+        data=audio_bytes,
+    ).json()
+    upload_url = upload["upload_url"]
+
+    # 2. Запускаем транскрипцию
+    tr = requests.post(
+        "https://api.assemblyai.com/v2/transcript",
+        headers={**auth, "content-type": "application/json"},
         json={
-            "audio": f"data:audio/mp4;base64,{audio_b64}",
-            "speech_model": "universal",
-            "language_detection": True,
+            "audio_url": upload_url,
+            "speech_models": ["universal-3-pro", "universal-2"],
+            "punctuate": False,
+            "format_text": False,
         },
-    )
-    data = res.json()
+    ).json()
 
-    # Если v3 не сработал — fallback на v2 с polling
-    if "text" not in data and "id" not in data:
-        return {"statusCode": 502, "headers": headers, "body": json.dumps({"error": str(data)})}
+    if "id" not in tr:
+        return {"statusCode": 502, "headers": headers, "body": json.dumps({"error": str(tr)})}
 
-    if "text" in data:
-        return {"statusCode": 200, "headers": headers, "body": json.dumps({"text": data["text"] or ""})}
-
-    # v2 polling fallback
-    import time
-    transcript_id = data["id"]
-    for _ in range(55):
-        time.sleep(1)
+    # 3. Polling каждые 0.5 сек — быстрее реагируем на готовность
+    for _ in range(50):
+        time.sleep(0.5)
         poll = requests.get(
-            f"https://api.assemblyai.com/v2/transcript/{transcript_id}",
-            headers={"authorization": api_key},
+            f"https://api.assemblyai.com/v2/transcript/{tr['id']}",
+            headers=auth,
         ).json()
-        if poll.get("status") == "completed":
+        status = poll.get("status")
+        if status == "completed":
             return {"statusCode": 200, "headers": headers, "body": json.dumps({"text": poll.get("text") or ""})}
-        if poll.get("status") == "error":
+        if status == "error":
             return {"statusCode": 500, "headers": headers, "body": json.dumps({"error": poll.get("error")})}
 
     return {"statusCode": 504, "headers": headers, "body": json.dumps({"error": "timeout", "text": ""})}
