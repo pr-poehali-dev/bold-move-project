@@ -317,7 +317,7 @@ def build_pdf(data, logo_bytes=None):
 
         # Кол-во / Цена
         c.setFont('PTSans', 8)
-        c.setFillColor(TEXT_MUTED)
+        c.setFillColor(BLACK)
         if qty:
             c.drawCentredString(cx(1) + CW[1]/2, ry, rub(qty))
         if price:
