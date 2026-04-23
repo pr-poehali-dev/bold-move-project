@@ -45,7 +45,9 @@ export const PromptInputBox = React.forwardRef<HTMLDivElement, Props>(
     const lastInterimRef = React.useRef("");
     const mediaRecorderRef = React.useRef<MediaRecorder | null>(null);
     const audioChunksRef = React.useRef<Blob[]>([]);
+    const iosStreamRef = React.useRef<MediaStream | null>(null);
     const [isTranscribing, setIsTranscribing] = React.useState(false);
+    const [iosMicReady, setIosMicReady] = React.useState(false);
     const fileInputRef = React.useRef<HTMLInputElement>(null);
     const [uploadState, setUploadState] = React.useState<"idle" | "loading" | "done" | "error">("idle");
     const [showUploadModal, setShowUploadModal] = React.useState(false);
@@ -117,71 +119,71 @@ export const PromptInputBox = React.forwardRef<HTMLDivElement, Props>(
     }, [isRecording]);
 
 
-
-    // iOS: запись через MediaRecorder → Whisper
-    const startIosRecording = async () => {
+    // iOS шаг 1: запросить доступ к микрофону и держать stream живым
+    const prepareIosMic = async () => {
       setSpeechError("");
       try {
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
         const tracks = stream.getAudioTracks();
-        dbg(`tracks=${tracks.length} enabled=${tracks[0]?.enabled} state=${tracks[0]?.readyState}`);
-
-        // Диагностика поддержки форматов
-        const formats = ["audio/mp4", "audio/aac", "audio/webm", "audio/ogg", "audio/wav", ""];
-        const supported = formats.filter(f => f === "" || MediaRecorder.isTypeSupported(f));
-        dbg(`supported: ${supported.join("|") || "none"}`);
-
-        // Safari поддерживает audio/mp4, но иногда только без явного mimeType
-        const mimeType = MediaRecorder.isTypeSupported("audio/mp4") ? "audio/mp4"
-          : MediaRecorder.isTypeSupported("audio/aac") ? "audio/aac"
-          : "";
-        dbg(`iOS MediaRecorder mime="${mimeType}"`);
-        const recorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
-        audioChunksRef.current = [];
-
-        const transcribeBlob = async (blob: Blob) => {
-          dbg(`iOS blob size=${blob.size} type=${blob.type}`);
-          if (blob.size === 0) { setSpeechError("Пустая запись"); return; }
-          setIsTranscribing(true);
-          try {
-            const buf = await blob.arrayBuffer();
-            const bytes = new Uint8Array(buf);
-            let bin = "";
-            for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
-            const b64 = btoa(bin);
-            const res = await fetch(WHISPER_URL, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ audio: b64, mimeType: blob.type }),
-            });
-            const data = await res.json();
-            dbg(`Whisper result="${data.text}"`);
-            if (data.text) onValueChange((value.trim() + " " + data.text).trim());
-          } catch (err) {
-            dbg(`Whisper err: ${err}`);
-            setSpeechError("Ошибка распознавания");
-          } finally {
-            setIsTranscribing(false);
-          }
-        };
-
-        recorder.ondataavailable = (e) => {
-          dbg(`chunk size=${e.data.size}`);
-          if (e.data.size > 0) audioChunksRef.current.push(e.data);
-        };
-        recorder.onstop = () => {
-          stream.getTracks().forEach(t => t.stop());
-          const blob = new Blob(audioChunksRef.current, { type: mimeType });
-          transcribeBlob(blob);
-        };
-        mediaRecorderRef.current = recorder;
-        // timeslice=250ms — iOS отдаёт чанки каждые 250мс, не ждёт stop()
-        recorder.start(250);
-        setIsRecording(true);
+        dbg(`mic ready tracks=${tracks.length} state=${tracks[0]?.readyState}`);
+        iosStreamRef.current = stream;
+        setIosMicReady(true);
       } catch (err) {
-        dbg(`iOS start err: ${err}`);
+        dbg(`mic denied: ${err}`);
         setSpeechError("Нет доступа к микрофону");
       }
+    };
+
+    // iOS шаг 2: начать запись на уже живом stream — синхронно, без await
+    const startIosRecording = () => {
+      const stream = iosStreamRef.current;
+      if (!stream) { prepareIosMic(); return; }
+
+      setSpeechError("");
+      const mimeType = MediaRecorder.isTypeSupported("audio/mp4") ? "audio/mp4" : "";
+      dbg(`start rec mime="${mimeType}" state=${stream.getAudioTracks()[0]?.readyState}`);
+
+      const recorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
+      audioChunksRef.current = [];
+
+      const transcribeBlob = async (blob: Blob) => {
+        dbg(`blob size=${blob.size} type=${blob.type}`);
+        if (blob.size === 0) { setSpeechError("Пустая запись"); return; }
+        setIsTranscribing(true);
+        try {
+          const buf = await blob.arrayBuffer();
+          const bytes = new Uint8Array(buf);
+          let bin = "";
+          for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+          const b64 = btoa(bin);
+          const res = await fetch(WHISPER_URL, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ audio: b64, mimeType: blob.type || "audio/mp4" }),
+          });
+          const data = await res.json();
+          dbg(`Whisper="${data.text}"`);
+          if (data.text) onValueChange((value.trim() + " " + data.text).trim());
+        } catch (err) {
+          dbg(`Whisper err: ${err}`);
+          setSpeechError("Ошибка распознавания");
+        } finally {
+          setIsTranscribing(false);
+        }
+      };
+
+      recorder.ondataavailable = (e) => {
+        dbg(`chunk=${e.data.size}`);
+        if (e.data.size > 0) audioChunksRef.current.push(e.data);
+      };
+      recorder.onstop = () => {
+        const blob = new Blob(audioChunksRef.current, { type: mimeType || "audio/mp4" });
+        transcribeBlob(blob);
+      };
+      mediaRecorderRef.current = recorder;
+      recorder.start(500);
+      setIsRecording(true);
+      dbg(`recorder.state=${recorder.state}`);
     };
 
     const stopIosRecording = () => {
@@ -445,20 +447,31 @@ export const PromptInputBox = React.forwardRef<HTMLDivElement, Props>(
           )}
 
           {/* Кнопка микрофон */}
-          <button
-            onClick={() => { if (isLoading || isTranscribing) return; if (isRecording) stopRecording(); else startRecording(); }}
-            title={isRecording ? "Остановить запись" : "Надиктовать голосом"}
-            className={cn(
-              "w-9 h-9 rounded-xl flex items-center justify-center shrink-0 transition-colors duration-200",
-              isRecording
-                ? "bg-red-500/20 text-red-400"
-                : isTranscribing
-                ? "bg-white/[0.06] text-white/20 cursor-wait"
-                : "bg-white/[0.06] text-white/30 hover:bg-white/[0.1] hover:text-white/60"
-            )}
-          >
-            {isTranscribing ? <Loader2 size={15} className="animate-spin" /> : isRecording ? <StopCircle size={16} /> : <Mic size={15} />}
-          </button>
+          {isIOS && !iosMicReady ? (
+            <button
+              onClick={prepareIosMic}
+              title="Разрешить микрофон"
+              className="flex items-center gap-1 px-2 h-9 rounded-xl text-[11px] shrink-0 bg-orange-500/15 text-orange-400"
+            >
+              <Mic size={13} />
+              <span>Разрешить</span>
+            </button>
+          ) : (
+            <button
+              onClick={() => { if (isLoading || isTranscribing) return; if (isRecording) stopRecording(); else startRecording(); }}
+              title={isRecording ? "Остановить запись" : "Надиктовать голосом"}
+              className={cn(
+                "w-9 h-9 rounded-xl flex items-center justify-center shrink-0 transition-colors duration-200",
+                isRecording
+                  ? "bg-red-500/20 text-red-400"
+                  : isTranscribing
+                  ? "bg-white/[0.06] text-white/20 cursor-wait"
+                  : "bg-white/[0.06] text-white/30 hover:bg-white/[0.1] hover:text-white/60"
+              )}
+            >
+              {isTranscribing ? <Loader2 size={15} className="animate-spin" /> : isRecording ? <StopCircle size={16} /> : <Mic size={15} />}
+            </button>
+          )}
 
           {/* Кнопка отправить */}
           <motion.button
