@@ -34,7 +34,6 @@ export const PromptInputBox = React.forwardRef<HTMLDivElement, Props>(
     const [isRecording, setIsRecording] = React.useState(false);
     const [recTime, setRecTime] = React.useState(0);
     const [speechError, setSpeechError] = React.useState("");
-    const dbg = (_msg: string) => {};
     const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as unknown as Record<string, unknown>).MSStream;
     const [bars] = React.useState(() =>
       Array.from({ length: 26 }, () => 0.2 + Math.random() * 0.8)
@@ -42,12 +41,10 @@ export const PromptInputBox = React.forwardRef<HTMLDivElement, Props>(
     const timerRef = React.useRef<ReturnType<typeof setInterval>>();
     const recognitionRef = React.useRef<SpeechRecognition | null>(null);
     const stoppedByUserRef = React.useRef(false);
-    const lastInterimRef = React.useRef("");
     const mediaRecorderRef = React.useRef<MediaRecorder | null>(null);
     const audioChunksRef = React.useRef<Blob[]>([]);
     const iosStreamRef = React.useRef<MediaStream | null>(null);
     const [isTranscribing, setIsTranscribing] = React.useState(false);
-    const [iosMicReady, setIosMicReady] = React.useState(false);
     const fileInputRef = React.useRef<HTMLInputElement>(null);
     const [uploadState, setUploadState] = React.useState<"idle" | "loading" | "done" | "error">("idle");
     const [showUploadModal, setShowUploadModal] = React.useState(false);
@@ -127,22 +124,17 @@ export const PromptInputBox = React.forwardRef<HTMLDivElement, Props>(
         try {
           stream = await navigator.mediaDevices.getUserMedia({ audio: true });
           iosStreamRef.current = stream;
-          setIosMicReady(true);
         } catch (err) {
           setSpeechError("Нет доступа к микрофону");
           return;
         }
       }
 
-      setSpeechError("");
       const mimeType = MediaRecorder.isTypeSupported("audio/mp4") ? "audio/mp4" : "";
-      dbg(`start rec mime="${mimeType}" state=${stream.getAudioTracks()[0]?.readyState}`);
-
       const recorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
       audioChunksRef.current = [];
 
       const transcribeBlob = async (blob: Blob) => {
-        dbg(`blob size=${blob.size} type=${blob.type}`);
         if (blob.size === 0) { setSpeechError("Пустая запись"); return; }
         setIsTranscribing(true);
         try {
@@ -169,8 +161,7 @@ export const PromptInputBox = React.forwardRef<HTMLDivElement, Props>(
           }
           if (data.text) onValueChange((value.trim() + " " + data.text).trim());
           else if (data.error) setSpeechError(`Ошибка: ${data.error}`);
-        } catch (err) {
-          dbg(`Whisper err: ${err}`);
+        } catch {
           setSpeechError("Ошибка распознавания");
         } finally {
           setIsTranscribing(false);
@@ -178,7 +169,6 @@ export const PromptInputBox = React.forwardRef<HTMLDivElement, Props>(
       };
 
       recorder.ondataavailable = (e) => {
-        dbg(`chunk=${e.data.size}`);
         if (e.data.size > 0) audioChunksRef.current.push(e.data);
       };
       recorder.onstop = () => {
@@ -188,7 +178,6 @@ export const PromptInputBox = React.forwardRef<HTMLDivElement, Props>(
       mediaRecorderRef.current = recorder;
       recorder.start(500);
       setIsRecording(true);
-      dbg(`recorder.state=${recorder.state}`);
     };
 
     const stopIosRecording = () => {
@@ -231,12 +220,10 @@ export const PromptInputBox = React.forwardRef<HTMLDivElement, Props>(
           }
           if (lastFinal) sessionText = lastFinal;
           const recognized = (savedText.current + " " + sessionText).trim();
-          dbg(`saved="${savedText.current}" session="${sessionText}" interim="${interim}"`);
           onValueChange(interim ? (recognized + " " + interim).trim() : recognized);
         };
 
         recognition.onerror = (e: SpeechRecognitionErrorEvent) => {
-          dbg(`ERR: ${e.error}`);
           if (e.error === "not-allowed") {
             setSpeechError("Нет доступа к микрофону");
             stoppedByUserRef.current = true;
@@ -245,7 +232,6 @@ export const PromptInputBox = React.forwardRef<HTMLDivElement, Props>(
         };
 
         recognition.onend = () => {
-          dbg(`END stopped=${stoppedByUserRef.current}`);
           if (stoppedByUserRef.current) { setIsRecording(false); return; }
           if (sessionText) savedText.current = (savedText.current + " " + sessionText).trim();
           sessionText = "";
