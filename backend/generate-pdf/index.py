@@ -423,31 +423,34 @@ def build_pdf(data, logo_bytes=None):
             c.setLineWidth(0.4)
             c.line(box_x + 5*mm, y - HEAD_H, box_x + box_w - 5*mm, y - HEAD_H)
 
-            # Фиксированные позиции: метка от левого края, цифра у правого
-            lbl_x = box_x + 6*mm   # левый край метки (drawString)
-            val_x = box_x + box_w - 5*mm  # правый край цифры (drawRightString)
+            val_x = box_x + box_w - 5*mm  # правый край цифры
+            GAP   = 3 * mm                 # зазор между меткой и цифрой
             ty = y - HEAD_H
 
             for lbl_, val_ in rows:
                 is_std = 'standard' in lbl_.lower()
                 rh = STD_ROW_H if is_std else NORM_ROW_H
                 font_size = 12 if is_std else 9
-                # Точный baseline — центр строки
                 mid_y = ty - rh / 2 - font_size * 0.176 * mm
 
+                fnt_name = 'PTSans-Bold' if is_std else 'PTSans'
+
+                # Ширина цифры — чтобы поставить метку вплотную слева
+                val_w = c.stringWidth(val_, fnt_name, font_size)
+                lbl_right = val_x - val_w - GAP  # правый край метки
+
                 if is_std:
-                    # Подсветка строки Standard
                     c.setFillColor(TOTAL_STD_BG)
                     c.rect(box_x + 1*mm, ty - rh + 0.3*mm, box_w - 2*mm, rh - 0.6*mm, fill=1, stroke=0)
                     c.setFont('PTSans-Bold', font_size)
                     c.setFillColor(ACCENT)
-                    c.drawString(lbl_x, mid_y, lbl_ + ':')
+                    c.drawRightString(lbl_right, mid_y, lbl_ + ':')
                     c.setFillColor(ACCENT_DARK)
                     c.drawRightString(val_x, mid_y, val_)
                 else:
                     c.setFont('PTSans', font_size)
                     c.setFillColor(TEXT_MUTED)
-                    c.drawString(lbl_x, mid_y, lbl_ + ':')
+                    c.drawRightString(lbl_right, mid_y, lbl_ + ':')
                     c.setFillColor(BLACK)
                     c.drawRightString(val_x, mid_y, val_)
 
