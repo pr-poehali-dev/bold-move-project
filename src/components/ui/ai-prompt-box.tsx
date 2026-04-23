@@ -123,9 +123,20 @@ export const PromptInputBox = React.forwardRef<HTMLDivElement, Props>(
       setSpeechError("");
       try {
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        const mimeType = MediaRecorder.isTypeSupported("audio/mp4") ? "audio/mp4" : "audio/webm";
-        dbg(`iOS MediaRecorder mime=${mimeType}`);
-        const recorder = new MediaRecorder(stream, { mimeType });
+        const tracks = stream.getAudioTracks();
+        dbg(`tracks=${tracks.length} enabled=${tracks[0]?.enabled} state=${tracks[0]?.readyState}`);
+
+        // Диагностика поддержки форматов
+        const formats = ["audio/mp4", "audio/aac", "audio/webm", "audio/ogg", "audio/wav", ""];
+        const supported = formats.filter(f => f === "" || MediaRecorder.isTypeSupported(f));
+        dbg(`supported: ${supported.join("|") || "none"}`);
+
+        // Safari поддерживает audio/mp4, но иногда только без явного mimeType
+        const mimeType = MediaRecorder.isTypeSupported("audio/mp4") ? "audio/mp4"
+          : MediaRecorder.isTypeSupported("audio/aac") ? "audio/aac"
+          : "";
+        dbg(`iOS MediaRecorder mime="${mimeType}"`);
+        const recorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
         audioChunksRef.current = [];
 
         const transcribeBlob = async (blob: Blob) => {
