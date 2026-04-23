@@ -405,6 +405,7 @@ export const PromptInputBox = React.forwardRef<HTMLDivElement, Props>(
             accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.dwg,.dxf" />
           {hasEstimate ? (
             <motion.button
+              type="button"
               onClick={onNewEstimate}
               whileTap={{ scale: 0.92 }}
               title="Создать новую смету"
@@ -415,6 +416,7 @@ export const PromptInputBox = React.forwardRef<HTMLDivElement, Props>(
             </motion.button>
           ) : (
             <motion.button
+              type="button"
               onClick={() => uploadState === "idle" && fileInputRef.current?.click()}
               whileTap={{ scale: 0.92 }}
               title="Загрузить проект"
@@ -440,6 +442,7 @@ export const PromptInputBox = React.forwardRef<HTMLDivElement, Props>(
 
           {/* Кнопка микрофон */}
           <button
+            type="button"
             onClick={() => { if (isLoading || isTranscribing) return; if (isRecording) stopRecording(); else startRecording(); }}
             title={isRecording ? "Остановить запись" : "Надиктовать голосом"}
             className={cn(
@@ -456,6 +459,7 @@ export const PromptInputBox = React.forwardRef<HTMLDivElement, Props>(
 
           {/* Кнопка отправить */}
           <motion.button
+            type="button"
             onClick={handleSend}
             disabled={!hasContent || isLoading || isRecording}
             whileTap={{ scale: 0.85 }}
