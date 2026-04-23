@@ -347,12 +347,6 @@ def build_pdf(data, logo_bytes=None):
         c.setLineWidth(0.35)
         c.line(card_mg, yy - rh, card_mg + tw, yy - rh)
 
-        # Вертикальные разделители колонок
-        c.setStrokeColor(HexColor('#888888'))
-        c.setLineWidth(0.35)
-        for i in range(1, 4):
-            c.line(cx(i), yy - rh, cx(i), yy)
-
         row_idx[0] += 1
         return yy - rh
 
@@ -375,6 +369,10 @@ def build_pdf(data, logo_bytes=None):
     c.setStrokeColor(HexColor('#888888'))
     c.setLineWidth(0.35)
     c.roundRect(card_mg, y, tw, table_h, 2.5*mm, fill=0, stroke=1)
+
+    # Вертикальные разделители колонок на всю высоту таблицы
+    for i in range(1, 4):
+        c.line(cx(i), y, cx(i), table_top[0])
 
     # ── БЛОК ИТОГОВ ───────────────────────────────────────────────────────────
     if totals_raw:
