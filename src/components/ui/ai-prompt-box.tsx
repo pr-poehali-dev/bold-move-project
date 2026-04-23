@@ -36,11 +36,13 @@ export const PromptInputBox = React.forwardRef<HTMLDivElement, Props>(
     const [speechError, setSpeechError] = React.useState("");
     const [debugLog, setDebugLog] = React.useState<string[]>([]);
     const dbg = (msg: string) => { console.log(msg); setDebugLog(p => [...p.slice(-12), msg]); };
-    // iOS = iPhone/iPad/iPod ИЛИ Mac с тачскрином (iPad в десктоп-режиме)
-    // Chrome на iOS тоже WebKit — Speech API не работает, используем MediaRecorder
-    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent)
+    // Safari iOS не поддерживает Web Speech API — используем MediaRecorder+Deepgram
+    // Chrome iOS поддерживает Web Speech API — используем его как Android
+    const isChromeIOS = /CriOS/i.test(navigator.userAgent);
+    const isIOS = !isChromeIOS && (
+      /iPad|iPhone|iPod/.test(navigator.userAgent)
       || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
-      || (/CriOS|FxiOS|OPiOS|mercury/i.test(navigator.userAgent)); // Chrome/Firefox/Opera на iOS
+    );
     const [bars] = React.useState(() =>
       Array.from({ length: 26 }, () => 0.2 + Math.random() * 0.8)
     );
