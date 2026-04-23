@@ -53,6 +53,8 @@ export const PromptInputBox = React.forwardRef<HTMLDivElement, Props>(
     const [isTranscribing, setIsTranscribing] = React.useState(false);
     const fileInputRef = React.useRef<HTMLInputElement>(null);
     const [uploadState, setUploadState] = React.useState<"idle" | "loading" | "done" | "error">("idle");
+    const [newEstimateConfirm, setNewEstimateConfirm] = React.useState(false);
+    const confirmTimerRef = React.useRef<ReturnType<typeof setTimeout>>();
     const [showUploadModal, setShowUploadModal] = React.useState(false);
     const [phoneSent, setPhoneSent] = React.useState(false);
     const { phone: uploadPhone, handleChange: handlePhoneChange, handleFocus: focusPhone, handleBlur: blurPhone, isValid: phoneValid } = usePhone();
@@ -417,13 +419,37 @@ export const PromptInputBox = React.forwardRef<HTMLDivElement, Props>(
           {hasEstimate ? (
             <motion.button
               type="button"
-              onClick={onNewEstimate}
+              onClick={() => {
+                if (newEstimateConfirm) {
+                  clearTimeout(confirmTimerRef.current);
+                  setNewEstimateConfirm(false);
+                  onNewEstimate?.();
+                } else {
+                  setNewEstimateConfirm(true);
+                  confirmTimerRef.current = setTimeout(() => setNewEstimateConfirm(false), 3000);
+                }
+              }}
               whileTap={{ scale: 0.92 }}
               title="Создать новую смету"
-              className="flex items-center gap-1.5 px-3 h-9 rounded-xl text-[11px] font-medium shrink-0 transition-all duration-200 bg-orange-500/15 text-orange-400 hover:bg-orange-500/25"
+              className={cn(
+                "flex items-center gap-1.5 px-3 h-9 rounded-xl text-[11px] font-medium shrink-0 transition-all duration-200",
+                newEstimateConfirm
+                  ? "bg-orange-500/30 text-orange-300 ring-1 ring-orange-500/50"
+                  : "bg-orange-500/15 text-orange-400 hover:bg-orange-500/25"
+              )}
             >
               <CheckCircle2 size={13} />
-              <span>Создать новую смету</span>
+              <AnimatePresence mode="wait">
+                {newEstimateConfirm ? (
+                  <motion.span key="confirm" initial={{ opacity: 0, width: 0 }} animate={{ opacity: 1, width: "auto" }} exit={{ opacity: 0, width: 0 }} className="overflow-hidden whitespace-nowrap">
+                    Уверены? Нажмите ещё раз
+                  </motion.span>
+                ) : (
+                  <motion.span key="default" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+                    Создать новую смету
+                  </motion.span>
+                )}
+              </AnimatePresence>
             </motion.button>
           ) : (
             <motion.button
