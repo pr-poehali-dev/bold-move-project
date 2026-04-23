@@ -316,6 +316,13 @@ def build_pdf(data, logo_bytes=None):
     def draw_row(yy, name, qty, price, total):
         rh = 8*mm
         yy = check(yy, rh)
+
+        # Сначала линия сверху строки — до заливки, чтобы не перекрылась
+        c.setStrokeColor(HexColor('#888888'))
+        c.setLineWidth(0.35)
+        c.line(card_mg, yy, card_mg + tw, yy)
+
+        # Белая заливка строки
         c.setFillColor(WHITE)
         c.rect(card_mg, yy - rh, tw, rh, fill=1, stroke=0)
 
@@ -341,11 +348,6 @@ def build_pdf(data, logo_bytes=None):
             c.setFont('PTSans-Bold', 8.5)
             c.setFillColor(ACCENT_DARK)
             c.drawRightString(cx(3) + CW[3] - 4*mm, ry, rub(total))
-
-        # Горизонтальная линия строки
-        c.setStrokeColor(HexColor('#888888'))
-        c.setLineWidth(0.35)
-        c.line(card_mg, yy - rh, card_mg + tw, yy - rh)
 
         row_idx[0] += 1
         return yy - rh
