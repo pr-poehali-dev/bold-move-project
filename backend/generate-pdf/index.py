@@ -215,9 +215,9 @@ def build_pdf(data, logo_bytes=None):
     c.setFillColor(GRAY_TEXT)
     c.drawString(mg, y - 27 * mm, f'№ б/н от {today}')
 
-    # Правая: тёмная плашка с логотипом
-    logo_box_w = 52 * mm
-    logo_box_h = 12 * mm
+    # Правая: тёмная плашка с логотипом — крупнее
+    logo_box_w = 62 * mm
+    logo_box_h = 15 * mm
     logo_box_x = w - mg - logo_box_w
     logo_box_y = y - logo_box_h
 
@@ -228,15 +228,15 @@ def build_pdf(data, logo_bytes=None):
         try:
             logo_img = ImageReader(io.BytesIO(logo_bytes))
             iw, ih = logo_img.getSize()
-            lh = logo_box_h * 0.65
+            lh = logo_box_h * 0.72
             lw_d = lh * (iw / ih)
             lx = logo_box_x + (logo_box_w - lw_d) / 2
             ly = logo_box_y + (logo_box_h - lh) / 2
             c.drawImage(logo_img, lx, ly, width=lw_d, height=lh, mask='auto')
         except Exception:
-            c.setFont('PTSans-Bold', 11)
+            c.setFont('PTSans-Bold', 12)
             c.setFillColor(WHITE)
-            c.drawCentredString(logo_box_x + logo_box_w / 2, logo_box_y + 3.5 * mm, 'MOSPOTOLKI')
+            c.drawCentredString(logo_box_x + logo_box_w / 2, logo_box_y + 4 * mm, 'MOSPOTOLKI')
 
     # Контакты под плашкой
     for ct in ['+7 (977) 606-89-01', 'mospotolki.net', 'г. Мытищи, ул. Пограничная 24']:
@@ -329,93 +329,99 @@ def build_pdf(data, logo_bytes=None):
             qty, price, total = split_value(value)
             y = draw_row(y, name, qty, price, total)
 
-    # Внешняя рамка таблицы
-    c.setStrokeColor(BORDER)
-    c.setLineWidth(0.5)
+    # Внешняя рамка таблицы — тёмная выразительная
+    c.setStrokeColor(HexColor('#555555'))
+    c.setLineWidth(1.2)
     c.rect(mg, y, tw, table_top_y[0] - y, fill=0, stroke=1)
 
     # ── БЛОК ИТОГОВ ───────────────────────────────────────────────────────────
     if totals:
         clean_totals = [clean(t) for t in totals
                         if clean(t) and not re.fullmatch(r'[-–—]+', clean(t))]
-        # Фильтруем строки для показа (без строк-заголовков без значения)
         rows = []
         for t in clean_totals:
             ci = t.find(':')
             lbl = t[:ci].strip() if ci >= 0 else t
             val = ensure_rub(t[ci + 1:].strip()) if ci >= 0 else ''
-            is_hdr = 'итог' in lbl.lower() and not val
-            if not is_hdr:
+            if not ('итог' in lbl.lower() and not val):
                 rows.append((lbl, val))
 
         if rows:
-            # Высота: заголовок + каждая строка
-            line_h = 10 * mm
-            box_h = 8 * mm + len(rows) * line_h + 6 * mm
+            # Строки: заголовок (7мм) + разделитель + 3 строки по 11мм + паддинг
+            ROW_H   = 11 * mm
+            HEAD_H  = 8  * mm
+            PAD     = 5  * mm
+            box_h   = HEAD_H + len(rows) * ROW_H + PAD
 
             y -= 8 * mm
-            y = check(y, box_h + 10 * mm)
+            y = check(y, box_h + 12 * mm)
 
-            # Блок — правые 56% ширины
-            box_w = tw * 0.56
+            # Правые 55% таблицы
+            box_w = tw * 0.55
             box_x = mg + tw - box_w
+            box_y = y - box_h
 
+            # Фон + рамка
             c.setFillColor(TOTAL_BG)
             c.setStrokeColor(TOTAL_BORDER)
-            c.setLineWidth(0.6)
-            c.roundRect(box_x, y - box_h, box_w, box_h, 2 * mm, fill=1, stroke=1)
+            c.setLineWidth(0.8)
+            c.roundRect(box_x, box_y, box_w, box_h, 2.5 * mm, fill=1, stroke=1)
 
-            # "Итоговая стоимость:" — справа сверху
-            c.setFont('PTSans-Bold', 8)
-            c.setFillColor(GRAY_TEXT)
-            c.drawRightString(box_x + box_w - 5 * mm, y - 6 * mm, 'Итоговая стоимость:')
+            # "Итоговая стоимость:" — мелко серым, право
+            c.setFont('PTSans-Bold', 7.5)
+            c.setFillColor(GRAY_LABEL)
+            c.drawRightString(box_x + box_w - 5 * mm, y - 5.5 * mm, 'Итоговая стоимость:')
 
-            # Горизонтальная линия под заголовком
+            # Тонкая линия-разделитель
+            sep_ty = y - HEAD_H
             c.setStrokeColor(TOTAL_BORDER)
-            c.setLineWidth(0.4)
-            c.line(box_x + 4 * mm, y - 8 * mm, box_x + box_w - 4 * mm, y - 8 * mm)
+            c.setLineWidth(0.5)
+            c.line(box_x + 4 * mm, sep_ty, box_x + box_w - 4 * mm, sep_ty)
 
-            ty = y - 8 * mm - line_h * 0.5
-            lbl_x = box_x + box_w * 0.44   # правый край меток
-            val_x = box_x + box_w - 5 * mm  # правый край значений
+            # Правые края колонок внутри блока
+            val_x = box_x + box_w - 5 * mm
+            lbl_x = box_x + box_w * 0.47
+
+            ty = sep_ty - ROW_H * 0.15  # стартовая позиция первой строки
 
             for lbl, val in rows:
                 is_std = 'standard' in lbl.lower()
-                cy_text = ty - line_h / 2 + 1 * mm
+                # Центр строки
+                text_y = ty - ROW_H / 2 + 1.5 * mm
 
                 if is_std:
-                    # Standard — крупно, жирно, оранжевый
-                    c.setFont('PTSans-Bold', 14)
+                    c.setFont('PTSans-Bold', 13)
                     c.setFillColor(ORANGE)
-                    c.drawRightString(lbl_x, cy_text, lbl + ':')
-                    c.setFont('PTSans-Bold', 14)
+                    c.drawRightString(lbl_x, text_y, lbl + ':')
+                    c.setFont('PTSans-Bold', 13)
                     c.setFillColor(ORANGE_SUM)
-                    c.drawRightString(val_x, cy_text, val)
-                    # Подчёркивание для Standard
-                    uly = cy_text - 2 * mm
+                    c.drawRightString(val_x, text_y, val)
+                    # Линии сверху и снизу строки Standard
                     c.setStrokeColor(TOTAL_BORDER)
-                    c.setLineWidth(0.3)
-                    c.line(box_x + 4 * mm, uly, box_x + box_w - 4 * mm, uly)
+                    c.setLineWidth(0.4)
+                    c.line(box_x + 4 * mm, ty, box_x + box_w - 4 * mm, ty)
+                    c.line(box_x + 4 * mm, ty - ROW_H, box_x + box_w - 4 * mm, ty - ROW_H)
                 else:
-                    # Econom / Premium — серый, обычный
                     c.setFont('PTSans', 9)
                     c.setFillColor(GRAY_LABEL)
-                    c.drawRightString(lbl_x, cy_text, lbl + ':')
+                    c.drawRightString(lbl_x, text_y, lbl + ':')
                     c.setFont('PTSans', 9)
                     c.setFillColor(BLACK)
-                    c.drawRightString(val_x, cy_text, val)
+                    c.drawRightString(val_x, text_y, val)
 
-                ty -= line_h
+                ty -= ROW_H
 
-            y = y - box_h - 5 * mm
+            y = box_y - 6 * mm
 
-    # ── ДИСКЛЕЙМЕР ────────────────────────────────────────────────────────────
-    y -= 5 * mm
+    # ── ДИСКЛЕЙМЕР — выровнен по правому краю блока итогов ───────────────────
+    y -= 3 * mm
     y = check(y, 8 * mm)
     c.setFont('PTSans', 7.5)
     c.setFillColor(ORANGE)
-    note = final_phrase or 'Данная смета является предварительной. Точная стоимость будет рассчитана на бесплатном замере.'
-    c.drawString(mg, y, note)
+    note = final_phrase or 'На какой день вас записать на бесплатный замер?'
+    # Выровнен по правому краю блока итогов
+    note_x = mg + tw - tw * 0.55 if totals else mg
+    c.drawString(note_x, y, note)
 
     draw_footer()
     c.save()
