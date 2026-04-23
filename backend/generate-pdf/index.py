@@ -203,63 +203,74 @@ def build_pdf(data, logo_bytes=None):
     c.setFillColor(WHITE)
     c.rect(0, 0, w, h, fill=1, stroke=0)
 
-    # ── Шапка: левая — заголовок, правая — логотип ────────────────────────────
-    y_top = h - 14 * mm
+    # ── Шапка: левая — заголовок+дата, правая — логотип+контакты ─────────────
+    y_top = h - 12 * mm
+    right_x = w - margin  # правый край
+    mid_x = w / 2         # граница между левой и правой частью шапки
 
-    # Большой заголовок "СМЕТА"
-    c.setFont('PTSans-Bold', 34)
+    # ЛЕВАЯ ЧАСТЬ — крупное "СМЕТА"
+    c.setFont('PTSans-Bold', 38)
     c.setFillColor(BLACK)
-    c.drawString(margin, y_top - 12 * mm, 'СМЕТА')
+    c.drawString(margin, y_top - 14 * mm, 'СМЕТА')
 
-    c.setFont('PTSans-Bold', 10)
+    c.setFont('PTSans-Bold', 11)
     c.setFillColor(ORANGE)
-    c.drawString(margin, y_top - 19 * mm, 'на натяжные потолки')
+    c.drawString(margin, y_top - 21 * mm, 'на натяжные потолки')
 
-    c.setFont('PTSans', 8.5)
+    c.setFont('PTSans', 9)
     c.setFillColor(GRAY_TEXT)
-    c.drawString(margin, y_top - 25 * mm, f'от {today}')
+    c.drawString(margin, y_top - 27.5 * mm, f'№ б/н от {today}')
 
-    # Контакты
-    contacts = ['+7 (977) 606-89-01', 'mospotolki.net', 'г. Мытищи, ул. Пограничная 24']
-    cy = y_top - 32 * mm
-    for ct in contacts:
-        c.setFont('PTSans', 8)
-        c.setFillColor(BLACK)
-        c.drawString(margin, cy, ct)
-        cy -= 5 * mm
-
-    # Логотип — правый верх
+    # ПРАВАЯ ЧАСТЬ — логотип сверху
+    right_col_x = mid_x + 5 * mm
+    logo_bottom = y_top
     if logo_bytes:
         try:
             logo_img = ImageReader(io.BytesIO(logo_bytes))
             iw, ih = logo_img.getSize()
-            lh = 13 * mm
+            lh = 11 * mm
             lw_draw = lh * (iw / ih)
-            c.drawImage(logo_img, w - margin - lw_draw, y_top - lh,
+            logo_bottom = y_top - lh
+            c.drawImage(logo_img, right_x - lw_draw, logo_bottom,
                         width=lw_draw, height=lh, mask='auto')
         except Exception:
             pass
 
-    # Оранжевая горизонтальная линия-разделитель
-    header_bottom = cy - 4 * mm
+    # Контакты под логотипом — выровнены по правому краю
+    contacts = [
+        '+7 (977) 606-89-01',
+        'mospotolki.net',
+        'г. Мытищи, ул. Пограничная 24',
+    ]
+    cy = logo_bottom - 6 * mm
+    for ct in contacts:
+        c.setFont('PTSans', 8)
+        c.setFillColor(GRAY_TEXT)
+        c.drawRightString(right_x, cy, ct)
+        cy -= 5 * mm
+
+    # Оранжевая разделительная полоса — на уровне низа левой части
+    header_bottom = y_top - 32 * mm
     c.setFillColor(ORANGE)
-    c.rect(margin, header_bottom, table_w, 2 * mm, fill=1, stroke=0)
+    c.rect(margin, header_bottom, table_w, 1.8 * mm, fill=1, stroke=0)
 
     y = header_bottom - 7 * mm
 
     # ── Заголовок таблицы ─────────────────────────────────────────────────────
-    th = 8 * mm
+    th = 8.5 * mm
     c.setFillColor(TABLE_HEAD)
     c.rect(margin, y - th, table_w, th, fill=1, stroke=0)
 
-    c.setFont('PTSans-Bold', 8)
+    c.setFont('PTSans-Bold', 8.5)
     c.setFillColor(WHITE)
     for i, lbl in enumerate(['Позиция', 'Кол-во', 'Цена', 'Сумма']):
         if i == 0:
-            c.drawString(cx(0) + 3 * mm, y - th + 2.6 * mm, lbl)
+            c.drawString(cx(0) + 3 * mm, y - th + 2.8 * mm, lbl)
         else:
-            c.drawCentredString(cx(i) + CW[i] / 2, y - th + 2.6 * mm, lbl)
+            c.drawCentredString(cx(i) + CW[i] / 2, y - th + 2.8 * mm, lbl)
 
+    # Запоминаем верх таблицы для внешней рамки
+    table_top_y = y
     y -= th
     row_idx = [0]
 
@@ -334,6 +345,11 @@ def build_pdf(data, logo_bytes=None):
             value = clean(item.get('value', ''))
             qty, price, total = split_value(value)
             y = draw_row(y, name, qty, price, total)
+
+    # Внешняя рамка вокруг всей таблицы
+    c.setStrokeColor(GRAY_MID)
+    c.setLineWidth(0.5)
+    c.rect(margin, y, table_w, table_top_y - y, fill=0, stroke=1)
 
     # ── Итого ─────────────────────────────────────────────────────────────────
     if totals:
