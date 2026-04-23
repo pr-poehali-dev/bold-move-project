@@ -35,7 +35,7 @@ def handler(event: dict, context) -> dict:
     ext = ext_map.get(mime_type.split(";")[0].strip(), ".mp4")
 
     # Пробуем GROQ_API_KEY, если нет — GROQ_API_KEY2
-    api_key = os.environ.get("GROQ_API_KEY") or os.environ.get("GROQ_API_KEY2")
+    api_key = os.environ.get("GROQ_API_KEY2") or os.environ.get("GROQ_API_KEY")
     client = Groq(api_key=api_key)
 
     with tempfile.NamedTemporaryFile(suffix=ext, delete=False) as f:
