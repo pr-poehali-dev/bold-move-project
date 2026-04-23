@@ -12,7 +12,7 @@ const LIVE_CHAT_URL = func2url["live-chat"];
 
 export function PanelBooking({ onClose }: { onClose: () => void }) {
   const [name, setName]   = useState("");
-  const { phone, handleChange: handlePhone, handleFocus: focusPhone, handleBlur: blurPhone, isValid: phoneValid } = usePhone();
+  const { phone, setPhone, handleChange: handlePhone, handleFocus: focusPhone, handleBlur: blurPhone, isValid: phoneValid } = usePhone();
   const [date, setDate]   = useState("");
   const [time, setTime]   = useState("");
   const [sent, setSent]   = useState(false);
@@ -260,7 +260,7 @@ export function PanelFaq({ onClose }: { onClose: () => void }) {
 // ─── Contacts ─────────────────────────────────────────────────────────────────
 export function PanelContacts({ onClose, onPanel }: { onClose: () => void; onPanel?: (p: string) => void }) {
   const [name, setName] = useState("");
-  const { phone, handleChange: handlePhone, handleFocus: focusPhone, handleBlur: blurPhone, isValid: phoneValid } = usePhone();
+  const { phone, setPhone, handleChange: handlePhone, handleFocus: focusPhone, handleBlur: blurPhone, isValid: phoneValid } = usePhone();
   const [msg, setMsg] = useState("");
   const [sent, setSent] = useState(false);
   const [loading, setLoading] = useState(false);
