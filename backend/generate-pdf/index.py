@@ -227,22 +227,26 @@ def build_pdf(data, logo_bytes=None):
     c.drawString(lx, h - mg - 29*mm, f'Предварительный расчёт  ·  от {today}')
 
     # Правая часть: логотип + контакты
-    # Плашка компактная — подгоняем под размер логотипа
-    logo_pill_h = 11 * mm
+    # Правый блок занимает 42% ширины карточки
+    right_w   = (w - 2*mg) * 0.42
+    right_x   = w - mg - right_w          # левый край правого блока
+    right_pad = 4 * mm                    # внутренний отступ справа
+
+    # Плашка логотипа — фиксированная высота, логотип покрупнее
+    logo_pill_h = 13 * mm
     logo_pill_y = h - mg - logo_pill_h - 4*mm
+    logo_pill_w = right_w                 # плашка на всю ширину правого блока
+    logo_pill_x = right_x
+
+    c.setFillColor(HexColor('#1e2029'))
+    c.roundRect(logo_pill_x, logo_pill_y, logo_pill_w, logo_pill_h, 2*mm, fill=1, stroke=0)
 
     if logo_bytes:
         try:
             img = ImageReader(io.BytesIO(logo_bytes))
             iw, ih_ = img.getSize()
-            lh = logo_pill_h * 0.78          # логотип занимает 78% высоты плашки
+            lh = logo_pill_h * 0.80
             lw_ = lh * (iw / ih_)
-            logo_pill_w = lw_ + 8 * mm       # плашка чуть шире логотипа
-            logo_pill_x = w - mg - logo_pill_w
-
-            c.setFillColor(HexColor('#1e2029'))
-            c.roundRect(logo_pill_x, logo_pill_y, logo_pill_w, logo_pill_h, 2*mm, fill=1, stroke=0)
-
             c.drawImage(img,
                 logo_pill_x + (logo_pill_w - lw_) / 2,
                 logo_pill_y + (logo_pill_h - lh) / 2,
@@ -250,13 +254,13 @@ def build_pdf(data, logo_bytes=None):
         except Exception:
             pass
 
-    # Контакты под логотипом — выравниваем по правому краю страницы
+    # Контакты под плашкой — внутри правого блока, по правому краю
     contacts = ['+7 (977) 606-89-01', 'mospotolki.net', 'г. Мытищи, ул. Пограничная 24']
     cy = logo_pill_y - 5.5*mm
     for ct in contacts:
         c.setFont('PTSans', 7.5)
         c.setFillColor(TEXT_MUTED)
-        c.drawRightString(w - mg, cy, ct)
+        c.drawRightString(right_x + right_w - right_pad, cy, ct)
         cy -= 4.5*mm
 
     # ── ТАБЛИЦА ───────────────────────────────────────────────────────────────
