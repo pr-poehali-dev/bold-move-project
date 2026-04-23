@@ -28,6 +28,7 @@ export default function Index() {
   const [regPhone, setRegPhone] = useState("");
   const [regDone, setRegDone] = useState(false);
   const isPresetMsg = useRef(false);
+  const hasEstimate = messages.some((m) => m.role === "assistant" && isEstimate(m.text));
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const modalTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const regTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -367,8 +368,8 @@ export default function Index() {
         </div>
       </div>
 
-      {/* Mobile bottom CTA — свайп вверх/вниз */}
-      <MobileContactBar panel={panel} setPanel={setPanel} />
+      {/* Mobile bottom CTA — свайп вверх/вниз, скрываем когда есть смета */}
+      {!hasEstimate && <MobileContactBar panel={panel} setPanel={setPanel} />}
     </div>
   );
 }
