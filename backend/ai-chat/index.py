@@ -919,6 +919,13 @@ def _apply_edit_patch(prev_items: list, patch: dict, price_map: dict) -> list:
     import copy
     result = copy.deepcopy(prev_items)
 
+    # Скидка на все позиции
+    discount = float(patch.get('discount_percent') or 0)
+    if discount > 0:
+        for it in result:
+            it['price'] = round(it['price'] * (1 - discount / 100))
+        print(f"[patch] applied discount {discount}% to all {len(result)} items")
+
     # Удаляем
     for name_to_remove in patch.get('remove', []):
         name_low = name_to_remove.lower().strip()
@@ -1305,12 +1312,14 @@ def handler(event, context):
 Верни ТОЛЬКО JSON-патч (без пояснений, без текста, только JSON):
 {{
   "comment": "Краткое подтверждение что сделано (1 строка для клиента)",
+  "discount_percent": 0,
   "remove": ["Точное название позиции для удаления"],
   "add": [{{"name": "Точное название из прайса", "qty": 1, "unit": "шт", "price": 0}}],
   "update": [{{"name": "Точное название из сметы", "qty": 2}}]
 }}
 
 Правила:
+- "discount_percent" — если клиент просит скидку (например "скидку 10%") — укажи число (10), остальные массивы оставь пустыми
 - "remove" — при удалении товара убирай и сам товар И его монтаж из сметы (оба названия в массиве remove)
 - "add" — ТОЛЬКО позиции из ПРАЙС-ЛИСТА выше которых нет в текущей смете. Используй точное название из прайса
 - "update" — позиции которые УЖЕ ЕСТЬ в смете, но нужно изменить qty
