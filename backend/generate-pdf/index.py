@@ -186,8 +186,8 @@ def build_pdf(data, logo_bytes=None):
         if yy - need < 16*mm:
             if table_top[0]:
                 # закрываем рамку таблицы
-                c.setStrokeColor(BORDER_OUTER)
-                c.setLineWidth(0.6)
+                c.setStrokeColor(HexColor('#888888'))
+                c.setLineWidth(0.35)
                 c.line(card_mg, yy, card_mg + tw, yy)
                 c.line(card_mg, yy, card_mg, table_top[0])
                 c.line(card_mg + tw, yy, card_mg + tw, table_top[0])
@@ -344,13 +344,13 @@ def build_pdf(data, logo_bytes=None):
             c.drawRightString(cx(3) + CW[3] - 4*mm, ry, rub(total))
 
         # Горизонтальная линия строки
-        c.setStrokeColor(BORDER_INNER)
-        c.setLineWidth(0.25)
+        c.setStrokeColor(HexColor('#888888'))
+        c.setLineWidth(0.35)
         c.line(card_mg, yy - rh, card_mg + tw, yy - rh)
 
         # Вертикальные разделители колонок
-        c.setStrokeColor(BORDER_INNER)
-        c.setLineWidth(0.25)
+        c.setStrokeColor(HexColor('#888888'))
+        c.setLineWidth(0.35)
         for i in range(1, 4):
             c.line(cx(i), yy - rh, cx(i), yy)
 
@@ -371,10 +371,10 @@ def build_pdf(data, logo_bytes=None):
             qty_, price_, total_ = split_value(value)
             y = draw_row(y, name, qty_, price_, total_)
 
-    # Внешняя рамка таблицы — roundRect только stroke, fill=0, не перекрывает текст
+    # Внешняя рамка таблицы
     table_h = table_top[0] - y
-    c.setStrokeColor(BORDER_OUTER)
-    c.setLineWidth(0.8)
+    c.setStrokeColor(HexColor('#888888'))
+    c.setLineWidth(0.35)
     c.roundRect(card_mg, y, tw, table_h, 2.5*mm, fill=0, stroke=1)
 
     # ── БЛОК ИТОГОВ ───────────────────────────────────────────────────────────
