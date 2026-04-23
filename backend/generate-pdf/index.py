@@ -357,16 +357,12 @@ def build_pdf(data, logo_bytes=None):
             qty_, price_, total_ = split_value(value)
             y = draw_row(y, name, qty_, price_, total_)
 
-    # Тень под таблицей
-    c.setFillColor(HexColor('#00000012'))
-    c.roundRect(card_mg + 0.8*mm, y - 1.5*mm, tw, table_top[0] - y, 2*mm, fill=1, stroke=0)
-
-    # Нижняя рамка таблицы + боковые линии
+    # Внешняя рамка таблицы (без тени — тень в PDF рисуется поверх содержимого)
     c.setStrokeColor(BORDER_OUTER)
-    c.setLineWidth(0.6)
-    c.line(card_mg, y, card_mg + tw, y)                         # низ
-    c.line(card_mg, y, card_mg, table_top[0])                   # лево
-    c.line(card_mg + tw, y, card_mg + tw, table_top[0])         # право
+    c.setLineWidth(0.8)
+    c.line(card_mg, y, card_mg + tw, y)                  # низ
+    c.line(card_mg, y, card_mg, table_top[0])             # лево
+    c.line(card_mg + tw, y, card_mg + tw, table_top[0])  # право
 
     # ── БЛОК ИТОГОВ ───────────────────────────────────────────────────────────
     if totals_raw:
