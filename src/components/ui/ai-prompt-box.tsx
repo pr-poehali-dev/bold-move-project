@@ -33,8 +33,7 @@ export const PromptInputBox = React.forwardRef<HTMLDivElement, Props>(
     const [isRecording, setIsRecording] = React.useState(false);
     const [recTime, setRecTime] = React.useState(0);
     const [speechError, setSpeechError] = React.useState("");
-    const [debugLog, setDebugLog] = React.useState<string[]>([]);
-    const dbg = (msg: string) => setDebugLog(p => [...p.slice(-10), msg]);
+    const dbg = (_msg: string) => {};
     const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as unknown as Record<string, unknown>).MSStream;
     const [bars] = React.useState(() =>
       Array.from({ length: 26 }, () => 0.2 + Math.random() * 0.8)
@@ -396,13 +395,6 @@ export const PromptInputBox = React.forwardRef<HTMLDivElement, Props>(
         {speechError && (
           <div className="px-3 pb-1">
             <span className="text-[10px] text-red-400">{speechError}</span>
-          </div>
-        )}
-
-        {/* DEBUG LOG */}
-        {debugLog.length > 0 && (
-          <div className="px-2 pb-1 font-mono text-[9px] text-yellow-400 bg-black/60 rounded max-h-32 overflow-y-auto">
-            {debugLog.map((l, i) => <div key={i}>{l}</div>)}
           </div>
         )}
 
