@@ -227,35 +227,36 @@ def build_pdf(data, logo_bytes=None):
     c.drawString(lx, h - mg - 29*mm, f'Предварительный расчёт  ·  от {today}')
 
     # Правая часть: логотип + контакты
-    right_block_x = w / 2 + 5*mm
-    right_block_w = w - mg - right_block_x - 4*mm
-
-    # Тёмная плашка логотипа
-    logo_pill_h = 13 * mm
+    # Плашка компактная — подгоняем под размер логотипа
+    logo_pill_h = 11 * mm
     logo_pill_y = h - mg - logo_pill_h - 4*mm
-    c.setFillColor(HexColor('#1e2029'))
-    c.roundRect(right_block_x, logo_pill_y, right_block_w, logo_pill_h, 2*mm, fill=1, stroke=0)
 
     if logo_bytes:
         try:
             img = ImageReader(io.BytesIO(logo_bytes))
             iw, ih_ = img.getSize()
-            lh = logo_pill_h * 0.68
+            lh = logo_pill_h * 0.78          # логотип занимает 78% высоты плашки
             lw_ = lh * (iw / ih_)
+            logo_pill_w = lw_ + 8 * mm       # плашка чуть шире логотипа
+            logo_pill_x = w - mg - logo_pill_w
+
+            c.setFillColor(HexColor('#1e2029'))
+            c.roundRect(logo_pill_x, logo_pill_y, logo_pill_w, logo_pill_h, 2*mm, fill=1, stroke=0)
+
             c.drawImage(img,
-                right_block_x + (right_block_w - lw_) / 2,
+                logo_pill_x + (logo_pill_w - lw_) / 2,
                 logo_pill_y + (logo_pill_h - lh) / 2,
                 width=lw_, height=lh, mask='auto')
         except Exception:
             pass
 
-    # Контакты под логотипом
+    # Контакты под логотипом — выравниваем по правому краю страницы
     contacts = ['+7 (977) 606-89-01', 'mospotolki.net', 'г. Мытищи, ул. Пограничная 24']
     cy = logo_pill_y - 5.5*mm
     for ct in contacts:
         c.setFont('PTSans', 7.5)
         c.setFillColor(TEXT_MUTED)
-        c.drawRightString(right_block_x + right_block_w, cy, ct)
+        c.drawRightString(w - mg, cy, ct)
         cy -= 4.5*mm
 
     # ── ТАБЛИЦА ───────────────────────────────────────────────────────────────
