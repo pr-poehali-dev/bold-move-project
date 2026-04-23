@@ -450,12 +450,55 @@ def build_pdf(data, logo_bytes=None):
 
             y = box_y - 6*mm
 
-            # Дисклеймер — под блоком итогов, выровнен по его левому краю
-            y -= 4*mm
-            c.setFont('PTSans', 7.5)
+            # ── Блок-CTA: серая плашка во всю ширину таблицы ─────────────────
+            y -= 5*mm
+            cta_h = 11 * mm
+            y = check(y, cta_h + 6*mm)
+
+            # Серый фон
+            c.setFillColor(HexColor('#f1f3f5'))
+            c.setStrokeColor(HexColor('#dee2e6'))
+            c.setLineWidth(0.5)
+            c.roundRect(card_mg, y - cta_h, tw, cta_h, 2*mm, fill=1, stroke=1)
+
+            # Левый текст
+            text_y = y - cta_h + (cta_h - 8.5 * 0.352 * mm) / 2
+            c.setFont('PTSans', 8.5)
+            c.setFillColor(BLACK)
+            c.drawString(card_mg + 4*mm, text_y,
+                'Технолог готов приехать к вам ')
+            c.setFont('PTSans-Bold', 8.5)
             c.setFillColor(ACCENT)
-            note = final_phrase or 'На какой день вас записать на бесплатный замер?'
-            c.drawString(box_x, y, note)
+            # Измеряем ширину первой части
+            first_part_w = c.stringWidth('Технолог готов приехать к вам ', 'PTSans', 8.5)
+            c.drawString(card_mg + 4*mm + first_part_w, text_y, 'БЕСПЛАТНО')
+            free_w = c.stringWidth('БЕСПЛАТНО', 'PTSans-Bold', 8.5)
+            c.setFont('PTSans', 8.5)
+            c.setFillColor(BLACK)
+            c.drawString(card_mg + 4*mm + first_part_w + free_w, text_y,
+                '  На какой день вас записать?')
+
+            # Кнопка "Записаться" справа — оранжевая с гиперссылкой
+            btn_w = 30 * mm
+            btn_h = 7 * mm
+            btn_x = card_mg + tw - btn_w - 4*mm
+            btn_y = y - cta_h + (cta_h - btn_h) / 2
+
+            c.setFillColor(ACCENT)
+            c.roundRect(btn_x, btn_y, btn_w, btn_h, 1.5*mm, fill=1, stroke=0)
+
+            btn_text_y = btn_y + (btn_h - 8 * 0.352 * mm) / 2
+            c.setFont('PTSans-Bold', 8)
+            c.setFillColor(WHITE)
+            c.drawCentredString(btn_x + btn_w / 2, btn_text_y, 'Записаться')
+
+            # Гиперссылка на звонок
+            from reportlab.lib.pdfencrypt import StandardEncryption
+            c.linkURL('tel:+79776068901',
+                (btn_x, btn_y, btn_x + btn_w, btn_y + btn_h),
+                relative=0)
+
+            y = y - cta_h
 
     draw_footer()
     c.save()
