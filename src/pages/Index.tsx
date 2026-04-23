@@ -28,6 +28,10 @@ export default function Index() {
   const [regPhone, setRegPhone] = useState("");
   const [regDone, setRegDone] = useState(false);
   const isPresetMsg = useRef(false);
+
+  // Фиксируем высоту один раз при загрузке — Android Chrome сжимает viewport при открытии клавиатуры
+  const [appHeight] = useState<number>(() => window.innerHeight);
+
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const modalTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const regTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -107,7 +111,7 @@ export default function Index() {
   };
 
   return (
-    <div className="bg-[#0b0b11] text-white font-rubik flex flex-col select-none" style={{ height: "100dvh", overflow: "hidden" }}>
+    <div className="bg-[#0b0b11] text-white font-rubik flex flex-col select-none" style={{ height: appHeight, overflow: "hidden" }}>
 
       {/* Header */}
       <header className="shrink-0 flex items-center h-12 px-4 md:px-6 border-b border-white/[0.05] bg-[#0d0d14]/80 backdrop-blur-xl z-30">
