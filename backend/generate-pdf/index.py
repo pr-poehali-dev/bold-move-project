@@ -261,12 +261,21 @@ def build_pdf(data, logo_bytes=None):
     # ── ТАБЛИЦА ───────────────────────────────────────────────────────────────
     y = h - mg - header_h - 6*mm
 
-    # Заголовок таблицы — скруглён только сверху
+    # Заголовок таблицы — только верхние углы скруглены (кривые Безье)
     th = 8.5*mm
     r = 2.5*mm
+    k = 0.5523 * r
+    x0, y0, w0, h0 = card_mg, y - th, tw, th
     c.setFillColor(HEADER_BG)
-    c.roundRect(card_mg, y - th, tw, th + r, r, fill=1, stroke=0)  # верхние углы скруглены
-    c.rect(card_mg, y - th, tw, r, fill=1, stroke=0)               # нижние углы прямые
+    p = c.beginPath()
+    p.moveTo(x0, y0)                               # низ-лево
+    p.lineTo(x0 + w0, y0)                          # низ-право
+    p.lineTo(x0 + w0, y0 + h0 - r)                # право вверх
+    p.curveTo(x0+w0, y0+h0-r+k, x0+w0-r+k, y0+h0, x0+w0-r, y0+h0)  # верх-правый угол
+    p.lineTo(x0 + r, y0 + h0)                     # верх влево
+    p.curveTo(x0+r-k, y0+h0, x0, y0+h0-r+k, x0, y0+h0-r)           # верх-левый угол
+    p.close()
+    c.drawPath(p, fill=1, stroke=0)
 
     c.setFont('PTSans-Bold', 8)
     c.setFillColor(WHITE)
