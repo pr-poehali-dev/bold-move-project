@@ -37,7 +37,7 @@ def handler(event: dict, context) -> dict:
     transcript_res = requests.post(
         "https://api.assemblyai.com/v2/transcript",
         headers={**aai_headers, "content-type": "application/json"},
-        json={"audio_url": upload_url, "speech_models": ["universal-3-pro"], "language_code": "ru"},
+        json={"audio_url": upload_url, "speech_models": ["universal-3-pro", "universal-2"]},
     )
     transcript_data = transcript_res.json()
     if "id" not in transcript_data:
