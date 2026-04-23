@@ -1260,7 +1260,8 @@ def handler(event, context):
     session_id = event.get('headers', {}).get('x-session-id', '') or event.get('headers', {}).get('X-Session-Id', '')
 
     # fast=True — кнопка "Пример расчёта", используем авто-расчёт
-    if fast:
+    # Но если есть prev_items — идём в обычный режим (редактирование сметы)
+    if fast and not prev_items:
         try:
             cached = get_cached_answer(last_user_text, session_id)
             if cached:
