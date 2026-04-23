@@ -358,9 +358,10 @@ def build_pdf(data, logo_bytes=None):
     c.setStrokeColor(HexColor('#888888'))
     c.setLineWidth(0.35)
 
-    # Горизонтальные линии (дедупликация)
+    # Горизонтальные линии (дедупликация, исключаем низ таблицы — он в рамке)
     for ly in sorted(set(row_lines), reverse=True):
-        c.line(card_mg, ly, card_mg + tw, ly)
+        if abs(ly - y) > 0.1:   # пропускаем нижнюю границу таблицы
+            c.line(card_mg, ly, card_mg + tw, ly)
 
     # Вертикальные разделители колонок — тоньше
     c.setLineWidth(0.25)
