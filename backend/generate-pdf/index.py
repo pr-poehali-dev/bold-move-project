@@ -386,11 +386,10 @@ def build_pdf(data, logo_bytes=None):
             rows.append((lbl_, val_))
 
         if rows:
-            # Компактные высоты строк
-            STD_ROW_H  = 12 * mm   # строка Standard — чуть выше
-            NORM_ROW_H = 8  * mm   # Econom / Premium — компактно
-            HEAD_H     = 8  * mm   # заголовок "Итоговая стоимость"
-            PAD_V      = 4  * mm   # паддинг снизу
+            STD_ROW_H  = 11 * mm
+            NORM_ROW_H = 8  * mm
+            HEAD_H     = 7  * mm
+            PAD_V      = 4  * mm
 
             total_rows_h = sum(STD_ROW_H if 'standard' in r[0].lower() else NORM_ROW_H for r in rows)
             box_h = HEAD_H + total_rows_h + PAD_V
@@ -407,47 +406,47 @@ def build_pdf(data, logo_bytes=None):
             c.setFillColor(HexColor('#00000010'))
             c.roundRect(box_x + 0.8*mm, box_y - 0.8*mm, box_w, box_h, 2.5*mm, fill=1, stroke=0)
 
-            # Белая карточка
-            c.setFillColor(TOTAL_BG)
+            # Светло-серая карточка
+            c.setFillColor(HexColor('#f1f3f5'))
             c.setStrokeColor(BORDER_OUTER)
             c.setLineWidth(0.6)
             c.roundRect(box_x, box_y, box_w, box_h, 2.5*mm, fill=1, stroke=1)
 
-            # "Итоговая стоимость:" — прижато к правому краю
-            c.setFont('PTSans-Bold', 7.5)
+            # "Итоговая стоимость:" справа
+            c.setFont('PTSans', 7)
             c.setFillColor(TEXT_MUTED)
-            c.drawRightString(box_x + box_w - 5*mm, y - 5.5*mm, 'Итоговая стоимость:')
+            c.drawRightString(box_x + box_w - 5*mm, y - 5*mm, 'Итоговая стоимость:')
 
-            # Разделитель под заголовком
-            c.setStrokeColor(BORDER_INNER)
+            # Разделитель
+            c.setStrokeColor(BORDER_OUTER)
             c.setLineWidth(0.4)
             c.line(box_x + 5*mm, y - HEAD_H, box_x + box_w - 5*mm, y - HEAD_H)
 
-            # Правый край значений и левый край меток — оба внутри карточки
-            val_x = box_x + box_w - 5*mm
-            # Метки: от правого края отступаем на ширину самого длинного значения + зазор
-            # Делаем проще: метка прижата к середине карточки
-            lbl_x = box_x + box_w * 0.52
+            # Фиксированные позиции: метка от левого края, цифра у правого
+            lbl_x = box_x + 6*mm   # левый край метки (drawString)
+            val_x = box_x + box_w - 5*mm  # правый край цифры (drawRightString)
             ty = y - HEAD_H
 
             for lbl_, val_ in rows:
                 is_std = 'standard' in lbl_.lower()
                 rh = STD_ROW_H if is_std else NORM_ROW_H
-                font_size = 13 if is_std else 9
-                mid_y = ty - rh + (rh - font_size * 0.352 * mm) / 2
+                font_size = 12 if is_std else 9
+                # Точный baseline — центр строки
+                mid_y = ty - rh / 2 - font_size * 0.176 * mm
 
                 if is_std:
+                    # Подсветка строки Standard
                     c.setFillColor(TOTAL_STD_BG)
                     c.rect(box_x + 1*mm, ty - rh + 0.3*mm, box_w - 2*mm, rh - 0.6*mm, fill=1, stroke=0)
                     c.setFont('PTSans-Bold', font_size)
                     c.setFillColor(ACCENT)
-                    c.drawRightString(lbl_x, mid_y, lbl_ + ':')
+                    c.drawString(lbl_x, mid_y, lbl_ + ':')
                     c.setFillColor(ACCENT_DARK)
                     c.drawRightString(val_x, mid_y, val_)
                 else:
                     c.setFont('PTSans', font_size)
                     c.setFillColor(TEXT_MUTED)
-                    c.drawRightString(lbl_x, mid_y, lbl_ + ':')
+                    c.drawString(lbl_x, mid_y, lbl_ + ':')
                     c.setFillColor(BLACK)
                     c.drawRightString(val_x, mid_y, val_)
 
