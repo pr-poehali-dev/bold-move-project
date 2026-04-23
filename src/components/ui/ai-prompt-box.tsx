@@ -34,6 +34,8 @@ export const PromptInputBox = React.forwardRef<HTMLDivElement, Props>(
     const [isRecording, setIsRecording] = React.useState(false);
     const [recTime, setRecTime] = React.useState(0);
     const [speechError, setSpeechError] = React.useState("");
+    const [debugLog, setDebugLog] = React.useState<string[]>([]);
+    const dbg = (msg: string) => { console.log(msg); setDebugLog(p => [...p.slice(-12), msg]); };
     // iOS = iPhone/iPad/iPod ИЛИ Mac с тачскрином (iPad в десктоп-режиме)
     // Chrome на iOS тоже WebKit — Speech API не работает, используем MediaRecorder
     const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent)
@@ -126,23 +128,26 @@ export const PromptInputBox = React.forwardRef<HTMLDivElement, Props>(
       let stream = iosStreamRef.current;
       if (!stream || stream.getAudioTracks()[0]?.readyState === "ended") {
         try {
-          // requestAnimationFrame даёт браузеру отрисовать UI до блокирующего await
-          await new Promise(r => requestAnimationFrame(r));
+            await new Promise(r => requestAnimationFrame(r));
           stream = await navigator.mediaDevices.getUserMedia({ audio: true });
           iosStreamRef.current = stream;
-        } catch {
+          dbg(`stream ok tracks=${stream.getAudioTracks().length} state=${stream.getAudioTracks()[0]?.readyState}`);
+        } catch (err) {
+          dbg(`mic err: ${err}`);
           setSpeechError("Нет доступа к микрофону");
           return;
         }
       }
 
-      // Chrome iOS: webm, Safari iOS: mp4
-      const mimeType = ["audio/webm;codecs=opus", "audio/webm", "audio/mp4", ""]
-        .find(m => m === "" || MediaRecorder.isTypeSupported(m)) ?? "";
+      const formats = ["audio/webm;codecs=opus", "audio/webm", "audio/mp4", "audio/ogg", ""];
+      const mimeType = formats.find(m => m === "" || MediaRecorder.isTypeSupported(m)) ?? "";
+      dbg(`mimeType="${mimeType}" trackState=${stream.getAudioTracks()[0]?.readyState}`);
       const recorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
       audioChunksRef.current = [];
+      dbg(`recorder.state=${recorder.state}`);
 
       const transcribeBlob = async (blob: Blob) => {
+        dbg(`blob size=${blob.size} type="${blob.type}" chunks=${audioChunksRef.current.length}`);
         if (blob.size === 0) { setSpeechError("Пустая запись"); return; }
         setIsTranscribing(true);
         try {
@@ -177,6 +182,7 @@ export const PromptInputBox = React.forwardRef<HTMLDivElement, Props>(
       };
 
       recorder.ondataavailable = (e) => {
+        dbg(`chunk=${e.data.size}`);
         if (e.data.size > 0) audioChunksRef.current.push(e.data);
       };
       recorder.onstop = () => {
@@ -394,6 +400,13 @@ export const PromptInputBox = React.forwardRef<HTMLDivElement, Props>(
         {speechError && (
           <div className="px-3 pb-1">
             <span className="text-[10px] text-red-400">{speechError}</span>
+          </div>
+        )}
+
+        {/* DEBUG LOG */}
+        {debugLog.length > 0 && (
+          <div className="px-2 pb-1 font-mono text-[9px] text-yellow-400 bg-black/60 rounded max-h-40 overflow-y-auto">
+            {debugLog.map((l, i) => <div key={i}>{l}</div>)}
           </div>
         )}
 
