@@ -204,10 +204,11 @@ def eval_calc_rule(rule: str, area: float, perim: float) -> float | None:
         if divisor:
             return round(base / divisor, 2)
 
-    # Просто «площадь» или «периметр» без операций
-    if 'area' in r and 'perimeter' not in r:
+    # Просто «площадь» или «периметр» без операций (только если нет арифметики)
+    _has_op = bool(re.search(r'[+\-*/×x]|\d', r))
+    if 'area' in r and 'perimeter' not in r and not _has_op:
         return round(area, 2)
-    if 'perimeter' in r and 'area' not in r:
+    if 'perimeter' in r and 'area' not in r and not _has_op:
         return round(perim, 2)
 
     # Попытка eval старого формата (area * 1.3)
