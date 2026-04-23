@@ -261,13 +261,10 @@ def build_pdf(data, logo_bytes=None):
     # ── ТАБЛИЦА ───────────────────────────────────────────────────────────────
     y = h - mg - header_h - 6*mm
 
-    # Заголовок таблицы
+    # Заголовок таблицы — прямоугольник без скруглений
     th = 8.5*mm
     c.setFillColor(HEADER_BG)
-    c.roundRect(card_mg, y - th, tw, th, 2*mm, fill=1, stroke=0)
-    # Перерисовываем нижние углы прямыми (только верх скруглён)
-    c.setFillColor(HEADER_BG)
-    c.rect(card_mg, y - th, tw, th/2, fill=1, stroke=0)
+    c.rect(card_mg, y - th, tw, th, fill=1, stroke=0)
 
     c.setFont('PTSans-Bold', 8)
     c.setFillColor(WHITE)
@@ -357,12 +354,11 @@ def build_pdf(data, logo_bytes=None):
             qty_, price_, total_ = split_value(value)
             y = draw_row(y, name, qty_, price_, total_)
 
-    # Внешняя рамка таблицы (без тени — тень в PDF рисуется поверх содержимого)
+    # Внешняя рамка таблицы — roundRect только stroke, fill=0, не перекрывает текст
+    table_h = table_top[0] - y
     c.setStrokeColor(BORDER_OUTER)
     c.setLineWidth(0.8)
-    c.line(card_mg, y, card_mg + tw, y)                  # низ
-    c.line(card_mg, y, card_mg, table_top[0])             # лево
-    c.line(card_mg + tw, y, card_mg + tw, table_top[0])  # право
+    c.roundRect(card_mg, y, tw, table_h, 2.5*mm, fill=0, stroke=1)
 
     # ── БЛОК ИТОГОВ ───────────────────────────────────────────────────────────
     if totals_raw:
