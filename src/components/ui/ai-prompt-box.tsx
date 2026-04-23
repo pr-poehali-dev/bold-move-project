@@ -138,19 +138,21 @@ export const PromptInputBox = React.forwardRef<HTMLDivElement, Props>(
         dbg(`iOS MediaRecorder mime=${mimeType}`);
         const recorder = new MediaRecorder(stream, { mimeType });
         audioChunksRef.current = [];
-        recorder.ondataavailable = (e) => { if (e.data.size > 0) audioChunksRef.current.push(e.data); };
-        recorder.onstop = async () => {
-          stream.getTracks().forEach(t => t.stop());
-          const blob = new Blob(audioChunksRef.current, { type: mimeType });
-          dbg(`iOS blob size=${blob.size} type=${mimeType}`);
+
+        const transcribeBlob = async (blob: Blob) => {
+          dbg(`iOS blob size=${blob.size} type=${blob.type}`);
+          if (blob.size === 0) { setSpeechError("Пустая запись"); return; }
           setIsTranscribing(true);
           try {
             const buf = await blob.arrayBuffer();
-            const b64 = btoa(String.fromCharCode(...new Uint8Array(buf)));
+            const bytes = new Uint8Array(buf);
+            let bin = "";
+            for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+            const b64 = btoa(bin);
             const res = await fetch(WHISPER_URL, {
               method: "POST",
               headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ audio: b64, mimeType }),
+              body: JSON.stringify({ audio: b64, mimeType: blob.type }),
             });
             const data = await res.json();
             dbg(`Whisper result="${data.text}"`);
@@ -162,8 +164,19 @@ export const PromptInputBox = React.forwardRef<HTMLDivElement, Props>(
             setIsTranscribing(false);
           }
         };
+
+        recorder.ondataavailable = (e) => {
+          dbg(`chunk size=${e.data.size}`);
+          if (e.data.size > 0) audioChunksRef.current.push(e.data);
+        };
+        recorder.onstop = () => {
+          stream.getTracks().forEach(t => t.stop());
+          const blob = new Blob(audioChunksRef.current, { type: mimeType });
+          transcribeBlob(blob);
+        };
         mediaRecorderRef.current = recorder;
-        recorder.start();
+        // timeslice=250ms — iOS отдаёт чанки каждые 250мс, не ждёт stop()
+        recorder.start(250);
         setIsRecording(true);
       } catch (err) {
         dbg(`iOS start err: ${err}`);
