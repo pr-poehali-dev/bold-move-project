@@ -1136,9 +1136,9 @@ def _recalc_totals(answer: str) -> str:
         r'=\s*([\d][\d\s]*(?:[.,]\d+)?)\s*₽\s*\**\s*$',
         re.IGNORECASE
     )
-    # Паттерн строки итога: Econom/Standard/Premium: X ₽
+    # Паттерн строки итога: Econom/Standard/Premium: X ₽ (целые и дробные)
     total_pat = re.compile(
-        r'^(Econom|Standard|Premium)\s*:\s*[\d\s]+\s*₽',
+        r'^(Econom|Standard|Premium)\s*:\s*[\d\s]+(?:[.,]\d+)?\s*₽',
         re.IGNORECASE
     )
 
