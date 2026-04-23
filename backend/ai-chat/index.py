@@ -383,11 +383,14 @@ def _try_simple_estimate_inner(text: str) -> tuple[str, dict] | None:
 
     # Длина ниши: явная (цифра или слово) рядом с любым ключевым словом ниши/карниза
     _nisha_kw = r'(?:ниш[аеуы]?|карниз|штор[аыуе]?|шторн|гардин\w*)'
+    # Ищем длину ниши — число + (м|пм|погон) рядом с ключевым словом.
+    # Намеренно исключаем "кв" перед "м" чтобы "12 кв.м" не захватывалось как длина.
+    _m_unit = r'(?:пм|погон\.?\s*м|п\.?\s*м|(?<!кв[\s.])м(?!²|2|\s*кв))'
     nisha_len_m = (
-        re.search(_NUM_WORD_PAT + r'\s*(?:м|пм|погон)\s+' + _nisha_kw, t) or
-        re.search(_nisha_kw + r'\s+(?:для\s+штор\s+)?(?:пк[- ]?\d+\s+)?' + _NUM_WORD_PAT + r'\s*(?:м|пм|погон)', t) or
-        re.search(_nisha_kw + r'\s+' + _NUM_WORD_PAT + r'\s*(?:м|пм|погон)', t) or
-        re.search(_NUM_WORD_PAT + r'\s*(?:м|пм|погон)\s*(?:для\s*)?' + _nisha_kw, t)
+        re.search(_nisha_kw + r'\s+(?:для\s+штор\s+)?(?:пк[- ]?\d+\s+)?' + _NUM_WORD_PAT + r'\s*' + _m_unit, t) or
+        re.search(_nisha_kw + r'\s+' + _NUM_WORD_PAT + r'\s*' + _m_unit, t) or
+        re.search(_NUM_WORD_PAT + r'\s*' + _m_unit + r'\s+' + _nisha_kw, t) or
+        re.search(_NUM_WORD_PAT + r'\s*' + _m_unit + r'\s*(?:для\s*)?' + _nisha_kw, t)
     )
     if nisha_len_m:
         nisha_len = _w2n(nisha_len_m.group(1))
