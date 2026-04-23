@@ -1,7 +1,7 @@
 import os
 import json
 import base64
-import tempfile
+import time
 import requests
 
 def handler(event: dict, context) -> dict:
@@ -39,10 +39,12 @@ def handler(event: dict, context) -> dict:
         headers={**aai_headers, "content-type": "application/json"},
         json={"audio_url": upload_url, "language_code": "ru"},
     )
-    transcript_id = transcript_res.json()["id"]
+    transcript_data = transcript_res.json()
+    if "id" not in transcript_data:
+        return {"statusCode": 502, "headers": headers, "body": json.dumps({"error": f"AAI error: {transcript_data}"})}
+    transcript_id = transcript_data["id"]
 
     # 3. Polling до готовности
-    import time
     for _ in range(30):
         poll = requests.get(
             f"https://api.assemblyai.com/v2/transcript/{transcript_id}",
