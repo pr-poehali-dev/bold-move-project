@@ -1,9 +1,9 @@
-"""Генерирует PDF-смету — точное воспроизведение утверждённого дизайна."""
+"""Генерирует PDF-смету — современный деловой стиль."""
 
 import json, os, base64, io, re, requests, boto3
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.units import mm
-from reportlab.lib.colors import HexColor
+from reportlab.lib.colors import HexColor, Color
 from reportlab.pdfgen import canvas
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
@@ -12,38 +12,37 @@ from datetime import date
 
 BUCKET = 'files'
 
-WHITE        = HexColor('#ffffff')
-BLACK        = HexColor('#1a1a1a')
-ORANGE       = HexColor('#f97316')
-ORANGE_SUM   = HexColor('#c2500a')
-GRAY_TEXT    = HexColor('#666666')
-GRAY_LABEL   = HexColor('#999999')
-SEC_BG       = HexColor('#f3f4f6')   # светло-серый фон секций
-TABLE_HEAD   = HexColor('#2d2d2d')
-BORDER       = HexColor('#e0e0e0')
-TOTAL_BG     = HexColor('#fff7ed')
-TOTAL_BORDER = HexColor('#f5c59a')
-LOGO_BG      = HexColor('#1a1a2e')
+# ── Палитра — современная деловая ────────────────────────────────────────────
+WHITE         = HexColor('#ffffff')
+BG_PAGE       = HexColor('#f8f9fa')   # лёгкий серый фон страницы
+CARD_BG       = HexColor('#ffffff')   # белая карточка таблицы
+BLACK         = HexColor('#1e2029')   # почти чёрный текст
+ACCENT        = HexColor('#f97316')   # оранжевый бренд
+ACCENT_DARK   = HexColor('#c2500a')   # тёмно-оранж для сумм
+HEADER_BG     = HexColor('#1e2029')   # тёмный заголовок таблицы
+SEC_BG        = HexColor('#f1f3f5')   # светло-серый фон секции
+SEC_STRIPE    = HexColor('#f97316')   # оранжевая левая полоска
+ROW_ALT       = HexColor('#fafafa')   # чуть светлее для чётных строк
+BORDER_INNER  = HexColor('#e9ecef')   # внутренние линии
+BORDER_OUTER  = HexColor('#ced4da')   # внешняя рамка
+TEXT_MUTED    = HexColor('#868e96')   # серый текст (Кол-во, Цена)
+TEXT_SECTION  = HexColor('#343a40')   # текст секции
+TOTAL_BG      = HexColor('#ffffff')   # белый фон блока итогов
+TOTAL_BORDER  = HexColor('#dee2e6')
+TOTAL_STD_BG  = HexColor('#fff4ec')   # фон строки Standard
 
-# Новый логотип
 LOGO_URL    = 'https://cdn.poehali.dev/files/3a96cf97-dbfb-47e7-8b6a-f8f01d5998e2.png'
 LOGO_S3_KEY = 'assets/mospotolki-logo-v2.png'
 
 FONT_URLS = {
-    'regular': {
-        'key': 'fonts/PTSans-Regular.ttf',
-        'urls': [
-            'https://raw.githubusercontent.com/openmaptiles/fonts/master/pt-sans/PTSans-Regular.ttf',
-            'https://fonts.gstatic.com/s/ptsans/v17/jizaRExUiTo99u79D0KExQ.ttf',
-        ],
-    },
-    'bold': {
-        'key': 'fonts/PTSans-Bold.ttf',
-        'urls': [
-            'https://raw.githubusercontent.com/openmaptiles/fonts/master/pt-sans/PTSans-Bold.ttf',
-            'https://fonts.gstatic.com/s/ptsans/v17/jizfRExUiTo99u79B_mh4OmnLD0Z4zM.ttf',
-        ],
-    },
+    'regular': {'key': 'fonts/PTSans-Regular.ttf', 'urls': [
+        'https://raw.githubusercontent.com/openmaptiles/fonts/master/pt-sans/PTSans-Regular.ttf',
+        'https://fonts.gstatic.com/s/ptsans/v17/jizaRExUiTo99u79D0KExQ.ttf',
+    ]},
+    'bold': {'key': 'fonts/PTSans-Bold.ttf', 'urls': [
+        'https://raw.githubusercontent.com/openmaptiles/fonts/master/pt-sans/PTSans-Bold.ttf',
+        'https://fonts.gstatic.com/s/ptsans/v17/jizfRExUiTo99u79B_mh4OmnLD0Z4zM.ttf',
+    ]},
 }
 
 fonts_registered = False
@@ -108,12 +107,11 @@ def clean(s):
     return (s or '').replace('**', '').strip()
 
 
-def ensure_rub(s):
+def rub(s):
     if not s:
         return s
     s = re.sub(r'(\d{3,})[.,]\d{2}(?=\s*[₽Рруб\s]|$)', r'\1', s)
-    s = s.replace('Р', '₽').replace('руб', '₽')
-    return s.strip()
+    return s.replace('Р', '₽').replace('руб', '₽').strip()
 
 
 def split_value(value):
@@ -124,7 +122,7 @@ def split_value(value):
         r'^([\d,.\s]+\s*(?:м²|м2|мп|пм|пог\.?м|шт\.?|шт|м\.п\.?|м|%)?)\s*[×xх]\s*([\d\s,.]+\s*[₽Рруб]?)\s*=\s*([\d\s,.]+\s*[₽Рруб]?)$',
         v, re.I)
     if m:
-        return m.group(1).strip(), ensure_rub(m.group(2).strip()), ensure_rub(m.group(3).strip())
+        return m.group(1).strip(), rub(m.group(2).strip()), rub(m.group(3).strip())
     m2 = re.match(
         r'^([\d,.\s]+\s*(?:м²|м2|мп|пм|пог\.?м|шт\.?|шт|м\.п\.?|м|%)?)\s*[×xх]\s*([\d\s,.]+)\s*[₽Рруб]?$',
         v, re.I)
@@ -132,190 +130,220 @@ def split_value(value):
         try:
             q = float(re.sub(r'[^\d.,]', '', m2.group(1)).replace(',', '.'))
             p = float(re.sub(r'[^\d.,]', '', m2.group(2)).replace(',', '.'))
-            total = f"{round(q * p):,}".replace(',', '\u202f') + ' ₽'
-            price = f"{round(p):,}".replace(',', '\u202f') + ' ₽'
-            return m2.group(1).strip(), price, total
+            return (m2.group(1).strip(),
+                    f"{round(p):,}".replace(',', '\u202f') + '\u202f₽',
+                    f"{round(q*p):,}".replace(',', '\u202f') + '\u202f₽')
         except Exception:
             pass
     if re.search(r'[₽Рруб]', v):
-        return '', '', ensure_rub(v)
+        return '', '', rub(v)
     return '', '', ''
 
 
 def build_pdf(data, logo_bytes=None):
     blocks       = data.get('blocks', [])
-    totals       = data.get('totals', [])
+    totals_raw   = data.get('totals', [])
     final_phrase = data.get('finalPhrase', '')
 
     buf = io.BytesIO()
     c = canvas.Canvas(buf, pagesize=A4)
     w, h = A4
-    mg = 16 * mm
-    tw = w - 2 * mg
+    mg   = 14 * mm          # внешний отступ
+    card_mg = 14 * mm       # отступ карточки таблицы
+    tw   = w - 2 * card_mg  # ширина таблицы
     today = date.today().strftime('%d.%m.%Y')
 
-    # Колонки: Позиция 55% | Кол-во 15% | Цена 15% | Сумма 15%
-    CW = [tw * 0.55, tw * 0.15, tw * 0.15, tw * 0.15]
+    # Колонки: Позиция 54% | Кол-во 15% | Цена 15% | Сумма 16%
+    CW = [tw * 0.54, tw * 0.15, tw * 0.15, tw * 0.16]
 
     def cx(i):
-        x = mg
+        x = card_mg
         for k in range(i): x += CW[k]
         return x
 
-    def hline(yy, lw=0.4, col=BORDER):
-        c.setStrokeColor(col)
-        c.setLineWidth(lw)
-        c.line(mg, yy, mg + tw, yy)
-
-    def vlines(y_top, y_bot):
-        c.setStrokeColor(BORDER)
-        c.setLineWidth(0.3)
-        for i in range(1, 4):
-            c.line(cx(i), y_bot, cx(i), y_top)
+    def shadow_rect(x, y, w_, h_, radius=2*mm):
+        """Рисует карточку с тенью."""
+        # тень
+        c.setFillColor(HexColor('#00000012'))
+        c.roundRect(x + 0.8*mm, y - 0.8*mm, w_, h_, radius, fill=1, stroke=0)
+        # карточка
+        c.setFillColor(CARD_BG)
+        c.setStrokeColor(BORDER_OUTER)
+        c.setLineWidth(0.6)
+        c.roundRect(x, y, w_, h_, radius, fill=1, stroke=1)
 
     def draw_footer():
+        c.setFillColor(BG_PAGE)
+        c.rect(0, 0, w, 14*mm, fill=1, stroke=0)
         c.setFont('PTSans', 6.5)
-        c.setFillColor(GRAY_LABEL)
-        c.drawCentredString(w / 2, 7 * mm,
+        c.setFillColor(TEXT_MUTED)
+        c.drawCentredString(w/2, 5.5*mm,
             'MosPotolki  ·  г. Мытищи, ул. Пограничная 24  ·  +7 (977) 606-89-01  ·  mospotolki.net')
 
-    table_top_y = [0]
+    table_top = [0]
 
     def check(yy, need):
-        if yy - need < 18 * mm:
-            if table_top_y[0]:
-                c.setStrokeColor(BORDER)
-                c.setLineWidth(0.5)
-                c.rect(mg, yy, tw, table_top_y[0] - yy, fill=0, stroke=1)
+        if yy - need < 16*mm:
+            if table_top[0]:
+                # закрываем рамку таблицы
+                c.setStrokeColor(BORDER_OUTER)
+                c.setLineWidth(0.6)
+                c.line(card_mg, yy, card_mg + tw, yy)
+                c.line(card_mg, yy, card_mg, table_top[0])
+                c.line(card_mg + tw, yy, card_mg + tw, table_top[0])
             c.showPage()
-            c.setFillColor(WHITE)
+            c.setFillColor(BG_PAGE)
             c.rect(0, 0, w, h, fill=1, stroke=0)
             draw_footer()
-            table_top_y[0] = h - 12 * mm
-            return h - 12 * mm
+            table_top[0] = h - 14*mm
+            return h - 14*mm
         return yy
 
-    # ── Белый фон ─────────────────────────────────────────────────────────────
-    c.setFillColor(WHITE)
+    # ── Фон страницы ──────────────────────────────────────────────────────────
+    c.setFillColor(BG_PAGE)
     c.rect(0, 0, w, h, fill=1, stroke=0)
 
     # ── ШАПКА ─────────────────────────────────────────────────────────────────
-    y = h - 14 * mm
+    # Белая карточка шапки
+    header_h = 38 * mm
+    shadow_rect(mg, h - mg - header_h, w - 2*mg, header_h, radius=2.5*mm)
 
-    # Левая: СМЕТА
-    c.setFont('PTSans-Bold', 40)
+    # Оранжевая вертикальная полоска слева в шапке
+    c.setFillColor(ACCENT)
+    c.roundRect(mg, h - mg - header_h, 3*mm, header_h, 1*mm, fill=1, stroke=0)
+
+    # Левая часть: СМЕТА
+    lx = mg + 7*mm
+    c.setFont('PTSans-Bold', 36)
     c.setFillColor(BLACK)
-    c.drawString(mg, y - 14 * mm, 'СМЕТА')
+    c.drawString(lx, h - mg - 16*mm, 'СМЕТА')
 
-    c.setFont('PTSans-Bold', 11)
-    c.setFillColor(ORANGE)
-    c.drawString(mg, y - 21 * mm, 'на натяжные потолки')
+    c.setFont('PTSans-Bold', 10)
+    c.setFillColor(ACCENT)
+    c.drawString(lx, h - mg - 23*mm, 'на натяжные потолки')
 
-    c.setFont('PTSans', 8.5)
-    c.setFillColor(GRAY_TEXT)
-    c.drawString(mg, y - 27 * mm, f'№ б/н от {today}')
+    c.setFont('PTSans', 8)
+    c.setFillColor(TEXT_MUTED)
+    c.drawString(lx, h - mg - 29*mm, f'Предварительный расчёт  ·  от {today}')
 
-    # Правая: тёмная плашка с логотипом — крупнее
-    logo_box_w = 62 * mm
-    logo_box_h = 15 * mm
-    logo_box_x = w - mg - logo_box_w
-    logo_box_y = y - logo_box_h
+    # Правая часть: логотип + контакты
+    right_block_x = w / 2 + 5*mm
+    right_block_w = w - mg - right_block_x - 4*mm
 
-    c.setFillColor(LOGO_BG)
-    c.roundRect(logo_box_x, logo_box_y, logo_box_w, logo_box_h, 1.5 * mm, fill=1, stroke=0)
+    # Тёмная плашка логотипа
+    logo_pill_h = 13 * mm
+    logo_pill_y = h - mg - logo_pill_h - 4*mm
+    c.setFillColor(HexColor('#1e2029'))
+    c.roundRect(right_block_x, logo_pill_y, right_block_w, logo_pill_h, 2*mm, fill=1, stroke=0)
 
     if logo_bytes:
         try:
-            logo_img = ImageReader(io.BytesIO(logo_bytes))
-            iw, ih = logo_img.getSize()
-            lh = logo_box_h * 0.72
-            lw_d = lh * (iw / ih)
-            lx = logo_box_x + (logo_box_w - lw_d) / 2
-            ly = logo_box_y + (logo_box_h - lh) / 2
-            c.drawImage(logo_img, lx, ly, width=lw_d, height=lh, mask='auto')
+            img = ImageReader(io.BytesIO(logo_bytes))
+            iw, ih_ = img.getSize()
+            lh = logo_pill_h * 0.68
+            lw_ = lh * (iw / ih_)
+            c.drawImage(img,
+                right_block_x + (right_block_w - lw_) / 2,
+                logo_pill_y + (logo_pill_h - lh) / 2,
+                width=lw_, height=lh, mask='auto')
         except Exception:
-            c.setFont('PTSans-Bold', 12)
-            c.setFillColor(WHITE)
-            c.drawCentredString(logo_box_x + logo_box_w / 2, logo_box_y + 4 * mm, 'MOSPOTOLKI')
+            pass
 
-    # Контакты под плашкой
-    for ct in ['+7 (977) 606-89-01', 'mospotolki.net', 'г. Мытищи, ул. Пограничная 24']:
-        logo_box_y -= 4.5 * mm
+    # Контакты под логотипом
+    contacts = ['+7 (977) 606-89-01', 'mospotolki.net', 'г. Мытищи, ул. Пограничная 24']
+    cy = logo_pill_y - 5.5*mm
+    for ct in contacts:
         c.setFont('PTSans', 7.5)
-        c.setFillColor(GRAY_TEXT)
-        c.drawRightString(w - mg, logo_box_y, ct)
+        c.setFillColor(TEXT_MUTED)
+        c.drawRightString(right_block_x + right_block_w, cy, ct)
+        cy -= 4.5*mm
 
-    # Оранжевая разделительная полоса
-    sep_y = y - 31 * mm
-    c.setFillColor(ORANGE)
-    c.rect(mg, sep_y, tw, 1.5 * mm, fill=1, stroke=0)
+    # ── ТАБЛИЦА ───────────────────────────────────────────────────────────────
+    y = h - mg - header_h - 6*mm
 
-    y = sep_y - 8 * mm
-
-    # ── ЗАГОЛОВОК ТАБЛИЦЫ ─────────────────────────────────────────────────────
-    th = 8 * mm
-    c.setFillColor(TABLE_HEAD)
-    c.rect(mg, y - th, tw, th, fill=1, stroke=0)
+    # Заголовок таблицы
+    th = 8.5*mm
+    c.setFillColor(HEADER_BG)
+    c.roundRect(card_mg, y - th, tw, th, 2*mm, fill=1, stroke=0)
+    # Перерисовываем нижние углы прямыми (только верх скруглён)
+    c.setFillColor(HEADER_BG)
+    c.rect(card_mg, y - th, tw, th/2, fill=1, stroke=0)
 
     c.setFont('PTSans-Bold', 8)
     c.setFillColor(WHITE)
     for i, lbl in enumerate(['Позиция', 'Кол-во', 'Цена', 'Сумма']):
         if i == 0:
-            c.drawString(cx(0) + 3 * mm, y - th + 2.5 * mm, lbl)
+            c.drawString(cx(0) + 4*mm, y - th + 2.8*mm, lbl)
         else:
-            c.drawCentredString(cx(i) + CW[i] / 2, y - th + 2.5 * mm, lbl)
+            c.drawCentredString(cx(i) + CW[i]/2, y - th + 2.8*mm, lbl)
 
-    table_top_y[0] = y
+    table_top[0] = y
     y -= th
 
-    # ── СТРОКА-СЕКЦИЯ ─────────────────────────────────────────────────────────
+    row_idx = [0]
+
     def draw_section(yy, label):
-        sh = 7.5 * mm
-        yy = check(yy, sh + 4 * mm)
-        # Светло-серый фон
+        sh = 8*mm
+        yy = check(yy, sh + 5*mm)
         c.setFillColor(SEC_BG)
-        c.rect(mg, yy - sh, tw, sh, fill=1, stroke=0)
-        # Оранжевая левая полоска
-        c.setFillColor(ORANGE)
-        c.rect(mg, yy - sh, 2.5 * mm, sh, fill=1, stroke=0)
+        c.rect(card_mg, yy - sh, tw, sh, fill=1, stroke=0)
+        c.setFillColor(SEC_STRIPE)
+        c.rect(card_mg, yy - sh, 3*mm, sh, fill=1, stroke=0)
         c.setFont('PTSans-Bold', 9)
-        c.setFillColor(BLACK)
-        c.drawString(mg + 5 * mm, yy - sh + 2.2 * mm, label)
-        hline(yy - sh)
+        c.setFillColor(TEXT_SECTION)
+        c.drawString(card_mg + 6*mm, yy - sh + 2.4*mm, label)
+        # нижняя линия секции
+        c.setStrokeColor(BORDER_INNER)
+        c.setLineWidth(0.35)
+        c.line(card_mg, yy - sh, card_mg + tw, yy - sh)
+        row_idx[0] = 0
         return yy - sh
 
-    # ── СТРОКА ПОЗИЦИИ (все белые, без чередования) ───────────────────────────
     def draw_row(yy, name, qty, price, total):
-        rh = 8 * mm
+        rh = 8*mm
         yy = check(yy, rh)
-        c.setFillColor(WHITE)
-        c.rect(mg, yy - rh, tw, rh, fill=1, stroke=0)
+        bg = WHITE if row_idx[0] % 2 == 0 else ROW_ALT
+        c.setFillColor(bg)
+        c.rect(card_mg, yy - rh, tw, rh, fill=1, stroke=0)
 
-        ry = yy - rh + 2.4 * mm
+        ry = yy - rh + 2.5*mm
 
+        # Название
         c.setFont('PTSans', 8.5)
         c.setFillColor(BLACK)
-        max_ch = int(CW[0] / (8.5 * 0.20 * mm))
-        nm = name[:max_ch - 1] + '…' if len(name) > max_ch else name
-        c.drawString(cx(0) + 3 * mm, ry, nm)
+        max_ch = int(CW[0] / (8.5 * 0.195 * mm))
+        nm = name[:max_ch-1] + '…' if len(name) > max_ch else name
+        c.drawString(cx(0) + 4*mm, ry, nm)
 
-        c.setFont('PTSans', 8.5)
-        c.setFillColor(GRAY_TEXT)
+        # Кол-во / Цена
+        c.setFont('PTSans', 8)
+        c.setFillColor(TEXT_MUTED)
         if qty:
-            c.drawCentredString(cx(1) + CW[1] / 2, ry, ensure_rub(qty))
+            c.drawCentredString(cx(1) + CW[1]/2, ry, rub(qty))
         if price:
-            c.drawCentredString(cx(2) + CW[2] / 2, ry, ensure_rub(price))
+            c.drawCentredString(cx(2) + CW[2]/2, ry, rub(price))
 
+        # Сумма
         if total:
             c.setFont('PTSans-Bold', 8.5)
-            c.setFillColor(ORANGE_SUM)
-            c.drawRightString(cx(3) + CW[3] - 3 * mm, ry, ensure_rub(total))
+            c.setFillColor(ACCENT_DARK)
+            c.drawRightString(cx(3) + CW[3] - 4*mm, ry, rub(total))
 
-        hline(yy - rh, lw=0.3)
-        vlines(yy, yy - rh)
+        # Горизонтальная линия строки
+        c.setStrokeColor(BORDER_INNER)
+        c.setLineWidth(0.25)
+        c.line(card_mg, yy - rh, card_mg + tw, yy - rh)
+
+        # Вертикальные разделители колонок
+        c.setStrokeColor(BORDER_INNER)
+        c.setLineWidth(0.25)
+        for i in range(1, 4):
+            c.line(cx(i), yy - rh, cx(i), yy)
+
+        row_idx[0] += 1
         return yy - rh
 
-    # ── РЕНДЕР БЛОКОВ ─────────────────────────────────────────────────────────
+    # ── Рендер данных ─────────────────────────────────────────────────────────
     num_counter = 0
     for block in blocks:
         if block.get('numbered', False):
@@ -326,102 +354,101 @@ def build_pdf(data, logo_bytes=None):
         for item in block.get('items', []):
             name = re.sub(r'\s*[-–—]\s*$', '', clean(item.get('name', '')))
             value = clean(item.get('value', ''))
-            qty, price, total = split_value(value)
-            y = draw_row(y, name, qty, price, total)
+            qty_, price_, total_ = split_value(value)
+            y = draw_row(y, name, qty_, price_, total_)
 
-    # Внешняя рамка таблицы — тёмная выразительная
-    c.setStrokeColor(HexColor('#555555'))
-    c.setLineWidth(1.2)
-    c.rect(mg, y, tw, table_top_y[0] - y, fill=0, stroke=1)
+    # Нижняя рамка таблицы + боковые линии
+    c.setStrokeColor(BORDER_OUTER)
+    c.setLineWidth(0.6)
+    c.line(card_mg, y, card_mg + tw, y)                         # низ
+    c.line(card_mg, y, card_mg, table_top[0])                   # лево
+    c.line(card_mg + tw, y, card_mg + tw, table_top[0])         # право
 
     # ── БЛОК ИТОГОВ ───────────────────────────────────────────────────────────
-    if totals:
-        clean_totals = [clean(t) for t in totals
-                        if clean(t) and not re.fullmatch(r'[-–—]+', clean(t))]
+    if totals_raw:
         rows = []
-        for t in clean_totals:
+        for t in totals_raw:
+            t = clean(t)
+            if not t or re.fullmatch(r'[-–—]+', t):
+                continue
             ci = t.find(':')
-            lbl = t[:ci].strip() if ci >= 0 else t
-            val = ensure_rub(t[ci + 1:].strip()) if ci >= 0 else ''
-            if not ('итог' in lbl.lower() and not val):
-                rows.append((lbl, val))
+            lbl_ = t[:ci].strip() if ci >= 0 else t
+            val_ = rub(t[ci+1:].strip()) if ci >= 0 else ''
+            if 'итог' in lbl_.lower() and not val_:
+                continue
+            rows.append((lbl_, val_))
 
         if rows:
-            # Строки: заголовок (7мм) + разделитель + 3 строки по 11мм + паддинг
-            ROW_H   = 11 * mm
-            HEAD_H  = 8  * mm
-            PAD     = 5  * mm
-            box_h   = HEAD_H + len(rows) * ROW_H + PAD
+            ROW_H  = 11 * mm
+            HEAD_H = 9  * mm
+            PAD    = 5  * mm
+            box_h  = HEAD_H + len(rows) * ROW_H + PAD
 
-            y -= 8 * mm
-            y = check(y, box_h + 12 * mm)
+            y -= 7*mm
+            y = check(y, box_h + 14*mm)
 
-            # Правые 55% таблицы
-            box_w = tw * 0.55
-            box_x = mg + tw - box_w
+            # Правые 52% страницы
+            box_w = tw * 0.52
+            box_x = card_mg + tw - box_w
             box_y = y - box_h
 
-            # Фон + рамка
+            # Тень
+            c.setFillColor(HexColor('#00000010'))
+            c.roundRect(box_x + 0.7*mm, box_y - 0.7*mm, box_w, box_h, 2.5*mm, fill=1, stroke=0)
+
+            # Белая карточка
             c.setFillColor(TOTAL_BG)
-            c.setStrokeColor(TOTAL_BORDER)
-            c.setLineWidth(0.8)
-            c.roundRect(box_x, box_y, box_w, box_h, 2.5 * mm, fill=1, stroke=1)
+            c.setStrokeColor(BORDER_OUTER)
+            c.setLineWidth(0.6)
+            c.roundRect(box_x, box_y, box_w, box_h, 2.5*mm, fill=1, stroke=1)
 
-            # "Итоговая стоимость:" — мелко серым, право
+            # "Итоговая стоимость:" — заголовок
             c.setFont('PTSans-Bold', 7.5)
-            c.setFillColor(GRAY_LABEL)
-            c.drawRightString(box_x + box_w - 5 * mm, y - 5.5 * mm, 'Итоговая стоимость:')
+            c.setFillColor(TEXT_MUTED)
+            c.drawRightString(box_x + box_w - 5*mm, y - 6*mm, 'Итоговая стоимость:')
 
-            # Тонкая линия-разделитель
-            sep_ty = y - HEAD_H
-            c.setStrokeColor(TOTAL_BORDER)
-            c.setLineWidth(0.5)
-            c.line(box_x + 4 * mm, sep_ty, box_x + box_w - 4 * mm, sep_ty)
+            # Тонкий разделитель
+            c.setStrokeColor(BORDER_INNER)
+            c.setLineWidth(0.4)
+            c.line(box_x + 5*mm, y - HEAD_H, box_x + box_w - 5*mm, y - HEAD_H)
 
-            # Правые края колонок внутри блока
-            val_x = box_x + box_w - 5 * mm
-            lbl_x = box_x + box_w * 0.47
+            val_x = box_x + box_w - 6*mm
+            lbl_x = box_x + box_w * 0.46
+            ty = y - HEAD_H
 
-            ty = sep_ty - ROW_H * 0.15  # стартовая позиция первой строки
-
-            for lbl, val in rows:
-                is_std = 'standard' in lbl.lower()
-                # Центр строки
-                text_y = ty - ROW_H / 2 + 1.5 * mm
+            for lbl_, val_ in rows:
+                is_std = 'standard' in lbl_.lower()
+                mid_y  = ty - ROW_H / 2 + 1.5*mm
 
                 if is_std:
+                    # Фоновая подсветка строки Standard
+                    c.setFillColor(TOTAL_STD_BG)
+                    c.rect(box_x + 1*mm, ty - ROW_H + 0.5*mm, box_w - 2*mm, ROW_H - 1*mm, fill=1, stroke=0)
+
                     c.setFont('PTSans-Bold', 13)
-                    c.setFillColor(ORANGE)
-                    c.drawRightString(lbl_x, text_y, lbl + ':')
+                    c.setFillColor(ACCENT)
+                    c.drawRightString(lbl_x, mid_y, lbl_ + ':')
                     c.setFont('PTSans-Bold', 13)
-                    c.setFillColor(ORANGE_SUM)
-                    c.drawRightString(val_x, text_y, val)
-                    # Линии сверху и снизу строки Standard
-                    c.setStrokeColor(TOTAL_BORDER)
-                    c.setLineWidth(0.4)
-                    c.line(box_x + 4 * mm, ty, box_x + box_w - 4 * mm, ty)
-                    c.line(box_x + 4 * mm, ty - ROW_H, box_x + box_w - 4 * mm, ty - ROW_H)
+                    c.setFillColor(ACCENT_DARK)
+                    c.drawRightString(val_x, mid_y, val_)
                 else:
                     c.setFont('PTSans', 9)
-                    c.setFillColor(GRAY_LABEL)
-                    c.drawRightString(lbl_x, text_y, lbl + ':')
+                    c.setFillColor(TEXT_MUTED)
+                    c.drawRightString(lbl_x, mid_y, lbl_ + ':')
                     c.setFont('PTSans', 9)
                     c.setFillColor(BLACK)
-                    c.drawRightString(val_x, text_y, val)
+                    c.drawRightString(val_x, mid_y, val_)
 
                 ty -= ROW_H
 
-            y = box_y - 6 * mm
+            y = box_y - 6*mm
 
-    # ── ДИСКЛЕЙМЕР — выровнен по правому краю блока итогов ───────────────────
-    y -= 3 * mm
-    y = check(y, 8 * mm)
-    c.setFont('PTSans', 7.5)
-    c.setFillColor(ORANGE)
-    note = final_phrase or 'На какой день вас записать на бесплатный замер?'
-    # Выровнен по правому краю блока итогов
-    note_x = mg + tw - tw * 0.55 if totals else mg
-    c.drawString(note_x, y, note)
+            # Дисклеймер — под блоком итогов, выровнен по его левому краю
+            y -= 4*mm
+            c.setFont('PTSans', 7.5)
+            c.setFillColor(ACCENT)
+            note = final_phrase or 'На какой день вас записать на бесплатный замер?'
+            c.drawString(box_x, y, note)
 
     draw_footer()
     c.save()
