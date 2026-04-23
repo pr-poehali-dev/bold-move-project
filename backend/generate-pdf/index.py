@@ -13,6 +13,7 @@ from reportlab.lib.colors import Color, white, HexColor
 from reportlab.pdfgen import canvas
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
+from reportlab.lib.utils import ImageReader
 from datetime import date
 
 
@@ -35,6 +36,9 @@ COL_STANDARD  = HexColor('#fb923c')      # Standard — оранжевый жи�
 COL_OTHER     = HexColor('#aaaacc')      # Econom / Premium
 COL_HEAD_COL  = HexColor('#555577')      # заголовки колонок
 
+LOGO_URL = 'https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/1dc8a36d-819a-489e-bdcb-25aaa523b7d9.png'
+LOGO_S3_KEY = 'assets/mospotolki-logo.png'
+
 FONT_URLS = {
     'regular': {
         'key': 'fonts/PTSans-Regular.ttf',
@@ -53,6 +57,7 @@ FONT_URLS = {
 }
 
 fonts_registered = False
+logo_cache = [None]  # [bytes or None]
 
 
 def get_s3():
@@ -79,6 +84,29 @@ def download_font(s3, cfg):
                 return resp.content
         except Exception:
             continue
+    return None
+
+
+def load_logo(s3):
+    if logo_cache[0] is not None:
+        return logo_cache[0]
+    # Пробуем из S3 кэша
+    try:
+        obj = s3.get_object(Bucket=BUCKET, Key=LOGO_S3_KEY)
+        logo_cache[0] = obj['Body'].read()
+        return logo_cache[0]
+    except Exception:
+        pass
+    # Скачиваем из CDN
+    try:
+        resp = requests.get(LOGO_URL, timeout=10)
+        if resp.status_code == 200 and len(resp.content) > 100:
+            data = resp.content
+            s3.put_object(Bucket=BUCKET, Key=LOGO_S3_KEY, Body=data, ContentType='image/png')
+            logo_cache[0] = data
+            return data
+    except Exception:
+        pass
     return None
 
 
@@ -138,7 +166,7 @@ def ensure_rub(s):
     return s.strip()
 
 
-def build_pdf(data):
+def build_pdf(data, logo_bytes=None):
     blocks = data.get('blocks', [])
     totals = data.get('totals', [])
     final_phrase = data.get('finalPhrase', '')
@@ -176,29 +204,43 @@ def build_pdf(data):
     fill_bg()
 
     # ── Шапка ────────────────────────────────────────────────────────────────
-    header_h = 28 * mm
+    header_h = 30 * mm
     c.setFillColor(BG_HEADER)
     c.rect(0, h - header_h, w, header_h, fill=1, stroke=0)
 
     # Оранжевая полоска снизу шапки
     c.setFillColor(COL_ORANGE)
-    c.rect(0, h - header_h, w, 0.6 * mm, fill=1, stroke=0)
+    c.rect(0, h - header_h, w, 0.7 * mm, fill=1, stroke=0)
 
-    # Иконка-квадратик слева от заголовка
-    c.setFillColor(COL_ORANGE)
-    c.roundRect(margin, h - 10 * mm - 5 * mm, 4 * mm, 4 * mm, 0.8 * mm, fill=1, stroke=0)
+    # Логотип (если загружен)
+    logo_h = 10 * mm
+    logo_y = h - header_h / 2 - logo_h / 2
+    if logo_bytes:
+        try:
+            logo_img = ImageReader(io.BytesIO(logo_bytes))
+            iw, ih = logo_img.getSize()
+            aspect = iw / ih
+            logo_draw_h = logo_h
+            logo_draw_w = logo_draw_h * aspect
+            c.drawImage(logo_img, margin, logo_y, width=logo_draw_w, height=logo_draw_h, mask='auto')
+            text_x = margin + logo_draw_w + 5 * mm
+        except Exception:
+            text_x = margin
+    else:
+        text_x = margin
 
-    c.setFont('PTSans-Bold', 13)
+    # "Смета на натяжные потолки" — справа от логотипа
+    c.setFont('PTSans-Bold', 12)
     c.setFillColor(COL_WHITE)
-    c.drawString(margin + 6 * mm, h - 10 * mm - 2.5 * mm, 'Смета на натяжные потолки')
+    c.drawString(text_x, logo_y + logo_h * 0.45, 'Смета на натяжные потолки')
+
+    c.setFont('PTSans', 7)
+    c.setFillColor(COL_DIM)
+    c.drawString(text_x, logo_y + logo_h * 0.1, 'Мытищи, Пограничная 24  ·  +7 (977) 606-89-01  ·  mospotolki.net')
 
     c.setFont('PTSans', 7.5)
     c.setFillColor(COL_DIM)
-    c.drawString(margin + 6 * mm, h - 10 * mm - 7.5 * mm, f'Мытищи, Пограничная 24  ·  +7 (977) 606-89-01  ·  mospotolki.net')
-
-    c.setFont('PTSans', 7.5)
-    c.setFillColor(COL_DIM)
-    c.drawRightString(w - margin, h - 10 * mm - 2.5 * mm, f'от {today}')
+    c.drawRightString(w - margin, logo_y + logo_h * 0.45, f'от {today}')
 
     y = h - header_h - 4 * mm
 
@@ -412,7 +454,8 @@ def handler(event, context):
     if not ensure_fonts(s3):
         return {'statusCode': 500, 'headers': cors, 'body': json.dumps({'error': 'Font loading failed'})}
 
-    pdf_bytes = build_pdf(data)
+    logo_bytes = load_logo(s3)
+    pdf_bytes = build_pdf(data, logo_bytes=logo_bytes)
     pdf_b64 = base64.b64encode(pdf_bytes).decode('ascii')
 
     return {
