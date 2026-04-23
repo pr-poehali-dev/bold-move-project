@@ -87,6 +87,7 @@ export default function ChatUI({ messages, input, typing, panel, onInput, onSend
         {messages.map((m, idx) => {
           const estimate = m.role === "assistant" && isEstimate(m.text);
           const showAvatar = m.role === "assistant" && !estimate;
+          const isLast = idx === messages.length - 1;
           return (
             <div key={m.id} ref={estimate && m.id === lastEstimateId ? estimateRef : null} className={`flex items-end ${estimate ? "" : "gap-2.5"} ${m.role === "user" ? "flex-row-reverse" : ""}`}>
               {m.role === "assistant" && !estimate && (
@@ -94,15 +95,30 @@ export default function ChatUI({ messages, input, typing, panel, onInput, onSend
                   ? <img src={AVATAR} alt="Женя" className="w-8 h-8 rounded-full object-cover shrink-0 border-2 border-orange-500/20 shadow-lg shadow-orange-500/10" />
                   : <div className="w-8 shrink-0" />
               )}
-              <div className={`rounded-2xl px-4 py-3 text-[13px] leading-relaxed ${
-                m.role === "user"
-                  ? "max-w-[75%] md:max-w-[60%] bg-white/[0.08] border border-white/[0.08] text-white/90 rounded-br-md whitespace-pre-wrap"
-                  : estimate
+              {m.role === "user" ? (
+                <div className="group flex flex-col items-end gap-1 max-w-[75%] md:max-w-[60%]">
+                  <div className="rounded-2xl px-4 py-3 text-[13px] leading-relaxed bg-white/[0.08] border border-white/[0.08] text-white/90 rounded-br-md whitespace-pre-wrap w-full">
+                    <MsgContent text={m.text} />
+                  </div>
+                  {!typing && isLast && (
+                    <button
+                      onClick={() => onSend(m.text)}
+                      className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] text-white/30 hover:text-orange-400 hover:bg-orange-500/10 transition-all duration-150 opacity-0 group-hover:opacity-100"
+                    >
+                      <Icon name="RotateCcw" size={10} />
+                      повторить
+                    </button>
+                  )}
+                </div>
+              ) : (
+                <div className={`rounded-2xl px-4 py-3 text-[13px] leading-relaxed ${
+                  estimate
                     ? "w-full bg-white/[0.03] border border-white/[0.06] rounded-bl-md"
                     : "max-w-[75%] md:max-w-[60%] bg-gradient-to-br from-white/[0.05] to-white/[0.02] border border-white/[0.06] text-white/70 rounded-bl-md whitespace-pre-wrap"
-              }`}>
-                {estimate ? <EstimateTable text={m.text} items={m.items} /> : <MsgContent text={m.text} />}
-              </div>
+                }`}>
+                  {estimate ? <EstimateTable text={m.text} items={m.items} /> : <MsgContent text={m.text} />}
+                </div>
+              )}
             </div>
           );
         })}
