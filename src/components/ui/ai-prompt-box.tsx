@@ -119,25 +119,20 @@ export const PromptInputBox = React.forwardRef<HTMLDivElement, Props>(
     }, [isRecording]);
 
 
-    // iOS шаг 1: запросить доступ к микрофону и держать stream живым
-    const prepareIosMic = async () => {
+    // iOS: получаем stream и сразу начинаем запись в одном тапе
+    const startIosRecording = async () => {
       setSpeechError("");
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        const tracks = stream.getAudioTracks();
-        dbg(`mic ready tracks=${tracks.length} state=${tracks[0]?.readyState}`);
-        iosStreamRef.current = stream;
-        setIosMicReady(true);
-      } catch (err) {
-        dbg(`mic denied: ${err}`);
-        setSpeechError("Нет доступа к микрофону");
+      let stream = iosStreamRef.current;
+      if (!stream || stream.getAudioTracks()[0]?.readyState === "ended") {
+        try {
+          stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+          iosStreamRef.current = stream;
+          setIosMicReady(true);
+        } catch (err) {
+          setSpeechError("Нет доступа к микрофону");
+          return;
+        }
       }
-    };
-
-    // iOS шаг 2: начать запись на уже живом stream — синхронно, без await
-    const startIosRecording = () => {
-      const stream = iosStreamRef.current;
-      if (!stream) { prepareIosMic(); return; }
 
       setSpeechError("");
       const mimeType = MediaRecorder.isTypeSupported("audio/mp4") ? "audio/mp4" : "";
@@ -450,31 +445,20 @@ export const PromptInputBox = React.forwardRef<HTMLDivElement, Props>(
           )}
 
           {/* Кнопка микрофон */}
-          {isIOS && !iosMicReady ? (
-            <button
-              onClick={prepareIosMic}
-              title="Разрешить микрофон"
-              className="flex items-center gap-1 px-2 h-9 rounded-xl text-[11px] shrink-0 bg-orange-500/15 text-orange-400"
-            >
-              <Mic size={13} />
-              <span>Разрешить</span>
-            </button>
-          ) : (
-            <button
-              onClick={() => { if (isLoading || isTranscribing) return; if (isRecording) stopRecording(); else startRecording(); }}
-              title={isRecording ? "Остановить запись" : "Надиктовать голосом"}
-              className={cn(
-                "w-9 h-9 rounded-xl flex items-center justify-center shrink-0 transition-colors duration-200",
-                isRecording
-                  ? "bg-red-500/20 text-red-400"
-                  : isTranscribing
-                  ? "bg-white/[0.06] text-white/20 cursor-wait"
-                  : "bg-white/[0.06] text-white/30 hover:bg-white/[0.1] hover:text-white/60"
-              )}
-            >
-              {isTranscribing ? <Loader2 size={15} className="animate-spin" /> : isRecording ? <StopCircle size={16} /> : <Mic size={15} />}
-            </button>
-          )}
+          <button
+            onClick={() => { if (isLoading || isTranscribing) return; if (isRecording) stopRecording(); else startRecording(); }}
+            title={isRecording ? "Остановить запись" : "Надиктовать голосом"}
+            className={cn(
+              "w-9 h-9 rounded-xl flex items-center justify-center shrink-0 transition-colors duration-200",
+              isRecording
+                ? "bg-red-500/20 text-red-400"
+                : isTranscribing
+                ? "bg-white/[0.06] text-white/20 cursor-wait"
+                : "bg-white/[0.06] text-white/30 hover:bg-white/[0.1] hover:text-white/60"
+            )}
+          >
+            {isTranscribing ? <Loader2 size={15} className="animate-spin" /> : isRecording ? <StopCircle size={16} /> : <Mic size={15} />}
+          </button>
 
           {/* Кнопка отправить */}
           <motion.button
