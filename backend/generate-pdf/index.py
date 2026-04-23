@@ -316,8 +316,7 @@ def build_pdf(data, logo_bytes=None):
     def draw_row(yy, name, qty, price, total):
         rh = 8*mm
         yy = check(yy, rh)
-        bg = WHITE if row_idx[0] % 2 == 0 else ROW_ALT
-        c.setFillColor(bg)
+        c.setFillColor(WHITE)
         c.rect(card_mg, yy - rh, tw, rh, fill=1, stroke=0)
 
         ry = yy - rh + 2.5*mm
