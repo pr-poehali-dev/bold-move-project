@@ -886,7 +886,8 @@ def _render_estimate_from_items(items: list, area: float = 0) -> str:
             qty = it['qty']
             price = int(it['price'])
             unit = it.get('unit', 'шт')
-            total = round(qty * price)
+            discount = float(it.get('_discount') or 0)
+            total = round(qty * price * (1 - discount / 100))
             standard += total
             qty_display = int(qty) if float(qty) == int(qty) else qty
             lines.append(f"{it['name']}  {qty_display} {unit} × {fmt(price)} ₽ = {fmt(total)} ₽")
@@ -919,11 +920,11 @@ def _apply_edit_patch(prev_items: list, patch: dict, price_map: dict) -> list:
     import copy
     result = copy.deepcopy(prev_items)
 
-    # Скидка на все позиции
+    # Скидка на все позиции — сохраняем как метаданные, применяем при рендере
     discount = float(patch.get('discount_percent') or 0)
     if discount > 0:
         for it in result:
-            it['price'] = round(it['price'] * (1 - discount / 100))
+            it['_discount'] = discount
         print(f"[patch] applied discount {discount}% to all {len(result)} items")
 
     # Удаляем
