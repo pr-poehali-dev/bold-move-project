@@ -87,7 +87,7 @@ export default function ChatUI({ messages, input, typing, panel, onInput, onSend
         {messages.map((m, idx) => {
           const estimate = m.role === "assistant" && isEstimate(m.text);
           const showAvatar = m.role === "assistant" && !estimate;
-          const isLastUser = m.role === "user" && messages.slice(idx + 1).every(mm => mm.role !== "user");
+
           return (
             <div key={m.id} ref={estimate && m.id === lastEstimateId ? estimateRef : null} className={`flex items-end ${estimate ? "" : "gap-2.5"} ${m.role === "user" ? "flex-row-reverse" : ""}`}>
               {m.role === "assistant" && !estimate && (
@@ -100,15 +100,13 @@ export default function ChatUI({ messages, input, typing, panel, onInput, onSend
                   <div className="rounded-2xl px-4 py-3 text-[13px] leading-relaxed bg-white/[0.08] border border-white/[0.08] text-white/90 rounded-br-md whitespace-pre-wrap w-full">
                     <MsgContent text={m.text} />
                   </div>
-                  {isLastUser && (
-                    <button
-                      onClick={() => onSend(m.text)}
-                      className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] text-white/25 hover:text-orange-400 hover:bg-orange-500/10 transition-all duration-150"
-                    >
-                      <Icon name="RotateCcw" size={10} />
-                      повторить
-                    </button>
-                  )}
+                  <button
+                    onClick={() => onSend(m.text)}
+                    className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] text-white/20 hover:text-orange-400 hover:bg-orange-500/10 transition-all duration-150"
+                  >
+                    <Icon name="RotateCcw" size={10} />
+                    повторить
+                  </button>
                 </div>
               ) : (
                 <div className={`rounded-2xl px-4 py-3 text-[13px] leading-relaxed ${
