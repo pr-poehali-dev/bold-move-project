@@ -1,10 +1,11 @@
 import React from "react";
-import { Send, Mic, Square, StopCircle, Paperclip, CheckCircle2, Loader2 } from "lucide-react";
+import { Send, Mic, StopCircle, Paperclip, CheckCircle2, Loader2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import func2url from "@/../backend/func2url.json";
 import { usePhone } from "@/hooks/use-phone";
 
 const UPLOAD_URL = func2url["live-chat"];
+const WHISPER_URL = func2url["whisper-transcribe"];
 
 const cn = (...c: (string | undefined | null | false)[]) => c.filter(Boolean).join(" ");
 
@@ -43,6 +44,9 @@ export const PromptInputBox = React.forwardRef<HTMLDivElement, Props>(
     const stoppedByUserRef = React.useRef(false);
     const lastInterimRef = React.useRef("");
     const [iosMicReady, setIosMicReady] = React.useState(!isIOS);
+    const mediaRecorderRef = React.useRef<MediaRecorder | null>(null);
+    const audioChunksRef = React.useRef<Blob[]>([]);
+    const [isTranscribing, setIsTranscribing] = React.useState(false);
     const fileInputRef = React.useRef<HTMLInputElement>(null);
     const [uploadState, setUploadState] = React.useState<"idle" | "loading" | "done" | "error">("idle");
     const [showUploadModal, setShowUploadModal] = React.useState(false);
@@ -125,7 +129,57 @@ export const PromptInputBox = React.forwardRef<HTMLDivElement, Props>(
       }
     };
 
+    // iOS: запись через MediaRecorder → Whisper
+    const startIosRecording = async () => {
+      setSpeechError("");
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        const mimeType = MediaRecorder.isTypeSupported("audio/mp4") ? "audio/mp4" : "audio/webm";
+        dbg(`iOS MediaRecorder mime=${mimeType}`);
+        const recorder = new MediaRecorder(stream, { mimeType });
+        audioChunksRef.current = [];
+        recorder.ondataavailable = (e) => { if (e.data.size > 0) audioChunksRef.current.push(e.data); };
+        recorder.onstop = async () => {
+          stream.getTracks().forEach(t => t.stop());
+          const blob = new Blob(audioChunksRef.current, { type: mimeType });
+          dbg(`iOS blob size=${blob.size} type=${mimeType}`);
+          setIsTranscribing(true);
+          try {
+            const buf = await blob.arrayBuffer();
+            const b64 = btoa(String.fromCharCode(...new Uint8Array(buf)));
+            const res = await fetch(WHISPER_URL, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ audio: b64, mimeType }),
+            });
+            const data = await res.json();
+            dbg(`Whisper result="${data.text}"`);
+            if (data.text) onValueChange((value.trim() + " " + data.text).trim());
+          } catch (err) {
+            dbg(`Whisper err: ${err}`);
+            setSpeechError("Ошибка распознавания");
+          } finally {
+            setIsTranscribing(false);
+          }
+        };
+        mediaRecorderRef.current = recorder;
+        recorder.start();
+        setIsRecording(true);
+      } catch (err) {
+        dbg(`iOS start err: ${err}`);
+        setSpeechError("Нет доступа к микрофону");
+      }
+    };
+
+    const stopIosRecording = () => {
+      mediaRecorderRef.current?.stop();
+      mediaRecorderRef.current = null;
+      setIsRecording(false);
+    };
+
+    // Android/Desktop: Web Speech API
     const startRecording = () => {
+      if (isIOS) { startIosRecording(); return; }
       setSpeechError("");
       const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
       if (!SR) {
@@ -134,7 +188,6 @@ export const PromptInputBox = React.forwardRef<HTMLDivElement, Props>(
       }
 
       stoppedByUserRef.current = false;
-      // savedText хранит весь накопленный текст между перезапусками сессий
       const savedText = { current: value };
 
       const createAndStart = () => {
@@ -143,9 +196,7 @@ export const PromptInputBox = React.forwardRef<HTMLDivElement, Props>(
         recognition.continuous = true;
         recognition.interimResults = true;
 
-        // Текст накопленный внутри текущей сессии
         let sessionText = "";
-        lastInterimRef.current = "";
 
         recognition.onresult = (e: SpeechRecognitionEvent) => {
           let lastFinal = "";
@@ -158,18 +209,9 @@ export const PromptInputBox = React.forwardRef<HTMLDivElement, Props>(
               interim = e.results[i][0].transcript + interim;
             }
           }
-          // на iOS isFinal всегда false — накапливаем interim как sessionText
-          if (isIOS) {
-            if (interim) {
-              sessionText = interim;
-              lastInterimRef.current = interim;
-            }
-          } else {
-            // Chrome/Android: lastFinal содержит ВЕСЬ текст сессии накопленно
-            if (lastFinal) sessionText = lastFinal;
-          }
+          if (lastFinal) sessionText = lastFinal;
           const recognized = (savedText.current + " " + sessionText).trim();
-          dbg(`iOS=${isIOS} saved="${savedText.current}" session="${sessionText}" interim="${interim}" isFinal=${lastFinal ? "YES" : "NO"}`);
+          dbg(`saved="${savedText.current}" session="${sessionText}" interim="${interim}"`);
           onValueChange(interim ? (recognized + " " + interim).trim() : recognized);
         };
 
@@ -184,11 +226,7 @@ export const PromptInputBox = React.forwardRef<HTMLDivElement, Props>(
 
         recognition.onend = () => {
           dbg(`END stopped=${stoppedByUserRef.current}`);
-          if (stoppedByUserRef.current) {
-            setIsRecording(false);
-            return;
-          }
-          // Фиксируем текст сессии в savedText перед новой сессией
+          if (stoppedByUserRef.current) { setIsRecording(false); return; }
           if (sessionText) savedText.current = (savedText.current + " " + sessionText).trim();
           sessionText = "";
           try { createAndStart(); } catch { setIsRecording(false); }
@@ -207,14 +245,8 @@ export const PromptInputBox = React.forwardRef<HTMLDivElement, Props>(
     };
 
     const stopRecording = () => {
+      if (isIOS) { stopIosRecording(); return; }
       stoppedByUserRef.current = true;
-      // iOS: isFinal никогда не приходит — фиксируем последний interim как финальный
-      if (isIOS && lastInterimRef.current) {
-        const fixed = (value.trim() + " " + lastInterimRef.current).trim();
-        dbg(`iOS STOP fix: "${lastInterimRef.current}"`);
-        onValueChange(fixed);
-        lastInterimRef.current = "";
-      }
       recognitionRef.current?.stop();
       recognitionRef.current = null;
       setIsRecording(false);
@@ -310,9 +342,17 @@ export const PromptInputBox = React.forwardRef<HTMLDivElement, Props>(
           )}
         </AnimatePresence>
 
+        {/* iOS: распознавание через Whisper */}
+        {isTranscribing && (
+          <div className="flex items-center gap-2 px-4 py-2 text-[11px] text-orange-400">
+            <Loader2 size={12} className="animate-spin" />
+            <span>Распознаю речь…</span>
+          </div>
+        )}
+
         {/* Textarea */}
         <AnimatePresence initial={false}>
-          {!isRecording && (
+          {!isRecording && !isTranscribing && (
             <motion.div
               key="textarea"
               initial={{ opacity: 0 }}
