@@ -185,7 +185,7 @@ export default function CrmDashboard() {
             <span className="text-sm font-bold" style={{ color: t.text }}>Динамика заявок</span>
           </div>
           <ResponsiveContainer width="100%" height={160}>
-            <BarChart data={stats.monthly_leads} margin={{ top: 0, right: 0, left: -25, bottom: 0 }}>
+            <BarChart data={stats.monthly_leads} margin={{ top: 0, right: 0, left: -25, bottom: 0 }} barCategoryGap="20%">
               <defs>
                 <linearGradient id="bg1" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="0%" stopColor="#8b5cf6" /><stop offset="100%" stopColor="#4f46e5" stopOpacity={0.6} />
@@ -193,7 +193,7 @@ export default function CrmDashboard() {
               </defs>
               <XAxis dataKey="month" tick={{ fill: t.textMute, fontSize: 10 }} axisLine={false} tickLine={false} />
               <YAxis tick={{ fill: t.textMute, fontSize: 10 }} axisLine={false} tickLine={false} />
-              <Tooltip contentStyle={{ background: t.surface, border: `1px solid ${t.border}`, borderRadius: 10, fontSize: 12 }} labelStyle={{ color: t.text }} itemStyle={{ color: "#a78bfa" }} />
+              <Tooltip contentStyle={{ background: t.surface, border: `1px solid ${t.border}`, borderRadius: 10, fontSize: 12 }} labelStyle={{ color: t.text }} itemStyle={{ color: "#a78bfa" }} cursor={false} />
               <Bar dataKey="count" fill="url(#bg1)" radius={[5, 5, 0, 0]} name="Заявок" activeBar={{ fill: "url(#bg1)", opacity: 0.85 }} />
             </BarChart>
           </ResponsiveContainer>
