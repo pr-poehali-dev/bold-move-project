@@ -1,191 +1,79 @@
 import { useEffect, useState } from "react";
-import { crmFetch, STATUS_LABELS, STATUS_COLORS, LEAD_STATUSES, ORDER_STATUSES, Client, DEFAULT_TAGS } from "./crmApi";
+import { crmFetch, STATUS_LABELS, Client } from "./crmApi";
 import Icon from "@/components/ui/icon";
 import ClientDrawer from "./ClientDrawer";
 import { useTheme } from "./themeContext";
+import { ClientsFilters, FiltersState } from "./ClientsFilters";
+import { ClientsTable, AddClientModal } from "./ClientsTable";
+import { BulkBar, DeleteConfirm } from "./ClientsBulkActions";
 
-const ALL_STATUSES = [...LEAD_STATUSES, ...ORDER_STATUSES];
+const EMPTY_FORM = { client_name: "", phone: "", status: "new", address: "", notes: "", measure_date: "" };
 
-function Avatar({ name }: { name: string }) {
-  const initials = (name || "?").split(" ").map(w => w[0]).slice(0, 2).join("").toUpperCase();
-  const colors = ["#8b5cf6","#3b82f6","#f59e0b","#10b981","#f97316","#ec4899","#06b6d4"];
-  const color = colors[(name || "?").charCodeAt(0) % colors.length];
-  return (
-    <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0"
-      style={{ background: color + "22", border: `1.5px solid ${color}55`, color }}>
-      {initials}
-    </div>
-  );
-}
-
-// ── Чекбокс ─────────────────────────────────────────────────────────────────
-function Checkbox({ checked, indeterminate, onChange }: {
-  checked: boolean; indeterminate?: boolean; onChange: () => void;
-}) {
-  return (
-    <button onClick={e => { e.stopPropagation(); onChange(); }}
-      className="w-4 h-4 rounded flex items-center justify-center flex-shrink-0 transition"
-      style={{
-        border: checked || indeterminate ? "none" : "1.5px solid #9ca3af",
-        background: checked || indeterminate ? "#7c3aed" : "transparent",
-      }}>
-      {indeterminate && !checked && <div className="w-2 h-0.5 bg-white rounded-full" />}
-      {checked && <Icon name="Check" size={10} style={{ color: "#fff" }} />}
-    </button>
-  );
-}
-
-// ── Панель массовых действий ─────────────────────────────────────────────────
-function BulkBar({ count, onChangeStatus, onDelete, onExport, onClear }: {
-  count: number;
-  onChangeStatus: (s: string) => void;
-  onDelete: () => void;
-  onExport: () => void;
-  onClear: () => void;
-}) {
-  const [statusOpen, setStatusOpen] = useState(false);
-  return (
-    <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 flex items-center gap-2 px-4 py-3 rounded-2xl shadow-2xl"
-      style={{ background: "#1e1b4b", border: "1px solid #4c1d95", minWidth: 420 }}>
-      <div className="flex items-center gap-2 mr-3">
-        <div className="w-6 h-6 rounded-lg flex items-center justify-center text-xs font-bold text-white" style={{ background: "#7c3aed" }}>{count}</div>
-        <span className="text-sm text-white/80 font-medium">выбрано</span>
-      </div>
-
-      {/* Сменить статус */}
-      <div className="relative">
-        <button onClick={() => setStatusOpen(o => !o)}
-          className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold transition text-white"
-          style={{ background: "rgba(255,255,255,0.1)", border: "1px solid rgba(255,255,255,0.15)" }}>
-          <Icon name="RefreshCw" size={12} /> Статус <Icon name="ChevronDown" size={11} />
-        </button>
-        {statusOpen && (
-          <div className="absolute bottom-full mb-2 left-0 rounded-xl overflow-hidden shadow-2xl z-50 min-w-[180px]"
-            style={{ background: "#1e1b4b", border: "1px solid #4c1d95" }}>
-            {ALL_STATUSES.map(s => (
-              <button key={s} onClick={() => { onChangeStatus(s); setStatusOpen(false); }}
-                className="w-full flex items-center gap-2 px-3 py-2.5 text-xs text-left hover:bg-white/10 transition">
-                <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: STATUS_COLORS[s] }} />
-                <span style={{ color: STATUS_COLORS[s] }}>{STATUS_LABELS[s]}</span>
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* Экспорт CSV */}
-      <button onClick={onExport}
-        className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold transition text-white"
-        style={{ background: "rgba(255,255,255,0.1)", border: "1px solid rgba(255,255,255,0.15)" }}>
-        <Icon name="Download" size={12} /> CSV
-      </button>
-
-      {/* Удалить */}
-      <button onClick={onDelete}
-        className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold transition text-red-400"
-        style={{ background: "rgba(239,68,68,0.12)", border: "1px solid rgba(239,68,68,0.3)" }}>
-        <Icon name="Trash2" size={12} /> Удалить
-      </button>
-
-      {/* Закрыть */}
-      <button onClick={onClear} className="ml-auto text-white/40 hover:text-white/70 transition">
-        <Icon name="X" size={14} />
-      </button>
-    </div>
-  );
-}
-
-// ── Диалог подтверждения удаления ────────────────────────────────────────────
-function DeleteConfirm({ count, onConfirm, onCancel }: {
-  count: number; onConfirm: () => void; onCancel: () => void;
-}) {
-  const t = useTheme();
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(0,0,0,0.6)" }}>
-      <div className="rounded-2xl p-6 w-full max-w-sm shadow-2xl" style={{ background: t.surface, border: `1px solid ${t.border}` }}>
-        <div className="w-12 h-12 rounded-2xl flex items-center justify-center mx-auto mb-4" style={{ background: "rgba(239,68,68,0.12)" }}>
-          <Icon name="Trash2" size={22} style={{ color: "#ef4444" }} />
-        </div>
-        <h3 className="text-base font-bold text-center mb-2" style={{ color: t.text }}>Удалить {count} клиент{count > 4 ? "ов" : count > 1 ? "а" : "а"}?</h3>
-        <p className="text-sm text-center mb-5" style={{ color: t.textMute }}>Это действие нельзя отменить</p>
-        <div className="flex gap-2">
-          <button onClick={onCancel} className="flex-1 py-2.5 rounded-xl text-sm font-medium transition"
-            style={{ background: t.surface2, color: t.textSub, border: `1px solid ${t.border}` }}>
-            Отмена
-          </button>
-          <button onClick={onConfirm} className="flex-1 py-2.5 rounded-xl text-sm font-bold text-white transition"
-            style={{ background: "#ef4444" }}>
-            Удалить
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ── Главный компонент ────────────────────────────────────────────────────────
 export default function CrmClients() {
   const t = useTheme();
-  const [clients, setClients] = useState<Client[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState("");
-  const [sourceFilter, setSourceFilter] = useState("");
-  const [dateFrom, setDateFrom] = useState("");
-  const [dateTo, setDateTo] = useState("");
+  const [clients, setClients]   = useState<Client[]>([]);
+  const [loading, setLoading]   = useState(true);
   const [selected, setSelected] = useState<Client | null>(null);
-  const [showAdd, setShowAdd] = useState(false);
-  const [newClient, setNewClient] = useState({ client_name: "", phone: "", status: "new", address: "", notes: "", measure_date: "" });
+  const [showAdd, setShowAdd]   = useState(false);
+  const [newClient, setNewClient] = useState(EMPTY_FORM);
 
-  // Выбор
-  const [checkedIds, setCheckedIds] = useState<Set<number>>(new Set());
+  // Фильтры
+  const [filters, setFilters] = useState<FiltersState>({
+    search: "", statusFilter: "", sourceFilter: "", dateFrom: "", dateTo: "",
+  });
+
+  // Выбор строк
+  const [checkedIds, setCheckedIds]           = useState<Set<number>>(new Set());
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
+  // ── Загрузка ──
   const load = () => {
     setLoading(true);
     const extra: Record<string, string> = {};
-    if (search) extra.search = search;
-    if (statusFilter) extra.status = statusFilter;
+    if (filters.search)       extra.search = filters.search;
+    if (filters.statusFilter) extra.status = filters.statusFilter;
     crmFetch("clients", undefined, extra).then(d => {
       setClients((Array.isArray(d) ? d : []).filter((c: Client) => c.status !== "deleted"));
       setLoading(false);
     });
   };
 
-  useEffect(() => { load(); }, [search, statusFilter]); // eslint-disable-line
+  useEffect(() => { load(); }, [filters.search, filters.statusFilter]); // eslint-disable-line
 
-  // Клиентская фильтрация (источник + диапазон дат)
+  // ── Клиентская фильтрация (источник + диапазон дат) ──
   const filteredClients = clients.filter(c => {
-    if (sourceFilter && (c.source || "chat") !== sourceFilter) return false;
-    if (dateFrom) {
-      const from = new Date(dateFrom);
+    if (filters.sourceFilter && (c.source || "chat") !== filters.sourceFilter) return false;
+    if (filters.dateFrom) {
+      const from = new Date(filters.dateFrom);
       from.setHours(0,0,0,0);
       if (new Date(c.created_at) < from) return false;
     }
-    if (dateTo) {
-      const to = new Date(dateTo);
+    if (filters.dateTo) {
+      const to = new Date(filters.dateTo);
       to.setHours(23,59,59,999);
       if (new Date(c.created_at) > to) return false;
     }
     return true;
   });
 
-  const activeFilters = [statusFilter, sourceFilter, dateFrom, dateTo].filter(Boolean).length;
-  const clearFilters = () => { setStatusFilter(""); setSourceFilter(""); setDateFrom(""); setDateTo(""); };
+  const activeFilters = [filters.statusFilter, filters.sourceFilter, filters.dateFrom, filters.dateTo].filter(Boolean).length;
+  const clearFilters  = () => setFilters(f => ({ ...f, statusFilter: "", sourceFilter: "", dateFrom: "", dateTo: "" }));
+  const patchFilters  = (patch: Partial<FiltersState>) => setFilters(f => ({ ...f, ...patch }));
 
+  // ── Добавление клиента ──
   const addClient = async () => {
     if (!newClient.client_name.trim()) return;
     await crmFetch("clients", { method: "POST", body: JSON.stringify(newClient) });
     setShowAdd(false);
-    setNewClient({ client_name: "", phone: "", status: "new", address: "", notes: "", measure_date: "" });
+    setNewClient(EMPTY_FORM);
     load();
   };
 
   // ── Чекбоксы ──
-  const allChecked     = filteredClients.length > 0 && filteredClients.every(c => checkedIds.has(c.id));
-  const someChecked    = filteredClients.some(c => checkedIds.has(c.id)) && !allChecked;
-  const toggleAll      = () => setCheckedIds(allChecked ? new Set() : new Set(filteredClients.map(c => c.id)));
-  const toggleOne      = (id: number) => setCheckedIds(prev => {
+  const allChecked  = filteredClients.length > 0 && filteredClients.every(c => checkedIds.has(c.id));
+  const someChecked = filteredClients.some(c => checkedIds.has(c.id)) && !allChecked;
+  const toggleAll   = () => setCheckedIds(allChecked ? new Set() : new Set(filteredClients.map(c => c.id)));
+  const toggleOne   = (id: number) => setCheckedIds(prev => {
     const next = new Set(prev);
     if (next.has(id)) { next.delete(id); } else { next.add(id); }
     return next;
@@ -211,13 +99,10 @@ export default function CrmClients() {
   };
 
   const bulkExportCSV = () => {
-    const selected = clients.filter(c => checkedIds.has(c.id));
+    const sel = clients.filter(c => checkedIds.has(c.id));
     const header = ["ID","Имя","Телефон","Адрес","Статус","Дата замера","Сумма договора"];
-    const rows = selected.map(c => [
-      c.id,
-      c.client_name || "",
-      c.phone || "",
-      c.address || "",
+    const rows = sel.map(c => [
+      c.id, c.client_name || "", c.phone || "", c.address || "",
       STATUS_LABELS[c.status] || c.status,
       c.measure_date ? new Date(c.measure_date).toLocaleDateString("ru-RU") : "",
       c.contract_sum || "",
@@ -229,10 +114,6 @@ export default function CrmClients() {
     URL.revokeObjectURL(url);
     clearSelection();
   };
-
-  const isDark = t.theme === "dark";
-  const rowHover = isDark ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.03)";
-  const rowChecked = isDark ? "rgba(124,58,237,0.1)" : "rgba(124,58,237,0.05)";
 
   return (
     <div className="space-y-4 pb-20">
@@ -254,186 +135,28 @@ export default function CrmClients() {
         </button>
       </div>
 
-      {/* Поиск + фильтры */}
-      <div className="rounded-2xl p-3 flex flex-wrap gap-2 items-center"
-        style={{ background: t.surface, border: `1px solid ${t.border}` }}>
-
-        {/* Поиск */}
-        <div className="relative flex-1 min-w-52">
-          <Icon name="Search" size={13} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: t.textMute }} />
-          <input value={search} onChange={e => setSearch(e.target.value)}
-            placeholder="Поиск по имени, телефону, адресу..."
-            className="w-full rounded-xl pl-9 pr-4 py-2 text-sm focus:outline-none transition"
-            style={{ background: t.surface2, border: `1px solid ${t.border}`, color: t.text }} />
-        </div>
-
-        {/* Разделитель */}
-        <div className="w-px h-7 flex-shrink-0" style={{ background: t.border }} />
-
-        {/* Статус */}
-        <div className="relative">
-          <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)}
-            className="appearance-none pl-3 pr-7 py-2 rounded-xl text-xs font-semibold focus:outline-none transition cursor-pointer"
-            style={statusFilter
-              ? { background: STATUS_COLORS[statusFilter] + "18", color: STATUS_COLORS[statusFilter], border: `1px solid ${STATUS_COLORS[statusFilter]}40` }
-              : { background: t.surface2, color: t.textMute, border: `1px solid ${t.border}` }}>
-            <option value="">Все статусы</option>
-            {ALL_STATUSES.map(s => <option key={s} value={s}>{STATUS_LABELS[s]}</option>)}
-          </select>
-          <Icon name="ChevronDown" size={11} className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none"
-            style={{ color: statusFilter ? STATUS_COLORS[statusFilter] : t.textMute }} />
-        </div>
-
-        {/* Источник */}
-        <div className="relative">
-          <select value={sourceFilter} onChange={e => setSourceFilter(e.target.value)}
-            className="appearance-none pl-3 pr-7 py-2 rounded-xl text-xs font-semibold focus:outline-none transition cursor-pointer"
-            style={sourceFilter
-              ? { background: "#7c3aed18", color: "#a78bfa", border: "1px solid #7c3aed40" }
-              : { background: t.surface2, color: t.textMute, border: `1px solid ${t.border}` }}>
-            <option value="">Все источники</option>
-            <option value="chat">Чат</option>
-            <option value="manual">Вручную</option>
-            <option value="telegram">Telegram</option>
-            <option value="site">Сайт</option>
-          </select>
-          <Icon name="ChevronDown" size={11} className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none"
-            style={{ color: sourceFilter ? "#a78bfa" : t.textMute }} />
-        </div>
-
-        {/* Разделитель */}
-        <div className="w-px h-7 flex-shrink-0" style={{ background: t.border }} />
-
-        {/* Дата от */}
-        <div className="flex items-center gap-1.5">
-          <span className="text-xs font-medium flex-shrink-0" style={{ color: t.textMute }}>с</span>
-          <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)}
-            className="rounded-xl px-2.5 py-2 text-xs focus:outline-none transition"
-            style={{ background: t.surface2, border: `1px solid ${dateFrom ? "#7c3aed60" : t.border}`, color: dateFrom ? t.text : t.textMute, width: 130 }} />
-        </div>
-        <div className="flex items-center gap-1.5">
-          <span className="text-xs font-medium flex-shrink-0" style={{ color: t.textMute }}>по</span>
-          <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)}
-            className="rounded-xl px-2.5 py-2 text-xs focus:outline-none transition"
-            style={{ background: t.surface2, border: `1px solid ${dateTo ? "#7c3aed60" : t.border}`, color: dateTo ? t.text : t.textMute, width: 130 }} />
-        </div>
-
-        {/* Сброс */}
-        {activeFilters > 0 && (
-          <button onClick={clearFilters}
-            className="flex items-center gap-1.5 px-2.5 py-2 rounded-xl text-xs font-semibold transition"
-            style={{ background: "rgba(239,68,68,0.1)", color: "#ef4444", border: "1px solid rgba(239,68,68,0.25)" }}>
-            <Icon name="X" size={11} /> Сбросить ({activeFilters})
-          </button>
-        )}
-      </div>
+      {/* Фильтры */}
+      <ClientsFilters
+        filters={filters}
+        onChange={patchFilters}
+        activeFilters={activeFilters}
+        onClear={clearFilters}
+      />
 
       {/* Таблица */}
-      <div className="rounded-2xl overflow-hidden" style={{ background: t.surface, border: `1px solid ${t.border}` }}>
-
-        {/* Заголовок */}
-        <div className="grid grid-cols-[40px_1fr_150px_180px_140px_140px_40px] px-4 py-3"
-          style={{ borderBottom: `1px solid ${t.border}`, background: t.surface2 }}>
-          <div className="flex items-center justify-center">
-            <Checkbox checked={allChecked} indeterminate={someChecked} onChange={toggleAll} />
-          </div>
-          {["Клиент","Телефон","Адрес","Статус","Дата замера",""].map(h => (
-            <div key={h} className="text-xs font-semibold uppercase tracking-wide" style={{ color: t.textMute }}>{h}</div>
-          ))}
-        </div>
-
-        {loading ? (
-          <div className="flex items-center justify-center py-16">
-            <div className="w-5 h-5 border-2 border-violet-500 border-t-transparent rounded-full animate-spin" />
-          </div>
-        ) : filteredClients.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-16 gap-2" style={{ color: t.textMute }}>
-            <Icon name="Users" size={32} className="opacity-30" />
-            <span className="text-sm">{activeFilters > 0 ? "Ничего не найдено по фильтрам" : "Клиенты не найдены"}</span>
-            {activeFilters > 0 && (
-              <button onClick={clearFilters} className="text-xs text-violet-400 hover:text-violet-300 transition mt-1">Сбросить фильтры</button>
-            )}
-          </div>
-        ) : filteredClients.map(c => {
-          const isChecked = checkedIds.has(c.id);
-          return (
-            <div key={c.id}
-              className="grid grid-cols-[40px_1fr_150px_180px_140px_140px_40px] px-4 py-3 cursor-pointer transition items-center group"
-              style={{
-                borderBottom: `1px solid ${t.border2}`,
-                background: isChecked ? rowChecked : "transparent",
-              }}
-              onMouseEnter={e => { if (!isChecked) (e.currentTarget as HTMLDivElement).style.background = rowHover; }}
-              onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.background = isChecked ? rowChecked : "transparent"; }}
-              onClick={() => setSelected(c)}>
-
-              {/* Чекбокс */}
-              <div className="flex items-center justify-center" onClick={e => e.stopPropagation()}>
-                <Checkbox checked={isChecked} onChange={() => toggleOne(c.id)} />
-              </div>
-
-              {/* Имя + теги */}
-              <div className="flex items-center gap-2.5 min-w-0">
-                <Avatar name={c.client_name} />
-                <div className="min-w-0">
-                  <div className="text-sm font-semibold truncate" style={{ color: t.text }}>{c.client_name || "—"}</div>
-                  {c.tags && c.tags.length > 0 && (
-                    <div className="flex gap-1 mt-0.5">
-                      {c.tags.slice(0, 2).map(tag => {
-                        const tagDef = DEFAULT_TAGS.find(d => d.label === tag);
-                        return (
-                          <span key={tag} className="text-[10px] px-1.5 py-0.5 rounded-md font-medium"
-                            style={{ background: (tagDef?.color || "#666") + "20", color: tagDef?.color || "#888" }}>
-                            {tag}
-                          </span>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              <div className="text-sm truncate font-medium" style={{ color: t.textSub }}>{c.phone || "—"}</div>
-              <div className="text-sm truncate" style={{ color: t.textMute }}>{c.address || "—"}</div>
-
-              <div>
-                <span className="inline-block px-2.5 py-1 rounded-lg text-xs font-semibold"
-                  style={{ background: STATUS_COLORS[c.status] + "18", color: STATUS_COLORS[c.status] }}>
-                  {STATUS_LABELS[c.status] || c.status}
-                </span>
-              </div>
-
-              <div className="text-xs font-medium" style={{ color: t.textMute }}>
-                {c.measure_date
-                  ? new Date(c.measure_date).toLocaleDateString("ru-RU", { day: "numeric", month: "short" })
-                  : "—"}
-              </div>
-
-              <div style={{ color: t.textMute }}>
-                <Icon name="ChevronRight" size={14} />
-              </div>
-            </div>
-          );
-        })}
-
-        {/* Футер с итогами */}
-        {filteredClients.length > 0 && (
-          <div className="px-4 py-3 flex items-center justify-between"
-            style={{ borderTop: `1px solid ${t.border}`, background: t.surface2 }}>
-            <span className="text-xs" style={{ color: t.textMute }}>
-              {checkedIds.size > 0
-                ? `Выбрано ${checkedIds.size} из ${filteredClients.length}`
-                : activeFilters > 0
-                ? `Показано ${filteredClients.length} из ${clients.length}`
-                : `Всего: ${clients.length}`}
-            </span>
-            <span className="text-xs font-semibold" style={{ color: t.textSub }}>
-              {filteredClients.filter(c => c.contract_sum).length > 0 &&
-                `Договоров: ${filteredClients.reduce((s,c) => s + (c.contract_sum||0), 0).toLocaleString("ru-RU")} ₽`}
-            </span>
-          </div>
-        )}
-      </div>
+      <ClientsTable
+        loading={loading}
+        filteredClients={filteredClients}
+        clients={clients}
+        checkedIds={checkedIds}
+        allChecked={allChecked}
+        someChecked={someChecked}
+        activeFilters={activeFilters}
+        onToggleAll={toggleAll}
+        onToggleOne={toggleOne}
+        onSelect={setSelected}
+        onClearFilters={clearFilters}
+      />
 
       {/* Drawer */}
       {selected && (
@@ -444,52 +167,12 @@ export default function CrmClients() {
 
       {/* Модалка добавления */}
       {showAdd && (
-        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4" onClick={() => setShowAdd(false)}>
-          <div className="rounded-2xl p-6 w-full max-w-md shadow-2xl" style={{ background: t.surface, border: `1px solid ${t.border}` }} onClick={e => e.stopPropagation()}>
-            <div className="flex items-center justify-between mb-5">
-              <h3 className="text-base font-bold" style={{ color: t.text }}>Новый клиент</h3>
-              <button onClick={() => setShowAdd(false)} style={{ color: t.textMute }}><Icon name="X" size={17} /></button>
-            </div>
-            <div className="space-y-3">
-              {([["client_name","Имя *"],["phone","Телефон"],["address","Адрес"]] as [keyof typeof newClient, string][]).map(([f,l]) => (
-                <div key={f}>
-                  <label className="text-xs mb-1.5 block font-medium" style={{ color: t.textMute }}>{l}</label>
-                  <input value={newClient[f]} onChange={e => setNewClient({ ...newClient, [f]: e.target.value })}
-                    className="w-full rounded-xl px-4 py-2.5 text-sm focus:outline-none transition"
-                    style={{ background: t.surface2, border: `1px solid ${t.border}`, color: t.text }} />
-                </div>
-              ))}
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-xs mb-1.5 block font-medium" style={{ color: t.textMute }}>Статус</label>
-                  <select value={newClient.status} onChange={e => setNewClient({ ...newClient, status: e.target.value })}
-                    className="w-full rounded-xl px-4 py-2.5 text-sm focus:outline-none transition"
-                    style={{ background: t.surface2, border: `1px solid ${t.border}`, color: t.text }}>
-                    {ALL_STATUSES.map(s => <option key={s} value={s}>{STATUS_LABELS[s]}</option>)}
-                  </select>
-                </div>
-                <div>
-                  <label className="text-xs mb-1.5 block font-medium" style={{ color: t.textMute }}>Дата замера</label>
-                  <input type="datetime-local" value={newClient.measure_date}
-                    onChange={e => setNewClient({ ...newClient, measure_date: e.target.value })}
-                    className="w-full rounded-xl px-4 py-2.5 text-sm focus:outline-none transition"
-                    style={{ background: t.surface2, border: `1px solid ${t.border}`, color: t.text }} />
-                </div>
-              </div>
-            </div>
-            <div className="flex gap-2 mt-5">
-              <button onClick={addClient} disabled={!newClient.client_name.trim()}
-                className="flex-1 py-2.5 bg-violet-600 hover:bg-violet-700 disabled:opacity-40 text-white text-sm rounded-xl font-semibold transition">
-                Добавить
-              </button>
-              <button onClick={() => setShowAdd(false)}
-                className="flex-1 py-2.5 rounded-xl text-sm font-medium transition"
-                style={{ background: t.surface2, color: t.textSub, border: `1px solid ${t.border}` }}>
-                Отмена
-              </button>
-            </div>
-          </div>
-        </div>
+        <AddClientModal
+          form={newClient}
+          onChange={patch => setNewClient(f => ({ ...f, ...patch }))}
+          onSave={addClient}
+          onClose={() => setShowAdd(false)}
+        />
       )}
 
       {/* Панель массовых действий */}
