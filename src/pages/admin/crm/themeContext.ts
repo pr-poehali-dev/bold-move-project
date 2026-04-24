@@ -30,14 +30,14 @@ export const DARK: Omit<ThemeCtx, "toggle"> = {
 
 export const LIGHT: Omit<ThemeCtx, "toggle"> = {
   theme:    "light",
-  bg:       "#f3f4f8",
+  bg:       "#eef0f6",
   surface:  "#ffffff",
-  surface2: "#f8f9fc",
-  border:   "rgba(0,0,0,0.07)",
-  border2:  "rgba(0,0,0,0.04)",
-  text:     "#111827",
-  textSub:  "rgba(0,0,0,0.50)",
-  textMute: "rgba(0,0,0,0.25)",
+  surface2: "#f0f2f7",
+  border:   "rgba(0,0,0,0.12)",
+  border2:  "rgba(0,0,0,0.07)",
+  text:     "#0f1623",
+  textSub:  "#374151",
+  textMute: "#6b7280",
 };
 
 export const ThemeContext = createContext<ThemeCtx>({ ...DARK, toggle: () => {} });
