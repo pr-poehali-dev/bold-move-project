@@ -5,6 +5,7 @@ import {
   LineChart, Line, CartesianGrid, Cell,
 } from "recharts";
 import Icon from "@/components/ui/icon";
+import { useTheme } from "./themeContext";
 
 interface Stats {
   total_all: number; total_leads: number; total_orders: number;
@@ -31,22 +32,24 @@ function Money({ val, color = "text-white" }: { val: number; color?: string }) {
 function StatCard({ icon, label, value, sub, color, grad }: {
   icon: string; label: string; value: string | number; sub?: string; color: string; grad: string;
 }) {
+  const t = useTheme();
   return (
-    <div className={`relative overflow-hidden bg-gradient-to-br ${grad} border border-white/[0.05] rounded-2xl p-5`}>
+    <div className={`relative overflow-hidden bg-gradient-to-br ${grad} rounded-2xl p-5`} style={{ border: `1px solid ${t.border}` }}>
       <div className="flex items-start justify-between mb-3">
         <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: color + "20" }}>
           <Icon name={icon} size={19} style={{ color }} />
         </div>
       </div>
-      <div className="text-white/35 text-xs mb-0.5">{label}</div>
-      <div className="text-2xl font-bold text-white">{typeof value === "number" ? value.toLocaleString("ru-RU") : value}</div>
-      {sub && <div className="text-xs text-white/25 mt-0.5">{sub}</div>}
+      <div className="text-xs mb-0.5" style={{ color: t.textMute }}>{label}</div>
+      <div className="text-2xl font-bold" style={{ color: t.text }}>{typeof value === "number" ? value.toLocaleString("ru-RU") : value}</div>
+      {sub && <div className="text-xs mt-0.5" style={{ color: t.textMute }}>{sub}</div>}
       <div className="absolute -bottom-5 -right-5 w-20 h-20 rounded-full opacity-[0.07]" style={{ background: color }} />
     </div>
   );
 }
 
 export default function CrmDashboard() {
+  const t = useTheme();
   const [stats, setStats] = useState<Stats | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -73,10 +76,10 @@ export default function CrmDashboard() {
       {/* ── Строка 2: деньги ── */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         {/* Финансовая сводка */}
-        <div className="bg-[#0a0a16] border border-white/[0.05] rounded-2xl p-5">
+        <div className="rounded-2xl p-5" style={{ background: t.surface, border: `1px solid ${t.border}` }}>
           <div className="flex items-center gap-2 mb-4">
             <div className="w-1 h-4 rounded-full bg-emerald-500" />
-            <span className="text-sm font-bold text-white">Финансовая сводка</span>
+            <span className="text-sm font-bold" style={{ color: t.text }}>Финансовая сводка</span>
           </div>
           <div className="space-y-3">
             {[
@@ -86,13 +89,13 @@ export default function CrmDashboard() {
               { label: "Стоимость замеров",   val: stats.total_measure_cost, color: "text-red-400/70" },
               { label: "Стоимость монтажей",  val: stats.total_install_cost, color: "text-red-400/70" },
             ].map(r => (
-              <div key={r.label} className="flex justify-between items-center py-1.5 border-b border-white/[0.04]">
-                <span className="text-xs text-white/40">{r.label}</span>
+              <div key={r.label} className="flex justify-between items-center py-1.5" style={{ borderBottom: `1px solid ${t.border2}` }}>
+                <span className="text-xs" style={{ color: t.textMute }}>{r.label}</span>
                 <Money val={r.val} color={r.color} />
               </div>
             ))}
             <div className="flex justify-between items-center pt-2">
-              <span className="text-sm font-bold text-white">Прибыль</span>
+              <span className="text-sm font-bold" style={{ color: t.text }}>Прибыль</span>
               <span className={`text-lg font-bold ${stats.total_profit >= 0 ? "text-emerald-400" : "text-red-400"}`}>
                 {stats.total_profit >= 0 ? "+" : ""}{stats.total_profit.toLocaleString("ru-RU")} ₽
               </span>
@@ -101,10 +104,10 @@ export default function CrmDashboard() {
         </div>
 
         {/* Воронка */}
-        <div className="bg-[#0a0a16] border border-white/[0.05] rounded-2xl p-5">
+        <div className="rounded-2xl p-5" style={{ background: t.surface, border: `1px solid ${t.border}` }}>
           <div className="flex items-center gap-2 mb-4">
             <div className="w-1 h-4 rounded-full bg-violet-500" />
-            <span className="text-sm font-bold text-white">Воронка продаж</span>
+            <span className="text-sm font-bold" style={{ color: t.text }}>Воронка продаж</span>
           </div>
           <div className="space-y-3">
             {[
@@ -116,10 +119,10 @@ export default function CrmDashboard() {
             ].map(f => (
               <div key={f.label}>
                 <div className="flex justify-between text-xs mb-1">
-                  <span className="text-white/50">{f.label}</span>
-                  <span className="font-semibold text-white/80">{f.count} <span className="text-white/30">({f.pct}%)</span></span>
+                  <span style={{ color: t.textSub }}>{f.label}</span>
+                  <span className="font-semibold" style={{ color: t.text }}>{f.count} <span style={{ color: t.textMute }}>({f.pct}%)</span></span>
                 </div>
-                <div className="h-1.5 bg-white/[0.06] rounded-full overflow-hidden">
+                <div className="h-1.5 rounded-full overflow-hidden" style={{ background: t.border }}>
                   <div className="h-full rounded-full transition-all" style={{ width: `${f.pct}%`, background: f.color }} />
                 </div>
               </div>
@@ -128,10 +131,10 @@ export default function CrmDashboard() {
         </div>
 
         {/* Себестоимость pie-like */}
-        <div className="bg-[#0a0a16] border border-white/[0.05] rounded-2xl p-5">
+        <div className="rounded-2xl p-5" style={{ background: t.surface, border: `1px solid ${t.border}` }}>
           <div className="flex items-center gap-2 mb-4">
             <div className="w-1 h-4 rounded-full bg-red-500" />
-            <span className="text-sm font-bold text-white">Себестоимость</span>
+            <span className="text-sm font-bold" style={{ color: t.text }}>Себестоимость</span>
           </div>
           <div className="space-y-3">
             {[
@@ -147,25 +150,25 @@ export default function CrmDashboard() {
                   </div>
                   <div className="flex-1">
                     <div className="flex justify-between text-xs mb-1">
-                      <span className="text-white/50">{c.label}</span>
-                      <span className="text-white/70">{c.val > 0 ? c.val.toLocaleString("ru-RU") + " ₽" : "—"}</span>
+                      <span style={{ color: t.textSub }}>{c.label}</span>
+                      <span style={{ color: t.text }}>{c.val > 0 ? c.val.toLocaleString("ru-RU") + " ₽" : "—"}</span>
                     </div>
-                    <div className="h-1 bg-white/[0.06] rounded-full overflow-hidden">
+                    <div className="h-1 rounded-full overflow-hidden" style={{ background: t.border }}>
                       <div className="h-full rounded-full" style={{ width: `${pct}%`, background: c.color }} />
                     </div>
                   </div>
                 </div>
               );
             })}
-            <div className="pt-2 border-t border-white/[0.05]">
+            <div className="pt-2" style={{ borderTop: `1px solid ${t.border}` }}>
               <div className="flex justify-between">
-                <span className="text-xs text-white/40">Итого затраты</span>
+                <span className="text-xs" style={{ color: t.textMute }}>Итого затраты</span>
                 <span className="text-sm font-bold text-red-400">{stats.total_costs > 0 ? stats.total_costs.toLocaleString("ru-RU") + " ₽" : "—"}</span>
               </div>
               {stats.avg_contract > 0 && (
                 <div className="flex justify-between mt-1.5">
-                  <span className="text-xs text-white/40">Средний чек</span>
-                  <span className="text-sm font-bold text-white">{stats.avg_contract.toLocaleString("ru-RU")} ₽</span>
+                  <span className="text-xs" style={{ color: t.textMute }}>Средний чек</span>
+                  <span className="text-sm font-bold" style={{ color: t.text }}>{stats.avg_contract.toLocaleString("ru-RU")} ₽</span>
                 </div>
               )}
             </div>
@@ -176,10 +179,10 @@ export default function CrmDashboard() {
       {/* ── Строка 3: графики ── */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* Заявки по месяцам */}
-        <div className="bg-[#0a0a16] border border-white/[0.05] rounded-2xl p-5">
+        <div className="rounded-2xl p-5" style={{ background: t.surface, border: `1px solid ${t.border}` }}>
           <div className="flex items-center gap-2 mb-4">
             <div className="w-1 h-4 rounded-full bg-violet-500" />
-            <span className="text-sm font-bold text-white">Динамика заявок</span>
+            <span className="text-sm font-bold" style={{ color: t.text }}>Динамика заявок</span>
           </div>
           <ResponsiveContainer width="100%" height={160}>
             <BarChart data={stats.monthly_leads} margin={{ top: 0, right: 0, left: -25, bottom: 0 }}>
@@ -188,32 +191,32 @@ export default function CrmDashboard() {
                   <stop offset="0%" stopColor="#8b5cf6" /><stop offset="100%" stopColor="#4f46e5" stopOpacity={0.6} />
                 </linearGradient>
               </defs>
-              <XAxis dataKey="month" tick={{ fill: "#ffffff20", fontSize: 10 }} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fill: "#ffffff20", fontSize: 10 }} axisLine={false} tickLine={false} />
-              <Tooltip contentStyle={{ background: "#0e0e1c", border: "1px solid #ffffff10", borderRadius: 10, fontSize: 12 }} labelStyle={{ color: "#fff" }} itemStyle={{ color: "#a78bfa" }} />
+              <XAxis dataKey="month" tick={{ fill: t.textMute, fontSize: 10 }} axisLine={false} tickLine={false} />
+              <YAxis tick={{ fill: t.textMute, fontSize: 10 }} axisLine={false} tickLine={false} />
+              <Tooltip contentStyle={{ background: t.surface, border: `1px solid ${t.border}`, borderRadius: 10, fontSize: 12 }} labelStyle={{ color: t.text }} itemStyle={{ color: "#a78bfa" }} />
               <Bar dataKey="count" fill="url(#bg1)" radius={[5, 5, 0, 0]} name="Заявок" />
             </BarChart>
           </ResponsiveContainer>
         </div>
 
         {/* Выручка по месяцам */}
-        <div className="bg-[#0a0a16] border border-white/[0.05] rounded-2xl p-5">
+        <div className="rounded-2xl p-5" style={{ background: t.surface, border: `1px solid ${t.border}` }}>
           <div className="flex items-center gap-2 mb-4">
             <div className="w-1 h-4 rounded-full bg-emerald-500" />
-            <span className="text-sm font-bold text-white">Выручка по месяцам</span>
+            <span className="text-sm font-bold" style={{ color: t.text }}>Выручка по месяцам</span>
           </div>
           {stats.monthly_revenue.length > 0 ? (
             <ResponsiveContainer width="100%" height={160}>
               <LineChart data={stats.monthly_revenue} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#ffffff06" />
-                <XAxis dataKey="month" tick={{ fill: "#ffffff20", fontSize: 10 }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fill: "#ffffff20", fontSize: 10 }} axisLine={false} tickLine={false} tickFormatter={v => `${Math.round(v/1000)}к`} />
-                <Tooltip contentStyle={{ background: "#0e0e1c", border: "1px solid #ffffff10", borderRadius: 10, fontSize: 12 }} labelStyle={{ color: "#fff" }} formatter={(v: number) => [v.toLocaleString("ru-RU") + " ₽", "Выручка"]} />
+                <CartesianGrid strokeDasharray="3 3" stroke={t.border2} />
+                <XAxis dataKey="month" tick={{ fill: t.textMute, fontSize: 10 }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fill: t.textMute, fontSize: 10 }} axisLine={false} tickLine={false} tickFormatter={v => `${Math.round(v/1000)}к`} />
+                <Tooltip contentStyle={{ background: t.surface, border: `1px solid ${t.border}`, borderRadius: 10, fontSize: 12 }} labelStyle={{ color: t.text }} formatter={(v: number) => [v.toLocaleString("ru-RU") + " ₽", "Выручка"]} />
                 <Line type="monotone" dataKey="revenue" stroke="#10b981" strokeWidth={2.5} dot={{ fill: "#10b981", r: 4, strokeWidth: 0 }} />
               </LineChart>
             </ResponsiveContainer>
           ) : (
-            <div className="flex items-center justify-center h-40 text-white/20 text-sm">Нет данных — добавьте суммы договоров</div>
+            <div className="flex items-center justify-center h-40 text-sm" style={{ color: t.textMute }}>Нет данных — добавьте суммы договоров</div>
           )}
         </div>
       </div>
@@ -221,14 +224,14 @@ export default function CrmDashboard() {
       {/* ── Строка 4: отказники + предстоящее ── */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* Причины отказов */}
-        <div className="bg-[#0a0a16] border border-white/[0.05] rounded-2xl p-5">
+        <div className="rounded-2xl p-5" style={{ background: t.surface, border: `1px solid ${t.border}` }}>
           <div className="flex items-center gap-2 mb-4">
             <div className="w-1 h-4 rounded-full bg-red-500" />
-            <span className="text-sm font-bold text-white">Причины отказов</span>
-            <span className="ml-auto text-xs text-white/25 bg-white/[0.05] px-2 py-0.5 rounded-lg">{stats.total_cancel} отказников</span>
+            <span className="text-sm font-bold" style={{ color: t.text }}>Причины отказов</span>
+            <span className="ml-auto text-xs px-2 py-0.5 rounded-lg" style={{ color: t.textMute, background: t.surface2 }}>{stats.total_cancel} отказников</span>
           </div>
           {stats.cancel_reasons.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-8 text-white/20">
+            <div className="flex flex-col items-center justify-center py-8" style={{ color: t.textMute }}>
               <Icon name="ThumbsUp" size={28} className="mb-2 opacity-30" />
               <span className="text-sm">Отказов нет — отлично!</span>
               <span className="text-xs mt-1">Указывайте причину при смене статуса на «Отменён»</span>
@@ -238,8 +241,8 @@ export default function CrmDashboard() {
               {stats.cancel_reasons.map((r, i) => (
                 <div key={i} className="flex items-center gap-3">
                   <div className="w-5 h-5 rounded-md bg-red-500/15 flex items-center justify-center text-[10px] font-bold text-red-400">{i+1}</div>
-                  <span className="flex-1 text-sm text-white/60">{r.reason}</span>
-                  <span className="text-sm font-bold text-white/80">{r.count}</span>
+                  <span className="flex-1 text-sm" style={{ color: t.textSub }}>{r.reason}</span>
+                  <span className="text-sm font-bold" style={{ color: t.text }}>{r.count}</span>
                 </div>
               ))}
             </div>
@@ -247,10 +250,10 @@ export default function CrmDashboard() {
         </div>
 
         {/* Предстоящие события */}
-        <div className="bg-[#0a0a16] border border-white/[0.05] rounded-2xl p-5">
+        <div className="rounded-2xl p-5" style={{ background: t.surface, border: `1px solid ${t.border}` }}>
           <div className="flex items-center gap-2 mb-4">
             <div className="w-1 h-4 rounded-full bg-amber-500" />
-            <span className="text-sm font-bold text-white">Предстоящие события</span>
+            <span className="text-sm font-bold" style={{ color: t.text }}>Предстоящие события</span>
           </div>
           <div className="grid grid-cols-2 gap-3">
             {[
@@ -261,18 +264,18 @@ export default function CrmDashboard() {
                 <div className="w-8 h-8 rounded-lg flex items-center justify-center mb-3" style={{ background: e.color + "20" }}>
                   <Icon name={e.icon} size={16} style={{ color: e.color }} />
                 </div>
-                <div className="text-2xl font-bold text-white mb-0.5">{e.count}</div>
-                <div className="text-xs text-white/40">{e.label}</div>
+                <div className="text-2xl font-bold mb-0.5" style={{ color: t.text }}>{e.count}</div>
+                <div className="text-xs" style={{ color: t.textMute }}>{e.label}</div>
               </div>
             ))}
           </div>
-          <div className="mt-3 pt-3 border-t border-white/[0.05] grid grid-cols-2 gap-3 text-xs">
+          <div className="mt-3 pt-3 grid grid-cols-2 gap-3 text-xs" style={{ borderTop: `1px solid ${t.border}` }}>
             <div>
-              <div className="text-white/30 mb-0.5">Средняя площадь</div>
-              <div className="font-bold text-white">{stats.avg_area > 0 ? `${stats.avg_area} м²` : "—"}</div>
+              <div className="mb-0.5" style={{ color: t.textMute }}>Средняя площадь</div>
+              <div className="font-bold" style={{ color: t.text }}>{stats.avg_area > 0 ? `${stats.avg_area} м²` : "—"}</div>
             </div>
             <div>
-              <div className="text-white/30 mb-0.5">Средний договор</div>
+              <div className="mb-0.5" style={{ color: t.textMute }}>Средний договор</div>
               <div className="font-bold text-emerald-400">{stats.avg_contract > 0 ? `${stats.avg_contract.toLocaleString("ru-RU")} ₽` : "—"}</div>
             </div>
           </div>

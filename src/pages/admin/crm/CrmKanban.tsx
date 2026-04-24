@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef } from "react";
 import { crmFetch, PRIORITY_LABELS, PRIORITY_COLORS } from "./crmApi";
 import Icon from "@/components/ui/icon";
+import { useTheme } from "./themeContext";
 
 interface KanbanColumn {
   id: number;
@@ -26,6 +27,7 @@ interface KanbanCard {
 const DEFAULT_COLORS = ["#3b82f6","#f59e0b","#8b5cf6","#06b6d4","#f97316","#10b981","#ef4444","#ec4899"];
 
 export default function CrmKanban() {
+  const t = useTheme();
   const [columns, setColumns] = useState<KanbanColumn[]>([]);
   const [cards, setCards] = useState<KanbanCard[]>([]);
   const [dragging, setDragging] = useState<KanbanCard | null>(null);
@@ -95,10 +97,13 @@ export default function CrmKanban() {
     setEditCard(null); loadAll();
   };
 
+  // Shared input style helper
+  const inputStyle = { background: t.surface2, border: `1px solid ${t.border}`, color: t.text };
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h2 className="text-lg font-bold text-white">Канбан-доска</h2>
+        <h2 className="text-lg font-bold" style={{ color: t.text }}>Канбан-доска</h2>
         <button onClick={() => setShowAddCol(true)} className="flex items-center gap-2 px-4 py-2 bg-violet-600 hover:bg-violet-700 text-white text-sm rounded-lg transition">
           <Icon name="Plus" size={14} /> Добавить колонку
         </button>
@@ -113,31 +118,32 @@ export default function CrmKanban() {
             <div className="flex items-center justify-between px-4 py-3 rounded-t-xl" style={{ background: col.color + "22", borderBottom: `2px solid ${col.color}` }}>
               <div className="flex items-center gap-2">
                 <div className="w-2.5 h-2.5 rounded-full" style={{ background: col.color }} />
-                <span className="text-sm font-semibold text-white">{col.title}</span>
-                <span className="text-xs text-white/40 ml-1">{cardsForCol(col.id).length}</span>
+                <span className="text-sm font-semibold" style={{ color: t.text }}>{col.title}</span>
+                <span className="text-xs ml-1" style={{ color: t.textMute }}>{cardsForCol(col.id).length}</span>
               </div>
               <div className="flex gap-1">
-                <button onClick={() => setAddCardCol(col.id)} className="p-1 rounded hover:bg-white/10 text-white/40 hover:text-white transition"><Icon name="Plus" size={13} /></button>
-                <button onClick={() => setEditCol(col)} className="p-1 rounded hover:bg-white/10 text-white/40 hover:text-white transition"><Icon name="Settings" size={13} /></button>
+                <button onClick={() => setAddCardCol(col.id)} className="p-1 rounded hover:bg-white/10 transition" style={{ color: t.textMute }}><Icon name="Plus" size={13} /></button>
+                <button onClick={() => setEditCol(col)} className="p-1 rounded hover:bg-white/10 transition" style={{ color: t.textMute }}><Icon name="Settings" size={13} /></button>
               </div>
             </div>
 
             {/* Карточки */}
-            <div className="flex-1 bg-[#080812] rounded-b-xl p-2 space-y-2 min-h-32">
+            <div className="flex-1 rounded-b-xl p-2 space-y-2 min-h-32" style={{ background: t.surface2 }}>
               {cardsForCol(col.id).map(card => (
                 <div key={card.id} draggable
                   onDragStart={() => onDragStart(card)}
                   onDragEnd={() => { setDragging(null); setDragOver(null); }}
                   onClick={() => setEditCard(card)}
-                  className={`bg-[#0e0e1c] border border-white/[0.06] rounded-xl p-3 cursor-grab active:cursor-grabbing hover:border-white/[0.12] transition ${dragging?.id === card.id ? "opacity-40" : ""}`}>
+                  className={`rounded-xl p-3 cursor-grab active:cursor-grabbing transition ${dragging?.id === card.id ? "opacity-40" : ""}`}
+                  style={{ background: t.surface, border: `1px solid ${t.border}` }}>
                   <div className="flex items-start justify-between gap-2 mb-2">
-                    <span className="text-sm font-medium text-white leading-tight">{card.title}</span>
+                    <span className="text-sm font-medium leading-tight" style={{ color: t.text }}>{card.title}</span>
                     <span className="flex-shrink-0 text-[10px] px-1.5 py-0.5 rounded-full font-medium" style={{ background: PRIORITY_COLORS[card.priority] + "33", color: PRIORITY_COLORS[card.priority] }}>
                       {PRIORITY_LABELS[card.priority]}
                     </span>
                   </div>
-                  {card.description && <p className="text-xs text-white/40 mb-2 line-clamp-2">{card.description}</p>}
-                  <div className="flex flex-wrap gap-2 text-xs text-white/40">
+                  {card.description && <p className="text-xs mb-2 line-clamp-2" style={{ color: t.textMute }}>{card.description}</p>}
+                  <div className="flex flex-wrap gap-2 text-xs" style={{ color: t.textMute }}>
                     {card.phone && <span className="flex items-center gap-1"><Icon name="Phone" size={11} />{card.phone}</span>}
                     {card.amount && <span className="flex items-center gap-1 text-emerald-400"><Icon name="Banknote" size={11} />{card.amount.toLocaleString("ru-RU")} ₽</span>}
                     {card.due_date && <span className="flex items-center gap-1"><Icon name="Calendar" size={11} />{new Date(card.due_date).toLocaleDateString("ru-RU")}</span>}
@@ -147,7 +153,8 @@ export default function CrmKanban() {
 
               {/* Добавить карточку */}
               <button onClick={() => setAddCardCol(col.id)}
-                className="w-full py-2 rounded-xl border border-dashed border-white/[0.06] hover:border-white/[0.15] text-xs text-white/25 hover:text-white/50 transition flex items-center justify-center gap-1">
+                className="w-full py-2 rounded-xl border border-dashed hover:border-white/[0.15] text-xs transition flex items-center justify-center gap-1"
+                style={{ borderColor: t.border, color: t.textMute }}>
                 <Icon name="Plus" size={12} /> Добавить карточку
               </button>
             </div>
@@ -156,7 +163,8 @@ export default function CrmKanban() {
 
         {/* Кнопка новой колонки */}
         <button onClick={() => setShowAddCol(true)}
-          className="flex-shrink-0 w-72 min-h-32 rounded-xl border-2 border-dashed border-white/[0.05] hover:border-violet-500/30 text-white/20 hover:text-violet-400 transition flex items-center justify-center gap-2 text-sm">
+          className="flex-shrink-0 w-72 min-h-32 rounded-xl border-2 border-dashed hover:border-violet-500/30 hover:text-violet-400 transition flex items-center justify-center gap-2 text-sm"
+          style={{ borderColor: t.border, color: t.textMute }}>
           <Icon name="Plus" size={16} /> Новая колонка
         </button>
       </div>
@@ -164,16 +172,17 @@ export default function CrmKanban() {
       {/* Модалка добавления колонки */}
       {showAddCol && (
         <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4" onClick={() => setShowAddCol(false)}>
-          <div className="bg-[#0e0e1c] border border-white/[0.07] rounded-2xl p-6 w-full max-w-sm" onClick={e => e.stopPropagation()}>
-            <h3 className="text-base font-bold text-white mb-4">Новая колонка</h3>
+          <div className="rounded-2xl p-6 w-full max-w-sm" style={{ background: t.surface, border: `1px solid ${t.border}` }} onClick={e => e.stopPropagation()}>
+            <h3 className="text-base font-bold mb-4" style={{ color: t.text }}>Новая колонка</h3>
             <div className="space-y-3">
               <div>
-                <label className="text-xs text-white/40 mb-1 block">Название</label>
+                <label className="text-xs mb-1 block" style={{ color: t.textMute }}>Название</label>
                 <input value={newColTitle} onChange={e => setNewColTitle(e.target.value)} placeholder="Например: В обработке"
-                  className="w-full bg-white/[0.04] border border-white/[0.07] rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-violet-500/40" />
+                  className="w-full rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-violet-500/40"
+                  style={inputStyle} />
               </div>
               <div>
-                <label className="text-xs text-white/40 mb-2 block">Цвет</label>
+                <label className="text-xs mb-2 block" style={{ color: t.textMute }}>Цвет</label>
                 <div className="flex flex-wrap gap-2">
                   {DEFAULT_COLORS.map(c => (
                     <button key={c} onClick={() => setNewColColor(c)}
@@ -185,7 +194,7 @@ export default function CrmKanban() {
             </div>
             <div className="flex gap-2 mt-4">
               <button onClick={addColumn} disabled={!newColTitle.trim()} className="flex-1 py-2 bg-violet-600 hover:bg-violet-700 disabled:opacity-40 text-white text-sm rounded-lg transition">Создать</button>
-              <button onClick={() => setShowAddCol(false)} className="flex-1 py-2 bg-white/5 hover:bg-white/10 text-white text-sm rounded-lg transition">Отмена</button>
+              <button onClick={() => setShowAddCol(false)} className="flex-1 py-2 text-sm rounded-lg transition hover:bg-white/10" style={{ background: t.surface2, color: t.textSub }}>Отмена</button>
             </div>
           </div>
         </div>
@@ -194,16 +203,17 @@ export default function CrmKanban() {
       {/* Модалка редактирования колонки */}
       {editCol && (
         <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4" onClick={() => setEditCol(null)}>
-          <div className="bg-[#0e0e1c] border border-white/[0.07] rounded-2xl p-6 w-full max-w-sm" onClick={e => e.stopPropagation()}>
-            <h3 className="text-base font-bold text-white mb-4">Редактировать колонку</h3>
+          <div className="rounded-2xl p-6 w-full max-w-sm" style={{ background: t.surface, border: `1px solid ${t.border}` }} onClick={e => e.stopPropagation()}>
+            <h3 className="text-base font-bold mb-4" style={{ color: t.text }}>Редактировать колонку</h3>
             <div className="space-y-3">
               <div>
-                <label className="text-xs text-white/40 mb-1 block">Название</label>
+                <label className="text-xs mb-1 block" style={{ color: t.textMute }}>Название</label>
                 <input value={editCol.title} onChange={e => setEditCol({ ...editCol, title: e.target.value })}
-                  className="w-full bg-white/[0.04] border border-white/[0.07] rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-violet-500/40" />
+                  className="w-full rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-violet-500/40"
+                  style={inputStyle} />
               </div>
               <div>
-                <label className="text-xs text-white/40 mb-2 block">Цвет</label>
+                <label className="text-xs mb-2 block" style={{ color: t.textMute }}>Цвет</label>
                 <div className="flex flex-wrap gap-2">
                   {DEFAULT_COLORS.map(c => (
                     <button key={c} onClick={() => setEditCol({ ...editCol, color: c })}
@@ -215,7 +225,7 @@ export default function CrmKanban() {
             </div>
             <div className="flex gap-2 mt-4">
               <button onClick={saveCol} className="flex-1 py-2 bg-violet-600 hover:bg-violet-700 text-white text-sm rounded-lg transition">Сохранить</button>
-              <button onClick={() => setEditCol(null)} className="flex-1 py-2 bg-white/5 hover:bg-white/10 text-white text-sm rounded-lg transition">Отмена</button>
+              <button onClick={() => setEditCol(null)} className="flex-1 py-2 text-sm rounded-lg transition hover:bg-white/10" style={{ background: t.surface2, color: t.textSub }}>Отмена</button>
             </div>
           </div>
         </div>
@@ -224,44 +234,49 @@ export default function CrmKanban() {
       {/* Модалка добавления карточки */}
       {addCardCol !== null && (
         <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4" onClick={() => setAddCardCol(null)}>
-          <div className="bg-[#0e0e1c] border border-white/[0.07] rounded-2xl p-6 w-full max-w-md" onClick={e => e.stopPropagation()}>
-            <h3 className="text-base font-bold text-white mb-4">Новая карточка</h3>
+          <div className="rounded-2xl p-6 w-full max-w-md" style={{ background: t.surface, border: `1px solid ${t.border}` }} onClick={e => e.stopPropagation()}>
+            <h3 className="text-base font-bold mb-4" style={{ color: t.text }}>Новая карточка</h3>
             <div className="space-y-3">
               {[["title","Название *"],["phone","Телефон"],["description","Описание"]].map(([f, l]) => (
                 <div key={f}>
-                  <label className="text-xs text-white/40 mb-1 block">{l}</label>
+                  <label className="text-xs mb-1 block" style={{ color: t.textMute }}>{l}</label>
                   {f === "description" ? (
                     <textarea value={(newCard as Record<string,string>)[f]} onChange={e => setNewCard(p => ({ ...p, [f]: e.target.value }))} rows={2}
-                      className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-violet-500 resize-none" />
+                      className="w-full rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-violet-500 resize-none"
+                      style={inputStyle} />
                   ) : (
                     <input value={(newCard as Record<string,string>)[f]} onChange={e => setNewCard(p => ({ ...p, [f]: e.target.value }))}
-                      className="w-full bg-white/[0.04] border border-white/[0.07] rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-violet-500/40" />
+                      className="w-full rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-violet-500/40"
+                      style={inputStyle} />
                   )}
                 </div>
               ))}
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-xs text-white/40 mb-1 block">Бюджет (₽)</label>
+                  <label className="text-xs mb-1 block" style={{ color: t.textMute }}>Бюджет (₽)</label>
                   <input type="number" value={newCard.amount} onChange={e => setNewCard(p => ({ ...p, amount: e.target.value }))}
-                    className="w-full bg-white/[0.04] border border-white/[0.07] rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-violet-500/40" />
+                    className="w-full rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-violet-500/40"
+                    style={inputStyle} />
                 </div>
                 <div>
-                  <label className="text-xs text-white/40 mb-1 block">Приоритет</label>
+                  <label className="text-xs mb-1 block" style={{ color: t.textMute }}>Приоритет</label>
                   <select value={newCard.priority} onChange={e => setNewCard(p => ({ ...p, priority: e.target.value }))}
-                    className="w-full bg-white/[0.04] border border-white/[0.07] rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-violet-500/40">
-                    {Object.entries(PRIORITY_LABELS).map(([k, v]) => <option key={k} value={k} className="bg-[#1a1a2e]">{v}</option>)}
+                    className="w-full rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-violet-500/40"
+                    style={inputStyle}>
+                    {Object.entries(PRIORITY_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
                   </select>
                 </div>
               </div>
               <div>
-                <label className="text-xs text-white/40 mb-1 block">Срок</label>
+                <label className="text-xs mb-1 block" style={{ color: t.textMute }}>Срок</label>
                 <input type="datetime-local" value={newCard.due_date} onChange={e => setNewCard(p => ({ ...p, due_date: e.target.value }))}
-                  className="w-full bg-white/[0.04] border border-white/[0.07] rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-violet-500/40" />
+                  className="w-full rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-violet-500/40"
+                  style={inputStyle} />
               </div>
             </div>
             <div className="flex gap-2 mt-4">
               <button onClick={addCard} disabled={!newCard.title.trim()} className="flex-1 py-2 bg-violet-600 hover:bg-violet-700 disabled:opacity-40 text-white text-sm rounded-lg transition">Добавить</button>
-              <button onClick={() => setAddCardCol(null)} className="flex-1 py-2 bg-white/5 hover:bg-white/10 text-white text-sm rounded-lg transition">Отмена</button>
+              <button onClick={() => setAddCardCol(null)} className="flex-1 py-2 text-sm rounded-lg transition hover:bg-white/10" style={{ background: t.surface2, color: t.textSub }}>Отмена</button>
             </div>
           </div>
         </div>
@@ -270,46 +285,51 @@ export default function CrmKanban() {
       {/* Модалка редактирования карточки */}
       {editCard && (
         <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4" onClick={() => setEditCard(null)}>
-          <div className="bg-[#0e0e1c] border border-white/[0.07] rounded-2xl p-6 w-full max-w-md" onClick={e => e.stopPropagation()}>
-            <h3 className="text-base font-bold text-white mb-4">Редактировать карточку</h3>
+          <div className="rounded-2xl p-6 w-full max-w-md" style={{ background: t.surface, border: `1px solid ${t.border}` }} onClick={e => e.stopPropagation()}>
+            <h3 className="text-base font-bold mb-4" style={{ color: t.text }}>Редактировать карточку</h3>
             <div className="space-y-3">
               {[["title","Название"],["phone","Телефон"],["description","Описание"]].map(([f, l]) => (
                 <div key={f}>
-                  <label className="text-xs text-white/40 mb-1 block">{l}</label>
+                  <label className="text-xs mb-1 block" style={{ color: t.textMute }}>{l}</label>
                   {f === "description" ? (
                     <textarea value={(editCard as Record<string,string>)[f] || ""} onChange={e => setEditCard(p => p ? { ...p, [f]: e.target.value } : p)} rows={2}
-                      className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-violet-500 resize-none" />
+                      className="w-full rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-violet-500 resize-none"
+                      style={inputStyle} />
                   ) : (
                     <input value={(editCard as Record<string,string>)[f] || ""} onChange={e => setEditCard(p => p ? { ...p, [f]: e.target.value } : p)}
-                      className="w-full bg-white/[0.04] border border-white/[0.07] rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-violet-500/40" />
+                      className="w-full rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-violet-500/40"
+                      style={inputStyle} />
                   )}
                 </div>
               ))}
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-xs text-white/40 mb-1 block">Бюджет (₽)</label>
+                  <label className="text-xs mb-1 block" style={{ color: t.textMute }}>Бюджет (₽)</label>
                   <input type="number" value={editCard.amount || ""} onChange={e => setEditCard(p => p ? { ...p, amount: +e.target.value } : p)}
-                    className="w-full bg-white/[0.04] border border-white/[0.07] rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-violet-500/40" />
+                    className="w-full rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-violet-500/40"
+                    style={inputStyle} />
                 </div>
                 <div>
-                  <label className="text-xs text-white/40 mb-1 block">Приоритет</label>
+                  <label className="text-xs mb-1 block" style={{ color: t.textMute }}>Приоритет</label>
                   <select value={editCard.priority} onChange={e => setEditCard(p => p ? { ...p, priority: e.target.value } : p)}
-                    className="w-full bg-white/[0.04] border border-white/[0.07] rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-violet-500/40">
-                    {Object.entries(PRIORITY_LABELS).map(([k, v]) => <option key={k} value={k} className="bg-[#1a1a2e]">{v}</option>)}
+                    className="w-full rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-violet-500/40"
+                    style={inputStyle}>
+                    {Object.entries(PRIORITY_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
                   </select>
                 </div>
               </div>
               <div>
-                <label className="text-xs text-white/40 mb-1 block">Срок</label>
+                <label className="text-xs mb-1 block" style={{ color: t.textMute }}>Срок</label>
                 <input type="datetime-local" value={editCard.due_date ? editCard.due_date.slice(0, 16) : ""}
                   onChange={e => setEditCard(p => p ? { ...p, due_date: e.target.value } : p)}
-                  className="w-full bg-white/[0.04] border border-white/[0.07] rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-violet-500/40" />
+                  className="w-full rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-violet-500/40"
+                  style={inputStyle} />
               </div>
             </div>
             <div className="flex gap-2 mt-4">
               <button onClick={saveCard} className="flex-1 py-2 bg-violet-600 hover:bg-violet-700 text-white text-sm rounded-lg transition">Сохранить</button>
               <button onClick={() => deleteCard(editCard.id)} className="py-2 px-4 bg-red-500/20 hover:bg-red-500/30 text-red-400 text-sm rounded-lg transition">Удалить</button>
-              <button onClick={() => setEditCard(null)} className="flex-1 py-2 bg-white/5 hover:bg-white/10 text-white text-sm rounded-lg transition">Отмена</button>
+              <button onClick={() => setEditCard(null)} className="flex-1 py-2 text-sm rounded-lg transition hover:bg-white/10" style={{ background: t.surface2, color: t.textSub }}>Отмена</button>
             </div>
           </div>
         </div>

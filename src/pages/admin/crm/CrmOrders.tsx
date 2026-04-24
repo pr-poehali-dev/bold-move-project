@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { crmFetch, STATUS_LABELS, STATUS_COLORS, LEAD_STATUSES, ORDER_STATUSES, Client } from "./crmApi";
 import Icon from "@/components/ui/icon";
 import ClientDrawer from "./ClientDrawer";
+import { useTheme } from "./themeContext";
 
 // ── Группировка статусов по 4 табам ────────────────────────────────────────
 const TABS = [
@@ -61,9 +62,9 @@ function InstallProgress({ status }: { status: string }) {
       {INSTALL_STEPS.map((s, i) => (
         <div key={s.status} className="flex items-center gap-0.5">
           <div className="w-2 h-2 rounded-full transition-all"
-            style={{ background: i <= idx ? s.color : "#ffffff12" }} />
+            style={{ background: i <= idx ? s.color : "rgba(255,255,255,0.07)" }} />
           {i < INSTALL_STEPS.length - 1 && (
-            <div className="w-3 h-px" style={{ background: i < idx ? s.color : "#ffffff10" }} />
+            <div className="w-3 h-px" style={{ background: i < idx ? s.color : "rgba(255,255,255,0.06)" }} />
           )}
         </div>
       ))}
@@ -79,31 +80,33 @@ function Avatar({ name }: { name: string }) {
   const colors = ["#8b5cf6", "#3b82f6", "#f59e0b", "#10b981", "#f97316", "#ec4899", "#06b6d4"];
   const color = colors[(name || "?").charCodeAt(0) % colors.length];
   return (
-    <div className="w-9 h-9 rounded-xl flex items-center justify-center text-xs font-bold text-white flex-shrink-0"
-      style={{ background: color + "25", border: `1.5px solid ${color}40` }}>
+    <div className="w-9 h-9 rounded-xl flex items-center justify-center text-xs font-bold flex-shrink-0"
+      style={{ background: color + "25", border: `1.5px solid ${color}40`, color: "#fff" }}>
       {initials}
     </div>
   );
 }
 
 function ClientCard({ c, onClick }: { c: Client; onClick: () => void }) {
-  const tab = TABS.find(t => (t.statuses as readonly string[]).includes(c.status));
+  const t = useTheme();
+  const tab = TABS.find(tb => (tb.statuses as readonly string[]).includes(c.status));
   const isInstall = tab?.id === "installs";
   const isDone = c.status === "done";
   const isCancelled = c.status === "cancelled";
 
   return (
     <div onClick={onClick}
-      className="bg-[#0a0a16] border border-white/[0.05] hover:border-white/[0.1] rounded-2xl p-4 cursor-pointer transition group">
+      className="rounded-2xl p-4 cursor-pointer transition group hover:border-white/[0.1]"
+      style={{ background: t.surface, border: `1px solid ${t.border}` }}>
       {/* Шапка */}
       <div className="flex items-start gap-3 mb-3">
         <Avatar name={c.client_name} />
         <div className="flex-1 min-w-0">
           <div className="flex items-center justify-between gap-2">
-            <span className="text-sm font-semibold text-white/90 truncate">{c.client_name || "Без имени"}</span>
-            <span className="text-[10px] text-white/25 font-mono flex-shrink-0">#{c.id}</span>
+            <span className="text-sm font-semibold truncate" style={{ color: t.text }}>{c.client_name || "Без имени"}</span>
+            <span className="text-[10px] font-mono flex-shrink-0" style={{ color: t.textMute }}>#{c.id}</span>
           </div>
-          <div className="text-xs text-white/35 truncate mt-0.5">{c.phone || "—"}</div>
+          <div className="text-xs truncate mt-0.5" style={{ color: t.textMute }}>{c.phone || "—"}</div>
           {isInstall && <InstallProgress status={c.status} />}
           {!isInstall && (
             <span className="inline-block mt-1 text-[10px] px-1.5 py-0.5 rounded-md font-medium"
@@ -116,10 +119,10 @@ function ClientCard({ c, onClick }: { c: Client; onClick: () => void }) {
 
       {/* Адрес + площадь */}
       {(c.address || c.area) && (
-        <div className="flex items-center gap-1.5 text-xs text-white/30 mb-2">
+        <div className="flex items-center gap-1.5 text-xs mb-2" style={{ color: t.textMute }}>
           <Icon name="MapPin" size={10} className="flex-shrink-0" />
           <span className="truncate">{c.address || "Адрес не указан"}</span>
-          {c.area && <span className="flex-shrink-0 text-white/20">· {c.area} м²</span>}
+          {c.area && <span className="flex-shrink-0" style={{ color: t.textMute }}>· {c.area} м²</span>}
         </div>
       )}
 
@@ -139,12 +142,12 @@ function ClientCard({ c, onClick }: { c: Client; onClick: () => void }) {
 
       {/* Финансы */}
       {(c.contract_sum || c.prepayment || c.extra_payment) && (
-        <div className="flex items-center justify-between text-xs pt-2.5 border-t border-white/[0.04]">
+        <div className="flex items-center justify-between text-xs pt-2.5" style={{ borderTop: `1px solid ${t.border2}` }}>
           {c.contract_sum ? (
             <span className="font-bold text-emerald-400">{c.contract_sum.toLocaleString("ru-RU")} ₽</span>
           ) : <span />}
           {(c.prepayment || c.extra_payment) && (
-            <span className="text-white/30">оплачено {((c.prepayment||0)+(c.extra_payment||0)).toLocaleString("ru-RU")} ₽</span>
+            <span style={{ color: t.textMute }}>оплачено {((c.prepayment||0)+(c.extra_payment||0)).toLocaleString("ru-RU")} ₽</span>
           )}
         </div>
       )}
@@ -158,7 +161,7 @@ function ClientCard({ c, onClick }: { c: Client; onClick: () => void }) {
 
       {/* Стрелка */}
       <div className="flex justify-end mt-2 opacity-0 group-hover:opacity-100 transition">
-        <Icon name="ChevronRight" size={13} className="text-white/25" />
+        <Icon name="ChevronRight" size={13} style={{ color: t.textMute }} />
       </div>
     </div>
   );
@@ -173,6 +176,7 @@ function TabColumn({
   search: string;
   onSelect: (c: Client) => void;
 }) {
+  const t = useTheme();
   const filtered = clients.filter(c => {
     if (!search) return true;
     const q = search.toLowerCase();
@@ -194,14 +198,14 @@ function TabColumn({
         </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
-            <span className="text-sm font-bold text-white">{tab.label}</span>
+            <span className="text-sm font-bold" style={{ color: t.text }}>{tab.label}</span>
             <span className="text-xs font-bold px-1.5 py-0.5 rounded-md"
               style={{ background: tab.color + "18", color: tab.color }}>
               {filtered.length}
             </span>
           </div>
           {totalRevenue > 0 && (
-            <div className="text-[11px] text-white/25">{totalRevenue.toLocaleString("ru-RU")} ₽</div>
+            <div className="text-[11px]" style={{ color: t.textMute }}>{totalRevenue.toLocaleString("ru-RU")} ₽</div>
           )}
         </div>
       </div>
@@ -212,7 +216,7 @@ function TabColumn({
       {/* Карточки */}
       <div className="space-y-2.5 flex-1">
         {filtered.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-10 text-white/15">
+          <div className="flex flex-col items-center justify-center py-10" style={{ color: t.textMute }}>
             <Icon name={tab.icon} size={26} className="mb-2 opacity-30" />
             <span className="text-xs">{tab.emptyText}</span>
           </div>
@@ -226,6 +230,7 @@ function TabColumn({
 
 // ── Главный компонент ───────────────────────────────────────────────────────
 export default function CrmOrders() {
+  const t = useTheme();
   const [allClients, setAllClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -242,12 +247,12 @@ export default function CrmOrders() {
     });
   };
 
-  useEffect(() => { load(); }, []);  
+  useEffect(() => { load(); }, []);
 
   const getTabClients = (tab: typeof TABS[number]) =>
     allClients.filter(c => (tab.statuses as readonly string[]).includes(c.status));
 
-  const currentTab = TABS.find(t => t.id === activeTab)!;
+  const currentTab = TABS.find(tb => tb.id === activeTab)!;
   const currentClients = getTabClients(currentTab);
 
   return (
@@ -256,15 +261,19 @@ export default function CrmOrders() {
       {/* Шапка */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <h2 className="text-xl font-bold text-white">Воронка заказов</h2>
-          <p className="text-xs text-white/25 mt-0.5">Всего клиентов: {allClients.length}</p>
+          <h2 className="text-xl font-bold" style={{ color: t.text }}>Воронка заказов</h2>
+          <p className="text-xs mt-0.5" style={{ color: t.textMute }}>Всего клиентов: {allClients.length}</p>
         </div>
         {/* Поиск */}
         <div className="relative w-72">
-          <Icon name="Search" size={13} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-white/20" />
-          <input value={search} onChange={e => setSearch(e.target.value)}
+          <Icon name="Search" size={13} className="absolute left-3.5 top-1/2 -translate-y-1/2" style={{ color: t.textMute }} />
+          <input
+            value={search}
+            onChange={e => setSearch(e.target.value)}
             placeholder="Поиск по имени, телефону..."
-            className="w-full bg-[#0a0a16] border border-white/[0.06] rounded-xl pl-10 pr-4 py-2.5 text-sm text-white placeholder-white/20 focus:outline-none focus:border-violet-500/40 transition" />
+            className="w-full rounded-xl pl-10 pr-4 py-2.5 text-sm focus:outline-none focus:border-violet-500/40 transition"
+            style={{ background: t.surface2, border: `1px solid ${t.border}`, color: t.text }}
+          />
         </div>
       </div>
 
@@ -276,24 +285,24 @@ export default function CrmOrders() {
           const isActive = activeTab === tab.id;
           return (
             <button key={tab.id} onClick={() => setActiveTab(tab.id)}
-              className={`relative overflow-hidden rounded-2xl p-4 text-left transition border ${
-                isActive ? "border-current" : "border-white/[0.05] hover:border-white/[0.1]"
-              }`}
-              style={isActive ? { background: tab.color + "12", borderColor: tab.color + "40" } : { background: "#0a0a16" }}>
+              className="relative overflow-hidden rounded-2xl p-4 text-left transition border"
+              style={isActive
+                ? { background: tab.color + "12", borderColor: tab.color + "40" }
+                : { background: t.surface, borderColor: t.border }}>
               <div className="flex items-center gap-2 mb-2">
                 <div className="w-7 h-7 rounded-lg flex items-center justify-center"
                   style={{ background: tab.color + "20" }}>
                   <Icon name={tab.icon} size={13} style={{ color: tab.color }} />
                 </div>
-                <span className="text-xs font-semibold text-white/70">{tab.label}</span>
+                <span className="text-xs font-semibold" style={{ color: t.textSub }}>{tab.label}</span>
               </div>
-              <div className="text-2xl font-bold text-white">{clients.length}</div>
+              <div className="text-2xl font-bold" style={{ color: t.text }}>{clients.length}</div>
               {revenue > 0 ? (
                 <div className="text-[11px] mt-0.5" style={{ color: tab.color + "cc" }}>
                   {revenue.toLocaleString("ru-RU")} ₽
                 </div>
               ) : (
-                <div className="text-[11px] mt-0.5 text-white/20">{tab.desc}</div>
+                <div className="text-[11px] mt-0.5" style={{ color: t.textMute }}>{tab.desc}</div>
               )}
               {isActive && (
                 <div className="absolute bottom-0 left-0 right-0 h-0.5 rounded-full"
@@ -339,7 +348,7 @@ export default function CrmOrders() {
                   })
                   .map(c => <ClientCard key={c.id} c={c} onClick={() => setSelected(c)} />)}
                 {currentClients.length === 0 && (
-                  <div className="col-span-3 flex flex-col items-center justify-center py-12 text-white/15">
+                  <div className="col-span-3 flex flex-col items-center justify-center py-12" style={{ color: t.textMute }}>
                     <Icon name="Wrench" size={28} className="mb-2 opacity-30" />
                     <span className="text-sm">Нет активных монтажей</span>
                   </div>
@@ -361,13 +370,13 @@ export default function CrmOrders() {
                   <div key={group.label}>
                     <div className="flex items-center gap-2 mb-3">
                       <Icon name={group.icon} size={14} style={{ color: group.color }} />
-                      <span className="text-sm font-bold text-white/70">{group.label}</span>
+                      <span className="text-sm font-bold" style={{ color: t.textSub }}>{group.label}</span>
                       <span className="text-xs px-1.5 py-0.5 rounded-md font-bold"
                         style={{ background: group.color + "18", color: group.color }}>{items.length}</span>
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
                       {items.length === 0 ? (
-                        <div className="col-span-3 py-4 text-white/20 text-sm text-center">Нет записей</div>
+                        <div className="col-span-3 py-4 text-sm text-center" style={{ color: t.textMute }}>Нет записей</div>
                       ) : items.map(c => <ClientCard key={c.id} c={c} onClick={() => setSelected(c)} />)}
                     </div>
                   </div>
@@ -387,7 +396,7 @@ export default function CrmOrders() {
                 })
                 .map(c => <ClientCard key={c.id} c={c} onClick={() => setSelected(c)} />)}
               {currentClients.length === 0 && (
-                <div className="col-span-3 flex flex-col items-center justify-center py-12 text-white/15">
+                <div className="col-span-3 flex flex-col items-center justify-center py-12" style={{ color: t.textMute }}>
                   <Icon name={currentTab.icon} size={28} className="mb-2 opacity-30" />
                   <span className="text-sm">{currentTab.emptyText}</span>
                 </div>

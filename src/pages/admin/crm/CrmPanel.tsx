@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import Icon from "@/components/ui/icon";
 import CrmDashboard from "./CrmDashboard";
 import CrmAnalytics from "./CrmAnalytics";
@@ -6,6 +6,7 @@ import CrmClients from "./CrmClients";
 import CrmOrders from "./CrmOrders";
 import CrmCalendar from "./CrmCalendar";
 import CrmKanban from "./CrmKanban";
+import { ThemeContext, DARK, LIGHT, type Theme } from "./themeContext";
 
 type CrmTab = "dashboard" | "analytics" | "clients" | "orders" | "calendar" | "kanban";
 
@@ -13,61 +14,83 @@ const CRM_TABS: { id: CrmTab; label: string; icon: string }[] = [
   { id: "dashboard", label: "Дашборд",   icon: "LayoutDashboard" },
   { id: "analytics", label: "Аналитика", icon: "BarChart2" },
   { id: "clients",   label: "Клиенты",   icon: "Users" },
-  { id: "orders",    label: "Заказы",    icon: "ShoppingBag" },
+  { id: "orders",    label: "Заказы",    icon: "Layers" },
   { id: "calendar",  label: "Календарь", icon: "CalendarDays" },
   { id: "kanban",    label: "Канбан",    icon: "Kanban" },
 ];
 
 export default function CrmPanel() {
   const [tab, setTab] = useState<CrmTab>("dashboard");
+  const [theme, setTheme] = useState<Theme>("dark");
+
+  const ctx = useMemo(() => ({
+    ...(theme === "dark" ? DARK : LIGHT),
+    toggle: () => setTheme(t => t === "dark" ? "light" : "dark"),
+  }), [theme]);
+
+  const t = ctx;
 
   return (
-    <div className="min-h-screen bg-[#080812] -m-4 p-0">
-      {/* Шапка */}
-      <div className="flex items-center justify-between px-6 py-4 border-b border-white/[0.06]">
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-violet-600 flex items-center justify-center shadow-lg shadow-violet-900/40">
-            <Icon name="LayoutDashboard" size={17} className="text-white" />
-          </div>
-          <div>
-            <div className="text-sm font-bold text-white leading-tight">CRM — Натяжные потолки</div>
-            <div className="text-[10px] text-white/25">от заявки до завершённого заказа</div>
-          </div>
-        </div>
-        <div className="flex items-center gap-3">
-          <button className="flex items-center gap-2 px-4 py-2 bg-white/5 hover:bg-white/10 border border-white/8 text-white/70 hover:text-white text-xs rounded-xl transition">
-            <Icon name="UserPlus" size={13} /> Добавить клиента
-          </button>
-          <button className="flex items-center gap-2 px-4 py-2 bg-violet-600 hover:bg-violet-700 text-white text-xs rounded-xl transition font-medium shadow-lg shadow-violet-900/30">
-            <Icon name="Plus" size={13} /> Добавить заказ
-          </button>
-        </div>
-      </div>
+    <ThemeContext.Provider value={ctx}>
+      <div className="min-h-screen -m-4 p-0 transition-colors duration-300"
+        style={{ background: t.bg }}>
 
-      {/* Навигация */}
-      <div className="flex gap-1 px-6 py-2 border-b border-white/[0.06] overflow-x-auto">
-        {CRM_TABS.map(t => (
-          <button key={t.id} onClick={() => setTab(t.id)}
-            className={`flex items-center gap-2 px-4 py-2.5 text-sm rounded-xl transition whitespace-nowrap font-medium ${
-              tab === t.id
-                ? "bg-violet-600/15 text-violet-300 border border-violet-500/25"
-                : "text-white/40 hover:text-white/70 hover:bg-white/5 border border-transparent"
-            }`}>
-            <Icon name={t.icon} size={15} />
-            {t.label}
-          </button>
-        ))}
-      </div>
+        {/* Шапка */}
+        <div className="flex items-center justify-between px-6 py-3.5"
+          style={{ borderBottom: `1px solid ${t.border}`, background: t.surface }}>
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-violet-600 flex items-center justify-center shadow-lg shadow-violet-900/30">
+              <Icon name="LayoutDashboard" size={17} className="text-white" />
+            </div>
+            <div>
+              <div className="text-sm font-bold leading-tight" style={{ color: t.text }}>CRM — Натяжные потолки</div>
+              <div className="text-[10px]" style={{ color: t.textMute }}>от заявки до завершённого заказа</div>
+            </div>
+          </div>
 
-      {/* Контент */}
-      <div className="p-6">
-        {tab === "dashboard" && <CrmDashboard />}
-        {tab === "analytics" && <CrmAnalytics />}
-        {tab === "clients"   && <CrmClients />}
-        {tab === "orders"    && <CrmOrders />}
-        {tab === "calendar"  && <CrmCalendar />}
-        {tab === "kanban"    && <CrmKanban />}
+          {/* Переключатель темы */}
+          <button onClick={ctx.toggle}
+            className="flex items-center gap-2 px-3.5 py-2 rounded-xl transition font-medium text-xs"
+            style={{ background: t.surface2, border: `1px solid ${t.border}`, color: t.textSub }}>
+            <Icon name={theme === "dark" ? "Sun" : "Moon"} size={14} />
+            {theme === "dark" ? "Светлая" : "Тёмная"}
+          </button>
+        </div>
+
+        {/* Навигация */}
+        <div className="flex gap-0.5 px-6 py-2.5 overflow-x-auto"
+          style={{ borderBottom: `1px solid ${t.border}`, background: t.surface }}>
+          {CRM_TABS.map(tb => {
+            const active = tab === tb.id;
+            return (
+              <button key={tb.id} onClick={() => setTab(tb.id)}
+                className="flex items-center gap-2 px-4 py-2 text-sm rounded-xl transition whitespace-nowrap font-medium border"
+                style={active ? {
+                  background: "#7c3aed18",
+                  color: "#a78bfa",
+                  borderColor: "#7c3aed35",
+                } : {
+                  color: t.textSub,
+                  borderColor: "transparent",
+                  background: "transparent",
+                }}>
+                <Icon name={tb.icon} size={14} />
+                {tb.label}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Контент */}
+        <div className="p-6">
+          {tab === "dashboard" && <CrmDashboard />}
+          {tab === "analytics" && <CrmAnalytics />}
+          {tab === "clients"   && <CrmClients />}
+          {tab === "orders"    && <CrmOrders />}
+          {tab === "calendar"  && <CrmCalendar />}
+          {tab === "kanban"    && <CrmKanban />}
+        </div>
       </div>
-    </div>
+    </ThemeContext.Provider>
   );
 }
