@@ -7,9 +7,11 @@ import TabPrompt from "./admin/TabPrompt";
 import TabFaq from "./admin/TabFaq";
 import TabQuestions from "./admin/TabQuestions";
 import TabCorrections from "./admin/TabCorrections";
+import CrmPanel from "./admin/crm/CrmPanel";
 import type { AdminTab } from "./admin/types";
 
 const TABS: { id: AdminTab; label: string; icon: string }[] = [
+  { id: "crm",         label: "CRM",              icon: "LayoutDashboard" },
   { id: "prices",      label: "Цены",             icon: "Tag" },
   { id: "rules",       label: "Правила расчёта",  icon: "SlidersHorizontal" },
   { id: "prompt",      label: "Промпт",           icon: "BrainCircuit" },
@@ -22,7 +24,7 @@ export default function AdminPanel() {
   const [token, setToken] = useState(() => sessionStorage.getItem("admin_token") || "");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
-  const [tab, setTab] = useState<AdminTab>("prices");
+  const [tab, setTab] = useState<AdminTab>("crm");
   const [newItemHint, setNewItemHint] = useState<string | null>(null);
 
   const handleItemAdded = (name: string) => {
@@ -92,7 +94,8 @@ export default function AdminPanel() {
         ))}
       </div>
 
-      <div className="p-4 max-w-6xl mx-auto">
+      <div className={tab === "crm" ? "p-4" : "p-4 max-w-6xl mx-auto"}>
+        {tab === "crm"         && <CrmPanel />}
         {tab === "prices"      && <TabPrices      token={token} onItemAdded={handleItemAdded} />}
         {tab === "rules"       && <TabRules       token={token} hint={newItemHint} />}
         {tab === "prompt"      && <TabPrompt      token={token} />}

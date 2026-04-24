@@ -1,0 +1,42 @@
+{
+  "tests": [
+    {
+      "name": "OPTIONS preflight",
+      "method": "OPTIONS",
+      "path": "/",
+      "expectedStatus": 200
+    },
+    {
+      "name": "GET stats",
+      "method": "GET",
+      "path": "/?r=stats",
+      "expectedStatus": 200,
+      "expectedBody": {"total_clients": "any"},
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "GET clients",
+      "method": "GET",
+      "path": "/?r=clients",
+      "expectedStatus": 200
+    },
+    {
+      "name": "GET kanban columns",
+      "method": "GET",
+      "path": "/?r=kanban-columns",
+      "expectedStatus": 200
+    },
+    {
+      "name": "GET kanban cards",
+      "method": "GET",
+      "path": "/?r=kanban-cards",
+      "expectedStatus": 200
+    },
+    {
+      "name": "GET calendar events",
+      "method": "GET",
+      "path": "/?r=calendar-events",
+      "expectedStatus": 200
+    }
+  ]
+}
