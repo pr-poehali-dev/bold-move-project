@@ -83,8 +83,49 @@ def handler(event: dict, context) -> dict:
                     )
                 )
                 new_id = cur.fetchone()[0]
+
+                # Автоматически добавляем в канбан — первая колонка
+                cur.execute(f"SELECT id FROM {SCHEMA}.kanban_columns ORDER BY position LIMIT 1")
+                first_col = cur.fetchone()
+                if first_col:
+                    col_id = first_col[0]
+                    cur.execute(f"SELECT COALESCE(MAX(position)+1,0) FROM {SCHEMA}.kanban_cards WHERE column_id=%s", (col_id,))
+                    pos = cur.fetchone()[0]
+                    name = body.get("client_name", "") or "Новый клиент"
+                    phone = body.get("phone", "")
+                    cur.execute(
+                        f"""INSERT INTO {SCHEMA}.kanban_cards (column_id, client_id, title, phone, priority, position)
+                            VALUES (%s, %s, %s, %s, 'medium', %s)""",
+                        (col_id, new_id, name, phone, pos)
+                    )
+
+                # Если есть дата замера — добавляем событие в календарь
+                measure_date = body.get("measure_date")
+                if measure_date:
+                    name = body.get("client_name", "") or "Клиент"
+                    phone = body.get("phone", "")
+                    cur.execute(
+                        f"""INSERT INTO {SCHEMA}.calendar_events (client_id, title, description, event_type, start_time, color)
+                            VALUES (%s, %s, %s, 'measure', %s, '#f59e0b')""",
+                        (new_id, f"Замер: {name}", phone, measure_date)
+                    )
+
                 conn.commit()
                 return ok({"id": new_id})
+
+            if method == "DELETE":
+                cid = qs.get("id")
+                if not cid:
+                    return err("id required")
+                # Удаляем связанные kanban-карточки и события
+                cur.execute(f"UPDATE {SCHEMA}.kanban_cards SET client_id = NULL WHERE client_id = %s", (int(cid),))
+                cur.execute(f"UPDATE {SCHEMA}.calendar_events SET client_id = NULL WHERE client_id = %s", (int(cid),))
+                cur.execute(f"UPDATE {SCHEMA}.live_messages SET session_id = session_id WHERE session_id IN (SELECT session_id FROM {SCHEMA}.live_chats WHERE id = %s)", (int(cid),))
+                cur.execute(f"UPDATE {SCHEMA}.live_chats SET status = status WHERE id = %s", (int(cid),))
+                # Помечаем как удалённого (soft delete через status)
+                cur.execute(f"UPDATE {SCHEMA}.live_chats SET status = 'deleted', notes = COALESCE(notes,'') || ' [удалён]' WHERE id = %s", (int(cid),))
+                conn.commit()
+                return ok({"deleted": True})
 
             if method == "PUT":
                 cid = qs.get("id")
@@ -101,6 +142,24 @@ def handler(event: dict, context) -> dict:
                     return err("nothing to update")
                 vals.append(int(cid))
                 cur.execute(f"UPDATE {SCHEMA}.live_chats SET {', '.join(sets)} WHERE id = %s", vals)
+
+                # Если изменилась дата замера — обновляем/создаём событие в календаре
+                if "measure_date" in body and body["measure_date"]:
+                    cur.execute(f"SELECT id FROM {SCHEMA}.calendar_events WHERE client_id = %s AND event_type = 'measure' LIMIT 1", (int(cid),))
+                    existing = cur.fetchone()
+                    cur.execute(f"SELECT client_name FROM {SCHEMA}.live_chats WHERE id = %s", (int(cid),))
+                    name_row = cur.fetchone()
+                    name = (name_row[0] if name_row else "") or "Клиент"
+                    if existing:
+                        cur.execute(f"UPDATE {SCHEMA}.calendar_events SET start_time = %s, title = %s WHERE id = %s",
+                                    (body["measure_date"], f"Замер: {name}", existing[0]))
+                    else:
+                        cur.execute(
+                            f"""INSERT INTO {SCHEMA}.calendar_events (client_id, title, event_type, start_time, color)
+                                VALUES (%s, %s, 'measure', %s, '#f59e0b')""",
+                            (int(cid), f"Замер: {name}", body["measure_date"])
+                        )
+
                 conn.commit()
                 return ok({"updated": True})
 

@@ -22,28 +22,36 @@ export default function CrmPanel() {
   const [tab, setTab] = useState<CrmTab>("dashboard");
 
   return (
-    <div className="min-h-screen bg-[#0b0b11] -m-4 p-0">
-      {/* Шапка CRM */}
-      <div className="bg-[#0d0d1a] border-b border-white/10 px-6 py-4 flex items-center justify-between">
+    <div className="min-h-screen bg-[#080812] -m-4 p-0">
+      {/* Шапка */}
+      <div className="flex items-center justify-between px-6 py-4 border-b border-white/[0.06]">
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-violet-600/20 flex items-center justify-center">
-            <Icon name="LayoutDashboard" size={18} className="text-violet-400" />
+          <div className="w-9 h-9 rounded-xl bg-violet-600 flex items-center justify-center shadow-lg shadow-violet-900/40">
+            <Icon name="LayoutDashboard" size={17} className="text-white" />
           </div>
           <div>
-            <div className="text-sm font-bold text-white">CRM — Натяжные потолки</div>
-            <div className="text-xs text-white/30">Управление клиентами и заказами</div>
+            <div className="text-sm font-bold text-white leading-tight">Simple Store Manager</div>
+            <div className="text-[10px] text-white/30">Управляй бизнесом с умом</div>
           </div>
+        </div>
+        <div className="flex items-center gap-3">
+          <button className="flex items-center gap-2 px-4 py-2 bg-white/5 hover:bg-white/10 border border-white/8 text-white/70 hover:text-white text-xs rounded-xl transition">
+            <Icon name="UserPlus" size={13} /> Добавить клиента
+          </button>
+          <button className="flex items-center gap-2 px-4 py-2 bg-violet-600 hover:bg-violet-700 text-white text-xs rounded-xl transition font-medium shadow-lg shadow-violet-900/30">
+            <Icon name="Plus" size={13} /> Добавить заказ
+          </button>
         </div>
       </div>
 
-      {/* Вкладки */}
-      <div className="bg-[#0d0d1a] border-b border-white/10 px-4 flex gap-1 overflow-x-auto">
+      {/* Навигация */}
+      <div className="flex gap-1 px-6 py-2 border-b border-white/[0.06] overflow-x-auto">
         {CRM_TABS.map(t => (
           <button key={t.id} onClick={() => setTab(t.id)}
-            className={`flex items-center gap-1.5 px-4 py-3 text-sm transition whitespace-nowrap border-b-2 ${
+            className={`flex items-center gap-2 px-4 py-2.5 text-sm rounded-xl transition whitespace-nowrap font-medium ${
               tab === t.id
-                ? "border-violet-500 text-violet-300 bg-violet-600/10"
-                : "border-transparent text-white/50 hover:text-white/80 hover:bg-white/5"
+                ? "bg-violet-600/15 text-violet-300 border border-violet-500/25"
+                : "text-white/40 hover:text-white/70 hover:bg-white/5 border border-transparent"
             }`}>
             <Icon name={t.icon} size={15} />
             {t.label}
@@ -52,7 +60,7 @@ export default function CrmPanel() {
       </div>
 
       {/* Контент */}
-      <div className="p-6 max-w-7xl mx-auto">
+      <div className="p-6">
         {tab === "dashboard" && <CrmDashboard />}
         {tab === "analytics" && <CrmAnalytics />}
         {tab === "clients"   && <CrmClients />}
