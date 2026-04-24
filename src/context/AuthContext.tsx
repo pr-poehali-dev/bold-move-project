@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import func2url from "@/../backend/func2url.json";
+import { setCrmToken } from "@/pages/admin/crm/crmApi";
 
 const AUTH_URL  = (func2url as Record<string, string>)["auth"];
 const TOKEN_KEY = "mp_user_token";
@@ -9,6 +10,7 @@ export interface AuthUser {
   email: string;
   name: string | null;
   phone: string | null;
+  is_master?: boolean;
 }
 
 interface AuthCtx {
@@ -37,7 +39,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     fetch(`${AUTH_URL}?action=me`, { headers: { "X-Authorization": `Bearer ${saved}` } })
       .then(r => r.json())
       .then(d => {
-        if (d.user) { setUser(d.user); setToken(saved); }
+        if (d.user) { setUser(d.user); setToken(saved); setCrmToken(saved); }
         else { localStorage.removeItem(TOKEN_KEY); }
       })
       .catch(() => localStorage.removeItem(TOKEN_KEY))
@@ -48,6 +50,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.setItem(TOKEN_KEY, tok);
     setToken(tok);
     setUser(u);
+    setCrmToken(tok);
   };
 
   const login = async (email: string, password: string) => {
@@ -82,6 +85,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.removeItem(TOKEN_KEY);
     setToken(null);
     setUser(null);
+    setCrmToken(null);
   };
 
   return (

@@ -62,6 +62,31 @@ def handler(event: dict, context) -> dict:
     conn = get_conn()
     cur = conn.cursor()
 
+    # ── Определяем company_id по токену ──────────────────────────────────────
+    # Мастер (пароль Sdauxbasstre228) → company_id = None (видит всё)
+    # Клиент (авторизован через сайт) → company_id = его user_id
+    headers = event.get("headers") or {}
+    raw_token = (headers.get("X-Authorization") or headers.get("Authorization") or "").replace("Bearer ", "").strip()
+
+    company_id = None   # None = мастер, видит всё
+    is_master  = True
+
+    if raw_token:
+        cur.execute(f"""
+            SELECT u.id, u.email FROM {SCHEMA}.user_sessions s
+            JOIN {SCHEMA}.users u ON u.id = s.user_id
+            WHERE s.token=%s AND s.expires_at > NOW()
+        """, (raw_token,))
+        sess = cur.fetchone()
+        if sess:
+            uid, uemail = sess
+            if uemail == "master@mospotolki.ru":
+                is_master  = True
+                company_id = None   # мастер видит всё
+            else:
+                is_master  = False
+                company_id = uid    # клиент видит только своё
+
     try:
         # ── UPLOAD FILE ───────────────────────────────────────────────────────
         if resource == "upload":
@@ -95,6 +120,9 @@ def handler(event: dict, context) -> dict:
                     WHERE status != 'deleted'
                 """
                 params = []
+                if company_id is not None:
+                    sql += " AND company_id = %s"
+                    params.append(company_id)
                 if mode == "leads":
                     sql += f" AND status = ANY(%s)"
                     params.append(LEAD_STATUSES)
@@ -115,12 +143,22 @@ def handler(event: dict, context) -> dict:
 
             if method == "POST":
                 tags = body.get("tags", [])
+                # company_id: если клиент создаёт — его id; если мастер — мастер-id
+                new_company_id = company_id if company_id is not None else (
+                    cur.execute(f"SELECT id FROM {SCHEMA}.users WHERE email='master@mospotolki.ru'") or
+                    cur.fetchone()[0]
+                )
+                cur.execute(f"SELECT id FROM {SCHEMA}.users WHERE email='master@mospotolki.ru'")
+                master_id_row = cur.fetchone()
+                master_id = master_id_row[0] if master_id_row else None
+                final_company_id = company_id if company_id is not None else master_id
+
                 cur.execute(
                     f"""INSERT INTO {SCHEMA}.live_chats
                         (session_id, client_name, phone, status, measure_date, install_date,
                          notes, address, area, budget, source,
-                         contract_sum, prepayment, responsible_phone, map_link, tags)
-                        VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                         contract_sum, prepayment, responsible_phone, map_link, tags, company_id)
+                        VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
                         RETURNING id""",
                     (
                         body.get("session_id", f"manual_{datetime.now().timestamp()}"),
@@ -139,6 +177,7 @@ def handler(event: dict, context) -> dict:
                         body.get("responsible_phone", ""),
                         body.get("map_link", ""),
                         tags,
+                        final_company_id,
                     )
                 )
                 new_id = cur.fetchone()[0]
@@ -246,6 +285,8 @@ def handler(event: dict, context) -> dict:
         if resource == "stats":
             S = SCHEMA
             W = "WHERE status != 'deleted'"
+            if company_id is not None:
+                W += f" AND company_id = {int(company_id)}"
 
             # Воронка — количество по каждому статусу
             cur.execute(f"SELECT status, COUNT(*) FROM {S}.live_chats {W} GROUP BY status")
@@ -261,19 +302,20 @@ def handler(event: dict, context) -> dict:
             went_contract = sum(status_dist.get(s, 0) for s in ["contract","prepaid","install_scheduled","install_done","extra_paid","done","cancelled"])
 
             # Предстоящие события
-            cur.execute(f"SELECT COUNT(*) FROM {S}.live_chats WHERE measure_date >= NOW() AND status != 'deleted'")
+            cid_filter = f" AND company_id = {int(company_id)}" if company_id is not None else ""
+            cur.execute(f"SELECT COUNT(*) FROM {S}.live_chats WHERE measure_date >= NOW() AND status != 'deleted'{cid_filter}")
             upcoming_measures = cur.fetchone()[0]
-            cur.execute(f"SELECT COUNT(*) FROM {S}.live_chats WHERE install_date >= NOW() AND status != 'deleted'")
+            cur.execute(f"SELECT COUNT(*) FROM {S}.live_chats WHERE install_date >= NOW() AND status != 'deleted'{cid_filter}")
             upcoming_installs = cur.fetchone()[0]
 
             # Финансы
-            cur.execute(f"SELECT COALESCE(SUM(contract_sum),0), COALESCE(SUM(prepayment),0), COALESCE(SUM(extra_payment),0), COALESCE(SUM(extra_agreement_sum),0) FROM {S}.live_chats WHERE status != 'deleted'")
+            cur.execute(f"SELECT COALESCE(SUM(contract_sum),0), COALESCE(SUM(prepayment),0), COALESCE(SUM(extra_payment),0), COALESCE(SUM(extra_agreement_sum),0) FROM {S}.live_chats WHERE status != 'deleted'{cid_filter}")
             r = cur.fetchone()
             total_contract, total_prepayment, total_extra, total_extra_agreement = float(r[0]), float(r[1]), float(r[2]), float(r[3])
             total_received = total_prepayment + total_extra
 
             # Себестоимость
-            cur.execute(f"SELECT COALESCE(SUM(material_cost),0), COALESCE(SUM(measure_cost),0), COALESCE(SUM(install_cost),0) FROM {S}.live_chats WHERE status != 'deleted'")
+            cur.execute(f"SELECT COALESCE(SUM(material_cost),0), COALESCE(SUM(measure_cost),0), COALESCE(SUM(install_cost),0) FROM {S}.live_chats WHERE status != 'deleted'{cid_filter}")
             r2 = cur.fetchone()
             total_material, total_measure_cost, total_install_cost = float(r2[0]), float(r2[1]), float(r2[2])
             total_costs = total_material + total_measure_cost + total_install_cost

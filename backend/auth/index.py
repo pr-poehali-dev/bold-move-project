@@ -89,13 +89,16 @@ def handler(event: dict, context) -> dict:
             return err("Неверный email или пароль")
 
         user_id, name, email_db = row
+        is_master = (email_db == "master@mospotolki.ru")
         new_token = secrets.token_hex(32)
         cur.execute(
             f"INSERT INTO {SCHEMA}.user_sessions (user_id, token) VALUES (%s,%s)",
             (user_id, new_token)
         )
         conn.commit()
-        return ok({"token": new_token, "user": {"id": user_id, "email": email_db, "name": name}})
+        return ok({"token": new_token, "user": {
+            "id": user_id, "email": email_db, "name": name, "is_master": is_master,
+        }})
 
     # ── Профиль (проверка токена) ─────────────────────────────────────────────
     if action == "me" and method == "GET":
@@ -113,7 +116,10 @@ def handler(event: dict, context) -> dict:
             return err("Токен недействителен", 401)
 
         uid, email, name, phone = row
-        return ok({"user": {"id": uid, "email": email, "name": name, "phone": phone}})
+        return ok({"user": {
+            "id": uid, "email": email, "name": name, "phone": phone,
+            "is_master": (email == "master@mospotolki.ru"),
+        }})
 
     # ── Обновление профиля ────────────────────────────────────────────────────
     if action == "update-profile" and method == "POST":

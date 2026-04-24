@@ -2,14 +2,19 @@ import func2url from "@/../backend/func2url.json";
 
 const BASE = (func2url as Record<string, string>)["crm-manager"];
 
+// Токен пробрасывается из AuthContext через этот setter
+let _authToken: string | null = null;
+export function setCrmToken(t: string | null) { _authToken = t; }
+
 export function crmFetch(resource: string, opts?: RequestInit, extra?: Record<string, string>) {
   let url = `${BASE}?r=${resource}`;
   if (extra) {
     Object.entries(extra).forEach(([k, v]) => { url += `&${k}=${encodeURIComponent(v)}`; });
   }
+  const authHeader = _authToken ? { "X-Authorization": `Bearer ${_authToken}` } : {};
   return fetch(url, {
     ...opts,
-    headers: { "Content-Type": "application/json", ...(opts?.headers || {}) },
+    headers: { "Content-Type": "application/json", ...authHeader, ...(opts?.headers || {}) },
   }).then(r => r.json());
 }
 
