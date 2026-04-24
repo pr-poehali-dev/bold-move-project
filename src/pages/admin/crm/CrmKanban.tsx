@@ -123,13 +123,13 @@ export default function CrmKanban() {
             </div>
 
             {/* Карточки */}
-            <div className="flex-1 bg-[#0f0f1a] rounded-b-xl p-2 space-y-2 min-h-32">
+            <div className="flex-1 bg-[#080812] rounded-b-xl p-2 space-y-2 min-h-32">
               {cardsForCol(col.id).map(card => (
                 <div key={card.id} draggable
                   onDragStart={() => onDragStart(card)}
                   onDragEnd={() => { setDragging(null); setDragOver(null); }}
                   onClick={() => setEditCard(card)}
-                  className={`bg-[#13131f] border border-white/10 rounded-xl p-3 cursor-grab active:cursor-grabbing hover:border-white/20 transition ${dragging?.id === card.id ? "opacity-40" : ""}`}>
+                  className={`bg-[#0e0e1c] border border-white/[0.06] rounded-xl p-3 cursor-grab active:cursor-grabbing hover:border-white/[0.12] transition ${dragging?.id === card.id ? "opacity-40" : ""}`}>
                   <div className="flex items-start justify-between gap-2 mb-2">
                     <span className="text-sm font-medium text-white leading-tight">{card.title}</span>
                     <span className="flex-shrink-0 text-[10px] px-1.5 py-0.5 rounded-full font-medium" style={{ background: PRIORITY_COLORS[card.priority] + "33", color: PRIORITY_COLORS[card.priority] }}>
@@ -147,7 +147,7 @@ export default function CrmKanban() {
 
               {/* Добавить карточку */}
               <button onClick={() => setAddCardCol(col.id)}
-                className="w-full py-2 rounded-xl border border-dashed border-white/10 hover:border-white/20 text-xs text-white/30 hover:text-white/60 transition flex items-center justify-center gap-1">
+                className="w-full py-2 rounded-xl border border-dashed border-white/[0.06] hover:border-white/[0.15] text-xs text-white/25 hover:text-white/50 transition flex items-center justify-center gap-1">
                 <Icon name="Plus" size={12} /> Добавить карточку
               </button>
             </div>
@@ -156,7 +156,7 @@ export default function CrmKanban() {
 
         {/* Кнопка новой колонки */}
         <button onClick={() => setShowAddCol(true)}
-          className="flex-shrink-0 w-72 min-h-32 rounded-xl border-2 border-dashed border-white/10 hover:border-violet-500/40 text-white/30 hover:text-violet-400 transition flex items-center justify-center gap-2 text-sm">
+          className="flex-shrink-0 w-72 min-h-32 rounded-xl border-2 border-dashed border-white/[0.05] hover:border-violet-500/30 text-white/20 hover:text-violet-400 transition flex items-center justify-center gap-2 text-sm">
           <Icon name="Plus" size={16} /> Новая колонка
         </button>
       </div>
@@ -164,13 +164,13 @@ export default function CrmKanban() {
       {/* Модалка добавления колонки */}
       {showAddCol && (
         <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4" onClick={() => setShowAddCol(false)}>
-          <div className="bg-[#13131f] border border-white/10 rounded-2xl p-6 w-full max-w-sm" onClick={e => e.stopPropagation()}>
+          <div className="bg-[#0e0e1c] border border-white/[0.07] rounded-2xl p-6 w-full max-w-sm" onClick={e => e.stopPropagation()}>
             <h3 className="text-base font-bold text-white mb-4">Новая колонка</h3>
             <div className="space-y-3">
               <div>
                 <label className="text-xs text-white/40 mb-1 block">Название</label>
                 <input value={newColTitle} onChange={e => setNewColTitle(e.target.value)} placeholder="Например: В обработке"
-                  className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-violet-500" />
+                  className="w-full bg-white/[0.04] border border-white/[0.07] rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-violet-500/40" />
               </div>
               <div>
                 <label className="text-xs text-white/40 mb-2 block">Цвет</label>
@@ -194,13 +194,13 @@ export default function CrmKanban() {
       {/* Модалка редактирования колонки */}
       {editCol && (
         <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4" onClick={() => setEditCol(null)}>
-          <div className="bg-[#13131f] border border-white/10 rounded-2xl p-6 w-full max-w-sm" onClick={e => e.stopPropagation()}>
+          <div className="bg-[#0e0e1c] border border-white/[0.07] rounded-2xl p-6 w-full max-w-sm" onClick={e => e.stopPropagation()}>
             <h3 className="text-base font-bold text-white mb-4">Редактировать колонку</h3>
             <div className="space-y-3">
               <div>
                 <label className="text-xs text-white/40 mb-1 block">Название</label>
                 <input value={editCol.title} onChange={e => setEditCol({ ...editCol, title: e.target.value })}
-                  className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-violet-500" />
+                  className="w-full bg-white/[0.04] border border-white/[0.07] rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-violet-500/40" />
               </div>
               <div>
                 <label className="text-xs text-white/40 mb-2 block">Цвет</label>
@@ -224,7 +224,7 @@ export default function CrmKanban() {
       {/* Модалка добавления карточки */}
       {addCardCol !== null && (
         <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4" onClick={() => setAddCardCol(null)}>
-          <div className="bg-[#13131f] border border-white/10 rounded-2xl p-6 w-full max-w-md" onClick={e => e.stopPropagation()}>
+          <div className="bg-[#0e0e1c] border border-white/[0.07] rounded-2xl p-6 w-full max-w-md" onClick={e => e.stopPropagation()}>
             <h3 className="text-base font-bold text-white mb-4">Новая карточка</h3>
             <div className="space-y-3">
               {[["title","Название *"],["phone","Телефон"],["description","Описание"]].map(([f, l]) => (
@@ -235,7 +235,7 @@ export default function CrmKanban() {
                       className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-violet-500 resize-none" />
                   ) : (
                     <input value={(newCard as Record<string,string>)[f]} onChange={e => setNewCard(p => ({ ...p, [f]: e.target.value }))}
-                      className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-violet-500" />
+                      className="w-full bg-white/[0.04] border border-white/[0.07] rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-violet-500/40" />
                   )}
                 </div>
               ))}
@@ -243,12 +243,12 @@ export default function CrmKanban() {
                 <div>
                   <label className="text-xs text-white/40 mb-1 block">Бюджет (₽)</label>
                   <input type="number" value={newCard.amount} onChange={e => setNewCard(p => ({ ...p, amount: e.target.value }))}
-                    className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-violet-500" />
+                    className="w-full bg-white/[0.04] border border-white/[0.07] rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-violet-500/40" />
                 </div>
                 <div>
                   <label className="text-xs text-white/40 mb-1 block">Приоритет</label>
                   <select value={newCard.priority} onChange={e => setNewCard(p => ({ ...p, priority: e.target.value }))}
-                    className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-violet-500">
+                    className="w-full bg-white/[0.04] border border-white/[0.07] rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-violet-500/40">
                     {Object.entries(PRIORITY_LABELS).map(([k, v]) => <option key={k} value={k} className="bg-[#1a1a2e]">{v}</option>)}
                   </select>
                 </div>
@@ -256,7 +256,7 @@ export default function CrmKanban() {
               <div>
                 <label className="text-xs text-white/40 mb-1 block">Срок</label>
                 <input type="datetime-local" value={newCard.due_date} onChange={e => setNewCard(p => ({ ...p, due_date: e.target.value }))}
-                  className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-violet-500" />
+                  className="w-full bg-white/[0.04] border border-white/[0.07] rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-violet-500/40" />
               </div>
             </div>
             <div className="flex gap-2 mt-4">
@@ -270,7 +270,7 @@ export default function CrmKanban() {
       {/* Модалка редактирования карточки */}
       {editCard && (
         <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4" onClick={() => setEditCard(null)}>
-          <div className="bg-[#13131f] border border-white/10 rounded-2xl p-6 w-full max-w-md" onClick={e => e.stopPropagation()}>
+          <div className="bg-[#0e0e1c] border border-white/[0.07] rounded-2xl p-6 w-full max-w-md" onClick={e => e.stopPropagation()}>
             <h3 className="text-base font-bold text-white mb-4">Редактировать карточку</h3>
             <div className="space-y-3">
               {[["title","Название"],["phone","Телефон"],["description","Описание"]].map(([f, l]) => (
@@ -281,7 +281,7 @@ export default function CrmKanban() {
                       className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-violet-500 resize-none" />
                   ) : (
                     <input value={(editCard as Record<string,string>)[f] || ""} onChange={e => setEditCard(p => p ? { ...p, [f]: e.target.value } : p)}
-                      className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-violet-500" />
+                      className="w-full bg-white/[0.04] border border-white/[0.07] rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-violet-500/40" />
                   )}
                 </div>
               ))}
@@ -289,12 +289,12 @@ export default function CrmKanban() {
                 <div>
                   <label className="text-xs text-white/40 mb-1 block">Бюджет (₽)</label>
                   <input type="number" value={editCard.amount || ""} onChange={e => setEditCard(p => p ? { ...p, amount: +e.target.value } : p)}
-                    className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-violet-500" />
+                    className="w-full bg-white/[0.04] border border-white/[0.07] rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-violet-500/40" />
                 </div>
                 <div>
                   <label className="text-xs text-white/40 mb-1 block">Приоритет</label>
                   <select value={editCard.priority} onChange={e => setEditCard(p => p ? { ...p, priority: e.target.value } : p)}
-                    className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-violet-500">
+                    className="w-full bg-white/[0.04] border border-white/[0.07] rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-violet-500/40">
                     {Object.entries(PRIORITY_LABELS).map(([k, v]) => <option key={k} value={k} className="bg-[#1a1a2e]">{v}</option>)}
                   </select>
                 </div>
@@ -303,7 +303,7 @@ export default function CrmKanban() {
                 <label className="text-xs text-white/40 mb-1 block">Срок</label>
                 <input type="datetime-local" value={editCard.due_date ? editCard.due_date.slice(0, 16) : ""}
                   onChange={e => setEditCard(p => p ? { ...p, due_date: e.target.value } : p)}
-                  className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-violet-500" />
+                  className="w-full bg-white/[0.04] border border-white/[0.07] rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-violet-500/40" />
               </div>
             </div>
             <div className="flex gap-2 mt-4">

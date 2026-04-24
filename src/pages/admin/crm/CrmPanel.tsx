@@ -30,8 +30,8 @@ export default function CrmPanel() {
             <Icon name="LayoutDashboard" size={17} className="text-white" />
           </div>
           <div>
-            <div className="text-sm font-bold text-white leading-tight">Simple Store Manager</div>
-            <div className="text-[10px] text-white/30">Управляй бизнесом с умом</div>
+            <div className="text-sm font-bold text-white leading-tight">CRM — Натяжные потолки</div>
+            <div className="text-[10px] text-white/25">от заявки до завершённого заказа</div>
           </div>
         </div>
         <div className="flex items-center gap-3">

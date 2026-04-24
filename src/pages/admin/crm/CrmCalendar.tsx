@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { crmFetch, EVENT_TYPE_LABELS } from "./crmApi";
+import { crmFetch, EVENT_TYPE_LABELS, EVENT_TYPE_COLORS } from "./crmApi";
 import Icon from "@/components/ui/icon";
 
 interface CalEvent {
@@ -15,13 +15,7 @@ interface CalEvent {
   phone?: string;
 }
 
-const EVENT_COLORS: Record<string, string> = {
-  measure: "#f59e0b",
-  payment: "#10b981",
-  install: "#f97316",
-  call: "#3b82f6",
-  other: "#8b5cf6",
-};
+const EVENT_COLORS = EVENT_TYPE_COLORS;
 
 const MONTH_NAMES = ["Январь","Февраль","Март","Апрель","Май","Июнь","Июль","Август","Сентябрь","Октябрь","Ноябрь","Декабрь"];
 const DAY_NAMES = ["Пн","Вт","Ср","Чт","Пт","Сб","Вс"];
@@ -135,7 +129,7 @@ export default function CrmCalendar() {
         </div>
 
         {/* Панель дня */}
-        <div className="bg-[#13131f] border border-white/10 rounded-xl p-5">
+        <div className="bg-[#0a0a16] border border-white/[0.05] rounded-xl p-5">
           {selectedDay ? (
             <>
               <div className="text-sm font-semibold text-white mb-3">{selectedDay} {MONTH_NAMES[month - 1]}</div>
@@ -169,25 +163,25 @@ export default function CrmCalendar() {
       {/* Модалка добавления */}
       {showAdd && (
         <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4" onClick={() => setShowAdd(false)}>
-          <div className="bg-[#13131f] border border-white/10 rounded-2xl p-6 w-full max-w-md" onClick={e => e.stopPropagation()}>
+          <div className="bg-[#0e0e1c] border border-white/[0.07] rounded-2xl p-6 w-full max-w-md" onClick={e => e.stopPropagation()}>
             <h3 className="text-base font-bold text-white mb-4">Новое событие</h3>
             <div className="space-y-3">
               <div>
                 <label className="text-xs text-white/40 mb-1 block">Название</label>
                 <input value={newEvent.title} onChange={e => setNewEvent(p => ({ ...p, title: e.target.value }))}
-                  className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-violet-500" />
+                  className="w-full bg-white/[0.04] border border-white/[0.07] rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-violet-500/40" />
               </div>
               <div>
                 <label className="text-xs text-white/40 mb-1 block">Тип</label>
                 <select value={newEvent.event_type} onChange={e => setNewEvent(p => ({ ...p, event_type: e.target.value, color: EVENT_COLORS[e.target.value] || "#8b5cf6" }))}
-                  className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-violet-500">
+                  className="w-full bg-white/[0.04] border border-white/[0.07] rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-violet-500/40">
                   {Object.entries(EVENT_TYPE_LABELS).map(([k, v]) => <option key={k} value={k} className="bg-[#1a1a2e]">{v}</option>)}
                 </select>
               </div>
               <div>
                 <label className="text-xs text-white/40 mb-1 block">Дата и время</label>
                 <input type="datetime-local" value={newEvent.start_time} onChange={e => setNewEvent(p => ({ ...p, start_time: e.target.value }))}
-                  className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-violet-500" />
+                  className="w-full bg-white/[0.04] border border-white/[0.07] rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-violet-500/40" />
               </div>
               <div>
                 <label className="text-xs text-white/40 mb-1 block">Описание</label>
@@ -207,18 +201,18 @@ export default function CrmCalendar() {
       {/* Модалка редактирования */}
       {editEvent && (
         <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4" onClick={() => setEditEvent(null)}>
-          <div className="bg-[#13131f] border border-white/10 rounded-2xl p-6 w-full max-w-md" onClick={e => e.stopPropagation()}>
+          <div className="bg-[#0e0e1c] border border-white/[0.07] rounded-2xl p-6 w-full max-w-md" onClick={e => e.stopPropagation()}>
             <h3 className="text-base font-bold text-white mb-4">Редактировать событие</h3>
             <div className="space-y-3">
               <div>
                 <label className="text-xs text-white/40 mb-1 block">Название</label>
                 <input value={editEvent.title} onChange={e => setEditEvent(p => p ? { ...p, title: e.target.value } : p)}
-                  className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-violet-500" />
+                  className="w-full bg-white/[0.04] border border-white/[0.07] rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-violet-500/40" />
               </div>
               <div>
                 <label className="text-xs text-white/40 mb-1 block">Тип</label>
                 <select value={editEvent.event_type} onChange={e => setEditEvent(p => p ? { ...p, event_type: e.target.value, color: EVENT_COLORS[e.target.value] || "#8b5cf6" } : p)}
-                  className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-violet-500">
+                  className="w-full bg-white/[0.04] border border-white/[0.07] rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-violet-500/40">
                   {Object.entries(EVENT_TYPE_LABELS).map(([k, v]) => <option key={k} value={k} className="bg-[#1a1a2e]">{v}</option>)}
                 </select>
               </div>
@@ -226,7 +220,7 @@ export default function CrmCalendar() {
                 <label className="text-xs text-white/40 mb-1 block">Дата и время</label>
                 <input type="datetime-local" value={editEvent.start_time ? editEvent.start_time.slice(0, 16) : ""}
                   onChange={e => setEditEvent(p => p ? { ...p, start_time: e.target.value } : p)}
-                  className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-violet-500" />
+                  className="w-full bg-white/[0.04] border border-white/[0.07] rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-violet-500/40" />
               </div>
               <div>
                 <label className="text-xs text-white/40 mb-1 block">Описание</label>
