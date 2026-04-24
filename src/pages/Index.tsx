@@ -212,7 +212,7 @@ export default function Index() {
 
         {/* Плавающая кнопка поддержки */}
         <a href="https://t.me/JoniKras" target="_blank" rel="noreferrer"
-          className="absolute bottom-36 right-3 z-30 flex items-center gap-2 pl-3 pr-3.5 py-2.5 rounded-full shadow-lg transition-all hover:scale-105 active:scale-95 group"
+          className="absolute bottom-36 right-3 z-30 flex items-center gap-2 py-2.5 rounded-full shadow-lg transition-all hover:scale-105 active:scale-95 group my-[59px] px-[9px] mx-6"
           style={{ background: "linear-gradient(135deg, #0088cc, #29b6f6)", boxShadow: "0 4px 20px rgba(0,136,204,0.35)" }}>
           <svg width="15" height="15" viewBox="0 0 24 24" fill="white">
             <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.894 8.221l-1.97 9.28c-.145.658-.537.818-1.084.508l-3-2.21-1.447 1.394c-.16.16-.295.295-.605.295l.213-3.053 5.56-5.023c.242-.213-.054-.333-.373-.12l-6.871 4.326-2.962-.924c-.643-.204-.657-.643.136-.953l11.57-4.461c.537-.194 1.006.131.833.941z"/>
