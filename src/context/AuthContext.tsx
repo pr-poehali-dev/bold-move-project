@@ -34,7 +34,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const saved = localStorage.getItem(TOKEN_KEY);
     if (!saved) { setLoading(false); return; }
-    fetch(`${AUTH_URL}?action=me`, { headers: { Authorization: `Bearer ${saved}` } })
+    fetch(`${AUTH_URL}?action=me`, { headers: { "X-Authorization": `Bearer ${saved}` } })
       .then(r => r.json())
       .then(d => {
         if (d.user) { setUser(d.user); setToken(saved); }
@@ -76,7 +76,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (token) {
       await fetch(`${AUTH_URL}?action=logout`, {
         method: "POST",
-        headers: { Authorization: `Bearer ${token}` },
+        headers: { "X-Authorization": `Bearer ${token}` },
       }).catch(() => {});
     }
     localStorage.removeItem(TOKEN_KEY);

@@ -301,7 +301,7 @@ export default function EstimateTable({ text, items, onSaveRequest }: {
     try {
       const res  = await fetch(`${AUTH_URL}?action=save-estimate`, {
         method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        headers: { "Content-Type": "application/json", "X-Authorization": `Bearer ${token}` },
         body: JSON.stringify({ blocks, totals, finalPhrase }),
       });
       const data = await res.json();
