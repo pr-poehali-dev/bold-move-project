@@ -1,5 +1,7 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import Icon from "@/components/ui/icon";
+import { useAuth } from "@/context/AuthContext";
+import AuthModal from "@/components/AuthModal";
 import { isEstimate } from "./EstimateTable";
 import { Panel, Msg, GREETING, AI_URL, localAnswer } from "./chatConfig";
 import ChatUI from "./ChatUI";
@@ -17,6 +19,8 @@ import {
 import MobileContactBar from "./MobileContactBar";
 
 export default function Index() {
+  const { user, logout } = useAuth();
+  const [showAuthModal, setShowAuthModal] = useState(false);
   const [panel, setPanel]       = useState<Panel>("none");
   const [messages, setMessages] = useState<Msg[]>([GREETING]);
   const [input, setInput]       = useState("");
@@ -137,8 +141,29 @@ export default function Index() {
             className="hidden md:flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-orange-500/10 border border-orange-500/20 text-orange-400 text-[11px] font-medium hover:bg-orange-500/15 transition-all">
             <Icon name="MessageSquare" size={12} /> MAX
           </a>
+
+          {/* Авторизация */}
+          {user ? (
+            <div className="flex items-center gap-1.5">
+              <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white/[0.05] border border-white/[0.08] text-[11px] text-white/70">
+                <Icon name="User" size={11} style={{ color: "#f97316" }} />
+                <span className="max-w-[80px] truncate">{user.name || user.email}</span>
+              </div>
+              <button onClick={() => logout()}
+                className="px-2.5 py-1 rounded-lg bg-white/[0.04] border border-white/[0.06] text-white/40 text-[11px] hover:text-white/70 transition-all">
+                <Icon name="LogOut" size={11} />
+              </button>
+            </div>
+          ) : (
+            <button onClick={() => setShowAuthModal(true)}
+              className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white/[0.06] border border-white/[0.1] text-white/60 text-[11px] font-medium hover:bg-white/[0.1] hover:text-white/90 transition-all">
+              <Icon name="User" size={11} /> Войти
+            </button>
+          )}
         </div>
       </header>
+
+      {showAuthModal && <AuthModal onClose={() => setShowAuthModal(false)} />}
 
       {/* Body */}
       <div className="flex-1 min-h-0 flex flex-col relative">
