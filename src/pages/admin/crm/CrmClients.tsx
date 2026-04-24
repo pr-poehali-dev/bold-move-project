@@ -130,6 +130,9 @@ export default function CrmClients() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
+  const [sourceFilter, setSourceFilter] = useState("");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
   const [selected, setSelected] = useState<Client | null>(null);
   const [showAdd, setShowAdd] = useState(false);
   const [newClient, setNewClient] = useState({ client_name: "", phone: "", status: "new", address: "", notes: "", measure_date: "" });
@@ -151,6 +154,25 @@ export default function CrmClients() {
 
   useEffect(() => { load(); }, [search, statusFilter]); // eslint-disable-line
 
+  // Клиентская фильтрация (источник + диапазон дат)
+  const filteredClients = clients.filter(c => {
+    if (sourceFilter && (c.source || "chat") !== sourceFilter) return false;
+    if (dateFrom) {
+      const from = new Date(dateFrom);
+      from.setHours(0,0,0,0);
+      if (new Date(c.created_at) < from) return false;
+    }
+    if (dateTo) {
+      const to = new Date(dateTo);
+      to.setHours(23,59,59,999);
+      if (new Date(c.created_at) > to) return false;
+    }
+    return true;
+  });
+
+  const activeFilters = [statusFilter, sourceFilter, dateFrom, dateTo].filter(Boolean).length;
+  const clearFilters = () => { setStatusFilter(""); setSourceFilter(""); setDateFrom(""); setDateTo(""); };
+
   const addClient = async () => {
     if (!newClient.client_name.trim()) return;
     await crmFetch("clients", { method: "POST", body: JSON.stringify(newClient) });
@@ -160,9 +182,9 @@ export default function CrmClients() {
   };
 
   // ── Чекбоксы ──
-  const allChecked     = clients.length > 0 && checkedIds.size === clients.length;
-  const someChecked    = checkedIds.size > 0 && checkedIds.size < clients.length;
-  const toggleAll      = () => setCheckedIds(allChecked ? new Set() : new Set(clients.map(c => c.id)));
+  const allChecked     = filteredClients.length > 0 && filteredClients.every(c => checkedIds.has(c.id));
+  const someChecked    = filteredClients.some(c => checkedIds.has(c.id)) && !allChecked;
+  const toggleAll      = () => setCheckedIds(allChecked ? new Set() : new Set(filteredClients.map(c => c.id)));
   const toggleOne      = (id: number) => setCheckedIds(prev => {
     const next = new Set(prev);
     if (next.has(id)) { next.delete(id); } else { next.add(id); }
@@ -220,7 +242,9 @@ export default function CrmClients() {
         <div>
           <h2 className="text-xl font-bold" style={{ color: t.text }}>Все клиенты</h2>
           <p className="text-xs mt-0.5" style={{ color: t.textMute }}>
-            {clients.length} клиент{clients.length === 1 ? "" : clients.length < 5 ? "а" : "ов"}
+            {filteredClients.length !== clients.length
+              ? <><span style={{ color: t.textSub }}>{filteredClients.length}</span> из {clients.length}</>
+              : <>{clients.length} клиент{clients.length === 1 ? "" : clients.length < 5 ? "а" : "ов"}</>}
             {checkedIds.size > 0 && <span className="ml-2 text-violet-500 font-semibold">· {checkedIds.size} выбрано</span>}
           </p>
         </div>
@@ -231,32 +255,77 @@ export default function CrmClients() {
       </div>
 
       {/* Поиск + фильтры */}
-      <div className="flex flex-wrap gap-2">
+      <div className="rounded-2xl p-3 flex flex-wrap gap-2 items-center"
+        style={{ background: t.surface, border: `1px solid ${t.border}` }}>
+
+        {/* Поиск */}
         <div className="relative flex-1 min-w-52">
-          <Icon name="Search" size={13} className="absolute left-3.5 top-1/2 -translate-y-1/2" style={{ color: t.textMute }} />
+          <Icon name="Search" size={13} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: t.textMute }} />
           <input value={search} onChange={e => setSearch(e.target.value)}
             placeholder="Поиск по имени, телефону, адресу..."
-            className="w-full rounded-xl pl-10 pr-4 py-2.5 text-sm focus:outline-none transition"
+            className="w-full rounded-xl pl-9 pr-4 py-2 text-sm focus:outline-none transition"
             style={{ background: t.surface2, border: `1px solid ${t.border}`, color: t.text }} />
         </div>
-        <div className="flex gap-1 flex-wrap">
-          <button onClick={() => setStatusFilter("")}
-            className="px-3 py-2 rounded-xl text-xs font-semibold transition"
-            style={!statusFilter
-              ? { background: "#7c3aed20", color: "#7c3aed", border: "1px solid #7c3aed40" }
+
+        {/* Разделитель */}
+        <div className="w-px h-7 flex-shrink-0" style={{ background: t.border }} />
+
+        {/* Статус */}
+        <div className="relative">
+          <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)}
+            className="appearance-none pl-3 pr-7 py-2 rounded-xl text-xs font-semibold focus:outline-none transition cursor-pointer"
+            style={statusFilter
+              ? { background: STATUS_COLORS[statusFilter] + "18", color: STATUS_COLORS[statusFilter], border: `1px solid ${STATUS_COLORS[statusFilter]}40` }
               : { background: t.surface2, color: t.textMute, border: `1px solid ${t.border}` }}>
-            Все
-          </button>
-          {ALL_STATUSES.map(s => (
-            <button key={s} onClick={() => setStatusFilter(s === statusFilter ? "" : s)}
-              className="px-3 py-2 rounded-xl text-xs font-semibold transition"
-              style={statusFilter === s
-                ? { background: STATUS_COLORS[s] + "22", color: STATUS_COLORS[s], border: `1px solid ${STATUS_COLORS[s]}50` }
-                : { background: t.surface2, color: t.textMute, border: `1px solid ${t.border}` }}>
-              {STATUS_LABELS[s]}
-            </button>
-          ))}
+            <option value="">Все статусы</option>
+            {ALL_STATUSES.map(s => <option key={s} value={s}>{STATUS_LABELS[s]}</option>)}
+          </select>
+          <Icon name="ChevronDown" size={11} className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none"
+            style={{ color: statusFilter ? STATUS_COLORS[statusFilter] : t.textMute }} />
         </div>
+
+        {/* Источник */}
+        <div className="relative">
+          <select value={sourceFilter} onChange={e => setSourceFilter(e.target.value)}
+            className="appearance-none pl-3 pr-7 py-2 rounded-xl text-xs font-semibold focus:outline-none transition cursor-pointer"
+            style={sourceFilter
+              ? { background: "#7c3aed18", color: "#a78bfa", border: "1px solid #7c3aed40" }
+              : { background: t.surface2, color: t.textMute, border: `1px solid ${t.border}` }}>
+            <option value="">Все источники</option>
+            <option value="chat">Чат</option>
+            <option value="manual">Вручную</option>
+            <option value="telegram">Telegram</option>
+            <option value="site">Сайт</option>
+          </select>
+          <Icon name="ChevronDown" size={11} className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none"
+            style={{ color: sourceFilter ? "#a78bfa" : t.textMute }} />
+        </div>
+
+        {/* Разделитель */}
+        <div className="w-px h-7 flex-shrink-0" style={{ background: t.border }} />
+
+        {/* Дата от */}
+        <div className="flex items-center gap-1.5">
+          <span className="text-xs font-medium flex-shrink-0" style={{ color: t.textMute }}>с</span>
+          <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)}
+            className="rounded-xl px-2.5 py-2 text-xs focus:outline-none transition"
+            style={{ background: t.surface2, border: `1px solid ${dateFrom ? "#7c3aed60" : t.border}`, color: dateFrom ? t.text : t.textMute, width: 130 }} />
+        </div>
+        <div className="flex items-center gap-1.5">
+          <span className="text-xs font-medium flex-shrink-0" style={{ color: t.textMute }}>по</span>
+          <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)}
+            className="rounded-xl px-2.5 py-2 text-xs focus:outline-none transition"
+            style={{ background: t.surface2, border: `1px solid ${dateTo ? "#7c3aed60" : t.border}`, color: dateTo ? t.text : t.textMute, width: 130 }} />
+        </div>
+
+        {/* Сброс */}
+        {activeFilters > 0 && (
+          <button onClick={clearFilters}
+            className="flex items-center gap-1.5 px-2.5 py-2 rounded-xl text-xs font-semibold transition"
+            style={{ background: "rgba(239,68,68,0.1)", color: "#ef4444", border: "1px solid rgba(239,68,68,0.25)" }}>
+            <Icon name="X" size={11} /> Сбросить ({activeFilters})
+          </button>
+        )}
       </div>
 
       {/* Таблица */}
@@ -277,12 +346,15 @@ export default function CrmClients() {
           <div className="flex items-center justify-center py-16">
             <div className="w-5 h-5 border-2 border-violet-500 border-t-transparent rounded-full animate-spin" />
           </div>
-        ) : clients.length === 0 ? (
+        ) : filteredClients.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 gap-2" style={{ color: t.textMute }}>
             <Icon name="Users" size={32} className="opacity-30" />
-            <span className="text-sm">Клиенты не найдены</span>
+            <span className="text-sm">{activeFilters > 0 ? "Ничего не найдено по фильтрам" : "Клиенты не найдены"}</span>
+            {activeFilters > 0 && (
+              <button onClick={clearFilters} className="text-xs text-violet-400 hover:text-violet-300 transition mt-1">Сбросить фильтры</button>
+            )}
           </div>
-        ) : clients.map(c => {
+        ) : filteredClients.map(c => {
           const isChecked = checkedIds.has(c.id);
           return (
             <div key={c.id}
@@ -345,15 +417,19 @@ export default function CrmClients() {
         })}
 
         {/* Футер с итогами */}
-        {clients.length > 0 && (
+        {filteredClients.length > 0 && (
           <div className="px-4 py-3 flex items-center justify-between"
             style={{ borderTop: `1px solid ${t.border}`, background: t.surface2 }}>
             <span className="text-xs" style={{ color: t.textMute }}>
-              {checkedIds.size > 0 ? `Выбрано ${checkedIds.size} из ${clients.length}` : `Всего: ${clients.length}`}
+              {checkedIds.size > 0
+                ? `Выбрано ${checkedIds.size} из ${filteredClients.length}`
+                : activeFilters > 0
+                ? `Показано ${filteredClients.length} из ${clients.length}`
+                : `Всего: ${clients.length}`}
             </span>
             <span className="text-xs font-semibold" style={{ color: t.textSub }}>
-              {clients.filter(c => c.contract_sum).length > 0 &&
-                `Договоров: ${clients.reduce((s,c) => s + (c.contract_sum||0), 0).toLocaleString("ru-RU")} ₽`}
+              {filteredClients.filter(c => c.contract_sum).length > 0 &&
+                `Договоров: ${filteredClients.reduce((s,c) => s + (c.contract_sum||0), 0).toLocaleString("ru-RU")} ₽`}
             </span>
           </div>
         )}
