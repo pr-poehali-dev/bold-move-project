@@ -126,6 +126,10 @@ export interface Client {
   photo_before_url: string | null;
   photo_after_url: string | null;
   document_url: string | null;
+  material_cost: number | null;
+  measure_cost: number | null;
+  install_cost: number | null;
+  cancel_reason: string | null;
 }
 
 export function fmt(n: number): string {

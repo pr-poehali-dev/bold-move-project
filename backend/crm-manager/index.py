@@ -41,6 +41,7 @@ ALL_CLIENT_FIELDS = [
     "contract_sum", "prepayment", "extra_payment", "extra_agreement_sum",
     "responsible_phone", "map_link", "tags",
     "photo_before_url", "photo_after_url", "document_url",
+    "material_cost", "measure_cost", "install_cost", "cancel_reason",
 ]
 
 def handler(event: dict, context) -> dict:
@@ -243,34 +244,107 @@ def handler(event: dict, context) -> dict:
 
         # ── STATS ─────────────────────────────────────────────────────────────
         if resource == "stats":
-            cur.execute(f"SELECT COUNT(*) FROM {SCHEMA}.live_chats WHERE status != 'deleted'")
-            total_clients = cur.fetchone()[0]
-            cur.execute(f"SELECT COUNT(*) FROM {SCHEMA}.live_chats WHERE status='done'")
-            done = cur.fetchone()[0]
-            cur.execute(f"SELECT COUNT(*) FROM {SCHEMA}.live_chats WHERE measure_date IS NOT NULL AND measure_date >= NOW() AND status != 'deleted'")
+            S = SCHEMA
+            W = "WHERE status != 'deleted'"
+
+            # Воронка — количество по каждому статусу
+            cur.execute(f"SELECT status, COUNT(*) FROM {S}.live_chats {W} GROUP BY status")
+            status_dist = {r[0]: r[1] for r in cur.fetchall()}
+
+            # Общие счётчики
+            total_leads   = sum(status_dist.get(s, 0) for s in LEAD_STATUSES)
+            total_orders  = sum(status_dist.get(s, 0) for s in ORDER_STATUSES if s != 'cancelled')
+            total_done    = status_dist.get('done', 0)
+            total_cancel  = status_dist.get('cancelled', 0)
+            total_all     = sum(status_dist.values())
+            went_measure  = sum(status_dist.get(s, 0) for s in ["measure","measured","contract","prepaid","install_scheduled","install_done","extra_paid","done","cancelled"])
+            went_contract = sum(status_dist.get(s, 0) for s in ["contract","prepaid","install_scheduled","install_done","extra_paid","done","cancelled"])
+
+            # Предстоящие события
+            cur.execute(f"SELECT COUNT(*) FROM {S}.live_chats WHERE measure_date >= NOW() AND status != 'deleted'")
             upcoming_measures = cur.fetchone()[0]
-            cur.execute(f"SELECT COUNT(*) FROM {SCHEMA}.live_chats WHERE install_date IS NOT NULL AND install_date >= NOW() AND status != 'deleted'")
+            cur.execute(f"SELECT COUNT(*) FROM {S}.live_chats WHERE install_date >= NOW() AND status != 'deleted'")
             upcoming_installs = cur.fetchone()[0]
-            cur.execute(f"SELECT COUNT(*) FROM {SCHEMA}.live_chats WHERE status='new'")
-            new_leads = cur.fetchone()[0]
-            cur.execute(f"SELECT COALESCE(SUM(contract_sum),0) FROM {SCHEMA}.live_chats WHERE status != 'deleted'")
-            total_revenue = cur.fetchone()[0] or 0
-            cur.execute(f"SELECT status, COUNT(*) FROM {SCHEMA}.live_chats WHERE status != 'deleted' GROUP BY status")
-            status_dist = [{"status": r[0], "count": r[1]} for r in cur.fetchall()]
-            cur.execute(f"""SELECT DATE_TRUNC('month', created_at) as m, COUNT(*) FROM {SCHEMA}.live_chats
-                WHERE created_at >= NOW() - INTERVAL '6 months' AND status != 'deleted' GROUP BY m ORDER BY m""")
+
+            # Финансы
+            cur.execute(f"SELECT COALESCE(SUM(contract_sum),0), COALESCE(SUM(prepayment),0), COALESCE(SUM(extra_payment),0), COALESCE(SUM(extra_agreement_sum),0) FROM {S}.live_chats WHERE status != 'deleted'")
+            r = cur.fetchone()
+            total_contract, total_prepayment, total_extra, total_extra_agreement = float(r[0]), float(r[1]), float(r[2]), float(r[3])
+            total_received = total_prepayment + total_extra
+
+            # Себестоимость
+            cur.execute(f"SELECT COALESCE(SUM(material_cost),0), COALESCE(SUM(measure_cost),0), COALESCE(SUM(install_cost),0) FROM {S}.live_chats WHERE status != 'deleted'")
+            r2 = cur.fetchone()
+            total_material, total_measure_cost, total_install_cost = float(r2[0]), float(r2[1]), float(r2[2])
+            total_costs = total_material + total_measure_cost + total_install_cost
+            total_profit = total_contract - total_costs
+
+            # Причины отказов
+            cur.execute(f"SELECT cancel_reason, COUNT(*) FROM {S}.live_chats WHERE status='cancelled' AND cancel_reason IS NOT NULL AND cancel_reason != '' GROUP BY cancel_reason ORDER BY COUNT(*) DESC LIMIT 10")
+            cancel_reasons = [{"reason": r[0], "count": r[1]} for r in cur.fetchall()]
+
+            # Динамика по месяцам (12 мес)
+            cur.execute(f"""SELECT DATE_TRUNC('month', created_at) as m, COUNT(*) FROM {S}.live_chats
+                WHERE created_at >= NOW() - INTERVAL '12 months' AND status != 'deleted' GROUP BY m ORDER BY m""")
             monthly_leads = [{"month": str(r[0])[:7], "count": r[1]} for r in cur.fetchall()]
-            cur.execute(f"""SELECT DATE_TRUNC('month', created_at) as m, COUNT(*) FROM {SCHEMA}.live_chats
-                WHERE status='done' AND created_at >= NOW() - INTERVAL '6 months' GROUP BY m ORDER BY m""")
+
+            cur.execute(f"""SELECT DATE_TRUNC('month', created_at) as m, COUNT(*) FROM {S}.live_chats
+                WHERE status='done' AND created_at >= NOW() - INTERVAL '12 months' GROUP BY m ORDER BY m""")
             monthly_done = [{"month": str(r[0])[:7], "count": r[1]} for r in cur.fetchall()]
-            cur.execute(f"SELECT COUNT(*) FROM {SCHEMA}.live_chats WHERE status = ANY(%s)", (ORDER_STATUSES,))
-            total_orders = cur.fetchone()[0]
+
+            cur.execute(f"""SELECT DATE_TRUNC('month', created_at) as m, COALESCE(SUM(contract_sum),0) FROM {S}.live_chats
+                WHERE contract_sum IS NOT NULL AND created_at >= NOW() - INTERVAL '12 months' AND status != 'deleted' GROUP BY m ORDER BY m""")
+            monthly_revenue = [{"month": str(r[0])[:7], "revenue": float(r[1])} for r in cur.fetchall()]
+
+            # Средние значения
+            cur.execute(f"SELECT AVG(area) FROM {S}.live_chats WHERE area IS NOT NULL AND status != 'deleted'")
+            avg_area = float(cur.fetchone()[0] or 0)
+            cur.execute(f"SELECT AVG(contract_sum) FROM {S}.live_chats WHERE contract_sum IS NOT NULL AND status != 'deleted'")
+            avg_contract = float(cur.fetchone()[0] or 0)
+
+            # Конверсия воронки
+            funnel = [
+                {"label": "Заявки",          "count": total_all,      "status": "all"},
+                {"label": "Замер назначен",   "count": went_measure,   "status": "measure"},
+                {"label": "До договора",      "count": went_contract,  "status": "contract"},
+                {"label": "Завершённые",      "count": total_done,     "status": "done"},
+            ]
+
             return ok({
-                "total_clients": total_clients, "done": done,
-                "upcoming_measures": upcoming_measures, "upcoming_installs": upcoming_installs,
-                "new_leads": new_leads, "total_revenue": float(total_revenue),
+                # Счётчики
+                "total_all": total_all,
+                "total_leads": total_leads,
                 "total_orders": total_orders,
-                "status_dist": status_dist, "monthly_leads": monthly_leads, "monthly_done": monthly_done,
+                "total_done": total_done,
+                "total_cancel": total_cancel,
+                "went_measure": went_measure,
+                "went_contract": went_contract,
+                "upcoming_measures": upcoming_measures,
+                "upcoming_installs": upcoming_installs,
+                # Финансы
+                "total_contract": total_contract,
+                "total_received": total_received,
+                "total_prepayment": total_prepayment,
+                "total_extra": total_extra,
+                "total_extra_agreement": total_extra_agreement,
+                # Себестоимость
+                "total_material": total_material,
+                "total_measure_cost": total_measure_cost,
+                "total_install_cost": total_install_cost,
+                "total_costs": total_costs,
+                "total_profit": total_profit,
+                # Средние
+                "avg_area": round(avg_area, 1),
+                "avg_contract": round(avg_contract, 0),
+                # Отказы
+                "cancel_reasons": cancel_reasons,
+                # Воронка
+                "funnel": funnel,
+                "status_dist": [{"status": k, "count": v} for k, v in status_dist.items()],
+                # Динамика
+                "monthly_leads": monthly_leads,
+                "monthly_done": monthly_done,
+                "monthly_revenue": monthly_revenue,
             })
 
         # ── KANBAN COLUMNS ────────────────────────────────────────────────────

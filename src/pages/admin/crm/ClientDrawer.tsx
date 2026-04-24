@@ -256,13 +256,21 @@ export default function ClientDrawer({ client, onClose, onUpdated, onDeleted }: 
             <InlineField label="Дата монтажа" value={data.install_date ? data.install_date.slice(0, 16) : ""} onSave={v => save({ install_date: v || null })} type="datetime-local" placeholder="Добавить дату" />
           </div>
 
-          {/* Финансы */}
+          {/* Финансы (доходы) */}
           <div className="mt-1">
-            <div className="text-xs text-white/25 font-semibold uppercase tracking-wider py-2">Финансы</div>
+            <div className="text-xs text-white/25 font-semibold uppercase tracking-wider py-2">Финансы — Доходы</div>
             <InlineField label="Сумма договора" value={data.contract_sum} onSave={v => save({ contract_sum: +v || null } as Partial<Client>)} type="number" placeholder="Пустое значение" />
             <InlineField label="Предоплата" value={data.prepayment} onSave={v => save({ prepayment: +v || null } as Partial<Client>)} type="number" placeholder="Пустое значение" />
             <InlineField label="Доплата" value={data.extra_payment} onSave={v => save({ extra_payment: +v || null } as Partial<Client>)} type="number" placeholder="Пустое значение" />
             <InlineField label="Сумма доп. соглашения" value={data.extra_agreement_sum} onSave={v => save({ extra_agreement_sum: +v || null } as Partial<Client>)} type="number" placeholder="Пустое значение" />
+          </div>
+
+          {/* Затраты (себестоимость) */}
+          <div className="mt-1">
+            <div className="text-xs text-white/25 font-semibold uppercase tracking-wider py-2">Затраты — Себестоимость</div>
+            <InlineField label="Стоимость материалов" value={data.material_cost} onSave={v => save({ material_cost: +v || null } as Partial<Client>)} type="number" placeholder="Пустое значение" />
+            <InlineField label="Стоимость замера" value={data.measure_cost} onSave={v => save({ measure_cost: +v || null } as Partial<Client>)} type="number" placeholder="Пустое значение" />
+            <InlineField label="Стоимость монтажа" value={data.install_cost} onSave={v => save({ install_cost: +v || null } as Partial<Client>)} type="number" placeholder="Пустое значение" />
           </div>
 
           {/* Файлы */}
@@ -272,6 +280,14 @@ export default function ClientDrawer({ client, onClose, onUpdated, onDeleted }: 
             <FileField label="Фото после монтажа" url={data.photo_after_url} accept="image/*" onUploaded={url => save({ photo_after_url: url })} />
             <FileField label="Договор / Смета / Замер" url={data.document_url} accept=".pdf,.doc,.docx,.xls,.xlsx" onUploaded={url => save({ document_url: url })} />
           </div>
+
+          {/* Причина отказа — только если отменён */}
+          {data.status === "cancelled" && (
+            <div className="mt-1">
+              <div className="text-xs text-red-400/60 font-semibold uppercase tracking-wider py-2">Причина отказа</div>
+              <InlineField label="Почему отказал?" value={data.cancel_reason} onSave={v => save({ cancel_reason: v })} placeholder="Укажите причину отказа" />
+            </div>
+          )}
 
           {/* Заметки */}
           <div className="mt-1">
@@ -284,34 +300,34 @@ export default function ClientDrawer({ client, onClose, onUpdated, onDeleted }: 
               className="w-full bg-white/[0.03] border border-white/[0.06] rounded-xl px-4 py-3 text-sm text-white/70 placeholder-white/20 focus:outline-none focus:border-violet-500/40 resize-none transition" />
           </div>
 
-          {/* Если заказ — доп финансовая сводка */}
-          {isOrder && (data.contract_sum || data.prepayment || data.extra_payment) && (
-            <div className="mt-3 bg-white/[0.03] border border-white/[0.05] rounded-xl p-4">
-              <div className="text-xs text-white/30 mb-3 font-semibold uppercase tracking-wider">Сводка по заказу</div>
-              <div className="space-y-2">
+          {/* Финансовая мини-сводка */}
+          {(data.contract_sum || data.material_cost || data.install_cost) && (
+            <div className="mt-3 bg-white/[0.02] border border-white/[0.05] rounded-xl p-4">
+              <div className="text-xs text-white/25 mb-3 font-semibold uppercase tracking-wider">Мини P&L по заказу</div>
+              <div className="space-y-1.5 text-sm">
+                {data.contract_sum && <div className="flex justify-between"><span className="text-white/40">Договор</span><span className="text-white font-semibold">{data.contract_sum.toLocaleString("ru-RU")} ₽</span></div>}
+                {data.prepayment && <div className="flex justify-between"><span className="text-white/40">Предоплата</span><span className="text-emerald-400">+{data.prepayment.toLocaleString("ru-RU")} ₽</span></div>}
+                {data.extra_payment && <div className="flex justify-between"><span className="text-white/40">Доплата</span><span className="text-emerald-400">+{data.extra_payment.toLocaleString("ru-RU")} ₽</span></div>}
+                {data.material_cost && <div className="flex justify-between"><span className="text-white/40">Материалы</span><span className="text-red-400">−{data.material_cost.toLocaleString("ru-RU")} ₽</span></div>}
+                {data.measure_cost && <div className="flex justify-between"><span className="text-white/40">Замер</span><span className="text-red-400/70">−{data.measure_cost.toLocaleString("ru-RU")} ₽</span></div>}
+                {data.install_cost && <div className="flex justify-between"><span className="text-white/40">Монтаж</span><span className="text-red-400/70">−{data.install_cost.toLocaleString("ru-RU")} ₽</span></div>}
+                <div className="border-t border-white/[0.06] pt-2 mt-1 flex justify-between">
+                  <span className="text-white/40 font-semibold">Прибыль</span>
+                  <span className={`font-bold ${(() => {
+                    const profit = (data.contract_sum||0) - (data.material_cost||0) - (data.measure_cost||0) - (data.install_cost||0);
+                    return profit >= 0 ? "text-emerald-400" : "text-red-400";
+                  })()}`}>
+                    {(() => {
+                      const profit = (data.contract_sum||0) - (data.material_cost||0) - (data.measure_cost||0) - (data.install_cost||0);
+                      return (profit >= 0 ? "+" : "") + profit.toLocaleString("ru-RU") + " ₽";
+                    })()}
+                  </span>
+                </div>
                 {data.contract_sum && (
-                  <div className="flex justify-between text-sm">
-                    <span className="text-white/40">Сумма договора</span>
-                    <span className="text-white font-semibold">{data.contract_sum.toLocaleString("ru-RU")} ₽</span>
-                  </div>
-                )}
-                {data.prepayment && (
-                  <div className="flex justify-between text-sm">
-                    <span className="text-white/40">Предоплата</span>
-                    <span className="text-emerald-400 font-semibold">− {data.prepayment.toLocaleString("ru-RU")} ₽</span>
-                  </div>
-                )}
-                {data.extra_payment && (
-                  <div className="flex justify-between text-sm">
-                    <span className="text-white/40">Доплата</span>
-                    <span className="text-emerald-400 font-semibold">− {data.extra_payment.toLocaleString("ru-RU")} ₽</span>
-                  </div>
-                )}
-                {data.contract_sum && (
-                  <div className="flex justify-between text-sm border-t border-white/[0.06] pt-2 mt-2">
-                    <span className="text-white/40">Остаток</span>
-                    <span className="font-bold text-amber-400">
-                      {((data.contract_sum || 0) - (data.prepayment || 0) - (data.extra_payment || 0)).toLocaleString("ru-RU")} ₽
+                  <div className="flex justify-between text-xs">
+                    <span className="text-white/30">Остаток к оплате</span>
+                    <span className="text-amber-400 font-semibold">
+                      {((data.contract_sum||0) - (data.prepayment||0) - (data.extra_payment||0)).toLocaleString("ru-RU")} ₽
                     </span>
                   </div>
                 )}
