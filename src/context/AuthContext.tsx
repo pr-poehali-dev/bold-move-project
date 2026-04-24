@@ -16,7 +16,7 @@ interface AuthCtx {
   token: string | null;
   loading: boolean;
   login:    (email: string, password: string) => Promise<void>;
-  register: (email: string, password: string, name: string) => Promise<void>;
+  register: (email: string, password: string, name: string, phone?: string) => Promise<void>;
   logout:   () => Promise<void>;
 }
 
@@ -61,11 +61,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     persist(data.token, data.user);
   };
 
-  const register = async (email: string, password: string, name: string) => {
+  const register = async (email: string, password: string, name: string, phone?: string) => {
     const res  = await fetch(`${AUTH_URL}?action=register`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, password, name }),
+      body: JSON.stringify({ email, password, name, phone }),
     });
     const data = await res.json();
     if (!res.ok || data.error) throw new Error(data.error || "Ошибка регистрации");

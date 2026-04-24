@@ -47,22 +47,39 @@ export default function AdminPanel() {
 
   if (!token) {
     return (
-      <div className="min-h-screen bg-[#0b0b11] flex items-center justify-center">
-        <div className="bg-[#13131f] border border-white/10 rounded-2xl p-8 w-full max-w-sm flex flex-col gap-4">
-          <div className="flex items-center gap-2 mb-2">
-            <Icon name="ShieldCheck" size={22} className="text-violet-400" />
-            <span className="text-white font-semibold text-lg">Вход для администратора</span>
+      <div className="min-h-screen bg-[#0b0b11] flex items-center justify-center px-4">
+        <div className="w-full max-w-sm">
+          {/* Логотип */}
+          <div className="flex items-center justify-center gap-3 mb-8">
+            <div className="w-12 h-12 rounded-2xl bg-violet-600/20 flex items-center justify-center">
+              <Icon name="ShieldCheck" size={24} className="text-violet-400" />
+            </div>
+            <div>
+              <div className="text-white font-black text-xl tracking-tight">MOS<span className="text-violet-400">POTOLKI</span></div>
+              <div className="text-white/30 text-xs">Панель администратора</div>
+            </div>
           </div>
-          <input
-            type="password" placeholder="Пароль" value={password}
-            onChange={e => setPassword(e.target.value)}
-            onKeyDown={e => e.key === "Enter" && login()}
-            className="bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 text-white outline-none focus:border-violet-500 transition"
-          />
-          {error && <p className="text-red-400 text-sm">{error}</p>}
-          <button onClick={login} className="bg-violet-600 hover:bg-violet-700 text-white rounded-lg py-2.5 font-medium transition">
-            Войти
-          </button>
+
+          <div className="rounded-2xl p-6 flex flex-col gap-4"
+            style={{ background: "#0e0e1c", border: "1px solid rgba(255,255,255,0.08)" }}>
+            <div className="text-sm font-semibold text-white/60 text-center mb-1">Введите пароль для входа</div>
+            <input
+              type="password" placeholder="Пароль" value={password}
+              onChange={e => setPassword(e.target.value)}
+              onKeyDown={e => e.key === "Enter" && login()}
+              autoFocus
+              className="rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-violet-500/50 transition"
+              style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.09)" }}
+            />
+            {error && (
+              <div className="rounded-xl px-3.5 py-2.5 text-xs text-red-400 bg-red-500/10 border border-red-500/20">{error}</div>
+            )}
+            <button onClick={login}
+              className="w-full py-3 rounded-xl text-sm font-bold text-white transition"
+              style={{ background: "#7c3aed" }}>
+              Войти
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -75,9 +92,17 @@ export default function AdminPanel() {
           <Icon name="BrainCircuit" size={20} className="text-violet-400" />
           <span className="font-semibold">Управление AI</span>
         </div>
-        <button onClick={logout} className="text-white/40 hover:text-white/70 flex items-center gap-1.5 text-sm transition">
-          <Icon name="LogOut" size={16} /> Выйти
-        </button>
+        <div className="flex items-center gap-3">
+          {/* Шестерёнка → Мастер-Админка (едва заметна) */}
+          <a href="/master" title="Мастер-Админка"
+            className="p-1.5 rounded-lg transition opacity-20 hover:opacity-60"
+            style={{ color: "rgba(255,255,255,0.4)" }}>
+            <Icon name="Settings" size={14} />
+          </a>
+          <button onClick={logout} className="text-white/40 hover:text-white/70 flex items-center gap-1.5 text-sm transition">
+            <Icon name="LogOut" size={16} /> Выйти
+          </button>
+        </div>
       </div>
 
       <div className="border-b border-white/10 px-4 flex gap-1 pt-2 overflow-x-auto">

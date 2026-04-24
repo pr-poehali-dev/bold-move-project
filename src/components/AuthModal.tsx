@@ -11,6 +11,7 @@ export default function AuthModal({ onClose, defaultTab = "login" }: Props) {
   const { login, register } = useAuth();
   const [tab,      setTab]      = useState<"login" | "register">(defaultTab);
   const [name,     setName]     = useState("");
+  const [phone,    setPhone]    = useState("");
   const [email,    setEmail]    = useState("");
   const [password, setPassword] = useState("");
   const [error,    setError]    = useState("");
@@ -25,7 +26,7 @@ export default function AuthModal({ onClose, defaultTab = "login" }: Props) {
         await login(email, password);
       } else {
         if (!name.trim()) { setError("Введите имя"); setLoading(false); return; }
-        await register(email, password, name);
+        await register(email, password, name, phone);
       }
       onClose();
     } catch (err: unknown) {
@@ -71,14 +72,22 @@ export default function AuthModal({ onClose, defaultTab = "login" }: Props) {
         </div>
 
         {/* Форма */}
-        <form onSubmit={submit} className="px-6 py-5 space-y-3.5">
+        <form onSubmit={submit} className="px-6 py-5 space-y-3">
           {tab === "register" && (
-            <div>
-              <label className="text-[11px] text-white/40 mb-1.5 block font-medium">Ваше имя</label>
-              <input value={name} onChange={e => setName(e.target.value)}
-                placeholder="Иван Петров" autoFocus
-                className="w-full rounded-xl px-4 py-2.5 text-sm bg-white/[0.05] border border-white/[0.08] text-white placeholder-white/20 focus:outline-none focus:border-orange-500/50 transition" />
-            </div>
+            <>
+              <div>
+                <label className="text-[11px] text-white/40 mb-1.5 block font-medium">Ваше имя *</label>
+                <input value={name} onChange={e => setName(e.target.value)}
+                  placeholder="Иван Петров" autoFocus
+                  className="w-full rounded-xl px-4 py-2.5 text-sm bg-white/[0.05] border border-white/[0.08] text-white placeholder-white/20 focus:outline-none focus:border-orange-500/50 transition" />
+              </div>
+              <div>
+                <label className="text-[11px] text-white/40 mb-1.5 block font-medium">Телефон</label>
+                <input type="tel" value={phone} onChange={e => setPhone(e.target.value)}
+                  placeholder="+7 (999) 000-00-00"
+                  className="w-full rounded-xl px-4 py-2.5 text-sm bg-white/[0.05] border border-white/[0.08] text-white placeholder-white/20 focus:outline-none focus:border-orange-500/50 transition" />
+              </div>
+            </>
           )}
 
           <div>

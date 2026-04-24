@@ -47,6 +47,7 @@ def handler(event: dict, context) -> dict:
         email    = (body.get("email") or "").strip().lower()
         password = body.get("password") or ""
         name     = (body.get("name") or "").strip()
+        phone    = (body.get("phone") or "").strip()
 
         if not email or not password:
             return err("Email и пароль обязательны")
@@ -58,8 +59,8 @@ def handler(event: dict, context) -> dict:
             return err("Email уже зарегистрирован")
 
         cur.execute(
-            f"INSERT INTO {SCHEMA}.users (email, password_hash, name) VALUES (%s,%s,%s) RETURNING id",
-            (email, hash_password(password), name)
+            f"INSERT INTO {SCHEMA}.users (email, password_hash, name, phone) VALUES (%s,%s,%s,%s) RETURNING id",
+            (email, hash_password(password), name, phone or None)
         )
         user_id = cur.fetchone()[0]
 
@@ -113,6 +114,36 @@ def handler(event: dict, context) -> dict:
 
         uid, email, name, phone = row
         return ok({"user": {"id": uid, "email": email, "name": name, "phone": phone}})
+
+    # ── Обновление профиля ────────────────────────────────────────────────────
+    if action == "update-profile" and method == "POST":
+        if not token:
+            return err("Требуется авторизация", 401)
+        cur.execute(f"""
+            SELECT u.id FROM {SCHEMA}.user_sessions s
+            JOIN {SCHEMA}.users u ON u.id = s.user_id
+            WHERE s.token=%s AND s.expires_at > NOW()
+        """, (token,))
+        row = cur.fetchone()
+        if not row:
+            return err("Токен недействителен", 401)
+        uid = row[0]
+
+        name         = (body.get("name") or "").strip()
+        phone        = (body.get("phone") or "").strip()
+        company_name = (body.get("company_name") or "").strip()
+        company_inn  = (body.get("company_inn") or "").strip()
+        company_addr = (body.get("company_addr") or "").strip()
+        website      = (body.get("website") or "").strip()
+        telegram     = (body.get("telegram") or "").strip()
+
+        cur.execute(f"""
+            UPDATE {SCHEMA}.users
+            SET name=%s, phone=%s, updated_at=NOW()
+            WHERE id=%s
+        """, (name or None, phone or None, uid))
+        conn.commit()
+        return ok({"ok": True})
 
     # ── Выход ─────────────────────────────────────────────────────────────────
     if action == "logout" and method == "POST":
