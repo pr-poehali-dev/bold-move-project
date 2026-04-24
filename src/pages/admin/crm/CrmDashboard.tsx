@@ -20,9 +20,11 @@ interface Stats {
   cancel_reasons: { reason: string; count: number }[];
   funnel: { label: string; count: number; status: string }[];
   status_dist: { status: string; count: number }[];
-  monthly_leads: { month: string; count: number }[];
-  monthly_done: { month: string; count: number }[];
+  monthly_leads:   { month: string; count: number }[];
+  monthly_done:    { month: string; count: number }[];
   monthly_revenue: { month: string; revenue: number }[];
+  monthly_costs:   { month: string; costs: number }[];
+  monthly_profit:  { month: string; profit: number }[];
 }
 
 function Money({ val, color = "text-white" }: { val: number; color?: string }) {
@@ -48,19 +50,77 @@ function StatCard({ icon, label, value, sub, color, grad }: {
   );
 }
 
+// ── Утилита: объединить данные по месяцам в один массив ─────────────────────
+function mergeMonths(
+  leads:   { month: string; count: number }[],
+  done:    { month: string; count: number }[],
+  revenue: { month: string; revenue: number }[],
+  costs:   { month: string; costs: number }[],
+  profit:  { month: string; profit: number }[],
+) {
+  const months = Array.from(new Set([
+    ...leads.map(d => d.month),
+    ...done.map(d => d.month),
+    ...revenue.map(d => d.month),
+    ...costs.map(d => d.month),
+    ...profit.map(d => d.month),
+  ])).sort();
+  return months.map(m => ({
+    month:   m,
+    leads:   leads.find(d => d.month === m)?.count   ?? 0,
+    done:    done.find(d => d.month === m)?.count    ?? 0,
+    revenue: revenue.find(d => d.month === m)?.revenue ?? 0,
+    costs:   costs.find(d => d.month === m)?.costs   ?? 0,
+    profit:  profit.find(d => d.month === m)?.profit ?? 0,
+  }));
+}
+
 export default function CrmDashboard() {
   const t = useTheme();
   const [stats, setStats] = useState<Stats | null>(null);
   const [loading, setLoading] = useState(true);
+
+  // Переключатели графиков
+  const [leadsMode,   setLeadsMode]   = useState<"leads" | "done">("leads");
+  const [revenueMode, setRevenueMode] = useState<"revenue" | "costs" | "profit">("revenue");
+
+  // Фильтр месяцев
+  const [monthFrom, setMonthFrom] = useState("");
+  const [monthTo,   setMonthTo]   = useState("");
 
   useEffect(() => { crmFetch("stats").then(d => { setStats(d); setLoading(false); }); }, []);
 
   if (loading) return <div className="flex items-center justify-center h-64"><div className="w-7 h-7 border-2 border-violet-500 border-t-transparent rounded-full animate-spin" /></div>;
   if (!stats) return null;
 
-  const convMeasure = stats.total_all > 0 ? Math.round((stats.went_measure / stats.total_all) * 100) : 0;
-  const convContract = stats.went_measure > 0 ? Math.round((stats.went_contract / stats.went_measure) * 100) : 0;
-  const convDone = stats.went_contract > 0 ? Math.round((stats.total_done / stats.went_contract) * 100) : 0;
+  const convMeasure  = stats.total_all     > 0 ? Math.round((stats.went_measure  / stats.total_all)     * 100) : 0;
+  const convContract = stats.went_measure  > 0 ? Math.round((stats.went_contract / stats.went_measure)  * 100) : 0;
+  const convDone     = stats.went_contract > 0 ? Math.round((stats.total_done    / stats.went_contract) * 100) : 0;
+
+  // Объединяем и фильтруем по диапазону месяцев
+  const allMerged = mergeMonths(
+    stats.monthly_leads, stats.monthly_done,
+    stats.monthly_revenue, stats.monthly_costs, stats.monthly_profit,
+  );
+  const merged = allMerged.filter(d =>
+    (!monthFrom || d.month >= monthFrom) &&
+    (!monthTo   || d.month <= monthTo)
+  );
+
+  // Конфиги режимов
+  const LEADS_MODES = {
+    leads: { label: "Заявки",       dataKey: "leads",  color: "#8b5cf6", gradId: "gradLeads",   name: "Заявок" },
+    done:  { label: "Завершённые",  dataKey: "done",   color: "#10b981", gradId: "gradDone",    name: "Завершено" },
+  } as const;
+
+  const REVENUE_MODES = {
+    revenue: { label: "Выручка",  dataKey: "revenue", color: "#10b981", name: "Выручка" },
+    costs:   { label: "Затраты",  dataKey: "costs",   color: "#ef4444", name: "Затраты" },
+    profit:  { label: "Прибыль",  dataKey: "profit",  color: "#f59e0b", name: "Прибыль" },
+  } as const;
+
+  const lm = LEADS_MODES[leadsMode];
+  const rm = REVENUE_MODES[revenueMode];
 
   return (
     <div className="space-y-5">
@@ -178,41 +238,95 @@ export default function CrmDashboard() {
 
       {/* ── Строка 3: графики ── */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {/* Заявки по месяцам */}
+
+        {/* ── График 1: Динамика заявок / Завершённые ── */}
         <div className="rounded-2xl p-5" style={{ background: t.surface, border: `1px solid ${t.border}` }}>
-          <div className="flex items-center gap-2 mb-4">
-            <div className="w-1 h-4 rounded-full bg-violet-500" />
-            <span className="text-sm font-bold" style={{ color: t.text }}>Динамика заявок</span>
+          {/* Шапка */}
+          <div className="flex items-center justify-between flex-wrap gap-2 mb-4">
+            <div className="flex items-center gap-2">
+              <div className="w-1 h-4 rounded-full flex-shrink-0" style={{ background: lm.color }} />
+              <span className="text-sm font-bold" style={{ color: t.text }}>{lm.label}</span>
+            </div>
+            <div className="flex items-center gap-2 flex-wrap">
+              {/* Переключатель режима */}
+              <div className="flex rounded-xl overflow-hidden" style={{ border: `1px solid ${t.border}` }}>
+                {(Object.entries(LEADS_MODES) as [keyof typeof LEADS_MODES, typeof LEADS_MODES[keyof typeof LEADS_MODES]][]).map(([k, v]) => (
+                  <button key={k} onClick={() => setLeadsMode(k)}
+                    className="px-2.5 py-1 text-[11px] font-semibold transition"
+                    style={leadsMode === k
+                      ? { background: v.color, color: "#fff" }
+                      : { background: t.surface2, color: t.textMute }}>
+                    {v.label}
+                  </button>
+                ))}
+              </div>
+              {/* Фильтр месяцев */}
+              <input type="month" value={monthFrom} onChange={e => setMonthFrom(e.target.value)}
+                className="rounded-lg px-2 py-1 text-[11px] focus:outline-none"
+                style={{ background: t.surface2, border: `1px solid ${monthFrom ? lm.color + "60" : t.border}`, color: monthFrom ? t.text : t.textMute, width: 112 }} />
+              <span className="text-[11px]" style={{ color: t.textMute }}>—</span>
+              <input type="month" value={monthTo} onChange={e => setMonthTo(e.target.value)}
+                className="rounded-lg px-2 py-1 text-[11px] focus:outline-none"
+                style={{ background: t.surface2, border: `1px solid ${monthTo ? lm.color + "60" : t.border}`, color: monthTo ? t.text : t.textMute, width: 112 }} />
+              {(monthFrom || monthTo) && (
+                <button onClick={() => { setMonthFrom(""); setMonthTo(""); }}
+                  className="text-[10px] px-1.5 py-1 rounded-lg transition"
+                  style={{ color: "#ef4444", background: "rgba(239,68,68,0.1)" }}>
+                  <Icon name="X" size={10} />
+                </button>
+              )}
+            </div>
           </div>
           <ResponsiveContainer width="100%" height={160}>
-            <BarChart data={stats.monthly_leads} margin={{ top: 0, right: 0, left: -25, bottom: 0 }} barCategoryGap="20%">
+            <BarChart data={merged} margin={{ top: 0, right: 0, left: -25, bottom: 0 }} barCategoryGap="20%">
               <defs>
-                <linearGradient id="bg1" x1="0" y1="0" x2="0" y2="1">
+                <linearGradient id="gradLeads" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="0%" stopColor="#8b5cf6" /><stop offset="100%" stopColor="#4f46e5" stopOpacity={0.6} />
+                </linearGradient>
+                <linearGradient id="gradDone" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#10b981" /><stop offset="100%" stopColor="#059669" stopOpacity={0.6} />
                 </linearGradient>
               </defs>
               <XAxis dataKey="month" tick={{ fill: t.textMute, fontSize: 10 }} axisLine={false} tickLine={false} />
               <YAxis tick={{ fill: t.textMute, fontSize: 10 }} axisLine={false} tickLine={false} />
-              <Tooltip contentStyle={{ background: t.surface, border: `1px solid ${t.border}`, borderRadius: 10, fontSize: 12 }} labelStyle={{ color: t.text }} itemStyle={{ color: "#a78bfa" }} cursor={false} />
-              <Bar dataKey="count" fill="url(#bg1)" radius={[5, 5, 0, 0]} name="Заявок" activeBar={{ fill: "url(#bg1)", opacity: 0.85 }} />
+              <Tooltip contentStyle={{ background: t.surface, border: `1px solid ${t.border}`, borderRadius: 10, fontSize: 12 }} labelStyle={{ color: t.text }} itemStyle={{ color: lm.color }} cursor={false} />
+              <Bar dataKey={lm.dataKey} fill={`url(#${lm.gradId})`} radius={[5, 5, 0, 0]} name={lm.name} activeBar={{ fill: `url(#${lm.gradId})`, opacity: 0.85 }} />
             </BarChart>
           </ResponsiveContainer>
         </div>
 
-        {/* Выручка по месяцам */}
+        {/* ── График 2: Выручка / Затраты / Прибыль ── */}
         <div className="rounded-2xl p-5" style={{ background: t.surface, border: `1px solid ${t.border}` }}>
-          <div className="flex items-center gap-2 mb-4">
-            <div className="w-1 h-4 rounded-full bg-emerald-500" />
-            <span className="text-sm font-bold" style={{ color: t.text }}>Выручка по месяцам</span>
+          {/* Шапка */}
+          <div className="flex items-center justify-between flex-wrap gap-2 mb-4">
+            <div className="flex items-center gap-2">
+              <div className="w-1 h-4 rounded-full flex-shrink-0" style={{ background: rm.color }} />
+              <span className="text-sm font-bold" style={{ color: t.text }}>{rm.label} по месяцам</span>
+            </div>
+            <div className="flex items-center gap-2 flex-wrap">
+              {/* Переключатель режима */}
+              <div className="flex rounded-xl overflow-hidden" style={{ border: `1px solid ${t.border}` }}>
+                {(Object.entries(REVENUE_MODES) as [keyof typeof REVENUE_MODES, typeof REVENUE_MODES[keyof typeof REVENUE_MODES]][]).map(([k, v]) => (
+                  <button key={k} onClick={() => setRevenueMode(k)}
+                    className="px-2.5 py-1 text-[11px] font-semibold transition"
+                    style={revenueMode === k
+                      ? { background: v.color, color: "#fff" }
+                      : { background: t.surface2, color: t.textMute }}>
+                    {v.label}
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
-          {stats.monthly_revenue.length > 0 ? (
+          {merged.some(d => d.revenue > 0 || d.costs > 0 || d.profit !== 0) ? (
             <ResponsiveContainer width="100%" height={160}>
-              <LineChart data={stats.monthly_revenue} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
+              <LineChart data={merged} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke={t.border2} />
                 <XAxis dataKey="month" tick={{ fill: t.textMute, fontSize: 10 }} axisLine={false} tickLine={false} />
                 <YAxis tick={{ fill: t.textMute, fontSize: 10 }} axisLine={false} tickLine={false} tickFormatter={v => `${Math.round(v/1000)}к`} />
-                <Tooltip contentStyle={{ background: t.surface, border: `1px solid ${t.border}`, borderRadius: 10, fontSize: 12 }} labelStyle={{ color: t.text }} formatter={(v: number) => [v.toLocaleString("ru-RU") + " ₽", "Выручка"]} />
-                <Line type="monotone" dataKey="revenue" stroke="#10b981" strokeWidth={2.5} dot={{ fill: "#10b981", r: 4, strokeWidth: 0 }} />
+                <Tooltip contentStyle={{ background: t.surface, border: `1px solid ${t.border}`, borderRadius: 10, fontSize: 12 }} labelStyle={{ color: t.text }}
+                  formatter={(v: number) => [v.toLocaleString("ru-RU") + " ₽", rm.name]} />
+                <Line key={revenueMode} type="monotone" dataKey={rm.dataKey} stroke={rm.color} strokeWidth={2.5} dot={{ fill: rm.color, r: 4, strokeWidth: 0 }} />
               </LineChart>
             </ResponsiveContainer>
           ) : (

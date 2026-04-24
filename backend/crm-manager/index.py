@@ -296,6 +296,18 @@ def handler(event: dict, context) -> dict:
                 WHERE contract_sum IS NOT NULL AND created_at >= NOW() - INTERVAL '12 months' AND status != 'deleted' GROUP BY m ORDER BY m""")
             monthly_revenue = [{"month": str(r[0])[:7], "revenue": float(r[1])} for r in cur.fetchall()]
 
+            cur.execute(f"""SELECT DATE_TRUNC('month', created_at) as m,
+                COALESCE(SUM(material_cost),0) + COALESCE(SUM(measure_cost),0) + COALESCE(SUM(install_cost),0)
+                FROM {S}.live_chats
+                WHERE created_at >= NOW() - INTERVAL '12 months' AND status != 'deleted' GROUP BY m ORDER BY m""")
+            monthly_costs = [{"month": str(r[0])[:7], "costs": float(r[1])} for r in cur.fetchall()]
+
+            cur.execute(f"""SELECT DATE_TRUNC('month', created_at) as m,
+                COALESCE(SUM(contract_sum),0) - COALESCE(SUM(material_cost),0) - COALESCE(SUM(measure_cost),0) - COALESCE(SUM(install_cost),0)
+                FROM {S}.live_chats
+                WHERE created_at >= NOW() - INTERVAL '12 months' AND status != 'deleted' GROUP BY m ORDER BY m""")
+            monthly_profit = [{"month": str(r[0])[:7], "profit": float(r[1])} for r in cur.fetchall()]
+
             # Средние значения
             cur.execute(f"SELECT AVG(area) FROM {S}.live_chats WHERE area IS NOT NULL AND status != 'deleted'")
             avg_area = float(cur.fetchone()[0] or 0)
@@ -345,6 +357,8 @@ def handler(event: dict, context) -> dict:
                 "monthly_leads": monthly_leads,
                 "monthly_done": monthly_done,
                 "monthly_revenue": monthly_revenue,
+                "monthly_costs": monthly_costs,
+                "monthly_profit": monthly_profit,
             })
 
         # ── KANBAN COLUMNS ────────────────────────────────────────────────────
