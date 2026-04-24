@@ -62,7 +62,7 @@ export default function UserDropdown({ onShowProfile, onShowPayment }: Props) {
           {/* Пункты меню */}
           <div className="py-1.5">
             <MenuItem icon="LayoutDashboard" label="Мои заявки"
-              onClick={() => { setOpen(false); window.open("/cabinet", "_self"); }} />
+              onClick={() => { setOpen(false); window.open("/admin-yura", "_self"); }} />
             <MenuItem icon="User" label="Профиль"
               onClick={() => { setOpen(false); onShowProfile(); }} />
             <MenuItem icon="CreditCard" label="Оплата"
