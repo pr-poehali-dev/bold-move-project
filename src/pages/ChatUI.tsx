@@ -50,9 +50,10 @@ interface Props {
   onPreset: (text: string) => void;
   onPanel: (p: Panel) => void;
   onNewEstimate?: () => void;
+  onSaveRequest?: () => void;
 }
 
-export default function ChatUI({ messages, input, typing, panel, onInput, onSend, onPreset, onPanel, onNewEstimate }: Props) {
+export default function ChatUI({ messages, input, typing, panel, onInput, onSend, onPreset, onPanel, onNewEstimate, onSaveRequest }: Props) {
   const hasEstimate = messages.some((m) => m.role === "assistant" && isEstimate(m.text));
   const chatRef = useRef<HTMLDivElement>(null);
   const estimateRef = useRef<HTMLDivElement>(null);
@@ -119,7 +120,7 @@ export default function ChatUI({ messages, input, typing, panel, onInput, onSend
                     ? "w-full bg-white/[0.03] border border-white/[0.06] rounded-bl-md"
                     : "max-w-[75%] md:max-w-[60%] bg-gradient-to-br from-white/[0.05] to-white/[0.02] border border-white/[0.06] text-white/70 rounded-bl-md whitespace-pre-wrap"
                 }`}>
-                  {estimate ? <EstimateTable text={m.text} items={m.items} /> : <MsgContent text={m.text} />}
+                  {estimate ? <EstimateTable text={m.text} items={m.items} onSaveRequest={onSaveRequest} /> : <MsgContent text={m.text} />}
                 </div>
               )}
             </div>

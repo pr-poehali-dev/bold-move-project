@@ -184,6 +184,7 @@ export default function Index() {
           onPreset={sendPreset}
           onPanel={setPanel}
           onNewEstimate={handleNewEstimate}
+          onSaveRequest={() => setShowAuthModal(true)}
         />
 
         {/* Slide-up panel */}

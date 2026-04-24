@@ -1,5 +1,9 @@
 import React, { useState, useMemo } from "react";
 import Icon from "@/components/ui/icon";
+import { useAuth } from "@/context/AuthContext";
+import func2url from "@/../backend/func2url.json";
+
+const AUTH_URL = (func2url as Record<string, string>)["auth"];
 
 export function isEstimate(text: string) {
   return (
@@ -249,7 +253,12 @@ function fmtQty(n: number): string {
   return rounded % 1 === 0 ? String(rounded) : rounded.toString().replace(".", ",");
 }
 
-export default function EstimateTable({ text, items }: { text: string; items?: LLMItem[] }) {
+export default function EstimateTable({ text, items, onSaveRequest }: {
+  text: string;
+  items?: LLMItem[];
+  onSaveRequest?: () => void;
+}) {
+  const { user, token } = useAuth();
   const parsed = useMemo(() => parseEstimateBlocks(text), [text]);
 
   // Строим карту name→{qty,price} из items для формулы
@@ -270,6 +279,9 @@ export default function EstimateTable({ text, items }: { text: string; items?: L
   };
   const { blocks, totals, finalPhrase } = parsed;
   const [downloading, setDownloading] = useState(false);
+  const [saving,      setSaving]      = useState(false);
+  const [saved,       setSaved]       = useState(false);
+  const [saveError,   setSaveError]   = useState("");
 
   const handleDownload = async () => {
     setDownloading(true);
@@ -280,6 +292,25 @@ export default function EstimateTable({ text, items }: { text: string; items?: L
       /* fallback */
     } finally {
       setDownloading(false);
+    }
+  };
+
+  const handleSave = async () => {
+    if (!user || !token) { onSaveRequest?.(); return; }
+    setSaving(true); setSaveError("");
+    try {
+      const res  = await fetch(`${AUTH_URL}?action=save-estimate`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ blocks, totals, finalPhrase }),
+      });
+      const data = await res.json();
+      if (!res.ok || data.error) throw new Error(data.error || "Ошибка сохранения");
+      setSaved(true);
+    } catch (e: unknown) {
+      setSaveError(e instanceof Error ? e.message : "Ошибка");
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -360,14 +391,45 @@ export default function EstimateTable({ text, items }: { text: string; items?: L
         <div className="mt-3 text-[11px] text-white/40 italic leading-relaxed">{finalPhrase}</div>
       )}
 
-      <button
-        onClick={handleDownload}
-        disabled={downloading}
-        className="mt-3 inline-flex items-center gap-2 bg-gradient-to-r from-orange-500 to-rose-500 text-white text-xs font-montserrat font-bold px-4 py-2.5 rounded-xl hover:scale-105 transition-transform disabled:opacity-50 shadow-lg shadow-orange-500/20"
-      >
-        <Icon name="Download" size={14} />
-        {downloading ? "Генерация..." : "Скачать смету PDF"}
-      </button>
+      <div className="mt-3 flex items-center gap-2 flex-wrap">
+        {/* Скачать PDF */}
+        <button
+          onClick={handleDownload}
+          disabled={downloading}
+          className="inline-flex items-center gap-2 bg-gradient-to-r from-orange-500 to-rose-500 text-white text-xs font-montserrat font-bold px-4 py-2.5 rounded-xl hover:scale-105 transition-transform disabled:opacity-50 shadow-lg shadow-orange-500/20"
+        >
+          <Icon name="Download" size={14} />
+          {downloading ? "Генерация..." : "Скачать смету PDF"}
+        </button>
+
+        {/* Сохранить смету (только для авторизованных) */}
+        {saved ? (
+          <div className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-montserrat font-bold text-emerald-400 border border-emerald-500/30 bg-emerald-500/10">
+            <Icon name="CheckCircle2" size={14} />
+            Смета сохранена! Заявка создана
+          </div>
+        ) : (
+          <button
+            onClick={handleSave}
+            disabled={saving}
+            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-montserrat font-bold transition-all disabled:opacity-50"
+            style={{
+              background: user ? "rgba(249,115,22,0.12)" : "rgba(255,255,255,0.06)",
+              border: user ? "1px solid rgba(249,115,22,0.35)" : "1px solid rgba(255,255,255,0.1)",
+              color: user ? "#f97316" : "rgba(255,255,255,0.5)",
+            }}
+          >
+            {saving
+              ? <><div className="w-3 h-3 border border-current border-t-transparent rounded-full animate-spin" /> Сохраняем...</>
+              : <><Icon name={user ? "Bookmark" : "LogIn"} size={14} /> {user ? "Сохранить заявку" : "Войдите, чтобы сохранить"}</>
+            }
+          </button>
+        )}
+
+        {saveError && (
+          <span className="text-xs text-red-400">{saveError}</span>
+        )}
+      </div>
     </div>
   );
 }
