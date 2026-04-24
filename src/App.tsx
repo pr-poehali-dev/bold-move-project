@@ -6,10 +6,11 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/context/AuthContext";
 
-const Index      = lazy(() => import("./pages/Index"));
-const AiHub      = lazy(() => import("./pages/AiHub"));
-const AdminPanel = lazy(() => import("./pages/AdminPanel"));
-const NotFound   = lazy(() => import("./pages/NotFound"));
+const Index       = lazy(() => import("./pages/Index"));
+const AiHub       = lazy(() => import("./pages/AiHub"));
+const AdminPanel  = lazy(() => import("./pages/AdminPanel"));
+const MasterAdmin = lazy(() => import("./pages/MasterAdmin"));
+const NotFound    = lazy(() => import("./pages/NotFound"));
 
 const queryClient = new QueryClient();
 
@@ -25,6 +26,7 @@ const App = () => (
               <Route path="/" element={<Index />} />
               <Route path="/hub" element={<AiHub />} />
               <Route path="/admin-yura" element={<AdminPanel />} />
+              <Route path="/master"    element={<MasterAdmin />} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
             </Routes>

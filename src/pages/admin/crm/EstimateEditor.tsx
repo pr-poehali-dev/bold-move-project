@@ -1,0 +1,311 @@
+import { useState, useEffect } from "react";
+import { crmFetch } from "./crmApi";
+import { useTheme } from "./themeContext";
+import Icon from "@/components/ui/icon";
+import func2url from "@/../backend/func2url.json";
+
+const AUTH_URL = (func2url as Record<string, string>)["auth"];
+
+interface EstimateBlock {
+  title: string;
+  numbered: boolean;
+  items: { name: string; value: string }[];
+}
+
+interface SavedEstimate {
+  id: number;
+  title: string;
+  blocks: EstimateBlock[];
+  totals: string[];
+  final_phrase: string;
+  total_econom: number | null;
+  total_standard: number | null;
+  total_premium: number | null;
+  status: string;
+  created_at: string;
+}
+
+// Парсим "20 м² × 399 ₽ = 7 980 ₽" → { qty, unit, price, total }
+function parseValue(value: string) {
+  const m = value.match(/([\d,.\s]+)\s*([а-яёa-z²³.]+)?\s*[×x*]\s*([\d\s]+)\s*₽\s*=\s*([\d\s]+)\s*₽/i);
+  if (m) {
+    const qty   = parseFloat(m[1].replace(/\s/g, "").replace(",", "."));
+    const unit  = (m[2] || "шт").trim();
+    const price = parseInt(m[3].replace(/\s/g, ""), 10);
+    const total = parseInt(m[4].replace(/\s/g, ""), 10);
+    return { qty, unit, price, total };
+  }
+  // Просто цена
+  const simple = value.match(/([\d\s]+)\s*₽/);
+  if (simple) return { qty: 1, unit: "шт", price: parseInt(simple[1].replace(/\s/g, ""), 10), total: parseInt(simple[1].replace(/\s/g, ""), 10) };
+  return null;
+}
+
+function fmt(n: number) { return Math.round(n).toLocaleString("ru-RU"); }
+
+// Строка редактора
+function ItemRow({ item, onChange, onDelete }: {
+  item: { name: string; value: string };
+  onChange: (name: string, qty: number, price: number, unit: string) => void;
+  onDelete: () => void;
+}) {
+  const t = useTheme();
+  const parsed = parseValue(item.value);
+  const [qty,   setQty]   = useState(String(parsed?.qty   ?? 1));
+  const [price, setPrice] = useState(String(parsed?.price ?? 0));
+  const unit = parsed?.unit ?? "шт";
+
+  const total = Math.round(parseFloat(qty || "0") * parseInt(price || "0", 10));
+
+  const commit = () => {
+    onChange(item.name, parseFloat(qty || "0"), parseInt(price || "0", 10), unit);
+  };
+
+  return (
+    <tr className="group" style={{ borderBottom: `1px solid ${t.border2}` }}>
+      <td className="py-2 px-3 text-sm" style={{ color: t.text }}>{item.name}</td>
+      <td className="py-2 px-2 w-24">
+        <input value={qty} onChange={e => setQty(e.target.value)} onBlur={commit}
+          className="w-full text-sm text-center rounded-lg px-2 py-1 focus:outline-none"
+          style={{ background: t.surface2, border: `1px solid ${t.border}`, color: t.text }} />
+      </td>
+      <td className="py-2 px-1 text-xs text-center" style={{ color: t.textMute }}>{unit}</td>
+      <td className="py-2 px-2 w-28">
+        <input value={price} onChange={e => setPrice(e.target.value)} onBlur={commit}
+          className="w-full text-sm text-right rounded-lg px-2 py-1 focus:outline-none"
+          style={{ background: t.surface2, border: `1px solid ${t.border}`, color: t.text }} />
+      </td>
+      <td className="py-2 px-3 text-sm font-semibold text-right w-28" style={{ color: t.text }}>
+        {fmt(total)} ₽
+      </td>
+      <td className="py-2 px-1 w-8">
+        <button onClick={onDelete} className="opacity-0 group-hover:opacity-100 transition text-red-400 hover:text-red-300">
+          <Icon name="X" size={13} />
+        </button>
+      </td>
+    </tr>
+  );
+}
+
+export default function EstimateEditor({ chatId }: { chatId: number }) {
+  const t = useTheme();
+  const [estimate, setEstimate]   = useState<SavedEstimate | null>(null);
+  const [loading,  setLoading]    = useState(true);
+  const [saving,   setSaving]     = useState(false);
+  const [saved,    setSaved]      = useState(false);
+  const [blocks,   setBlocks]     = useState<EstimateBlock[]>([]);
+  const [totals,   setTotals]     = useState<string[]>([]);
+
+  // Загружаем смету по chat_id
+  useEffect(() => {
+    setLoading(true);
+    // Ищем в saved_estimates по chat_id через CRM API
+    fetch(`${AUTH_URL}?action=estimate-by-chat&chat_id=${chatId}`)
+      .then(r => r.json())
+      .then(d => {
+        if (d.estimate) {
+          setEstimate(d.estimate);
+          setBlocks(d.estimate.blocks || []);
+          setTotals(d.estimate.totals || []);
+        }
+        setLoading(false);
+      })
+      .catch(() => setLoading(false));
+  }, [chatId]);
+
+  // Пересчёт итогов
+  const recalcTotals = (bs: EstimateBlock[]) => {
+    let standard = 0;
+    for (const block of bs) {
+      for (const item of block.items) {
+        const p = parseValue(item.value);
+        if (p) standard += p.total;
+      }
+    }
+    const econom  = Math.round(standard * 0.85);
+    const premium = Math.round(standard * 1.27);
+    return [
+      `Econom: ${fmt(econom)} ₽`,
+      `Standard: ${fmt(standard)} ₽`,
+      `Premium: ${fmt(premium)} ₽`,
+    ];
+  };
+
+  const updateItem = (bi: number, ii: number, name: string, qty: number, price: number, unit: string) => {
+    const total = Math.round(qty * price);
+    const newValue = `${qty} ${unit} × ${price} ₽ = ${fmt(total)} ₽`;
+    const newBlocks = blocks.map((block, bIdx) =>
+      bIdx !== bi ? block : {
+        ...block,
+        items: block.items.map((item, iIdx) =>
+          iIdx !== ii ? item : { ...item, name, value: newValue }
+        ),
+      }
+    );
+    setBlocks(newBlocks);
+    setTotals(recalcTotals(newBlocks));
+  };
+
+  const deleteItem = (bi: number, ii: number) => {
+    const newBlocks = blocks.map((block, bIdx) =>
+      bIdx !== bi ? block : { ...block, items: block.items.filter((_, iIdx) => iIdx !== ii) }
+    );
+    setBlocks(newBlocks);
+    setTotals(recalcTotals(newBlocks));
+  };
+
+  const addItem = (bi: number) => {
+    const newBlocks = blocks.map((block, bIdx) =>
+      bIdx !== bi ? block : {
+        ...block,
+        items: [...block.items, { name: "Новая позиция", value: "1 шт × 0 ₽ = 0 ₽" }],
+      }
+    );
+    setBlocks(newBlocks);
+  };
+
+  const saveEstimate = async () => {
+    if (!estimate) return;
+    setSaving(true); setSaved(false);
+    try {
+      await fetch(`${AUTH_URL}?action=update-estimate&id=${estimate.id}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ blocks, totals }),
+      });
+      // Обновляем contract_sum в заявке
+      const standardLine = totals.find(t => t.toLowerCase().startsWith("standard"));
+      if (standardLine) {
+        const nums = standardLine.match(/[\d\s]+/g);
+        if (nums) {
+          const val = parseInt(nums.map(n => n.replace(/\s/g,"")).join("").slice(0, 8), 10);
+          if (!isNaN(val)) {
+            await crmFetch("clients", { method: "PUT", body: JSON.stringify({ contract_sum: val }) }, { id: String(chatId) });
+          }
+        }
+      }
+      setSaved(true);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // Считаем итог Standard для отображения
+  const standardTotal = (() => {
+    let s = 0;
+    for (const block of blocks) {
+      for (const item of block.items) {
+        const p = parseValue(item.value);
+        if (p) s += p.total;
+      }
+    }
+    return s;
+  })();
+
+  if (loading) return (
+    <div className="flex items-center justify-center py-12">
+      <div className="w-5 h-5 border-2 border-violet-500 border-t-transparent rounded-full animate-spin" />
+    </div>
+  );
+
+  if (!estimate) return (
+    <div className="flex flex-col items-center justify-center py-12 gap-3" style={{ color: t.textMute }}>
+      <Icon name="FileSpreadsheet" size={32} className="opacity-20" />
+      <div className="text-sm text-center">
+        <p>К этой заявке нет сохранённой сметы</p>
+        <p className="text-xs mt-1 opacity-60">Смета создаётся когда клиент нажимает «Сохранить заявку» на сайте</p>
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="space-y-4">
+
+      {/* Шапка */}
+      <div className="flex items-center justify-between">
+        <div>
+          <div className="text-sm font-semibold" style={{ color: t.text }}>Смета на натяжные потолки</div>
+          <div className="text-xs mt-0.5" style={{ color: t.textMute }}>
+            Сохранена: {new Date(estimate.created_at).toLocaleDateString("ru-RU", { day: "numeric", month: "long", year: "numeric" })}
+          </div>
+        </div>
+        <button onClick={saveEstimate} disabled={saving}
+          className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold text-white transition disabled:opacity-50"
+          style={{ background: saved ? "#10b981" : "#7c3aed" }}>
+          {saving
+            ? <><div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" /> Сохранение...</>
+            : saved
+            ? <><Icon name="CheckCircle2" size={14} /> Сохранено</>
+            : <><Icon name="Save" size={14} /> Сохранить</>}
+        </button>
+      </div>
+
+      {/* Таблица */}
+      <div className="rounded-2xl overflow-hidden" style={{ border: `1px solid ${t.border}` }}>
+        <table className="w-full">
+          <thead>
+            <tr style={{ background: t.surface2, borderBottom: `1px solid ${t.border}` }}>
+              <th className="text-left px-3 py-2.5 text-xs font-semibold uppercase tracking-wide" style={{ color: t.textMute }}>Позиция</th>
+              <th className="text-center px-2 py-2.5 text-xs font-semibold uppercase tracking-wide w-24" style={{ color: t.textMute }}>Кол-во</th>
+              <th className="px-1 py-2.5 w-12" />
+              <th className="text-right px-2 py-2.5 text-xs font-semibold uppercase tracking-wide w-28" style={{ color: t.textMute }}>Цена</th>
+              <th className="text-right px-3 py-2.5 text-xs font-semibold uppercase tracking-wide w-28" style={{ color: t.textMute }}>Итого</th>
+              <th className="w-8" />
+            </tr>
+          </thead>
+          <tbody>
+            {blocks.map((block, bi) => {
+              let numCounter = 0;
+              blocks.slice(0, bi).forEach(b => { if (b.numbered) numCounter++; });
+              if (block.numbered) numCounter++;
+              const label = block.numbered ? `${numCounter}. ${block.title}` : block.title;
+              return (
+                <>
+                  <tr key={`h-${bi}`} style={{ background: t.surface2 + "80" }}>
+                    <td colSpan={6} className="px-3 py-2 text-xs font-bold" style={{ color: "#f97316", borderBottom: `1px solid ${t.border2}` }}>
+                      {label}
+                    </td>
+                  </tr>
+                  {block.items.map((item, ii) => (
+                    <ItemRow key={`${bi}-${ii}`} item={item}
+                      onChange={(name, qty, price, unit) => updateItem(bi, ii, name, qty, price, unit)}
+                      onDelete={() => deleteItem(bi, ii)}
+                    />
+                  ))}
+                  <tr key={`add-${bi}`}>
+                    <td colSpan={6} className="px-3 py-1.5">
+                      <button onClick={() => addItem(bi)}
+                        className="text-xs flex items-center gap-1.5 transition"
+                        style={{ color: t.textMute }}>
+                        <Icon name="Plus" size={11} /> Добавить позицию
+                      </button>
+                    </td>
+                  </tr>
+                </>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Итоги */}
+      <div className="rounded-2xl p-4" style={{ background: t.surface2, border: `1px solid ${t.border}` }}>
+        <div className="text-xs font-bold uppercase tracking-wider mb-3" style={{ color: t.textMute }}>Итого</div>
+        <div className="space-y-2">
+          {[
+            { label: "Econom",   val: Math.round(standardTotal * 0.85), color: "#10b981" },
+            { label: "Standard", val: standardTotal,                     color: "#f97316", bold: true },
+            { label: "Premium",  val: Math.round(standardTotal * 1.27), color: "#8b5cf6" },
+          ].map(r => (
+            <div key={r.label} className="flex justify-between items-center">
+              <span className="text-sm" style={{ color: t.textMute }}>{r.label}</span>
+              <span className={`font-${r.bold ? "black text-base" : "semibold text-sm"}`} style={{ color: r.color }}>
+                {fmt(r.val)} ₽
+              </span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}

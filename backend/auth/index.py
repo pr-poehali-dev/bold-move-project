@@ -121,6 +121,62 @@ def handler(event: dict, context) -> dict:
             conn.commit()
         return ok({"ok": True})
 
+    # ── Смета по chat_id ──────────────────────────────────────────────────────
+    if action == "estimate-by-chat" and method == "GET":
+        chat_id = params.get("chat_id")
+        if not chat_id:
+            return err("chat_id required")
+        cur.execute(f"""
+            SELECT id, title, blocks, totals, final_phrase,
+                   total_econom, total_standard, total_premium, status, created_at
+            FROM {SCHEMA}.saved_estimates WHERE chat_id=%s ORDER BY id DESC LIMIT 1
+        """, (int(chat_id),))
+        row = cur.fetchone()
+        if not row:
+            return ok({"estimate": None})
+        return ok({"estimate": {
+            "id": row[0], "title": row[1],
+            "blocks": row[2], "totals": row[3], "final_phrase": row[4],
+            "total_econom":   float(row[5]) if row[5] else None,
+            "total_standard": float(row[6]) if row[6] else None,
+            "total_premium":  float(row[7]) if row[7] else None,
+            "status": row[8], "created_at": str(row[9])[:19],
+        }})
+
+    # ── Обновить смету ─────────────────────────────────────────────────────────
+    if action == "update-estimate" and method == "POST":
+        est_id = params.get("id")
+        if not est_id:
+            return err("id required")
+        blocks_new = body.get("blocks", [])
+        totals_new = body.get("totals", [])
+
+        # Пересчёт итогов
+        import re as _re
+        def _extract(keyword):
+            for t in totals_new:
+                if keyword.lower() in t.lower():
+                    nums = _re.findall(r"[\d\s]+", t.replace("\u00a0", " "))
+                    cleaned = "".join("".join(nums).split())
+                    if cleaned.isdigit():
+                        return float(cleaned)
+            return None
+
+        cur.execute(f"""
+            UPDATE {SCHEMA}.saved_estimates
+            SET blocks=%s, totals=%s,
+                total_econom=%s, total_standard=%s, total_premium=%s,
+                updated_at=NOW()
+            WHERE id=%s
+        """, (
+            json.dumps(blocks_new, ensure_ascii=False),
+            json.dumps(totals_new, ensure_ascii=False),
+            _extract("econom"), _extract("standard"), _extract("premium"),
+            int(est_id),
+        ))
+        conn.commit()
+        return ok({"ok": True})
+
     # ── Сохранить смету → заявка в CRM ────────────────────────────────────────
     if action == "save-estimate" and method == "POST":
         if not token:
@@ -233,5 +289,38 @@ def handler(event: dict, context) -> dict:
             "crm_status": r[7],
         } for r in rows]
         return ok({"estimates": estimates})
+
+    # ── Мастер: список всех пользователей ────────────────────────────────────
+    if action == "admin-users" and method == "GET":
+        cur.execute(f"""
+            SELECT u.id, u.email, u.name, u.phone, u.created_at,
+                   COUNT(e.id) as estimates_count
+            FROM {SCHEMA}.users u
+            LEFT JOIN {SCHEMA}.saved_estimates e ON e.user_id = u.id
+            GROUP BY u.id ORDER BY u.created_at DESC
+        """)
+        rows = cur.fetchall()
+        return ok({"users": [{
+            "id": r[0], "email": r[1], "name": r[2], "phone": r[3],
+            "created_at": str(r[4])[:19], "estimates_count": r[5],
+        } for r in rows]})
+
+    # ── Мастер: сметы конкретного пользователя ────────────────────────────────
+    if action == "admin-user-estimates" and method == "GET":
+        user_id = params.get("user_id")
+        if not user_id:
+            return err("user_id required")
+        cur.execute(f"""
+            SELECT e.id, e.title, e.total_standard, e.status, e.created_at, lc.status
+            FROM {SCHEMA}.saved_estimates e
+            LEFT JOIN {SCHEMA}.live_chats lc ON lc.id = e.chat_id
+            WHERE e.user_id = %s ORDER BY e.created_at DESC
+        """, (int(user_id),))
+        rows = cur.fetchall()
+        return ok({"estimates": [{
+            "id": r[0], "title": r[1],
+            "total_standard": float(r[2]) if r[2] else None,
+            "status": r[3], "created_at": str(r[4])[:19], "crm_status": r[5],
+        } for r in rows]})
 
     return err("Неизвестное действие", 404)

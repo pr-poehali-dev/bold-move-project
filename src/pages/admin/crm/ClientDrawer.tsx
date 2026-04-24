@@ -2,6 +2,7 @@ import { useState, useRef } from "react";
 import { crmFetch, uploadFile, STATUS_LABELS, STATUS_COLORS, LEAD_STATUSES, ORDER_STATUSES, DEFAULT_TAGS, Client } from "./crmApi";
 import Icon from "@/components/ui/icon";
 import { useTheme } from "./themeContext";
+import EstimateEditor from "./EstimateEditor";
 
 interface Props {
   client: Client;
@@ -189,6 +190,7 @@ export default function ClientDrawer({ client, onClose, onUpdated, onDeleted }: 
   const [data, setData] = useState<Client>(client);
   const [saving, setSaving] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [drawerTab, setDrawerTab] = useState<"info" | "estimate">("info");
 
   const save = async (patch: Partial<Client>) => {
     const next = { ...data, ...patch };
@@ -243,9 +245,28 @@ export default function ClientDrawer({ client, onClose, onUpdated, onDeleted }: 
           </div>
         </div>
 
+        {/* Табы вкладок */}
+        <div className="flex px-5 gap-1 pt-3" style={{ borderBottom: `1px solid ${t.border}` }}>
+          {([
+            { id: "info",     label: "Заявка",  icon: "User" },
+            { id: "estimate", label: "Смета",   icon: "FileSpreadsheet" },
+          ] as const).map(tab => (
+            <button key={tab.id} onClick={() => setDrawerTab(tab.id)}
+              className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-t-lg transition"
+              style={drawerTab === tab.id
+                ? { color: "#7c3aed", borderBottom: "2px solid #7c3aed", marginBottom: -1 }
+                : { color: t.textMute }}>
+              <Icon name={tab.icon} size={13} /> {tab.label}
+            </button>
+          ))}
+        </div>
+
         {/* Контент */}
         <div className="flex-1 overflow-y-auto px-5 py-3">
 
+          {drawerTab === "estimate" && <EstimateEditor chatId={data.id} />}
+
+          {drawerTab === "info" && <>
           {/* Статус */}
           <StatusSelector status={data.status} onSave={s => save({ status: s })} />
 
@@ -393,6 +414,7 @@ export default function ClientDrawer({ client, onClose, onUpdated, onDeleted }: 
             <div>Добавлен: {new Date(data.created_at).toLocaleDateString("ru-RU", { day: "numeric", month: "long", year: "numeric" })}</div>
             <div>ID: #{data.id}</div>
           </div>
+          </>}
         </div>
       </div>
 
