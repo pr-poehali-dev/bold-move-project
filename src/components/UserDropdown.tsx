@@ -67,6 +67,12 @@ export default function UserDropdown({ onShowProfile, onShowPayment }: Props) {
               onClick={() => { setOpen(false); onShowProfile(); }} />
             <MenuItem icon="CreditCard" label="Оплата"
               onClick={() => { setOpen(false); onShowPayment(); }} />
+            <a href="https://t.me/JoniKras" target="_blank" rel="noreferrer"
+              onClick={() => setOpen(false)}
+              className="w-full flex items-center gap-2.5 px-4 py-2.5 text-xs font-medium transition hover:bg-white/[0.04] text-white/60 hover:text-white/90">
+              <Icon name="MessageCircle" size={13} style={{ color: "#29b6f6" }} />
+              Поддержка
+            </a>
           </div>
 
           {/* Выход */}
