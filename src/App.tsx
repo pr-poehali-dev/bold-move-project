@@ -10,6 +10,7 @@ const Index       = lazy(() => import("./pages/Index"));
 const AiHub       = lazy(() => import("./pages/AiHub"));
 const AdminPanel  = lazy(() => import("./pages/AdminPanel"));
 const MasterAdmin = lazy(() => import("./pages/MasterAdmin"));
+const Cabinet     = lazy(() => import("./pages/Cabinet"));
 const NotFound    = lazy(() => import("./pages/NotFound"));
 
 const queryClient = new QueryClient();
@@ -27,6 +28,7 @@ const App = () => (
               <Route path="/hub" element={<AiHub />} />
               <Route path="/admin-yura" element={<AdminPanel />} />
               <Route path="/master"    element={<MasterAdmin />} />
+              <Route path="/cabinet"   element={<Cabinet />} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
             </Routes>
