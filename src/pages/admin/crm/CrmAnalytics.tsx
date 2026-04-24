@@ -60,22 +60,14 @@ export default function CrmAnalytics() {
     { name: "Монтажи",   value: stats.total_install_cost, color: "#f97316" },
   ].filter(c => c.value > 0);
 
-  // Объединяем все месячные данные в один массив
-  const allMonths = Array.from(new Set([
-    ...stats.monthly_leads.map(d => d.month),
-    ...stats.monthly_done.map(d => d.month),
-    ...stats.monthly_revenue.map(d => d.month),
-    ...(stats.monthly_costs  || []).map(d => d.month),
-    ...(stats.monthly_profit || []).map(d => d.month),
-  ])).sort();
-
-  const allMerged = allMonths.map(m => ({
-    month:   m,
-    leads:   stats.monthly_leads.find(d => d.month === m)?.count ?? 0,
-    done:    stats.monthly_done.find(d => d.month === m)?.count  ?? 0,
-    revenue: stats.monthly_revenue.find(d => d.month === m)?.revenue ?? 0,
-    costs:   (stats.monthly_costs  || []).find(d => d.month === m)?.costs  ?? 0,
-    profit:  (stats.monthly_profit || []).find(d => d.month === m)?.profit ?? 0,
+  // Объединяем — бэкенд уже отдаёт ровно 12 месяцев
+  const allMerged = stats.monthly_leads.map(d => ({
+    month:   d.month,
+    leads:   d.count,
+    done:    stats.monthly_done.find(x => x.month === d.month)?.count      ?? 0,
+    revenue: stats.monthly_revenue.find(x => x.month === d.month)?.revenue ?? 0,
+    costs:   (stats.monthly_costs  || []).find(x => x.month === d.month)?.costs  ?? 0,
+    profit:  (stats.monthly_profit || []).find(x => x.month === d.month)?.profit ?? 0,
   }));
 
   const merged = allMerged.filter(d =>

@@ -283,30 +283,93 @@ def handler(event: dict, context) -> dict:
             cur.execute(f"SELECT cancel_reason, COUNT(*) FROM {S}.live_chats WHERE status='cancelled' AND cancel_reason IS NOT NULL AND cancel_reason != '' GROUP BY cancel_reason ORDER BY COUNT(*) DESC LIMIT 10")
             cancel_reasons = [{"reason": r[0], "count": r[1]} for r in cur.fetchall()]
 
-            # Динамика по месяцам (12 мес)
-            cur.execute(f"""SELECT DATE_TRUNC('month', created_at) as m, COUNT(*) FROM {S}.live_chats
-                WHERE created_at >= NOW() - INTERVAL '12 months' AND status != 'deleted' GROUP BY m ORDER BY m""")
-            monthly_leads = [{"month": str(r[0])[:7], "count": r[1]} for r in cur.fetchall()]
+            # Динамика по месяцам — все 12 месяцев скользящего окна с нулями для пустых
+            cur.execute(f"""
+                WITH months AS (
+                    SELECT generate_series(
+                        DATE_TRUNC('month', NOW() - INTERVAL '11 months'),
+                        DATE_TRUNC('month', NOW()),
+                        INTERVAL '1 month'
+                    ) AS m
+                ),
+                leads AS (
+                    SELECT DATE_TRUNC('month', created_at) AS m, COUNT(*) AS cnt
+                    FROM {S}.live_chats WHERE status != 'deleted' GROUP BY 1
+                )
+                SELECT TO_CHAR(months.m, 'YYYY-MM'), COALESCE(leads.cnt, 0)
+                FROM months LEFT JOIN leads ON months.m = leads.m ORDER BY months.m
+            """)
+            monthly_leads = [{"month": r[0], "count": r[1]} for r in cur.fetchall()]
 
-            cur.execute(f"""SELECT DATE_TRUNC('month', created_at) as m, COUNT(*) FROM {S}.live_chats
-                WHERE status='done' AND created_at >= NOW() - INTERVAL '12 months' GROUP BY m ORDER BY m""")
-            monthly_done = [{"month": str(r[0])[:7], "count": r[1]} for r in cur.fetchall()]
+            cur.execute(f"""
+                WITH months AS (
+                    SELECT generate_series(
+                        DATE_TRUNC('month', NOW() - INTERVAL '11 months'),
+                        DATE_TRUNC('month', NOW()),
+                        INTERVAL '1 month'
+                    ) AS m
+                ),
+                done AS (
+                    SELECT DATE_TRUNC('month', created_at) AS m, COUNT(*) AS cnt
+                    FROM {S}.live_chats WHERE status = 'done' GROUP BY 1
+                )
+                SELECT TO_CHAR(months.m, 'YYYY-MM'), COALESCE(done.cnt, 0)
+                FROM months LEFT JOIN done ON months.m = done.m ORDER BY months.m
+            """)
+            monthly_done = [{"month": r[0], "count": r[1]} for r in cur.fetchall()]
 
-            cur.execute(f"""SELECT DATE_TRUNC('month', created_at) as m, COALESCE(SUM(contract_sum),0) FROM {S}.live_chats
-                WHERE contract_sum IS NOT NULL AND created_at >= NOW() - INTERVAL '12 months' AND status != 'deleted' GROUP BY m ORDER BY m""")
-            monthly_revenue = [{"month": str(r[0])[:7], "revenue": float(r[1])} for r in cur.fetchall()]
+            cur.execute(f"""
+                WITH months AS (
+                    SELECT generate_series(
+                        DATE_TRUNC('month', NOW() - INTERVAL '11 months'),
+                        DATE_TRUNC('month', NOW()),
+                        INTERVAL '1 month'
+                    ) AS m
+                ),
+                rev AS (
+                    SELECT DATE_TRUNC('month', created_at) AS m, COALESCE(SUM(contract_sum), 0) AS s
+                    FROM {S}.live_chats WHERE contract_sum IS NOT NULL AND status != 'deleted' GROUP BY 1
+                )
+                SELECT TO_CHAR(months.m, 'YYYY-MM'), COALESCE(rev.s, 0)
+                FROM months LEFT JOIN rev ON months.m = rev.m ORDER BY months.m
+            """)
+            monthly_revenue = [{"month": r[0], "revenue": float(r[1])} for r in cur.fetchall()]
 
-            cur.execute(f"""SELECT DATE_TRUNC('month', created_at) as m,
-                COALESCE(SUM(material_cost),0) + COALESCE(SUM(measure_cost),0) + COALESCE(SUM(install_cost),0)
-                FROM {S}.live_chats
-                WHERE created_at >= NOW() - INTERVAL '12 months' AND status != 'deleted' GROUP BY m ORDER BY m""")
-            monthly_costs = [{"month": str(r[0])[:7], "costs": float(r[1])} for r in cur.fetchall()]
+            cur.execute(f"""
+                WITH months AS (
+                    SELECT generate_series(
+                        DATE_TRUNC('month', NOW() - INTERVAL '11 months'),
+                        DATE_TRUNC('month', NOW()),
+                        INTERVAL '1 month'
+                    ) AS m
+                ),
+                costs AS (
+                    SELECT DATE_TRUNC('month', created_at) AS m,
+                        COALESCE(SUM(material_cost),0) + COALESCE(SUM(measure_cost),0) + COALESCE(SUM(install_cost),0) AS s
+                    FROM {S}.live_chats WHERE status != 'deleted' GROUP BY 1
+                )
+                SELECT TO_CHAR(months.m, 'YYYY-MM'), COALESCE(costs.s, 0)
+                FROM months LEFT JOIN costs ON months.m = costs.m ORDER BY months.m
+            """)
+            monthly_costs = [{"month": r[0], "costs": float(r[1])} for r in cur.fetchall()]
 
-            cur.execute(f"""SELECT DATE_TRUNC('month', created_at) as m,
-                COALESCE(SUM(contract_sum),0) - COALESCE(SUM(material_cost),0) - COALESCE(SUM(measure_cost),0) - COALESCE(SUM(install_cost),0)
-                FROM {S}.live_chats
-                WHERE created_at >= NOW() - INTERVAL '12 months' AND status != 'deleted' GROUP BY m ORDER BY m""")
-            monthly_profit = [{"month": str(r[0])[:7], "profit": float(r[1])} for r in cur.fetchall()]
+            cur.execute(f"""
+                WITH months AS (
+                    SELECT generate_series(
+                        DATE_TRUNC('month', NOW() - INTERVAL '11 months'),
+                        DATE_TRUNC('month', NOW()),
+                        INTERVAL '1 month'
+                    ) AS m
+                ),
+                profit AS (
+                    SELECT DATE_TRUNC('month', created_at) AS m,
+                        COALESCE(SUM(contract_sum),0) - COALESCE(SUM(material_cost),0) - COALESCE(SUM(measure_cost),0) - COALESCE(SUM(install_cost),0) AS s
+                    FROM {S}.live_chats WHERE status != 'deleted' GROUP BY 1
+                )
+                SELECT TO_CHAR(months.m, 'YYYY-MM'), COALESCE(profit.s, 0)
+                FROM months LEFT JOIN profit ON months.m = profit.m ORDER BY months.m
+            """)
+            monthly_profit = [{"month": r[0], "profit": float(r[1])} for r in cur.fetchall()]
 
             # Средние значения
             cur.execute(f"SELECT AVG(area) FROM {S}.live_chats WHERE area IS NOT NULL AND status != 'deleted'")

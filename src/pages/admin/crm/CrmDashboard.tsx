@@ -50,7 +50,7 @@ function StatCard({ icon, label, value, sub, color, grad }: {
   );
 }
 
-// ── Утилита: объединить данные по месяцам в один массив ─────────────────────
+// ── Утилита: объединить данные по месяцам, всегда показывая все 12 ──────────
 function mergeMonths(
   leads:   { month: string; count: number }[],
   done:    { month: string; count: number }[],
@@ -58,20 +58,15 @@ function mergeMonths(
   costs:   { month: string; costs: number }[],
   profit:  { month: string; profit: number }[],
 ) {
-  const months = Array.from(new Set([
-    ...leads.map(d => d.month),
-    ...done.map(d => d.month),
-    ...revenue.map(d => d.month),
-    ...costs.map(d => d.month),
-    ...profit.map(d => d.month),
-  ])).sort();
+  // Бэкенд уже возвращает 12 месяцев, просто объединяем по ключу
+  const months = leads.map(d => d.month);
   return months.map(m => ({
     month:   m,
-    leads:   leads.find(d => d.month === m)?.count   ?? 0,
-    done:    done.find(d => d.month === m)?.count    ?? 0,
+    leads:   leads.find(d => d.month === m)?.count     ?? 0,
+    done:    done.find(d => d.month === m)?.count      ?? 0,
     revenue: revenue.find(d => d.month === m)?.revenue ?? 0,
-    costs:   costs.find(d => d.month === m)?.costs   ?? 0,
-    profit:  profit.find(d => d.month === m)?.profit ?? 0,
+    costs:   costs.find(d => d.month === m)?.costs     ?? 0,
+    profit:  profit.find(d => d.month === m)?.profit   ?? 0,
   }));
 }
 
