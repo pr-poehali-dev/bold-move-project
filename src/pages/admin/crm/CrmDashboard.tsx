@@ -194,7 +194,7 @@ export default function CrmDashboard() {
               <XAxis dataKey="month" tick={{ fill: t.textMute, fontSize: 10 }} axisLine={false} tickLine={false} />
               <YAxis tick={{ fill: t.textMute, fontSize: 10 }} axisLine={false} tickLine={false} />
               <Tooltip contentStyle={{ background: t.surface, border: `1px solid ${t.border}`, borderRadius: 10, fontSize: 12 }} labelStyle={{ color: t.text }} itemStyle={{ color: "#a78bfa" }} />
-              <Bar dataKey="count" fill="url(#bg1)" radius={[5, 5, 0, 0]} name="Заявок" />
+              <Bar dataKey="count" fill="url(#bg1)" radius={[5, 5, 0, 0]} name="Заявок" activeBar={{ fill: "url(#bg1)", opacity: 0.85 }} />
             </BarChart>
           </ResponsiveContainer>
         </div>
