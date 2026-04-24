@@ -80,7 +80,7 @@ def handler(event: dict, context) -> dict:
         sess = cur.fetchone()
         if sess:
             uid, uemail = sess
-            if uemail == "master@mospotolki.ru":
+            if uemail == "19.jeka.94@gmail.com":
                 is_master  = True
                 company_id = None   # мастер видит всё
             else:
@@ -148,7 +148,7 @@ def handler(event: dict, context) -> dict:
                     cur.execute(f"SELECT id FROM {SCHEMA}.users WHERE email='master@mospotolki.ru'") or
                     cur.fetchone()[0]
                 )
-                cur.execute(f"SELECT id FROM {SCHEMA}.users WHERE email='master@mospotolki.ru'")
+                cur.execute(f"SELECT id FROM {SCHEMA}.users WHERE email='19.jeka.94@gmail.com'")
                 master_id_row = cur.fetchone()
                 master_id = master_id_row[0] if master_id_row else None
                 final_company_id = company_id if company_id is not None else master_id

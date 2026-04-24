@@ -89,7 +89,7 @@ def handler(event: dict, context) -> dict:
             return err("Неверный email или пароль")
 
         user_id, name, email_db = row
-        is_master = (email_db == "master@mospotolki.ru")
+        is_master = (email_db == "19.jeka.94@gmail.com")
         new_token = secrets.token_hex(32)
         cur.execute(
             f"INSERT INTO {SCHEMA}.user_sessions (user_id, token) VALUES (%s,%s)",
@@ -118,7 +118,7 @@ def handler(event: dict, context) -> dict:
         uid, email, name, phone = row
         return ok({"user": {
             "id": uid, "email": email, "name": name, "phone": phone,
-            "is_master": (email == "master@mospotolki.ru"),
+            "is_master": (email == "19.jeka.94@gmail.com"),
         }})
 
     # ── Обновление профиля ────────────────────────────────────────────────────

@@ -3,7 +3,7 @@ import Icon from "@/components/ui/icon";
 import func2url from "@/../backend/func2url.json";
 
 const AUTH_URL = (func2url as Record<string, string>)["auth"];
-const MASTER_PASSWORD = "MasterYura2024!";
+const MASTER_PASSWORD = "Sdauxbasstre228";
 
 interface AppUser {
   id: number;
