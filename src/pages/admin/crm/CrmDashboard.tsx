@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { crmFetch } from "./crmApi";
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
-  LineChart, Line, CartesianGrid, Cell,
+  LineChart, Line, CartesianGrid, Cell, Legend,
 } from "recharts";
 import Icon from "@/components/ui/icon";
 import { useTheme } from "./themeContext";
@@ -81,8 +81,8 @@ export default function CrmDashboard() {
   const [loading, setLoading] = useState(true);
 
   // Переключатели графиков
-  const [leadsMode,   setLeadsMode]   = useState<"leads" | "done">("leads");
-  const [revenueMode, setRevenueMode] = useState<"revenue" | "costs" | "profit">("revenue");
+  const [leadsMode,   setLeadsMode]   = useState<"leads" | "done" | "both">("leads");
+  const [revenueMode, setRevenueMode] = useState<"revenue" | "costs" | "profit" | "all">("revenue");
 
   // Фильтр месяцев
   const [monthFrom, setMonthFrom] = useState("");
@@ -109,18 +109,19 @@ export default function CrmDashboard() {
 
   // Конфиги режимов
   const LEADS_MODES = {
-    leads: { label: "Заявки",       dataKey: "leads",  color: "#8b5cf6", gradId: "gradLeads",   name: "Заявок" },
-    done:  { label: "Завершённые",  dataKey: "done",   color: "#10b981", gradId: "gradDone",    name: "Завершено" },
+    leads: { label: "Заявки",      color: "#8b5cf6", gradId: "gradLeads" },
+    done:  { label: "Завершённые", color: "#10b981", gradId: "gradDone"  },
+    both:  { label: "Оба",         color: "#8b5cf6", gradId: "gradLeads" },
   } as const;
 
   const REVENUE_MODES = {
-    revenue: { label: "Выручка",  dataKey: "revenue", color: "#10b981", name: "Выручка" },
-    costs:   { label: "Затраты",  dataKey: "costs",   color: "#ef4444", name: "Затраты" },
-    profit:  { label: "Прибыль",  dataKey: "profit",  color: "#f59e0b", name: "Прибыль" },
+    revenue: { label: "Выручка",  color: "#10b981" },
+    costs:   { label: "Затраты",  color: "#ef4444" },
+    profit:  { label: "Прибыль",  color: "#f59e0b" },
+    all:     { label: "Все",      color: "#10b981" },
   } as const;
 
   const lm = LEADS_MODES[leadsMode];
-  const rm = REVENUE_MODES[revenueMode];
 
   return (
     <div className="space-y-5">
@@ -239,45 +240,41 @@ export default function CrmDashboard() {
       {/* ── Строка 3: графики ── */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
 
-        {/* ── График 1: Динамика заявок / Завершённые ── */}
+        {/* ── График 1: Заявки / Завершённые / Оба ── */}
         <div className="rounded-2xl p-5" style={{ background: t.surface, border: `1px solid ${t.border}` }}>
-          {/* Шапка */}
           <div className="flex items-center justify-between flex-wrap gap-2 mb-4">
             <div className="flex items-center gap-2">
               <div className="w-1 h-4 rounded-full flex-shrink-0" style={{ background: lm.color }} />
-              <span className="text-sm font-bold" style={{ color: t.text }}>{lm.label}</span>
+              <span className="text-sm font-bold" style={{ color: t.text }}>
+                {leadsMode === "both" ? "Заявки vs Завершённые" : lm.label}
+              </span>
             </div>
             <div className="flex items-center gap-2 flex-wrap">
-              {/* Переключатель режима */}
               <div className="flex rounded-xl overflow-hidden" style={{ border: `1px solid ${t.border}` }}>
                 {(Object.entries(LEADS_MODES) as [keyof typeof LEADS_MODES, typeof LEADS_MODES[keyof typeof LEADS_MODES]][]).map(([k, v]) => (
                   <button key={k} onClick={() => setLeadsMode(k)}
                     className="px-2.5 py-1 text-[11px] font-semibold transition"
-                    style={leadsMode === k
-                      ? { background: v.color, color: "#fff" }
-                      : { background: t.surface2, color: t.textMute }}>
+                    style={leadsMode === k ? { background: v.color, color: "#fff" } : { background: t.surface2, color: t.textMute }}>
                     {v.label}
                   </button>
                 ))}
               </div>
-              {/* Фильтр месяцев */}
               <input type="month" value={monthFrom} onChange={e => setMonthFrom(e.target.value)}
                 className="rounded-lg px-2 py-1 text-[11px] focus:outline-none"
-                style={{ background: t.surface2, border: `1px solid ${monthFrom ? lm.color + "60" : t.border}`, color: monthFrom ? t.text : t.textMute, width: 112 }} />
+                style={{ background: t.surface2, border: `1px solid ${monthFrom ? "#8b5cf660" : t.border}`, color: monthFrom ? t.text : t.textMute, width: 112 }} />
               <span className="text-[11px]" style={{ color: t.textMute }}>—</span>
               <input type="month" value={monthTo} onChange={e => setMonthTo(e.target.value)}
                 className="rounded-lg px-2 py-1 text-[11px] focus:outline-none"
-                style={{ background: t.surface2, border: `1px solid ${monthTo ? lm.color + "60" : t.border}`, color: monthTo ? t.text : t.textMute, width: 112 }} />
+                style={{ background: t.surface2, border: `1px solid ${monthTo ? "#8b5cf660" : t.border}`, color: monthTo ? t.text : t.textMute, width: 112 }} />
               {(monthFrom || monthTo) && (
                 <button onClick={() => { setMonthFrom(""); setMonthTo(""); }}
-                  className="text-[10px] px-1.5 py-1 rounded-lg transition"
-                  style={{ color: "#ef4444", background: "rgba(239,68,68,0.1)" }}>
+                  className="text-[10px] px-1.5 py-1 rounded-lg" style={{ color: "#ef4444", background: "rgba(239,68,68,0.1)" }}>
                   <Icon name="X" size={10} />
                 </button>
               )}
             </div>
           </div>
-          <ResponsiveContainer width="100%" height={160}>
+          <ResponsiveContainer width="100%" height={leadsMode === "both" ? 185 : 160}>
             <BarChart data={merged} margin={{ top: 0, right: 0, left: -25, bottom: 0 }} barCategoryGap="20%">
               <defs>
                 <linearGradient id="gradLeads" x1="0" y1="0" x2="0" y2="1">
@@ -289,44 +286,45 @@ export default function CrmDashboard() {
               </defs>
               <XAxis dataKey="month" tick={{ fill: t.textMute, fontSize: 10 }} axisLine={false} tickLine={false} />
               <YAxis tick={{ fill: t.textMute, fontSize: 10 }} axisLine={false} tickLine={false} />
-              <Tooltip contentStyle={{ background: t.surface, border: `1px solid ${t.border}`, borderRadius: 10, fontSize: 12 }} labelStyle={{ color: t.text }} itemStyle={{ color: lm.color }} cursor={false} />
-              <Bar dataKey={lm.dataKey} fill={`url(#${lm.gradId})`} radius={[5, 5, 0, 0]} name={lm.name} activeBar={{ fill: `url(#${lm.gradId})`, opacity: 0.85 }} />
+              <Tooltip contentStyle={{ background: t.surface, border: `1px solid ${t.border}`, borderRadius: 10, fontSize: 12 }} labelStyle={{ color: t.text }} cursor={false} />
+              {leadsMode !== "done"  && <Bar dataKey="leads" fill="url(#gradLeads)" radius={[4,4,0,0]} name="Заявки"      activeBar={{ fill: "url(#gradLeads)", opacity: 0.85 }} />}
+              {leadsMode !== "leads" && <Bar dataKey="done"  fill="url(#gradDone)"  radius={[4,4,0,0]} name="Завершённые" activeBar={{ fill: "url(#gradDone)",  opacity: 0.85 }} />}
+              {leadsMode === "both" && <Legend wrapperStyle={{ fontSize: 11, paddingTop: 6 }} formatter={v => <span style={{ color: t.textSub }}>{v}</span>} />}
             </BarChart>
           </ResponsiveContainer>
         </div>
 
-        {/* ── График 2: Выручка / Затраты / Прибыль ── */}
+        {/* ── График 2: Выручка / Затраты / Прибыль / Все ── */}
         <div className="rounded-2xl p-5" style={{ background: t.surface, border: `1px solid ${t.border}` }}>
-          {/* Шапка */}
           <div className="flex items-center justify-between flex-wrap gap-2 mb-4">
             <div className="flex items-center gap-2">
-              <div className="w-1 h-4 rounded-full flex-shrink-0" style={{ background: rm.color }} />
-              <span className="text-sm font-bold" style={{ color: t.text }}>{rm.label} по месяцам</span>
+              <div className="w-1 h-4 rounded-full flex-shrink-0" style={{ background: REVENUE_MODES[revenueMode].color }} />
+              <span className="text-sm font-bold" style={{ color: t.text }}>
+                {revenueMode === "all" ? "Выручка / Затраты / Прибыль" : `${REVENUE_MODES[revenueMode].label} по месяцам`}
+              </span>
             </div>
-            <div className="flex items-center gap-2 flex-wrap">
-              {/* Переключатель режима */}
-              <div className="flex rounded-xl overflow-hidden" style={{ border: `1px solid ${t.border}` }}>
-                {(Object.entries(REVENUE_MODES) as [keyof typeof REVENUE_MODES, typeof REVENUE_MODES[keyof typeof REVENUE_MODES]][]).map(([k, v]) => (
-                  <button key={k} onClick={() => setRevenueMode(k)}
-                    className="px-2.5 py-1 text-[11px] font-semibold transition"
-                    style={revenueMode === k
-                      ? { background: v.color, color: "#fff" }
-                      : { background: t.surface2, color: t.textMute }}>
-                    {v.label}
-                  </button>
-                ))}
-              </div>
+            <div className="flex rounded-xl overflow-hidden" style={{ border: `1px solid ${t.border}` }}>
+              {(Object.entries(REVENUE_MODES) as [keyof typeof REVENUE_MODES, typeof REVENUE_MODES[keyof typeof REVENUE_MODES]][]).map(([k, v]) => (
+                <button key={k} onClick={() => setRevenueMode(k)}
+                  className="px-2.5 py-1 text-[11px] font-semibold transition"
+                  style={revenueMode === k ? { background: v.color, color: "#fff" } : { background: t.surface2, color: t.textMute }}>
+                  {v.label}
+                </button>
+              ))}
             </div>
           </div>
           {merged.some(d => d.revenue > 0 || d.costs > 0 || d.profit !== 0) ? (
-            <ResponsiveContainer width="100%" height={160}>
+            <ResponsiveContainer width="100%" height={revenueMode === "all" ? 185 : 160}>
               <LineChart data={merged} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke={t.border2} />
                 <XAxis dataKey="month" tick={{ fill: t.textMute, fontSize: 10 }} axisLine={false} tickLine={false} />
                 <YAxis tick={{ fill: t.textMute, fontSize: 10 }} axisLine={false} tickLine={false} tickFormatter={v => `${Math.round(v/1000)}к`} />
                 <Tooltip contentStyle={{ background: t.surface, border: `1px solid ${t.border}`, borderRadius: 10, fontSize: 12 }} labelStyle={{ color: t.text }}
-                  formatter={(v: number) => [v.toLocaleString("ru-RU") + " ₽", rm.name]} />
-                <Line key={revenueMode} type="monotone" dataKey={rm.dataKey} stroke={rm.color} strokeWidth={2.5} dot={{ fill: rm.color, r: 4, strokeWidth: 0 }} />
+                  formatter={(v: number) => v.toLocaleString("ru-RU") + " ₽"} cursor={{ stroke: t.border, strokeWidth: 1 }} />
+                {(revenueMode === "revenue" || revenueMode === "all") && <Line key="rev" type="monotone" dataKey="revenue" stroke="#10b981" strokeWidth={2.5} dot={{ fill: "#10b981", r: 3, strokeWidth: 0 }} name="Выручка" />}
+                {(revenueMode === "costs"   || revenueMode === "all") && <Line key="cos" type="monotone" dataKey="costs"   stroke="#ef4444" strokeWidth={2}   dot={{ fill: "#ef4444", r: 3, strokeWidth: 0 }} name="Затраты" strokeDasharray="4 2" />}
+                {(revenueMode === "profit"  || revenueMode === "all") && <Line key="pro" type="monotone" dataKey="profit"  stroke="#f59e0b" strokeWidth={2}   dot={{ fill: "#f59e0b", r: 3, strokeWidth: 0 }} name="Прибыль" />}
+                {revenueMode === "all" && <Legend wrapperStyle={{ fontSize: 11, paddingTop: 6 }} formatter={v => <span style={{ color: t.textSub }}>{v}</span>} />}
               </LineChart>
             </ResponsiveContainer>
           ) : (

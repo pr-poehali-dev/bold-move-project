@@ -18,48 +18,82 @@ interface Stats {
   avg_area: number; avg_contract: number;
   cancel_reasons: { reason: string; count: number }[];
   status_dist: { status: string; count: number }[];
-  monthly_leads: { month: string; count: number }[];
-  monthly_done: { month: string; count: number }[];
+  monthly_leads:   { month: string; count: number }[];
+  monthly_done:    { month: string; count: number }[];
   monthly_revenue: { month: string; revenue: number }[];
+  monthly_costs:   { month: string; costs: number }[];
+  monthly_profit:  { month: string; profit: number }[];
 }
 
 const COST_COLORS = ["#ef4444", "#f59e0b", "#f97316"];
 
 export default function CrmAnalytics() {
   const t = useTheme();
-  const [stats, setStats] = useState<Stats | null>(null);
+  const [stats, setStats]     = useState<Stats | null>(null);
   const [loading, setLoading] = useState(true);
+
+  // Переключатели
+  const [leadsMode,   setLeadsMode]   = useState<"leads" | "done" | "both">("both");
+  const [revenueMode, setRevenueMode] = useState<"revenue" | "costs" | "profit" | "all">("all");
+
+  // Фильтр месяцев
+  const [monthFrom, setMonthFrom] = useState("");
+  const [monthTo,   setMonthTo]   = useState("");
 
   useEffect(() => { crmFetch("stats").then(d => { setStats(d); setLoading(false); }); }, []);
 
   if (loading) return <div className="flex items-center justify-center h-64"><div className="w-7 h-7 border-2 border-violet-500 border-t-transparent rounded-full animate-spin" /></div>;
   if (!stats) return null;
 
-  const convMeasure  = stats.total_all > 0      ? Math.round((stats.went_measure  / stats.total_all)      * 100) : 0;
-  const convContract = stats.went_measure > 0   ? Math.round((stats.went_contract / stats.went_measure)   * 100) : 0;
-  const convDone     = stats.went_contract > 0  ? Math.round((stats.total_done    / stats.went_contract)  * 100) : 0;
-  const cancelRate   = stats.total_all > 0      ? Math.round((stats.total_cancel  / stats.total_all)      * 100) : 0;
+  const convMeasure  = stats.total_all     > 0 ? Math.round((stats.went_measure  / stats.total_all)     * 100) : 0;
+  const convContract = stats.went_measure  > 0 ? Math.round((stats.went_contract / stats.went_measure)  * 100) : 0;
+  const convDone     = stats.went_contract > 0 ? Math.round((stats.total_done    / stats.went_contract) * 100) : 0;
+  const cancelRate   = stats.total_all     > 0 ? Math.round((stats.total_cancel  / stats.total_all)     * 100) : 0;
 
   const statusPie = stats.status_dist
     .filter(s => s.status !== "deleted")
     .map(s => ({ name: STATUS_LABELS[s.status] || s.status, value: s.count, color: STATUS_COLORS[s.status] || "#666" }));
 
   const costPie = [
-    { name: "Материалы",  value: stats.total_material,     color: "#ef4444" },
-    { name: "Замеры",     value: stats.total_measure_cost, color: "#f59e0b" },
-    { name: "Монтажи",    value: stats.total_install_cost, color: "#f97316" },
+    { name: "Материалы", value: stats.total_material,     color: "#ef4444" },
+    { name: "Замеры",    value: stats.total_measure_cost, color: "#f59e0b" },
+    { name: "Монтажи",   value: stats.total_install_cost, color: "#f97316" },
   ].filter(c => c.value > 0);
 
-  const combined = stats.monthly_leads.map(m => {
-    const d = stats.monthly_done.find(x => x.month === m.month);
-    return { month: m.month, "Заявки": m.count, "Завершённые": d?.count || 0 };
-  });
+  // Объединяем все месячные данные в один массив
+  const allMonths = Array.from(new Set([
+    ...stats.monthly_leads.map(d => d.month),
+    ...stats.monthly_done.map(d => d.month),
+    ...stats.monthly_revenue.map(d => d.month),
+    ...(stats.monthly_costs  || []).map(d => d.month),
+    ...(stats.monthly_profit || []).map(d => d.month),
+  ])).sort();
 
-  const marginData = stats.monthly_revenue.map(m => {
-    const totalCosts = stats.total_costs;
-    const perMonth = stats.monthly_revenue.length > 0 ? totalCosts / stats.monthly_revenue.length : 0;
-    return { month: m.month, "Выручка": m.revenue, "Затраты": Math.round(perMonth), "Прибыль": Math.max(0, m.revenue - perMonth) };
-  });
+  const allMerged = allMonths.map(m => ({
+    month:   m,
+    leads:   stats.monthly_leads.find(d => d.month === m)?.count ?? 0,
+    done:    stats.monthly_done.find(d => d.month === m)?.count  ?? 0,
+    revenue: stats.monthly_revenue.find(d => d.month === m)?.revenue ?? 0,
+    costs:   (stats.monthly_costs  || []).find(d => d.month === m)?.costs  ?? 0,
+    profit:  (stats.monthly_profit || []).find(d => d.month === m)?.profit ?? 0,
+  }));
+
+  const merged = allMerged.filter(d =>
+    (!monthFrom || d.month >= monthFrom) &&
+    (!monthTo   || d.month <= monthTo)
+  );
+
+  const LEADS_MODES   = {
+    leads: { label: "Заявки",      color: "#8b5cf6" },
+    done:  { label: "Завершённые", color: "#10b981" },
+    both:  { label: "Оба",         color: "#8b5cf6" },
+  } as const;
+  const REVENUE_MODES = {
+    revenue: { label: "Выручка",  color: "#10b981" },
+    costs:   { label: "Затраты",  color: "#ef4444" },
+    profit:  { label: "Прибыль",  color: "#f59e0b" },
+    all:     { label: "Все",      color: "#10b981" },
+  } as const;
 
   return (
     <div className="space-y-5">
@@ -182,42 +216,93 @@ export default function CrmAnalytics() {
 
       {/* ── Динамика ── */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {/* Заявки vs завершённые */}
+
+        {/* ── График 1: Заявки / Завершённые / Оба ── */}
         <div className="rounded-2xl p-5" style={{ background: t.surface, border: `1px solid ${t.border}` }}>
-          <div className="flex items-center gap-2 mb-4">
-            <div className="w-1 h-4 rounded-full bg-violet-500" />
-            <span className="text-sm font-bold" style={{ color: t.text }}>Заявки vs Завершённые</span>
+          <div className="flex items-center justify-between flex-wrap gap-2 mb-4">
+            <div className="flex items-center gap-2">
+              <div className="w-1 h-4 rounded-full flex-shrink-0" style={{ background: LEADS_MODES[leadsMode].color }} />
+              <span className="text-sm font-bold" style={{ color: t.text }}>
+                {leadsMode === "both" ? "Заявки vs Завершённые" : LEADS_MODES[leadsMode].label}
+              </span>
+            </div>
+            <div className="flex items-center gap-2 flex-wrap">
+              <div className="flex rounded-xl overflow-hidden" style={{ border: `1px solid ${t.border}` }}>
+                {(Object.entries(LEADS_MODES) as [keyof typeof LEADS_MODES, typeof LEADS_MODES[keyof typeof LEADS_MODES]][]).map(([k, v]) => (
+                  <button key={k} onClick={() => setLeadsMode(k)}
+                    className="px-2.5 py-1 text-[11px] font-semibold transition"
+                    style={leadsMode === k ? { background: v.color, color: "#fff" } : { background: t.surface2, color: t.textMute }}>
+                    {v.label}
+                  </button>
+                ))}
+              </div>
+              <input type="month" value={monthFrom} onChange={e => setMonthFrom(e.target.value)}
+                className="rounded-lg px-2 py-1 text-[11px] focus:outline-none"
+                style={{ background: t.surface2, border: `1px solid ${monthFrom ? "#8b5cf660" : t.border}`, color: monthFrom ? t.text : t.textMute, width: 112 }} />
+              <span className="text-[11px]" style={{ color: t.textMute }}>—</span>
+              <input type="month" value={monthTo} onChange={e => setMonthTo(e.target.value)}
+                className="rounded-lg px-2 py-1 text-[11px] focus:outline-none"
+                style={{ background: t.surface2, border: `1px solid ${monthTo ? "#8b5cf660" : t.border}`, color: monthTo ? t.text : t.textMute, width: 112 }} />
+              {(monthFrom || monthTo) && (
+                <button onClick={() => { setMonthFrom(""); setMonthTo(""); }}
+                  className="px-1.5 py-1 rounded-lg" style={{ color: "#ef4444", background: "rgba(239,68,68,0.1)" }}>
+                  <Icon name="X" size={10} />
+                </button>
+              )}
+            </div>
           </div>
-          <ResponsiveContainer width="100%" height={180}>
-            <BarChart data={combined} margin={{ top: 0, right: 0, left: -25, bottom: 0 }}>
+          <ResponsiveContainer width="100%" height={leadsMode === "both" ? 200 : 180}>
+            <BarChart data={merged} margin={{ top: 0, right: 0, left: -25, bottom: 0 }} barCategoryGap="20%">
+              <defs>
+                <linearGradient id="aGradLeads" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#8b5cf6" /><stop offset="100%" stopColor="#4f46e5" stopOpacity={0.6} />
+                </linearGradient>
+                <linearGradient id="aGradDone" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#10b981" /><stop offset="100%" stopColor="#059669" stopOpacity={0.6} />
+                </linearGradient>
+              </defs>
               <CartesianGrid strokeDasharray="3 3" stroke={t.border2} />
               <XAxis dataKey="month" tick={{ fill: t.textMute, fontSize: 10 }} axisLine={false} tickLine={false} />
               <YAxis tick={{ fill: t.textMute, fontSize: 10 }} axisLine={false} tickLine={false} />
-              <Tooltip contentStyle={{ background: t.surface, border: `1px solid ${t.border}`, borderRadius: 10, fontSize: 12 }} labelStyle={{ color: t.text }} />
-              <Legend wrapperStyle={{ fontSize: 11, color: t.textSub, paddingTop: 6 }} />
-              <Bar dataKey="Заявки"      fill="#8b5cf6" radius={[4, 4, 0, 0]} />
-              <Bar dataKey="Завершённые" fill="#10b981" radius={[4, 4, 0, 0]} />
+              <Tooltip contentStyle={{ background: t.surface, border: `1px solid ${t.border}`, borderRadius: 10, fontSize: 12 }} labelStyle={{ color: t.text }} cursor={false} />
+              {leadsMode !== "done"  && <Bar dataKey="leads" fill="url(#aGradLeads)" radius={[4,4,0,0]} name="Заявки"      activeBar={{ fill: "url(#aGradLeads)", opacity: 0.85 }} />}
+              {leadsMode !== "leads" && <Bar dataKey="done"  fill="url(#aGradDone)"  radius={[4,4,0,0]} name="Завершённые" activeBar={{ fill: "url(#aGradDone)",  opacity: 0.85 }} />}
+              {leadsMode === "both"  && <Legend wrapperStyle={{ fontSize: 11, paddingTop: 6 }} formatter={v => <span style={{ color: t.textSub }}>{v}</span>} />}
             </BarChart>
           </ResponsiveContainer>
         </div>
 
-        {/* Выручка и затраты */}
+        {/* ── График 2: Выручка / Затраты / Прибыль / Все ── */}
         <div className="rounded-2xl p-5" style={{ background: t.surface, border: `1px solid ${t.border}` }}>
-          <div className="flex items-center gap-2 mb-4">
-            <div className="w-1 h-4 rounded-full bg-emerald-500" />
-            <span className="text-sm font-bold" style={{ color: t.text }}>Выручка / Затраты / Прибыль</span>
+          <div className="flex items-center justify-between flex-wrap gap-2 mb-4">
+            <div className="flex items-center gap-2">
+              <div className="w-1 h-4 rounded-full flex-shrink-0" style={{ background: REVENUE_MODES[revenueMode].color }} />
+              <span className="text-sm font-bold" style={{ color: t.text }}>
+                {revenueMode === "all" ? "Выручка / Затраты / Прибыль" : `${REVENUE_MODES[revenueMode].label} по месяцам`}
+              </span>
+            </div>
+            <div className="flex rounded-xl overflow-hidden" style={{ border: `1px solid ${t.border}` }}>
+              {(Object.entries(REVENUE_MODES) as [keyof typeof REVENUE_MODES, typeof REVENUE_MODES[keyof typeof REVENUE_MODES]][]).map(([k, v]) => (
+                <button key={k} onClick={() => setRevenueMode(k)}
+                  className="px-2.5 py-1 text-[11px] font-semibold transition"
+                  style={revenueMode === k ? { background: v.color, color: "#fff" } : { background: t.surface2, color: t.textMute }}>
+                  {v.label}
+                </button>
+              ))}
+            </div>
           </div>
-          {marginData.length > 0 ? (
-            <ResponsiveContainer width="100%" height={180}>
-              <LineChart data={marginData} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
+          {merged.some(d => d.revenue > 0 || d.costs > 0 || d.profit !== 0) ? (
+            <ResponsiveContainer width="100%" height={revenueMode === "all" ? 200 : 180}>
+              <LineChart data={merged} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke={t.border2} />
                 <XAxis dataKey="month" tick={{ fill: t.textMute, fontSize: 10 }} axisLine={false} tickLine={false} />
                 <YAxis tick={{ fill: t.textMute, fontSize: 10 }} axisLine={false} tickLine={false} tickFormatter={v => `${Math.round(v/1000)}к`} />
-                <Tooltip contentStyle={{ background: t.surface, border: `1px solid ${t.border}`, borderRadius: 10, fontSize: 12 }} labelStyle={{ color: t.text }} formatter={(v: number) => v.toLocaleString("ru-RU") + " ₽"} />
-                <Legend wrapperStyle={{ fontSize: 11, color: t.textSub, paddingTop: 6 }} />
-                <Line type="monotone" dataKey="Выручка"  stroke="#10b981" strokeWidth={2} dot={{ r: 3, fill: "#10b981", strokeWidth: 0 }} />
-                <Line type="monotone" dataKey="Затраты"  stroke="#ef4444" strokeWidth={2} dot={{ r: 3, fill: "#ef4444", strokeWidth: 0 }} strokeDasharray="4 2" />
-                <Line type="monotone" dataKey="Прибыль"  stroke="#06b6d4" strokeWidth={2} dot={{ r: 3, fill: "#06b6d4", strokeWidth: 0 }} />
+                <Tooltip contentStyle={{ background: t.surface, border: `1px solid ${t.border}`, borderRadius: 10, fontSize: 12 }} labelStyle={{ color: t.text }}
+                  formatter={(v: number) => v.toLocaleString("ru-RU") + " ₽"} cursor={{ stroke: t.border, strokeWidth: 1 }} />
+                {(revenueMode === "revenue" || revenueMode === "all") && <Line key="rev" type="monotone" dataKey="revenue" stroke="#10b981" strokeWidth={2.5} dot={{ fill: "#10b981", r: 3, strokeWidth: 0 }} name="Выручка" />}
+                {(revenueMode === "costs"   || revenueMode === "all") && <Line key="cos" type="monotone" dataKey="costs"   stroke="#ef4444" strokeWidth={2}   dot={{ fill: "#ef4444", r: 3, strokeWidth: 0 }} name="Затраты" strokeDasharray="4 2" />}
+                {(revenueMode === "profit"  || revenueMode === "all") && <Line key="pro" type="monotone" dataKey="profit"  stroke="#f59e0b" strokeWidth={2}   dot={{ fill: "#f59e0b", r: 3, strokeWidth: 0 }} name="Прибыль" />}
+                {revenueMode === "all" && <Legend wrapperStyle={{ fontSize: 11, paddingTop: 6 }} formatter={v => <span style={{ color: t.textSub }}>{v}</span>} />}
               </LineChart>
             </ResponsiveContainer>
           ) : (
