@@ -252,23 +252,34 @@ export default function CrmAnalytics() {
             </div>
           </div>
 
-          {/* Распределение по статусам */}
+          {/* Распределение по статусам — bar chart */}
           {statusPie.length > 0 && (
             <div className="rounded-2xl p-5" style={{ background: t.surface, border: `1px solid ${t.border}` }}>
               <div className="flex items-center gap-2 mb-4">
                 <div className="w-1 h-4 rounded-full bg-violet-500" />
                 <span className="text-sm font-bold" style={{ color: t.text }}>Распределение по статусам</span>
               </div>
-              <div className="flex flex-wrap gap-2">
-                {statusPie.map(sp => (
-                  <div key={sp.name} className="flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-medium"
-                    style={{ background: sp.color + "12", border: `1px solid ${sp.color}25` }}>
-                    <div className="w-2 h-2 rounded-full" style={{ background: sp.color }} />
-                    <span style={{ color: sp.color }}>{sp.name}</span>
-                    <span className="font-bold" style={{ color: t.text }}>{sp.value}</span>
-                  </div>
-                ))}
-              </div>
+              <ResponsiveContainer width="100%" height={200}>
+                <BarChart data={statusPie} margin={{ top: 5, right: 5, left: -20, bottom: 40 }}>
+                  <XAxis
+                    dataKey="name"
+                    tick={{ fontSize: 10, fill: t.textMute }}
+                    angle={-35}
+                    textAnchor="end"
+                    interval={0}
+                  />
+                  <YAxis tick={{ fontSize: 10, fill: t.textMute }} allowDecimals={false} />
+                  <Tooltip
+                    contentStyle={tooltipStyle}
+                    formatter={(v: number) => [v, "Клиентов"]}
+                  />
+                  <Bar dataKey="value" name="Клиентов" radius={[4, 4, 0, 0]}>
+                    {statusPie.map((sp, i) => (
+                      <Cell key={i} fill={sp.color} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
             </div>
           )}
         </div>
