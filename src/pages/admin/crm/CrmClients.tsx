@@ -12,6 +12,7 @@ const EMPTY_FORM = { client_name: "", phone: "", status: "new", address: "", not
 export default function CrmClients() {
   const t = useTheme();
   const [clients, setClients]   = useState<Client[]>([]);
+  const [clientOrders, setClientOrders] = useState<Client[]>([]);
   const [loading, setLoading]   = useState(true);
   const [selected, setSelected] = useState<Client | null>(null);
   const [showAdd, setShowAdd]   = useState(false);
@@ -172,13 +173,20 @@ export default function CrmClients() {
         activeFilters={activeFilters}
         onToggleAll={toggleAll}
         onToggleOne={toggleOne}
-        onSelect={setSelected}
+        onSelect={c => {
+          const phone = (c.phone || "").trim().replace(/\D/g, "");
+          const orders = phone
+            ? clients.filter(x => (x.phone || "").trim().replace(/\D/g, "") === phone)
+            : [c];
+          setClientOrders(orders);
+          setSelected(c);
+        }}
         onClearFilters={clearFilters}
       />
 
       {/* Drawer */}
       {selected && (
-        <ClientDrawer client={selected} onClose={() => setSelected(null)}
+        <ClientDrawer client={selected} allClientOrders={clientOrders} onClose={() => setSelected(null)}
           onUpdated={() => { load(); }}
           onDeleted={() => { setSelected(null); load(); }} />
       )}

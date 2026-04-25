@@ -6,6 +6,7 @@ import EstimateEditor from "./EstimateEditor";
 
 interface Props {
   client: Client;
+  allClientOrders: Client[];
   onClose: () => void;
   onUpdated: () => void;
   onDeleted: () => void;
@@ -185,12 +186,12 @@ function StatusSelector({ status, onSave }: { status: string; onSave: (s: string
   );
 }
 
-export default function ClientDrawer({ client, onClose, onUpdated, onDeleted }: Props) {
+export default function ClientDrawer({ client, allClientOrders, onClose, onUpdated, onDeleted }: Props) {
   const t = useTheme();
   const [data, setData] = useState<Client>(client);
   const [saving, setSaving] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
-  const [drawerTab, setDrawerTab] = useState<"info" | "estimate">("info");
+  const [drawerTab, setDrawerTab] = useState<"info" | "orders" | "estimate">("info");
 
   const save = async (patch: Partial<Client>) => {
     const next = { ...data, ...patch };
@@ -249,6 +250,7 @@ export default function ClientDrawer({ client, onClose, onUpdated, onDeleted }: 
         <div className="flex px-5 gap-1 pt-3" style={{ borderBottom: `1px solid ${t.border}` }}>
           {([
             { id: "info",     label: "Заявка",  icon: "User" },
+            { id: "orders",   label: `История (${allClientOrders.length})`, icon: "ClipboardList" },
             { id: "estimate", label: "Смета",   icon: "FileSpreadsheet" },
           ] as const).map(tab => (
             <button key={tab.id} onClick={() => setDrawerTab(tab.id)}
@@ -265,6 +267,45 @@ export default function ClientDrawer({ client, onClose, onUpdated, onDeleted }: 
         <div className="flex-1 overflow-y-auto px-5 py-3">
 
           {drawerTab === "estimate" && <EstimateEditor chatId={data.id} />}
+
+          {drawerTab === "orders" && (
+            <div className="space-y-2 py-2">
+              {allClientOrders.length === 0 && (
+                <div className="text-sm text-center py-10" style={{ color: t.textMute }}>Нет заявок</div>
+              )}
+              {[...allClientOrders].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()).map(order => (
+                <button
+                  key={order.id}
+                  onClick={() => { setData(order); setDrawerTab("info"); }}
+                  className="w-full text-left rounded-xl p-3 transition"
+                  style={{
+                    background: data.id === order.id ? "#7c3aed18" : t.surface2,
+                    border: `1px solid ${data.id === order.id ? "#7c3aed50" : t.border}`,
+                  }}>
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-xs px-2 py-0.5 rounded-md font-medium"
+                      style={{ background: STATUS_COLORS[order.status] + "20", color: STATUS_COLORS[order.status] }}>
+                      {STATUS_LABELS[order.status] || order.status}
+                    </span>
+                    <span className="text-[11px]" style={{ color: t.textMute }}>
+                      {new Date(order.created_at).toLocaleDateString("ru-RU", { day: "numeric", month: "short", year: "numeric" })}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-xs truncate" style={{ color: t.textSub }}>{order.address || "Адрес не указан"}</span>
+                    {order.contract_sum ? (
+                      <span className="text-xs font-semibold whitespace-nowrap" style={{ color: t.text }}>
+                        {Number(order.contract_sum).toLocaleString("ru-RU")} ₽
+                      </span>
+                    ) : null}
+                  </div>
+                  {data.id === order.id && (
+                    <div className="text-[10px] mt-1 font-medium" style={{ color: "#7c3aed" }}>Открыта сейчас</div>
+                  )}
+                </button>
+              ))}
+            </div>
+          )}
 
           {drawerTab === "info" && <>
           {/* Статус */}
