@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { crmFetch, STATUS_LABELS, STATUS_COLORS, Client } from "./crmApi";
 import Icon from "@/components/ui/icon";
 import { useTheme } from "./themeContext";
@@ -133,6 +133,18 @@ function KanbanCard({ client, onOpen, onNextStep, dragging }: {
   );
 }
 
+const DEFAULT_WIDTH = 240;
+const MIN_WIDTH = 160;
+const MAX_WIDTH = 480;
+const LS_KEY = "kanban_col_widths";
+
+function loadWidths(): Record<string, number> {
+  try { return JSON.parse(localStorage.getItem(LS_KEY) || "{}"); } catch { return {}; }
+}
+function saveWidths(w: Record<string, number>) {
+  localStorage.setItem(LS_KEY, JSON.stringify(w));
+}
+
 export default function CrmKanban() {
   const t = useTheme();
   const [clients, setClients]       = useState<Client[]>([]);
@@ -142,6 +154,38 @@ export default function CrmKanban() {
   const [dragOverCol, setDragOverCol] = useState<ColId | null>(null);
   const [search, setSearch]         = useState("");
   const dragRef = useRef<Client | null>(null);
+
+  // Ширины колонок
+  const [colWidths, setColWidths] = useState<Record<string, number>>(loadWidths);
+  const resizeRef = useRef<{ colId: string; startX: number; startW: number } | null>(null);
+
+  const getWidth = (colId: string) => colWidths[colId] ?? DEFAULT_WIDTH;
+
+  const startResize = useCallback((e: React.MouseEvent, colId: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    resizeRef.current = { colId, startX: e.clientX, startW: getWidth(colId) };
+
+    const onMove = (ev: MouseEvent) => {
+      if (!resizeRef.current) return;
+      const delta = ev.clientX - resizeRef.current.startX;
+      const newW = Math.min(MAX_WIDTH, Math.max(MIN_WIDTH, resizeRef.current.startW + delta));
+      setColWidths(prev => ({ ...prev, [resizeRef.current!.colId]: newW }));
+    };
+    const onUp = () => {
+      if (resizeRef.current) {
+        setColWidths(prev => {
+          saveWidths(prev);
+          return prev;
+        });
+        resizeRef.current = null;
+      }
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+    };
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
+  }, [colWidths]); // eslint-disable-line
 
   const load = () => {
     crmFetch("clients").then(d => {
@@ -203,81 +247,116 @@ export default function CrmKanban() {
             {clients.length} клиентов · перетащи карточку для смены этапа
           </p>
         </div>
-        <div className="relative w-64">
-          <Icon name="Search" size={13} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: t.textMute }} />
-          <input value={search} onChange={e => setSearch(e.target.value)}
-            placeholder="Поиск по имени, телефону..."
-            className="w-full rounded-xl pl-9 pr-4 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-violet-500/40"
-            style={{ background: t.surface, border: `1px solid ${t.border}`, color: t.text }} />
+        <div className="flex items-center gap-2">
+          {Object.keys(colWidths).length > 0 && (
+            <button
+              onClick={() => { setColWidths({}); localStorage.removeItem(LS_KEY); }}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs transition"
+              style={{ background: t.surface2, border: `1px solid ${t.border}`, color: t.textMute }}
+              title="Сбросить ширины колонок">
+              <Icon name="RotateCcw" size={12} /> Сбросить
+            </button>
+          )}
+          <div className="relative w-64">
+            <Icon name="Search" size={13} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: t.textMute }} />
+            <input value={search} onChange={e => setSearch(e.target.value)}
+              placeholder="Поиск по имени, телефону..."
+              className="w-full rounded-xl pl-9 pr-4 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-violet-500/40"
+              style={{ background: t.surface, border: `1px solid ${t.border}`, color: t.text }} />
+          </div>
         </div>
       </div>
 
       {/* Колонки */}
-      <div className="flex gap-3 overflow-x-auto pb-4" style={{ minHeight: 520 }}>
-        {KANBAN_COLS.map(col => {
+      <div className="flex overflow-x-auto pb-4 select-none" style={{ minHeight: 520, gap: 0 }}>
+        {KANBAN_COLS.map((col, colIdx) => {
           const colClients = clientsForCol(col);
           const revenue = colClients.reduce((s, c) => s + (c.contract_sum || 0), 0);
           const isOver = dragOverCol === col.id;
+          const w = getWidth(col.id);
 
           return (
-            <div key={col.id}
-              className="flex-shrink-0 flex flex-col rounded-2xl transition-all"
-              style={{ width: 240, minWidth: 220 }}
-              onDragOver={e => onDragOver(e, col.id)}
-              onDragLeave={() => setDragOverCol(null)}
-              onDrop={() => onDrop(col.id)}>
-
-              {/* Заголовок колонки */}
-              <div className="flex items-center justify-between px-3 py-2.5 rounded-t-2xl"
-                style={{ background: col.color + "18", borderBottom: `2px solid ${col.color}` }}>
-                <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 rounded-full" style={{ background: col.color }} />
-                  <span className="text-xs font-bold" style={{ color: t.text }}>{col.label}</span>
-                  <span className="text-xs font-bold px-1.5 py-0.5 rounded-md"
-                    style={{ background: col.color + "25", color: col.color }}>{colClients.length}</span>
-                </div>
-                {revenue > 0 && (
-                  <span className="text-[10px] font-semibold" style={{ color: col.color + "bb" }}>
-                    {revenue.toLocaleString("ru-RU")} ₽
-                  </span>
-                )}
-              </div>
-
-              {/* Карточки */}
+            <div key={col.id} className="flex flex-shrink-0" style={{ width: w }}>
+              {/* Колонка */}
               <div
-                className="flex-1 p-2 space-y-2 rounded-b-2xl transition-all"
-                style={{
-                  background: isOver ? col.color + "08" : t.surface2,
-                  border: isOver ? `2px dashed ${col.color}60` : `2px solid transparent`,
-                  borderTop: "none",
-                }}>
-                {colClients.map(c => (
-                  <div key={c.id}
-                    onDragStart={() => onDragStart(c)}
-                    onDragEnd={() => { setDragging(null); setDragOverCol(null); }}>
-                    <KanbanCard
-                      client={c}
-                      dragging={dragging?.id === c.id}
-                      onOpen={() => setSelected(c)}
-                      onNextStep={handleNextStep}
-                    />
-                  </div>
-                ))}
+                className="flex flex-col rounded-2xl transition-all"
+                style={{ width: "100%", margin: "0 6px" }}
+                onDragOver={e => onDragOver(e, col.id)}
+                onDragLeave={() => setDragOverCol(null)}
+                onDrop={() => onDrop(col.id)}>
 
-                {colClients.length === 0 && !isOver && (
-                  <div className="flex flex-col items-center justify-center py-8 gap-2 opacity-40">
-                    <Icon name="Inbox" size={20} style={{ color: t.textMute }} />
-                    <span className="text-xs" style={{ color: t.textMute }}>Нет клиентов</span>
+                {/* Заголовок */}
+                <div className="flex items-center justify-between px-3 py-2.5 rounded-t-2xl"
+                  style={{ background: col.color + "18", borderBottom: `2px solid ${col.color}` }}>
+                  <div className="flex items-center gap-2 min-w-0">
+                    <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: col.color }} />
+                    <span className="text-xs font-bold truncate" style={{ color: t.text }}>{col.label}</span>
+                    <span className="text-xs font-bold px-1.5 py-0.5 rounded-md flex-shrink-0"
+                      style={{ background: col.color + "25", color: col.color }}>{colClients.length}</span>
                   </div>
-                )}
+                  {revenue > 0 && w > 180 && (
+                    <span className="text-[10px] font-semibold flex-shrink-0 ml-1" style={{ color: col.color + "bb" }}>
+                      {revenue.toLocaleString("ru-RU")} ₽
+                    </span>
+                  )}
+                </div>
 
-                {isOver && (
-                  <div className="rounded-xl border-2 border-dashed py-6 flex items-center justify-center"
-                    style={{ borderColor: col.color, background: col.color + "08" }}>
-                    <span className="text-xs font-semibold" style={{ color: col.color }}>Переместить сюда</span>
-                  </div>
-                )}
+                {/* Карточки */}
+                <div
+                  className="flex-1 p-2 space-y-2 rounded-b-2xl transition-all"
+                  style={{
+                    background: isOver ? col.color + "08" : t.surface2,
+                    border: isOver ? `2px dashed ${col.color}60` : `2px solid transparent`,
+                    borderTop: "none",
+                  }}>
+                  {colClients.map(c => (
+                    <div key={c.id}
+                      onDragStart={() => onDragStart(c)}
+                      onDragEnd={() => { setDragging(null); setDragOverCol(null); }}>
+                      <KanbanCard
+                        client={c}
+                        dragging={dragging?.id === c.id}
+                        onOpen={() => setSelected(c)}
+                        onNextStep={handleNextStep}
+                      />
+                    </div>
+                  ))}
+
+                  {colClients.length === 0 && !isOver && (
+                    <div className="flex flex-col items-center justify-center py-8 gap-2 opacity-40">
+                      <Icon name="Inbox" size={20} style={{ color: t.textMute }} />
+                      <span className="text-xs" style={{ color: t.textMute }}>Нет клиентов</span>
+                    </div>
+                  )}
+
+                  {isOver && (
+                    <div className="rounded-xl border-2 border-dashed py-6 flex items-center justify-center"
+                      style={{ borderColor: col.color, background: col.color + "08" }}>
+                      <span className="text-xs font-semibold" style={{ color: col.color }}>Переместить сюда</span>
+                    </div>
+                  )}
+                </div>
               </div>
+
+              {/* Ручка resize — между колонками */}
+              {colIdx < KANBAN_COLS.length - 1 && (
+                <div
+                  className="flex-shrink-0 flex items-center justify-center group"
+                  style={{ width: 8, cursor: "col-resize", zIndex: 10 }}
+                  onMouseDown={e => startResize(e, col.id)}>
+                  <div
+                    className="rounded-full transition-all group-hover:opacity-100 opacity-0"
+                    style={{
+                      width: 3,
+                      height: 40,
+                      background: t.border,
+                      transition: "opacity 0.15s, background 0.15s",
+                    }}
+                    onMouseEnter={e => (e.currentTarget.style.background = "#7c3aed")}
+                    onMouseLeave={e => (e.currentTarget.style.background = t.border)}
+                  />
+                </div>
+              )}
             </div>
           );
         })}
