@@ -16,14 +16,20 @@ export function InlineField({ label, value, onSave, type = "text", placeholder =
   const [val, setVal] = useState(String(value ?? ""));
   const ref = useRef<HTMLInputElement>(null);
 
-  // Синхронизируем val с value когда не редактируем (данные пришли с сервера)
+  // Только когда значение меняется СНАРУЖИ (другой сейв) — обновляем отображение, но не во время ввода
+  const prevValue = useRef(value);
   useEffect(() => {
-    if (!editing) setVal(String(value ?? ""));
-  }, [value, editing]);
+    if (!editing && prevValue.current !== value) {
+      prevValue.current = value;
+      setVal(String(value ?? ""));
+    }
+    if (!editing) prevValue.current = value;
+  }, [value]); // eslint-disable-line
 
   const commit = () => {
+    const currentVal = val;
     setEditing(false);
-    if (val !== String(value ?? "")) onSave(val);
+    if (currentVal !== String(value ?? "")) onSave(currentVal);
   };
 
   const displayVal = () => {
