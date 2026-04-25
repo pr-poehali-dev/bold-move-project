@@ -261,11 +261,6 @@ export function DrawerColumns(props: ColumnsProps) {
             </div>
           )}
           {dropOverCol !== 0 && <div style={{ height: 0 }} {...makeColDropZone(0)} />}
-          <button onClick={() => onAddBlock(0)}
-            className="w-full flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-medium transition border-2 border-dashed hover:border-violet-500/40 hover:text-violet-400"
-            style={{ borderColor: t.border, color: "#a3a3a3" }}>
-            <Icon name="Plus" size={12} /> Блок в левую
-          </button>
         </div>
 
         {/* Правый столбец */}
@@ -283,22 +278,31 @@ export function DrawerColumns(props: ColumnsProps) {
             </div>
           )}
           {dropOverCol !== 1 && <div style={{ height: 0 }} {...makeColDropZone(1)} />}
-          <button onClick={() => onAddBlock(1)}
-            className="w-full flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-medium transition border-2 border-dashed hover:border-violet-500/40 hover:text-violet-400"
-            style={{ borderColor: t.border, color: "#a3a3a3" }}>
-            <Icon name="Plus" size={12} /> Блок в правую
-          </button>
         </div>
       </div>
 
-      {/* Wide-блоки — на всю ширину */}
+      {/* Кнопки добавления в колонки — под блоками, над заметками */}
+      <div className="grid grid-cols-[1fr_1fr] gap-3">
+        <button onClick={() => onAddBlock(0)}
+          className="flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-medium transition border-2 border-dashed hover:border-violet-500/40 hover:text-violet-400"
+          style={{ borderColor: t.border, color: "#a3a3a3" }}>
+          <Icon name="Plus" size={12} /> Блок в левую
+        </button>
+        <button onClick={() => onAddBlock(1)}
+          className="flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-medium transition border-2 border-dashed hover:border-violet-500/40 hover:text-violet-400"
+          style={{ borderColor: t.border, color: "#a3a3a3" }}>
+          <Icon name="Plus" size={12} /> Блок в правую
+        </button>
+      </div>
+
+      {/* Wide-блоки — на всю ширину, над кнопками */}
       {wideBlocks.map(b => (
         <DraggableBlock key={b.id} blockId={b.id} onDragStart={onDragStart} onDragOver={onDragOver} onDrop={onDrop}>
           {renderColBlock(b)}
         </DraggableBlock>
       ))}
 
-      {/* Кнопка добавить широкий блок — под всеми */}
+      {/* Кнопка добавить широкий блок — самая последняя */}
       <button onClick={() => onAddBlock("wide")}
         className="w-full flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-medium transition border-2 border-dashed hover:border-violet-500/40 hover:text-violet-400"
         style={{ borderColor: t.border, color: "#a3a3a3" }}>
