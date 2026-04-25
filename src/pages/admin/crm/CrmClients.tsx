@@ -41,20 +41,38 @@ export default function CrmClients() {
   useEffect(() => { load(); }, [filters.search, filters.statusFilter]); // eslint-disable-line
 
   // ── Клиентская фильтрация (источник + диапазон дат) ──
-  const filteredClients = clients.filter(c => {
-    if (filters.sourceFilter && (c.source || "chat") !== filters.sourceFilter) return false;
-    if (filters.dateFrom) {
-      const from = new Date(filters.dateFrom);
-      from.setHours(0,0,0,0);
-      if (new Date(c.created_at) < from) return false;
+  const filteredClients = (() => {
+    // Дедупликация по телефону: один клиент = одна строка (берём самую свежую заявку)
+    const phoneMap = new Map<string, Client>();
+    const noPhoneList: Client[] = [];
+    for (const c of clients) {
+      const key = (c.phone || "").trim().replace(/\D/g, "");
+      if (!key) {
+        noPhoneList.push(c);
+        continue;
+      }
+      const existing = phoneMap.get(key);
+      if (!existing || new Date(c.created_at) > new Date(existing.created_at)) {
+        phoneMap.set(key, c);
+      }
     }
-    if (filters.dateTo) {
-      const to = new Date(filters.dateTo);
-      to.setHours(23,59,59,999);
-      if (new Date(c.created_at) > to) return false;
-    }
-    return true;
-  });
+    const deduped = [...phoneMap.values(), ...noPhoneList];
+
+    return deduped.filter(c => {
+      if (filters.sourceFilter && (c.source || "chat") !== filters.sourceFilter) return false;
+      if (filters.dateFrom) {
+        const from = new Date(filters.dateFrom);
+        from.setHours(0,0,0,0);
+        if (new Date(c.created_at) < from) return false;
+      }
+      if (filters.dateTo) {
+        const to = new Date(filters.dateTo);
+        to.setHours(23,59,59,999);
+        if (new Date(c.created_at) > to) return false;
+      }
+      return true;
+    });
+  })();
 
   const activeFilters = [filters.statusFilter, filters.sourceFilter, filters.dateFrom, filters.dateTo].filter(Boolean).length;
   const clearFilters  = () => setFilters(f => ({ ...f, statusFilter: "", sourceFilter: "", dateFrom: "", dateTo: "" }));
