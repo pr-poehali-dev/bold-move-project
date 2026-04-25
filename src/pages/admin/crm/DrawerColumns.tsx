@@ -198,31 +198,28 @@ export function DrawerColumns(props: ColumnsProps) {
         />, "StickyNote", "Заметки", "#8b5cf6", false);
 
       case "pl": {
-        // Доходы = всё что получено / должны получить
-        const plCs    = Number(data.contract_sum)        || 0; // договор
-        const plExtra = Number(data.extra_agreement_sum) || 0; // доп. соглашение
-        const plPre   = Number(data.prepayment)          || 0; // предоплата
-        const plExt   = Number(data.extra_payment)       || 0; // доплата
+        const fmt = (n: number) => n.toLocaleString("ru-RU");
 
-        // Итого доходов = договор + доп.соглашение + предоплата + доплата
-        const plIncome = plCs + plExtra + plPre + plExt;
+        // ── ДОХОДЫ (все поля блока "Доходы") ──────────────────────────────────
+        const incomeRows: { label: string; value: number }[] = [
+          { label: "Договор",         value: Number(data.contract_sum)        || 0 },
+          { label: "Предоплата",      value: Number(data.prepayment)          || 0 },
+          { label: "Доплата",         value: Number(data.extra_payment)       || 0 },
+          { label: "Доп. соглашение", value: Number(data.extra_agreement_sum) || 0 },
+        ].filter(r => r.value > 0);
 
-        // Уже получено наличными
-        const plReceived  = plPre + plExt;
-        // Остаток = (договор + доп.согл) - получено
-        const plContractTotal = plCs + plExtra;
-        const plRemaining = plContractTotal - plReceived;
+        const plIncome = incomeRows.reduce((s, r) => s + r.value, 0);
 
-        // Затраты = материалы + замер + монтаж
-        const plMc    = Number(data.material_cost) || 0;
-        const plMec   = Number(data.measure_cost)  || 0;
-        const plIc    = Number(data.install_cost)  || 0;
-        const plCosts = plMc + plMec + plIc;
+        // ── ЗАТРАТЫ (все поля блока "Затраты") ────────────────────────────────
+        const costRows: { label: string; value: number }[] = [
+          { label: "Материалы", value: Number(data.material_cost) || 0 },
+          { label: "Замер",     value: Number(data.measure_cost)  || 0 },
+          { label: "Монтаж",    value: Number(data.install_cost)  || 0 },
+        ].filter(r => r.value > 0);
 
-        // Прибыль = все доходы − затраты
+        const plCosts  = costRows.reduce((s, r) => s + r.value, 0);
         const plProfit = plIncome - plCosts;
 
-        const fmt = (n: number) => n.toLocaleString("ru-RU");
         return (
           <div key="pl" className="rounded-2xl overflow-hidden group/section" style={{ opacity: isHidden ? 0.45 : 1, border: `1px solid ${t.border}` }}>
             <div className="flex items-center gap-2 px-4 py-2.5" style={{ background: "linear-gradient(135deg,#7c3aed15,#10b98112)", borderBottom: isHidden ? "none" : `1px solid #7c3aed30` }}>
@@ -233,28 +230,50 @@ export function DrawerColumns(props: ColumnsProps) {
               </button>
             </div>
             {!isHidden && (
-              <div className="px-4 py-3 space-y-2 text-sm" style={{ background: "linear-gradient(135deg,#7c3aed08,#10b98108)" }}>
-                {/* Договор */}
-                {plCs > 0
-                  ? <div className="flex justify-between"><span style={{ color: "#a3a3a3" }}>Договор</span><span className="font-bold text-white">{fmt(plCs)} ₽</span></div>
-                  : <div className="flex justify-between"><span style={{ color: "#a3a3a3" }}>Договор</span><span className="text-xs" style={{ color: "#a3a3a3" }}>не указан</span></div>}
-                {plExtra > 0 && <div className="flex justify-between"><span style={{ color: "#a3a3a3" }}>Доп. соглашение</span><span className="font-semibold text-cyan-400">+{fmt(plExtra)} ₽</span></div>}
-                {plExtra > 0 && <div className="flex justify-between"><span style={{ color: "#a3a3a3" }}>Итого по договору</span><span className="font-bold text-white">{fmt(plTotal)} ₽</span></div>}
+              <div className="px-4 py-3 text-sm" style={{ background: "linear-gradient(135deg,#7c3aed08,#10b98108)" }}>
 
-                {/* Разделитель */}
-                {(plPre > 0 || plExt > 0) && <div style={{ borderTop: `1px solid ${t.border2}`, marginTop: 4, paddingTop: 4 }} />}
-
-                {/* Платежи */}
-                {plPre > 0 && <div className="flex justify-between"><span style={{ color: "#a3a3a3" }}>Предоплата</span><span className="font-semibold text-emerald-400">+{fmt(plPre)} ₽</span></div>}
-                {plExt > 0 && <div className="flex justify-between"><span style={{ color: "#a3a3a3" }}>Доплата</span><span className="font-semibold text-emerald-400">+{fmt(plExt)} ₽</span></div>}
-                {plReceived > 0 && <div className="flex justify-between"><span style={{ color: "#a3a3a3" }}>Итого получено</span><span className="font-semibold text-emerald-300">+{fmt(plReceived)} ₽</span></div>}
-                {plTotal > 0 && plRemaining > 0 && <div className="flex justify-between"><span style={{ color: "#a3a3a3" }}>Остаток</span><span className="font-semibold text-amber-400">{fmt(plRemaining)} ₽</span></div>}
+                {/* Доходы */}
+                <div className="text-[9px] uppercase tracking-wider font-semibold mb-1.5" style={{ color: "#a3a3a3" }}>Доходы</div>
+                <div className="space-y-1.5 mb-3">
+                  {incomeRows.length === 0
+                    ? <div className="flex justify-between"><span style={{ color: "#a3a3a3" }}>Договор</span><span style={{ color: "#a3a3a3" }} className="text-xs">не указан</span></div>
+                    : incomeRows.map(r => (
+                      <div key={r.label} className="flex justify-between">
+                        <span style={{ color: "#a3a3a3" }}>{r.label}</span>
+                        <span className="font-semibold text-emerald-400">+{fmt(r.value)} ₽</span>
+                      </div>
+                    ))}
+                  {incomeRows.length > 1 && (
+                    <div className="flex justify-between pt-1" style={{ borderTop: `1px solid ${t.border2}` }}>
+                      <span className="font-semibold text-white">Итого доходы</span>
+                      <span className="font-bold text-white">+{fmt(plIncome)} ₽</span>
+                    </div>
+                  )}
+                </div>
 
                 {/* Затраты */}
-                {plCosts > 0 && <><div style={{ borderTop: `1px solid ${t.border2}`, marginTop: 4, paddingTop: 4 }} /><div className="flex justify-between"><span style={{ color: "#a3a3a3" }}>Затраты</span><span className="font-semibold text-red-400">−{fmt(plCosts)} ₽</span></div></>}
+                {plCosts > 0 && (
+                  <>
+                    <div className="text-[9px] uppercase tracking-wider font-semibold mb-1.5" style={{ color: "#a3a3a3" }}>Затраты</div>
+                    <div className="space-y-1.5 mb-3">
+                      {costRows.map(r => (
+                        <div key={r.label} className="flex justify-between">
+                          <span style={{ color: "#a3a3a3" }}>{r.label}</span>
+                          <span className="font-semibold text-red-400">−{fmt(r.value)} ₽</span>
+                        </div>
+                      ))}
+                      {costRows.length > 1 && (
+                        <div className="flex justify-between pt-1" style={{ borderTop: `1px solid ${t.border2}` }}>
+                          <span className="font-semibold text-white">Итого затраты</span>
+                          <span className="font-bold text-red-400">−{fmt(plCosts)} ₽</span>
+                        </div>
+                      )}
+                    </div>
+                  </>
+                )}
 
                 {/* Прибыль */}
-                <div className="flex justify-between pt-2 mt-1" style={{ borderTop: `1px solid ${t.border}` }}>
+                <div className="flex justify-between pt-2" style={{ borderTop: `1px solid ${t.border}` }}>
                   <span className="font-bold text-white">Прибыль</span>
                   <span className={`text-lg font-black ${plProfit >= 0 ? "text-emerald-400" : "text-red-400"}`}>
                     {plProfit >= 0 ? "+" : ""}{fmt(plProfit)} ₽
