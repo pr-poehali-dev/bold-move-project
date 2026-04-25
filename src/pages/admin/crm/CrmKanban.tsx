@@ -160,7 +160,7 @@ export default function CrmKanban() {
             return phone ? clients.filter(c => (c.phone || "").trim().replace(/\D/g, "") === phone) : [selected];
           })()}
           onClose={() => setSelected(null)}
-          onUpdated={() => { load(); setSelected(null); }}
+          onUpdated={() => { load(); }}
           onDeleted={() => { setSelected(null); load(); }}
         />
       )}

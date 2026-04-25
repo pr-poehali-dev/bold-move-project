@@ -22,11 +22,12 @@ export default function ClientDrawer({ client, allClientOrders, onClose, onUpdat
   const [comments, setComments]       = useState<{ text: string; date: string }[]>([]);
 
   const save = async (patch: Partial<Client>) => {
-    const next = { ...data, ...patch };
-    setData(next);
+    // Обновляем локально сразу — используем функцию чтобы не было stale closure
+    setData(prev => ({ ...prev, ...patch }));
     setSaving(true);
     await crmFetch("clients", { method: "PUT", body: JSON.stringify(patch) }, { id: String(data.id) });
     setSaving(false);
+    onUpdated(); // обновляем список клиентов в фоне, дровер не закрывается
   };
 
   const handleDelete = async () => {

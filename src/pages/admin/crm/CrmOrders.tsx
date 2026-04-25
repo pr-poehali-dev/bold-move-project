@@ -184,7 +184,7 @@ export default function CrmOrders() {
             return phone ? allClients.filter(c => (c.phone || "").trim().replace(/\D/g, "") === phone) : [selected];
           })()}
           onClose={() => setSelected(null)}
-          onUpdated={() => { load(); setSelected(null); }}
+          onUpdated={() => { load(); }}
           onDeleted={() => { setSelected(null); load(); }}
         />
       )}

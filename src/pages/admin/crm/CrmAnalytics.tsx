@@ -129,7 +129,6 @@ export default function CrmAnalytics() {
             crmFetch("clients").then((d: unknown) => {
               if (Array.isArray(d)) setAllClients((d as Client[]).filter((c: Client) => c.status !== "deleted"));
             }).catch(() => {});
-            setDrawerClient(null);
           }}
           onDeleted={() => {
             setAllClients(prev => prev.filter(c => c.id !== drawerClient.id));
