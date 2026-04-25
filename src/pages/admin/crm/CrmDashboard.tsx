@@ -90,15 +90,25 @@ export default function CrmDashboard() {
 
   useEffect(() => {
     crmFetch("stats")
-      .then(d => { if (d && !d.error) setStats(d); setLoading(false); })
+      .then(d => {
+        if (d && typeof d === "object" && !("error" in (d as object)) && "total_all" in (d as object)) {
+          setStats(d as Stats);
+        }
+        setLoading(false);
+      })
       .catch(() => setLoading(false));
-    crmFetch("clients").then((d: Client[] | unknown) => {
+    crmFetch("clients").then((d: unknown) => {
       if (Array.isArray(d)) setRecentClients((d as Client[]).filter((c: Client) => c.status !== "deleted").slice(0, 8));
     }).catch(() => {});
   }, []);
 
   if (loading) return <div className="flex items-center justify-center h-64"><div className="w-7 h-7 border-2 border-violet-500 border-t-transparent rounded-full animate-spin" /></div>;
-  if (!stats) return null;
+  if (!stats) return (
+    <div className="flex flex-col items-center justify-center h-64 gap-3">
+      <Icon name="AlertCircle" size={32} className="text-white/20" />
+      <div className="text-white/40 text-sm">Нет данных. Попробуй выйти и войти заново.</div>
+    </div>
+  );
 
   const convMeasure  = stats.total_all     > 0 ? Math.round((stats.went_measure  / stats.total_all)     * 100) : 0;
   const convContract = stats.went_measure  > 0 ? Math.round((stats.went_contract / stats.went_measure)  * 100) : 0;

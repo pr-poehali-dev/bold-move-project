@@ -25,11 +25,7 @@ const TABS: { id: AdminTab; label: string; icon: string }[] = [
 ];
 
 async function initCrmToken(): Promise<void> {
-  const authToken = localStorage.getItem("mp_user_token");
-  if (authToken) {
-    setCrmToken(authToken);
-    return;
-  }
+  // Всегда получаем свежий токен через логин
   try {
     const res  = await fetch(`${AUTH_URL}?action=login`, {
       method: "POST",
@@ -37,7 +33,10 @@ async function initCrmToken(): Promise<void> {
       body: JSON.stringify({ email: "19.jeka.94@gmail.com", password: "Sdauxbasstre228" }),
     });
     const data = await res.json();
-    if (data.token) { localStorage.setItem("mp_user_token", data.token); setCrmToken(data.token); }
+    if (data.token) {
+      localStorage.setItem("mp_user_token", data.token);
+      setCrmToken(data.token);
+    }
   } catch { /* продолжаем без токена */ }
 }
 

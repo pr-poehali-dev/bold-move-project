@@ -5,8 +5,22 @@ const BASE = (func2url as Record<string, string>)["crm-manager"];
 // Токен пробрасывается из AuthContext через этот setter
 let _authToken: string | null = null;
 export function setCrmToken(t: string | null) { _authToken = t; }
+export function getCrmToken() { return _authToken; }
 
-export function crmFetch(resource: string, opts?: RequestInit, extra?: Record<string, string>) {
+function waitForToken(ms = 3000): Promise<void> {
+  return new Promise(resolve => {
+    if (_authToken) { resolve(); return; }
+    const start = Date.now();
+    const check = () => {
+      if (_authToken || Date.now() - start > ms) { resolve(); return; }
+      setTimeout(check, 100);
+    };
+    check();
+  });
+}
+
+export async function crmFetch(resource: string, opts?: RequestInit, extra?: Record<string, string>): Promise<unknown> {
+  await waitForToken();
   let url = `${BASE}?r=${resource}`;
   if (extra) {
     Object.entries(extra).forEach(([k, v]) => { url += `&${k}=${encodeURIComponent(v)}`; });
