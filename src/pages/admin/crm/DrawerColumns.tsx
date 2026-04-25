@@ -33,8 +33,7 @@ interface ColumnsProps {
   onDragOver: (e: React.DragEvent, id: BlockId) => void;
   onDrop: (targetId: BlockId) => void;
   onDropToCol: (col: 0 | 1) => void;
-  onAddBlockLeft: () => void;
-  onAddBlockRight: () => void;
+  onAddBlock: (col: 0 | 1 | "wide") => void;
   onReset: () => void;
 }
 
@@ -42,7 +41,7 @@ export function DrawerColumns(props: ColumnsProps) {
   const {
     data, setData, client, save, blocks, hiddenBlocks, editingBlock, customBlocks,
     customRowVals, toggleHidden, setEditingBlock, saveWithLog, logAction, setCustomRowVals,
-    deleteCustomBlock, onDragStart, onDragOver, onDrop, onDropToCol, onAddBlockLeft, onAddBlockRight,
+    deleteCustomBlock, onDragStart, onDragOver, onDrop, onDropToCol, onAddBlock,
   } = props;
   const t = useTheme();
 
@@ -244,8 +243,9 @@ export function DrawerColumns(props: ColumnsProps) {
 
   return (
     <div className="flex flex-col gap-3">
-      {/* Двухколоночная сетка для обычных блоков */}
-      <div className="grid grid-cols-[1fr_1fr] gap-3 items-start">
+
+      {/* Двухколоночная сетка — выровненные блоки */}
+      <div className="grid grid-cols-[1fr_1fr] gap-3">
         {/* Левый столбец */}
         <div className="flex flex-col gap-3">
           {col0Narrow.map(b => (
@@ -254,17 +254,17 @@ export function DrawerColumns(props: ColumnsProps) {
             </DraggableBlock>
           ))}
           {dropOverCol === 0 && (
-            <div className="rounded-xl flex items-center justify-center py-3 transition-all"
+            <div className="rounded-xl flex items-center justify-center py-3"
               style={{ border: `2px dashed #7c3aed80`, background: "#7c3aed08" }}
               {...makeColDropZone(0)}>
               <span className="text-xs text-violet-400">Перетащи сюда</span>
             </div>
           )}
           {dropOverCol !== 0 && <div style={{ height: 0 }} {...makeColDropZone(0)} />}
-          <button onClick={onAddBlockLeft}
-            className="w-full flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-medium transition border-2 border-dashed hover:border-violet-500/40 hover:text-violet-400"
+          <button onClick={() => onAddBlock(0)}
+            className="w-full flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-medium transition border-2 border-dashed hover:border-violet-500/40 hover:text-violet-400"
             style={{ borderColor: t.border, color: "#a3a3a3" }}>
-            <Icon name="Plus" size={13} /> Добавить блок
+            <Icon name="Plus" size={12} /> Блок в левую
           </button>
         </div>
 
@@ -276,17 +276,17 @@ export function DrawerColumns(props: ColumnsProps) {
             </DraggableBlock>
           ))}
           {dropOverCol === 1 && (
-            <div className="rounded-xl flex items-center justify-center py-3 transition-all"
+            <div className="rounded-xl flex items-center justify-center py-3"
               style={{ border: `2px dashed #7c3aed80`, background: "#7c3aed08" }}
               {...makeColDropZone(1)}>
               <span className="text-xs text-violet-400">Перетащи сюда</span>
             </div>
           )}
           {dropOverCol !== 1 && <div style={{ height: 0 }} {...makeColDropZone(1)} />}
-          <button onClick={onAddBlockRight}
-            className="w-full flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-medium transition border-2 border-dashed hover:border-violet-500/40 hover:text-violet-400"
+          <button onClick={() => onAddBlock(1)}
+            className="w-full flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-medium transition border-2 border-dashed hover:border-violet-500/40 hover:text-violet-400"
             style={{ borderColor: t.border, color: "#a3a3a3" }}>
-            <Icon name="Plus" size={13} /> Добавить блок
+            <Icon name="Plus" size={12} /> Блок в правую
           </button>
         </div>
       </div>
@@ -297,6 +297,15 @@ export function DrawerColumns(props: ColumnsProps) {
           {renderColBlock(b)}
         </DraggableBlock>
       ))}
+
+      {/* Кнопка добавить широкий блок — под всеми */}
+      <button onClick={() => onAddBlock("wide")}
+        className="w-full flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-medium transition border-2 border-dashed hover:border-violet-500/40 hover:text-violet-400"
+        style={{ borderColor: t.border, color: "#a3a3a3" }}>
+        <Icon name="Plus" size={13} />
+        <Icon name="LayoutTemplate" size={13} />
+        Добавить широкий блок
+      </button>
     </div>
   );
 }

@@ -30,7 +30,7 @@ export default function DrawerInfoTab({ data, client, setData, save, setComments
   const [editingBlock, setEditingBlock]   = useState<BlockId | null>(null);
   const [activityLog, setActivityLog]     = useState<ActivityEvent[]>([]);
   const [customBlocks, setCustomBlocks]   = useState<CustomBlockData[]>(loadCustomBlocks);
-  const [showAddBlock, setShowAddBlock]   = useState<0 | 1 | null>(null);
+  const [showAddBlock, setShowAddBlock]   = useState<0 | 1 | "wide" | null>(null);
   const [customRowVals, setCustomRowVals] = useState<Record<string, Record<number, string>>>(() => {
     try { return JSON.parse(localStorage.getItem(`custom_block_vals_${data.id}`) || "{}"); } catch { return {}; }
   });
@@ -73,11 +73,13 @@ export default function DrawerInfoTab({ data, client, setData, save, setComments
   };
 
   // ── кастомные блоки ──────────────────────────────────────────────────────────
-  const addCustomBlock = (block: CustomBlockData, col: 0 | 1) => {
-    const updated = [...customBlocks, block];
+  const addCustomBlock = (block: CustomBlockData, target: 0 | 1 | "wide") => {
+    const isWide = target === "wide" || block.wide;
+    const col: 0 | 1 = target === "wide" ? 0 : target;
+    const updated = [...customBlocks, { ...block, wide: isWide }];
     setCustomBlocks(updated);
     saveCustomBlocks(updated);
-    const newBlocks = [...blocks, { id: block.id, col, order: 999, wide: block.wide }];
+    const newBlocks = [...blocks, { id: block.id, col, order: 999, wide: isWide }];
     setBlocks(newBlocks);
     localStorage.setItem(LS_BLOCKS, JSON.stringify(newBlocks));
     logAction("Plus", "#8b5cf6", `Блок создан: ${block.title}`);
@@ -185,8 +187,7 @@ export default function DrawerInfoTab({ data, client, setData, save, setComments
             onDragOver={onDragOver}
             onDrop={onDrop}
             onDropToCol={onDropToCol}
-            onAddBlockLeft={() => setShowAddBlock(0)}
-            onAddBlockRight={() => setShowAddBlock(1)}
+            onAddBlock={(col) => setShowAddBlock(col)}
             onReset={handleReset}
           />
         </div>
