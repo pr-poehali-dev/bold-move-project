@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef } from "react";
 import { uploadFile, DEFAULT_TAGS } from "./crmApi";
 import Icon from "@/components/ui/icon";
 import { useTheme } from "./themeContext";
@@ -13,9 +13,9 @@ export function InlineField({ label, value, onSave, type = "text", placeholder =
 }) {
   const t = useTheme();
   const [editing, setEditing] = useState(false);
-  const [localVal, setLocalVal] = useState("");
-  const savedOnSave = useRef(onSave);
-  savedOnSave.current = onSave;
+  const valRef = useRef("");       // всегда актуальное значение без stale closure
+  const onSaveRef = useRef(onSave);
+  onSaveRef.current = onSave;
 
   const displayVal = () => {
     if (!value && value !== 0) return null;
@@ -26,13 +26,14 @@ export function InlineField({ label, value, onSave, type = "text", placeholder =
   };
 
   const startEdit = () => {
-    setLocalVal(String(value ?? ""));
+    valRef.current = String(value ?? "");
     setEditing(true);
   };
 
-  const commit = (v: string) => {
+  const commit = () => {
+    const v = valRef.current;
     setEditing(false);
-    savedOnSave.current(v);
+    onSaveRef.current(v);
   };
 
   return (
@@ -41,12 +42,12 @@ export function InlineField({ label, value, onSave, type = "text", placeholder =
       {editing ? (
         <input
           type={type}
-          value={localVal}
+          defaultValue={String(value ?? "")}
           autoFocus
-          onChange={e => setLocalVal(e.target.value)}
-          onBlur={() => commit(localVal)}
+          onChange={e => { valRef.current = e.target.value; }}
+          onBlur={commit}
           onKeyDown={e => {
-            if (e.key === "Enter") { e.preventDefault(); commit(localVal); }
+            if (e.key === "Enter") { e.preventDefault(); commit(); }
             if (e.key === "Escape") setEditing(false);
           }}
           className="flex-1 rounded-lg px-2 py-1 text-sm text-right focus:outline-none"
