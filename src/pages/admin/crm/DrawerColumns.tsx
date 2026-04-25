@@ -198,25 +198,29 @@ export function DrawerColumns(props: ColumnsProps) {
         />, "StickyNote", "Заметки", "#8b5cf6", false);
 
       case "pl": {
-        // Доходная часть
-        const plCs    = Number(data.contract_sum)       || 0; // сумма договора
-        const plExtra = Number(data.extra_agreement_sum)|| 0; // доп. соглашение (увеличивает договор)
-        const plTotal = plCs + plExtra;                        // итоговая сумма к получению
+        // Доходы = всё что получено / должны получить
+        const plCs    = Number(data.contract_sum)        || 0; // договор
+        const plExtra = Number(data.extra_agreement_sum) || 0; // доп. соглашение
+        const plPre   = Number(data.prepayment)          || 0; // предоплата
+        const plExt   = Number(data.extra_payment)       || 0; // доплата
 
-        // Уже получено
-        const plPre = Number(data.prepayment)  || 0; // предоплата
-        const plExt = Number(data.extra_payment)|| 0; // доплата
-        const plReceived  = plPre + plExt;             // итого получено
-        const plRemaining = plTotal - plReceived;       // остаток к получению
+        // Итого доходов = договор + доп.соглашение + предоплата + доплата
+        const plIncome = plCs + plExtra + plPre + plExt;
 
-        // Затраты
+        // Уже получено наличными
+        const plReceived  = plPre + plExt;
+        // Остаток = (договор + доп.согл) - получено
+        const plContractTotal = plCs + plExtra;
+        const plRemaining = plContractTotal - plReceived;
+
+        // Затраты = материалы + замер + монтаж
         const plMc    = Number(data.material_cost) || 0;
         const plMec   = Number(data.measure_cost)  || 0;
         const plIc    = Number(data.install_cost)  || 0;
         const plCosts = plMc + plMec + plIc;
 
-        // Прибыль = доходы - затраты
-        const plProfit = plTotal - plCosts;
+        // Прибыль = все доходы − затраты
+        const plProfit = plIncome - plCosts;
 
         const fmt = (n: number) => n.toLocaleString("ru-RU");
         return (
