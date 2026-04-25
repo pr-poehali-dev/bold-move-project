@@ -450,6 +450,10 @@ export default function CrmDashboard() {
       {drawerClient && (
         <ClientDrawer
           client={drawerClient}
+          allClientOrders={(() => {
+            const phone = (drawerClient.phone || "").trim().replace(/\D/g, "");
+            return phone ? recentClients.filter(c => (c.phone || "").trim().replace(/\D/g, "") === phone) : [drawerClient];
+          })()}
           onClose={() => setDrawerClient(null)}
           onUpdated={() => {
             crmFetch("clients").then((d: Client[] | unknown) => {

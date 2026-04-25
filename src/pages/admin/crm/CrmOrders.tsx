@@ -20,7 +20,7 @@ const NEXT_STATUS: Record<string, string> = {
 };
 
 const NEXT_LABEL: Record<string, string> = {
-  new:               "Назначить звонок",
+  new:               "Взять в работу",
   call:              "Назначить замер",
   measure:           "Замер выполнен",
   measured:          "Подписать договор",
@@ -31,9 +31,10 @@ const NEXT_LABEL: Record<string, string> = {
   extra_paid:        "Завершить заказ",
 };
 
-// ── Группировка по 4 табам ──────────────────────────────────────────────────
+// ── Группировка по 5 табам ──────────────────────────────────────────────────
 const TABS = [
-  { id: "leads",    label: "Заявки",    icon: "Inbox",        color: "#8b5cf6", statuses: LEAD_STATUSES as readonly string[],                                   emptyText: "Новых заявок нет" },
+  { id: "leads",    label: "Заявки",    icon: "Inbox",        color: "#8b5cf6", statuses: ["new"] as readonly string[],                                         emptyText: "Новых заявок нет" },
+  { id: "working",  label: "В работе",  icon: "Zap",          color: "#a78bfa", statuses: ["call"] as readonly string[],                                        emptyText: "Нет заявок в работе" },
   { id: "measures", label: "Замеры",    icon: "Ruler",        color: "#f59e0b", statuses: ["measure","measured"] as readonly string[],                          emptyText: "Нет замеров" },
   { id: "installs", label: "Монтажи",   icon: "Wrench",       color: "#f97316", statuses: ["contract","prepaid","install_scheduled","install_done","extra_paid"] as readonly string[], emptyText: "Нет активных монтажей" },
   { id: "done",     label: "Выполнено", icon: "CheckCircle2", color: "#10b981", statuses: ["done","cancelled"] as readonly string[],                             emptyText: "Нет завершённых заказов" },
@@ -209,6 +210,60 @@ function ClientCard({ c, onClick, onNextStep }: {
   );
 }
 
+// ── Строка списка ────────────────────────────────────────────────────────────
+function ClientRow({ c, onClick, onNextStep }: { c: Client; onClick: () => void; onNextStep: (id: number, next: string) => void }) {
+  const t = useTheme();
+  const [stepping, setStepping] = useState(false);
+  const nextStatus = NEXT_STATUS[c.status];
+  const nextLabel  = NEXT_LABEL[c.status];
+
+  const handleNext = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!nextStatus || stepping) return;
+    setStepping(true);
+    await onNextStep(c.id, nextStatus);
+    setStepping(false);
+  };
+
+  return (
+    <div className="flex items-center gap-3 px-4 py-3 rounded-xl cursor-pointer hover:brightness-[1.04] transition group"
+      style={{ background: t.surface, border: `1px solid ${t.border}` }}
+      onClick={onClick}>
+      <Avatar name={c.client_name} />
+      <div className="flex-1 min-w-0 grid grid-cols-[1fr_1fr_1fr_auto] gap-3 items-center">
+        <div className="min-w-0">
+          <div className="text-sm font-semibold truncate" style={{ color: t.text }}>{c.client_name || "Без имени"}</div>
+          <div className="text-xs truncate" style={{ color: t.textMute }}>{c.phone || "—"}</div>
+        </div>
+        <div className="min-w-0">
+          <div className="text-xs truncate" style={{ color: t.textMute }}>{c.address || "—"}</div>
+          {c.area && <div className="text-xs" style={{ color: t.textMute }}>{c.area} м²</div>}
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="text-[11px] px-2 py-0.5 rounded-md font-medium"
+            style={{ background: STATUS_COLORS[c.status] + "20", color: STATUS_COLORS[c.status] }}>
+            {STATUS_LABELS[c.status] || c.status}
+          </span>
+          {c.contract_sum ? (
+            <span className="text-xs font-bold text-emerald-500">{c.contract_sum.toLocaleString("ru-RU")} ₽</span>
+          ) : null}
+        </div>
+        <div onClick={e => e.stopPropagation()}>
+          {nextStatus && c.status !== "done" && c.status !== "cancelled" && (
+            <button onClick={handleNext} disabled={stepping}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition disabled:opacity-50 whitespace-nowrap"
+              style={{ background: STATUS_COLORS[nextStatus] + "18", color: STATUS_COLORS[nextStatus] }}>
+              {stepping
+                ? <div className="w-3 h-3 border border-current border-t-transparent rounded-full animate-spin" />
+                : <><Icon name="ArrowRight" size={11} /> {nextLabel}</>}
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Главный компонент ───────────────────────────────────────────────────────
 export default function CrmOrders() {
   const t = useTheme();
@@ -217,6 +272,7 @@ export default function CrmOrders() {
   const [search, setSearch]         = useState("");
   const [activeTab, setActiveTab]   = useState<TabId>("leads");
   const [selected, setSelected]     = useState<Client | null>(null);
+  const [viewMode, setViewMode]     = useState<"grid" | "list">("grid");
 
   const load = () => {
     setLoading(true);
@@ -258,12 +314,27 @@ export default function CrmOrders() {
           <h2 className="text-xl font-bold" style={{ color: t.text }}>Воронка заказов</h2>
           <p className="text-xs mt-0.5" style={{ color: t.textMute }}>Всего клиентов: {allClients.length}</p>
         </div>
-        <div className="relative w-72">
-          <Icon name="Search" size={13} className="absolute left-3.5 top-1/2 -translate-y-1/2" style={{ color: t.textMute }} />
-          <input value={search} onChange={e => setSearch(e.target.value)}
-            placeholder="Поиск по имени, телефону..."
-            className="w-full rounded-xl pl-10 pr-4 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-violet-500/40 transition"
-            style={{ background: t.surface, border: `1px solid ${t.border}`, color: t.text }} />
+        <div className="flex items-center gap-2">
+          {/* Переключатель вида */}
+          <div className="flex rounded-xl overflow-hidden" style={{ border: `1px solid ${t.border}` }}>
+            <button onClick={() => setViewMode("grid")}
+              className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold transition"
+              style={{ background: viewMode === "grid" ? "#7c3aed22" : "transparent", color: viewMode === "grid" ? "#7c3aed" : t.textMute }}>
+              <Icon name="LayoutGrid" size={13} /> Карточки
+            </button>
+            <button onClick={() => setViewMode("list")}
+              className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold transition"
+              style={{ background: viewMode === "list" ? "#7c3aed22" : "transparent", color: viewMode === "list" ? "#7c3aed" : t.textMute }}>
+              <Icon name="List" size={13} /> Список
+            </button>
+          </div>
+          <div className="relative w-64">
+            <Icon name="Search" size={13} className="absolute left-3.5 top-1/2 -translate-y-1/2" style={{ color: t.textMute }} />
+            <input value={search} onChange={e => setSearch(e.target.value)}
+              placeholder="Поиск по имени, телефону..."
+              className="w-full rounded-xl pl-10 pr-4 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-violet-500/40 transition"
+              style={{ background: t.surface, border: `1px solid ${t.border}`, color: t.text }} />
+          </div>
         </div>
       </div>
 
@@ -316,16 +387,22 @@ export default function CrmOrders() {
               );
             })}
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
-            {filterSearch(currentClients).map(c =>
-              <ClientCard key={c.id} c={c} onClick={() => setSelected(c)} onNextStep={handleNextStep} />)}
-            {currentClients.length === 0 && (
-              <div className="col-span-3 flex flex-col items-center justify-center py-12" style={{ color: t.textMute }}>
-                <Icon name="Wrench" size={28} className="mb-2 opacity-30" />
-                <span className="text-sm">Нет активных монтажей</span>
-              </div>
-            )}
-          </div>
+          {viewMode === "list" ? (
+            <div className="space-y-2">
+              {filterSearch(currentClients).map(c => <ClientRow key={c.id} c={c} onClick={() => setSelected(c)} onNextStep={handleNextStep} />)}
+              {currentClients.length === 0 && <div className="py-12 text-sm text-center" style={{ color: t.textMute }}>Нет активных монтажей</div>}
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
+              {filterSearch(currentClients).map(c => <ClientCard key={c.id} c={c} onClick={() => setSelected(c)} onNextStep={handleNextStep} />)}
+              {currentClients.length === 0 && (
+                <div className="col-span-3 flex flex-col items-center justify-center py-12" style={{ color: t.textMute }}>
+                  <Icon name="Wrench" size={28} className="mb-2 opacity-30" />
+                  <span className="text-sm">Нет активных монтажей</span>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       ) : activeTab === "done" ? (
         <div className="space-y-5">
@@ -342,14 +419,32 @@ export default function CrmOrders() {
                   <span className="text-xs px-1.5 py-0.5 rounded-md font-bold"
                     style={{ background: group.color + "18", color: group.color }}>{items.length}</span>
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
-                  {items.length === 0
-                    ? <div className="col-span-3 py-4 text-sm text-center" style={{ color: t.textMute }}>Нет записей</div>
-                    : items.map(c => <ClientCard key={c.id} c={c} onClick={() => setSelected(c)} onNextStep={handleNextStep} />)}
-                </div>
+                {viewMode === "list" ? (
+                  <div className="space-y-2">
+                    {items.length === 0
+                      ? <div className="py-4 text-sm text-center" style={{ color: t.textMute }}>Нет записей</div>
+                      : items.map(c => <ClientRow key={c.id} c={c} onClick={() => setSelected(c)} onNextStep={handleNextStep} />)}
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
+                    {items.length === 0
+                      ? <div className="col-span-3 py-4 text-sm text-center" style={{ color: t.textMute }}>Нет записей</div>
+                      : items.map(c => <ClientCard key={c.id} c={c} onClick={() => setSelected(c)} onNextStep={handleNextStep} />)}
+                  </div>
+                )}
               </div>
             );
           })}
+        </div>
+      ) : viewMode === "list" ? (
+        <div className="space-y-2">
+          {filterSearch(currentClients).map(c => <ClientRow key={c.id} c={c} onClick={() => setSelected(c)} onNextStep={handleNextStep} />)}
+          {currentClients.length === 0 && (
+            <div className="flex flex-col items-center justify-center py-12" style={{ color: t.textMute }}>
+              <Icon name={currentTab.icon} size={28} className="mb-2 opacity-30" />
+              <span className="text-sm">{currentTab.emptyText}</span>
+            </div>
+          )}
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
@@ -367,6 +462,10 @@ export default function CrmOrders() {
       {selected && (
         <ClientDrawer
           client={selected}
+          allClientOrders={(() => {
+            const phone = (selected.phone || "").trim().replace(/\D/g, "");
+            return phone ? allClients.filter(c => (c.phone || "").trim().replace(/\D/g, "") === phone) : [selected];
+          })()}
           onClose={() => setSelected(null)}
           onUpdated={() => { load(); setSelected(null); }}
           onDeleted={() => { setSelected(null); load(); }}

@@ -52,7 +52,7 @@ export const ORDER_STATUSES = ["contract", "prepaid", "install_scheduled", "inst
 export const STATUS_LABELS: Record<string, string> = {
   // Лиды
   new:               "Новая заявка",
-  call:              "Звонок назначен",
+  call:              "В работе",
   measure:           "Замер назначен",
   measured:          "Замер выполнен",
   // Заказы
