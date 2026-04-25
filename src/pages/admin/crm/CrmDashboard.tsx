@@ -91,9 +91,7 @@ export default function CrmDashboard() {
   useEffect(() => {
     crmFetch("stats")
       .then(d => {
-        if (d && typeof d === "object" && !("error" in (d as object)) && "total_all" in (d as object)) {
-          setStats(d as Stats);
-        }
+        setStats((d as Stats) ?? null);
         setLoading(false);
       })
       .catch(() => setLoading(false));
@@ -103,21 +101,26 @@ export default function CrmDashboard() {
   }, []);
 
   if (loading) return <div className="flex items-center justify-center h-64"><div className="w-7 h-7 border-2 border-violet-500 border-t-transparent rounded-full animate-spin" /></div>;
-  if (!stats) return (
-    <div className="flex flex-col items-center justify-center h-64 gap-3">
-      <Icon name="AlertCircle" size={32} className="text-white/20" />
-      <div className="text-white/40 text-sm">Нет данных. Попробуй выйти и войти заново.</div>
-    </div>
-  );
+  // Если stats не пришли — показываем пустые данные
+  const EMPTY_STATS: Stats = {
+    total_all: 0, total_leads: 0, total_orders: 0, total_done: 0, total_cancel: 0,
+    went_measure: 0, went_contract: 0, upcoming_measures: 0, upcoming_installs: 0,
+    total_contract: 0, total_received: 0, total_prepayment: 0, total_extra: 0,
+    total_material: 0, total_measure_cost: 0, total_install_cost: 0,
+    total_costs: 0, total_profit: 0, avg_area: 0, avg_contract: 0,
+    cancel_reasons: [], funnel: [], status_dist: [],
+    monthly_leads: [], monthly_done: [], monthly_revenue: [], monthly_costs: [], monthly_profit: [],
+  };
+  const s = stats ?? EMPTY_STATS;
 
-  const convMeasure  = stats.total_all     > 0 ? Math.round((stats.went_measure  / stats.total_all)     * 100) : 0;
-  const convContract = stats.went_measure  > 0 ? Math.round((stats.went_contract / stats.went_measure)  * 100) : 0;
-  const convDone     = stats.went_contract > 0 ? Math.round((stats.total_done    / stats.went_contract) * 100) : 0;
+  const convMeasure  = s.total_all > 0 ? Math.round((s.went_measure / s.total_all) * 100) : 0;
+  const convContract = s.went_measure  > 0 ? Math.round((s.went_contract / s.went_measure)  * 100) : 0;
+  const convDone     = s.went_contract > 0 ? Math.round((s.total_done    / s.went_contract) * 100) : 0;
 
   // Объединяем и фильтруем по диапазону месяцев
   const allMerged = mergeMonths(
-    stats.monthly_leads, stats.monthly_done,
-    stats.monthly_revenue, stats.monthly_costs, stats.monthly_profit,
+    s.monthly_leads, s.monthly_done,
+    s.monthly_revenue, s.monthly_costs, s.monthly_profit,
   );
   const merged = allMerged.filter(d =>
     (!monthFrom || d.month >= monthFrom) &&
@@ -145,10 +148,10 @@ export default function CrmDashboard() {
 
       {/* ── Строка 1: главные метрики ── */}
       <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
-        <StatCard icon="Users" label="Всего заявок" value={stats.total_all} sub={`${stats.total_leads} лидов · ${stats.total_orders} заказов`} color="#8b5cf6" grad="from-violet-600/15 to-transparent" />
-        <StatCard icon="CalendarDays" label="Замеров предстоит" value={stats.upcoming_measures} sub={`${stats.upcoming_installs} монтажей скоро`} color="#f59e0b" grad="from-amber-600/15 to-transparent" />
-        <StatCard icon="FileText" label="Договоров" value={stats.went_contract} sub={`${convContract}% от замеров`} color="#06b6d4" grad="from-cyan-600/15 to-transparent" />
-        <StatCard icon="CheckCircle2" label="Завершено" value={stats.total_done} sub={`${stats.total_cancel} отказов`} color="#10b981" grad="from-emerald-600/15 to-transparent" />
+        <StatCard icon="Users" label="Всего заявок" value={s.total_all} sub={`${s.total_leads} лидов · ${s.total_orders} заказов`} color="#8b5cf6" grad="from-violet-600/15 to-transparent" />
+        <StatCard icon="CalendarDays" label="Замеров предстоит" value={s.upcoming_measures} sub={`${s.upcoming_installs} монтажей скоро`} color="#f59e0b" grad="from-amber-600/15 to-transparent" />
+        <StatCard icon="FileText" label="Договоров" value={s.went_contract} sub={`${convContract}% от замеров`} color="#06b6d4" grad="from-cyan-600/15 to-transparent" />
+        <StatCard icon="CheckCircle2" label="Завершено" value={s.total_done} sub={`${s.total_cancel} отказов`} color="#10b981" grad="from-emerald-600/15 to-transparent" />
       </div>
 
       {/* ── Строка 2: деньги ── */}
@@ -161,11 +164,11 @@ export default function CrmDashboard() {
           </div>
           <div className="space-y-3">
             {[
-              { label: "Сумма договоров",   val: stats.total_contract,   color: "text-white" },
-              { label: "Получено (предоплата+доплата)", val: stats.total_received, color: "text-emerald-400" },
-              { label: "Стоимость материалов", val: stats.total_material, color: "text-red-400" },
-              { label: "Стоимость замеров",   val: stats.total_measure_cost, color: "text-red-400/70" },
-              { label: "Стоимость монтажей",  val: stats.total_install_cost, color: "text-red-400/70" },
+              { label: "Сумма договоров",   val: s.total_contract,   color: "text-white" },
+              { label: "Получено (предоплата+доплата)", val: s.total_received, color: "text-emerald-400" },
+              { label: "Стоимость материалов", val: s.total_material, color: "text-red-400" },
+              { label: "Стоимость замеров",   val: s.total_measure_cost, color: "text-red-400/70" },
+              { label: "Стоимость монтажей",  val: s.total_install_cost, color: "text-red-400/70" },
             ].map(r => (
               <div key={r.label} className="flex justify-between items-center py-1.5" style={{ borderBottom: `1px solid ${t.border2}` }}>
                 <span className="text-xs" style={{ color: t.textMute }}>{r.label}</span>
@@ -174,8 +177,8 @@ export default function CrmDashboard() {
             ))}
             <div className="flex justify-between items-center pt-2">
               <span className="text-sm font-bold" style={{ color: t.text }}>Прибыль</span>
-              <span className={`text-lg font-bold ${stats.total_profit >= 0 ? "text-emerald-400" : "text-red-400"}`}>
-                {stats.total_profit >= 0 ? "+" : ""}{stats.total_profit.toLocaleString("ru-RU")} ₽
+              <span className={`text-lg font-bold ${s.total_profit >= 0 ? "text-emerald-400" : "text-red-400"}`}>
+                {s.total_profit >= 0 ? "+" : ""}{s.total_profit.toLocaleString("ru-RU")} ₽
               </span>
             </div>
           </div>
@@ -189,11 +192,11 @@ export default function CrmDashboard() {
           </div>
           <div className="space-y-3">
             {[
-              { label: "Заявок",           count: stats.total_all,      pct: 100,         color: "#8b5cf6" },
-              { label: "Ушли на замер",    count: stats.went_measure,   pct: convMeasure, color: "#f59e0b" },
-              { label: "Подписали договор",count: stats.went_contract,  pct: convContract, color: "#06b6d4" },
-              { label: "Завершено",        count: stats.total_done,     pct: convDone,    color: "#10b981" },
-              { label: "Отказников",       count: stats.total_cancel,   pct: stats.total_all > 0 ? Math.round((stats.total_cancel / stats.total_all) * 100) : 0, color: "#ef4444" },
+              { label: "Заявок",           count: s.total_all,      pct: 100,         color: "#8b5cf6" },
+              { label: "Ушли на замер",    count: s.went_measure,   pct: convMeasure, color: "#f59e0b" },
+              { label: "Подписали договор",count: s.went_contract,  pct: convContract, color: "#06b6d4" },
+              { label: "Завершено",        count: s.total_done,     pct: convDone,    color: "#10b981" },
+              { label: "Отказников",       count: s.total_cancel,   pct: s.total_all > 0 ? Math.round((s.total_cancel / s.total_all) * 100) : 0, color: "#ef4444" },
             ].map(f => (
               <div key={f.label}>
                 <div className="flex justify-between text-xs mb-1">
@@ -216,11 +219,11 @@ export default function CrmDashboard() {
           </div>
           <div className="space-y-3">
             {[
-              { label: "Материалы",  val: stats.total_material,     color: "#ef4444", icon: "Package" },
-              { label: "Замеры",     val: stats.total_measure_cost, color: "#f59e0b", icon: "Ruler" },
-              { label: "Монтажи",    val: stats.total_install_cost, color: "#f97316", icon: "Wrench" },
+              { label: "Материалы",  val: s.total_material,     color: "#ef4444", icon: "Package" },
+              { label: "Замеры",     val: s.total_measure_cost, color: "#f59e0b", icon: "Ruler" },
+              { label: "Монтажи",    val: s.total_install_cost, color: "#f97316", icon: "Wrench" },
             ].map(c => {
-              const pct = stats.total_costs > 0 ? Math.round((c.val / stats.total_costs) * 100) : 0;
+              const pct = s.total_costs > 0 ? Math.round((c.val / s.total_costs) * 100) : 0;
               return (
                 <div key={c.label} className="flex items-center gap-3">
                   <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: c.color + "20" }}>
@@ -241,12 +244,12 @@ export default function CrmDashboard() {
             <div className="pt-2" style={{ borderTop: `1px solid ${t.border}` }}>
               <div className="flex justify-between">
                 <span className="text-xs" style={{ color: t.textMute }}>Итого затраты</span>
-                <span className="text-sm font-bold text-red-400">{stats.total_costs > 0 ? stats.total_costs.toLocaleString("ru-RU") + " ₽" : "—"}</span>
+                <span className="text-sm font-bold text-red-400">{s.total_costs > 0 ? s.total_costs.toLocaleString("ru-RU") + " ₽" : "—"}</span>
               </div>
-              {stats.avg_contract > 0 && (
+              {s.avg_contract > 0 && (
                 <div className="flex justify-between mt-1.5">
                   <span className="text-xs" style={{ color: t.textMute }}>Средний чек</span>
-                  <span className="text-sm font-bold" style={{ color: t.text }}>{stats.avg_contract.toLocaleString("ru-RU")} ₽</span>
+                  <span className="text-sm font-bold" style={{ color: t.text }}>{s.avg_contract.toLocaleString("ru-RU")} ₽</span>
                 </div>
               )}
             </div>
@@ -357,9 +360,9 @@ export default function CrmDashboard() {
           <div className="flex items-center gap-2 mb-4">
             <div className="w-1 h-4 rounded-full bg-red-500" />
             <span className="text-sm font-bold" style={{ color: t.text }}>Причины отказов</span>
-            <span className="ml-auto text-xs px-2 py-0.5 rounded-lg" style={{ color: t.textMute, background: t.surface2 }}>{stats.total_cancel} отказников</span>
+            <span className="ml-auto text-xs px-2 py-0.5 rounded-lg" style={{ color: t.textMute, background: t.surface2 }}>{s.total_cancel} отказников</span>
           </div>
-          {stats.cancel_reasons.length === 0 ? (
+          {s.cancel_reasons.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-8" style={{ color: t.textMute }}>
               <Icon name="ThumbsUp" size={28} className="mb-2 opacity-30" />
               <span className="text-sm">Отказов нет — отлично!</span>
@@ -367,7 +370,7 @@ export default function CrmDashboard() {
             </div>
           ) : (
             <div className="space-y-2">
-              {stats.cancel_reasons.map((r, i) => (
+              {s.cancel_reasons.map((r, i) => (
                 <div key={i} className="flex items-center gap-3">
                   <div className="w-5 h-5 rounded-md bg-red-500/15 flex items-center justify-center text-[10px] font-bold text-red-400">{i+1}</div>
                   <span className="flex-1 text-sm" style={{ color: t.textSub }}>{r.reason}</span>
@@ -386,8 +389,8 @@ export default function CrmDashboard() {
           </div>
           <div className="grid grid-cols-2 gap-3">
             {[
-              { label: "Замеров запланировано",  count: stats.upcoming_measures,  color: "#f59e0b", icon: "Ruler" },
-              { label: "Монтажей запланировано", count: stats.upcoming_installs,  color: "#f97316", icon: "Wrench" },
+              { label: "Замеров запланировано",  count: s.upcoming_measures,  color: "#f59e0b", icon: "Ruler" },
+              { label: "Монтажей запланировано", count: s.upcoming_installs,  color: "#f97316", icon: "Wrench" },
             ].map(e => (
               <div key={e.label} className="rounded-xl p-4" style={{ background: e.color + "10" }}>
                 <div className="w-8 h-8 rounded-lg flex items-center justify-center mb-3" style={{ background: e.color + "20" }}>
@@ -401,11 +404,11 @@ export default function CrmDashboard() {
           <div className="mt-3 pt-3 grid grid-cols-2 gap-3 text-xs" style={{ borderTop: `1px solid ${t.border}` }}>
             <div>
               <div className="mb-0.5" style={{ color: t.textMute }}>Средняя площадь</div>
-              <div className="font-bold" style={{ color: t.text }}>{stats.avg_area > 0 ? `${stats.avg_area} м²` : "—"}</div>
+              <div className="font-bold" style={{ color: t.text }}>{s.avg_area > 0 ? `${s.avg_area} м²` : "—"}</div>
             </div>
             <div>
               <div className="mb-0.5" style={{ color: t.textMute }}>Средний договор</div>
-              <div className="font-bold text-emerald-400">{stats.avg_contract > 0 ? `${stats.avg_contract.toLocaleString("ru-RU")} ₽` : "—"}</div>
+              <div className="font-bold text-emerald-400">{s.avg_contract > 0 ? `${s.avg_contract.toLocaleString("ru-RU")} ₽` : "—"}</div>
             </div>
           </div>
         </div>

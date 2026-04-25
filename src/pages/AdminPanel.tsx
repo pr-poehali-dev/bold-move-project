@@ -122,13 +122,27 @@ export default function AdminPanel() {
 
   return (
     <div className="min-h-screen bg-[#0b0b11] text-white">
-      <div className="border-b border-white/10 px-6 py-4 flex items-center justify-between">
+      <div className="border-b border-white/10 px-6 py-3 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Icon name="BrainCircuit" size={20} className="text-violet-400" />
           <span className="font-semibold">Управление AI</span>
         </div>
+
+        {/* Профиль + выход */}
         <div className="flex items-center gap-3">
-          {/* Шестерёнка → Мастер-Админка (едва заметна) */}
+          {/* Бейдж аккаунта */}
+          <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl"
+            style={{ background: "rgba(124,58,237,0.12)", border: "1px solid rgba(124,58,237,0.25)" }}>
+            <div className="w-6 h-6 rounded-full bg-violet-600 flex items-center justify-center text-[11px] font-bold text-white">
+              А
+            </div>
+            <div className="leading-tight">
+              <div className="text-[11px] font-semibold text-violet-300">Администратор</div>
+              <div className="text-[10px] text-white/40">19.jeka.94@gmail.com</div>
+            </div>
+          </div>
+
+          {/* Шестерёнка → Мастер-Админка */}
           <a href="/master" title="Мастер-Админка"
             className="p-1.5 rounded-lg transition opacity-20 hover:opacity-60"
             style={{ color: "rgba(255,255,255,0.4)" }}>
