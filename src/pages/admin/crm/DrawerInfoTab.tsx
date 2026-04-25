@@ -192,9 +192,7 @@ export default function DrawerInfoTab({ data, client, setData, save, setComments
               logAction("MessageSquare", "#7c3aed", `Комментарий: ${text}`);
             }}
           />
-          <div className="text-[10px] opacity-20 px-1" style={{ color: "#a3a3a3" }}>
-            ID #{data.id} · {data.source || "chat"}
-          </div>
+
         </div>
       </div>
 

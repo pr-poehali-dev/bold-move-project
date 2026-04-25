@@ -338,27 +338,22 @@ export function DrawerColumns(props: ColumnsProps) {
   });
 
   return (
-    <div className="grid grid-cols-[1fr_1fr] gap-3">
+    <div className="grid grid-cols-[1fr_1fr] gap-3 items-start">
       {/* Левый столбец */}
-      <div className="space-y-3 flex flex-col">
+      <div className="flex flex-col gap-3">
         {col0.filter(b => b.id !== "status").map(b => (
           <DraggableBlock key={b.id} blockId={b.id} onDragStart={onDragStart} onDragOver={onDragOver} onDrop={onDrop}>
             {renderColBlock(b)}
           </DraggableBlock>
         ))}
-        {/* Drop-зона на пустое место */}
-        <div className="flex-1 min-h-[48px] rounded-xl transition-all"
-          style={{
-            border: `2px dashed ${dropOverCol === 0 ? "#7c3aed80" : t.border}`,
-            background: dropOverCol === 0 ? "#7c3aed08" : "transparent",
-          }}
-          {...makeColDropZone(0)}>
-          {dropOverCol === 0 && (
-            <div className="flex items-center justify-center h-full py-4">
-              <span className="text-xs text-violet-400">Перетащи сюда</span>
-            </div>
-          )}
-        </div>
+        {dropOverCol === 0 && (
+          <div className="rounded-xl flex items-center justify-center py-3 transition-all"
+            style={{ border: `2px dashed #7c3aed80`, background: "#7c3aed08" }}
+            {...makeColDropZone(0)}>
+            <span className="text-xs text-violet-400">Перетащи сюда</span>
+          </div>
+        )}
+        {dropOverCol !== 0 && <div style={{ height: 0 }} {...makeColDropZone(0)} />}
         <button onClick={onAddBlockLeft}
           className="w-full flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-medium transition border-2 border-dashed hover:border-violet-500/40 hover:text-violet-400"
           style={{ borderColor: t.border, color: "#a3a3a3" }}>
@@ -367,34 +362,24 @@ export function DrawerColumns(props: ColumnsProps) {
       </div>
 
       {/* Правый столбец */}
-      <div className="space-y-3 flex flex-col">
+      <div className="flex flex-col gap-3">
         {col1.map(b => (
           <DraggableBlock key={b.id} blockId={b.id} onDragStart={onDragStart} onDragOver={onDragOver} onDrop={onDrop}>
             {renderColBlock(b)}
           </DraggableBlock>
         ))}
-        {/* Drop-зона на пустое место */}
-        <div className="flex-1 min-h-[48px] rounded-xl transition-all"
-          style={{
-            border: `2px dashed ${dropOverCol === 1 ? "#7c3aed80" : t.border}`,
-            background: dropOverCol === 1 ? "#7c3aed08" : "transparent",
-          }}
-          {...makeColDropZone(1)}>
-          {dropOverCol === 1 && (
-            <div className="flex items-center justify-center h-full py-4">
-              <span className="text-xs text-violet-400">Перетащи сюда</span>
-            </div>
-          )}
-        </div>
+        {dropOverCol === 1 && (
+          <div className="rounded-xl flex items-center justify-center py-3 transition-all"
+            style={{ border: `2px dashed #7c3aed80`, background: "#7c3aed08" }}
+            {...makeColDropZone(1)}>
+            <span className="text-xs text-violet-400">Перетащи сюда</span>
+          </div>
+        )}
+        {dropOverCol !== 1 && <div style={{ height: 0 }} {...makeColDropZone(1)} />}
         <button onClick={onAddBlockRight}
           className="w-full flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-medium transition border-2 border-dashed hover:border-violet-500/40 hover:text-violet-400"
           style={{ borderColor: t.border, color: "#a3a3a3" }}>
           <Icon name="Plus" size={13} /> Добавить блок
-        </button>
-        <button onClick={onReset}
-          className="text-[10px] opacity-25 hover:opacity-50 transition flex items-center gap-1 px-1"
-          style={{ color: "#a3a3a3" }}>
-          <Icon name="RotateCcw" size={10} /> сбросить
         </button>
       </div>
     </div>
