@@ -43,7 +43,12 @@ export const DEFAULT_BLOCKS: BlockDef[] = [
 export function loadBlocks(): BlockDef[] {
   try {
     const s = JSON.parse(localStorage.getItem(LS_BLOCKS) || "null");
-    if (Array.isArray(s) && s.length) return s;
+    if (Array.isArray(s) && s.length) {
+      // Добавляем дефолтные блоки которых нет в сохранённом списке
+      const savedIds = new Set(s.map((b: BlockDef) => b.id));
+      const missing = DEFAULT_BLOCKS.filter(b => !savedIds.has(b.id));
+      return missing.length > 0 ? [...s, ...missing] : s;
+    }
   } catch { /**/ }
   return DEFAULT_BLOCKS;
 }
