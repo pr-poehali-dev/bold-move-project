@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { uploadFile, DEFAULT_TAGS } from "./crmApi";
 import Icon from "@/components/ui/icon";
 import { useTheme } from "./themeContext";
@@ -16,6 +16,11 @@ export function InlineField({ label, value, onSave, type = "text", placeholder =
   const [val, setVal] = useState(String(value ?? ""));
   const ref = useRef<HTMLInputElement>(null);
 
+  // Синхронизируем val с value когда не редактируем (данные пришли с сервера)
+  useEffect(() => {
+    if (!editing) setVal(String(value ?? ""));
+  }, [value, editing]);
+
   const commit = () => {
     setEditing(false);
     if (val !== String(value ?? "")) onSave(val);
@@ -31,7 +36,7 @@ export function InlineField({ label, value, onSave, type = "text", placeholder =
 
   return (
     <div className="flex items-center justify-between py-2 group" style={{ borderBottom: `1px solid ${t.border2}` }}>
-      <span className="text-xs flex-shrink-0 w-36" style={{ color: "#a3a3a3" }}>{label}</span>
+      <span className="text-xs flex-shrink-0 w-36" style={{ color: "#d4d4d4" }}>{label}</span>
       {editing ? (
         <input ref={ref} type={type} value={val}
           onChange={e => setVal(e.target.value)}
@@ -122,7 +127,7 @@ export function FileField({ label, url, onUploaded, accept = "*" }: {
   return (
     <div className="py-2" style={{ borderBottom: `1px solid ${t.border2}` }}>
       <div className="flex items-center justify-between mb-1">
-        <span className="text-xs w-36 flex-shrink-0" style={{ color: "#a3a3a3" }}>{label}</span>
+        <span className="text-xs w-36 flex-shrink-0" style={{ color: "#d4d4d4" }}>{label}</span>
         <button onClick={() => ref.current?.click()}
           className="text-xs text-violet-400/70 underline decoration-dashed hover:text-violet-300 transition flex items-center gap-1">
           {uploading
@@ -191,6 +196,7 @@ export function TagsField({ tags, onSave, editMode = false }: {
 
   return (
     <div className="pt-2 pb-1">
+
       {/* Активные метки */}
       {current.length > 0 && (
         <div className="flex flex-wrap gap-1.5 mb-2">
@@ -204,30 +210,33 @@ export function TagsField({ tags, onSave, editMode = false }: {
                   value={editVal}
                   onChange={e => setEditVal(e.target.value)}
                   onBlur={() => renameTag(label, editVal)}
-                  onKeyDown={e => { if (e.key === "Enter") renameTag(label, editVal); if (e.key === "Escape") setEditingIdx(null); }}
-                  className="rounded-lg px-2 py-0.5 text-xs focus:outline-none w-24"
-                  style={{ background: t.surface, border: `1px solid ${color}60`, color: "#fff" }}
+                  onKeyDown={e => {
+                    if (e.key === "Enter") renameTag(label, editVal);
+                    if (e.key === "Escape") setEditingIdx(null);
+                  }}
+                  className="rounded-lg px-2 py-0.5 text-xs focus:outline-none w-28"
+                  style={{ background: t.surface, border: `1px solid ${color}80`, color: "#fff" }}
                 />
               </div>
             ) : (
               <span key={label}
-                className="flex items-center gap-1 px-2 py-0.5 rounded-lg text-xs font-medium"
-                style={{ background: color + "25", color, border: `1px solid ${color}50` }}>
+                className="flex items-center gap-1 px-2 py-0.5 rounded-lg text-xs font-semibold"
+                style={{ background: color + "30", color: "#fff", border: `1px solid ${color}60` }}>
                 {label}
                 {editMode ? (
                   <>
                     <button onClick={() => { setEditingIdx(idx); setEditVal(label); }}
-                      className="hover:text-white transition ml-0.5" title="Переименовать">
+                      className="opacity-60 hover:opacity-100 transition ml-0.5" title="Переименовать">
                       <Icon name="Pencil" size={9} />
                     </button>
                     <button onClick={() => deleteTag(label)}
-                      className="hover:text-red-300 transition" title="Удалить">
+                      className="opacity-60 hover:text-red-300 hover:opacity-100 transition" title="Удалить">
                       <Icon name="X" size={9} />
                     </button>
                   </>
                 ) : (
                   <button onClick={() => deleteTag(label)}
-                    className="hover:text-red-300 transition opacity-40 hover:opacity-100" title="Удалить">
+                    className="opacity-0 group-hover:opacity-60 hover:!opacity-100 hover:text-red-300 transition" title="Удалить">
                     <Icon name="X" size={9} />
                   </button>
                 )}
@@ -237,16 +246,18 @@ export function TagsField({ tags, onSave, editMode = false }: {
         </div>
       )}
 
-      {/* В режиме редактирования — неактивные дефолтные + поле добавления */}
+      {/* В режиме редактирования — дефолтные неактивные + поле добавления */}
       {editMode && (
         <>
           {inactiveDefs.length > 0 && (
             <div className="flex flex-wrap gap-1.5 mb-2 pb-2" style={{ borderBottom: `1px solid ${t.border2}` }}>
-              <span className="w-full text-[9px] uppercase tracking-wider font-semibold mb-0.5" style={{ color: "#a3a3a3" }}>Добавить:</span>
+              <span className="w-full text-[9px] uppercase tracking-wider font-semibold mb-0.5" style={{ color: "#a3a3a3" }}>
+                Добавить стандартную:
+              </span>
               {inactiveDefs.map(tg => (
                 <button key={tg.label} onClick={() => toggle(tg.label)}
-                  className="px-2 py-0.5 rounded-lg text-xs font-medium transition border"
-                  style={{ borderColor: tg.color + "40", background: t.surface, color: tg.color }}>
+                  className="px-2 py-0.5 rounded-lg text-xs font-semibold transition border"
+                  style={{ borderColor: tg.color + "50", background: tg.color + "15", color: "#fff" }}>
                   + {tg.label}
                 </button>
               ))}
@@ -259,18 +270,20 @@ export function TagsField({ tags, onSave, editMode = false }: {
               className="flex-1 rounded-lg px-3 py-1 text-xs focus:outline-none"
               style={{ background: t.surface, border: `1px solid ${t.border}`, color: "#fff" }} />
             <button onClick={addNew}
-              className="px-2.5 py-1 bg-violet-600/20 hover:bg-violet-600/30 text-violet-300 text-xs rounded-lg transition">+</button>
+              className="px-2.5 py-1 bg-violet-600/20 hover:bg-violet-600/30 text-violet-300 text-xs rounded-lg transition">
+              +
+            </button>
           </div>
         </>
       )}
 
-      {/* Пусто и не в режиме редактирования — показываем дефолтные */}
+      {/* Пусто и не в режиме редактирования — показываем дефолтные как подсказки */}
       {current.length === 0 && !editMode && (
         <div className="flex flex-wrap gap-1.5 mb-1">
           {DEFAULT_TAGS.map(tg => (
             <button key={tg.label} onClick={() => toggle(tg.label)}
               className="px-2 py-0.5 rounded-lg text-xs font-medium transition border"
-              style={{ borderColor: "transparent", background: t.surface, color: "#a3a3a3" }}>
+              style={{ borderColor: tg.color + "40", background: t.surface, color: "#a3a3a3" }}>
               {tg.label}
             </button>
           ))}

@@ -111,14 +111,9 @@ export const PRIORITY_COLORS: Record<string, string> = {
 
 // Метки (теги) — предустановленные + пользовательские
 export const DEFAULT_TAGS = [
-  { label: "Квартира",   color: "#3b82f6" },
-  { label: "Дом",        color: "#10b981" },
-  { label: "Офис",       color: "#f59e0b" },
-  { label: "Срочно",     color: "#ef4444" },
-  { label: "VIP",        color: "#f59e0b" },
-  { label: "Повторный",  color: "#8b5cf6" },
-  { label: "Дизайнер",   color: "#06b6d4" },
-  { label: "Прораб",     color: "#f97316" },
+  { label: "Новый",   color: "#3b82f6" },
+  { label: "Срочно",  color: "#ef4444" },
+  { label: "Важно",   color: "#f59e0b" },
 ];
 
 export interface Client {
