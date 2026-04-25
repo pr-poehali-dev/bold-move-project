@@ -1,168 +1,25 @@
 import { useEffect, useState, useRef, useCallback } from "react";
-import { crmFetch, STATUS_LABELS, STATUS_COLORS, Client } from "./crmApi";
+import { crmFetch, Client } from "./crmApi";
 import Icon from "@/components/ui/icon";
 import { useTheme } from "./themeContext";
 import ClientDrawer from "./ClientDrawer";
-
-// Колонки канбана жёстко привязаны к статусам воронки — синхронизация с Заказами
-const KANBAN_COLS = [
-  { id: "new",               label: "Новые заявки", color: "#8b5cf6", statuses: ["new"]                                                          },
-  { id: "working",           label: "В работе",     color: "#a78bfa", statuses: ["call"]                                                         },
-  { id: "measures",          label: "Замеры",        color: "#f59e0b", statuses: ["measure", "measured"]                                          },
-  { id: "installs",          label: "Монтажи",       color: "#f97316", statuses: ["contract","prepaid","install_scheduled","install_done","extra_paid"] },
-  { id: "done",              label: "Выполнено",     color: "#10b981", statuses: ["done"]                                                         },
-  { id: "cancelled",         label: "Отказники",     color: "#ef4444", statuses: ["cancelled"]                                                    },
-] as const;
-
-type ColId = typeof KANBAN_COLS[number]["id"];
-
-// При переносе в колонку — ставим этот статус
-const DROP_STATUS: Record<ColId, string> = {
-  new:       "new",
-  working:   "call",
-  measures:  "measure",
-  installs:  "contract",
-  done:      "done",
-  cancelled: "cancelled",
-};
-
-// Следующий шаг воронки
-const NEXT_STATUS: Record<string, string> = {
-  new: "call", call: "measure", measure: "measured", measured: "contract",
-  contract: "prepaid", prepaid: "install_scheduled",
-  install_scheduled: "install_done", install_done: "extra_paid", extra_paid: "done",
-};
-const NEXT_LABEL: Record<string, string> = {
-  new: "Взять в работу", call: "Назначить замер", measure: "Замер выполнен",
-  measured: "Подписать договор", contract: "Предоплата", prepaid: "Назначить монтаж",
-  install_scheduled: "Монтаж выполнен", install_done: "Доплата", extra_paid: "Завершить",
-};
-
-function Avatar({ name, color }: { name: string; color: string }) {
-  const initials = (name || "?").split(" ").map(w => w[0]).slice(0, 2).join("").toUpperCase();
-  return (
-    <div className="w-7 h-7 rounded-lg flex items-center justify-center text-[11px] font-bold flex-shrink-0 text-white"
-      style={{ background: color + "40", border: `1.5px solid ${color}60` }}>
-      {initials}
-    </div>
-  );
-}
-
-function KanbanCard({ client, onOpen, onNextStep, dragging }: {
-  client: Client;
-  onOpen: () => void;
-  onNextStep: (id: number, status: string) => void;
-  dragging: boolean;
-}) {
-  const t = useTheme();
-  const [stepping, setStepping] = useState(false);
-  const color = STATUS_COLORS[client.status] || "#8b5cf6";
-  const next = NEXT_STATUS[client.status];
-  const nextLabel = NEXT_LABEL[client.status];
-
-  const handleNext = async (e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (!next || stepping) return;
-    setStepping(true);
-    await onNextStep(client.id, next);
-    setStepping(false);
-  };
-
-  return (
-    <div
-      draggable
-      onClick={onOpen}
-      className={`rounded-xl overflow-hidden cursor-grab active:cursor-grabbing transition select-none ${dragging ? "opacity-40 scale-95" : ""}`}
-      style={{ background: t.surface, border: `1px solid ${t.border}` }}>
-
-      {/* Тело карточки */}
-      <div className="p-3">
-        <div className="flex items-start gap-2 mb-2">
-          <Avatar name={client.client_name || "?"} color={color} />
-          <div className="flex-1 min-w-0">
-            <div className="text-xs font-semibold truncate" style={{ color: t.text }}>
-              {client.client_name || "Без имени"}
-            </div>
-            {client.phone && (
-              <div className="text-[10px] truncate mt-0.5" style={{ color: t.textMute }}>{client.phone}</div>
-            )}
-          </div>
-          <span className="text-[10px] font-mono flex-shrink-0" style={{ color: t.textMute }}>#{client.id}</span>
-        </div>
-
-        {/* Статус бейдж */}
-        <span className="inline-block text-[10px] px-1.5 py-0.5 rounded-md font-medium mb-2"
-          style={{ background: color + "20", color }}>
-          {STATUS_LABELS[client.status] || client.status}
-        </span>
-
-        {/* Адрес */}
-        {client.address && (
-          <div className="flex items-center gap-1 text-[10px] mb-1.5" style={{ color: t.textMute }}>
-            <Icon name="MapPin" size={9} />
-            <span className="truncate">{client.address}</span>
-          </div>
-        )}
-
-        {/* Сумма */}
-        {client.contract_sum ? (
-          <div className="text-xs font-bold text-emerald-500">{client.contract_sum.toLocaleString("ru-RU")} ₽</div>
-        ) : null}
-      </div>
-
-      {/* Кнопка следующего шага */}
-      {next && client.status !== "done" && client.status !== "cancelled" && (
-        <button onClick={handleNext} disabled={stepping}
-          className="w-full flex items-center justify-between px-3 py-2 text-[10px] font-semibold transition disabled:opacity-50"
-          style={{ borderTop: `1px solid ${t.border2}`, background: color + "0c", color }}>
-          <span className="flex items-center gap-1">
-            {stepping
-              ? <><div className="w-2.5 h-2.5 border border-current border-t-transparent rounded-full animate-spin" /> Сохраняем...</>
-              : <><Icon name="ArrowRight" size={10} /> {nextLabel}</>}
-          </span>
-          <span className="opacity-50">{STATUS_LABELS[next]}</span>
-        </button>
-      )}
-      {client.status === "done" && (
-        <div className="px-3 py-2 text-[10px] font-semibold text-emerald-500 flex items-center gap-1"
-          style={{ borderTop: `1px solid ${t.border2}`, background: "rgba(16,185,129,0.06)" }}>
-          <Icon name="CheckCircle2" size={10} /> Завершён
-        </div>
-      )}
-    </div>
-  );
-}
-
-const DEFAULT_WIDTH = 240;
-const MIN_WIDTH = 160;
-const MAX_WIDTH = 480;
-const LS_KEY = "kanban_col_widths";
-
-function loadWidths(): Record<string, number> {
-  try { return JSON.parse(localStorage.getItem(LS_KEY) || "{}"); } catch { return {}; }
-}
-function saveWidths(w: Record<string, number>) {
-  localStorage.setItem(LS_KEY, JSON.stringify(w));
-}
-
-const LS_HIDDEN = "kanban_hidden_cols";
-const LS_LABELS = "kanban_col_labels";
-
-function loadHidden(): Set<string> {
-  try { return new Set(JSON.parse(localStorage.getItem(LS_HIDDEN) || "[]")); } catch { return new Set(); }
-}
-function loadLabels(): Record<string, string> {
-  try { return JSON.parse(localStorage.getItem(LS_LABELS) || "{}"); } catch { return {}; }
-}
+import KanbanCard from "./KanbanCard";
+import KanbanColSettings from "./KanbanColSettings";
+import {
+  KANBAN_COLS, ColId, DROP_STATUS,
+  DEFAULT_WIDTH, MIN_WIDTH, MAX_WIDTH,
+  LS_KEY, LS_HIDDEN, LS_LABELS,
+  loadWidths, saveWidths, loadHidden, loadLabels,
+} from "./kanbanTypes";
 
 export default function CrmKanban() {
   const t = useTheme();
-  const [clients, setClients]       = useState<Client[]>([]);
-  const [loading, setLoading]       = useState(true);
-  const [selected, setSelected]     = useState<Client | null>(null);
-  const [dragging, setDragging]     = useState<Client | null>(null);
+  const [clients, setClients]         = useState<Client[]>([]);
+  const [loading, setLoading]         = useState(true);
+  const [selected, setSelected]       = useState<Client | null>(null);
+  const [dragging, setDragging]       = useState<Client | null>(null);
   const [dragOverCol, setDragOverCol] = useState<ColId | null>(null);
-  const [search, setSearch]         = useState("");
+  const [search, setSearch]           = useState("");
   const dragRef = useRef<Client | null>(null);
 
   // Ширины колонок
@@ -170,10 +27,9 @@ export default function CrmKanban() {
   const resizeRef = useRef<{ colId: string; startX: number; startW: number } | null>(null);
 
   // Видимость и переименование колонок
-  const [hiddenCols, setHiddenCols] = useState<Set<string>>(loadHidden);
-  const [colLabels,  setColLabels]  = useState<Record<string, string>>(loadLabels);
+  const [hiddenCols,   setHiddenCols]   = useState<Set<string>>(loadHidden);
+  const [colLabels,    setColLabels]    = useState<Record<string, string>>(loadLabels);
   const [showSettings, setShowSettings] = useState(false);
-  const [editingLabel, setEditingLabel] = useState<{ id: string; val: string } | null>(null);
 
   const getWidth = (colId: string) => colWidths[colId] ?? DEFAULT_WIDTH;
 
@@ -190,10 +46,7 @@ export default function CrmKanban() {
     };
     const onUp = () => {
       if (resizeRef.current) {
-        setColWidths(prev => {
-          saveWidths(prev);
-          return prev;
-        });
+        setColWidths(prev => { saveWidths(prev); return prev; });
         resizeRef.current = null;
       }
       window.removeEventListener("mousemove", onMove);
@@ -218,7 +71,15 @@ export default function CrmKanban() {
       localStorage.setItem(LS_LABELS, JSON.stringify(next));
       return next;
     });
-    setEditingLabel(null);
+  };
+
+  const resetLabel = (colId: string) => {
+    setColLabels(prev => {
+      const next = { ...prev };
+      delete next[colId];
+      localStorage.setItem(LS_LABELS, JSON.stringify(next));
+      return next;
+    });
   };
 
   const getLabel = (col: typeof KANBAN_COLS[number]) => colLabels[col.id] || col.label;
@@ -240,23 +101,14 @@ export default function CrmKanban() {
       return (c.client_name || "").toLowerCase().includes(q) || (c.phone || "").includes(q);
     });
 
-  // Drag & drop
-  const onDragStart = (client: Client) => {
-    dragRef.current = client;
-    setDragging(client);
-  };
-  const onDragOver = (e: React.DragEvent, colId: ColId) => {
-    e.preventDefault();
-    setDragOverCol(colId);
-  };
+  const onDragStart = (client: Client) => { dragRef.current = client; setDragging(client); };
+  const onDragOver  = (e: React.DragEvent, colId: ColId) => { e.preventDefault(); setDragOverCol(colId); };
   const onDrop = async (colId: ColId) => {
     const client = dragRef.current;
-    setDragging(null);
-    setDragOverCol(null);
+    setDragging(null); setDragOverCol(null);
     if (!client) return;
     const newStatus = DROP_STATUS[colId];
     if (client.status === newStatus) return;
-    // Оптимистичное обновление
     setClients(prev => prev.map(c => c.id === client.id ? { ...c, status: newStatus } : c));
     await crmFetch("clients", { method: "PUT", body: JSON.stringify({ status: newStatus }) }, { id: String(client.id) });
   };
@@ -386,12 +238,7 @@ export default function CrmKanban() {
                   onMouseDown={e => startResize(e, col.id)}>
                   <div
                     className="rounded-full transition-all group-hover:opacity-100 opacity-0"
-                    style={{
-                      width: 3,
-                      height: 40,
-                      background: t.border,
-                      transition: "opacity 0.15s, background 0.15s",
-                    }}
+                    style={{ width: 3, height: 40, background: t.border, transition: "opacity 0.15s, background 0.15s" }}
                     onMouseEnter={e => (e.currentTarget.style.background = "#7c3aed")}
                     onMouseLeave={e => (e.currentTarget.style.background = t.border)}
                   />
@@ -416,89 +263,16 @@ export default function CrmKanban() {
         />
       )}
 
-      {/* Модалка настройки колонок */}
+      {/* Настройки колонок */}
       {showSettings && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
-          style={{ background: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)" }}
-          onClick={() => { setShowSettings(false); setEditingLabel(null); }}>
-          <div className="w-full max-w-sm rounded-2xl overflow-hidden shadow-2xl"
-            style={{ background: t.surface, border: `1px solid ${t.border}` }}
-            onClick={e => e.stopPropagation()}>
-
-            {/* Шапка */}
-            <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: `1px solid ${t.border}` }}>
-              <span className="text-sm font-bold" style={{ color: t.text }}>Настройка колонок</span>
-              <button onClick={() => { setShowSettings(false); setEditingLabel(null); }}
-                className="p-1.5 rounded-lg transition hover:bg-white/5" style={{ color: t.textMute }}>
-                <Icon name="X" size={15} />
-              </button>
-            </div>
-
-            {/* Список колонок */}
-            <div className="divide-y" style={{ borderColor: t.border2 }}>
-              {KANBAN_COLS.map(col => {
-                const isHidden = hiddenCols.has(col.id);
-                const isEditing = editingLabel?.id === col.id;
-                return (
-                  <div key={col.id} className="flex items-center gap-3 px-5 py-3">
-                    <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ background: col.color }} />
-
-                    {/* Название — кликабельное для переименования */}
-                    {isEditing ? (
-                      <input
-                        autoFocus
-                        value={editingLabel.val}
-                        onChange={e => setEditingLabel({ id: col.id, val: e.target.value })}
-                        onBlur={() => saveLabel(col.id, editingLabel.val)}
-                        onKeyDown={e => {
-                          if (e.key === "Enter") saveLabel(col.id, editingLabel.val);
-                          if (e.key === "Escape") setEditingLabel(null);
-                        }}
-                        className="flex-1 text-sm rounded-lg px-2 py-1 focus:outline-none"
-                        style={{ background: t.surface2, border: `1px solid #7c3aed40`, color: t.text }}
-                      />
-                    ) : (
-                      <button
-                        className="flex-1 text-left text-sm flex items-center gap-1.5 group/lbl"
-                        style={{ color: isHidden ? t.textMute : t.text }}
-                        onClick={() => setEditingLabel({ id: col.id, val: getLabel(col) })}>
-                        <span>{getLabel(col)}</span>
-                        <Icon name="Pencil" size={11} className="opacity-0 group-hover/lbl:opacity-40 transition" style={{ color: t.textMute }} />
-                      </button>
-                    )}
-
-                    {/* Сброс названия */}
-                    {colLabels[col.id] && (
-                      <button onClick={() => {
-                        const next = { ...colLabels };
-                        delete next[col.id];
-                        setColLabels(next);
-                        localStorage.setItem(LS_LABELS, JSON.stringify(next));
-                      }} className="p-1 rounded transition hover:opacity-60" style={{ color: t.textMute }} title="Сбросить название">
-                        <Icon name="RotateCcw" size={11} />
-                      </button>
-                    )}
-
-                    {/* Тогл видимости */}
-                    <button onClick={() => toggleHide(col.id)}
-                      className="flex-shrink-0 p-1.5 rounded-lg transition"
-                      style={{ color: isHidden ? t.textMute : col.color, background: isHidden ? "transparent" : col.color + "15" }}
-                      title={isHidden ? "Показать" : "Скрыть"}>
-                      <Icon name={isHidden ? "EyeOff" : "Eye"} size={14} />
-                    </button>
-                  </div>
-                );
-              })}
-            </div>
-
-            {/* Футер */}
-            <div className="px-5 py-3" style={{ borderTop: `1px solid ${t.border}` }}>
-              <p className="text-[11px]" style={{ color: t.textMute }}>
-                Нажми на название для переименования · Скрытые колонки не влияют на данные
-              </p>
-            </div>
-          </div>
-        </div>
+        <KanbanColSettings
+          hiddenCols={hiddenCols}
+          colLabels={colLabels}
+          onToggleHide={toggleHide}
+          onSaveLabel={saveLabel}
+          onResetLabel={resetLabel}
+          onClose={() => setShowSettings(false)}
+        />
       )}
     </div>
   );
