@@ -187,7 +187,17 @@ export default function CrmClients() {
       {/* Drawer */}
       {selected && (
         <ClientDrawer client={selected} allClientOrders={clientOrders} onClose={() => setSelected(null)}
-          onUpdated={() => { load(); }}
+          onUpdated={() => {
+            crmFetch("clients").then(d => {
+              const list = (Array.isArray(d) ? d : []).filter((c: Client) => c.status !== "deleted");
+              setClients(list);
+              setLoading(false);
+              if (selected) {
+                const fresh = list.find((c: Client) => c.id === selected.id);
+                if (fresh) setSelected(fresh);
+              }
+            });
+          }}
           onDeleted={() => { setSelected(null); load(); }} />
       )}
 
