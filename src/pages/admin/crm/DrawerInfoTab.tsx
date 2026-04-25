@@ -3,6 +3,7 @@ import { Client, STATUS_LABELS } from "./crmApi";
 import { useTheme } from "./themeContext";
 import { Section } from "./drawerComponents";
 import { StatusSelector } from "./StatusSelector";
+import { DrawerPLBlock } from "./DrawerPLBlock";
 import { ActivityFeed, ActivityEvent, appendActivityLog } from "./ActivityFeed";
 import { AddBlockModal } from "./DrawerBlockEditor";
 import { DrawerColumns } from "./DrawerColumns";

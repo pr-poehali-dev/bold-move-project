@@ -11,84 +11,114 @@ export function DrawerPLBlock({ data, isHidden, toggleHidden }: {
   const t = useTheme();
   const fmt = (n: number) => n.toLocaleString("ru-RU");
 
-  // ── ДОХОДЫ ──────────────────────────────────────────────────────────────────
+  // ── ЗАТРАТЫ (слева) ──────────────────────────────────────────────────────────
+  const costRows: { label: string; value: number }[] = [
+    { label: "Материалы", value: Number(data.material_cost) || 0 },
+    { label: "Замер",     value: Number(data.measure_cost)  || 0 },
+    { label: "Монтаж",    value: Number(data.install_cost)  || 0 },
+  ].filter(r => r.value > 0);
+  const plCosts = costRows.reduce((s, r) => s + r.value, 0);
+
+  // ── ДОХОДЫ (справа) ──────────────────────────────────────────────────────────
   const incomeRows: { label: string; value: number }[] = [
     { label: "Договор",         value: Number(data.contract_sum)        || 0 },
     { label: "Предоплата",      value: Number(data.prepayment)          || 0 },
     { label: "Доплата",         value: Number(data.extra_payment)       || 0 },
     { label: "Доп. соглашение", value: Number(data.extra_agreement_sum) || 0 },
   ].filter(r => r.value > 0);
-
   const plIncome = incomeRows.reduce((s, r) => s + r.value, 0);
 
-  // ── ЗАТРАТЫ ──────────────────────────────────────────────────────────────────
-  const costRows: { label: string; value: number }[] = [
-    { label: "Материалы", value: Number(data.material_cost) || 0 },
-    { label: "Замер",     value: Number(data.measure_cost)  || 0 },
-    { label: "Монтаж",    value: Number(data.install_cost)  || 0 },
-  ].filter(r => r.value > 0);
-
-  const plCosts  = costRows.reduce((s, r) => s + r.value, 0);
   const plProfit = plIncome - plCosts;
 
   return (
-    <div key="pl" className="rounded-2xl overflow-hidden group/section" style={{ opacity: isHidden ? 0.45 : 1, border: `1px solid ${t.border}` }}>
-      <div className="flex items-center gap-2 px-4 py-2.5" style={{ background: "linear-gradient(135deg,#7c3aed15,#10b98112)", borderBottom: isHidden ? "none" : `1px solid #7c3aed30` }}>
+    <div className="rounded-2xl overflow-hidden group/pl" style={{ border: `1px solid ${t.border}`, opacity: isHidden ? 0.45 : 1 }}>
+
+      {/* Шапка */}
+      <div className="flex items-center gap-2 px-5 py-2.5"
+        style={{ background: "linear-gradient(135deg,#7c3aed15,#10b98112)", borderBottom: isHidden ? "none" : `1px solid #7c3aed30` }}>
         <Icon name="TrendingUp" size={13} style={{ color: "#10b981" }} />
         <span className="text-xs font-bold uppercase tracking-wider text-white flex-1">P&L по заказу</span>
-        <button onClick={() => toggleHidden("pl")} className="p-1 rounded-md opacity-0 group-hover/section:opacity-100 transition hover:bg-white/10" style={{ color: isHidden ? "#10b981" : "#a3a3a3" }}>
+        <button onClick={() => toggleHidden("pl")}
+          className="p-1 rounded-md opacity-0 group-hover/pl:opacity-100 transition hover:bg-white/10"
+          style={{ color: isHidden ? "#10b981" : "#a3a3a3" }}>
           <Icon name={isHidden ? "EyeOff" : "Eye"} size={12} />
         </button>
       </div>
+
       {!isHidden && (
-        <div className="px-4 py-3 text-sm" style={{ background: "linear-gradient(135deg,#7c3aed08,#10b98108)" }}>
+        <div style={{ background: "linear-gradient(135deg,#7c3aed08,#10b98108)" }}>
 
-          {/* Доходы */}
-          <div className="text-[9px] uppercase tracking-wider font-semibold mb-1.5" style={{ color: "#a3a3a3" }}>Доходы</div>
-          <div className="space-y-1.5 mb-3">
-            {incomeRows.length === 0
-              ? <div className="flex justify-between"><span style={{ color: "#a3a3a3" }}>Договор</span><span style={{ color: "#a3a3a3" }} className="text-xs">не указан</span></div>
-              : incomeRows.map(r => (
-                <div key={r.label} className="flex justify-between">
-                  <span style={{ color: "#a3a3a3" }}>{r.label}</span>
-                  <span className="font-semibold text-emerald-400">+{fmt(r.value)} ₽</span>
+          {/* Горизонтальная сетка: Затраты | Прибыль | Доходы */}
+          <div className="grid grid-cols-[1fr_auto_1fr] gap-0">
+
+            {/* ЗАТРАТЫ — слева */}
+            <div className="px-5 py-3" style={{ borderRight: `1px solid ${t.border2}` }}>
+              <div className="text-[9px] uppercase tracking-wider font-semibold mb-2 flex items-center gap-1"
+                style={{ color: "#ef4444" }}>
+                <Icon name="ArrowDownRight" size={10} style={{ color: "#ef4444" }} /> Затраты
+              </div>
+              {costRows.length === 0 ? (
+                <div className="text-xs" style={{ color: "#a3a3a3" }}>Не указаны</div>
+              ) : (
+                <div className="space-y-1.5">
+                  {costRows.map(r => (
+                    <div key={r.label} className="flex items-center justify-between gap-3">
+                      <span className="text-xs" style={{ color: "#a3a3a3" }}>{r.label}</span>
+                      <span className="text-xs font-semibold text-red-400 whitespace-nowrap">−{fmt(r.value)} ₽</span>
+                    </div>
+                  ))}
+                  {costRows.length > 1 && (
+                    <div className="flex items-center justify-between gap-3 pt-1.5" style={{ borderTop: `1px solid ${t.border2}` }}>
+                      <span className="text-xs font-semibold text-white">Итого</span>
+                      <span className="text-sm font-bold text-red-400">−{fmt(plCosts)} ₽</span>
+                    </div>
+                  )}
                 </div>
-              ))}
-            {incomeRows.length > 1 && (
-              <div className="flex justify-between pt-1" style={{ borderTop: `1px solid ${t.border2}` }}>
-                <span className="font-semibold text-white">Итого доходы</span>
-                <span className="font-bold text-white">+{fmt(plIncome)} ₽</span>
-              </div>
-            )}
-          </div>
+              )}
+            </div>
 
-          {/* Затраты */}
-          {plCosts > 0 && (
-            <>
-              <div className="text-[9px] uppercase tracking-wider font-semibold mb-1.5" style={{ color: "#a3a3a3" }}>Затраты</div>
-              <div className="space-y-1.5 mb-3">
-                {costRows.map(r => (
-                  <div key={r.label} className="flex justify-between">
-                    <span style={{ color: "#a3a3a3" }}>{r.label}</span>
-                    <span className="font-semibold text-red-400">−{fmt(r.value)} ₽</span>
-                  </div>
-                ))}
-                {costRows.length > 1 && (
-                  <div className="flex justify-between pt-1" style={{ borderTop: `1px solid ${t.border2}` }}>
-                    <span className="font-semibold text-white">Итого затраты</span>
-                    <span className="font-bold text-red-400">−{fmt(plCosts)} ₽</span>
-                  </div>
-                )}
+            {/* ПРИБЫЛЬ — по центру */}
+            <div className="flex flex-col items-center justify-center px-6 py-3 text-center"
+              style={{ borderRight: `1px solid ${t.border2}`, minWidth: 140 }}>
+              <div className="text-[9px] uppercase tracking-wider font-semibold mb-1" style={{ color: "#a3a3a3" }}>
+                Прибыль
               </div>
-            </>
-          )}
+              <div className={`text-2xl font-black ${plProfit >= 0 ? "text-emerald-400" : "text-red-400"}`}>
+                {plProfit >= 0 ? "+" : ""}{fmt(plProfit)} ₽
+              </div>
+              {plIncome > 0 && plCosts > 0 && (
+                <div className="text-[10px] mt-1 px-2 py-0.5 rounded-md"
+                  style={{ background: plProfit >= 0 ? "#10b98120" : "#ef444420", color: plProfit >= 0 ? "#10b981" : "#ef4444" }}>
+                  {plIncome > 0 ? Math.round((plProfit / plIncome) * 100) : 0}% маржа
+                </div>
+              )}
+            </div>
 
-          {/* Прибыль */}
-          <div className="flex justify-between pt-2" style={{ borderTop: `1px solid ${t.border}` }}>
-            <span className="font-bold text-white">Прибыль</span>
-            <span className={`text-lg font-black ${plProfit >= 0 ? "text-emerald-400" : "text-red-400"}`}>
-              {plProfit >= 0 ? "+" : ""}{fmt(plProfit)} ₽
-            </span>
+            {/* ДОХОДЫ — справа */}
+            <div className="px-5 py-3">
+              <div className="text-[9px] uppercase tracking-wider font-semibold mb-2 flex items-center gap-1 justify-end"
+                style={{ color: "#10b981" }}>
+                Доходы <Icon name="ArrowUpRight" size={10} style={{ color: "#10b981" }} />
+              </div>
+              {incomeRows.length === 0 ? (
+                <div className="text-xs text-right" style={{ color: "#a3a3a3" }}>Не указаны</div>
+              ) : (
+                <div className="space-y-1.5">
+                  {incomeRows.map(r => (
+                    <div key={r.label} className="flex items-center justify-between gap-3">
+                      <span className="text-xs" style={{ color: "#a3a3a3" }}>{r.label}</span>
+                      <span className="text-xs font-semibold text-emerald-400 whitespace-nowrap">+{fmt(r.value)} ₽</span>
+                    </div>
+                  ))}
+                  {incomeRows.length > 1 && (
+                    <div className="flex items-center justify-between gap-3 pt-1.5" style={{ borderTop: `1px solid ${t.border2}` }}>
+                      <span className="text-xs font-semibold text-white">Итого</span>
+                      <span className="text-sm font-bold text-emerald-400">+{fmt(plIncome)} ₽</span>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
         </div>
       )}
