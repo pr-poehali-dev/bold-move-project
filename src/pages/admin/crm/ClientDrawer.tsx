@@ -27,7 +27,6 @@ export default function ClientDrawer({ client, allClientOrders, onClose, onUpdat
     setSaving(true);
     await crmFetch("clients", { method: "PUT", body: JSON.stringify(patch) }, { id: String(data.id) });
     setSaving(false);
-    onUpdated();
   };
 
   const handleDelete = async () => {
@@ -85,8 +84,8 @@ export default function ClientDrawer({ client, allClientOrders, onClose, onUpdat
         <div className="flex px-6 gap-1 pt-3 flex-shrink-0" style={{ borderBottom: `1px solid ${t.border}` }}>
           {([
             { id: "info",     label: "Заявка",  icon: "User" },
-            { id: "orders",   label: `История (${allClientOrders.length})`, icon: "ClipboardList" },
             { id: "estimate", label: "Смета",   icon: "FileSpreadsheet" },
+            { id: "orders",   label: `История (${allClientOrders.length})`, icon: "ClipboardList" },
           ] as const).map(tab => (
             <button key={tab.id} onClick={() => setDrawerTab(tab.id)}
               className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-t-lg transition"

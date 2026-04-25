@@ -2,7 +2,9 @@ import { useState, useRef } from "react";
 import { Client, STATUS_LABELS } from "./crmApi";
 import { useTheme } from "./themeContext";
 import { Section } from "./drawerComponents";
-import { StatusSelector, ActivityFeed, ActivityEvent } from "./DrawerStatusActivity";
+import Icon from "@/components/ui/icon";
+import { StatusSelector } from "./StatusSelector";
+import { ActivityFeed, ActivityEvent, appendActivityLog } from "./ActivityFeed";
 import { AddBlockModal } from "./DrawerBlockEditor";
 import { DrawerColumns } from "./DrawerColumns";
 import {
@@ -31,17 +33,27 @@ export default function DrawerInfoTab({ data, client, setData, save, setComments
   const [showAddBlock, setShowAddBlock]   = useState<0 | 1 | null>(null);
   const [customRowVals, setCustomRowVals] = useState<Record<string, Record<number, string>>>({});
   const dragId = useRef<BlockId | null>(null);
+  const dragColRef = useRef<0 | 1 | null>(null);
 
-  // ── финансы ──────────────────────────────────────────────────────────────────
-  const profit    = (data.contract_sum||0) - (data.material_cost||0) - (data.measure_cost||0) - (data.install_cost||0);
-  const received  = (data.prepayment||0) + (data.extra_payment||0);
-  const remaining = (data.contract_sum||0) - received;
+  // ── финансы (Number() чтобы строки из БД тоже работали) ────────────────────
+  const cs = Number(data.contract_sum) || 0;
+  const mc = Number(data.material_cost) || 0;
+  const mec = Number(data.measure_cost) || 0;
+  const ic = Number(data.install_cost) || 0;
+  const pre = Number(data.prepayment) || 0;
+  const ext = Number(data.extra_payment) || 0;
+  const profit    = cs - mc - mec - ic;
+  const received  = pre + ext;
+  const remaining = cs - received;
 
   // ── логирование ──────────────────────────────────────────────────────────────
   const now = () => new Date().toLocaleString("ru-RU", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
 
-  const logAction = (icon: string, color: string, text: string) =>
-    setActivityLog(prev => [...prev, { icon, color, text, date: now() }]);
+  const logAction = (icon: string, color: string, text: string) => {
+    const event: ActivityEvent = { icon, color, text, date: now() };
+    setActivityLog(prev => [...prev, event]);
+    appendActivityLog(data.id, event); // сохраняем в localStorage
+  };
 
   const saveWithLog = (patch: Partial<Client>, logText: string, icon = "Edit3", color = "#8b5cf6") => {
     save(patch);
@@ -79,9 +91,10 @@ export default function DrawerInfoTab({ data, client, setData, save, setComments
     localStorage.setItem(LS_BLOCKS, JSON.stringify(newBlocks));
   };
 
-  // ── drag & drop ──────────────────────────────────────────────────────────────
+  // ── drag & drop (в т.ч. на пустое место — drop zone внизу колонки) ──────────
   const onDragStart = (id: BlockId) => { dragId.current = id; };
   const onDragOver  = (_e: React.DragEvent, _id: BlockId) => {};
+
   const onDrop = (targetId: BlockId) => {
     const from = dragId.current; dragId.current = null;
     if (!from || from === targetId) return;
@@ -91,6 +104,23 @@ export default function DrawerInfoTab({ data, client, setData, save, setComments
       const result: BlockDef[] = [];
       for (const col of [0, 1] as const) {
         updated.filter(b => b.col === col).sort((a, b) => a.order - b.order).forEach((b, i) => result.push({ ...b, order: i }));
+      }
+      localStorage.setItem(LS_BLOCKS, JSON.stringify(result));
+      return result;
+    });
+  };
+
+  // Drop на пустую зону внизу колонки
+  const onDropToCol = (col: 0 | 1) => {
+    const from = dragId.current; dragId.current = null;
+    if (!from) return;
+    setBlocks(prev => {
+      const colBlocks = prev.filter(b => b.col === col).sort((a, b) => a.order - b.order);
+      const maxOrder = colBlocks.length > 0 ? colBlocks[colBlocks.length - 1].order + 1 : 0;
+      const updated = prev.map(b => b.id === from ? { ...b, col, order: maxOrder } : b);
+      const result: BlockDef[] = [];
+      for (const c of [0, 1] as const) {
+        updated.filter(b => b.col === c).sort((a, b) => a.order - b.order).forEach((b, i) => result.push({ ...b, order: i }));
       }
       localStorage.setItem(LS_BLOCKS, JSON.stringify(result));
       return result;
@@ -145,22 +175,57 @@ export default function DrawerInfoTab({ data, client, setData, save, setComments
             onDragStart={onDragStart}
             onDragOver={onDragOver}
             onDrop={onDrop}
+            onDropToCol={onDropToCol}
             onAddBlockLeft={() => setShowAddBlock(0)}
             onAddBlockRight={() => setShowAddBlock(1)}
             onReset={handleReset}
           />
         </div>
 
-        {/* Правая колонка — Активность */}
-        <div className="flex flex-col">
-          <ActivityFeed client={data} extraEvents={activityLog} onAddComment={text => {
-            const ts = now();
-            setComments(prev => [...prev, { text, date: ts }]);
-            logAction("MessageSquare", "#7c3aed", text);
-            const newNotes = (data.notes ? data.notes + "\n" : "") + `[${ts}] ${text}`;
-            save({ notes: newNotes });
-          }} />
-          <div className="text-[10px] opacity-20 px-1 mt-2" style={{ color: t.textMute }}>
+        {/* Правая колонка — Активность + Заметки */}
+        <div className="flex flex-col gap-3">
+          <ActivityFeed
+            client={data}
+            extraEvents={activityLog}
+            onAddComment={text => {
+              const ts = now();
+              setComments(prev => [...prev, { text, date: ts }]);
+              logAction("MessageSquare", "#7c3aed", `Комментарий: ${text}`);
+            }}
+          />
+
+          {/* Заметки — отдельный блок */}
+          <div className="rounded-2xl overflow-hidden" style={{ background: t.surface2, border: `1px solid ${t.border}` }}>
+            <div className="flex items-center gap-2 px-4 py-2.5" style={{ borderBottom: `1px solid ${t.border}` }}>
+              <div className="w-6 h-6 rounded-lg flex items-center justify-center" style={{ background: "#8b5cf620" }}>
+                <Icon name="StickyNote" size={12} style={{ color: "#8b5cf6" }} />
+              </div>
+              <span className="text-xs font-bold uppercase tracking-wider" style={{ color: "#8b5cf6" }}>Заметки</span>
+            </div>
+            <div className="px-3 py-3">
+              <textarea
+                value={(() => {
+                  const notes = data.notes || "";
+                  return notes.split("\n").filter(l =>
+                    !l.includes("Смета сохранена") && !l.includes("Email:") && !l.includes("Estimate ID:")
+                  ).join("\n").trim();
+                })()}
+                onChange={e => setData({ ...data, notes: e.target.value })}
+                onBlur={e => {
+                  if (e.target.value !== (client.notes || "")) {
+                    save({ notes: e.target.value });
+                    logAction("StickyNote", "#8b5cf6", "Заметки обновлены");
+                  }
+                }}
+                placeholder="Личные заметки по клиенту..."
+                rows={4}
+                className="w-full rounded-xl px-3 py-2.5 text-sm focus:outline-none resize-none transition"
+                style={{ background: t.surface, border: `1px solid ${t.border}`, color: "#fff" }}
+              />
+            </div>
+          </div>
+
+          <div className="text-[10px] opacity-20 px-1" style={{ color: "#a3a3a3" }}>
             ID #{data.id} · {data.source || "chat"}
           </div>
         </div>

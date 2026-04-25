@@ -17,7 +17,7 @@ export function OrdersTabs({ allClients, activeTab, onSelect }: {
     <div className="flex gap-2 flex-wrap">
       {ORDERS_TABS.map(tab => {
         const clients  = getTabClients(tab);
-        const revenue  = clients.reduce((s, c) => s + (c.contract_sum || 0), 0);
+        const revenue  = clients.reduce((s, c) => s + (Number(c.contract_sum) || 0), 0);
         const isActive = activeTab === tab.id;
         return (
           <button key={tab.id} onClick={() => onSelect(tab.id)}
@@ -32,12 +32,12 @@ export function OrdersTabs({ allClients, activeTab, onSelect }: {
             </div>
             <div className="flex-1 min-w-0 text-left">
               <div className="flex items-center gap-1.5">
-                <span className="text-xs font-bold" style={{ color: isActive ? tab.color : t.text }}>{tab.label}</span>
+                <span className="text-xs font-bold" style={{ color: isActive ? tab.color : "#fff" }}>{tab.label}</span>
                 <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md"
                   style={{ background: tab.color + "20", color: tab.color }}>{clients.length}</span>
               </div>
               {revenue > 0 && (
-                <div className="text-[10px] font-medium mt-0.5 truncate" style={{ color: isActive ? tab.color + "aa" : t.textMute }}>
+                <div className="text-[10px] font-semibold mt-0.5 truncate" style={{ color: isActive ? tab.color : "#a3a3a3" }}>
                   {revenue.toLocaleString("ru-RU")} ₽
                 </div>
               )}

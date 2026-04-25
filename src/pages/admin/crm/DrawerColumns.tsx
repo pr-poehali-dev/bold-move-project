@@ -1,3 +1,4 @@
+import { useState } from "react";
 import Icon from "@/components/ui/icon";
 import { useTheme } from "./themeContext";
 import { Client } from "./crmApi";
@@ -29,6 +30,7 @@ interface ColumnsProps {
   onDragStart: (id: BlockId) => void;
   onDragOver: (e: React.DragEvent, id: BlockId) => void;
   onDrop: (targetId: BlockId) => void;
+  onDropToCol: (col: 0 | 1) => void;
   onAddBlockLeft: () => void;
   onAddBlockRight: () => void;
   onReset: () => void;
@@ -39,7 +41,7 @@ export function DrawerColumns(props: ColumnsProps) {
     data, setData, client, save, blocks, hiddenBlocks, editingBlock, customBlocks,
     customRowVals, profit, received, remaining,
     toggleHidden, setEditingBlock, saveWithLog, logAction, setCustomRowVals,
-    deleteCustomBlock, onDragStart, onDragOver, onDrop, onAddBlockLeft, onAddBlockRight, onReset,
+    deleteCustomBlock, onDragStart, onDragOver, onDrop, onDropToCol, onAddBlockLeft, onAddBlockRight, onReset,
   } = props;
   const t = useTheme();
 
@@ -119,9 +121,9 @@ export function DrawerColumns(props: ColumnsProps) {
         {cb.rows.map((row, i) => (
           row.type === "file" ? (
             <FileField key={i} label={row.label} url={vals[i] || null}
-              onUploaded={url => {
+              onUploaded={(url, name) => {
                 setCustomRowVals(prev => ({ ...prev, [cb.id]: { ...(prev[cb.id] || {}), [i]: url } }));
-                logAction("Upload", cb.color, `${cb.title} / ${row.label}: файл загружен`);
+                logAction("Upload", cb.color, `${cb.title} / ${row.label}: ${name}`);
               }} />
           ) : (
             <div key={i} className="flex items-center justify-between py-2 group"
@@ -208,10 +210,12 @@ export function DrawerColumns(props: ColumnsProps) {
             </div>
             {!isHidden && (
               <div className="px-4 py-3 space-y-2 text-sm" style={{ background: "linear-gradient(135deg,#7c3aed08,#10b98108)" }}>
-                {data.contract_sum ? <div className="flex justify-between"><span style={{ color: t.textMute }}>Договор</span><span className="font-bold text-white">{data.contract_sum.toLocaleString("ru-RU")} ₽</span></div> : null}
-                {received > 0 && <div className="flex justify-between"><span style={{ color: t.textMute }}>Получено</span><span className="font-semibold text-emerald-400">+{received.toLocaleString("ru-RU")} ₽</span></div>}
-                {remaining > 0 && data.contract_sum ? <div className="flex justify-between"><span style={{ color: t.textMute }}>Остаток</span><span className="font-semibold text-amber-400">{remaining.toLocaleString("ru-RU")} ₽</span></div> : null}
-                {(data.material_cost||data.measure_cost||data.install_cost) ? <div className="flex justify-between"><span style={{ color: t.textMute }}>Затраты</span><span className="font-semibold text-red-400">−{((data.material_cost||0)+(data.measure_cost||0)+(data.install_cost||0)).toLocaleString("ru-RU")} ₽</span></div> : null}
+                {Number(data.contract_sum) > 0 ? <div className="flex justify-between"><span style={{ color: "#a3a3a3" }}>Договор</span><span className="font-bold text-white">{Number(data.contract_sum).toLocaleString("ru-RU")} ₽</span></div> : null}
+                {received > 0 && <div className="flex justify-between"><span style={{ color: "#a3a3a3" }}>Получено</span><span className="font-semibold text-emerald-400">+{received.toLocaleString("ru-RU")} ₽</span></div>}
+                {Number(data.prepayment) > 0 && <div className="flex justify-between"><span style={{ color: "#a3a3a3" }}>Предоплата</span><span className="font-semibold text-emerald-300">+{Number(data.prepayment).toLocaleString("ru-RU")} ₽</span></div>}
+                {Number(data.extra_payment) > 0 && <div className="flex justify-between"><span style={{ color: "#a3a3a3" }}>Доплата</span><span className="font-semibold text-emerald-300">+{Number(data.extra_payment).toLocaleString("ru-RU")} ₽</span></div>}
+                {remaining > 0 && Number(data.contract_sum) > 0 ? <div className="flex justify-between"><span style={{ color: "#a3a3a3" }}>Остаток</span><span className="font-semibold text-amber-400">{remaining.toLocaleString("ru-RU")} ₽</span></div> : null}
+                {(Number(data.material_cost)||Number(data.measure_cost)||Number(data.install_cost)) ? <div className="flex justify-between"><span style={{ color: "#a3a3a3" }}>Затраты</span><span className="font-semibold text-red-400">−{(Number(data.material_cost||0)+Number(data.measure_cost||0)+Number(data.install_cost||0)).toLocaleString("ru-RU")} ₽</span></div> : null}
                 <div className="flex justify-between pt-2 mt-1" style={{ borderTop: `1px solid ${t.border}` }}>
                   <span className="font-bold text-white">Прибыль</span>
                   <span className={`text-lg font-black ${profit >= 0 ? "text-emerald-400" : "text-red-400"}`}>{profit >= 0 ? "+" : ""}{profit.toLocaleString("ru-RU")} ₽</span>
@@ -238,9 +242,9 @@ export function DrawerColumns(props: ColumnsProps) {
 
       case "files":
         return wrap(id, <>
-          <FileField label="Фото до"         url={data.photo_before_url} accept="image/*"                    onUploaded={url => { save({ photo_before_url: url }); logAction("Image", "#06b6d4", "Фото до загружено"); }} />
-          <FileField label="Фото после"      url={data.photo_after_url}  accept="image/*"                    onUploaded={url => { save({ photo_after_url: url }); logAction("Image", "#06b6d4", "Фото после загружено"); }} />
-          <FileField label="Договор / Смета" url={data.document_url}     accept=".pdf,.doc,.docx,.xls,.xlsx" onUploaded={url => { save({ document_url: url }); logAction("FileText", "#06b6d4", "Документ загружен"); }} />
+          <FileField label="Фото до"         url={data.photo_before_url} accept="image/*"                    onUploaded={(url, name) => { save({ photo_before_url: url }); logAction("Image", "#06b6d4", `Фото до: ${name}`); }} />
+          <FileField label="Фото после"      url={data.photo_after_url}  accept="image/*"                    onUploaded={(url, name) => { save({ photo_after_url: url }); logAction("Image", "#06b6d4", `Фото после: ${name}`); }} />
+          <FileField label="Договор / Смета" url={data.document_url}     accept=".pdf,.doc,.docx,.xls,.xlsx" onUploaded={(url, name) => { save({ document_url: url }); logAction("FileText", "#06b6d4", `Документ: ${name}`); }} />
         </>, "Paperclip", "Файлы", "#06b6d4", false);
 
       case "cancel":
@@ -265,37 +269,71 @@ export function DrawerColumns(props: ColumnsProps) {
     return renderBlock(b.id);
   };
 
+  const [dropOverCol, setDropOverCol] = useState<0 | 1 | null>(null);
+
+  const makeColDropZone = (col: 0 | 1) => ({
+    onDragOver: (e: React.DragEvent) => { e.preventDefault(); setDropOverCol(col); },
+    onDragLeave: () => setDropOverCol(null),
+    onDrop: () => { setDropOverCol(null); onDropToCol(col); },
+  });
+
   return (
     <div className="grid grid-cols-[1fr_1fr] gap-3">
       {/* Левый столбец */}
-      <div className="space-y-3">
+      <div className="space-y-3 flex flex-col">
         {col0.filter(b => b.id !== "status").map(b => (
           <DraggableBlock key={b.id} blockId={b.id} onDragStart={onDragStart} onDragOver={onDragOver} onDrop={onDrop}>
             {renderColBlock(b)}
           </DraggableBlock>
         ))}
+        {/* Drop-зона на пустое место */}
+        <div className="flex-1 min-h-[48px] rounded-xl transition-all"
+          style={{
+            border: `2px dashed ${dropOverCol === 0 ? "#7c3aed80" : t.border}`,
+            background: dropOverCol === 0 ? "#7c3aed08" : "transparent",
+          }}
+          {...makeColDropZone(0)}>
+          {dropOverCol === 0 && (
+            <div className="flex items-center justify-center h-full py-4">
+              <span className="text-xs text-violet-400">Перетащи сюда</span>
+            </div>
+          )}
+        </div>
         <button onClick={onAddBlockLeft}
           className="w-full flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-medium transition border-2 border-dashed hover:border-violet-500/40 hover:text-violet-400"
-          style={{ borderColor: t.border, color: t.textMute }}>
+          style={{ borderColor: t.border, color: "#a3a3a3" }}>
           <Icon name="Plus" size={13} /> Добавить блок
         </button>
       </div>
 
       {/* Правый столбец */}
-      <div className="space-y-3">
+      <div className="space-y-3 flex flex-col">
         {col1.map(b => (
           <DraggableBlock key={b.id} blockId={b.id} onDragStart={onDragStart} onDragOver={onDragOver} onDrop={onDrop}>
             {renderColBlock(b)}
           </DraggableBlock>
         ))}
+        {/* Drop-зона на пустое место */}
+        <div className="flex-1 min-h-[48px] rounded-xl transition-all"
+          style={{
+            border: `2px dashed ${dropOverCol === 1 ? "#7c3aed80" : t.border}`,
+            background: dropOverCol === 1 ? "#7c3aed08" : "transparent",
+          }}
+          {...makeColDropZone(1)}>
+          {dropOverCol === 1 && (
+            <div className="flex items-center justify-center h-full py-4">
+              <span className="text-xs text-violet-400">Перетащи сюда</span>
+            </div>
+          )}
+        </div>
         <button onClick={onAddBlockRight}
           className="w-full flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-medium transition border-2 border-dashed hover:border-violet-500/40 hover:text-violet-400"
-          style={{ borderColor: t.border, color: t.textMute }}>
+          style={{ borderColor: t.border, color: "#a3a3a3" }}>
           <Icon name="Plus" size={13} /> Добавить блок
         </button>
         <button onClick={onReset}
           className="text-[10px] opacity-25 hover:opacity-50 transition flex items-center gap-1 px-1"
-          style={{ color: t.textMute }}>
+          style={{ color: "#a3a3a3" }}>
           <Icon name="RotateCcw" size={10} /> сбросить
         </button>
       </div>
