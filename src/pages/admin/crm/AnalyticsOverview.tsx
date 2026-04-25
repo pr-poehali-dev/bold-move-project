@@ -42,7 +42,15 @@ interface Props {
 export default function AnalyticsOverview({ s, convMeasure, convContract, convDone, cancelRate, funnelData, statusPie, recentClients, allClients, onSelectClient }: Props) {
   const t = useTheme();
   const [activeStatus, setActiveStatus] = useState<StatusEntry | null>(null);
-  const statusClients = activeStatus ? allClients.filter(c => c.status === activeStatus.status) : [];
+  const [statusSearch, setStatusSearch] = useState("");
+  const statusClients = activeStatus
+    ? allClients.filter(c => {
+        if (c.status !== activeStatus.status) return false;
+        if (!statusSearch) return true;
+        const q = statusSearch.toLowerCase();
+        return (c.client_name || "").toLowerCase().includes(q) || (c.phone || "").includes(q);
+      })
+    : [];
 
   return (
     <div className="space-y-5">
@@ -153,7 +161,7 @@ export default function AnalyticsOverview({ s, convMeasure, convContract, convDo
                     return (
                       <button
                         key={sp.status}
-                        onClick={() => setActiveStatus(prev => prev?.status === sp.status ? null : sp)}
+                        onClick={() => { setActiveStatus(prev => prev?.status === sp.status ? null : sp); setStatusSearch(""); }}
                         className="w-full text-left rounded-xl px-3 py-2.5 transition"
                         style={{
                           background: isActive ? sp.color + "15" : t.surface2,
@@ -195,17 +203,39 @@ export default function AnalyticsOverview({ s, convMeasure, convContract, convDo
                     <span className="text-sm font-semibold" style={{ color: activeStatus.color }}>{activeStatus.name}</span>
                     <span className="text-xs px-1.5 py-0.5 rounded-md font-bold"
                       style={{ background: activeStatus.color + "20", color: activeStatus.color }}>
-                      {statusClients.length}
+                      {statusSearch
+                        ? `${statusClients.length} из ${allClients.filter(c => c.status === activeStatus.status).length}`
+                        : statusClients.length}
                     </span>
                   </div>
-                  <button onClick={() => setActiveStatus(null)} className="p-1 rounded-lg transition hover:opacity-60" style={{ color: t.textMute }}>
+                  <button onClick={() => { setActiveStatus(null); setStatusSearch(""); }} className="p-1 rounded-lg transition hover:opacity-60" style={{ color: t.textMute }}>
                     <Icon name="X" size={14} />
                   </button>
                 </div>
+                {/* Поиск */}
+                <div className="px-3 py-2" style={{ borderBottom: `1px solid ${t.border2}` }}>
+                  <div className="relative">
+                    <Icon name="Search" size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2" style={{ color: t.textMute }} />
+                    <input
+                      value={statusSearch}
+                      onChange={e => setStatusSearch(e.target.value)}
+                      placeholder="Поиск по имени, телефону..."
+                      className="w-full rounded-lg pl-7 pr-3 py-1.5 text-xs focus:outline-none"
+                      style={{ background: t.surface2, border: `1px solid ${t.border}`, color: t.text }}
+                    />
+                    {statusSearch && (
+                      <button onClick={() => setStatusSearch("")} className="absolute right-2 top-1/2 -translate-y-1/2" style={{ color: t.textMute }}>
+                        <Icon name="X" size={11} />
+                      </button>
+                    )}
+                  </div>
+                </div>
                 {/* Список */}
-                <div className="divide-y overflow-y-auto" style={{ borderColor: t.border2, maxHeight: 320 }}>
+                <div className="divide-y overflow-y-auto" style={{ borderColor: t.border2, maxHeight: 280 }}>
                   {statusClients.length === 0 ? (
-                    <div className="py-10 text-center text-sm" style={{ color: t.textMute }}>Нет клиентов</div>
+                    <div className="py-10 text-center text-sm" style={{ color: t.textMute }}>
+                      {statusSearch ? "Ничего не найдено" : "Нет клиентов"}
+                    </div>
                   ) : statusClients.map(c => (
                     <button key={c.id} onClick={() => onSelectClient(c)}
                       className="w-full flex items-center gap-3 px-4 py-2.5 text-left transition hover:opacity-80 group">
