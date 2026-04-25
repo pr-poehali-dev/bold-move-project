@@ -51,6 +51,7 @@ function ItemRow({ item, onChange, onDelete }: {
 }) {
   const t = useTheme();
   const parsed = parseValue(item.value);
+  const [name,  setName]  = useState(item.name);
   const [qty,   setQty]   = useState(String(parsed?.qty   ?? 1));
   const [price, setPrice] = useState(String(parsed?.price ?? 0));
   const unit = parsed?.unit ?? "шт";
@@ -58,27 +59,44 @@ function ItemRow({ item, onChange, onDelete }: {
   const total = Math.round(parseFloat(qty || "0") * parseInt(price || "0", 10));
 
   const commit = () => {
-    onChange(item.name, parseFloat(qty || "0"), parseInt(price || "0", 10), unit);
+    onChange(name.trim() || item.name, parseFloat(qty || "0"), parseInt(price || "0", 10), unit);
   };
 
   return (
     <tr className="group" style={{ borderBottom: `1px solid ${t.border2}` }}>
-      <td className="py-2 px-3 text-sm" style={{ color: t.text }}>{item.name}</td>
-      <td className="py-2 px-2 w-24">
+      <td className="py-1.5 px-2">
+        <input
+          value={name}
+          onChange={e => setName(e.target.value)}
+          onBlur={commit}
+          onKeyDown={e => e.key === "Enter" && commit()}
+          className="w-full text-sm rounded-lg px-2 py-1 focus:outline-none transition"
+          style={{
+            background: "transparent",
+            border: `1px solid transparent`,
+            color: t.text,
+          }}
+          onFocus={e => (e.target.style.background = t.surface2, e.target.style.borderColor = "#7c3aed40")}
+          onBlurCapture={e => (e.target.style.background = "transparent", e.target.style.borderColor = "transparent")}
+        />
+      </td>
+      <td className="py-1.5 px-2 w-24">
         <input value={qty} onChange={e => setQty(e.target.value)} onBlur={commit}
+          onKeyDown={e => e.key === "Enter" && commit()}
           className="w-full text-sm text-center rounded-lg px-2 py-1 focus:outline-none"
           style={{ background: t.surface2, border: `1px solid ${t.border}`, color: t.text }} />
       </td>
-      <td className="py-2 px-1 text-xs text-center" style={{ color: t.textMute }}>{unit}</td>
-      <td className="py-2 px-2 w-28">
+      <td className="py-1.5 px-1 text-xs text-center" style={{ color: t.textMute }}>{unit}</td>
+      <td className="py-1.5 px-2 w-28">
         <input value={price} onChange={e => setPrice(e.target.value)} onBlur={commit}
+          onKeyDown={e => e.key === "Enter" && commit()}
           className="w-full text-sm text-right rounded-lg px-2 py-1 focus:outline-none"
           style={{ background: t.surface2, border: `1px solid ${t.border}`, color: t.text }} />
       </td>
-      <td className="py-2 px-3 text-sm font-semibold text-right w-28" style={{ color: t.text }}>
+      <td className="py-1.5 px-3 text-sm font-semibold text-right w-28" style={{ color: t.text }}>
         {fmt(total)} ₽
       </td>
-      <td className="py-2 px-1 w-8">
+      <td className="py-1.5 px-1 w-8">
         <button onClick={onDelete} className="opacity-0 group-hover:opacity-100 transition text-red-400 hover:text-red-300">
           <Icon name="X" size={13} />
         </button>
