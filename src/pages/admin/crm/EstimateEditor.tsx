@@ -1,233 +1,27 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { crmFetch } from "./crmApi";
 import { useTheme } from "./themeContext";
 import Icon from "@/components/ui/icon";
-import func2url from "@/../backend/func2url.json";
+import { AUTH_URL, PRICES_URL, PriceItem, EstimateBlock, SavedEstimate, parseValue, fmt } from "./estimateTypes";
+import EstimateItemRow from "./EstimateItemRow";
 
-const AUTH_URL    = (func2url as Record<string, string>)["auth"];
-const PRICES_URL  = (func2url as Record<string, string>)["get-prices"];
-
-interface PriceItem {
-  id: number;
-  name: string;
-  price: number;
-  unit: string;
-  category: string;
-}
-
-interface EstimateBlock {
-  title: string;
-  numbered: boolean;
-  items: { name: string; value: string }[];
-}
-
-interface SavedEstimate {
-  id: number;
-  title: string;
-  blocks: EstimateBlock[];
-  totals: string[];
-  final_phrase: string;
-  total_econom: number | null;
-  total_standard: number | null;
-  total_premium: number | null;
-  status: string;
-  created_at: string;
-}
-
-// Парсим "20 м² × 399 ₽ = 7 980 ₽" → { qty, unit, price, total }
-function parseValue(value: string) {
-  const m = value.match(/([\d,.\s]+)\s*([а-яёa-z²³.]+)?\s*[×x*]\s*([\d\s]+)\s*₽\s*=\s*([\d\s]+)\s*₽/i);
-  if (m) {
-    const qty   = parseFloat(m[1].replace(/\s/g, "").replace(",", "."));
-    const unit  = (m[2] || "шт").trim();
-    const price = parseInt(m[3].replace(/\s/g, ""), 10);
-    const total = parseInt(m[4].replace(/\s/g, ""), 10);
-    return { qty, unit, price, total };
-  }
-  // Просто цена
-  const simple = value.match(/([\d\s]+)\s*₽/);
-  if (simple) return { qty: 1, unit: "шт", price: parseInt(simple[1].replace(/\s/g, ""), 10), total: parseInt(simple[1].replace(/\s/g, ""), 10) };
-  return null;
-}
-
-function fmt(n: number) { return Math.round(n).toLocaleString("ru-RU"); }
-
-// Выбор позиции из прайса
-function PricePicker({ prices, onSelect, onClose }: {
-  prices: PriceItem[];
-  onSelect: (p: PriceItem) => void;
-  onClose: () => void;
+export default function EstimateEditor({ chatId, clientName, clientPhone }: {
+  chatId: number;
+  clientName?: string | null;
+  clientPhone?: string | null;
 }) {
   const t = useTheme();
-  const [q, setQ] = useState("");
-  const inputRef = useRef<HTMLInputElement>(null);
+  const [estimate, setEstimate] = useState<SavedEstimate | null>(null);
+  const [loading,  setLoading]  = useState(true);
+  const [saving,   setSaving]   = useState(false);
+  const [saved,    setSaved]    = useState(false);
+  const [copied,   setCopied]   = useState(false);
+  const [blocks,   setBlocks]   = useState<EstimateBlock[]>([]);
+  const [totals,   setTotals]   = useState<string[]>([]);
+  const [prices,   setPrices]   = useState<PriceItem[]>([]);
 
-  useEffect(() => { setTimeout(() => inputRef.current?.focus(), 50); }, []);
-
-  const filtered = q.length < 1
-    ? prices
-    : prices.filter(p =>
-        p.name.toLowerCase().includes(q.toLowerCase()) ||
-        p.category.toLowerCase().includes(q.toLowerCase())
-      );
-
-  // Группируем по категориям
-  const grouped = filtered.reduce<Record<string, PriceItem[]>>((acc, p) => {
-    (acc[p.category] = acc[p.category] || []).push(p);
-    return acc;
-  }, {});
-
-  return (
-    <div className="fixed inset-0 z-[70] flex items-center justify-center p-4"
-      style={{ background: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)" }}
-      onClick={onClose}>
-      <div className="w-full max-w-lg rounded-2xl overflow-hidden shadow-2xl flex flex-col"
-        style={{ background: t.surface, border: `1px solid ${t.border}`, maxHeight: "70vh" }}
-        onClick={e => e.stopPropagation()}>
-
-        {/* Поиск */}
-        <div className="p-3" style={{ borderBottom: `1px solid ${t.border}` }}>
-          <div className="relative">
-            <Icon name="Search" size={13} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: t.textMute }} />
-            <input ref={inputRef} value={q} onChange={e => setQ(e.target.value)}
-              placeholder="Поиск по прайсу..."
-              className="w-full rounded-xl pl-9 pr-4 py-2 text-sm focus:outline-none"
-              style={{ background: t.surface2, border: `1px solid ${t.border}`, color: t.text }} />
-          </div>
-        </div>
-
-        {/* Список */}
-        <div className="overflow-y-auto flex-1">
-          {Object.entries(grouped).map(([cat, items]) => (
-            <div key={cat}>
-              <div className="px-4 py-1.5 text-[10px] font-bold uppercase tracking-wider sticky top-0"
-                style={{ background: t.surface2, color: "#f97316" }}>
-                {cat || "Без категории"}
-              </div>
-              {items.map(p => (
-                <button key={p.id} onClick={() => onSelect(p)}
-                  className="w-full flex items-center justify-between px-4 py-2.5 text-left transition hover:opacity-80"
-                  style={{ borderBottom: `1px solid ${t.border2}` }}>
-                  <span className="text-sm" style={{ color: t.text }}>{p.name}</span>
-                  <div className="flex items-center gap-3 flex-shrink-0 ml-3">
-                    <span className="text-xs" style={{ color: t.textMute }}>{p.unit}</span>
-                    <span className="text-sm font-semibold text-emerald-500">{p.price.toLocaleString("ru-RU")} ₽</span>
-                  </div>
-                </button>
-              ))}
-            </div>
-          ))}
-          {filtered.length === 0 && (
-            <div className="py-10 text-center text-sm" style={{ color: t.textMute }}>Ничего не найдено</div>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// Строка редактора
-function ItemRow({ item, onChange, onDelete, prices }: {
-  item: { name: string; value: string };
-  onChange: (name: string, qty: number, price: number, unit: string) => void;
-  onDelete: () => void;
-  prices: PriceItem[];
-}) {
-  const t = useTheme();
-  const parsed = parseValue(item.value);
-  const [name,       setName]       = useState(item.name);
-  const [qty,        setQty]        = useState(String(parsed?.qty   ?? 1));
-  const [price,      setPrice]      = useState(String(parsed?.price ?? 0));
-  const [unit,       setUnit]       = useState(parsed?.unit ?? "шт");
-  const [showPicker, setShowPicker] = useState(false);
-
-  const total = Math.round(parseFloat(qty || "0") * parseInt(price || "0", 10));
-
-  const commit = (overrideName?: string, overrideUnit?: string) => {
-    onChange(
-      (overrideName ?? name).trim() || item.name,
-      parseFloat(qty || "0"),
-      parseInt(price || "0", 10),
-      overrideUnit ?? unit,
-    );
-  };
-
-  const handlePickPrice = (p: PriceItem) => {
-    setName(p.name);
-    setPrice(String(p.price));
-    setUnit(p.unit || "шт");
-    setShowPicker(false);
-    // Сохраняем сразу с новыми значениями
-    onChange(p.name, parseFloat(qty || "1"), p.price, p.unit || "шт");
-  };
-
-  return (
-    <>
-      {showPicker && <PricePicker prices={prices} onSelect={handlePickPrice} onClose={() => setShowPicker(false)} />}
-      <tr className="group" style={{ borderBottom: `1px solid ${t.border2}` }}>
-        <td className="py-1.5 px-2">
-          <div className="flex items-center gap-1">
-            {/* Кнопка замены из прайса */}
-            <button
-              onClick={() => setShowPicker(true)}
-              title="Заменить из прайса"
-              className="flex-shrink-0 opacity-0 group-hover:opacity-100 transition rounded-md p-1 hover:bg-violet-500/15"
-              style={{ color: "#7c3aed" }}>
-              <Icon name="RefreshCw" size={11} />
-            </button>
-            <input
-              value={name}
-              onChange={e => setName(e.target.value)}
-              onBlur={() => commit()}
-              onKeyDown={e => e.key === "Enter" && commit()}
-              className="w-full text-sm rounded-lg px-2 py-1 focus:outline-none transition"
-              style={{ background: "transparent", border: "1px solid transparent", color: t.text }}
-              onFocus={e => { e.target.style.background = t.surface2; e.target.style.borderColor = "#7c3aed40"; }}
-              onBlurCapture={e => { e.target.style.background = "transparent"; e.target.style.borderColor = "transparent"; }}
-            />
-          </div>
-        </td>
-        <td className="py-1.5 px-2 w-24">
-          <input value={qty} onChange={e => setQty(e.target.value)} onBlur={() => commit()}
-            onKeyDown={e => e.key === "Enter" && commit()}
-            className="w-full text-sm text-center rounded-lg px-2 py-1 focus:outline-none"
-            style={{ background: t.surface2, border: `1px solid ${t.border}`, color: t.text }} />
-        </td>
-        <td className="py-1.5 px-1 text-xs text-center" style={{ color: t.textMute }}>{unit}</td>
-        <td className="py-1.5 px-2 w-28">
-          <input value={price} onChange={e => setPrice(e.target.value)} onBlur={() => commit()}
-            onKeyDown={e => e.key === "Enter" && commit()}
-            className="w-full text-sm text-right rounded-lg px-2 py-1 focus:outline-none"
-            style={{ background: t.surface2, border: `1px solid ${t.border}`, color: t.text }} />
-        </td>
-        <td className="py-1.5 px-3 text-sm font-semibold text-right w-28" style={{ color: t.text }}>
-          {fmt(total)} ₽
-        </td>
-        <td className="py-1.5 px-1 w-8">
-          <button onClick={onDelete} className="opacity-0 group-hover:opacity-100 transition text-red-400 hover:text-red-300">
-            <Icon name="X" size={13} />
-          </button>
-        </td>
-      </tr>
-    </>
-  );
-}
-
-export default function EstimateEditor({ chatId, clientName, clientPhone }: { chatId: number; clientName?: string | null; clientPhone?: string | null }) {
-  const t = useTheme();
-  const [estimate, setEstimate]   = useState<SavedEstimate | null>(null);
-  const [loading,  setLoading]    = useState(true);
-  const [saving,   setSaving]     = useState(false);
-  const [saved,    setSaved]      = useState(false);
-  const [copied,   setCopied]     = useState(false);
-  const [blocks,   setBlocks]     = useState<EstimateBlock[]>([]);
-  const [totals,   setTotals]     = useState<string[]>([]);
-  const [prices,   setPrices]     = useState<PriceItem[]>([]);
-
-  // Загружаем смету по chat_id
   useEffect(() => {
     setLoading(true);
-    // Загружаем смету и прайс параллельно
     Promise.all([
       fetch(`${AUTH_URL}?action=estimate-by-chat&chat_id=${chatId}`).then(r => r.json()),
       fetch(PRICES_URL).then(r => r.json()).catch(() => ({ prices: [] })),
@@ -302,12 +96,11 @@ export default function EstimateEditor({ chatId, clientName, clientPhone }: { ch
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ blocks, totals }),
       });
-      // Обновляем contract_sum в заявке
       const standardLine = totals.find(t => t.toLowerCase().startsWith("standard"));
       if (standardLine) {
         const nums = standardLine.match(/[\d\s]+/g);
         if (nums) {
-          const val = parseInt(nums.map(n => n.replace(/\s/g,"")).join("").slice(0, 8), 10);
+          const val = parseInt(nums.map(n => n.replace(/\s/g, "")).join("").slice(0, 8), 10);
           if (!isNaN(val)) {
             await crmFetch("clients", { method: "PUT", body: JSON.stringify({ contract_sum: val }) }, { id: String(chatId) });
           }
@@ -319,7 +112,6 @@ export default function EstimateEditor({ chatId, clientName, clientPhone }: { ch
     }
   };
 
-  // Считаем итог Standard для отображения
   const standardTotal = (() => {
     let s = 0;
     for (const block of blocks) {
@@ -356,8 +148,8 @@ export default function EstimateEditor({ chatId, clientName, clientPhone }: { ch
 
   const printEstimate = () => {
     const name = clientName || "Клиент";
-    const econom   = Math.round(standardTotal * 0.85);
-    const premium  = Math.round(standardTotal * 1.27);
+    const econom  = Math.round(standardTotal * 0.85);
+    const premium = Math.round(standardTotal * 1.27);
     let rows = "";
     for (const block of blocks) {
       rows += `<tr><td colspan="4" style="background:#1e1b4b;color:#f97316;font-weight:bold;padding:8px 12px;font-size:13px">${block.title}</td></tr>`;
@@ -422,20 +214,17 @@ export default function EstimateEditor({ chatId, clientName, clientPhone }: { ch
           </div>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
-          {/* Копировать текст */}
           <button onClick={copyEstimateText}
             className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-semibold transition"
             style={{ background: copied ? "#10b98122" : t.surface2, color: copied ? "#10b981" : t.textSub, border: `1px solid ${copied ? "#10b98140" : t.border}` }}>
             <Icon name={copied ? "Check" : "Copy"} size={13} />
             {copied ? "Скопировано" : "Копировать"}
           </button>
-          {/* Печать / PDF */}
           <button onClick={printEstimate}
             className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-semibold transition"
             style={{ background: t.surface2, color: t.textSub, border: `1px solid ${t.border}` }}>
             <Icon name="Printer" size={13} /> Печать / PDF
           </button>
-          {/* Сохранить */}
           <button onClick={saveEstimate} disabled={saving}
             className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold text-white transition disabled:opacity-50"
             style={{ background: saved ? "#10b981" : "#7c3aed" }}>
@@ -475,7 +264,7 @@ export default function EstimateEditor({ chatId, clientName, clientPhone }: { ch
                     </td>
                   </tr>
                   {block.items.map((item, ii) => (
-                    <ItemRow key={`${bi}-${ii}`} item={item}
+                    <EstimateItemRow key={`${bi}-${ii}`} item={item}
                       onChange={(name, qty, price, unit) => updateItem(bi, ii, name, qty, price, unit)}
                       onDelete={() => deleteItem(bi, ii)}
                       prices={prices}
