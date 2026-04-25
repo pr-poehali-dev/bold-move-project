@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
-import { crmFetch } from "./crmApi";
+import { crmFetch, STATUS_LABELS, STATUS_COLORS, Client } from "./crmApi";
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
   LineChart, Line, CartesianGrid, Cell, Legend,
 } from "recharts";
 import Icon from "@/components/ui/icon";
 import { useTheme } from "./themeContext";
+import ClientDrawer from "./ClientDrawer";
 
 interface Stats {
   total_all: number; total_leads: number; total_orders: number;
@@ -83,7 +84,18 @@ export default function CrmDashboard() {
   const [monthFrom, setMonthFrom] = useState("");
   const [monthTo,   setMonthTo]   = useState("");
 
-  useEffect(() => { crmFetch("stats").then(d => { setStats(d); setLoading(false); }); }, []);
+  // Последние заявки + drawer
+  const [recentClients, setRecentClients] = useState<Client[]>([]);
+  const [drawerClient,  setDrawerClient]  = useState<Client | null>(null);
+
+  useEffect(() => {
+    crmFetch("stats")
+      .then(d => { if (d && !d.error) setStats(d); setLoading(false); })
+      .catch(() => setLoading(false));
+    crmFetch("clients").then((d: Client[] | unknown) => {
+      if (Array.isArray(d)) setRecentClients((d as Client[]).filter((c: Client) => c.status !== "deleted").slice(0, 8));
+    }).catch(() => {});
+  }, []);
 
   if (loading) return <div className="flex items-center justify-center h-64"><div className="w-7 h-7 border-2 border-violet-500 border-t-transparent rounded-full animate-spin" /></div>;
   if (!stats) return null;
@@ -388,6 +400,56 @@ export default function CrmDashboard() {
           </div>
         </div>
       </div>
+
+      {/* ── Последние заявки ── */}
+      {recentClients.length > 0 && (
+        <div className="rounded-2xl p-5" style={{ background: t.surface, border: `1px solid ${t.border}` }}>
+          <div className="flex items-center gap-2 mb-4">
+            <div className="w-1 h-4 rounded-full bg-violet-500" />
+            <span className="text-sm font-bold" style={{ color: t.text }}>Последние заявки</span>
+            <span className="ml-auto text-xs px-2 py-0.5 rounded-lg" style={{ color: t.textMute, background: t.surface2 }}>нажми → открыть карточку</span>
+          </div>
+          <div className="divide-y" style={{ borderColor: t.border2 }}>
+            {recentClients.map(c => (
+              <button key={c.id} onClick={() => setDrawerClient(c)}
+                className="w-full flex items-center gap-3 py-2.5 text-left transition hover:opacity-80 group">
+                <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 text-xs font-bold"
+                  style={{ background: (STATUS_COLORS[c.status] || "#8b5cf6") + "25", color: STATUS_COLORS[c.status] || "#8b5cf6" }}>
+                  {(c.client_name || "?")[0].toUpperCase()}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-medium truncate" style={{ color: t.text }}>{c.client_name || "Без имени"}</div>
+                  <div className="text-xs truncate" style={{ color: t.textMute }}>{c.phone || "—"} · {c.address || "Адрес не указан"}</div>
+                </div>
+                <span className="text-[11px] px-2 py-0.5 rounded-lg flex-shrink-0"
+                  style={{ background: (STATUS_COLORS[c.status] || "#8b5cf6") + "20", color: STATUS_COLORS[c.status] || "#8b5cf6" }}>
+                  {STATUS_LABELS[c.status] || c.status}
+                </span>
+                <span className="text-xs flex-shrink-0" style={{ color: t.textMute }}>{c.created_at?.slice(0,10)}</span>
+                <Icon name="ChevronRight" size={14} style={{ color: t.textMute }} className="flex-shrink-0 opacity-0 group-hover:opacity-100 transition" />
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Drawer клиента */}
+      {drawerClient && (
+        <ClientDrawer
+          client={drawerClient}
+          onClose={() => setDrawerClient(null)}
+          onUpdated={() => {
+            crmFetch("clients").then((d: Client[] | unknown) => {
+              if (Array.isArray(d)) setRecentClients((d as Client[]).filter((c: Client) => c.status !== "deleted").slice(0, 8));
+            }).catch(() => {});
+            setDrawerClient(null);
+          }}
+          onDeleted={() => {
+            setRecentClients(prev => prev.filter(c => c.id !== drawerClient.id));
+            setDrawerClient(null);
+          }}
+        />
+      )}
     </div>
   );
 }

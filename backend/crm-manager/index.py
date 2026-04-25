@@ -143,11 +143,6 @@ def handler(event: dict, context) -> dict:
 
             if method == "POST":
                 tags = body.get("tags", [])
-                # company_id: если клиент создаёт — его id; если мастер — мастер-id
-                new_company_id = company_id if company_id is not None else (
-                    cur.execute(f"SELECT id FROM {SCHEMA}.users WHERE email='master@mospotolki.ru'") or
-                    cur.fetchone()[0]
-                )
                 cur.execute(f"SELECT id FROM {SCHEMA}.users WHERE email='19.jeka.94@gmail.com'")
                 master_id_row = cur.fetchone()
                 master_id = master_id_row[0] if master_id_row else None

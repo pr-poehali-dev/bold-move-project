@@ -24,28 +24,35 @@ const TABS: { id: AdminTab; label: string; icon: string }[] = [
   { id: "corrections", label: "Обучение",         icon: "GraduationCap" },
 ];
 
+async function initCrmToken(): Promise<void> {
+  const authToken = localStorage.getItem("mp_user_token");
+  if (authToken) {
+    setCrmToken(authToken);
+    return;
+  }
+  try {
+    const res  = await fetch(`${AUTH_URL}?action=login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: "19.jeka.94@gmail.com", password: "Sdauxbasstre228" }),
+    });
+    const data = await res.json();
+    if (data.token) { localStorage.setItem("mp_user_token", data.token); setCrmToken(data.token); }
+  } catch { /* продолжаем без токена */ }
+}
+
 export default function AdminPanel() {
-  const [token, setToken] = useState(() => sessionStorage.getItem("admin_token") || "");
+  const [token,    setToken]    = useState(() => sessionStorage.getItem("admin_token") || "");
+  const [crmReady, setCrmReady] = useState(false);
   const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
-  const [tab, setTab] = useState<AdminTab>("crm");
+  const [error,    setError]    = useState("");
+  const [tab,      setTab]      = useState<AdminTab>("crm");
   const [newItemHint, setNewItemHint] = useState<string | null>(null);
 
-  // При наличии сохранённого admin_token — восстанавливаем CRM токен
+  // При наличии сохранённого admin_token — восстанавливаем CRM токен ДО рендера CrmPanel
   useEffect(() => {
     if (!sessionStorage.getItem("admin_token")) return;
-    const authToken = localStorage.getItem("mp_user_token");
-    if (authToken) {
-      setCrmToken(authToken);
-    } else {
-      fetch(`${AUTH_URL}?action=login`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: "19.jeka.94@gmail.com", password: "Sdauxbasstre228" }),
-      }).then(r => r.json()).then(d => {
-        if (d.token) { localStorage.setItem("mp_user_token", d.token); setCrmToken(d.token); }
-      }).catch(() => {});
-    }
+    initCrmToken().finally(() => setCrmReady(true));
   }, []);
 
   const handleItemAdded = (name: string) => {
@@ -58,29 +65,21 @@ export default function AdminPanel() {
     setError("");
     if (password === "Sdauxbasstre228") {
       sessionStorage.setItem("admin_token", password);
+      await initCrmToken();
       setToken(password);
-      // Берём auth-токен из localStorage и пробрасываем в CRM API
-      const authToken = localStorage.getItem("mp_user_token");
-      if (authToken) {
-        setCrmToken(authToken);
-      } else {
-        // Входим через auth API чтобы получить токен для CRM
-        try {
-          const res = await fetch(`${AUTH_URL}?action=login`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ email: "19.jeka.94@gmail.com", password: "Sdauxbasstre228" }),
-          });
-          const data = await res.json();
-          if (data.token) { localStorage.setItem("mp_user_token", data.token); setCrmToken(data.token); }
-        } catch { /* CRM будет без токена */ }
-      }
+      setCrmReady(true);
     } else {
       setError("Неверный пароль");
     }
   };
 
-  const logout = () => { sessionStorage.removeItem("admin_token"); setToken(""); };
+  const logout = () => {
+    sessionStorage.removeItem("admin_token");
+    localStorage.removeItem("mp_user_token");
+    setCrmToken(null);
+    setToken("");
+    setCrmReady(false);
+  };
 
   if (!token) {
     return (
@@ -157,7 +156,10 @@ export default function AdminPanel() {
       </div>
 
       <div className={tab === "crm" ? "p-4" : "p-4 max-w-6xl mx-auto"}>
-        {tab === "crm"         && <CrmPanel />}
+        {tab === "crm" && (crmReady
+          ? <CrmPanel />
+          : <div className="flex items-center justify-center h-64"><div className="w-7 h-7 border-2 border-violet-500 border-t-transparent rounded-full animate-spin" /></div>
+        )}
         {tab === "prices"      && <TabPrices      token={token} onItemAdded={handleItemAdded} />}
         {tab === "rules"       && <TabRules       token={token} hint={newItemHint} />}
         {tab === "prompt"      && <TabPrompt      token={token} />}
