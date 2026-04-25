@@ -1,91 +1,14 @@
 import { useState } from "react";
 import Icon from "@/components/ui/icon";
 import { useTheme } from "./themeContext";
-import { Client, DEFAULT_TAGS } from "./crmApi";
+import { Client } from "./crmApi";
 import { InlineField, Section, FileField } from "./drawerComponents";
 import { ActivityEvent } from "./DrawerStatusActivity";
 import { BlockId, BlockDef, CustomBlockData, EditRow } from "./drawerTypes";
 import { BlockEditor, DraggableBlock } from "./DrawerBlockEditor";
-
-const DEFAULT_TAGS_LIST = DEFAULT_TAGS;
-
-// ── TagsBlockEditor — редактор меток в стиле BlockEditor ──────────────────────
-function TagsBlockEditor({ tags, onSave, onClose }: {
-  tags: string[];
-  onSave: (tags: string[]) => void;
-  onClose: () => void;
-}) {
-  const t = useTheme();
-  const [local, setLocal] = useState<string[]>(tags);
-  const [newTag, setNewTag] = useState("");
-
-  const deleteTag = (i: number) => setLocal(prev => prev.filter((_, j) => j !== i));
-  const renameTag = (i: number, v: string) => setLocal(prev => prev.map((t, j) => j === i ? v : t));
-  const addTag = () => {
-    const trimmed = newTag.trim();
-    if (!trimmed || local.includes(trimmed)) return;
-    setLocal(prev => [...prev, trimmed]);
-    setNewTag("");
-  };
-
-  // Дефолтные не добавленные
-  const inactiveDefs = DEFAULT_TAGS.filter(d => !local.includes(d.label));
-
-  return (
-    <div className="mt-2 mb-1 rounded-xl overflow-hidden" style={{ border: `1px solid #06b6d440`, background: "#06b6d408" }}>
-      <div className="divide-y" style={{ borderColor: "#06b6d420" }}>
-        {local.map((tag, i) => {
-          const def = DEFAULT_TAGS.find(d => d.label === tag);
-          const color = def?.color || "#8b5cf6";
-          return (
-            <div key={i} className="flex items-center gap-2 px-3 py-1.5">
-              <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: color }} />
-              <input value={tag} onChange={e => renameTag(i, e.target.value)}
-                className="flex-1 text-xs rounded-lg px-2 py-1 focus:outline-none"
-                style={{ background: t.surface, border: `1px solid ${t.border}`, color: "#fff" }} />
-              <button onClick={() => deleteTag(i)} className="text-red-400 hover:text-red-300 transition flex-shrink-0">
-                <Icon name="Trash2" size={12} />
-              </button>
-            </div>
-          );
-        })}
-      </div>
-      {/* Дефолтные быстрые метки */}
-      {inactiveDefs.length > 0 && (
-        <div className="flex flex-wrap gap-1.5 px-3 py-2" style={{ borderTop: `1px solid #06b6d420` }}>
-          <span className="w-full text-[9px] uppercase tracking-wider font-semibold" style={{ color: "#a3a3a3" }}>Быстро добавить:</span>
-          {inactiveDefs.map(tg => (
-            <button key={tg.label} onClick={() => setLocal(prev => [...prev, tg.label])}
-              className="px-2 py-0.5 rounded-lg text-xs font-semibold transition"
-              style={{ background: tg.color + "20", color: "#fff", border: `1px solid ${tg.color}40` }}>
-              + {tg.label}
-            </button>
-          ))}
-        </div>
-      )}
-      {/* Добавить свою */}
-      <div className="flex items-center gap-2 px-3 py-2" style={{ borderTop: `1px solid #06b6d420` }}>
-        <input value={newTag} onChange={e => setNewTag(e.target.value)}
-          onKeyDown={e => e.key === "Enter" && addTag()} placeholder="Новая метка..."
-          className="flex-1 text-xs rounded-lg px-2 py-1 focus:outline-none"
-          style={{ background: t.surface, border: `1px solid ${t.border}`, color: "#fff" }} />
-        <button onClick={addTag} className="px-2 py-1 rounded-lg text-xs font-semibold text-cyan-300 bg-cyan-600/20 hover:bg-cyan-600/30 transition flex-shrink-0">
-          <Icon name="Plus" size={12} />
-        </button>
-      </div>
-      <div className="flex gap-2 px-3 pb-2">
-        <button onClick={() => onSave(local.filter(t => t.trim()))}
-          className="flex-1 py-1 rounded-lg text-xs font-semibold text-white bg-violet-600 hover:bg-violet-700 transition">
-          Сохранить
-        </button>
-        <button onClick={onClose} className="px-3 py-1 rounded-lg text-xs transition"
-          style={{ background: t.surface2, color: t.textMute }}>
-          Отмена
-        </button>
-      </div>
-    </div>
-  );
-}
+import { DrawerTagsBlock } from "./DrawerTagsBlock";
+import { DrawerPLBlock } from "./DrawerPLBlock";
+import { DrawerCustomBlock } from "./DrawerCustomBlock";
 
 interface ColumnsProps {
   data: Client;
@@ -119,14 +42,12 @@ interface ColumnsProps {
 export function DrawerColumns(props: ColumnsProps) {
   const {
     data, setData, client, save, blocks, hiddenBlocks, editingBlock, customBlocks,
-    customRowVals, profit, received, remaining,
-    toggleHidden, setEditingBlock, saveWithLog, logAction, setCustomRowVals,
-    deleteCustomBlock, onDragStart, onDragOver, onDrop, onDropToCol, onAddBlockLeft, onAddBlockRight, onReset,
+    customRowVals, toggleHidden, setEditingBlock, saveWithLog, logAction, setCustomRowVals,
+    deleteCustomBlock, onDragStart, onDragOver, onDrop, onDropToCol, onAddBlockLeft, onAddBlockRight,
   } = props;
   const t = useTheme();
 
-  // ── helpers ─────────────────────────────────────────────────────────────────
-
+  // ── getEditRows ──────────────────────────────────────────────────────────────
   const getEditRows = (id: BlockId): EditRow[] => {
     switch (id) {
       case "contacts": return [
@@ -135,13 +56,13 @@ export function DrawerColumns(props: ColumnsProps) {
         { label: "Ответственный", value: data.responsible_phone || "", key: "responsible_phone" },
       ];
       case "object": return [
-        { label: "Адрес", value: data.address  || "", key: "address" },
-        { label: "Карта", value: data.map_link || "", key: "map_link" },
+        { label: "Адрес",        value: data.address  || "", key: "address" },
+        { label: "Карта",        value: data.map_link || "", key: "map_link" },
         { label: "Площадь (м²)", value: data.area ? String(data.area) : "", key: "area" },
       ];
       case "dates": return [
-        { label: "Замер",  value: data.measure_date  ? data.measure_date.slice(0, 16)  : "", key: "measure_date" },
-        { label: "Монтаж", value: data.install_date  ? data.install_date.slice(0, 16)  : "", key: "install_date" },
+        { label: "Замер",  value: data.measure_date ? data.measure_date.slice(0, 16) : "", key: "measure_date" },
+        { label: "Монтаж", value: data.install_date ? data.install_date.slice(0, 16) : "", key: "install_date" },
       ];
       case "income": return [
         { label: "Договор",    value: data.contract_sum        ? String(data.contract_sum)        : "", key: "contract_sum" },
@@ -158,6 +79,7 @@ export function DrawerColumns(props: ColumnsProps) {
     }
   };
 
+  // ── saveEditRows ─────────────────────────────────────────────────────────────
   const saveEditRows = (id: BlockId, rows: EditRow[]) => {
     const patch: Partial<Client> = {};
     const numFields = ["contract_sum","prepayment","extra_payment","extra_agreement_sum","material_cost","measure_cost","install_cost","area"];
@@ -171,10 +93,11 @@ export function DrawerColumns(props: ColumnsProps) {
     setEditingBlock(null);
   };
 
+  // ── wrap ─────────────────────────────────────────────────────────────────────
   const wrap = (id: BlockId, content: React.ReactNode, icon: string, title: string, color: string, hasEdit: boolean) => {
-    const isHidden  = hiddenBlocks.has(id);
+    const isHidden   = hiddenBlocks.has(id);
     const showEditor = editingBlock === id;
-    const editRows  = getEditRows(id);
+    const editRows   = getEditRows(id);
     return (
       <Section icon={icon} title={title} color={color}
         hidden={isHidden}
@@ -188,105 +111,25 @@ export function DrawerColumns(props: ColumnsProps) {
     );
   };
 
-  // ── renderCustomBlock ────────────────────────────────────────────────────────
-
-  const renderCustomBlock = (cb: CustomBlockData) => {
-    const isHidden = hiddenBlocks.has(cb.id);
-    const vals = customRowVals[cb.id] || {};
-    return (
-      <Section key={cb.id} icon={cb.icon} title={cb.title} color={cb.color}
-        hidden={isHidden}
-        onToggleHidden={() => toggleHidden(cb.id)}
-        onEdit={() => { if (confirm(`Удалить блок «${cb.title}»?`)) deleteCustomBlock(cb.id); }}>
-        {cb.rows.map((row, i) => (
-          row.type === "file" ? (
-            <FileField key={i} label={row.label} url={vals[i] || null}
-              onUploaded={(url, name) => {
-                setCustomRowVals(prev => {
-                  const next = { ...prev, [cb.id]: { ...(prev[cb.id] || {}), [i]: url } };
-                  localStorage.setItem(`custom_block_vals_${data.id}`, JSON.stringify(next));
-                  return next;
-                });
-                logAction("Upload", cb.color, `${cb.title} / ${row.label}: ${name}`);
-              }} />
-          ) : (
-            <div key={i} className="flex items-center justify-between py-2 group"
-              style={{ borderBottom: `1px solid ${t.border2}` }}>
-              <span className="text-xs w-36 flex-shrink-0" style={{ color: "#d4d4d4" }}>{row.label}</span>
-              <input
-                value={vals[i] || ""}
-                onChange={e => {
-                  const v = e.target.value;
-                  setCustomRowVals(prev => {
-                    const next = { ...prev, [cb.id]: { ...(prev[cb.id] || {}), [i]: v } };
-                    localStorage.setItem(`custom_block_vals_${data.id}`, JSON.stringify(next));
-                    return next;
-                  });
-                }}
-                onBlur={e => { if (e.target.value) logAction("Edit3", cb.color, `${cb.title} / ${row.label}: ${e.target.value}`); }}
-                placeholder="—"
-                className="flex-1 text-right text-sm bg-transparent focus:outline-none rounded-lg px-2 py-0.5 transition"
-                style={{ color: "#fff" }}
-                onFocus={e => { e.target.style.background = t.surface2; }}
-                onBlurCapture={e => { e.target.style.background = "transparent"; }}
-              />
-            </div>
-          )
-        ))}
-      </Section>
-    );
-  };
-
   // ── renderBlock ──────────────────────────────────────────────────────────────
-
   const renderBlock = (id: BlockId): React.ReactNode => {
     const isHidden = hiddenBlocks.has(id);
     switch (id) {
       case "status": return null;
 
-      case "tags": {
-        const isHiddenTags = hiddenBlocks.has(id);
-        const showTagEditor = editingBlock === id;
-        const currentTags = data.tags || [];
+      case "tags":
         return (
-          <Section icon="Tag" title="Метки" color="#06b6d4"
-            hidden={isHiddenTags}
-            onToggleHidden={() => toggleHidden(id)}
-            onEdit={!isHiddenTags ? () => setEditingBlock(showTagEditor ? null : id) : undefined}>
-            {/* Отображение активных меток */}
-            <div className="flex flex-wrap gap-1.5 py-2">
-              {currentTags.length === 0 && !showTagEditor && (
-                <span className="text-xs" style={{ color: "#a3a3a3" }}>Нет меток — нажмите карандаш</span>
-              )}
-              {currentTags.map(tg => {
-                const def = DEFAULT_TAGS_LIST.find(d => d.label === tg);
-                const c = def?.color || "#8b5cf6";
-                return (
-                  <span key={tg} className="px-2 py-0.5 rounded-lg text-xs font-semibold"
-                    style={{ background: c + "30", color: "#fff", border: `1px solid ${c}60` }}>
-                    {tg}
-                  </span>
-                );
-              })}
-            </div>
-            {/* Редактор меток как в контактах */}
-            {showTagEditor && (
-              <TagsBlockEditor
-                tags={currentTags}
-                onSave={tags => {
-                  const added   = tags.filter(tg => !currentTags.includes(tg));
-                  const removed = currentTags.filter(tg => !tags.includes(tg));
-                  if (added.length)   logAction("Tag", "#06b6d4", `Метка добавлена: ${added.join(", ")}`);
-                  if (removed.length) logAction("Tag", "#ef4444", `Метка удалена: ${removed.join(", ")}`);
-                  save({ tags });
-                  setEditingBlock(null);
-                }}
-                onClose={() => setEditingBlock(null)}
-              />
-            )}
-          </Section>
+          <DrawerTagsBlock
+            id={id}
+            tags={data.tags}
+            editingBlock={editingBlock}
+            hiddenBlocks={hiddenBlocks}
+            toggleHidden={toggleHidden}
+            setEditingBlock={setEditingBlock}
+            save={save}
+            logAction={logAction}
+          />
         );
-      }
 
       case "contacts":
         return wrap(id, <>
@@ -321,93 +164,8 @@ export function DrawerColumns(props: ColumnsProps) {
           style={{ background: t.surface, border: `1px solid ${t.border}`, color: "#fff" }}
         />, "StickyNote", "Заметки", "#8b5cf6", false);
 
-      case "pl": {
-        const fmt = (n: number) => n.toLocaleString("ru-RU");
-
-        // ── ДОХОДЫ (все поля блока "Доходы") ──────────────────────────────────
-        const incomeRows: { label: string; value: number }[] = [
-          { label: "Договор",         value: Number(data.contract_sum)        || 0 },
-          { label: "Предоплата",      value: Number(data.prepayment)          || 0 },
-          { label: "Доплата",         value: Number(data.extra_payment)       || 0 },
-          { label: "Доп. соглашение", value: Number(data.extra_agreement_sum) || 0 },
-        ].filter(r => r.value > 0);
-
-        const plIncome = incomeRows.reduce((s, r) => s + r.value, 0);
-
-        // ── ЗАТРАТЫ (все поля блока "Затраты") ────────────────────────────────
-        const costRows: { label: string; value: number }[] = [
-          { label: "Материалы", value: Number(data.material_cost) || 0 },
-          { label: "Замер",     value: Number(data.measure_cost)  || 0 },
-          { label: "Монтаж",    value: Number(data.install_cost)  || 0 },
-        ].filter(r => r.value > 0);
-
-        const plCosts  = costRows.reduce((s, r) => s + r.value, 0);
-        const plProfit = plIncome - plCosts;
-
-        return (
-          <div key="pl" className="rounded-2xl overflow-hidden group/section" style={{ opacity: isHidden ? 0.45 : 1, border: `1px solid ${t.border}` }}>
-            <div className="flex items-center gap-2 px-4 py-2.5" style={{ background: "linear-gradient(135deg,#7c3aed15,#10b98112)", borderBottom: isHidden ? "none" : `1px solid #7c3aed30` }}>
-              <Icon name="TrendingUp" size={13} style={{ color: "#10b981" }} />
-              <span className="text-xs font-bold uppercase tracking-wider text-white flex-1">P&L по заказу</span>
-              <button onClick={() => toggleHidden(id)} className="p-1 rounded-md opacity-0 group-hover/section:opacity-100 transition hover:bg-white/10" style={{ color: isHidden ? "#10b981" : "#a3a3a3" }}>
-                <Icon name={isHidden ? "EyeOff" : "Eye"} size={12} />
-              </button>
-            </div>
-            {!isHidden && (
-              <div className="px-4 py-3 text-sm" style={{ background: "linear-gradient(135deg,#7c3aed08,#10b98108)" }}>
-
-                {/* Доходы */}
-                <div className="text-[9px] uppercase tracking-wider font-semibold mb-1.5" style={{ color: "#a3a3a3" }}>Доходы</div>
-                <div className="space-y-1.5 mb-3">
-                  {incomeRows.length === 0
-                    ? <div className="flex justify-between"><span style={{ color: "#a3a3a3" }}>Договор</span><span style={{ color: "#a3a3a3" }} className="text-xs">не указан</span></div>
-                    : incomeRows.map(r => (
-                      <div key={r.label} className="flex justify-between">
-                        <span style={{ color: "#a3a3a3" }}>{r.label}</span>
-                        <span className="font-semibold text-emerald-400">+{fmt(r.value)} ₽</span>
-                      </div>
-                    ))}
-                  {incomeRows.length > 1 && (
-                    <div className="flex justify-between pt-1" style={{ borderTop: `1px solid ${t.border2}` }}>
-                      <span className="font-semibold text-white">Итого доходы</span>
-                      <span className="font-bold text-white">+{fmt(plIncome)} ₽</span>
-                    </div>
-                  )}
-                </div>
-
-                {/* Затраты */}
-                {plCosts > 0 && (
-                  <>
-                    <div className="text-[9px] uppercase tracking-wider font-semibold mb-1.5" style={{ color: "#a3a3a3" }}>Затраты</div>
-                    <div className="space-y-1.5 mb-3">
-                      {costRows.map(r => (
-                        <div key={r.label} className="flex justify-between">
-                          <span style={{ color: "#a3a3a3" }}>{r.label}</span>
-                          <span className="font-semibold text-red-400">−{fmt(r.value)} ₽</span>
-                        </div>
-                      ))}
-                      {costRows.length > 1 && (
-                        <div className="flex justify-between pt-1" style={{ borderTop: `1px solid ${t.border2}` }}>
-                          <span className="font-semibold text-white">Итого затраты</span>
-                          <span className="font-bold text-red-400">−{fmt(plCosts)} ₽</span>
-                        </div>
-                      )}
-                    </div>
-                  </>
-                )}
-
-                {/* Прибыль */}
-                <div className="flex justify-between pt-2" style={{ borderTop: `1px solid ${t.border}` }}>
-                  <span className="font-bold text-white">Прибыль</span>
-                  <span className={`text-lg font-black ${plProfit >= 0 ? "text-emerald-400" : "text-red-400"}`}>
-                    {plProfit >= 0 ? "+" : ""}{fmt(plProfit)} ₽
-                  </span>
-                </div>
-              </div>
-            )}
-          </div>
-        );
-      }
+      case "pl":
+        return <DrawerPLBlock data={data} isHidden={isHidden} toggleHidden={toggleHidden} />;
 
       case "income":
         return wrap(id, <>
@@ -441,14 +199,24 @@ export function DrawerColumns(props: ColumnsProps) {
   };
 
   // ── layout ───────────────────────────────────────────────────────────────────
-
   const col0 = blocks.filter(b => b.col === 0).sort((a, b) => a.order - b.order);
   const col1 = blocks.filter(b => b.col === 1).sort((a, b) => a.order - b.order);
 
   const renderColBlock = (b: BlockDef) => {
     if (b.id.startsWith("custom_")) {
       const cb = customBlocks.find(c => c.id === b.id);
-      return cb ? renderCustomBlock(cb) : null;
+      return cb ? (
+        <DrawerCustomBlock
+          cb={cb}
+          data_id={data.id}
+          hiddenBlocks={hiddenBlocks}
+          customRowVals={customRowVals}
+          toggleHidden={toggleHidden}
+          deleteCustomBlock={deleteCustomBlock}
+          setCustomRowVals={setCustomRowVals}
+          logAction={logAction}
+        />
+      ) : null;
     }
     return renderBlock(b.id);
   };
