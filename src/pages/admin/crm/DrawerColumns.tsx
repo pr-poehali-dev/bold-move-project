@@ -93,6 +93,9 @@ export function DrawerColumns(props: ColumnsProps) {
   };
 
   // ── wrap ─────────────────────────────────────────────────────────────────────
+  // Блоки с фиксированными полями — нельзя добавлять новые строки через BlockEditor
+  const FIXED_BLOCKS = new Set(["income", "costs", "contacts", "object", "dates"]);
+
   const wrap = (id: BlockId, content: React.ReactNode, icon: string, title: string, color: string, hasEdit: boolean) => {
     const isHidden   = hiddenBlocks.has(id);
     const showEditor = editingBlock === id;
@@ -104,7 +107,12 @@ export function DrawerColumns(props: ColumnsProps) {
         onEdit={hasEdit && !isHidden ? () => setEditingBlock(showEditor ? null : id) : undefined}>
         {content}
         {showEditor && editRows.length > 0 && (
-          <BlockEditor rows={editRows} onSave={rows => saveEditRows(id, rows)} onClose={() => setEditingBlock(null)} />
+          <BlockEditor
+            rows={editRows}
+            allowAdd={!FIXED_BLOCKS.has(id)}
+            onSave={rows => saveEditRows(id, rows)}
+            onClose={() => setEditingBlock(null)}
+          />
         )}
       </Section>
     );

@@ -4,10 +4,11 @@ import { useTheme } from "./themeContext";
 import { BlockId, CustomBlockData, CustomBlockRow, EditRow, ICON_OPTIONS, COLOR_OPTIONS } from "./drawerTypes";
 
 // ── BlockEditor ────────────────────────────────────────────────────────────────
-export function BlockEditor({ rows, onSave, onClose }: {
+export function BlockEditor({ rows, onSave, onClose, allowAdd = true }: {
   rows: EditRow[];
   onSave: (rows: EditRow[]) => void;
   onClose: () => void;
+  allowAdd?: boolean;
 }) {
   const t = useTheme();
   const [local, setLocal] = useState<EditRow[]>(rows);
@@ -40,19 +41,21 @@ export function BlockEditor({ rows, onSave, onClose }: {
           </div>
         ))}
       </div>
-      <div className="flex items-center gap-2 px-3 py-2" style={{ borderTop: `1px solid #7c3aed20` }}>
-        <input value={newLabel} onChange={e => setNewLabel(e.target.value)}
-          onKeyDown={e => e.key === "Enter" && addRow()} placeholder="Название..."
-          className="w-28 text-xs rounded-lg px-2 py-1 focus:outline-none"
-          style={{ background: t.surface, border: `1px solid ${t.border}`, color: "#fff" }} />
-        <input value={newValue} onChange={e => setNewValue(e.target.value)}
-          onKeyDown={e => e.key === "Enter" && addRow()} placeholder="Значение..."
-          className="flex-1 text-xs rounded-lg px-2 py-1 focus:outline-none"
-          style={{ background: t.surface, border: `1px solid ${t.border}`, color: "#fff" }} />
-        <button onClick={addRow} className="px-2 py-1 rounded-lg text-xs font-semibold text-violet-300 bg-violet-600/20 hover:bg-violet-600/30 transition flex-shrink-0">
-          <Icon name="Plus" size={12} />
-        </button>
-      </div>
+      {allowAdd && (
+        <div className="flex items-center gap-2 px-3 py-2" style={{ borderTop: `1px solid #7c3aed20` }}>
+          <input value={newLabel} onChange={e => setNewLabel(e.target.value)}
+            onKeyDown={e => e.key === "Enter" && addRow()} placeholder="Название..."
+            className="w-28 text-xs rounded-lg px-2 py-1 focus:outline-none"
+            style={{ background: t.surface, border: `1px solid ${t.border}`, color: "#fff" }} />
+          <input value={newValue} onChange={e => setNewValue(e.target.value)}
+            onKeyDown={e => e.key === "Enter" && addRow()} placeholder="Значение..."
+            className="flex-1 text-xs rounded-lg px-2 py-1 focus:outline-none"
+            style={{ background: t.surface, border: `1px solid ${t.border}`, color: "#fff" }} />
+          <button onClick={addRow} className="px-2 py-1 rounded-lg text-xs font-semibold text-violet-300 bg-violet-600/20 hover:bg-violet-600/30 transition flex-shrink-0">
+            <Icon name="Plus" size={12} />
+          </button>
+        </div>
+      )}
       <div className="flex gap-2 px-3 pb-2">
         <button onClick={() => onSave(local)} className="flex-1 py-1 rounded-lg text-xs font-semibold text-white bg-violet-600 hover:bg-violet-700 transition">Сохранить</button>
         <button onClick={onClose} className="px-3 py-1 rounded-lg text-xs transition" style={{ background: t.surface2, color: t.textMute }}>Отмена</button>
