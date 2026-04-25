@@ -13,11 +13,28 @@ interface Props {
   setComments: React.Dispatch<React.SetStateAction<{ text: string; date: string }[]>>;
 }
 
-type BlockId =
+type BuiltinBlockId =
   | "status" | "tags" | "contacts" | "object" | "dates" | "notes"
   | "pl" | "income" | "costs" | "files" | "cancel";
 
+type BlockId = BuiltinBlockId | string; // строки вида "custom_TIMESTAMP"
+
 interface BlockDef { id: BlockId; col: 0 | 1; order: number; }
+
+// Кастомный блок — данные хранятся в localStorage
+interface CustomBlockRow { label: string; type: "text" | "file"; value: string; }
+interface CustomBlockData { id: string; title: string; icon: string; color: string; rows: CustomBlockRow[]; }
+
+const LS_CUSTOM = "drawer_custom_blocks";
+const ICON_OPTIONS = ["Star","Briefcase","Building","Car","Clock","CreditCard","Globe","Heart","Home","Info","Key","Layers","List","Lock","Mail","Map","Monitor","Music","Package","Palette","PenTool","Phone","Printer","Shield","ShoppingCart","Truck","Users","Zap"];
+const COLOR_OPTIONS = ["#8b5cf6","#06b6d4","#10b981","#f59e0b","#f97316","#ef4444","#ec4899","#3b82f6","#a78bfa"];
+
+function loadCustomBlocks(): CustomBlockData[] {
+  try { return JSON.parse(localStorage.getItem(LS_CUSTOM) || "[]"); } catch { return []; }
+}
+function saveCustomBlocks(blocks: CustomBlockData[]) {
+  localStorage.setItem(LS_CUSTOM, JSON.stringify(blocks));
+}
 
 const DEFAULT_BLOCKS: BlockDef[] = [
   { id: "status",   col: 0, order: 0 },
@@ -104,6 +121,126 @@ function BlockEditor({ rows, onSave, onClose }: {
   );
 }
 
+// ── AddBlockModal ─────────────────────────────────────────────────────────────
+function AddBlockModal({ onSave, onClose }: {
+  onSave: (block: CustomBlockData) => void;
+  onClose: () => void;
+}) {
+  const t = useTheme();
+  const [title, setTitle]   = useState("");
+  const [icon, setIcon]     = useState("Star");
+  const [color, setColor]   = useState("#8b5cf6");
+  const [rows, setRows]     = useState<CustomBlockRow[]>([{ label: "", type: "text", value: "" }]);
+
+  const addRow = () => setRows(prev => [...prev, { label: "", type: "text", value: "" }]);
+  const removeRow = (i: number) => setRows(prev => prev.filter((_, j) => j !== i));
+  const updateRow = (i: number, field: keyof CustomBlockRow, v: string) =>
+    setRows(prev => prev.map((r, j) => j === i ? { ...r, [field]: v } : r));
+
+  const handleSave = () => {
+    if (!title.trim()) return;
+    const validRows = rows.filter(r => r.label.trim());
+    onSave({ id: `custom_${Date.now()}`, title: title.trim(), icon, color, rows: validRows });
+  };
+
+  return (
+    <div className="fixed inset-0 z-[70] flex items-center justify-center p-4"
+      style={{ background: "rgba(0,0,0,0.7)", backdropFilter: "blur(4px)" }}
+      onClick={onClose}>
+      <div className="w-full max-w-md rounded-2xl overflow-hidden shadow-2xl"
+        style={{ background: t.surface, border: `1px solid ${t.border}` }}
+        onClick={e => e.stopPropagation()}>
+
+        {/* Шапка */}
+        <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: `1px solid ${t.border}` }}>
+          <span className="text-sm font-bold text-white">Новый блок</span>
+          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-white/5 transition" style={{ color: t.textMute }}>
+            <Icon name="X" size={15} />
+          </button>
+        </div>
+
+        <div className="px-5 py-4 space-y-4">
+          {/* Название */}
+          <div>
+            <label className="text-xs mb-1.5 block" style={{ color: t.textMute }}>Название блока</label>
+            <input value={title} onChange={e => setTitle(e.target.value)}
+              placeholder="Например: Дополнительно"
+              className="w-full rounded-xl px-3 py-2 text-sm focus:outline-none"
+              style={{ background: t.surface2, border: `1px solid ${t.border}`, color: "#fff" }} />
+          </div>
+
+          {/* Иконка + цвет */}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs mb-1.5 block" style={{ color: t.textMute }}>Иконка</label>
+              <select value={icon} onChange={e => setIcon(e.target.value)}
+                className="w-full rounded-xl px-3 py-2 text-sm focus:outline-none"
+                style={{ background: t.surface2, border: `1px solid ${t.border}`, color: "#fff" }}>
+                {ICON_OPTIONS.map(ic => <option key={ic} value={ic}>{ic}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="text-xs mb-1.5 block" style={{ color: t.textMute }}>Цвет</label>
+              <div className="flex flex-wrap gap-1.5 pt-1">
+                {COLOR_OPTIONS.map(c => (
+                  <button key={c} onClick={() => setColor(c)}
+                    className="w-6 h-6 rounded-lg transition"
+                    style={{ background: c, border: `2px solid ${color === c ? "#fff" : "transparent"}` }} />
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Строки */}
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <label className="text-xs" style={{ color: t.textMute }}>Строки блока</label>
+              <button onClick={addRow} className="flex items-center gap-1 text-xs text-violet-400 hover:text-violet-300 transition">
+                <Icon name="Plus" size={11} /> Добавить строку
+              </button>
+            </div>
+            <div className="space-y-2">
+              {rows.map((row, i) => (
+                <div key={i} className="flex items-center gap-2">
+                  <input value={row.label} onChange={e => updateRow(i, "label", e.target.value)}
+                    placeholder="Название строки"
+                    className="flex-1 rounded-lg px-2 py-1.5 text-xs focus:outline-none"
+                    style={{ background: t.surface2, border: `1px solid ${t.border}`, color: "#fff" }} />
+                  <select value={row.type} onChange={e => updateRow(i, "type", e.target.value)}
+                    className="rounded-lg px-2 py-1.5 text-xs focus:outline-none"
+                    style={{ background: t.surface2, border: `1px solid ${t.border}`, color: "#fff" }}>
+                    <option value="text">Текст</option>
+                    <option value="file">Файл</option>
+                  </select>
+                  <button onClick={() => removeRow(i)} disabled={rows.length === 1}
+                    className="flex-shrink-0 text-red-400 hover:text-red-300 transition disabled:opacity-30">
+                    <Icon name="X" size={13} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Футер */}
+        <div className="flex gap-2 px-5 pb-5">
+          <button onClick={handleSave} disabled={!title.trim()}
+            className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-white transition disabled:opacity-40"
+            style={{ background: "#7c3aed" }}>
+            <div className="flex items-center justify-center gap-2">
+              <Icon name={icon} size={14} style={{ color: color }} /> Создать блок
+            </div>
+          </button>
+          <button onClick={onClose} className="px-4 py-2.5 rounded-xl text-sm transition"
+            style={{ background: t.surface2, color: t.textMute }}>
+            Отмена
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── DraggableBlock ─────────────────────────────────────────────────────────────
 function DraggableBlock({ blockId, onDragStart, onDragOver, onDrop, children }: {
   blockId: BlockId;
@@ -132,6 +269,9 @@ export default function DrawerInfoTab({ data, client, setData, save, setComments
   const [hiddenBlocks, setHiddenBlocks] = useState<Set<BlockId>>(loadHidden);
   const [editingBlock, setEditingBlock] = useState<BlockId | null>(null);
   const [activityLog, setActivityLog]   = useState<ActivityEvent[]>([]);
+  const [customBlocks, setCustomBlocks] = useState<CustomBlockData[]>(loadCustomBlocks);
+  const [showAddBlock, setShowAddBlock] = useState<0 | 1 | null>(null); // колонка куда добавляем
+  const [customRowVals, setCustomRowVals] = useState<Record<string, Record<number, string>>>({}); // id блока -> index -> value
   const dragId = useRef<BlockId | null>(null);
 
   const profit    = (data.contract_sum||0) - (data.material_cost||0) - (data.measure_cost||0) - (data.install_cost||0);
@@ -157,6 +297,63 @@ export default function DrawerInfoTab({ data, client, setData, save, setComments
       localStorage.setItem(LS_HIDDEN, JSON.stringify([...next]));
       return next;
     });
+  };
+
+  const addCustomBlock = (block: CustomBlockData, col: 0 | 1) => {
+    const updated = [...customBlocks, block];
+    setCustomBlocks(updated);
+    saveCustomBlocks(updated);
+    const newBlockDef: BlockDef = { id: block.id, col, order: 999 };
+    const newBlocks = [...blocks, newBlockDef];
+    setBlocks(newBlocks);
+    localStorage.setItem(LS_BLOCKS, JSON.stringify(newBlocks));
+    logAction("Plus", "#8b5cf6", `Блок создан: ${block.title}`);
+    setShowAddBlock(null);
+  };
+
+  const deleteCustomBlock = (id: string) => {
+    const updated = customBlocks.filter(b => b.id !== id);
+    setCustomBlocks(updated);
+    saveCustomBlocks(updated);
+    const newBlocks = blocks.filter(b => b.id !== id);
+    setBlocks(newBlocks);
+    localStorage.setItem(LS_BLOCKS, JSON.stringify(newBlocks));
+  };
+
+  const renderCustomBlock = (cb: CustomBlockData) => {
+    const isHidden = hiddenBlocks.has(cb.id);
+    const vals = customRowVals[cb.id] || {};
+    return (
+      <Section key={cb.id} icon={cb.icon} title={cb.title} color={cb.color}
+        hidden={isHidden}
+        onToggleHidden={() => toggleHidden(cb.id)}
+        onEdit={() => { if (confirm(`Удалить блок «${cb.title}»?`)) deleteCustomBlock(cb.id); }}>
+        {cb.rows.map((row, i) => (
+          row.type === "file" ? (
+            <FileField key={i} label={row.label} url={vals[i] || null}
+              onUploaded={url => {
+                setCustomRowVals(prev => ({ ...prev, [cb.id]: { ...(prev[cb.id] || {}), [i]: url } }));
+                logAction("Upload", cb.color, `${cb.title} / ${row.label}: файл загружен`);
+              }} />
+          ) : (
+            <div key={i} className="flex items-center justify-between py-2 group"
+              style={{ borderBottom: `1px solid ${t.border2}` }}>
+              <span className="text-xs w-36 flex-shrink-0" style={{ color: t.textMute }}>{row.label}</span>
+              <input
+                value={vals[i] || ""}
+                onChange={e => setCustomRowVals(prev => ({ ...prev, [cb.id]: { ...(prev[cb.id] || {}), [i]: e.target.value } }))}
+                onBlur={e => { if (e.target.value) logAction("Edit3", cb.color, `${cb.title} / ${row.label}: ${e.target.value}`); }}
+                placeholder="—"
+                className="flex-1 text-right text-sm bg-transparent focus:outline-none rounded-lg px-2 py-0.5 transition"
+                style={{ color: "#fff" }}
+                onFocus={e => { e.target.style.background = t.surface2; }}
+                onBlurCapture={e => { e.target.style.background = "transparent"; }}
+              />
+            </div>
+          )
+        ))}
+      </Section>
+    );
   };
 
   const onDragStart = (id: BlockId) => { dragId.current = id; };
@@ -355,18 +552,32 @@ export default function DrawerInfoTab({ data, client, setData, save, setComments
         <div className="space-y-3">
           {col0.filter(b => b.id !== "status").map(b => (
             <DraggableBlock key={b.id} blockId={b.id} onDragStart={onDragStart} onDragOver={onDragOver} onDrop={onDrop}>
-              {renderBlock(b.id)}
+              {b.id.startsWith("custom_")
+                ? renderCustomBlock(customBlocks.find(cb => cb.id === b.id)!)
+                : renderBlock(b.id)}
             </DraggableBlock>
           ))}
+          <button onClick={() => setShowAddBlock(0)}
+            className="w-full flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-medium transition border-2 border-dashed hover:border-violet-500/40 hover:text-violet-400"
+            style={{ borderColor: t.border, color: t.textMute }}>
+            <Icon name="Plus" size={13} /> Добавить блок
+          </button>
         </div>
 
         {/* Центральный столбец */}
         <div className="space-y-3">
           {col1.map(b => (
             <DraggableBlock key={b.id} blockId={b.id} onDragStart={onDragStart} onDragOver={onDragOver} onDrop={onDrop}>
-              {renderBlock(b.id)}
+              {b.id.startsWith("custom_")
+                ? renderCustomBlock(customBlocks.find(cb => cb.id === b.id)!)
+                : renderBlock(b.id)}
             </DraggableBlock>
           ))}
+          <button onClick={() => setShowAddBlock(1)}
+            className="w-full flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-medium transition border-2 border-dashed hover:border-violet-500/40 hover:text-violet-400"
+            style={{ borderColor: t.border, color: t.textMute }}>
+            <Icon name="Plus" size={13} /> Добавить блок
+          </button>
           <button
             onClick={() => { setBlocks(DEFAULT_BLOCKS); setHiddenBlocks(new Set()); localStorage.removeItem(LS_BLOCKS); localStorage.removeItem(LS_HIDDEN); }}
             className="text-[10px] opacity-25 hover:opacity-50 transition flex items-center gap-1 px-1"
@@ -389,6 +600,14 @@ export default function DrawerInfoTab({ data, client, setData, save, setComments
           </div>
         </div>
       </div>
+
+      {/* Модалка добавления блока */}
+      {showAddBlock !== null && (
+        <AddBlockModal
+          onSave={block => addCustomBlock(block, showAddBlock)}
+          onClose={() => setShowAddBlock(null)}
+        />
+      )}
     </div>
   );
 }
