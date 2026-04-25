@@ -62,7 +62,24 @@ export function ActivityFeed({ client, extraEvents = [], onAddComment }: {
         <span className="ml-auto text-[10px] px-1.5 py-0.5 rounded-md" style={{ background: "#8b5cf620", color: "#8b5cf6" }}>{allEvents.length}</span>
       </div>
 
-      <div className="px-4 py-3 space-y-2.5 overflow-y-auto flex-1" style={{ maxHeight: 380 }}>
+      {/* Поле комментария — вверху */}
+      <div className="px-3 pt-3 pb-2 flex-shrink-0" style={{ borderBottom: `1px solid ${t.border}` }}>
+        <div className="flex gap-2">
+          <input value={comment} onChange={e => setComment(e.target.value)}
+            onKeyDown={e => e.key === "Enter" && !e.shiftKey && handleSend()}
+            placeholder="Добавить комментарий..."
+            className="flex-1 rounded-xl px-3 py-2 text-xs focus:outline-none"
+            style={{ background: t.surface, border: `1px solid ${t.border}`, color: "#fff" }} />
+          <button onClick={handleSend} disabled={!comment.trim()}
+            className="px-3 py-2 rounded-xl text-xs font-semibold transition disabled:opacity-40"
+            style={{ background: "#7c3aed", color: "#fff" }}>
+            <Icon name="Send" size={13} />
+          </button>
+        </div>
+      </div>
+
+      {/* Список событий — растягивается до конца */}
+      <div className="px-4 py-3 space-y-2.5 overflow-y-auto flex-1">
         {allEvents.length === 0 ? (
           <div className="text-xs text-center py-4" style={{ color: "#a3a3a3" }}>Нет событий</div>
         ) : [...allEvents].reverse().map((ev, i) => (
@@ -77,22 +94,6 @@ export function ActivityFeed({ client, extraEvents = [], onAddComment }: {
             </div>
           </div>
         ))}
-      </div>
-
-      {/* Поле комментария */}
-      <div className="px-3 pb-3 flex-shrink-0" style={{ borderTop: `1px solid ${t.border}` }}>
-        <div className="flex gap-2 pt-3">
-          <input value={comment} onChange={e => setComment(e.target.value)}
-            onKeyDown={e => e.key === "Enter" && !e.shiftKey && handleSend()}
-            placeholder="Добавить комментарий..."
-            className="flex-1 rounded-xl px-3 py-2 text-xs focus:outline-none"
-            style={{ background: t.surface, border: `1px solid ${t.border}`, color: "#fff" }} />
-          <button onClick={handleSend} disabled={!comment.trim()}
-            className="px-3 py-2 rounded-xl text-xs font-semibold transition disabled:opacity-40"
-            style={{ background: "#7c3aed", color: "#fff" }}>
-            <Icon name="Send" size={13} />
-          </button>
-        </div>
       </div>
     </div>
   );
