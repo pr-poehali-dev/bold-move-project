@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef } from "react";
 import { uploadFile, DEFAULT_TAGS } from "./crmApi";
 import Icon from "@/components/ui/icon";
 import { useTheme } from "./themeContext";
@@ -13,21 +13,23 @@ export function InlineField({ label, value, onSave, type = "text", placeholder =
 }) {
   const t = useTheme();
   const [editing, setEditing] = useState(false);
-  const [val, setVal] = useState(String(value ?? ""));
-  const ref = useRef<HTMLInputElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
-  // Только когда значение меняется СНАРУЖИ (другой сейв) — обновляем отображение, но не во время ввода
-  const prevValue = useRef(value);
-  useEffect(() => {
-    if (!editing && prevValue.current !== value) {
-      prevValue.current = value;
-      setVal(String(value ?? ""));
-    }
-    if (!editing) prevValue.current = value;
-  }, [value]); // eslint-disable-line
+  const startEdit = () => {
+    setEditing(true);
+    // После рендера устанавливаем значение напрямую в DOM
+    setTimeout(() => {
+      if (inputRef.current) {
+        inputRef.current.value = String(value ?? "");
+        inputRef.current.focus();
+        inputRef.current.select();
+      }
+    }, 0);
+  };
 
   const commit = () => {
-    const currentVal = val;
+    if (!inputRef.current) { setEditing(false); return; }
+    const currentVal = inputRef.current.value;
     setEditing(false);
     if (currentVal !== String(value ?? "")) onSave(currentVal);
   };
@@ -44,16 +46,20 @@ export function InlineField({ label, value, onSave, type = "text", placeholder =
     <div className="flex items-center justify-between py-2 group" style={{ borderBottom: `1px solid ${t.border2}` }}>
       <span className="text-xs flex-shrink-0 w-36" style={{ color: "#d4d4d4" }}>{label}</span>
       {editing ? (
-        <input ref={ref} type={type} value={val}
-          onChange={e => setVal(e.target.value)}
+        <input
+          ref={inputRef}
+          type={type}
+          defaultValue={String(value ?? "")}
           onBlur={commit}
-          onKeyDown={e => { if (e.key === "Enter") commit(); if (e.key === "Escape") setEditing(false); }}
-          autoFocus
+          onKeyDown={e => {
+            if (e.key === "Enter") { e.preventDefault(); commit(); }
+            if (e.key === "Escape") setEditing(false);
+          }}
           className="flex-1 rounded-lg px-2 py-1 text-sm text-right focus:outline-none"
           style={{ background: t.surface2, color: "#fff", border: "1px solid #7c3aed50" }}
         />
       ) : (
-        <button onClick={() => { setEditing(true); setVal(String(value ?? "")); }}
+        <button onClick={startEdit}
           className="flex-1 text-right text-sm transition hover:opacity-70 truncate">
           {displayVal()
             ? <span style={{ color: "#fff" }}>{displayVal()}</span>

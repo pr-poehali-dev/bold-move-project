@@ -21,13 +21,14 @@ export default function ClientDrawer({ client, allClientOrders, onClose, onUpdat
   const [drawerTab, setDrawerTab]     = useState<"info" | "orders" | "estimate">("info");
   const [comments, setComments]       = useState<{ text: string; date: string }[]>([]);
 
+
+
   const save = async (patch: Partial<Client>) => {
-    // Обновляем локально сразу — используем функцию чтобы не было stale closure
     setData(prev => ({ ...prev, ...patch }));
     setSaving(true);
     await crmFetch("clients", { method: "PUT", body: JSON.stringify(patch) }, { id: String(data.id) });
     setSaving(false);
-    onUpdated(); // обновляем список клиентов в фоне, дровер не закрывается
+    onUpdated();
   };
 
   const handleDelete = async () => {

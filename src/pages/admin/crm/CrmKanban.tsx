@@ -160,16 +160,7 @@ export default function CrmKanban() {
             return phone ? clients.filter(c => (c.phone || "").trim().replace(/\D/g, "") === phone) : [selected];
           })()}
           onClose={() => setSelected(null)}
-          onUpdated={() => {
-            crmFetch("clients").then(d => {
-              const list = (Array.isArray(d) ? d : []).filter((c: Client) => c.status !== "deleted");
-              setClients(list);
-              if (selected) {
-                const fresh = list.find((c: Client) => c.id === selected.id);
-                if (fresh) setSelected(fresh);
-              }
-            });
-          }}
+          onUpdated={() => { load(); }}
           onDeleted={() => { setSelected(null); load(); }}
         />
       )}
