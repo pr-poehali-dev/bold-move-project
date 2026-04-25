@@ -39,14 +39,22 @@ export const DEFAULT_BLOCKS: BlockDef[] = [
   { id: "cancel",   col: 1, order: 3 },
 ];
 
+// Блоки у которых wide задан жёстко и не меняется пользователем
+const FORCED_WIDE: Record<string, boolean> = { notes: true };
+
 export function loadBlocks(): BlockDef[] {
   try {
     const s = JSON.parse(localStorage.getItem(LS_BLOCKS) || "null");
     if (Array.isArray(s) && s.length) {
-      // Добавляем дефолтные блоки которых нет в сохранённом списке
       const savedIds = new Set(s.map((b: BlockDef) => b.id));
       const missing = DEFAULT_BLOCKS.filter(b => !savedIds.has(b.id));
-      return missing.length > 0 ? [...s, ...missing] : s;
+      // Мержим: добавляем отсутствующие + принудительно применяем FORCED_WIDE
+      const merged = s.map((b: BlockDef) =>
+        FORCED_WIDE[b.id as string] !== undefined
+          ? { ...b, wide: FORCED_WIDE[b.id as string] }
+          : b
+      );
+      return missing.length > 0 ? [...merged, ...missing] : merged;
     }
   } catch { /**/ }
   return DEFAULT_BLOCKS;
