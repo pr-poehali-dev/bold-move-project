@@ -1,10 +1,19 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { crmFetch } from "./crmApi";
 import { useTheme } from "./themeContext";
 import Icon from "@/components/ui/icon";
 import func2url from "@/../backend/func2url.json";
 
-const AUTH_URL = (func2url as Record<string, string>)["auth"];
+const AUTH_URL    = (func2url as Record<string, string>)["auth"];
+const PRICES_URL  = (func2url as Record<string, string>)["get-prices"];
+
+interface PriceItem {
+  id: number;
+  name: string;
+  price: number;
+  unit: string;
+  category: string;
+}
 
 interface EstimateBlock {
   title: string;
@@ -43,65 +52,164 @@ function parseValue(value: string) {
 
 function fmt(n: number) { return Math.round(n).toLocaleString("ru-RU"); }
 
+// Выбор позиции из прайса
+function PricePicker({ prices, onSelect, onClose }: {
+  prices: PriceItem[];
+  onSelect: (p: PriceItem) => void;
+  onClose: () => void;
+}) {
+  const t = useTheme();
+  const [q, setQ] = useState("");
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => { setTimeout(() => inputRef.current?.focus(), 50); }, []);
+
+  const filtered = q.length < 1
+    ? prices
+    : prices.filter(p =>
+        p.name.toLowerCase().includes(q.toLowerCase()) ||
+        p.category.toLowerCase().includes(q.toLowerCase())
+      );
+
+  // Группируем по категориям
+  const grouped = filtered.reduce<Record<string, PriceItem[]>>((acc, p) => {
+    (acc[p.category] = acc[p.category] || []).push(p);
+    return acc;
+  }, {});
+
+  return (
+    <div className="fixed inset-0 z-[70] flex items-center justify-center p-4"
+      style={{ background: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)" }}
+      onClick={onClose}>
+      <div className="w-full max-w-lg rounded-2xl overflow-hidden shadow-2xl flex flex-col"
+        style={{ background: t.surface, border: `1px solid ${t.border}`, maxHeight: "70vh" }}
+        onClick={e => e.stopPropagation()}>
+
+        {/* Поиск */}
+        <div className="p-3" style={{ borderBottom: `1px solid ${t.border}` }}>
+          <div className="relative">
+            <Icon name="Search" size={13} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: t.textMute }} />
+            <input ref={inputRef} value={q} onChange={e => setQ(e.target.value)}
+              placeholder="Поиск по прайсу..."
+              className="w-full rounded-xl pl-9 pr-4 py-2 text-sm focus:outline-none"
+              style={{ background: t.surface2, border: `1px solid ${t.border}`, color: t.text }} />
+          </div>
+        </div>
+
+        {/* Список */}
+        <div className="overflow-y-auto flex-1">
+          {Object.entries(grouped).map(([cat, items]) => (
+            <div key={cat}>
+              <div className="px-4 py-1.5 text-[10px] font-bold uppercase tracking-wider sticky top-0"
+                style={{ background: t.surface2, color: "#f97316" }}>
+                {cat || "Без категории"}
+              </div>
+              {items.map(p => (
+                <button key={p.id} onClick={() => onSelect(p)}
+                  className="w-full flex items-center justify-between px-4 py-2.5 text-left transition hover:opacity-80"
+                  style={{ borderBottom: `1px solid ${t.border2}` }}>
+                  <span className="text-sm" style={{ color: t.text }}>{p.name}</span>
+                  <div className="flex items-center gap-3 flex-shrink-0 ml-3">
+                    <span className="text-xs" style={{ color: t.textMute }}>{p.unit}</span>
+                    <span className="text-sm font-semibold text-emerald-500">{p.price.toLocaleString("ru-RU")} ₽</span>
+                  </div>
+                </button>
+              ))}
+            </div>
+          ))}
+          {filtered.length === 0 && (
+            <div className="py-10 text-center text-sm" style={{ color: t.textMute }}>Ничего не найдено</div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // Строка редактора
-function ItemRow({ item, onChange, onDelete }: {
+function ItemRow({ item, onChange, onDelete, prices }: {
   item: { name: string; value: string };
   onChange: (name: string, qty: number, price: number, unit: string) => void;
   onDelete: () => void;
+  prices: PriceItem[];
 }) {
   const t = useTheme();
   const parsed = parseValue(item.value);
-  const [name,  setName]  = useState(item.name);
-  const [qty,   setQty]   = useState(String(parsed?.qty   ?? 1));
-  const [price, setPrice] = useState(String(parsed?.price ?? 0));
-  const unit = parsed?.unit ?? "шт";
+  const [name,       setName]       = useState(item.name);
+  const [qty,        setQty]        = useState(String(parsed?.qty   ?? 1));
+  const [price,      setPrice]      = useState(String(parsed?.price ?? 0));
+  const [unit,       setUnit]       = useState(parsed?.unit ?? "шт");
+  const [showPicker, setShowPicker] = useState(false);
 
   const total = Math.round(parseFloat(qty || "0") * parseInt(price || "0", 10));
 
-  const commit = () => {
-    onChange(name.trim() || item.name, parseFloat(qty || "0"), parseInt(price || "0", 10), unit);
+  const commit = (overrideName?: string, overrideUnit?: string) => {
+    onChange(
+      (overrideName ?? name).trim() || item.name,
+      parseFloat(qty || "0"),
+      parseInt(price || "0", 10),
+      overrideUnit ?? unit,
+    );
+  };
+
+  const handlePickPrice = (p: PriceItem) => {
+    setName(p.name);
+    setPrice(String(p.price));
+    setUnit(p.unit || "шт");
+    setShowPicker(false);
+    // Сохраняем сразу с новыми значениями
+    onChange(p.name, parseFloat(qty || "1"), p.price, p.unit || "шт");
   };
 
   return (
-    <tr className="group" style={{ borderBottom: `1px solid ${t.border2}` }}>
-      <td className="py-1.5 px-2">
-        <input
-          value={name}
-          onChange={e => setName(e.target.value)}
-          onBlur={commit}
-          onKeyDown={e => e.key === "Enter" && commit()}
-          className="w-full text-sm rounded-lg px-2 py-1 focus:outline-none transition"
-          style={{
-            background: "transparent",
-            border: `1px solid transparent`,
-            color: t.text,
-          }}
-          onFocus={e => (e.target.style.background = t.surface2, e.target.style.borderColor = "#7c3aed40")}
-          onBlurCapture={e => (e.target.style.background = "transparent", e.target.style.borderColor = "transparent")}
-        />
-      </td>
-      <td className="py-1.5 px-2 w-24">
-        <input value={qty} onChange={e => setQty(e.target.value)} onBlur={commit}
-          onKeyDown={e => e.key === "Enter" && commit()}
-          className="w-full text-sm text-center rounded-lg px-2 py-1 focus:outline-none"
-          style={{ background: t.surface2, border: `1px solid ${t.border}`, color: t.text }} />
-      </td>
-      <td className="py-1.5 px-1 text-xs text-center" style={{ color: t.textMute }}>{unit}</td>
-      <td className="py-1.5 px-2 w-28">
-        <input value={price} onChange={e => setPrice(e.target.value)} onBlur={commit}
-          onKeyDown={e => e.key === "Enter" && commit()}
-          className="w-full text-sm text-right rounded-lg px-2 py-1 focus:outline-none"
-          style={{ background: t.surface2, border: `1px solid ${t.border}`, color: t.text }} />
-      </td>
-      <td className="py-1.5 px-3 text-sm font-semibold text-right w-28" style={{ color: t.text }}>
-        {fmt(total)} ₽
-      </td>
-      <td className="py-1.5 px-1 w-8">
-        <button onClick={onDelete} className="opacity-0 group-hover:opacity-100 transition text-red-400 hover:text-red-300">
-          <Icon name="X" size={13} />
-        </button>
-      </td>
-    </tr>
+    <>
+      {showPicker && <PricePicker prices={prices} onSelect={handlePickPrice} onClose={() => setShowPicker(false)} />}
+      <tr className="group" style={{ borderBottom: `1px solid ${t.border2}` }}>
+        <td className="py-1.5 px-2">
+          <div className="flex items-center gap-1">
+            {/* Кнопка замены из прайса */}
+            <button
+              onClick={() => setShowPicker(true)}
+              title="Заменить из прайса"
+              className="flex-shrink-0 opacity-0 group-hover:opacity-100 transition rounded-md p-1 hover:bg-violet-500/15"
+              style={{ color: "#7c3aed" }}>
+              <Icon name="RefreshCw" size={11} />
+            </button>
+            <input
+              value={name}
+              onChange={e => setName(e.target.value)}
+              onBlur={() => commit()}
+              onKeyDown={e => e.key === "Enter" && commit()}
+              className="w-full text-sm rounded-lg px-2 py-1 focus:outline-none transition"
+              style={{ background: "transparent", border: "1px solid transparent", color: t.text }}
+              onFocus={e => { e.target.style.background = t.surface2; e.target.style.borderColor = "#7c3aed40"; }}
+              onBlurCapture={e => { e.target.style.background = "transparent"; e.target.style.borderColor = "transparent"; }}
+            />
+          </div>
+        </td>
+        <td className="py-1.5 px-2 w-24">
+          <input value={qty} onChange={e => setQty(e.target.value)} onBlur={() => commit()}
+            onKeyDown={e => e.key === "Enter" && commit()}
+            className="w-full text-sm text-center rounded-lg px-2 py-1 focus:outline-none"
+            style={{ background: t.surface2, border: `1px solid ${t.border}`, color: t.text }} />
+        </td>
+        <td className="py-1.5 px-1 text-xs text-center" style={{ color: t.textMute }}>{unit}</td>
+        <td className="py-1.5 px-2 w-28">
+          <input value={price} onChange={e => setPrice(e.target.value)} onBlur={() => commit()}
+            onKeyDown={e => e.key === "Enter" && commit()}
+            className="w-full text-sm text-right rounded-lg px-2 py-1 focus:outline-none"
+            style={{ background: t.surface2, border: `1px solid ${t.border}`, color: t.text }} />
+        </td>
+        <td className="py-1.5 px-3 text-sm font-semibold text-right w-28" style={{ color: t.text }}>
+          {fmt(total)} ₽
+        </td>
+        <td className="py-1.5 px-1 w-8">
+          <button onClick={onDelete} className="opacity-0 group-hover:opacity-100 transition text-red-400 hover:text-red-300">
+            <Icon name="X" size={13} />
+          </button>
+        </td>
+      </tr>
+    </>
   );
 }
 
@@ -114,22 +222,24 @@ export default function EstimateEditor({ chatId, clientName, clientPhone }: { ch
   const [copied,   setCopied]     = useState(false);
   const [blocks,   setBlocks]     = useState<EstimateBlock[]>([]);
   const [totals,   setTotals]     = useState<string[]>([]);
+  const [prices,   setPrices]     = useState<PriceItem[]>([]);
 
   // Загружаем смету по chat_id
   useEffect(() => {
     setLoading(true);
-    // Ищем в saved_estimates по chat_id через CRM API
-    fetch(`${AUTH_URL}?action=estimate-by-chat&chat_id=${chatId}`)
-      .then(r => r.json())
-      .then(d => {
-        if (d.estimate) {
-          setEstimate(d.estimate);
-          setBlocks(d.estimate.blocks || []);
-          setTotals(d.estimate.totals || []);
-        }
-        setLoading(false);
-      })
-      .catch(() => setLoading(false));
+    // Загружаем смету и прайс параллельно
+    Promise.all([
+      fetch(`${AUTH_URL}?action=estimate-by-chat&chat_id=${chatId}`).then(r => r.json()),
+      fetch(PRICES_URL).then(r => r.json()).catch(() => ({ prices: [] })),
+    ]).then(([d, p]) => {
+      if (d.estimate) {
+        setEstimate(d.estimate);
+        setBlocks(d.estimate.blocks || []);
+        setTotals(d.estimate.totals || []);
+      }
+      if (p.prices) setPrices(p.prices);
+      setLoading(false);
+    }).catch(() => setLoading(false));
   }, [chatId]);
 
   // Пересчёт итогов
@@ -368,6 +478,7 @@ export default function EstimateEditor({ chatId, clientName, clientPhone }: { ch
                     <ItemRow key={`${bi}-${ii}`} item={item}
                       onChange={(name, qty, price, unit) => updateItem(bi, ii, name, qty, price, unit)}
                       onDelete={() => deleteItem(bi, ii)}
+                      prices={prices}
                     />
                   ))}
                   <tr key={`add-${bi}`}>
