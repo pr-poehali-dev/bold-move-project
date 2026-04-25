@@ -12,9 +12,8 @@ interface Props {
   onDeleted: () => void;
 }
 
-function InlineField({
-  label, value, onSave, type = "text", placeholder = "Пустое значение"
-}: {
+// ── InlineField ──────────────────────────────────────────────────────────────
+function InlineField({ label, value, onSave, type = "text", placeholder = "—" }: {
   label: string;
   value: string | number | null | undefined;
   onSave: (v: string) => void;
@@ -24,50 +23,65 @@ function InlineField({
   const t = useTheme();
   const [editing, setEditing] = useState(false);
   const [val, setVal] = useState(String(value ?? ""));
-  const inputRef = useRef<HTMLInputElement>(null);
+  const ref = useRef<HTMLInputElement>(null);
 
   const commit = () => {
     setEditing(false);
     if (val !== String(value ?? "")) onSave(val);
   };
 
+  const displayVal = () => {
+    if (!value) return null;
+    if (type === "datetime-local")
+      return new Date(String(value)).toLocaleString("ru-RU", { day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" });
+    if (type === "number") return Number(value).toLocaleString("ru-RU");
+    return String(value);
+  };
+
   return (
-    <div className="flex items-center justify-between py-2.5 group" style={{ borderBottom: `1px solid ${t.border2}` }}>
-      <span className="text-sm w-48 flex-shrink-0" style={{ color: t.textMute }}>{label}</span>
+    <div className="flex items-center justify-between py-2 group" style={{ borderBottom: `1px solid ${t.border2}` }}>
+      <span className="text-xs flex-shrink-0 w-36" style={{ color: t.textMute }}>{label}</span>
       {editing ? (
-        <input
-          ref={inputRef} type={type} value={val}
+        <input ref={ref} type={type} value={val}
           onChange={e => setVal(e.target.value)}
           onBlur={commit}
           onKeyDown={e => { if (e.key === "Enter") commit(); if (e.key === "Escape") setEditing(false); }}
           autoFocus
-          className="flex-1 rounded-lg px-3 py-1.5 text-sm focus:outline-none"
-          style={{ background: t.surface2, color: t.text, border: "1px solid #7c3aed40" }}
+          className="flex-1 rounded-lg px-2 py-1 text-sm text-right focus:outline-none"
+          style={{ background: t.surface2, color: "#fff", border: "1px solid #7c3aed50" }}
         />
       ) : (
         <button onClick={() => { setEditing(true); setVal(String(value ?? "")); }}
-          className="flex-1 text-right text-sm hover:text-violet-300 transition truncate"
-          style={{ color: t.textSub }}>
-          {value ? (
-            <span style={{ color: t.text }}>
-              {type === "datetime-local" && value
-                ? new Date(String(value)).toLocaleString("ru-RU", { day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" })
-                : type === "number" && value
-                ? Number(value).toLocaleString("ru-RU")
-                : String(value)}
-            </span>
-          ) : (
-            <span className="text-violet-400/70 underline underline-offset-2 decoration-dashed text-xs">{placeholder}</span>
-          )}
+          className="flex-1 text-right text-sm transition hover:opacity-70 truncate">
+          {displayVal()
+            ? <span style={{ color: "#fff" }}>{displayVal()}</span>
+            : <span className="text-xs text-violet-400/60 underline underline-offset-2 decoration-dashed">{placeholder}</span>}
         </button>
       )}
     </div>
   );
 }
 
-function FileField({
-  label, url, onUploaded, accept = "*"
-}: {
+// ── Section ──────────────────────────────────────────────────────────────────
+function Section({ icon, title, color = "#8b5cf6", children }: {
+  icon: string; title: string; color?: string; children: React.ReactNode;
+}) {
+  const t = useTheme();
+  return (
+    <div className="rounded-2xl overflow-hidden" style={{ background: t.surface2, border: `1px solid ${t.border}` }}>
+      <div className="flex items-center gap-2 px-4 py-2.5" style={{ borderBottom: `1px solid ${t.border}` }}>
+        <div className="w-6 h-6 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: color + "20" }}>
+          <Icon name={icon} size={12} style={{ color }} />
+        </div>
+        <span className="text-xs font-bold uppercase tracking-wider" style={{ color }}>{title}</span>
+      </div>
+      <div className="px-4 pb-1">{children}</div>
+    </div>
+  );
+}
+
+// ── FileField ─────────────────────────────────────────────────────────────────
+function FileField({ label, url, onUploaded, accept = "*" }: {
   label: string; url: string | null | undefined;
   onUploaded: (url: string) => void; accept?: string;
 }) {
@@ -87,23 +101,22 @@ function FileField({
   const isImage = url && /\.(jpg|jpeg|png|webp|gif)$/i.test(url);
 
   return (
-    <div className="flex items-start justify-between py-2.5" style={{ borderBottom: `1px solid ${t.border2}` }}>
-      <span className="text-sm w-48 flex-shrink-0 pt-1" style={{ color: t.textMute }}>{label}</span>
-      <div className="flex-1 flex flex-col items-end gap-2">
+    <div className="flex items-center justify-between py-2" style={{ borderBottom: `1px solid ${t.border2}` }}>
+      <span className="text-xs w-36 flex-shrink-0" style={{ color: t.textMute }}>{label}</span>
+      <div className="flex items-center gap-2">
         {isImage && url && (
           <a href={url} target="_blank" rel="noreferrer">
-            <img src={url} alt={label} className="w-32 h-20 object-cover rounded-lg" style={{ border: `1px solid ${t.border}` }} />
+            <img src={url} alt={label} className="w-12 h-8 object-cover rounded-md" style={{ border: `1px solid ${t.border}` }} />
           </a>
         )}
         {!isImage && url && (
-          <a href={url} target="_blank" rel="noreferrer"
-            className="text-xs text-violet-400 underline underline-offset-2 flex items-center gap-1">
-            <Icon name="FileText" size={12} /> Открыть файл
+          <a href={url} target="_blank" rel="noreferrer" className="text-xs text-violet-400 underline flex items-center gap-1">
+            <Icon name="FileText" size={11} /> Открыть
           </a>
         )}
         <button onClick={() => ref.current?.click()}
-          className="text-xs text-violet-400/70 underline underline-offset-2 decoration-dashed hover:text-violet-300 transition flex items-center gap-1">
-          {uploading ? <><Icon name="Loader2" size={11} className="animate-spin" /> Загрузка...</> : <><Icon name="Upload" size={11} /> {url ? "Заменить" : "Добавить файл"}</>}
+          className="text-xs text-violet-400/70 underline decoration-dashed hover:text-violet-300 transition flex items-center gap-1">
+          {uploading ? <><Icon name="Loader2" size={11} className="animate-spin" /> Загрузка...</> : <><Icon name="Upload" size={11} /> {url ? "Заменить" : "Загрузить"}</>}
         </button>
         <input ref={ref} type="file" accept={accept} className="hidden" onChange={handleFile} />
       </div>
@@ -111,87 +124,81 @@ function FileField({
   );
 }
 
+// ── TagsField ─────────────────────────────────────────────────────────────────
 function TagsField({ tags, onSave }: { tags: string[] | null; onSave: (tags: string[]) => void }) {
   const t = useTheme();
   const current = tags || [];
   const [custom, setCustom] = useState("");
 
   const toggle = (label: string) => {
-    const next = current.includes(label) ? current.filter(tg => tg !== label) : [...current, label];
-    onSave(next);
+    onSave(current.includes(label) ? current.filter(tg => tg !== label) : [...current, label]);
   };
-
   const addCustom = () => {
-    if (!custom.trim()) return;
-    if (!current.includes(custom.trim())) onSave([...current, custom.trim()]);
+    if (!custom.trim() || current.includes(custom.trim())) return;
+    onSave([...current, custom.trim()]);
     setCustom("");
   };
 
   return (
-    <div className="py-2.5" style={{ borderBottom: `1px solid ${t.border2}` }}>
-      <div className="text-sm mb-2" style={{ color: t.textMute }}>Метки</div>
+    <div className="pt-2 pb-1">
       <div className="flex flex-wrap gap-1.5 mb-2">
         {DEFAULT_TAGS.map(tg => (
           <button key={tg.label} onClick={() => toggle(tg.label)}
-            className="px-2.5 py-1 rounded-lg text-xs font-medium transition border"
+            className="px-2 py-0.5 rounded-lg text-xs font-medium transition border"
             style={current.includes(tg.label)
               ? { background: tg.color + "25", color: tg.color, borderColor: tg.color + "50" }
-              : { borderColor: "transparent", background: t.surface2, color: t.textMute }}>
+              : { borderColor: "transparent", background: t.surface, color: t.textMute }}>
             {tg.label}
           </button>
         ))}
         {current.filter(tg => !DEFAULT_TAGS.find(d => d.label === tg)).map(tg => (
-          <span key={tg} className="px-2.5 py-1 rounded-lg text-xs font-medium flex items-center gap-1"
-            style={{ background: t.surface2, color: t.textSub }}>
+          <span key={tg} className="px-2 py-0.5 rounded-lg text-xs font-medium flex items-center gap-1"
+            style={{ background: t.surface, color: t.textSub }}>
             {tg}
-            <button onClick={() => toggle(tg)} className="hover:text-red-400 transition ml-0.5" style={{ color: t.textMute }}>
-              <Icon name="X" size={10} />
+            <button onClick={() => toggle(tg)} className="hover:text-red-400 transition" style={{ color: t.textMute }}>
+              <Icon name="X" size={9} />
             </button>
           </span>
         ))}
       </div>
       <div className="flex gap-2">
-        <input
-          value={custom}
-          onChange={e => setCustom(e.target.value)}
+        <input value={custom} onChange={e => setCustom(e.target.value)}
           onKeyDown={e => e.key === "Enter" && addCustom()}
-          placeholder="Добавить метку..."
-          className="flex-1 rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:border-violet-500/50"
-          style={{ background: t.surface2, border: `1px solid ${t.border}`, color: t.text }}
-        />
-        <button onClick={addCustom} className="px-3 py-1.5 bg-violet-600/20 hover:bg-violet-600/30 text-violet-300 text-xs rounded-lg transition">+</button>
+          placeholder="Новая метка..."
+          className="flex-1 rounded-lg px-3 py-1 text-xs focus:outline-none"
+          style={{ background: t.surface, border: `1px solid ${t.border}`, color: "#fff" }} />
+        <button onClick={addCustom} className="px-2.5 py-1 bg-violet-600/20 hover:bg-violet-600/30 text-violet-300 text-xs rounded-lg transition">+</button>
       </div>
     </div>
   );
 }
 
+// ── StatusSelector ────────────────────────────────────────────────────────────
 function StatusSelector({ status, onSave }: { status: string; onSave: (s: string) => void }) {
   const t = useTheme();
   const ALL = [...LEAD_STATUSES, ...ORDER_STATUSES];
   return (
-    <div className="py-2.5" style={{ borderBottom: `1px solid ${t.border2}` }}>
-      <div className="text-sm mb-2" style={{ color: t.textMute }}>Статус воронки</div>
-      <div className="flex flex-wrap gap-1.5">
-        {ALL.map(s => (
-          <button key={s} onClick={() => onSave(s)}
-            className="px-2.5 py-1 rounded-lg text-xs font-medium transition border"
-            style={status === s
-              ? { background: STATUS_COLORS[s] + "25", color: STATUS_COLORS[s], borderColor: STATUS_COLORS[s] + "50" }
-              : { borderColor: "transparent", background: t.surface2, color: t.textMute }}>
-            {STATUS_LABELS[s]}
-          </button>
-        ))}
-      </div>
+    <div className="pt-2 pb-1 flex flex-wrap gap-1.5">
+      {ALL.map(s => (
+        <button key={s} onClick={() => onSave(s)}
+          className="px-2.5 py-1 rounded-lg text-xs font-medium transition border"
+          style={status === s
+            ? { background: STATUS_COLORS[s] + "25", color: STATUS_COLORS[s], borderColor: STATUS_COLORS[s] + "50" }
+            : { borderColor: "transparent", background: t.surface, color: t.textMute }}>
+          {STATUS_LABELS[s]}
+        </button>
+      ))}
     </div>
   );
 }
 
+// ── Main ──────────────────────────────────────────────────────────────────────
 export default function ClientDrawer({ client, allClientOrders, onClose, onUpdated, onDeleted }: Props) {
   const t = useTheme();
-  const [data, setData] = useState<Client>(client);
-  const [saving, setSaving] = useState(false);
+  const [data, setData]             = useState<Client>(client);
+  const [saving, setSaving]         = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
-  const [drawerTab, setDrawerTab] = useState<"info" | "orders" | "estimate">("info");
+  const [drawerTab, setDrawerTab]   = useState<"info" | "orders" | "estimate">("info");
 
   const save = async (patch: Partial<Client>) => {
     const next = { ...data, ...patch };
@@ -207,37 +214,43 @@ export default function ClientDrawer({ client, allClientOrders, onClose, onUpdat
     onDeleted();
   };
 
-  const isOrder = ORDER_STATUSES.includes(data.status);
+  const profit = (data.contract_sum||0) - (data.material_cost||0) - (data.measure_cost||0) - (data.install_cost||0);
+  const received = (data.prepayment||0) + (data.extra_payment||0);
+  const remaining = (data.contract_sum||0) - received;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={onClose}
-      style={{ background: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)" }}>
+      style={{ background: "rgba(0,0,0,0.65)", backdropFilter: "blur(5px)" }}>
 
-      {/* Модальное окно */}
-      <div
-        className="w-full flex flex-col overflow-hidden shadow-2xl"
+      <div className="w-full flex flex-col overflow-hidden shadow-2xl"
         style={{
           background: t.surface,
           border: `1px solid ${t.border}`,
           borderRadius: 20,
-          maxWidth: drawerTab === "estimate" ? 1100 : 680,
+          maxWidth: drawerTab === "estimate" ? 1100 : 860,
           maxHeight: "92vh",
         }}
         onClick={e => e.stopPropagation()}>
 
-        {/* Шапка */}
+        {/* ── Шапка ── */}
         <div className="flex items-center justify-between px-6 py-4 flex-shrink-0" style={{ borderBottom: `1px solid ${t.border}` }}>
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl flex items-center justify-center text-sm font-bold text-white"
-              style={{ background: STATUS_COLORS[data.status] + "30", border: `1.5px solid ${STATUS_COLORS[data.status]}50` }}>
+            <div className="w-11 h-11 rounded-xl flex items-center justify-center text-sm font-bold text-white"
+              style={{ background: STATUS_COLORS[data.status] + "35", border: `2px solid ${STATUS_COLORS[data.status]}50` }}>
               {(data.client_name || "?").slice(0, 2).toUpperCase()}
             </div>
             <div>
-              <div className="text-sm font-bold" style={{ color: t.text }}>{data.client_name || "Без имени"}</div>
-              <span className="text-[11px] px-2 py-0.5 rounded-md font-medium"
-                style={{ background: STATUS_COLORS[data.status] + "20", color: STATUS_COLORS[data.status] }}>
-                {STATUS_LABELS[data.status] || data.status}
-              </span>
+              <div className="text-base font-bold text-white">{data.client_name || "Без имени"}</div>
+              <div className="flex items-center gap-2 mt-0.5">
+                <span className="text-[11px] px-2 py-0.5 rounded-md font-semibold"
+                  style={{ background: STATUS_COLORS[data.status] + "25", color: STATUS_COLORS[data.status] }}>
+                  {STATUS_LABELS[data.status] || data.status}
+                </span>
+                {data.phone && <span className="text-xs" style={{ color: t.textMute }}>{data.phone}</span>}
+                {data.contract_sum ? (
+                  <span className="text-xs font-bold text-emerald-400">{data.contract_sum.toLocaleString("ru-RU")} ₽</span>
+                ) : null}
+              </div>
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -251,12 +264,12 @@ export default function ClientDrawer({ client, allClientOrders, onClose, onUpdat
           </div>
         </div>
 
-        {/* Табы вкладок */}
+        {/* ── Табы ── */}
         <div className="flex px-6 gap-1 pt-3 flex-shrink-0" style={{ borderBottom: `1px solid ${t.border}` }}>
           {([
-            { id: "info",     label: "Заявка",  icon: "User" },
+            { id: "info",     label: "Заявка",   icon: "User" },
             { id: "orders",   label: `История (${allClientOrders.length})`, icon: "ClipboardList" },
-            { id: "estimate", label: "Смета",   icon: "FileSpreadsheet" },
+            { id: "estimate", label: "Смета",    icon: "FileSpreadsheet" },
           ] as const).map(tab => (
             <button key={tab.id} onClick={() => setDrawerTab(tab.id)}
               className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-t-lg transition"
@@ -268,214 +281,205 @@ export default function ClientDrawer({ client, allClientOrders, onClose, onUpdat
           ))}
         </div>
 
-        {/* Контент */}
-        <div className="flex-1 overflow-y-auto px-6 py-4">
+        {/* ── Контент ── */}
+        <div className="flex-1 overflow-y-auto">
 
-          {drawerTab === "estimate" && <EstimateEditor chatId={data.id} clientName={data.client_name} clientPhone={data.phone} />}
+          {/* СМЕТА */}
+          {drawerTab === "estimate" && (
+            <div className="px-6 py-4">
+              <EstimateEditor chatId={data.id} clientName={data.client_name} clientPhone={data.phone} />
+            </div>
+          )}
 
+          {/* ИСТОРИЯ */}
           {drawerTab === "orders" && (
-            <div className="space-y-2 py-2">
+            <div className="px-6 py-4 space-y-2">
               {allClientOrders.length === 0 && (
-                <div className="text-sm text-center py-10" style={{ color: t.textMute }}>Нет заявок</div>
+                <div className="py-12 text-center text-sm" style={{ color: t.textMute }}>Нет заявок</div>
               )}
-              {[...allClientOrders].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()).map(order => (
-                <button
-                  key={order.id}
-                  onClick={() => { setData(order); setDrawerTab("info"); }}
-                  className="w-full text-left rounded-xl p-3 transition"
-                  style={{
-                    background: data.id === order.id ? "#7c3aed18" : t.surface2,
-                    border: `1px solid ${data.id === order.id ? "#7c3aed50" : t.border}`,
-                  }}>
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-xs px-2 py-0.5 rounded-md font-medium"
-                      style={{ background: STATUS_COLORS[order.status] + "20", color: STATUS_COLORS[order.status] }}>
-                      {STATUS_LABELS[order.status] || order.status}
-                    </span>
-                    <span className="text-[11px]" style={{ color: t.textMute }}>
-                      {new Date(order.created_at).toLocaleDateString("ru-RU", { day: "numeric", month: "short", year: "numeric" })}
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="text-xs truncate" style={{ color: t.textSub }}>{order.address || "Адрес не указан"}</span>
-                    {order.contract_sum ? (
-                      <span className="text-xs font-semibold whitespace-nowrap" style={{ color: t.text }}>
-                        {Number(order.contract_sum).toLocaleString("ru-RU")} ₽
+              {[...allClientOrders]
+                .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+                .map(order => (
+                  <button key={order.id} onClick={() => { setData(order); setDrawerTab("info"); }}
+                    className="w-full text-left rounded-xl p-3.5 transition"
+                    style={{
+                      background: data.id === order.id ? "#7c3aed18" : t.surface2,
+                      border: `1px solid ${data.id === order.id ? "#7c3aed50" : t.border}`,
+                    }}>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <span className="text-xs px-2 py-0.5 rounded-md font-semibold"
+                        style={{ background: STATUS_COLORS[order.status] + "20", color: STATUS_COLORS[order.status] }}>
+                        {STATUS_LABELS[order.status] || order.status}
                       </span>
-                    ) : null}
-                  </div>
-                  {data.id === order.id && (
-                    <div className="text-[10px] mt-1 font-medium" style={{ color: "#7c3aed" }}>Открыта сейчас</div>
-                  )}
-                </button>
-              ))}
+                      <span className="text-[11px]" style={{ color: t.textMute }}>
+                        {new Date(order.created_at).toLocaleDateString("ru-RU", { day: "numeric", month: "short", year: "numeric" })}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-xs truncate" style={{ color: t.textSub }}>{order.address || "Адрес не указан"}</span>
+                      {order.contract_sum ? (
+                        <span className="text-sm font-bold text-emerald-400 whitespace-nowrap">
+                          {Number(order.contract_sum).toLocaleString("ru-RU")} ₽
+                        </span>
+                      ) : null}
+                    </div>
+                    {data.id === order.id && (
+                      <div className="text-[10px] mt-1 font-semibold" style={{ color: "#7c3aed" }}>● Открыта сейчас</div>
+                    )}
+                  </button>
+                ))}
             </div>
           )}
 
-          {drawerTab === "info" && <>
-          {/* Статус */}
-          <StatusSelector status={data.status} onSave={s => save({ status: s })} />
+          {/* ЗАЯВКА — два столбца */}
+          {drawerTab === "info" && (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 px-6 py-4">
 
-          {/* Метки */}
-          <TagsField tags={data.tags} onSave={tags => save({ tags })} />
+              {/* ── Левый столбец ── */}
+              <div className="space-y-3">
 
-          {/* Основная инфо */}
-          <div className="mt-1">
-            <div className="text-xs font-semibold uppercase tracking-wider py-2" style={{ color: t.textMute }}>Контакты</div>
-            <InlineField label="Имя клиента" value={data.client_name} onSave={v => save({ client_name: v })} />
-            <InlineField label="Телефон заказчика" value={data.phone} onSave={v => save({ phone: v })} placeholder="Добавить телефон" />
-            <InlineField label="Телефон ответственного" value={data.responsible_phone} onSave={v => save({ responsible_phone: v })} placeholder="Прораб / дизайнер" />
-          </div>
+                {/* Статус воронки */}
+                <Section icon="GitBranch" title="Статус воронки" color="#8b5cf6">
+                  <StatusSelector status={data.status} onSave={s => save({ status: s })} />
+                </Section>
 
-          {/* Объект */}
-          <div className="mt-1">
-            <div className="text-xs font-semibold uppercase tracking-wider py-2" style={{ color: t.textMute }}>Объект</div>
-            <InlineField label="Адрес" value={data.address} onSave={v => save({ address: v })} placeholder="Пустое значение" />
-            <InlineField label="Точка на карте" value={data.map_link} onSave={v => save({ map_link: v })} placeholder="Добавить ссылку" />
-            <InlineField label="Площадь (м²)" value={data.area} onSave={v => save({ area: +v || null } as Partial<Client>)} type="number" placeholder="Пустое значение" />
-          </div>
+                {/* Метки */}
+                <Section icon="Tag" title="Метки" color="#06b6d4">
+                  <TagsField tags={data.tags} onSave={tags => save({ tags })} />
+                </Section>
 
-          {/* Даты */}
-          <div className="mt-1">
-            <div className="text-xs font-semibold uppercase tracking-wider py-2" style={{ color: t.textMute }}>Даты</div>
-            <InlineField label="Дата замера" value={data.measure_date ? data.measure_date.slice(0, 16) : ""} onSave={v => save({ measure_date: v || null })} type="datetime-local" placeholder="Добавить дату" />
-            <InlineField label="Дата монтажа" value={data.install_date ? data.install_date.slice(0, 16) : ""} onSave={v => save({ install_date: v || null })} type="datetime-local" placeholder="Добавить дату" />
-          </div>
+                {/* Контакты */}
+                <Section icon="Phone" title="Контакты" color="#10b981">
+                  <InlineField label="Имя клиента" value={data.client_name} onSave={v => save({ client_name: v })} placeholder="Добавить имя" />
+                  <InlineField label="Телефон" value={data.phone} onSave={v => save({ phone: v })} placeholder="Добавить телефон" />
+                  <InlineField label="Ответственный" value={data.responsible_phone} onSave={v => save({ responsible_phone: v })} placeholder="Прораб / дизайнер" />
+                </Section>
 
-          {/* Финансы (доходы) */}
-          <div className="mt-1">
-            <div className="text-xs font-semibold uppercase tracking-wider py-2" style={{ color: t.textMute }}>Финансы — Доходы</div>
-            <InlineField label="Сумма договора" value={data.contract_sum} onSave={v => save({ contract_sum: +v || null } as Partial<Client>)} type="number" placeholder="Пустое значение" />
-            <InlineField label="Предоплата" value={data.prepayment} onSave={v => save({ prepayment: +v || null } as Partial<Client>)} type="number" placeholder="Пустое значение" />
-            <InlineField label="Доплата" value={data.extra_payment} onSave={v => save({ extra_payment: +v || null } as Partial<Client>)} type="number" placeholder="Пустое значение" />
-            <InlineField label="Сумма доп. соглашения" value={data.extra_agreement_sum} onSave={v => save({ extra_agreement_sum: +v || null } as Partial<Client>)} type="number" placeholder="Пустое значение" />
-          </div>
+                {/* Объект */}
+                <Section icon="MapPin" title="Объект" color="#f59e0b">
+                  <InlineField label="Адрес" value={data.address} onSave={v => save({ address: v })} placeholder="Добавить адрес" />
+                  <InlineField label="Ссылка на карту" value={data.map_link} onSave={v => save({ map_link: v })} placeholder="Добавить ссылку" />
+                  <InlineField label="Площадь (м²)" value={data.area} onSave={v => save({ area: +v || null } as Partial<Client>)} type="number" placeholder="—" />
+                </Section>
 
-          {/* Затраты (себестоимость) */}
-          <div className="mt-1">
-            <div className="text-xs font-semibold uppercase tracking-wider py-2" style={{ color: t.textMute }}>Затраты — Себестоимость</div>
-            <InlineField label="Стоимость материалов" value={data.material_cost} onSave={v => save({ material_cost: +v || null } as Partial<Client>)} type="number" placeholder="Пустое значение" />
-            <InlineField label="Стоимость замера" value={data.measure_cost} onSave={v => save({ measure_cost: +v || null } as Partial<Client>)} type="number" placeholder="Пустое значение" />
-            <InlineField label="Стоимость монтажа" value={data.install_cost} onSave={v => save({ install_cost: +v || null } as Partial<Client>)} type="number" placeholder="Пустое значение" />
-          </div>
+                {/* Даты */}
+                <Section icon="Calendar" title="Даты" color="#f97316">
+                  <InlineField label="Дата замера" value={data.measure_date ? data.measure_date.slice(0, 16) : ""} onSave={v => save({ measure_date: v || null })} type="datetime-local" placeholder="Добавить дату" />
+                  <InlineField label="Дата монтажа" value={data.install_date ? data.install_date.slice(0, 16) : ""} onSave={v => save({ install_date: v || null })} type="datetime-local" placeholder="Добавить дату" />
+                </Section>
 
-          {/* Файлы */}
-          <div className="mt-1">
-            <div className="text-xs font-semibold uppercase tracking-wider py-2" style={{ color: t.textMute }}>Файлы</div>
-            <FileField label="Фото до монтажа" url={data.photo_before_url} accept="image/*" onUploaded={url => save({ photo_before_url: url })} />
-            <FileField label="Фото после монтажа" url={data.photo_after_url} accept="image/*" onUploaded={url => save({ photo_after_url: url })} />
-            <FileField label="Договор / Смета / Замер" url={data.document_url} accept=".pdf,.doc,.docx,.xls,.xlsx" onUploaded={url => save({ document_url: url })} />
-          </div>
+                {/* Заметки */}
+                <Section icon="StickyNote" title="Заметки" color="#8b5cf6">
+                  <textarea
+                    value={data.notes || ""}
+                    onChange={e => setData({ ...data, notes: e.target.value })}
+                    onBlur={e => { if (e.target.value !== (client.notes || "")) save({ notes: e.target.value }); }}
+                    placeholder="Добавить заметку..."
+                    rows={3}
+                    className="w-full rounded-xl px-3 py-2.5 text-sm focus:outline-none resize-none transition mt-2 mb-1"
+                    style={{ background: t.surface, border: `1px solid ${t.border}`, color: "#fff" }}
+                  />
+                </Section>
+              </div>
 
-          {/* Причина отказа — только если отменён */}
-          {data.status === "cancelled" && (
-            <div className="mt-1">
-              <div className="text-xs text-red-400/60 font-semibold uppercase tracking-wider py-2">Причина отказа</div>
-              <InlineField label="Почему отказал?" value={data.cancel_reason} onSave={v => save({ cancel_reason: v })} placeholder="Укажите причину отказа" />
-            </div>
-          )}
+              {/* ── Правый столбец ── */}
+              <div className="space-y-3">
 
-          {/* Заметки */}
-          <div className="mt-1">
-            <div className="text-xs font-semibold uppercase tracking-wider py-2" style={{ color: t.textMute }}>Заметки</div>
-            <textarea
-              value={data.notes || ""}
-              onChange={e => setData({ ...data, notes: e.target.value })}
-              onBlur={e => { if (e.target.value !== (client.notes || "")) save({ notes: e.target.value }); }}
-              placeholder="Добавить заметку..."
-              rows={3}
-              className="w-full rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-violet-500/40 resize-none transition"
-              style={{ background: t.surface2, border: `1px solid ${t.border}`, color: t.text }}
-            />
-          </div>
-
-          {/* Финансовая мини-сводка */}
-          {(data.contract_sum || data.material_cost || data.install_cost) && (
-            <div className="mt-3 rounded-xl p-4" style={{ background: t.surface2, border: `1px solid ${t.border}` }}>
-              <div className="text-xs mb-3 font-semibold uppercase tracking-wider" style={{ color: t.textMute }}>Мини P&L по заказу</div>
-              <div className="space-y-1.5 text-sm">
-                {data.contract_sum && (
-                  <div className="flex justify-between">
-                    <span style={{ color: t.textMute }}>Договор</span>
-                    <span className="font-semibold" style={{ color: t.text }}>{data.contract_sum.toLocaleString("ru-RU")} ₽</span>
+                {/* P&L мини-сводка */}
+                {(data.contract_sum || data.material_cost || data.install_cost) ? (
+                  <div className="rounded-2xl p-4" style={{ background: "linear-gradient(135deg, #7c3aed15, #10b98112)", border: `1px solid #7c3aed30` }}>
+                    <div className="flex items-center gap-2 mb-3">
+                      <Icon name="TrendingUp" size={14} style={{ color: "#10b981" }} />
+                      <span className="text-xs font-bold uppercase tracking-wider text-white">P&L по заказу</span>
+                    </div>
+                    <div className="space-y-2 text-sm">
+                      {data.contract_sum ? (
+                        <div className="flex justify-between items-center">
+                          <span style={{ color: t.textMute }}>Договор</span>
+                          <span className="font-bold text-white">{data.contract_sum.toLocaleString("ru-RU")} ₽</span>
+                        </div>
+                      ) : null}
+                      {received > 0 && (
+                        <div className="flex justify-between items-center">
+                          <span style={{ color: t.textMute }}>Получено</span>
+                          <span className="font-semibold text-emerald-400">+{received.toLocaleString("ru-RU")} ₽</span>
+                        </div>
+                      )}
+                      {remaining > 0 && data.contract_sum ? (
+                        <div className="flex justify-between items-center">
+                          <span style={{ color: t.textMute }}>Остаток</span>
+                          <span className="font-semibold text-amber-400">{remaining.toLocaleString("ru-RU")} ₽</span>
+                        </div>
+                      ) : null}
+                      {(data.material_cost || data.measure_cost || data.install_cost) ? (
+                        <div className="flex justify-between items-center">
+                          <span style={{ color: t.textMute }}>Затраты</span>
+                          <span className="font-semibold text-red-400">−{((data.material_cost||0)+(data.measure_cost||0)+(data.install_cost||0)).toLocaleString("ru-RU")} ₽</span>
+                        </div>
+                      ) : null}
+                      <div className="flex justify-between items-center pt-2 mt-1" style={{ borderTop: `1px solid ${t.border}` }}>
+                        <span className="font-bold text-white">Прибыль</span>
+                        <span className={`text-lg font-black ${profit >= 0 ? "text-emerald-400" : "text-red-400"}`}>
+                          {profit >= 0 ? "+" : ""}{profit.toLocaleString("ru-RU")} ₽
+                        </span>
+                      </div>
+                    </div>
                   </div>
+                ) : null}
+
+                {/* Доходы */}
+                <Section icon="Banknote" title="Доходы" color="#10b981">
+                  <InlineField label="Сумма договора" value={data.contract_sum} onSave={v => save({ contract_sum: +v || null } as Partial<Client>)} type="number" placeholder="—" />
+                  <InlineField label="Предоплата" value={data.prepayment} onSave={v => save({ prepayment: +v || null } as Partial<Client>)} type="number" placeholder="—" />
+                  <InlineField label="Доплата" value={data.extra_payment} onSave={v => save({ extra_payment: +v || null } as Partial<Client>)} type="number" placeholder="—" />
+                  <InlineField label="Доп. соглашение" value={data.extra_agreement_sum} onSave={v => save({ extra_agreement_sum: +v || null } as Partial<Client>)} type="number" placeholder="—" />
+                </Section>
+
+                {/* Затраты */}
+                <Section icon="Receipt" title="Затраты" color="#ef4444">
+                  <InlineField label="Материалы" value={data.material_cost} onSave={v => save({ material_cost: +v || null } as Partial<Client>)} type="number" placeholder="—" />
+                  <InlineField label="Замер" value={data.measure_cost} onSave={v => save({ measure_cost: +v || null } as Partial<Client>)} type="number" placeholder="—" />
+                  <InlineField label="Монтаж" value={data.install_cost} onSave={v => save({ install_cost: +v || null } as Partial<Client>)} type="number" placeholder="—" />
+                </Section>
+
+                {/* Файлы */}
+                <Section icon="Paperclip" title="Файлы" color="#06b6d4">
+                  <FileField label="Фото до" url={data.photo_before_url} accept="image/*" onUploaded={url => save({ photo_before_url: url })} />
+                  <FileField label="Фото после" url={data.photo_after_url} accept="image/*" onUploaded={url => save({ photo_after_url: url })} />
+                  <FileField label="Договор / Смета" url={data.document_url} accept=".pdf,.doc,.docx,.xls,.xlsx" onUploaded={url => save({ document_url: url })} />
+                </Section>
+
+                {/* Причина отказа */}
+                {data.status === "cancelled" && (
+                  <Section icon="XCircle" title="Причина отказа" color="#ef4444">
+                    <InlineField label="Причина" value={data.cancel_reason} onSave={v => save({ cancel_reason: v })} placeholder="Укажите причину" />
+                  </Section>
                 )}
-                {data.prepayment && (
-                  <div className="flex justify-between">
-                    <span style={{ color: t.textMute }}>Предоплата</span>
-                    <span className="text-emerald-400">+{data.prepayment.toLocaleString("ru-RU")} ₽</span>
-                  </div>
-                )}
-                {data.extra_payment && (
-                  <div className="flex justify-between">
-                    <span style={{ color: t.textMute }}>Доплата</span>
-                    <span className="text-emerald-400">+{data.extra_payment.toLocaleString("ru-RU")} ₽</span>
-                  </div>
-                )}
-                {data.material_cost && (
-                  <div className="flex justify-between">
-                    <span style={{ color: t.textMute }}>Материалы</span>
-                    <span className="text-red-400">−{data.material_cost.toLocaleString("ru-RU")} ₽</span>
-                  </div>
-                )}
-                {data.measure_cost && (
-                  <div className="flex justify-between">
-                    <span style={{ color: t.textMute }}>Замер</span>
-                    <span className="text-red-400/70">−{data.measure_cost.toLocaleString("ru-RU")} ₽</span>
-                  </div>
-                )}
-                {data.install_cost && (
-                  <div className="flex justify-between">
-                    <span style={{ color: t.textMute }}>Монтаж</span>
-                    <span className="text-red-400/70">−{data.install_cost.toLocaleString("ru-RU")} ₽</span>
-                  </div>
-                )}
-                <div className="pt-2 mt-1 flex justify-between" style={{ borderTop: `1px solid ${t.border}` }}>
-                  <span className="font-semibold" style={{ color: t.textMute }}>Прибыль</span>
-                  <span className={`font-bold ${(() => {
-                    const profit = (data.contract_sum||0) - (data.material_cost||0) - (data.measure_cost||0) - (data.install_cost||0);
-                    return profit >= 0 ? "text-emerald-400" : "text-red-400";
-                  })()}`}>
-                    {(() => {
-                      const profit = (data.contract_sum||0) - (data.material_cost||0) - (data.measure_cost||0) - (data.install_cost||0);
-                      return (profit >= 0 ? "+" : "") + profit.toLocaleString("ru-RU") + " ₽";
-                    })()}
-                  </span>
+
+                {/* Метаданные */}
+                <div className="px-1 text-xs space-y-1" style={{ color: t.textMute }}>
+                  <div>Источник: <span className="text-white/60">{data.source || "chat"}</span></div>
+                  <div>Добавлен: <span className="text-white/60">{new Date(data.created_at).toLocaleDateString("ru-RU", { day: "numeric", month: "long", year: "numeric" })}</span></div>
+                  <div>ID: <span className="text-white/60">#{data.id}</span></div>
                 </div>
-                {data.contract_sum && (
-                  <div className="flex justify-between text-xs">
-                    <span style={{ color: t.textMute }}>Остаток к оплате</span>
-                    <span className="text-amber-400 font-semibold">
-                      {((data.contract_sum||0) - (data.prepayment||0) - (data.extra_payment||0)).toLocaleString("ru-RU")} ₽
-                    </span>
-                  </div>
-                )}
               </div>
             </div>
           )}
-
-          {/* Метаданные */}
-          <div className="mt-4 mb-6 text-xs space-y-1" style={{ color: t.textMute }}>
-            <div>Источник: {data.source || "chat"}</div>
-            <div>Добавлен: {new Date(data.created_at).toLocaleDateString("ru-RU", { day: "numeric", month: "long", year: "numeric" })}</div>
-            <div>ID: #{data.id}</div>
-          </div>
-          </>}
         </div>
       </div>
 
       {/* Подтверждение удаления */}
       {confirmDelete && (
         <div className="fixed inset-0 flex items-center justify-center z-[60] bg-black/60" onClick={() => setConfirmDelete(false)}>
-          <div className="rounded-2xl p-6 w-80 shadow-2xl" style={{ background: t.surface, border: "1px solid rgba(239,68,68,0.2)" }} onClick={e => e.stopPropagation()}>
+          <div className="rounded-2xl p-6 w-80 shadow-2xl" style={{ background: t.surface, border: "1px solid rgba(239,68,68,0.25)" }} onClick={e => e.stopPropagation()}>
             <div className="w-12 h-12 rounded-full bg-red-500/15 flex items-center justify-center mx-auto mb-4">
               <Icon name="Trash2" size={22} className="text-red-400" />
             </div>
-            <h3 className="text-base font-bold text-center mb-2" style={{ color: t.text }}>Удалить клиента?</h3>
+            <h3 className="text-base font-bold text-center mb-2 text-white">Удалить клиента?</h3>
             <p className="text-sm text-center mb-5" style={{ color: t.textMute }}>«{data.client_name || "Клиент"}» будет удалён</p>
             <div className="flex gap-2">
-              <button onClick={handleDelete} className="flex-1 py-2.5 bg-red-600 hover:bg-red-700 text-white text-sm rounded-xl font-medium transition">Удалить</button>
-              <button onClick={() => setConfirmDelete(false)} className="flex-1 py-2.5 text-sm rounded-xl transition hover:bg-white/10"
+              <button onClick={handleDelete} className="flex-1 py-2.5 bg-red-600 hover:bg-red-700 text-white text-sm rounded-xl font-semibold transition">Удалить</button>
+              <button onClick={() => setConfirmDelete(false)} className="flex-1 py-2.5 text-sm rounded-xl transition"
                 style={{ background: t.surface2, color: t.textSub }}>Отмена</button>
             </div>
           </div>
