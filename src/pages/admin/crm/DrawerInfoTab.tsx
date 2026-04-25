@@ -2,7 +2,6 @@ import { useState, useRef } from "react";
 import { Client, STATUS_LABELS } from "./crmApi";
 import { useTheme } from "./themeContext";
 import { Section } from "./drawerComponents";
-import Icon from "@/components/ui/icon";
 import { StatusSelector } from "./StatusSelector";
 import { ActivityFeed, ActivityEvent, appendActivityLog } from "./ActivityFeed";
 import { AddBlockModal } from "./DrawerBlockEditor";
@@ -182,8 +181,8 @@ export default function DrawerInfoTab({ data, client, setData, save, setComments
           />
         </div>
 
-        {/* Правая колонка — Активность + Заметки */}
-        <div className="flex flex-col gap-3">
+        {/* Правая колонка — Активность */}
+        <div className="flex flex-col gap-2">
           <ActivityFeed
             client={data}
             extraEvents={activityLog}
@@ -193,38 +192,6 @@ export default function DrawerInfoTab({ data, client, setData, save, setComments
               logAction("MessageSquare", "#7c3aed", `Комментарий: ${text}`);
             }}
           />
-
-          {/* Заметки — отдельный блок */}
-          <div className="rounded-2xl overflow-hidden" style={{ background: t.surface2, border: `1px solid ${t.border}` }}>
-            <div className="flex items-center gap-2 px-4 py-2.5" style={{ borderBottom: `1px solid ${t.border}` }}>
-              <div className="w-6 h-6 rounded-lg flex items-center justify-center" style={{ background: "#8b5cf620" }}>
-                <Icon name="StickyNote" size={12} style={{ color: "#8b5cf6" }} />
-              </div>
-              <span className="text-xs font-bold uppercase tracking-wider" style={{ color: "#8b5cf6" }}>Заметки</span>
-            </div>
-            <div className="px-3 py-3">
-              <textarea
-                value={(() => {
-                  const notes = data.notes || "";
-                  return notes.split("\n").filter(l =>
-                    !l.includes("Смета сохранена") && !l.includes("Email:") && !l.includes("Estimate ID:")
-                  ).join("\n").trim();
-                })()}
-                onChange={e => setData({ ...data, notes: e.target.value })}
-                onBlur={e => {
-                  if (e.target.value !== (client.notes || "")) {
-                    save({ notes: e.target.value });
-                    logAction("StickyNote", "#8b5cf6", "Заметки обновлены");
-                  }
-                }}
-                placeholder="Личные заметки по клиенту..."
-                rows={4}
-                className="w-full rounded-xl px-3 py-2.5 text-sm focus:outline-none resize-none transition"
-                style={{ background: t.surface, border: `1px solid ${t.border}`, color: "#fff" }}
-              />
-            </div>
-          </div>
-
           <div className="text-[10px] opacity-20 px-1" style={{ color: "#a3a3a3" }}>
             ID #{data.id} · {data.source || "chat"}
           </div>

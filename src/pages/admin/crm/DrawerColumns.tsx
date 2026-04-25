@@ -155,14 +155,14 @@ export function DrawerColumns(props: ColumnsProps) {
 
       case "tags":
         return wrap(id,
-          <TagsField tags={data.tags} onSave={tags => {
+          <TagsField tags={data.tags} editMode={editingBlock === id} onSave={tags => {
             const added   = tags.filter(tg => !(data.tags || []).includes(tg));
             const removed = (data.tags || []).filter(tg => !tags.includes(tg));
             if (added.length)   logAction("Tag", "#06b6d4", `Метка добавлена: ${added.join(", ")}`);
             if (removed.length) logAction("Tag", "#ef4444", `Метка удалена: ${removed.join(", ")}`);
             save({ tags });
           }} />,
-          "Tag", "Метки", "#06b6d4", false);
+          "Tag", "Метки", "#06b6d4", true);
 
       case "contacts":
         return wrap(id, <>

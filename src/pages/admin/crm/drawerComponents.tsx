@@ -153,20 +153,19 @@ export function FileField({ label, url, onUploaded, accept = "*" }: {
   );
 }
 
-// ── TagsField — с режимом редактирования ─────────────────────────────────────
-export function TagsField({ tags, onSave }: { tags: string[] | null; onSave: (tags: string[]) => void }) {
+// ── TagsField — управляется через editMode проп (карандашик в Section) ────────
+export function TagsField({ tags, onSave, editMode = false }: {
+  tags: string[] | null;
+  onSave: (tags: string[]) => void;
+  editMode?: boolean;
+}) {
   const t = useTheme();
   const current = tags || [];
-  const [editMode, setEditMode] = useState(false);
   const [newLabel, setNewLabel] = useState("");
   const [editingIdx, setEditingIdx] = useState<number | null>(null);
   const [editVal, setEditVal] = useState("");
 
-  // Все активные метки (дефолтные выбранные + кастомные)
-  const activeTags = current;
-
   const toggle = (label: string) => {
-    if (editMode) return;
     onSave(current.includes(label) ? current.filter(tg => tg !== label) : [...current, label]);
   };
 
@@ -188,28 +187,14 @@ export function TagsField({ tags, onSave }: { tags: string[] | null; onSave: (ta
     setNewLabel("");
   };
 
-  // Дефолтные метки (не выбранные)
   const inactiveDefs = DEFAULT_TAGS.filter(d => !current.includes(d.label));
 
   return (
     <div className="pt-2 pb-1">
-      {/* Шапка с карандашиком */}
-      <div className="flex items-center justify-between mb-2">
-        <span className="text-[10px] uppercase tracking-wider font-semibold" style={{ color: "#a3a3a3" }}>
-          {editMode ? "Режим редактирования" : `${current.length} активных`}
-        </span>
-        <button onClick={() => setEditMode(e => !e)}
-          className="p-1 rounded-md transition hover:bg-white/10 flex items-center gap-1"
-          style={{ color: editMode ? "#7c3aed" : "#a3a3a3" }}>
-          <Icon name={editMode ? "Check" : "Pencil"} size={12} />
-          <span className="text-[10px]">{editMode ? "Готово" : "Изменить"}</span>
-        </button>
-      </div>
-
       {/* Активные метки */}
-      {activeTags.length > 0 && (
+      {current.length > 0 && (
         <div className="flex flex-wrap gap-1.5 mb-2">
-          {activeTags.map((label, idx) => {
+          {current.map((label, idx) => {
             const def = DEFAULT_TAGS.find(d => d.label === label);
             const color = def?.color || "#8b5cf6";
             return editMode && editingIdx === idx ? (
@@ -229,7 +214,7 @@ export function TagsField({ tags, onSave }: { tags: string[] | null; onSave: (ta
                 className="flex items-center gap-1 px-2 py-0.5 rounded-lg text-xs font-medium"
                 style={{ background: color + "25", color, border: `1px solid ${color}50` }}>
                 {label}
-                {editMode && (
+                {editMode ? (
                   <>
                     <button onClick={() => { setEditingIdx(idx); setEditVal(label); }}
                       className="hover:text-white transition ml-0.5" title="Переименовать">
@@ -240,10 +225,9 @@ export function TagsField({ tags, onSave }: { tags: string[] | null; onSave: (ta
                       <Icon name="X" size={9} />
                     </button>
                   </>
-                )}
-                {!editMode && (
+                ) : (
                   <button onClick={() => deleteTag(label)}
-                    className="hover:text-red-300 transition opacity-50 hover:opacity-100" title="Удалить">
+                    className="hover:text-red-300 transition opacity-40 hover:opacity-100" title="Удалить">
                     <Icon name="X" size={9} />
                   </button>
                 )}
@@ -253,38 +237,36 @@ export function TagsField({ tags, onSave }: { tags: string[] | null; onSave: (ta
         </div>
       )}
 
-      {/* Дефолтные неактивные (показываем только в режиме редактирования) */}
-      {editMode && inactiveDefs.length > 0 && (
-        <div className="flex flex-wrap gap-1.5 mb-2 pt-1" style={{ borderTop: `1px solid ${t.border2}` }}>
-          <span className="w-full text-[9px] uppercase tracking-wider mb-1" style={{ color: "#a3a3a3" }}>Добавить стандартную:</span>
-          {inactiveDefs.map(tg => (
-            <button key={tg.label} onClick={() => toggle(tg.label)}
-              className="px-2 py-0.5 rounded-lg text-xs font-medium transition border"
-              style={{ borderColor: tg.color + "30", background: t.surface, color: "#a3a3a3" }}>
-              + {tg.label}
-            </button>
-          ))}
-        </div>
-      )}
-
-      {/* Добавить новую */}
+      {/* В режиме редактирования — неактивные дефолтные + поле добавления */}
       {editMode && (
-        <div className="flex gap-2 mt-1">
-          <input value={newLabel} onChange={e => setNewLabel(e.target.value)}
-            onKeyDown={e => e.key === "Enter" && addNew()}
-            placeholder="Новая метка..."
-            className="flex-1 rounded-lg px-3 py-1 text-xs focus:outline-none"
-            style={{ background: t.surface, border: `1px solid ${t.border}`, color: "#fff" }} />
-          <button onClick={addNew}
-            className="px-2.5 py-1 bg-violet-600/20 hover:bg-violet-600/30 text-violet-300 text-xs rounded-lg transition">
-            +
-          </button>
-        </div>
+        <>
+          {inactiveDefs.length > 0 && (
+            <div className="flex flex-wrap gap-1.5 mb-2 pb-2" style={{ borderBottom: `1px solid ${t.border2}` }}>
+              <span className="w-full text-[9px] uppercase tracking-wider font-semibold mb-0.5" style={{ color: "#a3a3a3" }}>Добавить:</span>
+              {inactiveDefs.map(tg => (
+                <button key={tg.label} onClick={() => toggle(tg.label)}
+                  className="px-2 py-0.5 rounded-lg text-xs font-medium transition border"
+                  style={{ borderColor: tg.color + "40", background: t.surface, color: tg.color }}>
+                  + {tg.label}
+                </button>
+              ))}
+            </div>
+          )}
+          <div className="flex gap-2 mt-1">
+            <input value={newLabel} onChange={e => setNewLabel(e.target.value)}
+              onKeyDown={e => e.key === "Enter" && addNew()}
+              placeholder="Новая метка..."
+              className="flex-1 rounded-lg px-3 py-1 text-xs focus:outline-none"
+              style={{ background: t.surface, border: `1px solid ${t.border}`, color: "#fff" }} />
+            <button onClick={addNew}
+              className="px-2.5 py-1 bg-violet-600/20 hover:bg-violet-600/30 text-violet-300 text-xs rounded-lg transition">+</button>
+          </div>
+        </>
       )}
 
-      {/* Если нет активных меток и не в режиме редактирования */}
-      {activeTags.length === 0 && !editMode && (
-        <div className="flex flex-wrap gap-1.5 mb-2">
+      {/* Пусто и не в режиме редактирования — показываем дефолтные */}
+      {current.length === 0 && !editMode && (
+        <div className="flex flex-wrap gap-1.5 mb-1">
           {DEFAULT_TAGS.map(tg => (
             <button key={tg.label} onClick={() => toggle(tg.label)}
               className="px-2 py-0.5 rounded-lg text-xs font-medium transition border"
