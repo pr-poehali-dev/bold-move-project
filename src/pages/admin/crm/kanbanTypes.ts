@@ -34,6 +34,7 @@ export const NEXT_LABEL: Record<string, string> = {
 export const DEFAULT_WIDTH = 240;
 export const MIN_WIDTH = 160;
 export const MAX_WIDTH = 480;
+export const LS_GLOBAL_WIDTH = "kanban_global_width";
 
 export const LS_KEY    = "kanban_col_widths";
 export const LS_HIDDEN = "kanban_hidden_cols";
@@ -44,6 +45,12 @@ export function loadWidths(): Record<string, number> {
 }
 export function saveWidths(w: Record<string, number>) {
   localStorage.setItem(LS_KEY, JSON.stringify(w));
+}
+export function loadGlobalWidth(): number {
+  try { const v = localStorage.getItem(LS_GLOBAL_WIDTH); return v ? Number(v) : DEFAULT_WIDTH; } catch { return DEFAULT_WIDTH; }
+}
+export function saveGlobalWidth(w: number) {
+  localStorage.setItem(LS_GLOBAL_WIDTH, String(w));
 }
 export function loadHidden(): Set<string> {
   try { return new Set(JSON.parse(localStorage.getItem(LS_HIDDEN) || "[]")); } catch { return new Set(); }

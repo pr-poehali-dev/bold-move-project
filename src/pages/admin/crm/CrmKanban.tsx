@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef, useCallback } from "react";
+import { useEffect, useState, useRef } from "react";
 import { crmFetch, Client } from "./crmApi";
 import { useTheme } from "./themeContext";
 import ClientDrawer from "./ClientDrawer";
@@ -7,9 +7,9 @@ import { KanbanHeader } from "./KanbanHeader";
 import { KanbanColumn } from "./KanbanColumn";
 import {
   KANBAN_COLS, ColId, DROP_STATUS,
-  DEFAULT_WIDTH, MIN_WIDTH, MAX_WIDTH,
-  LS_KEY, LS_HIDDEN, LS_LABELS,
-  loadWidths, saveWidths, loadHidden, loadLabels,
+  LS_HIDDEN, LS_LABELS,
+  loadHidden, loadLabels,
+  loadGlobalWidth, saveGlobalWidth,
 } from "./kanbanTypes";
 
 export default function CrmKanban() {
@@ -22,32 +22,17 @@ export default function CrmKanban() {
   const [search, setSearch]           = useState("");
   const dragRef = useRef<Client | null>(null);
 
-  const [colWidths, setColWidths]     = useState<Record<string, number>>(loadWidths);
-  const resizeRef = useRef<{ colId: string; startX: number; startW: number } | null>(null);
+  // Глобальная ширина всех колонок
+  const [globalWidth, setGlobalWidth] = useState<number>(loadGlobalWidth);
 
   const [hiddenCols,   setHiddenCols]   = useState<Set<string>>(loadHidden);
   const [colLabels,    setColLabels]    = useState<Record<string, string>>(loadLabels);
   const [showSettings, setShowSettings] = useState(false);
 
-  const getWidth = (colId: string) => colWidths[colId] ?? DEFAULT_WIDTH;
-
-  const startResize = useCallback((e: React.MouseEvent, colId: string) => {
-    e.preventDefault(); e.stopPropagation();
-    resizeRef.current = { colId, startX: e.clientX, startW: getWidth(colId) };
-    const onMove = (ev: MouseEvent) => {
-      if (!resizeRef.current) return;
-      const delta = ev.clientX - resizeRef.current.startX;
-      const newW = Math.min(MAX_WIDTH, Math.max(MIN_WIDTH, resizeRef.current.startW + delta));
-      setColWidths(prev => ({ ...prev, [resizeRef.current!.colId]: newW }));
-    };
-    const onUp = () => {
-      if (resizeRef.current) { setColWidths(prev => { saveWidths(prev); return prev; }); resizeRef.current = null; }
-      window.removeEventListener("mousemove", onMove);
-      window.removeEventListener("mouseup", onUp);
-    };
-    window.addEventListener("mousemove", onMove);
-    window.addEventListener("mouseup", onUp);
-  }, [colWidths]); // eslint-disable-line
+  const handleWidthChange = (w: number) => {
+    setGlobalWidth(w);
+    saveGlobalWidth(w);
+  };
 
   const toggleHide = (colId: string) => {
     setHiddenCols(prev => {
@@ -121,10 +106,10 @@ export default function CrmKanban() {
 
       <KanbanHeader
         clientCount={clients.length}
-        colWidths={colWidths}
+        globalWidth={globalWidth}
         search={search}
         onSearch={setSearch}
-        onResetWidths={() => setColWidths({})}
+        onWidthChange={handleWidthChange}
         onSettings={() => setShowSettings(true)}
       />
 
@@ -135,7 +120,7 @@ export default function CrmKanban() {
             col={col}
             label={colLabels[col.id] || col.label}
             colClients={clientsForCol(col)}
-            width={getWidth(col.id)}
+            width={globalWidth}
             isLast={colIdx === visibleCols.length - 1}
             isOver={dragOverCol === col.id}
             dragging={dragging}
@@ -146,7 +131,7 @@ export default function CrmKanban() {
             onDrop={onDrop}
             onOpen={setSelected}
             onNextStep={handleNextStep}
-            onStartResize={startResize}
+            onStartResize={() => {}}
             resizeBorderColor={t.border}
           />
         ))}
