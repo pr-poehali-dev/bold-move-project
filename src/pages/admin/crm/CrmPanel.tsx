@@ -1,6 +1,5 @@
 import { useState, useMemo } from "react";
 import Icon from "@/components/ui/icon";
-import CrmDashboard from "./CrmDashboard";
 import CrmAnalytics from "./CrmAnalytics";
 import CrmClients from "./CrmClients";
 import CrmOrders from "./CrmOrders";
@@ -8,10 +7,9 @@ import CrmCalendar from "./CrmCalendar";
 import CrmKanban from "./CrmKanban";
 import { ThemeContext, DARK, LIGHT, type Theme } from "./themeContext";
 
-type CrmTab = "dashboard" | "analytics" | "clients" | "orders" | "calendar" | "kanban";
+type CrmTab = "analytics" | "clients" | "orders" | "calendar" | "kanban";
 
 const CRM_TABS: { id: CrmTab; label: string; icon: string }[] = [
-  { id: "dashboard", label: "Дашборд",   icon: "LayoutDashboard" },
   { id: "analytics", label: "Аналитика", icon: "BarChart2" },
   { id: "clients",   label: "Клиенты",   icon: "Users" },
   { id: "orders",    label: "Заказы",    icon: "Layers" },
@@ -20,7 +18,7 @@ const CRM_TABS: { id: CrmTab; label: string; icon: string }[] = [
 ];
 
 export default function CrmPanel() {
-  const [tab, setTab] = useState<CrmTab>("dashboard");
+  const [tab, setTab] = useState<CrmTab>("analytics");
   const [theme, setTheme] = useState<Theme>("dark");
 
   const ctx = useMemo(() => ({
@@ -83,7 +81,6 @@ export default function CrmPanel() {
 
         {/* Контент */}
         <div className="p-6">
-          {tab === "dashboard" && <CrmDashboard />}
           {tab === "analytics" && <CrmAnalytics />}
           {tab === "clients"   && <CrmClients />}
           {tab === "orders"    && <CrmOrders />}
