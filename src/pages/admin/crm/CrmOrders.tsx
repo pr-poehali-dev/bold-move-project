@@ -339,30 +339,32 @@ export default function CrmOrders() {
       </div>
 
       {/* Табы */}
-      <div className="grid grid-cols-4 gap-3">
+      <div className="flex gap-2 flex-wrap">
         {TABS.map(tab => {
           const clients  = getTabClients(tab);
           const revenue  = clients.reduce((s, c) => s + (c.contract_sum || 0), 0);
           const isActive = activeTab === tab.id;
           return (
             <button key={tab.id} onClick={() => setActiveTab(tab.id)}
-              className="relative overflow-hidden rounded-2xl p-4 text-left transition"
+              className="relative flex items-center gap-2.5 px-4 py-2.5 rounded-xl transition flex-1 min-w-0"
               style={{
-                background: isActive ? tab.color + "12" : t.surface,
+                background: isActive ? tab.color + "15" : t.surface,
                 border: `1px solid ${isActive ? tab.color + "45" : t.border}`,
               }}>
-              <div className="flex items-center gap-2 mb-2">
-                <div className="w-7 h-7 rounded-lg flex items-center justify-center"
-                  style={{ background: tab.color + "20" }}>
-                  <Icon name={tab.icon} size={13} style={{ color: tab.color }} />
-                </div>
-                <span className="text-xs font-semibold" style={{ color: t.textSub }}>{tab.label}</span>
+              <div className="w-6 h-6 rounded-lg flex items-center justify-center flex-shrink-0"
+                style={{ background: tab.color + "20" }}>
+                <Icon name={tab.icon} size={12} style={{ color: tab.color }} />
               </div>
-              <div className="text-2xl font-bold" style={{ color: t.text }}>{clients.length}</div>
-              {revenue > 0
-                ? <div className="text-[11px] mt-0.5 font-medium" style={{ color: tab.color + "cc" }}>{revenue.toLocaleString("ru-RU")} ₽</div>
-                : <div className="text-[11px] mt-0.5" style={{ color: t.textMute }}>клиентов</div>}
-              {isActive && <div className="absolute bottom-0 left-0 right-0 h-0.5" style={{ background: tab.color }} />}
+              <div className="text-left min-w-0">
+                <div className="text-xs font-semibold truncate" style={{ color: isActive ? tab.color : t.textSub }}>{tab.label}</div>
+                <div className="flex items-center gap-1.5 mt-0.5">
+                  <span className="text-base font-bold leading-none" style={{ color: t.text }}>{clients.length}</span>
+                  {revenue > 0
+                    ? <span className="text-[10px] font-medium truncate" style={{ color: tab.color + "cc" }}>{revenue.toLocaleString("ru-RU")} ₽</span>
+                    : <span className="text-[10px]" style={{ color: t.textMute }}>клиентов</span>}
+                </div>
+              </div>
+              {isActive && <div className="absolute bottom-0 left-0 right-0 h-0.5 rounded-b-xl" style={{ background: tab.color }} />}
             </button>
           );
         })}
