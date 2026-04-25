@@ -122,16 +122,27 @@ export function DrawerColumns(props: ColumnsProps) {
           row.type === "file" ? (
             <FileField key={i} label={row.label} url={vals[i] || null}
               onUploaded={(url, name) => {
-                setCustomRowVals(prev => ({ ...prev, [cb.id]: { ...(prev[cb.id] || {}), [i]: url } }));
+                setCustomRowVals(prev => {
+                  const next = { ...prev, [cb.id]: { ...(prev[cb.id] || {}), [i]: url } };
+                  localStorage.setItem(`custom_block_vals_${data.id}`, JSON.stringify(next));
+                  return next;
+                });
                 logAction("Upload", cb.color, `${cb.title} / ${row.label}: ${name}`);
               }} />
           ) : (
             <div key={i} className="flex items-center justify-between py-2 group"
               style={{ borderBottom: `1px solid ${t.border2}` }}>
-              <span className="text-xs w-36 flex-shrink-0" style={{ color: t.textMute }}>{row.label}</span>
+              <span className="text-xs w-36 flex-shrink-0" style={{ color: "#d4d4d4" }}>{row.label}</span>
               <input
                 value={vals[i] || ""}
-                onChange={e => setCustomRowVals(prev => ({ ...prev, [cb.id]: { ...(prev[cb.id] || {}), [i]: e.target.value } }))}
+                onChange={e => {
+                  const v = e.target.value;
+                  setCustomRowVals(prev => {
+                    const next = { ...prev, [cb.id]: { ...(prev[cb.id] || {}), [i]: v } };
+                    localStorage.setItem(`custom_block_vals_${data.id}`, JSON.stringify(next));
+                    return next;
+                  });
+                }}
                 onBlur={e => { if (e.target.value) logAction("Edit3", cb.color, `${cb.title} / ${row.label}: ${e.target.value}`); }}
                 placeholder="—"
                 className="flex-1 text-right text-sm bg-transparent focus:outline-none rounded-lg px-2 py-0.5 transition"

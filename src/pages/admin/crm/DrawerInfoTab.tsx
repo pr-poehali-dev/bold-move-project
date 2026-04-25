@@ -30,7 +30,9 @@ export default function DrawerInfoTab({ data, client, setData, save, setComments
   const [activityLog, setActivityLog]     = useState<ActivityEvent[]>([]);
   const [customBlocks, setCustomBlocks]   = useState<CustomBlockData[]>(loadCustomBlocks);
   const [showAddBlock, setShowAddBlock]   = useState<0 | 1 | null>(null);
-  const [customRowVals, setCustomRowVals] = useState<Record<string, Record<number, string>>>({});
+  const [customRowVals, setCustomRowVals] = useState<Record<string, Record<number, string>>>(() => {
+    try { return JSON.parse(localStorage.getItem(`custom_block_vals_${data.id}`) || "{}"); } catch { return {}; }
+  });
   const dragId = useRef<BlockId | null>(null);
   const dragColRef = useRef<0 | 1 | null>(null);
 
