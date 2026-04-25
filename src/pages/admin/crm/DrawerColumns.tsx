@@ -245,7 +245,7 @@ export function DrawerColumns(props: ColumnsProps) {
     <div className="flex flex-col gap-3">
 
       {/* Двухколоночная сетка — выровненные блоки */}
-      <div className="grid grid-cols-[1fr_1fr] gap-3">
+      <div className="grid grid-cols-[1fr_1fr] gap-3 items-start">
         {/* Левый столбец */}
         <div className="flex flex-col gap-3">
           {col0Narrow.map(b => (
