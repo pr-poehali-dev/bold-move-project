@@ -96,42 +96,31 @@ export function StatusSelector({ status, onSave }: { status: string; onSave: (s:
 }
 
 // ── ActivityFeed ──────────────────────────────────────────────────────────────
-export function ActivityFeed({ client, onAddComment }: { client: Client; onAddComment: (text: string) => void }) {
+export interface ActivityEvent {
+  icon: string; color: string; text: string; date: string;
+}
+
+export function ActivityFeed({ client, onAddComment, extraEvents = [] }: {
+  client: Client;
+  onAddComment: (text: string) => void;
+  extraEvents?: ActivityEvent[];
+}) {
   const t = useTheme();
   const [comment, setComment] = useState("");
 
-  const events: { icon: string; color: string; text: string; date: string }[] = [];
+  const now = () => new Date().toLocaleString("ru-RU", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
 
-  if (client.created_at) events.push({
-    icon: "Plus", color: "#8b5cf6",
-    text: "Заявка создана",
-    date: new Date(client.created_at).toLocaleDateString("ru-RU", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }),
-  });
-  if (client.measure_date) events.push({
-    icon: "Ruler", color: "#f59e0b",
-    text: "Замер назначен",
-    date: new Date(client.measure_date).toLocaleDateString("ru-RU", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }),
-  });
-  if (client.install_date) events.push({
-    icon: "Wrench", color: "#f97316",
-    text: "Монтаж назначен",
-    date: new Date(client.install_date).toLocaleDateString("ru-RU", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }),
-  });
-  if (client.contract_sum) events.push({
-    icon: "FileText", color: "#06b6d4",
-    text: `Договор: ${client.contract_sum.toLocaleString("ru-RU")} ₽`,
-    date: "",
-  });
-  if (client.prepayment) events.push({
-    icon: "Wallet", color: "#10b981",
-    text: `Предоплата: +${client.prepayment.toLocaleString("ru-RU")} ₽`,
-    date: "",
-  });
-  if (client.extra_payment) events.push({
-    icon: "Wallet", color: "#10b981",
-    text: `Доплата: +${client.extra_payment.toLocaleString("ru-RU")} ₽`,
-    date: "",
-  });
+  // Базовые события из данных клиента
+  const baseEvents: ActivityEvent[] = [];
+  if (client.created_at) baseEvents.push({ icon: "Plus", color: "#8b5cf6", text: "Заявка создана", date: new Date(client.created_at).toLocaleDateString("ru-RU", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) });
+  if (client.measure_date) baseEvents.push({ icon: "Ruler", color: "#f59e0b", text: "Замер назначен", date: new Date(client.measure_date).toLocaleDateString("ru-RU", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) });
+  if (client.install_date) baseEvents.push({ icon: "Wrench", color: "#f97316", text: "Монтаж назначен", date: new Date(client.install_date).toLocaleDateString("ru-RU", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) });
+  if (client.contract_sum) baseEvents.push({ icon: "FileText", color: "#06b6d4", text: `Договор: ${client.contract_sum.toLocaleString("ru-RU")} ₽`, date: "" });
+  if (client.prepayment) baseEvents.push({ icon: "Wallet", color: "#10b981", text: `Предоплата: +${client.prepayment.toLocaleString("ru-RU")} ₽`, date: "" });
+  if (client.extra_payment) baseEvents.push({ icon: "Wallet", color: "#10b981", text: `Доплата: +${client.extra_payment.toLocaleString("ru-RU")} ₽`, date: "" });
+
+  // Объединяем базовые + динамические события из сессии
+  const allEvents = [...baseEvents, ...extraEvents];
 
   const handleSend = () => {
     if (!comment.trim()) return;
@@ -140,18 +129,19 @@ export function ActivityFeed({ client, onAddComment }: { client: Client; onAddCo
   };
 
   return (
-    <div className="rounded-2xl overflow-hidden" style={{ background: t.surface2, border: `1px solid ${t.border}` }}>
-      <div className="flex items-center gap-2 px-4 py-2.5" style={{ borderBottom: `1px solid ${t.border}` }}>
+    <div className="rounded-2xl overflow-hidden flex flex-col flex-1" style={{ background: t.surface2, border: `1px solid ${t.border}` }}>
+      <div className="flex items-center gap-2 px-4 py-2.5 flex-shrink-0" style={{ borderBottom: `1px solid ${t.border}` }}>
         <div className="w-6 h-6 rounded-lg flex items-center justify-center" style={{ background: "#8b5cf620" }}>
           <Icon name="Activity" size={12} style={{ color: "#8b5cf6" }} />
         </div>
         <span className="text-xs font-bold uppercase tracking-wider" style={{ color: "#8b5cf6" }}>Активность</span>
+        <span className="ml-auto text-[10px] px-1.5 py-0.5 rounded-md" style={{ background: "#8b5cf620", color: "#8b5cf6" }}>{allEvents.length}</span>
       </div>
 
-      <div className="px-4 py-3 space-y-3 max-h-64 overflow-y-auto">
-        {events.length === 0 ? (
+      <div className="px-4 py-3 space-y-3 overflow-y-auto flex-1" style={{ maxHeight: 400 }}>
+        {allEvents.length === 0 ? (
           <div className="text-xs text-center py-4" style={{ color: t.textMute }}>Нет событий</div>
-        ) : events.map((ev, i) => (
+        ) : allEvents.map((ev, i) => (
           <div key={i} className="flex items-start gap-2.5">
             <div className="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5"
               style={{ background: ev.color + "20" }}>
@@ -165,16 +155,13 @@ export function ActivityFeed({ client, onAddComment }: { client: Client; onAddCo
         ))}
       </div>
 
-      <div className="px-3 pb-3" style={{ borderTop: `1px solid ${t.border}` }}>
+      <div className="px-3 pb-3 flex-shrink-0" style={{ borderTop: `1px solid ${t.border}` }}>
         <div className="flex gap-2 pt-3">
-          <input
-            value={comment}
-            onChange={e => setComment(e.target.value)}
+          <input value={comment} onChange={e => setComment(e.target.value)}
             onKeyDown={e => e.key === "Enter" && !e.shiftKey && handleSend()}
             placeholder="Добавить комментарий..."
             className="flex-1 rounded-xl px-3 py-2 text-xs focus:outline-none"
-            style={{ background: t.surface, border: `1px solid ${t.border}`, color: "#fff" }}
-          />
+            style={{ background: t.surface, border: `1px solid ${t.border}`, color: "#fff" }} />
           <button onClick={handleSend} disabled={!comment.trim()}
             className="px-3 py-2 rounded-xl text-xs font-semibold transition disabled:opacity-40"
             style={{ background: "#7c3aed", color: "#fff" }}>

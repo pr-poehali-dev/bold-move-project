@@ -1,9 +1,9 @@
 import { useState, useRef } from "react";
-import { Client } from "./crmApi";
+import { Client, STATUS_LABELS } from "./crmApi";
 import Icon from "@/components/ui/icon";
 import { useTheme } from "./themeContext";
 import { InlineField, Section, FileField, TagsField } from "./drawerComponents";
-import { StatusSelector, ActivityFeed } from "./DrawerStatusActivity";
+import { StatusSelector, ActivityFeed, ActivityEvent } from "./DrawerStatusActivity";
 
 interface Props {
   data: Client;
@@ -128,14 +128,27 @@ function DraggableBlock({ blockId, onDragStart, onDragOver, onDrop, children }: 
 // ── Main ──────────────────────────────────────────────────────────────────────
 export default function DrawerInfoTab({ data, client, setData, save, setComments }: Props) {
   const t = useTheme();
-  const [blocks, setBlocks]           = useState<BlockDef[]>(loadBlocks);
+  const [blocks, setBlocks]             = useState<BlockDef[]>(loadBlocks);
   const [hiddenBlocks, setHiddenBlocks] = useState<Set<BlockId>>(loadHidden);
   const [editingBlock, setEditingBlock] = useState<BlockId | null>(null);
+  const [activityLog, setActivityLog]   = useState<ActivityEvent[]>([]);
   const dragId = useRef<BlockId | null>(null);
 
   const profit    = (data.contract_sum||0) - (data.material_cost||0) - (data.measure_cost||0) - (data.install_cost||0);
   const received  = (data.prepayment||0) + (data.extra_payment||0);
   const remaining = (data.contract_sum||0) - received;
+
+  const now = () => new Date().toLocaleString("ru-RU", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+
+  const logAction = (icon: string, color: string, text: string) => {
+    setActivityLog(prev => [...prev, { icon, color, text, date: now() }]);
+  };
+
+  // save с логированием
+  const saveWithLog = (patch: Partial<Client>, logText: string, icon = "Edit3", color = "#8b5cf6") => {
+    save(patch);
+    logAction(icon, color, logText);
+  };
 
   const toggleHidden = (id: BlockId) => {
     setHiddenBlocks(prev => {
@@ -203,6 +216,7 @@ export default function DrawerInfoTab({ data, client, setData, save, setComments
       }
     });
     save(patch);
+    logAction("Edit3", "#8b5cf6", `Блок отредактирован`);
     setEditingBlock(null);
   };
 
@@ -226,26 +240,34 @@ export default function DrawerInfoTab({ data, client, setData, save, setComments
   const renderBlock = (id: BlockId): React.ReactNode => {
     const isHidden = hiddenBlocks.has(id);
     switch (id) {
-      case "status":
-        return wrap(id, <StatusSelector status={data.status} onSave={s => save({ status: s })} />, "GitBranch", "Статус воронки", "#8b5cf6", false);
+      // "status" рендерится отдельно вверху — пропускаем
+      case "status": return null;
       case "tags":
-        return wrap(id, <TagsField tags={data.tags} onSave={tags => save({ tags })} />, "Tag", "Метки", "#06b6d4", false);
+        return wrap(id,
+          <TagsField tags={data.tags} onSave={tags => {
+            const added   = tags.filter(tg => !(data.tags || []).includes(tg));
+            const removed = (data.tags || []).filter(tg => !tags.includes(tg));
+            if (added.length)   logAction("Tag", "#06b6d4", `Метка добавлена: ${added.join(", ")}`);
+            if (removed.length) logAction("Tag", "#ef4444", `Метка удалена: ${removed.join(", ")}`);
+            save({ tags });
+          }} />,
+          "Tag", "Метки", "#06b6d4", false);
       case "contacts":
         return wrap(id, <>
-          <InlineField label="Имя клиента"  value={data.client_name}       onSave={v => save({ client_name: v })}       placeholder="Добавить имя" />
-          <InlineField label="Телефон"       value={data.phone}             onSave={v => save({ phone: v })}             placeholder="Добавить телефон" />
-          <InlineField label="Ответственный" value={data.responsible_phone} onSave={v => save({ responsible_phone: v })} placeholder="Прораб / дизайнер" />
+          <InlineField label="Имя клиента"  value={data.client_name}       onSave={v => saveWithLog({ client_name: v }, `Имя: ${v}`, "User", "#10b981")}       placeholder="Добавить имя" />
+          <InlineField label="Телефон"       value={data.phone}             onSave={v => saveWithLog({ phone: v }, `Телефон: ${v}`, "Phone", "#10b981")}       placeholder="Добавить телефон" />
+          <InlineField label="Ответственный" value={data.responsible_phone} onSave={v => saveWithLog({ responsible_phone: v }, `Ответственный: ${v}`, "User", "#10b981")} placeholder="Прораб / дизайнер" />
         </>, "Phone", "Контакты", "#10b981", true);
       case "object":
         return wrap(id, <>
-          <InlineField label="Адрес"           value={data.address}  onSave={v => save({ address: v })}  placeholder="Добавить адрес" />
-          <InlineField label="Ссылка на карту" value={data.map_link} onSave={v => save({ map_link: v })} placeholder="Добавить ссылку" />
-          <InlineField label="Площадь (м²)"   value={data.area}     onSave={v => save({ area: +v || null } as Partial<Client>)} type="number" placeholder="—" />
+          <InlineField label="Адрес"           value={data.address}  onSave={v => saveWithLog({ address: v }, `Адрес: ${v}`, "MapPin", "#f59e0b")} placeholder="Добавить адрес" />
+          <InlineField label="Ссылка на карту" value={data.map_link} onSave={v => saveWithLog({ map_link: v }, "Карта обновлена", "Link", "#f59e0b")} placeholder="Добавить ссылку" />
+          <InlineField label="Площадь (м²)"   value={data.area}     onSave={v => saveWithLog({ area: +v || null } as Partial<Client>, `Площадь: ${v} м²`, "Maximize2", "#f59e0b")} type="number" placeholder="—" />
         </>, "MapPin", "Объект", "#f59e0b", true);
       case "dates":
         return wrap(id, <>
-          <InlineField label="Дата замера"  value={data.measure_date ? data.measure_date.slice(0, 16) : ""} onSave={v => save({ measure_date: v || null })} type="datetime-local" placeholder="Добавить дату" />
-          <InlineField label="Дата монтажа" value={data.install_date ? data.install_date.slice(0, 16) : ""} onSave={v => save({ install_date: v || null })} type="datetime-local" placeholder="Добавить дату" />
+          <InlineField label="Дата замера"  value={data.measure_date ? data.measure_date.slice(0, 16) : ""} onSave={v => saveWithLog({ measure_date: v || null }, v ? `Замер: ${new Date(v).toLocaleDateString("ru-RU")}` : "Дата замера удалена", "Ruler", "#f97316")} type="datetime-local" placeholder="Добавить дату" />
+          <InlineField label="Дата монтажа" value={data.install_date ? data.install_date.slice(0, 16) : ""} onSave={v => saveWithLog({ install_date: v || null }, v ? `Монтаж: ${new Date(v).toLocaleDateString("ru-RU")}` : "Дата монтажа удалена", "Wrench", "#f97316")} type="datetime-local" placeholder="Добавить дату" />
         </>, "Calendar", "Даты", "#f97316", true);
       case "notes":
         return wrap(id, <textarea
@@ -254,7 +276,7 @@ export default function DrawerInfoTab({ data, client, setData, save, setComments
             return notes.split("\n").filter(l => !l.includes("Смета сохранена") && !l.includes("Email:") && !l.includes("Estimate ID:")).join("\n").trim();
           })()}
           onChange={e => setData({ ...data, notes: e.target.value })}
-          onBlur={e => { if (e.target.value !== (client.notes || "")) save({ notes: e.target.value }); }}
+          onBlur={e => { if (e.target.value !== (client.notes || "")) { save({ notes: e.target.value }); logAction("StickyNote", "#8b5cf6", "Заметки обновлены"); } }}
           placeholder="Добавить заметку..." rows={3}
           className="w-full rounded-xl px-3 py-2.5 text-sm focus:outline-none resize-none transition mt-2 mb-1"
           style={{ background: t.surface, border: `1px solid ${t.border}`, color: "#fff" }}
@@ -286,26 +308,26 @@ export default function DrawerInfoTab({ data, client, setData, save, setComments
         );
       case "income":
         return wrap(id, <>
-          <InlineField label="Сумма договора" value={data.contract_sum}        onSave={v => save({ contract_sum: +v || null } as Partial<Client>)}        type="number" placeholder="—" />
-          <InlineField label="Предоплата"      value={data.prepayment}          onSave={v => save({ prepayment: +v || null } as Partial<Client>)}          type="number" placeholder="—" />
-          <InlineField label="Доплата"         value={data.extra_payment}       onSave={v => save({ extra_payment: +v || null } as Partial<Client>)}       type="number" placeholder="—" />
-          <InlineField label="Доп. соглашение" value={data.extra_agreement_sum} onSave={v => save({ extra_agreement_sum: +v || null } as Partial<Client>)} type="number" placeholder="—" />
+          <InlineField label="Сумма договора" value={data.contract_sum}        onSave={v => saveWithLog({ contract_sum: +v || null } as Partial<Client>, `Договор: ${(+v).toLocaleString("ru-RU")} ₽`, "FileText", "#10b981")} type="number" placeholder="—" />
+          <InlineField label="Предоплата"      value={data.prepayment}          onSave={v => saveWithLog({ prepayment: +v || null } as Partial<Client>, `Предоплата: +${(+v).toLocaleString("ru-RU")} ₽`, "Wallet", "#10b981")} type="number" placeholder="—" />
+          <InlineField label="Доплата"         value={data.extra_payment}       onSave={v => saveWithLog({ extra_payment: +v || null } as Partial<Client>, `Доплата: +${(+v).toLocaleString("ru-RU")} ₽`, "Wallet", "#10b981")} type="number" placeholder="—" />
+          <InlineField label="Доп. соглашение" value={data.extra_agreement_sum} onSave={v => saveWithLog({ extra_agreement_sum: +v || null } as Partial<Client>, `Доп. согл: ${(+v).toLocaleString("ru-RU")} ₽`, "FileText", "#06b6d4")} type="number" placeholder="—" />
         </>, "Banknote", "Доходы", "#10b981", true);
       case "costs":
         return wrap(id, <>
-          <InlineField label="Материалы" value={data.material_cost} onSave={v => save({ material_cost: +v || null } as Partial<Client>)} type="number" placeholder="—" />
-          <InlineField label="Замер"      value={data.measure_cost}  onSave={v => save({ measure_cost: +v || null } as Partial<Client>)}  type="number" placeholder="—" />
-          <InlineField label="Монтаж"     value={data.install_cost}  onSave={v => save({ install_cost: +v || null } as Partial<Client>)}  type="number" placeholder="—" />
+          <InlineField label="Материалы" value={data.material_cost} onSave={v => saveWithLog({ material_cost: +v || null } as Partial<Client>, `Материалы: ${(+v).toLocaleString("ru-RU")} ₽`, "Package", "#ef4444")} type="number" placeholder="—" />
+          <InlineField label="Замер"      value={data.measure_cost}  onSave={v => saveWithLog({ measure_cost: +v || null } as Partial<Client>, `Замер стоит: ${(+v).toLocaleString("ru-RU")} ₽`, "Ruler", "#ef4444")} type="number" placeholder="—" />
+          <InlineField label="Монтаж"     value={data.install_cost}  onSave={v => saveWithLog({ install_cost: +v || null } as Partial<Client>, `Монтаж стоит: ${(+v).toLocaleString("ru-RU")} ₽`, "Wrench", "#ef4444")} type="number" placeholder="—" />
         </>, "Receipt", "Затраты", "#ef4444", true);
       case "files":
         return wrap(id, <>
-          <FileField label="Фото до"         url={data.photo_before_url} accept="image/*"                    onUploaded={url => save({ photo_before_url: url })} />
-          <FileField label="Фото после"      url={data.photo_after_url}  accept="image/*"                    onUploaded={url => save({ photo_after_url: url })} />
-          <FileField label="Договор / Смета" url={data.document_url}     accept=".pdf,.doc,.docx,.xls,.xlsx" onUploaded={url => save({ document_url: url })} />
+          <FileField label="Фото до"         url={data.photo_before_url} accept="image/*"                    onUploaded={url => { save({ photo_before_url: url }); logAction("Image", "#06b6d4", "Фото до загружено"); }} />
+          <FileField label="Фото после"      url={data.photo_after_url}  accept="image/*"                    onUploaded={url => { save({ photo_after_url: url }); logAction("Image", "#06b6d4", "Фото после загружено"); }} />
+          <FileField label="Договор / Смета" url={data.document_url}     accept=".pdf,.doc,.docx,.xls,.xlsx" onUploaded={url => { save({ document_url: url }); logAction("FileText", "#06b6d4", "Документ загружен"); }} />
         </>, "Paperclip", "Файлы", "#06b6d4", false);
       case "cancel":
         return data.status !== "cancelled" ? null : wrap(id,
-          <InlineField label="Причина" value={data.cancel_reason} onSave={v => save({ cancel_reason: v })} placeholder="Укажите причину" />,
+          <InlineField label="Причина" value={data.cancel_reason} onSave={v => saveWithLog({ cancel_reason: v }, `Причина отказа: ${v}`, "XCircle", "#ef4444")} placeholder="Укажите причину" />,
           "XCircle", "Причина отказа", "#ef4444", true);
       default: return null;
     }
@@ -315,42 +337,56 @@ export default function DrawerInfoTab({ data, client, setData, save, setComments
   const col1 = blocks.filter(b => b.col === 1).sort((a, b) => a.order - b.order);
 
   return (
-    <div className="grid grid-cols-[1fr_1fr_320px] gap-4 px-6 py-4">
+    <div className="px-6 py-4 space-y-3">
 
-      {/* ── Левый столбец ── */}
-      <div className="space-y-3">
-        {col0.map(b => (
-          <DraggableBlock key={b.id} blockId={b.id} onDragStart={onDragStart} onDragOver={onDragOver} onDrop={onDrop}>
-            {renderBlock(b.id)}
-          </DraggableBlock>
-        ))}
-      </div>
-
-      {/* ── Центральный столбец ── */}
-      <div className="space-y-3">
-        {col1.map(b => (
-          <DraggableBlock key={b.id} blockId={b.id} onDragStart={onDragStart} onDragOver={onDragOver} onDrop={onDrop}>
-            {renderBlock(b.id)}
-          </DraggableBlock>
-        ))}
-        <button
-          onClick={() => { setBlocks(DEFAULT_BLOCKS); setHiddenBlocks(new Set()); localStorage.removeItem(LS_BLOCKS); localStorage.removeItem(LS_HIDDEN); }}
-          className="text-[10px] opacity-25 hover:opacity-50 transition flex items-center gap-1 px-1"
-          style={{ color: t.textMute }}>
-          <Icon name="RotateCcw" size={10} /> сбросить порядок и видимость
-        </button>
-      </div>
-
-      {/* ── Правая колонка — Активность ── */}
-      <div className="flex flex-col">
-        <ActivityFeed client={data} onAddComment={text => {
-          const entry = { text, date: new Date().toLocaleString("ru-RU", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) };
-          setComments(prev => [...prev, entry]);
-          const newNotes = (data.notes ? data.notes + "\n" : "") + `[${entry.date}] ${text}`;
-          save({ notes: newNotes });
+      {/* ── Статус воронки — на всю ширину ── */}
+      <Section icon="GitBranch" title="Статус воронки" color="#8b5cf6"
+        onToggleHidden={() => toggleHidden("status")}
+        hidden={hiddenBlocks.has("status")}>
+        <StatusSelector status={data.status} onSave={s => {
+          saveWithLog({ status: s }, `Статус → ${STATUS_LABELS[s] || s}`, "GitBranch", "#8b5cf6");
         }} />
-        <div className="text-[10px] opacity-20 px-1 mt-2" style={{ color: t.textMute }}>
-          ID #{data.id} · {data.source || "chat"}
+      </Section>
+
+      {/* ── Три колонки ── */}
+      <div className="grid grid-cols-[1fr_1fr_320px] gap-3">
+
+        {/* Левый столбец */}
+        <div className="space-y-3">
+          {col0.filter(b => b.id !== "status").map(b => (
+            <DraggableBlock key={b.id} blockId={b.id} onDragStart={onDragStart} onDragOver={onDragOver} onDrop={onDrop}>
+              {renderBlock(b.id)}
+            </DraggableBlock>
+          ))}
+        </div>
+
+        {/* Центральный столбец */}
+        <div className="space-y-3">
+          {col1.map(b => (
+            <DraggableBlock key={b.id} blockId={b.id} onDragStart={onDragStart} onDragOver={onDragOver} onDrop={onDrop}>
+              {renderBlock(b.id)}
+            </DraggableBlock>
+          ))}
+          <button
+            onClick={() => { setBlocks(DEFAULT_BLOCKS); setHiddenBlocks(new Set()); localStorage.removeItem(LS_BLOCKS); localStorage.removeItem(LS_HIDDEN); }}
+            className="text-[10px] opacity-25 hover:opacity-50 transition flex items-center gap-1 px-1"
+            style={{ color: t.textMute }}>
+            <Icon name="RotateCcw" size={10} /> сбросить
+          </button>
+        </div>
+
+        {/* Правая колонка — Активность */}
+        <div className="flex flex-col">
+          <ActivityFeed client={data} extraEvents={activityLog} onAddComment={text => {
+            const ts = now();
+            setComments(prev => [...prev, { text, date: ts }]);
+            logAction("MessageSquare", "#7c3aed", text);
+            const newNotes = (data.notes ? data.notes + "\n" : "") + `[${ts}] ${text}`;
+            save({ notes: newNotes });
+          }} />
+          <div className="text-[10px] opacity-20 px-1 mt-2" style={{ color: t.textMute }}>
+            ID #{data.id} · {data.source || "chat"}
+          </div>
         </div>
       </div>
     </div>
