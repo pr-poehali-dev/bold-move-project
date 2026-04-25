@@ -115,7 +115,8 @@ def handler(event: dict, context) -> dict:
                            measure_date, install_date, notes, address, area, budget, source, created_at,
                            contract_sum, prepayment, extra_payment, extra_agreement_sum,
                            responsible_phone, map_link, tags,
-                           photo_before_url, photo_after_url, document_url
+                           photo_before_url, photo_after_url, document_url,
+                           material_cost, measure_cost, install_cost, cancel_reason
                     FROM {SCHEMA}.live_chats
                     WHERE status != 'deleted'
                 """
