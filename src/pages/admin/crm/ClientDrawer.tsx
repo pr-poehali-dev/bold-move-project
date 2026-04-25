@@ -1,8 +1,9 @@
-import { useState, useRef } from "react";
-import { crmFetch, uploadFile, STATUS_LABELS, STATUS_COLORS, LEAD_STATUSES, ORDER_STATUSES, DEFAULT_TAGS, Client } from "./crmApi";
+import { useState } from "react";
+import { crmFetch, STATUS_LABELS, STATUS_COLORS, ORDER_STATUSES, Client } from "./crmApi";
 import Icon from "@/components/ui/icon";
 import { useTheme } from "./themeContext";
 import EstimateEditor from "./EstimateEditor";
+import DrawerInfoTab from "./DrawerInfoTab";
 
 interface Props {
   client: Client;
@@ -12,366 +13,13 @@ interface Props {
   onDeleted: () => void;
 }
 
-// ── InlineField ──────────────────────────────────────────────────────────────
-function InlineField({ label, value, onSave, type = "text", placeholder = "—" }: {
-  label: string;
-  value: string | number | null | undefined;
-  onSave: (v: string) => void;
-  type?: string;
-  placeholder?: string;
-}) {
-  const t = useTheme();
-  const [editing, setEditing] = useState(false);
-  const [val, setVal] = useState(String(value ?? ""));
-  const ref = useRef<HTMLInputElement>(null);
-
-  const commit = () => {
-    setEditing(false);
-    if (val !== String(value ?? "")) onSave(val);
-  };
-
-  const displayVal = () => {
-    if (!value) return null;
-    if (type === "datetime-local")
-      return new Date(String(value)).toLocaleString("ru-RU", { day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" });
-    if (type === "number") return Number(value).toLocaleString("ru-RU");
-    return String(value);
-  };
-
-  return (
-    <div className="flex items-center justify-between py-2 group" style={{ borderBottom: `1px solid ${t.border2}` }}>
-      <span className="text-xs flex-shrink-0 w-36" style={{ color: t.textMute }}>{label}</span>
-      {editing ? (
-        <input ref={ref} type={type} value={val}
-          onChange={e => setVal(e.target.value)}
-          onBlur={commit}
-          onKeyDown={e => { if (e.key === "Enter") commit(); if (e.key === "Escape") setEditing(false); }}
-          autoFocus
-          className="flex-1 rounded-lg px-2 py-1 text-sm text-right focus:outline-none"
-          style={{ background: t.surface2, color: "#fff", border: "1px solid #7c3aed50" }}
-        />
-      ) : (
-        <button onClick={() => { setEditing(true); setVal(String(value ?? "")); }}
-          className="flex-1 text-right text-sm transition hover:opacity-70 truncate">
-          {displayVal()
-            ? <span style={{ color: "#fff" }}>{displayVal()}</span>
-            : <span className="text-xs text-violet-400/60 underline underline-offset-2 decoration-dashed">{placeholder}</span>}
-        </button>
-      )}
-    </div>
-  );
-}
-
-// ── Section ──────────────────────────────────────────────────────────────────
-function Section({ icon, title, color = "#8b5cf6", children }: {
-  icon: string; title: string; color?: string; children: React.ReactNode;
-}) {
-  const t = useTheme();
-  return (
-    <div className="rounded-2xl overflow-hidden" style={{ background: t.surface2, border: `1px solid ${t.border}` }}>
-      <div className="flex items-center gap-2 px-4 py-2.5" style={{ borderBottom: `1px solid ${t.border}` }}>
-        <div className="w-6 h-6 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: color + "20" }}>
-          <Icon name={icon} size={12} style={{ color }} />
-        </div>
-        <span className="text-xs font-bold uppercase tracking-wider" style={{ color }}>{title}</span>
-      </div>
-      <div className="px-4 pb-1">{children}</div>
-    </div>
-  );
-}
-
-// ── FileField ─────────────────────────────────────────────────────────────────
-function FileField({ label, url, onUploaded, accept = "*" }: {
-  label: string; url: string | null | undefined;
-  onUploaded: (url: string) => void; accept?: string;
-}) {
-  const t = useTheme();
-  const [uploading, setUploading] = useState(false);
-  const ref = useRef<HTMLInputElement>(null);
-
-  const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setUploading(true);
-    const u = await uploadFile(file);
-    onUploaded(u);
-    setUploading(false);
-  };
-
-  const isImage = url && /\.(jpg|jpeg|png|webp|gif)$/i.test(url);
-
-  return (
-    <div className="flex items-center justify-between py-2" style={{ borderBottom: `1px solid ${t.border2}` }}>
-      <span className="text-xs w-36 flex-shrink-0" style={{ color: t.textMute }}>{label}</span>
-      <div className="flex items-center gap-2">
-        {isImage && url && (
-          <a href={url} target="_blank" rel="noreferrer">
-            <img src={url} alt={label} className="w-12 h-8 object-cover rounded-md" style={{ border: `1px solid ${t.border}` }} />
-          </a>
-        )}
-        {!isImage && url && (
-          <a href={url} target="_blank" rel="noreferrer" className="text-xs text-violet-400 underline flex items-center gap-1">
-            <Icon name="FileText" size={11} /> Открыть
-          </a>
-        )}
-        <button onClick={() => ref.current?.click()}
-          className="text-xs text-violet-400/70 underline decoration-dashed hover:text-violet-300 transition flex items-center gap-1">
-          {uploading ? <><Icon name="Loader2" size={11} className="animate-spin" /> Загрузка...</> : <><Icon name="Upload" size={11} /> {url ? "Заменить" : "Загрузить"}</>}
-        </button>
-        <input ref={ref} type="file" accept={accept} className="hidden" onChange={handleFile} />
-      </div>
-    </div>
-  );
-}
-
-// ── TagsField ─────────────────────────────────────────────────────────────────
-function TagsField({ tags, onSave }: { tags: string[] | null; onSave: (tags: string[]) => void }) {
-  const t = useTheme();
-  const current = tags || [];
-  const [custom, setCustom] = useState("");
-
-  const toggle = (label: string) => {
-    onSave(current.includes(label) ? current.filter(tg => tg !== label) : [...current, label]);
-  };
-  const addCustom = () => {
-    if (!custom.trim() || current.includes(custom.trim())) return;
-    onSave([...current, custom.trim()]);
-    setCustom("");
-  };
-
-  return (
-    <div className="pt-2 pb-1">
-      <div className="flex flex-wrap gap-1.5 mb-2">
-        {DEFAULT_TAGS.map(tg => (
-          <button key={tg.label} onClick={() => toggle(tg.label)}
-            className="px-2 py-0.5 rounded-lg text-xs font-medium transition border"
-            style={current.includes(tg.label)
-              ? { background: tg.color + "25", color: tg.color, borderColor: tg.color + "50" }
-              : { borderColor: "transparent", background: t.surface, color: t.textMute }}>
-            {tg.label}
-          </button>
-        ))}
-        {current.filter(tg => !DEFAULT_TAGS.find(d => d.label === tg)).map(tg => (
-          <span key={tg} className="px-2 py-0.5 rounded-lg text-xs font-medium flex items-center gap-1"
-            style={{ background: t.surface, color: t.textSub }}>
-            {tg}
-            <button onClick={() => toggle(tg)} className="hover:text-red-400 transition" style={{ color: t.textMute }}>
-              <Icon name="X" size={9} />
-            </button>
-          </span>
-        ))}
-      </div>
-      <div className="flex gap-2">
-        <input value={custom} onChange={e => setCustom(e.target.value)}
-          onKeyDown={e => e.key === "Enter" && addCustom()}
-          placeholder="Новая метка..."
-          className="flex-1 rounded-lg px-3 py-1 text-xs focus:outline-none"
-          style={{ background: t.surface, border: `1px solid ${t.border}`, color: "#fff" }} />
-        <button onClick={addCustom} className="px-2.5 py-1 bg-violet-600/20 hover:bg-violet-600/30 text-violet-300 text-xs rounded-lg transition">+</button>
-      </div>
-    </div>
-  );
-}
-
-// ── StatusSelector — визуальная воронка ──────────────────────────────────────
-const FUNNEL_STAGES = [
-  { statuses: ["new"],                                                             label: "Заявка",    color: "#8b5cf6", icon: "Inbox" },
-  { statuses: ["call"],                                                            label: "В работе",  color: "#a78bfa", icon: "Zap" },
-  { statuses: ["measure", "measured"],                                             label: "Замер",     color: "#f59e0b", icon: "Ruler" },
-  { statuses: ["contract", "prepaid", "install_scheduled", "install_done", "extra_paid"], label: "Монтаж", color: "#f97316", icon: "Wrench" },
-  { statuses: ["done"],                                                            label: "Готово",    color: "#10b981", icon: "CheckCircle2" },
-  { statuses: ["cancelled"],                                                       label: "Отказ",     color: "#ef4444", icon: "XCircle" },
-] as const;
-
-// Детальные статусы внутри этапа
-const STAGE_DETAIL: Record<string, string[]> = {
-  "В работе": ["call"],
-  "Замер":    ["measure", "measured"],
-  "Монтаж":   ["contract", "prepaid", "install_scheduled", "install_done", "extra_paid"],
-};
-
-function StatusSelector({ status, onSave }: { status: string; onSave: (s: string) => void }) {
-  const t = useTheme();
-  const [expandedStage, setExpandedStage] = useState<string | null>(null);
-
-  const currentStage = FUNNEL_STAGES.find(g => g.statuses.includes(status as never));
-
-  return (
-    <div className="pt-2 pb-2 space-y-2">
-      {/* Этапы-шаги */}
-      <div className="flex items-center gap-0.5">
-        {FUNNEL_STAGES.filter(g => g.label !== "Отказ").map((g, i, arr) => {
-          const isActive = g.statuses.includes(status as never);
-          const isPast = FUNNEL_STAGES.findIndex(x => x.statuses.includes(status as never)) > i;
-          return (
-            <div key={g.label} className="flex items-center flex-1 min-w-0">
-              <button
-                onClick={() => {
-                  if (STAGE_DETAIL[g.label]) {
-                    setExpandedStage(expandedStage === g.label ? null : g.label);
-                  } else {
-                    onSave(g.statuses[0]);
-                    setExpandedStage(null);
-                  }
-                }}
-                className="flex flex-col items-center gap-1 flex-1 min-w-0 py-1.5 px-1 rounded-xl transition"
-                style={{
-                  background: isActive ? g.color + "20" : isPast ? g.color + "10" : "transparent",
-                  border: `1.5px solid ${isActive ? g.color + "60" : isPast ? g.color + "30" : t.border2}`,
-                }}>
-                <div className="w-6 h-6 rounded-full flex items-center justify-center"
-                  style={{ background: isActive ? g.color : isPast ? g.color + "40" : t.surface }}>
-                  <Icon name={g.icon} size={11} style={{ color: isActive ? "#fff" : isPast ? g.color : t.textMute }} />
-                </div>
-                <span className="text-[9px] font-semibold text-center leading-tight truncate w-full"
-                  style={{ color: isActive ? g.color : isPast ? g.color + "cc" : t.textMute }}>
-                  {g.label}
-                </span>
-              </button>
-              {i < arr.length - 1 && (
-                <div className="w-2 flex-shrink-0 h-px mx-0.5" style={{ background: isPast ? currentStage?.color + "50" : t.border2 }} />
-              )}
-            </div>
-          );
-        })}
-        {/* Кнопка отказа отдельно */}
-        <div className="w-2 flex-shrink-0" />
-        <button
-          onClick={() => { onSave("cancelled"); setExpandedStage(null); }}
-          className="flex flex-col items-center gap-1 py-1.5 px-2 rounded-xl transition flex-shrink-0"
-          style={{
-            background: status === "cancelled" ? "#ef444420" : "transparent",
-            border: `1.5px solid ${status === "cancelled" ? "#ef444460" : t.border2}`,
-          }}>
-          <div className="w-6 h-6 rounded-full flex items-center justify-center"
-            style={{ background: status === "cancelled" ? "#ef4444" : t.surface }}>
-            <Icon name="XCircle" size={11} style={{ color: status === "cancelled" ? "#fff" : t.textMute }} />
-          </div>
-          <span className="text-[9px] font-semibold" style={{ color: status === "cancelled" ? "#ef4444" : t.textMute }}>Отказ</span>
-        </button>
-      </div>
-
-      {/* Детальные статусы для этапа */}
-      {expandedStage && STAGE_DETAIL[expandedStage] && (
-        <div className="flex flex-wrap gap-1.5 pt-1 pl-1">
-          {STAGE_DETAIL[expandedStage].map(s => (
-            <button key={s} onClick={() => { onSave(s); setExpandedStage(null); }}
-              className="px-2.5 py-1 rounded-lg text-[11px] font-medium transition border"
-              style={status === s
-                ? { background: STATUS_COLORS[s] + "25", color: STATUS_COLORS[s], borderColor: STATUS_COLORS[s] + "50" }
-                : { borderColor: t.border2, background: t.surface, color: t.textMute }}>
-              {STATUS_LABELS[s]}
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ── ActivityFeed ──────────────────────────────────────────────────────────────
-function ActivityFeed({ client, onAddComment }: { client: Client; onAddComment: (text: string) => void }) {
-  const t = useTheme();
-  const [comment, setComment] = useState("");
-
-  // Собираем ленту событий из данных клиента
-  const events: { icon: string; color: string; text: string; date: string }[] = [];
-
-  if (client.created_at) events.push({
-    icon: "Plus", color: "#8b5cf6",
-    text: "Заявка создана",
-    date: new Date(client.created_at).toLocaleDateString("ru-RU", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }),
-  });
-  if (client.measure_date) events.push({
-    icon: "Ruler", color: "#f59e0b",
-    text: `Замер назначен`,
-    date: new Date(client.measure_date).toLocaleDateString("ru-RU", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }),
-  });
-  if (client.install_date) events.push({
-    icon: "Wrench", color: "#f97316",
-    text: "Монтаж назначен",
-    date: new Date(client.install_date).toLocaleDateString("ru-RU", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }),
-  });
-  if (client.contract_sum) events.push({
-    icon: "FileText", color: "#06b6d4",
-    text: `Договор: ${client.contract_sum.toLocaleString("ru-RU")} ₽`,
-    date: "",
-  });
-  if (client.prepayment) events.push({
-    icon: "Wallet", color: "#10b981",
-    text: `Предоплата: +${client.prepayment.toLocaleString("ru-RU")} ₽`,
-    date: "",
-  });
-  if (client.extra_payment) events.push({
-    icon: "Wallet", color: "#10b981",
-    text: `Доплата: +${client.extra_payment.toLocaleString("ru-RU")} ₽`,
-    date: "",
-  });
-
-  const handleSend = () => {
-    if (!comment.trim()) return;
-    onAddComment(comment.trim());
-    setComment("");
-  };
-
-  return (
-    <div className="rounded-2xl overflow-hidden" style={{ background: t.surface2, border: `1px solid ${t.border}` }}>
-      {/* Заголовок */}
-      <div className="flex items-center gap-2 px-4 py-2.5" style={{ borderBottom: `1px solid ${t.border}` }}>
-        <div className="w-6 h-6 rounded-lg flex items-center justify-center" style={{ background: "#8b5cf620" }}>
-          <Icon name="Activity" size={12} style={{ color: "#8b5cf6" }} />
-        </div>
-        <span className="text-xs font-bold uppercase tracking-wider" style={{ color: "#8b5cf6" }}>Активность</span>
-      </div>
-
-      {/* Лента событий */}
-      <div className="px-4 py-3 space-y-3 max-h-64 overflow-y-auto">
-        {events.length === 0 ? (
-          <div className="text-xs text-center py-4" style={{ color: t.textMute }}>Нет событий</div>
-        ) : events.map((ev, i) => (
-          <div key={i} className="flex items-start gap-2.5">
-            <div className="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5"
-              style={{ background: ev.color + "20" }}>
-              <Icon name={ev.icon} size={11} style={{ color: ev.color }} />
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="text-xs" style={{ color: "#fff" }}>{ev.text}</div>
-              {ev.date && <div className="text-[10px] mt-0.5" style={{ color: t.textMute }}>{ev.date}</div>}
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {/* Поле комментария */}
-      <div className="px-3 pb-3" style={{ borderTop: `1px solid ${t.border}` }}>
-        <div className="flex gap-2 pt-3">
-          <input
-            value={comment}
-            onChange={e => setComment(e.target.value)}
-            onKeyDown={e => e.key === "Enter" && !e.shiftKey && handleSend()}
-            placeholder="Добавить комментарий..."
-            className="flex-1 rounded-xl px-3 py-2 text-xs focus:outline-none"
-            style={{ background: t.surface, border: `1px solid ${t.border}`, color: "#fff" }}
-          />
-          <button onClick={handleSend} disabled={!comment.trim()}
-            className="px-3 py-2 rounded-xl text-xs font-semibold transition disabled:opacity-40"
-            style={{ background: "#7c3aed", color: "#fff" }}>
-            <Icon name="Send" size={13} />
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ── Main ──────────────────────────────────────────────────────────────────────
 export default function ClientDrawer({ client, allClientOrders, onClose, onUpdated, onDeleted }: Props) {
   const t = useTheme();
-  const [data, setData]             = useState<Client>(client);
-  const [saving, setSaving]         = useState(false);
+  const [data, setData]               = useState<Client>(client);
+  const [saving, setSaving]           = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
-  const [drawerTab, setDrawerTab]   = useState<"info" | "orders" | "estimate">("info");
-  const [comments, setComments]     = useState<{ text: string; date: string }[]>([]);
+  const [drawerTab, setDrawerTab]     = useState<"info" | "orders" | "estimate">("info");
+  const [comments, setComments]       = useState<{ text: string; date: string }[]>([]);
 
   const save = async (patch: Partial<Client>) => {
     const next = { ...data, ...patch };
@@ -386,10 +34,6 @@ export default function ClientDrawer({ client, allClientOrders, onClose, onUpdat
     await crmFetch("clients", { method: "DELETE" }, { id: String(data.id) });
     onDeleted();
   };
-
-  const profit = (data.contract_sum||0) - (data.material_cost||0) - (data.measure_cost||0) - (data.install_cost||0);
-  const received = (data.prepayment||0) + (data.extra_payment||0);
-  const remaining = (data.contract_sum||0) - received;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={onClose}
@@ -440,9 +84,9 @@ export default function ClientDrawer({ client, allClientOrders, onClose, onUpdat
         {/* ── Табы ── */}
         <div className="flex px-6 gap-1 pt-3 flex-shrink-0" style={{ borderBottom: `1px solid ${t.border}` }}>
           {([
-            { id: "info",     label: "Заявка",   icon: "User" },
+            { id: "info",     label: "Заявка",  icon: "User" },
             { id: "orders",   label: `История (${allClientOrders.length})`, icon: "ClipboardList" },
-            { id: "estimate", label: "Смета",    icon: "FileSpreadsheet" },
+            { id: "estimate", label: "Смета",   icon: "FileSpreadsheet" },
           ] as const).map(tab => (
             <button key={tab.id} onClick={() => setDrawerTab(tab.id)}
               className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-t-lg transition"
@@ -504,155 +148,15 @@ export default function ClientDrawer({ client, allClientOrders, onClose, onUpdat
             </div>
           )}
 
-          {/* ЗАЯВКА — два столбца */}
+          {/* ЗАЯВКА */}
           {drawerTab === "info" && (
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 px-6 py-4">
-
-              {/* ── Левый столбец ── */}
-              <div className="space-y-3">
-
-                {/* Статус воронки */}
-                <Section icon="GitBranch" title="Статус воронки" color="#8b5cf6">
-                  <StatusSelector status={data.status} onSave={s => save({ status: s })} />
-                </Section>
-
-                {/* Метки */}
-                <Section icon="Tag" title="Метки" color="#06b6d4">
-                  <TagsField tags={data.tags} onSave={tags => save({ tags })} />
-                </Section>
-
-                {/* Контакты */}
-                <Section icon="Phone" title="Контакты" color="#10b981">
-                  <InlineField label="Имя клиента" value={data.client_name} onSave={v => save({ client_name: v })} placeholder="Добавить имя" />
-                  <InlineField label="Телефон" value={data.phone} onSave={v => save({ phone: v })} placeholder="Добавить телефон" />
-                  <InlineField label="Ответственный" value={data.responsible_phone} onSave={v => save({ responsible_phone: v })} placeholder="Прораб / дизайнер" />
-                </Section>
-
-                {/* Объект */}
-                <Section icon="MapPin" title="Объект" color="#f59e0b">
-                  <InlineField label="Адрес" value={data.address} onSave={v => save({ address: v })} placeholder="Добавить адрес" />
-                  <InlineField label="Ссылка на карту" value={data.map_link} onSave={v => save({ map_link: v })} placeholder="Добавить ссылку" />
-                  <InlineField label="Площадь (м²)" value={data.area} onSave={v => save({ area: +v || null } as Partial<Client>)} type="number" placeholder="—" />
-                </Section>
-
-                {/* Даты */}
-                <Section icon="Calendar" title="Даты" color="#f97316">
-                  <InlineField label="Дата замера" value={data.measure_date ? data.measure_date.slice(0, 16) : ""} onSave={v => save({ measure_date: v || null })} type="datetime-local" placeholder="Добавить дату" />
-                  <InlineField label="Дата монтажа" value={data.install_date ? data.install_date.slice(0, 16) : ""} onSave={v => save({ install_date: v || null })} type="datetime-local" placeholder="Добавить дату" />
-                </Section>
-
-                {/* Заметки — показываем только пользовательские, без технических строк */}
-                <Section icon="StickyNote" title="Заметки" color="#8b5cf6">
-                  <textarea
-                    value={(() => {
-                      const notes = data.notes || "";
-                      // Фильтруем технические строки (Email:, Estimate ID:, Смета сохранена)
-                      const lines = notes.split("\n").filter(l =>
-                        !l.includes("Смета сохранена") &&
-                        !l.includes("Email:") &&
-                        !l.includes("Estimate ID:")
-                      );
-                      return lines.join("\n").trim();
-                    })()}
-                    onChange={e => setData({ ...data, notes: e.target.value })}
-                    onBlur={e => { if (e.target.value !== (client.notes || "")) save({ notes: e.target.value }); }}
-                    placeholder="Добавить заметку..."
-                    rows={3}
-                    className="w-full rounded-xl px-3 py-2.5 text-sm focus:outline-none resize-none transition mt-2 mb-1"
-                    style={{ background: t.surface, border: `1px solid ${t.border}`, color: "#fff" }}
-                  />
-                </Section>
-              </div>
-
-              {/* ── Правый столбец ── */}
-              <div className="space-y-3">
-
-                {/* P&L мини-сводка */}
-                {(data.contract_sum || data.material_cost || data.install_cost) ? (
-                  <div className="rounded-2xl p-4" style={{ background: "linear-gradient(135deg, #7c3aed15, #10b98112)", border: `1px solid #7c3aed30` }}>
-                    <div className="flex items-center gap-2 mb-3">
-                      <Icon name="TrendingUp" size={14} style={{ color: "#10b981" }} />
-                      <span className="text-xs font-bold uppercase tracking-wider text-white">P&L по заказу</span>
-                    </div>
-                    <div className="space-y-2 text-sm">
-                      {data.contract_sum ? (
-                        <div className="flex justify-between items-center">
-                          <span style={{ color: t.textMute }}>Договор</span>
-                          <span className="font-bold text-white">{data.contract_sum.toLocaleString("ru-RU")} ₽</span>
-                        </div>
-                      ) : null}
-                      {received > 0 && (
-                        <div className="flex justify-between items-center">
-                          <span style={{ color: t.textMute }}>Получено</span>
-                          <span className="font-semibold text-emerald-400">+{received.toLocaleString("ru-RU")} ₽</span>
-                        </div>
-                      )}
-                      {remaining > 0 && data.contract_sum ? (
-                        <div className="flex justify-between items-center">
-                          <span style={{ color: t.textMute }}>Остаток</span>
-                          <span className="font-semibold text-amber-400">{remaining.toLocaleString("ru-RU")} ₽</span>
-                        </div>
-                      ) : null}
-                      {(data.material_cost || data.measure_cost || data.install_cost) ? (
-                        <div className="flex justify-between items-center">
-                          <span style={{ color: t.textMute }}>Затраты</span>
-                          <span className="font-semibold text-red-400">−{((data.material_cost||0)+(data.measure_cost||0)+(data.install_cost||0)).toLocaleString("ru-RU")} ₽</span>
-                        </div>
-                      ) : null}
-                      <div className="flex justify-between items-center pt-2 mt-1" style={{ borderTop: `1px solid ${t.border}` }}>
-                        <span className="font-bold text-white">Прибыль</span>
-                        <span className={`text-lg font-black ${profit >= 0 ? "text-emerald-400" : "text-red-400"}`}>
-                          {profit >= 0 ? "+" : ""}{profit.toLocaleString("ru-RU")} ₽
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                ) : null}
-
-                {/* Доходы */}
-                <Section icon="Banknote" title="Доходы" color="#10b981">
-                  <InlineField label="Сумма договора" value={data.contract_sum} onSave={v => save({ contract_sum: +v || null } as Partial<Client>)} type="number" placeholder="—" />
-                  <InlineField label="Предоплата" value={data.prepayment} onSave={v => save({ prepayment: +v || null } as Partial<Client>)} type="number" placeholder="—" />
-                  <InlineField label="Доплата" value={data.extra_payment} onSave={v => save({ extra_payment: +v || null } as Partial<Client>)} type="number" placeholder="—" />
-                  <InlineField label="Доп. соглашение" value={data.extra_agreement_sum} onSave={v => save({ extra_agreement_sum: +v || null } as Partial<Client>)} type="number" placeholder="—" />
-                </Section>
-
-                {/* Затраты */}
-                <Section icon="Receipt" title="Затраты" color="#ef4444">
-                  <InlineField label="Материалы" value={data.material_cost} onSave={v => save({ material_cost: +v || null } as Partial<Client>)} type="number" placeholder="—" />
-                  <InlineField label="Замер" value={data.measure_cost} onSave={v => save({ measure_cost: +v || null } as Partial<Client>)} type="number" placeholder="—" />
-                  <InlineField label="Монтаж" value={data.install_cost} onSave={v => save({ install_cost: +v || null } as Partial<Client>)} type="number" placeholder="—" />
-                </Section>
-
-                {/* Файлы */}
-                <Section icon="Paperclip" title="Файлы" color="#06b6d4">
-                  <FileField label="Фото до" url={data.photo_before_url} accept="image/*" onUploaded={url => save({ photo_before_url: url })} />
-                  <FileField label="Фото после" url={data.photo_after_url} accept="image/*" onUploaded={url => save({ photo_after_url: url })} />
-                  <FileField label="Договор / Смета" url={data.document_url} accept=".pdf,.doc,.docx,.xls,.xlsx" onUploaded={url => save({ document_url: url })} />
-                </Section>
-
-                {/* Причина отказа */}
-                {data.status === "cancelled" && (
-                  <Section icon="XCircle" title="Причина отказа" color="#ef4444">
-                    <InlineField label="Причина" value={data.cancel_reason} onSave={v => save({ cancel_reason: v })} placeholder="Укажите причину" />
-                  </Section>
-                )}
-
-                {/* Активность и комментарии */}
-                <ActivityFeed client={data} onAddComment={text => {
-                  const entry = { text, date: new Date().toLocaleString("ru-RU", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) };
-                  setComments(prev => [...prev, entry]);
-                  // Сохраняем комментарии в заметки (дописываем)
-                  const newNotes = (data.notes ? data.notes + "\n" : "") + `[${entry.date}] ${text}`;
-                  save({ notes: newNotes });
-                }} />
-
-                {/* Метаданные — скрыты, только ID для поддержки */}
-                <div className="text-[10px] opacity-30 px-1" style={{ color: t.textMute }}>
-                  ID #{data.id} · {data.source || "chat"}
-                </div>
-              </div>
-            </div>
+            <DrawerInfoTab
+              data={data}
+              client={client}
+              setData={setData}
+              save={save}
+              setComments={setComments}
+            />
           )}
         </div>
       </div>
