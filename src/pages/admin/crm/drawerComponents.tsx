@@ -54,19 +54,38 @@ export function InlineField({ label, value, onSave, type = "text", placeholder =
 }
 
 // ── Section ───────────────────────────────────────────────────────────────────
-export function Section({ icon, title, color = "#8b5cf6", children }: {
+export function Section({ icon, title, color = "#8b5cf6", children, onEdit, hidden, onToggleHidden }: {
   icon: string; title: string; color?: string; children: React.ReactNode;
+  onEdit?: () => void;
+  hidden?: boolean;
+  onToggleHidden?: () => void;
 }) {
   const t = useTheme();
   return (
-    <div className="rounded-2xl overflow-hidden" style={{ background: t.surface2, border: `1px solid ${t.border}` }}>
-      <div className="flex items-center gap-2 px-4 py-2.5" style={{ borderBottom: `1px solid ${t.border}` }}>
+    <div className="rounded-2xl overflow-hidden group/section" style={{ background: t.surface2, border: `1px solid ${t.border}`, opacity: hidden ? 0.45 : 1 }}>
+      <div className="flex items-center gap-2 px-4 py-2.5" style={{ borderBottom: hidden ? "none" : `1px solid ${t.border}` }}>
         <div className="w-6 h-6 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: color + "20" }}>
           <Icon name={icon} size={12} style={{ color }} />
         </div>
-        <span className="text-xs font-bold uppercase tracking-wider" style={{ color }}>{title}</span>
+        <span className="text-xs font-bold uppercase tracking-wider flex-1" style={{ color }}>{title}</span>
+        <div className="flex items-center gap-1 opacity-0 group-hover/section:opacity-100 transition">
+          {onToggleHidden && (
+            <button onClick={onToggleHidden} title={hidden ? "Показать" : "Скрыть"}
+              className="p-1 rounded-md transition hover:bg-white/10"
+              style={{ color: hidden ? color : t.textMute }}>
+              <Icon name={hidden ? "EyeOff" : "Eye"} size={12} />
+            </button>
+          )}
+          {onEdit && !hidden && (
+            <button onClick={onEdit} title="Редактировать блок"
+              className="p-1 rounded-md transition hover:bg-white/10"
+              style={{ color: t.textMute }}>
+              <Icon name="Pencil" size={12} />
+            </button>
+          )}
+        </div>
       </div>
-      <div className="px-4 pb-1">{children}</div>
+      {!hidden && <div className="px-4 pb-1">{children}</div>}
     </div>
   );
 }
