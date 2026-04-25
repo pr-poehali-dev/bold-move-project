@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { uploadFile, DEFAULT_TAGS } from "./crmApi";
 import Icon from "@/components/ui/icon";
 import { useTheme } from "./themeContext";
@@ -13,26 +13,9 @@ export function InlineField({ label, value, onSave, type = "text", placeholder =
 }) {
   const t = useTheme();
   const [editing, setEditing] = useState(false);
-  const inputRef = useRef<HTMLInputElement>(null);
-
-  const startEdit = () => {
-    setEditing(true);
-    // После рендера устанавливаем значение напрямую в DOM
-    setTimeout(() => {
-      if (inputRef.current) {
-        inputRef.current.value = String(value ?? "");
-        inputRef.current.focus();
-        inputRef.current.select();
-      }
-    }, 0);
-  };
-
-  const commit = () => {
-    if (!inputRef.current) { setEditing(false); return; }
-    const currentVal = inputRef.current.value;
-    setEditing(false);
-    if (currentVal !== String(value ?? "")) onSave(currentVal);
-  };
+  const [localVal, setLocalVal] = useState("");
+  const savedOnSave = useRef(onSave);
+  savedOnSave.current = onSave;
 
   const displayVal = () => {
     if (!value && value !== 0) return null;
@@ -42,17 +25,28 @@ export function InlineField({ label, value, onSave, type = "text", placeholder =
     return String(value);
   };
 
+  const startEdit = () => {
+    setLocalVal(String(value ?? ""));
+    setEditing(true);
+  };
+
+  const commit = (v: string) => {
+    setEditing(false);
+    savedOnSave.current(v);
+  };
+
   return (
     <div className="flex items-center justify-between py-2 group" style={{ borderBottom: `1px solid ${t.border2}` }}>
       <span className="text-xs flex-shrink-0 w-36" style={{ color: "#d4d4d4" }}>{label}</span>
       {editing ? (
         <input
-          ref={inputRef}
           type={type}
-          defaultValue={String(value ?? "")}
-          onBlur={commit}
+          value={localVal}
+          autoFocus
+          onChange={e => setLocalVal(e.target.value)}
+          onBlur={() => commit(localVal)}
           onKeyDown={e => {
-            if (e.key === "Enter") { e.preventDefault(); commit(); }
+            if (e.key === "Enter") { e.preventDefault(); commit(localVal); }
             if (e.key === "Escape") setEditing(false);
           }}
           className="flex-1 rounded-lg px-2 py-1 text-sm text-right focus:outline-none"
