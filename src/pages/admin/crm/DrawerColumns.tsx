@@ -198,16 +198,26 @@ export function DrawerColumns(props: ColumnsProps) {
         />, "StickyNote", "Заметки", "#8b5cf6", false);
 
       case "pl": {
-        const plCs  = Number(data.contract_sum)  || 0;
-        const plPre = Number(data.prepayment)     || 0;
-        const plExt = Number(data.extra_payment)  || 0;
-        const plMc  = Number(data.material_cost)  || 0;
-        const plMec = Number(data.measure_cost)   || 0;
-        const plIc  = Number(data.install_cost)   || 0;
-        const plReceived  = plPre + plExt;
-        const plRemaining = plCs - plReceived;
-        const plCosts     = plMc + plMec + plIc;
-        const plProfit    = plCs - plCosts;
+        // Доходная часть
+        const plCs    = Number(data.contract_sum)       || 0; // сумма договора
+        const plExtra = Number(data.extra_agreement_sum)|| 0; // доп. соглашение (увеличивает договор)
+        const plTotal = plCs + plExtra;                        // итоговая сумма к получению
+
+        // Уже получено
+        const plPre = Number(data.prepayment)  || 0; // предоплата
+        const plExt = Number(data.extra_payment)|| 0; // доплата
+        const plReceived  = plPre + plExt;             // итого получено
+        const plRemaining = plTotal - plReceived;       // остаток к получению
+
+        // Затраты
+        const plMc    = Number(data.material_cost) || 0;
+        const plMec   = Number(data.measure_cost)  || 0;
+        const plIc    = Number(data.install_cost)  || 0;
+        const plCosts = plMc + plMec + plIc;
+
+        // Прибыль = доходы - затраты
+        const plProfit = plTotal - plCosts;
+
         const fmt = (n: number) => n.toLocaleString("ru-RU");
         return (
           <div key="pl" className="rounded-2xl overflow-hidden group/section" style={{ opacity: isHidden ? 0.45 : 1, border: `1px solid ${t.border}` }}>
@@ -220,14 +230,26 @@ export function DrawerColumns(props: ColumnsProps) {
             </div>
             {!isHidden && (
               <div className="px-4 py-3 space-y-2 text-sm" style={{ background: "linear-gradient(135deg,#7c3aed08,#10b98108)" }}>
+                {/* Договор */}
                 {plCs > 0
                   ? <div className="flex justify-between"><span style={{ color: "#a3a3a3" }}>Договор</span><span className="font-bold text-white">{fmt(plCs)} ₽</span></div>
                   : <div className="flex justify-between"><span style={{ color: "#a3a3a3" }}>Договор</span><span className="text-xs" style={{ color: "#a3a3a3" }}>не указан</span></div>}
+                {plExtra > 0 && <div className="flex justify-between"><span style={{ color: "#a3a3a3" }}>Доп. соглашение</span><span className="font-semibold text-cyan-400">+{fmt(plExtra)} ₽</span></div>}
+                {plExtra > 0 && <div className="flex justify-between"><span style={{ color: "#a3a3a3" }}>Итого по договору</span><span className="font-bold text-white">{fmt(plTotal)} ₽</span></div>}
+
+                {/* Разделитель */}
+                {(plPre > 0 || plExt > 0) && <div style={{ borderTop: `1px solid ${t.border2}`, marginTop: 4, paddingTop: 4 }} />}
+
+                {/* Платежи */}
                 {plPre > 0 && <div className="flex justify-between"><span style={{ color: "#a3a3a3" }}>Предоплата</span><span className="font-semibold text-emerald-400">+{fmt(plPre)} ₽</span></div>}
                 {plExt > 0 && <div className="flex justify-between"><span style={{ color: "#a3a3a3" }}>Доплата</span><span className="font-semibold text-emerald-400">+{fmt(plExt)} ₽</span></div>}
                 {plReceived > 0 && <div className="flex justify-between"><span style={{ color: "#a3a3a3" }}>Итого получено</span><span className="font-semibold text-emerald-300">+{fmt(plReceived)} ₽</span></div>}
-                {plCs > 0 && plRemaining > 0 && <div className="flex justify-between"><span style={{ color: "#a3a3a3" }}>Остаток</span><span className="font-semibold text-amber-400">{fmt(plRemaining)} ₽</span></div>}
-                {plCosts > 0 && <div className="flex justify-between"><span style={{ color: "#a3a3a3" }}>Затраты</span><span className="font-semibold text-red-400">−{fmt(plCosts)} ₽</span></div>}
+                {plTotal > 0 && plRemaining > 0 && <div className="flex justify-between"><span style={{ color: "#a3a3a3" }}>Остаток</span><span className="font-semibold text-amber-400">{fmt(plRemaining)} ₽</span></div>}
+
+                {/* Затраты */}
+                {plCosts > 0 && <><div style={{ borderTop: `1px solid ${t.border2}`, marginTop: 4, paddingTop: 4 }} /><div className="flex justify-between"><span style={{ color: "#a3a3a3" }}>Затраты</span><span className="font-semibold text-red-400">−{fmt(plCosts)} ₽</span></div></>}
+
+                {/* Прибыль */}
                 <div className="flex justify-between pt-2 mt-1" style={{ borderTop: `1px solid ${t.border}` }}>
                   <span className="font-bold text-white">Прибыль</span>
                   <span className={`text-lg font-black ${plProfit >= 0 ? "text-emerald-400" : "text-red-400"}`}>
