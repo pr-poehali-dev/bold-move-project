@@ -33,11 +33,10 @@ export const DEFAULT_BLOCKS: BlockDef[] = [
   { id: "object",   col: 0, order: 3 },
   { id: "dates",    col: 0, order: 4 },
   { id: "notes",    col: 0, order: 5 },
-  { id: "pl",       col: 1, order: 0 },
-  { id: "income",   col: 1, order: 1 },
-  { id: "costs",    col: 1, order: 2 },
-  { id: "files",    col: 1, order: 3 },
-  { id: "cancel",   col: 1, order: 4 },
+  { id: "income",   col: 1, order: 0 },
+  { id: "costs",    col: 1, order: 1 },
+  { id: "files",    col: 1, order: 2 },
+  { id: "cancel",   col: 1, order: 3 },
 ];
 
 export function loadBlocks(): BlockDef[] {

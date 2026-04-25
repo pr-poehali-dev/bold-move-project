@@ -149,6 +149,13 @@ export default function DrawerInfoTab({ data, client, setData, save, setComments
         }} />
       </Section>
 
+      {/* P&L — на всю ширину под воронкой */}
+      <DrawerPLBlock
+        data={data}
+        isHidden={hiddenBlocks.has("pl")}
+        toggleHidden={toggleHidden}
+      />
+
       {/* Три колонки */}
       <div className="grid grid-cols-[1fr_1fr_320px] gap-3">
 

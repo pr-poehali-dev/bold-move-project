@@ -7,7 +7,6 @@ import { ActivityEvent } from "./DrawerStatusActivity";
 import { BlockId, BlockDef, CustomBlockData, EditRow } from "./drawerTypes";
 import { BlockEditor, DraggableBlock } from "./DrawerBlockEditor";
 import { DrawerTagsBlock } from "./DrawerTagsBlock";
-import { DrawerPLBlock } from "./DrawerPLBlock";
 import { DrawerCustomBlock } from "./DrawerCustomBlock";
 
 interface ColumnsProps {
@@ -165,7 +164,7 @@ export function DrawerColumns(props: ColumnsProps) {
         />, "StickyNote", "Заметки", "#8b5cf6", false);
 
       case "pl":
-        return <DrawerPLBlock data={data} isHidden={isHidden} toggleHidden={toggleHidden} />;
+        return null; // P&L вынесен на уровень выше — под Статус воронки
 
       case "income":
         return wrap(id, <>
