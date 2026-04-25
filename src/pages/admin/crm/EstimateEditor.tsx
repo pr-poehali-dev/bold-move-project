@@ -87,12 +87,13 @@ function ItemRow({ item, onChange, onDelete }: {
   );
 }
 
-export default function EstimateEditor({ chatId }: { chatId: number }) {
+export default function EstimateEditor({ chatId, clientName, clientPhone }: { chatId: number; clientName?: string | null; clientPhone?: string | null }) {
   const t = useTheme();
   const [estimate, setEstimate]   = useState<SavedEstimate | null>(null);
   const [loading,  setLoading]    = useState(true);
   const [saving,   setSaving]     = useState(false);
   const [saved,    setSaved]      = useState(false);
+  const [copied,   setCopied]     = useState(false);
   const [blocks,   setBlocks]     = useState<EstimateBlock[]>([]);
   const [totals,   setTotals]     = useState<string[]>([]);
 
@@ -202,6 +203,66 @@ export default function EstimateEditor({ chatId }: { chatId: number }) {
     return s;
   })();
 
+  const copyEstimateText = () => {
+    const name = clientName || "Клиент";
+    const phone = clientPhone || "";
+    let text = `📋 Смета на натяжные потолки\n`;
+    if (name) text += `Клиент: ${name}\n`;
+    if (phone) text += `Телефон: ${phone}\n`;
+    text += `\n`;
+    for (const block of blocks) {
+      text += `▪ ${block.title}\n`;
+      for (const item of block.items) {
+        text += `  • ${item.name}: ${item.value}\n`;
+      }
+    }
+    text += `\n💰 Итого:\n`;
+    text += `  Эконом:   ${fmt(Math.round(standardTotal * 0.85))} ₽\n`;
+    text += `  Стандарт: ${fmt(standardTotal)} ₽\n`;
+    text += `  Премиум:  ${fmt(Math.round(standardTotal * 1.27))} ₽\n`;
+    navigator.clipboard.writeText(text).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  };
+
+  const printEstimate = () => {
+    const name = clientName || "Клиент";
+    const econom   = Math.round(standardTotal * 0.85);
+    const premium  = Math.round(standardTotal * 1.27);
+    let rows = "";
+    for (const block of blocks) {
+      rows += `<tr><td colspan="4" style="background:#1e1b4b;color:#f97316;font-weight:bold;padding:8px 12px;font-size:13px">${block.title}</td></tr>`;
+      for (const item of block.items) {
+        const p = parseValue(item.value);
+        rows += `<tr style="border-bottom:1px solid #eee">
+          <td style="padding:6px 12px;font-size:13px">${item.name}</td>
+          <td style="padding:6px 8px;text-align:center;font-size:13px">${p ? p.qty : ""}</td>
+          <td style="padding:6px 8px;text-align:center;font-size:12px;color:#888">${p ? p.unit : ""}</td>
+          <td style="padding:6px 12px;text-align:right;font-weight:600;font-size:13px">${p ? fmt(p.total) + " ₽" : item.value}</td>
+        </tr>`;
+      }
+    }
+    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Смета — ${name}</title>
+    <style>body{font-family:sans-serif;padding:32px;color:#111}table{width:100%;border-collapse:collapse}
+    h1{font-size:20px;margin-bottom:4px}p{color:#666;font-size:14px;margin:0 0 24px}
+    .totals{margin-top:20px;background:#f5f5f5;padding:16px;border-radius:8px}
+    .totals div{display:flex;justify-content:space-between;padding:4px 0;font-size:14px}
+    .total-main{font-weight:800;font-size:18px;color:#f97316}</style></head>
+    <body>
+    <h1>Смета на натяжные потолки</h1>
+    <p>Клиент: ${name}${clientPhone ? " · " + clientPhone : ""} · Дата: ${new Date().toLocaleDateString("ru-RU")}</p>
+    <table>${rows}</table>
+    <div class="totals">
+      <div><span>Эконом</span><span style="color:#10b981;font-weight:600">${fmt(econom)} ₽</span></div>
+      <div><span>Стандарт</span><span class="total-main">${fmt(standardTotal)} ₽</span></div>
+      <div><span>Премиум</span><span style="color:#8b5cf6;font-weight:600">${fmt(premium)} ₽</span></div>
+    </div>
+    </body></html>`;
+    const w = window.open("", "_blank");
+    if (w) { w.document.write(html); w.document.close(); w.focus(); w.print(); }
+  };
+
   if (loading) return (
     <div className="flex items-center justify-center py-12">
       <div className="w-5 h-5 border-2 border-violet-500 border-t-transparent rounded-full animate-spin" />
@@ -222,22 +283,41 @@ export default function EstimateEditor({ chatId }: { chatId: number }) {
     <div className="space-y-4">
 
       {/* Шапка */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <div className="text-sm font-semibold" style={{ color: t.text }}>Смета на натяжные потолки</div>
+          <div className="text-sm font-semibold" style={{ color: t.text }}>
+            Смета на натяжные потолки{clientName ? ` — ${clientName}` : ""}
+          </div>
           <div className="text-xs mt-0.5" style={{ color: t.textMute }}>
-            Сохранена: {new Date(estimate.created_at).toLocaleDateString("ru-RU", { day: "numeric", month: "long", year: "numeric" })}
+            Создана: {new Date(estimate.created_at).toLocaleDateString("ru-RU", { day: "numeric", month: "long", year: "numeric" })}
+            {clientPhone && <span className="ml-2 opacity-60">{clientPhone}</span>}
           </div>
         </div>
-        <button onClick={saveEstimate} disabled={saving}
-          className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold text-white transition disabled:opacity-50"
-          style={{ background: saved ? "#10b981" : "#7c3aed" }}>
-          {saving
-            ? <><div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" /> Сохранение...</>
-            : saved
-            ? <><Icon name="CheckCircle2" size={14} /> Сохранено</>
-            : <><Icon name="Save" size={14} /> Сохранить</>}
-        </button>
+        <div className="flex items-center gap-2 flex-wrap">
+          {/* Копировать текст */}
+          <button onClick={copyEstimateText}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-semibold transition"
+            style={{ background: copied ? "#10b98122" : t.surface2, color: copied ? "#10b981" : t.textSub, border: `1px solid ${copied ? "#10b98140" : t.border}` }}>
+            <Icon name={copied ? "Check" : "Copy"} size={13} />
+            {copied ? "Скопировано" : "Копировать"}
+          </button>
+          {/* Печать / PDF */}
+          <button onClick={printEstimate}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-semibold transition"
+            style={{ background: t.surface2, color: t.textSub, border: `1px solid ${t.border}` }}>
+            <Icon name="Printer" size={13} /> Печать / PDF
+          </button>
+          {/* Сохранить */}
+          <button onClick={saveEstimate} disabled={saving}
+            className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold text-white transition disabled:opacity-50"
+            style={{ background: saved ? "#10b981" : "#7c3aed" }}>
+            {saving
+              ? <><div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" /> Сохранение...</>
+              : saved
+              ? <><Icon name="CheckCircle2" size={13} /> Сохранено</>
+              : <><Icon name="Save" size={13} /> Сохранить</>}
+          </button>
+        </div>
       </div>
 
       {/* Таблица */}

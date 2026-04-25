@@ -210,18 +210,23 @@ export default function ClientDrawer({ client, allClientOrders, onClose, onUpdat
   const isOrder = ORDER_STATUSES.includes(data.status);
 
   return (
-    <div className="fixed inset-0 z-50 flex" onClick={onClose}>
-      {/* Затемнение */}
-      <div className="flex-1 bg-black/50" />
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={onClose}
+      style={{ background: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)" }}>
 
-      {/* Панель */}
+      {/* Модальное окно */}
       <div
-        className="w-full max-w-lg flex flex-col h-full overflow-hidden shadow-2xl"
-        style={{ background: t.surface, borderLeft: `1px solid ${t.border}` }}
+        className="w-full flex flex-col overflow-hidden shadow-2xl"
+        style={{
+          background: t.surface,
+          border: `1px solid ${t.border}`,
+          borderRadius: 20,
+          maxWidth: drawerTab === "estimate" ? 1100 : 680,
+          maxHeight: "92vh",
+        }}
         onClick={e => e.stopPropagation()}>
 
         {/* Шапка */}
-        <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: `1px solid ${t.border}` }}>
+        <div className="flex items-center justify-between px-6 py-4 flex-shrink-0" style={{ borderBottom: `1px solid ${t.border}` }}>
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl flex items-center justify-center text-sm font-bold text-white"
               style={{ background: STATUS_COLORS[data.status] + "30", border: `1.5px solid ${STATUS_COLORS[data.status]}50` }}>
@@ -247,7 +252,7 @@ export default function ClientDrawer({ client, allClientOrders, onClose, onUpdat
         </div>
 
         {/* Табы вкладок */}
-        <div className="flex px-5 gap-1 pt-3" style={{ borderBottom: `1px solid ${t.border}` }}>
+        <div className="flex px-6 gap-1 pt-3 flex-shrink-0" style={{ borderBottom: `1px solid ${t.border}` }}>
           {([
             { id: "info",     label: "Заявка",  icon: "User" },
             { id: "orders",   label: `История (${allClientOrders.length})`, icon: "ClipboardList" },
@@ -264,9 +269,9 @@ export default function ClientDrawer({ client, allClientOrders, onClose, onUpdat
         </div>
 
         {/* Контент */}
-        <div className="flex-1 overflow-y-auto px-5 py-3">
+        <div className="flex-1 overflow-y-auto px-6 py-4">
 
-          {drawerTab === "estimate" && <EstimateEditor chatId={data.id} />}
+          {drawerTab === "estimate" && <EstimateEditor chatId={data.id} clientName={data.client_name} clientPhone={data.phone} />}
 
           {drawerTab === "orders" && (
             <div className="space-y-2 py-2">
@@ -461,7 +466,7 @@ export default function ClientDrawer({ client, allClientOrders, onClose, onUpdat
 
       {/* Подтверждение удаления */}
       {confirmDelete && (
-        <div className="absolute inset-0 flex items-center justify-center z-10 bg-black/60" onClick={() => setConfirmDelete(false)}>
+        <div className="fixed inset-0 flex items-center justify-center z-[60] bg-black/60" onClick={() => setConfirmDelete(false)}>
           <div className="rounded-2xl p-6 w-80 shadow-2xl" style={{ background: t.surface, border: "1px solid rgba(239,68,68,0.2)" }} onClick={e => e.stopPropagation()}>
             <div className="w-12 h-12 rounded-full bg-red-500/15 flex items-center justify-center mx-auto mb-4">
               <Icon name="Trash2" size={22} className="text-red-400" />
