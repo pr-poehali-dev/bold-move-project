@@ -44,7 +44,7 @@ export default function ClientDrawer({ client, allClientOrders, onClose, onUpdat
           background: t.surface,
           border: `1px solid ${t.border}`,
           borderRadius: 20,
-          maxWidth: drawerTab === "estimate" ? 1100 : 860,
+          maxWidth: drawerTab === "estimate" ? 1100 : 1160,
           maxHeight: "92vh",
         }}
         onClick={e => e.stopPropagation()}>
