@@ -70,6 +70,7 @@ export function AddBlockModal({ onSave, onClose }: {
   const [title, setTitle] = useState("");
   const [icon, setIcon]   = useState("Star");
   const [color, setColor] = useState("#8b5cf6");
+  const [wide, setWide]   = useState(false);
   const [rows, setRows]   = useState<CustomBlockRow[]>([{ label: "", type: "text", value: "" }]);
 
   const addRow    = () => setRows(prev => [...prev, { label: "", type: "text", value: "" }]);
@@ -80,7 +81,7 @@ export function AddBlockModal({ onSave, onClose }: {
   const handleSave = () => {
     if (!title.trim()) return;
     const validRows = rows.filter(r => r.label.trim());
-    onSave({ id: `custom_${Date.now()}`, title: title.trim(), icon, color, rows: validRows });
+    onSave({ id: `custom_${Date.now()}`, title: title.trim(), icon, color, rows: validRows, wide });
   };
 
   return (
@@ -105,6 +106,38 @@ export function AddBlockModal({ onSave, onClose }: {
               placeholder="Например: Дополнительно"
               className="w-full rounded-xl px-3 py-2 text-sm focus:outline-none"
               style={{ background: t.surface2, border: `1px solid ${t.border}`, color: "#fff" }} />
+          </div>
+
+          {/* Ширина блока */}
+          <div>
+            <label className="text-xs mb-1.5 block" style={{ color: t.textMute }}>Ширина блока</label>
+            <div className="grid grid-cols-2 gap-2">
+              <button onClick={() => setWide(false)}
+                className="flex flex-col items-center gap-1.5 py-2.5 rounded-xl text-xs font-medium transition border-2"
+                style={{
+                  background: !wide ? "#7c3aed15" : t.surface2,
+                  borderColor: !wide ? "#7c3aed" : t.border,
+                  color: !wide ? "#a78bfa" : t.textMute,
+                }}>
+                <div className="flex gap-0.5">
+                  <div className="w-8 h-5 rounded" style={{ background: !wide ? "#7c3aed40" : t.border }} />
+                  <div className="w-8 h-5 rounded opacity-30" style={{ background: t.border }} />
+                </div>
+                Одна колонка
+              </button>
+              <button onClick={() => setWide(true)}
+                className="flex flex-col items-center gap-1.5 py-2.5 rounded-xl text-xs font-medium transition border-2"
+                style={{
+                  background: wide ? "#7c3aed15" : t.surface2,
+                  borderColor: wide ? "#7c3aed" : t.border,
+                  color: wide ? "#a78bfa" : t.textMute,
+                }}>
+                <div className="flex gap-0.5">
+                  <div className="w-16 h-5 rounded" style={{ background: wide ? "#7c3aed40" : t.border }} />
+                </div>
+                Двойной блок
+              </button>
+            </div>
           </div>
 
           <div className="grid grid-cols-2 gap-3">

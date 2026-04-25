@@ -6,10 +6,10 @@ export type BuiltinBlockId =
 
 export type BlockId = BuiltinBlockId | string; // custom_TIMESTAMP
 
-export interface BlockDef { id: BlockId; col: 0 | 1; order: number; }
+export interface BlockDef { id: BlockId; col: 0 | 1; order: number; wide?: boolean; }
 
 export interface CustomBlockRow { label: string; type: "text" | "file"; value: string; }
-export interface CustomBlockData { id: string; title: string; icon: string; color: string; rows: CustomBlockRow[]; }
+export interface CustomBlockData { id: string; title: string; icon: string; color: string; rows: CustomBlockRow[]; wide?: boolean; }
 
 export interface EditRow { label: string; value: string; key: string; }
 
@@ -32,7 +32,7 @@ export const DEFAULT_BLOCKS: BlockDef[] = [
   { id: "contacts", col: 0, order: 2 },
   { id: "object",   col: 0, order: 3 },
   { id: "dates",    col: 0, order: 4 },
-  { id: "notes",    col: 0, order: 5 },
+  { id: "notes",    col: 0, order: 5, wide: true },
   { id: "income",   col: 1, order: 0 },
   { id: "costs",    col: 1, order: 1 },
   { id: "files",    col: 1, order: 2 },

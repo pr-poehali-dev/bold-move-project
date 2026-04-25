@@ -77,7 +77,7 @@ export default function DrawerInfoTab({ data, client, setData, save, setComments
     const updated = [...customBlocks, block];
     setCustomBlocks(updated);
     saveCustomBlocks(updated);
-    const newBlocks = [...blocks, { id: block.id, col, order: 999 }];
+    const newBlocks = [...blocks, { id: block.id, col, order: 999, wide: block.wide }];
     setBlocks(newBlocks);
     localStorage.setItem(LS_BLOCKS, JSON.stringify(newBlocks));
     logAction("Plus", "#8b5cf6", `Блок создан: ${block.title}`);
