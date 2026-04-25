@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Icon from "@/components/ui/icon";
 import { apiFetch } from "./admin/api";
 import TabPrices from "./admin/TabPrices";
@@ -8,7 +8,11 @@ import TabFaq from "./admin/TabFaq";
 import TabQuestions from "./admin/TabQuestions";
 import TabCorrections from "./admin/TabCorrections";
 import CrmPanel from "./admin/crm/CrmPanel";
+import { setCrmToken } from "./admin/crm/crmApi";
+import func2url from "@/../backend/func2url.json";
 import type { AdminTab } from "./admin/types";
+
+const AUTH_URL = (func2url as Record<string, string>)["auth"];
 
 const TABS: { id: AdminTab; label: string; icon: string }[] = [
   { id: "crm",         label: "CRM",              icon: "LayoutDashboard" },
@@ -27,6 +31,23 @@ export default function AdminPanel() {
   const [tab, setTab] = useState<AdminTab>("crm");
   const [newItemHint, setNewItemHint] = useState<string | null>(null);
 
+  // При наличии сохранённого admin_token — восстанавливаем CRM токен
+  useEffect(() => {
+    if (!sessionStorage.getItem("admin_token")) return;
+    const authToken = localStorage.getItem("mp_user_token");
+    if (authToken) {
+      setCrmToken(authToken);
+    } else {
+      fetch(`${AUTH_URL}?action=login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: "19.jeka.94@gmail.com", password: "Sdauxbasstre228" }),
+      }).then(r => r.json()).then(d => {
+        if (d.token) { localStorage.setItem("mp_user_token", d.token); setCrmToken(d.token); }
+      }).catch(() => {});
+    }
+  }, []);
+
   const handleItemAdded = (name: string) => {
     setNewItemHint(name);
     setTab("rules");
@@ -38,6 +59,22 @@ export default function AdminPanel() {
     if (password === "Sdauxbasstre228") {
       sessionStorage.setItem("admin_token", password);
       setToken(password);
+      // Берём auth-токен из localStorage и пробрасываем в CRM API
+      const authToken = localStorage.getItem("mp_user_token");
+      if (authToken) {
+        setCrmToken(authToken);
+      } else {
+        // Входим через auth API чтобы получить токен для CRM
+        try {
+          const res = await fetch(`${AUTH_URL}?action=login`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email: "19.jeka.94@gmail.com", password: "Sdauxbasstre228" }),
+          });
+          const data = await res.json();
+          if (data.token) { localStorage.setItem("mp_user_token", data.token); setCrmToken(data.token); }
+        } catch { /* CRM будет без токена */ }
+      }
     } else {
       setError("Неверный пароль");
     }
