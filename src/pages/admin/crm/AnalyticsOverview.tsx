@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from "recharts";
 import Icon from "@/components/ui/icon";
 import { useTheme } from "./themeContext";
@@ -19,6 +20,13 @@ function KpiCard({ icon, label, value, sub, color }: { icon: string; label: stri
   );
 }
 
+interface StatusEntry {
+  name: string;
+  value: number;
+  color: string;
+  status: string;
+}
+
 interface Props {
   s: Stats;
   convMeasure: number;
@@ -26,14 +34,18 @@ interface Props {
   convDone: number;
   cancelRate: number;
   funnelData: { label: string; count: number; color: string; pct: number }[];
-  statusPie: { name: string; value: number; color: string }[];
+  statusPie: StatusEntry[];
   recentClients: Client[];
+  allClients: Client[];
   onSelectClient: (c: Client) => void;
 }
 
-export default function AnalyticsOverview({ s, convMeasure, convContract, convDone, cancelRate, funnelData, statusPie, recentClients, onSelectClient }: Props) {
+export default function AnalyticsOverview({ s, convMeasure, convContract, convDone, cancelRate, funnelData, statusPie, recentClients, allClients, onSelectClient }: Props) {
   const t = useTheme();
   const tooltipStyle = { backgroundColor: t.surface, border: `1px solid ${t.border}`, borderRadius: 10, color: t.text, fontSize: 12 };
+
+  const [activeStatus, setActiveStatus] = useState<StatusEntry | null>(null);
+  const statusClients = activeStatus ? allClients.filter(c => c.status === activeStatus.status) : [];
 
   return (
     <div className="space-y-5">
@@ -122,20 +134,90 @@ export default function AnalyticsOverview({ s, convMeasure, convContract, convDo
       {/* Распределение по статусам — bar chart */}
       {statusPie.length > 0 && (
         <div className="rounded-2xl p-5" style={{ background: t.surface, border: `1px solid ${t.border}` }}>
-          <div className="flex items-center gap-2 mb-4">
+          <div className="flex items-center gap-2 mb-1">
             <div className="w-1 h-4 rounded-full bg-violet-500" />
             <span className="text-sm font-bold" style={{ color: t.text }}>Распределение по статусам</span>
+            <span className="ml-auto text-[10px] px-2 py-0.5 rounded-lg" style={{ color: t.textMute, background: t.surface2 }}>
+              нажми на столбец → список клиентов
+            </span>
           </div>
           <ResponsiveContainer width="100%" height={200}>
-            <BarChart data={statusPie} margin={{ top: 5, right: 5, left: -20, bottom: 40 }}>
+            <BarChart
+              data={statusPie}
+              margin={{ top: 5, right: 5, left: -20, bottom: 40 }}
+              onClick={data => {
+                if (data?.activePayload?.[0]) {
+                  const entry = data.activePayload[0].payload as StatusEntry;
+                  setActiveStatus(prev => prev?.status === entry.status ? null : entry);
+                }
+              }}
+              style={{ cursor: "pointer" }}
+            >
               <XAxis dataKey="name" tick={{ fontSize: 10, fill: t.textMute }} angle={-35} textAnchor="end" interval={0} />
               <YAxis tick={{ fontSize: 10, fill: t.textMute }} allowDecimals={false} />
               <Tooltip contentStyle={tooltipStyle} formatter={(v: number) => [v, "Клиентов"]} />
               <Bar dataKey="value" name="Клиентов" radius={[4, 4, 0, 0]}>
-                {statusPie.map((sp, i) => <Cell key={i} fill={sp.color} />)}
+                {statusPie.map((sp, i) => (
+                  <Cell
+                    key={i}
+                    fill={sp.color}
+                    opacity={activeStatus && activeStatus.status !== sp.status ? 0.3 : 1}
+                  />
+                ))}
               </Bar>
             </BarChart>
           </ResponsiveContainer>
+
+          {/* Список клиентов выбранного статуса */}
+          {activeStatus && (
+            <div className="mt-4 rounded-xl overflow-hidden" style={{ border: `1px solid ${activeStatus.color}30` }}>
+              {/* Шапка панели */}
+              <div className="flex items-center justify-between px-4 py-2.5"
+                style={{ background: activeStatus.color + "12", borderBottom: `1px solid ${activeStatus.color}25` }}>
+                <div className="flex items-center gap-2">
+                  <div className="w-2 h-2 rounded-full" style={{ background: activeStatus.color }} />
+                  <span className="text-sm font-semibold" style={{ color: activeStatus.color }}>{activeStatus.name}</span>
+                  <span className="text-xs px-1.5 py-0.5 rounded-md font-bold"
+                    style={{ background: activeStatus.color + "20", color: activeStatus.color }}>
+                    {statusClients.length}
+                  </span>
+                </div>
+                <button onClick={() => setActiveStatus(null)}
+                  className="p-1 rounded-lg transition hover:opacity-60"
+                  style={{ color: t.textMute }}>
+                  <Icon name="X" size={14} />
+                </button>
+              </div>
+
+              {/* Список */}
+              <div className="divide-y max-h-64 overflow-y-auto" style={{ borderColor: t.border2 }}>
+                {statusClients.length === 0 ? (
+                  <div className="py-8 text-center text-sm" style={{ color: t.textMute }}>Нет клиентов</div>
+                ) : statusClients.map(c => (
+                  <button key={c.id} onClick={() => onSelectClient(c)}
+                    className="w-full flex items-center gap-3 px-4 py-2.5 text-left transition hover:opacity-80 group"
+                    style={{ background: t.surface }}>
+                    <div className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 text-xs font-bold"
+                      style={{ background: activeStatus.color + "20", color: activeStatus.color }}>
+                      {(c.client_name || "?")[0].toUpperCase()}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-xs font-medium truncate" style={{ color: t.text }}>{c.client_name || "Без имени"}</div>
+                      <div className="text-[10px] truncate" style={{ color: t.textMute }}>
+                        {c.phone || "—"}{c.address ? ` · ${c.address}` : ""}
+                      </div>
+                    </div>
+                    {c.contract_sum ? (
+                      <span className="text-xs font-semibold text-emerald-500 flex-shrink-0">
+                        {c.contract_sum.toLocaleString("ru-RU")} ₽
+                      </span>
+                    ) : null}
+                    <Icon name="ChevronRight" size={12} style={{ color: t.textMute }} className="flex-shrink-0 opacity-0 group-hover:opacity-100 transition" />
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>

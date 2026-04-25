@@ -13,15 +13,17 @@ export default function CrmAnalytics() {
   const [stats, setStats]         = useState<Stats | null>(null);
   const [loading, setLoading]     = useState(true);
   const [tab, setTab]             = useState<AnalyticsTab>("overview");
-  const [recentClients, setRecentClients] = useState<Client[]>([]);
+  const [allClients,    setAllClients]    = useState<Client[]>([]);
   const [drawerClient,  setDrawerClient]  = useState<Client | null>(null);
 
   useEffect(() => {
     crmFetch("stats").then(d => { setStats(d as Stats); setLoading(false); }).catch(() => setLoading(false));
     crmFetch("clients").then((d: unknown) => {
-      if (Array.isArray(d)) setRecentClients((d as Client[]).filter((c: Client) => c.status !== "deleted").slice(0, 10));
+      if (Array.isArray(d)) setAllClients((d as Client[]).filter((c: Client) => c.status !== "deleted"));
     }).catch(() => {});
   }, []);
+
+  const recentClients = allClients.slice(0, 10);
 
   if (loading) return (
     <div className="flex items-center justify-center h-64">
@@ -46,7 +48,7 @@ export default function CrmAnalytics() {
 
   const statusPie = s.status_dist
     .filter(x => x.status !== "deleted")
-    .map(x => ({ name: STATUS_LABELS[x.status] || x.status, value: x.count, color: STATUS_COLORS[x.status] || "#666" }));
+    .map(x => ({ name: STATUS_LABELS[x.status] || x.status, value: x.count, color: STATUS_COLORS[x.status] || "#666", status: x.status }));
 
   // Воронка
   const funnelData = [
@@ -101,6 +103,7 @@ export default function CrmAnalytics() {
           funnelData={funnelData}
           statusPie={statusPie}
           recentClients={recentClients}
+          allClients={allClients}
           onSelectClient={setDrawerClient}
         />
       )}
@@ -119,17 +122,17 @@ export default function CrmAnalytics() {
           client={drawerClient}
           allClientOrders={(() => {
             const phone = (drawerClient.phone || "").trim().replace(/\D/g, "");
-            return phone ? recentClients.filter(c => (c.phone || "").trim().replace(/\D/g, "") === phone) : [drawerClient];
+            return phone ? allClients.filter(c => (c.phone || "").trim().replace(/\D/g, "") === phone) : [drawerClient];
           })()}
           onClose={() => setDrawerClient(null)}
           onUpdated={() => {
             crmFetch("clients").then((d: unknown) => {
-              if (Array.isArray(d)) setRecentClients((d as Client[]).filter((c: Client) => c.status !== "deleted").slice(0, 10));
+              if (Array.isArray(d)) setAllClients((d as Client[]).filter((c: Client) => c.status !== "deleted"));
             }).catch(() => {});
             setDrawerClient(null);
           }}
           onDeleted={() => {
-            setRecentClients(prev => prev.filter(c => c.id !== drawerClient.id));
+            setAllClients(prev => prev.filter(c => c.id !== drawerClient.id));
             setDrawerClient(null);
           }}
         />
