@@ -197,33 +197,48 @@ export function DrawerColumns(props: ColumnsProps) {
           style={{ background: t.surface, border: `1px solid ${t.border}`, color: "#fff" }}
         />, "StickyNote", "Заметки", "#8b5cf6", false);
 
-      case "pl":
-        if (!data.contract_sum && !data.material_cost && !data.install_cost) return null;
+      case "pl": {
+        const plCs  = Number(data.contract_sum)  || 0;
+        const plPre = Number(data.prepayment)     || 0;
+        const plExt = Number(data.extra_payment)  || 0;
+        const plMc  = Number(data.material_cost)  || 0;
+        const plMec = Number(data.measure_cost)   || 0;
+        const plIc  = Number(data.install_cost)   || 0;
+        const plReceived  = plPre + plExt;
+        const plRemaining = plCs - plReceived;
+        const plCosts     = plMc + plMec + plIc;
+        const plProfit    = plCs - plCosts;
+        const fmt = (n: number) => n.toLocaleString("ru-RU");
         return (
           <div key="pl" className="rounded-2xl overflow-hidden group/section" style={{ opacity: isHidden ? 0.45 : 1, border: `1px solid ${t.border}` }}>
             <div className="flex items-center gap-2 px-4 py-2.5" style={{ background: "linear-gradient(135deg,#7c3aed15,#10b98112)", borderBottom: isHidden ? "none" : `1px solid #7c3aed30` }}>
               <Icon name="TrendingUp" size={13} style={{ color: "#10b981" }} />
               <span className="text-xs font-bold uppercase tracking-wider text-white flex-1">P&L по заказу</span>
-              <button onClick={() => toggleHidden(id)} className="p-1 rounded-md opacity-0 group-hover/section:opacity-100 transition hover:bg-white/10" style={{ color: isHidden ? "#10b981" : t.textMute }}>
+              <button onClick={() => toggleHidden(id)} className="p-1 rounded-md opacity-0 group-hover/section:opacity-100 transition hover:bg-white/10" style={{ color: isHidden ? "#10b981" : "#a3a3a3" }}>
                 <Icon name={isHidden ? "EyeOff" : "Eye"} size={12} />
               </button>
             </div>
             {!isHidden && (
               <div className="px-4 py-3 space-y-2 text-sm" style={{ background: "linear-gradient(135deg,#7c3aed08,#10b98108)" }}>
-                {Number(data.contract_sum) > 0 ? <div className="flex justify-between"><span style={{ color: "#a3a3a3" }}>Договор</span><span className="font-bold text-white">{Number(data.contract_sum).toLocaleString("ru-RU")} ₽</span></div> : null}
-                {received > 0 && <div className="flex justify-between"><span style={{ color: "#a3a3a3" }}>Получено</span><span className="font-semibold text-emerald-400">+{received.toLocaleString("ru-RU")} ₽</span></div>}
-                {Number(data.prepayment) > 0 && <div className="flex justify-between"><span style={{ color: "#a3a3a3" }}>Предоплата</span><span className="font-semibold text-emerald-300">+{Number(data.prepayment).toLocaleString("ru-RU")} ₽</span></div>}
-                {Number(data.extra_payment) > 0 && <div className="flex justify-between"><span style={{ color: "#a3a3a3" }}>Доплата</span><span className="font-semibold text-emerald-300">+{Number(data.extra_payment).toLocaleString("ru-RU")} ₽</span></div>}
-                {remaining > 0 && Number(data.contract_sum) > 0 ? <div className="flex justify-between"><span style={{ color: "#a3a3a3" }}>Остаток</span><span className="font-semibold text-amber-400">{remaining.toLocaleString("ru-RU")} ₽</span></div> : null}
-                {(Number(data.material_cost)||Number(data.measure_cost)||Number(data.install_cost)) ? <div className="flex justify-between"><span style={{ color: "#a3a3a3" }}>Затраты</span><span className="font-semibold text-red-400">−{(Number(data.material_cost||0)+Number(data.measure_cost||0)+Number(data.install_cost||0)).toLocaleString("ru-RU")} ₽</span></div> : null}
+                {plCs > 0
+                  ? <div className="flex justify-between"><span style={{ color: "#a3a3a3" }}>Договор</span><span className="font-bold text-white">{fmt(plCs)} ₽</span></div>
+                  : <div className="flex justify-between"><span style={{ color: "#a3a3a3" }}>Договор</span><span className="text-xs" style={{ color: "#a3a3a3" }}>не указан</span></div>}
+                {plPre > 0 && <div className="flex justify-between"><span style={{ color: "#a3a3a3" }}>Предоплата</span><span className="font-semibold text-emerald-400">+{fmt(plPre)} ₽</span></div>}
+                {plExt > 0 && <div className="flex justify-between"><span style={{ color: "#a3a3a3" }}>Доплата</span><span className="font-semibold text-emerald-400">+{fmt(plExt)} ₽</span></div>}
+                {plReceived > 0 && <div className="flex justify-between"><span style={{ color: "#a3a3a3" }}>Итого получено</span><span className="font-semibold text-emerald-300">+{fmt(plReceived)} ₽</span></div>}
+                {plCs > 0 && plRemaining > 0 && <div className="flex justify-between"><span style={{ color: "#a3a3a3" }}>Остаток</span><span className="font-semibold text-amber-400">{fmt(plRemaining)} ₽</span></div>}
+                {plCosts > 0 && <div className="flex justify-between"><span style={{ color: "#a3a3a3" }}>Затраты</span><span className="font-semibold text-red-400">−{fmt(plCosts)} ₽</span></div>}
                 <div className="flex justify-between pt-2 mt-1" style={{ borderTop: `1px solid ${t.border}` }}>
                   <span className="font-bold text-white">Прибыль</span>
-                  <span className={`text-lg font-black ${profit >= 0 ? "text-emerald-400" : "text-red-400"}`}>{profit >= 0 ? "+" : ""}{profit.toLocaleString("ru-RU")} ₽</span>
+                  <span className={`text-lg font-black ${plProfit >= 0 ? "text-emerald-400" : "text-red-400"}`}>
+                    {plProfit >= 0 ? "+" : ""}{fmt(plProfit)} ₽
+                  </span>
                 </div>
               </div>
             )}
           </div>
         );
+      }
 
       case "income":
         return wrap(id, <>
