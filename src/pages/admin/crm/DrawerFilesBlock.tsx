@@ -147,16 +147,21 @@ export function DrawerFilesBlock({ clientId, hiddenBlocks, toggleHidden, logActi
                 </span>
               )}
 
-              {/* Кнопка загрузки */}
-              <button onClick={() => inputRefs.current[catIdx]?.click()}
-                className="flex-1 text-right text-xs transition hover:opacity-70 flex items-center justify-end gap-1"
-                style={{ color: uploading === catIdx ? t.textMute : "#7c3aed99" }}>
-                {uploading === catIdx
-                  ? <><Icon name="Loader2" size={10} className="animate-spin" />Загрузка...</>
-                  : <><span className="underline underline-offset-2 decoration-dashed" style={{ color: "#a78bfa99" }}>
-                      {cat.files.length > 0 ? `${cat.files.length} файл(ов)` : "Загрузить"}
-                    </span></>}
-              </button>
+              {/* Счётчик + кнопка загрузки */}
+              <div className="flex-1 flex items-center justify-end gap-2">
+                {cat.files.length > 0 && (
+                  <span className="text-xs" style={{ color: t.textMute }}>{cat.files.length} файл(ов)</span>
+                )}
+                <button onClick={() => inputRefs.current[catIdx]?.click()}
+                  className="text-xs flex items-center gap-1 transition hover:opacity-80"
+                  style={{ color: uploading === catIdx ? t.textMute : undefined }}>
+                  {uploading === catIdx
+                    ? <><Icon name="Loader2" size={10} className="animate-spin" style={{ color: t.textMute }} />Загрузка...</>
+                    : <span className="underline underline-offset-2 decoration-dashed" style={{ color: "#a78bfa99" }}>
+                        {cat.files.length > 0 ? "Добавить ещё" : "Загрузить"}
+                      </span>}
+                </button>
+              </div>
               <input
                 ref={el => { inputRefs.current[catIdx] = el; }}
                 type="file" multiple className="hidden"
