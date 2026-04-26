@@ -88,7 +88,7 @@ export function RowWithToggle({ rowKey, visible, onToggle, children, editMode, e
       )}
       {editMode && (
         <button
-          onClick={handleDelete}
+          onClick={() => { if (window.confirm("Точно удалить?")) handleDelete(); }}
           title="Удалить строку"
           className="flex-shrink-0 p-1 rounded-md text-red-400/50 hover:text-red-400 transition-all">
           <Icon name="X" size={11} />
