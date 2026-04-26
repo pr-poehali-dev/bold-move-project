@@ -5,12 +5,13 @@ import Icon from "@/components/ui/icon";
 import { useTheme } from "./themeContext";
 
 // ── InlineField ───────────────────────────────────────────────────────────────
-export function InlineField({ label, value, onSave, type = "text", placeholder = "—" }: {
+export function InlineField({ label, value, onSave, type = "text", placeholder = "—", hideLabel }: {
   label: string;
   value: string | number | null | undefined;
   onSave: (v: string) => void;
   type?: string;
   placeholder?: string;
+  hideLabel?: boolean;
 }) {
   const t = useTheme();
   const [editing, setEditing] = useState(false);
@@ -39,7 +40,7 @@ export function InlineField({ label, value, onSave, type = "text", placeholder =
 
   return (
     <div className="flex items-center justify-between py-2 group" style={{ borderBottom: `1px solid ${t.border2}` }}>
-      <span className="text-xs flex-shrink-0 w-36" style={{ color: "#d4d4d4" }}>{label}</span>
+      {!hideLabel && <span className="text-xs flex-shrink-0 w-36" style={{ color: "#d4d4d4" }}>{label}</span>}
       {editing ? (
         <input
           type={type}
