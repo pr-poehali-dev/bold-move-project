@@ -63,6 +63,12 @@ export default function DrawerInfoTab({ data, client, setData, save, setComments
     setCustomFinRows(updated);
     saveCustomFinRows(updated);
   };
+
+  const updateCustomFinRow = (key: string, label: string) => {
+    const updated = customFinRows.map(r => r.key === key ? { ...r, label } : r);
+    setCustomFinRows(updated);
+    saveCustomFinRows(updated);
+  };
   const [customRowVals, setCustomRowVals] = useState<Record<string, Record<number, string>>>(() => {
     try { return JSON.parse(localStorage.getItem(`custom_block_vals_${data.id}`) || "{}"); } catch { return {}; }
   });
@@ -239,6 +245,7 @@ export default function DrawerInfoTab({ data, client, setData, save, setComments
             customFinRows={customFinRows}
             addCustomFinRow={addCustomFinRow}
             deleteCustomFinRow={deleteCustomFinRow}
+            updateCustomFinRow={updateCustomFinRow}
           />
         </div>
 

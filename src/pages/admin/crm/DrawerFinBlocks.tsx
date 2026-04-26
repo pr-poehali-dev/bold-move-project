@@ -16,12 +16,13 @@ interface FinBlockProps {
   toggleRowVisibility: (key: string) => void;
   addCustomFinRow: (label: string, block: "income" | "costs") => void;
   deleteCustomFinRow: (key: string) => void;
+  updateCustomFinRow: (key: string, label: string) => void;
 }
 
 export function DrawerIncomeBlock({
   data, editingBlock, hiddenBlocks, rowVisibility, customFinRows,
   toggleHidden, setEditingBlock, saveWithLog, logAction,
-  toggleRowVisibility, addCustomFinRow, deleteCustomFinRow,
+  toggleRowVisibility, addCustomFinRow, deleteCustomFinRow, updateCustomFinRow,
 }: FinBlockProps) {
   const id: BlockId = "income";
   const isHidden = hiddenBlocks.has(id);
@@ -55,7 +56,8 @@ export function DrawerIncomeBlock({
         const lsKey = `fin_row_${data.id}_${r.key}`;
         const val = localStorage.getItem(lsKey) || "";
         return rowVisibility[r.key] !== false ? (
-          <RowWithToggle key={r.key} rowKey={r.key} visible onToggle={toggleRowVisibility} editMode={incomeEdit} onDelete={() => deleteCustomFinRow(r.key)}>
+          <RowWithToggle key={r.key} rowKey={r.key} visible onToggle={toggleRowVisibility} editMode={incomeEdit} onDelete={() => deleteCustomFinRow(r.key)}
+            editableLabel={r.label} onLabelChange={label => updateCustomFinRow(r.key, label)}>
             <InlineField label={r.label} value={val} type="number" placeholder="—"
               onSave={v => { localStorage.setItem(lsKey, v); logAction("Plus", "#10b981", `${r.label}: ${(+v).toLocaleString("ru-RU")} ₽`); }} />
           </RowWithToggle>
@@ -74,7 +76,7 @@ export function DrawerIncomeBlock({
 export function DrawerCostsBlock({
   data, editingBlock, hiddenBlocks, rowVisibility, customFinRows,
   toggleHidden, setEditingBlock, saveWithLog, logAction,
-  toggleRowVisibility, addCustomFinRow, deleteCustomFinRow,
+  toggleRowVisibility, addCustomFinRow, deleteCustomFinRow, updateCustomFinRow,
 }: FinBlockProps) {
   const id: BlockId = "costs";
   const isHidden = hiddenBlocks.has(id);
@@ -108,7 +110,8 @@ export function DrawerCostsBlock({
         const lsKey = `fin_row_${data.id}_${r.key}`;
         const val = localStorage.getItem(lsKey) || "";
         return rowVisibility[r.key] !== false ? (
-          <RowWithToggle key={r.key} rowKey={r.key} visible onToggle={toggleRowVisibility} editMode={costsEdit} onDelete={() => deleteCustomFinRow(r.key)}>
+          <RowWithToggle key={r.key} rowKey={r.key} visible onToggle={toggleRowVisibility} editMode={costsEdit} onDelete={() => deleteCustomFinRow(r.key)}
+            editableLabel={r.label} onLabelChange={label => updateCustomFinRow(r.key, label)}>
             <InlineField label={r.label} value={val} type="number" placeholder="—"
               onSave={v => { localStorage.setItem(lsKey, v); logAction("Minus", "#ef4444", `${r.label}: ${(+v).toLocaleString("ru-RU")} ₽`); }} />
           </RowWithToggle>

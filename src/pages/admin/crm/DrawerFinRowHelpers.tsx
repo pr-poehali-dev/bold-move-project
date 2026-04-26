@@ -1,5 +1,5 @@
 import { useState } from "react";
-import type React from "react";
+import React from "react";
 import Icon from "@/components/ui/icon";
 
 export function AddFinRowInline({ block, onAdd, forceOpen, onClose }: {
@@ -50,18 +50,42 @@ export function AddFinRowInline({ block, onAdd, forceOpen, onClose }: {
   );
 }
 
-export function RowWithToggle({ rowKey, visible, onToggle, children, editMode, onDelete }: {
+export function RowWithToggle({ rowKey, visible, onToggle, children, editMode, onDelete, editableLabel, onLabelChange }: {
   rowKey: string;
   visible: boolean;
   onToggle: (key: string) => void;
   children: React.ReactNode;
   editMode?: boolean;
   onDelete?: () => void;
+  editableLabel?: string;
+  onLabelChange?: (label: string) => void;
 }) {
+  const [labelVal, setLabelVal] = useState(editableLabel || "");
+
+  // Sync if label changes externally
+  React.useEffect(() => { setLabelVal(editableLabel || ""); }, [editableLabel]);
+
   if (!visible) return null;
+
+  const showLabelEdit = editMode && editableLabel !== undefined && onLabelChange;
+
   return (
     <div className="flex items-center gap-1">
-      <div className="flex-1 min-w-0">{children}</div>
+      {showLabelEdit ? (
+        <div className="flex items-center flex-1 min-w-0 py-2" style={{ borderBottom: "1px solid #2a2a2a" }}>
+          <input
+            value={labelVal}
+            onChange={e => setLabelVal(e.target.value)}
+            onBlur={() => { if (labelVal.trim() && labelVal !== editableLabel) onLabelChange!(labelVal.trim()); }}
+            onKeyDown={e => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }}
+            className="text-xs rounded-lg px-2 py-0.5 focus:outline-none w-36 flex-shrink-0"
+            style={{ background: "rgba(124,58,237,0.15)", border: "1px solid #7c3aed40", color: "#fff" }}
+          />
+          <div className="flex-1 min-w-0 ml-2">{children}</div>
+        </div>
+      ) : (
+        <div className="flex-1 min-w-0">{children}</div>
+      )}
       <button
         onClick={() => onToggle(rowKey)}
         title="Скрыть строку на всех карточках"

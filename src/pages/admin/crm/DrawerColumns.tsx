@@ -47,6 +47,7 @@ interface ColumnsProps {
   customFinRows: CustomFinRow[];
   addCustomFinRow: (label: string, block: "income" | "costs") => void;
   deleteCustomFinRow: (key: string) => void;
+  updateCustomFinRow: (key: string, label: string) => void;
 }
 
 export function DrawerColumns(props: ColumnsProps) {
@@ -54,7 +55,7 @@ export function DrawerColumns(props: ColumnsProps) {
     data, setData, client, save, blocks, hiddenBlocks, hideHidden, editingBlock, customBlocks,
     customRowVals, toggleHidden, setEditingBlock, saveWithLog, logAction, setCustomRowVals,
     deleteCustomBlock, updateCustomBlock, onDragStart, onDragOver, onDrop, onDropToCol, onAddBlock,
-    rowVisibility, toggleRowVisibility, customFinRows, addCustomFinRow, deleteCustomFinRow,
+    rowVisibility, toggleRowVisibility, customFinRows, addCustomFinRow, deleteCustomFinRow, updateCustomFinRow,
   } = props;
   const t = useTheme();
 
@@ -66,7 +67,7 @@ export function DrawerColumns(props: ColumnsProps) {
   const finProps = {
     data, editingBlock, hiddenBlocks, rowVisibility, customFinRows,
     toggleHidden, setEditingBlock, saveWithLog, logAction,
-    toggleRowVisibility, addCustomFinRow, deleteCustomFinRow,
+    toggleRowVisibility, addCustomFinRow, deleteCustomFinRow, updateCustomFinRow,
   };
 
   // ── renderBlock ──────────────────────────────────────────────────────────────
