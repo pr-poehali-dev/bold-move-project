@@ -16,15 +16,16 @@ function Avatar({ name, color }: { name: string; color: string }) {
 
 interface Props {
   client: Client;
+  colColor?: string;
   onOpen: () => void;
   onNextStep: (id: number, status: string) => void;
   dragging: boolean;
 }
 
-export default function KanbanCard({ client, onOpen, onNextStep, dragging }: Props) {
+export default function KanbanCard({ client, colColor, onOpen, onNextStep, dragging }: Props) {
   const t = useTheme();
   const [stepping, setStepping] = useState(false);
-  const color = STATUS_COLORS[client.status] || "#8b5cf6";
+  const color = colColor || STATUS_COLORS[client.status] || "#8b5cf6";
   const next = NEXT_STATUS[client.status];
   const nextLabel = NEXT_LABEL[client.status];
 

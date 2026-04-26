@@ -70,6 +70,7 @@ export function KanbanColumn({
               onDragEnd={onDragEnd}>
               <KanbanCard
                 client={c}
+                colColor={col.color}
                 dragging={dragging?.id === c.id}
                 onOpen={() => onOpen(c)}
                 onNextStep={onNextStep}

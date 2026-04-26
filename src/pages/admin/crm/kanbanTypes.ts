@@ -39,6 +39,14 @@ export const LS_GLOBAL_WIDTH = "kanban_global_width";
 export const LS_KEY    = "kanban_col_widths";
 export const LS_HIDDEN = "kanban_hidden_cols";
 export const LS_LABELS = "kanban_col_labels";
+export const LS_COLORS = "kanban_col_colors";
+
+export function loadColors(): Record<string, string> {
+  try { return JSON.parse(localStorage.getItem(LS_COLORS) || "{}"); } catch { return {}; }
+}
+export function saveColors(c: Record<string, string>) {
+  localStorage.setItem(LS_COLORS, JSON.stringify(c));
+}
 
 export function loadWidths(): Record<string, number> {
   try { return JSON.parse(localStorage.getItem(LS_KEY) || "{}"); } catch { return {}; }

@@ -7,8 +7,8 @@ import { KanbanHeader } from "./KanbanHeader";
 import { KanbanColumn } from "./KanbanColumn";
 import {
   KANBAN_COLS, ColId, DROP_STATUS,
-  LS_HIDDEN, LS_LABELS,
-  loadHidden, loadLabels,
+  LS_HIDDEN, LS_LABELS, LS_COLORS,
+  loadHidden, loadLabels, loadColors, saveColors,
   loadGlobalWidth, saveGlobalWidth,
 } from "./kanbanTypes";
 
@@ -27,6 +27,7 @@ export default function CrmKanban() {
 
   const [hiddenCols,   setHiddenCols]   = useState<Set<string>>(loadHidden);
   const [colLabels,    setColLabels]    = useState<Record<string, string>>(loadLabels);
+  const [colColors,    setColColors]    = useState<Record<string, string>>(loadColors);
   const [showSettings, setShowSettings] = useState(false);
 
   const handleWidthChange = (w: number) => {
@@ -58,6 +59,24 @@ export default function CrmKanban() {
       return next;
     });
   };
+
+  const saveColor = (colId: string, color: string) => {
+    setColColors(prev => {
+      const next = { ...prev, [colId]: color };
+      saveColors(next);
+      return next;
+    });
+  };
+
+  const resetColor = (colId: string) => {
+    setColColors(prev => {
+      const next = { ...prev }; delete next[colId];
+      saveColors(next);
+      return next;
+    });
+  };
+
+  const getColColor = (col: typeof KANBAN_COLS[number]) => colColors[col.id] || col.color;
 
   const load = () => {
     crmFetch("clients").then(d => {
@@ -117,7 +136,7 @@ export default function CrmKanban() {
         {visibleCols.map((col, colIdx) => (
           <KanbanColumn
             key={col.id}
-            col={col}
+            col={{ ...col, color: getColColor(col) }}
             label={colLabels[col.id] || col.label}
             colClients={clientsForCol(col)}
             width={globalWidth}
@@ -154,9 +173,12 @@ export default function CrmKanban() {
         <KanbanColSettings
           hiddenCols={hiddenCols}
           colLabels={colLabels}
+          colColors={colColors}
           onToggleHide={toggleHide}
           onSaveLabel={saveLabel}
           onResetLabel={resetLabel}
+          onSaveColor={saveColor}
+          onResetColor={resetColor}
           onClose={() => setShowSettings(false)}
         />
       )}
