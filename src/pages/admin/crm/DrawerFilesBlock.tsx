@@ -77,7 +77,7 @@ export function DrawerFilesBlock({ clientId, hiddenBlocks, toggleHidden, logActi
   };
 
   const handleDelete = async (file: ClientFile) => {
-    if (!window.confirm(`Удалить «${file.name}»?`)) return;
+    if (!window.confirm(`Точно удалить «${file.name}»?`)) return;
     await crmFetch("client_files", { method: "DELETE", body: JSON.stringify({ id: file.id, client_id: clientId }) });
     setFiles(prev => prev.filter(f => f.id !== file.id));
     if (lightboxId === file.id) setLightboxId(null);
@@ -100,7 +100,9 @@ export function DrawerFilesBlock({ clientId, hiddenBlocks, toggleHidden, logActi
 
       {/* Шапка: счётчик + кнопка загрузки */}
       <div className="flex items-center justify-between py-2" style={{ borderBottom: files.length > 0 ? `1px solid ${t.border2}` : "none" }}>
-        <span className="text-xs" style={{ color: t.textMute }}>{files.length} файлов</span>
+        <span className="text-xs" style={{ color: editMode ? "#06b6d4" : t.textMute }}>
+          {editMode ? "Режим редактирования" : `${files.length} файлов`}
+        </span>
         <button onClick={() => inputRef.current?.click()}
           className="text-xs text-violet-400/70 underline decoration-dashed hover:text-violet-300 transition flex items-center gap-1">
           {uploading
