@@ -30,12 +30,19 @@ export default function AnalyticsFinance({ s, costPie }: Props) {
     <div className="space-y-5">
 
       {/* Финансовые KPI */}
-      <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
-        <KpiCard icon="Banknote"   label="Сумма договоров" value={s.total_contract > 0 ? s.total_contract.toLocaleString("ru-RU") + " ₽" : "—"} color="#10b981" />
-        <KpiCard icon="Wallet"     label="Получено"        value={s.total_received > 0 ? s.total_received.toLocaleString("ru-RU") + " ₽" : "—"} sub="предоплата + доплата" color="#06b6d4" />
-        <KpiCard icon="Receipt"    label="Все затраты"     value={s.total_costs > 0 ? s.total_costs.toLocaleString("ru-RU") + " ₽" : "—"} color="#ef4444" />
-        <KpiCard icon="TrendingUp" label="Прибыль"         value={s.total_profit !== 0 ? (s.total_profit > 0 ? "+" : "") + s.total_profit.toLocaleString("ru-RU") + " ₽" : "—"} color={s.total_profit >= 0 ? "#10b981" : "#ef4444"} />
-      </div>
+      {(() => {
+        const income = s.total_contract + s.total_received;
+        const margin = income > 0 ? Math.round((s.total_profit / income) * 100) : 0;
+        return (
+          <div className="grid grid-cols-2 xl:grid-cols-5 gap-4">
+            <KpiCard icon="Banknote"   label="Сумма договоров" value={s.total_contract > 0 ? s.total_contract.toLocaleString("ru-RU") + " ₽" : "—"} color="#10b981" />
+            <KpiCard icon="Wallet"     label="Получено"        value={s.total_received > 0 ? s.total_received.toLocaleString("ru-RU") + " ₽" : "—"} sub="предоплата + доплата" color="#06b6d4" />
+            <KpiCard icon="Receipt"    label="Все затраты"     value={s.total_costs > 0 ? s.total_costs.toLocaleString("ru-RU") + " ₽" : "—"} color="#ef4444" />
+            <KpiCard icon="TrendingUp" label="Прибыль"         value={s.total_profit !== 0 ? (s.total_profit > 0 ? "+" : "") + s.total_profit.toLocaleString("ru-RU") + " ₽" : "—"} color={s.total_profit >= 0 ? "#10b981" : "#ef4444"} />
+            <KpiCard icon="Percent"    label="Маржа"           value={income > 0 ? `${margin}%` : "—"} sub="прибыль / доходы" color={margin >= 30 ? "#a78bfa" : margin >= 0 ? "#f59e0b" : "#ef4444"} />
+          </div>
+        );
+      })()}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
 
