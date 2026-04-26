@@ -50,7 +50,7 @@ export function AddFinRowInline({ block, onAdd, forceOpen, onClose }: {
   );
 }
 
-export function RowWithToggle({ rowKey, visible, onToggle, children, editMode, editableLabel, onLabelChange }: {
+export function RowWithToggle({ rowKey, visible, onToggle, children, editMode, editableLabel, onLabelChange, onDelete }: {
   rowKey: string;
   visible: boolean;
   onToggle: (key: string) => void;
@@ -58,6 +58,7 @@ export function RowWithToggle({ rowKey, visible, onToggle, children, editMode, e
   editMode?: boolean;
   editableLabel?: string;
   onLabelChange?: (label: string) => void;
+  onDelete?: () => void;
 }) {
   const [labelVal, setLabelVal] = useState(editableLabel || "");
 
@@ -66,6 +67,7 @@ export function RowWithToggle({ rowKey, visible, onToggle, children, editMode, e
   if (!visible) return null;
 
   const showLabelEdit = editMode && editableLabel !== undefined && onLabelChange;
+  const handleDelete = onDelete ?? (() => onToggle(rowKey));
 
   return (
     <div className="flex items-center gap-1">
@@ -84,11 +86,10 @@ export function RowWithToggle({ rowKey, visible, onToggle, children, editMode, e
       ) : (
         <div className="flex-1 min-w-0">{children}</div>
       )}
-      {/* Единая кнопка скрытия: тогл в режиме редактирования */}
       {editMode && (
         <button
-          onClick={() => onToggle(rowKey)}
-          title="Скрыть / показать строку"
+          onClick={handleDelete}
+          title="Удалить строку"
           className="flex-shrink-0 p-1 rounded-md text-red-400/50 hover:text-red-400 transition-all">
           <Icon name="X" size={11} />
         </button>
