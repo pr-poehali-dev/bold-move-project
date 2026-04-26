@@ -2,8 +2,8 @@ import { useState } from "react";
 import { STATUS_LABELS, STATUS_COLORS, Client } from "./crmApi";
 import Icon from "@/components/ui/icon";
 import { useTheme } from "./themeContext";
-import { NEXT_STATUS, NEXT_LABEL, INSTALL_STEPS } from "./kanbanTypes";
-import { ORDERS_TABS } from "./ordersTypes";
+import { NEXT_STATUS, NEXT_LABEL } from "./kanbanTypes";
+import { ORDERS_TABS, INSTALL_STEPS } from "./ordersTypes";
 
 function Avatar({ name, color }: { name: string; color: string }) {
   const initials = (name || "?").split(" ").map(w => w[0]).slice(0, 2).join("").toUpperCase();
