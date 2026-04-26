@@ -8,10 +8,11 @@ import { ActivityFeed, ActivityEvent, appendActivityLog } from "./ActivityFeed";
 import { AddBlockModal } from "./DrawerBlockEditor";
 import { DrawerColumns } from "./DrawerColumns";
 import {
-  BlockId, BlockDef, CustomBlockData,
+  BlockId, BlockDef, CustomBlockData, CustomFinRow,
   DEFAULT_BLOCKS, LS_BLOCKS, LS_HIDDEN,
   loadBlocks, loadHidden, loadCustomBlocks, saveCustomBlocks,
   loadRowVisibility, saveRowVisibility,
+  loadCustomFinRows, saveCustomFinRows,
 } from "./drawerTypes";
 
 interface Props {
@@ -33,6 +34,7 @@ export default function DrawerInfoTab({ data, client, setData, save, setComments
   const [customBlocks, setCustomBlocks]   = useState<CustomBlockData[]>(loadCustomBlocks);
   const [showAddBlock, setShowAddBlock]   = useState<0 | 1 | "wide" | null>(null);
   const [rowVisibility, setRowVisibility] = useState<Record<string, boolean>>(loadRowVisibility);
+  const [customFinRows, setCustomFinRows] = useState<CustomFinRow[]>(loadCustomFinRows);
 
   const toggleRowVisibility = (key: string) => {
     setRowVisibility(prev => {
@@ -40,6 +42,25 @@ export default function DrawerInfoTab({ data, client, setData, save, setComments
       saveRowVisibility(next);
       return next;
     });
+  };
+
+  const addCustomFinRow = (label: string, block: "income" | "costs") => {
+    const key = `custom_row_${Date.now()}`;
+    const newRow: CustomFinRow = { key, label, block };
+    const updated = [...customFinRows, newRow];
+    setCustomFinRows(updated);
+    saveCustomFinRows(updated);
+    setRowVisibility(prev => {
+      const next = { ...prev, [key]: true };
+      saveRowVisibility(next);
+      return next;
+    });
+  };
+
+  const deleteCustomFinRow = (key: string) => {
+    const updated = customFinRows.filter(r => r.key !== key);
+    setCustomFinRows(updated);
+    saveCustomFinRows(updated);
   };
   const [customRowVals, setCustomRowVals] = useState<Record<string, Record<number, string>>>(() => {
     try { return JSON.parse(localStorage.getItem(`custom_block_vals_${data.id}`) || "{}"); } catch { return {}; }
@@ -201,6 +222,9 @@ export default function DrawerInfoTab({ data, client, setData, save, setComments
             onReset={handleReset}
             rowVisibility={rowVisibility}
             toggleRowVisibility={toggleRowVisibility}
+            customFinRows={customFinRows}
+            addCustomFinRow={addCustomFinRow}
+            deleteCustomFinRow={deleteCustomFinRow}
           />
         </div>
 

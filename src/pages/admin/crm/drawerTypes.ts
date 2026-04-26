@@ -17,6 +17,22 @@ export const LS_BLOCKS       = "drawer_blocks_order";
 export const LS_HIDDEN       = "drawer_blocks_hidden";
 export const LS_CUSTOM       = "drawer_custom_blocks";
 export const LS_ROW_VIS      = "drawer_row_visibility";
+export const LS_CUSTOM_ROWS  = "drawer_custom_rows"; // кастомные строки доходов/затрат
+
+export interface CustomFinRow {
+  key: string;     // уникальный id типа "custom_row_1234"
+  label: string;   // название строки, например "Рекламация"
+  block: "income" | "costs";
+}
+
+export function loadCustomFinRows(): CustomFinRow[] {
+  try { return JSON.parse(localStorage.getItem(LS_CUSTOM_ROWS) || "[]"); }
+  catch { return []; }
+}
+
+export function saveCustomFinRows(rows: CustomFinRow[]) {
+  localStorage.setItem(LS_CUSTOM_ROWS, JSON.stringify(rows));
+}
 
 // Строки доходов и затрат — ключ → видимость (true = показывать)
 export const DEFAULT_ROW_VIS: Record<string, boolean> = {
