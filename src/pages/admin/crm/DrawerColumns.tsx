@@ -91,7 +91,7 @@ export function DrawerColumns(props: ColumnsProps) {
       case "object":   return <DrawerObjectBlock   {...infoProps} />;
       case "dates":    return <DrawerDatesBlock     {...infoProps} />;
       case "notes":    return <DrawerNotesBlock     {...infoProps} />;
-      case "files":    return <DrawerFilesBlock     {...infoProps} />;
+      case "files":    return <DrawerFilesBlock clientId={data.id} hiddenBlocks={hiddenBlocks} toggleHidden={toggleHidden} logAction={logAction} />;
       case "cancel":   return <DrawerCancelBlock    {...infoProps} />;
       case "income":   return <DrawerIncomeBlock    {...finProps}  />;
       case "costs":    return <DrawerCostsBlock     {...finProps}  />;

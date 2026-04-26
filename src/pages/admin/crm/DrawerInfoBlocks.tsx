@@ -1,7 +1,7 @@
 import type React from "react";
 import { useTheme } from "./themeContext";
 import { Client } from "./crmApi";
-import { InlineField, Section, FileField } from "./drawerComponents";
+import { InlineField, Section } from "./drawerComponents";
 import { BlockId, EditRow } from "./drawerTypes";
 import { BlockEditor } from "./DrawerBlockEditor";
 
@@ -139,15 +139,7 @@ export function DrawerNotesBlock(props: InfoBlocksProps) {
   />, "StickyNote", "Заметки", "#8b5cf6", false, data);
 }
 
-export function DrawerFilesBlock(props: InfoBlocksProps) {
-  const { data, save, logAction } = props;
-  const { wrap } = useInfoBlockWrap(props);
-  return wrap("files", <>
-    <FileField label="Фото до"         url={data.photo_before_url} accept="image/*"                    onUploaded={(url, name) => { save({ photo_before_url: url }); logAction("Image", "#06b6d4", `Фото до: ${name}`); }} />
-    <FileField label="Фото после"      url={data.photo_after_url}  accept="image/*"                    onUploaded={(url, name) => { save({ photo_after_url: url }); logAction("Image", "#06b6d4", `Фото после: ${name}`); }} />
-    <FileField label="Договор / Смета" url={data.document_url}     accept=".pdf,.doc,.docx,.xls,.xlsx" onUploaded={(url, name) => { save({ document_url: url }); logAction("FileText", "#06b6d4", `Документ: ${name}`); }} />
-  </>, "Paperclip", "Файлы", "#06b6d4", false, data);
-}
+export { DrawerFilesBlock } from "./DrawerFilesBlock";
 
 export function DrawerCancelBlock(props: InfoBlocksProps) {
   const { data, saveWithLog } = props;

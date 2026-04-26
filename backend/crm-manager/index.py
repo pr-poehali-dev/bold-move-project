@@ -103,6 +103,58 @@ def handler(event: dict, context) -> dict:
             cdn_url = f"https://cdn.poehali.dev/projects/{os.environ['AWS_ACCESS_KEY_ID']}/bucket/{key}"
             return ok({"url": cdn_url, "key": key})
 
+        # ── CLIENT FILES ─────────────────────────────────────────────────────
+        if resource == "client_files":
+            client_id = qs.get("client_id") or body.get("client_id")
+            if not client_id:
+                return err("client_id required")
+
+            if method == "GET":
+                cur.execute(
+                    f"SELECT id, url, name, type, created_at FROM {SCHEMA}.client_files WHERE client_id=%s ORDER BY created_at ASC",
+                    (client_id,)
+                )
+                cols = [d[0] for d in cur.description]
+                rows = [dict(zip(cols, r)) for r in cur.fetchall()]
+                return ok(rows)
+
+            if method == "POST":
+                url = body.get("url", "")
+                name = body.get("name", "файл")
+                ftype = body.get("type", "image")
+                if not url:
+                    return err("url required")
+                cur.execute(
+                    f"INSERT INTO {SCHEMA}.client_files (client_id, url, name, type) VALUES (%s,%s,%s,%s) RETURNING id",
+                    (client_id, url, name, ftype)
+                )
+                new_id = cur.fetchone()[0]
+                conn.commit()
+                return ok({"id": new_id, "url": url, "name": name, "type": ftype})
+
+            if method == "PUT":
+                file_id = body.get("id")
+                name = body.get("name", "")
+                if not file_id or not name:
+                    return err("id and name required")
+                cur.execute(
+                    f"UPDATE {SCHEMA}.client_files SET name=%s WHERE id=%s AND client_id=%s",
+                    (name, file_id, client_id)
+                )
+                conn.commit()
+                return ok({"ok": True})
+
+            if method == "DELETE":
+                file_id = body.get("id")
+                if not file_id:
+                    return err("id required")
+                cur.execute(
+                    f"DELETE FROM {SCHEMA}.client_files WHERE id=%s AND client_id=%s",
+                    (file_id, client_id)
+                )
+                conn.commit()
+                return ok({"ok": True})
+
         # ── CLIENTS ──────────────────────────────────────────────────────────
         if resource == "clients":
             if method == "GET":

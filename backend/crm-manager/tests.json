@@ -37,6 +37,12 @@
       "method": "GET",
       "path": "/?r=calendar-events",
       "expectedStatus": 200
+    },
+    {
+      "name": "GET client files",
+      "method": "GET",
+      "path": "/?r=client_files&client_id=1",
+      "expectedStatus": 200
     }
   ]
 }
