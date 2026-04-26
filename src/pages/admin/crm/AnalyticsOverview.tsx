@@ -1,4 +1,4 @@
-import { useState } from "react";
+
 import Icon from "@/components/ui/icon";
 import { useTheme } from "./themeContext";
 import { STATUS_LABELS, STATUS_COLORS, Client } from "./crmApi";
@@ -35,22 +35,11 @@ interface Props {
   funnelData: { label: string; count: number; color: string; pct: number }[];
   statusPie: StatusEntry[];
   recentClients: Client[];
-  allClients: Client[];
   onSelectClient: (c: Client) => void;
 }
 
-export default function AnalyticsOverview({ s, convMeasure, convContract, convDone, cancelRate, funnelData, statusPie, recentClients, allClients, onSelectClient }: Props) {
+export default function AnalyticsOverview({ s, convMeasure, convContract, convDone, cancelRate, funnelData, statusPie, recentClients, onSelectClient }: Props) {
   const t = useTheme();
-  const [activeStatus, setActiveStatus] = useState<StatusEntry | null>(null);
-  const [statusSearch, setStatusSearch] = useState("");
-  const statusClients = activeStatus
-    ? allClients.filter(c => {
-        if (c.status !== activeStatus.status) return false;
-        if (!statusSearch) return true;
-        const q = statusSearch.toLowerCase();
-        return (c.client_name || "").toLowerCase().includes(q) || (c.phone || "").includes(q);
-      })
-    : [];
 
   return (
     <div className="space-y-5">
@@ -71,8 +60,8 @@ export default function AnalyticsOverview({ s, convMeasure, convContract, convDo
         <KpiCard icon="XCircle"       label="Процент отказов"    value={`${cancelRate}%`}   sub={`${s.total_cancel} отказников`}           color="#ef4444" />
       </div>
 
-      {/* Воронка + последние заявки */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      {/* Три блока в один ряд */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
 
         {/* Воронка продаж */}
         <div className="rounded-2xl p-5" style={{ background: t.surface, border: `1px solid ${t.border}` }}>
@@ -112,10 +101,11 @@ export default function AnalyticsOverview({ s, convMeasure, convContract, convDo
               <span className="text-sm">Заявок пока нет</span>
             </div>
           ) : (
-            <div className="divide-y" style={{ borderColor: t.border2 }}>
-              {recentClients.map(c => (
+            <div>
+              {recentClients.map((c, i) => (
                 <button key={c.id} onClick={() => onSelectClient(c)}
-                  className="w-full flex items-center gap-3 py-2.5 text-left transition hover:opacity-80 group">
+                  className="w-full flex items-center gap-3 py-2 text-left transition hover:opacity-80 group"
+                  style={{ borderTop: i > 0 ? `1px solid ${t.border}22` : "none" }}>
                   <div className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 text-xs font-bold"
                     style={{ background: (STATUS_COLORS[c.status] || "#8b5cf6") + "25", color: STATUS_COLORS[c.status] || "#8b5cf6" }}>
                     {(c.client_name || "?")[0].toUpperCase()}
@@ -134,20 +124,13 @@ export default function AnalyticsOverview({ s, convMeasure, convContract, convDo
             </div>
           )}
         </div>
-      </div>
 
-      {/* Распределение по статусам — карточки + список */}
-      {statusPie.length > 0 && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-
-          {/* Левая колонка — карточки статусов */}
+        {/* Распределение по статусам */}
+        {statusPie.length > 0 && (
           <div className="rounded-2xl p-5" style={{ background: t.surface, border: `1px solid ${t.border}` }}>
             <div className="flex items-center gap-2 mb-4">
               <div className="w-1 h-4 rounded-full bg-violet-500" />
               <span className="text-sm font-bold" style={{ color: t.text }}>Распределение по статусам</span>
-              <span className="ml-auto text-[10px] px-2 py-0.5 rounded-lg" style={{ color: t.textMute, background: t.surface2 }}>
-                нажми → список
-              </span>
             </div>
             <div className="space-y-2">
               {(() => {
@@ -157,112 +140,27 @@ export default function AnalyticsOverview({ s, convMeasure, convContract, convDo
                   .sort((a, b) => b.value - a.value)
                   .map(sp => {
                     const pct = Math.round((sp.value / maxVal) * 100);
-                    const isActive = activeStatus?.status === sp.status;
                     return (
-                      <button
-                        key={sp.status}
-                        onClick={() => { setActiveStatus(prev => prev?.status === sp.status ? null : sp); setStatusSearch(""); }}
-                        className="w-full text-left rounded-xl px-3 py-2.5 transition"
-                        style={{
-                          background: isActive ? sp.color + "15" : t.surface2,
-                          border: `1px solid ${isActive ? sp.color + "50" : "transparent"}`,
-                        }}>
+                      <div key={sp.status} className="rounded-xl px-3 py-2.5" style={{ background: t.surface2 }}>
                         <div className="flex items-center justify-between mb-1.5">
                           <div className="flex items-center gap-2">
                             <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: sp.color }} />
-                            <span className="text-xs font-medium" style={{ color: isActive ? sp.color : t.textSub }}>{sp.name}</span>
+                            <span className="text-xs font-medium" style={{ color: t.textSub }}>{sp.name}</span>
                           </div>
-                          <span className="text-sm font-bold" style={{ color: isActive ? sp.color : t.text }}>{sp.value}</span>
+                          <span className="text-sm font-bold" style={{ color: t.text }}>{sp.value}</span>
                         </div>
                         <div className="h-1 rounded-full overflow-hidden" style={{ background: t.border }}>
                           <div className="h-full rounded-full transition-all duration-500"
-                            style={{ width: `${pct}%`, background: sp.color, opacity: isActive ? 1 : 0.5 }} />
+                            style={{ width: `${pct}%`, background: sp.color, opacity: 0.7 }} />
                         </div>
-                      </button>
+                      </div>
                     );
                   });
               })()}
             </div>
           </div>
-
-          {/* Правая колонка — список клиентов */}
-          <div className="rounded-2xl overflow-hidden" style={{ border: `1px solid ${activeStatus ? activeStatus.color + "35" : t.border}`, background: t.surface, transition: "border-color 0.2s" }}>
-            {!activeStatus ? (
-              <div className="flex flex-col items-center justify-center h-full min-h-48 gap-3" style={{ color: t.textMute }}>
-                <Icon name="MousePointerClick" size={28} className="opacity-20" />
-                <span className="text-sm">Выбери статус слева</span>
-                <span className="text-xs opacity-60">чтобы увидеть клиентов</span>
-              </div>
-            ) : (
-              <>
-                {/* Шапка */}
-                <div className="flex items-center justify-between px-4 py-3"
-                  style={{ background: activeStatus.color + "10", borderBottom: `1px solid ${activeStatus.color}25` }}>
-                  <div className="flex items-center gap-2">
-                    <div className="w-2.5 h-2.5 rounded-full" style={{ background: activeStatus.color }} />
-                    <span className="text-sm font-semibold" style={{ color: activeStatus.color }}>{activeStatus.name}</span>
-                    <span className="text-xs px-1.5 py-0.5 rounded-md font-bold"
-                      style={{ background: activeStatus.color + "20", color: activeStatus.color }}>
-                      {statusSearch
-                        ? `${statusClients.length} из ${allClients.filter(c => c.status === activeStatus.status).length}`
-                        : statusClients.length}
-                    </span>
-                  </div>
-                  <button onClick={() => { setActiveStatus(null); setStatusSearch(""); }} className="p-1 rounded-lg transition hover:opacity-60" style={{ color: t.textMute }}>
-                    <Icon name="X" size={14} />
-                  </button>
-                </div>
-                {/* Поиск */}
-                <div className="px-3 py-2" style={{ borderBottom: `1px solid ${t.border2}` }}>
-                  <div className="relative">
-                    <Icon name="Search" size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2" style={{ color: t.textMute }} />
-                    <input
-                      value={statusSearch}
-                      onChange={e => setStatusSearch(e.target.value)}
-                      placeholder="Поиск по имени, телефону..."
-                      className="w-full rounded-lg pl-7 pr-3 py-1.5 text-xs focus:outline-none"
-                      style={{ background: t.surface2, border: `1px solid ${t.border}`, color: t.text }}
-                    />
-                    {statusSearch && (
-                      <button onClick={() => setStatusSearch("")} className="absolute right-2 top-1/2 -translate-y-1/2" style={{ color: t.textMute }}>
-                        <Icon name="X" size={11} />
-                      </button>
-                    )}
-                  </div>
-                </div>
-                {/* Список */}
-                <div className="divide-y overflow-y-auto" style={{ borderColor: t.border2, maxHeight: 280 }}>
-                  {statusClients.length === 0 ? (
-                    <div className="py-10 text-center text-sm" style={{ color: t.textMute }}>
-                      {statusSearch ? "Ничего не найдено" : "Нет клиентов"}
-                    </div>
-                  ) : statusClients.map(c => (
-                    <button key={c.id} onClick={() => onSelectClient(c)}
-                      className="w-full flex items-center gap-3 px-4 py-2.5 text-left transition hover:opacity-80 group">
-                      <div className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 text-xs font-bold"
-                        style={{ background: activeStatus.color + "20", color: activeStatus.color }}>
-                        {(c.client_name || "?")[0].toUpperCase()}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="text-xs font-medium truncate" style={{ color: t.text }}>{c.client_name || "Без имени"}</div>
-                        <div className="text-[10px] truncate" style={{ color: t.textMute }}>
-                          {c.phone || "—"}{c.address ? ` · ${c.address}` : ""}
-                        </div>
-                      </div>
-                      {c.contract_sum ? (
-                        <span className="text-xs font-semibold text-emerald-500 flex-shrink-0">
-                          {c.contract_sum.toLocaleString("ru-RU")} ₽
-                        </span>
-                      ) : null}
-                      <Icon name="ChevronRight" size={12} style={{ color: t.textMute }} className="flex-shrink-0 opacity-0 group-hover:opacity-100 transition" />
-                    </button>
-                  ))}
-                </div>
-              </>
-            )}
-          </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 }

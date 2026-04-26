@@ -103,7 +103,6 @@ export default function CrmAnalytics() {
           funnelData={funnelData}
           statusPie={statusPie}
           recentClients={recentClients}
-          allClients={allClients}
           onSelectClient={setDrawerClient}
         />
       )}
