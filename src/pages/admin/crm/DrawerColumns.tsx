@@ -114,6 +114,8 @@ export function DrawerColumns(props: ColumnsProps) {
           data_id={data.id}
           hiddenBlocks={hiddenBlocks}
           customRowVals={customRowVals}
+          editingBlock={editingBlock}
+          setEditingBlock={setEditingBlock}
           toggleHidden={toggleHidden}
           deleteCustomBlock={deleteCustomBlock}
           setCustomRowVals={setCustomRowVals}

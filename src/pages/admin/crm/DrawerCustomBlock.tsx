@@ -1,12 +1,15 @@
 import { useTheme } from "./themeContext";
 import { Section, FileField } from "./drawerComponents";
-import { BlockId, CustomBlockData } from "./drawerTypes";
+import { BlockId, CustomBlockData, EditRow } from "./drawerTypes";
+import { BlockEditor } from "./DrawerBlockEditor";
 
-export function DrawerCustomBlock({ cb, data_id, hiddenBlocks, customRowVals, toggleHidden, deleteCustomBlock, setCustomRowVals, logAction }: {
+export function DrawerCustomBlock({ cb, data_id, hiddenBlocks, customRowVals, editingBlock, setEditingBlock, toggleHidden, deleteCustomBlock, setCustomRowVals, logAction }: {
   cb: CustomBlockData;
   data_id: number;
   hiddenBlocks: Set<BlockId>;
   customRowVals: Record<string, Record<number, string>>;
+  editingBlock: BlockId | null;
+  setEditingBlock: (id: BlockId | null) => void;
   toggleHidden: (id: BlockId) => void;
   deleteCustomBlock: (id: string) => void;
   setCustomRowVals: React.Dispatch<React.SetStateAction<Record<string, Record<number, string>>>>;
@@ -14,12 +17,27 @@ export function DrawerCustomBlock({ cb, data_id, hiddenBlocks, customRowVals, to
 }) {
   const t = useTheme();
   const isHidden = hiddenBlocks.has(cb.id);
+  const isEditing = editingBlock === cb.id;
   const vals = customRowVals[cb.id] || {};
+
+  const editRows: EditRow[] = cb.rows
+    .filter(r => r.type !== "file")
+    .map((row, i) => ({ label: row.label, value: vals[i] || "", key: String(i) }));
+
+  const handleSave = (rows: EditRow[]) => {
+    const next = { ...customRowVals, [cb.id]: {} as Record<number, string> };
+    rows.forEach((r, i) => { next[cb.id][i] = r.value; });
+    setCustomRowVals(next);
+    localStorage.setItem(`custom_block_vals_${data_id}`, JSON.stringify(next));
+    logAction("Edit3", cb.color, `${cb.title}: сохранено`);
+    setEditingBlock(null);
+  };
 
   return (
     <Section key={cb.id} icon={cb.icon} title={cb.title} color={cb.color}
       hidden={isHidden}
       onToggleHidden={() => toggleHidden(cb.id)}
+      onEdit={() => setEditingBlock(isEditing ? null : cb.id as BlockId)}
       onDelete={() => { if (confirm(`Удалить блок «${cb.title}»?`)) deleteCustomBlock(cb.id); }}>
       {cb.rows.map((row, i) => (
         row.type === "file" ? (
@@ -56,6 +74,13 @@ export function DrawerCustomBlock({ cb, data_id, hiddenBlocks, customRowVals, to
           </div>
         )
       ))}
+      {isEditing && (
+        <BlockEditor
+          rows={editRows}
+          onSave={handleSave}
+          onClose={() => setEditingBlock(null)}
+        />
+      )}
     </Section>
   );
 }
