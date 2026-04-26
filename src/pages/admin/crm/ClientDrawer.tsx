@@ -24,7 +24,7 @@ export default function ClientDrawer({ client, allClientOrders, onClose, onUpdat
   const [editingName, setEditingName] = useState(false);
   const nameValRef                    = useRef("");
   const [copied, setCopied]           = useState(false);
-  const [hideHidden, setHideHidden]   = useState(false);
+  const [hideHidden, setHideHidden]   = useState(() => localStorage.getItem("drawer_hide_hidden") === "true");
 
 
 
@@ -103,7 +103,7 @@ export default function ClientDrawer({ client, allClientOrders, onClose, onUpdat
             {saving && <div className="w-4 h-4 border-2 border-violet-500 border-t-transparent rounded-full animate-spin" />}
             {copied && <span className="text-xs text-violet-300 whitespace-nowrap">Скопировано!</span>}
             <button
-              onClick={() => setHideHidden(v => !v)}
+              onClick={() => setHideHidden(v => { const next = !v; localStorage.setItem("drawer_hide_hidden", String(next)); return next; })}
               className="p-2 rounded-lg hover:bg-white/5 transition"
               style={{ color: hideHidden ? "#a78bfa" : t.textMute }}
               title={hideHidden ? "Показать скрытые блоки" : "Скрыть скрытые блоки"}
