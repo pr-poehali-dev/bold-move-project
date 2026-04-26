@@ -29,7 +29,7 @@ export function KanbanColumn({
   onOpen, onNextStep, onStartResize, resizeBorderColor,
 }: KanbanColumnProps) {
   const t = useTheme();
-  const revenue = colClients.reduce((s, c) => s + (c.contract_sum || 0), 0);
+  const revenue = colClients.reduce((s, c) => s + (Number(c.contract_sum) || 0), 0);
 
   return (
     <div className="flex flex-shrink-0" style={{ width }}>

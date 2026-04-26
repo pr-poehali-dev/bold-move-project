@@ -54,7 +54,7 @@ export function OrdersClientRow({ c, onClick, onNextStep }: {
             {STATUS_LABELS[c.status] || c.status}
           </span>
           {c.contract_sum ? (
-            <span className="text-xs font-bold text-emerald-500">{c.contract_sum.toLocaleString("ru-RU")} ₽</span>
+            <span className="text-xs font-bold text-emerald-500">{Number(c.contract_sum).toLocaleString("ru-RU")} ₽</span>
           ) : null}
         </div>
         <div onClick={e => e.stopPropagation()}>

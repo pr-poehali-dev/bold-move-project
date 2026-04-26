@@ -109,11 +109,11 @@ export function OrdersClientCard({ c, onClick, onNextStep }: {
           <div className="flex items-center justify-between text-xs pt-2.5 mt-1"
             style={{ borderTop: `1px solid ${t.border2}` }}>
             {c.contract_sum
-              ? <span className="font-bold text-emerald-500">{c.contract_sum.toLocaleString("ru-RU")} ₽</span>
+              ? <span className="font-bold text-emerald-500">{Number(c.contract_sum).toLocaleString("ru-RU")} ₽</span>
               : <span />}
             {(c.prepayment || c.extra_payment) && (
               <span style={{ color: t.textMute }}>
-                оплачено {((c.prepayment||0)+(c.extra_payment||0)).toLocaleString("ru-RU")} ₽
+                оплачено {((Number(c.prepayment)||0)+(Number(c.extra_payment)||0)).toLocaleString("ru-RU")} ₽
               </span>
             )}
           </div>

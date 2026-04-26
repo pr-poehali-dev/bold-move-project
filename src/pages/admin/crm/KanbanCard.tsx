@@ -74,7 +74,7 @@ export default function KanbanCard({ client, onOpen, onNextStep, dragging }: Pro
 
         {/* Сумма */}
         {client.contract_sum ? (
-          <div className="text-xs font-bold text-emerald-500">{client.contract_sum.toLocaleString("ru-RU")} ₽</div>
+          <div className="text-xs font-bold text-emerald-500">{Number(client.contract_sum).toLocaleString("ru-RU")} ₽</div>
         ) : null}
       </div>
 
