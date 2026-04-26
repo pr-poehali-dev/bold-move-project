@@ -23,7 +23,7 @@ export function InlineField({ label, value, onSave, type = "text", placeholder =
     if (!value && value !== 0) return null;
     if (type === "datetime-local")
       return new Date(String(value)).toLocaleString("ru-RU", { day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" });
-    if (type === "number") return Number(value).toLocaleString("ru-RU");
+    if (type === "number") return Math.round(Number(value)).toLocaleString("ru-RU");
     return String(value);
   };
 
