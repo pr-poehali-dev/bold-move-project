@@ -21,9 +21,10 @@ interface Props {
   setData: (c: Client) => void;
   save: (patch: Partial<Client>) => void;
   setComments: React.Dispatch<React.SetStateAction<{ text: string; date: string }[]>>;
+  hideHidden?: boolean;
 }
 
-export default function DrawerInfoTab({ data, client, setData, save, setComments }: Props) {
+export default function DrawerInfoTab({ data, client, setData, save, setComments, hideHidden }: Props) {
   const t = useTheme();
 
   // ── state ────────────────────────────────────────────────────────────────────
@@ -174,21 +175,25 @@ export default function DrawerInfoTab({ data, client, setData, save, setComments
     <div className="px-6 py-4 space-y-3">
 
       {/* Статус воронки — на всю ширину */}
-      <Section icon="GitBranch" title="Статус воронки" color="#8b5cf6"
-        onToggleHidden={() => toggleHidden("status")}
-        hidden={hiddenBlocks.has("status")}>
-        <StatusSelector status={data.status} onSave={s => {
-          saveWithLog({ status: s }, `Статус → ${STATUS_LABELS[s] || s}`, "GitBranch", "#8b5cf6");
-        }} />
-      </Section>
+      {(!hideHidden || !hiddenBlocks.has("status")) && (
+        <Section icon="GitBranch" title="Статус воронки" color="#8b5cf6"
+          onToggleHidden={() => toggleHidden("status")}
+          hidden={hiddenBlocks.has("status")}>
+          <StatusSelector status={data.status} onSave={s => {
+            saveWithLog({ status: s }, `Статус → ${STATUS_LABELS[s] || s}`, "GitBranch", "#8b5cf6");
+          }} />
+        </Section>
+      )}
 
       {/* P&L — на всю ширину под воронкой */}
-      <DrawerPLBlock
-        data={data}
-        isHidden={hiddenBlocks.has("pl")}
-        toggleHidden={toggleHidden}
-        customFinRows={customFinRows}
-      />
+      {(!hideHidden || !hiddenBlocks.has("pl")) && (
+        <DrawerPLBlock
+          data={data}
+          isHidden={hiddenBlocks.has("pl")}
+          toggleHidden={toggleHidden}
+          customFinRows={customFinRows}
+        />
+      )}
 
       {/* Три колонки */}
       <div className="grid grid-cols-[1fr_1fr_320px] gap-3">
@@ -202,6 +207,7 @@ export default function DrawerInfoTab({ data, client, setData, save, setComments
             save={save}
             blocks={blocks}
             hiddenBlocks={hiddenBlocks}
+            hideHidden={hideHidden}
             editingBlock={editingBlock}
             customBlocks={customBlocks}
             customRowVals={customRowVals}

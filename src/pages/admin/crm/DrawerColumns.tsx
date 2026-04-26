@@ -21,6 +21,7 @@ interface ColumnsProps {
   save: (patch: Partial<Client>) => void;
   blocks: BlockDef[];
   hiddenBlocks: Set<BlockId>;
+  hideHidden?: boolean;
   editingBlock: BlockId | null;
   customBlocks: CustomBlockData[];
   customRowVals: Record<string, Record<number, string>>;
@@ -49,7 +50,7 @@ interface ColumnsProps {
 
 export function DrawerColumns(props: ColumnsProps) {
   const {
-    data, setData, client, save, blocks, hiddenBlocks, editingBlock, customBlocks,
+    data, setData, client, save, blocks, hiddenBlocks, hideHidden, editingBlock, customBlocks,
     customRowVals, toggleHidden, setEditingBlock, saveWithLog, logAction, setCustomRowVals,
     deleteCustomBlock, onDragStart, onDragOver, onDrop, onDropToCol, onAddBlock,
     rowVisibility, toggleRowVisibility, customFinRows, addCustomFinRow, deleteCustomFinRow,
@@ -131,9 +132,11 @@ export function DrawerColumns(props: ColumnsProps) {
     onDrop: () => { setDropOverCol(null); onDropToCol(col); },
   });
 
-  const col0Narrow = col0.filter(b => b.id !== "status" && !b.wide);
-  const col1Narrow = col1.filter(b => !b.wide);
+  const isVisible = (b: BlockDef) => !hideHidden || !hiddenBlocks.has(b.id as BlockId);
+  const col0Narrow = col0.filter(b => b.id !== "status" && !b.wide).filter(isVisible);
+  const col1Narrow = col1.filter(b => !b.wide).filter(isVisible);
   const wideBlocks = [...col0, ...col1].filter(b => b.wide && b.id !== "status")
+    .filter(isVisible)
     .sort((a, b) => (a.col * 100 + a.order) - (b.col * 100 + b.order));
 
   return (

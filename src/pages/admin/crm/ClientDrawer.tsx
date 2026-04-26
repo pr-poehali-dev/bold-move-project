@@ -24,6 +24,7 @@ export default function ClientDrawer({ client, allClientOrders, onClose, onUpdat
   const [editingName, setEditingName] = useState(false);
   const nameValRef                    = useRef("");
   const [copied, setCopied]           = useState(false);
+  const [hideHidden, setHideHidden]   = useState(false);
 
 
 
@@ -102,16 +103,12 @@ export default function ClientDrawer({ client, allClientOrders, onClose, onUpdat
             {saving && <div className="w-4 h-4 border-2 border-violet-500 border-t-transparent rounded-full animate-spin" />}
             {copied && <span className="text-xs text-violet-300 whitespace-nowrap">Скопировано!</span>}
             <button
-              onClick={() => {
-                navigator.clipboard.writeText(window.location.href);
-                setCopied(true);
-                setTimeout(() => setCopied(false), 2000);
-              }}
+              onClick={() => setHideHidden(v => !v)}
               className="p-2 rounded-lg hover:bg-white/5 transition"
-              style={{ color: t.textMute }}
-              title="Скопировать ссылку"
+              style={{ color: hideHidden ? "#a78bfa" : t.textMute }}
+              title={hideHidden ? "Показать скрытые блоки" : "Скрыть скрытые блоки"}
             >
-              <Icon name="Eye" size={15} />
+              <Icon name={hideHidden ? "EyeOff" : "Eye"} size={15} />
             </button>
             <button onClick={() => setConfirmDelete(true)} className="p-2 rounded-lg hover:bg-red-500/10 transition" style={{ color: t.textMute }}>
               <Icon name="Trash2" size={15} />
@@ -197,6 +194,7 @@ export default function ClientDrawer({ client, allClientOrders, onClose, onUpdat
               setData={setData}
               save={save}
               setComments={setComments}
+              hideHidden={hideHidden}
             />
           )}
         </div>
