@@ -103,19 +103,15 @@ export default function ClientDrawer({ client, allClientOrders, onClose, onUpdat
             {copied && <span className="text-xs text-violet-300 whitespace-nowrap">Скопировано!</span>}
             <button
               onClick={() => {
-                if (navigator.share) {
-                  navigator.share({ title: data.client_name || "", text: data.phone || "", url: window.location.href });
-                } else {
-                  navigator.clipboard.writeText(window.location.href);
-                  setCopied(true);
-                  setTimeout(() => setCopied(false), 2000);
-                }
+                navigator.clipboard.writeText(window.location.href);
+                setCopied(true);
+                setTimeout(() => setCopied(false), 2000);
               }}
               className="p-2 rounded-lg hover:bg-white/5 transition"
               style={{ color: t.textMute }}
-              title="Поделиться"
+              title="Скопировать ссылку"
             >
-              <Icon name="Share2" size={15} />
+              <Icon name="Eye" size={15} />
             </button>
             <button onClick={() => setConfirmDelete(true)} className="p-2 rounded-lg hover:bg-red-500/10 transition" style={{ color: t.textMute }}>
               <Icon name="Trash2" size={15} />

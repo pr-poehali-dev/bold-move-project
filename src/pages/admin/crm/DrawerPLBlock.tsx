@@ -52,7 +52,7 @@ export function DrawerPLBlock({ data, isHidden, toggleHidden, customFinRows }: {
         <Icon name="TrendingUp" size={13} style={{ color: "#10b981" }} />
         <span className="text-xs font-bold uppercase tracking-wider text-white flex-1">P&L по заказу</span>
         <button onClick={() => toggleHidden("pl")}
-          className="p-1 rounded-md opacity-0 group-hover/pl:opacity-100 transition hover:bg-white/10"
+          className={`p-1 rounded-md transition hover:bg-white/10 ${isHidden ? "opacity-100" : "opacity-0 group-hover/pl:opacity-100"}`}
           style={{ color: isHidden ? "#10b981" : "#a3a3a3" }}>
           <Icon name={isHidden ? "EyeOff" : "Eye"} size={12} />
         </button>

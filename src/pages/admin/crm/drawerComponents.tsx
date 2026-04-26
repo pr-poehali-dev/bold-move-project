@@ -81,9 +81,9 @@ export function Section({ icon, title, color = "#8b5cf6", children, onEdit, hidd
           <Icon name={icon} size={12} style={{ color }} />
         </div>
         <span className="text-xs font-bold uppercase tracking-wider flex-1" style={{ color }}>{title}</span>
-        <div className="flex items-center gap-1 opacity-0 group-hover/section:opacity-100 transition">
+        <div className={`flex items-center gap-1 transition ${hidden ? "opacity-100" : "opacity-0 group-hover/section:opacity-100"}`}>
           {onToggleHidden && (
-            <button onClick={onToggleHidden} title={hidden ? "Показать" : "Скрыть"}
+            <button onClick={onToggleHidden} title={hidden ? "Показать блок" : "Скрыть блок"}
               className="p-1 rounded-md transition hover:bg-white/10"
               style={{ color: hidden ? color : "#a3a3a3" }}>
               <Icon name={hidden ? "EyeOff" : "Eye"} size={12} />
