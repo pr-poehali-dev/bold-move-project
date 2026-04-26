@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useTheme } from "./themeContext";
 import { Section, FileField } from "./drawerComponents";
 import { BlockId, CustomBlockData } from "./drawerTypes";
-import { RowWithToggle, HiddenRowToggle } from "./DrawerFinRowHelpers";
+import { RowWithToggle } from "./DrawerFinRowHelpers";
 
 const LS_CUSTOM_VIS = "crm_custom_row_visibility";
 function loadCustomVis(): Record<string, boolean> {
@@ -37,26 +37,7 @@ export function DrawerCustomBlock({ cb, data_id, hiddenBlocks, customRowVals, ed
   const isVisible = (key: string) => vis[key] !== false;
 
   const renameRow = (i: number, label: string) => {
-    const updatedRows = cb.rows.map((r, j) => j === i ? { ...r, label } : r);
-    updateCustomBlock(cb.id, { ...cb, rows: updatedRows });
-  };
-
-  const deleteRow = (i: number) => {
-    const rowKey = `${cb.id}_row_${i}`;
-    // удаляем строку из метаданных
-    const updatedRows = cb.rows.filter((_, j) => j !== i);
-    updateCustomBlock(cb.id, { ...cb, rows: updatedRows });
-    // сдвигаем значения
-    setCustomRowVals(prev => {
-      const old = prev[cb.id] || {};
-      const next: Record<number, string> = {};
-      let ni = 0;
-      cb.rows.forEach((_, j) => { if (j !== i) { next[ni] = old[j] || ""; ni++; } });
-      const newVals = { ...prev, [cb.id]: next };
-      localStorage.setItem(`custom_block_vals_${data_id}`, JSON.stringify(newVals));
-      return newVals;
-    });
-    toggleVis(rowKey); // скрываем если была видима
+    updateCustomBlock(cb.id, { ...cb, rows: cb.rows.map((r, j) => j === i ? { ...r, label } : r) });
   };
 
   const setValue = (i: number, v: string) => {
@@ -76,32 +57,19 @@ export function DrawerCustomBlock({ cb, data_id, hiddenBlocks, customRowVals, ed
 
       {cb.rows.map((row, i) => {
         const rowKey = `${cb.id}_row_${i}`;
-        if (row.type === "file") {
-          return (
-            <div key={i}>
-              {isVisible(rowKey) ? (
-                <RowWithToggle rowKey={rowKey} visible onToggle={toggleVis} editMode={editMode}
-                  editableLabel={row.label} onLabelChange={l => renameRow(i, l)}
-                  onDelete={() => deleteRow(i)}>
-                  <FileField label={row.label} url={vals[i] || null}
-                    onUploaded={(url, name) => {
-                      setValue(i, url);
-                      logAction("Upload", cb.color, `${cb.title} / ${row.label}: ${name}`);
-                    }} />
-                </RowWithToggle>
-              ) : (
-                <HiddenRowToggle key={rowKey} rowKey={rowKey} label={row.label} onToggle={toggleVis} />
-              )}
-            </div>
-          );
-        }
+        const visible = isVisible(rowKey);
         return (
-          <div key={i}>
-            {isVisible(rowKey) ? (
-              <RowWithToggle rowKey={rowKey} visible onToggle={toggleVis} editMode={editMode}
-                editableLabel={row.label} onLabelChange={l => renameRow(i, l)}
-                onDelete={() => deleteRow(i)}>
-                <div className="flex items-center justify-between py-2 group"
+          <div key={i} style={{ opacity: !visible && editMode ? 0.35 : 1 }}>
+            <RowWithToggle rowKey={rowKey} visible={visible || editMode} onToggle={toggleVis} editMode={editMode}
+              editableLabel={row.label} onLabelChange={l => renameRow(i, l)}>
+              {row.type === "file" ? (
+                <FileField label={row.label} url={vals[i] || null}
+                  onUploaded={(url, name) => {
+                    setValue(i, url);
+                    logAction("Upload", cb.color, `${cb.title} / ${row.label}: ${name}`);
+                  }} />
+              ) : (
+                <div className="flex items-center justify-between py-2"
                   style={{ borderBottom: `1px solid ${t.border2}` }}>
                   <span className="text-xs w-36 flex-shrink-0" style={{ color: "#d4d4d4" }}>{row.label}</span>
                   <input
@@ -115,22 +83,16 @@ export function DrawerCustomBlock({ cb, data_id, hiddenBlocks, customRowVals, ed
                     onBlurCapture={e => { e.target.style.background = "transparent"; }}
                   />
                 </div>
-              </RowWithToggle>
-            ) : (
-              <HiddenRowToggle key={rowKey} rowKey={rowKey} label={row.label} onToggle={toggleVis} />
-            )}
+              )}
+            </RowWithToggle>
           </div>
         );
       })}
 
-      {/* Добавить строку в режиме редактирования */}
       {editMode && (
-        <div className="flex items-center gap-1.5 mt-1 mb-1">
-          <AddCustomRow color={cb.color} onAdd={label => {
-            const updatedRows = [...cb.rows, { label, type: "text" as const, value: "" }];
-            updateCustomBlock(cb.id, { ...cb, rows: updatedRows });
-          }} />
-        </div>
+        <AddCustomRow color={cb.color} onAdd={label => {
+          updateCustomBlock(cb.id, { ...cb, rows: [...cb.rows, { label, type: "text" as const, value: "" }] });
+        }} />
       )}
     </Section>
   );
@@ -140,9 +102,8 @@ function AddCustomRow({ color, onAdd }: { color: string; onAdd: (label: string) 
   const [val, setVal] = useState("");
   const commit = () => { if (val.trim()) { onAdd(val.trim()); setVal(""); } };
   return (
-    <div className="flex items-center gap-1.5 w-full">
+    <div className="flex items-center gap-1.5 mt-1 mb-1">
       <input
-        autoFocus
         value={val}
         onChange={e => setVal(e.target.value)}
         onKeyDown={e => { if (e.key === "Enter") commit(); }}

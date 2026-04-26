@@ -50,19 +50,17 @@ export function AddFinRowInline({ block, onAdd, forceOpen, onClose }: {
   );
 }
 
-export function RowWithToggle({ rowKey, visible, onToggle, children, editMode, onDelete, editableLabel, onLabelChange }: {
+export function RowWithToggle({ rowKey, visible, onToggle, children, editMode, editableLabel, onLabelChange }: {
   rowKey: string;
   visible: boolean;
   onToggle: (key: string) => void;
   children: React.ReactNode;
   editMode?: boolean;
-  onDelete?: () => void;
   editableLabel?: string;
   onLabelChange?: (label: string) => void;
 }) {
   const [labelVal, setLabelVal] = useState(editableLabel || "");
 
-  // Sync if label changes externally
   React.useEffect(() => { setLabelVal(editableLabel || ""); }, [editableLabel]);
 
   if (!visible) return null;
@@ -81,37 +79,17 @@ export function RowWithToggle({ rowKey, visible, onToggle, children, editMode, o
             className="text-xs rounded-lg px-2 py-0.5 focus:outline-none w-36 flex-shrink-0"
             style={{ background: "rgba(124,58,237,0.15)", border: "1px solid #7c3aed40", color: "#fff" }}
           />
-          {/* скрываем label-span внутри children */}
           <div className="flex-1 min-w-0 ml-2 [&>div>span:first-child]:hidden">{children}</div>
         </div>
       ) : (
         <div className="flex-1 min-w-0">{children}</div>
       )}
-      <button
-        onClick={() => onToggle(rowKey)}
-        title="Скрыть строку на всех карточках"
-        className={`${editMode ? "opacity-100 w-7" : "opacity-0 pointer-events-none w-0 overflow-hidden"} flex-shrink-0 rounded-full transition-all duration-200`}
-        style={{
-          height: 16,
-          background: "#8b5cf6",
-          position: "relative", display: "inline-flex", alignItems: "center",
-        }}>
-        <span style={{
-          width: 12, height: 12,
-          background: "#fff",
-          borderRadius: "50%",
-          position: "absolute",
-          left: 14,
-          transition: "left 0.2s",
-        }} />
-      </button>
-      {onDelete && (
+      {/* Единая кнопка скрытия: тогл в режиме редактирования */}
+      {editMode && (
         <button
-          onClick={() => {
-            if (window.confirm("Удалить строку? Это действие нельзя отменить.")) onDelete();
-          }}
-          title="Удалить строку"
-          className={`${editMode ? "opacity-100" : "opacity-0 pointer-events-none w-0 overflow-hidden"} flex-shrink-0 text-red-400/60 hover:text-red-400 transition-all`}>
+          onClick={() => onToggle(rowKey)}
+          title="Скрыть / показать строку"
+          className="flex-shrink-0 p-1 rounded-md text-red-400/50 hover:text-red-400 transition-all">
           <Icon name="X" size={11} />
         </button>
       )}
