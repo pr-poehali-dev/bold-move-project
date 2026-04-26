@@ -4,16 +4,15 @@ import CrmAnalytics from "./CrmAnalytics";
 import CrmClients from "./CrmClients";
 import CrmOrders from "./CrmOrders";
 import CrmCalendar from "./CrmCalendar";
-import CrmKanban from "./CrmKanban";
+
 import { ThemeContext, DARK, LIGHT, type Theme } from "./themeContext";
 import { crmFetch, Client } from "./crmApi";
 
-type CrmTab = "analytics" | "clients" | "orders" | "calendar" | "kanban";
+type CrmTab = "analytics" | "clients" | "orders" | "calendar";
 
 const CRM_TABS: { id: CrmTab; label: string; icon: string }[] = [
   { id: "orders",    label: "Заказы",    icon: "Layers" },
   { id: "clients",   label: "Клиенты",   icon: "Users" },
-  { id: "kanban",    label: "Канбан",    icon: "Kanban" },
   { id: "calendar",  label: "Календарь", icon: "CalendarDays" },
   { id: "analytics", label: "Аналитика", icon: "BarChart2" },
 ];
@@ -106,7 +105,7 @@ export default function CrmPanel() {
           {tab === "clients"   && <CrmClients />}
           {tab === "orders"    && <CrmOrders    clients={clients} loading={loading} onStatusChange={updateClientStatus} onClientRemoved={removeClient} onReload={loadClients} />}
           {tab === "calendar"  && <CrmCalendar />}
-          {tab === "kanban"    && <CrmKanban    clients={clients} loading={loading} onStatusChange={updateClientStatus} onClientRemoved={removeClient} onReload={loadClients} />}
+
         </div>
       </div>
     </ThemeContext.Provider>
