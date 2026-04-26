@@ -92,7 +92,6 @@ function AddRowInline({ color, onAdd }: { color: string; onAdd: (label: string) 
 
 // ── Contacts ─────────────────────────────────────────────────────────────────
 export function DrawerContactsBlock({ data, hiddenBlocks, editingBlock, toggleHidden, setEditingBlock, saveWithLog }: InfoBlocksProps) {
-  const t = useTheme();
   const id: BlockId = "contacts";
   const { isHidden, editMode, getLabel, renameLabel, hideRow, isVisible, extraRows, addExtraRow, updateExtraRow, renameExtraRow, deleteExtraRow } = useInfoBlock(id, hiddenBlocks, editingBlock, toggleHidden, setEditingBlock);
 
@@ -117,12 +116,7 @@ export function DrawerContactsBlock({ data, hiddenBlocks, editingBlock, toggleHi
         <RowWithToggle key={`extra_${i}`} rowKey={`extra_${i}`} visible onToggle={() => {}} editMode={editMode}
           editableLabel={row.label} onLabelChange={l => renameExtraRow(i, l)}
           onDelete={() => deleteExtraRow(i)}>
-          <div className="flex items-center justify-between py-2" style={{ borderBottom: `1px solid ${t.border2}` }}>
-            <span className="text-xs w-36 flex-shrink-0" style={{ color: "#d4d4d4" }}>{row.label}</span>
-            <input value={row.value} onChange={e => updateExtraRow(i, e.target.value)} placeholder="—"
-              className="flex-1 text-right text-sm bg-transparent focus:outline-none rounded-lg px-2 py-0.5"
-              style={{ color: "#fff" }} />
-          </div>
+          <InlineField label={row.label} value={row.value} onSave={v => updateExtraRow(i, v)} placeholder="Добавить значение" />
         </RowWithToggle>
       ))}
       {editMode && <AddRowInline color="#10b981" onAdd={addExtraRow} />}
@@ -132,7 +126,6 @@ export function DrawerContactsBlock({ data, hiddenBlocks, editingBlock, toggleHi
 
 // ── Object ────────────────────────────────────────────────────────────────────
 export function DrawerObjectBlock({ data, hiddenBlocks, editingBlock, toggleHidden, setEditingBlock, saveWithLog }: InfoBlocksProps) {
-  const t = useTheme();
   const id: BlockId = "object";
   const { isHidden, editMode, getLabel, renameLabel, hideRow, isVisible, extraRows, addExtraRow, updateExtraRow, renameExtraRow, deleteExtraRow } = useInfoBlock(id, hiddenBlocks, editingBlock, toggleHidden, setEditingBlock);
 
@@ -157,12 +150,7 @@ export function DrawerObjectBlock({ data, hiddenBlocks, editingBlock, toggleHidd
         <RowWithToggle key={`extra_${i}`} rowKey={`extra_${i}`} visible onToggle={() => {}} editMode={editMode}
           editableLabel={row.label} onLabelChange={l => renameExtraRow(i, l)}
           onDelete={() => deleteExtraRow(i)}>
-          <div className="flex items-center justify-between py-2" style={{ borderBottom: `1px solid ${t.border2}` }}>
-            <span className="text-xs w-36 flex-shrink-0" style={{ color: "#d4d4d4" }}>{row.label}</span>
-            <input value={row.value} onChange={e => updateExtraRow(i, e.target.value)} placeholder="—"
-              className="flex-1 text-right text-sm bg-transparent focus:outline-none rounded-lg px-2 py-0.5"
-              style={{ color: "#fff" }} />
-          </div>
+          <InlineField label={row.label} value={row.value} onSave={v => updateExtraRow(i, v)} placeholder="Добавить значение" />
         </RowWithToggle>
       ))}
       {editMode && <AddRowInline color="#f59e0b" onAdd={addExtraRow} />}
@@ -172,7 +160,6 @@ export function DrawerObjectBlock({ data, hiddenBlocks, editingBlock, toggleHidd
 
 // ── Dates ─────────────────────────────────────────────────────────────────────
 export function DrawerDatesBlock({ data, hiddenBlocks, editingBlock, toggleHidden, setEditingBlock, saveWithLog }: InfoBlocksProps) {
-  const t = useTheme();
   const id: BlockId = "dates";
   const { isHidden, editMode, getLabel, renameLabel, hideRow, isVisible, extraRows, addExtraRow, updateExtraRow, renameExtraRow, deleteExtraRow } = useInfoBlock(id, hiddenBlocks, editingBlock, toggleHidden, setEditingBlock);
 
@@ -196,12 +183,7 @@ export function DrawerDatesBlock({ data, hiddenBlocks, editingBlock, toggleHidde
         <RowWithToggle key={`extra_${i}`} rowKey={`extra_${i}`} visible onToggle={() => {}} editMode={editMode}
           editableLabel={row.label} onLabelChange={l => renameExtraRow(i, l)}
           onDelete={() => deleteExtraRow(i)}>
-          <div className="flex items-center justify-between py-2" style={{ borderBottom: `1px solid ${t.border2}` }}>
-            <span className="text-xs w-36 flex-shrink-0" style={{ color: "#d4d4d4" }}>{row.label}</span>
-            <input value={row.value} onChange={e => updateExtraRow(i, e.target.value)} placeholder="—"
-              className="flex-1 text-right text-sm bg-transparent focus:outline-none rounded-lg px-2 py-0.5"
-              style={{ color: "#fff" }} />
-          </div>
+          <InlineField label={row.label} value={row.value} onSave={v => updateExtraRow(i, v)} placeholder="Добавить значение" />
         </RowWithToggle>
       ))}
       {editMode && <AddRowInline color="#f97316" onAdd={addExtraRow} />}
