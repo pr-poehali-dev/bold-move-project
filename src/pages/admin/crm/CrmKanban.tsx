@@ -7,11 +7,12 @@ import { KanbanHeader } from "./KanbanHeader";
 import { KanbanColumn } from "./KanbanColumn";
 import {
   KANBAN_COLS, DROP_STATUS, CustomKanbanCol,
-  LS_HIDDEN, LS_LABELS, LS_COLORS,
-  loadHidden, loadLabels, loadColors, saveColors,
-  loadCustomCols, saveCustomCols,
   loadGlobalWidth, saveGlobalWidth,
 } from "./kanbanTypes";
+import {
+  loadSyncedCustomCols, loadSyncedHidden, loadSyncedLabels, loadSyncedColors,
+  saveSyncedLabels, saveSyncedColors, addSyncedCol, deleteSyncedCol,
+} from "./syncedCols";
 
 interface Props {
   clients: Client[];
@@ -43,52 +44,43 @@ export default function CrmKanban({ clients, loading, onStatusChange, onClientRe
   const [localCards, setLocalCards] = useState<Client[]>(loadLocalCards);
 
   const [globalWidth, setGlobalWidth] = useState<number>(loadGlobalWidth);
-  const [hiddenCols,  setHiddenCols]  = useState<Set<string>>(loadHidden);
-  const [colLabels,   setColLabels]   = useState<Record<string, string>>(loadLabels);
-  const [colColors,   setColColors]   = useState<Record<string, string>>(loadColors);
-  const [customCols,  setCustomCols]  = useState<CustomKanbanCol[]>(loadCustomCols);
+  const [hiddenCols,  setHiddenCols]  = useState<Set<string>>(loadSyncedHidden);
+  const [colLabels,   setColLabels]   = useState<Record<string, string>>(loadSyncedLabels);
+  const [colColors,   setColColors]   = useState<Record<string, string>>(loadSyncedColors);
+  const [customCols,  setCustomCols]  = useState<CustomKanbanCol[]>(() =>
+    loadSyncedCustomCols().map(c => ({ id: c.id, label: c.label, color: c.color, statuses: [] }))
+  );
 
   const handleWidthChange = (w: number) => { setGlobalWidth(w); saveGlobalWidth(w); };
 
   const saveLabel = (colId: string, val: string) => {
-    setColLabels(prev => {
-      const next = { ...prev, [colId]: val.trim() };
-      localStorage.setItem(LS_LABELS, JSON.stringify(next));
-      return next;
-    });
+    setColLabels(prev => { const next = { ...prev, [colId]: val.trim() }; saveSyncedLabels(next); return next; });
   };
 
   const saveColor = (colId: string, color: string) => {
-    setColColors(prev => {
-      const next = { ...prev, [colId]: color };
-      saveColors(next);
-      return next;
-    });
+    setColColors(prev => { const next = { ...prev, [colId]: color }; saveSyncedColors(next); return next; });
   };
 
-  // Удаление колонки (дефолтная → скрываем; кастомная → удаляем)
+  // Удаление колонки — синхронизируется с Заказами
   const deleteCol = (colId: string) => {
-    const isDefault = KANBAN_COLS.some(c => c.id === colId);
-    if (isDefault) {
-      setHiddenCols(prev => {
-        const next = new Set(prev); next.add(colId);
-        localStorage.setItem(LS_HIDDEN, JSON.stringify([...next]));
-        return next;
-      });
+    const isBuiltin = KANBAN_COLS.some(c => c.id === colId);
+    const label = colLabels[colId] || colId;
+    const msg = isBuiltin
+      ? `Скрыть колонку «${label}»? Она исчезнет из канбана и из воронки заказов.`
+      : `Удалить колонку «${label}»? Она удалится из канбана и из воронки заказов.`;
+    if (!window.confirm(msg)) return;
+    deleteSyncedCol(colId, isBuiltin);
+    if (isBuiltin) {
+      setHiddenCols(prev => { const next = new Set(prev); next.add(colId); return next; });
     } else {
-      const updated = customCols.filter(c => c.id !== colId);
-      setCustomCols(updated);
-      saveCustomCols(updated);
+      setCustomCols(prev => prev.filter(c => c.id !== colId));
     }
   };
 
-  // Добавление новой кастомной колонки
+  // Добавление — синхронизируется с Заказами
   const addCol = () => {
-    const id = `custom_col_${Date.now()}`;
-    const newCol: CustomKanbanCol = { id, label: "Новая колонка", color: "#8b5cf6", statuses: [] };
-    const updated = [...customCols, newCol];
-    setCustomCols(updated);
-    saveCustomCols(updated);
+    const col = addSyncedCol("Новая колонка", "#8b5cf6", "Layers");
+    setCustomCols(prev => [...prev, { id: col.id, label: col.label, color: col.color, statuses: [] }]);
   };
 
   const getColColor = (colId: string, defaultColor: string) => colColors[colId] || defaultColor;

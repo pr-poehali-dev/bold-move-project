@@ -11,11 +11,17 @@ import {
 } from "./ordersTypes";
 import {
   KANBAN_COLS, DROP_STATUS, CustomKanbanCol,
-  LS_HIDDEN, LS_LABELS, LS_COLORS,
-  loadHidden, loadLabels, loadColors, saveColors,
-  loadCustomCols, saveCustomCols,
+  LS_LABELS,
+  loadLabels, loadColors, saveColors,
   loadGlobalWidth, saveGlobalWidth,
 } from "./kanbanTypes";
+import {
+  loadSyncedCustomCols, saveSyncedCustomCols,
+  loadSyncedHidden, saveSyncedHidden,
+  loadSyncedLabels, saveSyncedLabels,
+  loadSyncedColors, saveSyncedColors,
+  addSyncedCol, deleteSyncedCol, SyncedCol,
+} from "./syncedCols";
 import { OrdersClientCard } from "./OrdersClientCard";
 import { OrdersClientRow } from "./OrdersClientRow";
 import { OrdersTabs } from "./OrdersTabs";
@@ -37,59 +43,77 @@ export default function CrmOrders({ clients: allClients, loading, onStatusChange
   const [selected, setSelected]   = useState<Client | null>(null);
   const [viewMode, setViewMode]   = useState<"grid" | "list" | "kanban">("grid");
 
-  // ── Настройки табов ──────────────────────────────────────────────────────────
-  const [tabLabels,  setTabLabels]  = useState<Record<string, string>>(loadTabLabels);
-  const [tabColors,  setTabColors]  = useState<Record<string, string>>(loadTabColors);
-  const [hiddenTabs, setHiddenTabs] = useState<Set<string>>(loadTabHidden);
-  const [customTabs, setCustomTabs] = useState<CustomOrdersTab[]>(loadCustomTabs);
+  // ── Настройки табов/колонок — ЕДИНЫЙ источник правды ────────────────────────
+  const [tabLabels,   setTabLabels]   = useState<Record<string, string>>(loadSyncedLabels);
+  const [tabColors,   setTabColors]   = useState<Record<string, string>>(loadSyncedColors);
+  const [hiddenTabs,  setHiddenTabs]  = useState<Set<string>>(loadSyncedHidden);
+  const [customTabs,  setCustomTabs]  = useState<SyncedCol[]>(loadSyncedCustomCols);
 
   const handleSaveLabel = (id: string, val: string) => {
-    setTabLabels(prev => { const next = { ...prev, [id]: val }; saveTabLabels(next); return next; });
+    setTabLabels(prev => { const next = { ...prev, [id]: val }; saveSyncedLabels(next); return next; });
   };
   const handleSaveColor = (id: string, color: string) => {
-    setTabColors(prev => { const next = { ...prev, [id]: color }; saveTabColors(next); return next; });
+    setTabColors(prev => { const next = { ...prev, [id]: color }; saveSyncedColors(next); return next; });
   };
   const handleDeleteTab = (id: string) => {
-    const isDefault = ORDERS_TABS.some(t => t.id === id);
-    if (isDefault) {
-      setHiddenTabs(prev => { const next = new Set(prev); next.add(id); saveTabHidden(next); return next; });
+    const isBuiltin = ORDERS_TABS.some(t => t.id === id);
+    const msg = isBuiltin
+      ? `Скрыть этап «${tabLabels[id] || id}»? Он исчезнет из воронки и из канбан-доски.`
+      : `Удалить этап «${tabLabels[id] || id}»? Он удалится из воронки и из канбан-доски.`;
+    if (!window.confirm(msg)) return;
+    deleteSyncedCol(id, isBuiltin);
+    if (isBuiltin) {
+      setHiddenTabs(prev => { const next = new Set(prev); next.add(id); return next; });
     } else {
-      setCustomTabs(prev => { const next = prev.filter(t => t.id !== id); saveCustomTabs(next); return next; });
+      setCustomTabs(prev => prev.filter(c => c.id !== id));
     }
   };
   const handleAddTab = () => {
-    const id = `custom_tab_${Date.now()}`;
-    const newTab: CustomOrdersTab = { id, label: "Новый таб", color: "#8b5cf6", icon: "Layers", statuses: [], emptyText: "Нет данных" };
-    setCustomTabs(prev => { const next = [...prev, newTab]; saveCustomTabs(next); return next; });
+    const col = addSyncedCol("Новый этап", "#8b5cf6", "Layers");
+    setCustomTabs(prev => [...prev, col]);
   };
 
-  // ── Настройки канбан-колонок ─────────────────────────────────────────────────
-  const [hiddenCols,  setHiddenCols]  = useState<Set<string>>(loadHidden);
-  const [colLabels,   setColLabels]   = useState<Record<string, string>>(loadLabels);
-  const [colColors,   setColColors]   = useState<Record<string, string>>(loadColors);
-  const [customCols,  setCustomCols]  = useState<CustomKanbanCol[]>(loadCustomCols);
+  // ── Канбан-колонки — читаем из того же хранилища ─────────────────────────────
+  const [colLabels,   setColLabels]   = useState<Record<string, string>>(loadSyncedLabels);
+  const [colColors,   setColColors]   = useState<Record<string, string>>(loadSyncedColors);
+  const [hiddenCols,  setHiddenCols]  = useState<Set<string>>(loadSyncedHidden);
+  const [customCols,  setCustomCols]  = useState<CustomKanbanCol[]>(() =>
+    loadSyncedCustomCols().map(c => ({ id: c.id, label: c.label, color: c.color, statuses: [] }))
+  );
   const [globalWidth, setGlobalWidth] = useState<number>(loadGlobalWidth);
   const [dragging,    setDragging]    = useState<Client | null>(null);
   const [dragOverCol, setDragOverCol] = useState<string | null>(null);
   const dragRef = useRef<Client | null>(null);
 
   const saveLabel = (colId: string, val: string) => {
-    setColLabels(prev => { const next = { ...prev, [colId]: val.trim() }; localStorage.setItem(LS_LABELS, JSON.stringify(next)); return next; });
+    const next = { ...colLabels, [colId]: val.trim() };
+    setColLabels(next); setTabLabels(next); saveSyncedLabels(next);
   };
   const saveColor = (colId: string, color: string) => {
-    setColColors(prev => { const next = { ...prev, [colId]: color }; saveColors(next); return next; });
+    const next = { ...colColors, [colId]: color };
+    setColColors(next); setTabColors(next); saveSyncedColors(next);
   };
   const deleteCol = (colId: string) => {
-    if (KANBAN_COLS.some(c => c.id === colId)) {
-      setHiddenCols(prev => { const next = new Set(prev); next.add(colId); localStorage.setItem(LS_HIDDEN, JSON.stringify([...next])); return next; });
+    const isBuiltin = KANBAN_COLS.some(c => c.id === colId);
+    const label = colLabels[colId] || colId;
+    const msg = isBuiltin
+      ? `Скрыть колонку «${label}»? Она исчезнет из канбана и из воронки.`
+      : `Удалить колонку «${label}»? Она удалится из канбана и из воронки.`;
+    if (!window.confirm(msg)) return;
+    deleteSyncedCol(colId, isBuiltin);
+    if (isBuiltin) {
+      setHiddenCols(prev => { const next = new Set(prev); next.add(colId); return next; });
+      setHiddenTabs(prev => { const next = new Set(prev); next.add(colId); return next; });
     } else {
-      setCustomCols(prev => { const next = prev.filter(c => c.id !== colId); saveCustomCols(next); return next; });
+      setCustomCols(prev => prev.filter(c => c.id !== colId));
+      setCustomTabs(prev => prev.filter(c => c.id !== colId));
     }
   };
   const addCol = () => {
-    const id = `custom_col_${Date.now()}`;
-    const newCol: CustomKanbanCol = { id, label: "Новая колонка", color: "#8b5cf6", statuses: [] };
-    setCustomCols(prev => { const next = [...prev, newCol]; saveCustomCols(next); return next; });
+    const col = addSyncedCol("Новая колонка", "#8b5cf6", "Layers");
+    const kanbanCol: CustomKanbanCol = { id: col.id, label: col.label, color: col.color, statuses: [] };
+    setCustomCols(prev => [...prev, kanbanCol]);
+    setCustomTabs(prev => [...prev, col]);
   };
 
   const getColColor = (colId: string, def: string) => colColors[colId] || def;
@@ -138,8 +162,8 @@ export default function CrmOrders({ clients: allClients, loading, onStatusChange
       color: tabColors[tab.id] || tab.color, statuses: tab.statuses as readonly string[], emptyText: tab.emptyText,
     })),
     ...customTabs.map(tab => ({
-      id: tab.id, label: tabLabels[tab.id] || tab.label, icon: tab.icon,
-      color: tabColors[tab.id] || tab.color, statuses: tab.statuses as readonly string[], emptyText: tab.emptyText,
+      id: tab.id, label: tabLabels[tab.id] || tab.label, icon: (tab as { icon?: string }).icon || "Layers",
+      color: tabColors[tab.id] || tab.color, statuses: [] as readonly string[], emptyText: "Нет данных",
     })),
   ];
 
