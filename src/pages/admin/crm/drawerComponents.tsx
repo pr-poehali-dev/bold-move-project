@@ -67,9 +67,10 @@ export function InlineField({ label, value, onSave, type = "text", placeholder =
 }
 
 // ── Section ───────────────────────────────────────────────────────────────────
-export function Section({ icon, title, color = "#8b5cf6", children, onEdit, hidden, onToggleHidden }: {
+export function Section({ icon, title, color = "#8b5cf6", children, onEdit, onDelete, hidden, onToggleHidden }: {
   icon: string; title: string; color?: string; children: React.ReactNode;
   onEdit?: () => void;
+  onDelete?: () => void;
   hidden?: boolean;
   onToggleHidden?: () => void;
 }) {
@@ -94,6 +95,13 @@ export function Section({ icon, title, color = "#8b5cf6", children, onEdit, hidd
               className="p-1 rounded-md transition hover:bg-white/10"
               style={{ color: "#a3a3a3" }}>
               <Icon name="Pencil" size={12} />
+            </button>
+          )}
+          {onDelete && !hidden && (
+            <button onClick={onDelete} title="Удалить блок"
+              className="p-1 rounded-md transition hover:bg-red-500/15"
+              style={{ color: "#a3a3a3" }}>
+              <Icon name="Trash2" size={12} />
             </button>
           )}
         </div>

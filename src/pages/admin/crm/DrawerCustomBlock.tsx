@@ -20,7 +20,7 @@ export function DrawerCustomBlock({ cb, data_id, hiddenBlocks, customRowVals, to
     <Section key={cb.id} icon={cb.icon} title={cb.title} color={cb.color}
       hidden={isHidden}
       onToggleHidden={() => toggleHidden(cb.id)}
-      onEdit={() => { if (confirm(`Удалить блок «${cb.title}»?`)) deleteCustomBlock(cb.id); }}>
+      onDelete={() => { if (confirm(`Удалить блок «${cb.title}»?`)) deleteCustomBlock(cb.id); }}>
       {cb.rows.map((row, i) => (
         row.type === "file" ? (
           <FileField key={i} label={row.label} url={vals[i] || null}
