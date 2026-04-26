@@ -63,7 +63,7 @@ export function RowWithToggle({ rowKey, visible, onToggle, children, editMode }:
       <button
         onClick={() => onToggle(rowKey)}
         title="Скрыть строку на всех карточках"
-        className={`${editMode ? "opacity-100" : "opacity-0 group-hover/rowtoggle:opacity-100"} flex-shrink-0 rounded-full transition-all duration-200`}
+        className={`${editMode ? "opacity-100" : "opacity-0 pointer-events-none"} flex-shrink-0 rounded-full transition-all duration-200`}
         style={{
           width: 28, height: 16,
           background: "#8b5cf6",
