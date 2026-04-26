@@ -3,17 +3,34 @@ import { createPortal } from "react-dom";
 import type React from "react";
 import Icon from "@/components/ui/icon";
 import { useTheme } from "./themeContext";
-import { crmFetch, uploadFile } from "./crmApi";
+import { uploadFile } from "./crmApi";
 import { Section } from "./drawerComponents";
 import { BlockId } from "./drawerTypes";
 
 const isImage = (u: string) => /\.(jpg|jpeg|png|webp|gif|bmp|svg)/i.test(u);
 
-interface ClientFile {
-  id: number;
-  url: string;
-  name: string;
-  type: string;
+interface FileEntry { url: string; name: string; }
+interface FileCategory { label: string; files: FileEntry[]; }
+
+const DEFAULT_CATEGORIES: FileCategory[] = [
+  { label: "Смета",     files: [] },
+  { label: "Договор",   files: [] },
+  { label: "Фото до",   files: [] },
+  { label: "Фото после",files: [] },
+];
+
+const LS_KEY = (id: number) => `crm_files_v2_${id}`;
+
+function loadCategories(clientId: number): FileCategory[] {
+  try {
+    const stored = localStorage.getItem(LS_KEY(clientId));
+    if (stored) return JSON.parse(stored);
+  } catch { /* */ }
+  return DEFAULT_CATEGORIES.map(c => ({ ...c, files: [] }));
+}
+
+function saveCategories(clientId: number, cats: FileCategory[]) {
+  localStorage.setItem(LS_KEY(clientId), JSON.stringify(cats));
 }
 
 interface Props {
@@ -27,158 +44,195 @@ interface Props {
 
 export function DrawerFilesBlock({ clientId, hiddenBlocks, toggleHidden, logAction, editingBlock, setEditingBlock }: Props) {
   const t = useTheme();
-  const [files, setFiles] = useState<ClientFile[]>([]);
-  const [uploading, setUploading] = useState(false);
-  const [lightboxId, setLightboxId] = useState<number | null>(null);
-  const [renamingId, setRenamingId] = useState<number | null>(null);
-  const renameRef = useRef("");
-  const inputRef = useRef<HTMLInputElement>(null);
-
   const isHidden = hiddenBlocks.has("files");
   const editMode = editingBlock === "files";
 
-  useEffect(() => {
-    crmFetch("client_files", undefined, { client_id: String(clientId) })
-      .then(d => { if (Array.isArray(d)) setFiles(d as ClientFile[]); })
-      .catch(() => {});
-  }, [clientId]);
+  const [cats, setCats] = useState<FileCategory[]>(() => loadCategories(clientId));
+  const [uploading, setUploading] = useState<number | null>(null); // индекс категории
+  const [lightbox, setLightbox] = useState<{ catIdx: number; fileIdx: number } | null>(null);
+  const [newRowVal, setNewRowVal] = useState("");
+  const [editingLabel, setEditingLabel] = useState<number | null>(null);
+  const [labelVal, setLabelVal] = useState("");
+  const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
-  const imageFiles = files.filter(f => isImage(f.url));
-  const lightboxFile = lightboxId != null ? files.find(f => f.id === lightboxId) ?? null : null;
-  const lightboxIdx = lightboxFile ? imageFiles.findIndex(f => f.id === lightboxFile.id) : -1;
+  const update = (next: FileCategory[]) => { setCats(next); saveCategories(clientId, next); };
+
+  // Добавить категорию
+  const addCategory = () => {
+    if (!newRowVal.trim()) return;
+    update([...cats, { label: newRowVal.trim(), files: [] }]);
+    setNewRowVal("");
+  };
+
+  // Удалить категорию
+  const deleteCategory = (i: number) => {
+    if (!window.confirm("Точно удалить?")) return;
+    update(cats.filter((_, j) => j !== i));
+  };
+
+  // Переименовать категорию
+  const renameCategory = (i: number, label: string) => {
+    if (!label.trim()) return;
+    update(cats.map((c, j) => j === i ? { ...c, label: label.trim() } : c));
+  };
+
+  // Загрузить файл в категорию
+  const handleUpload = async (catIdx: number, e: React.ChangeEvent<HTMLInputElement>) => {
+    const picked = Array.from(e.target.files || []);
+    if (!picked.length) return;
+    setUploading(catIdx);
+    for (const file of picked) {
+      const url = await uploadFile(file);
+      update(cats.map((c, j) => j === catIdx ? { ...c, files: [...c.files, { url, name: file.name }] } : c));
+      logAction("Paperclip", "#06b6d4", `${cats[catIdx].label}: ${file.name}`);
+    }
+    setUploading(null);
+    if (inputRefs.current[catIdx]) inputRefs.current[catIdx]!.value = "";
+  };
+
+  // Удалить файл из категории
+  const deleteFile = (catIdx: number, fileIdx: number) => {
+    if (!window.confirm("Точно удалить файл?")) return;
+    const updated = cats.map((c, j) => j === catIdx
+      ? { ...c, files: c.files.filter((_, k) => k !== fileIdx) }
+      : c
+    );
+    update(updated);
+  };
+
+  // Lightbox
+  const lightboxCat = lightbox ? cats[lightbox.catIdx] : null;
+  const lightboxImages = lightboxCat ? lightboxCat.files.filter(f => isImage(f.url)) : [];
+  const lightboxFile = lightbox ? lightboxImages[lightbox.fileIdx] ?? null : null;
 
   useEffect(() => {
-    if (lightboxId === null) return;
+    if (!lightbox) return;
     const handler = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setLightboxId(null);
-      if (e.key === "ArrowRight" && lightboxIdx < imageFiles.length - 1) setLightboxId(imageFiles[lightboxIdx + 1].id);
-      if (e.key === "ArrowLeft" && lightboxIdx > 0) setLightboxId(imageFiles[lightboxIdx - 1].id);
+      if (e.key === "Escape") setLightbox(null);
+      if (e.key === "ArrowRight") setLightbox(p => p && p.fileIdx < lightboxImages.length - 1 ? { ...p, fileIdx: p.fileIdx + 1 } : p);
+      if (e.key === "ArrowLeft") setLightbox(p => p && p.fileIdx > 0 ? { ...p, fileIdx: p.fileIdx - 1 } : p);
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [lightboxId, lightboxIdx, imageFiles]);
-
-  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const picked = Array.from(e.target.files || []);
-    if (!picked.length) return;
-    setUploading(true);
-    for (const file of picked) {
-      const url = await uploadFile(file);
-      const ftype = isImage(url) ? "image" : "doc";
-      const saved = await crmFetch("client_files", {
-        method: "POST",
-        body: JSON.stringify({ client_id: clientId, url, name: file.name, type: ftype }),
-      }) as ClientFile;
-      setFiles(prev => [...prev, saved]);
-      logAction("Paperclip", "#06b6d4", `Файл: ${file.name}`);
-    }
-    setUploading(false);
-    if (inputRef.current) inputRef.current.value = "";
-  };
-
-  const handleDelete = async (file: ClientFile) => {
-    if (!window.confirm(`Точно удалить «${file.name}»?`)) return;
-    await crmFetch("client_files", { method: "DELETE", body: JSON.stringify({ id: file.id, client_id: clientId }) });
-    setFiles(prev => prev.filter(f => f.id !== file.id));
-    if (lightboxId === file.id) setLightboxId(null);
-    logAction("Trash2", "#ef4444", `Файл удалён: ${file.name}`);
-  };
-
-  const handleRename = async (file: ClientFile) => {
-    const name = renameRef.current.trim();
-    if (!name || name === file.name) { setRenamingId(null); return; }
-    await crmFetch("client_files", { method: "PUT", body: JSON.stringify({ id: file.id, client_id: clientId, name }) });
-    setFiles(prev => prev.map(f => f.id === file.id ? { ...f, name } : f));
-    setRenamingId(null);
-    logAction("Pencil", "#06b6d4", `Переименован: ${name}`);
-  };
+  }, [lightbox, lightboxImages.length]);
 
   return (
     <Section icon="Paperclip" title="Файлы" color="#06b6d4" hidden={isHidden}
       onToggleHidden={() => toggleHidden("files")}
       onEdit={!isHidden ? () => setEditingBlock(editMode ? null : "files") : undefined}>
 
-      {/* Шапка: счётчик + кнопка загрузки */}
-      <div className="flex items-center justify-between py-2" style={{ borderBottom: files.length > 0 ? `1px solid ${t.border2}` : "none" }}>
-        <span className="text-xs" style={{ color: editMode ? "#06b6d4" : t.textMute }}>
-          {editMode ? "Режим редактирования" : `${files.length} файлов`}
-        </span>
-        <button onClick={() => inputRef.current?.click()}
-          className="text-xs text-violet-400/70 underline decoration-dashed hover:text-violet-300 transition flex items-center gap-1">
-          {uploading
-            ? <><Icon name="Loader2" size={11} className="animate-spin" />Загрузка...</>
-            : <><Icon name="Upload" size={11} />Загрузить</>}
-        </button>
-        <input ref={inputRef} type="file" multiple className="hidden" onChange={handleUpload} />
-      </div>
+      {cats.map((cat, catIdx) => {
+        const catImages = cat.files.filter(f => isImage(f.url));
+        const catDocs   = cat.files.filter(f => !isImage(f.url));
 
-      {files.length > 0 && (
-        <div className="pb-2">
-          {/* Картинки — сетка */}
-          {imageFiles.length > 0 && (
-            <div className="grid grid-cols-5 gap-1.5 my-2">
-              {imageFiles.map(f => (
-                <div key={f.id} className="relative aspect-square">
-                  <button onClick={() => !editMode && setLightboxId(f.id)}
-                    className="w-full h-full rounded-lg overflow-hidden hover:opacity-80 transition"
-                    style={{ border: `1px solid ${t.border}` }}>
-                    <img src={f.url} alt={f.name} className="w-full h-full object-cover" />
-                  </button>
-                  {editMode && (
-                    <button onClick={() => handleDelete(f)}
-                      className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-red-500 flex items-center justify-center hover:bg-red-600 transition"
-                      title="Удалить">
-                      <Icon name="X" size={9} className="text-white" />
-                    </button>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
-
-          {/* Документы — список */}
-          {files.filter(f => !isImage(f.url)).map(f => (
-            <div key={f.id} className="flex items-center gap-2 py-1.5"
-              style={{ borderTop: `1px solid ${t.border2}22` }}>
-              <Icon name="FileText" size={13} style={{ color: "#06b6d4" }} className="flex-shrink-0" />
-              {renamingId === f.id ? (
-                <input
-                  autoFocus
-                  defaultValue={f.name}
-                  onChange={e => { renameRef.current = e.target.value; }}
-                  onBlur={() => handleRename(f)}
-                  onKeyDown={e => { if (e.key === "Enter") handleRename(f); if (e.key === "Escape") setRenamingId(null); }}
-                  className="flex-1 text-xs rounded-lg px-2 py-0.5 focus:outline-none"
+        return (
+          <div key={catIdx} className="py-1" style={{ borderBottom: `1px solid ${t.border2}` }}>
+            {/* Строка категории */}
+            <div className="flex items-center gap-2 py-1.5">
+              {/* Label — редактируемый в editMode */}
+              {editMode && editingLabel === catIdx ? (
+                <input autoFocus value={labelVal}
+                  onChange={e => setLabelVal(e.target.value)}
+                  onBlur={() => { renameCategory(catIdx, labelVal); setEditingLabel(null); }}
+                  onKeyDown={e => { if (e.key === "Enter") { renameCategory(catIdx, labelVal); setEditingLabel(null); } }}
+                  className="text-xs rounded-lg px-2 py-0.5 focus:outline-none w-36 flex-shrink-0"
                   style={{ background: "rgba(124,58,237,0.15)", border: "1px solid #7c3aed40", color: "#fff" }}
                 />
               ) : (
-                <span className="text-xs flex-1 truncate cursor-pointer hover:opacity-70"
-                  style={{ color: t.textSub }}
-                  onClick={() => window.open(f.url, "_blank")}>
-                  {f.name}
+                <span
+                  className={`text-xs w-36 flex-shrink-0 ${editMode ? "cursor-pointer hover:opacity-70" : ""}`}
+                  style={{ color: "#d4d4d4" }}
+                  onClick={() => { if (editMode) { setEditingLabel(catIdx); setLabelVal(cat.label); } }}>
+                  {cat.label}
                 </span>
               )}
-              {editMode ? (
-                <div className="flex items-center gap-1 flex-shrink-0">
-                  <button onClick={() => { renameRef.current = f.name; setRenamingId(f.id); }} title="Переименовать"
-                    className="p-1 rounded hover:bg-white/10" style={{ color: t.textMute }}>
-                    <Icon name="Pencil" size={11} />
-                  </button>
-                  <button onClick={() => handleDelete(f)} title="Удалить"
-                    className="p-1 rounded hover:text-red-400" style={{ color: "#ef4444" }}>
-                    <Icon name="X" size={11} />
-                  </button>
-                </div>
-              ) : (
-                <div className="flex items-center gap-1 flex-shrink-0 opacity-0 group-hover/doc:opacity-100 transition">
-                  <button onClick={() => window.open(f.url, "_blank")} title="Открыть"
-                    className="p-1 rounded hover:bg-white/10" style={{ color: t.textMute }}>
-                    <Icon name="ExternalLink" size={11} />
-                  </button>
-                </div>
+
+              {/* Кнопка загрузки */}
+              <button onClick={() => inputRefs.current[catIdx]?.click()}
+                className="flex-1 text-right text-xs transition hover:opacity-70 flex items-center justify-end gap-1"
+                style={{ color: uploading === catIdx ? t.textMute : "#7c3aed99" }}>
+                {uploading === catIdx
+                  ? <><Icon name="Loader2" size={10} className="animate-spin" />Загрузка...</>
+                  : <><span className="underline underline-offset-2 decoration-dashed" style={{ color: "#a78bfa99" }}>
+                      {cat.files.length > 0 ? `${cat.files.length} файл(ов)` : "Загрузить"}
+                    </span></>}
+              </button>
+              <input
+                ref={el => { inputRefs.current[catIdx] = el; }}
+                type="file" multiple className="hidden"
+                onChange={e => handleUpload(catIdx, e)}
+              />
+
+              {/* X — удалить категорию */}
+              {editMode && (
+                <button onClick={() => deleteCategory(catIdx)}
+                  className="flex-shrink-0 p-1 rounded-md text-red-400/50 hover:text-red-400 transition-all">
+                  <Icon name="X" size={11} />
+                </button>
               )}
             </div>
-          ))}
+
+            {/* Файлы категории */}
+            {cat.files.length > 0 && (
+              <div className="pl-2 pb-1.5">
+                {/* Картинки */}
+                {catImages.length > 0 && (
+                  <div className="grid grid-cols-5 gap-1 mb-1.5">
+                    {catImages.map((f, fi) => (
+                      <div key={fi} className="relative aspect-square">
+                        <button onClick={() => setLightbox({ catIdx, fileIdx: fi })}
+                          className="w-full h-full rounded-lg overflow-hidden hover:opacity-80 transition"
+                          style={{ border: `1px solid ${t.border}` }}>
+                          <img src={f.url} alt={f.name} className="w-full h-full object-cover" />
+                        </button>
+                        {editMode && (
+                          <button onClick={() => deleteFile(catIdx, cat.files.indexOf(f))}
+                            className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-red-500 flex items-center justify-center hover:bg-red-600 transition">
+                            <Icon name="X" size={8} className="text-white" />
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Документы */}
+                {catDocs.map((f, fi) => (
+                  <div key={fi} className="flex items-center gap-2 py-1 group/doc">
+                    <Icon name="FileText" size={11} style={{ color: "#06b6d4" }} className="flex-shrink-0" />
+                    <span className="text-xs flex-1 truncate cursor-pointer hover:opacity-70"
+                      style={{ color: t.textSub }}
+                      onClick={() => window.open(f.url, "_blank")}>
+                      {f.name}
+                    </span>
+                    {editMode && (
+                      <button onClick={() => deleteFile(catIdx, cat.files.indexOf(f))}
+                        className="p-0.5 rounded hover:text-red-400 flex-shrink-0" style={{ color: "#ef4444" }}>
+                        <Icon name="X" size={10} />
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        );
+      })}
+
+      {/* Добавить категорию в режиме редактирования */}
+      {editMode && (
+        <div className="flex items-center gap-1.5 mt-2 mb-1">
+          <input value={newRowVal} onChange={e => setNewRowVal(e.target.value)}
+            onKeyDown={e => { if (e.key === "Enter") addCategory(); }}
+            placeholder="Новая категория..."
+            className="flex-1 text-xs rounded-lg px-2 py-1 focus:outline-none"
+            style={{ background: "rgba(255,255,255,0.06)", border: "1px solid #06b6d440", color: "#fff" }}
+          />
+          <button onClick={addCategory}
+            className="text-xs px-2 py-1 rounded-lg font-medium flex-shrink-0"
+            style={{ background: "#06b6d420", color: "#06b6d4" }}>
+            OK
+          </button>
         </div>
       )}
 
@@ -186,28 +240,28 @@ export function DrawerFilesBlock({ clientId, hiddenBlocks, toggleHidden, logActi
       {lightboxFile && createPortal(
         <div className="fixed inset-0 z-[9999] flex items-center justify-center"
           style={{ background: "rgba(0,0,0,0.92)" }}
-          onClick={() => setLightboxId(null)}>
-          <button className="absolute top-4 right-4 p-2 rounded-full hover:bg-white/10 transition" style={{ color: "#fff" }}
-            onClick={() => setLightboxId(null)}>
+          onClick={() => setLightbox(null)}>
+          <button className="absolute top-4 right-4 p-2 rounded-full hover:bg-white/10" style={{ color: "#fff" }}
+            onClick={() => setLightbox(null)}>
             <Icon name="X" size={20} />
           </button>
-          {lightboxIdx > 0 && (
-            <button className="absolute left-4 p-3 rounded-full hover:bg-white/10 transition" style={{ color: "#fff" }}
-              onClick={e => { e.stopPropagation(); setLightboxId(imageFiles[lightboxIdx - 1].id); }}>
+          {lightbox && lightbox.fileIdx > 0 && (
+            <button className="absolute left-4 p-3 rounded-full hover:bg-white/10" style={{ color: "#fff" }}
+              onClick={e => { e.stopPropagation(); setLightbox(p => p ? { ...p, fileIdx: p.fileIdx - 1 } : p); }}>
               <Icon name="ChevronLeft" size={28} />
             </button>
           )}
           <img src={lightboxFile.url} alt={lightboxFile.name}
             className="max-w-[90vw] max-h-[85vh] rounded-2xl object-contain"
             onClick={e => e.stopPropagation()} />
-          {lightboxIdx < imageFiles.length - 1 && (
-            <button className="absolute right-4 p-3 rounded-full hover:bg-white/10 transition" style={{ color: "#fff" }}
-              onClick={e => { e.stopPropagation(); setLightboxId(imageFiles[lightboxIdx + 1].id); }}>
+          {lightbox && lightbox.fileIdx < lightboxImages.length - 1 && (
+            <button className="absolute right-4 p-3 rounded-full hover:bg-white/10" style={{ color: "#fff" }}
+              onClick={e => { e.stopPropagation(); setLightbox(p => p ? { ...p, fileIdx: p.fileIdx + 1 } : p); }}>
               <Icon name="ChevronRight" size={28} />
             </button>
           )}
           <div className="absolute bottom-4 text-xs" style={{ color: "rgba(255,255,255,0.5)" }}>
-            {lightboxIdx + 1} / {imageFiles.length} — {lightboxFile.name}
+            {lightboxFile.name}
           </div>
         </div>,
         document.body
