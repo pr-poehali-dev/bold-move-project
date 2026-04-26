@@ -2,124 +2,16 @@ import { useState } from "react";
 import Icon from "@/components/ui/icon";
 import { useTheme } from "./themeContext";
 import { Client } from "./crmApi";
-import { InlineField, Section, FileField } from "./drawerComponents";
 import { ActivityEvent } from "./DrawerStatusActivity";
-import { BlockId, BlockDef, CustomBlockData, EditRow, CustomFinRow } from "./drawerTypes";
-import { BlockEditor, DraggableBlock } from "./DrawerBlockEditor";
+import { BlockId, BlockDef, CustomBlockData, CustomFinRow } from "./drawerTypes";
+import { DraggableBlock } from "./DrawerBlockEditor";
 import { DrawerTagsBlock } from "./DrawerTagsBlock";
 import { DrawerCustomBlock } from "./DrawerCustomBlock";
-
-function AddFinRowInline({ block, onAdd, forceOpen, onClose }: {
-  block: "income" | "costs";
-  onAdd: (label: string, block: "income" | "costs") => void;
-  forceOpen?: boolean;
-  onClose?: () => void;
-}) {
-  const [open, setOpen] = useState(false);
-  const [val, setVal] = useState("");
-  const color = block === "income" ? "#10b981" : "#ef4444";
-  const isOpen = open || forceOpen;
-
-  const commit = () => {
-    if (val.trim()) { onAdd(val.trim(), block); setVal(""); }
-    setOpen(false);
-    onClose?.();
-  };
-  const cancel = () => { setVal(""); setOpen(false); onClose?.(); };
-
-  if (!isOpen) return (
-    <button onClick={() => setOpen(true)}
-      className="flex items-center gap-1 mt-1 text-xs transition-opacity opacity-40 hover:opacity-80"
-      style={{ color }}>
-      <Icon name="Plus" size={11} /> Добавить строку
-    </button>
-  );
-  return (
-    <div className="flex items-center gap-1.5 mt-1">
-      <input
-        autoFocus
-        value={val}
-        onChange={e => setVal(e.target.value)}
-        onKeyDown={e => {
-          if (e.key === "Enter") commit();
-          if (e.key === "Escape") cancel();
-        }}
-        placeholder="Название строки..."
-        className="flex-1 text-xs rounded-lg px-2 py-1 focus:outline-none"
-        style={{ background: "rgba(255,255,255,0.06)", border: `1px solid ${color}40`, color: "#fff" }}
-      />
-      <button onClick={commit}
-        className="text-xs px-2 py-1 rounded-lg font-medium" style={{ background: `${color}20`, color }}>
-        OK
-      </button>
-      <button onClick={cancel} className="text-xs text-white/30 hover:text-white/60">✕</button>
-    </div>
-  );
-}
-
-function RowWithToggle({ rowKey, visible, onToggle, children, editMode }: {
-  rowKey: string;
-  visible: boolean;
-  onToggle: (key: string) => void;
-  children: React.ReactNode;
-  editMode?: boolean;
-}) {
-  if (!visible) return null;
-  return (
-    <div className={`flex items-center gap-1 ${editMode ? "" : "group/rowtoggle"}`}>
-      <div className="flex-1 min-w-0">{children}</div>
-      <button
-        onClick={() => onToggle(rowKey)}
-        title="Скрыть строку на всех карточках"
-        className={`${editMode ? "opacity-100" : "opacity-0 group-hover/rowtoggle:opacity-100"} flex-shrink-0 rounded-full transition-all duration-200`}
-        style={{
-          width: 28, height: 16,
-          background: "#8b5cf6",
-          position: "relative", display: "inline-flex", alignItems: "center",
-        }}>
-        <span style={{
-          width: 12, height: 12,
-          background: "#fff",
-          borderRadius: "50%",
-          position: "absolute",
-          left: 14,
-          transition: "left 0.2s",
-        }} />
-      </button>
-    </div>
-  );
-}
-
-function HiddenRowToggle({ rowKey, label, onToggle }: {
-  rowKey: string;
-  label: string;
-  onToggle: (key: string) => void;
-}) {
-  return (
-    <div className="flex items-center justify-between py-1.5 opacity-40 hover:opacity-70 transition-opacity"
-      style={{ borderBottom: "1px solid #2a2a2a" }}>
-      <span className="text-xs w-36" style={{ color: "#a3a3a3" }}>{label}</span>
-      <button
-        onClick={() => onToggle(rowKey)}
-        title="Показывать на всех карточках"
-        className="flex-shrink-0 rounded-full transition-all duration-200"
-        style={{
-          width: 28, height: 16,
-          background: "#404040",
-          position: "relative", display: "inline-flex", alignItems: "center",
-        }}>
-        <span style={{
-          width: 12, height: 12,
-          background: "#fff",
-          borderRadius: "50%",
-          position: "absolute",
-          left: 2,
-          transition: "left 0.2s",
-        }} />
-      </button>
-    </div>
-  );
-}
+import { DrawerIncomeBlock, DrawerCostsBlock } from "./DrawerFinBlocks";
+import {
+  DrawerContactsBlock, DrawerObjectBlock, DrawerDatesBlock,
+  DrawerNotesBlock, DrawerFilesBlock, DrawerCancelBlock,
+} from "./DrawerInfoBlocks";
 
 interface ColumnsProps {
   data: Client;
@@ -163,86 +55,22 @@ export function DrawerColumns(props: ColumnsProps) {
   } = props;
   const t = useTheme();
 
-  // ── getEditRows ──────────────────────────────────────────────────────────────
-  const getEditRows = (id: BlockId): EditRow[] => {
-    switch (id) {
-      case "contacts": return [
-        { label: "Имя",           value: data.client_name      || "", key: "client_name" },
-        { label: "Телефон",       value: data.phone             || "", key: "phone" },
-        { label: "Ответственный", value: data.responsible_phone || "", key: "responsible_phone" },
-      ];
-      case "object": return [
-        { label: "Адрес",        value: data.address  || "", key: "address" },
-        { label: "Карта",        value: data.map_link || "", key: "map_link" },
-        { label: "Площадь (м²)", value: data.area ? String(data.area) : "", key: "area" },
-      ];
-      case "dates": return [
-        { label: "Замер",  value: data.measure_date ? data.measure_date.slice(0, 16) : "", key: "measure_date" },
-        { label: "Монтаж", value: data.install_date ? data.install_date.slice(0, 16) : "", key: "install_date" },
-      ];
-      case "income": return [
-        { label: "Договор",    value: data.contract_sum        ? String(data.contract_sum)        : "", key: "contract_sum" },
-        { label: "Предоплата", value: data.prepayment          ? String(data.prepayment)          : "", key: "prepayment" },
-        { label: "Доплата",    value: data.extra_payment       ? String(data.extra_payment)       : "", key: "extra_payment" },
-        { label: "Доп. согл.", value: data.extra_agreement_sum ? String(data.extra_agreement_sum) : "", key: "extra_agreement_sum" },
-      ];
-      case "costs": return [
-        { label: "Материалы", value: data.material_cost ? String(data.material_cost) : "", key: "material_cost" },
-        { label: "Замер",     value: data.measure_cost  ? String(data.measure_cost)  : "", key: "measure_cost" },
-        { label: "Монтаж",    value: data.install_cost  ? String(data.install_cost)  : "", key: "install_cost" },
-      ];
-      default: return [];
-    }
+  const infoProps = {
+    data, client, setData, save, hiddenBlocks, editingBlock,
+    toggleHidden, setEditingBlock, saveWithLog, logAction,
   };
 
-  // ── saveEditRows ─────────────────────────────────────────────────────────────
-  const saveEditRows = (id: BlockId, rows: EditRow[]) => {
-    const patch: Partial<Client> = {};
-    const numFields = ["contract_sum","prepayment","extra_payment","extra_agreement_sum","material_cost","measure_cost","install_cost","area"];
-    rows.forEach(r => {
-      if (r.key && !r.key.startsWith("custom")) {
-        (patch as Record<string, unknown>)[r.key] = numFields.includes(r.key) ? (+r.value || null) : (r.value || null);
-      }
-    });
-    save(patch);
-    logAction("Edit3", "#8b5cf6", `Блок отредактирован`);
-    setEditingBlock(null);
-  };
-
-  // ── wrap ─────────────────────────────────────────────────────────────────────
-  // Блоки с фиксированными полями — нельзя добавлять новые строки через BlockEditor
-  const FIXED_BLOCKS = new Set(["income", "costs", "contacts", "object", "dates"]);
-
-  const FIN_BLOCKS = new Set<BlockId>(["income", "costs"]);
-
-  const wrap = (id: BlockId, content: React.ReactNode, icon: string, title: string, color: string, hasEdit: boolean) => {
-    const isHidden   = hiddenBlocks.has(id);
-    const showEditor = editingBlock === id;
-    const editRows   = getEditRows(id);
-    const isFinBlock = FIN_BLOCKS.has(id);
-    return (
-      <Section icon={icon} title={title} color={color}
-        hidden={isHidden}
-        onToggleHidden={() => toggleHidden(id)}
-        onEdit={hasEdit && !isHidden ? () => setEditingBlock(showEditor ? null : id) : undefined}>
-        {content}
-        {showEditor && editRows.length > 0 && !isFinBlock && (
-          <BlockEditor
-            rows={editRows}
-            allowAdd={!FIXED_BLOCKS.has(id)}
-            onSave={rows => saveEditRows(id, rows)}
-            onClose={() => setEditingBlock(null)}
-          />
-        )}
-      </Section>
-    );
+  const finProps = {
+    data, editingBlock, hiddenBlocks, rowVisibility, customFinRows,
+    toggleHidden, setEditingBlock, saveWithLog, logAction,
+    toggleRowVisibility, addCustomFinRow, deleteCustomFinRow,
   };
 
   // ── renderBlock ──────────────────────────────────────────────────────────────
   const renderBlock = (id: BlockId): React.ReactNode => {
-    const isHidden = hiddenBlocks.has(id);
     switch (id) {
-      case "status": return null;
+      case "status":   return null;
+      case "pl":       return null;
 
       case "tags":
         return (
@@ -258,147 +86,14 @@ export function DrawerColumns(props: ColumnsProps) {
           />
         );
 
-      case "contacts":
-        return wrap(id, <>
-          <InlineField label="Имя клиента"  value={data.client_name}       onSave={v => saveWithLog({ client_name: v }, `Имя: ${v}`, "User", "#10b981")}       placeholder="Добавить имя" />
-          <InlineField label="Телефон"       value={data.phone}             onSave={v => saveWithLog({ phone: v }, `Телефон: ${v}`, "Phone", "#10b981")}       placeholder="Добавить телефон" />
-          <InlineField label="Ответственный" value={data.responsible_phone} onSave={v => saveWithLog({ responsible_phone: v }, `Ответственный: ${v}`, "User", "#10b981")} placeholder="Прораб / дизайнер" />
-        </>, "Phone", "Контакты", "#10b981", true);
-
-      case "object":
-        return wrap(id, <>
-          <InlineField label="Адрес"           value={data.address}  onSave={v => saveWithLog({ address: v }, `Адрес: ${v}`, "MapPin", "#f59e0b")} placeholder="Добавить адрес" />
-          <InlineField label="Ссылка на карту" value={data.map_link} onSave={v => saveWithLog({ map_link: v }, "Карта обновлена", "Link", "#f59e0b")} placeholder="Добавить ссылку" />
-          <InlineField label="Площадь (м²)"   value={data.area}     onSave={v => saveWithLog({ area: +v || null } as Partial<Client>, `Площадь: ${v} м²`, "Maximize2", "#f59e0b")} type="number" placeholder="—" />
-        </>, "MapPin", "Объект", "#f59e0b", true);
-
-      case "dates":
-        return wrap(id, <>
-          <InlineField label="Дата замера"  value={data.measure_date ? data.measure_date.slice(0, 16) : ""} onSave={v => saveWithLog({ measure_date: v || null }, v ? `Замер: ${new Date(v).toLocaleDateString("ru-RU")}` : "Дата замера удалена", "Ruler", "#f97316")} type="datetime-local" placeholder="Добавить дату" />
-          <InlineField label="Дата монтажа" value={data.install_date ? data.install_date.slice(0, 16) : ""} onSave={v => saveWithLog({ install_date: v || null }, v ? `Монтаж: ${new Date(v).toLocaleDateString("ru-RU")}` : "Дата монтажа удалена", "Wrench", "#f97316")} type="datetime-local" placeholder="Добавить дату" />
-        </>, "Calendar", "Даты", "#f97316", true);
-
-      case "notes":
-        return wrap(id, <textarea
-          value={(() => {
-            const notes = data.notes || "";
-            return notes.split("\n").filter(l => !l.includes("Смета сохранена") && !l.includes("Email:") && !l.includes("Estimate ID:")).join("\n").trim();
-          })()}
-          onChange={e => setData({ ...data, notes: e.target.value })}
-          onBlur={e => { if (e.target.value !== (client.notes || "")) { save({ notes: e.target.value }); logAction("StickyNote", "#8b5cf6", "Заметки обновлены"); } }}
-          placeholder="Добавить заметку..." rows={3}
-          className="w-full rounded-xl px-3 py-2.5 text-sm focus:outline-none resize-none transition mt-2 mb-1"
-          style={{ background: t.surface, border: `1px solid ${t.border}`, color: "#fff" }}
-        />, "StickyNote", "Заметки", "#8b5cf6", false);
-
-      case "pl":
-        return null; // P&L вынесен на уровень выше — под Статус воронки
-
-      case "income": {
-        const incomeEdit = editingBlock === "income";
-        return wrap(id, <>
-          <RowWithToggle rowKey="contract_sum" visible={rowVisibility["contract_sum"] !== false} onToggle={toggleRowVisibility} editMode={incomeEdit}>
-            <InlineField label="Сумма договора" value={data.contract_sum} onSave={v => saveWithLog({ contract_sum: +v || null } as Partial<Client>, `Договор: ${(+v).toLocaleString("ru-RU")} ₽`, "FileText", "#10b981")} type="number" placeholder="—" />
-          </RowWithToggle>
-          {rowVisibility["contract_sum"] === false && <HiddenRowToggle rowKey="contract_sum" label="Сумма договора" onToggle={toggleRowVisibility} />}
-          <RowWithToggle rowKey="prepayment" visible={rowVisibility["prepayment"] !== false} onToggle={toggleRowVisibility} editMode={incomeEdit}>
-            <InlineField label="Предоплата" value={data.prepayment} onSave={v => saveWithLog({ prepayment: +v || null } as Partial<Client>, `Предоплата: +${(+v).toLocaleString("ru-RU")} ₽`, "Wallet", "#10b981")} type="number" placeholder="—" />
-          </RowWithToggle>
-          {rowVisibility["prepayment"] === false && <HiddenRowToggle rowKey="prepayment" label="Предоплата" onToggle={toggleRowVisibility} />}
-          <RowWithToggle rowKey="extra_payment" visible={rowVisibility["extra_payment"] !== false} onToggle={toggleRowVisibility} editMode={incomeEdit}>
-            <InlineField label="Доплата" value={data.extra_payment} onSave={v => saveWithLog({ extra_payment: +v || null } as Partial<Client>, `Доплата: +${(+v).toLocaleString("ru-RU")} ₽`, "Wallet", "#10b981")} type="number" placeholder="—" />
-          </RowWithToggle>
-          {rowVisibility["extra_payment"] === false && <HiddenRowToggle rowKey="extra_payment" label="Доплата" onToggle={toggleRowVisibility} />}
-          <RowWithToggle rowKey="extra_agreement_sum" visible={rowVisibility["extra_agreement_sum"] !== false} onToggle={toggleRowVisibility} editMode={incomeEdit}>
-            <InlineField label="Доп. соглашение" value={data.extra_agreement_sum} onSave={v => saveWithLog({ extra_agreement_sum: +v || null } as Partial<Client>, `Доп. согл: ${(+v).toLocaleString("ru-RU")} ₽`, "FileText", "#06b6d4")} type="number" placeholder="—" />
-          </RowWithToggle>
-          {rowVisibility["extra_agreement_sum"] === false && <HiddenRowToggle rowKey="extra_agreement_sum" label="Доп. соглашение" onToggle={toggleRowVisibility} />}
-          {customFinRows.filter(r => r.block === "income").map(r => {
-            const lsKey = `fin_row_${data.id}_${r.key}`;
-            const val = localStorage.getItem(lsKey) || "";
-            return rowVisibility[r.key] !== false ? (
-              <div key={r.key} className={`flex items-center gap-1 ${incomeEdit ? "" : "group/rowtoggle"}`}>
-                <div className="flex-1 min-w-0">
-                  <InlineField label={r.label} value={val} type="number" placeholder="—"
-                    onSave={v => { localStorage.setItem(lsKey, v); logAction("Plus", "#10b981", `${r.label}: ${(+v).toLocaleString("ru-RU")} ₽`); }} />
-                </div>
-                <button onClick={() => toggleRowVisibility(r.key)}
-                  title="Скрыть строку"
-                  className={`${incomeEdit ? "opacity-100" : "opacity-0 group-hover/rowtoggle:opacity-100"} flex-shrink-0 rounded-full transition-all duration-200`}
-                  style={{ width: 28, height: 16, background: "#8b5cf6", position: "relative", display: "inline-flex", alignItems: "center" }}>
-                  <span style={{ width: 12, height: 12, background: "#fff", borderRadius: "50%", position: "absolute", left: 14, transition: "left 0.2s" }} />
-                </button>
-                <button onClick={() => deleteCustomFinRow(r.key)} title="Удалить строку"
-                  className={`${incomeEdit ? "opacity-100" : "opacity-0 group-hover/rowtoggle:opacity-100"} flex-shrink-0 text-red-400/60 hover:text-red-400 transition-all ml-0.5`}>
-                  <Icon name="X" size={11} />
-                </button>
-              </div>
-            ) : (
-              <HiddenRowToggle key={r.key} rowKey={r.key} label={r.label} onToggle={toggleRowVisibility} />
-            );
-          })}
-          <AddFinRowInline block="income" onAdd={addCustomFinRow}
-            forceOpen={incomeEdit}
-            onClose={() => setEditingBlock(null)} />
-        </>, "Banknote", "Доходы", "#10b981", true);
-      }
-
-      case "costs": {
-        const costsEdit = editingBlock === "costs";
-        return wrap(id, <>
-          <RowWithToggle rowKey="material_cost" visible={rowVisibility["material_cost"] !== false} onToggle={toggleRowVisibility} editMode={costsEdit}>
-            <InlineField label="Материалы" value={data.material_cost} onSave={v => saveWithLog({ material_cost: +v || null } as Partial<Client>, `Материалы: ${(+v).toLocaleString("ru-RU")} ₽`, "Package", "#ef4444")} type="number" placeholder="—" />
-          </RowWithToggle>
-          {rowVisibility["material_cost"] === false && <HiddenRowToggle rowKey="material_cost" label="Материалы" onToggle={toggleRowVisibility} />}
-          <RowWithToggle rowKey="measure_cost" visible={rowVisibility["measure_cost"] !== false} onToggle={toggleRowVisibility} editMode={costsEdit}>
-            <InlineField label="Замер" value={data.measure_cost} onSave={v => saveWithLog({ measure_cost: +v || null } as Partial<Client>, `Замер стоит: ${(+v).toLocaleString("ru-RU")} ₽`, "Ruler", "#ef4444")} type="number" placeholder="—" />
-          </RowWithToggle>
-          {rowVisibility["measure_cost"] === false && <HiddenRowToggle rowKey="measure_cost" label="Замер" onToggle={toggleRowVisibility} />}
-          <RowWithToggle rowKey="install_cost" visible={rowVisibility["install_cost"] !== false} onToggle={toggleRowVisibility} editMode={costsEdit}>
-            <InlineField label="Монтаж" value={data.install_cost} onSave={v => saveWithLog({ install_cost: +v || null } as Partial<Client>, `Монтаж стоит: ${(+v).toLocaleString("ru-RU")} ₽`, "Wrench", "#ef4444")} type="number" placeholder="—" />
-          </RowWithToggle>
-          {rowVisibility["install_cost"] === false && <HiddenRowToggle rowKey="install_cost" label="Монтаж" onToggle={toggleRowVisibility} />}
-          {customFinRows.filter(r => r.block === "costs").map(r => {
-            const lsKey = `fin_row_${data.id}_${r.key}`;
-            const val = localStorage.getItem(lsKey) || "";
-            return rowVisibility[r.key] !== false ? (
-              <div key={r.key} className={`flex items-center gap-1 ${costsEdit ? "" : "group/rowtoggle"}`}>
-                <div className="flex-1 min-w-0">
-                  <InlineField label={r.label} value={val} type="number" placeholder="—"
-                    onSave={v => { localStorage.setItem(lsKey, v); logAction("Minus", "#ef4444", `${r.label}: ${(+v).toLocaleString("ru-RU")} ₽`); }} />
-                </div>
-                <button onClick={() => toggleRowVisibility(r.key)}
-                  title="Скрыть строку"
-                  className={`${costsEdit ? "opacity-100" : "opacity-0 group-hover/rowtoggle:opacity-100"} flex-shrink-0 rounded-full transition-all duration-200`}
-                  style={{ width: 28, height: 16, background: "#8b5cf6", position: "relative", display: "inline-flex", alignItems: "center" }}>
-                  <span style={{ width: 12, height: 12, background: "#fff", borderRadius: "50%", position: "absolute", left: 14, transition: "left 0.2s" }} />
-                </button>
-                <button onClick={() => deleteCustomFinRow(r.key)} title="Удалить строку"
-                  className={`${costsEdit ? "opacity-100" : "opacity-0 group-hover/rowtoggle:opacity-100"} flex-shrink-0 text-red-400/60 hover:text-red-400 transition-all ml-0.5`}>
-                  <Icon name="X" size={11} />
-                </button>
-              </div>
-            ) : (
-              <HiddenRowToggle key={r.key} rowKey={r.key} label={r.label} onToggle={toggleRowVisibility} />
-            );
-          })}
-          <AddFinRowInline block="costs" onAdd={addCustomFinRow}
-            forceOpen={costsEdit}
-            onClose={() => setEditingBlock(null)} />
-        </>, "Receipt", "Затраты", "#ef4444", true);
-      }
-
-      case "files":
-        return wrap(id, <>
-          <FileField label="Фото до"         url={data.photo_before_url} accept="image/*"                    onUploaded={(url, name) => { save({ photo_before_url: url }); logAction("Image", "#06b6d4", `Фото до: ${name}`); }} />
-          <FileField label="Фото после"      url={data.photo_after_url}  accept="image/*"                    onUploaded={(url, name) => { save({ photo_after_url: url }); logAction("Image", "#06b6d4", `Фото после: ${name}`); }} />
-          <FileField label="Договор / Смета" url={data.document_url}     accept=".pdf,.doc,.docx,.xls,.xlsx" onUploaded={(url, name) => { save({ document_url: url }); logAction("FileText", "#06b6d4", `Документ: ${name}`); }} />
-        </>, "Paperclip", "Файлы", "#06b6d4", false);
-
-      case "cancel":
-        return data.status !== "cancelled" ? null : wrap(id,
-          <InlineField label="Причина" value={data.cancel_reason} onSave={v => saveWithLog({ cancel_reason: v }, `Причина отказа: ${v}`, "XCircle", "#ef4444")} placeholder="Укажите причину" />,
-          "XCircle", "Причина отказа", "#ef4444", true);
+      case "contacts": return <DrawerContactsBlock {...infoProps} />;
+      case "object":   return <DrawerObjectBlock   {...infoProps} />;
+      case "dates":    return <DrawerDatesBlock     {...infoProps} />;
+      case "notes":    return <DrawerNotesBlock     {...infoProps} />;
+      case "files":    return <DrawerFilesBlock     {...infoProps} />;
+      case "cancel":   return <DrawerCancelBlock    {...infoProps} />;
+      case "income":   return <DrawerIncomeBlock    {...finProps}  />;
+      case "costs":    return <DrawerCostsBlock     {...finProps}  />;
 
       default: return null;
     }
@@ -435,7 +130,6 @@ export function DrawerColumns(props: ColumnsProps) {
     onDrop: () => { setDropOverCol(null); onDropToCol(col); },
   });
 
-  // Разделяем wide-блоки (на всю ширину) от обычных
   const col0Narrow = col0.filter(b => b.id !== "status" && !b.wide);
   const col1Narrow = col1.filter(b => !b.wide);
   const wideBlocks = [...col0, ...col1].filter(b => b.wide && b.id !== "status")
