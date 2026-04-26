@@ -3,7 +3,11 @@ import { crmFetch, Client } from "./crmApi";
 import Icon from "@/components/ui/icon";
 import ClientDrawer from "./ClientDrawer";
 import { useTheme } from "./themeContext";
-import { ORDERS_TABS, OrdersTabId, INSTALL_STEPS } from "./ordersTypes";
+import {
+  ORDERS_TABS, INSTALL_STEPS, CustomOrdersTab,
+  loadTabLabels, saveTabLabels, loadTabColors, saveTabColors,
+  loadTabHidden, saveTabHidden, loadCustomTabs, saveCustomTabs,
+} from "./ordersTypes";
 import { OrdersClientCard } from "./OrdersClientCard";
 import { OrdersClientRow } from "./OrdersClientRow";
 import { OrdersTabs } from "./OrdersTabs";
@@ -18,18 +22,64 @@ interface Props {
 
 export default function CrmOrders({ clients: allClients, loading, onStatusChange, onClientRemoved, onReload }: Props) {
   const t = useTheme();
-  const [search, setSearch]       = useState("");
-  const [activeTab, setActiveTab] = useState<OrdersTabId>("leads");
-  const [selected, setSelected]   = useState<Client | null>(null);
-  const [viewMode, setViewMode]   = useState<"grid" | "list">("grid");
+  const [search, setSearch]     = useState("");
+  const [activeTab, setActiveTab] = useState("leads");
+  const [selected, setSelected] = useState<Client | null>(null);
+  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+
+  // Настройки табов
+  const [tabLabels,   setTabLabels]   = useState<Record<string, string>>(loadTabLabels);
+  const [tabColors,   setTabColors]   = useState<Record<string, string>>(loadTabColors);
+  const [hiddenTabs,  setHiddenTabs]  = useState<Set<string>>(loadTabHidden);
+  const [customTabs,  setCustomTabs]  = useState<CustomOrdersTab[]>(loadCustomTabs);
+
+  const handleSaveLabel = (id: string, val: string) => {
+    setTabLabels(prev => { const next = { ...prev, [id]: val }; saveTabLabels(next); return next; });
+  };
+  const handleSaveColor = (id: string, color: string) => {
+    setTabColors(prev => { const next = { ...prev, [id]: color }; saveTabColors(next); return next; });
+  };
+  const handleDeleteTab = (id: string) => {
+    const isDefault = ORDERS_TABS.some(t => t.id === id);
+    if (isDefault) {
+      setHiddenTabs(prev => { const next = new Set(prev); next.add(id); saveTabHidden(next); return next; });
+    } else {
+      setCustomTabs(prev => { const next = prev.filter(t => t.id !== id); saveCustomTabs(next); return next; });
+    }
+  };
+  const handleAddTab = () => {
+    const id = `custom_tab_${Date.now()}`;
+    const newTab: CustomOrdersTab = { id, label: "Новый таб", color: "#8b5cf6", icon: "Layers", statuses: [], emptyText: "Нет данных" };
+    setCustomTabs(prev => { const next = [...prev, newTab]; saveCustomTabs(next); return next; });
+  };
 
   const handleNextStep = async (id: number, nextStatus: string) => {
     await crmFetch("clients", { method: "PUT", body: JSON.stringify({ status: nextStatus }) }, { id: String(id) });
     onStatusChange(id, nextStatus);
   };
 
-  const currentTab     = ORDERS_TABS.find(t => t.id === activeTab)!;
-  const currentClients = allClients.filter(c => currentTab.statuses.includes(c.status));
+  // Все видимые табы: дефолтные (не скрытые) + кастомные
+  const allTabDefs = [
+    ...ORDERS_TABS.filter(tab => !hiddenTabs.has(tab.id)).map(tab => ({
+      id: tab.id,
+      label: tabLabels[tab.id] || tab.label,
+      icon: tab.icon,
+      color: tabColors[tab.id] || tab.color,
+      statuses: tab.statuses as readonly string[],
+      emptyText: tab.emptyText,
+    })),
+    ...customTabs.map(tab => ({
+      id: tab.id,
+      label: tabLabels[tab.id] || tab.label,
+      icon: tab.icon,
+      color: tabColors[tab.id] || tab.color,
+      statuses: tab.statuses as readonly string[],
+      emptyText: tab.emptyText,
+    })),
+  ];
+
+  const currentTab     = allTabDefs.find(tab => tab.id === activeTab) ?? allTabDefs[0];
+  const currentClients = currentTab ? allClients.filter(c => currentTab.statuses.includes(c.status)) : [];
 
   const filterSearch = (list: Client[]) => {
     if (!search) return list;
@@ -81,7 +131,19 @@ export default function CrmOrders({ clients: allClients, loading, onStatusChange
       </div>
 
       {/* Табы */}
-      <OrdersTabs allClients={allClients} activeTab={activeTab} onSelect={setActiveTab} />
+      <OrdersTabs
+        allClients={allClients}
+        activeTab={activeTab}
+        onSelect={setActiveTab}
+        tabLabels={tabLabels}
+        tabColors={tabColors}
+        hiddenTabs={hiddenTabs}
+        customTabs={customTabs}
+        onSaveLabel={handleSaveLabel}
+        onSaveColor={handleSaveColor}
+        onDeleteTab={handleDeleteTab}
+        onAddTab={handleAddTab}
+      />
 
       {/* Контент */}
       {loading ? (

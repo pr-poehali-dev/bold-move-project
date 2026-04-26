@@ -34,6 +34,46 @@ export const ORDERS_TABS = [
 
 export type OrdersTabId = typeof ORDERS_TABS[number]["id"];
 
+// ── Персонализация табов (localStorage) ───────────────────────────────────────
+export const LS_TAB_LABELS  = "orders_tab_labels";
+export const LS_TAB_COLORS  = "orders_tab_colors";
+export const LS_TAB_HIDDEN  = "orders_tab_hidden";
+export const LS_CUSTOM_TABS = "orders_custom_tabs";
+
+export interface CustomOrdersTab {
+  id: string;
+  label: string;
+  color: string;
+  icon: string;
+  statuses: string[];
+  emptyText: string;
+}
+
+export function loadTabLabels(): Record<string, string> {
+  try { return JSON.parse(localStorage.getItem(LS_TAB_LABELS) || "{}"); } catch { return {}; }
+}
+export function saveTabLabels(v: Record<string, string>) {
+  localStorage.setItem(LS_TAB_LABELS, JSON.stringify(v));
+}
+export function loadTabColors(): Record<string, string> {
+  try { return JSON.parse(localStorage.getItem(LS_TAB_COLORS) || "{}"); } catch { return {}; }
+}
+export function saveTabColors(v: Record<string, string>) {
+  localStorage.setItem(LS_TAB_COLORS, JSON.stringify(v));
+}
+export function loadTabHidden(): Set<string> {
+  try { return new Set(JSON.parse(localStorage.getItem(LS_TAB_HIDDEN) || "[]")); } catch { return new Set(); }
+}
+export function saveTabHidden(v: Set<string>) {
+  localStorage.setItem(LS_TAB_HIDDEN, JSON.stringify([...v]));
+}
+export function loadCustomTabs(): CustomOrdersTab[] {
+  try { return JSON.parse(localStorage.getItem(LS_CUSTOM_TABS) || "[]"); } catch { return []; }
+}
+export function saveCustomTabs(v: CustomOrdersTab[]) {
+  localStorage.setItem(LS_CUSTOM_TABS, JSON.stringify(v));
+}
+
 export const INSTALL_STEPS = [
   { status: "contract",          label: "Договор",    color: "#06b6d4" },
   { status: "prepaid",           label: "Предоплата", color: "#0ea5e9" },
