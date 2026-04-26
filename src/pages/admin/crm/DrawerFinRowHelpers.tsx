@@ -1,4 +1,5 @@
 import { useState } from "react";
+import type React from "react";
 import Icon from "@/components/ui/icon";
 
 export function AddFinRowInline({ block, onAdd, forceOpen, onClose }: {

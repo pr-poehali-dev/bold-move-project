@@ -1,3 +1,4 @@
+import type React from "react";
 import { useTheme } from "./themeContext";
 import { Client } from "./crmApi";
 import { InlineField, Section, FileField } from "./drawerComponents";
