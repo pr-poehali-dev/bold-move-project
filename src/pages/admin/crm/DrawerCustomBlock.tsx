@@ -1,6 +1,5 @@
 import { useState } from "react";
-import { useTheme } from "./themeContext";
-import { Section, FileField } from "./drawerComponents";
+import { Section, FileField, InlineField } from "./drawerComponents";
 import { BlockId, CustomBlockData } from "./drawerTypes";
 import { RowWithToggle } from "./DrawerFinRowHelpers";
 
@@ -17,10 +16,10 @@ export function DrawerCustomBlock({ cb, data_id, hiddenBlocks, customRowVals, ed
   setCustomRowVals: React.Dispatch<React.SetStateAction<Record<string, Record<number, string>>>>;
   logAction: (icon: string, color: string, text: string) => void;
 }) {
-  const t = useTheme();
   const isHidden = hiddenBlocks.has(cb.id);
   const editMode = editingBlock === cb.id;
   const vals = customRowVals[cb.id] || {};
+
 
   const renameRow = (i: number, label: string) => {
     updateCustomBlock(cb.id, { ...cb, rows: cb.rows.map((r, j) => j === i ? { ...r, label } : r) });
@@ -67,20 +66,9 @@ export function DrawerCustomBlock({ cb, data_id, hiddenBlocks, customRowVals, ed
                 logAction("Upload", cb.color, `${cb.title} / ${row.label}: ${name}`);
               }} />
           ) : (
-            <div className="flex items-center justify-between py-2"
-              style={{ borderBottom: `1px solid ${t.border2}` }}>
-              <span className="text-xs w-36 flex-shrink-0" style={{ color: "#d4d4d4" }}>{row.label}</span>
-              <input
-                value={vals[i] || ""}
-                onChange={e => setValue(i, e.target.value)}
-                onBlur={e => { if (e.target.value) logAction("Edit3", cb.color, `${cb.title} / ${row.label}: ${e.target.value}`); }}
-                placeholder="—"
-                className="flex-1 text-right text-sm bg-transparent focus:outline-none rounded-lg px-2 py-0.5 transition"
-                style={{ color: "#fff" }}
-                onFocus={e => { e.target.style.background = t.surface2; }}
-                onBlurCapture={e => { e.target.style.background = "transparent"; }}
-              />
-            </div>
+            <InlineField label={row.label} value={vals[i] || ""} placeholder="Добавить значение"
+              hideLabel={editMode}
+              onSave={v => { setValue(i, v); if (v) logAction("Edit3", cb.color, `${cb.title} / ${row.label}: ${v}`); }} />
           )}
         </RowWithToggle>
       ))}
