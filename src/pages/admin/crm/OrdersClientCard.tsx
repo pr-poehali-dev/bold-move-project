@@ -4,24 +4,22 @@ import Icon from "@/components/ui/icon";
 import { useTheme } from "./themeContext";
 import { NEXT_STATUS, NEXT_LABEL, ORDERS_TABS, INSTALL_STEPS } from "./ordersTypes";
 
-// ── Avatar ────────────────────────────────────────────────────────────────────
 function Avatar({ name }: { name: string }) {
   const initials = (name || "?").split(" ").map(w => w[0]).slice(0, 2).join("").toUpperCase();
   const colors = ["#8b5cf6","#3b82f6","#f59e0b","#10b981","#f97316","#ec4899","#06b6d4"];
   const color = colors[(name || "?").charCodeAt(0) % colors.length];
   return (
-    <div className="w-9 h-9 rounded-xl flex items-center justify-center text-xs font-bold flex-shrink-0"
-      style={{ background: color + "25", border: `1.5px solid ${color}40`, color: "#fff" }}>
+    <div className="w-10 h-10 rounded-xl flex items-center justify-center text-sm font-bold flex-shrink-0"
+      style={{ background: color + "25", border: `1.5px solid ${color}50`, color }}>
       {initials}
     </div>
   );
 }
 
-// ── InstallProgress ───────────────────────────────────────────────────────────
 function InstallProgress({ status }: { status: string }) {
   const idx = INSTALL_STEPS.findIndex(s => s.status === status);
   return (
-    <div className="flex items-center gap-0.5 mt-1">
+    <div className="flex items-center gap-0.5 mt-1.5">
       {INSTALL_STEPS.map((s, i) => (
         <div key={s.status} className="flex items-center gap-0.5">
           <div className="w-2 h-2 rounded-full transition-all"
@@ -38,7 +36,20 @@ function InstallProgress({ status }: { status: string }) {
   );
 }
 
-// ── ClientCard ────────────────────────────────────────────────────────────────
+// Метрика с подписью
+function Metric({ label, value, color, icon }: { label: string; value: string; color?: string; icon?: string }) {
+  const t = useTheme();
+  return (
+    <div className="flex flex-col gap-0.5">
+      <span className="text-[9px] uppercase tracking-wider font-medium" style={{ color: t.textMute }}>{label}</span>
+      <span className="text-xs font-bold flex items-center gap-1" style={{ color: color || t.text }}>
+        {icon && <Icon name={icon} size={10} style={{ color }} />}
+        {value}
+      </span>
+    </div>
+  );
+}
+
 export function OrdersClientCard({ c, onClick, onNextStep }: {
   c: Client;
   onClick: () => void;
@@ -53,6 +64,11 @@ export function OrdersClientCard({ c, onClick, onNextStep }: {
   const nextStatus  = NEXT_STATUS[c.status];
   const nextLabel   = NEXT_LABEL[c.status];
 
+  const contractSum = Number(c.contract_sum) || 0;
+  const paid        = (Number(c.prepayment) || 0) + (Number(c.extra_payment) || 0);
+  const debt        = contractSum - paid;
+  const profit      = contractSum - (Number(c.material_cost)||0) - (Number(c.measure_cost)||0) - (Number(c.install_cost)||0);
+
   const handleNext = async (e: React.MouseEvent) => {
     e.stopPropagation();
     if (!nextStatus || stepping) return;
@@ -62,91 +78,115 @@ export function OrdersClientCard({ c, onClick, onNextStep }: {
   };
 
   return (
-    <div className="rounded-2xl overflow-hidden transition group"
+    <div className="rounded-2xl overflow-hidden transition flex flex-col"
       style={{ background: t.surface, border: `1px solid ${t.border}` }}>
 
-      <div className="p-4 cursor-pointer hover:brightness-[1.03] transition" onClick={onClick}>
+      {/* Шапка */}
+      <div className="p-4 cursor-pointer hover:brightness-[1.03] transition flex-1" onClick={onClick}>
+
+        {/* Клиент */}
         <div className="flex items-start gap-3 mb-3">
           <Avatar name={c.client_name} />
           <div className="flex-1 min-w-0">
             <div className="flex items-center justify-between gap-2">
-              <span className="text-sm font-semibold truncate" style={{ color: t.text }}>{c.client_name || "Без имени"}</span>
+              <span className="text-sm font-bold truncate" style={{ color: t.text }}>{c.client_name || "Без имени"}</span>
               <span className="text-[10px] font-mono flex-shrink-0" style={{ color: t.textMute }}>#{c.id}</span>
             </div>
             <div className="text-xs truncate mt-0.5" style={{ color: t.textMute }}>{c.phone || "—"}</div>
-            {isInstall && <InstallProgress status={c.status} />}
-            {!isInstall && (
-              <span className="inline-block mt-1 text-[10px] px-1.5 py-0.5 rounded-md font-medium"
-                style={{ background: STATUS_COLORS[c.status] + "20", color: STATUS_COLORS[c.status] }}>
-                {STATUS_LABELS[c.status] || c.status}
-              </span>
-            )}
+            {isInstall
+              ? <InstallProgress status={c.status} />
+              : <span className="inline-block mt-1 text-[10px] px-1.5 py-0.5 rounded-md font-medium"
+                  style={{ background: STATUS_COLORS[c.status] + "20", color: STATUS_COLORS[c.status] }}>
+                  {STATUS_LABELS[c.status] || c.status}
+                </span>
+            }
           </div>
         </div>
 
+        {/* Объект */}
         {(c.address || c.area) && (
-          <div className="flex items-center gap-1.5 text-xs mb-2" style={{ color: t.textMute }}>
-            <Icon name="MapPin" size={10} className="flex-shrink-0" />
-            <span className="truncate">{c.address || "—"}</span>
-            {c.area && <span className="flex-shrink-0">· {c.area} м²</span>}
+          <div className="flex items-center gap-1.5 text-xs mb-3 px-2 py-1.5 rounded-lg"
+            style={{ background: t.surface2 }}>
+            <Icon name="MapPin" size={10} style={{ color: "#f59e0b" }} className="flex-shrink-0" />
+            <span className="truncate flex-1" style={{ color: t.textSub }}>{c.address || "Адрес не указан"}</span>
+            {c.area && <span className="flex-shrink-0 text-[10px] font-medium" style={{ color: t.textMute }}>{c.area} м²</span>}
           </div>
         )}
 
-        {c.measure_date && !isInstall && (
-          <div className="flex items-center gap-1.5 text-xs text-amber-500/70 mb-2">
-            <Icon name="Calendar" size={10} />
-            <span>{new Date(c.measure_date).toLocaleDateString("ru-RU", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}</span>
-          </div>
-        )}
-        {c.install_date && isInstall && (
-          <div className="flex items-center gap-1.5 text-xs text-orange-500/70 mb-2">
-            <Icon name="Wrench" size={10} />
-            <span>{new Date(c.install_date).toLocaleDateString("ru-RU", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}</span>
-          </div>
-        )}
-
-        {(c.contract_sum || c.prepayment || c.extra_payment) && (
-          <div className="flex items-center justify-between text-xs pt-2.5 mt-1"
-            style={{ borderTop: `1px solid ${t.border2}` }}>
-            {c.contract_sum
-              ? <span className="font-bold text-emerald-500">{Number(c.contract_sum).toLocaleString("ru-RU")} ₽</span>
-              : <span />}
-            {(c.prepayment || c.extra_payment) && (
-              <span style={{ color: t.textMute }}>
-                оплачено {((Number(c.prepayment)||0)+(Number(c.extra_payment)||0)).toLocaleString("ru-RU")} ₽
-              </span>
+        {/* Даты */}
+        {(c.measure_date || c.install_date) && (
+          <div className="flex gap-2 mb-3">
+            {c.measure_date && (
+              <div className="flex items-center gap-1 text-[10px] px-1.5 py-1 rounded-md"
+                style={{ background: "rgba(245,158,11,0.1)", color: "#f59e0b" }}>
+                <Icon name="Ruler" size={9} />
+                <div>
+                  <div className="font-medium">{new Date(c.measure_date).toLocaleDateString("ru-RU", { day: "numeric", month: "short" })}</div>
+                  <div className="opacity-60">Замер</div>
+                </div>
+              </div>
             )}
+            {c.install_date && (
+              <div className="flex items-center gap-1 text-[10px] px-1.5 py-1 rounded-md"
+                style={{ background: "rgba(249,115,22,0.1)", color: "#f97316" }}>
+                <Icon name="Wrench" size={9} />
+                <div>
+                  <div className="font-medium">{new Date(c.install_date).toLocaleDateString("ru-RU", { day: "numeric", month: "short" })}</div>
+                  <div className="opacity-60">Монтаж</div>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Финансы */}
+        {contractSum > 0 && (
+          <div className="grid grid-cols-3 gap-2 pt-2.5 mt-1" style={{ borderTop: `1px solid ${t.border2}` }}>
+            <Metric label="Договор" value={`${contractSum.toLocaleString("ru-RU")} ₽`} color="#10b981" icon="FileText" />
+            <Metric label="Оплачено" value={paid > 0 ? `${paid.toLocaleString("ru-RU")} ₽` : "—"} color={paid > 0 ? "#06b6d4" : undefined} />
+            <Metric label={profit >= 0 ? "Прибыль" : "Убыток"} value={profit !== 0 ? `${Math.abs(profit).toLocaleString("ru-RU")} ₽` : "—"} color={profit > 0 ? "#a78bfa" : profit < 0 ? "#ef4444" : undefined} />
+          </div>
+        )}
+
+        {/* Долг */}
+        {contractSum > 0 && debt > 0 && !isDone && !isCancelled && (
+          <div className="flex items-center gap-1.5 mt-2 text-[10px] px-2 py-1 rounded-md"
+            style={{ background: "rgba(239,68,68,0.08)", color: "#ef4444" }}>
+            <Icon name="AlertCircle" size={10} />
+            <span>Долг: <b>{debt.toLocaleString("ru-RU")} ₽</b></span>
           </div>
         )}
 
         {isCancelled && c.cancel_reason && (
-          <div className="mt-2 text-[11px] text-red-400/60 rounded-lg px-2.5 py-1.5"
-            style={{ background: "rgba(239,68,68,0.07)" }}>
-            Отказ: {c.cancel_reason}
+          <div className="mt-2 text-[10px] px-2.5 py-1.5 rounded-lg"
+            style={{ background: "rgba(239,68,68,0.07)", color: "#ef4444" }}>
+            Причина отказа: {c.cancel_reason}
           </div>
         )}
       </div>
 
+      {/* Кнопка следующего шага */}
       {nextStatus && !isDone && !isCancelled && (
         <button onClick={handleNext} disabled={stepping}
-          className="w-full flex items-center justify-between px-4 py-2.5 transition group/btn disabled:opacity-60"
+          className="w-full flex items-center justify-between px-4 py-2.5 transition disabled:opacity-60"
           style={{ borderTop: `1px solid ${t.border2}`, background: STATUS_COLORS[nextStatus] + "08" }}>
-          <span className="text-xs font-semibold" style={{ color: STATUS_COLORS[nextStatus] }}>
+          <span className="text-xs font-semibold flex items-center gap-1.5" style={{ color: STATUS_COLORS[nextStatus] }}>
             {stepping
-              ? <span className="flex items-center gap-1.5"><span className="w-3 h-3 border border-current border-t-transparent rounded-full animate-spin inline-block" /> Обновление...</span>
-              : nextLabel}
+              ? <><span className="w-3 h-3 border border-current border-t-transparent rounded-full animate-spin inline-block" /> Обновление...</>
+              : <><Icon name="ArrowRight" size={11} /> {nextLabel}</>}
           </span>
-          <span className="text-[10px] opacity-60 font-mono"
-            style={{ background: STATUS_COLORS[nextStatus] + "20", borderRadius: 4, padding: "1px 5px" }}>
-            {STATUS_LABELS[nextStatus]}
+          <span className="text-[10px] font-medium px-1.5 py-0.5 rounded"
+            style={{ background: STATUS_COLORS[nextStatus] + "20", color: STATUS_COLORS[nextStatus] }}>
+            → {STATUS_LABELS[nextStatus]}
           </span>
         </button>
       )}
 
       {isDone && (
-        <div className="w-full flex items-center gap-1.5 px-4 py-2.5 text-xs font-semibold text-emerald-500"
+        <div className="w-full flex items-center justify-between px-4 py-2.5 text-xs font-semibold text-emerald-500"
           style={{ borderTop: `1px solid ${t.border2}`, background: "rgba(16,185,129,0.06)" }}>
-          <Icon name="CheckCircle2" size={12} /> Заказ завершён
+          <span className="flex items-center gap-1.5"><Icon name="CheckCircle2" size={12} /> Заказ завершён</span>
+          {contractSum > 0 && <span className="text-emerald-400">{contractSum.toLocaleString("ru-RU")} ₽</span>}
         </div>
       )}
     </div>
