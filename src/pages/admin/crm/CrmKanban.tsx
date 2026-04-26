@@ -2,13 +2,13 @@ import { useEffect, useState, useRef } from "react";
 import { crmFetch, Client } from "./crmApi";
 import { useTheme } from "./themeContext";
 import ClientDrawer from "./ClientDrawer";
-import KanbanColSettings from "./KanbanColSettings";
 import { KanbanHeader } from "./KanbanHeader";
 import { KanbanColumn } from "./KanbanColumn";
 import {
-  KANBAN_COLS, ColId, DROP_STATUS,
+  KANBAN_COLS, DROP_STATUS, CustomKanbanCol,
   LS_HIDDEN, LS_LABELS, LS_COLORS,
   loadHidden, loadLabels, loadColors, saveColors,
+  loadCustomCols, saveCustomCols,
   loadGlobalWidth, saveGlobalWidth,
 } from "./kanbanTypes";
 
@@ -18,43 +18,21 @@ export default function CrmKanban() {
   const [loading, setLoading]         = useState(true);
   const [selected, setSelected]       = useState<Client | null>(null);
   const [dragging, setDragging]       = useState<Client | null>(null);
-  const [dragOverCol, setDragOverCol] = useState<ColId | null>(null);
+  const [dragOverCol, setDragOverCol] = useState<string | null>(null);
   const [search, setSearch]           = useState("");
   const dragRef = useRef<Client | null>(null);
 
-  // Глобальная ширина всех колонок
   const [globalWidth, setGlobalWidth] = useState<number>(loadGlobalWidth);
+  const [hiddenCols,  setHiddenCols]  = useState<Set<string>>(loadHidden);
+  const [colLabels,   setColLabels]   = useState<Record<string, string>>(loadLabels);
+  const [colColors,   setColColors]   = useState<Record<string, string>>(loadColors);
+  const [customCols,  setCustomCols]  = useState<CustomKanbanCol[]>(loadCustomCols);
 
-  const [hiddenCols,   setHiddenCols]   = useState<Set<string>>(loadHidden);
-  const [colLabels,    setColLabels]    = useState<Record<string, string>>(loadLabels);
-  const [colColors,    setColColors]    = useState<Record<string, string>>(loadColors);
-  const [showSettings, setShowSettings] = useState(false);
-
-  const handleWidthChange = (w: number) => {
-    setGlobalWidth(w);
-    saveGlobalWidth(w);
-  };
-
-  const toggleHide = (colId: string) => {
-    setHiddenCols(prev => {
-      const next = new Set(prev);
-      if (next.has(colId)) next.delete(colId); else next.add(colId);
-      localStorage.setItem(LS_HIDDEN, JSON.stringify([...next]));
-      return next;
-    });
-  };
+  const handleWidthChange = (w: number) => { setGlobalWidth(w); saveGlobalWidth(w); };
 
   const saveLabel = (colId: string, val: string) => {
     setColLabels(prev => {
       const next = { ...prev, [colId]: val.trim() };
-      localStorage.setItem(LS_LABELS, JSON.stringify(next));
-      return next;
-    });
-  };
-
-  const resetLabel = (colId: string) => {
-    setColLabels(prev => {
-      const next = { ...prev }; delete next[colId];
       localStorage.setItem(LS_LABELS, JSON.stringify(next));
       return next;
     });
@@ -68,15 +46,33 @@ export default function CrmKanban() {
     });
   };
 
-  const resetColor = (colId: string) => {
-    setColColors(prev => {
-      const next = { ...prev }; delete next[colId];
-      saveColors(next);
-      return next;
-    });
+  // Удаление колонки (дефолтная → скрываем; кастомная → удаляем)
+  const deleteCol = (colId: string) => {
+    const isDefault = KANBAN_COLS.some(c => c.id === colId);
+    if (isDefault) {
+      setHiddenCols(prev => {
+        const next = new Set(prev); next.add(colId);
+        localStorage.setItem(LS_HIDDEN, JSON.stringify([...next]));
+        return next;
+      });
+    } else {
+      const updated = customCols.filter(c => c.id !== colId);
+      setCustomCols(updated);
+      saveCustomCols(updated);
+    }
   };
 
-  const getColColor = (col: typeof KANBAN_COLS[number]) => colColors[col.id] || col.color;
+  // Добавление новой кастомной колонки
+  const addCol = () => {
+    const id = `custom_col_${Date.now()}`;
+    const newCol: CustomKanbanCol = { id, label: "Новая колонка", color: "#8b5cf6", statuses: [] };
+    const updated = [...customCols, newCol];
+    setCustomCols(updated);
+    saveCustomCols(updated);
+  };
+
+  const getColColor = (colId: string, defaultColor: string) => colColors[colId] || defaultColor;
+  const getColLabel = (colId: string, defaultLabel: string) => colLabels[colId] || defaultLabel;
 
   const load = () => {
     crmFetch("clients").then(d => {
@@ -87,22 +83,43 @@ export default function CrmKanban() {
 
   useEffect(() => { load(); }, []);
 
-  const clientsForCol = (col: typeof KANBAN_COLS[number]) =>
+  // Все видимые колонки: дефолтные (не скрытые) + кастомные
+  const defaultCols = KANBAN_COLS
+    .filter(col => !hiddenCols.has(col.id))
+    .map(col => ({
+      id: col.id,
+      label: getColLabel(col.id, col.label),
+      color: getColColor(col.id, col.color),
+      statuses: col.statuses as readonly string[],
+      isDefault: true,
+    }));
+
+  const customColsMapped = customCols.map(col => ({
+    id: col.id,
+    label: getColLabel(col.id, col.label),
+    color: getColColor(col.id, col.color),
+    statuses: [] as readonly string[],
+    isDefault: false,
+  }));
+
+  const allCols = [...defaultCols, ...customColsMapped];
+
+  const clientsForCol = (col: { statuses: readonly string[] }) =>
     clients.filter(c => {
-      if (!col.statuses.includes(c.status as never)) return false;
+      if (!col.statuses.includes(c.status)) return false;
       if (!search) return true;
       const q = search.toLowerCase();
       return (c.client_name || "").toLowerCase().includes(q) || (c.phone || "").includes(q);
     });
 
   const onDragStart = (client: Client) => { dragRef.current = client; setDragging(client); };
-  const onDragOver  = (e: React.DragEvent, colId: ColId) => { e.preventDefault(); setDragOverCol(colId); };
-  const onDrop = async (colId: ColId) => {
+  const onDragOver  = (e: React.DragEvent, colId: string) => { e.preventDefault(); setDragOverCol(colId); };
+  const onDrop = async (colId: string) => {
     const client = dragRef.current;
     setDragging(null); setDragOverCol(null);
     if (!client) return;
     const newStatus = DROP_STATUS[colId];
-    if (client.status === newStatus) return;
+    if (!newStatus || client.status === newStatus) return;
     setClients(prev => prev.map(c => c.id === client.id ? { ...c, status: newStatus } : c));
     await crmFetch("clients", { method: "PUT", body: JSON.stringify({ status: newStatus }) }, { id: String(client.id) });
   };
@@ -118,8 +135,6 @@ export default function CrmKanban() {
     </div>
   );
 
-  const visibleCols = KANBAN_COLS.filter(col => !hiddenCols.has(col.id));
-
   return (
     <div className="space-y-4">
 
@@ -129,20 +144,21 @@ export default function CrmKanban() {
         search={search}
         onSearch={setSearch}
         onWidthChange={handleWidthChange}
-        onSettings={() => setShowSettings(true)}
+        onAddCol={addCol}
       />
 
       <div className="flex overflow-x-auto pb-4 select-none" style={{ minHeight: 520, gap: 0 }}>
-        {visibleCols.map((col, colIdx) => (
+        {allCols.map((col, colIdx) => (
           <KanbanColumn
             key={col.id}
-            col={{ ...col, color: getColColor(col) }}
-            label={colLabels[col.id] || col.label}
+            col={col}
+            label={col.label}
             colClients={clientsForCol(col)}
             width={globalWidth}
-            isLast={colIdx === visibleCols.length - 1}
+            isLast={colIdx === allCols.length - 1}
             isOver={dragOverCol === col.id}
             dragging={dragging}
+            canDelete={true}
             onDragStart={onDragStart}
             onDragEnd={() => { setDragging(null); setDragOverCol(null); }}
             onDragOver={onDragOver}
@@ -152,6 +168,9 @@ export default function CrmKanban() {
             onNextStep={handleNextStep}
             onStartResize={() => {}}
             resizeBorderColor={t.border}
+            onSaveLabel={saveLabel}
+            onSaveColor={saveColor}
+            onDelete={deleteCol}
           />
         ))}
       </div>
@@ -166,20 +185,6 @@ export default function CrmKanban() {
           onClose={() => setSelected(null)}
           onUpdated={() => { load(); }}
           onDeleted={() => { setSelected(null); load(); }}
-        />
-      )}
-
-      {showSettings && (
-        <KanbanColSettings
-          hiddenCols={hiddenCols}
-          colLabels={colLabels}
-          colColors={colColors}
-          onToggleHide={toggleHide}
-          onSaveLabel={saveLabel}
-          onResetLabel={resetLabel}
-          onSaveColor={saveColor}
-          onResetColor={resetColor}
-          onClose={() => setShowSettings(false)}
         />
       )}
     </div>

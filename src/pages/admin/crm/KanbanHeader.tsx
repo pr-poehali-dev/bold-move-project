@@ -2,13 +2,13 @@ import Icon from "@/components/ui/icon";
 import { useTheme } from "./themeContext";
 import { MIN_WIDTH, MAX_WIDTH } from "./kanbanTypes";
 
-export function KanbanHeader({ clientCount, globalWidth, search, onSearch, onWidthChange, onSettings }: {
+export function KanbanHeader({ clientCount, globalWidth, search, onSearch, onWidthChange, onAddCol }: {
   clientCount: number;
   globalWidth: number;
   search: string;
   onSearch: (v: string) => void;
   onWidthChange: (w: number) => void;
-  onSettings: () => void;
+  onAddCol: () => void;
 }) {
   const t = useTheme();
 
@@ -17,7 +17,7 @@ export function KanbanHeader({ clientCount, globalWidth, search, onSearch, onWid
       <div>
         <h2 className="text-lg font-bold" style={{ color: t.text }}>Канбан-доска</h2>
         <p className="text-xs mt-0.5" style={{ color: t.textMute }}>
-          {clientCount} клиентов · перетащи карточку для смены этапа
+          {clientCount} клиентов · перетащи карточку для смены этапа · наведи на заголовок колонки для настроек
         </p>
       </div>
 
@@ -43,11 +43,11 @@ export function KanbanHeader({ clientCount, globalWidth, search, onSearch, onWid
           </span>
         </div>
 
-        {/* Настройка колонок */}
-        <button onClick={onSettings}
-          className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold transition"
-          style={{ background: t.surface2, border: `1px solid ${t.border}`, color: t.textSub }}>
-          <Icon name="Settings2" size={13} /> Колонки
+        {/* Добавить колонку */}
+        <button onClick={onAddCol}
+          className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold transition hover:bg-violet-500/10"
+          style={{ background: t.surface2, border: `1px solid ${t.border}`, color: "#a78bfa" }}>
+          <Icon name="Plus" size={13} /> Добавить колонку
         </button>
 
         {/* Поиск */}

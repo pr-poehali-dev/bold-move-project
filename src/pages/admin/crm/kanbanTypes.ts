@@ -10,7 +10,15 @@ export const KANBAN_COLS = [
 export type ColId = typeof KANBAN_COLS[number]["id"];
 export type KanbanCol = typeof KANBAN_COLS[number];
 
-export const DROP_STATUS: Record<ColId, string> = {
+// Кастомная колонка (добавляется пользователем)
+export interface CustomKanbanCol {
+  id: string;       // "custom_col_<timestamp>"
+  label: string;
+  color: string;
+  statuses: string[];  // всегда []
+}
+
+export const DROP_STATUS: Record<string, string> = {
   new:       "new",
   working:   "call",
   measures:  "measure",
@@ -36,10 +44,11 @@ export const MIN_WIDTH = 160;
 export const MAX_WIDTH = 480;
 export const LS_GLOBAL_WIDTH = "kanban_global_width";
 
-export const LS_KEY    = "kanban_col_widths";
-export const LS_HIDDEN = "kanban_hidden_cols";
-export const LS_LABELS = "kanban_col_labels";
-export const LS_COLORS = "kanban_col_colors";
+export const LS_KEY         = "kanban_col_widths";
+export const LS_HIDDEN      = "kanban_hidden_cols";
+export const LS_LABELS      = "kanban_col_labels";
+export const LS_COLORS      = "kanban_col_colors";
+export const LS_CUSTOM_COLS = "kanban_custom_cols";
 
 export function loadColors(): Record<string, string> {
   try { return JSON.parse(localStorage.getItem(LS_COLORS) || "{}"); } catch { return {}; }
@@ -65,4 +74,10 @@ export function loadHidden(): Set<string> {
 }
 export function loadLabels(): Record<string, string> {
   try { return JSON.parse(localStorage.getItem(LS_LABELS) || "{}"); } catch { return {}; }
+}
+export function loadCustomCols(): CustomKanbanCol[] {
+  try { return JSON.parse(localStorage.getItem(LS_CUSTOM_COLS) || "[]"); } catch { return []; }
+}
+export function saveCustomCols(cols: CustomKanbanCol[]) {
+  localStorage.setItem(LS_CUSTOM_COLS, JSON.stringify(cols));
 }
