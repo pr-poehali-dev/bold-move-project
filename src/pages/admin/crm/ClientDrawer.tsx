@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { crmFetch, STATUS_LABELS, STATUS_COLORS, ORDER_STATUSES, Client } from "./crmApi";
 import Icon from "@/components/ui/icon";
 import { useTheme } from "./themeContext";
@@ -20,6 +20,9 @@ export default function ClientDrawer({ client, allClientOrders, onClose, onUpdat
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [drawerTab, setDrawerTab]     = useState<"info" | "orders" | "estimate">("info");
   const [comments, setComments]       = useState<{ text: string; date: string }[]>([]);
+  const [editingName, setEditingName] = useState(false);
+  const nameValRef                    = useRef("");
+  const [copied, setCopied]           = useState(false);
 
 
 
@@ -58,7 +61,27 @@ export default function ClientDrawer({ client, allClientOrders, onClose, onUpdat
               {(data.client_name || "?").slice(0, 2).toUpperCase()}
             </div>
             <div>
-              <div className="text-base font-bold text-white">{data.client_name || "Без имени"}</div>
+              {editingName ? (
+                <input
+                  autoFocus
+                  defaultValue={data.client_name || ""}
+                  onChange={e => { nameValRef.current = e.target.value; }}
+                  onBlur={() => { setEditingName(false); save({ client_name: nameValRef.current }); }}
+                  onKeyDown={e => {
+                    if (e.key === "Enter") { e.preventDefault(); setEditingName(false); save({ client_name: nameValRef.current }); }
+                    if (e.key === "Escape") setEditingName(false);
+                  }}
+                  className="text-base font-bold text-white bg-transparent focus:outline-none focus:border-b focus:border-violet-500"
+                  style={{ borderBottom: "1px solid #7c3aed" }}
+                />
+              ) : (
+                <div
+                  className="text-base font-bold text-white cursor-text hover:opacity-80 transition"
+                  onClick={() => { nameValRef.current = data.client_name || ""; setEditingName(true); }}
+                >
+                  {data.client_name || "Без имени"}
+                </div>
+              )}
               <div className="flex items-center gap-2 mt-0.5">
                 <span className="text-[11px] px-2 py-0.5 rounded-md font-semibold"
                   style={{ background: STATUS_COLORS[data.status] + "25", color: STATUS_COLORS[data.status] }}>
@@ -73,6 +96,23 @@ export default function ClientDrawer({ client, allClientOrders, onClose, onUpdat
           </div>
           <div className="flex items-center gap-2">
             {saving && <div className="w-4 h-4 border-2 border-violet-500 border-t-transparent rounded-full animate-spin" />}
+            {copied && <span className="text-xs text-violet-300 whitespace-nowrap">Скопировано!</span>}
+            <button
+              onClick={() => {
+                if (navigator.share) {
+                  navigator.share({ title: data.client_name || "", text: data.phone || "", url: window.location.href });
+                } else {
+                  navigator.clipboard.writeText(window.location.href);
+                  setCopied(true);
+                  setTimeout(() => setCopied(false), 2000);
+                }
+              }}
+              className="p-2 rounded-lg hover:bg-white/5 transition"
+              style={{ color: t.textMute }}
+              title="Поделиться"
+            >
+              <Icon name="Share2" size={15} />
+            </button>
             <button onClick={() => setConfirmDelete(true)} className="p-2 rounded-lg hover:bg-red-500/10 transition" style={{ color: t.textMute }}>
               <Icon name="Trash2" size={15} />
             </button>

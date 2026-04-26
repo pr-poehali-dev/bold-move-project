@@ -1,4 +1,5 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { uploadFile, DEFAULT_TAGS } from "./crmApi";
 import Icon from "@/components/ui/icon";
 import { useTheme } from "./themeContext";
@@ -102,6 +103,8 @@ export function Section({ icon, title, color = "#8b5cf6", children, onEdit, hidd
   );
 }
 
+const isImage = (u: string) => /\.(jpg|jpeg|png|webp|gif)$/i.test(u);
+
 // ── FileField — множественная загрузка ────────────────────────────────────────
 export function FileField({ label, url, onUploaded, accept = "*" }: {
   label: string;
@@ -114,7 +117,12 @@ export function FileField({ label, url, onUploaded, accept = "*" }: {
   const [uploadedList, setUploadedList] = useState<{ url: string; name: string }[]>(
     url ? [{ url, name: url.split("/").pop() || "файл" }] : []
   );
+  const [renamingIdx, setRenamingIdx] = useState<number | null>(null);
+  const renameValRef = useRef("");
+  const [lightboxIdx, setLightboxIdx] = useState<number | null>(null);
   const ref = useRef<HTMLInputElement>(null);
+
+  const imageItems = uploadedList.filter(f => isImage(f.url));
 
   const handleFiles = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
@@ -129,7 +137,31 @@ export function FileField({ label, url, onUploaded, accept = "*" }: {
     if (ref.current) ref.current.value = "";
   };
 
-  const isImage = (u: string) => /\.(jpg|jpeg|png|webp|gif)$/i.test(u);
+  const commitRename = (idx: number) => {
+    const v = renameValRef.current.trim();
+    if (v) setUploadedList(prev => prev.map((f, i) => i === idx ? { ...f, name: v } : f));
+    setRenamingIdx(null);
+  };
+
+  const deleteFile = (idx: number) => {
+    setUploadedList(prev => prev.filter((_, i) => i !== idx));
+  };
+
+  const openLightbox = (globalIdx: number) => {
+    const imgIndex = imageItems.findIndex(img => img.url === uploadedList[globalIdx].url);
+    if (imgIndex !== -1) setLightboxIdx(imgIndex);
+  };
+
+  useEffect(() => {
+    if (lightboxIdx === null) return;
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setLightboxIdx(null);
+      if (e.key === "ArrowRight") setLightboxIdx(i => i !== null ? Math.min(i + 1, imageItems.length - 1) : null);
+      if (e.key === "ArrowLeft") setLightboxIdx(i => i !== null ? Math.max(i - 1, 0) : null);
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [lightboxIdx, imageItems.length]);
 
   return (
     <div className="py-2" style={{ borderBottom: `1px solid ${t.border2}` }}>
@@ -144,22 +176,102 @@ export function FileField({ label, url, onUploaded, accept = "*" }: {
         <input ref={ref} type="file" accept={accept} multiple className="hidden" onChange={handleFiles} />
       </div>
       {uploadedList.length > 0 && (
-        <div className="flex flex-wrap gap-2 mt-1 pl-36">
+        <div className="flex flex-col gap-1 mt-1 pl-36">
           {uploadedList.map((f, i) => (
-            isImage(f.url) ? (
-              <a key={i} href={f.url} target="_blank" rel="noreferrer" title={f.name}>
-                <img src={f.url} alt={f.name} className="w-14 h-10 object-cover rounded-md hover:opacity-80 transition"
-                  style={{ border: `1px solid ${t.border}` }} />
-              </a>
-            ) : (
-              <a key={i} href={f.url} target="_blank" rel="noreferrer"
-                className="flex items-center gap-1 text-xs text-violet-400 underline hover:text-violet-300 transition max-w-[120px] truncate">
-                <Icon name="FileText" size={11} className="flex-shrink-0" />
-                <span className="truncate">{f.name}</span>
-              </a>
-            )
+            <div key={i} className="flex items-center gap-1 group/file">
+              {isImage(f.url) ? (
+                <button onClick={() => openLightbox(i)} className="flex-shrink-0" title={f.name}>
+                  <img src={f.url} alt={f.name} className="w-14 h-10 object-cover rounded-md hover:opacity-80 transition"
+                    style={{ border: `1px solid ${t.border}` }} />
+                </button>
+              ) : (
+                <button onClick={() => window.open(f.url, "_blank")}
+                  className="flex items-center gap-1 text-xs text-violet-400 underline hover:text-violet-300 transition max-w-[120px] truncate">
+                  <Icon name="FileText" size={11} className="flex-shrink-0" />
+                  {renamingIdx !== i && <span className="truncate">{f.name}</span>}
+                </button>
+              )}
+              {renamingIdx === i ? (
+                <input
+                  autoFocus
+                  defaultValue={f.name}
+                  onChange={e => { renameValRef.current = e.target.value; }}
+                  onBlur={() => commitRename(i)}
+                  onKeyDown={e => {
+                    if (e.key === "Enter") { e.preventDefault(); commitRename(i); }
+                    if (e.key === "Escape") setRenamingIdx(null);
+                  }}
+                  className="text-xs rounded px-1.5 py-0.5 focus:outline-none"
+                  style={{ background: t.surface2, color: "#fff", border: `1px solid #7c3aed50`, width: 110 }}
+                />
+              ) : (
+                <>
+                  {isImage(f.url) && (
+                    <span className="text-xs truncate max-w-[80px] opacity-0 group-hover/file:opacity-100 transition"
+                      style={{ color: t.textMute }}>{f.name}</span>
+                  )}
+                  <button
+                    onClick={() => { renameValRef.current = f.name; setRenamingIdx(i); }}
+                    className="opacity-0 group-hover/file:opacity-100 transition p-0.5 rounded hover:text-violet-300"
+                    style={{ color: t.textMute }}
+                    title="Переименовать"
+                  >
+                    <Icon name="Pencil" size={10} />
+                  </button>
+                </>
+              )}
+              <button
+                onClick={() => deleteFile(i)}
+                className="opacity-0 group-hover/file:opacity-100 transition p-0.5 rounded hover:text-red-400"
+                style={{ color: t.textMute }}
+                title="Удалить"
+              >
+                <Icon name="X" size={10} />
+              </button>
+            </div>
           ))}
         </div>
+      )}
+
+      {lightboxIdx !== null && createPortal(
+        <div
+          className="fixed inset-0 z-[9999] flex items-center justify-center"
+          style={{ background: "rgba(0,0,0,0.88)" }}
+          onClick={() => setLightboxIdx(null)}
+        >
+          <button
+            onClick={() => setLightboxIdx(null)}
+            className="absolute top-4 right-4 p-2 rounded-full hover:bg-white/10 transition"
+            style={{ color: "#fff" }}
+          >
+            <Icon name="X" size={20} />
+          </button>
+          {lightboxIdx > 0 && (
+            <button
+              onClick={e => { e.stopPropagation(); setLightboxIdx(i => i !== null ? i - 1 : null); }}
+              className="absolute left-4 p-2 rounded-full hover:bg-white/10 transition"
+              style={{ color: "#fff" }}
+            >
+              <Icon name="ChevronLeft" size={28} />
+            </button>
+          )}
+          {lightboxIdx < imageItems.length - 1 && (
+            <button
+              onClick={e => { e.stopPropagation(); setLightboxIdx(i => i !== null ? i + 1 : null); }}
+              className="absolute right-4 p-2 rounded-full hover:bg-white/10 transition"
+              style={{ color: "#fff" }}
+            >
+              <Icon name="ChevronRight" size={28} />
+            </button>
+          )}
+          <img
+            src={imageItems[lightboxIdx].url}
+            alt={imageItems[lightboxIdx].name}
+            onClick={e => e.stopPropagation()}
+            style={{ maxWidth: "90vw", maxHeight: "85vh", borderRadius: 10, objectFit: "contain" }}
+          />
+        </div>,
+        document.body
       )}
     </div>
   );
