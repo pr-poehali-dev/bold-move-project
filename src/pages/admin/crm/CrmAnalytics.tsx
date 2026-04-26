@@ -4,6 +4,22 @@ import Icon from "@/components/ui/icon";
 import { useTheme } from "./themeContext";
 import ClientDrawer from "./ClientDrawer";
 import { Stats, AnalyticsTab, ANALYTICS_TABS, EMPTY_STATS } from "./analyticsTypes";
+import { loadCustomFinRows } from "./drawerTypes";
+
+// Суммирует кастомные строки доходов/затрат из localStorage по всем клиентам
+function calcCustomFinTotals(clientIds: number[]): { extraIncome: number; extraCosts: number } {
+  const rows = loadCustomFinRows();
+  let extraIncome = 0;
+  let extraCosts  = 0;
+  for (const clientId of clientIds) {
+    for (const row of rows) {
+      const val = Number(localStorage.getItem(`fin_row_${clientId}_${row.key}`)) || 0;
+      if (row.block === "income") extraIncome += val;
+      else extraCosts += val;
+    }
+  }
+  return { extraIncome, extraCosts };
+}
 import AnalyticsOverview from "./AnalyticsOverview";
 import AnalyticsFinance from "./AnalyticsFinance";
 import AnalyticsDynamics from "./AnalyticsDynamics";
@@ -31,7 +47,16 @@ export default function CrmAnalytics() {
     </div>
   );
 
-  const s = stats ?? EMPTY_STATS;
+  const baseStats = stats ?? EMPTY_STATS;
+
+  // Добавляем кастомные строки из localStorage
+  const { extraIncome, extraCosts } = calcCustomFinTotals(allClients.map(c => c.id));
+  const s: Stats = {
+    ...baseStats,
+    total_received: baseStats.total_received + extraIncome,
+    total_costs:    baseStats.total_costs    + extraCosts,
+    total_profit:   baseStats.total_profit   + extraIncome - extraCosts,
+  };
 
   // Конверсии
   const convMeasure  = s.total_all     > 0 ? Math.round((s.went_measure  / s.total_all)     * 100) : 0;
