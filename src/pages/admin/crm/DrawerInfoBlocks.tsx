@@ -116,7 +116,7 @@ export function DrawerContactsBlock({ data, hiddenBlocks, editingBlock, toggleHi
         <RowWithToggle key={`extra_${i}`} rowKey={`extra_${i}`} visible onToggle={() => {}} editMode={editMode}
           editableLabel={row.label} onLabelChange={l => renameExtraRow(i, l)}
           onDelete={() => deleteExtraRow(i)}>
-          <InlineField label={row.label} value={row.value} onSave={v => updateExtraRow(i, v)} placeholder="Добавить значение" />
+          <InlineField label={row.label} value={row.value} onSave={v => updateExtraRow(i, v)} placeholder="Добавить значение" hideLabel={editMode} />
         </RowWithToggle>
       ))}
       {editMode && <AddRowInline color="#10b981" onAdd={addExtraRow} />}
@@ -150,7 +150,7 @@ export function DrawerObjectBlock({ data, hiddenBlocks, editingBlock, toggleHidd
         <RowWithToggle key={`extra_${i}`} rowKey={`extra_${i}`} visible onToggle={() => {}} editMode={editMode}
           editableLabel={row.label} onLabelChange={l => renameExtraRow(i, l)}
           onDelete={() => deleteExtraRow(i)}>
-          <InlineField label={row.label} value={row.value} onSave={v => updateExtraRow(i, v)} placeholder="Добавить значение" />
+          <InlineField label={row.label} value={row.value} onSave={v => updateExtraRow(i, v)} placeholder="Добавить значение" hideLabel={editMode} />
         </RowWithToggle>
       ))}
       {editMode && <AddRowInline color="#f59e0b" onAdd={addExtraRow} />}
@@ -183,7 +183,7 @@ export function DrawerDatesBlock({ data, hiddenBlocks, editingBlock, toggleHidde
         <RowWithToggle key={`extra_${i}`} rowKey={`extra_${i}`} visible onToggle={() => {}} editMode={editMode}
           editableLabel={row.label} onLabelChange={l => renameExtraRow(i, l)}
           onDelete={() => deleteExtraRow(i)}>
-          <InlineField label={row.label} value={row.value} onSave={v => updateExtraRow(i, v)} placeholder="Добавить значение" />
+          <InlineField label={row.label} value={row.value} onSave={v => updateExtraRow(i, v)} placeholder="Добавить значение" hideLabel={editMode} />
         </RowWithToggle>
       ))}
       {editMode && <AddRowInline color="#f97316" onAdd={addExtraRow} />}

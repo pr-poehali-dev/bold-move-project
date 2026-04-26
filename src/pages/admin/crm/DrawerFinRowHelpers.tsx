@@ -81,7 +81,7 @@ export function RowWithToggle({ rowKey, visible, onToggle, children, editMode, e
             className="text-xs rounded-lg px-2 py-0.5 focus:outline-none w-36 flex-shrink-0"
             style={{ background: "rgba(124,58,237,0.15)", border: "1px solid #7c3aed40", color: "#fff" }}
           />
-          <div className="flex-1 min-w-0 ml-2 [&>div>span:first-child]:hidden">{children}</div>
+          <div className="flex-1 min-w-0 ml-2 [&>div]:border-none [&>div]:py-0 [&>div>span:first-child]:!hidden">{children}</div>
         </div>
       ) : (
         <div className="flex-1 min-w-0">{children}</div>
