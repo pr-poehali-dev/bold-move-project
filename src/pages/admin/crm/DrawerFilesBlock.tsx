@@ -106,6 +106,30 @@ export function DrawerFilesBlock({ clientId, hiddenBlocks, toggleHidden, logActi
     update(updated);
   };
 
+  // Share helpers
+  const shareFiles = (files: FileEntry[], title: string) => {
+    const urls = files.map(f => f.url).join("\n");
+    if (navigator.share) {
+      navigator.share({ title, text: urls });
+    } else {
+      navigator.clipboard.writeText(urls);
+    }
+  };
+
+  const shareAllFiles = () => {
+    const all = cats.flatMap(c => c.files);
+    if (!all.length) return;
+    const text = cats
+      .filter(c => c.files.length > 0)
+      .map(c => `${c.label}:\n${c.files.map(f => f.url).join("\n")}`)
+      .join("\n\n");
+    if (navigator.share) {
+      navigator.share({ title: "Все файлы", text });
+    } else {
+      navigator.clipboard.writeText(text);
+    }
+  };
+
   // Lightbox
   const lightboxCat = lightbox ? cats[lightbox.catIdx] : null;
   const lightboxImages = lightboxCat ? lightboxCat.files.filter(f => isImage(f.url)) : [];
@@ -125,7 +149,8 @@ export function DrawerFilesBlock({ clientId, hiddenBlocks, toggleHidden, logActi
   return (
     <Section icon="Paperclip" title="Файлы" color="#06b6d4" hidden={isHidden}
       onToggleHidden={() => toggleHidden("files")}
-      onEdit={!isHidden ? () => setEditingBlock(editMode ? null : "files") : undefined}>
+      onEdit={!isHidden ? () => setEditingBlock(editMode ? null : "files") : undefined}
+      onShare={cats.some(c => c.files.length > 0) ? shareAllFiles : undefined}>
 
       {cats.map((cat, catIdx) => {
         const catImages = cat.files.filter(f => isImage(f.url));
@@ -153,10 +178,17 @@ export function DrawerFilesBlock({ clientId, hiddenBlocks, toggleHidden, logActi
                 </span>
               )}
 
-              {/* Счётчик + кнопка загрузки */}
+              {/* Счётчик + поделиться категорией + загрузка */}
               <div className="flex-1 flex items-center justify-end gap-2">
                 {cat.files.length > 0 && (
                   <span className="text-xs" style={{ color: t.textMute }}>{cat.files.length} файл(ов)</span>
+                )}
+                {cat.files.length > 0 && (
+                  <button onClick={() => shareFiles(cat.files, cat.label)}
+                    className="p-1 rounded-md transition hover:bg-white/10" title={`Поделиться «${cat.label}»`}
+                    style={{ color: "#a3a3a3" }}>
+                    <Icon name="Share2" size={11} />
+                  </button>
                 )}
                 <button onClick={() => inputRefs.current[catIdx]?.click()}
                   className="text-xs flex items-center gap-1 transition hover:opacity-80"
@@ -196,6 +228,12 @@ export function DrawerFilesBlock({ clientId, hiddenBlocks, toggleHidden, logActi
                           style={{ border: `1px solid ${t.border}` }}>
                           <img src={f.url} alt={f.name} className="w-full h-full object-cover" />
                         </button>
+                        {/* Share фото */}
+                        <button onClick={() => shareFiles([f], f.name)}
+                          className="absolute bottom-0 left-0 w-5 h-5 rounded-tr-lg bg-black/50 flex items-center justify-center hover:bg-black/70 transition"
+                          title="Поделиться">
+                          <Icon name="Share2" size={9} className="text-white" />
+                        </button>
                         {editMode && (
                           <button onClick={() => deleteFile(catIdx, cat.files.indexOf(f))}
                             className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-red-500 flex items-center justify-center hover:bg-red-600 transition">
@@ -216,6 +254,11 @@ export function DrawerFilesBlock({ clientId, hiddenBlocks, toggleHidden, logActi
                       onClick={() => window.open(f.url, "_blank")}>
                       {f.name}
                     </span>
+                    <button onClick={() => shareFiles([f], f.name)}
+                      className="p-0.5 rounded hover:bg-white/10 flex-shrink-0 opacity-0 group-hover/doc:opacity-100 transition"
+                      title="Поделиться" style={{ color: "#a3a3a3" }}>
+                      <Icon name="Share2" size={10} />
+                    </button>
                     {editMode && (
                       <button onClick={() => deleteFile(catIdx, cat.files.indexOf(f))}
                         className="p-0.5 rounded hover:text-red-400 flex-shrink-0" style={{ color: "#ef4444" }}>

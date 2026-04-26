@@ -68,10 +68,11 @@ export function InlineField({ label, value, onSave, type = "text", placeholder =
 }
 
 // ── Section ───────────────────────────────────────────────────────────────────
-export function Section({ icon, title, color = "#8b5cf6", children, onEdit, onDelete, hidden, onToggleHidden }: {
+export function Section({ icon, title, color = "#8b5cf6", children, onEdit, onDelete, onShare, hidden, onToggleHidden }: {
   icon: string; title: string; color?: string; children: React.ReactNode;
   onEdit?: () => void;
   onDelete?: () => void;
+  onShare?: () => void;
   hidden?: boolean;
   onToggleHidden?: () => void;
 }) {
@@ -84,6 +85,13 @@ export function Section({ icon, title, color = "#8b5cf6", children, onEdit, onDe
         </div>
         <span className="text-xs font-bold uppercase tracking-wider flex-1" style={{ color }}>{title}</span>
         <div className={`flex items-center gap-1 transition ${hidden ? "opacity-100" : "opacity-0 group-hover/section:opacity-100"}`}>
+          {onShare && !hidden && (
+            <button onClick={onShare} title="Поделиться всеми файлами"
+              className="p-1 rounded-md transition hover:bg-white/10"
+              style={{ color: "#a3a3a3" }}>
+              <Icon name="Share2" size={12} />
+            </button>
+          )}
           {onToggleHidden && (
             <button onClick={onToggleHidden} title={hidden ? "Показать блок" : "Скрыть блок"}
               className="p-1 rounded-md transition hover:bg-white/10"
