@@ -22,6 +22,15 @@ interface Props {
   onRemoveBoard?: () => void;
 }
 
+const LS_LOCAL_CARDS = "kanban_board_local_cards";
+
+function loadLocalCards(): Client[] {
+  try { return JSON.parse(localStorage.getItem(LS_LOCAL_CARDS) || "[]"); } catch { return []; }
+}
+function saveLocalCards(cards: Client[]) {
+  localStorage.setItem(LS_LOCAL_CARDS, JSON.stringify(cards));
+}
+
 export default function CrmKanban({ clients, loading, onStatusChange, onClientRemoved, onReload, onRemoveBoard }: Props) {
   const t = useTheme();
   const [selected, setSelected]       = useState<Client | null>(null);
@@ -29,6 +38,9 @@ export default function CrmKanban({ clients, loading, onStatusChange, onClientRe
   const [dragOverCol, setDragOverCol] = useState<string | null>(null);
   const [search, setSearch]           = useState("");
   const dragRef = useRef<Client | null>(null);
+
+  // Локальные карточки (заметки) — хранятся в localStorage
+  const [localCards, setLocalCards] = useState<Client[]>(loadLocalCards);
 
   const [globalWidth, setGlobalWidth] = useState<number>(loadGlobalWidth);
   const [hiddenCols,  setHiddenCols]  = useState<Set<string>>(loadHidden);
@@ -105,13 +117,41 @@ export default function CrmKanban({ clients, loading, onStatusChange, onClientRe
 
   const allCols = [...defaultCols, ...customColsMapped];
 
-  const clientsForCol = (col: { statuses: readonly string[] }) =>
-    clients.filter(c => {
-      if (!col.statuses.includes(c.status)) return false;
+  // Все карточки: реальные клиенты + локальные заметки
+  const allCards = [...clients, ...localCards];
+
+  const clientsForCol = (col: { id: string; statuses: readonly string[] }) => {
+    const colStatus = DROP_STATUS[col.id] || col.id;
+    return allCards.filter(c => {
+      const match = col.statuses.length > 0
+        ? col.statuses.includes(c.status)
+        : c.status === colStatus;
+      if (!match) return false;
       if (!search) return true;
       const q = search.toLowerCase();
       return (c.client_name || "").toLowerCase().includes(q) || (c.phone || "").includes(q);
     });
+  };
+
+  const addCard = (colId: string) => {
+    const name = prompt("Имя / название карточки:");
+    if (!name?.trim()) return;
+    const colStatus = DROP_STATUS[colId] || colId;
+    const newCard: Client = {
+      id: -(Date.now()),
+      session_id: "",
+      client_name: name.trim(),
+      phone: "",
+      status: colStatus,
+      measure_date: null, install_date: null, notes: null, address: null,
+      area: null, budget: null, source: null, created_at: new Date().toISOString(),
+      contract_sum: null, prepayment: null, extra_payment: null, extra_agreement_sum: null,
+      responsible_phone: null, map_link: null, tags: null,
+      photo_before_url: null, photo_after_url: null, document_url: null,
+      material_cost: null, measure_cost: null, install_cost: null, cancel_reason: null,
+    };
+    setLocalCards(prev => { const next = [...prev, newCard]; saveLocalCards(next); return next; });
+  };
 
   const onDragStart = (client: Client) => { dragRef.current = client; setDragging(client); };
   const onDragOver  = (e: React.DragEvent, colId: string) => { e.preventDefault(); setDragOverCol(colId); };
@@ -119,13 +159,22 @@ export default function CrmKanban({ clients, loading, onStatusChange, onClientRe
     const client = dragRef.current;
     setDragging(null); setDragOverCol(null);
     if (!client) return;
-    const newStatus = DROP_STATUS[colId];
-    if (!newStatus || client.status === newStatus) return;
+    const newStatus = DROP_STATUS[colId] || colId;
+    // Локальная карточка — обновляем только в localStorage
+    if (client.id < 0) {
+      setLocalCards(prev => { const next = prev.map(c => c.id === client.id ? { ...c, status: newStatus } : c); saveLocalCards(next); return next; });
+      return;
+    }
+    if (client.status === newStatus) return;
     onStatusChange(client.id, newStatus);
     await crmFetch("clients", { method: "PUT", body: JSON.stringify({ status: newStatus }) }, { id: String(client.id) });
   };
 
   const handleNextStep = async (id: number, nextStatus: string) => {
+    if (id < 0) {
+      setLocalCards(prev => { const next = prev.map(c => c.id === id ? { ...c, status: nextStatus } : c); saveLocalCards(next); return next; });
+      return;
+    }
     onStatusChange(id, nextStatus);
     await crmFetch("clients", { method: "PUT", body: JSON.stringify({ status: nextStatus }) }, { id: String(id) });
   };
@@ -140,7 +189,7 @@ export default function CrmKanban({ clients, loading, onStatusChange, onClientRe
     <div className="space-y-4">
 
       <KanbanHeader
-        clientCount={clients.length}
+        clientCount={allCards.length}
         globalWidth={globalWidth}
         search={search}
         onSearch={setSearch}
@@ -161,6 +210,7 @@ export default function CrmKanban({ clients, loading, onStatusChange, onClientRe
             isOver={dragOverCol === col.id}
             dragging={dragging}
             canDelete={true}
+            onAddCard={addCard}
             onDragStart={onDragStart}
             onDragEnd={() => { setDragging(null); setDragOverCol(null); }}
             onDragOver={onDragOver}

@@ -27,6 +27,7 @@ interface KanbanColumnProps {
   isOver: boolean;
   dragging: Client | null;
   canDelete: boolean;
+  onAddCard?: (colId: string) => void;
   onDragStart: (c: Client) => void;
   onDragEnd: () => void;
   onDragOver: (e: React.DragEvent, colId: string) => void;
@@ -43,7 +44,7 @@ interface KanbanColumnProps {
 
 export function KanbanColumn({
   col, label, colClients, width, isLast, isOver,
-  dragging, canDelete,
+  dragging, canDelete, onAddCard,
   onDragStart, onDragEnd, onDragOver, onDragLeave, onDrop,
   onOpen, onNextStep, onStartResize, resizeBorderColor,
   onSaveLabel, onSaveColor, onDelete,
@@ -214,6 +215,16 @@ export function KanbanColumn({
               style={{ borderColor: col.color, background: col.color + "08" }}>
               <span className="text-xs font-semibold" style={{ color: col.color }}>Переместить сюда</span>
             </div>
+          )}
+
+          {/* Кнопка добавить карточку */}
+          {onAddCard && (
+            <button
+              onClick={() => onAddCard(col.id)}
+              className="w-full flex items-center gap-1.5 px-2 py-2 rounded-xl text-xs font-medium transition opacity-40 hover:opacity-100 mt-1"
+              style={{ color: col.color }}>
+              <Icon name="Plus" size={13} /> Добавить карточку
+            </button>
           )}
         </div>
       </div>

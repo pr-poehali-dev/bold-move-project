@@ -162,7 +162,7 @@ export default function CrmPanel() {
           {tab === "clients"   && <CrmClients />}
           {tab === "orders"    && <CrmOrders clients={clients} loading={loading} onStatusChange={updateClientStatus} onClientRemoved={removeClient} onReload={loadClients} />}
           {tab === "calendar"  && <CrmCalendar />}
-          {tab === "kanban"    && <CrmKanban clients={clients} loading={loading} onStatusChange={updateClientStatus} onClientRemoved={removeClient} onReload={loadClients} onRemoveBoard={disableKanban} />}
+          {tab === "kanban"    && <CrmKanban clients={[]} loading={false} onStatusChange={() => {}} onClientRemoved={() => {}} onReload={() => {}} onRemoveBoard={disableKanban} />}
         </div>
       </div>
     </ThemeContext.Provider>
