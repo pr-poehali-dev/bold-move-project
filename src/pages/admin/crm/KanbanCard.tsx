@@ -55,10 +55,13 @@ export default function KanbanCard({ client, colColor, onOpen, onNextStep, dragg
   const isDone    = client.status === "done";
 
   const contractSum = Number(client.contract_sum) || 0;
-  const paid        = (Number(client.prepayment) || 0) + (Number(client.extra_payment) || 0);
+  const prepayment  = Number(client.prepayment) || 0;
+  const extraPay    = Number(client.extra_payment) || 0;
+  const income      = contractSum + prepayment + extraPay;
+  const paid        = prepayment + extraPay;
   const debt        = contractSum - paid;
   const costs       = (Number(client.material_cost)||0) + (Number(client.measure_cost)||0) + (Number(client.install_cost)||0);
-  const profit      = contractSum - costs;
+  const profit      = income - costs;
 
   const handleNext = async (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -132,16 +135,16 @@ export default function KanbanCard({ client, colColor, onOpen, onNextStep, dragg
         )}
 
         {/* Финансы */}
-        {contractSum > 0 && (
+        {income > 0 && (
           <div className="mt-2 pt-2 grid grid-cols-2 gap-x-2 gap-y-1" style={{ borderTop: `1px solid ${t.border2}` }}>
             <div>
-              <div className="text-[8px] uppercase tracking-wide" style={{ color: t.textMute }}>Договор</div>
-              <div className="text-xs font-bold text-emerald-500">{contractSum.toLocaleString("ru-RU")} ₽</div>
+              <div className="text-[8px] uppercase tracking-wide" style={{ color: t.textMute }}>Доходы</div>
+              <div className="text-xs font-bold text-emerald-500">{income.toLocaleString("ru-RU")} ₽</div>
             </div>
-            {paid > 0 && (
+            {costs > 0 && (
               <div>
-                <div className="text-[8px] uppercase tracking-wide" style={{ color: t.textMute }}>Оплачено</div>
-                <div className="text-xs font-semibold" style={{ color: "#06b6d4" }}>{paid.toLocaleString("ru-RU")} ₽</div>
+                <div className="text-[8px] uppercase tracking-wide" style={{ color: t.textMute }}>Затраты</div>
+                <div className="text-xs font-semibold" style={{ color: "#f97316" }}>{costs.toLocaleString("ru-RU")} ₽</div>
               </div>
             )}
             {debt > 0 && !isDone && (

@@ -48,10 +48,13 @@ export function OrdersClientRow({ c, onClick, onNextStep }: {
   const isCancelled = c.status === "cancelled";
 
   const contractSum = Number(c.contract_sum) || 0;
-  const paid        = (Number(c.prepayment) || 0) + (Number(c.extra_payment) || 0);
+  const prepayment  = Number(c.prepayment) || 0;
+  const extraPay    = Number(c.extra_payment) || 0;
+  const income      = contractSum + prepayment + extraPay;
+  const paid        = prepayment + extraPay;
   const debt        = contractSum - paid;
   const costs       = (Number(c.material_cost)||0) + (Number(c.measure_cost)||0) + (Number(c.install_cost)||0);
-  const profit      = contractSum - costs;
+  const profit      = income - costs;
 
   const handleNext = async (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -116,16 +119,16 @@ export function OrdersClientRow({ c, onClick, onNextStep }: {
 
       {/* Финансы */}
       <div className="flex items-center gap-4 flex-shrink-0">
-        {contractSum > 0 ? (
+        {income > 0 ? (
           <>
             <div className="text-right">
-              <div className="text-[9px] uppercase tracking-wide" style={{ color: t.textMute }}>Договор</div>
-              <div className="text-sm font-bold text-emerald-500">{contractSum.toLocaleString("ru-RU")} ₽</div>
+              <div className="text-[9px] uppercase tracking-wide" style={{ color: t.textMute }}>Доходы</div>
+              <div className="text-sm font-bold text-emerald-500">{income.toLocaleString("ru-RU")} ₽</div>
             </div>
-            {paid > 0 && (
+            {costs > 0 && (
               <div className="text-right">
-                <div className="text-[9px] uppercase tracking-wide" style={{ color: t.textMute }}>Оплачено</div>
-                <div className="text-xs font-semibold" style={{ color: "#06b6d4" }}>{paid.toLocaleString("ru-RU")} ₽</div>
+                <div className="text-[9px] uppercase tracking-wide" style={{ color: t.textMute }}>Затраты</div>
+                <div className="text-xs font-semibold" style={{ color: "#f97316" }}>{costs.toLocaleString("ru-RU")} ₽</div>
               </div>
             )}
             {debt > 0 && !isDone && !isCancelled && (
@@ -134,7 +137,7 @@ export function OrdersClientRow({ c, onClick, onNextStep }: {
                 <div className="text-xs font-semibold text-red-400">{debt.toLocaleString("ru-RU")} ₽</div>
               </div>
             )}
-            {costs > 0 && (
+            {(income > 0 || costs > 0) && (
               <div className="text-right">
                 <div className="text-[9px] uppercase tracking-wide" style={{ color: t.textMute }}>Прибыль</div>
                 <div className="text-xs font-semibold" style={{ color: profit >= 0 ? "#a78bfa" : "#ef4444" }}>

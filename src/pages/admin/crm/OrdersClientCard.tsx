@@ -65,9 +65,13 @@ export function OrdersClientCard({ c, onClick, onNextStep }: {
   const nextLabel   = NEXT_LABEL[c.status];
 
   const contractSum = Number(c.contract_sum) || 0;
-  const paid        = (Number(c.prepayment) || 0) + (Number(c.extra_payment) || 0);
+  const prepayment  = Number(c.prepayment) || 0;
+  const extraPay    = Number(c.extra_payment) || 0;
+  const income      = contractSum + prepayment + extraPay;
+  const paid        = prepayment + extraPay;
+  const costs       = (Number(c.material_cost)||0) + (Number(c.measure_cost)||0) + (Number(c.install_cost)||0);
   const debt        = contractSum - paid;
-  const profit      = contractSum - (Number(c.material_cost)||0) - (Number(c.measure_cost)||0) - (Number(c.install_cost)||0);
+  const profit      = income - costs;
 
   const handleNext = async (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -140,10 +144,10 @@ export function OrdersClientCard({ c, onClick, onNextStep }: {
         )}
 
         {/* Финансы */}
-        {contractSum > 0 && (
+        {income > 0 && (
           <div className="grid grid-cols-3 gap-2 pt-2.5 mt-1" style={{ borderTop: `1px solid ${t.border2}` }}>
-            <Metric label="Договор" value={`${contractSum.toLocaleString("ru-RU")} ₽`} color="#10b981" icon="FileText" />
-            <Metric label="Оплачено" value={paid > 0 ? `${paid.toLocaleString("ru-RU")} ₽` : "—"} color={paid > 0 ? "#06b6d4" : undefined} />
+            <Metric label="Доходы" value={`${income.toLocaleString("ru-RU")} ₽`} color="#10b981" icon="TrendingUp" />
+            <Metric label="Затраты" value={costs > 0 ? `${costs.toLocaleString("ru-RU")} ₽` : "—"} color={costs > 0 ? "#f97316" : undefined} />
             <Metric label={profit >= 0 ? "Прибыль" : "Убыток"} value={profit !== 0 ? `${Math.abs(profit).toLocaleString("ru-RU")} ₽` : "—"} color={profit > 0 ? "#a78bfa" : profit < 0 ? "#ef4444" : undefined} />
           </div>
         )}
