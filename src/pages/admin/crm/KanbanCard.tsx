@@ -41,7 +41,7 @@ export default function KanbanCard({ client, onOpen, onNextStep, dragging }: Pro
       draggable
       onClick={onOpen}
       className={`rounded-xl overflow-hidden cursor-grab active:cursor-grabbing transition select-none ${dragging ? "opacity-40 scale-95" : ""}`}
-      style={{ background: t.surface, border: `1px solid ${t.border}` }}>
+      style={{ background: t.surface, border: `1px solid ${color}35`, borderLeft: `3px solid ${color}` }}>
 
       {/* Тело карточки */}
       <div className="p-3">
