@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import Icon from "@/components/ui/icon";
 import CrmAnalytics from "./CrmAnalytics";
 import CrmClients from "./CrmClients";
@@ -6,6 +6,7 @@ import CrmOrders from "./CrmOrders";
 import CrmCalendar from "./CrmCalendar";
 import CrmKanban from "./CrmKanban";
 import { ThemeContext, DARK, LIGHT, type Theme } from "./themeContext";
+import { crmFetch, Client } from "./crmApi";
 
 type CrmTab = "analytics" | "clients" | "orders" | "calendar" | "kanban";
 
@@ -18,8 +19,28 @@ const CRM_TABS: { id: CrmTab; label: string; icon: string }[] = [
 ];
 
 export default function CrmPanel() {
-  const [tab, setTab] = useState<CrmTab>("orders");
-  const [theme, setTheme] = useState<Theme>("dark");
+  const [tab, setTab]         = useState<CrmTab>("orders");
+  const [theme, setTheme]     = useState<Theme>("dark");
+  const [clients, setClients] = useState<Client[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const loadClients = () => {
+    setLoading(true);
+    crmFetch("clients").then(d => {
+      setClients((Array.isArray(d) ? d : []).filter((c: Client) => c.status !== "deleted"));
+      setLoading(false);
+    });
+  };
+
+  const updateClientStatus = (id: number, status: string) => {
+    setClients(prev => prev.map(c => c.id === id ? { ...c, status } : c));
+  };
+
+  const removeClient = (id: number) => {
+    setClients(prev => prev.filter(c => c.id !== id));
+  };
+
+  useEffect(() => { loadClients(); }, []);
 
   const ctx = useMemo(() => ({
     ...(theme === "dark" ? DARK : LIGHT),
@@ -83,9 +104,9 @@ export default function CrmPanel() {
         <div className="p-6">
           {tab === "analytics" && <CrmAnalytics />}
           {tab === "clients"   && <CrmClients />}
-          {tab === "orders"    && <CrmOrders />}
+          {tab === "orders"    && <CrmOrders    clients={clients} loading={loading} onStatusChange={updateClientStatus} onClientRemoved={removeClient} onReload={loadClients} />}
           {tab === "calendar"  && <CrmCalendar />}
-          {tab === "kanban"    && <CrmKanban />}
+          {tab === "kanban"    && <CrmKanban    clients={clients} loading={loading} onStatusChange={updateClientStatus} onClientRemoved={removeClient} onReload={loadClients} />}
         </div>
       </div>
     </ThemeContext.Provider>

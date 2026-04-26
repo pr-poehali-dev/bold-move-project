@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { crmFetch, Client } from "./crmApi";
 import Icon from "@/components/ui/icon";
 import ClientDrawer from "./ClientDrawer";
@@ -8,28 +8,24 @@ import { OrdersClientCard } from "./OrdersClientCard";
 import { OrdersClientRow } from "./OrdersClientRow";
 import { OrdersTabs } from "./OrdersTabs";
 
-export default function CrmOrders() {
+interface Props {
+  clients: Client[];
+  loading: boolean;
+  onStatusChange: (id: number, status: string) => void;
+  onClientRemoved: (id: number) => void;
+  onReload: () => void;
+}
+
+export default function CrmOrders({ clients: allClients, loading, onStatusChange, onClientRemoved, onReload }: Props) {
   const t = useTheme();
-  const [allClients, setAllClients] = useState<Client[]>([]);
-  const [loading, setLoading]       = useState(true);
-  const [search, setSearch]         = useState("");
-  const [activeTab, setActiveTab]   = useState<OrdersTabId>("leads");
-  const [selected, setSelected]     = useState<Client | null>(null);
-  const [viewMode, setViewMode]     = useState<"grid" | "list">("grid");
-
-  const load = () => {
-    setLoading(true);
-    crmFetch("clients").then(d => {
-      setAllClients((Array.isArray(d) ? d : []).filter((c: Client) => c.status !== "deleted"));
-      setLoading(false);
-    });
-  };
-
-  useEffect(() => { load(); }, []);
+  const [search, setSearch]       = useState("");
+  const [activeTab, setActiveTab] = useState<OrdersTabId>("leads");
+  const [selected, setSelected]   = useState<Client | null>(null);
+  const [viewMode, setViewMode]   = useState<"grid" | "list">("grid");
 
   const handleNextStep = async (id: number, nextStatus: string) => {
     await crmFetch("clients", { method: "PUT", body: JSON.stringify({ status: nextStatus }) }, { id: String(id) });
-    setAllClients(prev => prev.map(c => c.id === id ? { ...c, status: nextStatus } : c));
+    onStatusChange(id, nextStatus);
   };
 
   const currentTab     = ORDERS_TABS.find(t => t.id === activeTab)!;
@@ -184,8 +180,8 @@ export default function CrmOrders() {
             return phone ? allClients.filter(c => (c.phone || "").trim().replace(/\D/g, "") === phone) : [selected];
           })()}
           onClose={() => setSelected(null)}
-          onUpdated={() => { load(); }}
-          onDeleted={() => { setSelected(null); load(); }}
+          onUpdated={() => { onReload(); }}
+          onDeleted={() => { setSelected(null); onClientRemoved(selected.id); }}
         />
       )}
     </div>

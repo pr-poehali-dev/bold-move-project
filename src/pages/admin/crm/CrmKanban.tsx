@@ -1,4 +1,5 @@
-import { useEffect, useState, useRef } from "react";
+import { useState, useRef } from "react";
+import type React from "react";
 import { crmFetch, Client } from "./crmApi";
 import { useTheme } from "./themeContext";
 import ClientDrawer from "./ClientDrawer";
@@ -12,10 +13,16 @@ import {
   loadGlobalWidth, saveGlobalWidth,
 } from "./kanbanTypes";
 
-export default function CrmKanban() {
+interface Props {
+  clients: Client[];
+  loading: boolean;
+  onStatusChange: (id: number, status: string) => void;
+  onClientRemoved: (id: number) => void;
+  onReload: () => void;
+}
+
+export default function CrmKanban({ clients, loading, onStatusChange, onClientRemoved, onReload }: Props) {
   const t = useTheme();
-  const [clients, setClients]         = useState<Client[]>([]);
-  const [loading, setLoading]         = useState(true);
   const [selected, setSelected]       = useState<Client | null>(null);
   const [dragging, setDragging]       = useState<Client | null>(null);
   const [dragOverCol, setDragOverCol] = useState<string | null>(null);
@@ -74,14 +81,7 @@ export default function CrmKanban() {
   const getColColor = (colId: string, defaultColor: string) => colColors[colId] || defaultColor;
   const getColLabel = (colId: string, defaultLabel: string) => colLabels[colId] || defaultLabel;
 
-  const load = () => {
-    crmFetch("clients").then(d => {
-      setClients((Array.isArray(d) ? d : []).filter((c: Client) => c.status !== "deleted"));
-      setLoading(false);
-    });
-  };
 
-  useEffect(() => { load(); }, []);
 
   // Все видимые колонки: дефолтные (не скрытые) + кастомные
   const defaultCols = KANBAN_COLS
@@ -120,12 +120,12 @@ export default function CrmKanban() {
     if (!client) return;
     const newStatus = DROP_STATUS[colId];
     if (!newStatus || client.status === newStatus) return;
-    setClients(prev => prev.map(c => c.id === client.id ? { ...c, status: newStatus } : c));
+    onStatusChange(client.id, newStatus);
     await crmFetch("clients", { method: "PUT", body: JSON.stringify({ status: newStatus }) }, { id: String(client.id) });
   };
 
   const handleNextStep = async (id: number, nextStatus: string) => {
-    setClients(prev => prev.map(c => c.id === id ? { ...c, status: nextStatus } : c));
+    onStatusChange(id, nextStatus);
     await crmFetch("clients", { method: "PUT", body: JSON.stringify({ status: nextStatus }) }, { id: String(id) });
   };
 
@@ -183,8 +183,8 @@ export default function CrmKanban() {
             return phone ? clients.filter(c => (c.phone || "").trim().replace(/\D/g, "") === phone) : [selected];
           })()}
           onClose={() => setSelected(null)}
-          onUpdated={() => { load(); }}
-          onDeleted={() => { setSelected(null); load(); }}
+          onUpdated={() => { onReload(); }}
+          onDeleted={() => { setSelected(null); onClientRemoved(selected.id); }}
         />
       )}
     </div>
