@@ -10,15 +10,15 @@ import { ThemeContext, DARK, LIGHT, type Theme } from "./themeContext";
 type CrmTab = "analytics" | "clients" | "orders" | "calendar" | "kanban";
 
 const CRM_TABS: { id: CrmTab; label: string; icon: string }[] = [
-  { id: "analytics", label: "Аналитика", icon: "BarChart2" },
-  { id: "clients",   label: "Клиенты",   icon: "Users" },
   { id: "orders",    label: "Заказы",    icon: "Layers" },
-  { id: "calendar",  label: "Календарь", icon: "CalendarDays" },
+  { id: "clients",   label: "Клиенты",   icon: "Users" },
   { id: "kanban",    label: "Канбан",    icon: "Kanban" },
+  { id: "calendar",  label: "Календарь", icon: "CalendarDays" },
+  { id: "analytics", label: "Аналитика", icon: "BarChart2" },
 ];
 
 export default function CrmPanel() {
-  const [tab, setTab] = useState<CrmTab>("analytics");
+  const [tab, setTab] = useState<CrmTab>("orders");
   const [theme, setTheme] = useState<Theme>("dark");
 
   const ctx = useMemo(() => ({
