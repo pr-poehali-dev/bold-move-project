@@ -48,11 +48,6 @@ export function DrawerIncomeBlock({
       </RowWithToggle>
       {rowVisibility["extra_payment"] === false && <HiddenRowToggle rowKey="extra_payment" label="Доплата" onToggle={toggleRowVisibility} />}
 
-      <RowWithToggle rowKey="extra_agreement_sum" visible={rowVisibility["extra_agreement_sum"] !== false} onToggle={toggleRowVisibility} editMode={incomeEdit}>
-        <InlineField label="Доп. соглашение" value={data.extra_agreement_sum} onSave={v => saveWithLog({ extra_agreement_sum: +v || null } as Partial<Client>, `Доп. согл: ${(+v).toLocaleString("ru-RU")} ₽`, "FileText", "#06b6d4")} type="number" placeholder="—" />
-      </RowWithToggle>
-      {rowVisibility["extra_agreement_sum"] === false && <HiddenRowToggle rowKey="extra_agreement_sum" label="Доп. соглашение" onToggle={toggleRowVisibility} />}
-
       {customFinRows.filter(r => r.block === "income").map(r => {
         const lsKey = `fin_row_${data.id}_${r.key}`;
         const val = localStorage.getItem(lsKey) || "";

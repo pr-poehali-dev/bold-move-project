@@ -39,10 +39,9 @@ function getEditRows(id: BlockId, data: Client): EditRow[] {
       { label: "Монтаж", value: data.install_date ? data.install_date.slice(0, 16) : "", key: "install_date" },
     ];
     case "income": return [
-      { label: "Договор",    value: data.contract_sum        ? String(data.contract_sum)        : "", key: "contract_sum" },
-      { label: "Предоплата", value: data.prepayment          ? String(data.prepayment)          : "", key: "prepayment" },
-      { label: "Доплата",    value: data.extra_payment       ? String(data.extra_payment)       : "", key: "extra_payment" },
-      { label: "Доп. согл.", value: data.extra_agreement_sum ? String(data.extra_agreement_sum) : "", key: "extra_agreement_sum" },
+      { label: "Договор",    value: data.contract_sum  ? String(data.contract_sum)  : "", key: "contract_sum" },
+      { label: "Предоплата", value: data.prepayment    ? String(data.prepayment)    : "", key: "prepayment" },
+      { label: "Доплата",    value: data.extra_payment ? String(data.extra_payment) : "", key: "extra_payment" },
     ];
     case "costs": return [
       { label: "Материалы", value: data.material_cost ? String(data.material_cost) : "", key: "material_cost" },

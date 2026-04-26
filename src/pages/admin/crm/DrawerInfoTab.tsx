@@ -187,6 +187,7 @@ export default function DrawerInfoTab({ data, client, setData, save, setComments
         data={data}
         isHidden={hiddenBlocks.has("pl")}
         toggleHidden={toggleHidden}
+        customFinRows={customFinRows}
       />
 
       {/* Три колонки */}

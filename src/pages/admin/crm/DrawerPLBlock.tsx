@@ -1,30 +1,43 @@
 import Icon from "@/components/ui/icon";
 import { useTheme } from "./themeContext";
 import { Client } from "./crmApi";
-import { BlockId } from "./drawerTypes";
+import { BlockId, CustomFinRow } from "./drawerTypes";
 
-export function DrawerPLBlock({ data, isHidden, toggleHidden }: {
+export function DrawerPLBlock({ data, isHidden, toggleHidden, customFinRows }: {
   data: Client;
   isHidden: boolean;
   toggleHidden: (id: BlockId) => void;
+  customFinRows: CustomFinRow[];
 }) {
   const t = useTheme();
   const fmt = (n: number) => n.toLocaleString("ru-RU");
+
+  // ── Кастомные строки из localStorage ─────────────────────────────────────────
+  const customCostRows = customFinRows
+    .filter(r => r.block === "costs")
+    .map(r => ({ label: r.label, value: Number(localStorage.getItem(`fin_row_${data.id}_${r.key}`)) || 0 }))
+    .filter(r => r.value > 0);
+
+  const customIncomeRows = customFinRows
+    .filter(r => r.block === "income")
+    .map(r => ({ label: r.label, value: Number(localStorage.getItem(`fin_row_${data.id}_${r.key}`)) || 0 }))
+    .filter(r => r.value > 0);
 
   // ── ЗАТРАТЫ (слева) ──────────────────────────────────────────────────────────
   const costRows: { label: string; value: number }[] = [
     { label: "Материалы", value: Number(data.material_cost) || 0 },
     { label: "Замер",     value: Number(data.measure_cost)  || 0 },
     { label: "Монтаж",    value: Number(data.install_cost)  || 0 },
+    ...customCostRows,
   ].filter(r => r.value > 0);
   const plCosts = costRows.reduce((s, r) => s + r.value, 0);
 
   // ── ДОХОДЫ (справа) ──────────────────────────────────────────────────────────
   const incomeRows: { label: string; value: number }[] = [
-    { label: "Договор",         value: Number(data.contract_sum)        || 0 },
-    { label: "Предоплата",      value: Number(data.prepayment)          || 0 },
-    { label: "Доплата",         value: Number(data.extra_payment)       || 0 },
-    { label: "Доп. соглашение", value: Number(data.extra_agreement_sum) || 0 },
+    { label: "Договор",    value: Number(data.contract_sum)  || 0 },
+    { label: "Предоплата", value: Number(data.prepayment)    || 0 },
+    { label: "Доплата",    value: Number(data.extra_payment) || 0 },
+    ...customIncomeRows,
   ].filter(r => r.value > 0);
   const plIncome = incomeRows.reduce((s, r) => s + r.value, 0);
 
