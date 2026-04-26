@@ -49,16 +49,17 @@ export function AddFinRowInline({ block, onAdd, forceOpen, onClose }: {
   );
 }
 
-export function RowWithToggle({ rowKey, visible, onToggle, children, editMode }: {
+export function RowWithToggle({ rowKey, visible, onToggle, children, editMode, onDelete }: {
   rowKey: string;
   visible: boolean;
   onToggle: (key: string) => void;
   children: React.ReactNode;
   editMode?: boolean;
+  onDelete?: () => void;
 }) {
   if (!visible) return null;
   return (
-    <div className={`flex items-center gap-1 ${editMode ? "" : "group/rowtoggle"}`}>
+    <div className="flex items-center gap-1">
       <div className="flex-1 min-w-0">{children}</div>
       <button
         onClick={() => onToggle(rowKey)}
@@ -78,6 +79,12 @@ export function RowWithToggle({ rowKey, visible, onToggle, children, editMode }:
           transition: "left 0.2s",
         }} />
       </button>
+      {onDelete && (
+        <button onClick={onDelete} title="Удалить строку"
+          className={`${editMode ? "opacity-100" : "opacity-0 pointer-events-none w-0 overflow-hidden"} flex-shrink-0 text-red-400/60 hover:text-red-400 transition-all`}>
+          <Icon name="X" size={11} />
+        </button>
+      )}
     </div>
   );
 }

@@ -1,4 +1,3 @@
-import Icon from "@/components/ui/icon";
 import { Client } from "./crmApi";
 import { InlineField, Section } from "./drawerComponents";
 import { BlockId, CustomFinRow } from "./drawerTypes";
@@ -58,22 +57,10 @@ export function DrawerIncomeBlock({
         const lsKey = `fin_row_${data.id}_${r.key}`;
         const val = localStorage.getItem(lsKey) || "";
         return rowVisibility[r.key] !== false ? (
-          <div key={r.key} className={`flex items-center gap-1 ${incomeEdit ? "" : "group/rowtoggle"}`}>
-            <div className="flex-1 min-w-0">
-              <InlineField label={r.label} value={val} type="number" placeholder="—"
-                onSave={v => { localStorage.setItem(lsKey, v); logAction("Plus", "#10b981", `${r.label}: ${(+v).toLocaleString("ru-RU")} ₽`); }} />
-            </div>
-            <button onClick={() => toggleRowVisibility(r.key)}
-              title="Скрыть строку"
-              className={`${incomeEdit ? "opacity-100" : "opacity-0 group-hover/rowtoggle:opacity-100"} flex-shrink-0 rounded-full transition-all duration-200`}
-              style={{ width: 28, height: 16, background: "#8b5cf6", position: "relative", display: "inline-flex", alignItems: "center" }}>
-              <span style={{ width: 12, height: 12, background: "#fff", borderRadius: "50%", position: "absolute", left: 14, transition: "left 0.2s" }} />
-            </button>
-            <button onClick={() => deleteCustomFinRow(r.key)} title="Удалить строку"
-              className={`${incomeEdit ? "opacity-100" : "opacity-0 group-hover/rowtoggle:opacity-100"} flex-shrink-0 text-red-400/60 hover:text-red-400 transition-all ml-0.5`}>
-              <Icon name="X" size={11} />
-            </button>
-          </div>
+          <RowWithToggle key={r.key} rowKey={r.key} visible onToggle={toggleRowVisibility} editMode={incomeEdit} onDelete={() => deleteCustomFinRow(r.key)}>
+            <InlineField label={r.label} value={val} type="number" placeholder="—"
+              onSave={v => { localStorage.setItem(lsKey, v); logAction("Plus", "#10b981", `${r.label}: ${(+v).toLocaleString("ru-RU")} ₽`); }} />
+          </RowWithToggle>
         ) : (
           <HiddenRowToggle key={r.key} rowKey={r.key} label={r.label} onToggle={toggleRowVisibility} />
         );
@@ -120,22 +107,10 @@ export function DrawerCostsBlock({
         const lsKey = `fin_row_${data.id}_${r.key}`;
         const val = localStorage.getItem(lsKey) || "";
         return rowVisibility[r.key] !== false ? (
-          <div key={r.key} className={`flex items-center gap-1 ${costsEdit ? "" : "group/rowtoggle"}`}>
-            <div className="flex-1 min-w-0">
-              <InlineField label={r.label} value={val} type="number" placeholder="—"
-                onSave={v => { localStorage.setItem(lsKey, v); logAction("Minus", "#ef4444", `${r.label}: ${(+v).toLocaleString("ru-RU")} ₽`); }} />
-            </div>
-            <button onClick={() => toggleRowVisibility(r.key)}
-              title="Скрыть строку"
-              className={`${costsEdit ? "opacity-100" : "opacity-0 group-hover/rowtoggle:opacity-100"} flex-shrink-0 rounded-full transition-all duration-200`}
-              style={{ width: 28, height: 16, background: "#8b5cf6", position: "relative", display: "inline-flex", alignItems: "center" }}>
-              <span style={{ width: 12, height: 12, background: "#fff", borderRadius: "50%", position: "absolute", left: 14, transition: "left 0.2s" }} />
-            </button>
-            <button onClick={() => deleteCustomFinRow(r.key)} title="Удалить строку"
-              className={`${costsEdit ? "opacity-100" : "opacity-0 group-hover/rowtoggle:opacity-100"} flex-shrink-0 text-red-400/60 hover:text-red-400 transition-all ml-0.5`}>
-              <Icon name="X" size={11} />
-            </button>
-          </div>
+          <RowWithToggle key={r.key} rowKey={r.key} visible onToggle={toggleRowVisibility} editMode={costsEdit} onDelete={() => deleteCustomFinRow(r.key)}>
+            <InlineField label={r.label} value={val} type="number" placeholder="—"
+              onSave={v => { localStorage.setItem(lsKey, v); logAction("Minus", "#ef4444", `${r.label}: ${(+v).toLocaleString("ru-RU")} ₽`); }} />
+          </RowWithToggle>
         ) : (
           <HiddenRowToggle key={r.key} rowKey={r.key} label={r.label} onToggle={toggleRowVisibility} />
         );
