@@ -53,35 +53,31 @@ export function DrawerIncomeBlock({
       onToggleHidden={() => toggleHidden(id)}
       onEdit={!isHidden ? () => setEditingBlock(incomeEdit ? null : id) : undefined}>
 
-      {(["contract_sum", "prepayment", "extra_payment"] as const).map(key => {
+      {(["contract_sum", "prepayment", "extra_payment"] as const).filter(key => rowVisibility[key] !== false).map(key => {
         const defs: Record<string, { def: string; save: (v: string) => void }> = {
-          contract_sum:  { def: "Сумма договора", save: v => saveWithLog({ contract_sum:  +v || null } as Partial<Client>, `Договор: ${(+v).toLocaleString("ru-RU")} ₽`,  "FileText", "#10b981") },
+          contract_sum:  { def: "Сумма договора", save: v => saveWithLog({ contract_sum:  +v || null } as Partial<Client>, `Договор: ${(+v).toLocaleString("ru-RU")} ₽`,   "FileText", "#10b981") },
           prepayment:    { def: "Предоплата",     save: v => saveWithLog({ prepayment:    +v || null } as Partial<Client>, `Предоплата: +${(+v).toLocaleString("ru-RU")} ₽`, "Wallet",   "#10b981") },
           extra_payment: { def: "Доплата",        save: v => saveWithLog({ extra_payment: +v || null } as Partial<Client>, `Доплата: +${(+v).toLocaleString("ru-RU")} ₽`,   "Wallet",   "#10b981") },
         };
-        const visible = rowVisibility[key] !== false;
         return (
-          <div key={key} style={{ opacity: !visible && incomeEdit ? 0.35 : 1 }}>
-            <RowWithToggle rowKey={key} visible={visible || incomeEdit} onToggle={toggleRowVisibility} editMode={incomeEdit}
-              editableLabel={getLabel(key, defs[key].def)} onLabelChange={l => renameLabel(key, l)}>
-              <InlineField label={getLabel(key, defs[key].def)} value={data[key]} onSave={defs[key].save} type="number" placeholder="—" />
-            </RowWithToggle>
-          </div>
+          <RowWithToggle key={key} rowKey={key} visible onToggle={() => {}} editMode={incomeEdit}
+            editableLabel={getLabel(key, defs[key].def)} onLabelChange={l => renameLabel(key, l)}
+            onDelete={() => toggleRowVisibility(key)}>
+            <InlineField label={getLabel(key, defs[key].def)} value={data[key]} onSave={defs[key].save} type="number" placeholder="—" />
+          </RowWithToggle>
         );
       })}
 
-      {customFinRows.filter(r => r.block === "income").map(r => {
+      {customFinRows.filter(r => r.block === "income" && rowVisibility[r.key] !== false).map(r => {
         const lsKey = `fin_row_${data.id}_${r.key}`;
         const val = localStorage.getItem(lsKey) || "";
-        const visible = rowVisibility[r.key] !== false;
         return (
-          <div key={r.key} style={{ opacity: !visible && incomeEdit ? 0.35 : 1 }}>
-            <RowWithToggle rowKey={r.key} visible={visible || incomeEdit} onToggle={toggleRowVisibility} editMode={incomeEdit}
-              editableLabel={r.label} onLabelChange={label => updateCustomFinRow(r.key, label)}>
-              <InlineField label={r.label} value={val} type="number" placeholder="—"
-                onSave={v => { localStorage.setItem(lsKey, v); logAction("Plus", "#10b981", `${r.label}: ${(+v).toLocaleString("ru-RU")} ₽`); }} />
-            </RowWithToggle>
-          </div>
+          <RowWithToggle key={r.key} rowKey={r.key} visible onToggle={() => {}} editMode={incomeEdit}
+            editableLabel={r.label} onLabelChange={label => updateCustomFinRow(r.key, label)}
+            onDelete={() => { deleteCustomFinRow(r.key); }}>
+            <InlineField label={r.label} value={val} type="number" placeholder="—"
+              onSave={v => { localStorage.setItem(lsKey, v); logAction("Plus", "#10b981", `${r.label}: ${(+v).toLocaleString("ru-RU")} ₽`); }} />
+          </RowWithToggle>
         );
       })}
 
@@ -120,29 +116,25 @@ export function DrawerCostsBlock({
           measure_cost:  { def: "Замер",     save: v => saveWithLog({ measure_cost:  +v || null } as Partial<Client>, `Замер стоит: ${(+v).toLocaleString("ru-RU")} ₽`, "Ruler",   "#ef4444") },
           install_cost:  { def: "Монтаж",    save: v => saveWithLog({ install_cost:  +v || null } as Partial<Client>, `Монтаж стоит: ${(+v).toLocaleString("ru-RU")} ₽`,"Wrench",  "#ef4444") },
         };
-        const visible = rowVisibility[key] !== false;
-        return (
-          <div key={key} style={{ opacity: !visible && costsEdit ? 0.35 : 1 }}>
-            <RowWithToggle rowKey={key} visible={visible || costsEdit} onToggle={toggleRowVisibility} editMode={costsEdit}
-              editableLabel={getLabel(key, defs[key].def)} onLabelChange={l => renameLabel(key, l)}>
-              <InlineField label={getLabel(key, defs[key].def)} value={data[key]} onSave={defs[key].save} type="number" placeholder="—" />
-            </RowWithToggle>
-          </div>
+        return rowVisibility[key] === false ? null : (
+          <RowWithToggle key={key} rowKey={key} visible onToggle={() => {}} editMode={costsEdit}
+            editableLabel={getLabel(key, defs[key].def)} onLabelChange={l => renameLabel(key, l)}
+            onDelete={() => toggleRowVisibility(key)}>
+            <InlineField label={getLabel(key, defs[key].def)} value={data[key]} onSave={defs[key].save} type="number" placeholder="—" />
+          </RowWithToggle>
         );
       })}
 
-      {customFinRows.filter(r => r.block === "costs").map(r => {
+      {customFinRows.filter(r => r.block === "costs" && rowVisibility[r.key] !== false).map(r => {
         const lsKey = `fin_row_${data.id}_${r.key}`;
         const val = localStorage.getItem(lsKey) || "";
-        const visible = rowVisibility[r.key] !== false;
         return (
-          <div key={r.key} style={{ opacity: !visible && costsEdit ? 0.35 : 1 }}>
-            <RowWithToggle rowKey={r.key} visible={visible || costsEdit} onToggle={toggleRowVisibility} editMode={costsEdit}
-              editableLabel={r.label} onLabelChange={label => updateCustomFinRow(r.key, label)}>
-              <InlineField label={r.label} value={val} type="number" placeholder="—"
-                onSave={v => { localStorage.setItem(lsKey, v); logAction("Minus", "#ef4444", `${r.label}: ${(+v).toLocaleString("ru-RU")} ₽`); }} />
-            </RowWithToggle>
-          </div>
+          <RowWithToggle key={r.key} rowKey={r.key} visible onToggle={() => {}} editMode={costsEdit}
+            editableLabel={r.label} onLabelChange={label => updateCustomFinRow(r.key, label)}
+            onDelete={() => { deleteCustomFinRow(r.key); }}>
+            <InlineField label={r.label} value={val} type="number" placeholder="—"
+              onSave={v => { localStorage.setItem(lsKey, v); logAction("Minus", "#ef4444", `${r.label}: ${(+v).toLocaleString("ru-RU")} ₽`); }} />
+          </RowWithToggle>
         );
       })}
 

@@ -10,17 +10,16 @@ function loadInfoLabels(): Record<string, string> {
   try { return JSON.parse(localStorage.getItem(LS_INFO_LABELS) || "{}"); } catch { return {}; }
 }
 function saveInfoLabel(key: string, label: string) {
-  const curr = loadInfoLabels();
-  curr[key] = label;
+  const curr = loadInfoLabels(); curr[key] = label;
   localStorage.setItem(LS_INFO_LABELS, JSON.stringify(curr));
 }
 
-const LS_INFO_VIS = "crm_info_row_visibility";
-function loadInfoVis(): Record<string, boolean> {
-  try { return JSON.parse(localStorage.getItem(LS_INFO_VIS) || "{}"); } catch { return {}; }
+const LS_INFO_HIDDEN = "crm_info_row_hidden";
+function loadInfoHidden(): Record<string, boolean> {
+  try { return JSON.parse(localStorage.getItem(LS_INFO_HIDDEN) || "{}"); } catch { return {}; }
 }
-function saveInfoVis(v: Record<string, boolean>) {
-  localStorage.setItem(LS_INFO_VIS, JSON.stringify(v));
+function saveInfoHidden(v: Record<string, boolean>) {
+  localStorage.setItem(LS_INFO_HIDDEN, JSON.stringify(v));
 }
 
 interface InfoBlocksProps {
@@ -36,39 +35,42 @@ interface InfoBlocksProps {
   logAction: (icon: string, color: string, text: string) => void;
 }
 
-// ── Contacts ─────────────────────────────────────────────────────────────────
-export function DrawerContactsBlock({ data, hiddenBlocks, editingBlock, toggleHidden, setEditingBlock, saveWithLog }: InfoBlocksProps) {
-  const id: BlockId = "contacts";
+// Хук единой логики для инфо-блоков
+function useInfoBlock(id: BlockId, hiddenBlocks: Set<BlockId>, editingBlock: BlockId | null, toggleHidden: (id: BlockId) => void, setEditingBlock: (id: BlockId | null) => void) {
   const isHidden = hiddenBlocks.has(id);
   const editMode = editingBlock === id;
   const [labels, setLabels] = useState<Record<string, string>>(loadInfoLabels);
-  const [vis, setVis] = useState<Record<string, boolean>>(loadInfoVis);
+  const [hidden, setHidden] = useState<Record<string, boolean>>(loadInfoHidden);
 
   const getLabel = (key: string, def: string) => labels[key] || def;
   const renameLabel = (key: string, label: string) => { setLabels(p => ({ ...p, [key]: label })); saveInfoLabel(key, label); };
-  const toggleVis = (key: string) => { setVis(p => { const n = { ...p, [key]: !p[key] }; saveInfoVis(n); return n; }); };
-  const isVisible = (key: string) => vis[key] !== false;
+  const hideRow = (key: string) => { setHidden(p => { const n = { ...p, [key]: true }; saveInfoHidden(n); return n; }); };
+  const isVisible = (key: string) => !hidden[key];
+
+  return { isHidden, editMode, getLabel, renameLabel, hideRow, isVisible, toggleHidden, setEditingBlock };
+}
+
+// ── Contacts ─────────────────────────────────────────────────────────────────
+export function DrawerContactsBlock({ data, hiddenBlocks, editingBlock, toggleHidden, setEditingBlock, saveWithLog }: InfoBlocksProps) {
+  const id: BlockId = "contacts";
+  const { isHidden, editMode, getLabel, renameLabel, hideRow, isVisible } = useInfoBlock(id, hiddenBlocks, editingBlock, toggleHidden, setEditingBlock);
 
   const rows: { key: keyof Client; def: string; ph: string; save: (v: string) => void }[] = [
-    { key: "client_name",       def: "Имя клиента",    ph: "Добавить имя",      save: v => saveWithLog({ client_name: v },       `Имя: ${v}`,           "User",  "#10b981") },
-    { key: "phone",             def: "Телефон",         ph: "Добавить телефон",  save: v => saveWithLog({ phone: v },             `Телефон: ${v}`,       "Phone", "#10b981") },
-    { key: "responsible_phone", def: "Ответственный",   ph: "Прораб / дизайнер", save: v => saveWithLog({ responsible_phone: v }, `Ответственный: ${v}`, "User",  "#10b981") },
+    { key: "client_name",       def: "Имя клиента",   ph: "Добавить имя",      save: v => saveWithLog({ client_name: v },       `Имя: ${v}`,           "User",  "#10b981") },
+    { key: "phone",             def: "Телефон",        ph: "Добавить телефон",  save: v => saveWithLog({ phone: v },             `Телефон: ${v}`,       "Phone", "#10b981") },
+    { key: "responsible_phone", def: "Ответственный",  ph: "Прораб / дизайнер", save: v => saveWithLog({ responsible_phone: v }, `Ответственный: ${v}`, "User",  "#10b981") },
   ];
 
   return (
     <Section icon="Phone" title="Контакты" color="#10b981" hidden={isHidden}
       onToggleHidden={() => toggleHidden(id)}
       onEdit={!isHidden ? () => setEditingBlock(editMode ? null : id) : undefined}>
-      {rows.map(r => (
-        // В режиме редактирования показываем все строки (даже скрытые — полупрозрачно)
-        // Вне режима — скрытые не рендерятся (visible=false → RowWithToggle вернёт null)
-        <div key={r.key} style={{ opacity: !isVisible(r.key) && editMode ? 0.35 : 1 }}>
-          <RowWithToggle rowKey={r.key} visible={isVisible(r.key) || editMode} onToggle={toggleVis} editMode={editMode}
-            editableLabel={getLabel(r.key, r.def)} onLabelChange={l => renameLabel(r.key, l)}
-            onDelete={() => toggleVis(r.key)}>
-            <InlineField label={getLabel(r.key, r.def)} value={data[r.key] as string} onSave={r.save} placeholder={r.ph} />
-          </RowWithToggle>
-        </div>
+      {rows.filter(r => isVisible(r.key)).map(r => (
+        <RowWithToggle key={r.key} rowKey={r.key} visible onToggle={() => {}} editMode={editMode}
+          editableLabel={getLabel(r.key, r.def)} onLabelChange={l => renameLabel(r.key, l)}
+          onDelete={() => hideRow(r.key)}>
+          <InlineField label={getLabel(r.key, r.def)} value={data[r.key] as string} onSave={r.save} placeholder={r.ph} />
+        </RowWithToggle>
       ))}
     </Section>
   );
@@ -77,34 +79,24 @@ export function DrawerContactsBlock({ data, hiddenBlocks, editingBlock, toggleHi
 // ── Object ────────────────────────────────────────────────────────────────────
 export function DrawerObjectBlock({ data, hiddenBlocks, editingBlock, toggleHidden, setEditingBlock, saveWithLog }: InfoBlocksProps) {
   const id: BlockId = "object";
-  const isHidden = hiddenBlocks.has(id);
-  const editMode = editingBlock === id;
-  const [labels, setLabels] = useState<Record<string, string>>(loadInfoLabels);
-  const [vis, setVis] = useState<Record<string, boolean>>(loadInfoVis);
-
-  const getLabel = (key: string, def: string) => labels[key] || def;
-  const renameLabel = (key: string, label: string) => { setLabels(p => ({ ...p, [key]: label })); saveInfoLabel(key, label); };
-  const toggleVis = (key: string) => { setVis(p => { const n = { ...p, [key]: !p[key] }; saveInfoVis(n); return n; }); };
-  const isVisible = (key: string) => vis[key] !== false;
+  const { isHidden, editMode, getLabel, renameLabel, hideRow, isVisible } = useInfoBlock(id, hiddenBlocks, editingBlock, toggleHidden, setEditingBlock);
 
   const rows: { key: keyof Client; def: string; ph: string; type?: string; save: (v: string) => void }[] = [
-    { key: "address",  def: "Адрес",          ph: "Добавить адрес",   save: v => saveWithLog({ address: v },                             `Адрес: ${v}`,      "MapPin",   "#f59e0b") },
-    { key: "map_link", def: "Ссылка на карту", ph: "Добавить ссылку",  save: v => saveWithLog({ map_link: v },                           "Карта обновлена",  "Link",     "#f59e0b") },
-    { key: "area",     def: "Площадь (м²)",   ph: "—", type: "number", save: v => saveWithLog({ area: +v || null } as Partial<Client>,   `Площадь: ${v} м²`, "Maximize2","#f59e0b") },
+    { key: "address",  def: "Адрес",           ph: "Добавить адрес",  save: v => saveWithLog({ address: v },                           `Адрес: ${v}`,      "MapPin",    "#f59e0b") },
+    { key: "map_link", def: "Ссылка на карту",  ph: "Добавить ссылку", save: v => saveWithLog({ map_link: v },                          "Карта обновлена",  "Link",      "#f59e0b") },
+    { key: "area",     def: "Площадь (м²)",    ph: "—", type: "number", save: v => saveWithLog({ area: +v || null } as Partial<Client>, `Площадь: ${v} м²`, "Maximize2", "#f59e0b") },
   ];
 
   return (
     <Section icon="MapPin" title="Объект" color="#f59e0b" hidden={isHidden}
       onToggleHidden={() => toggleHidden(id)}
       onEdit={!isHidden ? () => setEditingBlock(editMode ? null : id) : undefined}>
-      {rows.map(r => (
-        <div key={r.key} style={{ opacity: !isVisible(r.key) && editMode ? 0.35 : 1 }}>
-          <RowWithToggle rowKey={r.key} visible={isVisible(r.key) || editMode} onToggle={toggleVis} editMode={editMode}
-            editableLabel={getLabel(r.key, r.def)} onLabelChange={l => renameLabel(r.key, l)}
-            onDelete={() => toggleVis(r.key)}>
-            <InlineField label={getLabel(r.key, r.def)} value={data[r.key] as string | number} onSave={r.save} type={r.type} placeholder={r.ph} />
-          </RowWithToggle>
-        </div>
+      {rows.filter(r => isVisible(r.key)).map(r => (
+        <RowWithToggle key={r.key} rowKey={r.key} visible onToggle={() => {}} editMode={editMode}
+          editableLabel={getLabel(r.key, r.def)} onLabelChange={l => renameLabel(r.key, l)}
+          onDelete={() => hideRow(r.key)}>
+          <InlineField label={getLabel(r.key, r.def)} value={data[r.key] as string | number} onSave={r.save} type={r.type} placeholder={r.ph} />
+        </RowWithToggle>
       ))}
     </Section>
   );
@@ -113,15 +105,7 @@ export function DrawerObjectBlock({ data, hiddenBlocks, editingBlock, toggleHidd
 // ── Dates ─────────────────────────────────────────────────────────────────────
 export function DrawerDatesBlock({ data, hiddenBlocks, editingBlock, toggleHidden, setEditingBlock, saveWithLog }: InfoBlocksProps) {
   const id: BlockId = "dates";
-  const isHidden = hiddenBlocks.has(id);
-  const editMode = editingBlock === id;
-  const [labels, setLabels] = useState<Record<string, string>>(loadInfoLabels);
-  const [vis, setVis] = useState<Record<string, boolean>>(loadInfoVis);
-
-  const getLabel = (key: string, def: string) => labels[key] || def;
-  const renameLabel = (key: string, label: string) => { setLabels(p => ({ ...p, [key]: label })); saveInfoLabel(key, label); };
-  const toggleVis = (key: string) => { setVis(p => { const n = { ...p, [key]: !p[key] }; saveInfoVis(n); return n; }); };
-  const isVisible = (key: string) => vis[key] !== false;
+  const { isHidden, editMode, getLabel, renameLabel, hideRow, isVisible } = useInfoBlock(id, hiddenBlocks, editingBlock, toggleHidden, setEditingBlock);
 
   const rows: { key: keyof Client; def: string; valFn: () => string; save: (v: string) => void }[] = [
     { key: "measure_date", def: "Дата замера",  valFn: () => data.measure_date ? data.measure_date.slice(0, 16) : "", save: v => saveWithLog({ measure_date: v || null }, v ? `Замер: ${new Date(v).toLocaleDateString("ru-RU")}` : "Дата замера удалена",  "Ruler",  "#f97316") },
@@ -132,14 +116,12 @@ export function DrawerDatesBlock({ data, hiddenBlocks, editingBlock, toggleHidde
     <Section icon="Calendar" title="Даты" color="#f97316" hidden={isHidden}
       onToggleHidden={() => toggleHidden(id)}
       onEdit={!isHidden ? () => setEditingBlock(editMode ? null : id) : undefined}>
-      {rows.map(r => (
-        <div key={r.key} style={{ opacity: !isVisible(r.key) && editMode ? 0.35 : 1 }}>
-          <RowWithToggle rowKey={r.key} visible={isVisible(r.key) || editMode} onToggle={toggleVis} editMode={editMode}
-            editableLabel={getLabel(r.key, r.def)} onLabelChange={l => renameLabel(r.key, l)}
-            onDelete={() => toggleVis(r.key)}>
-            <InlineField label={getLabel(r.key, r.def)} value={r.valFn()} onSave={r.save} type="datetime-local" placeholder="Добавить дату" />
-          </RowWithToggle>
-        </div>
+      {rows.filter(r => isVisible(r.key)).map(r => (
+        <RowWithToggle key={r.key} rowKey={r.key} visible onToggle={() => {}} editMode={editMode}
+          editableLabel={getLabel(r.key, r.def)} onLabelChange={l => renameLabel(r.key, l)}
+          onDelete={() => hideRow(r.key)}>
+          <InlineField label={getLabel(r.key, r.def)} value={r.valFn()} onSave={r.save} type="datetime-local" placeholder="Добавить дату" />
+        </RowWithToggle>
       ))}
     </Section>
   );
