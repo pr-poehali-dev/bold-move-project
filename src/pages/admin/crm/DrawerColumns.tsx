@@ -9,11 +9,25 @@ import { BlockEditor, DraggableBlock } from "./DrawerBlockEditor";
 import { DrawerTagsBlock } from "./DrawerTagsBlock";
 import { DrawerCustomBlock } from "./DrawerCustomBlock";
 
-function AddFinRowInline({ block, onAdd }: { block: "income" | "costs"; onAdd: (label: string, block: "income" | "costs") => void }) {
+function AddFinRowInline({ block, onAdd, forceOpen, onClose }: {
+  block: "income" | "costs";
+  onAdd: (label: string, block: "income" | "costs") => void;
+  forceOpen?: boolean;
+  onClose?: () => void;
+}) {
   const [open, setOpen] = useState(false);
   const [val, setVal] = useState("");
   const color = block === "income" ? "#10b981" : "#ef4444";
-  if (!open) return (
+  const isOpen = open || forceOpen;
+
+  const commit = () => {
+    if (val.trim()) { onAdd(val.trim(), block); setVal(""); }
+    setOpen(false);
+    onClose?.();
+  };
+  const cancel = () => { setVal(""); setOpen(false); onClose?.(); };
+
+  if (!isOpen) return (
     <button onClick={() => setOpen(true)}
       className="flex items-center gap-1 mt-1 text-xs transition-opacity opacity-40 hover:opacity-80"
       style={{ color }}>
@@ -27,36 +41,37 @@ function AddFinRowInline({ block, onAdd }: { block: "income" | "costs"; onAdd: (
         value={val}
         onChange={e => setVal(e.target.value)}
         onKeyDown={e => {
-          if (e.key === "Enter" && val.trim()) { onAdd(val.trim(), block); setVal(""); setOpen(false); }
-          if (e.key === "Escape") { setVal(""); setOpen(false); }
+          if (e.key === "Enter") commit();
+          if (e.key === "Escape") cancel();
         }}
         placeholder="Название строки..."
         className="flex-1 text-xs rounded-lg px-2 py-1 focus:outline-none"
         style={{ background: "rgba(255,255,255,0.06)", border: `1px solid ${color}40`, color: "#fff" }}
       />
-      <button onClick={() => { if (val.trim()) { onAdd(val.trim(), block); setVal(""); setOpen(false); } }}
+      <button onClick={commit}
         className="text-xs px-2 py-1 rounded-lg font-medium" style={{ background: `${color}20`, color }}>
         OK
       </button>
-      <button onClick={() => { setVal(""); setOpen(false); }} className="text-xs text-white/30 hover:text-white/60">✕</button>
+      <button onClick={cancel} className="text-xs text-white/30 hover:text-white/60">✕</button>
     </div>
   );
 }
 
-function RowWithToggle({ rowKey, visible, onToggle, children }: {
+function RowWithToggle({ rowKey, visible, onToggle, children, editMode }: {
   rowKey: string;
   visible: boolean;
   onToggle: (key: string) => void;
   children: React.ReactNode;
+  editMode?: boolean;
 }) {
   if (!visible) return null;
   return (
-    <div className="flex items-center gap-1 group/rowtoggle">
+    <div className={`flex items-center gap-1 ${editMode ? "" : "group/rowtoggle"}`}>
       <div className="flex-1 min-w-0">{children}</div>
       <button
         onClick={() => onToggle(rowKey)}
         title="Скрыть строку на всех карточках"
-        className="opacity-0 group-hover/rowtoggle:opacity-100 flex-shrink-0 rounded-full transition-all duration-200"
+        className={`${editMode ? "opacity-100" : "opacity-0 group-hover/rowtoggle:opacity-100"} flex-shrink-0 rounded-full transition-all duration-200`}
         style={{
           width: 28, height: 16,
           background: "#8b5cf6",
@@ -198,17 +213,20 @@ export function DrawerColumns(props: ColumnsProps) {
   // Блоки с фиксированными полями — нельзя добавлять новые строки через BlockEditor
   const FIXED_BLOCKS = new Set(["income", "costs", "contacts", "object", "dates"]);
 
+  const FIN_BLOCKS = new Set<BlockId>(["income", "costs"]);
+
   const wrap = (id: BlockId, content: React.ReactNode, icon: string, title: string, color: string, hasEdit: boolean) => {
     const isHidden   = hiddenBlocks.has(id);
     const showEditor = editingBlock === id;
     const editRows   = getEditRows(id);
+    const isFinBlock = FIN_BLOCKS.has(id);
     return (
       <Section icon={icon} title={title} color={color}
         hidden={isHidden}
         onToggleHidden={() => toggleHidden(id)}
         onEdit={hasEdit && !isHidden ? () => setEditingBlock(showEditor ? null : id) : undefined}>
         {content}
-        {showEditor && editRows.length > 0 && (
+        {showEditor && editRows.length > 0 && !isFinBlock && (
           <BlockEditor
             rows={editRows}
             allowAdd={!FIXED_BLOCKS.has(id)}
@@ -276,21 +294,22 @@ export function DrawerColumns(props: ColumnsProps) {
       case "pl":
         return null; // P&L вынесен на уровень выше — под Статус воронки
 
-      case "income":
+      case "income": {
+        const incomeEdit = editingBlock === "income";
         return wrap(id, <>
-          <RowWithToggle rowKey="contract_sum" visible={rowVisibility["contract_sum"] !== false} onToggle={toggleRowVisibility}>
+          <RowWithToggle rowKey="contract_sum" visible={rowVisibility["contract_sum"] !== false} onToggle={toggleRowVisibility} editMode={incomeEdit}>
             <InlineField label="Сумма договора" value={data.contract_sum} onSave={v => saveWithLog({ contract_sum: +v || null } as Partial<Client>, `Договор: ${(+v).toLocaleString("ru-RU")} ₽`, "FileText", "#10b981")} type="number" placeholder="—" />
           </RowWithToggle>
           {rowVisibility["contract_sum"] === false && <HiddenRowToggle rowKey="contract_sum" label="Сумма договора" onToggle={toggleRowVisibility} />}
-          <RowWithToggle rowKey="prepayment" visible={rowVisibility["prepayment"] !== false} onToggle={toggleRowVisibility}>
+          <RowWithToggle rowKey="prepayment" visible={rowVisibility["prepayment"] !== false} onToggle={toggleRowVisibility} editMode={incomeEdit}>
             <InlineField label="Предоплата" value={data.prepayment} onSave={v => saveWithLog({ prepayment: +v || null } as Partial<Client>, `Предоплата: +${(+v).toLocaleString("ru-RU")} ₽`, "Wallet", "#10b981")} type="number" placeholder="—" />
           </RowWithToggle>
           {rowVisibility["prepayment"] === false && <HiddenRowToggle rowKey="prepayment" label="Предоплата" onToggle={toggleRowVisibility} />}
-          <RowWithToggle rowKey="extra_payment" visible={rowVisibility["extra_payment"] !== false} onToggle={toggleRowVisibility}>
+          <RowWithToggle rowKey="extra_payment" visible={rowVisibility["extra_payment"] !== false} onToggle={toggleRowVisibility} editMode={incomeEdit}>
             <InlineField label="Доплата" value={data.extra_payment} onSave={v => saveWithLog({ extra_payment: +v || null } as Partial<Client>, `Доплата: +${(+v).toLocaleString("ru-RU")} ₽`, "Wallet", "#10b981")} type="number" placeholder="—" />
           </RowWithToggle>
           {rowVisibility["extra_payment"] === false && <HiddenRowToggle rowKey="extra_payment" label="Доплата" onToggle={toggleRowVisibility} />}
-          <RowWithToggle rowKey="extra_agreement_sum" visible={rowVisibility["extra_agreement_sum"] !== false} onToggle={toggleRowVisibility}>
+          <RowWithToggle rowKey="extra_agreement_sum" visible={rowVisibility["extra_agreement_sum"] !== false} onToggle={toggleRowVisibility} editMode={incomeEdit}>
             <InlineField label="Доп. соглашение" value={data.extra_agreement_sum} onSave={v => saveWithLog({ extra_agreement_sum: +v || null } as Partial<Client>, `Доп. согл: ${(+v).toLocaleString("ru-RU")} ₽`, "FileText", "#06b6d4")} type="number" placeholder="—" />
           </RowWithToggle>
           {rowVisibility["extra_agreement_sum"] === false && <HiddenRowToggle rowKey="extra_agreement_sum" label="Доп. соглашение" onToggle={toggleRowVisibility} />}
@@ -298,19 +317,19 @@ export function DrawerColumns(props: ColumnsProps) {
             const lsKey = `fin_row_${data.id}_${r.key}`;
             const val = localStorage.getItem(lsKey) || "";
             return rowVisibility[r.key] !== false ? (
-              <div key={r.key} className="flex items-center gap-1 group/rowtoggle">
+              <div key={r.key} className={`flex items-center gap-1 ${incomeEdit ? "" : "group/rowtoggle"}`}>
                 <div className="flex-1 min-w-0">
                   <InlineField label={r.label} value={val} type="number" placeholder="—"
                     onSave={v => { localStorage.setItem(lsKey, v); logAction("Plus", "#10b981", `${r.label}: ${(+v).toLocaleString("ru-RU")} ₽`); }} />
                 </div>
                 <button onClick={() => toggleRowVisibility(r.key)}
                   title="Скрыть строку"
-                  className="opacity-0 group-hover/rowtoggle:opacity-100 flex-shrink-0 rounded-full transition-all duration-200"
+                  className={`${incomeEdit ? "opacity-100" : "opacity-0 group-hover/rowtoggle:opacity-100"} flex-shrink-0 rounded-full transition-all duration-200`}
                   style={{ width: 28, height: 16, background: "#8b5cf6", position: "relative", display: "inline-flex", alignItems: "center" }}>
                   <span style={{ width: 12, height: 12, background: "#fff", borderRadius: "50%", position: "absolute", left: 14, transition: "left 0.2s" }} />
                 </button>
                 <button onClick={() => deleteCustomFinRow(r.key)} title="Удалить строку"
-                  className="opacity-0 group-hover/rowtoggle:opacity-100 flex-shrink-0 text-red-400/60 hover:text-red-400 transition-all ml-0.5">
+                  className={`${incomeEdit ? "opacity-100" : "opacity-0 group-hover/rowtoggle:opacity-100"} flex-shrink-0 text-red-400/60 hover:text-red-400 transition-all ml-0.5`}>
                   <Icon name="X" size={11} />
                 </button>
               </div>
@@ -318,20 +337,24 @@ export function DrawerColumns(props: ColumnsProps) {
               <HiddenRowToggle key={r.key} rowKey={r.key} label={r.label} onToggle={toggleRowVisibility} />
             );
           })}
-          <AddFinRowInline block="income" onAdd={addCustomFinRow} />
+          <AddFinRowInline block="income" onAdd={addCustomFinRow}
+            forceOpen={incomeEdit}
+            onClose={() => setEditingBlock(null)} />
         </>, "Banknote", "Доходы", "#10b981", true);
+      }
 
-      case "costs":
+      case "costs": {
+        const costsEdit = editingBlock === "costs";
         return wrap(id, <>
-          <RowWithToggle rowKey="material_cost" visible={rowVisibility["material_cost"] !== false} onToggle={toggleRowVisibility}>
+          <RowWithToggle rowKey="material_cost" visible={rowVisibility["material_cost"] !== false} onToggle={toggleRowVisibility} editMode={costsEdit}>
             <InlineField label="Материалы" value={data.material_cost} onSave={v => saveWithLog({ material_cost: +v || null } as Partial<Client>, `Материалы: ${(+v).toLocaleString("ru-RU")} ₽`, "Package", "#ef4444")} type="number" placeholder="—" />
           </RowWithToggle>
           {rowVisibility["material_cost"] === false && <HiddenRowToggle rowKey="material_cost" label="Материалы" onToggle={toggleRowVisibility} />}
-          <RowWithToggle rowKey="measure_cost" visible={rowVisibility["measure_cost"] !== false} onToggle={toggleRowVisibility}>
+          <RowWithToggle rowKey="measure_cost" visible={rowVisibility["measure_cost"] !== false} onToggle={toggleRowVisibility} editMode={costsEdit}>
             <InlineField label="Замер" value={data.measure_cost} onSave={v => saveWithLog({ measure_cost: +v || null } as Partial<Client>, `Замер стоит: ${(+v).toLocaleString("ru-RU")} ₽`, "Ruler", "#ef4444")} type="number" placeholder="—" />
           </RowWithToggle>
           {rowVisibility["measure_cost"] === false && <HiddenRowToggle rowKey="measure_cost" label="Замер" onToggle={toggleRowVisibility} />}
-          <RowWithToggle rowKey="install_cost" visible={rowVisibility["install_cost"] !== false} onToggle={toggleRowVisibility}>
+          <RowWithToggle rowKey="install_cost" visible={rowVisibility["install_cost"] !== false} onToggle={toggleRowVisibility} editMode={costsEdit}>
             <InlineField label="Монтаж" value={data.install_cost} onSave={v => saveWithLog({ install_cost: +v || null } as Partial<Client>, `Монтаж стоит: ${(+v).toLocaleString("ru-RU")} ₽`, "Wrench", "#ef4444")} type="number" placeholder="—" />
           </RowWithToggle>
           {rowVisibility["install_cost"] === false && <HiddenRowToggle rowKey="install_cost" label="Монтаж" onToggle={toggleRowVisibility} />}
@@ -339,19 +362,19 @@ export function DrawerColumns(props: ColumnsProps) {
             const lsKey = `fin_row_${data.id}_${r.key}`;
             const val = localStorage.getItem(lsKey) || "";
             return rowVisibility[r.key] !== false ? (
-              <div key={r.key} className="flex items-center gap-1 group/rowtoggle">
+              <div key={r.key} className={`flex items-center gap-1 ${costsEdit ? "" : "group/rowtoggle"}`}>
                 <div className="flex-1 min-w-0">
                   <InlineField label={r.label} value={val} type="number" placeholder="—"
                     onSave={v => { localStorage.setItem(lsKey, v); logAction("Minus", "#ef4444", `${r.label}: ${(+v).toLocaleString("ru-RU")} ₽`); }} />
                 </div>
                 <button onClick={() => toggleRowVisibility(r.key)}
                   title="Скрыть строку"
-                  className="opacity-0 group-hover/rowtoggle:opacity-100 flex-shrink-0 rounded-full transition-all duration-200"
+                  className={`${costsEdit ? "opacity-100" : "opacity-0 group-hover/rowtoggle:opacity-100"} flex-shrink-0 rounded-full transition-all duration-200`}
                   style={{ width: 28, height: 16, background: "#8b5cf6", position: "relative", display: "inline-flex", alignItems: "center" }}>
                   <span style={{ width: 12, height: 12, background: "#fff", borderRadius: "50%", position: "absolute", left: 14, transition: "left 0.2s" }} />
                 </button>
                 <button onClick={() => deleteCustomFinRow(r.key)} title="Удалить строку"
-                  className="opacity-0 group-hover/rowtoggle:opacity-100 flex-shrink-0 text-red-400/60 hover:text-red-400 transition-all ml-0.5">
+                  className={`${costsEdit ? "opacity-100" : "opacity-0 group-hover/rowtoggle:opacity-100"} flex-shrink-0 text-red-400/60 hover:text-red-400 transition-all ml-0.5`}>
                   <Icon name="X" size={11} />
                 </button>
               </div>
@@ -359,8 +382,11 @@ export function DrawerColumns(props: ColumnsProps) {
               <HiddenRowToggle key={r.key} rowKey={r.key} label={r.label} onToggle={toggleRowVisibility} />
             );
           })}
-          <AddFinRowInline block="costs" onAdd={addCustomFinRow} />
+          <AddFinRowInline block="costs" onAdd={addCustomFinRow}
+            forceOpen={costsEdit}
+            onClose={() => setEditingBlock(null)} />
         </>, "Receipt", "Затраты", "#ef4444", true);
+      }
 
       case "files":
         return wrap(id, <>
