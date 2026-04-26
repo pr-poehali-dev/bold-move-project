@@ -13,9 +13,33 @@ export interface CustomBlockData { id: string; title: string; icon: string; colo
 
 export interface EditRow { label: string; value: string; key: string; }
 
-export const LS_BLOCKS  = "drawer_blocks_order";
-export const LS_HIDDEN  = "drawer_blocks_hidden";
-export const LS_CUSTOM  = "drawer_custom_blocks";
+export const LS_BLOCKS       = "drawer_blocks_order";
+export const LS_HIDDEN       = "drawer_blocks_hidden";
+export const LS_CUSTOM       = "drawer_custom_blocks";
+export const LS_ROW_VIS      = "drawer_row_visibility";
+
+// Строки доходов и затрат — ключ → видимость (true = показывать)
+export const DEFAULT_ROW_VIS: Record<string, boolean> = {
+  contract_sum:        true,
+  prepayment:          true,
+  extra_payment:       true,
+  extra_agreement_sum: true,
+  material_cost:       true,
+  measure_cost:        true,
+  install_cost:        true,
+};
+
+export function loadRowVisibility(): Record<string, boolean> {
+  try {
+    const s = JSON.parse(localStorage.getItem(LS_ROW_VIS) || "null");
+    if (s && typeof s === "object") return { ...DEFAULT_ROW_VIS, ...s };
+  } catch { /**/ }
+  return { ...DEFAULT_ROW_VIS };
+}
+
+export function saveRowVisibility(vis: Record<string, boolean>) {
+  localStorage.setItem(LS_ROW_VIS, JSON.stringify(vis));
+}
 
 export const ICON_OPTIONS = [
   "Star","Briefcase","Building","Car","Clock","CreditCard","Globe","Heart",

@@ -11,6 +11,7 @@ import {
   BlockId, BlockDef, CustomBlockData,
   DEFAULT_BLOCKS, LS_BLOCKS, LS_HIDDEN,
   loadBlocks, loadHidden, loadCustomBlocks, saveCustomBlocks,
+  loadRowVisibility, saveRowVisibility,
 } from "./drawerTypes";
 
 interface Props {
@@ -31,6 +32,15 @@ export default function DrawerInfoTab({ data, client, setData, save, setComments
   const [activityLog, setActivityLog]     = useState<ActivityEvent[]>([]);
   const [customBlocks, setCustomBlocks]   = useState<CustomBlockData[]>(loadCustomBlocks);
   const [showAddBlock, setShowAddBlock]   = useState<0 | 1 | "wide" | null>(null);
+  const [rowVisibility, setRowVisibility] = useState<Record<string, boolean>>(loadRowVisibility);
+
+  const toggleRowVisibility = (key: string) => {
+    setRowVisibility(prev => {
+      const next = { ...prev, [key]: !prev[key] };
+      saveRowVisibility(next);
+      return next;
+    });
+  };
   const [customRowVals, setCustomRowVals] = useState<Record<string, Record<number, string>>>(() => {
     try { return JSON.parse(localStorage.getItem(`custom_block_vals_${data.id}`) || "{}"); } catch { return {}; }
   });
@@ -189,6 +199,8 @@ export default function DrawerInfoTab({ data, client, setData, save, setComments
             onDropToCol={onDropToCol}
             onAddBlock={(col) => setShowAddBlock(col)}
             onReset={handleReset}
+            rowVisibility={rowVisibility}
+            toggleRowVisibility={toggleRowVisibility}
           />
         </div>
 

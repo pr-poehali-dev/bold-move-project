@@ -9,6 +9,69 @@ import { BlockEditor, DraggableBlock } from "./DrawerBlockEditor";
 import { DrawerTagsBlock } from "./DrawerTagsBlock";
 import { DrawerCustomBlock } from "./DrawerCustomBlock";
 
+function RowWithToggle({ rowKey, visible, onToggle, children }: {
+  rowKey: string;
+  visible: boolean;
+  onToggle: (key: string) => void;
+  children: React.ReactNode;
+}) {
+  if (!visible) return null;
+  return (
+    <div className="flex items-center gap-1 group/rowtoggle">
+      <div className="flex-1 min-w-0">{children}</div>
+      <button
+        onClick={() => onToggle(rowKey)}
+        title="Скрыть строку на всех карточках"
+        className="opacity-0 group-hover/rowtoggle:opacity-100 flex-shrink-0 rounded-full transition-all duration-200"
+        style={{
+          width: 28, height: 16,
+          background: "#8b5cf6",
+          position: "relative", display: "inline-flex", alignItems: "center",
+        }}>
+        <span style={{
+          width: 12, height: 12,
+          background: "#fff",
+          borderRadius: "50%",
+          position: "absolute",
+          left: 14,
+          transition: "left 0.2s",
+        }} />
+      </button>
+    </div>
+  );
+}
+
+function HiddenRowToggle({ rowKey, label, onToggle }: {
+  rowKey: string;
+  label: string;
+  onToggle: (key: string) => void;
+}) {
+  return (
+    <div className="flex items-center justify-between py-1.5 opacity-40 hover:opacity-70 transition-opacity"
+      style={{ borderBottom: "1px solid #2a2a2a" }}>
+      <span className="text-xs w-36" style={{ color: "#a3a3a3" }}>{label}</span>
+      <button
+        onClick={() => onToggle(rowKey)}
+        title="Показывать на всех карточках"
+        className="flex-shrink-0 rounded-full transition-all duration-200"
+        style={{
+          width: 28, height: 16,
+          background: "#404040",
+          position: "relative", display: "inline-flex", alignItems: "center",
+        }}>
+        <span style={{
+          width: 12, height: 12,
+          background: "#fff",
+          borderRadius: "50%",
+          position: "absolute",
+          left: 2,
+          transition: "left 0.2s",
+        }} />
+      </button>
+    </div>
+  );
+}
+
 interface ColumnsProps {
   data: Client;
   client: Client;
@@ -35,6 +98,8 @@ interface ColumnsProps {
   onDropToCol: (col: 0 | 1) => void;
   onAddBlock: (col: 0 | 1 | "wide") => void;
   onReset: () => void;
+  rowVisibility: Record<string, boolean>;
+  toggleRowVisibility: (key: string) => void;
 }
 
 export function DrawerColumns(props: ColumnsProps) {
@@ -42,6 +107,7 @@ export function DrawerColumns(props: ColumnsProps) {
     data, setData, client, save, blocks, hiddenBlocks, editingBlock, customBlocks,
     customRowVals, toggleHidden, setEditingBlock, saveWithLog, logAction, setCustomRowVals,
     deleteCustomBlock, onDragStart, onDragOver, onDrop, onDropToCol, onAddBlock,
+    rowVisibility, toggleRowVisibility,
   } = props;
   const t = useTheme();
 
@@ -175,17 +241,38 @@ export function DrawerColumns(props: ColumnsProps) {
 
       case "income":
         return wrap(id, <>
-          <InlineField label="Сумма договора" value={data.contract_sum}        onSave={v => saveWithLog({ contract_sum: +v || null } as Partial<Client>, `Договор: ${(+v).toLocaleString("ru-RU")} ₽`, "FileText", "#10b981")} type="number" placeholder="—" />
-          <InlineField label="Предоплата"      value={data.prepayment}          onSave={v => saveWithLog({ prepayment: +v || null } as Partial<Client>, `Предоплата: +${(+v).toLocaleString("ru-RU")} ₽`, "Wallet", "#10b981")} type="number" placeholder="—" />
-          <InlineField label="Доплата"         value={data.extra_payment}       onSave={v => saveWithLog({ extra_payment: +v || null } as Partial<Client>, `Доплата: +${(+v).toLocaleString("ru-RU")} ₽`, "Wallet", "#10b981")} type="number" placeholder="—" />
-          <InlineField label="Доп. соглашение" value={data.extra_agreement_sum} onSave={v => saveWithLog({ extra_agreement_sum: +v || null } as Partial<Client>, `Доп. согл: ${(+v).toLocaleString("ru-RU")} ₽`, "FileText", "#06b6d4")} type="number" placeholder="—" />
+          <RowWithToggle rowKey="contract_sum" visible={rowVisibility["contract_sum"] !== false} onToggle={toggleRowVisibility}>
+            <InlineField label="Сумма договора" value={data.contract_sum} onSave={v => saveWithLog({ contract_sum: +v || null } as Partial<Client>, `Договор: ${(+v).toLocaleString("ru-RU")} ₽`, "FileText", "#10b981")} type="number" placeholder="—" />
+          </RowWithToggle>
+          {rowVisibility["contract_sum"] === false && <HiddenRowToggle rowKey="contract_sum" label="Сумма договора" onToggle={toggleRowVisibility} />}
+          <RowWithToggle rowKey="prepayment" visible={rowVisibility["prepayment"] !== false} onToggle={toggleRowVisibility}>
+            <InlineField label="Предоплата" value={data.prepayment} onSave={v => saveWithLog({ prepayment: +v || null } as Partial<Client>, `Предоплата: +${(+v).toLocaleString("ru-RU")} ₽`, "Wallet", "#10b981")} type="number" placeholder="—" />
+          </RowWithToggle>
+          {rowVisibility["prepayment"] === false && <HiddenRowToggle rowKey="prepayment" label="Предоплата" onToggle={toggleRowVisibility} />}
+          <RowWithToggle rowKey="extra_payment" visible={rowVisibility["extra_payment"] !== false} onToggle={toggleRowVisibility}>
+            <InlineField label="Доплата" value={data.extra_payment} onSave={v => saveWithLog({ extra_payment: +v || null } as Partial<Client>, `Доплата: +${(+v).toLocaleString("ru-RU")} ₽`, "Wallet", "#10b981")} type="number" placeholder="—" />
+          </RowWithToggle>
+          {rowVisibility["extra_payment"] === false && <HiddenRowToggle rowKey="extra_payment" label="Доплата" onToggle={toggleRowVisibility} />}
+          <RowWithToggle rowKey="extra_agreement_sum" visible={rowVisibility["extra_agreement_sum"] !== false} onToggle={toggleRowVisibility}>
+            <InlineField label="Доп. соглашение" value={data.extra_agreement_sum} onSave={v => saveWithLog({ extra_agreement_sum: +v || null } as Partial<Client>, `Доп. согл: ${(+v).toLocaleString("ru-RU")} ₽`, "FileText", "#06b6d4")} type="number" placeholder="—" />
+          </RowWithToggle>
+          {rowVisibility["extra_agreement_sum"] === false && <HiddenRowToggle rowKey="extra_agreement_sum" label="Доп. соглашение" onToggle={toggleRowVisibility} />}
         </>, "Banknote", "Доходы", "#10b981", true);
 
       case "costs":
         return wrap(id, <>
-          <InlineField label="Материалы" value={data.material_cost} onSave={v => saveWithLog({ material_cost: +v || null } as Partial<Client>, `Материалы: ${(+v).toLocaleString("ru-RU")} ₽`, "Package", "#ef4444")} type="number" placeholder="—" />
-          <InlineField label="Замер"      value={data.measure_cost}  onSave={v => saveWithLog({ measure_cost: +v || null } as Partial<Client>, `Замер стоит: ${(+v).toLocaleString("ru-RU")} ₽`, "Ruler", "#ef4444")} type="number" placeholder="—" />
-          <InlineField label="Монтаж"     value={data.install_cost}  onSave={v => saveWithLog({ install_cost: +v || null } as Partial<Client>, `Монтаж стоит: ${(+v).toLocaleString("ru-RU")} ₽`, "Wrench", "#ef4444")} type="number" placeholder="—" />
+          <RowWithToggle rowKey="material_cost" visible={rowVisibility["material_cost"] !== false} onToggle={toggleRowVisibility}>
+            <InlineField label="Материалы" value={data.material_cost} onSave={v => saveWithLog({ material_cost: +v || null } as Partial<Client>, `Материалы: ${(+v).toLocaleString("ru-RU")} ₽`, "Package", "#ef4444")} type="number" placeholder="—" />
+          </RowWithToggle>
+          {rowVisibility["material_cost"] === false && <HiddenRowToggle rowKey="material_cost" label="Материалы" onToggle={toggleRowVisibility} />}
+          <RowWithToggle rowKey="measure_cost" visible={rowVisibility["measure_cost"] !== false} onToggle={toggleRowVisibility}>
+            <InlineField label="Замер" value={data.measure_cost} onSave={v => saveWithLog({ measure_cost: +v || null } as Partial<Client>, `Замер стоит: ${(+v).toLocaleString("ru-RU")} ₽`, "Ruler", "#ef4444")} type="number" placeholder="—" />
+          </RowWithToggle>
+          {rowVisibility["measure_cost"] === false && <HiddenRowToggle rowKey="measure_cost" label="Замер" onToggle={toggleRowVisibility} />}
+          <RowWithToggle rowKey="install_cost" visible={rowVisibility["install_cost"] !== false} onToggle={toggleRowVisibility}>
+            <InlineField label="Монтаж" value={data.install_cost} onSave={v => saveWithLog({ install_cost: +v || null } as Partial<Client>, `Монтаж стоит: ${(+v).toLocaleString("ru-RU")} ₽`, "Wrench", "#ef4444")} type="number" placeholder="—" />
+          </RowWithToggle>
+          {rowVisibility["install_cost"] === false && <HiddenRowToggle rowKey="install_cost" label="Монтаж" onToggle={toggleRowVisibility} />}
         </>, "Receipt", "Затраты", "#ef4444", true);
 
       case "files":
@@ -281,7 +368,14 @@ export function DrawerColumns(props: ColumnsProps) {
         </div>
       </div>
 
-      {/* Кнопки добавления в колонки — под блоками, над заметками */}
+      {/* Wide-блоки — на всю ширину, над кнопками добавления */}
+      {wideBlocks.map(b => (
+        <DraggableBlock key={b.id} blockId={b.id} onDragStart={onDragStart} onDragOver={onDragOver} onDrop={onDrop}>
+          {renderColBlock(b)}
+        </DraggableBlock>
+      ))}
+
+      {/* Кнопки добавления в колонки */}
       <div className="grid grid-cols-[1fr_1fr] gap-3">
         <button onClick={() => onAddBlock(0)}
           className="flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-medium transition border-2 border-dashed hover:border-violet-500/40 hover:text-violet-400"
@@ -294,13 +388,6 @@ export function DrawerColumns(props: ColumnsProps) {
           <Icon name="Plus" size={12} /> Блок в правую
         </button>
       </div>
-
-      {/* Wide-блоки — на всю ширину, над кнопками */}
-      {wideBlocks.map(b => (
-        <DraggableBlock key={b.id} blockId={b.id} onDragStart={onDragStart} onDragOver={onDragOver} onDrop={onDrop}>
-          {renderColBlock(b)}
-        </DraggableBlock>
-      ))}
 
       {/* Кнопка добавить широкий блок — самая последняя */}
       <button onClick={() => onAddBlock("wide")}
