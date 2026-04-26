@@ -232,11 +232,22 @@ export default function CrmKanban({ clients, loading, onStatusChange, onClientRe
           client={selected}
           allClientOrders={(() => {
             const phone = (selected.phone || "").trim().replace(/\D/g, "");
-            return phone ? clients.filter(c => (c.phone || "").trim().replace(/\D/g, "") === phone) : [selected];
+            return phone ? allCards.filter(c => (c.phone || "").trim().replace(/\D/g, "") === phone) : [selected];
           })()}
           onClose={() => setSelected(null)}
-          onUpdated={() => { onReload(); }}
-          onDeleted={() => { setSelected(null); onClientRemoved(selected.id); }}
+          onUpdated={() => {
+            if (selected.id < 0) return;
+            onReload();
+          }}
+          onDeleted={() => {
+            setSelected(null);
+            if (selected.id < 0) {
+              setLocalCards(prev => { const next = prev.filter(c => c.id !== selected.id); saveLocalCards(next); return next; });
+            } else {
+              onClientRemoved(selected.id);
+            }
+          }}
+          isLocalCard={selected.id < 0}
         />
       )}
     </div>

@@ -11,9 +11,10 @@ interface Props {
   onClose: () => void;
   onUpdated: () => void;
   onDeleted: () => void;
+  isLocalCard?: boolean;
 }
 
-export default function ClientDrawer({ client, allClientOrders, onClose, onUpdated, onDeleted }: Props) {
+export default function ClientDrawer({ client, allClientOrders, onClose, onUpdated, onDeleted, isLocalCard }: Props) {
   const t = useTheme();
   const [data, setData]               = useState<Client>(client);
   const [saving, setSaving]           = useState(false);
@@ -28,6 +29,7 @@ export default function ClientDrawer({ client, allClientOrders, onClose, onUpdat
 
   const save = async (patch: Partial<Client>) => {
     setData(prev => ({ ...prev, ...patch }));
+    if (isLocalCard) return;
     setSaving(true);
     await crmFetch("clients", { method: "PUT", body: JSON.stringify(patch) }, { id: String(data.id) });
     setSaving(false);
@@ -35,7 +37,9 @@ export default function ClientDrawer({ client, allClientOrders, onClose, onUpdat
   };
 
   const handleDelete = async () => {
-    await crmFetch("clients", { method: "DELETE" }, { id: String(data.id) });
+    if (!isLocalCard) {
+      await crmFetch("clients", { method: "DELETE" }, { id: String(data.id) });
+    }
     onDeleted();
   };
 

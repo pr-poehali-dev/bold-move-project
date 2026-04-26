@@ -113,27 +113,16 @@ export default function CrmPanel() {
 
           {/* Вкладка Канбан — если включена */}
           {kanbanEnabled && (
-            <div className="flex items-center gap-0.5 group/kb">
-              <button onClick={() => setTab("kanban")}
-                className="flex items-center gap-2 px-4 py-2 text-sm rounded-xl transition whitespace-nowrap font-medium border"
-                style={tab === "kanban" ? {
-                  background: "#7c3aed18", color: "#a78bfa", borderColor: "#7c3aed35",
-                } : {
-                  color: t.textSub, borderColor: "transparent", background: "transparent",
-                }}>
-                <Icon name="Kanban" size={14} />
-                Канбан
-              </button>
-              <button
-                onClick={() => {
-                  if (window.confirm("Убрать канбан-доску из меню? Настройки колонок сохранятся.")) disableKanban();
-                }}
-                title="Убрать канбан"
-                className="p-1 rounded-md transition hover:bg-red-500/15"
-                style={{ color: t.textMute }}>
-                <Icon name="X" size={12} />
-              </button>
-            </div>
+            <button onClick={() => setTab("kanban")}
+              className="flex items-center gap-2 px-4 py-2 text-sm rounded-xl transition whitespace-nowrap font-medium border"
+              style={tab === "kanban" ? {
+                background: "#7c3aed18", color: "#a78bfa", borderColor: "#7c3aed35",
+              } : {
+                color: t.textSub, borderColor: "transparent", background: "transparent",
+              }}>
+              <Icon name="Kanban" size={14} />
+              Канбан
+            </button>
           )}
 
           {/* Разделитель */}
