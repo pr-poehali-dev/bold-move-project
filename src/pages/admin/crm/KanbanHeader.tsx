@@ -2,13 +2,14 @@ import Icon from "@/components/ui/icon";
 import { useTheme } from "./themeContext";
 import { MIN_WIDTH, MAX_WIDTH } from "./kanbanTypes";
 
-export function KanbanHeader({ clientCount, globalWidth, search, onSearch, onWidthChange, onAddCol }: {
+export function KanbanHeader({ clientCount, globalWidth, search, onSearch, onWidthChange, onAddCol, onRemoveBoard }: {
   clientCount: number;
   globalWidth: number;
   search: string;
   onSearch: (v: string) => void;
   onWidthChange: (w: number) => void;
   onAddCol: () => void;
+  onRemoveBoard?: () => void;
 }) {
   const t = useTheme();
 
@@ -58,6 +59,18 @@ export function KanbanHeader({ clientCount, globalWidth, search, onSearch, onWid
             className="w-full rounded-xl pl-9 pr-4 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-violet-500/40"
             style={{ background: t.surface, border: `1px solid ${t.border}`, color: t.text }} />
         </div>
+
+        {/* Убрать доску */}
+        {onRemoveBoard && (
+          <button
+            onClick={() => {
+              if (window.confirm("Убрать канбан-доску из меню? Настройки колонок сохранятся.")) onRemoveBoard();
+            }}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium transition hover:bg-red-500/10"
+            style={{ background: t.surface2, border: `1px solid ${t.border}`, color: "#f87171" }}>
+            <Icon name="X" size={13} /> Убрать доску
+          </button>
+        )}
       </div>
     </div>
   );

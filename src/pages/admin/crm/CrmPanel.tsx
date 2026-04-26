@@ -129,7 +129,7 @@ export default function CrmPanel() {
                   if (window.confirm("Убрать канбан-доску из меню? Настройки колонок сохранятся.")) disableKanban();
                 }}
                 title="Убрать канбан"
-                className="opacity-0 group-hover/kb:opacity-100 transition p-1 rounded-md hover:bg-red-500/15"
+                className="p-1 rounded-md transition hover:bg-red-500/15"
                 style={{ color: t.textMute }}>
                 <Icon name="X" size={12} />
               </button>
@@ -162,7 +162,7 @@ export default function CrmPanel() {
           {tab === "clients"   && <CrmClients />}
           {tab === "orders"    && <CrmOrders clients={clients} loading={loading} onStatusChange={updateClientStatus} onClientRemoved={removeClient} onReload={loadClients} />}
           {tab === "calendar"  && <CrmCalendar />}
-          {tab === "kanban"    && <CrmKanban clients={[]} loading={false} onStatusChange={() => {}} onClientRemoved={() => {}} onReload={() => {}} />}
+          {tab === "kanban"    && <CrmKanban clients={clients} loading={loading} onStatusChange={updateClientStatus} onClientRemoved={removeClient} onReload={loadClients} onRemoveBoard={disableKanban} />}
         </div>
       </div>
     </ThemeContext.Provider>

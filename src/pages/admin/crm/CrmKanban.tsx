@@ -19,9 +19,10 @@ interface Props {
   onStatusChange: (id: number, status: string) => void;
   onClientRemoved: (id: number) => void;
   onReload: () => void;
+  onRemoveBoard?: () => void;
 }
 
-export default function CrmKanban({ clients, loading, onStatusChange, onClientRemoved, onReload }: Props) {
+export default function CrmKanban({ clients, loading, onStatusChange, onClientRemoved, onReload, onRemoveBoard }: Props) {
   const t = useTheme();
   const [selected, setSelected]       = useState<Client | null>(null);
   const [dragging, setDragging]       = useState<Client | null>(null);
@@ -145,6 +146,7 @@ export default function CrmKanban({ clients, loading, onStatusChange, onClientRe
         onSearch={setSearch}
         onWidthChange={handleWidthChange}
         onAddCol={addCol}
+        onRemoveBoard={onRemoveBoard}
       />
 
       <div className="flex overflow-x-auto pb-4 select-none" style={{ minHeight: 520, gap: 0 }}>
