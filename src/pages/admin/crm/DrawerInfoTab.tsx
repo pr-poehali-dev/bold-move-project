@@ -127,6 +127,12 @@ export default function DrawerInfoTab({ data, client, setData, save, setComments
     localStorage.setItem(LS_BLOCKS, JSON.stringify(newBlocks));
   };
 
+  const updateCustomBlock = (id: string, updatedBlock: CustomBlockData) => {
+    const updated = customBlocks.map(b => b.id === id ? updatedBlock : b);
+    setCustomBlocks(updated);
+    saveCustomBlocks(updated);
+  };
+
   // ── drag & drop (в т.ч. на пустое место — drop zone внизу колонки) ──────────
   const onDragStart = (id: BlockId) => { dragId.current = id; };
   const onDragOver  = (_e: React.DragEvent, _id: BlockId) => {};
@@ -221,6 +227,7 @@ export default function DrawerInfoTab({ data, client, setData, save, setComments
             logAction={logAction}
             setCustomRowVals={setCustomRowVals}
             deleteCustomBlock={deleteCustomBlock}
+            updateCustomBlock={updateCustomBlock}
             onDragStart={onDragStart}
             onDragOver={onDragOver}
             onDrop={onDrop}

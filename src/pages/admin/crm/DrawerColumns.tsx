@@ -35,6 +35,7 @@ interface ColumnsProps {
   logAction: (icon: string, color: string, text: string) => void;
   setCustomRowVals: React.Dispatch<React.SetStateAction<Record<string, Record<number, string>>>>;
   deleteCustomBlock: (id: string) => void;
+  updateCustomBlock: (id: string, updated: import("./drawerTypes").CustomBlockData) => void;
   onDragStart: (id: BlockId) => void;
   onDragOver: (e: React.DragEvent, id: BlockId) => void;
   onDrop: (targetId: BlockId) => void;
@@ -52,7 +53,7 @@ export function DrawerColumns(props: ColumnsProps) {
   const {
     data, setData, client, save, blocks, hiddenBlocks, hideHidden, editingBlock, customBlocks,
     customRowVals, toggleHidden, setEditingBlock, saveWithLog, logAction, setCustomRowVals,
-    deleteCustomBlock, onDragStart, onDragOver, onDrop, onDropToCol, onAddBlock,
+    deleteCustomBlock, updateCustomBlock, onDragStart, onDragOver, onDrop, onDropToCol, onAddBlock,
     rowVisibility, toggleRowVisibility, customFinRows, addCustomFinRow, deleteCustomFinRow,
   } = props;
   const t = useTheme();
@@ -118,6 +119,7 @@ export function DrawerColumns(props: ColumnsProps) {
           setEditingBlock={setEditingBlock}
           toggleHidden={toggleHidden}
           deleteCustomBlock={deleteCustomBlock}
+          updateCustomBlock={updateCustomBlock}
           setCustomRowVals={setCustomRowVals}
           logAction={logAction}
         />

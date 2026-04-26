@@ -3,7 +3,7 @@ import { Section, FileField } from "./drawerComponents";
 import { BlockId, CustomBlockData, EditRow } from "./drawerTypes";
 import { BlockEditor } from "./DrawerBlockEditor";
 
-export function DrawerCustomBlock({ cb, data_id, hiddenBlocks, customRowVals, editingBlock, setEditingBlock, toggleHidden, deleteCustomBlock, setCustomRowVals, logAction }: {
+export function DrawerCustomBlock({ cb, data_id, hiddenBlocks, customRowVals, editingBlock, setEditingBlock, toggleHidden, deleteCustomBlock, updateCustomBlock, setCustomRowVals, logAction }: {
   cb: CustomBlockData;
   data_id: number;
   hiddenBlocks: Set<BlockId>;
@@ -12,6 +12,7 @@ export function DrawerCustomBlock({ cb, data_id, hiddenBlocks, customRowVals, ed
   setEditingBlock: (id: BlockId | null) => void;
   toggleHidden: (id: BlockId) => void;
   deleteCustomBlock: (id: string) => void;
+  updateCustomBlock: (id: string, updated: CustomBlockData) => void;
   setCustomRowVals: React.Dispatch<React.SetStateAction<Record<string, Record<number, string>>>>;
   logAction: (icon: string, color: string, text: string) => void;
 }) {
@@ -20,15 +21,29 @@ export function DrawerCustomBlock({ cb, data_id, hiddenBlocks, customRowVals, ed
   const isEditing = editingBlock === cb.id;
   const vals = customRowVals[cb.id] || {};
 
+  // Строим EditRow из текущих строк блока + их значений из localStorage
   const editRows: EditRow[] = cb.rows
     .filter(r => r.type !== "file")
     .map((row, i) => ({ label: row.label, value: vals[i] || "", key: String(i) }));
 
   const handleSave = (rows: EditRow[]) => {
-    const next = { ...customRowVals, [cb.id]: {} as Record<number, string> };
-    rows.forEach((r, i) => { next[cb.id][i] = r.value; });
-    setCustomRowVals(next);
-    localStorage.setItem(`custom_block_vals_${data_id}`, JSON.stringify(next));
+    // Обновляем названия строк в метаданных блока
+    const updatedRows = rows.map((r, i) => ({
+      ...( cb.rows[i] || { type: "text" as const, value: "" }),
+      label: r.label,
+      type: "text" as const,
+    }));
+    updateCustomBlock(cb.id, { ...cb, rows: updatedRows });
+
+    // Сохраняем значения в localStorage
+    const newVals: Record<number, string> = {};
+    rows.forEach((r, i) => { newVals[i] = r.value; });
+    setCustomRowVals(prev => {
+      const next = { ...prev, [cb.id]: newVals };
+      localStorage.setItem(`custom_block_vals_${data_id}`, JSON.stringify(next));
+      return next;
+    });
+
     logAction("Edit3", cb.color, `${cb.title}: сохранено`);
     setEditingBlock(null);
   };
@@ -77,6 +92,7 @@ export function DrawerCustomBlock({ cb, data_id, hiddenBlocks, customRowVals, ed
       {isEditing && (
         <BlockEditor
           rows={editRows}
+          allowAdd={true}
           onSave={handleSave}
           onClose={() => setEditingBlock(null)}
         />
