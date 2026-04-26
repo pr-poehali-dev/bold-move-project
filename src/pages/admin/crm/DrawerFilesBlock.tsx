@@ -81,11 +81,17 @@ export function DrawerFilesBlock({ clientId, hiddenBlocks, toggleHidden, logActi
     const picked = Array.from(e.target.files || []);
     if (!picked.length) return;
     setUploading(catIdx);
+    const uploaded: FileEntry[] = [];
     for (const file of picked) {
       const url = await uploadFile(file);
-      update(cats.map((c, j) => j === catIdx ? { ...c, files: [...c.files, { url, name: file.name }] } : c));
+      uploaded.push({ url, name: file.name });
       logAction("Paperclip", "#06b6d4", `${cats[catIdx].label}: ${file.name}`);
     }
+    setCats(prev => {
+      const next = prev.map((c, j) => j === catIdx ? { ...c, files: [...c.files, ...uploaded] } : c);
+      saveCategories(clientId, next);
+      return next;
+    });
     setUploading(null);
     if (inputRefs.current[catIdx]) inputRefs.current[catIdx]!.value = "";
   };
