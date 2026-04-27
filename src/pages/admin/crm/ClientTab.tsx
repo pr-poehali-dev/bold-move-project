@@ -168,13 +168,17 @@ export default function ClientTab({ data, save }: Props) {
   };
 
   return (
-    <div className="px-6 py-5 space-y-4 max-w-xl">
+    <div className="px-6 py-5 space-y-5" style={{ maxWidth: 900 }}>
 
       {/* ── Поля (встроенные + кастомные) ─────────────────────────────── */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
       {visibleFields.map(field => {
         const isEditing  = editMode && editingFieldId === field.id;
         const isBuiltin  = !!field.builtin;
         const isDragOver = dragOver === field.id;
+
+        // textarea (notes) и custom поля — на всю ширину
+        const isWide = isBuiltin && field.clientKey === "notes";
 
         return (
           <div
@@ -184,6 +188,7 @@ export default function ClientTab({ data, save }: Props) {
             onDragOver={e => onDragOver(e, field.id)}
             onDrop={() => onDrop(field.id)}
             onDragEnd={onDragEnd}
+            className={isWide ? "md:col-span-2" : ""}
             style={{
               borderRadius: 12,
               transition: "box-shadow 0.15s, transform 0.15s",
@@ -267,6 +272,7 @@ export default function ClientTab({ data, save }: Props) {
           </div>
         );
       })}
+      </div>{/* end fields grid */}
 
       {/* ── Скрытые поля (режим редактирования) ───────────────────────── */}
       {editMode && hiddenFields.length > 0 && (
