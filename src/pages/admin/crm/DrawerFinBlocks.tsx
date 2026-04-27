@@ -10,6 +10,7 @@ import { useTheme } from "./themeContext";
 // ── Правила авто-расчёта ────────────────────────────────────────────────────
 // Структура: { [rowKey]: { pct: number|null, enabled: boolean } }
 const LS_AUTO_RULES = "crm_costs_auto_rules_v2";
+const LS_AUTO_MODE  = "crm_costs_auto_mode"; // глобальный авто-режим
 
 interface RuleEntry { pct: number | null; enabled: boolean; }
 type AutoRulesMap = Record<string, RuleEntry>;
@@ -22,6 +23,12 @@ function loadAutoRules(): AutoRulesMap {
 }
 function saveAutoRules(r: AutoRulesMap) {
   localStorage.setItem(LS_AUTO_RULES, JSON.stringify(r));
+}
+function loadAutoMode(): boolean {
+  return localStorage.getItem(LS_AUTO_MODE) === "true";
+}
+function saveAutoMode(v: boolean) {
+  localStorage.setItem(LS_AUTO_MODE, String(v));
 }
 
 function Toggle({ enabled, onChange }: { enabled: boolean; onChange: (v: boolean) => void }) {
@@ -43,8 +50,9 @@ interface CostRowDef { key: string; label: string; }
 function AutoRulesModal({ onClose, costRows }: { onClose: () => void; costRows: CostRowDef[] }) {
   const t = useTheme();
   const [rules, setRules] = useState<AutoRulesMap>(loadAutoRules);
+  const [autoMode, setAutoMode] = useState<boolean>(loadAutoMode);
 
-  const save = () => { saveAutoRules(rules); onClose(); };
+  const save = () => { saveAutoRules(rules); saveAutoMode(autoMode); onClose(); };
 
   const getEntry = (key: string): RuleEntry =>
     rules[key] ?? { pct: null, enabled: true };
@@ -77,9 +85,26 @@ function AutoRulesModal({ onClose, costRows }: { onClose: () => void; costRows: 
             </div>
             <span className="text-sm font-bold" style={{ color: t.text }}>Правила авто-расчёта</span>
           </div>
-          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-white/5 transition" style={{ color: t.textMute }}>
-            <Icon name="X" size={15} />
-          </button>
+          <div className="flex items-center gap-2">
+            {/* Глобальный авто-режим */}
+            <Toggle enabled={autoMode} onChange={setAutoMode} />
+            <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-white/5 transition" style={{ color: t.textMute }}>
+              <Icon name="X" size={15} />
+            </button>
+          </div>
+        </div>
+
+        {/* Авто-режим подсказка */}
+        <div className="px-5 pt-3 pb-0">
+          <div className="rounded-xl px-3 py-2 flex items-center gap-2"
+            style={{ background: autoMode ? "#ef444415" : "rgba(255,255,255,0.04)", border: `1px solid ${autoMode ? "#ef444430" : t.border}` }}>
+            <Icon name="Zap" size={13} style={{ color: autoMode ? "#ef4444" : t.textMute, flexShrink: 0 }} />
+            <span className="text-xs leading-relaxed" style={{ color: autoMode ? "#fca5a5" : t.textMute }}>
+              {autoMode
+                ? "Авто-режим включён — правила применяются сразу при изменении суммы договора"
+                : "Авто-режим выключен — нажмите «Авто» вручную в блоке затрат"}
+            </span>
+          </div>
         </div>
 
         {/* Тело */}
@@ -319,22 +344,15 @@ export function DrawerCostsBlock({
 
   const applyAuto = () => applyAutoWithSum(contractSum);
 
-  // Авто-применение при первом открытии карточки с суммой договора
-  const autoAppliedRef = useRef<string | null>(null);
+  // Авто-применение при изменении суммы договора (если авто-режим включён)
+  const prevContractSumRef = useRef<number>(contractSum);
   useEffect(() => {
-    const key = `${data.id}_${contractSum}`;
-    if (contractSum > 0 && autoAppliedRef.current !== key && hasRules) {
-      const allEmpty = costRows.every(row => {
-        if (row.key === "material_cost" || row.key === "measure_cost" || row.key === "install_cost") {
-          return !data[row.key as keyof Client];
-        }
-        return !localStorage.getItem(`fin_row_${data.id}_${row.key}`);
-      });
-      if (allEmpty) {
-        autoAppliedRef.current = key;
-        applyAutoWithSum(contractSum);
-      }
+    if (!contractSum || !hasRules) { prevContractSumRef.current = contractSum; return; }
+    const autoMode = loadAutoMode();
+    if (autoMode && contractSum !== prevContractSumRef.current) {
+      applyAutoWithSum(contractSum);
     }
+    prevContractSumRef.current = contractSum;
   }, [data.id, contractSum]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
