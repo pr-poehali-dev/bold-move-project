@@ -93,32 +93,32 @@ export function OrdersClientCard({ c, onClick, onNextStep }: {
                   </span>
               }
             </div>
-            <div className="space-y-0.5 mt-1">
+            <div className="space-y-1 mt-1.5">
               {c.client_name && (
-                <div className="flex items-center gap-1 text-xs" style={{ color: t.textMute }}>
-                  <Icon name="User" size={9} style={{ color: t.textMute, flexShrink: 0 }} />
-                  <span className="truncate">{c.client_name}</span>
+                <div className="flex items-center gap-1.5 text-xs px-2 py-1.5 rounded-lg"
+                  style={{ background: t.surface2 }}>
+                  <Icon name="User" size={10} style={{ color: "#8b5cf6", flexShrink: 0 }} />
+                  <span className="truncate" style={{ color: t.textSub }}>{c.client_name}</span>
                 </div>
               )}
               {c.phone && (
-                <div className="flex items-center gap-1 text-xs" style={{ color: t.textMute }}>
-                  <Icon name="Phone" size={9} style={{ color: t.textMute, flexShrink: 0 }} />
-                  <span className="truncate">{c.phone}</span>
+                <div className="flex items-center gap-1.5 text-xs px-2 py-1.5 rounded-lg"
+                  style={{ background: t.surface2 }}>
+                  <Icon name="Phone" size={10} style={{ color: "#10b981", flexShrink: 0 }} />
+                  <span className="truncate" style={{ color: t.textSub }}>{c.phone}</span>
+                </div>
+              )}
+              {(c.address || c.area) && (
+                <div className="flex items-center gap-1.5 text-xs px-2 py-1.5 rounded-lg"
+                  style={{ background: t.surface2 }}>
+                  <Icon name="MapPin" size={10} style={{ color: "#f59e0b", flexShrink: 0 }} />
+                  <span className="truncate flex-1" style={{ color: t.textSub }}>{c.address || "Адрес не указан"}</span>
+                  {c.area && <span className="flex-shrink-0 text-[10px] font-medium" style={{ color: t.textMute }}>{c.area} м²</span>}
                 </div>
               )}
             </div>
           </div>
         </div>
-
-        {/* Объект */}
-        {(c.address || c.area) && (
-          <div className="flex items-center gap-1.5 text-xs mb-3 px-2 py-1.5 rounded-lg"
-            style={{ background: t.surface2 }}>
-            <Icon name="MapPin" size={10} style={{ color: "#f59e0b" }} className="flex-shrink-0" />
-            <span className="truncate flex-1" style={{ color: t.textSub }}>{c.address || "Адрес не указан"}</span>
-            {c.area && <span className="flex-shrink-0 text-[10px] font-medium" style={{ color: t.textMute }}>{c.area} м²</span>}
-          </div>
-        )}
 
         {/* Даты */}
         {(c.measure_date || c.install_date) && (
