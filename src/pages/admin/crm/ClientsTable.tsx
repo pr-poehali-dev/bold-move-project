@@ -129,11 +129,10 @@ export function ClientsTable({
           </span>
           <span className="text-xs font-semibold" style={{ color: t.textSub }}>
             {filteredClients.filter(c => c.contract_sum).length > 0 &&
-              `Договоров: ${filteredClients.reduce((s,c) => s + (c.contract_sum||0), 0).toLocaleString("ru-RU")} ₽`}
+              `Договоров: ${filteredClients.reduce((s,c) => s + (Number(c.contract_sum)||0), 0).toLocaleString("ru-RU")} ₽`}
           </span>
         </div>
       )}
     </div>
   );
 }
-
