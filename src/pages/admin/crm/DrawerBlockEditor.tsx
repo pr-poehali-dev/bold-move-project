@@ -221,13 +221,30 @@ export function DraggableBlock({ blockId, onDragStart, onDragOver, onDrop, child
   children: React.ReactNode;
 }) {
   const [isDragOver, setIsDragOver] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
   return (
-    <div draggable
-      onDragStart={() => onDragStart(blockId)}
+    <div
+      draggable
+      onDragStart={() => { setIsDragging(true); onDragStart(blockId); }}
+      onDragEnd={() => setIsDragging(false)}
       onDragOver={e => { e.preventDefault(); setIsDragOver(true); onDragOver(e, blockId); }}
       onDragLeave={() => setIsDragOver(false)}
       onDrop={() => { setIsDragOver(false); onDrop(blockId); }}
-      style={{ outline: isDragOver ? `2px dashed #7c3aed60` : undefined, borderRadius: 16, transition: "outline 0.1s" }}>
+      style={{
+        borderRadius: 16,
+        cursor: "grab",
+        opacity: isDragging ? 0.45 : 1,
+        transform: isDragOver ? "scale(1.015)" : "scale(1)",
+        boxShadow: isDragOver ? "0 0 0 2px #7c3aed, 0 8px 24px rgba(124,58,237,0.18)" : "none",
+        transition: "transform 0.15s, box-shadow 0.15s, opacity 0.15s",
+        position: "relative",
+      }}>
+      {isDragOver && (
+        <div style={{
+          position: "absolute", inset: 0, borderRadius: 16, zIndex: 1, pointerEvents: "none",
+          background: "linear-gradient(135deg, rgba(124,58,237,0.07) 0%, rgba(124,58,237,0.02) 100%)",
+        }} />
+      )}
       {children}
     </div>
   );
