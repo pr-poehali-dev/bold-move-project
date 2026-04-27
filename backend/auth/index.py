@@ -3,6 +3,10 @@ from datetime import datetime
 
 SCHEMA = os.environ.get("DB_SCHEMA", "t_p45929761_bold_move_project")
 
+BUSINESS_ROLES = ("installer", "company")
+DISCOUNT_ROLES = ("designer", "foreman")
+DEFAULT_DISCOUNT = 10  # % для designer/foreman
+
 def get_conn():
     return psycopg2.connect(os.environ["DATABASE_URL"])
 
@@ -19,7 +23,7 @@ def hash_password(password: str) -> str:
     return hashlib.sha256(password.encode()).hexdigest()
 
 def handler(event: dict, context) -> dict:
-    """Авторизация клиентов: register / login / me / logout"""
+    """Авторизация: register / login / me / logout / approve-user / pending-users / set-discount"""
     if event.get("httpMethod") == "OPTIONS":
         return {"statusCode": 200, "headers": {
             "Access-Control-Allow-Origin": "*",
@@ -34,10 +38,9 @@ def handler(event: dict, context) -> dict:
     body_raw = event.get("body") or "{}"
     body     = json.loads(body_raw) if body_raw else {}
 
-    # Токен из заголовка X-Authorization (проксируется платформой)
-    headers = event.get("headers") or {}
+    headers   = event.get("headers") or {}
     raw_token = headers.get("X-Authorization") or headers.get("Authorization") or ""
-    token = raw_token.replace("Bearer ", "").strip()
+    token     = raw_token.replace("Bearer ", "").strip()
 
     conn = get_conn()
     cur  = conn.cursor()
@@ -48,6 +51,10 @@ def handler(event: dict, context) -> dict:
         password = body.get("password") or ""
         name     = (body.get("name") or "").strip()
         phone    = (body.get("phone") or "").strip()
+        role     = (body.get("role") or "client").strip()
+
+        if role not in ("client", "designer", "foreman", "installer", "company"):
+            role = "client"
 
         if not email or not password:
             return err("Email и пароль обязательны")
@@ -58,19 +65,30 @@ def handler(event: dict, context) -> dict:
         if cur.fetchone():
             return err("Email уже зарегистрирован")
 
+        # Бизнес-роли ждут одобрения; клиенты/дизайнеры/прорабы — сразу approved
+        approved = role not in BUSINESS_ROLES
+        discount = DEFAULT_DISCOUNT if role in DISCOUNT_ROLES else 0
+
         cur.execute(
-            f"INSERT INTO {SCHEMA}.users (email, password_hash, name, phone) VALUES (%s,%s,%s,%s) RETURNING id",
-            (email, hash_password(password), name, phone or None)
+            f"INSERT INTO {SCHEMA}.users (email, password_hash, name, phone, role, approved, discount) VALUES (%s,%s,%s,%s,%s,%s,%s) RETURNING id",
+            (email, hash_password(password), name, phone or None, role, approved, discount)
         )
         user_id = cur.fetchone()[0]
 
-        new_token = secrets.token_hex(32)
-        cur.execute(
-            f"INSERT INTO {SCHEMA}.user_sessions (user_id, token) VALUES (%s,%s)",
-            (user_id, new_token)
-        )
-        conn.commit()
-        return ok({"token": new_token, "user": {"id": user_id, "email": email, "name": name}})
+        if approved:
+            new_token = secrets.token_hex(32)
+            cur.execute(
+                f"INSERT INTO {SCHEMA}.user_sessions (user_id, token) VALUES (%s,%s)",
+                (user_id, new_token)
+            )
+            conn.commit()
+            return ok({"token": new_token, "user": {
+                "id": user_id, "email": email, "name": name,
+                "role": role, "approved": True, "discount": discount,
+            }})
+        else:
+            conn.commit()
+            return ok({"pending": True, "role": role})
 
     # ── Вход ─────────────────────────────────────────────────────────────────
     if action == "login" and method == "POST":
@@ -81,15 +99,19 @@ def handler(event: dict, context) -> dict:
             return err("Email и пароль обязательны")
 
         cur.execute(
-            f"SELECT id, name, email FROM {SCHEMA}.users WHERE email=%s AND password_hash=%s",
+            f"SELECT id, name, email, role, approved, discount FROM {SCHEMA}.users WHERE email=%s AND password_hash=%s",
             (email, hash_password(password))
         )
         row = cur.fetchone()
         if not row:
             return err("Неверный email или пароль")
 
-        user_id, name, email_db = row
+        user_id, name, email_db, role, approved, discount = row
         is_master = (email_db == "19.jeka.94@gmail.com")
+
+        if not approved and not is_master:
+            return ok({"pending": True, "role": role})
+
         new_token = secrets.token_hex(32)
         cur.execute(
             f"INSERT INTO {SCHEMA}.user_sessions (user_id, token) VALUES (%s,%s)",
@@ -97,7 +119,9 @@ def handler(event: dict, context) -> dict:
         )
         conn.commit()
         return ok({"token": new_token, "user": {
-            "id": user_id, "email": email_db, "name": name, "is_master": is_master,
+            "id": user_id, "email": email_db, "name": name,
+            "role": role, "approved": approved, "discount": discount or 0,
+            "is_master": is_master,
         }})
 
     # ── Профиль (проверка токена) ─────────────────────────────────────────────
@@ -106,7 +130,7 @@ def handler(event: dict, context) -> dict:
             return err("Требуется авторизация", 401)
 
         cur.execute(f"""
-            SELECT u.id, u.email, u.name, u.phone
+            SELECT u.id, u.email, u.name, u.phone, u.role, u.approved, u.discount
             FROM {SCHEMA}.user_sessions s
             JOIN {SCHEMA}.users u ON u.id = s.user_id
             WHERE s.token=%s AND s.expires_at > NOW()
@@ -115,9 +139,10 @@ def handler(event: dict, context) -> dict:
         if not row:
             return err("Токен недействителен", 401)
 
-        uid, email, name, phone = row
+        uid, email, name, phone, role, approved, discount = row
         return ok({"user": {
             "id": uid, "email": email, "name": name, "phone": phone,
+            "role": role or "client", "approved": approved, "discount": discount or 0,
             "is_master": (email == "19.jeka.94@gmail.com"),
         }})
 
@@ -135,18 +160,11 @@ def handler(event: dict, context) -> dict:
             return err("Токен недействителен", 401)
         uid = row[0]
 
-        name         = (body.get("name") or "").strip()
-        phone        = (body.get("phone") or "").strip()
-        company_name = (body.get("company_name") or "").strip()
-        company_inn  = (body.get("company_inn") or "").strip()
-        company_addr = (body.get("company_addr") or "").strip()
-        website      = (body.get("website") or "").strip()
-        telegram     = (body.get("telegram") or "").strip()
+        name  = (body.get("name") or "").strip()
+        phone = (body.get("phone") or "").strip()
 
         cur.execute(f"""
-            UPDATE {SCHEMA}.users
-            SET name=%s, phone=%s, updated_at=NOW()
-            WHERE id=%s
+            UPDATE {SCHEMA}.users SET name=%s, phone=%s, updated_at=NOW() WHERE id=%s
         """, (name or None, phone or None, uid))
         conn.commit()
         return ok({"ok": True})
@@ -156,6 +174,60 @@ def handler(event: dict, context) -> dict:
         if token:
             cur.execute(f"UPDATE {SCHEMA}.user_sessions SET expires_at=NOW() WHERE token=%s", (token,))
             conn.commit()
+        return ok({"ok": True})
+
+    # ── Мастер: список pending-пользователей ──────────────────────────────────
+    if action == "pending-users" and method == "GET":
+        role_filter = params.get("role_group", "business")
+        if role_filter == "business":
+            roles = ("installer", "company")
+        else:
+            roles = ("designer", "foreman")
+
+        cur.execute(f"""
+            SELECT id, email, name, phone, role, discount, created_at
+            FROM {SCHEMA}.users
+            WHERE role = ANY(%s) AND approved = false
+            ORDER BY created_at DESC
+        """, (list(roles),))
+        rows = cur.fetchall()
+        return ok({"users": [{
+            "id": r[0], "email": r[1], "name": r[2], "phone": r[3],
+            "role": r[4], "discount": r[5] or 0, "created_at": str(r[6])[:19],
+        } for r in rows]})
+
+    # ── Мастер: список дизайнеров/прорабов (все, включая одобренных) ──────────
+    if action == "pro-users" and method == "GET":
+        cur.execute(f"""
+            SELECT id, email, name, phone, role, approved, discount, created_at
+            FROM {SCHEMA}.users
+            WHERE role IN ('designer', 'foreman')
+            ORDER BY created_at DESC
+        """)
+        rows = cur.fetchall()
+        return ok({"users": [{
+            "id": r[0], "email": r[1], "name": r[2], "phone": r[3],
+            "role": r[4], "approved": r[5], "discount": r[6] or 0,
+            "created_at": str(r[7])[:19],
+        } for r in rows]})
+
+    # ── Мастер: одобрить пользователя ─────────────────────────────────────────
+    if action == "approve-user" and method == "POST":
+        user_id = body.get("user_id")
+        if not user_id:
+            return err("user_id required")
+        cur.execute(f"UPDATE {SCHEMA}.users SET approved=true WHERE id=%s", (int(user_id),))
+        conn.commit()
+        return ok({"ok": True})
+
+    # ── Мастер: установить скидку пользователю ────────────────────────────────
+    if action == "set-discount" and method == "POST":
+        user_id  = body.get("user_id")
+        discount = body.get("discount")
+        if user_id is None or discount is None:
+            return err("user_id и discount обязательны")
+        cur.execute(f"UPDATE {SCHEMA}.users SET discount=%s WHERE id=%s", (int(discount), int(user_id)))
+        conn.commit()
         return ok({"ok": True})
 
     # ── Смета по chat_id ──────────────────────────────────────────────────────
@@ -188,7 +260,6 @@ def handler(event: dict, context) -> dict:
         blocks_new = body.get("blocks", [])
         totals_new = body.get("totals", [])
 
-        # Пересчёт итогов
         import re as _re
         def _extract(keyword):
             for t in totals_new:
@@ -219,9 +290,8 @@ def handler(event: dict, context) -> dict:
         if not token:
             return err("Требуется авторизация", 401)
 
-        # Проверяем токен
         cur.execute(f"""
-            SELECT u.id, u.email, u.name, u.phone
+            SELECT u.id, u.email, u.name, u.phone, u.discount
             FROM {SCHEMA}.user_sessions s
             JOIN {SCHEMA}.users u ON u.id = s.user_id
             WHERE s.token=%s AND s.expires_at > NOW()
@@ -229,13 +299,12 @@ def handler(event: dict, context) -> dict:
         row = cur.fetchone()
         if not row:
             return err("Токен недействителен", 401)
-        user_id, email, user_name, phone = row
+        user_id, email, user_name, phone, user_discount = row
 
         blocks       = body.get("blocks", [])
         totals       = body.get("totals", [])
         final_phrase = body.get("finalPhrase", "")
 
-        # Извлекаем суммы из totals: "Standard: 61 000 ₽" → 61000.0
         def extract_sum(keyword):
             import re
             for t in totals:
@@ -250,7 +319,6 @@ def handler(event: dict, context) -> dict:
         total_standard = extract_sum("standard")
         total_premium  = extract_sum("premium")
 
-        # Сохраняем снимок сметы
         cur.execute(f"""
             INSERT INTO {SCHEMA}.saved_estimates
               (user_id, title, blocks, totals, final_phrase, total_econom, total_standard, total_premium)
@@ -266,7 +334,6 @@ def handler(event: dict, context) -> dict:
         ))
         estimate_id = cur.fetchone()[0]
 
-        # Считаем себестоимость (закупку) по позициям сметы
         material_cost_total = 0
         try:
             cur.execute(f"SELECT name, purchase_price FROM {SCHEMA}.ai_prices WHERE active=true AND purchase_price > 0")
@@ -283,7 +350,6 @@ def handler(event: dict, context) -> dict:
         except Exception:
             material_cost_total = 0
 
-        # Создаём заявку в CRM (live_chats)
         import secrets as sec
         session_id = f"estimate-{estimate_id}-{sec.token_hex(6)}"
         cur.execute(f"""
@@ -300,7 +366,6 @@ def handler(event: dict, context) -> dict:
         ))
         chat_id = cur.fetchone()[0]
 
-        # Привязываем заявку к смете
         cur.execute(f"UPDATE {SCHEMA}.saved_estimates SET chat_id=%s WHERE id=%s", (chat_id, estimate_id))
         conn.commit()
 
@@ -308,6 +373,7 @@ def handler(event: dict, context) -> dict:
             "ok": True,
             "estimate_id": estimate_id,
             "chat_id": chat_id,
+            "discount": user_discount or 0,
         })
 
     # ── Список смет пользователя ───────────────────────────────────────────────
@@ -327,7 +393,7 @@ def handler(event: dict, context) -> dict:
 
         cur.execute(f"""
             SELECT e.id, e.title, e.total_econom, e.total_standard, e.total_premium,
-                   e.status, e.created_at, lc.status as crm_status
+                   e.status, e.created_at, lc.status as crm_status, lc.id as chat_id
             FROM {SCHEMA}.saved_estimates e
             LEFT JOIN {SCHEMA}.live_chats lc ON lc.id = e.chat_id
             WHERE e.user_id = %s
@@ -340,14 +406,14 @@ def handler(event: dict, context) -> dict:
             "total_standard": float(r[3]) if r[3] else None,
             "total_premium": float(r[4]) if r[4] else None,
             "status": r[5], "created_at": str(r[6])[:19],
-            "crm_status": r[7],
+            "crm_status": r[7], "chat_id": r[8],
         } for r in rows]
         return ok({"estimates": estimates})
 
     # ── Мастер: список всех пользователей ────────────────────────────────────
     if action == "admin-users" and method == "GET":
         cur.execute(f"""
-            SELECT u.id, u.email, u.name, u.phone, u.created_at,
+            SELECT u.id, u.email, u.name, u.phone, u.role, u.approved, u.discount, u.created_at,
                    COUNT(e.id) as estimates_count
             FROM {SCHEMA}.users u
             LEFT JOIN {SCHEMA}.saved_estimates e ON e.user_id = u.id
@@ -356,7 +422,8 @@ def handler(event: dict, context) -> dict:
         rows = cur.fetchall()
         return ok({"users": [{
             "id": r[0], "email": r[1], "name": r[2], "phone": r[3],
-            "created_at": str(r[4])[:19], "estimates_count": r[5],
+            "role": r[4] or "client", "approved": r[5], "discount": r[6] or 0,
+            "created_at": str(r[7])[:19], "estimates_count": r[8],
         } for r in rows]})
 
     # ── Мастер: сметы конкретного пользователя ────────────────────────────────

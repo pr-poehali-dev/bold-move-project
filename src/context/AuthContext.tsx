@@ -5,26 +5,36 @@ import { setCrmToken } from "@/pages/admin/crm/crmApi";
 const AUTH_URL  = (func2url as Record<string, string>)["auth"];
 const TOKEN_KEY = "mp_user_token";
 
+export type UserRole = "client" | "designer" | "foreman" | "installer" | "company" | "manager";
+
 export interface AuthUser {
   id: number;
   email: string;
   name: string | null;
   phone: string | null;
+  role: UserRole;
+  approved: boolean;
+  discount: number;
   is_master?: boolean;
 }
+
+// Бизнес-роли: требуют одобрения, получают доступ к CRM
+export const BUSINESS_ROLES: UserRole[] = ["installer", "company", "manager"];
+// Клиентские роли: сразу approved, личный кабинет /my-orders
+export const CLIENT_ROLES: UserRole[] = ["client", "designer", "foreman"];
 
 interface AuthCtx {
   user: AuthUser | null;
   token: string | null;
   loading: boolean;
-  login:    (email: string, password: string) => Promise<void>;
-  register: (email: string, password: string, name: string, phone?: string) => Promise<void>;
+  login:    (email: string, password: string) => Promise<{ pending?: boolean; role?: string }>;
+  register: (email: string, password: string, name: string, role: UserRole, phone?: string) => Promise<{ pending?: boolean; role?: string }>;
   logout:   () => Promise<void>;
 }
 
 const Ctx = createContext<AuthCtx>({
   user: null, token: null, loading: true,
-  login: async () => {}, register: async () => {}, logout: async () => {},
+  login: async () => ({}), register: async () => ({}), logout: async () => {},
 });
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -32,7 +42,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [token,   setToken]   = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Восстанавливаем сессию при загрузке
   useEffect(() => {
     const saved = localStorage.getItem(TOKEN_KEY);
     if (!saved) { setLoading(false); return; }
@@ -61,18 +70,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
     const data = await res.json();
     if (!res.ok || data.error) throw new Error(data.error || "Ошибка входа");
+    if (data.pending) return { pending: true, role: data.role };
     persist(data.token, data.user);
+    return {};
   };
 
-  const register = async (email: string, password: string, name: string, phone?: string) => {
+  const register = async (email: string, password: string, name: string, role: UserRole, phone?: string) => {
     const res  = await fetch(`${AUTH_URL}?action=register`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, password, name, phone }),
+      body: JSON.stringify({ email, password, name, role, phone }),
     });
     const data = await res.json();
     if (!res.ok || data.error) throw new Error(data.error || "Ошибка регистрации");
+    if (data.pending) return { pending: true, role: data.role };
     persist(data.token, data.user);
+    return {};
   };
 
   const logout = async () => {

@@ -7,19 +7,37 @@
       "expectedStatus": 200
     },
     {
-      "name": "Register new user",
+      "name": "Register client (approved immediately)",
       "method": "POST",
       "path": "/?action=register",
-      "body": {"email": "test_auth@example.com", "password": "test123", "name": "Тест"},
+      "body": {"email": "test_client@example.com", "password": "test123", "name": "Клиент", "role": "client"},
       "expectedStatus": 200,
       "expectedBody": {"token": "string"},
       "bodyMatcher": "partial"
     },
     {
-      "name": "Login existing user",
+      "name": "Register designer (approved + 10% discount)",
+      "method": "POST",
+      "path": "/?action=register",
+      "body": {"email": "test_designer@example.com", "password": "test123", "name": "Дизайнер", "role": "designer"},
+      "expectedStatus": 200,
+      "expectedBody": {"token": "string"},
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "Register company (pending)",
+      "method": "POST",
+      "path": "/?action=register",
+      "body": {"email": "test_company@example.com", "password": "test123", "name": "Компания", "role": "company"},
+      "expectedStatus": 200,
+      "expectedBody": {"pending": true},
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "Login existing client",
       "method": "POST",
       "path": "/?action=login",
-      "body": {"email": "test_auth@example.com", "password": "test123"},
+      "body": {"email": "test_client@example.com", "password": "test123"},
       "expectedStatus": 200,
       "expectedBody": {"token": "string"},
       "bodyMatcher": "partial"
@@ -28,9 +46,25 @@
       "name": "Login wrong password",
       "method": "POST",
       "path": "/?action=login",
-      "body": {"email": "test_auth@example.com", "password": "wrongpass"},
+      "body": {"email": "test_client@example.com", "password": "wrongpass"},
       "expectedStatus": 400,
       "expectedBody": {"error": "string"},
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "Pending users (business)",
+      "method": "GET",
+      "path": "/?action=pending-users&role_group=business",
+      "expectedStatus": 200,
+      "expectedBody": {"users": []},
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "Pro users (designers/foremen)",
+      "method": "GET",
+      "path": "/?action=pro-users",
+      "expectedStatus": 200,
+      "expectedBody": {"users": []},
       "bodyMatcher": "partial"
     }
   ]

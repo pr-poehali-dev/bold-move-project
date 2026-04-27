@@ -4,6 +4,7 @@ import { useAuth } from "@/context/AuthContext";
 import AuthModal from "@/components/AuthModal";
 import UserDropdown from "@/components/UserDropdown";
 import ProfileModal from "@/components/ProfileModal";
+import PendingApprovalModal from "@/components/PendingApprovalModal";
 import PaymentModal from "@/components/PaymentModal";
 import { isEstimate } from "./EstimateTable";
 import { Panel, Msg, GREETING, AI_URL, localAnswer } from "./chatConfig";
@@ -24,6 +25,7 @@ import MobileContactBar from "./MobileContactBar";
 export default function Index() {
   const { user } = useAuth();
   const [showAuthModal,    setShowAuthModal]    = useState(false);
+  const [pendingRole,      setPendingRole]      = useState<string | null>(null);
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [panel, setPanel]       = useState<Panel>("none");
@@ -162,7 +164,12 @@ export default function Index() {
         </div>
       </header>
 
-      {showAuthModal    && <AuthModal    onClose={() => setShowAuthModal(false)} />}
+      {showAuthModal && <AuthModal
+        onClose={() => setShowAuthModal(false)}
+        onPending={(role) => { setPendingRole(role); setShowAuthModal(false); }}
+        onSuccess={() => setShowAuthModal(false)}
+      />}
+      {pendingRole && <PendingApprovalModal role={pendingRole} onClose={() => setPendingRole(null)} />}
       {showProfileModal && <ProfileModal onClose={() => setShowProfileModal(false)} />}
       {showPaymentModal && <PaymentModal onClose={() => setShowPaymentModal(false)} />}
 

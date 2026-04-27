@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { useAuth } from "@/context/AuthContext";
+import { useAuth, CLIENT_ROLES } from "@/context/AuthContext";
 import Icon from "@/components/ui/icon";
 
 interface Props {
@@ -61,8 +61,13 @@ export default function UserDropdown({ onShowProfile, onShowPayment }: Props) {
 
           {/* Пункты меню */}
           <div className="py-1.5">
-            <MenuItem icon="LayoutDashboard" label="Админ панель"
-              onClick={() => { setOpen(false); window.open("/admin-yura", "_self"); }} />
+            {user.role && CLIENT_ROLES.includes(user.role) ? (
+              <MenuItem icon="ClipboardList" label="Мои заявки"
+                onClick={() => { setOpen(false); window.location.href = "/my-orders"; }} />
+            ) : (
+              <MenuItem icon="LayoutDashboard" label="Панель управления"
+                onClick={() => { setOpen(false); window.location.href = "/admin-yura"; }} />
+            )}
             <MenuItem icon="User" label="Профиль"
               onClick={() => { setOpen(false); onShowProfile(); }} />
             <MenuItem icon="CreditCard" label="Оплата"
