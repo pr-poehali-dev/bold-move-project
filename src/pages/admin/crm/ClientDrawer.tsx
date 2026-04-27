@@ -173,7 +173,7 @@ export default function ClientDrawer({ client, allClientOrders, onClose, onUpdat
 
                 {/* Заголовок-переключатель (всегда виден) */}
                 <button
-                  className="w-full flex items-center justify-between px-2.5 text-xs font-semibold py-[500px]"
+                  className="w-full flex items-center justify-between px-2.5 text-xs font-semibold py-3"
                   style={{ borderBottom: `1px solid ${t.border}`, color: t.textMute }}
                   onClick={() => setOrdersListOpen(v => !v)}>
                   {ordersListOpen && (
