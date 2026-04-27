@@ -34,7 +34,14 @@ export async function crmFetch(resource: string, opts?: RequestInit, extra?: Rec
 
 export async function uploadFile(file: File): Promise<string> {
   const buf = await file.arrayBuffer();
-  const b64 = btoa(String.fromCharCode(...new Uint8Array(buf)));
+  const bytes = new Uint8Array(buf);
+  // btoa через спред падает на больших файлах (stack overflow) — конвертируем чанками
+  let b64 = "";
+  const CHUNK = 8192;
+  for (let i = 0; i < bytes.length; i += CHUNK) {
+    b64 += String.fromCharCode(...bytes.subarray(i, i + CHUNK));
+  }
+  b64 = btoa(b64);
   const res = await crmFetch("upload", {
     method: "POST",
     body: JSON.stringify({ data: b64, filename: file.name, content_type: file.type }),
