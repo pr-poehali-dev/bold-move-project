@@ -12,14 +12,15 @@ interface Props {
   onUpdated: () => void;
   onDeleted: () => void;
   isLocalCard?: boolean;
+  defaultTab?: "client" | "info" | "orders" | "estimate";
 }
 
-export default function ClientDrawer({ client, allClientOrders, onClose, onUpdated, onDeleted, isLocalCard }: Props) {
+export default function ClientDrawer({ client, allClientOrders, onClose, onUpdated, onDeleted, isLocalCard, defaultTab = "client" }: Props) {
   const t = useTheme();
   const [data, setData]               = useState<Client>(client);
   const [saving, setSaving]           = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
-  const [drawerTab, setDrawerTab]     = useState<"client" | "info" | "orders" | "estimate">("client");
+  const [drawerTab, setDrawerTab]     = useState<"client" | "info" | "orders" | "estimate">(defaultTab);
   const [comments, setComments]       = useState<{ text: string; date: string }[]>([]);
   const [editingName, setEditingName] = useState(false);
   const nameValRef                    = useRef("");
