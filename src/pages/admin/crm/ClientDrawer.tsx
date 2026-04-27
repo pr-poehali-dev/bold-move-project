@@ -90,7 +90,7 @@ export default function ClientDrawer({ client, allClientOrders, onClose, onUpdat
           const displayColor = STATUS_COLORS[ord.status] || "#8b5cf6";
           return (
         <div className="flex items-center justify-between px-3 sm:px-6 py-3 sm:py-4 flex-shrink-0" style={{ borderBottom: `1px solid ${t.border}` }}>
-          <div className="flex items-center gap-3 min-w-0">
+          <div className="flex items-center gap-3 min-w-0 flex-1 mr-3">
             <div className="w-11 h-11 rounded-xl flex-shrink-0 flex items-center justify-center text-sm font-bold text-white"
               style={{ background: displayColor + "35", border: `2px solid ${displayColor}50` }}>
               {ord.id}
@@ -113,8 +113,8 @@ export default function ClientDrawer({ client, allClientOrders, onClose, onUpdat
                     if (e.key === "Enter") (e.target as HTMLInputElement).blur();
                     if (e.key === "Escape") setEditingTitle(false);
                   }}
-                  className="text-base font-bold bg-transparent focus:outline-none w-full max-w-lg"
-                  style={{ color: "#fff", borderBottom: "1px solid #7c3aed" }}
+                  className="text-base font-bold bg-transparent focus:outline-none block w-full"
+                  style={{ color: "#fff", borderBottom: "1px solid #7c3aed", minWidth: 0 }}
                 />
               ) : (
                 <div className="text-base font-bold text-white truncate max-w-xs sm:max-w-lg cursor-text hover:opacity-80 transition"
