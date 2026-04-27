@@ -119,17 +119,20 @@ export function DrawerContactsBlock({ data, hiddenBlocks, editingBlock, toggleHi
       onEdit={!isHidden ? () => setEditingBlock(editMode ? null : id) : undefined}>
       {visibleFields.map(field => {
         if (field.builtin && field.clientKey) {
-          // Встроенное поле → значение из data (БД)
           const val = (data[field.clientKey as keyof Client] as string) || "";
           const saveKey = field.clientKey;
           return (
-            <RowWithToggle key={field.id} rowKey={field.id} visible onToggle={() => {}} editMode={false}
+            <RowWithToggle key={field.id} rowKey={field.id} visible onToggle={() => {}} editMode={editMode}
               editableLabel={field.label} onLabelChange={l => {
                 const updated = fields.map(f => f.id === field.id ? { ...f, label: l } : f);
                 setFields(updated);
                 saveClientFields(updated);
               }}
-              onDelete={() => {}}>
+              onDelete={() => {
+                const updated = fields.map(f => f.id === field.id ? { ...f, hidden: true } : f);
+                setFields(updated);
+                saveClientFields(updated);
+              }}>
               <InlineField
                 label={field.label}
                 value={val}
@@ -139,11 +142,18 @@ export function DrawerContactsBlock({ data, hiddenBlocks, editingBlock, toggleHi
             </RowWithToggle>
           );
         }
-        // Кастомное поле → значение из extraValues (localStorage)
         return (
-          <RowWithToggle key={field.id} rowKey={field.id} visible onToggle={() => {}} editMode={false}
-            editableLabel={field.label} onLabelChange={() => {}}
-            onDelete={() => {}}>
+          <RowWithToggle key={field.id} rowKey={field.id} visible onToggle={() => {}} editMode={editMode}
+            editableLabel={field.label} onLabelChange={l => {
+              const updated = fields.map(f => f.id === field.id ? { ...f, label: l } : f);
+              setFields(updated);
+              saveClientFields(updated);
+            }}
+            onDelete={() => {
+              const updated = fields.filter(f => f.id !== field.id);
+              setFields(updated);
+              saveClientFields(updated);
+            }}>
             <InlineField
               label={field.label}
               value={extraValues[field.id] || ""}
