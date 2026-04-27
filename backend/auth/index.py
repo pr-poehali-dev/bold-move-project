@@ -271,15 +271,14 @@ def handler(event: dict, context) -> dict:
         session_id = f"estimate-{estimate_id}-{sec.token_hex(6)}"
         cur.execute(f"""
             INSERT INTO {SCHEMA}.live_chats
-              (session_id, client_name, phone, status, source, contract_sum, notes)
-            VALUES (%s, %s, %s, 'new', 'estimate', %s, %s)
+              (session_id, client_name, phone, status, source, contract_sum)
+            VALUES (%s, %s, %s, 'new', 'estimate', %s)
             RETURNING id
         """, (
             session_id,
             user_name or email,
             phone or "",
             total_standard,
-            f"Смета сохранена клиентом через сайт. Email: {email}. Estimate ID: {estimate_id}",
         ))
         chat_id = cur.fetchone()[0]
 

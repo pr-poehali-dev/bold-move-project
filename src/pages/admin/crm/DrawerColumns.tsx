@@ -11,7 +11,7 @@ import { DrawerCustomBlock } from "./DrawerCustomBlock";
 import { DrawerIncomeBlock, DrawerCostsBlock } from "./DrawerFinBlocks";
 import {
   DrawerContactsBlock, DrawerObjectBlock, DrawerDatesBlock,
-  DrawerNotesBlock, DrawerFilesBlock, DrawerCancelBlock,
+  DrawerFilesBlock, DrawerCancelBlock,
 } from "./DrawerInfoBlocks";
 
 interface ColumnsProps {
@@ -93,7 +93,7 @@ export function DrawerColumns(props: ColumnsProps) {
       case "contacts": return <DrawerContactsBlock {...infoProps} />;
       case "object":   return <DrawerObjectBlock   {...infoProps} />;
       case "dates":    return <DrawerDatesBlock     {...infoProps} />;
-      case "notes":    return <DrawerNotesBlock     {...infoProps} />;
+      case "notes":    return null;
       case "files":    return <DrawerFilesBlock clientId={data.id} hiddenBlocks={hiddenBlocks} toggleHidden={toggleHidden} logAction={logAction} editingBlock={editingBlock} setEditingBlock={setEditingBlock} />;
       case "cancel":   return <DrawerCancelBlock    {...infoProps} />;
       case "income":   return <DrawerIncomeBlock    {...finProps}  />;
