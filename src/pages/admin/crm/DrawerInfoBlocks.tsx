@@ -5,6 +5,34 @@ import { InlineField, Section } from "./drawerComponents";
 import { BlockId } from "./drawerTypes";
 import { RowWithToggle } from "./DrawerFinRowHelpers";
 import { loadClientFields, saveClientFields, loadClientExtraValues, saveClientExtraValues, type CustomClientField } from "./clientFieldsStore";
+import Icon from "@/components/ui/icon";
+
+function AddRowInline({ color, onAdd, onDone }: { color: string; onAdd: (label: string) => void; onDone?: () => void }) {
+  const [open, setOpen] = useState(false);
+  const [val, setVal] = useState("");
+  const commit = () => {
+    if (val.trim()) { onAdd(val.trim()); setVal(""); }
+    setOpen(false);
+    onDone?.();
+  };
+  if (!open) return (
+    <button onClick={() => setOpen(true)}
+      className="flex items-center gap-1 mt-1 text-xs transition-opacity opacity-40 hover:opacity-80"
+      style={{ color }}>
+      <Icon name="Plus" size={11} /> Добавить поле
+    </button>
+  );
+  return (
+    <div className="flex items-center gap-2 mt-1">
+      <input autoFocus value={val} onChange={e => setVal(e.target.value)}
+        onKeyDown={e => { if (e.key === "Enter") commit(); if (e.key === "Escape") { setOpen(false); setVal(""); } }}
+        placeholder="Название поля"
+        className="flex-1 rounded px-2 py-1 text-xs bg-white/5 border border-white/10 text-white focus:outline-none" />
+      <button onClick={commit} className="text-xs px-2 py-1 rounded" style={{ background: color + "30", color }}>ОК</button>
+      <button onClick={() => { setOpen(false); setVal(""); }} className="text-xs opacity-40 hover:opacity-70">✕</button>
+    </div>
+  );
+}
 
 interface ExtraRow { label: string; value: string; }
 
@@ -72,27 +100,6 @@ function useInfoBlock(id: BlockId, hiddenBlocks: Set<BlockId>, editingBlock: Blo
   };
 
   return { isHidden, editMode, getLabel, renameLabel, hideRow, isVisible, extraRows, addExtraRow, updateExtraRow, renameExtraRow, deleteExtraRow, toggleHidden, setEditingBlock };
-}
-
-// Компонент добавления строки
-function AddRowInline({ color, onAdd, onDone }: { color: string; onAdd: (label: string) => void; onDone?: () => void }) {
-  const [val, setVal] = useState("");
-  const t = useTheme();
-  const commit = () => {
-    if (val.trim()) { onAdd(val.trim()); setVal(""); }
-    onDone?.();
-  };
-  return (
-    <div className="flex items-center gap-1.5 mt-1 mb-1">
-      <input value={val} onChange={e => setVal(e.target.value)}
-        onKeyDown={e => { if (e.key === "Enter") commit(); }}
-        placeholder="Новая строка..."
-        className="flex-1 text-xs rounded-lg px-2 py-1 focus:outline-none"
-        style={{ background: t.surface2, border: `1px solid ${color}40`, color: t.text }} />
-      <button onClick={commit} className="text-xs px-2 py-1 rounded-lg font-medium flex-shrink-0"
-        style={{ background: `${color}20`, color }}>OK</button>
-    </div>
-  );
 }
 
 // ── Contacts ─────────────────────────────────────────────────────────────────
