@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { createPortal } from "react-dom";
 import { Client } from "./crmApi";
 import { InlineField, Section } from "./drawerComponents";
 import { BlockId, CustomFinRow } from "./drawerTypes";
@@ -29,8 +30,8 @@ function AutoRulesModal({ onClose }: { onClose: () => void }) {
 
   const save = () => { saveAutoRules(rules); onClose(); };
 
-  return (
-    <div className="fixed inset-0 z-[80] flex items-end sm:items-center justify-center sm:p-4"
+  return createPortal(
+    <div className="fixed inset-0 z-[200] flex items-center justify-center p-4"
       style={{ background: "rgba(0,0,0,0.7)", backdropFilter: "blur(4px)" }}
       onClick={onClose}>
       <div className="w-full max-w-sm rounded-t-2xl sm:rounded-2xl shadow-2xl flex flex-col"
@@ -120,7 +121,8 @@ function AutoRulesModal({ onClose }: { onClose: () => void }) {
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
 
