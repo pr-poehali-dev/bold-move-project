@@ -156,3 +156,16 @@ export interface Client {
 export function fmt(n: number): string {
   return n.toLocaleString("ru-RU");
 }
+
+// Группировка заявок по клиенту: сначала по телефону, fallback — по имени
+export function getClientOrders(client: Client, allClients: Client[]): Client[] {
+  const phone = (client.phone || "").trim().replace(/\D/g, "");
+  if (phone) {
+    return allClients.filter(c => (c.phone || "").trim().replace(/\D/g, "") === phone);
+  }
+  const name = (client.client_name || "").trim().toLowerCase();
+  if (name) {
+    return allClients.filter(c => (c.client_name || "").trim().toLowerCase() === name);
+  }
+  return [client];
+}

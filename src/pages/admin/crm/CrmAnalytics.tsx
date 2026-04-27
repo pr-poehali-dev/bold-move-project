@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { crmFetch, STATUS_LABELS, STATUS_COLORS, Client } from "./crmApi";
+import { crmFetch, STATUS_LABELS, STATUS_COLORS, Client, getClientOrders } from "./crmApi";
 import Icon from "@/components/ui/icon";
 import { useTheme } from "./themeContext";
 import ClientDrawer from "./ClientDrawer";
@@ -144,10 +144,7 @@ export default function CrmAnalytics() {
       {drawerClient && (
         <ClientDrawer
           client={drawerClient}
-          allClientOrders={(() => {
-            const phone = (drawerClient.phone || "").trim().replace(/\D/g, "");
-            return phone ? allClients.filter(c => (c.phone || "").trim().replace(/\D/g, "") === phone) : [drawerClient];
-          })()}
+          allClientOrders={getClientOrders(drawerClient, allClients)}
           onClose={() => setDrawerClient(null)}
           onUpdated={() => {
             crmFetch("clients").then((d: unknown) => {

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { crmFetch, STATUS_LABELS, Client } from "./crmApi";
+import { crmFetch, STATUS_LABELS, Client, getClientOrders } from "./crmApi";
 import Icon from "@/components/ui/icon";
 import ClientDrawer from "./ClientDrawer";
 import { useTheme } from "./themeContext";
@@ -174,11 +174,7 @@ export default function CrmClients() {
         onToggleAll={toggleAll}
         onToggleOne={toggleOne}
         onSelect={c => {
-          const phone = (c.phone || "").trim().replace(/\D/g, "");
-          const orders = phone
-            ? clients.filter(x => (x.phone || "").trim().replace(/\D/g, "") === phone)
-            : [c];
-          setClientOrders(orders);
+          setClientOrders(getClientOrders(c, clients));
           setSelected(c);
         }}
         onClearFilters={clearFilters}

@@ -1,6 +1,6 @@
 import { useState, useRef } from "react";
 import type React from "react";
-import { crmFetch, Client } from "./crmApi";
+import { crmFetch, Client, getClientOrders } from "./crmApi";
 import Icon from "@/components/ui/icon";
 import ClientDrawer from "./ClientDrawer";
 import { useTheme } from "./themeContext";
@@ -379,10 +379,7 @@ export default function CrmOrders({ clients: allClients, loading, onStatusChange
           client={selected}
           defaultTab="orders"
           defaultOrderId={selected.id}
-          allClientOrders={(() => {
-            const phone = (selected.phone || "").trim().replace(/\D/g, "");
-            return phone ? allClients.filter(c => (c.phone || "").trim().replace(/\D/g, "") === phone) : [selected];
-          })()}
+          allClientOrders={getClientOrders(selected, allClients)}
           onClose={() => setSelected(null)}
           onUpdated={() => { onReload(); }}
           onDeleted={() => { setSelected(null); onClientRemoved(selected.id); }}

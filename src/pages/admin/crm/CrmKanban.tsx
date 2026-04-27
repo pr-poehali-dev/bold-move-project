@@ -1,6 +1,6 @@
 import { useState, useRef } from "react";
 import type React from "react";
-import { crmFetch, Client } from "./crmApi";
+import { crmFetch, Client, getClientOrders } from "./crmApi";
 import { useTheme } from "./themeContext";
 import ClientDrawer from "./ClientDrawer";
 import { KanbanHeader } from "./KanbanHeader";
@@ -222,10 +222,7 @@ export default function CrmKanban({ clients, loading, onStatusChange, onClientRe
       {selected && (
         <ClientDrawer
           client={selected}
-          allClientOrders={(() => {
-            const phone = (selected.phone || "").trim().replace(/\D/g, "");
-            return phone ? allCards.filter(c => (c.phone || "").trim().replace(/\D/g, "") === phone) : [selected];
-          })()}
+          allClientOrders={getClientOrders(selected, allCards)}
           onClose={() => setSelected(null)}
           onUpdated={() => {
             if (selected.id < 0) return;
