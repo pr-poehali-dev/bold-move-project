@@ -184,7 +184,7 @@ export default function DrawerInfoTab({ data, client, setData, save, setComments
 
   // ── render ───────────────────────────────────────────────────────────────────
   return (
-    <div className="px-6 py-4 space-y-3">
+    <div className="px-3 sm:px-6 py-4 space-y-3">
 
       {/* Статус воронки — на всю ширину */}
       {(!hideHidden || !hiddenBlocks.has("status")) && (
@@ -207,11 +207,11 @@ export default function DrawerInfoTab({ data, client, setData, save, setComments
         />
       )}
 
-      {/* Три колонки */}
-      <div className="grid grid-cols-[1fr_1fr_320px] gap-3">
+      {/* Колонки: на широких — [2fr 320px], на узких — одна колонка */}
+      <div className="grid grid-cols-1 xl:grid-cols-[1fr_300px] gap-3">
 
-        {/* Левая + центральная колонки */}
-        <div className="col-span-2">
+        {/* Основной контент */}
+        <div className="min-w-0">
           <DrawerColumns
             data={data}
             client={client}
@@ -250,7 +250,7 @@ export default function DrawerInfoTab({ data, client, setData, save, setComments
         </div>
 
         {/* Правая колонка — Активность */}
-        <div className="flex flex-col gap-2">
+        <div className="flex flex-col gap-2 min-w-0">
           <ActivityFeed
             client={data}
             extraEvents={activityLog}

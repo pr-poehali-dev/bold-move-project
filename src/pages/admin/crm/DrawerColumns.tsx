@@ -148,9 +148,9 @@ export function DrawerColumns(props: ColumnsProps) {
     <div className="flex flex-col gap-3">
 
       {/* Двухколоночная сетка — выровненные блоки */}
-      <div className="grid grid-cols-[1fr_1fr] gap-3 items-start">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 items-start">
         {/* Левый столбец */}
-        <div className="flex flex-col gap-3">
+        <div className="flex flex-col gap-3 min-w-0">
           {col0Narrow.map(b => (
             <DraggableBlock key={b.id} blockId={b.id} onDragStart={onDragStart} onDragOver={onDragOver} onDrop={onDrop}>
               {renderColBlock(b)}
@@ -167,7 +167,7 @@ export function DrawerColumns(props: ColumnsProps) {
         </div>
 
         {/* Правый столбец */}
-        <div className="flex flex-col gap-3">
+        <div className="flex flex-col gap-3 min-w-0">
           {col1Narrow.map(b => (
             <DraggableBlock key={b.id} blockId={b.id} onDragStart={onDragStart} onDragOver={onDragOver} onDrop={onDrop}>
               {renderColBlock(b)}
@@ -192,7 +192,7 @@ export function DrawerColumns(props: ColumnsProps) {
       ))}
 
       {/* Кнопки добавления в колонки */}
-      <div className="grid grid-cols-[1fr_1fr] gap-3">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         <button onClick={() => onAddBlock(0)}
           className="flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-medium transition border-2 border-dashed hover:border-violet-500/40 hover:text-violet-400"
           style={{ borderColor: t.border, color: "#a3a3a3" }}>

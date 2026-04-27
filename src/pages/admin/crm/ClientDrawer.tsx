@@ -63,21 +63,25 @@ export default function ClientDrawer({ client, allClientOrders, onClose, onUpdat
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={onClose}
+    <div className="fixed inset-0 z-50 flex items-center justify-center sm:p-4" onClick={onClose}
       style={{ background: "rgba(0,0,0,0.65)", backdropFilter: "blur(5px)" }}>
 
       <div className="w-full flex flex-col overflow-hidden shadow-2xl"
         style={{
           background: t.surface,
           border: `1px solid ${t.border}`,
-          borderRadius: 20,
+          borderRadius: "clamp(0px, 4vw, 20px)",
           maxWidth: 1160,
-          maxHeight: "92vh",
+          height: "100dvh",
+          maxHeight: "100dvh",
         }}
-        onClick={e => e.stopPropagation()}>
+        onClick={e => e.stopPropagation()}
+        // На десктопе ограничиваем высоту
+        ref={el => { if (el) { el.style.maxHeight = window.innerWidth >= 640 ? "92vh" : "100dvh"; } }}
+        >
 
         {/* ── Шапка ── */}
-        <div className="flex items-center justify-between px-6 py-4 flex-shrink-0" style={{ borderBottom: `1px solid ${t.border}` }}>
+        <div className="flex items-center justify-between px-3 sm:px-6 py-3 sm:py-4 flex-shrink-0" style={{ borderBottom: `1px solid ${t.border}` }}>
           <div className="flex items-center gap-3">
             <div className="w-11 h-11 rounded-xl flex items-center justify-center text-sm font-bold text-white"
               style={{ background: STATUS_COLORS[data.status] + "35", border: `2px solid ${STATUS_COLORS[data.status]}50` }}>
@@ -138,7 +142,7 @@ export default function ClientDrawer({ client, allClientOrders, onClose, onUpdat
         </div>
 
         {/* ── Табы ── */}
-        <div className="flex px-6 gap-1 pt-3 flex-shrink-0" style={{ borderBottom: `1px solid ${t.border}` }}>
+        <div className="flex px-3 sm:px-6 gap-1 pt-2 sm:pt-3 flex-shrink-0 overflow-x-auto" style={{ borderBottom: `1px solid ${t.border}` }}>
           {([
             { id: "client",   label: "Клиент",  icon: "User" },
             { id: "orders",   label: `Заявки (${allClientOrders.length})`, icon: "ClipboardList" },
@@ -165,7 +169,7 @@ export default function ClientDrawer({ client, allClientOrders, onClose, onUpdat
           {drawerTab === "orders" && (
             <div className="flex h-full min-h-0">
               {/* Левая панель — список заявок */}
-              <div className="w-64 flex-shrink-0 border-r overflow-y-auto py-3 px-3 space-y-2" style={{ borderColor: t.border }}>
+              <div className="w-28 sm:w-64 flex-shrink-0 border-r overflow-y-auto py-3 px-2 sm:px-3 space-y-2" style={{ borderColor: t.border }}>
                 {allClientOrders.length === 0 && (
                   <div className="py-8 text-center text-xs" style={{ color: t.textMute }}>Нет заявок</div>
                 )}
