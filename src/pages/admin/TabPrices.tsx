@@ -7,7 +7,7 @@ import { apiFetch } from "./api";
 import { PRICE_UNITS } from "./constants";
 import type { PriceItem } from "./types";
 
-const EMPTY_NEW = { name: "", price: "", unit: "шт", description: "" };
+const EMPTY_NEW = { name: "", price: "", purchase_price: "", unit: "шт", description: "" };
 const EMPTY_CAT = { name: "", firstItem: "", price: "", unit: "шт", description: "" };
 
 interface Props { token: string; onItemAdded?: (name: string) => void; }
@@ -41,7 +41,7 @@ export default function TabPrices({ token, onItemAdded }: Props) {
     if (!newItem.name.trim()) return;
     const r = await apiFetch("prices", {
       method: "POST",
-      body: JSON.stringify({ ...newItem, category, price: parseInt(newItem.price) || 0 }),
+      body: JSON.stringify({ ...newItem, category, price: parseInt(newItem.price) || 0, purchase_price: parseInt(newItem.purchase_price) || 0 }),
     }, token);
     if (r.ok) { setAddingInCat(null); setNewItem(EMPTY_NEW); load(); onItemAdded?.(newItem.name.trim()); }
   };
@@ -102,7 +102,8 @@ export default function TabPrices({ token, onItemAdded }: Props) {
                 <tr className="border-b border-white/10">
                   <th className="px-2 py-2.5 w-6" />
                   <th className="text-left text-white/30 font-normal px-4 py-2.5 w-[32%]">Название</th>
-                  <th className="text-right text-white/30 font-normal px-4 py-2.5 w-[9%]">Цена ₽</th>
+                  <th className="text-right text-white/30 font-normal px-4 py-2.5 w-[9%]">Цена продажи ₽</th>
+                  <th className="text-right text-white/30 font-normal px-4 py-2.5 w-[9%]">Цена закупки ₽</th>
                   <th className="text-left text-white/30 font-normal px-4 py-2.5 w-[7%]">Ед.</th>
                   <th className="text-left text-white/30 font-normal px-4 py-2.5 w-[20%]">Описание (как AI понимает)</th>
                   <th className="text-left text-white/30 font-normal px-4 py-2.5">Синонимы (через запятую)</th>
@@ -138,6 +139,9 @@ export default function TabPrices({ token, onItemAdded }: Props) {
                     </td>
                     <td className="px-4 py-2.5 text-right font-mono text-green-400">
                       <EditableCell value={item.price} type="number" onSave={v => saveField(item, "price", v)} className="text-right" />
+                    </td>
+                    <td className="px-4 py-2.5 text-right font-mono text-blue-400">
+                      <EditableCell value={item.purchase_price ?? 0} type="number" onSave={v => saveField(item, "purchase_price", v)} className="text-right" />
                     </td>
                     <td className="px-4 py-2.5 text-white/50">
                       <select value={item.unit} onChange={e => saveField(item, "unit", e.target.value)}
@@ -197,10 +201,16 @@ export default function TabPrices({ token, onItemAdded }: Props) {
                     className="bg-white/5 border border-white/15 rounded-lg px-3 py-1.5 text-white text-sm outline-none focus:border-violet-500" />
                 </div>
                 <div className="flex flex-col gap-1 w-24">
-                  <span className="text-white/30 text-xs">Цена ₽</span>
+                  <span className="text-white/30 text-xs">Цена продажи ₽</span>
                   <input type="number" value={newItem.price} onChange={e => setNewItem(p => ({ ...p, price: e.target.value }))}
                     placeholder="0"
-                    className="bg-white/5 border border-white/15 rounded-lg px-3 py-1.5 text-white text-sm outline-none focus:border-violet-500 font-mono" />
+                    className="bg-white/5 border border-white/15 rounded-lg px-3 py-1.5 text-green-400 text-sm outline-none focus:border-violet-500 font-mono" />
+                </div>
+                <div className="flex flex-col gap-1 w-24">
+                  <span className="text-white/30 text-xs">Цена закупки ₽</span>
+                  <input type="number" value={newItem.purchase_price} onChange={e => setNewItem(p => ({ ...p, purchase_price: e.target.value }))}
+                    placeholder="0"
+                    className="bg-white/5 border border-white/15 rounded-lg px-3 py-1.5 text-blue-400 text-sm outline-none focus:border-violet-500 font-mono" />
                 </div>
                 <div className="flex flex-col gap-1 w-24">
                   <span className="text-white/30 text-xs">Единица</span>

@@ -20,6 +20,7 @@ export interface PriceItem {
   category: string;
   name: string;
   price: number;
+  purchase_price: number;
   unit: string;
   description: string;
   synonyms: string;

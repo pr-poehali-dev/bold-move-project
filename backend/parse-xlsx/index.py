@@ -207,10 +207,10 @@ def handler(event: dict, context) -> dict:
     # --- GET ?r=prices
     if r == 'prices' and method == 'GET':
         conn = get_conn(); cur = conn.cursor()
-        cur.execute(f"SELECT id, category, name, price, unit, description, sort_order, active, calc_rule, bundle, synonyms, when_condition, when_not_condition, client_changes FROM {SCHEMA}.ai_prices ORDER BY sort_order, id")
+        cur.execute(f"SELECT id, category, name, price, unit, description, sort_order, active, calc_rule, bundle, synonyms, when_condition, when_not_condition, client_changes, purchase_price FROM {SCHEMA}.ai_prices ORDER BY sort_order, id")
         rows = cur.fetchall()
         cur.close(); conn.close()
-        return resp(200, {'items': [{'id': row[0], 'category': row[1], 'name': row[2], 'price': row[3], 'unit': row[4], 'description': row[5], 'sort_order': row[6], 'active': row[7], 'calc_rule': row[8] or '', 'bundle': row[9] or '[]', 'synonyms': row[10] or '', 'when_condition': row[11] or '', 'when_not_condition': row[12] or '', 'client_changes': row[13] or ''} for row in rows]})
+        return resp(200, {'items': [{'id': row[0], 'category': row[1], 'name': row[2], 'price': row[3], 'unit': row[4], 'description': row[5], 'sort_order': row[6], 'active': row[7], 'calc_rule': row[8] or '', 'bundle': row[9] or '[]', 'synonyms': row[10] or '', 'when_condition': row[11] or '', 'when_not_condition': row[12] or '', 'client_changes': row[13] or '', 'purchase_price': row[14] or 0} for row in rows]})
 
     # --- POST ?r=prices  (добавление позиции)
     if r == 'prices' and method == 'POST':
@@ -228,8 +228,8 @@ def handler(event: dict, context) -> dict:
         sort_order = cur.fetchone()[0]
         synonyms = body.get('synonyms', '')
         cur.execute(
-            f"INSERT INTO {SCHEMA}.ai_prices (category, name, price, unit, description, sort_order, active, synonyms) VALUES (%s,%s,%s,%s,%s,%s,true,%s) RETURNING id",
-            (category, name, int(body.get('price', 0)), body.get('unit', 'шт'), body.get('description', ''), sort_order, synonyms)
+            f"INSERT INTO {SCHEMA}.ai_prices (category, name, price, purchase_price, unit, description, sort_order, active, synonyms) VALUES (%s,%s,%s,%s,%s,%s,%s,true,%s) RETURNING id",
+            (category, name, int(body.get('price', 0)), int(body.get('purchase_price', 0)), body.get('unit', 'шт'), body.get('description', ''), sort_order, synonyms)
         )
         new_id = cur.fetchone()[0]
         _save_complex_exceptions(conn, cur, synonyms, name)
@@ -248,15 +248,16 @@ def handler(event: dict, context) -> dict:
         when_condition = body.get('when_condition', '')
         when_not_condition = body.get('when_not_condition', '')
         client_changes = body.get('client_changes', '')
+        purchase_price = int(body.get('purchase_price', 0))
         if sort_order is not None:
             cur.execute(
-                f"UPDATE {SCHEMA}.ai_prices SET name=%s, price=%s, unit=%s, description=%s, active=%s, calc_rule=%s, bundle=%s, synonyms=%s, when_condition=%s, when_not_condition=%s, client_changes=%s, sort_order=%s, updated_at=now() WHERE id=%s",
-                (body.get('name',''), int(body.get('price', 0)), body.get('unit',''), body.get('description',''), body.get('active', True), body.get('calc_rule',''), body.get('bundle','[]'), synonyms, when_condition, when_not_condition, client_changes, int(sort_order), price_id)
+                f"UPDATE {SCHEMA}.ai_prices SET name=%s, price=%s, purchase_price=%s, unit=%s, description=%s, active=%s, calc_rule=%s, bundle=%s, synonyms=%s, when_condition=%s, when_not_condition=%s, client_changes=%s, sort_order=%s, updated_at=now() WHERE id=%s",
+                (body.get('name',''), int(body.get('price', 0)), purchase_price, body.get('unit',''), body.get('description',''), body.get('active', True), body.get('calc_rule',''), body.get('bundle','[]'), synonyms, when_condition, when_not_condition, client_changes, int(sort_order), price_id)
             )
         else:
             cur.execute(
-                f"UPDATE {SCHEMA}.ai_prices SET name=%s, price=%s, unit=%s, description=%s, active=%s, calc_rule=%s, bundle=%s, synonyms=%s, when_condition=%s, when_not_condition=%s, client_changes=%s, updated_at=now() WHERE id=%s",
-                (body.get('name',''), int(body.get('price', 0)), body.get('unit',''), body.get('description',''), body.get('active', True), body.get('calc_rule',''), body.get('bundle','[]'), synonyms, when_condition, when_not_condition, client_changes, price_id)
+                f"UPDATE {SCHEMA}.ai_prices SET name=%s, price=%s, purchase_price=%s, unit=%s, description=%s, active=%s, calc_rule=%s, bundle=%s, synonyms=%s, when_condition=%s, when_not_condition=%s, client_changes=%s, updated_at=now() WHERE id=%s",
+                (body.get('name',''), int(body.get('price', 0)), purchase_price, body.get('unit',''), body.get('description',''), body.get('active', True), body.get('calc_rule',''), body.get('bundle','[]'), synonyms, when_condition, when_not_condition, client_changes, price_id)
             )
         _save_complex_exceptions(conn, cur, synonyms, body.get('name', ''))
         cur.close(); conn.close()
