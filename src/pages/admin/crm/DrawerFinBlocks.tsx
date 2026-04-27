@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { Client } from "./crmApi";
 import { InlineField, Section } from "./drawerComponents";
@@ -342,16 +342,37 @@ export function DrawerCostsBlock({
 
   const contractSum = Number(data.contract_sum) || 0;
   const rules = loadAutoRules();
-  const hasRules = rules.measure_pct != null || rules.install_pct != null;
+  const hasRules = (rules.measure_enabled !== false && rules.measure_pct != null)
+    || (rules.install_enabled !== false && rules.install_pct != null)
+    || (rules.custom || []).some(c => c.enabled && c.pct != null);
 
-  const applyAuto = () => {
-    if (!contractSum) return;
+  const applyAutoWithSum = (sum: number) => {
+    if (!sum) return;
+    const r = loadAutoRules();
     const patch: Partial<Client> = {};
-    if (rules.measure_pct != null) (patch as Record<string, unknown>).measure_cost = Math.round(contractSum * rules.measure_pct / 100);
-    if (rules.install_pct != null) (patch as Record<string, unknown>).install_cost = Math.round(contractSum * rules.install_pct / 100);
-    saveWithLog(patch, "Авто-расчёт затрат по правилу", "Zap", "#ef4444");
-    setAutoFilled(true);
+    if (r.measure_enabled !== false && r.measure_pct != null)
+      (patch as Record<string, unknown>).measure_cost = Math.round(sum * r.measure_pct / 100);
+    if (r.install_enabled !== false && r.install_pct != null)
+      (patch as Record<string, unknown>).install_cost = Math.round(sum * r.install_pct / 100);
+    if (Object.keys(patch).length > 0) {
+      saveWithLog(patch, "Авто-расчёт затрат по правилу", "Zap", "#ef4444");
+      setAutoFilled(true);
+    }
   };
+
+  const applyAuto = () => applyAutoWithSum(contractSum);
+
+  // Автоматически применять правила при первом появлении суммы договора
+  const autoAppliedRef = useRef<string | null>(null);
+  useEffect(() => {
+    const key = `${data.id}_${contractSum}`;
+    if (contractSum > 0 && autoAppliedRef.current !== key && hasRules
+      && !data.measure_cost && !data.install_cost) {
+      autoAppliedRef.current = key;
+      applyAutoWithSum(contractSum);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data.id, contractSum]);
 
   return (
     <>
