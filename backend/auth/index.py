@@ -393,7 +393,8 @@ def handler(event: dict, context) -> dict:
 
         cur.execute(f"""
             SELECT e.id, e.title, e.total_econom, e.total_standard, e.total_premium,
-                   e.status, e.created_at, lc.status as crm_status, lc.id as chat_id
+                   e.status, e.created_at, lc.status as crm_status, lc.id as chat_id,
+                   e.blocks, e.totals, e.final_phrase
             FROM {SCHEMA}.saved_estimates e
             LEFT JOIN {SCHEMA}.live_chats lc ON lc.id = e.chat_id
             WHERE e.user_id = %s
@@ -407,6 +408,9 @@ def handler(event: dict, context) -> dict:
             "total_premium": float(r[4]) if r[4] else None,
             "status": r[5], "created_at": str(r[6])[:19],
             "crm_status": r[7], "chat_id": r[8],
+            "blocks": r[9] if r[9] else [],
+            "totals": r[10] if r[10] else [],
+            "final_phrase": r[11] or "",
         } for r in rows]
         return ok({"estimates": estimates})
 
