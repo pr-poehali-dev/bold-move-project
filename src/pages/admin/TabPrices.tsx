@@ -102,11 +102,11 @@ export default function TabPrices({ token, onItemAdded }: Props) {
                 <tr className="border-b border-white/10">
                   <th className="px-2 py-2.5 w-6" />
                   <th className="text-left text-white/30 font-normal px-4 py-2.5 w-[32%]">Название</th>
-                  <th className="text-right text-white/30 font-normal px-4 py-2.5 w-[9%]">Цена продажи ₽</th>
-                  <th className="text-right text-white/30 font-normal px-4 py-2.5 w-[9%]">Цена закупки ₽</th>
-                  <th className="text-left text-white/30 font-normal px-4 py-2.5 w-[7%]">Ед.</th>
-                  <th className="text-left text-white/30 font-normal px-4 py-2.5 w-[20%]">Описание (как AI понимает)</th>
-                  <th className="text-left text-white/30 font-normal px-4 py-2.5">Синонимы (через запятую)</th>
+                  <th className="text-right text-white/30 font-normal px-4 py-2.5 w-[9%] whitespace-nowrap">Продажа ₽</th>
+                  <th className="text-right text-white/30 font-normal px-4 py-2.5 w-[9%] whitespace-nowrap">Закупка ₽</th>
+                  <th className="text-left text-white/30 font-normal px-4 py-2.5 w-[6%] whitespace-nowrap">Ед.</th>
+                  <th className="text-left text-white/30 font-normal px-4 py-2.5 w-[20%] whitespace-nowrap">Описание (AI)</th>
+                  <th className="text-left text-white/30 font-normal px-4 py-2.5 whitespace-nowrap">Синонимы</th>
                   <th className="px-3 py-2.5 w-8" />
                 </tr>
               </thead>
