@@ -77,7 +77,7 @@ export default function CrmAnalytics() {
 
   // Воронка
   const funnelData = [
-    { label: "Заявки",            count: s.total_all,     color: "#8b5cf6", pct: 100 },
+    { label: "Заявки",            count: s.total_all,     color: "#8b5cf6", pct: s.total_all > 0 ? 100 : 0 },
     { label: "Ушли на замер",     count: s.went_measure,  color: "#f59e0b", pct: s.total_all > 0 ? Math.round(s.went_measure  / s.total_all * 100) : 0 },
     { label: "Подписали договор", count: s.went_contract, color: "#06b6d4", pct: s.total_all > 0 ? Math.round(s.went_contract / s.total_all * 100) : 0 },
     { label: "Завершённые",       count: s.total_done,    color: "#10b981", pct: s.total_all > 0 ? Math.round(s.total_done    / s.total_all * 100) : 0 },
