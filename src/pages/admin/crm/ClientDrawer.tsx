@@ -226,17 +226,43 @@ export default function ClientDrawer({ client, allClientOrders, onClose, onUpdat
                             minWidth: 130,
                             padding: "8px 10px",
                           }}>
-                          <div className="flex items-center justify-between mb-1 gap-1">
-                            <span className="text-[10px] px-1.5 py-0.5 rounded font-semibold truncate"
+                          {/* Заголовок + статус */}
+                          <div className="flex items-center justify-between gap-1 mb-1.5">
+                            <span className="text-xs font-bold truncate" style={{ color: t.text }}>
+                              {localStorage.getItem(`order_title_${order.id}`) || `Заявка №${order.id}`}
+                            </span>
+                            <span className="text-[9px] px-1.5 py-0.5 rounded flex-shrink-0 font-semibold"
                               style={{ background: STATUS_COLORS[order.status] + "20", color: STATUS_COLORS[order.status] }}>
                               {STATUS_LABELS[order.status] || order.status}
                             </span>
-                            <span className="text-[10px] flex-shrink-0" style={{ color: t.textMute }}>#{order.id}</span>
                           </div>
-                          <div className="text-xs truncate" style={{ color: t.textSub }}>{order.address || "Без адреса"}</div>
-                          {order.contract_sum ? (
-                            <div className="text-xs font-bold text-emerald-400">{Number(order.contract_sum).toLocaleString("ru-RU")} ₽</div>
-                          ) : null}
+                          {/* Детали */}
+                          <div className="space-y-0.5">
+                            {order.client_name && (
+                              <div className="flex items-center gap-1 text-[10px]" style={{ color: t.textMute }}>
+                                <Icon name="User" size={8} style={{ color: "#8b5cf6", flexShrink: 0 }} />
+                                <span className="truncate">{order.client_name}</span>
+                              </div>
+                            )}
+                            {order.phone && (
+                              <div className="flex items-center gap-1 text-[10px]" style={{ color: t.textMute }}>
+                                <Icon name="Phone" size={8} style={{ color: "#10b981", flexShrink: 0 }} />
+                                <span className="truncate">{order.phone}</span>
+                              </div>
+                            )}
+                            {order.address && (
+                              <div className="flex items-center gap-1 text-[10px]" style={{ color: t.textMute }}>
+                                <Icon name="MapPin" size={8} style={{ color: "#f59e0b", flexShrink: 0 }} />
+                                <span className="truncate">{order.address}</span>
+                              </div>
+                            )}
+                            {order.contract_sum ? (
+                              <div className="flex items-center gap-1 text-[10px]">
+                                <Icon name="Banknote" size={8} style={{ color: "#10b981", flexShrink: 0 }} />
+                                <span className="font-bold text-emerald-400">{Number(order.contract_sum).toLocaleString("ru-RU")} ₽</span>
+                              </div>
+                            ) : null}
+                          </div>
                         </button>
                       );
                     })}
