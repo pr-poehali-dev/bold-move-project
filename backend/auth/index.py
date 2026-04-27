@@ -266,19 +266,37 @@ def handler(event: dict, context) -> dict:
         ))
         estimate_id = cur.fetchone()[0]
 
+        # Считаем себестоимость (закупку) по позициям сметы
+        material_cost_total = 0
+        try:
+            cur.execute(f"SELECT name, purchase_price FROM {SCHEMA}.ai_prices WHERE active=true AND purchase_price > 0")
+            price_map = {row[0].strip().lower(): int(row[1]) for row in cur.fetchall()}
+            for block in blocks:
+                for item in block.get("items", []):
+                    item_name = item.get("name", "").strip().lower()
+                    val_str = item.get("value", "")
+                    import re as _re
+                    nums = _re.findall(r"\d[\d\s]*", str(val_str).replace("\u00a0", " "))
+                    qty = int("".join(nums[0].split())) if nums else 1
+                    if item_name in price_map:
+                        material_cost_total += price_map[item_name] * qty
+        except Exception:
+            material_cost_total = 0
+
         # Создаём заявку в CRM (live_chats)
         import secrets as sec
         session_id = f"estimate-{estimate_id}-{sec.token_hex(6)}"
         cur.execute(f"""
             INSERT INTO {SCHEMA}.live_chats
-              (session_id, client_name, phone, status, source, contract_sum)
-            VALUES (%s, %s, %s, 'new', 'estimate', %s)
+              (session_id, client_name, phone, status, source, contract_sum, material_cost)
+            VALUES (%s, %s, %s, 'new', 'estimate', %s, %s)
             RETURNING id
         """, (
             session_id,
             user_name or email,
             phone or "",
             total_standard,
+            material_cost_total if material_cost_total > 0 else None,
         ))
         chat_id = cur.fetchone()[0]
 
