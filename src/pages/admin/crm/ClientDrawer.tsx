@@ -80,10 +80,13 @@ export default function ClientDrawer({ client, allClientOrders, onClose, onUpdat
 
         {/* ── Шапка ── */}
         {(() => {
-          // Название заявки: Заявка №{id} + адрес + имя + телефон
           const ord = drawerTab === "orders" ? orderData : data;
+          // Кастомное название из localStorage (приоритет) или авто из полей
+          const lsKey = `order_title_${ord.id}`;
+          const customTitle = localStorage.getItem(lsKey);
           const parts = [ord.address, ord.client_name, ord.phone].filter(Boolean);
-          const orderTitle = `Заявка №${ord.id}${parts.length ? " · " + parts.join(" · ") : ""}`;
+          const autoTitle = `Заявка №${ord.id}${parts.length ? " · " + parts.join(" · ") : ""}`;
+          const orderTitle = customTitle || autoTitle;
           const displayColor = STATUS_COLORS[ord.status] || "#8b5cf6";
           return (
         <div className="flex items-center justify-between px-3 sm:px-6 py-3 sm:py-4 flex-shrink-0" style={{ borderBottom: `1px solid ${t.border}` }}>
@@ -92,32 +95,30 @@ export default function ClientDrawer({ client, allClientOrders, onClose, onUpdat
               style={{ background: displayColor + "35", border: `2px solid ${displayColor}50` }}>
               {ord.id}
             </div>
-            <div className="min-w-0">
+            <div className="min-w-0 flex-1">
               {editingTitle ? (
-                <div className="flex items-baseline gap-1.5 max-w-xs sm:max-w-lg">
-                  <span className="text-base font-bold whitespace-nowrap flex-shrink-0" style={{ color: "#9ca3af" }}>
-                    Заявка №{ord.id}{ord.address ? ` · ${ord.address}` : ""}{ord.phone ? ` · ${ord.phone}` : ""} ·{" "}
-                  </span>
-                  <input
-                    autoFocus
-                    defaultValue={ord.client_name || ""}
-                    onBlur={e => {
-                      const saveTarget = drawerTab === "orders" ? saveOrder : save;
-                      saveTarget({ client_name: e.target.value });
-                      setEditingTitle(false);
-                    }}
-                    onKeyDown={e => {
-                      if (e.key === "Enter") (e.target as HTMLInputElement).blur();
-                      if (e.key === "Escape") setEditingTitle(false);
-                    }}
-                    placeholder="Имя..."
-                    className="text-base font-bold bg-transparent focus:outline-none min-w-0 flex-1"
-                    style={{ color: "#fff", borderBottom: "1px solid #7c3aed" }}
-                  />
-                </div>
+                <input
+                  autoFocus
+                  defaultValue={orderTitle}
+                  onBlur={e => {
+                    const val = e.target.value.trim();
+                    if (val && val !== autoTitle) {
+                      localStorage.setItem(lsKey, val);
+                    } else {
+                      localStorage.removeItem(lsKey);
+                    }
+                    setEditingTitle(false);
+                  }}
+                  onKeyDown={e => {
+                    if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+                    if (e.key === "Escape") setEditingTitle(false);
+                  }}
+                  className="text-base font-bold bg-transparent focus:outline-none w-full max-w-lg"
+                  style={{ color: "#fff", borderBottom: "1px solid #7c3aed" }}
+                />
               ) : (
                 <div className="text-base font-bold text-white truncate max-w-xs sm:max-w-lg cursor-text hover:opacity-80 transition"
-                  title="Нажмите чтобы изменить имя клиента"
+                  title="Нажмите чтобы изменить название"
                   onClick={() => setEditingTitle(true)}>
                   {orderTitle}
                 </div>
