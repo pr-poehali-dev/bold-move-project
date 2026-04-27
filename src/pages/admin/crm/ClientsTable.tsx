@@ -2,6 +2,14 @@ import { STATUS_LABELS, STATUS_COLORS, Client, DEFAULT_TAGS } from "./crmApi";
 import { useTheme } from "./themeContext";
 import Icon from "@/components/ui/icon";
 import { Avatar, Checkbox } from "./ClientsTablePrimitives";
+import { loadCustomTags } from "./clientFieldsStore";
+
+const ALL_TAG_COLORS: Record<string, string> = (() => {
+  const map: Record<string, string> = {};
+  DEFAULT_TAGS.forEach(t => { map[t.label] = t.color; });
+  try { loadCustomTags().forEach(t => { map[t.label] = t.color; }); } catch { /**/ }
+  return map;
+})();
 export { AddClientModal } from "./AddClientModal";
 
 // ── Таблица клиентов ─────────────────────────────────────────────────────────
@@ -80,10 +88,10 @@ export function ClientsTable({
                 {c.tags && c.tags.length > 0 && (
                   <div className="flex gap-1 mt-0.5">
                     {c.tags.slice(0, 2).map(tag => {
-                      const tagDef = DEFAULT_TAGS.find(d => d.label === tag);
+                      const color = ALL_TAG_COLORS[tag] || "#888";
                       return (
                         <span key={tag} className="text-[10px] px-1.5 py-0.5 rounded-md font-medium"
-                          style={{ background: (tagDef?.color || "#666") + "20", color: tagDef?.color || "#888" }}>
+                          style={{ background: color + "20", color }}>
                           {tag}
                         </span>
                       );

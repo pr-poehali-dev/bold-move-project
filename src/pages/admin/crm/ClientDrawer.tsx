@@ -1,9 +1,10 @@
 import { useState, useRef } from "react";
-import { crmFetch, STATUS_LABELS, STATUS_COLORS, ORDER_STATUSES, Client, DEFAULT_TAGS } from "./crmApi";
+import { crmFetch, STATUS_LABELS, STATUS_COLORS, ORDER_STATUSES, Client } from "./crmApi";
 import Icon from "@/components/ui/icon";
 import { useTheme } from "./themeContext";
 import EstimateEditor from "./EstimateEditor";
 import DrawerInfoTab from "./DrawerInfoTab";
+import ClientTab from "./ClientTab";
 
 interface Props {
   client: Client;
@@ -157,78 +158,7 @@ export default function ClientDrawer({ client, allClientOrders, onClose, onUpdat
 
           {/* КЛИЕНТ */}
           {drawerTab === "client" && (
-            <div className="px-6 py-5 space-y-4 max-w-lg">
-              {/* Имя */}
-              <div>
-                <label className="text-xs font-medium mb-1.5 block" style={{ color: t.textMute }}>Имя клиента</label>
-                <input
-                  defaultValue={data.client_name || ""}
-                  onBlur={e => { if (e.target.value !== data.client_name) save({ client_name: e.target.value }); }}
-                  className="w-full rounded-xl px-4 py-2.5 text-sm focus:outline-none transition"
-                  style={{ background: t.surface2, border: `1px solid ${t.border}`, color: t.text }}
-                  placeholder="Введите имя"
-                />
-              </div>
-              {/* Телефон */}
-              <div>
-                <label className="text-xs font-medium mb-1.5 block" style={{ color: t.textMute }}>Телефон</label>
-                <input
-                  defaultValue={data.phone || ""}
-                  onBlur={e => { if (e.target.value !== data.phone) save({ phone: e.target.value }); }}
-                  className="w-full rounded-xl px-4 py-2.5 text-sm focus:outline-none transition"
-                  style={{ background: t.surface2, border: `1px solid ${t.border}`, color: t.text }}
-                  placeholder="+7 (___) ___-__-__"
-                />
-              </div>
-              {/* Ответственный */}
-              <div>
-                <label className="text-xs font-medium mb-1.5 block" style={{ color: t.textMute }}>Ответственный (прораб / дизайнер)</label>
-                <input
-                  defaultValue={data.responsible_phone || ""}
-                  onBlur={e => { if (e.target.value !== (data.responsible_phone || "")) save({ responsible_phone: e.target.value }); }}
-                  className="w-full rounded-xl px-4 py-2.5 text-sm focus:outline-none transition"
-                  style={{ background: t.surface2, border: `1px solid ${t.border}`, color: t.text }}
-                  placeholder="Имя или телефон"
-                />
-              </div>
-              {/* Заметка */}
-              <div>
-                <label className="text-xs font-medium mb-1.5 block" style={{ color: t.textMute }}>Заметка о клиенте</label>
-                <textarea
-                  defaultValue={data.notes || ""}
-                  onBlur={e => { if (e.target.value !== (data.notes || "")) save({ notes: e.target.value }); }}
-                  rows={3}
-                  className="w-full rounded-xl px-4 py-2.5 text-sm focus:outline-none transition resize-none"
-                  style={{ background: t.surface2, border: `1px solid ${t.border}`, color: t.text }}
-                  placeholder="Комментарий..."
-                />
-              </div>
-              {/* Теги */}
-              <div>
-                <label className="text-xs font-medium mb-2 block" style={{ color: t.textMute }}>Метки</label>
-                <div className="flex flex-wrap gap-2">
-                  {DEFAULT_TAGS.map(tag => {
-                    const active = (data.tags || []).includes(tag.label);
-                    return (
-                      <button key={tag.label}
-                        onClick={() => {
-                          const cur = data.tags || [];
-                          const next = active ? cur.filter(t => t !== tag.label) : [...cur, tag.label];
-                          save({ tags: next });
-                        }}
-                        className="px-3 py-1 rounded-lg text-xs font-semibold transition"
-                        style={{
-                          background: active ? tag.color + "30" : t.surface2,
-                          color: active ? tag.color : t.textMute,
-                          border: `1px solid ${active ? tag.color + "60" : t.border}`,
-                        }}>
-                        {tag.label}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            </div>
+            <ClientTab data={data} save={save} />
           )}
 
           {/* ЗАЯВКИ */}
