@@ -106,14 +106,29 @@ export function DrawerFilesBlock({ clientId, hiddenBlocks, toggleHidden, logActi
     update(updated);
   };
 
-  // Share helpers
+  const [copied, setCopied] = useState<string | null>(null);
+
+  const copyToClipboard = (text: string, label: string) => {
+    navigator.clipboard.writeText(text).then(() => {
+      setCopied(label);
+      setTimeout(() => setCopied(null), 2000);
+    }).catch(() => {
+      // fallback для старых браузеров
+      const el = document.createElement("textarea");
+      el.value = text;
+      document.body.appendChild(el);
+      el.select();
+      document.execCommand("copy");
+      document.body.removeChild(el);
+      setCopied(label);
+      setTimeout(() => setCopied(null), 2000);
+    });
+  };
+
+  // Share helpers — копируем ссылки в буфер обмена
   const shareFiles = (files: FileEntry[], title: string) => {
     const urls = files.map(f => f.url).join("\n");
-    if (navigator.share) {
-      navigator.share({ title, text: urls });
-    } else {
-      navigator.clipboard.writeText(urls);
-    }
+    copyToClipboard(urls, title);
   };
 
   const shareAllFiles = () => {
@@ -123,11 +138,7 @@ export function DrawerFilesBlock({ clientId, hiddenBlocks, toggleHidden, logActi
       .filter(c => c.files.length > 0)
       .map(c => `${c.label}:\n${c.files.map(f => f.url).join("\n")}`)
       .join("\n\n");
-    if (navigator.share) {
-      navigator.share({ title: "Все файлы", text });
-    } else {
-      navigator.clipboard.writeText(text);
-    }
+    copyToClipboard(text, "Все файлы");
   };
 
   // Lightbox
@@ -151,6 +162,15 @@ export function DrawerFilesBlock({ clientId, hiddenBlocks, toggleHidden, logActi
       onToggleHidden={() => toggleHidden("files")}
       onEdit={!isHidden ? () => setEditingBlock(editMode ? null : "files") : undefined}
       onShare={cats.some(c => c.files.length > 0) ? shareAllFiles : undefined}>
+
+      {/* Тост "скопировано" */}
+      {copied && (
+        <div className="flex items-center gap-2 rounded-lg px-3 py-2 mb-1 text-xs font-medium"
+          style={{ background: "#06b6d420", border: "1px solid #06b6d440", color: "#67e8f9" }}>
+          <Icon name="Check" size={12} />
+          Ссылки «{copied}» скопированы в буфер
+        </div>
+      )}
 
       {cats.map((cat, catIdx) => {
         const catImages = cat.files.filter(f => isImage(f.url));
