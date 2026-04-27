@@ -92,11 +92,12 @@ export function OrdersClientCard({ c, onClick, onNextStep }: {
         <div className="flex items-start gap-3 mb-3">
           <Avatar name={c.client_name} />
           <div className="flex-1 min-w-0">
-            <div className="flex items-center justify-between gap-2">
-              <span className="text-sm font-bold truncate" style={{ color: t.text }}>{c.client_name || "Без имени"}</span>
-              <span className="text-[10px] font-mono flex-shrink-0" style={{ color: t.textMute }}>#{c.id}</span>
-            </div>
-            <div className="text-xs truncate mt-0.5" style={{ color: t.textMute }}>{c.phone || "—"}</div>
+            {(() => {
+              const customTitle = localStorage.getItem(`order_title_${c.id}`);
+              const parts = [c.address, c.client_name, c.phone].filter(Boolean);
+              const title = customTitle || `Заявка №${c.id}${parts.length ? " · " + parts.join(" · ") : ""}`;
+              return <span className="text-sm font-bold" style={{ color: t.text, display: "block", wordBreak: "break-word", lineHeight: 1.4 }}>{title}</span>;
+            })()}
             {isInstall
               ? <InstallProgress status={c.status} />
               : <span className="inline-block mt-1 text-[10px] px-1.5 py-0.5 rounded-md font-medium"

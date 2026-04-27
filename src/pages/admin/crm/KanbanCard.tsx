@@ -81,20 +81,23 @@ export default function KanbanCard({ client, colColor, onOpen, onNextStep, dragg
       {/* Тело */}
       <div className="p-3">
         {/* Шапка клиента */}
+        {(() => {
+          const lsKey = `order_title_${client.id}`;
+          const customTitle = localStorage.getItem(lsKey);
+          const parts = [client.address, client.client_name, client.phone].filter(Boolean);
+          const autoTitle = `Заявка №${client.id}${parts.length ? " · " + parts.join(" · ") : ""}`;
+          const cardTitle = customTitle || autoTitle;
+          return (
         <div className="flex items-start gap-2 mb-2">
           <Avatar name={client.client_name || "?"} color={color} />
           <div className="flex-1 min-w-0">
-            <div className="flex items-center justify-between gap-1">
-              <span className="text-xs font-bold truncate" style={{ color: t.text }}>
-                {client.client_name || "Без имени"}
-              </span>
-              <span className="text-[9px] font-mono flex-shrink-0" style={{ color: t.textMute }}>#{client.id}</span>
-            </div>
-            {client.phone && (
-              <div className="text-[10px] truncate" style={{ color: t.textMute }}>{client.phone}</div>
-            )}
+            <span className="text-xs font-bold" style={{ color: t.text, display: "block", wordBreak: "break-word", lineHeight: 1.4 }}>
+              {cardTitle}
+            </span>
           </div>
         </div>
+          );
+        })()}
 
         {/* Статус */}
         {isInstall
