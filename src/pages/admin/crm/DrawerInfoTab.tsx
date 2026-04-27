@@ -207,62 +207,53 @@ export default function DrawerInfoTab({ data, client, setData, save, setComments
         />
       )}
 
-      {/* Колонки: на широких — [2fr 320px], на узких — одна колонка */}
-      <div className="grid grid-cols-1 xl:grid-cols-[1fr_300px] gap-3">
+      {/* Основной контент — всегда на всю ширину */}
+      <DrawerColumns
+        data={data}
+        client={client}
+        setData={setData}
+        save={save}
+        blocks={blocks}
+        hiddenBlocks={hiddenBlocks}
+        hideHidden={hideHidden}
+        editingBlock={editingBlock}
+        customBlocks={customBlocks}
+        customRowVals={customRowVals}
+        activityLog={activityLog}
+        profit={profit}
+        received={received}
+        remaining={remaining}
+        toggleHidden={toggleHidden}
+        setEditingBlock={setEditingBlock}
+        saveWithLog={saveWithLog}
+        logAction={logAction}
+        setCustomRowVals={setCustomRowVals}
+        deleteCustomBlock={deleteCustomBlock}
+        updateCustomBlock={updateCustomBlock}
+        onDragStart={onDragStart}
+        onDragOver={onDragOver}
+        onDrop={onDrop}
+        onDropToCol={onDropToCol}
+        onAddBlock={(col) => setShowAddBlock(col)}
+        onReset={handleReset}
+        rowVisibility={rowVisibility}
+        toggleRowVisibility={toggleRowVisibility}
+        customFinRows={customFinRows}
+        addCustomFinRow={addCustomFinRow}
+        deleteCustomFinRow={deleteCustomFinRow}
+        updateCustomFinRow={updateCustomFinRow}
+      />
 
-        {/* Основной контент */}
-        <div className="min-w-0">
-          <DrawerColumns
-            data={data}
-            client={client}
-            setData={setData}
-            save={save}
-            blocks={blocks}
-            hiddenBlocks={hiddenBlocks}
-            hideHidden={hideHidden}
-            editingBlock={editingBlock}
-            customBlocks={customBlocks}
-            customRowVals={customRowVals}
-            activityLog={activityLog}
-            profit={profit}
-            received={received}
-            remaining={remaining}
-            toggleHidden={toggleHidden}
-            setEditingBlock={setEditingBlock}
-            saveWithLog={saveWithLog}
-            logAction={logAction}
-            setCustomRowVals={setCustomRowVals}
-            deleteCustomBlock={deleteCustomBlock}
-            updateCustomBlock={updateCustomBlock}
-            onDragStart={onDragStart}
-            onDragOver={onDragOver}
-            onDrop={onDrop}
-            onDropToCol={onDropToCol}
-            onAddBlock={(col) => setShowAddBlock(col)}
-            onReset={handleReset}
-            rowVisibility={rowVisibility}
-            toggleRowVisibility={toggleRowVisibility}
-            customFinRows={customFinRows}
-            addCustomFinRow={addCustomFinRow}
-            deleteCustomFinRow={deleteCustomFinRow}
-            updateCustomFinRow={updateCustomFinRow}
-          />
-        </div>
-
-        {/* Правая колонка — Активность */}
-        <div className="flex flex-col gap-2 min-w-0">
-          <ActivityFeed
-            client={data}
-            extraEvents={activityLog}
-            onAddComment={text => {
-              const ts = now();
-              setComments(prev => [...prev, { text, date: ts }]);
-              logAction("MessageSquare", "#7c3aed", `Комментарий: ${text}`);
-            }}
-          />
-
-        </div>
-      </div>
+      {/* Активность — под блоками, всегда видна */}
+      <ActivityFeed
+        client={data}
+        extraEvents={activityLog}
+        onAddComment={text => {
+          const ts = now();
+          setComments(prev => [...prev, { text, date: ts }]);
+          logAction("MessageSquare", "#7c3aed", `Комментарий: ${text}`);
+        }}
+      />
 
       {/* Модалка добавления блока */}
       {showAddBlock !== null && (

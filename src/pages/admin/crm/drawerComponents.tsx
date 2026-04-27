@@ -39,8 +39,8 @@ export function InlineField({ label, value, onSave, type = "text", placeholder =
   };
 
   return (
-    <div className="flex items-center justify-between py-2 group" style={{ borderBottom: `1px solid ${t.border2}` }}>
-      {!hideLabel && <span className="text-xs flex-shrink-0 w-36" style={{ color: "#d4d4d4" }}>{label}</span>}
+    <div className="flex items-center justify-between group" style={{ borderBottom: `1px solid ${t.border2}`, minHeight: 36 }}>
+      {!hideLabel && <span className="text-xs flex-shrink-0 w-36 py-2" style={{ color: "#d4d4d4" }}>{label}</span>}
       {editing ? (
         <input
           type={type}
@@ -52,12 +52,18 @@ export function InlineField({ label, value, onSave, type = "text", placeholder =
             if (e.key === "Enter") { e.preventDefault(); commit(); }
             if (e.key === "Escape") setEditing(false);
           }}
-          className="flex-1 rounded-lg px-2 py-1 text-sm text-right focus:outline-none"
-          style={{ background: t.surface2, color: "#fff", border: "1px solid #7c3aed50" }}
+          className="flex-1 text-sm text-right focus:outline-none my-1 mx-0 px-2 rounded-lg"
+          style={{
+            background: t.surface2,
+            color: "#fff",
+            border: "1px solid #7c3aed50",
+            height: 28,
+            boxSizing: "border-box",
+          }}
         />
       ) : (
         <button onClick={startEdit}
-          className="flex-1 text-right text-sm transition hover:opacity-70 truncate">
+          className="flex-1 text-right text-sm transition hover:opacity-70 truncate py-2">
           {displayVal()
             ? <span style={{ color: "#fff" }}>{displayVal()}</span>
             : <span className="text-xs text-violet-400/60 underline underline-offset-2 decoration-dashed">{placeholder}</span>}
