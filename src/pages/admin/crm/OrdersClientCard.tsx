@@ -182,7 +182,6 @@ export function OrdersClientCard({ c, onClick, onNextStep }: {
             <span className="text-xs font-semibold flex items-center gap-1.5" style={{ color: STATUS_COLORS[nextStatus] }}>
               <Icon name="ArrowRight" size={11} />
               {nextLabel}
-              <span className="text-[10px] font-normal opacity-60">→ {STATUS_LABELS[nextStatus]}</span>
             </span>
           )}
         </button>
