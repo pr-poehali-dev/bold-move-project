@@ -176,13 +176,10 @@ export default function ClientDrawer({ client, allClientOrders, onClose, onUpdat
 
                 {/* Индикатор свёрнутой панели — по центру полоски */}
                 {!ordersListOpen && (
-                  <div className="flex-1 flex flex-col items-center justify-center gap-1.5" style={{ color: t.textMute }}>
-                    <Icon name="ChevronRight" size={13} />
-                    <div className="flex flex-col gap-0.5">
-                      {[...Array(4)].map((_, i) => (
-                        <div key={i} className="w-0.5 h-3 rounded-full opacity-20" style={{ background: t.textMute }} />
-                      ))}
-                    </div>
+                  <div className="flex-1 flex flex-col items-center justify-center gap-0.5">
+                    {[...Array(5)].map((_, i) => (
+                      <div key={i} className="w-0.5 h-3 rounded-full opacity-20" style={{ background: t.textMute }} />
+                    ))}
                   </div>
                 )}
                 {/* Кнопка свернуть — только когда открыт */}
