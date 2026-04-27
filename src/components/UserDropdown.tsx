@@ -66,7 +66,7 @@ export default function UserDropdown({ onShowProfile, onShowPayment }: Props) {
                 onClick={() => { setOpen(false); window.location.href = "/my-orders"; }} />
             ) : (
               <MenuItem icon="LayoutDashboard" label="Панель управления"
-                onClick={() => { setOpen(false); window.location.href = "/admin-yura"; }} />
+                onClick={() => { setOpen(false); window.location.href = "/company"; }} />
             )}
             <MenuItem icon="User" label="Профиль"
               onClick={() => { setOpen(false); onShowProfile(); }} />

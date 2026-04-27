@@ -365,7 +365,7 @@ export function PanelOther({ onClose, onPanel }: { onClose: () => void; onPanel:
           </button>
         ))}
         <div className="mt-auto pt-4 flex justify-center">
-          <a href="/admin-yura" target="_blank" rel="noopener noreferrer"
+          <a href="/company" target="_blank" rel="noopener noreferrer"
             className="text-white/10 hover:text-white/30 transition-colors p-2 rounded-lg">
             <Icon name="Settings" size={14} />
           </a>

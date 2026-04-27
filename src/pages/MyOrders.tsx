@@ -260,7 +260,7 @@ export default function MyOrders() {
   }, [token]);
 
   if (!token && !loading) { window.location.href = "/"; return null; }
-  if (user && !CLIENT_ROLES.includes(user.role)) { window.location.href = "/admin-yura"; return null; }
+  if (user && !CLIENT_ROLES.includes(user.role)) { window.location.href = "/company"; return null; }
 
   const roleLabel = user?.role === "designer" ? "Дизайнер" : user?.role === "foreman" ? "Прораб" : "Клиент";
   const filtered  = estimates.filter(e => matchFilter(filter, e.crm_status));

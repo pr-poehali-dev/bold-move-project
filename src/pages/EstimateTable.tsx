@@ -101,7 +101,7 @@ export default function EstimateTable({ text, items, onSaveRequest }: {
         const isClient = !user?.role || CLIENT_ROLES.includes(user.role);
         window.location.href = isClient
           ? `/my-orders`
-          : `/admin-yura?order=${savedChatId}`;
+          : `/company?order=${savedChatId}`;
       }, 1200);
     } finally {
       setContactSaving(false);

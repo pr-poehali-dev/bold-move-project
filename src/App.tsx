@@ -26,7 +26,7 @@ const App = () => (
             <Routes>
               <Route path="/" element={<Index />} />
               <Route path="/hub" element={<AiHub />} />
-              <Route path="/admin-yura" element={<AdminPanel />} />
+              <Route path="/company"    element={<AdminPanel />} />
               <Route path="/master"    element={<MasterAdmin />} />
               <Route path="/my-orders" element={<MyOrders />} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
