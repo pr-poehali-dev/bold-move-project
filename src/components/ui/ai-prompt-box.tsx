@@ -2,7 +2,7 @@ import React from "react";
 import { Send, Mic, StopCircle, Square, Paperclip, CheckCircle2, Loader2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import func2url from "@/../backend/func2url.json";
-import { usePhone } from "@/hooks/use-phone";
+import { usePhone } from "@/hooks/webapp/use-phone";
 
 const UPLOAD_URL = func2url["live-chat"];
 const WHISPER_URL = func2url["whisper-transcribe"]; // резерв — AssemblyAI
