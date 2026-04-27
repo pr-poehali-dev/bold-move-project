@@ -141,7 +141,7 @@ export default function ClientDrawer({ client, allClientOrders, onClose, onUpdat
         </div>
 
         {/* ── Табы ── */}
-        <div className="flex px-3 sm:px-6 gap-1 pt-2 sm:pt-3 flex-shrink-0 overflow-x-auto" style={{ borderBottom: `1px solid ${t.border}` }}>
+        <div className="flex px-3 sm:px-6 gap-1 pt-2 sm:pt-3 flex-shrink-0" style={{ borderBottom: `1px solid ${t.border}` }}>
           {([
             { id: "client",   label: "Клиент",  icon: "User" },
             { id: "orders",   label: `Заявки (${allClientOrders.length})`, icon: "ClipboardList" },
