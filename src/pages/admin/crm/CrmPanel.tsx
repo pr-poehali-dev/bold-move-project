@@ -19,9 +19,8 @@ const FIXED_TABS: { id: CrmTab; label: string; icon: string }[] = [
   { id: "analytics", label: "Аналитика", icon: "BarChart2" },
 ];
 
-export default function CrmPanel() {
+export default function CrmPanel({ theme }: { theme: Theme }) {
   const [tab, setTab]               = useState<CrmTab>("orders");
-  const [theme, setTheme]           = useState<Theme>("dark");
   const [clients, setClients]       = useState<Client[]>([]);
   const [loading, setLoading]       = useState(true);
   const [kanbanEnabled, setKanbanEnabled] = useState<boolean>(
@@ -60,7 +59,7 @@ export default function CrmPanel() {
 
   const ctx = useMemo(() => ({
     ...(theme === "dark" ? DARK : LIGHT),
-    toggle: () => setTheme(t => t === "dark" ? "light" : "dark"),
+    toggle: () => {},
   }), [theme]);
 
   const t = ctx;
@@ -124,13 +123,7 @@ export default function CrmPanel() {
             </div>
           )}
 
-          {/* Кнопка смены темы */}
-          <button onClick={ctx.toggle}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl transition font-medium text-xs flex-shrink-0"
-            style={{ background: t.surface2, border: `1px solid ${t.border}`, color: t.textSub }}>
-            <Icon name={theme === "dark" ? "Sun" : "Moon"} size={13} />
-            {theme === "dark" ? "Светлая" : "Тёмная"}
-          </button>
+
         </div>
 
         {/* Контент */}

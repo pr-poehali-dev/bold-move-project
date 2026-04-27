@@ -10,6 +10,7 @@ import CrmPanel from "./admin/crm/CrmPanel";
 import { setCrmToken } from "./admin/crm/crmApi";
 import func2url from "@/../backend/func2url.json";
 import type { AgentSubTab } from "./admin/types";
+import type { Theme } from "./admin/crm/themeContext";
 
 const AUTH_URL = (func2url as Record<string, string>)["auth"];
 
@@ -48,6 +49,8 @@ export default function AdminPanel() {
   const [mainTab,  setMainTab]  = useState<MainTab>("crm");
   const [agentTab, setAgentTab] = useState<AgentSubTab>("prices");
   const [newItemHint, setNewItemHint] = useState<string | null>(null);
+  const [theme, setTheme] = useState<Theme>("dark");
+  const toggleTheme = () => setTheme(t => t === "dark" ? "light" : "dark");
 
   // При наличии сохранённого admin_token — восстанавливаем CRM токен ДО рендера CrmPanel
   useEffect(() => {
@@ -122,26 +125,40 @@ export default function AdminPanel() {
     );
   }
 
+  const isDark = theme === "dark";
+  const headerBg = isDark ? "#0b0b11" : "#ffffff";
+  const headerBorder = isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)";
+  const headerText = isDark ? "#ffffff" : "#0f1623";
+
   return (
-    <div className="min-h-screen bg-[#0b0b11] text-white flex flex-col">
+    <div className="min-h-screen flex flex-col transition-colors duration-300"
+      style={{ background: isDark ? "#07070f" : "#eef0f6", color: headerText }}>
 
       {/* ── Шапка ── */}
-      <div className="border-b border-white/10 px-4 sm:px-6 py-3 flex items-center justify-between flex-shrink-0">
+      <div className="px-4 sm:px-6 py-3 flex items-center justify-between flex-shrink-0 transition-colors duration-300"
+        style={{ background: headerBg, borderBottom: `1px solid ${headerBorder}` }}>
         <div className="flex items-center gap-2">
           <Icon name="BrainCircuit" size={20} className="text-violet-400" />
-          <span className="font-semibold hidden sm:block">Панель управления</span>
+          <span className="font-semibold hidden sm:block" style={{ color: headerText }}>Панель управления</span>
         </div>
         <div className="flex items-center gap-2 sm:gap-3">
+          <button onClick={toggleTheme}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl transition font-medium text-xs"
+            style={{ background: isDark ? "rgba(255,255,255,0.07)" : "rgba(0,0,0,0.07)", border: `1px solid ${headerBorder}`, color: isDark ? "rgba(255,255,255,0.5)" : "#374151" }}>
+            <Icon name={isDark ? "Sun" : "Moon"} size={13} />
+            <span className="hidden sm:block">{isDark ? "Светлая" : "Тёмная"}</span>
+          </button>
           <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-xl"
             style={{ background: "rgba(124,58,237,0.12)", border: "1px solid rgba(124,58,237,0.25)" }}>
             <div className="w-5 h-5 rounded-full bg-violet-600 flex items-center justify-center text-[10px] font-bold text-white">А</div>
             <span className="text-[11px] font-semibold text-violet-300">Администратор</span>
           </div>
           <a href="/master" title="Мастер-Админка"
-            className="p-1.5 rounded-lg transition opacity-20 hover:opacity-60" style={{ color: "rgba(255,255,255,0.4)" }}>
+            className="p-1.5 rounded-lg transition opacity-20 hover:opacity-60" style={{ color: isDark ? "rgba(255,255,255,0.4)" : "#374151" }}>
             <Icon name="Settings" size={14} />
           </a>
-          <button onClick={logout} className="text-white/40 hover:text-white/70 flex items-center gap-1.5 text-xs sm:text-sm transition">
+          <button onClick={logout} className="flex items-center gap-1.5 text-xs sm:text-sm transition"
+            style={{ color: isDark ? "rgba(255,255,255,0.4)" : "#374151" }}>
             <Icon name="LogOut" size={15} />
             <span className="hidden sm:block">Выйти</span>
           </button>
@@ -149,19 +166,20 @@ export default function AdminPanel() {
       </div>
 
       {/* ── Главные вкладки ── */}
-      <div className="border-b border-white/10 px-4 flex gap-1 pt-2 flex-shrink-0">
+      <div className="px-4 flex gap-1 pt-2 flex-shrink-0 transition-colors duration-300"
+        style={{ background: headerBg, borderBottom: `1px solid ${headerBorder}` }}>
         {([
           { id: "crm"   as MainTab, label: "CRM",               icon: "LayoutDashboard" },
           { id: "agent" as MainTab, label: "Управление агентом", icon: "BrainCircuit"    },
-        ]).map(t => (
-          <button key={t.id} onClick={() => setMainTab(t.id)}
+        ]).map(tb => (
+          <button key={tb.id} onClick={() => setMainTab(tb.id)}
             className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-semibold rounded-t-lg transition whitespace-nowrap ${
-              mainTab === t.id
+              mainTab === tb.id
                 ? "bg-violet-600/20 text-violet-300 border-b-2 border-violet-500"
-                : "text-white/50 hover:text-white/80"
+                : isDark ? "text-white/50 hover:text-white/80" : "text-gray-500 hover:text-gray-800"
             }`}>
-            <Icon name={t.icon} size={15} />
-            {t.label}
+            <Icon name={tb.icon} size={15} />
+            {tb.label}
           </button>
         ))}
       </div>
@@ -170,7 +188,7 @@ export default function AdminPanel() {
       {mainTab === "crm" && (
         <div className="flex-1 overflow-hidden">
           {crmReady
-            ? <CrmPanel />
+            ? <CrmPanel theme={theme} />
             : <div className="flex items-center justify-center h-64"><div className="w-7 h-7 border-2 border-violet-500 border-t-transparent rounded-full animate-spin" /></div>
           }
         </div>
