@@ -86,9 +86,6 @@ export function Section({ icon, title, color = "#8b5cf6", children, onEdit, onDe
   return (
     <div className="rounded-2xl overflow-hidden group/section" style={{ background: t.surface2, border: `1px solid ${t.border}`, opacity: hidden ? 0.45 : 1 }}>
       <div className="flex items-center gap-2 px-4 py-2.5" style={{ borderBottom: hidden ? "none" : `1px solid ${t.border}` }}>
-        <div className="opacity-0 group-hover/section:opacity-40 transition flex-shrink-0 cursor-grab" style={{ color: "#6b7280" }}>
-          <Icon name="GripVertical" size={13} />
-        </div>
         <div className="w-6 h-6 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: color + "20" }}>
           <Icon name={icon} size={12} style={{ color }} />
         </div>
