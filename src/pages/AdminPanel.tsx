@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
 import Icon from "@/components/ui/icon";
-import { apiFetch } from "./admin/api";
 import TabPrices from "./admin/TabPrices";
 import TabRules from "./admin/TabRules";
 import TabPrompt from "./admin/TabPrompt";
@@ -10,18 +9,19 @@ import TabCorrections from "./admin/TabCorrections";
 import CrmPanel from "./admin/crm/CrmPanel";
 import { setCrmToken } from "./admin/crm/crmApi";
 import func2url from "@/../backend/func2url.json";
-import type { AdminTab } from "./admin/types";
+import type { AgentSubTab } from "./admin/types";
 
 const AUTH_URL = (func2url as Record<string, string>)["auth"];
 
-const TABS: { id: AdminTab; label: string; icon: string }[] = [
-  { id: "crm",         label: "CRM",              icon: "LayoutDashboard" },
-  { id: "prices",      label: "Цены",             icon: "Tag" },
-  { id: "rules",       label: "Правила расчёта",  icon: "SlidersHorizontal" },
-  { id: "prompt",      label: "Промпт",           icon: "BrainCircuit" },
-  { id: "faq",         label: "База знаний",      icon: "Database" },
-  { id: "questions",   label: "Быстрые ответы",   icon: "MessageCircle" },
-  { id: "corrections", label: "Обучение",         icon: "GraduationCap" },
+type MainTab = "crm" | "agent";
+
+const AGENT_TABS: { id: AgentSubTab; label: string; icon: string }[] = [
+  { id: "prices",      label: "Цены",            icon: "Tag" },
+  { id: "rules",       label: "Правила расчёта", icon: "SlidersHorizontal" },
+  { id: "prompt",      label: "Промпт",          icon: "BrainCircuit" },
+  { id: "faq",         label: "База знаний",     icon: "Database" },
+  { id: "questions",   label: "Быстрые ответы",  icon: "MessageCircle" },
+  { id: "corrections", label: "Обучение",        icon: "GraduationCap" },
 ];
 
 async function initCrmToken(): Promise<void> {
@@ -45,7 +45,8 @@ export default function AdminPanel() {
   const [crmReady, setCrmReady] = useState(false);
   const [password, setPassword] = useState("");
   const [error,    setError]    = useState("");
-  const [tab,      setTab]      = useState<AdminTab>("crm");
+  const [mainTab,  setMainTab]  = useState<MainTab>("crm");
+  const [agentTab, setAgentTab] = useState<AgentSubTab>("prices");
   const [newItemHint, setNewItemHint] = useState<string | null>(null);
 
   // При наличии сохранённого admin_token — восстанавливаем CRM токен ДО рендера CrmPanel
@@ -56,7 +57,8 @@ export default function AdminPanel() {
 
   const handleItemAdded = (name: string) => {
     setNewItemHint(name);
-    setTab("rules");
+    setMainTab("agent");
+    setAgentTab("rules");
     setTimeout(() => setNewItemHint(null), 6000);
   };
 
@@ -121,44 +123,40 @@ export default function AdminPanel() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0b0b11] text-white">
-      <div className="border-b border-white/10 px-6 py-3 flex items-center justify-between">
+    <div className="min-h-screen bg-[#0b0b11] text-white flex flex-col">
+
+      {/* ── Шапка ── */}
+      <div className="border-b border-white/10 px-4 sm:px-6 py-3 flex items-center justify-between flex-shrink-0">
         <div className="flex items-center gap-2">
           <Icon name="BrainCircuit" size={20} className="text-violet-400" />
-          <span className="font-semibold">Управление AI</span>
+          <span className="font-semibold hidden sm:block">Панель управления</span>
         </div>
-
-        {/* Профиль + выход */}
-        <div className="flex items-center gap-3">
-          {/* Бейдж аккаунта */}
-          <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl"
+        <div className="flex items-center gap-2 sm:gap-3">
+          <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-xl"
             style={{ background: "rgba(124,58,237,0.12)", border: "1px solid rgba(124,58,237,0.25)" }}>
-            <div className="w-6 h-6 rounded-full bg-violet-600 flex items-center justify-center text-[11px] font-bold text-white">
-              А
-            </div>
-            <div className="leading-tight">
-              <div className="text-[11px] font-semibold text-violet-300">Администратор</div>
-              <div className="text-[10px] text-white/40">19.jeka.94@gmail.com</div>
-            </div>
+            <div className="w-5 h-5 rounded-full bg-violet-600 flex items-center justify-center text-[10px] font-bold text-white">А</div>
+            <span className="text-[11px] font-semibold text-violet-300">Администратор</span>
           </div>
-
-          {/* Шестерёнка → Мастер-Админка */}
           <a href="/master" title="Мастер-Админка"
-            className="p-1.5 rounded-lg transition opacity-20 hover:opacity-60"
-            style={{ color: "rgba(255,255,255,0.4)" }}>
+            className="p-1.5 rounded-lg transition opacity-20 hover:opacity-60" style={{ color: "rgba(255,255,255,0.4)" }}>
             <Icon name="Settings" size={14} />
           </a>
-          <button onClick={logout} className="text-white/40 hover:text-white/70 flex items-center gap-1.5 text-sm transition">
-            <Icon name="LogOut" size={16} /> Выйти
+          <button onClick={logout} className="text-white/40 hover:text-white/70 flex items-center gap-1.5 text-xs sm:text-sm transition">
+            <Icon name="LogOut" size={15} />
+            <span className="hidden sm:block">Выйти</span>
           </button>
         </div>
       </div>
 
-      <div className="border-b border-white/10 px-4 flex gap-1 pt-2 overflow-x-auto">
-        {TABS.map(t => (
-          <button key={t.id} onClick={() => setTab(t.id)}
-            className={`flex items-center gap-1.5 px-4 py-2.5 text-sm rounded-t-lg transition whitespace-nowrap ${
-              tab === t.id
+      {/* ── Главные вкладки ── */}
+      <div className="border-b border-white/10 px-4 flex gap-1 pt-2 flex-shrink-0">
+        {([
+          { id: "crm"   as MainTab, label: "CRM",               icon: "LayoutDashboard" },
+          { id: "agent" as MainTab, label: "Управление агентом", icon: "BrainCircuit"    },
+        ]).map(t => (
+          <button key={t.id} onClick={() => setMainTab(t.id)}
+            className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-semibold rounded-t-lg transition whitespace-nowrap ${
+              mainTab === t.id
                 ? "bg-violet-600/20 text-violet-300 border-b-2 border-violet-500"
                 : "text-white/50 hover:text-white/80"
             }`}>
@@ -168,18 +166,44 @@ export default function AdminPanel() {
         ))}
       </div>
 
-      <div className={tab === "crm" ? "p-4" : "p-4 max-w-6xl mx-auto"}>
-        {tab === "crm" && (crmReady
-          ? <CrmPanel />
-          : <div className="flex items-center justify-center h-64"><div className="w-7 h-7 border-2 border-violet-500 border-t-transparent rounded-full animate-spin" /></div>
-        )}
-        {tab === "prices"      && <TabPrices      token={token} onItemAdded={handleItemAdded} />}
-        {tab === "rules"       && <TabRules       token={token} hint={newItemHint} />}
-        {tab === "prompt"      && <TabPrompt      token={token} />}
-        {tab === "faq"         && <TabFaq         token={token} />}
-        {tab === "questions"   && <TabQuestions   token={token} />}
-        {tab === "corrections" && <TabCorrections token={token} />}
-      </div>
+      {/* ── CRM ── */}
+      {mainTab === "crm" && (
+        <div className="flex-1 overflow-hidden">
+          {crmReady
+            ? <CrmPanel />
+            : <div className="flex items-center justify-center h-64"><div className="w-7 h-7 border-2 border-violet-500 border-t-transparent rounded-full animate-spin" /></div>
+          }
+        </div>
+      )}
+
+      {/* ── Управление агентом ── */}
+      {mainTab === "agent" && (
+        <div className="flex-1 flex flex-col overflow-hidden">
+          {/* Суб-вкладки */}
+          <div className="border-b border-white/10 px-4 flex gap-0.5 pt-2 overflow-x-auto flex-shrink-0">
+            {AGENT_TABS.map(t => (
+              <button key={t.id} onClick={() => setAgentTab(t.id)}
+                className={`flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-t-lg transition whitespace-nowrap ${
+                  agentTab === t.id
+                    ? "bg-violet-600/15 text-violet-300 border-b-2 border-violet-500"
+                    : "text-white/40 hover:text-white/70"
+                }`}>
+                <Icon name={t.icon} size={13} />
+                {t.label}
+              </button>
+            ))}
+          </div>
+
+          <div className="flex-1 overflow-y-auto p-4 max-w-6xl mx-auto w-full">
+            {agentTab === "prices"      && <TabPrices      token={token} onItemAdded={handleItemAdded} />}
+            {agentTab === "rules"       && <TabRules       token={token} hint={newItemHint} />}
+            {agentTab === "prompt"      && <TabPrompt      token={token} />}
+            {agentTab === "faq"         && <TabFaq         token={token} />}
+            {agentTab === "questions"   && <TabQuestions   token={token} />}
+            {agentTab === "corrections" && <TabCorrections token={token} />}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
