@@ -30,11 +30,11 @@ function AutoRulesModal({ onClose }: { onClose: () => void }) {
   const save = () => { saveAutoRules(rules); onClose(); };
 
   return (
-    <div className="fixed inset-0 z-[80] flex items-center justify-center p-4"
+    <div className="fixed inset-0 z-[80] flex items-end sm:items-center justify-center sm:p-4"
       style={{ background: "rgba(0,0,0,0.7)", backdropFilter: "blur(4px)" }}
       onClick={onClose}>
-      <div className="w-full max-w-sm rounded-2xl overflow-hidden shadow-2xl"
-        style={{ background: t.surface, border: `1px solid ${t.border}` }}
+      <div className="w-full max-w-sm rounded-t-2xl sm:rounded-2xl shadow-2xl flex flex-col"
+        style={{ background: t.surface, border: `1px solid ${t.border}`, maxHeight: "90dvh" }}
         onClick={e => e.stopPropagation()}>
 
         {/* Шапка */}
@@ -51,7 +51,7 @@ function AutoRulesModal({ onClose }: { onClose: () => void }) {
         </div>
 
         {/* Тело */}
-        <div className="px-5 py-4 space-y-4">
+        <div className="px-5 py-4 space-y-4 overflow-y-auto flex-1">
           <p className="text-xs leading-relaxed" style={{ color: t.textMute }}>
             Укажите процент от суммы договора. При нажатии кнопки <strong style={{ color: "#ef4444" }}>«Авто»</strong> в блоке Затрат значения Замера и Монтажа заполнятся автоматически.
           </p>
@@ -107,7 +107,7 @@ function AutoRulesModal({ onClose }: { onClose: () => void }) {
         </div>
 
         {/* Кнопки */}
-        <div className="flex gap-2 px-5 pb-5">
+        <div className="flex gap-2 px-5 pb-5 pt-2 flex-shrink-0" style={{ borderTop: `1px solid ${t.border}` }}>
           <button onClick={save}
             className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-white transition"
             style={{ background: "#ef4444" }}>
