@@ -40,7 +40,7 @@ export function StatusSelector({ status, onSave }: { status: string; onSave: (s:
                     setExpandedStage(null);
                   }
                 }}
-                className="flex flex-col items-center gap-1 flex-1 min-w-0 py-1.5 px-1 rounded-xl transition"
+                className="flex flex-col items-center gap-1 flex-1 min-w-0 py-1.5 px-0.5 rounded-xl transition"
                 style={{
                   background: isActive ? g.color + "20" : isPast ? g.color + "10" : "transparent",
                   border: `1.5px solid ${isActive ? g.color + "60" : isPast ? g.color + "30" : t.border2}`,
@@ -49,8 +49,8 @@ export function StatusSelector({ status, onSave }: { status: string; onSave: (s:
                   style={{ background: isActive ? g.color : isPast ? g.color + "40" : t.surface }}>
                   <Icon name={g.icon} size={11} style={{ color: isActive ? "#fff" : isPast ? g.color : t.textMute }} />
                 </div>
-                <span className="text-[9px] font-semibold text-center leading-tight truncate w-full"
-                  style={{ color: isActive ? g.color : isPast ? g.color + "cc" : t.textMute }}>
+                <span className="text-[9px] font-semibold text-center leading-tight w-full break-words hyphens-auto"
+                  style={{ color: isActive ? g.color : isPast ? g.color + "cc" : t.textMute, wordBreak: "break-word" }}>
                   {g.label}
                 </span>
               </button>

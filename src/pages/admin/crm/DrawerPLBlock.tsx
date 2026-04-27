@@ -61,11 +61,31 @@ export function DrawerPLBlock({ data, isHidden, toggleHidden, customFinRows }: {
       {!isHidden && (
         <div style={{ background: "linear-gradient(135deg,#7c3aed08,#10b98108)" }}>
 
-          {/* Горизонтальная сетка: Затраты | Прибыль | Доходы */}
-          <div className="grid grid-cols-[1fr_auto_1fr] gap-0">
+          {/* Сетка: на мобиле — Прибыль сверху, затем Затраты|Доходы рядом; на ≥640px — три колонки */}
+          <div className="flex flex-col sm:grid sm:grid-cols-[1fr_auto_1fr]">
 
-            {/* ЗАТРАТЫ — слева */}
-            <div className="px-5 py-3" style={{ borderRight: `1px solid ${t.border2}` }}>
+            {/* ПРИБЫЛЬ — на мобиле сверху */}
+            <div className="flex sm:hidden items-center justify-between px-4 py-3"
+              style={{ borderBottom: `1px solid ${t.border2}` }}>
+              <span className="text-xs font-semibold" style={{ color: "#a3a3a3" }}>Прибыль</span>
+              <div className="flex items-center gap-2">
+                <span className={`text-xl font-black ${plProfit >= 0 ? "text-emerald-400" : "text-red-400"}`}>
+                  {plProfit >= 0 ? "+" : ""}{fmt(plProfit)} ₽
+                </span>
+                {plIncome > 0 && plCosts > 0 && (
+                  <span className="text-[10px] px-2 py-0.5 rounded-md"
+                    style={{ background: plProfit >= 0 ? "#10b98120" : "#ef444420", color: plProfit >= 0 ? "#10b981" : "#ef4444" }}>
+                    {plIncome > 0 ? Math.round((plProfit / plIncome) * 100) : 0}%
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {/* Затраты + Доходы рядом на мобиле */}
+            <div className="flex sm:contents">
+
+            {/* ЗАТРАТЫ */}
+            <div className="flex-1 px-3 sm:px-5 py-3" style={{ borderRight: `1px solid ${t.border2}` }}>
               <div className="text-[9px] uppercase tracking-wider font-semibold mb-2 flex items-center gap-1"
                 style={{ color: "#ef4444" }}>
                 <Icon name="ArrowDownRight" size={10} style={{ color: "#ef4444" }} /> Затраты
@@ -90,25 +110,8 @@ export function DrawerPLBlock({ data, isHidden, toggleHidden, customFinRows }: {
               )}
             </div>
 
-            {/* ПРИБЫЛЬ — по центру */}
-            <div className="flex flex-col items-center justify-center px-6 py-3 text-center"
-              style={{ borderRight: `1px solid ${t.border2}`, minWidth: 140 }}>
-              <div className="text-[9px] uppercase tracking-wider font-semibold mb-1" style={{ color: "#a3a3a3" }}>
-                Прибыль
-              </div>
-              <div className={`text-2xl font-black ${plProfit >= 0 ? "text-emerald-400" : "text-red-400"}`}>
-                {plProfit >= 0 ? "+" : ""}{fmt(plProfit)} ₽
-              </div>
-              {plIncome > 0 && plCosts > 0 && (
-                <div className="text-[10px] mt-1 px-2 py-0.5 rounded-md"
-                  style={{ background: plProfit >= 0 ? "#10b98120" : "#ef444420", color: plProfit >= 0 ? "#10b981" : "#ef4444" }}>
-                  {plIncome > 0 ? Math.round((plProfit / plIncome) * 100) : 0}% маржа
-                </div>
-              )}
-            </div>
-
-            {/* ДОХОДЫ — справа */}
-            <div className="px-5 py-3">
+            {/* ДОХОДЫ */}
+            <div className="flex-1 px-3 sm:px-5 py-3">
               <div className="text-[9px] uppercase tracking-wider font-semibold mb-2 flex items-center gap-1 justify-end"
                 style={{ color: "#10b981" }}>
                 Доходы <Icon name="ArrowUpRight" size={10} style={{ color: "#10b981" }} />
@@ -129,6 +132,22 @@ export function DrawerPLBlock({ data, isHidden, toggleHidden, customFinRows }: {
                       <span className="text-sm font-bold text-emerald-400">+{fmt(plIncome)} ₽</span>
                     </div>
                   )}
+                </div>
+              )}
+            </div>
+            </div>{/* конец flex sm:contents */}
+
+            {/* ПРИБЫЛЬ — только десктоп (по центру между колонками) */}
+            <div className="hidden sm:flex flex-col items-center justify-center px-6 py-3 text-center sm:order-2"
+              style={{ borderLeft: `1px solid ${t.border2}`, borderRight: `1px solid ${t.border2}`, minWidth: 140 }}>
+              <div className="text-[9px] uppercase tracking-wider font-semibold mb-1" style={{ color: "#a3a3a3" }}>Прибыль</div>
+              <div className={`text-2xl font-black ${plProfit >= 0 ? "text-emerald-400" : "text-red-400"}`}>
+                {plProfit >= 0 ? "+" : ""}{fmt(plProfit)} ₽
+              </div>
+              {plIncome > 0 && plCosts > 0 && (
+                <div className="text-[10px] mt-1 px-2 py-0.5 rounded-md"
+                  style={{ background: plProfit >= 0 ? "#10b98120" : "#ef444420", color: plProfit >= 0 ? "#10b981" : "#ef4444" }}>
+                  {Math.round((plProfit / plIncome) * 100)}% маржа
                 </div>
               )}
             </div>

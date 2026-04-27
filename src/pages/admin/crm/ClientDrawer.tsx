@@ -30,6 +30,7 @@ export default function ClientDrawer({ client, allClientOrders, onClose, onUpdat
   const [hideHidden, setHideHidden]   = useState(() => localStorage.getItem("drawer_hide_hidden") === "true");
   const [selectedOrderId, setSelectedOrderId] = useState<number>(defaultOrderId ?? client.id);
   const [orderInnerTab, setOrderInnerTab] = useState<"info" | "estimate">("info");
+  const [ordersListOpen, setOrdersListOpen] = useState(true);
 
 
 
@@ -167,44 +168,59 @@ export default function ClientDrawer({ client, allClientOrders, onClose, onUpdat
           {drawerTab === "orders" && (
             <div className="flex flex-col sm:flex-row h-full min-h-0">
 
-              {/* Список заявок: на мобиле — горизонтальная полоса сверху, на десктопе — вертикальная колонка слева */}
-              <div className="flex-shrink-0 sm:w-56 md:w-64
-                              flex sm:flex-col
-                              overflow-x-auto sm:overflow-x-hidden sm:overflow-y-auto
-                              gap-2 p-2 sm:p-3
-                              border-b sm:border-b-0 sm:border-r"
-                style={{ borderColor: t.border }}>
-                {allClientOrders.length === 0 && (
-                  <div className="py-4 text-center text-xs w-full" style={{ color: t.textMute }}>Нет заявок</div>
-                )}
-                {[...allClientOrders]
-                  .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-                  .map(order => {
-                    const isActive = order.id === selectedOrderId;
-                    return (
-                      <button key={order.id}
-                        onClick={() => { setSelectedOrderId(order.id); setOrderData(order); setOrderInnerTab("info"); }}
-                        className="flex-shrink-0 sm:flex-shrink text-left rounded-xl transition"
-                        style={{
-                          background: isActive ? "#7c3aed18" : t.surface2,
-                          border: `1px solid ${isActive ? "#7c3aed60" : t.border}`,
-                          minWidth: 130,
-                          padding: "8px 10px",
-                        }}>
-                        <div className="flex items-center justify-between mb-1 gap-1">
-                          <span className="text-[10px] px-1.5 py-0.5 rounded font-semibold truncate"
-                            style={{ background: STATUS_COLORS[order.status] + "20", color: STATUS_COLORS[order.status] }}>
-                            {STATUS_LABELS[order.status] || order.status}
-                          </span>
-                          <span className="text-[10px] flex-shrink-0" style={{ color: t.textMute }}>#{order.id}</span>
-                        </div>
-                        <div className="text-xs truncate" style={{ color: t.textSub }}>{order.address || "Без адреса"}</div>
-                        {order.contract_sum ? (
-                          <div className="text-xs font-bold text-emerald-400">{Number(order.contract_sum).toLocaleString("ru-RU")} ₽</div>
-                        ) : null}
-                      </button>
-                    );
-                  })}
+              {/* Список заявок */}
+              <div className="flex-shrink-0 sm:w-56 md:w-64 sm:border-r" style={{ borderColor: t.border }}>
+
+                {/* Мобильный аккордеон-заголовок */}
+                <button
+                  className="sm:hidden w-full flex items-center justify-between px-3 py-2.5 text-xs font-semibold"
+                  style={{ borderBottom: `1px solid ${t.border}`, color: t.textMute }}
+                  onClick={() => setOrdersListOpen(v => !v)}>
+                  <span className="flex items-center gap-1.5">
+                    <Icon name="ClipboardList" size={12} />
+                    {orderData ? (STATUS_LABELS[orderData.status] || orderData.status) + (orderData.address ? ` — ${orderData.address}` : "") : "Выберите заявку"}
+                  </span>
+                  <Icon name={ordersListOpen ? "ChevronUp" : "ChevronDown"} size={13} />
+                </button>
+
+                {/* Список: на мобиле — сворачивается, на десктопе — всегда виден */}
+                <div className={`${ordersListOpen ? "flex" : "hidden"} sm:flex flex-row sm:flex-col
+                                overflow-x-auto sm:overflow-x-hidden sm:overflow-y-auto
+                                gap-2 p-2 sm:p-3
+                                border-b sm:border-b-0`}
+                  style={{ borderColor: t.border }}>
+                  {allClientOrders.length === 0 && (
+                    <div className="py-4 text-center text-xs w-full" style={{ color: t.textMute }}>Нет заявок</div>
+                  )}
+                  {[...allClientOrders]
+                    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+                    .map(order => {
+                      const isActive = order.id === selectedOrderId;
+                      return (
+                        <button key={order.id}
+                          onClick={() => { setSelectedOrderId(order.id); setOrderData(order); setOrderInnerTab("info"); setOrdersListOpen(false); }}
+                          className="flex-shrink-0 sm:flex-shrink-[unset] text-left rounded-xl transition"
+                          style={{
+                            background: isActive ? "#7c3aed18" : t.surface2,
+                            border: `1px solid ${isActive ? "#7c3aed60" : t.border}`,
+                            minWidth: 130,
+                            padding: "8px 10px",
+                          }}>
+                          <div className="flex items-center justify-between mb-1 gap-1">
+                            <span className="text-[10px] px-1.5 py-0.5 rounded font-semibold truncate"
+                              style={{ background: STATUS_COLORS[order.status] + "20", color: STATUS_COLORS[order.status] }}>
+                              {STATUS_LABELS[order.status] || order.status}
+                            </span>
+                            <span className="text-[10px] flex-shrink-0" style={{ color: t.textMute }}>#{order.id}</span>
+                          </div>
+                          <div className="text-xs truncate" style={{ color: t.textSub }}>{order.address || "Без адреса"}</div>
+                          {order.contract_sum ? (
+                            <div className="text-xs font-bold text-emerald-400">{Number(order.contract_sum).toLocaleString("ru-RU")} ₽</div>
+                          ) : null}
+                        </button>
+                      );
+                    })}
+                </div>
               </div>
 
               {/* Контент выбранной заявки */}
