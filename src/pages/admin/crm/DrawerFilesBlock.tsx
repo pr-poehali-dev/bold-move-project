@@ -108,27 +108,35 @@ export function DrawerFilesBlock({ clientId, hiddenBlocks, toggleHidden, logActi
 
   const [copied, setCopied] = useState<string | null>(null);
 
-  const copyToClipboard = (text: string, label: string) => {
-    navigator.clipboard.writeText(text).then(() => {
-      setCopied(label);
-      setTimeout(() => setCopied(null), 2000);
-    }).catch(() => {
-      // fallback для старых браузеров
+  const doShare = async (text: string, title: string) => {
+    // navigator.share — штатный системный шаринг (Android/iOS)
+    if (navigator.share) {
+      try {
+        await navigator.share({ title, text });
+        return;
+      } catch (e) {
+        // Пользователь отменил — не показываем fallback
+        if (e instanceof Error && e.name === "AbortError") return;
+        // Другая ошибка (iframe, desktop без поддержки) — падаем на буфер
+      }
+    }
+    // Fallback — копирование в буфер
+    try {
+      await navigator.clipboard.writeText(text);
+    } catch {
       const el = document.createElement("textarea");
       el.value = text;
       document.body.appendChild(el);
       el.select();
       document.execCommand("copy");
       document.body.removeChild(el);
-      setCopied(label);
-      setTimeout(() => setCopied(null), 2000);
-    });
+    }
+    setCopied(title);
+    setTimeout(() => setCopied(null), 2000);
   };
 
-  // Share helpers — копируем ссылки в буфер обмена
   const shareFiles = (files: FileEntry[], title: string) => {
-    const urls = files.map(f => f.url).join("\n");
-    copyToClipboard(urls, title);
+    doShare(files.map(f => f.url).join("\n"), title);
   };
 
   const shareAllFiles = () => {
@@ -138,7 +146,7 @@ export function DrawerFilesBlock({ clientId, hiddenBlocks, toggleHidden, logActi
       .filter(c => c.files.length > 0)
       .map(c => `${c.label}:\n${c.files.map(f => f.url).join("\n")}`)
       .join("\n\n");
-    copyToClipboard(text, "Все файлы");
+    doShare(text, "Все файлы");
   };
 
   // Lightbox
