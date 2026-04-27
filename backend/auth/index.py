@@ -216,9 +216,38 @@ def handler(event: dict, context) -> dict:
         user_id = body.get("user_id")
         if not user_id:
             return err("user_id required")
-        cur.execute(f"UPDATE {SCHEMA}.users SET approved=true WHERE id=%s", (int(user_id),))
+        cur.execute(f"UPDATE {SCHEMA}.users SET approved=true, rejected=false WHERE id=%s", (int(user_id),))
         conn.commit()
         return ok({"ok": True})
+
+    # ── Мастер: отклонить пользователя ────────────────────────────────────────
+    if action == "reject-user" and method == "POST":
+        user_id = body.get("user_id")
+        if not user_id:
+            return err("user_id required")
+        cur.execute(f"UPDATE {SCHEMA}.users SET approved=false, rejected=true WHERE id=%s", (int(user_id),))
+        conn.commit()
+        return ok({"ok": True})
+
+    # ── Мастер: установить подписку ───────────────────────────────────────────
+    if action == "set-subscription" and method == "POST":
+        user_id = body.get("user_id")
+        days    = body.get("days")  # продлить на N дней от сегодня или от текущего конца
+        if user_id is None or days is None:
+            return err("user_id и days обязательны")
+        cur.execute(f"""
+            UPDATE {SCHEMA}.users
+            SET subscription_start = COALESCE(subscription_start, NOW()),
+                subscription_end   = GREATEST(COALESCE(subscription_end, NOW()), NOW()) + INTERVAL '%s days',
+                approved           = true,
+                rejected           = false
+            WHERE id = %s
+        """, (int(days), int(user_id)))
+        conn.commit()
+        # Возвращаем новые даты
+        cur.execute(f"SELECT subscription_start, subscription_end FROM {SCHEMA}.users WHERE id=%s", (int(user_id),))
+        row = cur.fetchone()
+        return ok({"ok": True, "subscription_start": str(row[0])[:19] if row[0] else None, "subscription_end": str(row[1])[:19] if row[1] else None})
 
     # ── Мастер: установить скидку пользователю ────────────────────────────────
     if action == "set-discount" and method == "POST":
@@ -229,6 +258,34 @@ def handler(event: dict, context) -> dict:
         cur.execute(f"UPDATE {SCHEMA}.users SET discount=%s WHERE id=%s", (int(discount), int(user_id)))
         conn.commit()
         return ok({"ok": True})
+
+    # ── Мастер: бизнес-пользователи (монтажники/компании) с фильтром ──────────
+    if action == "business-users" and method == "GET":
+        status_filter = params.get("status", "all")
+        if status_filter == "pending":
+            where = "WHERE role IN ('installer','company') AND approved=false AND rejected=false"
+        elif status_filter == "approved":
+            where = "WHERE role IN ('installer','company') AND approved=true"
+        elif status_filter == "rejected":
+            where = "WHERE role IN ('installer','company') AND rejected=true"
+        else:
+            where = "WHERE role IN ('installer','company')"
+
+        cur.execute(f"""
+            SELECT id, email, name, phone, role, approved, rejected, discount,
+                   created_at, subscription_start, subscription_end
+            FROM {SCHEMA}.users
+            {where}
+            ORDER BY created_at DESC
+        """)
+        rows = cur.fetchall()
+        return ok({"users": [{
+            "id": r[0], "email": r[1], "name": r[2], "phone": r[3],
+            "role": r[4], "approved": r[5], "rejected": r[6], "discount": r[7] or 0,
+            "created_at": str(r[8])[:19],
+            "subscription_start": str(r[9])[:19] if r[9] else None,
+            "subscription_end":   str(r[10])[:19] if r[10] else None,
+        } for r in rows]})
 
     # ── Смета по chat_id ──────────────────────────────────────────────────────
     if action == "estimate-by-chat" and method == "GET":
@@ -418,7 +475,7 @@ def handler(event: dict, context) -> dict:
     if action == "admin-users" and method == "GET":
         cur.execute(f"""
             SELECT u.id, u.email, u.name, u.phone, u.role, u.approved, u.discount, u.created_at,
-                   COUNT(e.id) as estimates_count
+                   COUNT(e.id) as estimates_count, u.rejected, u.subscription_start, u.subscription_end
             FROM {SCHEMA}.users u
             LEFT JOIN {SCHEMA}.saved_estimates e ON e.user_id = u.id
             GROUP BY u.id ORDER BY u.created_at DESC
@@ -428,6 +485,9 @@ def handler(event: dict, context) -> dict:
             "id": r[0], "email": r[1], "name": r[2], "phone": r[3],
             "role": r[4] or "client", "approved": r[5], "discount": r[6] or 0,
             "created_at": str(r[7])[:19], "estimates_count": r[8],
+            "rejected": r[9] or False,
+            "subscription_start": str(r[10])[:19] if r[10] else None,
+            "subscription_end":   str(r[11])[:19] if r[11] else None,
         } for r in rows]})
 
     # ── Мастер: сметы конкретного пользователя ────────────────────────────────

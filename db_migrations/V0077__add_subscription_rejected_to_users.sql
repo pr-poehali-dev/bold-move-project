@@ -1,0 +1,4 @@
+ALTER TABLE t_p45929761_bold_move_project.users
+  ADD COLUMN IF NOT EXISTS rejected BOOLEAN NOT NULL DEFAULT false,
+  ADD COLUMN IF NOT EXISTS subscription_start TIMESTAMPTZ,
+  ADD COLUMN IF NOT EXISTS subscription_end TIMESTAMPTZ;

@@ -1,8 +1,8 @@
 import { useState, useEffect, useCallback } from "react";
 import Icon from "@/components/ui/icon";
 import func2url from "@/../backend/func2url.json";
-import type { MasterTab, PendingUser, ProUser, AppUser, UserEstimate } from "./masterAdminTypes";
-import MasterTabPending from "./MasterTabPending";
+import type { MasterTab, BusinessUser, ProUser, AppUser, UserEstimate } from "./masterAdminTypes";
+import MasterTabBusiness from "./MasterTabBusiness";
 import MasterTabPro from "./MasterTabPro";
 import MasterTabAllUsers from "./MasterTabAllUsers";
 
@@ -13,12 +13,11 @@ export default function MasterAdmin() {
   const [authed,  setAuthed]  = useState(() => sessionStorage.getItem("master_token") === MASTER_PASSWORD);
   const [pass,    setPass]    = useState("");
   const [passErr, setPassErr] = useState("");
-  const [tab,     setTab]     = useState<MasterTab>("pending");
+  const [tab,     setTab]     = useState<MasterTab>("business");
 
-  // Pending (business)
-  const [pendingBiz,     setPendingBiz]     = useState<PendingUser[]>([]);
-  const [pendingLoading, setPendingLoading] = useState(false);
-  const [approvingId,    setApprovingId]    = useState<number | null>(null);
+  // Business (installer/company)
+  const [bizUsers,    setBizUsers]    = useState<BusinessUser[]>([]);
+  const [bizLoading,  setBizLoading]  = useState(false);
 
   // Pro users (designer/foreman)
   const [proUsers,       setProUsers]       = useState<ProUser[]>([]);
@@ -33,6 +32,7 @@ export default function MasterAdmin() {
   const [userEstimates, setUserEstimates] = useState<UserEstimate[]>([]);
   const [estLoading,    setEstLoading]    = useState(false);
   const [search,        setSearch]        = useState("");
+  const [approvingId,   setApprovingId]   = useState<number | null>(null);
 
   const login = () => {
     if (pass === MASTER_PASSWORD) {
@@ -43,12 +43,12 @@ export default function MasterAdmin() {
     }
   };
 
-  const loadPending = useCallback(async () => {
-    setPendingLoading(true);
-    const r = await fetch(`${AUTH_URL}?action=pending-users&role_group=business`);
+  const loadBiz = useCallback(async () => {
+    setBizLoading(true);
+    const r = await fetch(`${AUTH_URL}?action=business-users&status=all`);
     const d = await r.json();
-    setPendingBiz(d.users || []);
-    setPendingLoading(false);
+    setBizUsers(d.users || []);
+    setBizLoading(false);
   }, []);
 
   const loadPro = useCallback(async () => {
@@ -69,33 +69,31 @@ export default function MasterAdmin() {
 
   useEffect(() => {
     if (!authed) return;
-    loadPending();
-  }, [authed, loadPending]);
+    loadBiz();
+  }, [authed, loadBiz]);
 
   useEffect(() => {
     if (!authed) return;
-    if (tab === "pending") loadPending();
+    if (tab === "business") loadBiz();
     else if (tab === "pro") loadPro();
     else if (tab === "all") loadAll();
-  }, [tab, authed, loadPending, loadPro, loadAll]);
+  }, [tab, authed, loadBiz, loadPro, loadAll]);
 
   const approveUser = async (id: number) => {
     setApprovingId(id);
     await fetch(`${AUTH_URL}?action=approve-user`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
+      method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ user_id: id }),
     });
     setApprovingId(null);
-    loadPending();
+    if (tab === "all") { loadAll(); }
   };
 
   const saveDiscount = async () => {
     if (!editDiscount) return;
     setSavingDiscount(true);
     await fetch(`${AUTH_URL}?action=set-discount`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
+      method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ user_id: editDiscount.id, discount: parseInt(editDiscount.value) || 0 }),
     });
     setSavingDiscount(false);
@@ -111,6 +109,9 @@ export default function MasterAdmin() {
     setUserEstimates(data.estimates || []);
     setEstLoading(false);
   };
+
+  // Счётчик pending для таба
+  const pendingCount = bizUsers.filter(u => !u.approved && !u.rejected).length;
 
   // ── Экран входа ──
   if (!authed) {
@@ -142,9 +143,9 @@ export default function MasterAdmin() {
   }
 
   const TABS: { id: MasterTab; label: string; icon: string; badge?: number }[] = [
-    { id: "pending", label: "Ожидают одобрения",  icon: "Clock", badge: pendingBiz.length },
-    { id: "pro",     label: "Дизайнеры / Прорабы", icon: "Star" },
-    { id: "all",     label: "Все пользователи",    icon: "Users" },
+    { id: "business", label: "Монтажники / Компании", icon: "Building2", badge: pendingCount },
+    { id: "pro",      label: "Клиенты / Прорабы / Дизайнеры", icon: "Star" },
+    { id: "all",      label: "Все пользователи", icon: "Users" },
   ];
 
   return (
@@ -168,10 +169,10 @@ export default function MasterAdmin() {
       </div>
 
       {/* Табы */}
-      <div className="flex gap-1 px-6 pt-4 pb-0 border-b border-white/[0.06]">
+      <div className="flex gap-1 px-6 pt-4 pb-0 border-b border-white/[0.06] overflow-x-auto">
         {TABS.map(t => (
           <button key={t.id} onClick={() => setTab(t.id)}
-            className="flex items-center gap-2 px-4 py-2.5 text-xs font-semibold rounded-t-lg transition"
+            className="flex items-center gap-2 px-4 py-2.5 text-xs font-semibold rounded-t-lg transition whitespace-nowrap"
             style={tab === t.id
               ? { background: "#10b98115", color: "#10b981", borderBottom: "2px solid #10b981" }
               : { color: "rgba(255,255,255,0.35)" }}>
@@ -185,13 +186,12 @@ export default function MasterAdmin() {
         ))}
       </div>
 
-      {/* Контент вкладок */}
-      {tab === "pending" && (
-        <MasterTabPending
-          users={pendingBiz}
-          loading={pendingLoading}
-          approvingId={approvingId}
-          onApprove={approveUser}
+      {/* Контент */}
+      {tab === "business" && (
+        <MasterTabBusiness
+          users={bizUsers}
+          loading={bizLoading}
+          onReload={loadBiz}
         />
       )}
 

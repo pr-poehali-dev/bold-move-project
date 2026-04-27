@@ -1,6 +1,10 @@
+import { useState } from "react";
 import Icon from "@/components/ui/icon";
 import RoleBadge from "./MasterRoleBadge";
 import type { AppUser, UserEstimate } from "./masterAdminTypes";
+import { fmtDate, subStatus } from "./masterAdminTypes";
+
+type AllFilter = "all" | "client" | "designer" | "foreman" | "installer" | "company";
 
 interface Props {
   users: AppUser[];
@@ -15,23 +19,37 @@ interface Props {
   onApprove: (id: number) => void;
 }
 
+const ROLE_FILTERS: { id: AllFilter; label: string }[] = [
+  { id: "all",       label: "Все" },
+  { id: "client",    label: "Клиенты" },
+  { id: "designer",  label: "Дизайнеры" },
+  { id: "foreman",   label: "Прорабы" },
+  { id: "installer", label: "Монтажники" },
+  { id: "company",   label: "Компании" },
+];
+
 export default function MasterTabAllUsers({
   users, loading, search, selectedUser, userEstimates,
   estLoading, approvingId, onSearch, onSelectUser, onApprove,
 }: Props) {
-  const filtered = users.filter(u =>
-    !search ||
-    (u.email || "").toLowerCase().includes(search.toLowerCase()) ||
-    (u.name  || "").toLowerCase().includes(search.toLowerCase())
-  );
+  const [roleFilter, setRoleFilter] = useState<AllFilter>("all");
+
+  const filtered = users.filter(u => {
+    const matchRole   = roleFilter === "all" || u.role === roleFilter;
+    const matchSearch = !search ||
+      (u.email || "").toLowerCase().includes(search.toLowerCase()) ||
+      (u.name  || "").toLowerCase().includes(search.toLowerCase());
+    return matchRole && matchSearch;
+  });
 
   return (
     <div className="flex h-[calc(100vh-120px)]">
 
       {/* Левая: список */}
       <div className="w-80 flex-shrink-0 border-r border-white/[0.06] flex flex-col">
-        <div className="p-4">
-          <div className="flex items-center justify-between mb-3">
+        <div className="p-4 space-y-3">
+          {/* Счётчик + поиск */}
+          <div className="flex items-center justify-between">
             <span className="text-sm font-bold text-white">Пользователи</span>
             <span className="text-xs px-2 py-0.5 rounded-lg font-bold"
               style={{ background: "#10b98120", color: "#10b981" }}>{users.length}</span>
@@ -42,6 +60,18 @@ export default function MasterTabAllUsers({
               placeholder="Поиск..."
               className="w-full rounded-xl pl-9 pr-3 py-2 text-xs focus:outline-none"
               style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", color: "#fff" }} />
+          </div>
+          {/* Фильтр по роли */}
+          <div className="flex flex-wrap gap-1">
+            {ROLE_FILTERS.map(f => (
+              <button key={f.id} onClick={() => setRoleFilter(f.id)}
+                className="px-2 py-1 rounded-lg text-[10px] font-semibold transition"
+                style={roleFilter === f.id
+                  ? { background: "#10b981", color: "#fff" }
+                  : { background: "rgba(255,255,255,0.05)", color: "rgba(255,255,255,0.4)" }}>
+                {f.label}
+              </button>
+            ))}
           </div>
         </div>
 
@@ -66,8 +96,9 @@ export default function MasterTabAllUsers({
                 <div className="text-xs truncate text-white/30">{u.email}</div>
                 <div className="flex items-center gap-2 mt-0.5">
                   <span className="text-[10px] text-white/20">{new Date(u.created_at).toLocaleDateString("ru-RU")}</span>
-                  {!u.approved && (
-                    <span className="text-[10px] text-red-400">ожидает</span>
+                  {u.rejected && <span className="text-[10px] text-red-400">✗ отклонён</span>}
+                  {!u.approved && !u.rejected && ["installer","company"].includes(u.role) && (
+                    <span className="text-[10px] text-amber-400">ожидает</span>
                   )}
                   {u.estimates_count > 0 && (
                     <span className="text-[10px] px-1.5 py-0.5 rounded-md font-semibold"
@@ -91,18 +122,25 @@ export default function MasterTabAllUsers({
           </div>
         ) : (
           <div className="max-w-2xl">
-            <div className="flex items-center gap-4 mb-6 p-5 rounded-2xl"
+            {/* Профиль */}
+            <div className="flex items-center gap-4 mb-4 p-5 rounded-2xl"
               style={{ background: "#0e0e1c", border: "1px solid rgba(255,255,255,0.07)" }}>
               <div className="w-14 h-14 rounded-2xl flex items-center justify-center text-lg font-bold flex-shrink-0"
                 style={{ background: "#10b98120", color: "#10b981" }}>
                 {(selectedUser.name || selectedUser.email || "?")[0].toUpperCase()}
               </div>
               <div className="flex-1">
-                <div className="flex items-center gap-2 mb-1">
+                <div className="flex items-center gap-2 mb-1 flex-wrap">
                   <span className="text-lg font-bold text-white">{selectedUser.name || "—"}</span>
                   <RoleBadge role={selectedUser.role} />
-                  {!selectedUser.approved && (
+                  {selectedUser.rejected && (
+                    <span className="text-[10px] px-2 py-0.5 rounded-lg font-bold bg-red-500/20 text-red-400">✗ отклонён</span>
+                  )}
+                  {!selectedUser.approved && !selectedUser.rejected && (
                     <span className="text-[10px] px-2 py-0.5 rounded-lg font-bold bg-amber-500/20 text-amber-400">ожидает одобрения</span>
+                  )}
+                  {selectedUser.approved && (
+                    <span className="text-[10px] px-2 py-0.5 rounded-lg font-bold bg-emerald-500/20 text-emerald-400">✓ одобрен</span>
                   )}
                 </div>
                 <div className="text-sm text-white/40">{selectedUser.email}</div>
@@ -111,18 +149,42 @@ export default function MasterTabAllUsers({
                   <div className="text-xs text-violet-300 mt-1">Скидка: {selectedUser.discount}%</div>
                 )}
                 <div className="text-xs text-white/20 mt-1">
-                  Зарегистрирован: {new Date(selectedUser.created_at).toLocaleDateString("ru-RU", { day: "numeric", month: "long", year: "numeric" })}
+                  Зарегистрирован: {fmtDate(selectedUser.created_at)}
                 </div>
               </div>
               <div className="text-right">
                 <div className="text-2xl font-black" style={{ color: "#10b981" }}>{selectedUser.estimates_count}</div>
-                <div className="text-xs text-white/30">смет сохранено</div>
+                <div className="text-xs text-white/30">смет</div>
               </div>
             </div>
 
-            {!selectedUser.approved && (
+            {/* Подписка (только для installer/company) */}
+            {["installer","company"].includes(selectedUser.role) && (
+              <div className="mb-4 p-4 rounded-2xl"
+                style={{ background: "#0e0e1c", border: "1px solid rgba(124,58,237,0.2)" }}>
+                <div className="text-xs font-bold text-white/60 mb-3 flex items-center gap-1.5">
+                  <Icon name="CreditCard" size={13} style={{ color: "#a78bfa" }} />
+                  Подписка
+                </div>
+                <div className="grid grid-cols-2 gap-3 text-xs">
+                  <div>
+                    <div className="text-white/30 mb-0.5">Начало</div>
+                    <div className="text-white/70">{fmtDate(selectedUser.subscription_start)}</div>
+                  </div>
+                  <div>
+                    <div className="text-white/30 mb-0.5">Истекает</div>
+                    <div style={{ color: subStatus(selectedUser) === "active" ? "#10b981" : subStatus(selectedUser) === "expired" ? "#ef4444" : "rgba(255,255,255,0.7)" }}>
+                      {fmtDate(selectedUser.subscription_end)}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Кнопки действий */}
+            {!selectedUser.approved && !selectedUser.rejected && (
               <button onClick={() => onApprove(selectedUser.id)} disabled={approvingId === selectedUser.id}
-                className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-bold text-white mb-4 transition disabled:opacity-50"
+                className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-bold text-white mb-3 transition disabled:opacity-50"
                 style={{ background: "#10b981" }}>
                 {approvingId === selectedUser.id
                   ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
@@ -131,6 +193,7 @@ export default function MasterTabAllUsers({
               </button>
             )}
 
+            {/* Сметы */}
             <div>
               <div className="text-sm font-bold mb-3 text-white/70">Сметы и заявки</div>
               {estLoading ? (

@@ -1,15 +1,26 @@
-export interface PendingUser {
+export interface BusinessUser {
   id: number;
   email: string;
   name: string | null;
   phone: string | null;
   role: string;
+  approved: boolean;
+  rejected: boolean;
   discount: number;
   created_at: string;
+  subscription_start: string | null;
+  subscription_end: string | null;
 }
 
-export interface ProUser extends PendingUser {
+export interface ProUser {
+  id: number;
+  email: string;
+  name: string | null;
+  phone: string | null;
+  role: string;
   approved: boolean;
+  discount: number;
+  created_at: string;
 }
 
 export interface AppUser {
@@ -19,9 +30,12 @@ export interface AppUser {
   phone: string | null;
   role: string;
   approved: boolean;
+  rejected: boolean;
   discount: number;
   created_at: string;
   estimates_count: number;
+  subscription_start: string | null;
+  subscription_end: string | null;
 }
 
 export interface UserEstimate {
@@ -33,7 +47,7 @@ export interface UserEstimate {
   crm_status: string | null;
 }
 
-export type MasterTab = "pending" | "pro" | "all";
+export type MasterTab = "business" | "pro" | "all";
 
 export const ROLE_LABELS: Record<string, { label: string; color: string }> = {
   client:    { label: "Клиент",    color: "#f97316" },
@@ -43,3 +57,13 @@ export const ROLE_LABELS: Record<string, { label: string; color: string }> = {
   company:   { label: "Компания",  color: "#f59e0b" },
   manager:   { label: "Менеджер",  color: "#94a3b8" },
 };
+
+export function subStatus(user: { subscription_end: string | null; approved: boolean }): "active" | "expired" | "none" {
+  if (!user.subscription_end) return "none";
+  return new Date(user.subscription_end) > new Date() ? "active" : "expired";
+}
+
+export function fmtDate(s: string | null): string {
+  if (!s) return "—";
+  return new Date(s).toLocaleDateString("ru-RU", { day: "numeric", month: "short", year: "numeric" });
+}
