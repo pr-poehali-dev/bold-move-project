@@ -218,7 +218,13 @@ export default function ClientDrawer({ client, allClientOrders, onClose, onUpdat
               </div>
 
               {/* Контент выбранной заявки */}
-              <div className="flex-1 min-w-0 min-h-0 flex flex-col overflow-hidden">
+              <div className="flex-1 min-w-0 min-h-0 flex flex-col overflow-hidden relative">
+                {/* Оверлей-триггер для открытия списка */}
+                {!ordersListOpen && (
+                  <div className="absolute inset-0 z-10 cursor-pointer"
+                    title="Развернуть список заявок"
+                    onClick={() => setOrdersListOpen(true)} />
+                )}
                 {/* Внутренние табы */}
                 <div className="flex px-3 sm:px-4 gap-1 pt-2 flex-shrink-0" style={{ borderBottom: `1px solid ${t.border}` }}>
                   {([
