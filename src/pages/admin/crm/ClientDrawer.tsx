@@ -94,22 +94,27 @@ export default function ClientDrawer({ client, allClientOrders, onClose, onUpdat
             </div>
             <div className="min-w-0">
               {editingTitle ? (
-                <input
-                  autoFocus
-                  defaultValue={ord.client_name || ""}
-                  onBlur={e => {
-                    const saveTarget = drawerTab === "orders" ? saveOrder : save;
-                    saveTarget({ client_name: e.target.value });
-                    setEditingTitle(false);
-                  }}
-                  onKeyDown={e => {
-                    if (e.key === "Enter") (e.target as HTMLInputElement).blur();
-                    if (e.key === "Escape") setEditingTitle(false);
-                  }}
-                  placeholder="Имя клиента..."
-                  className="text-base font-bold bg-transparent focus:outline-none w-full max-w-xs sm:max-w-lg"
-                  style={{ color: "#fff", borderBottom: "1px solid #7c3aed" }}
-                />
+                <div className="flex items-baseline gap-1.5 max-w-xs sm:max-w-lg">
+                  <span className="text-base font-bold whitespace-nowrap flex-shrink-0" style={{ color: "#9ca3af" }}>
+                    Заявка №{ord.id}{ord.address ? ` · ${ord.address}` : ""}{ord.phone ? ` · ${ord.phone}` : ""} ·{" "}
+                  </span>
+                  <input
+                    autoFocus
+                    defaultValue={ord.client_name || ""}
+                    onBlur={e => {
+                      const saveTarget = drawerTab === "orders" ? saveOrder : save;
+                      saveTarget({ client_name: e.target.value });
+                      setEditingTitle(false);
+                    }}
+                    onKeyDown={e => {
+                      if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+                      if (e.key === "Escape") setEditingTitle(false);
+                    }}
+                    placeholder="Имя..."
+                    className="text-base font-bold bg-transparent focus:outline-none min-w-0 flex-1"
+                    style={{ color: "#fff", borderBottom: "1px solid #7c3aed" }}
+                  />
+                </div>
               ) : (
                 <div className="text-base font-bold text-white truncate max-w-xs sm:max-w-lg cursor-text hover:opacity-80 transition"
                   title="Нажмите чтобы изменить имя клиента"
