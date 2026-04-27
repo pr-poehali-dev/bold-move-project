@@ -177,7 +177,6 @@ export default function ClientTab({ data, save }: Props) {
         const isBuiltin  = !!field.builtin;
         const isDragOver = dragOver === field.id;
 
-        // textarea (notes) и custom поля — на всю ширину
         const isWide = isBuiltin && field.clientKey === "notes";
 
         return (
