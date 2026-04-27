@@ -174,15 +174,17 @@ export function OrdersClientCard({ c, onClick, onNextStep }: {
         <button onClick={handleNext} disabled={stepping}
           className="w-full flex items-center justify-between px-4 py-2.5 transition disabled:opacity-60"
           style={{ borderTop: `1px solid ${t.border2}`, background: STATUS_COLORS[nextStatus] + "08" }}>
-          <span className="text-xs font-semibold flex items-center gap-1.5" style={{ color: STATUS_COLORS[nextStatus] }}>
-            {stepping
-              ? <><span className="w-3 h-3 border border-current border-t-transparent rounded-full animate-spin inline-block" /> Обновление...</>
-              : <><Icon name="ArrowRight" size={11} /> {nextLabel}</>}
-          </span>
-          <span className="text-[10px] font-medium px-1.5 py-0.5 rounded"
-            style={{ background: STATUS_COLORS[nextStatus] + "20", color: STATUS_COLORS[nextStatus] }}>
-            → {STATUS_LABELS[nextStatus]}
-          </span>
+          {stepping ? (
+            <span className="text-xs font-semibold flex items-center gap-1.5" style={{ color: STATUS_COLORS[nextStatus] }}>
+              <span className="w-3 h-3 border border-current border-t-transparent rounded-full animate-spin inline-block" /> Обновление...
+            </span>
+          ) : (
+            <span className="text-xs font-semibold flex items-center gap-1.5" style={{ color: STATUS_COLORS[nextStatus] }}>
+              <Icon name="ArrowRight" size={11} />
+              {nextLabel}
+              <span className="text-[10px] font-normal opacity-60">→ {STATUS_LABELS[nextStatus]}</span>
+            </span>
+          )}
         </button>
       )}
 
