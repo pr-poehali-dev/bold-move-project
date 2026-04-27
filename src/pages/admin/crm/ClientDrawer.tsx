@@ -166,29 +166,22 @@ export default function ClientDrawer({ client, allClientOrders, onClose, onUpdat
 
           {/* ЗАЯВКИ */}
           {drawerTab === "orders" && (
-            <div className="flex flex-col sm:flex-row h-full min-h-0">
+            <div className="flex flex-row h-full min-h-0">
 
-              {/* Список заявок */}
-              <div className={`flex-shrink-0 transition-all duration-200 sm:border-r ${ordersListOpen ? "border-b sm:border-b-0 w-full sm:w-56 md:w-64" : "w-full sm:w-10"}`} style={{ borderColor: t.border }}>
+              {/* Список заявок — боковая панель (только desktop-стиль) */}
+              <div className={`flex-shrink-0 transition-all duration-200 border-r ${ordersListOpen ? "w-56 md:w-64" : "w-9"}`} style={{ borderColor: t.border }}>
 
-                {/* Заголовок-переключатель (всегда виден) */}
+                {/* Кнопка-переключатель */}
                 <button
-                  className={`w-full flex items-center text-xs font-semibold py-2.5 gap-2 ${ordersListOpen ? "justify-between px-3" : "justify-center px-0 sm:flex-col sm:py-3"}`}
+                  className="w-full h-10 flex items-center justify-center transition hover:bg-white/5"
                   style={{ borderBottom: `1px solid ${t.border}`, color: t.textMute }}
-                  onClick={() => setOrdersListOpen(v => !v)}>
-                  <span className={`flex items-center gap-1.5 truncate ${!ordersListOpen ? "hidden sm:hidden" : ""}`}>
-                    <Icon name="ClipboardList" size={12} />
-                    {orderData ? (STATUS_LABELS[orderData.status] || orderData.status) + (orderData.address ? ` — ${orderData.address}` : "") : "Заявки"}
-                  </span>
-                  {!ordersListOpen && <span className="text-[10px] hidden">Заявки</span>}
-                  <Icon name={ordersListOpen ? "ChevronUp" : "ChevronDown"} size={13} className="flex-shrink-0 sm:hidden" />
-                  <Icon name={ordersListOpen ? "ChevronLeft" : "ChevronRight"} size={13} className="flex-shrink-0 hidden sm:block" />
+                  onClick={() => setOrdersListOpen(v => !v)}
+                  title={ordersListOpen ? "Свернуть список" : "Развернуть список заявок"}>
+                  <Icon name={ordersListOpen ? "ChevronLeft" : "ChevronRight"} size={14} />
                 </button>
 
                 {/* Список — виден только когда открыт */}
-                <div className={`${ordersListOpen ? "flex" : "hidden"} flex-col
-                                overflow-y-auto
-                                gap-2 p-2 sm:p-3`}
+                <div className={`${ordersListOpen ? "flex" : "hidden"} flex-col overflow-y-auto gap-2 p-2 sm:p-3`}
                   style={{ borderColor: t.border }}>
                   {allClientOrders.length === 0 && (
                     <div className="py-4 text-center text-xs w-full" style={{ color: t.textMute }}>Нет заявок</div>
