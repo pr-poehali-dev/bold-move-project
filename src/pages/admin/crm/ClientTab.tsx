@@ -29,8 +29,41 @@ export default function ClientTab({ data, save }: Props) {
   const [editingFieldId, setEditingFieldId] = useState<string | null>(null);
   const editFieldRef = useRef<string>("");
 
-  const visibleFields = fields.filter(f => !f.hidden);
+  // ── Drag state ──────────────────────────────────────────────────────────
+  const dragId   = useRef<string | null>(null);
+  const [dragOver, setDragOver] = useState<string | null>(null);
 
+  const visibleFields = fields.filter(f => !f.hidden);
+  const hiddenFields  = fields.filter(f => f.hidden);
+
+  // ── Drag handlers ───────────────────────────────────────────────────────
+  const onDragStart = (id: string) => { dragId.current = id; };
+
+  const onDragOver = (e: React.DragEvent, id: string) => {
+    e.preventDefault();
+    if (dragId.current !== id) setDragOver(id);
+  };
+
+  const onDrop = (targetId: string) => {
+    const fromId = dragId.current;
+    if (!fromId || fromId === targetId) { setDragOver(null); return; }
+
+    const fromIdx  = fields.findIndex(f => f.id === fromId);
+    const toIdx    = fields.findIndex(f => f.id === targetId);
+    if (fromIdx === -1 || toIdx === -1) { setDragOver(null); return; }
+
+    const next = [...fields];
+    const [moved] = next.splice(fromIdx, 1);
+    next.splice(toIdx, 0, moved);
+    setFields(next);
+    saveClientFields(next);
+    dragId.current = null;
+    setDragOver(null);
+  };
+
+  const onDragEnd = () => { dragId.current = null; setDragOver(null); };
+
+  // ── Field ops ───────────────────────────────────────────────────────────
   const setExtraValue = (fieldId: string, value: string) => {
     const updated = { ...extraValues, [fieldId]: value };
     setExtraValues(updated);
@@ -59,95 +92,77 @@ export default function ClientTab({ data, save }: Props) {
     saveClientFields(updated);
   };
 
-  const deleteField = (id: string) => {
-    const updated = fields.filter(f => f.id !== id);
-    setFields(updated);
-    saveClientFields(updated);
-    const { [id]: _, ...rest } = extraValues;
-    setExtraValues(rest);
-    saveClientExtraValues(data.id, rest);
-  };
-
   const renameField = (id: string, newLabel: string) => {
     const updated = fields.map(f => f.id === id ? { ...f, label: newLabel } : f);
     setFields(updated);
     saveClientFields(updated);
   };
 
-  // Сохранение встроенного поля → в БД через save()
   const saveBuiltin = (clientKey: string, value: string) => {
     save({ [clientKey]: value } as Partial<Client>);
   };
 
-  const getBuiltinValue = (clientKey: string): string => {
-    return (data[clientKey as keyof Client] as string) || "";
-  };
-
-  const hiddenFields = fields.filter(f => f.hidden);
+  const getBuiltinValue = (clientKey: string): string =>
+    (data[clientKey as keyof Client] as string) || "";
 
   // ── Метки ───────────────────────────────────────────────────────────────
-  const [customTags, setCustomTags]     = useState<CustomTag[]>(loadCustomTags);
+  const [customTags, setCustomTags]       = useState<CustomTag[]>(loadCustomTags);
   const [hiddenBuiltin, setHiddenBuiltin] = useState<Set<string>>(loadHiddenBuiltinTags);
-  const [editTagsMode, setEditTagsMode] = useState(false);
-  const [newTagLabel, setNewTagLabel]   = useState("");
-  const [newTagColor, setNewTagColor]   = useState(PRESET_TAG_COLORS[0]);
-  const [editingTagId, setEditingTagId] = useState<string | null>(null);
+  const [editTagsMode, setEditTagsMode]   = useState(false);
+  const [newTagLabel, setNewTagLabel]     = useState("");
+  const [newTagColor, setNewTagColor]     = useState(PRESET_TAG_COLORS[0]);
+  const [editingTagId, setEditingTagId]   = useState<string | null>(null);
   const editTagRef = useRef<string>("");
 
-  // Все видимые метки
-  const builtinTags = DEFAULT_TAGS.filter(t => !hiddenBuiltin.has(t.label))
-    .map(t => ({ id: t.label, label: t.label, color: t.color, builtin: true as const }));
-  const customTagsMapped = customTags.map(t => ({ ...t, builtin: false as const }));
+  const builtinTags = DEFAULT_TAGS.filter(tg => !hiddenBuiltin.has(tg.label))
+    .map(tg => ({ id: tg.label, label: tg.label, color: tg.color, builtin: true as const }));
+  const customTagsMapped = customTags.map(tg => ({ ...tg, builtin: false as const }));
   const allVisibleTags = [...builtinTags, ...customTagsMapped];
 
   const toggleTag = (label: string) => {
     if (editTagsMode) return;
     const cur = data.tags || [];
-    const next = cur.includes(label) ? cur.filter(l => l !== label) : [...cur, label];
-    save({ tags: next });
+    save({ tags: cur.includes(label) ? cur.filter(l => l !== label) : [...cur, label] });
   };
 
   const hideBuiltinTag = (label: string) => {
     const next = new Set(hiddenBuiltin).add(label);
     setHiddenBuiltin(next);
     saveHiddenBuiltinTags(next);
-    if ((data.tags || []).includes(label)) {
+    if ((data.tags || []).includes(label))
       save({ tags: (data.tags || []).filter(l => l !== label) });
-    }
   };
 
   const addCustomTag = () => {
     const label = newTagLabel.trim();
     if (!label) return;
-    const newTag: CustomTag = { id: `tag_${Date.now()}`, label, color: newTagColor };
-    const updated = [...customTags, newTag];
+    const tag: CustomTag = { id: `tag_${Date.now()}`, label, color: newTagColor };
+    const updated = [...customTags, tag];
     setCustomTags(updated);
     saveCustomTags(updated);
     setNewTagLabel("");
   };
 
   const deleteCustomTag = (id: string) => {
-    const tag = customTags.find(t => t.id === id);
-    const updated = customTags.filter(t => t.id !== id);
+    const tag = customTags.find(tg => tg.id === id);
+    const updated = customTags.filter(tg => tg.id !== id);
     setCustomTags(updated);
     saveCustomTags(updated);
-    if (tag && (data.tags || []).includes(tag.label)) {
+    if (tag && (data.tags || []).includes(tag.label))
       save({ tags: (data.tags || []).filter(l => l !== tag.label) });
-    }
   };
 
   const renameCustomTag = (id: string, newLabel: string) => {
-    const tag = customTags.find(t => t.id === id);
-    const updated = customTags.map(t => t.id === id ? { ...t, label: newLabel } : t);
+    const tag = customTags.find(tg => tg.id === id);
+    const updated = customTags.map(tg => tg.id === id ? { ...tg, label: newLabel } : tg);
     setCustomTags(updated);
     saveCustomTags(updated);
-    if (tag && (data.tags || []).includes(tag.label)) {
+    if (tag && (data.tags || []).includes(tag.label))
       save({ tags: (data.tags || []).map(l => l === tag.label ? newLabel : l) });
-    }
   };
 
   const changeTagColor = (id: string, color: string) => {
-    const updated = customTags.map(t => t.id === id ? { ...t, color } : t);
+    const updated = customTags.map(tg => tg.id === id ? { ...tg, color } : tg);
     setCustomTags(updated);
     saveCustomTags(updated);
   };
@@ -157,41 +172,65 @@ export default function ClientTab({ data, save }: Props) {
 
       {/* ── Поля (встроенные + кастомные) ─────────────────────────────── */}
       {visibleFields.map(field => {
-        const isEditing = editMode && editingFieldId === field.id;
-        const isBuiltin = !!field.builtin;
+        const isEditing  = editMode && editingFieldId === field.id;
+        const isBuiltin  = !!field.builtin;
+        const isDragOver = dragOver === field.id;
 
         return (
-          <div key={field.id}>
+          <div
+            key={field.id}
+            draggable={editMode}
+            onDragStart={() => onDragStart(field.id)}
+            onDragOver={e => onDragOver(e, field.id)}
+            onDrop={() => onDrop(field.id)}
+            onDragEnd={onDragEnd}
+            style={{
+              borderRadius: 12,
+              transition: "box-shadow 0.15s, transform 0.15s",
+              boxShadow: isDragOver ? `0 0 0 2px #7c3aed` : "none",
+              transform: isDragOver ? "scale(1.01)" : "scale(1)",
+              cursor: editMode ? "grab" : "default",
+              padding: editMode ? "6px 8px" : "0",
+              background: editMode ? `${t.surface2}88` : "transparent",
+            }}>
+
             {/* Лейбл */}
-            {isEditing ? (
-              <div className="flex gap-2 mb-1.5 items-center">
+            <label className="text-xs font-medium mb-1.5 flex items-center gap-1.5" style={{ color: t.textMute }}>
+              {editMode && (
+                <span style={{ color: "#4b5563", cursor: "grab", lineHeight: 1 }}>
+                  <Icon name="GripVertical" size={13} />
+                </span>
+              )}
+
+              {isEditing ? (
                 <input
                   autoFocus
                   defaultValue={field.label}
                   onChange={e => { editFieldRef.current = e.target.value; }}
                   onBlur={() => { renameField(field.id, editFieldRef.current || field.label); setEditingFieldId(null); }}
                   onKeyDown={e => { if (e.key === "Enter") { renameField(field.id, editFieldRef.current || field.label); setEditingFieldId(null); } }}
-                  className="flex-1 rounded-lg px-2.5 py-1 text-xs focus:outline-none"
+                  className="flex-1 rounded-lg px-2.5 py-0.5 text-xs focus:outline-none"
                   style={{ background: t.surface2, border: `1px solid #7c3aed`, color: t.text }}
+                  onClick={e => e.stopPropagation()}
+                  onMouseDown={e => e.stopPropagation()}
                 />
-              </div>
-            ) : (
-              <label className="text-xs font-medium mb-1.5 flex items-center gap-1.5" style={{ color: t.textMute }}>
-                {field.label}
-                {editMode && (
-                  <>
-                    <button onClick={() => { editFieldRef.current = field.label; setEditingFieldId(field.id); }}
-                      className="p-0.5 rounded hover:bg-white/5 transition" style={{ color: "#7c3aed" }}>
-                      <Icon name="Pencil" size={11} />
-                    </button>
-                    <button onClick={() => hideField(field.id)}
-                      className="p-0.5 rounded hover:bg-red-500/10 transition" style={{ color: "#ef4444" }}>
-                      <Icon name="Trash2" size={11} />
-                    </button>
-                  </>
-                )}
-              </label>
-            )}
+              ) : (
+                <span className="flex-1">{field.label}</span>
+              )}
+
+              {editMode && !isEditing && (
+                <>
+                  <button onClick={() => { editFieldRef.current = field.label; setEditingFieldId(field.id); }}
+                    className="p-0.5 rounded hover:bg-white/5 transition" style={{ color: "#7c3aed" }}>
+                    <Icon name="Pencil" size={11} />
+                  </button>
+                  <button onClick={() => hideField(field.id)}
+                    className="p-0.5 rounded hover:bg-red-500/10 transition" style={{ color: "#ef4444" }}>
+                    <Icon name="Trash2" size={11} />
+                  </button>
+                </>
+              )}
+            </label>
 
             {/* Инпут */}
             {isBuiltin && field.clientKey === "notes" ? (
@@ -203,6 +242,7 @@ export default function ClientTab({ data, save }: Props) {
                 className="w-full rounded-xl px-4 py-2.5 text-sm focus:outline-none transition resize-none"
                 style={{ background: t.surface2, border: `1px solid ${t.border}`, color: t.text }}
                 placeholder="Комментарий..."
+                onMouseDown={e => e.stopPropagation()}
               />
             ) : isBuiltin && field.clientKey ? (
               <input
@@ -212,6 +252,7 @@ export default function ClientTab({ data, save }: Props) {
                 className="w-full rounded-xl px-4 py-2.5 text-sm focus:outline-none transition"
                 style={{ background: t.surface2, border: `1px solid ${t.border}`, color: t.text }}
                 placeholder={field.label}
+                onMouseDown={e => e.stopPropagation()}
               />
             ) : (
               <input
@@ -220,13 +261,14 @@ export default function ClientTab({ data, save }: Props) {
                 className="w-full rounded-xl px-4 py-2.5 text-sm focus:outline-none transition"
                 style={{ background: t.surface2, border: `1px solid ${t.border}`, color: t.text }}
                 placeholder={field.label}
+                onMouseDown={e => e.stopPropagation()}
               />
             )}
           </div>
         );
       })}
 
-      {/* ── Скрытые поля (показываем в режиме редактирования) ─────────── */}
+      {/* ── Скрытые поля (режим редактирования) ───────────────────────── */}
       {editMode && hiddenFields.length > 0 && (
         <div className="rounded-xl p-3 space-y-2" style={{ background: t.surface2, border: `1px solid ${t.border}` }}>
           <div className="text-[10px] font-medium uppercase tracking-wider mb-2" style={{ color: t.textMute }}>Скрытые поля</div>
@@ -263,7 +305,7 @@ export default function ClientTab({ data, save }: Props) {
           </div>
         )}
         <button
-          onClick={() => { setEditMode(v => !v); setEditingFieldId(null); }}
+          onClick={() => { setEditMode(v => !v); setEditingFieldId(null); setDragOver(null); }}
           className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium transition"
           style={{
             background: editMode ? "#7c3aed20" : t.surface2,
@@ -294,10 +336,9 @@ export default function ClientTab({ data, save }: Props) {
           </button>
         </div>
 
-        {/* Видимые метки */}
         <div className="flex flex-wrap gap-2">
           {allVisibleTags.map(tag => {
-            const active = (data.tags || []).includes(tag.label);
+            const active       = (data.tags || []).includes(tag.label);
             const isEditingThis = editTagsMode && !tag.builtin && editingTagId === tag.id;
 
             return (
@@ -355,11 +396,10 @@ export default function ClientTab({ data, save }: Props) {
             );
           })}
 
-          {/* Восстановить скрытые встроенные метки */}
           {editTagsMode && hiddenBuiltin.size > 0 && (
             <div className="w-full mt-2 flex flex-wrap gap-2">
               <span className="text-[10px] w-full" style={{ color: t.textMute }}>Скрытые встроенные:</span>
-              {DEFAULT_TAGS.filter(t => hiddenBuiltin.has(t.label)).map(tag => (
+              {DEFAULT_TAGS.filter(tg => hiddenBuiltin.has(tg.label)).map(tag => (
                 <button key={tag.label}
                   onClick={() => { const next = new Set(hiddenBuiltin); next.delete(tag.label); setHiddenBuiltin(next); saveHiddenBuiltinTags(next); }}
                   className="px-2.5 py-0.5 rounded-lg text-[10px] font-semibold transition opacity-50 hover:opacity-100"
@@ -371,7 +411,6 @@ export default function ClientTab({ data, save }: Props) {
           )}
         </div>
 
-        {/* Добавить новую метку */}
         {editTagsMode && (
           <div className="flex items-center gap-1.5 mt-3 w-full">
             <input
