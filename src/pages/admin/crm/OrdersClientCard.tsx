@@ -84,8 +84,18 @@ export function OrdersClientCard({ c, onClick, onNextStep }: {
               {localStorage.getItem(`order_title_${c.id}`) || `Заявка №${c.id}`}
             </span>
             <div className="space-y-0.5 mt-1">
-              {c.client_name && <div className="text-xs truncate" style={{ color: t.textMute }}>👤 {c.client_name}</div>}
-              {c.phone && <div className="text-xs truncate" style={{ color: t.textMute }}>📞 {c.phone}</div>}
+              {c.client_name && (
+                <div className="flex items-center gap-1 text-xs" style={{ color: t.textMute }}>
+                  <Icon name="User" size={9} style={{ color: t.textMute, flexShrink: 0 }} />
+                  <span className="truncate">{c.client_name}</span>
+                </div>
+              )}
+              {c.phone && (
+                <div className="flex items-center gap-1 text-xs" style={{ color: t.textMute }}>
+                  <Icon name="Phone" size={9} style={{ color: t.textMute, flexShrink: 0 }} />
+                  <span className="truncate">{c.phone}</span>
+                </div>
+              )}
             </div>
             {isInstall
               ? <InstallProgress status={c.status} />

@@ -92,19 +92,19 @@ export default function KanbanCard({ client, colColor, onOpen, onNextStep, dragg
         <div className="space-y-0.5 mb-1">
           {client.client_name && (
             <div className="flex items-center gap-1 text-[10px]" style={{ color: t.textMute }}>
-              <Icon name="User" size={9} className="flex-shrink-0" style={{ color: "#8b5cf6" }} />
+              <Icon name="User" size={9} className="flex-shrink-0" style={{ color: t.textMute }} />
               <span className="truncate">{client.client_name}</span>
             </div>
           )}
           {client.phone && (
             <div className="flex items-center gap-1 text-[10px]" style={{ color: t.textMute }}>
-              <Icon name="Phone" size={9} className="flex-shrink-0" style={{ color: "#10b981" }} />
+              <Icon name="Phone" size={9} className="flex-shrink-0" style={{ color: t.textMute }} />
               <span className="truncate">{client.phone}</span>
             </div>
           )}
           {(client.address || client.area) && (
             <div className="flex items-center gap-1 text-[10px]" style={{ color: t.textMute }}>
-              <Icon name="MapPin" size={9} className="flex-shrink-0" style={{ color: "#f59e0b" }} />
+              <Icon name="MapPin" size={9} className="flex-shrink-0" style={{ color: t.textMute }} />
               {client.address && <span className="truncate flex-1">{client.address}</span>}
               {client.area && <span className="flex-shrink-0 font-medium">{client.area} м²</span>}
             </div>
