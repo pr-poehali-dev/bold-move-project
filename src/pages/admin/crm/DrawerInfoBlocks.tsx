@@ -4,7 +4,7 @@ import { Client } from "./crmApi";
 import { InlineField, Section } from "./drawerComponents";
 import { BlockId } from "./drawerTypes";
 import { RowWithToggle } from "./DrawerFinRowHelpers";
-import { loadClientFields, saveClientFields, loadClientExtraValues, saveClientExtraValues } from "./clientFieldsStore";
+import { loadClientFields, saveClientFields, loadClientExtraValues, saveClientExtraValues, type CustomClientField } from "./clientFieldsStore";
 
 interface ExtraRow { label: string; value: string; }
 
@@ -114,6 +114,13 @@ export function DrawerContactsBlock({ data, hiddenBlocks, editingBlock, toggleHi
     saveClientExtraValues(data.id, updated);
   };
 
+  const addCustomField = (label: string) => {
+    const newField: CustomClientField = { id: `field_${Date.now()}`, label };
+    const updated = [...fields, newField];
+    setFields(updated);
+    saveClientFields(updated);
+  };
+
   return (
     <Section icon="Phone" title="Контакты" color="#10b981" hidden={isHidden}
       onToggleHidden={() => toggleHidden(id)}
@@ -164,6 +171,7 @@ export function DrawerContactsBlock({ data, hiddenBlocks, editingBlock, toggleHi
           </RowWithToggle>
         );
       })}
+      {editMode && <AddRowInline color="#10b981" onAdd={addCustomField} />}
     </Section>
   );
 }
