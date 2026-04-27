@@ -141,7 +141,7 @@ export default function TabPrices({ token, onItemAdded }: Props) {
                       <EditableCell value={item.price} type="number" onSave={v => saveField(item, "price", v)} className="text-right" />
                     </td>
                     <td className="px-4 py-2.5 text-right font-mono text-blue-400">
-                      <EditableCell value={item.purchase_price ?? 0} type="number" onSave={v => saveField(item, "purchase_price", v)} className="text-right" />
+                      <EditableCell value={item.purchase_price ?? ""} type="number" onSave={v => saveField(item, "purchase_price", v)} className="text-right" placeholder="—" />
                     </td>
                     <td className="px-4 py-2.5 text-white/50">
                       <select value={item.unit} onChange={e => saveField(item, "unit", e.target.value)}
