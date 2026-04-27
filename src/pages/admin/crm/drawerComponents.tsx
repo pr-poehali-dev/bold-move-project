@@ -28,7 +28,10 @@ export function InlineField({ label, value, onSave, type = "text", placeholder =
   };
 
   const startEdit = () => {
-    valRef.current = String(value ?? "");
+    const v = (type === "number" && value != null && value !== "")
+      ? String(Math.round(Number(value)))
+      : String(value ?? "");
+    valRef.current = v;
     setEditing(true);
   };
 
@@ -44,7 +47,7 @@ export function InlineField({ label, value, onSave, type = "text", placeholder =
       {editing ? (
         <input
           type={type}
-          defaultValue={String(value ?? "")}
+          defaultValue={type === "number" && value != null ? String(Math.round(Number(value))) : String(value ?? "")}
           autoFocus
           onChange={e => { valRef.current = e.target.value; }}
           onBlur={commit}
