@@ -487,21 +487,21 @@ export default function EstimateTable({ text, items, onSaveRequest }: {
                     <div className="w-14 h-14 rounded-2xl bg-orange-500/15 flex items-center justify-center mb-3">
                       <Icon name="ClipboardList" size={26} className="text-orange-400" />
                     </div>
-                    <div className="text-white font-bold text-base mb-1">Заявка создана!</div>
+                    <div className="text-white font-bold text-base mb-1">Заполни карточку заказа</div>
                     <div className="text-white/40 text-sm leading-relaxed">
-                      Укажите контактные данные — запишем на замер и уточним детали
+                      Укажите данные клиента — запишем на замер и уточним детали
                     </div>
                   </div>
                   <div className="space-y-3">
                     <div>
-                      <label className="text-xs text-white/40 mb-1 block">Ваше имя</label>
+                      <label className="text-xs text-white/40 mb-1 block">Имя клиента</label>
                       <input value={contactName} onChange={e => setContactName(e.target.value)}
                         placeholder="Иван Иванов"
                         className="w-full rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none"
                         style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(249,115,22,0.25)" }} />
                     </div>
                     <div>
-                      <label className="text-xs text-white/40 mb-1 block">Номер телефона</label>
+                      <label className="text-xs text-white/40 mb-1 block">Телефон клиента</label>
                       <input value={contactPhone} onChange={e => setContactPhone(e.target.value)}
                         placeholder="+7 (900) 000-00-00" type="tel"
                         className="w-full rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none"
