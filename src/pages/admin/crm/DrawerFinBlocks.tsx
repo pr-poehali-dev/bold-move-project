@@ -77,7 +77,11 @@ function AutoRulesModal({ onClose }: { onClose: () => void }) {
   const deleteCustom = (id: string) =>
     setRules(r => ({ ...r, custom: (r.custom || []).filter(c => c.id !== id) }));
 
-  const allRules = [
+  interface BuiltinRule {
+    label: string; pct: number | null; enabled: boolean; color: string; icon: string;
+    setPct: (v: number | null) => void; setEnabled: (v: boolean) => void;
+  }
+  const allRules: BuiltinRule[] = [
     { label: "Замер", pct: rules.measure_pct, enabled: rules.measure_enabled ?? true, color: "#f59e0b", icon: "Ruler",
       setPct: (v: number | null) => setRules(r => ({ ...r, measure_pct: v })),
       setEnabled: (v: boolean) => setRules(r => ({ ...r, measure_enabled: v })) },
