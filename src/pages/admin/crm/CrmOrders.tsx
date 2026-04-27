@@ -307,7 +307,7 @@ export default function CrmOrders({ clients: allClients, loading, onStatusChange
                   {currentClients.length === 0 && <div className="py-12 text-sm text-center" style={{ color: t.textMute }}>Нет активных монтажей</div>}
                 </div>
               ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3">
                   {filterSearch(currentClients).map(renderCard)}
                   {currentClients.length === 0 && (
                     <div className="col-span-3 flex flex-col items-center justify-center py-12" style={{ color: t.textMute }}>
@@ -340,7 +340,7 @@ export default function CrmOrders({ clients: allClients, loading, onStatusChange
                           : items.map(renderRow)}
                       </div>
                     ) : (
-                      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3">
                         {items.length === 0
                           ? <div className="col-span-3 py-4 text-sm text-center" style={{ color: t.textMute }}>Нет записей</div>
                           : items.map(renderCard)}
@@ -361,7 +361,7 @@ export default function CrmOrders({ clients: allClients, loading, onStatusChange
               )}
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3">
               {filterSearch(currentClients).map(renderCard)}
               {currentClients.length === 0 && (
                 <div className="col-span-3 flex flex-col items-center justify-center py-12" style={{ color: t.textMute }}>
