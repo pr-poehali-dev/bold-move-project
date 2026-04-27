@@ -366,7 +366,7 @@ export function DrawerCostsBlock({
 
         {/* Кнопки авто-расчёта */}
         {!isHidden && (
-          <div className="flex items-center gap-1.5 pt-2 pb-1">
+          <div className="flex items-center gap-1.5 pt-2 pb-1 w-full">
             <button
               onClick={applyAuto}
               disabled={!hasRules || !contractSum}
@@ -383,17 +383,17 @@ export function DrawerCostsBlock({
               style={{ color: "#6b7280" }}>
               <Icon name="Settings2" size={13} />
             </button>
-            {/* Индикатор авто-режима */}
+            {!hasRules && (
+              <span className="text-[10px]" style={{ color: "#6b7280" }}>Настройте правило →</span>
+            )}
+            {/* Индикатор авто-режима — правый край */}
             {hasRules && loadAutoMode() && (
-              <div className="flex items-center gap-1 px-2 py-0.5 rounded-full"
+              <div className="flex items-center gap-1 px-2 py-0.5 rounded-full ml-auto"
                 style={{ background: "#ef444418", border: "1px solid #ef444435" }}
                 title="Авто-режим включён — затраты пересчитываются при изменении суммы">
                 <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: "#ef4444" }} />
                 <span className="text-[10px] font-medium" style={{ color: "#ef4444" }}>авто</span>
               </div>
-            )}
-            {!hasRules && (
-              <span className="text-[10px]" style={{ color: "#6b7280" }}>Настройте правило →</span>
             )}
           </div>
         )}
