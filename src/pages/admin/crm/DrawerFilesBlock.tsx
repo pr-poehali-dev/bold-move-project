@@ -108,33 +108,47 @@ export function DrawerFilesBlock({ clientId, hiddenBlocks, toggleHidden, logActi
 
   const [copied, setCopied] = useState<string | null>(null);
 
-  const doShare = async (text: string, title: string) => {
-    // navigator.share — штатный системный шаринг (Android/iOS)
+  // ВАЖНО: navigator.share на iOS/Android требует вызова строго в обработчике клика
+  // без async/await — иначе браузер блокирует как "не из жеста пользователя"
+  const doShare = (text: string, title: string) => {
     if (navigator.share) {
-      try {
-        await navigator.share({ title, text });
-        return;
-      } catch (e) {
-        // Пользователь отменил — не показываем fallback
-        if (e instanceof Error && e.name === "AbortError") return;
-        // Другая ошибка (iframe, desktop без поддержки) — падаем на буфер
-      }
+      // Синхронно вызываем share — промис игнорируем только для AbortError
+      navigator.share({ title, text }).catch(e => {
+        if (e instanceof Error && e.name === "AbortError") return; // пользователь отменил
+        // Иначе — копируем в буфер как fallback
+        copyFallback(text, title);
+      });
+    } else {
+      copyFallback(text, title);
     }
-    // Fallback — копирование в буфер
-    try {
-      await navigator.clipboard.writeText(text);
-    } catch {
-      const el = document.createElement("textarea");
-      el.value = text;
-      document.body.appendChild(el);
-      el.select();
-      document.execCommand("copy");
-      document.body.removeChild(el);
-    }
-    setCopied(title);
-    setTimeout(() => setCopied(null), 2000);
   };
 
+  const copyFallback = (text: string, title: string) => {
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(text).then(() => {
+        setCopied(title);
+        setTimeout(() => setCopied(null), 2500);
+      }).catch(() => execCopy(text, title));
+    } else {
+      execCopy(text, title);
+    }
+  };
+
+  const execCopy = (text: string, title: string) => {
+    const el = document.createElement("textarea");
+    el.value = text;
+    el.style.position = "fixed";
+    el.style.opacity = "0";
+    document.body.appendChild(el);
+    el.focus();
+    el.select();
+    document.execCommand("copy");
+    document.body.removeChild(el);
+    setCopied(title);
+    setTimeout(() => setCopied(null), 2500);
+  };
+
+  // Поделиться файлами категории — все ссылки одним сообщением
   const shareFiles = (files: FileEntry[], title: string) => {
     doShare(files.map(f => f.url).join("\n"), title);
   };
@@ -231,6 +245,7 @@ export function DrawerFilesBlock({ clientId, hiddenBlocks, toggleHidden, logActi
               <input
                 ref={el => { inputRefs.current[catIdx] = el; }}
                 type="file" multiple className="hidden"
+                accept="image/*,application/pdf,.doc,.docx,.xls,.xlsx,.txt"
                 onChange={e => handleUpload(catIdx, e)}
               />
 
@@ -256,12 +271,6 @@ export function DrawerFilesBlock({ clientId, hiddenBlocks, toggleHidden, logActi
                           style={{ border: `1px solid ${t.border}` }}>
                           <img src={f.url} alt={f.name} className="w-full h-full object-cover" />
                         </button>
-                        {/* Share фото */}
-                        <button onClick={() => shareFiles([f], f.name)}
-                          className="absolute bottom-0 left-0 w-5 h-5 rounded-tr-lg bg-black/50 flex items-center justify-center hover:bg-black/70 transition"
-                          title="Поделиться">
-                          <Icon name="Share2" size={9} className="text-white" />
-                        </button>
                         {editMode && (
                           <button onClick={() => deleteFile(catIdx, cat.files.indexOf(f))}
                             className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-red-500 flex items-center justify-center hover:bg-red-600 transition">
@@ -282,11 +291,6 @@ export function DrawerFilesBlock({ clientId, hiddenBlocks, toggleHidden, logActi
                       onClick={() => window.open(f.url, "_blank")}>
                       {f.name}
                     </span>
-                    <button onClick={() => shareFiles([f], f.name)}
-                      className="p-0.5 rounded hover:bg-white/10 flex-shrink-0 opacity-0 group-hover/doc:opacity-100 transition"
-                      title="Поделиться" style={{ color: "#a3a3a3" }}>
-                      <Icon name="Share2" size={10} />
-                    </button>
                     {editMode && (
                       <button onClick={() => deleteFile(catIdx, cat.files.indexOf(f))}
                         className="p-0.5 rounded hover:text-red-400 flex-shrink-0" style={{ color: "#ef4444" }}>
