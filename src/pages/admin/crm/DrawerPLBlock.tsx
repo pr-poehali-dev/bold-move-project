@@ -61,31 +61,11 @@ export function DrawerPLBlock({ data, isHidden, toggleHidden, customFinRows }: {
       {!isHidden && (
         <div style={{ background: "linear-gradient(135deg,#7c3aed08,#10b98108)" }}>
 
-          {/* Сетка: на мобиле — Прибыль сверху, затем Затраты|Доходы рядом; на ≥640px — три колонки */}
-          <div className="flex flex-col sm:grid sm:grid-cols-[1fr_auto_1fr]">
-
-            {/* ПРИБЫЛЬ — на мобиле сверху */}
-            <div className="flex sm:hidden items-center justify-between px-4 py-3"
-              style={{ borderBottom: `1px solid ${t.border2}` }}>
-              <span className="text-xs font-semibold" style={{ color: "#a3a3a3" }}>Прибыль</span>
-              <div className="flex items-center gap-2">
-                <span className={`text-xl font-black ${plProfit >= 0 ? "text-emerald-400" : "text-red-400"}`}>
-                  {plProfit >= 0 ? "+" : ""}{fmt(plProfit)} ₽
-                </span>
-                {plIncome > 0 && plCosts > 0 && (
-                  <span className="text-[10px] px-2 py-0.5 rounded-md"
-                    style={{ background: plProfit >= 0 ? "#10b98120" : "#ef444420", color: plProfit >= 0 ? "#10b981" : "#ef4444" }}>
-                    {plIncome > 0 ? Math.round((plProfit / plIncome) * 100) : 0}%
-                  </span>
-                )}
-              </div>
-            </div>
-
-            {/* Затраты + Доходы рядом на мобиле */}
-            <div className="flex sm:contents">
+          {/* Три равные колонки: Затраты | Доходы | Прибыль */}
+          <div className="grid grid-cols-3">
 
             {/* ЗАТРАТЫ */}
-            <div className="flex-1 px-3 sm:px-5 py-3" style={{ borderRight: `1px solid ${t.border2}` }}>
+            <div className="px-4 py-3" style={{ borderRight: `1px solid ${t.border2}` }}>
               <div className="text-[9px] uppercase tracking-wider font-semibold mb-2 flex items-center gap-1"
                 style={{ color: "#ef4444" }}>
                 <Icon name="ArrowDownRight" size={10} style={{ color: "#ef4444" }} /> Затраты
@@ -95,13 +75,13 @@ export function DrawerPLBlock({ data, isHidden, toggleHidden, customFinRows }: {
               ) : (
                 <div className="space-y-1.5">
                   {costRows.map(r => (
-                    <div key={r.label} className="flex items-center justify-between gap-3">
-                      <span className="text-xs" style={{ color: "#a3a3a3" }}>{r.label}</span>
+                    <div key={r.label} className="flex items-center justify-between gap-2">
+                      <span className="text-xs truncate" style={{ color: "#a3a3a3" }}>{r.label}</span>
                       <span className="text-xs font-semibold text-red-400 whitespace-nowrap">−{fmt(r.value)} ₽</span>
                     </div>
                   ))}
                   {costRows.length > 1 && (
-                    <div className="flex items-center justify-between gap-3 pt-1.5" style={{ borderTop: `1px solid ${t.border2}` }}>
+                    <div className="flex items-center justify-between gap-2 pt-1.5" style={{ borderTop: `1px solid ${t.border2}` }}>
                       <span className="text-xs font-semibold text-white">Итого</span>
                       <span className="text-sm font-bold text-red-400">−{fmt(plCosts)} ₽</span>
                     </div>
@@ -111,7 +91,7 @@ export function DrawerPLBlock({ data, isHidden, toggleHidden, customFinRows }: {
             </div>
 
             {/* ДОХОДЫ */}
-            <div className="flex-1 px-3 sm:px-5 py-3">
+            <div className="px-4 py-3" style={{ borderRight: `1px solid ${t.border2}` }}>
               <div className="text-[9px] uppercase tracking-wider font-semibold mb-2 flex items-center gap-1 justify-end"
                 style={{ color: "#10b981" }}>
                 Доходы <Icon name="ArrowUpRight" size={10} style={{ color: "#10b981" }} />
@@ -121,13 +101,13 @@ export function DrawerPLBlock({ data, isHidden, toggleHidden, customFinRows }: {
               ) : (
                 <div className="space-y-1.5">
                   {incomeRows.map(r => (
-                    <div key={r.label} className="flex items-center justify-between gap-3">
-                      <span className="text-xs" style={{ color: "#a3a3a3" }}>{r.label}</span>
+                    <div key={r.label} className="flex items-center justify-between gap-2">
+                      <span className="text-xs truncate" style={{ color: "#a3a3a3" }}>{r.label}</span>
                       <span className="text-xs font-semibold text-emerald-400 whitespace-nowrap">+{fmt(r.value)} ₽</span>
                     </div>
                   ))}
                   {incomeRows.length > 1 && (
-                    <div className="flex items-center justify-between gap-3 pt-1.5" style={{ borderTop: `1px solid ${t.border2}` }}>
+                    <div className="flex items-center justify-between gap-2 pt-1.5" style={{ borderTop: `1px solid ${t.border2}` }}>
                       <span className="text-xs font-semibold text-white">Итого</span>
                       <span className="text-sm font-bold text-emerald-400">+{fmt(plIncome)} ₽</span>
                     </div>
@@ -135,22 +115,21 @@ export function DrawerPLBlock({ data, isHidden, toggleHidden, customFinRows }: {
                 </div>
               )}
             </div>
-            </div>{/* конец flex sm:contents */}
 
-            {/* ПРИБЫЛЬ — только десктоп (по центру между колонками) */}
-            <div className="hidden sm:flex flex-col items-center justify-center px-6 py-3 text-center sm:order-2"
-              style={{ borderLeft: `1px solid ${t.border2}`, borderRight: `1px solid ${t.border2}`, minWidth: 140 }}>
+            {/* ПРИБЫЛЬ */}
+            <div className="flex flex-col items-center justify-center px-4 py-3 text-center">
               <div className="text-[9px] uppercase tracking-wider font-semibold mb-1" style={{ color: "#a3a3a3" }}>Прибыль</div>
-              <div className={`text-2xl font-black ${plProfit >= 0 ? "text-emerald-400" : "text-red-400"}`}>
+              <div className={`text-xl font-black ${plProfit >= 0 ? "text-emerald-400" : "text-red-400"}`}>
                 {plProfit >= 0 ? "+" : ""}{fmt(plProfit)} ₽
               </div>
-              {plIncome > 0 && plCosts > 0 && (
+              {plIncome > 0 && (
                 <div className="text-[10px] mt-1 px-2 py-0.5 rounded-md"
                   style={{ background: plProfit >= 0 ? "#10b98120" : "#ef444420", color: plProfit >= 0 ? "#10b981" : "#ef4444" }}>
                   {Math.round((plProfit / plIncome) * 100)}% маржа
                 </div>
               )}
             </div>
+
           </div>
         </div>
       )}
