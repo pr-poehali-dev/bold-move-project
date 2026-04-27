@@ -32,14 +32,19 @@ export function DrawerPLBlock({ data, isHidden, toggleHidden, customFinRows }: {
   ].filter(r => r.value > 0);
   const plCosts = costRows.reduce((s, r) => s + r.value, 0);
 
-  // ── ДОХОДЫ (справа) ──────────────────────────────────────────────────────────
+  // ── ДОХОДЫ (справа) — только Договор, Предоплата/Доплата = части договора ────
+  const contractSum = Number(data.contract_sum) || 0;
+  const prepayment  = Number(data.prepayment)   || 0;
+  const extraPay    = Number(data.extra_payment) || 0;
+  // Итого доход = сумма договора (Предоплата и Доплата — это уже оплаченные части, не доп.доход)
+  const plIncome = contractSum + (customIncomeRows.reduce((s, r) => s + r.value, 0));
+
   const incomeRows: { label: string; value: number }[] = [
-    { label: "Договор",    value: Number(data.contract_sum)  || 0 },
-    { label: "Предоплата", value: Number(data.prepayment)    || 0 },
-    { label: "Доплата",    value: Number(data.extra_payment) || 0 },
+    { label: "Договор",    value: contractSum },
+    ...(prepayment  ? [{ label: "Предоплата", value: prepayment }]  : []),
+    ...(extraPay    ? [{ label: "Доплата",    value: extraPay }]    : []),
     ...customIncomeRows,
   ].filter(r => r.value > 0);
-  const plIncome = incomeRows.reduce((s, r) => s + r.value, 0);
 
   const plProfit = plIncome - plCosts;
 
