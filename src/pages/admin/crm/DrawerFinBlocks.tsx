@@ -349,14 +349,19 @@ export function DrawerCostsBlock({
     prevContractSumRef.current = contractSum;
 
     if (isFirstRender) {
-      // При открытии карточки: применяем если все затраты пустые
-      const allEmpty = costRows.every(row => {
+      // При открытии карточки: применяем только для строк с правилами у которых значение пустое
+      const rulesMap = loadAutoRules();
+      const rowsWithRules = costRows.filter(row => {
+        const e = rulesMap[row.key];
+        return e && e.enabled && e.pct != null && e.pct > 0;
+      });
+      const targetRowsEmpty = rowsWithRules.every(row => {
         if (row.key === "material_cost" || row.key === "measure_cost" || row.key === "install_cost") {
           return !data[row.key as keyof Client];
         }
         return !localStorage.getItem(`fin_row_${data.id}_${row.key}`);
       });
-      if (allEmpty) applyAutoWithSum(contractSum);
+      if (rowsWithRules.length > 0 && targetRowsEmpty) applyAutoWithSum(contractSum);
     } else if (sumChanged) {
       // При изменении суммы — всегда пересчитываем
       applyAutoWithSum(contractSum);
