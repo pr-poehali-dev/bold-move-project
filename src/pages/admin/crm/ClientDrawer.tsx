@@ -76,8 +76,6 @@ export default function ClientDrawer({ client, allClientOrders, onClose, onUpdat
           maxHeight: "100dvh",
         }}
         onClick={e => e.stopPropagation()}
-        // На десктопе ограничиваем высоту
-        ref={el => { if (el) { el.style.maxHeight = window.innerWidth >= 640 ? "92vh" : "100dvh"; } }}
         >
 
         {/* ── Шапка ── */}
@@ -167,11 +165,17 @@ export default function ClientDrawer({ client, allClientOrders, onClose, onUpdat
 
           {/* ЗАЯВКИ */}
           {drawerTab === "orders" && (
-            <div className="flex h-full min-h-0">
-              {/* Левая панель — список заявок */}
-              <div className="w-28 sm:w-64 flex-shrink-0 border-r overflow-y-auto py-3 px-2 sm:px-3 space-y-2" style={{ borderColor: t.border }}>
+            <div className="flex flex-col sm:flex-row h-full min-h-0">
+
+              {/* Список заявок: на мобиле — горизонтальная полоса сверху, на десктопе — вертикальная колонка слева */}
+              <div className="flex-shrink-0 sm:w-56 md:w-64
+                              flex sm:flex-col
+                              overflow-x-auto sm:overflow-x-hidden sm:overflow-y-auto
+                              gap-2 p-2 sm:p-3
+                              border-b sm:border-b-0 sm:border-r"
+                style={{ borderColor: t.border }}>
                 {allClientOrders.length === 0 && (
-                  <div className="py-8 text-center text-xs" style={{ color: t.textMute }}>Нет заявок</div>
+                  <div className="py-4 text-center text-xs w-full" style={{ color: t.textMute }}>Нет заявок</div>
                 )}
                 {[...allClientOrders]
                   .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
@@ -180,34 +184,33 @@ export default function ClientDrawer({ client, allClientOrders, onClose, onUpdat
                     return (
                       <button key={order.id}
                         onClick={() => { setSelectedOrderId(order.id); setOrderData(order); setOrderInnerTab("info"); }}
-                        className="w-full text-left rounded-xl p-3 transition"
+                        className="flex-shrink-0 sm:flex-shrink text-left rounded-xl transition"
                         style={{
                           background: isActive ? "#7c3aed18" : t.surface2,
                           border: `1px solid ${isActive ? "#7c3aed60" : t.border}`,
+                          minWidth: 130,
+                          padding: "8px 10px",
                         }}>
-                        <div className="flex items-center justify-between mb-1">
-                          <span className="text-[10px] px-1.5 py-0.5 rounded font-semibold"
+                        <div className="flex items-center justify-between mb-1 gap-1">
+                          <span className="text-[10px] px-1.5 py-0.5 rounded font-semibold truncate"
                             style={{ background: STATUS_COLORS[order.status] + "20", color: STATUS_COLORS[order.status] }}>
                             {STATUS_LABELS[order.status] || order.status}
                           </span>
-                          <span className="text-[10px]" style={{ color: t.textMute }}>#{order.id}</span>
+                          <span className="text-[10px] flex-shrink-0" style={{ color: t.textMute }}>#{order.id}</span>
                         </div>
-                        <div className="text-xs truncate mb-0.5" style={{ color: t.textSub }}>{order.address || "Адрес не указан"}</div>
+                        <div className="text-xs truncate" style={{ color: t.textSub }}>{order.address || "Без адреса"}</div>
                         {order.contract_sum ? (
                           <div className="text-xs font-bold text-emerald-400">{Number(order.contract_sum).toLocaleString("ru-RU")} ₽</div>
                         ) : null}
-                        <div className="text-[10px] mt-1" style={{ color: t.textMute }}>
-                          {new Date(order.created_at).toLocaleDateString("ru-RU", { day: "numeric", month: "short", year: "numeric" })}
-                        </div>
                       </button>
                     );
                   })}
               </div>
 
-              {/* Правая панель — детали выбранной заявки */}
-              <div className="flex-1 min-w-0 flex flex-col overflow-hidden">
+              {/* Контент выбранной заявки */}
+              <div className="flex-1 min-w-0 min-h-0 flex flex-col overflow-hidden">
                 {/* Внутренние табы */}
-                <div className="flex px-4 gap-1 pt-2 flex-shrink-0" style={{ borderBottom: `1px solid ${t.border}` }}>
+                <div className="flex px-3 sm:px-4 gap-1 pt-2 flex-shrink-0" style={{ borderBottom: `1px solid ${t.border}` }}>
                   {([
                     { id: "info" as const,     label: "Заявка",  icon: "ClipboardEdit" },
                     { id: "estimate" as const, label: "Смета",   icon: "FileSpreadsheet" },
@@ -235,7 +238,7 @@ export default function ClientDrawer({ client, allClientOrders, onClose, onUpdat
                     />
                   )}
                   {orderInnerTab === "estimate" && (
-                    <div className="px-6 py-4">
+                    <div className="px-3 sm:px-6 py-4">
                       <EstimateEditor chatId={orderData.id} clientName={orderData.client_name} clientPhone={orderData.phone} />
                     </div>
                   )}

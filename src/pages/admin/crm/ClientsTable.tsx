@@ -37,8 +37,8 @@ export function ClientsTable({
   return (
     <div className="rounded-2xl overflow-hidden" style={{ background: t.surface, border: `1px solid ${t.border}` }}>
 
-      {/* Заголовок */}
-      <div className="grid grid-cols-[40px_1fr_150px_180px_140px_140px_40px] px-4 py-3"
+      {/* ── Заголовок таблицы (только десктоп) ── */}
+      <div className="hidden md:grid grid-cols-[40px_1fr_140px_160px_120px_120px_32px] px-4 py-3"
         style={{ borderBottom: `1px solid ${t.border}`, background: t.surface2 }}>
         <div className="flex items-center justify-center">
           <Checkbox checked={allChecked} indeterminate={someChecked} onChange={onToggleAll} />
@@ -66,65 +66,84 @@ export function ClientsTable({
         const isChecked = checkedIds.has(c.id);
         return (
           <div key={c.id}
-            className="grid grid-cols-[40px_1fr_150px_180px_140px_140px_40px] px-4 py-3 cursor-pointer transition items-center group"
+            className="cursor-pointer transition"
             style={{
               borderBottom: `1px solid ${t.border2}`,
               background: isChecked ? rowChecked : "transparent",
             }}
-            onMouseEnter={e => { if (!isChecked) (e.currentTarget as HTMLDivElement).style.background = rowHover; }}
-            onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.background = isChecked ? rowChecked : "transparent"; }}
             onClick={() => onSelect(c)}>
 
-            {/* Чекбокс */}
-            <div className="flex items-center justify-center" onClick={e => e.stopPropagation()}>
-              <Checkbox checked={isChecked} onChange={() => onToggleOne(c.id)} />
+            {/* ── Десктоп: строка таблицы ── */}
+            <div className="hidden md:grid grid-cols-[40px_1fr_140px_160px_120px_120px_32px] px-4 py-3 items-center"
+              onMouseEnter={e => { if (!isChecked) (e.currentTarget as HTMLDivElement).style.background = rowHover; }}
+              onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.background = "transparent"; }}>
+
+              <div className="flex items-center justify-center" onClick={e => e.stopPropagation()}>
+                <Checkbox checked={isChecked} onChange={() => onToggleOne(c.id)} />
+              </div>
+              <div className="flex items-center gap-2.5 min-w-0">
+                <Avatar name={c.client_name} />
+                <div className="min-w-0">
+                  <div className="text-sm font-semibold truncate" style={{ color: t.text }}>{c.client_name || "—"}</div>
+                  {c.tags && c.tags.length > 0 && (
+                    <div className="flex gap-1 mt-0.5">
+                      {c.tags.slice(0, 2).map(tag => {
+                        const color = ALL_TAG_COLORS[tag] || "#888";
+                        return <span key={tag} className="text-[10px] px-1.5 py-0.5 rounded-md font-medium" style={{ background: color + "20", color }}>{tag}</span>;
+                      })}
+                    </div>
+                  )}
+                </div>
+              </div>
+              <div className="text-sm truncate font-medium" style={{ color: t.textSub }}>{c.phone || "—"}</div>
+              <div className="text-sm truncate" style={{ color: t.textMute }}>{c.address || "—"}</div>
+              <div>
+                <span className="inline-block px-2.5 py-1 rounded-lg text-xs font-semibold"
+                  style={{ background: STATUS_COLORS[c.status] + "18", color: STATUS_COLORS[c.status] }}>
+                  {STATUS_LABELS[c.status] || c.status}
+                </span>
+              </div>
+              <div className="text-xs font-medium" style={{ color: t.textMute }}>
+                {c.measure_date ? new Date(c.measure_date).toLocaleDateString("ru-RU", { day: "numeric", month: "short" }) : "—"}
+              </div>
+              <div style={{ color: t.textMute }}><Icon name="ChevronRight" size={14} /></div>
             </div>
 
-            {/* Имя + теги */}
-            <div className="flex items-center gap-2.5 min-w-0">
+            {/* ── Мобиле: карточка ── */}
+            <div className="md:hidden flex items-center gap-3 px-3 py-3">
+              <div className="flex-shrink-0" onClick={e => e.stopPropagation()}>
+                <Checkbox checked={isChecked} onChange={() => onToggleOne(c.id)} />
+              </div>
               <Avatar name={c.client_name} />
-              <div className="min-w-0">
-                <div className="text-sm font-semibold truncate" style={{ color: t.text }}>{c.client_name || "—"}</div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-sm font-semibold truncate" style={{ color: t.text }}>{c.client_name || "—"}</span>
+                  <span className="text-[10px] px-1.5 py-0.5 rounded font-semibold flex-shrink-0"
+                    style={{ background: STATUS_COLORS[c.status] + "20", color: STATUS_COLORS[c.status] }}>
+                    {STATUS_LABELS[c.status] || c.status}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2 mt-0.5">
+                  {c.phone && <span className="text-xs font-medium" style={{ color: t.textSub }}>{c.phone}</span>}
+                  {c.contract_sum ? <span className="text-xs font-bold text-emerald-400">{Number(c.contract_sum).toLocaleString("ru-RU")} ₽</span> : null}
+                </div>
+                {c.address && <div className="text-xs truncate mt-0.5" style={{ color: t.textMute }}>{c.address}</div>}
                 {c.tags && c.tags.length > 0 && (
-                  <div className="flex gap-1 mt-0.5">
-                    {c.tags.slice(0, 2).map(tag => {
+                  <div className="flex gap-1 mt-1 flex-wrap">
+                    {c.tags.slice(0, 3).map(tag => {
                       const color = ALL_TAG_COLORS[tag] || "#888";
-                      return (
-                        <span key={tag} className="text-[10px] px-1.5 py-0.5 rounded-md font-medium"
-                          style={{ background: color + "20", color }}>
-                          {tag}
-                        </span>
-                      );
+                      return <span key={tag} className="text-[10px] px-1.5 py-0.5 rounded-md font-medium" style={{ background: color + "20", color }}>{tag}</span>;
                     })}
                   </div>
                 )}
               </div>
-            </div>
-
-            <div className="text-sm truncate font-medium" style={{ color: t.textSub }}>{c.phone || "—"}</div>
-            <div className="text-sm truncate" style={{ color: t.textMute }}>{c.address || "—"}</div>
-
-            <div>
-              <span className="inline-block px-2.5 py-1 rounded-lg text-xs font-semibold"
-                style={{ background: STATUS_COLORS[c.status] + "18", color: STATUS_COLORS[c.status] }}>
-                {STATUS_LABELS[c.status] || c.status}
-              </span>
-            </div>
-
-            <div className="text-xs font-medium" style={{ color: t.textMute }}>
-              {c.measure_date
-                ? new Date(c.measure_date).toLocaleDateString("ru-RU", { day: "numeric", month: "short" })
-                : "—"}
-            </div>
-
-            <div style={{ color: t.textMute }}>
-              <Icon name="ChevronRight" size={14} />
+              <Icon name="ChevronRight" size={14} style={{ color: t.textMute, flexShrink: 0 }} />
             </div>
           </div>
         );
       })}
 
-      {/* Футер с итогами */}
+      {/* Футер */}
       {filteredClients.length > 0 && (
         <div className="px-4 py-3 flex items-center justify-between"
           style={{ borderTop: `1px solid ${t.border}`, background: t.surface2 }}>
