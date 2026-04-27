@@ -168,14 +168,17 @@ export default function ClientDrawer({ client, allClientOrders, onClose, onUpdat
           {drawerTab === "orders" && (
             <div className="flex flex-row h-full min-h-0">
 
-              {/* Список заявок — боковая панель (только desktop-стиль) */}
-              <div className={`flex-shrink-0 transition-all duration-200 border-r ${ordersListOpen ? "w-56 md:w-64" : "w-9"}`} style={{ borderColor: t.border }}>
+              {/* Список заявок — боковая панель */}
+              <div className={`flex-shrink-0 transition-all duration-200 border-r flex flex-col ${ordersListOpen ? "w-56 md:w-64" : "w-9 cursor-pointer hover:bg-white/[0.02]"}`}
+                style={{ borderColor: t.border }}
+                onClick={!ordersListOpen ? () => setOrdersListOpen(true) : undefined}
+                title={!ordersListOpen ? "Развернуть список заявок" : undefined}>
 
                 {/* Кнопка-переключатель */}
                 <button
-                  className="w-full h-10 flex items-center justify-center transition hover:bg-white/5"
+                  className="w-full h-10 flex items-center justify-center transition hover:bg-white/5 flex-shrink-0"
                   style={{ borderBottom: `1px solid ${t.border}`, color: t.textMute }}
-                  onClick={() => setOrdersListOpen(v => !v)}
+                  onClick={e => { e.stopPropagation(); setOrdersListOpen(v => !v); }}
                   title={ordersListOpen ? "Свернуть список" : "Развернуть список заявок"}>
                   <Icon name={ordersListOpen ? "ChevronLeft" : "ChevronRight"} size={14} />
                 </button>
@@ -218,13 +221,7 @@ export default function ClientDrawer({ client, allClientOrders, onClose, onUpdat
               </div>
 
               {/* Контент выбранной заявки */}
-              <div className="flex-1 min-w-0 min-h-0 flex flex-col overflow-hidden relative">
-                {/* Оверлей-триггер для открытия списка */}
-                {!ordersListOpen && (
-                  <div className="absolute inset-0 z-10 cursor-pointer"
-                    title="Развернуть список заявок"
-                    onClick={() => setOrdersListOpen(true)} />
-                )}
+              <div className="flex-1 min-w-0 min-h-0 flex flex-col overflow-hidden">
                 {/* Внутренние табы */}
                 <div className="flex px-3 sm:px-4 gap-1 pt-2 flex-shrink-0" style={{ borderBottom: `1px solid ${t.border}` }}>
                   {([
