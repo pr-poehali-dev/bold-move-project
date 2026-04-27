@@ -2,6 +2,8 @@ import { useState } from "react";
 import { useAuth, type UserRole, BUSINESS_ROLES } from "@/context/AuthContext";
 import Icon from "@/components/ui/icon";
 import TermsModal from "@/components/TermsModal";
+import PersonalDataModal from "@/components/PersonalDataModal";
+import DisclaimerModal from "@/components/DisclaimerModal";
 
 interface Props {
   onClose: () => void;
@@ -71,10 +73,14 @@ export default function AuthModal({ onClose, defaultTab = "login", onPending, on
   const [phone,    setPhone]    = useState("");
   const [email,    setEmail]    = useState("");
   const [password, setPassword] = useState("");
-  const [error,      setError]      = useState("");
-  const [loading,    setLoading]    = useState(false);
-  const [termsAccepted, setTermsAccepted] = useState(true);
-  const [showTerms,  setShowTerms]  = useState(false);
+  const [error,           setError]           = useState("");
+  const [loading,         setLoading]         = useState(false);
+  const [termsAccepted,   setTermsAccepted]   = useState(true);
+  const [pdAccepted,      setPdAccepted]      = useState(true);
+  const [disclaimerAccepted, setDisclaimerAccepted] = useState(true);
+  const [showTerms,       setShowTerms]       = useState(false);
+  const [showPd,          setShowPd]          = useState(false);
+  const [showDisclaimer,  setShowDisclaimer]  = useState(false);
 
   const selectedRole = ROLE_OPTIONS.find(r => r.value === role)!;
   const isBusiness   = BUSINESS_ROLES.includes(role);
@@ -251,47 +257,47 @@ export default function AuthModal({ onClose, defaultTab = "login", onPending, on
               </div>
             )}
 
-            {/* Чекбокс соглашения — только при регистрации */}
+            {/* Чекбоксы соглашений — только при регистрации */}
             {tab === "register" && (
-              <label className="flex items-start gap-2.5 cursor-pointer select-none">
-                <div className="relative mt-0.5 flex-shrink-0">
-                  <input
-                    type="checkbox"
-                    checked={termsAccepted}
-                    onChange={e => setTermsAccepted(e.target.checked)}
-                    className="sr-only"
-                  />
-                  <div
-                    className="w-4 h-4 rounded flex items-center justify-center transition"
-                    style={{
-                      background: termsAccepted ? selectedRole.color : "rgba(255,255,255,0.06)",
-                      border: termsAccepted ? `1.5px solid ${selectedRole.color}` : "1.5px solid rgba(255,255,255,0.15)",
-                    }}
-                    onClick={() => setTermsAccepted(v => !v)}
-                  >
-                    {termsAccepted && (
-                      <svg width="9" height="7" viewBox="0 0 9 7" fill="none">
-                        <path d="M1 3L3.5 5.5L8 1" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                      </svg>
-                    )}
-                  </div>
-                </div>
-                <span className="text-[11px] text-white/40 leading-relaxed">
-                  Я ознакомлен(а) и согласен(на) с{" "}
-                  <button
-                    type="button"
-                    onClick={() => setShowTerms(true)}
-                    className="text-blue-400 hover:text-blue-300 underline underline-offset-2 transition"
-                  >
-                    Пользовательским соглашением
-                  </button>
-                  , уведомлён(а) о том, что расчёты AI-агента носят предварительный характер, могут содержать ошибки и{" "}
-                  <strong className="text-white/55">не являются публичной офертой</strong>.
-                </span>
-              </label>
+              <div className="space-y-2.5 rounded-xl p-3"
+                style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
+                <p className="text-[10px] text-white/30 mb-1">
+                  Создавая аккаунт, вы соглашаетесь со всеми тремя документами:
+                </p>
+
+                {/* 1. Пользовательское соглашение */}
+                <Checkbox
+                  checked={termsAccepted}
+                  color={selectedRole.color}
+                  onChange={setTermsAccepted}
+                  onLinkClick={() => setShowTerms(true)}
+                  linkText="Пользовательское соглашение"
+                  suffix="— включая уведомление о том, что расчёты AI-агента носят предварительный характер и не являются публичной офертой"
+                />
+
+                {/* 2. Согласие на обработку ПД */}
+                <Checkbox
+                  checked={pdAccepted}
+                  color={selectedRole.color}
+                  onChange={setPdAccepted}
+                  onLinkClick={() => setShowPd(true)}
+                  linkText="Согласие на обработку персональных данных"
+                  suffix="(ФЗ-152)"
+                />
+
+                {/* 3. Отказ от ответственности */}
+                <Checkbox
+                  checked={disclaimerAccepted}
+                  color={selectedRole.color}
+                  onChange={setDisclaimerAccepted}
+                  onLinkClick={() => setShowDisclaimer(true)}
+                  linkText="Отказ от юридической ответственности"
+                  suffix="— вся ответственность за решения лежит на Пользователе"
+                />
+              </div>
             )}
 
-            <button type="submit" disabled={loading || !email || !password || (tab === "register" && !termsAccepted)}
+            <button type="submit" disabled={loading || !email || !password || (tab === "register" && (!termsAccepted || !pdAccepted || !disclaimerAccepted))}
               className="w-full py-3 rounded-xl text-sm font-bold text-white transition disabled:opacity-40 mt-1"
               style={{ background: loading ? "#9a3412" : (tab === "register" ? selectedRole.color : "#f97316") }}>
               {loading
@@ -314,7 +320,50 @@ export default function AuthModal({ onClose, defaultTab = "login", onPending, on
       </div>
     </div>
 
-    {showTerms && <TermsModal onClose={() => setShowTerms(false)} />}
+    {showTerms      && <TermsModal        onClose={() => setShowTerms(false)} />}
+    {showPd         && <PersonalDataModal onClose={() => setShowPd(false)} />}
+    {showDisclaimer && <DisclaimerModal   onClose={() => setShowDisclaimer(false)} />}
     </>
+  );
+}
+
+// ── Вспомогательный компонент чекбокса ──────────────────────────────────────
+function Checkbox({
+  checked, color, onChange, onLinkClick, linkText, suffix,
+}: {
+  checked: boolean;
+  color: string;
+  onChange: (v: boolean) => void;
+  onLinkClick: () => void;
+  linkText: string;
+  suffix?: string;
+}) {
+  return (
+    <label className="flex items-start gap-2.5 cursor-pointer select-none">
+      <div
+        className="w-4 h-4 rounded flex items-center justify-center flex-shrink-0 mt-0.5 transition"
+        style={{
+          background: checked ? color : "rgba(255,255,255,0.06)",
+          border: checked ? `1.5px solid ${color}` : "1.5px solid rgba(255,255,255,0.15)",
+        }}
+        onClick={() => onChange(!checked)}
+      >
+        {checked && (
+          <svg width="9" height="7" viewBox="0 0 9 7" fill="none">
+            <path d="M1 3L3.5 5.5L8 1" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+        )}
+      </div>
+      <span className="text-[11px] text-white/40 leading-relaxed">
+        <button
+          type="button"
+          onClick={onLinkClick}
+          className="text-blue-400 hover:text-blue-300 underline underline-offset-2 transition"
+        >
+          {linkText}
+        </button>
+        {suffix && <span> {suffix}</span>}
+      </span>
+    </label>
   );
 }
