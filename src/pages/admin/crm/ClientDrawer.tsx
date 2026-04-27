@@ -30,7 +30,7 @@ export default function ClientDrawer({ client, allClientOrders, onClose, onUpdat
   const [hideHidden, setHideHidden]   = useState(() => localStorage.getItem("drawer_hide_hidden") === "true");
   const [selectedOrderId, setSelectedOrderId] = useState<number>(defaultOrderId ?? client.id);
   const [orderInnerTab, setOrderInnerTab] = useState<"info" | "estimate">("info");
-  const [ordersListOpen, setOrdersListOpen] = useState(true);
+  const [ordersListOpen, setOrdersListOpen] = useState(false);
 
 
 
@@ -169,25 +169,26 @@ export default function ClientDrawer({ client, allClientOrders, onClose, onUpdat
             <div className="flex flex-col sm:flex-row h-full min-h-0">
 
               {/* Список заявок */}
-              <div className="flex-shrink-0 sm:w-56 md:w-64 sm:border-r" style={{ borderColor: t.border }}>
+              <div className={`flex-shrink-0 transition-all duration-200 ${ordersListOpen ? "w-56 md:w-64 border-r" : "w-10"}`} style={{ borderColor: t.border }}>
 
-                {/* Мобильный аккордеон-заголовок */}
+                {/* Заголовок-переключатель (всегда виден) */}
                 <button
-                  className="sm:hidden w-full flex items-center justify-between px-3 py-2.5 text-xs font-semibold"
+                  className="w-full flex items-center justify-between px-2.5 py-2.5 text-xs font-semibold"
                   style={{ borderBottom: `1px solid ${t.border}`, color: t.textMute }}
                   onClick={() => setOrdersListOpen(v => !v)}>
-                  <span className="flex items-center gap-1.5">
-                    <Icon name="ClipboardList" size={12} />
-                    {orderData ? (STATUS_LABELS[orderData.status] || orderData.status) + (orderData.address ? ` — ${orderData.address}` : "") : "Выберите заявку"}
-                  </span>
-                  <Icon name={ordersListOpen ? "ChevronUp" : "ChevronDown"} size={13} />
+                  {ordersListOpen && (
+                    <span className="flex items-center gap-1.5 truncate">
+                      <Icon name="ClipboardList" size={12} />
+                      {orderData ? (STATUS_LABELS[orderData.status] || orderData.status) + (orderData.address ? ` — ${orderData.address}` : "") : "Заявки"}
+                    </span>
+                  )}
+                  <Icon name={ordersListOpen ? "ChevronLeft" : "ChevronRight"} size={13} className="flex-shrink-0 ml-auto" />
                 </button>
 
-                {/* Список: на мобиле — сворачивается, на десктопе — всегда виден */}
-                <div className={`${ordersListOpen ? "flex" : "hidden"} sm:flex flex-row sm:flex-col
-                                overflow-x-auto sm:overflow-x-hidden sm:overflow-y-auto
-                                gap-2 p-2 sm:p-3
-                                border-b sm:border-b-0`}
+                {/* Список — виден только когда открыт */}
+                <div className={`${ordersListOpen ? "flex" : "hidden"} flex-col
+                                overflow-y-auto
+                                gap-2 p-2 sm:p-3`}
                   style={{ borderColor: t.border }}>
                   {allClientOrders.length === 0 && (
                     <div className="py-4 text-center text-xs w-full" style={{ color: t.textMute }}>Нет заявок</div>
