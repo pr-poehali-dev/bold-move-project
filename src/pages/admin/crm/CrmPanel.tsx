@@ -67,28 +67,8 @@ export default function CrmPanel() {
 
   return (
     <ThemeContext.Provider value={ctx}>
-      <div className="min-h-screen -m-4 p-0 transition-colors duration-300"
+      <div className="flex flex-col h-full transition-colors duration-300"
         style={{ background: t.bg }}>
-
-        {/* Шапка */}
-        <div className="flex items-center justify-between px-6 py-3.5"
-          style={{ borderBottom: `1px solid ${t.border}`, background: t.surface }}>
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-violet-600 flex items-center justify-center shadow-lg shadow-violet-900/30">
-              <Icon name="LayoutDashboard" size={17} className="text-white" />
-            </div>
-            <div>
-              <div className="text-sm font-bold leading-tight" style={{ color: t.text }}>CRM — Натяжные потолки</div>
-              <div className="text-[10px]" style={{ color: t.textMute }}>от заявки до завершённого заказа</div>
-            </div>
-          </div>
-          <button onClick={ctx.toggle}
-            className="flex items-center gap-2 px-3.5 py-2 rounded-xl transition font-medium text-xs"
-            style={{ background: t.surface2, border: `1px solid ${t.border}`, color: t.textSub }}>
-            <Icon name={theme === "dark" ? "Sun" : "Moon"} size={14} />
-            {theme === "dark" ? "Светлая" : "Тёмная"}
-          </button>
-        </div>
 
         {/* Навигация */}
         <div className="flex items-center gap-0.5 px-6 py-2.5 overflow-x-auto"
@@ -143,6 +123,14 @@ export default function CrmPanel() {
               </button>
             </div>
           )}
+
+          {/* Кнопка смены темы */}
+          <button onClick={ctx.toggle}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl transition font-medium text-xs flex-shrink-0"
+            style={{ background: t.surface2, border: `1px solid ${t.border}`, color: t.textSub }}>
+            <Icon name={theme === "dark" ? "Sun" : "Moon"} size={13} />
+            {theme === "dark" ? "Светлая" : "Тёмная"}
+          </button>
         </div>
 
         {/* Контент */}
