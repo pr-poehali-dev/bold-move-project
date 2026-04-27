@@ -80,9 +80,19 @@ export function OrdersClientCard({ c, onClick, onNextStep }: {
         {/* Клиент */}
         <div className="flex items-start mb-3">
           <div className="flex-1 min-w-0">
-            <span className="text-sm font-bold block" style={{ color: t.text }}>
-              {localStorage.getItem(`order_title_${c.id}`) || `Заявка №${c.id}`}
-            </span>
+            {/* Заголовок + статус в одной строке */}
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-sm font-bold truncate" style={{ color: t.text }}>
+                {localStorage.getItem(`order_title_${c.id}`) || `Заявка №${c.id}`}
+              </span>
+              {isInstall
+                ? <InstallProgress status={c.status} />
+                : <span className="flex-shrink-0 text-[10px] px-1.5 py-0.5 rounded-md font-medium"
+                    style={{ background: STATUS_COLORS[c.status] + "20", color: STATUS_COLORS[c.status] }}>
+                    {STATUS_LABELS[c.status] || c.status}
+                  </span>
+              }
+            </div>
             <div className="space-y-0.5 mt-1">
               {c.client_name && (
                 <div className="flex items-center gap-1 text-xs" style={{ color: t.textMute }}>
@@ -97,13 +107,6 @@ export function OrdersClientCard({ c, onClick, onNextStep }: {
                 </div>
               )}
             </div>
-            {isInstall
-              ? <InstallProgress status={c.status} />
-              : <span className="inline-block mt-1 text-[10px] px-1.5 py-0.5 rounded-md font-medium"
-                  style={{ background: STATUS_COLORS[c.status] + "20", color: STATUS_COLORS[c.status] }}>
-                  {STATUS_LABELS[c.status] || c.status}
-                </span>
-            }
           </div>
         </div>
 
