@@ -5,15 +5,6 @@ import { useTheme } from "./themeContext";
 import { NEXT_STATUS, NEXT_LABEL } from "./kanbanTypes";
 import { ORDERS_TABS, INSTALL_STEPS } from "./ordersTypes";
 
-function Avatar({ name, color }: { name: string; color: string }) {
-  const initials = (name || "?").split(" ").map(w => w[0]).slice(0, 2).join("").toUpperCase();
-  return (
-    <div className="w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold flex-shrink-0"
-      style={{ background: color + "30", border: `1.5px solid ${color}50`, color }}>
-      {initials}
-    </div>
-  );
-}
 
 function InstallProgress({ status, color }: { status: string; color: string }) {
   const idx = INSTALL_STEPS.findIndex(s => s.status === status);
@@ -88,8 +79,7 @@ export default function KanbanCard({ client, colColor, onOpen, onNextStep, dragg
           const autoTitle = `Заявка №${client.id}${parts.length ? " · " + parts.join(" · ") : ""}`;
           const cardTitle = customTitle || autoTitle;
           return (
-        <div className="flex items-start gap-2 mb-2">
-          <Avatar name={client.client_name || "?"} color={color} />
+        <div className="flex items-start mb-2">
           <div className="flex-1 min-w-0">
             <span className="text-xs font-bold" style={{ color: t.text, display: "block", wordBreak: "break-word", lineHeight: 1.4 }}>
               {cardTitle}

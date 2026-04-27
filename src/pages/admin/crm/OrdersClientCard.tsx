@@ -4,17 +4,6 @@ import Icon from "@/components/ui/icon";
 import { useTheme } from "./themeContext";
 import { NEXT_STATUS, NEXT_LABEL, ORDERS_TABS, INSTALL_STEPS } from "./ordersTypes";
 
-function Avatar({ name }: { name: string }) {
-  const initials = (name || "?").split(" ").map(w => w[0]).slice(0, 2).join("").toUpperCase();
-  const colors = ["#8b5cf6","#3b82f6","#f59e0b","#10b981","#f97316","#ec4899","#06b6d4"];
-  const color = colors[(name || "?").charCodeAt(0) % colors.length];
-  return (
-    <div className="w-10 h-10 rounded-xl flex items-center justify-center text-sm font-bold flex-shrink-0"
-      style={{ background: color + "25", border: `1.5px solid ${color}50`, color }}>
-      {initials}
-    </div>
-  );
-}
 
 function InstallProgress({ status }: { status: string }) {
   const idx = INSTALL_STEPS.findIndex(s => s.status === status);
@@ -89,8 +78,7 @@ export function OrdersClientCard({ c, onClick, onNextStep }: {
       <div className="p-4 cursor-pointer hover:brightness-[1.03] transition flex-1" onClick={onClick}>
 
         {/* Клиент */}
-        <div className="flex items-start gap-3 mb-3">
-          <Avatar name={c.client_name} />
+        <div className="flex items-start mb-3">
           <div className="flex-1 min-w-0">
             {(() => {
               const customTitle = localStorage.getItem(`order_title_${c.id}`);

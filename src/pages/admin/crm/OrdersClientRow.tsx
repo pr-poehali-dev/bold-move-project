@@ -4,17 +4,6 @@ import Icon from "@/components/ui/icon";
 import { useTheme } from "./themeContext";
 import { NEXT_STATUS, NEXT_LABEL, INSTALL_STEPS, ORDERS_TABS } from "./ordersTypes";
 
-function Avatar({ name }: { name: string }) {
-  const initials = (name || "?").split(" ").map(w => w[0]).slice(0, 2).join("").toUpperCase();
-  const colors = ["#8b5cf6","#3b82f6","#f59e0b","#10b981","#f97316","#ec4899","#06b6d4"];
-  const color = colors[(name || "?").charCodeAt(0) % colors.length];
-  return (
-    <div className="w-9 h-9 rounded-xl flex items-center justify-center text-xs font-bold flex-shrink-0"
-      style={{ background: color + "25", border: `1.5px solid ${color}50`, color }}>
-      {initials}
-    </div>
-  );
-}
 
 function InstallProgress({ status }: { status: string }) {
   const idx = INSTALL_STEPS.findIndex(s => s.status === status);
@@ -68,8 +57,6 @@ export function OrdersClientRow({ c, onClick, onNextStep }: {
     <div className="flex items-center gap-3 px-4 py-3 rounded-xl cursor-pointer hover:brightness-[1.04] transition"
       style={{ background: t.surface, border: `1px solid ${t.border}`, borderLeft: `3px solid ${STATUS_COLORS[c.status]}50` }}
       onClick={onClick}>
-
-      <Avatar name={c.client_name} />
 
       {/* Клиент */}
       <div className="w-44 min-w-0 flex-shrink-0">
