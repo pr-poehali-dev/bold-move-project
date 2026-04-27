@@ -4,6 +4,7 @@ import { useAuth } from "@/context/AuthContext";
 import func2url from "@/../backend/func2url.json";
 
 const AUTH_URL = (func2url as Record<string, string>)["auth"];
+const CRM_URL  = (func2url as Record<string, string>)["crm-manager"];
 
 export function isEstimate(text: string) {
   return (
@@ -261,6 +262,14 @@ export default function EstimateTable({ text, items, onSaveRequest }: {
   const { user, token } = useAuth();
   const parsed = useMemo(() => parseEstimateBlocks(text), [text]);
 
+  const [showContact,   setShowContact]   = useState(false);
+  const [contactName,   setContactName]   = useState("");
+  const [contactPhone,  setContactPhone]  = useState("");
+  const [contactAddr,   setContactAddr]   = useState("");
+  const [contactSaving, setContactSaving] = useState(false);
+  const [contactDone,   setContactDone]   = useState(false);
+  const [savedChatId,   setSavedChatId]   = useState<number | null>(null);
+
   // Строим карту name→{qty,price} из items для формулы
   const itemMap = useMemo(() => {
     if (!items) return new Map<string, LLMItem>();
@@ -307,10 +316,35 @@ export default function EstimateTable({ text, items, onSaveRequest }: {
       const data = await res.json();
       if (!res.ok || data.error) throw new Error(data.error || "Ошибка сохранения");
       setSaved(true);
+      setSavedChatId(data.chat_id ?? null);
+      setShowContact(true);
     } catch (e: unknown) {
       setSaveError(e instanceof Error ? e.message : "Ошибка");
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleContactSave = async () => {
+    setContactSaving(true);
+    try {
+      if (savedChatId && token) {
+        await fetch(`${CRM_URL}?r=clients&id=${savedChatId}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json", "X-Authorization": `Bearer ${token}` },
+          body: JSON.stringify({
+            client_name: contactName || undefined,
+            phone:       contactPhone || undefined,
+            address:     contactAddr || undefined,
+          }),
+        });
+      }
+      setContactDone(true);
+      setTimeout(() => {
+        window.location.href = `/admin-yura?order=${savedChatId}`;
+      }, 1200);
+    } finally {
+      setContactSaving(false);
     }
   };
 

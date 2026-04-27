@@ -44,6 +44,9 @@ async function initCrmToken(): Promise<void> {
 export default function AdminPanel() {
   const [token,    setToken]    = useState(() => sessionStorage.getItem("admin_token") || "");
   const [crmReady, setCrmReady] = useState(false);
+  const initialOrderId = new URLSearchParams(window.location.search).get("order")
+    ? Number(new URLSearchParams(window.location.search).get("order"))
+    : null;
   const [password, setPassword] = useState("");
   const [error,    setError]    = useState("");
   const [mainTab,  setMainTab]  = useState<MainTab>("crm");
@@ -188,7 +191,7 @@ export default function AdminPanel() {
       {mainTab === "crm" && (
         <div className="flex-1 overflow-hidden">
           {crmReady
-            ? <CrmPanel theme={theme} />
+            ? <CrmPanel theme={theme} initialOrderId={initialOrderId} />
             : <div className="flex items-center justify-center h-64"><div className="w-7 h-7 border-2 border-violet-500 border-t-transparent rounded-full animate-spin" /></div>
           }
         </div>

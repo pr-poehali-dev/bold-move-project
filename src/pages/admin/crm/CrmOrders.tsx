@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import type React from "react";
 import { crmFetch, Client, getClientOrders } from "./crmApi";
 import Icon from "@/components/ui/icon";
@@ -34,13 +34,26 @@ interface Props {
   onStatusChange: (id: number, status: string) => void;
   onClientRemoved: (id: number) => void;
   onReload: () => void;
+  initialOrderId?: number | null;
 }
 
-export default function CrmOrders({ clients: allClients, loading, onStatusChange, onClientRemoved, onReload }: Props) {
+export default function CrmOrders({ clients: allClients, loading, onStatusChange, onClientRemoved, onReload, initialOrderId }: Props) {
   const t = useTheme();
   const [search, setSearch]       = useState("");
   const [activeTab, setActiveTab] = useState("leads");
   const [selected, setSelected]   = useState<Client | null>(null);
+
+  useEffect(() => {
+    if (!initialOrderId || loading || allClients.length === 0) return;
+    const found = allClients.find(c => c.id === initialOrderId);
+    if (found) {
+      setSelected(found);
+      // Убираем ?order= из URL без перезагрузки
+      const url = new URL(window.location.href);
+      url.searchParams.delete("order");
+      window.history.replaceState({}, "", url.toString());
+    }
+  }, [initialOrderId, loading, allClients]);
   const [viewMode, setViewMode]   = useState<"grid" | "list" | "kanban">("grid");
 
   // ── Настройки табов/колонок — ЕДИНЫЙ источник правды ────────────────────────

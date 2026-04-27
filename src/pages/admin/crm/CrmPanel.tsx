@@ -19,7 +19,7 @@ const FIXED_TABS: { id: CrmTab; label: string; icon: string }[] = [
   { id: "analytics", label: "Аналитика", icon: "BarChart2" },
 ];
 
-export default function CrmPanel({ theme }: { theme: Theme }) {
+export default function CrmPanel({ theme, initialOrderId }: { theme: Theme; initialOrderId?: number | null }) {
   const [tab, setTab]               = useState<CrmTab>("orders");
   const [clients, setClients]       = useState<Client[]>([]);
   const [loading, setLoading]       = useState(true);
@@ -130,7 +130,7 @@ export default function CrmPanel({ theme }: { theme: Theme }) {
         <div className="p-6">
           {tab === "analytics" && <CrmAnalytics />}
           {tab === "clients"   && <CrmClients />}
-          {tab === "orders"    && <CrmOrders clients={clients} loading={loading} onStatusChange={updateClientStatus} onClientRemoved={removeClient} onReload={loadClients} />}
+          {tab === "orders"    && <CrmOrders clients={clients} loading={loading} onStatusChange={updateClientStatus} onClientRemoved={removeClient} onReload={loadClients} initialOrderId={initialOrderId} />}
           {tab === "calendar"  && <CrmCalendar />}
           {tab === "kanban"    && <CrmKanban clients={[]} loading={false} onStatusChange={() => {}} onClientRemoved={() => {}} onReload={() => {}} onRemoveBoard={disableKanban} />}
         </div>
