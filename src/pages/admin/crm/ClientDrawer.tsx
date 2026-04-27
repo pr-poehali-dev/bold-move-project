@@ -24,6 +24,7 @@ export default function ClientDrawer({ client, allClientOrders, onClose, onUpdat
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [drawerTab, setDrawerTab]     = useState<"client" | "orders">(defaultTab);
   const [comments, setComments]       = useState<{ text: string; date: string }[]>([]);
+  const [editingTitle, setEditingTitle] = useState(false);
   const [copied, setCopied]           = useState(false);
   const [hideHidden, setHideHidden]   = useState(() => localStorage.getItem("drawer_hide_hidden") === "true");
   const [selectedOrderId, setSelectedOrderId] = useState<number>(defaultOrderId ?? client.id);
@@ -92,9 +93,30 @@ export default function ClientDrawer({ client, allClientOrders, onClose, onUpdat
               {ord.id}
             </div>
             <div className="min-w-0">
-              <div className="text-base font-bold text-white truncate max-w-xs sm:max-w-lg" title={orderTitle}>
-                {orderTitle}
-              </div>
+              {editingTitle ? (
+                <input
+                  autoFocus
+                  defaultValue={ord.client_name || ""}
+                  onBlur={e => {
+                    const saveTarget = drawerTab === "orders" ? saveOrder : save;
+                    saveTarget({ client_name: e.target.value });
+                    setEditingTitle(false);
+                  }}
+                  onKeyDown={e => {
+                    if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+                    if (e.key === "Escape") setEditingTitle(false);
+                  }}
+                  placeholder="Имя клиента..."
+                  className="text-base font-bold bg-transparent focus:outline-none w-full max-w-xs sm:max-w-lg"
+                  style={{ color: "#fff", borderBottom: "1px solid #7c3aed" }}
+                />
+              ) : (
+                <div className="text-base font-bold text-white truncate max-w-xs sm:max-w-lg cursor-text hover:opacity-80 transition"
+                  title="Нажмите чтобы изменить имя клиента"
+                  onClick={() => setEditingTitle(true)}>
+                  {orderTitle}
+                </div>
+              )}
               <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                 <span className="text-[11px] px-2 py-0.5 rounded-md font-semibold flex-shrink-0"
                   style={{ background: displayColor + "25", color: displayColor }}>
