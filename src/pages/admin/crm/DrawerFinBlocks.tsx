@@ -10,25 +10,84 @@ import { useTheme } from "./themeContext";
 // ── Правила авто-расчёта ────────────────────────────────────────────────────
 const LS_AUTO_RULES = "crm_costs_auto_rules";
 
+interface AutoRule {
+  id: string;
+  label: string;
+  pct: number | null;
+  enabled: boolean;
+  color: string;
+  icon: string;
+}
+
 interface AutoRules {
-  measure_pct: number | null;   // % от суммы договора
+  measure_pct: number | null;
   install_pct: number | null;
+  measure_enabled?: boolean;
+  install_enabled?: boolean;
+  custom?: AutoRule[];
 }
 
 function loadAutoRules(): AutoRules {
-  try { return { measure_pct: null, install_pct: null, ...JSON.parse(localStorage.getItem(LS_AUTO_RULES) || "{}") }; }
-  catch { return { measure_pct: null, install_pct: null }; }
+  try { return { measure_pct: null, install_pct: null, measure_enabled: true, install_enabled: true, custom: [], ...JSON.parse(localStorage.getItem(LS_AUTO_RULES) || "{}") }; }
+  catch { return { measure_pct: null, install_pct: null, measure_enabled: true, install_enabled: true, custom: [] }; }
 }
 function saveAutoRules(r: AutoRules) {
   localStorage.setItem(LS_AUTO_RULES, JSON.stringify(r));
+}
+
+function Toggle({ enabled, onChange }: { enabled: boolean; onChange: (v: boolean) => void }) {
+  return (
+    <button
+      onClick={() => onChange(!enabled)}
+      className="relative flex-shrink-0 w-9 h-5 rounded-full transition-colors duration-200 focus:outline-none"
+      style={{ background: enabled ? "#ef4444" : "rgba(255,255,255,0.12)" }}>
+      <span className="absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform duration-200"
+        style={{ transform: enabled ? "translateX(16px)" : "translateX(0)" }} />
+    </button>
+  );
 }
 
 // ── Модальное окно настройки правил ────────────────────────────────────────
 function AutoRulesModal({ onClose }: { onClose: () => void }) {
   const t = useTheme();
   const [rules, setRules] = useState<AutoRules>(loadAutoRules);
+  const [addingNew, setAddingNew] = useState(false);
+  const [newLabel, setNewLabel] = useState("");
+  const [newPct, setNewPct] = useState<string>("");
 
   const save = () => { saveAutoRules(rules); onClose(); };
+
+  const addCustomRule = () => {
+    if (!newLabel.trim()) return;
+    const newRule: AutoRule = {
+      id: `rule_${Date.now()}`,
+      label: newLabel.trim(),
+      pct: newPct === "" ? null : +newPct,
+      enabled: true,
+      color: "#8b5cf6",
+      icon: "Hash",
+    };
+    setRules(r => ({ ...r, custom: [...(r.custom || []), newRule] }));
+    setNewLabel(""); setNewPct(""); setAddingNew(false);
+  };
+
+  const updateCustom = (id: string, patch: Partial<AutoRule>) =>
+    setRules(r => ({ ...r, custom: (r.custom || []).map(c => c.id === id ? { ...c, ...patch } : c) }));
+
+  const deleteCustom = (id: string) =>
+    setRules(r => ({ ...r, custom: (r.custom || []).filter(c => c.id !== id) }));
+
+  const allRules = [
+    { label: "Замер", pct: rules.measure_pct, enabled: rules.measure_enabled ?? true, color: "#f59e0b", icon: "Ruler",
+      setPct: (v: number | null) => setRules(r => ({ ...r, measure_pct: v })),
+      setEnabled: (v: boolean) => setRules(r => ({ ...r, measure_enabled: v })) },
+    { label: "Монтаж", pct: rules.install_pct, enabled: rules.install_enabled ?? true, color: "#ef4444", icon: "Wrench",
+      setPct: (v: number | null) => setRules(r => ({ ...r, install_pct: v })),
+      setEnabled: (v: boolean) => setRules(r => ({ ...r, install_enabled: v })) },
+  ];
+
+  const exampleSum = 100000;
+  const hasAny = allRules.some(r => r.enabled && r.pct) || (rules.custom || []).some(c => c.enabled && c.pct);
 
   return createPortal(
     <div className="fixed inset-0 z-[200] flex items-center justify-center p-4"
@@ -44,7 +103,7 @@ function AutoRulesModal({ onClose }: { onClose: () => void }) {
             <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: "#ef444420" }}>
               <Icon name="Percent" size={14} style={{ color: "#ef4444" }} />
             </div>
-            <span className="text-sm font-bold text-white">Правила авто-расчёта</span>
+            <span className="text-sm font-bold" style={{ color: t.text }}>Правила авто-расчёта</span>
           </div>
           <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-white/5 transition" style={{ color: t.textMute }}>
             <Icon name="X" size={15} />
@@ -52,57 +111,105 @@ function AutoRulesModal({ onClose }: { onClose: () => void }) {
         </div>
 
         {/* Тело */}
-        <div className="px-5 py-4 space-y-4 overflow-y-auto flex-1">
+        <div className="px-5 py-4 space-y-3 overflow-y-auto flex-1">
           <p className="text-xs leading-relaxed" style={{ color: t.textMute }}>
-            Укажите процент от суммы договора. При нажатии кнопки <strong style={{ color: "#ef4444" }}>«Авто»</strong> в блоке Затрат значения Замера и Монтажа заполнятся автоматически.
+            Укажите процент от суммы договора. Слайдер включает или выключает правило для всех карточек.
           </p>
 
-          <div className="space-y-3">
-            {/* Замер */}
-            <div className="rounded-xl p-3" style={{ background: t.surface2, border: `1px solid ${t.border}` }}>
-              <label className="text-xs font-medium mb-2 flex items-center gap-1.5" style={{ color: "#f59e0b" }}>
-                <Icon name="Ruler" size={12} /> Замер
-              </label>
-              <div className="flex items-center gap-2">
-                <input
-                  type="number" min={0} max={100}
-                  value={rules.measure_pct ?? ""}
-                  onChange={e => setRules(r => ({ ...r, measure_pct: e.target.value === "" ? null : +e.target.value }))}
-                  className="flex-1 rounded-lg px-3 py-2 text-sm focus:outline-none"
-                  style={{ background: t.surface, border: `1px solid ${t.border}`, color: t.text }}
-                  placeholder="0"
-                />
-                <span className="text-sm font-bold" style={{ color: t.textMute }}>%</span>
-                <span className="text-xs" style={{ color: t.textMute }}>от договора</span>
+          <div className="space-y-2">
+            {/* Встроенные правила */}
+            {allRules.map(rule => (
+              <div key={rule.label} className="rounded-xl p-3" style={{ background: t.surface2, border: `1px solid ${rule.enabled ? rule.color + "40" : t.border}`, opacity: rule.enabled ? 1 : 0.5 }}>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="text-xs font-medium flex items-center gap-1.5" style={{ color: rule.color }}>
+                    <Icon name={rule.icon} size={12} /> {rule.label}
+                  </label>
+                  <Toggle enabled={rule.enabled} onChange={rule.setEnabled} />
+                </div>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="number" min={0} max={100}
+                    value={rule.pct ?? ""}
+                    onChange={e => rule.setPct(e.target.value === "" ? null : +e.target.value)}
+                    disabled={!rule.enabled}
+                    className="flex-1 rounded-lg px-3 py-2 text-sm focus:outline-none"
+                    style={{ background: t.surface, border: `1px solid ${t.border}`, color: t.text }}
+                    placeholder="0"
+                  />
+                  <span className="text-sm font-bold" style={{ color: t.textMute }}>%</span>
+                  <span className="text-xs" style={{ color: t.textMute }}>от договора</span>
+                </div>
               </div>
-            </div>
+            ))}
 
-            {/* Монтаж */}
-            <div className="rounded-xl p-3" style={{ background: t.surface2, border: `1px solid ${t.border}` }}>
-              <label className="text-xs font-medium mb-2 flex items-center gap-1.5" style={{ color: "#ef4444" }}>
-                <Icon name="Wrench" size={12} /> Монтаж
-              </label>
-              <div className="flex items-center gap-2">
-                <input
-                  type="number" min={0} max={100}
-                  value={rules.install_pct ?? ""}
-                  onChange={e => setRules(r => ({ ...r, install_pct: e.target.value === "" ? null : +e.target.value }))}
-                  className="flex-1 rounded-lg px-3 py-2 text-sm focus:outline-none"
-                  style={{ background: t.surface, border: `1px solid ${t.border}`, color: t.text }}
-                  placeholder="0"
-                />
-                <span className="text-sm font-bold" style={{ color: t.textMute }}>%</span>
-                <span className="text-xs" style={{ color: t.textMute }}>от договора</span>
+            {/* Кастомные правила */}
+            {(rules.custom || []).map(rule => (
+              <div key={rule.id} className="rounded-xl p-3" style={{ background: t.surface2, border: `1px solid ${rule.enabled ? rule.color + "40" : t.border}`, opacity: rule.enabled ? 1 : 0.5 }}>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="text-xs font-medium flex items-center gap-1.5" style={{ color: rule.color }}>
+                    <Icon name={rule.icon} size={12} /> {rule.label}
+                  </label>
+                  <div className="flex items-center gap-2">
+                    <Toggle enabled={rule.enabled} onChange={v => updateCustom(rule.id, { enabled: v })} />
+                    <button onClick={() => deleteCustom(rule.id)} className="opacity-40 hover:opacity-80 transition" style={{ color: t.textMute }}>
+                      <Icon name="Trash2" size={13} />
+                    </button>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="number" min={0} max={100}
+                    value={rule.pct ?? ""}
+                    onChange={e => updateCustom(rule.id, { pct: e.target.value === "" ? null : +e.target.value })}
+                    disabled={!rule.enabled}
+                    className="flex-1 rounded-lg px-3 py-2 text-sm focus:outline-none"
+                    style={{ background: t.surface, border: `1px solid ${t.border}`, color: t.text }}
+                    placeholder="0"
+                  />
+                  <span className="text-sm font-bold" style={{ color: t.textMute }}>%</span>
+                  <span className="text-xs" style={{ color: t.textMute }}>от договора</span>
+                </div>
               </div>
-            </div>
+            ))}
+
+            {/* Форма добавления нового */}
+            {addingNew ? (
+              <div className="rounded-xl p-3 space-y-2" style={{ background: t.surface2, border: "1px solid #8b5cf640" }}>
+                <input autoFocus value={newLabel} onChange={e => setNewLabel(e.target.value)}
+                  placeholder="Название (напр. Материалы)"
+                  className="w-full rounded-lg px-3 py-2 text-sm focus:outline-none"
+                  style={{ background: t.surface, border: `1px solid ${t.border}`, color: t.text }} />
+                <div className="flex items-center gap-2">
+                  <input type="number" min={0} max={100} value={newPct}
+                    onChange={e => setNewPct(e.target.value)}
+                    onKeyDown={e => { if (e.key === "Enter") addCustomRule(); if (e.key === "Escape") setAddingNew(false); }}
+                    placeholder="0"
+                    className="flex-1 rounded-lg px-3 py-2 text-sm focus:outline-none"
+                    style={{ background: t.surface, border: `1px solid ${t.border}`, color: t.text }} />
+                  <span className="text-sm font-bold" style={{ color: t.textMute }}>%</span>
+                  <button onClick={addCustomRule} className="px-3 py-2 rounded-lg text-xs font-semibold text-white" style={{ background: "#8b5cf6" }}>ОК</button>
+                  <button onClick={() => { setAddingNew(false); setNewLabel(""); setNewPct(""); }} className="text-xs opacity-40 hover:opacity-70" style={{ color: t.textMute }}>✕</button>
+                </div>
+              </div>
+            ) : (
+              <button onClick={() => setAddingNew(true)}
+                className="flex items-center gap-1.5 text-xs opacity-50 hover:opacity-90 transition mt-1"
+                style={{ color: "#8b5cf6" }}>
+                <Icon name="Plus" size={13} /> Добавить правило
+              </button>
+            )}
           </div>
 
           {/* Пример */}
-          {(rules.measure_pct || rules.install_pct) && (
+          {hasAny && (
             <div className="rounded-xl px-3 py-2.5 text-xs space-y-1" style={{ background: "#ef444410", border: "1px solid #ef444430" }}>
               <div className="font-medium mb-1" style={{ color: "#ef4444" }}>Пример при договоре 100 000 ₽:</div>
-              {rules.measure_pct != null && <div style={{ color: t.textMute }}>Замер = {(100000 * rules.measure_pct / 100).toLocaleString("ru-RU")} ₽</div>}
-              {rules.install_pct != null && <div style={{ color: t.textMute }}>Монтаж = {(100000 * rules.install_pct / 100).toLocaleString("ru-RU")} ₽</div>}
+              {allRules.filter(r => r.enabled && r.pct).map(r => (
+                <div key={r.label} style={{ color: t.textMute }}>{r.label} = {(exampleSum * (r.pct!) / 100).toLocaleString("ru-RU")} ₽</div>
+              ))}
+              {(rules.custom || []).filter(c => c.enabled && c.pct).map(c => (
+                <div key={c.id} style={{ color: t.textMute }}>{c.label} = {(exampleSum * (c.pct!) / 100).toLocaleString("ru-RU")} ₽</div>
+              ))}
             </div>
           )}
         </div>
@@ -112,7 +219,7 @@ function AutoRulesModal({ onClose }: { onClose: () => void }) {
           <button onClick={save}
             className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-white transition"
             style={{ background: "#ef4444" }}>
-            Сохранить правило
+            Сохранить
           </button>
           <button onClick={onClose}
             className="px-4 py-2.5 rounded-xl text-sm transition"
