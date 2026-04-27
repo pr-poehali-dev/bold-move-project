@@ -12,20 +12,23 @@ interface Props {
   onUpdated: () => void;
   onDeleted: () => void;
   isLocalCard?: boolean;
-  defaultTab?: "client" | "info" | "orders" | "estimate";
+  defaultTab?: "client" | "orders";
+  defaultOrderId?: number;
 }
 
-export default function ClientDrawer({ client, allClientOrders, onClose, onUpdated, onDeleted, isLocalCard, defaultTab = "client" }: Props) {
+export default function ClientDrawer({ client, allClientOrders, onClose, onUpdated, onDeleted, isLocalCard, defaultTab = "client", defaultOrderId }: Props) {
   const t = useTheme();
   const [data, setData]               = useState<Client>(client);
   const [saving, setSaving]           = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
-  const [drawerTab, setDrawerTab]     = useState<"client" | "info" | "orders" | "estimate">(defaultTab);
+  const [drawerTab, setDrawerTab]     = useState<"client" | "orders">(defaultTab);
   const [comments, setComments]       = useState<{ text: string; date: string }[]>([]);
   const [editingName, setEditingName] = useState(false);
   const nameValRef                    = useRef("");
   const [copied, setCopied]           = useState(false);
   const [hideHidden, setHideHidden]   = useState(() => localStorage.getItem("drawer_hide_hidden") === "true");
+  const [selectedOrderId, setSelectedOrderId] = useState<number>(defaultOrderId ?? client.id);
+  const [orderInnerTab, setOrderInnerTab] = useState<"info" | "estimate">("info");
 
 
 
@@ -34,6 +37,19 @@ export default function ClientDrawer({ client, allClientOrders, onClose, onUpdat
     if (isLocalCard) return;
     setSaving(true);
     await crmFetch("clients", { method: "PUT", body: JSON.stringify(patch) }, { id: String(data.id) });
+    setSaving(false);
+    onUpdated();
+  };
+
+  const [orderData, setOrderData] = useState<Client>(
+    allClientOrders.find(o => o.id === selectedOrderId) ?? allClientOrders[0] ?? data
+  );
+
+  const saveOrder = async (patch: Partial<Client>) => {
+    setOrderData(prev => ({ ...prev, ...patch }));
+    if (isLocalCard) return;
+    setSaving(true);
+    await crmFetch("clients", { method: "PUT", body: JSON.stringify(patch) }, { id: String(orderData.id) });
     setSaving(false);
     onUpdated();
   };
@@ -54,7 +70,7 @@ export default function ClientDrawer({ client, allClientOrders, onClose, onUpdat
           background: t.surface,
           border: `1px solid ${t.border}`,
           borderRadius: 20,
-          maxWidth: drawerTab === "estimate" ? 1100 : 1160,
+          maxWidth: 1160,
           maxHeight: "92vh",
         }}
         onClick={e => e.stopPropagation()}>
@@ -124,9 +140,7 @@ export default function ClientDrawer({ client, allClientOrders, onClose, onUpdat
         <div className="flex px-6 gap-1 pt-3 flex-shrink-0" style={{ borderBottom: `1px solid ${t.border}` }}>
           {([
             { id: "client",   label: "Клиент",  icon: "User" },
-            { id: "info",     label: "Заявка",  icon: "ClipboardEdit" },
-            { id: "estimate", label: "Смета",   icon: "FileSpreadsheet" },
-            { id: "orders",   label: `История (${allClientOrders.length})`, icon: "ClipboardList" },
+            { id: "orders",   label: `Заявки (${allClientOrders.length})`, icon: "ClipboardList" },
           ] as const).map(tab => (
             <button key={tab.id} onClick={() => setDrawerTab(tab.id)}
               className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-t-lg transition"
@@ -217,63 +231,83 @@ export default function ClientDrawer({ client, allClientOrders, onClose, onUpdat
             </div>
           )}
 
-          {/* СМЕТА */}
-          {drawerTab === "estimate" && (
-            <div className="px-6 py-4">
-              <EstimateEditor chatId={data.id} clientName={data.client_name} clientPhone={data.phone} />
-            </div>
-          )}
-
-          {/* ИСТОРИЯ */}
+          {/* ЗАЯВКИ */}
           {drawerTab === "orders" && (
-            <div className="px-6 py-4 space-y-2">
-              {allClientOrders.length === 0 && (
-                <div className="py-12 text-center text-sm" style={{ color: t.textMute }}>Нет заявок</div>
-              )}
-              {[...allClientOrders]
-                .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-                .map(order => (
-                  <button key={order.id} onClick={() => { setData(order); setDrawerTab("info"); }}
-                    className="w-full text-left rounded-xl p-3.5 transition"
-                    style={{
-                      background: data.id === order.id ? "#7c3aed18" : t.surface2,
-                      border: `1px solid ${data.id === order.id ? "#7c3aed50" : t.border}`,
-                    }}>
-                    <div className="flex items-center justify-between mb-1.5">
-                      <span className="text-xs px-2 py-0.5 rounded-md font-semibold"
-                        style={{ background: STATUS_COLORS[order.status] + "20", color: STATUS_COLORS[order.status] }}>
-                        {STATUS_LABELS[order.status] || order.status}
-                      </span>
-                      <span className="text-[11px]" style={{ color: t.textMute }}>
-                        {new Date(order.created_at).toLocaleDateString("ru-RU", { day: "numeric", month: "short", year: "numeric" })}
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="text-xs truncate" style={{ color: t.textSub }}>{order.address || "Адрес не указан"}</span>
-                      {order.contract_sum ? (
-                        <span className="text-sm font-bold text-emerald-400 whitespace-nowrap">
-                          {Number(order.contract_sum).toLocaleString("ru-RU")} ₽
-                        </span>
-                      ) : null}
-                    </div>
-                    {data.id === order.id && (
-                      <div className="text-[10px] mt-1 font-semibold" style={{ color: "#7c3aed" }}>● Открыта сейчас</div>
-                    )}
-                  </button>
-                ))}
-            </div>
-          )}
+            <div className="flex h-full min-h-0">
+              {/* Левая панель — список заявок */}
+              <div className="w-64 flex-shrink-0 border-r overflow-y-auto py-3 px-3 space-y-2" style={{ borderColor: t.border }}>
+                {allClientOrders.length === 0 && (
+                  <div className="py-8 text-center text-xs" style={{ color: t.textMute }}>Нет заявок</div>
+                )}
+                {[...allClientOrders]
+                  .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+                  .map(order => {
+                    const isActive = order.id === selectedOrderId;
+                    return (
+                      <button key={order.id}
+                        onClick={() => { setSelectedOrderId(order.id); setOrderData(order); setOrderInnerTab("info"); }}
+                        className="w-full text-left rounded-xl p-3 transition"
+                        style={{
+                          background: isActive ? "#7c3aed18" : t.surface2,
+                          border: `1px solid ${isActive ? "#7c3aed60" : t.border}`,
+                        }}>
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-[10px] px-1.5 py-0.5 rounded font-semibold"
+                            style={{ background: STATUS_COLORS[order.status] + "20", color: STATUS_COLORS[order.status] }}>
+                            {STATUS_LABELS[order.status] || order.status}
+                          </span>
+                          <span className="text-[10px]" style={{ color: t.textMute }}>#{order.id}</span>
+                        </div>
+                        <div className="text-xs truncate mb-0.5" style={{ color: t.textSub }}>{order.address || "Адрес не указан"}</div>
+                        {order.contract_sum ? (
+                          <div className="text-xs font-bold text-emerald-400">{Number(order.contract_sum).toLocaleString("ru-RU")} ₽</div>
+                        ) : null}
+                        <div className="text-[10px] mt-1" style={{ color: t.textMute }}>
+                          {new Date(order.created_at).toLocaleDateString("ru-RU", { day: "numeric", month: "short", year: "numeric" })}
+                        </div>
+                      </button>
+                    );
+                  })}
+              </div>
 
-          {/* ЗАЯВКА */}
-          {drawerTab === "info" && (
-            <DrawerInfoTab
-              data={data}
-              client={client}
-              setData={setData}
-              save={save}
-              setComments={setComments}
-              hideHidden={hideHidden}
-            />
+              {/* Правая панель — детали выбранной заявки */}
+              <div className="flex-1 min-w-0 flex flex-col overflow-hidden">
+                {/* Внутренние табы */}
+                <div className="flex px-4 gap-1 pt-2 flex-shrink-0" style={{ borderBottom: `1px solid ${t.border}` }}>
+                  {([
+                    { id: "info" as const,     label: "Заявка",  icon: "ClipboardEdit" },
+                    { id: "estimate" as const, label: "Смета",   icon: "FileSpreadsheet" },
+                  ]).map(tab => (
+                    <button key={tab.id} onClick={() => setOrderInnerTab(tab.id)}
+                      className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-t-lg transition"
+                      style={orderInnerTab === tab.id
+                        ? { color: "#7c3aed", borderBottom: "2px solid #7c3aed", marginBottom: -1 }
+                        : { color: t.textMute }}>
+                      <Icon name={tab.icon} size={12} /> {tab.label}
+                    </button>
+                  ))}
+                </div>
+
+                <div className="flex-1 overflow-y-auto">
+                  {orderInnerTab === "info" && (
+                    <DrawerInfoTab
+                      key={orderData.id}
+                      data={orderData}
+                      client={client}
+                      setData={setOrderData}
+                      save={saveOrder}
+                      setComments={setComments}
+                      hideHidden={hideHidden}
+                    />
+                  )}
+                  {orderInnerTab === "estimate" && (
+                    <div className="px-6 py-4">
+                      <EstimateEditor chatId={orderData.id} clientName={orderData.client_name} clientPhone={orderData.phone} />
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
           )}
         </div>
       </div>

@@ -377,7 +377,8 @@ export default function CrmOrders({ clients: allClients, loading, onStatusChange
       {selected && (
         <ClientDrawer
           client={selected}
-          defaultTab="info"
+          defaultTab="orders"
+          defaultOrderId={selected.id}
           allClientOrders={(() => {
             const phone = (selected.phone || "").trim().replace(/\D/g, "");
             return phone ? allClients.filter(c => (c.phone || "").trim().replace(/\D/g, "") === phone) : [selected];
