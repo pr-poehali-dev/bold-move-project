@@ -70,7 +70,7 @@ export function RowWithToggle({ rowKey, visible, onToggle, children, editMode, e
   const handleDelete = onDelete ?? (() => onToggle(rowKey));
 
   return (
-    <div className="flex items-center gap-1">
+    <div className="flex items-center gap-1 group">
       {showLabelEdit ? (
         <div className="flex items-center flex-1 min-w-0 py-2" style={{ borderBottom: "1px solid #2a2a2a" }}>
           <input
@@ -85,6 +85,27 @@ export function RowWithToggle({ rowKey, visible, onToggle, children, editMode, e
         </div>
       ) : (
         <div className="flex-1 min-w-0">{children}</div>
+      )}
+      {/* Слайдер видимости — всегда, появляется при наведении */}
+      {!editMode && (
+        <button
+          onClick={() => onToggle(rowKey)}
+          title="Показывать на всех карточках"
+          className="flex-shrink-0 opacity-0 group-hover:opacity-60 hover:!opacity-100 transition-all duration-150 rounded-full"
+          style={{
+            width: 24, height: 13,
+            background: "#10b981",
+            position: "relative", display: "inline-flex", alignItems: "center",
+          }}>
+          <span style={{
+            width: 9, height: 9,
+            background: "#fff",
+            borderRadius: "50%",
+            position: "absolute",
+            left: 13,
+            transition: "left 0.15s",
+          }} />
+        </button>
       )}
       {editMode && (
         <button
