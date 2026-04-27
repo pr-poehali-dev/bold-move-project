@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState } from "react";
 import { crmFetch, STATUS_LABELS, STATUS_COLORS, ORDER_STATUSES, Client } from "./crmApi";
 import Icon from "@/components/ui/icon";
 import { useTheme } from "./themeContext";
@@ -24,8 +24,6 @@ export default function ClientDrawer({ client, allClientOrders, onClose, onUpdat
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [drawerTab, setDrawerTab]     = useState<"client" | "orders">(defaultTab);
   const [comments, setComments]       = useState<{ text: string; date: string }[]>([]);
-  const [editingName, setEditingName] = useState(false);
-  const nameValRef                    = useRef("");
   const [copied, setCopied]           = useState(false);
   const [hideHidden, setHideHidden]   = useState(() => localStorage.getItem("drawer_hide_hidden") === "true");
   const [selectedOrderId, setSelectedOrderId] = useState<number>(defaultOrderId ?? client.id);
@@ -80,42 +78,30 @@ export default function ClientDrawer({ client, allClientOrders, onClose, onUpdat
         >
 
         {/* ── Шапка ── */}
+        {(() => {
+          // Название заявки: Заявка №{id} + адрес + имя + телефон
+          const ord = drawerTab === "orders" ? orderData : data;
+          const parts = [ord.address, ord.client_name, ord.phone].filter(Boolean);
+          const orderTitle = `Заявка №${ord.id}${parts.length ? " · " + parts.join(" · ") : ""}`;
+          const displayColor = STATUS_COLORS[ord.status] || "#8b5cf6";
+          return (
         <div className="flex items-center justify-between px-3 sm:px-6 py-3 sm:py-4 flex-shrink-0" style={{ borderBottom: `1px solid ${t.border}` }}>
-          <div className="flex items-center gap-3">
-            <div className="w-11 h-11 rounded-xl flex items-center justify-center text-sm font-bold text-white"
-              style={{ background: STATUS_COLORS[data.status] + "35", border: `2px solid ${STATUS_COLORS[data.status]}50` }}>
-              {(data.client_name || "?").slice(0, 2).toUpperCase()}
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-11 h-11 rounded-xl flex-shrink-0 flex items-center justify-center text-sm font-bold text-white"
+              style={{ background: displayColor + "35", border: `2px solid ${displayColor}50` }}>
+              {ord.id}
             </div>
-            <div>
-              {editingName ? (
-                <input
-                  autoFocus
-                  defaultValue={data.client_name || ""}
-                  onChange={e => { nameValRef.current = e.target.value; }}
-                  onBlur={() => { setEditingName(false); save({ client_name: nameValRef.current }); }}
-                  onKeyDown={e => {
-                    if (e.key === "Enter") { e.preventDefault(); setEditingName(false); save({ client_name: nameValRef.current }); }
-                    if (e.key === "Escape") setEditingName(false);
-                  }}
-                  className="text-base font-bold text-white bg-transparent focus:outline-none focus:border-b focus:border-violet-500"
-                  style={{ borderBottom: "1px solid #7c3aed" }}
-                />
-              ) : (
-                <div
-                  className="text-base font-bold text-white cursor-text hover:opacity-80 transition"
-                  onClick={() => { nameValRef.current = data.client_name || ""; setEditingName(true); }}
-                >
-                  {data.client_name || "Без имени"}
-                </div>
-              )}
-              <div className="flex items-center gap-2 mt-0.5">
-                <span className="text-[11px] px-2 py-0.5 rounded-md font-semibold"
-                  style={{ background: STATUS_COLORS[data.status] + "25", color: STATUS_COLORS[data.status] }}>
-                  {STATUS_LABELS[data.status] || data.status}
+            <div className="min-w-0">
+              <div className="text-base font-bold text-white truncate max-w-xs sm:max-w-lg" title={orderTitle}>
+                {orderTitle}
+              </div>
+              <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                <span className="text-[11px] px-2 py-0.5 rounded-md font-semibold flex-shrink-0"
+                  style={{ background: displayColor + "25", color: displayColor }}>
+                  {STATUS_LABELS[ord.status] || ord.status}
                 </span>
-                {data.phone && <span className="text-xs" style={{ color: t.textMute }}>{data.phone}</span>}
-                {data.contract_sum ? (
-                  <span className="text-xs font-bold text-emerald-400">{data.contract_sum.toLocaleString("ru-RU")} ₽</span>
+                {ord.contract_sum ? (
+                  <span className="text-xs font-bold text-emerald-400 flex-shrink-0">{ord.contract_sum.toLocaleString("ru-RU")} ₽</span>
                 ) : null}
               </div>
             </div>
@@ -139,6 +125,8 @@ export default function ClientDrawer({ client, allClientOrders, onClose, onUpdat
             </button>
           </div>
         </div>
+          );
+        })()}
 
         {/* ── Табы ── */}
         <div className="flex px-3 sm:px-6 gap-1 pt-2 sm:pt-3 flex-shrink-0" style={{ borderBottom: `1px solid ${t.border}` }}>
