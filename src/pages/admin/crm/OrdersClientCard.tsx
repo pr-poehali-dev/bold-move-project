@@ -80,12 +80,13 @@ export function OrdersClientCard({ c, onClick, onNextStep }: {
         {/* Клиент */}
         <div className="flex items-start mb-3">
           <div className="flex-1 min-w-0">
-            {(() => {
-              const customTitle = localStorage.getItem(`order_title_${c.id}`);
-              const parts = [c.address, c.client_name, c.phone].filter(Boolean);
-              const title = customTitle || `Заявка №${c.id}${parts.length ? " · " + parts.join(" · ") : ""}`;
-              return <span className="text-sm font-bold" style={{ color: t.text, display: "block", wordBreak: "break-word", lineHeight: 1.4 }}>{title}</span>;
-            })()}
+            <span className="text-sm font-bold block" style={{ color: t.text }}>
+              {localStorage.getItem(`order_title_${c.id}`) || `Заявка №${c.id}`}
+            </span>
+            <div className="space-y-0.5 mt-1">
+              {c.client_name && <div className="text-xs truncate" style={{ color: t.textMute }}>👤 {c.client_name}</div>}
+              {c.phone && <div className="text-xs truncate" style={{ color: t.textMute }}>📞 {c.phone}</div>}
+            </div>
             {isInstall
               ? <InstallProgress status={c.status} />
               : <span className="inline-block mt-1 text-[10px] px-1.5 py-0.5 rounded-md font-medium"

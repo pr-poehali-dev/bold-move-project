@@ -72,22 +72,12 @@ export default function KanbanCard({ client, colColor, onOpen, onNextStep, dragg
       {/* Тело */}
       <div className="p-3">
         {/* Шапка клиента */}
-        {(() => {
-          const lsKey = `order_title_${client.id}`;
-          const customTitle = localStorage.getItem(lsKey);
-          const parts = [client.address, client.client_name, client.phone].filter(Boolean);
-          const autoTitle = `Заявка №${client.id}${parts.length ? " · " + parts.join(" · ") : ""}`;
-          const cardTitle = customTitle || autoTitle;
-          return (
-        <div className="flex items-start mb-2">
-          <div className="flex-1 min-w-0">
-            <span className="text-xs font-bold" style={{ color: t.text, display: "block", wordBreak: "break-word", lineHeight: 1.4 }}>
-              {cardTitle}
-            </span>
-          </div>
+        {/* Заголовок */}
+        <div className="mb-1.5">
+          <span className="text-xs font-bold" style={{ color: t.text }}>
+            {localStorage.getItem(`order_title_${client.id}`) || `Заявка №${client.id}`}
+          </span>
         </div>
-          );
-        })()}
 
         {/* Статус */}
         {isInstall
@@ -98,14 +88,28 @@ export default function KanbanCard({ client, colColor, onOpen, onNextStep, dragg
             </span>
         }
 
-        {/* Адрес + площадь */}
-        {(client.address || client.area) && (
-          <div className="flex items-center gap-1 text-[10px] mt-1.5 mb-1" style={{ color: t.textMute }}>
-            <Icon name="MapPin" size={9} style={{ color: "#f59e0b" }} className="flex-shrink-0" />
-            {client.address && <span className="truncate flex-1">{client.address}</span>}
-            {client.area && <span className="flex-shrink-0 font-medium">{client.area} м²</span>}
-          </div>
-        )}
+        {/* Имя + телефон + адрес */}
+        <div className="space-y-0.5 mb-1">
+          {client.client_name && (
+            <div className="flex items-center gap-1 text-[10px]" style={{ color: t.textMute }}>
+              <Icon name="User" size={9} className="flex-shrink-0" style={{ color: "#8b5cf6" }} />
+              <span className="truncate">{client.client_name}</span>
+            </div>
+          )}
+          {client.phone && (
+            <div className="flex items-center gap-1 text-[10px]" style={{ color: t.textMute }}>
+              <Icon name="Phone" size={9} className="flex-shrink-0" style={{ color: "#10b981" }} />
+              <span className="truncate">{client.phone}</span>
+            </div>
+          )}
+          {(client.address || client.area) && (
+            <div className="flex items-center gap-1 text-[10px]" style={{ color: t.textMute }}>
+              <Icon name="MapPin" size={9} className="flex-shrink-0" style={{ color: "#f59e0b" }} />
+              {client.address && <span className="truncate flex-1">{client.address}</span>}
+              {client.area && <span className="flex-shrink-0 font-medium">{client.area} м²</span>}
+            </div>
+          )}
+        </div>
 
         {/* Даты */}
         {(client.measure_date || client.install_date) && (

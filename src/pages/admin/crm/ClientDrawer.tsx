@@ -81,12 +81,9 @@ export default function ClientDrawer({ client, allClientOrders, onClose, onUpdat
         {/* ── Шапка ── */}
         {(() => {
           const ord = drawerTab === "orders" ? orderData : data;
-          // Кастомное название из localStorage (приоритет) или авто из полей
           const lsKey = `order_title_${ord.id}`;
           const customTitle = localStorage.getItem(lsKey);
-          const parts = [ord.address, ord.client_name, ord.phone].filter(Boolean);
-          const autoTitle = `Заявка №${ord.id}${parts.length ? " · " + parts.join(" · ") : ""}`;
-          const orderTitle = customTitle || autoTitle;
+          const orderTitle = customTitle || `Заявка №${ord.id}`;
           const displayColor = STATUS_COLORS[ord.status] || "#8b5cf6";
           return (
         <div className="flex items-center justify-between px-3 sm:px-6 py-3 sm:py-4 flex-shrink-0" style={{ borderBottom: `1px solid ${t.border}` }}>
@@ -102,7 +99,7 @@ export default function ClientDrawer({ client, allClientOrders, onClose, onUpdat
                   defaultValue={orderTitle}
                   onBlur={e => {
                     const val = e.target.value.trim();
-                    if (val && val !== autoTitle) {
+                    if (val && val !== `Заявка №${ord.id}`) {
                       localStorage.setItem(lsKey, val);
                     } else {
                       localStorage.removeItem(lsKey);

@@ -60,12 +60,14 @@ export function OrdersClientRow({ c, onClick, onNextStep }: {
 
       {/* Клиент */}
       <div className="w-44 min-w-0 flex-shrink-0">
-        {(() => {
-          const customTitle = localStorage.getItem(`order_title_${c.id}`);
-          const parts = [c.address, c.client_name, c.phone].filter(Boolean);
-          const title = customTitle || `Заявка №${c.id}${parts.length ? " · " + parts.join(" · ") : ""}`;
-          return <div className="text-sm font-semibold truncate" style={{ color: t.text }} title={title}>{title}</div>;
-        })()}
+        <div className="text-sm font-semibold truncate" style={{ color: t.text }}>
+          {localStorage.getItem(`order_title_${c.id}`) || `Заявка №${c.id}`}
+        </div>
+        {(c.client_name || c.phone) && (
+          <div className="text-xs truncate" style={{ color: t.textMute }}>
+            {[c.client_name, c.phone].filter(Boolean).join(" · ")}
+          </div>
+        )}
       </div>
 
       {/* Статус */}
