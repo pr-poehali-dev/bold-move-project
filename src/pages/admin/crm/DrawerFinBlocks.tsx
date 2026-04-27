@@ -337,15 +337,30 @@ export function DrawerCostsBlock({
 
   const applyAuto = () => applyAutoWithSum(contractSum);
 
-  // Авто-применение при изменении суммы договора (если авто-режим включён)
-  const prevContractSumRef = useRef<number>(contractSum);
+  // Авто-применение правил
+  const prevContractSumRef = useRef<number>(-1); // -1 = первый рендер
   useEffect(() => {
-    if (!contractSum || !hasRules) { prevContractSumRef.current = contractSum; return; }
-    const autoMode = loadAutoMode();
-    if (autoMode && contractSum !== prevContractSumRef.current) {
+    if (!contractSum || !hasRules || !loadAutoMode()) {
+      prevContractSumRef.current = contractSum;
+      return;
+    }
+    const isFirstRender = prevContractSumRef.current === -1;
+    const sumChanged = contractSum !== prevContractSumRef.current;
+    prevContractSumRef.current = contractSum;
+
+    if (isFirstRender) {
+      // При открытии карточки: применяем если все затраты пустые
+      const allEmpty = costRows.every(row => {
+        if (row.key === "material_cost" || row.key === "measure_cost" || row.key === "install_cost") {
+          return !data[row.key as keyof Client];
+        }
+        return !localStorage.getItem(`fin_row_${data.id}_${row.key}`);
+      });
+      if (allEmpty) applyAutoWithSum(contractSum);
+    } else if (sumChanged) {
+      // При изменении суммы — всегда пересчитываем
       applyAutoWithSum(contractSum);
     }
-    prevContractSumRef.current = contractSum;
   }, [data.id, contractSum]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
