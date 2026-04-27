@@ -8,30 +8,19 @@ import Icon from "@/components/ui/icon";
 import { useTheme } from "./themeContext";
 
 // ── Правила авто-расчёта ────────────────────────────────────────────────────
-const LS_AUTO_RULES = "crm_costs_auto_rules";
+// Структура: { [rowKey]: { pct: number|null, enabled: boolean } }
+const LS_AUTO_RULES = "crm_costs_auto_rules_v2";
 
-interface AutoRule {
-  id: string;
-  label: string;
-  pct: number | null;
-  enabled: boolean;
-  color: string;
-  icon: string;
-}
+interface RuleEntry { pct: number | null; enabled: boolean; }
+type AutoRulesMap = Record<string, RuleEntry>;
 
-interface AutoRules {
-  measure_pct: number | null;
-  install_pct: number | null;
-  measure_enabled?: boolean;
-  install_enabled?: boolean;
-  custom?: AutoRule[];
+function loadAutoRules(): AutoRulesMap {
+  try {
+    const v = JSON.parse(localStorage.getItem(LS_AUTO_RULES) || "{}");
+    return typeof v === "object" && v !== null ? v : {};
+  } catch { return {}; }
 }
-
-function loadAutoRules(): AutoRules {
-  try { return { measure_pct: null, install_pct: null, measure_enabled: true, install_enabled: true, custom: [], ...JSON.parse(localStorage.getItem(LS_AUTO_RULES) || "{}") }; }
-  catch { return { measure_pct: null, install_pct: null, measure_enabled: true, install_enabled: true, custom: [] }; }
-}
-function saveAutoRules(r: AutoRules) {
+function saveAutoRules(r: AutoRulesMap) {
   localStorage.setItem(LS_AUTO_RULES, JSON.stringify(r));
 }
 
@@ -47,52 +36,30 @@ function Toggle({ enabled, onChange }: { enabled: boolean; onChange: (v: boolean
   );
 }
 
-interface BuiltinRule {
-  label: string; pct: number | null; enabled: boolean; color: string; icon: string;
-  setPct: (v: number | null) => void; setEnabled: (v: boolean) => void;
-}
+// Строка затраты для отображения в модалке
+interface CostRowDef { key: string; label: string; }
 
 // ── Модальное окно настройки правил ────────────────────────────────────────
-function AutoRulesModal({ onClose }: { onClose: () => void }) {
+function AutoRulesModal({ onClose, costRows }: { onClose: () => void; costRows: CostRowDef[] }) {
   const t = useTheme();
-  const [rules, setRules] = useState<AutoRules>(loadAutoRules);
-  const [addingNew, setAddingNew] = useState(false);
-  const [newLabel, setNewLabel] = useState("");
-  const [newPct, setNewPct] = useState<string>("");
+  const [rules, setRules] = useState<AutoRulesMap>(loadAutoRules);
 
   const save = () => { saveAutoRules(rules); onClose(); };
 
-  const addCustomRule = () => {
-    if (!newLabel.trim()) return;
-    const newRule: AutoRule = {
-      id: `rule_${Date.now()}`,
-      label: newLabel.trim(),
-      pct: newPct === "" ? null : +newPct,
-      enabled: true,
-      color: "#8b5cf6",
-      icon: "Hash",
-    };
-    setRules(r => ({ ...r, custom: [...(r.custom || []), newRule] }));
-    setNewLabel(""); setNewPct(""); setAddingNew(false);
-  };
+  const getEntry = (key: string): RuleEntry =>
+    rules[key] ?? { pct: null, enabled: true };
 
-  const updateCustom = (id: string, patch: Partial<AutoRule>) =>
-    setRules(r => ({ ...r, custom: (r.custom || []).map(c => c.id === id ? { ...c, ...patch } : c) }));
+  const setEntry = (key: string, patch: Partial<RuleEntry>) =>
+    setRules(r => ({ ...r, [key]: { ...getEntry(key), ...patch } }));
 
-  const deleteCustom = (id: string) =>
-    setRules(r => ({ ...r, custom: (r.custom || []).filter(c => c.id !== id) }));
-
-  const allRules: BuiltinRule[] = [
-    { label: "Замер", pct: rules.measure_pct, enabled: rules.measure_enabled ?? true, color: "#f59e0b", icon: "Ruler",
-      setPct: (v: number | null) => setRules(r => ({ ...r, measure_pct: v })),
-      setEnabled: (v: boolean) => setRules(r => ({ ...r, measure_enabled: v })) },
-    { label: "Монтаж", pct: rules.install_pct, enabled: rules.install_enabled ?? true, color: "#ef4444", icon: "Wrench",
-      setPct: (v: number | null) => setRules(r => ({ ...r, install_pct: v })),
-      setEnabled: (v: boolean) => setRules(r => ({ ...r, install_enabled: v })) },
-  ];
+  const deleteEntry = (key: string) =>
+    setRules(r => { const next = { ...r }; delete next[key]; return next; });
 
   const exampleSum = 100000;
-  const hasAny = allRules.some(r => r.enabled && r.pct) || (rules.custom || []).some(c => c.enabled && c.pct);
+  const hasAny = costRows.some(row => {
+    const e = getEntry(row.key);
+    return e.enabled && e.pct != null && e.pct > 0;
+  });
 
   return createPortal(
     <div className="fixed inset-0 z-[200] flex items-center justify-center p-4"
@@ -118,103 +85,59 @@ function AutoRulesModal({ onClose }: { onClose: () => void }) {
         {/* Тело */}
         <div className="px-5 py-4 space-y-3 overflow-y-auto flex-1">
           <p className="text-xs leading-relaxed" style={{ color: t.textMute }}>
-            Укажите процент от суммы договора. Слайдер включает или выключает правило для всех карточек.
+            Укажите % от суммы договора для каждой затраты. Слайдер включает или выключает правило для всех карточек.
           </p>
 
-          <div className="space-y-2">
-            {/* Встроенные правила */}
-            {allRules.map(rule => (
-              <div key={rule.label} className="rounded-xl p-3" style={{ background: t.surface2, border: `1px solid ${rule.enabled ? rule.color + "40" : t.border}`, opacity: rule.enabled ? 1 : 0.5 }}>
-                <div className="flex items-center justify-between mb-2">
-                  <label className="text-xs font-medium flex items-center gap-1.5" style={{ color: rule.color }}>
-                    <Icon name={rule.icon} size={12} /> {rule.label}
-                  </label>
-                  <Toggle enabled={rule.enabled} onChange={rule.setEnabled} />
-                </div>
-                <div className="flex items-center gap-2">
-                  <input
-                    type="number" min={0} max={100}
-                    value={rule.pct ?? ""}
-                    onChange={e => rule.setPct(e.target.value === "" ? null : +e.target.value)}
-                    disabled={!rule.enabled}
-                    className="flex-1 rounded-lg px-3 py-2 text-sm focus:outline-none"
-                    style={{ background: t.surface, border: `1px solid ${t.border}`, color: t.text }}
-                    placeholder="0"
-                  />
-                  <span className="text-sm font-bold" style={{ color: t.textMute }}>%</span>
-                  <span className="text-xs" style={{ color: t.textMute }}>от договора</span>
-                </div>
-              </div>
-            ))}
+          {costRows.length === 0 && (
+            <div className="text-xs text-center py-4 opacity-40" style={{ color: t.textMute }}>
+              Добавьте строки затрат в карточку — они появятся здесь
+            </div>
+          )}
 
-            {/* Кастомные правила */}
-            {(rules.custom || []).map(rule => (
-              <div key={rule.id} className="rounded-xl p-3" style={{ background: t.surface2, border: `1px solid ${rule.enabled ? rule.color + "40" : t.border}`, opacity: rule.enabled ? 1 : 0.5 }}>
-                <div className="flex items-center justify-between mb-2">
-                  <label className="text-xs font-medium flex items-center gap-1.5" style={{ color: rule.color }}>
-                    <Icon name={rule.icon} size={12} /> {rule.label}
-                  </label>
+          <div className="space-y-2">
+            {costRows.map(row => {
+              const entry = getEntry(row.key);
+              return (
+                <div key={row.key} className="rounded-xl p-3"
+                  style={{ background: t.surface2, border: `1px solid ${entry.enabled ? "#ef444440" : t.border}`, opacity: entry.enabled ? 1 : 0.55 }}>
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-xs font-medium" style={{ color: "#ef4444" }}>{row.label}</span>
+                    <div className="flex items-center gap-2">
+                      <Toggle enabled={entry.enabled} onChange={v => setEntry(row.key, { enabled: v })} />
+                      <button onClick={() => deleteEntry(row.key)}
+                        title="Удалить правило"
+                        className="opacity-30 hover:opacity-70 transition" style={{ color: t.textMute }}>
+                        <Icon name="Trash2" size={13} />
+                      </button>
+                    </div>
+                  </div>
                   <div className="flex items-center gap-2">
-                    <Toggle enabled={rule.enabled} onChange={v => updateCustom(rule.id, { enabled: v })} />
-                    <button onClick={() => deleteCustom(rule.id)} className="opacity-40 hover:opacity-80 transition" style={{ color: t.textMute }}>
-                      <Icon name="Trash2" size={13} />
-                    </button>
+                    <input
+                      type="number" min={0} max={100}
+                      value={entry.pct ?? ""}
+                      onChange={e => setEntry(row.key, { pct: e.target.value === "" ? null : +e.target.value })}
+                      disabled={!entry.enabled}
+                      className="flex-1 rounded-lg px-3 py-2 text-sm focus:outline-none"
+                      style={{ background: t.surface, border: `1px solid ${t.border}`, color: t.text }}
+                      placeholder="0"
+                    />
+                    <span className="text-sm font-bold" style={{ color: t.textMute }}>%</span>
+                    <span className="text-xs" style={{ color: t.textMute }}>от договора</span>
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <input
-                    type="number" min={0} max={100}
-                    value={rule.pct ?? ""}
-                    onChange={e => updateCustom(rule.id, { pct: e.target.value === "" ? null : +e.target.value })}
-                    disabled={!rule.enabled}
-                    className="flex-1 rounded-lg px-3 py-2 text-sm focus:outline-none"
-                    style={{ background: t.surface, border: `1px solid ${t.border}`, color: t.text }}
-                    placeholder="0"
-                  />
-                  <span className="text-sm font-bold" style={{ color: t.textMute }}>%</span>
-                  <span className="text-xs" style={{ color: t.textMute }}>от договора</span>
-                </div>
-              </div>
-            ))}
-
-            {/* Форма добавления нового */}
-            {addingNew ? (
-              <div className="rounded-xl p-3 space-y-2" style={{ background: t.surface2, border: "1px solid #8b5cf640" }}>
-                <input autoFocus value={newLabel} onChange={e => setNewLabel(e.target.value)}
-                  placeholder="Название (напр. Материалы)"
-                  className="w-full rounded-lg px-3 py-2 text-sm focus:outline-none"
-                  style={{ background: t.surface, border: `1px solid ${t.border}`, color: t.text }} />
-                <div className="flex items-center gap-2">
-                  <input type="number" min={0} max={100} value={newPct}
-                    onChange={e => setNewPct(e.target.value)}
-                    onKeyDown={e => { if (e.key === "Enter") addCustomRule(); if (e.key === "Escape") setAddingNew(false); }}
-                    placeholder="0"
-                    className="flex-1 rounded-lg px-3 py-2 text-sm focus:outline-none"
-                    style={{ background: t.surface, border: `1px solid ${t.border}`, color: t.text }} />
-                  <span className="text-sm font-bold" style={{ color: t.textMute }}>%</span>
-                  <button onClick={addCustomRule} className="px-3 py-2 rounded-lg text-xs font-semibold text-white" style={{ background: "#8b5cf6" }}>ОК</button>
-                  <button onClick={() => { setAddingNew(false); setNewLabel(""); setNewPct(""); }} className="text-xs opacity-40 hover:opacity-70" style={{ color: t.textMute }}>✕</button>
-                </div>
-              </div>
-            ) : (
-              <button onClick={() => setAddingNew(true)}
-                className="flex items-center gap-1.5 text-xs opacity-50 hover:opacity-90 transition mt-1"
-                style={{ color: "#8b5cf6" }}>
-                <Icon name="Plus" size={13} /> Добавить правило
-              </button>
-            )}
+              );
+            })}
           </div>
 
           {/* Пример */}
           {hasAny && (
             <div className="rounded-xl px-3 py-2.5 text-xs space-y-1" style={{ background: "#ef444410", border: "1px solid #ef444430" }}>
               <div className="font-medium mb-1" style={{ color: "#ef4444" }}>Пример при договоре 100 000 ₽:</div>
-              {allRules.filter(r => r.enabled && r.pct).map(r => (
-                <div key={r.label} style={{ color: t.textMute }}>{r.label} = {(exampleSum * (r.pct!) / 100).toLocaleString("ru-RU")} ₽</div>
-              ))}
-              {(rules.custom || []).filter(c => c.enabled && c.pct).map(c => (
-                <div key={c.id} style={{ color: t.textMute }}>{c.label} = {(exampleSum * (c.pct!) / 100).toLocaleString("ru-RU")} ₽</div>
-              ))}
+              {costRows.map(row => {
+                const e = getEntry(row.key);
+                if (!e.enabled || !e.pct) return null;
+                return <div key={row.key} style={{ color: t.textMute }}>{row.label} = {(exampleSum * e.pct / 100).toLocaleString("ru-RU")} ₽</div>;
+              })}
             </div>
           )}
         </div>
@@ -341,42 +264,82 @@ export function DrawerCostsBlock({
     saveFinLabel(key, label);
   };
 
-  const contractSum = Number(data.contract_sum) || 0;
-  const rules = loadAutoRules();
-  const hasRules = (rules.measure_enabled !== false && rules.measure_pct != null)
-    || (rules.install_enabled !== false && rules.install_pct != null)
-    || (rules.custom || []).some(c => c.enabled && c.pct != null);
+  // Метки встроенных строк затрат
+  const BUILTIN_COST_DEFS: Record<string, string> = {
+    material_cost: "Материалы",
+    measure_cost:  "Замер",
+    install_cost:  "Монтаж",
+  };
 
+  // Список всех видимых строк затрат для модалки правил
+  const costRows: CostRowDef[] = [
+    ...(["material_cost", "measure_cost", "install_cost"] as const)
+      .filter(key => rowVisibility[key] !== false)
+      .map(key => ({ key, label: getLabel(key, BUILTIN_COST_DEFS[key]) })),
+    ...customFinRows
+      .filter(r => r.block === "costs" && rowVisibility[r.key] !== false)
+      .map(r => ({ key: r.key, label: r.label })),
+  ];
+
+  const contractSum = Number(data.contract_sum) || 0;
+  const rulesMap = loadAutoRules();
+
+  // Есть ли хоть одно включённое правило с процентом для видимых строк
+  const hasRules = costRows.some(row => {
+    const e = rulesMap[row.key];
+    return e && e.enabled && e.pct != null && e.pct > 0;
+  });
+
+  // Применить авто-расчёт: встроенные строки — через saveWithLog, кастомные — в localStorage
   const applyAutoWithSum = (sum: number) => {
     if (!sum) return;
     const r = loadAutoRules();
     const patch: Partial<Client> = {};
-    if (r.measure_enabled !== false && r.measure_pct != null)
-      (patch as Record<string, unknown>).measure_cost = Math.round(sum * r.measure_pct / 100);
-    if (r.install_enabled !== false && r.install_pct != null)
-      (patch as Record<string, unknown>).install_cost = Math.round(sum * r.install_pct / 100);
+    let hasCustom = false;
+
+    costRows.forEach(row => {
+      const e = r[row.key];
+      if (!e || !e.enabled || !e.pct) return;
+      const val = Math.round(sum * e.pct / 100);
+      if (row.key === "material_cost" || row.key === "measure_cost" || row.key === "install_cost") {
+        (patch as Record<string, unknown>)[row.key] = val;
+      } else {
+        localStorage.setItem(`fin_row_${data.id}_${row.key}`, String(val));
+        hasCustom = true;
+      }
+    });
+
     if (Object.keys(patch).length > 0) {
       saveWithLog(patch, "Авто-расчёт затрат по правилу", "Zap", "#ef4444");
-      setAutoFilled(true);
+    } else if (hasCustom) {
+      logAction("Zap", "#ef4444", "Авто-расчёт затрат по правилу");
     }
+    if (Object.keys(patch).length > 0 || hasCustom) setAutoFilled(true);
   };
 
   const applyAuto = () => applyAutoWithSum(contractSum);
 
-  // Автоматически применять правила при первом появлении суммы договора
+  // Авто-применение при первом открытии карточки с суммой договора
   const autoAppliedRef = useRef<string | null>(null);
   useEffect(() => {
     const key = `${data.id}_${contractSum}`;
-    if (contractSum > 0 && autoAppliedRef.current !== key && hasRules
-      && !data.measure_cost && !data.install_cost) {
-      autoAppliedRef.current = key;
-      applyAutoWithSum(contractSum);
+    if (contractSum > 0 && autoAppliedRef.current !== key && hasRules) {
+      const allEmpty = costRows.every(row => {
+        if (row.key === "material_cost" || row.key === "measure_cost" || row.key === "install_cost") {
+          return !data[row.key as keyof Client];
+        }
+        return !localStorage.getItem(`fin_row_${data.id}_${row.key}`);
+      });
+      if (allEmpty) {
+        autoAppliedRef.current = key;
+        applyAutoWithSum(contractSum);
+      }
     }
   }, [data.id, contractSum]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <>
-      {showRules && <AutoRulesModal onClose={() => setShowRules(false)} />}
+      {showRules && <AutoRulesModal onClose={() => setShowRules(false)} costRows={costRows} />}
 
       <Section icon="Receipt" title="Затраты" color="#ef4444"
         hidden={isHidden}
@@ -415,8 +378,7 @@ export function DrawerCostsBlock({
             <Icon name="Zap" size={12} style={{ color: "#ef4444", flexShrink: 0, marginTop: 1 }} />
             <div className="flex-1">
               <span className="text-[11px] leading-relaxed" style={{ color: "#fca5a5" }}>
-                Замер и Монтаж заполнены автоматически по правилу ({rules.measure_pct ?? 0}% / {rules.install_pct ?? 0}%).
-                Вы можете изменить значения вручную.
+                Затраты заполнены автоматически по правилу. Можно изменить вручную.
               </span>
             </div>
             <button onClick={() => setAutoFilled(false)} style={{ color: "#ef444460" }}>
@@ -427,9 +389,9 @@ export function DrawerCostsBlock({
 
         {(["material_cost", "measure_cost", "install_cost"] as const).map(key => {
           const defs: Record<string, { def: string; save: (v: string) => void }> = {
-            material_cost: { def: "Материалы", save: v => saveWithLog({ material_cost: +v || null } as Partial<Client>, `Материалы: ${(+v).toLocaleString("ru-RU")} ₽`,   "Package", "#ef4444") },
-            measure_cost:  { def: "Замер",     save: v => { saveWithLog({ measure_cost:  +v || null } as Partial<Client>, `Замер стоит: ${(+v).toLocaleString("ru-RU")} ₽`, "Ruler",   "#ef4444"); setAutoFilled(false); } },
-            install_cost:  { def: "Монтаж",    save: v => { saveWithLog({ install_cost:  +v || null } as Partial<Client>, `Монтаж стоит: ${(+v).toLocaleString("ru-RU")} ₽`,"Wrench",  "#ef4444"); setAutoFilled(false); } },
+            material_cost: { def: "Материалы", save: v => saveWithLog({ material_cost: +v || null } as Partial<Client>, `Материалы: ${(+v).toLocaleString("ru-RU")} ₽`,    "Package", "#ef4444") },
+            measure_cost:  { def: "Замер",     save: v => { saveWithLog({ measure_cost:  +v || null } as Partial<Client>, `Замер: ${(+v).toLocaleString("ru-RU")} ₽`,  "Ruler",   "#ef4444"); setAutoFilled(false); } },
+            install_cost:  { def: "Монтаж",    save: v => { saveWithLog({ install_cost:  +v || null } as Partial<Client>, `Монтаж: ${(+v).toLocaleString("ru-RU")} ₽`, "Wrench",  "#ef4444"); setAutoFilled(false); } },
           };
           return rowVisibility[key] === false ? null : (
             <RowWithToggle key={key} rowKey={key} visible onToggle={() => {}} editMode={costsEdit}
