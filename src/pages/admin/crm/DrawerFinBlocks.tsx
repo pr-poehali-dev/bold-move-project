@@ -127,14 +127,7 @@ function AutoRulesModal({ onClose, costRows }: { onClose: () => void; costRows: 
                   style={{ background: t.surface2, border: `1px solid ${entry.enabled ? "#ef444440" : t.border}`, opacity: entry.enabled ? 1 : 0.55 }}>
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-xs font-medium" style={{ color: "#ef4444" }}>{row.label}</span>
-                    <div className="flex items-center gap-2">
-                      <Toggle enabled={entry.enabled} onChange={v => setEntry(row.key, { enabled: v })} />
-                      <button onClick={() => deleteEntry(row.key)}
-                        title="Удалить правило"
-                        className="opacity-30 hover:opacity-70 transition" style={{ color: t.textMute }}>
-                        <Icon name="Trash2" size={13} />
-                      </button>
-                    </div>
+                    <Toggle enabled={entry.enabled} onChange={v => setEntry(row.key, { enabled: v })} />
                   </div>
                   <div className="flex items-center gap-2">
                     <input
