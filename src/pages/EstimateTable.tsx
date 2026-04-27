@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { useAuth } from "@/context/AuthContext";
+import { useAuth, CLIENT_ROLES } from "@/context/AuthContext";
 import func2url from "@/../backend/func2url.json";
 import { parseEstimateBlocks, type LLMItem } from "./estimateUtils";
 import EstimateBody from "./EstimateBody";
@@ -98,7 +98,10 @@ export default function EstimateTable({ text, items, onSaveRequest }: {
       }
       setContactDone(true);
       setTimeout(() => {
-        window.location.href = `/admin-yura?order=${savedChatId}`;
+        const isClient = !user?.role || CLIENT_ROLES.includes(user.role);
+        window.location.href = isClient
+          ? `/my-orders`
+          : `/admin-yura?order=${savedChatId}`;
       }, 1200);
     } finally {
       setContactSaving(false);
