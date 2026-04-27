@@ -180,12 +180,12 @@ export function OrdersTabs({
                 </div>
                 <div className="flex-1 min-w-0 text-left">
                   <div className="flex items-center gap-1.5">
-                    <span className="text-xs font-bold truncate" style={{ color: isActive ? tab.color : "#fff" }}>{tab.label}</span>
+                    <span className="text-xs font-bold truncate" style={{ color: isActive ? tab.color : t.text }}>{tab.label}</span>
                     <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md flex-shrink-0"
                       style={{ background: tab.color + "20", color: tab.color }}>{count}</span>
                   </div>
                   {revenue > 0 && (
-                    <div className="text-[10px] font-semibold mt-0.5 truncate" style={{ color: isActive ? tab.color : "#a3a3a3" }}>
+                    <div className="text-[10px] font-semibold mt-0.5 truncate" style={{ color: isActive ? tab.color : t.textSub }}>
                       {revenue.toLocaleString("ru-RU")} ₽
                     </div>
                   )}
@@ -195,7 +195,10 @@ export function OrdersTabs({
               {/* Шестерёнка */}
               <button
                 onClick={e => { e.stopPropagation(); setOpenPopup(isOpen ? null : tab.id); }}
-                className="absolute top-1.5 right-1.5 p-1 rounded-md opacity-0 group-hover/tab:opacity-100 transition hover:bg-white/10"
+                className="absolute top-1.5 right-1.5 p-1 rounded-md opacity-0 group-hover/tab:opacity-100 transition"
+                style={{ background: "transparent" }}
+                onMouseEnter={e => (e.currentTarget.style.background = t.surface2)}
+                onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
                 style={{ color: t.textMute }}>
                 <Icon name="Settings2" size={11} />
               </button>

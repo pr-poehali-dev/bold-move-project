@@ -13,29 +13,37 @@ export function BulkBar({ count, onChangeStatus, onDelete, onExport, onClear }: 
   onClear: () => void;
 }) {
   const [statusOpen, setStatusOpen] = useState(false);
+  const t = useTheme();
+  const barBg = t.theme === "dark" ? "#1e1b4b" : "#4c1d95";
+  const barBorder = t.theme === "dark" ? "#4c1d95" : "#6d28d9";
+  const btnBg = t.theme === "dark" ? "rgba(255,255,255,0.1)" : "rgba(255,255,255,0.2)";
+  const btnBorder = t.theme === "dark" ? "rgba(255,255,255,0.15)" : "rgba(255,255,255,0.3)";
   return (
     <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 flex items-center gap-2 px-4 py-3 rounded-2xl shadow-2xl"
-      style={{ background: "#1e1b4b", border: "1px solid #4c1d95", minWidth: 420 }}>
+      style={{ background: barBg, border: `1px solid ${barBorder}`, minWidth: 420 }}>
       <div className="flex items-center gap-2 mr-3">
         <div className="w-6 h-6 rounded-lg flex items-center justify-center text-xs font-bold text-white" style={{ background: "#7c3aed" }}>{count}</div>
-        <span className="text-sm text-white/80 font-medium">выбрано</span>
+        <span className="text-sm font-medium text-white">выбрано</span>
       </div>
 
       {/* Сменить статус */}
       <div className="relative">
         <button onClick={() => setStatusOpen(o => !o)}
           className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold transition text-white"
-          style={{ background: "rgba(255,255,255,0.1)", border: "1px solid rgba(255,255,255,0.15)" }}>
+          style={{ background: btnBg, border: `1px solid ${btnBorder}` }}>
           <Icon name="RefreshCw" size={12} /> Статус <Icon name="ChevronDown" size={11} />
         </button>
         {statusOpen && (
           <div className="absolute bottom-full mb-2 left-0 rounded-xl overflow-hidden shadow-2xl z-50 min-w-[180px]"
-            style={{ background: "#1e1b4b", border: "1px solid #4c1d95" }}>
+            style={{ background: barBg, border: `1px solid ${barBorder}` }}>
             {ALL_STATUSES.map(s => (
               <button key={s} onClick={() => { onChangeStatus(s); setStatusOpen(false); }}
-                className="w-full flex items-center gap-2 px-3 py-2.5 text-xs text-left hover:bg-white/10 transition">
+                className="w-full flex items-center gap-2 px-3 py-2.5 text-xs text-left transition"
+                style={{ color: STATUS_COLORS[s] }}
+                onMouseEnter={e => (e.currentTarget.style.background = "rgba(255,255,255,0.08)")}
+                onMouseLeave={e => (e.currentTarget.style.background = "transparent")}>
                 <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: STATUS_COLORS[s] }} />
-                <span style={{ color: STATUS_COLORS[s] }}>{STATUS_LABELS[s]}</span>
+                {STATUS_LABELS[s]}
               </button>
             ))}
           </div>
@@ -45,7 +53,7 @@ export function BulkBar({ count, onChangeStatus, onDelete, onExport, onClear }: 
       {/* Экспорт CSV */}
       <button onClick={onExport}
         className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold transition text-white"
-        style={{ background: "rgba(255,255,255,0.1)", border: "1px solid rgba(255,255,255,0.15)" }}>
+        style={{ background: btnBg, border: `1px solid ${btnBorder}` }}>
         <Icon name="Download" size={12} /> CSV
       </button>
 
@@ -57,7 +65,7 @@ export function BulkBar({ count, onChangeStatus, onDelete, onExport, onClear }: 
       </button>
 
       {/* Закрыть */}
-      <button onClick={onClear} className="ml-auto text-white/40 hover:text-white/70 transition">
+      <button onClick={onClear} className="ml-auto text-white/60 hover:text-white transition">
         <Icon name="X" size={14} />
       </button>
     </div>

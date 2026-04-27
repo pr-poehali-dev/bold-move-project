@@ -209,12 +209,12 @@ export function DrawerFilesBlock({ clientId, hiddenBlocks, toggleHidden, logActi
                   onBlur={() => { renameCategory(catIdx, labelVal); setEditingLabel(null); }}
                   onKeyDown={e => { if (e.key === "Enter") { renameCategory(catIdx, labelVal); setEditingLabel(null); } }}
                   className="text-xs rounded-lg px-2 py-0.5 focus:outline-none w-36 flex-shrink-0"
-                  style={{ background: "rgba(124,58,237,0.15)", border: "1px solid #7c3aed40", color: "#fff" }}
+                  style={{ background: "rgba(124,58,237,0.15)", border: "1px solid #7c3aed40", color: t.text }}
                 />
               ) : (
                 <span
                   className={`text-xs w-36 flex-shrink-0 ${editMode ? "cursor-pointer hover:opacity-70" : ""}`}
-                  style={{ color: "#d4d4d4" }}
+                  style={{ color: t.textSub }}
                   onClick={() => { if (editMode) { setEditingLabel(catIdx); setLabelVal(cat.label); } }}>
                   {cat.label}
                 </span>

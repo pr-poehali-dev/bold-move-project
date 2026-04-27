@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Section, FileField, InlineField } from "./drawerComponents";
 import { BlockId, CustomBlockData } from "./drawerTypes";
 import { RowWithToggle } from "./DrawerFinRowHelpers";
+import { useTheme } from "./themeContext";
 
 export function DrawerCustomBlock({ cb, data_id, hiddenBlocks, customRowVals, editingBlock, setEditingBlock, toggleHidden, deleteCustomBlock, updateCustomBlock, setCustomRowVals, logAction }: {
   cb: CustomBlockData;
@@ -84,6 +85,7 @@ export function DrawerCustomBlock({ cb, data_id, hiddenBlocks, customRowVals, ed
 
 function AddCustomRow({ color, onAdd }: { color: string; onAdd: (label: string) => void }) {
   const [val, setVal] = useState("");
+  const t = useTheme();
   const commit = () => { if (val.trim()) { onAdd(val.trim()); setVal(""); } };
   return (
     <div className="flex items-center gap-1.5 mt-1 mb-1">
@@ -93,7 +95,7 @@ function AddCustomRow({ color, onAdd }: { color: string; onAdd: (label: string) 
         onKeyDown={e => { if (e.key === "Enter") commit(); }}
         placeholder="Новая строка..."
         className="flex-1 text-xs rounded-lg px-2 py-1 focus:outline-none"
-        style={{ background: "rgba(255,255,255,0.06)", border: `1px solid ${color}40`, color: "#fff" }}
+        style={{ background: t.surface2, border: `1px solid ${color}40`, color: t.text }}
       />
       <button onClick={commit}
         className="text-xs px-2 py-1 rounded-lg font-medium flex-shrink-0"

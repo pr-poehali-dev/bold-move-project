@@ -77,6 +77,7 @@ function useInfoBlock(id: BlockId, hiddenBlocks: Set<BlockId>, editingBlock: Blo
 // Компонент добавления строки
 function AddRowInline({ color, onAdd, onDone }: { color: string; onAdd: (label: string) => void; onDone?: () => void }) {
   const [val, setVal] = useState("");
+  const t = useTheme();
   const commit = () => {
     if (val.trim()) { onAdd(val.trim()); setVal(""); }
     onDone?.();
@@ -87,7 +88,7 @@ function AddRowInline({ color, onAdd, onDone }: { color: string; onAdd: (label: 
         onKeyDown={e => { if (e.key === "Enter") commit(); }}
         placeholder="Новая строка..."
         className="flex-1 text-xs rounded-lg px-2 py-1 focus:outline-none"
-        style={{ background: "rgba(255,255,255,0.06)", border: `1px solid ${color}40`, color: "#fff" }} />
+        style={{ background: t.surface2, border: `1px solid ${color}40`, color: t.text }} />
       <button onClick={commit} className="text-xs px-2 py-1 rounded-lg font-medium flex-shrink-0"
         style={{ background: `${color}20`, color }}>OK</button>
     </div>

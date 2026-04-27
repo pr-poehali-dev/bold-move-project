@@ -110,8 +110,10 @@ export function KanbanColumn({
             <div className="relative" ref={menuRef}>
               <button
                 onClick={() => { setMenuOpen(v => !v); setShowColorPicker(false); setEditingLabel(false); }}
-                className="p-1 rounded-md opacity-0 group-hover/header:opacity-100 transition hover:bg-white/10"
-                style={{ color: t.textMute }}>
+                className="p-1 rounded-md opacity-0 group-hover/header:opacity-100 transition"
+                style={{ color: t.textMute }}
+                onMouseEnter={e => (e.currentTarget.style.background = t.surface2)}
+                onMouseLeave={e => (e.currentTarget.style.background = "transparent")}>
                 <Icon name="Settings2" size={12} />
               </button>
 
