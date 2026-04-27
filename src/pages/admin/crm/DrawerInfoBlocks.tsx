@@ -75,9 +75,12 @@ function useInfoBlock(id: BlockId, hiddenBlocks: Set<BlockId>, editingBlock: Blo
 }
 
 // Компонент добавления строки
-function AddRowInline({ color, onAdd }: { color: string; onAdd: (label: string) => void }) {
+function AddRowInline({ color, onAdd, onDone }: { color: string; onAdd: (label: string) => void; onDone?: () => void }) {
   const [val, setVal] = useState("");
-  const commit = () => { if (val.trim()) { onAdd(val.trim()); setVal(""); } };
+  const commit = () => {
+    if (val.trim()) { onAdd(val.trim()); setVal(""); }
+    onDone?.();
+  };
   return (
     <div className="flex items-center gap-1.5 mt-1 mb-1">
       <input value={val} onChange={e => setVal(e.target.value)}
@@ -183,7 +186,7 @@ export function DrawerObjectBlock({ data, hiddenBlocks, editingBlock, toggleHidd
           <InlineField label={row.label} value={row.value} onSave={v => updateExtraRow(i, v)} placeholder="Добавить значение" hideLabel={editMode} />
         </RowWithToggle>
       ))}
-      {editMode && <AddRowInline color="#f59e0b" onAdd={addExtraRow} />}
+      {editMode && <AddRowInline color="#f59e0b" onAdd={addExtraRow} onDone={() => setEditingBlock(null)} />}
     </Section>
   );
 }
@@ -216,7 +219,7 @@ export function DrawerDatesBlock({ data, hiddenBlocks, editingBlock, toggleHidde
           <InlineField label={row.label} value={row.value} onSave={v => updateExtraRow(i, v)} placeholder="Добавить значение" hideLabel={editMode} />
         </RowWithToggle>
       ))}
-      {editMode && <AddRowInline color="#f97316" onAdd={addExtraRow} />}
+      {editMode && <AddRowInline color="#f97316" onAdd={addExtraRow} onDone={() => setEditingBlock(null)} />}
     </Section>
   );
 }
