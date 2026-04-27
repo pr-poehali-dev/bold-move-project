@@ -234,8 +234,8 @@ export function DrawerCostsBlock({
   const applyAuto = () => {
     if (!contractSum) return;
     const patch: Partial<Client> = {};
-    if (rules.measure_pct != null) patch.measure_cost = Math.round(contractSum * rules.measure_pct / 100) as unknown as null;
-    if (rules.install_pct != null) patch.install_cost = Math.round(contractSum * rules.install_pct / 100) as unknown as null;
+    if (rules.measure_pct != null) (patch as Record<string, unknown>).measure_cost = Math.round(contractSum * rules.measure_pct / 100);
+    if (rules.install_pct != null) (patch as Record<string, unknown>).install_cost = Math.round(contractSum * rules.install_pct / 100);
     saveWithLog(patch, "Авто-расчёт затрат по правилу", "Zap", "#ef4444");
     setAutoFilled(true);
   };
