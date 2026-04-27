@@ -4,6 +4,7 @@ import { Client } from "./crmApi";
 import { InlineField, Section } from "./drawerComponents";
 import { BlockId } from "./drawerTypes";
 import { RowWithToggle } from "./DrawerFinRowHelpers";
+import { loadClientFields, saveClientFields, loadClientExtraValues, saveClientExtraValues } from "./clientFieldsStore";
 
 interface ExtraRow { label: string; value: string; }
 
@@ -93,33 +94,62 @@ function AddRowInline({ color, onAdd }: { color: string; onAdd: (label: string) 
 // ── Contacts ─────────────────────────────────────────────────────────────────
 export function DrawerContactsBlock({ data, hiddenBlocks, editingBlock, toggleHidden, setEditingBlock, saveWithLog }: InfoBlocksProps) {
   const id: BlockId = "contacts";
-  const { isHidden, editMode, getLabel, renameLabel, hideRow, isVisible, extraRows, addExtraRow, updateExtraRow, renameExtraRow, deleteExtraRow } = useInfoBlock(id, hiddenBlocks, editingBlock, toggleHidden, setEditingBlock);
+  const { isHidden, editMode } = useInfoBlock(id, hiddenBlocks, editingBlock, toggleHidden, setEditingBlock);
 
-  const rows: { key: keyof Client; def: string; ph: string; save: (v: string) => void }[] = [
-    { key: "client_name",       def: "Имя клиента",   ph: "Добавить имя",      save: v => saveWithLog({ client_name: v },       `Имя: ${v}`,           "User",  "#10b981") },
-    { key: "phone",             def: "Телефон",        ph: "Добавить телефон",  save: v => saveWithLog({ phone: v },             `Телефон: ${v}`,       "Phone", "#10b981") },
-    { key: "responsible_phone", def: "Ответственный",  ph: "Прораб / дизайнер", save: v => saveWithLog({ responsible_phone: v }, `Ответственный: ${v}`, "User",  "#10b981") },
-  ];
+  // Читаем поля из единого хранилища (синхронизировано с ClientTab)
+  const [fields, setFields]           = useState(loadClientFields);
+  const [extraValues, setExtraValues] = useState<Record<string, string>>(
+    () => loadClientExtraValues(data.id)
+  );
+
+  const visibleFields = fields.filter(f => !f.hidden);
+
+  const saveExtraVal = (fieldId: string, value: string) => {
+    const updated = { ...extraValues, [fieldId]: value };
+    setExtraValues(updated);
+    saveClientExtraValues(data.id, updated);
+  };
 
   return (
     <Section icon="Phone" title="Контакты" color="#10b981" hidden={isHidden}
       onToggleHidden={() => toggleHidden(id)}
       onEdit={!isHidden ? () => setEditingBlock(editMode ? null : id) : undefined}>
-      {rows.filter(r => isVisible(r.key)).map(r => (
-        <RowWithToggle key={r.key} rowKey={r.key} visible onToggle={() => {}} editMode={editMode}
-          editableLabel={getLabel(r.key, r.def)} onLabelChange={l => renameLabel(r.key, l)}
-          onDelete={() => hideRow(r.key)}>
-          <InlineField label={getLabel(r.key, r.def)} value={data[r.key] as string} onSave={r.save} placeholder={r.ph} />
-        </RowWithToggle>
-      ))}
-      {extraRows.map((row, i) => (
-        <RowWithToggle key={`extra_${i}`} rowKey={`extra_${i}`} visible onToggle={() => {}} editMode={editMode}
-          editableLabel={row.label} onLabelChange={l => renameExtraRow(i, l)}
-          onDelete={() => deleteExtraRow(i)}>
-          <InlineField label={row.label} value={row.value} onSave={v => updateExtraRow(i, v)} placeholder="Добавить значение" hideLabel={editMode} />
-        </RowWithToggle>
-      ))}
-      {editMode && <AddRowInline color="#10b981" onAdd={addExtraRow} />}
+      {visibleFields.map(field => {
+        if (field.builtin && field.clientKey) {
+          // Встроенное поле → значение из data (БД)
+          const val = (data[field.clientKey as keyof Client] as string) || "";
+          const saveKey = field.clientKey;
+          return (
+            <RowWithToggle key={field.id} rowKey={field.id} visible onToggle={() => {}} editMode={false}
+              editableLabel={field.label} onLabelChange={l => {
+                const updated = fields.map(f => f.id === field.id ? { ...f, label: l } : f);
+                setFields(updated);
+                saveClientFields(updated);
+              }}
+              onDelete={() => {}}>
+              <InlineField
+                label={field.label}
+                value={val}
+                onSave={v => saveWithLog({ [saveKey]: v } as Partial<Client>, `${field.label}: ${v}`, "User", "#10b981")}
+                placeholder={field.label}
+              />
+            </RowWithToggle>
+          );
+        }
+        // Кастомное поле → значение из extraValues (localStorage)
+        return (
+          <RowWithToggle key={field.id} rowKey={field.id} visible onToggle={() => {}} editMode={false}
+            editableLabel={field.label} onLabelChange={() => {}}
+            onDelete={() => {}}>
+            <InlineField
+              label={field.label}
+              value={extraValues[field.id] || ""}
+              onSave={v => saveExtraVal(field.id, v)}
+              placeholder={field.label}
+            />
+          </RowWithToggle>
+        );
+      })}
     </Section>
   );
 }
