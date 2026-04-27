@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useAuth, type UserRole, BUSINESS_ROLES } from "@/context/AuthContext";
 import Icon from "@/components/ui/icon";
+import TermsModal from "@/components/TermsModal";
 
 interface Props {
   onClose: () => void;
@@ -70,8 +71,10 @@ export default function AuthModal({ onClose, defaultTab = "login", onPending, on
   const [phone,    setPhone]    = useState("");
   const [email,    setEmail]    = useState("");
   const [password, setPassword] = useState("");
-  const [error,    setError]    = useState("");
-  const [loading,  setLoading]  = useState(false);
+  const [error,      setError]      = useState("");
+  const [loading,    setLoading]    = useState(false);
+  const [termsAccepted, setTermsAccepted] = useState(true);
+  const [showTerms,  setShowTerms]  = useState(false);
 
   const selectedRole = ROLE_OPTIONS.find(r => r.value === role)!;
   const isBusiness   = BUSINESS_ROLES.includes(role);
@@ -113,6 +116,7 @@ export default function AuthModal({ onClose, defaultTab = "login", onPending, on
   };
 
   return (
+    <>
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4"
       style={{ background: "rgba(0,0,0,0.80)" }} onClick={onClose}>
       <div className="w-full max-w-md rounded-2xl overflow-hidden shadow-2xl"
@@ -247,7 +251,47 @@ export default function AuthModal({ onClose, defaultTab = "login", onPending, on
               </div>
             )}
 
-            <button type="submit" disabled={loading || !email || !password}
+            {/* Чекбокс соглашения — только при регистрации */}
+            {tab === "register" && (
+              <label className="flex items-start gap-2.5 cursor-pointer select-none">
+                <div className="relative mt-0.5 flex-shrink-0">
+                  <input
+                    type="checkbox"
+                    checked={termsAccepted}
+                    onChange={e => setTermsAccepted(e.target.checked)}
+                    className="sr-only"
+                  />
+                  <div
+                    className="w-4 h-4 rounded flex items-center justify-center transition"
+                    style={{
+                      background: termsAccepted ? selectedRole.color : "rgba(255,255,255,0.06)",
+                      border: termsAccepted ? `1.5px solid ${selectedRole.color}` : "1.5px solid rgba(255,255,255,0.15)",
+                    }}
+                    onClick={() => setTermsAccepted(v => !v)}
+                  >
+                    {termsAccepted && (
+                      <svg width="9" height="7" viewBox="0 0 9 7" fill="none">
+                        <path d="M1 3L3.5 5.5L8 1" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                      </svg>
+                    )}
+                  </div>
+                </div>
+                <span className="text-[11px] text-white/40 leading-relaxed">
+                  Я ознакомлен(а) и согласен(на) с{" "}
+                  <button
+                    type="button"
+                    onClick={() => setShowTerms(true)}
+                    className="text-blue-400 hover:text-blue-300 underline underline-offset-2 transition"
+                  >
+                    Пользовательским соглашением
+                  </button>
+                  , уведомлён(а) о том, что расчёты AI-агента носят предварительный характер, могут содержать ошибки и{" "}
+                  <strong className="text-white/55">не являются публичной офертой</strong>.
+                </span>
+              </label>
+            )}
+
+            <button type="submit" disabled={loading || !email || !password || (tab === "register" && !termsAccepted)}
               className="w-full py-3 rounded-xl text-sm font-bold text-white transition disabled:opacity-40 mt-1"
               style={{ background: loading ? "#9a3412" : (tab === "register" ? selectedRole.color : "#f97316") }}>
               {loading
@@ -269,5 +313,8 @@ export default function AuthModal({ onClose, defaultTab = "login", onPending, on
         )}
       </div>
     </div>
+
+    {showTerms && <TermsModal onClose={() => setShowTerms(false)} />}
+    </>
   );
 }
