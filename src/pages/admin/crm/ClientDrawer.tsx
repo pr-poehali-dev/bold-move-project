@@ -174,14 +174,27 @@ export default function ClientDrawer({ client, allClientOrders, onClose, onUpdat
                 onClick={!ordersListOpen ? () => setOrdersListOpen(true) : undefined}
                 title={!ordersListOpen ? "Развернуть список заявок" : undefined}>
 
-                {/* Кнопка-переключатель */}
-                <button
-                  className="w-full h-10 flex items-center justify-center transition hover:bg-white/5 flex-shrink-0"
-                  style={{ borderBottom: `1px solid ${t.border}`, color: t.textMute }}
-                  onClick={e => { e.stopPropagation(); setOrdersListOpen(v => !v); }}
-                  title={ordersListOpen ? "Свернуть список" : "Развернуть список заявок"}>
-                  <Icon name={ordersListOpen ? "ChevronLeft" : "ChevronRight"} size={14} />
-                </button>
+                {/* Индикатор свёрнутой панели — по центру полоски */}
+                {!ordersListOpen && (
+                  <div className="flex-1 flex flex-col items-center justify-center gap-1.5" style={{ color: t.textMute }}>
+                    <Icon name="ChevronRight" size={13} />
+                    <div className="flex flex-col gap-0.5">
+                      {[...Array(4)].map((_, i) => (
+                        <div key={i} className="w-0.5 h-3 rounded-full opacity-20" style={{ background: t.textMute }} />
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {/* Кнопка свернуть — только когда открыт */}
+                {ordersListOpen && (
+                  <button
+                    className="w-full h-10 flex items-center justify-center transition hover:bg-white/5 flex-shrink-0"
+                    style={{ borderBottom: `1px solid ${t.border}`, color: t.textMute }}
+                    onClick={e => { e.stopPropagation(); setOrdersListOpen(false); }}
+                    title="Свернуть список">
+                    <Icon name="ChevronLeft" size={14} />
+                  </button>
+                )}
 
                 {/* Список — виден только когда открыт */}
                 <div className={`${ordersListOpen ? "flex" : "hidden"} flex-col overflow-y-auto gap-2 p-2 sm:p-3`}
