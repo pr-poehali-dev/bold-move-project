@@ -10,17 +10,18 @@ interface Props {
 
 export default function EditableCell({ value, type = "text", onSave, className = "", placeholder = "" }: Props) {
   const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState(String(value));
+  const [draft, setDraft] = useState(value === 0 || value === "0" ? "" : String(value));
   const [saving, setSaving] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => { setDraft(String(value)); }, [value]);
+  useEffect(() => { setDraft(value === 0 || value === "0" ? "" : String(value)); }, [value]);
   useEffect(() => { if (editing) inputRef.current?.focus(); }, [editing]);
 
   const commit = async () => {
-    if (draft === String(value)) { setEditing(false); return; }
+    const trimmed = draft.trim();
+    if (trimmed === String(value)) { setEditing(false); return; }
     setSaving(true);
-    await onSave(draft);
+    await onSave(trimmed);
     setSaving(false);
     setEditing(false);
   };
