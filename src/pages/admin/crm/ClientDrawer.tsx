@@ -169,20 +169,20 @@ export default function ClientDrawer({ client, allClientOrders, onClose, onUpdat
             <div className="flex flex-col sm:flex-row h-full min-h-0">
 
               {/* Список заявок */}
-              <div className={`flex-shrink-0 transition-all duration-200 ${ordersListOpen ? "w-56 md:w-64 border-r" : "w-10"}`} style={{ borderColor: t.border }}>
+              <div className={`flex-shrink-0 transition-all duration-200 sm:border-r ${ordersListOpen ? "border-b sm:border-b-0 w-full sm:w-56 md:w-64" : "w-full sm:w-10"}`} style={{ borderColor: t.border }}>
 
                 {/* Заголовок-переключатель (всегда виден) */}
                 <button
-                  className={`w-full flex items-center text-xs font-semibold py-3 ${ordersListOpen ? "justify-between px-2.5" : "justify-center px-0"}`}
+                  className={`w-full flex items-center text-xs font-semibold py-2.5 gap-2 ${ordersListOpen ? "justify-between px-3" : "justify-center px-0 sm:flex-col sm:py-3"}`}
                   style={{ borderBottom: `1px solid ${t.border}`, color: t.textMute }}
                   onClick={() => setOrdersListOpen(v => !v)}>
-                  {ordersListOpen && (
-                    <span className="flex items-center gap-1.5 truncate">
-                      <Icon name="ClipboardList" size={12} />
-                      {orderData ? (STATUS_LABELS[orderData.status] || orderData.status) + (orderData.address ? ` — ${orderData.address}` : "") : "Заявки"}
-                    </span>
-                  )}
-                  <Icon name={ordersListOpen ? "ChevronLeft" : "ChevronRight"} size={13} className="flex-shrink-0" />
+                  <span className={`flex items-center gap-1.5 truncate ${!ordersListOpen ? "hidden sm:hidden" : ""}`}>
+                    <Icon name="ClipboardList" size={12} />
+                    {orderData ? (STATUS_LABELS[orderData.status] || orderData.status) + (orderData.address ? ` — ${orderData.address}` : "") : "Заявки"}
+                  </span>
+                  {!ordersListOpen && <span className="text-[10px] hidden">Заявки</span>}
+                  <Icon name={ordersListOpen ? "ChevronUp" : "ChevronDown"} size={13} className="flex-shrink-0 sm:hidden" />
+                  <Icon name={ordersListOpen ? "ChevronLeft" : "ChevronRight"} size={13} className="flex-shrink-0 hidden sm:block" />
                 </button>
 
                 {/* Список — виден только когда открыт */}
