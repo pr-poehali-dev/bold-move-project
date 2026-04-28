@@ -505,19 +505,34 @@ export default function Pricing() {
                 <Step n={4} text="Напишите нам в Telegram — начислим смет на баланс в течение 15 минут" />
               </div>
 
-              {/* Кнопка Telegram */}
-              <a href="https://t.me/JoniKras" target="_blank" rel="noreferrer"
-                className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl text-sm font-bold transition hover:opacity-90"
-                style={{ background: "#29b6f6", color: "#fff" }}>
-                <Icon name="Send" size={15} />
-                Сообщить об оплате в Telegram
-              </a>
+              {/* Кнопка Telegram с предзаполненным сообщением */}
+              {(() => {
+                const lines = [
+                  "Здравствуйте! Хочу оплатить тариф.",
+                  "",
+                  `📦 Пакет: ${selectedPkg.name} — ${selectedPkg.estimates} смет`,
+                  `💳 Сумма: ${selectedPkg.price.toLocaleString("ru-RU")} ₽`,
+                ];
+                if (user) {
+                  lines.push("", `👤 ID: ${user.id}`, `✉️ Email: ${user.email}`);
+                }
+                const tgText = encodeURIComponent(lines.join("\n"));
+                return (
+                  <a href={`https://t.me/JoniKras?text=${tgText}`} target="_blank" rel="noreferrer"
+                    className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl text-sm font-bold transition hover:opacity-90"
+                    style={{ background: "#29b6f6", color: "#fff" }}>
+                    <Icon name="Send" size={15} />
+                    Сообщить об оплате в Telegram
+                  </a>
+                );
+              })()}
 
-              {user && (
-                <div className="mt-3 text-center text-[10px] text-white/30">
-                  При сообщении укажите ваш ID: <span className="text-white/60 font-mono">{user.id}</span> ({user.email})
-                </div>
-              )}
+              <div className="mt-3 text-center text-[10px] text-white/30">
+                {user
+                  ? <>Сообщение уже готово — ID <span className="text-white/60 font-mono">{user.id}</span> и тариф подставятся автоматически</>
+                  : <>Сообщение готово — тариф подставится автоматически. После оплаты укажи свой email/телефон в чате</>
+                }
+              </div>
             </div>
 
             {/* FAQ микро */}
