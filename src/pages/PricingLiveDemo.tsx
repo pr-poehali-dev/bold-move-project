@@ -358,7 +358,7 @@ function Label({ icon, children }: { icon: string; children: React.ReactNode }) 
 function FloorPlan() {
   // Простой стилизованный «план» SVG
   return (
-    <svg viewBox="0 0 240 110" className="w-full h-full p-3">
+    <svg viewBox="0 0 240 124" className="w-full h-full p-3">
       <rect x="6" y="6" width="228" height="98" rx="6" fill="none"
         stroke="rgba(167,139,250,0.55)" strokeWidth="1.5" strokeDasharray="3 2" />
       <rect x="14" y="14" width="110" height="50" rx="3" fill="rgba(167,139,250,0.07)"
@@ -377,7 +377,7 @@ function FloorPlan() {
       <text x="20" y="86" fill="rgba(249,115,22,0.85)" fontSize="8" fontFamily="monospace">КОРИДОР · 6 м²</text>
 
       {/* размер */}
-      <text x="120" y="106" textAnchor="middle" fill="rgba(255,255,255,0.3)" fontSize="7" fontFamily="monospace">
+      <text x="120" y="120" textAnchor="middle" fill="rgba(255,255,255,0.3)" fontSize="7" fontFamily="monospace">
         ИТОГО: 32 м²
       </text>
     </svg>
