@@ -10,6 +10,7 @@ export interface BusinessUser {
   created_at: string;
   subscription_start: string | null;
   subscription_end: string | null;
+  telegram?: string | null;
 }
 
 export interface ProUser {
@@ -36,6 +37,7 @@ export interface AppUser {
   estimates_count: number;
   subscription_start: string | null;
   subscription_end: string | null;
+  telegram?: string | null;
 }
 
 export interface UserEstimate {
@@ -47,7 +49,27 @@ export interface UserEstimate {
   crm_status: string | null;
 }
 
-export type MasterTab = "business" | "pro" | "all";
+export interface ExpiringUser {
+  id: number;
+  email: string;
+  name: string | null;
+  phone: string | null;
+  role: string;
+  subscription_end: string;
+  telegram: string | null;
+}
+
+export interface AdminStats {
+  total_users: number;
+  pending: number;
+  active_subs: number;
+  total_estimates: number;
+  new_week: number;
+  by_role: Record<string, number>;
+  expiring_soon: ExpiringUser[];
+}
+
+export type MasterTab = "dashboard" | "business" | "pro" | "all";
 
 export const ROLE_LABELS: Record<string, { label: string; color: string }> = {
   client:    { label: "Клиент",    color: "#f97316" },
@@ -58,12 +80,22 @@ export const ROLE_LABELS: Record<string, { label: string; color: string }> = {
   manager:   { label: "Менеджер",  color: "#94a3b8" },
 };
 
-export function subStatus(user: { subscription_end: string | null; approved: boolean }): "active" | "expired" | "none" {
+export function subStatus(user: { subscription_end: string | null; approved: boolean }): "active" | "expiring" | "expired" | "none" {
   if (!user.subscription_end) return "none";
-  return new Date(user.subscription_end) > new Date() ? "active" : "expired";
+  const end = new Date(user.subscription_end);
+  const now = new Date();
+  const diff = (end.getTime() - now.getTime()) / (1000 * 60 * 60 * 24);
+  if (diff < 0) return "expired";
+  if (diff <= 7) return "expiring";
+  return "active";
 }
 
 export function fmtDate(s: string | null): string {
   if (!s) return "—";
   return new Date(s).toLocaleDateString("ru-RU", { day: "numeric", month: "short", year: "numeric" });
+}
+
+export function daysLeft(s: string | null): number {
+  if (!s) return 0;
+  return Math.ceil((new Date(s).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
 }

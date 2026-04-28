@@ -1,10 +1,11 @@
 import { useState, useEffect, useCallback } from "react";
 import Icon from "@/components/ui/icon";
 import func2url from "@/../backend/func2url.json";
-import type { MasterTab, BusinessUser, ProUser, AppUser, UserEstimate } from "./masterAdminTypes";
-import MasterTabBusiness from "./MasterTabBusiness";
-import MasterTabPro from "./MasterTabPro";
-import MasterTabAllUsers from "./MasterTabAllUsers";
+import type { MasterTab, BusinessUser, ProUser, AppUser, UserEstimate, AdminStats } from "./masterAdminTypes";
+import MasterTabBusiness  from "./MasterTabBusiness";
+import MasterTabPro       from "./MasterTabPro";
+import MasterTabAllUsers  from "./MasterTabAllUsers";
+import MasterTabDashboard from "./MasterTabDashboard";
 
 const AUTH_URL = (func2url as Record<string, string>)["auth"];
 const MASTER_PASSWORD = "Sdauxbasstre228";
@@ -13,13 +14,17 @@ export default function MasterAdmin() {
   const [authed,  setAuthed]  = useState(() => sessionStorage.getItem("master_token") === MASTER_PASSWORD);
   const [pass,    setPass]    = useState("");
   const [passErr, setPassErr] = useState("");
-  const [tab,     setTab]     = useState<MasterTab>("business");
+  const [tab,     setTab]     = useState<MasterTab>("dashboard");
 
-  // Business (installer/company)
-  const [bizUsers,    setBizUsers]    = useState<BusinessUser[]>([]);
-  const [bizLoading,  setBizLoading]  = useState(false);
+  // Stats
+  const [stats,        setStats]        = useState<AdminStats | null>(null);
+  const [statsLoading, setStatsLoading] = useState(false);
 
-  // Pro users (designer/foreman)
+  // Business
+  const [bizUsers,   setBizUsers]   = useState<BusinessUser[]>([]);
+  const [bizLoading, setBizLoading] = useState(false);
+
+  // Pro
   const [proUsers,       setProUsers]       = useState<ProUser[]>([]);
   const [proLoading,     setProLoading]     = useState(false);
   const [editDiscount,   setEditDiscount]   = useState<{ id: number; value: string } | null>(null);
@@ -42,6 +47,14 @@ export default function MasterAdmin() {
       setPassErr("Неверный пароль");
     }
   };
+
+  const loadStats = useCallback(async () => {
+    setStatsLoading(true);
+    const r = await fetch(`${AUTH_URL}?action=admin-stats`);
+    const d = await r.json();
+    setStats(d);
+    setStatsLoading(false);
+  }, []);
 
   const loadBiz = useCallback(async () => {
     setBizLoading(true);
@@ -69,15 +82,17 @@ export default function MasterAdmin() {
 
   useEffect(() => {
     if (!authed) return;
+    loadStats();
     loadBiz();
-  }, [authed, loadBiz]);
+  }, [authed, loadStats, loadBiz]);
 
   useEffect(() => {
     if (!authed) return;
-    if (tab === "business") loadBiz();
+    if (tab === "dashboard") loadStats();
+    else if (tab === "business") loadBiz();
     else if (tab === "pro") loadPro();
     else if (tab === "all") loadAll();
-  }, [tab, authed, loadBiz, loadPro, loadAll]);
+  }, [tab, authed, loadStats, loadBiz, loadPro, loadAll]);
 
   const approveUser = async (id: number) => {
     setApprovingId(id);
@@ -86,7 +101,7 @@ export default function MasterAdmin() {
       body: JSON.stringify({ user_id: id }),
     });
     setApprovingId(null);
-    if (tab === "all") { loadAll(); }
+    loadAll();
   };
 
   const saveDiscount = async () => {
@@ -110,7 +125,6 @@ export default function MasterAdmin() {
     setEstLoading(false);
   };
 
-  // Счётчик pending для таба
   const pendingCount = bizUsers.filter(u => !u.approved && !u.rejected).length;
 
   // ── Экран входа ──
@@ -129,8 +143,7 @@ export default function MasterAdmin() {
             </div>
           </div>
           <input type="password" value={pass} onChange={e => setPass(e.target.value)}
-            onKeyDown={e => e.key === "Enter" && login()}
-            placeholder="Пароль"
+            onKeyDown={e => e.key === "Enter" && login()} placeholder="Пароль"
             className="w-full rounded-xl px-4 py-3 text-sm mb-3 focus:outline-none"
             style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "#fff" }} />
           {passErr && <p className="text-red-400 text-xs mb-3">{passErr}</p>}
@@ -143,9 +156,10 @@ export default function MasterAdmin() {
   }
 
   const TABS: { id: MasterTab; label: string; icon: string; badge?: number }[] = [
-    { id: "business", label: "Монтажники / Компании", icon: "Building2", badge: pendingCount },
-    { id: "pro",      label: "Клиенты / Прорабы / Дизайнеры", icon: "Star" },
-    { id: "all",      label: "Все пользователи", icon: "Users" },
+    { id: "dashboard", label: "Дашборд",                    icon: "LayoutDashboard" },
+    { id: "business",  label: "Монтажники / Компании",       icon: "Building2", badge: pendingCount },
+    { id: "pro",       label: "Дизайнеры / Прорабы",        icon: "Star" },
+    { id: "all",       label: "Все пользователи",            icon: "Users" },
   ];
 
   return (
@@ -187,37 +201,29 @@ export default function MasterAdmin() {
       </div>
 
       {/* Контент */}
+      {tab === "dashboard" && (
+        <MasterTabDashboard stats={stats} loading={statsLoading} />
+      )}
+
       {tab === "business" && (
-        <MasterTabBusiness
-          users={bizUsers}
-          loading={bizLoading}
-          onReload={loadBiz}
-        />
+        <MasterTabBusiness users={bizUsers} loading={bizLoading} onReload={loadBiz} />
       )}
 
       {tab === "pro" && (
         <MasterTabPro
-          users={proUsers}
-          loading={proLoading}
-          editDiscount={editDiscount}
-          savingDiscount={savingDiscount}
-          onEditDiscount={setEditDiscount}
-          onSaveDiscount={saveDiscount}
+          users={proUsers} loading={proLoading}
+          editDiscount={editDiscount} savingDiscount={savingDiscount}
+          onEditDiscount={setEditDiscount} onSaveDiscount={saveDiscount}
         />
       )}
 
       {tab === "all" && (
         <MasterTabAllUsers
-          users={users}
-          loading={allLoading}
-          search={search}
-          selectedUser={selectedUser}
-          userEstimates={userEstimates}
-          estLoading={estLoading}
-          approvingId={approvingId}
-          onSearch={setSearch}
-          onSelectUser={openUser}
-          onApprove={approveUser}
+          users={users} loading={allLoading} search={search}
+          selectedUser={selectedUser} userEstimates={userEstimates}
+          estLoading={estLoading} approvingId={approvingId}
+          onSearch={setSearch} onSelectUser={openUser}
+          onApprove={approveUser} onReload={loadAll}
         />
       )}
     </div>

@@ -585,4 +585,60 @@ def handler(event: dict, context) -> dict:
             "status": r[3], "created_at": str(r[4])[:19], "crm_status": r[5],
         } for r in rows]})
 
+    # ── Мастер: удалить пользователя ─────────────────────────────────────────
+    if action == "delete-user" and method == "POST":
+        user_id = body.get("user_id")
+        if not user_id:
+            return err("user_id required")
+        uid = int(user_id)
+        cur.execute(f"DELETE FROM {SCHEMA}.user_sessions WHERE user_id=%s", (uid,))
+        cur.execute(f"DELETE FROM {SCHEMA}.saved_estimates WHERE user_id=%s", (uid,))
+        cur.execute(f"DELETE FROM {SCHEMA}.users WHERE id=%s", (uid,))
+        conn.commit()
+        return ok({"ok": True})
+
+    # ── Мастер: статистика дашборда ───────────────────────────────────────────
+    if action == "admin-stats" and method == "GET":
+        cur.execute(f"SELECT COUNT(*) FROM {SCHEMA}.users")
+        total_users = cur.fetchone()[0]
+
+        cur.execute(f"SELECT COUNT(*) FROM {SCHEMA}.users WHERE role IN ('installer','company') AND approved=false AND rejected=false")
+        pending = cur.fetchone()[0]
+
+        cur.execute(f"SELECT COUNT(*) FROM {SCHEMA}.users WHERE subscription_end > NOW()")
+        active_subs = cur.fetchone()[0]
+
+        cur.execute(f"SELECT COUNT(*) FROM {SCHEMA}.saved_estimates")
+        total_estimates = cur.fetchone()[0]
+
+        # Заканчивается подписка в ближайшие 7 дней
+        cur.execute(f"""
+            SELECT id, email, name, phone, role, subscription_end, telegram
+            FROM {SCHEMA}.users
+            WHERE subscription_end > NOW() AND subscription_end < NOW() + INTERVAL '7 days'
+            ORDER BY subscription_end ASC
+        """)
+        expiring = cur.fetchall()
+
+        # Новые за 7 дней
+        cur.execute(f"SELECT COUNT(*) FROM {SCHEMA}.users WHERE created_at > NOW() - INTERVAL '7 days'")
+        new_week = cur.fetchone()[0]
+
+        # По ролям
+        cur.execute(f"SELECT role, COUNT(*) FROM {SCHEMA}.users GROUP BY role")
+        by_role = {r[0]: r[1] for r in cur.fetchall()}
+
+        return ok({
+            "total_users": total_users,
+            "pending": pending,
+            "active_subs": active_subs,
+            "total_estimates": total_estimates,
+            "new_week": new_week,
+            "by_role": by_role,
+            "expiring_soon": [{
+                "id": r[0], "email": r[1], "name": r[2], "phone": r[3],
+                "role": r[4], "subscription_end": str(r[5])[:19], "telegram": r[6],
+            } for r in expiring],
+        })
+
     return err("Неизвестное действие", 404)
