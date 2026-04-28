@@ -670,6 +670,148 @@ def handler(event: dict, context) -> dict:
             "status": r[3], "created_at": str(r[4])[:19], "crm_status": r[5],
         } for r in rows]})
 
+    # ── КОМАНДА компании (владелец-company управляет своими менеджерами) ─────
+    # Хелпер: вернуть (uid, role, is_master) текущего пользователя или ошибку
+    def get_owner_or_err():
+        if not token:
+            return None, err("Требуется авторизация", 401)
+        cur.execute(f"""
+            SELECT u.id, u.role, u.email
+            FROM {SCHEMA}.user_sessions s
+            JOIN {SCHEMA}.users u ON u.id = s.user_id
+            WHERE s.token=%s AND s.expires_at > NOW()
+        """, (token,))
+        row = cur.fetchone()
+        if not row:
+            return None, err("Токен недействителен", 401)
+        uid, role, email = row
+        is_master = (email == "19.jeka.94@gmail.com")
+        # Доступ к команде: только company или мастер
+        if role != "company" and not is_master:
+            return None, err("Доступ только для роли 'Компания'", 403)
+        return (uid, role, is_master), None
+
+    # Список членов команды (своей)
+    if action == "team-list" and method == "GET":
+        owner, e = get_owner_or_err()
+        if e: return e
+        owner_id, _, _ = owner
+        cur.execute(f"""
+            SELECT id, email, name, phone, role, approved, created_at
+            FROM {SCHEMA}.users
+            WHERE company_id = %s AND removed_at IS NULL AND id <> %s
+            ORDER BY created_at DESC
+        """, (owner_id, owner_id))
+        rows = cur.fetchall()
+        return ok({"members": [{
+            "id": r[0], "email": r[1], "name": r[2], "phone": r[3],
+            "role": r[4], "approved": r[5],
+            "created_at": str(r[6])[:19],
+        } for r in rows]})
+
+    # Приглашение нового сотрудника (создание менеджера в компании)
+    if action == "team-invite" and method == "POST":
+        owner, e = get_owner_or_err()
+        if e: return e
+        owner_id, _, _ = owner
+
+        invitee_email = (body.get("email") or "").strip().lower()
+        invitee_name  = (body.get("name") or "").strip()
+        invitee_phone = (body.get("phone") or "").strip()
+
+        if not invitee_email:
+            return err("Укажите email сотрудника")
+        if "@" not in invitee_email or "." not in invitee_email:
+            return err("Некорректный email")
+
+        cur.execute(f"SELECT id FROM {SCHEMA}.users WHERE email=%s", (invitee_email,))
+        if cur.fetchone():
+            return err("Пользователь с таким email уже зарегистрирован")
+
+        # Генерим временный пароль (10 символов) — отдадим его владельцу один раз
+        temp_password = secrets.token_urlsafe(8)[:10]
+
+        cur.execute(f"""
+            INSERT INTO {SCHEMA}.users
+              (email, password_hash, name, phone, role, approved, company_id, invited_by)
+            VALUES (%s, %s, %s, %s, 'manager', TRUE, %s, %s)
+            RETURNING id
+        """, (
+            invitee_email, hash_password(temp_password),
+            invitee_name or None, invitee_phone or None,
+            owner_id, owner_id,
+        ))
+        new_id = cur.fetchone()[0]
+        conn.commit()
+
+        return ok({
+            "ok": True,
+            "member": {
+                "id": new_id, "email": invitee_email,
+                "name": invitee_name, "phone": invitee_phone,
+                "role": "manager", "approved": True,
+            },
+            "temp_password": temp_password,  # ВЛАДЕЛЕЦ должен передать сотруднику
+        })
+
+    # Удаление сотрудника (мягкое)
+    if action == "team-remove" and method == "POST":
+        owner, e = get_owner_or_err()
+        if e: return e
+        owner_id, _, _ = owner
+
+        member_id = body.get("member_id")
+        if not member_id:
+            return err("member_id required")
+        member_id = int(member_id)
+
+        # Проверяем, что удаляемый — действительно член этой команды
+        cur.execute(f"""
+            SELECT id FROM {SCHEMA}.users
+            WHERE id=%s AND company_id=%s AND removed_at IS NULL
+        """, (member_id, owner_id))
+        if not cur.fetchone():
+            return err("Сотрудник не найден в вашей команде", 404)
+
+        cur.execute(f"""
+            UPDATE {SCHEMA}.users
+            SET removed_at=NOW(), removed_name=name, removed_email=email,
+                email=CONCAT('_removed_', id, '_', email)
+            WHERE id=%s
+        """, (member_id,))
+        # Гасим все его сессии
+        cur.execute(f"UPDATE {SCHEMA}.user_sessions SET expires_at=NOW() WHERE user_id=%s", (member_id,))
+        conn.commit()
+        return ok({"ok": True})
+
+    # Сброс пароля сотрудника владельцем (отдаём новый временный пароль)
+    if action == "team-reset-password" and method == "POST":
+        owner, e = get_owner_or_err()
+        if e: return e
+        owner_id, _, _ = owner
+
+        member_id = body.get("member_id")
+        if not member_id:
+            return err("member_id required")
+        member_id = int(member_id)
+
+        cur.execute(f"""
+            SELECT id, email FROM {SCHEMA}.users
+            WHERE id=%s AND company_id=%s AND removed_at IS NULL
+        """, (member_id, owner_id))
+        row = cur.fetchone()
+        if not row:
+            return err("Сотрудник не найден в вашей команде", 404)
+
+        new_password = secrets.token_urlsafe(8)[:10]
+        cur.execute(f"""
+            UPDATE {SCHEMA}.users SET password_hash=%s, updated_at=NOW() WHERE id=%s
+        """, (hash_password(new_password), member_id))
+        # Сбрасываем сессии
+        cur.execute(f"UPDATE {SCHEMA}.user_sessions SET expires_at=NOW() WHERE user_id=%s", (member_id,))
+        conn.commit()
+        return ok({"ok": True, "temp_password": new_password})
+
     # ── Пакеты смет ──────────────────────────────────────────────────────────
     PACKAGES = {
         "start":    {"name": "Старт",    "estimates": 5,   "price": 490},

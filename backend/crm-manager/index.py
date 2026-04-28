@@ -73,19 +73,25 @@ def handler(event: dict, context) -> dict:
 
     if raw_token:
         cur.execute(f"""
-            SELECT u.id, u.email FROM {SCHEMA}.user_sessions s
+            SELECT u.id, u.email, u.role, u.company_id
+            FROM {SCHEMA}.user_sessions s
             JOIN {SCHEMA}.users u ON u.id = s.user_id
             WHERE s.token=%s AND s.expires_at > NOW()
         """, (raw_token,))
         sess = cur.fetchone()
         if sess:
-            uid, uemail = sess
+            uid, uemail, urole, ucompany_id = sess
             if uemail == "19.jeka.94@gmail.com":
                 is_master  = True
                 company_id = None   # мастер видит всё
             else:
                 is_master  = False
-                company_id = uid    # клиент видит только своё
+                # Менеджер привязан к компании → видит данные владельца
+                # Все остальные роли видят только свои данные (company_id = их uid)
+                if urole == "manager" and ucompany_id:
+                    company_id = ucompany_id
+                else:
+                    company_id = uid
 
     try:
         # ── UPLOAD FILE ───────────────────────────────────────────────────────
