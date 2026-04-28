@@ -50,6 +50,16 @@ export default function Index() {
     return () => { if (regTimer.current) clearTimeout(regTimer.current); };
   }, [user]);
 
+  // Автооткрытие модалки регистрации при заходе с /pricing → "?auth=register"
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (!user && params.get("auth") === "register") {
+      setShowAuthModal(true);
+      // Чистим query, чтобы не открывать повторно
+      window.history.replaceState({}, "", window.location.pathname);
+    }
+  }, [user]);
+
   // Через 3 сек после сметы: модальный оверлей (только если не пресет)
   useEffect(() => {
     const last = messages[messages.length - 1];

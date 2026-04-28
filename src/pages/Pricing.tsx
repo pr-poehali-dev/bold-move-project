@@ -568,26 +568,39 @@ function TrialBanner() {
 
   if (!user || !isBusiness) {
     return (
-      <section className="max-w-3xl mx-auto px-5 pb-10">
-        <div className="rounded-3xl p-5 flex items-center gap-4"
+      <section className="max-w-6xl mx-auto px-5 pb-10">
+        <div className="rounded-3xl p-5 flex items-center gap-4 flex-wrap md:flex-nowrap"
           style={{
             background: "linear-gradient(90deg, rgba(16,185,129,0.10), rgba(16,185,129,0.02))",
             border: "1.5px solid rgba(16,185,129,0.28)",
           }}>
-          <div className="w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0"
-            style={{ background: "rgba(16,185,129,0.18)" }}>
-            <Icon name="Gift" size={22} style={{ color: "#10b981" }} />
-          </div>
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 mb-0.5 flex-wrap">
-              <span className="text-sm font-black text-white">Бесплатно для новых мастеров</span>
-              <span className="px-2 py-0.5 rounded-md text-[9px] font-black uppercase tracking-wider"
-                style={{ background: "#10b981", color: "#0a0a14" }}>FREE</span>
+            <div className="w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0"
+              style={{ background: "rgba(16,185,129,0.18)" }}>
+              <Icon name="Gift" size={22} style={{ color: "#10b981" }} />
             </div>
-            <div className="text-[11px] text-white/55 leading-snug">
-              Зарегистрируйся как монтажник или компания — получи <b className="text-[#10b981]">20 смет</b> на <b className="text-[#10b981]">4 дня</b>. Без оплаты.
+            <div className="flex-1 min-w-[200px]">
+              <div className="flex items-center gap-2 mb-0.5 flex-wrap">
+                <span className="text-sm font-black text-white">Бесплатно для новых мастеров</span>
+                <span className="px-2 py-0.5 rounded-md text-[9px] font-black uppercase tracking-wider"
+                  style={{ background: "#10b981", color: "#0a0a14" }}>FREE</span>
+              </div>
+              <div className="text-[11px] text-white/55 leading-snug">
+                Зарегистрируйся как монтажник или компания — получи <b className="text-[#10b981]">20 смет</b> на <b className="text-[#10b981]">4 дня</b>. Без оплаты.
+              </div>
             </div>
-          </div>
+            {!user && (
+              <a href="/?auth=register"
+                className="group flex-shrink-0 w-full md:w-auto flex items-center justify-center gap-2 px-5 py-3 rounded-xl text-[13px] font-black uppercase tracking-wider transition-all hover:-translate-y-0.5 active:translate-y-0"
+                style={{
+                  background: "linear-gradient(135deg, #10b981, #34d399)",
+                  color: "#0a0a14",
+                  boxShadow: "0 8px 24px rgba(16,185,129,0.35), 0 0 0 1.5px rgba(255,255,255,0.12) inset",
+                }}>
+                <Icon name="Rocket" size={14} />
+                <span>Попробовать бесплатно</span>
+                <Icon name="ArrowRight" size={14} className="transition-transform group-hover:translate-x-0.5" />
+              </a>
+            )}
         </div>
       </section>
     );
