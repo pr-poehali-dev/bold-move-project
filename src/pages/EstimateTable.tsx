@@ -5,6 +5,7 @@ import { parseEstimateBlocks, type LLMItem } from "./estimateUtils";
 import EstimateBody from "./EstimateBody";
 import EstimateActions from "./EstimateActions";
 import EstimateContactModal from "./EstimateContactModal";
+import AuthModal from "@/components/AuthModal";
 
 export { isEstimate, parseEstimateBlocks, resolveItem } from "./estimateUtils";
 
@@ -44,12 +45,14 @@ export default function EstimateTable({ text, items, onSaveRequest }: {
   };
 
   const { blocks, totals, finalPhrase } = parsed;
-  const [downloading, setDownloading] = useState(false);
-  const [saving,      setSaving]      = useState(false);
-  const [saved,       setSaved]       = useState(false);
-  const [saveError,   setSaveError]   = useState("");
+  const [downloading,   setDownloading]   = useState(false);
+  const [saving,        setSaving]        = useState(false);
+  const [saved,         setSaved]         = useState(false);
+  const [saveError,     setSaveError]     = useState("");
+  const [showAuthForPdf, setShowAuthForPdf] = useState(false);
 
   const handleDownload = async () => {
+    if (!user) { setShowAuthForPdf(true); return; }
     setDownloading(true);
     try {
       const { generateEstimatePdf } = await import("./estimatePdf");
@@ -140,6 +143,14 @@ export default function EstimateTable({ text, items, onSaveRequest }: {
         onSave={handleContactSave}
         onClose={() => setShowContact(false)}
       />
+      {showAuthForPdf && (
+        <AuthModal
+          onClose={() => setShowAuthForPdf(false)}
+          defaultTab="register"
+          onSuccess={() => { setShowAuthForPdf(false); handleDownload(); }}
+          onPending={() => setShowAuthForPdf(false)}
+        />
+      )}
     </div>
   );
 }
