@@ -62,15 +62,15 @@ export default function UserDropdown({ onShowProfile, onShowPayment }: Props) {
                 {initials}
               </div>
               <div className="min-w-0">
-                <div className="flex items-center gap-1.5">
-                  <div className="text-sm font-semibold text-white truncate">{user.name || "—"}</div>
-                  <div className="text-[9px] font-medium px-1.5 py-0.5 rounded-md flex-shrink-0"
+                <div className="text-sm font-semibold text-white truncate">{user.name || "—"}</div>
+                <div className="text-[10px] text-white/30 truncate">{user.email}</div>
+                <div className="flex items-center gap-2 mt-0.5">
+                  <div className="text-[10px] text-white/20">ID: {user.id}</div>
+                  <div className="text-[9px] font-medium px-1.5 py-0.5 rounded-md"
                     style={{ background: "#f9731620", color: "#f97316" }}>
                     {ROLE_LABELS[user.role] ?? user.role}
                   </div>
                 </div>
-                <div className="text-[10px] text-white/30 truncate">{user.email}</div>
-                <div className="text-[10px] text-white/20 mt-0.5">ID: {user.id}</div>
               </div>
             </div>
           </div>
