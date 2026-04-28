@@ -5,6 +5,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/context/AuthContext";
+import { BrandProvider } from "@/context/BrandContext";
 
 const Index       = lazy(() => import("./pages/Index"));
 const AdminPanel  = lazy(() => import("./pages/AdminPanel"));
@@ -22,17 +23,19 @@ const App = () => (
         <Toaster />
         <Sonner />
         <BrowserRouter>
-          <Suspense fallback={<div className="bg-[#0b0b11]" style={{ height: "100dvh" }} />}>
-            <Routes>
-              <Route path="/" element={<Index />} />
-              <Route path="/company"    element={<AdminPanel />} />
-              <Route path="/master"    element={<MasterAdmin />} />
-              <Route path="/my-orders" element={<MyOrders />} />
-              <Route path="/pricing"   element={<Pricing />} />
-              {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </Suspense>
+          <BrandProvider>
+            <Suspense fallback={<div className="bg-[#0b0b11]" style={{ height: "100dvh" }} />}>
+              <Routes>
+                <Route path="/" element={<Index />} />
+                <Route path="/company"    element={<AdminPanel />} />
+                <Route path="/master"    element={<MasterAdmin />} />
+                <Route path="/my-orders" element={<MyOrders />} />
+                <Route path="/pricing"   element={<Pricing />} />
+                {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </Suspense>
+          </BrandProvider>
         </BrowserRouter>
       </TooltipProvider>
     </AuthProvider>

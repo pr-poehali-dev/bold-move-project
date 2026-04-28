@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import Icon from "@/components/ui/icon";
 import { useAuth } from "@/context/AuthContext";
+import { useBrand } from "@/context/BrandContext";
 import AuthModal from "@/components/AuthModal";
 import UserDropdown from "@/components/UserDropdown";
 import ProfileModal from "@/components/ProfileModal";
@@ -24,12 +25,21 @@ import MobileContactBar from "./MobileContactBar";
 
 export default function Index() {
   const { user } = useAuth();
+  const { brand, isCustom } = useBrand();
   const [showAuthModal,    setShowAuthModal]    = useState(false);
   const [pendingRole,      setPendingRole]      = useState<string | null>(null);
   const [showProfileModal, setShowProfileModal] = useState(false);
 
+  // Приветствие: подменяется именем бота из бренда, если он кастомный
+  const greeting: Msg = isCustom
+    ? {
+        ...GREETING,
+        text: brand.bot_greeting || `Здравствуйте! Я ${brand.bot_name} — консультант компании «${brand.company_name}» 👋`,
+      }
+    : GREETING;
+
   const [panel, setPanel]       = useState<Panel>("none");
-  const [messages, setMessages] = useState<Msg[]>([GREETING]);
+  const [messages, setMessages] = useState<Msg[]>([greeting]);
   const [input, setInput]       = useState("");
   const [typing, setTyping]     = useState(false);
   const [bookingToast, setBookingToast] = useState(false);
@@ -123,7 +133,7 @@ export default function Index() {
   const hasPanel     = panel !== "none";
 
   const handleNewEstimate = () => {
-    setMessages([GREETING]);
+    setMessages([greeting]);
     setInput("");
     setBookingToast(false);
     setEstimateModal(false);
@@ -134,26 +144,33 @@ export default function Index() {
 
       {/* Header */}
       <header className="shrink-0 flex items-center h-12 px-4 md:px-6 border-b border-white/[0.05] bg-[#0d0d14]/80 backdrop-blur-xl z-30">
-        <img src="https://cdn.poehali.dev/files/7105828c-c33e-48f9-ac90-02134e3cd4d7.png" alt="" className="w-6 h-6 object-contain mr-2.5" style={{ mixBlendMode: "screen" }} />
-        <span className="font-montserrat font-black text-sm tracking-wide">MOS<span className="text-orange-400">POTOLKI</span></span>
+        <img src={brand.brand_logo_url} alt="" className="w-6 h-6 object-contain mr-2.5" style={{ mixBlendMode: isCustom ? "normal" : "screen" }} />
+        {isCustom
+          ? <span className="font-montserrat font-black text-sm tracking-wide truncate max-w-[200px]" style={{ color: brand.brand_color }}>{brand.company_name}</span>
+          : <span className="font-montserrat font-black text-sm tracking-wide">MOS<span style={{ color: brand.brand_color }}>POTOLKI</span></span>
+        }
         <div className="ml-auto flex items-center gap-1.5">
           <button
             onClick={() => setPanel(panel === "contacts" ? "none" : "contacts")}
-            className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-orange-500/10 border border-orange-500/20 text-orange-400 text-[11px] font-medium hover:bg-orange-500/15 transition-all">
+            className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-medium transition-all"
+            style={{ background: `${brand.brand_color}1a`, border: `1px solid ${brand.brand_color}33`, color: brand.brand_color }}>
             <Icon name="MapPin" size={12} /> <span>Контакты</span>
           </button>
 
           <button
             onClick={() => setPanel(panel === "livechat" ? "none" : "livechat")}
-            className="hidden md:flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-orange-500/10 border border-orange-500/20 text-orange-400 text-[11px] font-medium hover:bg-orange-500/15 transition-all">
+            className="hidden md:flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-medium transition-all"
+            style={{ background: `${brand.brand_color}1a`, border: `1px solid ${brand.brand_color}33`, color: brand.brand_color }}>
             <Icon name="MessageCircle" size={12} /> Чат
           </button>
-          <a href="https://t.me/JoniKras" target="_blank" rel="noreferrer"
-            className="hidden md:flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-orange-500/10 border border-orange-500/20 text-orange-400 text-[11px] font-medium hover:bg-orange-500/15 transition-all">
+          <a href={brand.telegram_url} target="_blank" rel="noreferrer"
+            className="hidden md:flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-medium transition-all"
+            style={{ background: `${brand.brand_color}1a`, border: `1px solid ${brand.brand_color}33`, color: brand.brand_color }}>
             <Icon name="Send" size={12} /> Telegram
           </a>
-          <a href="https://max.ru/u/f9LHodD0cOImGR_bXwRjzpNeWQv7qzBR-lP0W9lvbuzV8iU1J5lngmKBGgA" target="_blank" rel="noreferrer"
-            className="hidden md:flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-orange-500/10 border border-orange-500/20 text-orange-400 text-[11px] font-medium hover:bg-orange-500/15 transition-all">
+          <a href={brand.max_url} target="_blank" rel="noreferrer"
+            className="hidden md:flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-medium transition-all"
+            style={{ background: `${brand.brand_color}1a`, border: `1px solid ${brand.brand_color}33`, color: brand.brand_color }}>
             <Icon name="MessageSquare" size={12} /> MAX
           </a>
 

@@ -5,7 +5,8 @@ import Lightbox from "@/components/ui/lightbox";
 import { PRODUCTION } from "./data/content";
 import { SharedPanelReviews, SharedPanelFaq } from "./sharedPanels";
 import { PORTFOLIO_ITEMS } from "./data/portfolio";
-import { TIPS, CONTACTS, PROD_FEATURES, BOOKING_TIMES, Panel } from "./chatConfig";
+import { TIPS, PROD_FEATURES, BOOKING_TIMES, Panel } from "./chatConfig";
+import { useBrand } from "@/context/BrandContext";
 import func2url from "@/../backend/func2url.json";
 
 const LIVE_CHAT_URL = func2url["live-chat"];
@@ -259,11 +260,21 @@ export function PanelFaq({ onClose }: { onClose: () => void }) {
 
 // ─── Contacts ─────────────────────────────────────────────────────────────────
 export function PanelContacts({ onClose, onPanel }: { onClose: () => void; onPanel?: (p: string) => void }) {
+  const { brand } = useBrand();
   const [name, setName] = useState("");
   const { phone, setPhone, handleChange: handlePhone, handleFocus: focusPhone, handleBlur: blurPhone, isValid: phoneValid } = usePhone("+7 (");
   const [msg, setMsg] = useState("");
   const [sent, setSent] = useState(false);
   const [loading, setLoading] = useState(false);
+
+  const contactItems = [
+    { icon: "Phone",         label: "Телефон",      val: brand.support_phone,                  href: `tel:${(brand.support_phone || "").replace(/\D/g, "")}` },
+    { icon: "Send",          label: "Telegram",     val: "Написать в Telegram",                href: brand.telegram_url },
+    { icon: "MessageSquare", label: "MAX",          val: "Написать в MAX",                     href: brand.max_url },
+    { icon: "MessageCircle", label: "Чат на сайте", val: "Написать менеджеру",                 href: "#livechat" },
+    { icon: "MapPin",        label: "Адрес",        val: brand.pdf_footer_address || brand.company_name || "—", href: "#" },
+    { icon: "Clock",         label: "Часы",         val: brand.working_hours,                  href: "#" },
+  ];
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -295,7 +306,7 @@ export function PanelContacts({ onClose, onPanel }: { onClose: () => void; onPan
         ) : (
           <div className="max-w-md mx-auto space-y-4">
             <div className="grid grid-cols-2 gap-2.5">
-              {CONTACTS.map((c, i) => {
+              {contactItems.map((c, i) => {
                 const isLiveChat = c.href === "#livechat";
                 const Tag = isLiveChat ? "button" : "a";
                 const extra = isLiveChat

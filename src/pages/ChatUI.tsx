@@ -3,6 +3,7 @@ import Icon from "@/components/ui/icon";
 import { PromptInputBox } from "@/components/ui/ai-prompt-box";
 import EstimateTable, { isEstimate } from "./EstimateTable";
 import { Msg, Panel, NAV, AVATAR } from "./chatConfig";
+import { useBrand } from "@/context/BrandContext";
 
 // Парсит текст: разбивает на обычный текст и картинки ![alt](url)
 function MsgContent({ text }: { text: string }) {
@@ -54,6 +55,9 @@ interface Props {
 }
 
 export default function ChatUI({ messages, input, typing, panel, onInput, onSend, onPreset, onPanel, onNewEstimate, onSaveRequest }: Props) {
+  const { brand } = useBrand();
+  const avatarSrc = brand.bot_avatar_url || AVATAR;
+  const botName   = brand.bot_name || "Женя";
   const hasEstimate = messages.some((m) => m.role === "assistant" && isEstimate(m.text));
   const chatRef = useRef<HTMLDivElement>(null);
   const estimateRef = useRef<HTMLDivElement>(null);
@@ -98,7 +102,7 @@ export default function ChatUI({ messages, input, typing, panel, onInput, onSend
             <div key={m.id} ref={estimate && m.id === lastEstimateId ? estimateRef : null} className={`flex items-end ${estimate ? "" : "gap-2.5"} ${m.role === "user" ? "flex-row-reverse" : ""}`}>
               {m.role === "assistant" && !estimate && (
                 showAvatar
-                  ? <img src={AVATAR} alt="Женя" className="w-8 h-8 rounded-full object-cover shrink-0 border-2 border-orange-500/20 shadow-lg shadow-orange-500/10" />
+                  ? <img src={avatarSrc} alt={botName} className="w-8 h-8 rounded-full object-cover shrink-0 border-2 border-orange-500/20 shadow-lg shadow-orange-500/10" />
                   : <div className="w-8 shrink-0" />
               )}
               {m.role === "user" ? (
@@ -149,12 +153,12 @@ export default function ChatUI({ messages, input, typing, panel, onInput, onSend
 
         {typing && (
           <div className="flex items-end gap-2.5">
-            <img src={AVATAR} alt="Женя" className="w-8 h-8 rounded-full object-cover shrink-0 border-2 border-orange-500/20" />
+            <img src={avatarSrc} alt={botName} className="w-8 h-8 rounded-full object-cover shrink-0 border-2 border-orange-500/20" />
             <div className="bg-white/[0.04] border border-white/[0.06] rounded-2xl rounded-bl-md px-4 py-3 flex items-center gap-2">
               <span className="typing-dot" style={{ background: "rgb(251 146 60)" }} />
               <span className="typing-dot" style={{ background: "rgb(251 146 60)", animationDelay: "0.15s" }} />
               <span className="typing-dot" style={{ background: "rgb(251 146 60)", animationDelay: "0.3s" }} />
-              <span className="text-white/25 text-xs">Женя анализирует…</span>
+              <span className="text-white/25 text-xs">{botName} анализирует…</span>
             </div>
           </div>
         )}

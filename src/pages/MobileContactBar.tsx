@@ -1,6 +1,7 @@
 import { useState, useRef } from "react";
 import Icon from "@/components/ui/icon";
 import { Panel } from "./chatConfig";
+import { useBrand } from "@/context/BrandContext";
 
 interface Props {
   panel: Panel;
@@ -8,8 +9,11 @@ interface Props {
 }
 
 export default function MobileContactBar({ panel, setPanel }: Props) {
+  const { brand } = useBrand();
   const [open, setOpen] = useState(false);
   const startYRef = useRef<number | null>(null);
+  const phoneTel = "tel:" + (brand.support_phone || "").replace(/\D/g, "");
+  const c = brand.brand_color;
 
   const handleTouchStart = (e: React.TouchEvent) => {
     startYRef.current = e.touches[0].clientY;
@@ -47,21 +51,25 @@ export default function MobileContactBar({ panel, setPanel }: Props) {
         style={{ maxHeight: open ? "80px" : "0px", opacity: open ? 1 : 0 }}
       >
         <div className="flex items-center gap-2 px-3 pb-3">
-          <a href="tel:+79776068901"
-            className="flex-1 flex items-center justify-center gap-1 py-2.5 rounded-xl bg-orange-500/15 border border-orange-500/20 text-orange-400 text-[10px] font-medium active:scale-95 transition-transform">
+          <a href={phoneTel}
+            className="flex-1 flex items-center justify-center gap-1 py-2.5 rounded-xl text-[10px] font-medium active:scale-95 transition-transform"
+            style={{ background: `${c}26`, border: `1px solid ${c}33`, color: c }}>
             <Icon name="Phone" size={12} /> Позвонить
           </a>
           <button
             onClick={() => setPanel(panel === "livechat" ? "none" : "livechat")}
-            className="flex-1 flex items-center justify-center gap-1 py-2.5 rounded-xl bg-orange-500/15 border border-orange-500/20 text-orange-400 text-[10px] font-medium active:scale-95 transition-transform">
+            className="flex-1 flex items-center justify-center gap-1 py-2.5 rounded-xl text-[10px] font-medium active:scale-95 transition-transform"
+            style={{ background: `${c}26`, border: `1px solid ${c}33`, color: c }}>
             <Icon name="MessageCircle" size={12} /> Чат
           </button>
-          <a href="https://t.me/JoniKras" target="_blank" rel="noreferrer"
-            className="flex-1 flex items-center justify-center gap-1 py-2.5 rounded-xl bg-orange-500/15 border border-orange-500/20 text-orange-400 text-[10px] font-medium active:scale-95 transition-transform">
+          <a href={brand.telegram_url} target="_blank" rel="noreferrer"
+            className="flex-1 flex items-center justify-center gap-1 py-2.5 rounded-xl text-[10px] font-medium active:scale-95 transition-transform"
+            style={{ background: `${c}26`, border: `1px solid ${c}33`, color: c }}>
             <Icon name="Send" size={12} /> Telegram
           </a>
-          <a href="https://max.ru/u/f9LHodD0cOImGR_bXwRjzpNeWQv7qzBR-lP0W9lvbuzV8iU1J5lngmKBGgA" target="_blank" rel="noreferrer"
-            className="flex-1 flex items-center justify-center gap-1 py-2.5 rounded-xl bg-orange-500/15 border border-orange-500/20 text-orange-400 text-[10px] font-medium active:scale-95 transition-transform">
+          <a href={brand.max_url} target="_blank" rel="noreferrer"
+            className="flex-1 flex items-center justify-center gap-1 py-2.5 rounded-xl text-[10px] font-medium active:scale-95 transition-transform"
+            style={{ background: `${c}26`, border: `1px solid ${c}33`, color: c }}>
             <Icon name="MessageSquare" size={12} /> MAX
           </a>
         </div>
