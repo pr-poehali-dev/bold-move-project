@@ -19,12 +19,14 @@ interface Props {
   onApprove:     (id: number) => void;
   onConfirmDel:  (u: AppUser) => void;
   onAddBalance:  (userId: number, amount: number, reason: string) => Promise<void>;
+  onToggleOwnAgent: (userId: number, enable: boolean) => Promise<void>;
 }
 
 export default function AllUsersPanel({
   selectedUser, userEstimates, estLoading, approvingId,
-  onApprove, onConfirmDel, onAddBalance,
+  onApprove, onConfirmDel, onAddBalance, onToggleOwnAgent,
 }: Props) {
+  const [agentBusy, setAgentBusy] = useState(false);
   const [showPackages, setShowPackages] = useState(false);
   const [addingPkg,    setAddingPkg]    = useState<string | null>(null);
 
@@ -153,6 +155,48 @@ export default function AllUsersPanel({
               <Icon name="Plus" size={11} /> Начислить пакет
             </button>
           )}
+        </div>
+      )}
+
+      {/* Свой агент (только для компаний) */}
+      {selectedUser.role === "company" && (
+        <div className="px-5 py-3 border-b border-white/[0.05]">
+          <div className="text-[9px] font-bold text-white/25 uppercase tracking-wider mb-2">Свой агент · 80 000 ₽</div>
+          <div className="flex items-center justify-between gap-2 mb-2">
+            <div className="flex items-center gap-2">
+              <div className="w-7 h-7 rounded-lg flex items-center justify-center"
+                style={{ background: selectedUser.has_own_agent ? "rgba(16,185,129,0.18)" : "rgba(255,255,255,0.04)" }}>
+                <Icon name={selectedUser.has_own_agent ? "BotMessageSquare" : "Bot"} size={13}
+                  style={{ color: selectedUser.has_own_agent ? "#10b981" : "rgba(255,255,255,0.4)" }} />
+              </div>
+              <div>
+                <div className="text-[11px] font-bold" style={{ color: selectedUser.has_own_agent ? "#10b981" : "rgba(255,255,255,0.55)" }}>
+                  {selectedUser.has_own_agent ? "Активирован" : "Не активирован"}
+                </div>
+                {selectedUser.agent_purchased_at && selectedUser.has_own_agent && (
+                  <div className="text-[9px] text-white/25">с {fmtDate(selectedUser.agent_purchased_at)}</div>
+                )}
+              </div>
+            </div>
+            <button
+              onClick={async () => {
+                if (agentBusy) return;
+                setAgentBusy(true);
+                await onToggleOwnAgent(selectedUser.id, !selectedUser.has_own_agent);
+                setAgentBusy(false);
+              }}
+              disabled={agentBusy}
+              className="px-3 py-1.5 rounded-lg text-[10px] font-bold transition disabled:opacity-50"
+              style={{
+                background: selectedUser.has_own_agent ? "#ef444415" : "#10b981",
+                color: selectedUser.has_own_agent ? "#ef4444" : "#fff",
+                border: selectedUser.has_own_agent ? "1px solid #ef444430" : "none",
+              }}>
+              {agentBusy
+                ? "..."
+                : selectedUser.has_own_agent ? "Отключить" : "Активировать"}
+            </button>
+          </div>
         </div>
       )}
 

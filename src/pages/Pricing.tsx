@@ -3,6 +3,7 @@ import PricingHeroAndTrial from "./pricing/PricingHeroAndTrial";
 import PricingPackages from "./pricing/PricingPackages";
 import PricingFeatures from "./pricing/PricingFeatures";
 import PricingPayment from "./pricing/PricingPayment";
+import PricingOwnAgent from "./pricing/PricingOwnAgent";
 
 export default function Pricing() {
   const [selected, setSelected] = useState<string | null>(null);
@@ -19,6 +20,7 @@ export default function Pricing() {
       <PricingHeroAndTrial />
       <PricingPackages selected={selected} onSelect={choosePackage} />
       <PricingFeatures />
+      <PricingOwnAgent />
       <PricingPayment selectedId={selected} />
     </div>
   );

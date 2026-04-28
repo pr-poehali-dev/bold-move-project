@@ -39,6 +39,8 @@ export interface AppUser {
   subscription_start: string | null;
   subscription_end: string | null;
   estimates_balance: number;
+  has_own_agent?: boolean;
+  agent_purchased_at?: string | null;
   telegram?: string | null;
 }
 

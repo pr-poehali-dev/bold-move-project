@@ -148,7 +148,8 @@ def handler(event: dict, context) -> dict:
         cur.execute(f"""
             SELECT u.id, u.email, u.name, u.phone, u.role, u.approved, u.discount,
                    u.company_name, u.company_inn, u.company_addr, u.website, u.telegram,
-                   u.estimates_balance, u.trial_until, u.permissions, u.company_id
+                   u.estimates_balance, u.trial_until, u.permissions, u.company_id,
+                   u.has_own_agent
             FROM {SCHEMA}.user_sessions s
             JOIN {SCHEMA}.users u ON u.id = s.user_id
             WHERE s.token=%s AND s.expires_at > NOW()
@@ -157,7 +158,7 @@ def handler(event: dict, context) -> dict:
         if not row:
             return err("Токен недействителен", 401)
 
-        uid, email, name, phone, role, approved, discount, company_name, company_inn, company_addr, website, telegram, estimates_balance, trial_until, permissions, ucompany_id = row
+        uid, email, name, phone, role, approved, discount, company_name, company_inn, company_addr, website, telegram, estimates_balance, trial_until, permissions, ucompany_id, has_own_agent = row
         return ok({"user": {
             "id": uid, "email": email, "name": name, "phone": phone,
             "role": role or "client", "approved": approved, "discount": discount or 0,
@@ -168,6 +169,7 @@ def handler(event: dict, context) -> dict:
             "trial_until": str(trial_until)[:19] if trial_until else None,
             "permissions": permissions,
             "company_id": ucompany_id,
+            "has_own_agent": bool(has_own_agent),
         }})
 
     # ── Обновление профиля ────────────────────────────────────────────────────
@@ -636,7 +638,7 @@ def handler(event: dict, context) -> dict:
         cur.execute(f"""
             SELECT u.id, u.email, u.name, u.phone, u.role, u.approved, u.discount, u.created_at,
                    COUNT(e.id) as estimates_count, u.rejected, u.subscription_start, u.subscription_end,
-                   u.estimates_balance, u.trial_until
+                   u.estimates_balance, u.trial_until, u.has_own_agent, u.agent_purchased_at
             FROM {SCHEMA}.users u
             LEFT JOIN {SCHEMA}.saved_estimates e ON e.user_id = u.id
             WHERE u.removed_at IS NULL
@@ -652,7 +654,42 @@ def handler(event: dict, context) -> dict:
             "subscription_end":   str(r[11])[:19] if r[11] else None,
             "estimates_balance":  r[12] or 0,
             "trial_until":        str(r[13])[:19] if r[13] else None,
+            "has_own_agent":      bool(r[14]),
+            "agent_purchased_at": str(r[15])[:19] if r[15] else None,
         } for r in rows]})
+
+    # ── Мастер: переключить флаг "Свой агент" у компании ─────────────────────
+    if action == "admin-toggle-own-agent" and method == "POST":
+        # Только мастер
+        if not token:
+            return err("Требуется авторизация", 401)
+        cur.execute(f"""
+            SELECT u.email FROM {SCHEMA}.user_sessions s
+            JOIN {SCHEMA}.users u ON u.id = s.user_id
+            WHERE s.token=%s AND s.expires_at > NOW()
+        """, (token,))
+        row = cur.fetchone()
+        if not row or row[0] != "19.jeka.94@gmail.com":
+            return err("Доступ только для мастера", 403)
+
+        user_id = body.get("user_id")
+        enable  = bool(body.get("enable"))
+        if not user_id:
+            return err("user_id обязателен")
+        uid = int(user_id)
+
+        if enable:
+            cur.execute(f"""
+                UPDATE {SCHEMA}.users
+                SET has_own_agent=TRUE, agent_purchased_at=COALESCE(agent_purchased_at, NOW())
+                WHERE id=%s
+            """, (uid,))
+        else:
+            cur.execute(f"""
+                UPDATE {SCHEMA}.users SET has_own_agent=FALSE WHERE id=%s
+            """, (uid,))
+        conn.commit()
+        return ok({"ok": True, "has_own_agent": enable})
 
     # ── Мастер: сметы конкретного пользователя ────────────────────────────────
     if action == "admin-user-estimates" and method == "GET":

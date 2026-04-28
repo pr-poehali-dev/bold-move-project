@@ -9,6 +9,7 @@ import TabCorrections from "./admin/TabCorrections";
 import CrmPanel from "./admin/crm/CrmPanel";
 import { setCrmToken } from "./admin/crm/crmApi";
 import TeamPanel from "./admin/team/TeamPanel";
+import OwnAgentTeaser from "./admin/own-agent/OwnAgentTeaser";
 import { useAuth } from "@/context/AuthContext";
 import AuthModal from "@/components/AuthModal";
 import type { AgentSubTab } from "./admin/types";
@@ -17,7 +18,7 @@ import type { Theme } from "./admin/crm/themeContext";
 // Роли с доступом к /company
 const ALLOWED_ROLES = ["installer", "company", "manager"];
 
-type MainTab = "crm" | "agent" | "team";
+type MainTab = "crm" | "agent" | "team" | "own-agent";
 
 const AGENT_TABS: { id: AgentSubTab; label: string; icon: string }[] = [
   { id: "prices",      label: "Цены",            icon: "Tag" },
@@ -215,6 +216,10 @@ export default function AdminPanel() {
           ...(user?.role === "company" || user?.is_master
             ? [{ id: "team" as MainTab, label: "Команда",         icon: "Users" }]
             : []),
+          // Вкладка "Свой агент" — только для компаний (заглушка пока не активирован)
+          ...(user?.role === "company"
+            ? [{ id: "own-agent" as MainTab, label: "Свой агент", icon: "Bot" }]
+            : []),
           { id: "agent" as MainTab, label: "Управление агентом", icon: "BrainCircuit"    },
         ]).map(tb => (
           <button key={tb.id} onClick={() => setMainTab(tb.id)}
@@ -243,6 +248,13 @@ export default function AdminPanel() {
       {mainTab === "team" && (
         <div className="flex-1 flex flex-col overflow-hidden">
           <TeamPanel isDark={isDark} />
+        </div>
+      )}
+
+      {/* ── Свой агент ── */}
+      {mainTab === "own-agent" && (
+        <div className="flex-1 flex flex-col overflow-hidden">
+          <OwnAgentTeaser isDark={isDark} />
         </div>
       )}
 

@@ -43,6 +43,7 @@ export interface AuthUser {
   is_master?: boolean;
   company_id?: number | null;
   permissions?: Permissions | null;
+  has_own_agent?: boolean;
   company_name?: string | null;
   company_inn?:  string | null;
   company_addr?: string | null;

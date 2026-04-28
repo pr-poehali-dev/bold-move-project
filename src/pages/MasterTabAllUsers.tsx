@@ -83,6 +83,16 @@ export default function MasterTabAllUsers({
     onReload();
   };
 
+  const doToggleOwnAgent = async (userId: number, enable: boolean) => {
+    const masterToken = localStorage.getItem("mp_user_token") || "";
+    await fetch(`${AUTH_URL}?action=admin-toggle-own-agent`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Authorization": `Bearer ${masterToken}` },
+      body: JSON.stringify({ user_id: userId, enable }),
+    });
+    onReload();
+  };
+
   return (
     <div className="flex h-[calc(100vh-112px)]">
 
@@ -123,6 +133,7 @@ export default function MasterTabAllUsers({
           onApprove={onApprove}
           onConfirmDel={setConfirmDel}
           onAddBalance={doAddBalance}
+          onToggleOwnAgent={doToggleOwnAgent}
         />
       </div>
 
