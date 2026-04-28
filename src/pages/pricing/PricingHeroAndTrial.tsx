@@ -77,7 +77,7 @@ function TrialBanner() {
                   boxShadow: "0 8px 24px rgba(16,185,129,0.35), 0 0 0 1.5px rgba(255,255,255,0.12) inset",
                 }}>
                 <Icon name="Rocket" size={14} />
-                <span>Попробовать бесплатно</span>
+                <span>Попробуй бесплатно</span>
                 <Icon name="ArrowRight" size={14} className="transition-transform group-hover:translate-x-0.5" />
               </a>
             )}
