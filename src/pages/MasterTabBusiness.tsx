@@ -34,6 +34,21 @@ export default function MasterTabBusiness({ users, loading, onReload }: Props) {
   const [actionId,   setActionId]   = useState<number | null>(null);
   const [subUserId,  setSubUserId]  = useState<number | null>(null);
   const [subLoading, setSubLoading] = useState(false);
+  const [selected,   setSelected]   = useState<BusinessUser | null>(null);
+  const [confirmDel, setConfirmDel] = useState<BusinessUser | null>(null);
+  const [deletingId, setDeletingId] = useState<number | null>(null);
+
+  const doDelete = async (u: BusinessUser) => {
+    setDeletingId(u.id);
+    await fetch(`${AUTH_URL}?action=delete-user`, {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ user_id: u.id }),
+    });
+    setDeletingId(null);
+    setConfirmDel(null);
+    setSelected(null);
+    onReload();
+  };
 
   const filtered = users.filter(u => {
     if (filter === "pending")  return !u.approved && !u.rejected;
@@ -83,7 +98,8 @@ export default function MasterTabBusiness({ users, loading, onReload }: Props) {
   const subPanelUser = users.find(u => u.id === subUserId);
 
   return (
-    <div className="p-6 max-w-4xl mx-auto">
+    <div className="flex h-[calc(100vh-120px)]">
+    <div className="flex-1 overflow-y-auto p-6">
       {/* Фильтры */}
       <div className="flex gap-2 mb-5 flex-wrap">
         {FILTERS.map(f => (
@@ -116,8 +132,10 @@ export default function MasterTabBusiness({ users, loading, onReload }: Props) {
             const ss = subStatus(u);
             const isLoading = actionId === u.id;
             return (
-              <div key={u.id} className="rounded-2xl overflow-hidden"
-                style={{ background: "#0e0e1c", border: `1px solid ${u.rejected ? "rgba(239,68,68,0.2)" : u.approved ? "rgba(16,185,129,0.2)" : "rgba(245,158,11,0.2)"}` }}>
+              <div key={u.id}
+                onClick={() => setSelected(s => s?.id === u.id ? null : u)}
+                className="rounded-2xl overflow-hidden cursor-pointer transition"
+                style={{ background: selected?.id === u.id ? "#0e0e2a" : "#0e0e1c", border: `1.5px solid ${selected?.id === u.id ? "rgba(167,139,250,0.4)" : u.rejected ? "rgba(239,68,68,0.2)" : u.approved ? "rgba(16,185,129,0.2)" : "rgba(245,158,11,0.2)"}` }}>
 
                 {/* Цветная полоска */}
                 <div className="h-1" style={{ background: u.rejected ? "#ef4444" : u.approved ? "#10b981" : "#f59e0b" }} />
@@ -150,7 +168,7 @@ export default function MasterTabBusiness({ users, loading, onReload }: Props) {
                     </div>
 
                     {/* Кнопки действий */}
-                    <div className="flex items-center gap-2 flex-shrink-0">
+                    <div className="flex items-center gap-2 flex-shrink-0" onClick={e => e.stopPropagation()}>
                       {!u.approved && !u.rejected && (
                         <>
                           <button onClick={() => doApprove(u.id)} disabled={isLoading}
@@ -244,6 +262,86 @@ export default function MasterTabBusiness({ users, loading, onReload }: Props) {
               </div>
             );
           })}
+        </div>
+      )}
+    </div>
+
+      {/* Боковая панель */}
+      {selected && (
+        <div className="w-72 flex-shrink-0 border-l border-white/[0.07] flex flex-col"
+          style={{ background: "#080810" }}>
+          <div className="flex items-center justify-between px-5 py-4 border-b border-white/[0.06]">
+            <span className="text-xs font-bold text-white/50 uppercase tracking-wider">Детали</span>
+            <button onClick={() => setSelected(null)} className="text-white/30 hover:text-white/60 transition">
+              <Icon name="X" size={15} />
+            </button>
+          </div>
+          <div className="flex-1 overflow-y-auto p-5 space-y-4">
+            <div className="flex flex-col items-center text-center gap-2">
+              <div className="w-16 h-16 rounded-2xl flex items-center justify-center text-xl font-bold"
+                style={{ background: selected.role === "company" ? "#f59e0b20" : "#60a5fa20", color: selected.role === "company" ? "#f59e0b" : "#60a5fa" }}>
+                {(selected.name || selected.email)[0].toUpperCase()}
+              </div>
+              <div className="text-sm font-bold text-white">{selected.name || "—"}</div>
+              <RoleBadge role={selected.role} />
+            </div>
+            <div className="space-y-2 text-xs">
+              {[
+                { label: "Email",       value: selected.email },
+                { label: "Телефон",     value: selected.phone || "—" },
+                { label: "Зарегистрирован", value: fmtDate(selected.created_at) },
+                { label: "Подписка до", value: fmtDate(selected.subscription_end) },
+                { label: "ID",          value: `#${selected.id}` },
+              ].map(row => (
+                <div key={row.label} className="flex justify-between gap-2 py-1.5 border-b border-white/[0.04]">
+                  <span className="text-white/30">{row.label}</span>
+                  <span className="text-white/70 text-right truncate max-w-[60%]">{row.value}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+          <div className="p-4 border-t border-white/[0.06]">
+            <button onClick={() => setConfirmDel(selected)}
+              className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-bold transition"
+              style={{ background: "rgba(239,68,68,0.1)", color: "#ef4444", border: "1px solid rgba(239,68,68,0.25)" }}>
+              <Icon name="Trash2" size={13} /> Удалить пользователя
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Подтверждение удаления */}
+      {confirmDel && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4"
+          style={{ background: "rgba(0,0,0,0.85)" }} onClick={() => setConfirmDel(null)}>
+          <div className="w-full max-w-sm rounded-2xl p-6 shadow-2xl"
+            style={{ background: "#0e0e1c", border: "1.5px solid rgba(239,68,68,0.3)" }}
+            onClick={e => e.stopPropagation()}>
+            <div className="w-12 h-12 rounded-2xl flex items-center justify-center mb-4"
+              style={{ background: "rgba(239,68,68,0.12)" }}>
+              <Icon name="Trash2" size={22} style={{ color: "#ef4444" }} />
+            </div>
+            <div className="text-base font-bold text-white mb-1">Удалить пользователя?</div>
+            <div className="text-sm text-white/40 mb-1">{confirmDel.name || "—"}</div>
+            <div className="text-xs text-white/30 mb-4">{confirmDel.email}</div>
+            <div className="rounded-xl px-3.5 py-2.5 text-xs text-red-300/80 bg-red-500/10 border border-red-500/20 mb-5">
+              Будут удалены все сметы и сессии. Действие необратимо.
+            </div>
+            <div className="flex gap-2">
+              <button onClick={() => doDelete(confirmDel)} disabled={deletingId === confirmDel.id}
+                className="flex-1 py-2.5 rounded-xl text-sm font-bold text-white transition disabled:opacity-50 flex items-center justify-center gap-2"
+                style={{ background: "#ef4444" }}>
+                {deletingId === confirmDel.id
+                  ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  : "Удалить"}
+              </button>
+              <button onClick={() => setConfirmDel(null)}
+                className="px-5 py-2.5 rounded-xl text-sm font-medium transition"
+                style={{ background: "rgba(255,255,255,0.05)", color: "rgba(255,255,255,0.4)", border: "1px solid rgba(255,255,255,0.07)" }}>
+                Отмена
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

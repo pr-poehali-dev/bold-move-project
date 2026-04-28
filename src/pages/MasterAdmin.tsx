@@ -214,6 +214,7 @@ export default function MasterAdmin() {
           users={proUsers} loading={proLoading}
           editDiscount={editDiscount} savingDiscount={savingDiscount}
           onEditDiscount={setEditDiscount} onSaveDiscount={saveDiscount}
+          onReload={loadPro}
         />
       )}
 
