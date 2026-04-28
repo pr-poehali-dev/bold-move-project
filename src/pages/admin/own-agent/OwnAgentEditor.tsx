@@ -3,6 +3,7 @@ import Icon from "@/components/ui/icon";
 import PhoneInput from "@/components/ui/PhoneInput";
 import { useAuth, type Brand } from "@/context/AuthContext";
 import { updateBrand, uploadBrandImage } from "./brandApi";
+import BrandPreview from "./BrandPreview";
 
 interface Props { isDark: boolean }
 
@@ -49,7 +50,10 @@ export default function OwnAgentEditor({ isDark }: Props) {
 
   return (
     <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-5" style={{ color: text }}>
-      <div className="max-w-3xl mx-auto">
+      <div className="max-w-6xl mx-auto grid lg:grid-cols-[1fr_320px] gap-6">
+
+        {/* ─── Левая колонка: форма ─── */}
+        <div className="min-w-0">
 
         {/* Шапка */}
         <div className="flex items-start justify-between flex-wrap gap-3 mb-5">
@@ -131,6 +135,13 @@ export default function OwnAgentEditor({ isDark }: Props) {
               : <><Icon name="Save" size={14} /> Сохранить настройки бренда</>}
           </button>
         </div>
+        </div>
+
+        {/* ─── Правая колонка: превью ─── */}
+        <div className="lg:sticky lg:top-4 lg:self-start">
+          <BrandPreview brand={brand} isDark={isDark} />
+        </div>
+
       </div>
     </div>
   );
