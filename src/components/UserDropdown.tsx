@@ -2,6 +2,15 @@ import { useState, useRef, useEffect } from "react";
 import { useAuth, CLIENT_ROLES } from "@/context/AuthContext";
 import Icon from "@/components/ui/icon";
 
+const ROLE_LABELS: Record<string, string> = {
+  client:    "Клиент",
+  designer:  "Дизайнер",
+  foreman:   "Прораб",
+  installer: "Монтажник",
+  company:   "Компания",
+  manager:   "Менеджер",
+};
+
 interface Props {
   onShowProfile: () => void;
   onShowPayment: () => void;
@@ -57,7 +66,7 @@ export default function UserDropdown({ onShowProfile, onShowPayment }: Props) {
                   <div className="text-sm font-semibold text-white truncate">{user.name || "—"}</div>
                   <div className="text-[9px] font-medium px-1.5 py-0.5 rounded-md flex-shrink-0"
                     style={{ background: "#f9731620", color: "#f97316" }}>
-                    {user.role}
+                    {ROLE_LABELS[user.role] ?? user.role}
                   </div>
                 </div>
                 <div className="text-[10px] text-white/30 truncate">{user.email}</div>
