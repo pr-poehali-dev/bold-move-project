@@ -159,7 +159,7 @@ export default function Pricing() {
 
       {/* Тарифы */}
       <section className="max-w-6xl mx-auto px-5 pb-14">
-        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div id="packages-grid" className="grid md:grid-cols-2 lg:grid-cols-4 gap-4 scroll-mt-10">
           {PACKAGES.map(pkg => {
             const isSelected = selected === pkg.id;
             const isPopular  = pkg.badge === "Популярный";
@@ -348,50 +348,90 @@ export default function Pricing() {
       </section>
 
       {/* Оплата / CTA */}
-      <section id="payment-block" className="max-w-3xl mx-auto px-5 pb-16 scroll-mt-10">
+      <section id="payment-block"
+        className={`${selectedPkg ? "max-w-3xl" : "max-w-6xl"} mx-auto px-5 pb-16 scroll-mt-10`}>
 
         {!selectedPkg ? (
-          /* ── Огромная CTA-кнопка пока пакет не выбран ─────────────────── */
-          <button
-            onClick={() => {
-              document.querySelector("section .grid")?.scrollIntoView({ behavior: "smooth", block: "center" });
-            }}
-            className="group relative w-full overflow-hidden rounded-[28px] py-10 md:py-14 px-6 transition-all hover:scale-[1.01] active:scale-[0.99]"
+          /* ── CTA в стиле сайта пока пакет не выбран ───────────────────── */
+          <div className="relative rounded-[28px] overflow-hidden p-8 md:p-14"
             style={{
-              background: "linear-gradient(135deg, #f97316 0%, #fbbf24 50%, #f97316 100%)",
-              backgroundSize: "200% 100%",
-              boxShadow: "0 20px 60px rgba(249,115,22,0.4), 0 0 0 1.5px rgba(255,255,255,0.15) inset",
-              animation: "ctaShine 4s ease-in-out infinite",
+              background:
+                "radial-gradient(120% 140% at 0% 0%, rgba(249,115,22,0.16), rgba(8,8,15,0) 55%), radial-gradient(120% 140% at 100% 100%, rgba(251,191,36,0.10), rgba(8,8,15,0) 55%), #0a0a14",
+              border: "1.5px solid rgba(249,115,22,0.30)",
+              boxShadow: "0 0 80px rgba(249,115,22,0.14)",
             }}>
 
-            {/* Блики */}
-            <div className="absolute -top-10 -left-10 w-40 h-40 rounded-full"
-              style={{ background: "radial-gradient(circle, rgba(255,255,255,0.35), transparent 60%)" }} />
-            <div className="absolute -bottom-10 -right-10 w-40 h-40 rounded-full"
-              style={{ background: "radial-gradient(circle, rgba(255,255,255,0.25), transparent 60%)" }} />
+            {/* Декоративные орбы */}
+            <div className="absolute -top-32 -left-32 w-72 h-72 rounded-full pointer-events-none"
+              style={{ background: "radial-gradient(circle, rgba(249,115,22,0.18), transparent 65%)" }} />
+            <div className="absolute -bottom-32 -right-32 w-72 h-72 rounded-full pointer-events-none"
+              style={{ background: "radial-gradient(circle, rgba(251,191,36,0.12), transparent 65%)" }} />
 
-            <div className="relative flex flex-col items-center gap-3">
-              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider"
-                style={{ background: "rgba(255,255,255,0.22)", color: "#fff" }}>
-                <Icon name="Rocket" size={12} />
-                Старт прямо сейчас
+            <div className="relative grid lg:grid-cols-[1fr_auto] gap-8 items-center">
+
+              {/* Левая часть — текст */}
+              <div>
+                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider mb-5"
+                  style={{ background: "rgba(249,115,22,0.18)", color: "#fbbf24", border: "1px solid rgba(249,115,22,0.4)" }}>
+                  <Icon name="Rocket" size={11} />
+                  Старт прямо сейчас
+                </div>
+
+                <h2 className="text-3xl md:text-5xl font-black leading-[1.05] tracking-tight mb-4">
+                  Вперёд к<br />
+                  <span style={{ background: "linear-gradient(90deg,#f97316,#fbbf24)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>
+                    достижениям!
+                  </span>
+                </h2>
+
+                <p className="text-sm md:text-base text-white/55 max-w-lg leading-relaxed mb-6">
+                  Выбери тариф выше — и мы сразу покажем, как оплатить.
+                  Без сложных регистраций, форм и комиссий.
+                </p>
+
+                {/* Микро-цифры */}
+                <div className="grid grid-cols-3 gap-3 max-w-md">
+                  {[
+                    { v: "30 сек", l: "одна смета"     },
+                    { v: "0%",     l: "комиссия СБП"   },
+                    { v: "15 мин", l: "до начисления"  },
+                  ].map(s => (
+                    <div key={s.l} className="rounded-xl px-3 py-2.5"
+                      style={{ background: "rgba(255,255,255,0.035)", border: "1px solid rgba(255,255,255,0.06)" }}>
+                      <div className="text-base md:text-lg font-black" style={{ color: "#fbbf24" }}>{s.v}</div>
+                      <div className="text-[10px] text-white/40 leading-tight">{s.l}</div>
+                    </div>
+                  ))}
+                </div>
               </div>
 
-              <div className="text-3xl md:text-5xl font-black text-white drop-shadow-lg leading-tight tracking-tight">
-                ВПЕРЁД К ДОСТИЖЕНИЯМ!
-              </div>
-
-              <div className="text-[13px] md:text-sm font-semibold text-white/90 max-w-md">
-                Выбери тариф выше — и мы покажем как оплатить
-              </div>
-
-              <div className="mt-3 flex items-center gap-2 px-5 py-2.5 rounded-full transition-all group-hover:gap-3"
-                style={{ background: "rgba(255,255,255,0.18)", border: "1.5px solid rgba(255,255,255,0.3)" }}>
-                <Icon name="ArrowUp" size={16} style={{ color: "#fff" }} />
-                <span className="text-sm font-black text-white uppercase tracking-wider">Выбрать пакет</span>
+              {/* Правая часть — кнопка */}
+              <div className="flex flex-col items-stretch lg:items-end gap-3">
+                <button
+                  onClick={() => {
+                    document.querySelector("#packages-grid")?.scrollIntoView({ behavior: "smooth", block: "center" });
+                  }}
+                  className="group relative overflow-hidden rounded-2xl px-7 py-5 md:py-6 transition-all hover:-translate-y-0.5 active:translate-y-0"
+                  style={{
+                    background: "linear-gradient(135deg, #f97316, #fb923c)",
+                    boxShadow: "0 12px 35px rgba(249,115,22,0.45), 0 0 0 1.5px rgba(255,255,255,0.12) inset",
+                  }}>
+                  <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                    style={{ background: "linear-gradient(135deg, #fb923c, #fbbf24)" }} />
+                  <div className="relative flex items-center gap-3 whitespace-nowrap">
+                    <Icon name="ArrowUp" size={20} style={{ color: "#fff" }} />
+                    <span className="text-base md:text-lg font-black text-white uppercase tracking-wider">
+                      Выбрать пакет
+                    </span>
+                  </div>
+                </button>
+                <div className="text-[11px] text-white/35 text-center lg:text-right flex items-center gap-1.5 justify-center lg:justify-end">
+                  <Icon name="ShieldCheck" size={11} style={{ color: "#10b981" }} />
+                  Возврат 100% в течение 14 дней
+                </div>
               </div>
             </div>
-          </button>
+          </div>
 
         ) : (
           /* ── Блок СБП после выбора пакета ─────────────────────────────── */
