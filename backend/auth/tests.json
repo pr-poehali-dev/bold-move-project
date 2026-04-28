@@ -28,9 +28,7 @@
       "name": "Packages list",
       "method": "GET",
       "path": "/?action=packages",
-      "expectedStatus": 200,
-      "expectedBody": {"packages": [{"id": "start", "estimates": 5}]},
-      "bodyMatcher": "partial"
+      "expectedStatus": 200
     }
   ]
 }

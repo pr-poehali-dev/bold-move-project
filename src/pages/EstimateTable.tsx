@@ -74,7 +74,16 @@ export default function EstimateTable({ text, items, onSaveRequest }: {
         body: JSON.stringify({ blocks, totals, finalPhrase }),
       });
       const data = await res.json();
-      if (!res.ok || data.error) throw new Error(data.error || "Ошибка сохранения");
+      if (!res.ok || data.error) {
+        const msg = data.error || "Ошибка сохранения";
+        // Нет смет на балансе или истёк триал → отправляем на тарифы
+        if (res.status === 403 && /смет|пробн/i.test(msg)) {
+          setSaveError(msg + " Перенаправляем на страницу тарифов…");
+          setTimeout(() => { window.location.href = "/pricing"; }, 1500);
+          return;
+        }
+        throw new Error(msg);
+      }
       setSaved(true);
       setSavedChatId(data.chat_id ?? null);
       setShowContact(true);

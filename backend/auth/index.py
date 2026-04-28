@@ -6,6 +6,8 @@ SCHEMA = os.environ.get("DB_SCHEMA", "t_p45929761_bold_move_project")
 BUSINESS_ROLES = ("installer", "company")
 DISCOUNT_ROLES = ("designer", "foreman")
 DEFAULT_DISCOUNT = 10  # % для designer/foreman
+TRIAL_ESTIMATES = 20   # бесплатный пакет при регистрации
+TRIAL_DAYS      = 4    # срок действия триала
 
 def get_conn():
     return psycopg2.connect(os.environ["DATABASE_URL"])
@@ -69,11 +71,25 @@ def handler(event: dict, context) -> dict:
         approved = role not in BUSINESS_ROLES
         discount = DEFAULT_DISCOUNT if role in DISCOUNT_ROLES else 0
 
+        # Триал для бизнес-ролей: TRIAL_ESTIMATES смет на TRIAL_DAYS дней
+        is_business = role in BUSINESS_ROLES
+        init_balance = TRIAL_ESTIMATES if is_business else 0
+        trial_sql    = f"NOW() + INTERVAL '{TRIAL_DAYS} days'" if is_business else "NULL"
+
         cur.execute(
-            f"INSERT INTO {SCHEMA}.users (email, password_hash, name, phone, role, approved, discount) VALUES (%s,%s,%s,%s,%s,%s,%s) RETURNING id",
-            (email, hash_password(password), name, phone or None, role, approved, discount)
+            f"""INSERT INTO {SCHEMA}.users
+                (email, password_hash, name, phone, role, approved, discount, estimates_balance, trial_until)
+                VALUES (%s,%s,%s,%s,%s,%s,%s,%s, {trial_sql})
+                RETURNING id""",
+            (email, hash_password(password), name, phone or None, role, approved, discount, init_balance)
         )
         user_id = cur.fetchone()[0]
+
+        if is_business:
+            cur.execute(
+                f"INSERT INTO {SCHEMA}.balance_transactions (user_id, amount, reason) VALUES (%s, %s, 'trial_signup')",
+                (user_id, TRIAL_ESTIMATES)
+            )
 
         if approved:
             new_token = secrets.token_hex(32)
@@ -132,7 +148,7 @@ def handler(event: dict, context) -> dict:
         cur.execute(f"""
             SELECT u.id, u.email, u.name, u.phone, u.role, u.approved, u.discount,
                    u.company_name, u.company_inn, u.company_addr, u.website, u.telegram,
-                   u.estimates_balance
+                   u.estimates_balance, u.trial_until
             FROM {SCHEMA}.user_sessions s
             JOIN {SCHEMA}.users u ON u.id = s.user_id
             WHERE s.token=%s AND s.expires_at > NOW()
@@ -141,7 +157,7 @@ def handler(event: dict, context) -> dict:
         if not row:
             return err("Токен недействителен", 401)
 
-        uid, email, name, phone, role, approved, discount, company_name, company_inn, company_addr, website, telegram, estimates_balance = row
+        uid, email, name, phone, role, approved, discount, company_name, company_inn, company_addr, website, telegram, estimates_balance, trial_until = row
         return ok({"user": {
             "id": uid, "email": email, "name": name, "phone": phone,
             "role": role or "client", "approved": approved, "discount": discount or 0,
@@ -149,6 +165,7 @@ def handler(event: dict, context) -> dict:
             "company_name": company_name, "company_inn": company_inn,
             "company_addr": company_addr, "website": website, "telegram": telegram,
             "estimates_balance": estimates_balance or 0,
+            "trial_until": str(trial_until)[:19] if trial_until else None,
         }})
 
     # ── Обновление профиля ────────────────────────────────────────────────────
@@ -428,7 +445,8 @@ def handler(event: dict, context) -> dict:
             return err("Требуется авторизация", 401)
 
         cur.execute(f"""
-            SELECT u.id, u.email, u.name, u.phone, u.discount, u.role, u.estimates_balance
+            SELECT u.id, u.email, u.name, u.phone, u.discount, u.role, u.estimates_balance,
+                   u.trial_until, (u.trial_until IS NOT NULL AND u.trial_until < NOW()) AS trial_expired
             FROM {SCHEMA}.user_sessions s
             JOIN {SCHEMA}.users u ON u.id = s.user_id
             WHERE s.token=%s AND s.expires_at > NOW()
@@ -436,10 +454,12 @@ def handler(event: dict, context) -> dict:
         row = cur.fetchone()
         if not row:
             return err("Токен недействителен", 401)
-        user_id, email, user_name, phone, user_discount, user_role, estimates_balance = row
+        user_id, email, user_name, phone, user_discount, user_role, estimates_balance, trial_until, trial_expired = row
 
         # Для монтажников/компаний проверяем и списываем баланс
         if user_role in BUSINESS_ROLES:
+            if trial_expired:
+                return err("Пробный период закончился. Пополните пакет.", 403)
             if (estimates_balance or 0) <= 0:
                 return err("Недостаточно смет на балансе. Пополните пакет.", 403)
             cur.execute(f"""
@@ -573,7 +593,7 @@ def handler(event: dict, context) -> dict:
         cur.execute(f"""
             SELECT u.id, u.email, u.name, u.phone, u.role, u.approved, u.discount, u.created_at,
                    COUNT(e.id) as estimates_count, u.rejected, u.subscription_start, u.subscription_end,
-                   u.estimates_balance
+                   u.estimates_balance, u.trial_until
             FROM {SCHEMA}.users u
             LEFT JOIN {SCHEMA}.saved_estimates e ON e.user_id = u.id
             WHERE u.removed_at IS NULL
@@ -588,6 +608,7 @@ def handler(event: dict, context) -> dict:
             "subscription_start": str(r[10])[:19] if r[10] else None,
             "subscription_end":   str(r[11])[:19] if r[11] else None,
             "estimates_balance":  r[12] or 0,
+            "trial_until":        str(r[13])[:19] if r[13] else None,
         } for r in rows]})
 
     # ── Мастер: сметы конкретного пользователя ────────────────────────────────

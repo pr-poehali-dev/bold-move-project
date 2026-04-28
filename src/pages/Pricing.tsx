@@ -149,6 +149,9 @@ export default function Pricing() {
         </p>
       </section>
 
+      {/* Статус триала / приветствие */}
+      <TrialBanner />
+
       {/* Тарифы */}
       <section className="max-w-6xl mx-auto px-5 pb-14">
         <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -364,5 +367,88 @@ function Faq({ q, a }: { q: string; a: string }) {
       </div>
       <div className="text-[11px] text-white/45 leading-relaxed">{a}</div>
     </div>
+  );
+}
+
+function TrialBanner() {
+  const { user } = useAuth();
+
+  // Не для бизнес-роли — показываем общий «триал для новых»
+  const isBusiness = user && ["installer","company"].includes(user.role);
+
+  if (!user || !isBusiness) {
+    return (
+      <section className="max-w-3xl mx-auto px-5 pb-10">
+        <div className="rounded-3xl p-5 flex items-center gap-4"
+          style={{
+            background: "linear-gradient(90deg, rgba(16,185,129,0.10), rgba(16,185,129,0.02))",
+            border: "1.5px solid rgba(16,185,129,0.28)",
+          }}>
+          <div className="w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0"
+            style={{ background: "rgba(16,185,129,0.18)" }}>
+            <Icon name="Gift" size={22} style={{ color: "#10b981" }} />
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 mb-0.5 flex-wrap">
+              <span className="text-sm font-black text-white">Бесплатно для новых мастеров</span>
+              <span className="px-2 py-0.5 rounded-md text-[9px] font-black uppercase tracking-wider"
+                style={{ background: "#10b981", color: "#0a0a14" }}>FREE</span>
+            </div>
+            <div className="text-[11px] text-white/55 leading-snug">
+              Зарегистрируйся как монтажник или компания — получи <b className="text-[#10b981]">20 смет</b> на <b className="text-[#10b981]">4 дня</b>. Без оплаты.
+            </div>
+          </div>
+        </div>
+      </section>
+    );
+  }
+
+  // Активный/истекший триал
+  const trial = user.trial_until ? new Date(user.trial_until) : null;
+  const now   = new Date();
+  const balance = user.estimates_balance ?? 0;
+
+  if (!trial) return null; // у бизнес-юзера должен быть, но на всякий случай
+
+  const expired   = trial < now;
+  const hoursLeft = Math.max(0, Math.floor((trial.getTime() - now.getTime()) / 3600000));
+  const daysLeftN = Math.floor(hoursLeft / 24);
+  const remainder = hoursLeft - daysLeftN * 24;
+
+  return (
+    <section className="max-w-3xl mx-auto px-5 pb-10">
+      <div className="rounded-3xl p-5"
+        style={{
+          background: expired
+            ? "linear-gradient(90deg, rgba(239,68,68,0.10), rgba(239,68,68,0.02))"
+            : "linear-gradient(90deg, rgba(16,185,129,0.10), rgba(16,185,129,0.02))",
+          border: `1.5px solid ${expired ? "rgba(239,68,68,0.28)" : "rgba(16,185,129,0.28)"}`,
+        }}>
+        <div className="flex items-center gap-4">
+          <div className="w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0"
+            style={{ background: expired ? "rgba(239,68,68,0.18)" : "rgba(16,185,129,0.18)" }}>
+            <Icon name={expired ? "AlertCircle" : "Gift"} size={22}
+              style={{ color: expired ? "#ef4444" : "#10b981" }} />
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 mb-0.5 flex-wrap">
+              <span className="text-sm font-black text-white">
+                {expired ? "Пробный период истёк" : "Активен пробный период"}
+              </span>
+              {!expired && (
+                <span className="px-2 py-0.5 rounded-md text-[9px] font-black uppercase tracking-wider"
+                  style={{ background: "#10b981", color: "#0a0a14" }}>FREE</span>
+              )}
+            </div>
+            <div className="text-[11px] text-white/55 leading-snug">
+              {expired
+                ? "Чтобы продолжить считать сметы — выбери пакет ниже."
+                : <>Осталось <b className="text-[#10b981]">{balance} смет</b> и <b className="text-[#10b981]">{daysLeftN > 0 ? `${daysLeftN} дн. ${remainder} ч.` : `${hoursLeft} ч.`}</b> до конца пробного периода.</>
+              }
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
   );
 }

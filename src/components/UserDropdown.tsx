@@ -74,21 +74,39 @@ export default function UserDropdown({ onShowProfile, onShowPayment }: Props) {
               </div>
             </div>
             {/* Баланс смет для монтажников/компаний */}
-            {["installer","company"].includes(user.role) && (
-              <button
-                onClick={() => { setOpen(false); window.location.href = "/pricing"; }}
-                className="mt-2.5 w-full flex items-center justify-between px-3 py-2 rounded-xl transition hover:opacity-80"
-                style={{ background: (user.estimates_balance ?? 0) > 0 ? "rgba(16,185,129,0.07)" : "rgba(239,68,68,0.07)" }}>
-                <span className="text-[10px] text-white/40">Смет на балансе</span>
-                <span className="flex items-center gap-1.5">
-                  <span className="text-sm font-black"
-                    style={{ color: (user.estimates_balance ?? 0) > 0 ? "#10b981" : "#ef4444" }}>
-                    {user.estimates_balance ?? 0}
-                  </span>
-                  <Icon name="Plus" size={11} style={{ color: "rgba(255,255,255,0.3)" }} />
-                </span>
-              </button>
-            )}
+            {["installer","company"].includes(user.role) && (() => {
+              const trial      = user.trial_until ? new Date(user.trial_until) : null;
+              const trialAlive = trial && trial > new Date();
+              const hoursLeft  = trialAlive ? Math.floor((trial.getTime() - Date.now()) / 3600000) : 0;
+              return (
+                <>
+                  <button
+                    onClick={() => { setOpen(false); window.location.href = "/pricing"; }}
+                    className="mt-2.5 w-full flex items-center justify-between px-3 py-2 rounded-xl transition hover:opacity-80"
+                    style={{ background: (user.estimates_balance ?? 0) > 0 ? "rgba(16,185,129,0.07)" : "rgba(239,68,68,0.07)" }}>
+                    <span className="text-[10px] text-white/40">Смет на балансе</span>
+                    <span className="flex items-center gap-1.5">
+                      <span className="text-sm font-black"
+                        style={{ color: (user.estimates_balance ?? 0) > 0 ? "#10b981" : "#ef4444" }}>
+                        {user.estimates_balance ?? 0}
+                      </span>
+                      <Icon name="Plus" size={11} style={{ color: "rgba(255,255,255,0.3)" }} />
+                    </span>
+                  </button>
+                  {trialAlive && (
+                    <div className="mt-1.5 flex items-center gap-1.5 px-3 py-1.5 rounded-lg"
+                      style={{ background: "rgba(16,185,129,0.08)" }}>
+                      <Icon name="Gift" size={10} style={{ color: "#10b981" }} />
+                      <span className="text-[10px] font-bold" style={{ color: "#10b981" }}>FREE триал</span>
+                      <span className="text-[10px] text-white/40">·</span>
+                      <span className="text-[10px] text-white/55">
+                        {hoursLeft >= 24 ? `${Math.floor(hoursLeft/24)} дн.` : `${hoursLeft} ч.`} осталось
+                      </span>
+                    </div>
+                  )}
+                </>
+              );
+            })()}
           </div>
 
           {/* Пункты меню */}

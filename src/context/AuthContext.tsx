@@ -16,6 +16,7 @@ export interface AuthUser {
   approved: boolean;
   discount: number;
   estimates_balance: number;
+  trial_until?: string | null;
   is_master?: boolean;
   company_name?: string | null;
   company_inn?:  string | null;
