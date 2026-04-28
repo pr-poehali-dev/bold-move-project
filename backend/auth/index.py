@@ -148,7 +148,7 @@ def handler(event: dict, context) -> dict:
         cur.execute(f"""
             SELECT u.id, u.email, u.name, u.phone, u.role, u.approved, u.discount,
                    u.company_name, u.company_inn, u.company_addr, u.website, u.telegram,
-                   u.estimates_balance, u.trial_until
+                   u.estimates_balance, u.trial_until, u.permissions, u.company_id
             FROM {SCHEMA}.user_sessions s
             JOIN {SCHEMA}.users u ON u.id = s.user_id
             WHERE s.token=%s AND s.expires_at > NOW()
@@ -157,7 +157,7 @@ def handler(event: dict, context) -> dict:
         if not row:
             return err("Токен недействителен", 401)
 
-        uid, email, name, phone, role, approved, discount, company_name, company_inn, company_addr, website, telegram, estimates_balance, trial_until = row
+        uid, email, name, phone, role, approved, discount, company_name, company_inn, company_addr, website, telegram, estimates_balance, trial_until, permissions, ucompany_id = row
         return ok({"user": {
             "id": uid, "email": email, "name": name, "phone": phone,
             "role": role or "client", "approved": approved, "discount": discount or 0,
@@ -166,6 +166,8 @@ def handler(event: dict, context) -> dict:
             "company_addr": company_addr, "website": website, "telegram": telegram,
             "estimates_balance": estimates_balance or 0,
             "trial_until": str(trial_until)[:19] if trial_until else None,
+            "permissions": permissions,
+            "company_id": ucompany_id,
         }})
 
     # ── Обновление профиля ────────────────────────────────────────────────────
@@ -697,7 +699,8 @@ def handler(event: dict, context) -> dict:
         if e: return e
         owner_id, _, _ = owner
         cur.execute(f"""
-            SELECT id, email, name, phone, role, approved, created_at
+            SELECT id, email, name, phone, role, approved, created_at,
+                   permissions, (temp_password_plain IS NOT NULL) AS has_pending_password
             FROM {SCHEMA}.users
             WHERE company_id = %s AND removed_at IS NULL AND id <> %s
             ORDER BY created_at DESC
@@ -707,9 +710,13 @@ def handler(event: dict, context) -> dict:
             "id": r[0], "email": r[1], "name": r[2], "phone": r[3],
             "role": r[4], "approved": r[5],
             "created_at": str(r[6])[:19],
+            "permissions": r[7],
+            "has_pending_password": r[8],
         } for r in rows]})
 
     # Приглашение нового сотрудника (создание менеджера в компании)
+    # ВАЖНО: пароль НЕ возвращается сразу — он сохраняется в temp_password_plain.
+    # Владелец сначала настраивает права, потом вызывает team-show-password.
     if action == "team-invite" and method == "POST":
         owner, e = get_owner_or_err()
         if e: return e
@@ -728,18 +735,29 @@ def handler(event: dict, context) -> dict:
         if cur.fetchone():
             return err("Пользователь с таким email уже зарегистрирован")
 
-        # Генерим временный пароль (10 символов) — отдадим его владельцу один раз
+        # Генерим временный пароль (10 символов). Сохраняем plain, чтобы владелец
+        # мог получить его уже после настройки прав.
         temp_password = secrets.token_urlsafe(8)[:10]
+
+        # По умолчанию — все права отключены (владелец сам настроит)
+        default_permissions = {
+            "crm_view": False, "crm_edit": False,
+            "finance": False, "calendar": False,
+            "analytics": False, "kanban": False,
+            "files": False, "settings": False,
+        }
 
         cur.execute(f"""
             INSERT INTO {SCHEMA}.users
-              (email, password_hash, name, phone, role, approved, company_id, invited_by)
-            VALUES (%s, %s, %s, %s, 'manager', TRUE, %s, %s)
+              (email, password_hash, name, phone, role, approved, company_id, invited_by,
+               permissions, temp_password_plain)
+            VALUES (%s, %s, %s, %s, 'manager', TRUE, %s, %s, %s::jsonb, %s)
             RETURNING id
         """, (
             invitee_email, hash_password(temp_password),
             invitee_name or None, invitee_phone or None,
             owner_id, owner_id,
+            json.dumps(default_permissions), temp_password,
         ))
         new_id = cur.fetchone()[0]
         conn.commit()
@@ -750,9 +768,62 @@ def handler(event: dict, context) -> dict:
                 "id": new_id, "email": invitee_email,
                 "name": invitee_name, "phone": invitee_phone,
                 "role": "manager", "approved": True,
+                "permissions": default_permissions,
+                "has_pending_password": True,
             },
-            "temp_password": temp_password,  # ВЛАДЕЛЕЦ должен передать сотруднику
         })
+
+    # Обновление прав сотрудника
+    if action == "team-update-permissions" and method == "POST":
+        owner, e = get_owner_or_err()
+        if e: return e
+        owner_id, _, _ = owner
+
+        member_id = body.get("member_id")
+        perms     = body.get("permissions")
+        if not member_id or perms is None:
+            return err("member_id и permissions обязательны")
+
+        cur.execute(f"""
+            SELECT id FROM {SCHEMA}.users
+            WHERE id=%s AND company_id=%s AND removed_at IS NULL
+        """, (int(member_id), owner_id))
+        if not cur.fetchone():
+            return err("Сотрудник не найден в вашей команде", 404)
+
+        cur.execute(f"""
+            UPDATE {SCHEMA}.users SET permissions=%s::jsonb, updated_at=NOW() WHERE id=%s
+        """, (json.dumps(perms), int(member_id)))
+        conn.commit()
+        return ok({"ok": True, "permissions": perms})
+
+    # Получить временный пароль (доступно один раз — пока есть temp_password_plain)
+    if action == "team-show-password" and method == "POST":
+        owner, e = get_owner_or_err()
+        if e: return e
+        owner_id, _, _ = owner
+
+        member_id = body.get("member_id")
+        if not member_id:
+            return err("member_id required")
+
+        cur.execute(f"""
+            SELECT id, email, temp_password_plain FROM {SCHEMA}.users
+            WHERE id=%s AND company_id=%s AND removed_at IS NULL
+        """, (int(member_id), owner_id))
+        row = cur.fetchone()
+        if not row:
+            return err("Сотрудник не найден", 404)
+        _, member_email, plain = row
+        if not plain:
+            return err("Пароль уже был показан. Используйте «Сбросить пароль».", 410)
+
+        # Чистим plain после показа
+        cur.execute(f"""
+            UPDATE {SCHEMA}.users SET temp_password_plain=NULL WHERE id=%s
+        """, (int(member_id),))
+        conn.commit()
+        return ok({"ok": True, "email": member_email, "temp_password": plain})
 
     # Удаление сотрудника (мягкое)
     if action == "team-remove" and method == "POST":
@@ -805,7 +876,9 @@ def handler(event: dict, context) -> dict:
 
         new_password = secrets.token_urlsafe(8)[:10]
         cur.execute(f"""
-            UPDATE {SCHEMA}.users SET password_hash=%s, updated_at=NOW() WHERE id=%s
+            UPDATE {SCHEMA}.users
+            SET password_hash=%s, updated_at=NOW(), temp_password_plain=NULL
+            WHERE id=%s
         """, (hash_password(new_password), member_id))
         # Сбрасываем сессии
         cur.execute(f"UPDATE {SCHEMA}.user_sessions SET expires_at=NOW() WHERE user_id=%s", (member_id,))

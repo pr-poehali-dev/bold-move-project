@@ -7,6 +7,29 @@ const TOKEN_KEY = "mp_user_token";
 
 export type UserRole = "client" | "designer" | "foreman" | "installer" | "company" | "manager";
 
+export interface Permissions {
+  crm_view?:  boolean;
+  crm_edit?:  boolean;
+  finance?:   boolean;
+  calendar?:  boolean;
+  analytics?: boolean;
+  kanban?:    boolean;
+  files?:     boolean;
+  settings?:  boolean;
+}
+
+/**
+ * Проверка прав. Если permissions === null/undefined — это владелец/мастер
+ * (полный доступ). Иначе — менеджер и смотрим конкретный ключ.
+ */
+export function hasPermission(user: AuthUser | null, key: keyof Permissions): boolean {
+  if (!user) return false;
+  if (user.is_master) return true;
+  if (user.role === "company" || user.role === "installer") return true; // владельцы
+  if (!user.permissions) return true; // на всякий случай — старые менеджеры без прав = полный
+  return user.permissions[key] === true;
+}
+
 export interface AuthUser {
   id: number;
   email: string;
@@ -18,6 +41,8 @@ export interface AuthUser {
   estimates_balance: number;
   trial_until?: string | null;
   is_master?: boolean;
+  company_id?: number | null;
+  permissions?: Permissions | null;
   company_name?: string | null;
   company_inn?:  string | null;
   company_addr?: string | null;

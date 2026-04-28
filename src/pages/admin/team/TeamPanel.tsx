@@ -4,6 +4,8 @@ import { useAuth } from "@/context/AuthContext";
 import { fetchTeam, removeMember, type TeamMember } from "./teamApi";
 import InviteMemberModal from "./InviteMemberModal";
 import ResetPasswordModal from "./ResetPasswordModal";
+import EditPermissionsModal from "./EditPermissionsModal";
+import { PERM_GROUPS } from "./PermissionsEditor";
 
 interface Props { isDark: boolean }
 
@@ -15,6 +17,7 @@ export default function TeamPanel({ isDark }: Props) {
 
   const [showInvite, setShowInvite] = useState(false);
   const [resetFor,   setResetFor]   = useState<TeamMember | null>(null);
+  const [editFor,    setEditFor]    = useState<TeamMember | null>(null);
   const [confirmDel, setConfirmDel] = useState<TeamMember | null>(null);
   const [delBusy,    setDelBusy]    = useState(false);
 
@@ -76,8 +79,8 @@ export default function TeamPanel({ isDark }: Props) {
           style={{ background: "rgba(124,58,237,0.08)", border: "1px solid rgba(124,58,237,0.22)", color: isDark ? "#c4b5fd" : "#6d28d9" }}>
           <Icon name="Info" size={14} className="mt-0.5 flex-shrink-0" />
           <span>
-            Каждый сотрудник видит вашу CRM целиком. При создании сотруднику выдаётся <b>временный пароль</b> — передайте его лично.
-            Сменить или сбросить пароль можно в любой момент.
+            Сначала <b>создайте сотрудника</b> → затем <b>настройте доступ</b> к разделам → и только потом <b>передайте пароль</b>.
+            До передачи пароля сотрудник не сможет войти.
           </span>
         </div>
 
@@ -113,6 +116,7 @@ export default function TeamPanel({ isDark }: Props) {
           <div className="grid sm:grid-cols-2 gap-3">
             {members.map(m => (
               <MemberCard key={m.id} member={m} isDark={isDark}
+                onEditPermissions={() => setEditFor(m)}
                 onResetPassword={() => setResetFor(m)}
                 onRemove={() => setConfirmDel(m)} />
             ))}
@@ -124,7 +128,13 @@ export default function TeamPanel({ isDark }: Props) {
       {showInvite && (
         <InviteMemberModal isDark={isDark}
           onClose={() => setShowInvite(false)}
-          onInvited={(m) => setMembers(prev => [m, ...prev])} />
+          onInvited={(m) => setMembers(prev => [m, ...prev])}
+          onUpdated={(m) => setMembers(prev => prev.map(x => x.id === m.id ? { ...x, ...m } : x))} />
+      )}
+      {editFor && (
+        <EditPermissionsModal isDark={isDark} member={editFor}
+          onClose={() => setEditFor(null)}
+          onSaved={(m) => setMembers(prev => prev.map(x => x.id === m.id ? { ...x, ...m } : x))} />
       )}
       {resetFor && (
         <ResetPasswordModal isDark={isDark} member={resetFor} onClose={() => setResetFor(null)} />
@@ -137,18 +147,33 @@ export default function TeamPanel({ isDark }: Props) {
   );
 }
 
-function MemberCard({ member, isDark, onResetPassword, onRemove }: {
+function MemberCard({ member, isDark, onEditPermissions, onResetPassword, onRemove }: {
   member: TeamMember; isDark: boolean;
-  onResetPassword: () => void; onRemove: () => void;
+  onEditPermissions: () => void;
+  onResetPassword: () => void;
+  onRemove: () => void;
 }) {
   const muted  = isDark ? "rgba(255,255,255,0.45)" : "#6b7280";
   const border = isDark ? "rgba(255,255,255,0.07)" : "#e5e7eb";
   const bg     = isDark ? "rgba(255,255,255,0.03)" : "#ffffff";
   const initials = (member.name || member.email).slice(0, 1).toUpperCase();
 
+  // Подсчёт активных прав
+  const activeCount = member.permissions
+    ? Object.values(member.permissions).filter(Boolean).length
+    : PERM_GROUPS.length;
+  const totalCount  = PERM_GROUPS.length;
+
+  const isPwdPending = member.has_pending_password === true;
+
   return (
     <div className="rounded-2xl p-4"
-      style={{ background: bg, border: `1px solid ${border}` }}>
+      style={{
+        background: bg,
+        border: isPwdPending
+          ? "1.5px solid rgba(251,191,36,0.45)"
+          : `1px solid ${border}`,
+      }}>
       <div className="flex items-start gap-3 mb-3">
         <div className="w-10 h-10 rounded-xl flex items-center justify-center text-base font-black flex-shrink-0"
           style={{ background: "rgba(124,58,237,0.18)", color: "#a78bfa" }}>
@@ -165,6 +190,35 @@ function MemberCard({ member, isDark, onResetPassword, onRemove }: {
           style={{ background: "rgba(124,58,237,0.18)", color: "#a78bfa" }}>
           Менеджер
         </span>
+      </div>
+
+      {/* Состояние: пароль не передан */}
+      {isPwdPending && (
+        <div className="mb-3 rounded-lg px-2.5 py-2 text-[10.5px] flex items-center gap-2"
+          style={{ background: "rgba(251,191,36,0.10)", border: "1px solid rgba(251,191,36,0.30)", color: "#fbbf24" }}>
+          <Icon name="AlertTriangle" size={11} className="flex-shrink-0" />
+          <span>Пароль не передан — сотрудник пока не может войти</span>
+        </div>
+      )}
+
+      {/* Счётчик прав */}
+      <div className="mb-3 flex items-center justify-between text-[10.5px]" style={{ color: muted }}>
+        <span className="flex items-center gap-1.5">
+          <Icon name="ShieldCheck" size={11} />
+          Доступ
+        </span>
+        <span className="font-bold" style={{ color: activeCount === 0 ? "#ef4444" : isDark ? "#fff" : "#0f1623" }}>
+          {activeCount} / {totalCount} разделов
+        </span>
+      </div>
+
+      <div className="flex gap-2 mb-2">
+        <button onClick={onEditPermissions}
+          className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-[11px] font-bold transition"
+          style={{ background: "rgba(124,58,237,0.14)", color: "#a78bfa", border: "1px solid rgba(124,58,237,0.32)" }}>
+          <Icon name="ShieldCheck" size={11} />
+          Настроить доступ
+        </button>
       </div>
 
       <div className="flex gap-2">
