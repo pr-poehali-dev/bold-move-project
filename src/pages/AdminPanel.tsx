@@ -8,6 +8,7 @@ import TabQuestions from "./admin/TabQuestions";
 import TabCorrections from "./admin/TabCorrections";
 import CrmPanel from "./admin/crm/CrmPanel";
 import { setCrmToken } from "./admin/crm/crmApi";
+import TeamPanel from "./admin/team/TeamPanel";
 import { useAuth } from "@/context/AuthContext";
 import AuthModal from "@/components/AuthModal";
 import type { AgentSubTab } from "./admin/types";
@@ -16,7 +17,7 @@ import type { Theme } from "./admin/crm/themeContext";
 // Роли с доступом к /company
 const ALLOWED_ROLES = ["installer", "company", "manager"];
 
-type MainTab = "crm" | "agent";
+type MainTab = "crm" | "agent" | "team";
 
 const AGENT_TABS: { id: AgentSubTab; label: string; icon: string }[] = [
   { id: "prices",      label: "Цены",            icon: "Tag" },
@@ -210,7 +211,10 @@ export default function AdminPanel() {
       <div className="px-4 flex gap-1 pt-2 flex-shrink-0 transition-colors duration-300"
         style={{ background: headerBg, borderBottom: `1px solid ${headerBorder}` }}>
         {([
-          { id: "crm"   as MainTab, label: "CRM",               icon: "LayoutDashboard" },
+          { id: "crm"   as MainTab, label: "CRM",                icon: "LayoutDashboard" },
+          ...(user?.role === "company" || user?.is_master
+            ? [{ id: "team" as MainTab, label: "Команда",         icon: "Users" }]
+            : []),
           { id: "agent" as MainTab, label: "Управление агентом", icon: "BrainCircuit"    },
         ]).map(tb => (
           <button key={tb.id} onClick={() => setMainTab(tb.id)}
@@ -235,6 +239,13 @@ export default function AdminPanel() {
         </div>
       )}
 
+      {/* ── Команда ── */}
+      {mainTab === "team" && (
+        <div className="flex-1 flex flex-col overflow-hidden">
+          <TeamPanel isDark={isDark} />
+        </div>
+      )}
+
       {/* ── Управление агентом ── */}
       {mainTab === "agent" && (
         <div className="flex-1 flex flex-col overflow-hidden">
@@ -254,12 +265,12 @@ export default function AdminPanel() {
           </div>
 
           <div className="flex-1 overflow-y-auto p-4 max-w-6xl mx-auto w-full">
-            {agentTab === "prices"      && <TabPrices      token={token} onItemAdded={handleItemAdded} />}
-            {agentTab === "rules"       && <TabRules       token={token} hint={newItemHint} />}
-            {agentTab === "prompt"      && <TabPrompt      token={token} />}
-            {agentTab === "faq"         && <TabFaq         token={token} />}
-            {agentTab === "questions"   && <TabQuestions   token={token} />}
-            {agentTab === "corrections" && <TabCorrections token={token} />}
+            {agentTab === "prices"      && <TabPrices      token={authToken} onItemAdded={handleItemAdded} />}
+            {agentTab === "rules"       && <TabRules       token={authToken} hint={newItemHint} />}
+            {agentTab === "prompt"      && <TabPrompt      token={authToken} />}
+            {agentTab === "faq"         && <TabFaq         token={authToken} />}
+            {agentTab === "questions"   && <TabQuestions   token={authToken} />}
+            {agentTab === "corrections" && <TabCorrections token={authToken} />}
           </div>
         </div>
       )}
