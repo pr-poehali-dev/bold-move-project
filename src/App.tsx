@@ -7,7 +7,6 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/context/AuthContext";
 
 const Index       = lazy(() => import("./pages/Index"));
-const AiHub       = lazy(() => import("./pages/AiHub"));
 const AdminPanel  = lazy(() => import("./pages/AdminPanel"));
 const MasterAdmin = lazy(() => import("./pages/MasterAdmin"));
 const MyOrders    = lazy(() => import("./pages/MyOrders"));
@@ -25,7 +24,6 @@ const App = () => (
           <Suspense fallback={<div className="bg-[#0b0b11]" style={{ height: "100dvh" }} />}>
             <Routes>
               <Route path="/" element={<Index />} />
-              <Route path="/hub" element={<AiHub />} />
               <Route path="/company"    element={<AdminPanel />} />
               <Route path="/master"    element={<MasterAdmin />} />
               <Route path="/my-orders" element={<MyOrders />} />
