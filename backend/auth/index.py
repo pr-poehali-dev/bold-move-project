@@ -130,7 +130,8 @@ def handler(event: dict, context) -> dict:
             return err("Требуется авторизация", 401)
 
         cur.execute(f"""
-            SELECT u.id, u.email, u.name, u.phone, u.role, u.approved, u.discount
+            SELECT u.id, u.email, u.name, u.phone, u.role, u.approved, u.discount,
+                   u.company_name, u.company_inn, u.company_addr, u.website, u.telegram
             FROM {SCHEMA}.user_sessions s
             JOIN {SCHEMA}.users u ON u.id = s.user_id
             WHERE s.token=%s AND s.expires_at > NOW()
@@ -139,11 +140,13 @@ def handler(event: dict, context) -> dict:
         if not row:
             return err("Токен недействителен", 401)
 
-        uid, email, name, phone, role, approved, discount = row
+        uid, email, name, phone, role, approved, discount, company_name, company_inn, company_addr, website, telegram = row
         return ok({"user": {
             "id": uid, "email": email, "name": name, "phone": phone,
             "role": role or "client", "approved": approved, "discount": discount or 0,
             "is_master": (email == "19.jeka.94@gmail.com"),
+            "company_name": company_name, "company_inn": company_inn,
+            "company_addr": company_addr, "website": website, "telegram": telegram,
         }})
 
     # ── Обновление профиля ────────────────────────────────────────────────────
@@ -160,12 +163,21 @@ def handler(event: dict, context) -> dict:
             return err("Токен недействителен", 401)
         uid = row[0]
 
-        name  = (body.get("name") or "").strip()
-        phone = (body.get("phone") or "").strip()
+        name         = (body.get("name") or "").strip()
+        phone        = (body.get("phone") or "").strip()
+        company_name = (body.get("company_name") or "").strip()
+        company_inn  = (body.get("company_inn") or "").strip()
+        company_addr = (body.get("company_addr") or "").strip()
+        website      = (body.get("website") or "").strip()
+        telegram     = (body.get("telegram") or "").strip()
 
         cur.execute(f"""
-            UPDATE {SCHEMA}.users SET name=%s, phone=%s, updated_at=NOW() WHERE id=%s
-        """, (name or None, phone or None, uid))
+            UPDATE {SCHEMA}.users
+            SET name=%s, phone=%s, company_name=%s, company_inn=%s,
+                company_addr=%s, website=%s, telegram=%s, updated_at=NOW()
+            WHERE id=%s
+        """, (name or None, phone or None, company_name or None, company_inn or None,
+              company_addr or None, website or None, telegram or None, uid))
         conn.commit()
         return ok({"ok": True})
 

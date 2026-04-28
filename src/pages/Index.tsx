@@ -35,9 +35,6 @@ export default function Index() {
   const [bookingToast, setBookingToast] = useState(false);
   const [estimateModal, setEstimateModal] = useState(false);
   const [regModal, setRegModal] = useState(false);
-  const [regName, setRegName] = useState("");
-  const [regPhone, setRegPhone] = useState("");
-  const [regDone, setRegDone] = useState(false);
   const isPresetMsg = useRef(false);
 
   // Фиксируем высоту один раз при загрузке — Android Chrome сжимает viewport при открытии клавиатуры
@@ -48,9 +45,10 @@ export default function Index() {
   const regTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
+    if (user) return;
     regTimer.current = setTimeout(() => setRegModal(true), 120000);
     return () => { if (regTimer.current) clearTimeout(regTimer.current); };
-  }, []);
+  }, [user]);
 
   // Через 3 сек после сметы: модальный оверлей (только если не пресет)
   useEffect(() => {
@@ -275,96 +273,14 @@ export default function Index() {
           </div>
         )}
 
-        {/* Registration modal — через 1 минуту */}
-        {regModal && (
-          <div className="absolute inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md [-webkit-backdrop-filter:blur(12px)]">
-            <div className="w-full max-w-sm rounded-3xl border border-orange-500/25 bg-[#16100a] shadow-2xl shadow-orange-500/15 overflow-hidden animate-fade-in">
-              <div className="h-1.5 bg-gradient-to-r from-orange-500 to-rose-500" />
-              <div className="p-6">
-                <button
-                  onClick={() => setRegModal(false)}
-                  className="absolute top-4 right-4 p-1.5 text-white/20 hover:text-white/50 transition-colors rounded-lg">
-                  <Icon name="X" size={16} />
-                </button>
-
-                {!regDone ? (
-                  <>
-                    <div className="flex flex-col items-center text-center mb-6">
-                      <div className="w-14 h-14 rounded-2xl bg-orange-500/15 border border-orange-500/25 flex items-center justify-center mb-3">
-                        <Icon name="Gift" size={26} className="text-orange-400" />
-                      </div>
-                      <div className="text-white font-bold text-lg mb-1">Авторизуйтесь</div>
-                      <div className="text-white/45 text-sm leading-relaxed">
-                        чтобы получить дополнительные бонусы и скидку на первый заказ
-                      </div>
-                    </div>
-
-                    <div className="space-y-3 mb-4">
-                      <input
-                        type="text"
-                        placeholder="Ваше имя"
-                        value={regName}
-                        onChange={(e) => setRegName(e.target.value)}
-                        className="w-full bg-white/[0.05] border border-white/[0.10] rounded-xl px-4 py-3 text-white text-sm placeholder:text-white/25 focus:outline-none focus:border-orange-500/50 transition-colors"
-                      />
-                      <input
-                        type="tel"
-                        placeholder="+7 (___) ___-__-__"
-                        value={regPhone}
-                        onFocus={() => { if (!regPhone) setRegPhone("+7 ("); }}
-                        onChange={(e) => {
-                          const raw = e.target.value;
-                          const digits = raw.replace(/\D/g, "").replace(/^7/, "").replace(/^8/, "");
-                          let masked = "+7 (";
-                          if (digits.length > 0) masked += digits.slice(0, 3);
-                          if (digits.length >= 3) masked += ") " + digits.slice(3, 6);
-                          if (digits.length >= 6) masked += "-" + digits.slice(6, 8);
-                          if (digits.length >= 8) masked += "-" + digits.slice(8, 10);
-                          setRegPhone(masked);
-                        }}
-                        className="w-full bg-white/[0.05] border border-white/[0.10] rounded-xl px-4 py-3 text-white text-sm placeholder:text-white/25 focus:outline-none focus:border-orange-500/50 transition-colors"
-                      />
-                    </div>
-
-                    <button
-                      onClick={() => {
-                        if (!regName.trim() || !regPhone.trim()) return;
-                        fetch("https://functions.poehali.dev/5d6b4c0b-fe66-4dfa-8c5a-cb108a53ffd8?action=register", {
-                          method: "POST",
-                          headers: { "Content-Type": "application/json" },
-                          body: JSON.stringify({ name: regName.trim(), phone: regPhone.trim() }),
-                        }).finally(() => setRegDone(true));
-                      }}
-                      disabled={!regName.trim() || !regPhone.trim()}
-                      className="w-full bg-gradient-to-r from-orange-500 to-rose-500 hover:brightness-110 disabled:opacity-40 disabled:cursor-not-allowed text-white font-bold py-3.5 rounded-2xl text-sm transition-all active:scale-[0.98] flex items-center justify-center gap-2 shadow-lg shadow-orange-500/25 mb-2">
-                      <Icon name="Sparkles" size={15} />
-                      Получить бонусы
-                    </button>
-                    <button
-                      onClick={() => setRegModal(false)}
-                      className="w-full py-2 text-white/30 text-sm hover:text-white/50 transition-colors text-center">
-                      Не сейчас
-                    </button>
-                  </>
-                ) : (
-                  <div className="flex flex-col items-center text-center py-4">
-                    <div className="w-16 h-16 rounded-2xl bg-green-500/15 border border-green-500/25 flex items-center justify-center mb-4">
-                      <Icon name="CheckCircle" size={32} className="text-green-400" />
-                    </div>
-                    <div className="text-white font-bold text-lg mb-2">Готово, {regName}!</div>
-                    <div className="text-white/45 text-sm leading-relaxed mb-5">
-                      Ваши бонусы активированы. Наш менеджер свяжется с вами в ближайшее время
-                    </div>
-                    <button
-                      onClick={() => setRegModal(false)}
-                      className="w-full bg-gradient-to-r from-orange-500 to-rose-500 hover:brightness-110 text-white font-bold py-3.5 rounded-2xl text-sm transition-all">
-                      Отлично!
-                    </button>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
+        {/* Попап регистрации — только для незалогиненных, через 2 минуты */}
+        {regModal && !user && (
+          <AuthModal
+            onClose={() => setRegModal(false)}
+            defaultTab="register"
+            onSuccess={() => setRegModal(false)}
+            onPending={() => setRegModal(false)}
+          />
         )}
 
         {/* Booking toast */}

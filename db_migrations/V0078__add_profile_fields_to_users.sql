@@ -1,0 +1,6 @@
+ALTER TABLE users
+  ADD COLUMN IF NOT EXISTS company_name TEXT,
+  ADD COLUMN IF NOT EXISTS company_inn  TEXT,
+  ADD COLUMN IF NOT EXISTS company_addr TEXT,
+  ADD COLUMN IF NOT EXISTS website      TEXT,
+  ADD COLUMN IF NOT EXISTS telegram     TEXT;

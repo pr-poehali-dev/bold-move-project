@@ -16,6 +16,11 @@ export interface AuthUser {
   approved: boolean;
   discount: number;
   is_master?: boolean;
+  company_name?: string | null;
+  company_inn?:  string | null;
+  company_addr?: string | null;
+  website?:      string | null;
+  telegram?:     string | null;
 }
 
 // Бизнес-роли: требуют одобрения, получают доступ к CRM
