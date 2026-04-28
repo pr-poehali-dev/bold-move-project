@@ -347,106 +347,148 @@ export default function Pricing() {
         </div>
       </section>
 
-      {/* Оплата */}
+      {/* Оплата / CTA */}
       <section id="payment-block" className="max-w-3xl mx-auto px-5 pb-16 scroll-mt-10">
-        <div className="rounded-3xl p-7 md:p-9"
-          style={{
-            background: "linear-gradient(180deg, rgba(249,115,22,0.06), rgba(8,8,15,0.95))",
-            border: "1.5px solid rgba(249,115,22,0.28)",
-          }}>
-          <div className="flex items-center gap-2.5 mb-1">
-            <div className="w-9 h-9 rounded-xl flex items-center justify-center"
-              style={{ background: "rgba(249,115,22,0.15)" }}>
-              <Icon name="CreditCard" size={17} style={{ color: "#f97316" }} />
-            </div>
-            <div>
-              <div className="text-base font-black text-white">Оплата перевод по СБП</div>
-              <div className="text-[10px] text-white/35">Без комиссии · мгновенно</div>
-            </div>
-          </div>
 
-          {selectedPkg ? (
-            <div className="my-5 flex items-center justify-between px-4 py-3 rounded-xl"
-              style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}>
-              <div>
-                <div className="text-[10px] text-white/35">Выбран пакет</div>
-                <div className="text-sm font-bold" style={{ color: selectedPkg.color }}>
-                  {selectedPkg.name} — {selectedPkg.estimates} смет
+        {!selectedPkg ? (
+          /* ── Огромная CTA-кнопка пока пакет не выбран ─────────────────── */
+          <button
+            onClick={() => {
+              document.querySelector("section .grid")?.scrollIntoView({ behavior: "smooth", block: "center" });
+            }}
+            className="group relative w-full overflow-hidden rounded-[28px] py-10 md:py-14 px-6 transition-all hover:scale-[1.01] active:scale-[0.99]"
+            style={{
+              background: "linear-gradient(135deg, #f97316 0%, #fbbf24 50%, #f97316 100%)",
+              backgroundSize: "200% 100%",
+              boxShadow: "0 20px 60px rgba(249,115,22,0.4), 0 0 0 1.5px rgba(255,255,255,0.15) inset",
+              animation: "ctaShine 4s ease-in-out infinite",
+            }}>
+
+            {/* Блики */}
+            <div className="absolute -top-10 -left-10 w-40 h-40 rounded-full"
+              style={{ background: "radial-gradient(circle, rgba(255,255,255,0.35), transparent 60%)" }} />
+            <div className="absolute -bottom-10 -right-10 w-40 h-40 rounded-full"
+              style={{ background: "radial-gradient(circle, rgba(255,255,255,0.25), transparent 60%)" }} />
+
+            <div className="relative flex flex-col items-center gap-3">
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider"
+                style={{ background: "rgba(255,255,255,0.22)", color: "#fff" }}>
+                <Icon name="Rocket" size={12} />
+                Старт прямо сейчас
+              </div>
+
+              <div className="text-3xl md:text-5xl font-black text-white drop-shadow-lg leading-tight tracking-tight">
+                ВПЕРЁД К ДОСТИЖЕНИЯМ!
+              </div>
+
+              <div className="text-[13px] md:text-sm font-semibold text-white/90 max-w-md">
+                Выбери тариф выше — и мы покажем как оплатить
+              </div>
+
+              <div className="mt-3 flex items-center gap-2 px-5 py-2.5 rounded-full transition-all group-hover:gap-3"
+                style={{ background: "rgba(255,255,255,0.18)", border: "1.5px solid rgba(255,255,255,0.3)" }}>
+                <Icon name="ArrowUp" size={16} style={{ color: "#fff" }} />
+                <span className="text-sm font-black text-white uppercase tracking-wider">Выбрать пакет</span>
+              </div>
+            </div>
+          </button>
+
+        ) : (
+          /* ── Блок СБП после выбора пакета ─────────────────────────────── */
+          <>
+            <div className="rounded-3xl p-7 md:p-9"
+              style={{
+                background: "linear-gradient(180deg, rgba(249,115,22,0.06), rgba(8,8,15,0.95))",
+                border: "1.5px solid rgba(249,115,22,0.28)",
+              }}>
+              <div className="flex items-center gap-2.5 mb-1">
+                <div className="w-9 h-9 rounded-xl flex items-center justify-center"
+                  style={{ background: "rgba(249,115,22,0.15)" }}>
+                  <Icon name="CreditCard" size={17} style={{ color: "#f97316" }} />
+                </div>
+                <div>
+                  <div className="text-base font-black text-white">Оплата перевод по СБП</div>
+                  <div className="text-[10px] text-white/35">Без комиссии · мгновенно</div>
                 </div>
               </div>
-              <div className="text-right">
-                <div className="text-[10px] text-white/35">К оплате</div>
-                <div className="text-lg font-black text-white">{selectedPkg.price.toLocaleString("ru-RU")} ₽</div>
+
+              <div className="my-5 flex items-center justify-between px-4 py-3 rounded-xl"
+                style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}>
+                <div>
+                  <div className="text-[10px] text-white/35">Выбран пакет</div>
+                  <div className="text-sm font-bold" style={{ color: selectedPkg.color }}>
+                    {selectedPkg.name} — {selectedPkg.estimates} смет
+                  </div>
+                </div>
+                <div className="text-right">
+                  <div className="text-[10px] text-white/35">К оплате</div>
+                  <div className="text-lg font-black text-white">{selectedPkg.price.toLocaleString("ru-RU")} ₽</div>
+                </div>
               </div>
-            </div>
-          ) : (
-            <div className="my-5 px-4 py-3 rounded-xl text-center text-[11px] text-white/40"
-              style={{ background: "rgba(255,255,255,0.03)", border: "1px dashed rgba(255,255,255,0.08)" }}>
-              Выберите пакет выше, чтобы увидеть сумму
-            </div>
-          )}
 
-          {/* Карточка с реквизитами */}
-          <div className="rounded-2xl p-5 mb-4"
-            style={{ background: "#0e0e1c", border: "1px solid rgba(255,255,255,0.08)" }}>
-            <div className="text-[10px] font-bold uppercase tracking-wider text-white/35 mb-3">
-              {SBP_HINT}
-            </div>
+              {/* Карточка с реквизитами */}
+              <div className="rounded-2xl p-5 mb-4"
+                style={{ background: "#0e0e1c", border: "1px solid rgba(255,255,255,0.08)" }}>
+                <div className="text-[10px] font-bold uppercase tracking-wider text-white/35 mb-3">
+                  {SBP_HINT}
+                </div>
 
-            <div className="flex items-center justify-between gap-3 mb-3">
-              <div className="min-w-0">
-                <div className="text-[10px] text-white/30 mb-0.5">Номер телефона</div>
-                <div className="text-xl md:text-2xl font-black tracking-wide truncate">{PHONE}</div>
+                <div className="flex items-center justify-between gap-3 mb-3">
+                  <div className="min-w-0">
+                    <div className="text-[10px] text-white/30 mb-0.5">Номер телефона</div>
+                    <div className="text-xl md:text-2xl font-black tracking-wide truncate">{PHONE}</div>
+                  </div>
+                  <button onClick={copyPhone}
+                    className="flex items-center gap-1.5 px-3 py-2.5 rounded-xl text-[11px] font-bold transition flex-shrink-0"
+                    style={{
+                      background: copied ? "#10b981" : "#f97316",
+                      color: "#fff",
+                    }}>
+                    <Icon name={copied ? "Check" : "Copy"} size={13} />
+                    {copied ? "Скопировано" : "Копировать"}
+                  </button>
+                </div>
+
+                <div className="flex items-center gap-2 px-3 py-2 rounded-lg"
+                  style={{ background: "rgba(255,255,255,0.04)" }}>
+                  <Icon name="Building2" size={12} style={{ color: "#94a3b8" }} />
+                  <span className="text-[11px] text-white/50">Банк получателя:</span>
+                  <span className="text-[11px] font-bold text-white">{BANK}</span>
+                </div>
               </div>
-              <button onClick={copyPhone}
-                className="flex items-center gap-1.5 px-3 py-2.5 rounded-xl text-[11px] font-bold transition flex-shrink-0"
-                style={{
-                  background: copied ? "#10b981" : "#f97316",
-                  color: "#fff",
-                }}>
-                <Icon name={copied ? "Check" : "Copy"} size={13} />
-                {copied ? "Скопировано" : "Копировать"}
-              </button>
+
+              {/* Инструкция */}
+              <div className="space-y-2 mb-5">
+                <Step n={1} text="Откройте мобильный банк и выберите «Перевод по СБП по номеру телефона»" />
+                <Step n={2} text={`Введите номер ${PHONE} и выберите банк ${BANK}`} />
+                <Step n={3} text={`Переведите ${selectedPkg.price.toLocaleString("ru-RU")} ₽`} />
+                <Step n={4} text="Напишите нам в Telegram — начислим смет на баланс в течение 15 минут" />
+              </div>
+
+              {/* Кнопка Telegram */}
+              <a href="https://t.me/JoniKras" target="_blank" rel="noreferrer"
+                className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl text-sm font-bold transition hover:opacity-90"
+                style={{ background: "#29b6f6", color: "#fff" }}>
+                <Icon name="Send" size={15} />
+                Сообщить об оплате в Telegram
+              </a>
+
+              {user && (
+                <div className="mt-3 text-center text-[10px] text-white/30">
+                  При сообщении укажите ваш ID: <span className="text-white/60 font-mono">{user.id}</span> ({user.email})
+                </div>
+              )}
             </div>
 
-            <div className="flex items-center gap-2 px-3 py-2 rounded-lg"
-              style={{ background: "rgba(255,255,255,0.04)" }}>
-              <Icon name="Building2" size={12} style={{ color: "#94a3b8" }} />
-              <span className="text-[11px] text-white/50">Банк получателя:</span>
-              <span className="text-[11px] font-bold text-white">{BANK}</span>
+            {/* FAQ микро */}
+            <div className="mt-8 grid md:grid-cols-2 gap-3">
+              <Faq q="Когда начислятся сметы?"   a="В течение 15 минут после получения подтверждения от вас в Telegram. Обычно — за 2-5 минут." />
+              <Faq q="Сметы сгорают?"             a="Нет. Купленные сметы остаются на балансе бессрочно. Списываются только за факт расчёта." />
+              <Faq q="Можно вернуть деньги?"      a="Да, если не использовали ни одной сметы — вернём 100% в течение 14 дней." />
+              <Faq q="Нужны чеки/документы?"      a="Если нужны закрывающие документы для юрлица — напишите в Telegram, оформим." />
             </div>
-          </div>
-
-          {/* Инструкция */}
-          <div className="space-y-2 mb-5">
-            <Step n={1} text="Откройте мобильный банк и выберите «Перевод по СБП по номеру телефона»" />
-            <Step n={2} text={`Введите номер ${PHONE} и выберите банк ${BANK}`} />
-            <Step n={3} text={selectedPkg ? `Переведите ${selectedPkg.price.toLocaleString("ru-RU")} ₽` : "Переведите сумму выбранного пакета"} />
-            <Step n={4} text="Напишите нам в Telegram — начислим смет на баланс в течение 15 минут" />
-          </div>
-
-          {/* Кнопка Telegram */}
-          <a href="https://t.me/JoniKras" target="_blank" rel="noreferrer"
-            className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl text-sm font-bold transition hover:opacity-90"
-            style={{ background: "#29b6f6", color: "#fff" }}>
-            <Icon name="Send" size={15} />
-            Сообщить об оплате в Telegram
-          </a>
-
-          {user && (
-            <div className="mt-3 text-center text-[10px] text-white/30">
-              При сообщении укажите ваш ID: <span className="text-white/60 font-mono">{user.id}</span> ({user.email})
-            </div>
-          )}
-        </div>
-
-        {/* FAQ микро */}
-        <div className="mt-8 grid md:grid-cols-2 gap-3">
-          <Faq q="Когда начислятся сметы?"   a="В течение 15 минут после получения подтверждения от вас в Telegram. Обычно — за 2-5 минут." />
-          <Faq q="Сметы сгорают?"             a="Нет. Купленные сметы остаются на балансе бессрочно. Списываются только за факт расчёта." />
-          <Faq q="Можно вернуть деньги?"      a="Да, если не использовали ни одной сметы — вернём 100% в течение 14 дней." />
-          <Faq q="Нужны чеки/документы?"      a="Если нужны закрывающие документы для юрлица — напишите в Telegram, оформим." />
-        </div>
+          </>
+        )}
       </section>
     </div>
   );

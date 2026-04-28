@@ -9,6 +9,19 @@
   display: none !important;
 }
 
+/* Бликующий градиент для главной CTA на /pricing */
+@keyframes ctaShine {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
 input[type="number"]::-webkit-inner-spin-button,
 input[type="number"]::-webkit-outer-spin-button {
   -webkit-appearance: none;
