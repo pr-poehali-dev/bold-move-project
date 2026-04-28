@@ -51,68 +51,126 @@ export default function PricingPayment({ selectedId }: Props) {
           <div className="absolute -bottom-32 -right-32 w-72 h-72 rounded-full pointer-events-none"
             style={{ background: "radial-gradient(circle, rgba(251,191,36,0.12), transparent 65%)" }} />
 
-          <div className="relative grid lg:grid-cols-[1fr_auto] gap-8 items-center">
+          <div className="relative">
 
-            {/* Левая часть — текст */}
-            <div>
-              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider mb-5"
-                style={{ background: "rgba(249,115,22,0.18)", color: "#fbbf24", border: "1px solid rgba(249,115,22,0.4)" }}>
-                <Icon name="Rocket" size={11} />
-                Старт прямо сейчас
+            {/* Шапка: бейдж + заголовок + описание + кнопка */}
+            <div className="grid lg:grid-cols-[1fr_auto] gap-8 items-center mb-7">
+              <div>
+                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider mb-5"
+                  style={{ background: "rgba(249,115,22,0.18)", color: "#fbbf24", border: "1px solid rgba(249,115,22,0.4)" }}>
+                  <Icon name="Rocket" size={11} />
+                  Старт прямо сейчас
+                </div>
+
+                <h2 className="text-3xl md:text-5xl font-black leading-[1.05] tracking-tight mb-4">
+                  Вперёд к<br />
+                  <span style={{ background: "linear-gradient(90deg,#f97316,#fbbf24)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>
+                    достижениям!
+                  </span>
+                </h2>
+
+                <p className="text-sm md:text-base text-white/55 max-w-lg leading-relaxed">
+                  Выбери тариф выше — и мы сразу покажем, как оплатить.
+                  Без сложных регистраций, форм и комиссий.
+                </p>
               </div>
 
-              <h2 className="text-3xl md:text-5xl font-black leading-[1.05] tracking-tight mb-4">
-                Вперёд к<br />
-                <span style={{ background: "linear-gradient(90deg,#f97316,#fbbf24)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>
-                  достижениям!
-                </span>
-              </h2>
-
-              <p className="text-sm md:text-base text-white/55 max-w-lg leading-relaxed mb-6">
-                Выбери тариф выше — и мы сразу покажем, как оплатить.
-                Без сложных регистраций, форм и комиссий.
-              </p>
-
-              {/* Микро-цифры */}
-              <div className="grid grid-cols-3 gap-3 max-w-md">
-                {[
-                  { v: "30 сек", l: "одна смета"     },
-                  { v: "0%",     l: "комиссия СБП"   },
-                  { v: "15 мин", l: "до начисления"  },
-                ].map(s => (
-                  <div key={s.l} className="rounded-xl px-3 py-2.5"
-                    style={{ background: "rgba(255,255,255,0.035)", border: "1px solid rgba(255,255,255,0.06)" }}>
-                    <div className="text-base md:text-lg font-black" style={{ color: "#fbbf24" }}>{s.v}</div>
-                    <div className="text-[10px] text-white/40 leading-tight">{s.l}</div>
+              <div>
+                <button
+                  onClick={() => {
+                    document.querySelector("#packages-grid")?.scrollIntoView({ behavior: "smooth", block: "center" });
+                  }}
+                  className="group relative overflow-hidden rounded-2xl px-7 py-5 md:py-6 transition-all hover:-translate-y-0.5 active:translate-y-0 w-full lg:w-auto"
+                  style={{
+                    background: "linear-gradient(135deg, #f97316, #fb923c)",
+                    boxShadow: "0 12px 35px rgba(249,115,22,0.45), 0 0 0 1.5px rgba(255,255,255,0.12) inset",
+                  }}>
+                  <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                    style={{ background: "linear-gradient(135deg, #fb923c, #fbbf24)" }} />
+                  <div className="relative flex items-center gap-3 whitespace-nowrap justify-center">
+                    <Icon name="ArrowUp" size={20} style={{ color: "#fff" }} />
+                    <span className="text-base md:text-lg font-black text-white uppercase tracking-wider">
+                      Выбрать пакет
+                    </span>
                   </div>
-                ))}
+                </button>
               </div>
             </div>
 
-            {/* Правая часть — кнопка */}
-            <div className="flex flex-col items-stretch lg:items-end gap-3">
-              <button
-                onClick={() => {
-                  document.querySelector("#packages-grid")?.scrollIntoView({ behavior: "smooth", block: "center" });
-                }}
-                className="group relative overflow-hidden rounded-2xl px-7 py-5 md:py-6 transition-all hover:-translate-y-0.5 active:translate-y-0"
-                style={{
-                  background: "linear-gradient(135deg, #f97316, #fb923c)",
-                  boxShadow: "0 12px 35px rgba(249,115,22,0.45), 0 0 0 1.5px rgba(255,255,255,0.12) inset",
-                }}>
-                <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity"
-                  style={{ background: "linear-gradient(135deg, #fb923c, #fbbf24)" }} />
-                <div className="relative flex items-center gap-3 whitespace-nowrap">
-                  <Icon name="ArrowUp" size={20} style={{ color: "#fff" }} />
-                  <span className="text-base md:text-lg font-black text-white uppercase tracking-wider">
-                    Выбрать пакет
-                  </span>
+            {/* Преимущества — крупная сетка из 4 карточек */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+              {[
+                {
+                  icon: "Zap",
+                  iconColor: "#fbbf24",
+                  iconBg: "rgba(251,191,36,0.14)",
+                  border: "rgba(251,191,36,0.32)",
+                  value: "30 сек",
+                  title: "Расчёт сметы",
+                  text: "Загрузил план — получил готовую смету",
+                },
+                {
+                  icon: "BadgePercent",
+                  iconColor: "#f97316",
+                  iconBg: "rgba(249,115,22,0.14)",
+                  border: "rgba(249,115,22,0.32)",
+                  value: "0%",
+                  title: "Комиссия СБП",
+                  text: "Платишь ровно столько, сколько в тарифе",
+                },
+                {
+                  icon: "Timer",
+                  iconColor: "#a78bfa",
+                  iconBg: "rgba(167,139,250,0.14)",
+                  border: "rgba(167,139,250,0.32)",
+                  value: "15 мин",
+                  title: "До старта",
+                  text: "Начислим сметы — и сразу в работу",
+                },
+                {
+                  icon: "ShieldCheck",
+                  iconColor: "#10b981",
+                  iconBg: "rgba(16,185,129,0.14)",
+                  border: "rgba(16,185,129,0.36)",
+                  value: "100%",
+                  title: "Возврат 14 дней",
+                  text: "Не подошло — вернём деньги без вопросов",
+                },
+              ].map(b => (
+                <div key={b.title}
+                  className="relative rounded-2xl p-4 transition hover:-translate-y-0.5"
+                  style={{
+                    background: "rgba(255,255,255,0.035)",
+                    border: `1.5px solid ${b.border}`,
+                  }}>
+                  <div className="w-9 h-9 rounded-xl flex items-center justify-center mb-3"
+                    style={{ background: b.iconBg }}>
+                    <Icon name={b.icon} size={17} style={{ color: b.iconColor }} />
+                  </div>
+                  <div className="text-2xl md:text-3xl font-black leading-none mb-1.5"
+                    style={{ color: b.iconColor }}>
+                    {b.value}
+                  </div>
+                  <div className="text-[12px] font-bold text-white mb-1">{b.title}</div>
+                  <div className="text-[10.5px] text-white/45 leading-snug">{b.text}</div>
                 </div>
-              </button>
-              <div className="text-[11px] text-white/35 text-center lg:text-right flex items-center gap-1.5 justify-center lg:justify-end">
-                <Icon name="ShieldCheck" size={11} style={{ color: "#10b981" }} />
-                Возврат 100% в течение 14 дней
-              </div>
+              ))}
+            </div>
+
+            {/* Микро-доверие */}
+            <div className="mt-5 flex items-center justify-center gap-x-5 gap-y-2 flex-wrap text-[11px] text-white/45">
+              <span className="inline-flex items-center gap-1.5">
+                <Icon name="Lock" size={11} style={{ color: "#10b981" }} />
+                Безопасный платёж
+              </span>
+              <span className="inline-flex items-center gap-1.5">
+                <Icon name="Headset" size={11} style={{ color: "#a78bfa" }} />
+                Живой менеджер на связи
+              </span>
+              <span className="inline-flex items-center gap-1.5">
+                <Icon name="Infinity" size={11} style={{ color: "#fbbf24" }} />
+                Сметы не сгорают
+              </span>
             </div>
           </div>
         </div>
