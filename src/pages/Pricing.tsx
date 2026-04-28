@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Icon from "@/components/ui/icon";
 import { useAuth } from "@/context/AuthContext";
+import PricingLiveDemo from "./PricingLiveDemo";
 
 const PHONE         = "+7 977 606 89 01";
 const PHONE_RAW     = "+79776068901";
@@ -321,6 +322,9 @@ export default function Pricing() {
           </div>
         </div>
       </section>
+
+      {/* ── Живая демонстрация работы сервиса ────────────────────────────── */}
+      <PricingLiveDemo />
 
       {/* ── Остальные преимущества (8 шт) ────────────────────────────────── */}
       <section className="max-w-6xl mx-auto px-5 pb-14">
