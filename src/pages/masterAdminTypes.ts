@@ -69,7 +69,7 @@ export interface AdminStats {
   expiring_soon: ExpiringUser[];
 }
 
-export type MasterTab = "dashboard" | "business" | "pro" | "all";
+export type MasterTab = "dashboard" | "professionals" | "all";
 
 export const ROLE_LABELS: Record<string, { label: string; color: string }> = {
   client:    { label: "Клиент",    color: "#f97316" },

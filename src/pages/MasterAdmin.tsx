@@ -2,10 +2,9 @@ import { useState, useEffect, useCallback } from "react";
 import Icon from "@/components/ui/icon";
 import func2url from "@/../backend/func2url.json";
 import type { MasterTab, BusinessUser, ProUser, AppUser, UserEstimate, AdminStats } from "./masterAdminTypes";
-import MasterTabBusiness  from "./MasterTabBusiness";
-import MasterTabPro       from "./MasterTabPro";
-import MasterTabAllUsers  from "./MasterTabAllUsers";
-import MasterTabDashboard from "./MasterTabDashboard";
+import MasterTabProfessionals from "./MasterTabProfessionals";
+import MasterTabAllUsers      from "./MasterTabAllUsers";
+import MasterTabDashboard     from "./MasterTabDashboard";
 
 const AUTH_URL = (func2url as Record<string, string>)["auth"];
 const MASTER_PASSWORD = "Sdauxbasstre228";
@@ -88,10 +87,9 @@ export default function MasterAdmin() {
 
   useEffect(() => {
     if (!authed) return;
-    if (tab === "dashboard") loadStats();
-    else if (tab === "business") loadBiz();
-    else if (tab === "pro") loadPro();
-    else if (tab === "all") loadAll();
+    if (tab === "dashboard")     loadStats();
+    else if (tab === "professionals") { loadBiz(); loadPro(); }
+    else if (tab === "all")      loadAll();
   }, [tab, authed, loadStats, loadBiz, loadPro, loadAll]);
 
   const approveUser = async (id: number) => {
@@ -156,10 +154,9 @@ export default function MasterAdmin() {
   }
 
   const TABS: { id: MasterTab; label: string; icon: string; badge?: number }[] = [
-    { id: "dashboard", label: "Дашборд",                    icon: "LayoutDashboard" },
-    { id: "business",  label: "Монтажники / Компании",       icon: "Building2", badge: pendingCount },
-    { id: "pro",       label: "Дизайнеры / Прорабы",        icon: "Star" },
-    { id: "all",       label: "Все пользователи",            icon: "Users" },
+    { id: "dashboard",     label: "Дашборд",         icon: "LayoutDashboard" },
+    { id: "professionals", label: "Профессионалы",   icon: "Users2", badge: pendingCount },
+    { id: "all",           label: "Все пользователи", icon: "Users" },
   ];
 
   return (
@@ -205,16 +202,14 @@ export default function MasterAdmin() {
         <MasterTabDashboard stats={stats} loading={statsLoading} />
       )}
 
-      {tab === "business" && (
-        <MasterTabBusiness users={bizUsers} loading={bizLoading} onReload={loadBiz} />
-      )}
-
-      {tab === "pro" && (
-        <MasterTabPro
-          users={proUsers} loading={proLoading}
+      {tab === "professionals" && (
+        <MasterTabProfessionals
+          bizUsers={bizUsers}   bizLoading={bizLoading}
+          proUsers={proUsers}   proLoading={proLoading}
           editDiscount={editDiscount} savingDiscount={savingDiscount}
+          pendingCount={pendingCount}
           onEditDiscount={setEditDiscount} onSaveDiscount={saveDiscount}
-          onReload={loadPro}
+          onReloadBiz={loadBiz} onReloadPro={loadPro}
         />
       )}
 
