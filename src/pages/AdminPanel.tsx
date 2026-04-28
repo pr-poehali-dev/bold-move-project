@@ -10,6 +10,7 @@ import CrmPanel from "./admin/crm/CrmPanel";
 import { setCrmToken } from "./admin/crm/crmApi";
 import TeamPanel from "./admin/team/TeamPanel";
 import OwnAgentTeaser from "./admin/own-agent/OwnAgentTeaser";
+import OwnAgentEditor from "./admin/own-agent/OwnAgentEditor";
 import { useAuth } from "@/context/AuthContext";
 import AuthModal from "@/components/AuthModal";
 import type { AgentSubTab } from "./admin/types";
@@ -254,7 +255,9 @@ export default function AdminPanel() {
       {/* ── Свой агент ── */}
       {mainTab === "own-agent" && (
         <div className="flex-1 flex flex-col overflow-hidden">
-          <OwnAgentTeaser isDark={isDark} />
+          {user?.has_own_agent
+            ? <OwnAgentEditor isDark={isDark} />
+            : <OwnAgentTeaser isDark={isDark} />}
         </div>
       )}
 

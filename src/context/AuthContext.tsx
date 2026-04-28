@@ -7,6 +7,19 @@ const TOKEN_KEY = "mp_user_token";
 
 export type UserRole = "client" | "designer" | "foreman" | "installer" | "company" | "manager";
 
+export interface Brand {
+  bot_name?:           string | null;
+  bot_greeting?:       string | null;
+  bot_avatar_url?:     string | null;
+  brand_logo_url?:     string | null;
+  brand_color?:        string | null;
+  support_phone?:      string | null;
+  support_email?:      string | null;
+  max_url?:            string | null;
+  working_hours?:      string | null;
+  pdf_footer_address?: string | null;
+}
+
 export interface Permissions {
   crm_view?:  boolean;
   crm_edit?:  boolean;
@@ -44,6 +57,7 @@ export interface AuthUser {
   company_id?: number | null;
   permissions?: Permissions | null;
   has_own_agent?: boolean;
+  brand?: Brand | null;
   company_name?: string | null;
   company_inn?:  string | null;
   company_addr?: string | null;

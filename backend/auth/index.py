@@ -149,7 +149,10 @@ def handler(event: dict, context) -> dict:
             SELECT u.id, u.email, u.name, u.phone, u.role, u.approved, u.discount,
                    u.company_name, u.company_inn, u.company_addr, u.website, u.telegram,
                    u.estimates_balance, u.trial_until, u.permissions, u.company_id,
-                   u.has_own_agent
+                   u.has_own_agent,
+                   u.bot_name, u.bot_greeting, u.bot_avatar_url, u.brand_logo_url,
+                   u.brand_color, u.support_phone, u.support_email, u.max_url,
+                   u.working_hours, u.pdf_footer_address
             FROM {SCHEMA}.user_sessions s
             JOIN {SCHEMA}.users u ON u.id = s.user_id
             WHERE s.token=%s AND s.expires_at > NOW()
@@ -158,7 +161,12 @@ def handler(event: dict, context) -> dict:
         if not row:
             return err("Токен недействителен", 401)
 
-        uid, email, name, phone, role, approved, discount, company_name, company_inn, company_addr, website, telegram, estimates_balance, trial_until, permissions, ucompany_id, has_own_agent = row
+        (uid, email, name, phone, role, approved, discount, company_name, company_inn,
+         company_addr, website, telegram, estimates_balance, trial_until, permissions,
+         ucompany_id, has_own_agent,
+         bot_name, bot_greeting, bot_avatar_url, brand_logo_url, brand_color,
+         support_phone, support_email, max_url, working_hours, pdf_footer_address) = row
+
         return ok({"user": {
             "id": uid, "email": email, "name": name, "phone": phone,
             "role": role or "client", "approved": approved, "discount": discount or 0,
@@ -170,6 +178,14 @@ def handler(event: dict, context) -> dict:
             "permissions": permissions,
             "company_id": ucompany_id,
             "has_own_agent": bool(has_own_agent),
+            "brand": {
+                "bot_name": bot_name, "bot_greeting": bot_greeting,
+                "bot_avatar_url": bot_avatar_url,
+                "brand_logo_url": brand_logo_url, "brand_color": brand_color,
+                "support_phone": support_phone, "support_email": support_email,
+                "max_url": max_url, "working_hours": working_hours,
+                "pdf_footer_address": pdf_footer_address,
+            },
         }})
 
     # ── Обновление профиля ────────────────────────────────────────────────────
@@ -309,6 +325,89 @@ def handler(event: dict, context) -> dict:
         )
         conn.commit()
         return ok({"ok": True})
+
+    # ── Бренд: обновить (только владелец-company с активированным "Свой агент") ─
+    if action == "update-brand" and method == "POST":
+        if not token:
+            return err("Требуется авторизация", 401)
+        cur.execute(f"""
+            SELECT u.id, u.role, u.has_own_agent, u.email
+            FROM {SCHEMA}.user_sessions s
+            JOIN {SCHEMA}.users u ON u.id = s.user_id
+            WHERE s.token=%s AND s.expires_at > NOW()
+        """, (token,))
+        row = cur.fetchone()
+        if not row:
+            return err("Токен недействителен", 401)
+        uid, urole, has_agent, uemail = row
+        is_master = (uemail == "19.jeka.94@gmail.com")
+        if not is_master and (urole != "company" or not has_agent):
+            return err("Брендинг доступен только компаниям с активированным «Свой агент»", 403)
+
+        # Обновляем только переданные поля (NULL допустим — обнуляет)
+        ALLOWED = [
+            "bot_name", "bot_greeting", "bot_avatar_url",
+            "brand_logo_url", "brand_color",
+            "support_phone", "support_email", "max_url",
+            "working_hours", "pdf_footer_address",
+        ]
+        sets = []
+        vals = []
+        for k in ALLOWED:
+            if k in body:
+                v = body.get(k)
+                if isinstance(v, str):
+                    v = v.strip() or None
+                sets.append(f"{k}=%s")
+                vals.append(v)
+        if not sets:
+            return err("Нет полей для обновления")
+        vals.append(uid)
+        cur.execute(
+            f"UPDATE {SCHEMA}.users SET {', '.join(sets)}, updated_at=NOW() WHERE id=%s",
+            tuple(vals)
+        )
+        conn.commit()
+        return ok({"ok": True})
+
+    # ── Бренд: получить публично по ?company_id=  (для подмены на главной) ────
+    if action == "get-brand" and method == "GET":
+        company_id = params.get("company_id")
+        if not company_id:
+            return err("company_id обязателен")
+        cur.execute(f"""
+            SELECT id, role, has_own_agent,
+                   bot_name, bot_greeting, bot_avatar_url, brand_logo_url, brand_color,
+                   support_phone, support_email, max_url, working_hours,
+                   pdf_footer_address, company_name, telegram, website
+            FROM {SCHEMA}.users
+            WHERE id=%s AND removed_at IS NULL
+        """, (int(company_id),))
+        r = cur.fetchone()
+        if not r:
+            return err("Компания не найдена", 404)
+        cid, role, has_agent, bot_name, bot_greeting, bot_avatar_url, brand_logo_url, brand_color, \
+            support_phone, support_email, max_url, working_hours, pdf_footer_address, \
+            company_name, telegram, website = r
+        # Если у пользователя нет активной услуги — возвращаем пустой бренд
+        if not has_agent or role != "company":
+            return ok({"brand": None})
+        return ok({"brand": {
+            "company_id": cid,
+            "company_name": company_name,
+            "bot_name": bot_name,
+            "bot_greeting": bot_greeting,
+            "bot_avatar_url": bot_avatar_url,
+            "brand_logo_url": brand_logo_url,
+            "brand_color": brand_color,
+            "support_phone": support_phone,
+            "support_email": support_email,
+            "max_url": max_url,
+            "telegram": telegram,
+            "website": website,
+            "working_hours": working_hours,
+            "pdf_footer_address": pdf_footer_address,
+        }})
 
     # ── Выход ─────────────────────────────────────────────────────────────────
     if action == "logout" and method == "POST":
