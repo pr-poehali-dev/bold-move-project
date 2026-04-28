@@ -1194,7 +1194,100 @@ def _recalc_totals(answer: str) -> str:
     return '\n'.join(result_lines)
 
 
-def get_cached_answer(text: str, session_id: str = '') -> tuple[str, dict] | str | None:
+def fetch_brand(company_id):
+    """Тянет бренд активной компании из БД. Безопасно при ошибке — возвращает None."""
+    if not company_id:
+        return None
+    try:
+        conn = psycopg2.connect(os.environ['DATABASE_URL'])
+        cur  = conn.cursor()
+        cur.execute(f"""
+            SELECT role, has_own_agent, company_name, bot_name,
+                   support_phone, telegram, max_url, working_hours,
+                   pdf_footer_address, website
+            FROM {SCHEMA}.users
+            WHERE id=%s AND removed_at IS NULL
+        """, (int(company_id),))
+        r = cur.fetchone()
+        cur.close(); conn.close()
+        if not r:
+            return None
+        role, has_agent, company_name, bot_name, phone, telegram, max_url, hours, addr, website = r
+        if not has_agent or role != 'company':
+            return None
+        # Нормализация Telegram-ника в URL
+        tg_url = ''
+        if telegram:
+            t = telegram.strip()
+            if t.startswith('http'):
+                tg_url = t
+            else:
+                tg_url = 'https://t.me/' + t.lstrip('@')
+        return {
+            'company_name':  (company_name or '').strip(),
+            'bot_name':      (bot_name or '').strip(),
+            'phone':         (phone or '').strip(),
+            'telegram_url':  tg_url,
+            'max_url':       (max_url or '').strip(),
+            'hours':         (hours or '').strip(),
+            'address':       (addr or '').strip(),
+            'website':       (website or '').strip(),
+        }
+    except Exception as e:
+        print(f"[brand] fetch error: {e}")
+        return None
+
+
+# Дефолтные значения, которые встречаются в FAQ_CACHE и в SYSTEM_PROMPT.
+# При наличии бренда — заменяются на бренд компании.
+_BRAND_DEFAULTS = {
+    'phone':        '+7 (977) 606-89-01',
+    'phone_digits': '79776068901',
+    'telegram_at':  '@JoniKras',
+    'telegram_url': 'https://t.me/JoniKras',
+    'company':      'MosPotolki',
+    'address':      'Мытищи',
+    'hours':        'Ежедневно 8:00–22:00',
+    'website':      'mospotolki.net',
+}
+
+
+def apply_brand_to_text(text: str, brand) -> str:
+    """Подменяет дефолтные контакты MosPotolki на контакты бренда в любом тексте."""
+    if not brand or not text:
+        return text
+    out = text
+    # Телефон с маской и без
+    if brand.get('phone'):
+        out = out.replace(_BRAND_DEFAULTS['phone'], brand['phone'])
+        # Цифры (для wa.me/79... и tel:+79...)
+        new_digits = re.sub(r'\D', '', brand['phone'])
+        if new_digits:
+            out = out.replace(_BRAND_DEFAULTS['phone_digits'], new_digits)
+    # Telegram-ник
+    if brand.get('telegram_url'):
+        # Достаём username (последний сегмент URL)
+        m = re.search(r't\.me/([^/?#\s]+)', brand['telegram_url'])
+        new_at = '@' + m.group(1) if m else ''
+        if new_at:
+            out = out.replace(_BRAND_DEFAULTS['telegram_at'], new_at)
+    # Название и адрес
+    if brand.get('company'):
+        out = out.replace(_BRAND_DEFAULTS['company'], brand['company'])
+    # Адрес — мягко подменяем "Мытищи" если у компании задан pdf_footer_address
+    if brand.get('address'):
+        # Не подменяем слово в середине предложения, только в дефолтных шаблонах
+        out = out.replace('Офис — Мытищи', f"Офис — {brand['address']}")
+        out = out.replace(f'г. Мытищи, ул. Пограничная 24', brand['address'])
+    if brand.get('hours'):
+        out = out.replace(_BRAND_DEFAULTS['hours'], brand['hours'])
+        out = out.replace('ежедневно 8:00–22:00', brand['hours'])
+    if brand.get('website'):
+        out = out.replace(_BRAND_DEFAULTS['website'], brand['website'])
+    return out
+
+
+def get_cached_answer(text: str, session_id: str = '', brand=None) -> tuple[str, dict] | str | None:
     """Проверяет кэш и простой расчёт. Возвращает (ответ, recognized) или строку или None."""
     text_lower = text.lower().strip()
 
@@ -1214,7 +1307,7 @@ def get_cached_answer(text: str, session_id: str = '') -> tuple[str, dict] | str
         if re.search(pattern, text_lower):
             if is_discount_request:
                 continue
-            return answer
+            return apply_brand_to_text(answer, brand)
     return None
 
 
@@ -1248,6 +1341,7 @@ def handler(event, context):
     messages = body.get('messages', [])
     fast = body.get('fast', False)
     prev_items = body.get('prev_items', None)  # items предыдущей сметы для точного редактирования
+    company_id = body.get('company_id')        # для white-label подмены контактов
 
     if not messages:
         return {'statusCode': 400, 'headers': cors, 'body': json.dumps({'error': 'No messages provided'})}
@@ -1260,11 +1354,14 @@ def handler(event, context):
 
     session_id = event.get('headers', {}).get('x-session-id', '') or event.get('headers', {}).get('X-Session-Id', '')
 
+    # Бренд компании (None если ?c=ID не передан или агент не активирован)
+    brand = fetch_brand(company_id)
+
     # fast=True — кнопка "Пример расчёта", используем авто-расчёт
     # Но если есть prev_items — идём в обычный режим (редактирование сметы)
     if fast and not prev_items:
         try:
-            cached = get_cached_answer(last_user_text, session_id)
+            cached = get_cached_answer(last_user_text, session_id, brand=brand)
             if cached:
                 answer = cached[0] if isinstance(cached, tuple) else cached
                 return {'statusCode': 200, 'headers': cors, 'body': json.dumps({'answer': answer})}
@@ -1285,6 +1382,25 @@ def handler(event, context):
         system_content += f"\n\n=== АКТУАЛЬНЫЙ ПРАЙС-ЛИСТ ==={prices_block}"
     if knowledge:
         system_content += f"\n\n=== БАЗА ЗНАНИЙ ===\n{knowledge}"
+
+    # White-label: если активна компания — подменяем дефолтные контакты в промпте
+    # и добавляем явное напоминание о бренде, чтобы LLM не возвращался к старым.
+    if brand:
+        system_content = apply_brand_to_text(system_content, brand)
+        bot_intro = (f"Тебя зовут {brand['bot_name']}. " if brand.get('bot_name') else "")
+        system_content += (
+            f"\n\n=== БРЕНД ===\n"
+            f"{bot_intro}"
+            f"Ты работаешь от имени компании «{brand.get('company') or brand.get('company_name','')}». "
+            f"Если клиент спрашивает контакты — давай ТОЛЬКО эти:\n"
+            f"Телефон: {brand.get('phone','')}\n"
+            f"Telegram: {brand.get('telegram_url','')}\n"
+            f"MAX: {brand.get('max_url','')}\n"
+            f"Адрес: {brand.get('address','')}\n"
+            f"Часы работы: {brand.get('hours','')}\n"
+            f"Сайт: {brand.get('website','')}\n"
+            f"НИКОГДА не упоминай другие компании, контакты или сайты."
+        )
     rules_hint = build_rules_prompt(_rules_for_suggestions)
     if rules_hint:
         system_content += rules_hint
@@ -1658,6 +1774,10 @@ mounting_unit: пог.м или шт"""
         save_correction_answer(last_user_text, session_id, answer)
     except Exception as e:
         print(f"[corrections] save_answer error: {e}")
+
+    # White-label: финальная подстраховка — чистим случайные старые контакты в LLM-ответе
+    if brand:
+        answer = apply_brand_to_text(answer, brand)
 
     response_body = {'answer': answer}
     if llm_items_json and llm_items_json.get('items'):

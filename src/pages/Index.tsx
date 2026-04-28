@@ -105,7 +105,9 @@ export default function Index() {
     const prevItems = lastEstimateMsg?.items ?? null;
     const ctrl = new AbortController();
     const timer = setTimeout(() => ctrl.abort(), 90000);
-    fetch(AI_URL, { method: "POST", headers: { "Content-Type": "application/json", "X-Session-Id": sessionStorage.getItem("sid") || "" }, body: JSON.stringify({ messages: history, fast, prev_items: prevItems }), signal: ctrl.signal })
+    const aiPayload: Record<string, unknown> = { messages: history, fast, prev_items: prevItems };
+    if (isCustom && brand.company_id) aiPayload.company_id = brand.company_id;
+    fetch(AI_URL, { method: "POST", headers: { "Content-Type": "application/json", "X-Session-Id": sessionStorage.getItem("sid") || "" }, body: JSON.stringify(aiPayload), signal: ctrl.signal })
       .then((r) => r.json())
       .then((d) => {
         const newMsg = { id: Date.now() + 1, role: "assistant" as const, text: d.answer || localAnswer(text), items: d.items };
