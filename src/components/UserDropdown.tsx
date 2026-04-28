@@ -55,6 +55,7 @@ export default function UserDropdown({ onShowProfile, onShowPayment }: Props) {
               <div className="min-w-0">
                 <div className="text-sm font-semibold text-white truncate">{user.name || "—"}</div>
                 <div className="text-[10px] text-white/30 truncate">{user.email}</div>
+                <div className="text-[10px] text-white/20 mt-0.5">ID: {user.id}</div>
               </div>
             </div>
           </div>
