@@ -103,6 +103,19 @@ def load_logo(s3):
     return None
 
 
+def load_logo_from_url(url):
+    """Скачивает логотип компании по URL (без кеша). Безопасно при ошибке."""
+    if not url:
+        return None
+    try:
+        r = requests.get(url, timeout=10)
+        if r.status_code == 200 and len(r.content) > 100:
+            return r.content
+    except Exception:
+        pass
+    return None
+
+
 def clean(s):
     return (s or '').replace('**', '').strip()
 
@@ -140,10 +153,27 @@ def split_value(value):
     return '', '', ''
 
 
-def build_pdf(data, logo_bytes=None):
+def build_pdf(data, logo_bytes=None, brand=None):
     blocks       = data.get('blocks', [])
     totals_raw   = data.get('totals', [])
     final_phrase = data.get('finalPhrase', '')
+
+    # Бренд: либо из аргумента, либо из data.brand, иначе дефолт
+    if brand is None:
+        brand = data.get('brand') or {}
+
+    brand_phone   = (brand.get('support_phone')      or '+7 (977) 606-89-01').strip()
+    brand_website = (brand.get('website')            or 'mospotolki.net').strip()
+    brand_addr    = (brand.get('pdf_footer_address') or 'г. Мытищи, ул. Пограничная 24').strip()
+    brand_name    = (brand.get('company_name')       or 'MosPotolki').strip()
+    brand_color   = (brand.get('brand_color')        or '#f97316').strip()
+    # Динамический акцент: если задан корректный hex — используем
+    try:
+        custom_accent = HexColor(brand_color)
+    except Exception:
+        custom_accent = ACCENT
+    # Телефон только цифры — для tel: и Записаться
+    phone_digits = re.sub(r'\D', '', brand_phone) or '79776068901'
 
     buf = io.BytesIO()
     c = canvas.Canvas(buf, pagesize=A4)
@@ -177,8 +207,8 @@ def build_pdf(data, logo_bytes=None):
         c.rect(0, 0, w, 14*mm, fill=1, stroke=0)
         c.setFont('PTSans', 6.5)
         c.setFillColor(TEXT_MUTED)
-        c.drawCentredString(w/2, 5.5*mm,
-            'MosPotolki  ·  г. Мытищи, ул. Пограничная 24  ·  +7 (977) 606-89-01  ·  mospotolki.net')
+        footer_parts = [p for p in [brand_name, brand_addr, brand_phone, brand_website] if p]
+        c.drawCentredString(w/2, 5.5*mm, '  ·  '.join(footer_parts))
 
     table_top = [0]
 
@@ -209,7 +239,7 @@ def build_pdf(data, logo_bytes=None):
     shadow_rect(mg, h - mg - header_h, w - 2*mg, header_h, radius=2.5*mm)
 
     # Оранжевая вертикальная полоска слева в шапке
-    c.setFillColor(ACCENT)
+    c.setFillColor(custom_accent)
     c.roundRect(mg, h - mg - header_h, 3*mm, header_h, 1*mm, fill=1, stroke=0)
 
     # Левая часть: СМЕТА
@@ -219,7 +249,7 @@ def build_pdf(data, logo_bytes=None):
     c.drawString(lx, h - mg - 16*mm, 'СМЕТА')
 
     c.setFont('PTSans-Bold', 10)
-    c.setFillColor(ACCENT)
+    c.setFillColor(custom_accent)
     c.drawString(lx, h - mg - 23*mm, 'на натяжные потолки')
 
     c.setFont('PTSans', 8)
@@ -255,7 +285,7 @@ def build_pdf(data, logo_bytes=None):
             pass
 
     # Контакты под плашкой — внутри правого блока, по правому краю
-    contacts = ['+7 (977) 606-89-01', 'mospotolki.net', 'г. Мытищи, ул. Пограничная 24']
+    contacts = [p for p in [brand_phone, brand_website, brand_addr] if p]
     cy = logo_pill_y - 5.5*mm
     for ct in contacts:
         c.setFont('PTSans', 7.5)
@@ -488,7 +518,7 @@ def build_pdf(data, logo_bytes=None):
             btn_x = card_mg + tw - btn_w - 4*mm
             btn_y = cta_y + (cta_h - btn_h) / 2
 
-            c.setFillColor(ACCENT)
+            c.setFillColor(custom_accent)
             c.roundRect(btn_x, btn_y, btn_w, btn_h, 1.5*mm, fill=1, stroke=0)
             c.setFont('PTSans-Bold', 8)
             c.setFillColor(WHITE)
@@ -496,7 +526,7 @@ def build_pdf(data, logo_bytes=None):
                 btn_y + (btn_h - 8 * 0.352 * mm) / 2, 'Записаться')
 
             # Ссылка на звонок поверх кнопки
-            c.linkURL('tel:+79776068901',
+            c.linkURL(f'tel:+{phone_digits}',
                       (btn_x, btn_y, btn_x + btn_w, btn_y + btn_h),
                       relative=0)
 
@@ -530,13 +560,53 @@ def build_pdf(data, logo_bytes=None):
     return buf.getvalue()
 
 
+def fetch_brand_from_db(company_id):
+    """Тянет бренд активной компании напрямую из PostgreSQL.
+    Возвращает dict или None. Безопасно — при ошибке возвращает None."""
+    if not company_id:
+        return None
+    try:
+        import psycopg2
+        schema = os.environ.get('DB_SCHEMA', 't_p45929761_bold_move_project')
+        conn = psycopg2.connect(os.environ['DATABASE_URL'])
+        cur  = conn.cursor()
+        cur.execute(f"""
+            SELECT role, has_own_agent, company_name, brand_logo_url, brand_color,
+                   support_phone, website, telegram, max_url, working_hours,
+                   pdf_footer_address
+            FROM {schema}.users
+            WHERE id=%s AND removed_at IS NULL
+        """, (int(company_id),))
+        r = cur.fetchone()
+        cur.close(); conn.close()
+        if not r:
+            return None
+        role, has_agent, company_name, brand_logo_url, brand_color, support_phone, \
+            website, telegram, max_url, working_hours, pdf_footer_address = r
+        if not has_agent or role != 'company':
+            return None
+        return {
+            'company_name':       company_name,
+            'brand_logo_url':     brand_logo_url,
+            'brand_color':        brand_color,
+            'support_phone':      support_phone,
+            'website':            website,
+            'telegram':           telegram,
+            'max_url':            max_url,
+            'working_hours':      working_hours,
+            'pdf_footer_address': pdf_footer_address,
+        }
+    except Exception:
+        return None
+
+
 def handler(event, context):
     """Генерирует PDF-смету и возвращает base64."""
     if event.get('httpMethod') == 'OPTIONS':
         return {'statusCode': 200, 'headers': {
             'Access-Control-Allow-Origin': '*',
             'Access-Control-Allow-Methods': 'POST, OPTIONS',
-            'Access-Control-Allow-Headers': 'Content-Type',
+            'Access-Control-Allow-Headers': 'Content-Type, X-Authorization',
             'Access-Control-Max-Age': '86400'}, 'body': ''}
 
     cors = {'Access-Control-Allow-Origin': '*', 'Content-Type': 'application/json'}
@@ -546,8 +616,17 @@ def handler(event, context):
     if not ensure_fonts(s3):
         return {'statusCode': 500, 'headers': cors, 'body': json.dumps({'error': 'Font loading failed'})}
 
-    logo_bytes = load_logo(s3)
-    pdf_bytes  = build_pdf(data, logo_bytes=logo_bytes)
+    # Если в data есть company_id — пробуем подтянуть бренд этой компании
+    brand = data.get('brand') or fetch_brand_from_db(data.get('company_id'))
+
+    # Логотип: если у бренда есть свой URL — берём его; иначе дефолт
+    logo_bytes = None
+    if brand and brand.get('brand_logo_url'):
+        logo_bytes = load_logo_from_url(brand['brand_logo_url'])
+    if not logo_bytes:
+        logo_bytes = load_logo(s3)
+
+    pdf_bytes = build_pdf(data, logo_bytes=logo_bytes, brand=brand)
 
     return {'statusCode': 200, 'headers': cors,
             'body': json.dumps({'pdf': base64.b64encode(pdf_bytes).decode('ascii')})}

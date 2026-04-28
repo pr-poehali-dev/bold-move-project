@@ -1,5 +1,6 @@
 import { useState, useMemo } from "react";
 import { useAuth, CLIENT_ROLES } from "@/context/AuthContext";
+import { useBrand } from "@/context/BrandContext";
 import func2url from "@/../backend/func2url.json";
 import { parseEstimateBlocks, type LLMItem } from "./estimateUtils";
 import EstimateBody from "./EstimateBody";
@@ -18,6 +19,7 @@ export default function EstimateTable({ text, items, onSaveRequest }: {
   onSaveRequest?: () => void;
 }) {
   const { user, token } = useAuth();
+  const { brand, isCustom } = useBrand();
   const parsed = useMemo(() => parseEstimateBlocks(text), [text]);
 
   const [showContact,   setShowContact]   = useState(false);
@@ -56,7 +58,7 @@ export default function EstimateTable({ text, items, onSaveRequest }: {
     setDownloading(true);
     try {
       const { generateEstimatePdf } = await import("./estimatePdf");
-      await generateEstimatePdf(parsed);
+      await generateEstimatePdf(parsed, { brand, isCustom });
     } catch {
       /* fallback */
     } finally {

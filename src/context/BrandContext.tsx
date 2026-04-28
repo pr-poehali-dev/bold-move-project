@@ -50,6 +50,50 @@ interface BrandCtx {
 
 const Ctx = createContext<BrandCtx>({ brand: DEFAULT_BRAND, loading: false, isCustom: false });
 
+const CACHE_PREFIX = "mp_brand_";
+const CACHE_TTL_MS = 1000 * 60 * 60 * 6; // 6 часов
+
+interface CachedBrand { brand: Brand; ts: number }
+
+function cacheGet(cid: string): Brand | null {
+  try {
+    const raw = localStorage.getItem(CACHE_PREFIX + cid);
+    if (!raw) return null;
+    const { brand, ts } = JSON.parse(raw) as CachedBrand;
+    if (Date.now() - ts > CACHE_TTL_MS) {
+      localStorage.removeItem(CACHE_PREFIX + cid);
+      return null;
+    }
+    return brand;
+  } catch { return null; }
+}
+
+function cacheSet(cid: string, brand: Brand) {
+  try {
+    localStorage.setItem(CACHE_PREFIX + cid, JSON.stringify({ brand, ts: Date.now() }));
+  } catch { /* localStorage full or disabled */ }
+}
+
+function mergeBrand(b: Partial<Brand> & { telegram?: string }, cid: number): Brand {
+  return {
+    ...DEFAULT_BRAND,
+    company_id:    b.company_id ?? cid,
+    company_name:  nonEmpty(b.company_name)  ?? DEFAULT_BRAND.company_name,
+    bot_name:      nonEmpty(b.bot_name)      ?? DEFAULT_BRAND.bot_name,
+    bot_greeting:  nonEmpty(b.bot_greeting)  ?? DEFAULT_BRAND.bot_greeting,
+    bot_avatar_url: nonEmpty(b.bot_avatar_url) ?? DEFAULT_BRAND.bot_avatar_url,
+    brand_logo_url: nonEmpty(b.brand_logo_url) ?? DEFAULT_BRAND.brand_logo_url,
+    brand_color:    nonEmpty(b.brand_color)    ?? DEFAULT_BRAND.brand_color,
+    support_phone:  nonEmpty(b.support_phone)  ?? DEFAULT_BRAND.support_phone,
+    support_email:  nonEmpty(b.support_email)  ?? null,
+    telegram_url:   normalizeTelegram(b.telegram) ?? DEFAULT_BRAND.telegram_url,
+    max_url:        nonEmpty(b.max_url)         ?? DEFAULT_BRAND.max_url,
+    website:        nonEmpty(b.website)         ?? null,
+    working_hours:  nonEmpty(b.working_hours)   ?? DEFAULT_BRAND.working_hours,
+    pdf_footer_address: nonEmpty(b.pdf_footer_address) ?? null,
+  };
+}
+
 export function BrandProvider({ children }: { children: ReactNode }) {
   const [brand,   setBrand]   = useState<Brand>(DEFAULT_BRAND);
   const [loading, setLoading] = useState(false);
@@ -60,34 +104,30 @@ export function BrandProvider({ children }: { children: ReactNode }) {
     const cid = params.get("c");
     if (!cid) return;
 
+    // 1) Мгновенно показываем кеш, если он свежий
+    const cached = cacheGet(cid);
+    if (cached) {
+      setBrand(cached);
+      setIsCustom(true);
+    }
+
+    // 2) Параллельно обновляем с сервера (refresh-on-focus поведение)
     setLoading(true);
     fetch(`${AUTH_URL}?action=get-brand&company_id=${encodeURIComponent(cid)}`)
       .then(r => r.json())
       .then(d => {
-        if (!d?.brand) return; // компания без активного «Свой агент» → остаётся дефолт
-        const b = d.brand as Partial<Brand> & { telegram?: string };
-        // Мерджим с дефолтом — пустые/null поля не перетирают дефолт
-        const merged: Brand = {
-          ...DEFAULT_BRAND,
-          company_id:    b.company_id ?? Number(cid),
-          company_name:  nonEmpty(b.company_name)  ?? DEFAULT_BRAND.company_name,
-          bot_name:      nonEmpty(b.bot_name)      ?? DEFAULT_BRAND.bot_name,
-          bot_greeting:  nonEmpty(b.bot_greeting)  ?? DEFAULT_BRAND.bot_greeting,
-          bot_avatar_url: nonEmpty(b.bot_avatar_url) ?? DEFAULT_BRAND.bot_avatar_url,
-          brand_logo_url: nonEmpty(b.brand_logo_url) ?? DEFAULT_BRAND.brand_logo_url,
-          brand_color:    nonEmpty(b.brand_color)    ?? DEFAULT_BRAND.brand_color,
-          support_phone:  nonEmpty(b.support_phone)  ?? DEFAULT_BRAND.support_phone,
-          support_email:  nonEmpty(b.support_email)  ?? null,
-          telegram_url:   normalizeTelegram(b.telegram) ?? DEFAULT_BRAND.telegram_url,
-          max_url:        nonEmpty(b.max_url)         ?? DEFAULT_BRAND.max_url,
-          website:        nonEmpty(b.website)         ?? null,
-          working_hours:  nonEmpty(b.working_hours)   ?? DEFAULT_BRAND.working_hours,
-          pdf_footer_address: nonEmpty(b.pdf_footer_address) ?? null,
-        };
+        if (!d?.brand) {
+          // Компания без активного «Свой агент» → чистим возможно устаревший кеш
+          try { localStorage.removeItem(CACHE_PREFIX + cid); } catch { /* ignore */ }
+          if (cached) { setBrand(DEFAULT_BRAND); setIsCustom(false); }
+          return;
+        }
+        const merged = mergeBrand(d.brand as Partial<Brand> & { telegram?: string }, Number(cid));
         setBrand(merged);
         setIsCustom(true);
+        cacheSet(cid, merged);
       })
-      .catch(() => { /* остаётся дефолт */ })
+      .catch(() => { /* остаётся прежнее значение */ })
       .finally(() => setLoading(false));
   }, []);
 
