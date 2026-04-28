@@ -63,7 +63,7 @@ export default function ClientDrawer({ client, allClientOrders, onClose, onUpdat
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center sm:p-4" onClick={onClose}
+    <div className="fixed inset-0 z-50 flex items-center justify-center sm:p-4"
       style={{ background: "rgba(0,0,0,0.65)", backdropFilter: "blur(5px)" }}>
 
       <div className="w-full flex flex-col overflow-hidden shadow-2xl"

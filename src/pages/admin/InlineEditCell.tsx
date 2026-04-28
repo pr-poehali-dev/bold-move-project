@@ -64,7 +64,7 @@ export default function InlineEditCell({ value, onSave, placeholder = "—", col
       </div>
 
       {open && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={cancel}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
           <div
             className="relative bg-[#13131f] border border-white/10 rounded-2xl shadow-2xl w-full max-w-md flex flex-col gap-4 p-5"

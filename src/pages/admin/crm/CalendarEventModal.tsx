@@ -24,7 +24,7 @@ export function CalendarEventModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
-      style={{ background: "rgba(0,0,0,0.55)" }} onClick={onClose}>
+      style={{ background: "rgba(0,0,0,0.55)" }}>
       <div className="w-full max-w-md rounded-2xl shadow-2xl overflow-hidden"
         style={{ background: t.surface, border: `1px solid ${t.border}` }}
         onClick={e => e.stopPropagation()}>

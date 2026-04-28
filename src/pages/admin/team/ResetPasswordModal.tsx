@@ -45,7 +45,7 @@ export default function ResetPasswordModal({ isDark, member, onClose }: Props) {
 
   return (
     <div className="fixed inset-0 z-[200] flex items-center justify-center p-4"
-      style={{ background: "rgba(0,0,0,0.78)" }} onClick={onClose}>
+      style={{ background: "rgba(0,0,0,0.78)" }}>
       <div className="w-full max-w-md rounded-2xl overflow-hidden"
         style={{ background: bg, border: `1px solid ${border}`, color: text }}
         onClick={e => e.stopPropagation()}>

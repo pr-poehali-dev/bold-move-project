@@ -12,7 +12,7 @@ const MODULES = [
 export default function PaymentModal({ onClose }: Props) {
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4"
-      style={{ background: "rgba(0,0,0,0.75)" }} onClick={onClose}>
+      style={{ background: "rgba(0,0,0,0.75)" }}>
       <div className="w-full max-w-lg rounded-2xl overflow-hidden shadow-2xl"
         style={{ background: "#0e0e1c", border: "1px solid rgba(255,255,255,0.08)" }}
         onClick={e => e.stopPropagation()}>

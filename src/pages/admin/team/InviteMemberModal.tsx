@@ -3,6 +3,9 @@ import Icon from "@/components/ui/icon";
 import { useAuth, type Permissions } from "@/context/AuthContext";
 import { inviteMember, updatePermissions, showMemberPassword, type TeamMember } from "./teamApi";
 import PermissionsEditor from "./PermissionsEditor";
+import PhoneInput from "@/components/ui/PhoneInput";
+import { isEmailValid } from "@/lib/validation";
+import { isPhoneValid } from "@/hooks/use-phone";
 
 interface Props {
   isDark: boolean;
@@ -46,6 +49,13 @@ export default function InviteMemberModal({ isDark, onClose, onInvited, onUpdate
   const submitForm = async () => {
     setErr("");
     if (!email.trim()) { setErr("Укажите email"); return; }
+    if (!isEmailValid(email)) { setErr("Введите корректный Email"); return; }
+    // Телефон не обязателен. Если заполнен (>1 цифры) — проверим валидность
+    const phoneDigits = phone.replace(/\D/g, "").length;
+    if (phoneDigits > 1 && !isPhoneValid(phone)) {
+      setErr("Введите корректный телефон или оставьте поле пустым");
+      return;
+    }
     setBusy(true);
     try {
       const { member: m } = await inviteMember(token, {
@@ -136,7 +146,7 @@ export default function InviteMemberModal({ isDark, onClose, onInvited, onUpdate
             <>
               <Input label="Email *"   value={email} onChange={setEmail} placeholder="manager@example.com" type="email" isDark={isDark} />
               <Input label="Имя"       value={name}  onChange={setName}  placeholder="Иван Петров"          isDark={isDark} />
-              <Input label="Телефон"   value={phone} onChange={setPhone} placeholder="+7 (999) 000-00-00"   type="tel"   isDark={isDark} />
+              <PhoneFieldUI label="Телефон" value={phone} onChange={setPhone} isDark={isDark} />
             </>
           )}
 
@@ -269,10 +279,10 @@ function Progress({ step, isDark }: { step: Step; isDark: boolean }) {
   );
 }
 
-function Backdrop({ children, onClose }: { children: React.ReactNode; onClose: () => void }) {
+function Backdrop({ children, onClose: _onClose }: { children: React.ReactNode; onClose: () => void }) {
   return (
     <div className="fixed inset-0 z-[200] flex items-center justify-center p-4"
-      style={{ background: "rgba(0,0,0,0.78)" }} onClick={onClose}>
+      style={{ background: "rgba(0,0,0,0.78)" }}>
       {children}
     </div>
   );
@@ -287,6 +297,25 @@ function Input({ label, value, onChange, placeholder, type = "text", isDark }: {
     <div>
       <div className="text-[10px] font-bold uppercase tracking-wider mb-1.5" style={{ color: muted }}>{label}</div>
       <input type={type} value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder}
+        className="w-full px-3.5 py-2.5 rounded-xl text-sm transition focus:outline-none"
+        style={{
+          background: isDark ? "rgba(255,255,255,0.05)" : "#f9fafb",
+          border: `1px solid ${isDark ? "rgba(255,255,255,0.08)" : "#e5e7eb"}`,
+          color: isDark ? "#fff" : "#0f1623",
+        }}
+      />
+    </div>
+  );
+}
+
+function PhoneFieldUI({ label, value, onChange, isDark }: {
+  label: string; value: string; onChange: (v: string) => void; isDark: boolean;
+}) {
+  const muted = isDark ? "rgba(255,255,255,0.4)" : "#6b7280";
+  return (
+    <div>
+      <div className="text-[10px] font-bold uppercase tracking-wider mb-1.5" style={{ color: muted }}>{label}</div>
+      <PhoneInput value={value} onChange={onChange} showValidation
         className="w-full px-3.5 py-2.5 rounded-xl text-sm transition focus:outline-none"
         style={{
           background: isDark ? "rgba(255,255,255,0.05)" : "#f9fafb",

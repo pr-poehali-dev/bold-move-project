@@ -16,7 +16,12 @@ export function isPhoneValid(formatted: string): boolean {
 }
 
 export function usePhone(initial = "") {
-  const [phone, setPhoneRaw] = useState(initial ? formatPhone(initial) : "");
+  // Если initial — пустая строка маски "+7 (" — оставляем её как есть, чтобы маска была видна сразу.
+  const [phone, setPhoneRaw] = useState(() => {
+    if (!initial) return "";
+    if (initial === "+7 (") return "+7 (";
+    return formatPhone(initial);
+  });
 
   const setPhone = useCallback((val: string) => {
     setPhoneRaw(formatPhone(val));
@@ -37,7 +42,7 @@ export function usePhone(initial = "") {
   }, []);
 
   const handleBlur = useCallback(() => {
-    setPhoneRaw((prev) => (prev === "+7 (" ? "" : prev));
+    // Маска "+7 (" остаётся видимой даже при пустом значении — это требование UX.
   }, []);
 
   return { phone, setPhone, handleChange, handleFocus, handleBlur, isValid: isPhoneValid(phone) };

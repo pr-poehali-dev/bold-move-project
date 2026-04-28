@@ -7,7 +7,7 @@ interface Props {
 export default function TermsModal({ onClose }: Props) {
   return (
     <div className="fixed inset-0 z-[200] flex items-center justify-center p-4"
-      style={{ background: "rgba(0,0,0,0.85)" }} onClick={onClose}>
+      style={{ background: "rgba(0,0,0,0.85)" }}>
       <div className="w-full max-w-2xl max-h-[85vh] rounded-2xl overflow-hidden shadow-2xl flex flex-col"
         style={{ background: "#0e0e1c", border: "1px solid rgba(255,255,255,0.08)" }}
         onClick={e => e.stopPropagation()}>

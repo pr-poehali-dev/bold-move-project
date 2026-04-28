@@ -1,4 +1,5 @@
 import Icon from "@/components/ui/icon";
+import PhoneInput from "@/components/ui/PhoneInput";
 
 interface Props {
   show: boolean;
@@ -57,8 +58,7 @@ export default function EstimateContactModal({
                 </div>
                 <div>
                   <label className="text-xs text-white/40 mb-1 block">Телефон клиента</label>
-                  <input value={phone} onChange={e => onChangePhone(e.target.value)}
-                    placeholder="+7 (900) 000-00-00" type="tel"
+                  <PhoneInput value={phone} onChange={onChangePhone} showValidation
                     className="w-full rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none"
                     style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(249,115,22,0.25)" }} />
                 </div>

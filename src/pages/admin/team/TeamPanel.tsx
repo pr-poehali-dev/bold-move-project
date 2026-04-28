@@ -248,7 +248,7 @@ function ConfirmDeleteModal({ isDark, member, busy, onCancel, onConfirm }: {
   const muted  = isDark ? "rgba(255,255,255,0.4)" : "#6b7280";
   return (
     <div className="fixed inset-0 z-[200] flex items-center justify-center p-4"
-      style={{ background: "rgba(0,0,0,0.78)" }} onClick={onCancel}>
+      style={{ background: "rgba(0,0,0,0.78)" }}>
       <div className="w-full max-w-sm rounded-2xl p-6"
         style={{ background: bg, border: `1.5px solid rgba(239,68,68,0.30)`, color: text }}
         onClick={e => e.stopPropagation()}>

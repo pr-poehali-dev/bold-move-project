@@ -103,6 +103,14 @@ export default function AuthModal({ onClose, defaultTab = "login", onPending, on
         if (res.pending) { onPending?.(res.role || "company"); onClose(); return; }
       } else {
         if (!name.trim()) { setError("Введите имя"); setLoading(false); return; }
+        // Если телефон введён частично (есть цифры, но не 11) — отказ
+        const phoneDigits = phone.replace(/\D/g, "").length;
+        if (phoneDigits > 1 && !isValidPhone(phone)) {
+          setError("Введите корректный телефон или оставьте поле пустым");
+          setPhoneTouched(true);
+          setLoading(false);
+          return;
+        }
         const phoneVal = isValidPhone(phone) ? phone : undefined;
         const res = await register(email, password, name, role, phoneVal);
         if (res.pending) { onPending?.(res.role || role); onClose(); return; }
@@ -140,7 +148,7 @@ export default function AuthModal({ onClose, defaultTab = "login", onPending, on
   return (
     <>
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4"
-      style={{ background: "rgba(0,0,0,0.80)" }} onClick={onClose}>
+      style={{ background: "rgba(0,0,0,0.80)" }}>
       <div className="w-full max-w-md rounded-2xl overflow-hidden shadow-2xl max-h-[90vh] flex flex-col"
         style={{ background: "#0e0e1c", border: "1px solid rgba(255,255,255,0.08)" }}
         onClick={e => e.stopPropagation()}>

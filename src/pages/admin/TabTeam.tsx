@@ -217,7 +217,7 @@ export default function TabTeam({ token }: Props) {
       {/* ── Модал приглашения ── */}
       {showInvite && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center p-4"
-          style={{ background: "rgba(0,0,0,0.8)" }} onClick={() => setShowInvite(false)}>
+          style={{ background: "rgba(0,0,0,0.8)" }}>
           <div className="w-full max-w-md rounded-2xl p-6"
             style={{ background: "#0e0e1c", border: "1.5px solid rgba(124,58,237,0.4)" }}
             onClick={e => e.stopPropagation()}>
@@ -286,7 +286,7 @@ export default function TabTeam({ token }: Props) {
       {/* ── Модал подтверждения удаления ── */}
       {confirmDel && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center p-4"
-          style={{ background: "rgba(0,0,0,0.8)" }} onClick={() => setConfirmDel(null)}>
+          style={{ background: "rgba(0,0,0,0.8)" }}>
           <div className="w-full max-w-sm rounded-2xl p-6"
             style={{ background: "#0e0e1c", border: "1.5px solid #ef444430" }}
             onClick={e => e.stopPropagation()}>
@@ -344,7 +344,7 @@ function PasswordModal({ title, email, password, hint, onClose, onCopy }: {
 
   return (
     <div className="fixed inset-0 z-[210] flex items-center justify-center p-4"
-      style={{ background: "rgba(0,0,0,0.85)" }} onClick={onClose}>
+      style={{ background: "rgba(0,0,0,0.85)" }}>
       <div className="w-full max-w-md rounded-2xl p-6"
         style={{ background: "#0e0e1c", border: "1.5px solid rgba(16,185,129,0.4)" }}
         onClick={e => e.stopPropagation()}>

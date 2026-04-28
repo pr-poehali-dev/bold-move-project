@@ -1,5 +1,6 @@
 import { STATUS_LABELS, LEAD_STATUSES, ORDER_STATUSES } from "./crmApi";
 import Icon from "@/components/ui/icon";
+import PhoneInput from "@/components/ui/PhoneInput";
 import { useTheme } from "./themeContext";
 
 const ALL_STATUSES = [...LEAD_STATUSES, ...ORDER_STATUSES];
@@ -14,21 +15,31 @@ export function AddClientModal({ form, onChange, onSave, onClose }: {
 }) {
   const t = useTheme();
   return (
-    <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4" onClick={onClose}>
+    <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
       <div className="rounded-2xl p-6 w-full max-w-md shadow-2xl" style={{ background: t.surface, border: `1px solid ${t.border}` }} onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-5">
           <h3 className="text-base font-bold" style={{ color: t.text }}>Новый клиент</h3>
           <button onClick={onClose} style={{ color: t.textMute }}><Icon name="X" size={17} /></button>
         </div>
         <div className="space-y-3">
-          {([["client_name","Имя *"],["phone","Телефон"],["address","Адрес"]] as [keyof NewClientForm, string][]).map(([f,l]) => (
-            <div key={f}>
-              <label className="text-xs mb-1.5 block font-medium" style={{ color: t.textMute }}>{l}</label>
-              <input value={form[f]} onChange={e => onChange({ [f]: e.target.value })}
-                className="w-full rounded-xl px-4 py-2.5 text-sm focus:outline-none transition"
-                style={{ background: t.surface2, border: `1px solid ${t.border}`, color: t.text }} />
-            </div>
-          ))}
+          <div>
+            <label className="text-xs mb-1.5 block font-medium" style={{ color: t.textMute }}>Имя *</label>
+            <input value={form.client_name} onChange={e => onChange({ client_name: e.target.value })}
+              className="w-full rounded-xl px-4 py-2.5 text-sm focus:outline-none transition"
+              style={{ background: t.surface2, border: `1px solid ${t.border}`, color: t.text }} />
+          </div>
+          <div>
+            <label className="text-xs mb-1.5 block font-medium" style={{ color: t.textMute }}>Телефон</label>
+            <PhoneInput value={form.phone} onChange={(v) => onChange({ phone: v })} showValidation
+              className="w-full rounded-xl px-4 py-2.5 text-sm focus:outline-none transition"
+              style={{ background: t.surface2, border: `1px solid ${t.border}`, color: t.text }} />
+          </div>
+          <div>
+            <label className="text-xs mb-1.5 block font-medium" style={{ color: t.textMute }}>Адрес</label>
+            <input value={form.address} onChange={e => onChange({ address: e.target.value })}
+              className="w-full rounded-xl px-4 py-2.5 text-sm focus:outline-none transition"
+              style={{ background: t.surface2, border: `1px solid ${t.border}`, color: t.text }} />
+          </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="text-xs mb-1.5 block font-medium" style={{ color: t.textMute }}>Статус</label>

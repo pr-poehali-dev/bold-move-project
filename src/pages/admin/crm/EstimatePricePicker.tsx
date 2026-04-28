@@ -30,8 +30,7 @@ export default function EstimatePricePicker({ prices, onSelect, onClose }: Props
 
   return (
     <div className="fixed inset-0 z-[70] flex items-center justify-center p-4"
-      style={{ background: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)" }}
-      onClick={onClose}>
+      style={{ background: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)" }}>
       <div className="w-full max-w-lg rounded-2xl overflow-hidden shadow-2xl flex flex-col"
         style={{ background: t.surface, border: `1px solid ${t.border}`, maxHeight: "70vh" }}
         onClick={e => e.stopPropagation()}>

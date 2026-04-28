@@ -39,7 +39,7 @@ export default function EditPermissionsModal({ isDark, member, onClose, onSaved 
 
   return (
     <div className="fixed inset-0 z-[200] flex items-center justify-center p-4"
-      style={{ background: "rgba(0,0,0,0.78)" }} onClick={onClose}>
+      style={{ background: "rgba(0,0,0,0.78)" }}>
       <div className="w-full max-w-md rounded-2xl overflow-hidden flex flex-col max-h-[92vh]"
         style={{ background: bg, border: `1px solid ${border}`, color: text }}
         onClick={e => e.stopPropagation()}>

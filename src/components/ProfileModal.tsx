@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { useAuth, type UserRole, BUSINESS_ROLES, CLIENT_ROLES } from "@/context/AuthContext";
 import Icon from "@/components/ui/icon";
+import PhoneInput from "@/components/ui/PhoneInput";
+import { isPhoneValid } from "@/hooks/use-phone";
 import func2url from "@/../backend/func2url.json";
 
 const AUTH_URL = (func2url as Record<string, string>)["auth"];
@@ -37,7 +39,14 @@ export default function ProfileModal({ onClose }: Props) {
   const roleChanged = form.role !== user?.role;
 
   const save = async () => {
-    setSaving(true); setSaved(false); setError("");
+    setError("");
+    // Валидация телефона: если введён хоть какой-то набор цифр — должно быть полных 11
+    const phoneDigits = (form.phone || "").replace(/\D/g, "").length;
+    if (phoneDigits > 1 && !isPhoneValid(form.phone)) {
+      setError("Введите корректный телефон или оставьте поле пустым");
+      return;
+    }
+    setSaving(true); setSaved(false);
     try {
       const res = await fetch(`${AUTH_URL}?action=update-profile`, {
         method: "POST",
@@ -57,7 +66,7 @@ export default function ProfileModal({ onClose }: Props) {
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4"
-      style={{ background: "rgba(0,0,0,0.75)" }} onClick={onClose}>
+      style={{ background: "rgba(0,0,0,0.75)" }}>
       <div className="w-full max-w-lg rounded-2xl overflow-hidden shadow-2xl max-h-[90vh] flex flex-col"
         style={{ background: "#0e0e1c", border: "1px solid rgba(255,255,255,0.08)" }}
         onClick={e => e.stopPropagation()}>
@@ -145,7 +154,7 @@ export default function ProfileModal({ onClose }: Props) {
           {/* Личные данные */}
           <Section title="Личные данные" icon="User">
             <Field label="Имя"     value={form.name}  onChange={v => setForm(f => ({ ...f, name: v }))}  placeholder="Иван Петров" />
-            <Field label="Телефон" value={form.phone} onChange={v => setForm(f => ({ ...f, phone: v }))} placeholder="+7 (999) 000-00-00" type="tel" />
+            <PhoneField label="Телефон" value={form.phone} onChange={v => setForm(f => ({ ...f, phone: v }))} />
             <Field label="Email"   value={user?.email || ""} readonly />
           </Section>
 
@@ -222,6 +231,23 @@ function Field({ label, value, onChange, placeholder, type = "text", readonly = 
         placeholder={placeholder}
         className="flex-1 text-xs bg-transparent text-right placeholder-white/15 focus:outline-none transition"
         style={{ color: readonly ? "rgba(255,255,255,0.3)" : "rgba(255,255,255,0.7)" }}
+      />
+    </div>
+  );
+}
+
+function PhoneField({ label, value, onChange }: {
+  label: string; value: string; onChange: (v: string) => void;
+}) {
+  return (
+    <div className="flex items-center px-4 py-2.5 border-b border-white/[0.04] last:border-0">
+      <span className="text-xs text-white/30 w-24 flex-shrink-0">{label}</span>
+      <PhoneInput
+        value={value}
+        onChange={onChange}
+        showValidation
+        className="flex-1 text-xs bg-transparent text-right placeholder-white/15 focus:outline-none transition"
+        style={{ color: "rgba(255,255,255,0.7)" }}
       />
     </div>
   );
