@@ -170,16 +170,49 @@ def handler(event: dict, context) -> dict:
         company_addr = (body.get("company_addr") or "").strip()
         website      = (body.get("website") or "").strip()
         telegram     = (body.get("telegram") or "").strip()
+        new_role     = (body.get("role") or "").strip()
 
-        cur.execute(f"""
-            UPDATE {SCHEMA}.users
-            SET name=%s, phone=%s, company_name=%s, company_inn=%s,
-                company_addr=%s, website=%s, telegram=%s, updated_at=NOW()
-            WHERE id=%s
-        """, (name or None, phone or None, company_name or None, company_inn or None,
-              company_addr or None, website or None, telegram or None, uid))
+        ALLOWED_ROLES = ("client", "designer", "foreman", "installer", "company")
+        if new_role and new_role not in ALLOWED_ROLES:
+            return err("Недопустимая роль")
+
+        # При смене на бизнес-роль — сбрасываем approved, при клиентской — approved=True
+        if new_role:
+            new_approved = new_role not in BUSINESS_ROLES
+            new_discount = DEFAULT_DISCOUNT if new_role in DISCOUNT_ROLES else 0
+            cur.execute(f"""
+                UPDATE {SCHEMA}.users
+                SET name=%s, phone=%s, company_name=%s, company_inn=%s,
+                    company_addr=%s, website=%s, telegram=%s,
+                    role=%s, approved=%s, discount=%s, updated_at=NOW()
+                WHERE id=%s
+            """, (name or None, phone or None, company_name or None, company_inn or None,
+                  company_addr or None, website or None, telegram or None,
+                  new_role, new_approved, new_discount, uid))
+        else:
+            cur.execute(f"""
+                UPDATE {SCHEMA}.users
+                SET name=%s, phone=%s, company_name=%s, company_inn=%s,
+                    company_addr=%s, website=%s, telegram=%s, updated_at=NOW()
+                WHERE id=%s
+            """, (name or None, phone or None, company_name or None, company_inn or None,
+                  company_addr or None, website or None, telegram or None, uid))
+
         conn.commit()
-        return ok({"ok": True})
+
+        # Возвращаем обновлённые данные пользователя
+        cur.execute(f"""
+            SELECT id, email, name, phone, role, approved, discount,
+                   company_name, company_inn, company_addr, website, telegram
+            FROM {SCHEMA}.users WHERE id=%s
+        """, (uid,))
+        u = cur.fetchone()
+        return ok({"ok": True, "user": {
+            "id": u[0], "email": u[1], "name": u[2], "phone": u[3],
+            "role": u[4], "approved": u[5], "discount": u[6] or 0,
+            "company_name": u[7], "company_inn": u[8], "company_addr": u[9],
+            "website": u[10], "telegram": u[11],
+        }})
 
     # ── Восстановление пароля ────────────────────────────────────────────────
     if action == "reset-password" and method == "POST":

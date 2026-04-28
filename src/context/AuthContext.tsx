@@ -32,14 +32,15 @@ interface AuthCtx {
   user: AuthUser | null;
   token: string | null;
   loading: boolean;
-  login:    (email: string, password: string) => Promise<{ pending?: boolean; role?: string }>;
-  register: (email: string, password: string, name: string, role: UserRole, phone?: string) => Promise<{ pending?: boolean; role?: string }>;
-  logout:   () => Promise<void>;
+  login:      (email: string, password: string) => Promise<{ pending?: boolean; role?: string }>;
+  register:   (email: string, password: string, name: string, role: UserRole, phone?: string) => Promise<{ pending?: boolean; role?: string }>;
+  logout:     () => Promise<void>;
+  updateUser: (patch: Partial<AuthUser>) => void;
 }
 
 const Ctx = createContext<AuthCtx>({
   user: null, token: null, loading: true,
-  login: async () => ({}), register: async () => ({}), logout: async () => {},
+  login: async () => ({}), register: async () => ({}), logout: async () => {}, updateUser: () => {},
 });
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -93,6 +94,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return {};
   };
 
+  const updateUser = (patch: Partial<AuthUser>) => {
+    setUser(prev => prev ? { ...prev, ...patch } : prev);
+  };
+
   const logout = async () => {
     if (token) {
       await fetch(`${AUTH_URL}?action=logout`, {
@@ -107,7 +112,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <Ctx.Provider value={{ user, token, loading, login, register, logout }}>
+    <Ctx.Provider value={{ user, token, loading, login, register, logout, updateUser }}>
       {children}
     </Ctx.Provider>
   );
