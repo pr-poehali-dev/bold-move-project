@@ -10,6 +10,7 @@ export interface BusinessUser {
   created_at: string;
   subscription_start: string | null;
   subscription_end: string | null;
+  estimates_balance: number;
   telegram?: string | null;
 }
 
@@ -37,6 +38,7 @@ export interface AppUser {
   estimates_count: number;
   subscription_start: string | null;
   subscription_end: string | null;
+  estimates_balance: number;
   telegram?: string | null;
 }
 

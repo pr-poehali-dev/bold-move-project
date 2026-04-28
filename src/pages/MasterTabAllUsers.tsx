@@ -32,8 +32,6 @@ export default function MasterTabAllUsers({
   const [sortBy,      setSortBy]      = useState<"created" | "sub_end">("created");
   const [deletingId,  setDeletingId]  = useState<number | null>(null);
   const [confirmDel,  setConfirmDel]  = useState<AppUser | null>(null);
-  const [subUserId,   setSubUserId]   = useState<number | null>(null);
-  const [subLoading,  setSubLoading]  = useState(false);
 
   const toggleRole = (role: string) => {
     setRoleFilters(prev => {
@@ -77,14 +75,11 @@ export default function MasterTabAllUsers({
     onReload();
   };
 
-  const doExtend = async (userId: number, days: number) => {
-    setSubLoading(true);
-    await fetch(`${AUTH_URL}?action=extend-subscription`, {
+  const doAddBalance = async (userId: number, amount: number, reason: string) => {
+    await fetch(`${AUTH_URL}?action=add-balance`, {
       method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ user_id: userId, days }),
+      body: JSON.stringify({ user_id: userId, amount, reason }),
     });
-    setSubLoading(false);
-    setSubUserId(null);
     onReload();
   };
 
@@ -125,12 +120,9 @@ export default function MasterTabAllUsers({
           userEstimates={userEstimates}
           estLoading={estLoading}
           approvingId={approvingId}
-          subUserId={subUserId}
-          subLoading={subLoading}
           onApprove={onApprove}
           onConfirmDel={setConfirmDel}
-          onExtend={doExtend}
-          onSubUserId={setSubUserId}
+          onAddBalance={doAddBalance}
         />
       </div>
 

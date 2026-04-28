@@ -15,6 +15,7 @@ export interface AuthUser {
   role: UserRole;
   approved: boolean;
   discount: number;
+  estimates_balance: number;
   is_master?: boolean;
   company_name?: string | null;
   company_inn?:  string | null;

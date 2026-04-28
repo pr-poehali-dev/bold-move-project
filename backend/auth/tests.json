@@ -6,7 +6,6 @@
       "path": "/?action=register",
       "expectedStatus": 200
     },
-
     {
       "name": "Login existing client",
       "method": "POST",
@@ -26,27 +25,11 @@
       "bodyMatcher": "partial"
     },
     {
-      "name": "Pending users (business)",
+      "name": "Packages list",
       "method": "GET",
-      "path": "/?action=pending-users&role_group=business",
+      "path": "/?action=packages",
       "expectedStatus": 200,
-      "expectedBody": {"users": "array"},
-      "bodyMatcher": "partial"
-    },
-    {
-      "name": "Pro users (designers/foremen)",
-      "method": "GET",
-      "path": "/?action=pro-users",
-      "expectedStatus": 200,
-      "expectedBody": {"users": "array"},
-      "bodyMatcher": "partial"
-    },
-    {
-      "name": "Removed users (all groups)",
-      "method": "GET",
-      "path": "/?action=removed-users&group=all",
-      "expectedStatus": 200,
-      "expectedBody": {"users": []},
+      "expectedBody": {"packages": [{"id": "start", "estimates": 5}]},
       "bodyMatcher": "partial"
     }
   ]

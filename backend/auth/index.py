@@ -131,7 +131,8 @@ def handler(event: dict, context) -> dict:
 
         cur.execute(f"""
             SELECT u.id, u.email, u.name, u.phone, u.role, u.approved, u.discount,
-                   u.company_name, u.company_inn, u.company_addr, u.website, u.telegram
+                   u.company_name, u.company_inn, u.company_addr, u.website, u.telegram,
+                   u.estimates_balance
             FROM {SCHEMA}.user_sessions s
             JOIN {SCHEMA}.users u ON u.id = s.user_id
             WHERE s.token=%s AND s.expires_at > NOW()
@@ -140,13 +141,14 @@ def handler(event: dict, context) -> dict:
         if not row:
             return err("Токен недействителен", 401)
 
-        uid, email, name, phone, role, approved, discount, company_name, company_inn, company_addr, website, telegram = row
+        uid, email, name, phone, role, approved, discount, company_name, company_inn, company_addr, website, telegram, estimates_balance = row
         return ok({"user": {
             "id": uid, "email": email, "name": name, "phone": phone,
             "role": role or "client", "approved": approved, "discount": discount or 0,
             "is_master": (email == "19.jeka.94@gmail.com"),
             "company_name": company_name, "company_inn": company_inn,
             "company_addr": company_addr, "website": website, "telegram": telegram,
+            "estimates_balance": estimates_balance or 0,
         }})
 
     # ── Обновление профиля ────────────────────────────────────────────────────
@@ -350,7 +352,7 @@ def handler(event: dict, context) -> dict:
 
         cur.execute(f"""
             SELECT id, email, name, phone, role, approved, rejected, discount,
-                   created_at, subscription_start, subscription_end
+                   created_at, subscription_start, subscription_end, estimates_balance
             FROM {SCHEMA}.users
             {where}
             ORDER BY created_at DESC
@@ -362,6 +364,7 @@ def handler(event: dict, context) -> dict:
             "created_at": str(r[8])[:19],
             "subscription_start": str(r[9])[:19] if r[9] else None,
             "subscription_end":   str(r[10])[:19] if r[10] else None,
+            "estimates_balance":  r[11] or 0,
         } for r in rows]})
 
     # ── Смета по chat_id ──────────────────────────────────────────────────────
@@ -425,7 +428,7 @@ def handler(event: dict, context) -> dict:
             return err("Требуется авторизация", 401)
 
         cur.execute(f"""
-            SELECT u.id, u.email, u.name, u.phone, u.discount
+            SELECT u.id, u.email, u.name, u.phone, u.discount, u.role, u.estimates_balance
             FROM {SCHEMA}.user_sessions s
             JOIN {SCHEMA}.users u ON u.id = s.user_id
             WHERE s.token=%s AND s.expires_at > NOW()
@@ -433,7 +436,19 @@ def handler(event: dict, context) -> dict:
         row = cur.fetchone()
         if not row:
             return err("Токен недействителен", 401)
-        user_id, email, user_name, phone, user_discount = row
+        user_id, email, user_name, phone, user_discount, user_role, estimates_balance = row
+
+        # Для монтажников/компаний проверяем и списываем баланс
+        if user_role in BUSINESS_ROLES:
+            if (estimates_balance or 0) <= 0:
+                return err("Недостаточно смет на балансе. Пополните пакет.", 403)
+            cur.execute(f"""
+                UPDATE {SCHEMA}.users SET estimates_balance = estimates_balance - 1 WHERE id = %s
+            """, (user_id,))
+            cur.execute(f"""
+                INSERT INTO {SCHEMA}.balance_transactions (user_id, amount, reason)
+                VALUES (%s, -1, 'estimate_created')
+            """, (user_id,))
 
         blocks       = body.get("blocks", [])
         totals       = body.get("totals", [])
@@ -503,11 +518,16 @@ def handler(event: dict, context) -> dict:
         cur.execute(f"UPDATE {SCHEMA}.saved_estimates SET chat_id=%s WHERE id=%s", (chat_id, estimate_id))
         conn.commit()
 
+        # Читаем актуальный баланс после возможного списания
+        cur.execute(f"SELECT estimates_balance FROM {SCHEMA}.users WHERE id=%s", (user_id,))
+        new_balance = cur.fetchone()[0] or 0
+
         return ok({
             "ok": True,
             "estimate_id": estimate_id,
             "chat_id": chat_id,
             "discount": user_discount or 0,
+            "estimates_balance": new_balance,
         })
 
     # ── Список смет пользователя ───────────────────────────────────────────────
@@ -552,7 +572,8 @@ def handler(event: dict, context) -> dict:
     if action == "admin-users" and method == "GET":
         cur.execute(f"""
             SELECT u.id, u.email, u.name, u.phone, u.role, u.approved, u.discount, u.created_at,
-                   COUNT(e.id) as estimates_count, u.rejected, u.subscription_start, u.subscription_end
+                   COUNT(e.id) as estimates_count, u.rejected, u.subscription_start, u.subscription_end,
+                   u.estimates_balance
             FROM {SCHEMA}.users u
             LEFT JOIN {SCHEMA}.saved_estimates e ON e.user_id = u.id
             WHERE u.removed_at IS NULL
@@ -566,6 +587,7 @@ def handler(event: dict, context) -> dict:
             "rejected": r[9] or False,
             "subscription_start": str(r[10])[:19] if r[10] else None,
             "subscription_end":   str(r[11])[:19] if r[11] else None,
+            "estimates_balance":  r[12] or 0,
         } for r in rows]})
 
     # ── Мастер: сметы конкретного пользователя ────────────────────────────────
@@ -585,6 +607,55 @@ def handler(event: dict, context) -> dict:
             "total_standard": float(r[2]) if r[2] else None,
             "status": r[3], "created_at": str(r[4])[:19], "crm_status": r[5],
         } for r in rows]})
+
+    # ── Пакеты смет ──────────────────────────────────────────────────────────
+    PACKAGES = {
+        "start":    {"name": "Старт",    "estimates": 5,   "price": 490},
+        "standard": {"name": "Стандарт", "estimates": 20,  "price": 990},
+        "pro":      {"name": "Про",      "estimates": 60,  "price": 1990},
+        "business": {"name": "Бизнес",   "estimates": 150, "price": 3990},
+    }
+
+    # ── Список пакетов (публичный) ────────────────────────────────────────────
+    if action == "packages" and method == "GET":
+        return ok({"packages": [
+            {"id": k, **v} for k, v in PACKAGES.items()
+        ]})
+
+    # ── Мастер: ручное начисление баланса ────────────────────────────────────
+    if action == "add-balance" and method == "POST":
+        user_id = body.get("user_id")
+        amount  = body.get("amount")
+        reason  = body.get("reason", "admin_manual")
+        if not user_id or amount is None:
+            return err("user_id и amount обязательны")
+        uid = int(user_id)
+        amt = int(amount)
+        cur.execute(f"""
+            UPDATE {SCHEMA}.users SET estimates_balance = estimates_balance + %s WHERE id=%s
+        """, (amt, uid))
+        cur.execute(f"""
+            INSERT INTO {SCHEMA}.balance_transactions (user_id, amount, reason) VALUES (%s, %s, %s)
+        """, (uid, amt, reason))
+        conn.commit()
+        cur.execute(f"SELECT estimates_balance FROM {SCHEMA}.users WHERE id=%s", (uid,))
+        new_bal = cur.fetchone()[0] or 0
+        return ok({"ok": True, "estimates_balance": new_bal})
+
+    # ── История транзакций пользователя (для мастера) ─────────────────────────
+    if action == "balance-history" and method == "GET":
+        user_id = params.get("user_id")
+        if not user_id:
+            return err("user_id required")
+        cur.execute(f"""
+            SELECT id, amount, reason, created_at FROM {SCHEMA}.balance_transactions
+            WHERE user_id=%s ORDER BY created_at DESC LIMIT 50
+        """, (int(user_id),))
+        rows = cur.fetchall()
+        return ok({"history": [
+            {"id": r[0], "amount": r[1], "reason": r[2], "created_at": str(r[3])[:19]}
+            for r in rows
+        ]})
 
     # ── Мастер: мягкое удаление пользователя ────────────────────────────────
     if action == "delete-user" and method == "POST":

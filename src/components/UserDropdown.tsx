@@ -73,6 +73,17 @@ export default function UserDropdown({ onShowProfile, onShowPayment }: Props) {
                 </div>
               </div>
             </div>
+            {/* Баланс смет для монтажников/компаний */}
+            {["installer","company"].includes(user.role) && (
+              <div className="mt-2.5 flex items-center justify-between px-3 py-2 rounded-xl"
+                style={{ background: (user.estimates_balance ?? 0) > 0 ? "rgba(16,185,129,0.07)" : "rgba(239,68,68,0.07)" }}>
+                <span className="text-[10px] text-white/40">Смет на балансе</span>
+                <span className="text-sm font-black"
+                  style={{ color: (user.estimates_balance ?? 0) > 0 ? "#10b981" : "#ef4444" }}>
+                  {user.estimates_balance ?? 0}
+                </span>
+              </div>
+            )}
           </div>
 
           {/* Пункты меню */}
