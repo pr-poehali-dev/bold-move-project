@@ -67,7 +67,10 @@ export default function MasterTabAllUsers({
         (u.name  || "").toLowerCase().includes(search.toLowerCase());
       const matchRole = roleFilters.size === 0 || roleFilters.has(u.role);
       const ss = subStatus(u);
-      const matchSub = subFilter === "all" || ss === subFilter;
+      const hasSubRole = ["installer","company"].includes(u.role);
+      // «Нет подписки» — только среди тех, у кого подписка предполагается
+      const matchSub = subFilter === "all"
+        || (subFilter === "none" ? hasSubRole && ss === "none" : ss === subFilter);
       return matchSearch && matchRole && matchSub;
     })
     .sort((a, b) => {
@@ -215,8 +218,8 @@ export default function MasterTabAllUsers({
             <>
               {/* Шапка таблицы */}
               <div className="grid px-5 py-2 border-b border-white/[0.05] sticky top-0 z-10"
-                style={{ gridTemplateColumns: "minmax(0,2fr) 140px 130px 80px 40px", background: "#07070f" }}>
-                {["Пользователь", "Роль", "Подписка", "Смет", ""].map(h => (
+                style={{ gridTemplateColumns: "minmax(0,2fr) 130px 110px 140px 70px 36px", background: "#07070f" }}>
+                {["Пользователь", "Роль", "Зарегистрирован", "Подписка до", "Смет", ""].map(h => (
                   <div key={h} className="text-[10px] font-bold text-white/22 uppercase tracking-wider">{h}</div>
                 ))}
               </div>
@@ -226,12 +229,13 @@ export default function MasterTabAllUsers({
                   const badge = subBadge(u);
                   const isSelected = selectedUser?.id === u.id;
                   const roleColor = ROLE_LABELS[u.role]?.color ?? "#94a3b8";
+                  const hasSubRole = ["installer","company"].includes(u.role);
                   return (
                     <div key={u.id}
                       onClick={() => onSelectUser(u)}
-                      className="grid items-center px-5 py-3.5 cursor-pointer transition hover:bg-white/[0.025]"
+                      className="grid items-center px-5 py-3 cursor-pointer transition hover:bg-white/[0.025]"
                       style={{
-                        gridTemplateColumns: "minmax(0,2fr) 140px 130px 80px 40px",
+                        gridTemplateColumns: "minmax(0,2fr) 130px 110px 140px 70px 36px",
                         background: isSelected ? "rgba(255,255,255,0.04)" : undefined,
                         borderLeft: isSelected ? "3px solid rgba(255,255,255,0.3)" : "3px solid transparent",
                       }}>
@@ -259,15 +263,27 @@ export default function MasterTabAllUsers({
                         )}
                       </div>
 
-                      {/* Подписка */}
+                      {/* Зарегистрирован */}
+                      <div className="text-[10px] text-white/35">{fmtDate(u.created_at)}</div>
+
+                      {/* Подписка до */}
                       <div>
-                        {badge ? (
-                          <span className="text-[10px] px-2 py-0.5 rounded-lg font-bold"
-                            style={{ background: badge.bg, color: badge.color }}>
-                            {badge.label}
-                          </span>
+                        {hasSubRole ? (
+                          badge ? (
+                            <div>
+                              <span className="text-[10px] px-2 py-0.5 rounded-lg font-bold"
+                                style={{ background: badge.bg, color: badge.color }}>
+                                {badge.label}
+                              </span>
+                              {u.subscription_end && (
+                                <div className="text-[9px] text-white/25 mt-0.5">{fmtDate(u.subscription_end)}</div>
+                              )}
+                            </div>
+                          ) : (
+                            <span className="text-[10px] text-white/20">нет подписки</span>
+                          )
                         ) : (
-                          <span className="text-[10px] text-white/20">—</span>
+                          <span className="text-[10px] text-white/15">—</span>
                         )}
                       </div>
 

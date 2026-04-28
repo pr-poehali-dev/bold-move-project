@@ -278,7 +278,7 @@ def handler(event: dict, context) -> dict:
         cur.execute(f"""
             SELECT id, email, name, phone, role, approved, discount, created_at
             FROM {SCHEMA}.users
-            WHERE role IN ('designer', 'foreman')
+            WHERE role IN ('designer', 'foreman') AND removed_at IS NULL
             ORDER BY created_at DESC
         """)
         rows = cur.fetchall()
@@ -340,13 +340,13 @@ def handler(event: dict, context) -> dict:
     if action == "business-users" and method == "GET":
         status_filter = params.get("status", "all")
         if status_filter == "pending":
-            where = "WHERE role IN ('installer','company') AND approved=false AND rejected=false"
+            where = "WHERE role IN ('installer','company') AND approved=false AND rejected=false AND removed_at IS NULL"
         elif status_filter == "approved":
-            where = "WHERE role IN ('installer','company') AND approved=true"
+            where = "WHERE role IN ('installer','company') AND approved=true AND removed_at IS NULL"
         elif status_filter == "rejected":
-            where = "WHERE role IN ('installer','company') AND rejected=true"
+            where = "WHERE role IN ('installer','company') AND rejected=true AND removed_at IS NULL"
         else:
-            where = "WHERE role IN ('installer','company')"
+            where = "WHERE role IN ('installer','company') AND removed_at IS NULL"
 
         cur.execute(f"""
             SELECT id, email, name, phone, role, approved, rejected, discount,
@@ -555,6 +555,7 @@ def handler(event: dict, context) -> dict:
                    COUNT(e.id) as estimates_count, u.rejected, u.subscription_start, u.subscription_end
             FROM {SCHEMA}.users u
             LEFT JOIN {SCHEMA}.saved_estimates e ON e.user_id = u.id
+            WHERE u.removed_at IS NULL
             GROUP BY u.id ORDER BY u.created_at DESC
         """)
         rows = cur.fetchall()
@@ -585,17 +586,59 @@ def handler(event: dict, context) -> dict:
             "status": r[3], "created_at": str(r[4])[:19], "crm_status": r[5],
         } for r in rows]})
 
-    # ── Мастер: удалить пользователя ─────────────────────────────────────────
+    # ── Мастер: мягкое удаление пользователя ────────────────────────────────
     if action == "delete-user" and method == "POST":
         user_id = body.get("user_id")
         if not user_id:
             return err("user_id required")
         uid = int(user_id)
-        cur.execute(f"DELETE FROM {SCHEMA}.user_sessions WHERE user_id=%s", (uid,))
-        cur.execute(f"DELETE FROM {SCHEMA}.saved_estimates WHERE user_id=%s", (uid,))
-        cur.execute(f"DELETE FROM {SCHEMA}.users WHERE id=%s", (uid,))
+        cur.execute(f"""
+            UPDATE {SCHEMA}.users
+            SET removed_at=NOW(), removed_name=name, removed_email=email,
+                email=CONCAT('_removed_', id, '_', email)
+            WHERE id=%s AND removed_at IS NULL
+        """, (uid,))
         conn.commit()
         return ok({"ok": True})
+
+    # ── Мастер: восстановить пользователя ────────────────────────────────────
+    if action == "restore-user" and method == "POST":
+        user_id = body.get("user_id")
+        if not user_id:
+            return err("user_id required")
+        uid = int(user_id)
+        cur.execute(f"""
+            UPDATE {SCHEMA}.users
+            SET email=removed_email, removed_at=NULL, removed_name=NULL, removed_email=NULL
+            WHERE id=%s AND removed_at IS NOT NULL
+        """, (uid,))
+        conn.commit()
+        return ok({"ok": True})
+
+    # ── Мастер: список удалённых пользователей ───────────────────────────────
+    if action == "removed-users" and method == "GET":
+        role_group = params.get("group", "all")
+        if role_group == "business":
+            where = "WHERE role IN ('installer','company') AND removed_at IS NOT NULL"
+        elif role_group == "pro":
+            where = "WHERE role IN ('designer','foreman') AND removed_at IS NOT NULL"
+        else:
+            where = "WHERE removed_at IS NOT NULL"
+        cur.execute(f"""
+            SELECT id, removed_email, removed_name, role, removed_at, approved, rejected, discount,
+                   created_at, subscription_start, subscription_end
+            FROM {SCHEMA}.users {where}
+            ORDER BY removed_at DESC
+        """)
+        rows = cur.fetchall()
+        return ok({"users": [{
+            "id": r[0], "email": r[1] or "", "name": r[2],
+            "role": r[3], "removed_at": str(r[4])[:19],
+            "approved": r[5], "rejected": r[6], "discount": r[7] or 0,
+            "created_at": str(r[8])[:19],
+            "subscription_start": str(r[9])[:19] if r[9] else None,
+            "subscription_end":   str(r[10])[:19] if r[10] else None,
+        } for r in rows]})
 
     # ── Мастер: статистика дашборда ───────────────────────────────────────────
     if action == "admin-stats" and method == "GET":

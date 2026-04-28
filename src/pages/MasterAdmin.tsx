@@ -155,7 +155,7 @@ export default function MasterAdmin() {
 
   const TABS: { id: MasterTab; label: string; icon: string; badge?: number }[] = [
     { id: "dashboard",     label: "Дашборд",         icon: "LayoutDashboard" },
-    { id: "professionals", label: "Профессионалы",   icon: "Users2", badge: pendingCount },
+    { id: "professionals", label: "Одобрение",        icon: "Users2", badge: pendingCount },
     { id: "all",           label: "Все пользователи", icon: "Users" },
   ];
 

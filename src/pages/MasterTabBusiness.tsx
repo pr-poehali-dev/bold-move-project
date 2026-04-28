@@ -3,10 +3,12 @@ import Icon from "@/components/ui/icon";
 import RoleBadge from "./MasterRoleBadge";
 import type { BusinessUser } from "./masterAdminTypes";
 import { subStatus, fmtDate, daysLeft } from "./masterAdminTypes";
+import MasterTabRemoved from "./MasterTabRemoved";
 import func2url from "@/../backend/func2url.json";
 
 const AUTH_URL = (func2url as Record<string, string>)["auth"];
 
+type BizView   = "active" | "removed";
 type BizFilter = "all" | "approved" | "pending" | "rejected";
 
 const FILTERS: { id: BizFilter; label: string }[] = [
@@ -61,6 +63,7 @@ interface Props {
 }
 
 export default function MasterTabBusiness({ users, loading, onReload }: Props) {
+  const [view,       setView]       = useState<BizView>("active");
   const [filter,     setFilter]     = useState<BizFilter>("all");
   const [actionId,   setActionId]   = useState<number | null>(null);
   const [subUserId,  setSubUserId]  = useState<number | null>(null);
@@ -126,6 +129,27 @@ export default function MasterTabBusiness({ users, loading, onReload }: Props) {
 
   return (
     <div className="p-5 max-w-4xl mx-auto">
+      {/* Переключатель активные / удалённые */}
+      <div className="flex gap-2 mb-5">
+        <button onClick={() => setView("active")}
+          className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition border"
+          style={view === "active"
+            ? { background: "rgba(255,255,255,0.09)", color: "#fff", borderColor: "rgba(255,255,255,0.2)" }
+            : { background: "transparent", color: "rgba(255,255,255,0.3)", borderColor: "rgba(255,255,255,0.07)" }}>
+          <Icon name="Users" size={12} /> Активные
+        </button>
+        <button onClick={() => setView("removed")}
+          className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition border"
+          style={view === "removed"
+            ? { background: "rgba(239,68,68,0.12)", color: "#ef4444", borderColor: "rgba(239,68,68,0.3)" }
+            : { background: "transparent", color: "rgba(255,255,255,0.3)", borderColor: "rgba(255,255,255,0.07)" }}>
+          <Icon name="Trash2" size={12} /> Удалённые
+        </button>
+      </div>
+
+      {view === "removed" ? (
+        <MasterTabRemoved group="business" />
+      ) : (<>
       {/* Фильтры */}
       <div className="flex items-center gap-4 mb-5">
         <FilterTabs tabs={FILTERS} active={filter} counts={counts} onSelect={setFilter} />
@@ -301,6 +325,7 @@ export default function MasterTabBusiness({ users, loading, onReload }: Props) {
           </div>
         </div>
       )}
+      </>)}
     </div>
   );
 }
