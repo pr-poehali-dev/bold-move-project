@@ -181,6 +181,38 @@ def handler(event: dict, context) -> dict:
         conn.commit()
         return ok({"ok": True})
 
+    # ── Восстановление пароля ────────────────────────────────────────────────
+    if action == "reset-password" and method == "POST":
+        email = (body.get("email") or "").strip().lower()
+        if not email:
+            return err("Укажите Email")
+        cur.execute(f"SELECT id, name FROM {SCHEMA}.users WHERE email=%s", (email,))
+        row = cur.fetchone()
+        if not row:
+            return ok({"ok": True})  # не раскрываем что email не найден
+        uid, name = row
+
+        new_password = secrets.token_urlsafe(8)
+        cur.execute(f"UPDATE {SCHEMA}.users SET password_hash=%s, updated_at=NOW() WHERE id=%s",
+                    (hash_password(new_password), uid))
+        cur.execute(f"UPDATE {SCHEMA}.user_sessions SET expires_at=NOW() WHERE user_id=%s", (uid,))
+        conn.commit()
+
+        import urllib.request
+        tg_token = os.environ.get("TELEGRAM_BOT_TOKEN", "")
+        tg_chat  = os.environ.get("TELEGRAM_OWNER_CHAT_ID", "")
+        if tg_token and tg_chat:
+            msg = f"🔑 Сброс пароля\nEmail: {email}\nНовый пароль: {new_password}"
+            payload = json.dumps({"chat_id": tg_chat, "text": msg}).encode()
+            req = urllib.request.Request(
+                f"https://api.telegram.org/bot{tg_token}/sendMessage",
+                data=payload, headers={"Content-Type": "application/json"}, method="POST"
+            )
+            try: urllib.request.urlopen(req, timeout=5)
+            except: pass
+
+        return ok({"ok": True, "password": new_password})
+
     # ── Выход ─────────────────────────────────────────────────────────────────
     if action == "logout" and method == "POST":
         if token:
