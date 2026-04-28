@@ -162,6 +162,11 @@ export default function ProfileModal({ onClose }: Props) {
             <Field label="Telegram" value={form.telegram} onChange={v => setForm(f => ({ ...f, telegram: v }))} placeholder="@username" />
           </Section>
 
+          {/* Безопасность */}
+          <Section title="Безопасность" icon="ShieldCheck">
+            <ChangePasswordBlock />
+          </Section>
+
           {error && (
             <div className="rounded-xl px-3.5 py-2.5 text-xs text-red-400 bg-red-500/10 border border-red-500/20">{error}</div>
           )}
@@ -217,6 +222,123 @@ function Field({ label, value, onChange, placeholder, type = "text", readonly = 
         placeholder={placeholder}
         className="flex-1 text-xs bg-transparent text-right placeholder-white/15 focus:outline-none transition"
         style={{ color: readonly ? "rgba(255,255,255,0.3)" : "rgba(255,255,255,0.7)" }}
+      />
+    </div>
+  );
+}
+
+function ChangePasswordBlock() {
+  const { token } = useAuth();
+  const [open,    setOpen]    = useState(false);
+  const [oldPwd,  setOldPwd]  = useState("");
+  const [newPwd,  setNewPwd]  = useState("");
+  const [repPwd,  setRepPwd]  = useState("");
+  const [show,    setShow]    = useState(false);
+  const [busy,    setBusy]    = useState(false);
+  const [done,    setDone]    = useState(false);
+  const [err,     setErr]     = useState("");
+
+  const reset = () => { setOldPwd(""); setNewPwd(""); setRepPwd(""); setErr(""); setDone(false); };
+
+  const submit = async () => {
+    setErr(""); setDone(false);
+    if (!oldPwd || !newPwd || !repPwd) { setErr("Заполните все поля"); return; }
+    if (newPwd.length < 6)              { setErr("Новый пароль минимум 6 символов"); return; }
+    if (newPwd !== repPwd)              { setErr("Новые пароли не совпадают"); return; }
+
+    setBusy(true);
+    try {
+      const res = await fetch(`${AUTH_URL}?action=change-password`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-Authorization": `Bearer ${token}` },
+        body: JSON.stringify({ old_password: oldPwd, new_password: newPwd }),
+      });
+      const d = await res.json();
+      if (!res.ok || d.error) throw new Error(d.error || "Ошибка");
+      setDone(true);
+      setTimeout(() => { reset(); setOpen(false); }, 1800);
+    } catch (e: unknown) {
+      setErr(e instanceof Error ? e.message : "Ошибка");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  if (!open) {
+    return (
+      <button onClick={() => setOpen(true)}
+        className="w-full flex items-center justify-between px-4 py-3 transition hover:bg-white/[0.03]">
+        <div className="flex items-center gap-2.5">
+          <Icon name="KeyRound" size={13} style={{ color: "#a78bfa" }} />
+          <span className="text-xs font-semibold text-white/75">Сменить пароль</span>
+        </div>
+        <Icon name="ChevronRight" size={13} style={{ color: "rgba(255,255,255,0.3)" }} />
+      </button>
+    );
+  }
+
+  return (
+    <div className="px-4 py-3 space-y-2.5">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Icon name="KeyRound" size={13} style={{ color: "#a78bfa" }} />
+          <span className="text-xs font-bold text-white">Смена пароля</span>
+        </div>
+        <button onClick={() => setShow(s => !s)}
+          className="text-[10px] text-white/40 hover:text-white/70 flex items-center gap-1 transition">
+          <Icon name={show ? "EyeOff" : "Eye"} size={11} />
+          {show ? "Скрыть" : "Показать"}
+        </button>
+      </div>
+
+      <PwdField label="Текущий пароль" value={oldPwd} onChange={setOldPwd} show={show} />
+      <PwdField label="Новый пароль"   value={newPwd} onChange={setNewPwd} show={show} />
+      <PwdField label="Повторите"      value={repPwd} onChange={setRepPwd} show={show} />
+
+      {err && (
+        <div className="rounded-lg px-3 py-2 text-[11px] text-red-300 bg-red-500/10 border border-red-500/20">
+          {err}
+        </div>
+      )}
+      {done && (
+        <div className="rounded-lg px-3 py-2 text-[11px] text-green-300 bg-green-500/10 border border-green-500/20 flex items-center gap-1.5">
+          <Icon name="CheckCircle2" size={12} /> Пароль изменён
+        </div>
+      )}
+
+      <div className="flex gap-2 pt-1">
+        <button onClick={submit} disabled={busy}
+          className="flex-1 py-2 rounded-lg text-[11px] font-bold text-white transition disabled:opacity-50"
+          style={{ background: "#a78bfa" }}>
+          {busy ? "Сохранение..." : "Изменить пароль"}
+        </button>
+        <button onClick={() => { reset(); setOpen(false); }}
+          className="px-3 py-2 rounded-lg text-[11px] text-white/50 transition"
+          style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)" }}>
+          Отмена
+        </button>
+      </div>
+
+      <div className="text-[10px] text-white/30 leading-snug pt-1">
+        После смены пароля все остальные устройства будут разлогинены.
+      </div>
+    </div>
+  );
+}
+
+function PwdField({ label, value, onChange, show }: {
+  label: string; value: string; onChange: (v: string) => void; show: boolean;
+}) {
+  return (
+    <div className="flex items-center px-3 py-2 rounded-lg"
+      style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
+      <span className="text-[10px] text-white/35 w-24 flex-shrink-0">{label}</span>
+      <input
+        type={show ? "text" : "password"}
+        value={value}
+        onChange={e => onChange(e.target.value)}
+        placeholder="••••••••"
+        className="flex-1 text-xs bg-transparent placeholder-white/15 focus:outline-none transition text-right text-white/80"
       />
     </div>
   );

@@ -265,6 +265,47 @@ def handler(event: dict, context) -> dict:
 
         return ok({"ok": True, "password": new_password})
 
+    # ── Смена пароля ──────────────────────────────────────────────────────────
+    if action == "change-password" and method == "POST":
+        if not token:
+            return err("Требуется авторизация", 401)
+
+        old_password = body.get("old_password") or ""
+        new_password = body.get("new_password") or ""
+
+        if not old_password or not new_password:
+            return err("Укажите текущий и новый пароль")
+        if len(new_password) < 6:
+            return err("Новый пароль должен быть не короче 6 символов")
+        if old_password == new_password:
+            return err("Новый пароль совпадает с текущим")
+
+        cur.execute(f"""
+            SELECT u.id, u.password_hash
+            FROM {SCHEMA}.user_sessions s
+            JOIN {SCHEMA}.users u ON u.id = s.user_id
+            WHERE s.token=%s AND s.expires_at > NOW()
+        """, (token,))
+        row = cur.fetchone()
+        if not row:
+            return err("Токен недействителен", 401)
+        uid, current_hash = row
+
+        if current_hash != hash_password(old_password):
+            return err("Текущий пароль введён неверно")
+
+        cur.execute(
+            f"UPDATE {SCHEMA}.users SET password_hash=%s, updated_at=NOW() WHERE id=%s",
+            (hash_password(new_password), uid)
+        )
+        # Все остальные сессии — деактивируем (текущая остаётся живой)
+        cur.execute(
+            f"UPDATE {SCHEMA}.user_sessions SET expires_at=NOW() WHERE user_id=%s AND token<>%s",
+            (uid, token)
+        )
+        conn.commit()
+        return ok({"ok": True})
+
     # ── Выход ─────────────────────────────────────────────────────────────────
     if action == "logout" and method == "POST":
         if token:

@@ -8,11 +8,13 @@ import TabQuestions from "./admin/TabQuestions";
 import TabCorrections from "./admin/TabCorrections";
 import CrmPanel from "./admin/crm/CrmPanel";
 import { setCrmToken } from "./admin/crm/crmApi";
-import func2url from "@/../backend/func2url.json";
+import { useAuth } from "@/context/AuthContext";
+import AuthModal from "@/components/AuthModal";
 import type { AgentSubTab } from "./admin/types";
 import type { Theme } from "./admin/crm/themeContext";
 
-const AUTH_URL = (func2url as Record<string, string>)["auth"];
+// Роли с доступом к /company
+const ALLOWED_ROLES = ["installer", "company", "manager"];
 
 type MainTab = "crm" | "agent";
 
@@ -25,41 +27,36 @@ const AGENT_TABS: { id: AgentSubTab; label: string; icon: string }[] = [
   { id: "corrections", label: "Обучение",        icon: "GraduationCap" },
 ];
 
-async function initCrmToken(): Promise<void> {
-  // Всегда получаем свежий токен через логин
-  try {
-    const res  = await fetch(`${AUTH_URL}?action=login`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email: "19.jeka.94@gmail.com", password: "Sdauxbasstre228" }),
-    });
-    const data = await res.json();
-    if (data.token) {
-      localStorage.setItem("mp_user_token", data.token);
-      setCrmToken(data.token);
-    }
-  } catch { /* продолжаем без токена */ }
-}
-
 export default function AdminPanel() {
-  const [token,    setToken]    = useState(() => sessionStorage.getItem("admin_token") || "");
-  const [crmReady, setCrmReady] = useState(false);
+  const { user, token: authToken, loading, logout: authLogout } = useAuth();
+
+  const [crmReady,  setCrmReady]  = useState(false);
+  const [showLogin, setShowLogin] = useState(false);
   const initialOrderId = new URLSearchParams(window.location.search).get("order")
     ? Number(new URLSearchParams(window.location.search).get("order"))
     : null;
-  const [password, setPassword] = useState("");
-  const [error,    setError]    = useState("");
   const [mainTab,  setMainTab]  = useState<MainTab>("crm");
   const [agentTab, setAgentTab] = useState<AgentSubTab>("prices");
   const [newItemHint, setNewItemHint] = useState<string | null>(null);
   const [theme, setTheme] = useState<Theme>("dark");
   const toggleTheme = () => setTheme(t => t === "dark" ? "light" : "dark");
 
-  // При наличии сохранённого admin_token — восстанавливаем CRM токен ДО рендера CrmPanel
+  // Признак: текущий пользователь имеет доступ к /company
+  const hasAccess =
+    !!user &&
+    !!authToken &&
+    user.approved &&
+    (user.is_master || ALLOWED_ROLES.includes(user.role));
+
+  // Прокидываем токен залогиненного пользователя в CRM
   useEffect(() => {
-    if (!sessionStorage.getItem("admin_token")) return;
-    initCrmToken().finally(() => setCrmReady(true));
-  }, []);
+    if (hasAccess && authToken) {
+      setCrmToken(authToken);
+      setCrmReady(true);
+    } else {
+      setCrmReady(false);
+    }
+  }, [hasAccess, authToken]);
 
   const handleItemAdded = (name: string) => {
     setNewItemHint(name);
@@ -68,63 +65,104 @@ export default function AdminPanel() {
     setTimeout(() => setNewItemHint(null), 6000);
   };
 
-  const login = async () => {
-    setError("");
-    if (password === "Sdauxbasstre228") {
-      sessionStorage.setItem("admin_token", password);
-      await initCrmToken();
-      setToken(password);
-      setCrmReady(true);
-    } else {
-      setError("Неверный пароль");
-    }
-  };
-
   const logout = () => {
-    sessionStorage.removeItem("admin_token");
-    localStorage.removeItem("mp_user_token");
     setCrmToken(null);
-    setToken("");
-    setCrmReady(false);
+    authLogout();
   };
 
-  if (!token) {
+  // Загрузка профиля
+  if (loading) {
     return (
-      <div className="min-h-screen bg-[#0b0b11] flex items-center justify-center px-4">
-        <div className="w-full max-w-sm">
-          {/* Логотип */}
-          <div className="flex items-center justify-center gap-3 mb-8">
-            <div className="w-12 h-12 rounded-2xl bg-violet-600/20 flex items-center justify-center">
-              <Icon name="ShieldCheck" size={24} className="text-violet-400" />
-            </div>
-            <div>
-              <div className="text-white font-black text-xl tracking-tight">MOS<span className="text-violet-400">POTOLKI</span></div>
-              <div className="text-white/30 text-xs">Панель администратора</div>
-            </div>
-          </div>
+      <div className="min-h-screen bg-[#0b0b11] flex items-center justify-center">
+        <div className="w-6 h-6 border-2 border-white/15 border-t-violet-400 rounded-full animate-spin" />
+      </div>
+    );
+  }
 
-          <div className="rounded-2xl p-6 flex flex-col gap-4"
-            style={{ background: "#0e0e1c", border: "1px solid rgba(255,255,255,0.08)" }}>
-            <div className="text-sm font-semibold text-white/60 text-center mb-1">Введите пароль для входа</div>
-            <input
-              type="password" placeholder="Пароль" value={password}
-              onChange={e => setPassword(e.target.value)}
-              onKeyDown={e => e.key === "Enter" && login()}
-              autoFocus
-              className="rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-violet-500/50 transition"
-              style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.09)" }}
-            />
-            {error && (
-              <div className="rounded-xl px-3.5 py-2.5 text-xs text-red-400 bg-red-500/10 border border-red-500/20">{error}</div>
-            )}
-            <button onClick={login}
-              className="w-full py-3 rounded-xl text-sm font-bold text-white transition"
-              style={{ background: "#7c3aed" }}>
-              Войти
-            </button>
+  // Нет доступа — экран входа/отказа
+  if (!hasAccess) {
+    const isWrongRole = !!user && !user.is_master && !ALLOWED_ROLES.includes(user.role);
+    const isPending   = !!user && !user.approved;
+
+    return (
+      <>
+        <div className="min-h-screen bg-[#0b0b11] flex items-center justify-center px-4">
+          <div className="w-full max-w-sm">
+            <div className="flex items-center justify-center gap-3 mb-8">
+              <div className="w-12 h-12 rounded-2xl bg-violet-600/20 flex items-center justify-center">
+                <Icon name="ShieldCheck" size={24} className="text-violet-400" />
+              </div>
+              <div>
+                <div className="text-white font-black text-xl tracking-tight">MOS<span className="text-violet-400">POTOLKI</span></div>
+                <div className="text-white/30 text-xs">Панель администратора</div>
+              </div>
+            </div>
+
+            <div className="rounded-2xl p-6 flex flex-col gap-4"
+              style={{ background: "#0e0e1c", border: "1px solid rgba(255,255,255,0.08)" }}>
+
+              {!user && (
+                <>
+                  <div className="text-sm font-semibold text-white/70 text-center">
+                    Войдите в свой аккаунт
+                  </div>
+                  <div className="text-[11px] text-white/40 text-center -mt-2 leading-snug">
+                    Доступ к панели открыт для монтажников, компаний и менеджеров
+                  </div>
+                  <button onClick={() => setShowLogin(true)}
+                    className="w-full py-3 rounded-xl text-sm font-bold text-white transition"
+                    style={{ background: "#7c3aed" }}>
+                    Войти
+                  </button>
+                </>
+              )}
+
+              {isPending && (
+                <>
+                  <div className="rounded-xl px-3.5 py-3 text-xs text-amber-300/85 bg-amber-500/10 border border-amber-500/20 flex items-start gap-2">
+                    <Icon name="Clock" size={14} className="mt-0.5 flex-shrink-0" />
+                    <div>
+                      <div className="font-bold mb-0.5">Заявка на проверке</div>
+                      <div className="text-amber-300/65">Доступ откроется после одобрения. Обычно 1–24 часа.</div>
+                    </div>
+                  </div>
+                  <button onClick={logout}
+                    className="w-full py-2.5 rounded-xl text-xs font-medium transition"
+                    style={{ background: "rgba(255,255,255,0.05)", color: "rgba(255,255,255,0.5)", border: "1px solid rgba(255,255,255,0.07)" }}>
+                    Выйти
+                  </button>
+                </>
+              )}
+
+              {isWrongRole && !isPending && (
+                <>
+                  <div className="rounded-xl px-3.5 py-3 text-xs text-red-300/85 bg-red-500/10 border border-red-500/20 flex items-start gap-2">
+                    <Icon name="ShieldX" size={14} className="mt-0.5 flex-shrink-0" />
+                    <div>
+                      <div className="font-bold mb-0.5">Нет доступа к панели</div>
+                      <div className="text-red-300/65">Доступ открыт только для ролей: монтажник, компания, менеджер. Сменить роль можно в профиле.</div>
+                    </div>
+                  </div>
+                  <button onClick={logout}
+                    className="w-full py-2.5 rounded-xl text-xs font-medium transition"
+                    style={{ background: "rgba(255,255,255,0.05)", color: "rgba(255,255,255,0.5)", border: "1px solid rgba(255,255,255,0.07)" }}>
+                    Выйти
+                  </button>
+                </>
+              )}
+            </div>
           </div>
         </div>
-      </div>
+
+        {showLogin && (
+          <AuthModal
+            onClose={() => setShowLogin(false)}
+            onSuccess={() => setShowLogin(false)}
+            onPending={() => setShowLogin(false)}
+            defaultTab="login"
+          />
+        )}
+      </>
     );
   }
 
