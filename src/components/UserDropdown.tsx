@@ -13,10 +13,9 @@ const ROLE_LABELS: Record<string, string> = {
 
 interface Props {
   onShowProfile: () => void;
-  onShowPayment: () => void;
 }
 
-export default function UserDropdown({ onShowProfile, onShowPayment }: Props) {
+export default function UserDropdown({ onShowProfile }: Props) {
   const { user, logout } = useAuth();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);

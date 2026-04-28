@@ -5,7 +5,7 @@ import AuthModal from "@/components/AuthModal";
 import UserDropdown from "@/components/UserDropdown";
 import ProfileModal from "@/components/ProfileModal";
 import PendingApprovalModal from "@/components/PendingApprovalModal";
-import PaymentModal from "@/components/PaymentModal";
+
 import { isEstimate } from "./EstimateTable";
 import { Panel, Msg, GREETING, AI_URL, localAnswer } from "./chatConfig";
 import ChatUI from "./ChatUI";
@@ -27,7 +27,7 @@ export default function Index() {
   const [showAuthModal,    setShowAuthModal]    = useState(false);
   const [pendingRole,      setPendingRole]      = useState<string | null>(null);
   const [showProfileModal, setShowProfileModal] = useState(false);
-  const [showPaymentModal, setShowPaymentModal] = useState(false);
+
   const [panel, setPanel]       = useState<Panel>("none");
   const [messages, setMessages] = useState<Msg[]>([GREETING]);
   const [input, setInput]       = useState("");
@@ -161,7 +161,6 @@ export default function Index() {
           {user ? (
             <UserDropdown
               onShowProfile={() => setShowProfileModal(true)}
-              onShowPayment={() => setShowPaymentModal(true)}
             />
           ) : (
             <button onClick={() => setShowAuthModal(true)}
@@ -179,7 +178,7 @@ export default function Index() {
       />}
       {pendingRole && <PendingApprovalModal role={pendingRole} onClose={() => setPendingRole(null)} />}
       {showProfileModal && <ProfileModal onClose={() => setShowProfileModal(false)} />}
-      {showPaymentModal && <PaymentModal onClose={() => setShowPaymentModal(false)} />}
+
 
       {/* Body */}
       <div className="flex-1 min-h-0 flex flex-col relative">
