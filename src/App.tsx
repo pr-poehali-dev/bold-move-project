@@ -10,6 +10,7 @@ const Index       = lazy(() => import("./pages/Index"));
 const AdminPanel  = lazy(() => import("./pages/AdminPanel"));
 const MasterAdmin = lazy(() => import("./pages/MasterAdmin"));
 const MyOrders    = lazy(() => import("./pages/MyOrders"));
+const Pricing     = lazy(() => import("./pages/Pricing"));
 const NotFound    = lazy(() => import("./pages/NotFound"));
 
 const queryClient = new QueryClient();
@@ -27,6 +28,7 @@ const App = () => (
               <Route path="/company"    element={<AdminPanel />} />
               <Route path="/master"    element={<MasterAdmin />} />
               <Route path="/my-orders" element={<MyOrders />} />
+              <Route path="/pricing"   element={<Pricing />} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
             </Routes>

@@ -75,14 +75,19 @@ export default function UserDropdown({ onShowProfile, onShowPayment }: Props) {
             </div>
             {/* Баланс смет для монтажников/компаний */}
             {["installer","company"].includes(user.role) && (
-              <div className="mt-2.5 flex items-center justify-between px-3 py-2 rounded-xl"
+              <button
+                onClick={() => { setOpen(false); window.location.href = "/pricing"; }}
+                className="mt-2.5 w-full flex items-center justify-between px-3 py-2 rounded-xl transition hover:opacity-80"
                 style={{ background: (user.estimates_balance ?? 0) > 0 ? "rgba(16,185,129,0.07)" : "rgba(239,68,68,0.07)" }}>
                 <span className="text-[10px] text-white/40">Смет на балансе</span>
-                <span className="text-sm font-black"
-                  style={{ color: (user.estimates_balance ?? 0) > 0 ? "#10b981" : "#ef4444" }}>
-                  {user.estimates_balance ?? 0}
+                <span className="flex items-center gap-1.5">
+                  <span className="text-sm font-black"
+                    style={{ color: (user.estimates_balance ?? 0) > 0 ? "#10b981" : "#ef4444" }}>
+                    {user.estimates_balance ?? 0}
+                  </span>
+                  <Icon name="Plus" size={11} style={{ color: "rgba(255,255,255,0.3)" }} />
                 </span>
-              </div>
+              </button>
             )}
           </div>
 
@@ -97,6 +102,10 @@ export default function UserDropdown({ onShowProfile, onShowPayment }: Props) {
             )}
             <MenuItem icon="User" label="Профиль"
               onClick={() => { setOpen(false); onShowProfile(); }} />
+            {["installer","company"].includes(user.role) && (
+              <MenuItem icon="Sparkles" label="Тарифы и пакеты"
+                onClick={() => { setOpen(false); window.location.href = "/pricing"; }} />
+            )}
             <MenuItem icon="CreditCard" label="Оплата"
               onClick={() => { setOpen(false); onShowPayment(); }} />
             <a href="https://t.me/JoniKras" target="_blank" rel="noreferrer"
