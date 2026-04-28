@@ -34,11 +34,18 @@ const ROLE_FILTERS: { id: RoleFilter; label: string }[] = [
 ];
 
 const SUB_FILTERS: { id: SubFilter; label: string; color: string }[] = [
-  { id: "all",      label: "Все",          color: "#94a3b8" },
-  { id: "active",   label: "Активна",      color: "#10b981" },
+  { id: "all",      label: "Все",           color: "#94a3b8" },
+  { id: "active",   label: "Активна",       color: "#10b981" },
   { id: "expiring", label: "Скоро кончится", color: "#f59e0b" },
-  { id: "expired",  label: "Истекла",      color: "#ef4444" },
-  { id: "none",     label: "Нет подписки", color: "#64748b" },
+  { id: "expired",  label: "Истекла",       color: "#ef4444" },
+  { id: "none",     label: "Нет подписки",  color: "#64748b" },
+];
+
+const EXTEND_OPTIONS = [
+  { label: "7 дн.",    days: 7   },
+  { label: "30 дн.",   days: 30  },
+  { label: "90 дн.",   days: 90  },
+  { label: "365 дн.",  days: 365 },
 ];
 
 export default function MasterTabAllUsers({
@@ -50,6 +57,8 @@ export default function MasterTabAllUsers({
   const [deletingId,  setDeletingId]  = useState<number | null>(null);
   const [confirmDel,  setConfirmDel]  = useState<AppUser | null>(null);
   const [sortBy,      setSortBy]      = useState<"created" | "sub_end">("created");
+  const [subUserId,   setSubUserId]   = useState<number | null>(null);
+  const [subLoading,  setSubLoading]  = useState(false);
 
   const filtered = users
     .filter(u => {
@@ -83,206 +92,308 @@ export default function MasterTabAllUsers({
     onReload();
   };
 
+  const doExtend = async (userId: number, days: number) => {
+    setSubLoading(true);
+    await fetch(`${AUTH_URL}?action=extend-subscription`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ user_id: userId, days }),
+    });
+    setSubLoading(false);
+    setSubUserId(null);
+    onReload();
+  };
+
+  const subBadge = (u: AppUser) => {
+    const ss = subStatus(u);
+    if (ss === "active")    return { label: `${daysLeft(u.subscription_end)} дн.`, bg: "#10b98120", color: "#10b981" };
+    if (ss === "expiring")  return { label: `⚠ ${daysLeft(u.subscription_end)} дн.`, bg: "#f59e0b20", color: "#f59e0b" };
+    if (ss === "expired")   return { label: "Истекла", bg: "#ef444420", color: "#ef4444" };
+    return null;
+  };
+
   return (
-    <div className="flex h-[calc(100vh-120px)]">
+    <div className="flex h-[calc(100vh-112px)]">
 
-      {/* Левая панель */}
-      <div className="w-80 flex-shrink-0 border-r border-white/[0.06] flex flex-col">
-        <div className="p-4 space-y-3">
-          <div className="flex items-center justify-between">
-            <span className="text-sm font-bold text-white">Пользователи</span>
-            <div className="flex items-center gap-2">
-              <span className="text-xs px-2 py-0.5 rounded-lg font-bold"
-                style={{ background: "#10b98120", color: "#10b981" }}>{filtered.length}</span>
-              <button onClick={() => setSortBy(s => s === "created" ? "sub_end" : "created")}
-                className="text-[10px] px-2 py-1 rounded-lg transition flex items-center gap-1"
-                style={{ background: "rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.4)" }}>
-                <Icon name="ArrowUpDown" size={10} />
-                {sortBy === "created" ? "по дате" : "по подписке"}
-              </button>
+      {/* ─── Левая колонка: фильтры + таблица ─── */}
+      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+
+        {/* Панель фильтров */}
+        <div className="px-5 py-3 border-b border-white/[0.06] space-y-2.5 flex-shrink-0"
+          style={{ background: "#07070f" }}>
+
+          {/* Поиск + сортировка */}
+          <div className="flex gap-2">
+            <div className="relative flex-1">
+              <Icon name="Search" size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/20" />
+              <input value={search} onChange={e => onSearch(e.target.value)}
+                placeholder="Поиск по имени или email..."
+                className="w-full rounded-xl pl-9 pr-3 py-2 text-xs focus:outline-none"
+                style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", color: "#fff" }} />
             </div>
+            <button onClick={() => setSortBy(s => s === "created" ? "sub_end" : "created")}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-[10px] font-semibold transition flex-shrink-0"
+              style={{ background: "rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.4)", border: "1px solid rgba(255,255,255,0.08)" }}>
+              <Icon name="ArrowUpDown" size={11} />
+              {sortBy === "created" ? "по дате" : "по подписке"}
+            </button>
           </div>
 
-          {/* Поиск */}
-          <div className="relative">
-            <Icon name="Search" size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/20" />
-            <input value={search} onChange={e => onSearch(e.target.value)}
-              placeholder="Поиск по имени / email..."
-              className="w-full rounded-xl pl-9 pr-3 py-2 text-xs focus:outline-none"
-              style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", color: "#fff" }} />
-          </div>
-
-          {/* Фильтр по роли */}
-          <div className="flex flex-wrap gap-1">
-            {ROLE_FILTERS.map(f => (
-              <button key={f.id} onClick={() => setRoleFilter(f.id)}
-                className="px-2 py-1 rounded-lg text-[10px] font-semibold transition"
-                style={roleFilter === f.id
-                  ? { background: "#10b981", color: "#fff" }
-                  : { background: "rgba(255,255,255,0.05)", color: "rgba(255,255,255,0.4)" }}>
-                {f.label}
-              </button>
-            ))}
-          </div>
-
-          {/* Фильтр по подписке */}
-          <div className="flex flex-wrap gap-1">
-            {SUB_FILTERS.map(f => (
-              <button key={f.id} onClick={() => setSubFilter(f.id)}
-                className="px-2 py-1 rounded-lg text-[10px] font-semibold transition"
-                style={subFilter === f.id
-                  ? { background: f.color + "30", color: f.color, border: `1px solid ${f.color}60` }
-                  : { background: "rgba(255,255,255,0.03)", color: "rgba(255,255,255,0.3)", border: "1px solid rgba(255,255,255,0.06)" }}>
-                {f.label}
-              </button>
-            ))}
+          {/* Роль + подписка в одну строку */}
+          <div className="flex gap-4 flex-wrap items-center">
+            <div className="flex gap-1 flex-wrap">
+              {ROLE_FILTERS.map(f => (
+                <button key={f.id} onClick={() => setRoleFilter(f.id)}
+                  className="px-2.5 py-1 rounded-lg text-[10px] font-semibold transition"
+                  style={roleFilter === f.id
+                    ? { background: "#10b981", color: "#fff" }
+                    : { background: "rgba(255,255,255,0.05)", color: "rgba(255,255,255,0.4)" }}>
+                  {f.label}
+                </button>
+              ))}
+            </div>
+            <div className="w-px h-4 bg-white/10 flex-shrink-0" />
+            <div className="flex gap-1 flex-wrap">
+              {SUB_FILTERS.map(f => (
+                <button key={f.id} onClick={() => setSubFilter(f.id)}
+                  className="px-2.5 py-1 rounded-lg text-[10px] font-semibold transition"
+                  style={subFilter === f.id
+                    ? { background: f.color + "30", color: f.color, border: `1px solid ${f.color}50` }
+                    : { background: "rgba(255,255,255,0.03)", color: "rgba(255,255,255,0.3)", border: "1px solid rgba(255,255,255,0.05)" }}>
+                  {f.label}
+                </button>
+              ))}
+            </div>
+            <span className="text-[10px] text-white/25 ml-auto">{filtered.length} польз.</span>
           </div>
         </div>
 
-        {/* Список */}
+        {/* Таблица */}
         <div className="flex-1 overflow-y-auto">
           {loading ? (
-            <div className="flex items-center justify-center py-12">
-              <div className="w-5 h-5 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" />
+            <div className="flex items-center justify-center py-16">
+              <div className="w-6 h-6 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" />
             </div>
           ) : filtered.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-16 gap-2" style={{ color: "rgba(255,255,255,0.15)" }}>
-              <Icon name="SearchX" size={28} />
-              <span className="text-xs">Никого не найдено</span>
+            <div className="flex flex-col items-center justify-center py-20 gap-3" style={{ color: "rgba(255,255,255,0.15)" }}>
+              <Icon name="SearchX" size={36} />
+              <span className="text-sm">Никого не найдено</span>
             </div>
-          ) : filtered.map(u => {
-            const ss = subStatus(u);
-            const subColor = ss === "active" ? "#10b981" : ss === "expiring" ? "#f59e0b" : ss === "expired" ? "#ef4444" : undefined;
-            return (
-              <button key={u.id} onClick={() => onSelectUser(u)}
-                className="w-full flex items-start gap-3 px-4 py-3 text-left transition border-b border-white/[0.04] hover:bg-white/[0.03]"
-                style={selectedUser?.id === u.id ? { background: "rgba(16,185,129,0.08)" } : {}}>
-                <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0"
-                  style={{ background: "#10b98120", color: "#10b981" }}>
-                  {(u.name || u.email || "?")[0].toUpperCase()}
-                </div>
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-1.5 flex-wrap">
-                    <span className="text-xs font-semibold truncate text-white/90">{u.name || "—"}</span>
-                    <RoleBadge role={u.role} />
-                  </div>
-                  <div className="text-[10px] truncate text-white/30">{u.email}</div>
-                  <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                    {subColor && (
-                      <span className="text-[9px] font-bold" style={{ color: subColor }}>
-                        {ss === "active" ? "✓ подписка" : ss === "expiring" ? `⚠ ${daysLeft(u.subscription_end)}д` : "✗ истекла"}
-                      </span>
-                    )}
-                    {u.rejected && <span className="text-[9px] text-red-400">отклонён</span>}
-                    {!u.approved && !u.rejected && ["installer","company"].includes(u.role) && (
-                      <span className="text-[9px] text-amber-400">ожидает</span>
-                    )}
-                    {u.estimates_count > 0 && (
-                      <span className="text-[9px] px-1 py-0.5 rounded font-semibold"
-                        style={{ background: "#7c3aed18", color: "#a78bfa" }}>
-                        {u.estimates_count} смет
-                      </span>
-                    )}
-                  </div>
-                </div>
-              </button>
-            );
-          })}
+          ) : (
+            <>
+              {/* Шапка таблицы */}
+              <div className="grid items-center px-5 py-2 border-b border-white/[0.05] sticky top-0 z-10"
+                style={{ gridTemplateColumns: "2fr 1fr 1fr 80px 90px", background: "#07070f" }}>
+                {["Пользователь", "Роль", "Подписка", "Смет", ""].map(h => (
+                  <div key={h} className="text-[10px] font-bold text-white/25 uppercase tracking-wider">{h}</div>
+                ))}
+              </div>
+
+              {/* Строки */}
+              <div className="divide-y divide-white/[0.04]">
+                {filtered.map(u => {
+                  const badge = subBadge(u);
+                  const isSelected = selectedUser?.id === u.id;
+                  return (
+                    <div key={u.id}
+                      onClick={() => onSelectUser(u)}
+                      className="grid items-center px-5 py-3.5 cursor-pointer transition hover:bg-white/[0.03]"
+                      style={{
+                        gridTemplateColumns: "2fr 1fr 1fr 80px 90px",
+                        background: isSelected ? "rgba(16,185,129,0.07)" : undefined,
+                        borderLeft: isSelected ? "3px solid #10b981" : "3px solid transparent",
+                      }}>
+
+                      {/* Пользователь */}
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0"
+                          style={{
+                            background: (ROLE_LABELS[u.role]?.color ?? "#94a3b8") + "20",
+                            color: ROLE_LABELS[u.role]?.color ?? "#94a3b8",
+                          }}>
+                          {(u.name || u.email || "?")[0].toUpperCase()}
+                        </div>
+                        <div className="min-w-0">
+                          <div className="text-xs font-semibold text-white/90 truncate">{u.name || "—"}</div>
+                          <div className="text-[10px] text-white/30 truncate">{u.email}</div>
+                        </div>
+                      </div>
+
+                      {/* Роль */}
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <RoleBadge role={u.role} />
+                        {u.rejected && <span className="text-[9px] px-1.5 py-0.5 rounded font-bold bg-red-500/20 text-red-400">откл.</span>}
+                        {!u.approved && !u.rejected && ["installer","company"].includes(u.role) && (
+                          <span className="text-[9px] px-1.5 py-0.5 rounded font-bold bg-amber-500/15 text-amber-400">ожидает</span>
+                        )}
+                      </div>
+
+                      {/* Подписка */}
+                      <div>
+                        {badge ? (
+                          <span className="text-[10px] px-2 py-0.5 rounded-lg font-bold"
+                            style={{ background: badge.bg, color: badge.color }}>
+                            {badge.label}
+                          </span>
+                        ) : (
+                          <span className="text-[10px] text-white/20">—</span>
+                        )}
+                      </div>
+
+                      {/* Смет */}
+                      <div>
+                        {u.estimates_count > 0 ? (
+                          <span className="text-xs font-bold" style={{ color: "#10b981" }}>{u.estimates_count}</span>
+                        ) : (
+                          <span className="text-[10px] text-white/20">0</span>
+                        )}
+                      </div>
+
+                      {/* Стрелка */}
+                      <div className="flex justify-end">
+                        <Icon name="ChevronRight" size={14}
+                          style={{ color: isSelected ? "#10b981" : "rgba(255,255,255,0.15)" }} />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </>
+          )}
         </div>
       </div>
 
-      {/* Правая: детали */}
-      <div className="flex-1 overflow-y-auto p-6">
+      {/* ─── Правая панель: профиль ─── */}
+      <div className="w-[340px] flex-shrink-0 border-l border-white/[0.07] flex flex-col overflow-hidden"
+        style={{ background: "#080810" }}>
         {!selectedUser ? (
-          <div className="flex flex-col items-center justify-center h-full gap-3" style={{ color: "rgba(255,255,255,0.15)" }}>
-            <Icon name="Users" size={40} className="opacity-30" />
-            <span className="text-sm">Выберите пользователя</span>
+          <div className="flex flex-col items-center justify-center h-full gap-3 p-8"
+            style={{ color: "rgba(255,255,255,0.15)" }}>
+            <Icon name="MousePointerClick" size={32} />
+            <span className="text-xs text-center">Нажмите на пользователя чтобы увидеть детали</span>
           </div>
         ) : (
-          <div className="max-w-2xl space-y-4">
+          <div className="flex-1 overflow-y-auto">
 
-            {/* Профиль */}
-            <div className="p-5 rounded-2xl" style={{ background: "#0e0e1c", border: "1px solid rgba(255,255,255,0.07)" }}>
-              <div className="flex items-center gap-4">
-                <div className="w-14 h-14 rounded-2xl flex items-center justify-center text-lg font-bold flex-shrink-0"
-                  style={{ background: "#10b98120", color: "#10b981" }}>
+            {/* Шапка профиля */}
+            <div className="p-5 border-b border-white/[0.06]">
+              <div className="flex items-start gap-3">
+                <div className="w-12 h-12 rounded-2xl flex items-center justify-center text-base font-bold flex-shrink-0"
+                  style={{
+                    background: (ROLE_LABELS[selectedUser.role]?.color ?? "#94a3b8") + "20",
+                    color: ROLE_LABELS[selectedUser.role]?.color ?? "#94a3b8",
+                  }}>
                   {(selectedUser.name || selectedUser.email || "?")[0].toUpperCase()}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1 flex-wrap">
-                    <span className="text-base font-bold text-white">{selectedUser.name || "—"}</span>
+                  <div className="text-sm font-bold text-white mb-1">{selectedUser.name || "—"}</div>
+                  <div className="flex items-center gap-1.5 flex-wrap mb-1">
                     <RoleBadge role={selectedUser.role} />
                     {selectedUser.rejected && (
-                      <span className="text-[10px] px-2 py-0.5 rounded-lg font-bold bg-red-500/20 text-red-400">✗ отклонён</span>
+                      <span className="text-[9px] px-1.5 py-0.5 rounded-lg font-bold bg-red-500/20 text-red-400">✗ отклонён</span>
                     )}
                     {!selectedUser.approved && !selectedUser.rejected && (
-                      <span className="text-[10px] px-2 py-0.5 rounded-lg font-bold bg-amber-500/20 text-amber-400">ожидает</span>
+                      <span className="text-[9px] px-1.5 py-0.5 rounded-lg font-bold bg-amber-500/15 text-amber-400">ожидает</span>
                     )}
                     {selectedUser.approved && !selectedUser.rejected && (
-                      <span className="text-[10px] px-2 py-0.5 rounded-lg font-bold bg-emerald-500/20 text-emerald-400">✓ одобрен</span>
+                      <span className="text-[9px] px-1.5 py-0.5 rounded-lg font-bold bg-emerald-500/15 text-emerald-400">✓ одобрен</span>
                     )}
                   </div>
-                  <div className="text-xs text-white/40">{selectedUser.email}</div>
-                  {selectedUser.phone && <div className="text-xs text-white/30">{selectedUser.phone}</div>}
-                  {selectedUser.discount > 0 && (
-                    <div className="text-xs text-violet-300 mt-1">Скидка: {selectedUser.discount}%</div>
-                  )}
-                  <div className="text-[10px] text-white/20 mt-1">
-                    ID #{selectedUser.id} · Зарег. {fmtDate(selectedUser.created_at)}
-                  </div>
+                  <div className="text-[10px] text-white/35 truncate">{selectedUser.email}</div>
+                  {selectedUser.phone && <div className="text-[10px] text-white/25">{selectedUser.phone}</div>}
                 </div>
                 <div className="text-right flex-shrink-0">
-                  <div className="text-2xl font-black" style={{ color: "#10b981" }}>{selectedUser.estimates_count}</div>
-                  <div className="text-xs text-white/30">смет</div>
+                  <div className="text-xl font-black" style={{ color: "#10b981" }}>{selectedUser.estimates_count}</div>
+                  <div className="text-[9px] text-white/30">смет</div>
                 </div>
               </div>
+            </div>
 
-              {/* Действия */}
-              <div className="flex gap-2 mt-4 flex-wrap">
-                {!selectedUser.approved && !selectedUser.rejected && (
-                  <button onClick={() => onApprove(selectedUser.id)}
-                    disabled={approvingId === selectedUser.id}
-                    className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold text-white transition disabled:opacity-50"
-                    style={{ background: "#10b981" }}>
-                    {approvingId === selectedUser.id
-                      ? <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                      : <Icon name="Check" size={13} />}
-                    Одобрить
-                  </button>
-                )}
-                <button onClick={() => setConfirmDel(selectedUser)}
-                  className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition ml-auto"
-                  style={{ background: "rgba(239,68,68,0.1)", color: "#ef4444", border: "1px solid rgba(239,68,68,0.25)" }}>
-                  <Icon name="Trash2" size={13} /> Удалить
-                </button>
-              </div>
+            {/* Инфо поля */}
+            <div className="px-5 py-3 space-y-1.5 border-b border-white/[0.05]">
+              {[
+                { label: "ID",            value: `#${selectedUser.id}` },
+                { label: "Зарегистрирован", value: fmtDate(selectedUser.created_at) },
+                ...(selectedUser.discount > 0 ? [{ label: "Скидка", value: `${selectedUser.discount}%` }] : []),
+              ].map(row => (
+                <div key={row.label} className="flex justify-between text-xs py-1 border-b border-white/[0.04]">
+                  <span className="text-white/30">{row.label}</span>
+                  <span className="text-white/65">{row.value}</span>
+                </div>
+              ))}
             </div>
 
             {/* Подписка */}
             {["installer","company"].includes(selectedUser.role) && (
-              <div className="p-4 rounded-2xl" style={{ background: "#0e0e1c", border: "1px solid rgba(124,58,237,0.2)" }}>
-                <div className="text-xs font-bold text-white/50 mb-3 flex items-center gap-1.5">
-                  <Icon name="CreditCard" size={13} style={{ color: "#a78bfa" }} /> Подписка
+              <div className="px-5 py-3 border-b border-white/[0.05]">
+                <div className="text-[10px] font-bold text-white/35 uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
+                  <Icon name="CreditCard" size={11} style={{ color: "#a78bfa" }} /> Подписка
                 </div>
                 {(() => {
                   const ss = subStatus(selectedUser);
                   const subColor = ss === "active" ? "#10b981" : ss === "expiring" ? "#f59e0b" : ss === "expired" ? "#ef4444" : "#64748b";
                   return (
-                    <div className="grid grid-cols-3 gap-3 text-xs">
-                      <div><div className="text-white/30 mb-0.5">Начало</div><div className="text-white/70">{fmtDate(selectedUser.subscription_start)}</div></div>
-                      <div><div className="text-white/30 mb-0.5">Конец</div><div className="text-white/70">{fmtDate(selectedUser.subscription_end)}</div></div>
-                      <div>
-                        <div className="text-white/30 mb-0.5">Статус</div>
-                        <div className="font-bold" style={{ color: subColor }}>
-                          {ss === "active" ? `✓ ${daysLeft(selectedUser.subscription_end)} дн.`
+                    <div className="space-y-1.5">
+                      <div className="flex justify-between text-xs py-1 border-b border-white/[0.04]">
+                        <span className="text-white/30">Начало</span>
+                        <span className="text-white/65">{fmtDate(selectedUser.subscription_start)}</span>
+                      </div>
+                      <div className="flex justify-between text-xs py-1 border-b border-white/[0.04]">
+                        <span className="text-white/30">Истекает</span>
+                        <span className="font-semibold" style={{ color: subColor }}>
+                          {fmtDate(selectedUser.subscription_end)}
+                        </span>
+                      </div>
+                      <div className="flex justify-between text-xs py-1">
+                        <span className="text-white/30">Статус</span>
+                        <span className="font-bold text-[11px]" style={{ color: subColor }}>
+                          {ss === "active"   ? `✓ ${daysLeft(selectedUser.subscription_end)} дн. осталось`
                            : ss === "expiring" ? `⚠ ${daysLeft(selectedUser.subscription_end)} дн.`
-                           : ss === "expired" ? "✗ истекла"
-                           : "—"}
-                        </div>
+                           : ss === "expired"  ? "✗ Истекла"
+                           : "Нет подписки"}
+                        </span>
                       </div>
                     </div>
                   );
                 })()}
+
+                {/* Продлить */}
+                {subUserId === selectedUser.id ? (
+                  <div className="mt-3 rounded-xl p-3 flex items-center gap-1.5 flex-wrap"
+                    style={{ background: "#7c3aed12", border: "1px solid #7c3aed30" }}>
+                    <span className="text-[10px] text-white/40 w-full mb-1">Продлить на:</span>
+                    {EXTEND_OPTIONS.map(opt => (
+                      <button key={opt.days} onClick={() => doExtend(selectedUser.id, opt.days)} disabled={subLoading}
+                        className="px-2.5 py-1.5 rounded-lg text-[10px] font-bold text-white transition disabled:opacity-50"
+                        style={{ background: "#7c3aed" }}>
+                        {subLoading ? "..." : opt.label}
+                      </button>
+                    ))}
+                    <button onClick={() => setSubUserId(null)} className="ml-auto text-white/25 hover:text-white/50">
+                      <Icon name="X" size={12} />
+                    </button>
+                  </div>
+                ) : (
+                  <button onClick={() => setSubUserId(selectedUser.id)}
+                    className="mt-2.5 w-full flex items-center justify-center gap-1.5 py-2 rounded-xl text-[10px] font-bold transition"
+                    style={{ background: "#7c3aed20", color: "#a78bfa", border: "1px solid #7c3aed40" }}>
+                    <Icon name="RefreshCw" size={11} /> Продлить подписку
+                  </button>
+                )}
+              </div>
+            )}
+
+            {/* Одобрить (если ожидает) */}
+            {!selectedUser.approved && !selectedUser.rejected && (
+              <div className="px-5 py-3 border-b border-white/[0.05]">
+                <button onClick={() => onApprove(selectedUser.id)}
+                  disabled={approvingId === selectedUser.id}
+                  className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-bold text-white transition disabled:opacity-50"
+                  style={{ background: "#10b981" }}>
+                  {approvingId === selectedUser.id
+                    ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    : <><Icon name="Check" size={13} /> Одобрить</>}
+                </button>
               </div>
             )}
 
@@ -292,26 +403,28 @@ export default function MasterTabAllUsers({
                 <div className="w-5 h-5 border-2 border-violet-500 border-t-transparent rounded-full animate-spin" />
               </div>
             ) : userEstimates.length > 0 && (
-              <div className="rounded-2xl overflow-hidden" style={{ background: "#0e0e1c", border: "1px solid rgba(255,255,255,0.06)" }}>
-                <div className="px-4 py-3 border-b border-white/[0.06] text-xs font-bold text-white/40 uppercase tracking-wider flex items-center gap-2">
-                  <Icon name="FileText" size={13} style={{ color: "#a78bfa" }} /> Сметы
+              <div className="px-5 py-3">
+                <div className="text-[10px] font-bold text-white/35 uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
+                  <Icon name="FileText" size={11} style={{ color: "#a78bfa" }} /> Сметы
                 </div>
-                <div className="divide-y divide-white/[0.04]">
+                <div className="space-y-1.5">
                   {userEstimates.map(e => (
-                    <div key={e.id} className="flex items-center px-4 py-3 gap-3">
+                    <div key={e.id} className="flex items-center gap-3 px-3 py-2.5 rounded-xl"
+                      style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
                       <div className="flex-1 min-w-0">
-                        <div className="text-xs text-white/70 truncate">{e.title}</div>
-                        <div className="text-[10px] text-white/30">{fmtDate(e.created_at)}</div>
+                        <div className="text-[11px] text-white/70 truncate">{e.title}</div>
+                        <div className="text-[9px] text-white/25">{fmtDate(e.created_at)}</div>
                       </div>
-                      {e.total_standard && (
-                        <span className="text-xs font-bold text-emerald-400 flex-shrink-0">
+                      {e.total_standard != null && (
+                        <span className="text-[11px] font-bold flex-shrink-0"
+                          style={{ color: "#10b981" }}>
                           {e.total_standard.toLocaleString("ru-RU")} ₽
                         </span>
                       )}
-                      {e.crm_status && (
-                        <span className="text-[10px] px-2 py-0.5 rounded-lg flex-shrink-0"
-                          style={{ background: "rgba(16,185,129,0.12)", color: "#10b981" }}>
-                          {e.crm_status}
+                      {e.status && (
+                        <span className="text-[9px] px-1.5 py-0.5 rounded font-bold flex-shrink-0"
+                          style={{ background: "rgba(167,139,250,0.15)", color: "#a78bfa" }}>
+                          {e.status}
                         </span>
                       )}
                     </div>
@@ -319,11 +432,20 @@ export default function MasterTabAllUsers({
                 </div>
               </div>
             )}
+
+            {/* Удалить */}
+            <div className="p-5 mt-auto">
+              <button onClick={() => setConfirmDel(selectedUser)}
+                className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-bold transition"
+                style={{ background: "rgba(239,68,68,0.08)", color: "#ef4444", border: "1px solid rgba(239,68,68,0.2)" }}>
+                <Icon name="Trash2" size={13} /> Удалить пользователя
+              </button>
+            </div>
           </div>
         )}
       </div>
 
-      {/* Модалка подтверждения удаления */}
+      {/* Подтверждение удаления */}
       {confirmDel && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center p-4"
           style={{ background: "rgba(0,0,0,0.85)" }} onClick={() => setConfirmDel(null)}>
@@ -336,9 +458,9 @@ export default function MasterTabAllUsers({
             </div>
             <div className="text-base font-bold text-white mb-1">Удалить пользователя?</div>
             <div className="text-sm text-white/40 mb-1">{confirmDel.name || "—"}</div>
-            <div className="text-xs text-white/30 mb-4">{confirmDel.email}</div>
+            <div className="text-xs text-white/25 mb-4">{confirmDel.email}</div>
             <div className="rounded-xl px-3.5 py-2.5 text-xs text-red-300/80 bg-red-500/10 border border-red-500/20 mb-5">
-              Будут удалены все сметы и сессии. Это действие необратимо.
+              Все сметы и сессии будут удалены. Действие необратимо.
             </div>
             <div className="flex gap-2">
               <button onClick={() => doDelete(confirmDel)} disabled={deletingId === confirmDel.id}
