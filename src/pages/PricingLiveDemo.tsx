@@ -24,21 +24,22 @@ export default function PricingLiveDemo() {
   const [step,    setStep]    = useState<number>(-1); // -1 = ещё не стартовали
   const [profit,  setProfit]  = useState<number>(0);
   const [disc,    setDisc]    = useState<number>(0);
+  const [visible, setVisible] = useState(false);
+  const [cdown,   setCdown]   = useState(0);
   const ref = useRef<HTMLDivElement>(null);
 
-  // Запуск при появлении в области видимости
+  // Отслеживаем видимость — старт и перезапуск только когда на экране
   useEffect(() => {
     if (!ref.current) return;
     const obs = new IntersectionObserver(([e]) => {
-      if (e.isIntersecting && step === -1) {
-        setStep(0);
-      }
+      setVisible(e.isIntersecting);
+      if (e.isIntersecting && step === -1) setStep(0);
     }, { threshold: 0.35 });
     obs.observe(ref.current);
     return () => obs.disconnect();
   }, [step]);
 
-  // Прогон шагов
+  // Прогон шагов + закольцовка
   useEffect(() => {
     if (step < 0) return;
     const timings: Record<number, number> = {
@@ -47,12 +48,31 @@ export default function PricingLiveDemo() {
       2: 1300, // считаем итог
       3: 1800, // считаем прибыль
       4: 1800, // показываем скидку
-      5: 9999, // финал — стоим
+      5: 3500, // финал — задержка перед обратным отсчётом
+      6: 3000, // обратный отсчёт 3 → 1 → рестарт
     };
     const t = setTimeout(() => {
-      if (step < 5) setStep(step + 1);
+      if (step < 6) {
+        setStep(step + 1);
+      } else if (visible) {
+        // рестарт цикла
+        setProfit(0); setDisc(0); setCdown(0);
+        setStep(0);
+      } else {
+        // вне экрана — задерживаемся на финале
+        setStep(5);
+      }
     }, timings[step]);
     return () => clearTimeout(t);
+  }, [step, visible]);
+
+  // Обратный отсчёт 3 → 2 → 1 на шаге 6
+  useEffect(() => {
+    if (step !== 6) { setCdown(0); return; }
+    setCdown(3);
+    const i1 = setTimeout(() => setCdown(2), 1000);
+    const i2 = setTimeout(() => setCdown(1), 2000);
+    return () => { clearTimeout(i1); clearTimeout(i2); };
   }, [step]);
 
   // Анимация счётчика прибыли
@@ -86,7 +106,7 @@ export default function PricingLiveDemo() {
   }, [step]);
 
   const restart = () => {
-    setProfit(0); setDisc(0); setStep(0);
+    setProfit(0); setDisc(0); setCdown(0); setStep(0);
   };
 
   return (
@@ -104,12 +124,29 @@ export default function PricingLiveDemo() {
       </div>
 
       {/* Демо-окно */}
-      <div ref={ref} className="rounded-[24px] overflow-hidden"
+      <div ref={ref} className="relative rounded-[24px] overflow-hidden"
         style={{
           background: "linear-gradient(180deg, #0d0d1a, #06060c)",
           border: "1.5px solid rgba(255,255,255,0.08)",
           boxShadow: "0 30px 80px rgba(0,0,0,0.5)",
         }}>
+
+        {/* Оверлей закольцовки */}
+        {step === 6 && (
+          <div className="absolute inset-0 z-30 flex items-center justify-center backdrop-blur-sm"
+            style={{ background: "rgba(8,8,15,0.78)" }}>
+            <div className="text-center">
+              <div className="w-20 h-20 rounded-full mx-auto mb-4 flex items-center justify-center relative"
+                style={{ background: "rgba(167,139,250,0.12)", border: "1.5px solid rgba(167,139,250,0.4)" }}>
+                <span className="text-3xl font-black" style={{ color: "#a78bfa" }}>{cdown || 1}</span>
+                <div className="absolute inset-0 rounded-full"
+                  style={{ animation: "pulse 1s ease-in-out infinite", boxShadow: "0 0 30px rgba(167,139,250,0.4)" }} />
+              </div>
+              <div className="text-sm font-bold text-white mb-1">Запускаем заново</div>
+              <div className="text-[11px] text-white/40">Каждая твоя смета — точный расчёт</div>
+            </div>
+          </div>
+        )}
 
         {/* Тулбар как в браузере */}
         <div className="flex items-center gap-2 px-4 py-2.5 border-b border-white/[0.06]"

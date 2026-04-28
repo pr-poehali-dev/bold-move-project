@@ -264,7 +264,7 @@ export default function Pricing() {
                 </div>
               </div>
               <div className="text-sm font-bold text-white/85 mb-2">
-                «Дам 10%? Или 5%? А вдруг уйду в минус?»
+                «Дам 10%? Или 5%? А вдруг уйду в минус? А вдруг клиент сорвётся?»
               </div>
               <div className="text-[11px] text-white/40 leading-relaxed">
                 Считал маржу на коленке, боялся продешевить или потерять клиента.
