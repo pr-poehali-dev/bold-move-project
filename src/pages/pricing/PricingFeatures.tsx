@@ -1,8 +1,11 @@
+import { useState } from "react";
 import Icon from "@/components/ui/icon";
 import PricingLiveDemo from "../PricingLiveDemo";
 import { ADVANTAGES } from "./pricingData";
 
 export default function PricingFeatures() {
+  const [expanded, setExpanded] = useState(false);
+
   return (
     <>
       {/* ── ГЛАВНОЕ ПРЕИМУЩЕСТВО — не упускай клиента ─────────────────────── */}
@@ -110,24 +113,65 @@ export default function PricingFeatures() {
 
       {/* ── Остальные преимущества (8 шт) ────────────────────────────────── */}
       <section className="max-w-6xl mx-auto px-5 pb-14">
-        <div className="text-center mb-8">
+        <div className="text-center mb-6 sm:mb-8">
           <h2 className="text-2xl font-black mb-2">И ещё 8 причин выбрать нас</h2>
           <p className="text-sm text-white/40">Всё, что нужно мастеру — в одном сервисе</p>
         </div>
-        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
+
+        {/* Десктоп — все карточки сразу */}
+        <div className="hidden sm:grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
           {ADVANTAGES.map(a => (
-            <div key={a.title} className="p-4 rounded-2xl transition hover:-translate-y-0.5"
-              style={{ background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.05)" }}>
-              <div className="w-10 h-10 rounded-xl flex items-center justify-center mb-3"
-                style={{ background: "rgba(249,115,22,0.12)" }}>
-                <Icon name={a.icon} size={18} style={{ color: "#f97316" }} />
-              </div>
-              <div className="text-sm font-bold text-white mb-1">{a.title}</div>
-              <div className="text-[11px] text-white/45 leading-relaxed">{a.text}</div>
-            </div>
+            <AdvCard key={a.title} a={a} />
           ))}
+        </div>
+
+        {/* Мобиле — 3 карточки + раскрытие */}
+        <div className="sm:hidden">
+          <div className="flex flex-col gap-3">
+            {ADVANTAGES.slice(0, 3).map(a => (
+              <AdvCard key={a.title} a={a} />
+            ))}
+          </div>
+
+          {/* Плавно раскрывающийся блок с остальными */}
+          <div
+            className="overflow-hidden transition-all duration-500 ease-in-out"
+            style={{ maxHeight: expanded ? ADVANTAGES.length * 120 : 0, opacity: expanded ? 1 : 0 }}>
+            <div className="flex flex-col gap-3 pt-3">
+              {ADVANTAGES.slice(3).map(a => (
+                <AdvCard key={a.title} a={a} />
+              ))}
+            </div>
+          </div>
+
+          {/* Кнопка показать/скрыть */}
+          <button
+            onClick={() => setExpanded(v => !v)}
+            className="w-full mt-4 py-3 rounded-2xl text-sm font-semibold flex items-center justify-center gap-2 transition active:opacity-70"
+            style={{
+              background: "rgba(255,255,255,0.04)",
+              border: "1px solid rgba(255,255,255,0.08)",
+              color: "rgba(255,255,255,0.6)",
+            }}>
+            <Icon name={expanded ? "ChevronUp" : "ChevronDown"} size={16} />
+            {expanded ? "Скрыть" : `Показать ещё ${ADVANTAGES.length - 3}`}
+          </button>
         </div>
       </section>
     </>
+  );
+}
+
+function AdvCard({ a }: { a: { icon: string; title: string; text: string } }) {
+  return (
+    <div className="p-4 rounded-2xl transition hover:-translate-y-0.5"
+      style={{ background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.05)" }}>
+      <div className="w-10 h-10 rounded-xl flex items-center justify-center mb-3"
+        style={{ background: "rgba(249,115,22,0.12)" }}>
+        <Icon name={a.icon} size={18} style={{ color: "#f97316" }} />
+      </div>
+      <div className="text-sm font-bold text-white mb-1">{a.title}</div>
+      <div className="text-[11px] text-white/45 leading-relaxed">{a.text}</div>
+    </div>
   );
 }
