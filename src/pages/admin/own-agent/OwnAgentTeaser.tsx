@@ -55,10 +55,15 @@ export default function OwnAgentTeaser({ isDark }: Props) {
             </span>
           </h1>
 
-          <p className="text-sm md:text-base leading-relaxed mb-6 max-w-2xl" style={{ color: muted }}>
+          <p className="text-sm md:text-base leading-relaxed mb-3 max-w-2xl" style={{ color: muted }}>
             Запустите бот под своим брендом: ваш логотип, ваши контакты, ваше имя ассистента,
-            ваш цвет. Клиенты не узнают, что вы пользуетесь нашим сервисом.
+            ваш цвет.
           </p>
+          <div className="inline-flex items-center gap-2 px-4 py-2.5 rounded-2xl mb-6 text-sm font-bold"
+            style={{ background: "rgba(167,139,250,0.13)", border: "1.5px solid rgba(167,139,250,0.35)", color: "#c4b5fd" }}>
+            <Icon name="ShieldCheck" size={16} style={{ color: "#a78bfa" }} />
+            Клиенты будут уверены на 100%, что это ваш сервис
+          </div>
 
           {/* Цена */}
           <div className="rounded-2xl px-5 py-4 mb-6 inline-flex items-center gap-4"
