@@ -190,17 +190,37 @@ export default function AdminPanel() {
 
       {/* ── Баннер режима просмотра (мастер смотрит чужой аккаунт) ── */}
       {masterToken && (
-        <div className="flex items-center justify-between px-4 py-2 text-xs font-bold"
-          style={{ background: "#d97706", color: "#0a0a14" }}>
-          <div className="flex items-center gap-2">
-            <Icon name="Eye" size={13} />
-            Режим просмотра: вы видите панель как&nbsp;<span className="font-black">{user?.name || user?.email}</span>
+        <div className="flex items-center justify-between px-3 py-2 text-xs"
+          style={{ background: "#92400e", borderBottom: "1px solid #b45309" }}>
+          <div className="flex items-center gap-3 flex-wrap">
+            <div className="flex items-center gap-1.5 font-bold" style={{ color: "#fde68a" }}>
+              <Icon name="Eye" size={13} />
+              Режим просмотра
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-black"
+                style={{ background: "#d97706", color: "#0a0a14" }}>
+                {(user?.name || user?.email || "?")[0].toUpperCase()}
+              </div>
+              <span className="font-black" style={{ color: "#fff" }}>{user?.name || user?.email}</span>
+              {user?.email && user?.name && (
+                <span style={{ color: "#fbbf24" }}>{user.email}</span>
+              )}
+            </div>
+            <span className="px-2 py-0.5 rounded text-[9px] font-black uppercase"
+              style={{ background: "rgba(0,0,0,0.25)", color: "#fde68a" }}>
+              ID #{user?.id}
+            </span>
+            <span className="px-2 py-0.5 rounded text-[9px] font-black uppercase"
+              style={{ background: "rgba(0,0,0,0.25)", color: "#fde68a" }}>
+              {user?.role === "company" ? "Компания" : user?.role === "manager" ? "Менеджер" : user?.role || "—"}
+            </span>
           </div>
           <button onClick={exitImpersonate}
-            className="flex items-center gap-1.5 px-3 py-1 rounded-lg transition"
-            style={{ background: "rgba(0,0,0,0.20)", color: "#0a0a14" }}>
+            className="flex items-center gap-1.5 px-3 py-1 rounded-lg transition hover:opacity-80 whitespace-nowrap ml-3"
+            style={{ background: "rgba(0,0,0,0.30)", color: "#fde68a", border: "1px solid rgba(253,230,138,0.3)" }}>
             <Icon name="LogOut" size={11} />
-            Выйти обратно как {masterName}
+            ← Вернуться как {masterName}
           </button>
         </div>
       )}
@@ -220,9 +240,22 @@ export default function AdminPanel() {
             <span className="hidden sm:block">{isDark ? "Светлая" : "Тёмная"}</span>
           </button>
           <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-xl"
-            style={{ background: "rgba(124,58,237,0.12)", border: "1px solid rgba(124,58,237,0.25)" }}>
-            <div className="w-5 h-5 rounded-full bg-violet-600 flex items-center justify-center text-[10px] font-bold text-white">А</div>
-            <span className="text-[11px] font-semibold text-violet-300">Администратор</span>
+            style={{
+              background: user?.is_master ? "rgba(239,68,68,0.12)" : "rgba(124,58,237,0.12)",
+              border: `1px solid ${user?.is_master ? "rgba(239,68,68,0.25)" : "rgba(124,58,237,0.25)"}`,
+            }}>
+            <div className="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold text-white"
+              style={{ background: user?.is_master ? "#ef4444" : "#7c3aed" }}>
+              {(user?.name || user?.email || "?")[0].toUpperCase()}
+            </div>
+            <div className="flex flex-col leading-none">
+              <span className="text-[11px] font-semibold" style={{ color: user?.is_master ? "#fca5a5" : "#c4b5fd" }}>
+                {user?.name || user?.email?.split("@")[0] || "—"}
+              </span>
+              <span className="text-[9px] font-bold uppercase tracking-wider" style={{ color: user?.is_master ? "#ef4444" : "#7c3aed" }}>
+                {user?.is_master ? "Мастер" : user?.role === "company" ? "Компания" : user?.role === "manager" ? "Менеджер" : user?.role === "installer" ? "Монтажник" : user?.role || "—"}
+              </span>
+            </div>
           </div>
           <a href="/master" title="Мастер-Админка"
             className="p-1.5 rounded-lg transition opacity-20 hover:opacity-60" style={{ color: isDark ? "rgba(255,255,255,0.4)" : "#374151" }}>
