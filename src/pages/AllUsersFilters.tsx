@@ -31,27 +31,28 @@ export default function AllUsersFilters({
   onSearch, onSortBy, onToggleRole, onClearRoles, onSubFilter,
 }: Props) {
   return (
-    <div className="px-5 py-3 border-b border-white/[0.06] flex-shrink-0" style={{ background: "#07070f" }}>
+    <div className="px-3 sm:px-5 py-2 sm:py-3 border-b border-white/[0.06] flex-shrink-0" style={{ background: "#07070f" }}>
 
       {/* Строка 1: поиск + сортировка */}
-      <div className="flex gap-2 mb-3">
+      <div className="flex gap-2 mb-2">
         <div className="relative flex-1">
           <Icon name="Search" size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/20" />
           <input value={search} onChange={e => onSearch(e.target.value)}
-            placeholder="Поиск по имени или email..."
+            placeholder="Поиск..."
             className="w-full rounded-xl pl-9 pr-3 py-2 text-xs focus:outline-none"
             style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", color: "#fff" }} />
         </div>
         <button onClick={() => onSortBy(sortBy === "created" ? "sub_end" : "created")}
-          className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-[10px] font-semibold flex-shrink-0 transition"
+          className="flex items-center gap-1.5 px-2.5 py-2 rounded-xl text-[10px] font-semibold flex-shrink-0 transition"
           style={{ background: "rgba(255,255,255,0.05)", color: "rgba(255,255,255,0.4)", border: "1px solid rgba(255,255,255,0.07)" }}>
           <Icon name="ArrowUpDown" size={11} />
-          {sortBy === "created" ? "по дате" : "по подписке"}
+          <span className="hidden sm:inline">{sortBy === "created" ? "по дате" : "по подписке"}</span>
         </button>
       </div>
 
-      {/* Строка 2: фильтры ролей + подписка */}
-      <div className="flex items-center gap-2 flex-wrap">
+      {/* Строка 2: фильтры — горизонтальный скролл на мобиле */}
+      <div className="overflow-x-auto" style={{ scrollbarWidth: "none" }}>
+      <div className="flex items-center gap-1.5 min-w-max sm:flex-wrap">
         {/* Кнопка «Все» */}
         <button onClick={onClearRoles}
           className="px-2.5 py-1 rounded-lg text-[10px] font-semibold transition border"
@@ -110,7 +111,8 @@ export default function AllUsersFilters({
           </button>
         ))}
 
-        <span className="ml-auto text-[10px] text-white/25">{totalShown} польз.</span>
+        <span className="text-[10px] text-white/25 pl-1">{totalShown} польз.</span>
+      </div>
       </div>
     </div>
   );

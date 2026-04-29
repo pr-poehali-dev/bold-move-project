@@ -94,7 +94,7 @@ export default function MasterTabAllUsers({
   };
 
   return (
-    <div className="flex h-[calc(100vh-112px)]">
+    <div className="flex h-[calc(100vh-112px)] relative">
 
       {/* ─── Основная часть ─── */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
@@ -122,8 +122,8 @@ export default function MasterTabAllUsers({
         </div>
       </div>
 
-      {/* ─── Правая панель ─── */}
-      <div className="w-[320px] flex-shrink-0 border-l border-white/[0.06] flex flex-col overflow-hidden"
+      {/* ─── Правая панель — десктоп ─── */}
+      <div className="hidden sm:flex w-[320px] flex-shrink-0 border-l border-white/[0.06] flex-col overflow-hidden"
         style={{ background: "#08080f" }}>
         <AllUsersPanel
           selectedUser={selectedUser}
@@ -136,6 +136,34 @@ export default function MasterTabAllUsers({
           onToggleOwnAgent={doToggleOwnAgent}
         />
       </div>
+
+      {/* ─── Bottom drawer — мобиле ─── */}
+      {selectedUser && (
+        <div className="sm:hidden fixed inset-0 z-[100] flex flex-col justify-end"
+          style={{ background: "rgba(0,0,0,0.6)" }}
+          onClick={() => onSelectUser(selectedUser)}>
+          <div className="rounded-t-2xl overflow-hidden flex flex-col max-h-[85dvh]"
+            style={{ background: "#08080f", border: "1px solid rgba(255,255,255,0.08)" }}
+            onClick={e => e.stopPropagation()}>
+            {/* Ручка */}
+            <div className="flex justify-center pt-3 pb-1 flex-shrink-0">
+              <div className="w-10 h-1 rounded-full" style={{ background: "rgba(255,255,255,0.15)" }} />
+            </div>
+            <div className="flex-1 overflow-y-auto">
+              <AllUsersPanel
+                selectedUser={selectedUser}
+                userEstimates={userEstimates}
+                estLoading={estLoading}
+                approvingId={approvingId}
+                onApprove={onApprove}
+                onConfirmDel={setConfirmDel}
+                onAddBalance={doAddBalance}
+                onToggleOwnAgent={doToggleOwnAgent}
+              />
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Модал удаления */}
       {confirmDel && (
