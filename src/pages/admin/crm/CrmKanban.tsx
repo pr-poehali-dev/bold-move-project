@@ -6,6 +6,7 @@ import { useTheme } from "./themeContext";
 import ClientDrawer from "./ClientDrawer";
 import { KanbanHeader } from "./KanbanHeader";
 import { KanbanColumn } from "./KanbanColumn";
+import { KanbanMobileView } from "./KanbanMobileView";
 import {
   KANBAN_COLS, DROP_STATUS, CustomKanbanCol,
   loadGlobalWidth, saveGlobalWidth,
@@ -181,15 +182,6 @@ export default function CrmKanban({ clients, loading, onStatusChange, onClientRe
   return (
     <div className="space-y-4">
 
-      {/* Баннер: рекомендуем ПК */}
-      <div className="sm:hidden rounded-2xl px-4 py-3 flex items-start gap-3"
-        style={{ background: "rgba(124,58,237,0.10)", border: "1px solid rgba(124,58,237,0.25)" }}>
-        <Icon name="Monitor" size={16} style={{ color: "#a78bfa", marginTop: 2, flexShrink: 0 }} />
-        <p className="text-xs leading-snug" style={{ color: "#c4b5fd" }}>
-          Канбан-доска удобнее на компьютере. На телефоне можно листать колонки горизонтально.
-        </p>
-      </div>
-
       <KanbanHeader
         clientCount={allCards.length}
         globalWidth={globalWidth}
@@ -200,7 +192,22 @@ export default function CrmKanban({ clients, loading, onStatusChange, onClientRe
         onRemoveBoard={onRemoveBoard}
       />
 
-      <div className="flex overflow-x-auto pb-4 select-none" style={{ minHeight: 520, gap: 0 }}>
+      {/* ── МОБИЛЕ ── */}
+      <div className="sm:hidden">
+        <KanbanMobileView
+          cols={allCols}
+          clientsForCol={clientsForCol}
+          onOpen={setSelected}
+          onNextStep={handleNextStep}
+          onDrop={onDrop}
+          onDragStart={onDragStart}
+          onDragEnd={() => { setDragging(null); setDragOverCol(null); }}
+          dragging={dragging}
+        />
+      </div>
+
+      {/* ── ДЕСКТОП ── */}
+      <div className="hidden sm:flex overflow-x-auto pb-4 select-none" style={{ minHeight: 520, gap: 0 }}>
         {allCols.map((col, colIdx) => (
           <KanbanColumn
             key={col.id}

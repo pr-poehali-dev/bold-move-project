@@ -3,6 +3,7 @@ import { Client, crmFetch } from "./crmApi";
 import { useTheme } from "./themeContext";
 import { KanbanColumn } from "./KanbanColumn";
 import { KanbanHeader } from "./KanbanHeader";
+import { KanbanMobileView } from "./KanbanMobileView";
 import { CustomKanbanCol, DROP_STATUS, KANBAN_COLS, loadGlobalWidth, saveGlobalWidth } from "./kanbanTypes";
 import {
   loadSyncedColors, loadSyncedCustomCols, loadSyncedHidden, loadSyncedLabels,
@@ -105,7 +106,23 @@ export function OrdersKanbanView({ allClients, search, onSearch, onStatusChange,
         onWidthChange={w => { setGlobalWidth(w); saveGlobalWidth(w); }}
         onAddCol={addCol}
       />
-      <div className="flex overflow-x-auto pb-4 select-none" style={{ minHeight: 520, gap: 0 }}>
+
+      {/* ── МОБИЛЕ ── */}
+      <div className="sm:hidden">
+        <KanbanMobileView
+          cols={allKanbanCols}
+          clientsForCol={clientsForCol}
+          onOpen={onSelect}
+          onNextStep={onNextStep}
+          onDrop={onDrop}
+          onDragStart={onDragStart}
+          onDragEnd={() => { setDragging(null); setDragOverCol(null); }}
+          dragging={dragging}
+        />
+      </div>
+
+      {/* ── ДЕСКТОП ── */}
+      <div className="hidden sm:flex overflow-x-auto pb-4 select-none" style={{ minHeight: 520, gap: 0 }}>
         {allKanbanCols.map((col, colIdx) => (
           <KanbanColumn
             key={col.id}
