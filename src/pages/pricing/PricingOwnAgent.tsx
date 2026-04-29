@@ -37,33 +37,71 @@ export default function PricingOwnAgent() {
         {/* Шапка-кнопка раскрытия */}
         <button
           onClick={() => setOpen(o => !o)}
-          className="w-full flex items-center gap-4 p-5 md:p-6 transition hover:bg-white/[0.02] text-left">
-          <div className="w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0"
-            style={{ background: "rgba(167,139,250,0.18)" }}>
-            <Icon name="Bot" size={22} style={{ color: "#a78bfa" }} />
-          </div>
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 flex-wrap mb-0.5">
-              <span className="text-base md:text-lg font-black text-white">Свой агент</span>
-              <span className="px-2 py-0.5 rounded-md text-[9px] font-black uppercase tracking-wider"
-                style={{ background: "#a78bfa", color: "#0a0a14" }}>WHITE LABEL</span>
-              <span className="px-2 py-0.5 rounded-md text-[9px] font-black uppercase tracking-wider"
-                style={{ background: "rgba(251,191,36,0.18)", color: "#fbbf24", border: "1px solid rgba(251,191,36,0.32)" }}>
-                для компаний
-              </span>
+          className="w-full transition hover:bg-white/[0.02] text-left p-4 sm:p-5 md:p-6">
+
+          {/* Мобиле: вертикальный вид */}
+          <div className="flex sm:hidden flex-col gap-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
+                  style={{ background: "rgba(167,139,250,0.18)" }}>
+                  <Icon name="Bot" size={20} style={{ color: "#a78bfa" }} />
+                </div>
+                <div className="flex flex-col gap-1">
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <span className="text-base font-black text-white">Свой агент</span>
+                    <span className="px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-wider"
+                      style={{ background: "#a78bfa", color: "#0a0a14" }}>WHITE LABEL</span>
+                  </div>
+                  <span className="px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-wider w-fit"
+                    style={{ background: "rgba(251,191,36,0.18)", color: "#fbbf24", border: "1px solid rgba(251,191,36,0.32)" }}>
+                    для компаний
+                  </span>
+                </div>
+              </div>
+              <Icon name={open ? "ChevronUp" : "ChevronDown"} size={16}
+                style={{ color: "rgba(255,255,255,0.4)" }} className="flex-shrink-0 ml-2" />
             </div>
             <div className="text-[12px] text-white/55 leading-snug">
               Собственный бот с вашим брендом, контактами и логотипом — клиенты будут уверены на 100% что это ваш сервис
             </div>
-          </div>
-          <div className="text-right flex-shrink-0">
-            <div className="text-xl md:text-2xl font-black" style={{ color: "#a78bfa" }}>
-              {PRICE.toLocaleString("ru-RU")} ₽
+            <div className="flex items-baseline gap-1.5">
+              <span className="text-2xl font-black" style={{ color: "#a78bfa" }}>
+                {PRICE.toLocaleString("ru-RU")} ₽
+              </span>
+              <span className="text-[11px] text-white/35">единоразово</span>
             </div>
-            <div className="text-[10px] text-white/35">единоразово</div>
           </div>
-          <Icon name={open ? "ChevronUp" : "ChevronDown"} size={18}
-            style={{ color: "rgba(255,255,255,0.45)" }} className="flex-shrink-0" />
+
+          {/* Десктоп: горизонтальный вид */}
+          <div className="hidden sm:flex items-center gap-4">
+            <div className="w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0"
+              style={{ background: "rgba(167,139,250,0.18)" }}>
+              <Icon name="Bot" size={22} style={{ color: "#a78bfa" }} />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 flex-wrap mb-0.5">
+                <span className="text-lg font-black text-white">Свой агент</span>
+                <span className="px-2 py-0.5 rounded-md text-[9px] font-black uppercase tracking-wider"
+                  style={{ background: "#a78bfa", color: "#0a0a14" }}>WHITE LABEL</span>
+                <span className="px-2 py-0.5 rounded-md text-[9px] font-black uppercase tracking-wider"
+                  style={{ background: "rgba(251,191,36,0.18)", color: "#fbbf24", border: "1px solid rgba(251,191,36,0.32)" }}>
+                  для компаний
+                </span>
+              </div>
+              <div className="text-[12px] text-white/55 leading-snug">
+                Собственный бот с вашим брендом, контактами и логотипом — клиенты будут уверены на 100% что это ваш сервис
+              </div>
+            </div>
+            <div className="text-right flex-shrink-0">
+              <div className="text-2xl font-black" style={{ color: "#a78bfa" }}>
+                {PRICE.toLocaleString("ru-RU")} ₽
+              </div>
+              <div className="text-[10px] text-white/35">единоразово</div>
+            </div>
+            <Icon name={open ? "ChevronUp" : "ChevronDown"} size={18}
+              style={{ color: "rgba(255,255,255,0.45)" }} className="flex-shrink-0" />
+          </div>
         </button>
 
         {/* Раскрытое содержимое */}

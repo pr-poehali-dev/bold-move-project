@@ -165,14 +165,16 @@ export default function PricingFeatures() {
 
         {/* Мобиле — авто-карусель по 3 карточки */}
         <div className="sm:hidden">
-          {/* Карточки с fade */}
-          <div
-            className="flex flex-col gap-3 transition-opacity duration-300"
-            style={{ opacity: fadeIn ? 1 : 0 }}>
-            {ADVANTAGES.slice(page * VISIBLE, page * VISIBLE + VISIBLE).map(a => (
-              <AdvCard key={a.title} a={a} />
-            ))}
-          </div>
+          {/* Карточки с fade — min-height чтобы не прыгало */}
+          <div style={{ minHeight: 360 }}>
+            <div
+              className="flex flex-col gap-3 transition-opacity duration-300"
+              style={{ opacity: fadeIn ? 1 : 0 }}>
+              {ADVANTAGES.slice(page * VISIBLE, page * VISIBLE + VISIBLE).map(a => (
+                <AdvCard key={a.title} a={a} />
+              ))}
+            </div>
+          </div>{/* /min-height wrapper */}
 
           {/* Точки-индикаторы */}
           <div className="flex items-center justify-center gap-2 mt-4">
