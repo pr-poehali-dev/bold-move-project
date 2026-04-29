@@ -103,6 +103,19 @@ def load_logo(s3):
     return None
 
 
+def _is_dark_hex(hex_str):
+    """Возвращает True если цвет тёмный (для выбора светлой версии логотипа)."""
+    try:
+        s = hex_str.lstrip('#')
+        if len(s) == 3:
+            s = ''.join(c*2 for c in s)
+        r = int(s[0:2], 16); g = int(s[2:4], 16); b = int(s[4:6], 16)
+        # Стандартная формула яркости
+        return (0.299*r + 0.587*g + 0.114*b) < 128
+    except Exception:
+        return False
+
+
 def load_logo_from_url(url):
     """Скачивает логотип компании по URL (без кеша). Безопасно при ошибке."""
     if not url:
@@ -131,13 +144,18 @@ def split_value(value):
     v = clean(value)
     if not v:
         return '', '', ''
+    # Универсальный regex: число + любая единица из русских/латинских букв и точек до знака ×
+    # Примеры: "20 м²", "18 п.м", "1 шт", "24 пог.м", "5 м.п."
+    UNIT = r'(?:[а-яёa-z]+\.?[а-яёa-z]*\.?|м²|м2|%)?'
+    # Полная форма: qty × price = total
     m = re.match(
-        r'^([\d,.\s]+\s*(?:м²|м2|мп|пм|пог\.?м|шт\.?|шт|м\.п\.?|м|%)?)\s*[×xх]\s*([\d\s,.]+\s*[₽Рруб]?)\s*=\s*([\d\s,.]+\s*[₽Рруб]?)$',
+        rf'^([\d,.\s]+\s*{UNIT})\s*[×xх*]\s*([\d\s,.]+\s*[₽Рруб]?)\s*=\s*([\d\s,.]+\s*[₽Рруб]?)$',
         v, re.I)
     if m:
         return m.group(1).strip(), rub(m.group(2).strip()), rub(m.group(3).strip())
+    # Сокращённая: qty × price (без =)
     m2 = re.match(
-        r'^([\d,.\s]+\s*(?:м²|м2|мп|пм|пог\.?м|шт\.?|шт|м\.п\.?|м|%)?)\s*[×xх]\s*([\d\s,.]+)\s*[₽Рруб]?$',
+        rf'^([\d,.\s]+\s*{UNIT})\s*[×xх*]\s*([\d\s,.]+)\s*[₽Рруб]?$',
         v, re.I)
     if m2:
         try:
@@ -178,6 +196,10 @@ def build_pdf(data, logo_bytes=None, brand=None):
         custom_text = HexColor(_raw_text_color) if _raw_text_color else BLACK
     except Exception:
         custom_text = BLACK
+
+    # Подложка логотипа: auto / transparent / white / dark / hex
+    logo_bg_mode = (brand.get('pdf_logo_bg') or 'auto').strip().lower()
+    logo_orient  = (brand.get('brand_logo_orientation') or 'horizontal').strip().lower()
     # Телефон только цифры — для tel: и Записаться
     phone_digits = re.sub(r'\D', '', brand_phone) or '79776068901'
 
@@ -268,21 +290,53 @@ def build_pdf(data, logo_bytes=None, brand=None):
     right_x   = w - mg - right_w          # левый край правого блока
     right_pad = 4 * mm                    # внутренний отступ справа
 
-    # Плашка логотипа — фиксированная высота, логотип покрупнее
-    logo_pill_h = 13 * mm
+    # Плашка логотипа — высота зависит от ориентации
+    is_vertical = logo_orient == 'vertical'
+    logo_pill_h = (22 if is_vertical else 13) * mm
     logo_pill_y = h - mg - logo_pill_h - 4*mm
-    logo_pill_w = right_w                 # плашка на всю ширину правого блока
+    logo_pill_w = right_w
     logo_pill_x = right_x
 
-    c.setFillColor(HexColor('#1e2029'))
-    c.roundRect(logo_pill_x, logo_pill_y, logo_pill_w, logo_pill_h, 2*mm, fill=1, stroke=0)
+    # Цвет подложки логотипа
+    pill_fill = None
+    pill_stroke = None
+    if logo_bg_mode == 'transparent' or logo_bg_mode == 'none':
+        pill_fill = None
+    elif logo_bg_mode == 'white':
+        pill_fill = WHITE
+        pill_stroke = HexColor('#e9ecef')
+    elif logo_bg_mode == 'dark':
+        pill_fill = HexColor('#1e2029')
+    elif logo_bg_mode.startswith('#'):
+        try:
+            pill_fill = HexColor(logo_bg_mode)
+        except Exception:
+            pill_fill = WHITE
+    else:
+        # auto — белая подложка с лёгкой рамкой
+        pill_fill = WHITE
+        pill_stroke = HexColor('#e9ecef')
+
+    if pill_fill is not None:
+        c.setFillColor(pill_fill)
+        if pill_stroke is not None:
+            c.setStrokeColor(pill_stroke)
+            c.setLineWidth(0.5)
+            c.roundRect(logo_pill_x, logo_pill_y, logo_pill_w, logo_pill_h, 2*mm, fill=1, stroke=1)
+        else:
+            c.roundRect(logo_pill_x, logo_pill_y, logo_pill_w, logo_pill_h, 2*mm, fill=1, stroke=0)
 
     if logo_bytes:
         try:
             img = ImageReader(io.BytesIO(logo_bytes))
             iw, ih_ = img.getSize()
-            lh = logo_pill_h * 0.80
-            lw_ = lh * (iw / ih_)
+            # Вписать логотип в плашку с отступом, не растягивая больше натурального размера
+            pad = 2 * mm
+            max_h = logo_pill_h - 2 * pad
+            max_w = logo_pill_w - 2 * pad
+            scale = min(max_w / iw, max_h / ih_, 1.0)  # не больше 1.0 — без растяжения
+            lw_ = iw * scale
+            lh  = ih_ * scale
             c.drawImage(img,
                 logo_pill_x + (logo_pill_w - lw_) / 2,
                 logo_pill_y + (logo_pill_h - lh) / 2,
@@ -581,7 +635,8 @@ def fetch_brand_from_db(company_id):
         cur.execute(f"""
             SELECT role, has_own_agent, company_name, brand_logo_url, brand_color,
                    support_phone, website, telegram, max_url, working_hours,
-                   pdf_footer_address, pdf_text_color, telegram_url
+                   pdf_footer_address, pdf_text_color, telegram_url,
+                   brand_logo_url_dark, brand_logo_orientation, pdf_logo_bg
             FROM {schema}.users
             WHERE id=%s AND removed_at IS NULL
         """, (int(company_id),))
@@ -591,12 +646,16 @@ def fetch_brand_from_db(company_id):
             return None
         role, has_agent, company_name, brand_logo_url, brand_color, support_phone, \
             website, telegram, max_url, working_hours, pdf_footer_address, \
-            pdf_text_color, telegram_url = r
+            pdf_text_color, telegram_url, \
+            brand_logo_url_dark, brand_logo_orientation, pdf_logo_bg = r
         if not has_agent or role != 'company':
             return None
         return {
             'company_name':       company_name,
             'brand_logo_url':     brand_logo_url,
+            'brand_logo_url_dark': brand_logo_url_dark,
+            'brand_logo_orientation': brand_logo_orientation or 'horizontal',
+            'pdf_logo_bg':        pdf_logo_bg or 'auto',
             'brand_color':        brand_color,
             'support_phone':      support_phone,
             'website':            website,
@@ -630,10 +689,16 @@ def handler(event, context):
     # Если в data есть company_id — пробуем подтянуть бренд этой компании
     brand = data.get('brand') or fetch_brand_from_db(data.get('company_id'))
 
-    # Логотип: если у бренда есть свой URL — берём его; иначе дефолт
+    # Логотип: выбираем версию по цвету подложки
     logo_bytes = None
-    if brand and brand.get('brand_logo_url'):
-        logo_bytes = load_logo_from_url(brand['brand_logo_url'])
+    if brand:
+        bg_mode = (brand.get('pdf_logo_bg') or 'auto').strip().lower()
+        # Если подложка тёмная и есть светлая версия лого — используем её
+        is_dark_bg = bg_mode == 'dark' or (bg_mode.startswith('#') and _is_dark_hex(bg_mode))
+        if is_dark_bg and brand.get('brand_logo_url_dark'):
+            logo_bytes = load_logo_from_url(brand['brand_logo_url_dark'])
+        if not logo_bytes and brand.get('brand_logo_url'):
+            logo_bytes = load_logo_from_url(brand['brand_logo_url'])
     if not logo_bytes:
         logo_bytes = load_logo(s3)
 

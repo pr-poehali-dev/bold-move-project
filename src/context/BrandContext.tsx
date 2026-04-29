@@ -22,6 +22,10 @@ export interface Brand {
   website?:            string | null;
   working_hours:       string;
   pdf_footer_address?: string | null;
+  pdf_text_color?:         string | null;
+  brand_logo_url_dark?:    string | null;
+  brand_logo_orientation?: string | null;
+  pdf_logo_bg?:            string | null;
 }
 
 /** Дефолтные значения (как было до white-label). */

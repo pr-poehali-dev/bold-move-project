@@ -15,6 +15,9 @@ export default function OwnAgentEditor({ isDark }: Props) {
     bot_greeting:       user?.brand?.bot_greeting       ?? "",
     bot_avatar_url:     user?.brand?.bot_avatar_url     ?? "",
     brand_logo_url:     user?.brand?.brand_logo_url     ?? "",
+    brand_logo_url_dark:    user?.brand?.brand_logo_url_dark    ?? "",
+    brand_logo_orientation: user?.brand?.brand_logo_orientation ?? "horizontal",
+    pdf_logo_bg:        user?.brand?.pdf_logo_bg        ?? "auto",
     brand_color:        user?.brand?.brand_color        ?? "#f97316",
     support_phone:      user?.brand?.support_phone      ?? "",
     support_email:      user?.brand?.support_email      ?? "",
@@ -25,6 +28,10 @@ export default function OwnAgentEditor({ isDark }: Props) {
     pdf_text_color:     user?.brand?.pdf_text_color     ?? "#111827",
   });
 
+  // Профиль (название компании и сайт) — отдельно через update-profile
+  const [companyName, setCompanyName] = useState(user?.company_name ?? "");
+  const [website,     setWebsite]     = useState(user?.website ?? "");
+
   const [saving, setSaving] = useState(false);
   const [saved,  setSaved]  = useState(false);
   const [err,    setErr]    = useState("");
@@ -34,8 +41,30 @@ export default function OwnAgentEditor({ isDark }: Props) {
   const save = async () => {
     setErr(""); setSaved(false); setSaving(true);
     try {
+      // Сохраняем бренд
       await updateBrand(token, brand);
-      updateUser({ brand });
+      // Сохраняем профиль (название компании и сайт)
+      const profileChanged = (companyName !== (user?.company_name ?? "")) || (website !== (user?.website ?? ""));
+      if (profileChanged) {
+        const { default: func2url } = await import("@/../backend/func2url.json");
+        const AUTH_URL = (func2url as Record<string, string>)["auth"];
+        const res = await fetch(`${AUTH_URL}?action=update-profile`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "X-Authorization": `Bearer ${token}` },
+          body: JSON.stringify({
+            name:         user?.name || "",
+            phone:        user?.phone || "",
+            company_name: companyName,
+            company_inn:  user?.company_inn || "",
+            company_addr: user?.company_addr || "",
+            website:      website,
+            telegram:     user?.telegram || "",
+          }),
+        });
+        const d = await res.json();
+        if (!res.ok || d.error) throw new Error(d.error || "Ошибка сохранения профиля");
+      }
+      updateUser({ brand, company_name: companyName, website });
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
     } catch (e: unknown) {
@@ -73,6 +102,14 @@ export default function OwnAgentEditor({ isDark }: Props) {
           <CopyLink link={link} isDark={isDark} />
         </div>
 
+        {/* Компания */}
+        <Section title="Компания" icon="Building2" isDark={isDark}>
+          <Field label="Название компании" placeholder="ООО «Ваша компания»"
+            value={companyName} onChange={setCompanyName} isDark={isDark} />
+          <Field label="Сайт" placeholder="yourcompany.ru"
+            value={website} onChange={setWebsite} isDark={isDark} />
+        </Section>
+
         {/* Бренд: бот */}
         <Section title="Бот" icon="Bot" isDark={isDark}>
           <Field label="Имя бота" placeholder="Например: Анна, Максим, Алина"
@@ -87,11 +124,38 @@ export default function OwnAgentEditor({ isDark }: Props) {
 
         {/* Бренд: визуал */}
         <Section title="Визуал" icon="Palette" isDark={isDark}>
-          <ImageUploader label="Логотип компании" hint="PNG с прозрачным фоном, до 1 МБ"
-            value={brand.brand_logo_url || ""} onChange={v => set("brand_logo_url", v)}
-            token={token} isDark={isDark} />
           <ColorField label="Цвет акцента" value={brand.brand_color || "#f97316"}
             onChange={v => set("brand_color", v)} isDark={isDark} />
+
+          {/* Ориентация логотипа */}
+          <ChoiceField label="Ориентация логотипа"
+            value={brand.brand_logo_orientation || "horizontal"}
+            options={[
+              { val: "horizontal", label: "Горизонтальный", icon: "RectangleHorizontal" },
+              { val: "vertical",   label: "Квадратный",     icon: "Square" },
+            ]}
+            onChange={v => set("brand_logo_orientation", v)} isDark={isDark} />
+
+          <ImageUploader label="Логотип для светлой подложки (тёмный)"
+            hint="PNG с прозрачным фоном, до 1 МБ"
+            value={brand.brand_logo_url || ""} onChange={v => set("brand_logo_url", v)}
+            token={token} isDark={isDark} />
+
+          <ImageUploader label="Логотип для тёмной подложки (светлый)"
+            hint="Опционально. Используется когда подложка тёмная"
+            value={brand.brand_logo_url_dark || ""} onChange={v => set("brand_logo_url_dark", v)}
+            token={token} isDark={isDark} />
+
+          {/* Подложка PDF */}
+          <ChoiceField label="Подложка логотипа в PDF"
+            value={brand.pdf_logo_bg || "auto"}
+            options={[
+              { val: "auto",        label: "Авто",         icon: "Sparkles" },
+              { val: "transparent", label: "Прозрачная",   icon: "EyeOff" },
+              { val: "white",       label: "Белая",        icon: "Sun" },
+              { val: "dark",        label: "Тёмная",       icon: "Moon" },
+            ]}
+            onChange={v => set("pdf_logo_bg", v)} isDark={isDark} />
         </Section>
 
         {/* Контакты */}
@@ -193,6 +257,36 @@ function Field({ label, value, onChange, placeholder, type = "text", multiline, 
         : <input type={type} value={value} onChange={e => onChange(e.target.value)}
             placeholder={placeholder} className={cls} style={style} />
       }
+    </div>
+  );
+}
+
+function ChoiceField({ label, value, onChange, options, isDark }: {
+  label: string; value: string; onChange: (v: string) => void;
+  options: { val: string; label: string; icon: string }[]; isDark: boolean;
+}) {
+  const muted  = isDark ? "rgba(255,255,255,0.4)" : "#6b7280";
+  const border = isDark ? "rgba(255,255,255,0.08)" : "#e5e7eb";
+  const bg     = isDark ? "rgba(255,255,255,0.05)" : "#f9fafb";
+  const text   = isDark ? "#fff" : "#0f1623";
+  return (
+    <div>
+      <div className="text-[10px] font-bold uppercase tracking-wider mb-1.5" style={{ color: muted }}>{label}</div>
+      <div className="grid gap-1.5" style={{ gridTemplateColumns: `repeat(${options.length}, minmax(0, 1fr))` }}>
+        {options.map(o => {
+          const active = o.val === value;
+          return (
+            <button key={o.val} onClick={() => onChange(o.val)}
+              className="flex items-center justify-center gap-1.5 px-2 py-2 rounded-xl text-xs font-semibold transition"
+              style={active
+                ? { background: "rgba(124,58,237,0.18)", border: "1px solid rgba(124,58,237,0.4)", color: "#a78bfa" }
+                : { background: bg, border: `1px solid ${border}`, color: text }}>
+              <Icon name={o.icon} size={13} />
+              <span className="truncate">{o.label}</span>
+            </button>
+          );
+        })}
+      </div>
     </div>
   );
 }

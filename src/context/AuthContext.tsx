@@ -20,6 +20,9 @@ export interface Brand {
   pdf_footer_address?: string | null;
   telegram_url?:       string | null;
   pdf_text_color?:     string | null;
+  brand_logo_url_dark?:    string | null;
+  brand_logo_orientation?: "horizontal" | "vertical" | string | null;
+  pdf_logo_bg?:            string | null;
 }
 
 export interface Permissions {

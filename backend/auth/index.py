@@ -152,7 +152,8 @@ def handler(event: dict, context) -> dict:
                    u.has_own_agent,
                    u.bot_name, u.bot_greeting, u.bot_avatar_url, u.brand_logo_url,
                    u.brand_color, u.support_phone, u.support_email, u.max_url,
-                   u.working_hours, u.pdf_footer_address, u.telegram_url, u.pdf_text_color
+                   u.working_hours, u.pdf_footer_address, u.telegram_url, u.pdf_text_color,
+                   u.brand_logo_url_dark, u.brand_logo_orientation, u.pdf_logo_bg
             FROM {SCHEMA}.user_sessions s
             JOIN {SCHEMA}.users u ON u.id = s.user_id
             WHERE s.token=%s AND s.expires_at > NOW()
@@ -165,7 +166,8 @@ def handler(event: dict, context) -> dict:
          company_addr, website, telegram, estimates_balance, trial_until, permissions,
          ucompany_id, has_own_agent,
          bot_name, bot_greeting, bot_avatar_url, brand_logo_url, brand_color,
-         support_phone, support_email, max_url, working_hours, pdf_footer_address, telegram_url, pdf_text_color) = row
+         support_phone, support_email, max_url, working_hours, pdf_footer_address, telegram_url, pdf_text_color,
+         brand_logo_url_dark, brand_logo_orientation, pdf_logo_bg) = row
 
         return ok({"user": {
             "id": uid, "email": email, "name": name, "phone": phone,
@@ -187,6 +189,9 @@ def handler(event: dict, context) -> dict:
                 "pdf_footer_address": pdf_footer_address,
                 "telegram_url": telegram_url,
                 "pdf_text_color": pdf_text_color,
+                "brand_logo_url_dark":    brand_logo_url_dark,
+                "brand_logo_orientation": brand_logo_orientation or "horizontal",
+                "pdf_logo_bg":            pdf_logo_bg or "auto",
             },
         }})
 
@@ -352,6 +357,7 @@ def handler(event: dict, context) -> dict:
             "brand_logo_url", "brand_color",
             "support_phone", "support_email", "max_url",
             "working_hours", "pdf_footer_address", "telegram_url", "pdf_text_color",
+            "brand_logo_url_dark", "brand_logo_orientation", "pdf_logo_bg",
         ]
         sets = []
         vals = []
@@ -381,7 +387,8 @@ def handler(event: dict, context) -> dict:
             SELECT id, role, has_own_agent,
                    bot_name, bot_greeting, bot_avatar_url, brand_logo_url, brand_color,
                    support_phone, support_email, max_url, working_hours,
-                   pdf_footer_address, company_name, telegram, website, telegram_url, pdf_text_color
+                   pdf_footer_address, company_name, telegram, website, telegram_url, pdf_text_color,
+                   brand_logo_url_dark, brand_logo_orientation, pdf_logo_bg
             FROM {SCHEMA}.users
             WHERE id=%s AND removed_at IS NULL
         """, (int(company_id),))
@@ -390,7 +397,8 @@ def handler(event: dict, context) -> dict:
             return err("Компания не найдена", 404)
         cid, role, has_agent, bot_name, bot_greeting, bot_avatar_url, brand_logo_url, brand_color, \
             support_phone, support_email, max_url, working_hours, pdf_footer_address, \
-            company_name, telegram, website, telegram_url, pdf_text_color = r
+            company_name, telegram, website, telegram_url, pdf_text_color, \
+            brand_logo_url_dark, brand_logo_orientation, pdf_logo_bg = r
         # Если у пользователя нет активной услуги — возвращаем пустой бренд
         if not has_agent or role != "company":
             return ok({"brand": None})
@@ -411,6 +419,9 @@ def handler(event: dict, context) -> dict:
             "pdf_footer_address": pdf_footer_address,
             "telegram_url": telegram_url,
             "pdf_text_color": pdf_text_color,
+            "brand_logo_url_dark":    brand_logo_url_dark,
+            "brand_logo_orientation": brand_logo_orientation or "horizontal",
+            "pdf_logo_bg":            pdf_logo_bg or "auto",
         }})
 
     # ── Выход ─────────────────────────────────────────────────────────────────
