@@ -152,7 +152,7 @@ def handler(event: dict, context) -> dict:
                    u.has_own_agent,
                    u.bot_name, u.bot_greeting, u.bot_avatar_url, u.brand_logo_url,
                    u.brand_color, u.support_phone, u.support_email, u.max_url,
-                   u.working_hours, u.pdf_footer_address
+                   u.working_hours, u.pdf_footer_address, u.telegram_url
             FROM {SCHEMA}.user_sessions s
             JOIN {SCHEMA}.users u ON u.id = s.user_id
             WHERE s.token=%s AND s.expires_at > NOW()
@@ -165,7 +165,7 @@ def handler(event: dict, context) -> dict:
          company_addr, website, telegram, estimates_balance, trial_until, permissions,
          ucompany_id, has_own_agent,
          bot_name, bot_greeting, bot_avatar_url, brand_logo_url, brand_color,
-         support_phone, support_email, max_url, working_hours, pdf_footer_address) = row
+         support_phone, support_email, max_url, working_hours, pdf_footer_address, telegram_url) = row
 
         return ok({"user": {
             "id": uid, "email": email, "name": name, "phone": phone,
@@ -185,6 +185,7 @@ def handler(event: dict, context) -> dict:
                 "support_phone": support_phone, "support_email": support_email,
                 "max_url": max_url, "working_hours": working_hours,
                 "pdf_footer_address": pdf_footer_address,
+                "telegram_url": telegram_url,
             },
         }})
 
@@ -349,7 +350,7 @@ def handler(event: dict, context) -> dict:
             "bot_name", "bot_greeting", "bot_avatar_url",
             "brand_logo_url", "brand_color",
             "support_phone", "support_email", "max_url",
-            "working_hours", "pdf_footer_address",
+            "working_hours", "pdf_footer_address", "telegram_url",
         ]
         sets = []
         vals = []
@@ -379,7 +380,7 @@ def handler(event: dict, context) -> dict:
             SELECT id, role, has_own_agent,
                    bot_name, bot_greeting, bot_avatar_url, brand_logo_url, brand_color,
                    support_phone, support_email, max_url, working_hours,
-                   pdf_footer_address, company_name, telegram, website
+                   pdf_footer_address, company_name, telegram, website, telegram_url
             FROM {SCHEMA}.users
             WHERE id=%s AND removed_at IS NULL
         """, (int(company_id),))
@@ -388,7 +389,7 @@ def handler(event: dict, context) -> dict:
             return err("Компания не найдена", 404)
         cid, role, has_agent, bot_name, bot_greeting, bot_avatar_url, brand_logo_url, brand_color, \
             support_phone, support_email, max_url, working_hours, pdf_footer_address, \
-            company_name, telegram, website = r
+            company_name, telegram, website, telegram_url = r
         # Если у пользователя нет активной услуги — возвращаем пустой бренд
         if not has_agent or role != "company":
             return ok({"brand": None})
@@ -407,6 +408,7 @@ def handler(event: dict, context) -> dict:
             "website": website,
             "working_hours": working_hours,
             "pdf_footer_address": pdf_footer_address,
+            "telegram_url": telegram_url,
         }})
 
     # ── Выход ─────────────────────────────────────────────────────────────────

@@ -21,6 +21,7 @@ export default function OwnAgentEditor({ isDark }: Props) {
     max_url:            user?.brand?.max_url            ?? "",
     working_hours:      user?.brand?.working_hours      ?? "Ежедневно 9:00–22:00",
     pdf_footer_address: user?.brand?.pdf_footer_address ?? "",
+    telegram_url:       user?.brand?.telegram_url       ?? "",
   });
 
   const [saving, setSaving] = useState(false);
@@ -99,6 +100,8 @@ export default function OwnAgentEditor({ isDark }: Props) {
             onChange={v => set("support_phone", v)} isDark={isDark} />
           <Field label="Email" placeholder="info@yourcompany.ru" type="email"
             value={brand.support_email || ""} onChange={v => set("support_email", v)} isDark={isDark} />
+          <Field label="Telegram (ссылка)" placeholder="https://t.me/yourcompany"
+            value={brand.telegram_url || ""} onChange={v => set("telegram_url", v)} isDark={isDark} />
           <Field label="MAX (ссылка)" placeholder="https://max.ru/u/..."
             value={brand.max_url || ""} onChange={v => set("max_url", v)} isDark={isDark} />
           <Field label="Часы работы" placeholder="Ежедневно 9:00–22:00"

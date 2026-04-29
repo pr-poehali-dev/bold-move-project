@@ -136,18 +136,67 @@ export default function BrandPreview({ brand, isDark }: Props) {
         </div>
         <div className="space-y-1.5 text-[10.5px]">
           {[
-            { icon: "Phone",         val: brand.support_phone || "не задан" },
-            { icon: "Send",          val: brand.bot_name      ? "Telegram активен" : "не задан" },
-            { icon: "Clock",         val: brand.working_hours || "Ежедневно 8:00–22:00" },
-            { icon: "MapPin",        val: brand.pdf_footer_address || "не задан" },
+            { icon: "Phone",  val: brand.support_phone || "не задан" },
+            { icon: "Send",   val: brand.telegram_url  || "не задан" },
+            { icon: "Clock",  val: brand.working_hours || "Ежедневно 8:00–22:00" },
           ].map(c => (
             <div key={c.icon} className="flex items-center gap-2">
               <Icon name={c.icon} size={11} style={{ color: accent }} />
-              <span className={brand.support_phone || c.val !== "не задан" ? "text-white/70" : "text-white/30 italic"}>
+              <span className={c.val !== "не задан" ? "text-white/70" : "text-white/30 italic"}>
                 {c.val}
               </span>
             </div>
           ))}
+        </div>
+      </div>
+
+      {/* Превью PDF-сметы */}
+      <div>
+        <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider mb-2"
+          style={{ color: muted }}>
+          <Icon name="FileText" size={11} />
+          Так выглядит PDF-смета
+        </div>
+        <div className="rounded-xl overflow-hidden shadow-lg"
+          style={{ background: "#fff", border: `1px solid ${border}` }}>
+          {/* Шапка PDF */}
+          <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
+            <div className="flex items-center gap-2">
+              {brand.brand_logo_url
+                ? <img src={brand.brand_logo_url} alt="" className="h-6 object-contain" />
+                : <div className="w-6 h-6 rounded bg-gray-200" />}
+              <span className="text-[11px] font-black text-gray-800">{companyName}</span>
+            </div>
+            <div className="text-right">
+              <div className="text-[8px] text-gray-400">Смета №</div>
+              <div className="text-[10px] font-bold text-gray-600">001</div>
+            </div>
+          </div>
+          {/* Тело */}
+          <div className="px-4 py-2.5">
+            <div className="text-[9px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">Позиции</div>
+            {[
+              { name: "Натяжной потолок белый матовый", qty: "24 м²", price: "12 480 ₽" },
+              { name: "Монтаж и установка", qty: "1 шт", price: "3 000 ₽" },
+            ].map((r, i) => (
+              <div key={i} className="flex items-center justify-between py-1 border-b border-gray-50">
+                <span className="text-[9px] text-gray-600 flex-1 truncate pr-2">{r.name}</span>
+                <span className="text-[8px] text-gray-400 w-10 text-right">{r.qty}</span>
+                <span className="text-[9px] font-bold text-gray-700 w-16 text-right">{r.price}</span>
+              </div>
+            ))}
+            <div className="flex justify-end mt-1.5 gap-1 items-center">
+              <span className="text-[9px] text-gray-400">Итого:</span>
+              <span className="text-[11px] font-black" style={{ color: accent }}>15 480 ₽</span>
+            </div>
+          </div>
+          {/* Подвал PDF */}
+          <div className="px-4 py-2 border-t border-gray-100"
+            style={{ background: `${accent}0d` }}>
+            <div className="text-[8px] text-gray-400 text-center leading-tight">
+              {brand.pdf_footer_address || "Здесь появится адрес и реквизиты вашей компании"}
+            </div>
+          </div>
         </div>
       </div>
     </div>

@@ -18,6 +18,7 @@ export interface Brand {
   max_url?:            string | null;
   working_hours?:      string | null;
   pdf_footer_address?: string | null;
+  telegram_url?:       string | null;
 }
 
 export interface Permissions {
