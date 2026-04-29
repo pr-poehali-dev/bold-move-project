@@ -257,7 +257,9 @@ function EventGroup({ title, icon, color, items, onSelect, overdue }: {
             )}
             <div className={`min-w-0 ${overdue || item.isToday ? "pl-2" : ""}`}>
               <div className="text-sm font-medium truncate" style={{ color: t.text }}>{item.name || "Без имени"}</div>
-              {item.phone && <div className="text-xs truncate" style={{ color: t.textMute }}>{item.phone}</div>}
+              {item.phone && <div className="text-xs truncate flex items-center gap-1" style={{ color: t.textMute }}>
+                <Icon name="Phone" size={10} style={{ color, flexShrink: 0 }} />{item.phone}
+              </div>}
               {item.address && <div className="text-xs truncate flex items-center gap-1 mt-0.5" style={{ color: t.textMute }}>
                 <Icon name="MapPin" size={10} style={{ color, flexShrink: 0 }} />{item.address}
               </div>}
