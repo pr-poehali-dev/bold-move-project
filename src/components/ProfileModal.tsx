@@ -65,13 +65,13 @@ export default function ProfileModal({ onClose }: Props) {
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4"
+    <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center sm:p-4"
       style={{ background: "rgba(0,0,0,0.75)" }}>
-      <div className="w-full max-w-lg rounded-2xl overflow-hidden shadow-2xl max-h-[90vh] flex flex-col"
+      <div className="w-full max-w-lg sm:rounded-2xl rounded-t-2xl overflow-hidden shadow-2xl max-h-[92dvh] flex flex-col"
         style={{ background: "#0e0e1c", border: "1px solid rgba(255,255,255,0.08)" }}
         onClick={e => e.stopPropagation()}>
 
-        <div className="flex items-center justify-between px-6 py-4 border-b border-white/[0.06] flex-shrink-0">
+        <div className="flex items-center justify-between px-4 sm:px-6 py-3 sm:py-4 border-b border-white/[0.06] flex-shrink-0">
           <div className="flex items-center gap-2.5">
             <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: "#f9731615" }}>
               <Icon name="User" size={15} style={{ color: "#f97316" }} />
@@ -83,7 +83,7 @@ export default function ProfileModal({ onClose }: Props) {
           </button>
         </div>
 
-        <div className="overflow-y-auto flex-1 px-6 py-5 space-y-5">
+        <div className="overflow-y-auto flex-1 px-4 sm:px-6 py-4 sm:py-5 space-y-4 sm:space-y-5">
 
           {/* Роль */}
           <Section title="Роль" icon="BadgeCheck">
@@ -181,9 +181,9 @@ export default function ProfileModal({ onClose }: Props) {
           )}
         </div>
 
-        <div className="flex gap-2 px-6 py-4 border-t border-white/[0.06] flex-shrink-0">
+        <div className="flex gap-2 px-4 sm:px-6 py-3 sm:py-4 border-t border-white/[0.06] flex-shrink-0">
           <button onClick={save} disabled={saving}
-            className="flex-1 py-2.5 rounded-xl text-sm font-bold text-white transition disabled:opacity-50 flex items-center justify-center gap-2"
+            className="flex-1 py-3 sm:py-2.5 rounded-xl text-sm font-bold text-white transition disabled:opacity-50 flex items-center justify-center gap-2"
             style={{ background: saved ? "#10b981" : "#f97316" }}>
             {saving
               ? <><div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> Сохранение...</>
@@ -192,7 +192,7 @@ export default function ProfileModal({ onClose }: Props) {
               : <><Icon name="Save" size={14} /> Сохранить</>}
           </button>
           <button onClick={onClose}
-            className="px-5 py-2.5 rounded-xl text-sm font-medium transition"
+            className="px-5 py-3 sm:py-2.5 rounded-xl text-sm font-medium transition"
             style={{ background: "rgba(255,255,255,0.05)", color: "rgba(255,255,255,0.4)", border: "1px solid rgba(255,255,255,0.07)" }}>
             Закрыть
           </button>
@@ -221,17 +221,29 @@ function Field({ label, value, onChange, placeholder, type = "text", readonly = 
   placeholder?: string; type?: string; readonly?: boolean;
 }) {
   return (
-    <div className="flex items-center px-4 py-2.5 border-b border-white/[0.04] last:border-0">
-      <span className="text-xs text-white/30 w-24 flex-shrink-0">{label}</span>
-      <input
-        type={type}
-        value={value}
-        readOnly={readonly}
-        onChange={e => onChange?.(e.target.value)}
-        placeholder={placeholder}
-        className="flex-1 text-xs bg-transparent text-right placeholder-white/15 focus:outline-none transition"
-        style={{ color: readonly ? "rgba(255,255,255,0.3)" : "rgba(255,255,255,0.7)" }}
-      />
+    <div className="border-b border-white/[0.04] last:border-0">
+      {/* Десктоп: горизонтально */}
+      <div className="hidden sm:flex items-center px-4 py-2.5">
+        <span className="text-xs text-white/30 w-24 flex-shrink-0">{label}</span>
+        <input
+          type={type} value={value} readOnly={readonly}
+          onChange={e => onChange?.(e.target.value)}
+          placeholder={placeholder}
+          className="flex-1 text-xs bg-transparent text-right placeholder-white/15 focus:outline-none transition"
+          style={{ color: readonly ? "rgba(255,255,255,0.3)" : "rgba(255,255,255,0.7)" }}
+        />
+      </div>
+      {/* Мобиле: вертикально */}
+      <div className="sm:hidden px-4 py-3">
+        <div className="text-[10px] text-white/30 mb-1 uppercase tracking-wider">{label}</div>
+        <input
+          type={type} value={value} readOnly={readonly}
+          onChange={e => onChange?.(e.target.value)}
+          placeholder={placeholder}
+          className="w-full text-sm bg-transparent placeholder-white/15 focus:outline-none transition"
+          style={{ color: readonly ? "rgba(255,255,255,0.3)" : "rgba(255,255,255,0.85)" }}
+        />
+      </div>
     </div>
   );
 }
@@ -240,15 +252,21 @@ function PhoneField({ label, value, onChange }: {
   label: string; value: string; onChange: (v: string) => void;
 }) {
   return (
-    <div className="flex items-center px-4 py-2.5 border-b border-white/[0.04] last:border-0">
-      <span className="text-xs text-white/30 w-24 flex-shrink-0">{label}</span>
-      <PhoneInput
-        value={value}
-        onChange={onChange}
-        showValidation
-        className="flex-1 text-xs bg-transparent text-right placeholder-white/15 focus:outline-none transition"
-        style={{ color: "rgba(255,255,255,0.7)" }}
-      />
+    <div className="border-b border-white/[0.04] last:border-0">
+      {/* Десктоп */}
+      <div className="hidden sm:flex items-center px-4 py-2.5">
+        <span className="text-xs text-white/30 w-24 flex-shrink-0">{label}</span>
+        <PhoneInput value={value} onChange={onChange} showValidation
+          className="flex-1 text-xs bg-transparent text-right placeholder-white/15 focus:outline-none transition"
+          style={{ color: "rgba(255,255,255,0.7)" }} />
+      </div>
+      {/* Мобиле */}
+      <div className="sm:hidden px-4 py-3">
+        <div className="text-[10px] text-white/30 mb-1 uppercase tracking-wider">{label}</div>
+        <PhoneInput value={value} onChange={onChange} showValidation
+          className="w-full text-sm bg-transparent placeholder-white/15 focus:outline-none transition"
+          style={{ color: "rgba(255,255,255,0.85)" }} />
+      </div>
     </div>
   );
 }
