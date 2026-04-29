@@ -218,7 +218,7 @@ export default function PricingLiveDemo() {
         {/* Скроллируемая зона — на мобиле высота ограничена и плавно скроллится вниз */}
         <div
           ref={scrollRef}
-          className="overflow-y-auto"
+          className="overflow-hidden"
           style={{ maxHeight: "min(70vh, 560px)" }}>
         <div className="grid md:grid-cols-2 gap-0">
 
