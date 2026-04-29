@@ -1,10 +1,27 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Icon from "@/components/ui/icon";
 import PricingLiveDemo from "../PricingLiveDemo";
 import { ADVANTAGES } from "./pricingData";
 
+const VISIBLE  = 3;
+const INTERVAL = 3000; // мс между сменой
+const PAGES    = Math.ceil(ADVANTAGES.length / VISIBLE);
+
 export default function PricingFeatures() {
-  const [expanded, setExpanded] = useState(false);
+  const [page,   setPage]   = useState(0);
+  const [fadeIn, setFadeIn] = useState(true);
+
+  // Автосмена каждые 3 секунды
+  useEffect(() => {
+    const t = setInterval(() => {
+      setFadeIn(false);
+      setTimeout(() => {
+        setPage(p => (p + 1) % PAGES);
+        setFadeIn(true);
+      }, 300);
+    }, INTERVAL);
+    return () => clearInterval(t);
+  }, []);
 
   return (
     <>
@@ -125,37 +142,32 @@ export default function PricingFeatures() {
           ))}
         </div>
 
-        {/* Мобиле — 3 карточки + раскрытие */}
+        {/* Мобиле — авто-карусель по 3 карточки */}
         <div className="sm:hidden">
-          <div className="flex flex-col gap-3">
-            {ADVANTAGES.slice(0, 3).map(a => (
+          {/* Карточки с fade */}
+          <div
+            className="flex flex-col gap-3 transition-opacity duration-300"
+            style={{ opacity: fadeIn ? 1 : 0 }}>
+            {ADVANTAGES.slice(page * VISIBLE, page * VISIBLE + VISIBLE).map(a => (
               <AdvCard key={a.title} a={a} />
             ))}
           </div>
 
-          {/* Плавно раскрывающийся блок с остальными */}
-          <div
-            className="overflow-hidden transition-all duration-500 ease-in-out"
-            style={{ maxHeight: expanded ? ADVANTAGES.length * 120 : 0, opacity: expanded ? 1 : 0 }}>
-            <div className="flex flex-col gap-3 pt-3">
-              {ADVANTAGES.slice(3).map(a => (
-                <AdvCard key={a.title} a={a} />
-              ))}
-            </div>
+          {/* Точки-индикаторы */}
+          <div className="flex items-center justify-center gap-2 mt-4">
+            {Array.from({ length: PAGES }).map((_, i) => (
+              <button
+                key={i}
+                onClick={() => { setFadeIn(false); setTimeout(() => { setPage(i); setFadeIn(true); }, 300); }}
+                className="rounded-full transition-all duration-300"
+                style={{
+                  width:      i === page ? 20 : 6,
+                  height:     6,
+                  background: i === page ? "#f97316" : "rgba(255,255,255,0.2)",
+                }}
+              />
+            ))}
           </div>
-
-          {/* Кнопка показать/скрыть */}
-          <button
-            onClick={() => setExpanded(v => !v)}
-            className="w-full mt-4 py-3 rounded-2xl text-sm font-semibold flex items-center justify-center gap-2 transition active:opacity-70"
-            style={{
-              background: "rgba(255,255,255,0.04)",
-              border: "1px solid rgba(255,255,255,0.08)",
-              color: "rgba(255,255,255,0.6)",
-            }}>
-            <Icon name={expanded ? "ChevronUp" : "ChevronDown"} size={16} />
-            {expanded ? "Скрыть" : `Показать ещё ${ADVANTAGES.length - 3}`}
-          </button>
         </div>
       </section>
     </>
