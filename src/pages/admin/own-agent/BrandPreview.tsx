@@ -1,5 +1,7 @@
+import { useState } from "react";
 import Icon from "@/components/ui/icon";
 import { useAuth, type Brand } from "@/context/AuthContext";
+import func2url from "@/../backend/func2url.json";
 
 interface Props {
   brand: Brand;
@@ -10,8 +12,86 @@ interface Props {
  * Мини-превью «как клиент увидит сайт» — обновляется в реальном времени
  * по мере заполнения формы редактирования бренда.
  */
+const PDF_URL = (func2url as Record<string, string>)["generate-pdf"];
+
+// Тестовые данные расчёта (пример: натяжной потолок 20 м²)
+const DEMO_ESTIMATE = {
+  blocks: [
+    {
+      title: "1. Полотно",
+      numbered: true,
+      items: [
+        { name: "Натяжной потолок белый матовый MSD Classic", value: "20 м² × 399 ₽ = 7 980 ₽" },
+        { name: "Раскрой ПВХ",                               value: "20 м² × 25 ₽ = 500 ₽"   },
+      ],
+    },
+    {
+      title: "2. Профиль",
+      numbered: true,
+      items: [
+        { name: "Профиль настенный алюминий", value: "18 п.м × 90 ₽ = 1 620 ₽" },
+      ],
+    },
+    {
+      title: "3. Монтаж",
+      numbered: true,
+      items: [
+        { name: "Монтаж натяжного потолка", value: "20 м² × 180 ₽ = 3 600 ₽" },
+        { name: "Монтаж профиля",           value: "18 п.м × 40 ₽ = 720 ₽"   },
+      ],
+    },
+  ],
+  totals: [
+    "Econom: 12 100 ₽",
+    "Standard: 14 420 ₽",
+    "Premium: 18 313 ₽",
+  ],
+  finalPhrase: "На какой день вас записать на бесплатный замер?",
+};
+
 export default function BrandPreview({ brand, isDark }: Props) {
   const { user } = useAuth();
+  const [downloading, setDownloading] = useState(false);
+
+  const downloadPdf = async () => {
+    setDownloading(true);
+    try {
+      const resp = await fetch(PDF_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...DEMO_ESTIMATE,
+          brand: {
+            company_name:       user?.company_name || "Ваша компания",
+            brand_logo_url:     brand.brand_logo_url || "",
+            brand_color:        brand.brand_color || "#f97316",
+            pdf_text_color:     brand.pdf_text_color || "#111827",
+            support_phone:      brand.support_phone || "",
+            website:            "",
+            telegram:           brand.telegram_url || "",
+            max_url:            brand.max_url || "",
+            working_hours:      brand.working_hours || "",
+            pdf_footer_address: brand.pdf_footer_address || "",
+          },
+        }),
+      });
+      if (!resp.ok) throw new Error("Ошибка генерации");
+      const data = await resp.json();
+      if (!data.pdf) throw new Error("Нет PDF");
+      const bytes = Uint8Array.from(atob(data.pdf), c => c.charCodeAt(0));
+      const blob  = new Blob([bytes], { type: "application/pdf" });
+      const url   = URL.createObjectURL(blob);
+      const a     = document.createElement("a");
+      a.href      = url;
+      a.download  = "смета-пример.pdf";
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      alert("Не удалось сгенерировать PDF. Попробуй позже.");
+    } finally {
+      setDownloading(false);
+    }
+  };
 
   const accent      = brand.brand_color  || "#f97316";
   const pdfText     = brand.pdf_text_color || "#111827";
@@ -208,6 +288,21 @@ export default function BrandPreview({ brand, isDark }: Props) {
           </div>
         </div>
       </div>
+
+      {/* Кнопка скачать PDF */}
+      <button
+        onClick={downloadPdf}
+        disabled={downloading}
+        className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-bold transition disabled:opacity-60"
+        style={{
+          background: downloading ? "rgba(124,58,237,0.15)" : "rgba(124,58,237,0.12)",
+          border: "1px solid rgba(124,58,237,0.3)",
+          color: "#a78bfa",
+        }}>
+        {downloading
+          ? <><div className="w-3.5 h-3.5 border-2 border-violet-400 border-t-transparent rounded-full animate-spin" /> Генерирую PDF...</>
+          : <><Icon name="Download" size={14} /> Скачать PDF с моим брендом</>}
+      </button>
     </div>
   );
 }
