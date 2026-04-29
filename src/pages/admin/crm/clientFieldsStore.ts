@@ -26,10 +26,9 @@ export const PRESET_TAG_COLORS = [
 
 // ── Встроенные поля (дефолтный порядок) ────────────────────────────────────
 export const BUILTIN_FIELDS: CustomClientField[] = [
-  { id: "builtin_name",        label: "Имя клиента",                       clientKey: "client_name",       builtin: true },
-  { id: "builtin_phone",       label: "Телефон",                           clientKey: "phone",             builtin: true },
-  { id: "builtin_responsible", label: "Ответственный (прораб / дизайнер)", clientKey: "responsible_phone", builtin: true },
-  { id: "builtin_notes",       label: "Заметка о клиенте",                 clientKey: "notes",             builtin: true },
+  { id: "builtin_name",  label: "Имя клиента",       clientKey: "client_name", builtin: true },
+  { id: "builtin_phone", label: "Телефон",           clientKey: "phone",       builtin: true },
+  { id: "builtin_notes", label: "Заметка о клиенте", clientKey: "notes",       builtin: true },
 ];
 
 // ── Список полей (встроенные + кастомные, порядок и скрытые) ───────────────
