@@ -599,28 +599,44 @@ def handler(event: dict, context) -> dict:
         if resource == "calendar-events":
             if method == "GET":
                 month = qs.get("month"); year = qs.get("year")
-                if month and year:
+                if is_master:
+                    cond_args = []
+                    if month and year:
+                        cond = "WHERE EXTRACT(MONTH FROM ce.start_time)=%s AND EXTRACT(YEAR FROM ce.start_time)=%s"
+                        cond_args = [int(month), int(year)]
+                    else:
+                        cond = ""
                     cur.execute(f"""SELECT ce.id, ce.client_id, ce.title, ce.description, ce.event_type,
                         ce.start_time, ce.end_time, ce.color, ce.created_at, lc.client_name, lc.phone
                         FROM {SCHEMA}.calendar_events ce
                         LEFT JOIN {SCHEMA}.live_chats lc ON ce.client_id=lc.id
-                        WHERE EXTRACT(MONTH FROM ce.start_time)=%s AND EXTRACT(YEAR FROM ce.start_time)=%s
-                        ORDER BY ce.start_time""", (int(month), int(year)))
+                        {cond} ORDER BY ce.start_time DESC LIMIT 200""", cond_args)
                 else:
-                    cur.execute(f"""SELECT ce.id, ce.client_id, ce.title, ce.description, ce.event_type,
-                        ce.start_time, ce.end_time, ce.color, ce.created_at, lc.client_name, lc.phone
-                        FROM {SCHEMA}.calendar_events ce
-                        LEFT JOIN {SCHEMA}.live_chats lc ON ce.client_id=lc.id
-                        ORDER BY ce.start_time DESC LIMIT 100""")
+                    if month and year:
+                        cur.execute(f"""SELECT ce.id, ce.client_id, ce.title, ce.description, ce.event_type,
+                            ce.start_time, ce.end_time, ce.color, ce.created_at, lc.client_name, lc.phone
+                            FROM {SCHEMA}.calendar_events ce
+                            LEFT JOIN {SCHEMA}.live_chats lc ON ce.client_id=lc.id
+                            WHERE ce.company_id=%s
+                              AND EXTRACT(MONTH FROM ce.start_time)=%s
+                              AND EXTRACT(YEAR FROM ce.start_time)=%s
+                            ORDER BY ce.start_time""", (company_id, int(month), int(year)))
+                    else:
+                        cur.execute(f"""SELECT ce.id, ce.client_id, ce.title, ce.description, ce.event_type,
+                            ce.start_time, ce.end_time, ce.color, ce.created_at, lc.client_name, lc.phone
+                            FROM {SCHEMA}.calendar_events ce
+                            LEFT JOIN {SCHEMA}.live_chats lc ON ce.client_id=lc.id
+                            WHERE ce.company_id=%s
+                            ORDER BY ce.start_time DESC LIMIT 100""", (company_id,))
                 cols_desc = [d[0] for d in cur.description]
                 return ok([dict(zip(cols_desc, r)) for r in cur.fetchall()])
             if method == "POST":
                 cur.execute(f"""INSERT INTO {SCHEMA}.calendar_events
-                    (client_id,title,description,event_type,start_time,end_time,color)
-                    VALUES (%s,%s,%s,%s,%s,%s,%s) RETURNING id""",
+                    (client_id,title,description,event_type,start_time,end_time,color,company_id)
+                    VALUES (%s,%s,%s,%s,%s,%s,%s,%s) RETURNING id""",
                     (body.get("client_id"), body.get("title",""), body.get("description",""),
                      body.get("event_type","measure"), body.get("start_time"),
-                     body.get("end_time"), body.get("color","#f59e0b")))
+                     body.get("end_time"), body.get("color","#f59e0b"), company_id))
                 new_id = cur.fetchone()[0]
                 conn.commit()
                 return ok({"id": new_id})
@@ -633,13 +649,21 @@ def handler(event: dict, context) -> dict:
                     if f in body: sets.append(f"{f}=%s"); vals.append(body[f])
                 if not sets: return err("nothing to update")
                 vals.append(int(cid))
-                cur.execute(f"UPDATE {SCHEMA}.calendar_events SET {','.join(sets)} WHERE id=%s", vals)
+                # Мастер редактирует любое; компания — только своё
+                if is_master:
+                    cur.execute(f"UPDATE {SCHEMA}.calendar_events SET {','.join(sets)} WHERE id=%s", vals)
+                else:
+                    vals.append(company_id)
+                    cur.execute(f"UPDATE {SCHEMA}.calendar_events SET {','.join(sets)} WHERE id=%s AND company_id=%s", vals)
                 conn.commit()
                 return ok({"updated": True})
             if method == "DELETE":
                 cid = qs.get("id")
                 if not cid: return err("id required")
-                cur.execute(f"UPDATE {SCHEMA}.calendar_events SET id=id WHERE id=%s", (int(cid),))
+                if is_master:
+                    cur.execute(f"DELETE FROM {SCHEMA}.calendar_events WHERE id=%s", (int(cid),))
+                else:
+                    cur.execute(f"DELETE FROM {SCHEMA}.calendar_events WHERE id=%s AND company_id=%s", (int(cid), company_id))
                 conn.commit()
                 return ok({"deleted": True})
 
