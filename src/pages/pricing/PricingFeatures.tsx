@@ -6,8 +6,8 @@ export default function PricingFeatures() {
   return (
     <>
       {/* ── ГЛАВНОЕ ПРЕИМУЩЕСТВО — не упускай клиента ─────────────────────── */}
-      <section className="max-w-5xl mx-auto px-5 pb-12">
-        <div className="relative rounded-[28px] overflow-hidden p-7 md:p-10"
+      <section className="max-w-5xl mx-auto px-5 pb-6 sm:pb-12">
+        <div className="relative rounded-[28px] overflow-hidden p-4 sm:p-7 md:p-10"
           style={{
             background:
               "radial-gradient(120% 120% at 0% 0%, rgba(249,115,22,0.18), rgba(8,8,15,0) 60%), radial-gradient(120% 120% at 100% 100%, rgba(16,185,129,0.18), rgba(8,8,15,0) 55%), #0a0a14",
@@ -16,27 +16,27 @@ export default function PricingFeatures() {
           }}>
 
           {/* Бейдж */}
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider mb-5"
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider mb-3 sm:mb-5"
             style={{ background: "rgba(249,115,22,0.18)", color: "#fbbf24", border: "1px solid rgba(249,115,22,0.4)" }}>
             <Icon name="Crown" size={12} />
             Главная фишка сервиса
           </div>
 
-          <h2 className="text-2xl md:text-4xl font-black leading-tight mb-3">
+          <h2 className="text-xl sm:text-2xl md:text-4xl font-black leading-tight mb-2 sm:mb-3">
             Не упускай <span style={{ color: "#f97316" }}>СВОЕГО</span> клиента
           </h2>
-          <p className="text-sm md:text-base text-white/65 max-w-2xl leading-relaxed mb-7">
+          <p className="text-sm md:text-base text-white/65 max-w-2xl leading-relaxed mb-4 sm:mb-7">
             Сервис показывает <b className="text-white">сколько ты заработаешь</b> на заказе ещё до закупки материала.
             Значит ты <b style={{ color: "#10b981" }}>точно знаешь</b>, какую скидку можешь дать,
             чтобы клиент <b style={{ color: "#10b981" }}>сказал «беру»</b> — и при этом остаться в плюсе.
           </p>
 
           {/* Сравнение: ДО / ПОСЛЕ */}
-          <div className="grid md:grid-cols-2 gap-3 mb-6">
+          <div className="grid md:grid-cols-2 gap-2 sm:gap-3 mb-4 sm:mb-6">
             {/* ДО */}
-            <div className="rounded-2xl p-5"
+            <div className="rounded-2xl p-3 sm:p-5"
               style={{ background: "rgba(239,68,68,0.06)", border: "1.5px solid rgba(239,68,68,0.22)" }}>
-              <div className="flex items-center gap-2 mb-3">
+              <div className="flex items-center gap-2 mb-2 sm:mb-3">
                 <div className="w-7 h-7 rounded-lg flex items-center justify-center"
                   style={{ background: "rgba(239,68,68,0.18)" }}>
                   <Icon name="X" size={14} style={{ color: "#ef4444" }} />
@@ -55,9 +55,9 @@ export default function PricingFeatures() {
             </div>
 
             {/* ПОСЛЕ */}
-            <div className="rounded-2xl p-5"
+            <div className="rounded-2xl p-3 sm:p-5"
               style={{ background: "rgba(16,185,129,0.06)", border: "1.5px solid rgba(16,185,129,0.32)" }}>
-              <div className="flex items-center gap-2 mb-3">
+              <div className="flex items-center gap-2 mb-2 sm:mb-3">
                 <div className="w-7 h-7 rounded-lg flex items-center justify-center"
                   style={{ background: "rgba(16,185,129,0.2)" }}>
                   <Icon name="Check" size={14} style={{ color: "#10b981" }} />
@@ -77,7 +77,7 @@ export default function PricingFeatures() {
           </div>
 
           {/* Пример цифр */}
-          <div className="rounded-2xl p-5"
+          <div className="rounded-2xl p-3 sm:p-5"
             style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)" }}>
             <div className="text-[10px] font-bold text-white/40 uppercase tracking-wider mb-3">
               Пример расчёта по смете
