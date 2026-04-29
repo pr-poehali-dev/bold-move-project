@@ -156,7 +156,8 @@ export default function Index() {
             onClick={() => setPanel(panel === "contacts" ? "none" : "contacts")}
             className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-medium transition-all"
             style={{ background: `${brand.brand_color}1a`, border: `1px solid ${brand.brand_color}33`, color: brand.brand_color }}>
-            <Icon name="MapPin" size={12} /> <span>Контакты</span>
+            <Icon name="MapPin" size={12} />
+            <span className="hidden sm:inline">Контакты</span>
           </button>
 
           <button
