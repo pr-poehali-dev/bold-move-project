@@ -129,7 +129,7 @@ export function DrawerPLBlock({ data, isHidden, toggleHidden, customFinRows }: {
                   {incomeRows.map(r => (
                     <div key={r.label} className="flex items-center justify-between px-3 py-2">
                       <span className="text-xs" style={{ color: t.textSub }}>{r.label}</span>
-                      <span className="text-xs font-semibold text-emerald-400">+{fmt(r.value)} ₽</span>
+                      <span className="text-xs font-semibold text-emerald-400">{fmt(r.value)} ₽</span>
                     </div>
                   ))}
                 </div>
@@ -179,7 +179,7 @@ export function DrawerPLBlock({ data, isHidden, toggleHidden, customFinRows }: {
                   {incomeRows.map(r => (
                     <div key={r.label} className="flex items-center justify-between gap-2">
                       <span className="text-xs truncate" style={{ color: "#a3a3a3" }}>{r.label}</span>
-                      <span className="text-xs font-semibold text-emerald-400 whitespace-nowrap">+{fmt(r.value)} ₽</span>
+                      <span className="text-xs font-semibold text-emerald-400 whitespace-nowrap">{fmt(r.value)} ₽</span>
                     </div>
                   ))}
                   {incomeRows.length > 1 && (
