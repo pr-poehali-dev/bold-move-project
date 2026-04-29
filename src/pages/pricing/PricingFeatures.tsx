@@ -1,40 +1,47 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import Icon from "@/components/ui/icon";
 import PricingLiveDemo from "../PricingLiveDemo";
 import { ADVANTAGES } from "./pricingData";
 
-const VISIBLE = 3;
-const PAGES   = Math.ceil(ADVANTAGES.length / VISIBLE); // 3 страницы по 3
+const VISIBLE  = 3;
+const PAGES    = Math.ceil(ADVANTAGES.length / VISIBLE); // 3 страницы по 3
+const INTERVAL = 5000;
 
 export default function PricingFeatures() {
-  const [page,   setPage]   = useState(0);
-  const [fadeIn, setFadeIn] = useState(true);
-  const fadeTimer  = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const touchStart = useRef<{ x: number; y: number } | null>(null);
+  const [page,       setPage]       = useState(0);
+  const trackRef     = useRef<HTMLDivElement>(null);
+  const intervalRef  = useRef<ReturnType<typeof setInterval> | null>(null);
+  const touchStartX  = useRef(0);
 
-  const goToPage = (i: number) => {
-    if (i === page) return;
-    if (fadeTimer.current) clearTimeout(fadeTimer.current);
-    setFadeIn(false);
-    fadeTimer.current = setTimeout(() => {
-      setPage(i);
-      setFadeIn(true);
-    }, 250);
-  };
+  const goToPage = useCallback((i: number) => {
+    const next = (i + PAGES) % PAGES;
+    setPage(next);
+    if (trackRef.current) {
+      trackRef.current.style.transition = "transform 0.4s cubic-bezier(0.4,0,0.2,1)";
+      trackRef.current.style.transform  = `translateX(-${next * 100}%)`;
+    }
+  }, []);
+
+  const resetInterval = useCallback(() => {
+    if (intervalRef.current) clearInterval(intervalRef.current);
+    intervalRef.current = setInterval(() => goToPage(page + 1), INTERVAL);
+  }, [page, goToPage]);
+
+  useEffect(() => {
+    resetInterval();
+    return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
+  }, [page]);
 
   const onTouchStart = (e: React.TouchEvent) => {
-    touchStart.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+    touchStartX.current = e.touches[0].clientX;
   };
 
   const onTouchEnd = (e: React.TouchEvent) => {
-    if (!touchStart.current) return;
-    const dy = e.changedTouches[0].clientY - touchStart.current.y;
-    const dx = Math.abs(e.changedTouches[0].clientX - touchStart.current.x);
-    if (Math.abs(dy) > 40 && dx < 60) {
-      if (dy < 0 && page < PAGES - 1) goToPage(page + 1); // свайп вверх → следующие
-      if (dy > 0 && page > 0)         goToPage(page - 1); // свайп вниз → предыдущие
+    const dx = e.changedTouches[0].clientX - touchStartX.current;
+    if (Math.abs(dx) > 40) {
+      goToPage(dx < 0 ? page + 1 : page - 1);
+      resetInterval();
     }
-    touchStart.current = null;
   };
 
   return (
@@ -156,40 +163,37 @@ export default function PricingFeatures() {
           ))}
         </div>
 
-        {/* Мобиле — свайп-карусель по 3 карточки */}
-        <div className="sm:hidden"
+        {/* Мобиле — горизонтальный слайдер 3×3 */}
+        <div className="sm:hidden overflow-hidden"
           onTouchStart={onTouchStart}
           onTouchEnd={onTouchEnd}>
 
-          {/* Карточки с fade */}
-          <div style={{ minHeight: 360 }}>
-            <div className="flex flex-col gap-3 transition-opacity duration-250"
-              style={{ opacity: fadeIn ? 1 : 0 }}>
-              {ADVANTAGES.slice(page * VISIBLE, page * VISIBLE + VISIBLE).map(a => (
-                <AdvCard key={a.title} a={a} />
-              ))}
-            </div>
+          {/* Track — полоса из PAGES слайдов */}
+          <div
+            ref={trackRef}
+            className="flex"
+            style={{ transform: `translateX(-${page * 100}%)`, transition: "transform 0.4s cubic-bezier(0.4,0,0.2,1)", willChange: "transform" }}>
+            {Array.from({ length: PAGES }).map((_, pi) => (
+              <div key={pi} className="flex-shrink-0 w-full flex flex-col gap-3">
+                {ADVANTAGES.slice(pi * VISIBLE, pi * VISIBLE + VISIBLE).map(a => (
+                  <AdvCard key={a.title} a={a} />
+                ))}
+              </div>
+            ))}
           </div>
 
-          {/* Точки + подсказка свайпа */}
-          <div className="flex flex-col items-center gap-2 mt-3">
-            <div className="flex items-center gap-2">
-              {Array.from({ length: PAGES }).map((_, i) => (
-                <button key={i} onClick={() => goToPage(i)}
-                  className="rounded-full transition-all duration-300"
-                  style={{
-                    width:      i === page ? 20 : 6,
-                    height:     6,
-                    background: i === page ? "#f97316" : "rgba(255,255,255,0.2)",
-                  }} />
-              ))}
-            </div>
-            {page < PAGES - 1 && (
-              <div className="flex items-center gap-1 text-[10px] text-white/25 animate-bounce">
-                <Icon name="ChevronDown" size={11} />
-                листай вниз
-              </div>
-            )}
+          {/* Точки */}
+          <div className="flex items-center justify-center gap-2 mt-4">
+            {Array.from({ length: PAGES }).map((_, i) => (
+              <button key={i}
+                onClick={() => { goToPage(i); resetInterval(); }}
+                className="rounded-full transition-all duration-300"
+                style={{
+                  width:      i === page ? 20 : 6,
+                  height:     6,
+                  background: i === page ? "#f97316" : "rgba(255,255,255,0.2)",
+                }} />
+            ))}
           </div>
         </div>
       </section>
