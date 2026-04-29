@@ -288,7 +288,9 @@ export default function AdminPanel() {
             <button key={tb.id} onClick={() => setMainTab(tb.id)}
               className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-semibold rounded-t-lg transition whitespace-nowrap ${
                 mainTab === tb.id
-                  ? "bg-violet-600/20 text-violet-300 border-b-2 border-violet-500"
+                  ? isDark
+                    ? "bg-violet-600/20 text-violet-300 border-b-2 border-violet-500"
+                    : "bg-violet-600/10 text-violet-700 border-b-2 border-violet-600"
                   : isDark ? "text-white/50 hover:text-white/80" : "text-gray-500 hover:text-gray-800"
               }`}>
               <Icon name={tb.icon} size={15} />
@@ -301,7 +303,9 @@ export default function AdminPanel() {
           <button onClick={() => setMainTab("own-agent")}
             className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-semibold rounded-t-lg transition whitespace-nowrap ${
               mainTab === "own-agent"
-                ? "bg-violet-600/20 text-violet-300 border-b-2 border-violet-500"
+                ? isDark
+                  ? "bg-violet-600/20 text-violet-300 border-b-2 border-violet-500"
+                  : "bg-violet-600/10 text-violet-700 border-b-2 border-violet-600"
                 : isDark ? "text-white/50 hover:text-white/80" : "text-gray-500 hover:text-gray-800"
             }`}>
             <Icon name="Bot" size={15} />
@@ -340,13 +344,16 @@ export default function AdminPanel() {
       {mainTab === "agent" && (
         <div className="flex-1 flex flex-col overflow-hidden">
           {/* Суб-вкладки */}
-          <div className="border-b border-white/10 px-4 flex gap-0.5 pt-2 overflow-x-auto flex-shrink-0">
+          <div className="px-4 flex gap-0.5 pt-2 overflow-x-auto flex-shrink-0"
+            style={{ borderBottom: `1px solid ${isDark ? "rgba(255,255,255,0.1)" : "#e5e7eb"}` }}>
             {AGENT_TABS.map(t => (
               <button key={t.id} onClick={() => setAgentTab(t.id)}
                 className={`flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-t-lg transition whitespace-nowrap ${
                   agentTab === t.id
-                    ? "bg-violet-600/15 text-violet-300 border-b-2 border-violet-500"
-                    : "text-white/40 hover:text-white/70"
+                    ? isDark
+                      ? "bg-violet-600/15 text-violet-300 border-b-2 border-violet-500"
+                      : "bg-violet-600/10 text-violet-700 border-b-2 border-violet-600"
+                    : isDark ? "text-white/40 hover:text-white/70" : "text-gray-500 hover:text-gray-800"
                 }`}>
                 <Icon name={t.icon} size={13} />
                 {t.label}
