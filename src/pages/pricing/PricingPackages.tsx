@@ -64,8 +64,8 @@ export default function PricingPackages({ selected, onSelect }: Props) {
                 </div>
               </div>
 
-              {/* Фичи — компактно */}
-              <div className="px-4 pb-3 flex flex-wrap gap-x-4 gap-y-1">
+              {/* Фичи — одна колонка */}
+              <div className="px-4 pb-3 flex flex-col gap-1">
                 {pkg.features.map(f => (
                   <div key={f} className="flex items-center gap-1.5 text-[11px] text-white/45">
                     <Icon name="Check" size={10} style={{ color: pkg.color, flexShrink: 0 }} />
