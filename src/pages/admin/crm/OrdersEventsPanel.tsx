@@ -19,22 +19,33 @@ export function OrdersEventsPanel({ allClients, loading, onSelect }: Props) {
   const [pushAsked, setPushAsked] = useState(false);
 
   const now = new Date();
+
+  // startDate: для "Завтра" начинаем с завтра 00:00, иначе с текущего момента
+  const startDate = new Date(now);
+  if (eventDays === 2) {
+    startDate.setDate(startDate.getDate() + 1);
+    startDate.setHours(0, 0, 0, 0);
+  }
+
+  // endDate: конец последнего дня диапазона
   const endDate = new Date(now);
-  endDate.setDate(now.getDate() + eventDays);
+  // "Сегодня"=1 день, "Завтра"=только завтра, "3 дня"=3 дня, "7 дней"=7 дней
+  const daysToAdd = eventDays === 2 ? 1 : eventDays - 1;
+  endDate.setDate(now.getDate() + daysToAdd);
   endDate.setHours(23, 59, 59, 999);
 
   // Замеры — measure_date в диапазоне, статус ещё активен (не выполнен/не отменён)
   const upcomingMeasures = allClients.filter(c => {
     if (!c.measure_date || !MEASURE_ACTIVE.includes(c.status)) return false;
     const d = new Date(c.measure_date);
-    return d >= now && d <= endDate;
+    return d >= startDate && d <= endDate;
   }).sort((a, b) => new Date(a.measure_date!).getTime() - new Date(b.measure_date!).getTime());
 
   // Монтажи — install_date в диапазоне, статус ещё активен (не выполнен/не отменён)
   const upcomingInstalls = allClients.filter(c => {
     if (!c.install_date || !INSTALL_ACTIVE.includes(c.status)) return false;
     const d = new Date(c.install_date);
-    return d >= now && d <= endDate;
+    return d >= startDate && d <= endDate;
   }).sort((a, b) => new Date(a.install_date!).getTime() - new Date(b.install_date!).getTime());
 
   // Просроченные замеры
