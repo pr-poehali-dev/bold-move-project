@@ -64,6 +64,7 @@ export default function DrumPicker({
       } else {
         el.scrollTop = target;
         isSnapping.current = false;
+        navigator.vibrate?.(8);
         onChange(items[clamped].value);
       }
     };
