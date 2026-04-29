@@ -22,6 +22,7 @@ export default function OwnAgentEditor({ isDark }: Props) {
     working_hours:      user?.brand?.working_hours      ?? "Ежедневно 9:00–22:00",
     pdf_footer_address: user?.brand?.pdf_footer_address ?? "",
     telegram_url:       user?.brand?.telegram_url       ?? "",
+    pdf_text_color:     user?.brand?.pdf_text_color     ?? "#111827",
   });
 
   const [saving, setSaving] = useState(false);
@@ -110,11 +111,13 @@ export default function OwnAgentEditor({ isDark }: Props) {
 
         {/* PDF */}
         <Section title="PDF-сметы" icon="FileText" isDark={isDark}>
+          <ColorField label="Цвет текста в PDF" value={brand.pdf_text_color || "#111827"}
+            onChange={v => set("pdf_text_color", v)} isDark={isDark} />
           <Field label="Подвал PDF" multiline rows={2}
             placeholder="г. Москва, ул. Примерная 1 · ИНН 1234567890 · сайт.рф"
             value={brand.pdf_footer_address || ""} onChange={v => set("pdf_footer_address", v)} isDark={isDark} />
-          <div className="text-[11px] mt-2 px-1" style={{ color: muted }}>
-            Эта строка появится внизу каждой PDF-сметы клиенту. Логотип и название берутся из настроек выше.
+          <div className="text-[11px] mt-1 px-1" style={{ color: muted }}>
+            Логотип и цвет акцента берутся из настроек выше.
           </div>
         </Section>
 

@@ -13,7 +13,8 @@ interface Props {
 export default function BrandPreview({ brand, isDark }: Props) {
   const { user } = useAuth();
 
-  const accent      = brand.brand_color || "#f97316";
+  const accent      = brand.brand_color  || "#f97316";
+  const pdfText     = brand.pdf_text_color || "#111827";
   const logoUrl     = brand.brand_logo_url || "https://cdn.poehali.dev/files/7105828c-c33e-48f9-ac90-02134e3cd4d7.png";
   const avatarUrl   = brand.bot_avatar_url || "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/files/60e2335c-4916-41e5-b894-7f4d9ca6a923.jpg";
   const botName     = brand.bot_name || "Женя";
@@ -160,40 +161,48 @@ export default function BrandPreview({ brand, isDark }: Props) {
         <div className="rounded-xl overflow-hidden shadow-lg"
           style={{ background: "#fff", border: `1px solid ${border}` }}>
           {/* Шапка PDF */}
-          <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
+          <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100"
+            style={{ borderColor: `${accent}22` }}>
             <div className="flex items-center gap-2">
               {brand.brand_logo_url
                 ? <img src={brand.brand_logo_url} alt="" className="h-6 object-contain" />
-                : <div className="w-6 h-6 rounded bg-gray-200" />}
-              <span className="text-[11px] font-black text-gray-800">{companyName}</span>
+                : <div className="w-6 h-6 rounded" style={{ background: `${accent}22` }} />}
+              <span className="text-[11px] font-black" style={{ color: pdfText }}>{companyName}</span>
             </div>
             <div className="text-right">
-              <div className="text-[8px] text-gray-400">Смета №</div>
-              <div className="text-[10px] font-bold text-gray-600">001</div>
+              <div className="text-[8px]" style={{ color: `${pdfText}66` }}>Смета №</div>
+              <div className="text-[10px] font-bold" style={{ color: accent }}>001</div>
             </div>
           </div>
           {/* Тело */}
           <div className="px-4 py-2.5">
-            <div className="text-[9px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">Позиции</div>
+            <div className="text-[8px] font-bold uppercase tracking-wider mb-1.5"
+              style={{ color: `${pdfText}55` }}>Позиции</div>
             {[
               { name: "Натяжной потолок белый матовый", qty: "24 м²", price: "12 480 ₽" },
-              { name: "Монтаж и установка", qty: "1 шт", price: "3 000 ₽" },
+              { name: "Демонтаж старого покрытия",      qty: "24 м²", price: "2 400 ₽"  },
+              { name: "Профиль настенный алюминий",     qty: "20 п.м", price: "1 600 ₽" },
+              { name: "Монтаж и установка под ключ",    qty: "1 шт",  price: "4 000 ₽"  },
             ].map((r, i) => (
-              <div key={i} className="flex items-center justify-between py-1 border-b border-gray-50">
-                <span className="text-[9px] text-gray-600 flex-1 truncate pr-2">{r.name}</span>
-                <span className="text-[8px] text-gray-400 w-10 text-right">{r.qty}</span>
-                <span className="text-[9px] font-bold text-gray-700 w-16 text-right">{r.price}</span>
+              <div key={i} className="flex items-center justify-between py-1"
+                style={{ borderBottom: `1px solid ${pdfText}0d` }}>
+                <span className="text-[9px] flex-1 truncate pr-2" style={{ color: pdfText }}>{r.name}</span>
+                <span className="text-[8px] w-10 text-right" style={{ color: `${pdfText}55` }}>{r.qty}</span>
+                <span className="text-[9px] font-bold w-16 text-right" style={{ color: pdfText }}>{r.price}</span>
               </div>
             ))}
-            <div className="flex justify-end mt-1.5 gap-1 items-center">
-              <span className="text-[9px] text-gray-400">Итого:</span>
-              <span className="text-[11px] font-black" style={{ color: accent }}>15 480 ₽</span>
+            <div className="flex justify-between items-center mt-2 pt-1.5"
+              style={{ borderTop: `1.5px solid ${accent}44` }}>
+              <span className="text-[8px] font-bold uppercase tracking-wider"
+                style={{ color: `${pdfText}55` }}>Итого</span>
+              <span className="text-[13px] font-black" style={{ color: accent }}>20 480 ₽</span>
             </div>
           </div>
           {/* Подвал PDF */}
-          <div className="px-4 py-2 border-t border-gray-100"
-            style={{ background: `${accent}0d` }}>
-            <div className="text-[8px] text-gray-400 text-center leading-tight">
+          <div className="px-4 py-2 border-t"
+            style={{ background: `${accent}0d`, borderColor: `${accent}22` }}>
+            <div className="text-[8px] text-center leading-tight"
+              style={{ color: `${pdfText}77` }}>
               {brand.pdf_footer_address || "Здесь появится адрес и реквизиты вашей компании"}
             </div>
           </div>

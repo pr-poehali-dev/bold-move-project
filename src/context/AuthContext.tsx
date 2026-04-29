@@ -19,6 +19,7 @@ export interface Brand {
   working_hours?:      string | null;
   pdf_footer_address?: string | null;
   telegram_url?:       string | null;
+  pdf_text_color?:     string | null;
 }
 
 export interface Permissions {
