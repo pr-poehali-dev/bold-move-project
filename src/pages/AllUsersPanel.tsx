@@ -4,6 +4,7 @@ import RoleBadge from "./MasterRoleBadge";
 import type { AppUser, UserEstimate } from "./masterAdminTypes";
 import { fmtDate, ROLE_LABELS } from "./masterAdminTypes";
 import func2url from "@/../backend/func2url.json";
+import { useAuth } from "@/context/AuthContext";
 
 const AUTH_URL = (func2url as Record<string, string>)["auth"];
 
@@ -29,6 +30,7 @@ export default function AllUsersPanel({
   selectedUser, userEstimates, estLoading, approvingId,
   onApprove, onConfirmDel, onAddBalance, onToggleOwnAgent,
 }: Props) {
+  const { user: masterUser } = useAuth();
   const [agentBusy,  setAgentBusy]  = useState(false);
   const [showPackages, setShowPackages] = useState(false);
   const [addingPkg,    setAddingPkg]    = useState<string | null>(null);
@@ -49,7 +51,7 @@ export default function AllUsersPanel({
       const d = await r.json();
       if (d.token) {
         const masterToken = localStorage.getItem("mp_user_token");
-        const masterName  = "Мастер";
+        const masterName  = masterUser?.name || masterUser?.email?.split("@")[0] || "Мастер";
         if (masterToken) {
           localStorage.setItem("mp_master_token", masterToken);
           localStorage.setItem("mp_master_name", masterName);
