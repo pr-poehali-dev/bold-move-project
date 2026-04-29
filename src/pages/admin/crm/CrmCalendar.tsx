@@ -2,12 +2,30 @@ import { useEffect, useState } from "react";
 import { crmFetch } from "./crmApi";
 import { useTheme } from "./themeContext";
 import Icon from "@/components/ui/icon";
-import { CalEvent, MONTH_NAMES, EVENT_COLORS } from "./calendarTypes";
+import { CalEvent, MONTH_NAMES } from "./calendarTypes";
 import { CalendarEventModal } from "./CalendarEventModal";
 import { CalendarWeekView } from "./CalendarWeekView";
 import { CalendarLeftSidebar, CalendarDaySidebar } from "./CalendarSidebar";
 import { CalendarMonthGrid } from "./CalendarMonthGrid";
+import { CalendarMobileView } from "./CalendarMobileView";
 import { buildMonthGrid, eventsForDay, mondayWeekStart } from "./calendarUtils";
+import { loadSyncedColors } from "./syncedCols";
+import { KANBAN_COLS } from "./kanbanTypes";
+
+// Цвет события из цветов канбана (синхронизированных пользователем)
+function resolveEventColor(eventType: string): string {
+  const syncedColors = loadSyncedColors();
+  const typeToColId: Record<string, string> = {
+    measure: "measures",
+    install: "installs",
+    call:    "working",
+    payment: "done",
+    other:   "new",
+  };
+  const colId = typeToColId[eventType] || "new";
+  if (syncedColors[colId]) return syncedColors[colId];
+  return KANBAN_COLS.find(c => c.id === colId)?.color || "#8b5cf6";
+}
 
 export default function CrmCalendar() {
   const t = useTheme();
@@ -27,10 +45,10 @@ export default function CrmCalendar() {
       .then(d => setEvents(Array.isArray(d) ? d : []));
 
   const loadWeek = (ws: Date) => {
-    const m = ws.getMonth() + 1;
-    const y = ws.getFullYear();
-    crmFetch("calendar-events", undefined, { month: String(m), year: String(y) })
-      .then(d => setEvents(Array.isArray(d) ? d : []));
+    crmFetch("calendar-events", undefined, {
+      month: String(ws.getMonth() + 1),
+      year:  String(ws.getFullYear()),
+    }).then(d => setEvents(Array.isArray(d) ? d : []));
   };
 
   useEffect(() => { loadMonth(month, year); }, [month, year]);
@@ -48,9 +66,9 @@ export default function CrmCalendar() {
   const openAdd = (iso: string) => setAddModal({ date: iso });
 
   const saveAdd = async (form: Partial<CalEvent>) => {
-    await crmFetch("calendar-events", { method: "POST", body: JSON.stringify({
-      ...form, color: EVENT_COLORS[form.event_type || "measure"] || "#8b5cf6",
-    }) });
+    // Цвет берём из канбан-настроек пользователя
+    const color = resolveEventColor(form.event_type || "other");
+    await crmFetch("calendar-events", { method: "POST", body: JSON.stringify({ ...form, color }) });
     setAddModal(null);
     loadMonth(month, year);
     if (view === "week") loadWeek(weekStart);
@@ -58,7 +76,8 @@ export default function CrmCalendar() {
 
   const saveEdit = async (form: Partial<CalEvent>) => {
     if (!editModal) return;
-    await crmFetch("calendar-events", { method: "PUT", body: JSON.stringify({ ...editModal, ...form }) }, { id: String(editModal.id) });
+    const color = resolveEventColor(form.event_type || editModal.event_type || "other");
+    await crmFetch("calendar-events", { method: "PUT", body: JSON.stringify({ ...editModal, ...form, color }) }, { id: String(editModal.id) });
     setEditModal(null);
     loadMonth(month, year);
     if (view === "week") loadWeek(weekStart);
@@ -72,8 +91,8 @@ export default function CrmCalendar() {
     if (view === "week") loadWeek(weekStart);
   };
 
-  const allCells = buildMonthGrid(year, month);
-  const getDayEvents = (day: number, cur: boolean) => eventsForDay(events, day, month, year, cur);
+  const allCells       = buildMonthGrid(year, month);
+  const getDayEvents   = (day: number, cur: boolean) => eventsForDay(events, day, month, year, cur);
   const selectedEvents = selectedDay ? getDayEvents(selectedDay, true) : [];
 
   const weekEnd = new Date(weekStart);
@@ -82,82 +101,89 @@ export default function CrmCalendar() {
 
   return (
     <div>
-    {/* Баннер: рекомендуем ПК */}
-    <div className="sm:hidden rounded-2xl px-4 py-3 flex items-start gap-3 mb-4"
-      style={{ background: "rgba(124,58,237,0.10)", border: "1px solid rgba(124,58,237,0.25)" }}>
-      <Icon name="Monitor" size={16} style={{ color: "#a78bfa", marginTop: 2, flexShrink: 0 }} />
-      <p className="text-xs leading-snug" style={{ color: "#c4b5fd" }}>
-        Календарь удобнее на компьютере. На телефоне можно листать и смотреть события.
-      </p>
-    </div>
-    <div className="flex rounded-2xl overflow-hidden" style={{ border: `1px solid ${t.border}`, background: t.surface, height: "calc(100vh - 180px)", minHeight: 580 }}>
-
-      <CalendarLeftSidebar
-        year={year} month={month} selectedDay={selectedDay}
-        allCells={allCells} eventsForDay={getDayEvents}
-        onPrevMonth={prevMonth} onNextMonth={nextMonth}
-        onSelectDay={setSelectedDay} onToday={goToday}
-      />
-
-      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-        {/* Шапка */}
-        <div className="flex items-center justify-between px-5 py-3" style={{ borderBottom: `1px solid ${t.border}` }}>
-          <div className="flex items-center gap-2">
-            <button onClick={view === "month" ? prevMonth : prevWeek}
-              className="w-8 h-8 flex items-center justify-center rounded-xl transition"
-              style={{ color: t.textSub, background: t.surface2, border: `1px solid ${t.border}` }}>
-              <Icon name="ChevronLeft" size={14} />
-            </button>
-            <button onClick={view === "month" ? nextMonth : nextWeek}
-              className="w-8 h-8 flex items-center justify-center rounded-xl transition"
-              style={{ color: t.textSub, background: t.surface2, border: `1px solid ${t.border}` }}>
-              <Icon name="ChevronRight" size={14} />
-            </button>
-            <span className="text-base font-bold ml-1" style={{ color: t.text }}>
-              {view === "month" ? `${MONTH_NAMES[month-1]} ${year}` : weekLabel}
-            </span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="flex rounded-xl overflow-hidden" style={{ border: `1px solid ${t.border}` }}>
-              {(["month","week"] as const).map(v => (
-                <button key={v} onClick={() => setView(v)}
-                  className="px-3 py-1.5 text-xs font-semibold transition"
-                  style={view === v ? { background: "#7c3aed", color: "#fff" } : { background: t.surface2, color: t.textSub }}>
-                  {v === "month" ? "Месяц" : "Неделя"}
-                </button>
-              ))}
-            </div>
-            <button onClick={() => openAdd(`${year}-${String(month).padStart(2,"0")}-${String(selectedDay||today.getDate()).padStart(2,"0")}T10:00`)}
-              className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold text-white"
-              style={{ background: "#7c3aed" }}>
-              <Icon name="Plus" size={13} /> Создать
-            </button>
-          </div>
-        </div>
-
-        {view === "month" && (
-          <CalendarMonthGrid
-            allCells={allCells}
-            year={year}
-            month={month}
-            selectedDay={selectedDay}
-            events={events}
-            onSelectDay={setSelectedDay}
-            onDoubleClickDay={openAdd}
-          />
-        )}
-
-        {view === "week" && (
-          <CalendarWeekView weekStart={weekStart} events={events} onAddAt={openAdd} onEdit={setEditModal} />
-        )}
+      {/* ── МОБИЛЕ: Google-like календарь ── */}
+      <div className="sm:hidden">
+        <CalendarMobileView
+          year={year}
+          month={month}
+          events={events}
+          selectedDay={selectedDay}
+          onSelectDay={setSelectedDay}
+          onPrevMonth={prevMonth}
+          onNextMonth={nextMonth}
+          onAddEvent={openAdd}
+          onEditEvent={setEditModal}
+          onToday={goToday}
+        />
       </div>
 
-      <CalendarDaySidebar
-        selectedDay={selectedDay} month={month} year={year}
-        selectedEvents={selectedEvents}
-        onOpenAdd={openAdd} onEditEvent={setEditModal}
-      />
+      {/* ── ДЕСКТОП: оригинальный вид ── */}
+      <div className="hidden sm:flex rounded-2xl overflow-hidden"
+        style={{ border: `1px solid ${t.border}`, background: t.surface, height: "calc(100vh - 180px)", minHeight: 580 }}>
 
+        <CalendarLeftSidebar
+          year={year} month={month} selectedDay={selectedDay}
+          allCells={allCells} eventsForDay={getDayEvents}
+          onPrevMonth={prevMonth} onNextMonth={nextMonth}
+          onSelectDay={setSelectedDay} onToday={goToday}
+        />
+
+        <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+          {/* Шапка */}
+          <div className="flex items-center justify-between px-5 py-3" style={{ borderBottom: `1px solid ${t.border}` }}>
+            <div className="flex items-center gap-2">
+              <button onClick={view === "month" ? prevMonth : prevWeek}
+                className="w-8 h-8 flex items-center justify-center rounded-xl transition"
+                style={{ color: t.textSub, background: t.surface2, border: `1px solid ${t.border}` }}>
+                <Icon name="ChevronLeft" size={14} />
+              </button>
+              <button onClick={view === "month" ? nextMonth : nextWeek}
+                className="w-8 h-8 flex items-center justify-center rounded-xl transition"
+                style={{ color: t.textSub, background: t.surface2, border: `1px solid ${t.border}` }}>
+                <Icon name="ChevronRight" size={14} />
+              </button>
+              <span className="text-base font-bold ml-1" style={{ color: t.text }}>
+                {view === "month" ? `${MONTH_NAMES[month-1]} ${year}` : weekLabel}
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="flex rounded-xl overflow-hidden" style={{ border: `1px solid ${t.border}` }}>
+                {(["month","week"] as const).map(v => (
+                  <button key={v} onClick={() => setView(v)}
+                    className="px-3 py-1.5 text-xs font-semibold transition"
+                    style={view === v ? { background: "#7c3aed", color: "#fff" } : { background: t.surface2, color: t.textSub }}>
+                    {v === "month" ? "Месяц" : "Неделя"}
+                  </button>
+                ))}
+              </div>
+              <button onClick={() => openAdd(`${year}-${String(month).padStart(2,"0")}-${String(selectedDay||today.getDate()).padStart(2,"0")}T10:00`)}
+                className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold text-white"
+                style={{ background: "#7c3aed" }}>
+                <Icon name="Plus" size={13} /> Создать
+              </button>
+            </div>
+          </div>
+
+          {view === "month" && (
+            <CalendarMonthGrid
+              allCells={allCells} year={year} month={month}
+              selectedDay={selectedDay} events={events}
+              onSelectDay={setSelectedDay} onDoubleClickDay={openAdd}
+            />
+          )}
+          {view === "week" && (
+            <CalendarWeekView weekStart={weekStart} events={events} onAddAt={openAdd} onEdit={setEditModal} />
+          )}
+        </div>
+
+        <CalendarDaySidebar
+          selectedDay={selectedDay} month={month} year={year}
+          selectedEvents={selectedEvents}
+          onOpenAdd={openAdd} onEditEvent={setEditModal}
+        />
+      </div>
+
+      {/* Модалки — общие для мобиле и десктопа */}
       {addModal && (
         <CalendarEventModal mode="add" event={{ start_time: addModal.date }}
           onClose={() => setAddModal(null)} onSave={saveAdd} />
@@ -166,7 +192,6 @@ export default function CrmCalendar() {
         <CalendarEventModal mode="edit" event={editModal}
           onClose={() => setEditModal(null)} onSave={saveEdit} onDelete={deleteEvent} />
       )}
-    </div>
     </div>
   );
 }
