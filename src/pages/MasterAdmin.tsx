@@ -163,14 +163,14 @@ export default function MasterAdmin() {
     <div className="min-h-screen bg-[#07070f] text-white">
 
       {/* Шапка */}
-      <div className="flex items-center justify-between px-6 py-4 border-b border-white/[0.07]">
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-emerald-500/15 flex items-center justify-center">
+      <div className="flex items-center justify-between px-3 sm:px-6 py-3 sm:py-4 border-b border-white/[0.07]">
+        <div className="flex items-center gap-2 sm:gap-3">
+          <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-emerald-500/15 flex items-center justify-center flex-shrink-0">
             <Icon name="ShieldCheck" size={17} style={{ color: "#10b981" }} />
           </div>
-          <div>
+          <div className="min-w-0">
             <div className="font-bold text-sm">Мастер-Админка</div>
-            <div className="text-[11px] text-white/30">SaaS — управление пользователями</div>
+            <div className="text-[11px] text-white/30 hidden sm:block">SaaS — управление пользователями</div>
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -178,11 +178,12 @@ export default function MasterAdmin() {
             className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-medium transition hover:opacity-80"
             style={{ background: "rgba(255,255,255,0.05)", color: "rgba(255,255,255,0.40)", border: "1px solid rgba(255,255,255,0.08)" }}>
             <Icon name="ArrowLeft" size={12} />
-            В бот
+            <span className="hidden sm:inline">В бот</span>
           </a>
           <button onClick={() => { sessionStorage.removeItem("master_token"); setAuthed(false); }}
             className="flex items-center gap-1.5 text-xs text-white/30 hover:text-white/60 transition">
-            <Icon name="LogOut" size={14} /> Выйти
+            <Icon name="LogOut" size={14} />
+            <span className="hidden sm:inline">Выйти</span>
           </button>
         </div>
       </div>

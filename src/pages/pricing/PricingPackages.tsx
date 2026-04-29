@@ -9,7 +9,7 @@ interface Props {
 export default function PricingPackages({ selected, onSelect }: Props) {
   return (
     <section className="max-w-6xl mx-auto px-5 pb-14">
-      <div id="packages-grid" className="grid md:grid-cols-2 lg:grid-cols-4 gap-4 scroll-mt-10">
+      <div id="packages-grid" className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 scroll-mt-10">
         {PACKAGES.map(pkg => {
           const isSelected = selected === pkg.id;
           const isPopular  = pkg.badge === "Популярный";

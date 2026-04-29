@@ -81,6 +81,15 @@ export default function CrmCalendar() {
   const weekLabel = `${weekStart.getDate()} ${MONTH_NAMES[weekStart.getMonth()].slice(0,3)} — ${weekEnd.getDate()} ${MONTH_NAMES[weekEnd.getMonth()].slice(0,3)} ${weekEnd.getFullYear()}`;
 
   return (
+    <div>
+    {/* Баннер: рекомендуем ПК */}
+    <div className="sm:hidden rounded-2xl px-4 py-3 flex items-start gap-3 mb-4"
+      style={{ background: "rgba(124,58,237,0.10)", border: "1px solid rgba(124,58,237,0.25)" }}>
+      <Icon name="Monitor" size={16} style={{ color: "#a78bfa", marginTop: 2, flexShrink: 0 }} />
+      <p className="text-xs leading-snug" style={{ color: "#c4b5fd" }}>
+        Календарь удобнее на компьютере. На телефоне можно листать и смотреть события.
+      </p>
+    </div>
     <div className="flex rounded-2xl overflow-hidden" style={{ border: `1px solid ${t.border}`, background: t.surface, height: "calc(100vh - 180px)", minHeight: 580 }}>
 
       <CalendarLeftSidebar
@@ -157,6 +166,7 @@ export default function CrmCalendar() {
         <CalendarEventModal mode="edit" event={editModal}
           onClose={() => setEditModal(null)} onSave={saveEdit} onDelete={deleteEvent} />
       )}
+    </div>
     </div>
   );
 }

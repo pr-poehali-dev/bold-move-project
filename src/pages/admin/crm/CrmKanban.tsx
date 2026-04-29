@@ -1,5 +1,6 @@
 import { useState, useRef } from "react";
 import type React from "react";
+import Icon from "@/components/ui/icon";
 import { crmFetch, Client, getClientOrders } from "./crmApi";
 import { useTheme } from "./themeContext";
 import ClientDrawer from "./ClientDrawer";
@@ -179,6 +180,15 @@ export default function CrmKanban({ clients, loading, onStatusChange, onClientRe
 
   return (
     <div className="space-y-4">
+
+      {/* Баннер: рекомендуем ПК */}
+      <div className="sm:hidden rounded-2xl px-4 py-3 flex items-start gap-3"
+        style={{ background: "rgba(124,58,237,0.10)", border: "1px solid rgba(124,58,237,0.25)" }}>
+        <Icon name="Monitor" size={16} style={{ color: "#a78bfa", marginTop: 2, flexShrink: 0 }} />
+        <p className="text-xs leading-snug" style={{ color: "#c4b5fd" }}>
+          Канбан-доска удобнее на компьютере. На телефоне можно листать колонки горизонтально.
+        </p>
+      </div>
 
       <KanbanHeader
         clientCount={allCards.length}

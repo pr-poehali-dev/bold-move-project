@@ -137,6 +137,15 @@ export default function CrmClients() {
   return (
     <div className="space-y-4 pb-20">
 
+      {/* Баннер: рекомендуем ПК */}
+      <div className="sm:hidden rounded-2xl px-4 py-3 flex items-start gap-3"
+        style={{ background: "rgba(124,58,237,0.10)", border: "1px solid rgba(124,58,237,0.25)" }}>
+        <Icon name="Monitor" size={16} style={{ color: "#a78bfa", marginTop: 2, flexShrink: 0 }} />
+        <p className="text-xs leading-snug" style={{ color: "#c4b5fd" }}>
+          Таблица клиентов лучше работает на компьютере. На телефоне можно смотреть и открывать карточки.
+        </p>
+      </div>
+
       {/* Шапка */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>

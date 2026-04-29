@@ -40,7 +40,7 @@ export function AddClientModal({ form, onChange, onSave, onClose }: {
               className="w-full rounded-xl px-4 py-2.5 text-sm focus:outline-none transition"
               style={{ background: t.surface2, border: `1px solid ${t.border}`, color: t.text }} />
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="text-xs mb-1.5 block font-medium" style={{ color: t.textMute }}>Статус</label>
               <select value={form.status} onChange={e => onChange({ status: e.target.value })}
@@ -63,7 +63,7 @@ export function AddClientModal({ form, onChange, onSave, onClose }: {
               style={{ background: t.surface2, border: `1px solid ${t.border}`, color: t.text }} />
           </div>
         </div>
-        <div className="flex gap-3 mt-5">
+        <div className="flex flex-col-reverse sm:flex-row gap-3 mt-5">
           <button onClick={onSave} disabled={!form.client_name.trim()}
             className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-white transition disabled:opacity-40"
             style={{ background: "#7c3aed" }}>

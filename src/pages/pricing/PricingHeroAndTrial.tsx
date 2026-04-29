@@ -49,7 +49,7 @@ function TrialBanner() {
   if (!user || !isBusiness) {
     return (
       <section className="max-w-6xl mx-auto px-5 pb-10">
-        <div className="rounded-3xl p-5 flex items-center gap-4 flex-wrap md:flex-nowrap"
+        <div className="rounded-3xl p-4 sm:p-5 flex items-center gap-3 sm:gap-4 flex-wrap md:flex-nowrap"
           style={{
             background: "linear-gradient(90deg, rgba(16,185,129,0.10), rgba(16,185,129,0.02))",
             border: "1.5px solid rgba(16,185,129,0.28)",

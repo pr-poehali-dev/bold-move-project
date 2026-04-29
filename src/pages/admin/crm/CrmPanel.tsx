@@ -70,7 +70,7 @@ export default function CrmPanel({ theme, initialOrderId }: { theme: Theme; init
         style={{ background: t.bg }}>
 
         {/* Навигация */}
-        <div className="flex items-center gap-0.5 px-6 py-2.5 overflow-x-auto"
+        <div className="flex items-center gap-0.5 px-2 sm:px-6 py-2.5 overflow-x-auto"
           style={{ borderBottom: `1px solid ${t.border}`, background: t.surface }}>
 
           {/* Фиксированные вкладки */}
@@ -78,7 +78,7 @@ export default function CrmPanel({ theme, initialOrderId }: { theme: Theme; init
             const active = tab === tb.id;
             return (
               <button key={tb.id} onClick={() => setTab(tb.id)}
-                className="flex items-center gap-2 px-4 py-2 text-sm rounded-xl transition whitespace-nowrap font-medium border"
+                className="flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-4 py-2 text-xs sm:text-sm rounded-xl transition whitespace-nowrap font-medium border"
                 style={active ? {
                   background: "#7c3aed18", color: "#a78bfa", borderColor: "#7c3aed35",
                 } : {
@@ -93,7 +93,7 @@ export default function CrmPanel({ theme, initialOrderId }: { theme: Theme; init
           {/* Вкладка Канбан — если включена */}
           {kanbanEnabled && (
             <button onClick={() => setTab("kanban")}
-              className="flex items-center gap-2 px-4 py-2 text-sm rounded-xl transition whitespace-nowrap font-medium border"
+              className="flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-4 py-2 text-xs sm:text-sm rounded-xl transition whitespace-nowrap font-medium border"
               style={tab === "kanban" ? {
                 background: "#7c3aed18", color: "#a78bfa", borderColor: "#7c3aed35",
               } : {
@@ -107,9 +107,9 @@ export default function CrmPanel({ theme, initialOrderId }: { theme: Theme; init
           {/* Разделитель */}
           <div className="flex-1" />
 
-          {/* Промо-блок — если канбан не включён */}
+          {/* Промо-блок — только на десктопе */}
           {!kanbanEnabled && (
-            <div className="flex items-center gap-3 px-4 py-1.5 rounded-xl"
+            <div className="hidden sm:flex items-center gap-3 px-4 py-1.5 rounded-xl"
               style={{ background: "linear-gradient(135deg,#7c3aed12,#06b6d412)", border: `1px dashed #7c3aed40` }}>
               <Icon name="Kanban" size={14} style={{ color: "#a78bfa" }} className="flex-shrink-0" />
               <span className="text-xs whitespace-nowrap" style={{ color: t.textMute }}>
@@ -123,11 +123,20 @@ export default function CrmPanel({ theme, initialOrderId }: { theme: Theme; init
             </div>
           )}
 
+          {/* Кнопка канбана на мобиле */}
+          {!kanbanEnabled && (
+            <button onClick={enableKanban}
+              className="flex sm:hidden items-center gap-1 px-2.5 py-2 rounded-xl text-xs font-semibold transition whitespace-nowrap flex-shrink-0"
+              style={{ background: "#7c3aed18", color: "#a78bfa", border: "1px solid #7c3aed35" }}>
+              <Icon name="Plus" size={13} />
+              Канбан
+            </button>
+          )}
 
         </div>
 
         {/* Контент */}
-        <div className="p-6">
+        <div className="p-2 sm:p-6">
           {tab === "analytics" && <CrmAnalytics />}
           {tab === "clients"   && <CrmClients />}
           {tab === "orders"    && <CrmOrders clients={clients} loading={loading} onStatusChange={updateClientStatus} onClientRemoved={removeClient} onReload={loadClients} initialOrderId={initialOrderId} />}
