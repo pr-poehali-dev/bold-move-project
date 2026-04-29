@@ -183,7 +183,7 @@ export default function AdminPanel() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col transition-colors duration-300"
+    <div className="min-h-screen flex flex-col transition-colors duration-300 overflow-x-hidden"
       style={{ background: isDark ? "#07070f" : "#eef0f6", color: headerText }}>
 
       {/* ── Баннер режима просмотра (мастер смотрит чужой аккаунт) ── */}
@@ -274,44 +274,31 @@ export default function AdminPanel() {
       </div>
 
       {/* ── Главные вкладки ── */}
-      <div className="px-4 flex items-end gap-1 pt-2 flex-shrink-0 transition-colors duration-300"
-        style={{ background: headerBg, borderBottom: `1px solid ${headerBorder}` }}>
-        {/* Левые вкладки */}
-        <div className="flex gap-1 flex-1">
-          {([
-            { id: "crm"   as MainTab, label: "CRM",                icon: "LayoutDashboard" },
-            { id: "agent" as MainTab, label: "Управление агентом", icon: "BrainCircuit"    },
-            ...(user?.role === "company" || user?.is_master
-              ? [{ id: "team" as MainTab, label: "Команда", icon: "Users" }]
-              : []),
-          ]).map(tb => (
-            <button key={tb.id} onClick={() => setMainTab(tb.id)}
-              className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-semibold rounded-t-lg transition whitespace-nowrap ${
-                mainTab === tb.id
-                  ? isDark
-                    ? "bg-violet-600/20 text-violet-300 border-b-2 border-violet-500"
-                    : "bg-violet-600/10 text-violet-700 border-b-2 border-violet-600"
-                  : isDark ? "text-white/50 hover:text-white/80" : "text-gray-500 hover:text-gray-800"
-              }`}>
-              <Icon name={tb.icon} size={15} />
-              {tb.label}
-            </button>
-          ))}
-        </div>
-        {/* Свой агент — правый край */}
-        {(user?.role === "company" || user?.is_master) && (
-          <button onClick={() => setMainTab("own-agent")}
-            className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-semibold rounded-t-lg transition whitespace-nowrap ${
-              mainTab === "own-agent"
+      <div className="flex items-end gap-1 pt-2 flex-shrink-0 overflow-x-auto transition-colors duration-300 px-2 sm:px-4"
+        style={{ background: headerBg, borderBottom: `1px solid ${headerBorder}`, scrollbarWidth: "none" }}>
+        {([
+          { id: "crm"       as MainTab, label: "CRM",          labelMobile: "CRM",      icon: "LayoutDashboard" },
+          { id: "agent"     as MainTab, label: "Агент",         labelMobile: "Агент",    icon: "BrainCircuit"    },
+          ...(user?.role === "company" || user?.is_master
+            ? [{ id: "team" as MainTab, label: "Команда",      labelMobile: "Команда",  icon: "Users" }]
+            : []),
+          ...(user?.role === "company" || user?.is_master
+            ? [{ id: "own-agent" as MainTab, label: "Свой агент", labelMobile: "Агент+", icon: "Bot" }]
+            : []),
+        ]).map(tb => (
+          <button key={tb.id} onClick={() => setMainTab(tb.id)}
+            className={`flex items-center gap-1.5 px-3 sm:px-4 py-2.5 text-xs sm:text-sm font-semibold rounded-t-lg transition whitespace-nowrap flex-shrink-0 ${
+              mainTab === tb.id
                 ? isDark
                   ? "bg-violet-600/20 text-violet-300 border-b-2 border-violet-500"
                   : "bg-violet-600/10 text-violet-700 border-b-2 border-violet-600"
                 : isDark ? "text-white/50 hover:text-white/80" : "text-gray-500 hover:text-gray-800"
             }`}>
-            <Icon name="Bot" size={15} />
-            Свой агент
+            <Icon name={tb.icon} size={14} />
+            <span className="hidden sm:inline">{tb.label}</span>
+            <span className="sm:hidden">{tb.labelMobile}</span>
           </button>
-        )}
+        ))}
       </div>
 
       {/* ── CRM ── */}

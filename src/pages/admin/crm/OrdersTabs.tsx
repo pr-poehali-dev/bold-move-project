@@ -158,7 +158,7 @@ export function OrdersTabs({
 
   return (
     <div className="space-y-2">
-      <div className="flex gap-2 flex-wrap items-center">
+      <div className="flex gap-2 items-center overflow-x-auto pb-1" style={{ scrollbarWidth: "none" }}>
         {allTabs.map(tab => {
           const count    = getCount(tab);
           const revenue  = getRevenue(tab);
@@ -166,7 +166,7 @@ export function OrdersTabs({
           const isOpen   = openPopup === tab.id;
 
           return (
-            <div key={tab.id} className="relative group/tab flex-1 min-w-0">
+            <div key={tab.id} className="relative group/tab flex-shrink-0" style={{ minWidth: 130 }}>
               <button
                 onClick={() => onSelect(tab.id)}
                 className="w-full flex items-center gap-2.5 px-4 py-2.5 rounded-xl transition"

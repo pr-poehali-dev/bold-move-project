@@ -81,12 +81,12 @@ export default function CrmOrders({ clients: allClients, loading, onStatusChange
     <div className="space-y-4">
 
       {/* Header */}
-      <div className="flex items-center justify-between flex-wrap gap-3">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h2 className="text-xl font-bold" style={{ color: t.text }}>Воронка заказов</h2>
           <p className="text-xs mt-0.5" style={{ color: t.textMute }}>Всего клиентов: {allClients.length}</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           {/* View mode switcher */}
           <div className="flex rounded-xl overflow-hidden" style={{ border: `1px solid ${t.border}` }}>
             {([
@@ -95,22 +95,23 @@ export default function CrmOrders({ clients: allClients, loading, onStatusChange
               { mode: "kanban", icon: "Kanban",     label: "Канбан" },
             ] as const).map(({ mode, icon, label }) => (
               <button key={mode} onClick={() => setViewMode(mode)}
-                className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold transition"
+                className="flex items-center gap-1.5 px-2.5 sm:px-3 py-2 text-xs font-semibold transition"
                 style={{
                   background: viewMode === mode ? "#7c3aed22" : "transparent",
                   color: viewMode === mode ? "#7c3aed" : t.textMute,
                   borderRight: mode !== "kanban" ? `1px solid ${t.border}` : undefined,
                 }}>
-                <Icon name={icon} size={13} /> {label}
+                <Icon name={icon} size={13} />
+                <span className="hidden sm:inline">{label}</span>
               </button>
             ))}
           </div>
 
           {/* Search */}
-          <div className="relative w-64">
+          <div className="relative flex-1 sm:w-64 sm:flex-none min-w-[140px]">
             <Icon name="Search" size={13} className="absolute left-3.5 top-1/2 -translate-y-1/2" style={{ color: t.textMute }} />
             <input value={search} onChange={e => setSearch(e.target.value)}
-              placeholder="Поиск по имени, телефону..."
+              placeholder="Поиск..."
               className="w-full rounded-xl pl-10 pr-4 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-violet-500/40 transition"
               style={{ background: t.surface, border: `1px solid ${t.border}`, color: t.text }} />
           </div>
