@@ -21,12 +21,53 @@ const PROFIT   = 32400;
 const MAX_DISC = 18; // %
 
 export default function PricingLiveDemo() {
-  const [step,    setStep]    = useState<number>(-1); // -1 = ещё не стартовали
-  const [profit,  setProfit]  = useState<number>(0);
-  const [disc,    setDisc]    = useState<number>(0);
-  const [visible, setVisible] = useState(false);
-  const [cdown,   setCdown]   = useState(0);
-  const ref = useRef<HTMLDivElement>(null);
+  const [step,      setStep]      = useState<number>(-1);
+  const [profit,    setProfit]    = useState<number>(0);
+  const [disc,      setDisc]      = useState<number>(0);
+  const [visible,   setVisible]   = useState(false);
+  const [cdown,     setCdown]     = useState(0);
+  const [recording, setRecording] = useState(false);
+  const ref        = useRef<HTMLDivElement>(null);
+  const recRef     = useRef<MediaRecorder | null>(null);
+  const chunksRef  = useRef<Blob[]>([]);
+
+  const startRecording = async () => {
+    if (recording || !ref.current) return;
+    try {
+      const canvas = ref.current;
+      // Захватываем весь элемент через его canvas-поток
+      const stream = (canvas as HTMLElement & { captureStream?: () => MediaStream }).captureStream?.();
+      // Если captureStream недоступен — используем display media как fallback
+      const mediaStream = stream ?? await navigator.mediaDevices.getDisplayMedia({
+        video: { frameRate: 30 },
+        audio: false,
+      });
+
+      chunksRef.current = [];
+      const mr = new MediaRecorder(mediaStream, { mimeType: "video/webm;codecs=vp9" });
+      mr.ondataavailable = e => { if (e.data.size > 0) chunksRef.current.push(e.data); };
+      mr.onstop = () => {
+        const blob = new Blob(chunksRef.current, { type: "video/webm" });
+        const url  = URL.createObjectURL(blob);
+        const a    = document.createElement("a");
+        a.href     = url;
+        a.download = "smeta-demo.webm";
+        a.click();
+        URL.revokeObjectURL(url);
+        setRecording(false);
+        mediaStream.getTracks().forEach(t => t.stop());
+      };
+      recRef.current = mr;
+      mr.start();
+      setRecording(true);
+      // Запускаем анимацию с начала
+      setProfit(0); setDisc(0); setCdown(0); setStep(0);
+      // Останавливаем после одного полного цикла (~16 сек)
+      setTimeout(() => { if (recRef.current?.state === "recording") recRef.current.stop(); }, 16000);
+    } catch {
+      alert("Не удалось начать запись. Попробуй в Chrome.");
+    }
+  };
 
   // Отслеживаем видимость — старт и перезапуск только когда на экране
   useEffect(() => {
@@ -159,10 +200,22 @@ export default function PricingLiveDemo() {
           <div className="flex-1 text-center text-[10px] text-white/35 font-mono">
             Смета №1284 · Натяжные потолки · Квартира 32 м²
           </div>
-          <button onClick={restart}
-            className="text-[10px] flex items-center gap-1 text-white/40 hover:text-white/80 transition">
-            <Icon name="RotateCcw" size={11} /> Заново
-          </button>
+          <div className="flex items-center gap-2">
+            <button onClick={startRecording} disabled={recording}
+              className="text-[10px] flex items-center gap-1 transition"
+              style={{ color: recording ? "#f59e0b" : "rgba(255,255,255,0.35)" }}
+              title="Записать как видео">
+              {recording
+                ? <><span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse inline-block" /> Запись...</>
+                : <><Icon name="Download" size={11} /> Скачать</>
+              }
+            </button>
+            <span className="text-white/15">|</span>
+            <button onClick={restart}
+              className="text-[10px] flex items-center gap-1 text-white/40 hover:text-white/80 transition">
+              <Icon name="RotateCcw" size={11} /> Заново
+            </button>
+          </div>
         </div>
 
         {/* Прогресс-бар шагов */}
