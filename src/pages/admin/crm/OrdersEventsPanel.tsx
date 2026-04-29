@@ -164,9 +164,11 @@ export function OrdersEventsPanel({ allClients, loading, onSelect }: Props) {
           </div>
 
           {/* Правая часть: фильтр + шеврон */}
-          <div className="flex items-center gap-1.5 flex-shrink-0" onClick={e => e.stopPropagation()}>
+          <div className="flex items-center gap-1.5 flex-shrink-0">
+            {/* Фильтр дней — stopPropagation только на кнопках фильтра */}
             <div className="flex items-center gap-0.5 p-0.5 rounded-xl"
-              style={{ background: t.surface2, border: `1px solid ${t.border}` }}>
+              style={{ background: t.surface2, border: `1px solid ${t.border}` }}
+              onClick={e => e.stopPropagation()}>
               {([
                 { val: 1, label: "Сег", labelFull: "Сегодня" },
                 { val: 2, label: "Зав", labelFull: "Завтра" },
@@ -184,7 +186,10 @@ export function OrdersEventsPanel({ allClients, loading, onSelect }: Props) {
                 </button>
               ))}
             </div>
-            <Icon name={collapsed ? "ChevronDown" : "ChevronUp"} size={14} style={{ color: t.textMute }} />
+            {/* Шеврон — вне stopPropagation, клик доходит до родителя */}
+            <div className="p-1">
+              <Icon name={collapsed ? "ChevronDown" : "ChevronUp"} size={14} style={{ color: t.textMute }} />
+            </div>
           </div>
         </div>
 
