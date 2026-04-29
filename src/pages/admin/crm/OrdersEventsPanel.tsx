@@ -147,9 +147,9 @@ export function OrdersEventsPanel({ allClients, loading, onSelect }: Props) {
       {/* ── ПРЕДСТОЯЩИЕ ─────────────────────────────────────────────────────── */}
       <div className="rounded-2xl" style={{ background: t.surface, border: `1px solid ${t.border}` }}>
         {/* Шапка — всегда видна, кликабельна */}
-        <button
+        <div
           onClick={() => setCollapsed(v => !v)}
-          className="w-full flex items-center justify-between px-4 py-3 rounded-2xl transition hover:opacity-80"
+          className="w-full flex items-center justify-between px-4 py-3 rounded-2xl transition hover:opacity-80 cursor-pointer"
         >
           <div className="flex items-center gap-2">
             <Icon name="CalendarClock" size={15} style={{ color: "#a78bfa" }} />
@@ -185,7 +185,7 @@ export function OrdersEventsPanel({ allClients, loading, onSelect }: Props) {
             {/* Кнопка свернуть */}
             <Icon name={collapsed ? "ChevronDown" : "ChevronUp"} size={14} style={{ color: t.textMute }} />
           </div>
-        </button>
+        </div>
 
         {/* Тело — сворачивается */}
         {!collapsed && (
