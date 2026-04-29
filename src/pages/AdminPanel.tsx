@@ -28,6 +28,65 @@ const AGENT_TABS: { id: AgentSubTab; label: string; icon: string }[] = [
   { id: "corrections", label: "Обучение",        icon: "GraduationCap" },
 ];
 
+const MAIN_TABS = (hasTeam: boolean) => [
+  { id: "crm"       as MainTab, icon: "LayoutDashboard", label: "CRM"     },
+  { id: "agent"     as MainTab, icon: "BrainCircuit",    label: "Агент"   },
+  ...(hasTeam ? [{ id: "team"      as MainTab, icon: "Users", label: "Команда" }] : []),
+  ...(hasTeam ? [{ id: "own-agent" as MainTab, icon: "Bot",   label: "Агент+"  }] : []),
+];
+
+function MobileTabMenu({ mainTab, isDark, hasTeam, onSelect }: {
+  mainTab: MainTab; isDark: boolean; hasTeam: boolean;
+  onSelect: (t: MainTab) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const tabs = MAIN_TABS(hasTeam);
+  const active = tabs.find(t => t.id === mainTab) ?? tabs[0];
+
+  return (
+    <div className="flex sm:hidden flex-1 relative">
+      {/* Кнопка текущего таба */}
+      <button
+        onClick={() => setOpen(v => !v)}
+        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-semibold transition"
+        style={{ background: "#7c3aed22", color: "#a78bfa", border: "1px solid #7c3aed40" }}>
+        <Icon name={active.icon} size={13} />
+        {active.label}
+        <Icon name={open ? "ChevronUp" : "ChevronDown"} size={11} />
+      </button>
+
+      {/* Дропдаун */}
+      {open && (
+        <>
+          {/* Оверлей */}
+          <div className="fixed inset-0 z-[90]" onClick={() => setOpen(false)} />
+          <div className="absolute top-full left-0 mt-1.5 z-[91] rounded-xl overflow-hidden min-w-[160px]"
+            style={{
+              background: isDark ? "#0e0e1c" : "#ffffff",
+              border: isDark ? "1px solid rgba(255,255,255,0.10)" : "1px solid #e5e7eb",
+              boxShadow: "0 8px 32px rgba(0,0,0,0.4)",
+            }}>
+            {tabs.map((tb, i) => (
+              <button key={tb.id}
+                onClick={() => { onSelect(tb.id); setOpen(false); }}
+                className="flex items-center gap-2.5 w-full px-4 py-2.5 text-[12px] font-semibold transition text-left"
+                style={{
+                  background: tb.id === mainTab ? "#7c3aed22" : "transparent",
+                  color: tb.id === mainTab ? "#a78bfa" : isDark ? "rgba(255,255,255,0.6)" : "#374151",
+                  borderTop: i > 0 ? (isDark ? "1px solid rgba(255,255,255,0.05)" : "1px solid #f3f4f6") : "none",
+                }}>
+                <Icon name={tb.icon} size={14} />
+                {tb.label}
+                {tb.id === mainTab && <Icon name="Check" size={11} className="ml-auto" style={{ color: "#a78bfa" }} />}
+              </button>
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
 export default function AdminPanel() {
   const { user, token: authToken, loading, logout: authLogout } = useAuth();
 
@@ -244,24 +303,13 @@ export default function AdminPanel() {
         </a>
         <Icon name="BrainCircuit" size={18} className="text-violet-400 flex-shrink-0" />
 
-        {/* Мобиле: главные табы прямо здесь */}
-        <div className="flex sm:hidden items-center gap-0.5 overflow-x-auto flex-1" style={{ scrollbarWidth: "none" }}>
-          {([
-            { id: "crm"       as MainTab, icon: "LayoutDashboard", label: "CRM"   },
-            { id: "agent"     as MainTab, icon: "BrainCircuit",    label: "Агент" },
-            ...(user?.role === "company" || user?.is_master ? [{ id: "team"      as MainTab, icon: "Users", label: "Команда" }] : []),
-            ...(user?.role === "company" || user?.is_master ? [{ id: "own-agent" as MainTab, icon: "Bot",   label: "Агент+"  }] : []),
-          ]).map(tb => (
-            <button key={tb.id} onClick={() => setMainTab(tb.id)}
-              className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] font-semibold transition whitespace-nowrap flex-shrink-0"
-              style={mainTab === tb.id
-                ? { background: "#7c3aed22", color: "#a78bfa", border: "1px solid #7c3aed40" }
-                : { color: isDark ? "rgba(255,255,255,0.45)" : "#6b7280", border: "1px solid transparent" }}>
-              <Icon name={tb.icon} size={13} />
-              {tb.label}
-            </button>
-          ))}
-        </div>
+        {/* Мобиле: активный таб + дропдаун */}
+        <MobileTabMenu
+          mainTab={mainTab}
+          isDark={isDark}
+          hasTeam={user?.role === "company" || !!user?.is_master}
+          onSelect={setMainTab}
+        />
 
         {/* Десктоп: название */}
         <span className="font-semibold hidden sm:block flex-1" style={{ color: headerText }}>Панель управления</span>
