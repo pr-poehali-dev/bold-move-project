@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { crmFetch, STATUS_LABELS, STATUS_COLORS, ORDER_STATUSES, Client } from "./crmApi";
+import { crmFetch, STATUS_LABELS, STATUS_COLORS, Client } from "./crmApi";
 import Icon from "@/components/ui/icon";
 import { useTheme } from "./themeContext";
 import EstimateEditor from "./EstimateEditor";
@@ -31,8 +31,6 @@ export default function ClientDrawer({ client, allClientOrders, onClose, onUpdat
   const [orderInnerTab, setOrderInnerTab] = useState<"info" | "estimate">("info");
   const [ordersListOpen, setOrdersListOpen] = useState(false);
 
-
-
   const save = async (patch: Partial<Client>) => {
     setData(prev => ({ ...prev, ...patch }));
     if (isLocalCard) return;
@@ -62,6 +60,12 @@ export default function ClientDrawer({ client, allClientOrders, onClose, onUpdat
     onDeleted();
   };
 
+  const ord = drawerTab === "orders" ? orderData : data;
+  const lsKey = `order_title_${ord.id}`;
+  const customTitle = localStorage.getItem(lsKey);
+  const orderTitle = customTitle || `Заявка №${ord.id}`;
+  const displayColor = STATUS_COLORS[ord.status] || "#8b5cf6";
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center sm:p-4"
       style={{ background: "rgba(0,0,0,0.65)", backdropFilter: "blur(5px)" }}>
@@ -75,24 +79,19 @@ export default function ClientDrawer({ client, allClientOrders, onClose, onUpdat
           height: "100dvh",
           maxHeight: "100dvh",
         }}
-        onClick={e => e.stopPropagation()}
-        >
+        onClick={e => e.stopPropagation()}>
 
         {/* ── Шапка ── */}
-        {(() => {
-          const ord = drawerTab === "orders" ? orderData : data;
-          const lsKey = `order_title_${ord.id}`;
-          const customTitle = localStorage.getItem(lsKey);
-          const orderTitle = customTitle || `Заявка №${ord.id}`;
-          const displayColor = STATUS_COLORS[ord.status] || "#8b5cf6";
-          return (
-        <div className="flex items-center justify-between px-3 sm:px-6 py-3 sm:py-4 flex-shrink-0" style={{ borderBottom: `1px solid ${t.border}` }}>
-          <div className="flex items-center gap-3 min-w-0 flex-1 mr-3">
-            <div className="w-11 h-11 rounded-xl flex-shrink-0 flex items-center justify-center text-sm font-bold text-white"
+        <div className="flex items-center justify-between px-3 sm:px-6 py-2.5 sm:py-4 flex-shrink-0" style={{ borderBottom: `1px solid ${t.border}` }}>
+          <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1 mr-2">
+            {/* Цветной аватар с номером */}
+            <div className="w-9 h-9 sm:w-11 sm:h-11 rounded-xl flex-shrink-0 flex items-center justify-center text-sm font-bold text-white"
               style={{ background: displayColor + "35", border: `2px solid ${displayColor}50` }}>
-              {ord.id}
+              <span className="text-xs sm:text-sm">{ord.id}</span>
             </div>
+
             <div className="min-w-0 flex-1">
+              {/* Название заявки */}
               {editingTitle ? (
                 <input
                   autoFocus
@@ -110,38 +109,48 @@ export default function ClientDrawer({ client, allClientOrders, onClose, onUpdat
                     if (e.key === "Enter") (e.target as HTMLInputElement).blur();
                     if (e.key === "Escape") setEditingTitle(false);
                   }}
-                  className="text-base font-bold bg-transparent focus:outline-none block w-full"
+                  className="text-sm sm:text-base font-bold bg-transparent focus:outline-none block w-full"
                   style={{ color: "#fff", borderBottom: "1px solid #7c3aed", minWidth: 0 }}
                 />
               ) : (
-                <div className="text-base font-bold text-white truncate max-w-xs sm:max-w-lg cursor-text hover:opacity-80 transition"
+                <div
+                  className="text-sm sm:text-base font-bold text-white truncate cursor-text hover:opacity-80 transition"
+                  style={{ maxWidth: "min(180px, 40vw)" }}
                   title="Нажмите чтобы изменить название"
                   onClick={() => setEditingTitle(true)}>
                   {orderTitle}
                 </div>
               )}
-              <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                <span className="text-[11px] px-2 py-0.5 rounded-md font-semibold flex-shrink-0"
+
+              {/* Статус + сумма */}
+              <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                <span className="text-[10px] sm:text-[11px] px-1.5 sm:px-2 py-0.5 rounded-md font-semibold flex-shrink-0"
                   style={{ background: displayColor + "25", color: displayColor }}>
                   {STATUS_LABELS[ord.status] || ord.status}
                 </span>
                 {ord.contract_sum ? (
-                  <span className="text-xs font-bold text-emerald-400 flex-shrink-0">{ord.contract_sum.toLocaleString("ru-RU")} ₽</span>
+                  <span className="text-xs font-bold text-emerald-400 flex-shrink-0">
+                    {ord.contract_sum.toLocaleString("ru-RU")} ₽
+                  </span>
                 ) : null}
               </div>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+
+          {/* Правые кнопки */}
+          <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
             {saving && <div className="w-4 h-4 border-2 border-violet-500 border-t-transparent rounded-full animate-spin" />}
-            {copied && <span className="text-xs text-violet-300 whitespace-nowrap">Скопировано!</span>}
+            {copied && <span className="hidden sm:inline text-xs text-violet-300 whitespace-nowrap">Скопировано!</span>}
+
+            {/* Скрыть блоки — только на десктопе */}
             <button
               onClick={() => setHideHidden(v => { const next = !v; localStorage.setItem("drawer_hide_hidden", String(next)); return next; })}
-              className="p-2 rounded-lg hover:bg-white/5 transition"
+              className="hidden sm:flex p-2 rounded-lg hover:bg-white/5 transition"
               style={{ color: hideHidden ? "#a78bfa" : t.textMute }}
-              title={hideHidden ? "Показать скрытые блоки" : "Скрыть скрытые блоки"}
-            >
+              title={hideHidden ? "Показать скрытые блоки" : "Скрыть скрытые блоки"}>
               <Icon name={hideHidden ? "EyeOff" : "Eye"} size={15} />
             </button>
+
             <button onClick={() => setConfirmDelete(true)} className="p-2 rounded-lg hover:bg-red-500/10 transition" style={{ color: t.textMute }}>
               <Icon name="Trash2" size={15} />
             </button>
@@ -150,8 +159,6 @@ export default function ClientDrawer({ client, allClientOrders, onClose, onUpdat
             </button>
           </div>
         </div>
-          );
-        })()}
 
         {/* ── Табы ── */}
         <div className="flex px-3 sm:px-6 gap-1 pt-2 sm:pt-3 flex-shrink-0" style={{ borderBottom: `1px solid ${t.border}` }}>
@@ -170,7 +177,7 @@ export default function ClientDrawer({ client, allClientOrders, onClose, onUpdat
         </div>
 
         {/* ── Контент ── */}
-        <div className="flex-1 overflow-y-auto">
+        <div className="flex-1 overflow-y-auto min-h-0">
 
           {/* КЛИЕНТ */}
           {drawerTab === "client" && (
@@ -179,15 +186,57 @@ export default function ClientDrawer({ client, allClientOrders, onClose, onUpdat
 
           {/* ЗАЯВКИ */}
           {drawerTab === "orders" && (
-            <div className="flex flex-row h-full min-h-0">
+            <div className="flex flex-col sm:flex-row h-full min-h-0">
 
-              {/* Список заявок — боковая панель */}
-              <div className={`flex-shrink-0 transition-all duration-200 border-r flex flex-col ${ordersListOpen ? "w-56 md:w-64" : "w-9 cursor-pointer hover:bg-white/[0.02]"}`}
+              {/* ── МОБИЛЕ: горизонтальный скролл заявок сверху ── */}
+              {allClientOrders.length > 1 && (
+                <div className="sm:hidden flex-shrink-0 px-3 pt-2 pb-0">
+                  <div className="flex gap-2 overflow-x-auto pb-2" style={{ scrollbarWidth: "none" }}>
+                    {[...allClientOrders]
+                      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+                      .map(order => {
+                        const isActive = order.id === selectedOrderId;
+                        const color = STATUS_COLORS[order.status] || "#8b5cf6";
+                        return (
+                          <button key={order.id}
+                            onClick={() => { setSelectedOrderId(order.id); setOrderData(order); setOrderInnerTab("info"); }}
+                            className="flex-shrink-0 text-left rounded-xl transition"
+                            style={{
+                              background: isActive ? "#7c3aed18" : t.surface2,
+                              border: `1.5px solid ${isActive ? "#7c3aed70" : t.border}`,
+                              padding: "8px 12px",
+                              minWidth: 140,
+                              maxWidth: 170,
+                            }}>
+                            <div className="flex items-center justify-between gap-1 mb-1">
+                              <span className="text-[11px] font-bold truncate" style={{ color: t.text }}>
+                                {localStorage.getItem(`order_title_${order.id}`) || `Заявка №${order.id}`}
+                              </span>
+                            </div>
+                            <span className="text-[9px] px-1.5 py-0.5 rounded font-semibold"
+                              style={{ background: color + "20", color }}>
+                              {STATUS_LABELS[order.status] || order.status}
+                            </span>
+                            {order.contract_sum ? (
+                              <div className="text-[10px] font-bold text-emerald-400 mt-1">
+                                {Number(order.contract_sum).toLocaleString("ru-RU")} ₽
+                              </div>
+                            ) : null}
+                          </button>
+                        );
+                      })}
+                  </div>
+                  {/* Разделитель */}
+                  <div className="h-px mt-1" style={{ background: t.border }} />
+                </div>
+              )}
+
+              {/* ── ДЕСКТОП: боковая панель заявок ── */}
+              <div className={`hidden sm:flex flex-shrink-0 transition-all duration-200 border-r flex-col ${ordersListOpen ? "w-56 md:w-64" : "w-9 cursor-pointer hover:bg-white/[0.02]"}`}
                 style={{ borderColor: t.border }}
                 onClick={!ordersListOpen ? () => setOrdersListOpen(true) : undefined}
                 title={!ordersListOpen ? "Развернуть список заявок" : undefined}>
 
-                {/* Индикатор свёрнутой панели — по центру полоски */}
                 {!ordersListOpen && (
                   <div className="flex-1 flex flex-col items-center justify-center gap-0.5">
                     {[...Array(5)].map((_, i) => (
@@ -195,7 +244,6 @@ export default function ClientDrawer({ client, allClientOrders, onClose, onUpdat
                     ))}
                   </div>
                 )}
-                {/* Кнопка свернуть — только когда открыт */}
                 {ordersListOpen && (
                   <button
                     className="w-full h-10 flex items-center justify-center transition hover:bg-white/5 flex-shrink-0"
@@ -206,9 +254,7 @@ export default function ClientDrawer({ client, allClientOrders, onClose, onUpdat
                   </button>
                 )}
 
-                {/* Список — виден только когда открыт */}
-                <div className={`${ordersListOpen ? "flex" : "hidden"} flex-col overflow-y-auto gap-2 p-2 sm:p-3`}
-                  style={{ borderColor: t.border }}>
+                <div className={`${ordersListOpen ? "flex" : "hidden"} flex-col overflow-y-auto gap-2 p-2 sm:p-3`}>
                   {allClientOrders.length === 0 && (
                     <div className="py-4 text-center text-xs w-full" style={{ color: t.textMute }}>Нет заявок</div>
                   )}
@@ -219,14 +265,13 @@ export default function ClientDrawer({ client, allClientOrders, onClose, onUpdat
                       return (
                         <button key={order.id}
                           onClick={() => { setSelectedOrderId(order.id); setOrderData(order); setOrderInnerTab("info"); setOrdersListOpen(false); }}
-                          className="flex-shrink-0 sm:flex-shrink-[unset] text-left rounded-xl transition"
+                          className="flex-shrink-0 text-left rounded-xl transition"
                           style={{
                             background: isActive ? "#7c3aed18" : t.surface2,
                             border: `1px solid ${isActive ? "#7c3aed60" : t.border}`,
                             minWidth: 130,
                             padding: "8px 10px",
                           }}>
-                          {/* Заголовок + статус */}
                           <div className="flex items-center justify-between gap-1 mb-1.5">
                             <span className="text-xs font-bold truncate" style={{ color: t.text }}>
                               {localStorage.getItem(`order_title_${order.id}`) || `Заявка №${order.id}`}
@@ -236,7 +281,6 @@ export default function ClientDrawer({ client, allClientOrders, onClose, onUpdat
                               {STATUS_LABELS[order.status] || order.status}
                             </span>
                           </div>
-                          {/* Детали */}
                           <div className="space-y-0.5">
                             {order.client_name && (
                               <div className="flex items-center gap-1 text-[10px]" style={{ color: t.textMute }}>
@@ -313,8 +357,8 @@ export default function ClientDrawer({ client, allClientOrders, onClose, onUpdat
 
       {/* Подтверждение удаления */}
       {confirmDelete && (
-        <div className="fixed inset-0 flex items-center justify-center z-[60] bg-black/60" onClick={() => setConfirmDelete(false)}>
-          <div className="rounded-2xl p-6 w-80 shadow-2xl" style={{ background: t.surface, border: "1px solid rgba(239,68,68,0.25)" }} onClick={e => e.stopPropagation()}>
+        <div className="fixed inset-0 flex items-center justify-center z-[60] bg-black/60 p-4" onClick={() => setConfirmDelete(false)}>
+          <div className="rounded-2xl p-6 w-full max-w-xs shadow-2xl" style={{ background: t.surface, border: "1px solid rgba(239,68,68,0.25)" }} onClick={e => e.stopPropagation()}>
             <div className="w-12 h-12 rounded-full bg-red-500/15 flex items-center justify-center mx-auto mb-4">
               <Icon name="Trash2" size={22} className="text-red-400" />
             </div>
