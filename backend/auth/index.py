@@ -222,8 +222,13 @@ def handler(event: dict, context) -> dict:
         if new_role and new_role not in ALLOWED_ROLES:
             return err("Недопустимая роль")
 
-        # При смене на бизнес-роль — сбрасываем approved, при клиентской — approved=True
-        if new_role:
+        # Читаем текущую роль и approved из БД
+        cur.execute(f"SELECT role, approved FROM {SCHEMA}.users WHERE id=%s", (uid,))
+        cur_row = cur.fetchone()
+        current_role, current_approved = cur_row if cur_row else (None, False)
+
+        # Сбрасываем approved ТОЛЬКО если роль реально изменилась
+        if new_role and new_role != current_role:
             new_approved = new_role not in BUSINESS_ROLES
             new_discount = DEFAULT_DISCOUNT if new_role in DISCOUNT_ROLES else 0
             cur.execute(f"""
@@ -236,6 +241,7 @@ def handler(event: dict, context) -> dict:
                   company_addr or None, website or None, telegram or None,
                   new_role, new_approved, new_discount, uid))
         else:
+            # Роль не изменилась — обновляем только данные профиля, approved не трогаем
             cur.execute(f"""
                 UPDATE {SCHEMA}.users
                 SET name=%s, phone=%s, company_name=%s, company_inn=%s,
