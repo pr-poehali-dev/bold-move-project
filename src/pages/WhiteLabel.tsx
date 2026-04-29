@@ -19,18 +19,32 @@ interface CheckResult {
 }
 
 export default function WhiteLabel() {
-  const { user } = useAuth();
+  const { user, loading } = useAuth();
   const navigate = useNavigate();
   const [results, setResults] = useState<Record<string, CheckResult | null>>({});
   const [running, setRunning] = useState<string | null>(null);
 
   // Доступ только мастеру
   useEffect(() => {
-    if (user && !user.is_master) navigate("/");
-  }, [user, navigate]);
+    if (!loading && user && !user.is_master) navigate("/");
+  }, [user, loading, navigate]);
 
-  if (!user) {
+  if (loading) {
     return <Center><Spin /> <span className="ml-2 text-white/40 text-sm">Загрузка...</span></Center>;
+  }
+  if (!user) {
+    return (
+      <Center>
+        <div className="text-center space-y-3">
+          <div className="text-white/40 text-sm">Нужно войти как мастер</div>
+          <button onClick={() => navigate("/")}
+            className="px-4 py-2 rounded-xl text-xs font-bold"
+            style={{ background: "#7c3aed", color: "#fff" }}>
+            На главную
+          </button>
+        </div>
+      </Center>
+    );
   }
   if (!user.is_master) {
     return <Center><span className="text-white/40 text-sm">Доступ только для мастера</span></Center>;
