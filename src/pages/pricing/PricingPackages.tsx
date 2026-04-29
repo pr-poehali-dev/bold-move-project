@@ -38,7 +38,7 @@ export default function PricingPackages({ selected, onSelect }: Props) {
                 <span className="text-sm text-white/30">₽</span>
               </div>
               <div className="text-[10px] text-white/35 mb-4">
-                {pkg.perEstimate} ₽ за одну смету
+                {pkg.perEstimate} ₽ за одну смету = 1 объект
               </div>
 
               <div className="flex items-center gap-2 px-3 py-2 rounded-xl mb-4"
