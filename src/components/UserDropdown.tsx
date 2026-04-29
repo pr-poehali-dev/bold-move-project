@@ -111,17 +111,23 @@ export default function UserDropdown({ onShowProfile }: Props) {
           {/* Пункты меню */}
           <div className="py-1.5">
             {user.role && CLIENT_ROLES.includes(user.role) ? (
-              <MenuItem icon="ClipboardList" label="Мои заявки"
-                onClick={() => { setOpen(false); window.location.href = "/my-orders"; }} />
+              <>
+                <MenuItem icon="ClipboardList" label="Мои заявки"
+                  onClick={() => { setOpen(false); window.location.href = "/my-orders"; }} />
+                <MenuItem icon="User" label="Профиль"
+                  onClick={() => { setOpen(false); onShowProfile(); }} />
+              </>
             ) : (
-              <MenuItem icon="LayoutDashboard" label="Панель управления"
-                onClick={() => { setOpen(false); window.location.href = "/company"; }} />
-            )}
-            <MenuItem icon="User" label="Профиль"
-              onClick={() => { setOpen(false); onShowProfile(); }} />
-            {["installer","company"].includes(user.role) && (
-              <MenuItem icon="Sparkles" label="Тарифы и пакеты"
-                onClick={() => { setOpen(false); window.location.href = "/pricing"; }} />
+              <>
+                <MenuItem icon="User" label="Профиль"
+                  onClick={() => { setOpen(false); onShowProfile(); }} />
+                {["installer","company"].includes(user.role) && (
+                  <MenuItem icon="Sparkles" label="Тарифы и пакеты"
+                    onClick={() => { setOpen(false); window.location.href = "/pricing"; }} />
+                )}
+                <MenuItem icon="LayoutDashboard" label="Панель управления"
+                  onClick={() => { setOpen(false); window.location.href = "/company"; }} />
+              </>
             )}
 
             <a href="https://t.me/JoniKras" target="_blank" rel="noreferrer"
