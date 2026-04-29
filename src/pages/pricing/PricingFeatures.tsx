@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import Icon from "@/components/ui/icon";
 import PricingLiveDemo from "../PricingLiveDemo";
 import { ADVANTAGES } from "./pricingData";
@@ -10,18 +10,39 @@ const PAGES    = Math.ceil(ADVANTAGES.length / VISIBLE);
 export default function PricingFeatures() {
   const [page,   setPage]   = useState(0);
   const [fadeIn, setFadeIn] = useState(true);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const fadeTimer   = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Автосмена каждые 3 секунды
-  useEffect(() => {
-    const t = setInterval(() => {
+  const startInterval = useCallback(() => {
+    if (intervalRef.current) clearInterval(intervalRef.current);
+    intervalRef.current = setInterval(() => {
       setFadeIn(false);
-      setTimeout(() => {
+      fadeTimer.current = setTimeout(() => {
         setPage(p => (p + 1) % PAGES);
         setFadeIn(true);
       }, 300);
     }, INTERVAL);
-    return () => clearInterval(t);
   }, []);
+
+  // Запускаем автосмену при монтировании
+  useEffect(() => {
+    startInterval();
+    return () => {
+      if (intervalRef.current) clearInterval(intervalRef.current);
+      if (fadeTimer.current)   clearTimeout(fadeTimer.current);
+    };
+  }, [startInterval]);
+
+  // Ручное переключение — сбрасывает и перезапускает интервал
+  const goToPage = useCallback((i: number) => {
+    if (fadeTimer.current) clearTimeout(fadeTimer.current);
+    setFadeIn(false);
+    fadeTimer.current = setTimeout(() => {
+      setPage(i);
+      setFadeIn(true);
+    }, 300);
+    startInterval(); // сброс таймера
+  }, [startInterval]);
 
   return (
     <>
@@ -158,7 +179,7 @@ export default function PricingFeatures() {
             {Array.from({ length: PAGES }).map((_, i) => (
               <button
                 key={i}
-                onClick={() => { setFadeIn(false); setTimeout(() => { setPage(i); setFadeIn(true); }, 300); }}
+                onClick={() => goToPage(i)}
                 className="rounded-full transition-all duration-300"
                 style={{
                   width:      i === page ? 20 : 6,
