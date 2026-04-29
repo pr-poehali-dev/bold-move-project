@@ -101,7 +101,7 @@ export function CalendarLeftSidebar({
 
 // ── Правая панель: список событий выбранного дня ─────────────────────────────
 export function CalendarDaySidebar({
-  selectedDay, month, year, selectedEvents, onOpenAdd, onEditEvent,
+  selectedDay, month, year, selectedEvents, onOpenAdd, onEditEvent, onSelectClient,
 }: {
   selectedDay: number | null;
   month: number;
@@ -109,6 +109,7 @@ export function CalendarDaySidebar({
   selectedEvents: CalEvent[];
   onOpenAdd: (iso: string) => void;
   onEditEvent: (e: CalEvent) => void;
+  onSelectClient?: (id: number) => void;
 }) {
   const t = useTheme();
 
@@ -149,10 +150,10 @@ export function CalendarDaySidebar({
         )}
         <div className="space-y-2">
           {selectedEvents.map(e => (
-            <div key={e.id} onClick={() => onEditEvent(e)}
-              className="rounded-xl p-3 cursor-pointer transition"
+            <div key={e.id}
+              className="rounded-xl p-3 transition"
               style={{ background: e.color + "15", border: `1px solid ${e.color}30` }}>
-              <div className="flex items-center gap-2 mb-1.5">
+              <div className="flex items-center gap-2 mb-1.5 cursor-pointer" onClick={() => onEditEvent(e)}>
                 <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: e.color }} />
                 <span className="text-xs font-bold truncate" style={{ color: t.text }}>{e.title}</span>
               </div>
@@ -164,7 +165,14 @@ export function CalendarDaySidebar({
                 {e.end_time && " — " + new Date(e.end_time).toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" })}
               </div>
               {e.client_name && <div className="text-[10px] mt-0.5" style={{ color: t.textMute }}>{e.client_name}</div>}
-              {e.description && <div className="text-[10px] mt-1" style={{ color: t.textMute }}>{e.description}</div>}
+              {e.description && <div className="text-[10px] mt-1 cursor-pointer" onClick={() => onEditEvent(e)} style={{ color: t.textMute }}>{e.description}</div>}
+              {e.client_id && onSelectClient && (
+                <button onClick={() => onSelectClient(e.client_id!)}
+                  className="mt-2 text-[10px] font-semibold px-2 py-1 rounded-lg w-full text-center transition hover:opacity-80"
+                  style={{ background: e.color + "25", color: e.color }}>
+                  Открыть заказ →
+                </button>
+              )}
             </div>
           ))}
         </div>

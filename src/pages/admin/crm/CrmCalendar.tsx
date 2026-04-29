@@ -27,7 +27,7 @@ function resolveEventColor(eventType: string): string {
   return KANBAN_COLS.find(c => c.id === colId)?.color || "#8b5cf6";
 }
 
-export default function CrmCalendar() {
+export default function CrmCalendar({ onSelectClient }: { onSelectClient?: (id: number) => void }) {
   const t = useTheme();
   const today = new Date();
 
@@ -114,6 +114,7 @@ export default function CrmCalendar() {
           onAddEvent={openAdd}
           onEditEvent={setEditModal}
           onToday={goToday}
+          onSelectClient={onSelectClient}
         />
       </div>
 
@@ -169,10 +170,11 @@ export default function CrmCalendar() {
               allCells={allCells} year={year} month={month}
               selectedDay={selectedDay} events={events}
               onSelectDay={setSelectedDay} onDoubleClickDay={openAdd}
+              onSelectClient={onSelectClient}
             />
           )}
           {view === "week" && (
-            <CalendarWeekView weekStart={weekStart} events={events} onAddAt={openAdd} onEdit={setEditModal} />
+            <CalendarWeekView weekStart={weekStart} events={events} onAddAt={openAdd} onEdit={setEditModal} onSelectClient={onSelectClient} />
           )}
         </div>
 
@@ -180,6 +182,7 @@ export default function CrmCalendar() {
           selectedDay={selectedDay} month={month} year={year}
           selectedEvents={selectedEvents}
           onOpenAdd={openAdd} onEditEvent={setEditModal}
+          onSelectClient={onSelectClient}
         />
       </div>
 

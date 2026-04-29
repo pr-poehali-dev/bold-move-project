@@ -23,6 +23,12 @@ export default function CrmPanel({ theme, initialOrderId }: { theme: Theme; init
   const [tab, setTab]               = useState<CrmTab>("orders");
   const [clients, setClients]       = useState<Client[]>([]);
   const [loading, setLoading]       = useState(true);
+  const [calendarOpenId, setCalendarOpenId] = useState<number | null>(null);
+
+  const handleCalendarSelectClient = (id: number) => {
+    setCalendarOpenId(id);
+    setTab("orders");
+  };
   const [kanbanEnabled, setKanbanEnabled] = useState<boolean>(
     () => localStorage.getItem(LS_KANBAN_ENABLED) === "true"
   );
@@ -139,8 +145,8 @@ export default function CrmPanel({ theme, initialOrderId }: { theme: Theme; init
         <div className="p-2 sm:p-6">
           {tab === "analytics" && <CrmAnalytics />}
           {tab === "clients"   && <CrmClients />}
-          {tab === "orders"    && <CrmOrders clients={clients} loading={loading} onStatusChange={updateClientStatus} onClientRemoved={removeClient} onReload={loadClients} initialOrderId={initialOrderId} />}
-          {tab === "calendar"  && <CrmCalendar />}
+          {tab === "orders"    && <CrmOrders clients={clients} loading={loading} onStatusChange={updateClientStatus} onClientRemoved={removeClient} onReload={loadClients} initialOrderId={calendarOpenId ?? initialOrderId} />}
+          {tab === "calendar"  && <CrmCalendar onSelectClient={handleCalendarSelectClient} />}
           {tab === "kanban"    && <CrmKanban clients={[]} loading={false} onStatusChange={() => {}} onClientRemoved={() => {}} onReload={() => {}} onRemoveBoard={disableKanban} />}
         </div>
       </div>

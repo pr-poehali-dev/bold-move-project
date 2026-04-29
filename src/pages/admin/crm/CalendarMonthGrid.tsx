@@ -11,10 +11,11 @@ interface CalendarMonthGridProps {
   events: CalEvent[];
   onSelectDay: (day: number | null) => void;
   onDoubleClickDay: (iso: string) => void;
+  onSelectClient?: (id: number) => void;
 }
 
 export function CalendarMonthGrid({
-  allCells, year, month, selectedDay, events, onSelectDay, onDoubleClickDay,
+  allCells, year, month, selectedDay, events, onSelectDay, onDoubleClickDay, onSelectClient,
 }: CalendarMonthGridProps) {
   const t = useTheme();
   const today = new Date();
@@ -53,7 +54,11 @@ export function CalendarMonthGrid({
                 </span>
               </div>
               <div className="space-y-0.5 px-1">
-                {dayEvents.slice(0, 3).map(ev => <EventBadge key={ev.id} e={ev} onClick={() => {}} />)}
+                {dayEvents.slice(0, 3).map(ev => (
+                  <EventBadge key={ev.id} e={ev} onClick={() => {
+                    if (ev.client_id && onSelectClient) onSelectClient(ev.client_id);
+                  }} />
+                ))}
                 {dayEvents.length > 3 && (
                   <div className="text-[9px] font-semibold px-1" style={{ color: t.textMute }}>
                     +{dayEvents.length - 3} ещё

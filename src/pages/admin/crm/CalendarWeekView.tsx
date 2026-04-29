@@ -2,12 +2,13 @@ import { useTheme } from "./themeContext";
 import { CalEvent, DAY_SHORT, HOURS } from "./calendarTypes";
 
 export function CalendarWeekView({
-  weekStart, events, onAddAt, onEdit,
+  weekStart, events, onAddAt, onEdit, onSelectClient,
 }: {
   weekStart: Date;
   events: CalEvent[];
   onAddAt: (iso: string) => void;
   onEdit: (e: CalEvent) => void;
+  onSelectClient?: (id: number) => void;
 }) {
   const t = useTheme();
   const today = new Date();
@@ -80,7 +81,12 @@ export function CalendarWeekView({
                     <div className="absolute left-0 right-0 top-0 h-0.5 z-10" style={{ background: "#7c3aed" }} />
                   )}
                   {slotEvents.map(e => (
-                    <div key={e.id} onClick={ev => { ev.stopPropagation(); onEdit(e); }}
+                    <div key={e.id}
+                      onClick={ev => {
+                        ev.stopPropagation();
+                        if (e.client_id && onSelectClient) onSelectClient(e.client_id);
+                        else onEdit(e);
+                      }}
                       className="rounded-md px-1.5 py-1 text-[10px] font-medium cursor-pointer hover:brightness-110 transition mb-0.5"
                       style={{ background: e.color + "25", color: e.color, borderLeft: `2.5px solid ${e.color}` }}>
                       <div className="font-semibold truncate">{e.title}</div>

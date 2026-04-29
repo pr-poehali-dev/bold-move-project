@@ -33,12 +33,13 @@ interface Props {
   onAddEvent: (iso: string) => void;
   onEditEvent: (e: CalEvent) => void;
   onToday: () => void;
+  onSelectClient?: (id: number) => void;
 }
 
 export function CalendarMobileView({
   year, month, events, selectedDay,
   onSelectDay, onPrevMonth, onNextMonth,
-  onAddEvent, onEditEvent, onToday,
+  onAddEvent, onEditEvent, onToday, onSelectClient,
 }: Props) {
   const t = useTheme();
   const today = new Date();
@@ -232,7 +233,10 @@ export function CalendarMobileView({
                   .map(e => {
                     const color = getEventColor(e);
                     return (
-                      <button key={e.id} onClick={() => onEditEvent(e)}
+                      <button key={e.id} onClick={() => {
+                          if (e.client_id && onSelectClient) onSelectClient(e.client_id);
+                          else onEditEvent(e);
+                        }}
                         className="w-full text-left rounded-2xl p-3.5 transition active:opacity-70"
                         style={{ background: color + "15", border: `1px solid ${color}35`, borderLeft: `4px solid ${color}` }}>
                         <div className="flex items-start justify-between gap-2">
