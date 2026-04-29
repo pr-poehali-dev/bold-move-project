@@ -164,7 +164,7 @@ export default function AuthModal({ onClose, defaultTab = "login", onPending, on
                 ? "Восстановление пароля"
                 : tab === "login"
                 ? "Вход в кабинет"
-                : step === "role" ? "Кто вы?" : `Регистрация — ${selectedRole.label}`}
+                : step === "role" ? "Давайте познакомимся" : `Регистрация — ${selectedRole.label}`}
             </span>
           </div>
           <button onClick={onClose} className="text-white/30 hover:text-white/70 transition">
