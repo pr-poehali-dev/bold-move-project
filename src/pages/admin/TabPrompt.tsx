@@ -190,22 +190,22 @@ export default function TabPrompt({ token, isDark = true }: Props) {
 
       {/* Редактор промпта — две вкладки */}
       <div className="flex flex-col gap-3">
-        <div className="flex items-start justify-between gap-4">
+        <div className="flex flex-col gap-2">
           <div>
             <p className={`${isDark ? "text-white" : "text-gray-900"} font-medium text-sm`}>Инструкции для AI</p>
             <p className={`${isDark ? "text-white/40" : "text-gray-400"} text-xs mt-0.5`}>Прайс и правила расчёта подставляются автоматически — здесь только общие инструкции и формат.</p>
           </div>
-          <div className={`flex gap-1 ${isDark ? "bg-white/5" : "bg-gray-100"} rounded-lg p-0.5 flex-shrink-0`}>
+          <div className={`flex gap-1 ${isDark ? "bg-white/5" : "bg-gray-100"} rounded-lg p-0.5 w-full`}>
             <button onClick={() => setActiveTab("general")}
-              className={`text-xs px-3 py-1.5 rounded-md transition ${activeTab === "general" ? "bg-violet-600 text-white" : isDark ? "text-white/40 hover:text-white" : "text-gray-500 hover:text-gray-900"}`}>
+              className={`flex-1 text-xs px-2 py-1.5 rounded-md transition ${activeTab === "general" ? "bg-violet-600 text-white" : isDark ? "text-white/40 hover:text-white" : "text-gray-500 hover:text-gray-900"}`}>
               Общее
             </button>
             <button onClick={() => setActiveTab("system")}
-              className={`text-xs px-3 py-1.5 rounded-md transition ${activeTab === "system" ? "bg-violet-600 text-white" : isDark ? "text-white/40 hover:text-white" : "text-gray-500 hover:text-gray-900"}`}>
+              className={`flex-1 text-xs px-2 py-1.5 rounded-md transition ${activeTab === "system" ? "bg-violet-600 text-white" : isDark ? "text-white/40 hover:text-white" : "text-gray-500 hover:text-gray-900"}`}>
               Инструкции
             </button>
             <button onClick={() => setActiveTab("format")}
-              className={`text-xs px-3 py-1.5 rounded-md transition ${activeTab === "format" ? "bg-violet-600 text-white" : isDark ? "text-white/40 hover:text-white" : "text-gray-500 hover:text-gray-900"}`}>
+              className={`flex-1 text-xs px-2 py-1.5 rounded-md transition ${activeTab === "format" ? "bg-violet-600 text-white" : isDark ? "text-white/40 hover:text-white" : "text-gray-500 hover:text-gray-900"}`}>
               Формат ответа
             </button>
           </div>
@@ -213,8 +213,8 @@ export default function TabPrompt({ token, isDark = true }: Props) {
 
         {activeTab === "general" && (
           <div className="flex flex-col gap-2">
-            <div className="flex items-center justify-between">
-              <p className={`${isDark ? "text-white/30" : "text-gray-400"} text-xs`}>Роль бота, название компании, контакты, общее представление. Эта часть идёт первой в промпте.</p>
+            <div className="flex flex-wrap items-start justify-between gap-2">
+              <p className={`${isDark ? "text-white/30" : "text-gray-400"} text-xs flex-1 min-w-0`}>Роль бота, название компании, контакты, общее представление. Эта часть идёт первой в промпте.</p>
               <TemplateButton onApply={handleGeneralChange} template={TEMPLATE_GENERAL} />
             </div>
             <textarea
@@ -228,8 +228,8 @@ export default function TabPrompt({ token, isDark = true }: Props) {
 
         {activeTab === "system" && (
           <div className="flex flex-col gap-2">
-            <div className="flex items-center justify-between">
-              <p className={`${isDark ? "text-white/30" : "text-gray-400"} text-xs`}>Общие принципы расчёта, ограничения. <span className="text-amber-500">Правила по конкретным позициям — во вкладке «Правила».</span></p>
+            <div className="flex flex-wrap items-start justify-between gap-2">
+              <p className={`${isDark ? "text-white/30" : "text-gray-400"} text-xs flex-1 min-w-0`}>Общие принципы расчёта, ограничения. <span className="text-amber-500">Правила по конкретным позициям — во вкладке «Правила».</span></p>
               <TemplateButton onApply={handleSystemChange} template={TEMPLATE_SYSTEM} />
             </div>
             <textarea
@@ -243,8 +243,8 @@ export default function TabPrompt({ token, isDark = true }: Props) {
 
         {activeTab === "format" && (
           <div className="flex flex-col gap-2">
-            <div className="flex items-center justify-between">
-              <p className={`${isDark ? "text-white/30" : "text-gray-400"} text-xs`}>Формат каждой позиции, структура блоков ответа, итоговая стоимость.</p>
+            <div className="flex flex-wrap items-start justify-between gap-2">
+              <p className={`${isDark ? "text-white/30" : "text-gray-400"} text-xs flex-1 min-w-0`}>Формат каждой позиции, структура блоков ответа, итоговая стоимость.</p>
               <TemplateButton onApply={handleFormatChange} template={TEMPLATE_FORMAT} />
             </div>
             <textarea
