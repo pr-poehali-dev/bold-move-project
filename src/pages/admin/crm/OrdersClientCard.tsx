@@ -75,7 +75,7 @@ export function OrdersClientCard({ c, onClick, onNextStep }: {
       style={{ background: t.surface, border: `1px solid ${t.border}` }}>
 
       {/* Шапка */}
-      <div className="p-4 cursor-pointer hover:brightness-[1.03] transition flex-1" onClick={onClick}>
+      <div className="p-3 sm:p-4 cursor-pointer hover:brightness-[1.03] transition flex-1" onClick={onClick}>
 
         {/* Клиент */}
         <div className="flex items-start mb-3">
@@ -175,7 +175,7 @@ export function OrdersClientCard({ c, onClick, onNextStep }: {
       {/* Кнопка следующего шага */}
       {nextStatus && !isDone && !isCancelled && (
         <button onClick={handleNext} disabled={stepping}
-          className="w-full flex items-center justify-between px-4 py-2.5 transition disabled:opacity-60"
+          className="w-full flex items-center justify-between px-4 py-3 sm:py-2.5 transition disabled:opacity-60 active:opacity-70"
           style={{ borderTop: `1px solid ${t.border2}`, background: STATUS_COLORS[nextStatus] + "08" }}>
           {stepping ? (
             <span className="text-xs font-semibold flex items-center gap-1.5" style={{ color: STATUS_COLORS[nextStatus] }}>
@@ -187,6 +187,7 @@ export function OrdersClientCard({ c, onClick, onNextStep }: {
               {nextLabel}
             </span>
           )}
+          <Icon name="ChevronRight" size={13} style={{ color: STATUS_COLORS[nextStatus] + "80" }} />
         </button>
       )}
 
