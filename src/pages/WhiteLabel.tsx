@@ -230,13 +230,13 @@ export default function WhiteLabel() {
                   // Докидываем баланс смет если < 5
                   await fetch(`${AUTH_URL}?action=admin-ensure-balance`, {
                     method: "POST",
-                    headers: { "Content-Type": "application/json", "Authorization": masterToken || "" },
+                    headers: { "Content-Type": "application/json", "X-Authorization": masterToken || "" },
                     body: JSON.stringify({ user_id: parseInt(previewId) }),
                   });
                   // Получаем токен компании
                   const r = await fetch(`${AUTH_URL}?action=admin-login-as`, {
                     method: "POST",
-                    headers: { "Content-Type": "application/json", "Authorization": masterToken || "" },
+                    headers: { "Content-Type": "application/json", "X-Authorization": masterToken || "" },
                     body: JSON.stringify({ user_id: parseInt(previewId) }),
                   });
                   const d = await r.json();
