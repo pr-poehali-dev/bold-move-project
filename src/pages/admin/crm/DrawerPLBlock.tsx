@@ -12,7 +12,6 @@ export function DrawerPLBlock({ data, isHidden, toggleHidden, customFinRows }: {
   const t = useTheme();
   const fmt = (n: number) => n.toLocaleString("ru-RU");
 
-  // ── Кастомные строки из localStorage ─────────────────────────────────────────
   const customCostRows = customFinRows
     .filter(r => r.block === "costs")
     .map(r => ({ label: r.label, value: Number(localStorage.getItem(`fin_row_${data.id}_${r.key}`)) || 0 }))
@@ -23,7 +22,6 @@ export function DrawerPLBlock({ data, isHidden, toggleHidden, customFinRows }: {
     .map(r => ({ label: r.label, value: Number(localStorage.getItem(`fin_row_${data.id}_${r.key}`)) || 0 }))
     .filter(r => r.value > 0);
 
-  // ── ЗАТРАТЫ (слева) ──────────────────────────────────────────────────────────
   const costRows: { label: string; value: number }[] = [
     { label: "Материалы", value: Number(data.material_cost) || 0 },
     { label: "Замер",     value: Number(data.measure_cost)  || 0 },
@@ -32,27 +30,27 @@ export function DrawerPLBlock({ data, isHidden, toggleHidden, customFinRows }: {
   ].filter(r => r.value > 0);
   const plCosts = costRows.reduce((s, r) => s + r.value, 0);
 
-  // ── ДОХОДЫ (справа) — только Договор, Предоплата/Доплата = части договора ────
   const contractSum = Number(data.contract_sum) || 0;
   const prepayment  = Number(data.prepayment)   || 0;
   const extraPay    = Number(data.extra_payment) || 0;
-  // Итого доход = сумма договора (Предоплата и Доплата — это уже оплаченные части, не доп.доход)
-  const plIncome = contractSum + (customIncomeRows.reduce((s, r) => s + r.value, 0));
+  const plIncome    = contractSum + (customIncomeRows.reduce((s, r) => s + r.value, 0));
 
   const incomeRows: { label: string; value: number }[] = [
-    { label: "Договор",    value: contractSum },
-    ...(prepayment  ? [{ label: "Предоплата", value: prepayment }]  : []),
-    ...(extraPay    ? [{ label: "Доплата",    value: extraPay }]    : []),
+    { label: "Договор",   value: contractSum },
+    ...(prepayment ? [{ label: "Предоплата", value: prepayment }] : []),
+    ...(extraPay   ? [{ label: "Доплата",    value: extraPay   }] : []),
     ...customIncomeRows,
   ].filter(r => r.value > 0);
 
   const plProfit = plIncome - plCosts;
+  const margin   = plIncome > 0 ? Math.round((plProfit / plIncome) * 100) : null;
+  const profitColor = plProfit >= 0 ? "#10b981" : "#ef4444";
 
   return (
     <div className="rounded-2xl overflow-hidden group/pl" style={{ border: `1px solid ${t.border}`, opacity: isHidden ? 0.45 : 1 }}>
 
       {/* Шапка */}
-      <div className="flex items-center gap-2 px-5 py-2.5"
+      <div className="flex items-center gap-2 px-4 py-2.5"
         style={{ background: "linear-gradient(135deg,#7c3aed15,#10b98112)", borderBottom: isHidden ? "none" : `1px solid #7c3aed30` }}>
         <Icon name="TrendingUp" size={13} style={{ color: "#10b981" }} />
         <span className="text-xs font-bold uppercase tracking-wider text-white flex-1">P&L по заказу</span>
@@ -66,8 +64,81 @@ export function DrawerPLBlock({ data, isHidden, toggleHidden, customFinRows }: {
       {!isHidden && (
         <div style={{ background: "linear-gradient(135deg,#7c3aed08,#10b98108)" }}>
 
-          {/* Три равные колонки: Затраты | Доходы | Прибыль */}
-          <div className="grid grid-cols-3">
+          {/* ── МОБИЛЕ: вертикальный понятный вид ─────────────────── */}
+          <div className="sm:hidden px-4 py-3 space-y-3">
+
+            {/* Итог-сводка: 3 плитки */}
+            <div className="grid grid-cols-3 gap-2">
+              <div className="rounded-xl px-3 py-2.5 text-center" style={{ background: "#ef444412", border: "1px solid #ef444425" }}>
+                <div className="text-[9px] uppercase tracking-wider font-semibold mb-1" style={{ color: "#ef4444" }}>Затраты</div>
+                <div className="text-sm font-black text-red-400">−{fmt(plCosts)} ₽</div>
+              </div>
+              <div className="rounded-xl px-3 py-2.5 text-center" style={{ background: "#10b98112", border: "1px solid #10b98125" }}>
+                <div className="text-[9px] uppercase tracking-wider font-semibold mb-1" style={{ color: "#10b981" }}>Доходы</div>
+                <div className="text-sm font-black text-emerald-400">+{fmt(plIncome)} ₽</div>
+              </div>
+              <div className="rounded-xl px-3 py-2.5 text-center"
+                style={{ background: profitColor + "12", border: `1px solid ${profitColor}25` }}>
+                <div className="text-[9px] uppercase tracking-wider font-semibold mb-1" style={{ color: profitColor }}>
+                  {plProfit >= 0 ? "Прибыль" : "Убыток"}
+                </div>
+                <div className="text-sm font-black" style={{ color: profitColor }}>
+                  {plProfit >= 0 ? "+" : ""}{fmt(plProfit)} ₽
+                </div>
+              </div>
+            </div>
+
+            {/* Маржа */}
+            {margin !== null && (
+              <div className="flex items-center justify-center">
+                <span className="text-[11px] font-bold px-3 py-1 rounded-full"
+                  style={{ background: profitColor + "18", color: profitColor }}>
+                  {margin}% маржа
+                </span>
+              </div>
+            )}
+
+            {/* Детализация затрат */}
+            {costRows.length > 0 && (
+              <div className="rounded-xl overflow-hidden" style={{ border: `1px solid ${t.border2}` }}>
+                <div className="px-3 py-2 flex items-center gap-1.5"
+                  style={{ background: "#ef444410", borderBottom: `1px solid ${t.border2}` }}>
+                  <Icon name="ArrowDownRight" size={11} style={{ color: "#ef4444" }} />
+                  <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: "#ef4444" }}>Затраты</span>
+                </div>
+                <div className="divide-y" style={{ borderColor: t.border2 }}>
+                  {costRows.map(r => (
+                    <div key={r.label} className="flex items-center justify-between px-3 py-2">
+                      <span className="text-xs" style={{ color: t.textSub }}>{r.label}</span>
+                      <span className="text-xs font-semibold text-red-400">−{fmt(r.value)} ₽</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Детализация доходов */}
+            {incomeRows.length > 0 && (
+              <div className="rounded-xl overflow-hidden" style={{ border: `1px solid ${t.border2}` }}>
+                <div className="px-3 py-2 flex items-center gap-1.5"
+                  style={{ background: "#10b98110", borderBottom: `1px solid ${t.border2}` }}>
+                  <Icon name="ArrowUpRight" size={11} style={{ color: "#10b981" }} />
+                  <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: "#10b981" }}>Доходы</span>
+                </div>
+                <div className="divide-y" style={{ borderColor: t.border2 }}>
+                  {incomeRows.map(r => (
+                    <div key={r.label} className="flex items-center justify-between px-3 py-2">
+                      <span className="text-xs" style={{ color: t.textSub }}>{r.label}</span>
+                      <span className="text-xs font-semibold text-emerald-400">+{fmt(r.value)} ₽</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* ── ДЕСКТОП: три колонки как было ─────────────────────── */}
+          <div className="hidden sm:grid grid-cols-3">
 
             {/* ЗАТРАТЫ */}
             <div className="px-4 py-3" style={{ borderRight: `1px solid ${t.border2}` }}>
@@ -127,10 +198,10 @@ export function DrawerPLBlock({ data, isHidden, toggleHidden, customFinRows }: {
               <div className={`text-xl font-black ${plProfit >= 0 ? "text-emerald-400" : "text-red-400"}`}>
                 {plProfit >= 0 ? "+" : ""}{fmt(plProfit)} ₽
               </div>
-              {plIncome > 0 && (
+              {margin !== null && (
                 <div className="text-[10px] mt-1 px-2 py-0.5 rounded-md"
-                  style={{ background: plProfit >= 0 ? "#10b98120" : "#ef444420", color: plProfit >= 0 ? "#10b981" : "#ef4444" }}>
-                  {Math.round((plProfit / plIncome) * 100)}% маржа
+                  style={{ background: profitColor + "20", color: profitColor }}>
+                  {margin}% маржа
                 </div>
               )}
             </div>
