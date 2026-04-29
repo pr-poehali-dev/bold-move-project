@@ -200,6 +200,38 @@ export default function CrmOrders({ clients: allClients, loading, onStatusChange
     <OrdersClientRow key={c.id} c={c} onClick={() => setSelected(c)} onNextStep={handleNextStep} />
   );
 
+  // ── Предстоящие события ─────────────────────────────────────────────────────
+  const [eventDays, setEventDays] = useState<1 | 3 | 7>(3);
+
+  const now = new Date();
+  const endDate = new Date(now);
+  endDate.setDate(now.getDate() + eventDays);
+
+  const upcomingMeasures = allClients.filter(c => {
+    if (c.status !== "measure" || !c.measure_date) return false;
+    const d = new Date(c.measure_date);
+    return d >= now && d <= endDate;
+  }).sort((a, b) => new Date(a.measure_date!).getTime() - new Date(b.measure_date!).getTime());
+
+  const upcomingInstalls = allClients.filter(c => {
+    if (c.status !== "install_scheduled" || !c.install_date) return false;
+    const d = new Date(c.install_date);
+    return d >= now && d <= endDate;
+  }).sort((a, b) => new Date(a.install_date!).getTime() - new Date(b.install_date!).getTime());
+
+  const hasEvents = upcomingMeasures.length > 0 || upcomingInstalls.length > 0;
+
+  const fmtDate = (iso: string) => {
+    const d = new Date(iso);
+    const today = new Date(); today.setHours(0,0,0,0);
+    const tom   = new Date(today); tom.setDate(today.getDate() + 1);
+    const dd    = new Date(d); dd.setHours(0,0,0,0);
+    const time  = d.toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" });
+    if (dd.getTime() === today.getTime()) return `Сегодня ${time}`;
+    if (dd.getTime() === tom.getTime())   return `Завтра ${time}`;
+    return d.toLocaleDateString("ru-RU", { day: "numeric", month: "short" }) + " " + time;
+  };
+
   return (
     <div className="space-y-4">
 
@@ -239,6 +271,99 @@ export default function CrmOrders({ clients: allClients, loading, onStatusChange
           </div>
         </div>
       </div>
+
+      {/* ── ПРЕДСТОЯЩИЕ СОБЫТИЯ ─────────────────────────────────────────────── */}
+      {!loading && (
+        <div className="rounded-2xl p-4" style={{ background: t.surface, border: `1px solid ${t.border}` }}>
+          <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
+            <div className="flex items-center gap-2">
+              <Icon name="CalendarClock" size={15} style={{ color: "#a78bfa" }} />
+              <span className="text-sm font-bold" style={{ color: t.text }}>Предстоящие события</span>
+              {hasEvents && (
+                <span className="text-xs px-2 py-0.5 rounded-full font-bold"
+                  style={{ background: "#7c3aed20", color: "#a78bfa" }}>
+                  {upcomingMeasures.length + upcomingInstalls.length}
+                </span>
+              )}
+            </div>
+            {/* Фильтр дней */}
+            <div className="flex items-center gap-1 p-0.5 rounded-xl" style={{ background: t.surface2, border: `1px solid ${t.border}` }}>
+              {([1, 3, 7] as const).map(d => (
+                <button key={d} onClick={() => setEventDays(d)}
+                  className="px-3 py-1 rounded-lg text-xs font-semibold transition"
+                  style={eventDays === d
+                    ? { background: "#7c3aed", color: "#fff" }
+                    : { color: t.textMute, background: "transparent" }}>
+                  {d === 1 ? "Сегодня" : `${d} дня`}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {!hasEvents ? (
+            <div className="flex items-center gap-2 py-3 text-sm" style={{ color: t.textMute }}>
+              <Icon name="CheckCircle2" size={14} className="opacity-50" />
+              Нет запланированных замеров и монтажей на этот период
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {/* Замеры */}
+              {upcomingMeasures.length > 0 && (
+                <div>
+                  <div className="flex items-center gap-1.5 mb-2">
+                    <Icon name="Ruler" size={12} style={{ color: "#f59e0b" }} />
+                    <span className="text-xs font-bold uppercase tracking-wider" style={{ color: "#f59e0b" }}>
+                      Замеры ({upcomingMeasures.length})
+                    </span>
+                  </div>
+                  <div className="space-y-1.5">
+                    {upcomingMeasures.map(c => (
+                      <button key={c.id} onClick={() => setSelected(c)}
+                        className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-left transition hover:opacity-80"
+                        style={{ background: "#f59e0b12", border: "1px solid #f59e0b30" }}>
+                        <div className="min-w-0">
+                          <div className="text-sm font-medium truncate" style={{ color: t.text }}>{c.client_name || "Без имени"}</div>
+                          {c.phone && <div className="text-xs" style={{ color: t.textMute }}>{c.phone}</div>}
+                        </div>
+                        <div className="text-xs font-semibold whitespace-nowrap ml-3" style={{ color: "#f59e0b" }}>
+                          {fmtDate(c.measure_date!)}
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Монтажи */}
+              {upcomingInstalls.length > 0 && (
+                <div>
+                  <div className="flex items-center gap-1.5 mb-2">
+                    <Icon name="Wrench" size={12} style={{ color: "#f97316" }} />
+                    <span className="text-xs font-bold uppercase tracking-wider" style={{ color: "#f97316" }}>
+                      Монтажи ({upcomingInstalls.length})
+                    </span>
+                  </div>
+                  <div className="space-y-1.5">
+                    {upcomingInstalls.map(c => (
+                      <button key={c.id} onClick={() => setSelected(c)}
+                        className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-left transition hover:opacity-80"
+                        style={{ background: "#f9731612", border: "1px solid #f9731630" }}>
+                        <div className="min-w-0">
+                          <div className="text-sm font-medium truncate" style={{ color: t.text }}>{c.client_name || "Без имени"}</div>
+                          {c.phone && <div className="text-xs" style={{ color: t.textMute }}>{c.phone}</div>}
+                        </div>
+                        <div className="text-xs font-semibold whitespace-nowrap ml-3" style={{ color: "#f97316" }}>
+                          {fmtDate(c.install_date!)}
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* ── КАНБАН-ВИД ───────────────────────────────────────────────────────── */}
       {viewMode === "kanban" ? (

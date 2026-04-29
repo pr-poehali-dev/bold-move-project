@@ -355,11 +355,11 @@ def handler(event: dict, context) -> dict:
             went_measure  = sum(status_dist.get(s, 0) for s in ["measure","measured","contract","prepaid","install_scheduled","install_done","extra_paid","done","cancelled"])
             went_contract = sum(status_dist.get(s, 0) for s in ["contract","prepaid","install_scheduled","install_done","extra_paid","done","cancelled"])
 
-            # Предстоящие события
+            # Предстоящие события — только актуальные статусы
             cid_filter = f" AND company_id = {int(company_id)}" if company_id is not None else ""
-            cur.execute(f"SELECT COUNT(*) FROM {S}.live_chats WHERE measure_date >= NOW() AND status != 'deleted'{cid_filter}")
+            cur.execute(f"SELECT COUNT(*) FROM {S}.live_chats WHERE measure_date >= NOW() AND status = 'measure'{cid_filter}")
             upcoming_measures = cur.fetchone()[0]
-            cur.execute(f"SELECT COUNT(*) FROM {S}.live_chats WHERE install_date >= NOW() AND status != 'deleted'{cid_filter}")
+            cur.execute(f"SELECT COUNT(*) FROM {S}.live_chats WHERE install_date >= NOW() AND status = 'install_scheduled'{cid_filter}")
             upcoming_installs = cur.fetchone()[0]
 
             # Финансы
