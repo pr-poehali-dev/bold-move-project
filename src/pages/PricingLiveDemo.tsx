@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type RefObject } from "react";
 import Icon from "@/components/ui/icon";
 
 /**
@@ -28,6 +28,12 @@ export default function PricingLiveDemo() {
   const [cdown,     setCdown]     = useState(0);
   const ref        = useRef<HTMLDivElement>(null);
   const scrollRef  = useRef<HTMLDivElement>(null);
+  const refPlan      = useRef<HTMLDivElement>(null);
+  const refMaterials = useRef<HTMLDivElement>(null);
+  const refTotal     = useRef<HTMLDivElement>(null);
+  const refProfit    = useRef<HTMLDivElement>(null);
+  const refDiscount  = useRef<HTMLDivElement>(null);
+  const refDeal      = useRef<HTMLDivElement>(null);
 
   // Отслеживаем видимость — старт и перезапуск только когда на экране
   useEffect(() => {
@@ -106,14 +112,27 @@ export default function PricingLiveDemo() {
     return () => cancelAnimationFrame(raf);
   }, [step]);
 
-  // Автоскролл вниз при появлении новых шагов (только мобиле)
+  // Точный автоскролл к блоку текущего шага
   useEffect(() => {
-    if (step <= 0 || !scrollRef.current) return;
-    const el = scrollRef.current;
-    // Плавно скроллим до низа через небольшую задержку (чтобы контент успел отрендериться)
+    if (step < 0 || !scrollRef.current) return;
+    const container = scrollRef.current;
+    const targetMap: Record<number, RefObject<HTMLDivElement>> = {
+      0: refPlan,
+      1: refMaterials,
+      2: refTotal,
+      3: refProfit,
+      4: refDiscount,
+      5: refDeal,
+    };
+    const targetRef = targetMap[step];
+    if (!targetRef?.current) return;
     const t = setTimeout(() => {
-      el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
-    }, 200);
+      const target    = targetRef.current!;
+      const containerTop = container.getBoundingClientRect().top;
+      const targetTop    = target.getBoundingClientRect().top;
+      const offset       = targetTop - containerTop + container.scrollTop - 12;
+      container.scrollTo({ top: offset, behavior: "smooth" });
+    }, 150);
     return () => clearTimeout(t);
   }, [step]);
 
@@ -207,7 +226,7 @@ export default function PricingLiveDemo() {
           <div className="p-5 md:p-6 border-b md:border-b-0 md:border-r border-white/[0.05]">
 
             {/* План */}
-            <div className="mb-4">
+            <div className="mb-4" ref={refPlan}>
               <Label icon="FileText">План помещения</Label>
               <div className="rounded-2xl overflow-hidden h-[140px] relative flex items-center justify-center"
                 style={{ background: "rgba(255,255,255,0.03)", border: "1px dashed rgba(255,255,255,0.08)" }}>
@@ -223,28 +242,30 @@ export default function PricingLiveDemo() {
             </div>
 
             {/* Список материалов */}
-            <Label icon="Package">Состав сметы</Label>
-            <div className="space-y-1.5">
-              {ITEMS.map((it, i) => (
-                <div key={it.name}
-                  className="flex items-center justify-between px-3 py-2 rounded-xl text-[11px] transition-all"
-                  style={{
-                    background: step >= 1 ? "rgba(255,255,255,0.035)" : "rgba(255,255,255,0.015)",
-                    border: "1px solid rgba(255,255,255,0.05)",
-                    opacity: step >= 1 ? 1 : 0,
-                    transform: step >= 1 ? "translateY(0)" : "translateY(8px)",
-                    transitionDelay: `${i * 120}ms`,
-                  }}>
-                  <div className="flex items-center gap-2 min-w-0">
-                    <div className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: "#a78bfa" }} />
-                    <span className="text-white/75 truncate">{it.name}</span>
+            <div ref={refMaterials}>
+              <Label icon="Package">Состав сметы</Label>
+              <div className="space-y-1.5">
+                {ITEMS.map((it, i) => (
+                  <div key={it.name}
+                    className="flex items-center justify-between px-3 py-2 rounded-xl text-[11px] transition-all"
+                    style={{
+                      background: step >= 1 ? "rgba(255,255,255,0.035)" : "rgba(255,255,255,0.015)",
+                      border: "1px solid rgba(255,255,255,0.05)",
+                      opacity: step >= 1 ? 1 : 0,
+                      transform: step >= 1 ? "translateY(0)" : "translateY(8px)",
+                      transitionDelay: `${i * 120}ms`,
+                    }}>
+                    <div className="flex items-center gap-2 min-w-0">
+                      <div className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: "#a78bfa" }} />
+                      <span className="text-white/75 truncate">{it.name}</span>
+                    </div>
+                    <div className="flex items-center gap-3 flex-shrink-0">
+                      <span className="text-white/30 font-mono text-[10px]">{it.qty}</span>
+                      <span className="text-white font-bold tabular-nums">{it.price.toLocaleString("ru-RU")} ₽</span>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-3 flex-shrink-0">
-                    <span className="text-white/30 font-mono text-[10px]">{it.qty}</span>
-                    <span className="text-white font-bold tabular-nums">{it.price.toLocaleString("ru-RU")} ₽</span>
-                  </div>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
           </div>
 
@@ -252,7 +273,7 @@ export default function PricingLiveDemo() {
           <div className="p-5 md:p-6">
 
             {/* Итог */}
-            <div className={`rounded-2xl p-4 mb-3 transition-all duration-500 ${step >= 2 ? "" : "opacity-30 blur-[1px]"}`}
+            <div ref={refTotal} className={`rounded-2xl p-4 mb-3 transition-all duration-500 ${step >= 2 ? "" : "opacity-30 blur-[1px]"}`}
               style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)" }}>
               <div className="flex items-center justify-between mb-2">
                 <span className="text-[10px] font-bold text-white/35 uppercase tracking-wider">Сумма заказа</span>
@@ -269,7 +290,7 @@ export default function PricingLiveDemo() {
             </div>
 
             {/* Прибыль */}
-            <div className={`rounded-2xl p-4 mb-3 relative overflow-hidden transition-all duration-500 ${step >= 3 ? "" : "opacity-30 blur-[1px]"}`}
+            <div ref={refProfit} className={`rounded-2xl p-4 mb-3 relative overflow-hidden transition-all duration-500 ${step >= 3 ? "" : "opacity-30 blur-[1px]"}`}
               style={{
                 background: "linear-gradient(135deg, rgba(16,185,129,0.14), rgba(16,185,129,0.04))",
                 border: "1.5px solid rgba(16,185,129,0.4)",
@@ -294,7 +315,7 @@ export default function PricingLiveDemo() {
             </div>
 
             {/* Скидка */}
-            <div className={`rounded-2xl p-4 mb-3 transition-all duration-500 ${step >= 4 ? "" : "opacity-30 blur-[1px]"}`}
+            <div ref={refDiscount} className={`rounded-2xl p-4 mb-3 transition-all duration-500 ${step >= 4 ? "" : "opacity-30 blur-[1px]"}`}
               style={{
                 background: "linear-gradient(135deg, rgba(251,191,36,0.16), rgba(251,191,36,0.03))",
                 border: "1.5px solid rgba(251,191,36,0.45)",
@@ -332,7 +353,7 @@ export default function PricingLiveDemo() {
             </div>
 
             {/* Финал — сделка */}
-            <div className={`rounded-2xl p-4 transition-all duration-500 ${step >= 5 ? "" : "opacity-0 translate-y-2"}`}
+            <div ref={refDeal} className={`rounded-2xl p-4 transition-all duration-500 ${step >= 5 ? "" : "opacity-0 translate-y-2"}`}
               style={{
                 background: "linear-gradient(135deg, rgba(16,185,129,0.18), rgba(16,185,129,0.06))",
                 border: "1.5px solid rgba(16,185,129,0.55)",
