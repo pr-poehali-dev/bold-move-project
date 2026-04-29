@@ -21,6 +21,7 @@ export function OrdersEventsPanel({ allClients, loading, onSelect }: Props) {
   const now = new Date();
   const endDate = new Date(now);
   endDate.setDate(now.getDate() + eventDays);
+  endDate.setHours(23, 59, 59, 999);
 
   // Замеры — measure_date в диапазоне, статус ещё активен (не выполнен/не отменён)
   const upcomingMeasures = allClients.filter(c => {
