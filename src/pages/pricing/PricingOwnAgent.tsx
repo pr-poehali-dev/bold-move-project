@@ -53,7 +53,7 @@ export default function PricingOwnAgent() {
               </span>
             </div>
             <div className="text-[12px] text-white/55 leading-snug">
-              Собственный бот с вашим брендом, контактами и логотипом — клиенты не узнают что это наш сервис
+              Собственный бот с вашим брендом, контактами и логотипом — клиенты будут уверены на 100% что это ваш сервис
             </div>
           </div>
           <div className="text-right flex-shrink-0">
