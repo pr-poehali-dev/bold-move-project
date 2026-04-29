@@ -23,6 +23,7 @@ export default function WhiteLabel() {
   const navigate = useNavigate();
   const [results, setResults] = useState<Record<string, CheckResult | null>>({});
   const [running, setRunning] = useState<string | null>(null);
+  const [previewId, setPreviewId] = useState("");
 
   // Доступ только мастеру
   useEffect(() => {
@@ -190,6 +191,29 @@ export default function WhiteLabel() {
                 } catch (e) { alert(String(e)); }
               }}
               color="#10b981" />
+          </div>
+        </Section>
+
+        {/* Просмотр клиента по ID */}
+        <Section title="Просмотр клиента по ID" icon="Search" color="#f59e0b">
+          <p className="text-[11px] text-white/40 mb-2">Введи company_id — откроется главная страница с брендом этой компании</p>
+          <div className="flex gap-2">
+            <input
+              type="number"
+              min={1}
+              value={previewId}
+              onChange={e => setPreviewId(e.target.value)}
+              placeholder="Например: 42"
+              className="flex-1 rounded-xl px-3 py-2 text-xs font-mono bg-white/[0.05] border border-white/10 text-white placeholder-white/25 outline-none focus:border-amber-500/50 transition"
+            />
+            <LinkBtn
+              icon="ExternalLink"
+              label="Открыть"
+              href={previewId ? `/?c=${previewId}` : undefined}
+              target="_blank"
+              color="#f59e0b"
+              onClick={previewId ? undefined : () => {}}
+            />
           </div>
         </Section>
 
