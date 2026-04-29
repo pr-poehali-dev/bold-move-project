@@ -151,20 +151,20 @@ export function OrdersEventsPanel({ allClients, loading, onSelect }: Props) {
           onClick={() => setCollapsed(v => !v)}
           className="w-full flex flex-wrap items-center gap-2 px-3 sm:px-4 py-3 rounded-2xl transition hover:opacity-80 cursor-pointer"
         >
-          {/* Левая часть: иконка + заголовок + счётчик */}
+          {/* Левая часть: иконка + заголовок */}
           <div className="flex items-center gap-2 flex-1 min-w-0">
             <Icon name="CalendarClock" size={15} style={{ color: "#a78bfa", flexShrink: 0 }} />
             <span className="text-sm font-bold" style={{ color: t.text }}>Предстоящие события</span>
+          </div>
+
+          {/* Правая часть: счётчик + фильтр + шеврон */}
+          <div className="flex items-center gap-1.5 flex-shrink-0">
             {upcomingCount > 0 && (
-              <span className="text-xs px-2 py-0.5 rounded-full font-bold flex-shrink-0"
+              <span className="text-xs px-2 py-0.5 rounded-full font-bold"
                 style={{ background: "#7c3aed20", color: "#a78bfa" }}>
                 {upcomingCount}
               </span>
             )}
-          </div>
-
-          {/* Правая часть: фильтр + шеврон */}
-          <div className="flex items-center gap-1.5 flex-shrink-0">
             {/* Фильтр дней — stopPropagation только на кнопках фильтра */}
             <div className="flex items-center gap-0.5 p-0.5 rounded-xl"
               style={{ background: t.surface2, border: `1px solid ${t.border}` }}
