@@ -6,7 +6,7 @@ import RuleAddForm from "./RuleAddForm";
 import RuleCategoryTable from "./RuleCategoryTable";
 import BundleModal from "./BundleModal";
 import TabPricingRules from "./TabPricingRules";
-import TabCorrections from "./TabCorrections";
+import TabAutoRules from "./TabAutoRules";
 import { parseBundleIds } from "./RuleTypes";
 import type { RuleItem, RuleType, DraftMap } from "./RuleTypes";
 import type { PriceItem } from "./types";
@@ -47,8 +47,8 @@ export default function TabRules({ token, hint, isDark = true }: Props) {
         ))}
       </div>
 
-      {sub === "pricing_3"  && <TabPricingRules token={token} />}
-      {sub === "auto_rules" && <TabCorrections token={token} isDark={isDark} />}
+      {sub === "pricing_3"   && <TabPricingRules token={token} />}
+      {sub === "auto_rules"  && <TabAutoRules isDark={isDark} />}
       {sub === "price_rules" && <PriceRulesContent token={token} hint={hint} isDark={isDark} />}
     </div>
   );
