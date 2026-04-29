@@ -1,4 +1,25 @@
 import { EstimateItem } from "./chatConfig";
+import func2url from "@/../backend/func2url.json";
+
+const AUTH_URL = (func2url as Record<string, string>)["auth"];
+
+// Кэш коэффициентов — загружается один раз при старте
+let _econom_mult    = 0.85;
+let _premium_mult   = 1.27;
+let _econom_label   = "Econom";
+let _standard_label = "Standard";
+let _premium_label  = "Premium";
+
+fetch(`${AUTH_URL}?action=get-pricing-rules`)
+  .then(r => r.json())
+  .then(d => {
+    if (d.econom_mult   !== undefined) _econom_mult    = d.econom_mult;
+    if (d.premium_mult  !== undefined) _premium_mult   = d.premium_mult;
+    if (d.econom_label  !== undefined) _econom_label   = d.econom_label;
+    if (d.standard_label !== undefined) _standard_label = d.standard_label;
+    if (d.premium_label !== undefined) _premium_label  = d.premium_label;
+  })
+  .catch(() => {});
 
 export interface EditResult {
   handled: boolean;
@@ -60,14 +81,14 @@ export function buildEstimateText(items: EstimateItem[], oldText: string): strin
   }
 
   const standard = Math.round(items.reduce((s, it) => s + it.qty * it.price, 0));
-  const econom   = Math.round(standard * 0.85);
-  const premium  = Math.round(standard * 1.27);
+  const econom   = Math.round(standard * _econom_mult);
+  const premium  = Math.round(standard * _premium_mult);
 
   lines.push("");
   lines.push("ИТОГО стоимость:");
-  lines.push(`Econom: ${econom.toLocaleString("ru")} ₽`);
-  lines.push(`Standard: ${standard.toLocaleString("ru")} ₽`);
-  lines.push(`Premium: ${premium.toLocaleString("ru")} ₽`);
+  lines.push(`${_econom_label}: ${econom.toLocaleString("ru")} ₽`);
+  lines.push(`${_standard_label}: ${standard.toLocaleString("ru")} ₽`);
+  lines.push(`${_premium_label}: ${premium.toLocaleString("ru")} ₽`);
 
   const finalLine = origLines.find((l) =>
     l.toLowerCase().includes("на какой день") ||

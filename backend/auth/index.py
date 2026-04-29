@@ -1234,4 +1234,65 @@ def handler(event: dict, context) -> dict:
             } for r in expiring],
         })
 
+    # ── Правила 3 цен: получить ───────────────────────────────────────────────
+    if action == "get-pricing-rules" and method == "GET":
+        cur.execute(f"""
+            SELECT econom_mult, premium_mult, econom_label, standard_label, premium_label
+            FROM {SCHEMA}.pricing_settings ORDER BY id LIMIT 1
+        """)
+        row = cur.fetchone()
+        if not row:
+            return ok({"econom_mult": 0.85, "premium_mult": 1.27,
+                       "econom_label": "Econom", "standard_label": "Standard", "premium_label": "Premium"})
+        return ok({
+            "econom_mult":    float(row[0]),
+            "premium_mult":   float(row[1]),
+            "econom_label":   row[2],
+            "standard_label": row[3],
+            "premium_label":  row[4],
+        })
+
+    # ── Правила 3 цен: сохранить (только мастер или company) ─────────────────
+    if action == "save-pricing-rules" and method == "POST":
+        if not token:
+            return err("Требуется авторизация", 401)
+        cur.execute(f"""
+            SELECT u.email, u.role FROM {SCHEMA}.user_sessions s
+            JOIN {SCHEMA}.users u ON u.id = s.user_id
+            WHERE s.token=%s AND s.expires_at > NOW()
+        """, (token,))
+        row = cur.fetchone()
+        if not row:
+            return err("Токен недействителен", 401)
+        uemail, urole = row
+        is_master = (uemail == "19.jeka.94@gmail.com")
+        if not is_master and urole not in ("company", "installer"):
+            return err("Нет прав на изменение правил цен", 403)
+
+        econom_mult    = float(body.get("econom_mult", 0.85))
+        premium_mult   = float(body.get("premium_mult", 1.27))
+        econom_label   = (body.get("econom_label") or "Econom").strip()
+        standard_label = (body.get("standard_label") or "Standard").strip()
+        premium_label  = (body.get("premium_label") or "Premium").strip()
+
+        # Upsert: обновить первую запись или создать
+        cur.execute(f"SELECT id FROM {SCHEMA}.pricing_settings LIMIT 1")
+        existing = cur.fetchone()
+        if existing:
+            cur.execute(f"""
+                UPDATE {SCHEMA}.pricing_settings
+                SET econom_mult=%s, premium_mult=%s,
+                    econom_label=%s, standard_label=%s, premium_label=%s,
+                    updated_at=NOW()
+                WHERE id=%s
+            """, (econom_mult, premium_mult, econom_label, standard_label, premium_label, existing[0]))
+        else:
+            cur.execute(f"""
+                INSERT INTO {SCHEMA}.pricing_settings
+                  (econom_mult, premium_mult, econom_label, standard_label, premium_label)
+                VALUES (%s, %s, %s, %s, %s)
+            """, (econom_mult, premium_mult, econom_label, standard_label, premium_label))
+        conn.commit()
+        return ok({"ok": True})
+
     return err("Неизвестное действие", 404)

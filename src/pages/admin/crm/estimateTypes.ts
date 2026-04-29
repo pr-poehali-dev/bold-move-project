@@ -3,6 +3,20 @@ import func2url from "@/../backend/func2url.json";
 export const AUTH_URL   = (func2url as Record<string, string>)["auth"];
 export const PRICES_URL = (func2url as Record<string, string>)["get-prices"];
 
+// Кэш коэффициентов 3 цен
+export const pricingRules = {
+  econom_mult:    0.85,
+  premium_mult:   1.27,
+  econom_label:   "Econom",
+  standard_label: "Standard",
+  premium_label:  "Premium",
+};
+
+fetch(`${AUTH_URL}?action=get-pricing-rules`)
+  .then(r => r.json())
+  .then(d => { Object.assign(pricingRules, d); })
+  .catch(() => {});
+
 export interface PriceItem {
   id: number;
   name: string;

@@ -507,8 +507,24 @@ def _try_simple_estimate_inner(text: str) -> tuple[str, dict] | None:
                 zakl_total + svet_total +
                 mount_canvas + mount_profile + mount_zakl + mount_svet + mount_razv +
                 dynamic_total)
-    econom        = round(standard * 0.77)
-    premium_price = round(standard * 1.27)
+    # Загружаем коэффициенты из БД (с fallback)
+    _econom_mult   = 0.85
+    _premium_mult  = 1.27
+    _econom_label  = "Econom"
+    _standard_label = "Standard"
+    _premium_label = "Premium"
+    try:
+        _conn2 = psycopg2.connect(os.environ['DATABASE_URL'])
+        _cur2  = _conn2.cursor()
+        _cur2.execute(f"SELECT econom_mult, premium_mult, econom_label, standard_label, premium_label FROM {SCHEMA}.pricing_settings LIMIT 1")
+        _row2 = _cur2.fetchone()
+        if _row2:
+            _econom_mult, _premium_mult, _econom_label, _standard_label, _premium_label = float(_row2[0]), float(_row2[1]), _row2[2], _row2[3], _row2[4]
+        _conn2.close()
+    except Exception:
+        pass
+    econom        = round(standard * _econom_mult)
+    premium_price = round(standard * _premium_mult)
 
     def fmt(n): return f"{n:,}".replace(',', ' ')
 
@@ -572,9 +588,9 @@ def _try_simple_estimate_inner(text: str) -> tuple[str, dict] | None:
             lines.append(f"  {name}  {qty} {unit} × {unit_price} ₽ = {fmt(total)} ₽")
 
     lines.append(f"\nИтоговая стоимость:")
-    lines.append(f"Econom:   {fmt(econom)} ₽")
-    lines.append(f"Standard: {fmt(standard)} ₽")
-    lines.append(f"Premium:  {fmt(premium_price)} ₽")
+    lines.append(f"{_econom_label}:   {fmt(econom)} ₽")
+    lines.append(f"{_standard_label}: {fmt(standard)} ₽")
+    lines.append(f"{_premium_label}:  {fmt(premium_price)} ₽")
     lines.append(f"\nНа какой день вас записать на бесплатный замер?")
 
     recognized = {

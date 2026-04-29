@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { crmFetch } from "./crmApi";
 import { useTheme } from "./themeContext";
 import Icon from "@/components/ui/icon";
-import { AUTH_URL, PRICES_URL, PriceItem, EstimateBlock, SavedEstimate, parseValue, fmt } from "./estimateTypes";
+import { AUTH_URL, PRICES_URL, PriceItem, EstimateBlock, SavedEstimate, parseValue, fmt, pricingRules } from "./estimateTypes";
 import EstimateItemRow from "./EstimateItemRow";
 
 export default function EstimateEditor({ chatId, clientName, clientPhone }: {
@@ -45,12 +45,12 @@ export default function EstimateEditor({ chatId, clientName, clientPhone }: {
         if (p) standard += p.total;
       }
     }
-    const econom  = Math.round(standard * 0.85);
-    const premium = Math.round(standard * 1.27);
+    const econom  = Math.round(standard * pricingRules.econom_mult);
+    const premium = Math.round(standard * pricingRules.premium_mult);
     return [
-      `Econom: ${fmt(econom)} ₽`,
-      `Standard: ${fmt(standard)} ₽`,
-      `Premium: ${fmt(premium)} ₽`,
+      `${pricingRules.econom_label}: ${fmt(econom)} ₽`,
+      `${pricingRules.standard_label}: ${fmt(standard)} ₽`,
+      `${pricingRules.premium_label}: ${fmt(premium)} ₽`,
     ];
   };
 
@@ -137,9 +137,9 @@ export default function EstimateEditor({ chatId, clientName, clientPhone }: {
       }
     }
     text += `\n💰 Итого:\n`;
-    text += `  Эконом:   ${fmt(Math.round(standardTotal * 0.85))} ₽\n`;
-    text += `  Стандарт: ${fmt(standardTotal)} ₽\n`;
-    text += `  Премиум:  ${fmt(Math.round(standardTotal * 1.27))} ₽\n`;
+    text += `  ${pricingRules.econom_label}:   ${fmt(Math.round(standardTotal * pricingRules.econom_mult))} ₽\n`;
+    text += `  ${pricingRules.standard_label}: ${fmt(standardTotal)} ₽\n`;
+    text += `  ${pricingRules.premium_label}:  ${fmt(Math.round(standardTotal * pricingRules.premium_mult))} ₽\n`;
     navigator.clipboard.writeText(text).then(() => {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
@@ -148,8 +148,8 @@ export default function EstimateEditor({ chatId, clientName, clientPhone }: {
 
   const printEstimate = () => {
     const name = clientName || "Клиент";
-    const econom  = Math.round(standardTotal * 0.85);
-    const premium = Math.round(standardTotal * 1.27);
+    const econom  = Math.round(standardTotal * pricingRules.econom_mult);
+    const premium = Math.round(standardTotal * pricingRules.premium_mult);
     let rows = "";
     for (const block of blocks) {
       rows += `<tr><td colspan="4" style="background:#1e1b4b;color:#f97316;font-weight:bold;padding:8px 12px;font-size:13px">${block.title}</td></tr>`;
@@ -174,9 +174,9 @@ export default function EstimateEditor({ chatId, clientName, clientPhone }: {
     <p>Клиент: ${name}${clientPhone ? " · " + clientPhone : ""} · Дата: ${new Date().toLocaleDateString("ru-RU")}</p>
     <table>${rows}</table>
     <div class="totals">
-      <div><span>Эконом</span><span style="color:#10b981;font-weight:600">${fmt(econom)} ₽</span></div>
-      <div><span>Стандарт</span><span class="total-main">${fmt(standardTotal)} ₽</span></div>
-      <div><span>Премиум</span><span style="color:#8b5cf6;font-weight:600">${fmt(premium)} ₽</span></div>
+      <div><span>${pricingRules.econom_label}</span><span style="color:#10b981;font-weight:600">${fmt(econom)} ₽</span></div>
+      <div><span>${pricingRules.standard_label}</span><span class="total-main">${fmt(standardTotal)} ₽</span></div>
+      <div><span>${pricingRules.premium_label}</span><span style="color:#8b5cf6;font-weight:600">${fmt(premium)} ₽</span></div>
     </div>
     </body></html>`;
     const w = window.open("", "_blank");

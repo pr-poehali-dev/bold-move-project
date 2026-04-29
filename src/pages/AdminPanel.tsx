@@ -4,7 +4,6 @@ import TabPrices from "./admin/TabPrices";
 import TabRules from "./admin/TabRules";
 import TabPrompt from "./admin/TabPrompt";
 import TabFaq from "./admin/TabFaq";
-import TabQuestions from "./admin/TabQuestions";
 import TabCorrections from "./admin/TabCorrections";
 import CrmPanel from "./admin/crm/CrmPanel";
 import { setCrmToken } from "./admin/crm/crmApi";
@@ -26,7 +25,6 @@ const AGENT_TABS: { id: AgentSubTab; label: string; icon: string }[] = [
   { id: "rules",       label: "Правила расчёта", icon: "SlidersHorizontal" },
   { id: "prompt",      label: "Промпт",          icon: "BrainCircuit" },
   { id: "faq",         label: "База знаний",     icon: "Database" },
-  { id: "questions",   label: "Быстрые ответы",  icon: "MessageCircle" },
   { id: "corrections", label: "Обучение",        icon: "GraduationCap" },
 ];
 
@@ -364,7 +362,6 @@ export default function AdminPanel() {
             {agentTab === "rules"       && <TabRules       token={authToken} hint={newItemHint} />}
             {agentTab === "prompt"      && <TabPrompt      token={authToken} />}
             {agentTab === "faq"         && <TabFaq         token={authToken} />}
-            {agentTab === "questions"   && <TabQuestions   token={authToken} />}
             {agentTab === "corrections" && <TabCorrections token={authToken} />}
           </div>
         </div>
