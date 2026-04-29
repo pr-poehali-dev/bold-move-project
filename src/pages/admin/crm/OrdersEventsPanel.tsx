@@ -9,38 +9,48 @@ interface Props {
   onSelect: (c: Client) => void;
 }
 
+const MEASURE_ACTIVE = ["new", "call", "measure"];
+const INSTALL_ACTIVE = ["contract", "prepaid", "install_scheduled"];
+
 export function OrdersEventsPanel({ allClients, loading, onSelect }: Props) {
   const t = useTheme();
   const [eventDays, setEventDays] = useState<1 | 2 | 3 | 7>(3);
+  const [collapsed, setCollapsed] = useState(false);
   const [pushAsked, setPushAsked] = useState(false);
 
   const now = new Date();
   const endDate = new Date(now);
   endDate.setDate(now.getDate() + eventDays);
 
+  // Замеры — measure_date в диапазоне, статус ещё активен (не выполнен/не отменён)
   const upcomingMeasures = allClients.filter(c => {
-    if (c.status !== "measure" || !c.measure_date) return false;
+    if (!c.measure_date || !MEASURE_ACTIVE.includes(c.status)) return false;
     const d = new Date(c.measure_date);
     return d >= now && d <= endDate;
   }).sort((a, b) => new Date(a.measure_date!).getTime() - new Date(b.measure_date!).getTime());
 
+  // Монтажи — install_date в диапазоне, статус ещё активен (не выполнен/не отменён)
   const upcomingInstalls = allClients.filter(c => {
-    if (c.status !== "install_scheduled" || !c.install_date) return false;
+    if (!c.install_date || !INSTALL_ACTIVE.includes(c.status)) return false;
     const d = new Date(c.install_date);
     return d >= now && d <= endDate;
   }).sort((a, b) => new Date(a.install_date!).getTime() - new Date(b.install_date!).getTime());
 
+  // Просроченные замеры
   const overdueM = allClients.filter(c =>
-    c.status === "measure" && c.measure_date && new Date(c.measure_date) < now
+    MEASURE_ACTIVE.includes(c.status) && c.measure_date && new Date(c.measure_date) < now
   ).sort((a, b) => new Date(a.measure_date!).getTime() - new Date(b.measure_date!).getTime());
 
+  // Просроченные монтажи
   const overdueI = allClients.filter(c =>
-    c.status === "install_scheduled" && c.install_date && new Date(c.install_date) < now
+    INSTALL_ACTIVE.includes(c.status) && c.install_date && new Date(c.install_date) < now
   ).sort((a, b) => new Date(a.install_date!).getTime() - new Date(b.install_date!).getTime());
 
   const overdueCount = overdueM.length + overdueI.length;
-  const hasEvents = upcomingMeasures.length > 0 || upcomingInstalls.length > 0;
+  const upcomingCount = upcomingMeasures.length + upcomingInstalls.length;
+  const hasEvents = upcomingCount > 0;
 
+  // Push-уведомление при загрузке если есть просроченные
   useEffect(() => {
     if (loading || pushAsked || overdueCount === 0) return;
     setPushAsked(true);
@@ -81,7 +91,7 @@ export function OrdersEventsPanel({ allClients, loading, onSelect }: Props) {
 
   return (
     <>
-      {/* ── ПРОСРОЧЕННЫЕ СОБЫТИЯ ────────────────────────────────────────────── */}
+      {/* ── ПРОСРОЧЕННЫЕ ────────────────────────────────────────────────────── */}
       {overdueCount > 0 && (
         <div className="rounded-2xl p-4" style={{ background: "#ef444408", border: "1px solid #ef444430" }}>
           <div className="flex items-center gap-2 mb-3">
@@ -95,173 +105,158 @@ export function OrdersEventsPanel({ allClients, loading, onSelect }: Props) {
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {overdueM.length > 0 && (
-              <div>
-                <div className="flex items-center gap-1.5 mb-2">
-                  <Icon name="Ruler" size={12} style={{ color: "#ef4444" }} />
-                  <span className="text-xs font-bold uppercase tracking-wider" style={{ color: "#ef4444" }}>
-                    Замеры ({overdueM.length})
-                  </span>
-                </div>
-                <div className="space-y-1.5">
-                  {overdueM.map(c => (
-                    <button key={c.id} onClick={() => onSelect(c)}
-                      className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-left transition hover:opacity-80 relative overflow-hidden"
-                      style={{ background: "#ef444415", border: "1px solid #ef444435" }}>
-                      <div className="absolute left-0 top-0 bottom-0 w-1 rounded-l-xl" style={{ background: "#ef4444" }} />
-                      <div className="min-w-0 pl-2">
-                        <div className="text-sm font-medium truncate" style={{ color: t.text }}>{c.client_name || "Без имени"}</div>
-                        {c.phone && <div className="text-xs" style={{ color: t.textMute }}>{c.phone}</div>}
-                      </div>
-                      <div className="text-xs font-semibold whitespace-nowrap ml-3" style={{ color: "#ef4444" }}>
-                        {fmtOverdue(c.measure_date!)}
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              </div>
+              <EventGroup
+                title={`Замеры (${overdueM.length})`}
+                icon="Ruler" color="#ef4444"
+                items={overdueM.map(c => ({
+                  id: c.id, name: c.client_name, phone: c.phone,
+                  dateStr: fmtOverdue(c.measure_date!), isToday: false, client: c,
+                }))}
+                onSelect={onSelect}
+                overdue
+              />
             )}
             {overdueI.length > 0 && (
-              <div>
-                <div className="flex items-center gap-1.5 mb-2">
-                  <Icon name="Wrench" size={12} style={{ color: "#ef4444" }} />
-                  <span className="text-xs font-bold uppercase tracking-wider" style={{ color: "#ef4444" }}>
-                    Монтажи ({overdueI.length})
-                  </span>
-                </div>
-                <div className="space-y-1.5">
-                  {overdueI.map(c => (
-                    <button key={c.id} onClick={() => onSelect(c)}
-                      className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-left transition hover:opacity-80 relative overflow-hidden"
-                      style={{ background: "#ef444415", border: "1px solid #ef444435" }}>
-                      <div className="absolute left-0 top-0 bottom-0 w-1 rounded-l-xl" style={{ background: "#ef4444" }} />
-                      <div className="min-w-0 pl-2">
-                        <div className="text-sm font-medium truncate" style={{ color: t.text }}>{c.client_name || "Без имени"}</div>
-                        {c.phone && <div className="text-xs" style={{ color: t.textMute }}>{c.phone}</div>}
-                      </div>
-                      <div className="text-xs font-semibold whitespace-nowrap ml-3" style={{ color: "#ef4444" }}>
-                        {fmtOverdue(c.install_date!)}
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              </div>
+              <EventGroup
+                title={`Монтажи (${overdueI.length})`}
+                icon="Wrench" color="#ef4444"
+                items={overdueI.map(c => ({
+                  id: c.id, name: c.client_name, phone: c.phone,
+                  dateStr: fmtOverdue(c.install_date!), isToday: false, client: c,
+                }))}
+                onSelect={onSelect}
+                overdue
+              />
             )}
           </div>
         </div>
       )}
 
-      {/* ── ПРЕДСТОЯЩИЕ СОБЫТИЯ ─────────────────────────────────────────────── */}
-      <div className="rounded-2xl p-4" style={{ background: t.surface, border: `1px solid ${t.border}` }}>
-        <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
+      {/* ── ПРЕДСТОЯЩИЕ ─────────────────────────────────────────────────────── */}
+      <div className="rounded-2xl" style={{ background: t.surface, border: `1px solid ${t.border}` }}>
+        {/* Шапка — всегда видна, кликабельна */}
+        <button
+          onClick={() => setCollapsed(v => !v)}
+          className="w-full flex items-center justify-between px-4 py-3 rounded-2xl transition hover:opacity-80"
+        >
           <div className="flex items-center gap-2">
             <Icon name="CalendarClock" size={15} style={{ color: "#a78bfa" }} />
             <span className="text-sm font-bold" style={{ color: t.text }}>Предстоящие события</span>
-            {hasEvents && (
+            {upcomingCount > 0 && (
               <span className="text-xs px-2 py-0.5 rounded-full font-bold"
                 style={{ background: "#7c3aed20", color: "#a78bfa" }}>
-                {upcomingMeasures.length + upcomingInstalls.length}
+                {upcomingCount}
               </span>
             )}
           </div>
-          <div className="flex items-center gap-1 p-0.5 rounded-xl" style={{ background: t.surface2, border: `1px solid ${t.border}` }}>
-            {([
-              { val: 1, label: "Сегодня" },
-              { val: 2, label: "Завтра" },
-              { val: 3, label: "3 дня" },
-              { val: 7, label: "7 дней" },
-            ] as const).map(({ val, label }) => (
-              <button key={val} onClick={() => setEventDays(val)}
-                className="px-3 py-1 rounded-lg text-xs font-semibold transition whitespace-nowrap"
-                style={eventDays === val
-                  ? { background: "#7c3aed", color: "#fff" }
-                  : { color: t.textMute, background: "transparent" }}>
-                {label}
-              </button>
-            ))}
+          <div className="flex items-center gap-2">
+            {/* Фильтр дней */}
+            <div className="flex items-center gap-1 p-0.5 rounded-xl"
+              style={{ background: t.surface2, border: `1px solid ${t.border}` }}
+              onClick={e => e.stopPropagation()}>
+              {([
+                { val: 1, label: "Сегодня" },
+                { val: 2, label: "Завтра" },
+                { val: 3, label: "3 дня" },
+                { val: 7, label: "7 дней" },
+              ] as const).map(({ val, label }) => (
+                <button key={val}
+                  onClick={e => { e.stopPropagation(); setEventDays(val); if (collapsed) setCollapsed(false); }}
+                  className="px-3 py-1 rounded-lg text-xs font-semibold transition whitespace-nowrap"
+                  style={eventDays === val
+                    ? { background: "#7c3aed", color: "#fff" }
+                    : { color: t.textMute, background: "transparent" }}>
+                  {label}
+                </button>
+              ))}
+            </div>
+            {/* Кнопка свернуть */}
+            <Icon name={collapsed ? "ChevronDown" : "ChevronUp"} size={14} style={{ color: t.textMute }} />
           </div>
-        </div>
+        </button>
 
-        {!hasEvents ? (
-          <div className="flex items-center gap-2 py-3 text-sm" style={{ color: t.textMute }}>
-            <Icon name="CheckCircle2" size={14} className="opacity-50" />
-            Нет замеров и монтажей на выбранный период
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {upcomingMeasures.length > 0 && (
-              <div>
-                <div className="flex items-center gap-1.5 mb-2">
-                  <Icon name="Ruler" size={12} style={{ color: "#f59e0b" }} />
-                  <span className="text-xs font-bold uppercase tracking-wider" style={{ color: "#f59e0b" }}>
-                    Замеры ({upcomingMeasures.length})
-                  </span>
-                </div>
-                <div className="space-y-1.5">
-                  {upcomingMeasures.map(c => {
-                    const isToday = new Date(c.measure_date!).toDateString() === now.toDateString();
-                    return (
-                      <button key={c.id} onClick={() => onSelect(c)}
-                        className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-left transition hover:opacity-80 relative overflow-hidden"
-                        style={{
-                          background: isToday ? "#f59e0b22" : "#f59e0b12",
-                          border: `1px solid ${isToday ? "#f59e0b60" : "#f59e0b30"}`,
-                        }}>
-                        {isToday && <div className="absolute left-0 top-0 bottom-0 w-1 rounded-l-xl" style={{ background: "#f59e0b" }} />}
-                        <div className={`min-w-0 ${isToday ? "pl-2" : ""}`}>
-                          <div className="text-sm font-medium truncate" style={{ color: t.text }}>{c.client_name || "Без имени"}</div>
-                          {c.phone && <div className="text-xs" style={{ color: t.textMute }}>{c.phone}</div>}
-                        </div>
-                        <div className="flex items-center gap-1.5 ml-3 flex-shrink-0">
-                          {isToday && <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md" style={{ background: "#f59e0b30", color: "#f59e0b" }}>СЕГОДНЯ</span>}
-                          <span className="text-xs font-semibold whitespace-nowrap" style={{ color: "#f59e0b" }}>
-                            {fmtDate(c.measure_date!)}
-                          </span>
-                        </div>
-                      </button>
-                    );
-                  })}
-                </div>
+        {/* Тело — сворачивается */}
+        {!collapsed && (
+          <div className="px-4 pb-4">
+            {!hasEvents ? (
+              <div className="flex items-center gap-2 py-2 text-sm" style={{ color: t.textMute }}>
+                <Icon name="CheckCircle2" size={14} className="opacity-50" />
+                Нет замеров и монтажей на выбранный период
               </div>
-            )}
-
-            {upcomingInstalls.length > 0 && (
-              <div>
-                <div className="flex items-center gap-1.5 mb-2">
-                  <Icon name="Wrench" size={12} style={{ color: "#f97316" }} />
-                  <span className="text-xs font-bold uppercase tracking-wider" style={{ color: "#f97316" }}>
-                    Монтажи ({upcomingInstalls.length})
-                  </span>
-                </div>
-                <div className="space-y-1.5">
-                  {upcomingInstalls.map(c => {
-                    const isToday = new Date(c.install_date!).toDateString() === now.toDateString();
-                    return (
-                      <button key={c.id} onClick={() => onSelect(c)}
-                        className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-left transition hover:opacity-80 relative overflow-hidden"
-                        style={{
-                          background: isToday ? "#f9731622" : "#f9731612",
-                          border: `1px solid ${isToday ? "#f9731660" : "#f9731630"}`,
-                        }}>
-                        {isToday && <div className="absolute left-0 top-0 bottom-0 w-1 rounded-l-xl" style={{ background: "#f97316" }} />}
-                        <div className={`min-w-0 ${isToday ? "pl-2" : ""}`}>
-                          <div className="text-sm font-medium truncate" style={{ color: t.text }}>{c.client_name || "Без имени"}</div>
-                          {c.phone && <div className="text-xs" style={{ color: t.textMute }}>{c.phone}</div>}
-                        </div>
-                        <div className="flex items-center gap-1.5 ml-3 flex-shrink-0">
-                          {isToday && <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md" style={{ background: "#f9731630", color: "#f97316" }}>СЕГОДНЯ</span>}
-                          <span className="text-xs font-semibold whitespace-nowrap" style={{ color: "#f97316" }}>
-                            {fmtDate(c.install_date!)}
-                          </span>
-                        </div>
-                      </button>
-                    );
-                  })}
-                </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {upcomingMeasures.length > 0 && (
+                  <EventGroup
+                    title={`Замеры (${upcomingMeasures.length})`}
+                    icon="Ruler" color="#f59e0b"
+                    items={upcomingMeasures.map(c => {
+                      const isToday = new Date(c.measure_date!).toDateString() === now.toDateString();
+                      return { id: c.id, name: c.client_name, phone: c.phone, dateStr: fmtDate(c.measure_date!), isToday, client: c };
+                    })}
+                    onSelect={onSelect}
+                  />
+                )}
+                {upcomingInstalls.length > 0 && (
+                  <EventGroup
+                    title={`Монтажи (${upcomingInstalls.length})`}
+                    icon="Wrench" color="#f97316"
+                    items={upcomingInstalls.map(c => {
+                      const isToday = new Date(c.install_date!).toDateString() === now.toDateString();
+                      return { id: c.id, name: c.client_name, phone: c.phone, dateStr: fmtDate(c.install_date!), isToday, client: c };
+                    })}
+                    onSelect={onSelect}
+                  />
+                )}
               </div>
             )}
           </div>
         )}
       </div>
     </>
+  );
+}
+
+/* ── Переиспользуемая группа событий ─────────────────────────────────────── */
+function EventGroup({ title, icon, color, items, onSelect, overdue }: {
+  title: string;
+  icon: string;
+  color: string;
+  items: { id: number; name: string; phone?: string | null; dateStr: string; isToday: boolean; client: Client }[];
+  onSelect: (c: Client) => void;
+  overdue?: boolean;
+}) {
+  const t = useTheme();
+  return (
+    <div>
+      <div className="flex items-center gap-1.5 mb-2">
+        <Icon name={icon} size={12} style={{ color }} />
+        <span className="text-xs font-bold uppercase tracking-wider" style={{ color }}>{title}</span>
+      </div>
+      <div className="space-y-1.5">
+        {items.map(item => (
+          <button key={item.id} onClick={() => onSelect(item.client)}
+            className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-left transition hover:opacity-80 relative overflow-hidden"
+            style={{
+              background: overdue ? `${color}15` : item.isToday ? `${color}22` : `${color}12`,
+              border: `1px solid ${overdue ? `${color}35` : item.isToday ? `${color}60` : `${color}30`}`,
+            }}>
+            {(overdue || item.isToday) && (
+              <div className="absolute left-0 top-0 bottom-0 w-1 rounded-l-xl" style={{ background: color }} />
+            )}
+            <div className={`min-w-0 ${overdue || item.isToday ? "pl-2" : ""}`}>
+              <div className="text-sm font-medium truncate" style={{ color: t.text }}>{item.name || "Без имени"}</div>
+              {item.phone && <div className="text-xs" style={{ color: t.textMute }}>{item.phone}</div>}
+            </div>
+            <div className="flex items-center gap-1.5 ml-3 flex-shrink-0">
+              {item.isToday && !overdue && (
+                <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md"
+                  style={{ background: `${color}30`, color }}>СЕГОДНЯ</span>
+              )}
+              <span className="text-xs font-semibold whitespace-nowrap" style={{ color }}>{item.dateStr}</span>
+            </div>
+          </button>
+        ))}
+      </div>
+    </div>
   );
 }
