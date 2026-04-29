@@ -149,40 +149,41 @@ export function OrdersEventsPanel({ allClients, loading, onSelect }: Props) {
         {/* Шапка — всегда видна, кликабельна */}
         <div
           onClick={() => setCollapsed(v => !v)}
-          className="w-full flex items-center justify-between px-4 py-3 rounded-2xl transition hover:opacity-80 cursor-pointer"
+          className="w-full flex flex-wrap items-center gap-2 px-3 sm:px-4 py-3 rounded-2xl transition hover:opacity-80 cursor-pointer"
         >
-          <div className="flex items-center gap-2">
-            <Icon name="CalendarClock" size={15} style={{ color: "#a78bfa" }} />
+          {/* Левая часть: иконка + заголовок + счётчик */}
+          <div className="flex items-center gap-2 flex-1 min-w-0">
+            <Icon name="CalendarClock" size={15} style={{ color: "#a78bfa", flexShrink: 0 }} />
             <span className="text-sm font-bold" style={{ color: t.text }}>Предстоящие события</span>
             {upcomingCount > 0 && (
-              <span className="text-xs px-2 py-0.5 rounded-full font-bold"
+              <span className="text-xs px-2 py-0.5 rounded-full font-bold flex-shrink-0"
                 style={{ background: "#7c3aed20", color: "#a78bfa" }}>
                 {upcomingCount}
               </span>
             )}
           </div>
-          <div className="flex items-center gap-2">
-            {/* Фильтр дней */}
-            <div className="flex items-center gap-1 p-0.5 rounded-xl"
-              style={{ background: t.surface2, border: `1px solid ${t.border}` }}
-              onClick={e => e.stopPropagation()}>
+
+          {/* Правая часть: фильтр + шеврон */}
+          <div className="flex items-center gap-1.5 flex-shrink-0" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center gap-0.5 p-0.5 rounded-xl"
+              style={{ background: t.surface2, border: `1px solid ${t.border}` }}>
               {([
-                { val: 1, label: "Сегодня" },
-                { val: 2, label: "Завтра" },
-                { val: 3, label: "3 дня" },
-                { val: 7, label: "7 дней" },
-              ] as const).map(({ val, label }) => (
+                { val: 1, label: "Сег", labelFull: "Сегодня" },
+                { val: 2, label: "Зав", labelFull: "Завтра" },
+                { val: 3, label: "3д",  labelFull: "3 дня" },
+                { val: 7, label: "7д",  labelFull: "7 дней" },
+              ] as const).map(({ val, label, labelFull }) => (
                 <button key={val}
                   onClick={e => { e.stopPropagation(); setEventDays(val); if (collapsed) setCollapsed(false); }}
-                  className="px-3 py-1 rounded-lg text-xs font-semibold transition whitespace-nowrap"
+                  className="rounded-lg text-xs font-semibold transition whitespace-nowrap px-2 sm:px-3 py-1"
                   style={eventDays === val
                     ? { background: "#7c3aed", color: "#fff" }
                     : { color: t.textMute, background: "transparent" }}>
-                  {label}
+                  <span className="sm:hidden">{label}</span>
+                  <span className="hidden sm:inline">{labelFull}</span>
                 </button>
               ))}
             </div>
-            {/* Кнопка свернуть */}
             <Icon name={collapsed ? "ChevronDown" : "ChevronUp"} size={14} style={{ color: t.textMute }} />
           </div>
         </div>
@@ -247,7 +248,7 @@ function EventGroup({ title, icon, color, items, onSelect, overdue }: {
       <div className="space-y-1.5">
         {items.map(item => (
           <button key={item.id} onClick={() => onSelect(item.client)}
-            className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-left transition hover:opacity-80 relative overflow-hidden"
+            className="w-full flex items-start justify-between px-3 py-2.5 rounded-xl text-left transition active:opacity-70 hover:opacity-80 relative overflow-hidden gap-2"
             style={{
               background: overdue ? `${color}15` : item.isToday ? `${color}22` : `${color}12`,
               border: `1px solid ${overdue ? `${color}35` : item.isToday ? `${color}60` : `${color}30`}`,
@@ -255,21 +256,25 @@ function EventGroup({ title, icon, color, items, onSelect, overdue }: {
             {(overdue || item.isToday) && (
               <div className="absolute left-0 top-0 bottom-0 w-1 rounded-l-xl" style={{ background: color }} />
             )}
-            <div className={`min-w-0 ${overdue || item.isToday ? "pl-2" : ""}`}>
-              <div className="text-sm font-medium truncate" style={{ color: t.text }}>{item.name || "Без имени"}</div>
-              {item.phone && <div className="text-xs truncate flex items-center gap-1" style={{ color: t.textMute }}>
-                <Icon name="Phone" size={10} style={{ color, flexShrink: 0 }} />{item.phone}
-              </div>}
-              {item.address && <div className="text-xs truncate flex items-center gap-1 mt-0.5" style={{ color: t.textMute }}>
-                <Icon name="MapPin" size={10} style={{ color, flexShrink: 0 }} />{item.address}
-              </div>}
+            <div className={`min-w-0 flex-1 ${overdue || item.isToday ? "pl-2" : ""}`}>
+              <div className="text-sm font-semibold truncate" style={{ color: t.text }}>{item.name || "Без имени"}</div>
+              {item.phone && (
+                <div className="text-xs truncate flex items-center gap-1 mt-0.5" style={{ color: t.textMute }}>
+                  <Icon name="Phone" size={9} style={{ color, flexShrink: 0 }} />{item.phone}
+                </div>
+              )}
+              {item.address && (
+                <div className="text-xs truncate flex items-center gap-1 mt-0.5" style={{ color: t.textMute }}>
+                  <Icon name="MapPin" size={9} style={{ color, flexShrink: 0 }} />{item.address}
+                </div>
+              )}
             </div>
-            <div className="flex items-center gap-1.5 ml-3 flex-shrink-0">
+            <div className="flex flex-col items-end gap-1 flex-shrink-0">
               {item.isToday && !overdue && (
-                <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md"
+                <span className="text-[9px] font-black px-1.5 py-0.5 rounded-md"
                   style={{ background: `${color}30`, color }}>СЕГОДНЯ</span>
               )}
-              <span className="text-xs font-semibold whitespace-nowrap" style={{ color }}>{item.dateStr}</span>
+              <span className="text-xs font-bold whitespace-nowrap" style={{ color }}>{item.dateStr}</span>
             </div>
           </button>
         ))}
