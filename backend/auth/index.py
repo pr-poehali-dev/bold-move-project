@@ -817,6 +817,41 @@ def handler(event: dict, context) -> dict:
         conn.commit()
         return ok({"token": new_token})
 
+    # ── Мастер: проверить и докинуть баланс смет компании ────────────────────
+    if action == "admin-ensure-balance" and method == "POST":
+        if not token:
+            return err("Требуется авторизация", 401)
+        cur.execute(f"""
+            SELECT u.email FROM {SCHEMA}.user_sessions s
+            JOIN {SCHEMA}.users u ON u.id = s.user_id
+            WHERE s.token=%s AND s.expires_at > NOW()
+        """, (token,))
+        row = cur.fetchone()
+        if not row or row[0] != "19.jeka.94@gmail.com":
+            return err("Доступ только для мастера", 403)
+
+        target_id = body.get("user_id")
+        if not target_id:
+            return err("user_id обязателен")
+
+        cur.execute(f"SELECT estimates_balance FROM {SCHEMA}.users WHERE id=%s", (int(target_id),))
+        row = cur.fetchone()
+        if not row:
+            return err("Пользователь не найден", 404)
+        balance = row[0] or 0
+        added = 0
+        if balance < 5:
+            added = 5 - balance
+            cur.execute(f"""
+                UPDATE {SCHEMA}.users SET estimates_balance = 5 WHERE id=%s
+            """, (int(target_id),))
+            cur.execute(f"""
+                INSERT INTO {SCHEMA}.balance_transactions (user_id, amount, reason)
+                VALUES (%s, %s, 'admin_top_up')
+            """, (int(target_id), added))
+            conn.commit()
+        return ok({"balance_before": balance, "balance_after": max(balance, 5), "added": added})
+
     # ── Мастер: сметы конкретного пользователя ────────────────────────────────
     if action == "admin-user-estimates" and method == "GET":
         user_id = params.get("user_id")

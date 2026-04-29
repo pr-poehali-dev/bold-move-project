@@ -194,25 +194,64 @@ export default function WhiteLabel() {
           </div>
         </Section>
 
-        {/* Просмотр клиента по ID */}
-        <Section title="Просмотр клиента по ID" icon="Search" color="#f59e0b">
-          <p className="text-[11px] text-white/40 mb-2">Введи company_id — откроется главная страница с брендом этой компании</p>
-          <div className="flex gap-2">
+        {/* Просмотр и вход в компанию по ID */}
+        <Section title="Войти в компанию по ID" icon="LogIn" color="#f59e0b">
+          <p className="text-[11px] text-white/40 mb-3">
+            Введи ID компании — откроешь их сайт или войдёшь в их панель управления как они
+          </p>
+          <div className="flex gap-2 mb-3">
             <input
               type="number"
               min={1}
               value={previewId}
               onChange={e => setPreviewId(e.target.value)}
-              placeholder="Например: 42"
+              onKeyDown={e => { if (e.key === "Enter" && previewId) window.open(`/?c=${previewId}`, "_blank"); }}
+              placeholder="ID компании, например: 42"
               className="flex-1 rounded-xl px-3 py-2 text-xs font-mono bg-white/[0.05] border border-white/10 text-white placeholder-white/25 outline-none focus:border-amber-500/50 transition"
             />
+          </div>
+          <div className="flex flex-wrap gap-2">
             <LinkBtn
               icon="ExternalLink"
-              label="Открыть"
+              label="Открыть их сайт"
               href={previewId ? `/?c=${previewId}` : undefined}
               target="_blank"
               color="#f59e0b"
               onClick={previewId ? undefined : () => {}}
+            />
+            <LinkBtn
+              icon="Shield"
+              label="Войти в их панель"
+              color="#a78bfa"
+              onClick={async () => {
+                if (!previewId) return;
+                try {
+                  const masterToken = localStorage.getItem("mp_user_token");
+                  // Докидываем баланс смет если < 5
+                  await fetch(`${AUTH_URL}?action=admin-ensure-balance`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json", "Authorization": masterToken || "" },
+                    body: JSON.stringify({ user_id: parseInt(previewId) }),
+                  });
+                  // Получаем токен компании
+                  const r = await fetch(`${AUTH_URL}?action=admin-login-as`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json", "Authorization": masterToken || "" },
+                    body: JSON.stringify({ user_id: parseInt(previewId) }),
+                  });
+                  const d = await r.json();
+                  if (d.token) {
+                    if (masterToken) {
+                      localStorage.setItem("mp_master_token", masterToken);
+                      localStorage.setItem("mp_master_name", user?.name || "Мастер");
+                    }
+                    localStorage.setItem("mp_user_token", d.token);
+                    window.location.href = "/company";
+                  } else {
+                    alert("Ошибка: " + (d.error || "не удалось получить токен"));
+                  }
+                } catch (e) { alert(String(e)); }
+              }}
             />
           </div>
         </Section>
