@@ -110,7 +110,7 @@ export function OrdersEventsPanel({ allClients, loading, onSelect }: Props) {
                 title={`Замеры (${overdueM.length})`}
                 icon="Ruler" color="#ef4444"
                 items={overdueM.map(c => ({
-                  id: c.id, name: c.client_name, phone: c.phone,
+                  id: c.id, name: c.client_name, phone: c.phone, address: c.address,
                   dateStr: fmtOverdue(c.measure_date!), isToday: false, client: c,
                 }))}
                 onSelect={onSelect}
@@ -122,7 +122,7 @@ export function OrdersEventsPanel({ allClients, loading, onSelect }: Props) {
                 title={`Монтажи (${overdueI.length})`}
                 icon="Wrench" color="#ef4444"
                 items={overdueI.map(c => ({
-                  id: c.id, name: c.client_name, phone: c.phone,
+                  id: c.id, name: c.client_name, phone: c.phone, address: c.address,
                   dateStr: fmtOverdue(c.install_date!), isToday: false, client: c,
                 }))}
                 onSelect={onSelect}
@@ -192,7 +192,7 @@ export function OrdersEventsPanel({ allClients, loading, onSelect }: Props) {
                     icon="Ruler" color="#f59e0b"
                     items={upcomingMeasures.map(c => {
                       const isToday = new Date(c.measure_date!).toDateString() === now.toDateString();
-                      return { id: c.id, name: c.client_name, phone: c.phone, dateStr: fmtDate(c.measure_date!), isToday, client: c };
+                      return { id: c.id, name: c.client_name, phone: c.phone, address: c.address, dateStr: fmtDate(c.measure_date!), isToday, client: c };
                     })}
                     onSelect={onSelect}
                   />
@@ -203,7 +203,7 @@ export function OrdersEventsPanel({ allClients, loading, onSelect }: Props) {
                     icon="Wrench" color="#f97316"
                     items={upcomingInstalls.map(c => {
                       const isToday = new Date(c.install_date!).toDateString() === now.toDateString();
-                      return { id: c.id, name: c.client_name, phone: c.phone, dateStr: fmtDate(c.install_date!), isToday, client: c };
+                      return { id: c.id, name: c.client_name, phone: c.phone, address: c.address, dateStr: fmtDate(c.install_date!), isToday, client: c };
                     })}
                     onSelect={onSelect}
                   />
@@ -222,7 +222,7 @@ function EventGroup({ title, icon, color, items, onSelect, overdue }: {
   title: string;
   icon: string;
   color: string;
-  items: { id: number; name: string; phone?: string | null; dateStr: string; isToday: boolean; client: Client }[];
+  items: { id: number; name: string; phone?: string | null; address?: string | null; dateStr: string; isToday: boolean; client: Client }[];
   onSelect: (c: Client) => void;
   overdue?: boolean;
 }) {
@@ -246,7 +246,10 @@ function EventGroup({ title, icon, color, items, onSelect, overdue }: {
             )}
             <div className={`min-w-0 ${overdue || item.isToday ? "pl-2" : ""}`}>
               <div className="text-sm font-medium truncate" style={{ color: t.text }}>{item.name || "Без имени"}</div>
-              {item.phone && <div className="text-xs" style={{ color: t.textMute }}>{item.phone}</div>}
+              {item.phone && <div className="text-xs truncate" style={{ color: t.textMute }}>{item.phone}</div>}
+              {item.address && <div className="text-xs truncate flex items-center gap-1 mt-0.5" style={{ color: t.textMute }}>
+                <Icon name="MapPin" size={10} style={{ color, flexShrink: 0 }} />{item.address}
+              </div>}
             </div>
             <div className="flex items-center gap-1.5 ml-3 flex-shrink-0">
               {item.isToday && !overdue && (
