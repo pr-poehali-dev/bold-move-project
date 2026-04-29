@@ -20,13 +20,17 @@ interface Props {
   onDragStart: (c: Client) => void;
   onDragEnd: () => void;
   dragging: Client | null;
+  onAddCard?: (colId: string, name: string) => void;
 }
 
 export function KanbanMobileView({
-  cols, clientsForCol, onOpen, onNextStep, onDrop, onDragStart, onDragEnd,
+  cols, clientsForCol, onOpen, onNextStep, onDrop, onDragStart, onDragEnd, onAddCard,
 }: Props) {
   const t = useTheme();
   const [activeColIdx, setActiveColIdx] = useState(0);
+  const [addingCard, setAddingCard]     = useState(false);
+  const [newCardName, setNewCardName]   = useState("");
+  const addInputRef = useRef<HTMLInputElement>(null);
 
   // ── Modal переноса карточки ──────────────────────────────────────────────
   const [moveTarget, setMoveTarget] = useState<Client | null>(null);
@@ -141,8 +145,8 @@ export function KanbanMobileView({
         onTouchStart={onTouchStart}
         onTouchEnd={onTouchEnd}>
 
-        {clients.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-12 gap-2" style={{ color: t.textMute }}>
+        {clients.length === 0 && !addingCard ? (
+          <div className="flex flex-col items-center justify-center py-10 gap-2" style={{ color: t.textMute }}>
             <Icon name="Inbox" size={28} className="opacity-20" />
             <span className="text-sm">Нет карточек</span>
           </div>
@@ -161,6 +165,58 @@ export function KanbanMobileView({
               />
             </div>
           ))
+        )}
+
+        {/* ── Inline форма добавления ── */}
+        {addingCard ? (
+          <div className="rounded-xl p-3 space-y-2" style={{ background: t.surface, border: `1.5px solid ${activeCol.color}50` }}>
+            <input
+              ref={addInputRef}
+              value={newCardName}
+              onChange={e => setNewCardName(e.target.value)}
+              onKeyDown={e => {
+                if (e.key === "Enter" && newCardName.trim()) {
+                  onAddCard?.(activeCol.id, newCardName.trim());
+                  setNewCardName(""); setAddingCard(false);
+                }
+                if (e.key === "Escape") { setNewCardName(""); setAddingCard(false); }
+              }}
+              placeholder="Имя клиента или название..."
+              autoFocus
+              className="w-full text-sm rounded-lg px-3 py-2 focus:outline-none"
+              style={{ background: t.surface2, border: `1px solid ${activeCol.color}40`, color: t.text }}
+            />
+            <div className="flex gap-2">
+              <button
+                onClick={() => {
+                  if (newCardName.trim()) {
+                    onAddCard?.(activeCol.id, newCardName.trim());
+                    setNewCardName(""); setAddingCard(false);
+                  }
+                }}
+                disabled={!newCardName.trim()}
+                className="flex-1 py-2 rounded-lg text-xs font-bold text-white transition disabled:opacity-40"
+                style={{ background: activeCol.color }}>
+                Добавить
+              </button>
+              <button
+                onClick={() => { setNewCardName(""); setAddingCard(false); }}
+                className="px-4 py-2 rounded-lg text-xs font-semibold transition"
+                style={{ background: t.surface2, color: t.textMute, border: `1px solid ${t.border}` }}>
+                Отмена
+              </button>
+            </div>
+          </div>
+        ) : (
+          onAddCard && (
+            <button
+              onClick={() => { setAddingCard(true); setTimeout(() => addInputRef.current?.focus(), 50); }}
+              className="w-full flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-semibold transition active:opacity-70"
+              style={{ border: `1.5px dashed ${activeCol.color}50`, color: activeCol.color, background: activeCol.color + "08" }}>
+              <Icon name="Plus" size={14} />
+              Добавить карточку
+            </button>
+          )
         )}
       </div>
 

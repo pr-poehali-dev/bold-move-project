@@ -127,8 +127,8 @@ export default function CrmKanban({ clients, loading, onStatusChange, onClientRe
     });
   };
 
-  const addCard = (colId: string) => {
-    const name = prompt("Имя / название карточки:");
+  const addCard = (colId: string, providedName?: string) => {
+    const name = providedName ?? prompt("Имя / название карточки:");
     if (!name?.trim()) return;
     const colStatus = DROP_STATUS[colId] || colId;
     const newCard: Client = {
@@ -203,6 +203,7 @@ export default function CrmKanban({ clients, loading, onStatusChange, onClientRe
           onDragStart={onDragStart}
           onDragEnd={() => { setDragging(null); setDragOverCol(null); }}
           dragging={dragging}
+          onAddCard={(colId, name) => addCard(colId, name)}
         />
       </div>
 
