@@ -6,9 +6,10 @@ interface Props {
   onSave: (val: string) => void;
   className?: string;
   placeholder?: string;
+  isDark?: boolean;
 }
 
-export default function EditableCell({ value, type = "text", onSave, className = "", placeholder = "" }: Props) {
+export default function EditableCell({ value, type = "text", onSave, className = "", placeholder = "", isDark = true }: Props) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(value === 0 || value === "0" ? "" : String(value));
   const [saving, setSaving] = useState(false);
@@ -38,7 +39,7 @@ export default function EditableCell({ value, type = "text", onSave, className =
           if (e.key === "Enter") commit();
           if (e.key === "Escape") { setDraft(String(value)); setEditing(false); }
         }}
-        className={`bg-violet-500/10 border border-violet-500/40 rounded px-2 py-0.5 text-white outline-none w-full ${className}`}
+        className={`bg-violet-500/10 border border-violet-500/40 rounded px-2 py-0.5 outline-none w-full ${isDark ? "text-white" : "text-gray-900"} ${className}`}
       />
     );
   }
@@ -47,7 +48,7 @@ export default function EditableCell({ value, type = "text", onSave, className =
     <span
       onClick={() => setEditing(true)}
       title="Нажмите для редактирования"
-      className={`cursor-pointer hover:text-violet-300 transition-colors rounded px-1 -mx-1 min-h-[1.25rem] inline-block w-full ${saving ? "opacity-50" : ""} ${!value ? "text-white/20 italic" : ""} ${className}`}
+      className={`cursor-pointer hover:text-violet-500 transition-colors rounded px-1 -mx-1 min-h-[1.25rem] inline-block w-full ${saving ? "opacity-50" : ""} ${!value ? (isDark ? "text-white/20 italic" : "text-gray-300 italic") : ""} ${className}`}
     >
       {saving ? "…" : value || placeholder || <>&nbsp;</>}
     </span>

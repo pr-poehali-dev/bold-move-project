@@ -9,9 +9,9 @@ import { parseBundleIds } from "./RuleTypes";
 import type { RuleItem, RuleType, DraftMap } from "./RuleTypes";
 import type { PriceItem } from "./types";
 
-interface Props { token: string; hint?: string | null; }
+interface Props { token: string; hint?: string | null; isDark?: boolean; }
 
-export default function TabRules({ token, hint }: Props) {
+export default function TabRules({ token, hint, isDark = true }: Props) {
   const { prices, loading, byCategory, saveField, deleteItem } = usePriceList(token);
   const [confirmDeleteItemId, setConfirmDeleteItemId] = useState<number | null>(null);
   const [ruleTypes, setRuleTypes] = useState<RuleType[]>([]);
@@ -154,12 +154,12 @@ export default function TabRules({ token, hint }: Props) {
   );
   const activeRuleTypes = ruleTypes.filter(rt => rt.active);
 
-  if (loading) return <p className="text-white/30 text-sm">Загрузка...</p>;
+  if (loading) return <p className={`${isDark ? "text-white/30" : "text-gray-400"} text-sm`}>Загрузка...</p>;
 
   return (
     <div className="flex flex-col gap-6">
       <div className="flex items-start justify-between gap-4">
-        <p className="text-white/50 text-sm">Нажмите на строку — откроется редактор правил для этой позиции.</p>
+        <p className={`${isDark ? "text-white/50" : "text-gray-500"} text-sm`}>Нажмите на строку — откроется редактор правил для этой позиции.</p>
         <button onClick={() => setAddingRule(true)}
           className="flex items-center gap-2 px-3 py-1.5 bg-violet-600/20 hover:bg-violet-600/30 border border-violet-500/30 text-violet-300 text-xs rounded-lg transition flex-shrink-0">
           <Icon name="Plus" size={13} />
@@ -181,8 +181,8 @@ export default function TabRules({ token, hint }: Props) {
         <div className="flex items-start gap-3 bg-violet-500/10 border border-violet-500/30 rounded-xl px-4 py-3">
           <Icon name="ArrowDown" size={16} className="text-violet-400 mt-0.5 flex-shrink-0" />
           <div className="text-sm">
-            <span className="text-violet-300 font-medium">Позиция «{hint}» добавлена.</span>
-            <span className="text-white/50 ml-1">Найдите её ниже и заполните правила расчёта если нужно.</span>
+            <span className={`${isDark ? "text-violet-300" : "text-violet-600"} font-medium`}>Позиция «{hint}» добавлена.</span>
+            <span className={`${isDark ? "text-white/50" : "text-gray-500"} ml-1`}>Найдите её ниже и заполните правила расчёта если нужно.</span>
           </div>
         </div>
       )}
@@ -190,6 +190,7 @@ export default function TabRules({ token, hint }: Props) {
       {Object.entries(rulesByCategory).map(([category, catItems]) => (
         <RuleCategoryTable
           key={category}
+          isDark={isDark}
           category={category}
           items={catItems}
           prices={prices}

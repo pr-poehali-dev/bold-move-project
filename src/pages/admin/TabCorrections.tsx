@@ -3,9 +3,9 @@ import Icon from "@/components/ui/icon";
 import CorrectionCard from "./CorrectionCard";
 import { useCorrectionsList } from "./useCorrectionsList";
 
-interface Props { token: string; }
+interface Props { token: string; isDark?: boolean; }
 
-export default function TabCorrections({ token }: Props) {
+export default function TabCorrections({ token, isDark = true }: Props) {
   const {
     prices, loading,
     needsTraining, allGood,
@@ -17,7 +17,7 @@ export default function TabCorrections({ token }: Props) {
 
   const [activeTab, setActiveTab] = useState<"needs" | "good">("needs");
 
-  if (loading) return <p className="text-white/30 text-sm">Загрузка...</p>;
+  if (loading) return <p className={`${isDark ? "text-white/30" : "text-gray-400"} text-sm`}>Загрузка...</p>;
 
   const renderCard = (item: (typeof needsTraining)[0]) => (
     <CorrectionCard
@@ -42,13 +42,13 @@ export default function TabCorrections({ token }: Props) {
     <div className="flex flex-col gap-4">
 
       {/* Подкладки */}
-      <div className="flex items-center gap-1 bg-white/[0.03] rounded-xl p-1 w-fit">
+      <div className={`flex items-center gap-1 ${isDark ? "bg-white/[0.03]" : "bg-gray-100"} rounded-xl p-1 w-fit`}>
         <button
           onClick={() => setActiveTab("needs")}
           className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm transition ${
             activeTab === "needs"
               ? "bg-amber-500/20 text-amber-300"
-              : "text-white/40 hover:text-white/60"
+              : isDark ? "text-white/40 hover:text-white/60" : "text-gray-400 hover:text-gray-700"
           }`}
         >
           <Icon name="AlertCircle" size={14} />
@@ -66,14 +66,14 @@ export default function TabCorrections({ token }: Props) {
           className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm transition ${
             activeTab === "good"
               ? "bg-green-500/20 text-green-300"
-              : "text-white/40 hover:text-white/60"
+              : isDark ? "text-white/40 hover:text-white/60" : "text-gray-400 hover:text-gray-700"
           }`}
         >
           <Icon name="CheckCircle" size={14} />
           Всё понятно LLM
           {allGood.length > 0 && (
             <span className={`text-xs px-1.5 py-0.5 rounded-full font-medium ${
-              activeTab === "good" ? "bg-green-500/30 text-green-200" : "bg-white/10 text-white/40"
+              activeTab === "good" ? "bg-green-500/30 text-green-200" : isDark ? "bg-white/10 text-white/40" : "bg-gray-200 text-gray-500"
             }`}>
               {allGood.length}
             </span>

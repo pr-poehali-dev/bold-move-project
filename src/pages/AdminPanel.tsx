@@ -355,11 +355,11 @@ export default function AdminPanel() {
           </div>
 
           <div className="flex-1 overflow-y-auto p-4 max-w-6xl mx-auto w-full">
-            {agentTab === "prices"      && <TabPrices      token={authToken} onItemAdded={handleItemAdded} />}
-            {agentTab === "rules"       && <TabRules       token={authToken} hint={newItemHint} />}
-            {agentTab === "prompt"      && <TabPrompt      token={authToken} />}
-            {agentTab === "faq"         && <TabFaq         token={authToken} />}
-            {agentTab === "corrections" && <TabCorrections token={authToken} />}
+            {agentTab === "prices"      && <TabPrices      token={authToken} onItemAdded={handleItemAdded} isDark={isDark} />}
+            {agentTab === "rules"       && <TabRules       token={authToken} hint={newItemHint} isDark={isDark} />}
+            {agentTab === "prompt"      && <TabPrompt      token={authToken} isDark={isDark} />}
+            {agentTab === "faq"         && <TabFaq         token={authToken} isDark={isDark} />}
+            {agentTab === "corrections" && <TabCorrections token={authToken} isDark={isDark} />}
           </div>
         </div>
       )}

@@ -35,7 +35,7 @@ export default function TruncatedCell({ value, onSave, placeholder, className = 
       <span
         onClick={() => setOpen(true)}
         title={value || placeholder}
-        className={`cursor-pointer hover:text-violet-300 transition-colors truncate block w-full ${!value ? "text-white/20 italic" : ""} ${className}`}
+        className={`cursor-pointer hover:text-violet-500 transition-colors truncate block w-full ${!value ? "opacity-30 italic" : ""} ${className}`}
       >
         {value ? preview : (placeholder || "\u00a0")}
       </span>

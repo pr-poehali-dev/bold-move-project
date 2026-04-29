@@ -6,6 +6,7 @@ import { parseBundleIds } from "./RuleTypes";
 import type { PriceItem } from "./types";
 
 interface Props {
+  isDark?: boolean;
   category: string;
   items: RuleItem[];
   prices: PriceItem[];
@@ -37,7 +38,7 @@ interface Props {
 }
 
 export default function RuleCategoryTable({
-  category, items, prices, activeRuleTypes, ruleValues,
+  isDark = true, category, items, prices, activeRuleTypes, ruleValues,
   expandedId, drafts, saving, confirmDeleteItemId, confirmDeleteId,
   editingLabelId, editingLabelVal,
   onOpenRow, onSaveRow, onCloseRow, onPatchDraft,
@@ -47,18 +48,22 @@ export default function RuleCategoryTable({
   onOpenBundleModal, onSaveField, onSaveCustomValue, onPasteBundle,
 }: Props) {
   const colTemplate = `1.2fr 1fr 1fr 1fr repeat(${activeRuleTypes.length}, 1fr) 32px`;
+  const catHead = isDark ? "text-violet-300" : "text-violet-600";
+  const bg      = isDark ? "bg-white/[0.03]" : "bg-white";
+  const border  = isDark ? "border-white/10"  : "border-gray-200";
+  const muted   = isDark ? "text-white/30"    : "text-gray-400";
 
   return (
     <div>
-      <h3 className="text-violet-300 text-xs font-semibold uppercase tracking-wider mb-2 px-1">{category}</h3>
-      <div className="bg-white/[0.03] border border-white/10 rounded-xl overflow-hidden">
+      <h3 className={`${catHead} text-xs font-semibold uppercase tracking-wider mb-2 px-1`}>{category}</h3>
+      <div className={`${bg} border ${border} rounded-xl overflow-hidden`}>
 
         {/* Заголовок */}
-        <div className="grid border-b border-white/10 px-4 py-2.5" style={{ gridTemplateColumns: colTemplate }}>
-          <span className="text-white/30 text-xs">Позиция</span>
-          <span className="text-white/30 text-xs">Добавляется если...</span>
-          <span className="text-white/30 text-xs">НЕ добавляется если...</span>
-          <span className="text-white/30 text-xs text-amber-400/60">Изменения клиента</span>
+        <div className={`grid border-b ${border} px-4 py-2.5`} style={{ gridTemplateColumns: colTemplate }}>
+          <span className={`${muted} text-xs`}>Позиция</span>
+          <span className={`${muted} text-xs`}>Добавляется если...</span>
+          <span className={`${muted} text-xs`}>НЕ добавляется если...</span>
+          <span className={`${muted} text-xs text-amber-400/60`}>Изменения клиента</span>
           {activeRuleTypes.map(rt => (
             <div key={rt.id} className="flex items-center gap-1.5 group/col min-w-0">
               {editingLabelId === rt.id ? (
@@ -71,11 +76,11 @@ export default function RuleCategoryTable({
                     if (e.key === "Enter") onSaveLabel(rt);
                     if (e.key === "Escape") onCancelEditLabel();
                   }}
-                  className="text-white text-xs bg-violet-500/10 border border-violet-500/40 rounded px-2 py-0.5 outline-none w-full"
+                  className={`${isDark ? "text-white" : "text-gray-900"} text-xs bg-violet-500/10 border border-violet-500/40 rounded px-2 py-0.5 outline-none w-full`}
                 />
               ) : (
                 <>
-                  <span className="text-white/30 text-xs truncate" title={rt.description}>{rt.label}</span>
+                  <span className={`${muted} text-xs truncate`} title={rt.description}>{rt.label}</span>
                   {rt.name !== "calc_rule" && rt.name !== "bundle" && (
                     <>
                       <button
@@ -113,19 +118,19 @@ export default function RuleCategoryTable({
           const isSaving = saving === item.id;
 
           return (
-            <div key={item.id} className={`border-b border-white/5 last:border-0 ${!item.active ? "opacity-40" : ""}`}>
+            <div key={item.id} className={`border-b ${isDark ? "border-white/5" : "border-gray-100"} last:border-0 ${!item.active ? "opacity-40" : ""}`}>
 
               {/* Строка-превью */}
               <div
                 className={`grid px-4 py-2.5 transition items-start gap-2
-                  ${idx % 2 ? "bg-white/[0.01]" : ""}
-                  ${isExpanded ? "bg-violet-500/10 border-b border-violet-500/20" : "hover:bg-white/[0.02]"}
+                  ${idx % 2 ? (isDark ? "bg-white/[0.01]" : "bg-gray-50/50") : ""}
+                  ${isExpanded ? "bg-violet-500/10 border-b border-violet-500/20" : (isDark ? "hover:bg-white/[0.02]" : "hover:bg-gray-50")}
                 `}
                 style={{ gridTemplateColumns: colTemplate }}
               >
                 <div className="flex items-center gap-1.5 min-w-0 cursor-pointer py-0.5" onClick={() => onOpenRow(item)}>
-                  <Icon name={isExpanded ? "ChevronUp" : "ChevronDown"} size={12} className="text-white/20 flex-shrink-0" />
-                  <span className="text-white/80 text-xs font-medium truncate">{item.name}</span>
+                  <Icon name={isExpanded ? "ChevronUp" : "ChevronDown"} size={12} className={`${isDark ? "text-white/20" : "text-gray-300"} flex-shrink-0`} />
+                  <span className={`${isDark ? "text-white/80" : "text-gray-700"} text-xs font-medium truncate`}>{item.name}</span>
                 </div>
 
                 <div className="min-w-0 overflow-hidden">
