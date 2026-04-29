@@ -33,7 +33,7 @@ interface Props {
   onAddTab: () => void;
 }
 
-function TabSettingsPopup({ tab, tabLabels, tabColors, onSaveLabel, onSaveColor, onDelete, onClose }: {
+function TabSettingsPopup({ tab, tabLabels, tabColors, onSaveLabel, onSaveColor, onDelete, onClose, popupPos }: {
   tab: TabDef;
   tabLabels: Record<string, string>;
   tabColors: Record<string, string>;
@@ -41,6 +41,7 @@ function TabSettingsPopup({ tab, tabLabels, tabColors, onSaveLabel, onSaveColor,
   onSaveColor: (id: string, color: string) => void;
   onDelete: () => void;
   onClose: () => void;
+  popupPos?: { top: number; left: number };
 }) {
   const t = useTheme();
   const [labelVal, setLabelVal] = useState(tabLabels[tab.id] || tab.label);
@@ -62,9 +63,13 @@ function TabSettingsPopup({ tab, tabLabels, tabColors, onSaveLabel, onSaveColor,
     setEditing(false);
   };
 
+  const posStyle = popupPos
+    ? { position: "fixed" as const, top: popupPos.top, left: popupPos.left, zIndex: 9999 }
+    : { position: "absolute" as const, left: 0, top: "100%", marginTop: 4, zIndex: 50 };
+
   return (
-    <div ref={ref} className="absolute left-0 top-full mt-1 z-50 rounded-xl shadow-2xl overflow-hidden"
-      style={{ background: t.surface, border: `1px solid ${t.border}`, minWidth: 210 }}
+    <div ref={ref} className="rounded-xl shadow-2xl overflow-hidden"
+      style={{ ...posStyle, background: t.surface, border: `1px solid ${t.border}`, minWidth: 210 }}
       onClick={e => e.stopPropagation()}>
 
       {/* Название */}
@@ -156,6 +161,17 @@ export function OrdersTabs({
   const getCount = (tab: TabDef) =>
     allClients.filter(c => tab.statuses.includes(c.status)).length;
 
+  const gearRefs = useRef<Record<string, HTMLButtonElement | null>>({});
+  const [popupPos, setPopupPos] = useState<{ top: number; left: number } | null>(null);
+
+  const openTab = (tabId: string) => {
+    const btn = gearRefs.current[tabId];
+    if (!btn) return;
+    const rect = btn.getBoundingClientRect();
+    setPopupPos({ top: rect.bottom + 6, left: rect.left });
+    setOpenPopup(tabId);
+  };
+
   return (
     <div className="space-y-2">
       <div className="flex gap-2 items-center overflow-x-auto pb-1" style={{ scrollbarWidth: "none" }}>
@@ -194,23 +210,24 @@ export function OrdersTabs({
 
               {/* Шестерёнка */}
               <button
-                onClick={e => { e.stopPropagation(); setOpenPopup(isOpen ? null : tab.id); }}
+                ref={(el: HTMLButtonElement | null) => { gearRefs.current[tab.id] = el; }}
+                onClick={e => { e.stopPropagation(); if (isOpen) { setOpenPopup(null); } else { openTab(tab.id); } }}
                 className="absolute top-1.5 right-1.5 p-1 rounded-md opacity-0 group-hover/tab:opacity-100 transition"
-                style={{ background: "transparent" }}
+                style={{ color: t.textMute }}
                 onMouseEnter={e => (e.currentTarget.style.background = t.surface2)}
-                onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
-                style={{ color: t.textMute }}>
+                onMouseLeave={e => (e.currentTarget.style.background = "transparent")}>
                 <Icon name="Settings2" size={11} />
               </button>
 
-              {/* Попап */}
-              {isOpen && (
+              {/* Попап — рендерится через fixed чтобы не обрезался */}
+              {isOpen && popupPos && (
                 <TabSettingsPopup
                   tab={tab}
                   tabLabels={tabLabels}
                   tabColors={tabColors}
                   onSaveLabel={onSaveLabel}
                   onSaveColor={onSaveColor}
+                  popupPos={popupPos}
                   onDelete={() => { onDeleteTab(tab.id); setOpenPopup(null); if (activeTab === tab.id) onSelect(allTabs[0]?.id || "leads"); }}
                   onClose={() => setOpenPopup(null)}
                 />
