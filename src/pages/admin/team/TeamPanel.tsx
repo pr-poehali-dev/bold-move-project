@@ -180,16 +180,18 @@ function MemberCard({ member, isDark, onEditPermissions, onResetPassword, onRemo
           {initials}
         </div>
         <div className="flex-1 min-w-0">
-          <div className="text-sm font-bold truncate">{member.name || "—"}</div>
+          <div className="flex items-center gap-2 flex-wrap">
+            <div className="text-sm font-bold truncate">{member.name || "—"}</div>
+            <span className="px-2 py-0.5 rounded-md text-[9px] font-black uppercase tracking-wider flex-shrink-0"
+              style={{ background: "rgba(124,58,237,0.18)", color: "#a78bfa" }}>
+              Менеджер
+            </span>
+          </div>
           <div className="text-[11px] truncate" style={{ color: muted }}>{member.email}</div>
           {member.phone && (
             <div className="text-[11px] mt-0.5" style={{ color: muted }}>{member.phone}</div>
           )}
         </div>
-        <span className="px-2 py-0.5 rounded-md text-[9px] font-black uppercase tracking-wider whitespace-nowrap"
-          style={{ background: "rgba(124,58,237,0.18)", color: "#a78bfa" }}>
-          Менеджер
-        </span>
       </div>
 
       {/* Состояние: пароль не передан */}
