@@ -26,7 +26,8 @@ export default function PricingLiveDemo() {
   const [disc,      setDisc]      = useState<number>(0);
   const [visible,   setVisible]   = useState(false);
   const [cdown,     setCdown]     = useState(0);
-  const ref = useRef<HTMLDivElement>(null);
+  const ref        = useRef<HTMLDivElement>(null);
+  const scrollRef  = useRef<HTMLDivElement>(null);
 
   // Отслеживаем видимость — старт и перезапуск только когда на экране
   useEffect(() => {
@@ -105,8 +106,20 @@ export default function PricingLiveDemo() {
     return () => cancelAnimationFrame(raf);
   }, [step]);
 
+  // Автоскролл вниз при появлении новых шагов (только мобиле)
+  useEffect(() => {
+    if (step <= 0 || !scrollRef.current) return;
+    const el = scrollRef.current;
+    // Плавно скроллим до низа через небольшую задержку (чтобы контент успел отрендериться)
+    const t = setTimeout(() => {
+      el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
+    }, 200);
+    return () => clearTimeout(t);
+  }, [step]);
+
   const restart = () => {
     setProfit(0); setDisc(0); setCdown(0); setStep(0);
+    if (scrollRef.current) scrollRef.current.scrollTop = 0;
   };
 
   return (
@@ -183,6 +196,11 @@ export default function PricingLiveDemo() {
         {/* Прогресс-бар шагов */}
         <StepBar step={step} />
 
+        {/* Скроллируемая зона — на мобиле высота ограничена и плавно скроллится вниз */}
+        <div
+          ref={scrollRef}
+          className="overflow-y-auto"
+          style={{ maxHeight: "min(70vh, 560px)" }}>
         <div className="grid md:grid-cols-2 gap-0">
 
           {/* ─── Левая колонка: план + материалы ─── */}
@@ -337,6 +355,7 @@ export default function PricingLiveDemo() {
             </div>
           </div>
         </div>
+        </div>{/* /scrollRef */}
 
         {/* Подпись внизу */}
         <div className="px-5 py-3 border-t border-white/[0.05] flex items-center justify-between flex-wrap gap-2"
