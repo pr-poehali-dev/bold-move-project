@@ -26,7 +26,7 @@ export default function PricingFeatures() {
             Не упускай <span style={{ color: "#f97316" }}>СВОЕГО</span> клиента
           </h2>
           <p className="text-sm md:text-base text-white/65 max-w-2xl leading-relaxed mb-7">
-            Сервис показывает <b className="text-white">сколько ты заработаешь</b> на заказе ещё до подписания договора.
+            Сервис показывает <b className="text-white">сколько ты заработаешь</b> на заказе ещё до закупки материала.
             Значит ты <b style={{ color: "#10b981" }}>точно знаешь</b>, какую скидку можешь дать,
             чтобы клиент <b style={{ color: "#10b981" }}>сказал «беру»</b> — и при этом остаться в плюсе.
           </p>
