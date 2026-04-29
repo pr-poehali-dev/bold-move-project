@@ -264,10 +264,7 @@ export default function AdminPanel() {
               </span>
             </div>
           </div>
-          <a href="/master" title="Мастер-Админка"
-            className="p-1.5 rounded-lg transition opacity-20 hover:opacity-60" style={{ color: isDark ? "rgba(255,255,255,0.4)" : "#374151" }}>
-            <Icon name="Settings" size={14} />
-          </a>
+
           <button onClick={logout} className="flex items-center gap-1.5 text-xs sm:text-sm transition"
             style={{ color: isDark ? "rgba(255,255,255,0.4)" : "#374151" }}>
             <Icon name="LogOut" size={15} />
