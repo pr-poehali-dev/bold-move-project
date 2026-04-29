@@ -9,7 +9,77 @@ interface Props {
 export default function PricingPackages({ selected, onSelect }: Props) {
   return (
     <section className="max-w-6xl mx-auto px-5 pb-14">
-      <div id="packages-grid" className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 scroll-mt-10">
+
+      {/* ── МОБИЛЕ: вертикальный список на всю ширину ── */}
+      <div className="flex flex-col gap-3 sm:hidden">
+        {PACKAGES.map(pkg => {
+          const isSelected = selected === pkg.id;
+          return (
+            <div key={pkg.id}
+              onClick={() => onSelect(pkg.id)}
+              className="relative rounded-2xl cursor-pointer transition-all active:scale-[0.99]"
+              style={{
+                background: isSelected ? `linear-gradient(135deg, ${pkg.glow}, rgba(8,8,15,0.95))` : "rgba(255,255,255,0.03)",
+                border: `1.5px solid ${isSelected ? pkg.color : "rgba(255,255,255,0.07)"}`,
+              }}>
+
+              {pkg.badge && (
+                <div className="absolute -top-2.5 left-4 px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider"
+                  style={{ background: pkg.color, color: "#0a0a14" }}>
+                  {pkg.badge}
+                </div>
+              )}
+
+              <div className="flex items-center gap-4 px-4 py-4">
+                {/* Левая часть: название + цена */}
+                <div className="flex-1 min-w-0">
+                  <div className="text-[10px] font-bold uppercase tracking-wider mb-0.5" style={{ color: pkg.color }}>
+                    {pkg.name}
+                  </div>
+                  <div className="flex items-baseline gap-1 mb-0.5">
+                    <span className="text-2xl font-black text-white">{pkg.price.toLocaleString("ru-RU")}</span>
+                    <span className="text-sm text-white/30">₽</span>
+                  </div>
+                  <div className="text-[10px] text-white/35">{pkg.perEstimate} ₽ за одну смету</div>
+                </div>
+
+                {/* Правая часть: смет на балансе + кнопка */}
+                <div className="flex flex-col items-end gap-2 flex-shrink-0">
+                  <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl"
+                    style={{ background: pkg.glow }}>
+                    <Icon name="Calculator" size={12} style={{ color: pkg.color }} />
+                    <span className="text-xs font-bold whitespace-nowrap" style={{ color: pkg.color }}>
+                      {pkg.estimates} смет
+                    </span>
+                  </div>
+                  <button
+                    className="px-4 py-2 rounded-xl text-xs font-bold transition whitespace-nowrap"
+                    style={{
+                      background: isSelected ? pkg.color : "rgba(255,255,255,0.07)",
+                      color: isSelected ? "#0a0a14" : "#fff",
+                      border: `1px solid ${isSelected ? pkg.color : "rgba(255,255,255,0.1)"}`,
+                    }}>
+                    {isSelected ? "✓ Выбран" : "Выбрать"}
+                  </button>
+                </div>
+              </div>
+
+              {/* Фичи — компактно */}
+              <div className="px-4 pb-3 flex flex-wrap gap-x-4 gap-y-1">
+                {pkg.features.map(f => (
+                  <div key={f} className="flex items-center gap-1.5 text-[11px] text-white/45">
+                    <Icon name="Check" size={10} style={{ color: pkg.color, flexShrink: 0 }} />
+                    <span>{f}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* ── ДЕСКТОП: сетка 4 колонки ── */}
+      <div id="packages-grid" className="hidden sm:grid md:grid-cols-2 lg:grid-cols-4 gap-4 scroll-mt-10">
         {PACKAGES.map(pkg => {
           const isSelected = selected === pkg.id;
           const isPopular  = pkg.badge === "Популярный";
@@ -71,6 +141,7 @@ export default function PricingPackages({ selected, onSelect }: Props) {
           );
         })}
       </div>
+
       <div className="flex justify-end mt-3">
         <div className="flex items-center gap-1.5 text-[11px] text-white/30">
           <Icon name="Info" size={11} />
