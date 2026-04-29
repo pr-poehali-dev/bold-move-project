@@ -4,11 +4,12 @@ import LiveDemoContent from "./LiveDemoContent";
 import { PROFIT, MAX_DISC, STEP_TIMINGS, easeOutCubic } from "./liveDemoData";
 
 export default function PricingLiveDemo() {
-  const [step,    setStep]    = useState<number>(-1);
-  const [profit,  setProfit]  = useState<number>(0);
-  const [disc,    setDisc]    = useState<number>(0);
-  const [visible, setVisible] = useState(false);
-  const [cdown,   setCdown]   = useState(0);
+  const [step,      setStep]      = useState<number>(-1);
+  const [profit,    setProfit]    = useState<number>(0);
+  const [disc,      setDisc]      = useState<number>(0);
+  const [visible,   setVisible]   = useState(false);
+  const [cdown,     setCdown]     = useState(0);
+  const hasPlayed = useRef(false); // scroll-lock срабатывает только при первом показе
 
   const ref          = useRef<HTMLDivElement>(null);
   const scrollRef    = useRef<HTMLDivElement>(null);
@@ -35,8 +36,9 @@ export default function PricingLiveDemo() {
     return () => obs.disconnect();
   }, [step]);
 
-  // Scroll-lock: запрещаем скролл страницы пока идёт анимация (шаги 0-5)
+  // Scroll-lock: только при первом проигрывании (шаги 0-5)
   useEffect(() => {
+    if (hasPlayed.current) return; // уже играло — не лочим
     const isAnimating = step >= 0 && step <= 5;
     if (isAnimating) {
       document.body.style.overflow    = "hidden";
@@ -44,6 +46,7 @@ export default function PricingLiveDemo() {
     } else {
       document.body.style.overflow    = "";
       document.body.style.touchAction = "";
+      if (step === 6) hasPlayed.current = true; // первый цикл завершён
     }
     return () => {
       document.body.style.overflow    = "";
