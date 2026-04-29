@@ -162,6 +162,12 @@ export default function WhiteLabel() {
                   });
                   const d = await r.json();
                   if (d.token) {
+                    // Сохраняем мастер-токен чтобы вернуться обратно
+                    const masterToken = localStorage.getItem("mp_user_token");
+                    if (masterToken) {
+                      localStorage.setItem("mp_master_token", masterToken);
+                      localStorage.setItem("mp_master_name", user?.name || "Мастер");
+                    }
                     localStorage.setItem("mp_user_token", d.token);
                     window.location.href = "/company";
                   } else {

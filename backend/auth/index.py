@@ -790,6 +790,33 @@ def handler(event: dict, context) -> dict:
         conn.commit()
         return ok({"ok": True, "has_own_agent": enable})
 
+    # ── Мастер: войти под любым пользователем (выдать его токен) ─────────────
+    if action == "admin-login-as" and method == "POST":
+        if not token:
+            return err("Требуется авторизация", 401)
+        cur.execute(f"""
+            SELECT u.email FROM {SCHEMA}.user_sessions s
+            JOIN {SCHEMA}.users u ON u.id = s.user_id
+            WHERE s.token=%s AND s.expires_at > NOW()
+        """, (token,))
+        row = cur.fetchone()
+        if not row or row[0] != "19.jeka.94@gmail.com":
+            return err("Доступ только для мастера", 403)
+
+        target_id = body.get("user_id")
+        if not target_id:
+            return err("user_id обязателен")
+
+        # Создаём сессию для целевого пользователя
+        import secrets as _sec
+        new_token = _sec.token_hex(32)
+        cur.execute(f"""
+            INSERT INTO {SCHEMA}.user_sessions (user_id, token, expires_at)
+            VALUES (%s, %s, NOW() + INTERVAL '8 hours')
+        """, (int(target_id), new_token))
+        conn.commit()
+        return ok({"token": new_token})
+
     # ── Мастер: сметы конкретного пользователя ────────────────────────────────
     if action == "admin-user-estimates" and method == "GET":
         user_id = params.get("user_id")

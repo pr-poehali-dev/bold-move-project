@@ -3,6 +3,9 @@ import Icon from "@/components/ui/icon";
 import RoleBadge from "./MasterRoleBadge";
 import type { AppUser, UserEstimate } from "./masterAdminTypes";
 import { fmtDate, ROLE_LABELS } from "./masterAdminTypes";
+import func2url from "@/../backend/func2url.json";
+
+const AUTH_URL = (func2url as Record<string, string>)["auth"];
 
 const PACKAGES = [
   { id: "start",    label: "Старт",    estimates: 5,   price: 490 },
@@ -26,9 +29,40 @@ export default function AllUsersPanel({
   selectedUser, userEstimates, estLoading, approvingId,
   onApprove, onConfirmDel, onAddBalance, onToggleOwnAgent,
 }: Props) {
-  const [agentBusy, setAgentBusy] = useState(false);
+  const [agentBusy,  setAgentBusy]  = useState(false);
   const [showPackages, setShowPackages] = useState(false);
   const [addingPkg,    setAddingPkg]    = useState<string | null>(null);
+  const [loginBusy,  setLoginBusy]  = useState(false);
+
+  const loginAsUser = async () => {
+    if (!selectedUser) return;
+    setLoginBusy(true);
+    try {
+      const r = await fetch(`${AUTH_URL}?action=admin-login-as`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Authorization": `Bearer ${localStorage.getItem("mp_user_token")}`,
+        },
+        body: JSON.stringify({ user_id: selectedUser.id }),
+      });
+      const d = await r.json();
+      if (d.token) {
+        const masterToken = localStorage.getItem("mp_user_token");
+        const masterName  = "Мастер";
+        if (masterToken) {
+          localStorage.setItem("mp_master_token", masterToken);
+          localStorage.setItem("mp_master_name", masterName);
+        }
+        localStorage.setItem("mp_user_token", d.token);
+        window.location.href = "/company";
+      } else {
+        alert("Не удалось войти: " + (d.error || "?"));
+      }
+    } finally {
+      setLoginBusy(false);
+    }
+  };
 
   const handleAddPackage = async (pkg: typeof PACKAGES[0]) => {
     if (!selectedUser) return;
@@ -83,6 +117,15 @@ export default function AllUsersPanel({
             <div className="text-[9px] text-white/25">смет</div>
           </div>
         </div>
+
+        {/* Войти как этот пользователь */}
+        <button onClick={loginAsUser} disabled={loginBusy}
+          className="mt-3 w-full flex items-center justify-center gap-1.5 py-2 rounded-xl text-[11px] font-bold transition disabled:opacity-50"
+          style={{ background: "rgba(217,119,6,0.15)", color: "#fbbf24", border: "1px solid rgba(217,119,6,0.35)" }}>
+          {loginBusy
+            ? <><div className="w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin" /> Входим...</>
+            : <><Icon name="Eye" size={12} /> Войти как этот пользователь</>}
+        </button>
       </div>
 
       {/* Поля */}

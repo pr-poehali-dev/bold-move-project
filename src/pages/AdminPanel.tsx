@@ -174,9 +174,36 @@ export default function AdminPanel() {
   const headerBorder = isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)";
   const headerText = isDark ? "#ffffff" : "#0f1623";
 
+  const masterToken = localStorage.getItem("mp_master_token");
+  const masterName  = localStorage.getItem("mp_master_name") || "Мастер";
+
+  const exitImpersonate = () => {
+    localStorage.setItem("mp_user_token", masterToken!);
+    localStorage.removeItem("mp_master_token");
+    localStorage.removeItem("mp_master_name");
+    window.location.href = "/whitelabel";
+  };
+
   return (
     <div className="min-h-screen flex flex-col transition-colors duration-300"
       style={{ background: isDark ? "#07070f" : "#eef0f6", color: headerText }}>
+
+      {/* ── Баннер режима просмотра (мастер смотрит чужой аккаунт) ── */}
+      {masterToken && (
+        <div className="flex items-center justify-between px-4 py-2 text-xs font-bold"
+          style={{ background: "#d97706", color: "#0a0a14" }}>
+          <div className="flex items-center gap-2">
+            <Icon name="Eye" size={13} />
+            Режим просмотра: вы видите панель как&nbsp;<span className="font-black">{user?.name || user?.email}</span>
+          </div>
+          <button onClick={exitImpersonate}
+            className="flex items-center gap-1.5 px-3 py-1 rounded-lg transition"
+            style={{ background: "rgba(0,0,0,0.20)", color: "#0a0a14" }}>
+            <Icon name="LogOut" size={11} />
+            Выйти обратно как {masterName}
+          </button>
+        </div>
+      )}
 
       {/* ── Шапка ── */}
       <div className="px-4 sm:px-6 py-3 flex items-center justify-between flex-shrink-0 transition-colors duration-300"
