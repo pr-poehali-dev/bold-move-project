@@ -78,14 +78,14 @@ export default function CrmPanel({ theme, initialOrderId }: { theme: Theme; init
             const active = tab === tb.id;
             return (
               <button key={tb.id} onClick={() => setTab(tb.id)}
-                className="flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-4 py-2 text-xs sm:text-sm rounded-xl transition whitespace-nowrap font-medium border"
+                className="flex items-center gap-1 sm:gap-2 px-2 sm:px-4 py-2 text-xs sm:text-sm rounded-xl transition whitespace-nowrap font-medium border"
                 style={active ? {
                   background: "#7c3aed18", color: "#a78bfa", borderColor: "#7c3aed35",
                 } : {
                   color: t.textSub, borderColor: "transparent", background: "transparent",
                 }}>
-                <Icon name={tb.icon} size={14} />
-                {tb.label}
+                <Icon name={tb.icon} size={15} />
+                <span className="hidden sm:inline">{tb.label}</span>
               </button>
             );
           })}
@@ -93,14 +93,14 @@ export default function CrmPanel({ theme, initialOrderId }: { theme: Theme; init
           {/* Вкладка Канбан — если включена */}
           {kanbanEnabled && (
             <button onClick={() => setTab("kanban")}
-              className="flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-4 py-2 text-xs sm:text-sm rounded-xl transition whitespace-nowrap font-medium border"
+              className="flex items-center gap-1 sm:gap-2 px-2 sm:px-4 py-2 text-xs sm:text-sm rounded-xl transition whitespace-nowrap font-medium border"
               style={tab === "kanban" ? {
                 background: "#7c3aed18", color: "#a78bfa", borderColor: "#7c3aed35",
               } : {
                 color: t.textSub, borderColor: "transparent", background: "transparent",
               }}>
-              <Icon name="Kanban" size={14} />
-              Канбан
+              <Icon name="Kanban" size={15} />
+              <span className="hidden sm:inline">Канбан</span>
             </button>
           )}
 

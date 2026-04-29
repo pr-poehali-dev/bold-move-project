@@ -223,34 +223,52 @@ export default function AdminPanel() {
         </div>
       )}
 
-      {/* ── Шапка ── */}
-      <div className="px-4 sm:px-6 py-3 flex items-center justify-between flex-shrink-0 transition-colors duration-300"
+      {/* ── Шапка (десктоп: 2 строки, мобиле: 1 строка) ── */}
+
+      {/* Строка 1: логотип + юзер + выход */}
+      <div className="px-3 sm:px-6 py-2 sm:py-3 flex items-center gap-2 flex-shrink-0 transition-colors duration-300"
         style={{ background: headerBg, borderBottom: `1px solid ${headerBorder}` }}>
-        <div className="flex items-center gap-2">
-          <a href={(() => {
-              const ownerId = user?.has_own_agent ? user.id : user?.company_id;
-              return ownerId ? `/?c=${ownerId}` : "/";
-            })()}
-            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-medium transition hover:opacity-80"
-            style={{ background: isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)", color: isDark ? "rgba(255,255,255,0.45)" : "#374151", border: `1px solid ${headerBorder}` }}>
-            <Icon name="ArrowLeft" size={12} />
-            В бот
-          </a>
-          <Icon name="BrainCircuit" size={20} className="text-violet-400" />
-          <span className="font-semibold hidden sm:block" style={{ color: headerText }}>Панель управления</span>
+
+        {/* Левая часть: назад + иконка */}
+        <a href={(() => { const ownerId = user?.has_own_agent ? user.id : user?.company_id; return ownerId ? `/?c=${ownerId}` : "/"; })()}
+          className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-medium transition hover:opacity-80 flex-shrink-0"
+          style={{ background: isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)", color: isDark ? "rgba(255,255,255,0.45)" : "#374151", border: `1px solid ${headerBorder}` }}>
+          <Icon name="ArrowLeft" size={12} />
+          <span className="hidden sm:inline">В бот</span>
+        </a>
+        <Icon name="BrainCircuit" size={18} className="text-violet-400 flex-shrink-0" />
+
+        {/* Мобиле: главные табы прямо здесь */}
+        <div className="flex sm:hidden items-center gap-0.5 overflow-x-auto flex-1" style={{ scrollbarWidth: "none" }}>
+          {([
+            { id: "crm"       as MainTab, icon: "LayoutDashboard", label: "CRM"   },
+            { id: "agent"     as MainTab, icon: "BrainCircuit",    label: "Агент" },
+            ...(user?.role === "company" || user?.is_master ? [{ id: "team"      as MainTab, icon: "Users", label: "Команда" }] : []),
+            ...(user?.role === "company" || user?.is_master ? [{ id: "own-agent" as MainTab, icon: "Bot",   label: "Агент+"  }] : []),
+          ]).map(tb => (
+            <button key={tb.id} onClick={() => setMainTab(tb.id)}
+              className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] font-semibold transition whitespace-nowrap flex-shrink-0"
+              style={mainTab === tb.id
+                ? { background: "#7c3aed22", color: "#a78bfa", border: "1px solid #7c3aed40" }
+                : { color: isDark ? "rgba(255,255,255,0.45)" : "#6b7280", border: "1px solid transparent" }}>
+              <Icon name={tb.icon} size={13} />
+              {tb.label}
+            </button>
+          ))}
         </div>
-        <div className="flex items-center gap-2 sm:gap-3">
+
+        {/* Десктоп: название */}
+        <span className="font-semibold hidden sm:block flex-1" style={{ color: headerText }}>Панель управления</span>
+
+        {/* Правая часть */}
+        <div className="flex items-center gap-1.5 sm:gap-3 flex-shrink-0">
           <button onClick={toggleTheme}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl transition font-medium text-xs"
+            className="p-1.5 rounded-xl transition"
             style={{ background: isDark ? "rgba(255,255,255,0.07)" : "rgba(0,0,0,0.07)", border: `1px solid ${headerBorder}`, color: isDark ? "rgba(255,255,255,0.5)" : "#374151" }}>
             <Icon name={isDark ? "Sun" : "Moon"} size={13} />
-            <span className="hidden sm:block">{isDark ? "Светлая" : "Тёмная"}</span>
           </button>
           <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-xl"
-            style={{
-              background: user?.is_master ? "rgba(239,68,68,0.12)" : "rgba(124,58,237,0.12)",
-              border: `1px solid ${user?.is_master ? "rgba(239,68,68,0.25)" : "rgba(124,58,237,0.25)"}`,
-            }}>
+            style={{ background: user?.is_master ? "rgba(239,68,68,0.12)" : "rgba(124,58,237,0.12)", border: `1px solid ${user?.is_master ? "rgba(239,68,68,0.25)" : "rgba(124,58,237,0.25)"}` }}>
             <div className="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold text-white"
               style={{ background: user?.is_master ? "#ef4444" : "#7c3aed" }}>
               {(user?.name || user?.email || "?")[0].toUpperCase()}
@@ -264,39 +282,30 @@ export default function AdminPanel() {
               </span>
             </div>
           </div>
-
-          <button onClick={logout} className="flex items-center gap-1.5 text-xs sm:text-sm transition"
+          <button onClick={logout} className="p-1.5 transition"
             style={{ color: isDark ? "rgba(255,255,255,0.4)" : "#374151" }}>
             <Icon name="LogOut" size={15} />
-            <span className="hidden sm:block">Выйти</span>
           </button>
         </div>
       </div>
 
-      {/* ── Главные вкладки ── */}
-      <div className="flex items-end gap-1 pt-2 flex-shrink-0 overflow-x-auto transition-colors duration-300 px-2 sm:px-4"
+      {/* Строка 2: главные табы — только на десктопе */}
+      <div className="hidden sm:flex items-end gap-1 pt-2 flex-shrink-0 overflow-x-auto transition-colors duration-300 px-4"
         style={{ background: headerBg, borderBottom: `1px solid ${headerBorder}`, scrollbarWidth: "none" }}>
         {([
-          { id: "crm"       as MainTab, label: "CRM",          labelMobile: "CRM",      icon: "LayoutDashboard" },
-          { id: "agent"     as MainTab, label: "Агент",         labelMobile: "Агент",    icon: "BrainCircuit"    },
-          ...(user?.role === "company" || user?.is_master
-            ? [{ id: "team" as MainTab, label: "Команда",      labelMobile: "Команда",  icon: "Users" }]
-            : []),
-          ...(user?.role === "company" || user?.is_master
-            ? [{ id: "own-agent" as MainTab, label: "Свой агент", labelMobile: "Агент+", icon: "Bot" }]
-            : []),
+          { id: "crm"       as MainTab, label: "CRM",        icon: "LayoutDashboard" },
+          { id: "agent"     as MainTab, label: "Агент",       icon: "BrainCircuit"    },
+          ...(user?.role === "company" || user?.is_master ? [{ id: "team"      as MainTab, label: "Команда",    icon: "Users" }] : []),
+          ...(user?.role === "company" || user?.is_master ? [{ id: "own-agent" as MainTab, label: "Свой агент", icon: "Bot"   }] : []),
         ]).map(tb => (
           <button key={tb.id} onClick={() => setMainTab(tb.id)}
-            className={`flex items-center gap-1.5 px-3 sm:px-4 py-2.5 text-xs sm:text-sm font-semibold rounded-t-lg transition whitespace-nowrap flex-shrink-0 ${
+            className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-semibold rounded-t-lg transition whitespace-nowrap flex-shrink-0 ${
               mainTab === tb.id
-                ? isDark
-                  ? "bg-violet-600/20 text-violet-300 border-b-2 border-violet-500"
-                  : "bg-violet-600/10 text-violet-700 border-b-2 border-violet-600"
+                ? isDark ? "bg-violet-600/20 text-violet-300 border-b-2 border-violet-500" : "bg-violet-600/10 text-violet-700 border-b-2 border-violet-600"
                 : isDark ? "text-white/50 hover:text-white/80" : "text-gray-500 hover:text-gray-800"
             }`}>
             <Icon name={tb.icon} size={14} />
-            <span className="hidden sm:inline">{tb.label}</span>
-            <span className="sm:hidden">{tb.labelMobile}</span>
+            {tb.label}
           </button>
         ))}
       </div>
