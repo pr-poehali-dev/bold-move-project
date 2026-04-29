@@ -1,48 +1,41 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useRef } from "react";
 import Icon from "@/components/ui/icon";
 import PricingLiveDemo from "../PricingLiveDemo";
 import { ADVANTAGES } from "./pricingData";
 
-const VISIBLE  = 3;
-const INTERVAL = 3000; // мс между сменой
-const PAGES    = Math.ceil(ADVANTAGES.length / VISIBLE);
+const VISIBLE = 3;
+const PAGES   = Math.ceil(ADVANTAGES.length / VISIBLE); // 3 страницы по 3
 
 export default function PricingFeatures() {
   const [page,   setPage]   = useState(0);
   const [fadeIn, setFadeIn] = useState(true);
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const fadeTimer   = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const fadeTimer  = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const touchStart = useRef<{ x: number; y: number } | null>(null);
 
-  const startInterval = useCallback(() => {
-    if (intervalRef.current) clearInterval(intervalRef.current);
-    intervalRef.current = setInterval(() => {
-      setFadeIn(false);
-      fadeTimer.current = setTimeout(() => {
-        setPage(p => (p + 1) % PAGES);
-        setFadeIn(true);
-      }, 300);
-    }, INTERVAL);
-  }, []);
-
-  // Запускаем автосмену при монтировании
-  useEffect(() => {
-    startInterval();
-    return () => {
-      if (intervalRef.current) clearInterval(intervalRef.current);
-      if (fadeTimer.current)   clearTimeout(fadeTimer.current);
-    };
-  }, [startInterval]);
-
-  // Ручное переключение — сбрасывает и перезапускает интервал
-  const goToPage = useCallback((i: number) => {
+  const goToPage = (i: number) => {
+    if (i === page) return;
     if (fadeTimer.current) clearTimeout(fadeTimer.current);
     setFadeIn(false);
     fadeTimer.current = setTimeout(() => {
       setPage(i);
       setFadeIn(true);
-    }, 300);
-    startInterval(); // сброс таймера
-  }, [startInterval]);
+    }, 250);
+  };
+
+  const onTouchStart = (e: React.TouchEvent) => {
+    touchStart.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+  };
+
+  const onTouchEnd = (e: React.TouchEvent) => {
+    if (!touchStart.current) return;
+    const dy = e.changedTouches[0].clientY - touchStart.current.y;
+    const dx = Math.abs(e.changedTouches[0].clientX - touchStart.current.x);
+    if (Math.abs(dy) > 40 && dx < 60) {
+      if (dy < 0 && page < PAGES - 1) goToPage(page + 1); // свайп вверх → следующие
+      if (dy > 0 && page > 0)         goToPage(page - 1); // свайп вниз → предыдущие
+    }
+    touchStart.current = null;
+  };
 
   return (
     <>
@@ -163,33 +156,40 @@ export default function PricingFeatures() {
           ))}
         </div>
 
-        {/* Мобиле — авто-карусель по 3 карточки */}
-        <div className="sm:hidden">
-          {/* Карточки с fade — min-height чтобы не прыгало */}
+        {/* Мобиле — свайп-карусель по 3 карточки */}
+        <div className="sm:hidden"
+          onTouchStart={onTouchStart}
+          onTouchEnd={onTouchEnd}>
+
+          {/* Карточки с fade */}
           <div style={{ minHeight: 360 }}>
-            <div
-              className="flex flex-col gap-3 transition-opacity duration-300"
+            <div className="flex flex-col gap-3 transition-opacity duration-250"
               style={{ opacity: fadeIn ? 1 : 0 }}>
               {ADVANTAGES.slice(page * VISIBLE, page * VISIBLE + VISIBLE).map(a => (
                 <AdvCard key={a.title} a={a} />
               ))}
             </div>
-          </div>{/* /min-height wrapper */}
+          </div>
 
-          {/* Точки-индикаторы */}
-          <div className="flex items-center justify-center gap-2 mt-4">
-            {Array.from({ length: PAGES }).map((_, i) => (
-              <button
-                key={i}
-                onClick={() => goToPage(i)}
-                className="rounded-full transition-all duration-300"
-                style={{
-                  width:      i === page ? 20 : 6,
-                  height:     6,
-                  background: i === page ? "#f97316" : "rgba(255,255,255,0.2)",
-                }}
-              />
-            ))}
+          {/* Точки + подсказка свайпа */}
+          <div className="flex flex-col items-center gap-2 mt-3">
+            <div className="flex items-center gap-2">
+              {Array.from({ length: PAGES }).map((_, i) => (
+                <button key={i} onClick={() => goToPage(i)}
+                  className="rounded-full transition-all duration-300"
+                  style={{
+                    width:      i === page ? 20 : 6,
+                    height:     6,
+                    background: i === page ? "#f97316" : "rgba(255,255,255,0.2)",
+                  }} />
+              ))}
+            </div>
+            {page < PAGES - 1 && (
+              <div className="flex items-center gap-1 text-[10px] text-white/25 animate-bounce">
+                <Icon name="ChevronDown" size={11} />
+                листай вниз
+              </div>
+            )}
           </div>
         </div>
       </section>
