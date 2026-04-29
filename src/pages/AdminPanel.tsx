@@ -229,7 +229,10 @@ export default function AdminPanel() {
       <div className="px-4 sm:px-6 py-3 flex items-center justify-between flex-shrink-0 transition-colors duration-300"
         style={{ background: headerBg, borderBottom: `1px solid ${headerBorder}` }}>
         <div className="flex items-center gap-2">
-          <a href="/"
+          <a href={(() => {
+              const ownerId = user?.has_own_agent ? user.id : user?.company_id;
+              return ownerId ? `/?c=${ownerId}` : "/";
+            })()}
             className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-medium transition hover:opacity-80"
             style={{ background: isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)", color: isDark ? "rgba(255,255,255,0.45)" : "#374151", border: `1px solid ${headerBorder}` }}>
             <Icon name="ArrowLeft" size={12} />
