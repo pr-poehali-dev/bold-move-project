@@ -188,37 +188,43 @@ export default function AdminPanel() {
 
       {/* ── Баннер режима просмотра (мастер смотрит чужой аккаунт) ── */}
       {masterToken && (
-        <div className="flex items-center justify-between px-3 py-2 text-xs"
+        <div className="flex items-center justify-between px-3 py-2 text-xs gap-2"
           style={{ background: "#92400e", borderBottom: "1px solid #b45309" }}>
-          <div className="flex items-center gap-3 flex-wrap">
-            <div className="flex items-center gap-1.5 font-bold" style={{ color: "#fde68a" }}>
-              <Icon name="Eye" size={13} />
-              Режим просмотра
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-black"
+
+          {/* Левая часть */}
+          <div className="flex items-center gap-2 min-w-0 flex-1">
+            <Icon name="Eye" size={13} style={{ color: "#fde68a", flexShrink: 0 }} />
+            {/* Мобиле: только имя */}
+            <div className="flex items-center gap-1.5 min-w-0">
+              <div className="w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-black flex-shrink-0"
                 style={{ background: "#d97706", color: "#0a0a14" }}>
                 {(user?.name || user?.email || "?")[0].toUpperCase()}
               </div>
-              <span className="font-black" style={{ color: "#fff" }}>{user?.name || user?.email}</span>
+              <span className="font-black truncate" style={{ color: "#fff" }}>
+                {user?.name || user?.email?.split("@")[0]}
+              </span>
+              {/* email и теги — только на десктопе */}
               {user?.email && user?.name && (
-                <span style={{ color: "#fbbf24" }}>{user.email}</span>
+                <span className="hidden sm:inline" style={{ color: "#fbbf24" }}>{user.email}</span>
               )}
             </div>
-            <span className="px-2 py-0.5 rounded text-[9px] font-black uppercase"
+            <span className="hidden sm:inline px-2 py-0.5 rounded text-[9px] font-black uppercase flex-shrink-0"
               style={{ background: "rgba(0,0,0,0.25)", color: "#fde68a" }}>
               ID #{user?.id}
             </span>
-            <span className="px-2 py-0.5 rounded text-[9px] font-black uppercase"
+            <span className="hidden sm:inline px-2 py-0.5 rounded text-[9px] font-black uppercase flex-shrink-0"
               style={{ background: "rgba(0,0,0,0.25)", color: "#fde68a" }}>
               {user?.role === "company" ? "Компания" : user?.role === "manager" ? "Менеджер" : user?.role || "—"}
             </span>
           </div>
+
+          {/* Кнопка возврата */}
           <button onClick={exitImpersonate}
-            className="flex items-center gap-1.5 px-3 py-1 rounded-lg transition hover:opacity-80 whitespace-nowrap ml-3"
+            className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg transition hover:opacity-80 whitespace-nowrap flex-shrink-0"
             style={{ background: "rgba(0,0,0,0.30)", color: "#fde68a", border: "1px solid rgba(253,230,138,0.3)" }}>
             <Icon name="LogOut" size={11} />
-            ← Вернуться как {masterName}
+            <span className="hidden sm:inline">← Вернуться как {masterName}</span>
+            <span className="sm:hidden">{masterName}</span>
           </button>
         </div>
       )}
