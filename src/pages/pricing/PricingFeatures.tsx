@@ -138,9 +138,9 @@ export default function PricingFeatures() {
                 </div>
               ))}
             </div>
-            <div className="mt-3 flex items-center gap-2 text-[11px] text-white/55">
-              <Icon name="Sparkles" size={12} style={{ color: "#fbbf24" }} />
-              Знаешь свой потолок скидки — закрываешь клиента <b className="text-white">сегодня</b>, а не «подумаю».
+            <div className="mt-3 flex items-start gap-1.5 text-[11px] text-white/55 leading-snug">
+              <Icon name="Sparkles" size={12} style={{ color: "#fbbf24", marginTop: 1, flexShrink: 0 }} />
+              <span>Знаешь свой потолок скидки — закрываешь клиента <b className="text-white">сегодня</b>, а не «подумаю».</span>
             </div>
           </div>
         </div>
