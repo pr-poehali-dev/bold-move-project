@@ -344,8 +344,8 @@ def build_pdf(data, logo_bytes=None, brand=None):
         except Exception:
             pass
 
-    # Контакты под плашкой — только телефон и сайт (адрес/реквизиты — в подвале страницы)
-    contacts = [p for p in [brand_phone, brand_website] if p]
+    # Контакты под плашкой — название компании, телефон, сайт (адрес/реквизиты — в подвале страницы)
+    contacts = [p for p in [brand_name, brand_phone, brand_website] if p]
     cy = logo_pill_y - 5.5*mm
     for ct in contacts:
         c.setFont('PTSans', 7.5)
