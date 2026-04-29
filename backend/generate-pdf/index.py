@@ -172,6 +172,12 @@ def build_pdf(data, logo_bytes=None, brand=None):
         custom_accent = HexColor(brand_color)
     except Exception:
         custom_accent = ACCENT
+    # Цвет текста позиций (pdf_text_color)
+    _raw_text_color = (brand.get('pdf_text_color') or '').strip()
+    try:
+        custom_text = HexColor(_raw_text_color) if _raw_text_color else BLACK
+    except Exception:
+        custom_text = BLACK
     # Телефон только цифры — для tel: и Записаться
     phone_digits = re.sub(r'\D', '', brand_phone) or '79776068901'
 
@@ -331,14 +337,14 @@ def build_pdf(data, logo_bytes=None, brand=None):
         yy = check(yy, sh + 5*mm)
         c.setFillColor(SEC_BG)
         c.rect(card_mg, yy - sh, tw, sh, fill=1, stroke=0)
-        c.setFillColor(SEC_STRIPE)
+        c.setFillColor(custom_accent)
         c.rect(card_mg, yy - sh, 3*mm, sh, fill=1, stroke=0)
         c.setFont('PTSans-Bold', 9)
-        c.setFillColor(TEXT_SECTION)
+        c.setFillColor(custom_text)
         c.drawString(card_mg + 6*mm, yy - sh + 2.4*mm, label)
         sec_lines.append((yy, yy - sh))
-        row_lines.append(yy)        # верхняя граница секции
-        row_lines.append(yy - sh)   # нижняя граница секции
+        row_lines.append(yy)
+        row_lines.append(yy - sh)
         return yy - sh
 
     def draw_row(yy, name, qty, price, total):
@@ -350,13 +356,13 @@ def build_pdf(data, logo_bytes=None, brand=None):
         ry = yy - rh + 2.5*mm
 
         c.setFont('PTSans', 8.5)
-        c.setFillColor(BLACK)
+        c.setFillColor(custom_text)
         max_ch = int(CW[0] / (8.5 * 0.195 * mm))
         nm = name[:max_ch-1] + '…' if len(name) > max_ch else name
         c.drawString(cx(0) + 4*mm, ry, nm)
 
         c.setFont('PTSans', 8)
-        c.setFillColor(BLACK)
+        c.setFillColor(custom_text)
         if qty:
             c.drawCentredString(cx(1) + CW[1]/2, ry, rub(qty))
         if price:
@@ -364,10 +370,10 @@ def build_pdf(data, logo_bytes=None, brand=None):
 
         if total:
             c.setFont('PTSans-Bold', 8.5)
-            c.setFillColor(ACCENT_DARK)
+            c.setFillColor(custom_accent)
             c.drawRightString(cx(3) + CW[3] - 4*mm, ry, rub(total))
 
-        row_lines.append(yy - rh)   # нижняя граница строки
+        row_lines.append(yy - rh)
         return yy - rh
 
     # ── Рендер данных ─────────────────────────────────────────────────────────
@@ -468,8 +474,10 @@ def build_pdf(data, logo_bytes=None, brand=None):
             val_x = box_x + box_w - PAD_H
             ty = y - HEAD_H
 
-            for lbl_, val_ in rows:
-                is_std = 'standard' in lbl_.lower()
+            n_rows = len(rows)
+            for row_idx, (lbl_, val_) in enumerate(rows):
+                # Средняя строка из 3 — это Standard (базовая цена)
+                is_std = (n_rows == 3 and row_idx == 1) or 'standard' in lbl_.lower()
                 rh = STD_ROW_H if is_std else NORM_ROW_H
                 font_size = 12 if is_std else 9
                 mid_y = ty - rh / 2 - font_size * 0.176 * mm
@@ -484,15 +492,15 @@ def build_pdf(data, logo_bytes=None, brand=None):
                     c.setFillColor(TOTAL_STD_BG)
                     c.rect(box_x + 1*mm, ty - rh + 0.3*mm, box_w - 2*mm, rh - 0.6*mm, fill=1, stroke=0)
                     c.setFont('PTSans-Bold', font_size)
-                    c.setFillColor(ACCENT)
+                    c.setFillColor(custom_accent)
                     c.drawRightString(lbl_right, mid_y, lbl_ + ':')
-                    c.setFillColor(ACCENT_DARK)
+                    c.setFillColor(custom_accent)
                     c.drawRightString(val_x, mid_y, val_)
                 else:
                     c.setFont('PTSans', font_size)
                     c.setFillColor(TEXT_MUTED)
                     c.drawRightString(lbl_right, mid_y, lbl_ + ':')
-                    c.setFillColor(BLACK)
+                    c.setFillColor(custom_text)
                     c.drawRightString(val_x, mid_y, val_)
 
                 ty -= rh
@@ -573,7 +581,7 @@ def fetch_brand_from_db(company_id):
         cur.execute(f"""
             SELECT role, has_own_agent, company_name, brand_logo_url, brand_color,
                    support_phone, website, telegram, max_url, working_hours,
-                   pdf_footer_address
+                   pdf_footer_address, pdf_text_color, telegram_url
             FROM {schema}.users
             WHERE id=%s AND removed_at IS NULL
         """, (int(company_id),))
@@ -582,7 +590,8 @@ def fetch_brand_from_db(company_id):
         if not r:
             return None
         role, has_agent, company_name, brand_logo_url, brand_color, support_phone, \
-            website, telegram, max_url, working_hours, pdf_footer_address = r
+            website, telegram, max_url, working_hours, pdf_footer_address, \
+            pdf_text_color, telegram_url = r
         if not has_agent or role != 'company':
             return None
         return {
@@ -592,9 +601,11 @@ def fetch_brand_from_db(company_id):
             'support_phone':      support_phone,
             'website':            website,
             'telegram':           telegram,
+            'telegram_url':       telegram_url,
             'max_url':            max_url,
             'working_hours':      working_hours,
             'pdf_footer_address': pdf_footer_address,
+            'pdf_text_color':     pdf_text_color,
         }
     except Exception:
         return None
