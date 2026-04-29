@@ -142,6 +142,11 @@ export default function WhiteLabel() {
 
       {/* Шапка */}
       <header className="px-5 py-4 border-b border-white/[0.06] flex items-center gap-3">
+        <a href="/"
+          className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-medium transition hover:opacity-80"
+          style={{ background: "rgba(255,255,255,0.05)", color: "rgba(255,255,255,0.40)", border: "1px solid rgba(255,255,255,0.08)" }}>
+          <Icon name="ArrowLeft" size={12} /> В бот
+        </a>
         <button onClick={() => navigate("/master")}
           className="text-xs text-white/40 hover:text-white/80 flex items-center gap-1">
           <Icon name="ArrowLeft" size={13} /> Мастер
