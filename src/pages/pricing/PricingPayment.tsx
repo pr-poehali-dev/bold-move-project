@@ -37,7 +37,7 @@ export default function PricingPayment({ selectedId }: Props) {
 
       {!selectedPkg ? (
         /* ── CTA в стиле сайта пока пакет не выбран ───────────────────── */
-        <div className="relative rounded-[28px] overflow-hidden p-8 md:p-14"
+        <div className="relative rounded-[28px] overflow-hidden p-5 sm:p-8 md:p-14"
           style={{
             background:
               "radial-gradient(120% 140% at 0% 0%, rgba(249,115,22,0.16), rgba(8,8,15,0) 55%), radial-gradient(120% 140% at 100% 100%, rgba(251,191,36,0.10), rgba(8,8,15,0) 55%), #0a0a14",
@@ -54,22 +54,22 @@ export default function PricingPayment({ selectedId }: Props) {
           <div className="relative">
 
             {/* Шапка: бейдж + заголовок + описание + кнопка */}
-            <div className="grid lg:grid-cols-[1fr_auto] gap-8 items-center mb-7">
+            <div className="grid lg:grid-cols-[1fr_auto] gap-5 sm:gap-8 items-center mb-4 sm:mb-7">
               <div>
-                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider mb-5"
+                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider mb-3 sm:mb-5"
                   style={{ background: "rgba(249,115,22,0.18)", color: "#fbbf24", border: "1px solid rgba(249,115,22,0.4)" }}>
                   <Icon name="Rocket" size={11} />
                   Старт прямо сейчас
                 </div>
 
-                <h2 className="text-3xl md:text-5xl font-black leading-[1.05] tracking-tight mb-4">
+                <h2 className="text-2xl sm:text-3xl md:text-5xl font-black leading-[1.05] tracking-tight mb-2 sm:mb-4">
                   Вперёд к<br />
                   <span style={{ background: "linear-gradient(90deg,#f97316,#fbbf24)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>
                     достижениям!
                   </span>
                 </h2>
 
-                <p className="text-sm md:text-base text-white/55 max-w-lg leading-relaxed">
+                <p className="text-sm text-white/55 max-w-lg leading-relaxed">
                   Выбери тариф выше — и мы сразу покажем, как оплатить.
                   Без сложных регистраций, форм и комиссий.
                 </p>
@@ -80,7 +80,7 @@ export default function PricingPayment({ selectedId }: Props) {
                   onClick={() => {
                     document.querySelector("#packages-grid")?.scrollIntoView({ behavior: "smooth", block: "center" });
                   }}
-                  className="group relative overflow-hidden rounded-2xl px-7 py-5 md:py-6 transition-all hover:-translate-y-0.5 active:translate-y-0 w-full lg:w-auto"
+                  className="group relative overflow-hidden rounded-2xl px-7 py-3.5 sm:py-5 md:py-6 transition-all hover:-translate-y-0.5 active:translate-y-0 w-full lg:w-auto mt-1 sm:mt-0"
                   style={{
                     background: "linear-gradient(135deg, #f97316, #fb923c)",
                     boxShadow: "0 12px 35px rgba(249,115,22,0.45), 0 0 0 1.5px rgba(255,255,255,0.12) inset",
@@ -88,8 +88,8 @@ export default function PricingPayment({ selectedId }: Props) {
                   <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity"
                     style={{ background: "linear-gradient(135deg, #fb923c, #fbbf24)" }} />
                   <div className="relative flex items-center gap-3 whitespace-nowrap justify-center">
-                    <Icon name="ArrowUp" size={20} style={{ color: "#fff" }} />
-                    <span className="text-base md:text-lg font-black text-white uppercase tracking-wider">
+                    <Icon name="ArrowUp" size={18} style={{ color: "#fff" }} />
+                    <span className="text-sm sm:text-base md:text-lg font-black text-white uppercase tracking-wider">
                       Выбрать пакет
                     </span>
                   </div>
@@ -138,21 +138,21 @@ export default function PricingPayment({ selectedId }: Props) {
                 },
               ].map(b => (
                 <div key={b.title}
-                  className="relative rounded-2xl p-4 transition hover:-translate-y-0.5"
+                  className="relative rounded-2xl p-3 sm:p-4 transition hover:-translate-y-0.5"
                   style={{
                     background: "rgba(255,255,255,0.035)",
                     border: `1.5px solid ${b.border}`,
                   }}>
-                  <div className="w-9 h-9 rounded-xl flex items-center justify-center mb-3"
+                  <div className="w-7 h-7 sm:w-9 sm:h-9 rounded-xl flex items-center justify-center mb-2 sm:mb-3"
                     style={{ background: b.iconBg }}>
-                    <Icon name={b.icon} size={17} style={{ color: b.iconColor }} />
+                    <Icon name={b.icon} size={14} style={{ color: b.iconColor }} />
                   </div>
-                  <div className="text-2xl md:text-3xl font-black leading-none mb-1.5"
+                  <div className="text-xl sm:text-2xl md:text-3xl font-black leading-none mb-1"
                     style={{ color: b.iconColor }}>
                     {b.value}
                   </div>
-                  <div className="text-[12px] font-bold text-white mb-1">{b.title}</div>
-                  <div className="text-[10.5px] text-white/45 leading-snug">{b.text}</div>
+                  <div className="text-[11px] sm:text-[12px] font-bold text-white mb-0.5">{b.title}</div>
+                  <div className="text-[10px] sm:text-[10.5px] text-white/45 leading-snug">{b.text}</div>
                 </div>
               ))}
             </div>
