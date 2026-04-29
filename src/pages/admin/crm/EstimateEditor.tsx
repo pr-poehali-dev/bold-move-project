@@ -240,7 +240,7 @@ export default function EstimateEditor({ chatId, clientName, clientPhone }: {
       {/* Таблица */}
       <div className="rounded-2xl overflow-hidden" style={{ border: `1px solid ${t.border}` }}>
         <table className="w-full">
-          <thead>
+          <thead className="hidden sm:table-header-group">
             <tr style={{ background: t.surface2, borderBottom: `1px solid ${t.border}` }}>
               <th className="text-left px-3 py-2.5 text-xs font-semibold uppercase tracking-wide" style={{ color: t.textMute }}>Позиция</th>
               <th className="text-center px-2 py-2.5 text-xs font-semibold uppercase tracking-wide w-24" style={{ color: t.textMute }}>Кол-во</th>
