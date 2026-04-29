@@ -9,13 +9,6 @@ interface Props {
 export default function PricingPackages({ selected, onSelect }: Props) {
   return (
     <section className="max-w-6xl mx-auto px-5 pb-14">
-      <div className="flex items-center justify-center mb-5">
-        <div className="flex items-center gap-2 px-4 py-2 rounded-full text-[11px] text-white/45"
-          style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}>
-          <Icon name="Info" size={12} />
-          1 смета = 1 объект (квартира, офис, дом — любой замер)
-        </div>
-      </div>
       <div id="packages-grid" className="grid md:grid-cols-2 lg:grid-cols-4 gap-4 scroll-mt-10">
         {PACKAGES.map(pkg => {
           const isSelected = selected === pkg.id;
@@ -77,6 +70,12 @@ export default function PricingPackages({ selected, onSelect }: Props) {
             </div>
           );
         })}
+      </div>
+      <div className="flex justify-end mt-3">
+        <div className="flex items-center gap-1.5 text-[11px] text-white/30">
+          <Icon name="Info" size={11} />
+          1 смета = 1 объект (квартира, офис, дом — любой замер)
+        </div>
       </div>
     </section>
   );
