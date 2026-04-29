@@ -40,10 +40,32 @@ export default function PricingLiveDemo() {
     if (!ref.current) return;
     const obs = new IntersectionObserver(([e]) => {
       setVisible(e.isIntersecting);
-      if (e.isIntersecting && step === -1) setStep(0);
+      if (e.isIntersecting && step === -1) {
+        setStep(0);
+        // Auto-snap: подтягиваем блок к верху экрана
+        setTimeout(() => {
+          ref.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+        }, 100);
+      }
     }, { threshold: 0.35 });
     obs.observe(ref.current);
     return () => obs.disconnect();
+  }, [step]);
+
+  // Scroll-lock: запрещаем скролл страницы пока идёт анимация (шаги 0-5)
+  useEffect(() => {
+    const isAnimating = step >= 0 && step <= 5;
+    if (isAnimating) {
+      document.body.style.overflow = "hidden";
+      document.body.style.touchAction = "none";
+    } else {
+      document.body.style.overflow = "";
+      document.body.style.touchAction = "";
+    }
+    return () => {
+      document.body.style.overflow = "";
+      document.body.style.touchAction = "";
+    };
   }, [step]);
 
   // Прогон шагов + закольцовка
