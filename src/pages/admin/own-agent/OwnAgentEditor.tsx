@@ -45,10 +45,9 @@ export default function OwnAgentEditor({ isDark }: Props) {
     }
   };
 
-  const text   = isDark ? "#fff" : "#0f1623";
-  const muted  = isDark ? "rgba(255,255,255,0.45)" : "#6b7280";
-  const border = isDark ? "rgba(255,255,255,0.07)" : "#e5e7eb";
-  const link   = `${window.location.origin}/?c=${user?.id}`;
+  const text  = isDark ? "#fff" : "#0f1623";
+  const muted = isDark ? "rgba(255,255,255,0.45)" : "#6b7280";
+  const link  = `${window.location.origin}/?c=${user?.id}`;
 
   return (
     <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-5" style={{ color: text }}>
