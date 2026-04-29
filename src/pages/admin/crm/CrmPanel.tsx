@@ -113,7 +113,7 @@ export default function CrmPanel({ theme, initialOrderId }: { theme: Theme; init
               style={{ background: "linear-gradient(135deg,#7c3aed12,#06b6d412)", border: `1px dashed #7c3aed40` }}>
               <Icon name="Kanban" size={14} style={{ color: "#a78bfa" }} className="flex-shrink-0" />
               <span className="text-xs whitespace-nowrap" style={{ color: t.textMute }}>
-                Добавить канбан-доску для потенциальных клиентов?
+                Добавить новый канбан? <span style={{ color: t.textSub }}>(например для потенциальных клиентов)</span>
               </span>
               <button onClick={enableKanban}
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition whitespace-nowrap hover:opacity-90"
