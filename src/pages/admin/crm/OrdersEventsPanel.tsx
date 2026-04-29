@@ -15,7 +15,7 @@ const INSTALL_ACTIVE = ["contract", "prepaid", "install_scheduled"];
 export function OrdersEventsPanel({ allClients, loading, onSelect }: Props) {
   const t = useTheme();
   const [eventDays, setEventDays] = useState<1 | 2 | 3 | 7>(3);
-  const [collapsed, setCollapsed] = useState(false);
+  const [collapsed, setCollapsed] = useState(true);
   const [pushAsked, setPushAsked] = useState(false);
 
   const now = new Date();
