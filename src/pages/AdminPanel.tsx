@@ -1,20 +1,20 @@
 import { useState, useEffect } from "react";
 import Icon from "@/components/ui/icon";
-import TabPrices from "./admin/TabPrices";
-import TabRules from "./admin/TabRules";
-import TabPrompt from "./admin/TabPrompt";
-import TabFaq from "./admin/TabFaq";
-import TabQuestions from "./admin/TabQuestions";
-import TabCorrections from "./admin/TabCorrections";
-import CrmPanel from "./admin/crm/CrmPanel";
-import { setCrmToken } from "./admin/crm/crmApi";
-import TeamPanel from "./admin/team/TeamPanel";
-import OwnAgentTeaser from "./admin/own-agent/OwnAgentTeaser";
-import OwnAgentEditor from "./admin/own-agent/OwnAgentEditor";
+import TabPrices from "./admin/webapp/TabPrices";
+import TabRules from "./admin/webapp/TabRules";
+import TabPrompt from "./admin/webapp/TabPrompt";
+import TabFaq from "./admin/webapp/TabFaq";
+import TabQuestions from "./admin/webapp/TabQuestions";
+import TabCorrections from "./admin/webapp/TabCorrections";
+import CrmPanel from "./admin/webapp/crm/CrmPanel";
+import { setCrmToken } from "./admin/webapp/crm/crmApi";
+import TeamPanel from "./admin/webapp/team/TeamPanel";
+import OwnAgentTeaser from "./admin/webapp/own-agent/OwnAgentTeaser";
+import OwnAgentEditor from "./admin/webapp/own-agent/OwnAgentEditor";
 import { useAuth } from "@/context/AuthContext";
 import AuthModal from "@/components/AuthModal";
-import type { AgentSubTab } from "./admin/types";
-import type { Theme } from "./admin/crm/themeContext";
+import type { AgentSubTab } from "./admin/webapp/types";
+import type { Theme } from "./admin/webapp/crm/themeContext";
 
 // Роли с доступом к /company
 const ALLOWED_ROLES = ["installer", "company", "manager"];
