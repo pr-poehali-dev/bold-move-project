@@ -36,26 +36,34 @@ export function WLPipelineEvents({ companies, onSelect }: Props) {
   const [range,     setRange]     = useState<Range>(7);
   const [collapsed, setCollapsed] = useState(true);
 
-  const now     = new Date();
-  const endDate = new Date(now);
-  // range=1 → конец сегодня, range=2 → конец завтра, range=3/7 → +N дней
-  endDate.setDate(now.getDate() + range - 1);
-  endDate.setHours(23, 59, 59, 999);
+  const now = new Date();
 
-  // Компании с next_action_date в диапазоне (не в отказе)
+  // Строгие границы: start = начало сегодня (или завтра), end = конец последнего дня
+  const start = new Date(now); start.setHours(0, 0, 0, 0);
+  if (range === 2) start.setDate(start.getDate() + 1); // Зав → с завтра 00:00
+  const end = new Date(start);
+  if (range === 1) { /* end = конец сегодня */ }
+  else if (range === 2) { /* end = конец завтра */ }
+  else { end.setDate(new Date().getDate() + range - 1); }
+  end.setHours(23, 59, 59, 999);
+
+  // Только будущие/сегодняшние в диапазоне (не в отказе, не просроченные)
   const upcoming = companies
     .filter(c => c.next_action_date && c.status !== "rejected")
     .filter(c => {
       const d = new Date(c.next_action_date);
-      return d <= endDate;
+      return d >= start && d <= end;
     })
     .sort((a, b) => new Date(a.next_action_date).getTime() - new Date(b.next_action_date).getTime());
 
-  // Просроченные (дата прошла, не отказ)
-  const overdue = upcoming.filter(c => new Date(c.next_action_date) < now);
-  const future  = upcoming.filter(c => new Date(c.next_action_date) >= now);
+  // Просроченные (дата < начало сегодня, не отказ) — показываем всегда вне диапазона
+  const overdue = companies.filter(c =>
+    c.next_action_date && c.status !== "rejected" && new Date(c.next_action_date) < start
+  ).sort((a, b) => new Date(a.next_action_date).getTime() - new Date(b.next_action_date).getTime());
 
-  const total = upcoming.length;
+  const future = upcoming; // все в диапазоне — уже >= start, значит не просрочены
+
+  const total = upcoming.length + overdue.length;
 
   // Нет действий 7+ дней: статус не rejected, и либо дата не заполнена,
   // либо дата прошла 7+ дней назад
