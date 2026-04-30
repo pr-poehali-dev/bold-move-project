@@ -27,7 +27,7 @@ function resolveEventColor(eventType: string): string {
   return KANBAN_COLS.find(c => c.id === colId)?.color || "#8b5cf6";
 }
 
-export default function CrmCalendar({ onSelectClient, canEdit: _canEdit = true }: { onSelectClient?: (id: number) => void; canEdit?: boolean }) {
+export default function CrmCalendar({ onSelectClient }: { onSelectClient?: (id: number) => void; canEdit?: boolean }) {
   const t = useTheme();
   const today = new Date();
 

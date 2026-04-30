@@ -35,7 +35,7 @@ function saveLocalCards(cards: Client[]) {
   localStorage.setItem(LS_LOCAL_CARDS, JSON.stringify(cards));
 }
 
-export default function CrmKanban({ clients, loading, onStatusChange, onClientRemoved, onReload, onRemoveBoard, canEdit: _canEdit = true }: Props) {
+export default function CrmKanban({ clients, loading, onStatusChange, onClientRemoved, onReload, onRemoveBoard }: Props) {
   const t = useTheme();
   const [selected, setSelected]       = useState<Client | null>(null);
   const [dragging, setDragging]       = useState<Client | null>(null);

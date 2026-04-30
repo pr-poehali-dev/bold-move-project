@@ -43,14 +43,12 @@ interface ColumnsProps {
   addCustomFinRow: (label: string, block: "income" | "costs") => void;
   deleteCustomFinRow: (key: string) => void;
   updateCustomFinRow: (key: string, label: string) => void;
-  canEdit?:          boolean;
   canFinance?:       boolean;
   canFiles?:         boolean;
   canFieldContacts?: boolean;
   canFieldAddress?:  boolean;
   canFieldDates?:    boolean;
   canFieldFinance?:  boolean;
-  canFieldNotes?:    boolean;
   canFieldFiles?:    boolean;
   canFieldCancel?:   boolean;
 }
@@ -61,9 +59,9 @@ export function DrawerColumns(props: ColumnsProps) {
     customRowVals, toggleHidden, setEditingBlock, saveWithLog, logAction, setCustomRowVals,
     deleteCustomBlock, updateCustomBlock, onDragStart, onDragOver, onDrop, onDropToCol, onAddBlock,
     rowVisibility, toggleRowVisibility, customFinRows, addCustomFinRow, deleteCustomFinRow, updateCustomFinRow,
-    canEdit: _canEdit = true, canFinance = true, canFiles = true,
+    canFinance = true, canFiles = true,
     canFieldContacts = true, canFieldAddress = true, canFieldDates = true,
-    canFieldFinance = true, canFieldNotes: _canFieldNotes = true, canFieldFiles = true, canFieldCancel = true,
+    canFieldFinance = true, canFieldFiles = true, canFieldCancel = true,
   } = props;
   const t = useTheme();
 

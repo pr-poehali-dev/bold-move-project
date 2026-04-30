@@ -243,14 +243,12 @@ export default function DrawerInfoTab({ data, client, setData, save, setComments
         addCustomFinRow={addCustomFinRow}
         deleteCustomFinRow={deleteCustomFinRow}
         updateCustomFinRow={updateCustomFinRow}
-        canEdit={canEdit}
         canFinance={canFinance}
         canFiles={canFiles}
         canFieldContacts={canFieldContacts}
         canFieldAddress={canFieldAddress}
         canFieldDates={canFieldDates}
         canFieldFinance={canFieldFinance}
-        canFieldNotes={canFieldNotes}
         canFieldFiles={canFieldFiles}
         canFieldCancel={canFieldCancel}
       />
