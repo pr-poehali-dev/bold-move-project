@@ -46,15 +46,15 @@ function ActionButtons({ c, onOpenPanel, onRunApiTests }: {
         }} className={btn} style={{ background: "rgba(167,139,250,0.12)", color: "#a78bfa", border: "1px solid rgba(167,139,250,0.25)" }}>
         <Icon name="LayoutDashboard" size={10} /> Панель
       </button>
+      <button onClick={() => onRunApiTests(c.company_id)}
+        className={btn} style={{ background: "rgba(16,185,129,0.10)", color: "#10b981", border: "1px solid rgba(16,185,129,0.22)" }}>
+        <Icon name="Zap" size={10} /> Живые API
+      </button>
       <button onClick={async () => {
           const tok = await loginAs(c.company_id);
           if (tok) onOpenPanel({ type: "agent", companyId: c.company_id }, tok);
         }} className={btn} style={{ background: "rgba(245,158,11,0.12)", color: "#f59e0b", border: "1px solid rgba(245,158,11,0.25)" }}>
         <Icon name="Pencil" size={10} /> Бренд
-      </button>
-      <button onClick={() => onRunApiTests(c.company_id)}
-        className={btn} style={{ background: "rgba(16,185,129,0.10)", color: "#10b981", border: "1px solid rgba(16,185,129,0.22)" }}>
-        <Icon name="Zap" size={10} /> Живые API
       </button>
     </div>
   );
