@@ -5,7 +5,7 @@ import { fetchTeam, removeMember, type TeamMember } from "./teamApi";
 import InviteMemberModal from "./InviteMemberModal";
 import ResetPasswordModal from "./ResetPasswordModal";
 import EditPermissionsModal from "./EditPermissionsModal";
-import { PERM_GROUPS } from "./PermissionsEditor";
+import { ALL_PERM_KEYS } from "./PermissionsEditor";
 
 interface Props { isDark: boolean }
 
@@ -161,8 +161,8 @@ function MemberCard({ member, isDark, onEditPermissions, onResetPassword, onRemo
   // Подсчёт активных прав
   const activeCount = member.permissions
     ? Object.values(member.permissions).filter(Boolean).length
-    : PERM_GROUPS.length;
-  const totalCount  = PERM_GROUPS.length;
+    : ALL_PERM_KEYS.length;
+  const totalCount  = ALL_PERM_KEYS.length;
 
   const isPwdPending = member.has_pending_password === true;
 

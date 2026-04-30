@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, type Dispatch, type SetStateAction } from "react";
 import { Client, STATUS_LABELS } from "./crmApi";
 import { useTheme } from "./themeContext";
 import { Section } from "./drawerComponents";
@@ -20,7 +20,7 @@ interface Props {
   client: Client;
   setData: (c: Client) => void;
   save: (patch: Partial<Client>) => void;
-  setComments: React.Dispatch<React.SetStateAction<{ text: string; date: string }[]>>;
+  setComments: Dispatch<SetStateAction<{ text: string; date: string }[]>>;
   hideHidden?: boolean;
   canEdit?:          boolean;
   canOrdersEdit?:    boolean;
