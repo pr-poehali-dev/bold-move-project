@@ -1,0 +1,135 @@
+import { useState, useEffect, useCallback } from "react";
+import Icon from "@/components/ui/icon";
+import { AUTH_URL } from "./wlTypes";
+import type { DemoPipelineCompany, DemoStatus, PanelView } from "./wlTypes";
+import { WLPipelineKanban } from "./WLPipelineKanban";
+import { WLPipelineList }   from "./WLPipelineList";
+import { WLPipelineDrawer } from "./WLPipelineDrawer";
+
+interface Props {
+  refreshTrigger:  number;
+  onOpenPanel:     (p: PanelView, token?: string) => void;
+  onRunApiTests:   (cid: number) => void;
+}
+
+type ViewMode = "kanban" | "list";
+
+const masterToken = () => localStorage.getItem("mp_user_token") || "";
+
+export function WLPipeline({ refreshTrigger, onOpenPanel, onRunApiTests }: Props) {
+  const [companies, setCompanies] = useState<DemoPipelineCompany[]>([]);
+  const [loading,   setLoading]   = useState(false);
+  const [view,      setView]      = useState<ViewMode>("kanban");
+  const [filter,    setFilter]    = useState<DemoStatus | "all">("all");
+  const [selected,  setSelected]  = useState<DemoPipelineCompany | null>(null);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const r = await fetch(`${AUTH_URL}?action=admin-demo-companies`, {
+        headers: { "X-Authorization": masterToken() },
+      });
+      const d = await r.json();
+      setCompanies((d.companies || []).filter((c: DemoPipelineCompany) => !c.deleted));
+    } finally { setLoading(false); }
+  }, []);
+
+  useEffect(() => { load(); }, [load, refreshTrigger]);
+
+  const handleMove = async (demoId: number, status: DemoStatus) => {
+    setCompanies(prev => prev.map(c => c.demo_id === demoId ? { ...c, status } : c));
+    await fetch(`${AUTH_URL}?action=admin-update-demo`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Authorization": masterToken() },
+      body: JSON.stringify({ demo_id: demoId, status }),
+    });
+  };
+
+  const handleUpdate = (patch: Partial<DemoPipelineCompany>) => {
+    if (!selected) return;
+    const updated = { ...selected, ...patch };
+    setCompanies(prev => prev.map(c => c.demo_id === selected.demo_id ? updated : c));
+    setSelected(updated);
+  };
+
+  const handleDelete = () => {
+    if (!selected) return;
+    setCompanies(prev => prev.filter(c => c.demo_id !== selected.demo_id));
+  };
+
+  if (loading && companies.length === 0) {
+    return (
+      <div className="flex items-center gap-2 text-white/30 text-xs py-4">
+        <div className="w-3 h-3 border-2 border-white/15 border-t-violet-400 rounded-full animate-spin" />
+        Загрузка...
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      {/* Заголовок + переключатель */}
+      <div className="flex items-center gap-3 mb-1">
+        <div className="flex items-center gap-2">
+          <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: "#8b5cf620" }}>
+            <Icon name="Kanban" size={14} style={{ color: "#8b5cf6" }} />
+          </div>
+          <h2 className="text-sm font-black uppercase tracking-wider" style={{ color: "#8b5cf6" }}>
+            Pipeline ({companies.length})
+          </h2>
+        </div>
+
+        <div className="ml-auto flex items-center gap-2">
+          {/* Переключатель вид */}
+          <div className="flex items-center rounded-lg overflow-hidden" style={{ border: "1px solid rgba(255,255,255,0.08)" }}>
+            {([["kanban", "Kanban"], ["list", "List"]] as [ViewMode, string][]).map(([id, icon]) => (
+              <button key={id} onClick={() => setView(id)}
+                className="px-3 py-1.5 text-[10px] font-bold transition flex items-center gap-1"
+                style={{
+                  background: view === id ? "rgba(139,92,246,0.2)" : "transparent",
+                  color:      view === id ? "#a78bfa" : "rgba(255,255,255,0.3)",
+                }}>
+                <Icon name={id === "kanban" ? "LayoutGrid" : "List"} size={11} />
+                {icon}
+              </button>
+            ))}
+          </div>
+          <button onClick={load} className="text-[10px] text-white/30 hover:text-white/60 transition flex items-center gap-1">
+            <Icon name="RefreshCw" size={10} /> Обновить
+          </button>
+        </div>
+      </div>
+
+      {companies.length === 0 && !loading ? (
+        <div className="text-center py-10 text-white/20 text-sm">
+          Нет спарсенных компаний — запусти парсер выше
+        </div>
+      ) : view === "kanban" ? (
+        <WLPipelineKanban
+          companies={companies}
+          onSelect={setSelected}
+          onMove={handleMove}
+        />
+      ) : (
+        <WLPipelineList
+          companies={companies}
+          filterStatus={filter}
+          onFilterChange={setFilter}
+          onSelect={setSelected}
+        />
+      )}
+
+      {/* Drawer */}
+      {selected && (
+        <WLPipelineDrawer
+          company={selected}
+          onClose={() => setSelected(null)}
+          onUpdate={handleUpdate}
+          onDelete={handleDelete}
+          onOpenPanel={(p, tok) => { setSelected(null); onOpenPanel(p, tok); }}
+          onRunApiTests={(cid) => { setSelected(null); onRunApiTests(cid); }}
+        />
+      )}
+    </div>
+  );
+}

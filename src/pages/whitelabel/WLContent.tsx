@@ -1,12 +1,11 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Icon from "@/components/ui/icon";
-import { AUTH_URL } from "./wlTypes";
 import type { CheckResult, PanelView } from "./wlTypes";
 import { WLApiTestsModal, useApiChecks } from "./WLApiTests";
 import { WLPanelView } from "./WLPanelView";
 import { WLSiteParser } from "./WLSiteParser";
-import { WLDemoCompanies } from "./WLDemoCompanies";
+import { WLPipeline } from "./WLPipeline";
 
 export function WLContent() {
   const navigate = useNavigate();
@@ -49,22 +48,6 @@ export function WLContent() {
     setIframeToken(null);
   };
 
-  const handleLoginAs = async (companyId: number): Promise<string | null> => {
-    const masterToken = localStorage.getItem("mp_user_token");
-    await fetch(`${AUTH_URL}?action=admin-ensure-balance`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "X-Authorization": masterToken || "" },
-      body: JSON.stringify({ user_id: companyId, min_balance: 10, sync_name: true }),
-    });
-    const r = await fetch(`${AUTH_URL}?action=admin-login-as`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "X-Authorization": masterToken || "" },
-      body: JSON.stringify({ user_id: companyId }),
-    });
-    const d = await r.json();
-    return d.token || null;
-  };
-
   if (panel) {
     return (
       <WLPanelView
@@ -101,11 +84,10 @@ export function WLContent() {
             onCreated={(_companyId, _token) => setRefreshTrigger(t => t + 1)}
           />
 
-          <WLDemoCompanies
+          <WLPipeline
             refreshTrigger={refreshTrigger}
             onOpenPanel={handleOpenPanel}
-            onRunApiTests={(cid) => check_runAll(cid)}
-            onLoginAs={handleLoginAs}
+            onRunApiTests={check_runAll}
           />
         </div>
       </div>

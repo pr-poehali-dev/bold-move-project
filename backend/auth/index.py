@@ -1451,27 +1451,99 @@ def handler(event: dict, context) -> dict:
             SELECT dc.id, dc.site_url, dc.created_at,
                    u.id, u.email, u.company_name, u.bot_name, u.brand_color,
                    u.support_phone, u.estimates_balance, u.has_own_agent,
-                   u.brand_logo_url, u.removed_at
+                   u.brand_logo_url, u.removed_at,
+                   dc.status, dc.contact_name, dc.contact_phone, dc.contact_position,
+                   dc.notes, dc.next_action, dc.next_action_date
             FROM {SCHEMA}.demo_companies dc
             JOIN {SCHEMA}.users u ON u.id = dc.company_id
             ORDER BY dc.created_at DESC
         """)
         rows = cur.fetchall()
         return ok({"companies": [{
-            "demo_id":          r[0],
-            "site_url":         r[1],
-            "created_at":       str(r[2])[:16] if r[2] else "",
-            "company_id":       r[3],
-            "email":            r[4] or "",
-            "company_name":     r[5] or "",
-            "bot_name":         r[6] or "",
-            "brand_color":      r[7] or "#8b5cf6",
-            "support_phone":    r[8] or "",
+            "demo_id":           r[0],
+            "site_url":          r[1],
+            "created_at":        str(r[2])[:16] if r[2] else "",
+            "company_id":        r[3],
+            "email":             r[4] or "",
+            "company_name":      r[5] or "",
+            "bot_name":          r[6] or "",
+            "brand_color":       r[7] or "#8b5cf6",
+            "support_phone":     r[8] or "",
             "estimates_balance": r[9] or 0,
-            "has_own_agent":    bool(r[10]),
-            "brand_logo_url":   r[11] or "",
-            "deleted":          r[12] is not None,
+            "has_own_agent":     bool(r[10]),
+            "brand_logo_url":    r[11] or "",
+            "deleted":           r[12] is not None,
+            "status":            r[13] or "new",
+            "contact_name":      r[14] or "",
+            "contact_phone":     r[15] or "",
+            "contact_position":  r[16] or "",
+            "notes":             r[17] or "",
+            "next_action":       r[18] or "",
+            "next_action_date":  str(r[19]) if r[19] else "",
         } for r in rows]})
+
+    # ── Мастер: обновить данные демо-компании (pipeline) ─────────────────────
+    if action == "admin-update-demo" and method == "POST":
+        if not token:
+            return err("Требуется авторизация", 401)
+        cur.execute(f"""
+            SELECT u.email FROM {SCHEMA}.user_sessions s
+            JOIN {SCHEMA}.users u ON u.id = s.user_id
+            WHERE s.token=%s AND s.expires_at > NOW()
+        """, (token,))
+        row = cur.fetchone()
+        if not row or row[0] != "19.jeka.94@gmail.com":
+            return err("Доступ только для мастера", 403)
+
+        demo_id = body.get("demo_id")
+        if not demo_id:
+            return err("demo_id обязателен")
+
+        # Поля demo_companies
+        dc_allowed = ["status", "contact_name", "contact_phone", "contact_position",
+                      "notes", "next_action", "next_action_date"]
+        # Поля users (бренд)
+        u_allowed  = ["company_name", "bot_name", "brand_color", "support_phone",
+                      "support_email", "telegram", "website", "working_hours", "pdf_footer_address"]
+
+        dc_sets, dc_vals = [], []
+        u_sets,  u_vals  = [], []
+
+        for key in dc_allowed:
+            if key in body:
+                dc_sets.append(f"{key} = %s")
+                val = body[key]
+                dc_vals.append(val if val not in ("", None) else None)
+
+        for key in u_allowed:
+            if key in body:
+                u_sets.append(f"{key} = %s")
+                val = body[key]
+                u_sets_val = str(val).strip() if val not in ("", None) else None
+                u_vals.append(u_sets_val)
+
+        if dc_sets:
+            dc_vals.append(int(demo_id))
+            cur.execute(f"""
+                UPDATE {SCHEMA}.demo_companies
+                SET {', '.join(dc_sets)}
+                WHERE id = %s
+            """, dc_vals)
+
+        if u_sets:
+            # Получаем company_id
+            cur.execute(f"SELECT company_id FROM {SCHEMA}.demo_companies WHERE id=%s", (int(demo_id),))
+            cid_row = cur.fetchone()
+            if cid_row:
+                u_vals.append(cid_row[0])
+                cur.execute(f"""
+                    UPDATE {SCHEMA}.users
+                    SET {', '.join(u_sets)}
+                    WHERE id = %s
+                """, u_vals)
+
+        conn.commit()
+        return ok({"ok": True})
 
     # ── Мастер: удалить демо-компанию ────────────────────────────────────────
     if action == "admin-delete-demo-company" and method == "POST":
