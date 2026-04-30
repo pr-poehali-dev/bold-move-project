@@ -30,10 +30,15 @@ export default function InviteMemberModal({ isDark, onClose, onInvited, onUpdate
   // Созданный сотрудник
   const [member, setMember] = useState<TeamMember | null>(null);
 
-  // Шаг 2: права
+  // Шаг 2: права (дефолт для нового сотрудника)
   const [perms, setPerms] = useState<Permissions>({
-    crm_view: true, crm_edit: false, kanban: true, calendar: true,
-    finance: false, analytics: false, files: true, settings: false,
+    // Уровень 1 — вкладки
+    crm_view: true, agent_view: false,
+    // Уровень 2 — блоки CRM
+    crm_edit: false, kanban: true, calendar: true,
+    finance: false, analytics: false, files: true,
+    // Уровень 2 — агент
+    settings: false,
   });
 
   // Шаг 3: пароль

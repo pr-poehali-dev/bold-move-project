@@ -10,7 +10,7 @@ import { setCrmToken } from "./admin/crm/crmApi";
 import TeamPanel from "./admin/team/TeamPanel";
 import OwnAgentTeaser from "./admin/own-agent/OwnAgentTeaser";
 import OwnAgentEditor from "./admin/own-agent/OwnAgentEditor";
-import { useAuth } from "@/context/AuthContext";
+import { useAuth, hasPermission } from "@/context/AuthContext";
 import AuthModal from "@/components/AuthModal";
 import type { AgentSubTab } from "./admin/types";
 import type { Theme } from "./admin/crm/themeContext";
@@ -28,19 +28,20 @@ const AGENT_TABS: { id: AgentSubTab; label: string; icon: string }[] = [
   { id: "corrections", label: "Обучение",        icon: "GraduationCap" },
 ];
 
-const MAIN_TABS = (hasTeam: boolean) => [
-  { id: "crm"       as MainTab, icon: "LayoutDashboard", label: "CRM"     },
-  { id: "agent"     as MainTab, icon: "BrainCircuit",    label: "Агент"   },
-  ...(hasTeam ? [{ id: "team"      as MainTab, icon: "Users", label: "Команда" }] : []),
-  ...(hasTeam ? [{ id: "own-agent" as MainTab, icon: "Bot",   label: "Агент+"  }] : []),
+interface TabConfig { id: MainTab; icon: string; label: string; }
+
+const buildMainTabs = (canCrm: boolean, canAgent: boolean, hasTeam: boolean): TabConfig[] => [
+  ...(canCrm   ? [{ id: "crm"       as MainTab, icon: "LayoutDashboard", label: "CRM"        }] : []),
+  ...(canAgent ? [{ id: "agent"     as MainTab, icon: "BrainCircuit",    label: "Агент"      }] : []),
+  ...(hasTeam  ? [{ id: "team"      as MainTab, icon: "Users",           label: "Команда"    }] : []),
+  ...(hasTeam  ? [{ id: "own-agent" as MainTab, icon: "Bot",             label: "Свой агент" }] : []),
 ];
 
-function MobileTabMenu({ mainTab, isDark, hasTeam, onSelect }: {
-  mainTab: MainTab; isDark: boolean; hasTeam: boolean;
+function MobileTabMenu({ mainTab, isDark, tabs, onSelect }: {
+  mainTab: MainTab; isDark: boolean; tabs: TabConfig[];
   onSelect: (t: MainTab) => void;
 }) {
   const [open, setOpen] = useState(false);
-  const tabs = MAIN_TABS(hasTeam);
   const active = tabs.find(t => t.id === mainTab) ?? tabs[0];
 
   return (
@@ -95,7 +96,6 @@ export default function AdminPanel() {
   const initialOrderId = new URLSearchParams(window.location.search).get("order")
     ? Number(new URLSearchParams(window.location.search).get("order"))
     : null;
-  const [mainTab,  setMainTab]  = useState<MainTab>("crm");
   const [agentTab, setAgentTab] = useState<AgentSubTab>("prices");
   const [newItemHint, setNewItemHint] = useState<string | null>(null);
   const [theme, setTheme] = useState<Theme>("dark");
@@ -107,6 +107,27 @@ export default function AdminPanel() {
     !!authToken &&
     user.approved &&
     (user.is_master || ALLOWED_ROLES.includes(user.role));
+
+  // Права на вкладки
+  const canCrm   = hasPermission(user, "crm_view");
+  const canAgent = hasPermission(user, "agent_view");
+  const hasTeam  = user?.role === "company" || !!user?.is_master;
+  const mainTabs = buildMainTabs(canCrm, canAgent, hasTeam);
+
+  // Начальная вкладка — первая доступная
+  const [mainTab, setMainTab] = useState<MainTab>(() => {
+    if (canCrm)   return "crm";
+    if (canAgent) return "agent";
+    if (hasTeam)  return "team";
+    return "crm";
+  });
+
+  // Если текущая вкладка стала недоступна — переключиться на первую доступную
+  const safeSetMainTab = (tab: MainTab) => {
+    const allowed = mainTabs.map(t => t.id);
+    if (allowed.includes(tab)) { setMainTab(tab); return; }
+    setMainTab(mainTabs[0]?.id ?? "crm");
+  };
 
   // Прокидываем токен залогиненного пользователя в CRM
   useEffect(() => {
@@ -307,8 +328,8 @@ export default function AdminPanel() {
         <MobileTabMenu
           mainTab={mainTab}
           isDark={isDark}
-          hasTeam={user?.role === "company" || !!user?.is_master}
-          onSelect={setMainTab}
+          tabs={mainTabs}
+          onSelect={safeSetMainTab}
         />
 
         {/* Десктоп: название */}
@@ -346,13 +367,8 @@ export default function AdminPanel() {
       {/* Строка 2: главные табы — только на десктопе */}
       <div className="hidden sm:flex items-end gap-1 pt-2 flex-shrink-0 overflow-x-auto transition-colors duration-300 px-4"
         style={{ background: headerBg, borderBottom: `1px solid ${headerBorder}`, scrollbarWidth: "none" }}>
-        {([
-          { id: "crm"       as MainTab, label: "CRM",        icon: "LayoutDashboard" },
-          { id: "agent"     as MainTab, label: "Агент",       icon: "BrainCircuit"    },
-          ...(user?.role === "company" || user?.is_master ? [{ id: "team"      as MainTab, label: "Команда",    icon: "Users" }] : []),
-          ...(user?.role === "company" || user?.is_master ? [{ id: "own-agent" as MainTab, label: "Свой агент", icon: "Bot"   }] : []),
-        ]).map(tb => (
-          <button key={tb.id} onClick={() => setMainTab(tb.id)}
+        {mainTabs.map(tb => (
+          <button key={tb.id} onClick={() => safeSetMainTab(tb.id)}
             className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-semibold rounded-t-lg transition whitespace-nowrap flex-shrink-0 ${
               mainTab === tb.id
                 ? isDark ? "bg-violet-600/20 text-violet-300 border-b-2 border-violet-500" : "bg-violet-600/10 text-violet-700 border-b-2 border-violet-600"
@@ -365,7 +381,7 @@ export default function AdminPanel() {
       </div>
 
       {/* ── CRM ── */}
-      {mainTab === "crm" && (
+      {mainTab === "crm" && canCrm && (
         <div className="flex-1 overflow-hidden">
           {crmReady
             ? <CrmPanel theme={theme} initialOrderId={initialOrderId} />
@@ -375,14 +391,14 @@ export default function AdminPanel() {
       )}
 
       {/* ── Команда ── */}
-      {mainTab === "team" && (
+      {mainTab === "team" && hasTeam && (
         <div className="flex-1 flex flex-col overflow-hidden">
           <TeamPanel isDark={isDark} />
         </div>
       )}
 
       {/* ── Свой агент ── */}
-      {mainTab === "own-agent" && (
+      {mainTab === "own-agent" && hasTeam && (
         <div className="flex-1 flex flex-col overflow-hidden">
           {user?.has_own_agent
             ? <OwnAgentEditor isDark={isDark} />
@@ -391,7 +407,7 @@ export default function AdminPanel() {
       )}
 
       {/* ── Управление агентом ── */}
-      {mainTab === "agent" && (
+      {mainTab === "agent" && canAgent && (
         <div className="flex-1 flex flex-col overflow-hidden">
           {/* Суб-вкладки */}
           <div className="px-4 flex gap-0.5 pt-2 overflow-x-auto flex-shrink-0"
@@ -418,6 +434,17 @@ export default function AdminPanel() {
             {agentTab === "faq"         && <TabFaq         token={authToken} isDark={isDark} />}
             {agentTab === "corrections" && <TabCorrections token={authToken} isDark={isDark} />}
           </div>
+        </div>
+      )}
+
+      {/* ── Нет доступа ни к одной вкладке ── */}
+      {mainTabs.length === 0 && (
+        <div className="flex-1 flex flex-col items-center justify-center gap-3 text-center px-6">
+          <div className="w-12 h-12 rounded-2xl flex items-center justify-center" style={{ background: "rgba(239,68,68,0.12)" }}>
+            <Icon name="ShieldOff" size={22} className="text-red-400" />
+          </div>
+          <p className={`text-sm font-semibold ${isDark ? "text-white/60" : "text-gray-500"}`}>Нет доступа ни к одному разделу</p>
+          <p className={`text-xs ${isDark ? "text-white/30" : "text-gray-400"}`}>Обратитесь к администратору компании для получения прав</p>
         </div>
       )}
     </div>

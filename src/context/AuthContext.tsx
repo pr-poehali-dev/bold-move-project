@@ -26,14 +26,18 @@ export interface Brand {
 }
 
 export interface Permissions {
-  crm_view?:  boolean;
-  crm_edit?:  boolean;
-  finance?:   boolean;
-  calendar?:  boolean;
-  analytics?: boolean;
-  kanban?:    boolean;
-  files?:     boolean;
-  settings?:  boolean;
+  // Уровень 1 — вкладки
+  crm_view?:   boolean;  // вкладка CRM (список заявок)
+  agent_view?: boolean;  // вкладка Агент (цены, правила, промпт...)
+  // Уровень 2 — блоки внутри CRM
+  crm_edit?:   boolean;  // редактирование данных клиентов
+  finance?:    boolean;  // финансовые показатели и суммы
+  calendar?:   boolean;  // календарь замеров и монтажей
+  analytics?:  boolean;  // аналитика и отчёты
+  kanban?:     boolean;  // канбан-доска
+  files?:      boolean;  // файлы клиентов
+  // Уровень 2 — блоки внутри Агента
+  settings?:   boolean;  // настройки агента (промпт, база знаний)
 }
 
 /**
