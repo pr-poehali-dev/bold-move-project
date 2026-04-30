@@ -32,6 +32,7 @@ export interface Permissions {
   profile_view?:     boolean;  // видит раздел Профиль
   tariffs_view?:     boolean;  // видит раздел Тарифы и пакеты
   admin_panel_view?: boolean;  // видит раздел Панель управления
+  support_view?:     boolean;  // видит раздел Поддержка
 
   // ── Уровень 2: Блоки внутри CRM ─────────────────────────────────────────
   clients_view?:   boolean;  // видит раздел Клиенты
