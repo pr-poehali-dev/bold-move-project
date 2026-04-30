@@ -5,12 +5,13 @@ import Icon from "@/components/ui/icon";
 
 const ALL_STATUSES = [...LEAD_STATUSES, ...ORDER_STATUSES];
 
-export function BulkBar({ count, onChangeStatus, onDelete, onExport, onClear }: {
+export function BulkBar({ count, onChangeStatus, onDelete, onExport, onClear, canEdit = true }: {
   count: number;
   onChangeStatus: (s: string) => void;
   onDelete: () => void;
   onExport: () => void;
   onClear: () => void;
+  canEdit?: boolean;
 }) {
   const [statusOpen, setStatusOpen] = useState(false);
   const t = useTheme();
@@ -26,43 +27,47 @@ export function BulkBar({ count, onChangeStatus, onDelete, onExport, onClear }: 
         <span className="text-sm font-medium text-white">выбрано</span>
       </div>
 
-      {/* Сменить статус */}
-      <div className="relative">
-        <button onClick={() => setStatusOpen(o => !o)}
-          className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold transition text-white"
-          style={{ background: btnBg, border: `1px solid ${btnBorder}` }}>
-          <Icon name="RefreshCw" size={12} /> Статус <Icon name="ChevronDown" size={11} />
-        </button>
-        {statusOpen && (
-          <div className="absolute bottom-full mb-2 left-0 rounded-xl overflow-hidden shadow-2xl z-50 min-w-[180px]"
-            style={{ background: barBg, border: `1px solid ${barBorder}` }}>
-            {ALL_STATUSES.map(s => (
-              <button key={s} onClick={() => { onChangeStatus(s); setStatusOpen(false); }}
-                className="w-full flex items-center gap-2 px-3 py-2.5 text-xs text-left transition"
-                style={{ color: STATUS_COLORS[s] }}
-                onMouseEnter={e => (e.currentTarget.style.background = "rgba(255,255,255,0.08)")}
-                onMouseLeave={e => (e.currentTarget.style.background = "transparent")}>
-                <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: STATUS_COLORS[s] }} />
-                {STATUS_LABELS[s]}
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
+      {/* Сменить статус — только если canEdit */}
+      {canEdit && (
+        <div className="relative">
+          <button onClick={() => setStatusOpen(o => !o)}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold transition text-white"
+            style={{ background: btnBg, border: `1px solid ${btnBorder}` }}>
+            <Icon name="RefreshCw" size={12} /> Статус <Icon name="ChevronDown" size={11} />
+          </button>
+          {statusOpen && (
+            <div className="absolute bottom-full mb-2 left-0 rounded-xl overflow-hidden shadow-2xl z-50 min-w-[180px]"
+              style={{ background: barBg, border: `1px solid ${barBorder}` }}>
+              {ALL_STATUSES.map(s => (
+                <button key={s} onClick={() => { onChangeStatus(s); setStatusOpen(false); }}
+                  className="w-full flex items-center gap-2 px-3 py-2.5 text-xs text-left transition"
+                  style={{ color: STATUS_COLORS[s] }}
+                  onMouseEnter={e => (e.currentTarget.style.background = "rgba(255,255,255,0.08)")}
+                  onMouseLeave={e => (e.currentTarget.style.background = "transparent")}>
+                  <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: STATUS_COLORS[s] }} />
+                  {STATUS_LABELS[s]}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
-      {/* Экспорт CSV */}
+      {/* Экспорт CSV — всегда */}
       <button onClick={onExport}
         className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold transition text-white"
         style={{ background: btnBg, border: `1px solid ${btnBorder}` }}>
         <Icon name="Download" size={12} /> CSV
       </button>
 
-      {/* Удалить */}
-      <button onClick={onDelete}
-        className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold transition text-red-400"
-        style={{ background: "rgba(239,68,68,0.12)", border: "1px solid rgba(239,68,68,0.3)" }}>
-        <Icon name="Trash2" size={12} /> Удалить
-      </button>
+      {/* Удалить — только если canEdit */}
+      {canEdit && (
+        <button onClick={onDelete}
+          className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold transition text-red-400"
+          style={{ background: "rgba(239,68,68,0.12)", border: "1px solid rgba(239,68,68,0.3)" }}>
+          <Icon name="Trash2" size={12} /> Удалить
+        </button>
+      )}
 
       {/* Закрыть */}
       <button onClick={onClear} className="ml-auto text-white/60 hover:text-white transition">

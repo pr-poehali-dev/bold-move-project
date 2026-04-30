@@ -154,9 +154,11 @@ export default function ClientDrawer({ client, allClientOrders, onClose, onUpdat
               <Icon name={hideHidden ? "EyeOff" : "Eye"} size={15} />
             </button>
 
-            <button onClick={() => setConfirmDelete(true)} className="p-2 rounded-lg hover:bg-red-500/10 transition" style={{ color: t.textMute }}>
-              <Icon name="Trash2" size={15} />
-            </button>
+            {canEdit && (
+              <button onClick={() => setConfirmDelete(true)} className="p-2 rounded-lg hover:bg-red-500/10 transition" style={{ color: t.textMute }}>
+                <Icon name="Trash2" size={15} />
+              </button>
+            )}
             <button onClick={onClose} className="p-2 rounded-lg hover:bg-white/5 transition" style={{ color: t.textMute }}>
               <Icon name="X" size={16} />
             </button>

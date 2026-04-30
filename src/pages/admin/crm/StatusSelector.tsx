@@ -204,7 +204,22 @@ function MobileDrum({ status, onSave }: { status: string; onSave: (s: string) =>
 }
 
 // ── Экспортируемый компонент ──────────────────────────────────────────────
-export function StatusSelector({ status, onSave }: { status: string; onSave: (s: string) => void }) {
+export function StatusSelector({ status, onSave, readOnly = false }: {
+  status: string; onSave: (s: string) => void; readOnly?: boolean;
+}) {
+  if (readOnly) {
+    // Только просмотр — без возможности смены
+    const color = STATUS_COLORS[status] ?? "#8b5cf6";
+    return (
+      <div className="flex items-center gap-2 py-2 px-1">
+        <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ background: color }} />
+        <span className="text-sm font-semibold" style={{ color }}>
+          {STATUS_LABELS[status] ?? status}
+        </span>
+        <span className="text-xs opacity-50 ml-1">(только просмотр)</span>
+      </div>
+    );
+  }
   return (
     <>
       {/* Десктоп: воронка с кнопками */}

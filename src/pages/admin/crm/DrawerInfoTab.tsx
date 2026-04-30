@@ -192,11 +192,15 @@ export default function DrawerInfoTab({ data, client, setData, save, setComments
       {/* Статус воронки — на всю ширину */}
       {(!hideHidden || !hiddenBlocks.has("status")) && (
         <Section icon="GitBranch" title="Статус воронки" color="#8b5cf6"
-          onToggleHidden={() => toggleHidden("status")}
+          onToggleHidden={canEdit ? () => toggleHidden("status") : undefined}
           hidden={hiddenBlocks.has("status")}>
-          <StatusSelector status={data.status} onSave={s => {
-            saveWithLog({ status: s }, `Статус → ${STATUS_LABELS[s] || s}`, "GitBranch", "#8b5cf6");
-          }} />
+          <StatusSelector
+            status={data.status}
+            readOnly={!canEdit}
+            onSave={s => {
+              saveWithLog({ status: s }, `Статус → ${STATUS_LABELS[s] || s}`, "GitBranch", "#8b5cf6");
+            }}
+          />
         </Section>
       )}
 

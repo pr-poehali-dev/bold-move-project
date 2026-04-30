@@ -217,6 +217,7 @@ export default function CrmClients({ canEdit = true }: { canEdit?: boolean }) {
           onDelete={() => setShowDeleteConfirm(true)}
           onExport={bulkExportCSV}
           onClear={clearSelection}
+          canEdit={canEdit}
         />
       )}
 
