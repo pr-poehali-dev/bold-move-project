@@ -7,6 +7,7 @@ import type { CheckResult, WLCompany, PanelView } from "./whitelabel/wlTypes";
 import { Section, Field, LinkBtn, Spin, Center } from "./whitelabel/WLHelpers";
 import { WLApiTestsModal, useApiChecks } from "./whitelabel/WLApiTests";
 import { WLPanelView } from "./whitelabel/WLPanelView";
+import { WLSiteParser } from "./whitelabel/WLSiteParser";
 
 export default function WhiteLabel() {
   const { user, loading } = useAuth();
@@ -115,6 +116,9 @@ export default function WhiteLabel() {
         </header>
 
         <div className="max-w-4xl mx-auto px-5 py-8 space-y-8">
+
+          {/* Автозаполнение из сайта */}
+          <WLSiteParser companyId={DEMO_ID} />
 
           {/* Демо-компания */}
           <Section title="Демо-компания" icon="Building2" color="#a78bfa">

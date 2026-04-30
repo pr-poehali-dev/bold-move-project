@@ -1,4 +1,5 @@
 {
+  "parse-site": "https://functions.poehali.dev/0f8000f8-2d90-4883-a4d0-02078d604d00",
   "auth": "https://functions.poehali.dev/70179633-b3cd-4a23-b101-49c124403b0c",
   "crm-manager": "https://functions.poehali.dev/37f12dd8-c3c7-4bc9-9451-27dd60d66a3b",
   "deepgram-transcribe": "https://functions.poehali.dev/8fa7fd9e-1b44-4d3c-9f63-9eb83ab95ad9",

@@ -1,8 +1,9 @@
 import func2url from "@/../backend/func2url.json";
 
-export const AUTH_URL = (func2url as Record<string, string>)["auth"];
-export const AI_URL   = (func2url as Record<string, string>)["ai-chat"];
-export const PDF_URL  = (func2url as Record<string, string>)["generate-pdf"];
+export const AUTH_URL       = (func2url as Record<string, string>)["auth"];
+export const AI_URL         = (func2url as Record<string, string>)["ai-chat"];
+export const PDF_URL        = (func2url as Record<string, string>)["generate-pdf"];
+export const PARSE_SITE_URL = (func2url as Record<string, string>)["parse-site"];
 
 export const DEMO_ID       = 14;
 export const DEMO_EMAIL    = "whitelabel-test@demo.local";
