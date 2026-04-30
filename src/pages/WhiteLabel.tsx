@@ -260,33 +260,61 @@ export default function WhiteLabel() {
         </Section>
 
         {/* Войти в компанию по ID */}
-        <Section title="Войти в компанию по ID" icon="LogIn" color="#f59e0b">
-          <p className="text-[11px] text-white/40 mb-3">
-            Введи ID компании — открывай их сайт или входи в панель управления прямо здесь
-          </p>
-          <div className="flex gap-2 mb-3">
-            <input
-              type="number"
-              min={1}
-              value={previewId}
-              onChange={e => setPreviewId(e.target.value)}
-              onKeyDown={e => { if (e.key === "Enter" && previewId) openSite(Number(previewId)); }}
-              placeholder="ID компании, например: 42"
-              className="flex-1 rounded-xl px-3 py-2 text-xs font-mono bg-white/[0.05] border border-white/10 text-white placeholder-white/25 outline-none focus:border-amber-500/50 transition"
-            />
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <LinkBtn icon="Globe" label="Открыть их сайт"
-              onClick={() => previewId ? openSite(Number(previewId)) : undefined}
-              color="#f59e0b" />
-            <LinkBtn icon="LayoutDashboard" label="Войти в их панель"
-              onClick={() => previewId ? loginAsCompany(Number(previewId)) : undefined}
-              color="#a78bfa" />
-            <LinkBtn icon="Zap" label="Живые API"
-              onClick={() => previewId ? check_runAll(Number(previewId)) : undefined}
-              color="#10b981" />
-          </div>
-        </Section>
+        {(() => {
+          const foundCompany = previewId ? wlCompanies.find(c => c.id === Number(previewId)) : null;
+          return (
+            <Section title="Войти в компанию по ID" icon="LogIn" color="#f59e0b">
+              <p className="text-[11px] text-white/40 mb-3">
+                Введи ID компании — открывай их сайт или входи в панель управления прямо здесь
+              </p>
+              <div className="flex gap-2 mb-3">
+                <input
+                  type="number"
+                  min={1}
+                  value={previewId}
+                  onChange={e => setPreviewId(e.target.value)}
+                  onKeyDown={e => { if (e.key === "Enter" && previewId) openSite(Number(previewId)); }}
+                  placeholder="ID компании, например: 42"
+                  className="flex-1 rounded-xl px-3 py-2 text-xs font-mono bg-white/[0.05] border border-white/10 text-white placeholder-white/25 outline-none focus:border-amber-500/50 transition"
+                />
+              </div>
+
+              {/* Найденная WL-компания */}
+              {foundCompany && (
+                <div className="flex items-center gap-3 rounded-xl px-3 py-2.5 mb-3"
+                  style={{ background: foundCompany.brand_color + "10", border: `1px solid ${foundCompany.brand_color}35` }}>
+                  <div className="w-7 h-7 rounded-lg flex-shrink-0 flex items-center justify-center text-xs font-black"
+                    style={{ background: foundCompany.brand_color + "25", color: foundCompany.brand_color }}>
+                    {(foundCompany.company_name || foundCompany.name || "?")[0].toUpperCase()}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-xs font-bold truncate" style={{ color: foundCompany.brand_color }}>
+                      {foundCompany.company_name || foundCompany.name}
+                      {foundCompany.bot_name && <span className="ml-2 font-normal text-white/40">бот: {foundCompany.bot_name}</span>}
+                    </div>
+                    <div className="text-[10px] text-white/35 truncate">{foundCompany.email}{foundCompany.support_phone ? ` · ${foundCompany.support_phone}` : ""}</div>
+                  </div>
+                  <div className="text-[10px] font-bold flex-shrink-0"
+                    style={{ color: foundCompany.estimates_balance > 0 ? "#10b981" : "#ef4444" }}>
+                    {foundCompany.estimates_balance} смет
+                  </div>
+                </div>
+              )}
+
+              <div className="flex flex-wrap gap-2">
+                <LinkBtn icon="Globe" label="Открыть их сайт"
+                  onClick={() => previewId ? openSite(Number(previewId)) : undefined}
+                  color="#f59e0b" />
+                <LinkBtn icon="LayoutDashboard" label="Войти в их панель"
+                  onClick={() => previewId ? loginAsCompany(Number(previewId)) : undefined}
+                  color="#a78bfa" />
+                <LinkBtn icon="Zap" label="Живые API"
+                  onClick={() => previewId ? check_runAll(Number(previewId)) : undefined}
+                  color="#10b981" />
+              </div>
+            </Section>
+          );
+        })()}
 
         {/* Список WL-компаний */}
         <Section title="White-Label компании" icon="Sparkles" color="#10b981">
