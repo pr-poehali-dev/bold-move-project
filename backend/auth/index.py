@@ -1353,4 +1353,184 @@ def handler(event: dict, context) -> dict:
             "purchased_at":     str(r[9])[:10] if r[9] else "",
         } for r in rows]})
 
+    # ── Мастер: создать демо-компанию из данных парсинга ─────────────────────
+    if action == "admin-create-demo-company" and method == "POST":
+        if not token:
+            return err("Требуется авторизация", 401)
+        cur.execute(f"""
+            SELECT u.email FROM {SCHEMA}.user_sessions s
+            JOIN {SCHEMA}.users u ON u.id = s.user_id
+            WHERE s.token=%s AND s.expires_at > NOW()
+        """, (token,))
+        row = cur.fetchone()
+        if not row or row[0] != "19.jeka.94@gmail.com":
+            return err("Доступ только для мастера", 403)
+
+        site_url     = body.get("site_url", "").strip()
+        company_name = body.get("company_name", "").strip() or "Демо-компания"
+        brand        = body.get("brand", {}) or {}
+
+        if not site_url:
+            return err("site_url обязателен")
+
+        # Генерируем уникальный email для демо-аккаунта
+        import secrets as _sec
+        slug = re.sub(r"https?://", "", site_url).split("/")[0].replace(".", "-")
+        demo_email = f"demo-{slug}-{_sec.token_hex(4)}@demo.local"
+        temp_pass  = _sec.token_urlsafe(10)
+        pw_hash    = hash_password(temp_pass)
+
+        # Создаём пользователя
+        cur.execute(f"""
+            INSERT INTO {SCHEMA}.users
+              (email, password_hash, name, role, approved, has_own_agent,
+               estimates_balance, agent_purchased_at,
+               company_name, bot_name, bot_greeting,
+               brand_color, brand_logo_url, bot_avatar_url,
+               support_phone, support_email, telegram, website,
+               working_hours, pdf_footer_address)
+            VALUES (%s,%s,%s,'company',TRUE,TRUE,
+                    10, NOW(),
+                    %s,%s,%s,
+                    %s,%s,%s,
+                    %s,%s,%s,%s,
+                    %s,%s)
+            RETURNING id
+        """, (
+            demo_email, pw_hash, company_name,
+            company_name,
+            brand.get("bot_name") or company_name,
+            brand.get("bot_greeting") or f"Здравствуйте! Я помощник компании «{company_name}».",
+            brand.get("brand_color") or "#8b5cf6",
+            brand.get("brand_logo_url"),
+            brand.get("bot_avatar_url"),
+            brand.get("support_phone"),
+            brand.get("support_email"),
+            brand.get("telegram"),
+            brand.get("website"),
+            brand.get("working_hours"),
+            brand.get("pdf_footer_address"),
+        ))
+        new_id = cur.fetchone()[0]
+
+        # Создаём сессию (токен на 30 дней)
+        new_token = _sec.token_hex(32)
+        cur.execute(f"""
+            INSERT INTO {SCHEMA}.user_sessions (user_id, token, expires_at)
+            VALUES (%s, %s, NOW() + INTERVAL '30 days')
+        """, (new_id, new_token))
+
+        # Записываем в demo_companies
+        cur.execute(f"""
+            INSERT INTO {SCHEMA}.demo_companies (site_url, company_id)
+            VALUES (%s, %s)
+        """, (site_url, new_id))
+
+        conn.commit()
+        return ok({
+            "company_id": new_id,
+            "token":      new_token,
+            "email":      demo_email,
+            "password":   temp_pass,
+        })
+
+    # ── Мастер: список демо-компаний ─────────────────────────────────────────
+    if action == "admin-demo-companies" and method == "GET":
+        if not token:
+            return err("Требуется авторизация", 401)
+        cur.execute(f"""
+            SELECT u.email FROM {SCHEMA}.user_sessions s
+            JOIN {SCHEMA}.users u ON u.id = s.user_id
+            WHERE s.token=%s AND s.expires_at > NOW()
+        """, (token,))
+        row = cur.fetchone()
+        if not row or row[0] != "19.jeka.94@gmail.com":
+            return err("Доступ только для мастера", 403)
+
+        cur.execute(f"""
+            SELECT dc.id, dc.site_url, dc.created_at,
+                   u.id, u.email, u.company_name, u.bot_name, u.brand_color,
+                   u.support_phone, u.estimates_balance, u.has_own_agent,
+                   u.brand_logo_url, u.removed_at
+            FROM {SCHEMA}.demo_companies dc
+            JOIN {SCHEMA}.users u ON u.id = dc.company_id
+            ORDER BY dc.created_at DESC
+        """)
+        rows = cur.fetchall()
+        return ok({"companies": [{
+            "demo_id":          r[0],
+            "site_url":         r[1],
+            "created_at":       str(r[2])[:16] if r[2] else "",
+            "company_id":       r[3],
+            "email":            r[4] or "",
+            "company_name":     r[5] or "",
+            "bot_name":         r[6] or "",
+            "brand_color":      r[7] or "#8b5cf6",
+            "support_phone":    r[8] or "",
+            "estimates_balance": r[9] or 0,
+            "has_own_agent":    bool(r[10]),
+            "brand_logo_url":   r[11] or "",
+            "deleted":          r[12] is not None,
+        } for r in rows]})
+
+    # ── Мастер: удалить демо-компанию ────────────────────────────────────────
+    if action == "admin-delete-demo-company" and method == "POST":
+        if not token:
+            return err("Требуется авторизация", 401)
+        cur.execute(f"""
+            SELECT u.email FROM {SCHEMA}.user_sessions s
+            JOIN {SCHEMA}.users u ON u.id = s.user_id
+            WHERE s.token=%s AND s.expires_at > NOW()
+        """, (token,))
+        row = cur.fetchone()
+        if not row or row[0] != "19.jeka.94@gmail.com":
+            return err("Доступ только для мастера", 403)
+
+        demo_id = body.get("demo_id")
+        if not demo_id:
+            return err("demo_id обязателен")
+
+        # Получаем company_id
+        cur.execute(f"SELECT company_id FROM {SCHEMA}.demo_companies WHERE id=%s", (int(demo_id),))
+        row = cur.fetchone()
+        if not row:
+            return err("Демо-компания не найдена", 404)
+        company_id = row[0]
+
+        # Soft-delete пользователя
+        cur.execute(f"""
+            UPDATE {SCHEMA}.users
+            SET removed_at=NOW(), removed_name=name, removed_email=email,
+                email=CONCAT('_removed_', id, '_', email)
+            WHERE id=%s AND removed_at IS NULL
+        """, (company_id,))
+        # Удаляем из demo_companies
+        cur.execute(f"DELETE FROM {SCHEMA}.demo_companies WHERE id=%s", (int(demo_id),))
+        conn.commit()
+        return ok({"ok": True})
+
+    # ── Мастер: активировать агента для демо-компании ────────────────────────
+    if action == "admin-activate-agent" and method == "POST":
+        if not token:
+            return err("Требуется авторизация", 401)
+        cur.execute(f"""
+            SELECT u.email FROM {SCHEMA}.user_sessions s
+            JOIN {SCHEMA}.users u ON u.id = s.user_id
+            WHERE s.token=%s AND s.expires_at > NOW()
+        """, (token,))
+        row = cur.fetchone()
+        if not row or row[0] != "19.jeka.94@gmail.com":
+            return err("Доступ только для мастера", 403)
+
+        company_id = body.get("company_id")
+        if not company_id:
+            return err("company_id обязателен")
+        cur.execute(f"""
+            UPDATE {SCHEMA}.users
+            SET has_own_agent=TRUE, agent_purchased_at=COALESCE(agent_purchased_at, NOW())
+            WHERE id=%s
+        """, (int(company_id),))
+        conn.commit()
+        return ok({"ok": True})
+
     return err("Неизвестное действие", 404)
