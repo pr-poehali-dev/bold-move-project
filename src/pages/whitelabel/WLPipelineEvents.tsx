@@ -129,7 +129,7 @@ export function WLPipelineEvents({ companies, onSelect }: Props) {
     )}
 
     {/* ── Ближайшие шаги ───────────────────────────────────────────────────── */}
-    <div className="rounded-2xl overflow-hidden" style={{ background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.07)" }}>
+    <div className="rounded-2xl" style={{ background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.07)" }}>
 
       {/* Шапка */}
       <div

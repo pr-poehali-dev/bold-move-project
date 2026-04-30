@@ -101,13 +101,6 @@ export function WLPipeline({ refreshTrigger, onOpenPanel, onRunApiTests }: Props
         </div>
       </div>
 
-      {/* Ближайшие шаги */}
-      {companies.length > 0 && (
-        <div className="mt-4">
-          <WLPipelineEvents companies={companies} onSelect={setSelected} />
-        </div>
-      )}
-
       {companies.length === 0 && !loading ? (
         <div className="text-center py-10 text-white/20 text-sm">
           Нет спарсенных компаний — запусти парсер выше
@@ -127,6 +120,13 @@ export function WLPipeline({ refreshTrigger, onOpenPanel, onRunApiTests }: Props
           onOpenPanel={onOpenPanel}
           onRunApiTests={onRunApiTests}
         />
+      )}
+
+      {/* Ближайшие шаги — после списка/канбана */}
+      {companies.length > 0 && (
+        <div className="mt-4">
+          <WLPipelineEvents companies={companies} onSelect={setSelected} />
+        </div>
       )}
 
       {/* Drawer */}
