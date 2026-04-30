@@ -255,9 +255,9 @@ def handler(event: dict, context) -> dict:
                 if measure_date:
                     name = body.get("client_name", "") or "Клиент"
                     cur.execute(
-                        f"""INSERT INTO {SCHEMA}.calendar_events (client_id, title, description, event_type, start_time, color)
-                            VALUES (%s,%s,%s,'measure',%s,'#f59e0b')""",
-                        (new_id, f"Замер: {name}", body.get("phone",""), measure_date)
+                        f"""INSERT INTO {SCHEMA}.calendar_events (client_id, title, description, event_type, start_time, color, company_id)
+                            VALUES (%s,%s,%s,'measure',%s,'#f59e0b',%s)""",
+                        (new_id, f"Замер: {name}", body.get("phone",""), measure_date, company_id)
                     )
 
                 # Авто-календарь для монтажа
@@ -265,9 +265,9 @@ def handler(event: dict, context) -> dict:
                 if install_date:
                     name = body.get("client_name", "") or "Клиент"
                     cur.execute(
-                        f"""INSERT INTO {SCHEMA}.calendar_events (client_id, title, description, event_type, start_time, color)
-                            VALUES (%s,%s,%s,'install',%s,'#f97316')""",
-                        (new_id, f"Монтаж: {name}", body.get("address",""), install_date)
+                        f"""INSERT INTO {SCHEMA}.calendar_events (client_id, title, description, event_type, start_time, color, company_id)
+                            VALUES (%s,%s,%s,'install',%s,'#f97316',%s)""",
+                        (new_id, f"Монтаж: {name}", body.get("address",""), install_date, company_id)
                     )
 
                 conn.commit()
@@ -304,8 +304,8 @@ def handler(event: dict, context) -> dict:
                             cur.execute(f"UPDATE {SCHEMA}.calendar_events SET start_time=%s, title=%s WHERE id=%s",
                                         (body["measure_date"], f"Замер: {name}", ex[0]))
                         else:
-                            cur.execute(f"""INSERT INTO {SCHEMA}.calendar_events (client_id,title,event_type,start_time,color)
-                                VALUES (%s,%s,'measure',%s,'#f59e0b')""", (int(cid), f"Замер: {name}", body["measure_date"]))
+                            cur.execute(f"""INSERT INTO {SCHEMA}.calendar_events (client_id,title,event_type,start_time,color,company_id)
+                                VALUES (%s,%s,'measure',%s,'#f59e0b',%s)""", (int(cid), f"Замер: {name}", body["measure_date"], company_id))
 
                 # Синхронизируем дату монтажа в календаре
                 if "install_date" in body:
@@ -319,8 +319,8 @@ def handler(event: dict, context) -> dict:
                             cur.execute(f"UPDATE {SCHEMA}.calendar_events SET start_time=%s, title=%s WHERE id=%s",
                                         (body["install_date"], f"Монтаж: {name}", ex[0]))
                         else:
-                            cur.execute(f"""INSERT INTO {SCHEMA}.calendar_events (client_id,title,event_type,start_time,color)
-                                VALUES (%s,%s,'install',%s,'#f97316')""", (int(cid), f"Монтаж: {name}", body["install_date"]))
+                            cur.execute(f"""INSERT INTO {SCHEMA}.calendar_events (client_id,title,event_type,start_time,color,company_id)
+                                VALUES (%s,%s,'install',%s,'#f97316',%s)""", (int(cid), f"Монтаж: {name}", body["install_date"], company_id))
 
                 conn.commit()
                 return ok({"updated": True})
