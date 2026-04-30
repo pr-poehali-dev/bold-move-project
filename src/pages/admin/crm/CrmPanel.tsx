@@ -6,8 +6,10 @@ import CrmOrders from "./CrmOrders";
 import CrmCalendar from "./CrmCalendar";
 import CrmKanban from "./CrmKanban";
 import { ThemeContext, DARK, LIGHT, type Theme } from "./themeContext";
+import { SubstatusContext } from "./substatusContext";
 import { crmFetch, Client } from "./crmApi";
 import { useAuth, hasPermission, type Permissions } from "@/context/AuthContext";
+import { useSubstatuses } from "./OrdersTabs";
 
 const LS_KANBAN_ENABLED = "crm_kanban_board_enabled";
 
@@ -90,6 +92,8 @@ export default function CrmPanel({ theme, initialOrderId }: { theme: Theme; init
     if (tab === "kanban") setTab("orders");
   };
 
+  const { substatuses, setSubstatuses } = useSubstatuses();
+
   const ctx = useMemo(() => ({
     ...(theme === "dark" ? DARK : LIGHT),
     toggle: () => {},
@@ -98,6 +102,7 @@ export default function CrmPanel({ theme, initialOrderId }: { theme: Theme; init
   const t = ctx;
 
   return (
+    <SubstatusContext.Provider value={substatuses}>
     <ThemeContext.Provider value={ctx}>
       <div className="flex flex-col h-full transition-colors duration-300"
         style={{ background: t.bg }}>
@@ -201,6 +206,8 @@ export default function CrmPanel({ theme, initialOrderId }: { theme: Theme; init
               canFieldFinance={canFieldFinance}
               canFieldFiles={canFieldFiles}
               canFieldCancel={canFieldCancel}
+              substatuses={substatuses}
+              onSubstatusesChange={setSubstatuses}
             />
           )}
           {tab === "calendar" && canCalendar && <CrmCalendar onSelectClient={handleCalendarSelectClient} canEdit={canCalendarEdit} />}
@@ -208,5 +215,6 @@ export default function CrmPanel({ theme, initialOrderId }: { theme: Theme; init
         </div>
       </div>
     </ThemeContext.Provider>
+    </SubstatusContext.Provider>
   );
 }

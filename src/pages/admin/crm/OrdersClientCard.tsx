@@ -2,25 +2,31 @@ import { useState } from "react";
 import { Client, STATUS_LABELS, STATUS_COLORS } from "./crmApi";
 import Icon from "@/components/ui/icon";
 import { useTheme } from "./themeContext";
-import { NEXT_STATUS, NEXT_LABEL, ORDERS_TABS, INSTALL_STEPS } from "./ordersTypes";
+import { NEXT_STATUS, NEXT_LABEL, ORDERS_TABS } from "./ordersTypes";
+import { useSubstatuses } from "./substatusContext";
 
 
-function InstallProgress({ status }: { status: string }) {
-  const idx = INSTALL_STEPS.findIndex(s => s.status === status);
+function InstallProgress({ client }: { client: Client }) {
+  const allSubs = useSubstatuses();
+  const steps = allSubs.filter(s => s.parent_status === "installs");
+  if (steps.length === 0) return null;
+  const idx = steps.findIndex(s => String(s.id) === client.sub_status);
   return (
     <div className="flex items-center gap-0.5 mt-1.5">
-      {INSTALL_STEPS.map((s, i) => (
-        <div key={s.status} className="flex items-center gap-0.5">
+      {steps.map((s, i) => (
+        <div key={s.id} className="flex items-center gap-0.5">
           <div className="w-2 h-2 rounded-full transition-all"
             style={{ background: i <= idx ? s.color : "rgba(128,128,128,0.2)" }} />
-          {i < INSTALL_STEPS.length - 1 && (
+          {i < steps.length - 1 && (
             <div className="w-3 h-px" style={{ background: i < idx ? s.color : "rgba(128,128,128,0.15)" }} />
           )}
         </div>
       ))}
-      <span className="ml-1.5 text-[10px] font-medium" style={{ color: INSTALL_STEPS[idx]?.color || "#999" }}>
-        {INSTALL_STEPS[idx]?.label || ""}
-      </span>
+      {idx >= 0 && (
+        <span className="ml-1.5 text-[10px] font-medium" style={{ color: steps[idx].color }}>
+          {steps[idx].label}
+        </span>
+      )}
     </div>
   );
 }
@@ -86,7 +92,7 @@ export function OrdersClientCard({ c, onClick, onNextStep }: {
                 {localStorage.getItem(`order_title_${c.id}`) || `Заявка №${c.id}`}
               </span>
               {isInstall
-                ? <InstallProgress status={c.status} />
+                ? <InstallProgress client={c} />
                 : <span className="flex-shrink-0 text-[10px] px-1.5 py-0.5 rounded-md font-medium"
                     style={{ background: STATUS_COLORS[c.status] + "20", color: STATUS_COLORS[c.status] }}>
                     {STATUS_LABELS[c.status] || c.status}

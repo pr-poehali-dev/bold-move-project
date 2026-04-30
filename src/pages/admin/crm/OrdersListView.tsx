@@ -1,10 +1,10 @@
 import { Client } from "./crmApi";
 import Icon from "@/components/ui/icon";
 import { useTheme } from "./themeContext";
-import { ORDERS_TABS, INSTALL_STEPS } from "./ordersTypes";
+import { ORDERS_TABS } from "./ordersTypes";
 import { OrdersClientCard } from "./OrdersClientCard";
 import { OrdersClientRow } from "./OrdersClientRow";
-import { OrdersTabs } from "./OrdersTabs";
+import { OrdersTabs, Substatus } from "./OrdersTabs";
 import { SyncedCol } from "./syncedCols";
 
 interface TabDef {
@@ -34,12 +34,15 @@ interface Props {
   onSaveColor: (id: string, color: string) => void;
   onDeleteTab: (id: string) => void;
   onAddTab: () => void;
+  substatuses: Substatus[];
+  onSubstatusesChange: (list: Substatus[]) => void;
 }
 
 export function OrdersListView({
   allClients, loading, viewMode, search, activeTab, onSelect, onNextStep, onSetActiveTab,
   tabLabels, tabColors, hiddenTabs, customTabs,
   onSaveLabel, onSaveColor, onDeleteTab, onAddTab,
+  substatuses, onSubstatusesChange,
 }: Props) {
   const t = useTheme();
 
@@ -88,6 +91,8 @@ export function OrdersListView({
         onSaveColor={onSaveColor}
         onDeleteTab={onDeleteTab}
         onAddTab={onAddTab}
+        substatuses={substatuses}
+        onSubstatusesChange={onSubstatusesChange}
       />
 
       {loading ? (
@@ -96,17 +101,19 @@ export function OrdersListView({
         </div>
       ) : activeTab === "installs" ? (
         <div>
-          <div className="flex gap-1.5 flex-wrap mb-4">
-            {INSTALL_STEPS.map(s => {
-              const cnt = allClients.filter(c => c.status === s.status).length;
-              return (
-                <div key={s.status} className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs border font-medium"
-                  style={{ background: s.color + "10", borderColor: s.color + "30", color: s.color }}>
-                  {s.label} <span className="font-bold">{cnt}</span>
-                </div>
-              );
-            })}
-          </div>
+          {substatuses.filter(s => s.parent_status === "installs").length > 0 && (
+            <div className="flex gap-1.5 flex-wrap mb-4">
+              {substatuses.filter(s => s.parent_status === "installs").map(s => {
+                const cnt = allClients.filter(c => c.sub_status === String(s.id)).length;
+                return (
+                  <div key={s.id} className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs border font-medium"
+                    style={{ background: s.color + "10", borderColor: s.color + "30", color: s.color }}>
+                    {s.label} <span className="font-bold">{cnt}</span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
           {viewMode === "list" ? (
             <div className="space-y-2">
               {filterSearch(currentClients).map(renderRow)}

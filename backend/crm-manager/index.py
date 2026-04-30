@@ -36,7 +36,7 @@ def err(msg, code=400):
     return {"statusCode": code, "headers": {**CORS, "Content-Type": "application/json"}, "body": json.dumps({"error": msg}, ensure_ascii=False)}
 
 ALL_CLIENT_FIELDS = [
-    "client_name", "phone", "status", "measure_date", "install_date",
+    "client_name", "phone", "status", "sub_status", "measure_date", "install_date",
     "notes", "address", "area", "budget", "source",
     "contract_sum", "prepayment", "extra_payment", "extra_agreement_sum",
     "responsible_phone", "map_link", "tags",
@@ -169,7 +169,7 @@ def handler(event: dict, context) -> dict:
                 mode = qs.get("mode", "")  # "leads" | "orders" | "" = all
 
                 sql = f"""
-                    SELECT id, session_id, client_name, phone, status,
+                    SELECT id, session_id, client_name, phone, status, sub_status,
                            measure_date, install_date, notes, address, area, budget, source, created_at,
                            contract_sum, prepayment, extra_payment, extra_agreement_sum,
                            responsible_phone, map_link, tags,
@@ -664,6 +664,71 @@ def handler(event: dict, context) -> dict:
                     cur.execute(f"DELETE FROM {SCHEMA}.calendar_events WHERE id=%s", (int(cid),))
                 else:
                     cur.execute(f"DELETE FROM {SCHEMA}.calendar_events WHERE id=%s AND company_id=%s", (int(cid), company_id))
+                conn.commit()
+                return ok({"deleted": True})
+
+        # ── ORDER SUBSTATUSES ─────────────────────────────────────────────────
+        if resource == "substatuses":
+            if method == "GET":
+                parent = qs.get("parent_status")
+                if company_id is not None:
+                    if parent:
+                        cur.execute(f"""SELECT id, parent_status, label, color, position
+                            FROM {SCHEMA}.order_substatuses
+                            WHERE company_id=%s AND parent_status=%s
+                            ORDER BY position, id""", (company_id, parent))
+                    else:
+                        cur.execute(f"""SELECT id, parent_status, label, color, position
+                            FROM {SCHEMA}.order_substatuses
+                            WHERE company_id=%s
+                            ORDER BY parent_status, position, id""", (company_id,))
+                else:
+                    cur.execute(f"""SELECT id, parent_status, label, color, position
+                        FROM {SCHEMA}.order_substatuses
+                        ORDER BY company_id, parent_status, position, id""")
+                cols = [d[0] for d in cur.description]
+                return ok([dict(zip(cols, r)) for r in cur.fetchall()])
+
+            if method == "POST":
+                parent = body.get("parent_status", "")
+                label  = body.get("label", "").strip()
+                color  = body.get("color", "#a78bfa")
+                if not parent or not label:
+                    return err("parent_status and label required")
+                cur.execute(f"""SELECT COALESCE(MAX(position), -1) + 1
+                    FROM {SCHEMA}.order_substatuses WHERE company_id=%s AND parent_status=%s""",
+                    (company_id, parent))
+                pos = cur.fetchone()[0]
+                cur.execute(f"""INSERT INTO {SCHEMA}.order_substatuses
+                    (company_id, parent_status, label, color, position)
+                    VALUES (%s,%s,%s,%s,%s) RETURNING id""",
+                    (company_id, parent, label, color, pos))
+                new_id = cur.fetchone()[0]
+                conn.commit()
+                return ok({"id": new_id, "position": pos})
+
+            if method == "PUT":
+                sid = qs.get("id")
+                if not sid: return err("id required")
+                fields = ["label", "color", "position"]
+                sets, vals = [], []
+                for f in fields:
+                    if f in body:
+                        sets.append(f"{f}=%s")
+                        vals.append(body[f])
+                if not sets: return err("nothing to update")
+                vals.append(int(sid))
+                vals.append(company_id)
+                cur.execute(f"""UPDATE {SCHEMA}.order_substatuses
+                    SET {','.join(sets)} WHERE id=%s AND company_id=%s""", vals)
+                conn.commit()
+                return ok({"updated": True})
+
+            if method == "DELETE":
+                sid = qs.get("id")
+                if not sid: return err("id required")
+                cur.execute(f"""DELETE FROM {SCHEMA}.order_substatuses
+                    WHERE id=%s AND company_id=%s""", (int(sid), company_id))
                 conn.commit()
                 return ok({"deleted": True})
 

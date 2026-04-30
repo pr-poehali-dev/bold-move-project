@@ -151,6 +151,7 @@ export interface Client {
   measure_cost: number | null;
   install_cost: number | null;
   cancel_reason: string | null;
+  sub_status: string | null;
 }
 
 export function fmt(n: number): string {

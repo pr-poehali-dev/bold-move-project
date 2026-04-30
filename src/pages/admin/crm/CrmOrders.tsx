@@ -12,6 +12,7 @@ import {
 import { OrdersEventsPanel } from "./OrdersEventsPanel";
 import { OrdersKanbanView } from "./OrdersKanbanView";
 import { OrdersListView } from "./OrdersListView";
+import type { Substatus } from "./OrdersTabs";
 
 interface Props {
   clients: Client[];
@@ -30,9 +31,11 @@ interface Props {
   canFieldFinance?:  boolean;
   canFieldFiles?:    boolean;
   canFieldCancel?:   boolean;
+  substatuses?: Substatus[];
+  onSubstatusesChange?: (list: Substatus[]) => void;
 }
 
-export default function CrmOrders({ clients: allClients, loading, onStatusChange, onClientRemoved, onReload, initialOrderId, canEdit = true, canOrdersEdit = true, canFinance = true, canFiles = true, canFieldContacts = true, canFieldAddress = true, canFieldDates = true, canFieldFinance = true, canFieldFiles = true, canFieldCancel = true }: Props) {
+export default function CrmOrders({ clients: allClients, loading, onStatusChange, onClientRemoved, onReload, initialOrderId, canEdit = true, canOrdersEdit = true, canFinance = true, canFiles = true, canFieldContacts = true, canFieldAddress = true, canFieldDates = true, canFieldFinance = true, canFieldFiles = true, canFieldCancel = true, substatuses = [], onSubstatusesChange = () => {} }: Props) {
   const t = useTheme();
   const [search, setSearch]       = useState("");
   const [activeTab, setActiveTab] = useState("leads");
@@ -163,6 +166,8 @@ export default function CrmOrders({ clients: allClients, loading, onStatusChange
           onSaveColor={handleSaveColor}
           onDeleteTab={handleDeleteTab}
           onAddTab={handleAddTab}
+          substatuses={substatuses}
+          onSubstatusesChange={onSubstatusesChange}
         />
       )}
 

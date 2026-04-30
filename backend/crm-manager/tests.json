@@ -41,6 +41,12 @@
       "method": "GET",
       "path": "/?r=client_files&client_id=1",
       "expectedStatus": 200
+    },
+    {
+      "name": "GET substatuses",
+      "method": "GET",
+      "path": "/?r=substatuses",
+      "expectedStatus": 200
     }
   ]
 }
