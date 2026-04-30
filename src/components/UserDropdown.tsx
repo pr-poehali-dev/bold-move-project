@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { useAuth, CLIENT_ROLES } from "@/context/AuthContext";
+import { useAuth, CLIENT_ROLES, hasPermission } from "@/context/AuthContext";
 import Icon from "@/components/ui/icon";
 
 const ROLE_LABELS: Record<string, string> = {
@@ -114,19 +114,25 @@ export default function UserDropdown({ onShowProfile }: Props) {
               <>
                 <MenuItem icon="ClipboardList" label="Мои заявки"
                   onClick={() => { setOpen(false); window.location.href = "/my-orders"; }} />
-                <MenuItem icon="User" label="Профиль"
-                  onClick={() => { setOpen(false); onShowProfile(); }} />
+                {hasPermission(user, "profile_view") && (
+                  <MenuItem icon="User" label="Профиль"
+                    onClick={() => { setOpen(false); onShowProfile(); }} />
+                )}
               </>
             ) : (
               <>
-                <MenuItem icon="User" label="Профиль"
-                  onClick={() => { setOpen(false); onShowProfile(); }} />
-                {["installer","company"].includes(user.role) && (
+                {hasPermission(user, "profile_view") && (
+                  <MenuItem icon="User" label="Профиль"
+                    onClick={() => { setOpen(false); onShowProfile(); }} />
+                )}
+                {["installer","company"].includes(user.role) && hasPermission(user, "tariffs_view") && (
                   <MenuItem icon="Sparkles" label="Тарифы и пакеты"
                     onClick={() => { setOpen(false); window.location.href = "/pricing"; }} />
                 )}
-                <MenuItem icon="LayoutDashboard" label="Панель управления"
-                  onClick={() => { setOpen(false); window.location.href = "/company"; }} />
+                {hasPermission(user, "admin_panel_view") && (
+                  <MenuItem icon="LayoutDashboard" label="Панель управления"
+                    onClick={() => { setOpen(false); window.location.href = "/company"; }} />
+                )}
               </>
             )}
 

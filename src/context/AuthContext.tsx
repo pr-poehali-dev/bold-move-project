@@ -27,8 +27,11 @@ export interface Brand {
 
 export interface Permissions {
   // ── Уровень 1: Вкладки ───────────────────────────────────────────────────
-  crm_view?:       boolean;  // видит вкладку CRM
-  agent_view?:     boolean;  // видит вкладку Агент
+  crm_view?:         boolean;  // видит вкладку CRM
+  agent_view?:       boolean;  // видит вкладку Агент
+  profile_view?:     boolean;  // видит раздел Профиль
+  tariffs_view?:     boolean;  // видит раздел Тарифы и пакеты
+  admin_panel_view?: boolean;  // видит раздел Панель управления
 
   // ── Уровень 2: Блоки внутри CRM ─────────────────────────────────────────
   clients_view?:   boolean;  // видит раздел Клиенты
