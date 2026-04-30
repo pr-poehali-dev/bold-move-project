@@ -123,10 +123,10 @@ export default function WhiteLabel() {
           {/* Демо-компания */}
           <Section title="Демо-компания" icon="Building2" color="#a78bfa">
             <div className="grid sm:grid-cols-2 gap-3">
-              <Field label="Email"  value={DEMO_EMAIL} />
-              <Field label="Пароль" value={DEMO_PASSWORD} />
-              <Field label="ID"     value={`#${DEMO_ID}`} />
-              <Field label="Цвет"   value="#06b6d4 · циан" />
+              <Field label="Email"      value={DEMO_EMAIL} />
+              <Field label="Пароль"     value={DEMO_PASSWORD} />
+              <Field label="ID"         value={`#${DEMO_ID}`} />
+              <Field label="Демо-сайт"  value={`/?c=${DEMO_ID}`} href={`/?c=${DEMO_ID}`} />
             </div>
             <div className="flex flex-wrap gap-2 mt-4">
               <LinkBtn icon="Globe" label="Открыть их сайт"
