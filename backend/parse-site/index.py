@@ -371,31 +371,49 @@ def search_missing_fields(brand: dict, site_url: str) -> dict:
 
     print(f"[parse-site] searching missing: {list(to_search.keys())}")
 
-    # Один общий поиск по всем полям сразу
-    combined_query = " ".join(list(to_search.values())[:2])  # берём первые два
+    # Один поиск по сайту — получаем максимум контента
+    site_query = f'site:{domain} контакты email telegram адрес'
+    all_snippets = ""
     try:
         data = tavily_post("https://api.tavily.com/search", {
-            "query": combined_query,
+            "query": site_query,
             "search_depth": "basic",
-            "max_results": 3,
+            "max_results": 5,
             "include_raw_content": False,
         }, api_key, timeout=8)
-        snippets = " ".join(r.get("content", "") for r in data.get("results", []))
+        all_snippets = " ".join(r.get("content", "") for r in data.get("results", []))
+        print(f"[parse-site] search got {len(all_snippets)} chars")
     except Exception as e:
         print(f"[parse-site] search error: {e}")
-        return brand
 
-    if not snippets:
-        return brand
+    # Пробуем regex по всем полям из общего контента
+    for field in list(to_search.keys()):
+        if all_snippets:
+            try:
+                result = extract_with_regex(all_snippets, field)
+                if result:
+                    brand[field] = result
+                    print(f"[parse-site] found {field} from site search: {result}")
+                    continue
+            except Exception as e:
+                print(f"[parse-site] regex {field} error: {e}")
 
-    for field in to_search:
+        # Если не нашли — отдельный целевой поиск
         try:
-            result = extract_with_regex(snippets, field)
-            if result:
-                brand[field] = result
-                print(f"[parse-site] found {field}: {result}")
+            data2 = tavily_post("https://api.tavily.com/search", {
+                "query": to_search[field],
+                "search_depth": "basic",
+                "max_results": 3,
+                "include_raw_content": False,
+            }, api_key, timeout=6)
+            snippets2 = " ".join(r.get("content", "") for r in data2.get("results", []))
+            if snippets2:
+                result = extract_with_regex(snippets2, field)
+                if result:
+                    brand[field] = result
+                    print(f"[parse-site] found {field} from targeted search: {result}")
         except Exception as e:
-            print(f"[parse-site] regex {field} error: {e}")
+            print(f"[parse-site] targeted search {field} error: {e}")
 
     return brand
 
