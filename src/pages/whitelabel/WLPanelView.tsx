@@ -12,26 +12,36 @@ interface Props {
 function IframeSiteAuthed({ url, token }: { url: string; token: string }) {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [ready, setReady] = useState(false);
+  const tokenSentRef = useRef(false);
+
+  const sendToken = () => {
+    iframeRef.current?.contentWindow?.postMessage(
+      { type: "set-token", token },
+      window.location.origin
+    );
+  };
 
   useEffect(() => {
+    tokenSentRef.current = false;
     const handler = (e: MessageEvent) => {
       if (e.data === "iframe-ready") {
-        iframeRef.current?.contentWindow?.postMessage(
-          { type: "set-token", token },
-          window.location.origin
-        );
-        setReady(true);
+        sendToken();
+        if (!tokenSentRef.current) {
+          tokenSentRef.current = true;
+          // После применения токена iframe снова пришлёт iframe-ready — скрываем спиннер
+          setTimeout(() => setReady(true), 600);
+        }
       }
     };
     window.addEventListener("message", handler);
     return () => window.removeEventListener("message", handler);
-  }, [token]);
+  }, [token]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <div className="flex-1 relative">
       {!ready && (
         <div className="absolute inset-0 flex items-center justify-center" style={{ background: "#06060c" }}>
-          <Spin /><span className="ml-2 text-white/40 text-sm">Загрузка сайта...</span>
+          <Spin /><span className="ml-2 text-white/40 text-sm">Авторизация...</span>
         </div>
       )}
       <iframe

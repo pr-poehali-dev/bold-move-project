@@ -169,27 +169,40 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Принимаем токен от родительского окна (для iframe-режима /whitelabel)
   useEffect(() => {
+    if (window.parent === window) return; // не в iframe — пропускаем
+
+    let tokenApplied = false;
+
     const handler = async (e: MessageEvent) => {
       if (e.origin !== window.location.origin) return;
-      if (e.data?.type === "set-token" && e.data?.token) {
+      if (e.data?.type === "set-token" && e.data?.token && !tokenApplied) {
+        tokenApplied = true;
         const tok = e.data.token as string;
         localStorage.setItem(TOKEN_KEY, tok);
-        // Сообщаем родителю что готовы
-        window.parent.postMessage("iframe-ready", e.origin);
-        // Загружаем пользователя
         try {
           const r = await fetch(`${AUTH_URL}?action=me`, { headers: { "X-Authorization": `Bearer ${tok}` } });
           const d = await r.json();
           if (d.user) { setUser(d.user); setToken(tok); setCrmToken(tok); }
         } catch { /* ignore */ }
+        // Сообщаем родителю что токен применён
+        window.parent.postMessage("iframe-ready", window.location.origin);
       }
     };
     window.addEventListener("message", handler);
-    // Сообщаем родителю что страница загружена и готова принять токен
-    if (window.parent !== window) {
-      window.parent.postMessage("iframe-ready", window.location.origin);
-    }
-    return () => window.removeEventListener("message", handler);
+
+    // Сигналим родителю что iframe готов принять токен — повторяем каждые 200ms пока не получим токен
+    const ping = () => {
+      if (!tokenApplied) {
+        window.parent.postMessage("iframe-ready", window.location.origin);
+      }
+    };
+    ping();
+    const interval = setInterval(() => { if (!tokenApplied) ping(); else clearInterval(interval); }, 300);
+
+    return () => {
+      window.removeEventListener("message", handler);
+      clearInterval(interval);
+    };
   }, []);
 
   const persist = (tok: string, u: AuthUser) => {
