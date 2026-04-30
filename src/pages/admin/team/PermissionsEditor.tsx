@@ -1,3 +1,4 @@
+import { useState } from "react";
 import Icon from "@/components/ui/icon";
 import type { Permissions } from "@/context/AuthContext";
 
@@ -97,7 +98,12 @@ function Toggle({ checked, color, isDark, onChange, title }: {
   );
 }
 
+// Короткие названия для табов
+const TAB_LABELS = ["Вкладки", "CRM", "Агент", "Карточка"];
+
 export default function PermissionsEditor({ isDark, permissions, onChange }: Props) {
+  const [activeTab, setActiveTab] = useState(0);
+
   const muted   = isDark ? "rgba(255,255,255,0.35)" : "#9ca3af";
   const border  = isDark ? "rgba(255,255,255,0.06)" : "#f3f4f6";
   const text    = isDark ? "#fff" : "#0f1623";
@@ -129,9 +135,19 @@ export default function PermissionsEditor({ isDark, permissions, onChange }: Pro
     onChange(patch);
   };
 
+  // Подсчёт активных прав в секции для бейджа
+  const sectionActiveCount = (section: PermSection) =>
+    section.rows.reduce((n, r) => {
+      if (r.view && permissions[r.view]) n++;
+      if (r.edit && permissions[r.edit]) n++;
+      return n;
+    }, 0);
+
+  const section = PERM_TREE[activeTab];
+
   return (
-    <div className="flex flex-col gap-4">
-      {/* Шапка */}
+    <div className="flex flex-col gap-3">
+      {/* Шапка: "выдать все" */}
       <div className="flex items-center justify-between">
         <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: muted }}>
           Настройка доступа
@@ -144,83 +160,85 @@ export default function PermissionsEditor({ isDark, permissions, onChange }: Pro
         </button>
       </div>
 
-      {PERM_TREE.map(section => (
-        <div key={section.title}>
-          {/* Заголовок секции */}
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: muted }}>
-              {section.title}
-            </span>
-            <button
-              onClick={() => toggleSection(section)}
-              className="text-[10px] font-semibold transition"
-              style={{ color: "#a78bfa" }}>
-              {sectionAllChecked(section) ? "Снять" : "Выдать"}
+      {/* Табы-вкладки */}
+      <div className="flex gap-1 p-1 rounded-xl" style={{ background: isDark ? "rgba(255,255,255,0.04)" : "#f3f4f6" }}>
+        {PERM_TREE.map((s, i) => {
+          const active = activeTab === i;
+          const count  = sectionActiveCount(s);
+          return (
+            <button key={i} onClick={() => setActiveTab(i)}
+              className="flex-1 flex items-center justify-center gap-1 px-2 py-1.5 rounded-lg text-[11px] font-semibold transition relative"
+              style={{
+                background: active ? (isDark ? "#1e1b4b" : "#ffffff") : "transparent",
+                color: active ? "#a78bfa" : muted,
+                boxShadow: active ? "0 1px 4px rgba(0,0,0,0.3)" : "none",
+              }}>
+              {TAB_LABELS[i]}
+              {count > 0 && (
+                <span className="text-[9px] font-bold px-1 rounded-full"
+                  style={{ background: "#7c3aed40", color: "#a78bfa" }}>
+                  {count}
+                </span>
+              )}
             </button>
-          </div>
+          );
+        })}
+      </div>
 
-          {/* Шапка колонок — только если есть edit */}
-          {section.rows.some(r => r.edit) && (
-            <div className="flex items-center gap-2 px-3 mb-1">
-              <div className="flex-1" />
-              <span className="text-[9px] font-bold uppercase tracking-widest w-8 text-center" style={{ color: muted }}>👁</span>
-              <span className="text-[9px] font-bold uppercase tracking-widest w-8 text-center" style={{ color: muted }}>✏</span>
-            </div>
-          )}
+      {/* Заголовок активной секции + кнопка выдать/снять */}
+      <div className="flex items-center justify-between px-1">
+        <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: muted }}>
+          {section.title}
+        </span>
+        <button onClick={() => toggleSection(section)}
+          className="text-[10px] font-semibold transition"
+          style={{ color: "#a78bfa" }}>
+          {sectionAllChecked(section) ? "Снять все" : "Выдать все"}
+        </button>
+      </div>
 
-          {/* Строки */}
-          <div className="flex flex-col gap-1">
-            {section.rows.map(row => {
-              const vChecked = row.view ? !!permissions[row.view] : undefined;
-              const eChecked = row.edit ? !!permissions[row.edit] : undefined;
-              return (
-                <div key={row.label}
-                  className="flex items-center gap-2 px-3 py-2 rounded-xl"
-                  style={{
-                    background: (vChecked || eChecked)
-                      ? `${row.color}0e`
-                      : (isDark ? "rgba(255,255,255,0.025)" : "#f9fafb"),
-                    border: `1px solid ${(vChecked || eChecked) ? `${row.color}30` : border}`,
-                  }}>
-                  {/* Иконка */}
-                  <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
-                    style={{ background: `${row.color}18` }}>
-                    <Icon name={row.icon} size={13} style={{ color: row.color }} />
-                  </div>
-                  {/* Текст */}
-                  <div className="flex-1 min-w-0">
-                    <div className="text-xs font-semibold truncate" style={{ color: text }}>{row.label}</div>
-                    {row.desc && (
-                      <div className="text-[10px] truncate" style={{ color: textSub }}>{row.desc}</div>
-                    )}
-                  </div>
-                  {/* Переключатели */}
-                  {row.view ? (
-                    <Toggle
-                      checked={vChecked!}
-                      color={row.color}
-                      isDark={isDark}
-                      onChange={() => toggle(row.view!)}
-                      title="Видимость"
-                    />
-                  ) : <div className="w-8" />}
-                  {row.edit ? (
-                    <Toggle
-                      checked={eChecked!}
-                      color={row.color}
-                      isDark={isDark}
-                      onChange={() => toggle(row.edit!)}
-                      title="Редактирование"
-                    />
-                  ) : (
-                    section.rows.some(r => r.edit) ? <div className="w-8" /> : null
-                  )}
-                </div>
-              );
-            })}
-          </div>
+      {/* Шапка колонок 👁 ✏ — только если есть edit */}
+      {section.rows.some(r => r.edit) && (
+        <div className="flex items-center gap-2 px-3">
+          <div className="flex-1" />
+          <span className="text-[9px] font-bold w-8 text-center" style={{ color: muted }}>👁</span>
+          <span className="text-[9px] font-bold w-8 text-center" style={{ color: muted }}>✏</span>
         </div>
-      ))}
+      )}
+
+      {/* Строки активной секции */}
+      <div className="flex flex-col gap-1">
+        {section.rows.map(row => {
+          const vChecked = row.view ? !!permissions[row.view] : undefined;
+          const eChecked = row.edit ? !!permissions[row.edit] : undefined;
+          const active   = vChecked || eChecked;
+          return (
+            <div key={row.label}
+              className="flex items-center gap-2 px-3 py-2 rounded-xl"
+              style={{
+                background: active ? `${row.color}0e` : (isDark ? "rgba(255,255,255,0.025)" : "#f9fafb"),
+                border: `1px solid ${active ? `${row.color}30` : border}`,
+              }}>
+              <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
+                style={{ background: `${row.color}18` }}>
+                <Icon name={row.icon} size={13} style={{ color: row.color }} />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="text-xs font-semibold truncate" style={{ color: text }}>{row.label}</div>
+                {row.desc && (
+                  <div className="text-[10px] truncate" style={{ color: textSub }}>{row.desc}</div>
+                )}
+              </div>
+              {row.view
+                ? <Toggle checked={vChecked!} color={row.color} isDark={isDark} onChange={() => toggle(row.view!)} title="Видимость" />
+                : <div className="w-8" />}
+              {row.edit
+                ? <Toggle checked={eChecked!} color={row.color} isDark={isDark} onChange={() => toggle(row.edit!)} title="Редактирование" />
+                : section.rows.some(r => r.edit) ? <div className="w-8" /> : null}
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }
