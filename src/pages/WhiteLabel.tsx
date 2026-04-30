@@ -43,6 +43,7 @@ export default function WhiteLabel() {
   const [iframeToken, setIframeToken] = useState<string | null>(null);
   const [wlCompanies, setWlCompanies] = useState<WLCompany[]>([]);
   const [wlLoading, setWlLoading] = useState(false);
+  const [apiTestId, setApiTestId] = useState(DEMO_ID);
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
   useEffect(() => {
@@ -134,6 +135,8 @@ export default function WhiteLabel() {
   };
 
   const check_runAll = async (cid: number) => {
+    setApiTestId(cid);
+    setResults({ "brand-api": null, "ai-chat": null, "pdf": null });
     await check_brandApi(cid);
     await check_aiChat(cid);
     await check_pdf(cid);
@@ -214,6 +217,7 @@ export default function WhiteLabel() {
 
   /* ── ОСНОВНАЯ СТРАНИЦА ── */
   return (
+    <>
     <div className="min-h-screen text-white" style={{ background: "#06060c" }}>
 
       {/* Шапка */}
@@ -351,32 +355,51 @@ export default function WhiteLabel() {
           )}
         </Section>
 
-        {/* Тесты API */}
-        <Section title="Тесты API (живые)" icon="Beaker" color="#fbbf24">
-          {Object.keys(results).length === 0 ? (
-            <div className="text-[11px] text-white/30 py-1">
-              Введи ID компании выше и нажми «Живые API» — результаты появятся здесь
-            </div>
-          ) : (
-            <div className="space-y-2.5">
-              <TestRow id="brand-api" name="get-brand: бренд компании"
-                onRun={() => check_brandApi(Number(previewId) || DEMO_ID)} running={running} result={results["brand-api"]} />
-              <TestRow id="ai-chat" name="AI-чат: подмена контактов на бренд"
-                onRun={() => check_aiChat(Number(previewId) || DEMO_ID)} running={running} result={results["ai-chat"]} />
-              <TestRow id="pdf" name="generate-pdf: PDF с брендом компании"
-                onRun={() => check_pdf(Number(previewId) || DEMO_ID)} running={running} result={results["pdf"]} />
-            </div>
-          )}
-          <button onClick={() => check_runAll(Number(previewId) || DEMO_ID)} disabled={!!running}
-            className="mt-3 w-full py-2.5 rounded-xl text-xs font-bold transition disabled:opacity-50 flex items-center justify-center gap-2"
-            style={{ background: "#fbbf24", color: "#0a0a14" }}>
-            <Icon name="Play" size={13} />
-            {previewId ? `Прогнать все три для ID #${previewId}` : `Прогнать все три (демо #${DEMO_ID})`}
-          </button>
-        </Section>
-
       </div>
     </div>
+
+    {/* Модальное окно тестов API */}
+    {Object.keys(results).length > 0 && (
+      <div className="fixed inset-0 flex items-center justify-center z-[9999] px-4"
+        style={{ background: "rgba(0,0,0,0.7)" }}
+        onClick={() => setResults({})}>
+        <div className="w-full max-w-lg rounded-2xl overflow-hidden shadow-2xl"
+          style={{ background: "#0e0e1c", border: "1px solid rgba(255,255,255,0.1)" }}
+          onClick={e => e.stopPropagation()}>
+          {/* Шапка */}
+          <div className="flex items-center justify-between px-4 py-3"
+            style={{ borderBottom: "1px solid rgba(255,255,255,0.07)" }}>
+            <div className="flex items-center gap-2">
+              <Icon name="Beaker" size={14} style={{ color: "#fbbf24" }} />
+              <span className="text-sm font-black uppercase tracking-wider" style={{ color: "#fbbf24" }}>
+                Тесты API — ID #{apiTestId}
+              </span>
+            </div>
+            <button onClick={() => setResults({})}
+              className="text-white/40 hover:text-white/80 transition p-1">
+              <Icon name="X" size={14} />
+            </button>
+          </div>
+          {/* Результаты */}
+          <div className="p-4 space-y-2.5">
+            <TestRow id="brand-api" name="get-brand: бренд компании"
+              onRun={() => check_brandApi(apiTestId)} running={running} result={results["brand-api"]} />
+            <TestRow id="ai-chat" name="AI-чат: подмена контактов на бренд"
+              onRun={() => check_aiChat(apiTestId)} running={running} result={results["ai-chat"]} />
+            <TestRow id="pdf" name="generate-pdf: PDF с брендом компании"
+              onRun={() => check_pdf(apiTestId)} running={running} result={results["pdf"]} />
+          </div>
+          <div className="px-4 pb-4">
+            <button onClick={() => check_runAll(apiTestId)} disabled={!!running}
+              className="w-full py-2.5 rounded-xl text-xs font-bold transition disabled:opacity-50 flex items-center justify-center gap-2"
+              style={{ background: "#fbbf24", color: "#0a0a14" }}>
+              <Icon name="RotateCcw" size={12} /> Прогнать заново
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+    </>
   );
 }
 
