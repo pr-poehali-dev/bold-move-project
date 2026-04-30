@@ -120,7 +120,8 @@ def ask_openai(prompt: str) -> str:
 
 def extract_brand_info(site_url: str, page_text: str) -> dict:
     """Просит AI вытащить бренд-данные из текста страницы."""
-    prompt = f"""Ты парсишь сайт компании по натяжным потолкам (или смежный бизнес).
+    domain = re.sub(r"https?://", "", site_url).split("/")[0]
+    prompt = f"""Ты парсишь сайт компании (натяжные потолки или смежный бизнес).
 Сайт: {site_url}
 
 Текст со страницы:
@@ -128,29 +129,51 @@ def extract_brand_info(site_url: str, page_text: str) -> dict:
 {page_text}
 ---
 
-Извлеки следующие данные в формате JSON. Если данных нет — ставь null.
+Извлеки данные в формате JSON. Правила:
+- Если данных нет в тексте — ставь null
+- company_name: торговое название (без ООО/ИП если есть короткое брендовое имя)
+- bot_name: возьми ПЕРВОЕ слово из company_name как имя бота (например "РумЭксперт" → "РумЭксперт"). Не придумывай человеческие имена.
+- bot_greeting: "Здравствуйте! Я помощник компании [company_name]. Помогу рассчитать стоимость и ответить на вопросы." — подставь реальное название
+- support_phone: телефон в формате +7 (XXX) XXX-XX-XX
+- support_email: email компании (ищи на странице контактов, в футере)
+- telegram: telegram username или ссылка t.me/... (ищи в контактах, соцсетях)
+- website: домен без https:// (например: {domain})
+- working_hours: часы работы (например: Ежедневно 9:00-21:00)
+- pdf_footer_address: полный адрес (город, улица, дом) — ищи в контактах и футере
+- brand_color: ГЛАВНЫЙ цвет бренда в HEX — посмотри на кнопки, заголовки, логотип. Например: "#e63946" для красного, "#1d7afc" для синего. Не ставь null если видишь явный фирменный цвет.
 
 {{
-  "company_name": "Официальное название компании (ООО, ИП, или торговое название)",
-  "bot_name": "Имя для бота/менеджера (женское имя если есть, иначе null)",
-  "bot_greeting": "Приветствие бота (1-2 предложения от имени компании)",
-  "support_phone": "Телефон в формате +7 (XXX) XXX-XX-XX",
-  "support_email": "Email компании",
-  "telegram": "Telegram username без @ или полная ссылка",
-  "website": "Домен сайта без https:// (например: company.ru)",
-  "working_hours": "Часы работы (например: Ежедневно 9:00-21:00)",
-  "pdf_footer_address": "Полный адрес компании (город, улица, дом)",
-  "brand_color": "Основной цвет бренда в HEX (если заметен, иначе null)"
+  "company_name": "...",
+  "bot_name": "...",
+  "bot_greeting": "...",
+  "support_phone": "...",
+  "support_email": "...",
+  "telegram": "...",
+  "website": "...",
+  "working_hours": "...",
+  "pdf_footer_address": "...",
+  "brand_color": "..."
 }}
 
-Верни ТОЛЬКО JSON без markdown-обёртки.
+Верни ТОЛЬКО JSON без markdown-обёртки и пояснений.
 """
     raw = ask_openai(prompt)
     # Вырезаем JSON из ответа
     match = re.search(r"\{.*\}", raw, re.DOTALL)
     if not match:
         raise ValueError(f"AI не вернул JSON: {raw[:200]}")
-    return json.loads(match.group())
+    result = json.loads(match.group())
+
+    # Пост-обработка: если bot_name пустой — берём первое слово company_name
+    if not result.get("bot_name") and result.get("company_name"):
+        result["bot_name"] = result["company_name"].split()[0]
+
+    # Если bot_greeting пустой — генерируем из company_name
+    if not result.get("bot_greeting") and result.get("company_name"):
+        name = result["company_name"]
+        result["bot_greeting"] = f"Здравствуйте! Я помощник компании «{name}». Помогу рассчитать стоимость и ответить на вопросы."
+
+    return result
 
 def save_brand_to_db(company_id: int, brand: dict):
     """Сохраняет бренд-данные в таблицу users."""
