@@ -5,6 +5,7 @@ import type { MasterTab, BusinessUser, ProUser, AppUser, UserEstimate, AdminStat
 import MasterTabProfessionals from "./MasterTabProfessionals";
 import MasterTabAllUsers      from "./MasterTabAllUsers";
 import MasterTabDashboard     from "./MasterTabDashboard";
+import MasterTabWhiteLabel    from "./MasterTabWhiteLabel";
 
 const AUTH_URL = (func2url as Record<string, string>)["auth"];
 const MASTER_PASSWORD = "Sdauxbasstre228";
@@ -157,6 +158,7 @@ export default function MasterAdmin() {
     { id: "dashboard",     label: "Дашборд",         icon: "LayoutDashboard" },
     { id: "professionals", label: "Одобрение",        icon: "Users2", badge: pendingCount },
     { id: "all",           label: "Все пользователи", icon: "Users" },
+    { id: "whitelabel",    label: "White-Label",      icon: "Sparkles" },
   ];
 
   return (
@@ -231,6 +233,8 @@ export default function MasterAdmin() {
           onApprove={approveUser} onReload={loadAll}
         />
       )}
+
+      {tab === "whitelabel" && <MasterTabWhiteLabel />}
     </div>
   );
 }
