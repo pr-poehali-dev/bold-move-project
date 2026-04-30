@@ -482,12 +482,54 @@ def handler(event: dict, context) -> dict:
         except Exception:
             pass
 
-    site_url = (body.get("url") or "").strip()
+    site_url   = (body.get("url") or "").strip()
     company_id = int(body.get("company_id") or 14)
+    only_field = (body.get("only_field") or "").strip()  # если задано — ищем только одно поле
 
     if not site_url:
         return err("url обязателен")
 
+    # ── Режим поиска одного поля ─────────────────────────────────────────────
+    if only_field:
+        domain  = re.sub(r"https?://", "", site_url).split("/")[0]
+        # Читаем текущее название компании из БД
+        conn2 = get_conn(); cur2 = conn2.cursor()
+        cur2.execute(f"SELECT company_name FROM {SCHEMA}.users WHERE id=%s", (company_id,))
+        row2 = cur2.fetchone(); cur2.close(); conn2.close()
+        company = (row2[0] if row2 else None) or domain
+
+        queries = {
+            "support_email":      f'{domain} email почта контакты',
+            "telegram":           f'{company} telegram t.me',
+            "pdf_footer_address": f'{company} {domain} адрес офис город',
+        }
+        query = queries.get(only_field, f'{domain} {only_field}')
+        api_key = os.environ.get("TAVILY_API_KEY", "")
+        brand = {}
+        try:
+            data = tavily_post("https://api.tavily.com/search", {
+                "query": query, "search_depth": "basic",
+                "max_results": 5, "include_raw_content": False,
+            }, api_key, timeout=10)
+            snippets = " ".join(r.get("content", "") for r in data.get("results", []))
+            val = extract_with_regex(snippets, only_field) if snippets else None
+            if val:
+                brand[only_field] = val
+                save_brand_to_db(company_id, brand)
+        except Exception as e:
+            print(f"[parse-site] only_field search error: {e}")
+
+        label_map = {
+            "support_email": "Email", "telegram": "Telegram",
+            "pdf_footer_address": "Адрес", "brand_color": "Цвет бренда",
+        }
+        report = {
+            "filled":  [{"field": only_field, "label": label_map.get(only_field, only_field), "value": brand.get(only_field, "")}] if brand.get(only_field) else [],
+            "missing": [] if brand.get(only_field) else [{"field": only_field, "label": label_map.get(only_field, only_field)}],
+        }
+        return ok({"brand": brand, "report": report, "company_id": company_id})
+
+    # ── Полный парсинг ───────────────────────────────────────────────────────
     try:
         page_text = fetch_page_text(site_url)
     except ValueError as e:

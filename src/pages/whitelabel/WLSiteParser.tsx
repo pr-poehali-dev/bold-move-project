@@ -14,10 +14,21 @@ interface Props {
 }
 
 export function WLSiteParser({ companyId = DEMO_ID, onDone, onParsed }: Props) {
-  const [url, setUrl]         = useState("");
-  const [loading, setLoading] = useState(false);
-  const [report, setReport]   = useState<ParseReport | null>(null);
-  const [error, setError]     = useState<string | null>(null);
+  const [url, setUrl]           = useState("");
+  const [loading, setLoading]   = useState(false);
+  const [report, setReport]     = useState<ParseReport | null>(null);
+  const [error, setError]       = useState<string | null>(null);
+  const [searching, setSearching] = useState<string | null>(null); // поле которое сейчас ищем
+
+  const callParse = async (body: object) => {
+    const token = localStorage.getItem("mp_user_token");
+    const r = await fetch(PARSE_SITE_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Authorization": token || "" },
+      body: JSON.stringify(body),
+    });
+    return r.json();
+  };
 
   const run = async () => {
     const trimmed = url.trim();
@@ -26,22 +37,12 @@ export function WLSiteParser({ companyId = DEMO_ID, onDone, onParsed }: Props) {
     setReport(null);
     setError(null);
     try {
-      const token = localStorage.getItem("mp_user_token");
-      const r = await fetch(PARSE_SITE_URL, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-Authorization": token || "",
-        },
-        body: JSON.stringify({ url: trimmed, company_id: companyId }),
-      });
-      const d = await r.json();
+      const d = await callParse({ url: trimmed, company_id: companyId });
       if (d.error) {
         setError(d.error);
       } else {
         setReport(d.report);
         onDone?.();
-        // Передаём домен наверх
         const domain = trimmed.replace(/https?:\/\//, "").split("/")[0];
         onParsed?.(domain);
       }
@@ -50,6 +51,26 @@ export function WLSiteParser({ companyId = DEMO_ID, onDone, onParsed }: Props) {
     } finally {
       setLoading(false);
     }
+  };
+
+  // Повторный поиск одного конкретного поля
+  const searchField = async (field: MissingField) => {
+    if (!url.trim()) return;
+    setSearching(field.field);
+    try {
+      const d = await callParse({ url: url.trim(), company_id: companyId, only_field: field.field });
+      if (!d.error && d.report) {
+        // Проверяем заполнилось ли поле
+        const nowFilled = d.report.filled.find((f: FilledField) => f.field === field.field);
+        if (nowFilled && report) {
+          setReport({
+            filled:  [...report.filled, nowFilled],
+            missing: report.missing.filter(m => m.field !== field.field),
+          });
+        }
+      }
+    } catch { /* ignore */ }
+    finally { setSearching(null); }
   };
 
   return (
@@ -113,21 +134,34 @@ export function WLSiteParser({ companyId = DEMO_ID, onDone, onParsed }: Props) {
             </div>
           )}
 
-          {/* Не заполнено */}
+          {/* Не заполнено — кликабельные пилюли с повторным поиском */}
           {report.missing.length > 0 && (
             <div>
               <div className="text-[10px] uppercase tracking-wider font-bold mb-2 flex items-center gap-1.5"
                 style={{ color: "#f59e0b" }}>
-                <Icon name="AlertTriangle" size={11} /> Заполнить вручную ({report.missing.length})
+                <Icon name="AlertTriangle" size={11} /> Не найдено — нажми чтобы поискать ({report.missing.length})
               </div>
               <div className="flex flex-wrap gap-1.5">
-                {report.missing.map(f => (
-                  <span key={f.field} className="text-[10px] px-2 py-1 rounded-lg font-medium"
-                    style={{ background: "rgba(245,158,11,0.10)", border: "1px solid rgba(245,158,11,0.25)", color: "#fbbf24" }}>
-                    {f.label}
-                  </span>
-                ))}
+                {report.missing.map(f => {
+                  const isSearching = searching === f.field;
+                  return (
+                    <button
+                      key={f.field}
+                      onClick={() => searchField(f)}
+                      disabled={!!searching || !url.trim()}
+                      className="flex items-center gap-1 text-[10px] px-2.5 py-1 rounded-lg font-medium transition hover:opacity-80 disabled:opacity-50"
+                      style={{ background: "rgba(245,158,11,0.10)", border: "1px solid rgba(245,158,11,0.35)", color: "#fbbf24" }}
+                      title={`Повторно поискать ${f.label}`}>
+                      {isSearching
+                        ? <div className="w-2.5 h-2.5 border border-amber-400/40 border-t-amber-400 rounded-full animate-spin flex-shrink-0" />
+                        : <Icon name="Search" size={9} />
+                      }
+                      {f.label}
+                    </button>
+                  );
+                })}
               </div>
+              <p className="text-[10px] text-white/25 mt-1.5">Нажми на пилюлю — поиск именно этого поля повторно</p>
             </div>
           )}
 
