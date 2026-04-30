@@ -1,12 +1,12 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Icon from "@/components/ui/icon";
-import { AUTH_URL, DEMO_ID, DEMO_EMAIL, DEMO_PASSWORD } from "./wlTypes";
+import { AUTH_URL, DEMO_ID } from "./wlTypes";
 import type { CheckResult, PanelView } from "./wlTypes";
-import { Section, Field, LinkBtn } from "./WLHelpers";
 import { WLApiTestsModal, useApiChecks } from "./WLApiTests";
 import { WLPanelView } from "./WLPanelView";
 import { WLSiteParser } from "./WLSiteParser";
+import { WLDemoCard } from "./WLDemoCard";
 
 export function WLContent() {
   const navigate = useNavigate();
@@ -133,30 +133,13 @@ export function WLContent() {
         <div className="max-w-4xl mx-auto px-5 py-8 space-y-8">
           <WLSiteParser companyId={DEMO_ID} onParsed={setParsedDomain} />
 
-          <Section title="Демо-компания" icon="Building2" color="#a78bfa">
-            <div className="grid sm:grid-cols-2 gap-3">
-              <Field label="Email"   value={DEMO_EMAIL} />
-              <Field label="Пароль"  value={DEMO_PASSWORD} />
-              <Field label="ID"      value={`#${DEMO_ID}`} />
-              <Field
-                label="Демо-сайт"
-                value={parsedDomain ? `${parsedDomain}/?c=${DEMO_ID}` : `${window.location.origin}/?c=${DEMO_ID}`}
-                href={`/?c=${DEMO_ID}`}
-              />
-            </div>
-            <div className="flex flex-wrap items-center gap-2 mt-4">
-              <LinkBtn icon="Globe" label="Открыть их сайт"
-                onClick={() => openSite(DEMO_ID)} color="#06b6d4" />
-              <LinkBtn icon="LayoutDashboard" label="Войти в их панель"
-                onClick={() => loginAsCompany(DEMO_ID)} color="#a78bfa" />
-              <LinkBtn icon="Zap" label="Живые API"
-                onClick={() => check_runAll(DEMO_ID)} color="#10b981" />
-              <div className="ml-auto">
-                <LinkBtn icon="Pencil" label="Редактировать бренд"
-                  onClick={() => editBrand(DEMO_ID)} color="#f59e0b" />
-              </div>
-            </div>
-          </Section>
+          <WLDemoCard
+            parsedDomain={parsedDomain}
+            onOpenSite={() => openSite(DEMO_ID)}
+            onLoginAs={() => loginAsCompany(DEMO_ID)}
+            onRunApiTests={() => check_runAll(DEMO_ID)}
+            onEditBrand={() => editBrand(DEMO_ID)}
+          />
         </div>
       </div>
 
