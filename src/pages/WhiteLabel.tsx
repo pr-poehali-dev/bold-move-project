@@ -68,12 +68,12 @@ export default function WhiteLabel() {
   const setResult = (key: string, r: CheckResult | null) =>
     setResults(prev => ({ ...prev, [key]: r }));
 
-  /* ── ПРОВЕРКИ ── */
+  /* ── ПРОВЕРКИ (принимают companyId) ── */
 
-  const check_brandApi = async () => {
+  const check_brandApi = async (cid: number) => {
     setRunning("brand-api"); setResult("brand-api", null);
     try {
-      const r = await fetch(`${AUTH_URL}?action=get-brand&company_id=${DEMO_ID}`);
+      const r = await fetch(`${AUTH_URL}?action=get-brand&company_id=${cid}`);
       const d = await r.json();
       if (d.brand?.bot_name) {
         setResult("brand-api", { ok: true, label: `Бренд получен: бот «${d.brand.bot_name}», цвет ${d.brand.brand_color}, телефон ${d.brand.support_phone}` });
@@ -84,30 +84,29 @@ export default function WhiteLabel() {
     finally { setRunning(null); }
   };
 
-  const check_aiChat = async () => {
+  const check_aiChat = async (cid: number) => {
     setRunning("ai-chat"); setResult("ai-chat", null);
     try {
       const r = await fetch(AI_URL, {
         method: "POST",
         headers: { "Content-Type": "application/json", "X-Session-Id": "wl-test" },
-        body: JSON.stringify({ messages: [{ role: "user", text: "телефон" }], fast: true, company_id: DEMO_ID }),
+        body: JSON.stringify({ messages: [{ role: "user", text: "телефон" }], fast: true, company_id: cid }),
       });
       const d = await r.json();
       const ans = String(d.answer || "");
-      const hasNew = ans.includes("812") || ans.includes("555-12-34");
       const hasOld = ans.includes("977 606-89-01") || ans.includes("977) 606-89-01");
-      if (hasNew && !hasOld) {
-        setResult("ai-chat", { ok: true, label: "Бот ответил с брендированным телефоном (812)555-12-34", data: ans.slice(0, 200) });
+      if (!hasOld && ans.length > 0) {
+        setResult("ai-chat", { ok: true, label: "Бот ответил без дефолтного номера MosPotolki ✓", data: ans.slice(0, 200) });
       } else if (hasOld) {
         setResult("ai-chat", { ok: false, label: "Бот вернул дефолтный телефон вместо бренда", data: ans.slice(0, 200) });
       } else {
-        setResult("ai-chat", { ok: true, label: "Ответ получен (телефон не упомянут)", data: ans.slice(0, 200) });
+        setResult("ai-chat", { ok: true, label: "Ответ получен", data: ans.slice(0, 200) });
       }
     } catch (e) { setResult("ai-chat", { ok: false, label: String(e) }); }
     finally { setRunning(null); }
   };
 
-  const check_pdf = async () => {
+  const check_pdf = async (cid: number) => {
     setRunning("pdf"); setResult("pdf", null);
     try {
       const r = await fetch(PDF_URL, {
@@ -117,7 +116,7 @@ export default function WhiteLabel() {
           blocks: [{ title: "Тест", numbered: false, items: [{ name: "Демо позиция", value: "1 шт × 1000 ₽ = 1000 ₽" }] }],
           totals: ["Standard: 1000 ₽"],
           finalPhrase: "",
-          company_id: DEMO_ID,
+          company_id: cid,
         }),
       });
       const d = await r.json();
@@ -134,10 +133,10 @@ export default function WhiteLabel() {
     finally { setRunning(null); }
   };
 
-  const check_runAll = async () => {
-    await check_brandApi();
-    await check_aiChat();
-    await check_pdf();
+  const check_runAll = async (cid: number) => {
+    await check_brandApi(cid);
+    await check_aiChat(cid);
+    await check_pdf(cid);
   };
 
   /* ── ВОЙТИ В ПАНЕЛЬ компании ── */
@@ -278,7 +277,7 @@ export default function WhiteLabel() {
               onClick={() => previewId ? loginAsCompany(Number(previewId)) : undefined}
               color="#a78bfa" />
             <LinkBtn icon="Zap" label="Живые API"
-              onClick={() => previewId ? window.open(`${AUTH_URL}?action=get-brand&company_id=${previewId}`, "_blank") : undefined}
+              onClick={() => previewId ? check_runAll(Number(previewId)) : undefined}
               color="#10b981" />
           </div>
         </Section>
@@ -352,18 +351,25 @@ export default function WhiteLabel() {
 
         {/* Тесты API */}
         <Section title="Тесты API (живые)" icon="Beaker" color="#fbbf24">
-          <div className="space-y-2.5">
-            <TestRow id="brand-api" name="Эндпоинт get-brand отдаёт бренд для ?c=14"
-              onRun={check_brandApi} running={running} result={results["brand-api"]} />
-            <TestRow id="ai-chat" name="AI-чат подменяет телефон в FAQ при company_id=14"
-              onRun={check_aiChat} running={running} result={results["ai-chat"]} />
-            <TestRow id="pdf" name="generate-pdf подставляет бренд при company_id=14"
-              onRun={check_pdf} running={running} result={results["pdf"]} />
-          </div>
-          <button onClick={check_runAll} disabled={!!running}
-            className="mt-4 w-full py-2.5 rounded-xl text-xs font-bold text-white transition disabled:opacity-50 flex items-center justify-center gap-2"
+          {Object.keys(results).length === 0 ? (
+            <div className="text-[11px] text-white/30 py-1">
+              Введи ID компании выше и нажми «Живые API» — результаты появятся здесь
+            </div>
+          ) : (
+            <div className="space-y-2.5">
+              <TestRow id="brand-api" name="get-brand: бренд компании"
+                onRun={() => check_brandApi(Number(previewId) || DEMO_ID)} running={running} result={results["brand-api"]} />
+              <TestRow id="ai-chat" name="AI-чат: подмена контактов на бренд"
+                onRun={() => check_aiChat(Number(previewId) || DEMO_ID)} running={running} result={results["ai-chat"]} />
+              <TestRow id="pdf" name="generate-pdf: PDF с брендом компании"
+                onRun={() => check_pdf(Number(previewId) || DEMO_ID)} running={running} result={results["pdf"]} />
+            </div>
+          )}
+          <button onClick={() => check_runAll(Number(previewId) || DEMO_ID)} disabled={!!running}
+            className="mt-3 w-full py-2.5 rounded-xl text-xs font-bold transition disabled:opacity-50 flex items-center justify-center gap-2"
             style={{ background: "#fbbf24", color: "#0a0a14" }}>
-            <Icon name="Play" size={13} /> Прогнать все три
+            <Icon name="Play" size={13} />
+            {previewId ? `Прогнать все три для ID #${previewId}` : `Прогнать все три (демо #${DEMO_ID})`}
           </button>
         </Section>
 
