@@ -84,7 +84,6 @@ export default function DrawerInfoTab({ data, client, setData, save, setComments
     try { return JSON.parse(localStorage.getItem(`custom_block_vals_${data.id}`) || "{}"); } catch { return {}; }
   });
   const dragId = useRef<BlockId | null>(null);
-  const dragColRef = useRef<0 | 1 | null>(null);
 
   // ── финансы (Number() чтобы строки из БД тоже работали) ────────────────────
   const cs = Number(data.contract_sum) || 0;

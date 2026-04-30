@@ -34,7 +34,6 @@ export default function CrmPanel({ theme, initialOrderId }: { theme: Theme; init
   const canCalendarEdit = hasPermission(user, "calendar_edit");
   const canAnalytics    = hasPermission(user, "analytics_view");
   const canFinance      = hasPermission(user, "finance_view");
-  const canFiles        = hasPermission(user, "files_view");
   const canFilesEdit    = hasPermission(user, "files_edit");
 
   // Поля в карточке
