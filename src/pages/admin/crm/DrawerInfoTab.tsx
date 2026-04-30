@@ -85,16 +85,7 @@ export default function DrawerInfoTab({ data, client, setData, save, setComments
   });
   const dragId = useRef<BlockId | null>(null);
 
-  // ── финансы (Number() чтобы строки из БД тоже работали) ────────────────────
-  const cs = Number(data.contract_sum) || 0;
-  const mc = Number(data.material_cost) || 0;
-  const mec = Number(data.measure_cost) || 0;
-  const ic = Number(data.install_cost) || 0;
-  const pre = Number(data.prepayment) || 0;
-  const ext = Number(data.extra_payment) || 0;
-  const profit    = cs - mc - mec - ic;
-  const received  = pre + ext;
-  const remaining = cs - received;
+  // (финансовые расчёты перенесены в DrawerPLBlock)
 
   // ── логирование ──────────────────────────────────────────────────────────────
   const now = () => new Date().toLocaleString("ru-RU", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
@@ -233,10 +224,6 @@ export default function DrawerInfoTab({ data, client, setData, save, setComments
         editingBlock={editingBlock}
         customBlocks={customBlocks}
         customRowVals={customRowVals}
-        activityLog={activityLog}
-        profit={profit}
-        received={received}
-        remaining={remaining}
         toggleHidden={toggleHidden}
         setEditingBlock={setEditingBlock}
         saveWithLog={saveWithLog}

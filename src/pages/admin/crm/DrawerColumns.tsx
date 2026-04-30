@@ -3,7 +3,6 @@ import type React from "react";
 import Icon from "@/components/ui/icon";
 import { useTheme } from "./themeContext";
 import { Client } from "./crmApi";
-import { ActivityEvent } from "./DrawerStatusActivity";
 import { BlockId, BlockDef, CustomBlockData, CustomFinRow } from "./drawerTypes";
 import { DraggableBlock } from "./DrawerBlockEditor";
 import { DrawerTagsBlock } from "./DrawerTagsBlock";
@@ -25,10 +24,6 @@ interface ColumnsProps {
   editingBlock: BlockId | null;
   customBlocks: CustomBlockData[];
   customRowVals: Record<string, Record<number, string>>;
-  activityLog: ActivityEvent[];
-  profit: number;
-  received: number;
-  remaining: number;
   toggleHidden: (id: BlockId) => void;
   setEditingBlock: (id: BlockId | null) => void;
   saveWithLog: (patch: Partial<Client>, logText: string, icon?: string, color?: string) => void;
