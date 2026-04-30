@@ -124,6 +124,8 @@ export function WLPipeline({ refreshTrigger, onOpenPanel, onRunApiTests }: Props
           filterStatus={filter}
           onFilterChange={setFilter}
           onSelect={setSelected}
+          onOpenPanel={onOpenPanel}
+          onRunApiTests={onRunApiTests}
         />
       )}
 
