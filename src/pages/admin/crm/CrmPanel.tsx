@@ -7,19 +7,34 @@ import CrmCalendar from "./CrmCalendar";
 import CrmKanban from "./CrmKanban";
 import { ThemeContext, DARK, LIGHT, type Theme } from "./themeContext";
 import { crmFetch, Client } from "./crmApi";
+import { useAuth, hasPermission } from "@/context/AuthContext";
 
 const LS_KANBAN_ENABLED = "crm_kanban_board_enabled";
 
 type CrmTab = "analytics" | "clients" | "orders" | "calendar" | "kanban";
 
-const FIXED_TABS: { id: CrmTab; label: string; icon: string }[] = [
+// Все возможные табы с привязкой к праву (undefined = всегда видна)
+const ALL_TABS: { id: CrmTab; label: string; icon: string; perm?: "calendar" | "analytics" | "kanban" }[] = [
   { id: "orders",    label: "Заказы",    icon: "Layers" },
   { id: "clients",   label: "Клиенты",   icon: "Users" },
-  { id: "calendar",  label: "Календарь", icon: "CalendarDays" },
-  { id: "analytics", label: "Аналитика", icon: "BarChart2" },
+  { id: "calendar",  label: "Календарь", icon: "CalendarDays", perm: "calendar"  },
+  { id: "analytics", label: "Аналитика", icon: "BarChart2",    perm: "analytics" },
 ];
 
 export default function CrmPanel({ theme, initialOrderId }: { theme: Theme; initialOrderId?: number | null }) {
+  const { user } = useAuth();
+
+  // Права пользователя
+  const canCalendar  = hasPermission(user, "calendar");
+  const canAnalytics = hasPermission(user, "analytics");
+  const canKanban    = hasPermission(user, "kanban");
+  const canFinance   = hasPermission(user, "finance");
+  const canFiles     = hasPermission(user, "files");
+  const canEdit      = hasPermission(user, "crm_edit");
+
+  // Доступные фиксированные табы
+  const visibleTabs = ALL_TABS.filter(tb => !tb.perm || hasPermission(user, tb.perm));
+
   const [tab, setTab]               = useState<CrmTab>("orders");
   const [clients, setClients]       = useState<Client[]>([]);
   const [loading, setLoading]       = useState(true);
@@ -30,7 +45,7 @@ export default function CrmPanel({ theme, initialOrderId }: { theme: Theme; init
     setTab("orders");
   };
   const [kanbanEnabled, setKanbanEnabled] = useState<boolean>(
-    () => localStorage.getItem(LS_KANBAN_ENABLED) === "true"
+    () => canKanban && localStorage.getItem(LS_KANBAN_ENABLED) === "true"
   );
 
   const loadClients = () => {
@@ -79,8 +94,8 @@ export default function CrmPanel({ theme, initialOrderId }: { theme: Theme; init
         <div className="flex items-center gap-0.5 px-2 sm:px-6 py-2.5 overflow-x-auto"
           style={{ borderBottom: `1px solid ${t.border}`, background: t.surface }}>
 
-          {/* Фиксированные вкладки */}
-          {FIXED_TABS.map(tb => {
+          {/* Фиксированные вкладки (фильтрованные по правам) */}
+          {visibleTabs.map(tb => {
             const active = tab === tb.id;
             return (
               <button key={tb.id} onClick={() => setTab(tb.id)}
@@ -96,8 +111,8 @@ export default function CrmPanel({ theme, initialOrderId }: { theme: Theme; init
             );
           })}
 
-          {/* Вкладка Канбан — если включена */}
-          {kanbanEnabled && (
+          {/* Вкладка Канбан — если включена и есть право */}
+          {kanbanEnabled && canKanban && (
             <button onClick={() => setTab("kanban")}
               className="flex items-center gap-1 sm:gap-2 px-2 sm:px-4 py-2 text-xs sm:text-sm rounded-xl transition whitespace-nowrap font-medium border"
               style={tab === "kanban" ? {
@@ -113,8 +128,8 @@ export default function CrmPanel({ theme, initialOrderId }: { theme: Theme; init
           {/* Разделитель */}
           <div className="flex-1" />
 
-          {/* Промо-блок — только на десктопе */}
-          {!kanbanEnabled && (
+          {/* Промо-блок канбана — только если есть право и канбан ещё не включён */}
+          {!kanbanEnabled && canKanban && (
             <div className="hidden sm:flex items-center gap-3 px-4 py-1.5 rounded-xl"
               style={{ background: "linear-gradient(135deg,#7c3aed12,#06b6d412)", border: `1px dashed #7c3aed40` }}>
               <Icon name="Kanban" size={14} style={{ color: "#a78bfa" }} className="flex-shrink-0" />
@@ -130,7 +145,7 @@ export default function CrmPanel({ theme, initialOrderId }: { theme: Theme; init
           )}
 
           {/* Кнопка канбана на мобиле */}
-          {!kanbanEnabled && (
+          {!kanbanEnabled && canKanban && (
             <button onClick={enableKanban}
               className="flex sm:hidden items-center gap-1 px-2.5 py-2 rounded-xl text-xs font-semibold transition whitespace-nowrap flex-shrink-0"
               style={{ background: "#7c3aed18", color: "#a78bfa", border: "1px solid #7c3aed35" }}>
@@ -143,11 +158,11 @@ export default function CrmPanel({ theme, initialOrderId }: { theme: Theme; init
 
         {/* Контент */}
         <div className="p-2 sm:p-6">
-          {tab === "analytics" && <CrmAnalytics />}
-          {tab === "clients"   && <CrmClients />}
-          {tab === "orders"    && <CrmOrders clients={clients} loading={loading} onStatusChange={updateClientStatus} onClientRemoved={removeClient} onReload={loadClients} initialOrderId={calendarOpenId ?? initialOrderId} />}
-          {tab === "calendar"  && <CrmCalendar onSelectClient={handleCalendarSelectClient} />}
-          {tab === "kanban"    && <CrmKanban clients={[]} loading={false} onStatusChange={() => {}} onClientRemoved={() => {}} onReload={() => {}} onRemoveBoard={disableKanban} />}
+          {tab === "analytics" && canAnalytics && <CrmAnalytics />}
+          {tab === "clients"   && <CrmClients canEdit={canEdit} />}
+          {tab === "orders"    && <CrmOrders clients={clients} loading={loading} onStatusChange={updateClientStatus} onClientRemoved={removeClient} onReload={loadClients} initialOrderId={calendarOpenId ?? initialOrderId} canEdit={canEdit} canFinance={canFinance} canFiles={canFiles} />}
+          {tab === "calendar"  && canCalendar && <CrmCalendar onSelectClient={handleCalendarSelectClient} />}
+          {tab === "kanban"    && canKanban   && <CrmKanban clients={[]} loading={false} onStatusChange={() => {}} onClientRemoved={() => {}} onReload={() => {}} onRemoveBoard={disableKanban} />}
         </div>
       </div>
     </ThemeContext.Provider>

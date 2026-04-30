@@ -22,9 +22,12 @@ interface Props {
   save: (patch: Partial<Client>) => void;
   setComments: React.Dispatch<React.SetStateAction<{ text: string; date: string }[]>>;
   hideHidden?: boolean;
+  canEdit?:    boolean;
+  canFinance?: boolean;
+  canFiles?:   boolean;
 }
 
-export default function DrawerInfoTab({ data, client, setData, save, setComments, hideHidden }: Props) {
+export default function DrawerInfoTab({ data, client, setData, save, setComments, hideHidden, canEdit = true, canFinance = true, canFiles = true }: Props) {
   const t = useTheme();
 
   // ── state ────────────────────────────────────────────────────────────────────
@@ -197,8 +200,8 @@ export default function DrawerInfoTab({ data, client, setData, save, setComments
         </Section>
       )}
 
-      {/* P&L — на всю ширину под воронкой */}
-      {(!hideHidden || !hiddenBlocks.has("pl")) && (
+      {/* P&L — на всю ширину под воронкой (только с правом finance) */}
+      {canFinance && (!hideHidden || !hiddenBlocks.has("pl")) && (
         <DrawerPLBlock
           data={data}
           isHidden={hiddenBlocks.has("pl")}
@@ -242,6 +245,9 @@ export default function DrawerInfoTab({ data, client, setData, save, setComments
         addCustomFinRow={addCustomFinRow}
         deleteCustomFinRow={deleteCustomFinRow}
         updateCustomFinRow={updateCustomFinRow}
+        canEdit={canEdit}
+        canFinance={canFinance}
+        canFiles={canFiles}
       />
 
       {/* Активность — под блоками, всегда видна */}

@@ -15,9 +15,12 @@ interface Props {
   isLocalCard?: boolean;
   defaultTab?: "client" | "orders";
   defaultOrderId?: number;
+  canEdit?:    boolean;
+  canFinance?: boolean;
+  canFiles?:   boolean;
 }
 
-export default function ClientDrawer({ client, allClientOrders, onClose, onUpdated, onDeleted, isLocalCard, defaultTab = "client", defaultOrderId }: Props) {
+export default function ClientDrawer({ client, allClientOrders, onClose, onUpdated, onDeleted, isLocalCard, defaultTab = "client", defaultOrderId, canEdit = true, canFinance = true, canFiles = true }: Props) {
   const t = useTheme();
   const [data, setData]               = useState<Client>(client);
   const [saving, setSaving]           = useState(false);
@@ -128,7 +131,7 @@ export default function ClientDrawer({ client, allClientOrders, onClose, onUpdat
                   style={{ background: displayColor + "25", color: displayColor }}>
                   {STATUS_LABELS[ord.status] || ord.status}
                 </span>
-                {ord.contract_sum ? (
+                {canFinance && ord.contract_sum ? (
                   <span className="text-xs font-bold text-emerald-400 flex-shrink-0">
                     {ord.contract_sum.toLocaleString("ru-RU")} ₽
                   </span>
@@ -217,7 +220,7 @@ export default function ClientDrawer({ client, allClientOrders, onClose, onUpdat
                               style={{ background: color + "20", color }}>
                               {STATUS_LABELS[order.status] || order.status}
                             </span>
-                            {order.contract_sum ? (
+                            {canFinance && order.contract_sum ? (
                               <div className="text-[10px] font-bold text-emerald-400 mt-1">
                                 {Number(order.contract_sum).toLocaleString("ru-RU")} ₽
                               </div>
@@ -341,6 +344,9 @@ export default function ClientDrawer({ client, allClientOrders, onClose, onUpdat
                       save={saveOrder}
                       setComments={setComments}
                       hideHidden={hideHidden}
+                      canEdit={canEdit}
+                      canFinance={canFinance}
+                      canFiles={canFiles}
                     />
                   )}
                   {orderInnerTab === "estimate" && (

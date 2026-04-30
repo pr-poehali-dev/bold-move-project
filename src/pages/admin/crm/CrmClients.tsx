@@ -9,7 +9,7 @@ import { BulkBar, DeleteConfirm } from "./ClientsBulkActions";
 
 const EMPTY_FORM = { client_name: "", phone: "", status: "new", address: "", notes: "", measure_date: "" };
 
-export default function CrmClients() {
+export default function CrmClients({ canEdit = true }: { canEdit?: boolean }) {
   const t = useTheme();
   const [clients, setClients]   = useState<Client[]>([]);
   const [clientOrders, setClientOrders] = useState<Client[]>([]);
@@ -157,10 +157,12 @@ export default function CrmClients() {
             {checkedIds.size > 0 && <span className="ml-2 text-violet-500 font-semibold">· {checkedIds.size} выбрано</span>}
           </p>
         </div>
-        <button onClick={() => setShowAdd(true)}
-          className="flex items-center gap-2 px-4 py-2.5 bg-violet-600 hover:bg-violet-700 text-white text-sm rounded-xl font-semibold transition shadow-lg shadow-violet-500/20">
-          <Icon name="UserPlus" size={14} /> Добавить клиента
-        </button>
+        {canEdit && (
+          <button onClick={() => setShowAdd(true)}
+            className="flex items-center gap-2 px-4 py-2.5 bg-violet-600 hover:bg-violet-700 text-white text-sm rounded-xl font-semibold transition shadow-lg shadow-violet-500/20">
+            <Icon name="UserPlus" size={14} /> Добавить клиента
+          </button>
+        )}
       </div>
 
       {/* Фильтры */}
@@ -193,7 +195,8 @@ export default function CrmClients() {
       {selected && (
         <ClientDrawer client={selected} allClientOrders={clientOrders} onClose={() => setSelected(null)}
           onUpdated={() => { load(); }}
-          onDeleted={() => { setSelected(null); load(); }} />
+          onDeleted={() => { setSelected(null); load(); }}
+          canEdit={canEdit} canFinance={true} canFiles={true} />
       )}
 
       {/* Модалка добавления */}

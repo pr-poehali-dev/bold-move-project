@@ -20,9 +20,12 @@ interface Props {
   onClientRemoved: (id: number) => void;
   onReload: () => void;
   initialOrderId?: number | null;
+  canEdit?:    boolean;
+  canFinance?: boolean;
+  canFiles?:   boolean;
 }
 
-export default function CrmOrders({ clients: allClients, loading, onStatusChange, onClientRemoved, onReload, initialOrderId }: Props) {
+export default function CrmOrders({ clients: allClients, loading, onStatusChange, onClientRemoved, onReload, initialOrderId, canEdit = true, canFinance = true, canFiles = true }: Props) {
   const t = useTheme();
   const [search, setSearch]       = useState("");
   const [activeTab, setActiveTab] = useState("leads");
@@ -165,6 +168,9 @@ export default function CrmOrders({ clients: allClients, loading, onStatusChange
           onClose={() => setSelected(null)}
           onUpdated={() => { onReload(); }}
           onDeleted={() => { setSelected(null); onClientRemoved(selected.id); }}
+          canEdit={canEdit}
+          canFinance={canFinance}
+          canFiles={canFiles}
         />
       )}
     </div>

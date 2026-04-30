@@ -48,6 +48,9 @@ interface ColumnsProps {
   addCustomFinRow: (label: string, block: "income" | "costs") => void;
   deleteCustomFinRow: (key: string) => void;
   updateCustomFinRow: (key: string, label: string) => void;
+  canEdit?:    boolean;
+  canFinance?: boolean;
+  canFiles?:   boolean;
 }
 
 export function DrawerColumns(props: ColumnsProps) {
@@ -56,6 +59,7 @@ export function DrawerColumns(props: ColumnsProps) {
     customRowVals, toggleHidden, setEditingBlock, saveWithLog, logAction, setCustomRowVals,
     deleteCustomBlock, updateCustomBlock, onDragStart, onDragOver, onDrop, onDropToCol, onAddBlock,
     rowVisibility, toggleRowVisibility, customFinRows, addCustomFinRow, deleteCustomFinRow, updateCustomFinRow,
+    canEdit = true, canFinance = true, canFiles = true,
   } = props;
   const t = useTheme();
 
@@ -94,10 +98,10 @@ export function DrawerColumns(props: ColumnsProps) {
       case "object":   return <DrawerObjectBlock   {...infoProps} />;
       case "dates":    return <DrawerDatesBlock     {...infoProps} />;
       case "notes":    return null;
-      case "files":    return <DrawerFilesBlock clientId={data.id} hiddenBlocks={hiddenBlocks} toggleHidden={toggleHidden} logAction={logAction} editingBlock={editingBlock} setEditingBlock={setEditingBlock} />;
-      case "cancel":   return <DrawerCancelBlock    {...infoProps} />;
-      case "income":   return <DrawerIncomeBlock    {...finProps}  />;
-      case "costs":    return <DrawerCostsBlock     {...finProps}  />;
+      case "files":    return canFiles   ? <DrawerFilesBlock clientId={data.id} hiddenBlocks={hiddenBlocks} toggleHidden={toggleHidden} logAction={logAction} editingBlock={editingBlock} setEditingBlock={setEditingBlock} /> : null;
+      case "cancel":   return canEdit    ? <DrawerCancelBlock    {...infoProps} /> : null;
+      case "income":   return canFinance ? <DrawerIncomeBlock    {...finProps}  /> : null;
+      case "costs":    return canFinance ? <DrawerCostsBlock     {...finProps}  /> : null;
 
       default: return null;
     }
