@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import Icon from "@/components/ui/icon";
 import { PARSE_SITE_URL } from "./wlTypes";
 import { Section } from "./WLHelpers";
@@ -6,6 +6,9 @@ import { Section } from "./WLHelpers";
 interface FilledField  { field: string; label: string; value: string }
 interface MissingField { field: string; label: string }
 interface ParseReport  { filled: FilledField[]; missing: MissingField[] }
+
+// Стадии после парсинга: анимация → баннер → свёрнуто
+type Phase = "idle" | "animating" | "banner" | "collapsed";
 
 interface Props {
   onCreated?: (companyId: number, token: string) => void;
@@ -18,7 +21,18 @@ export function WLSiteParser({ onCreated }: Props) {
   const [error, setError]         = useState<string | null>(null);
   const [searching, setSearching] = useState<string | null>(null);
   const [lastCompanyId, setLastCompanyId] = useState<number | null>(null);
-  const [done, setDone]           = useState(false); // успешно создана компания
+  const [phase, setPhase]         = useState<Phase>("idle");
+  // сколько полей уже «доехало» в анимации
+  const [visibleCount, setVisibleCount] = useState(0);
+  const timersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
+
+  // Чистим таймеры при размонтировании
+  useEffect(() => () => { timersRef.current.forEach(clearTimeout); }, []);
+
+  const clearTimers = () => {
+    timersRef.current.forEach(clearTimeout);
+    timersRef.current = [];
+  };
 
   const callParse = async (body: object) => {
     const token = localStorage.getItem("mp_user_token");
@@ -30,14 +44,37 @@ export function WLSiteParser({ onCreated }: Props) {
     return r.json();
   };
 
+  const startAnimation = (filledCount: number) => {
+    clearTimers();
+    setPhase("animating");
+    setVisibleCount(0);
+
+    // Показываем поля по одному с задержкой 180ms
+    for (let i = 1; i <= filledCount; i++) {
+      const t = setTimeout(() => setVisibleCount(i), i * 180);
+      timersRef.current.push(t);
+    }
+
+    // После последнего поля + 4 сек → баннер
+    const bannerDelay = filledCount * 180 + 4000;
+    const t1 = setTimeout(() => setPhase("banner"), bannerDelay);
+    timersRef.current.push(t1);
+
+    // Ещё +2 сек → сворачиваем
+    const t2 = setTimeout(() => setPhase("collapsed"), bannerDelay + 2000);
+    timersRef.current.push(t2);
+  };
+
   const run = async () => {
     const trimmed = url.trim();
     if (!trimmed) return;
+    clearTimers();
     setLoading(true);
     setReport(null);
     setError(null);
     setLastCompanyId(null);
-    setDone(false);
+    setPhase("idle");
+    setVisibleCount(0);
     try {
       const d = await callParse({ url: trimmed });
       if (d.error) {
@@ -46,8 +83,8 @@ export function WLSiteParser({ onCreated }: Props) {
         setReport(d.report);
         if (d.company_id && d.token) {
           setLastCompanyId(d.company_id);
-          setDone(true);
           onCreated?.(d.company_id, d.token);
+          startAnimation((d.report?.filled || []).length);
         }
       }
     } catch (e) {
@@ -75,6 +112,35 @@ export function WLSiteParser({ onCreated }: Props) {
     finally { setSearching(null); }
   };
 
+  const reset = () => {
+    clearTimers();
+    setPhase("idle");
+    setReport(null);
+    setUrl("");
+    setLastCompanyId(null);
+    setVisibleCount(0);
+  };
+
+  // Компактный зелёный баннер (collapsed)
+  if (phase === "collapsed") {
+    return (
+      <div
+        className="rounded-2xl px-4 py-3 flex items-center gap-3 cursor-pointer transition hover:opacity-80"
+        style={{ background: "rgba(16,185,129,0.08)", border: "1px solid rgba(16,185,129,0.25)" }}
+        onClick={reset}
+      >
+        <Icon name="CheckCircle2" size={16} style={{ color: "#10b981", flexShrink: 0 }} />
+        <div className="flex-1 min-w-0">
+          <div className="text-xs font-bold" style={{ color: "#10b981" }}>
+            Компания создана — ID #{lastCompanyId}
+          </div>
+          <div className="text-[10px] text-white/30 mt-0.5">Нажми чтобы спарсить ещё один сайт</div>
+        </div>
+        <Icon name="RefreshCw" size={12} style={{ color: "rgba(255,255,255,0.2)" }} />
+      </div>
+    );
+  }
+
   return (
     <Section title="Автозаполнение из сайта" icon="Wand2" color="#f59e0b">
       <p className="text-[11px] text-white/40 mb-3">
@@ -87,10 +153,10 @@ export function WLSiteParser({ onCreated }: Props) {
           onChange={e => setUrl(e.target.value)}
           onKeyDown={e => e.key === "Enter" && run()}
           placeholder="например: company.ru или https://company.ru"
-          disabled={loading}
+          disabled={loading || phase === "animating" || phase === "banner"}
           className="flex-1 rounded-xl px-3 py-2 text-xs font-mono bg-white/[0.05] border border-white/10 text-white placeholder-white/25 outline-none focus:border-amber-500/50 transition disabled:opacity-50"
         />
-        <button onClick={run} disabled={loading || !url.trim()}
+        <button onClick={run} disabled={loading || !url.trim() || phase === "animating" || phase === "banner"}
           className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold transition disabled:opacity-40 flex-shrink-0"
           style={{ background: loading ? "rgba(245,158,11,0.15)" : "#f59e0b", color: loading ? "#f59e0b" : "#0a0a14" }}>
           {loading
@@ -100,18 +166,6 @@ export function WLSiteParser({ onCreated }: Props) {
         </button>
       </div>
 
-      {done && (
-        <div className="rounded-xl px-3 py-2.5 text-xs flex items-center gap-2 mb-2"
-          style={{ background: "rgba(16,185,129,0.08)", border: "1px solid rgba(16,185,129,0.25)", color: "#6ee7b7" }}>
-          <Icon name="CheckCircle2" size={12} style={{ color: "#10b981", flexShrink: 0 }} />
-          <span>Компания создана — ID #{lastCompanyId}. Смотри список ниже.</span>
-          <button onClick={() => { setDone(false); setReport(null); setUrl(""); setLastCompanyId(null); }}
-            className="ml-auto text-white/30 hover:text-white/60 transition flex-shrink-0">
-            <Icon name="X" size={11} />
-          </button>
-        </div>
-      )}
-
       {error && (
         <div className="rounded-xl px-3 py-2.5 text-xs"
           style={{ background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.25)", color: "#fca5a5" }}>
@@ -120,18 +174,28 @@ export function WLSiteParser({ onCreated }: Props) {
         </div>
       )}
 
-      {report && !done && (
+      {/* Анимированный отчёт */}
+      {report && (phase === "animating" || phase === "banner") && (
         <div className="space-y-3 mt-1">
+
+          {/* Заполненные поля — появляются по одному */}
           {report.filled.length > 0 && (
             <div>
               <div className="text-[10px] uppercase tracking-wider font-bold mb-2 flex items-center gap-1.5"
                 style={{ color: "#10b981" }}>
-                <Icon name="CheckCircle2" size={11} /> Заполнено ({report.filled.length})
+                <Icon name="CheckCircle2" size={11} />
+                Заполнено ({visibleCount}/{report.filled.length})
               </div>
               <div className="space-y-1.5">
-                {report.filled.map(f => (
-                  <div key={f.field} className="flex items-start gap-2 rounded-lg px-2.5 py-1.5"
-                    style={{ background: "rgba(16,185,129,0.06)", border: "1px solid rgba(16,185,129,0.18)" }}>
+                {report.filled.slice(0, visibleCount).map((f, i) => (
+                  <div key={f.field}
+                    className="flex items-start gap-2 rounded-lg px-2.5 py-1.5"
+                    style={{
+                      background: "rgba(16,185,129,0.06)",
+                      border: "1px solid rgba(16,185,129,0.18)",
+                      animation: "fadeSlideIn 0.3s ease both",
+                      animationDelay: `${i * 0}ms`,
+                    }}>
                     <Icon name="Check" size={10} className="mt-0.5 flex-shrink-0" style={{ color: "#10b981" }} />
                     <div className="min-w-0">
                       <span className="text-[10px] text-white/40">{f.label}: </span>
@@ -139,23 +203,31 @@ export function WLSiteParser({ onCreated }: Props) {
                     </div>
                   </div>
                 ))}
+                {/* Оставшиеся — серые плейсхолдеры */}
+                {report.filled.slice(visibleCount).map(f => (
+                  <div key={f.field}
+                    className="flex items-start gap-2 rounded-lg px-2.5 py-1.5 opacity-20"
+                    style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
+                    <div className="w-2.5 h-2.5 rounded-full mt-0.5 flex-shrink-0 bg-white/20" />
+                    <div className="text-[10px] text-white/30">{f.label}</div>
+                  </div>
+                ))}
               </div>
             </div>
           )}
 
-          {report.missing.length > 0 && (
+          {/* Незаполненные */}
+          {visibleCount >= report.filled.length && report.missing.length > 0 && (
             <div>
               <div className="text-[10px] uppercase tracking-wider font-bold mb-2 flex items-center gap-1.5"
                 style={{ color: "#f59e0b" }}>
-                <Icon name="AlertTriangle" size={11} /> Не найдено — нажми чтобы поискать ({report.missing.length})
+                <Icon name="AlertTriangle" size={11} /> Не найдено ({report.missing.length})
               </div>
               <div className="flex flex-wrap gap-1.5">
                 {report.missing.map(f => {
                   const isSearching = searching === f.field;
                   return (
-                    <button
-                      key={f.field}
-                      onClick={() => searchField(f)}
+                    <button key={f.field} onClick={() => searchField(f)}
                       disabled={!!searching || !url.trim() || !lastCompanyId}
                       className="flex items-center gap-1 text-[10px] px-2.5 py-1 rounded-lg font-medium transition hover:opacity-80 disabled:opacity-50"
                       style={{ background: "rgba(245,158,11,0.10)", border: "1px solid rgba(245,158,11,0.35)", color: "#fbbf24" }}>
@@ -168,17 +240,66 @@ export function WLSiteParser({ onCreated }: Props) {
                   );
                 })}
               </div>
-              <p className="text-[10px] text-white/25 mt-1.5">Нажми на пилюлю — поиск именно этого поля повторно</p>
             </div>
           )}
 
-          {report.missing.length === 0 && (
-            <div className="text-[11px] text-center py-1 font-semibold" style={{ color: "#10b981" }}>
-              Все поля заполнены!
+          {/* Баннер «Готово» */}
+          {phase === "banner" && (
+            <div className="rounded-xl px-3 py-2.5 flex items-center gap-2"
+              style={{
+                background: "rgba(16,185,129,0.10)",
+                border: "1px solid rgba(16,185,129,0.35)",
+                animation: "fadeSlideIn 0.4s ease both",
+              }}>
+              <Icon name="Sparkles" size={13} style={{ color: "#10b981", flexShrink: 0 }} />
+              <div className="flex-1">
+                <div className="text-xs font-bold" style={{ color: "#10b981" }}>
+                  Компания создана — ID #{lastCompanyId}
+                </div>
+                <div className="text-[10px] text-white/30">Карточка появится в списке ниже...</div>
+              </div>
             </div>
           )}
         </div>
       )}
+
+      {/* Обычный режим (не анимация) — для повторного поиска полей */}
+      {report && phase === "idle" && (
+        <div className="space-y-3 mt-1">
+          {report.missing.length > 0 && (
+            <div>
+              <div className="text-[10px] uppercase tracking-wider font-bold mb-2 flex items-center gap-1.5"
+                style={{ color: "#f59e0b" }}>
+                <Icon name="AlertTriangle" size={11} /> Не найдено — нажми чтобы поискать ({report.missing.length})
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                {report.missing.map(f => {
+                  const isSearching = searching === f.field;
+                  return (
+                    <button key={f.field} onClick={() => searchField(f)}
+                      disabled={!!searching || !url.trim() || !lastCompanyId}
+                      className="flex items-center gap-1 text-[10px] px-2.5 py-1 rounded-lg font-medium transition hover:opacity-80 disabled:opacity-50"
+                      style={{ background: "rgba(245,158,11,0.10)", border: "1px solid rgba(245,158,11,0.35)", color: "#fbbf24" }}>
+                      {isSearching
+                        ? <div className="w-2.5 h-2.5 border border-amber-400/40 border-t-amber-400 rounded-full animate-spin flex-shrink-0" />
+                        : <Icon name="Search" size={9} />
+                      }
+                      {f.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      <style>{`
+        @keyframes fadeSlideIn {
+          from { opacity: 0; transform: translateY(-6px); }
+          to   { opacity: 1; transform: translateY(0); }
+        }
+      `}</style>
     </Section>
   );
 }
