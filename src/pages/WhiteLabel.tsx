@@ -122,8 +122,6 @@ export default function WhiteLabel() {
     );
   }
 
-  const foundCompany = previewId ? wlCompanies.find(c => c.id === Number(previewId)) : null;
-
   return (
     <>
       <div className="min-h-screen text-white" style={{ background: "#06060c" }}>
