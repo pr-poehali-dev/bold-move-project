@@ -18,6 +18,7 @@ export function WLSiteParser({ onCreated }: Props) {
   const [error, setError]         = useState<string | null>(null);
   const [searching, setSearching] = useState<string | null>(null);
   const [lastCompanyId, setLastCompanyId] = useState<number | null>(null);
+  const [done, setDone]           = useState(false); // успешно создана компания
 
   const callParse = async (body: object) => {
     const token = localStorage.getItem("mp_user_token");
@@ -36,6 +37,7 @@ export function WLSiteParser({ onCreated }: Props) {
     setReport(null);
     setError(null);
     setLastCompanyId(null);
+    setDone(false);
     try {
       const d = await callParse({ url: trimmed });
       if (d.error) {
@@ -44,6 +46,7 @@ export function WLSiteParser({ onCreated }: Props) {
         setReport(d.report);
         if (d.company_id && d.token) {
           setLastCompanyId(d.company_id);
+          setDone(true);
           onCreated?.(d.company_id, d.token);
         }
       }
@@ -97,6 +100,18 @@ export function WLSiteParser({ onCreated }: Props) {
         </button>
       </div>
 
+      {done && (
+        <div className="rounded-xl px-3 py-2.5 text-xs flex items-center gap-2 mb-2"
+          style={{ background: "rgba(16,185,129,0.08)", border: "1px solid rgba(16,185,129,0.25)", color: "#6ee7b7" }}>
+          <Icon name="CheckCircle2" size={12} style={{ color: "#10b981", flexShrink: 0 }} />
+          <span>Компания создана — ID #{lastCompanyId}. Смотри список ниже.</span>
+          <button onClick={() => { setDone(false); setReport(null); setUrl(""); setLastCompanyId(null); }}
+            className="ml-auto text-white/30 hover:text-white/60 transition flex-shrink-0">
+            <Icon name="X" size={11} />
+          </button>
+        </div>
+      )}
+
       {error && (
         <div className="rounded-xl px-3 py-2.5 text-xs"
           style={{ background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.25)", color: "#fca5a5" }}>
@@ -105,7 +120,7 @@ export function WLSiteParser({ onCreated }: Props) {
         </div>
       )}
 
-      {report && (
+      {report && !done && (
         <div className="space-y-3 mt-1">
           {report.filled.length > 0 && (
             <div>
