@@ -87,22 +87,30 @@ def fetch_page_text(url: str) -> str:
     return re.sub(r"\s{3,}", "\n", combined).strip()[:6000]
 
 def ask_openai(prompt: str) -> str:
-    """Отправляет запрос к OpenAI GPT-4o-mini."""
-    api_key = os.environ["OPENAI_API_KEY"]
+    """Отправляет запрос к Groq (llama-3.1-8b-instant) — бесплатно, работает из РФ."""
+    import urllib.error
+    api_key = os.environ.get("GROQ_API_KEY") or os.environ.get("GROQ_API_KEY2", "")
+    if not api_key:
+        raise ValueError("GROQ_API_KEY не настроен")
     payload = json.dumps({
-        "model": "gpt-4o-mini",
+        "model": "llama-3.1-8b-instant",
         "messages": [{"role": "user", "content": prompt}],
         "temperature": 0.1,
         "max_tokens": 800,
     }).encode()
     req = urllib.request.Request(
-        "https://api.openai.com/v1/chat/completions",
+        "https://api.groq.com/openai/v1/chat/completions",
         data=payload,
         headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
         method="POST",
     )
-    with urllib.request.urlopen(req, timeout=30) as resp:
-        data = json.loads(resp.read())
+    try:
+        with urllib.request.urlopen(req, timeout=30) as resp:
+            data = json.loads(resp.read())
+    except urllib.error.HTTPError as e:
+        body = e.read().decode("utf-8", errors="replace")
+        print(f"[parse-site] Groq HTTP {e.code}: {body[:200]}")
+        raise ValueError(f"AI ошибка: {body[:100]}")
     return data["choices"][0]["message"]["content"].strip()
 
 def extract_brand_info(site_url: str, page_text: str) -> dict:
