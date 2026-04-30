@@ -251,12 +251,21 @@ export function WLPipelineDrawer({ company, onClose, onUpdate, onDelete, onOpenP
           </div>
         </div>
 
-        {/* Футер — сохранить / удалить */}
+        {/* Футер — сохранить / отказ */}
         <div className="px-5 py-4 border-t border-white/[0.06] flex items-center gap-3 flex-shrink-0">
-          <button onClick={handleDelete}
+          <button onClick={async () => {
+              setForm(f => ({ ...f, status: "rejected" }));
+              await fetch(`${AUTH_URL}?action=admin-update-demo`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json", "X-Authorization": masterToken() },
+                body: JSON.stringify({ demo_id: company.demo_id, status: "rejected" }),
+              });
+              onUpdate({ status: "rejected" });
+              onClose();
+            }}
             className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-[11px] font-bold transition hover:opacity-80"
             style={{ background: "rgba(239,68,68,0.08)", color: "#ef4444", border: "1px solid rgba(239,68,68,0.20)" }}>
-            <Icon name="Trash2" size={12} /> Удалить
+            <Icon name="XCircle" size={12} /> Отказ
           </button>
           <button onClick={save} disabled={saving}
             className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-[12px] font-bold transition disabled:opacity-50"
