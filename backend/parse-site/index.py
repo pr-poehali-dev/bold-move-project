@@ -22,41 +22,74 @@ def get_conn():
     return psycopg2.connect(os.environ["DATABASE_URL"])
 
 def fetch_page_text(url: str) -> str:
-    """Получает текст страницы через Tavily Extract (обходит блокировки)."""
+    """Получает текст о компании через Tavily Search по домену сайта."""
     if not url.startswith("http"):
         url = "https://" + url
+
+    # Извлекаем домен для поискового запроса
+    domain = re.sub(r"https?://", "", url).split("/")[0]
 
     api_key = os.environ.get("TAVILY_API_KEY", "")
     if not api_key:
         raise ValueError("TAVILY_API_KEY не настроен")
 
-    payload = json.dumps({"urls": [url]}).encode()
+    # Сначала пробуем Extract
+    try:
+        payload = json.dumps({"urls": [url]}).encode()
+        req = urllib.request.Request(
+            "https://api.tavily.com/extract",
+            data=payload,
+            headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
+            method="POST",
+        )
+        with urllib.request.urlopen(req, timeout=15) as resp:
+            data = json.loads(resp.read())
+        results = data.get("results", [])
+        if results:
+            raw = results[0].get("raw_content", "") or results[0].get("content", "")
+            if raw and len(raw) > 200:
+                raw = re.sub(r"\s{3,}", "\n", raw)
+                return raw.strip()[:6000]
+    except Exception:
+        pass
+
+    # Fallback: Tavily Search по домену
+    query = f"компания {domain} телефон адрес часы работы контакты"
+    payload = json.dumps({
+        "query": query,
+        "search_depth": "advanced",
+        "include_domains": [domain],
+        "max_results": 5,
+        "include_raw_content": True,
+    }).encode()
     req = urllib.request.Request(
-        "https://api.tavily.com/extract",
+        "https://api.tavily.com/search",
         data=payload,
-        headers={
-            "Authorization": f"Bearer {api_key}",
-            "Content-Type": "application/json",
-        },
+        headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
         method="POST",
     )
     try:
         with urllib.request.urlopen(req, timeout=20) as resp:
             data = json.loads(resp.read())
     except Exception as e:
-        raise ValueError(f"Tavily не смог загрузить сайт: {e}")
+        raise ValueError(f"Не удалось получить данные о сайте: {e}")
 
     results = data.get("results", [])
     if not results:
-        raise ValueError("Tavily не вернул содержимое страницы")
+        raise ValueError("Сайт не найден в поиске. Попробуй другой URL.")
 
-    raw = results[0].get("raw_content", "") or results[0].get("content", "")
-    if not raw:
-        raise ValueError("Страница пустая или недоступна")
+    # Склеиваем контент из всех результатов
+    parts = []
+    for r in results:
+        content = r.get("raw_content", "") or r.get("content", "")
+        if content:
+            parts.append(content)
+    combined = "\n\n".join(parts)
+    if not combined:
+        raise ValueError("Не удалось получить содержимое страниц сайта.")
 
-    # Обрезаем до 6000 символов для AI
-    raw = re.sub(r"\s{3,}", "\n", raw)
-    return raw.strip()[:6000]
+    combined = re.sub(r"\s{3,}", "\n", combined)
+    return combined.strip()[:6000]
 
 def ask_openai(prompt: str) -> str:
     """Отправляет запрос к OpenAI GPT-4o-mini."""
