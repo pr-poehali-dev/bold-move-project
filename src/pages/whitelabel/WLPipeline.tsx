@@ -2,9 +2,10 @@ import { useState, useEffect, useCallback } from "react";
 import Icon from "@/components/ui/icon";
 import { AUTH_URL } from "./wlTypes";
 import type { DemoPipelineCompany, DemoStatus, PanelView } from "./wlTypes";
-import { WLPipelineKanban } from "./WLPipelineKanban";
-import { WLPipelineList }   from "./WLPipelineList";
-import { WLPipelineDrawer } from "./WLPipelineDrawer";
+import { WLPipelineKanban }  from "./WLPipelineKanban";
+import { WLPipelineList }    from "./WLPipelineList";
+import { WLPipelineDrawer }  from "./WLPipelineDrawer";
+import { WLPipelineEvents }  from "./WLPipelineEvents";
 
 interface Props {
   refreshTrigger:  number;
@@ -99,6 +100,13 @@ export function WLPipeline({ refreshTrigger, onOpenPanel, onRunApiTests }: Props
           </button>
         </div>
       </div>
+
+      {/* Ближайшие шаги */}
+      {companies.length > 0 && (
+        <div className="mt-4">
+          <WLPipelineEvents companies={companies} onSelect={setSelected} />
+        </div>
+      )}
 
       {companies.length === 0 && !loading ? (
         <div className="text-center py-10 text-white/20 text-sm">
