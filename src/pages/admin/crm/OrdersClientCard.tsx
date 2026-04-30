@@ -1,32 +1,42 @@
 import { useState } from "react";
-import { Client, STATUS_LABELS, STATUS_COLORS } from "./crmApi";
+import { Client, STATUS_LABELS, STATUS_COLORS, crmFetch } from "./crmApi";
 import Icon from "@/components/ui/icon";
 import { useTheme } from "./themeContext";
 import { NEXT_STATUS, NEXT_LABEL, ORDERS_TABS } from "./ordersTypes";
 import { useSubstatuses } from "./substatusContext";
 
-
-function InstallProgress({ client }: { client: Client }) {
+function SubstatusPills({ client, tabId, onUpdate }: { client: Client; tabId: string; onUpdate: (subStatus: string | null) => void }) {
   const allSubs = useSubstatuses();
-  const steps = allSubs.filter(s => s.parent_status === "installs");
+  const steps = allSubs.filter(s => s.parent_status === tabId);
   if (steps.length === 0) return null;
-  const idx = steps.findIndex(s => String(s.id) === client.sub_status);
+  const current = client.sub_status;
+
+  const handleClick = async (e: React.MouseEvent, id: number) => {
+    e.stopPropagation();
+    const newVal = current === String(id) ? null : String(id);
+    onUpdate(newVal);
+    await crmFetch("clients", {
+      method: "PUT",
+      body: JSON.stringify({ sub_status: newVal }),
+    }, { id: String(client.id) });
+  };
+
   return (
-    <div className="flex items-center gap-0.5 mt-1.5">
-      {steps.map((s, i) => (
-        <div key={s.id} className="flex items-center gap-0.5">
-          <div className="w-2 h-2 rounded-full transition-all"
-            style={{ background: i <= idx ? s.color : "rgba(128,128,128,0.2)" }} />
-          {i < steps.length - 1 && (
-            <div className="w-3 h-px" style={{ background: i < idx ? s.color : "rgba(128,128,128,0.15)" }} />
-          )}
-        </div>
-      ))}
-      {idx >= 0 && (
-        <span className="ml-1.5 text-[10px] font-medium" style={{ color: steps[idx].color }}>
-          {steps[idx].label}
-        </span>
-      )}
+    <div className="flex flex-wrap gap-1 mt-2" onClick={e => e.stopPropagation()}>
+      {steps.map(s => {
+        const active = current === String(s.id);
+        return (
+          <button key={s.id} onClick={e => handleClick(e, s.id)}
+            className="text-[10px] font-semibold px-2 py-0.5 rounded-full transition"
+            style={{
+              background: active ? s.color + "25" : "rgba(128,128,128,0.08)",
+              color: active ? s.color : "rgba(150,150,150,0.7)",
+              border: `1px solid ${active ? s.color + "60" : "transparent"}`,
+            }}>
+            {s.label}
+          </button>
+        );
+      })}
     </div>
   );
 }
@@ -52,6 +62,8 @@ export function OrdersClientCard({ c, onClick, onNextStep }: {
 }) {
   const t = useTheme();
   const [stepping, setStepping] = useState(false);
+  const [localSubStatus, setLocalSubStatus] = useState<string | null>(c.sub_status ?? null);
+  const clientWithSub = { ...c, sub_status: localSubStatus };
   const tab         = ORDERS_TABS.find(tb => tb.statuses.includes(c.status));
   const isInstall   = tab?.id === "installs";
   const isCancelled = c.status === "cancelled";
@@ -92,7 +104,7 @@ export function OrdersClientCard({ c, onClick, onNextStep }: {
                 {localStorage.getItem(`order_title_${c.id}`) || `Заявка №${c.id}`}
               </span>
               {isInstall
-                ? <InstallProgress client={c} />
+                ? <InstallProgress client={clientWithSub} />
                 : <span className="flex-shrink-0 text-[10px] px-1.5 py-0.5 rounded-md font-medium"
                     style={{ background: STATUS_COLORS[c.status] + "20", color: STATUS_COLORS[c.status] }}>
                     {STATUS_LABELS[c.status] || c.status}
@@ -150,6 +162,11 @@ export function OrdersClientCard({ c, onClick, onNextStep }: {
               </div>
             )}
           </div>
+        )}
+
+        {/* Подстатусы — только для монтажей */}
+        {isInstall && tab && (
+          <SubstatusPills client={clientWithSub} tabId={tab.id} onUpdate={setLocalSubStatus} />
         )}
 
         {/* Финансы */}
