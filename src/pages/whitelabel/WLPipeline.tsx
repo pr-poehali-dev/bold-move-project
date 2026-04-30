@@ -19,7 +19,7 @@ const masterToken = () => localStorage.getItem("mp_user_token") || "";
 export function WLPipeline({ refreshTrigger, onOpenPanel, onRunApiTests }: Props) {
   const [companies, setCompanies] = useState<DemoPipelineCompany[]>([]);
   const [loading,   setLoading]   = useState(false);
-  const [view,      setView]      = useState<ViewMode>("kanban");
+  const [view,      setView]      = useState<ViewMode>("list");
   const [filter,    setFilter]    = useState<DemoStatus | "all">("all");
   const [selected,  setSelected]  = useState<DemoPipelineCompany | null>(null);
 
