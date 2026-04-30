@@ -53,8 +53,6 @@ export default function CorrectionCardHeader({
     onExtraWordsChange(newExtras);
     const newDone = [...doneWords.filter(d => d !== first && d !== second), first, second];
     onDoneWordsChange(newDone);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (onMergeFirstChange as any)?.(null);
     setSelectedWords([]);
     setPanelOpen(false);
   };
@@ -84,9 +82,7 @@ export default function CorrectionCardHeader({
     handleIgnore(w);
   };
 
-  // mergeFirst is unused dead code preserved for 1:1 compatibility
-   
-  const onMergeFirstChange = (_: null) => {};
+
 
   return (
     <div className="p-4 flex items-start justify-between gap-3">

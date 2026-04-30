@@ -30,12 +30,11 @@ interface Props {
   canFieldAddress?:  boolean;
   canFieldDates?:    boolean;
   canFieldFinance?:  boolean;
-  canFieldNotes?:    boolean;
   canFieldFiles?:    boolean;
   canFieldCancel?:   boolean;
 }
 
-export default function DrawerInfoTab({ data, client, setData, save, setComments, hideHidden, canEdit = true, canOrdersEdit = true, canFinance = true, canFiles = true, canFieldContacts = true, canFieldAddress = true, canFieldDates = true, canFieldFinance = true, canFieldNotes = true, canFieldFiles = true, canFieldCancel = true }: Props) {
+export default function DrawerInfoTab({ data, client, setData, save, setComments, hideHidden, canEdit = true, canOrdersEdit = true, canFinance = true, canFiles = true, canFieldContacts = true, canFieldAddress = true, canFieldDates = true, canFieldFinance = true, canFieldFiles = true, canFieldCancel = true }: Props) {
   const t = useTheme();
 
   // ── state ────────────────────────────────────────────────────────────────────

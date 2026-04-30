@@ -23,12 +23,11 @@ interface Props {
   canFieldAddress?:  boolean;
   canFieldDates?:    boolean;
   canFieldFinance?:  boolean;
-  canFieldNotes?:    boolean;
   canFieldFiles?:    boolean;
   canFieldCancel?:   boolean;
 }
 
-export default function ClientDrawer({ client, allClientOrders, onClose, onUpdated, onDeleted, isLocalCard, defaultTab = "client", defaultOrderId, canEdit = true, canOrdersEdit = true, canFinance = true, canFiles = true, canFieldContacts = true, canFieldAddress = true, canFieldDates = true, canFieldFinance = true, canFieldNotes = true, canFieldFiles = true, canFieldCancel = true }: Props) {
+export default function ClientDrawer({ client, allClientOrders, onClose, onUpdated, onDeleted, isLocalCard, defaultTab = "client", defaultOrderId, canEdit = true, canOrdersEdit = true, canFinance = true, canFiles = true, canFieldContacts = true, canFieldAddress = true, canFieldDates = true, canFieldFinance = true, canFieldFiles = true, canFieldCancel = true }: Props) {
   const t = useTheme();
   const [data, setData]               = useState<Client>(client);
   const [saving, setSaving]           = useState(false);
@@ -362,7 +361,6 @@ export default function ClientDrawer({ client, allClientOrders, onClose, onUpdat
                       canFieldAddress={canFieldAddress}
                       canFieldDates={canFieldDates}
                       canFieldFinance={canFieldFinance}
-                      canFieldNotes={canFieldNotes}
                       canFieldFiles={canFieldFiles}
                       canFieldCancel={canFieldCancel}
                     />

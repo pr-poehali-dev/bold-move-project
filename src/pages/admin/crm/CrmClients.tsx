@@ -9,10 +9,10 @@ import { BulkBar, DeleteConfirm } from "./ClientsBulkActions";
 
 const EMPTY_FORM = { client_name: "", phone: "", status: "new", address: "", notes: "", measure_date: "" };
 
-export default function CrmClients({ canEdit = true, canFinance = true, canFiles = true, canFieldContacts = true, canFieldAddress = true, canFieldDates = true, canFieldFinance = true, canFieldNotes = true, canFieldFiles = true, canFieldCancel = true }: {
+export default function CrmClients({ canEdit = true, canFinance = true, canFiles = true, canFieldContacts = true, canFieldAddress = true, canFieldDates = true, canFieldFinance = true, canFieldFiles = true, canFieldCancel = true }: {
   canEdit?: boolean; canFinance?: boolean; canFiles?: boolean;
   canFieldContacts?: boolean; canFieldAddress?: boolean; canFieldDates?: boolean;
-  canFieldFinance?: boolean; canFieldNotes?: boolean; canFieldFiles?: boolean; canFieldCancel?: boolean;
+  canFieldFinance?: boolean; canFieldFiles?: boolean; canFieldCancel?: boolean;
 }) {
   const t = useTheme();
   const [clients, setClients]   = useState<Client[]>([]);
@@ -203,7 +203,7 @@ export default function CrmClients({ canEdit = true, canFinance = true, canFiles
           canEdit={canEdit} canFinance={canFinance} canFiles={canFiles}
           canFieldContacts={canFieldContacts} canFieldAddress={canFieldAddress}
           canFieldDates={canFieldDates} canFieldFinance={canFieldFinance}
-          canFieldNotes={canFieldNotes} canFieldFiles={canFieldFiles}
+          canFieldFiles={canFieldFiles}
           canFieldCancel={canFieldCancel} />
       )}
 

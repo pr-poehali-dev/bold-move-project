@@ -28,12 +28,11 @@ interface Props {
   canFieldAddress?:  boolean;
   canFieldDates?:    boolean;
   canFieldFinance?:  boolean;
-  canFieldNotes?:    boolean;
   canFieldFiles?:    boolean;
   canFieldCancel?:   boolean;
 }
 
-export default function CrmOrders({ clients: allClients, loading, onStatusChange, onClientRemoved, onReload, initialOrderId, canEdit = true, canOrdersEdit = true, canFinance = true, canFiles = true, canFieldContacts = true, canFieldAddress = true, canFieldDates = true, canFieldFinance = true, canFieldNotes = true, canFieldFiles = true, canFieldCancel = true }: Props) {
+export default function CrmOrders({ clients: allClients, loading, onStatusChange, onClientRemoved, onReload, initialOrderId, canEdit = true, canOrdersEdit = true, canFinance = true, canFiles = true, canFieldContacts = true, canFieldAddress = true, canFieldDates = true, canFieldFinance = true, canFieldFiles = true, canFieldCancel = true }: Props) {
   const t = useTheme();
   const [search, setSearch]       = useState("");
   const [activeTab, setActiveTab] = useState("leads");
@@ -184,7 +183,6 @@ export default function CrmOrders({ clients: allClients, loading, onStatusChange
           canFieldAddress={canFieldAddress}
           canFieldDates={canFieldDates}
           canFieldFinance={canFieldFinance}
-          canFieldNotes={canFieldNotes}
           canFieldFiles={canFieldFiles}
           canFieldCancel={canFieldCancel}
         />

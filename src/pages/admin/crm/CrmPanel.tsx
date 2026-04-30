@@ -41,7 +41,6 @@ export default function CrmPanel({ theme, initialOrderId }: { theme: Theme; init
   const canFieldAddress  = hasPermission(user, "field_address");
   const canFieldDates    = hasPermission(user, "field_dates");
   const canFieldFinance  = hasPermission(user, "field_finance");
-  const canFieldNotes    = hasPermission(user, "field_notes");
   const canFieldFiles    = hasPermission(user, "field_files");
   const canFieldCancel   = hasPermission(user, "field_cancel");
 
@@ -181,7 +180,6 @@ export default function CrmPanel({ theme, initialOrderId }: { theme: Theme; init
               canFieldAddress={canFieldAddress}
               canFieldDates={canFieldDates}
               canFieldFinance={canFieldFinance}
-              canFieldNotes={canFieldNotes}
               canFieldFiles={canFieldFiles}
               canFieldCancel={canFieldCancel}
             />
@@ -201,7 +199,6 @@ export default function CrmPanel({ theme, initialOrderId }: { theme: Theme; init
               canFieldAddress={canFieldAddress}
               canFieldDates={canFieldDates}
               canFieldFinance={canFieldFinance}
-              canFieldNotes={canFieldNotes}
               canFieldFiles={canFieldFiles}
               canFieldCancel={canFieldCancel}
             />

@@ -99,7 +99,7 @@ export function DrawerColumns(props: ColumnsProps) {
       case "contacts": return canFieldContacts ? <DrawerContactsBlock {...infoProps} /> : null;
       case "object":   return canFieldAddress  ? <DrawerObjectBlock   {...infoProps} /> : null;
       case "dates":    return canFieldDates     ? <DrawerDatesBlock    {...infoProps} /> : null;
-      case "notes":    return null; // notes рендерится отдельно (canFieldNotes применяется в ActivityFeed)
+      case "notes":    return null; // notes рендерится отдельно
       case "files":    return (canFiles && canFieldFiles)    ? <DrawerFilesBlock clientId={data.id} hiddenBlocks={hiddenBlocks} toggleHidden={toggleHidden} logAction={logAction} editingBlock={editingBlock} setEditingBlock={setEditingBlock} /> : null;
       case "cancel":   return canFieldCancel   ? <DrawerCancelBlock   {...infoProps} /> : null;
       case "income":   return (canFinance && canFieldFinance) ? <DrawerIncomeBlock {...finProps} /> : null;
