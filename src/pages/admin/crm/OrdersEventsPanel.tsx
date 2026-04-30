@@ -62,6 +62,19 @@ export function OrdersEventsPanel({ allClients, loading, onSelect }: Props) {
   const upcomingCount = upcomingMeasures.length + upcomingInstalls.length;
   const hasEvents = upcomingCount > 0;
 
+  // Нет действий 7+ дней: статус активный, updated_at не менялся 7+ дней
+  const sevenDaysAgo = new Date(now); sevenDaysAgo.setDate(now.getDate() - 7);
+  const ACTIVE_STATUSES = [...MEASURE_ACTIVE, ...INSTALL_ACTIVE];
+  const noAction = allClients.filter(c => {
+    if (!ACTIVE_STATUSES.includes(c.status)) return false;
+    const lastActivity = c.updated_at ? new Date(c.updated_at) : new Date(c.created_at);
+    return lastActivity < sevenDaysAgo;
+  }).sort((a, b) => {
+    const ta = a.updated_at ? new Date(a.updated_at).getTime() : new Date(a.created_at).getTime();
+    const tb = b.updated_at ? new Date(b.updated_at).getTime() : new Date(b.created_at).getTime();
+    return ta - tb;
+  });
+
   // Push-уведомление при загрузке если есть просроченные
   useEffect(() => {
     if (loading || pushAsked || overdueCount === 0) return;
@@ -103,6 +116,59 @@ export function OrdersEventsPanel({ allClients, loading, onSelect }: Props) {
 
   return (
     <>
+      {/* ── НЕТ ДЕЙСТВИЙ 7+ ДНЕЙ ────────────────────────────────────────────── */}
+      {noAction.length > 0 && (
+        <div className="rounded-2xl p-4" style={{ background: "rgba(245,158,11,0.06)", border: "1px solid rgba(245,158,11,0.22)" }}>
+          <div className="flex items-center gap-2 mb-3">
+            <Icon name="Clock" size={15} style={{ color: "#f59e0b" }} />
+            <span className="text-sm font-bold" style={{ color: "#f59e0b" }}>Нет действий 7+ дней</span>
+            <span className="text-xs px-2 py-0.5 rounded-full font-bold"
+              style={{ background: "rgba(245,158,11,0.18)", color: "#f59e0b" }}>
+              {noAction.length}
+            </span>
+            <span className="text-xs ml-1" style={{ color: "#fbbf24" }}>— требуют внимания</span>
+          </div>
+          <div className="space-y-2">
+            {noAction.map(c => {
+              const lastActivity = c.updated_at ? new Date(c.updated_at) : new Date(c.created_at);
+              const daysIdle = Math.floor((now.getTime() - lastActivity.getTime()) / 86400000);
+              return (
+                <div key={c.id}
+                  onClick={() => onSelect(c)}
+                  className="flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer transition hover:opacity-80"
+                  style={{ background: t.surface2, border: `1px solid ${t.border}` }}>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-semibold truncate" style={{ color: t.text }}>
+                        {c.client_name || c.phone || `#${c.id}`}
+                      </span>
+                      {c.phone && (
+                        <span className="text-[10px] flex-shrink-0" style={{ color: t.textMute }}>{c.phone}</span>
+                      )}
+                    </div>
+                    {c.address && (
+                      <div className="text-[10px] truncate mt-0.5" style={{ color: t.textSub }}>
+                        <Icon name="MapPin" size={9} className="inline mr-0.5" style={{ color: "#f59e0b" }} />
+                        {c.address}
+                      </div>
+                    )}
+                  </div>
+                  <div className="text-right flex-shrink-0">
+                    <div className="text-[10px] font-bold" style={{ color: "#f59e0b" }}>
+                      {daysIdle} дн. без изменений
+                    </div>
+                    <div className="text-[9px]" style={{ color: t.textMute }}>
+                      {lastActivity.toLocaleDateString("ru-RU", { day: "numeric", month: "short" })}
+                    </div>
+                  </div>
+                  <Icon name="ChevronRight" size={13} style={{ color: t.textMute, flexShrink: 0 }} />
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       {/* ── ПРОСРОЧЕННЫЕ ────────────────────────────────────────────────────── */}
       {overdueCount > 0 && (
         <div className="rounded-2xl p-4" style={{ background: "#ef444408", border: "1px solid #ef444430" }}>

@@ -174,7 +174,8 @@ def handler(event: dict, context) -> dict:
                            contract_sum, prepayment, extra_payment, extra_agreement_sum,
                            responsible_phone, map_link, tags,
                            photo_before_url, photo_after_url, document_url,
-                           material_cost, measure_cost, install_cost, cancel_reason
+                           material_cost, measure_cost, install_cost, cancel_reason,
+                           updated_at
                     FROM {SCHEMA}.live_chats
                     WHERE status != 'deleted'
                 """
@@ -289,6 +290,7 @@ def handler(event: dict, context) -> dict:
                             vals.append(body[f] if body[f] != "" else None)
                 if not sets:
                     return err("nothing to update")
+                sets.append("updated_at = NOW()")
                 vals.append(int(cid))
                 cur.execute(f"UPDATE {SCHEMA}.live_chats SET {', '.join(sets)} WHERE id = %s", vals)
 

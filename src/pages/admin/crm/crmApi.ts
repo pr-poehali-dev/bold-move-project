@@ -152,6 +152,7 @@ export interface Client {
   install_cost: number | null;
   cancel_reason: string | null;
   sub_status: string | null;
+  updated_at: string | null;
 }
 
 export function fmt(n: number): string {
