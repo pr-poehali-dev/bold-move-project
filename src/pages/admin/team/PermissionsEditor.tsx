@@ -22,14 +22,14 @@ type PermSection = {
 
 export const PERM_TREE: PermSection[] = [
   {
-    title: "Уровень 1 — Вкладки",
+    title: "Доступ к разделам",
     rows: [
       { label: "CRM",   icon: "LayoutDashboard", color: "#a78bfa", view: "crm_view",   desc: "Доступ к разделу CRM" },
       { label: "Агент", icon: "BrainCircuit",    color: "#60a5fa", view: "agent_view", desc: "Доступ к настройкам агента" },
     ],
   },
   {
-    title: "Уровень 2 — Блоки в CRM",
+    title: "Что видит в CRM",
     rows: [
       { label: "Клиенты",          icon: "Users",        color: "#a78bfa", view: "clients_view",  edit: "clients_edit",  desc: "Список клиентов" },
       { label: "Статус заявок",    icon: "GitBranch",    color: "#34d399", view: "crm_view",      edit: "orders_edit",   desc: "Смена статусов в воронке" },
@@ -41,7 +41,7 @@ export const PERM_TREE: PermSection[] = [
     ],
   },
   {
-    title: "Уровень 2 — Подвкладки Агента",
+    title: "Настройки агента",
     rows: [
       { label: "Цены",          icon: "Tag",               color: "#a78bfa", view: "prices_view",      edit: "prices_edit",      desc: "Прайс-лист" },
       { label: "Правила",       icon: "SlidersHorizontal", color: "#60a5fa", view: "rules_view",       edit: "rules_edit",       desc: "Правила расчёта" },
@@ -51,7 +51,7 @@ export const PERM_TREE: PermSection[] = [
     ],
   },
   {
-    title: "Уровень 3 — Поля в карточке клиента",
+    title: "Карточка клиента",
     rows: [
       { label: "Контакты",     icon: "Phone",     color: "#a78bfa", view: "field_contacts", desc: "Телефон, email клиента" },
       { label: "Адрес объекта",icon: "MapPin",    color: "#60a5fa", view: "field_address",  desc: "Адрес замера/монтажа" },
