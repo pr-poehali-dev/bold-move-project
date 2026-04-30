@@ -93,7 +93,7 @@ def ask_openai(prompt: str) -> str:
     if not api_key:
         raise ValueError("OPENROUTER_API_KEY_2 не настроен")
     payload = json.dumps({
-        "model": "meta-llama/llama-3.1-8b-instruct:free",
+        "model": "openrouter/owl-alpha",
         "messages": [{"role": "user", "content": prompt}],
         "temperature": 0.1,
         "max_tokens": 800,
