@@ -131,15 +131,13 @@ export function OrdersClientRow({ c, onClick, onNextStep }: {
           {/* Правая часть */}
           <div className="flex-shrink-0 flex flex-col items-end gap-1">
             {isInstall
-              ? <>
-                  <InstallProgress client={clientWithSub} />
-                  {tab && <SubstatusPills client={clientWithSub} tabId={tab.id} onUpdate={setLocalSubStatus} />}
-                </>
+              ? <InstallProgress client={clientWithSub} />
               : <span className="text-[10px] px-1.5 py-0.5 rounded-md font-semibold"
                   style={{ background: color + "20", color }}>
                   {STATUS_LABELS[c.status] || c.status}
                 </span>
             }
+            {tab && <SubstatusPills client={clientWithSub} tabId={tab.id} onUpdate={setLocalSubStatus} />}
             {income > 0 && (
               <span className="text-xs font-bold text-emerald-500">{income.toLocaleString("ru-RU")} ₽</span>
             )}
@@ -190,15 +188,13 @@ export function OrdersClientRow({ c, onClick, onNextStep }: {
         {/* Статус */}
         <div className="w-44 flex-shrink-0">
           {isInstall
-            ? <>
-                <InstallProgress client={clientWithSub} />
-                {tab && <SubstatusPills client={clientWithSub} tabId={tab.id} onUpdate={setLocalSubStatus} />}
-              </>
+            ? <InstallProgress client={clientWithSub} />
             : <span className="text-[10px] px-1.5 py-0.5 rounded-md font-medium"
                 style={{ background: color + "20", color }}>
                 {STATUS_LABELS[c.status] || c.status}
               </span>
           }
+          {tab && <SubstatusPills client={clientWithSub} tabId={tab.id} onUpdate={setLocalSubStatus} />}
           {(c.measure_date && !isInstall) && (
             <div className="flex items-center gap-1 mt-1 text-[10px]" style={{ color: "#f59e0b" }}>
               <Icon name="Ruler" size={9} />

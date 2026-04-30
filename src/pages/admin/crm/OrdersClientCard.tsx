@@ -164,8 +164,8 @@ export function OrdersClientCard({ c, onClick, onNextStep }: {
           </div>
         )}
 
-        {/* Подстатусы — только для монтажей */}
-        {isInstall && tab && (
+        {/* Подстатусы */}
+        {tab && (
           <SubstatusPills client={clientWithSub} tabId={tab.id} onUpdate={setLocalSubStatus} />
         )}
 
