@@ -107,7 +107,7 @@ export function WLPipelineDrawer({ company, onClose, onUpdate, onDelete, onOpenP
   const domain  = company.site_url.replace(/https?:\/\//, "").split("/")[0];
   const statusInfo = DEMO_STATUSES.find(s => s.id === form.status) || DEMO_STATUSES[0];
 
-  const btn = "flex items-center gap-1.5 px-3 py-2 rounded-xl text-[11px] font-bold transition hover:opacity-80";
+  const btn = "flex items-center justify-center gap-1 px-2 py-1.5 rounded-lg text-[10px] font-bold transition hover:opacity-80";
 
   return (
     <div className="fixed inset-0 z-50 flex" onClick={onClose}>
@@ -211,29 +211,29 @@ export function WLPipelineDrawer({ company, onClose, onUpdate, onDelete, onOpenP
           {/* Кнопки действий */}
           <div className="space-y-2">
             <div className="text-[10px] uppercase tracking-wider text-white/25 mb-1">Действия</div>
-            <div className="flex flex-wrap gap-2">
+            <div className={`grid gap-2 ${!company.has_own_agent ? "grid-cols-5" : "grid-cols-4"}`}>
               <button onClick={async () => {
                   const tok = await loginAs(company.company_id);
                   if (tok) onOpenPanel({ type: "site-authed", url: `/?c=${company.company_id}`, token: tok });
                   else onOpenPanel({ type: "site", url: `/?c=${company.company_id}` });
                 }} className={btn} style={{ background: "rgba(6,182,212,0.12)", color: "#06b6d4", border: "1px solid rgba(6,182,212,0.25)" }}>
-                <Icon name="Globe" size={12} /> Открыть сайт
+                <Icon name="Globe" size={11} /> Сайт
               </button>
               <button onClick={async () => {
                   const tok = await loginAs(company.company_id);
                   if (tok) onOpenPanel({ type: "admin", companyId: company.company_id }, tok);
                 }} className={btn} style={{ background: "rgba(167,139,250,0.12)", color: "#a78bfa", border: "1px solid rgba(167,139,250,0.25)" }}>
-                <Icon name="LayoutDashboard" size={12} /> Панель
+                <Icon name="LayoutDashboard" size={11} /> Панель
               </button>
               <button onClick={() => onRunApiTests(company.company_id)}
                 className={btn} style={{ background: "rgba(16,185,129,0.10)", color: "#10b981", border: "1px solid rgba(16,185,129,0.22)" }}>
-                <Icon name="Zap" size={12} /> Живые API
+                <Icon name="Zap" size={11} /> API
               </button>
               <button onClick={async () => {
                   const tok = await loginAs(company.company_id);
                   if (tok) onOpenPanel({ type: "agent", companyId: company.company_id }, tok);
                 }} className={btn} style={{ background: "rgba(245,158,11,0.12)", color: "#f59e0b", border: "1px solid rgba(245,158,11,0.25)" }}>
-                <Icon name="Pencil" size={12} /> Бренд
+                <Icon name="Pencil" size={11} /> Бренд
               </button>
               {!company.has_own_agent && (
                 <button onClick={async () => {
@@ -244,7 +244,7 @@ export function WLPipelineDrawer({ company, onClose, onUpdate, onDelete, onOpenP
                     });
                     onUpdate({ has_own_agent: true });
                   }} className={btn} style={{ background: "rgba(16,185,129,0.12)", color: "#10b981", border: "1px solid rgba(16,185,129,0.25)" }}>
-                  <Icon name="Sparkles" size={12} /> Купили агента
+                  <Icon name="Sparkles" size={11} /> WL
                 </button>
               )}
             </div>
