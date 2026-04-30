@@ -44,7 +44,7 @@ export function WLSiteParser({ onCreated }: Props) {
     return r.json();
   };
 
-  const startAnimation = (filledCount: number) => {
+  const startAnimation = (filledCount: number, missingCount: number) => {
     clearTimers();
     setPhase("animating");
     setVisibleCount(0);
@@ -60,9 +60,11 @@ export function WLSiteParser({ onCreated }: Props) {
     const t1 = setTimeout(() => setPhase("banner"), bannerDelay);
     timersRef.current.push(t1);
 
-    // Ещё +2 сек → сворачиваем
-    const t2 = setTimeout(() => setPhase("collapsed"), bannerDelay + 2000);
-    timersRef.current.push(t2);
+    // Ещё +2 сек → сворачиваем ТОЛЬКО если нет незаполненных полей
+    if (missingCount === 0) {
+      const t2 = setTimeout(() => setPhase("collapsed"), bannerDelay + 2000);
+      timersRef.current.push(t2);
+    }
   };
 
   const run = async () => {
@@ -84,7 +86,10 @@ export function WLSiteParser({ onCreated }: Props) {
         if (d.company_id && d.token) {
           setLastCompanyId(d.company_id);
           onCreated?.(d.company_id, d.token);
-          startAnimation((d.report?.filled || []).length);
+          startAnimation(
+            (d.report?.filled  || []).length,
+            (d.report?.missing || []).length,
+          );
         }
       }
     } catch (e) {
@@ -256,8 +261,19 @@ export function WLSiteParser({ onCreated }: Props) {
                 <div className="text-xs font-bold" style={{ color: "#10b981" }}>
                   Компания создана — ID #{lastCompanyId}
                 </div>
-                <div className="text-[10px] text-white/30">Карточка появится в списке ниже...</div>
+                <div className="text-[10px] text-white/30">
+                  {report.missing.length === 0
+                    ? "Все поля заполнены — сворачиваю..."
+                    : "Доищи недостающие поля выше, потом сверни"}
+                </div>
               </div>
+              {report.missing.length > 0 && (
+                <button onClick={() => setPhase("collapsed")}
+                  className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[10px] font-bold transition hover:opacity-80 flex-shrink-0"
+                  style={{ background: "rgba(16,185,129,0.15)", color: "#10b981", border: "1px solid rgba(16,185,129,0.3)" }}>
+                  <Icon name="ChevronUp" size={10} /> Свернуть
+                </button>
+              )}
             </div>
           )}
         </div>
