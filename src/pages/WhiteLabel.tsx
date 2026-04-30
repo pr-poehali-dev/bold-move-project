@@ -250,6 +250,8 @@ export default function WhiteLabel() {
               onClick={() => openSite(DEMO_ID)} color="#06b6d4" />
             <LinkBtn icon="LayoutDashboard" label="Войти в их панель"
               onClick={() => loginAsCompany(DEMO_ID)} color="#a78bfa" />
+            <LinkBtn icon="Zap" label="Живые API"
+              onClick={() => check_runAll(DEMO_ID)} color="#10b981" />
           </div>
         </Section>
 
