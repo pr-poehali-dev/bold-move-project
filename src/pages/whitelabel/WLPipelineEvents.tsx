@@ -56,7 +56,67 @@ export function WLPipelineEvents({ companies, onSelect }: Props) {
 
   const total = upcoming.length;
 
+  // Нет действий 7+ дней: статус не rejected, и либо дата не заполнена,
+  // либо дата прошла 7+ дней назад
+  const sevenDaysAgo = new Date(now); sevenDaysAgo.setDate(now.getDate() - 7);
+  const noAction = companies.filter(c => {
+    if (c.status === "rejected") return false;
+    if (!c.next_action_date) return true;
+    return new Date(c.next_action_date) < sevenDaysAgo;
+  });
+
   return (
+    <div className="space-y-2">
+
+    {/* ── Нет действий 7+ дней ─────────────────────────────────────────────── */}
+    {noAction.length > 0 && (
+      <div className="rounded-2xl px-4 py-3" style={{ background: "rgba(245,158,11,0.06)", border: "1px solid rgba(245,158,11,0.22)" }}>
+        <div className="flex items-center gap-2 mb-2.5">
+          <Icon name="AlertTriangle" size={13} style={{ color: "#f59e0b" }} />
+          <span className="text-[11px] font-bold" style={{ color: "#f59e0b" }}>Нет действий 7+ дней</span>
+          <span className="text-[10px] px-2 py-0.5 rounded-full font-bold"
+            style={{ background: "rgba(245,158,11,0.15)", color: "#f59e0b" }}>
+            {noAction.length}
+          </span>
+          <span className="text-[10px] text-white/30 ml-1">— запланируй следующий шаг</span>
+        </div>
+        <div className="space-y-1.5">
+          {noAction.map(c => {
+            const color  = c.brand_color || "#8b5cf6";
+            const domain = c.site_url.replace(/https?:\/\//, "").split("/")[0];
+            const st     = DEMO_STATUSES.find(s => s.id === c.status) || DEMO_STATUSES[0];
+            const daysIdle = c.next_action_date
+              ? Math.floor((now.getTime() - new Date(c.next_action_date).getTime()) / 86400000)
+              : null;
+            return (
+              <div key={c.demo_id} onClick={() => onSelect(c)}
+                className="flex items-center gap-3 px-3 py-2 rounded-xl cursor-pointer transition hover:bg-white/[0.03]"
+                style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(245,158,11,0.12)", borderLeft: `3px solid ${color}` }}>
+                <div className="w-6 h-6 rounded-lg flex-shrink-0 flex items-center justify-center text-[10px] font-black overflow-hidden"
+                  style={{ background: color + "25", color, border: `1px solid ${color}40` }}>
+                  {c.brand_logo_url
+                    ? <img src={c.brand_logo_url} className="w-full h-full object-contain" alt="" />
+                    : c.company_name[0]?.toUpperCase()
+                  }
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="text-[11px] font-bold text-white/80 truncate">{c.company_name}</div>
+                  <div className="text-[9px] text-white/30">{domain}</div>
+                </div>
+                <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-md flex-shrink-0"
+                  style={{ background: st.bg, color: st.color }}>{st.label}</span>
+                <span className="text-[9px] text-white/25 flex-shrink-0">
+                  {daysIdle !== null ? `${daysIdle} дн. без обновления` : "Шаг не задан"}
+                </span>
+                <Icon name="ChevronRight" size={11} style={{ color: "rgba(255,255,255,0.15)", flexShrink: 0 }} />
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    )}
+
+    {/* ── Ближайшие шаги ───────────────────────────────────────────────────── */}
     <div className="rounded-2xl overflow-hidden" style={{ background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.07)" }}>
 
       {/* Шапка */}
@@ -144,6 +204,7 @@ export function WLPipelineEvents({ companies, onSelect }: Props) {
           )}
         </div>
       )}
+    </div>
     </div>
   );
 }
