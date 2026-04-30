@@ -418,6 +418,74 @@ def search_missing_fields(brand: dict, site_url: str) -> dict:
     return brand
 
 
+def hash_password(password: str) -> str:
+    """Простой SHA-256 хэш пароля."""
+    import hashlib
+    return hashlib.sha256(password.encode()).hexdigest()
+
+def create_demo_company(site_url: str, brand: dict) -> tuple[int, str]:
+    """
+    Создаёт новый аккаунт company с has_own_agent=true и запись в demo_companies.
+    Возвращает (company_id, token).
+    """
+    import secrets as _sec
+    slug = re.sub(r"https?://", "", site_url).split("/")[0].replace(".", "-")
+    demo_email = f"demo-{slug}-{_sec.token_hex(4)}@demo.local"
+    temp_pass  = _sec.token_urlsafe(10)
+    pw_hash    = hash_password(temp_pass)
+    company_name = (brand.get("company_name") or slug)
+
+    conn = get_conn()
+    cur  = conn.cursor()
+    cur.execute(f"""
+        INSERT INTO {SCHEMA}.users
+          (email, password_hash, name, role, approved, has_own_agent,
+           estimates_balance, agent_purchased_at,
+           company_name, bot_name, bot_greeting,
+           brand_color, brand_logo_url, bot_avatar_url,
+           support_phone, support_email, telegram, website,
+           working_hours, pdf_footer_address)
+        VALUES (%s,%s,%s,'company',TRUE,TRUE,
+                10, NOW(),
+                %s,%s,%s,
+                %s,%s,%s,
+                %s,%s,%s,%s,
+                %s,%s)
+        RETURNING id
+    """, (
+        demo_email, pw_hash, company_name,
+        company_name,
+        brand.get("bot_name") or company_name,
+        brand.get("bot_greeting") or f"Здравствуйте! Я помощник компании «{company_name}».",
+        brand.get("brand_color"),
+        brand.get("brand_logo_url"),
+        brand.get("bot_avatar_url"),
+        brand.get("support_phone"),
+        brand.get("support_email"),
+        brand.get("telegram"),
+        brand.get("website"),
+        brand.get("working_hours"),
+        brand.get("pdf_footer_address"),
+    ))
+    new_id = cur.fetchone()[0]
+
+    token = _sec.token_hex(32)
+    cur.execute(f"""
+        INSERT INTO {SCHEMA}.user_sessions (user_id, token, expires_at)
+        VALUES (%s, %s, NOW() + INTERVAL '30 days')
+    """, (new_id, token))
+
+    cur.execute(f"""
+        INSERT INTO {SCHEMA}.demo_companies (site_url, company_id)
+        VALUES (%s, %s)
+    """, (site_url, new_id))
+
+    conn.commit()
+    cur.close()
+    conn.close()
+    print(f"[parse-site] created demo company id={new_id} email={demo_email}")
+    return new_id, token
+
 def save_brand_to_db(company_id: int, brand: dict):
     """Сохраняет бренд-данные в таблицу users."""
     allowed = [
@@ -501,7 +569,9 @@ def handler(event: dict, context) -> dict:
             pass
 
     site_url   = (body.get("url") or "").strip()
-    company_id = int(body.get("company_id") or 14)
+    company_id = body.get("company_id")  # None при полном парсинге (создаём новый)
+    if company_id is not None:
+        company_id = int(company_id)
     only_field = (body.get("only_field") or "").strip()  # если задано — ищем только одно поле
 
     if not site_url:
@@ -598,14 +668,23 @@ def handler(event: dict, context) -> dict:
                     except Exception as e:
                         print(f"[parse-site] avatar upload failed: {e}")
 
-    try:
-        save_brand_to_db(company_id, brand)
-    except Exception as e:
-        return err(f"Ошибка сохранения: {e}")
+    # Создаём новый демо-аккаунт (или обновляем существующий, если company_id передан)
+    if company_id is None:
+        try:
+            company_id, token = create_demo_company(site_url, brand)
+        except Exception as e:
+            return err(f"Ошибка создания аккаунта: {e}")
+    else:
+        token = None
+        try:
+            save_brand_to_db(company_id, brand)
+        except Exception as e:
+            return err(f"Ошибка сохранения: {e}")
 
     report = build_report(brand)
     return ok({
-        "brand": brand,
-        "report": report,
+        "brand":      brand,
+        "report":     report,
         "company_id": company_id,
+        "token":      token,
     })
