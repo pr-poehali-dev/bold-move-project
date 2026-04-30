@@ -66,9 +66,9 @@ export function DrawerColumns(props: ColumnsProps) {
     customRowVals, toggleHidden, setEditingBlock, saveWithLog, logAction, setCustomRowVals,
     deleteCustomBlock, updateCustomBlock, onDragStart, onDragOver, onDrop, onDropToCol, onAddBlock,
     rowVisibility, toggleRowVisibility, customFinRows, addCustomFinRow, deleteCustomFinRow, updateCustomFinRow,
-    canEdit = true, canFinance = true, canFiles = true,
+    canEdit: _canEdit = true, canFinance = true, canFiles = true,
     canFieldContacts = true, canFieldAddress = true, canFieldDates = true,
-    canFieldFinance = true, canFieldNotes = true, canFieldFiles = true, canFieldCancel = true,
+    canFieldFinance = true, canFieldNotes: _canFieldNotes = true, canFieldFiles = true, canFieldCancel = true,
   } = props;
   const t = useTheme();
 
@@ -106,7 +106,7 @@ export function DrawerColumns(props: ColumnsProps) {
       case "contacts": return canFieldContacts ? <DrawerContactsBlock {...infoProps} /> : null;
       case "object":   return canFieldAddress  ? <DrawerObjectBlock   {...infoProps} /> : null;
       case "dates":    return canFieldDates     ? <DrawerDatesBlock    {...infoProps} /> : null;
-      case "notes":    return canFieldNotes     ? null : null; // notes рендерится отдельно
+      case "notes":    return null; // notes рендерится отдельно (canFieldNotes применяется в ActivityFeed)
       case "files":    return (canFiles && canFieldFiles)    ? <DrawerFilesBlock clientId={data.id} hiddenBlocks={hiddenBlocks} toggleHidden={toggleHidden} logAction={logAction} editingBlock={editingBlock} setEditingBlock={setEditingBlock} /> : null;
       case "cancel":   return canFieldCancel   ? <DrawerCancelBlock   {...infoProps} /> : null;
       case "income":   return (canFinance && canFieldFinance) ? <DrawerIncomeBlock {...finProps} /> : null;

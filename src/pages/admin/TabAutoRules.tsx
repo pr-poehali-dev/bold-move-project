@@ -172,14 +172,16 @@ export default function TabAutoRules({ isDark = true, readOnly = false }: Props)
         </div>
       )}
 
-      {/* Кнопка сохранить */}
-      <button onClick={save}
-        className="w-full py-3 rounded-xl text-sm font-bold text-white transition flex items-center justify-center gap-2"
-        style={{ background: saved ? "#10b981" : "#ef4444" }}>
-        {saved
-          ? <><Icon name="CheckCircle2" size={14} /> Сохранено</>
-          : <><Icon name="Save" size={14} /> Сохранить правила</>}
-      </button>
+      {/* Кнопка сохранить — только если не readOnly */}
+      {!readOnly && (
+        <button onClick={save}
+          className="w-full py-3 rounded-xl text-sm font-bold text-white transition flex items-center justify-center gap-2"
+          style={{ background: saved ? "#10b981" : "#ef4444" }}>
+          {saved
+            ? <><Icon name="CheckCircle2" size={14} /> Сохранено</>
+            : <><Icon name="Save" size={14} /> Сохранить правила</>}
+        </button>
+      )}
     </div>
   );
 }

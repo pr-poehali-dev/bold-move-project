@@ -213,16 +213,18 @@ export default function TabPricingRules({ token, readOnly = false }: Props) {
         </div>
       )}
 
-      {/* Сохранить */}
-      <button onClick={save} disabled={saving}
-        className="w-full py-3 rounded-xl text-sm font-bold text-white transition disabled:opacity-50 flex items-center justify-center gap-2"
-        style={{ background: saved ? "#10b981" : "#7c3aed" }}>
-        {saving
-          ? <><div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> Сохранение...</>
-          : saved
-          ? <><Icon name="CheckCircle2" size={14} /> Сохранено — применится к новым расчётам</>
-          : <><Icon name="Save" size={14} /> Сохранить правила</>}
-      </button>
+      {/* Сохранить — только если не readOnly */}
+      {!readOnly && (
+        <button onClick={save} disabled={saving}
+          className="w-full py-3 rounded-xl text-sm font-bold text-white transition disabled:opacity-50 flex items-center justify-center gap-2"
+          style={{ background: saved ? "#10b981" : "#7c3aed" }}>
+          {saving
+            ? <><div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> Сохранение...</>
+            : saved
+            ? <><Icon name="CheckCircle2" size={14} /> Сохранено — применится к новым расчётам</>
+            : <><Icon name="Save" size={14} /> Сохранить правила</>}
+        </button>
+      )}
     </div>
   );
 }
