@@ -3,6 +3,7 @@ import os
 import re
 import urllib.request
 import urllib.parse
+import urllib.error
 import psycopg2
 
 SCHEMA = os.environ.get("MAIN_DB_SCHEMA", "public")
@@ -20,6 +21,68 @@ def err(msg, code=400):
 
 def get_conn():
     return psycopg2.connect(os.environ["DATABASE_URL"])
+
+def fetch_brand_color(url: str) -> str | None:
+    """Загружает HTML страницы напрямую и извлекает доминирующий цвет из CSS."""
+    if not url.startswith("http"):
+        url = "https://" + url
+    try:
+        req = urllib.request.Request(url, headers={
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+            "Accept": "text/html,application/xhtml+xml",
+        })
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            html = resp.read().decode("utf-8", errors="replace")
+    except Exception as e:
+        print(f"[parse-site] color fetch failed: {e}")
+        return None
+
+    # Ищем inline-стили и style-блоки
+    css_chunks = []
+    # <style> блоки
+    for m in re.finditer(r"<style[^>]*>(.*?)</style>", html, re.DOTALL | re.IGNORECASE):
+        css_chunks.append(m.group(1))
+    # inline style=""
+    for m in re.finditer(r'style="([^"]*)"', html, re.IGNORECASE):
+        css_chunks.append(m.group(1))
+    # Tailwind / Bootstrap классы bg-[#xxx]
+    for m in re.finditer(r'bg-\[#([0-9a-fA-F]{3,6})\]', html):
+        return f"#{m.group(1)}"
+
+    css_text = "\n".join(css_chunks)
+
+    # Ищем цвета в CSS: background, background-color, color для кнопок/primary
+    # Приоритет: btn, button, primary, accent, brand, cta
+    priority_pattern = re.compile(
+        r'(?:\.btn|\.button|\.cta|primary|accent|brand|header|hero)[^{]*\{[^}]*'
+        r'(?:background(?:-color)?|color)\s*:\s*(#[0-9a-fA-F]{3,8}|rgb\([^)]+\))',
+        re.IGNORECASE | re.DOTALL
+    )
+    for m in priority_pattern.finditer(css_text):
+        color = m.group(1).strip()
+        if color.startswith("#") and len(color) in (4, 7):
+            # Пропускаем белый, чёрный, серые
+            hex_val = color.lstrip("#").lower()
+            if hex_val not in ("fff", "ffffff", "000", "000000", "333", "333333", "666", "666666"):
+                print(f"[parse-site] found brand color: {color}")
+                return color
+
+    # Fallback: все HEX-цвета, берём самый частый не-нейтральный
+    all_colors = re.findall(r'#([0-9a-fA-F]{6})', css_text)
+    neutral = {"ffffff", "000000", "333333", "666666", "999999", "cccccc", "f5f5f5",
+               "eeeeee", "e5e5e5", "dddddd", "f0f0f0", "fafafa", "1a1a1a", "2d2d2d"}
+    freq: dict = {}
+    for c in all_colors:
+        lc = c.lower()
+        if lc not in neutral:
+            freq[lc] = freq.get(lc, 0) + 1
+    if freq:
+        best = max(freq, key=lambda k: freq[k])
+        print(f"[parse-site] fallback brand color: #{best}")
+        return f"#{best}"
+
+    return None
+
 
 def tavily_post(endpoint: str, payload: dict, api_key: str, timeout: int = 20) -> dict:
     """Выполняет POST-запрос к Tavily API, читает тело даже при ошибке."""
@@ -270,6 +333,13 @@ def handler(event: dict, context) -> dict:
         brand = extract_brand_info(site_url, page_text)
     except Exception as e:
         return err(f"AI ошибка: {e}")
+
+    # Если AI не нашёл цвет — пробуем вытащить из CSS
+    if not brand.get("brand_color"):
+        css_color = fetch_brand_color(site_url)
+        if css_color:
+            brand["brand_color"] = css_color
+            print(f"[parse-site] brand_color from CSS: {css_color}")
 
     try:
         save_brand_to_db(company_id, brand)
