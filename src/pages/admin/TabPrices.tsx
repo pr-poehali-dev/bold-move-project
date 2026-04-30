@@ -106,7 +106,8 @@ export default function TabPrices({ token, onItemAdded, isDark = true }: Props) 
           </div>
 
           <div className={`${bg} border ${border} rounded-xl overflow-hidden`}>
-            <table className="w-full text-sm">
+            {/* ── Десктоп: таблица ── */}
+            <table className="hidden sm:table w-full text-sm">
               <thead>
                 <tr className={`border-b ${border}`}>
                   <th className="px-2 py-2.5 w-6" />
@@ -133,11 +134,9 @@ export default function TabPrices({ token, onItemAdded, isDark = true }: Props) 
                       ${idx % 2 ? (isDark ? "bg-white/[0.01]" : "bg-gray-50/50") : ""}
                       ${dragOverId === item.id ? "bg-violet-500/10 border-violet-500/30" : ""}
                     `}>
-                    {/* Drag handle */}
                     <td className="px-2 py-2.5 w-6">
                       <Icon name="GripVertical" size={14} className={`${isDark ? "text-white/15 hover:text-white/40" : "text-gray-300 hover:text-gray-500"} transition mx-auto`} />
                     </td>
-                    {/* Название + кружок активности */}
                     <td className={`px-4 py-2.5 ${text}`}>
                       <div className="flex items-center gap-2">
                         <button onClick={e => { e.stopPropagation(); toggleActive(item); }}
@@ -189,7 +188,6 @@ export default function TabPrices({ token, onItemAdded, isDark = true }: Props) 
                         </button>
                       </div>
                     </td>
-                    {/* Только удаление — активность теперь в колонке названия */}
                     <td className="px-3 py-2.5 w-8">
                       <button onClick={() => handleDeleteItem(item)} title="Удалить"
                         className={`${isDark ? "text-white/20" : "text-gray-300"} hover:text-red-400 transition`}>
@@ -200,6 +198,71 @@ export default function TabPrices({ token, onItemAdded, isDark = true }: Props) 
                 ))}
               </tbody>
             </table>
+
+            {/* ── Мобиле: карточки ── */}
+            <div className="sm:hidden flex flex-col divide-y" style={{ borderColor: isDark ? "rgba(255,255,255,0.05)" : "#f3f4f6" }}>
+              {items.map(item => (
+                <div key={item.id} className={`px-3 py-3 flex flex-col gap-2.5 ${!item.active ? "opacity-40" : ""}`}>
+                  {/* Строка 1: активность + название + удалить */}
+                  <div className="flex items-center gap-2">
+                    <button onClick={() => toggleActive(item)}
+                      className={`w-3.5 h-3.5 rounded-full border flex-shrink-0 transition ${item.active ? "bg-green-400 border-green-400" : isDark ? "border-white/25" : "border-gray-300"}`} />
+                    <div className={`flex-1 font-medium text-sm ${text}`}>
+                      <EditableCell value={item.name} onSave={v => saveField(item, "name", v)} />
+                    </div>
+                    <button onClick={() => handleDeleteItem(item)}
+                      className={`${isDark ? "text-white/20" : "text-gray-300"} hover:text-red-400 transition p-1`}>
+                      <Icon name="X" size={13} />
+                    </button>
+                  </div>
+                  {/* Строка 2: цены + единица */}
+                  <div className="flex items-center gap-3">
+                    <div className="flex flex-col gap-0.5 flex-1">
+                      <span className={`text-[10px] ${muted2}`}>Продажа ₽</span>
+                      <div className="font-mono text-green-400 text-sm">
+                        <EditableCell value={item.price} type="number" onSave={v => saveField(item, "price", v)} />
+                      </div>
+                    </div>
+                    <div className="flex flex-col gap-0.5 flex-1">
+                      <span className={`text-[10px] ${muted2}`}>Закупка ₽</span>
+                      <div className="font-mono text-blue-400 text-sm">
+                        <EditableCell value={item.purchase_price ?? ""} type="number" onSave={v => saveField(item, "purchase_price", v)} placeholder="—" />
+                      </div>
+                    </div>
+                    <div className="flex flex-col gap-0.5">
+                      <span className={`text-[10px] ${muted2}`}>Ед.</span>
+                      <select value={item.unit} onChange={e => saveField(item, "unit", e.target.value)}
+                        className={`bg-transparent text-sm outline-none cursor-pointer appearance-none ${muted}`}
+                        style={{ colorScheme: isDark ? "dark" : "light" }}>
+                        {PRICE_UNITS.map(u => <option key={u} value={u} style={{ background: selectBg }}>{u}</option>)}
+                      </select>
+                    </div>
+                  </div>
+                  {/* Строка 3: описание + AI */}
+                  <div className="flex items-center gap-2">
+                    <div className={`flex-1 text-xs ${muted}`}>
+                      <TruncatedCell value={item.description} onSave={v => saveField(item, "description", v)} placeholder="Описание для AI..." maxChars={40} />
+                    </div>
+                    <button onClick={() => generateDescription(item)} disabled={aiDescLoadingId === item.id}
+                      className="flex-shrink-0 bg-violet-600/20 hover:bg-violet-600/40 border border-violet-500/30 text-violet-400 rounded px-2 py-1 disabled:opacity-40 transition flex items-center gap-1">
+                      {aiDescLoadingId === item.id ? <Icon name="Loader" size={11} className="animate-spin" /> : <Icon name="Sparkles" size={11} />}
+                      <span className="text-[10px]">AI</span>
+                    </button>
+                  </div>
+                  {/* Строка 4: синонимы + AI */}
+                  <div className="flex items-center gap-2">
+                    <div className="flex-1 text-xs text-amber-400/60">
+                      <TruncatedCell value={item.synonyms || ""} onSave={v => saveField(item, "synonyms", v)} placeholder="Синонимы..." maxChars={40} />
+                    </div>
+                    <button onClick={() => generateSynonyms(item)} disabled={aiLoadingId === item.id}
+                      className="flex-shrink-0 bg-violet-600/20 hover:bg-violet-600/40 border border-violet-500/30 text-violet-400 rounded px-2 py-1 disabled:opacity-40 transition flex items-center gap-1">
+                      {aiLoadingId === item.id ? <Icon name="Loader" size={11} className="animate-spin" /> : <Icon name="Sparkles" size={11} />}
+                      <span className="text-[10px]">AI</span>
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
 
             {addingInCat === category ? (
               <div className={`border-t ${border} px-4 py-3 flex gap-2 items-end flex-wrap bg-violet-500/5`}>

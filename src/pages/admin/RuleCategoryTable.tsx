@@ -58,8 +58,131 @@ export default function RuleCategoryTable({
       <h3 className={`${catHead} text-xs font-semibold uppercase tracking-wider mb-2 px-1`}>{category}</h3>
       <div className={`${bg} border ${border} rounded-xl overflow-hidden`}>
 
+        {/* ── Мобиле: аккордеон-карточки ── */}
+        <div className="sm:hidden flex flex-col divide-y" style={{ borderColor: isDark ? "rgba(255,255,255,0.05)" : "#f3f4f6" }}>
+          {items.map(item => {
+            const isExpanded = expandedId === item.id;
+            const d = drafts[item.id];
+            const isSaving = saving === item.id;
+            return (
+              <div key={item.id} className={!item.active ? "opacity-40" : ""}>
+                {/* Строка-заголовок карточки */}
+                <button
+                  onClick={() => onOpenRow(item)}
+                  className={`w-full flex items-center gap-2 px-3 py-3 text-left transition ${isExpanded ? "bg-violet-500/10" : ""}`}>
+                  <Icon name={isExpanded ? "ChevronUp" : "ChevronDown"} size={13} className={muted} />
+                  <span className={`flex-1 text-sm font-medium ${isDark ? "text-white/80" : "text-gray-700"}`}>{item.name}</span>
+                  {(item.when_condition || item.when_not_condition || item.calc_rule) && (
+                    <span className="text-[10px] bg-violet-500/20 text-violet-400 rounded-full px-2 py-0.5">правила</span>
+                  )}
+                  <div onClick={e => e.stopPropagation()}>
+                    {confirmDeleteItemId === item.id ? (
+                      <div className="flex items-center gap-1">
+                        <button onClick={() => { onDeleteItem(item.id); onSetConfirmDeleteItemId(null); }}
+                          className="text-red-400 text-[10px] px-1.5 py-0.5 bg-red-500/20 rounded">Да</button>
+                        <button onClick={() => onSetConfirmDeleteItemId(null)}
+                          className="text-white/40 text-[10px] px-1.5 py-0.5 bg-white/5 rounded">Нет</button>
+                      </div>
+                    ) : (
+                      <button onClick={() => onSetConfirmDeleteItemId(item.id)}
+                        className="text-white/20 hover:text-red-400 transition p-1">
+                        <Icon name="X" size={13} />
+                      </button>
+                    )}
+                  </div>
+                </button>
+
+                {/* Раскрытый редактор (мобиле) */}
+                {isExpanded && d && (
+                  <div className={`px-4 pb-4 flex flex-col gap-3 ${isDark ? "bg-white/[0.02]" : "bg-gray-50/50"}`}>
+                    <p className={`${muted} text-xs pt-2`}>Правила для <span className={isDark ? "text-violet-300 font-medium" : "text-violet-600 font-medium"}>{item.name}</span></p>
+
+                    <div className="flex flex-col gap-1.5">
+                      <label className={`${isDark ? "text-white/60" : "text-gray-500"} text-xs font-medium flex items-center gap-1.5`}>
+                        <Icon name="CircleCheck" size={11} className="text-green-400" />
+                        Добавляется если...
+                      </label>
+                      <textarea value={d.when_condition}
+                        onChange={e => onPatchDraft(item.id, { when_condition: e.target.value })}
+                        placeholder={"• клиент выбрал ПВХ полотно\n• всегда добавлять"}
+                        rows={3}
+                        className={`${isDark ? "bg-white/5 border-white/10 text-white placeholder-white/20 focus:border-green-500/60" : "bg-white border-gray-200 text-gray-900 placeholder-gray-300 focus:border-green-500"} border rounded-lg px-3 py-2 text-xs outline-none resize-none transition`}
+                      />
+                    </div>
+
+                    <div className="flex flex-col gap-1.5">
+                      <label className={`${isDark ? "text-white/60" : "text-gray-500"} text-xs font-medium flex items-center gap-1.5`}>
+                        <Icon name="CircleX" size={11} className="text-red-400" />
+                        НЕ добавляется если...
+                      </label>
+                      <textarea value={d.when_not_condition}
+                        onChange={e => onPatchDraft(item.id, { when_not_condition: e.target.value })}
+                        placeholder={"• клиент выбрал тканевое полотно"}
+                        rows={3}
+                        className={`${isDark ? "bg-white/5 border-white/10 text-white placeholder-white/20 focus:border-red-500/60" : "bg-white border-gray-200 text-gray-900 placeholder-gray-300 focus:border-red-500"} border rounded-lg px-3 py-2 text-xs outline-none resize-none transition`}
+                      />
+                    </div>
+
+                    <div className="flex flex-col gap-1.5">
+                      <label className={`${isDark ? "text-white/60" : "text-gray-500"} text-xs font-medium flex items-center gap-1.5`}>
+                        <Icon name="Calculator" size={11} className="text-violet-400" />
+                        Логика расчёта
+                      </label>
+                      <textarea value={d.calc_rule}
+                        onChange={e => onPatchDraft(item.id, { calc_rule: e.target.value })}
+                        placeholder={"• площадь комнаты\n• периметр × 1.3"}
+                        rows={3}
+                        className={`${isDark ? "bg-white/5 border-white/10 text-white placeholder-white/20 focus:border-violet-500" : "bg-white border-gray-200 text-gray-900 placeholder-gray-300 focus:border-violet-500"} border rounded-lg px-3 py-2 text-xs outline-none resize-none transition`}
+                      />
+                    </div>
+
+                    <div className="flex flex-col gap-1.5">
+                      <label className={`${isDark ? "text-white/60" : "text-gray-500"} text-xs font-medium flex items-center gap-1.5`}>
+                        <Icon name="PenLine" size={11} className="text-amber-400" />
+                        Изменения клиента
+                      </label>
+                      <textarea value={d.client_changes}
+                        onChange={e => onPatchDraft(item.id, { client_changes: e.target.value })}
+                        placeholder={"что может изменить клиент..."}
+                        rows={2}
+                        className={`${isDark ? "bg-white/5 border-white/10 text-white placeholder-white/20" : "bg-white border-gray-200 text-gray-900 placeholder-gray-300"} border rounded-lg px-3 py-2 text-xs outline-none resize-none transition`}
+                      />
+                    </div>
+
+                    {activeRuleTypes.filter(rt => rt.name !== "calc_rule" && rt.name !== "bundle").map(rt => (
+                      <div key={rt.id} className="flex flex-col gap-1.5">
+                        <label className={`${isDark ? "text-white/60" : "text-gray-500"} text-xs font-medium`}>{rt.label}</label>
+                        <textarea
+                          value={d.custom[rt.id] ?? ""}
+                          onChange={e => onPatchDraft(item.id, { custom: { ...d.custom, [rt.id]: e.target.value } })}
+                          placeholder={rt.placeholder || "—"}
+                          rows={2}
+                          className={`${isDark ? "bg-white/5 border-white/10 text-white placeholder-white/20" : "bg-white border-gray-200 text-gray-900 placeholder-gray-300"} border rounded-lg px-3 py-2 text-xs outline-none resize-none transition`}
+                        />
+                      </div>
+                    ))}
+
+                    <div className="flex gap-2 pt-2 border-t" style={{ borderColor: isDark ? "rgba(255,255,255,0.06)" : "#e5e7eb" }}>
+                      <button onClick={() => onSaveRow(item)} disabled={isSaving}
+                        className="flex-1 bg-violet-600 hover:bg-violet-700 disabled:opacity-40 text-white text-xs px-4 py-2.5 rounded-lg transition flex items-center justify-center gap-1.5">
+                        {isSaving ? <Icon name="Loader" size={12} className="animate-spin" /> : <Icon name="Check" size={12} />}
+                        Сохранить
+                      </button>
+                      <button onClick={onCloseRow}
+                        className={`px-4 py-2.5 text-xs rounded-lg transition ${isDark ? "text-white/40 hover:text-white/70" : "text-gray-500 hover:text-gray-700"}`}>
+                        Отмена
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+
+        {/* ── Десктоп: таблица (скрыта на мобиле) ── */}
         {/* Заголовок */}
-        <div className={`grid border-b ${border} px-4 py-2.5`} style={{ gridTemplateColumns: colTemplate }}>
+        <div className={`hidden sm:grid border-b ${border} px-4 py-2.5`} style={{ gridTemplateColumns: colTemplate }}>
           <span className={`${muted} text-xs`}>Позиция</span>
           <span className={`${muted} text-xs`}>Добавляется если...</span>
           <span className={`${muted} text-xs`}>НЕ добавляется если...</span>
@@ -111,7 +234,8 @@ export default function RuleCategoryTable({
           <span />
         </div>
 
-        {/* Строки */}
+        {/* Строки (только десктоп) */}
+        <div className="hidden sm:block">
         {items.map((item, idx) => {
           const isExpanded = expandedId === item.id;
           const d = drafts[item.id];
@@ -327,6 +451,7 @@ export default function RuleCategoryTable({
             </div>
           );
         })}
+        </div>{/* end hidden sm:block */}
       </div>
     </div>
   );

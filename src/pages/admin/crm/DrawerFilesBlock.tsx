@@ -108,14 +108,13 @@ export function DrawerFilesBlock({ clientId, hiddenBlocks, toggleHidden, logActi
 
   const [copied, setCopied] = useState<string | null>(null);
 
-  // ВАЖНО: navigator.share на iOS/Android требует вызова строго в обработчике клика
-  // без async/await — иначе браузер блокирует как "не из жеста пользователя"
+  // navigator.share работает только на мобильных — на ПК сразу копируем в буфер
+  const isMobile = () => typeof window !== "undefined" && "ontouchstart" in window;
+
   const doShare = (text: string, title: string) => {
-    if (navigator.share) {
-      // Синхронно вызываем share — промис игнорируем только для AbortError
+    if (navigator.share && isMobile()) {
       navigator.share({ title, text }).catch(e => {
-        if (e instanceof Error && e.name === "AbortError") return; // пользователь отменил
-        // Иначе — копируем в буфер как fallback
+        if (e instanceof Error && e.name === "AbortError") return;
         copyFallback(text, title);
       });
     } else {
