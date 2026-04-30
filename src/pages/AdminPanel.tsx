@@ -108,21 +108,27 @@ export default function AdminPanel() {
     user.approved &&
     (user.is_master || ALLOWED_ROLES.includes(user.role));
 
-  // Права на вкладки
+  // Права на вкладки — пересчитываются после загрузки user
   const canCrm   = hasPermission(user, "crm_view");
   const canAgent = hasPermission(user, "agent_view");
   const hasTeam  = user?.role === "company" || !!user?.is_master;
   const mainTabs = buildMainTabs(canCrm, canAgent, hasTeam);
 
-  // Начальная вкладка — первая доступная
-  const [mainTab, setMainTab] = useState<MainTab>(() => {
-    if (canCrm)   return "crm";
-    if (canAgent) return "agent";
-    if (hasTeam)  return "team";
-    return "crm";
-  });
+  // mainTab — всегда первая доступная вкладка, пересчитывается при смене user
+  const [mainTab, setMainTab] = useState<MainTab>("crm");
 
-  // Если текущая вкладка стала недоступна — переключиться на первую доступную
+  useEffect(() => {
+    if (loading || !user) return;
+    const allowed = buildMainTabs(
+      hasPermission(user, "crm_view"),
+      hasPermission(user, "agent_view"),
+      user.role === "company" || !!user.is_master,
+    );
+    // Всегда переключаемся на первый доступный таб после загрузки
+    setMainTab(allowed[0]?.id ?? "crm");
+  }, [loading, user?.id]);  // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Безопасное переключение — только в разрешённые табы
   const safeSetMainTab = (tab: MainTab) => {
     const allowed = mainTabs.map(t => t.id);
     if (allowed.includes(tab)) { setMainTab(tab); return; }
@@ -438,7 +444,7 @@ export default function AdminPanel() {
       )}
 
       {/* ── Нет доступа ни к одной вкладке ── */}
-      {mainTabs.length === 0 && (
+      {!loading && mainTabs.length === 0 && (
         <div className="flex-1 flex flex-col items-center justify-center gap-3 text-center px-6">
           <div className="w-12 h-12 rounded-2xl flex items-center justify-center" style={{ background: "rgba(239,68,68,0.12)" }}>
             <Icon name="ShieldOff" size={22} className="text-red-400" />
