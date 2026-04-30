@@ -31,9 +31,9 @@ const DEFAULT_COST_ROWS = [
   { key: "install_cost",  label: "Монтаж" },
 ];
 
-interface Props { isDark?: boolean; }
+interface Props { isDark?: boolean; readOnly?: boolean; }
 
-export default function TabAutoRules({ isDark = true }: Props) {
+export default function TabAutoRules({ isDark = true, readOnly = false }: Props) {
   const [rules,    setRules]    = useState<AutoRulesMap>(loadAutoRules);
   const [autoMode, setAutoMode] = useState<boolean>(loadAutoMode);
   const [saved,    setSaved]    = useState(false);

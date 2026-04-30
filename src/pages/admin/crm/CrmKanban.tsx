@@ -23,6 +23,7 @@ interface Props {
   onClientRemoved: (id: number) => void;
   onReload: () => void;
   onRemoveBoard?: () => void;
+  canEdit?: boolean;
 }
 
 const LS_LOCAL_CARDS = "kanban_board_local_cards";
@@ -34,7 +35,7 @@ function saveLocalCards(cards: Client[]) {
   localStorage.setItem(LS_LOCAL_CARDS, JSON.stringify(cards));
 }
 
-export default function CrmKanban({ clients, loading, onStatusChange, onClientRemoved, onReload, onRemoveBoard }: Props) {
+export default function CrmKanban({ clients, loading, onStatusChange, onClientRemoved, onReload, onRemoveBoard, canEdit = true }: Props) {
   const t = useTheme();
   const [selected, setSelected]       = useState<Client | null>(null);
   const [dragging, setDragging]       = useState<Client | null>(null);

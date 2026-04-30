@@ -7,14 +7,14 @@ import CrmCalendar from "./CrmCalendar";
 import CrmKanban from "./CrmKanban";
 import { ThemeContext, DARK, LIGHT, type Theme } from "./themeContext";
 import { crmFetch, Client } from "./crmApi";
-import { useAuth, hasPermission } from "@/context/AuthContext";
+import { useAuth, hasPermission, type Permissions } from "@/context/AuthContext";
 
 const LS_KANBAN_ENABLED = "crm_kanban_board_enabled";
 
 type CrmTab = "analytics" | "clients" | "orders" | "calendar" | "kanban";
 
 // Все возможные табы с привязкой к новым правам
-const ALL_TABS: { id: CrmTab; label: string; icon: string; perm?: keyof import("@/context/AuthContext").Permissions }[] = [
+const ALL_TABS: { id: CrmTab; label: string; icon: string; perm?: keyof Permissions }[] = [
   { id: "orders",    label: "Заказы",    icon: "Layers" },
   { id: "clients",   label: "Клиенты",   icon: "Users",       perm: "clients_view"  },
   { id: "calendar",  label: "Календарь", icon: "CalendarDays", perm: "calendar_view" },

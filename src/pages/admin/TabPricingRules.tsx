@@ -12,14 +12,14 @@ interface PricingRules {
   premium_label:  string;
 }
 
-interface Props { token: string; }
+interface Props { token: string; readOnly?: boolean; }
 
 const DEFAULT: PricingRules = {
   econom_mult: 0.85, premium_mult: 1.27,
   econom_label: "Econom", standard_label: "Standard", premium_label: "Premium",
 };
 
-export default function TabPricingRules({ token }: Props) {
+export default function TabPricingRules({ token, readOnly = false }: Props) {
   const [rules,   setRules]   = useState<PricingRules>(DEFAULT);
   const [loading, setLoading] = useState(true);
   const [saving,  setSaving]  = useState(false);
