@@ -259,7 +259,7 @@ def ask_openai(prompt: str) -> str:
         method="POST",
     )
     try:
-        with urllib.request.urlopen(req, timeout=30) as resp:
+        with urllib.request.urlopen(req, timeout=15) as resp:
             data = json.loads(resp.read())
     except urllib.error.HTTPError as e:
         body = e.read().decode("utf-8", errors="replace")
@@ -325,8 +325,33 @@ def extract_brand_info(site_url: str, page_text: str) -> dict:
 
     return result
 
+def extract_with_regex(text: str, field: str) -> str | None:
+    """Быстрое извлечение через regex — без AI, мгновенно."""
+    if field == "support_email":
+        m = re.search(r'[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z]{2,}', text)
+        return m.group() if m else None
+    if field == "telegram":
+        m = re.search(r'(?:t\.me/|@)([a-zA-Z0-9_]{4,})', text)
+        if m:
+            slug = m.group(1)
+            return f"https://t.me/{slug}" if not text[m.start():m.start()+1] == "@" else f"@{slug}"
+        return None
+    if field == "pdf_footer_address":
+        # Ищем паттерн: г. Город, ул. ... или просто город + улица
+        m = re.search(
+            r'(?:г\.?\s*[А-ЯЁ][а-яё\-]+[\s,]+(?:ул\.?|пр\.?|пр-т|переулок|бул\.?|шоссе)[\s.]*[^,\n]{3,40}(?:,\s*д\.?\s*\d[\w/]*)?)',
+            text, re.IGNORECASE
+        )
+        if m:
+            return m.group().strip()
+        # Fallback: просто город
+        m = re.search(r'г\.\s*[А-ЯЁ][а-яё\-]+', text)
+        return m.group().strip() if m else None
+    return None
+
+
 def search_missing_fields(brand: dict, site_url: str) -> dict:
-    """Ищет недостающие поля через Tavily Search по домену и названию компании."""
+    """Ищет недостающие поля через Tavily Search + regex (без AI — быстро)."""
     api_key = os.environ.get("TAVILY_API_KEY", "")
     if not api_key:
         return brand
@@ -334,47 +359,43 @@ def search_missing_fields(brand: dict, site_url: str) -> dict:
     domain = re.sub(r"https?://", "", site_url).split("/")[0]
     company = brand.get("company_name") or domain
 
-    # Определяем какие поля пустые
     missing = {
-        "support_email":      f'{domain} email почта контакты',
-        "telegram":           f'{company} telegram телеграм',
-        "pdf_footer_address": f'{company} адрес офис город',
+        "support_email":      f'{domain} email контакты',
+        "telegram":           f'{company} telegram t.me',
+        "pdf_footer_address": f'{company} {domain} адрес офис',
     }
 
-    # Ищем только реально пустые поля
     to_search = {k: q for k, q in missing.items() if not brand.get(k)}
     if not to_search:
         return brand
 
     print(f"[parse-site] searching missing: {list(to_search.keys())}")
 
-    for field, query in to_search.items():
+    # Один общий поиск по всем полям сразу
+    combined_query = " ".join(list(to_search.values())[:2])  # берём первые два
+    try:
+        data = tavily_post("https://api.tavily.com/search", {
+            "query": combined_query,
+            "search_depth": "basic",
+            "max_results": 3,
+            "include_raw_content": False,
+        }, api_key, timeout=8)
+        snippets = " ".join(r.get("content", "") for r in data.get("results", []))
+    except Exception as e:
+        print(f"[parse-site] search error: {e}")
+        return brand
+
+    if not snippets:
+        return brand
+
+    for field in to_search:
         try:
-            data = tavily_post("https://api.tavily.com/search", {
-                "query": query,
-                "search_depth": "basic",
-                "max_results": 3,
-                "include_raw_content": False,
-            }, api_key, timeout=10)
-
-            snippets = " ".join(r.get("content", "") for r in data.get("results", []))
-            if not snippets:
-                continue
-
-            # Извлекаем нужное значение через AI
-            field_prompt = {
-                "support_email":      f"Из текста извлеки email-адрес компании. Верни ТОЛЬКО email или null.\n\nТекст:\n{snippets[:1500]}",
-                "telegram":           f"Из текста извлеки Telegram-ник или ссылку t.me/ компании. Верни ТОЛЬКО username или ссылку или null.\n\nТекст:\n{snippets[:1500]}",
-                "pdf_footer_address": f"Из текста извлеки полный адрес компании (город, улица, дом). Верни ТОЛЬКО адрес или null.\n\nТекст:\n{snippets[:1500]}",
-            }
-
-            result = ask_openai(field_prompt[field]).strip()
-            # Отбрасываем мусор
-            if result and result.lower() not in ("null", "none", "не найдено", "нет", "-", ""):
+            result = extract_with_regex(snippets, field)
+            if result:
                 brand[field] = result
                 print(f"[parse-site] found {field}: {result}")
         except Exception as e:
-            print(f"[parse-site] search {field} error: {e}")
+            print(f"[parse-site] regex {field} error: {e}")
 
     return brand
 
