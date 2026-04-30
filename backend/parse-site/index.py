@@ -325,6 +325,60 @@ def extract_brand_info(site_url: str, page_text: str) -> dict:
 
     return result
 
+def search_missing_fields(brand: dict, site_url: str) -> dict:
+    """Ищет недостающие поля через Tavily Search по домену и названию компании."""
+    api_key = os.environ.get("TAVILY_API_KEY", "")
+    if not api_key:
+        return brand
+
+    domain = re.sub(r"https?://", "", site_url).split("/")[0]
+    company = brand.get("company_name") or domain
+
+    # Определяем какие поля пустые
+    missing = {
+        "support_email":      f'{domain} email почта контакты',
+        "telegram":           f'{company} telegram телеграм',
+        "pdf_footer_address": f'{company} адрес офис город',
+    }
+
+    # Ищем только реально пустые поля
+    to_search = {k: q for k, q in missing.items() if not brand.get(k)}
+    if not to_search:
+        return brand
+
+    print(f"[parse-site] searching missing: {list(to_search.keys())}")
+
+    for field, query in to_search.items():
+        try:
+            data = tavily_post("https://api.tavily.com/search", {
+                "query": query,
+                "search_depth": "basic",
+                "max_results": 3,
+                "include_raw_content": False,
+            }, api_key, timeout=10)
+
+            snippets = " ".join(r.get("content", "") for r in data.get("results", []))
+            if not snippets:
+                continue
+
+            # Извлекаем нужное значение через AI
+            field_prompt = {
+                "support_email":      f"Из текста извлеки email-адрес компании. Верни ТОЛЬКО email или null.\n\nТекст:\n{snippets[:1500]}",
+                "telegram":           f"Из текста извлеки Telegram-ник или ссылку t.me/ компании. Верни ТОЛЬКО username или ссылку или null.\n\nТекст:\n{snippets[:1500]}",
+                "pdf_footer_address": f"Из текста извлеки полный адрес компании (город, улица, дом). Верни ТОЛЬКО адрес или null.\n\nТекст:\n{snippets[:1500]}",
+            }
+
+            result = ask_openai(field_prompt[field]).strip()
+            # Отбрасываем мусор
+            if result and result.lower() not in ("null", "none", "не найдено", "нет", "-", ""):
+                brand[field] = result
+                print(f"[parse-site] found {field}: {result}")
+        except Exception as e:
+            print(f"[parse-site] search {field} error: {e}")
+
+    return brand
+
+
 def save_brand_to_db(company_id: int, brand: dict):
     """Сохраняет бренд-данные в таблицу users."""
     allowed = [
@@ -429,6 +483,12 @@ def handler(event: dict, context) -> dict:
         if css_color:
             brand["brand_color"] = css_color
             print(f"[parse-site] brand_color from CSS: {css_color}")
+
+    # Доищем пустые поля через Tavily Search
+    try:
+        brand = search_missing_fields(brand, site_url)
+    except Exception as e:
+        print(f"[parse-site] search_missing_fields error: {e}")
 
     # Парсим логотип и фавикон → загружаем в S3
     logo_src, favicon_src = find_logo_url(site_url)
