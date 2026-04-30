@@ -22,25 +22,39 @@ def get_conn():
     return psycopg2.connect(os.environ["DATABASE_URL"])
 
 def fetch_page_text(url: str) -> str:
-    """Загружает страницу и возвращает очищенный текст (без HTML-тегов)."""
+    """Получает текст страницы через Tavily Extract (обходит блокировки)."""
     if not url.startswith("http"):
         url = "https://" + url
-    req = urllib.request.Request(url, headers={
-        "User-Agent": "Mozilla/5.0 (compatible; BrandParser/1.0)",
-        "Accept-Language": "ru,en;q=0.9",
-    })
-    try:
-        with urllib.request.urlopen(req, timeout=10) as resp:
-            raw = resp.read().decode("utf-8", errors="replace")
-    except Exception as e:
-        raise ValueError(f"Не удалось загрузить сайт: {e}")
 
-    # Убираем скрипты, стили, head
-    raw = re.sub(r"<script[^>]*>.*?</script>", " ", raw, flags=re.DOTALL | re.IGNORECASE)
-    raw = re.sub(r"<style[^>]*>.*?</style>",  " ", raw, flags=re.DOTALL | re.IGNORECASE)
-    raw = re.sub(r"<head[^>]*>.*?</head>",     " ", raw, flags=re.DOTALL | re.IGNORECASE)
-    raw = re.sub(r"<[^>]+>", " ", raw)
-    raw = re.sub(r"&[a-zA-Z]+;", " ", raw)
+    api_key = os.environ.get("TAVILY_API_KEY", "")
+    if not api_key:
+        raise ValueError("TAVILY_API_KEY не настроен")
+
+    payload = json.dumps({"urls": [url]}).encode()
+    req = urllib.request.Request(
+        "https://api.tavily.com/extract",
+        data=payload,
+        headers={
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": "application/json",
+        },
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=20) as resp:
+            data = json.loads(resp.read())
+    except Exception as e:
+        raise ValueError(f"Tavily не смог загрузить сайт: {e}")
+
+    results = data.get("results", [])
+    if not results:
+        raise ValueError("Tavily не вернул содержимое страницы")
+
+    raw = results[0].get("raw_content", "") or results[0].get("content", "")
+    if not raw:
+        raise ValueError("Страница пустая или недоступна")
+
+    # Обрезаем до 6000 символов для AI
     raw = re.sub(r"\s{3,}", "\n", raw)
     return raw.strip()[:6000]
 
