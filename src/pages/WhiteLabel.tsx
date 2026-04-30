@@ -162,15 +162,17 @@ export default function WhiteLabel() {
                 href={`/?c=${DEMO_ID}`}
               />
             </div>
-            <div className="flex flex-wrap gap-2 mt-4">
+            <div className="flex flex-wrap items-center gap-2 mt-4">
               <LinkBtn icon="Globe" label="Открыть их сайт"
                 onClick={() => openSite(DEMO_ID)} color="#06b6d4" />
               <LinkBtn icon="LayoutDashboard" label="Войти в их панель"
                 onClick={() => loginAsCompany(DEMO_ID)} color="#a78bfa" />
               <LinkBtn icon="Zap" label="Живые API"
                 onClick={() => check_runAll(DEMO_ID)} color="#10b981" />
-              <LinkBtn icon="Pencil" label="Редактировать бренд"
-                onClick={() => editBrand(DEMO_ID)} color="#f59e0b" />
+              <div className="ml-auto">
+                <LinkBtn icon="Pencil" label="Редактировать бренд"
+                  onClick={() => editBrand(DEMO_ID)} color="#f59e0b" />
+              </div>
             </div>
           </Section>
 
