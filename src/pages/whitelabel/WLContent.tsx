@@ -31,8 +31,22 @@ export function WLContent() {
   };
 
   const handleOpenPanel = (p: PanelView, token?: string) => {
+    // Сохраняем мастер-токен перед открытием iframe — он может перезаписаться
+    const masterTok = localStorage.getItem("mp_user_token");
+    if (masterTok) localStorage.setItem("mp_master_token_backup", masterTok);
     if (token) setIframeToken(token);
     setPanel(p);
+  };
+
+  const handleClosePanel = () => {
+    // Восстанавливаем мастер-токен после закрытия iframe
+    const backup = localStorage.getItem("mp_master_token_backup");
+    if (backup) {
+      localStorage.setItem("mp_user_token", backup);
+      localStorage.removeItem("mp_master_token_backup");
+    }
+    setPanel(null);
+    setIframeToken(null);
   };
 
   const handleLoginAs = async (companyId: number): Promise<string | null> => {
@@ -56,7 +70,7 @@ export function WLContent() {
       <WLPanelView
         panel={panel}
         iframeToken={iframeToken}
-        onClose={() => { setPanel(null); setIframeToken(null); }}
+        onClose={handleClosePanel}
       />
     );
   }
