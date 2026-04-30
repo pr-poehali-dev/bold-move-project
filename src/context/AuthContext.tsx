@@ -167,6 +167,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .finally(() => setLoading(false));
   }, []);
 
+  // Принимаем токен от родительского окна (для iframe-режима /whitelabel)
+  useEffect(() => {
+    const handler = async (e: MessageEvent) => {
+      if (e.origin !== window.location.origin) return;
+      if (e.data?.type === "set-token" && e.data?.token) {
+        const tok = e.data.token as string;
+        localStorage.setItem(TOKEN_KEY, tok);
+        // Сообщаем родителю что готовы
+        window.parent.postMessage("iframe-ready", e.origin);
+        // Загружаем пользователя
+        try {
+          const r = await fetch(`${AUTH_URL}?action=me`, { headers: { "X-Authorization": `Bearer ${tok}` } });
+          const d = await r.json();
+          if (d.user) { setUser(d.user); setToken(tok); setCrmToken(tok); }
+        } catch { /* ignore */ }
+      }
+    };
+    window.addEventListener("message", handler);
+    // Сообщаем родителю что страница загружена и готова принять токен
+    if (window.parent !== window) {
+      window.parent.postMessage("iframe-ready", window.location.origin);
+    }
+    return () => window.removeEventListener("message", handler);
+  }, []);
+
   const persist = (tok: string, u: AuthUser) => {
     localStorage.setItem(TOKEN_KEY, tok);
     setToken(tok);

@@ -861,17 +861,25 @@ def handler(event: dict, context) -> dict:
             return err("Пользователь не найден", 404)
         balance = row[0] or 0
         added = 0
-        if balance < 5:
-            added = 5 - balance
+        min_balance = body.get("min_balance", 5)
+        if balance < min_balance:
+            added = min_balance - balance
             cur.execute(f"""
-                UPDATE {SCHEMA}.users SET estimates_balance = 5 WHERE id=%s
-            """, (int(target_id),))
+                UPDATE {SCHEMA}.users SET estimates_balance = %s WHERE id=%s
+            """, (min_balance, int(target_id)))
             cur.execute(f"""
                 INSERT INTO {SCHEMA}.balance_transactions (user_id, amount, reason)
                 VALUES (%s, %s, 'admin_top_up')
             """, (int(target_id), added))
             conn.commit()
-        return ok({"balance_before": balance, "balance_after": max(balance, 5), "added": added})
+        # Синхронизируем name = company_name если передан флаг
+        if body.get("sync_name"):
+            cur.execute(f"""
+                UPDATE {SCHEMA}.users SET name = company_name
+                WHERE id = %s AND company_name IS NOT NULL AND company_name != ''
+            """, (int(target_id),))
+            conn.commit()
+        return ok({"balance_before": balance, "balance_after": max(balance, min_balance), "added": added})
 
     # ── Мастер: сметы конкретного пользователя ────────────────────────────────
     if action == "admin-user-estimates" and method == "GET":

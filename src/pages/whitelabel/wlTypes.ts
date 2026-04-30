@@ -28,4 +28,9 @@ export interface WLCompany {
   purchased_at: string;
 }
 
-export type PanelView = null | { type: "site"; url: string } | { type: "admin"; companyId: number } | { type: "agent"; companyId: number };
+export type PanelView =
+  | null
+  | { type: "site"; url: string }
+  | { type: "site-authed"; url: string; token: string }
+  | { type: "admin"; companyId: number }
+  | { type: "agent"; companyId: number };

@@ -77,7 +77,30 @@ export default function WhiteLabel() {
     } catch (e) { alert(String(e)); }
   };
 
-  const openSite = (companyId: number) => setPanel({ type: "site", url: `/?c=${companyId}` });
+  const openSite = async (companyId: number) => {
+    const url = `/?c=${companyId}`;
+    try {
+      const masterToken = localStorage.getItem("mp_user_token");
+      // Поднимаем баланс до 10 и синхронизируем имя аккаунта
+      await fetch(`${AUTH_URL}?action=admin-ensure-balance`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-Authorization": masterToken || "" },
+        body: JSON.stringify({ user_id: companyId, min_balance: 10, sync_name: true }),
+      });
+      // Получаем токен демо-компании
+      const r = await fetch(`${AUTH_URL}?action=admin-login-as`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-Authorization": masterToken || "" },
+        body: JSON.stringify({ user_id: companyId }),
+      });
+      const d = await r.json();
+      if (d.token) {
+        setPanel({ type: "site-authed", url, token: d.token });
+        return;
+      }
+    } catch { /* ignore, fallback to simple open */ }
+    setPanel({ type: "site", url });
+  };
 
   const editBrand = async (companyId: number) => {
     try {
