@@ -38,7 +38,8 @@ export function WLPipelineEvents({ companies, onSelect }: Props) {
 
   const now     = new Date();
   const endDate = new Date(now);
-  endDate.setDate(now.getDate() + range);
+  // range=1 → конец сегодня, range=2 → конец завтра, range=3/7 → +N дней
+  endDate.setDate(now.getDate() + range - 1);
   endDate.setHours(23, 59, 59, 999);
 
   // Компании с next_action_date в диапазоне (не в отказе)
