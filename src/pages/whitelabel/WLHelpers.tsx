@@ -23,23 +23,18 @@ export function Section({ title, icon, color, children }: {
 
 export function Field({ label, value, href }: { label: string; value: string; href?: string }) {
   const [copied, setCopied] = useState(false);
-  const copy = async () => {
-    try {
-      if (navigator.clipboard?.writeText) {
-        await navigator.clipboard.writeText(value);
-      } else {
-        const el = document.createElement("textarea");
-        el.value = value;
-        el.style.position = "fixed";
-        el.style.opacity = "0";
-        document.body.appendChild(el);
-        el.select();
-        document.execCommand("copy");
-        document.body.removeChild(el);
-      }
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1500);
-    } catch { /* ignore */ }
+  const copy = () => {
+    const el = document.createElement("input");
+    el.value = value;
+    el.style.position = "fixed";
+    el.style.left = "-9999px";
+    document.body.appendChild(el);
+    el.focus();
+    el.select();
+    document.execCommand("copy");
+    document.body.removeChild(el);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1500);
   };
   return (
     <div className="rounded-xl px-3 py-2.5 flex items-center justify-between gap-2"
