@@ -18,21 +18,48 @@ interface CheckResult {
   data?: string;
 }
 
+interface WLCompany {
+  id: number;
+  email: string;
+  name: string;
+  company_name: string;
+  bot_name: string;
+  brand_color: string;
+  support_phone: string;
+  estimates_balance: number;
+  created_at: string;
+  purchased_at: string;
+}
+
 type PanelView = null | { type: "site"; url: string } | { type: "admin"; companyId: number };
 
 export default function WhiteLabel() {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
-  const [results, setResults]   = useState<Record<string, CheckResult | null>>({});
-  const [running, setRunning]   = useState<string | null>(null);
+  const [results, setResults]     = useState<Record<string, CheckResult | null>>({});
+  const [running, setRunning]     = useState<string | null>(null);
   const [previewId, setPreviewId] = useState("");
-  const [panel, setPanel]       = useState<PanelView>(null);
+  const [panel, setPanel]         = useState<PanelView>(null);
   const [iframeToken, setIframeToken] = useState<string | null>(null);
+  const [wlCompanies, setWlCompanies] = useState<WLCompany[]>([]);
+  const [wlLoading, setWlLoading] = useState(false);
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
   useEffect(() => {
     if (!loading && user && !user.is_master) navigate("/");
   }, [user, loading, navigate]);
+
+  useEffect(() => {
+    if (!user?.is_master) return;
+    const token = localStorage.getItem("mp_user_token");
+    setWlLoading(true);
+    fetch(`${AUTH_URL}?action=admin-wl-companies`, {
+      headers: { "X-Authorization": token || "" },
+    })
+      .then(r => r.json())
+      .then(d => setWlCompanies(Array.isArray(d.companies) ? d.companies : []))
+      .finally(() => setWlLoading(false));
+  }, [user]);
 
   if (loading) return <Center><Spin /><span className="ml-2 text-white/40 text-sm">Загрузка...</span></Center>;
   if (!user)   return <Center><span className="text-white/40 text-sm">Нужно войти как мастер</span></Center>;
@@ -254,6 +281,73 @@ export default function WhiteLabel() {
               onClick={() => previewId ? window.open(`${AUTH_URL}?action=get-brand&company_id=${previewId}`, "_blank") : undefined}
               color="#10b981" />
           </div>
+        </Section>
+
+        {/* Список WL-компаний */}
+        <Section title="White-Label компании" icon="Sparkles" color="#10b981">
+          {wlLoading ? (
+            <div className="flex items-center gap-2 py-2 text-white/40 text-xs">
+              <Spin /> Загрузка...
+            </div>
+          ) : wlCompanies.length === 0 ? (
+            <div className="text-white/30 text-xs py-2">Нет активных WL-компаний</div>
+          ) : (
+            <div className="space-y-2">
+              {wlCompanies.map(c => (
+                <div key={c.id} className="rounded-xl p-3 flex items-center gap-3"
+                  style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)" }}>
+                  {/* Цвет-аватар */}
+                  <div className="w-8 h-8 rounded-lg flex-shrink-0 flex items-center justify-center text-xs font-black"
+                    style={{ background: c.brand_color + "25", color: c.brand_color, border: `1px solid ${c.brand_color}40` }}>
+                    {(c.company_name || c.name || "?")[0].toUpperCase()}
+                  </div>
+                  {/* Инфо */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-bold text-white/90 truncate">
+                        {c.company_name || c.name || c.email}
+                      </span>
+                      {c.bot_name && (
+                        <span className="text-[9px] px-1.5 py-0.5 rounded-full font-semibold flex-shrink-0"
+                          style={{ background: c.brand_color + "20", color: c.brand_color }}>
+                          бот: {c.bot_name}
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-3 mt-0.5">
+                      <span className="text-[10px] text-white/35 truncate">{c.email}</span>
+                      {c.support_phone && (
+                        <span className="text-[10px] text-white/35 flex-shrink-0">{c.support_phone}</span>
+                      )}
+                      <span className="text-[10px] text-white/25 flex-shrink-0">ID #{c.id}</span>
+                    </div>
+                  </div>
+                  {/* Баланс */}
+                  <div className="flex-shrink-0 text-right">
+                    <div className="text-[10px] font-bold" style={{ color: c.estimates_balance > 0 ? "#10b981" : "#ef4444" }}>
+                      {c.estimates_balance} смет
+                    </div>
+                    <div className="text-[9px] text-white/25">{c.purchased_at || c.created_at}</div>
+                  </div>
+                  {/* Кнопки */}
+                  <div className="flex-shrink-0 flex gap-1.5">
+                    <button onClick={() => openSite(c.id)}
+                      className="p-1.5 rounded-lg transition hover:opacity-80"
+                      style={{ background: "rgba(6,182,212,0.12)", color: "#06b6d4", border: "1px solid rgba(6,182,212,0.25)" }}
+                      title="Открыть сайт">
+                      <Icon name="Globe" size={12} />
+                    </button>
+                    <button onClick={() => loginAsCompany(c.id)}
+                      className="p-1.5 rounded-lg transition hover:opacity-80"
+                      style={{ background: "rgba(167,139,250,0.12)", color: "#a78bfa", border: "1px solid rgba(167,139,250,0.25)" }}
+                      title="Войти в панель">
+                      <Icon name="LayoutDashboard" size={12} />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </Section>
 
         {/* Тесты API */}

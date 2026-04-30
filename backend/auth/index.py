@@ -1312,4 +1312,37 @@ def handler(event: dict, context) -> dict:
         conn.commit()
         return ok({"ok": True})
 
+    # ── Мастер: список WL-компаний ───────────────────────────────────────────
+    if action == "admin-wl-companies" and method == "GET":
+        if not token:
+            return err("Требуется авторизация", 401)
+        cur.execute(f"""
+            SELECT u.email FROM {SCHEMA}.user_sessions s
+            JOIN {SCHEMA}.users u ON u.id = s.user_id
+            WHERE s.token=%s AND s.expires_at > NOW()
+        """, (token,))
+        row = cur.fetchone()
+        if not row or row[0] != "19.jeka.94@gmail.com":
+            return err("Доступ только для мастера", 403)
+        cur.execute(f"""
+            SELECT id, email, name, company_name, bot_name, brand_color,
+                   support_phone, estimates_balance, created_at, agent_purchased_at
+            FROM {SCHEMA}.users
+            WHERE has_own_agent = TRUE AND removed_at IS NULL
+            ORDER BY agent_purchased_at DESC NULLS LAST, id DESC
+        """)
+        rows = cur.fetchall()
+        return ok({"companies": [{
+            "id":               r[0],
+            "email":            r[1] or "",
+            "name":             r[2] or "",
+            "company_name":     r[3] or "",
+            "bot_name":         r[4] or "",
+            "brand_color":      r[5] or "#8b5cf6",
+            "support_phone":    r[6] or "",
+            "estimates_balance": r[7] or 0,
+            "created_at":       str(r[8])[:10] if r[8] else "",
+            "purchased_at":     str(r[9])[:10] if r[9] else "",
+        } for r in rows]})
+
     return err("Неизвестное действие", 404)
