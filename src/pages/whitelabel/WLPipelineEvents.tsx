@@ -56,12 +56,15 @@ export function WLPipelineEvents({ companies, onSelect }: Props) {
     })
     .sort((a, b) => new Date(a.next_action_date).getTime() - new Date(b.next_action_date).getTime());
 
-  // Просроченные (дата < начало сегодня, не отказ) — показываем всегда вне диапазона
-  const overdue = companies.filter(c =>
-    c.next_action_date && c.status !== "rejected" && new Date(c.next_action_date) < start
+  // Просроченные: дата < сегодня 00:00, не отказ
+  // Показываем только при Все (7) и Сег (1) — при Зав/3д/7д не показываем
+  const today0 = new Date(now); today0.setHours(0, 0, 0, 0);
+  const overdueAll = companies.filter(c =>
+    c.next_action_date && c.status !== "rejected" && new Date(c.next_action_date) < today0
   ).sort((a, b) => new Date(a.next_action_date).getTime() - new Date(b.next_action_date).getTime());
+  const overdue = (range === 7 || range === 1) ? overdueAll : [];
 
-  const future = upcoming; // все в диапазоне — уже >= start, значит не просрочены
+  const future = upcoming;
 
   const total = upcoming.length + overdue.length;
 
