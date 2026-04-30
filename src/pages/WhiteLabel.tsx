@@ -20,6 +20,7 @@ export default function WhiteLabel() {
   const [wlCompanies, setWlCompanies] = useState<WLCompany[]>([]);
   const [wlLoading, setWlLoading]     = useState(false);
   const [apiTestId, setApiTestId]     = useState(DEMO_ID);
+  const [parsedDomain, setParsedDomain] = useState<string | null>(null);
 
   useEffect(() => {
     if (!loading && user && !user.is_master) navigate("/");
@@ -164,7 +165,7 @@ export default function WhiteLabel() {
         <div className="max-w-4xl mx-auto px-5 py-8 space-y-8">
 
           {/* Автозаполнение из сайта */}
-          <WLSiteParser companyId={DEMO_ID} />
+          <WLSiteParser companyId={DEMO_ID} onParsed={setParsedDomain} />
 
           {/* Демо-компания */}
           <Section title="Демо-компания" icon="Building2" color="#a78bfa">
@@ -172,7 +173,11 @@ export default function WhiteLabel() {
               <Field label="Email"      value={DEMO_EMAIL} />
               <Field label="Пароль"     value={DEMO_PASSWORD} />
               <Field label="ID"         value={`#${DEMO_ID}`} />
-              <Field label="Демо-сайт"  value={`${window.location.origin}/?c=${DEMO_ID}`} href={`/?c=${DEMO_ID}`} />
+              <Field
+                label="Демо-сайт"
+                value={parsedDomain ? `${parsedDomain}/?c=${DEMO_ID}` : `${window.location.origin}/?c=${DEMO_ID}`}
+                href={`/?c=${DEMO_ID}`}
+              />
             </div>
             <div className="flex flex-wrap gap-2 mt-4">
               <LinkBtn icon="Globe" label="Открыть их сайт"

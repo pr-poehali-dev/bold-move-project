@@ -10,9 +10,10 @@ interface ParseReport  { filled: FilledField[]; missing: MissingField[] }
 interface Props {
   companyId?: number;
   onDone?: () => void;
+  onParsed?: (domain: string) => void;
 }
 
-export function WLSiteParser({ companyId = DEMO_ID, onDone }: Props) {
+export function WLSiteParser({ companyId = DEMO_ID, onDone, onParsed }: Props) {
   const [url, setUrl]         = useState("");
   const [loading, setLoading] = useState(false);
   const [report, setReport]   = useState<ParseReport | null>(null);
@@ -40,6 +41,9 @@ export function WLSiteParser({ companyId = DEMO_ID, onDone }: Props) {
       } else {
         setReport(d.report);
         onDone?.();
+        // Передаём домен наверх
+        const domain = trimmed.replace(/https?:\/\//, "").split("/")[0];
+        onParsed?.(domain);
       }
     } catch (e) {
       setError(String(e));
