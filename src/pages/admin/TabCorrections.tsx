@@ -3,9 +3,9 @@ import Icon from "@/components/ui/icon";
 import CorrectionCard from "./CorrectionCard";
 import { useCorrectionsList } from "./useCorrectionsList";
 
-interface Props { token: string; isDark?: boolean; }
+interface Props { token: string; isDark?: boolean; readOnly?: boolean; }
 
-export default function TabCorrections({ token, isDark = true }: Props) {
+export default function TabCorrections({ token, isDark = true, readOnly = false }: Props) {
   const {
     prices, loading,
     needsTraining, allGood,
@@ -25,6 +25,7 @@ export default function TabCorrections({ token, isDark = true }: Props) {
       item={item}
       prices={prices}
       token={token}
+      readOnly={readOnly}
       isExpanded={expandedId === item.id}
       onToggleExpand={() => setExpandedId(expandedId === item.id ? null : item.id)}
       onRemove={() => remove(item.id)}

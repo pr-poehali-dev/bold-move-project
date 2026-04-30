@@ -117,6 +117,15 @@ export default function AdminPanel() {
   const hasTeam  = user?.role === "company" || !!user?.is_master;
   const mainTabs = buildMainTabs(canCrm, canAgent, hasTeam);
 
+  // Права агента — какие подвкладки видны и редактируемы
+  const agentPerms = {
+    prices:      { view: hasPermission(user, "prices_view"),      edit: hasPermission(user, "prices_edit") },
+    rules:       { view: hasPermission(user, "rules_view"),       edit: hasPermission(user, "rules_edit") },
+    prompt:      { view: hasPermission(user, "prompt_view"),      edit: hasPermission(user, "prompt_edit") },
+    faq:         { view: hasPermission(user, "faq_view"),         edit: hasPermission(user, "faq_edit") },
+    corrections: { view: hasPermission(user, "corrections_view"), edit: hasPermission(user, "corrections_edit") },
+  } as const;
+
   // mainTab — всегда первая доступная вкладка, пересчитывается при смене user
   const [mainTab, setMainTab] = useState<MainTab>("crm");
 
@@ -418,10 +427,10 @@ export default function AdminPanel() {
       {/* ── Управление агентом ── */}
       {mainTab === "agent" && canAgent && (
         <div className="flex-1 flex flex-col overflow-hidden">
-          {/* Суб-вкладки */}
+          {/* Суб-вкладки — только с правом view */}
           <div className="px-4 flex gap-0.5 pt-2 overflow-x-auto flex-shrink-0"
             style={{ borderBottom: `1px solid ${isDark ? "rgba(255,255,255,0.1)" : "#e5e7eb"}` }}>
-            {AGENT_TABS.map(t => (
+            {AGENT_TABS.filter(t => agentPerms[t.id].view).map(t => (
               <button key={t.id} onClick={() => setAgentTab(t.id)}
                 className={`flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-t-lg transition whitespace-nowrap ${
                   agentTab === t.id
@@ -432,16 +441,19 @@ export default function AdminPanel() {
                 }`}>
                 <Icon name={t.icon} size={13} />
                 {t.label}
+                {!agentPerms[t.id].edit && (
+                  <Icon name="Eye" size={10} className="ml-0.5 opacity-50" />
+                )}
               </button>
             ))}
           </div>
 
           <div className="flex-1 overflow-y-auto p-4 max-w-6xl mx-auto w-full">
-            {agentTab === "prices"      && <TabPrices      token={authToken} onItemAdded={handleItemAdded} isDark={isDark} />}
-            {agentTab === "rules"       && <TabRules       token={authToken} hint={newItemHint} isDark={isDark} />}
-            {agentTab === "prompt"      && <TabPrompt      token={authToken} isDark={isDark} />}
-            {agentTab === "faq"         && <TabFaq         token={authToken} isDark={isDark} />}
-            {agentTab === "corrections" && <TabCorrections token={authToken} isDark={isDark} />}
+            {agentTab === "prices"      && agentPerms.prices.view      && <TabPrices      token={authToken} onItemAdded={handleItemAdded} isDark={isDark} readOnly={!agentPerms.prices.edit} />}
+            {agentTab === "rules"       && agentPerms.rules.view       && <TabRules       token={authToken} hint={newItemHint} isDark={isDark} readOnly={!agentPerms.rules.edit} />}
+            {agentTab === "prompt"      && agentPerms.prompt.view      && <TabPrompt      token={authToken} isDark={isDark} readOnly={!agentPerms.prompt.edit} />}
+            {agentTab === "faq"         && agentPerms.faq.view         && <TabFaq         token={authToken} isDark={isDark} readOnly={!agentPerms.faq.edit} />}
+            {agentTab === "corrections" && agentPerms.corrections.view && <TabCorrections token={authToken} isDark={isDark} readOnly={!agentPerms.corrections.edit} />}
           </div>
         </div>
       )}

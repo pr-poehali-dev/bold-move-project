@@ -13,9 +13,9 @@ import type { PriceItem } from "./types";
 
 type RulesSub = "price_rules" | "pricing_3" | "auto_rules";
 
-interface Props { token: string; hint?: string | null; isDark?: boolean; }
+interface Props { token: string; hint?: string | null; isDark?: boolean; readOnly?: boolean; }
 
-export default function TabRules({ token, hint, isDark = true }: Props) {
+export default function TabRules({ token, hint, isDark = true, readOnly = false }: Props) {
   const [sub, setSub] = useState<RulesSub>("price_rules");
 
   const SUB_TABS: { id: RulesSub; label: string; icon: string }[] = [
@@ -47,15 +47,15 @@ export default function TabRules({ token, hint, isDark = true }: Props) {
         ))}
       </div>
 
-      {sub === "pricing_3"   && <TabPricingRules token={token} />}
-      {sub === "auto_rules"  && <TabAutoRules isDark={isDark} />}
-      {sub === "price_rules" && <PriceRulesContent token={token} hint={hint} isDark={isDark} />}
+      {sub === "pricing_3"   && <TabPricingRules token={token} readOnly={readOnly} />}
+      {sub === "auto_rules"  && <TabAutoRules isDark={isDark} readOnly={readOnly} />}
+      {sub === "price_rules" && <PriceRulesContent token={token} hint={hint} isDark={isDark} readOnly={readOnly} />}
     </div>
   );
 }
 
 // ── Бывший TabRules (контент правил к прайсу) ─────────────────────────────────
-function PriceRulesContent({ token, hint, isDark = true }: Props) {
+function PriceRulesContent({ token, hint, isDark = true, readOnly = false }: Props) {
   const { prices, loading, byCategory, saveField, deleteItem } = usePriceList(token);
   const [confirmDeleteItemId, setConfirmDeleteItemId] = useState<number | null>(null);
   const [ruleTypes, setRuleTypes] = useState<RuleType[]>([]);
@@ -204,14 +204,16 @@ function PriceRulesContent({ token, hint, isDark = true }: Props) {
     <div className="flex flex-col gap-6">
       <div className="flex items-start justify-between gap-4">
         <p className={`${isDark ? "text-white/50" : "text-gray-500"} text-sm`}>Нажмите на строку — откроется редактор правил для этой позиции.</p>
-        <button onClick={() => setAddingRule(true)}
-          className="flex items-center gap-2 px-3 py-1.5 bg-violet-600/20 hover:bg-violet-600/30 border border-violet-500/30 text-violet-300 text-xs rounded-lg transition flex-shrink-0">
-          <Icon name="Plus" size={13} />
-          Добавить правило
-        </button>
+        {!readOnly && (
+          <button onClick={() => setAddingRule(true)}
+            className="flex items-center gap-2 px-3 py-1.5 bg-violet-600/20 hover:bg-violet-600/30 border border-violet-500/30 text-violet-300 text-xs rounded-lg transition flex-shrink-0">
+            <Icon name="Plus" size={13} />
+            Добавить правило
+          </button>
+        )}
       </div>
 
-      {addingRule && (
+      {!readOnly && addingRule && (
         <RuleAddForm
           newRule={newRule}
           saving={addingRuleSaving}
@@ -235,6 +237,7 @@ function PriceRulesContent({ token, hint, isDark = true }: Props) {
         <RuleCategoryTable
           key={category}
           isDark={isDark}
+          readOnly={readOnly}
           category={category}
           items={catItems}
           prices={prices}

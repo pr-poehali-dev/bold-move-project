@@ -13,24 +13,38 @@ const LS_KANBAN_ENABLED = "crm_kanban_board_enabled";
 
 type CrmTab = "analytics" | "clients" | "orders" | "calendar" | "kanban";
 
-// Все возможные табы с привязкой к праву (undefined = всегда видна)
-const ALL_TABS: { id: CrmTab; label: string; icon: string; perm?: "calendar" | "analytics" | "kanban" }[] = [
+// Все возможные табы с привязкой к новым правам
+const ALL_TABS: { id: CrmTab; label: string; icon: string; perm?: keyof import("@/context/AuthContext").Permissions }[] = [
   { id: "orders",    label: "Заказы",    icon: "Layers" },
-  { id: "clients",   label: "Клиенты",   icon: "Users" },
-  { id: "calendar",  label: "Календарь", icon: "CalendarDays", perm: "calendar"  },
-  { id: "analytics", label: "Аналитика", icon: "BarChart2",    perm: "analytics" },
+  { id: "clients",   label: "Клиенты",   icon: "Users",       perm: "clients_view"  },
+  { id: "calendar",  label: "Календарь", icon: "CalendarDays", perm: "calendar_view" },
+  { id: "analytics", label: "Аналитика", icon: "BarChart2",    perm: "analytics_view"},
 ];
 
 export default function CrmPanel({ theme, initialOrderId }: { theme: Theme; initialOrderId?: number | null }) {
   const { user } = useAuth();
 
-  // Права пользователя
-  const canCalendar  = hasPermission(user, "calendar");
-  const canAnalytics = hasPermission(user, "analytics");
-  const canKanban    = hasPermission(user, "kanban");
-  const canFinance   = hasPermission(user, "finance");
-  const canFiles     = hasPermission(user, "files");
-  const canEdit      = hasPermission(user, "crm_edit");
+  // Права пользователя — новая система
+  const canClientsView  = hasPermission(user, "clients_view");
+  const canClientsEdit  = hasPermission(user, "clients_edit");
+  const canOrdersEdit   = hasPermission(user, "orders_edit");
+  const canKanban       = hasPermission(user, "kanban_view");
+  const canKanbanEdit   = hasPermission(user, "kanban_edit");
+  const canCalendar     = hasPermission(user, "calendar_view");
+  const canCalendarEdit = hasPermission(user, "calendar_edit");
+  const canAnalytics    = hasPermission(user, "analytics_view");
+  const canFinance      = hasPermission(user, "finance_view");
+  const canFiles        = hasPermission(user, "files_view");
+  const canFilesEdit    = hasPermission(user, "files_edit");
+
+  // Поля в карточке
+  const canFieldContacts = hasPermission(user, "field_contacts");
+  const canFieldAddress  = hasPermission(user, "field_address");
+  const canFieldDates    = hasPermission(user, "field_dates");
+  const canFieldFinance  = hasPermission(user, "field_finance");
+  const canFieldNotes    = hasPermission(user, "field_notes");
+  const canFieldFiles    = hasPermission(user, "field_files");
+  const canFieldCancel   = hasPermission(user, "field_cancel");
 
   // Доступные фиксированные табы
   const visibleTabs = ALL_TABS.filter(tb => !tb.perm || hasPermission(user, tb.perm));
@@ -159,10 +173,42 @@ export default function CrmPanel({ theme, initialOrderId }: { theme: Theme; init
         {/* Контент */}
         <div className="p-2 sm:p-6">
           {tab === "analytics" && canAnalytics && <CrmAnalytics />}
-          {tab === "clients"   && <CrmClients canEdit={canEdit} />}
-          {tab === "orders"    && <CrmOrders clients={clients} loading={loading} onStatusChange={updateClientStatus} onClientRemoved={removeClient} onReload={loadClients} initialOrderId={calendarOpenId ?? initialOrderId} canEdit={canEdit} canFinance={canFinance} canFiles={canFiles} />}
-          {tab === "calendar"  && canCalendar && <CrmCalendar onSelectClient={handleCalendarSelectClient} />}
-          {tab === "kanban"    && canKanban   && <CrmKanban clients={[]} loading={false} onStatusChange={() => {}} onClientRemoved={() => {}} onReload={() => {}} onRemoveBoard={disableKanban} />}
+          {tab === "clients"   && canClientsView && (
+            <CrmClients
+              canEdit={canClientsEdit}
+              canFinance={canFinance}
+              canFiles={canFilesEdit}
+              canFieldContacts={canFieldContacts}
+              canFieldAddress={canFieldAddress}
+              canFieldDates={canFieldDates}
+              canFieldFinance={canFieldFinance}
+              canFieldNotes={canFieldNotes}
+              canFieldFiles={canFieldFiles}
+              canFieldCancel={canFieldCancel}
+            />
+          )}
+          {tab === "orders" && (
+            <CrmOrders
+              clients={clients} loading={loading}
+              onStatusChange={updateClientStatus}
+              onClientRemoved={removeClient}
+              onReload={loadClients}
+              initialOrderId={calendarOpenId ?? initialOrderId}
+              canEdit={canClientsEdit}
+              canOrdersEdit={canOrdersEdit}
+              canFinance={canFinance}
+              canFiles={canFilesEdit}
+              canFieldContacts={canFieldContacts}
+              canFieldAddress={canFieldAddress}
+              canFieldDates={canFieldDates}
+              canFieldFinance={canFieldFinance}
+              canFieldNotes={canFieldNotes}
+              canFieldFiles={canFieldFiles}
+              canFieldCancel={canFieldCancel}
+            />
+          )}
+          {tab === "calendar" && canCalendar && <CrmCalendar onSelectClient={handleCalendarSelectClient} canEdit={canCalendarEdit} />}
+          {tab === "kanban"   && canKanban   && <CrmKanban clients={[]} loading={false} onStatusChange={() => {}} onClientRemoved={() => {}} onReload={() => {}} onRemoveBoard={disableKanban} canEdit={canKanbanEdit} />}
         </div>
       </div>
     </ThemeContext.Provider>

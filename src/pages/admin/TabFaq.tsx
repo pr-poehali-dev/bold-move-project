@@ -5,9 +5,9 @@ import type { FaqItem, QuickQuestion } from "./types";
 
 type FaqSub = "knowledge" | "questions";
 
-interface Props { token: string; isDark?: boolean; }
+interface Props { token: string; isDark?: boolean; readOnly?: boolean; }
 
-export default function TabFaq({ token, isDark = true }: Props) {
+export default function TabFaq({ token, isDark = true, readOnly = false }: Props) {
   const [sub, setSub] = useState<FaqSub>("knowledge");
 
   const SUB_TABS: { id: FaqSub; label: string; icon: string }[] = [
@@ -36,14 +36,14 @@ export default function TabFaq({ token, isDark = true }: Props) {
         ))}
       </div>
 
-      {sub === "knowledge" && <KnowledgeTab token={token} isDark={isDark} />}
-      {sub === "questions" && <QuestionsTab token={token} isDark={isDark} />}
+      {sub === "knowledge" && <KnowledgeTab token={token} isDark={isDark} readOnly={readOnly} />}
+      {sub === "questions" && <QuestionsTab token={token} isDark={isDark} readOnly={readOnly} />}
     </div>
   );
 }
 
 /* ── Знания бота (бывший TabFaq) ─────────────────────────────────────────── */
-function KnowledgeTab({ token, isDark = true }: { token: string; isDark?: boolean }) {
+function KnowledgeTab({ token, isDark = true, readOnly = false }: { token: string; isDark?: boolean; readOnly?: boolean }) {
   const bg     = isDark ? "bg-white/5"    : "bg-white";
   const border = isDark ? "border-white/10" : "border-gray-200";
   const text   = isDark ? "text-white"    : "text-gray-900";
@@ -114,16 +114,18 @@ function KnowledgeTab({ token, isDark = true }: { token: string; isDark?: boolea
                   </div>
                   <p className={`${muted} text-xs line-clamp-2`}>{item.content}</p>
                 </div>
-                <div className="flex gap-1 flex-shrink-0">
-                  <button onClick={() => setEditing(item)} className={`${isDark ? "text-white/30" : "text-gray-300"} hover:text-violet-400 p-1.5 transition`}><Icon name="Pencil" size={15} /></button>
-                  <button onClick={() => remove(item.id)} className={`${isDark ? "text-white/30" : "text-gray-300"} hover:text-red-400 p-1.5 transition`}><Icon name="Trash2" size={15} /></button>
-                </div>
+                {!readOnly && (
+                  <div className="flex gap-1 flex-shrink-0">
+                    <button onClick={() => setEditing(item)} className={`${isDark ? "text-white/30" : "text-gray-300"} hover:text-violet-400 p-1.5 transition`}><Icon name="Pencil" size={15} /></button>
+                    <button onClick={() => remove(item.id)} className={`${isDark ? "text-white/30" : "text-gray-300"} hover:text-red-400 p-1.5 transition`}><Icon name="Trash2" size={15} /></button>
+                  </div>
+                )}
               </div>
             )}
           </div>
         ))}
 
-        {adding ? (
+        {!readOnly && adding ? (
           <div className={`${bg} border border-violet-500/30 rounded-xl p-4 flex flex-col gap-3`}>
             <input value={newItem.title} onChange={e => setNewItem(p => ({ ...p, title: e.target.value }))}
               placeholder="Название записи" autoFocus
@@ -138,10 +140,12 @@ function KnowledgeTab({ token, isDark = true }: { token: string; isDark?: boolea
             </div>
           </div>
         ) : (
-          <button onClick={() => setAdding(true)}
-            className="flex items-center gap-2 text-violet-400 hover:text-violet-300 text-sm transition border border-dashed border-violet-500/30 rounded-xl py-3 justify-center hover:border-violet-500/60">
-            <Icon name="Plus" size={16} /> Добавить запись
-          </button>
+          !readOnly && (
+            <button onClick={() => setAdding(true)}
+              className="flex items-center gap-2 text-violet-400 hover:text-violet-300 text-sm transition border border-dashed border-violet-500/30 rounded-xl py-3 justify-center hover:border-violet-500/60">
+              <Icon name="Plus" size={16} /> Добавить запись
+            </button>
+          )
         )}
       </div>
     </div>
@@ -149,7 +153,7 @@ function KnowledgeTab({ token, isDark = true }: { token: string; isDark?: boolea
 }
 
 /* ── Быстрые ответы (бывший TabQuestions) ────────────────────────────────── */
-function QuestionsTab({ token, isDark = true }: { token: string; isDark?: boolean }) {
+function QuestionsTab({ token, isDark = true, readOnly = false }: { token: string; isDark?: boolean; readOnly?: boolean }) {
   const bg     = isDark ? "bg-white/5"      : "bg-white";
   const border = isDark ? "border-white/10"  : "border-gray-200";
   const text   = isDark ? "text-white"       : "text-gray-900";
@@ -215,16 +219,18 @@ function QuestionsTab({ token, isDark = true }: { token: string; isDark?: boolea
                   </div>
                   <p className={`${muted} text-xs line-clamp-2`}>{item.answer}</p>
                 </div>
-                <div className="flex gap-1 flex-shrink-0">
-                  <button onClick={() => setEditing(item)} className={`${isDark ? "text-white/30" : "text-gray-300"} hover:text-violet-400 p-1.5 transition`}><Icon name="Pencil" size={15} /></button>
-                  <button onClick={() => remove(item.id)} className={`${isDark ? "text-white/30" : "text-gray-300"} hover:text-red-400 p-1.5 transition`}><Icon name="Trash2" size={15} /></button>
-                </div>
+                {!readOnly && (
+                  <div className="flex gap-1 flex-shrink-0">
+                    <button onClick={() => setEditing(item)} className={`${isDark ? "text-white/30" : "text-gray-300"} hover:text-violet-400 p-1.5 transition`}><Icon name="Pencil" size={15} /></button>
+                    <button onClick={() => remove(item.id)} className={`${isDark ? "text-white/30" : "text-gray-300"} hover:text-red-400 p-1.5 transition`}><Icon name="Trash2" size={15} /></button>
+                  </div>
+                )}
               </div>
             )}
           </div>
         ))}
 
-        {adding ? (
+        {!readOnly && adding ? (
           <div className={`${bg} border border-violet-500/30 rounded-xl p-4 flex flex-col gap-3`}>
             <input value={newItem.pattern} onChange={e => setNewItem(p => ({ ...p, pattern: e.target.value }))}
               placeholder="Паттерн (например: гарантия|срок службы)" autoFocus
@@ -239,10 +245,12 @@ function QuestionsTab({ token, isDark = true }: { token: string; isDark?: boolea
             </div>
           </div>
         ) : (
-          <button onClick={() => setAdding(true)}
-            className={`flex items-center gap-2 ${isDark ? "text-violet-400" : "text-violet-500"} hover:text-violet-400 text-sm transition border border-dashed border-violet-500/30 rounded-xl py-3 justify-center hover:border-violet-500/60`}>
-            <Icon name="Plus" size={16} /> Добавить ответ
-          </button>
+          !readOnly && (
+            <button onClick={() => setAdding(true)}
+              className={`flex items-center gap-2 ${isDark ? "text-violet-400" : "text-violet-500"} hover:text-violet-400 text-sm transition border border-dashed border-violet-500/30 rounded-xl py-3 justify-center hover:border-violet-500/60`}>
+              <Icon name="Plus" size={16} /> Добавить ответ
+            </button>
+          )
         )}
       </div>
     </div>

@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import Icon from "@/components/ui/icon";
 import { apiFetch } from "./api";
 
-interface Props { token: string; isDark?: boolean; }
+interface Props { token: string; isDark?: boolean; readOnly?: boolean; }
 
 interface PriceItem { category: string; name: string; price: number; unit: string; description: string; active: boolean; }
 interface RuleItem { name: string; category: string; when_condition: string; when_not_condition: string; calc_rule: string; bundle: string; client_changes: string; }
@@ -93,7 +93,7 @@ function parseBundleNames(bundle: string, nameMap: Record<number, string>): stri
   return "";
 }
 
-export default function TabPrompt({ token, isDark = true }: Props) {
+export default function TabPrompt({ token, isDark = true, readOnly = false }: Props) {
   const [content, setContent] = useState("");
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState("");
@@ -220,6 +220,7 @@ export default function TabPrompt({ token, isDark = true }: Props) {
             <textarea
               value={generalPart}
               onChange={e => handleGeneralChange(e.target.value)}
+              readOnly={readOnly}
               rows={18}
               className={`w-full ${isDark ? "bg-white/5 border-white/10 text-white" : "bg-gray-50 border-gray-200 text-gray-900"} border rounded-xl px-4 py-3 text-sm font-mono resize-y outline-none focus:border-violet-500 transition`}
             />
@@ -235,6 +236,7 @@ export default function TabPrompt({ token, isDark = true }: Props) {
             <textarea
               value={systemPart}
               onChange={e => handleSystemChange(e.target.value)}
+              readOnly={readOnly}
               rows={18}
               className={`w-full ${isDark ? "bg-white/5 border-white/10 text-white" : "bg-gray-50 border-gray-200 text-gray-900"} border rounded-xl px-4 py-3 text-sm font-mono resize-y outline-none focus:border-violet-500 transition`}
             />
@@ -250,27 +252,30 @@ export default function TabPrompt({ token, isDark = true }: Props) {
             <textarea
               value={formatPart}
               onChange={e => handleFormatChange(e.target.value)}
+              readOnly={readOnly}
               rows={18}
               className={`w-full ${isDark ? "bg-white/5 border-white/10 text-white" : "bg-gray-50 border-gray-200 text-gray-900"} border rounded-xl px-4 py-3 text-sm font-mono resize-y outline-none focus:border-violet-500 transition`}
             />
           </div>
         )}
 
-        <div className="flex items-center gap-3">
-          <button onClick={() => save()} disabled={saving}
-            className="bg-violet-600 hover:bg-violet-700 disabled:opacity-50 text-white rounded-lg px-6 py-2 font-medium transition flex items-center gap-2">
-            {saving ? <><Icon name="Loader" size={14} className="animate-spin" /> Сохраняю...</> : "Сохранить"}
-          </button>
-          {msg && (
-            <span className={`text-sm flex items-center gap-1 ${msg.includes("Ошибка") ? "text-red-400" : "text-green-400"}`}>
-              {!msg.includes("Ошибка") && <Icon name="Check" size={13} />}
-              {msg}
-            </span>
-          )}
-          {dirty && !saving && !msg && (
-            <span className="text-white/30 text-xs">Есть несохранённые изменения</span>
-          )}
-        </div>
+        {!readOnly && (
+          <div className="flex items-center gap-3">
+            <button onClick={() => save()} disabled={saving}
+              className="bg-violet-600 hover:bg-violet-700 disabled:opacity-50 text-white rounded-lg px-6 py-2 font-medium transition flex items-center gap-2">
+              {saving ? <><Icon name="Loader" size={14} className="animate-spin" /> Сохраняю...</> : "Сохранить"}
+            </button>
+            {msg && (
+              <span className={`text-sm flex items-center gap-1 ${msg.includes("Ошибка") ? "text-red-400" : "text-green-400"}`}>
+                {!msg.includes("Ошибка") && <Icon name="Check" size={13} />}
+                {msg}
+              </span>
+            )}
+            {dirty && !saving && !msg && (
+              <span className="text-white/30 text-xs">Есть несохранённые изменения</span>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Превью правил — что видит LLM */}

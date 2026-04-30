@@ -22,12 +22,20 @@ interface Props {
   save: (patch: Partial<Client>) => void;
   setComments: React.Dispatch<React.SetStateAction<{ text: string; date: string }[]>>;
   hideHidden?: boolean;
-  canEdit?:    boolean;
-  canFinance?: boolean;
-  canFiles?:   boolean;
+  canEdit?:          boolean;
+  canOrdersEdit?:    boolean;
+  canFinance?:       boolean;
+  canFiles?:         boolean;
+  canFieldContacts?: boolean;
+  canFieldAddress?:  boolean;
+  canFieldDates?:    boolean;
+  canFieldFinance?:  boolean;
+  canFieldNotes?:    boolean;
+  canFieldFiles?:    boolean;
+  canFieldCancel?:   boolean;
 }
 
-export default function DrawerInfoTab({ data, client, setData, save, setComments, hideHidden, canEdit = true, canFinance = true, canFiles = true }: Props) {
+export default function DrawerInfoTab({ data, client, setData, save, setComments, hideHidden, canEdit = true, canOrdersEdit = true, canFinance = true, canFiles = true, canFieldContacts = true, canFieldAddress = true, canFieldDates = true, canFieldFinance = true, canFieldNotes = true, canFieldFiles = true, canFieldCancel = true }: Props) {
   const t = useTheme();
 
   // ── state ────────────────────────────────────────────────────────────────────
@@ -196,7 +204,7 @@ export default function DrawerInfoTab({ data, client, setData, save, setComments
           hidden={hiddenBlocks.has("status")}>
           <StatusSelector
             status={data.status}
-            readOnly={!canEdit}
+            readOnly={!canOrdersEdit}
             onSave={s => {
               saveWithLog({ status: s }, `Статус → ${STATUS_LABELS[s] || s}`, "GitBranch", "#8b5cf6");
             }}
@@ -252,6 +260,13 @@ export default function DrawerInfoTab({ data, client, setData, save, setComments
         canEdit={canEdit}
         canFinance={canFinance}
         canFiles={canFiles}
+        canFieldContacts={canFieldContacts}
+        canFieldAddress={canFieldAddress}
+        canFieldDates={canFieldDates}
+        canFieldFinance={canFieldFinance}
+        canFieldNotes={canFieldNotes}
+        canFieldFiles={canFieldFiles}
+        canFieldCancel={canFieldCancel}
       />
 
       {/* Активность — под блоками, всегда видна */}

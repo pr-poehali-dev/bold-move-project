@@ -26,30 +26,81 @@ export interface Brand {
 }
 
 export interface Permissions {
-  // Уровень 1 — вкладки
-  crm_view?:   boolean;  // вкладка CRM (список заявок)
-  agent_view?: boolean;  // вкладка Агент (цены, правила, промпт...)
-  // Уровень 2 — блоки внутри CRM
-  crm_edit?:   boolean;  // редактирование данных клиентов
-  finance?:    boolean;  // финансовые показатели и суммы
-  calendar?:   boolean;  // календарь замеров и монтажей
-  analytics?:  boolean;  // аналитика и отчёты
-  kanban?:     boolean;  // канбан-доска
-  files?:      boolean;  // файлы клиентов
-  // Уровень 2 — блоки внутри Агента
-  settings?:   boolean;  // настройки агента (промпт, база знаний)
+  // ── Уровень 1: Вкладки ───────────────────────────────────────────────────
+  crm_view?:       boolean;  // видит вкладку CRM
+  agent_view?:     boolean;  // видит вкладку Агент
+
+  // ── Уровень 2: Блоки внутри CRM ─────────────────────────────────────────
+  clients_view?:   boolean;  // видит раздел Клиенты
+  clients_edit?:   boolean;  // может добавлять/удалять клиентов
+  orders_edit?:    boolean;  // может менять статус заявок
+  kanban_view?:    boolean;  // видит Канбан
+  kanban_edit?:    boolean;  // может перемещать карточки
+  calendar_view?:  boolean;  // видит Календарь
+  calendar_edit?:  boolean;  // может редактировать события
+  analytics_view?: boolean;  // видит Аналитику
+  finance_view?:   boolean;  // видит финансовые данные
+  files_view?:     boolean;  // видит Файлы
+  files_edit?:     boolean;  // может загружать/удалять файлы
+
+  // ── Уровень 2: Подвкладки Агента ────────────────────────────────────────
+  prices_view?:      boolean;  // видит Цены
+  prices_edit?:      boolean;  // может редактировать цены
+  rules_view?:       boolean;  // видит Правила расчёта
+  rules_edit?:       boolean;  // может редактировать правила
+  prompt_view?:      boolean;  // видит Промпт
+  prompt_edit?:      boolean;  // может редактировать промпт
+  faq_view?:         boolean;  // видит Базу знаний
+  faq_edit?:         boolean;  // может редактировать базу знаний
+  corrections_view?: boolean;  // видит Обучение
+  corrections_edit?: boolean;  // может редактировать обучение
+
+  // ── Уровень 3: Строки/поля в карточке клиента ───────────────────────────
+  field_contacts?:  boolean;  // видит контакты (телефон, email)
+  field_address?:   boolean;  // видит адрес объекта
+  field_dates?:     boolean;  // видит даты замера/монтажа
+  field_finance?:   boolean;  // видит суммы (договор, прибыль)
+  field_notes?:     boolean;  // видит примечания
+  field_files?:     boolean;  // видит блок файлов в карточке
+  field_cancel?:    boolean;  // видит блок отмены заказа
+
+  // ── Устаревшие (для обратной совместимости) ─────────────────────────────
+  crm_edit?:   boolean;
+  finance?:    boolean;
+  calendar?:   boolean;
+  analytics?:  boolean;
+  kanban?:     boolean;
+  files?:      boolean;
+  settings?:   boolean;
 }
+
+// Маппинг старых ключей на новые (обратная совместимость)
+const COMPAT: Partial<Record<keyof Permissions, keyof Permissions>> = {
+  crm_edit:  "orders_edit",
+  finance:   "finance_view",
+  calendar:  "calendar_view",
+  analytics: "analytics_view",
+  kanban:    "kanban_view",
+  files:     "files_view",
+  settings:  "prices_edit",
+};
 
 /**
  * Проверка прав. Если permissions === null/undefined — это владелец/мастер
- * (полный доступ). Иначе — менеджер и смотрим конкретный ключ.
+ * (полный доступ). Иначе — менеджер, смотрим конкретный ключ.
+ * Поддерживает старые ключи через маппинг.
  */
 export function hasPermission(user: AuthUser | null, key: keyof Permissions): boolean {
   if (!user) return false;
   if (user.is_master) return true;
-  if (user.role === "company" || user.role === "installer") return true; // владельцы
-  if (!user.permissions) return true; // на всякий случай — старые менеджеры без прав = полный
-  return user.permissions[key] === true;
+  if (user.role === "company" || user.role === "installer") return true;
+  if (!user.permissions) return true;
+  // Проверяем новый ключ
+  if (user.permissions[key] === true) return true;
+  // Обратная совместимость: новый ключ → старый
+  const compat = COMPAT[key];
+  if (compat && user.permissions[compat] === true) return true;
+  return false;
 }
 
 export interface AuthUser {

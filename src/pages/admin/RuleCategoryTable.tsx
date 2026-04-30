@@ -7,6 +7,7 @@ import type { PriceItem } from "./types";
 
 interface Props {
   isDark?: boolean;
+  readOnly?: boolean;
   category: string;
   items: RuleItem[];
   prices: PriceItem[];
@@ -38,7 +39,7 @@ interface Props {
 }
 
 export default function RuleCategoryTable({
-  isDark = true, category, items, prices, activeRuleTypes, ruleValues,
+  isDark = true, readOnly = false, category, items, prices, activeRuleTypes, ruleValues,
   expandedId, drafts, saving, confirmDeleteItemId, confirmDeleteId,
   editingLabelId, editingLabelVal,
   onOpenRow, onSaveRow, onCloseRow, onPatchDraft,
@@ -75,21 +76,23 @@ export default function RuleCategoryTable({
                   {(item.when_condition || item.when_not_condition || item.calc_rule) && (
                     <span className="text-[10px] bg-violet-500/20 text-violet-400 rounded-full px-2 py-0.5">правила</span>
                   )}
-                  <div onClick={e => e.stopPropagation()}>
-                    {confirmDeleteItemId === item.id ? (
-                      <div className="flex items-center gap-1">
-                        <button onClick={() => { onDeleteItem(item.id); onSetConfirmDeleteItemId(null); }}
-                          className="text-red-400 text-[10px] px-1.5 py-0.5 bg-red-500/20 rounded">Да</button>
-                        <button onClick={() => onSetConfirmDeleteItemId(null)}
-                          className="text-white/40 text-[10px] px-1.5 py-0.5 bg-white/5 rounded">Нет</button>
-                      </div>
-                    ) : (
-                      <button onClick={() => onSetConfirmDeleteItemId(item.id)}
-                        className="text-white/20 hover:text-red-400 transition p-1">
-                        <Icon name="X" size={13} />
-                      </button>
-                    )}
-                  </div>
+                  {!readOnly && (
+                    <div onClick={e => e.stopPropagation()}>
+                      {confirmDeleteItemId === item.id ? (
+                        <div className="flex items-center gap-1">
+                          <button onClick={() => { onDeleteItem(item.id); onSetConfirmDeleteItemId(null); }}
+                            className="text-red-400 text-[10px] px-1.5 py-0.5 bg-red-500/20 rounded">Да</button>
+                          <button onClick={() => onSetConfirmDeleteItemId(null)}
+                            className="text-white/40 text-[10px] px-1.5 py-0.5 bg-white/5 rounded">Нет</button>
+                        </div>
+                      ) : (
+                        <button onClick={() => onSetConfirmDeleteItemId(item.id)}
+                          className="text-white/20 hover:text-red-400 transition p-1">
+                          <Icon name="X" size={13} />
+                        </button>
+                      )}
+                    </div>
+                  )}
                 </button>
 
                 {/* Раскрытый редактор (мобиле) */}
@@ -204,7 +207,7 @@ export default function RuleCategoryTable({
               ) : (
                 <>
                   <span className={`${muted} text-xs truncate`} title={rt.description}>{rt.label}</span>
-                  {rt.name !== "calc_rule" && rt.name !== "bundle" && (
+                  {!readOnly && rt.name !== "calc_rule" && rt.name !== "bundle" && (
                     <>
                       <button
                         onClick={() => onStartEditLabel(rt)}
@@ -338,21 +341,23 @@ export default function RuleCategoryTable({
                   );
                 })}
 
-                <div className="flex items-center gap-1 justify-self-end pt-0.5" onClick={e => e.stopPropagation()}>
-                  {confirmDeleteItemId === item.id ? (
-                    <>
-                      <button onClick={() => { onDeleteItem(item.id); onSetConfirmDeleteItemId(null); }}
-                        className="text-red-400 hover:text-red-300 text-[10px] px-1.5 py-0.5 bg-red-500/20 rounded transition">Да</button>
-                      <button onClick={() => onSetConfirmDeleteItemId(null)}
-                        className="text-white/40 hover:text-white/70 text-[10px] px-1.5 py-0.5 bg-white/5 rounded transition">Нет</button>
-                    </>
-                  ) : (
-                    <button onClick={() => onSetConfirmDeleteItemId(item.id)}
-                      className="text-white/15 hover:text-red-400 transition p-1">
-                      <Icon name="X" size={13} />
-                    </button>
-                  )}
-                </div>
+                {!readOnly && (
+                  <div className="flex items-center gap-1 justify-self-end pt-0.5" onClick={e => e.stopPropagation()}>
+                    {confirmDeleteItemId === item.id ? (
+                      <>
+                        <button onClick={() => { onDeleteItem(item.id); onSetConfirmDeleteItemId(null); }}
+                          className="text-red-400 hover:text-red-300 text-[10px] px-1.5 py-0.5 bg-red-500/20 rounded transition">Да</button>
+                        <button onClick={() => onSetConfirmDeleteItemId(null)}
+                          className="text-white/40 hover:text-white/70 text-[10px] px-1.5 py-0.5 bg-white/5 rounded transition">Нет</button>
+                      </>
+                    ) : (
+                      <button onClick={() => onSetConfirmDeleteItemId(item.id)}
+                        className="text-white/15 hover:text-red-400 transition p-1">
+                        <Icon name="X" size={13} />
+                      </button>
+                    )}
+                  </div>
+                )}
               </div>
 
               {/* Раскрытый редактор */}

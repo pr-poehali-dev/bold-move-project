@@ -10,6 +10,7 @@ interface Props {
   item: BotCorrection;
   prices: PriceItem[];
   token: string;
+  readOnly?: boolean;
   isExpanded: boolean;
   onToggleExpand: () => void;
   onRemove: () => void;
@@ -22,6 +23,7 @@ interface Props {
 
 export default function CorrectionCard({
   item, prices, token,
+  readOnly = false,
   isExpanded, onToggleExpand, onRemove, onUpdate,
   doneWords, onDoneWordsChange,
   extraWords, onExtraWordsChange,
@@ -64,6 +66,7 @@ export default function CorrectionCard({
           item={item}
           prices={prices}
           token={token}
+          readOnly={readOnly}
           isLLM={isLLM}
           skipInfo={skipInfo}
           unknownWords={unknownWords}

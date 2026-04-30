@@ -10,9 +10,9 @@ import type { PriceItem } from "./types";
 const EMPTY_NEW = { name: "", price: "", purchase_price: "", unit: "шт", description: "" };
 const EMPTY_CAT = { name: "", firstItem: "", price: "", unit: "шт", description: "" };
 
-interface Props { token: string; onItemAdded?: (name: string) => void; isDark?: boolean; }
+interface Props { token: string; onItemAdded?: (name: string) => void; isDark?: boolean; readOnly?: boolean; }
 
-export default function TabPrices({ token, onItemAdded, isDark = true }: Props) {
+export default function TabPrices({ token, onItemAdded, isDark = true, readOnly = false }: Props) {
   const text    = isDark ? "text-white"     : "text-gray-900";
   const muted   = isDark ? "text-white/40"  : "text-gray-500";
   const muted2  = isDark ? "text-white/30"  : "text-gray-400";
@@ -135,7 +135,7 @@ export default function TabPrices({ token, onItemAdded, isDark = true }: Props) 
                       ${dragOverId === item.id ? "bg-violet-500/10 border-violet-500/30" : ""}
                     `}>
                     <td className="px-2 py-2.5 w-6">
-                      <Icon name="GripVertical" size={14} className={`${isDark ? "text-white/15 hover:text-white/40" : "text-gray-300 hover:text-gray-500"} transition mx-auto`} />
+                      {!readOnly && <Icon name="GripVertical" size={14} className={`${isDark ? "text-white/15 hover:text-white/40" : "text-gray-300 hover:text-gray-500"} transition mx-auto`} />}
                     </td>
                     <td className={`px-4 py-2.5 ${text}`}>
                       <div className="flex items-center gap-2">
@@ -189,10 +189,12 @@ export default function TabPrices({ token, onItemAdded, isDark = true }: Props) 
                       </div>
                     </td>
                     <td className="px-3 py-2.5 w-8">
-                      <button onClick={() => handleDeleteItem(item)} title="Удалить"
-                        className={`${isDark ? "text-white/20" : "text-gray-300"} hover:text-red-400 transition`}>
-                        <Icon name="X" size={13} />
-                      </button>
+                      {!readOnly && (
+                        <button onClick={() => handleDeleteItem(item)} title="Удалить"
+                          className={`${isDark ? "text-white/20" : "text-gray-300"} hover:text-red-400 transition`}>
+                          <Icon name="X" size={13} />
+                        </button>
+                      )}
                     </td>
                   </tr>
                 ))}
@@ -210,10 +212,12 @@ export default function TabPrices({ token, onItemAdded, isDark = true }: Props) 
                     <div className={`flex-1 font-medium text-sm ${text}`}>
                       <EditableCell value={item.name} onSave={v => saveField(item, "name", v)} />
                     </div>
-                    <button onClick={() => handleDeleteItem(item)}
-                      className={`${isDark ? "text-white/20" : "text-gray-300"} hover:text-red-400 transition p-1`}>
-                      <Icon name="X" size={13} />
-                    </button>
+                    {!readOnly && (
+                      <button onClick={() => handleDeleteItem(item)}
+                        className={`${isDark ? "text-white/20" : "text-gray-300"} hover:text-red-400 transition p-1`}>
+                        <Icon name="X" size={13} />
+                      </button>
+                    )}
                   </div>
                   {/* Строка 2: цены + единица */}
                   <div className="flex items-center gap-3">
@@ -264,7 +268,7 @@ export default function TabPrices({ token, onItemAdded, isDark = true }: Props) 
               ))}
             </div>
 
-            {addingInCat === category ? (
+            {!readOnly && addingInCat === category ? (
               <div className={`border-t ${border} px-4 py-3 flex gap-2 items-end flex-wrap bg-violet-500/5`}>
                 <div className="flex flex-col gap-1 flex-1 min-w-[150px]">
                   <span className={`${muted2} text-xs`}>Название</span>
@@ -306,17 +310,19 @@ export default function TabPrices({ token, onItemAdded, isDark = true }: Props) 
                 </div>
               </div>
             ) : (
-              <button onClick={() => { setAddingInCat(category); setNewItem(EMPTY_NEW); }}
-                className={`w-full py-2.5 ${isDark ? "text-violet-400/60" : "text-violet-500/70"} hover:text-violet-400 text-xs flex items-center justify-center gap-1.5 border-t ${border2} transition hover:bg-violet-500/5`}>
-                <Icon name="Plus" size={13} /> Добавить позицию в «{category}»
-              </button>
+              !readOnly && (
+                <button onClick={() => { setAddingInCat(category); setNewItem(EMPTY_NEW); }}
+                  className={`w-full py-2.5 ${isDark ? "text-violet-400/60" : "text-violet-500/70"} hover:text-violet-400 text-xs flex items-center justify-center gap-1.5 border-t ${border2} transition hover:bg-violet-500/5`}>
+                  <Icon name="Plus" size={13} /> Добавить позицию в «{category}»
+                </button>
+              )
             )}
           </div>
         </div>
       ))}
 
       {/* Новая категория */}
-      {addingCat ? (
+      {!readOnly && addingCat ? (
         <div className={`${bg} border border-violet-500/30 rounded-xl p-5 flex flex-col gap-4`}>
           <h3 className={`${isDark ? "text-violet-300" : "text-violet-600"} text-sm font-semibold flex items-center gap-2`}>
             <Icon name="FolderPlus" size={16} /> Новая категория
@@ -364,10 +370,12 @@ export default function TabPrices({ token, onItemAdded, isDark = true }: Props) 
           </div>
         </div>
       ) : (
-        <button onClick={() => setAddingCat(true)}
-          className={`border border-dashed border-violet-500/30 hover:border-violet-500/60 rounded-xl py-3 ${isDark ? "text-violet-400/60" : "text-violet-500/70"} hover:text-violet-400 text-sm flex items-center justify-center gap-2 transition`}>
-          <Icon name="FolderPlus" size={15} /> Добавить новую категорию
-        </button>
+        !readOnly && (
+          <button onClick={() => setAddingCat(true)}
+            className={`border border-dashed border-violet-500/30 hover:border-violet-500/60 rounded-xl py-3 ${isDark ? "text-violet-400/60" : "text-violet-500/70"} hover:text-violet-400 text-sm flex items-center justify-center gap-2 transition`}>
+            <Icon name="FolderPlus" size={15} /> Добавить новую категорию
+          </button>
+        )
       )}
     </div>
   );

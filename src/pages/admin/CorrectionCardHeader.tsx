@@ -10,6 +10,7 @@ interface Props {
   item: BotCorrection;
   prices: PriceItem[];
   token: string;
+  readOnly?: boolean;
   isLLM: boolean;
   skipInfo: SkipInfo | null;
   unknownWords: string[];
@@ -30,6 +31,7 @@ interface Props {
 
 export default function CorrectionCardHeader({
   item, prices, token,
+  readOnly = false,
   isLLM, skipInfo, unknownWords, allUnknownWords,
   doneWords, onDoneWordsChange,
   extraWords, onExtraWordsChange,
@@ -260,7 +262,7 @@ export default function CorrectionCardHeader({
       </div>
 
       <div className="flex items-center gap-1 flex-shrink-0">
-        {isLLM && item.llm_answer && (
+        {!readOnly && isLLM && item.llm_answer && (
           <button
             onClick={onAiEditOpen}
             title="Исправить ответ AI — обучить систему"
@@ -282,9 +284,11 @@ export default function CorrectionCardHeader({
             <Icon name="Eye" size={14} />
           </button>
         )}
-        <button onClick={onRemove} className="text-white/20 hover:text-red-400 transition">
-          <Icon name="X" size={14} />
-        </button>
+        {!readOnly && (
+          <button onClick={onRemove} className="text-white/20 hover:text-red-400 transition">
+            <Icon name="X" size={14} />
+          </button>
+        )}
       </div>
     </div>
   );

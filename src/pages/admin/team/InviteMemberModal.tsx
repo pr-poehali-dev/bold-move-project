@@ -30,15 +30,27 @@ export default function InviteMemberModal({ isDark, onClose, onInvited, onUpdate
   // Созданный сотрудник
   const [member, setMember] = useState<TeamMember | null>(null);
 
-  // Шаг 2: права (дефолт для нового сотрудника)
+  // Шаг 2: права по умолчанию для нового сотрудника
   const [perms, setPerms] = useState<Permissions>({
     // Уровень 1 — вкладки
     crm_view: true, agent_view: false,
     // Уровень 2 — блоки CRM
-    crm_edit: false, kanban: true, calendar: true,
-    finance: false, analytics: false, files: true,
+    clients_view: true, clients_edit: false,
+    orders_edit: false,
+    kanban_view: false, kanban_edit: false,
+    calendar_view: true, calendar_edit: false,
+    analytics_view: false,
+    finance_view: false,
+    files_view: true, files_edit: false,
     // Уровень 2 — агент
-    settings: false,
+    prices_view: false, prices_edit: false,
+    rules_view: false, rules_edit: false,
+    prompt_view: false, prompt_edit: false,
+    faq_view: false, faq_edit: false,
+    corrections_view: false, corrections_edit: false,
+    // Уровень 3 — поля в карточке
+    field_contacts: true, field_address: true, field_dates: true,
+    field_finance: false, field_notes: true, field_files: true, field_cancel: false,
   });
 
   // Шаг 3: пароль

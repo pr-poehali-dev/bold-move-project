@@ -20,12 +20,20 @@ interface Props {
   onClientRemoved: (id: number) => void;
   onReload: () => void;
   initialOrderId?: number | null;
-  canEdit?:    boolean;
-  canFinance?: boolean;
-  canFiles?:   boolean;
+  canEdit?:          boolean;
+  canOrdersEdit?:    boolean;
+  canFinance?:       boolean;
+  canFiles?:         boolean;
+  canFieldContacts?: boolean;
+  canFieldAddress?:  boolean;
+  canFieldDates?:    boolean;
+  canFieldFinance?:  boolean;
+  canFieldNotes?:    boolean;
+  canFieldFiles?:    boolean;
+  canFieldCancel?:   boolean;
 }
 
-export default function CrmOrders({ clients: allClients, loading, onStatusChange, onClientRemoved, onReload, initialOrderId, canEdit = true, canFinance = true, canFiles = true }: Props) {
+export default function CrmOrders({ clients: allClients, loading, onStatusChange, onClientRemoved, onReload, initialOrderId, canEdit = true, canOrdersEdit = true, canFinance = true, canFiles = true, canFieldContacts = true, canFieldAddress = true, canFieldDates = true, canFieldFinance = true, canFieldNotes = true, canFieldFiles = true, canFieldCancel = true }: Props) {
   const t = useTheme();
   const [search, setSearch]       = useState("");
   const [activeTab, setActiveTab] = useState("leads");
@@ -169,8 +177,16 @@ export default function CrmOrders({ clients: allClients, loading, onStatusChange
           onUpdated={() => { onReload(); }}
           onDeleted={() => { setSelected(null); onClientRemoved(selected.id); }}
           canEdit={canEdit}
+          canOrdersEdit={canOrdersEdit}
           canFinance={canFinance}
           canFiles={canFiles}
+          canFieldContacts={canFieldContacts}
+          canFieldAddress={canFieldAddress}
+          canFieldDates={canFieldDates}
+          canFieldFinance={canFieldFinance}
+          canFieldNotes={canFieldNotes}
+          canFieldFiles={canFieldFiles}
+          canFieldCancel={canFieldCancel}
         />
       )}
     </div>

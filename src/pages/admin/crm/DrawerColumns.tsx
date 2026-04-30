@@ -48,9 +48,16 @@ interface ColumnsProps {
   addCustomFinRow: (label: string, block: "income" | "costs") => void;
   deleteCustomFinRow: (key: string) => void;
   updateCustomFinRow: (key: string, label: string) => void;
-  canEdit?:    boolean;
-  canFinance?: boolean;
-  canFiles?:   boolean;
+  canEdit?:          boolean;
+  canFinance?:       boolean;
+  canFiles?:         boolean;
+  canFieldContacts?: boolean;
+  canFieldAddress?:  boolean;
+  canFieldDates?:    boolean;
+  canFieldFinance?:  boolean;
+  canFieldNotes?:    boolean;
+  canFieldFiles?:    boolean;
+  canFieldCancel?:   boolean;
 }
 
 export function DrawerColumns(props: ColumnsProps) {
@@ -60,6 +67,8 @@ export function DrawerColumns(props: ColumnsProps) {
     deleteCustomBlock, updateCustomBlock, onDragStart, onDragOver, onDrop, onDropToCol, onAddBlock,
     rowVisibility, toggleRowVisibility, customFinRows, addCustomFinRow, deleteCustomFinRow, updateCustomFinRow,
     canEdit = true, canFinance = true, canFiles = true,
+    canFieldContacts = true, canFieldAddress = true, canFieldDates = true,
+    canFieldFinance = true, canFieldNotes = true, canFieldFiles = true, canFieldCancel = true,
   } = props;
   const t = useTheme();
 
@@ -94,14 +103,14 @@ export function DrawerColumns(props: ColumnsProps) {
           />
         );
 
-      case "contacts": return <DrawerContactsBlock {...infoProps} />;
-      case "object":   return <DrawerObjectBlock   {...infoProps} />;
-      case "dates":    return <DrawerDatesBlock     {...infoProps} />;
-      case "notes":    return null;
-      case "files":    return canFiles   ? <DrawerFilesBlock clientId={data.id} hiddenBlocks={hiddenBlocks} toggleHidden={toggleHidden} logAction={logAction} editingBlock={editingBlock} setEditingBlock={setEditingBlock} /> : null;
-      case "cancel":   return canEdit    ? <DrawerCancelBlock    {...infoProps} /> : null;
-      case "income":   return canFinance ? <DrawerIncomeBlock    {...finProps}  /> : null;
-      case "costs":    return canFinance ? <DrawerCostsBlock     {...finProps}  /> : null;
+      case "contacts": return canFieldContacts ? <DrawerContactsBlock {...infoProps} /> : null;
+      case "object":   return canFieldAddress  ? <DrawerObjectBlock   {...infoProps} /> : null;
+      case "dates":    return canFieldDates     ? <DrawerDatesBlock    {...infoProps} /> : null;
+      case "notes":    return canFieldNotes     ? null : null; // notes рендерится отдельно
+      case "files":    return (canFiles && canFieldFiles)    ? <DrawerFilesBlock clientId={data.id} hiddenBlocks={hiddenBlocks} toggleHidden={toggleHidden} logAction={logAction} editingBlock={editingBlock} setEditingBlock={setEditingBlock} /> : null;
+      case "cancel":   return canFieldCancel   ? <DrawerCancelBlock   {...infoProps} /> : null;
+      case "income":   return (canFinance && canFieldFinance) ? <DrawerIncomeBlock {...finProps} /> : null;
+      case "costs":    return (canFinance && canFieldFinance) ? <DrawerCostsBlock  {...finProps} /> : null;
 
       default: return null;
     }
