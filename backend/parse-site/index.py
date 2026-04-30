@@ -1,10 +1,12 @@
 import json
 import os
 import re
+import uuid
 import urllib.request
 import urllib.parse
 import urllib.error
 import psycopg2
+import boto3
 
 SCHEMA = os.environ.get("MAIN_DB_SCHEMA", "public")
 CORS = {
@@ -82,6 +84,91 @@ def fetch_brand_color(url: str) -> str | None:
         return f"#{best}"
 
     return None
+
+
+def get_s3():
+    return boto3.client(
+        "s3",
+        endpoint_url="https://bucket.poehali.dev",
+        aws_access_key_id=os.environ["AWS_ACCESS_KEY_ID"],
+        aws_secret_access_key=os.environ["AWS_SECRET_ACCESS_KEY"],
+    )
+
+def upload_image_to_s3(image_bytes: bytes, ext: str, prefix: str) -> str:
+    """Загружает картинку в S3 и возвращает CDN URL."""
+    key = f"brand/{prefix}_{uuid.uuid4().hex[:8]}.{ext}"
+    content_type = "image/png" if ext == "png" else "image/jpeg" if ext in ("jpg", "jpeg") else "image/svg+xml" if ext == "svg" else "image/x-icon"
+    s3 = get_s3()
+    s3.put_object(Bucket="files", Key=key, Body=image_bytes, ContentType=content_type)
+    cdn = f"https://cdn.poehali.dev/projects/{os.environ['AWS_ACCESS_KEY_ID']}/bucket/{key}"
+    print(f"[parse-site] uploaded to CDN: {cdn}")
+    return cdn
+
+def fetch_image_bytes(url: str) -> tuple[bytes, str] | None:
+    """Загружает изображение по URL, возвращает (bytes, ext) или None."""
+    try:
+        req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+        with urllib.request.urlopen(req, timeout=8) as resp:
+            data = resp.read()
+            ct = resp.headers.get("Content-Type", "")
+            if "svg" in ct:    ext = "svg"
+            elif "png" in ct:  ext = "png"
+            elif "ico" in ct:  ext = "ico"
+            else:              ext = "jpg"
+            return data, ext
+    except Exception as e:
+        print(f"[parse-site] image fetch failed {url}: {e}")
+        return None
+
+def find_logo_url(site_url: str) -> tuple[str | None, str | None]:
+    """
+    Парсит HTML страницы, ищет логотип и фавикон.
+    Возвращает (logo_url, favicon_url) — абсолютные URL на изображения.
+    """
+    if not site_url.startswith("http"):
+        site_url = "https://" + site_url
+    base = "/".join(site_url.rstrip("/").split("/")[:3])  # https://domain.ru
+
+    try:
+        req = urllib.request.Request(site_url, headers={"User-Agent": "Mozilla/5.0"})
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            html = resp.read().decode("utf-8", errors="replace")
+    except Exception as e:
+        print(f"[parse-site] find_logo html fetch failed: {e}")
+        return None, None
+
+    def abs_url(src: str) -> str:
+        if src.startswith("http"):   return src
+        if src.startswith("//"):     return "https:" + src
+        if src.startswith("/"):      return base + src
+        return base + "/" + src
+
+    logo_url = None
+    # Ищем логотип: <img> с alt/class/id содержащим logo
+    for m in re.finditer(r'<img[^>]+>', html, re.IGNORECASE):
+        tag = m.group()
+        if re.search(r'(?:logo|brand|header-img)', tag, re.IGNORECASE):
+            src = re.search(r'src=["\']([^"\']+)["\']', tag)
+            if src:
+                u = src.group(1)
+                # Пропускаем data: и svg-data
+                if not u.startswith("data:"):
+                    logo_url = abs_url(u)
+                    break
+
+    # Ищем фавикон
+    favicon_url = None
+    for m in re.finditer(r'<link[^>]+rel=["\'][^"\']*icon[^"\']*["\'][^>]*>', html, re.IGNORECASE):
+        tag = m.group()
+        href = re.search(r'href=["\']([^"\']+)["\']', tag)
+        if href:
+            favicon_url = abs_url(href.group(1))
+            break
+    if not favicon_url:
+        favicon_url = base + "/favicon.ico"
+
+    print(f"[parse-site] logo={logo_url} favicon={favicon_url}")
+    return logo_url, favicon_url
 
 
 def tavily_post(endpoint: str, payload: dict, api_key: str, timeout: int = 20) -> dict:
@@ -243,7 +330,7 @@ def save_brand_to_db(company_id: int, brand: dict):
     allowed = [
         "company_name", "bot_name", "bot_greeting", "support_phone",
         "support_email", "telegram", "website", "working_hours",
-        "pdf_footer_address", "brand_color",
+        "pdf_footer_address", "brand_color", "brand_logo_url", "bot_avatar_url",
     ]
     sets, vals = [], []
     for key in allowed:
@@ -267,6 +354,8 @@ def build_report(brand: dict) -> dict:
         "company_name":       "Название компании",
         "bot_name":           "Имя бота",
         "bot_greeting":       "Приветствие бота",
+        "brand_logo_url":     "Логотип",
+        "bot_avatar_url":     "Фото бота",
         "support_phone":      "Телефон",
         "support_email":      "Email",
         "telegram":           "Telegram",
@@ -340,6 +429,33 @@ def handler(event: dict, context) -> dict:
         if css_color:
             brand["brand_color"] = css_color
             print(f"[parse-site] brand_color from CSS: {css_color}")
+
+    # Парсим логотип и фавикон → загружаем в S3
+    logo_src, favicon_src = find_logo_url(site_url)
+
+    if logo_src and not brand.get("brand_logo_url"):
+        result = fetch_image_bytes(logo_src)
+        if result:
+            img_bytes, ext = result
+            if len(img_bytes) > 500:  # не пустой файл
+                try:
+                    brand["brand_logo_url"] = upload_image_to_s3(img_bytes, ext, "logo")
+                except Exception as e:
+                    print(f"[parse-site] logo upload failed: {e}")
+
+    if not brand.get("bot_avatar_url"):
+        # Аватар бота = логотип (если загрузили) или фавикон
+        if brand.get("brand_logo_url"):
+            brand["bot_avatar_url"] = brand["brand_logo_url"]
+        elif favicon_src:
+            result = fetch_image_bytes(favicon_src)
+            if result:
+                img_bytes, ext = result
+                if len(img_bytes) > 100:
+                    try:
+                        brand["bot_avatar_url"] = upload_image_to_s3(img_bytes, ext, "avatar")
+                    except Exception as e:
+                        print(f"[parse-site] avatar upload failed: {e}")
 
     try:
         save_brand_to_db(company_id, brand)
