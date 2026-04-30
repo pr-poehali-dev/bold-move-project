@@ -75,7 +75,7 @@ export function WLDemoCompanies({ onOpenPanel, onRunApiTests, refreshTrigger }: 
   const deleteCompany = async (c: DemoCompany) => {
     if (!window.confirm(`Удалить «${c.company_name || c.site_url}»?`)) return;
     setDeleting(c.id);
-    await fetch(`${AUTH_URL}?action=admin-delete-demo`, {
+    await fetch(`${AUTH_URL}?action=admin-delete-demo-company`, {
       method: "POST",
       headers: { "Content-Type": "application/json", "X-Authorization": masterToken() },
       body: JSON.stringify({ demo_id: c.id }),
@@ -86,7 +86,7 @@ export function WLDemoCompanies({ onOpenPanel, onRunApiTests, refreshTrigger }: 
 
   const buyAgent = async (c: DemoCompany) => {
     setBuying(c.company_id);
-    await fetch(`${AUTH_URL}?action=admin-demo-bought-agent`, {
+    await fetch(`${AUTH_URL}?action=admin-activate-agent`, {
       method: "POST",
       headers: { "Content-Type": "application/json", "X-Authorization": masterToken() },
       body: JSON.stringify({ company_id: c.company_id }),
