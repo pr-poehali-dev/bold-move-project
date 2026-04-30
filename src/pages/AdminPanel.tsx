@@ -44,6 +44,9 @@ function MobileTabMenu({ mainTab, isDark, tabs, onSelect }: {
   const [open, setOpen] = useState(false);
   const active = tabs.find(t => t.id === mainTab) ?? tabs[0];
 
+  // Нет доступных вкладок — ничего не рендерим
+  if (!active) return <div className="flex-1" />;
+
   return (
     <div className="flex sm:hidden flex-1 relative">
       {/* Кнопка текущего таба */}
