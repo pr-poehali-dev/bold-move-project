@@ -56,8 +56,6 @@ export function WLPipelineEvents({ companies, onSelect }: Props) {
 
   const total = upcoming.length;
 
-  if (companies.every(c => !c.next_action_date)) return null;
-
   return (
     <div className="rounded-2xl overflow-hidden" style={{ background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.07)" }}>
 
