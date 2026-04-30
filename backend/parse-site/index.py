@@ -21,75 +21,70 @@ def err(msg, code=400):
 def get_conn():
     return psycopg2.connect(os.environ["DATABASE_URL"])
 
-def fetch_page_text(url: str) -> str:
-    """Получает текст о компании через Tavily Search по домену сайта."""
-    if not url.startswith("http"):
-        url = "https://" + url
-
-    # Извлекаем домен для поискового запроса
-    domain = re.sub(r"https?://", "", url).split("/")[0]
-
-    api_key = os.environ.get("TAVILY_API_KEY", "")
-    if not api_key:
-        raise ValueError("TAVILY_API_KEY не настроен")
-
-    # Сначала пробуем Extract
-    try:
-        payload = json.dumps({"urls": [url]}).encode()
-        req = urllib.request.Request(
-            "https://api.tavily.com/extract",
-            data=payload,
-            headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
-            method="POST",
-        )
-        with urllib.request.urlopen(req, timeout=15) as resp:
-            data = json.loads(resp.read())
-        results = data.get("results", [])
-        if results:
-            raw = results[0].get("raw_content", "") or results[0].get("content", "")
-            if raw and len(raw) > 200:
-                raw = re.sub(r"\s{3,}", "\n", raw)
-                return raw.strip()[:6000]
-    except Exception:
-        pass
-
-    # Fallback: Tavily Search по домену
-    query = f"компания {domain} телефон адрес часы работы контакты"
-    payload = json.dumps({
-        "query": query,
-        "search_depth": "advanced",
-        "include_domains": [domain],
-        "max_results": 5,
-        "include_raw_content": True,
-    }).encode()
+def tavily_post(endpoint: str, payload: dict, api_key: str, timeout: int = 20) -> dict:
+    """Выполняет POST-запрос к Tavily API, читает тело даже при ошибке."""
+    import urllib.error
+    data = json.dumps(payload).encode()
     req = urllib.request.Request(
-        "https://api.tavily.com/search",
-        data=payload,
+        endpoint,
+        data=data,
         headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
         method="POST",
     )
     try:
-        with urllib.request.urlopen(req, timeout=20) as resp:
-            data = json.loads(resp.read())
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
+            return json.loads(resp.read())
+    except urllib.error.HTTPError as e:
+        body = e.read().decode("utf-8", errors="replace")
+        print(f"[parse-site] Tavily {endpoint} HTTP {e.code}: {body[:200]}")
+        raise ValueError(f"Tavily вернул {e.code}: {body[:100]}")
     except Exception as e:
-        raise ValueError(f"Не удалось получить данные о сайте: {e}")
+        print(f"[parse-site] Tavily {endpoint} error: {e}")
+        raise ValueError(str(e))
+
+
+def fetch_page_text(url: str) -> str:
+    """Получает текст о компании: Extract → Search fallback."""
+    if not url.startswith("http"):
+        url = "https://" + url
+
+    domain = re.sub(r"https?://", "", url).split("/")[0]
+    api_key = os.environ.get("TAVILY_API_KEY", "")
+    if not api_key:
+        raise ValueError("TAVILY_API_KEY не настроен")
+
+    # 1. Пробуем Extract
+    try:
+        data = tavily_post("https://api.tavily.com/extract", {"urls": [url]}, api_key, timeout=15)
+        results = data.get("results", [])
+        if results:
+            raw = results[0].get("raw_content", "") or results[0].get("content", "")
+            if raw and len(raw.strip()) > 200:
+                print(f"[parse-site] Extract OK: {len(raw)} chars")
+                return re.sub(r"\s{3,}", "\n", raw).strip()[:6000]
+    except Exception as ex:
+        print(f"[parse-site] Extract failed, trying Search: {ex}")
+
+    # 2. Fallback: Tavily Search (без include_domains — он блокирует результаты)
+    query = f'site:{domain} телефон адрес контакты часы работы название компании'
+    data = tavily_post("https://api.tavily.com/search", {
+        "query": query,
+        "search_depth": "basic",
+        "max_results": 5,
+        "include_raw_content": False,
+    }, api_key, timeout=20)
 
     results = data.get("results", [])
+    print(f"[parse-site] Search results: {len(results)}")
     if not results:
-        raise ValueError("Сайт не найден в поиске. Попробуй другой URL.")
+        raise ValueError("Не удалось найти информацию о сайте. Попробуй указать домен без https://")
 
-    # Склеиваем контент из всех результатов
-    parts = []
-    for r in results:
-        content = r.get("raw_content", "") or r.get("content", "")
-        if content:
-            parts.append(content)
+    parts = [r.get("content", "") for r in results if r.get("content")]
     combined = "\n\n".join(parts)
-    if not combined:
-        raise ValueError("Не удалось получить содержимое страниц сайта.")
+    if not combined.strip():
+        raise ValueError("Поиск не вернул текст о компании.")
 
-    combined = re.sub(r"\s{3,}", "\n", combined)
-    return combined.strip()[:6000]
+    return re.sub(r"\s{3,}", "\n", combined).strip()[:6000]
 
 def ask_openai(prompt: str) -> str:
     """Отправляет запрос к OpenAI GPT-4o-mini."""
