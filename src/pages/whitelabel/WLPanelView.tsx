@@ -23,14 +23,18 @@ export function WLPanelView({ panel, iframeToken, onClose }: Props) {
         </button>
         <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-mono flex-1 min-w-0"
           style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)", color: "rgba(255,255,255,0.4)" }}>
-          <Icon name={panel.type === "site" ? "Globe" : "LayoutDashboard"} size={11} />
+          <Icon name={panel.type === "site" ? "Globe" : panel.type === "agent" ? "Pencil" : "LayoutDashboard"} size={11} />
           <span className="truncate">
-            {panel.type === "site" ? panel.url : `/company (ID: ${panel.companyId})`}
+            {panel.type === "site"
+              ? panel.url
+              : panel.type === "agent"
+              ? `/company?tab=own-agent (ID: ${panel.companyId})`
+              : `/company (ID: ${panel.companyId})`}
           </span>
         </div>
         <button
           onClick={() => {
-            const url = panel.type === "site" ? panel.url : "/company";
+            const url = panel.type === "site" ? panel.url : panel.type === "agent" ? "/company?tab=own-agent" : "/company";
             window.open(url, "_blank");
           }}
           className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition hover:opacity-80 flex-shrink-0"
@@ -47,7 +51,7 @@ export function WLPanelView({ panel, iframeToken, onClose }: Props) {
           title="Сайт компании"
         />
       ) : (
-        <IframeAdmin token={iframeToken} />
+        <IframeAdmin token={iframeToken} tab={panel.type === "agent" ? "own-agent" : undefined} />
       )}
     </div>
   );

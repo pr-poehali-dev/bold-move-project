@@ -118,9 +118,10 @@ export function Center({ children }: { children: React.ReactNode }) {
   return <div className="min-h-screen flex items-center justify-center" style={{ background: "#06060c" }}>{children}</div>;
 }
 
-export function IframeAdmin({ token }: { token: string | null }) {
+export function IframeAdmin({ token, tab }: { token: string | null; tab?: string }) {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [ready, setReady] = useState(false);
+  const src = `/company?iframe=1${tab ? `&tab=${tab}` : ""}`;
 
   useEffect(() => {
     if (!token || !iframeRef.current) return;
@@ -146,7 +147,7 @@ export function IframeAdmin({ token }: { token: string | null }) {
       )}
       <iframe
         ref={iframeRef}
-        src="/company?iframe=1"
+        src={src}
         className="w-full h-full border-0"
         title="Панель управления компании"
         style={{ opacity: ready ? 1 : 0, transition: "opacity 0.3s" }}

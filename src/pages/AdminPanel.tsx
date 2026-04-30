@@ -126,8 +126,9 @@ export default function AdminPanel() {
     corrections: { view: hasPermission(user, "corrections_view"), edit: hasPermission(user, "corrections_edit") },
   } as const;
 
-  // mainTab — всегда первая доступная вкладка, пересчитывается при смене user
-  const [mainTab, setMainTab] = useState<MainTab>("crm");
+  // mainTab — из URL-параметра ?tab=... или первая доступная
+  const urlTab = new URLSearchParams(window.location.search).get("tab") as MainTab | null;
+  const [mainTab, setMainTab] = useState<MainTab>(urlTab ?? "crm");
 
   useEffect(() => {
     if (loading || !user) return;
@@ -136,8 +137,9 @@ export default function AdminPanel() {
       hasPermission(user, "agent_view"),
       user.role === "company" || !!user.is_master,
     );
-    // Всегда переключаемся на первый доступный таб после загрузки
-    setMainTab(allowed[0]?.id ?? "crm");
+    // Если в URL есть tab и он доступен — открываем его, иначе первый доступный
+    const target = urlTab && allowed.find(t => t.id === urlTab) ? urlTab : allowed[0]?.id ?? "crm";
+    setMainTab(target);
   }, [loading, user?.id]);  // eslint-disable-line react-hooks/exhaustive-deps
 
   // Безопасное переключение — только в разрешённые табы

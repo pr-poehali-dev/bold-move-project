@@ -79,6 +79,29 @@ export default function WhiteLabel() {
 
   const openSite = (companyId: number) => setPanel({ type: "site", url: `/?c=${companyId}` });
 
+  const editBrand = async (companyId: number) => {
+    try {
+      const masterToken = localStorage.getItem("mp_user_token");
+      await fetch(`${AUTH_URL}?action=admin-ensure-balance`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-Authorization": masterToken || "" },
+        body: JSON.stringify({ user_id: companyId }),
+      });
+      const r = await fetch(`${AUTH_URL}?action=admin-login-as`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-Authorization": masterToken || "" },
+        body: JSON.stringify({ user_id: companyId }),
+      });
+      const d = await r.json();
+      if (d.token) {
+        setIframeToken(d.token);
+        setPanel({ type: "agent", companyId });
+      } else {
+        alert("Ошибка: " + (d.error || "не удалось получить токен"));
+      }
+    } catch (e) { alert(String(e)); }
+  };
+
   // Если открыта панель — показываем встроенный просмотр
   if (panel) {
     return (
@@ -135,6 +158,8 @@ export default function WhiteLabel() {
                 onClick={() => loginAsCompany(DEMO_ID)} color="#a78bfa" />
               <LinkBtn icon="Zap" label="Живые API"
                 onClick={() => check_runAll(DEMO_ID)} color="#10b981" />
+              <LinkBtn icon="Pencil" label="Редактировать бренд"
+                onClick={() => editBrand(DEMO_ID)} color="#f59e0b" />
             </div>
           </Section>
 
