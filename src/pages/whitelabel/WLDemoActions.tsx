@@ -8,6 +8,7 @@ interface DemoActionsProps {
   onOpenSite: () => void;
   onOpenPanel: () => void;
   onEditBrand: () => void;
+  onRunApiTests: () => void;
   onBuyAgent: () => void;
   onDelete: () => void;
   hasOwnAgent: boolean;
@@ -19,6 +20,7 @@ export function WLDemoActions({
   onOpenSite,
   onOpenPanel,
   onEditBrand,
+  onRunApiTests,
   onBuyAgent,
   onDelete,
   hasOwnAgent,
@@ -40,6 +42,10 @@ export function WLDemoActions({
       <button onClick={onEditBrand} className={btn}
         style={{ background: "rgba(245,158,11,0.12)", color: "#f59e0b", border: "1px solid rgba(245,158,11,0.25)" }}>
         <Icon name="Pencil" size={10} /> Бренд
+      </button>
+      <button onClick={onRunApiTests} className={btn}
+        style={{ background: "rgba(16,185,129,0.10)", color: "#10b981", border: "1px solid rgba(16,185,129,0.22)" }}>
+        <Icon name="Zap" size={10} /> Живые API
       </button>
 
       {!hasOwnAgent ? (

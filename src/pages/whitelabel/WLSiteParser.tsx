@@ -1,6 +1,6 @@
 import { useState } from "react";
 import Icon from "@/components/ui/icon";
-import { PARSE_SITE_URL, DEMO_ID } from "./wlTypes";
+import { PARSE_SITE_URL } from "./wlTypes";
 import { Section } from "./WLHelpers";
 
 interface FilledField  { field: string; label: string; value: string }
@@ -8,17 +8,16 @@ interface MissingField { field: string; label: string }
 interface ParseReport  { filled: FilledField[]; missing: MissingField[] }
 
 interface Props {
-  companyId?: number;
-  onDone?: () => void;
-  onParsed?: (domain: string) => void;
+  onCreated?: (companyId: number, token: string) => void;
 }
 
-export function WLSiteParser({ companyId = DEMO_ID, onDone, onParsed }: Props) {
-  const [url, setUrl]           = useState("");
-  const [loading, setLoading]   = useState(false);
-  const [report, setReport]     = useState<ParseReport | null>(null);
-  const [error, setError]       = useState<string | null>(null);
-  const [searching, setSearching] = useState<string | null>(null); // поле которое сейчас ищем
+export function WLSiteParser({ onCreated }: Props) {
+  const [url, setUrl]             = useState("");
+  const [loading, setLoading]     = useState(false);
+  const [report, setReport]       = useState<ParseReport | null>(null);
+  const [error, setError]         = useState<string | null>(null);
+  const [searching, setSearching] = useState<string | null>(null);
+  const [lastCompanyId, setLastCompanyId] = useState<number | null>(null);
 
   const callParse = async (body: object) => {
     const token = localStorage.getItem("mp_user_token");
@@ -36,15 +35,17 @@ export function WLSiteParser({ companyId = DEMO_ID, onDone, onParsed }: Props) {
     setLoading(true);
     setReport(null);
     setError(null);
+    setLastCompanyId(null);
     try {
-      const d = await callParse({ url: trimmed, company_id: companyId });
+      const d = await callParse({ url: trimmed });
       if (d.error) {
         setError(d.error);
       } else {
         setReport(d.report);
-        onDone?.();
-        const domain = trimmed.replace(/https?:\/\//, "").split("/")[0];
-        onParsed?.(domain);
+        if (d.company_id && d.token) {
+          setLastCompanyId(d.company_id);
+          onCreated?.(d.company_id, d.token);
+        }
       }
     } catch (e) {
       setError(String(e));
@@ -53,14 +54,12 @@ export function WLSiteParser({ companyId = DEMO_ID, onDone, onParsed }: Props) {
     }
   };
 
-  // Повторный поиск одного конкретного поля
   const searchField = async (field: MissingField) => {
-    if (!url.trim()) return;
+    if (!url.trim() || !lastCompanyId) return;
     setSearching(field.field);
     try {
-      const d = await callParse({ url: url.trim(), company_id: companyId, only_field: field.field });
+      const d = await callParse({ url: url.trim(), company_id: lastCompanyId, only_field: field.field });
       if (!d.error && d.report) {
-        // Проверяем заполнилось ли поле
         const nowFilled = d.report.filled.find((f: FilledField) => f.field === field.field);
         if (nowFilled && report) {
           setReport({
@@ -76,10 +75,9 @@ export function WLSiteParser({ companyId = DEMO_ID, onDone, onParsed }: Props) {
   return (
     <Section title="Автозаполнение из сайта" icon="Wand2" color="#f59e0b">
       <p className="text-[11px] text-white/40 mb-3">
-        Введи сайт клиента — AI вытащит все данные и заполнит демо-компанию #{companyId}
+        Введи сайт клиента — AI вытащит все данные и создаст новую демо-компанию
       </p>
 
-      {/* Ввод URL */}
       <div className="flex gap-2 mb-3">
         <input
           value={url}
@@ -99,7 +97,6 @@ export function WLSiteParser({ companyId = DEMO_ID, onDone, onParsed }: Props) {
         </button>
       </div>
 
-      {/* Ошибка */}
       {error && (
         <div className="rounded-xl px-3 py-2.5 text-xs"
           style={{ background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.25)", color: "#fca5a5" }}>
@@ -108,11 +105,8 @@ export function WLSiteParser({ companyId = DEMO_ID, onDone, onParsed }: Props) {
         </div>
       )}
 
-      {/* Отчёт */}
       {report && (
         <div className="space-y-3 mt-1">
-
-          {/* Заполнено */}
           {report.filled.length > 0 && (
             <div>
               <div className="text-[10px] uppercase tracking-wider font-bold mb-2 flex items-center gap-1.5"
@@ -134,7 +128,6 @@ export function WLSiteParser({ companyId = DEMO_ID, onDone, onParsed }: Props) {
             </div>
           )}
 
-          {/* Не заполнено — кликабельные пилюли с повторным поиском */}
           {report.missing.length > 0 && (
             <div>
               <div className="text-[10px] uppercase tracking-wider font-bold mb-2 flex items-center gap-1.5"
@@ -148,10 +141,9 @@ export function WLSiteParser({ companyId = DEMO_ID, onDone, onParsed }: Props) {
                     <button
                       key={f.field}
                       onClick={() => searchField(f)}
-                      disabled={!!searching || !url.trim()}
+                      disabled={!!searching || !url.trim() || !lastCompanyId}
                       className="flex items-center gap-1 text-[10px] px-2.5 py-1 rounded-lg font-medium transition hover:opacity-80 disabled:opacity-50"
-                      style={{ background: "rgba(245,158,11,0.10)", border: "1px solid rgba(245,158,11,0.35)", color: "#fbbf24" }}
-                      title={`Повторно поискать ${f.label}`}>
+                      style={{ background: "rgba(245,158,11,0.10)", border: "1px solid rgba(245,158,11,0.35)", color: "#fbbf24" }}>
                       {isSearching
                         ? <div className="w-2.5 h-2.5 border border-amber-400/40 border-t-amber-400 rounded-full animate-spin flex-shrink-0" />
                         : <Icon name="Search" size={9} />

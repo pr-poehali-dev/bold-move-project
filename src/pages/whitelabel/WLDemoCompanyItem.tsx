@@ -26,13 +26,14 @@ interface Props {
   onOpenSite: () => void;
   onOpenPanel: () => void;
   onEditBrand: () => void;
+  onRunApiTests: () => void;
   onBuyAgent: () => void;
   onDelete: () => void;
 }
 
 export function WLDemoCompanyItem({
   c, isOpen, isDeleting, isBuying,
-  onToggle, onOpenSite, onOpenPanel, onEditBrand, onBuyAgent, onDelete,
+  onToggle, onOpenSite, onOpenPanel, onEditBrand, onRunApiTests, onBuyAgent, onDelete,
 }: Props) {
   const color  = c.brand_color || "#8b5cf6";
   const name   = c.company_name || c.site_url;
@@ -97,6 +98,7 @@ export function WLDemoCompanyItem({
             onOpenSite={onOpenSite}
             onOpenPanel={onOpenPanel}
             onEditBrand={onEditBrand}
+            onRunApiTests={onRunApiTests}
             onBuyAgent={onBuyAgent}
             onDelete={onDelete}
             hasOwnAgent={c.has_own_agent}

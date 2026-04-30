@@ -7,6 +7,8 @@ import type { DemoCompany } from "./WLDemoCompanyItem";
 
 interface Props {
   onOpenPanel: (panel: PanelView, token?: string) => void;
+  onRunApiTests?: (companyId: number) => void;
+  onLoginAs?: (companyId: number) => Promise<string | null>;
   refreshTrigger?: number;
 }
 
@@ -14,7 +16,7 @@ function Spin() {
   return <div className="w-3 h-3 border-2 border-white/15 border-t-violet-400 rounded-full animate-spin" />;
 }
 
-export function WLDemoCompanies({ onOpenPanel, refreshTrigger }: Props) {
+export function WLDemoCompanies({ onOpenPanel, onRunApiTests, refreshTrigger }: Props) {
   const [companies, setCompanies] = useState<DemoCompany[]>([]);
   const [loading, setLoading]     = useState(false);
   const [expanded, setExpanded]   = useState<Set<number>>(new Set());
@@ -130,6 +132,7 @@ export function WLDemoCompanies({ onOpenPanel, refreshTrigger }: Props) {
           onOpenSite={() => openSite(c)}
           onOpenPanel={() => openPanel(c)}
           onEditBrand={() => openBrand(c)}
+          onRunApiTests={() => onRunApiTests?.(c.company_id)}
           onBuyAgent={() => buyAgent(c)}
           onDelete={() => deleteCompany(c)}
         />

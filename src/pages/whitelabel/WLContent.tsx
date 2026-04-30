@@ -1,12 +1,12 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Icon from "@/components/ui/icon";
-import { AUTH_URL, DEMO_ID } from "./wlTypes";
+import { AUTH_URL } from "./wlTypes";
 import type { CheckResult, PanelView } from "./wlTypes";
 import { WLApiTestsModal, useApiChecks } from "./WLApiTests";
 import { WLPanelView } from "./WLPanelView";
 import { WLSiteParser } from "./WLSiteParser";
-import { WLDemoCard } from "./WLDemoCard";
+import { WLDemoCompanies } from "./WLDemoCompanies";
 
 export function WLContent() {
   const navigate = useNavigate();
@@ -14,8 +14,8 @@ export function WLContent() {
   const [running, setRunning]           = useState<string | null>(null);
   const [panel, setPanel]               = useState<PanelView>(null);
   const [iframeToken, setIframeToken]   = useState<string | null>(null);
-  const [apiTestId, setApiTestId]       = useState(DEMO_ID);
-  const [parsedDomain, setParsedDomain] = useState<string | null>(null);
+  const [apiTestId, setApiTestId]       = useState<number>(0);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   const setResult = (key: string, r: CheckResult | null) =>
     setResults(prev => ({ ...prev, [key]: r }));
@@ -30,73 +30,25 @@ export function WLContent() {
     await check_pdf(cid);
   };
 
-  const loginAsCompany = async (companyId: number) => {
-    try {
-      const masterToken = localStorage.getItem("mp_user_token");
-      await fetch(`${AUTH_URL}?action=admin-ensure-balance`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "X-Authorization": masterToken || "" },
-        body: JSON.stringify({ user_id: companyId }),
-      });
-      const r = await fetch(`${AUTH_URL}?action=admin-login-as`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "X-Authorization": masterToken || "" },
-        body: JSON.stringify({ user_id: companyId }),
-      });
-      const d = await r.json();
-      if (d.token) {
-        setIframeToken(d.token);
-        setPanel({ type: "admin", companyId });
-      } else {
-        alert("Ошибка: " + (d.error || "не удалось получить токен"));
-      }
-    } catch (e) { alert(String(e)); }
+  const handleOpenPanel = (p: PanelView, token?: string) => {
+    if (token) setIframeToken(token);
+    setPanel(p);
   };
 
-  const openSite = async (companyId: number) => {
-    const url = `/?c=${companyId}`;
-    try {
-      const masterToken = localStorage.getItem("mp_user_token");
-      await fetch(`${AUTH_URL}?action=admin-ensure-balance`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "X-Authorization": masterToken || "" },
-        body: JSON.stringify({ user_id: companyId, min_balance: 10, sync_name: true }),
-      });
-      const r = await fetch(`${AUTH_URL}?action=admin-login-as`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "X-Authorization": masterToken || "" },
-        body: JSON.stringify({ user_id: companyId }),
-      });
-      const d = await r.json();
-      if (d.token) {
-        setPanel({ type: "site-authed", url, token: d.token });
-        return;
-      }
-    } catch { /* fallback */ }
-    setPanel({ type: "site", url });
-  };
-
-  const editBrand = async (companyId: number) => {
-    try {
-      const masterToken = localStorage.getItem("mp_user_token");
-      await fetch(`${AUTH_URL}?action=admin-ensure-balance`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "X-Authorization": masterToken || "" },
-        body: JSON.stringify({ user_id: companyId }),
-      });
-      const r = await fetch(`${AUTH_URL}?action=admin-login-as`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "X-Authorization": masterToken || "" },
-        body: JSON.stringify({ user_id: companyId }),
-      });
-      const d = await r.json();
-      if (d.token) {
-        setIframeToken(d.token);
-        setPanel({ type: "agent", companyId });
-      } else {
-        alert("Ошибка: " + (d.error || "не удалось получить токен"));
-      }
-    } catch (e) { alert(String(e)); }
+  const handleLoginAs = async (companyId: number): Promise<string | null> => {
+    const masterToken = localStorage.getItem("mp_user_token");
+    await fetch(`${AUTH_URL}?action=admin-ensure-balance`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Authorization": masterToken || "" },
+      body: JSON.stringify({ user_id: companyId, min_balance: 10, sync_name: true }),
+    });
+    const r = await fetch(`${AUTH_URL}?action=admin-login-as`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Authorization": masterToken || "" },
+      body: JSON.stringify({ user_id: companyId }),
+    });
+    const d = await r.json();
+    return d.token || null;
   };
 
   if (panel) {
@@ -131,14 +83,15 @@ export function WLContent() {
         </header>
 
         <div className="max-w-4xl mx-auto px-5 py-8 space-y-8">
-          <WLSiteParser companyId={DEMO_ID} onParsed={setParsedDomain} />
+          <WLSiteParser
+            onCreated={(_companyId, _token) => setRefreshTrigger(t => t + 1)}
+          />
 
-          <WLDemoCard
-            parsedDomain={parsedDomain}
-            onOpenSite={() => openSite(DEMO_ID)}
-            onLoginAs={() => loginAsCompany(DEMO_ID)}
-            onRunApiTests={() => check_runAll(DEMO_ID)}
-            onEditBrand={() => editBrand(DEMO_ID)}
+          <WLDemoCompanies
+            refreshTrigger={refreshTrigger}
+            onOpenPanel={handleOpenPanel}
+            onRunApiTests={(cid) => check_runAll(cid)}
+            onLoginAs={handleLoginAs}
           />
         </div>
       </div>
