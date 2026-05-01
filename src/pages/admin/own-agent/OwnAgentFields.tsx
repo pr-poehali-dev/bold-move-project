@@ -154,10 +154,24 @@ export function ColorField({ label, value, onChange, isDark }: {
   );
 }
 
+// ── Определение ориентации изображения ───────────────────────────────────────
+function detectOrientation(url: string): Promise<"horizontal" | "vertical"> {
+  return new Promise(resolve => {
+    const img = new Image();
+    img.onload = () => {
+      // горизонтальный если ширина > высоты * 1.2, иначе квадратный/вертикальный
+      resolve(img.width > img.height * 1.2 ? "horizontal" : "vertical");
+    };
+    img.onerror = () => resolve("horizontal");
+    img.src = url;
+  });
+}
+
 // ── ImageUploader ─────────────────────────────────────────────────────────────
-export function ImageUploader({ label, hint, value, onChange, token, isDark }: {
+export function ImageUploader({ label, hint, value, onChange, token, isDark, onOrientationDetected }: {
   label: string; hint: string; value: string; onChange: (v: string) => void;
   token: string | null; isDark: boolean;
+  onOrientationDetected?: (o: "horizontal" | "vertical") => void;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
@@ -170,7 +184,12 @@ export function ImageUploader({ label, hint, value, onChange, token, isDark }: {
     if (file.size > 2 * 1024 * 1024) { setErr("Файл больше 2 МБ"); return; }
     setErr(""); setBusy(true);
     try {
-      onChange(await uploadBrandImage(token, file));
+      const url = await uploadBrandImage(token, file);
+      onChange(url);
+      if (onOrientationDetected) {
+        const orientation = await detectOrientation(url);
+        onOrientationDetected(orientation);
+      }
     } catch (ex: unknown) {
       setErr(ex instanceof Error ? ex.message : "Ошибка загрузки");
     } finally {

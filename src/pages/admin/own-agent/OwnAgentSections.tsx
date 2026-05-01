@@ -61,7 +61,8 @@ export function SectionVisual({ brand, set, token, isDark }: {
       <ImageUploader label="Логотип для светлой подложки (тёмный)"
         hint="PNG с прозрачным фоном, до 1 МБ"
         value={brand.brand_logo_url || ""} onChange={v => set("brand_logo_url", v)}
-        token={token} isDark={isDark} />
+        token={token} isDark={isDark}
+        onOrientationDetected={o => set("brand_logo_orientation", o)} />
 
       <ImageUploader label="Логотип для тёмной подложки (светлый)"
         hint="Опционально. Используется когда подложка тёмная"
