@@ -86,9 +86,9 @@ export function WLSiteParser({ onCreated }: Props) {
         setReport(d.report);
         if (d.company_id && d.token) {
           setLastCompanyId(d.company_id);
-          // Автозаполняем первый шаг: позвонить сегодня
           const today = new Date().toISOString().slice(0, 10);
           const masterToken = getWLToken();
+          // Автозаполняем первый шаг
           fetch(`${AUTH_URL}?action=admin-update-demo`, {
             method: "POST",
             headers: { "Content-Type": "application/json", "X-Authorization": masterToken },
@@ -98,6 +98,30 @@ export function WLSiteParser({ onCreated }: Props) {
               next_action_date: today,
             }),
           }).catch(() => {});
+          // Авто-назначение: если вошёл менеджер — закрепляем за ним
+          const wlManagerRaw = localStorage.getItem("wl_manager_token");
+          if (wlManagerRaw && d.demo_id) {
+            fetch(`${AUTH_URL}?action=wl-assign-company`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json", "X-Authorization": masterToken },
+              body: JSON.stringify({ demo_id: d.demo_id, manager_id: null }),
+            })
+            .then(r => r.json())
+            .then(() => {
+              // Получаем ID менеджера из wl-me и назначаем
+              fetch(`${AUTH_URL}?action=wl-me`, { headers: { "X-Authorization": wlManagerRaw } })
+                .then(r => r.json())
+                .then(me => {
+                  if (me.manager?.id) {
+                    fetch(`${AUTH_URL}?action=wl-assign-company`, {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json", "X-Authorization": masterToken },
+                      body: JSON.stringify({ demo_id: d.demo_id, manager_id: me.manager.id }),
+                    }).catch(() => {});
+                  }
+                }).catch(() => {});
+            }).catch(() => {});
+          }
           onCreated?.(d.company_id, d.token);
           startAnimation(
             (d.report?.filled  || []).length,

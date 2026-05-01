@@ -2,7 +2,8 @@ import { useState, useEffect } from "react";
 import Icon from "@/components/ui/icon";
 import { AUTH_URL, PARSE_SITE_URL, DEMO_STATUSES } from "./wlTypes";
 import type { DemoPipelineCompany, DemoStatus, PanelView } from "./wlTypes";
-import { getWLToken } from "./WLManagerContext";
+import { getWLToken, useWLManager } from "./WLManagerContext";
+import { WLAssignManager } from "./WLAssignManager";
 
 interface Props {
   company: DemoPipelineCompany;
@@ -90,6 +91,9 @@ function AiBtn({ fieldKey, busy, attempts, onRun }: {
 }
 
 export function WLPipelineDrawer({ company, onClose, onUpdate, onDelete, onOpenPanel, onRunApiTests, onRequestReceipt }: Props) {
+  const { isMaster, manager } = useWLManager();
+  const canAssign = isMaster || manager?.wl_role === "master_manager";
+
   const [form, setForm] = useState({
     status:           company.status,
     contact_name:     company.contact_name,
@@ -268,6 +272,21 @@ export function WLPipelineDrawer({ company, onClose, onUpdate, onDelete, onOpenP
             <Field label="" value={form.notes} onChange={set("notes")} type="textarea"
               placeholder="Договорились о демо, интересует белый лейбл для 3 городов..." />
           </div>
+
+          {/* Назначение менеджера */}
+          {canAssign && (
+            <div className="space-y-2">
+              <div className="text-[11px] font-bold text-white/50 flex items-center gap-1.5">
+                <Icon name="UserCheck" size={12} /> Ответственный менеджер
+              </div>
+              <WLAssignManager
+                demoId={company.demo_id}
+                managerId={company.manager_id}
+                managerName={company.manager_name}
+                onAssigned={(mid, mname) => onUpdate({ manager_id: mid, manager_name: mname })}
+              />
+            </div>
+          )}
 
           {/* Данные аккаунта */}
           <div className="rounded-xl p-3 space-y-1.5" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
