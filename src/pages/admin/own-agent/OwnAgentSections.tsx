@@ -6,15 +6,23 @@ import {
 
 interface CommonProps { isDark: boolean }
 
+interface AiProps {
+  website: string;
+  runAi: (field: string) => void;
+  aiAttempts: Record<string, number>;
+  aiBusy: Record<string, boolean>;
+}
+
 // ── SectionCompany ────────────────────────────────────────────────────────────
-export function SectionCompany({ companyName, setCompanyName, website, setWebsite, isDark }: {
+export function SectionCompany({ companyName, setCompanyName, website, setWebsite, runAi, aiAttempts, aiBusy, isDark }: {
   companyName: string; setCompanyName: (v: string) => void;
   website: string;     setWebsite:     (v: string) => void;
-} & CommonProps) {
+} & AiProps & CommonProps) {
   return (
     <Section title="Компания" icon="Building2" isDark={isDark}>
       <Field label="Название компании" placeholder="ООО «Ваша компания»"
-        value={companyName} onChange={setCompanyName} isDark={isDark} />
+        value={companyName} onChange={setCompanyName} isDark={isDark}
+        aiBtn={<AiFieldBtn field="company_name" busy={aiBusy["company_name"] || false} attempts={aiAttempts["company_name"] || 0} onRun={runAi} siteUrl={website} />} />
       <Field label="Сайт" placeholder="yourcompany.ru"
         value={website} onChange={setWebsite} isDark={isDark} />
     </Section>
@@ -22,17 +30,19 @@ export function SectionCompany({ companyName, setCompanyName, website, setWebsit
 }
 
 // ── SectionBot ────────────────────────────────────────────────────────────────
-export function SectionBot({ brand, set, token, isDark }: {
+export function SectionBot({ brand, set, token, website, runAi, aiAttempts, aiBusy, isDark }: {
   brand: Brand; set: <K extends keyof Brand>(k: K, v: Brand[K]) => void;
   token: string | null;
-} & CommonProps) {
+} & AiProps & CommonProps) {
   return (
     <Section title="Бот" icon="Bot" isDark={isDark}>
       <Field label="Имя бота" placeholder="Например: Анна, Максим, Алина"
-        value={brand.bot_name || ""} onChange={v => set("bot_name", v)} isDark={isDark} />
+        value={brand.bot_name || ""} onChange={v => set("bot_name", v)} isDark={isDark}
+        aiBtn={<AiFieldBtn field="bot_name" busy={aiBusy["bot_name"] || false} attempts={aiAttempts["bot_name"] || 0} onRun={runAi} siteUrl={website} />} />
       <Field label="Приветствие" multiline rows={3}
         placeholder="Привет! Я Анна — консультант компании «...». Расскажу о потолках, помогу выбрать и рассчитаю стоимость."
-        value={brand.bot_greeting || ""} onChange={v => set("bot_greeting", v)} isDark={isDark} />
+        value={brand.bot_greeting || ""} onChange={v => set("bot_greeting", v)} isDark={isDark}
+        aiBtn={<AiFieldBtn field="bot_greeting" busy={aiBusy["bot_greeting"] || false} attempts={aiAttempts["bot_greeting"] || 0} onRun={runAi} siteUrl={website} />} />
       <ImageUploader label="Аватар бота" hint="Квадрат 200×200, PNG/JPG"
         value={brand.bot_avatar_url || ""} onChange={v => set("bot_avatar_url", v)}
         token={token} isDark={isDark} />
@@ -41,14 +51,15 @@ export function SectionBot({ brand, set, token, isDark }: {
 }
 
 // ── SectionVisual ─────────────────────────────────────────────────────────────
-export function SectionVisual({ brand, set, token, isDark }: {
+export function SectionVisual({ brand, set, token, website, runAi, aiAttempts, aiBusy, isDark }: {
   brand: Brand; set: <K extends keyof Brand>(k: K, v: Brand[K]) => void;
   token: string | null;
-} & CommonProps) {
+} & AiProps & CommonProps) {
   return (
     <Section title="Визуал" icon="Palette" isDark={isDark}>
       <ColorField label="Цвет акцента" value={brand.brand_color || "#f97316"}
-        onChange={v => set("brand_color", v)} isDark={isDark} />
+        onChange={v => set("brand_color", v)} isDark={isDark}
+        aiBtn={<AiFieldBtn field="brand_color" busy={aiBusy["brand_color"] || false} attempts={aiAttempts["brand_color"] || 0} onRun={runAi} siteUrl={website} />} />
 
       <ChoiceField label="Ориентация логотипа"
         value={brand.brand_logo_orientation || "auto"}
@@ -81,15 +92,12 @@ export function SectionVisual({ brand, set, token, isDark }: {
 // ── SectionContacts ───────────────────────────────────────────────────────────
 export function SectionContacts({ brand, set, website, runAi, aiAttempts, aiBusy, isDark }: {
   brand: Brand; set: <K extends keyof Brand>(k: K, v: Brand[K]) => void;
-  website: string;
-  runAi: (field: string) => void;
-  aiAttempts: Record<string, number>;
-  aiBusy: Record<string, boolean>;
-} & CommonProps) {
+} & AiProps & CommonProps) {
   return (
     <Section title="Контакты" icon="Phone" isDark={isDark}>
       <PhoneField label="Телефон" value={brand.support_phone || ""}
-        onChange={v => set("support_phone", v)} isDark={isDark} />
+        onChange={v => set("support_phone", v)} isDark={isDark}
+        aiBtn={<AiFieldBtn field="support_phone" busy={aiBusy["support_phone"] || false} attempts={aiAttempts["support_phone"] || 0} onRun={runAi} siteUrl={website} />} />
       <Field label="Email" placeholder="info@yourcompany.ru" type="email"
         value={brand.support_email || ""} onChange={v => set("support_email", v)} isDark={isDark}
         aiBtn={<AiFieldBtn field="support_email" busy={aiBusy["support_email"] || false} attempts={aiAttempts["support_email"] || 0} onRun={runAi} siteUrl={website} />} />
@@ -109,11 +117,7 @@ export function SectionContacts({ brand, set, website, runAi, aiAttempts, aiBusy
 // ── SectionPdf ────────────────────────────────────────────────────────────────
 export function SectionPdf({ brand, set, website, runAi, aiAttempts, aiBusy, isDark }: {
   brand: Brand; set: <K extends keyof Brand>(k: K, v: Brand[K]) => void;
-  website: string;
-  runAi: (field: string) => void;
-  aiAttempts: Record<string, number>;
-  aiBusy: Record<string, boolean>;
-} & CommonProps) {
+} & AiProps & CommonProps) {
   const muted = isDark ? "rgba(255,255,255,0.45)" : "#6b7280";
   return (
     <Section title="PDF-сметы" icon="FileText" isDark={isDark}>

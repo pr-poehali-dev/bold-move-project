@@ -117,23 +117,30 @@ export function ChoiceField({ label, value, onChange, options, isDark }: {
 }
 
 // ── PhoneField ────────────────────────────────────────────────────────────────
-export function PhoneField({ label, value, onChange, isDark }: {
+export function PhoneField({ label, value, onChange, isDark, aiBtn }: {
   label: string; value: string; onChange: (v: string) => void; isDark: boolean;
+  aiBtn?: React.ReactNode;
 }) {
   const { muted, border, bg, text } = fieldStyles(isDark);
   return (
     <div>
       <div className="text-[10px] font-bold uppercase tracking-wider mb-1.5" style={{ color: muted }}>{label}</div>
-      <PhoneInput value={value} onChange={onChange} showValidation
-        className="w-full px-3.5 py-2.5 rounded-xl text-sm transition focus:outline-none"
-        style={{ background: bg, border: `1px solid ${border}`, color: text }} />
+      <div className="relative">
+        <PhoneInput value={value} onChange={onChange} showValidation
+          className={"w-full px-3.5 py-2.5 rounded-xl text-sm transition focus:outline-none" + (aiBtn ? " pr-16" : "")}
+          style={{ background: bg, border: `1px solid ${border}`, color: text }} />
+        {aiBtn && (
+          <div className="absolute right-2 top-1/2 -translate-y-1/2">{aiBtn}</div>
+        )}
+      </div>
     </div>
   );
 }
 
 // ── ColorField ────────────────────────────────────────────────────────────────
-export function ColorField({ label, value, onChange, isDark }: {
+export function ColorField({ label, value, onChange, isDark, aiBtn }: {
   label: string; value: string; onChange: (v: string) => void; isDark: boolean;
+  aiBtn?: React.ReactNode;
 }) {
   const { muted, border, bg, text } = fieldStyles(isDark);
   return (
@@ -149,6 +156,7 @@ export function ColorField({ label, value, onChange, isDark }: {
           style={{ background: bg, border: `1px solid ${border}`, color: text }} />
         <div className="w-10 h-10 rounded-lg flex-shrink-0"
           style={{ background: value, border: `1px solid ${border}` }} />
+        {aiBtn && <div className="flex-shrink-0">{aiBtn}</div>}
       </div>
     </div>
   );

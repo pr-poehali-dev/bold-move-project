@@ -161,12 +161,17 @@ export default function OwnAgentEditor({ isDark }: Props) {
           <SectionCompany
             companyName={companyName} setCompanyName={setCompanyName}
             website={website} setWebsite={setWebsite}
+            runAi={runAi} aiAttempts={aiAttempts} aiBusy={aiBusy}
             isDark={isDark}
           />
 
-          <SectionBot brand={brand} set={set} token={token} isDark={isDark} />
+          <SectionBot brand={brand} set={set} token={token}
+            website={website} runAi={runAi} aiAttempts={aiAttempts} aiBusy={aiBusy}
+            isDark={isDark} />
 
-          <SectionVisual brand={brand} set={set} token={token} isDark={isDark} />
+          <SectionVisual brand={brand} set={set} token={token}
+            website={website} runAi={runAi} aiAttempts={aiAttempts} aiBusy={aiBusy}
+            isDark={isDark} />
 
           <SectionContacts
             brand={brand} set={set}
