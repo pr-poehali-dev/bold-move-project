@@ -27,8 +27,8 @@ function ActionButtons({ c, onMove }: {
   return (
     <div className="flex gap-1.5 pt-2.5 mt-2.5 border-t border-white/[0.06]"
       onClick={e => e.stopPropagation()}>
-      {DEMO_STATUSES.map(s => {
-        const active = c.status === s.id;
+      {DEMO_STATUSES.filter(s => s.id !== "presented").map(s => {
+        const active   = c.status === s.id;
         return (
           <button key={s.id} onClick={() => !active && onMove(s.id)}
             disabled={active}
@@ -44,6 +44,15 @@ function ActionButtons({ c, onMove }: {
           </button>
         );
       })}
+      {/* Показ проведён — только для информации, не кликабелен */}
+      {c.status === "presented" && (() => {
+        const s = DEMO_STATUSES.find(st => st.id === "presented")!;
+        return (
+          <div className={btn} style={{ background: s.bg, color: s.color, border: `1px solid ${s.color}50` }}>
+            <Icon name="Check" size={9} /> {s.label}
+          </div>
+        );
+      })()}
     </div>
   );
 }
