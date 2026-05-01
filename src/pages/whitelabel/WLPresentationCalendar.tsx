@@ -318,29 +318,37 @@ function PresentationCard({ p, mini, onSelect }: {
 }) {
   const time = new Date(p.scheduled_at).toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" });
   const done = p.status === "done";
+  const color = done ? "#10b981" : (p.brand_color || "#f97316");
+  const bg    = done ? "rgba(16,185,129,0.12)" : color + "20";
 
+  // mini — вид месяца: одна строка время + название
   if (mini) return (
     <div onClick={onSelect} className="rounded px-1.5 py-0.5 cursor-pointer truncate text-[9px] font-bold"
-      style={{
-        background: done ? "rgba(16,185,129,0.12)" : (p.brand_color || "#f97316") + "20",
-        color: done ? "#10b981" : (p.brand_color || "#f97316"),
-      }}>
+      style={{ background: bg, color }}>
       {time} {p.company_name}
     </div>
   );
 
+  // full — вид недели:
+  // мобиль: только время (крупно) — места мало, 7 колонок узкие
+  // десктоп: время + название компании
   return (
     <div onClick={onSelect}
       className="rounded-lg p-1.5 cursor-pointer transition hover:brightness-110"
-      style={{ background: (p.brand_color || "#f97316") + "15", border: `1px solid ${p.brand_color || "#f97316"}30` }}>
-      <div className="text-[10px] font-bold truncate" style={{ color: p.brand_color || "#f97316" }}>
+      style={{ background: color + "15", border: `1px solid ${color}30` }}>
+      {/* Мобиль: только время */}
+      <div className="sm:hidden text-[10px] font-black text-center" style={{ color }}>
+        {time}
+      </div>
+      {/* Десктоп: время + название */}
+      <div className="hidden sm:block text-[10px] font-bold truncate" style={{ color }}>
         {time} · {p.company_name}
       </div>
-      {!mini && p.contact_name && (
-        <div className="text-[9px] text-white/30 truncate mt-0.5">{p.contact_name}</div>
+      {p.contact_name && (
+        <div className="hidden sm:block text-[9px] text-white/30 truncate mt-0.5">{p.contact_name}</div>
       )}
-      {done && !mini && (
-        <div className="mt-1 text-[9px] font-bold" style={{ color: "#10b981" }}>✓ Проведён</div>
+      {done && (
+        <div className="hidden sm:block mt-1 text-[9px] font-bold" style={{ color: "#10b981" }}>✓ Проведён</div>
       )}
     </div>
   );
