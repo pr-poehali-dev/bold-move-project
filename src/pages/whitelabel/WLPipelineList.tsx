@@ -189,7 +189,13 @@ export function WLPipelineList({ companies, filterStatus, onFilterChange, onSele
                   return (
                     <div className="flex-1 flex flex-col gap-1 min-w-0 max-w-[180px]"
                       onClick={e => e.stopPropagation()}>
-                      <div className="text-[9px] text-white/25 leading-none">Нужно заполнить</div>
+                      <div className="flex items-center gap-1">
+                        <svg width="11" height="10" viewBox="0 0 11 10" fill="none" style={{ flexShrink: 0, filter: "drop-shadow(0 0 3px rgba(239,68,68,0.6))" }}>
+                          <path d="M5.5 1L10.5 9.5H0.5L5.5 1Z" fill="#ef4444"/>
+                          <text x="5.5" y="7.5" textAnchor="middle" fontSize="5" fontWeight="900" fill="white">!</text>
+                        </svg>
+                        <span className="text-[9px] text-white/30 leading-none">Нужно заполнить</span>
+                      </div>
                       <div className="flex flex-wrap gap-1">
                         {missing.map(m => (
                           <button key={m.key}
@@ -237,20 +243,6 @@ export function WLPipelineList({ companies, filterStatus, onFilterChange, onSele
                     </div>
                   );
                 })()}
-
-                {/* Бейдж ЛПР — отдельная кнопка если не заполнен */}
-                {(!c.contact_name || !c.contact_phone || !c.contact_position) && (
-                  <button
-                    onClick={e => { e.stopPropagation(); setLprFor(c); }}
-                    className="flex-shrink-0 transition hover:scale-110"
-                    style={{ filter: "drop-shadow(0 0 5px rgba(239,68,68,0.7))" }}
-                    title="Не заполнен ЛПР — нажми чтобы добавить">
-                    <svg width="20" height="18" viewBox="0 0 20 18" fill="none">
-                      <path d="M10 1L19 17H1L10 1Z" fill="#ef4444"/>
-                      <text x="10" y="14.5" textAnchor="middle" fontSize="9" fontWeight="900" fill="white">!</text>
-                    </svg>
-                  </button>
-                )}
 
                 {/* Бренд */}
                 <button onClick={e => { e.stopPropagation(); onBrand(c.company_id); }}
