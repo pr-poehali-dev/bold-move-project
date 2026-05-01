@@ -34,10 +34,15 @@ export function WLPipeline({ refreshTrigger, onOpenPanel, onRunApiTests }: Props
   const load = useCallback(async () => {
     setLoading(true);
     try {
+      const wlTok  = localStorage.getItem("wl_manager_token");
+      const mpTok  = localStorage.getItem("mp_user_token");
+      const usedTok = getWLToken(isMaster);
+      console.warn(`[WL] isMaster=${isMaster} wl=${wlTok?.slice(0,6)} mp=${mpTok?.slice(0,6)} used=${usedTok.slice(0,6)}`);
       const r = await fetch(`${AUTH_URL}?action=admin-demo-companies`, {
-        headers: { "X-Authorization": getWLToken(isMaster) },
+        headers: { "X-Authorization": usedTok },
       });
       const d = await r.json();
+      console.warn(`[WL] response count=${d.companies?.length} error=${d.error}`);
       setCompanies((d.companies || []).filter((c: DemoPipelineCompany) => !c.deleted));
     } finally { setLoading(false); }
   }, [isMaster]);
