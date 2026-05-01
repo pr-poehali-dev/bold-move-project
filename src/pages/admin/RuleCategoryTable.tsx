@@ -46,7 +46,7 @@ export default function RuleCategoryTable({
   onDeleteItem, onSetConfirmDeleteItemId,
   onDeleteRuleType, onSetConfirmDeleteId,
   onStartEditLabel, onEditLabelChange, onSaveLabel, onCancelEditLabel,
-  onOpenBundleModal, onSaveField, onSaveCustomValue,
+  onOpenBundleModal, onSaveField, onSaveCustomValue, onPasteBundle,
 }: Props) {
   const colTemplate = `1.2fr 1fr 1fr 1fr repeat(${activeRuleTypes.length}, 1fr) 32px`;
   const catHead = isDark ? "text-violet-300" : "text-violet-600";
