@@ -18,6 +18,7 @@ const STATUS_DEFAULTS: Record<string, { action: string }> = {
   presentation: { action: "Ждёт презентации" },
   presented:    { action: "Связаться с клиентом после презентации" },
   paid:         { action: "Подписать договор и активировать агента" },
+  upsell:       { action: "Обсудить стоимость мобильного приложения (App Store / Google Play)" },
   rejected:     { action: "" },
   new:          { action: "" },
 };
