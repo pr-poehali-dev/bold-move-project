@@ -325,10 +325,21 @@ export function DrawerDiscountBlock({ data, customFinRows, onContractSumUpdated 
         {/* Футер: итог + кнопка */}
         <div className="flex items-center gap-3">
           {discount > 0 && (
-            <div className="flex-1 flex items-center justify-between px-3 py-2 rounded-xl"
-              style={{ background: "#ffffff06", border: `1px solid ${t.border}` }}>
-              <span className="text-[11px] text-white/50">Сумма со скидкой {discount}%</span>
-              <span className="text-[12px] font-bold text-white/80">{fmt(discountedIncome)} ₽</span>
+            <div className="flex-1 grid grid-cols-2 gap-2">
+              <div className="flex items-center justify-between px-3 py-2 rounded-xl"
+                style={{ background: "#ffffff06", border: `1px solid ${t.border}` }}>
+                <span className="text-[10px] text-white/40">Выручка со скидкой</span>
+                <span className="text-[11px] font-bold text-white/70">{fmt(discountedIncome)} ₽</span>
+              </div>
+              <div className="flex items-center justify-between px-3 py-2 rounded-xl"
+                style={{ background: isNegative ? "#ef444410" : "#10b98110", border: `1px solid ${isNegative ? "#ef444430" : "#10b98130"}` }}>
+                <span className="text-[10px]" style={{ color: isNegative ? "#ef4444" : "#10b981" }}>
+                  {isNegative ? "Убыток" : "Заработаете"}
+                </span>
+                <span className="text-[11px] font-bold" style={{ color: isNegative ? "#ef4444" : "#10b981" }}>
+                  {isNegative ? "" : "+"}{fmt(discountedProfit)} ₽
+                </span>
+              </div>
             </div>
           )}
           <button
