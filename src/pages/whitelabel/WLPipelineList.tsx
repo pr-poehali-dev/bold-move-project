@@ -91,10 +91,11 @@ export function WLPipelineList({ companies, filterStatus, onFilterChange, onSele
     if (estFilter === "used"    && used === 0)                return false;
     if (estFilter === "bought"  && !boughtEst)               return false;
 
-    // Фильтр по агенту
-    const agentBought = !!c.agent_purchased_at && c.has_own_agent;
-    if (agentFilter === "demo"   && agentBought)             return false;
-    if (agentFilter === "bought" && !agentBought)            return false;
+    // Фильтр по агенту: куплен = status paid, триал = has_own_agent + not paid
+    const agentPaid  = c.status === "paid";
+    const agentTrial = c.has_own_agent && !agentPaid;
+    if (agentFilter === "demo"   && !agentTrial)  return false;
+    if (agentFilter === "bought" && !agentPaid)   return false;
 
     return true;
   });
@@ -257,22 +258,20 @@ export function WLPipelineList({ companies, filterStatus, onFilterChange, onSele
                         </svg>
                       </button>
                     )}
-                    {/* Бейдж агента */}
-                    {(() => {
-                      const bought = !!c.agent_purchased_at && c.has_own_agent;
-                      const isDemo = !bought; // демо-доступ, не куплен
-                      return bought ? (
+                    {/* Бейдж агента: куплен = статус paid, демо = has_own_agent но не paid */}
+                    {c.has_own_agent && (
+                      c.status === "paid" ? (
                         <span className="text-[9px] px-1.5 py-0.5 rounded-full font-bold flex-shrink-0"
                           style={{ background: "rgba(16,185,129,0.15)", color: "#10b981", border: "1px solid rgba(16,185,129,0.3)" }}>
                           🤖 куплен
                         </span>
-                      ) : isDemo ? (
+                      ) : (
                         <span className="text-[9px] px-1.5 py-0.5 rounded-full font-bold flex-shrink-0"
                           style={{ background: "rgba(6,182,212,0.1)", color: "#06b6d4", border: "1px solid rgba(6,182,212,0.2)" }}>
-                          🤖 демо
+                          🤖 триал
                         </span>
-                      ) : null;
-                    })()}
+                      )
+                    )}
                     {/* Бейдж смет — ред флаг если не использовал ни одной */}
                     {(() => {
                       const used = c.estimates_used || 0;

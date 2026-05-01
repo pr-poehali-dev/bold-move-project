@@ -60,7 +60,10 @@ export function WLBalanceHistoryModal({ company, mode, onClose }: Props) {
   const totalAdded = additions.reduce((s, h) => s + h.amount, 0);
 
   // ── Агент ──────────────────────────────────────────────────────────────────
-  const agentBought = !!company.agent_purchased_at && company.has_own_agent;
+  // Куплен = статус paid (мастер подтвердил оплату и включил агента)
+  // Триал = has_own_agent включён, но статус не paid (демо-доступ)
+  const agentBought = company.status === "paid";
+  const agentTrial  = company.has_own_agent && !agentBought;
 
   const isInfo = mode === "info";
   const title  = isInfo ? "Полная информация" : mode === "demo" ? "Демо-период" : "Сметы";
@@ -165,10 +168,10 @@ export function WLBalanceHistoryModal({ company, mode, onClose }: Props) {
                     note={company.site_url.replace(/https?:\/\//, "").split("/")[0]} />
                   <TimelineLine />
                   {/* Агент */}
-                  {company.agent_purchased_at ? (
+                  {agentBought ? (
                     <>
                       <TimelineRow icon="Bot" color="#10b981"
-                        title="Агент куплен"
+                        title="Агент куплен (оплачено)"
                         date={fmt(company.agent_purchased_at)} time="" note="" />
                       <TimelineLine />
                     </>
@@ -187,17 +190,27 @@ export function WLBalanceHistoryModal({ company, mode, onClose }: Props) {
               <div>
                 <div className="text-[10px] uppercase tracking-wider text-white/25 mb-2">Агент (White Label)</div>
                 <div className="rounded-xl p-3 flex items-center gap-3"
-                  style={{ background: agentBought ? "rgba(16,185,129,0.08)" : "rgba(255,255,255,0.03)", border: `1px solid ${agentBought ? "rgba(16,185,129,0.25)" : "rgba(255,255,255,0.07)"}` }}>
-                  <Icon name={agentBought ? "Bot" : "BotOff"} size={18} style={{ color: agentBought ? "#10b981" : "rgba(255,255,255,0.2)", flexShrink: 0 }} />
+                  style={{
+                    background: agentBought ? "rgba(16,185,129,0.08)" : agentTrial ? "rgba(6,182,212,0.06)" : "rgba(255,255,255,0.03)",
+                    border: `1px solid ${agentBought ? "rgba(16,185,129,0.25)" : agentTrial ? "rgba(6,182,212,0.2)" : "rgba(255,255,255,0.07)"}`,
+                  }}>
+                  <Icon name={agentBought || agentTrial ? "Bot" : "BotOff"} size={18} style={{
+                    color: agentBought ? "#10b981" : agentTrial ? "#06b6d4" : "rgba(255,255,255,0.2)",
+                    flexShrink: 0,
+                  }} />
                   <div className="flex-1">
-                    <div className="text-[11px] font-bold" style={{ color: agentBought ? "#10b981" : "rgba(255,255,255,0.4)" }}>
-                      {agentBought ? "Агент куплен" : "На демо-доступе"}
+                    <div className="text-[11px] font-bold" style={{
+                      color: agentBought ? "#10b981" : agentTrial ? "#06b6d4" : "rgba(255,255,255,0.4)",
+                    }}>
+                      {agentBought ? "Куплен (подтверждена оплата)" : agentTrial ? "Выдан триал-доступ" : "Агент не выдан"}
                     </div>
-                    {company.agent_purchased_at && (
-                      <div className="text-[10px] text-white/30 mt-0.5">
-                        Куплен {fmt(company.agent_purchased_at, { day: "numeric", month: "long", year: "numeric" })}
-                      </div>
-                    )}
+                    <div className="text-[10px] text-white/30 mt-0.5">
+                      {agentBought
+                        ? "Мастер подтвердил оплату → статус «Оплатили»"
+                        : agentTrial
+                        ? "Доступ выдан в рамках демо, оплата не подтверждена"
+                        : "Агент не активирован"}
+                    </div>
                   </div>
                 </div>
               </div>
