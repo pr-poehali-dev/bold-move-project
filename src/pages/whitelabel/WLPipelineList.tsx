@@ -330,7 +330,7 @@ export function WLPipelineList({ companies, filterStatus, onFilterChange, onSele
                   if (!c.bot_name)       missing.push({ key: "bot",   label: "Имя бота" });
                   const noLpr = !c.contact_name || !c.contact_phone || !c.contact_position;
                   if (missing.length === 0 && !noLpr) return (
-                    <div className="flex-1 min-w-0 max-w-[180px] cursor-pointer"
+                    <div className="flex-1 min-w-0 max-w-[180px] cursor-pointer self-stretch"
                       onClick={e => { e.stopPropagation(); toggle(c.demo_id, e); }} />
                   );
                   return (
