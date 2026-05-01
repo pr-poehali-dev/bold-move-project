@@ -263,43 +263,25 @@ export function WLPipelineDrawer({ company, onClose, onUpdate, onDelete, onOpenP
               placeholder="Договорились о демо, интересует белый лейбл для 3 городов..." />
           </div>
 
-          {/* Данные бренда с AI-дозаполнением */}
-          {(() => {
-            const brandFields: { key: string; label: string; val: string }[] = [
-              { key: "support_phone",      label: "Телефон",  val: company.support_phone || "" },
-              { key: "support_email",      label: "Email",    val: company.email?.endsWith("@demo.local") ? "" : (company.email || "") },
-              { key: "telegram",           label: "Telegram", val: "" },
-              { key: "pdf_footer_address", label: "Адрес",    val: "" },
-            ];
-            const missing = brandFields.filter(f => !f.val);
-            if (missing.length === 0) return (
-              <div className="rounded-xl p-3 space-y-1.5" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
-                <div className="text-[10px] uppercase tracking-wider text-white/25 mb-1">Данные аккаунта</div>
-                {[
-                  { label: "Сайт",    value: domain },
-                  { label: "Телефон", value: company.support_phone },
-                  { label: "Баланс",  value: `${company.estimates_balance} смет` },
-                ].filter(r => r.value).map(r => (
-                  <div key={r.label} className="flex items-center justify-between text-[11px]">
-                    <span className="text-white/30">{r.label}</span>
-                    <span className="text-white/60 font-medium">{r.value}</span>
-                  </div>
-                ))}
+          {/* Данные аккаунта */}
+          <div className="rounded-xl p-3 space-y-1.5" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
+            <div className="text-[10px] uppercase tracking-wider text-white/25 mb-1">Данные аккаунта</div>
+            {[
+              { label: "Сайт",    value: domain },
+              { label: "Телефон", value: company.support_phone },
+              { label: "Баланс",  value: `${company.estimates_balance} смет` },
+            ].filter(r => r.value).map(r => (
+              <div key={r.label} className="flex items-center justify-between text-[11px]">
+                <span className="text-white/30">{r.label}</span>
+                <span className="text-white/60 font-medium">{r.value}</span>
               </div>
-            );
-            return (
-              <div className="space-y-2">
-                <div className="text-[10px] uppercase tracking-wider text-white/25">Данные аккаунта</div>
-                <div className="text-[10px] text-white/30">Сайт: <span className="text-white/50">{domain}</span></div>
-                {missing.map(f => (
-                  <Field key={f.key} label={f.label} value={f.val} onChange={() => {}}
-                    placeholder={f.label === "Телефон" ? "+7 (900) 000-00-00" : f.label === "Email" ? "info@company.ru" : f.label === "Telegram" ? "@company" : "г. Москва, ул. ..."}
-                    aiBtn={<AiBtn fieldKey={f.key} busy={aiBusy[f.key] || false} attempts={aiAttempts[f.key] || 0} onRun={runAiField} />}
-                  />
-                ))}
+            ))}
+            {company.has_own_agent && (
+              <div className="flex items-center gap-1.5 text-[10px] font-bold mt-1" style={{ color: "#10b981" }}>
+                <Icon name="CheckCircle2" size={10} /> White Label активен — настрой в «Бренд»
               </div>
-            );
-          })()}
+            )}
+          </div>
 
           {/* Кнопки действий */}
           <div className="space-y-2">

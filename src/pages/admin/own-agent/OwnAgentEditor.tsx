@@ -4,6 +4,10 @@ import PhoneInput from "@/components/ui/PhoneInput";
 import { useAuth, type Brand } from "@/context/AuthContext";
 import { updateBrand, uploadBrandImage } from "./brandApi";
 import BrandPreview from "./BrandPreview";
+import func2url from "@/../backend/func2url.json";
+
+const PARSE_SITE_URL = (func2url as Record<string, string>)["parse-site"];
+const AUTH_URL_F     = (func2url as Record<string, string>)["auth"];
 
 interface Props { isDark: boolean }
 
@@ -35,6 +39,55 @@ export default function OwnAgentEditor({ isDark }: Props) {
   const [saving, setSaving] = useState(false);
   const [saved,  setSaved]  = useState(false);
   const [err,    setErr]    = useState("");
+
+  // AI-дозаполнение полей
+  const [aiAttempts, setAiAttempts] = useState<Record<string, number>>({});
+  const [aiBusy,     setAiBusy]     = useState<Record<string, boolean>>({});
+
+  // Маппинг: поле Brand → поле в ответе parse-site
+  const AI_FIELD_MAP: Record<string, keyof Brand> = {
+    support_phone:      "support_phone",
+    support_email:      "support_email",
+    telegram_url:       "telegram_url",
+    pdf_footer_address: "pdf_footer_address",
+    working_hours:      "working_hours",
+  };
+
+  const runAi = async (field: string) => {
+    const attempts = aiAttempts[field] || 0;
+    if (attempts >= 2) return;
+    const siteUrl = website || user?.website || "";
+    if (!siteUrl) return;
+    setAiBusy(p => ({ ...p, [field]: true }));
+    try {
+      const r = await fetch(PARSE_SITE_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-Authorization": `Bearer ${token}` },
+        body: JSON.stringify({ url: siteUrl }),
+      });
+      const d = await r.json();
+      // parse-site возвращает brand объект с полями
+      const parseField = field === "telegram_url" ? "telegram" : field;
+      const val = d.brand?.[parseField] || d.brand?.[field];
+      if (val) {
+        const brandKey = AI_FIELD_MAP[field];
+        if (brandKey) {
+          set(brandKey, val);
+          // Сразу сохраняем
+          await fetch(`${AUTH_URL_F}?action=update-profile`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json", "X-Authorization": `Bearer ${token}` },
+            body: JSON.stringify({ [field]: val }),
+          }).catch(() => {});
+        }
+      }
+      setAiAttempts(p => ({ ...p, [field]: attempts + 1 }));
+    } catch {
+      setAiAttempts(p => ({ ...p, [field]: attempts + 1 }));
+    } finally {
+      setAiBusy(p => ({ ...p, [field]: false }));
+    }
+  };
 
   const set = <K extends keyof Brand>(k: K, v: Brand[K]) => setBrand(b => ({ ...b, [k]: v }));
 
@@ -163,22 +216,26 @@ export default function OwnAgentEditor({ isDark }: Props) {
           <PhoneField label="Телефон" value={brand.support_phone || ""}
             onChange={v => set("support_phone", v)} isDark={isDark} />
           <Field label="Email" placeholder="info@yourcompany.ru" type="email"
-            value={brand.support_email || ""} onChange={v => set("support_email", v)} isDark={isDark} />
+            value={brand.support_email || ""} onChange={v => set("support_email", v)} isDark={isDark}
+            aiBtn={<AiFieldBtn field="support_email" busy={aiBusy["support_email"] || false} attempts={aiAttempts["support_email"] || 0} onRun={runAi} siteUrl={website} />} />
           <Field label="Telegram (ссылка)" placeholder="https://t.me/yourcompany"
-            value={brand.telegram_url || ""} onChange={v => set("telegram_url", v)} isDark={isDark} />
+            value={brand.telegram_url || ""} onChange={v => set("telegram_url", v)} isDark={isDark}
+            aiBtn={<AiFieldBtn field="telegram_url" busy={aiBusy["telegram_url"] || false} attempts={aiAttempts["telegram_url"] || 0} onRun={runAi} siteUrl={website} />} />
           <Field label="MAX (ссылка)" placeholder="https://max.ru/u/..."
             value={brand.max_url || ""} onChange={v => set("max_url", v)} isDark={isDark} />
           <Field label="Часы работы" placeholder="Ежедневно 9:00–22:00"
-            value={brand.working_hours || ""} onChange={v => set("working_hours", v)} isDark={isDark} />
+            value={brand.working_hours || ""} onChange={v => set("working_hours", v)} isDark={isDark}
+            aiBtn={<AiFieldBtn field="working_hours" busy={aiBusy["working_hours"] || false} attempts={aiAttempts["working_hours"] || 0} onRun={runAi} siteUrl={website} />} />
         </Section>
 
         {/* PDF */}
         <Section title="PDF-сметы" icon="FileText" isDark={isDark}>
           <ColorField label="Цвет текста в PDF" value={brand.pdf_text_color || "#111827"}
             onChange={v => set("pdf_text_color", v)} isDark={isDark} />
-          <Field label="Подвал PDF" multiline rows={2}
+          <Field label="Подвал PDF (адрес, ИНН, сайт)" multiline rows={2}
             placeholder="г. Москва, ул. Примерная 1 · ИНН 1234567890 · сайт.рф"
-            value={brand.pdf_footer_address || ""} onChange={v => set("pdf_footer_address", v)} isDark={isDark} />
+            value={brand.pdf_footer_address || ""} onChange={v => set("pdf_footer_address", v)} isDark={isDark}
+            aiBtn={<AiFieldBtn field="pdf_footer_address" busy={aiBusy["pdf_footer_address"] || false} attempts={aiAttempts["pdf_footer_address"] || 0} onRun={runAi} siteUrl={website} />} />
           <div className="text-[11px] mt-1 px-1" style={{ color: muted }}>
             Логотип и цвет акцента берутся из настроек выше.
           </div>
@@ -238,9 +295,10 @@ function Section({ title, icon, children, isDark }: {
   );
 }
 
-function Field({ label, value, onChange, placeholder, type = "text", multiline, rows = 2, isDark }: {
+function Field({ label, value, onChange, placeholder, type = "text", multiline, rows = 2, isDark, aiBtn }: {
   label: string; value: string; onChange: (v: string) => void;
   placeholder?: string; type?: string; multiline?: boolean; rows?: number; isDark: boolean;
+  aiBtn?: React.ReactNode;
 }) {
   const muted  = isDark ? "rgba(255,255,255,0.4)" : "#6b7280";
   const border = isDark ? "rgba(255,255,255,0.08)" : "#e5e7eb";
@@ -251,13 +309,41 @@ function Field({ label, value, onChange, placeholder, type = "text", multiline, 
   return (
     <div>
       <div className="text-[10px] font-bold uppercase tracking-wider mb-1.5" style={{ color: muted }}>{label}</div>
-      {multiline
-        ? <textarea rows={rows} value={value} onChange={e => onChange(e.target.value)}
-            placeholder={placeholder} className={cls + " resize-none"} style={style} />
-        : <input type={type} value={value} onChange={e => onChange(e.target.value)}
-            placeholder={placeholder} className={cls} style={style} />
-      }
+      <div className="relative">
+        {multiline
+          ? <textarea rows={rows} value={value} onChange={e => onChange(e.target.value)}
+              placeholder={placeholder} className={cls + " resize-none"} style={style} />
+          : <input type={type} value={value} onChange={e => onChange(e.target.value)}
+              placeholder={placeholder} className={cls + (aiBtn && !value ? " pr-16" : "")} style={style} />
+        }
+        {aiBtn && !value && (
+          <div className="absolute right-2 top-1/2 -translate-y-1/2">{aiBtn}</div>
+        )}
+      </div>
     </div>
+  );
+}
+
+function AiFieldBtn({ field, busy, attempts, onRun, siteUrl }: {
+  field: string; busy: boolean; attempts: number; onRun: (f: string) => void; siteUrl: string;
+}) {
+  if (!siteUrl) return null;
+  if (attempts >= 2) return (
+    <span className="text-[9px] flex items-center gap-1" style={{ color: "#ef4444" }}>
+      <svg width="9" height="8" viewBox="0 0 9 8" fill="none"><path d="M4.5 0.5L8.5 7.5H0.5L4.5 0.5Z" fill="#ef4444"/><text x="4.5" y="6.5" textAnchor="middle" fontSize="4" fontWeight="900" fill="white">!</text></svg>
+      вручную
+    </span>
+  );
+  return (
+    <button disabled={busy} onClick={() => onRun(field)}
+      className="flex items-center gap-1 px-2 py-1 rounded-lg text-[9px] font-bold transition hover:opacity-80 disabled:opacity-40"
+      style={{ background: "rgba(139,92,246,0.2)", color: "#a78bfa", border: "1px solid rgba(139,92,246,0.4)" }}>
+      {busy
+        ? <div className="w-2 h-2 border border-current/30 border-t-current rounded-full animate-spin" />
+        : <Icon name="Sparkles" size={9} />
+      }
+      {busy ? "..." : attempts > 0 ? "ещё" : "AI"}
+    </button>
   );
 }
 
