@@ -195,47 +195,84 @@ export function DrawerDiscountBlock({ data, customFinRows, onContractSumUpdated 
           </div>
         )}
 
-        {/* Слайдер */}
-        <div className="space-y-2">
-          <div className="flex items-center justify-between text-[10px]">
-            <span className="text-white/30">0%</span>
-            {recommendedDiscount > 0 && (
-              <button onClick={() => setDiscount(recommendedDiscount)}
-                className="px-2 py-0.5 rounded-full font-bold transition hover:opacity-80"
-                style={{ background: "#f59e0b20", color: "#f59e0b", fontSize: 9 }}>
-                безопасный потолок {recommendedDiscount}%
-              </button>
-            )}
-            <span className="text-white/30">{sliderMax}%</span>
-          </div>
-          <div className="relative">
-            <input
-              type="range" min={0} max={sliderMax} step={0.5} value={discount}
-              onChange={e => { setDiscount(Number(e.target.value)); setApplied(false); }}
-              className="w-full cursor-pointer"
-              style={{ accentColor: isNegative ? "#ef4444" : "#f59e0b", height: 4 }}
-            />
-            {maxSafeDiscount > 0 && (() => {
-              const pct = Math.min(100, (maxSafeDiscount / sliderMax) * 100);
-              return (
-                <div className="absolute top-0 h-4 w-0.5 pointer-events-none"
-                  style={{ left: `${pct}%`, background: "#ef444460", transform: "translateX(-50%)" }} />
-              );
-            })()}
-          </div>
-          <div className="h-1 rounded-full overflow-hidden flex" style={{ background: t.border }}>
-            {maxSafeDiscount > 0 && (() => {
-              const safePct = Math.min(100, (recommendedDiscount / sliderMax) * 100);
-              const warnPct = Math.min(100, (maxSafeDiscount / sliderMax) * 100) - safePct;
-              const dangerPct = 100 - safePct - warnPct;
+        {/* Шкала + слайдер */}
+        <div className="space-y-1">
+          {/* Цветная шкала зон */}
+          <div className="relative h-7 rounded-lg overflow-hidden flex">
+            {(() => {
+              const low  = recommendedDiscount;
+              const mid  = maxSafeDiscount;
+              const max  = sliderMax;
+              const lowPct  = Math.min(100, (low / max) * 100);
+              const midPct  = Math.min(100 - lowPct, ((mid - low) / max) * 100);
+              const highPct = 100 - lowPct - midPct;
               return (
                 <>
-                  <div style={{ width: `${safePct}%`, background: "linear-gradient(90deg,#10b981,#f59e0b)" }} />
-                  <div style={{ width: `${warnPct}%`, background: "linear-gradient(90deg,#f59e0b,#ef4444)" }} />
-                  <div style={{ width: `${dangerPct}%`, background: "#ef444440" }} />
+                  <div style={{ width: `${lowPct}%`, background: "linear-gradient(90deg,#16a34a,#84cc16)" }}
+                    className="flex items-center justify-center">
+                    {lowPct > 15 && <span className="text-[10px] font-black text-white drop-shadow">Низкий</span>}
+                  </div>
+                  <div style={{ width: `${midPct}%`, background: "linear-gradient(90deg,#f59e0b,#f97316)" }}
+                    className="flex items-center justify-center">
+                    {midPct > 15 && <span className="text-[10px] font-black text-white drop-shadow">Средний</span>}
+                  </div>
+                  <div style={{ width: `${highPct}%`, background: "linear-gradient(90deg,#f97316,#ef4444,#dc2626)" }}
+                    className="flex items-center justify-center">
+                    {highPct > 15 && <span className="text-[10px] font-black text-white drop-shadow">Высокий</span>}
+                  </div>
                 </>
               );
             })()}
+          </div>
+
+          {/* Метки границ */}
+          <div className="relative h-4">
+            <span className="absolute left-0 text-[9px] text-white/30">0%</span>
+            {(() => {
+              const low = recommendedDiscount;
+              const mid = maxSafeDiscount;
+              const max = sliderMax;
+              const lowPct = Math.min(98, (low / max) * 100);
+              const midPct = Math.min(98, (mid / max) * 100);
+              return (
+                <>
+                  <span className="absolute text-[9px] font-bold"
+                    style={{ left: `${lowPct}%`, color: "#f59e0b", transform: "translateX(-50%)" }}>
+                    ↑ {low}%
+                  </span>
+                  <span className="absolute text-[9px] font-bold"
+                    style={{ left: `${midPct}%`, color: "#ef4444", transform: "translateX(-50%)" }}>
+                    ↑ {mid}%
+                  </span>
+                </>
+              );
+            })()}
+            <span className="absolute right-0 text-[9px] text-white/30">max {sliderMax}%</span>
+          </div>
+
+          {/* Слайдер поверх шкалы */}
+          <div className="relative" style={{ marginTop: -4 }}>
+            <input
+              type="range" min={0} max={sliderMax} step={0.5} value={discount}
+              onChange={e => { setDiscount(Number(e.target.value)); setApplied(false); }}
+              className="w-full cursor-pointer relative z-10"
+              style={{ accentColor: isNegative ? "#ef4444" : discount <= recommendedDiscount ? "#10b981" : discount <= maxSafeDiscount ? "#f59e0b" : "#ef4444", height: 4, background: "transparent" }}
+            />
+          </div>
+
+          {/* Легенда */}
+          <div className="flex gap-4 pt-1">
+            {[
+              { color: "#10b981", label: "Низкий риск",  range: `0–${recommendedDiscount}%` },
+              { color: "#f59e0b", label: "Средний риск", range: `${recommendedDiscount}–${maxSafeDiscount}%` },
+              { color: "#ef4444", label: "Высокий риск", range: `${maxSafeDiscount}–${sliderMax}%` },
+            ].map(z => (
+              <div key={z.color} className="flex items-center gap-1.5">
+                <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: z.color }} />
+                <span className="text-[10px] font-semibold" style={{ color: z.color }}>{z.label}</span>
+                <span className="text-[9px] text-white/25">{z.range}</span>
+              </div>
+            ))}
           </div>
         </div>
 
