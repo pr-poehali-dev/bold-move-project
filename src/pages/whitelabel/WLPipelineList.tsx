@@ -47,11 +47,25 @@ function ActionButtons({ c, onMove }: {
   );
 }
 
+type DemoFilter  = "all" | "active" | "expiring" | "expired";
+type EstFilter   = "all" | "many" | "low" | "zero";
+type BoughtFilter = "all" | "agent_yes" | "agent_no" | "est_yes" | "est_no";
+
+const DEMO_DAYS = 10;
+function demoDaysLeft(c: DemoPipelineCompany) {
+  const passed = Math.floor((Date.now() - new Date(c.created_at).getTime()) / 86400000);
+  return Math.max(0, DEMO_DAYS - passed);
+}
+
 export function WLPipelineList({ companies, filterStatus, onFilterChange, onSelect, onMove, onUpdate, onBrand }: Props) {
   const [expanded,    setExpanded]    = useState<Set<number>>(new Set());
   const [nextStepFor, setNextStepFor] = useState<{ company: DemoPipelineCompany; status: DemoStatus } | null>(null);
   const [receiptFor,  setReceiptFor]  = useState<DemoPipelineCompany | null>(null);
   const [lprFor,      setLprFor]      = useState<DemoPipelineCompany | null>(null);
+
+  const [demoFilter,   setDemoFilter]   = useState<DemoFilter>("all");
+  const [estFilter,    setEstFilter]    = useState<EstFilter>("all");
+  const [boughtFilter, setBoughtFilter] = useState<BoughtFilter>("all");
 
   const handleMove = (c: DemoPipelineCompany, status: DemoStatus) => {
     if (status === c.status) return;
@@ -59,9 +73,26 @@ export function WLPipelineList({ companies, filterStatus, onFilterChange, onSele
     setNextStepFor({ company: c, status });
   };
 
-  const filtered = filterStatus === "all"
-    ? companies
-    : companies.filter(c => c.status === filterStatus);
+  const byStatus = filterStatus === "all" ? companies : companies.filter(c => c.status === filterStatus);
+
+  const filtered = byStatus.filter(c => {
+    const dl = demoDaysLeft(c);
+    if (demoFilter === "active"   && dl === 0)  return false;
+    if (demoFilter === "expiring" && (dl === 0 || dl > 3)) return false;
+    if (demoFilter === "expired"  && dl > 0)    return false;
+
+    const bal = c.estimates_balance;
+    if (estFilter === "many" && bal <= 5)  return false;
+    if (estFilter === "low"  && (bal === 0 || bal > 5)) return false;
+    if (estFilter === "zero" && bal > 0)  return false;
+
+    if (boughtFilter === "agent_yes" && !c.agent_purchased_at) return false;
+    if (boughtFilter === "agent_no"  &&  c.agent_purchased_at) return false;
+    if (boughtFilter === "est_yes"   && c.estimates_balance <= 10) return false;
+    if (boughtFilter === "est_no"    && c.estimates_balance > 10)  return false;
+
+    return true;
+  });
 
   const toggle = (id: number, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -100,6 +131,86 @@ export function WLPipelineList({ companies, filterStatus, onFilterChange, onSele
             </button>
           );
         })}
+      </div>
+
+      {/* Доп-фильтры: Демо / Сметы / Купил */}
+      <div className="flex flex-wrap gap-2 items-center">
+        {/* Демо */}
+        <div className="flex items-center gap-1">
+          <span className="text-[9px] text-white/25 uppercase tracking-wider">Демо:</span>
+          {([
+            { id: "all",      label: "Все"      },
+            { id: "active",   label: "Идёт",    color: "#06b6d4" },
+            { id: "expiring", label: "≤3 дн.",  color: "#f59e0b" },
+            { id: "expired",  label: "Истёк",   color: "#ef4444" },
+          ] as { id: DemoFilter; label: string; color?: string }[]).map(f => {
+            const active = demoFilter === f.id;
+            return (
+              <button key={f.id} onClick={() => setDemoFilter(f.id)}
+                className="px-2 py-0.5 rounded-md text-[10px] font-bold transition"
+                style={{
+                  background: active ? (f.color ? f.color + "20" : "rgba(255,255,255,0.12)") : "rgba(255,255,255,0.04)",
+                  color:      active ? (f.color || "rgba(255,255,255,0.9)") : "rgba(255,255,255,0.3)",
+                  border:     `1px solid ${active ? (f.color ? f.color + "50" : "rgba(255,255,255,0.25)") : "transparent"}`,
+                }}>
+                {f.label}
+              </button>
+            );
+          })}
+        </div>
+
+        <div className="w-px h-4 bg-white/[0.08]" />
+
+        {/* Сметы */}
+        <div className="flex items-center gap-1">
+          <span className="text-[9px] text-white/25 uppercase tracking-wider">Сметы:</span>
+          {([
+            { id: "all",  label: "Все"     },
+            { id: "many", label: ">5",      color: "#10b981" },
+            { id: "low",  label: "1-5",     color: "#f59e0b" },
+            { id: "zero", label: "0",       color: "#ef4444" },
+          ] as { id: EstFilter; label: string; color?: string }[]).map(f => {
+            const active = estFilter === f.id;
+            return (
+              <button key={f.id} onClick={() => setEstFilter(f.id)}
+                className="px-2 py-0.5 rounded-md text-[10px] font-bold transition"
+                style={{
+                  background: active ? (f.color ? f.color + "20" : "rgba(255,255,255,0.12)") : "rgba(255,255,255,0.04)",
+                  color:      active ? (f.color || "rgba(255,255,255,0.9)") : "rgba(255,255,255,0.3)",
+                  border:     `1px solid ${active ? (f.color ? f.color + "50" : "rgba(255,255,255,0.25)") : "transparent"}`,
+                }}>
+                {f.label}
+              </button>
+            );
+          })}
+        </div>
+
+        <div className="w-px h-4 bg-white/[0.08]" />
+
+        {/* Купил */}
+        <div className="flex items-center gap-1">
+          <span className="text-[9px] text-white/25 uppercase tracking-wider">Покупки:</span>
+          {([
+            { id: "all",       label: "Все"          },
+            { id: "agent_yes", label: "WL ✓",  color: "#10b981" },
+            { id: "agent_no",  label: "WL ✗",  color: "#ef4444" },
+            { id: "est_yes",   label: "Смет ✓", color: "#a78bfa" },
+            { id: "est_no",    label: "Смет ✗", color: "#f59e0b" },
+          ] as { id: BoughtFilter; label: string; color?: string }[]).map(f => {
+            const active = boughtFilter === f.id;
+            return (
+              <button key={f.id} onClick={() => setBoughtFilter(f.id)}
+                className="px-2 py-0.5 rounded-md text-[10px] font-bold transition"
+                style={{
+                  background: active ? (f.color ? f.color + "20" : "rgba(255,255,255,0.12)") : "rgba(255,255,255,0.04)",
+                  color:      active ? (f.color || "rgba(255,255,255,0.9)") : "rgba(255,255,255,0.3)",
+                  border:     `1px solid ${active ? (f.color ? f.color + "50" : "rgba(255,255,255,0.25)") : "transparent"}`,
+                }}>
+                {f.label}
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       {/* Список */}
@@ -146,6 +257,30 @@ export function WLPipelineList({ companies, filterStatus, onFilterChange, onSele
                     {c.has_own_agent && (
                       <span className="text-[9px] px-1.5 py-0.5 rounded-full font-bold flex-shrink-0"
                         style={{ background: "#10b98120", color: "#10b981" }}>WL</span>
+                    )}
+                    {/* Купил агента */}
+                    {c.agent_purchased_at ? (
+                      <span className="text-[9px] px-1.5 py-0.5 rounded-full font-bold flex-shrink-0"
+                        style={{ background: "rgba(16,185,129,0.12)", color: "#10b981" }}>
+                        🤖 куплен
+                      </span>
+                    ) : (
+                      <span className="text-[9px] px-1.5 py-0.5 rounded-full font-bold flex-shrink-0"
+                        style={{ background: "rgba(239,68,68,0.08)", color: "rgba(239,68,68,0.5)" }}>
+                        🤖 нет
+                      </span>
+                    )}
+                    {/* Купил сметы (>10 = купил, 10 = стартовый баланс) */}
+                    {c.estimates_balance > 10 ? (
+                      <span className="text-[9px] px-1.5 py-0.5 rounded-full font-bold flex-shrink-0"
+                        style={{ background: "rgba(167,139,250,0.12)", color: "#a78bfa" }}>
+                        📄 куплены
+                      </span>
+                    ) : (
+                      <span className="text-[9px] px-1.5 py-0.5 rounded-full font-bold flex-shrink-0"
+                        style={{ background: "rgba(245,158,11,0.08)", color: "rgba(245,158,11,0.5)" }}>
+                        📄 нет
+                      </span>
                     )}
                     {/* Статус воронки */}
                     <span className="text-[9px] px-1.5 py-0.5 rounded-md font-bold flex-shrink-0"

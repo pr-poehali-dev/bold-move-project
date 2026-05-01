@@ -1484,34 +1484,35 @@ def handler(event: dict, context) -> dict:
                    u.brand_logo_url, u.removed_at,
                    dc.status, dc.contact_name, dc.contact_phone, dc.contact_position,
                    dc.notes, dc.next_action, dc.next_action_date,
-                   u.trial_until
+                   u.trial_until, u.agent_purchased_at
             FROM {SCHEMA}.demo_companies dc
             JOIN {SCHEMA}.users u ON u.id = dc.company_id
             ORDER BY dc.created_at DESC
         """)
         rows = cur.fetchall()
         return ok({"companies": [{
-            "demo_id":           r[0],
-            "site_url":          r[1],
-            "created_at":        str(r[2])[:16] if r[2] else "",
-            "company_id":        r[3],
-            "email":             r[4] or "",
-            "company_name":      r[5] or "",
-            "bot_name":          r[6] or "",
-            "brand_color":       r[7] or "#8b5cf6",
-            "support_phone":     r[8] or "",
-            "estimates_balance": r[9] or 0,
-            "has_own_agent":     bool(r[10]),
-            "brand_logo_url":    r[11] or "",
-            "deleted":           r[12] is not None,
-            "status":            r[13] or "new",
-            "contact_name":      r[14] or "",
-            "contact_phone":     r[15] or "",
-            "contact_position":  r[16] or "",
-            "notes":             r[17] or "",
-            "next_action":       r[18] or "",
-            "next_action_date":  str(r[19]) if r[19] else "",
-            "trial_until":       str(r[20])[:10] if r[20] else None,
+            "demo_id":              r[0],
+            "site_url":             r[1],
+            "created_at":           str(r[2])[:16] if r[2] else "",
+            "company_id":           r[3],
+            "email":                r[4] or "",
+            "company_name":         r[5] or "",
+            "bot_name":             r[6] or "",
+            "brand_color":          r[7] or "#8b5cf6",
+            "support_phone":        r[8] or "",
+            "estimates_balance":    r[9] or 0,
+            "has_own_agent":        bool(r[10]),
+            "brand_logo_url":       r[11] or "",
+            "deleted":              r[12] is not None,
+            "status":               r[13] or "new",
+            "contact_name":         r[14] or "",
+            "contact_phone":        r[15] or "",
+            "contact_position":     r[16] or "",
+            "notes":                r[17] or "",
+            "next_action":          r[18] or "",
+            "next_action_date":     str(r[19]) if r[19] else "",
+            "trial_until":          str(r[20])[:10] if r[20] else None,
+            "agent_purchased_at":   str(r[21])[:10] if r[21] else None,
         } for r in rows]})
 
     # ── Мастер: обновить данные демо-компании (pipeline) ─────────────────────

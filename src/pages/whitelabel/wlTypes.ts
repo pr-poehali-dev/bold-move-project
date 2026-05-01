@@ -49,9 +49,10 @@ export interface DemoPipelineCompany {
   contact_phone:     string;
   contact_position:  string;
   notes:             string;
-  next_action:       string;
-  next_action_date:  string;
-  trial_until:       string | null;
+  next_action:          string;
+  next_action_date:     string;
+  trial_until:          string | null;
+  agent_purchased_at:   string | null;
 }
 
 export const DEMO_STATUSES: { id: DemoStatus; label: string; color: string; bg: string }[] = [
