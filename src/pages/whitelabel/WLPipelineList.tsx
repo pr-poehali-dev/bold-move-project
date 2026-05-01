@@ -258,46 +258,7 @@ export function WLPipelineList({ companies, filterStatus, onFilterChange, onSele
                         </svg>
                       </button>
                     )}
-                    {/* Бейдж агента: куплен = статус paid, демо = has_own_agent но не paid */}
-                    {c.has_own_agent && (
-                      c.status === "paid" ? (
-                        <span className="text-[9px] px-1.5 py-0.5 rounded-full font-bold flex-shrink-0"
-                          style={{ background: "rgba(16,185,129,0.15)", color: "#10b981", border: "1px solid rgba(16,185,129,0.3)" }}>
-                          🤖 куплен
-                        </span>
-                      ) : (
-                        <span className="text-[9px] px-1.5 py-0.5 rounded-full font-bold flex-shrink-0"
-                          style={{ background: "rgba(6,182,212,0.1)", color: "#06b6d4", border: "1px solid rgba(6,182,212,0.2)" }}>
-                          🤖 триал
-                        </span>
-                      )
-                    )}
-                    {/* Бейдж смет — ред флаг если не использовал ни одной */}
-                    {(() => {
-                      const used = c.estimates_used || 0;
-                      const bal  = c.estimates_balance;
-                      const isRedFlag = used === 0; // выдали, но не использовал ни одной
-                      const boughtMore = bal > 10;  // докупил сверх стартовых
-                      if (boughtMore) return (
-                        <span className="text-[9px] px-1.5 py-0.5 rounded-full font-bold flex-shrink-0"
-                          style={{ background: "rgba(167,139,250,0.15)", color: "#a78bfa", border: "1px solid rgba(167,139,250,0.3)" }}>
-                          📄 куплены
-                        </span>
-                      );
-                      if (isRedFlag) return (
-                        <span className="text-[9px] px-1.5 py-0.5 rounded-full font-bold flex-shrink-0"
-                          title="Выдано демо, но ни одной сметы не создано — ред флаг!"
-                          style={{ background: "rgba(239,68,68,0.15)", color: "#ef4444", border: "1px solid rgba(239,68,68,0.35)" }}>
-                          📄 0 исп.
-                        </span>
-                      );
-                      return (
-                        <span className="text-[9px] px-1.5 py-0.5 rounded-full font-bold flex-shrink-0"
-                          style={{ background: "rgba(16,185,129,0.1)", color: "#10b981", border: "1px solid rgba(16,185,129,0.2)" }}>
-                          📄 {used} исп.
-                        </span>
-                      );
-                    })()}
+
                     {/* Статус воронки */}
                     <span className="text-[9px] px-1.5 py-0.5 rounded-md font-bold flex-shrink-0"
                       style={{ background: st.bg, color: st.color }}>{st.label}</span>
