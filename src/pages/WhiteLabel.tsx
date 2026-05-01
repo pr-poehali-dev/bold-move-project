@@ -16,9 +16,8 @@ export default function WhiteLabel() {
   useEffect(() => {
     if (authLoading) return;
 
-    // Мастер — сразу доступ, очищаем wl_manager_token чтобы не мешал
+    // Мастер — сразу доступ (не трогаем wl_manager_token других пользователей)
     if (user?.is_master) {
-      localStorage.removeItem("wl_manager_token");
       setWlOk(true); setWlLoading(false); return;
     }
 
