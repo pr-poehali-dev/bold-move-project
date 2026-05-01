@@ -290,9 +290,9 @@ def build_pdf(data, logo_bytes=None, brand=None):
     right_x   = w - mg - right_w          # левый край правого блока
     right_pad = 4 * mm                    # внутренний отступ справа
 
-    # Плашка логотипа — высота зависит от ориентации
+    # Плашка логотипа — высота зависит от ориентации (авто = определим позже по реальным размерам)
     is_vertical = logo_orient == 'vertical'
-    logo_pill_h = (22 if is_vertical else 13) * mm
+    logo_pill_h = (22 if is_vertical else 13) * mm  # будет пересчитано при auto
     logo_pill_y = h - mg - logo_pill_h - 4*mm
     logo_pill_w = right_w
     logo_pill_x = right_x
@@ -330,11 +330,37 @@ def build_pdf(data, logo_bytes=None, brand=None):
         try:
             img = ImageReader(io.BytesIO(logo_bytes))
             iw, ih_ = img.getSize()
-            # Вписать логотип в плашку с отступом, не растягивая больше натурального размера
+
+            # Авто: определяем высоту плашки по реальному соотношению сторон логотипа
+            if logo_orient == 'auto':
+                ratio = iw / ih_ if ih_ > 0 else 1.0
+                if ratio > 1.5:
+                    # Широкий (горизонтальный) — низкая плашка
+                    auto_pill_h = 13 * mm
+                elif ratio < 0.85:
+                    # Высокий (вертикальный/квадрат с запасом) — высокая плашка
+                    auto_pill_h = 22 * mm
+                else:
+                    # Квадратный — средняя плашка
+                    auto_pill_h = 17 * mm
+                # Пересчитываем позицию плашки с новой высотой
+                logo_pill_h = auto_pill_h
+                logo_pill_y = h - mg - logo_pill_h - 4*mm
+                # Перерисовываем подложку с новой высотой
+                if pill_fill is not None:
+                    c.setFillColor(pill_fill)
+                    if pill_stroke is not None:
+                        c.setStrokeColor(pill_stroke)
+                        c.setLineWidth(0.5)
+                        c.roundRect(logo_pill_x, logo_pill_y, logo_pill_w, logo_pill_h, 2*mm, fill=1, stroke=1)
+                    else:
+                        c.roundRect(logo_pill_x, logo_pill_y, logo_pill_w, logo_pill_h, 2*mm, fill=1, stroke=0)
+
+            # Вписать логотип в плашку с отступом (object-fit: contain)
             pad = 2 * mm
             max_h = logo_pill_h - 2 * pad
             max_w = logo_pill_w - 2 * pad
-            scale = min(max_w / iw, max_h / ih_, 1.0)  # не больше 1.0 — без растяжения
+            scale = min(max_w / iw, max_h / ih_)
             lw_ = iw * scale
             lh  = ih_ * scale
             c.drawImage(img,

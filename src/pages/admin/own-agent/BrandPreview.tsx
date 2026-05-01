@@ -65,9 +65,7 @@ export default function BrandPreview({ brand, isDark }: Props) {
             company_name:       user?.company_name || "Ваша компания",
             brand_logo_url:     brand.brand_logo_url || "",
             brand_logo_url_dark: brand.brand_logo_url_dark || "",
-            brand_logo_orientation: (brand.brand_logo_orientation && brand.brand_logo_orientation !== "auto")
-              ? brand.brand_logo_orientation
-              : "horizontal",
+            brand_logo_orientation: brand.brand_logo_orientation || "auto",
             pdf_logo_bg:        brand.pdf_logo_bg || "auto",
             brand_color:        brand.brand_color || "#f97316",
             pdf_text_color:     brand.pdf_text_color || "#111827",
