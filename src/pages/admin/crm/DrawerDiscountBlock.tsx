@@ -244,31 +244,29 @@ export function DrawerDiscountBlock({ data, customFinRows, onContractSumUpdated 
 
         {/* Шкала + слайдер */}
         <div className="space-y-1">
-          {/* Цветная шкала зон из настроек управления риском */}
-          <div className="relative h-7 rounded-lg overflow-hidden flex">
-            {(() => {
-              const max     = sliderMax || 1;
-              const lowPct  = Math.min(100, (zoneLow / max) * 100);
-              const midPct  = Math.min(100 - lowPct, ((zoneMid - zoneLow) / max) * 100);
-              const highPct = 100 - lowPct - midPct;
-              return (
-                <>
-                  <div style={{ width: `${lowPct}%`, background: "linear-gradient(90deg,#16a34a,#84cc16)" }}
-                    className="flex items-center justify-center">
-                    {lowPct > 15 && <span className="text-[10px] font-black text-white drop-shadow">Низкий</span>}
+          {/* Цветная шкала — единый плавный градиент */}
+          {(() => {
+            const max    = sliderMax || 1;
+            const lowPct = Math.min(100, (zoneLow / max) * 100);
+            const midPct = Math.min(100, (zoneMid / max) * 100);
+            return (
+              <div className="relative h-7 rounded-lg overflow-hidden"
+                style={{ background: `linear-gradient(90deg, #16a34a 0%, #84cc16 ${lowPct * 0.6}%, #f59e0b ${lowPct}%, #f97316 ${midPct * 0.7}%, #ef4444 ${midPct}%, #dc2626 100%)` }}>
+                {/* Подписи зон */}
+                <div className="absolute inset-0 flex">
+                  <div style={{ width: `${lowPct}%` }} className="flex items-center justify-center">
+                    {lowPct > 15 && <span className="text-[10px] font-black text-white" style={{ textShadow: "0 1px 3px rgba(0,0,0,0.5)" }}>Низкий</span>}
                   </div>
-                  <div style={{ width: `${midPct}%`, background: "linear-gradient(90deg,#f59e0b,#f97316)" }}
-                    className="flex items-center justify-center">
-                    {midPct > 15 && <span className="text-[10px] font-black text-white drop-shadow">Средний</span>}
+                  <div style={{ width: `${midPct - lowPct}%` }} className="flex items-center justify-center">
+                    {(midPct - lowPct) > 15 && <span className="text-[10px] font-black text-white" style={{ textShadow: "0 1px 3px rgba(0,0,0,0.5)" }}>Средний</span>}
                   </div>
-                  <div style={{ width: `${highPct}%`, background: "linear-gradient(90deg,#f97316,#ef4444,#dc2626)" }}
-                    className="flex items-center justify-center">
-                    {highPct > 15 && <span className="text-[10px] font-black text-white drop-shadow">Высокий</span>}
+                  <div style={{ width: `${100 - midPct}%` }} className="flex items-center justify-center">
+                    {(100 - midPct) > 15 && <span className="text-[10px] font-black text-white" style={{ textShadow: "0 1px 3px rgba(0,0,0,0.5)" }}>Высокий</span>}
                   </div>
-                </>
-              );
-            })()}
-          </div>
+                </div>
+              </div>
+            );
+          })()}
 
           {/* Метки границ зон */}
           <div className="relative h-4">
