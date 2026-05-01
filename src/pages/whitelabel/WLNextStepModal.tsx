@@ -45,9 +45,9 @@ export function WLNextStepModal({ company, newStatus, onSuccess, onCancel }: Pro
   const isPresentation = newStatus === "presentation";
 
   const [action,    setAction]    = useState(STATUS_DEFAULTS[newStatus]?.action || "");
-  const [date,      setDate]      = useState(isPresentation ? minDate : today);
+  const [date,      setDate]      = useState(isPresentation ? minDate : "");
   const [hour,      setHour]      = useState(10);
-  const [notes,     setNotes]     = useState(company.notes || "");
+  const [notes,     setNotes]     = useState("");
   const [reason,    setReason]    = useState("");
   const [saving,    setSaving]    = useState(false);
   const [error,     setError]     = useState<string | null>(null);
@@ -142,8 +142,7 @@ export function WLNextStepModal({ company, newStatus, onSuccess, onCancel }: Pro
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4"
-      style={{ background: "rgba(0,0,0,0.7)" }}
-      onClick={onCancel}>
+      style={{ background: "rgba(0,0,0,0.7)" }}>
       <div className="w-full max-w-sm rounded-2xl overflow-hidden flex flex-col max-h-[90vh]"
         style={{ background: "#0e0e1a", border: `1px solid ${st.color}40` }}
         onClick={e => e.stopPropagation()}>
