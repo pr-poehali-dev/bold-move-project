@@ -217,8 +217,13 @@ export function WLPipeline({ refreshTrigger, onOpenPanel, onRunApiTests }: Props
       {/* Контент вкладки Показы */}
       {tab === "calendar" && (
         <WLPresentationCalendar
-          onMarkDone={demoId => {
-            setCompanies(prev => prev.map(c => c.demo_id === demoId ? { ...c, status: "presented" } : c));
+          onMarkDone={(demoId, nextActionDate) => {
+            setCompanies(prev => prev.map(c => c.demo_id === demoId ? {
+              ...c,
+              status: "presented",
+              next_action: "Связаться с клиентом после презентации",
+              next_action_date: nextActionDate || c.next_action_date,
+            } : c));
           }}
           onReschedule={p => {
             const company = companies.find(c => c.demo_id === p.demo_id);

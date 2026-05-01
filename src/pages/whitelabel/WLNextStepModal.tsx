@@ -13,16 +13,20 @@ interface Props {
 const masterToken = () => localStorage.getItem("mp_user_token") || "";
 
 const STATUS_DEFAULTS: Record<string, { action: string }> = {
-  interested: { action: "Позвонить и уточнить интерес" },
-  paid:       { action: "Подписать договор и активировать агента" },
-  rejected:   { action: "Отметить причину отказа" },
-  new:        { action: "" },
+  interested:   { action: "Позвонить и уточнить интерес" },
+  presentation: { action: "Ждёт презентации" },
+  presented:    { action: "Связаться с клиентом после презентации" },
+  paid:         { action: "Подписать договор и активировать агента" },
+  rejected:     { action: "" },
+  new:          { action: "" },
 };
 
 export function WLNextStepModal({ company, newStatus, onSuccess, onCancel }: Props) {
   const st = DEMO_STATUSES.find(s => s.id === newStatus)!;
   const today = new Date().toISOString().slice(0, 10);
-  const isRejected = newStatus === "rejected";
+  const isRejected     = newStatus === "rejected";
+  const isPresentation = newStatus === "presentation";
+  // Для презентации действие фиксировано — поле не редактируется
 
   const [action,  setAction]  = useState(STATUS_DEFAULTS[newStatus]?.action || "");
   const [date,    setDate]    = useState(today);
@@ -35,13 +39,14 @@ export function WLNextStepModal({ company, newStatus, onSuccess, onCancel }: Pro
     if (isRejected) {
       if (!reason.trim()) { setError("Укажи причину отказа"); return; }
     } else {
-      if (!action.trim()) { setError("Заполни действие"); return; }
-      if (!date)          { setError("Укажи дату"); return; }
+      if (!isPresentation && !action.trim()) { setError("Заполни действие"); return; }
+      if (!date) { setError("Укажи дату"); return; }
     }
     setSaving(true);
+    const finalAction = isPresentation ? "Ждёт презентации" : action.trim();
     const patch = isRejected
       ? { status: "rejected" as DemoStatus, notes: reason.trim() }
-      : { status: newStatus, next_action: action.trim(), next_action_date: date, notes: notes.trim() };
+      : { status: newStatus, next_action: finalAction, next_action_date: date, notes: notes.trim() };
     await fetch(`${AUTH_URL}?action=admin-update-demo`, {
       method: "POST",
       headers: { "Content-Type": "application/json", "X-Authorization": masterToken() },
@@ -96,27 +101,40 @@ export function WLNextStepModal({ company, newStatus, onSuccess, onCancel }: Pro
             </div>
           ) : (
             <>
-              <div>
-                <div className="text-[10px] uppercase tracking-wider text-white/30 mb-1.5">
-                  Действие <span style={{ color: st.color }}>*</span>
+              {/* Для презентации — показываем фиксированное действие, не редактируем */}
+              {isPresentation ? (
+                <div className="rounded-xl px-3 py-2.5 flex items-center gap-2"
+                  style={{ background: `${st.color}10`, border: `1px solid ${st.color}30` }}>
+                  <Icon name="CalendarClock" size={14} style={{ color: st.color, flexShrink: 0 }} />
+                  <div>
+                    <div className="text-[11px] font-bold" style={{ color: st.color }}>Ждёт презентации</div>
+                    <div className="text-[10px] text-white/35 mt-0.5">Действие установится автоматически</div>
+                  </div>
                 </div>
-                <input
-                  value={action}
-                  onChange={e => setAction(e.target.value)}
-                  placeholder="Позвонить и уточнить интерес..."
-                  className="w-full rounded-xl px-3 py-2.5 text-xs bg-white/[0.04] border border-white/[0.08] text-white/80 placeholder-white/20 outline-none focus:border-violet-500/50 transition"
-                  autoFocus
-                />
-              </div>
+              ) : (
+                <div>
+                  <div className="text-[10px] uppercase tracking-wider text-white/30 mb-1.5">
+                    Действие <span style={{ color: st.color }}>*</span>
+                  </div>
+                  <input
+                    value={action}
+                    onChange={e => setAction(e.target.value)}
+                    placeholder="Позвонить и уточнить интерес..."
+                    className="w-full rounded-xl px-3 py-2.5 text-xs bg-white/[0.04] border border-white/[0.08] text-white/80 placeholder-white/20 outline-none focus:border-violet-500/50 transition"
+                    autoFocus
+                  />
+                </div>
+              )}
               <div>
                 <div className="text-[10px] uppercase tracking-wider text-white/30 mb-1.5">
-                  Дата <span style={{ color: st.color }}>*</span>
+                  {isPresentation ? "Дата показа *" : "Дата *"}
                 </div>
                 <input
                   type="date"
                   value={date}
                   onChange={e => setDate(e.target.value)}
                   className="w-full rounded-xl px-3 py-2.5 text-xs bg-white/[0.04] border border-white/[0.08] text-white/80 outline-none focus:border-violet-500/50 transition"
+                  autoFocus={isPresentation}
                 />
               </div>
               <div>
@@ -124,7 +142,9 @@ export function WLNextStepModal({ company, newStatus, onSuccess, onCancel }: Pro
                 <textarea
                   value={notes}
                   onChange={e => setNotes(e.target.value)}
-                  placeholder="Договорились о демо, интересует белый лейбл для 3 городов..."
+                  placeholder={isPresentation
+                    ? "Что показать клиенту, особые пожелания..."
+                    : "Договорились о демо, интересует белый лейбл для 3 городов..."}
                   rows={3}
                   className="w-full rounded-xl px-3 py-2.5 text-xs bg-white/[0.04] border border-white/[0.08] text-white/80 placeholder-white/20 outline-none focus:border-violet-500/50 resize-none transition"
                 />

@@ -18,7 +18,7 @@ interface Presentation {
 }
 
 interface Props {
-  onMarkDone: (demoId: number) => void;
+  onMarkDone: (demoId: number, nextActionDate?: string) => void;
   onReschedule: (p: Presentation) => void;
 }
 
@@ -67,13 +67,14 @@ export function WLPresentationCalendar({ onMarkDone, onReschedule }: Props) {
   const markDone = async (p: Presentation) => {
     if (!confirm(`Подтвердить что показ «${p.company_name}» проведён?`)) return;
     setMarking(p.demo_id);
-    await fetch(`${AUTH_URL}?action=demo-mark-presented`, {
+    const r = await fetch(`${AUTH_URL}?action=demo-mark-presented`, {
       method: "POST",
       headers: { "Content-Type": "application/json", "X-Authorization": masterToken() },
       body: JSON.stringify({ demo_id: p.demo_id }),
     });
+    const d = await r.json();
     setMarking(null);
-    onMarkDone(p.demo_id);
+    onMarkDone(p.demo_id, d.next_action_date);
     load();
   };
 

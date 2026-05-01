@@ -1852,19 +1852,33 @@ def handler(event: dict, context) -> dict:
         if not demo_id:
             return err("demo_id обязателен")
 
-        # Переводим все scheduled→done
+        # Переводим все scheduled→done, берём дату показа
         cur.execute(f"""
             UPDATE {SCHEMA}.demo_presentations SET status = 'done'
             WHERE demo_id = %s AND status = 'scheduled'
+            RETURNING scheduled_at
         """, (int(demo_id),))
+        pres_row = cur.fetchone()
 
-        # Обновляем статус демо-компании → presented
+        # Следующий шаг: связаться через 4 часа после показа
+        from datetime import datetime, timezone, timedelta
+        if pres_row:
+            call_at = pres_row[0] + timedelta(hours=4)
+            call_date = call_at.date().isoformat()
+        else:
+            call_date = (datetime.now(timezone.utc) + timedelta(hours=4)).date().isoformat()
+
+        # Обновляем статус демо-компании → presented + ставим задачу для менеджера
         cur.execute(f"""
-            UPDATE {SCHEMA}.demo_companies SET status = 'presented' WHERE id = %s
-        """, (int(demo_id),))
+            UPDATE {SCHEMA}.demo_companies
+            SET status = 'presented',
+                next_action = 'Связаться с клиентом после презентации',
+                next_action_date = %s
+            WHERE id = %s
+        """, (call_date, int(demo_id)))
 
         conn.commit()
-        return ok({"ok": True})
+        return ok({"ok": True, "next_action_date": call_date})
 
     # ── Презентации: обновить/перенести ──────────────────────────────────────
     if action == "demo-reschedule-presentation" and method == "POST":
