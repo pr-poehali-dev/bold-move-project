@@ -1,11 +1,23 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
+import {
+  DndContext, closestCenter, PointerSensor, useSensor, useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  SortableContext, verticalListSortingStrategy,
+  useSortable, arrayMove,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+import Icon from "@/components/ui/icon";
 import type { DemoPipelineCompany, DemoStatus } from "./wlTypes";
+import { AUTH_URL } from "./wlTypes";
 import { WLNextStepModal }       from "./WLNextStepModal";
 import { WLReceiptModal }        from "./WLReceiptModal";
 import { WLLprModal }            from "./WLLprModal";
 import { WLBalanceHistoryModal } from "./WLBalanceHistoryModal";
 import { WLPipelineFilters }     from "./WLPipelineFilters";
 import { WLPipelineCard }        from "./WLPipelineCard";
+import { getWLToken }            from "./WLManagerContext";
 import type { DemoFilter, EstFilter, AgentFilter } from "./WLPipelineFilters";
 
 interface Props {
@@ -16,6 +28,7 @@ interface Props {
   onMove:         (demoId: number, status: DemoStatus) => void;
   onUpdate:       (demoId: number, patch: Partial<DemoPipelineCompany>) => void;
   onBrand:        (companyId: number) => void;
+  onReorder:      (orderedIds: number[]) => void;
 }
 
 const DEMO_DAYS = 10;
@@ -24,7 +37,40 @@ function demoDaysLeft(c: DemoPipelineCompany) {
   return Math.max(0, DEMO_DAYS - passed);
 }
 
-export function WLPipelineList({ companies, filterStatus, onFilterChange, onSelect, onMove, onUpdate, onBrand }: Props) {
+// ── Sortable обёртка карточки ─────────────────────────────────────────────
+function SortableCard({ c, ...props }: { c: DemoPipelineCompany } & Omit<React.ComponentProps<typeof WLPipelineCard>, "c">) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: c.demo_id,
+  });
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={{
+        transform: CSS.Transform.toString(transform),
+        transition,
+        opacity: isDragging ? 0.5 : 1,
+        position: "relative",
+        zIndex: isDragging ? 50 : "auto",
+      }}>
+      {/* Ручка перетаскивания */}
+      <div
+        {...attributes}
+        {...listeners}
+        className="absolute left-0 top-0 bottom-0 w-5 flex items-center justify-center cursor-grab active:cursor-grabbing z-10"
+        style={{ color: "rgba(255,255,255,0.12)" }}
+        title="Перетащить"
+        onClick={e => e.stopPropagation()}>
+        <Icon name="GripVertical" size={12} />
+      </div>
+      <div style={{ paddingLeft: "16px" }}>
+        <WLPipelineCard c={c} {...props} />
+      </div>
+    </div>
+  );
+}
+
+export function WLPipelineList({ companies, filterStatus, onFilterChange, onSelect, onMove, onUpdate, onBrand, onReorder }: Props) {
   const [expanded,    setExpanded]    = useState<Set<number>>(new Set());
   const [nextStepFor, setNextStepFor] = useState<{ company: DemoPipelineCompany; status: DemoStatus } | null>(null);
   const [receiptFor,  setReceiptFor]  = useState<DemoPipelineCompany | null>(null);
@@ -34,6 +80,10 @@ export function WLPipelineList({ companies, filterStatus, onFilterChange, onSele
   const [demoFilter,  setDemoFilter]  = useState<DemoFilter>("all");
   const [estFilter,   setEstFilter]   = useState<EstFilter>("all");
   const [agentFilter, setAgentFilter] = useState<AgentFilter>("all");
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
+  );
 
   const handleMove = (c: DemoPipelineCompany, status: DemoStatus) => {
     if (status === c.status) return;
@@ -72,6 +122,26 @@ export function WLPipelineList({ companies, filterStatus, onFilterChange, onSele
     return true;
   });
 
+  const handleDragEnd = useCallback((event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+
+    const oldIndex = filtered.findIndex(c => c.demo_id === active.id);
+    const newIndex = filtered.findIndex(c => c.demo_id === over.id);
+    if (oldIndex === -1 || newIndex === -1) return;
+
+    const reordered = arrayMove(filtered, oldIndex, newIndex);
+    const orderedIds = reordered.map(c => c.demo_id);
+    onReorder(orderedIds);
+
+    // Сохраняем на бэкенде
+    fetch(`${AUTH_URL}?action=wl-reorder`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Authorization": getWLToken() },
+      body: JSON.stringify({ ordered_ids: orderedIds }),
+    }).catch(() => {});
+  }, [filtered, onReorder]);
+
   return (
     <div className="mt-4 space-y-3">
       <WLPipelineFilters
@@ -86,29 +156,33 @@ export function WLPipelineList({ companies, filterStatus, onFilterChange, onSele
         onAgentFilter={setAgentFilter}
       />
 
-      {/* Список */}
-      <div className="space-y-1.5">
-        {filtered.map(c => (
-          <WLPipelineCard
-            key={c.demo_id}
-            c={c}
-            isOpen={expanded.has(c.demo_id)}
-            onToggle={toggle}
-            onSelect={onSelect}
-            onMove={handleMove}
-            onBrand={onBrand}
-            onLpr={setLprFor}
-            onHistory={(company, mode) => setHistoryFor({ company, mode })}
-            onUpdate={onUpdate}
-          />
-        ))}
+      {/* Список с DnD */}
+      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+        <SortableContext items={filtered.map(c => c.demo_id)} strategy={verticalListSortingStrategy}>
+          <div className="space-y-1.5">
+            {filtered.map(c => (
+              <SortableCard
+                key={c.demo_id}
+                c={c}
+                isOpen={expanded.has(c.demo_id)}
+                onToggle={toggle}
+                onSelect={onSelect}
+                onMove={handleMove}
+                onBrand={onBrand}
+                onLpr={setLprFor}
+                onHistory={(company, mode) => setHistoryFor({ company, mode })}
+                onUpdate={onUpdate}
+              />
+            ))}
 
-        {filtered.length === 0 && (
-          <div className="text-center py-10 text-white/20 text-sm">
-            Нет компаний в этом статусе
+            {filtered.length === 0 && (
+              <div className="text-center py-10 text-white/20 text-sm">
+                Нет компаний в этом статусе
+              </div>
+            )}
           </div>
-        )}
-      </div>
+        </SortableContext>
+      </DndContext>
 
       {/* Модалка следующего шага */}
       {nextStepFor && (

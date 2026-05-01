@@ -203,6 +203,14 @@ export function WLPipeline({ refreshTrigger, onOpenPanel, onRunApiTests }: Props
             onMove={(demoId, status) => handleMove(demoId, status)}
             onUpdate={(demoId, patch) => setCompanies(prev => prev.map(c => c.demo_id === demoId ? { ...c, ...patch } : c))}
             onBrand={handleBrand}
+            onReorder={orderedIds => {
+              setCompanies(prev => {
+                const map = new Map(prev.map(c => [c.demo_id, c]));
+                const reordered = orderedIds.map(id => map.get(id)).filter(Boolean) as typeof prev;
+                const rest = prev.filter(c => !orderedIds.includes(c.demo_id));
+                return [...reordered, ...rest];
+              });
+            }}
           />
         )
       )}

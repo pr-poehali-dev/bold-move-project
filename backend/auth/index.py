@@ -1640,6 +1640,37 @@ def handler(event: dict, context) -> dict:
         conn.commit()
         return ok({"ok": True})
 
+    # ── WL: сохранить порядок компаний ───────────────────────────────────────
+    if action == "wl-reorder" and method == "POST":
+        if not token:
+            return err("Требуется авторизация", 401)
+        # Доступно мастеру и wl-менеджерам
+        cur.execute(f"""
+            SELECT u.email FROM {SCHEMA}.user_sessions s
+            JOIN {SCHEMA}.users u ON u.id = s.user_id
+            WHERE s.token=%s AND s.expires_at > NOW()
+        """, (token,))
+        master_row = cur.fetchone()
+        is_wl_master = master_row and master_row[0] == "19.jeka.94@gmail.com"
+        if not is_wl_master:
+            cur.execute(f"""
+                SELECT m.id FROM {SCHEMA}.wl_managers m
+                JOIN {SCHEMA}.user_sessions s ON s.user_id = m.id
+                WHERE s.token=%s AND s.expires_at > NOW() AND m.approved = TRUE
+            """, (token,))
+            if not cur.fetchone():
+                return err("Доступ запрещён", 403)
+        # ordered_ids — список demo_id в нужном порядке
+        ordered_ids = body.get("ordered_ids", [])
+        if not ordered_ids:
+            return err("ordered_ids обязателен")
+        for i, demo_id_item in enumerate(ordered_ids):
+            cur.execute(f"""
+                UPDATE {SCHEMA}.demo_companies SET sort_order = %s WHERE id = %s
+            """, (i + 1, int(demo_id_item)))
+        conn.commit()
+        return ok({"ok": True})
+
     # ── Мастер: список демо-компаний ─────────────────────────────────────────
     if action == "admin-demo-companies" and method == "GET":
         if not token:
@@ -1709,7 +1740,7 @@ def handler(event: dict, context) -> dict:
                      dc.status, dc.contact_name, dc.contact_phone, dc.contact_position,
                      dc.notes, dc.next_action, dc.next_action_date,
                      u.trial_until, u.agent_purchased_at, dc.manager_id, wm.name
-            ORDER BY dc.created_at DESC
+            ORDER BY dc.sort_order ASC, dc.created_at DESC
         """, filter_params)
         rows = cur.fetchall()
         return ok({"companies": [{
