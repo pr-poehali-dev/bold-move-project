@@ -1720,18 +1720,15 @@ def handler(event: dict, context) -> dict:
 
     # ── Презентации: проверить занятые слоты ─────────────────────────────────
     if action == "demo-busy-slots" and method == "GET":
-        """Возвращает занятые временные слоты (window ±2ч вокруг каждого показа)."""
         date_str = params.get("date")  # YYYY-MM-DD
         cur.execute(f"""
-            SELECT scheduled_at, duration_min FROM {SCHEMA}.demo_presentations
+            SELECT EXTRACT(HOUR FROM scheduled_at AT TIME ZONE 'Europe/Moscow')::int AS hour
+            FROM {SCHEMA}.demo_presentations
             WHERE status = 'scheduled'
             AND DATE(scheduled_at AT TIME ZONE 'Europe/Moscow') = %s
         """, (date_str,))
         rows = cur.fetchall()
-        return ok({"slots": [
-            {"scheduled_at": str(r[0]), "duration_min": r[1]}
-            for r in rows
-        ]})
+        return ok({"busy_hours": [r[0] for r in rows]})
 
     # ── Презентации: список всех (для мастера) ────────────────────────────────
     if action == "demo-presentations" and method == "GET":

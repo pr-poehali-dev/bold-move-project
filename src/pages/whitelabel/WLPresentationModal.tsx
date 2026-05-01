@@ -3,8 +3,6 @@ import Icon from "@/components/ui/icon";
 import { AUTH_URL } from "./wlTypes";
 import type { DemoPipelineCompany } from "./wlTypes";
 
-interface BusySlot { scheduled_at: string; duration_min: number }
-
 interface Props {
   company: DemoPipelineCompany;
   onSuccess: () => void;
@@ -22,24 +20,6 @@ const DURATION_OPTIONS = [
   { value: 120, label: "2 часа" },
 ];
 
-function toDatetimeLocal(date: Date): string {
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
-}
-
-function isBusy(hour: number, date: string, slots: BusySlot[]): boolean {
-  if (!date) return false;
-  // Строим локальное время выбранного слота и берём начало часа
-  const chosen = new Date(`${date}T${String(hour).padStart(2, "0")}:00:00`);
-  const chosenH = chosen.getTime();
-  return slots.some(s => {
-    const slotTime = new Date(s.scheduled_at);
-    // Сравниваем начала часов (обнуляем минуты/секунды слота)
-    slotTime.setMinutes(0, 0, 0);
-    return slotTime.getTime() === chosenH;
-  });
-}
-
 export function WLPresentationModal({ company, onSuccess, onCancel }: Props) {
   // Минимальная дата — завтра
   const tomorrow = new Date();
@@ -50,22 +30,22 @@ export function WLPresentationModal({ company, onSuccess, onCancel }: Props) {
   const [hour,     setHour]     = useState(10);
   const [duration, setDuration] = useState(60);
   const [notes,    setNotes]    = useState("");
-  const [busySlots, setBusy]    = useState<BusySlot[]>([]);
+  const [busyHours, setBusyHours] = useState<number[]>([]);
   const [saving,   setSaving]   = useState(false);
   const [error,    setError]    = useState("");
 
-  // Загружаем занятые слоты при смене даты
+  // Загружаем занятые часы при смене даты
   useEffect(() => {
     if (!date) return;
     fetch(`${AUTH_URL}?action=demo-busy-slots&date=${date}`, {
       headers: { "X-Authorization": masterToken() },
     })
       .then(r => r.json())
-      .then(d => setBusy(d.slots || []))
-      .catch(() => setBusy([]));
+      .then(d => setBusyHours(d.busy_hours || []))
+      .catch(() => setBusyHours([]));
   }, [date]);
 
-  const selectedBusy = isBusy(hour, date, busySlots);
+  const selectedBusy = busyHours.includes(hour);
 
   const handleSave = async () => {
     setSaving(true); setError("");
@@ -130,7 +110,7 @@ export function WLPresentationModal({ company, onSuccess, onCancel }: Props) {
             <div className="text-[10px] uppercase tracking-wider text-white/30 mb-2">Время начала</div>
             <div className="grid grid-cols-4 gap-1.5">
               {HOURS.map(h => {
-                const busy    = isBusy(h, date, busySlots);
+                const busy    = busyHours.includes(h);
                 const active  = hour === h;
                 return (
                   <button key={h} disabled={busy}
@@ -151,7 +131,7 @@ export function WLPresentationModal({ company, onSuccess, onCancel }: Props) {
                 );
               })}
             </div>
-            {busySlots.length > 0 && (
+            {busyHours.length > 0 && (
               <div className="text-[10px] text-white/25 mt-1.5">
                 Серые слоты уже заняты
               </div>

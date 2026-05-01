@@ -10,8 +10,6 @@ interface Props {
   onCancel:  () => void;
 }
 
-interface BusySlot { scheduled_at: string; duration_min: number }
-
 const masterToken = () => localStorage.getItem("mp_user_token") || "";
 
 const STATUS_DEFAULTS: Record<string, { action: string }> = {
@@ -25,16 +23,6 @@ const STATUS_DEFAULTS: Record<string, { action: string }> = {
 
 // Часы для выбора (9:00–21:00)
 const HOURS = Array.from({ length: 13 }, (_, i) => i + 9);
-
-function isBusy(hour: number, date: string, slots: BusySlot[]): boolean {
-  if (!date) return false;
-  const chosen = new Date(`${date}T${String(hour).padStart(2, "0")}:00:00`);
-  return slots.some(s => {
-    const slotTime = new Date(s.scheduled_at);
-    slotTime.setMinutes(0, 0, 0);
-    return slotTime.getTime() === chosen.getTime();
-  });
-}
 
 function isPast(hour: number, date: string): boolean {
   if (!date) return false;
@@ -61,10 +49,10 @@ export function WLNextStepModal({ company, newStatus, onSuccess, onCancel }: Pro
   const [reason,    setReason]    = useState("");
   const [saving,    setSaving]    = useState(false);
   const [error,     setError]     = useState<string | null>(null);
-  const [busySlots, setBusy]      = useState<BusySlot[]>([]);
+  const [busyHours, setBusyHours] = useState<number[]>([]);
   const [loadingSlots, setLoadingSlots] = useState(false);
 
-  // Загружаем занятые слоты при смене даты (только для презентации)
+  // Загружаем занятые часы при смене даты (только для презентации)
   useEffect(() => {
     if (!isPresentation || !date) return;
     setLoadingSlots(true);
@@ -72,12 +60,12 @@ export function WLNextStepModal({ company, newStatus, onSuccess, onCancel }: Pro
       headers: { "X-Authorization": masterToken() },
     })
       .then(r => r.json())
-      .then(d => setBusy(d.slots || []))
-      .catch(() => setBusy([]))
+      .then(d => setBusyHours(d.busy_hours || []))
+      .catch(() => setBusyHours([]))
       .finally(() => setLoadingSlots(false));
   }, [date, isPresentation]);
 
-  const selectedBusy = isPresentation && (isBusy(hour, date, busySlots) || isPast(hour, date));
+  const selectedBusy = isPresentation && (busyHours.includes(hour) || isPast(hour, date));
 
   const handleSave = async () => {
     if (isRejected) {
@@ -223,7 +211,7 @@ export function WLNextStepModal({ company, newStatus, onSuccess, onCancel }: Pro
                 </div>
                 <div className="grid grid-cols-4 gap-1.5">
                   {HOURS.map(h => {
-                    const busy     = isBusy(h, date, busySlots);
+                    const busy     = busyHours.includes(h);
                     const past     = isPast(h, date);
                     const disabled = busy || past;
                     const active   = hour === h;
@@ -247,7 +235,7 @@ export function WLNextStepModal({ company, newStatus, onSuccess, onCancel }: Pro
                     );
                   })}
                 </div>
-                {busySlots.length > 0 && (
+                {busyHours.length > 0 && (
                   <div className="text-[9px] text-white/20 mt-1.5">
                     Серые слоты уже заняты
                   </div>
