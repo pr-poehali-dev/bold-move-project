@@ -170,28 +170,14 @@ export function WLPipelineList({ companies, filterStatus, onFilterChange, onSele
                   )}
                 </div>
 
-                {/* Демо дней осталось */}
-                {(() => {
-                  if (!c.trial_until) return (
-                    <div className="flex-shrink-0 text-center px-3 py-1.5 rounded-lg"
-                      style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)" }}>
-                      <div className="text-[9px] text-white/25">Демо</div>
-                      <div className="text-xs font-bold text-white/25">—</div>
-                    </div>
-                  );
-                  const d = Math.ceil((new Date(c.trial_until).getTime() - Date.now()) / 86400000);
-                  const color = d <= 0 ? "#ef4444" : d <= 3 ? "#ef4444" : d <= 7 ? "#f59e0b" : "#06b6d4";
-                  const bg    = d <= 0 ? "rgba(239,68,68,0.08)" : d <= 7 ? "rgba(245,158,11,0.08)" : "rgba(6,182,212,0.08)";
-                  return (
-                    <div className="flex-shrink-0 text-center px-3 py-1.5 rounded-lg"
-                      style={{ background: bg, border: `1px solid ${color}30` }}>
-                      <div className="text-[9px]" style={{ color: color + "99" }}>Демо</div>
-                      <div className="text-xs font-bold" style={{ color }}>
-                        {d <= 0 ? "Истёк" : `${d} дн.`}
-                      </div>
-                    </div>
-                  );
-                })()}
+                {/* Дней с регистрации */}
+                <div className="flex-shrink-0 text-center px-3 py-1.5 rounded-lg"
+                  style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)" }}>
+                  <div className="text-[9px] text-white/25">В базе</div>
+                  <div className="text-xs font-bold text-white/50">
+                    {Math.floor((Date.now() - new Date(c.created_at).getTime()) / 86400000)} дн.
+                  </div>
+                </div>
 
                 {/* Смет */}
                 <div className="flex-shrink-0 text-center px-3 py-1.5 rounded-lg"
