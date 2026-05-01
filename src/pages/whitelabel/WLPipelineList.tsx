@@ -305,7 +305,8 @@ export function WLPipelineList({ companies, filterStatus, onFilterChange, onSele
                     {c.contact_name && <><span>·</span><Icon name="User" size={9} /><span>{c.contact_name}</span></>}
                   </div>
                   {c.next_action && (
-                    <div className="text-[9px] mt-0.5 flex items-center gap-1" style={{ color: "#fbbf24" }}>
+                    <div className="inline-flex items-center gap-1 mt-1 px-2 py-0.5 rounded-lg text-[9px] font-medium"
+                      style={{ background: "rgba(251,191,36,0.08)", border: "1px solid rgba(251,191,36,0.2)", color: "#fbbf24" }}>
                       <Icon name="Target" size={9} /> {c.next_action}
                       {c.next_action_date && <span className="opacity-60">— {c.next_action_date}</span>}
                     </div>
