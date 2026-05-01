@@ -84,7 +84,7 @@ export interface AdminStats {
   expiring_soon: ExpiringUser[];
 }
 
-export type MasterTab = "dashboard" | "professionals" | "all" | "whitelabel";
+export type MasterTab = "dashboard" | "professionals" | "all" | "whitelabel" | "wl-staff";
 
 export const ROLE_LABELS: Record<string, { label: string; color: string }> = {
   client:    { label: "Клиент",    color: "#f97316" },

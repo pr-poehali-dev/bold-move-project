@@ -6,6 +6,7 @@ import MasterTabProfessionals from "./MasterTabProfessionals";
 import MasterTabAllUsers      from "./MasterTabAllUsers";
 import MasterTabDashboard     from "./MasterTabDashboard";
 import MasterTabWhiteLabel    from "./MasterTabWhiteLabel";
+import { WLStaff }            from "./whitelabel/WLStaff";
 
 const AUTH_URL = (func2url as Record<string, string>)["auth"];
 const MASTER_PASSWORD = "Sdauxbasstre228";
@@ -159,6 +160,7 @@ export default function MasterAdmin() {
     { id: "professionals", label: "Одобрение",        icon: "Users2", badge: pendingCount },
     { id: "all",           label: "Все пользователи", icon: "Users" },
     { id: "whitelabel",    label: "White-Label",      icon: "Sparkles" },
+    { id: "wl-staff",      label: "WL Сотрудники",   icon: "UserCheck" },
   ];
 
   return (
@@ -235,6 +237,12 @@ export default function MasterAdmin() {
       )}
 
       {tab === "whitelabel" && <MasterTabWhiteLabel />}
+
+      {tab === "wl-staff" && (
+        <div className="max-w-4xl mx-auto px-5 py-8">
+          <WLStaff />
+        </div>
+      )}
     </div>
   );
 }
