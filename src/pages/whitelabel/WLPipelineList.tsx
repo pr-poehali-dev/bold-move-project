@@ -38,7 +38,7 @@ function ActionButtons({ c, onOpenPanel, onRunApiTests }: {
           if (tok) onOpenPanel({ type: "site-authed", url: `/?c=${c.company_id}`, token: tok });
           else onOpenPanel({ type: "site", url: `/?c=${c.company_id}` });
         }} className={btn} style={{ background: "rgba(6,182,212,0.12)", color: "#06b6d4", border: "1px solid rgba(6,182,212,0.25)" }}>
-        <Icon name="Globe" size={10} /> Открыть сайт
+        <Icon name="Globe" size={10} /> Борд
       </button>
       <button onClick={async () => {
           const tok = await loginAs(c.company_id);
@@ -151,19 +151,6 @@ export function WLPipelineList({ companies, filterStatus, onFilterChange, onSele
                     </div>
                   )}
                 </div>
-
-                {/* WL-борд ссылка */}
-                <a
-                  href={`/?c=${c.company_id}`}
-                  target="_blank"
-                  rel="noreferrer"
-                  onClick={e => e.stopPropagation()}
-                  className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[10px] font-mono transition hover:opacity-80 flex-shrink-0 truncate max-w-[140px]"
-                  style={{ background: "rgba(255,255,255,0.04)", color: "rgba(255,255,255,0.35)", border: "1px solid rgba(255,255,255,0.07)" }}
-                  title={`Открыть WL-борд: /?c=${c.company_id}`}>
-                  <Icon name="ExternalLink" size={9} style={{ flexShrink: 0 }} />
-                  <span className="truncate">{domain}</span>
-                </a>
 
                 {/* Статус */}
                 <span className="text-[10px] font-bold px-2 py-1 rounded-lg flex-shrink-0"
