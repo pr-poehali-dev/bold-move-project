@@ -40,7 +40,7 @@ export function WLPipelineCard({ c, isOpen, onToggle, onSelect, onMove, onBrand,
         </div>
 
         {/* Инфо — кликабелен */}
-        <div className="flex-1 min-w-0 cursor-pointer hover:opacity-80 transition" onClick={() => onSelect(c)}>
+        <div className="min-w-0 cursor-pointer hover:opacity-80 transition" style={{ flex: "0 1 calc(70% - 2rem)" }} onClick={() => onSelect(c)}>
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-xs font-bold text-white/90 truncate">{c.company_name}</span>
             {(!c.contact_name || !c.contact_phone || !c.contact_position) && (
