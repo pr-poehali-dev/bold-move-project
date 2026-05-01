@@ -577,7 +577,7 @@ def hash_password(password: str) -> str:
     import hashlib
     return hashlib.sha256(password.encode()).hexdigest()
 
-def create_demo_company(site_url: str, brand: dict) -> tuple[int, str, int]:
+def create_demo_company(site_url: str, brand: dict, wl_manager_id=None) -> tuple[int, str, int]:
     """
     Создаёт новый аккаунт company с has_own_agent=true и запись в demo_companies.
     Возвращает (company_id, token, demo_id).
@@ -630,10 +630,10 @@ def create_demo_company(site_url: str, brand: dict) -> tuple[int, str, int]:
     """, (new_id, token))
 
     cur.execute(f"""
-        INSERT INTO {SCHEMA}.demo_companies (site_url, company_id)
-        VALUES (%s, %s)
+        INSERT INTO {SCHEMA}.demo_companies (site_url, company_id, manager_id)
+        VALUES (%s, %s, %s)
         RETURNING id
-    """, (site_url, new_id))
+    """, (site_url, new_id, wl_manager_id))
     demo_id = cur.fetchone()[0]
 
     conn.commit()
@@ -698,7 +698,7 @@ def handler(event: dict, context) -> dict:
     if event.get("httpMethod") != "POST":
         return err("Только POST", 405)
 
-    # Проверяем токен мастера
+    # Проверяем токен мастера или wl-менеджера
     headers = event.get("headers") or {}
     raw_token = (headers.get("X-Authorization") or "").replace("Bearer ", "").strip()
     if not raw_token:
@@ -706,16 +706,33 @@ def handler(event: dict, context) -> dict:
 
     conn = get_conn()
     cur = conn.cursor()
+
+    # Сначала проверяем wl_managers (чтобы не было коллизии id с users)
     cur.execute(f"""
-        SELECT u.email FROM {SCHEMA}.user_sessions s
-        JOIN {SCHEMA}.users u ON u.id = s.user_id
+        SELECT m.id, m.wl_role, m.approved FROM {SCHEMA}.wl_managers m
+        JOIN {SCHEMA}.user_sessions s ON s.user_id = m.id
         WHERE s.token=%s AND s.expires_at > NOW()
     """, (raw_token,))
-    row = cur.fetchone()
-    cur.close()
-    conn.close()
-    if not row or row[0] != "19.jeka.94@gmail.com":
-        return err("Доступ только для мастера", 403)
+    wl_row = cur.fetchone()
+
+    if wl_row:
+        if not wl_row[2]:
+            cur.close(); conn.close()
+            return err("Аккаунт не одобрен", 403)
+        # wl-менеджер авторизован — запоминаем его id для назначения компании
+        wl_manager_id = wl_row[0]
+    else:
+        # Проверяем обычного мастера
+        cur.execute(f"""
+            SELECT u.email FROM {SCHEMA}.user_sessions s
+            JOIN {SCHEMA}.users u ON u.id = s.user_id
+            WHERE s.token=%s AND s.expires_at > NOW()
+        """, (raw_token,))
+        row = cur.fetchone()
+        if not row or row[0] != "19.jeka.94@gmail.com":
+            cur.close(); conn.close()
+            return err("Доступ запрещён", 403)
+        wl_manager_id = None  # мастер — без привязки к менеджеру
 
     body = {}
     if event.get("body"):
@@ -862,7 +879,7 @@ def handler(event: dict, context) -> dict:
     demo_id = None
     if company_id is None:
         try:
-            company_id, token, demo_id = create_demo_company(site_url, brand)
+            company_id, token, demo_id = create_demo_company(site_url, brand, wl_manager_id)
         except Exception as e:
             return err(f"Ошибка создания аккаунта: {e}")
     else:

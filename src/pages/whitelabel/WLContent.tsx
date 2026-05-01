@@ -110,7 +110,7 @@ export function WLContent() {
           {/* Правая часть хедера */}
           <div className="ml-auto flex items-center gap-2">
             {/* Кнопка + на мобиле — открывает парсер в модалке */}
-            {isMaster && (
+            {(isMaster || !!manager) && (
               <button
                 onClick={() => setParserModal(true)}
                 className="sm:hidden flex items-center justify-center w-7 h-7 rounded-lg transition hover:opacity-80"
@@ -153,7 +153,7 @@ export function WLContent() {
 
         <div className="max-w-4xl mx-auto px-3 sm:px-5 py-4 sm:py-8 space-y-4 sm:space-y-8">
           {/* Парсер — только десктоп (на мобиле открывается через кнопку + в хедере) */}
-          {isMaster && (
+          {(isMaster || !!manager) && (
             <div className="hidden sm:block">
               <WLSiteParser onCreated={() => setRefreshTrigger(t => t + 1)} />
             </div>
