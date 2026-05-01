@@ -76,10 +76,14 @@ export function DrawerDiscountBlock({ data, customFinRows }: Props) {
       <div className="px-4 py-4 space-y-4">
 
         {/* Текущий результат со скидкой */}
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-4 gap-2">
           <div className="rounded-xl px-3 py-2.5 text-center" style={{ background: "#ffffff08", border: `1px solid ${t.border}` }}>
             <div className="text-[9px] uppercase tracking-wider font-semibold mb-1 text-white/40">Скидка</div>
             <div className="text-base font-black" style={{ color: accentColor }}>{discount}%</div>
+          </div>
+          <div className="rounded-xl px-3 py-2.5 text-center" style={{ background: "#ffffff08", border: `1px solid ${t.border}` }}>
+            <div className="text-[9px] uppercase tracking-wider font-semibold mb-1 text-white/40">Сумма скидки</div>
+            <div className="text-sm font-black text-white/70">−{fmt(baseIncome * discount / 100)} ₽</div>
           </div>
           <div className="rounded-xl px-3 py-2.5 text-center"
             style={{ background: (isNegative ? "#ef444412" : "#10b98112"), border: `1px solid ${isNegative ? "#ef444430" : "#10b98125"}` }}>
