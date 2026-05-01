@@ -43,23 +43,15 @@ export function WLPipelineKanban({ companies, onSelect, onMove, onUpdate }: Prop
   const [lprFor,   setLprFor]   = useState<DemoPipelineCompany | null>(null);
   const [colWidth, setColWidth] = useState<number>(loadWidth);
   const [search,   setSearch]   = useState("");
-  const [useMobile, setUseMobile] = useState(false);
+  const [useMobile, setUseMobile] = useState(() => window.innerWidth < 640);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // Динамически переключаем вид по реальной ширине контейнера
+  // Мобильный вид только на узких экранах (телефон)
   useEffect(() => {
-    const el = containerRef.current;
-    if (!el) return;
-    const check = () => {
-      const gap = 12; // gap-3
-      const needed = DEMO_STATUSES.length * (colWidth + gap);
-      setUseMobile(el.offsetWidth < needed);
-    };
-    check();
-    const ro = new ResizeObserver(check);
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, [colWidth]);
+    const check = () => setUseMobile(window.innerWidth < 640);
+    window.addEventListener("resize", check);
+    return () => window.removeEventListener("resize", check);
+  }, []);
 
   const dateRange = getRangeDates(range);
 
