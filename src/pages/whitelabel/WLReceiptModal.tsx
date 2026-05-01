@@ -61,6 +61,7 @@ export function WLReceiptModal({ company, onSuccess, onCancel }: Props) {
       const d = await r.json();
       if (d.error) { setError(d.error); return; }
       onSuccess(company.demo_id);
+      onCancel();
     } catch (e) {
       setError(String(e));
     } finally {
