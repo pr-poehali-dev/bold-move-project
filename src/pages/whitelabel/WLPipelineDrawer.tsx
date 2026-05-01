@@ -178,8 +178,13 @@ export function WLPipelineDrawer({ company, onClose, onUpdate, onDelete, onOpenP
 
   const btn = "flex items-center justify-center gap-1 px-2 py-1.5 rounded-lg text-[10px] font-bold transition hover:opacity-80";
 
+  const handleBackdropClick = async () => {
+    await save();
+    onClose();
+  };
+
   return (
-    <div className="fixed inset-0 z-50 flex" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex" onClick={handleBackdropClick}>
       {/* Backdrop */}
       <div className="flex-1 bg-black/40" />
 
