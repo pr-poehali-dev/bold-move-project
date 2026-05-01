@@ -651,12 +651,13 @@ def handler(event: dict, context) -> dict:
     if company_id is not None:
         company_id = int(company_id)
     only_field = (body.get("only_field") or "").strip()  # если задано — ищем только одно поле
+    parse_only = bool(body.get("parse_only"))  # True — только парсинг, без создания компании
 
     if not site_url:
         return err("url обязателен")
 
     # ── Проверка дубликата: этот сайт уже парсили ────────────────────────────
-    if company_id is None:
+    if company_id is None and not parse_only:
         chk_conn = get_conn(); chk_cur = chk_conn.cursor()
         # Берём домен без протокола для сравнения
         domain_check = re.sub(r"https?://", "", site_url).split("/")[0].lower()
@@ -683,19 +684,25 @@ def handler(event: dict, context) -> dict:
         company = (row2[0] if row2 else None) or domain
 
         queries = {
-            "support_email":      f'{domain} email почта контакты',
-            "telegram":           f'{company} telegram t.me',
-            "pdf_footer_address": f'{company} {domain} адрес офис город',
+            "support_email":      f'{domain} email почта официальный контакты сайт',
+            "support_phone":      f'{domain} телефон номер позвонить контакты',
+            "telegram":           f'{company} {domain} telegram t.me официальный канал',
+            "pdf_footer_address": f'{company} {domain} адрес офис город улица официальный',
+            "working_hours":      f'{domain} часы работы режим график работы',
+            "brand_logo_url":     f'{domain} логотип logo официальный сайт',
         }
-        query = queries.get(only_field, f'{domain} {only_field}')
+        query = queries.get(only_field, f'{domain} {company} {only_field}')
         api_key = os.environ.get("TAVILY_API_KEY", "")
         brand = {}
         try:
             data = tavily_post("https://api.tavily.com/search", {
-                "query": query, "search_depth": "basic",
-                "max_results": 5, "include_raw_content": False,
-            }, api_key, timeout=10)
-            snippets = " ".join(r.get("content", "") for r in data.get("results", []))
+                "query": query, "search_depth": "advanced",
+                "max_results": 8, "include_raw_content": True,
+            }, api_key, timeout=20)
+            snippets = " ".join(
+                (r.get("raw_content") or r.get("content") or "")
+                for r in data.get("results", [])
+            )
             val = extract_with_regex(snippets, only_field) if snippets else None
             if val:
                 brand[only_field] = val
@@ -763,6 +770,11 @@ def handler(event: dict, context) -> dict:
                         brand["bot_avatar_url"] = upload_image_to_s3(img_bytes, ext, "avatar")
                     except Exception as e:
                         print(f"[parse-site] avatar upload failed: {e}")
+
+    # parse_only=True — возвращаем только результат парсинга, не создаём компанию
+    if parse_only:
+        report = build_report(brand)
+        return ok({"brand": brand, "report": report})
 
     # Создаём новый демо-аккаунт (или обновляем существующий, если company_id передан)
     demo_id = None

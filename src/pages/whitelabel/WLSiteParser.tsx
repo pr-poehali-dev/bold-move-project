@@ -8,8 +8,8 @@ interface FilledField  { field: string; label: string; value: string }
 interface MissingField { field: string; label: string }
 interface ParseReport  { filled: FilledField[]; missing: MissingField[] }
 
-// Стадии после парсинга: анимация → баннер → свёрнуто
-type Phase = "idle" | "animating" | "banner" | "collapsed";
+// Стадии: idle → parsed (данные есть, компания ещё не создана) → animating → banner → collapsed
+type Phase = "idle" | "parsed" | "animating" | "banner" | "collapsed";
 
 interface Props {
   onCreated?: (companyId: number, token: string) => void;
@@ -18,16 +18,17 @@ interface Props {
 export function WLSiteParser({ onCreated }: Props) {
   const [url, setUrl]             = useState("");
   const [loading, setLoading]     = useState(false);
+  const [creating, setCreating]   = useState(false);
   const [report, setReport]       = useState<ParseReport | null>(null);
+  const [parsedBrand, setParsedBrand] = useState<Record<string, string> | null>(null);
   const [error, setError]         = useState<string | null>(null);
   const [searching, setSearching] = useState<string | null>(null);
   const [lastCompanyId, setLastCompanyId] = useState<number | null>(null);
+  const [lastCompanyName, setLastCompanyName] = useState<string | null>(null);
   const [phase, setPhase]         = useState<Phase>("idle");
-  // сколько полей уже «доехало» в анимации
   const [visibleCount, setVisibleCount] = useState(0);
   const timersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
 
-  // Чистим таймеры при размонтировании
   useEffect(() => () => { timersRef.current.forEach(clearTimeout); }, []);
 
   const clearTimers = () => {
@@ -50,45 +51,67 @@ export function WLSiteParser({ onCreated }: Props) {
     setPhase("animating");
     setVisibleCount(0);
 
-    // Показываем поля по одному с задержкой 180ms
     for (let i = 1; i <= filledCount; i++) {
       const t = setTimeout(() => setVisibleCount(i), i * 180);
       timersRef.current.push(t);
     }
 
-    // После последнего поля + 4 сек → баннер
     const bannerDelay = filledCount * 180 + 4000;
     const t1 = setTimeout(() => setPhase("banner"), bannerDelay);
     timersRef.current.push(t1);
 
-    // Ещё +2 сек → сворачиваем ТОЛЬКО если нет незаполненных полей
     if (missingCount === 0) {
       const t2 = setTimeout(() => setPhase("collapsed"), bannerDelay + 2000);
       timersRef.current.push(t2);
     }
   };
 
+  // Шаг 1: парсим сайт, НЕ создаём компанию
   const run = async () => {
     const trimmed = url.trim();
     if (!trimmed) return;
     clearTimers();
     setLoading(true);
     setReport(null);
+    setParsedBrand(null);
     setError(null);
     setLastCompanyId(null);
+    setLastCompanyName(null);
     setPhase("idle");
     setVisibleCount(0);
+    try {
+      const d = await callParse({ url: trimmed, parse_only: true });
+      if (d.error) {
+        setError(d.error);
+      } else {
+        setReport(d.report);
+        setParsedBrand(d.brand || null);
+        setPhase("parsed");
+      }
+    } catch (e) {
+      setError(String(e));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Шаг 2: создаём компанию по клику
+  const createCompany = async () => {
+    const trimmed = url.trim();
+    if (!trimmed || !report) return;
+    setCreating(true);
+    setError(null);
     try {
       const d = await callParse({ url: trimmed });
       if (d.error) {
         setError(d.error);
       } else {
-        setReport(d.report);
         if (d.company_id && d.token) {
           setLastCompanyId(d.company_id);
+          setLastCompanyName(d.brand?.company_name || null);
+          setReport(d.report);
           const today = new Date().toISOString().slice(0, 10);
           const masterToken = getWLToken();
-          // Автозаполняем первый шаг
           fetch(`${AUTH_URL}?action=admin-update-demo`, {
             method: "POST",
             headers: { "Content-Type": "application/json", "X-Authorization": masterToken },
@@ -98,7 +121,6 @@ export function WLSiteParser({ onCreated }: Props) {
               next_action_date: today,
             }),
           }).catch(() => {});
-          // Авто-назначение: если вошёл менеджер — закрепляем за ним
           const wlManagerRaw = localStorage.getItem("wl_manager_token");
           if (wlManagerRaw && d.demo_id) {
             fetch(`${AUTH_URL}?action=wl-assign-company`, {
@@ -108,7 +130,6 @@ export function WLSiteParser({ onCreated }: Props) {
             })
             .then(r => r.json())
             .then(() => {
-              // Получаем ID менеджера из wl-me и назначаем
               fetch(`${AUTH_URL}?action=wl-me`, { headers: { "X-Authorization": wlManagerRaw } })
                 .then(r => r.json())
                 .then(me => {
@@ -132,7 +153,7 @@ export function WLSiteParser({ onCreated }: Props) {
     } catch (e) {
       setError(String(e));
     } finally {
-      setLoading(false);
+      setCreating(false);
     }
   };
 
@@ -158,8 +179,10 @@ export function WLSiteParser({ onCreated }: Props) {
     clearTimers();
     setPhase("idle");
     setReport(null);
+    setParsedBrand(null);
     setUrl("");
     setLastCompanyId(null);
+    setLastCompanyName(null);
     setVisibleCount(0);
   };
 
@@ -174,7 +197,7 @@ export function WLSiteParser({ onCreated }: Props) {
         <Icon name="CheckCircle2" size={16} style={{ color: "#10b981", flexShrink: 0 }} />
         <div className="flex-1 min-w-0">
           <div className="text-xs font-bold" style={{ color: "#10b981" }}>
-            Компания создана — ID #{lastCompanyId}
+            {lastCompanyName ? `${lastCompanyName} — ID #${lastCompanyId}` : `Компания создана — ID #${lastCompanyId}`}
           </div>
           <div className="text-[10px] text-white/30 mt-0.5">Нажми чтобы спарсить ещё один сайт</div>
         </div>
@@ -217,11 +240,77 @@ export function WLSiteParser({ onCreated }: Props) {
         </div>
       )}
 
-      {/* Анимированный отчёт */}
+      {/* Результат парсинга — перед созданием компании */}
+      {report && phase === "parsed" && (
+        <div className="space-y-3 mt-1">
+          {report.filled.length > 0 && (
+            <div>
+              <div className="text-[10px] uppercase tracking-wider font-bold mb-2 flex items-center gap-1.5"
+                style={{ color: "#10b981" }}>
+                <Icon name="CheckCircle2" size={11} />
+                Заполнено ({report.filled.length}/{report.filled.length + report.missing.length})
+              </div>
+              <div className="space-y-1.5">
+                {report.filled.map(f => (
+                  <div key={f.field}
+                    className="flex items-start gap-2 rounded-lg px-2.5 py-1.5"
+                    style={{ background: "rgba(16,185,129,0.06)", border: "1px solid rgba(16,185,129,0.18)" }}>
+                    <Icon name="Check" size={10} className="mt-0.5 flex-shrink-0" style={{ color: "#10b981" }} />
+                    <div className="min-w-0">
+                      <span className="text-[10px] text-white/40">{f.label}: </span>
+                      <span className="text-[11px] text-white/80 font-medium break-all">{f.value}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {report.missing.length > 0 && (
+            <div>
+              <div className="text-[10px] uppercase tracking-wider font-bold mb-2 flex items-center gap-1.5"
+                style={{ color: "#f59e0b" }}>
+                <Icon name="AlertTriangle" size={11} /> Не найдено ({report.missing.length})
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                {report.missing.map(f => (
+                  <div key={f.field}
+                    className="flex items-center gap-1 text-[10px] px-2.5 py-1 rounded-lg font-medium"
+                    style={{ background: "rgba(245,158,11,0.08)", border: "1px solid rgba(245,158,11,0.2)", color: "#fbbf24" }}>
+                    {f.label}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Кнопки действий */}
+          <div className="flex gap-2 pt-1">
+            <button
+              onClick={createCompany}
+              disabled={creating}
+              className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-bold transition disabled:opacity-50"
+              style={{ background: creating ? "rgba(16,185,129,0.15)" : "#10b981", color: creating ? "#10b981" : "#0a0a14" }}>
+              {creating
+                ? <><div className="w-3 h-3 border-2 border-emerald-400/30 border-t-emerald-400 rounded-full animate-spin" /> Создаю...</>
+                : <><Icon name="Plus" size={12} /> Создать компанию</>
+              }
+            </button>
+            <button
+              onClick={reset}
+              disabled={creating}
+              className="flex items-center gap-1 px-3 py-2.5 rounded-xl text-xs font-bold transition hover:opacity-80 disabled:opacity-40"
+              style={{ background: "rgba(255,255,255,0.05)", color: "rgba(255,255,255,0.4)", border: "1px solid rgba(255,255,255,0.08)" }}>
+              <Icon name="ChevronUp" size={11} /> Свернуть
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Анимированный отчёт (после создания) */}
       {report && (phase === "animating" || phase === "banner") && (
         <div className="space-y-3 mt-1">
 
-          {/* Заполненные поля — появляются по одному */}
           {report.filled.length > 0 && (
             <div>
               <div className="text-[10px] uppercase tracking-wider font-bold mb-2 flex items-center gap-1.5"
@@ -246,7 +335,6 @@ export function WLSiteParser({ onCreated }: Props) {
                     </div>
                   </div>
                 ))}
-                {/* Оставшиеся — серые плейсхолдеры */}
                 {report.filled.slice(visibleCount).map(f => (
                   <div key={f.field}
                     className="flex items-start gap-2 rounded-lg px-2.5 py-1.5 opacity-20"
@@ -259,7 +347,6 @@ export function WLSiteParser({ onCreated }: Props) {
             </div>
           )}
 
-          {/* Незаполненные */}
           {visibleCount >= report.filled.length && report.missing.length > 0 && (
             <div>
               <div className="text-[10px] uppercase tracking-wider font-bold mb-2 flex items-center gap-1.5"
@@ -286,7 +373,6 @@ export function WLSiteParser({ onCreated }: Props) {
             </div>
           )}
 
-          {/* Баннер «Готово» */}
           {phase === "banner" && (
             <div className="rounded-xl px-3 py-2.5 flex items-center gap-2"
               style={{
@@ -297,7 +383,7 @@ export function WLSiteParser({ onCreated }: Props) {
               <Icon name="Sparkles" size={13} style={{ color: "#10b981", flexShrink: 0 }} />
               <div className="flex-1">
                 <div className="text-xs font-bold" style={{ color: "#10b981" }}>
-                  Компания создана — ID #{lastCompanyId}
+                  {lastCompanyName ? `${lastCompanyName} — ID #${lastCompanyId}` : `Компания создана — ID #${lastCompanyId}`}
                 </div>
                 <div className="text-[10px] text-white/30">
                   {report.missing.length === 0
