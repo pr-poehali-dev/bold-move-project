@@ -92,7 +92,7 @@ export function WLSiteParser({ onCreated }: Props) {
             method: "POST",
             headers: { "Content-Type": "application/json", "X-Authorization": masterToken },
             body: JSON.stringify({
-              demo_id:          d.company_id,
+              demo_id:          d.demo_id,
               next_action:      "Позвонить, уточнить интерес",
               next_action_date: today,
             }),

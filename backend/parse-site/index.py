@@ -423,10 +423,10 @@ def hash_password(password: str) -> str:
     import hashlib
     return hashlib.sha256(password.encode()).hexdigest()
 
-def create_demo_company(site_url: str, brand: dict) -> tuple[int, str]:
+def create_demo_company(site_url: str, brand: dict) -> tuple[int, str, int]:
     """
     Создаёт новый аккаунт company с has_own_agent=true и запись в demo_companies.
-    Возвращает (company_id, token).
+    Возвращает (company_id, token, demo_id).
     """
     import secrets as _sec
     slug = re.sub(r"https?://", "", site_url).split("/")[0].replace(".", "-")
@@ -478,13 +478,15 @@ def create_demo_company(site_url: str, brand: dict) -> tuple[int, str]:
     cur.execute(f"""
         INSERT INTO {SCHEMA}.demo_companies (site_url, company_id)
         VALUES (%s, %s)
+        RETURNING id
     """, (site_url, new_id))
+    demo_id = cur.fetchone()[0]
 
     conn.commit()
     cur.close()
     conn.close()
-    print(f"[parse-site] created demo company id={new_id} email={demo_email}")
-    return new_id, token
+    print(f"[parse-site] created demo company id={new_id} demo_id={demo_id} email={demo_email}")
+    return new_id, token, demo_id
 
 def save_brand_to_db(company_id: int, brand: dict):
     """Сохраняет бренд-данные в таблицу users."""
@@ -669,9 +671,10 @@ def handler(event: dict, context) -> dict:
                         print(f"[parse-site] avatar upload failed: {e}")
 
     # Создаём новый демо-аккаунт (или обновляем существующий, если company_id передан)
+    demo_id = None
     if company_id is None:
         try:
-            company_id, token = create_demo_company(site_url, brand)
+            company_id, token, demo_id = create_demo_company(site_url, brand)
         except Exception as e:
             return err(f"Ошибка создания аккаунта: {e}")
     else:
@@ -686,5 +689,6 @@ def handler(event: dict, context) -> dict:
         "brand":      brand,
         "report":     report,
         "company_id": company_id,
+        "demo_id":    demo_id,
         "token":      token,
     })
