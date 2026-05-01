@@ -1721,14 +1721,30 @@ def handler(event: dict, context) -> dict:
     # ── Презентации: проверить занятые слоты ─────────────────────────────────
     if action == "demo-busy-slots" and method == "GET":
         date_str = params.get("date")  # YYYY-MM-DD
+        # scheduled_at хранится в UTC, МСК = UTC+3
+        # Берём все показы за сутки с запасом (±1 день) и фильтруем на Python
         cur.execute(f"""
-            SELECT EXTRACT(HOUR FROM scheduled_at AT TIME ZONE 'Europe/Moscow')::int AS hour
+            SELECT scheduled_at
             FROM {SCHEMA}.demo_presentations
             WHERE status = 'scheduled'
-            AND DATE(scheduled_at AT TIME ZONE 'Europe/Moscow') = %s
-        """, (date_str,))
+            AND scheduled_at >= %s::date - INTERVAL '1 day'
+            AND scheduled_at <  %s::date + INTERVAL '2 days'
+        """, (date_str, date_str))
         rows = cur.fetchall()
-        return ok({"busy_hours": [r[0] for r in rows]})
+        busy_hours = []
+        from datetime import datetime, timezone, timedelta
+        MSK = timezone(timedelta(hours=3))
+        target_date = datetime.strptime(date_str, "%Y-%m-%d").date()
+        for (scheduled_at,) in rows:
+            # Конвертируем в МСК
+            if scheduled_at.tzinfo is None:
+                dt_utc = scheduled_at.replace(tzinfo=timezone.utc)
+            else:
+                dt_utc = scheduled_at
+            dt_msk = dt_utc.astimezone(MSK)
+            if dt_msk.date() == target_date:
+                busy_hours.append(dt_msk.hour)
+        return ok({"busy_hours": busy_hours})
 
     # ── Презентации: список всех (для мастера) ────────────────────────────────
     if action == "demo-presentations" and method == "GET":
@@ -1808,14 +1824,19 @@ def handler(event: dict, context) -> dict:
         if not demo_id or not scheduled_at:
             return err("demo_id и scheduled_at обязательны")
 
-        # Проверка: нет показа в тот же час
+        # Проверка: нет показа в тот же час (Python-логика, без date_trunc)
+        from datetime import datetime, timezone, timedelta
+        MSK = timezone(timedelta(hours=3))
+        new_dt = datetime.fromisoformat(scheduled_at.replace("Z", "+00:00"))
+        new_msk = new_dt.astimezone(MSK)
+        new_hour_start = new_msk.replace(minute=0, second=0, microsecond=0)
+        new_hour_end   = new_hour_start + timedelta(hours=1)
         cur.execute(f"""
-            SELECT COUNT(*) FROM {SCHEMA}.demo_presentations
+            SELECT scheduled_at FROM {SCHEMA}.demo_presentations
             WHERE status = 'scheduled'
-            AND date_trunc('hour', scheduled_at) = date_trunc('hour', %s::timestamptz)
-        """, (scheduled_at,))
-        conflict = cur.fetchone()[0]
-        if conflict > 0:
+            AND scheduled_at >= %s AND scheduled_at < %s
+        """, (new_hour_start.astimezone(timezone.utc), new_hour_end.astimezone(timezone.utc)))
+        if cur.fetchone():
             return err("В это время уже запланирован показ")
 
         cur.execute(f"""
@@ -1898,14 +1919,19 @@ def handler(event: dict, context) -> dict:
         if not pres_id or not scheduled_at:
             return err("presentation_id и scheduled_at обязательны")
 
-        # Проверка: нет другого показа в тот же час
+        # Проверка: нет другого показа в тот же час (Python-логика, без date_trunc)
+        from datetime import datetime, timezone, timedelta
+        MSK = timezone(timedelta(hours=3))
+        new_dt2 = datetime.fromisoformat(scheduled_at.replace("Z", "+00:00"))
+        new_msk2 = new_dt2.astimezone(MSK)
+        hour_start2 = new_msk2.replace(minute=0, second=0, microsecond=0)
+        hour_end2   = hour_start2 + timedelta(hours=1)
         cur.execute(f"""
-            SELECT COUNT(*) FROM {SCHEMA}.demo_presentations
+            SELECT scheduled_at FROM {SCHEMA}.demo_presentations
             WHERE status = 'scheduled' AND id != %s
-            AND date_trunc('hour', scheduled_at) = date_trunc('hour', %s::timestamptz)
-        """, (int(pres_id), scheduled_at))
-        conflict = cur.fetchone()[0]
-        if conflict > 0:
+            AND scheduled_at >= %s AND scheduled_at < %s
+        """, (int(pres_id), hour_start2.astimezone(timezone.utc), hour_end2.astimezone(timezone.utc)))
+        if cur.fetchone():
             return err("В это время уже запланирован показ")
 
         sets = ["scheduled_at = %s"]
