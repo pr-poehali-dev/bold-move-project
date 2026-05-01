@@ -2,21 +2,33 @@ import { useState } from "react";
 import Icon from "@/components/ui/icon";
 import type { CheckResult } from "./wlTypes";
 
-export function Section({ title, icon, color, children }: {
+export function Section({ title, icon, color, children, collapsible = false, defaultCollapsed = false }: {
   title: string; icon: string; color: string; children: React.ReactNode;
+  collapsible?: boolean; defaultCollapsed?: boolean;
 }) {
+  const [collapsed, setCollapsed] = useState(defaultCollapsed);
+
   return (
     <section>
-      <div className="flex items-center gap-2 mb-3">
+      <div
+        className={`flex items-center gap-2 mb-3 ${collapsible ? "cursor-pointer select-none" : ""}`}
+        onClick={collapsible ? () => setCollapsed(v => !v) : undefined}
+      >
         <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: `${color}1f` }}>
           <Icon name={icon} size={14} style={{ color }} />
         </div>
-        <h2 className="text-sm font-black uppercase tracking-wider" style={{ color }}>{title}</h2>
+        <h2 className="text-sm font-black uppercase tracking-wider flex-1" style={{ color }}>{title}</h2>
+        {collapsible && (
+          <Icon name={collapsed ? "ChevronDown" : "ChevronUp"} size={14}
+            style={{ color: "rgba(255,255,255,0.25)", transition: "transform 0.2s" }} />
+        )}
       </div>
-      <div className="rounded-2xl p-4 space-y-2.5"
-        style={{ background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.06)" }}>
-        {children}
-      </div>
+      {!collapsed && (
+        <div className="rounded-2xl p-4 space-y-2.5"
+          style={{ background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.06)" }}>
+          {children}
+        </div>
+      )}
     </section>
   );
 }

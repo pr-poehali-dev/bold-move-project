@@ -159,7 +159,7 @@ export function WLSiteParser({ onCreated }: Props) {
   }
 
   return (
-    <Section title="Автозаполнение из сайта" icon="Wand2" color="#f59e0b">
+    <Section title="Автозаполнение из сайта" icon="Wand2" color="#f59e0b" collapsible defaultCollapsed>
       <p className="text-[11px] text-white/40 mb-3">
         Введи сайт клиента — AI вытащит все данные и создаст новую демо-компанию
       </p>
