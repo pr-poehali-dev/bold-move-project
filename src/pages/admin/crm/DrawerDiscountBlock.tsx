@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import Icon from "@/components/ui/icon";
 import { useTheme } from "./themeContext";
 import { Client, crmFetch } from "./crmApi";
@@ -45,8 +45,18 @@ export function DrawerDiscountBlock({ data, customFinRows, onContractSumUpdated 
   const [applied,  setApplied]  = useState(false);
   const fmt = (n: number) => Math.round(n).toLocaleString("ru-RU");
 
-  // Настройки управления риском из вкладки "Правила расчёта"
-  const risk = useMemo(() => loadRiskSettings(), []);
+  // Настройки управления риском — реактивно обновляются при изменении localStorage
+  const [risk, setRisk] = useState<RiskSettings>(loadRiskSettings);
+  useEffect(() => {
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === RISK_LS_KEY) setRisk(loadRiskSettings());
+    };
+    window.addEventListener("storage", onStorage);
+    // Также обновляем при фокусе окна (если настройки меняли в той же вкладке)
+    const onFocus = () => setRisk(loadRiskSettings());
+    window.addEventListener("focus", onFocus);
+    return () => { window.removeEventListener("storage", onStorage); window.removeEventListener("focus", onFocus); };
+  }, []);
 
   const customCostRows = customFinRows
     .filter(r => r.block === "costs")

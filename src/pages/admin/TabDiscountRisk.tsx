@@ -44,6 +44,8 @@ export default function TabDiscountRisk({ isDark = true, readOnly = false }: Pro
 
   const save = () => {
     localStorage.setItem(LS_KEY, JSON.stringify(s));
+    // Уведомляем другие компоненты об изменении (storage event не срабатывает в той же вкладке)
+    window.dispatchEvent(new StorageEvent("storage", { key: LS_KEY, newValue: JSON.stringify(s) }));
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
   };
