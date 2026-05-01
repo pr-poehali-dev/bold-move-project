@@ -1485,7 +1485,10 @@ def handler(event: dict, context) -> dict:
                    dc.status, dc.contact_name, dc.contact_phone, dc.contact_position,
                    dc.notes, dc.next_action, dc.next_action_date,
                    u.trial_until, u.agent_purchased_at,
-                   COUNT(e.id) AS estimates_used
+                   COUNT(e.id) AS estimates_used,
+                   (SELECT dp.scheduled_at FROM {SCHEMA}.demo_presentations dp
+                    WHERE dp.demo_id = dc.id AND dp.status = 'scheduled'
+                    ORDER BY dp.scheduled_at LIMIT 1) AS presentation_at
             FROM {SCHEMA}.demo_companies dc
             JOIN {SCHEMA}.users u ON u.id = dc.company_id
             LEFT JOIN {SCHEMA}.saved_estimates e ON e.user_id = u.id
@@ -1523,6 +1526,7 @@ def handler(event: dict, context) -> dict:
             "trial_until":          str(r[20])[:10] if r[20] else None,
             "agent_purchased_at":   str(r[21])[:10] if r[21] else None,
             "estimates_used":       int(r[22] or 0),
+            "presentation_at":      str(r[23])[:16] if r[23] else None,
         } for r in rows]})
 
     # ── Мастер: обновить данные демо-компании (pipeline) ─────────────────────
@@ -1713,5 +1717,198 @@ def handler(event: dict, context) -> dict:
                 print(f"[receipt] TG send error: {e}")
 
         return ok({"ok": True, "receipt_url": cdn_url})
+
+    # ── Презентации: проверить занятые слоты ─────────────────────────────────
+    if action == "demo-busy-slots" and method == "GET":
+        """Возвращает занятые временные слоты (window ±2ч вокруг каждого показа)."""
+        date_str = params.get("date")  # YYYY-MM-DD
+        cur.execute(f"""
+            SELECT scheduled_at, duration_min FROM {SCHEMA}.demo_presentations
+            WHERE status = 'scheduled'
+            AND DATE(scheduled_at AT TIME ZONE 'Europe/Moscow') = %s
+        """, (date_str,))
+        rows = cur.fetchall()
+        return ok({"slots": [
+            {"scheduled_at": str(r[0]), "duration_min": r[1]}
+            for r in rows
+        ]})
+
+    # ── Презентации: список всех (для мастера) ────────────────────────────────
+    if action == "demo-presentations" and method == "GET":
+        if not token:
+            return err("Требуется авторизация", 401)
+        cur.execute(f"""
+            SELECT u.email FROM {SCHEMA}.user_sessions s
+            JOIN {SCHEMA}.users u ON u.id = s.user_id
+            WHERE s.token=%s AND s.expires_at > NOW()
+        """, (token,))
+        row = cur.fetchone()
+        if not row or row[0] != "19.jeka.94@gmail.com":
+            return err("Доступ только для мастера", 403)
+
+        month = params.get("month")
+        year  = params.get("year")
+        if month and year:
+            cur.execute(f"""
+                SELECT dp.id, dp.demo_id, dp.scheduled_at, dp.duration_min,
+                       dp.notes, dp.status, dp.created_at,
+                       dc.site_url, u.company_name, u.brand_color, u.brand_logo_url,
+                       dc.contact_name, dc.contact_phone
+                FROM {SCHEMA}.demo_presentations dp
+                JOIN {SCHEMA}.demo_companies dc ON dc.id = dp.demo_id
+                JOIN {SCHEMA}.users u ON u.id = dc.company_id
+                WHERE EXTRACT(MONTH FROM dp.scheduled_at) = %s
+                  AND EXTRACT(YEAR  FROM dp.scheduled_at) = %s
+                ORDER BY dp.scheduled_at
+            """, (int(month), int(year)))
+        else:
+            cur.execute(f"""
+                SELECT dp.id, dp.demo_id, dp.scheduled_at, dp.duration_min,
+                       dp.notes, dp.status, dp.created_at,
+                       dc.site_url, u.company_name, u.brand_color, u.brand_logo_url,
+                       dc.contact_name, dc.contact_phone
+                FROM {SCHEMA}.demo_presentations dp
+                JOIN {SCHEMA}.demo_companies dc ON dc.id = dp.demo_id
+                JOIN {SCHEMA}.users u ON u.id = dc.company_id
+                WHERE dp.status = 'scheduled'
+                ORDER BY dp.scheduled_at
+            """)
+        rows = cur.fetchall()
+        return ok({"presentations": [{
+            "id":           r[0],
+            "demo_id":      r[1],
+            "scheduled_at": str(r[2]),
+            "duration_min": r[3],
+            "notes":        r[4] or "",
+            "status":       r[5],
+            "created_at":   str(r[6]),
+            "site_url":     r[7] or "",
+            "company_name": r[8] or "",
+            "brand_color":  r[9] or "#8b5cf6",
+            "brand_logo_url": r[10] or "",
+            "contact_name": r[11] or "",
+            "contact_phone": r[12] or "",
+        } for r in rows]})
+
+    # ── Презентации: создать запись на показ ──────────────────────────────────
+    if action == "demo-schedule-presentation" and method == "POST":
+        if not token:
+            return err("Требуется авторизация", 401)
+        cur.execute(f"""
+            SELECT u.email FROM {SCHEMA}.user_sessions s
+            JOIN {SCHEMA}.users u ON u.id = s.user_id
+            WHERE s.token=%s AND s.expires_at > NOW()
+        """, (token,))
+        row = cur.fetchone()
+        if not row or row[0] != "19.jeka.94@gmail.com":
+            return err("Доступ только для мастера", 403)
+
+        demo_id      = body.get("demo_id")
+        scheduled_at = body.get("scheduled_at")  # ISO string
+        duration_min = int(body.get("duration_min", 60))
+        notes        = (body.get("notes") or "").strip()
+
+        if not demo_id or not scheduled_at:
+            return err("demo_id и scheduled_at обязательны")
+
+        # Проверка правила 2 часа: нет показа ±2ч от выбранного времени
+        cur.execute(f"""
+            SELECT COUNT(*) FROM {SCHEMA}.demo_presentations
+            WHERE status = 'scheduled'
+            AND ABS(EXTRACT(EPOCH FROM (scheduled_at - %s::timestamptz))) < 7200
+        """, (scheduled_at,))
+        conflict = cur.fetchone()[0]
+        if conflict > 0:
+            return err("В этот промежуток уже запланирован показ (правило 2 часа)")
+
+        cur.execute(f"""
+            INSERT INTO {SCHEMA}.demo_presentations (demo_id, scheduled_at, duration_min, notes)
+            VALUES (%s, %s, %s, %s) RETURNING id
+        """, (int(demo_id), scheduled_at, duration_min, notes or None))
+        pres_id = cur.fetchone()[0]
+
+        # Обновляем статус демо-компании → presentation
+        cur.execute(f"""
+            UPDATE {SCHEMA}.demo_companies SET status = 'presentation' WHERE id = %s
+        """, (int(demo_id),))
+
+        conn.commit()
+        return ok({"ok": True, "presentation_id": pres_id})
+
+    # ── Презентации: отметить показ проведён ─────────────────────────────────
+    if action == "demo-mark-presented" and method == "POST":
+        if not token:
+            return err("Требуется авторизация", 401)
+        cur.execute(f"""
+            SELECT u.email FROM {SCHEMA}.user_sessions s
+            JOIN {SCHEMA}.users u ON u.id = s.user_id
+            WHERE s.token=%s AND s.expires_at > NOW()
+        """, (token,))
+        row = cur.fetchone()
+        if not row or row[0] != "19.jeka.94@gmail.com":
+            return err("Доступ только для мастера", 403)
+
+        demo_id = body.get("demo_id")
+        if not demo_id:
+            return err("demo_id обязателен")
+
+        # Переводим все scheduled→done
+        cur.execute(f"""
+            UPDATE {SCHEMA}.demo_presentations SET status = 'done'
+            WHERE demo_id = %s AND status = 'scheduled'
+        """, (int(demo_id),))
+
+        # Обновляем статус демо-компании → presented
+        cur.execute(f"""
+            UPDATE {SCHEMA}.demo_companies SET status = 'presented' WHERE id = %s
+        """, (int(demo_id),))
+
+        conn.commit()
+        return ok({"ok": True})
+
+    # ── Презентации: обновить/перенести ──────────────────────────────────────
+    if action == "demo-reschedule-presentation" and method == "POST":
+        if not token:
+            return err("Требуется авторизация", 401)
+        cur.execute(f"""
+            SELECT u.email FROM {SCHEMA}.user_sessions s
+            JOIN {SCHEMA}.users u ON u.id = s.user_id
+            WHERE s.token=%s AND s.expires_at > NOW()
+        """, (token,))
+        row = cur.fetchone()
+        if not row or row[0] != "19.jeka.94@gmail.com":
+            return err("Доступ только для мастера", 403)
+
+        pres_id      = body.get("presentation_id")
+        scheduled_at = body.get("scheduled_at")
+        duration_min = body.get("duration_min")
+        notes        = body.get("notes")
+
+        if not pres_id or not scheduled_at:
+            return err("presentation_id и scheduled_at обязательны")
+
+        # Проверка правила 2 часа (исключаем саму запись)
+        cur.execute(f"""
+            SELECT COUNT(*) FROM {SCHEMA}.demo_presentations
+            WHERE status = 'scheduled' AND id != %s
+            AND ABS(EXTRACT(EPOCH FROM (scheduled_at - %s::timestamptz))) < 7200
+        """, (int(pres_id), scheduled_at))
+        conflict = cur.fetchone()[0]
+        if conflict > 0:
+            return err("В этот промежуток уже запланирован показ (правило 2 часа)")
+
+        sets = ["scheduled_at = %s"]
+        vals = [scheduled_at]
+        if duration_min is not None:
+            sets.append("duration_min = %s"); vals.append(int(duration_min))
+        if notes is not None:
+            sets.append("notes = %s"); vals.append(notes.strip() or None)
+        vals.append(int(pres_id))
+
+        cur.execute(f"""
+            UPDATE {SCHEMA}.demo_presentations SET {', '.join(sets)} WHERE id = %s
+        """, vals)
+        conn.commit()
+        return ok({"ok": True})
 
     return err("Неизвестное действие", 404)

@@ -28,7 +28,7 @@ export interface WLCompany {
   purchased_at: string;
 }
 
-export type DemoStatus = "new" | "interested" | "paid" | "rejected";
+export type DemoStatus = "new" | "interested" | "presentation" | "presented" | "paid" | "rejected";
 
 export interface DemoPipelineCompany {
   demo_id:           number;
@@ -54,13 +54,16 @@ export interface DemoPipelineCompany {
   trial_until:          string | null;
   agent_purchased_at:   string | null;
   estimates_used:       number;
+  presentation_at:      string | null;
 }
 
 export const DEMO_STATUSES: { id: DemoStatus; label: string; color: string; bg: string }[] = [
-  { id: "new",        label: "Новые",        color: "#a78bfa", bg: "rgba(167,139,250,0.12)" },
-  { id: "interested", label: "Интерес",      color: "#06b6d4", bg: "rgba(6,182,212,0.12)"   },
-  { id: "paid",       label: "Оплатили",     color: "#10b981", bg: "rgba(16,185,129,0.12)"  },
-  { id: "rejected",   label: "Отказ",        color: "#ef4444", bg: "rgba(239,68,68,0.10)"   },
+  { id: "new",          label: "Новые",        color: "#a78bfa", bg: "rgba(167,139,250,0.12)" },
+  { id: "interested",   label: "Интерес",      color: "#06b6d4", bg: "rgba(6,182,212,0.12)"   },
+  { id: "presentation", label: "Презентация",  color: "#f97316", bg: "rgba(249,115,22,0.12)"  },
+  { id: "presented",    label: "Показ проведён", color: "#8b5cf6", bg: "rgba(139,92,246,0.12)" },
+  { id: "paid",         label: "Оплатили",     color: "#10b981", bg: "rgba(16,185,129,0.12)"  },
+  { id: "rejected",     label: "Отказ",        color: "#ef4444", bg: "rgba(239,68,68,0.10)"   },
 ];
 
 export type PanelView =

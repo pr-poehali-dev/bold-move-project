@@ -2,11 +2,13 @@ import { useState, useEffect, useCallback } from "react";
 import Icon from "@/components/ui/icon";
 import { AUTH_URL } from "./wlTypes";
 import type { DemoPipelineCompany, DemoStatus, PanelView } from "./wlTypes";
-import { WLPipelineKanban }  from "./WLPipelineKanban";
-import { WLPipelineList }    from "./WLPipelineList";
-import { WLPipelineDrawer }  from "./WLPipelineDrawer";
-import { WLPipelineEvents }  from "./WLPipelineEvents";
-import { WLReceiptModal }    from "./WLReceiptModal";
+import { WLPipelineKanban }        from "./WLPipelineKanban";
+import { WLPipelineList }          from "./WLPipelineList";
+import { WLPipelineDrawer }        from "./WLPipelineDrawer";
+import { WLPipelineEvents }        from "./WLPipelineEvents";
+import { WLReceiptModal }          from "./WLReceiptModal";
+import { WLPresentationCalendar }  from "./WLPresentationCalendar";
+import { WLPresentationModal }     from "./WLPresentationModal";
 
 interface Props {
   refreshTrigger:  number;
@@ -15,7 +17,7 @@ interface Props {
 }
 
 type ViewMode = "kanban" | "list";
-type Tab = "companies" | "tasks";
+type Tab = "companies" | "tasks" | "calendar";
 
 const masterToken = () => localStorage.getItem("mp_user_token") || "";
 
@@ -25,8 +27,9 @@ export function WLPipeline({ refreshTrigger, onOpenPanel, onRunApiTests }: Props
   const [view,      setView]      = useState<ViewMode>("list");
   const [tab,       setTab]       = useState<Tab>("companies");
   const [filter,    setFilter]    = useState<DemoStatus | "all">("all");
-  const [selected,  setSelected]  = useState<DemoPipelineCompany | null>(null);
-  const [receiptFor, setReceiptFor] = useState<DemoPipelineCompany | null>(null);
+  const [selected,        setSelected]        = useState<DemoPipelineCompany | null>(null);
+  const [receiptFor,      setReceiptFor]      = useState<DemoPipelineCompany | null>(null);
+  const [presentationFor, setPresentationFor] = useState<DemoPipelineCompany | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -42,10 +45,14 @@ export function WLPipeline({ refreshTrigger, onOpenPanel, onRunApiTests }: Props
   useEffect(() => { load(); }, [load, refreshTrigger]);
 
   const handleMove = async (demoId: number, status: DemoStatus) => {
+    const company = companies.find(c => c.demo_id === demoId);
     // При переносе в "paid" — требуем чек
     if (status === "paid") {
-      const company = companies.find(c => c.demo_id === demoId);
       if (company) { setReceiptFor(company); return; }
+    }
+    // При переносе в "presentation" — открываем модалку планирования
+    if (status === "presentation") {
+      if (company) { setPresentationFor(company); return; }
     }
     setCompanies(prev => prev.map(c => c.demo_id === demoId ? { ...c, status } : c));
     await fetch(`${AUTH_URL}?action=admin-update-demo`, {
@@ -132,30 +139,49 @@ export function WLPipeline({ refreshTrigger, onOpenPanel, onRunApiTests }: Props
       </div>
 
       {/* Вкладки */}
-      <div className="flex items-center gap-1 mb-4 p-1 rounded-xl" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)" }}>
-        <button onClick={() => setTab("companies")}
-          className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-[11px] font-bold transition"
-          style={{
-            background: tab === "companies" ? "rgba(139,92,246,0.2)" : "transparent",
-            color:      tab === "companies" ? "#a78bfa" : "rgba(255,255,255,0.3)",
-          }}>
-          <Icon name="Building2" size={12} /> Компании
-        </button>
-        <button onClick={() => setTab("tasks")}
-          className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-[11px] font-bold transition"
-          style={{
-            background: tab === "tasks" ? "rgba(245,158,11,0.15)" : "transparent",
-            color:      tab === "tasks" ? "#f59e0b" : "rgba(255,255,255,0.3)",
-          }}>
-          <Icon name="Target" size={12} /> Задачи
-          {tasksCount > 0 && (
-            <span className="text-[9px] px-1.5 py-0.5 rounded-full font-bold"
-              style={{ background: tab === "tasks" ? "rgba(245,158,11,0.25)" : "rgba(245,158,11,0.15)", color: "#f59e0b" }}>
-              {tasksCount}
-            </span>
-          )}
-        </button>
-      </div>
+      {(() => {
+        const presCount = companies.filter(c => c.status === "presentation").length;
+        return (
+          <div className="flex items-center gap-1 mb-4 p-1 rounded-xl" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)" }}>
+            <button onClick={() => setTab("companies")}
+              className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-[11px] font-bold transition"
+              style={{
+                background: tab === "companies" ? "rgba(139,92,246,0.2)" : "transparent",
+                color:      tab === "companies" ? "#a78bfa" : "rgba(255,255,255,0.3)",
+              }}>
+              <Icon name="Building2" size={12} /> Компании
+            </button>
+            <button onClick={() => setTab("tasks")}
+              className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-[11px] font-bold transition"
+              style={{
+                background: tab === "tasks" ? "rgba(245,158,11,0.15)" : "transparent",
+                color:      tab === "tasks" ? "#f59e0b" : "rgba(255,255,255,0.3)",
+              }}>
+              <Icon name="Target" size={12} /> Задачи
+              {tasksCount > 0 && (
+                <span className="text-[9px] px-1.5 py-0.5 rounded-full font-bold"
+                  style={{ background: tab === "tasks" ? "rgba(245,158,11,0.25)" : "rgba(245,158,11,0.15)", color: "#f59e0b" }}>
+                  {tasksCount}
+                </span>
+              )}
+            </button>
+            <button onClick={() => setTab("calendar")}
+              className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-[11px] font-bold transition"
+              style={{
+                background: tab === "calendar" ? "rgba(249,115,22,0.15)" : "transparent",
+                color:      tab === "calendar" ? "#f97316" : "rgba(255,255,255,0.3)",
+              }}>
+              <Icon name="CalendarDays" size={12} /> Показы
+              {presCount > 0 && (
+                <span className="text-[9px] px-1.5 py-0.5 rounded-full font-bold"
+                  style={{ background: tab === "calendar" ? "rgba(249,115,22,0.3)" : "rgba(249,115,22,0.15)", color: "#f97316" }}>
+                  {presCount}
+                </span>
+              )}
+            </button>
+          </div>
+        );
+      })()}
 
       {/* Контент вкладки Компании */}
       {tab === "companies" && (
@@ -188,6 +214,19 @@ export function WLPipeline({ refreshTrigger, onOpenPanel, onRunApiTests }: Props
         <WLPipelineEvents companies={companies} onSelect={setSelected} />
       )}
 
+      {/* Контент вкладки Показы */}
+      {tab === "calendar" && (
+        <WLPresentationCalendar
+          onMarkDone={demoId => {
+            setCompanies(prev => prev.map(c => c.demo_id === demoId ? { ...c, status: "presented" } : c));
+          }}
+          onReschedule={p => {
+            const company = companies.find(c => c.demo_id === p.demo_id);
+            if (company) setPresentationFor(company);
+          }}
+        />
+      )}
+
       {/* Drawer */}
       {selected && (
         <WLPipelineDrawer
@@ -210,6 +249,21 @@ export function WLPipeline({ refreshTrigger, onOpenPanel, onRunApiTests }: Props
             setReceiptFor(null);
           }}
           onCancel={() => setReceiptFor(null)}
+        />
+      )}
+
+      {/* Модалка планирования показа */}
+      {presentationFor && (
+        <WLPresentationModal
+          company={presentationFor}
+          onSuccess={() => {
+            setCompanies(prev => prev.map(c =>
+              c.demo_id === presentationFor.demo_id ? { ...c, status: "presentation" } : c
+            ));
+            setPresentationFor(null);
+            setTab("calendar");
+          }}
+          onCancel={() => setPresentationFor(null)}
         />
       )}
     </div>
