@@ -6,9 +6,14 @@ import { WLApiTestsModal, useApiChecks } from "./WLApiTests";
 import { WLPanelView } from "./WLPanelView";
 import { WLSiteParser } from "./WLSiteParser";
 import { WLPipeline } from "./WLPipeline";
+import { useAuth } from "@/context/AuthContext";
+import func2url from "@/../backend/func2url.json";
+
+const AUTH_URL = (func2url as Record<string, string>)["auth"];
 
 export function WLContent() {
-  const navigate = useNavigate();
+  const navigate  = useNavigate();
+  const { updateUser } = useAuth();
   const [results, setResults]           = useState<Record<string, CheckResult | null>>({});
   const [running, setRunning]           = useState<string | null>(null);
   const [panel, setPanel]               = useState<PanelView>(null);
@@ -29,20 +34,26 @@ export function WLContent() {
     await check_pdf(cid);
   };
 
+  // Мастер-токен сохраняем ОДИН РАЗ при монтировании страницы
+  // и больше не меняем — он всегда доступен для восстановления
+  const masterTokenRef = useState<string | null>(
+    () => localStorage.getItem("mp_user_token")
+  )[0];
+
   const handleOpenPanel = (p: PanelView, token?: string) => {
-    // Сохраняем мастер-токен перед открытием iframe — он может перезаписаться
-    const masterTok = localStorage.getItem("mp_user_token");
-    if (masterTok) localStorage.setItem("mp_master_token_backup", masterTok);
     if (token) setIframeToken(token);
     setPanel(p);
   };
 
   const handleClosePanel = () => {
-    // Восстанавливаем мастер-токен после закрытия iframe
-    const backup = localStorage.getItem("mp_master_token_backup");
-    if (backup) {
-      localStorage.setItem("mp_user_token", backup);
-      localStorage.removeItem("mp_master_token_backup");
+    // Восстанавливаем мастер-токен — берём из ref (он не менялся с момента открытия страницы)
+    if (masterTokenRef) {
+      localStorage.setItem("mp_user_token", masterTokenRef);
+      // Перечитываем профиль мастера чтобы AuthContext обновился
+      fetch(`${AUTH_URL}?action=me`, { headers: { "X-Authorization": `Bearer ${masterTokenRef}` } })
+        .then(r => r.json())
+        .then(d => { if (d.user) updateUser(d.user); })
+        .catch(() => {});
     }
     setPanel(null);
     setIframeToken(null);
