@@ -103,10 +103,7 @@ export function WLPipelineCard({ c, isOpen, onToggle, onSelect, onMove, onBrand,
           if (!c.brand_logo_url) missing.push({ key: "logo",  label: "Логотип" });
           if (!c.bot_name)       missing.push({ key: "bot",   label: "Имя бота" });
           const noLpr = !c.contact_name || !c.contact_phone || !c.contact_position;
-          if (missing.length === 0 && !noLpr) return (
-            <div className="flex-1 min-w-0 max-w-[180px] cursor-pointer self-stretch"
-              onClick={e => { e.stopPropagation(); onToggle(c.demo_id, e); }} />
-          );
+          if (missing.length === 0 && !noLpr) return null;
           return (
             <div className="flex-1 flex flex-col gap-1 min-w-0 max-w-[180px] cursor-pointer"
               onClick={e => { e.stopPropagation(); onToggle(c.demo_id, e); }}>
