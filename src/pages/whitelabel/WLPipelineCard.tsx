@@ -72,21 +72,14 @@ export function WLPipelineCard({ c, isOpen, onToggle, onSelect, onMove, onBrand,
 
             <span className="text-[9px] px-1.5 py-0.5 rounded-md font-bold flex-shrink-0"
               style={{ background: st.bg, color: st.color }}>{st.label}</span>
-            {/* Демо-trial badge */}
-            {(() => {
-              if (!c.trial_until) return null;
-              const dl = Math.ceil((new Date(c.trial_until).getTime() - Date.now()) / 86400000);
-              if (dl <= 0) return (
-                <span className="text-[9px] px-1.5 py-0.5 rounded-md font-bold flex-shrink-0"
-                  style={{ background: "rgba(239,68,68,0.12)", color: "#ef4444" }}>Демо истёк</span>
-              );
-              const tc = dl <= 3 ? "#ef4444" : dl <= 7 ? "#f59e0b" : "#06b6d4";
-              const tb = dl <= 3 ? "rgba(239,68,68,0.12)" : dl <= 7 ? "rgba(245,158,11,0.12)" : "rgba(6,182,212,0.12)";
-              return (
-                <span className="text-[9px] px-1.5 py-0.5 rounded-md font-bold flex-shrink-0"
-                  style={{ background: tb, color: tc }}>Демо · {dl} дн.</span>
-              );
-            })()}
+            {/* Демо-badge от created_at */}
+            {!c.agent_purchased_at && (
+              expired
+                ? <span className="text-[9px] px-1.5 py-0.5 rounded-md font-bold flex-shrink-0"
+                    style={{ background: "rgba(239,68,68,0.12)", color: "#ef4444" }}>Демо истёк</span>
+                : <span className="text-[9px] px-1.5 py-0.5 rounded-md font-bold flex-shrink-0"
+                    style={{ background: demoBg, color: demoColor }}>Демо · {daysLeft} дн.</span>
+            )}
           </div>
           <div className="flex items-center gap-1.5 text-[10px] text-white/30 flex-wrap mt-0.5">
             <span>{domain}</span>

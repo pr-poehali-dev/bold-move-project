@@ -37,17 +37,17 @@ export function KanbanCard({ c, onSelect, onDragStart, onLpr, dateRange, colWidt
     return null;
   }
 
-  const hasTrial  = c.trial_until && new Date(c.trial_until) > now;
-  const hasPaid   = !!c.agent_purchased_at;
-  const isOverdue = c.next_action_date && new Date(c.next_action_date) < now;
-  const compact   = colWidth < 240;
-  const balance   = Number(c.estimates_balance) || 0;
-  const used      = Number(c.estimates_used)    || 0;
+  const DEMO_DAYS  = 10;
+  const hasPaid    = !!c.agent_purchased_at;
+  const isOverdue  = c.next_action_date && new Date(c.next_action_date) < now;
+  const compact    = colWidth < 240;
+  const balance    = Number(c.estimates_balance) || 0;
+  const used       = Number(c.estimates_used)    || 0;
 
-  const trialDaysLeft = c.trial_until && hasTrial
-    ? Math.ceil((new Date(c.trial_until).getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
-    : 0;
-  const trialColor = trialDaysLeft <= 3 ? "#ef4444" : trialDaysLeft <= 7 ? "#f59e0b" : "#10b981";
+  const daysPassed  = Math.floor((now.getTime() - new Date(c.created_at).getTime()) / 86400000);
+  const daysLeft    = Math.max(0, DEMO_DAYS - daysPassed);
+  const demoExpired = daysLeft === 0;
+  const demoColor   = daysLeft <= 3 ? "#ef4444" : daysLeft <= 7 ? "#f59e0b" : "#06b6d4";
 
   return (
     <div
@@ -74,8 +74,12 @@ export function KanbanCard({ c, onSelect, onDragStart, onLpr, dateRange, colWidt
             <div className="text-[9px] text-white/30 truncate">{domain}</div>
           </div>
           <div className="flex flex-col items-end gap-0.5 flex-shrink-0">
-            {hasPaid && <span className="text-[8px] px-1.5 py-0.5 rounded-full font-bold" style={{ background: "#10b98120", color: "#10b981" }}>WL</span>}
-            {hasTrial && !hasPaid && <span className="text-[8px] px-1.5 py-0.5 rounded-full font-bold" style={{ background: "#f59e0b20", color: "#f59e0b" }}>Trial</span>}
+            {hasPaid
+              ? <span className="text-[8px] px-1.5 py-0.5 rounded-full font-bold" style={{ background: "#10b98120", color: "#10b981" }}>WL</span>
+              : <span className="text-[8px] px-1.5 py-0.5 rounded-full font-bold" style={{ background: demoColor + "20", color: demoColor }}>
+                  {demoExpired ? "Истёк" : `${daysLeft}д`}
+                </span>
+            }
           </div>
         </div>
 
@@ -107,12 +111,12 @@ export function KanbanCard({ c, onSelect, onDragStart, onLpr, dateRange, colWidt
               <span className="font-bold">{balance}</span>
               <span className="opacity-60">смет</span>
             </div>
-            {/* Счётчик триала */}
-            {hasTrial && trialDaysLeft > 0 && (
+            {/* Счётчик демо от created_at */}
+            {!hasPaid && (
               <div className="flex items-center gap-1 text-[9px] px-1.5 py-0.5 rounded-md font-bold"
-                style={{ background: trialColor + "15", color: trialColor }}>
+                style={{ background: demoColor + "15", color: demoColor }}>
                 <Icon name="Clock" size={8} />
-                <span>{trialDaysLeft}д триал</span>
+                <span>{demoExpired ? "Демо истёк" : `${daysLeft}д демо`}</span>
               </div>
             )}
             {/* Оплачен */}

@@ -38,7 +38,7 @@ export function getRangeDates(range: number): [Date, Date] | null {
   return [start, end];
 }
 
-type Tag = "all" | "trial" | "paid" | "no_lpr";
+type Tag = "all" | "expired" | "paid" | "no_lpr";
 
 export function WLPipelineKanban({ companies, onSelect, onMove, onUpdate }: Props) {
   const [range,    setRange]    = useState<Range>(0);
@@ -72,7 +72,7 @@ export function WLPipelineKanban({ companies, onSelect, onMove, onUpdate }: Prop
       (c.contact_phone || "").includes(q) ||
       c.site_url.toLowerCase().includes(q)
     )) return false;
-    if (tag === "trial") return c.trial_until && new Date(c.trial_until) > now;
+    if (tag === "expired") { const d = Math.floor((now.getTime() - new Date(c.created_at).getTime()) / 86400000); return d >= 10 && !c.agent_purchased_at; }
     if (tag === "paid")  return !!c.agent_purchased_at;
     if (tag === "no_lpr") return !c.contact_name || !c.contact_phone || !c.contact_position;
     return true;
@@ -118,10 +118,10 @@ export function WLPipelineKanban({ companies, onSelect, onMove, onUpdate }: Prop
         {/* Фильтр по типу */}
         <div className="flex items-center gap-1">
           {([
-            { val: "all",    label: "Все",       color: "#a78bfa" },
-            { val: "trial",  label: "Триал",     color: "#f59e0b" },
-            { val: "paid",   label: "Оплачен",   color: "#10b981" },
-            { val: "no_lpr", label: "Без ЛПР",   color: "#ef4444" },
+            { val: "all",     label: "Все",        color: "#a78bfa" },
+            { val: "expired", label: "Истёк",      color: "#ef4444" },
+            { val: "paid",    label: "Оплачен",    color: "#10b981" },
+            { val: "no_lpr",  label: "Без ЛПР",   color: "#f59e0b" },
           ] as { val: Tag; label: string; color: string }[]).map(({ val, label, color }) => (
             <button key={val} onClick={() => setTag(val)}
               className="px-2.5 py-1 rounded-lg text-[10px] font-bold transition"
