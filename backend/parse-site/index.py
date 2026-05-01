@@ -594,13 +594,13 @@ def create_demo_company(site_url: str, brand: dict) -> tuple[int, str, int]:
     cur.execute(f"""
         INSERT INTO {SCHEMA}.users
           (email, password_hash, name, role, approved, has_own_agent,
-           estimates_balance, agent_purchased_at,
+           estimates_balance, trial_until,
            company_name, bot_name, bot_greeting,
            brand_color, brand_logo_url, bot_avatar_url,
            support_phone, support_email, telegram, website,
            working_hours, pdf_footer_address)
         VALUES (%s,%s,%s,'company',TRUE,TRUE,
-                10, NOW(),
+                10, NOW() + INTERVAL '14 days',
                 %s,%s,%s,
                 %s,%s,%s,
                 %s,%s,%s,%s,
