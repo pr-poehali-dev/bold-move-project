@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import Icon from "@/components/ui/icon";
 import { AUTH_URL, PARSE_SITE_URL, DEMO_STATUSES } from "./wlTypes";
 import type { DemoPipelineCompany, DemoStatus, PanelView } from "./wlTypes";
+import { getWLToken } from "./WLManagerContext";
 
 interface Props {
   company: DemoPipelineCompany;
@@ -13,7 +14,7 @@ interface Props {
   onRequestReceipt?: () => void;
 }
 
-const masterToken = () => localStorage.getItem("mp_user_token") || "";
+const masterToken = () => getWLToken();
 
 async function loginAs(companyId: number): Promise<string | null> {
   const r = await fetch(`${AUTH_URL}?action=admin-login-as`, {

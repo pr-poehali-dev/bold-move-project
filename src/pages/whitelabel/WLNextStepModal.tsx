@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import Icon from "@/components/ui/icon";
 import { AUTH_URL, DEMO_STATUSES } from "./wlTypes";
 import type { DemoStatus, DemoPipelineCompany } from "./wlTypes";
+import { getWLToken } from "./WLManagerContext";
 
 interface Props {
   company:   DemoPipelineCompany;
@@ -10,7 +11,7 @@ interface Props {
   onCancel:  () => void;
 }
 
-const masterToken = () => localStorage.getItem("mp_user_token") || "";
+const masterToken = () => getWLToken();
 
 const STATUS_DEFAULTS: Record<string, { action: string }> = {
   interested:   { action: "Позвонить и уточнить интерес" },

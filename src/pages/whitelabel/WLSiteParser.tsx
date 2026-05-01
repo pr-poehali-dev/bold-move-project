@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import Icon from "@/components/ui/icon";
 import { PARSE_SITE_URL, AUTH_URL } from "./wlTypes";
 import { Section } from "./WLHelpers";
+import { getWLToken } from "./WLManagerContext";
 
 interface FilledField  { field: string; label: string; value: string }
 interface MissingField { field: string; label: string }
@@ -35,7 +36,7 @@ export function WLSiteParser({ onCreated }: Props) {
   };
 
   const callParse = async (body: object) => {
-    const token = localStorage.getItem("mp_user_token");
+    const token = getWLToken();
     const r = await fetch(PARSE_SITE_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json", "X-Authorization": token || "" },
@@ -87,7 +88,7 @@ export function WLSiteParser({ onCreated }: Props) {
           setLastCompanyId(d.company_id);
           // Автозаполняем первый шаг: позвонить сегодня
           const today = new Date().toISOString().slice(0, 10);
-          const masterToken = localStorage.getItem("mp_user_token") || "";
+          const masterToken = getWLToken();
           fetch(`${AUTH_URL}?action=admin-update-demo`, {
             method: "POST",
             headers: { "Content-Type": "application/json", "X-Authorization": masterToken },

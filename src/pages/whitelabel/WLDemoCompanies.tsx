@@ -4,6 +4,7 @@ import { AUTH_URL } from "./wlTypes";
 import type { PanelView } from "./wlTypes";
 import { WLDemoCompanyItem } from "./WLDemoCompanyItem";
 import type { DemoCompany } from "./WLDemoCompanyItem";
+import { getWLToken } from "./WLManagerContext";
 
 interface Props {
   onOpenPanel: (panel: PanelView, token?: string) => void;
@@ -23,7 +24,7 @@ export function WLDemoCompanies({ onOpenPanel, onRunApiTests, refreshTrigger }: 
   const [deleting, setDeleting]   = useState<number | null>(null);
   const [buying, setBuying]       = useState<number | null>(null);
 
-  const masterToken = () => localStorage.getItem("mp_user_token") || "";
+  const masterToken = () => getWLToken();
 
   const load = useCallback(async () => {
     setLoading(true);

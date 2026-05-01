@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import Icon from "@/components/ui/icon";
 import { AUTH_URL } from "./wlTypes";
+import { getWLToken } from "./WLManagerContext";
 
 interface Presentation {
   id:           number;
@@ -22,7 +23,7 @@ interface Props {
   onReschedule: (p: Presentation) => void;
 }
 
-const masterToken = () => localStorage.getItem("mp_user_token") || "";
+const masterToken = () => getWLToken();
 
 const MONTH_NAMES = ["Январь","Февраль","Март","Апрель","Май","Июнь",
   "Июль","Август","Сентябрь","Октябрь","Ноябрь","Декабрь"];

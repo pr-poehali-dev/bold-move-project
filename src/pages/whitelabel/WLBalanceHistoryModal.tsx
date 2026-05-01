@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import Icon from "@/components/ui/icon";
 import { AUTH_URL } from "./wlTypes";
 import type { DemoPipelineCompany } from "./wlTypes";
+import { getWLToken } from "./WLManagerContext";
 
 interface HistoryRow { id: number; amount: number; reason: string; created_at: string }
 
@@ -11,7 +12,7 @@ interface Props {
   onClose: () => void;
 }
 
-const masterToken = () => localStorage.getItem("mp_user_token") || "";
+const masterToken = () => getWLToken();
 
 const REASON_LABEL: Record<string, string> = {
   trial_signup:     "Стартовый баланс (триал)",

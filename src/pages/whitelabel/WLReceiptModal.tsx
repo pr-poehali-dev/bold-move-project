@@ -2,6 +2,7 @@ import { useState, useRef } from "react";
 import Icon from "@/components/ui/icon";
 import { AUTH_URL } from "./wlTypes";
 import type { DemoPipelineCompany } from "./wlTypes";
+import { getWLToken } from "./WLManagerContext";
 
 interface Props {
   company: DemoPipelineCompany;
@@ -9,7 +10,7 @@ interface Props {
   onCancel:  () => void;
 }
 
-const masterToken = () => localStorage.getItem("mp_user_token") || "";
+const masterToken = () => getWLToken();
 
 export function WLReceiptModal({ company, onSuccess, onCancel }: Props) {
   const [preview, setPreview]   = useState<string | null>(null);

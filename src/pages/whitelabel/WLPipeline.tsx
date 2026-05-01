@@ -9,6 +9,7 @@ import { WLPipelineEvents }        from "./WLPipelineEvents";
 import { WLReceiptModal }          from "./WLReceiptModal";
 import { WLPresentationCalendar }  from "./WLPresentationCalendar";
 import { WLPresentationModal }     from "./WLPresentationModal";
+import { getWLToken }              from "./WLManagerContext";
 
 interface Props {
   refreshTrigger:  number;
@@ -19,7 +20,8 @@ interface Props {
 type ViewMode = "kanban" | "list";
 type Tab = "companies" | "tasks" | "calendar";
 
-const masterToken = () => localStorage.getItem("mp_user_token") || "";
+// Универсальный токен: wl-менеджер или мастер
+const masterToken = () => getWLToken();
 
 export function WLPipeline({ refreshTrigger, onOpenPanel, onRunApiTests }: Props) {
   const [companies, setCompanies] = useState<DemoPipelineCompany[]>([]);

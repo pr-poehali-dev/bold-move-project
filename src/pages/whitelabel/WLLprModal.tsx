@@ -2,6 +2,7 @@ import { useState } from "react";
 import Icon from "@/components/ui/icon";
 import { AUTH_URL } from "./wlTypes";
 import type { DemoPipelineCompany } from "./wlTypes";
+import { getWLToken } from "./WLManagerContext";
 
 interface Props {
   company:   DemoPipelineCompany;
@@ -9,7 +10,7 @@ interface Props {
   onClose:   () => void;
 }
 
-const masterToken = () => localStorage.getItem("mp_user_token") || "";
+const masterToken = () => getWLToken();
 
 export function WLLprModal({ company, onSuccess, onClose }: Props) {
   const [name,     setName]     = useState(company.contact_name     || "");

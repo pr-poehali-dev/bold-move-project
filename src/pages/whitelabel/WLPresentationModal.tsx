@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import Icon from "@/components/ui/icon";
 import { AUTH_URL } from "./wlTypes";
 import type { DemoPipelineCompany } from "./wlTypes";
+import { getWLToken } from "./WLManagerContext";
 
 interface Props {
   company: DemoPipelineCompany;
@@ -9,7 +10,7 @@ interface Props {
   onCancel: () => void;
 }
 
-const masterToken = () => localStorage.getItem("mp_user_token") || "";
+const masterToken = () => getWLToken();
 
 // Часы для выбора (9:00 – 21:00)
 const HOURS = Array.from({ length: 13 }, (_, i) => i + 9);
