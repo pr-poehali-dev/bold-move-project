@@ -6,6 +6,7 @@ import { WLPipelineKanban }  from "./WLPipelineKanban";
 import { WLPipelineList }    from "./WLPipelineList";
 import { WLPipelineDrawer }  from "./WLPipelineDrawer";
 import { WLPipelineEvents }  from "./WLPipelineEvents";
+import { WLReceiptModal }    from "./WLReceiptModal";
 
 interface Props {
   refreshTrigger:  number;
@@ -25,6 +26,7 @@ export function WLPipeline({ refreshTrigger, onOpenPanel, onRunApiTests }: Props
   const [tab,       setTab]       = useState<Tab>("companies");
   const [filter,    setFilter]    = useState<DemoStatus | "all">("all");
   const [selected,  setSelected]  = useState<DemoPipelineCompany | null>(null);
+  const [receiptFor, setReceiptFor] = useState<DemoPipelineCompany | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -40,6 +42,11 @@ export function WLPipeline({ refreshTrigger, onOpenPanel, onRunApiTests }: Props
   useEffect(() => { load(); }, [load, refreshTrigger]);
 
   const handleMove = async (demoId: number, status: DemoStatus) => {
+    // При переносе в "paid" — требуем чек
+    if (status === "paid") {
+      const company = companies.find(c => c.demo_id === demoId);
+      if (company) { setReceiptFor(company); return; }
+    }
     setCompanies(prev => prev.map(c => c.demo_id === demoId ? { ...c, status } : c));
     await fetch(`${AUTH_URL}?action=admin-update-demo`, {
       method: "POST",
@@ -179,6 +186,19 @@ export function WLPipeline({ refreshTrigger, onOpenPanel, onRunApiTests }: Props
           onDelete={handleDelete}
           onOpenPanel={(p, tok) => { setSelected(null); onOpenPanel(p, tok); }}
           onRunApiTests={(cid) => { setSelected(null); onRunApiTests(cid); }}
+          onRequestReceipt={() => { setReceiptFor(selected); setSelected(null); }}
+        />
+      )}
+
+      {/* Модалка загрузки чека */}
+      {receiptFor && (
+        <WLReceiptModal
+          company={receiptFor}
+          onSuccess={(demoId) => {
+            setCompanies(prev => prev.map(c => c.demo_id === demoId ? { ...c, status: "paid" } : c));
+            setReceiptFor(null);
+          }}
+          onCancel={() => setReceiptFor(null)}
         />
       )}
     </div>

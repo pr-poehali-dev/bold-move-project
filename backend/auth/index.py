@@ -1635,4 +1635,72 @@ def handler(event: dict, context) -> dict:
         conn.commit()
         return ok({"ok": True})
 
+    # ── Мастер: загрузить чек оплаты и перевести в статус paid ───────────────
+    if action == "admin-upload-receipt" and method == "POST":
+        if not token:
+            return err("Требуется авторизация", 401)
+        cur.execute(f"""
+            SELECT u.email FROM {SCHEMA}.user_sessions s
+            JOIN {SCHEMA}.users u ON u.id = s.user_id
+            WHERE s.token=%s AND s.expires_at > NOW()
+        """, (token,))
+        row = cur.fetchone()
+        if not row or row[0] != "19.jeka.94@gmail.com":
+            return err("Доступ только для мастера", 403)
+
+        demo_id      = body.get("demo_id")
+        image_b64    = body.get("image_b64", "")
+        image_ext    = body.get("image_ext", "jpg")
+        company_name = body.get("company_name", "Компания")
+        company_cid  = body.get("company_id", "")
+
+        if not demo_id or not image_b64:
+            return err("demo_id и image_b64 обязательны")
+
+        # Загружаем чек в S3
+        import base64, boto3, urllib.request as _ureq
+        img_bytes = base64.b64decode(image_b64)
+        s3 = boto3.client(
+            "s3",
+            endpoint_url="https://bucket.poehali.dev",
+            aws_access_key_id=os.environ["AWS_ACCESS_KEY_ID"],
+            aws_secret_access_key=os.environ["AWS_SECRET_ACCESS_KEY"],
+        )
+        key = f"receipts/receipt_{demo_id}_{secrets.token_hex(4)}.{image_ext}"
+        ct  = "image/jpeg" if image_ext in ("jpg", "jpeg") else "image/png" if image_ext == "png" else "application/octet-stream"
+        s3.put_object(Bucket="files", Key=key, Body=img_bytes, ContentType=ct)
+        cdn_url = f"https://cdn.poehali.dev/projects/{os.environ['AWS_ACCESS_KEY_ID']}/bucket/{key}"
+
+        # Сохраняем URL и меняем статус
+        cur.execute(f"""
+            UPDATE {SCHEMA}.demo_companies
+            SET payment_receipt_url=%s, status='paid'
+            WHERE id=%s
+        """, (cdn_url, int(demo_id)))
+        conn.commit()
+
+        # Отправляем фото в Telegram
+        tg_token = os.environ.get("TELEGRAM_BOT_TOKEN", "")
+        tg_chat  = os.environ.get("TELEGRAM_OWNER_CHAT_ID", "")
+        if tg_token and tg_chat:
+            caption = f"💰 Оплатили агента!\n\n🏢 {company_name}\nID #{company_cid}\n\nЧек приложен."
+            try:
+                import json as _json
+                payload = _json.dumps({
+                    "chat_id": tg_chat,
+                    "photo":   cdn_url,
+                    "caption": caption,
+                }).encode()
+                req = _ureq.Request(
+                    f"https://api.telegram.org/bot{tg_token}/sendPhoto",
+                    data=payload,
+                    headers={"Content-Type": "application/json"},
+                    method="POST",
+                )
+                _ureq.urlopen(req, timeout=10)
+            except Exception as e:
+                print(f"[receipt] TG send error: {e}")
+
+        return ok({"ok": True, "receipt_url": cdn_url})
+
     return err("Неизвестное действие", 404)

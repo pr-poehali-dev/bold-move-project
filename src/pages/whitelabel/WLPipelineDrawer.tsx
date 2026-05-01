@@ -10,6 +10,7 @@ interface Props {
   onDelete: () => void;
   onOpenPanel: (p: PanelView, token?: string) => void;
   onRunApiTests: (cid: number) => void;
+  onRequestReceipt?: () => void;
 }
 
 const masterToken = () => localStorage.getItem("mp_user_token") || "";
@@ -52,7 +53,7 @@ function Field({ label, value, onChange, type = "text", placeholder = "" }: {
   );
 }
 
-export function WLPipelineDrawer({ company, onClose, onUpdate, onDelete, onOpenPanel, onRunApiTests }: Props) {
+export function WLPipelineDrawer({ company, onClose, onUpdate, onDelete, onOpenPanel, onRunApiTests, onRequestReceipt }: Props) {
   const [form, setForm] = useState({
     status:           company.status,
     contact_name:     company.contact_name,
@@ -146,14 +147,21 @@ export function WLPipelineDrawer({ company, onClose, onUpdate, onDelete, onOpenP
             <div className="text-[10px] uppercase tracking-wider text-white/30 mb-2">Статус</div>
             <div className="flex flex-wrap gap-1.5">
               {DEMO_STATUSES.map(s => (
-                <button key={s.id} onClick={() => set("status")(s.id)}
-                  className="px-3 py-1.5 rounded-lg text-[11px] font-bold transition"
+                <button key={s.id} onClick={() => {
+                    if (s.id === "paid" && form.status !== "paid" && onRequestReceipt) {
+                      onRequestReceipt();
+                    } else {
+                      set("status")(s.id);
+                    }
+                  }}
+                  className="px-3 py-1.5 rounded-lg text-[11px] font-bold transition flex items-center gap-1"
                   style={{
                     background: form.status === s.id ? s.bg : "rgba(255,255,255,0.04)",
                     color:      form.status === s.id ? s.color : "rgba(255,255,255,0.3)",
                     border:     `1px solid ${form.status === s.id ? s.color + "50" : "transparent"}`,
                   }}>
                   {s.label}
+                  {s.id === "paid" && form.status !== "paid" && <Icon name="Receipt" size={9} />}
                 </button>
               ))}
             </div>
