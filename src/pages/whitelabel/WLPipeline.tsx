@@ -14,6 +14,7 @@ interface Props {
 }
 
 type ViewMode = "kanban" | "list";
+type Tab = "companies" | "tasks";
 
 const masterToken = () => localStorage.getItem("mp_user_token") || "";
 
@@ -21,6 +22,7 @@ export function WLPipeline({ refreshTrigger, onOpenPanel, onRunApiTests }: Props
   const [companies, setCompanies] = useState<DemoPipelineCompany[]>([]);
   const [loading,   setLoading]   = useState(false);
   const [view,      setView]      = useState<ViewMode>("list");
+  const [tab,       setTab]       = useState<Tab>("companies");
   const [filter,    setFilter]    = useState<DemoStatus | "all">("all");
   const [selected,  setSelected]  = useState<DemoPipelineCompany | null>(null);
 
@@ -58,6 +60,18 @@ export function WLPipeline({ refreshTrigger, onOpenPanel, onRunApiTests }: Props
     setCompanies(prev => prev.filter(c => c.demo_id !== selected.demo_id));
   };
 
+  // Считаем задачи для бейджа
+  const now = new Date();
+  const today0 = new Date(now); today0.setHours(0, 0, 0, 0);
+  const sevenDaysAgo = new Date(now); sevenDaysAgo.setDate(now.getDate() - 7);
+  const end7 = new Date(now); end7.setDate(now.getDate() + 6); end7.setHours(23, 59, 59, 999);
+  const tasksCount = companies.filter(c => {
+    if (c.status === "rejected") return false;
+    if (!c.next_action_date) return true; // нет даты — нет действий
+    const d = new Date(c.next_action_date);
+    return d < sevenDaysAgo || (d >= today0 && d <= end7);
+  }).length;
+
   if (loading && companies.length === 0) {
     return (
       <div className="flex items-center gap-2 text-white/30 text-xs py-4">
@@ -69,8 +83,8 @@ export function WLPipeline({ refreshTrigger, onOpenPanel, onRunApiTests }: Props
 
   return (
     <div>
-      {/* Заголовок + переключатель */}
-      <div className="flex items-center gap-3 mb-1">
+      {/* Заголовок */}
+      <div className="flex items-center gap-3 mb-3">
         <div className="flex items-center gap-2">
           <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: "#8b5cf620" }}>
             <Icon name="Kanban" size={14} style={{ color: "#8b5cf6" }} />
@@ -81,52 +95,81 @@ export function WLPipeline({ refreshTrigger, onOpenPanel, onRunApiTests }: Props
         </div>
 
         <div className="ml-auto flex items-center gap-2">
-          {/* Переключатель вид */}
-          <div className="flex items-center rounded-lg overflow-hidden" style={{ border: "1px solid rgba(255,255,255,0.08)" }}>
-            {([["kanban", "Kanban"], ["list", "List"]] as [ViewMode, string][]).map(([id, icon]) => (
-              <button key={id} onClick={() => setView(id)}
-                className="px-3 py-1.5 text-[10px] font-bold transition flex items-center gap-1"
-                style={{
-                  background: view === id ? "rgba(139,92,246,0.2)" : "transparent",
-                  color:      view === id ? "#a78bfa" : "rgba(255,255,255,0.3)",
-                }}>
-                <Icon name={id === "kanban" ? "LayoutGrid" : "List"} size={11} />
-                {icon}
-              </button>
-            ))}
-          </div>
+          {/* Переключатель вид — только для вкладки Компании */}
+          {tab === "companies" && (
+            <div className="flex items-center rounded-lg overflow-hidden" style={{ border: "1px solid rgba(255,255,255,0.08)" }}>
+              {([["kanban", "Kanban"], ["list", "List"]] as [ViewMode, string][]).map(([id, label]) => (
+                <button key={id} onClick={() => setView(id)}
+                  className="px-3 py-1.5 text-[10px] font-bold transition flex items-center gap-1"
+                  style={{
+                    background: view === id ? "rgba(139,92,246,0.2)" : "transparent",
+                    color:      view === id ? "#a78bfa" : "rgba(255,255,255,0.3)",
+                  }}>
+                  <Icon name={id === "kanban" ? "LayoutGrid" : "List"} size={11} />
+                  {label}
+                </button>
+              ))}
+            </div>
+          )}
           <button onClick={load} className="text-[10px] text-white/30 hover:text-white/60 transition flex items-center gap-1">
             <Icon name="RefreshCw" size={10} /> Обновить
           </button>
         </div>
       </div>
 
-      {companies.length === 0 && !loading ? (
-        <div className="text-center py-10 text-white/20 text-sm">
-          Нет спарсенных компаний — запусти парсер выше
-        </div>
-      ) : view === "kanban" ? (
-        <WLPipelineKanban
-          companies={companies}
-          onSelect={setSelected}
-          onMove={handleMove}
-        />
-      ) : (
-        <WLPipelineList
-          companies={companies}
-          filterStatus={filter}
-          onFilterChange={setFilter}
-          onSelect={setSelected}
-          onOpenPanel={onOpenPanel}
-          onRunApiTests={onRunApiTests}
-        />
+      {/* Вкладки */}
+      <div className="flex items-center gap-1 mb-4 p-1 rounded-xl" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)" }}>
+        <button onClick={() => setTab("companies")}
+          className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-[11px] font-bold transition"
+          style={{
+            background: tab === "companies" ? "rgba(139,92,246,0.2)" : "transparent",
+            color:      tab === "companies" ? "#a78bfa" : "rgba(255,255,255,0.3)",
+          }}>
+          <Icon name="Building2" size={12} /> Компании
+        </button>
+        <button onClick={() => setTab("tasks")}
+          className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-[11px] font-bold transition"
+          style={{
+            background: tab === "tasks" ? "rgba(245,158,11,0.15)" : "transparent",
+            color:      tab === "tasks" ? "#f59e0b" : "rgba(255,255,255,0.3)",
+          }}>
+          <Icon name="Target" size={12} /> Задачи
+          {tasksCount > 0 && (
+            <span className="text-[9px] px-1.5 py-0.5 rounded-full font-bold"
+              style={{ background: tab === "tasks" ? "rgba(245,158,11,0.25)" : "rgba(245,158,11,0.15)", color: "#f59e0b" }}>
+              {tasksCount}
+            </span>
+          )}
+        </button>
+      </div>
+
+      {/* Контент вкладки Компании */}
+      {tab === "companies" && (
+        companies.length === 0 && !loading ? (
+          <div className="text-center py-10 text-white/20 text-sm">
+            Нет спарсенных компаний — запусти парсер выше
+          </div>
+        ) : view === "kanban" ? (
+          <WLPipelineKanban
+            companies={companies}
+            onSelect={setSelected}
+            onMove={handleMove}
+          />
+        ) : (
+          <WLPipelineList
+            companies={companies}
+            filterStatus={filter}
+            onFilterChange={setFilter}
+            onSelect={setSelected}
+            onOpenPanel={onOpenPanel}
+            onRunApiTests={onRunApiTests}
+          />
+        )
       )}
 
-      {/* Ближайшие шаги — после списка/канбана */}
-      {companies.length > 0 && (
-        <div className="mt-4">
-          <WLPipelineEvents companies={companies} onSelect={setSelected} />
-        </div>
+      {/* Контент вкладки Задачи */}
+      {tab === "tasks" && (
+        <WLPipelineEvents companies={companies} onSelect={setSelected} />
       )}
 
       {/* Drawer */}
