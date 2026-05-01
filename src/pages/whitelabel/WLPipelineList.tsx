@@ -178,6 +178,32 @@ export function WLPipelineList({ companies, filterStatus, onFilterChange, onSele
                   )}
                 </div>
 
+                {/* Незаполненные поля бренда — пилюли */}
+                {(() => {
+                  const missing: { key: string; label: string }[] = [];
+                  if (!c.support_phone) missing.push({ key: "phone",    label: "Телефон" });
+                  if (!c.brand_color)   missing.push({ key: "color",    label: "Цвет" });
+                  if (!c.brand_logo_url) missing.push({ key: "logo",   label: "Логотип" });
+                  if (!c.bot_name)      missing.push({ key: "bot",     label: "Имя бота" });
+                  if (missing.length === 0) return null;
+                  return (
+                    <div className="flex-1 flex flex-col gap-1 min-w-0 max-w-[180px]"
+                      onClick={e => e.stopPropagation()}>
+                      <div className="text-[9px] text-white/25 leading-none">Нужно заполнить</div>
+                      <div className="flex flex-wrap gap-1">
+                        {missing.map(m => (
+                          <button key={m.key}
+                            onClick={e => { e.stopPropagation(); onBrand(c.company_id); }}
+                            className="text-[9px] font-bold px-1.5 py-0.5 rounded-full transition hover:opacity-80"
+                            style={{ background: "rgba(239,68,68,0.15)", color: "#ef4444", border: "1px solid rgba(239,68,68,0.3)" }}>
+                            {m.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })()}
+
                 {/* Демо: дней осталось (10 дней с создания) */}
                 {(() => {
                   const DEMO_DAYS = 10;
