@@ -5,6 +5,33 @@ import { Client, crmFetch } from "./crmApi";
 import { CustomFinRow } from "./drawerTypes";
 import { AUTH_URL, EstimateBlock, parseValue, fmt as fmtEst, pricingRules } from "./estimateTypes";
 
+const RISK_LS_KEY = "discount_risk_settings";
+
+interface RiskSettings {
+  max_discount: number;
+  low_risk_threshold: number;
+  mid_risk_threshold: number;
+  min_margin: number;
+  warn_margin: number;
+  allow_zero_margin: boolean;
+}
+
+const RISK_DEFAULTS: RiskSettings = {
+  max_discount: 30,
+  low_risk_threshold: 10,
+  mid_risk_threshold: 20,
+  min_margin: 5,
+  warn_margin: 15,
+  allow_zero_margin: false,
+};
+
+function loadRiskSettings(): RiskSettings {
+  try {
+    const s = localStorage.getItem(RISK_LS_KEY);
+    return s ? { ...RISK_DEFAULTS, ...JSON.parse(s) } : RISK_DEFAULTS;
+  } catch { return RISK_DEFAULTS; }
+}
+
 interface Props {
   data: Client;
   customFinRows: CustomFinRow[];
@@ -17,6 +44,9 @@ export function DrawerDiscountBlock({ data, customFinRows, onContractSumUpdated 
   const [applying, setApplying] = useState(false);
   const [applied,  setApplied]  = useState(false);
   const fmt = (n: number) => Math.round(n).toLocaleString("ru-RU");
+
+  // Настройки управления риском из вкладки "Правила расчёта"
+  const risk = useMemo(() => loadRiskSettings(), []);
 
   const customCostRows = customFinRows
     .filter(r => r.block === "costs")
@@ -33,13 +63,20 @@ export function DrawerDiscountBlock({ data, customFinRows, onContractSumUpdated 
   const baseIncome = (Number(data.contract_sum) || 0)
     + customIncomeRows.reduce((s, r) => s + r.value, 0);
 
-  const maxSafeDiscount = useMemo(() => {
+  // Точка безубыточности — реальный максимум из данных заказа
+  const breakEvenDiscount = useMemo(() => {
     if (baseIncome <= 0) return 0;
     const d = (1 - plCosts / baseIncome) * 100;
     return Math.max(0, Math.floor(d * 10) / 10);
   }, [baseIncome, plCosts]);
 
-  const recommendedDiscount = Math.max(0, Math.floor(maxSafeDiscount * 0.82 * 10) / 10);
+  // Пороги зон из настроек управления риском (адаптируем к реальной безубыточности)
+  // Если настройки больше реальной безубыточности — обрезаем
+  const zoneLow  = Math.min(risk.low_risk_threshold,  breakEvenDiscount * 0.6);
+  const zoneMid  = Math.min(risk.mid_risk_threshold,  breakEvenDiscount * 0.85);
+  const zoneMax  = Math.min(risk.max_discount,        breakEvenDiscount);
+  // sliderMax = максимум из настроек, но не выше безубыточности
+  const sliderMax = Math.round(zoneMax * 10) / 10;
 
   const discountedIncome = baseIncome * (1 - discount / 100);
   const discountedProfit = discountedIncome - plCosts;
@@ -47,13 +84,20 @@ export function DrawerDiscountBlock({ data, customFinRows, onContractSumUpdated 
     ? Math.round((discountedProfit / discountedIncome) * 100)
     : 0;
 
-  const isNegative = discountedProfit < 0;
-  const isWarning  = discountedMargin < 10 && !isNegative;
-  const accentColor = isNegative ? "#ef4444" : "#f59e0b";
+  const isNegative = discountedProfit < 0 || (!risk.allow_zero_margin && discountedMargin < risk.min_margin);
+  const isWarning  = !isNegative && discountedMargin < risk.warn_margin;
+  // Зона текущей скидки
+  const currentZone = discount === 0 ? "none"
+    : discount <= zoneLow ? "low"
+    : discount <= zoneMid ? "mid"
+    : "high";
+
+  const accentColor = isNegative ? "#ef4444"
+    : currentZone === "low" ? "#10b981"
+    : currentZone === "mid" ? "#f59e0b"
+    : "#ef4444";
   const bgColor     = isNegative ? "#ef444412" : "#f59e0b10";
   const borderColor = isNegative ? "#ef444430" : "#f59e0b25";
-
-  const sliderMax = Math.min(50, Math.ceil(maxSafeDiscount * 1.5) || 30);
 
   // Применить скидку к позициям сметы
   const applyDiscount = async () => {
@@ -129,10 +173,10 @@ export function DrawerDiscountBlock({ data, customFinRows, onContractSumUpdated 
         <span className="text-xs font-bold uppercase tracking-wider flex-1" style={{ color: accentColor }}>
           Оценка риска скидки
         </span>
-        {maxSafeDiscount > 0 && (
+        {zoneMax > 0 && (
           <span className="text-[10px] font-bold px-2 py-0.5 rounded-full"
             style={{ background: "#f59e0b20", color: "#f59e0b" }}>
-            можно до {maxSafeDiscount}%
+            можно до {zoneMax}%
           </span>
         )}
       </div>
@@ -184,7 +228,10 @@ export function DrawerDiscountBlock({ data, customFinRows, onContractSumUpdated 
           <div className="flex items-center gap-2 px-3 py-2.5 rounded-xl"
             style={{ background: "#f59e0b15", border: "1px solid #f59e0b30" }}>
             <Icon name="AlertCircle" size={14} style={{ color: "#f59e0b", flexShrink: 0 }} />
-            <div className="text-[10px] text-yellow-300/80">Маржа ниже 10% — скидка рискованная</div>
+            <div className="text-[10px] text-yellow-300/80">
+              Маржа ниже {risk.warn_margin}% — скидка рискованная
+              {currentZone === "high" && " (высокий риск по правилам)"}
+            </div>
           </div>
         )}
         {applied && (
@@ -197,14 +244,12 @@ export function DrawerDiscountBlock({ data, customFinRows, onContractSumUpdated 
 
         {/* Шкала + слайдер */}
         <div className="space-y-1">
-          {/* Цветная шкала зон */}
+          {/* Цветная шкала зон из настроек управления риском */}
           <div className="relative h-7 rounded-lg overflow-hidden flex">
             {(() => {
-              const low  = recommendedDiscount;
-              const mid  = maxSafeDiscount;
-              const max  = sliderMax;
-              const lowPct  = Math.min(100, (low / max) * 100);
-              const midPct  = Math.min(100 - lowPct, ((mid - low) / max) * 100);
+              const max     = sliderMax || 1;
+              const lowPct  = Math.min(100, (zoneLow / max) * 100);
+              const midPct  = Math.min(100 - lowPct, ((zoneMid - zoneLow) / max) * 100);
               const highPct = 100 - lowPct - midPct;
               return (
                 <>
@@ -225,24 +270,21 @@ export function DrawerDiscountBlock({ data, customFinRows, onContractSumUpdated 
             })()}
           </div>
 
-          {/* Метки границ */}
+          {/* Метки границ зон */}
           <div className="relative h-4">
             <span className="absolute left-0 text-[9px] text-white/30">0%</span>
-            {(() => {
-              const low = recommendedDiscount;
-              const mid = maxSafeDiscount;
-              const max = sliderMax;
-              const lowPct = Math.min(98, (low / max) * 100);
-              const midPct = Math.min(98, (mid / max) * 100);
+            {sliderMax > 0 && (() => {
+              const lowPct = Math.min(96, (zoneLow / sliderMax) * 100);
+              const midPct = Math.min(96, (zoneMid / sliderMax) * 100);
               return (
                 <>
                   <span className="absolute text-[9px] font-bold"
                     style={{ left: `${lowPct}%`, color: "#f59e0b", transform: "translateX(-50%)" }}>
-                    ↑ {low}%
+                    ↑ {Math.round(zoneLow * 10) / 10}%
                   </span>
                   <span className="absolute text-[9px] font-bold"
                     style={{ left: `${midPct}%`, color: "#ef4444", transform: "translateX(-50%)" }}>
-                    ↑ {mid}%
+                    ↑ {Math.round(zoneMid * 10) / 10}%
                   </span>
                 </>
               );
@@ -250,22 +292,29 @@ export function DrawerDiscountBlock({ data, customFinRows, onContractSumUpdated 
             <span className="absolute right-0 text-[9px] text-white/30">max {sliderMax}%</span>
           </div>
 
-          {/* Слайдер поверх шкалы */}
+          {/* Слайдер */}
           <div className="relative" style={{ marginTop: -4 }}>
             <input
-              type="range" min={0} max={sliderMax} step={0.5} value={discount}
+              type="range" min={0} max={sliderMax || 1} step={0.5} value={discount}
               onChange={e => { setDiscount(Number(e.target.value)); setApplied(false); }}
               className="w-full cursor-pointer relative z-10"
-              style={{ accentColor: isNegative ? "#ef4444" : discount <= recommendedDiscount ? "#10b981" : discount <= maxSafeDiscount ? "#f59e0b" : "#ef4444", height: 4, background: "transparent" }}
+              style={{
+                accentColor: isNegative ? "#ef4444"
+                  : currentZone === "low"  ? "#10b981"
+                  : currentZone === "mid"  ? "#f59e0b"
+                  : currentZone === "high" ? "#ef4444"
+                  : "#10b981",
+                height: 4, background: "transparent",
+              }}
             />
           </div>
 
-          {/* Легенда */}
-          <div className="flex gap-4 pt-1">
+          {/* Легенда с реальными значениями из настроек */}
+          <div className="flex flex-wrap gap-3 pt-1">
             {[
-              { color: "#10b981", label: "Низкий риск",  range: `0–${recommendedDiscount}%` },
-              { color: "#f59e0b", label: "Средний риск", range: `${recommendedDiscount}–${maxSafeDiscount}%` },
-              { color: "#ef4444", label: "Высокий риск", range: `${maxSafeDiscount}–${sliderMax}%` },
+              { color: "#10b981", label: "Низкий риск",  range: `0–${Math.round(zoneLow * 10) / 10}%` },
+              { color: "#f59e0b", label: "Средний риск", range: `${Math.round(zoneLow * 10) / 10}–${Math.round(zoneMid * 10) / 10}%` },
+              { color: "#ef4444", label: "Высокий риск", range: `${Math.round(zoneMid * 10) / 10}–${sliderMax}%` },
             ].map(z => (
               <div key={z.color} className="flex items-center gap-1.5">
                 <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: z.color }} />
