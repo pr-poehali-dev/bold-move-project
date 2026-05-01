@@ -2252,4 +2252,64 @@ def handler(event: dict, context) -> dict:
         conn.commit()
         return ok({"ok": True})
 
+    # ── CRM: AI оценка риска скидки по позициям сметы ────────────────────────
+    if action == "crm-risk-ai" and method == "POST":
+        items = body.get("items", [])
+        max_discount = body.get("max_discount", 30)
+        if not items:
+            return err("items обязателен")
+
+        prompt = (
+            f"Ты эксперт по монтажу натяжных потолков. Оцени сложность монтажа "
+            f"по позициям сметы и рекомендуй оптимальную скидку клиенту.\n\n"
+            f"Позиции сметы:\n"
+            + "\n".join(f"{i+1}. {it}" for i, it in enumerate(items[:40]))
+            + f"\n\nМаксимально допустимая скидка: {max_discount}%\n\n"
+            f"Оцени риски монтажа и предложи безопасную скидку. "
+            f"Чем сложнее объект — тем меньше скидка.\n\n"
+            f"Ответь строго в JSON без markdown:\n"
+            f'{{"level":"low|mid|high",'
+            f'"recommended_discount":число от 0 до {max_discount},'
+            f'"reason":"краткое объяснение (1-2 предложения)",'
+            f'"items":["риск 1","риск 2"]}}'
+        )
+
+        or_key = os.environ.get("OPENROUTER_API_KEY_2", "") or os.environ.get("OPENROUTER_API_KEY", "")
+        if not or_key:
+            return err("AI недоступен — нет ключа")
+
+        import urllib.request as _req2
+        payload = json.dumps({
+            "model": "openai/gpt-4o-mini",
+            "messages": [
+                {"role": "system", "content": "Отвечай только JSON без markdown."},
+                {"role": "user", "content": prompt},
+            ],
+            "max_tokens": 400,
+            "temperature": 0,
+        }).encode()
+        req2 = _req2.Request(
+            "https://openrouter.ai/api/v1/chat/completions",
+            data=payload,
+            headers={
+                "Authorization": f"Bearer {or_key}",
+                "Content-Type": "application/json",
+                "HTTP-Referer": "https://mospotolki.ru",
+            },
+            method="POST",
+        )
+        try:
+            with _req2.urlopen(req2, timeout=30) as r2:
+                ai_resp = json.loads(r2.read().decode())
+            content = ai_resp["choices"][0]["message"]["content"]
+            # Вытаскиваем JSON из ответа
+            import re as _re
+            m = _re.search(r'\{[\s\S]*\}', content)
+            if not m:
+                return err("AI вернул неожиданный формат")
+            result = json.loads(m.group(0))
+            return ok(result)
+        except Exception as e:
+            return err(f"AI ошибка: {str(e)[:100]}")
+
     return err("Неизвестное действие", 404)

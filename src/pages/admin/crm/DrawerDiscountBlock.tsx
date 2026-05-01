@@ -144,33 +144,15 @@ export function DrawerDiscountBlock({ data, customFinRows, onContractSumUpdated 
       if (items.length === 0) { setAiError("Смета пустая — нечего анализировать"); setAiLoading(false); return; }
 
       const maxDiscount = effectiveMax || risk.max_discount;
-      const prompt = `Ты эксперт по монтажу натяжных потолков. Оцени сложность монтажа по позициям сметы и рекомендуй оптимальную скидку клиенту.
 
-Позиции сметы:
-${items.map((it, i) => `${i + 1}. ${it}`).join("\n")}
-
-Максимально допустимая скидка: ${maxDiscount}%
-
-Оцени риски монтажа и предложи безопасную скидку. Чем сложнее объект — тем меньше скидка.
-
-Ответь строго в JSON формате:
-{
-  "level": "low" | "mid" | "high",
-  "recommended_discount": число от 0 до ${maxDiscount} (рекомендуемая скидка %),
-  "reason": "краткое объяснение на русском (1-2 предложения)",
-  "items": ["риск 1", "риск 2"] (конкретные риски из позиций, максимум 3)
-}`;
-
-      const aiRes = await fetch(`${AUTH_URL}?action=ai-chat`, {
+      const aiRes = await fetch(`${AUTH_URL}?action=crm-risk-ai`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: prompt, system: "Отвечай только JSON без markdown." }),
+        body: JSON.stringify({ items, max_discount: maxDiscount }),
       }).then(r => r.json());
 
-      const text = aiRes.reply || aiRes.message || "";
-      const jsonMatch = text.match(/\{[\s\S]*\}/);
-      if (!jsonMatch) throw new Error("Не удалось разобрать ответ AI");
-      const parsed: AiRisk = JSON.parse(jsonMatch[0]);
+      if (aiRes.error) throw new Error(aiRes.error);
+      const parsed: AiRisk = aiRes;
       setAiRisk(parsed);
       // AI сразу выставляет основной слайдер скидки
       const rec = Math.min(parsed.recommended_discount ?? 0, effectiveMax || risk.max_discount);
@@ -246,12 +228,7 @@ ${items.map((it, i) => `${i + 1}. ${it}`).join("\n")}
             : <><Icon name="Sparkles" size={11} /> Оценить AI</>
           }
         </button>
-        {effectiveMax > 0 && (
-          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full"
-            style={{ background: "#f59e0b20", color: "#f59e0b" }}>
-            можно до {effectiveMax}%
-          </span>
-        )}
+
       </div>
 
       <div className="px-4 py-4 space-y-4">
