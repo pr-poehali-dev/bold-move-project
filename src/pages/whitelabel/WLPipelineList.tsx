@@ -205,6 +205,14 @@ export function WLPipelineList({ companies, filterStatus, onFilterChange, onSele
                             {m.label}
                           </button>
                         ))}
+                        {(!c.contact_name || !c.contact_phone || !c.contact_position) && (
+                          <button
+                            onClick={e => { e.stopPropagation(); setLprFor(c); }}
+                            className="text-[9px] font-bold px-1.5 py-0.5 rounded-full transition hover:opacity-80"
+                            style={{ background: "rgba(239,68,68,0.15)", color: "#ef4444", border: "1px solid rgba(239,68,68,0.3)" }}>
+                            ЛПР
+                          </button>
+                        )}
                       </div>
                     </div>
                   );
