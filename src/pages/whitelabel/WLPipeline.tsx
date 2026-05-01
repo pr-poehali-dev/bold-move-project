@@ -34,15 +34,10 @@ export function WLPipeline({ refreshTrigger, onOpenPanel, onRunApiTests }: Props
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const wlTok  = localStorage.getItem("wl_manager_token");
-      const mpTok  = localStorage.getItem("mp_user_token");
-      const usedTok = getWLToken(isMaster);
-      console.warn(`[WL] isMaster=${isMaster} wl=${wlTok?.slice(0,6)} mp=${mpTok?.slice(0,6)} used=${usedTok.slice(0,6)}`);
       const r = await fetch(`${AUTH_URL}?action=admin-demo-companies`, {
-        headers: { "X-Authorization": usedTok },
+        headers: { "X-Authorization": getWLToken(isMaster) },
       });
       const d = await r.json();
-      console.warn(`[WL] response count=${d.companies?.length} error=${d.error}`);
       setCompanies((d.companies || []).filter((c: DemoPipelineCompany) => !c.deleted));
     } finally { setLoading(false); }
   }, [isMaster]);
@@ -87,13 +82,13 @@ export function WLPipeline({ refreshTrigger, onOpenPanel, onRunApiTests }: Props
   // Считаем задачи для бейджа
   const now = new Date();
   const today0 = new Date(now); today0.setHours(0, 0, 0, 0);
-  const sevenDaysAgo = new Date(now); sevenDaysAgo.setDate(now.getDate() - 7);
-  const end7 = new Date(now); end7.setDate(now.getDate() + 6); end7.setHours(23, 59, 59, 999);
+  const today23 = new Date(now); today23.setHours(23, 59, 59, 999);
+  // Счётчик = просроченные + на сегодня (без компаний без даты)
   const tasksCount = companies.filter(c => {
     if (c.status === "rejected") return false;
-    if (!c.next_action_date) return true; // нет даты — нет действий
+    if (!c.next_action_date) return false;
     const d = new Date(c.next_action_date);
-    return d < sevenDaysAgo || (d >= today0 && d <= end7);
+    return d <= today23; // просроченные или сегодня
   }).length;
 
   if (loading && companies.length === 0) {

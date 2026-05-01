@@ -33,7 +33,7 @@ function fmtDate(iso: string): { label: string; isToday: boolean; isOverdue: boo
 }
 
 export function WLPipelineEvents({ companies, onSelect }: Props) {
-  const [range,     setRange]     = useState<Range>(7);
+  const [range,     setRange]     = useState<Range>(1);
   const [collapsed, setCollapsed] = useState(false);
 
   const now = new Date();
