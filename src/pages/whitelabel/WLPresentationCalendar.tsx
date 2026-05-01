@@ -18,7 +18,7 @@ interface Presentation {
 }
 
 interface Props {
-  onMarkDone: (demoId: number, nextActionDate?: string) => void;
+  onMarkDone?: (demoId: number, nextActionDate?: string) => void;
   onReschedule: (p: Presentation) => void;
 }
 
@@ -45,7 +45,6 @@ export function WLPresentationCalendar({ onMarkDone, onReschedule }: Props) {
   const [presentations, setPres] = useState<Presentation[]>([]);
   const [loading, setLoading] = useState(false);
   const [selected, setSelected] = useState<Presentation | null>(null);
-  const [marking, setMarking]   = useState<number | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -63,20 +62,6 @@ export function WLPresentationCalendar({ onMarkDone, onReschedule }: Props) {
   const nextMonth = () => { if (month === 12) { setMonth(1); setYear(y => y + 1); } else setMonth(m => m + 1); };
   const prevWeek  = () => { const d = new Date(weekStart); d.setDate(d.getDate() - 7); setWeekStart(d); };
   const nextWeek  = () => { const d = new Date(weekStart); d.setDate(d.getDate() + 7); setWeekStart(d); };
-
-  const markDone = async (p: Presentation) => {
-    if (!confirm(`Подтвердить что показ «${p.company_name}» проведён?`)) return;
-    setMarking(p.demo_id);
-    const r = await fetch(`${AUTH_URL}?action=demo-mark-presented`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "X-Authorization": masterToken() },
-      body: JSON.stringify({ demo_id: p.demo_id }),
-    });
-    const d = await r.json();
-    setMarking(null);
-    onMarkDone(p.demo_id, d.next_action_date);
-    load();
-  };
 
   // ── Неделя ────────────────────────────────────────────────────────────────
   const weekDays = Array.from({ length: 7 }, (_, i) => {
@@ -199,10 +184,8 @@ export function WLPresentationCalendar({ onMarkDone, onReschedule }: Props) {
                   {items.length === 0 ? (
                     <div className="text-center pt-4 text-[9px] text-white/10">—</div>
                   ) : items.map(p => (
-                    <PresentationCard key={p.id} p={p} compact
+                    <PresentationCard key={p.id} p={p}
                       onSelect={() => setSelected(p)}
-                      onMarkDone={() => markDone(p)}
-                      marking={marking === p.demo_id}
                     />
                   ))}
                 </div>
@@ -237,10 +220,8 @@ export function WLPresentationCalendar({ onMarkDone, onReschedule }: Props) {
                         {day}
                       </div>
                       {items.slice(0, 2).map(p => (
-                        <PresentationCard key={p.id} p={p} compact mini
+                        <PresentationCard key={p.id} p={p} mini
                           onSelect={() => setSelected(p)}
-                          onMarkDone={() => markDone(p)}
-                          marking={marking === p.demo_id}
                         />
                       ))}
                       {items.length > 2 && (
@@ -307,22 +288,14 @@ export function WLPresentationCalendar({ onMarkDone, onReschedule }: Props) {
               )}
               <div className="flex gap-2 pt-1">
                 {selected.status === "scheduled" && (
-                  <>
-                    <button onClick={() => { setSelected(null); onReschedule(selected); }}
-                      className="flex-1 py-2 rounded-xl text-[11px] font-bold transition hover:opacity-80"
-                      style={{ background: "rgba(255,255,255,0.05)", color: "rgba(255,255,255,0.5)", border: "1px solid rgba(255,255,255,0.1)" }}>
-                      <Icon name="CalendarArrowUp" size={11} /> Перенести
-                    </button>
-                    <button onClick={() => { setSelected(null); markDone(selected); }}
-                      disabled={marking === selected.demo_id}
-                      className="flex-1 py-2 rounded-xl text-[11px] font-bold transition disabled:opacity-50"
-                      style={{ background: "rgba(16,185,129,0.2)", color: "#10b981", border: "1px solid rgba(16,185,129,0.4)" }}>
-                      <Icon name="CheckCircle2" size={11} /> Провёл показ
-                    </button>
-                  </>
+                  <button onClick={() => { setSelected(null); onReschedule(selected); }}
+                    className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-[11px] font-bold transition hover:opacity-80"
+                    style={{ background: "rgba(255,255,255,0.05)", color: "rgba(255,255,255,0.5)", border: "1px solid rgba(255,255,255,0.1)" }}>
+                    <Icon name="CalendarArrowUp" size={11} /> Перенести
+                  </button>
                 )}
                 {selected.status === "done" && (
-                  <div className="flex-1 py-2 rounded-xl text-center text-[11px] font-bold"
+                  <div className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-[11px] font-bold"
                     style={{ background: "rgba(16,185,129,0.08)", color: "#10b981" }}>
                     <Icon name="CheckCircle2" size={11} /> Показ проведён
                   </div>
@@ -337,9 +310,9 @@ export function WLPresentationCalendar({ onMarkDone, onReschedule }: Props) {
 }
 
 /* ─── Карточка показа ───────────────────────────────────────────────────── */
-function PresentationCard({ p, compact, mini, onSelect, onMarkDone, marking }: {
-  p: Presentation; compact?: boolean; mini?: boolean;
-  onSelect: () => void; onMarkDone: () => void; marking: boolean;
+function PresentationCard({ p, mini, onSelect }: {
+  p: Presentation; mini?: boolean;
+  onSelect: () => void;
 }) {
   const time = new Date(p.scheduled_at).toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" });
   const done = p.status === "done";
@@ -363,14 +336,6 @@ function PresentationCard({ p, compact, mini, onSelect, onMarkDone, marking }: {
       </div>
       {!mini && p.contact_name && (
         <div className="text-[9px] text-white/30 truncate mt-0.5">{p.contact_name}</div>
-      )}
-      {!done && !mini && (
-        <button onClick={e => { e.stopPropagation(); onMarkDone(); }}
-          disabled={marking}
-          className="mt-1 w-full py-0.5 rounded text-[9px] font-bold transition disabled:opacity-50"
-          style={{ background: "rgba(16,185,129,0.15)", color: "#10b981" }}>
-          {marking ? "..." : "✓ Провёл"}
-        </button>
       )}
       {done && !mini && (
         <div className="mt-1 text-[9px] font-bold" style={{ color: "#10b981" }}>✓ Проведён</div>
