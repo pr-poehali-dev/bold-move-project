@@ -127,7 +127,7 @@ export function WLNextStepModal({ company, newStatus, onSuccess, onCancel }: Pro
     } else {
       const finalAction = action.trim();
       const patch = isRejected
-        ? { status: "rejected" as DemoStatus, notes: reason.trim() }
+        ? { status: "rejected" as DemoStatus, notes: reason.trim(), next_action: "", next_action_date: "" }
         : { status: newStatus, next_action: finalAction, next_action_date: date, notes: notes.trim() };
 
       await fetch(`${AUTH_URL}?action=admin-update-demo`, {
