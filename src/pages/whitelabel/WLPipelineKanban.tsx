@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import Icon from "@/components/ui/icon";
 import type { DemoPipelineCompany, DemoStatus } from "./wlTypes";
+import { DEMO_STATUSES } from "./wlTypes";
 import { WLLprModal } from "./WLLprModal";
 import { WLKanbanMobile } from "./WLKanbanMobile";
 import { WLKanbanDesktop } from "./WLKanbanDesktop";
@@ -42,6 +43,23 @@ export function WLPipelineKanban({ companies, onSelect, onMove, onUpdate }: Prop
   const [lprFor,   setLprFor]   = useState<DemoPipelineCompany | null>(null);
   const [colWidth, setColWidth] = useState<number>(loadWidth);
   const [search,   setSearch]   = useState("");
+  const [useMobile, setUseMobile] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  // Динамически переключаем вид по реальной ширине контейнера
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const check = () => {
+      const gap = 12; // gap-3
+      const needed = DEMO_STATUSES.length * (colWidth + gap);
+      setUseMobile(el.offsetWidth < needed);
+    };
+    check();
+    const ro = new ResizeObserver(check);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [colWidth]);
 
   const dateRange = getRangeDates(range);
 
@@ -61,7 +79,7 @@ export function WLPipelineKanban({ companies, onSelect, onMove, onUpdate }: Prop
     : companies;
 
   return (
-    <div className="mt-4">
+    <div className="mt-4" ref={containerRef}>
       {/* Панель управления */}
       <div className="flex flex-wrap items-center gap-2 sm:gap-3 mb-4">
         {/* Фильтр по дате */}
@@ -86,8 +104,8 @@ export function WLPipelineKanban({ companies, onSelect, onMove, onUpdate }: Prop
           ))}
         </div>
 
-        {/* Слайдер ширины — только на десктопе */}
-        <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-xl"
+        {/* Слайдер ширины — только когда показан десктопный вид */}
+        <div className={`${useMobile ? "hidden" : "flex"} items-center gap-2 px-3 py-1.5 rounded-xl`}
           style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}>
           <Icon name="Columns" size={12} style={{ color: "rgba(255,255,255,0.3)" }} />
           <span className="text-[10px] text-white/30">Ширина</span>
@@ -110,8 +128,8 @@ export function WLPipelineKanban({ companies, onSelect, onMove, onUpdate }: Prop
         <span className="text-[10px] text-white/25 ml-auto">{filtered.length}</span>
       </div>
 
-      {/* Мобильный вид */}
-      <div className="sm:hidden">
+      {/* Переключаем вид по реальной ширине контейнера */}
+      {useMobile ? (
         <WLKanbanMobile
           filtered={filtered}
           dateRange={dateRange}
@@ -119,17 +137,16 @@ export function WLPipelineKanban({ companies, onSelect, onMove, onUpdate }: Prop
           onMove={onMove}
           onLpr={c => setLprFor(c)}
         />
-      </div>
-
-      {/* Десктопный вид */}
-      <WLKanbanDesktop
-        filtered={filtered}
-        dateRange={dateRange}
-        colWidth={colWidth}
-        onSelect={onSelect}
-        onMove={onMove}
-        onLpr={c => setLprFor(c)}
-      />
+      ) : (
+        <WLKanbanDesktop
+          filtered={filtered}
+          dateRange={dateRange}
+          colWidth={colWidth}
+          onSelect={onSelect}
+          onMove={onMove}
+          onLpr={c => setLprFor(c)}
+        />
+      )}
 
       {lprFor && (
         <WLLprModal

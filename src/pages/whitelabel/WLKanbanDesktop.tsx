@@ -22,7 +22,7 @@ export function WLKanbanDesktop({ filtered, dateRange, colWidth, onSelect, onMov
   };
 
   return (
-    <div className="hidden sm:flex gap-3 overflow-x-auto pb-4" style={{ alignItems: "flex-start" }}>
+    <div className="flex gap-3 overflow-x-auto pb-4" style={{ alignItems: "flex-start" }}>
       {DEMO_STATUSES.map(col => {
         const allCards = filtered.filter(c => c.status === col.id);
         const visibleCount = dateRange
