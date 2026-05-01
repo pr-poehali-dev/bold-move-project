@@ -155,7 +155,8 @@ def handler(event: dict, context) -> dict:
                    u.bot_name, u.bot_greeting, u.bot_avatar_url, u.brand_logo_url,
                    u.brand_color, u.support_phone, u.support_email, u.max_url,
                    u.working_hours, u.pdf_footer_address, u.telegram_url, u.pdf_text_color,
-                   u.brand_logo_url_dark, u.brand_logo_orientation, u.pdf_logo_bg
+                   u.brand_logo_url_dark, u.brand_logo_orientation, u.pdf_logo_bg,
+                   u.bot_avatar_bg
             FROM {SCHEMA}.user_sessions s
             JOIN {SCHEMA}.users u ON u.id = s.user_id
             WHERE s.token=%s AND s.expires_at > NOW()
@@ -169,7 +170,7 @@ def handler(event: dict, context) -> dict:
          ucompany_id, has_own_agent,
          bot_name, bot_greeting, bot_avatar_url, brand_logo_url, brand_color,
          support_phone, support_email, max_url, working_hours, pdf_footer_address, telegram_url, pdf_text_color,
-         brand_logo_url_dark, brand_logo_orientation, pdf_logo_bg) = row
+         brand_logo_url_dark, brand_logo_orientation, pdf_logo_bg, bot_avatar_bg) = row
 
         return ok({"user": {
             "id": uid, "email": email, "name": name, "phone": phone,
@@ -194,6 +195,7 @@ def handler(event: dict, context) -> dict:
                 "brand_logo_url_dark":    brand_logo_url_dark,
                 "brand_logo_orientation": brand_logo_orientation or "horizontal",
                 "pdf_logo_bg":            pdf_logo_bg or "auto",
+                "bot_avatar_bg":          bot_avatar_bg or "transparent",
             },
         }})
 
@@ -361,7 +363,7 @@ def handler(event: dict, context) -> dict:
 
         # Обновляем только переданные поля (NULL допустим — обнуляет)
         ALLOWED = [
-            "bot_name", "bot_greeting", "bot_avatar_url",
+            "bot_name", "bot_greeting", "bot_avatar_url", "bot_avatar_bg",
             "brand_logo_url", "brand_color",
             "support_phone", "support_email", "max_url",
             "working_hours", "pdf_footer_address", "telegram_url", "pdf_text_color",

@@ -46,6 +46,16 @@ export function SectionBot({ brand, set, token, website, runAi, aiAttempts, aiBu
       <ImageUploader label="Аватар бота" hint="Квадрат 200×200, PNG/JPG"
         value={brand.bot_avatar_url || ""} onChange={v => set("bot_avatar_url", v)}
         token={token} isDark={isDark} />
+
+      <ChoiceField label="Подложка аватара бота"
+        value={brand.bot_avatar_bg || "transparent"}
+        options={[
+          { val: "transparent", label: "Прозрачная", icon: "EyeOff" },
+          { val: "white",       label: "Белая",      icon: "Sun" },
+          { val: "brand",       label: "Цвет бренда", icon: "Palette" },
+          { val: "dark",        label: "Тёмная",     icon: "Moon" },
+        ]}
+        onChange={v => set("bot_avatar_bg", v)} isDark={isDark} />
     </Section>
   );
 }

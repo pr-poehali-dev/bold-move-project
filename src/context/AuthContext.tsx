@@ -23,6 +23,7 @@ export interface Brand {
   brand_logo_url_dark?:    string | null;
   brand_logo_orientation?: "horizontal" | "vertical" | string | null;
   pdf_logo_bg?:            string | null;
+  bot_avatar_bg?:          string | null;
 }
 
 export interface Permissions {
