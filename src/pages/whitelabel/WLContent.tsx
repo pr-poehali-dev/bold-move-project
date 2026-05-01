@@ -126,8 +126,6 @@ export function WLContent() {
           {isMaster && (
             <WLSiteParser onCreated={() => setRefreshTrigger(t => t + 1)} />
           )}
-        </div>
-        <div className="px-3 sm:px-5 pb-8">
           <WLPipeline
             refreshTrigger={refreshTrigger}
             onOpenPanel={handleOpenPanel}

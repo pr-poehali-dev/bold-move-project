@@ -130,14 +130,16 @@ export function WLPipelineKanban({ companies, onSelect, onMove, onUpdate }: Prop
           onLpr={c => setLprFor(c)}
         />
       ) : (
-        <WLKanbanDesktop
-          filtered={filtered}
-          dateRange={dateRange}
-          colWidth={colWidth}
-          onSelect={onSelect}
-          onMove={onMove}
-          onLpr={c => setLprFor(c)}
-        />
+        <div style={{ width: "100vw", position: "relative", left: "50%", transform: "translateX(-50%)", paddingLeft: "20px", paddingRight: "20px", boxSizing: "border-box" }}>
+          <WLKanbanDesktop
+            filtered={filtered}
+            dateRange={dateRange}
+            colWidth={colWidth}
+            onSelect={onSelect}
+            onMove={onMove}
+            onLpr={c => setLprFor(c)}
+          />
+        </div>
       )}
 
       {lprFor && (
