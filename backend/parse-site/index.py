@@ -657,7 +657,7 @@ def handler(event: dict, context) -> dict:
         return err("url обязателен")
 
     # ── Проверка дубликата: этот сайт уже парсили ────────────────────────────
-    if company_id is None and not parse_only:
+    if company_id is None and not only_field:
         chk_conn = get_conn(); chk_cur = chk_conn.cursor()
         # Берём домен без протокола для сравнения
         domain_check = re.sub(r"https?://", "", site_url).split("/")[0].lower()
