@@ -29,6 +29,23 @@
       "method": "GET",
       "path": "/?action=packages",
       "expectedStatus": 200
+    },
+    {
+      "name": "WL login wrong password",
+      "method": "POST",
+      "path": "/?action=wl-login",
+      "body": {"email": "nobody@example.com", "password": "wrong"},
+      "expectedStatus": 400,
+      "expectedBody": {"error": "string"},
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "WL staff list unauthorized",
+      "method": "GET",
+      "path": "/?action=wl-staff-list",
+      "expectedStatus": 401,
+      "expectedBody": {"error": "string"},
+      "bodyMatcher": "partial"
     }
   ]
 }

@@ -1464,8 +1464,58 @@ def handler(event: dict, context) -> dict:
             "password":   temp_pass,
         })
 
-    # ── Мастер: список демо-компаний ─────────────────────────────────────────
-    if action == "admin-demo-companies" and method == "GET":
+    # ── WL-менеджеры: вход ───────────────────────────────────────────────────
+    if action == "wl-login" and method == "POST":
+        email    = (body.get("email") or "").strip().lower()
+        password = (body.get("password") or "").strip()
+        if not email or not password:
+            return err("Email и пароль обязательны")
+        cur.execute(f"""
+            SELECT id, name, wl_role, approved, password_hash
+            FROM {SCHEMA}.wl_managers WHERE email = %s
+        """, (email,))
+        row = cur.fetchone()
+        if not row:
+            return err("Неверный email или пароль")
+        mgr_id, mgr_name, wl_role, approved, pwd_hash = row
+        if pwd_hash != hash_password(password):
+            return err("Неверный email или пароль")
+        if not approved:
+            return err("Аккаунт ожидает одобрения мастера")
+        tok = secrets.token_hex(32)
+        cur.execute(f"""
+            INSERT INTO {SCHEMA}.user_sessions (user_id, token, expires_at)
+            VALUES (%s, %s, NOW() + INTERVAL '30 days')
+        """, (mgr_id, tok))
+        conn.commit()
+        return ok({"token": tok, "manager": {
+            "id": mgr_id, "name": mgr_name,
+            "email": email, "wl_role": wl_role,
+        }})
+
+    # ── WL-менеджеры: кто я ──────────────────────────────────────────────────
+    if action == "wl-me" and method == "GET":
+        if not token:
+            return err("Требуется авторизация", 401)
+        cur.execute(f"""
+            SELECT m.id, m.name, m.email, m.wl_role, m.approved
+            FROM {SCHEMA}.wl_managers m
+            JOIN {SCHEMA}.user_sessions s ON s.user_id = m.id
+            WHERE s.token = %s AND s.expires_at > NOW()
+        """, (token,))
+        row = cur.fetchone()
+        if not row:
+            return err("Сессия не найдена", 401)
+        mgr_id, mgr_name, mgr_email, wl_role, approved = row
+        if not approved:
+            return err("Аккаунт не одобрен", 403)
+        return ok({"manager": {
+            "id": mgr_id, "name": mgr_name,
+            "email": mgr_email, "wl_role": wl_role,
+        }})
+
+    # ── WL-менеджеры: список (только мастер) ─────────────────────────────────
+    if action == "wl-staff-list" and method == "GET":
         if not token:
             return err("Требуется авторизация", 401)
         cur.execute(f"""
@@ -1476,6 +1526,162 @@ def handler(event: dict, context) -> dict:
         row = cur.fetchone()
         if not row or row[0] != "19.jeka.94@gmail.com":
             return err("Доступ только для мастера", 403)
+        cur.execute(f"""
+            SELECT id, name, email, wl_role, approved, created_at,
+                   (SELECT COUNT(*) FROM {SCHEMA}.demo_companies dc WHERE dc.manager_id = m.id) AS companies_count
+            FROM {SCHEMA}.wl_managers m ORDER BY created_at DESC
+        """)
+        rows = cur.fetchall()
+        return ok({"staff": [{
+            "id": r[0], "name": r[1], "email": r[2],
+            "wl_role": r[3], "approved": r[4],
+            "created_at": str(r[5])[:10],
+            "companies_count": int(r[6] or 0),
+        } for r in rows]})
+
+    # ── WL-менеджеры: добавить (только мастер) ───────────────────────────────
+    if action == "wl-staff-invite" and method == "POST":
+        if not token:
+            return err("Требуется авторизация", 401)
+        cur.execute(f"""
+            SELECT u.email FROM {SCHEMA}.user_sessions s
+            JOIN {SCHEMA}.users u ON u.id = s.user_id
+            WHERE s.token=%s AND s.expires_at > NOW()
+        """, (token,))
+        row = cur.fetchone()
+        if not row or row[0] != "19.jeka.94@gmail.com":
+            return err("Доступ только для мастера", 403)
+        name     = (body.get("name") or "").strip()
+        email    = (body.get("email") or "").strip().lower()
+        password = (body.get("password") or "").strip()
+        wl_role  = body.get("wl_role", "manager")
+        if wl_role not in ("manager", "master_manager"):
+            wl_role = "manager"
+        if not name or not email or not password:
+            return err("Имя, email и пароль обязательны")
+        cur.execute(f"SELECT id FROM {SCHEMA}.wl_managers WHERE email=%s", (email,))
+        if cur.fetchone():
+            return err("Менеджер с таким email уже существует")
+        cur.execute(f"""
+            INSERT INTO {SCHEMA}.wl_managers (name, email, password_hash, wl_role, approved)
+            VALUES (%s, %s, %s, %s, FALSE) RETURNING id
+        """, (name, email, hash_password(password), wl_role))
+        new_id = cur.fetchone()[0]
+        conn.commit()
+        return ok({"id": new_id, "name": name, "email": email, "wl_role": wl_role, "approved": False})
+
+    # ── WL-менеджеры: одобрить/отклонить (только мастер) ────────────────────
+    if action == "wl-staff-approve" and method == "POST":
+        if not token:
+            return err("Требуется авторизация", 401)
+        cur.execute(f"""
+            SELECT u.email FROM {SCHEMA}.user_sessions s
+            JOIN {SCHEMA}.users u ON u.id = s.user_id
+            WHERE s.token=%s AND s.expires_at > NOW()
+        """, (token,))
+        row = cur.fetchone()
+        if not row or row[0] != "19.jeka.94@gmail.com":
+            return err("Доступ только для мастера", 403)
+        mgr_id  = body.get("id")
+        approved = body.get("approved")
+        wl_role  = body.get("wl_role")
+        if mgr_id is None:
+            return err("id обязателен")
+        sets, vals = [], []
+        if approved is not None:
+            sets.append("approved = %s"); vals.append(bool(approved))
+        if wl_role in ("manager", "master_manager"):
+            sets.append("wl_role = %s"); vals.append(wl_role)
+        if not sets:
+            return err("Нечего обновлять")
+        vals.append(int(mgr_id))
+        cur.execute(f"UPDATE {SCHEMA}.wl_managers SET {', '.join(sets)} WHERE id = %s", vals)
+        conn.commit()
+        return ok({"ok": True})
+
+    # ── WL-менеджеры: удалить (только мастер) ────────────────────────────────
+    if action == "wl-staff-delete" and method == "POST":
+        if not token:
+            return err("Требуется авторизация", 401)
+        cur.execute(f"""
+            SELECT u.email FROM {SCHEMA}.user_sessions s
+            JOIN {SCHEMA}.users u ON u.id = s.user_id
+            WHERE s.token=%s AND s.expires_at > NOW()
+        """, (token,))
+        row = cur.fetchone()
+        if not row or row[0] != "19.jeka.94@gmail.com":
+            return err("Доступ только для мастера", 403)
+        mgr_id = body.get("id")
+        if not mgr_id:
+            return err("id обязателен")
+        cur.execute(f"DELETE FROM {SCHEMA}.wl_managers WHERE id = %s", (int(mgr_id),))
+        conn.commit()
+        return ok({"ok": True})
+
+    # ── WL-менеджеры: назначить компанию ─────────────────────────────────────
+    if action == "wl-assign-company" and method == "POST":
+        if not token:
+            return err("Требуется авторизация", 401)
+        cur.execute(f"""
+            SELECT u.email FROM {SCHEMA}.user_sessions s
+            JOIN {SCHEMA}.users u ON u.id = s.user_id
+            WHERE s.token=%s AND s.expires_at > NOW()
+        """, (token,))
+        row = cur.fetchone()
+        if not row or row[0] != "19.jeka.94@gmail.com":
+            return err("Доступ только для мастера", 403)
+        demo_id    = body.get("demo_id")
+        manager_id = body.get("manager_id")  # None = снять назначение
+        if not demo_id:
+            return err("demo_id обязателен")
+        cur.execute(f"""
+            UPDATE {SCHEMA}.demo_companies SET manager_id = %s WHERE id = %s
+        """, (manager_id, int(demo_id)))
+        conn.commit()
+        return ok({"ok": True})
+
+    # ── Мастер: список демо-компаний ─────────────────────────────────────────
+    if action == "admin-demo-companies" and method == "GET":
+        if not token:
+            return err("Требуется авторизация", 401)
+
+        # Проверяем: мастер или wl-менеджер?
+        is_master_user = False
+        wl_manager_row = None
+
+        cur.execute(f"""
+            SELECT u.email FROM {SCHEMA}.user_sessions s
+            JOIN {SCHEMA}.users u ON u.id = s.user_id
+            WHERE s.token=%s AND s.expires_at > NOW()
+        """, (token,))
+        user_row = cur.fetchone()
+        if user_row and user_row[0] == "19.jeka.94@gmail.com":
+            is_master_user = True
+        else:
+            # Может это wl-менеджер?
+            cur.execute(f"""
+                SELECT m.id, m.wl_role, m.approved FROM {SCHEMA}.wl_managers m
+                JOIN {SCHEMA}.user_sessions s ON s.user_id = m.id
+                WHERE s.token = %s AND s.expires_at > NOW()
+            """, (token,))
+            wl_manager_row = cur.fetchone()
+            if not wl_manager_row:
+                return err("Доступ запрещён", 403)
+            if not wl_manager_row[2]:
+                return err("Аккаунт не одобрен", 403)
+
+        # Формируем WHERE для фильтрации по менеджеру
+        if is_master_user:
+            manager_filter = ""
+            filter_params = ()
+        elif wl_manager_row[1] == "master_manager":
+            # Мастер-менеджер видит все компании
+            manager_filter = ""
+            filter_params = ()
+        else:
+            # Обычный менеджер — только свои
+            manager_filter = "AND dc.manager_id = %s"
+            filter_params = (wl_manager_row[0],)
 
         cur.execute(f"""
             SELECT dc.id, dc.site_url, dc.created_at,
@@ -1488,19 +1694,23 @@ def handler(event: dict, context) -> dict:
                    COUNT(e.id) AS estimates_used,
                    (SELECT dp.scheduled_at FROM {SCHEMA}.demo_presentations dp
                     WHERE dp.demo_id = dc.id AND dp.status = 'scheduled'
-                    ORDER BY dp.scheduled_at LIMIT 1) AS presentation_at
+                    ORDER BY dp.scheduled_at LIMIT 1) AS presentation_at,
+                   dc.manager_id,
+                   wm.name AS manager_name
             FROM {SCHEMA}.demo_companies dc
             JOIN {SCHEMA}.users u ON u.id = dc.company_id
             LEFT JOIN {SCHEMA}.saved_estimates e ON e.user_id = u.id
+            LEFT JOIN {SCHEMA}.wl_managers wm ON wm.id = dc.manager_id
+            WHERE 1=1 {manager_filter}
             GROUP BY dc.id, dc.site_url, dc.created_at,
                      u.id, u.email, u.company_name, u.bot_name, u.brand_color,
                      u.support_phone, u.estimates_balance, u.has_own_agent,
                      u.brand_logo_url, u.removed_at,
                      dc.status, dc.contact_name, dc.contact_phone, dc.contact_position,
                      dc.notes, dc.next_action, dc.next_action_date,
-                     u.trial_until, u.agent_purchased_at
+                     u.trial_until, u.agent_purchased_at, dc.manager_id, wm.name
             ORDER BY dc.created_at DESC
-        """)
+        """, filter_params)
         rows = cur.fetchall()
         return ok({"companies": [{
             "demo_id":              r[0],
@@ -1527,6 +1737,8 @@ def handler(event: dict, context) -> dict:
             "agent_purchased_at":   str(r[21])[:10] if r[21] else None,
             "estimates_used":       int(r[22] or 0),
             "presentation_at":      str(r[23])[:16] if r[23] else None,
+            "manager_id":           r[24],
+            "manager_name":         r[25] or "",
         } for r in rows]})
 
     # ── Мастер: обновить данные демо-компании (pipeline) ─────────────────────
