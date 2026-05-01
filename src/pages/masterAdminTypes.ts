@@ -11,7 +11,18 @@ export interface BusinessUser {
   subscription_start: string | null;
   subscription_end: string | null;
   estimates_balance: number;
+  has_own_agent: boolean;
+  agent_purchased_at: string | null;
+  trial_until: string | null;
+  total_bought: number;
   telegram?: string | null;
+}
+
+export interface UserTransaction {
+  id: number;
+  amount: number;
+  reason: string;
+  created_at: string;
 }
 
 export interface ProUser {

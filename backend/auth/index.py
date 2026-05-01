@@ -533,20 +533,48 @@ def handler(event: dict, context) -> dict:
             where = "WHERE role IN ('installer','company') AND removed_at IS NULL"
 
         cur.execute(f"""
-            SELECT id, email, name, phone, role, approved, rejected, discount,
-                   created_at, subscription_start, subscription_end, estimates_balance
-            FROM {SCHEMA}.users
+            SELECT u.id, u.email, u.name, u.phone, u.role, u.approved, u.rejected, u.discount,
+                   u.created_at, u.subscription_start, u.subscription_end, u.estimates_balance,
+                   u.has_own_agent, u.agent_purchased_at, u.trial_until,
+                   COALESCE(SUM(CASE WHEN bt.amount > 0 THEN bt.amount ELSE 0 END), 0) AS total_bought
+            FROM {SCHEMA}.users u
+            LEFT JOIN {SCHEMA}.balance_transactions bt ON bt.user_id = u.id
             {where}
-            ORDER BY created_at DESC
+            GROUP BY u.id
+            ORDER BY u.created_at DESC
         """)
         rows = cur.fetchall()
         return ok({"users": [{
             "id": r[0], "email": r[1], "name": r[2], "phone": r[3],
             "role": r[4], "approved": r[5], "rejected": r[6], "discount": r[7] or 0,
-            "created_at": str(r[8])[:19],
-            "subscription_start": str(r[9])[:19] if r[9] else None,
+            "created_at":         str(r[8])[:19],
+            "subscription_start": str(r[9])[:19]  if r[9]  else None,
             "subscription_end":   str(r[10])[:19] if r[10] else None,
             "estimates_balance":  r[11] or 0,
+            "has_own_agent":      bool(r[12]),
+            "agent_purchased_at": str(r[13])[:19] if r[13] else None,
+            "trial_until":        str(r[14])[:19] if r[14] else None,
+            "total_bought":       int(r[15] or 0),
+        } for r in rows]})
+
+    # ── История транзакций пользователя ──────────────────────────────────────
+    if action == "admin-user-transactions" and method == "GET":
+        uid = params.get("user_id")
+        if not uid:
+            return err("user_id обязателен")
+        cur.execute(f"""
+            SELECT id, amount, reason, created_at
+            FROM {SCHEMA}.balance_transactions
+            WHERE user_id = %s
+            ORDER BY created_at DESC
+            LIMIT 50
+        """, (int(uid),))
+        rows = cur.fetchall()
+        return ok({"transactions": [{
+            "id":         r[0],
+            "amount":     r[1],
+            "reason":     r[2] or "",
+            "created_at": str(r[3])[:19] if r[3] else "",
         } for r in rows]})
 
     # ── Смета по chat_id ──────────────────────────────────────────────────────
