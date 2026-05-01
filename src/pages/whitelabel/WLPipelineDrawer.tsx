@@ -312,7 +312,7 @@ export function WLPipelineDrawer({ company, onClose, onUpdate, onDelete, onOpenP
                     border:     `1px solid ${form.status === s.id ? s.color + "50" : "transparent"}`,
                   }}>
                   {s.label}
-                  {s.id === "paid" && form.status !== "paid" && <Icon name="Receipt" size={9} />}
+
                 </button>
               ))}
             </div>
