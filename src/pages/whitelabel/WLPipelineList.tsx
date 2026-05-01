@@ -329,10 +329,13 @@ export function WLPipelineList({ companies, filterStatus, onFilterChange, onSele
                   if (!c.brand_logo_url) missing.push({ key: "logo",  label: "Логотип" });
                   if (!c.bot_name)       missing.push({ key: "bot",   label: "Имя бота" });
                   const noLpr = !c.contact_name || !c.contact_phone || !c.contact_position;
-                  if (missing.length === 0 && !noLpr) return null;
+                  if (missing.length === 0 && !noLpr) return (
+                    <div className="flex-1 min-w-0 max-w-[180px] cursor-pointer"
+                      onClick={e => { e.stopPropagation(); toggle(c.demo_id, e); }} />
+                  );
                   return (
-                    <div className="flex-1 flex flex-col gap-1 min-w-0 max-w-[180px]"
-                      onClick={e => e.stopPropagation()}>
+                    <div className="flex-1 flex flex-col gap-1 min-w-0 max-w-[180px] cursor-pointer"
+                      onClick={e => { e.stopPropagation(); toggle(c.demo_id, e); }}>
                       <div className="flex items-center gap-1">
                         <svg width="11" height="10" viewBox="0 0 11 10" fill="none" style={{ flexShrink: 0, filter: "drop-shadow(0 0 3px rgba(239,68,68,0.6))" }}>
                           <path d="M5.5 1L10.5 9.5H0.5L5.5 1Z" fill="#ef4444"/>
