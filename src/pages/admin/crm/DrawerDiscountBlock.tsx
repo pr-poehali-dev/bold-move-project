@@ -32,6 +32,13 @@ function loadRiskSettings(): RiskSettings {
   } catch { return RISK_DEFAULTS; }
 }
 
+interface AiRisk {
+  level: "low" | "mid" | "high";
+  reserve: number;
+  reason: string;
+  items: string[];
+}
+
 interface Props {
   data: Client;
   customFinRows: CustomFinRow[];
@@ -40,9 +47,14 @@ interface Props {
 
 export function DrawerDiscountBlock({ data, customFinRows, onContractSumUpdated }: Props) {
   const t = useTheme();
-  const [discount, setDiscount] = useState(0);
-  const [applying, setApplying] = useState(false);
-  const [applied,  setApplied]  = useState(false);
+  const [discount,    setDiscount]    = useState(0);
+  const [applying,    setApplying]    = useState(false);
+  const [applied,     setApplied]     = useState(false);
+  const [reserve,     setReserve]     = useState(0);       // % непредвиденных рисков
+  const [customMax,   setCustomMax]   = useState<number | null>(null); // переопределение max для этого заказа
+  const [aiRisk,      setAiRisk]      = useState<AiRisk | null>(null);
+  const [aiLoading,   setAiLoading]   = useState(false);
+  const [aiError,     setAiError]     = useState<string | null>(null);
   const fmt = (n: number) => Math.round(n).toLocaleString("ru-RU");
 
   // Настройки управления риском — реактивно обновляются при изменении localStorage
@@ -52,7 +64,6 @@ export function DrawerDiscountBlock({ data, customFinRows, onContractSumUpdated 
       if (e.key === RISK_LS_KEY) setRisk(loadRiskSettings());
     };
     window.addEventListener("storage", onStorage);
-    // Также обновляем при фокусе окна (если настройки меняли в той же вкладке)
     const onFocus = () => setRisk(loadRiskSettings());
     window.addEventListener("focus", onFocus);
     return () => { window.removeEventListener("storage", onStorage); window.removeEventListener("focus", onFocus); };
@@ -73,19 +84,25 @@ export function DrawerDiscountBlock({ data, customFinRows, onContractSumUpdated 
   const baseIncome = (Number(data.contract_sum) || 0)
     + customIncomeRows.reduce((s, r) => s + r.value, 0);
 
-  // Точка безубыточности — реальный максимум из данных заказа
+  // Точка безубыточности
   const breakEvenDiscount = useMemo(() => {
     if (baseIncome <= 0) return 0;
     const d = (1 - plCosts / baseIncome) * 100;
     return Math.max(0, Math.floor(d * 10) / 10);
   }, [baseIncome, plCosts]);
 
-  // Пороги берём напрямую из настроек — не адаптируем автоматически
-  // Только sliderMax ограничиваем безубыточностью чтобы не уйти в минус
+  // Эффективный максимум = min(правила, заказ, кастом) - резерв
+  const effectiveMax = useMemo(() => {
+    const base = Math.min(
+      customMax ?? risk.max_discount,
+      breakEvenDiscount > 0 ? breakEvenDiscount : risk.max_discount
+    );
+    return Math.max(0, Math.round((base - reserve) * 10) / 10);
+  }, [risk.max_discount, customMax, breakEvenDiscount, reserve]);
+
   const zoneLow   = risk.low_risk_threshold;
   const zoneMid   = risk.mid_risk_threshold;
-  const zoneMax   = Math.min(risk.max_discount, breakEvenDiscount > 0 ? breakEvenDiscount : risk.max_discount);
-  const sliderMax = Math.round(zoneMax * 10) / 10;
+  const sliderMax = effectiveMax;
 
   const discountedIncome = baseIncome * (1 - discount / 100);
   const discountedProfit = discountedIncome - plCosts;
@@ -95,32 +112,78 @@ export function DrawerDiscountBlock({ data, customFinRows, onContractSumUpdated 
 
   const isNegative = discountedProfit < 0 || (!risk.allow_zero_margin && discountedMargin < risk.min_margin);
   const isWarning  = !isNegative && discountedMargin < risk.warn_margin;
-  // Зона текущей скидки
+  const isOverMax  = discount > effectiveMax && effectiveMax > 0;
+
   const currentZone = discount === 0 ? "none"
     : discount <= zoneLow ? "low"
     : discount <= zoneMid ? "mid"
     : "high";
 
-  const accentColor = isNegative ? "#ef4444"
-    : currentZone === "low" ? "#10b981"
-    : currentZone === "mid" ? "#f59e0b"
-    : "#ef4444";
-  const bgColor     = isNegative ? "#ef444412" : "#f59e0b10";
+  const accentColor = isNegative || isOverMax ? "#ef4444"
+    : currentZone === "low"  ? "#10b981"
+    : currentZone === "mid"  ? "#f59e0b"
+    : currentZone === "high" ? "#ef4444"
+    : "#f59e0b";
+
   const borderColor = isNegative ? "#ef444430" : "#f59e0b25";
+
+  // AI оценка сложности монтажа
+  const runAiRisk = async () => {
+    setAiLoading(true);
+    setAiError(null);
+    setAiRisk(null);
+    try {
+      const d = await fetch(`${AUTH_URL}?action=estimate-by-chat&chat_id=${data.id}`).then(r => r.json());
+      const blocks: EstimateBlock[] = d.estimate?.blocks || [];
+      const items: string[] = [];
+      for (const block of blocks) {
+        for (const item of block.items) {
+          if (item.name) items.push(item.name);
+        }
+      }
+      if (items.length === 0) { setAiError("Смета пустая — нечего анализировать"); setAiLoading(false); return; }
+
+      const prompt = `Ты эксперт по монтажу натяжных потолков. Оцени сложность монтажа по списку позиций сметы и определи резерв на непредвиденные расходы.
+
+Позиции сметы:
+${items.map((it, i) => `${i + 1}. ${it}`).join("\n")}
+
+Ответь строго в JSON формате:
+{
+  "level": "low" | "mid" | "high",
+  "reserve": число от 0 до 15 (рекомендуемый % резерва),
+  "reason": "краткое объяснение на русском (1-2 предложения)",
+  "items": ["риск 1", "риск 2", "риск 3"] (конкретные риски из позиций)
+}`;
+
+      const aiRes = await fetch(`${AUTH_URL}?action=ai-chat`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: prompt, system: "Отвечай только JSON без markdown." }),
+      }).then(r => r.json());
+
+      const text = aiRes.reply || aiRes.message || "";
+      const jsonMatch = text.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) throw new Error("Не удалось разобрать ответ AI");
+      const parsed: AiRisk = JSON.parse(jsonMatch[0]);
+      setAiRisk(parsed);
+      setReserve(parsed.reserve);
+    } catch (e) {
+      setAiError("Ошибка AI оценки — попробуй ещё раз");
+    } finally {
+      setAiLoading(false);
+    }
+  };
 
   // Применить скидку к позициям сметы
   const applyDiscount = async () => {
-    if (discount === 0 || isNegative) return;
+    if (discount === 0 || isNegative || isOverMax) return;
     setApplying(true);
     setApplied(false);
     try {
-      // 1. Загружаем текущую смету
       const d = await fetch(`${AUTH_URL}?action=estimate-by-chat&chat_id=${data.id}`).then(r => r.json());
       if (!d.estimate) return;
-
       const mult = 1 - discount / 100;
-
-      // 2. Пересчитываем цены всех позиций
       const newBlocks: EstimateBlock[] = d.estimate.blocks.map((block: EstimateBlock) => ({
         ...block,
         items: block.items.map(item => {
@@ -128,21 +191,12 @@ export function DrawerDiscountBlock({ data, customFinRows, onContractSumUpdated 
           if (!p) return item;
           const newPrice = Math.round(p.price * mult);
           const newTotal = Math.round(p.qty * newPrice);
-          return {
-            ...item,
-            value: `${p.qty} ${p.unit} × ${newPrice} ₽ = ${fmtEst(newTotal)} ₽`,
-          };
+          return { ...item, value: `${p.qty} ${p.unit} × ${newPrice} ₽ = ${fmtEst(newTotal)} ₽` };
         }),
       }));
-
-      // 3. Пересчитываем итоги
       let standard = 0;
-      for (const block of newBlocks) {
-        for (const item of block.items) {
-          const p = parseValue(item.value);
-          if (p) standard += p.total;
-        }
-      }
+      for (const block of newBlocks)
+        for (const item of block.items) { const p = parseValue(item.value); if (p) standard += p.total; }
       const econom  = Math.round(standard * pricingRules.econom_mult);
       const premium = Math.round(standard * pricingRules.premium_mult);
       const newTotals = [
@@ -150,42 +204,35 @@ export function DrawerDiscountBlock({ data, customFinRows, onContractSumUpdated 
         `${pricingRules.standard_label}: ${fmtEst(standard)} ₽`,
         `${pricingRules.premium_label}: ${fmtEst(premium)} ₽`,
       ];
-
-      // 4. Сохраняем смету
       await fetch(`${AUTH_URL}?action=update-estimate&id=${d.estimate.id}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+        method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ blocks: newBlocks, totals: newTotals }),
       });
-
-      // 5. Обновляем contract_sum
-      await crmFetch("clients", {
-        method: "PUT",
-        body: JSON.stringify({ contract_sum: standard }),
-      }, { id: String(data.id) });
-
+      await crmFetch("clients", { method: "PUT", body: JSON.stringify({ contract_sum: standard }) }, { id: String(data.id) });
       onContractSumUpdated?.(standard);
       setApplied(true);
       setDiscount(0);
-    } finally {
-      setApplying(false);
-    }
+    } finally { setApplying(false); }
   };
 
   if (baseIncome <= 0 && plCosts <= 0) return null;
 
+  const aiLevelColor = aiRisk?.level === "low" ? "#10b981" : aiRisk?.level === "mid" ? "#f59e0b" : "#ef4444";
+  const aiLevelLabel = aiRisk?.level === "low" ? "Низкая сложность" : aiRisk?.level === "mid" ? "Средняя сложность" : "Высокая сложность";
+
   return (
-    <div className="rounded-2xl overflow-hidden" style={{ border: `1px solid ${borderColor}`, background: bgColor }}>
+    <div className="rounded-2xl overflow-hidden" style={{ border: `1px solid ${borderColor}`, background: "#f59e0b08" }}>
+
       {/* Шапка */}
       <div className="flex items-center gap-2 px-4 py-2.5" style={{ borderBottom: `1px solid ${borderColor}` }}>
-        <Icon name="Tag" size={13} style={{ color: accentColor }} />
-        <span className="text-xs font-bold uppercase tracking-wider flex-1" style={{ color: accentColor }}>
+        <Icon name="Tag" size={13} style={{ color: "#f59e0b" }} />
+        <span className="text-xs font-bold uppercase tracking-wider flex-1 text-yellow-400">
           Оценка риска скидки
         </span>
-        {zoneMax > 0 && (
+        {effectiveMax > 0 && (
           <span className="text-[10px] font-bold px-2 py-0.5 rounded-full"
             style={{ background: "#f59e0b20", color: "#f59e0b" }}>
-            можно до {zoneMax}%
+            можно до {effectiveMax}%
           </span>
         )}
       </div>
@@ -223,17 +270,19 @@ export function DrawerDiscountBlock({ data, customFinRows, onContractSumUpdated 
         </div>
 
         {/* Предупреждения */}
-        {isNegative && (
+        {(isNegative || isOverMax) && (
           <div className="flex items-center gap-2 px-3 py-2.5 rounded-xl animate-pulse"
             style={{ background: "#ef444415", border: "1px solid #ef444435" }}>
             <Icon name="AlertTriangle" size={14} style={{ color: "#ef4444", flexShrink: 0 }} />
             <div>
               <div className="text-[11px] font-black uppercase tracking-wide text-red-400">Нельзя давать такую скидку</div>
-              <div className="text-[10px] text-red-300/70">Объект становится убыточным</div>
+              <div className="text-[10px] text-red-300/70">
+                {isOverMax ? `Превышен максимум ${effectiveMax}% для этого заказа` : "Объект становится убыточным"}
+              </div>
             </div>
           </div>
         )}
-        {isWarning && !isNegative && (
+        {isWarning && !isNegative && !isOverMax && (
           <div className="flex items-center gap-2 px-3 py-2.5 rounded-xl"
             style={{ background: "#f59e0b15", border: "1px solid #f59e0b30" }}>
             <Icon name="AlertCircle" size={14} style={{ color: "#f59e0b", flexShrink: 0 }} />
@@ -253,7 +302,7 @@ export function DrawerDiscountBlock({ data, customFinRows, onContractSumUpdated 
 
         {/* Шкала + слайдер */}
         <div className="space-y-1">
-          {/* Цветная шкала — единый плавный градиент */}
+          {/* Цветная шкала */}
           {(() => {
             const max    = sliderMax || 1;
             const lowPct = Math.min(100, (zoneLow / max) * 100);
@@ -261,7 +310,6 @@ export function DrawerDiscountBlock({ data, customFinRows, onContractSumUpdated 
             return (
               <div className="relative h-7 rounded-lg overflow-hidden"
                 style={{ background: `linear-gradient(90deg, #16a34a 0%, #84cc16 ${lowPct * 0.6}%, #f59e0b ${lowPct}%, #f97316 ${midPct * 0.7}%, #ef4444 ${midPct}%, #dc2626 100%)` }}>
-                {/* Подписи зон */}
                 <div className="absolute inset-0 flex">
                   <div style={{ width: `${lowPct}%` }} className="flex items-center justify-center">
                     {lowPct > 15 && <span className="text-[10px] font-black text-white" style={{ textShadow: "0 1px 3px rgba(0,0,0,0.5)" }}>Низкий</span>}
@@ -277,7 +325,7 @@ export function DrawerDiscountBlock({ data, customFinRows, onContractSumUpdated 
             );
           })()}
 
-          {/* Метки границ зон */}
+          {/* Метки */}
           <div className="relative h-4">
             <span className="absolute left-0 text-[9px] text-white/30">0%</span>
             {sliderMax > 0 && (() => {
@@ -286,13 +334,9 @@ export function DrawerDiscountBlock({ data, customFinRows, onContractSumUpdated 
               return (
                 <>
                   <span className="absolute text-[9px] font-bold"
-                    style={{ left: `${lowPct}%`, color: "#f59e0b", transform: "translateX(-50%)" }}>
-                    ↑ {Math.round(zoneLow * 10) / 10}%
-                  </span>
+                    style={{ left: `${lowPct}%`, color: "#f59e0b", transform: "translateX(-50%)" }}>↑ {zoneLow}%</span>
                   <span className="absolute text-[9px] font-bold"
-                    style={{ left: `${midPct}%`, color: "#ef4444", transform: "translateX(-50%)" }}>
-                    ↑ {Math.round(zoneMid * 10) / 10}%
-                  </span>
+                    style={{ left: `${midPct}%`, color: "#ef4444", transform: "translateX(-50%)" }}>↑ {zoneMid}%</span>
                 </>
               );
             })()}
@@ -300,35 +344,150 @@ export function DrawerDiscountBlock({ data, customFinRows, onContractSumUpdated 
           </div>
 
           {/* Слайдер */}
-          <div className="relative" style={{ marginTop: -4 }}>
-            <input
-              type="range" min={0} max={sliderMax || 1} step={0.5} value={discount}
-              onChange={e => { setDiscount(Number(e.target.value)); setApplied(false); }}
-              className="w-full cursor-pointer relative z-10"
-              style={{
-                accentColor: isNegative ? "#ef4444"
-                  : currentZone === "low"  ? "#10b981"
-                  : currentZone === "mid"  ? "#f59e0b"
-                  : currentZone === "high" ? "#ef4444"
-                  : "#10b981",
-                height: 4, background: "transparent",
-              }}
-            />
-          </div>
+          <input
+            type="range" min={0} max={sliderMax || 1} step={0.5} value={discount}
+            onChange={e => { setDiscount(Number(e.target.value)); setApplied(false); }}
+            className="w-full cursor-pointer"
+            style={{
+              accentColor: isNegative || isOverMax ? "#ef4444"
+                : currentZone === "low" ? "#10b981"
+                : currentZone === "mid" ? "#f59e0b"
+                : "#ef4444",
+              height: 4,
+            }}
+          />
 
-          {/* Легенда с реальными значениями из настроек */}
+          {/* Легенда */}
           <div className="flex flex-wrap gap-3 pt-1">
             {[
-              { color: "#10b981", label: "Низкий риск",  range: `0–${Math.round(zoneLow * 10) / 10}%` },
-              { color: "#f59e0b", label: "Средний риск", range: `${Math.round(zoneLow * 10) / 10}–${Math.round(zoneMid * 10) / 10}%` },
-              { color: "#ef4444", label: "Высокий риск", range: `${Math.round(zoneMid * 10) / 10}–${sliderMax}%` },
+              { color: "#10b981", label: "Низкий риск",  range: `0–${zoneLow}%` },
+              { color: "#f59e0b", label: "Средний риск", range: `${zoneLow}–${zoneMid}%` },
+              { color: "#ef4444", label: "Высокий риск", range: `${zoneMid}–${sliderMax}%` },
             ].map(z => (
               <div key={z.color} className="flex items-center gap-1.5">
-                <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: z.color }} />
+                <div className="w-2 h-2 rounded-full" style={{ background: z.color }} />
                 <span className="text-[10px] font-semibold" style={{ color: z.color }}>{z.label}</span>
                 <span className="text-[9px] text-white/25">{z.range}</span>
               </div>
             ))}
+          </div>
+        </div>
+
+        {/* ── БЛОК 1: Непредвиденные риски ─────────────────────────── */}
+        <div className="rounded-xl overflow-hidden" style={{ border: `1px solid rgba(239,68,68,0.2)`, background: "rgba(239,68,68,0.05)" }}>
+          <div className="flex items-center gap-2 px-3 py-2" style={{ borderBottom: "1px solid rgba(239,68,68,0.15)" }}>
+            <Icon name="ShieldAlert" size={12} style={{ color: "#ef4444" }} />
+            <span className="text-[10px] font-bold uppercase tracking-wider text-red-400 flex-1">
+              Непредвиденные риски
+            </span>
+            <span className="text-[10px] font-bold text-red-400">{reserve}% резерв</span>
+          </div>
+          <div className="px-3 py-3 space-y-2">
+            <div className="flex items-center gap-3">
+              <input
+                type="range" min={0} max={20} step={1} value={reserve}
+                onChange={e => { setReserve(Number(e.target.value)); setApplied(false); }}
+                className="flex-1 cursor-pointer" style={{ accentColor: "#ef4444", height: 3 }}
+              />
+              <div className="flex items-center gap-1 flex-shrink-0">
+                {[0, 5, 10, 15, 20].map(v => (
+                  <button key={v} onClick={() => setReserve(v)}
+                    className="text-[9px] px-1.5 py-0.5 rounded font-bold transition"
+                    style={{
+                      background: reserve === v ? "rgba(239,68,68,0.2)" : "rgba(255,255,255,0.04)",
+                      color: reserve === v ? "#ef4444" : "rgba(255,255,255,0.25)",
+                    }}>
+                    {v}%
+                  </button>
+                ))}
+              </div>
+            </div>
+            <p className="text-[9px] text-white/25">
+              Резерв вычитается из доступной скидки. Защищает от непредвиденных затрат на монтаж.
+              {reserve > 0 && ` Без резерва можно было бы дать ${Math.round((effectiveMax + reserve) * 10) / 10}%.`}
+            </p>
+
+            {/* AI оценка */}
+            <div className="flex items-center gap-2 pt-1">
+              <button onClick={runAiRisk} disabled={aiLoading}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-bold transition disabled:opacity-50 hover:opacity-80"
+                style={{ background: "rgba(139,92,246,0.15)", color: "#a78bfa", border: "1px solid rgba(139,92,246,0.3)" }}>
+                {aiLoading
+                  ? <><div className="w-3 h-3 border-2 border-current/30 border-t-current rounded-full animate-spin" /> Анализирую смету...</>
+                  : <><Icon name="Sparkles" size={11} /> AI оценить сложность</>
+                }
+              </button>
+              {aiError && <span className="text-[9px] text-red-400">{aiError}</span>}
+            </div>
+
+            {/* Результат AI */}
+            {aiRisk && (
+              <div className="rounded-lg px-3 py-2.5 space-y-1.5" style={{ background: aiLevelColor + "12", border: `1px solid ${aiLevelColor}25` }}>
+                <div className="flex items-center gap-2">
+                  <div className="w-2 h-2 rounded-full" style={{ background: aiLevelColor }} />
+                  <span className="text-[11px] font-bold" style={{ color: aiLevelColor }}>{aiLevelLabel}</span>
+                  <span className="text-[9px] text-white/30 ml-auto">рекомендуемый резерв: {aiRisk.reserve}%</span>
+                </div>
+                <p className="text-[10px] text-white/60">{aiRisk.reason}</p>
+                {aiRisk.items.length > 0 && (
+                  <div className="flex flex-wrap gap-1 pt-0.5">
+                    {aiRisk.items.map((item, i) => (
+                      <span key={i} className="text-[9px] px-1.5 py-0.5 rounded-full"
+                        style={{ background: aiLevelColor + "18", color: aiLevelColor }}>
+                        {item}
+                      </span>
+                    ))}
+                  </div>
+                )}
+                <button onClick={() => setReserve(aiRisk.reserve)}
+                  className="text-[9px] font-bold px-2 py-1 rounded-lg transition hover:opacity-80 mt-1"
+                  style={{ background: "rgba(139,92,246,0.15)", color: "#a78bfa" }}>
+                  Применить резерв {aiRisk.reserve}%
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* ── БЛОК 2: Переопределение max для этого заказа ──────────── */}
+        <div className="rounded-xl overflow-hidden" style={{ border: `1px solid rgba(139,92,246,0.2)`, background: "rgba(139,92,246,0.04)" }}>
+          <div className="flex items-center gap-2 px-3 py-2" style={{ borderBottom: "1px solid rgba(139,92,246,0.15)" }}>
+            <Icon name="Lock" size={12} style={{ color: "#a78bfa" }} />
+            <span className="text-[10px] font-bold uppercase tracking-wider text-violet-400 flex-1">
+              Максимум для этого заказа
+            </span>
+            <span className="text-[9px] text-white/30">
+              глобально: {risk.max_discount}%
+            </span>
+          </div>
+          <div className="px-3 py-3">
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-1">
+                {[null, 5, 10, 15, 20, 25, 30].map(v => (
+                  <button key={String(v)} onClick={() => setCustomMax(v)}
+                    className="text-[9px] px-1.5 py-0.5 rounded font-bold transition"
+                    style={{
+                      background: customMax === v ? "rgba(139,92,246,0.25)" : "rgba(255,255,255,0.04)",
+                      color: customMax === v ? "#a78bfa" : "rgba(255,255,255,0.25)",
+                      border: customMax === v ? "1px solid rgba(139,92,246,0.4)" : "1px solid transparent",
+                    }}>
+                    {v === null ? "авто" : `${v}%`}
+                  </button>
+                ))}
+              </div>
+              {customMax !== null && (
+                <div className="flex items-center gap-1.5 ml-auto">
+                  <span className="text-[9px] text-violet-400">→</span>
+                  <span className="text-[10px] font-bold text-violet-300">
+                    эффективный max: {effectiveMax}%
+                    {reserve > 0 && ` (−${reserve}% резерв)`}
+                  </span>
+                </div>
+              )}
+            </div>
+            <p className="text-[9px] text-white/25 mt-2">
+              Переопределяет глобальный максимум только для этого заказа. Не сохраняется.
+            </p>
           </div>
         </div>
 
@@ -354,7 +513,7 @@ export function DrawerDiscountBlock({ data, customFinRows, onContractSumUpdated 
           )}
           <button
             onClick={applyDiscount}
-            disabled={discount === 0 || isNegative || applying}
+            disabled={discount === 0 || isNegative || isOverMax || applying}
             className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-[11px] font-bold transition disabled:opacity-30 disabled:cursor-not-allowed hover:opacity-80 flex-shrink-0"
             style={{ background: "rgba(245,158,11,0.15)", color: "#f59e0b", border: "1px solid rgba(245,158,11,0.3)" }}>
             {applying
@@ -363,6 +522,7 @@ export function DrawerDiscountBlock({ data, customFinRows, onContractSumUpdated 
             }
           </button>
         </div>
+
       </div>
     </div>
   );
