@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import Icon from "@/components/ui/icon";
-import { AUTH_URL, DEMO_STATUSES } from "./wlTypes";
+import { AUTH_URL, PARSE_SITE_URL, DEMO_STATUSES } from "./wlTypes";
 import type { DemoPipelineCompany, DemoStatus, PanelView } from "./wlTypes";
 
 interface Props {
@@ -65,6 +65,40 @@ export function WLPipelineDrawer({ company, onClose, onUpdate, onDelete, onOpenP
   });
   const [saving, setSaving] = useState(false);
   const [saved,  setSaved]  = useState(false);
+
+  // AI-попытки для каждого поля: { field: attempts }
+  const [aiAttempts, setAiAttempts] = useState<Record<string, number>>({});
+  const [aiBusy,     setAiBusy]     = useState<Record<string, boolean>>({});
+
+  const runAiField = async (field: string, label: string) => {
+    const attempts = (aiAttempts[field] || 0);
+    if (attempts >= 2) return;
+    setAiBusy(p => ({ ...p, [field]: true }));
+    try {
+      const r = await fetch(PARSE_SITE_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-Authorization": masterToken() },
+        body: JSON.stringify({ url: company.site_url, company_id: company.company_id, only_field: field }),
+      });
+      const d = await r.json();
+      const val = d.brand?.[field];
+      if (val) {
+        // Сохраняем в БД через admin-update-demo (бренд-поля — через users, но patch для отображения)
+        await fetch(`${AUTH_URL}?action=admin-update-demo`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "X-Authorization": masterToken() },
+          body: JSON.stringify({ demo_id: company.demo_id, [field]: val }),
+        });
+        // Обновляем локально
+        (onUpdate as (p: Partial<DemoPipelineCompany>) => void)({ [field]: val } as Partial<DemoPipelineCompany>);
+      }
+      setAiAttempts(p => ({ ...p, [field]: attempts + 1 }));
+    } catch {
+      setAiAttempts(p => ({ ...p, [field]: attempts + 1 }));
+    } finally {
+      setAiBusy(p => ({ ...p, [field]: false }));
+    }
+  };
 
   useEffect(() => {
     setForm({
@@ -194,6 +228,59 @@ export function WLPipelineDrawer({ company, onClose, onUpdate, onDelete, onOpenP
             <Field label="" value={form.notes} onChange={set("notes")} type="textarea"
               placeholder="Договорились о демо, интересует белый лейбл для 3 городов..." />
           </div>
+
+          {/* AI-дозаполнение незаполненных полей */}
+          {(() => {
+            const fields: { key: string; label: string; value: string }[] = [
+              { key: "support_phone",      label: "Телефон",  value: company.support_phone },
+              { key: "support_email",      label: "Email",    value: company.email?.endsWith("@demo.local") ? "" : company.email },
+              { key: "telegram",           label: "Telegram", value: "" },
+              { key: "pdf_footer_address", label: "Адрес",    value: "" },
+            ].filter(f => !f.value);
+            if (fields.length === 0) return null;
+            return (
+              <div className="rounded-xl p-3 space-y-2.5"
+                style={{ background: "rgba(239,68,68,0.04)", border: "1px solid rgba(239,68,68,0.18)" }}>
+                <div className="text-[10px] uppercase tracking-wider flex items-center gap-1.5" style={{ color: "#ef4444" }}>
+                  <svg width="10" height="9" viewBox="0 0 10 9" fill="none">
+                    <path d="M5 1L9.5 8.5H0.5L5 1Z" fill="#ef4444"/>
+                    <text x="5" y="7" textAnchor="middle" fontSize="4.5" fontWeight="900" fill="white">!</text>
+                  </svg>
+                  Нужно заполнить
+                </div>
+                {fields.map(f => {
+                  const attempts = aiAttempts[f.key] || 0;
+                  const busy     = aiBusy[f.key] || false;
+                  const failed   = attempts >= 2;
+                  return (
+                    <div key={f.key} className="flex items-center justify-between gap-2">
+                      <span className="text-[11px] text-white/50">{f.label}</span>
+                      {failed ? (
+                        <div className="flex items-center gap-1.5">
+                          <svg width="10" height="9" viewBox="0 0 10 9" fill="none">
+                            <path d="M5 1L9.5 8.5H0.5L5 1Z" fill="#ef4444"/>
+                            <text x="5" y="7" textAnchor="middle" fontSize="4.5" fontWeight="900" fill="white">!</text>
+                          </svg>
+                          <span className="text-[10px]" style={{ color: "#ef4444" }}>Заполните вручную</span>
+                        </div>
+                      ) : (
+                        <button
+                          disabled={busy}
+                          onClick={() => runAiField(f.key, f.label)}
+                          className="flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-bold transition hover:opacity-80 disabled:opacity-50"
+                          style={{ background: "rgba(139,92,246,0.18)", color: "#a78bfa", border: "1px solid rgba(139,92,246,0.35)" }}>
+                          {busy
+                            ? <><div className="w-2.5 h-2.5 border-2 border-current/30 border-t-current rounded-full animate-spin" /> Ищу...</>
+                            : <><Icon name="Sparkles" size={10} /> AI {attempts > 0 ? `(ещё раз)` : ""}</>
+                          }
+                        </button>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            );
+          })()}
 
           {/* Инфо о компании */}
           <div className="rounded-xl p-3 space-y-2" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
