@@ -168,7 +168,6 @@ export function WLPipelineList({ companies, filterStatus, onFilterChange, onSele
 
                 {/* Демо: дней осталось (10 дней с создания) */}
                 {(() => {
-                  const noLpr = !c.contact_name && !c.contact_phone;
                   const DEMO_DAYS = 10;
                   const daysPassed = Math.floor((Date.now() - new Date(c.created_at).getTime()) / 86400000);
                   const daysLeft = Math.max(0, DEMO_DAYS - daysPassed);
@@ -177,20 +176,11 @@ export function WLPipelineList({ companies, filterStatus, onFilterChange, onSele
                   const color = expired ? "#ef4444" : warn ? "#f59e0b" : "#06b6d4";
                   const bg    = expired ? "rgba(239,68,68,0.08)" : warn ? "rgba(245,158,11,0.08)" : "rgba(6,182,212,0.08)";
                   return (
-                    <div className="relative flex-shrink-0" onClick={noLpr ? e => { e.stopPropagation(); setLprFor(c); } : undefined}
-                      style={{ cursor: noLpr ? "pointer" : "default" }}>
-                      {noLpr && (
-                        <div className="absolute -top-1.5 -right-1.5 w-3.5 h-3.5 rounded-full flex items-center justify-center z-10"
-                          style={{ background: "#ef4444", border: "2px solid #0e0e1a" }}>
-                          <span className="text-[7px] font-black text-white leading-none">!</span>
-                        </div>
-                      )}
-                      <div className="text-center px-3 py-1.5 rounded-lg"
-                        style={{ background: noLpr ? "rgba(239,68,68,0.10)" : bg, border: `1px solid ${noLpr ? "#ef444440" : color + "30"}` }}>
-                        <div className="text-[9px]" style={{ color: (noLpr ? "#ef4444" : color) + "99" }}>Демо</div>
-                        <div className="text-xs font-bold" style={{ color: noLpr ? "#ef4444" : color }}>
-                          {expired ? "Истёк" : `${daysLeft} дн.`}
-                        </div>
+                    <div className="flex-shrink-0 text-center px-3 py-1.5 rounded-lg"
+                      style={{ background: bg, border: `1px solid ${color}30` }}>
+                      <div className="text-[9px]" style={{ color: color + "99" }}>Демо</div>
+                      <div className="text-xs font-bold" style={{ color }}>
+                        {expired ? "Истёк" : `${daysLeft} дн.`}
                       </div>
                     </div>
                   );
@@ -198,27 +188,28 @@ export function WLPipelineList({ companies, filterStatus, onFilterChange, onSele
 
                 {/* Смет осталось */}
                 {(() => {
-                  const noLpr = !c.contact_name && !c.contact_phone;
                   const bal = c.estimates_balance;
                   const color = bal > 5 ? "#10b981" : bal > 0 ? "#f59e0b" : "#ef4444";
                   const bg    = bal > 5 ? "rgba(16,185,129,0.08)" : bal > 0 ? "rgba(245,158,11,0.08)" : "rgba(239,68,68,0.06)";
                   return (
-                    <div className="relative flex-shrink-0" onClick={noLpr ? e => { e.stopPropagation(); setLprFor(c); } : undefined}
-                      style={{ cursor: noLpr ? "pointer" : "default" }}>
-                      {noLpr && (
-                        <div className="absolute -top-1.5 -right-1.5 w-3.5 h-3.5 rounded-full flex items-center justify-center z-10"
-                          style={{ background: "#ef4444", border: "2px solid #0e0e1a" }}>
-                          <span className="text-[7px] font-black text-white leading-none">!</span>
-                        </div>
-                      )}
-                      <div className="text-center px-3 py-1.5 rounded-lg"
-                        style={{ background: noLpr ? "rgba(239,68,68,0.10)" : bg, border: `1px solid ${noLpr ? "#ef444440" : color + "30"}` }}>
-                        <div className="text-[9px]" style={{ color: (noLpr ? "#ef4444" : color) + "99" }}>Смет</div>
-                        <div className="text-xs font-bold" style={{ color: noLpr ? "#ef4444" : color }}>{bal}</div>
-                      </div>
+                    <div className="flex-shrink-0 text-center px-3 py-1.5 rounded-lg"
+                      style={{ background: bg, border: `1px solid ${color}30` }}>
+                      <div className="text-[9px]" style={{ color: color + "99" }}>Смет</div>
+                      <div className="text-xs font-bold" style={{ color }}>{bal}</div>
                     </div>
                   );
                 })()}
+
+                {/* Бейдж ЛПР — отдельная кнопка если не заполнен */}
+                {!c.contact_name && !c.contact_phone && (
+                  <button
+                    onClick={e => { e.stopPropagation(); setLprFor(c); }}
+                    className="flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center transition hover:scale-110"
+                    style={{ background: "#ef4444", border: "2px solid rgba(239,68,68,0.3)", boxShadow: "0 0 8px rgba(239,68,68,0.5)" }}
+                    title="Не заполнен ЛПР — нажми чтобы добавить">
+                    <span className="text-[11px] font-black text-white leading-none">!</span>
+                  </button>
+                )}
 
                 {/* Бренд */}
                 <button onClick={e => { e.stopPropagation(); onBrand(c.company_id); }}
