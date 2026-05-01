@@ -1,0 +1,156 @@
+import Icon from "@/components/ui/icon";
+import { useState } from "react";
+import { DEMO_STATUSES } from "./wlTypes";
+import type { DemoStatus } from "./wlTypes";
+
+export type DemoFilter  = "all" | "active" | "expiring" | "expired";
+export type EstFilter   = "all" | "redflag" | "used" | "bought";
+export type AgentFilter = "all" | "demo" | "bought" | "none";
+
+interface Props {
+  companies:      { status: DemoStatus }[];
+  filterStatus:   DemoStatus | "all";
+  onFilterChange: (s: DemoStatus | "all") => void;
+  demoFilter:     DemoFilter;
+  estFilter:      EstFilter;
+  agentFilter:    AgentFilter;
+  onDemoFilter:   (v: DemoFilter) => void;
+  onEstFilter:    (v: EstFilter) => void;
+  onAgentFilter:  (v: AgentFilter) => void;
+}
+
+export function WLPipelineFilters({
+  companies, filterStatus, onFilterChange,
+  demoFilter, estFilter, agentFilter,
+  onDemoFilter, onEstFilter, onAgentFilter,
+}: Props) {
+  const [filtersOpen, setFiltersOpen] = useState(false);
+
+  return (
+    <>
+      {/* Фильтр по статусу */}
+      <div className="flex flex-wrap gap-1.5">
+        <button onClick={() => onFilterChange("all")}
+          className="px-3 py-1.5 rounded-lg text-[11px] font-bold transition"
+          style={{
+            background: filterStatus === "all" ? "rgba(255,255,255,0.12)" : "rgba(255,255,255,0.04)",
+            color:      filterStatus === "all" ? "rgba(255,255,255,0.9)"  : "rgba(255,255,255,0.3)",
+            border:     `1px solid ${filterStatus === "all" ? "rgba(255,255,255,0.25)" : "transparent"}`,
+          }}>
+          Все ({companies.length})
+        </button>
+        {DEMO_STATUSES.map(s => {
+          const count  = companies.filter(c => c.status === s.id).length;
+          const active = filterStatus === s.id;
+          return (
+            <button key={s.id} onClick={() => onFilterChange(s.id)}
+              className="px-3 py-1.5 rounded-lg text-[11px] font-bold transition"
+              style={{
+                background: active ? s.bg : "rgba(255,255,255,0.04)",
+                color:      active ? s.color : "rgba(255,255,255,0.3)",
+                border:     `1px solid ${active ? s.color + "50" : "transparent"}`,
+              }}>
+              {s.label} ({count})
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Доп-фильтры — сворачиваемый блок */}
+      <div className="rounded-xl overflow-hidden transition-all"
+        style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)" }}>
+        <button className="w-full flex items-center gap-2 px-3 py-2 text-left transition hover:bg-white/[0.02]"
+          onClick={() => setFiltersOpen(v => !v)}>
+          <Icon name="SlidersHorizontal" size={12} style={{ color: "rgba(255,255,255,0.3)" }} />
+          <span className="text-[10px] text-white/30 font-bold uppercase tracking-wider flex-1">Фильтры</span>
+          {!filtersOpen && (demoFilter !== "all" || estFilter !== "all" || agentFilter !== "all") && (
+            <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full"
+              style={{ background: "rgba(139,92,246,0.2)", color: "#a78bfa" }}>
+              активны
+            </span>
+          )}
+          <Icon name={filtersOpen ? "ChevronUp" : "ChevronDown"} size={12} style={{ color: "rgba(255,255,255,0.2)" }} />
+        </button>
+
+        {filtersOpen && (
+          <div className="px-3 pb-3 flex flex-wrap gap-2 items-center border-t border-white/[0.05]" style={{ paddingTop: 10 }}>
+            {/* Демо */}
+            <div className="flex items-center gap-1">
+              <span className="text-[9px] text-white/25 uppercase tracking-wider">Демо:</span>
+              {([
+                { id: "all",      label: "Все"     },
+                { id: "active",   label: "Идёт",   color: "#06b6d4" },
+                { id: "expiring", label: "≤3 дн.", color: "#f59e0b" },
+                { id: "expired",  label: "Истёк",  color: "#ef4444" },
+              ] as { id: DemoFilter; label: string; color?: string }[]).map(f => {
+                const active = demoFilter === f.id;
+                return (
+                  <button key={f.id} onClick={() => onDemoFilter(f.id)}
+                    className="px-2 py-0.5 rounded-md text-[10px] font-bold transition"
+                    style={{
+                      background: active ? (f.color ? f.color + "20" : "rgba(255,255,255,0.12)") : "rgba(255,255,255,0.04)",
+                      color:      active ? (f.color || "rgba(255,255,255,0.9)") : "rgba(255,255,255,0.3)",
+                      border:     `1px solid ${active ? (f.color ? f.color + "50" : "rgba(255,255,255,0.25)") : "transparent"}`,
+                    }}>
+                    {f.label}
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="w-px h-4 bg-white/[0.08]" />
+
+            {/* Сметы */}
+            <div className="flex items-center gap-1">
+              <span className="text-[9px] text-white/25 uppercase tracking-wider">Сметы:</span>
+              {([
+                { id: "all",     label: "Все"        },
+                { id: "redflag", label: "🚩 0 исп.", color: "#ef4444" },
+                { id: "used",    label: "Используют", color: "#10b981" },
+                { id: "bought",  label: "Купили ещё", color: "#a78bfa" },
+              ] as { id: EstFilter; label: string; color?: string }[]).map(f => {
+                const active = estFilter === f.id;
+                return (
+                  <button key={f.id} onClick={() => onEstFilter(f.id)}
+                    className="px-2 py-0.5 rounded-md text-[10px] font-bold transition"
+                    style={{
+                      background: active ? (f.color ? f.color + "20" : "rgba(255,255,255,0.12)") : "rgba(255,255,255,0.04)",
+                      color:      active ? (f.color || "rgba(255,255,255,0.9)") : "rgba(255,255,255,0.3)",
+                      border:     `1px solid ${active ? (f.color ? f.color + "50" : "rgba(255,255,255,0.25)") : "transparent"}`,
+                    }}>
+                    {f.label}
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="w-px h-4 bg-white/[0.08]" />
+
+            {/* Агент */}
+            <div className="flex items-center gap-1">
+              <span className="text-[9px] text-white/25 uppercase tracking-wider">Агент:</span>
+              {([
+                { id: "all",    label: "Все"       },
+                { id: "demo",   label: "На демо",  color: "#06b6d4" },
+                { id: "bought", label: "Куплен",   color: "#10b981" },
+              ] as { id: AgentFilter; label: string; color?: string }[]).map(f => {
+                const active = agentFilter === f.id;
+                return (
+                  <button key={f.id} onClick={() => onAgentFilter(f.id)}
+                    className="px-2 py-0.5 rounded-md text-[10px] font-bold transition"
+                    style={{
+                      background: active ? (f.color ? f.color + "20" : "rgba(255,255,255,0.12)") : "rgba(255,255,255,0.04)",
+                      color:      active ? (f.color || "rgba(255,255,255,0.9)") : "rgba(255,255,255,0.3)",
+                      border:     `1px solid ${active ? (f.color ? f.color + "50" : "rgba(255,255,255,0.25)") : "transparent"}`,
+                    }}>
+                    {f.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+      </div>
+    </>
+  );
+}
