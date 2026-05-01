@@ -67,7 +67,7 @@ export function WLPipelineList({ companies, filterStatus, onFilterChange, onSele
   const [demoFilter,  setDemoFilter]  = useState<DemoFilter>("all");
   const [estFilter,   setEstFilter]   = useState<EstFilter>("all");
   const [agentFilter, setAgentFilter] = useState<AgentFilter>("all");
-  const [historyFor,  setHistoryFor]  = useState<{ company: DemoPipelineCompany; mode: "demo" | "est" } | null>(null);
+  const [historyFor,  setHistoryFor]  = useState<{ company: DemoPipelineCompany; mode: "demo" | "est" | "info" } | null>(null);
 
   const handleMove = (c: DemoPipelineCompany, status: DemoStatus) => {
     if (status === c.status) return;
@@ -370,6 +370,15 @@ export function WLPipelineList({ companies, filterStatus, onFilterChange, onSele
                     </div>
                   );
                 })()}
+
+                {/* Кнопка инфо */}
+                <button
+                  onClick={e => { e.stopPropagation(); setHistoryFor({ company: c, mode: "info" }); }}
+                  className="flex-shrink-0 w-7 h-7 rounded-lg flex items-center justify-center transition hover:bg-white/[0.08]"
+                  style={{ color: "rgba(255,255,255,0.25)", border: "1px solid rgba(255,255,255,0.08)" }}
+                  title="Полная информация">
+                  <Icon name="Info" size={13} />
+                </button>
 
                 {/* Демо: дней осталось (10 дней с создания) — кликабельный */}
                 {(() => {
