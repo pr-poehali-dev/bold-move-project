@@ -89,24 +89,25 @@ export function WLContent() {
     <>
       <div className="min-h-screen text-white" style={{ background: "#06060c" }}>
         <header className="px-3 sm:px-5 py-3 sm:py-4 border-b border-white/[0.06] flex items-center gap-2 sm:gap-3">
+          {/* Навигация назад — только десктоп */}
           {isMaster && (
             <>
               <a href="/"
-                className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-medium transition hover:opacity-80"
+                className="hidden sm:flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-medium transition hover:opacity-80"
                 style={{ background: "rgba(255,255,255,0.05)", color: "rgba(255,255,255,0.40)", border: "1px solid rgba(255,255,255,0.08)" }}>
                 <Icon name="ArrowLeft" size={12} /> В бот
               </a>
               <button onClick={() => navigate("/master")}
-                className="text-xs text-white/40 hover:text-white/80 flex items-center gap-1">
+                className="hidden sm:flex text-xs text-white/40 hover:text-white/80 items-center gap-1">
                 <Icon name="ArrowLeft" size={13} /> Мастер
               </button>
-              <span className="text-white/20">/</span>
+              <span className="hidden sm:inline text-white/20">/</span>
             </>
           )}
-          <h1 className="text-sm font-bold">White-Label</h1>
+          <h1 className="hidden sm:block text-sm font-bold">White-Label</h1>
 
-          {/* Кто вошёл */}
-          <div className="ml-auto flex items-center gap-2">
+          {/* Имя аккаунта — на мобиле главное, на десктопе справа */}
+          <div className="ml-auto sm:ml-auto flex items-center gap-2">
             <div className="text-right">
               <div className="text-[11px] font-bold text-white/70">{displayName}</div>
               <div className="text-[9px] text-white/30">{displayRole}</div>
