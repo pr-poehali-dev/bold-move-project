@@ -101,7 +101,7 @@ export function WLPipelineCard({ c, isOpen, onToggle, onSelect, onMove, onBrand,
           if (!c.brand_logo_url)     missing.push({ key: "logo",    label: "Логотип" });
           if (!c.bot_avatar_url)     missing.push({ key: "avatar",  label: "Фото бота" });
           if (!c.support_phone)      missing.push({ key: "phone",   label: "Телефон" });
-          if (!c.telegram)           missing.push({ key: "tg",      label: "Telegram" });
+          if (!c.telegram_url)       missing.push({ key: "tg",      label: "Telegram" });
           if (!c.working_hours)      missing.push({ key: "hours",   label: "Часы работы" });
           if (!c.brand_color)        missing.push({ key: "color",   label: "Цвет бренда" });
           if (!c.support_email)      missing.push({ key: "email",   label: "Email" });
@@ -115,12 +115,13 @@ export function WLPipelineCard({ c, isOpen, onToggle, onSelect, onMove, onBrand,
           return (
             <div className="flex-1 flex flex-col gap-1 min-w-0 max-w-[180px] cursor-pointer"
               onClick={e => { e.stopPropagation(); onToggle(c.demo_id, e); }}>
-              <div className="flex items-center gap-1">
+              <div className="flex items-center gap-1" title="Поля реально пустые в базе данных">
                 <svg width="11" height="10" viewBox="0 0 11 10" fill="none" style={{ flexShrink: 0, filter: "drop-shadow(0 0 3px rgba(239,68,68,0.6))" }}>
                   <path d="M5.5 1L10.5 9.5H0.5L5.5 1Z" fill="#ef4444"/>
                   <text x="5.5" y="7.5" textAnchor="middle" fontSize="5" fontWeight="900" fill="white">!</text>
                 </svg>
                 <span className="text-[9px] text-white/30 leading-none">Нужно заполнить</span>
+                <span className="text-[8px] text-white/15">({missing.length + (noLpr ? 1 : 0)})</span>
               </div>
               <div className="flex flex-wrap gap-1">
                 {missing.map(m => (

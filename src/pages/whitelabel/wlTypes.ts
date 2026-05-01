@@ -43,7 +43,7 @@ export interface DemoPipelineCompany {
   brand_color:       string;
   support_phone:     string;
   support_email:     string;
-  telegram:          string;
+  telegram_url:      string;
   working_hours:     string;
   pdf_footer_address: string;
   estimates_balance: number;

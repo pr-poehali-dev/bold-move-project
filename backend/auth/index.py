@@ -1730,7 +1730,8 @@ def handler(event: dict, context) -> dict:
                     ORDER BY dp.scheduled_at LIMIT 1) AS presentation_at,
                    dc.manager_id,
                    wm.name AS manager_name,
-                   u.bot_avatar_url, u.support_email, u.telegram,
+                   u.bot_avatar_url, u.support_email,
+                   COALESCE(u.telegram_url, u.telegram) AS telegram_url,
                    u.working_hours, u.pdf_footer_address
             FROM {SCHEMA}.demo_companies dc
             JOIN {SCHEMA}.users u ON u.id = dc.company_id
@@ -1744,7 +1745,7 @@ def handler(event: dict, context) -> dict:
                      dc.status, dc.contact_name, dc.contact_phone, dc.contact_position,
                      dc.notes, dc.next_action, dc.next_action_date,
                      u.trial_until, u.agent_purchased_at, dc.manager_id, wm.name,
-                     u.bot_avatar_url, u.support_email, u.telegram,
+                     u.bot_avatar_url, u.support_email, u.telegram_url, u.telegram,
                      u.working_hours, u.pdf_footer_address
             ORDER BY
               CASE WHEN dc.sort_order = 0 THEN 0 ELSE 1 END ASC,
