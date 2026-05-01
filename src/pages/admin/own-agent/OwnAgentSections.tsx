@@ -51,8 +51,9 @@ export function SectionVisual({ brand, set, token, isDark }: {
         onChange={v => set("brand_color", v)} isDark={isDark} />
 
       <ChoiceField label="Ориентация логотипа"
-        value={brand.brand_logo_orientation || "horizontal"}
+        value={brand.brand_logo_orientation || "auto"}
         options={[
+          { val: "auto",       label: "Авто",           icon: "Sparkles" },
           { val: "horizontal", label: "Горизонтальный", icon: "RectangleHorizontal" },
           { val: "vertical",   label: "Квадратный",     icon: "Square" },
         ]}
@@ -63,11 +64,6 @@ export function SectionVisual({ brand, set, token, isDark }: {
         value={brand.brand_logo_url || ""} onChange={v => set("brand_logo_url", v)}
         token={token} isDark={isDark}
         onOrientationDetected={o => set("brand_logo_orientation", o)} />
-
-      <ImageUploader label="Логотип для тёмной подложки (светлый)"
-        hint="Опционально. Используется когда подложка тёмная"
-        value={brand.brand_logo_url_dark || ""} onChange={v => set("brand_logo_url_dark", v)}
-        token={token} isDark={isDark} />
 
       <ChoiceField label="Подложка логотипа в PDF"
         value={brand.pdf_logo_bg || "auto"}
