@@ -13,8 +13,13 @@ export function WLLoginPage() {
     e.preventDefault();
     setError(""); setLoading(true);
     const err = await login(email.trim(), password);
-    if (err) setError(err);
-    setLoading(false);
+    if (err) {
+      setError(err);
+      setLoading(false);
+    } else {
+      // Перезагружаем страницу чтобы WhiteLabel.tsx подхватил новый токен
+      window.location.reload();
+    }
   };
 
   return (
