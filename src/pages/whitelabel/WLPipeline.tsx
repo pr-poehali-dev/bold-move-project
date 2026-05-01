@@ -67,6 +67,15 @@ export function WLPipeline({ refreshTrigger, onOpenPanel, onRunApiTests }: Props
     setCompanies(prev => prev.filter(c => c.demo_id !== selected.demo_id));
   };
 
+  const handleBrand = async (companyId: number) => {
+    const tok = await fetch(`${AUTH_URL}?action=admin-login-as`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Authorization": masterToken() },
+      body: JSON.stringify({ user_id: companyId }),
+    }).then(r => r.json()).then(d => d.token || null);
+    if (tok) onOpenPanel({ type: "agent", companyId }, tok);
+  };
+
   // Считаем задачи для бейджа
   const now = new Date();
   const today0 = new Date(now); today0.setHours(0, 0, 0, 0);
@@ -168,6 +177,7 @@ export function WLPipeline({ refreshTrigger, onOpenPanel, onRunApiTests }: Props
             onSelect={setSelected}
             onMove={(demoId, status) => handleMove(demoId, status)}
             onUpdate={(demoId, patch) => setCompanies(prev => prev.map(c => c.demo_id === demoId ? { ...c, ...patch } : c))}
+            onBrand={handleBrand}
           />
         )
       )}

@@ -13,6 +13,7 @@ interface Props {
 
   onMove:         (demoId: number, status: DemoStatus) => void;
   onUpdate:       (demoId: number, patch: Partial<DemoPipelineCompany>) => void;
+  onBrand:        (companyId: number) => void;
 }
 
 
@@ -45,7 +46,7 @@ function ActionButtons({ c, onMove }: {
   );
 }
 
-export function WLPipelineList({ companies, filterStatus, onFilterChange, onSelect, onMove, onUpdate }: Props) {
+export function WLPipelineList({ companies, filterStatus, onFilterChange, onSelect, onMove, onUpdate, onBrand }: Props) {
   const [expanded,    setExpanded]    = useState<Set<number>>(new Set());
   const [nextStepFor, setNextStepFor] = useState<{ company: DemoPipelineCompany; status: DemoStatus } | null>(null);
   const [receiptFor,  setReceiptFor]  = useState<DemoPipelineCompany | null>(null);
@@ -196,6 +197,13 @@ export function WLPipelineList({ companies, filterStatus, onFilterChange, onSele
                     </div>
                   );
                 })()}
+
+                {/* Бренд */}
+                <button onClick={e => { e.stopPropagation(); onBrand(c.company_id); }}
+                  className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[10px] font-bold transition hover:opacity-80 flex-shrink-0"
+                  style={{ background: "rgba(245,158,11,0.12)", color: "#f59e0b", border: "1px solid rgba(245,158,11,0.25)" }}>
+                  <Icon name="Pencil" size={10} /> Бренд
+                </button>
 
                 {/* Кнопка раскрытия действий */}
                 <button
