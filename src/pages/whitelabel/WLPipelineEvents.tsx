@@ -73,6 +73,7 @@ export function WLPipelineEvents({ companies, onSelect }: Props) {
   const sevenDaysAgo = new Date(now); sevenDaysAgo.setDate(now.getDate() - 7);
   const noAction = companies.filter(c => {
     if (c.status === "rejected") return false;
+    if (c.status === "paid")     return false;
     if (!c.next_action_date) return true;
     return new Date(c.next_action_date) < sevenDaysAgo;
   });
