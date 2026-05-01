@@ -7,11 +7,12 @@ import RuleCategoryTable from "./RuleCategoryTable";
 import BundleModal from "./BundleModal";
 import TabPricingRules from "./TabPricingRules";
 import TabAutoRules from "./TabAutoRules";
+import TabDiscountRisk from "./TabDiscountRisk";
 import { parseBundleIds } from "./RuleTypes";
 import type { RuleItem, RuleType, DraftMap } from "./RuleTypes";
 import type { PriceItem } from "./types";
 
-type RulesSub = "price_rules" | "pricing_3" | "auto_rules";
+type RulesSub = "price_rules" | "pricing_3" | "auto_rules" | "discount_risk";
 
 interface Props { token: string; hint?: string | null; isDark?: boolean; readOnly?: boolean; }
 
@@ -19,9 +20,10 @@ export default function TabRules({ token, hint, isDark = true, readOnly = false 
   const [sub, setSub] = useState<RulesSub>("price_rules");
 
   const SUB_TABS: { id: RulesSub; label: string; icon: string }[] = [
-    { id: "price_rules", label: "Правила к прайсу",    icon: "SlidersHorizontal" },
-    { id: "pricing_3",   label: "Правила 3 цен",       icon: "Layers3" },
-    { id: "auto_rules",  label: "Правила авто-расчёта", icon: "GraduationCap" },
+    { id: "price_rules",   label: "Правила к прайсу",     icon: "SlidersHorizontal" },
+    { id: "pricing_3",     label: "Правила 3 цен",        icon: "Layers3" },
+    { id: "auto_rules",    label: "Правила авто-расчёта", icon: "GraduationCap" },
+    { id: "discount_risk", label: "Управление риском",    icon: "ShieldAlert" },
   ];
 
   const activeCls = isDark
@@ -47,9 +49,10 @@ export default function TabRules({ token, hint, isDark = true, readOnly = false 
         ))}
       </div>
 
-      {sub === "pricing_3"   && <TabPricingRules token={token} readOnly={readOnly} />}
-      {sub === "auto_rules"  && <TabAutoRules isDark={isDark} readOnly={readOnly} />}
-      {sub === "price_rules" && <PriceRulesContent token={token} hint={hint} isDark={isDark} readOnly={readOnly} />}
+      {sub === "pricing_3"     && <TabPricingRules token={token} readOnly={readOnly} />}
+      {sub === "auto_rules"    && <TabAutoRules isDark={isDark} readOnly={readOnly} />}
+      {sub === "price_rules"   && <PriceRulesContent token={token} hint={hint} isDark={isDark} readOnly={readOnly} />}
+      {sub === "discount_risk" && <TabDiscountRisk isDark={isDark} readOnly={readOnly} />}
     </div>
   );
 }
