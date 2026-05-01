@@ -27,7 +27,8 @@ const Ctx = createContext<WLManagerCtx>({
 
 const TOKEN_KEY = "wl_manager_token";
 
-// Возвращает актуальный токен: wl-менеджера или мастера (для запросов к бэкенду)
+// Возвращает актуальный токен для запросов к бэкенду.
+// wl_manager_token — только для менеджеров, mp_user_token — для мастера
 export const getWLToken = () =>
   localStorage.getItem(TOKEN_KEY) || localStorage.getItem("mp_user_token") || "";
 
