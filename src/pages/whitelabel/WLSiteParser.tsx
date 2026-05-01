@@ -157,6 +157,70 @@ export function WLSiteParser({ onCreated }: Props) {
     }
   };
 
+  // Поиск поля в фазе "parsed" — сначала создаём компанию если нужно, потом ищем
+  const searchFieldBeforeCreate = async (field: MissingField) => {
+    let cid = lastCompanyId;
+    if (!cid) {
+      // Создаём компанию молча
+      setCreating(true);
+      try {
+        const d = await callParse({ url: url.trim() });
+        if (d.error) { setError(d.error); setCreating(false); return; }
+        if (d.company_id && d.token) {
+          cid = d.company_id;
+          setLastCompanyId(d.company_id);
+          setLastCompanyName(d.brand?.company_name || null);
+          setReport(d.report);
+          const today = new Date().toISOString().slice(0, 10);
+          const masterToken = getWLToken();
+          fetch(`${AUTH_URL}?action=admin-update-demo`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json", "X-Authorization": masterToken },
+            body: JSON.stringify({ demo_id: d.demo_id, next_action: "Позвонить, уточнить интерес", next_action_date: today }),
+          }).catch(() => {});
+          const wlManagerRaw = localStorage.getItem("wl_manager_token");
+          if (wlManagerRaw && d.demo_id) {
+            fetch(`${AUTH_URL}?action=wl-assign-company`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json", "X-Authorization": masterToken },
+              body: JSON.stringify({ demo_id: d.demo_id, manager_id: null }),
+            }).then(r => r.json()).then(() => {
+              fetch(`${AUTH_URL}?action=wl-me`, { headers: { "X-Authorization": wlManagerRaw } })
+                .then(r => r.json()).then(me => {
+                  if (me.manager?.id) {
+                    fetch(`${AUTH_URL}?action=wl-assign-company`, {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json", "X-Authorization": masterToken },
+                      body: JSON.stringify({ demo_id: d.demo_id, manager_id: me.manager.id }),
+                    }).catch(() => {});
+                  }
+                }).catch(() => {});
+            }).catch(() => {});
+          }
+          onCreated?.(d.company_id, d.token);
+          setPhase("banner");
+        }
+      } catch (e) { setError(String(e)); setCreating(false); return; }
+      setCreating(false);
+    }
+    if (!cid) return;
+    // Теперь ищем поле
+    setSearching(field.field);
+    try {
+      const d = await callParse({ url: url.trim(), company_id: cid, only_field: field.field });
+      if (!d.error && d.report) {
+        const nowFilled = d.report.filled.find((f: FilledField) => f.field === field.field);
+        if (nowFilled && report) {
+          setReport({
+            filled:  [...report.filled, nowFilled],
+            missing: report.missing.filter(m => m.field !== field.field),
+          });
+        }
+      }
+    } catch { /* ignore */ }
+    finally { setSearching(null); }
+  };
+
   const searchField = async (field: MissingField) => {
     if (!url.trim() || !lastCompanyId) return;
     setSearching(field.field);
@@ -273,14 +337,24 @@ export function WLSiteParser({ onCreated }: Props) {
                 <Icon name="AlertTriangle" size={11} /> Не найдено ({report.missing.length})
               </div>
               <div className="flex flex-wrap gap-1.5">
-                {report.missing.map(f => (
-                  <div key={f.field}
-                    className="flex items-center gap-1 text-[10px] px-2.5 py-1 rounded-lg font-medium"
-                    style={{ background: "rgba(245,158,11,0.08)", border: "1px solid rgba(245,158,11,0.2)", color: "#fbbf24" }}>
-                    {f.label}
-                  </div>
-                ))}
+                {report.missing.map(f => {
+                  const isSearching = searching === f.field;
+                  return (
+                    <button key={f.field}
+                      onClick={() => searchFieldBeforeCreate(f)}
+                      disabled={!!searching || creating}
+                      className="flex items-center gap-1 text-[10px] px-2.5 py-1 rounded-lg font-medium transition hover:opacity-80 disabled:opacity-50 cursor-pointer"
+                      style={{ background: "rgba(245,158,11,0.10)", border: "1px solid rgba(245,158,11,0.35)", color: "#fbbf24" }}>
+                      {isSearching
+                        ? <div className="w-2.5 h-2.5 border border-amber-400/40 border-t-amber-400 rounded-full animate-spin flex-shrink-0" />
+                        : <Icon name="Search" size={9} />
+                      }
+                      {f.label}
+                    </button>
+                  );
+                })}
               </div>
+              <div className="text-[9px] text-white/25 mt-1.5">Нажми чтобы поискать в интернете</div>
             </div>
           )}
 
