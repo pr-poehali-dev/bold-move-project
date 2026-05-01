@@ -49,11 +49,11 @@ export function Field({ label, value, onChange, placeholder, type = "text", mult
       <div className="relative">
         {multiline
           ? <textarea rows={rows} value={value} onChange={e => onChange(e.target.value)}
-              placeholder={placeholder} className={cls + " resize-none"} style={style} />
+              placeholder={placeholder} className={cls + " resize-none" + (aiBtn ? " pr-16" : "")} style={style} />
           : <input type={type} value={value} onChange={e => onChange(e.target.value)}
-              placeholder={placeholder} className={cls + (aiBtn && !value ? " pr-16" : "")} style={style} />
+              placeholder={placeholder} className={cls + (aiBtn ? " pr-16" : "")} style={style} />
         }
-        {aiBtn && !value && (
+        {aiBtn && (
           <div className="absolute right-2 top-1/2 -translate-y-1/2">{aiBtn}</div>
         )}
       </div>

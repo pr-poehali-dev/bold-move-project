@@ -97,7 +97,8 @@ export function SectionContacts({ brand, set, website, runAi, aiAttempts, aiBusy
         value={brand.telegram_url || ""} onChange={v => set("telegram_url", v)} isDark={isDark}
         aiBtn={<AiFieldBtn field="telegram_url" busy={aiBusy["telegram_url"] || false} attempts={aiAttempts["telegram_url"] || 0} onRun={runAi} siteUrl={website} />} />
       <Field label="MAX (ссылка)" placeholder="https://max.ru/u/..."
-        value={brand.max_url || ""} onChange={v => set("max_url", v)} isDark={isDark} />
+        value={brand.max_url || ""} onChange={v => set("max_url", v)} isDark={isDark}
+        aiBtn={<AiFieldBtn field="max_url" busy={aiBusy["max_url"] || false} attempts={aiAttempts["max_url"] || 0} onRun={runAi} siteUrl={website} />} />
       <Field label="Часы работы" placeholder="Ежедневно 9:00–22:00"
         value={brand.working_hours || ""} onChange={v => set("working_hours", v)} isDark={isDark}
         aiBtn={<AiFieldBtn field="working_hours" busy={aiBusy["working_hours"] || false} attempts={aiAttempts["working_hours"] || 0} onRun={runAi} siteUrl={website} />} />
