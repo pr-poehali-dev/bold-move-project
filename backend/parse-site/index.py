@@ -364,7 +364,7 @@ def extract_brand_info(site_url: str, page_text: str) -> dict:
 - support_email: email компании (ищи на странице контактов, в футере)
 - telegram: telegram username или ссылка t.me/... (ищи в контактах, соцсетях)
 - website: домен без https:// (например: {domain})
-- working_hours: часы работы (например: Ежедневно 9:00-21:00)
+- working_hours: режим работы/часы работы — ищи на странице контактов, в футере, в блоке "режим работы" / "график" / "пн-пт". Примеры: "Ежедневно 9:00-21:00", "Пн-Пт: 9:00-18:00, Сб: 10:00-15:00", "ПН-ПТ с 8:30 до 17:00; СБ: 8:30 до 14:00; ВС: выходной". ВАЖНО: если видишь любые временные диапазоны рядом с днями недели — это часы работы, обязательно верни их.
 - pdf_footer_address: полный адрес (город, улица, дом) — ищи в контактах и футере
 - brand_color: ГЛАВНЫЙ цвет бренда в HEX — посмотри на кнопки, заголовки, логотип. Например: "#e63946" для красного, "#1d7afc" для синего. Не ставь null если видишь явный фирменный цвет.
 
@@ -423,6 +423,20 @@ def extract_with_regex(text: str, field: str) -> str | None:
         # Fallback: просто город
         m = re.search(r'г\.\s*[А-ЯЁ][а-яё\-]+', text)
         return m.group().strip() if m else None
+    if field == "working_hours":
+        # Паттерн 1: Пн-Пт / ПН-ПТ: 9:00-18:00 (с перечислением дней)
+        m = re.search(
+            r'(?:пн|пон|вт|ср|чт|пт|сб|вс|пятн|понед|ежедн|ежедневно|будн|выходн)'
+            r'[^.!?\n]{2,80}(?:\d{1,2}[:.]\d{2})',
+            text, re.IGNORECASE
+        )
+        if m:
+            snippet = m.group().strip()
+            # Берём до 100 символов и чистим
+            return re.sub(r'\s+', ' ', snippet[:100]).strip()
+        # Паттерн 2: просто время вроде "9:00 - 21:00" или "09:00–21:00"
+        m = re.search(r'\d{1,2}[:.]\d{2}\s*[-–—]\s*\d{1,2}[:.]\d{2}', text)
+        return m.group().strip() if m else None
     return None
 
 
@@ -439,6 +453,7 @@ def search_missing_fields(brand: dict, site_url: str) -> dict:
         "support_email":      f'{domain} email контакты',
         "telegram":           f'{company} telegram t.me',
         "pdf_footer_address": f'{company} {domain} адрес офис',
+        "working_hours":      f'{domain} часы работы режим работы график',
     }
 
     to_search = {k: q for k, q in missing.items() if not brand.get(k)}
@@ -448,7 +463,7 @@ def search_missing_fields(brand: dict, site_url: str) -> dict:
     print(f"[parse-site] searching missing: {list(to_search.keys())}")
 
     # Один поиск по сайту — получаем максимум контента
-    site_query = f'site:{domain} контакты email telegram адрес'
+    site_query = f'site:{domain} контакты email telegram адрес часы работы'
     all_snippets = ""
     try:
         data = tavily_post("https://api.tavily.com/search", {
