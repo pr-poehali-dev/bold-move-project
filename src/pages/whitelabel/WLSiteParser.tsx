@@ -157,20 +157,20 @@ export function WLSiteParser({ onCreated }: Props) {
     }
   };
 
-  // Поиск поля в фазе "parsed" — сначала создаём компанию если нужно, потом ищем
+  // Поиск поля в фазе "parsed" — создаём компанию тихо (без смены фазы), потом ищем
   const searchFieldBeforeCreate = async (field: MissingField) => {
     let cid = lastCompanyId;
+    const currentReport = report;
     if (!cid) {
-      // Создаём компанию молча
-      setCreating(true);
+      setSearching(field.field); // показываем спиннер на пилюле сразу
       try {
         const d = await callParse({ url: url.trim() });
-        if (d.error) { setError(d.error); setCreating(false); return; }
+        if (d.error) { setError(d.error); setSearching(null); return; }
         if (d.company_id && d.token) {
           cid = d.company_id;
+          // Сохраняем только ID и имя — НЕ меняем фазу и НЕ перезаписываем report
           setLastCompanyId(d.company_id);
           setLastCompanyName(d.brand?.company_name || null);
-          setReport(d.report);
           const today = new Date().toISOString().slice(0, 10);
           const masterToken = getWLToken();
           fetch(`${AUTH_URL}?action=admin-update-demo`, {
@@ -198,22 +198,21 @@ export function WLSiteParser({ onCreated }: Props) {
             }).catch(() => {});
           }
           onCreated?.(d.company_id, d.token);
-          setPhase("banner");
         }
-      } catch (e) { setError(String(e)); setCreating(false); return; }
-      setCreating(false);
+      } catch (e) { setError(String(e)); setSearching(null); return; }
+    } else {
+      setSearching(field.field);
     }
-    if (!cid) return;
-    // Теперь ищем поле
-    setSearching(field.field);
+    if (!cid) { setSearching(null); return; }
+    // Ищем поле — фаза остаётся "parsed", пилюли видны
     try {
       const d = await callParse({ url: url.trim(), company_id: cid, only_field: field.field });
       if (!d.error && d.report) {
         const nowFilled = d.report.filled.find((f: FilledField) => f.field === field.field);
-        if (nowFilled && report) {
+        if (nowFilled && currentReport) {
           setReport({
-            filled:  [...report.filled, nowFilled],
-            missing: report.missing.filter(m => m.field !== field.field),
+            filled:  [...currentReport.filled, nowFilled],
+            missing: currentReport.missing.filter(m => m.field !== field.field),
           });
         }
       }
@@ -342,7 +341,7 @@ export function WLSiteParser({ onCreated }: Props) {
                   return (
                     <button key={f.field}
                       onClick={() => searchFieldBeforeCreate(f)}
-                      disabled={!!searching || creating}
+                      disabled={!!searching}
                       className="flex items-center gap-1 text-[10px] px-2.5 py-1 rounded-lg font-medium transition hover:opacity-80 disabled:opacity-50 cursor-pointer"
                       style={{ background: "rgba(245,158,11,0.10)", border: "1px solid rgba(245,158,11,0.35)", color: "#fbbf24" }}>
                       {isSearching
