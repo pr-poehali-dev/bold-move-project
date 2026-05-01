@@ -143,7 +143,7 @@ export function WLNextStepModal({ company, newStatus, onSuccess, onCancel }: Pro
   return (
     <div className="fixed inset-0 z-[100] flex sm:items-center sm:justify-center items-end p-0 sm:p-4"
       style={{ background: "rgba(0,0,0,0.7)" }}>
-      <div className="w-full sm:max-w-sm rounded-t-2xl sm:rounded-2xl overflow-hidden flex flex-col max-h-[90vh]"
+      <div className="w-full sm:max-w-sm rounded-t-2xl sm:rounded-2xl overflow-hidden flex flex-col max-h-[100dvh] sm:max-h-[90vh]"
         style={{ background: "#0e0e1a", border: `1px solid ${st.color}40` }}
         onClick={e => e.stopPropagation()}>
         <div className="flex justify-center pt-3 sm:hidden"><div className="w-10 h-1 rounded-full" style={{ background: "rgba(255,255,255,0.15)" }} /></div>
@@ -319,7 +319,7 @@ export function WLNextStepModal({ company, newStatus, onSuccess, onCancel }: Pro
         </div>
 
         {/* Футер */}
-        <div className="px-5 pb-5 pt-3 border-t border-white/[0.06] flex gap-3 flex-shrink-0">
+        <div className="px-5 pt-3 border-t border-white/[0.06] flex gap-3 flex-shrink-0" style={{ paddingBottom: "max(20px, env(safe-area-inset-bottom))" }}>
           <button onClick={onCancel}
             className="flex-1 py-2.5 rounded-xl text-[11px] font-bold transition"
             style={{ background: "rgba(255,255,255,0.05)", color: "rgba(255,255,255,0.4)" }}>
