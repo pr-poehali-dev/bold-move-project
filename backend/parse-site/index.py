@@ -579,6 +579,24 @@ def handler(event: dict, context) -> dict:
     if not site_url:
         return err("url обязателен")
 
+    # ── Проверка дубликата: этот сайт уже парсили ────────────────────────────
+    if company_id is None:
+        chk_conn = get_conn(); chk_cur = chk_conn.cursor()
+        # Берём домен без протокола для сравнения
+        domain_check = re.sub(r"https?://", "", site_url).split("/")[0].lower()
+        chk_cur.execute(f"""
+            SELECT dc.id, u.company_name, dc.site_url
+            FROM {SCHEMA}.demo_companies dc
+            JOIN {SCHEMA}.users u ON u.id = dc.company_id
+            WHERE u.removed_at IS NULL
+        """)
+        all_sites = chk_cur.fetchall()
+        chk_cur.close(); chk_conn.close()
+        for row_ in all_sites:
+            existing_domain = re.sub(r"https?://", "", row_[2] or "").split("/")[0].lower()
+            if existing_domain == domain_check:
+                return err(f"Этот сайт уже добавлен: «{row_[1]}»")
+
     # ── Режим поиска одного поля ─────────────────────────────────────────────
     if only_field:
         domain  = re.sub(r"https?://", "", site_url).split("/")[0]
