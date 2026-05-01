@@ -170,24 +170,39 @@ export function WLPipelineList({ companies, filterStatus, onFilterChange, onSele
                   )}
                 </div>
 
-                {/* Дней с регистрации */}
-                <div className="flex-shrink-0 text-center px-3 py-1.5 rounded-lg"
-                  style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)" }}>
-                  <div className="text-[9px] text-white/25">В базе</div>
-                  <div className="text-xs font-bold text-white/50">
-                    {Math.floor((Date.now() - new Date(c.created_at).getTime()) / 86400000)} дн.
-                  </div>
-                </div>
+                {/* Демо: дней осталось (10 дней с создания) */}
+                {(() => {
+                  const DEMO_DAYS = 10;
+                  const daysPassed = Math.floor((Date.now() - new Date(c.created_at).getTime()) / 86400000);
+                  const daysLeft = Math.max(0, DEMO_DAYS - daysPassed);
+                  const expired = daysLeft === 0;
+                  const warn = daysLeft <= 3;
+                  const color = expired ? "#ef4444" : warn ? "#f59e0b" : "#06b6d4";
+                  const bg    = expired ? "rgba(239,68,68,0.08)" : warn ? "rgba(245,158,11,0.08)" : "rgba(6,182,212,0.08)";
+                  return (
+                    <div className="flex-shrink-0 text-center px-3 py-1.5 rounded-lg"
+                      style={{ background: bg, border: `1px solid ${color}30` }}>
+                      <div className="text-[9px]" style={{ color: color + "99" }}>Демо</div>
+                      <div className="text-xs font-bold" style={{ color }}>
+                        {expired ? "Истёк" : `${daysLeft} дн.`}
+                      </div>
+                    </div>
+                  );
+                })()}
 
-                {/* Смет */}
-                <div className="flex-shrink-0 text-center px-3 py-1.5 rounded-lg"
-                  style={{ background: c.estimates_balance > 0 ? "rgba(16,185,129,0.08)" : "rgba(239,68,68,0.06)",
-                           border: `1px solid ${c.estimates_balance > 0 ? "rgba(16,185,129,0.2)" : "rgba(239,68,68,0.15)"}` }}>
-                  <div className="text-[9px]" style={{ color: c.estimates_balance > 0 ? "rgba(16,185,129,0.6)" : "rgba(239,68,68,0.6)" }}>Смет</div>
-                  <div className="text-xs font-bold" style={{ color: c.estimates_balance > 0 ? "#10b981" : "#ef4444" }}>
-                    {c.estimates_balance}
-                  </div>
-                </div>
+                {/* Смет осталось */}
+                {(() => {
+                  const bal = c.estimates_balance;
+                  const color = bal > 5 ? "#10b981" : bal > 0 ? "#f59e0b" : "#ef4444";
+                  const bg    = bal > 5 ? "rgba(16,185,129,0.08)" : bal > 0 ? "rgba(245,158,11,0.08)" : "rgba(239,68,68,0.06)";
+                  return (
+                    <div className="flex-shrink-0 text-center px-3 py-1.5 rounded-lg"
+                      style={{ background: bg, border: `1px solid ${color}30` }}>
+                      <div className="text-[9px]" style={{ color: color + "99" }}>Смет</div>
+                      <div className="text-xs font-bold" style={{ color }}>{bal}</div>
+                    </div>
+                  );
+                })()}
 
                 {/* Борд */}
                 <button onClick={async e => {
