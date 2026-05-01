@@ -730,6 +730,7 @@ def handler(event: dict, context) -> dict:
         company_id = int(company_id)
     only_field = (body.get("only_field") or "").strip()  # если задано — ищем только одно поле
     parse_only = bool(body.get("parse_only"))  # True — только парсинг, без создания компании
+    check_only = bool(body.get("check_only"))  # True — только проверка дубликата, без парсинга
 
     if not site_url:
         return err("url обязателен")
@@ -751,6 +752,9 @@ def handler(event: dict, context) -> dict:
             existing_domain = re.sub(r"https?://", "", row_[2] or "").split("/")[0].lower()
             if existing_domain == domain_check:
                 return err(f"Этот сайт уже добавлен: «{row_[1]}»")
+        # check_only=True — только проверка дубликата, возвращаем ОК без парсинга
+        if check_only:
+            return ok({"ok": True, "duplicate": False})
 
     # ── Режим поиска одного поля ─────────────────────────────────────────────
     if only_field:

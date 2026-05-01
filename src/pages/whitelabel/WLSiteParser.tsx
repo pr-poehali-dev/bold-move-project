@@ -22,6 +22,7 @@ export function WLSiteParser({ onCreated }: Props) {
   const [report, setReport]       = useState<ParseReport | null>(null);
   const [parsedBrand, setParsedBrand] = useState<Record<string, string> | null>(null);
   const [error, setError]         = useState<string | null>(null);
+  const [dupError, setDupError]   = useState<string | null>(null); // ошибка дубликата — до парсинга
   const [searching, setSearching] = useState<string | null>(null);
   const [notFound,  setNotFound]  = useState<string | null>(null);
   const [lastCompanyId, setLastCompanyId] = useState<number | null>(null);
@@ -29,8 +30,29 @@ export function WLSiteParser({ onCreated }: Props) {
   const [phase, setPhase]         = useState<Phase>("idle");
   const [visibleCount, setVisibleCount] = useState(0);
   const timersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
+  const dupTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => () => { timersRef.current.forEach(clearTimeout); }, []);
+
+  // Проверка дубликата с дебаунсом при вводе URL
+  useEffect(() => {
+    if (dupTimerRef.current) clearTimeout(dupTimerRef.current);
+    const trimmed = url.trim();
+    if (!trimmed || phase !== "idle") { setDupError(null); return; }
+    dupTimerRef.current = setTimeout(async () => {
+      try {
+        const token = getWLToken();
+        const r = await fetch(PARSE_SITE_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "X-Authorization": token || "" },
+          body: JSON.stringify({ url: trimmed, check_only: true }),
+        });
+        const d = await r.json();
+        setDupError(d.error || null);
+      } catch { /* ignore */ }
+    }, 600);
+    return () => { if (dupTimerRef.current) clearTimeout(dupTimerRef.current); };
+  }, [url, phase]);
 
   const clearTimers = () => {
     timersRef.current.forEach(clearTimeout);
@@ -70,7 +92,7 @@ export function WLSiteParser({ onCreated }: Props) {
   // Шаг 1: парсим сайт, НЕ создаём компанию
   const run = async () => {
     const trimmed = url.trim();
-    if (!trimmed) return;
+    if (!trimmed || dupError) return;
     clearTimers();
     setLoading(true);
     setReport(null);
@@ -257,6 +279,8 @@ export function WLSiteParser({ onCreated }: Props) {
     setReport(null);
     setParsedBrand(null);
     setUrl("");
+    setError(null);
+    setDupError(null);
     setLastCompanyId(null);
     setLastCompanyName(null);
     setVisibleCount(0);
@@ -288,7 +312,7 @@ export function WLSiteParser({ onCreated }: Props) {
           disabled={loading || phase === "animating" || phase === "banner"}
           className="flex-1 rounded-xl px-3 py-2 text-xs font-mono bg-white/[0.05] border border-white/10 text-white placeholder-white/25 outline-none focus:border-amber-500/50 transition disabled:opacity-50"
         />
-        <button onClick={run} disabled={loading || !url.trim() || phase === "animating" || phase === "banner"}
+        <button onClick={run} disabled={loading || !url.trim() || !!dupError || phase === "animating" || phase === "banner"}
           className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold transition disabled:opacity-40 flex-shrink-0"
           style={{ background: loading ? "rgba(245,158,11,0.15)" : "#f59e0b", color: loading ? "#f59e0b" : "#0a0a14" }}>
           {loading
@@ -298,7 +322,15 @@ export function WLSiteParser({ onCreated }: Props) {
         </button>
       </div>
 
-      {error && (
+      {dupError && (
+        <div className="rounded-xl px-3 py-2.5 text-xs"
+          style={{ background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.25)", color: "#fca5a5" }}>
+          <Icon name="AlertCircle" size={11} className="inline mr-1.5" style={{ color: "#ef4444" }} />
+          {dupError}
+        </div>
+      )}
+
+      {!dupError && error && (
         <div className="rounded-xl px-3 py-2.5 text-xs"
           style={{ background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.25)", color: "#fca5a5" }}>
           <Icon name="AlertCircle" size={11} className="inline mr-1.5" style={{ color: "#ef4444" }} />
