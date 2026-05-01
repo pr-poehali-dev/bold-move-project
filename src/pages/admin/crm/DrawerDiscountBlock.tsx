@@ -70,12 +70,11 @@ export function DrawerDiscountBlock({ data, customFinRows, onContractSumUpdated 
     return Math.max(0, Math.floor(d * 10) / 10);
   }, [baseIncome, plCosts]);
 
-  // Пороги зон из настроек управления риском (адаптируем к реальной безубыточности)
-  // Если настройки больше реальной безубыточности — обрезаем
-  const zoneLow  = Math.min(risk.low_risk_threshold,  breakEvenDiscount * 0.6);
-  const zoneMid  = Math.min(risk.mid_risk_threshold,  breakEvenDiscount * 0.85);
-  const zoneMax  = Math.min(risk.max_discount,        breakEvenDiscount);
-  // sliderMax = максимум из настроек, но не выше безубыточности
+  // Пороги берём напрямую из настроек — не адаптируем автоматически
+  // Только sliderMax ограничиваем безубыточностью чтобы не уйти в минус
+  const zoneLow   = risk.low_risk_threshold;
+  const zoneMid   = risk.mid_risk_threshold;
+  const zoneMax   = Math.min(risk.max_discount, breakEvenDiscount > 0 ? breakEvenDiscount : risk.max_discount);
   const sliderMax = Math.round(zoneMax * 10) / 10;
 
   const discountedIncome = baseIncome * (1 - discount / 100);
