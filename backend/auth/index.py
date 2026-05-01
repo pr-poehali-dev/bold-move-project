@@ -1,4 +1,6 @@
-import json, os, hashlib, secrets, psycopg2
+import json, os, hashlib, secrets, psycopg2, base64
+import urllib.request as _ureq
+import boto3
 from datetime import datetime
 
 SCHEMA = os.environ.get("DB_SCHEMA", "t_p45929761_bold_move_project")
@@ -1658,7 +1660,6 @@ def handler(event: dict, context) -> dict:
             return err("demo_id и image_b64 обязательны")
 
         # Загружаем чек в S3
-        import base64, boto3, urllib.request as _ureq
         img_bytes = base64.b64decode(image_b64)
         s3 = boto3.client(
             "s3",
@@ -1685,8 +1686,7 @@ def handler(event: dict, context) -> dict:
         if tg_token and tg_chat:
             caption = f"💰 Оплатили агента!\n\n🏢 {company_name}\nID #{company_cid}\n\nЧек приложен."
             try:
-                import json as _json
-                payload = _json.dumps({
+                payload = json.dumps({
                     "chat_id": tg_chat,
                     "photo":   cdn_url,
                     "caption": caption,
