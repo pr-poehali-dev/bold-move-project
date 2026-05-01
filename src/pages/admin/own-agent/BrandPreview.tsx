@@ -306,6 +306,27 @@ export default function BrandPreview({ brand, isDark }: Props) {
           ? <><div className="w-3.5 h-3.5 border-2 border-violet-400 border-t-transparent rounded-full animate-spin" /> Генерирую PDF...</>
           : <><Icon name="Download" size={14} /> Скачать PDF с моим брендом</>}
       </button>
+
+      {/* Быстрые ссылки */}
+      {user?.id && (
+        <div className="grid grid-cols-3 gap-2">
+          <a href={`/?c=${user.id}`} target="_blank" rel="noreferrer"
+            className="flex items-center justify-center gap-1.5 py-2 rounded-xl text-[11px] font-bold transition hover:opacity-80"
+            style={{ background: "rgba(6,182,212,0.12)", color: "#06b6d4", border: "1px solid rgba(6,182,212,0.25)" }}>
+            <Icon name="Globe" size={12} /> Сайт
+          </a>
+          <a href="/company" target="_blank" rel="noreferrer"
+            className="flex items-center justify-center gap-1.5 py-2 rounded-xl text-[11px] font-bold transition hover:opacity-80"
+            style={{ background: "rgba(167,139,250,0.12)", color: "#a78bfa", border: "1px solid rgba(167,139,250,0.25)" }}>
+            <Icon name="LayoutDashboard" size={12} /> Панель
+          </a>
+          <a href={`/?c=${user.id}&test=1`} target="_blank" rel="noreferrer"
+            className="flex items-center justify-center gap-1.5 py-2 rounded-xl text-[11px] font-bold transition hover:opacity-80"
+            style={{ background: "rgba(16,185,129,0.10)", color: "#10b981", border: "1px solid rgba(16,185,129,0.22)" }}>
+            <Icon name="Zap" size={12} /> API
+          </a>
+        </div>
+      )}
     </div>
   );
 }
