@@ -1486,8 +1486,8 @@ def handler(event: dict, context) -> dict:
             return err("Аккаунт ожидает одобрения мастера")
         tok = secrets.token_hex(32)
         cur.execute(f"""
-            INSERT INTO {SCHEMA}.user_sessions (user_id, token, expires_at)
-            VALUES (%s, %s, NOW() + INTERVAL '30 days')
+            INSERT INTO {SCHEMA}.user_sessions (user_id, token, expires_at, session_type)
+            VALUES (%s, %s, NOW() + INTERVAL '30 days', 'wl_manager')
         """, (mgr_id, tok))
         conn.commit()
         return ok({"token": tok, "manager": {
@@ -1503,7 +1503,7 @@ def handler(event: dict, context) -> dict:
             SELECT m.id, m.name, m.email, m.wl_role, m.approved
             FROM {SCHEMA}.wl_managers m
             JOIN {SCHEMA}.user_sessions s ON s.user_id = m.id
-            WHERE s.token = %s AND s.expires_at > NOW()
+            WHERE s.token = %s AND s.expires_at > NOW() AND s.session_type = 'wl_manager'
         """, (token,))
         row = cur.fetchone()
         if not row:
@@ -1724,7 +1724,7 @@ def handler(event: dict, context) -> dict:
         cur.execute(f"""
             SELECT m.id, m.wl_role, m.approved, m.email FROM {SCHEMA}.wl_managers m
             JOIN {SCHEMA}.user_sessions s ON s.user_id = m.id
-            WHERE s.token = %s AND s.expires_at > NOW()
+            WHERE s.token = %s AND s.expires_at > NOW() AND s.session_type = 'wl_manager'
         """, (token,))
         wl_row = cur.fetchone()
 

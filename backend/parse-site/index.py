@@ -711,7 +711,7 @@ def handler(event: dict, context) -> dict:
     cur.execute(f"""
         SELECT m.id, m.wl_role, m.approved FROM {SCHEMA}.wl_managers m
         JOIN {SCHEMA}.user_sessions s ON s.user_id = m.id
-        WHERE s.token=%s AND s.expires_at > NOW()
+        WHERE s.token=%s AND s.expires_at > NOW() AND s.session_type = 'wl_manager'
     """, (raw_token,))
     wl_row = cur.fetchone()
 
