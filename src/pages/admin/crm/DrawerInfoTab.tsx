@@ -4,6 +4,7 @@ import { useTheme } from "./themeContext";
 import { Section } from "./drawerComponents";
 import { StatusSelector } from "./StatusSelector";
 import { DrawerPLBlock } from "./DrawerPLBlock";
+import { DrawerDiscountBlock } from "./DrawerDiscountBlock";
 import { ActivityFeed, ActivityEvent, appendActivityLog } from "./ActivityFeed";
 import { AddBlockModal } from "./DrawerBlockEditor";
 import { DrawerColumns } from "./DrawerColumns";
@@ -207,6 +208,14 @@ export default function DrawerInfoTab({ data, client, setData, save, setComments
           data={data}
           isHidden={hiddenBlocks.has("pl")}
           toggleHidden={toggleHidden}
+          customFinRows={customFinRows}
+        />
+      )}
+
+      {/* Оценка риска скидки — только если есть финансовые данные */}
+      {canFinance && !hiddenBlocks.has("pl") && (
+        <DrawerDiscountBlock
+          data={data}
           customFinRows={customFinRows}
         />
       )}
