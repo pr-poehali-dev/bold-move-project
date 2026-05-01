@@ -54,10 +54,15 @@ export function WLContent() {
         .then(d => { if (d.user) updateUser(d.user); })
         .catch(() => {});
     }
-    // После закрытия панели агента/админа — перезагружаем список компаний,
-    // чтобы обновились telegram, email, логотип и другие поля бренда
+    // После закрытия панели агента/админа — перезагружаем список компаний
+    // и очищаем кеш бренда чтобы сайт клиента сразу показал новые данные
     if (panel && (panel.type === "agent" || panel.type === "admin")) {
       setRefreshTrigger(t => t + 1);
+      // Очищаем кеш бренда для этой компании
+      const companyId = (panel as { companyId?: number }).companyId;
+      if (companyId) {
+        try { localStorage.removeItem(`mp_brand_${companyId}`); } catch { /* ignore */ }
+      }
     }
     setPanel(null);
     setIframeToken(null);

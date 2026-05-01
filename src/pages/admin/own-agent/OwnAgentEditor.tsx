@@ -33,7 +33,7 @@ export default function OwnAgentEditor({ isDark }: Props) {
     support_phone:      user?.brand?.support_phone      ?? "",
     support_email:      user?.brand?.support_email      ?? "",
     max_url:            user?.brand?.max_url            ?? "",
-    working_hours:      user?.brand?.working_hours      ?? "Ежедневно 9:00–22:00",
+    working_hours:      user?.brand?.working_hours      ?? "",
     pdf_footer_address: user?.brand?.pdf_footer_address ?? "",
     telegram_url:       user?.brand?.telegram_url       ?? "",
     pdf_text_color:     user?.brand?.pdf_text_color     ?? "#111827",
@@ -211,7 +211,7 @@ export default function OwnAgentEditor({ isDark }: Props) {
 
         {/* ─── Правая колонка: превью ─── */}
         <div className="lg:sticky lg:top-4 lg:self-start">
-          <BrandPreview brand={brand} isDark={isDark} />
+          <BrandPreview brand={brand} isDark={isDark} companyName={companyName} />
         </div>
 
       </div>

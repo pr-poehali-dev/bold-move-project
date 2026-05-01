@@ -6,6 +6,7 @@ import func2url from "@/../backend/func2url.json";
 interface Props {
   brand: Brand;
   isDark: boolean;
+  companyName?: string;
 }
 
 /**
@@ -49,7 +50,7 @@ const DEMO_ESTIMATE = {
   finalPhrase: "На какой день вас записать на бесплатный замер?",
 };
 
-export default function BrandPreview({ brand, isDark }: Props) {
+export default function BrandPreview({ brand, isDark, companyName: companyNameProp }: Props) {
   const { user } = useAuth();
   const [downloading, setDownloading] = useState(false);
 
@@ -102,7 +103,7 @@ export default function BrandPreview({ brand, isDark }: Props) {
   const avatarUrl   = brand.bot_avatar_url || "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/files/60e2335c-4916-41e5-b894-7f4d9ca6a923.jpg";
   const botName     = brand.bot_name || "Женя";
   const greeting    = brand.bot_greeting || "Привет! Я Женя — ваш персональный консультант 👋";
-  const companyName = user?.company_name || "Ваша компания";
+  const companyName = companyNameProp || user?.company_name || "Ваша компания";
 
   const muted   = isDark ? "rgba(255,255,255,0.45)" : "#6b7280";
   const border  = isDark ? "rgba(255,255,255,0.07)" : "#e5e7eb";

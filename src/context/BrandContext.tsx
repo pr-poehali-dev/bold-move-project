@@ -55,7 +55,7 @@ interface BrandCtx {
 const Ctx = createContext<BrandCtx>({ brand: DEFAULT_BRAND, loading: false, isCustom: false });
 
 const CACHE_PREFIX = "mp_brand_";
-const CACHE_TTL_MS = 1000 * 60 * 60 * 6; // 6 часов
+const CACHE_TTL_MS = 1000 * 60 * 5; // 5 минут — чтобы изменения в редакторе отражались быстро
 
 interface CachedBrand { brand: Brand; ts: number }
 
@@ -79,6 +79,8 @@ function cacheSet(cid: string, brand: Brand) {
 }
 
 function mergeBrand(b: Partial<Brand> & { telegram?: string }, cid: number): Brand {
+  // telegram_url может приходить как telegram_url или telegram (старое поле)
+  const tgUrl = nonEmpty(b.telegram_url) ?? normalizeTelegram(b.telegram) ?? DEFAULT_BRAND.telegram_url;
   return {
     ...DEFAULT_BRAND,
     company_id:    b.company_id ?? cid,
@@ -90,11 +92,15 @@ function mergeBrand(b: Partial<Brand> & { telegram?: string }, cid: number): Bra
     brand_color:    nonEmpty(b.brand_color)    ?? DEFAULT_BRAND.brand_color,
     support_phone:  nonEmpty(b.support_phone)  ?? DEFAULT_BRAND.support_phone,
     support_email:  nonEmpty(b.support_email)  ?? null,
-    telegram_url:   normalizeTelegram(b.telegram) ?? DEFAULT_BRAND.telegram_url,
+    telegram_url:   tgUrl,
     max_url:        nonEmpty(b.max_url)         ?? DEFAULT_BRAND.max_url,
     website:        nonEmpty(b.website)         ?? null,
     working_hours:  nonEmpty(b.working_hours)   ?? DEFAULT_BRAND.working_hours,
-    pdf_footer_address: nonEmpty(b.pdf_footer_address) ?? null,
+    pdf_footer_address:   nonEmpty(b.pdf_footer_address)   ?? null,
+    pdf_text_color:       nonEmpty(b.pdf_text_color)       ?? null,
+    brand_logo_url_dark:  nonEmpty(b.brand_logo_url_dark)  ?? null,
+    brand_logo_orientation: nonEmpty(b.brand_logo_orientation) ?? "horizontal",
+    pdf_logo_bg:          nonEmpty(b.pdf_logo_bg)          ?? "auto",
   };
 }
 
