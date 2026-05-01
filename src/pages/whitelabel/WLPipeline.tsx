@@ -104,78 +104,64 @@ export function WLPipeline({ refreshTrigger, onOpenPanel, onRunApiTests }: Props
 
   return (
     <div>
-      {/* Заголовок */}
-      <div className="flex items-center gap-2 sm:gap-3 mb-3">
-        <div className="flex items-center gap-2">
-          <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: "#8b5cf620" }}>
-            <Icon name="Kanban" size={14} style={{ color: "#8b5cf6" }} />
-          </div>
-          <h2 className="text-sm font-black uppercase tracking-wider" style={{ color: "#8b5cf6" }}>
-            Pipeline ({companies.length})
-          </h2>
-        </div>
-
-        <div className="ml-auto flex items-center gap-2">
-          {/* Переключатель вид — только для вкладки Компании */}
-          {tab === "companies" && (
-            <div className="flex items-center rounded-lg overflow-hidden" style={{ border: "1px solid rgba(255,255,255,0.08)" }}>
-              {([["kanban", "Kanban"], ["list", "List"]] as [ViewMode, string][]).map(([id, label]) => (
-                <button key={id} onClick={() => setView(id)}
-                  className="px-2 sm:px-3 py-1.5 text-[10px] font-bold transition flex items-center gap-1"
-                  style={{
-                    background: view === id ? "rgba(139,92,246,0.2)" : "transparent",
-                    color:      view === id ? "#a78bfa" : "rgba(255,255,255,0.3)",
-                  }}>
-                  <Icon name={id === "kanban" ? "LayoutGrid" : "List"} size={11} />
-                  <span className="hidden sm:inline">{label}</span>
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Вкладки */}
+      {/* Шапка: заголовок + табы + переключатель вида — всё в одну строку */}
       {(() => {
         const presCount = companies.filter(c => c.status === "presentation").length;
         return (
-          <div className="flex items-center gap-1 mb-4 p-1 rounded-xl" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)" }}>
-            <button onClick={() => setTab("companies")}
-              className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-[11px] font-bold transition"
-              style={{
-                background: tab === "companies" ? "rgba(139,92,246,0.2)" : "transparent",
-                color:      tab === "companies" ? "#a78bfa" : "rgba(255,255,255,0.3)",
-              }}>
-              <Icon name="Building2" size={12} /> Компании
-            </button>
-            <button onClick={() => setTab("tasks")}
-              className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-[11px] font-bold transition"
-              style={{
-                background: tab === "tasks" ? "rgba(245,158,11,0.15)" : "transparent",
-                color:      tab === "tasks" ? "#f59e0b" : "rgba(255,255,255,0.3)",
-              }}>
-              <Icon name="Target" size={12} /> Задачи
-              {tasksCount > 0 && (
-                <span className="text-[9px] px-1.5 py-0.5 rounded-full font-bold"
-                  style={{ background: tab === "tasks" ? "rgba(245,158,11,0.25)" : "rgba(245,158,11,0.15)", color: "#f59e0b" }}>
-                  {tasksCount}
-                </span>
-              )}
-            </button>
-            <button onClick={() => setTab("calendar")}
-              className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-[11px] font-bold transition"
-              style={{
-                background: tab === "calendar" ? "rgba(249,115,22,0.15)" : "transparent",
-                color:      tab === "calendar" ? "#f97316" : "rgba(255,255,255,0.3)",
-              }}>
-              <Icon name="CalendarDays" size={12} /> Показы
-              {presCount > 0 && (
-                <span className="text-[9px] px-1.5 py-0.5 rounded-full font-bold"
-                  style={{ background: tab === "calendar" ? "rgba(249,115,22,0.3)" : "rgba(249,115,22,0.15)", color: "#f97316" }}>
-                  {presCount}
-                </span>
-              )}
-            </button>
+          <div className="flex items-center gap-1.5 mb-3">
+            {/* Заголовок — только десктоп */}
+            <div className="hidden sm:flex items-center gap-2 mr-1">
+              <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: "#8b5cf620" }}>
+                <Icon name="Kanban" size={14} style={{ color: "#8b5cf6" }} />
+              </div>
+              <h2 className="text-sm font-black uppercase tracking-wider whitespace-nowrap" style={{ color: "#8b5cf6" }}>
+                Pipeline ({companies.length})
+              </h2>
+            </div>
+
+            {/* Табы */}
+            <div className="flex items-center gap-1 flex-1 p-1 rounded-xl" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)" }}>
+              <button onClick={() => setTab("companies")}
+                className="flex-1 flex items-center justify-center gap-1 py-1.5 rounded-lg text-[10px] font-bold transition"
+                style={{ background: tab === "companies" ? "rgba(139,92,246,0.2)" : "transparent", color: tab === "companies" ? "#a78bfa" : "rgba(255,255,255,0.3)" }}>
+                <Icon name="Building2" size={11} />
+                <span className="hidden xs:inline sm:inline">Компании</span>
+                <span className="sm:hidden">{companies.length}</span>
+              </button>
+              <button onClick={() => setTab("tasks")}
+                className="flex-1 flex items-center justify-center gap-1 py-1.5 rounded-lg text-[10px] font-bold transition"
+                style={{ background: tab === "tasks" ? "rgba(245,158,11,0.15)" : "transparent", color: tab === "tasks" ? "#f59e0b" : "rgba(255,255,255,0.3)" }}>
+                <Icon name="Target" size={11} />
+                <span className="hidden sm:inline">Задачи</span>
+                {tasksCount > 0 && (
+                  <span className="text-[8px] px-1 py-0.5 rounded-full font-bold"
+                    style={{ background: "rgba(245,158,11,0.25)", color: "#f59e0b" }}>{tasksCount}</span>
+                )}
+              </button>
+              <button onClick={() => setTab("calendar")}
+                className="flex-1 flex items-center justify-center gap-1 py-1.5 rounded-lg text-[10px] font-bold transition"
+                style={{ background: tab === "calendar" ? "rgba(249,115,22,0.15)" : "transparent", color: tab === "calendar" ? "#f97316" : "rgba(255,255,255,0.3)" }}>
+                <Icon name="CalendarDays" size={11} />
+                <span className="hidden sm:inline">Показы</span>
+                {presCount > 0 && (
+                  <span className="text-[8px] px-1 py-0.5 rounded-full font-bold"
+                    style={{ background: "rgba(249,115,22,0.25)", color: "#f97316" }}>{presCount}</span>
+                )}
+              </button>
+            </div>
+
+            {/* Переключатель вид — только для вкладки Компании */}
+            {tab === "companies" && (
+              <div className="flex items-center rounded-lg overflow-hidden flex-shrink-0" style={{ border: "1px solid rgba(255,255,255,0.08)" }}>
+                {([["kanban", "LayoutGrid"], ["list", "List"]] as [ViewMode, string][]).map(([id, icon]) => (
+                  <button key={id} onClick={() => setView(id)}
+                    className="px-2 py-1.5 text-[10px] font-bold transition flex items-center gap-1"
+                    style={{ background: view === id ? "rgba(139,92,246,0.2)" : "transparent", color: view === id ? "#a78bfa" : "rgba(255,255,255,0.3)" }}>
+                    <Icon name={icon} size={12} />
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         );
       })()}

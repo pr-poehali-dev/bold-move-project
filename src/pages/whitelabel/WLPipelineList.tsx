@@ -153,19 +153,32 @@ export function WLPipelineList({ companies, filterStatus, onFilterChange, onSele
 
   return (
     <div className="mt-4 space-y-3">
-      <WLPipelineFilters
-        companies={companies}
-        filterStatus={filterStatus}
-        onFilterChange={onFilterChange}
-        demoFilter={demoFilter}
-        estFilter={estFilter}
-        agentFilter={agentFilter}
-        onDemoFilter={setDemoFilter}
-        onEstFilter={setEstFilter}
-        onAgentFilter={setAgentFilter}
-        search={search}
-        onSearch={setSearch}
-      />
+      {/* Поиск на мобиле — компактная строка */}
+      <div className="flex sm:hidden items-center gap-2 px-3 py-2 rounded-xl"
+        style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}>
+        <Icon name="Search" size={12} style={{ color: "rgba(255,255,255,0.3)", flexShrink: 0 }} />
+        <input value={search} onChange={e => setSearch(e.target.value)}
+          placeholder="Поиск..."
+          className="flex-1 bg-transparent text-[11px] text-white/80 outline-none placeholder-white/20" />
+        {search && <button onClick={() => setSearch("")}><Icon name="X" size={11} style={{ color: "rgba(255,255,255,0.3)" }} /></button>}
+      </div>
+
+      {/* Фильтры — только на десктопе */}
+      <div className="hidden sm:block">
+        <WLPipelineFilters
+          companies={companies}
+          filterStatus={filterStatus}
+          onFilterChange={onFilterChange}
+          demoFilter={demoFilter}
+          estFilter={estFilter}
+          agentFilter={agentFilter}
+          onDemoFilter={setDemoFilter}
+          onEstFilter={setEstFilter}
+          onAgentFilter={setAgentFilter}
+          search={search}
+          onSearch={setSearch}
+        />
+      </div>
 
       {/* Список с DnD */}
       <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
