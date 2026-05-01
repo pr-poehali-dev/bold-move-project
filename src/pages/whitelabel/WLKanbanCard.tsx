@@ -111,14 +111,7 @@ export function KanbanCard({ c, onSelect, onDragStart, onLpr, dateRange, colWidt
               <span className="font-bold">{balance}</span>
               <span className="opacity-60">смет</span>
             </div>
-            {/* Счётчик демо от created_at */}
-            {!hasPaid && (
-              <div className="flex items-center gap-1 text-[9px] px-1.5 py-0.5 rounded-md font-bold"
-                style={{ background: demoColor + "15", color: demoColor }}>
-                <Icon name="Clock" size={8} />
-                <span>{demoExpired ? "Демо истёк" : `${daysLeft}д демо`}</span>
-              </div>
-            )}
+
             {/* Оплачен */}
             {hasPaid && (
               <div className="flex items-center gap-1 text-[9px] px-1.5 py-0.5 rounded-md"

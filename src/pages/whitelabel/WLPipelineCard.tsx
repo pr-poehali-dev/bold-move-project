@@ -72,14 +72,7 @@ export function WLPipelineCard({ c, isOpen, onToggle, onSelect, onMove, onBrand,
 
             <span className="text-[9px] px-1.5 py-0.5 rounded-md font-bold flex-shrink-0"
               style={{ background: st.bg, color: st.color }}>{st.label}</span>
-            {/* Демо-badge от created_at */}
-            {!c.agent_purchased_at && (
-              expired
-                ? <span className="text-[9px] px-1.5 py-0.5 rounded-md font-bold flex-shrink-0"
-                    style={{ background: "rgba(239,68,68,0.12)", color: "#ef4444" }}>Демо истёк</span>
-                : <span className="text-[9px] px-1.5 py-0.5 rounded-md font-bold flex-shrink-0"
-                    style={{ background: demoBg, color: demoColor }}>Демо · {daysLeft} дн.</span>
-            )}
+
           </div>
           <div className="flex items-center gap-1.5 text-[10px] text-white/30 flex-wrap mt-0.5">
             <span>{domain}</span>
