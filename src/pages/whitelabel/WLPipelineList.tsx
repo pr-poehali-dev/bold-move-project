@@ -1,67 +1,60 @@
 import { useState } from "react";
 import Icon from "@/components/ui/icon";
-import { AUTH_URL, DEMO_STATUSES } from "./wlTypes";
-import type { DemoPipelineCompany, DemoStatus, PanelView } from "./wlTypes";
+import { DEMO_STATUSES } from "./wlTypes";
+import type { DemoPipelineCompany, DemoStatus } from "./wlTypes";
+import { WLNextStepModal } from "./WLNextStepModal";
+import { WLReceiptModal }  from "./WLReceiptModal";
 
 interface Props {
   companies:      DemoPipelineCompany[];
   filterStatus:   DemoStatus | "all";
   onFilterChange: (s: DemoStatus | "all") => void;
   onSelect:       (c: DemoPipelineCompany) => void;
-  onOpenPanel:    (p: PanelView, token?: string) => void;
-  onRunApiTests:  (cid: number) => void;
+
+  onMove:         (demoId: number, status: DemoStatus) => void;
+  onUpdate:       (demoId: number, patch: Partial<DemoPipelineCompany>) => void;
 }
 
-const masterToken = () => localStorage.getItem("mp_user_token") || "";
 
-async function loginAs(companyId: number): Promise<string | null> {
-  const r = await fetch(`${AUTH_URL}?action=admin-login-as`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", "X-Authorization": masterToken() },
-    body: JSON.stringify({ user_id: companyId }),
-  });
-  const d = await r.json();
-  return d.token || null;
-}
-
-function ActionButtons({ c, onOpenPanel, onRunApiTests }: {
+function ActionButtons({ c, onMove }: {
   c: DemoPipelineCompany;
-  onOpenPanel: (p: PanelView, token?: string) => void;
-  onRunApiTests: (cid: number) => void;
+  onMove: (status: DemoStatus) => void;
 }) {
-  const btn = "flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[10px] font-bold transition hover:opacity-80";
+  const btn = "flex-1 flex items-center justify-center gap-1 py-2 rounded-lg text-[10px] font-bold transition";
   return (
-    <div className="flex flex-wrap gap-1.5 pt-2.5 mt-2.5 border-t border-white/[0.06]"
+    <div className="flex gap-1.5 pt-2.5 mt-2.5 border-t border-white/[0.06]"
       onClick={e => e.stopPropagation()}>
-      <button onClick={async () => {
-          const tok = await loginAs(c.company_id);
-          if (tok) onOpenPanel({ type: "site-authed", url: `/?c=${c.company_id}`, token: tok });
-          else onOpenPanel({ type: "site", url: `/?c=${c.company_id}` });
-        }} className={btn} style={{ background: "rgba(6,182,212,0.12)", color: "#06b6d4", border: "1px solid rgba(6,182,212,0.25)" }}>
-        <Icon name="Globe" size={10} /> Сайт
-      </button>
-      <button onClick={async () => {
-          const tok = await loginAs(c.company_id);
-          if (tok) onOpenPanel({ type: "admin", companyId: c.company_id }, tok);
-        }} className={btn} style={{ background: "rgba(167,139,250,0.12)", color: "#a78bfa", border: "1px solid rgba(167,139,250,0.25)" }}>
-        <Icon name="LayoutDashboard" size={10} /> Панель
-      </button>
-      <button onClick={() => onRunApiTests(c.company_id)}
-        className={btn} style={{ background: "rgba(16,185,129,0.10)", color: "#10b981", border: "1px solid rgba(16,185,129,0.22)" }}>
-        <Icon name="Zap" size={10} /> Живые API
-      </button>
-      <button onClick={async () => {
-          const tok = await loginAs(c.company_id);
-          if (tok) onOpenPanel({ type: "agent", companyId: c.company_id }, tok);
-        }} className={btn} style={{ background: "rgba(245,158,11,0.12)", color: "#f59e0b", border: "1px solid rgba(245,158,11,0.25)" }}>
-        <Icon name="Pencil" size={10} /> Бренд
-      </button>
+      {DEMO_STATUSES.map(s => {
+        const active = c.status === s.id;
+        return (
+          <button key={s.id} onClick={() => !active && onMove(s.id)}
+            disabled={active}
+            className={btn}
+            style={{
+              background: active ? s.bg : "rgba(255,255,255,0.04)",
+              color:      active ? s.color : "rgba(255,255,255,0.3)",
+              border:     `1px solid ${active ? s.color + "50" : "transparent"}`,
+              cursor:     active ? "default" : "pointer",
+            }}>
+            {active && <Icon name="Check" size={9} />}
+            {s.label}
+          </button>
+        );
+      })}
     </div>
   );
 }
 
-export function WLPipelineList({ companies, filterStatus, onFilterChange, onSelect, onOpenPanel, onRunApiTests }: Props) {
-  const [expanded, setExpanded] = useState<Set<number>>(new Set());
+export function WLPipelineList({ companies, filterStatus, onFilterChange, onSelect, onMove, onUpdate }: Props) {
+  const [expanded,    setExpanded]    = useState<Set<number>>(new Set());
+  const [nextStepFor, setNextStepFor] = useState<{ company: DemoPipelineCompany; status: DemoStatus } | null>(null);
+  const [receiptFor,  setReceiptFor]  = useState<DemoPipelineCompany | null>(null);
+
+  const handleMove = (c: DemoPipelineCompany, status: DemoStatus) => {
+    if (status === c.status) return;
+    if (status === "paid") { setReceiptFor(c); return; }
+    setNextStepFor({ company: c, status });
+  };
 
   const filtered = filterStatus === "all"
     ? companies
@@ -204,20 +197,6 @@ export function WLPipelineList({ companies, filterStatus, onFilterChange, onSele
                   );
                 })()}
 
-                {/* Борд */}
-                <button onClick={async e => {
-                    e.stopPropagation();
-                    const tok = await loginAs(c.company_id);
-                    if (tok) onOpenPanel({ type: "site-authed", url: `/?c=${c.company_id}`, token: tok });
-                    else onOpenPanel({ type: "site", url: `/?c=${c.company_id}` });
-                  }}
-                  className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[10px] font-bold transition hover:opacity-80 flex-shrink-0"
-                  style={{ background: "rgba(6,182,212,0.12)", color: "#06b6d4", border: "1px solid rgba(6,182,212,0.25)" }}>
-                  <Icon name="Globe" size={10} /> Бренд Борд
-                </button>
-
-
-
                 {/* Кнопка раскрытия действий */}
                 <button
                   onClick={e => toggle(c.demo_id, e)}
@@ -228,10 +207,10 @@ export function WLPipelineList({ companies, filterStatus, onFilterChange, onSele
                 </button>
               </div>
 
-              {/* Раскрытые действия */}
+              {/* Раскрытые действия — этапы воронки */}
               {isOpen && (
                 <div className="px-4 pb-3">
-                  <ActionButtons c={c} onOpenPanel={onOpenPanel} onRunApiTests={onRunApiTests} />
+                  <ActionButtons c={c} onMove={status => handleMove(c, status)} />
                 </div>
               )}
             </div>
@@ -244,6 +223,33 @@ export function WLPipelineList({ companies, filterStatus, onFilterChange, onSele
           </div>
         )}
       </div>
+
+      {/* Модалка следующего шага */}
+      {nextStepFor && (
+        <WLNextStepModal
+          company={nextStepFor.company}
+          newStatus={nextStepFor.status}
+          onSuccess={patch => {
+            onMove(nextStepFor.company.demo_id, nextStepFor.status);
+            onUpdate(nextStepFor.company.demo_id, patch);
+            setNextStepFor(null);
+          }}
+          onCancel={() => setNextStepFor(null)}
+        />
+      )}
+
+      {/* Модалка чека при оплате */}
+      {receiptFor && (
+        <WLReceiptModal
+          company={receiptFor}
+          onSuccess={(demoId) => {
+            onMove(demoId, "paid");
+            onUpdate(demoId, { status: "paid" });
+            setReceiptFor(null);
+          }}
+          onCancel={() => setReceiptFor(null)}
+        />
+      )}
     </div>
   );
 }

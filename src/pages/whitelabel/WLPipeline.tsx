@@ -166,8 +166,8 @@ export function WLPipeline({ refreshTrigger, onOpenPanel, onRunApiTests }: Props
             filterStatus={filter}
             onFilterChange={setFilter}
             onSelect={setSelected}
-            onOpenPanel={onOpenPanel}
-            onRunApiTests={onRunApiTests}
+            onMove={(demoId, status) => handleMove(demoId, status)}
+            onUpdate={(demoId, patch) => setCompanies(prev => prev.map(c => c.demo_id === demoId ? { ...c, ...patch } : c))}
           />
         )
       )}
