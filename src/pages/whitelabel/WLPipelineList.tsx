@@ -134,10 +134,13 @@ export function WLPipelineList({ companies, filterStatus, onFilterChange, onSele
                     {!c.contact_name && !c.contact_phone && (
                       <button
                         onClick={e => { e.stopPropagation(); setLprFor(c); }}
-                        className="w-4 h-4 rounded-full flex items-center justify-center flex-shrink-0 transition hover:scale-110"
-                        style={{ background: "#ef4444", boxShadow: "0 0 6px rgba(239,68,68,0.6)" }}
+                        className="flex-shrink-0 transition hover:scale-110"
+                        style={{ filter: "drop-shadow(0 0 4px rgba(239,68,68,0.7))" }}
                         title="Не заполнен ЛПР">
-                        <span className="text-[9px] font-black text-white leading-none">!</span>
+                        <svg width="14" height="13" viewBox="0 0 14 13" fill="none">
+                          <path d="M7 1L13 12H1L7 1Z" fill="#ef4444"/>
+                          <text x="7" y="10.5" textAnchor="middle" fontSize="7" fontWeight="900" fill="white">!</text>
+                        </svg>
                       </button>
                     )}
                     {c.has_own_agent && (
@@ -213,10 +216,13 @@ export function WLPipelineList({ companies, filterStatus, onFilterChange, onSele
                 {!c.contact_name && !c.contact_phone && (
                   <button
                     onClick={e => { e.stopPropagation(); setLprFor(c); }}
-                    className="flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center transition hover:scale-110"
-                    style={{ background: "#ef4444", border: "2px solid rgba(239,68,68,0.3)", boxShadow: "0 0 8px rgba(239,68,68,0.5)" }}
+                    className="flex-shrink-0 transition hover:scale-110"
+                    style={{ filter: "drop-shadow(0 0 5px rgba(239,68,68,0.7))" }}
                     title="Не заполнен ЛПР — нажми чтобы добавить">
-                    <span className="text-[11px] font-black text-white leading-none">!</span>
+                    <svg width="20" height="18" viewBox="0 0 20 18" fill="none">
+                      <path d="M10 1L19 17H1L10 1Z" fill="#ef4444"/>
+                      <text x="10" y="14.5" textAnchor="middle" fontSize="9" fontWeight="900" fill="white">!</text>
+                    </svg>
                   </button>
                 )}
 

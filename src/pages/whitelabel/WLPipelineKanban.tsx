@@ -82,10 +82,13 @@ function KanbanCard({ c, onSelect, onDragStart, onLpr, dateRange }: {
             {!c.contact_name && !c.contact_phone && (
               <button
                 onClick={e => { e.stopPropagation(); onLpr(); }}
-                className="w-3.5 h-3.5 rounded-full flex items-center justify-center flex-shrink-0 transition hover:scale-110"
-                style={{ background: "#ef4444", boxShadow: "0 0 5px rgba(239,68,68,0.6)" }}
+                className="flex-shrink-0 transition hover:scale-110"
+                style={{ filter: "drop-shadow(0 0 4px rgba(239,68,68,0.7))" }}
                 title="Не заполнен ЛПР">
-                <span className="text-[8px] font-black text-white leading-none">!</span>
+                <svg width="13" height="12" viewBox="0 0 13 12" fill="none">
+                  <path d="M6.5 1L12 11H1L6.5 1Z" fill="#ef4444"/>
+                  <text x="6.5" y="9.5" textAnchor="middle" fontSize="6" fontWeight="900" fill="white">!</text>
+                </svg>
               </button>
             )}
           </div>
