@@ -38,8 +38,14 @@ export interface DemoPipelineCompany {
   email:             string;
   company_name:      string;
   bot_name:          string;
+  bot_avatar_url:    string;
+  bot_greeting:      string;
   brand_color:       string;
   support_phone:     string;
+  support_email:     string;
+  telegram:          string;
+  working_hours:     string;
+  pdf_footer_address: string;
   estimates_balance: number;
   has_own_agent:     boolean;
   brand_logo_url:    string;

@@ -98,10 +98,14 @@ export function WLPipelineCard({ c, isOpen, onToggle, onSelect, onMove, onBrand,
         {/* Незаполненные поля бренда — пилюли */}
         {(() => {
           const missing: { key: string; label: string }[] = [];
-          if (!c.support_phone)  missing.push({ key: "phone", label: "Телефон" });
-          if (!c.brand_color)    missing.push({ key: "color", label: "Цвет" });
-          if (!c.brand_logo_url) missing.push({ key: "logo",  label: "Логотип" });
-          if (!c.bot_name)       missing.push({ key: "bot",   label: "Имя бота" });
+          if (!c.brand_logo_url)     missing.push({ key: "logo",    label: "Логотип" });
+          if (!c.bot_avatar_url)     missing.push({ key: "avatar",  label: "Фото бота" });
+          if (!c.support_phone)      missing.push({ key: "phone",   label: "Телефон" });
+          if (!c.telegram)           missing.push({ key: "tg",      label: "Telegram" });
+          if (!c.working_hours)      missing.push({ key: "hours",   label: "Часы работы" });
+          if (!c.brand_color)        missing.push({ key: "color",   label: "Цвет бренда" });
+          if (!c.support_email)      missing.push({ key: "email",   label: "Email" });
+          if (!c.pdf_footer_address) missing.push({ key: "address", label: "Адрес" });
           const noLpr = !c.contact_name || !c.contact_phone || !c.contact_position;
           if (missing.length === 0 && !noLpr) return (
             <div className="flex-1 min-w-0 self-stretch cursor-pointer"

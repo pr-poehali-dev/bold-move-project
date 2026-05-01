@@ -1729,7 +1729,9 @@ def handler(event: dict, context) -> dict:
                     WHERE dp.demo_id = dc.id AND dp.status = 'scheduled'
                     ORDER BY dp.scheduled_at LIMIT 1) AS presentation_at,
                    dc.manager_id,
-                   wm.name AS manager_name
+                   wm.name AS manager_name,
+                   u.bot_avatar_url, u.support_email, u.telegram,
+                   u.working_hours, u.pdf_footer_address
             FROM {SCHEMA}.demo_companies dc
             JOIN {SCHEMA}.users u ON u.id = dc.company_id
             LEFT JOIN {SCHEMA}.saved_estimates e ON e.user_id = u.id
@@ -1741,7 +1743,9 @@ def handler(event: dict, context) -> dict:
                      u.brand_logo_url, u.removed_at,
                      dc.status, dc.contact_name, dc.contact_phone, dc.contact_position,
                      dc.notes, dc.next_action, dc.next_action_date,
-                     u.trial_until, u.agent_purchased_at, dc.manager_id, wm.name
+                     u.trial_until, u.agent_purchased_at, dc.manager_id, wm.name,
+                     u.bot_avatar_url, u.support_email, u.telegram,
+                     u.working_hours, u.pdf_footer_address
             ORDER BY
               CASE WHEN dc.sort_order = 0 THEN 0 ELSE 1 END ASC,
               dc.sort_order ASC,
@@ -1756,7 +1760,7 @@ def handler(event: dict, context) -> dict:
             "email":                r[4] or "",
             "company_name":         r[5] or "",
             "bot_name":             r[6] or "",
-            "brand_color":          r[7] or "#8b5cf6",
+            "brand_color":          r[7] or "",
             "support_phone":        r[8] or "",
             "estimates_balance":    r[9] or 0,
             "has_own_agent":        bool(r[10]),
@@ -1775,6 +1779,11 @@ def handler(event: dict, context) -> dict:
             "presentation_at":      str(r[23])[:16] if r[23] else None,
             "manager_id":           r[24],
             "manager_name":         r[25] or "",
+            "bot_avatar_url":       r[26] or "",
+            "support_email":        r[27] or "",
+            "telegram":             r[28] or "",
+            "working_hours":        r[29] or "",
+            "pdf_footer_address":   r[30] or "",
         } for r in rows]})
 
     # ── Мастер: обновить данные демо-компании (pipeline) ─────────────────────
