@@ -112,7 +112,18 @@ export function WLPipelineEvents({ companies, onSelect }: Props) {
                   }
                 </div>
                 <div className="flex-1 min-w-0">
-                  <div className="text-[11px] font-bold text-white/80 truncate">{c.company_name}</div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[11px] font-bold text-white/80 truncate">{c.company_name}</span>
+                    {(!c.contact_name || !c.contact_phone || !c.contact_position) && (
+                      <span className="flex-shrink-0" style={{ filter: "drop-shadow(0 0 4px rgba(239,68,68,0.7))" }}
+                        title="Не заполнен ЛПР">
+                        <svg width="13" height="12" viewBox="0 0 13 12" fill="none">
+                          <path d="M6.5 1L13 12H0L6.5 1Z" fill="#ef4444"/>
+                          <text x="6.5" y="9.5" textAnchor="middle" fontSize="6" fontWeight="900" fill="white">!</text>
+                        </svg>
+                      </span>
+                    )}
+                  </div>
                   <div className="text-[9px] text-white/30">{domain}</div>
                 </div>
                 <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-md flex-shrink-0"
@@ -250,6 +261,15 @@ function EventRow({ c, onSelect }: { c: DemoPipelineCompany; onSelect: (c: DemoP
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
           <span className="text-[11px] font-bold text-white/90 truncate">{c.company_name}</span>
+          {(!c.contact_name || !c.contact_phone || !c.contact_position) && (
+            <button onClick={e => e.stopPropagation()} className="flex-shrink-0 transition hover:scale-110"
+              style={{ filter: "drop-shadow(0 0 4px rgba(239,68,68,0.7))" }} title="Не заполнен ЛПР">
+              <svg width="13" height="12" viewBox="0 0 13 12" fill="none">
+                <path d="M6.5 1L13 12H0L6.5 1Z" fill="#ef4444"/>
+                <text x="6.5" y="9.5" textAnchor="middle" fontSize="6" fontWeight="900" fill="white">!</text>
+              </svg>
+            </button>
+          )}
           <span className="text-[9px] px-1.5 py-0.5 rounded-full font-bold flex-shrink-0"
             style={{ background: st.bg, color: st.color }}>{st.label}</span>
         </div>
