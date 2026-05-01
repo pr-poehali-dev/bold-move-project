@@ -28,9 +28,12 @@ const Ctx = createContext<WLManagerCtx>({
 const TOKEN_KEY = "wl_manager_token";
 
 // Возвращает актуальный токен для запросов к бэкенду.
-// wl_manager_token — только для менеджеров, mp_user_token — для мастера
-export const getWLToken = () =>
-  localStorage.getItem(TOKEN_KEY) || localStorage.getItem("mp_user_token") || "";
+// isMaster=true → всегда mp_user_token (игнорируем wl_manager_token)
+// isMaster=false → wl_manager_token менеджера
+export const getWLToken = (isMaster?: boolean) => {
+  if (isMaster) return localStorage.getItem("mp_user_token") || "";
+  return localStorage.getItem(TOKEN_KEY) || localStorage.getItem("mp_user_token") || "";
+};
 
 export function WLManagerProvider({ children, isMaster }: { children: ReactNode; isMaster: boolean }) {
   const [manager,    setManager]    = useState<WLManager | null>(null);

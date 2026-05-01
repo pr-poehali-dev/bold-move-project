@@ -16,7 +16,7 @@ export default function WhiteLabel() {
   useEffect(() => {
     if (authLoading) return;
 
-    // Мастер — сразу доступ (не трогаем wl_manager_token других пользователей)
+    // Мастер — сразу доступ
     if (user?.is_master) {
       setWlOk(true); setWlLoading(false); return;
     }

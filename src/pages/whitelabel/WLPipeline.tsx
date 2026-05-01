@@ -9,7 +9,7 @@ import { WLPipelineEvents }        from "./WLPipelineEvents";
 import { WLReceiptModal }          from "./WLReceiptModal";
 import { WLPresentationCalendar }  from "./WLPresentationCalendar";
 import { WLPresentationModal }     from "./WLPresentationModal";
-import { getWLToken }              from "./WLManagerContext";
+import { getWLToken, useWLManager } from "./WLManagerContext";
 
 interface Props {
   refreshTrigger:  number;
@@ -20,10 +20,8 @@ interface Props {
 type ViewMode = "kanban" | "list";
 type Tab = "companies" | "tasks" | "calendar";
 
-// Универсальный токен: wl-менеджер или мастер
-const masterToken = () => getWLToken();
-
 export function WLPipeline({ refreshTrigger, onOpenPanel, onRunApiTests }: Props) {
+  const { isMaster } = useWLManager();
   const [companies, setCompanies] = useState<DemoPipelineCompany[]>([]);
   const [loading,   setLoading]   = useState(false);
   const [view,      setView]      = useState<ViewMode>("list");
@@ -37,12 +35,12 @@ export function WLPipeline({ refreshTrigger, onOpenPanel, onRunApiTests }: Props
     setLoading(true);
     try {
       const r = await fetch(`${AUTH_URL}?action=admin-demo-companies`, {
-        headers: { "X-Authorization": masterToken() },
+        headers: { "X-Authorization": getWLToken(isMaster) },
       });
       const d = await r.json();
       setCompanies((d.companies || []).filter((c: DemoPipelineCompany) => !c.deleted));
     } finally { setLoading(false); }
-  }, []);
+  }, [isMaster]);
 
   useEffect(() => { load(); }, [load, refreshTrigger]);
 
