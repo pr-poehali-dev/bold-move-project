@@ -217,6 +217,7 @@ export default function DrawerInfoTab({ data, client, setData, save, setComments
         <DrawerDiscountBlock
           data={data}
           customFinRows={customFinRows}
+          onContractSumUpdated={newSum => save({ contract_sum: newSum })}
         />
       )}
 
