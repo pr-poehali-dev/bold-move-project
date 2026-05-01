@@ -168,16 +168,21 @@ export function WLPipelineDrawer({ company, onClose, onUpdate, onDelete, onOpenP
       setSaveError("Укажи дату следующего шага");
       return;
     }
+    // При финальных статусах (отказ, оплата, доп.продажа) очищаем следующий шаг
+    const payload = form.status === "rejected"
+      ? { ...form, next_action: "", next_action_date: "" }
+      : form;
     setSaving(true);
     await fetch(`${AUTH_URL}?action=admin-update-demo`, {
       method: "POST",
       headers: { "Content-Type": "application/json", "X-Authorization": masterToken() },
-      body: JSON.stringify({ demo_id: company.demo_id, ...form }),
+      body: JSON.stringify({ demo_id: company.demo_id, ...payload }),
     });
     setSaving(false);
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
-    onUpdate({ ...form, status: form.status as DemoStatus });
+    setForm(f => ({ ...f, ...payload }));
+    onUpdate({ ...payload, status: payload.status as DemoStatus });
   };
 
   const handleDelete = async () => {
