@@ -51,6 +51,7 @@ export interface DemoPipelineCompany {
   notes:             string;
   next_action:       string;
   next_action_date:  string;
+  trial_until:       string | null;
 }
 
 export const DEMO_STATUSES: { id: DemoStatus; label: string; color: string; bg: string }[] = [

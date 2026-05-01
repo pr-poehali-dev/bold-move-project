@@ -133,12 +133,30 @@ export function WLPipelineList({ companies, filterStatus, onFilterChange, onSele
 
                 {/* Инфо */}
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
                     <span className="text-xs font-bold text-white/90 truncate">{c.company_name}</span>
                     {c.has_own_agent && (
                       <span className="text-[9px] px-1.5 py-0.5 rounded-full font-bold flex-shrink-0"
                         style={{ background: "#10b98120", color: "#10b981" }}>WL</span>
                     )}
+                    {/* Демо-время */}
+                    {(() => {
+                      if (!c.trial_until) return (
+                        <span className="text-[9px] px-1.5 py-0.5 rounded-md font-bold flex-shrink-0"
+                          style={{ background: "rgba(71,85,105,0.2)", color: "#64748b" }}>Демо не выдан</span>
+                      );
+                      const daysLeft = Math.ceil((new Date(c.trial_until).getTime() - Date.now()) / 86400000);
+                      if (daysLeft <= 0) return (
+                        <span className="text-[9px] px-1.5 py-0.5 rounded-md font-bold flex-shrink-0"
+                          style={{ background: "rgba(239,68,68,0.12)", color: "#ef4444" }}>Демо истёк</span>
+                      );
+                      const color = daysLeft <= 3 ? "#ef4444" : daysLeft <= 7 ? "#f59e0b" : "#06b6d4";
+                      const bg    = daysLeft <= 3 ? "rgba(239,68,68,0.12)" : daysLeft <= 7 ? "rgba(245,158,11,0.12)" : "rgba(6,182,212,0.12)";
+                      return (
+                        <span className="text-[9px] px-1.5 py-0.5 rounded-md font-bold flex-shrink-0"
+                          style={{ background: bg, color }}>Демо · {daysLeft} дн.</span>
+                      );
+                    })()}
                   </div>
                   <div className="flex items-center gap-2 text-[10px] text-white/30">
                     <span>{domain}</span>

@@ -1481,7 +1481,8 @@ def handler(event: dict, context) -> dict:
                    u.support_phone, u.estimates_balance, u.has_own_agent,
                    u.brand_logo_url, u.removed_at,
                    dc.status, dc.contact_name, dc.contact_phone, dc.contact_position,
-                   dc.notes, dc.next_action, dc.next_action_date
+                   dc.notes, dc.next_action, dc.next_action_date,
+                   u.trial_until
             FROM {SCHEMA}.demo_companies dc
             JOIN {SCHEMA}.users u ON u.id = dc.company_id
             ORDER BY dc.created_at DESC
@@ -1508,6 +1509,7 @@ def handler(event: dict, context) -> dict:
             "notes":             r[17] or "",
             "next_action":       r[18] or "",
             "next_action_date":  str(r[19]) if r[19] else "",
+            "trial_until":       str(r[20])[:10] if r[20] else None,
         } for r in rows]})
 
     # ── Мастер: обновить данные демо-компании (pipeline) ─────────────────────
