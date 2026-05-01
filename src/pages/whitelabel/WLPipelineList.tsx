@@ -99,6 +99,7 @@ export function WLPipelineList({ companies, filterStatus, onFilterChange, onSele
             onBrand={onBrand}
             onLpr={setLprFor}
             onHistory={(company, mode) => setHistoryFor({ company, mode })}
+            onUpdate={onUpdate}
           />
         ))}
 

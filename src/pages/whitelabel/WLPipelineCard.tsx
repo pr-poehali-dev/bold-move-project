@@ -2,6 +2,8 @@ import Icon from "@/components/ui/icon";
 import { DEMO_STATUSES } from "./wlTypes";
 import type { DemoPipelineCompany, DemoStatus } from "./wlTypes";
 import { WLPipelineActionButtons } from "./WLPipelineActionButtons";
+import { WLAssignManager } from "./WLAssignManager";
+import { useWLManager } from "./WLManagerContext";
 
 const DEMO_DAYS = 10;
 
@@ -14,9 +16,12 @@ interface Props {
   onBrand:  (companyId: number) => void;
   onLpr:    (c: DemoPipelineCompany) => void;
   onHistory:(company: DemoPipelineCompany, mode: "demo" | "est" | "info") => void;
+  onUpdate: (demoId: number, patch: Partial<DemoPipelineCompany>) => void;
 }
 
-export function WLPipelineCard({ c, isOpen, onToggle, onSelect, onMove, onBrand, onLpr, onHistory }: Props) {
+export function WLPipelineCard({ c, isOpen, onToggle, onSelect, onMove, onBrand, onLpr, onHistory, onUpdate }: Props) {
+  const { isMaster, manager } = useWLManager();
+  const canAssign = isMaster || manager?.wl_role === "master_manager";
   const color  = c.brand_color || "#8b5cf6";
   const domain = c.site_url.replace(/https?:\/\//, "").split("/")[0];
   const st     = DEMO_STATUSES.find(s => s.id === c.status) || DEMO_STATUSES[0];
@@ -186,6 +191,18 @@ export function WLPipelineCard({ c, isOpen, onToggle, onSelect, onMove, onBrand,
             <Icon name="Pencil" size={12} />
           </div>
         </button>
+
+        {/* Назначение менеджера — только для мастера и мастер-менеджера */}
+        {canAssign && (
+          <div onClick={e => e.stopPropagation()}>
+            <WLAssignManager
+              demoId={c.demo_id}
+              managerId={c.manager_id}
+              managerName={c.manager_name}
+              onAssigned={(mid, mname) => onUpdate(c.demo_id, { manager_id: mid, manager_name: mname })}
+            />
+          </div>
+        )}
 
         {/* Кнопка раскрытия действий */}
         <button
