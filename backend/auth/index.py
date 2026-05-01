@@ -1740,7 +1740,10 @@ def handler(event: dict, context) -> dict:
                      dc.status, dc.contact_name, dc.contact_phone, dc.contact_position,
                      dc.notes, dc.next_action, dc.next_action_date,
                      u.trial_until, u.agent_purchased_at, dc.manager_id, wm.name
-            ORDER BY dc.sort_order ASC, dc.created_at DESC
+            ORDER BY
+              CASE WHEN dc.sort_order = 0 THEN 0 ELSE 1 END ASC,
+              dc.sort_order ASC,
+              dc.created_at DESC
         """, filter_params)
         rows = cur.fetchall()
         return ok({"companies": [{
