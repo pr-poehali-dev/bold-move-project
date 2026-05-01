@@ -80,9 +80,16 @@ export function WLPipelineCard({ c, isOpen, onToggle, onSelect, onMove, onBrand,
               );
             })()}
           </div>
-          <div className="flex items-center gap-2 text-[10px] text-white/30">
+          <div className="flex items-center gap-2 text-[10px] text-white/30 flex-wrap">
             <span>{domain}</span>
             {c.contact_name && <><span>·</span><Icon name="User" size={9} /><span>{c.contact_name}</span></>}
+            {c.manager_name && (
+              <><span>·</span>
+              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md font-bold"
+                style={{ background: "rgba(139,92,246,0.1)", color: "#a78bfa" }}>
+                <Icon name="UserCheck" size={9} />{c.manager_name}
+              </span></>
+            )}
           </div>
           {c.next_action && (
             <div className="inline-flex items-center gap-1 mt-1 px-2 py-0.5 rounded-lg text-[9px] font-medium"
