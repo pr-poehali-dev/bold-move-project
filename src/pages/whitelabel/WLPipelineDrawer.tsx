@@ -209,8 +209,8 @@ export function WLPipelineDrawer({ company, onClose, onUpdate, onDelete, onOpenP
 
       {/* Drawer */}
       <div
-        className="w-full max-w-md flex flex-col h-full overflow-hidden"
-        style={{ background: "#0e0e1a", borderLeft: "1px solid rgba(255,255,255,0.07)" }}
+        className="w-full flex flex-col h-full overflow-hidden"
+        style={{ background: "#0e0e1a", borderLeft: "1px solid rgba(255,255,255,0.07)", maxWidth: "min(448px, 55vw)" }}
         onClick={e => e.stopPropagation()}
       >
         {/* Шапка */}
