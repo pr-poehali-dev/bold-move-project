@@ -291,13 +291,13 @@ def fetch_page_text(url: str) -> str:
     except Exception as ex:
         print(f"[parse-site] Extract failed, trying Search: {ex}")
 
-    # 2. Fallback: Tavily Search (без include_domains — он блокирует результаты)
-    query = f'site:{domain} телефон адрес контакты часы работы название компании'
+    # 2. Fallback: Tavily Search — ищем страницу контактов
+    query = f'site:{domain} контакты телефон адрес email режим работы часы'
     data = tavily_post("https://api.tavily.com/search", {
         "query": query,
-        "search_depth": "basic",
+        "search_depth": "advanced",
         "max_results": 5,
-        "include_raw_content": False,
+        "include_raw_content": True,
     }, api_key, timeout=20)
 
     results = data.get("results", [])
@@ -305,7 +305,7 @@ def fetch_page_text(url: str) -> str:
     if not results:
         raise ValueError("Не удалось найти информацию о сайте. Попробуй указать домен без https://")
 
-    parts = [r.get("content", "") for r in results if r.get("content")]
+    parts = [(r.get("raw_content") or r.get("content", "")) for r in results if r.get("content") or r.get("raw_content")]
     combined = "\n\n".join(parts)
     if not combined.strip():
         raise ValueError("Поиск не вернул текст о компании.")
@@ -347,7 +347,7 @@ def ask_openai(prompt: str) -> str:
 def extract_brand_info(site_url: str, page_text: str) -> dict:
     """Просит AI вытащить бренд-данные из текста страницы."""
     domain = re.sub(r"https?://", "", site_url).split("/")[0]
-    prompt = f"""Ты парсишь сайт компании (натяжные потолки или смежный бизнес).
+    prompt = f"""Ты извлекаешь контактные данные компании из текста её сайта.
 Сайт: {site_url}
 
 Текст со страницы:
@@ -355,18 +355,33 @@ def extract_brand_info(site_url: str, page_text: str) -> dict:
 {page_text}
 ---
 
-Извлеки данные в формате JSON. Правила:
-- Если данных нет в тексте — ставь null
-- company_name: торговое название (без ООО/ИП если есть короткое брендовое имя)
-- bot_name: возьми ПЕРВОЕ слово из company_name как имя бота (например "РумЭксперт" → "РумЭксперт"). Не придумывай человеческие имена.
-- bot_greeting: "Здравствуйте! Я помощник компании [company_name]. Помогу рассчитать стоимость и ответить на вопросы." — подставь реальное название
-- support_phone: телефон в формате +7 (XXX) XXX-XX-XX
-- support_email: email компании (ищи на странице контактов, в футере)
-- telegram: telegram username или ссылка t.me/... (ищи в контактах, соцсетях)
-- website: домен без https:// (например: {domain})
-- working_hours: режим работы/часы работы — ищи на странице контактов, в футере, в блоке "режим работы" / "график" / "пн-пт". Примеры: "Ежедневно 9:00-21:00", "Пн-Пт: 9:00-18:00, Сб: 10:00-15:00", "ПН-ПТ с 8:30 до 17:00; СБ: 8:30 до 14:00; ВС: выходной". ВАЖНО: если видишь любые временные диапазоны рядом с днями недели — это часы работы, обязательно верни их.
-- pdf_footer_address: полный адрес (город, улица, дом) — ищи в контактах и футере
-- brand_color: ГЛАВНЫЙ цвет бренда в HEX — посмотри на кнопки, заголовки, логотип. Например: "#e63946" для красного, "#1d7afc" для синего. Не ставь null если видишь явный фирменный цвет.
+Верни JSON со следующими полями. Правила для каждого поля:
+
+company_name — официальное торговое название. Убери ООО/ИП/АО если есть короткий бренд. Пример: "РумЭксперт", "Мягкие окна".
+
+bot_name — ПЕРВОЕ слово из company_name. Пример: "РумЭксперт" → "РумЭксперт", "Мягкие окна" → "Мягкие". НЕ придумывай имена людей.
+
+bot_greeting — точно такой текст: "Здравствуйте! Я помощник компании [company_name]. Помогу рассчитать стоимость и ответить на вопросы." Подставь реальное название.
+
+support_phone — телефон компании. Ищи в шапке, футере, контактах. Формат: +7 (XXX) XXX-XX-XX. Если несколько — бери первый городской или мобильный.
+
+support_email — email компании. Ищи в футере, контактах, разделе "о нас". Игнорируй личные почты. Пример: info@company.ru, zakaz@company.ru.
+
+telegram — ссылка на Telegram. Ищи t.me/... или @username в контактах и соцсетях. Верни полный URL: https://t.me/username.
+
+website — домен сайта без протокола. Пример: {domain}.
+
+working_hours — РЕЖИМ РАБОТЫ. Это КРИТИЧЕСКИ важное поле. Ищи везде:
+  * блоки "Режим работы", "Часы работы", "График", "Время работы"
+  * аббревиатуры дней: Пн, Пт, Сб, Вс, ПН-ПТ, МО-ФР
+  * любые временные диапазоны рядом с днями: "9:00-18:00", "с 8:30 до 17:00"
+  * слова "ежедневно", "круглосуточно", "выходной"
+  Примеры результата: "Пн-Пт: 9:00-18:00, Сб: 10:00-15:00", "Ежедневно 9:00-21:00", "ПН-ПТ с 8:30 до 17:00, СБ до 14:00, ВС выходной".
+  ВАЖНО: если в тексте есть хоть намёк на время работы — обязательно верни его, не ставь null!
+
+pdf_footer_address — полный почтовый адрес. Ищи в контактах, футере, разделе "о нас". Формат: город, улица, дом. Пример: "г. Пушкино, ул. Луговая, д. 47А". Если есть индекс — включи.
+
+brand_color — ГЛАВНЫЙ фирменный цвет в HEX. Смотри на цвет кнопок, заголовков, логотипа, акцентов. Примеры: "#e63946", "#1d7afc", "#10b981". НЕ ставь null если видишь явный фирменный цвет. НЕ используй белый (#ffffff) или чёрный (#000000).
 
 {{
   "company_name": "...",
@@ -381,7 +396,7 @@ def extract_brand_info(site_url: str, page_text: str) -> dict:
   "brand_color": "..."
 }}
 
-Верни ТОЛЬКО JSON без markdown-обёртки и пояснений.
+Верни ТОЛЬКО JSON. Без markdown, без пояснений. Если поле не найдено — null.
 """
     raw = ask_openai(prompt)
     # Вырезаем JSON из ответа
@@ -403,40 +418,80 @@ def extract_brand_info(site_url: str, page_text: str) -> dict:
 
 def extract_with_regex(text: str, field: str) -> str | None:
     """Быстрое извлечение через regex — без AI, мгновенно."""
+
+    if field == "support_phone":
+        # +7 или 8, затем 10 цифр в разных форматах
+        m = re.search(
+            r'(?:\+7|8)[\s\-]?\(?\d{3}\)?[\s\-]?\d{3}[\s\-]?\d{2}[\s\-]?\d{2}',
+            text
+        )
+        return m.group().strip() if m else None
+
     if field == "support_email":
-        m = re.search(r'[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z]{2,}', text)
-        return m.group() if m else None
-    if field == "telegram":
-        m = re.search(r'(?:t\.me/|@)([a-zA-Z0-9_]{4,})', text)
+        # Исключаем технические адреса
+        m = re.search(
+            r'\b(?!noreply|no-reply|donotreply|robot|mailer)[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z]{2,}\b',
+            text, re.IGNORECASE
+        )
+        return m.group().strip() if m else None
+
+    if field == "telegram" or field == "telegram_url":
+        # t.me/username или @username (минимум 4 символа)
+        m = re.search(r'(?:https?://)?t\.me/([a-zA-Z0-9_]{4,})', text)
         if m:
-            slug = m.group(1)
-            return f"https://t.me/{slug}" if not text[m.start():m.start()+1] == "@" else f"@{slug}"
+            return f"https://t.me/{m.group(1)}"
+        m = re.search(r'(?<!\w)@([a-zA-Z0-9_]{4,})', text)
+        if m:
+            return f"https://t.me/{m.group(1)}"
         return None
+
     if field == "pdf_footer_address":
-        # Ищем паттерн: г. Город, ул. ... или просто город + улица
+        # Индекс + город + улица
         m = re.search(
-            r'(?:г\.?\s*[А-ЯЁ][а-яё\-]+[\s,]+(?:ул\.?|пр\.?|пр-т|переулок|бул\.?|шоссе)[\s.]*[^,\n]{3,40}(?:,\s*д\.?\s*\d[\w/]*)?)',
+            r'\d{6}[\s,]+(?:г\.?\s*)?[А-ЯЁ][а-яё\-]+[\s,]+(?:ул\.?|пр\.?|пр-т|переулок|бул\.?|шоссе|пл\.?)[^,\n]{3,50}(?:,?\s*д\.?\s*\d[\w/]*)?',
             text, re.IGNORECASE
         )
         if m:
-            return m.group().strip()
-        # Fallback: просто город
-        m = re.search(r'г\.\s*[А-ЯЁ][а-яё\-]+', text)
+            return re.sub(r'\s+', ' ', m.group()).strip()
+        # г. Город, ул. Улица, д. N
+        m = re.search(
+            r'г\.?\s*[А-ЯЁ][а-яё\-]+[\s,]+(?:ул\.?|пр\.?|пр-т|переулок|бул\.?|шоссе|пл\.?)[\s.]*[^,\n]{3,40}(?:,\s*д\.?\s*\d[\w/]*)?',
+            text, re.IGNORECASE
+        )
+        if m:
+            return re.sub(r'\s+', ' ', m.group()).strip()
+        # Fallback: просто "г. Город"
+        m = re.search(r'г\.?\s*[А-ЯЁ][а-яё\-]{2,}', text)
         return m.group().strip() if m else None
+
     if field == "working_hours":
-        # Паттерн 1: Пн-Пт / ПН-ПТ: 9:00-18:00 (с перечислением дней)
+        # Паттерн 1: "Режим работы" / "Часы работы" + что после
         m = re.search(
-            r'(?:пн|пон|вт|ср|чт|пт|сб|вс|пятн|понед|ежедн|ежедневно|будн|выходн)'
-            r'[^.!?\n]{2,80}(?:\d{1,2}[:.]\d{2})',
+            r'(?:режим\s+работы|часы\s+работы|время\s+работы|график\s+работы)[:\s]*([^\n.]{5,120})',
             text, re.IGNORECASE
         )
         if m:
-            snippet = m.group().strip()
-            # Берём до 100 символов и чистим
-            return re.sub(r'\s+', ' ', snippet[:100]).strip()
-        # Паттерн 2: просто время вроде "9:00 - 21:00" или "09:00–21:00"
-        m = re.search(r'\d{1,2}[:.]\d{2}\s*[-–—]\s*\d{1,2}[:.]\d{2}', text)
-        return m.group().strip() if m else None
+            return re.sub(r'\s+', ' ', m.group(1)).strip()[:120]
+
+        # Паттерн 2: дни недели + время
+        m = re.search(
+            r'(?:пн|пон|вт|ср|чт|пт|сб|вс|пятн|понед|ежедн|ежедневно|будн|круглосут)'
+            r'[^.!?]{2,100}\d{1,2}[:.]\d{2}',
+            text, re.IGNORECASE
+        )
+        if m:
+            return re.sub(r'\s+', ' ', m.group()).strip()[:120]
+
+        # Паттерн 3: "с 9:00 до 18:00" или диапазон "9:00-18:00"
+        m = re.search(
+            r'(?:с\s+)?\d{1,2}[:.]\d{2}\s*[-–—до]\s*\d{1,2}[:.]\d{2}(?:\s*,\s*[^\n.]{3,60})?',
+            text, re.IGNORECASE
+        )
+        if m:
+            return re.sub(r'\s+', ' ', m.group()).strip()[:100]
+
+        return None
+
     return None
 
 
@@ -449,62 +504,70 @@ def search_missing_fields(brand: dict, site_url: str) -> dict:
     domain = re.sub(r"https?://", "", site_url).split("/")[0]
     company = brand.get("company_name") or domain
 
-    missing = {
-        "support_email":      f'{domain} email контакты',
-        "telegram":           f'{company} telegram t.me',
-        "pdf_footer_address": f'{company} {domain} адрес офис',
-        "working_hours":      f'{domain} часы работы режим работы график',
+    # Все поля которые умеем искать через regex
+    search_queries = {
+        "support_phone":      f'site:{domain} телефон контакты',
+        "support_email":      f'site:{domain} email почта контакты',
+        "telegram_url":       f'{company} {domain} telegram t.me',
+        "pdf_footer_address": f'site:{domain} адрес офис контакты',
+        "working_hours":      f'site:{domain} часы работы режим график',
     }
 
-    to_search = {k: q for k, q in missing.items() if not brand.get(k)}
+    to_search = {k: q for k, q in search_queries.items() if not brand.get(k)}
     if not to_search:
         return brand
 
     print(f"[parse-site] searching missing: {list(to_search.keys())}")
 
-    # Один поиск по сайту — получаем максимум контента
-    site_query = f'site:{domain} контакты email telegram адрес часы работы'
+    # Один широкий поиск по странице контактов
+    site_query = f'site:{domain} контакты телефон email адрес часы работы режим telegram'
     all_snippets = ""
     try:
         data = tavily_post("https://api.tavily.com/search", {
             "query": site_query,
-            "search_depth": "basic",
+            "search_depth": "advanced",
             "max_results": 5,
-            "include_raw_content": False,
-        }, api_key, timeout=8)
-        all_snippets = " ".join(r.get("content", "") for r in data.get("results", []))
+            "include_raw_content": True,
+        }, api_key, timeout=12)
+        all_snippets = " ".join(
+            (r.get("raw_content") or r.get("content") or "")
+            for r in data.get("results", [])
+        )
         print(f"[parse-site] search got {len(all_snippets)} chars")
     except Exception as e:
         print(f"[parse-site] search error: {e}")
 
-    # Пробуем regex по всем полям из общего контента
+    # Пробуем regex по общему контенту
     for field in list(to_search.keys()):
         if all_snippets:
             try:
                 result = extract_with_regex(all_snippets, field)
                 if result:
                     brand[field] = result
-                    print(f"[parse-site] found {field} from site search: {result}")
+                    print(f"[parse-site] found {field} via regex: {result[:60]}")
                     continue
             except Exception as e:
                 print(f"[parse-site] regex {field} error: {e}")
 
-        # Если не нашли — отдельный целевой поиск
+        # Целевой поиск если не нашли в общем
         try:
             data2 = tavily_post("https://api.tavily.com/search", {
                 "query": to_search[field],
-                "search_depth": "basic",
-                "max_results": 3,
-                "include_raw_content": False,
-            }, api_key, timeout=6)
-            snippets2 = " ".join(r.get("content", "") for r in data2.get("results", []))
+                "search_depth": "advanced",
+                "max_results": 4,
+                "include_raw_content": True,
+            }, api_key, timeout=10)
+            snippets2 = " ".join(
+                (r.get("raw_content") or r.get("content") or "")
+                for r in data2.get("results", [])
+            )
             if snippets2:
                 result = extract_with_regex(snippets2, field)
                 if result:
                     brand[field] = result
-                    print(f"[parse-site] found {field} from targeted search: {result}")
+                    print(f"[parse-site] found {field} via targeted: {result[:60]}")
         except Exception as e:
-            print(f"[parse-site] targeted search {field} error: {e}")
+            print(f"[parse-site] targeted {field} error: {e}")
 
     return brand
 
