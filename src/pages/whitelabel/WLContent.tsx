@@ -54,6 +54,11 @@ export function WLContent() {
         .then(d => { if (d.user) updateUser(d.user); })
         .catch(() => {});
     }
+    // После закрытия панели агента/админа — перезагружаем список компаний,
+    // чтобы обновились telegram, email, логотип и другие поля бренда
+    if (panel && (panel.type === "agent" || panel.type === "admin")) {
+      setRefreshTrigger(t => t + 1);
+    }
     setPanel(null);
     setIframeToken(null);
   };
