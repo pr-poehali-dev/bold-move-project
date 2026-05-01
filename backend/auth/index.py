@@ -1620,6 +1620,44 @@ def handler(event: dict, context) -> dict:
         conn.commit()
         return ok({"ok": True})
 
+    # ── WL-менеджеры: редактировать (только мастер) ──────────────────────────
+    if action == "wl-staff-update" and method == "POST":
+        if not token:
+            return err("Требуется авторизация", 401)
+        cur.execute(f"""
+            SELECT u.email FROM {SCHEMA}.user_sessions s
+            JOIN {SCHEMA}.users u ON u.id = s.user_id
+            WHERE s.token=%s AND s.expires_at > NOW()
+        """, (token,))
+        row = cur.fetchone()
+        if not row or row[0] != "19.jeka.94@gmail.com":
+            return err("Доступ только для мастера", 403)
+        mgr_id = body.get("id")
+        if not mgr_id:
+            return err("id обязателен")
+        name     = (body.get("name") or "").strip()
+        email_new = (body.get("email") or "").strip().lower()
+        password  = (body.get("password") or "").strip()
+        wl_role   = body.get("wl_role")
+        sets, vals = [], []
+        if name:
+            sets.append("name = %s"); vals.append(name)
+        if email_new:
+            cur.execute(f"SELECT id FROM {SCHEMA}.wl_managers WHERE email=%s AND id != %s", (email_new, int(mgr_id)))
+            if cur.fetchone():
+                return err("Менеджер с таким email уже существует")
+            sets.append("email = %s"); vals.append(email_new)
+        if password:
+            sets.append("password_hash = %s"); vals.append(hash_password(password))
+        if wl_role in ("manager", "master_manager"):
+            sets.append("wl_role = %s"); vals.append(wl_role)
+        if not sets:
+            return err("Нечего обновлять")
+        vals.append(int(mgr_id))
+        cur.execute(f"UPDATE {SCHEMA}.wl_managers SET {', '.join(sets)} WHERE id = %s", vals)
+        conn.commit()
+        return ok({"ok": True})
+
     # ── WL-менеджеры: назначить компанию ─────────────────────────────────────
     if action == "wl-assign-company" and method == "POST":
         if not token:
