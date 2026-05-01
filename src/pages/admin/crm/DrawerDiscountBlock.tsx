@@ -34,7 +34,7 @@ function loadRiskSettings(): RiskSettings {
 
 interface AiRisk {
   level: "low" | "mid" | "high";
-  reserve: number;
+  recommended_discount: number;
   reason: string;
   items: string[];
 }
@@ -143,17 +143,22 @@ export function DrawerDiscountBlock({ data, customFinRows, onContractSumUpdated 
       }
       if (items.length === 0) { setAiError("Смета пустая — нечего анализировать"); setAiLoading(false); return; }
 
-      const prompt = `Ты эксперт по монтажу натяжных потолков. Оцени сложность монтажа по списку позиций сметы и определи резерв на непредвиденные расходы.
+      const maxDiscount = effectiveMax || risk.max_discount;
+      const prompt = `Ты эксперт по монтажу натяжных потолков. Оцени сложность монтажа по позициям сметы и рекомендуй оптимальную скидку клиенту.
 
 Позиции сметы:
 ${items.map((it, i) => `${i + 1}. ${it}`).join("\n")}
 
+Максимально допустимая скидка: ${maxDiscount}%
+
+Оцени риски монтажа и предложи безопасную скидку. Чем сложнее объект — тем меньше скидка.
+
 Ответь строго в JSON формате:
 {
   "level": "low" | "mid" | "high",
-  "reserve": число от 0 до 15 (рекомендуемый % резерва),
+  "recommended_discount": число от 0 до ${maxDiscount} (рекомендуемая скидка %),
   "reason": "краткое объяснение на русском (1-2 предложения)",
-  "items": ["риск 1", "риск 2", "риск 3"] (конкретные риски из позиций)
+  "items": ["риск 1", "риск 2"] (конкретные риски из позиций, максимум 3)
 }`;
 
       const aiRes = await fetch(`${AUTH_URL}?action=ai-chat`, {
@@ -167,7 +172,10 @@ ${items.map((it, i) => `${i + 1}. ${it}`).join("\n")}
       if (!jsonMatch) throw new Error("Не удалось разобрать ответ AI");
       const parsed: AiRisk = JSON.parse(jsonMatch[0]);
       setAiRisk(parsed);
-      setReserve(parsed.reserve);
+      // AI сразу выставляет основной слайдер скидки
+      const rec = Math.min(parsed.recommended_discount ?? 0, effectiveMax || risk.max_discount);
+      setDiscount(rec);
+      setApplied(false);
     } catch (e) {
       setAiError("Ошибка AI оценки — попробуй ещё раз");
     } finally {
@@ -229,6 +237,15 @@ ${items.map((it, i) => `${i + 1}. ${it}`).join("\n")}
         <span className="text-xs font-bold uppercase tracking-wider flex-1 text-yellow-400">
           Оценка риска скидки
         </span>
+        {/* Кнопка AI */}
+        <button onClick={runAiRisk} disabled={aiLoading}
+          className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-bold transition disabled:opacity-50 hover:opacity-80"
+          style={{ background: "rgba(139,92,246,0.15)", color: "#a78bfa", border: "1px solid rgba(139,92,246,0.3)" }}>
+          {aiLoading
+            ? <><div className="w-2.5 h-2.5 border-2 border-current/30 border-t-current rounded-full animate-spin" /> AI...</>
+            : <><Icon name="Sparkles" size={11} /> Оценить AI</>
+          }
+        </button>
         {effectiveMax > 0 && (
           <span className="text-[10px] font-bold px-2 py-0.5 rounded-full"
             style={{ background: "#f59e0b20", color: "#f59e0b" }}>
@@ -373,123 +390,31 @@ ${items.map((it, i) => `${i + 1}. ${it}`).join("\n")}
           </div>
         </div>
 
-        {/* ── БЛОК 1: Непредвиденные риски ─────────────────────────── */}
-        <div className="rounded-xl overflow-hidden" style={{ border: `1px solid rgba(239,68,68,0.2)`, background: "rgba(239,68,68,0.05)" }}>
-          <div className="flex items-center gap-2 px-3 py-2" style={{ borderBottom: "1px solid rgba(239,68,68,0.15)" }}>
-            <Icon name="ShieldAlert" size={12} style={{ color: "#ef4444" }} />
-            <span className="text-[10px] font-bold uppercase tracking-wider text-red-400 flex-1">
-              Непредвиденные риски
-            </span>
-            <span className="text-[10px] font-bold text-red-400">{reserve}% резерв</span>
-          </div>
-          <div className="px-3 py-3 space-y-2">
-            <div className="flex items-center gap-3">
-              <input
-                type="range" min={0} max={20} step={1} value={reserve}
-                onChange={e => { setReserve(Number(e.target.value)); setApplied(false); }}
-                className="flex-1 cursor-pointer" style={{ accentColor: "#ef4444", height: 3 }}
-              />
-              <div className="flex items-center gap-1 flex-shrink-0">
-                {[0, 5, 10, 15, 20].map(v => (
-                  <button key={v} onClick={() => setReserve(v)}
-                    className="text-[9px] px-1.5 py-0.5 rounded font-bold transition"
-                    style={{
-                      background: reserve === v ? "rgba(239,68,68,0.2)" : "rgba(255,255,255,0.04)",
-                      color: reserve === v ? "#ef4444" : "rgba(255,255,255,0.25)",
-                    }}>
-                    {v}%
-                  </button>
-                ))}
+        {/* Компактный результат AI */}
+        {aiError && (
+          <div className="text-[10px] text-red-400 px-1">{aiError}</div>
+        )}
+        {aiRisk && (
+          <div className="flex items-start gap-2 px-3 py-2.5 rounded-xl"
+            style={{ background: aiLevelColor + "12", border: `1px solid ${aiLevelColor}25` }}>
+            <div className="w-2 h-2 rounded-full mt-0.5 flex-shrink-0" style={{ background: aiLevelColor }} />
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 mb-0.5">
+                <span className="text-[11px] font-bold" style={{ color: aiLevelColor }}>{aiLevelLabel}</span>
+                <span className="text-[9px] text-white/30">→ скидка {aiRisk.recommended_discount}% выставлена</span>
               </div>
-            </div>
-            <p className="text-[9px] text-white/25">
-              Резерв вычитается из доступной скидки. Защищает от непредвиденных затрат на монтаж.
-              {reserve > 0 && ` Без резерва можно было бы дать ${Math.round((effectiveMax + reserve) * 10) / 10}%.`}
-            </p>
-
-            {/* AI оценка */}
-            <div className="flex items-center gap-2 pt-1">
-              <button onClick={runAiRisk} disabled={aiLoading}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-bold transition disabled:opacity-50 hover:opacity-80"
-                style={{ background: "rgba(139,92,246,0.15)", color: "#a78bfa", border: "1px solid rgba(139,92,246,0.3)" }}>
-                {aiLoading
-                  ? <><div className="w-3 h-3 border-2 border-current/30 border-t-current rounded-full animate-spin" /> Анализирую смету...</>
-                  : <><Icon name="Sparkles" size={11} /> AI оценить сложность</>
-                }
-              </button>
-              {aiError && <span className="text-[9px] text-red-400">{aiError}</span>}
-            </div>
-
-            {/* Результат AI */}
-            {aiRisk && (
-              <div className="rounded-lg px-3 py-2.5 space-y-1.5" style={{ background: aiLevelColor + "12", border: `1px solid ${aiLevelColor}25` }}>
-                <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 rounded-full" style={{ background: aiLevelColor }} />
-                  <span className="text-[11px] font-bold" style={{ color: aiLevelColor }}>{aiLevelLabel}</span>
-                  <span className="text-[9px] text-white/30 ml-auto">рекомендуемый резерв: {aiRisk.reserve}%</span>
-                </div>
-                <p className="text-[10px] text-white/60">{aiRisk.reason}</p>
-                {aiRisk.items.length > 0 && (
-                  <div className="flex flex-wrap gap-1 pt-0.5">
-                    {aiRisk.items.map((item, i) => (
-                      <span key={i} className="text-[9px] px-1.5 py-0.5 rounded-full"
-                        style={{ background: aiLevelColor + "18", color: aiLevelColor }}>
-                        {item}
-                      </span>
-                    ))}
-                  </div>
-                )}
-                <button onClick={() => setReserve(aiRisk.reserve)}
-                  className="text-[9px] font-bold px-2 py-1 rounded-lg transition hover:opacity-80 mt-1"
-                  style={{ background: "rgba(139,92,246,0.15)", color: "#a78bfa" }}>
-                  Применить резерв {aiRisk.reserve}%
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* ── БЛОК 2: Переопределение max для этого заказа ──────────── */}
-        <div className="rounded-xl overflow-hidden" style={{ border: `1px solid rgba(139,92,246,0.2)`, background: "rgba(139,92,246,0.04)" }}>
-          <div className="flex items-center gap-2 px-3 py-2" style={{ borderBottom: "1px solid rgba(139,92,246,0.15)" }}>
-            <Icon name="Lock" size={12} style={{ color: "#a78bfa" }} />
-            <span className="text-[10px] font-bold uppercase tracking-wider text-violet-400 flex-1">
-              Максимум для этого заказа
-            </span>
-            <span className="text-[9px] text-white/30">
-              глобально: {risk.max_discount}%
-            </span>
-          </div>
-          <div className="px-3 py-3">
-            <div className="flex items-center gap-3">
-              <div className="flex items-center gap-1">
-                {[null, 5, 10, 15, 20, 25, 30].map(v => (
-                  <button key={String(v)} onClick={() => setCustomMax(v)}
-                    className="text-[9px] px-1.5 py-0.5 rounded font-bold transition"
-                    style={{
-                      background: customMax === v ? "rgba(139,92,246,0.25)" : "rgba(255,255,255,0.04)",
-                      color: customMax === v ? "#a78bfa" : "rgba(255,255,255,0.25)",
-                      border: customMax === v ? "1px solid rgba(139,92,246,0.4)" : "1px solid transparent",
-                    }}>
-                    {v === null ? "авто" : `${v}%`}
-                  </button>
-                ))}
-              </div>
-              {customMax !== null && (
-                <div className="flex items-center gap-1.5 ml-auto">
-                  <span className="text-[9px] text-violet-400">→</span>
-                  <span className="text-[10px] font-bold text-violet-300">
-                    эффективный max: {effectiveMax}%
-                    {reserve > 0 && ` (−${reserve}% резерв)`}
-                  </span>
+              <p className="text-[10px] text-white/55">{aiRisk.reason}</p>
+              {aiRisk.items.length > 0 && (
+                <div className="flex flex-wrap gap-1 mt-1">
+                  {aiRisk.items.map((item, i) => (
+                    <span key={i} className="text-[9px] px-1.5 py-0.5 rounded-full"
+                      style={{ background: aiLevelColor + "18", color: aiLevelColor }}>{item}</span>
+                  ))}
                 </div>
               )}
             </div>
-            <p className="text-[9px] text-white/25 mt-2">
-              Переопределяет глобальный максимум только для этого заказа. Не сохраняется.
-            </p>
           </div>
-        </div>
+        )}
 
         {/* Футер: итог + кнопка */}
         <div className="flex items-center gap-3">
