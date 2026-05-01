@@ -79,7 +79,7 @@ function KanbanCard({ c, onSelect, onDragStart, onLpr, dateRange }: {
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-1.5">
             <span className="text-[11px] font-bold text-white/90 truncate">{c.company_name}</span>
-            {!c.contact_name && !c.contact_phone && (
+            {(!c.contact_name || !c.contact_phone || !c.contact_position) && (
               <button
                 onClick={e => { e.stopPropagation(); onLpr(); }}
                 className="flex-shrink-0 transition hover:scale-110"

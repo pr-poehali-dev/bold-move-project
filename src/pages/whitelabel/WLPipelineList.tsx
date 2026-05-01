@@ -131,7 +131,7 @@ export function WLPipelineList({ companies, filterStatus, onFilterChange, onSele
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="text-xs font-bold text-white/90 truncate">{c.company_name}</span>
-                    {!c.contact_name && !c.contact_phone && (
+                    {(!c.contact_name || !c.contact_phone || !c.contact_position) && (
                       <button
                         onClick={e => { e.stopPropagation(); setLprFor(c); }}
                         className="flex-shrink-0 transition hover:scale-110"
@@ -213,7 +213,7 @@ export function WLPipelineList({ companies, filterStatus, onFilterChange, onSele
                 })()}
 
                 {/* Бейдж ЛПР — отдельная кнопка если не заполнен */}
-                {!c.contact_name && !c.contact_phone && (
+                {(!c.contact_name || !c.contact_phone || !c.contact_position) && (
                   <button
                     onClick={e => { e.stopPropagation(); setLprFor(c); }}
                     className="flex-shrink-0 transition hover:scale-110"
