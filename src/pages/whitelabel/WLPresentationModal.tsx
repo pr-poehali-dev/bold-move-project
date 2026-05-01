@@ -29,11 +29,12 @@ function toDatetimeLocal(date: Date): string {
 
 function isBusy(hour: number, date: string, slots: BusySlot[]): boolean {
   if (!date) return false;
-  const chosen = new Date(`${date}T${String(hour).padStart(2, "0")}:00:00`);
   return slots.some(s => {
     const slotTime = new Date(s.scheduled_at);
-    const diffSec  = Math.abs(chosen.getTime() - slotTime.getTime()) / 1000;
-    return diffSec < 7200; // 2 часа = 7200 секунд
+    return slotTime.getFullYear() === new Date(date).getFullYear()
+      && slotTime.getMonth()      === new Date(date).getMonth()
+      && slotTime.getDate()       === new Date(date).getDate()
+      && slotTime.getHours()      === hour;
   });
 }
 
@@ -65,7 +66,6 @@ export function WLPresentationModal({ company, onSuccess, onCancel }: Props) {
   const selectedBusy = isBusy(hour, date, busySlots);
 
   const handleSave = async () => {
-    if (selectedBusy) { setError("Это время занято — выбери другое"); return; }
     setSaving(true); setError("");
     try {
       const scheduledAt = new Date(`${date}T${String(hour).padStart(2, "0")}:00:00`).toISOString();
@@ -135,25 +135,23 @@ export function WLPresentationModal({ company, onSuccess, onCancel }: Props) {
                     onClick={() => { setHour(h); setError(""); }}
                     className="py-2 rounded-lg text-[11px] font-bold transition"
                     style={{
-                      background: busy    ? "rgba(239,68,68,0.08)"
+                      background: busy    ? "rgba(255,255,255,0.02)"
                                 : active  ? "rgba(249,115,22,0.25)"
                                 :           "rgba(255,255,255,0.04)",
-                      color: busy    ? "rgba(239,68,68,0.4)"
+                      color: busy    ? "rgba(255,255,255,0.15)"
                            : active  ? "#f97316"
                            :           "rgba(255,255,255,0.5)",
-                      border: `1px solid ${busy ? "rgba(239,68,68,0.2)" : active ? "rgba(249,115,22,0.5)" : "transparent"}`,
+                      border: `1px solid ${busy ? "rgba(255,255,255,0.05)" : active ? "rgba(249,115,22,0.5)" : "transparent"}`,
                       cursor: busy ? "not-allowed" : "pointer",
-                      textDecoration: busy ? "line-through" : "none",
                     }}>
                     {String(h).padStart(2, "0")}:00
-                    {busy && <div className="text-[8px] opacity-50">занято</div>}
                   </button>
                 );
               })}
             </div>
             {busySlots.length > 0 && (
               <div className="text-[10px] text-white/25 mt-1.5">
-                Зачёркнутые — заняты (правило: 2 часа между показами)
+                Серые слоты уже заняты
               </div>
             )}
           </div>
