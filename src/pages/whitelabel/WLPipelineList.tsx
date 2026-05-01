@@ -139,12 +139,12 @@ export function WLPipelineList({ companies, filterStatus, onFilterChange, onSele
                       <span className="text-[9px] px-1.5 py-0.5 rounded-full font-bold flex-shrink-0"
                         style={{ background: "#10b98120", color: "#10b981" }}>WL</span>
                     )}
+                    {/* Статус воронки */}
+                    <span className="text-[9px] px-1.5 py-0.5 rounded-md font-bold flex-shrink-0"
+                      style={{ background: st.bg, color: st.color }}>{st.label}</span>
                     {/* Демо-время */}
                     {(() => {
-                      if (!c.trial_until) return (
-                        <span className="text-[9px] px-1.5 py-0.5 rounded-md font-bold flex-shrink-0"
-                          style={{ background: "rgba(71,85,105,0.2)", color: "#64748b" }}>Демо не выдан</span>
-                      );
+                      if (!c.trial_until) return null;
                       const daysLeft = Math.ceil((new Date(c.trial_until).getTime() - Date.now()) / 86400000);
                       if (daysLeft <= 0) return (
                         <span className="text-[9px] px-1.5 py-0.5 rounded-md font-bold flex-shrink-0"
@@ -182,11 +182,7 @@ export function WLPipelineList({ companies, filterStatus, onFilterChange, onSele
                   <Icon name="Globe" size={10} /> Бренд Борд
                 </button>
 
-                {/* Статус */}
-                <span className="text-[10px] font-bold px-2 py-1 rounded-lg flex-shrink-0"
-                  style={{ background: st.bg, color: st.color }}>
-                  {st.label}
-                </span>
+
 
                 {/* Кнопка раскрытия действий */}
                 <button
