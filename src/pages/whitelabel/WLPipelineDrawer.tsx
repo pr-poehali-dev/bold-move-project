@@ -373,7 +373,7 @@ export function WLPipelineDrawer({ company, onClose, onUpdate, onDelete, onOpenP
               {saveError}
             </div>
           )}
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
             <button onClick={onClose}
               className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-[11px] font-bold transition hover:opacity-80"
               style={{ background: "rgba(255,255,255,0.05)", color: "rgba(255,255,255,0.4)", border: "1px solid rgba(255,255,255,0.10)" }}>
@@ -386,6 +386,12 @@ export function WLPipelineDrawer({ company, onClose, onUpdate, onDelete, onOpenP
                 : saved ? <><Icon name="Check" size={13} /> Сохранено</>
                 : <><Icon name="Save" size={13} /> Сохранить</>
               }
+            </button>
+            <button onClick={handleDelete}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-[11px] font-bold transition hover:opacity-80"
+              style={{ background: "rgba(239,68,68,0.08)", color: "#ef4444", border: "1px solid rgba(239,68,68,0.20)" }}
+              title="Удалить компанию">
+              <Icon name="Trash2" size={12} />
             </button>
           </div>
         </div>
