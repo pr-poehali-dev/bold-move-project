@@ -262,19 +262,19 @@ export function WLPipelineList({ companies, filterStatus, onFilterChange, onSele
               style={{ background: "rgba(255,255,255,0.03)", border: `1px solid rgba(255,255,255,0.06)`, borderLeft: `3px solid ${color}` }}
             >
               {/* Шапка строки */}
-              <div className="flex items-center gap-3 px-4 py-3 cursor-pointer hover:bg-white/[0.02] transition"
-                onClick={() => onSelect(c)}>
-                {/* Аватар */}
-                <div className="w-8 h-8 rounded-lg flex-shrink-0 flex items-center justify-center text-xs font-black overflow-hidden"
-                  style={{ background: color + "25", color, border: `1px solid ${color}40` }}>
+              <div className="flex items-center gap-3 px-4 py-3 transition">
+                {/* Аватар — кликабелен */}
+                <div className="w-8 h-8 rounded-lg flex-shrink-0 flex items-center justify-center text-xs font-black overflow-hidden cursor-pointer hover:opacity-80 transition"
+                  style={{ background: color + "25", color, border: `1px solid ${color}40` }}
+                  onClick={() => onSelect(c)}>
                   {c.brand_logo_url
                     ? <img src={c.brand_logo_url} className="w-full h-full object-contain" alt="" />
                     : c.company_name[0]?.toUpperCase()
                   }
                 </div>
 
-                {/* Инфо */}
-                <div className="flex-1 min-w-0">
+                {/* Инфо — кликабелен */}
+                <div className="flex-1 min-w-0 cursor-pointer hover:opacity-80 transition" onClick={() => onSelect(c)}>
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="text-xs font-bold text-white/90 truncate">{c.company_name}</span>
                     {(!c.contact_name || !c.contact_phone || !c.contact_position) && (
