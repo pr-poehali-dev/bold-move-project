@@ -179,26 +179,36 @@ export function WLPipelineFilters({
         style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)" }}>
         <div className="flex gap-1.5">
           <button onClick={() => onFilterChange("all")}
-            className="flex-1 py-1.5 rounded-lg text-[10px] font-bold transition text-center whitespace-nowrap"
+            className="flex-1 py-1.5 rounded-lg text-[10px] font-bold transition text-center whitespace-nowrap flex items-center justify-center gap-1"
             style={{
               background: filterStatus === "all" ? "rgba(255,255,255,0.12)" : "rgba(255,255,255,0.04)",
               color:      filterStatus === "all" ? "rgba(255,255,255,0.9)"  : "rgba(255,255,255,0.3)",
               border:     `1px solid ${filterStatus === "all" ? "rgba(255,255,255,0.25)" : "transparent"}`,
             }}>
-            Все ({companies.length})
+            Все
+            <span className="text-[9px] font-black px-1 py-0.5 rounded"
+              style={{ background: "rgba(255,255,255,0.12)", color: "rgba(255,255,255,0.7)" }}>
+              {companies.length}
+            </span>
           </button>
           {DEMO_STATUSES.map(s => {
             const count  = companies.filter(c => c.status === s.id).length;
             const active = filterStatus === s.id;
             return (
               <button key={s.id} onClick={() => onFilterChange(s.id)}
-                className="flex-1 py-1.5 rounded-lg text-[10px] font-bold transition text-center whitespace-nowrap"
+                className="flex-1 py-1.5 rounded-lg text-[10px] font-bold transition text-center whitespace-nowrap flex items-center justify-center gap-1"
                 style={{
                   background: active ? s.bg : "rgba(255,255,255,0.04)",
                   color:      active ? s.color : "rgba(255,255,255,0.3)",
                   border:     `1px solid ${active ? s.color + "50" : "transparent"}`,
                 }}>
-                {s.label} ({count})
+                {s.label}
+                {count > 0 && (
+                  <span className="text-[9px] font-black px-1 py-0.5 rounded"
+                    style={{ background: s.color + "25", color: s.color }}>
+                    {count}
+                  </span>
+                )}
               </button>
             );
           })}
