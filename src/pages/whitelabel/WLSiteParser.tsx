@@ -23,6 +23,7 @@ export function WLSiteParser({ onCreated }: Props) {
   const [parsedBrand, setParsedBrand] = useState<Record<string, string> | null>(null);
   const [error, setError]         = useState<string | null>(null);
   const [searching, setSearching] = useState<string | null>(null);
+  const [notFound,  setNotFound]  = useState<string | null>(null); // поле которое не нашлось
   const [lastCompanyId, setLastCompanyId] = useState<number | null>(null);
   const [lastCompanyName, setLastCompanyName] = useState<string | null>(null);
   const [phase, setPhase]         = useState<Phase>("idle");
@@ -161,11 +162,12 @@ export function WLSiteParser({ onCreated }: Props) {
   const searchFieldBeforeCreate = async (field: MissingField) => {
     let cid = lastCompanyId;
     const currentReport = report;
+    setNotFound(null);
     if (!cid) {
       setSearching(field.field); // показываем спиннер на пилюле сразу
       try {
         const d = await callParse({ url: url.trim() });
-        if (d.error) { setError(d.error); setSearching(null); return; }
+        if (d.error) { setSearching(null); return; } // тихо — дубликат уже показан выше
         if (d.company_id && d.token) {
           cid = d.company_id;
           // Сохраняем только ID и имя — НЕ меняем фазу и НЕ перезаписываем report
@@ -199,7 +201,7 @@ export function WLSiteParser({ onCreated }: Props) {
           }
           onCreated?.(d.company_id, d.token);
         }
-      } catch (e) { setError(String(e)); setSearching(null); return; }
+      } catch { setSearching(null); return; }
     } else {
       setSearching(field.field);
     }
@@ -214,7 +216,14 @@ export function WLSiteParser({ onCreated }: Props) {
             filled:  [...currentReport.filled, nowFilled],
             missing: currentReport.missing.filter(m => m.field !== field.field),
           });
+        } else {
+          // Не нашли — показываем подсказку на пилюле
+          setNotFound(field.field);
+          setTimeout(() => setNotFound(null), 3000);
         }
+      } else {
+        setNotFound(field.field);
+        setTimeout(() => setNotFound(null), 3000);
       }
     } catch { /* ignore */ }
     finally { setSearching(null); }
@@ -223,6 +232,7 @@ export function WLSiteParser({ onCreated }: Props) {
   const searchField = async (field: MissingField) => {
     if (!url.trim() || !lastCompanyId) return;
     setSearching(field.field);
+    setNotFound(null);
     try {
       const d = await callParse({ url: url.trim(), company_id: lastCompanyId, only_field: field.field });
       if (!d.error && d.report) {
@@ -232,7 +242,13 @@ export function WLSiteParser({ onCreated }: Props) {
             filled:  [...report.filled, nowFilled],
             missing: report.missing.filter(m => m.field !== field.field),
           });
+        } else {
+          setNotFound(field.field);
+          setTimeout(() => setNotFound(null), 3000);
         }
+      } else {
+        setNotFound(field.field);
+        setTimeout(() => setNotFound(null), 3000);
       }
     } catch { /* ignore */ }
     finally { setSearching(null); }
@@ -338,17 +354,23 @@ export function WLSiteParser({ onCreated }: Props) {
               <div className="flex flex-wrap gap-1.5">
                 {report.missing.map(f => {
                   const isSearching = searching === f.field;
+                  const isNotFound  = notFound === f.field;
                   return (
                     <button key={f.field}
                       onClick={() => searchFieldBeforeCreate(f)}
                       disabled={!!searching}
                       className="flex items-center gap-1 text-[10px] px-2.5 py-1 rounded-lg font-medium transition hover:opacity-80 disabled:opacity-50 cursor-pointer"
-                      style={{ background: "rgba(245,158,11,0.10)", border: "1px solid rgba(245,158,11,0.35)", color: "#fbbf24" }}>
+                      style={isNotFound
+                        ? { background: "rgba(239,68,68,0.10)", border: "1px solid rgba(239,68,68,0.35)", color: "#f87171" }
+                        : { background: "rgba(245,158,11,0.10)", border: "1px solid rgba(245,158,11,0.35)", color: "#fbbf24" }
+                      }>
                       {isSearching
                         ? <div className="w-2.5 h-2.5 border border-amber-400/40 border-t-amber-400 rounded-full animate-spin flex-shrink-0" />
-                        : <Icon name="Search" size={9} />
+                        : isNotFound
+                          ? <Icon name="X" size={9} />
+                          : <Icon name="Search" size={9} />
                       }
-                      {f.label}
+                      {isNotFound ? `${f.label} — не найдено` : f.label}
                     </button>
                   );
                 })}
@@ -429,16 +451,20 @@ export function WLSiteParser({ onCreated }: Props) {
               <div className="flex flex-wrap gap-1.5">
                 {report.missing.map(f => {
                   const isSearching = searching === f.field;
+                  const isNotFound  = notFound === f.field;
                   return (
                     <button key={f.field} onClick={() => searchField(f)}
                       disabled={!!searching || !url.trim() || !lastCompanyId}
                       className="flex items-center gap-1 text-[10px] px-2.5 py-1 rounded-lg font-medium transition hover:opacity-80 disabled:opacity-50"
-                      style={{ background: "rgba(245,158,11,0.10)", border: "1px solid rgba(245,158,11,0.35)", color: "#fbbf24" }}>
+                      style={isNotFound
+                        ? { background: "rgba(239,68,68,0.10)", border: "1px solid rgba(239,68,68,0.35)", color: "#f87171" }
+                        : { background: "rgba(245,158,11,0.10)", border: "1px solid rgba(245,158,11,0.35)", color: "#fbbf24" }
+                      }>
                       {isSearching
                         ? <div className="w-2.5 h-2.5 border border-amber-400/40 border-t-amber-400 rounded-full animate-spin flex-shrink-0" />
-                        : <Icon name="Search" size={9} />
+                        : isNotFound ? <Icon name="X" size={9} /> : <Icon name="Search" size={9} />
                       }
-                      {f.label}
+                      {isNotFound ? `${f.label} — не найдено` : f.label}
                     </button>
                   );
                 })}
@@ -488,16 +514,20 @@ export function WLSiteParser({ onCreated }: Props) {
               <div className="flex flex-wrap gap-1.5">
                 {report.missing.map(f => {
                   const isSearching = searching === f.field;
+                  const isNotFound  = notFound === f.field;
                   return (
                     <button key={f.field} onClick={() => searchField(f)}
                       disabled={!!searching || !url.trim() || !lastCompanyId}
                       className="flex items-center gap-1 text-[10px] px-2.5 py-1 rounded-lg font-medium transition hover:opacity-80 disabled:opacity-50"
-                      style={{ background: "rgba(245,158,11,0.10)", border: "1px solid rgba(245,158,11,0.35)", color: "#fbbf24" }}>
+                      style={isNotFound
+                        ? { background: "rgba(239,68,68,0.10)", border: "1px solid rgba(239,68,68,0.35)", color: "#f87171" }
+                        : { background: "rgba(245,158,11,0.10)", border: "1px solid rgba(245,158,11,0.35)", color: "#fbbf24" }
+                      }>
                       {isSearching
                         ? <div className="w-2.5 h-2.5 border border-amber-400/40 border-t-amber-400 rounded-full animate-spin flex-shrink-0" />
-                        : <Icon name="Search" size={9} />
+                        : isNotFound ? <Icon name="X" size={9} /> : <Icon name="Search" size={9} />
                       }
-                      {f.label}
+                      {isNotFound ? `${f.label} — не найдено` : f.label}
                     </button>
                   );
                 })}
