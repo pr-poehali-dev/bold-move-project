@@ -41,7 +41,13 @@ export function WLPresentationModal({ company, onSuccess, onCancel }: Props) {
       headers: { "X-Authorization": masterToken() },
     })
       .then(r => r.json())
-      .then(d => setBusyHours(d.busy_hours || []))
+      .then(d => {
+        const busy: number[] = d.busy_hours || [];
+        setBusyHours(busy);
+        // Автоматически выбираем первый свободный слот
+        const firstFree = HOURS.find(h => !busy.includes(h));
+        if (firstFree !== undefined) setHour(firstFree);
+      })
       .catch(() => setBusyHours([]));
   }, [date]);
 

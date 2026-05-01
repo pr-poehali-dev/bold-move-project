@@ -60,7 +60,13 @@ export function WLNextStepModal({ company, newStatus, onSuccess, onCancel }: Pro
       headers: { "X-Authorization": masterToken() },
     })
       .then(r => r.json())
-      .then(d => setBusyHours(d.busy_hours || []))
+      .then(d => {
+        const busy: number[] = d.busy_hours || [];
+        setBusyHours(busy);
+        // Автоматически выбираем первый свободный и не прошедший слот
+        const firstFree = HOURS.find(h => !busy.includes(h) && !isPast(h, date));
+        if (firstFree !== undefined) setHour(firstFree);
+      })
       .catch(() => setBusyHours([]))
       .finally(() => setLoadingSlots(false));
   }, [date, isPresentation]);
@@ -73,7 +79,7 @@ export function WLNextStepModal({ company, newStatus, onSuccess, onCancel }: Pro
     } else {
       if (!isPresentation && !action.trim()) { setError("Заполни действие"); return; }
       if (!date) { setError("Укажи дату"); return; }
-      if (isPresentation && selectedBusy) { setError("Это время занято — выбери другое"); return; }
+      if (isPresentation && selectedBusy) return; // слот недоступен — кнопка уже задизейблена
     }
 
     setSaving(true);
