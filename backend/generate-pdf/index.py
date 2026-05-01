@@ -317,14 +317,17 @@ def build_pdf(data, logo_bytes=None, brand=None):
         pill_fill = WHITE
         pill_stroke = HexColor('#e9ecef')
 
-    if pill_fill is not None:
+    def draw_pill(px, py, pw, ph):
+        """Рисует подложку логотипа с текущими настройками цвета."""
+        if pill_fill is None:
+            return
         c.setFillColor(pill_fill)
         if pill_stroke is not None:
             c.setStrokeColor(pill_stroke)
             c.setLineWidth(0.5)
-            c.roundRect(logo_pill_x, logo_pill_y, logo_pill_w, logo_pill_h, 2*mm, fill=1, stroke=1)
+            c.roundRect(px, py, pw, ph, 2*mm, fill=1, stroke=1)
         else:
-            c.roundRect(logo_pill_x, logo_pill_y, logo_pill_w, logo_pill_h, 2*mm, fill=1, stroke=0)
+            c.roundRect(px, py, pw, ph, 2*mm, fill=1, stroke=0)
 
     if logo_bytes:
         try:
@@ -335,26 +338,15 @@ def build_pdf(data, logo_bytes=None, brand=None):
             if logo_orient == 'auto':
                 ratio = iw / ih_ if ih_ > 0 else 1.0
                 if ratio > 1.5:
-                    # Широкий (горизонтальный) — низкая плашка
-                    auto_pill_h = 13 * mm
+                    logo_pill_h = 13 * mm
                 elif ratio < 0.85:
-                    # Высокий (вертикальный/квадрат с запасом) — высокая плашка
-                    auto_pill_h = 22 * mm
+                    logo_pill_h = 22 * mm
                 else:
-                    # Квадратный — средняя плашка
-                    auto_pill_h = 17 * mm
-                # Пересчитываем позицию плашки с новой высотой
-                logo_pill_h = auto_pill_h
+                    logo_pill_h = 17 * mm
                 logo_pill_y = h - mg - logo_pill_h - 4*mm
-                # Перерисовываем подложку с новой высотой
-                if pill_fill is not None:
-                    c.setFillColor(pill_fill)
-                    if pill_stroke is not None:
-                        c.setStrokeColor(pill_stroke)
-                        c.setLineWidth(0.5)
-                        c.roundRect(logo_pill_x, logo_pill_y, logo_pill_w, logo_pill_h, 2*mm, fill=1, stroke=1)
-                    else:
-                        c.roundRect(logo_pill_x, logo_pill_y, logo_pill_w, logo_pill_h, 2*mm, fill=1, stroke=0)
+
+            # Рисуем плашку один раз с окончательными размерами
+            draw_pill(logo_pill_x, logo_pill_y, logo_pill_w, logo_pill_h)
 
             # Вписать логотип в плашку с отступом (object-fit: contain)
             pad = 2 * mm
@@ -368,7 +360,11 @@ def build_pdf(data, logo_bytes=None, brand=None):
                 logo_pill_y + (logo_pill_h - lh) / 2,
                 width=lw_, height=lh, mask='auto')
         except Exception:
-            pass
+            # Нет логотипа или ошибка — рисуем плашку без картинки
+            draw_pill(logo_pill_x, logo_pill_y, logo_pill_w, logo_pill_h)
+    else:
+        # Нет логотипа — рисуем плашку без картинки
+        draw_pill(logo_pill_x, logo_pill_y, logo_pill_w, logo_pill_h)
 
     # Контакты под плашкой — название компании, телефон, сайт (адрес/реквизиты — в подвале страницы)
     contacts = [p for p in [brand_name, brand_phone, brand_website] if p]
