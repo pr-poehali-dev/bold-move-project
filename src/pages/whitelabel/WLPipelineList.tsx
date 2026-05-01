@@ -38,7 +38,7 @@ function ActionButtons({ c, onOpenPanel, onRunApiTests }: {
           if (tok) onOpenPanel({ type: "site-authed", url: `/?c=${c.company_id}`, token: tok });
           else onOpenPanel({ type: "site", url: `/?c=${c.company_id}` });
         }} className={btn} style={{ background: "rgba(6,182,212,0.12)", color: "#06b6d4", border: "1px solid rgba(6,182,212,0.25)" }}>
-        <Icon name="Globe" size={10} /> Борд
+        <Icon name="Globe" size={10} /> Бренд Борд
       </button>
       <button onClick={async () => {
           const tok = await loginAs(c.company_id);
@@ -161,7 +161,7 @@ export function WLPipelineList({ companies, filterStatus, onFilterChange, onSele
                   }}
                   className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[10px] font-bold transition hover:opacity-80 flex-shrink-0"
                   style={{ background: "rgba(6,182,212,0.12)", color: "#06b6d4", border: "1px solid rgba(6,182,212,0.25)" }}>
-                  <Icon name="Globe" size={10} /> Борд
+                  <Icon name="Globe" size={10} /> Бренд Борд
                 </button>
 
                 {/* Статус */}
