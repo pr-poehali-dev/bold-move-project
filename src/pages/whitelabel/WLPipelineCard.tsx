@@ -69,18 +69,7 @@ export function WLPipelineCard({ c, isOpen, onToggle, onSelect, onMove, onBrand,
         <div className="flex-1 min-w-0 cursor-pointer hover:opacity-80 transition" onClick={() => onSelect(c)}>
           <div className="flex items-center gap-1.5 flex-wrap">
             <span className="text-xs font-bold text-white/90 truncate">{c.company_name}</span>
-            {(!c.contact_name || !c.contact_phone || !c.contact_position) && (
-              <button
-                onClick={e => { e.stopPropagation(); onLpr(c); }}
-                className="flex-shrink-0 transition hover:scale-110"
-                style={{ filter: "drop-shadow(0 0 4px rgba(239,68,68,0.7))" }}
-                title="Не заполнен ЛПР">
-                <svg width="14" height="13" viewBox="0 0 14 13" fill="none">
-                  <path d="M7 1L13 12H1L7 1Z" fill="#ef4444"/>
-                  <text x="7" y="10.5" textAnchor="middle" fontSize="7" fontWeight="900" fill="white">!</text>
-                </svg>
-              </button>
-            )}
+
             <span className="text-[9px] px-1.5 py-0.5 rounded-md font-bold flex-shrink-0"
               style={{ background: st.bg, color: st.color }}>{st.label}</span>
             {/* Демо-trial badge */}

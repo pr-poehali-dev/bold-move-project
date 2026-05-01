@@ -69,17 +69,7 @@ export function KanbanCard({ c, onSelect, onDragStart, onLpr, dateRange, colWidt
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-1 flex-wrap">
               <span className="text-[11px] font-bold text-white/90 truncate leading-tight">{c.company_name}</span>
-              {(!c.contact_name || !c.contact_phone || !c.contact_position) && (
-                <button onClick={e => { e.stopPropagation(); onLpr(); }}
-                  className="flex-shrink-0 transition hover:scale-110"
-                  style={{ filter: "drop-shadow(0 0 4px rgba(239,68,68,0.7))" }}
-                  title="Не заполнен ЛПР">
-                  <svg width="13" height="12" viewBox="0 0 13 12" fill="none">
-                    <path d="M6.5 1L12 11H1L6.5 1Z" fill="#ef4444"/>
-                    <text x="6.5" y="9.5" textAnchor="middle" fontSize="6" fontWeight="900" fill="white">!</text>
-                  </svg>
-                </button>
-              )}
+
             </div>
             <div className="text-[9px] text-white/30 truncate">{domain}</div>
           </div>
