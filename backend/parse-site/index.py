@@ -24,10 +24,43 @@ def err(msg, code=400):
 def get_conn():
     return psycopg2.connect(os.environ["DATABASE_URL"])
 
+NEUTRAL_COLORS = {
+    "ffffff", "000000", "333333", "666666", "999999", "cccccc", "f5f5f5",
+    "eeeeee", "e5e5e5", "dddddd", "f0f0f0", "fafafa", "1a1a1a", "2d2d2d",
+    "111111", "222222", "444444", "555555", "777777", "888888", "aaaaaa",
+    "bbbbbb", "c0c0c0", "d4d4d4", "e0e0e0", "f8f8f8", "fcfcfc", "4a4a4a",
+}
+
+def _is_neutral(hex6: str) -> bool:
+    lc = hex6.lower()
+    if lc in NEUTRAL_COLORS:
+        return True
+    # Серые — r≈g≈b с небольшим допуском
+    try:
+        r, g, b = int(lc[0:2], 16), int(lc[2:4], 16), int(lc[4:6], 16)
+        spread = max(r, g, b) - min(r, g, b)
+        return spread < 18
+    except Exception:
+        return False
+
+def _best_color(css_text: str) -> str | None:
+    """Частотный анализ HEX-цветов в CSS, возвращает самый частый не-нейтральный."""
+    all_colors = re.findall(r'#([0-9a-fA-F]{6})', css_text)
+    freq: dict = {}
+    for c in all_colors:
+        lc = c.lower()
+        if not _is_neutral(lc):
+            freq[lc] = freq.get(lc, 0) + 1
+    if freq:
+        best = max(freq, key=lambda k: freq[k])
+        return f"#{best}"
+    return None
+
 def fetch_brand_color(url: str) -> str | None:
-    """Загружает HTML страницы напрямую и извлекает доминирующий цвет из CSS."""
+    """Загружает HTML страницы и извлекает цвет бренда из нескольких источников."""
     if not url.startswith("http"):
         url = "https://" + url
+    base_url = "/".join(url.split("/")[:3])  # https://domain.ru
     try:
         req = urllib.request.Request(url, headers={
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
@@ -39,51 +72,94 @@ def fetch_brand_color(url: str) -> str | None:
         print(f"[parse-site] color fetch failed: {e}")
         return None
 
-    # Ищем inline-стили и style-блоки
+    # ── 1. meta theme-color ──────────────────────────────────────────────────
+    m = re.search(r'<meta[^>]+name=["\']theme-color["\'][^>]+content=["\']([^"\']+)["\']', html, re.IGNORECASE)
+    if not m:
+        m = re.search(r'<meta[^>]+content=["\']([^"\']+)["\'][^>]+name=["\']theme-color["\']', html, re.IGNORECASE)
+    if m:
+        color = m.group(1).strip()
+        if re.match(r'^#[0-9a-fA-F]{6}$', color) and not _is_neutral(color[1:]):
+            print(f"[parse-site] brand color from meta theme-color: {color}")
+            return color
+
+    # ── 2. og:image не нужен, но проверим msapplication-TileColor ───────────
+    m = re.search(r'<meta[^>]+name=["\']msapplication-TileColor["\'][^>]+content=["\']([^"\']+)["\']', html, re.IGNORECASE)
+    if m:
+        color = m.group(1).strip()
+        if re.match(r'^#[0-9a-fA-F]{6}$', color) and not _is_neutral(color[1:]):
+            print(f"[parse-site] brand color from msapplication-TileColor: {color}")
+            return color
+
+    # ── 3. Tailwind / Bootstrap классы bg-[#xxx] ──────────────────────────────
+    for m in re.finditer(r'bg-\[#([0-9a-fA-F]{3,6})\]', html):
+        val = m.group(1).lower()
+        if len(val) == 3:
+            val = val[0]*2 + val[1]*2 + val[2]*2
+        if not _is_neutral(val):
+            print(f"[parse-site] brand color from Tailwind: #{val}")
+            return f"#{val}"
+
+    # ── 4. Собираем CSS: <style> блоки + inline + внешние файлы ──────────────
     css_chunks = []
-    # <style> блоки
     for m in re.finditer(r"<style[^>]*>(.*?)</style>", html, re.DOTALL | re.IGNORECASE):
         css_chunks.append(m.group(1))
-    # inline style=""
     for m in re.finditer(r'style="([^"]*)"', html, re.IGNORECASE):
         css_chunks.append(m.group(1))
-    # Tailwind / Bootstrap классы bg-[#xxx]
-    for m in re.finditer(r'bg-\[#([0-9a-fA-F]{3,6})\]', html):
-        return f"#{m.group(1)}"
+
+    # Загружаем до 3 внешних CSS файлов
+    css_hrefs = re.findall(r'<link[^>]+rel=["\']stylesheet["\'][^>]+href=["\']([^"\']+)["\']', html, re.IGNORECASE)
+    css_hrefs += re.findall(r'<link[^>]+href=["\']([^"\']+)["\'][^>]+rel=["\']stylesheet["\']', html, re.IGNORECASE)
+    for href in css_hrefs[:3]:
+        try:
+            if href.startswith("//"):
+                href = "https:" + href
+            elif href.startswith("/"):
+                href = base_url + href
+            elif not href.startswith("http"):
+                href = base_url + "/" + href
+            r2 = urllib.request.Request(href, headers={"User-Agent": "Mozilla/5.0"})
+            with urllib.request.urlopen(r2, timeout=5) as resp2:
+                css_chunks.append(resp2.read().decode("utf-8", errors="replace"))
+        except Exception:
+            pass
 
     css_text = "\n".join(css_chunks)
 
-    # Ищем цвета в CSS: background, background-color, color для кнопок/primary
-    # Приоритет: btn, button, primary, accent, brand, cta
+    # ── 5. CSS переменные --primary, --brand, --accent, --color-main ─────────
+    var_pattern = re.compile(
+        r'--(primary|brand|accent|main|theme|color-primary|color-brand|color-accent|color-main|clr-primary|clr-accent)'
+        r'\s*:\s*(#[0-9a-fA-F]{3,8})',
+        re.IGNORECASE
+    )
+    for m in var_pattern.finditer(css_text):
+        color = m.group(2).strip()
+        hex_val = color.lstrip("#").lower()
+        if len(hex_val) == 3:
+            hex_val = hex_val[0]*2 + hex_val[1]*2 + hex_val[2]*2
+        if len(hex_val) == 6 and not _is_neutral(hex_val):
+            print(f"[parse-site] brand color from CSS var --{m.group(1)}: #{hex_val}")
+            return f"#{hex_val}"
+
+    # ── 6. Приоритетные классы: кнопки, primary, accent, brand ───────────────
     priority_pattern = re.compile(
-        r'(?:\.btn|\.button|\.cta|primary|accent|brand|header|hero)[^{]*\{[^}]*'
-        r'(?:background(?:-color)?|color)\s*:\s*(#[0-9a-fA-F]{3,8}|rgb\([^)]+\))',
+        r'(?:\.btn|\.button|\.cta|primary|accent|brand|header|hero|nav)[^{]*\{[^}]*'
+        r'(?:background(?:-color)?)\s*:\s*(#[0-9a-fA-F]{3,8})',
         re.IGNORECASE | re.DOTALL
     )
     for m in priority_pattern.finditer(css_text):
         color = m.group(1).strip()
-        if color.startswith("#") and len(color) in (4, 7):
-            # Пропускаем белый, чёрный, серые
-            hex_val = color.lstrip("#").lower()
-            if hex_val not in ("fff", "ffffff", "000", "000000", "333", "333333", "666", "666666"):
-                print(f"[parse-site] found brand color: {color}")
-                return color
+        hex_val = color.lstrip("#").lower()
+        if len(hex_val) == 3:
+            hex_val = hex_val[0]*2 + hex_val[1]*2 + hex_val[2]*2
+        if len(hex_val) == 6 and not _is_neutral(hex_val):
+            print(f"[parse-site] brand color from priority class: #{hex_val}")
+            return f"#{hex_val}"
 
-    # Fallback: все HEX-цвета, берём самый частый не-нейтральный
-    all_colors = re.findall(r'#([0-9a-fA-F]{6})', css_text)
-    neutral = {"ffffff", "000000", "333333", "666666", "999999", "cccccc", "f5f5f5",
-               "eeeeee", "e5e5e5", "dddddd", "f0f0f0", "fafafa", "1a1a1a", "2d2d2d"}
-    freq: dict = {}
-    for c in all_colors:
-        lc = c.lower()
-        if lc not in neutral:
-            freq[lc] = freq.get(lc, 0) + 1
-    if freq:
-        best = max(freq, key=lambda k: freq[k])
-        print(f"[parse-site] fallback brand color: #{best}")
-        return f"#{best}"
-
-    return None
+    # ── 7. Fallback: частотный анализ всех HEX ───────────────────────────────
+    color = _best_color(css_text)
+    if color:
+        print(f"[parse-site] brand color from frequency: {color}")
+    return color
 
 
 def get_s3():
