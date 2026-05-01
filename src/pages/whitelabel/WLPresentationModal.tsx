@@ -29,12 +29,14 @@ function toDatetimeLocal(date: Date): string {
 
 function isBusy(hour: number, date: string, slots: BusySlot[]): boolean {
   if (!date) return false;
+  // Строим локальное время выбранного слота и берём начало часа
+  const chosen = new Date(`${date}T${String(hour).padStart(2, "0")}:00:00`);
+  const chosenH = chosen.getTime();
   return slots.some(s => {
     const slotTime = new Date(s.scheduled_at);
-    return slotTime.getFullYear() === new Date(date).getFullYear()
-      && slotTime.getMonth()      === new Date(date).getMonth()
-      && slotTime.getDate()       === new Date(date).getDate()
-      && slotTime.getHours()      === hour;
+    // Сравниваем начала часов (обнуляем минуты/секунды слота)
+    slotTime.setMinutes(0, 0, 0);
+    return slotTime.getTime() === chosenH;
   });
 }
 
