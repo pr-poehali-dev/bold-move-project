@@ -78,32 +78,35 @@ export function WLPipelineFilters({
         )}
       </div>
 
-      {/* Фильтр по статусу */}
-      <div className="flex flex-wrap gap-1.5">
-        <button onClick={() => onFilterChange("all")}
-          className="px-3 py-1.5 rounded-lg text-[11px] font-bold transition"
-          style={{
-            background: filterStatus === "all" ? "rgba(255,255,255,0.12)" : "rgba(255,255,255,0.04)",
-            color:      filterStatus === "all" ? "rgba(255,255,255,0.9)"  : "rgba(255,255,255,0.3)",
-            border:     `1px solid ${filterStatus === "all" ? "rgba(255,255,255,0.25)" : "transparent"}`,
-          }}>
-          Все ({companies.length})
-        </button>
-        {DEMO_STATUSES.map(s => {
-          const count  = companies.filter(c => c.status === s.id).length;
-          const active = filterStatus === s.id;
-          return (
-            <button key={s.id} onClick={() => onFilterChange(s.id)}
-              className="px-3 py-1.5 rounded-lg text-[11px] font-bold transition"
-              style={{
-                background: active ? s.bg : "rgba(255,255,255,0.04)",
-                color:      active ? s.color : "rgba(255,255,255,0.3)",
-                border:     `1px solid ${active ? s.color + "50" : "transparent"}`,
-              }}>
-              {s.label} ({count})
-            </button>
-          );
-        })}
+      {/* Фильтр по статусу — в контейнере как поиск и фильтры */}
+      <div className="rounded-xl px-3 py-2.5"
+        style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)" }}>
+        <div className="flex flex-wrap gap-1.5">
+          <button onClick={() => onFilterChange("all")}
+            className="px-3 py-1.5 rounded-lg text-[11px] font-bold transition"
+            style={{
+              background: filterStatus === "all" ? "rgba(255,255,255,0.12)" : "rgba(255,255,255,0.04)",
+              color:      filterStatus === "all" ? "rgba(255,255,255,0.9)"  : "rgba(255,255,255,0.3)",
+              border:     `1px solid ${filterStatus === "all" ? "rgba(255,255,255,0.25)" : "transparent"}`,
+            }}>
+            Все ({companies.length})
+          </button>
+          {DEMO_STATUSES.map(s => {
+            const count  = companies.filter(c => c.status === s.id).length;
+            const active = filterStatus === s.id;
+            return (
+              <button key={s.id} onClick={() => onFilterChange(s.id)}
+                className="px-3 py-1.5 rounded-lg text-[11px] font-bold transition"
+                style={{
+                  background: active ? s.bg : "rgba(255,255,255,0.04)",
+                  color:      active ? s.color : "rgba(255,255,255,0.3)",
+                  border:     `1px solid ${active ? s.color + "50" : "transparent"}`,
+                }}>
+                {s.label} ({count})
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       {/* Доп-фильтры — сворачиваемый блок */}
