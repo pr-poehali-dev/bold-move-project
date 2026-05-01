@@ -23,6 +23,7 @@ export function WLContent() {
   const [iframeToken,    setIframeToken]    = useState<string | null>(null);
   const [apiTestId,      setApiTestId]      = useState<number>(0);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const [parserModal,    setParserModal]    = useState(false);
 
   const setResult = (key: string, r: CheckResult | null) =>
     setResults(prev => ({ ...prev, [key]: r }));
@@ -104,10 +105,20 @@ export function WLContent() {
               <span className="hidden sm:inline text-white/20">/</span>
             </>
           )}
-          <h1 className="hidden sm:block text-sm font-bold">White-Label</h1>
+          <h1 className="text-sm font-bold">White-Label</h1>
 
-          {/* Имя аккаунта — на мобиле главное, на десктопе справа */}
-          <div className="ml-auto sm:ml-auto flex items-center gap-2">
+          {/* Правая часть хедера */}
+          <div className="ml-auto flex items-center gap-2">
+            {/* Кнопка + на мобиле — открывает парсер в модалке */}
+            {isMaster && (
+              <button
+                onClick={() => setParserModal(true)}
+                className="sm:hidden flex items-center justify-center w-7 h-7 rounded-lg transition hover:opacity-80"
+                style={{ background: "rgba(251,146,60,0.15)", border: "1px solid rgba(251,146,60,0.3)", color: "#fb923c" }}
+                title="Добавить новых">
+                <Icon name="Plus" size={14} />
+              </button>
+            )}
             <div className="text-right">
               <div className="text-[11px] font-bold text-white/70">{displayName}</div>
               <div className="text-[9px] text-white/30">{displayRole}</div>
@@ -123,9 +134,29 @@ export function WLContent() {
           </div>
         </header>
 
+        {/* Модалка парсера на мобиле */}
+        {parserModal && (
+          <div className="sm:hidden fixed inset-0 z-50 flex flex-col" style={{ background: "#06060c" }}>
+            <div className="flex items-center gap-3 px-4 py-3 border-b border-white/[0.06]">
+              <button onClick={() => setParserModal(false)}
+                className="p-1.5 rounded-lg transition hover:bg-white/[0.06]"
+                style={{ color: "rgba(255,255,255,0.4)" }}>
+                <Icon name="ArrowLeft" size={16} />
+              </button>
+              <span className="text-sm font-bold text-white/80">Добавить новых</span>
+            </div>
+            <div className="flex-1 overflow-y-auto px-4 py-4">
+              <WLSiteParser onCreated={() => { setRefreshTrigger(t => t + 1); setParserModal(false); }} />
+            </div>
+          </div>
+        )}
+
         <div className="max-w-4xl mx-auto px-3 sm:px-5 py-4 sm:py-8 space-y-4 sm:space-y-8">
+          {/* Парсер — только десктоп (на мобиле открывается через кнопку + в хедере) */}
           {isMaster && (
-            <WLSiteParser onCreated={() => setRefreshTrigger(t => t + 1)} />
+            <div className="hidden sm:block">
+              <WLSiteParser onCreated={() => setRefreshTrigger(t => t + 1)} />
+            </div>
           )}
           <WLPipeline
             refreshTrigger={refreshTrigger}
