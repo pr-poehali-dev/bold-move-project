@@ -179,7 +179,7 @@ export function WLPipelineFilters({
         style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)" }}>
         <div className="flex gap-1.5">
           <button onClick={() => onFilterChange("all")}
-            className="flex-1 py-1.5 rounded-lg text-[11px] font-bold transition text-center"
+            className="flex-1 py-1.5 rounded-lg text-[10px] font-bold transition text-center whitespace-nowrap"
             style={{
               background: filterStatus === "all" ? "rgba(255,255,255,0.12)" : "rgba(255,255,255,0.04)",
               color:      filterStatus === "all" ? "rgba(255,255,255,0.9)"  : "rgba(255,255,255,0.3)",
@@ -192,7 +192,7 @@ export function WLPipelineFilters({
             const active = filterStatus === s.id;
             return (
               <button key={s.id} onClick={() => onFilterChange(s.id)}
-                className="flex-1 py-1.5 rounded-lg text-[11px] font-bold transition text-center"
+                className="flex-1 py-1.5 rounded-lg text-[10px] font-bold transition text-center whitespace-nowrap"
                 style={{
                   background: active ? s.bg : "rgba(255,255,255,0.04)",
                   color:      active ? s.color : "rgba(255,255,255,0.3)",
