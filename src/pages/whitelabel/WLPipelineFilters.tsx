@@ -17,17 +17,67 @@ interface Props {
   onDemoFilter:   (v: DemoFilter) => void;
   onEstFilter:    (v: EstFilter) => void;
   onAgentFilter:  (v: AgentFilter) => void;
+  search:         string;
+  onSearch:       (v: string) => void;
 }
 
 export function WLPipelineFilters({
   companies, filterStatus, onFilterChange,
   demoFilter, estFilter, agentFilter,
   onDemoFilter, onEstFilter, onAgentFilter,
+  search, onSearch,
 }: Props) {
-  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [filtersOpen,  setFiltersOpen]  = useState(false);
+  const [searchOpen,   setSearchOpen]   = useState(false);
 
   return (
     <>
+      {/* Поиск — сворачиваемый */}
+      <div className="rounded-xl overflow-hidden"
+        style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)" }}>
+        <button className="w-full flex items-center gap-2 px-3 py-2 text-left transition hover:bg-white/[0.02]"
+          onClick={() => setSearchOpen(v => !v)}>
+          <Icon name="Search" size={12} style={{ color: "rgba(255,255,255,0.3)" }} />
+          <span className="text-[10px] text-white/30 font-bold uppercase tracking-wider flex-1">Поиск</span>
+          {!searchOpen && search && (
+            <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full truncate max-w-[120px]"
+              style={{ background: "rgba(139,92,246,0.2)", color: "#a78bfa" }}>
+              {search}
+            </span>
+          )}
+          <Icon name={searchOpen ? "ChevronUp" : "ChevronDown"} size={12} style={{ color: "rgba(255,255,255,0.2)" }} />
+        </button>
+        {searchOpen && (
+          <div className="px-3 pb-3 border-t border-white/[0.05]" style={{ paddingTop: 10 }}>
+            <div className="relative">
+              <Icon name="Search" size={12} style={{
+                position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)",
+                color: "rgba(255,255,255,0.25)", pointerEvents: "none",
+              }} />
+              <input
+                autoFocus
+                value={search}
+                onChange={e => onSearch(e.target.value)}
+                placeholder="Название компании или сайт..."
+                className="w-full rounded-lg text-xs text-white/80 placeholder-white/20 outline-none transition"
+                style={{
+                  background: "rgba(255,255,255,0.05)",
+                  border: "1px solid rgba(255,255,255,0.1)",
+                  padding: "7px 10px 7px 30px",
+                }}
+              />
+              {search && (
+                <button onClick={() => onSearch("")}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 transition hover:opacity-80"
+                  style={{ color: "rgba(255,255,255,0.3)" }}>
+                  <Icon name="X" size={12} />
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+
       {/* Фильтр по статусу */}
       <div className="flex flex-wrap gap-1.5">
         <button onClick={() => onFilterChange("all")}

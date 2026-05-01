@@ -80,6 +80,7 @@ export function WLPipelineList({ companies, filterStatus, onFilterChange, onSele
   const [demoFilter,  setDemoFilter]  = useState<DemoFilter>("all");
   const [estFilter,   setEstFilter]   = useState<EstFilter>("all");
   const [agentFilter, setAgentFilter] = useState<AgentFilter>("all");
+  const [search,      setSearch]      = useState("");
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
@@ -102,7 +103,15 @@ export function WLPipelineList({ companies, filterStatus, onFilterChange, onSele
 
   const byStatus = filterStatus === "all" ? companies : companies.filter(c => c.status === filterStatus);
 
+  const searchLower = search.trim().toLowerCase();
   const filtered = byStatus.filter(c => {
+    // Поиск по названию и домену
+    if (searchLower) {
+      const nameMatch = c.company_name.toLowerCase().includes(searchLower);
+      const siteMatch = c.site_url.toLowerCase().includes(searchLower);
+      if (!nameMatch && !siteMatch) return false;
+    }
+
     const dl = demoDaysLeft(c);
     if (demoFilter === "active"   && dl === 0)             return false;
     if (demoFilter === "expiring" && (dl === 0 || dl > 3)) return false;
@@ -154,6 +163,8 @@ export function WLPipelineList({ companies, filterStatus, onFilterChange, onSele
         onDemoFilter={setDemoFilter}
         onEstFilter={setEstFilter}
         onAgentFilter={setAgentFilter}
+        search={search}
+        onSearch={setSearch}
       />
 
       {/* Список с DnD */}
