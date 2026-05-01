@@ -16,12 +16,12 @@ function fmtDate(iso: string): { label: string; isToday: boolean; isOverdue: boo
   const today = new Date(); today.setHours(0, 0, 0, 0);
   const tom   = new Date(today); tom.setDate(today.getDate() + 1);
   const dd    = new Date(d); dd.setHours(0, 0, 0, 0);
-  const isOverdue = d < now;
+  const isOverdue = dd.getTime() < today.getTime(); // просрочено только если дата РАНЬШЕ сегодня
   const isToday   = dd.getTime() === today.getTime();
   let label = "";
   if (isOverdue) {
-    const diff = Math.floor((now.getTime() - d.getTime()) / 86400000);
-    label = diff === 0 ? "Сегодня (просрочено)" : diff === 1 ? "Вчера" : `${diff} дн. назад`;
+    const diff = Math.floor((today.getTime() - dd.getTime()) / 86400000);
+    label = diff === 1 ? "Вчера" : `${diff} дн. назад`;
   } else if (isToday) {
     label = "Сегодня";
   } else if (dd.getTime() === tom.getTime()) {
