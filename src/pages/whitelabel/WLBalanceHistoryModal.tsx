@@ -70,12 +70,13 @@ export function WLBalanceHistoryModal({ company, mode, onClose }: Props) {
   const title  = isInfo ? "Полная информация" : mode === "demo" ? "Демо-период" : "Сметы";
 
   return (
-    <div className="fixed inset-0 z-[110] flex items-center justify-center p-4"
+    <div className="fixed inset-0 z-[110] flex sm:items-center sm:justify-center items-end p-0 sm:p-4"
       style={{ background: "rgba(0,0,0,0.8)" }}
       onClick={onClose}>
-      <div className="w-full max-w-md rounded-2xl overflow-hidden flex flex-col"
+      <div className="w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl overflow-hidden flex flex-col"
         style={{ background: "#0e0e1a", border: "1px solid rgba(139,92,246,0.25)", maxHeight: "88vh" }}
         onClick={e => e.stopPropagation()}>
+        <div className="flex justify-center pt-3 sm:hidden"><div className="w-10 h-1 rounded-full" style={{ background: "rgba(255,255,255,0.15)" }} /></div>
 
         {/* Шапка */}
         <div className="px-5 py-4 border-b border-white/[0.06] flex items-center gap-3 flex-shrink-0">

@@ -174,10 +174,35 @@ export function WLPipelineFilters({
         )}
       </div>
 
-      {/* Фильтр по статусу — растянут на всю ширину */}
+      {/* Фильтр по статусу — скролл на мобиле, stretch на десктопе */}
       <div className="rounded-xl px-3 py-2.5"
         style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)" }}>
-        <div className="flex gap-1.5">
+        {/* Мобиле: горизонтальный скролл */}
+        <div className="flex sm:hidden gap-1.5 overflow-x-auto pb-0.5 scrollbar-hide -mx-1 px-1">
+          {[{ id: "all" as const, label: "Все", color: "rgba(255,255,255,0.9)", bg: "rgba(255,255,255,0.12)", border: "rgba(255,255,255,0.25)" }, ...DEMO_STATUSES.map(s => ({ ...s, border: s.color + "50" }))].map(s => {
+            const count = s.id === "all" ? companies.length : companies.filter(c => c.status === s.id).length;
+            const active = filterStatus === s.id;
+            return (
+              <button key={s.id} onClick={() => onFilterChange(s.id)}
+                className="flex-shrink-0 px-3 py-1.5 rounded-lg text-[10px] font-bold transition whitespace-nowrap flex items-center gap-1"
+                style={{
+                  background: active ? s.bg : "rgba(255,255,255,0.04)",
+                  color:      active ? s.color : "rgba(255,255,255,0.3)",
+                  border:     `1px solid ${active ? s.border : "transparent"}`,
+                }}>
+                {s.label}
+                {count > 0 && (
+                  <span className="text-[9px] font-black px-1 py-0.5 rounded"
+                    style={{ background: (active ? s.color : "rgba(255,255,255,0.15)") + "40", color: active ? s.color : "rgba(255,255,255,0.5)" }}>
+                    {count}
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+        {/* Десктоп: flex-1 равные кнопки */}
+        <div className="hidden sm:flex gap-1.5">
           <button onClick={() => onFilterChange("all")}
             className="flex-1 py-1.5 rounded-lg text-[10px] font-bold transition text-center whitespace-nowrap flex items-center justify-center gap-1"
             style={{

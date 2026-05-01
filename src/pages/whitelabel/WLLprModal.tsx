@@ -34,11 +34,16 @@ export function WLLprModal({ company, onSuccess, onClose }: Props) {
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4"
+    <div className="fixed inset-0 z-[100] flex sm:items-center sm:justify-center items-end p-0 sm:p-4"
       style={{ background: "rgba(0,0,0,0.7)" }} onClick={onClose}>
-      <div className="w-full max-w-sm rounded-2xl overflow-hidden"
+      <div className="w-full sm:max-w-sm rounded-t-2xl sm:rounded-2xl overflow-hidden"
         style={{ background: "#0e0e1a", border: "1px solid rgba(239,68,68,0.3)" }}
         onClick={e => e.stopPropagation()}>
+
+        {/* Ручка (только мобиле) */}
+        <div className="flex justify-center pt-3 sm:hidden">
+          <div className="w-10 h-1 rounded-full" style={{ background: "rgba(255,255,255,0.15)" }} />
+        </div>
 
         {/* Шапка */}
         <div className="px-5 py-4 border-b border-white/[0.07] flex items-center gap-3">

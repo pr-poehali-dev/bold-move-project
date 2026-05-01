@@ -210,11 +210,11 @@ export function WLPipelineDrawer({ company, onClose, onUpdate, onDelete, onOpenP
       {/* Drawer */}
       <div
         className="w-full flex flex-col h-full overflow-hidden"
-        style={{ background: "#0e0e1a", borderLeft: "1px solid rgba(255,255,255,0.07)", maxWidth: "30vw" }}
+        style={{ background: "#0e0e1a", borderLeft: "1px solid rgba(255,255,255,0.07)", maxWidth: "min(480px, 95vw)" }}
         onClick={e => e.stopPropagation()}
       >
         {/* Шапка */}
-        <div className="flex items-center gap-3 px-5 py-4 border-b border-white/[0.06] flex-shrink-0">
+        <div className="flex items-center gap-3 px-4 py-3 border-b border-white/[0.06] flex-shrink-0">
           <div className="w-9 h-9 rounded-xl flex items-center justify-center text-sm font-black overflow-hidden flex-shrink-0"
             style={{ background: color + "25", color, border: `1px solid ${color}40` }}>
             {company.brand_logo_url
@@ -232,7 +232,7 @@ export function WLPipelineDrawer({ company, onClose, onUpdate, onDelete, onOpenP
         </div>
 
         {/* Скроллируемый контент */}
-        <div className="flex-1 overflow-y-auto px-5 py-5 space-y-6">
+        <div className="flex-1 overflow-y-auto px-4 py-4 space-y-5">
 
           {/* Статус */}
           <div>
@@ -325,7 +325,7 @@ export function WLPipelineDrawer({ company, onClose, onUpdate, onDelete, onOpenP
           {/* Кнопки действий */}
           <div className="space-y-2">
             <div className="text-[10px] uppercase tracking-wider text-white/25 mb-1">Действия</div>
-            <div className={`grid gap-2 ${!company.has_own_agent ? "grid-cols-5" : "grid-cols-4"}`}>
+            <div className={`grid gap-2 ${!company.has_own_agent ? "grid-cols-3 sm:grid-cols-5" : "grid-cols-2 sm:grid-cols-4"}`}>
               <button onClick={async () => {
                   const tok = await loginAs(company.company_id);
                   if (tok) onOpenPanel({ type: "site-authed", url: `/?c=${company.company_id}`, token: tok });
@@ -366,7 +366,7 @@ export function WLPipelineDrawer({ company, onClose, onUpdate, onDelete, onOpenP
         </div>
 
         {/* Футер — сохранить / отказ */}
-        <div className="px-5 pb-4 pt-3 border-t border-white/[0.06] flex-shrink-0">
+        <div className="px-4 pb-4 pt-3 border-t border-white/[0.06] flex-shrink-0">
           {saveError && (
             <div className="mb-2 px-3 py-2 rounded-lg text-[11px]"
               style={{ background: "rgba(239,68,68,0.1)", color: "#ef4444", border: "1px solid rgba(239,68,68,0.2)" }}>
