@@ -14,20 +14,22 @@ export default function WhiteLabel() {
   const [wlOk,      setWlOk]      = useState(false);
 
   useEffect(() => {
-    // Мастер — сразу доступ
-    if (!authLoading && user?.is_master) {
+    if (authLoading) return;
+
+    // Мастер — сразу доступ, никаких дополнительных проверок
+    if (user?.is_master) {
       setWlOk(true); setWlLoading(false); return;
     }
-    // Проверяем wl-токен менеджера
-    if (!authLoading) {
-      const tok = getWLToken();
-      if (!tok) { setWlLoading(false); return; }
-      fetch(`${AUTH_URL}?action=wl-me`, { headers: { "X-Authorization": tok } })
-        .then(r => r.json())
-        .then(d => { if (d.manager) setWlOk(true); })
-        .catch(() => {})
-        .finally(() => setWlLoading(false));
-    }
+
+    // Проверяем отдельный wl-токен менеджера (не мастер-токен)
+    const tok = localStorage.getItem("wl_manager_token");
+    if (!tok) { setWlLoading(false); return; }
+
+    fetch(`${AUTH_URL}?action=wl-me`, { headers: { "X-Authorization": tok } })
+      .then(r => r.json())
+      .then(d => { if (d.manager) setWlOk(true); })
+      .catch(() => {})
+      .finally(() => setWlLoading(false));
   }, [user, authLoading]);
 
   if (authLoading || wlLoading)
