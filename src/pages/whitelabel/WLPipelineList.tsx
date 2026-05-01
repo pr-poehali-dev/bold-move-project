@@ -48,9 +48,9 @@ function ActionButtons({ c, onMove }: {
   );
 }
 
-type DemoFilter  = "all" | "active" | "expiring" | "expired";
-type EstFilter   = "all" | "many" | "low" | "zero";
-type BoughtFilter = "all" | "agent_yes" | "agent_no" | "est_yes" | "est_no";
+type DemoFilter   = "all" | "active" | "expiring" | "expired";
+type EstFilter    = "all" | "redflag" | "used" | "bought";
+type AgentFilter  = "all" | "demo" | "bought" | "none";
 
 const DEMO_DAYS = 10;
 function demoDaysLeft(c: DemoPipelineCompany) {
@@ -64,10 +64,10 @@ export function WLPipelineList({ companies, filterStatus, onFilterChange, onSele
   const [receiptFor,  setReceiptFor]  = useState<DemoPipelineCompany | null>(null);
   const [lprFor,      setLprFor]      = useState<DemoPipelineCompany | null>(null);
 
-  const [demoFilter,   setDemoFilter]   = useState<DemoFilter>("all");
-  const [estFilter,    setEstFilter]    = useState<EstFilter>("all");
-  const [boughtFilter, setBoughtFilter] = useState<BoughtFilter>("all");
-  const [historyFor,   setHistoryFor]   = useState<{ company: DemoPipelineCompany; mode: "demo" | "est" } | null>(null);
+  const [demoFilter,  setDemoFilter]  = useState<DemoFilter>("all");
+  const [estFilter,   setEstFilter]   = useState<EstFilter>("all");
+  const [agentFilter, setAgentFilter] = useState<AgentFilter>("all");
+  const [historyFor,  setHistoryFor]  = useState<{ company: DemoPipelineCompany; mode: "demo" | "est" } | null>(null);
 
   const handleMove = (c: DemoPipelineCompany, status: DemoStatus) => {
     if (status === c.status) return;
@@ -78,20 +78,23 @@ export function WLPipelineList({ companies, filterStatus, onFilterChange, onSele
   const byStatus = filterStatus === "all" ? companies : companies.filter(c => c.status === filterStatus);
 
   const filtered = byStatus.filter(c => {
+    // Фильтр по дням демо
     const dl = demoDaysLeft(c);
-    if (demoFilter === "active"   && dl === 0)  return false;
+    if (demoFilter === "active"   && dl === 0)            return false;
     if (demoFilter === "expiring" && (dl === 0 || dl > 3)) return false;
-    if (demoFilter === "expired"  && dl > 0)    return false;
+    if (demoFilter === "expired"  && dl > 0)              return false;
 
-    const bal = c.estimates_balance;
-    if (estFilter === "many" && bal <= 5)  return false;
-    if (estFilter === "low"  && (bal === 0 || bal > 5)) return false;
-    if (estFilter === "zero" && bal > 0)  return false;
+    // Фильтр по сметам
+    const used     = c.estimates_used || 0;
+    const boughtEst = c.estimates_balance > 10;
+    if (estFilter === "redflag" && (used > 0 || boughtEst))  return false; // ред флаг = выдано, но 0 использовано и не купил
+    if (estFilter === "used"    && used === 0)                return false;
+    if (estFilter === "bought"  && !boughtEst)               return false;
 
-    if (boughtFilter === "agent_yes" && !c.agent_purchased_at) return false;
-    if (boughtFilter === "agent_no"  &&  c.agent_purchased_at) return false;
-    if (boughtFilter === "est_yes"   && c.estimates_balance <= 10) return false;
-    if (boughtFilter === "est_no"    && c.estimates_balance > 10)  return false;
+    // Фильтр по агенту
+    const agentBought = !!c.agent_purchased_at && c.has_own_agent;
+    if (agentFilter === "demo"   && agentBought)             return false;
+    if (agentFilter === "bought" && !agentBought)            return false;
 
     return true;
   });
@@ -135,16 +138,16 @@ export function WLPipelineList({ companies, filterStatus, onFilterChange, onSele
         })}
       </div>
 
-      {/* Доп-фильтры: Демо / Сметы / Купил */}
+      {/* Доп-фильтры */}
       <div className="flex flex-wrap gap-2 items-center">
         {/* Демо */}
         <div className="flex items-center gap-1">
           <span className="text-[9px] text-white/25 uppercase tracking-wider">Демо:</span>
           {([
-            { id: "all",      label: "Все"      },
-            { id: "active",   label: "Идёт",    color: "#06b6d4" },
-            { id: "expiring", label: "≤3 дн.",  color: "#f59e0b" },
-            { id: "expired",  label: "Истёк",   color: "#ef4444" },
+            { id: "all",      label: "Все"     },
+            { id: "active",   label: "Идёт",   color: "#06b6d4" },
+            { id: "expiring", label: "≤3 дн.", color: "#f59e0b" },
+            { id: "expired",  label: "Истёк",  color: "#ef4444" },
           ] as { id: DemoFilter; label: string; color?: string }[]).map(f => {
             const active = demoFilter === f.id;
             return (
@@ -163,14 +166,14 @@ export function WLPipelineList({ companies, filterStatus, onFilterChange, onSele
 
         <div className="w-px h-4 bg-white/[0.08]" />
 
-        {/* Сметы */}
+        {/* Сметы — по активности */}
         <div className="flex items-center gap-1">
           <span className="text-[9px] text-white/25 uppercase tracking-wider">Сметы:</span>
           {([
-            { id: "all",  label: "Все"     },
-            { id: "many", label: ">5",      color: "#10b981" },
-            { id: "low",  label: "1-5",     color: "#f59e0b" },
-            { id: "zero", label: "0",       color: "#ef4444" },
+            { id: "all",     label: "Все"        },
+            { id: "redflag", label: "🚩 0 исп.", color: "#ef4444" },
+            { id: "used",    label: "Используют", color: "#10b981" },
+            { id: "bought",  label: "Купили ещё", color: "#a78bfa" },
           ] as { id: EstFilter; label: string; color?: string }[]).map(f => {
             const active = estFilter === f.id;
             return (
@@ -189,19 +192,17 @@ export function WLPipelineList({ companies, filterStatus, onFilterChange, onSele
 
         <div className="w-px h-4 bg-white/[0.08]" />
 
-        {/* Купил */}
+        {/* Агент */}
         <div className="flex items-center gap-1">
-          <span className="text-[9px] text-white/25 uppercase tracking-wider">Покупки:</span>
+          <span className="text-[9px] text-white/25 uppercase tracking-wider">Агент:</span>
           {([
-            { id: "all",       label: "Все"          },
-            { id: "agent_yes", label: "WL ✓",  color: "#10b981" },
-            { id: "agent_no",  label: "WL ✗",  color: "#ef4444" },
-            { id: "est_yes",   label: "Смет ✓", color: "#a78bfa" },
-            { id: "est_no",    label: "Смет ✗", color: "#f59e0b" },
-          ] as { id: BoughtFilter; label: string; color?: string }[]).map(f => {
-            const active = boughtFilter === f.id;
+            { id: "all",    label: "Все"       },
+            { id: "demo",   label: "На демо",  color: "#06b6d4" },
+            { id: "bought", label: "Куплен",   color: "#10b981" },
+          ] as { id: AgentFilter; label: string; color?: string }[]).map(f => {
+            const active = agentFilter === f.id;
             return (
-              <button key={f.id} onClick={() => setBoughtFilter(f.id)}
+              <button key={f.id} onClick={() => setAgentFilter(f.id)}
                 className="px-2 py-0.5 rounded-md text-[10px] font-bold transition"
                 style={{
                   background: active ? (f.color ? f.color + "20" : "rgba(255,255,255,0.12)") : "rgba(255,255,255,0.04)",
@@ -256,34 +257,48 @@ export function WLPipelineList({ companies, filterStatus, onFilterChange, onSele
                         </svg>
                       </button>
                     )}
-                    {c.has_own_agent && (
-                      <span className="text-[9px] px-1.5 py-0.5 rounded-full font-bold flex-shrink-0"
-                        style={{ background: "#10b98120", color: "#10b981" }}>WL</span>
-                    )}
-                    {/* Купил агента */}
-                    {c.agent_purchased_at ? (
-                      <span className="text-[9px] px-1.5 py-0.5 rounded-full font-bold flex-shrink-0"
-                        style={{ background: "rgba(16,185,129,0.12)", color: "#10b981" }}>
-                        🤖 куплен
-                      </span>
-                    ) : (
-                      <span className="text-[9px] px-1.5 py-0.5 rounded-full font-bold flex-shrink-0"
-                        style={{ background: "rgba(239,68,68,0.08)", color: "rgba(239,68,68,0.5)" }}>
-                        🤖 нет
-                      </span>
-                    )}
-                    {/* Купил сметы (>10 = купил, 10 = стартовый баланс) */}
-                    {c.estimates_balance > 10 ? (
-                      <span className="text-[9px] px-1.5 py-0.5 rounded-full font-bold flex-shrink-0"
-                        style={{ background: "rgba(167,139,250,0.12)", color: "#a78bfa" }}>
-                        📄 куплены
-                      </span>
-                    ) : (
-                      <span className="text-[9px] px-1.5 py-0.5 rounded-full font-bold flex-shrink-0"
-                        style={{ background: "rgba(245,158,11,0.08)", color: "rgba(245,158,11,0.5)" }}>
-                        📄 нет
-                      </span>
-                    )}
+                    {/* Бейдж агента */}
+                    {(() => {
+                      const bought = !!c.agent_purchased_at && c.has_own_agent;
+                      const isDemo = !bought; // демо-доступ, не куплен
+                      return bought ? (
+                        <span className="text-[9px] px-1.5 py-0.5 rounded-full font-bold flex-shrink-0"
+                          style={{ background: "rgba(16,185,129,0.15)", color: "#10b981", border: "1px solid rgba(16,185,129,0.3)" }}>
+                          🤖 куплен
+                        </span>
+                      ) : isDemo ? (
+                        <span className="text-[9px] px-1.5 py-0.5 rounded-full font-bold flex-shrink-0"
+                          style={{ background: "rgba(6,182,212,0.1)", color: "#06b6d4", border: "1px solid rgba(6,182,212,0.2)" }}>
+                          🤖 демо
+                        </span>
+                      ) : null;
+                    })()}
+                    {/* Бейдж смет — ред флаг если не использовал ни одной */}
+                    {(() => {
+                      const used = c.estimates_used || 0;
+                      const bal  = c.estimates_balance;
+                      const isRedFlag = used === 0; // выдали, но не использовал ни одной
+                      const boughtMore = bal > 10;  // докупил сверх стартовых
+                      if (boughtMore) return (
+                        <span className="text-[9px] px-1.5 py-0.5 rounded-full font-bold flex-shrink-0"
+                          style={{ background: "rgba(167,139,250,0.15)", color: "#a78bfa", border: "1px solid rgba(167,139,250,0.3)" }}>
+                          📄 куплены
+                        </span>
+                      );
+                      if (isRedFlag) return (
+                        <span className="text-[9px] px-1.5 py-0.5 rounded-full font-bold flex-shrink-0"
+                          title="Выдано демо, но ни одной сметы не создано — ред флаг!"
+                          style={{ background: "rgba(239,68,68,0.15)", color: "#ef4444", border: "1px solid rgba(239,68,68,0.35)" }}>
+                          📄 0 исп.
+                        </span>
+                      );
+                      return (
+                        <span className="text-[9px] px-1.5 py-0.5 rounded-full font-bold flex-shrink-0"
+                          style={{ background: "rgba(16,185,129,0.1)", color: "#10b981", border: "1px solid rgba(16,185,129,0.2)" }}>
+                          📄 {used} исп.
+                        </span>
+                      );
+                    })()}
                     {/* Статус воронки */}
                     <span className="text-[9px] px-1.5 py-0.5 rounded-md font-bold flex-shrink-0"
                       style={{ background: st.bg, color: st.color }}>{st.label}</span>

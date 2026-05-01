@@ -53,6 +53,7 @@ export interface DemoPipelineCompany {
   next_action_date:     string;
   trial_until:          string | null;
   agent_purchased_at:   string | null;
+  estimates_used:       number;
 }
 
 export const DEMO_STATUSES: { id: DemoStatus; label: string; color: string; bg: string }[] = [

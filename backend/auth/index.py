@@ -1484,9 +1484,18 @@ def handler(event: dict, context) -> dict:
                    u.brand_logo_url, u.removed_at,
                    dc.status, dc.contact_name, dc.contact_phone, dc.contact_position,
                    dc.notes, dc.next_action, dc.next_action_date,
-                   u.trial_until, u.agent_purchased_at
+                   u.trial_until, u.agent_purchased_at,
+                   COUNT(e.id) AS estimates_used
             FROM {SCHEMA}.demo_companies dc
             JOIN {SCHEMA}.users u ON u.id = dc.company_id
+            LEFT JOIN {SCHEMA}.saved_estimates e ON e.user_id = u.id
+            GROUP BY dc.id, dc.site_url, dc.created_at,
+                     u.id, u.email, u.company_name, u.bot_name, u.brand_color,
+                     u.support_phone, u.estimates_balance, u.has_own_agent,
+                     u.brand_logo_url, u.removed_at,
+                     dc.status, dc.contact_name, dc.contact_phone, dc.contact_position,
+                     dc.notes, dc.next_action, dc.next_action_date,
+                     u.trial_until, u.agent_purchased_at
             ORDER BY dc.created_at DESC
         """)
         rows = cur.fetchall()
@@ -1513,6 +1522,7 @@ def handler(event: dict, context) -> dict:
             "next_action_date":     str(r[19]) if r[19] else "",
             "trial_until":          str(r[20])[:10] if r[20] else None,
             "agent_purchased_at":   str(r[21])[:10] if r[21] else None,
+            "estimates_used":       int(r[22] or 0),
         } for r in rows]})
 
     # ── Мастер: обновить данные демо-компании (pipeline) ─────────────────────
