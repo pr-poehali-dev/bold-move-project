@@ -379,9 +379,14 @@ export function WLPipelineList({ companies, filterStatus, onFilterChange, onSele
 
                 {/* Бренд */}
                 <button onClick={e => { e.stopPropagation(); onBrand(c.company_id); }}
-                  className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[10px] font-bold transition hover:opacity-80 flex-shrink-0"
-                  style={{ background: "rgba(245,158,11,0.12)", color: "#f59e0b", border: "1px solid rgba(245,158,11,0.25)" }}>
-                  <Icon name="Pencil" size={10} /> Бренд
+                  className="flex-shrink-0 text-center px-3 py-1.5 rounded-lg transition hover:brightness-125"
+                  style={{ background: "rgba(245,158,11,0.08)", border: "1px solid rgba(245,158,11,0.25)" }}>
+                  <div className="text-[9px] flex items-center justify-center gap-0.5" style={{ color: "rgba(245,158,11,0.6)" }}>
+                    <Icon name="Pencil" size={8} /> Бренд
+                  </div>
+                  <div className="text-xs font-bold" style={{ color: "#f59e0b" }}>
+                    <Icon name="Settings2" size={12} />
+                  </div>
                 </button>
 
                 {/* Кнопка раскрытия действий */}
