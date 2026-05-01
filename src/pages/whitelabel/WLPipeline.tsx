@@ -187,12 +187,14 @@ export function WLPipeline({ refreshTrigger, onOpenPanel, onRunApiTests }: Props
             Нет спарсенных компаний — запусти парсер выше
           </div>
         ) : view === "kanban" ? (
-          <WLPipelineKanban
-            companies={companies}
-            onSelect={setSelected}
-            onMove={handleMove}
-            onUpdate={(demoId, patch) => setCompanies(prev => prev.map(c => c.demo_id === demoId ? { ...c, ...patch } : c))}
-          />
+          <div style={{ marginLeft: "calc(-1 * (100vw - 100%) / 2 - 20px)", marginRight: "calc(-1 * (100vw - 100%) / 2 - 20px)", paddingLeft: 20, paddingRight: 20 }}>
+            <WLPipelineKanban
+              companies={companies}
+              onSelect={setSelected}
+              onMove={handleMove}
+              onUpdate={(demoId, patch) => setCompanies(prev => prev.map(c => c.demo_id === demoId ? { ...c, ...patch } : c))}
+            />
+          </div>
         ) : (
           <WLPipelineList
             companies={companies}

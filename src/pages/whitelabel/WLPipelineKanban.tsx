@@ -38,11 +38,14 @@ export function getRangeDates(range: number): [Date, Date] | null {
   return [start, end];
 }
 
+type Tag = "all" | "trial" | "paid" | "no_lpr";
+
 export function WLPipelineKanban({ companies, onSelect, onMove, onUpdate }: Props) {
   const [range,    setRange]    = useState<Range>(0);
   const [lprFor,   setLprFor]   = useState<DemoPipelineCompany | null>(null);
   const [colWidth, setColWidth] = useState<number>(loadWidth);
   const [search,   setSearch]   = useState("");
+  const [tag,      setTag]      = useState<Tag>("all");
   const [useMobile, setUseMobile] = useState(() => window.innerWidth < 640);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -60,15 +63,20 @@ export function WLPipelineKanban({ companies, onSelect, onMove, onUpdate }: Prop
     localStorage.setItem(LS_WIDTH, String(w));
   };
 
+  const now = new Date();
   const q = search.toLowerCase().trim();
-  const filtered = q
-    ? companies.filter(c =>
-        c.company_name.toLowerCase().includes(q) ||
-        (c.contact_name  || "").toLowerCase().includes(q) ||
-        (c.contact_phone || "").includes(q) ||
-        c.site_url.toLowerCase().includes(q)
-      )
-    : companies;
+  const filtered = companies.filter(c => {
+    if (q && !(
+      c.company_name.toLowerCase().includes(q) ||
+      (c.contact_name  || "").toLowerCase().includes(q) ||
+      (c.contact_phone || "").includes(q) ||
+      c.site_url.toLowerCase().includes(q)
+    )) return false;
+    if (tag === "trial") return c.trial_until && new Date(c.trial_until) > now;
+    if (tag === "paid")  return !!c.agent_purchased_at;
+    if (tag === "no_lpr") return !c.contact_name || !c.contact_phone || !c.contact_position;
+    return true;
+  });
 
   return (
     <div className="mt-4" ref={containerRef}>
@@ -105,6 +113,26 @@ export function WLPipelineKanban({ companies, onSelect, onMove, onUpdate }: Prop
             onChange={e => handleWidthChange(Number(e.target.value))}
             className="w-24 accent-violet-500 cursor-pointer" style={{ height: 3 }} />
           <span className="text-[10px] font-mono w-9 text-right text-white/30">{colWidth}px</span>
+        </div>
+
+        {/* Фильтр по типу */}
+        <div className="flex items-center gap-1">
+          {([
+            { val: "all",    label: "Все",       color: "#a78bfa" },
+            { val: "trial",  label: "Триал",     color: "#f59e0b" },
+            { val: "paid",   label: "Оплачен",   color: "#10b981" },
+            { val: "no_lpr", label: "Без ЛПР",   color: "#ef4444" },
+          ] as { val: Tag; label: string; color: string }[]).map(({ val, label, color }) => (
+            <button key={val} onClick={() => setTag(val)}
+              className="px-2.5 py-1 rounded-lg text-[10px] font-bold transition"
+              style={{
+                background: tag === val ? color + "25" : "rgba(255,255,255,0.04)",
+                color:      tag === val ? color : "rgba(255,255,255,0.3)",
+                border:     `1px solid ${tag === val ? color + "50" : "transparent"}`,
+              }}>
+              {label}
+            </button>
+          ))}
         </div>
 
         {/* Поиск */}

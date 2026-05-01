@@ -44,6 +44,11 @@ export function KanbanCard({ c, onSelect, onDragStart, onLpr, dateRange, colWidt
   const balance   = Number(c.estimates_balance) || 0;
   const used      = Number(c.estimates_used)    || 0;
 
+  const trialDaysLeft = c.trial_until && hasTrial
+    ? Math.ceil((new Date(c.trial_until).getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
+    : 0;
+  const trialColor = trialDaysLeft <= 3 ? "#ef4444" : trialDaysLeft <= 7 ? "#f59e0b" : "#10b981";
+
   return (
     <div
       draggable={!!onDragStart}
@@ -104,15 +109,28 @@ export function KanbanCard({ c, onSelect, onDragStart, onLpr, dateRange, colWidt
           </div>
         )}
         {!compact && (
-          <div className="flex items-center gap-2 mt-1.5 mb-1.5">
-            <div className="flex items-center gap-1 text-[9px]" style={{ color: balance > 0 ? "#a78bfa" : "rgba(255,255,255,0.2)" }}>
+          <div className="flex items-center gap-2 mt-1.5 mb-1.5 flex-wrap">
+            {/* Остаток смет */}
+            <div className="flex items-center gap-1 text-[9px] px-1.5 py-0.5 rounded-md"
+              style={{ background: balance > 0 ? "#a78bfa15" : "rgba(255,255,255,0.04)", color: balance > 0 ? "#a78bfa" : "rgba(255,255,255,0.2)" }}>
               <Icon name="Sparkles" size={8} />
-              <span className="font-medium">{balance} смет</span>
-              {used > 0 && <span className="opacity-50">({used} исп.)</span>}
+              <span className="font-bold">{balance}</span>
+              <span className="opacity-60">смет</span>
             </div>
-            {c.trial_until && hasTrial && (
-              <div className="flex items-center gap-1 text-[9px]" style={{ color: "#f59e0b" }}>
-                <Icon name="Clock" size={8} /><span>до {fmt(c.trial_until)}</span>
+            {/* Счётчик триала */}
+            {hasTrial && trialDaysLeft > 0 && (
+              <div className="flex items-center gap-1 text-[9px] px-1.5 py-0.5 rounded-md font-bold"
+                style={{ background: trialColor + "15", color: trialColor }}>
+                <Icon name="Clock" size={8} />
+                <span>{trialDaysLeft}д триал</span>
+              </div>
+            )}
+            {/* Оплачен */}
+            {hasPaid && (
+              <div className="flex items-center gap-1 text-[9px] px-1.5 py-0.5 rounded-md"
+                style={{ background: "#10b98115", color: "#10b981" }}>
+                <Icon name="CheckCircle2" size={8} />
+                <span className="font-bold">Оплачен</span>
               </div>
             )}
           </div>
@@ -134,16 +152,11 @@ export function KanbanCard({ c, onSelect, onDragStart, onLpr, dateRange, colWidt
           <div className="text-[9px] text-white/25 mt-1.5 line-clamp-2 px-1">{c.notes}</div>
         )}
       </div>
-      {(c.presentation_at || c.agent_purchased_at) && !compact && (
+      {c.presentation_at && !compact && (
         <div className="px-3 pb-2 flex items-center gap-2">
           {c.presentation_at && (
             <div className="flex items-center gap-1 text-[9px]" style={{ color: "#8b5cf6" }}>
               <Icon name="Presentation" size={8} /><span>{fmt(c.presentation_at)}</span>
-            </div>
-          )}
-          {c.agent_purchased_at && (
-            <div className="flex items-center gap-1 text-[9px]" style={{ color: "#10b981" }}>
-              <Icon name="CheckCircle2" size={8} /><span>оплачен {fmt(c.agent_purchased_at)}</span>
             </div>
           )}
         </div>
