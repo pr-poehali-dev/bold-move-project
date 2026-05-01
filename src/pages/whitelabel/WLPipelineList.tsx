@@ -131,6 +131,15 @@ export function WLPipelineList({ companies, filterStatus, onFilterChange, onSele
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="text-xs font-bold text-white/90 truncate">{c.company_name}</span>
+                    {!c.contact_name && !c.contact_phone && (
+                      <button
+                        onClick={e => { e.stopPropagation(); setLprFor(c); }}
+                        className="w-4 h-4 rounded-full flex items-center justify-center flex-shrink-0 transition hover:scale-110"
+                        style={{ background: "#ef4444", boxShadow: "0 0 6px rgba(239,68,68,0.6)" }}
+                        title="Не заполнен ЛПР">
+                        <span className="text-[9px] font-black text-white leading-none">!</span>
+                      </button>
+                    )}
                     {c.has_own_agent && (
                       <span className="text-[9px] px-1.5 py-0.5 rounded-full font-bold flex-shrink-0"
                         style={{ background: "#10b98120", color: "#10b981" }}>WL</span>

@@ -2,6 +2,7 @@ import { useRef, useState } from "react";
 import Icon from "@/components/ui/icon";
 import { DEMO_STATUSES } from "./wlTypes";
 import type { DemoPipelineCompany, DemoStatus } from "./wlTypes";
+import { WLLprModal } from "./WLLprModal";
 
 interface Props {
   companies: DemoPipelineCompany[];
@@ -27,10 +28,11 @@ export function getRangeDates(range: number): [Date, Date] | null {
   return [start, end];
 }
 
-function KanbanCard({ c, onSelect, onDragStart, dateRange }: {
+function KanbanCard({ c, onSelect, onDragStart, onLpr, dateRange }: {
   c: DemoPipelineCompany;
   onSelect: () => void;
   onDragStart: (e: React.DragEvent) => void;
+  onLpr: () => void;
   dateRange: [Date, Date] | null;
 }) {
   const color  = c.brand_color || "#8b5cf6";
@@ -75,7 +77,18 @@ function KanbanCard({ c, onSelect, onDragStart, dateRange }: {
           }
         </div>
         <div className="flex-1 min-w-0">
-          <div className="text-[11px] font-bold text-white/90 truncate">{c.company_name}</div>
+          <div className="flex items-center gap-1.5">
+            <span className="text-[11px] font-bold text-white/90 truncate">{c.company_name}</span>
+            {!c.contact_name && !c.contact_phone && (
+              <button
+                onClick={e => { e.stopPropagation(); onLpr(); }}
+                className="w-3.5 h-3.5 rounded-full flex items-center justify-center flex-shrink-0 transition hover:scale-110"
+                style={{ background: "#ef4444", boxShadow: "0 0 5px rgba(239,68,68,0.6)" }}
+                title="Не заполнен ЛПР">
+                <span className="text-[8px] font-black text-white leading-none">!</span>
+              </button>
+            )}
+          </div>
           <div className="text-[9px] text-white/30 truncate">{domain}</div>
         </div>
         {c.has_own_agent && (
@@ -108,9 +121,10 @@ function KanbanCard({ c, onSelect, onDragStart, dateRange }: {
   );
 }
 
-export function WLPipelineKanban({ companies, onSelect, onMove }: Props) {
+export function WLPipelineKanban({ companies, onSelect, onMove, onUpdate }: Props & { onUpdate?: (demoId: number, patch: Partial<DemoPipelineCompany>) => void }) {
   const dragId = useRef<number | null>(null);
-  const [range, setRange] = useState<Range>(0);
+  const [range,  setRange]  = useState<Range>(0);
+  const [lprFor, setLprFor] = useState<DemoPipelineCompany | null>(null);
 
   const dateRange = getRangeDates(range);
 
@@ -179,6 +193,7 @@ export function WLPipelineKanban({ companies, onSelect, onMove }: Props) {
                   <KanbanCard key={c.demo_id} c={c}
                     dateRange={dateRange}
                     onSelect={() => onSelect(c)}
+                    onLpr={() => setLprFor(c)}
                     onDragStart={e => { dragId.current = c.demo_id; e.dataTransfer.effectAllowed = "move"; }}
                   />
                 ))}
@@ -192,6 +207,17 @@ export function WLPipelineKanban({ companies, onSelect, onMove }: Props) {
           );
         })}
       </div>
+
+      {lprFor && (
+        <WLLprModal
+          company={lprFor}
+          onSuccess={patch => {
+            onUpdate?.(lprFor.demo_id, patch);
+            setLprFor(null);
+          }}
+          onClose={() => setLprFor(null)}
+        />
+      )}
     </div>
   );
 }
