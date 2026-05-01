@@ -1717,29 +1717,37 @@ def handler(event: dict, context) -> dict:
             return err("Требуется авторизация", 401)
 
         # Проверяем: мастер или wl-менеджер?
+        # ВАЖНО: сначала ищем в wl_managers (чтобы избежать коллизии id с users)
         is_master_user = False
         wl_manager_row = None
 
         cur.execute(f"""
-            SELECT u.email FROM {SCHEMA}.user_sessions s
-            JOIN {SCHEMA}.users u ON u.id = s.user_id
-            WHERE s.token=%s AND s.expires_at > NOW()
+            SELECT m.id, m.wl_role, m.approved, m.email FROM {SCHEMA}.wl_managers m
+            JOIN {SCHEMA}.user_sessions s ON s.user_id = m.id
+            WHERE s.token = %s AND s.expires_at > NOW()
         """, (token,))
-        user_row = cur.fetchone()
-        if user_row and user_row[0] == "19.jeka.94@gmail.com":
-            is_master_user = True
-        else:
-            # Может это wl-менеджер?
-            cur.execute(f"""
-                SELECT m.id, m.wl_role, m.approved FROM {SCHEMA}.wl_managers m
-                JOIN {SCHEMA}.user_sessions s ON s.user_id = m.id
-                WHERE s.token = %s AND s.expires_at > NOW()
-            """, (token,))
-            wl_manager_row = cur.fetchone()
-            if not wl_manager_row:
-                return err("Доступ запрещён", 403)
-            if not wl_manager_row[2]:
+        wl_row = cur.fetchone()
+
+        if wl_row:
+            # Токен принадлежит wl-менеджеру
+            if not wl_row[2]:
                 return err("Аккаунт не одобрен", 403)
+            if wl_row[3] == "19.jeka.94@gmail.com" or wl_row[1] == "master_manager":
+                is_master_user = True
+            else:
+                wl_manager_row = wl_row
+        else:
+            # Может это обычный мастер-пользователь?
+            cur.execute(f"""
+                SELECT u.email FROM {SCHEMA}.user_sessions s
+                JOIN {SCHEMA}.users u ON u.id = s.user_id
+                WHERE s.token=%s AND s.expires_at > NOW()
+            """, (token,))
+            user_row = cur.fetchone()
+            if user_row and user_row[0] == "19.jeka.94@gmail.com":
+                is_master_user = True
+            else:
+                return err("Доступ запрещён", 403)
 
         # Формируем WHERE для фильтрации по менеджеру
         if is_master_user:
