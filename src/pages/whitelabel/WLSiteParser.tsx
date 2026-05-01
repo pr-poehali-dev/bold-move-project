@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import Icon from "@/components/ui/icon";
-import { PARSE_SITE_URL } from "./wlTypes";
+import { PARSE_SITE_URL, AUTH_URL } from "./wlTypes";
 import { Section } from "./WLHelpers";
 
 interface FilledField  { field: string; label: string; value: string }
@@ -85,6 +85,18 @@ export function WLSiteParser({ onCreated }: Props) {
         setReport(d.report);
         if (d.company_id && d.token) {
           setLastCompanyId(d.company_id);
+          // Автозаполняем первый шаг: позвонить сегодня
+          const today = new Date().toISOString().slice(0, 10);
+          const masterToken = localStorage.getItem("mp_user_token") || "";
+          fetch(`${AUTH_URL}?action=admin-update-demo`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json", "X-Authorization": masterToken },
+            body: JSON.stringify({
+              demo_id:          d.company_id,
+              next_action:      "Позвонить, уточнить интерес",
+              next_action_date: today,
+            }),
+          }).catch(() => {});
           onCreated?.(d.company_id, d.token);
           startAnimation(
             (d.report?.filled  || []).length,
