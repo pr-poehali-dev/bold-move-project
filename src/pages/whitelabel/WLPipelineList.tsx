@@ -64,9 +64,10 @@ export function WLPipelineList({ companies, filterStatus, onFilterChange, onSele
   const [receiptFor,  setReceiptFor]  = useState<DemoPipelineCompany | null>(null);
   const [lprFor,      setLprFor]      = useState<DemoPipelineCompany | null>(null);
 
-  const [demoFilter,  setDemoFilter]  = useState<DemoFilter>("all");
-  const [estFilter,   setEstFilter]   = useState<EstFilter>("all");
-  const [agentFilter, setAgentFilter] = useState<AgentFilter>("all");
+  const [demoFilter,   setDemoFilter]   = useState<DemoFilter>("all");
+  const [estFilter,    setEstFilter]    = useState<EstFilter>("all");
+  const [agentFilter,  setAgentFilter]  = useState<AgentFilter>("all");
+  const [filtersOpen,  setFiltersOpen]  = useState(false);
   const [historyFor,  setHistoryFor]  = useState<{ company: DemoPipelineCompany; mode: "demo" | "est" | "info" } | null>(null);
 
   const handleMove = (c: DemoPipelineCompany, status: DemoStatus) => {
@@ -139,8 +140,27 @@ export function WLPipelineList({ companies, filterStatus, onFilterChange, onSele
         })}
       </div>
 
-      {/* Доп-фильтры */}
-      <div className="flex flex-wrap gap-2 items-center">
+      {/* Доп-фильтры — сворачиваемый блок */}
+      <div className="rounded-xl overflow-hidden transition-all"
+        style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)" }}>
+        {/* Заголовок-переключатель */}
+        <button className="w-full flex items-center gap-2 px-3 py-2 text-left transition hover:bg-white/[0.02]"
+          onClick={() => setFiltersOpen(v => !v)}>
+          <Icon name="SlidersHorizontal" size={12} style={{ color: "rgba(255,255,255,0.3)" }} />
+          <span className="text-[10px] text-white/30 font-bold uppercase tracking-wider flex-1">Фильтры</span>
+          {/* Показываем активные фильтры в свёрнутом виде */}
+          {!filtersOpen && (demoFilter !== "all" || estFilter !== "all" || agentFilter !== "all") && (
+            <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full"
+              style={{ background: "rgba(139,92,246,0.2)", color: "#a78bfa" }}>
+              активны
+            </span>
+          )}
+          <Icon name={filtersOpen ? "ChevronUp" : "ChevronDown"} size={12} style={{ color: "rgba(255,255,255,0.2)" }} />
+        </button>
+
+        {/* Содержимое */}
+        {filtersOpen && (
+        <div className="px-3 pb-3 flex flex-wrap gap-2 items-center border-t border-white/[0.05]" style={{ paddingTop: 10 }}>
         {/* Демо */}
         <div className="flex items-center gap-1">
           <span className="text-[9px] text-white/25 uppercase tracking-wider">Демо:</span>
@@ -215,6 +235,8 @@ export function WLPipelineList({ companies, filterStatus, onFilterChange, onSele
             );
           })}
         </div>
+        </div>
+        )}
       </div>
 
       {/* Список */}
