@@ -403,7 +403,7 @@ export function WLPipelineList({ companies, filterStatus, onFilterChange, onSele
                 <button onClick={e => { e.stopPropagation(); onBrand(c.company_id); }}
                   className="flex-shrink-0 text-center px-3 py-1.5 rounded-lg transition hover:brightness-125"
                   style={{ background: "rgba(245,158,11,0.08)", border: "1px solid rgba(245,158,11,0.25)" }}>
-                  <div className="text-[9px]" style={{ color: "rgba(245,158,11,0.6)" }}>Бренд</div>
+                  <div className="text-[9px]" style={{ color: "rgba(245,158,11,0.6)" }}>Редакт.</div>
                   <div className="flex items-center justify-center" style={{ color: "#f59e0b" }}>
                     <Icon name="Pencil" size={12} />
                   </div>
