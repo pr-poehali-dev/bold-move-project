@@ -105,7 +105,7 @@ export function WLPipeline({ refreshTrigger, onOpenPanel, onRunApiTests }: Props
   return (
     <div>
       {/* Заголовок */}
-      <div className="flex items-center gap-3 mb-3">
+      <div className="flex items-center gap-2 sm:gap-3 mb-3">
         <div className="flex items-center gap-2">
           <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: "#8b5cf620" }}>
             <Icon name="Kanban" size={14} style={{ color: "#8b5cf6" }} />
@@ -121,18 +121,17 @@ export function WLPipeline({ refreshTrigger, onOpenPanel, onRunApiTests }: Props
             <div className="flex items-center rounded-lg overflow-hidden" style={{ border: "1px solid rgba(255,255,255,0.08)" }}>
               {([["kanban", "Kanban"], ["list", "List"]] as [ViewMode, string][]).map(([id, label]) => (
                 <button key={id} onClick={() => setView(id)}
-                  className="px-3 py-1.5 text-[10px] font-bold transition flex items-center gap-1"
+                  className="px-2 sm:px-3 py-1.5 text-[10px] font-bold transition flex items-center gap-1"
                   style={{
                     background: view === id ? "rgba(139,92,246,0.2)" : "transparent",
                     color:      view === id ? "#a78bfa" : "rgba(255,255,255,0.3)",
                   }}>
                   <Icon name={id === "kanban" ? "LayoutGrid" : "List"} size={11} />
-                  {label}
+                  <span className="hidden sm:inline">{label}</span>
                 </button>
               ))}
             </div>
           )}
-
         </div>
       </div>
 

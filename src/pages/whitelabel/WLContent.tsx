@@ -88,7 +88,7 @@ export function WLContent() {
   return (
     <>
       <div className="min-h-screen text-white" style={{ background: "#06060c" }}>
-        <header className="px-5 py-4 border-b border-white/[0.06] flex items-center gap-3">
+        <header className="px-3 sm:px-5 py-3 sm:py-4 border-b border-white/[0.06] flex items-center gap-2 sm:gap-3">
           {isMaster && (
             <>
               <a href="/"
@@ -122,7 +122,7 @@ export function WLContent() {
           </div>
         </header>
 
-        <div className="max-w-4xl mx-auto px-5 py-8 space-y-8">
+        <div className="max-w-4xl mx-auto px-3 sm:px-5 py-4 sm:py-8 space-y-4 sm:space-y-8">
           {isMaster && (
             <WLSiteParser onCreated={() => setRefreshTrigger(t => t + 1)} />
           )}
