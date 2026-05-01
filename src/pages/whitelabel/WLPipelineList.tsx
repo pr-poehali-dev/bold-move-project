@@ -138,8 +138,8 @@ export function WLPipelineList({ companies, filterStatus, onFilterChange, onSele
                         style={{ filter: "drop-shadow(0 0 4px rgba(239,68,68,0.7))" }}
                         title="Не заполнен ЛПР">
                         <svg width="14" height="13" viewBox="0 0 14 13" fill="none">
-                          <path d="M7 1L13 12H1L7 1Z" fill="#ef4444"/>
-                          <text x="7" y="10.5" textAnchor="middle" fontSize="7" fontWeight="900" fill="white">!</text>
+                          <path d="M7 12L13 1H1L7 12Z" fill="#ef4444"/>
+                          <text x="7" y="9" textAnchor="middle" fontSize="7" fontWeight="900" fill="white">!</text>
                         </svg>
                       </button>
                     )}
@@ -220,8 +220,8 @@ export function WLPipelineList({ companies, filterStatus, onFilterChange, onSele
                     style={{ filter: "drop-shadow(0 0 5px rgba(239,68,68,0.7))" }}
                     title="Не заполнен ЛПР — нажми чтобы добавить">
                     <svg width="20" height="18" viewBox="0 0 20 18" fill="none">
-                      <path d="M10 1L19 17H1L10 1Z" fill="#ef4444"/>
-                      <text x="10" y="14.5" textAnchor="middle" fontSize="9" fontWeight="900" fill="white">!</text>
+                      <path d="M10 17L19 1H1L10 17Z" fill="#ef4444"/>
+                      <text x="10" y="13" textAnchor="middle" fontSize="9" fontWeight="900" fill="white">!</text>
                     </svg>
                   </button>
                 )}
