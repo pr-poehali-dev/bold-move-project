@@ -178,7 +178,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (e.data?.type === "set-token" && e.data?.token && !tokenApplied) {
         tokenApplied = true;
         const tok = e.data.token as string;
-        localStorage.setItem(TOKEN_KEY, tok);
+        // Не пишем в localStorage — он общий для всего домена и перезапишет мастер-токен родителя.
+        // Держим токен только в памяти React-состояния.
         try {
           const r = await fetch(`${AUTH_URL}?action=me`, { headers: { "X-Authorization": `Bearer ${tok}` } });
           const d = await r.json();
