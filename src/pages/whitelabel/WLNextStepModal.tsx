@@ -35,6 +35,12 @@ function isBusy(hour: number, date: string, slots: BusySlot[]): boolean {
   });
 }
 
+function isPast(hour: number, date: string): boolean {
+  if (!date) return false;
+  const chosen = new Date(`${date}T${String(hour).padStart(2, "0")}:00:00`);
+  return chosen.getTime() < Date.now();
+}
+
 export function WLNextStepModal({ company, newStatus, onSuccess, onCancel }: Props) {
   const st = DEMO_STATUSES.find(s => s.id === newStatus)!;
 
@@ -70,7 +76,7 @@ export function WLNextStepModal({ company, newStatus, onSuccess, onCancel }: Pro
       .finally(() => setLoadingSlots(false));
   }, [date, isPresentation]);
 
-  const selectedBusy = isPresentation && isBusy(hour, date, busySlots);
+  const selectedBusy = isPresentation && (isBusy(hour, date, busySlots) || isPast(hour, date));
 
   const handleSave = async () => {
     if (isRejected) {
@@ -216,22 +222,27 @@ export function WLNextStepModal({ company, newStatus, onSuccess, onCancel }: Pro
                 </div>
                 <div className="grid grid-cols-4 gap-1.5">
                   {HOURS.map(h => {
-                    const busy   = isBusy(h, date, busySlots);
-                    const active = hour === h;
+                    const busy     = isBusy(h, date, busySlots);
+                    const past     = isPast(h, date);
+                    const disabled = busy || past;
+                    const active   = hour === h;
                     return (
-                      <button key={h} disabled={busy}
+                      <button key={h} disabled={disabled}
                         onClick={() => { setHour(h); setError(null); }}
                         className="py-2 rounded-lg text-[11px] font-bold transition"
                         style={{
-                          background: busy    ? "rgba(239,68,68,0.06)"
+                          background: past    ? "rgba(255,255,255,0.02)"
+                                    : busy    ? "rgba(239,68,68,0.06)"
                                     : active  ? `${st.color}25`
                                     :           "rgba(255,255,255,0.04)",
-                          color: busy    ? "rgba(239,68,68,0.35)"
+                          color: past    ? "rgba(255,255,255,0.15)"
+                               : busy    ? "rgba(239,68,68,0.35)"
                                : active  ? st.color
                                :           "rgba(255,255,255,0.5)",
-                          border: `1px solid ${busy ? "rgba(239,68,68,0.15)" : active ? `${st.color}50` : "transparent"}`,
-                          cursor: busy ? "not-allowed" : "pointer",
-                          textDecoration: busy ? "line-through" : "none",
+                          border: `1px solid ${past ? "transparent" : busy ? "rgba(239,68,68,0.15)" : active ? `${st.color}50` : "transparent"}`,
+                          cursor: disabled ? "not-allowed" : "pointer",
+                          textDecoration: busy && !past ? "line-through" : "none",
+                          opacity: past ? 0.4 : 1,
                         }}>
                         {String(h).padStart(2, "0")}:00
                       </button>
