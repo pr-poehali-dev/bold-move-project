@@ -25,31 +25,66 @@ async function loginAs(companyId: number): Promise<string | null> {
   return d.token || null;
 }
 
-function Field({ label, value, onChange, type = "text", placeholder = "" }: {
+function Field({ label, value, onChange, type = "text", placeholder = "", aiBtn }: {
   label: string; value: string; onChange: (v: string) => void;
   type?: string; placeholder?: string;
+  aiBtn?: React.ReactNode;
 }) {
   return (
     <div>
       <div className="text-[10px] uppercase tracking-wider text-white/30 mb-1">{label}</div>
-      {type === "textarea" ? (
-        <textarea
-          value={value}
-          onChange={e => onChange(e.target.value)}
-          placeholder={placeholder}
-          rows={3}
-          className="w-full rounded-xl px-3 py-2 text-xs bg-white/[0.04] border border-white/[0.08] text-white/80 placeholder-white/20 outline-none focus:border-violet-500/50 resize-none transition"
-        />
-      ) : (
-        <input
-          type={type}
-          value={value}
-          onChange={e => onChange(e.target.value)}
-          placeholder={placeholder}
-          className="w-full rounded-xl px-3 py-2 text-xs bg-white/[0.04] border border-white/[0.08] text-white/80 placeholder-white/20 outline-none focus:border-violet-500/50 transition"
-        />
-      )}
+      <div className="relative">
+        {type === "textarea" ? (
+          <textarea
+            value={value}
+            onChange={e => onChange(e.target.value)}
+            placeholder={placeholder}
+            rows={3}
+            className="w-full rounded-xl px-3 py-2 text-xs bg-white/[0.04] border border-white/[0.08] text-white/80 placeholder-white/20 outline-none focus:border-violet-500/50 resize-none transition"
+          />
+        ) : (
+          <input
+            type={type}
+            value={value}
+            onChange={e => onChange(e.target.value)}
+            placeholder={placeholder}
+            className={`w-full rounded-xl px-3 py-2 text-xs bg-white/[0.04] border border-white/[0.08] text-white/80 placeholder-white/20 outline-none focus:border-violet-500/50 transition ${aiBtn ? "pr-20" : ""}`}
+          />
+        )}
+        {aiBtn && (
+          <div className="absolute right-2 top-1/2 -translate-y-1/2">
+            {aiBtn}
+          </div>
+        )}
+      </div>
     </div>
+  );
+}
+
+function AiBtn({ fieldKey, busy, attempts, onRun }: {
+  fieldKey: string; busy: boolean; attempts: number; onRun: (field: string) => void;
+}) {
+  if (attempts >= 2) return (
+    <div className="flex items-center gap-1" title="Не удалось найти — заполните вручную">
+      <svg width="9" height="8" viewBox="0 0 9 8" fill="none">
+        <path d="M4.5 0.5L8.5 7.5H0.5L4.5 0.5Z" fill="#ef4444"/>
+        <text x="4.5" y="6.5" textAnchor="middle" fontSize="4" fontWeight="900" fill="white">!</text>
+      </svg>
+      <span className="text-[9px]" style={{ color: "#ef4444" }}>вручную</span>
+    </div>
+  );
+  return (
+    <button
+      disabled={busy}
+      onClick={() => onRun(fieldKey)}
+      className="flex items-center gap-1 px-1.5 py-1 rounded-lg text-[9px] font-bold transition hover:opacity-80 disabled:opacity-40"
+      style={{ background: "rgba(139,92,246,0.2)", color: "#a78bfa", border: "1px solid rgba(139,92,246,0.4)" }}>
+      {busy
+        ? <div className="w-2 h-2 border border-current/30 border-t-current rounded-full animate-spin" />
+        : <Icon name="Sparkles" size={9} />
+      }
+      {busy ? "..." : attempts > 0 ? "ещё" : "AI"}
+    </button>
   );
 }
 
@@ -70,27 +105,26 @@ export function WLPipelineDrawer({ company, onClose, onUpdate, onDelete, onOpenP
   const [aiAttempts, setAiAttempts] = useState<Record<string, number>>({});
   const [aiBusy,     setAiBusy]     = useState<Record<string, boolean>>({});
 
-  const runAiField = async (field: string, label: string) => {
+  const runAiField = async (field: string) => {
     const attempts = (aiAttempts[field] || 0);
     if (attempts >= 2) return;
     setAiBusy(p => ({ ...p, [field]: true }));
     try {
+      // Полный повторный парсинг сайта — ищем глубже чем only_field
       const r = await fetch(PARSE_SITE_URL, {
         method: "POST",
         headers: { "Content-Type": "application/json", "X-Authorization": masterToken() },
-        body: JSON.stringify({ url: company.site_url, company_id: company.company_id, only_field: field }),
+        body: JSON.stringify({ url: company.site_url, company_id: company.company_id }),
       });
       const d = await r.json();
       const val = d.brand?.[field];
       if (val) {
-        // Сохраняем в БД через admin-update-demo (бренд-поля — через users, но patch для отображения)
         await fetch(`${AUTH_URL}?action=admin-update-demo`, {
           method: "POST",
           headers: { "Content-Type": "application/json", "X-Authorization": masterToken() },
           body: JSON.stringify({ demo_id: company.demo_id, [field]: val }),
         });
-        // Обновляем локально
-        (onUpdate as (p: Partial<DemoPipelineCompany>) => void)({ [field]: val } as Partial<DemoPipelineCompany>);
+        onUpdate({ [field]: val } as Partial<DemoPipelineCompany>);
       }
       setAiAttempts(p => ({ ...p, [field]: attempts + 1 }));
     } catch {
@@ -229,79 +263,43 @@ export function WLPipelineDrawer({ company, onClose, onUpdate, onDelete, onOpenP
               placeholder="Договорились о демо, интересует белый лейбл для 3 городов..." />
           </div>
 
-          {/* AI-дозаполнение незаполненных полей */}
+          {/* Данные бренда с AI-дозаполнением */}
           {(() => {
-            const fields: { key: string; label: string; value: string }[] = [
-              { key: "support_phone",      label: "Телефон",  value: company.support_phone },
-              { key: "support_email",      label: "Email",    value: company.email?.endsWith("@demo.local") ? "" : company.email },
-              { key: "telegram",           label: "Telegram", value: "" },
-              { key: "pdf_footer_address", label: "Адрес",    value: "" },
-            ].filter(f => !f.value);
-            if (fields.length === 0) return null;
+            const brandFields: { key: string; label: string; val: string }[] = [
+              { key: "support_phone",      label: "Телефон",  val: company.support_phone || "" },
+              { key: "support_email",      label: "Email",    val: company.email?.endsWith("@demo.local") ? "" : (company.email || "") },
+              { key: "telegram",           label: "Telegram", val: "" },
+              { key: "pdf_footer_address", label: "Адрес",    val: "" },
+            ];
+            const missing = brandFields.filter(f => !f.val);
+            if (missing.length === 0) return (
+              <div className="rounded-xl p-3 space-y-1.5" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
+                <div className="text-[10px] uppercase tracking-wider text-white/25 mb-1">Данные аккаунта</div>
+                {[
+                  { label: "Сайт",    value: domain },
+                  { label: "Телефон", value: company.support_phone },
+                  { label: "Баланс",  value: `${company.estimates_balance} смет` },
+                ].filter(r => r.value).map(r => (
+                  <div key={r.label} className="flex items-center justify-between text-[11px]">
+                    <span className="text-white/30">{r.label}</span>
+                    <span className="text-white/60 font-medium">{r.value}</span>
+                  </div>
+                ))}
+              </div>
+            );
             return (
-              <div className="rounded-xl p-3 space-y-2.5"
-                style={{ background: "rgba(239,68,68,0.04)", border: "1px solid rgba(239,68,68,0.18)" }}>
-                <div className="text-[10px] uppercase tracking-wider flex items-center gap-1.5" style={{ color: "#ef4444" }}>
-                  <svg width="10" height="9" viewBox="0 0 10 9" fill="none">
-                    <path d="M5 1L9.5 8.5H0.5L5 1Z" fill="#ef4444"/>
-                    <text x="5" y="7" textAnchor="middle" fontSize="4.5" fontWeight="900" fill="white">!</text>
-                  </svg>
-                  Нужно заполнить
-                </div>
-                {fields.map(f => {
-                  const attempts = aiAttempts[f.key] || 0;
-                  const busy     = aiBusy[f.key] || false;
-                  const failed   = attempts >= 2;
-                  return (
-                    <div key={f.key} className="flex items-center justify-between gap-2">
-                      <span className="text-[11px] text-white/50">{f.label}</span>
-                      {failed ? (
-                        <div className="flex items-center gap-1.5">
-                          <svg width="10" height="9" viewBox="0 0 10 9" fill="none">
-                            <path d="M5 1L9.5 8.5H0.5L5 1Z" fill="#ef4444"/>
-                            <text x="5" y="7" textAnchor="middle" fontSize="4.5" fontWeight="900" fill="white">!</text>
-                          </svg>
-                          <span className="text-[10px]" style={{ color: "#ef4444" }}>Заполните вручную</span>
-                        </div>
-                      ) : (
-                        <button
-                          disabled={busy}
-                          onClick={() => runAiField(f.key, f.label)}
-                          className="flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-bold transition hover:opacity-80 disabled:opacity-50"
-                          style={{ background: "rgba(139,92,246,0.18)", color: "#a78bfa", border: "1px solid rgba(139,92,246,0.35)" }}>
-                          {busy
-                            ? <><div className="w-2.5 h-2.5 border-2 border-current/30 border-t-current rounded-full animate-spin" /> Ищу...</>
-                            : <><Icon name="Sparkles" size={10} /> AI {attempts > 0 ? `(ещё раз)` : ""}</>
-                          }
-                        </button>
-                      )}
-                    </div>
-                  );
-                })}
+              <div className="space-y-2">
+                <div className="text-[10px] uppercase tracking-wider text-white/25">Данные аккаунта</div>
+                <div className="text-[10px] text-white/30">Сайт: <span className="text-white/50">{domain}</span></div>
+                {missing.map(f => (
+                  <Field key={f.key} label={f.label} value={f.val} onChange={() => {}}
+                    placeholder={f.label === "Телефон" ? "+7 (900) 000-00-00" : f.label === "Email" ? "info@company.ru" : f.label === "Telegram" ? "@company" : "г. Москва, ул. ..."}
+                    aiBtn={<AiBtn fieldKey={f.key} busy={aiBusy[f.key] || false} attempts={aiAttempts[f.key] || 0} onRun={runAiField} />}
+                  />
+                ))}
               </div>
             );
           })()}
-
-          {/* Инфо о компании */}
-          <div className="rounded-xl p-3 space-y-2" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
-            <div className="text-[10px] uppercase tracking-wider text-white/25 mb-1">Данные аккаунта</div>
-            {[
-              { label: "Сайт",    value: domain },
-              { label: "Email",   value: company.email },
-              { label: "Телефон", value: company.support_phone },
-              { label: "Баланс",  value: `${company.estimates_balance} смет` },
-            ].filter(r => r.value).map(r => (
-              <div key={r.label} className="flex items-center justify-between text-[11px]">
-                <span className="text-white/30">{r.label}</span>
-                <span className="text-white/60 font-medium">{r.value}</span>
-              </div>
-            ))}
-            {company.has_own_agent && (
-              <div className="flex items-center gap-1.5 text-[10px] font-bold mt-1" style={{ color: "#10b981" }}>
-                <Icon name="CheckCircle2" size={10} /> White Label активен
-              </div>
-            )}
-          </div>
 
           {/* Кнопки действий */}
           <div className="space-y-2">
