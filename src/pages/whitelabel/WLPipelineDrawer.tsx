@@ -4,6 +4,11 @@ import { AUTH_URL, PARSE_SITE_URL, DEMO_STATUSES } from "./wlTypes";
 import type { DemoPipelineCompany, DemoStatus, PanelView } from "./wlTypes";
 import { getWLToken, useWLManager } from "./WLManagerContext";
 import { WLAssignManager } from "./WLAssignManager";
+import { WLNextStepModal } from "./WLNextStepModal";
+import { WLReceiptModal } from "./WLReceiptModal";
+
+// Финальные статусы — не требуют даты следующего шага
+const FINAL_STATUSES: DemoStatus[] = ["paid", "rejected", "upsell"];
 
 interface Props {
   company: DemoPipelineCompany;
@@ -103,8 +108,11 @@ export function WLPipelineDrawer({ company, onClose, onUpdate, onDelete, onOpenP
     next_action:      company.next_action,
     next_action_date: company.next_action_date,
   });
-  const [saving, setSaving] = useState(false);
-  const [saved,  setSaved]  = useState(false);
+  const [saving,       setSaving]       = useState(false);
+  const [saved,        setSaved]        = useState(false);
+  const [saveError,    setSaveError]    = useState("");
+  const [nextStepFor,  setNextStepFor]  = useState<DemoStatus | null>(null);
+  const [receiptOpen,  setReceiptOpen]  = useState(false);
 
   // AI-попытки для каждого поля: { field: attempts }
   const [aiAttempts, setAiAttempts] = useState<Record<string, number>>({});
@@ -154,6 +162,12 @@ export function WLPipelineDrawer({ company, onClose, onUpdate, onDelete, onOpenP
   const set = (k: keyof typeof form) => (v: string) => setForm(f => ({ ...f, [k]: v }));
 
   const save = async () => {
+    setSaveError("");
+    // Валидация: дата следующего шага обязательна для не-финальных статусов
+    if (!FINAL_STATUSES.includes(form.status as DemoStatus) && !form.next_action_date) {
+      setSaveError("Укажи дату следующего шага");
+      return;
+    }
     setSaving(true);
     await fetch(`${AUTH_URL}?action=admin-update-demo`, {
       method: "POST",
@@ -224,13 +238,13 @@ export function WLPipelineDrawer({ company, onClose, onUpdate, onDelete, onOpenP
           <div>
             <div className="text-[10px] uppercase tracking-wider text-white/30 mb-2">Статус</div>
             <div className="flex flex-wrap gap-1.5">
-              {DEMO_STATUSES.map(s => (
+              {DEMO_STATUSES
+                .filter(s => s.id !== "upsell" || form.status === "paid" || form.status === "upsell")
+                .map(s => (
                 <button key={s.id} onClick={() => {
-                    if (s.id === "paid" && form.status !== "paid" && onRequestReceipt) {
-                      onRequestReceipt();
-                    } else {
-                      set("status")(s.id);
-                    }
+                    if (s.id === form.status) return;
+                    if (s.id === "paid") { setReceiptOpen(true); return; }
+                    setNextStepFor(s.id);
                   }}
                   className="px-3 py-1.5 rounded-lg text-[11px] font-bold transition flex items-center gap-1"
                   style={{
@@ -352,22 +366,57 @@ export function WLPipelineDrawer({ company, onClose, onUpdate, onDelete, onOpenP
         </div>
 
         {/* Футер — сохранить / отказ */}
-        <div className="px-5 py-4 border-t border-white/[0.06] flex items-center gap-3 flex-shrink-0">
-          <button onClick={onClose}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-[11px] font-bold transition hover:opacity-80"
-            style={{ background: "rgba(255,255,255,0.05)", color: "rgba(255,255,255,0.4)", border: "1px solid rgba(255,255,255,0.10)" }}>
-            <Icon name="ArrowLeft" size={12} /> Назад
-          </button>
-          <button onClick={save} disabled={saving}
-            className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-[12px] font-bold transition disabled:opacity-50"
-            style={{ background: saved ? "rgba(16,185,129,0.2)" : statusInfo.bg, color: saved ? "#10b981" : statusInfo.color, border: `1px solid ${saved ? "rgba(16,185,129,0.4)" : statusInfo.color + "50"}` }}>
-            {saving ? <><div className="w-3 h-3 border-2 border-current/30 border-t-current rounded-full animate-spin" /> Сохранение...</>
-              : saved ? <><Icon name="Check" size={13} /> Сохранено</>
-              : <><Icon name="Save" size={13} /> Сохранить</>
-            }
-          </button>
+        <div className="px-5 pb-4 pt-3 border-t border-white/[0.06] flex-shrink-0">
+          {saveError && (
+            <div className="mb-2 px-3 py-2 rounded-lg text-[11px]"
+              style={{ background: "rgba(239,68,68,0.1)", color: "#ef4444", border: "1px solid rgba(239,68,68,0.2)" }}>
+              {saveError}
+            </div>
+          )}
+          <div className="flex items-center gap-3">
+            <button onClick={onClose}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-[11px] font-bold transition hover:opacity-80"
+              style={{ background: "rgba(255,255,255,0.05)", color: "rgba(255,255,255,0.4)", border: "1px solid rgba(255,255,255,0.10)" }}>
+              <Icon name="ArrowLeft" size={12} /> Назад
+            </button>
+            <button onClick={save} disabled={saving}
+              className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-[12px] font-bold transition disabled:opacity-50"
+              style={{ background: saved ? "rgba(16,185,129,0.2)" : statusInfo.bg, color: saved ? "#10b981" : statusInfo.color, border: `1px solid ${saved ? "rgba(16,185,129,0.4)" : statusInfo.color + "50"}` }}>
+              {saving ? <><div className="w-3 h-3 border-2 border-current/30 border-t-current rounded-full animate-spin" /> Сохранение...</>
+                : saved ? <><Icon name="Check" size={13} /> Сохранено</>
+                : <><Icon name="Save" size={13} /> Сохранить</>
+              }
+            </button>
+          </div>
         </div>
       </div>
+
+      {/* Модалка следующего шага при смене статуса */}
+      {nextStepFor && (
+        <WLNextStepModal
+          company={company}
+          newStatus={nextStepFor}
+          onSuccess={patch => {
+            setForm(f => ({ ...f, status: nextStepFor, ...patch }));
+            onUpdate({ status: nextStepFor, ...patch });
+            setNextStepFor(null);
+          }}
+          onCancel={() => setNextStepFor(null)}
+        />
+      )}
+
+      {/* Модалка чека при переходе в "paid" */}
+      {receiptOpen && (
+        <WLReceiptModal
+          company={company}
+          onSuccess={demoId => {
+            setForm(f => ({ ...f, status: "paid" }));
+            onUpdate({ status: "paid" });
+            setReceiptOpen(false);
+          }}
+          onCancel={() => setReceiptOpen(false)}
+        />
+      )}
     </div>
   );
 }
