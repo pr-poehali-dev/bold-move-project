@@ -2,9 +2,10 @@ import { useState } from "react";
 import Icon from "@/components/ui/icon";
 import { DEMO_STATUSES } from "./wlTypes";
 import type { DemoPipelineCompany, DemoStatus } from "./wlTypes";
-import { WLNextStepModal } from "./WLNextStepModal";
-import { WLReceiptModal }  from "./WLReceiptModal";
-import { WLLprModal }      from "./WLLprModal";
+import { WLNextStepModal }          from "./WLNextStepModal";
+import { WLReceiptModal }           from "./WLReceiptModal";
+import { WLLprModal }               from "./WLLprModal";
+import { WLBalanceHistoryModal }    from "./WLBalanceHistoryModal";
 
 interface Props {
   companies:      DemoPipelineCompany[];
@@ -66,6 +67,7 @@ export function WLPipelineList({ companies, filterStatus, onFilterChange, onSele
   const [demoFilter,   setDemoFilter]   = useState<DemoFilter>("all");
   const [estFilter,    setEstFilter]    = useState<EstFilter>("all");
   const [boughtFilter, setBoughtFilter] = useState<BoughtFilter>("all");
+  const [historyFor,   setHistoryFor]   = useState<{ company: DemoPipelineCompany; mode: "demo" | "est" } | null>(null);
 
   const handleMove = (c: DemoPipelineCompany, status: DemoStatus) => {
     if (status === c.status) return;
@@ -354,9 +356,8 @@ export function WLPipelineList({ companies, filterStatus, onFilterChange, onSele
                   );
                 })()}
 
-                {/* Демо: дней осталось (10 дней с создания) */}
+                {/* Демо: дней осталось (10 дней с создания) — кликабельный */}
                 {(() => {
-                  const DEMO_DAYS = 10;
                   const daysPassed = Math.floor((Date.now() - new Date(c.created_at).getTime()) / 86400000);
                   const daysLeft = Math.max(0, DEMO_DAYS - daysPassed);
                   const expired = daysLeft === 0;
@@ -364,27 +365,31 @@ export function WLPipelineList({ companies, filterStatus, onFilterChange, onSele
                   const color = expired ? "#ef4444" : warn ? "#f59e0b" : "#06b6d4";
                   const bg    = expired ? "rgba(239,68,68,0.08)" : warn ? "rgba(245,158,11,0.08)" : "rgba(6,182,212,0.08)";
                   return (
-                    <div className="flex-shrink-0 text-center px-3 py-1.5 rounded-lg"
-                      style={{ background: bg, border: `1px solid ${color}30` }}>
+                    <button className="flex-shrink-0 text-center px-3 py-1.5 rounded-lg transition hover:brightness-125"
+                      style={{ background: bg, border: `1px solid ${color}30` }}
+                      onClick={e => { e.stopPropagation(); setHistoryFor({ company: c, mode: "demo" }); }}
+                      title="История демо-периода">
                       <div className="text-[9px]" style={{ color: color + "99" }}>Демо</div>
                       <div className="text-xs font-bold" style={{ color }}>
                         {expired ? "Истёк" : `${daysLeft} дн.`}
                       </div>
-                    </div>
+                    </button>
                   );
                 })()}
 
-                {/* Смет осталось */}
+                {/* Смет осталось — кликабельный */}
                 {(() => {
                   const bal = c.estimates_balance;
                   const color = bal > 5 ? "#10b981" : bal > 0 ? "#f59e0b" : "#ef4444";
                   const bg    = bal > 5 ? "rgba(16,185,129,0.08)" : bal > 0 ? "rgba(245,158,11,0.08)" : "rgba(239,68,68,0.06)";
                   return (
-                    <div className="flex-shrink-0 text-center px-3 py-1.5 rounded-lg"
-                      style={{ background: bg, border: `1px solid ${color}30` }}>
+                    <button className="flex-shrink-0 text-center px-3 py-1.5 rounded-lg transition hover:brightness-125"
+                      style={{ background: bg, border: `1px solid ${color}30` }}
+                      onClick={e => { e.stopPropagation(); setHistoryFor({ company: c, mode: "est" }); }}
+                      title="История баланса смет">
                       <div className="text-[9px]" style={{ color: color + "99" }}>Смет</div>
                       <div className="text-xs font-bold" style={{ color }}>{bal}</div>
-                    </div>
+                    </button>
                   );
                 })()}
 
@@ -458,6 +463,15 @@ export function WLPipelineList({ companies, filterStatus, onFilterChange, onSele
             setLprFor(null);
           }}
           onClose={() => setLprFor(null)}
+        />
+      )}
+
+      {/* Модалка истории демо/смет */}
+      {historyFor && (
+        <WLBalanceHistoryModal
+          company={historyFor.company}
+          mode={historyFor.mode}
+          onClose={() => setHistoryFor(null)}
         />
       )}
     </div>
