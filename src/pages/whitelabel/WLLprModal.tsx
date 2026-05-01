@@ -4,6 +4,17 @@ import { AUTH_URL } from "./wlTypes";
 import type { DemoPipelineCompany } from "./wlTypes";
 import { getWLToken } from "./WLManagerContext";
 
+function formatPhone(raw: string): string {
+  const digits = raw.replace(/\D/g, "");
+  const d = digits.startsWith("7") || digits.startsWith("8") ? digits.slice(1) : digits;
+  const p = d.slice(0, 10);
+  if (p.length === 0) return "+7 ";
+  if (p.length <= 3) return `+7 (${p}`;
+  if (p.length <= 6) return `+7 (${p.slice(0,3)}) ${p.slice(3)}`;
+  if (p.length <= 8) return `+7 (${p.slice(0,3)}) ${p.slice(3,6)}-${p.slice(6)}`;
+  return `+7 (${p.slice(0,3)}) ${p.slice(3,6)}-${p.slice(6,8)}-${p.slice(8)}`;
+}
+
 interface Props {
   company:   DemoPipelineCompany;
   onSuccess: (patch: Partial<DemoPipelineCompany>) => void;
@@ -70,8 +81,25 @@ export function WLLprModal({ company, onSuccess, onClose }: Props) {
           </div>
           <div>
             <div className="text-[10px] uppercase tracking-wider text-white/30 mb-1.5">Телефон</div>
-            <input value={phone} onChange={e => setPhone(e.target.value)} placeholder="+7 (900) 000-00-00"
-              className="w-full rounded-xl px-3 py-2.5 text-xs bg-white/[0.04] border border-white/[0.08] text-white/80 placeholder-white/20 outline-none focus:border-violet-500/50 transition" />
+            <div className="flex gap-2">
+              <input
+                type="tel"
+                value={phone}
+                onChange={e => { const r = e.target.value; setPhone(!r || r === "+" ? "" : formatPhone(r)); }}
+                onFocus={() => { if (!phone) setPhone("+7 "); }}
+                onBlur={() => { if (phone === "+7 " || phone === "+7") setPhone(""); }}
+                placeholder="+7 (900) 000-00-00"
+                className="flex-1 rounded-xl px-3 py-2.5 text-xs bg-white/[0.04] border border-white/[0.08] text-white/80 placeholder-white/20 outline-none focus:border-violet-500/50 transition"
+              />
+              {phone.replace(/\D/g, "").length >= 10 && (
+                <a href={`tel:+7${phone.replace(/\D/g, "").slice(-10)}`}
+                  className="flex items-center gap-1.5 px-3 py-2.5 rounded-xl text-xs font-bold transition hover:opacity-80 flex-shrink-0"
+                  style={{ background: "rgba(16,185,129,0.15)", color: "#10b981", border: "1px solid rgba(16,185,129,0.3)" }}>
+                  <Icon name="Phone" size={12} />
+                  <span className="hidden sm:inline">Позвонить</span>
+                </a>
+              )}
+            </div>
           </div>
           <div>
             <div className="text-[10px] uppercase tracking-wider text-white/30 mb-1.5">Должность</div>

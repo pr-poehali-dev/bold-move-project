@@ -32,6 +32,65 @@ async function loginAs(companyId: number): Promise<string | null> {
   return d.token || null;
 }
 
+function formatPhone(raw: string): string {
+  // Оставляем только цифры
+  const digits = raw.replace(/\D/g, "");
+  // Убираем ведущую 7 или 8 если есть
+  const d = digits.startsWith("7") || digits.startsWith("8") ? digits.slice(1) : digits;
+  const p = d.slice(0, 10);
+  if (p.length === 0) return "+7 ";
+  if (p.length <= 3) return `+7 (${p}`;
+  if (p.length <= 6) return `+7 (${p.slice(0,3)}) ${p.slice(3)}`;
+  if (p.length <= 8) return `+7 (${p.slice(0,3)}) ${p.slice(3,6)}-${p.slice(6)}`;
+  return `+7 (${p.slice(0,3)}) ${p.slice(3,6)}-${p.slice(6,8)}-${p.slice(8)}`;
+}
+
+function PhoneField({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const phoneForCall = value.replace(/\D/g, "");
+  const canCall = phoneForCall.length >= 10;
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const raw = e.target.value;
+    // Если стёрли всё — сбрасываем
+    if (!raw || raw === "+") { onChange(""); return; }
+    onChange(formatPhone(raw));
+  };
+
+  const handleFocus = () => {
+    if (!value) onChange("+7 ");
+  };
+
+  const handleBlur = () => {
+    if (value === "+7 " || value === "+7") onChange("");
+  };
+
+  return (
+    <div>
+      <div className="text-[10px] uppercase tracking-wider text-white/30 mb-1">Телефон</div>
+      <div className="flex gap-2">
+        <input
+          type="tel"
+          value={value}
+          onChange={handleChange}
+          onFocus={handleFocus}
+          onBlur={handleBlur}
+          placeholder="+7 (900) 000-00-00"
+          className="flex-1 rounded-xl px-3 py-2 text-xs bg-white/[0.04] border border-white/[0.08] text-white/80 placeholder-white/20 outline-none focus:border-violet-500/50 transition"
+        />
+        {canCall && (
+          <a
+            href={`tel:+7${phoneForCall.slice(-10)}`}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition hover:opacity-80 flex-shrink-0"
+            style={{ background: "rgba(16,185,129,0.15)", color: "#10b981", border: "1px solid rgba(16,185,129,0.3)" }}>
+            <Icon name="Phone" size={12} />
+            <span className="hidden sm:inline">Позвонить</span>
+          </a>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function Field({ label, value, onChange, type = "text", placeholder = "", aiBtn }: {
   label: string; value: string; onChange: (v: string) => void;
   type?: string; placeholder?: string;
@@ -265,7 +324,7 @@ export function WLPipelineDrawer({ company, onClose, onUpdate, onDelete, onOpenP
               <Icon name="User" size={12} /> Контакт / ЛПР
             </div>
             <Field label="ФИО" value={form.contact_name} onChange={set("contact_name")} placeholder="Иванов Иван Иванович" />
-            <Field label="Телефон" value={form.contact_phone} onChange={set("contact_phone")} placeholder="+7 (900) 000-00-00" />
+            <PhoneField value={form.contact_phone} onChange={set("contact_phone")} />
             <Field label="Должность" value={form.contact_position} onChange={set("contact_position")} placeholder="Директор, менеджер..." />
           </div>
 
