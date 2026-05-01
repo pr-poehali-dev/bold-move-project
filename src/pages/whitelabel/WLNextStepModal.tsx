@@ -22,23 +22,26 @@ const STATUS_DEFAULTS: Record<string, { action: string }> = {
 export function WLNextStepModal({ company, newStatus, onSuccess, onCancel }: Props) {
   const st = DEMO_STATUSES.find(s => s.id === newStatus)!;
   const today = new Date().toISOString().slice(0, 10);
+  const isRejected = newStatus === "rejected";
 
-  const [action, setAction]   = useState(STATUS_DEFAULTS[newStatus]?.action || "");
-  const [date,   setDate]     = useState(today);
-  const [notes,  setNotes]    = useState(company.notes || "");
-  const [saving, setSaving]   = useState(false);
-  const [error,  setError]    = useState<string | null>(null);
+  const [action,  setAction]  = useState(STATUS_DEFAULTS[newStatus]?.action || "");
+  const [date,    setDate]    = useState(today);
+  const [notes,   setNotes]   = useState(company.notes || "");
+  const [reason,  setReason]  = useState("");
+  const [saving,  setSaving]  = useState(false);
+  const [error,   setError]   = useState<string | null>(null);
 
   const handleSave = async () => {
-    if (!action.trim()) { setError("Заполни действие"); return; }
-    if (!date)          { setError("Укажи дату"); return; }
+    if (isRejected) {
+      if (!reason.trim()) { setError("Укажи причину отказа"); return; }
+    } else {
+      if (!action.trim()) { setError("Заполни действие"); return; }
+      if (!date)          { setError("Укажи дату"); return; }
+    }
     setSaving(true);
-    const patch = {
-      status:           newStatus,
-      next_action:      action.trim(),
-      next_action_date: date,
-      notes:            notes.trim(),
-    };
+    const patch = isRejected
+      ? { status: "rejected" as DemoStatus, notes: reason.trim() }
+      : { status: newStatus, next_action: action.trim(), next_action_date: date, notes: notes.trim() };
     await fetch(`${AUTH_URL}?action=admin-update-demo`, {
       method: "POST",
       headers: { "Content-Type": "application/json", "X-Authorization": masterToken() },
@@ -60,10 +63,12 @@ export function WLNextStepModal({ company, newStatus, onSuccess, onCancel }: Pro
         <div className="px-5 py-4 border-b border-white/[0.07] flex items-center gap-3">
           <div className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0"
             style={{ background: st.bg }}>
-            <Icon name="Target" size={14} style={{ color: st.color }} />
+            <Icon name={isRejected ? "XCircle" : "Target"} size={14} style={{ color: st.color }} />
           </div>
           <div className="flex-1 min-w-0">
-            <div className="text-sm font-bold text-white">Следующий шаг</div>
+            <div className="text-sm font-bold text-white">
+              {isRejected ? "Причина отказа" : "Следующий шаг"}
+            </div>
             <div className="text-[11px] text-white/35">
               {company.company_name} → <span style={{ color: st.color }}>{st.label}</span>
             </div>
@@ -75,41 +80,57 @@ export function WLNextStepModal({ company, newStatus, onSuccess, onCancel }: Pro
 
         {/* Форма */}
         <div className="p-5 space-y-4">
-          <div>
-            <div className="text-[10px] uppercase tracking-wider text-white/30 mb-1.5">
-              Действие <span style={{ color: st.color }}>*</span>
+          {isRejected ? (
+            <div>
+              <div className="text-[10px] uppercase tracking-wider text-white/30 mb-1.5">
+                Что сказал клиент? <span style={{ color: st.color }}>*</span>
+              </div>
+              <textarea
+                value={reason}
+                onChange={e => setReason(e.target.value)}
+                placeholder="Дорого, нет бюджета / Уже работает с другим сервисом / Не увидел ценности..."
+                rows={4}
+                autoFocus
+                className="w-full rounded-xl px-3 py-2.5 text-xs bg-white/[0.04] border border-white/[0.08] text-white/80 placeholder-white/20 outline-none focus:border-red-500/50 resize-none transition"
+              />
             </div>
-            <input
-              value={action}
-              onChange={e => setAction(e.target.value)}
-              placeholder="Позвонить и уточнить интерес..."
-              className="w-full rounded-xl px-3 py-2.5 text-xs bg-white/[0.04] border border-white/[0.08] text-white/80 placeholder-white/20 outline-none focus:border-violet-500/50 transition"
-              autoFocus
-            />
-          </div>
-
-          <div>
-            <div className="text-[10px] uppercase tracking-wider text-white/30 mb-1.5">
-              Дата <span style={{ color: st.color }}>*</span>
-            </div>
-            <input
-              type="date"
-              value={date}
-              onChange={e => setDate(e.target.value)}
-              className="w-full rounded-xl px-3 py-2.5 text-xs bg-white/[0.04] border border-white/[0.08] text-white/80 outline-none focus:border-violet-500/50 transition"
-            />
-          </div>
-
-          <div>
-            <div className="text-[10px] uppercase tracking-wider text-white/30 mb-1.5">Заметки</div>
-            <textarea
-              value={notes}
-              onChange={e => setNotes(e.target.value)}
-              placeholder="Договорились о демо, интересует белый лейбл для 3 городов..."
-              rows={3}
-              className="w-full rounded-xl px-3 py-2.5 text-xs bg-white/[0.04] border border-white/[0.08] text-white/80 placeholder-white/20 outline-none focus:border-violet-500/50 resize-none transition"
-            />
-          </div>
+          ) : (
+            <>
+              <div>
+                <div className="text-[10px] uppercase tracking-wider text-white/30 mb-1.5">
+                  Действие <span style={{ color: st.color }}>*</span>
+                </div>
+                <input
+                  value={action}
+                  onChange={e => setAction(e.target.value)}
+                  placeholder="Позвонить и уточнить интерес..."
+                  className="w-full rounded-xl px-3 py-2.5 text-xs bg-white/[0.04] border border-white/[0.08] text-white/80 placeholder-white/20 outline-none focus:border-violet-500/50 transition"
+                  autoFocus
+                />
+              </div>
+              <div>
+                <div className="text-[10px] uppercase tracking-wider text-white/30 mb-1.5">
+                  Дата <span style={{ color: st.color }}>*</span>
+                </div>
+                <input
+                  type="date"
+                  value={date}
+                  onChange={e => setDate(e.target.value)}
+                  className="w-full rounded-xl px-3 py-2.5 text-xs bg-white/[0.04] border border-white/[0.08] text-white/80 outline-none focus:border-violet-500/50 transition"
+                />
+              </div>
+              <div>
+                <div className="text-[10px] uppercase tracking-wider text-white/30 mb-1.5">Заметки</div>
+                <textarea
+                  value={notes}
+                  onChange={e => setNotes(e.target.value)}
+                  placeholder="Договорились о демо, интересует белый лейбл для 3 городов..."
+                  rows={3}
+                  className="w-full rounded-xl px-3 py-2.5 text-xs bg-white/[0.04] border border-white/[0.08] text-white/80 placeholder-white/20 outline-none focus:border-violet-500/50 resize-none transition"
+                />
+              </div>
+            </>
+          )}
 
           {error && (
             <div className="text-[11px] px-3 py-2 rounded-lg"
