@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useRef, useState } from "react";
 import Icon from "@/components/ui/icon";
 import PhoneInput from "@/components/ui/PhoneInput";
 import { uploadBrandImage } from "./brandApi";
@@ -35,9 +35,10 @@ export function Section({ title, icon, children, isDark }: {
 }
 
 // ── Field ─────────────────────────────────────────────────────────────────────
-export function Field({ label, value, onChange, placeholder, type = "text", multiline, rows = 2, isDark }: {
+export function Field({ label, value, onChange, placeholder, type = "text", multiline, rows = 2, isDark, aiBtn }: {
   label: string; value: string; onChange: (v: string) => void;
   placeholder?: string; type?: string; multiline?: boolean; rows?: number; isDark: boolean;
+  aiBtn?: React.ReactNode;
 }) {
   const { muted, border, bg, text } = fieldStyles(isDark);
   const cls = "w-full px-3.5 py-2.5 rounded-xl text-sm transition focus:outline-none";
@@ -45,12 +46,45 @@ export function Field({ label, value, onChange, placeholder, type = "text", mult
   return (
     <div>
       <div className="text-[10px] font-bold uppercase tracking-wider mb-1.5" style={{ color: muted }}>{label}</div>
-      {multiline
-        ? <textarea rows={rows} value={value} onChange={e => onChange(e.target.value)}
-            placeholder={placeholder} className={cls + " resize-none"} style={style} />
-        : <input type={type} value={value} onChange={e => onChange(e.target.value)}
-            placeholder={placeholder} className={cls} style={style} />}
+      <div className="relative">
+        {multiline
+          ? <textarea rows={rows} value={value} onChange={e => onChange(e.target.value)}
+              placeholder={placeholder} className={cls + " resize-none"} style={style} />
+          : <input type={type} value={value} onChange={e => onChange(e.target.value)}
+              placeholder={placeholder} className={cls + (aiBtn && !value ? " pr-16" : "")} style={style} />
+        }
+        {aiBtn && !value && (
+          <div className="absolute right-2 top-1/2 -translate-y-1/2">{aiBtn}</div>
+        )}
+      </div>
     </div>
+  );
+}
+
+// ── AiFieldBtn ────────────────────────────────────────────────────────────────
+export function AiFieldBtn({ field, busy, attempts, onRun, siteUrl }: {
+  field: string; busy: boolean; attempts: number; onRun: (f: string) => void; siteUrl: string;
+}) {
+  if (!siteUrl) return null;
+  if (attempts >= 2) return (
+    <span className="text-[9px] flex items-center gap-1" style={{ color: "#ef4444" }}>
+      <svg width="9" height="8" viewBox="0 0 9 8" fill="none">
+        <path d="M4.5 0.5L8.5 7.5H0.5L4.5 0.5Z" fill="#ef4444"/>
+        <text x="4.5" y="6.5" textAnchor="middle" fontSize="4" fontWeight="900" fill="white">!</text>
+      </svg>
+      вручную
+    </span>
+  );
+  return (
+    <button disabled={busy} onClick={() => onRun(field)}
+      className="flex items-center gap-1 px-2 py-1 rounded-lg text-[9px] font-bold transition hover:opacity-80 disabled:opacity-40"
+      style={{ background: "rgba(139,92,246,0.2)", color: "#a78bfa", border: "1px solid rgba(139,92,246,0.4)" }}>
+      {busy
+        ? <div className="w-2 h-2 border border-current/30 border-t-current rounded-full animate-spin" />
+        : <Icon name="Sparkles" size={9} />
+      }
+      {busy ? "..." : attempts > 0 ? "ещё" : "AI"}
+    </button>
   );
 }
 
