@@ -144,11 +144,12 @@ export function DrawerDiscountBlock({ data, customFinRows, onContractSumUpdated 
       if (items.length === 0) { setAiError("Смета пустая — нечего анализировать"); setAiLoading(false); return; }
 
       const maxDiscount = effectiveMax || risk.max_discount;
+      const customPrompt = localStorage.getItem("discount_risk_ai_prompt") || undefined;
 
       const aiRes = await fetch(`${AUTH_URL}?action=crm-risk-ai`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ items, max_discount: maxDiscount }),
+        body: JSON.stringify({ items, max_discount: maxDiscount, custom_prompt: customPrompt }),
       }).then(r => r.json());
 
       if (aiRes.error) throw new Error(aiRes.error);

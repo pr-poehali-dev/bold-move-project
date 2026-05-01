@@ -1,7 +1,26 @@
 import { useState, useEffect } from "react";
 import Icon from "@/components/ui/icon";
 
-const LS_KEY = "discount_risk_settings";
+const LS_KEY        = "discount_risk_settings";
+const AI_PROMPT_KEY = "discount_risk_ai_prompt";
+
+const DEFAULT_AI_PROMPT = `Ты эксперт по монтажу натяжных потолков. Оцени сложность монтажа по позициям сметы и рекомендуй оптимальную скидку клиенту.
+
+Критерии оценки:
+- Простой объект (прямоугольник, одно полотно, без ниш) → низкий риск, скидка ближе к максимуму
+- Средний объект (несколько полотен, 1-2 ниши, парящий потолок) → средний риск
+- Сложный объект (многоуровневый, сложные ниши, много закладных, большая площадь) → высокий риск, минимальная скидка
+
+Чем сложнее монтаж → тем выше риск непредвиденных затрат → тем меньше можно давать скидку.`;
+
+function loadAiPrompt(): string {
+  return localStorage.getItem(AI_PROMPT_KEY) || DEFAULT_AI_PROMPT;
+}
+
+function saveAiPrompt(p: string) {
+  localStorage.setItem(AI_PROMPT_KEY, p);
+  window.dispatchEvent(new StorageEvent("storage", { key: AI_PROMPT_KEY, newValue: p }));
+}
 
 interface RiskSettings {
   max_discount: number;        // Максимально допустимая скидка (абсолютный потолок)
@@ -35,12 +54,25 @@ function load(): RiskSettings {
 interface Props { isDark?: boolean; readOnly?: boolean; }
 
 export default function TabDiscountRisk({ isDark = true, readOnly = false }: Props) {
-  const [s, setS] = useState<RiskSettings>(load);
-  const [saved, setSaved] = useState(false);
+  const [s,           setS]          = useState<RiskSettings>(load);
+  const [saved,       setSaved]      = useState(false);
+  const [aiPrompt,    setAiPrompt]   = useState(loadAiPrompt);
+  const [promptSaved, setPromptSaved] = useState(false);
+  const [promptOpen,  setPromptOpen]  = useState(false);
 
   useEffect(() => { setSaved(false); }, [s]);
 
   const update = (patch: Partial<RiskSettings>) => setS(prev => ({ ...prev, ...patch }));
+
+  const savePrompt = () => {
+    saveAiPrompt(aiPrompt);
+    setPromptSaved(true);
+    setTimeout(() => setPromptSaved(false), 2000);
+  };
+
+  const resetPrompt = () => {
+    setAiPrompt(DEFAULT_AI_PROMPT);
+  };
 
   const save = () => {
     localStorage.setItem(LS_KEY, JSON.stringify(s));
@@ -233,6 +265,57 @@ export default function TabDiscountRisk({ isDark = true, readOnly = false }: Pro
             placeholder="Текст который увидит менеджер при запросе одобрения скидки..." />
         </div>
       )}
+
+      {/* Управление логикой AI */}
+      <div className={`rounded-2xl overflow-hidden ${bg} border ${border}`}>
+        <button
+          onClick={() => setPromptOpen(v => !v)}
+          className="w-full flex items-center gap-2 px-4 py-3 text-left transition hover:bg-white/[0.02]">
+          <Icon name="Sparkles" size={14} style={{ color: "#a78bfa" }} />
+          <span className={`text-xs font-bold uppercase tracking-wider ${isDark ? "text-violet-300" : "text-violet-600"} flex-1`}>
+            Управление логикой AI
+          </span>
+          <span className={`text-[9px] ${sub} mr-2`}>Промт для оценки риска скидки</span>
+          <Icon name={promptOpen ? "ChevronUp" : "ChevronDown"} size={13} style={{ color: isDark ? "rgba(255,255,255,0.3)" : "#9ca3af" }} />
+        </button>
+
+        {promptOpen && (
+          <div className="px-4 pb-4 space-y-3" style={{ borderTop: `1px solid ${isDark ? "rgba(255,255,255,0.07)" : "#e5e7eb"}` }}>
+            <p className={`text-[10px] mt-3 ${sub}`}>
+              Этот промт отправляется в AI при нажатии "Оценить AI" в блоке оценки риска скидки.
+              AI получит этот текст + список позиций сметы + максимальную скидку.
+            </p>
+            <textarea
+              disabled={readOnly}
+              rows={10}
+              value={aiPrompt}
+              onChange={e => { setAiPrompt(e.target.value); setPromptSaved(false); }}
+              className={`w-full rounded-xl px-3 py-2.5 text-xs font-mono outline-none transition resize-none ${
+                isDark
+                  ? "bg-white/[0.04] border border-white/10 text-white/75 focus:border-violet-500/50"
+                  : "bg-gray-50 border border-gray-200 text-gray-700 focus:border-violet-400"
+              }`}
+              placeholder="Промт для AI оценки риска..."
+            />
+            {!readOnly && (
+              <div className="flex items-center gap-2">
+                <button onClick={savePrompt}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-bold transition hover:opacity-80"
+                  style={{ background: "rgba(139,92,246,0.15)", color: "#a78bfa", border: "1px solid rgba(139,92,246,0.3)" }}>
+                  <Icon name={promptSaved ? "Check" : "Save"} size={12} />
+                  {promptSaved ? "Сохранено" : "Сохранить промт"}
+                </button>
+                <button onClick={resetPrompt}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-bold transition hover:opacity-80 ${sub}`}
+                  style={{ background: isDark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.04)", border: `1px solid ${isDark ? "rgba(255,255,255,0.08)" : "#e5e7eb"}` }}>
+                  <Icon name="RotateCcw" size={12} />
+                  Сбросить к дефолту
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
 
       {/* Кнопка сохранения */}
       {!readOnly && (

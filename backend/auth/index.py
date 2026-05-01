@@ -2256,17 +2256,22 @@ def handler(event: dict, context) -> dict:
     if action == "crm-risk-ai" and method == "POST":
         items = body.get("items", [])
         max_discount = body.get("max_discount", 30)
+        custom_prompt = body.get("custom_prompt", "")
         if not items:
             return err("items обязателен")
 
+        base_prompt = custom_prompt.strip() if custom_prompt else (
+            "Ты эксперт по монтажу натяжных потолков. Оцени сложность монтажа "
+            "по позициям сметы и рекомендуй оптимальную скидку клиенту.\n\n"
+            "Критерии: простой объект (прямоугольник, одно полотно) → скидка ближе к максимуму; "
+            "сложный (многоуровневый, ниши, много закладных) → минимальная скидка."
+        )
+
         prompt = (
-            f"Ты эксперт по монтажу натяжных потолков. Оцени сложность монтажа "
-            f"по позициям сметы и рекомендуй оптимальную скидку клиенту.\n\n"
+            f"{base_prompt}\n\n"
             f"Позиции сметы:\n"
             + "\n".join(f"{i+1}. {it}" for i, it in enumerate(items[:40]))
             + f"\n\nМаксимально допустимая скидка: {max_discount}%\n\n"
-            f"Оцени риски монтажа и предложи безопасную скидку. "
-            f"Чем сложнее объект — тем меньше скидка.\n\n"
             f"Ответь строго в JSON без markdown:\n"
             f'{{"level":"low|mid|high",'
             f'"recommended_discount":число от 0 до {max_discount},'
