@@ -181,11 +181,12 @@ export function WLPipelineList({ companies, filterStatus, onFilterChange, onSele
                 {/* Незаполненные поля бренда — пилюли */}
                 {(() => {
                   const missing: { key: string; label: string }[] = [];
-                  if (!c.support_phone) missing.push({ key: "phone",    label: "Телефон" });
-                  if (!c.brand_color)   missing.push({ key: "color",    label: "Цвет" });
-                  if (!c.brand_logo_url) missing.push({ key: "logo",   label: "Логотип" });
-                  if (!c.bot_name)      missing.push({ key: "bot",     label: "Имя бота" });
-                  if (missing.length === 0) return null;
+                  if (!c.support_phone)  missing.push({ key: "phone", label: "Телефон" });
+                  if (!c.brand_color)    missing.push({ key: "color", label: "Цвет" });
+                  if (!c.brand_logo_url) missing.push({ key: "logo",  label: "Логотип" });
+                  if (!c.bot_name)       missing.push({ key: "bot",   label: "Имя бота" });
+                  const noLpr = !c.contact_name || !c.contact_phone || !c.contact_position;
+                  if (missing.length === 0 && !noLpr) return null;
                   return (
                     <div className="flex-1 flex flex-col gap-1 min-w-0 max-w-[180px]"
                       onClick={e => e.stopPropagation()}>
@@ -205,7 +206,7 @@ export function WLPipelineList({ companies, filterStatus, onFilterChange, onSele
                             {m.label}
                           </button>
                         ))}
-                        {(!c.contact_name || !c.contact_phone || !c.contact_position) && (
+                        {noLpr && (
                           <button
                             onClick={e => { e.stopPropagation(); setLprFor(c); }}
                             className="text-[9px] font-bold px-1.5 py-0.5 rounded-full transition hover:opacity-80"
