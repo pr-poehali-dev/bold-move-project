@@ -152,6 +152,18 @@ export function WLPipelineList({ companies, filterStatus, onFilterChange, onSele
                   )}
                 </div>
 
+                {/* Борд */}
+                <button onClick={async e => {
+                    e.stopPropagation();
+                    const tok = await loginAs(c.company_id);
+                    if (tok) onOpenPanel({ type: "site-authed", url: `/?c=${c.company_id}`, token: tok });
+                    else onOpenPanel({ type: "site", url: `/?c=${c.company_id}` });
+                  }}
+                  className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[10px] font-bold transition hover:opacity-80 flex-shrink-0"
+                  style={{ background: "rgba(6,182,212,0.12)", color: "#06b6d4", border: "1px solid rgba(6,182,212,0.25)" }}>
+                  <Icon name="Globe" size={10} /> Борд
+                </button>
+
                 {/* Статус */}
                 <span className="text-[10px] font-bold px-2 py-1 rounded-lg flex-shrink-0"
                   style={{ background: st.bg, color: st.color }}>
