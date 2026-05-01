@@ -124,15 +124,13 @@ export function WLPipeline({ refreshTrigger, onOpenPanel, onRunApiTests }: Props
               <button onClick={() => setTab("companies")}
                 className="flex-1 flex items-center justify-center gap-1 py-1.5 rounded-lg text-[10px] font-bold transition"
                 style={{ background: tab === "companies" ? "rgba(139,92,246,0.2)" : "transparent", color: tab === "companies" ? "#a78bfa" : "rgba(255,255,255,0.3)" }}>
-                <Icon name="Building2" size={11} />
-                <span className="hidden xs:inline sm:inline">Компании</span>
-                <span className="sm:hidden">{companies.length}</span>
+                Компании
+                <span className="text-[8px] opacity-60">{companies.length}</span>
               </button>
               <button onClick={() => setTab("tasks")}
                 className="flex-1 flex items-center justify-center gap-1 py-1.5 rounded-lg text-[10px] font-bold transition"
                 style={{ background: tab === "tasks" ? "rgba(245,158,11,0.15)" : "transparent", color: tab === "tasks" ? "#f59e0b" : "rgba(255,255,255,0.3)" }}>
-                <Icon name="Target" size={11} />
-                <span className="hidden sm:inline">Задачи</span>
+                Задачи
                 {tasksCount > 0 && (
                   <span className="text-[8px] px-1 py-0.5 rounded-full font-bold"
                     style={{ background: "rgba(245,158,11,0.25)", color: "#f59e0b" }}>{tasksCount}</span>
@@ -141,8 +139,7 @@ export function WLPipeline({ refreshTrigger, onOpenPanel, onRunApiTests }: Props
               <button onClick={() => setTab("calendar")}
                 className="flex-1 flex items-center justify-center gap-1 py-1.5 rounded-lg text-[10px] font-bold transition"
                 style={{ background: tab === "calendar" ? "rgba(249,115,22,0.15)" : "transparent", color: tab === "calendar" ? "#f97316" : "rgba(255,255,255,0.3)" }}>
-                <Icon name="CalendarDays" size={11} />
-                <span className="hidden sm:inline">Показы</span>
+                Показы
                 {presCount > 0 && (
                   <span className="text-[8px] px-1 py-0.5 rounded-full font-bold"
                     style={{ background: "rgba(249,115,22,0.25)", color: "#f97316" }}>{presCount}</span>
