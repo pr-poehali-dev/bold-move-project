@@ -31,7 +31,8 @@ function isBusy(hour: number, date: string, slots: BusySlot[]): boolean {
   const chosen = new Date(`${date}T${String(hour).padStart(2, "0")}:00:00`);
   return slots.some(s => {
     const slotTime = new Date(s.scheduled_at);
-    return Math.abs(chosen.getTime() - slotTime.getTime()) / 1000 < 7200;
+    slotTime.setMinutes(0, 0, 0);
+    return slotTime.getTime() === chosen.getTime();
   });
 }
 
@@ -231,18 +232,15 @@ export function WLNextStepModal({ company, newStatus, onSuccess, onCancel }: Pro
                         onClick={() => { setHour(h); setError(null); }}
                         className="py-2 rounded-lg text-[11px] font-bold transition"
                         style={{
-                          background: past    ? "rgba(255,255,255,0.02)"
-                                    : busy    ? "rgba(239,68,68,0.06)"
-                                    : active  ? `${st.color}25`
-                                    :           "rgba(255,255,255,0.04)",
-                          color: past    ? "rgba(255,255,255,0.15)"
-                               : busy    ? "rgba(239,68,68,0.35)"
-                               : active  ? st.color
-                               :           "rgba(255,255,255,0.5)",
-                          border: `1px solid ${past ? "transparent" : busy ? "rgba(239,68,68,0.15)" : active ? `${st.color}50` : "transparent"}`,
+                          background: (past || busy) ? "rgba(255,255,255,0.02)"
+                                    : active         ? `${st.color}25`
+                                    :                  "rgba(255,255,255,0.04)",
+                          color: (past || busy) ? "rgba(255,255,255,0.15)"
+                               : active         ? st.color
+                               :                  "rgba(255,255,255,0.5)",
+                          border: `1px solid ${active && !past && !busy ? `${st.color}50` : "transparent"}`,
                           cursor: disabled ? "not-allowed" : "pointer",
-                          textDecoration: busy && !past ? "line-through" : "none",
-                          opacity: past ? 0.4 : 1,
+                          opacity: (past || busy) ? 0.4 : 1,
                         }}>
                         {String(h).padStart(2, "0")}:00
                       </button>
@@ -251,7 +249,7 @@ export function WLNextStepModal({ company, newStatus, onSuccess, onCancel }: Pro
                 </div>
                 {busySlots.length > 0 && (
                   <div className="text-[9px] text-white/20 mt-1.5">
-                    Зачёркнутые заняты · между показами минимум 2 часа
+                    Серые слоты уже заняты
                   </div>
                 )}
               </div>

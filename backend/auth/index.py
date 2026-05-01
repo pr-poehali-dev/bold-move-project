@@ -1811,15 +1811,15 @@ def handler(event: dict, context) -> dict:
         if not demo_id or not scheduled_at:
             return err("demo_id и scheduled_at обязательны")
 
-        # Проверка правила 2 часа: нет показа ±2ч от выбранного времени
+        # Проверка: нет показа в тот же час
         cur.execute(f"""
             SELECT COUNT(*) FROM {SCHEMA}.demo_presentations
             WHERE status = 'scheduled'
-            AND ABS(EXTRACT(EPOCH FROM (scheduled_at - %s::timestamptz))) < 7200
+            AND date_trunc('hour', scheduled_at) = date_trunc('hour', %s::timestamptz)
         """, (scheduled_at,))
         conflict = cur.fetchone()[0]
         if conflict > 0:
-            return err("В этот промежуток уже запланирован показ (правило 2 часа)")
+            return err("В это время уже запланирован показ")
 
         cur.execute(f"""
             INSERT INTO {SCHEMA}.demo_presentations (demo_id, scheduled_at, duration_min, notes)
@@ -1901,15 +1901,15 @@ def handler(event: dict, context) -> dict:
         if not pres_id or not scheduled_at:
             return err("presentation_id и scheduled_at обязательны")
 
-        # Проверка правила 2 часа (исключаем саму запись)
+        # Проверка: нет другого показа в тот же час
         cur.execute(f"""
             SELECT COUNT(*) FROM {SCHEMA}.demo_presentations
             WHERE status = 'scheduled' AND id != %s
-            AND ABS(EXTRACT(EPOCH FROM (scheduled_at - %s::timestamptz))) < 7200
+            AND date_trunc('hour', scheduled_at) = date_trunc('hour', %s::timestamptz)
         """, (int(pres_id), scheduled_at))
         conflict = cur.fetchone()[0]
         if conflict > 0:
-            return err("В этот промежуток уже запланирован показ (правило 2 часа)")
+            return err("В это время уже запланирован показ")
 
         sets = ["scheduled_at = %s"]
         vals = [scheduled_at]
