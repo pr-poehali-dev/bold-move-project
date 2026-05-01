@@ -111,9 +111,7 @@ export function WLPipeline({ refreshTrigger, onOpenPanel, onRunApiTests }: Props
               ))}
             </div>
           )}
-          <button onClick={load} className="text-[10px] text-white/30 hover:text-white/60 transition flex items-center gap-1">
-            <Icon name="RefreshCw" size={10} /> Обновить
-          </button>
+
         </div>
       </div>
 
