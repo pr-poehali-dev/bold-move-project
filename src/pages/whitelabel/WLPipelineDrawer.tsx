@@ -387,12 +387,14 @@ export function WLPipelineDrawer({ company, onClose, onUpdate, onDelete, onOpenP
                 : <><Icon name="Save" size={13} /> Сохранить</>
               }
             </button>
-            <button onClick={handleDelete}
-              className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-[11px] font-bold transition hover:opacity-80"
-              style={{ background: "rgba(239,68,68,0.08)", color: "#ef4444", border: "1px solid rgba(239,68,68,0.20)" }}
-              title="Удалить компанию">
-              <Icon name="Trash2" size={12} />
-            </button>
+            {canAssign && (
+              <button onClick={handleDelete}
+                className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-[11px] font-bold transition hover:opacity-80"
+                style={{ background: "rgba(239,68,68,0.08)", color: "#ef4444", border: "1px solid rgba(239,68,68,0.20)" }}
+                title="Удалить компанию">
+                <Icon name="Trash2" size={12} />
+              </button>
+            )}
           </div>
         </div>
       </div>
