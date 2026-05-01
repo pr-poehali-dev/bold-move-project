@@ -159,6 +159,7 @@ export function WLSiteParser({ onCreated }: Props) {
   }
 
   return (
+    <div className="rounded-2xl p-4" style={{ border: "1px solid rgba(245,158,11,0.2)", background: "rgba(245,158,11,0.03)" }}>
     <Section title="Добавить новых" icon="Wand2" color="#f59e0b" collapsible defaultCollapsed>
       <p className="text-[11px] text-white/40 mb-3">
         Введи сайт клиента — AI вытащит все данные и создаст новую демо-компанию
@@ -329,5 +330,6 @@ export function WLSiteParser({ onCreated }: Props) {
         }
       `}</style>
     </Section>
+    </div>
   );
 }
