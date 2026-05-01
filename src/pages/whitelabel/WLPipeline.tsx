@@ -50,10 +50,6 @@ export function WLPipeline({ refreshTrigger, onOpenPanel, onRunApiTests }: Props
     if (status === "paid") {
       if (company) { setReceiptFor(company); return; }
     }
-    // При переносе в "presentation" — открываем модалку планирования
-    if (status === "presentation") {
-      if (company) { setPresentationFor(company); return; }
-    }
     setCompanies(prev => prev.map(c => c.demo_id === demoId ? { ...c, status } : c));
     await fetch(`${AUTH_URL}?action=admin-update-demo`, {
       method: "POST",
