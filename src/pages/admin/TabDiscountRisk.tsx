@@ -145,8 +145,8 @@ export default function TabDiscountRisk({ isDark = true, readOnly = false }: Pro
     if (prices.length > 0) return;
     setPricesLoading(true);
     try {
-      const func2url = await import("@/../../backend/func2url.json");
-      const url = (func2url as Record<string, string>)["get-prices"];
+      const func2url = await import("@/../backend/func2url.json");
+      const url = (func2url as unknown as Record<string, string>)["get-prices"];
       const res = await fetch(url).then(r => r.json());
       setPrices(res.prices || []);
     } catch {
