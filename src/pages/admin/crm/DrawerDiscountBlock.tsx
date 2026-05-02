@@ -4,8 +4,26 @@ import { useTheme } from "./themeContext";
 import { Client, crmFetch } from "./crmApi";
 import { CustomFinRow } from "./drawerTypes";
 import { AUTH_URL, EstimateBlock, parseValue, fmt as fmtEst, pricingRules } from "./estimateTypes";
+import func2url from "@/../backend/func2url.json";
 
-const RISK_LS_KEY = "discount_risk_settings";
+const RISK_LS_KEY            = "discount_risk_settings";
+const COMPLEXITY_LS_KEY      = "discount_complexity_settings";
+const COMPLEXITY_PROMPTS_KEY = "discount_complexity_prompts";
+const COMPLEXITY_FORMULA_KEY = "discount_complexity_formula";
+const GET_PRICES_URL         = (func2url as Record<string, string>)["get-prices"];
+
+interface ComplexityAnalysis {
+  mathScore: number;
+  mathResult: string;
+  semanticResult: string;
+  combineResult: {
+    score: number;
+    recommended_discount: number;
+    level: "low" | "mid" | "high";
+    summary: string;
+  } | null;
+  items: Array<{ name: string; complexity: number; weight: number; qty: number; unitScore: number }>;
+}
 
 interface RiskSettings {
   max_discount: number;
@@ -52,9 +70,17 @@ export function DrawerDiscountBlock({ data, customFinRows, onContractSumUpdated 
   const [applied,     setApplied]     = useState(false);
   const [reserve,     setReserve]     = useState(0);       // % непредвиденных рисков
   const [customMax,   setCustomMax]   = useState<number | null>(null); // переопределение max для этого заказа
-  const [aiRisk,      setAiRisk]      = useState<AiRisk | null>(null);
-  const [aiLoading,   setAiLoading]   = useState(false);
-  const [aiError,     setAiError]     = useState<string | null>(null);
+  const [aiRisk,        setAiRisk]        = useState<AiRisk | null>(null);
+  const [aiLoading,     setAiLoading]     = useState(false);
+  const [aiError,       setAiError]       = useState<string | null>(null);
+
+  // 3-этапный анализ
+  const [analysisOpen,   setAnalysisOpen]   = useState(false);
+  const [analysisLoading, setAnalysisLoading] = useState(false);
+  const [analysisStep,   setAnalysisStep]   = useState<0 | 1 | 2 | 3>(0);
+  const [analysisError,  setAnalysisError]  = useState<string | null>(null);
+  const [analysis,       setAnalysis]       = useState<ComplexityAnalysis | null>(null);
+
   const fmt = (n: number) => Math.round(n).toLocaleString("ru-RU");
 
   // Настройки управления риском — реактивно обновляются при изменении localStorage
@@ -166,6 +192,133 @@ export function DrawerDiscountBlock({ data, customFinRows, onContractSumUpdated 
     }
   };
 
+  // 3-этапный анализ сложности
+  const runComplexityAnalysis = async () => {
+    setAnalysisLoading(true);
+    setAnalysisStep(0);
+    setAnalysisError(null);
+    setAnalysis(null);
+    setAnalysisOpen(true);
+    try {
+      // Загружаем смету
+      const d = await fetch(`${AUTH_URL}?action=estimate-by-chat&chat_id=${data.id}`).then(r => r.json());
+      const blocks: EstimateBlock[] = d.estimate?.blocks || [];
+      const itemNames: Array<{ name: string; qty: number }> = [];
+      for (const block of blocks) {
+        for (const item of block.items) {
+          if (!item.name) continue;
+          const p = parseValue(item.value);
+          itemNames.push({ name: item.name, qty: p?.qty || 1 });
+        }
+      }
+      if (itemNames.length === 0) { setAnalysisError("Смета пустая — нечего анализировать"); setAnalysisLoading(false); return; }
+
+      // Загружаем настройки сложности из localStorage
+      const complexityMap: Record<number, { complexity: number; weight: number }> = (() => {
+        try { return JSON.parse(localStorage.getItem(COMPLEXITY_LS_KEY) || "{}"); } catch { return {}; }
+      })();
+      const prompts = (() => {
+        try {
+          const p = JSON.parse(localStorage.getItem(COMPLEXITY_PROMPTS_KEY) || "{}");
+          return {
+            math: p.math || "",
+            semantic: p.semantic || "",
+            combine: p.combine || "",
+          };
+        } catch { return { math: "", semantic: "", combine: "" }; }
+      })();
+      const formula = localStorage.getItem(COMPLEXITY_FORMULA_KEY) || "Σ(сложность × вес × кол-во) / Σ(вес × кол-во)";
+      const maxDiscount = effectiveMax || risk.max_discount;
+
+      // Загружаем прайс чтобы смапить названия → id
+      const pricesRes = await fetch(GET_PRICES_URL).then(r => r.json());
+      const prices: Array<{ id: number; name: string; unit: string }> = pricesRes.prices || [];
+
+      // Матчинг позиций сметы с прайсом (по вхождению названия)
+      const matchedItems = itemNames.map(({ name, qty }) => {
+        const match = prices.find(p =>
+          name.toLowerCase().includes(p.name.toLowerCase()) ||
+          p.name.toLowerCase().includes(name.toLowerCase())
+        );
+        const cfg = match ? (complexityMap[match.id] || { complexity: 5, weight: 5 }) : { complexity: 5, weight: 5 };
+        return { name, qty, complexity: cfg.complexity, weight: cfg.weight, unitScore: Math.round(cfg.complexity * cfg.weight / 10 * 10) / 10 };
+      });
+
+      // ЭТАП 1 — Математика
+      setAnalysisStep(1);
+      const totalWeightQty = matchedItems.reduce((s, i) => s + i.weight * i.qty, 0);
+      const mathScore = totalWeightQty > 0
+        ? Math.round(matchedItems.reduce((s, i) => s + i.complexity * i.weight * i.qty, 0) / totalWeightQty * 10) / 10
+        : 5;
+
+      const mathPromptText = (prompts.math || `Математическая оценка сложности объекта: {math_score}/10. Формула: ${formula}. Позиции: {items_breakdown}. Дай краткий вывод.`)
+        .replace("{math_score}", String(mathScore))
+        .replace("{items_breakdown}", matchedItems.map(i => `${i.name} (сл:${i.complexity}, вес:${i.weight}, кол:${i.qty}) → ${i.unitScore}`).join("; "));
+
+      const mathRes = await fetch(`${AUTH_URL}?action=crm-risk-ai`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ items: [mathPromptText], max_discount: maxDiscount, custom_prompt: "Дай краткий аналитический вывод (2-3 предложения) без рекомендаций по скидке." }),
+      }).then(r => r.json());
+      const mathResult = mathRes.reason || mathRes.summary || "Математический анализ завершён";
+
+      // ЭТАП 2 — Семантика
+      setAnalysisStep(2);
+      const semanticPromptText = (prompts.semantic || `Ты эксперт по монтажу натяжных потолков. Список позиций сметы: {items}. Оцени семантически сложность объекта от 1 до 10 и объясни риски.`)
+        .replace("{items}", matchedItems.map(i => `${i.name} (${i.qty} шт/м)`).join(", "));
+
+      const semanticRes = await fetch(`${AUTH_URL}?action=crm-risk-ai`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ items: matchedItems.map(i => i.name), max_discount: maxDiscount, custom_prompt: semanticPromptText }),
+      }).then(r => r.json());
+      const semanticResult = semanticRes.reason || semanticRes.summary || "Семантический анализ завершён";
+
+      // ЭТАП 3 — Объединение
+      setAnalysisStep(3);
+      const combinePromptText = (prompts.combine || `Два анализа объекта:\nМАТЕМАТИКА: {math_result}\nСЕМАНТИКА: {semantic_result}\nДай итог в JSON: {"score":7,"recommended_discount":5,"level":"high","summary":"текст"}`)
+        .replace("{math_result}", mathResult)
+        .replace("{semantic_result}", semanticResult)
+        .replace("{max_discount}", String(maxDiscount));
+
+      const combineRes = await fetch(`${AUTH_URL}?action=crm-risk-ai`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ items: matchedItems.map(i => i.name), max_discount: maxDiscount, custom_prompt: combinePromptText }),
+      }).then(r => r.json());
+
+      // Пробуем распарсить JSON из ответа
+      let combineResult = null;
+      try {
+        const raw = combineRes.reason || combineRes.summary || "";
+        const jsonMatch = raw.match(/\{[\s\S]*\}/);
+        if (jsonMatch) combineResult = JSON.parse(jsonMatch[0]);
+      } catch { /* не страшно */ }
+
+      // Если не удалось — формируем из полей ответа
+      if (!combineResult) {
+        combineResult = {
+          score: mathScore,
+          recommended_discount: combineRes.recommended_discount ?? Math.round(maxDiscount * (1 - mathScore / 10)),
+          level: combineRes.level ?? (mathScore <= 3 ? "low" : mathScore <= 6 ? "mid" : "high"),
+          summary: combineRes.reason || combineRes.summary || "Анализ завершён",
+        };
+      }
+
+      setAnalysis({ mathScore, mathResult, semanticResult, combineResult, items: matchedItems });
+
+      // Автоматически выставляем скидку в слайдер
+      const rec = Math.min(combineResult.recommended_discount ?? 0, maxDiscount);
+      setDiscount(rec);
+      setApplied(false);
+
+    } catch {
+      setAnalysisError("Ошибка анализа — попробуй ещё раз");
+    } finally {
+      setAnalysisLoading(false);
+    }
+  };
+
   // Применить скидку к позициям сметы
   const applyDiscount = async () => {
     if (discount === 0 || isNegative || isOverMax) return;
@@ -212,6 +365,7 @@ export function DrawerDiscountBlock({ data, customFinRows, onContractSumUpdated 
   const aiLevelLabel = aiRisk?.level === "low" ? "Низкая сложность" : aiRisk?.level === "mid" ? "Средняя сложность" : "Высокая сложность";
 
   return (
+    <>
     <div className="rounded-2xl overflow-hidden" style={{ border: `1px solid ${borderColor}`, background: "#f59e0b08" }}>
 
       {/* Шапка */}
@@ -227,6 +381,16 @@ export function DrawerDiscountBlock({ data, customFinRows, onContractSumUpdated 
           {aiLoading
             ? <><div className="w-2.5 h-2.5 border-2 border-current/30 border-t-current rounded-full animate-spin" /> AI...</>
             : <><Icon name="Sparkles" size={11} /> Оценить AI</>
+          }
+        </button>
+
+        {/* Кнопка 3-этапного анализа */}
+        <button onClick={runComplexityAnalysis} disabled={analysisLoading}
+          className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-bold transition disabled:opacity-50 hover:opacity-80"
+          style={{ background: "rgba(16,185,129,0.12)", color: "#34d399", border: "1px solid rgba(16,185,129,0.3)" }}>
+          {analysisLoading
+            ? <><div className="w-2.5 h-2.5 border-2 border-current/30 border-t-current rounded-full animate-spin" /> Анализ...</>
+            : <><Icon name="BarChart2" size={11} /> Анализ объекта</>
           }
         </button>
 
@@ -428,5 +592,155 @@ export function DrawerDiscountBlock({ data, customFinRows, onContractSumUpdated 
 
       </div>
     </div>
+
+    {/* Модальное окно — Анализ объекта */}
+    {analysisOpen && (
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
+        style={{ background: "rgba(0,0,0,0.7)", backdropFilter: "blur(4px)" }}
+        onClick={e => { if (e.target === e.currentTarget) setAnalysisOpen(false); }}>
+        <div className="w-full max-w-lg rounded-2xl overflow-hidden flex flex-col"
+          style={{ background: "#1a1a2e", border: "1px solid rgba(255,255,255,0.1)", maxHeight: "90vh" }}>
+
+          {/* Шапка */}
+          <div className="flex items-center gap-2 px-5 py-4" style={{ borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
+            <Icon name="BarChart2" size={16} style={{ color: "#34d399" }} />
+            <span className="text-sm font-bold text-white flex-1">Анализ объекта</span>
+            {analysis?.combineResult && (
+              <span className="text-xs font-bold px-2.5 py-1 rounded-lg"
+                style={{
+                  background: analysis.combineResult.level === "low" ? "#10b98120" : analysis.combineResult.level === "mid" ? "#f59e0b20" : "#ef444420",
+                  color: analysis.combineResult.level === "low" ? "#10b981" : analysis.combineResult.level === "mid" ? "#f59e0b" : "#ef4444",
+                }}>
+                {analysis.combineResult.level === "low" ? "Низкая сложность" : analysis.combineResult.level === "mid" ? "Средняя сложность" : "Высокая сложность"}
+              </span>
+            )}
+            <button onClick={() => setAnalysisOpen(false)} className="ml-1 p-1 rounded-lg hover:bg-white/10 transition">
+              <Icon name="X" size={14} style={{ color: "rgba(255,255,255,0.4)" }} />
+            </button>
+          </div>
+
+          <div className="overflow-y-auto flex-1 p-5 space-y-4">
+
+            {/* Прогресс этапов */}
+            <div className="flex items-center gap-2">
+              {[
+                { n: 1, label: "Математика",  color: "#10b981" },
+                { n: 2, label: "Семантика",   color: "#f59e0b" },
+                { n: 3, label: "Объединение", color: "#8b5cf6" },
+              ].map((step, i) => {
+                const done = analysisStep > step.n || (!analysisLoading && analysis);
+                const active = analysisLoading && analysisStep === step.n;
+                return (
+                  <div key={step.n} className="flex items-center gap-2 flex-1">
+                    <div className="flex items-center gap-1.5 flex-1">
+                      <div className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-black flex-shrink-0"
+                        style={{
+                          background: done || active ? `${step.color}25` : "rgba(255,255,255,0.05)",
+                          border: `1px solid ${done || active ? step.color : "rgba(255,255,255,0.1)"}`,
+                          color: done || active ? step.color : "rgba(255,255,255,0.3)",
+                        }}>
+                        {active ? <div className="w-3 h-3 border-2 border-current/30 border-t-current rounded-full animate-spin" /> : step.n}
+                      </div>
+                      <span className="text-[10px] font-semibold" style={{ color: done || active ? step.color : "rgba(255,255,255,0.3)" }}>
+                        {step.label}
+                      </span>
+                    </div>
+                    {i < 2 && <div className="w-4 h-px" style={{ background: analysisStep > step.n || (!analysisLoading && analysis) ? step.color : "rgba(255,255,255,0.1)" }} />}
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Ошибка */}
+            {analysisError && (
+              <div className="flex items-center gap-2 px-3 py-2.5 rounded-xl" style={{ background: "#ef444415", border: "1px solid #ef444430" }}>
+                <Icon name="AlertTriangle" size={13} style={{ color: "#ef4444" }} />
+                <span className="text-xs text-red-400">{analysisError}</span>
+              </div>
+            )}
+
+            {/* Загрузка */}
+            {analysisLoading && !analysisError && (
+              <div className="flex items-center gap-2 py-4 justify-center">
+                <div className="w-4 h-4 border-2 border-emerald-500/30 border-t-emerald-500 rounded-full animate-spin" />
+                <span className="text-xs text-white/50">
+                  {analysisStep === 1 && "Считаю математику..."}
+                  {analysisStep === 2 && "AI анализирует позиции..."}
+                  {analysisStep === 3 && "Объединяю результаты..."}
+                </span>
+              </div>
+            )}
+
+            {analysis && (
+              <>
+                {/* Этап 1 — Математика */}
+                <div className="rounded-xl p-4 space-y-2" style={{ background: "#10b98108", border: "1px solid #10b98120" }}>
+                  <div className="flex items-center gap-2 mb-2">
+                    <div className="w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-black" style={{ background: "#10b98125", color: "#10b981" }}>1</div>
+                    <span className="text-xs font-bold" style={{ color: "#10b981" }}>Математический анализ</span>
+                    <span className="ml-auto text-lg font-black" style={{ color: "#10b981" }}>{analysis.mathScore}/10</span>
+                  </div>
+                  <p className="text-[11px] text-white/60 leading-relaxed">{analysis.mathResult}</p>
+                  {/* Топ-3 доминирующих позиции */}
+                  <div className="flex flex-wrap gap-1 pt-1">
+                    {[...analysis.items].sort((a, b) => b.unitScore - a.unitScore).slice(0, 4).map((item, i) => (
+                      <span key={i} className="text-[9px] px-2 py-0.5 rounded-full"
+                        style={{ background: "rgba(16,185,129,0.1)", color: "#10b981" }}>
+                        {item.name} · {item.unitScore}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Этап 2 — Семантика */}
+                <div className="rounded-xl p-4 space-y-2" style={{ background: "#f59e0b08", border: "1px solid #f59e0b20" }}>
+                  <div className="flex items-center gap-2 mb-2">
+                    <div className="w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-black" style={{ background: "#f59e0b25", color: "#f59e0b" }}>2</div>
+                    <span className="text-xs font-bold" style={{ color: "#f59e0b" }}>Семантический анализ AI</span>
+                  </div>
+                  <p className="text-[11px] text-white/60 leading-relaxed">{analysis.semanticResult}</p>
+                </div>
+
+                {/* Этап 3 — Итог */}
+                {analysis.combineResult && (
+                  <div className="rounded-xl p-4 space-y-3" style={{ background: "#8b5cf608", border: "1px solid #8b5cf630" }}>
+                    <div className="flex items-center gap-2">
+                      <div className="w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-black" style={{ background: "#8b5cf625", color: "#8b5cf6" }}>3</div>
+                      <span className="text-xs font-bold" style={{ color: "#8b5cf6" }}>Итоговая оценка</span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="rounded-lg p-3 text-center" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}>
+                        <div className="text-[9px] text-white/30 uppercase tracking-wider mb-1">Сложность</div>
+                        <div className="text-2xl font-black" style={{ color: "#8b5cf6" }}>{analysis.combineResult.score}/10</div>
+                      </div>
+                      <div className="rounded-lg p-3 text-center" style={{ background: "rgba(245,158,11,0.08)", border: "1px solid rgba(245,158,11,0.2)" }}>
+                        <div className="text-[9px] text-yellow-400/60 uppercase tracking-wider mb-1">Рекомендованная скидка</div>
+                        <div className="text-2xl font-black text-yellow-400">{analysis.combineResult.recommended_discount}%</div>
+                      </div>
+                    </div>
+                    <p className="text-[11px] text-white/65 leading-relaxed">{analysis.combineResult.summary}</p>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+
+          {/* Футер */}
+          {analysis?.combineResult && (
+            <div className="px-5 py-4 flex items-center gap-3" style={{ borderTop: "1px solid rgba(255,255,255,0.08)" }}>
+              <span className="text-xs text-white/40 flex-1">
+                Скидка {analysis.combineResult.recommended_discount}% уже выставлена в слайдер
+              </span>
+              <button onClick={() => setAnalysisOpen(false)}
+                className="px-4 py-2 rounded-xl text-xs font-bold transition hover:opacity-80"
+                style={{ background: "rgba(139,92,246,0.15)", color: "#a78bfa", border: "1px solid rgba(139,92,246,0.3)" }}>
+                Применить и закрыть
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+    )}
+    </>
   );
 }
