@@ -171,12 +171,13 @@ export default function DiscountRiskComplexity({ isDark, theme, readOnly }: Prop
       const current = prev[id] || getItem(id);
       const merged = { ...current, ...patch };
       // Если пользователь изменил complexity — обновляем reason под новое значение
-      if ("complexity" in patch && patch.complexity !== current.ai_complexity) {
-        merged.reason = `${patch.complexity}/10 (вручную) — ${getComplexityHint(patch.complexity!)}`;
+      if ("complexity" in patch) {
+        merged.reason = getComplexityHint(patch.complexity!);
+        merged.ai_complexity = patch.complexity;
       }
-      // Если пользователь изменил weight — обновляем weight_reason под новое значение
-      if ("weight" in patch && patch.weight !== current.ai_weight) {
-        merged.weight_reason = `${patch.weight}/10 (вручную) — ${getWeightHint(patch.weight!)}`;
+      if ("weight" in patch) {
+        merged.weight_reason = getWeightHint(patch.weight!);
+        merged.ai_weight = patch.weight;
       }
       const next = { ...prev, [id]: merged };
       saveComplexityItems(next);
