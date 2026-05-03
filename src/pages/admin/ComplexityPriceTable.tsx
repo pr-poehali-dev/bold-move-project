@@ -40,6 +40,7 @@ export default function ComplexityPriceTable({
   const [hoveredId, setHoveredId] = useState<number | null>(null);
 
   const hoveredReason = hoveredId !== null ? (complexityItems[hoveredId]?.reason || "") : "";
+  const hasAnyReason = Object.values(complexityItems).some(i => i.reason);
 
   const getItem = (id: number): ComplexityItem =>
     complexityItems[id] || { priceId: id, complexity: 5, weight: 5 };
@@ -211,13 +212,21 @@ export default function ComplexityPriceTable({
                             <Icon name="Sparkles" size={9} style={{ color: "#a78bfa", marginTop: 1, flexShrink: 0 }} />
                             <span style={{ color: isDark ? "rgba(255,255,255,0.55)" : "#6b7280", fontStyle: "italic" }}>{hoveredReason}</span>
                           </span>
+                        ) : hoveredId && !hoveredReason && hasAnyReason ? (
+                          <span style={{ color: isDark ? "rgba(255,255,255,0.2)" : "#c4c4c4", fontStyle: "italic" }}>
+                            нет объяснения AI для этой позиции
+                          </span>
+                        ) : !hasAnyReason ? (
+                          <span className="flex items-start gap-1">
+                            <Icon name="Sparkles" size={9} style={{ color: "rgba(139,92,246,0.4)", marginTop: 1, flexShrink: 0 }} />
+                            <span style={{ color: isDark ? "rgba(255,255,255,0.25)" : "#c4c4c4", fontStyle: "italic" }}>
+                              Нажми «AI оценить» — здесь появятся объяснения по каждой позиции
+                            </span>
+                          </span>
                         ) : (
-                          <>
-                            Насколько трудно выполнить физически.<br />
-                            <span style={{ color: "#10b981" }}>1–3</span> = просто (профиль, полотно ПВХ)&nbsp;
-                            <span style={{ color: "#f59e0b" }}>4–6</span> = средне (ниши, парящий)&nbsp;
-                            <span style={{ color: "#ef4444" }}>7–10</span> = сложно (многоуровневый, высота)
-                          </>
+                          <span style={{ color: isDark ? "rgba(255,255,255,0.2)" : "#c4c4c4", fontStyle: "italic" }}>
+                            наведи на позицию — увидишь объяснение AI
+                          </span>
                         )}
                       </div>
                     </div>
