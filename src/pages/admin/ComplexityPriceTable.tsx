@@ -39,13 +39,17 @@ export default function ComplexityPriceTable({
 }: Props) {
   const border2 = isDark ? "rgba(255,255,255,0.05)" : "#f3f4f6";
   const [hoveredId, setHoveredId] = useState<number | null>(null);
+  // lastId — запоминаем последнюю наведённую позицию, не сбрасываем при уходе мыши
+  const [lastId, setLastId] = useState<number | null>(null);
 
-  // Ищем данные по hoveredId — перебираем все ключи т.к. могут быть числовыми или строковыми
-  const hoveredItem = hoveredId !== null
-    ? Object.values(complexityItems).find(i => i.priceId === hoveredId) || null
+  const activeId = hoveredId ?? lastId;
+
+  // Ищем данные по activeId — перебираем все ключи т.к. могут быть числовыми или строковыми
+  const hoveredItem = activeId !== null
+    ? Object.values(complexityItems).find(i => i.priceId === activeId) || null
     : null;
-  const hoveredPrice = hoveredId !== null
-    ? prices.find(p => p.id === hoveredId) || null
+  const hoveredPrice = activeId !== null
+    ? prices.find(p => p.id === activeId) || null
     : null;
 
   const getItem = (id: number): ComplexityItem =>
@@ -241,7 +245,7 @@ export default function ComplexityPriceTable({
                             borderBottom: `1px solid ${border2}`,
                             background: isHovered ? (isDark ? "rgba(139,92,246,0.06)" : "rgba(139,92,246,0.03)") : "transparent",
                           }}
-                          onMouseOver={() => setHoveredId(price.id)}
+                          onMouseOver={() => { setHoveredId(price.id); setLastId(price.id); }}
                         >
                           {/* Название */}
                           <div className="px-4 py-3 flex items-center gap-2 text-xs" style={{ width: 160, flexShrink: 0 }}>
@@ -320,6 +324,11 @@ export default function ComplexityPriceTable({
                       <p className="text-[11px] font-bold leading-snug" style={{ color: isDark ? "rgba(255,255,255,0.8)" : "#111" }}>
                         {hoveredPrice.name}
                       </p>
+                      {hoveredId === null && lastId !== null && (
+                        <p className="text-[9px] mt-0.5" style={{ color: isDark ? "rgba(255,255,255,0.25)" : "#c4c4c4" }}>
+                          последняя просмотренная
+                        </p>
+                      )}
                     </div>
                     {/* Сложность */}
                     <div>
