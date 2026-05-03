@@ -490,7 +490,6 @@ export default function AdminPanel() {
           {(() => {
             const visibleTabs = [
               ...AGENT_TABS.filter(t => agentPerms[t.id as keyof typeof agentPerms]?.view ?? true),
-              ...(user?.is_master ? [{ id: "default-rules" as AgentSubTab, label: "Дефолты по ролям", icon: "ShieldCheck" }] : []),
             ];
             const activeAgentTab = visibleTabs.find(t => t.id === agentTab) ?? visibleTabs[0];
             return (
