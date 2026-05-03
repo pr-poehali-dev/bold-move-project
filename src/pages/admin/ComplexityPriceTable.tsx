@@ -328,9 +328,18 @@ export default function ComplexityPriceTable({
                           {hoveredItem?.ai_complexity ?? hoveredItem?.complexity ?? getItem(hoveredPrice.id).complexity}/10
                         </span>
                       </div>
-                      <p className="text-[11px] leading-relaxed" style={{ color: isDark ? "rgba(255,255,255,0.55)" : "#6b7280" }}>
-                        {hoveredItem?.reason?.trim() || "AI анализирует..."}
-                      </p>
+                      {hoveredItem?.reason?.trim() ? (
+                        <p className="text-[11px] leading-relaxed" style={{ color: isDark ? "rgba(255,255,255,0.55)" : "#6b7280" }}>
+                          {hoveredItem.reason}
+                        </p>
+                      ) : (
+                        <div className="flex items-center gap-1.5">
+                          <div className="w-2.5 h-2.5 rounded-full border-2 border-violet-400/30 border-t-violet-400 animate-spin flex-shrink-0" />
+                          <span className="text-[10px]" style={{ color: isDark ? "rgba(255,255,255,0.2)" : "#c4c4c4" }}>
+                            AI готовит объяснение...
+                          </span>
+                        </div>
+                      )}
                     </div>
                     {/* Влияние */}
                     <div>
@@ -340,9 +349,18 @@ export default function ComplexityPriceTable({
                           {hoveredItem?.ai_weight ?? hoveredItem?.weight ?? getItem(hoveredPrice.id).weight}/10
                         </span>
                       </div>
-                      <p className="text-[11px] leading-relaxed" style={{ color: isDark ? "rgba(255,255,255,0.55)" : "#6b7280" }}>
-                        {hoveredItem?.weight_reason?.trim() || "AI анализирует..."}
-                      </p>
+                      {hoveredItem?.weight_reason?.trim() ? (
+                        <p className="text-[11px] leading-relaxed" style={{ color: isDark ? "rgba(255,255,255,0.55)" : "#6b7280" }}>
+                          {hoveredItem.weight_reason}
+                        </p>
+                      ) : (
+                        <div className="flex items-center gap-1.5">
+                          <div className="w-2.5 h-2.5 rounded-full border-2 border-violet-400/30 border-t-violet-400 animate-spin flex-shrink-0" />
+                          <span className="text-[10px]" style={{ color: isDark ? "rgba(255,255,255,0.2)" : "#c4c4c4" }}>
+                            AI готовит объяснение...
+                          </span>
+                        </div>
+                      )}
                     </div>
                   </div>
                 ) : (
