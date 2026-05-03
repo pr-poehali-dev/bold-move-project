@@ -168,7 +168,9 @@ export default function DiscountRiskComplexity({ isDark, theme, readOnly }: Prop
   }, [prices]);
 
   const getItem = (id: number): ComplexityItem =>
-    complexityItems[id] || { priceId: id, complexity: 5, weight: 5 };
+    complexityItems[id]
+    || Object.values(complexityItems).find(i => i.priceId === id)
+    || { priceId: id, complexity: 5, weight: 5 };
 
   const updateItem = (id: number, patch: Partial<ComplexityItem>) => {
     setComplexityItems(prev => {
