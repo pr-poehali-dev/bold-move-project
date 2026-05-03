@@ -154,7 +154,7 @@ export function DrawerColumns(props: ColumnsProps) {
     <div className="flex flex-col gap-3">
 
       {/* Двухколоночная сетка — выровненные блоки */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 items-start">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 items-stretch">
         {/* Левый столбец */}
         <div className="flex flex-col gap-3 min-w-0">
           {col0Narrow.map(b => (
@@ -162,14 +162,25 @@ export function DrawerColumns(props: ColumnsProps) {
               {renderColBlock(b)}
             </DraggableBlock>
           ))}
-          {dropOverCol === 0 && (
-            <div className="rounded-xl flex items-center justify-center py-3"
-              style={{ border: `2px dashed #7c3aed80`, background: "#7c3aed08" }}
-              {...makeColDropZone(0)}>
+          {/* Растягивающаяся зона — занимает оставшееся место и кликабельна для добавления блока */}
+          <div
+            className="flex-1 rounded-xl flex flex-col items-center justify-center gap-1.5 cursor-pointer transition-all"
+            style={{
+              minHeight: 48,
+              border: `2px dashed ${dropOverCol === 0 ? "#7c3aed80" : "transparent"}`,
+              background: dropOverCol === 0 ? "#7c3aed08" : "transparent",
+            }}
+            onClick={() => onAddBlock(0)}
+            {...makeColDropZone(0)}
+          >
+            {dropOverCol === 0 ? (
               <span className="text-xs text-violet-400">Перетащи сюда</span>
-            </div>
-          )}
-          {dropOverCol !== 0 && <div style={{ height: 0 }} {...makeColDropZone(0)} />}
+            ) : (
+              <span className="text-[11px] opacity-0 hover:opacity-100 transition-opacity" style={{ color: "#a3a3a3" }}>
+                + Блок в левую
+              </span>
+            )}
+          </div>
         </div>
 
         {/* Правый столбец */}
