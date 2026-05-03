@@ -95,8 +95,10 @@ export function DrawerIncomeBlock({
     incomeRows.forEach(row => {
       const e = r[row.key];
       if (!e || !e.enabled || !e.pct) return;
+      // contract_sum — база расчёта, не перезаписываем чтобы избежать цикла
+      if (row.key === "contract_sum") return;
       const val = Math.round(sum * e.pct / 100);
-      if (row.key === "contract_sum" || row.key === "prepayment" || row.key === "extra_payment") {
+      if (row.key === "prepayment" || row.key === "extra_payment") {
         (patch as Record<string, unknown>)[row.key] = val;
       } else {
         localStorage.setItem(`fin_row_${data.id}_${row.key}`, String(val));
@@ -131,12 +133,14 @@ export function DrawerIncomeBlock({
         const e = r[row.key];
         return e && e.enabled && e.pct != null && e.pct > 0;
       });
-      const targetRowsEmpty = rowsWithRules.every(row => {
-        if (row.key === "contract_sum" || row.key === "prepayment" || row.key === "extra_payment") {
-          return !data[row.key as keyof Client];
-        }
-        return !localStorage.getItem(`fin_row_${data.id}_${row.key}`);
-      });
+      const targetRowsEmpty = rowsWithRules
+        .filter(row => row.key !== "contract_sum")
+        .every(row => {
+          if (row.key === "prepayment" || row.key === "extra_payment") {
+            return !data[row.key as keyof Client];
+          }
+          return !localStorage.getItem(`fin_row_${data.id}_${row.key}`);
+        });
       if (rowsWithRules.length > 0 && targetRowsEmpty) applyIncomeAutoWithSum(contractSum);
     } else if (sumChanged) {
       applyIncomeAutoWithSum(contractSum);
