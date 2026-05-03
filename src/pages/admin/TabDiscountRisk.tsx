@@ -28,7 +28,7 @@ export default function TabDiscountRisk({ isDark = true, readOnly = false }: Pro
   const theme = getTheme(isDark);
 
   return (
-    <div className="space-y-5 max-w-2xl">
+    <div className="space-y-5">
       <DiscountRiskScale s={s} isDark={isDark} theme={theme} />
       <DiscountRiskThresholds s={s} isDark={isDark} theme={theme} readOnly={readOnly} update={update} />
       <DiscountRiskComplexity isDark={isDark} theme={theme} readOnly={readOnly} />
