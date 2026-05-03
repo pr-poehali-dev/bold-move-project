@@ -45,7 +45,12 @@ export default function TabDefaultAutoRules({ isDark = true }: Props) {
     setLocalRules(prev => ({ ...prev, [role]: rules }));
 
   const currentRules = getRules(activeRole);
+  // Показываем все правила вкладки (visible=false показываем с пометкой "скрыто")
   const tabRules     = currentRules.filter(r => r.row_type === activeTab);
+
+  // Счётчик только по текущей вкладке
+  const enabledCount = tabRules.filter(r => r.enabled).length;
+  const totalCount   = tabRules.length;
 
   const accentColor = activeTab === "cost" ? "#ef4444" : "#10b981";
 
@@ -129,7 +134,7 @@ export default function TabDefaultAutoRules({ isDark = true }: Props) {
         <div>
           <div className="text-sm font-bold" style={{ color: activeRoleMeta.color }}>{activeRoleMeta.label}</div>
           <div className="text-xs" style={{ color: muted }}>
-            {currentRules.filter(r => r.enabled).length} правил включено из {currentRules.length}
+            {enabledCount} из {totalCount} {activeTab === "cost" ? "расходов" : "доходов"} включено
           </div>
         </div>
       </div>
