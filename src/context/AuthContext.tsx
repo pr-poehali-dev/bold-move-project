@@ -98,9 +98,11 @@ const COMPAT: Partial<Record<keyof Permissions, keyof Permissions>> = {
 export function hasPermission(user: AuthUser | null, key: keyof Permissions): boolean {
   if (!user) return false;
   if (user.is_master) return true;
+  // Владелец компании и установщик — полный доступ (у них нет матрицы прав)
   if (user.role === "company" || user.role === "installer") return true;
-  if (!user.permissions) return true;
-  // Проверяем новый ключ
+  // Менеджер без выданных прав — нет доступа ни к чему
+  if (!user.permissions) return false;
+  // Проверяем конкретный ключ
   if (user.permissions[key] === true) return true;
   // Обратная совместимость: новый ключ → старый
   const compat = COMPAT[key];
