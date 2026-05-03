@@ -89,13 +89,7 @@ export default function ComplexityPriceTable({
         )}
 
         {prices.length > 0 && (
-          <>
-            <span className="text-[10px] px-2.5 py-1 rounded-full font-semibold"
-              style={{ background: "rgba(139,92,246,0.12)", color: "#a78bfa", border: "1px solid rgba(139,92,246,0.2)" }}>
-              ср. {avgScore}/10
-            </span>
-            <span className={`text-[10px] ${theme.sub}`}>{prices.length} позиций</span>
-          </>
+          <span className={`text-[10px] ${theme.sub}`}>{prices.length} позиций</span>
         )}
       </div>
 
@@ -140,7 +134,7 @@ export default function ComplexityPriceTable({
 
       {/* Фильтр категорий */}
       {categories.length > 1 && (
-        <div className="px-4 pt-2 pb-2 flex flex-wrap gap-1.5" style={{ borderBottom: `1px solid ${border2}` }}>
+        <div className="px-4 pt-2 pb-2 flex gap-1.5 overflow-x-auto" style={{ borderBottom: `1px solid ${border2}` }}>
           <button onClick={() => setCategoryFilter("all")}
             className="px-2.5 py-1 rounded-lg text-[10px] font-semibold transition"
             style={{
