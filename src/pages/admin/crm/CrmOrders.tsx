@@ -21,6 +21,7 @@ interface Props {
   onClientRemoved: (id: number) => void;
   onReload: () => void;
   initialOrderId?: number | null;
+  onDrawerClose?: () => void;
   canEdit?:          boolean;
   canOrdersEdit?:    boolean;
   canFinance?:       boolean;
@@ -35,7 +36,7 @@ interface Props {
   onSubstatusesChange?: (list: Substatus[]) => void;
 }
 
-export default function CrmOrders({ clients: allClients, loading, onStatusChange, onClientRemoved, onReload, initialOrderId, canEdit = true, canOrdersEdit = true, canFinance = true, canFiles = true, canFieldContacts = true, canFieldAddress = true, canFieldDates = true, canFieldFinance = true, canFieldFiles = true, canFieldCancel = true, substatuses = [], onSubstatusesChange = () => {} }: Props) {
+export default function CrmOrders({ clients: allClients, loading, onStatusChange, onClientRemoved, onReload, initialOrderId, onDrawerClose, canEdit = true, canOrdersEdit = true, canFinance = true, canFiles = true, canFieldContacts = true, canFieldAddress = true, canFieldDates = true, canFieldFinance = true, canFieldFiles = true, canFieldCancel = true, substatuses = [], onSubstatusesChange = () => {} }: Props) {
   const t = useTheme();
   const [search, setSearch]       = useState("");
   const [activeTab, setActiveTab] = useState("leads");
@@ -177,7 +178,7 @@ export default function CrmOrders({ clients: allClients, loading, onStatusChange
           defaultTab="orders"
           defaultOrderId={selected.id}
           allClientOrders={getClientOrders(selected, allClients)}
-          onClose={() => setSelected(null)}
+          onClose={() => { setSelected(null); onDrawerClose?.(); }}
           onUpdated={() => { onReload(); }}
           onDeleted={() => { setSelected(null); onClientRemoved(selected.id); }}
           canEdit={canEdit}

@@ -213,6 +213,7 @@ export default function CrmPanel({ theme, initialOrderId }: { theme: Theme; init
                 onClientRemoved={removeClient}
                 onReload={loadClients}
                 initialOrderId={calendarOpenId ?? initialOrderId}
+                onDrawerClose={calendarOpenId ? handleBackToCalendar : undefined}
                 canEdit={canClientsEdit}
                 canOrdersEdit={canOrdersEdit}
                 canFinance={canFinance}
