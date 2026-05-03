@@ -1,3 +1,4 @@
+import { useState } from "react";
 import Icon from "@/components/ui/icon";
 import { ComplexityPrompts, ThemeClasses, DEFAULT_COMPLEXITY_PROMPTS, DEFAULT_FORMULA } from "./discountRiskTypes";
 
@@ -22,6 +23,14 @@ export default function ComplexityAiPrompts({
   activePromptTab, setActivePromptTab,
   savedPrompts, onSavePrompts,
 }: Props) {
+  const [improved, setImproved] = useState(false);
+
+  const handleImprove = () => {
+    setComplexityPrompts(DEFAULT_COMPLEXITY_PROMPTS);
+    setImproved(true);
+    setTimeout(() => setImproved(false), 2500);
+  };
+
   return (
     <div className={`rounded-2xl p-4 space-y-3 ${theme.bg} border ${theme.border}`}>
 
@@ -96,11 +105,11 @@ export default function ComplexityAiPrompts({
             <Icon name={savedPrompts ? "Check" : "Save"} size={12} />
             {savedPrompts ? "Сохранено" : "Сохранить промпты и формулу"}
           </button>
-          <button onClick={() => setComplexityPrompts(DEFAULT_COMPLEXITY_PROMPTS)}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-bold transition hover:opacity-80 ${theme.sub}`}
-            style={{ background: isDark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.04)", border: `1px solid ${isDark ? "rgba(255,255,255,0.08)" : "#e5e7eb"}` }}>
-            <Icon name="RotateCcw" size={12} />
-            Сбросить промпты
+          <button onClick={handleImprove}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-bold transition hover:opacity-80"
+            style={{ background: improved ? "rgba(16,185,129,0.12)" : "rgba(245,158,11,0.12)", color: improved ? "#10b981" : "#f59e0b", border: `1px solid ${improved ? "rgba(16,185,129,0.3)" : "rgba(245,158,11,0.3)"}` }}>
+            <Icon name={improved ? "CheckCircle2" : "Wand2"} size={12} />
+            {improved ? "Промпты улучшены!" : "Улучшить промпты"}
           </button>
         </div>
       )}
