@@ -175,22 +175,52 @@ export default function DiscountRiskComplexity({ isDark, theme, readOnly }: Prop
 
             {/* Таблица */}
             <div className="overflow-x-auto">
-              <table className="w-full text-xs" style={{ minWidth: 700 }}>
+              <table className="w-full text-xs" style={{ minWidth: 640 }}>
                 <thead>
                   <tr style={{
                     background: isDark ? "rgba(255,255,255,0.03)" : "#f9fafb",
                     borderBottom: `1px solid ${isDark ? "rgba(255,255,255,0.07)" : "#e5e7eb"}`,
                   }}>
-                    <th className={`text-left px-4 py-2.5 font-semibold ${theme.sub}`} style={{ minWidth: 150 }}>Название</th>
-                    <th className={`text-right px-3 py-2.5 font-semibold ${theme.sub}`} style={{ width: 72 }}>Продажа</th>
-                    <th className={`text-center px-2 py-2.5 font-semibold ${theme.sub}`} style={{ width: 36 }}>Ед.</th>
-                    <th className="text-left px-4 py-2.5 font-semibold" style={{ color: "#f59e0b", width: "30%" }}>
-                      Сложность <span className={`font-normal ${theme.sub}`}>1–10</span>
+                    {/* Название */}
+                    <th className="text-left px-4 py-0" style={{ minWidth: 160, verticalAlign: "top" }}>
+                      <div className="py-2.5">
+                        <div className={`font-semibold ${theme.sub}`}>Название</div>
+                      </div>
                     </th>
-                    <th className="text-left px-4 py-2.5 font-semibold" style={{ color: "#8b5cf6", width: "30%" }}>
-                      Вес <span className={`font-normal ${theme.sub}`}>1–10</span>
+
+                    {/* Сложность */}
+                    <th className="text-left px-4 py-0" style={{ width: "35%", verticalAlign: "top" }}>
+                      <div className="py-2.5">
+                        <div className="font-bold" style={{ color: "#f59e0b" }}>
+                          Сложность монтажа <span className="font-normal text-[10px]">1–10</span>
+                        </div>
+                        <div className="text-[9px] font-normal mt-0.5" style={{ color: isDark ? "rgba(255,255,255,0.3)" : "#9ca3af" }}>
+                          Насколько трудно выполнить — 1 просто, 10 очень сложно
+                        </div>
+                      </div>
                     </th>
-                    <th className="text-center px-3 py-2.5 font-semibold" style={{ color: "#a78bfa", width: 64 }}>Итог</th>
+
+                    {/* Вес */}
+                    <th className="text-left px-4 py-0" style={{ width: "35%", verticalAlign: "top" }}>
+                      <div className="py-2.5">
+                        <div className="font-bold" style={{ color: "#8b5cf6" }}>
+                          Влияние на скидку <span className="font-normal text-[10px]">1–10</span>
+                        </div>
+                        <div className="text-[9px] font-normal mt-0.5" style={{ color: isDark ? "rgba(255,255,255,0.3)" : "#9ca3af" }}>
+                          Насколько эта позиция влияет на итоговый риск скидки
+                        </div>
+                      </div>
+                    </th>
+
+                    {/* Итог */}
+                    <th className="text-center px-4 py-0" style={{ width: 100, verticalAlign: "top" }}>
+                      <div className="py-2.5">
+                        <div className="font-bold" style={{ color: "#a78bfa" }}>Итог</div>
+                        <div className="text-[9px] font-normal mt-0.5 font-mono" style={{ color: isDark ? "rgba(255,255,255,0.3)" : "#9ca3af" }}>
+                          сл × вес / 10
+                        </div>
+                      </div>
+                    </th>
                   </tr>
                 </thead>
 
@@ -202,7 +232,7 @@ export default function DiscountRiskComplexity({ isDark, theme, readOnly }: Prop
                   return (
                     <tbody key={cat}>
                       <tr style={{ background: isDark ? "rgba(139,92,246,0.06)" : "rgba(139,92,246,0.04)" }}>
-                        <td colSpan={6} className="px-4 py-1.5">
+                        <td colSpan={4} className="px-4 py-1.5">
                           <div className="flex items-center gap-2">
                             <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: "#a78bfa" }}>{cat}</span>
                             <span className="text-[9px] px-1.5 py-0.5 rounded-full"
@@ -219,21 +249,17 @@ export default function DiscountRiskComplexity({ isDark, theme, readOnly }: Prop
                         const scoreBg    = score <= 3 ? "rgba(16,185,129,0.12)" : score <= 6 ? "rgba(245,158,11,0.12)" : "rgba(239,68,68,0.12)";
                         return (
                           <tr key={price.id} style={{ borderTop: `1px solid ${border2}` }} className="transition hover:bg-white/[0.015]">
-                            <td className="px-4 py-2.5">
+
+                            {/* Название */}
+                            <td className="px-4 py-3">
                               <div className="flex items-center gap-2">
-                                <div className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: scoreColor }} />
+                                <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: scoreColor }} />
                                 <span className={`font-medium ${theme.text} leading-snug`}>{price.name}</span>
                               </div>
                             </td>
-                            <td className="px-3 py-2.5 text-right">
-                              <span className="font-semibold" style={{ color: "#10b981" }}>
-                                {price.price != null ? price.price.toLocaleString("ru-RU") : <span className={theme.sub}>—</span>}
-                              </span>
-                            </td>
-                            <td className="px-2 py-2.5 text-center">
-                              <span className={`text-[10px] ${theme.sub}`}>{price.unit || "—"}</span>
-                            </td>
-                            <td className="px-4 py-2.5">
+
+                            {/* Слайдер Сложность */}
+                            <td className="px-4 py-3">
                               <div className="flex items-center gap-3">
                                 <input type="range" min={1} max={10} step={1}
                                   value={item.complexity} disabled={readOnly}
@@ -244,7 +270,9 @@ export default function DiscountRiskComplexity({ isDark, theme, readOnly }: Prop
                                 </span>
                               </div>
                             </td>
-                            <td className="px-4 py-2.5">
+
+                            {/* Слайдер Вес */}
+                            <td className="px-4 py-3">
                               <div className="flex items-center gap-3">
                                 <input type="range" min={1} max={10} step={1}
                                   value={item.weight} disabled={readOnly}
@@ -255,11 +283,19 @@ export default function DiscountRiskComplexity({ isDark, theme, readOnly }: Prop
                                 </span>
                               </div>
                             </td>
-                            <td className="px-3 py-2.5 text-center">
-                              <span className="text-xs font-black px-2 py-0.5 rounded-md"
-                                style={{ color: scoreColor, background: scoreBg }}>
-                                {score}
-                              </span>
+
+                            {/* Итог = сл × вес / 10 */}
+                            <td className="px-4 py-3 text-center">
+                              <div className="flex flex-col items-center gap-0.5">
+                                <span className="text-sm font-black"
+                                  style={{ color: scoreColor }}>
+                                  {score}
+                                </span>
+                                <span className="text-[8px] font-mono"
+                                  style={{ color: isDark ? "rgba(255,255,255,0.2)" : "#d1d5db" }}>
+                                  {item.complexity}×{item.weight}/10
+                                </span>
+                              </div>
                             </td>
                           </tr>
                         );
@@ -273,12 +309,12 @@ export default function DiscountRiskComplexity({ isDark, theme, readOnly }: Prop
                     borderTop: `2px solid ${isDark ? "rgba(139,92,246,0.2)" : "rgba(139,92,246,0.15)"}`,
                     background: isDark ? "rgba(139,92,246,0.05)" : "rgba(139,92,246,0.03)",
                   }}>
-                    <td colSpan={5} className="px-4 py-2.5">
+                    <td colSpan={3} className="px-4 py-2.5">
                       <span className="text-[11px] font-bold" style={{ color: "#a78bfa" }}>Суммарный удельный вес</span>
                       <span className={`text-[10px] ml-2 ${theme.sub}`}>({filteredPrices.length} позиций)</span>
                     </td>
-                    <td className="px-3 py-2.5 text-center">
-                      <span className="text-sm font-black" style={{ color: "#a78bfa" }}>{totalWeightedScore}</span>
+                    <td className="px-4 py-2.5 text-center">
+                      <span className="text-base font-black" style={{ color: "#a78bfa" }}>{totalWeightedScore}</span>
                     </td>
                   </tr>
                 </tfoot>
