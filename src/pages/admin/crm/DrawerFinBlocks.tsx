@@ -45,7 +45,9 @@ export function DrawerIncomeBlock({
   const id: BlockId = "income";
   const isHidden = hiddenBlocks.has(id);
   const incomeEdit = editingBlock === id;
-  const [labels, setLabels] = useState<Record<string, string>>(loadFinLabels);
+  const [labels,     setLabels]     = useState<Record<string, string>>(loadFinLabels);
+  const [showRules,  setShowRules]  = useState(false);
+  const [autoFilled, setAutoFilled] = useState(false);
 
   const getLabel = (key: string, def: string) => labels[key] || def;
   const renameLabel = (key: string, label: string) => {
@@ -53,56 +55,189 @@ export function DrawerIncomeBlock({
     saveFinLabel(key, label);
   };
 
-  // Читаем правила доходов — чтобы скрыть строки у которых visible=false
-  const incomeRules = loadIncomeRules();
+  // Строки доходов для модалки
+  const BUILTIN_INCOME_DEFS: Record<string, string> = {
+    contract_sum:  "Сумма договора",
+    prepayment:    "Предоплата",
+    extra_payment: "Доплата",
+  };
+  const incomeRows: CostRowDef[] = [
+    ...(["contract_sum", "prepayment", "extra_payment"] as const)
+      .filter(key => rowVisibility[key] !== false)
+      .map(key => ({ key, label: getLabel(key, BUILTIN_INCOME_DEFS[key]) })),
+    ...customFinRows
+      .filter(r => r.block === "income" && rowVisibility[r.key] !== false)
+      .map(r => ({ key: r.key, label: r.label })),
+  ];
+
+  const contractSum = Number(data.contract_sum) || 0;
+  const incomeRulesMap = loadIncomeRules();
+
+  // Видимость строки по полю visible из правил
   const isIncomeVisible = (key: string) => {
-    const e = incomeRules[key];
-    // Если правило есть и visible явно выключен — скрываем; иначе показываем
+    const e = incomeRulesMap[key];
     return !e || e.visible !== false;
   };
 
+  // Есть ли включённые правила доходов
+  const hasIncomeRules = incomeRows.some(row => {
+    const e = incomeRulesMap[row.key];
+    return e && e.enabled && e.pct != null && e.pct > 0;
+  });
+
+  // Применить авто-расчёт доходов
+  const applyIncomeAutoWithSum = (sum: number) => {
+    if (!sum) return;
+    const r = loadIncomeRules();
+    const patch: Partial<Client> = {};
+    let hasCustom = false;
+
+    incomeRows.forEach(row => {
+      const e = r[row.key];
+      if (!e || !e.enabled || !e.pct) return;
+      const val = Math.round(sum * e.pct / 100);
+      if (row.key === "contract_sum" || row.key === "prepayment" || row.key === "extra_payment") {
+        (patch as Record<string, unknown>)[row.key] = val;
+      } else {
+        localStorage.setItem(`fin_row_${data.id}_${row.key}`, String(val));
+        hasCustom = true;
+      }
+    });
+
+    if (Object.keys(patch).length > 0) {
+      saveWithLog(patch, "Авто-расчёт доходов по правилу", "Zap", "#10b981");
+    } else if (hasCustom) {
+      logAction("Zap", "#10b981", "Авто-расчёт доходов по правилу");
+    }
+    if (Object.keys(patch).length > 0 || hasCustom) setAutoFilled(true);
+  };
+
+  const applyIncomeAuto = () => applyIncomeAutoWithSum(contractSum);
+
+  // Авто-применение при изменении суммы
+  const prevSumRef = useRef<number>(-1);
+  useEffect(() => {
+    if (!contractSum || !hasIncomeRules || !loadAutoMode()) {
+      prevSumRef.current = contractSum;
+      return;
+    }
+    const isFirstRender = prevSumRef.current === -1;
+    const sumChanged = contractSum !== prevSumRef.current;
+    prevSumRef.current = contractSum;
+
+    if (isFirstRender) {
+      const r = loadIncomeRules();
+      const rowsWithRules = incomeRows.filter(row => {
+        const e = r[row.key];
+        return e && e.enabled && e.pct != null && e.pct > 0;
+      });
+      const targetRowsEmpty = rowsWithRules.every(row => {
+        if (row.key === "contract_sum" || row.key === "prepayment" || row.key === "extra_payment") {
+          return !data[row.key as keyof Client];
+        }
+        return !localStorage.getItem(`fin_row_${data.id}_${row.key}`);
+      });
+      if (rowsWithRules.length > 0 && targetRowsEmpty) applyIncomeAutoWithSum(contractSum);
+    } else if (sumChanged) {
+      applyIncomeAutoWithSum(contractSum);
+    }
+  }, [data.id, contractSum]); // eslint-disable-line react-hooks/exhaustive-deps
+
   return (
-    <Section icon="Banknote" title="Доходы" color="#10b981"
-      hidden={isHidden}
-      onToggleHidden={() => toggleHidden(id)}
-      onEdit={!isHidden ? () => setEditingBlock(incomeEdit ? null : id) : undefined}>
+    <>
+      {showRules && <AutoRulesModal onClose={() => setShowRules(false)} costRows={incomeRows} defaultTab="income" />}
 
-      {(["contract_sum", "prepayment", "extra_payment"] as const)
-        .filter(key => rowVisibility[key] !== false && isIncomeVisible(key))
-        .map(key => {
-          const defs: Record<string, { def: string; save: (v: string) => void }> = {
-            contract_sum:  { def: "Сумма договора", save: v => saveWithLog({ contract_sum:  +v || null } as Partial<Client>, `Договор: ${(+v).toLocaleString("ru-RU")} ₽`,   "FileText", "#10b981") },
-            prepayment:    { def: "Предоплата",     save: v => saveWithLog({ prepayment:    +v || null } as Partial<Client>, `Предоплата: +${(+v).toLocaleString("ru-RU")} ₽`, "Wallet",   "#10b981") },
-            extra_payment: { def: "Доплата",        save: v => saveWithLog({ extra_payment: +v || null } as Partial<Client>, `Доплата: +${(+v).toLocaleString("ru-RU")} ₽`,   "Wallet",   "#10b981") },
-          };
-          return (
-            <RowWithToggle key={key} rowKey={key} visible onToggle={() => {}} editMode={incomeEdit}
-              editableLabel={getLabel(key, defs[key].def)} onLabelChange={l => renameLabel(key, l)}
-              onDelete={() => toggleRowVisibility(key)}>
-              <InlineField label={getLabel(key, defs[key].def)} value={data[key]} onSave={defs[key].save} type="number" placeholder="—" />
-            </RowWithToggle>
-          );
-        })}
+      <Section icon="Banknote" title="Доходы" color="#10b981"
+        hidden={isHidden}
+        onToggleHidden={() => toggleHidden(id)}
+        onEdit={!isHidden ? () => setEditingBlock(incomeEdit ? null : id) : undefined}>
 
-      {customFinRows
-        .filter(r => r.block === "income" && rowVisibility[r.key] !== false && isIncomeVisible(r.key))
-        .map(r => {
-          const lsKey = `fin_row_${data.id}_${r.key}`;
-          const val = localStorage.getItem(lsKey) || "";
-          return (
-            <RowWithToggle key={r.key} rowKey={r.key} visible onToggle={() => {}} editMode={incomeEdit}
-              editableLabel={r.label} onLabelChange={label => updateCustomFinRow(r.key, label)}
-              onDelete={() => { deleteCustomFinRow(r.key); }}>
-              <InlineField label={r.label} value={val} type="number" placeholder="—"
-                onSave={v => { localStorage.setItem(lsKey, v); logAction("Plus", "#10b981", `${r.label}: ${(+v).toLocaleString("ru-RU")} ₽`); }} />
-            </RowWithToggle>
-          );
-        })}
+        {/* Кнопки авто-расчёта доходов */}
+        {!isHidden && (
+          <div className="flex items-center gap-1.5 pt-2 pb-1 w-full">
+            <button
+              onClick={applyIncomeAuto}
+              disabled={!hasIncomeRules || !contractSum}
+              title={!contractSum ? "Сначала укажите сумму договора" : !hasIncomeRules ? "Настройте правило (шестерёнка)" : "Авто-расчёт по правилу"}
+              className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold transition disabled:opacity-30"
+              style={{ background: "#10b98115", color: "#10b981", border: "1px solid #10b98130" }}>
+              <Icon name="Zap" size={11} />
+              Авто
+            </button>
+            <button
+              onClick={() => setShowRules(true)}
+              title="Настроить правила авто-расчёта доходов"
+              className="p-1 rounded-lg transition hover:bg-white/5"
+              style={{ color: "#6b7280" }}>
+              <Icon name="Settings2" size={13} />
+            </button>
+            {!hasIncomeRules && (
+              <span className="text-[10px]" style={{ color: "#6b7280" }}>Настройте правило →</span>
+            )}
+            {hasIncomeRules && loadAutoMode() && (
+              <div className="flex items-center gap-1 px-2 py-0.5 rounded-full ml-auto"
+                style={{ background: "#10b98118", border: "1px solid #10b98135" }}
+                title="Авто-режим включён — доходы пересчитываются при изменении суммы">
+                <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: "#10b981" }} />
+                <span className="text-[10px] font-medium" style={{ color: "#10b981" }}>авто</span>
+              </div>
+            )}
+          </div>
+        )}
 
-      <AddFinRowInline block="income" onAdd={addCustomFinRow}
-        forceOpen={incomeEdit}
-        onClose={() => setEditingBlock(null)} />
-    </Section>
+        {/* Предупреждение об авто-заполнении */}
+        {autoFilled && !isHidden && (
+          <div className="flex items-start gap-2 rounded-lg px-2.5 py-2 mb-1"
+            style={{ background: "#10b98112", border: "1px solid #10b98130" }}>
+            <Icon name="Zap" size={12} style={{ color: "#10b981", flexShrink: 0, marginTop: 1 }} />
+            <div className="flex-1">
+              <span className="text-[11px] leading-relaxed" style={{ color: "#6ee7b7" }}>
+                Доходы заполнены автоматически по правилу. Можно изменить вручную.
+              </span>
+            </div>
+            <button onClick={() => setAutoFilled(false)} style={{ color: "#10b98160" }}>
+              <Icon name="X" size={11} />
+            </button>
+          </div>
+        )}
+
+        {(["contract_sum", "prepayment", "extra_payment"] as const)
+          .filter(key => rowVisibility[key] !== false && isIncomeVisible(key))
+          .map(key => {
+            const defs: Record<string, { def: string; save: (v: string) => void }> = {
+              contract_sum:  { def: "Сумма договора", save: v => saveWithLog({ contract_sum:  +v || null } as Partial<Client>, `Договор: ${(+v).toLocaleString("ru-RU")} ₽`,   "FileText", "#10b981") },
+              prepayment:    { def: "Предоплата",     save: v => saveWithLog({ prepayment:    +v || null } as Partial<Client>, `Предоплата: +${(+v).toLocaleString("ru-RU")} ₽`, "Wallet",   "#10b981") },
+              extra_payment: { def: "Доплата",        save: v => saveWithLog({ extra_payment: +v || null } as Partial<Client>, `Доплата: +${(+v).toLocaleString("ru-RU")} ₽`,   "Wallet",   "#10b981") },
+            };
+            return (
+              <RowWithToggle key={key} rowKey={key} visible onToggle={() => {}} editMode={incomeEdit}
+                editableLabel={getLabel(key, defs[key].def)} onLabelChange={l => renameLabel(key, l)}
+                onDelete={() => toggleRowVisibility(key)}>
+                <InlineField label={getLabel(key, defs[key].def)} value={data[key]} onSave={defs[key].save} type="number" placeholder="—" />
+              </RowWithToggle>
+            );
+          })}
+
+        {customFinRows
+          .filter(r => r.block === "income" && rowVisibility[r.key] !== false && isIncomeVisible(r.key))
+          .map(r => {
+            const lsKey = `fin_row_${data.id}_${r.key}`;
+            const val = localStorage.getItem(lsKey) || "";
+            return (
+              <RowWithToggle key={r.key} rowKey={r.key} visible onToggle={() => {}} editMode={incomeEdit}
+                editableLabel={r.label} onLabelChange={label => updateCustomFinRow(r.key, label)}
+                onDelete={() => { deleteCustomFinRow(r.key); }}>
+                <InlineField label={r.label} value={val} type="number" placeholder="—"
+                  onSave={v => { localStorage.setItem(lsKey, v); logAction("Plus", "#10b981", `${r.label}: ${(+v).toLocaleString("ru-RU")} ₽`); }} />
+              </RowWithToggle>
+            );
+          })}
+
+        <AddFinRowInline block="income" onAdd={addCustomFinRow}
+          forceOpen={incomeEdit}
+          onClose={() => setEditingBlock(null)} />
+      </Section>
+    </>
   );
 }
 

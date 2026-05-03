@@ -75,9 +75,9 @@ function Toggle({ enabled, onChange, color = "#ef4444" }: {
 }
 
 // ── Основной модал ────────────────────────────────────────────────────────
-export function AutoRulesModal({ onClose, costRows }: { onClose: () => void; costRows: CostRowDef[] }) {
+export function AutoRulesModal({ onClose, costRows, defaultTab = "costs" }: { onClose: () => void; costRows: CostRowDef[]; defaultTab?: "costs" | "income" }) {
   const t = useTheme();
-  const [tab,       setTab]       = useState<"costs" | "income">("costs");
+  const [tab,       setTab]       = useState<"costs" | "income">(defaultTab);
   const [costRules, setCostRules] = useState<AutoRulesMap>(loadAutoRules);
   const [incRules,  setIncRules]  = useState<AutoRulesMap>(loadIncomeRules);
   const [autoMode,  setAutoMode]  = useState<boolean>(loadAutoMode);
