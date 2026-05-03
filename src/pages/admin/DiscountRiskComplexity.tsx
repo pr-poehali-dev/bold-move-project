@@ -63,12 +63,13 @@ export default function DiscountRiskComplexity({ isDark, theme, readOnly }: Prop
         }).then(r => r.json());
 
         if (res.results && Array.isArray(res.results)) {
-          res.results.forEach((item: { id: number; complexity: number; weight: number; reason?: string }) => {
+          res.results.forEach((item: { id: number; complexity: number; weight: number; reason?: string; weight_reason?: string }) => {
             newItems[item.id] = {
               priceId: item.id,
               complexity: Math.min(10, Math.max(1, Math.round(item.complexity))),
               weight: Math.min(10, Math.max(1, Math.round(item.weight))),
               reason: item.reason || "",
+              weight_reason: item.weight_reason || "",
             };
           });
         }
@@ -108,6 +109,16 @@ export default function DiscountRiskComplexity({ isDark, theme, readOnly }: Prop
   }, [prices.length]);
 
   useEffect(() => { loadPrices(); }, [loadPrices]);
+
+  // Автозапуск AI если прайс загружен, но нет объяснений
+  useEffect(() => {
+    if (prices.length === 0 || aiLoading || readOnly) return;
+    const hasReasons = Object.values(complexityItems).some(i => i.reason);
+    if (!hasReasons) {
+      runAiEvaluation();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [prices]);
 
   const getItem = (id: number): ComplexityItem =>
     complexityItems[id] || { priceId: id, complexity: 5, weight: 5 };

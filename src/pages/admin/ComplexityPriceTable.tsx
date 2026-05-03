@@ -39,7 +39,11 @@ export default function ComplexityPriceTable({
   const border2 = isDark ? "rgba(255,255,255,0.05)" : "#f3f4f6";
   const [hoveredId, setHoveredId] = useState<number | null>(null);
 
-  const hoveredReason = hoveredId !== null ? (complexityItems[hoveredId]?.reason || "") : "";
+  const hoveredItem = hoveredId !== null ? complexityItems[hoveredId] : null;
+  const hoveredReason = hoveredItem?.reason || "";
+  const hoveredWeightReason = hoveredItem?.weight_reason || "";
+  const hoveredComplexity = hoveredItem?.complexity ?? null;
+  const hoveredWeight = hoveredItem?.weight ?? null;
   const hasAnyReason = Object.values(complexityItems).some(i => i.reason);
 
   const getItem = (id: number): ComplexityItem =>
@@ -208,19 +212,18 @@ export default function ComplexityPriceTable({
                       </div>
                       <div className="text-[9px] font-normal mt-0.5 leading-relaxed" style={{ color: isDark ? "rgba(255,255,255,0.3)" : "#9ca3af", minHeight: 32 }}>
                         {hoveredReason ? (
-                          <span className="flex items-start gap-1">
+                          <span className="flex items-start gap-1.5">
                             <Icon name="Sparkles" size={9} style={{ color: "#a78bfa", marginTop: 1, flexShrink: 0 }} />
-                            <span style={{ color: isDark ? "rgba(255,255,255,0.55)" : "#6b7280", fontStyle: "italic" }}>{hoveredReason}</span>
-                          </span>
-                        ) : hoveredId && !hoveredReason && hasAnyReason ? (
-                          <span style={{ color: isDark ? "rgba(255,255,255,0.2)" : "#c4c4c4", fontStyle: "italic" }}>
-                            нет объяснения AI для этой позиции
+                            <span>
+                              <span className="font-bold mr-1" style={{ color: "#f59e0b" }}>{hoveredComplexity}/10</span>
+                              <span style={{ color: isDark ? "rgba(255,255,255,0.55)" : "#6b7280", fontStyle: "italic" }}>{hoveredReason}</span>
+                            </span>
                           </span>
                         ) : !hasAnyReason ? (
                           <span className="flex items-start gap-1">
                             <Icon name="Sparkles" size={9} style={{ color: "rgba(139,92,246,0.4)", marginTop: 1, flexShrink: 0 }} />
                             <span style={{ color: isDark ? "rgba(255,255,255,0.25)" : "#c4c4c4", fontStyle: "italic" }}>
-                              Нажми «AI оценить» — здесь появятся объяснения по каждой позиции
+                              AI анализирует позиции...
                             </span>
                           </span>
                         ) : (
@@ -236,14 +239,31 @@ export default function ComplexityPriceTable({
                       <div className="font-bold" style={{ color: "#8b5cf6" }}>
                         Влияние на скидку <span className="font-normal text-[10px]">1–10</span>
                       </div>
-                      <div className="text-[9px] font-normal mt-0.5 leading-relaxed" style={{ color: isDark ? "rgba(255,255,255,0.3)" : "#9ca3af" }}>
-                        Насколько эта позиция увеличивает риск при скидке.<br />
-                        <span style={{ color: "#10b981" }}>1–3</span> = почти не влияет (лента, разводка)&nbsp;
-                        <span style={{ color: "#f59e0b" }}>4–6</span> = умеренно (закладная, блок питания)&nbsp;
-                        <span style={{ color: "#ef4444" }}>7–10</span> = критично (сложный монтаж, высота)
+                      <div className="text-[9px] font-normal mt-0.5 leading-relaxed" style={{ color: isDark ? "rgba(255,255,255,0.3)" : "#9ca3af", minHeight: 32 }}>
+                        {hoveredWeightReason ? (
+                          <span className="flex items-start gap-1.5">
+                            <Icon name="Sparkles" size={9} style={{ color: "#a78bfa", marginTop: 1, flexShrink: 0 }} />
+                            <span>
+                              <span className="font-bold mr-1" style={{ color: "#8b5cf6" }}>{hoveredWeight}/10</span>
+                              <span style={{ color: isDark ? "rgba(255,255,255,0.55)" : "#6b7280", fontStyle: "italic" }}>{hoveredWeightReason}</span>
+                            </span>
+                          </span>
+                        ) : !hasAnyReason ? (
+                          <span className="flex items-start gap-1">
+                            <Icon name="Sparkles" size={9} style={{ color: "rgba(139,92,246,0.4)", marginTop: 1, flexShrink: 0 }} />
+                            <span style={{ color: isDark ? "rgba(255,255,255,0.25)" : "#c4c4c4", fontStyle: "italic" }}>
+                              AI анализирует позиции...
+                            </span>
+                          </span>
+                        ) : (
+                          <span style={{ color: isDark ? "rgba(255,255,255,0.2)" : "#c4c4c4", fontStyle: "italic" }}>
+                            наведи на позицию — увидишь объяснение AI
+                          </span>
+                        )}
                       </div>
                     </div>
                   </th>
+
                   <th className="text-center px-4 py-0" style={{ width: 100, verticalAlign: "top" }}>
                     <div className="py-3">
                       <div className="font-bold" style={{ color: "#a78bfa" }}>Итог</div>

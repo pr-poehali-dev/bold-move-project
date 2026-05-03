@@ -2333,10 +2333,11 @@ def handler(event: dict, context) -> dict:
             f"Оцени каждую позицию из списка по трём параметрам:\n"
             f"- complexity: сложность монтажа от 1 до 10 (1=очень просто, 10=очень сложно)\n"
             f"- weight: насколько эта позиция влияет на риск скидки от 1 до 10 (1=не влияет, 10=критически)\n"
-            f"- reason: 1 предложение на русском — почему именно такая оценка сложности\n\n"
+            f"- reason: 1 предложение на русском — почему именно такая оценка сложности монтажа\n"
+            f"- weight_reason: 1 предложение на русском — почему именно такое влияние на риск скидки\n\n"
             f"Позиции:\n{names_list}\n\n"
             f"Ответь строго JSON массивом без markdown, ровно {len(items)} элементов:\n"
-            f'[{{"idx":1,"complexity":5,"weight":5,"reason":"Стандартная операция без особых требований"}}, ...]'
+            f'[{{"idx":1,"complexity":5,"weight":5,"reason":"Стандартная операция.","weight_reason":"Умеренно влияет на итог сметы."}}, ...]'
         )
 
         import urllib.request as _req3
@@ -2377,6 +2378,7 @@ def handler(event: dict, context) -> dict:
                         "complexity": max(1, min(10, int(entry.get("complexity", 5)))),
                         "weight": max(1, min(10, int(entry.get("weight", 5)))),
                         "reason": str(entry.get("reason", "")).strip(),
+                        "weight_reason": str(entry.get("weight_reason", "")).strip(),
                     })
             return ok({"results": result})
         except Exception as e:
