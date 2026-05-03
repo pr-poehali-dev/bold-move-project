@@ -120,17 +120,22 @@ export default function DiscountRiskComplexity({ isDark, theme, readOnly }: Prop
 
   useEffect(() => { loadPrices(); }, [loadPrices]);
 
-  // Тихий автозапуск только для подсказок (reason/weight_reason) — слайдеры не трогает
+  // Тихий автозапуск подсказок — только для позиций без reason/weight_reason
   useEffect(() => {
     if (prices.length === 0 || readOnly) return;
-    const hasHints = Object.values(complexityItems).some(i => i.reason?.trim() && i.weight_reason?.trim());
-    if (hasHints) return;
+
+    // Находим позиции которым нужны подсказки
+    const needHints = prices.filter(p => {
+      const item = complexityItems[p.id];
+      return !item?.reason?.trim() || !item?.weight_reason?.trim();
+    });
+    if (needHints.length === 0) return;
 
     const fetchHints = async () => {
       const BATCH = 10;
       const current: Record<number, ComplexityItem> = { ...complexityItems };
-      for (let i = 0; i < prices.length; i += BATCH) {
-        const batch = prices.slice(i, i + BATCH);
+      for (let i = 0; i < needHints.length; i += BATCH) {
+        const batch = needHints.slice(i, i + BATCH);
         try {
           const res = await fetch(`${AUTH_URL}?action=complexity-eval`, {
             method: "POST",
@@ -146,14 +151,14 @@ export default function DiscountRiskComplexity({ isDark, theme, readOnly }: Prop
                 priceId: item.id,
                 complexity: existing?.complexity ?? aiComplexity,
                 weight: existing?.weight ?? aiWeight,
-                reason: item.reason || "",
-                weight_reason: item.weight_reason || "",
+                reason: item.reason?.trim() || existing?.reason || "",
+                weight_reason: item.weight_reason?.trim() || existing?.weight_reason || "",
                 ai_complexity: aiComplexity,
                 ai_weight: aiWeight,
               } as ComplexityItem;
             });
           }
-        } catch { /* тихо игнорируем */ }
+        } catch { /* тихо */ }
       }
       setComplexityItems({ ...current });
       saveComplexityItems(current);

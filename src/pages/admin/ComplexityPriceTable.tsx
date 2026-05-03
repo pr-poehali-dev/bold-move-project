@@ -307,7 +307,6 @@ export default function ComplexityPriceTable({
 
               {/* Контент панели */}
               <div className="flex-1 px-4 py-4 flex flex-col justify-center" style={{ minHeight: 120 }}>
-                {hoveredId && <div className="text-[9px] mb-2 opacity-30">id: {hoveredId} | reason: {hoveredItem?.reason ? "✓" : "✗"}</div>}
                 {hoveredItem ? (
                   <div className="space-y-3">
                     {hoveredItem.reason?.trim() ? (
