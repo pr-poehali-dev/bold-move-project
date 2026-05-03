@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import type React from "react";
 import Icon from "@/components/ui/icon";
 import { useTheme } from "./themeContext";
@@ -137,6 +137,29 @@ export function DrawerColumns(props: ColumnsProps) {
 
   const [dropOverCol, setDropOverCol] = useState<0 | 1 | null>(null);
 
+  // Синхронизация высоты пустого блока с правым столбцом
+  const rightColRef = useRef<HTMLDivElement>(null);
+  const leftBlocksRef = useRef<HTMLDivElement>(null);
+  const [emptyBlockHeight, setEmptyBlockHeight] = useState<number>(80);
+
+  useEffect(() => {
+    const update = () => {
+      const right = rightColRef.current;
+      const leftBlocks = leftBlocksRef.current;
+      if (!right || !leftBlocks) return;
+      const rightH = right.getBoundingClientRect().height;
+      const leftH = leftBlocks.getBoundingClientRect().height;
+      const gap = 12;
+      const remaining = rightH - leftH - gap;
+      setEmptyBlockHeight(Math.max(48, remaining));
+    };
+    update();
+    const observer = new ResizeObserver(update);
+    if (rightColRef.current) observer.observe(rightColRef.current);
+    if (leftBlocksRef.current) observer.observe(leftBlocksRef.current);
+    return () => observer.disconnect();
+  }, [col0Narrow, col1Narrow]);
+
   const makeColDropZone = (col: 0 | 1) => ({
     onDragOver: (e: React.DragEvent) => { e.preventDefault(); setDropOverCol(col); },
     onDragLeave: () => setDropOverCol(null),
@@ -157,16 +180,18 @@ export function DrawerColumns(props: ColumnsProps) {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3" style={{ alignItems: "stretch" }}>
         {/* Левый столбец */}
         <div style={{ display: "flex", flexDirection: "column", gap: 12, minWidth: 0 }}>
-          {col0Narrow.map(b => (
-            <DraggableBlock key={b.id} blockId={b.id} onDragStart={onDragStart} onDragOver={onDragOver} onDrop={onDrop}>
-              {renderColBlock(b)}
-            </DraggableBlock>
-          ))}
-          {/* Растягивающаяся зона — занимает оставшееся место и кликабельна для добавления блока */}
+          <div ref={leftBlocksRef} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            {col0Narrow.map(b => (
+              <DraggableBlock key={b.id} blockId={b.id} onDragStart={onDragStart} onDragOver={onDragOver} onDrop={onDrop}>
+                {renderColBlock(b)}
+              </DraggableBlock>
+            ))}
+          </div>
+          {/* Пустой блок — высота вычисляется по правому столбцу */}
           <div
             className="rounded-xl flex flex-col items-center justify-center gap-1.5 cursor-pointer transition-all"
             style={{
-              flex: 1,
+              height: emptyBlockHeight,
               minHeight: 48,
               border: `2px dashed ${dropOverCol === 0 ? "#7c3aed" : "#ffffff18"}`,
               background: dropOverCol === 0 ? "#7c3aed08" : "transparent",
@@ -185,7 +210,7 @@ export function DrawerColumns(props: ColumnsProps) {
         </div>
 
         {/* Правый столбец */}
-        <div style={{ display: "flex", flexDirection: "column", gap: 12, minWidth: 0 }}>
+        <div ref={rightColRef} style={{ display: "flex", flexDirection: "column", gap: 12, minWidth: 0 }}>
           {col1Narrow.map(b => (
             <DraggableBlock key={b.id} blockId={b.id} onDragStart={onDragStart} onDragOver={onDragOver} onDrop={onDrop}>
               {renderColBlock(b)}
