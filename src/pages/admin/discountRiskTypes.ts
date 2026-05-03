@@ -126,7 +126,14 @@ export function getWeightHint(v: number): string {
 export function loadComplexityItems(): Record<number, ComplexityItem> {
   try {
     const s = localStorage.getItem(COMPLEXITY_LS_KEY);
-    return s ? JSON.parse(s) : {};
+    if (!s) return {};
+    const raw = JSON.parse(s);
+    // Нормализуем ключи в числа (JSON.parse делает их строками)
+    const result: Record<number, ComplexityItem> = {};
+    for (const key of Object.keys(raw)) {
+      result[Number(key)] = raw[key];
+    }
+    return result;
   } catch { return {}; }
 }
 

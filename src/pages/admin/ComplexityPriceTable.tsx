@@ -38,7 +38,9 @@ export default function ComplexityPriceTable({
 }: Props) {
   const border2 = isDark ? "rgba(255,255,255,0.05)" : "#f3f4f6";
   const [hoveredId, setHoveredId] = useState<number | null>(null);
-  const hoveredItem = hoveredId !== null ? (complexityItems[hoveredId] || null) : null;
+  const hoveredItem = hoveredId !== null
+    ? (complexityItems[hoveredId] || complexityItems[String(hoveredId)] || null)
+    : null;
 
   const getItem = (id: number): ComplexityItem =>
     complexityItems[id] || { priceId: id, complexity: 5, weight: 5 };
