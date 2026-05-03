@@ -3,6 +3,7 @@ import { EVENT_TYPE_LABELS } from "./crmApi";
 import { useTheme } from "./themeContext";
 import Icon from "@/components/ui/icon";
 import { CalEvent, EVENT_COLORS } from "./calendarTypes";
+import { DateTimePickerPopup } from "./DateTimePicker";
 
 export function CalendarEventModal({
   mode, event, onClose, onSave, onDelete,
@@ -21,6 +22,8 @@ export function CalendarEventModal({
     start_time:  event.start_time || "",
     end_time:    event.end_time || "",
   });
+  const [openPicker, setOpenPicker] = useState<"start_time" | "end_time" | null>(null);
+  const [anchorRect, setAnchorRect] = useState<DOMRect | null>(null);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
@@ -49,14 +52,25 @@ export function CalendarEventModal({
             ))}
           </div>
           <div className="flex gap-3">
-            {[["Начало","start_time"],["Конец","end_time"]].map(([lbl, field]) => (
+            {([["Начало","start_time"],["Конец","end_time"]] as [string, "start_time" | "end_time"][]).map(([lbl, field]) => (
               <div key={field} className="flex-1">
                 <label className="text-[11px] mb-1 block" style={{ color: t.textMute }}>{lbl}</label>
-                <input type="datetime-local"
-                  value={(form as Record<string, string>)[field] || ""}
-                  onChange={e => setForm(p => ({ ...p, [field]: e.target.value }))}
-                  className="w-full text-xs rounded-xl px-3 py-2 focus:outline-none border"
-                  style={{ background: t.surface2, color: t.text, borderColor: t.border }} />
+                <button
+                  onClick={e => { setAnchorRect(e.currentTarget.getBoundingClientRect()); setOpenPicker(field); }}
+                  className="w-full text-xs rounded-xl px-3 py-2 text-left transition border"
+                  style={{ background: t.surface2, color: form[field] ? t.text : t.textMute, borderColor: openPicker === field ? "#7c3aed80" : t.border }}>
+                  {form[field]
+                    ? new Date(form[field]).toLocaleString("ru-RU", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })
+                    : "Выбрать..."}
+                </button>
+                {openPicker === field && (
+                  <DateTimePickerPopup
+                    value={form[field] || null}
+                    anchorRect={anchorRect}
+                    onChange={iso => { setForm(p => ({ ...p, [field]: iso ?? "" })); setOpenPicker(null); }}
+                    onClose={() => setOpenPicker(null)}
+                  />
+                )}
               </div>
             ))}
           </div>

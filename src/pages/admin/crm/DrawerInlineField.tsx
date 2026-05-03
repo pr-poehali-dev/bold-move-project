@@ -1,5 +1,6 @@
 import { useState, useRef, type ChangeEvent } from "react";
 import { useTheme } from "./themeContext";
+import { DateTimePickerPopup } from "./DateTimePicker";
 
 function applyPhoneMask(raw: string): string {
   const digits = raw.replace(/\D/g, "");
@@ -29,23 +30,31 @@ export function InlineField({ label, value, onSave, type = "text", placeholder =
   hideLabel?: boolean;
 }) {
   const t = useTheme();
-  const [editing, setEditing]   = useState(false);
-  const [phoneErr, setPhoneErr] = useState(false);
+  const [editing,      setEditing]      = useState(false);
+  const [phoneErr,     setPhoneErr]     = useState(false);
+  const [datePickerOpen, setDatePickerOpen] = useState(false);
+  const [anchorRect,   setAnchorRect]   = useState<DOMRect | null>(null);
   const valRef    = useRef("");
   const onSaveRef = useRef(onSave);
   onSaveRef.current = onSave;
 
-  const isPhone = type === "phone" || label.toLowerCase().includes("телефон");
+  const isPhone    = type === "phone" || label.toLowerCase().includes("телефон");
+  const isDatetime = type === "datetime-local";
 
   const displayVal = () => {
     if (!value && value !== 0) return null;
-    if (type === "datetime-local")
+    if (isDatetime)
       return new Date(String(value)).toLocaleString("ru-RU", { day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" });
     if (type === "number") return Math.round(Number(value)).toLocaleString("ru-RU");
     return String(value);
   };
 
-  const startEdit = () => {
+  const startEdit = (e: React.MouseEvent<HTMLButtonElement>) => {
+    if (isDatetime) {
+      setAnchorRect(e.currentTarget.getBoundingClientRect());
+      setDatePickerOpen(true);
+      return;
+    }
     const v = (type === "number" && value != null && value !== "")
       ? String(Math.round(Number(value)))
       : String(value ?? "");
@@ -73,7 +82,24 @@ export function InlineField({ label, value, onSave, type = "text", placeholder =
     <div style={{ borderBottom: `1px solid ${t.border2}`, minHeight: 36 }}>
       <div className="flex items-center justify-between group">
         {!hideLabel && <span className="text-xs flex-shrink-0 w-36 py-2" style={{ color: "#d4d4d4" }}>{label}</span>}
-        {editing ? (
+
+        {isDatetime ? (
+          <>
+            <button onClick={startEdit} className="flex-1 text-right text-sm transition hover:opacity-70 truncate py-2">
+              {displayVal()
+                ? <span style={{ color: "#fff" }}>{displayVal()}</span>
+                : <span className="text-xs text-violet-400/60 underline underline-offset-2 decoration-dashed">{placeholder}</span>}
+            </button>
+            {datePickerOpen && (
+              <DateTimePickerPopup
+                value={value as string | null}
+                anchorRect={anchorRect}
+                onChange={iso => { onSaveRef.current(iso ?? ""); }}
+                onClose={() => setDatePickerOpen(false)}
+              />
+            )}
+          </>
+        ) : editing ? (
           <input
             type={isPhone ? "tel" : type}
             defaultValue={valRef.current}

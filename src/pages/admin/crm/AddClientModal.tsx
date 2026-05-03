@@ -1,7 +1,9 @@
+import { useState } from "react";
 import { STATUS_LABELS, LEAD_STATUSES, ORDER_STATUSES } from "./crmApi";
 import Icon from "@/components/ui/icon";
 import PhoneInput from "@/components/ui/PhoneInput";
 import { useTheme } from "./themeContext";
+import { DateTimePickerPopup } from "./DateTimePicker";
 
 const ALL_STATUSES = [...LEAD_STATUSES, ...ORDER_STATUSES];
 
@@ -14,6 +16,8 @@ export function AddClientModal({ form, onChange, onSave, onClose }: {
   onClose: () => void;
 }) {
   const t = useTheme();
+  const [datePickerOpen, setDatePickerOpen] = useState(false);
+  const [anchorRect, setAnchorRect] = useState<DOMRect | null>(null);
   return (
     <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
       <div className="rounded-2xl p-6 w-full max-w-md shadow-2xl" style={{ background: t.surface, border: `1px solid ${t.border}` }} onClick={e => e.stopPropagation()}>
@@ -51,9 +55,22 @@ export function AddClientModal({ form, onChange, onSave, onClose }: {
             </div>
             <div>
               <label className="text-xs mb-1.5 block font-medium" style={{ color: t.textMute }}>Дата замера</label>
-              <input type="datetime-local" value={form.measure_date} onChange={e => onChange({ measure_date: e.target.value })}
-                className="w-full rounded-xl px-4 py-2.5 text-sm focus:outline-none transition"
-                style={{ background: t.surface2, border: `1px solid ${t.border}`, color: t.text }} />
+              <button ref={dateRef}
+                onClick={e => { setAnchorRect(e.currentTarget.getBoundingClientRect()); setDatePickerOpen(true); }}
+                className="w-full rounded-xl px-4 py-2.5 text-sm text-left transition"
+                style={{ background: t.surface2, border: `1px solid ${datePickerOpen ? "#7c3aed80" : t.border}`, color: form.measure_date ? t.text : t.textMute }}>
+                {form.measure_date
+                  ? new Date(form.measure_date).toLocaleString("ru-RU", { day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" })
+                  : "Выбрать дату..."}
+              </button>
+              {datePickerOpen && (
+                <DateTimePickerPopup
+                  value={form.measure_date || null}
+                  anchorRect={anchorRect}
+                  onChange={iso => onChange({ measure_date: iso ?? "" })}
+                  onClose={() => setDatePickerOpen(false)}
+                />
+              )}
             </div>
           </div>
           <div>
