@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import Icon from "@/components/ui/icon";
 import { apiFetch } from "./api";
+import func2url from "@/../backend/func2url.json";
 import {
   PriceItem, ComplexityItem, ComplexityPrompts, ThemeClasses,
   COMPLEXITY_LS_KEY, COMPLEXITY_PROMPTS_KEY, COMPLEXITY_FORMULA_KEY,
@@ -8,6 +9,8 @@ import {
   loadComplexityItems, saveComplexityItems,
   loadComplexityPrompts, loadFormula,
 } from "./discountRiskTypes";
+
+const AUTH_URL = (func2url as Record<string, string>)["auth"];
 
 interface Props {
   isDark: boolean;
@@ -25,6 +28,90 @@ export default function DiscountRiskComplexity({ isDark, theme, readOnly }: Prop
   const [formula,           setFormula]           = useState(loadFormula);
   const [activePromptTab,   setActivePromptTab]   = useState<"math" | "semantic" | "combine">("math");
   const [savedPrompts,      setSavedPrompts]      = useState(false);
+
+  // AI оценка
+  const [aiLoading,   setAiLoading]   = useState(false);
+  const [aiProgress,  setAiProgress]  = useState(0);   // сколько батчей обработано
+  const [aiTotal,     setAiTotal]     = useState(0);   // всего батчей
+  const [aiError,     setAiError]     = useState<string | null>(null);
+  const [aiDone,      setAiDone]      = useState(false);
+
+  const runAiEvaluation = async () => {
+    if (!prices.length || aiLoading) return;
+    setAiLoading(true);
+    setAiError(null);
+    setAiDone(false);
+    setAiProgress(0);
+
+    // Разбиваем на батчи по 10 позиций чтобы не превышать лимиты AI
+    const BATCH = 10;
+    const batches: PriceItem[][] = [];
+    for (let i = 0; i < prices.length; i += BATCH) {
+      batches.push(prices.slice(i, i + BATCH));
+    }
+    setAiTotal(batches.length);
+
+    const newItems: Record<number, ComplexityItem> = { ...complexityItems };
+
+    try {
+      for (let b = 0; b < batches.length; b++) {
+        const batch = batches[b];
+        const prompt = `Ты эксперт по монтажу натяжных потолков.
+Оцени каждую позицию из списка по двум параметрам от 1 до 10:
+- complexity (сложность монтажа): 1=очень просто, 10=очень сложно
+- weight (влияние на риск скидки): 1=почти не влияет, 10=критически важно
+
+Позиции:
+${batch.map((p, i) => `${i + 1}. ${p.name}`).join("\n")}
+
+Ответь строго в JSON массиве (без markdown):
+[{"id": <порядковый номер 1..N>, "complexity": <1-10>, "weight": <1-10>}, ...]`;
+
+        const res = await fetch(`${AUTH_URL}?action=crm-risk-ai`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            items: batch.map(p => p.name),
+            max_discount: 30,
+            custom_prompt: prompt,
+          }),
+        }).then(r => r.json());
+
+        // Парсим JSON из ответа AI
+        try {
+          const raw = res.reason || res.summary || res.result || "";
+          const jsonMatch = raw.match(/\[[\s\S]*\]/);
+          if (jsonMatch) {
+            const parsed: Array<{ id: number; complexity: number; weight: number }> = JSON.parse(jsonMatch[0]);
+            parsed.forEach(item => {
+              const price = batch[item.id - 1];
+              if (price) {
+                newItems[price.id] = {
+                  priceId: price.id,
+                  complexity: Math.min(10, Math.max(1, Math.round(item.complexity))),
+                  weight: Math.min(10, Math.max(1, Math.round(item.weight))),
+                };
+              }
+            });
+          }
+        } catch { /* пропускаем батч при ошибке парсинга */ }
+
+        setAiProgress(b + 1);
+      }
+
+      setComplexityItems(newItems);
+      saveComplexityItems(newItems);
+      window.dispatchEvent(new StorageEvent("storage", { key: COMPLEXITY_LS_KEY }));
+      setAiDone(true);
+      setTimeout(() => setAiDone(false), 4000);
+    } catch {
+      setAiError("Ошибка AI — попробуй ещё раз");
+    } finally {
+      setAiLoading(false);
+      setAiProgress(0);
+      setAiTotal(0);
+    }
+  };
 
   const loadPrices = useCallback(async () => {
     if (prices.length > 0) return;
@@ -112,6 +199,28 @@ export default function DiscountRiskComplexity({ isDark, theme, readOnly }: Prop
           <span className={`text-xs font-bold uppercase tracking-wider ${isDark ? "text-violet-300" : "text-violet-600"} flex-1`}>
             Позиции прайса
           </span>
+
+          {/* AI кнопка */}
+          {prices.length > 0 && !readOnly && (
+            <button
+              onClick={runAiEvaluation}
+              disabled={aiLoading}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-bold transition hover:opacity-80 disabled:opacity-60"
+              style={{ background: "rgba(139,92,246,0.15)", color: "#a78bfa", border: "1px solid rgba(139,92,246,0.3)" }}
+              title="AI автоматически оценит сложность и влияние каждой позиции">
+              {aiLoading ? (
+                <>
+                  <div className="w-3 h-3 border-2 border-violet-400/30 border-t-violet-400 rounded-full animate-spin" />
+                  {aiTotal > 0 ? `${aiProgress}/${aiTotal} батчей` : "Оцениваю..."}
+                </>
+              ) : aiDone ? (
+                <><Icon name="CheckCircle2" size={12} /> Готово!</>
+              ) : (
+                <><Icon name="Sparkles" size={12} /> AI оценить</>
+              )}
+            </button>
+          )}
+
           {prices.length > 0 && (
             <>
               <span className="text-[10px] px-2.5 py-1 rounded-full font-semibold"
@@ -122,6 +231,45 @@ export default function DiscountRiskComplexity({ isDark, theme, readOnly }: Prop
             </>
           )}
         </div>
+
+        {/* Прогресс AI */}
+        {aiLoading && aiTotal > 0 && (
+          <div className="px-4 py-2" style={{ borderBottom: `1px solid ${border2}` }}>
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-[10px]" style={{ color: "#a78bfa" }}>
+                AI анализирует позиции... {aiProgress * 10}/{prices.length}
+              </span>
+              <span className="text-[10px]" style={{ color: "#a78bfa" }}>
+                {Math.round(aiProgress / aiTotal * 100)}%
+              </span>
+            </div>
+            <div className="h-1 rounded-full overflow-hidden" style={{ background: "rgba(139,92,246,0.1)" }}>
+              <div className="h-full rounded-full transition-all duration-500"
+                style={{ width: `${Math.round(aiProgress / aiTotal * 100)}%`, background: "linear-gradient(90deg, #8b5cf6, #a78bfa)" }} />
+            </div>
+          </div>
+        )}
+
+        {/* Ошибка AI */}
+        {aiError && (
+          <div className="px-4 py-2 flex items-center gap-2" style={{ borderBottom: `1px solid ${border2}` }}>
+            <Icon name="AlertCircle" size={12} style={{ color: "#ef4444" }} />
+            <span className="text-[10px]" style={{ color: "#ef4444" }}>{aiError}</span>
+            <button onClick={() => setAiError(null)} className="ml-auto text-[10px]" style={{ color: "rgba(239,68,68,0.5)" }}>
+              <Icon name="X" size={10} />
+            </button>
+          </div>
+        )}
+
+        {/* Успех AI */}
+        {aiDone && (
+          <div className="px-4 py-2 flex items-center gap-2" style={{ borderBottom: `1px solid ${border2}` }}>
+            <Icon name="Sparkles" size={12} style={{ color: "#a78bfa" }} />
+            <span className="text-[10px]" style={{ color: "#a78bfa" }}>
+              AI оценил {prices.length} позиций — проверь результаты и сохрани
+            </span>
+          </div>
+        )}
 
         {/* Фильтр категорий */}
         {categories.length > 1 && (
