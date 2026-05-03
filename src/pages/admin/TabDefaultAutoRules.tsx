@@ -2,6 +2,7 @@ import { useState } from "react";
 import Icon from "@/components/ui/icon";
 import { useDefaultAutoRules } from "@/hooks/useDefaultAutoRules";
 import { RuleEntry } from "@/hooks/useAutoRules";
+import { useAuth } from "@/context/AuthContext";
 
 const ROLES = [
   { key: "installer", label: "Монтажник", icon: "Wrench",       color: "#f97316" },
@@ -22,7 +23,8 @@ function Toggle({ enabled, onChange, color = "#ef4444" }: { enabled: boolean; on
 }
 
 export default function TabDefaultAutoRules({ isDark = true }: Props) {
-  const { defaults, loading, saving, saveRole } = useDefaultAutoRules();
+  const { token } = useAuth();
+  const { defaults, loading, saving, saveRole } = useDefaultAutoRules(token);
   const [activeRole, setActiveRole] = useState("installer");
   const [activeTab, setActiveTab]   = useState<"cost" | "income">("cost");
   const [localRules, setLocalRules] = useState<Record<string, RuleEntry[]>>({});
