@@ -118,6 +118,14 @@ export function DrawerPLBlock({ data, isHidden, toggleHidden, customFinRows }: {
                       <span className="text-xs font-semibold text-red-400">−{fmt(r.value)} ₽</span>
                     </div>
                   ))}
+                  {totalDiscount > 0 && (
+                    <div className="flex items-center justify-between px-3 py-2">
+                      <span className="text-xs" style={{ color: "#f59e0b" }}>
+                        Скидка {discountHistory[0]?.discount_pct}%
+                      </span>
+                      <span className="text-xs font-semibold" style={{ color: "#f59e0b" }}>−{fmt(totalDiscount)} ₽</span>
+                    </div>
+                  )}
                 </div>
               </div>
             )}
@@ -164,10 +172,18 @@ export function DrawerPLBlock({ data, isHidden, toggleHidden, customFinRows }: {
                       <span className="text-xs font-semibold text-red-400 whitespace-nowrap">−{fmt(r.value)} ₽</span>
                     </div>
                   ))}
-                  {costRows.length > 1 && (
+                  {totalDiscount > 0 && (
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-xs truncate" style={{ color: "#f59e0b" }}>
+                        Скидка {discountHistory.length > 1 ? `(×${discountHistory.length})` : `${discountHistory[0]?.discount_pct}%`}
+                      </span>
+                      <span className="text-xs font-semibold whitespace-nowrap" style={{ color: "#f59e0b" }}>−{fmt(totalDiscount)} ₽</span>
+                    </div>
+                  )}
+                  {(costRows.length > 1 || totalDiscount > 0) && (
                     <div className="flex items-center justify-between gap-2 pt-1.5" style={{ borderTop: `1px solid ${t.border2}` }}>
                       <span className="text-xs font-semibold text-white">Итого</span>
-                      <span className="text-sm font-bold text-red-400">−{fmt(plCosts)} ₽</span>
+                      <span className="text-sm font-bold text-red-400">−{fmt(plCosts + totalDiscount)} ₽</span>
                     </div>
                   )}
                 </div>

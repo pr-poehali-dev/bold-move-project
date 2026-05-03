@@ -243,15 +243,19 @@ function PaymentConfirmModal({
             )}
           </div>
 
-          {/* Чек */}
+          {/* Чек — обязательно */}
           <div>
-            <label className="text-xs font-semibold uppercase tracking-wider mb-1.5 block"
-              style={{ color: t.textMute }}>
-              Квитанция / чек (необязательно)
+            <label className="text-xs font-semibold uppercase tracking-wider mb-1.5 flex items-center gap-1.5"
+              style={{ color: receiptUrl ? "#10b981" : "#ef4444" }}>
+              <Icon name={receiptUrl ? "CheckCircle2" : "AlertCircle"} size={12} />
+              Квитанция / чек
+              <span className="font-normal text-[10px]" style={{ color: receiptUrl ? "#10b981" : "#ef4444" }}>
+                (обязательно)
+              </span>
             </label>
             {receiptUrl ? (
               <div className="relative rounded-xl overflow-hidden"
-                style={{ border: `1px solid ${t.border}` }}>
+                style={{ border: "1px solid rgba(16,185,129,0.4)" }}>
                 {isImage(receiptUrl) ? (
                   <img src={receiptUrl} alt="Чек" className="w-full max-h-40 object-cover" />
                 ) : (
@@ -271,7 +275,7 @@ function PaymentConfirmModal({
             ) : (
               <button onClick={() => fileRef.current?.click()} disabled={uploading}
                 className="w-full flex items-center justify-center gap-2 py-3 rounded-xl transition hover:opacity-80 disabled:opacity-50"
-                style={{ background: t.surface2, border: `1px dashed ${t.border}`, color: t.textMute }}>
+                style={{ background: "rgba(239,68,68,0.08)", border: "1px dashed rgba(239,68,68,0.4)", color: "#ef4444" }}>
                 {uploading
                   ? <><div className="w-4 h-4 border-2 border-current/30 border-t-current rounded-full animate-spin" /> Загрузка...</>
                   : <><Icon name="Upload" size={14} /> Прикрепить чек</>
@@ -291,8 +295,8 @@ function PaymentConfirmModal({
           </button>
           <button
             onClick={() => onConfirm(parseFloat(amount) || 0, receiptUrl)}
-            disabled={!amount || parseFloat(amount) <= 0}
-            className="flex-2 flex items-center justify-center gap-1.5 px-5 py-2.5 rounded-xl text-sm font-bold transition hover:opacity-90 disabled:opacity-40"
+            disabled={!amount || parseFloat(amount) <= 0 || !receiptUrl}
+            className="flex-2 flex items-center justify-center gap-1.5 px-5 py-2.5 rounded-xl text-sm font-bold transition hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed"
             style={{ background: "#10b981", color: "#fff", flex: 2 }}>
             <Icon name="CheckCircle2" size={14} />
             Подтвердить получение
