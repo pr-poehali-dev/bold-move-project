@@ -190,7 +190,7 @@ export default function ComplexityPriceTable({
           </div>
 
           {/* Таблица */}
-          <div className="overflow-x-auto">
+          <div className="overflow-auto" style={{ maxHeight: "60vh" }}>
             <table className="w-full text-xs" style={{ minWidth: 640 }}>
               <thead className="sticky top-0 z-10"
                 style={{ background: isDark ? "#0f0f1a" : "#f9fafb" }}>
@@ -264,14 +264,11 @@ export default function ComplexityPriceTable({
                     </div>
                   </th>
 
-                  <th className="text-center px-4 py-0" style={{ width: 100, verticalAlign: "top" }}>
+                  <th className="text-center px-4 py-0" style={{ width: 90, verticalAlign: "middle" }}>
                     <div className="py-3">
                       <div className="font-bold" style={{ color: "#a78bfa" }}>Итог</div>
-                      <div className="text-[9px] font-normal mt-0.5 font-mono" style={{ color: isDark ? "rgba(255,255,255,0.3)" : "#9ca3af" }}>
-                        сл × вес / 10
-                      </div>
-                      <div className="text-[9px] font-normal mt-0.5 leading-relaxed" style={{ color: isDark ? "rgba(255,255,255,0.2)" : "#c4c4c4" }}>
-                        чем выше — тем<br />меньше скидки
+                      <div className="text-[9px] font-normal mt-0.5 font-mono" style={{ color: isDark ? "rgba(255,255,255,0.25)" : "#c4c4c4" }}>
+                        сл×вес/10
                       </div>
                     </div>
                   </th>
