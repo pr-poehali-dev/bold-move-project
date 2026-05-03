@@ -52,6 +52,7 @@ export interface AppUser {
   estimates_balance: number;
   has_own_agent?: boolean;
   agent_purchased_at?: string | null;
+  trial_until?: string | null;
   telegram?: string | null;
 }
 

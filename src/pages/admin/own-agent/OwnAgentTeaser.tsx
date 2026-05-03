@@ -28,9 +28,47 @@ export default function OwnAgentTeaser({ isDark }: Props) {
   const muted  = isDark ? "rgba(255,255,255,0.45)" : "#6b7280";
   const text   = isDark ? "#fff" : "#0f1623";
 
+  // Триал
+  const trialUntil = user?.trial_until ? new Date(user.trial_until) : null;
+  const isTrial = !!trialUntil && !user?.agent_purchased_at;
+  const trialDaysLeft = isTrial ? Math.max(0, Math.ceil((trialUntil!.getTime() - Date.now()) / (1000 * 60 * 60 * 24))) : 0;
+  const trialActive = isTrial && trialDaysLeft > 0;
+  const trialExpired = isTrial && trialDaysLeft === 0;
+
   return (
     <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-5" style={{ color: text }}>
       <div className="max-w-3xl mx-auto">
+
+        {/* Баннер активного триала */}
+        {trialActive && (
+          <div className="rounded-2xl px-5 py-4 mb-5 flex items-start gap-3"
+            style={{ background: "rgba(245,158,11,0.1)", border: "1px solid rgba(245,158,11,0.3)" }}>
+            <Icon name="Clock" size={18} style={{ color: "#f59e0b", flexShrink: 0, marginTop: 1 }} />
+            <div>
+              <div className="text-sm font-bold text-yellow-400 mb-0.5">
+                Демо-режим активен · осталось {trialDaysLeft} {trialDaysLeft === 1 ? "день" : trialDaysLeft < 5 ? "дня" : "дней"}
+              </div>
+              <div className="text-xs text-yellow-300/70">
+                Вы используете пробный период White Label (10 смет, до {trialUntil!.toLocaleDateString("ru-RU")}).
+                Чтобы продолжить — приобретите полный доступ.
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Баннер истёкшего триала */}
+        {trialExpired && (
+          <div className="rounded-2xl px-5 py-4 mb-5 flex items-start gap-3"
+            style={{ background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.3)" }}>
+            <Icon name="AlertTriangle" size={18} style={{ color: "#ef4444", flexShrink: 0, marginTop: 1 }} />
+            <div>
+              <div className="text-sm font-bold text-red-400 mb-0.5">Демо-период истёк</div>
+              <div className="text-xs text-red-300/70">
+                Пробный период White Label завершился. Чтобы продолжить использование — приобретите полный доступ.
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Hero-карточка */}
         <div className="rounded-[28px] overflow-hidden p-7 md:p-10 mb-5"

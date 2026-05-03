@@ -151,7 +151,7 @@ def handler(event: dict, context) -> dict:
             SELECT u.id, u.email, u.name, u.phone, u.role, u.approved, u.discount,
                    u.company_name, u.company_inn, u.company_addr, u.website, u.telegram,
                    u.estimates_balance, u.trial_until, u.permissions, u.company_id,
-                   u.has_own_agent,
+                   u.has_own_agent, u.agent_purchased_at,
                    u.bot_name, u.bot_greeting, u.bot_avatar_url, u.brand_logo_url,
                    u.brand_color, u.support_phone, u.support_email, u.max_url,
                    u.working_hours, u.pdf_footer_address, u.telegram_url, u.pdf_text_color,
@@ -167,7 +167,7 @@ def handler(event: dict, context) -> dict:
 
         (uid, email, name, phone, role, approved, discount, company_name, company_inn,
          company_addr, website, telegram, estimates_balance, trial_until, permissions,
-         ucompany_id, has_own_agent,
+         ucompany_id, has_own_agent, agent_purchased_at,
          bot_name, bot_greeting, bot_avatar_url, brand_logo_url, brand_color,
          support_phone, support_email, max_url, working_hours, pdf_footer_address, telegram_url, pdf_text_color,
          brand_logo_url_dark, brand_logo_orientation, pdf_logo_bg, bot_avatar_bg) = row
@@ -183,6 +183,7 @@ def handler(event: dict, context) -> dict:
             "permissions": permissions,
             "company_id": ucompany_id,
             "has_own_agent": bool(has_own_agent),
+            "agent_purchased_at": str(agent_purchased_at)[:19] if agent_purchased_at else None,
             "brand": {
                 "bot_name": bot_name, "bot_greeting": bot_greeting,
                 "bot_avatar_url": bot_avatar_url,

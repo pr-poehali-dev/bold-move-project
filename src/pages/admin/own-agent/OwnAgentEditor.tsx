@@ -146,10 +146,33 @@ export default function OwnAgentEditor({ isDark }: Props) {
             <div>
               <div className="flex items-center gap-2 mb-1">
                 <h1 className="text-xl sm:text-2xl font-black">Свой агент</h1>
-                <span className="px-2 py-0.5 rounded-md text-[9px] font-black uppercase tracking-wider"
-                  style={{ background: "rgba(16,185,129,0.18)", color: "#10b981", border: "1px solid rgba(16,185,129,0.32)" }}>
-                  Активирован
-                </span>
+                {(() => {
+                  const trialUntil = user?.trial_until ? new Date(user.trial_until) : null;
+                  const isTrial = trialUntil && !user?.agent_purchased_at;
+                  const trialDaysLeft = isTrial ? Math.max(0, Math.ceil((trialUntil.getTime() - Date.now()) / (1000 * 60 * 60 * 24))) : 0;
+                  if (isTrial && trialDaysLeft > 0) {
+                    return (
+                      <span className="px-2 py-0.5 rounded-md text-[9px] font-black uppercase tracking-wider"
+                        style={{ background: "rgba(245,158,11,0.18)", color: "#f59e0b", border: "1px solid rgba(245,158,11,0.32)" }}>
+                        Триал · {trialDaysLeft} дн.
+                      </span>
+                    );
+                  }
+                  if (isTrial && trialDaysLeft === 0) {
+                    return (
+                      <span className="px-2 py-0.5 rounded-md text-[9px] font-black uppercase tracking-wider"
+                        style={{ background: "rgba(239,68,68,0.18)", color: "#ef4444", border: "1px solid rgba(239,68,68,0.32)" }}>
+                        Триал истёк
+                      </span>
+                    );
+                  }
+                  return (
+                    <span className="px-2 py-0.5 rounded-md text-[9px] font-black uppercase tracking-wider"
+                      style={{ background: "rgba(16,185,129,0.18)", color: "#10b981", border: "1px solid rgba(16,185,129,0.32)" }}>
+                      Активирован
+                    </span>
+                  );
+                })()}
               </div>
               <div className="text-[12px]" style={{ color: muted }}>
                 Настройте имя бота, контакты и логотип — всё подменится у клиентов

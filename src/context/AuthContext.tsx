@@ -124,6 +124,7 @@ export interface AuthUser {
   company_id?: number | null;
   permissions?: Permissions | null;
   has_own_agent?: boolean;
+  agent_purchased_at?: string | null;
   brand?: Brand | null;
   company_name?: string | null;
   company_inn?:  string | null;
