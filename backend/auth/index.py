@@ -2330,12 +2330,13 @@ def handler(event: dict, context) -> dict:
         names_list = "\n".join(f'{i+1}. {it["name"]}' for i, it in enumerate(items[:15]))
         prompt = (
             f"Ты эксперт по монтажу натяжных потолков. "
-            f"Оцени каждую позицию из списка по двум параметрам от 1 до 10:\n"
-            f"- complexity: сложность монтажа (1=очень просто, 10=очень сложно)\n"
-            f"- weight: насколько эта позиция влияет на риск скидки (1=не влияет, 10=критически)\n\n"
+            f"Оцени каждую позицию из списка по трём параметрам:\n"
+            f"- complexity: сложность монтажа от 1 до 10 (1=очень просто, 10=очень сложно)\n"
+            f"- weight: насколько эта позиция влияет на риск скидки от 1 до 10 (1=не влияет, 10=критически)\n"
+            f"- reason: 1 предложение на русском — почему именно такая оценка сложности\n\n"
             f"Позиции:\n{names_list}\n\n"
             f"Ответь строго JSON массивом без markdown, ровно {len(items)} элементов:\n"
-            f'[{{"idx":1,"complexity":5,"weight":5}}, ...]'
+            f'[{{"idx":1,"complexity":5,"weight":5,"reason":"Стандартная операция без особых требований"}}, ...]'
         )
 
         import urllib.request as _req3
@@ -2346,7 +2347,7 @@ def handler(event: dict, context) -> dict:
                 {"role": "system", "content": "Отвечай только JSON массивом без markdown и пояснений."},
                 {"role": "user", "content": prompt},
             ],
-            "max_tokens": 800,
+            "max_tokens": 1200,
             "temperature": 0,
         }).encode()
         req3 = _req3.Request(
@@ -2375,6 +2376,7 @@ def handler(event: dict, context) -> dict:
                         "id": items[i]["id"],
                         "complexity": max(1, min(10, int(entry.get("complexity", 5)))),
                         "weight": max(1, min(10, int(entry.get("weight", 5)))),
+                        "reason": str(entry.get("reason", "")).strip(),
                     })
             return ok({"results": result})
         except Exception as e:
