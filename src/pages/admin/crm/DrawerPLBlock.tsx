@@ -32,13 +32,15 @@ export function DrawerPLBlock({ data, isHidden, toggleHidden, customFinRows }: {
   ].filter(r => r.value > 0);
   const plCosts = costRows.reduce((s, r) => s + r.value, 0);
 
-  const contractSum  = Number(data.contract_sum) || 0;
-  const plIncome     = contractSum + (customIncomeRows.reduce((s, r) => s + r.value, 0));
+  const contractSum    = Number(data.contract_sum) || 0;
+  const totalDiscount  = discountHistory.reduce((s, e) => s + Number(e.discount_amount), 0);
+  const customIncomSum = customIncomeRows.reduce((s, r) => s + r.value, 0);
+  const plIncome       = contractSum - totalDiscount + customIncomSum;
 
   const incomeRows: { label: string; value: number; isDiscount?: boolean }[] = [
     { label: "Договор", value: contractSum },
     ...discountHistory.map((e, i) => ({
-      label: `Скидка ${i + 1} (${e.discount_pct}%)`,
+      label: discountHistory.length > 1 ? `Скидка ${i + 1} (${e.discount_pct}%)` : `Скидка (${e.discount_pct}%)`,
       value: -Number(e.discount_amount),
       isDiscount: true,
     })),

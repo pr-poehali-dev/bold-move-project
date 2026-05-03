@@ -8,6 +8,7 @@ import { useTheme } from "./themeContext";
 import { AutoRulesModal, type CostRowDef } from "./DrawerAutoRulesModal";
 import { PaymentStatusBadge, CustomPaymentBadge } from "./PaymentConfirmModal";
 import { useAutoRules, RuleEntry } from "@/hooks/useAutoRules";
+import { useDiscountHistory } from "@/hooks/useDiscountHistory";
 
 const LS_FIN_LABELS = "crm_fin_row_labels";
 
@@ -275,6 +276,7 @@ export function DrawerCostsBlock({
   const isHidden = hiddenBlocks.has(id);
   const costsEdit = editingBlock === id;
   const { rules: autoRules, auto_mode: autoMode } = useAutoRules();
+  const { history: discountHistory, totalDiscountAmount } = useDiscountHistory(data.id);
   const [labels, setLabels] = useState<Record<string, string>>(loadFinLabels);
   const [showRules, setShowRules] = useState(false);
   const [autoFilled, setAutoFilled] = useState(false);
@@ -461,6 +463,24 @@ export function DrawerCostsBlock({
             </RowWithToggle>
           );
         })}
+
+        {/* Скидка — отображается только если применена */}
+        {discountHistory.length > 0 && (
+          <div style={{ borderBottom: `1px solid ${t.border2}`, minHeight: 36 }}>
+            <div className="flex items-center justify-between group">
+              <div className="flex items-center gap-1.5 flex-shrink-0 w-36 py-2">
+                <span className="text-xs" style={{ color: "#f59e0b" }}>
+                  {discountHistory.length > 1
+                    ? `Скидки (${discountHistory.map(e => e.discount_pct + "%").join(", ")})`
+                    : `Скидка ${discountHistory[0].discount_pct}%`}
+                </span>
+              </div>
+              <span className="text-xs font-semibold py-2" style={{ color: "#f59e0b" }}>
+                −{Math.round(totalDiscountAmount).toLocaleString("ru-RU")} ₽
+              </span>
+            </div>
+          </div>
+        )}
 
         <AddFinRowInline block="costs" onAdd={addCustomFinRow}
           forceOpen={costsEdit}
