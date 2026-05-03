@@ -55,6 +55,27 @@ export function saveSyncedColors(v: Record<string, string>) {
   localStorage.setItem(LS_SYNCED_COLORS, JSON.stringify(v));
 }
 
+// ── Цвет события по типу (из цветов канбана) ──────────────────────────────────
+const TYPE_TO_COL: Record<string, string> = {
+  measure: "measures",
+  install: "installs",
+  call:    "working",
+  payment: "done",
+  other:   "new",
+};
+const COL_DEFAULTS: Record<string, string> = {
+  measures: "#f59e0b",
+  installs: "#f97316",
+  working:  "#a78bfa",
+  done:     "#10b981",
+  new:      "#8b5cf6",
+};
+export function resolveEventColor(eventType: string): string {
+  const synced = loadSyncedColors();
+  const colId  = TYPE_TO_COL[eventType] || "new";
+  return synced[colId] || COL_DEFAULTS[colId] || "#8b5cf6";
+}
+
 // ── Добавить колонку ──────────────────────────────────────────────────────────
 export function addSyncedCol(label: string, color = "#8b5cf6", icon = "Layers"): SyncedCol {
   const id = `custom_col_${Date.now()}`;

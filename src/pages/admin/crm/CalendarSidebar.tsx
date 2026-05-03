@@ -2,6 +2,7 @@ import { EVENT_TYPE_LABELS } from "./crmApi";
 import { useTheme } from "./themeContext";
 import Icon from "@/components/ui/icon";
 import { CalEvent, MONTH_NAMES, EVENT_COLORS } from "./calendarTypes";
+import { resolveEventColor } from "./syncedCols";
 
 const EVENT_TYPE_ICONS: Record<string, string> = {
   measure: "Ruler",
@@ -13,20 +14,22 @@ const EVENT_TYPE_ICONS: Record<string, string> = {
 
 // ── Бейдж события в месячной сетке ──────────────────────────────────────────
 export function EventBadge({ e, onClick }: { e: CalEvent; onClick: (e: CalEvent) => void }) {
-  const time = new Date(e.start_time).toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" });
-  const icon = EVENT_TYPE_ICONS[e.event_type] || "Circle";
+  const time  = new Date(e.start_time).toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" });
+  const icon  = EVENT_TYPE_ICONS[e.event_type] || "Circle";
+  const color = resolveEventColor(e.event_type);
+  const sub   = e.address || e.client_name;
   return (
     <div onClick={ev => { ev.stopPropagation(); onClick(e); }}
       className="rounded-md px-1.5 py-0.5 cursor-pointer hover:brightness-110 transition mb-0.5"
-      style={{ background: e.color + "22", borderLeft: `2.5px solid ${e.color}` }}>
+      style={{ background: color + "22", borderLeft: `2.5px solid ${color}` }}>
       <div className="flex items-center gap-1 min-w-0">
-        <Icon name={icon} size={9} style={{ color: e.color, flexShrink: 0 }} />
-        <span className="text-[10px] font-semibold truncate" style={{ color: e.color }}>{time}</span>
-        <span className="text-[10px] font-medium truncate" style={{ color: e.color + "cc" }}>{e.title}</span>
+        <Icon name={icon} size={9} style={{ color, flexShrink: 0 }} />
+        <span className="text-[10px] font-semibold truncate" style={{ color }}>{time}</span>
+        <span className="text-[10px] font-medium truncate" style={{ color: color + "cc" }}>{e.title}</span>
       </div>
-      {e.client_name && (
-        <div className="text-[9px] truncate mt-0.5 pl-3.5" style={{ color: e.color + "99" }}>
-          {e.client_name}
+      {sub && (
+        <div className="text-[9px] truncate mt-0.5 pl-3.5" style={{ color: color + "99" }}>
+          {sub}
         </div>
       )}
     </div>
@@ -169,25 +172,27 @@ export function CalendarDaySidebar({
         )}
         <div className="space-y-2">
           {selectedEvents.map(e => {
-            const icon = EVENT_TYPE_ICONS[e.event_type] || "Circle";
+            const icon      = EVENT_TYPE_ICONS[e.event_type] || "Circle";
+            const color     = resolveEventColor(e.event_type);
             const startTime = new Date(e.start_time).toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" });
             const endTime   = e.end_time ? new Date(e.end_time).toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" }) : null;
+            const sub       = e.address || e.client_name;
             return (
               <div key={e.id}
                 className="rounded-xl overflow-hidden transition"
-                style={{ border: `1px solid ${e.color}35` }}>
+                style={{ border: `1px solid ${color}35` }}>
 
                 {/* Цветная полоска-шапка */}
                 <div className="px-3 py-2 flex items-center gap-2 cursor-pointer"
-                  style={{ background: e.color + "20" }}
+                  style={{ background: color + "20" }}
                   onClick={() => onEditEvent(e)}>
                   <div className="w-6 h-6 rounded-lg flex items-center justify-center flex-shrink-0"
-                    style={{ background: e.color + "30" }}>
-                    <Icon name={icon} size={12} style={{ color: e.color }} />
+                    style={{ background: color + "30" }}>
+                    <Icon name={icon} size={12} style={{ color }} />
                   </div>
                   <div className="min-w-0 flex-1">
                     <div className="text-xs font-bold truncate" style={{ color: t.text }}>{e.title}</div>
-                    <div className="text-[10px] font-semibold" style={{ color: e.color }}>
+                    <div className="text-[10px] font-semibold" style={{ color }}>
                       {EVENT_TYPE_LABELS[e.event_type] || e.event_type}
                     </div>
                   </div>
@@ -195,7 +200,7 @@ export function CalendarDaySidebar({
                 </div>
 
                 {/* Тело */}
-                <div className="px-3 py-2 space-y-1" style={{ background: e.color + "08" }}>
+                <div className="px-3 py-2 space-y-1" style={{ background: color + "08" }}>
                   {/* Время */}
                   <div className="flex items-center gap-1.5">
                     <Icon name="Clock" size={10} style={{ color: t.textMute, flexShrink: 0 }} />
@@ -203,17 +208,17 @@ export function CalendarDaySidebar({
                       {startTime}{endTime && ` — ${endTime}`}
                     </span>
                   </div>
-                  {/* Клиент */}
-                  {e.client_name && (
+                  {/* Адрес / имя клиента */}
+                  {sub && (
                     <div className="flex items-center gap-1.5">
-                      <Icon name="User" size={10} style={{ color: t.textMute, flexShrink: 0 }} />
-                      <span className="text-[11px] truncate" style={{ color: t.textSub }}>{e.client_name}</span>
+                      <Icon name="MapPin" size={10} style={{ color: t.textMute, flexShrink: 0 }} />
+                      <span className="text-[11px] truncate" style={{ color: t.textSub }}>{sub}</span>
                     </div>
                   )}
-                  {/* Описание / адрес */}
+                  {/* Описание */}
                   {e.description && (
                     <div className="flex items-start gap-1.5">
-                      <Icon name="MapPin" size={10} style={{ color: t.textMute, flexShrink: 0, marginTop: 1 }} />
+                      <Icon name="FileText" size={10} style={{ color: t.textMute, flexShrink: 0, marginTop: 1 }} />
                       <span className="text-[10px] leading-relaxed" style={{ color: t.textMute }}>{e.description}</span>
                     </div>
                   )}
@@ -223,7 +228,7 @@ export function CalendarDaySidebar({
                 {e.client_id && onSelectClient && (
                   <button onClick={() => onSelectClient(e.client_id!)}
                     className="w-full px-3 py-2 flex items-center justify-center gap-1.5 text-[10px] font-bold transition hover:opacity-90"
-                    style={{ background: e.color + "18", color: e.color, borderTop: `1px solid ${e.color}25` }}>
+                    style={{ background: color + "18", color, borderTop: `1px solid ${color}25` }}>
                     <Icon name="ExternalLink" size={10} />
                     Открыть заявку
                   </button>

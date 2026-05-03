@@ -1,5 +1,6 @@
 import { useTheme } from "./themeContext";
 import { CalEvent, DAY_SHORT, HOURS } from "./calendarTypes";
+import { resolveEventColor } from "./syncedCols";
 
 export function CalendarWeekView({
   weekStart, events, onAddAt, onEdit, onSelectClient,
@@ -88,9 +89,9 @@ export function CalendarWeekView({
                         else onEdit(e);
                       }}
                       className="rounded-md px-1.5 py-1 text-[10px] font-medium cursor-pointer hover:brightness-110 transition mb-0.5"
-                      style={{ background: e.color + "25", color: e.color, borderLeft: `2.5px solid ${e.color}` }}>
+                      style={{ background: resolveEventColor(e.event_type) + "25", color: resolveEventColor(e.event_type), borderLeft: `2.5px solid ${resolveEventColor(e.event_type)}` }}>
                       <div className="font-semibold truncate">{e.title}</div>
-                      {e.client_name && <div className="truncate opacity-70">{e.client_name}</div>}
+                      {(e.address || e.client_name) && <div className="truncate opacity-70">{e.address || e.client_name}</div>}
                     </div>
                   ))}
                 </div>

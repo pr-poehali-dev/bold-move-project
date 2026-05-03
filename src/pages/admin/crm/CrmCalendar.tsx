@@ -9,23 +9,7 @@ import { CalendarLeftSidebar, CalendarDaySidebar } from "./CalendarSidebar";
 import { CalendarMonthGrid } from "./CalendarMonthGrid";
 import { CalendarMobileView } from "./CalendarMobileView";
 import { buildMonthGrid, eventsForDay, mondayWeekStart } from "./calendarUtils";
-import { loadSyncedColors } from "./syncedCols";
-import { KANBAN_COLS } from "./kanbanTypes";
-
-// Цвет события из цветов канбана (синхронизированных пользователем)
-function resolveEventColor(eventType: string): string {
-  const syncedColors = loadSyncedColors();
-  const typeToColId: Record<string, string> = {
-    measure: "measures",
-    install: "installs",
-    call:    "working",
-    payment: "done",
-    other:   "new",
-  };
-  const colId = typeToColId[eventType] || "new";
-  if (syncedColors[colId]) return syncedColors[colId];
-  return KANBAN_COLS.find(c => c.id === colId)?.color || "#8b5cf6";
-}
+import { resolveEventColor } from "./syncedCols";
 
 export default function CrmCalendar({ onSelectClient }: { onSelectClient?: (id: number) => void; canEdit?: boolean }) {
   const t = useTheme();

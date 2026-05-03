@@ -11,6 +11,7 @@ export interface CalEvent {
   color: string;
   client_name?: string;
   phone?: string;
+  address?: string | null;
 }
 
 export const MONTH_NAMES = ["Январь","Февраль","Март","Апрель","Май","Июнь","Июль","Август","Сентябрь","Октябрь","Ноябрь","Декабрь"];

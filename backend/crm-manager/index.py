@@ -682,14 +682,14 @@ def handler(event: dict, context) -> dict:
                     else:
                         cond = ""
                     cur.execute(f"""SELECT ce.id, ce.client_id, ce.title, ce.description, ce.event_type,
-                        ce.start_time, ce.end_time, ce.color, ce.created_at, lc.client_name, lc.phone
+                        ce.start_time, ce.end_time, ce.color, ce.created_at, lc.client_name, lc.phone, lc.address
                         FROM {SCHEMA}.calendar_events ce
                         LEFT JOIN {SCHEMA}.live_chats lc ON ce.client_id=lc.id
                         {cond} ORDER BY ce.start_time DESC LIMIT 200""", cond_args)
                 else:
                     if month and year:
                         cur.execute(f"""SELECT ce.id, ce.client_id, ce.title, ce.description, ce.event_type,
-                            ce.start_time, ce.end_time, ce.color, ce.created_at, lc.client_name, lc.phone
+                            ce.start_time, ce.end_time, ce.color, ce.created_at, lc.client_name, lc.phone, lc.address
                             FROM {SCHEMA}.calendar_events ce
                             LEFT JOIN {SCHEMA}.live_chats lc ON ce.client_id=lc.id
                             WHERE ce.company_id=%s
@@ -698,7 +698,7 @@ def handler(event: dict, context) -> dict:
                             ORDER BY ce.start_time""", (company_id, int(month), int(year)))
                     else:
                         cur.execute(f"""SELECT ce.id, ce.client_id, ce.title, ce.description, ce.event_type,
-                            ce.start_time, ce.end_time, ce.color, ce.created_at, lc.client_name, lc.phone
+                            ce.start_time, ce.end_time, ce.color, ce.created_at, lc.client_name, lc.phone, lc.address
                             FROM {SCHEMA}.calendar_events ce
                             LEFT JOIN {SCHEMA}.live_chats lc ON ce.client_id=lc.id
                             WHERE ce.company_id=%s

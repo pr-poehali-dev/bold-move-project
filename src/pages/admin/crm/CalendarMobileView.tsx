@@ -256,10 +256,10 @@ export function CalendarMobileView({
                                 {EVENT_TYPE_LABELS[e.event_type] || e.event_type}
                               </span>
                             </div>
-                            {e.client_name && (
+                            {(e.address || e.client_name) && (
                               <div className="flex items-center gap-1 mt-1.5 text-xs" style={{ color: t.textSub }}>
-                                <Icon name="User" size={10} style={{ color, flexShrink: 0 }} />
-                                {e.client_name}
+                                <Icon name="MapPin" size={10} style={{ color, flexShrink: 0 }} />
+                                {e.address || e.client_name}
                                 {e.phone && <span className="opacity-60">· {e.phone}</span>}
                               </div>
                             )}
@@ -320,8 +320,8 @@ export function CalendarMobileView({
                                 <span className="text-xs" style={{ color }}>
                                   {fmtTime(e.start_time)}{e.end_time && ` — ${fmtTime(e.end_time)}`}
                                 </span>
-                                {e.client_name && (
-                                  <span className="text-xs" style={{ color: t.textMute }}>· {e.client_name}</span>
+                                {(e.address || e.client_name) && (
+                                  <span className="text-xs" style={{ color: t.textMute }}>· {e.address || e.client_name}</span>
                                 )}
                               </div>
                             </div>
