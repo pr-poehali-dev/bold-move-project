@@ -39,18 +39,6 @@ export default function ComplexityPriceTable({
 }: Props) {
   const border2 = isDark ? "rgba(255,255,255,0.05)" : "#f3f4f6";
   const [hoveredId, setHoveredId] = useState<number | null>(null);
-  // lastId — запоминаем последнюю наведённую позицию, не сбрасываем при уходе мыши
-  const [lastId, setLastId] = useState<number | null>(null);
-
-  const activeId = hoveredId ?? lastId;
-
-  // Ищем данные по activeId — перебираем все ключи т.к. могут быть числовыми или строковыми
-  const hoveredItem = activeId !== null
-    ? Object.values(complexityItems).find(i => i.priceId === activeId) || null
-    : null;
-  const hoveredPrice = activeId !== null
-    ? prices.find(p => p.id === activeId) || null
-    : null;
 
   const getItem = (id: number): ComplexityItem =>
     complexityItems[id] || { priceId: id, complexity: 5, weight: 5 };
@@ -195,22 +183,19 @@ export default function ComplexityPriceTable({
             </span>
           </div>
 
-          {/* Layout: список слева + панель подсказок справа */}
-          <div className="flex" style={{ borderTop: `1px solid ${border2}` }}>
+          {/* Список позиций */}
+          <div style={{ borderTop: `1px solid ${border2}` }}>
 
-            {/* Левая часть — список позиций */}
-            <div className="flex-1 min-w-0" style={{ borderRight: `1px solid ${border2}` }}
-              onMouseLeave={() => setHoveredId(null)}
-            >
+            {/* Заголовок колонок */}
+            <div className="flex items-center px-4 py-2.5 text-[10px] font-bold"
+              style={{ background: isDark ? "#0f0f1a" : "#f9fafb", borderBottom: `1px solid ${border2}` }}>
+              <div style={{ width: 160, flexShrink: 0 }} className={theme.sub}>Название</div>
+              <div className="flex-1" style={{ color: "#f59e0b" }}>Сложность монтажа 1–10</div>
+              <div className="flex-1" style={{ color: "#8b5cf6" }}>Влияние на скидку 1–10</div>
+              <div style={{ width: 72, textAlign: "center", color: "#a78bfa" }}>Итог</div>
+            </div>
 
-              {/* Заголовок колонок */}
-              <div className="flex items-center px-4 py-2.5 text-[10px] font-bold"
-                style={{ background: isDark ? "#0f0f1a" : "#f9fafb", borderBottom: `1px solid ${border2}` }}>
-                <div style={{ width: 160, flexShrink: 0 }} className={theme.sub}>Название</div>
-                <div className="flex-1" style={{ color: "#f59e0b" }}>Сложность монтажа</div>
-                <div className="flex-1" style={{ color: "#8b5cf6" }}>Влияние на скидку</div>
-                <div style={{ width: 72, textAlign: "center", color: "#a78bfa" }}>Итог</div>
-              </div>
+            <div>
 
               {/* Строки по категориям */}
               {Object.entries(byCategory).map(([cat, catPrices]) => {
@@ -238,55 +223,77 @@ export default function ComplexityPriceTable({
                       const scoreBg    = score <= 3 ? "rgba(16,185,129,0.12)" : score <= 6 ? "rgba(245,158,11,0.12)" : "rgba(239,68,68,0.12)";
                       const inputCls   = `w-10 text-center text-sm font-black rounded-md px-1 py-0.5 outline-none border transition ${isDark ? "bg-white/[0.06] border-white/10 focus:border-violet-500/50 text-white" : "bg-gray-50 border-gray-200 focus:border-violet-400 text-gray-900"}`;
                       const isHovered  = hoveredId === price.id;
+                      const aiItem = Object.values(complexityItems).find(i => i.priceId === price.id) || null;
                       return (
                         <div key={price.id}
-                          className="flex items-center transition cursor-default"
-                          style={{
-                            borderBottom: `1px solid ${border2}`,
-                            background: isHovered ? (isDark ? "rgba(139,92,246,0.06)" : "rgba(139,92,246,0.03)") : "transparent",
-                          }}
-                          onMouseOver={() => { setHoveredId(price.id); setLastId(price.id); }}
+                          style={{ borderBottom: `1px solid ${border2}` }}
+                          onMouseEnter={() => setHoveredId(price.id)}
+                          onMouseLeave={() => setHoveredId(null)}
                         >
-                          {/* Название */}
-                          <div className="px-4 py-3 flex items-center gap-2 text-xs" style={{ width: 160, flexShrink: 0 }}>
-                            <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: scoreColor }} />
-                            <span className={`font-medium ${theme.text} leading-snug`}>{price.name}</span>
-                          </div>
-                          {/* Сложность */}
-                          <div className="flex-1 px-4 py-3">
-                            <div className="flex items-center gap-3">
-                              <input type="range" min={1} max={10} step={1}
-                                value={item.complexity} disabled={readOnly}
-                                onChange={e => onUpdateItem(price.id, { complexity: Number(e.target.value) })}
-                                className="flex-1 cursor-pointer" style={{ accentColor: "#f59e0b", height: 4 }} />
-                              <input type="number" min={1} max={10} value={item.complexity} disabled={readOnly}
-                                onChange={e => onUpdateItem(price.id, { complexity: Math.min(10, Math.max(1, Number(e.target.value) || 1)) })}
-                                className={inputCls} style={{ color: "#f59e0b", borderColor: "#f59e0b30" }} />
+                          {/* Основная строка */}
+                          <div className="flex items-center transition"
+                            style={{ background: isHovered ? (isDark ? "rgba(139,92,246,0.06)" : "rgba(139,92,246,0.03)") : "transparent" }}>
+                            {/* Название */}
+                            <div className="px-4 py-3 flex items-center gap-2 text-xs" style={{ width: 160, flexShrink: 0 }}>
+                              <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: scoreColor }} />
+                              <span className={`font-medium ${theme.text} leading-snug`}>{price.name}</span>
                             </div>
-                          </div>
-                          {/* Влияние */}
-                          <div className="flex-1 px-4 py-3">
-                            <div className="flex items-center gap-3">
-                              <input type="range" min={1} max={10} step={1}
-                                value={item.weight} disabled={readOnly}
-                                onChange={e => onUpdateItem(price.id, { weight: Number(e.target.value) })}
-                                className="flex-1 cursor-pointer" style={{ accentColor: "#8b5cf6", height: 4 }} />
-                              <input type="number" min={1} max={10} value={item.weight} disabled={readOnly}
-                                onChange={e => onUpdateItem(price.id, { weight: Math.min(10, Math.max(1, Number(e.target.value) || 1)) })}
-                                className={inputCls} style={{ color: "#8b5cf6", borderColor: "#8b5cf630" }} />
+                            {/* Сложность */}
+                            <div className="flex-1 px-4 py-3">
+                              <div className="flex items-center gap-3">
+                                <input type="range" min={1} max={10} step={1}
+                                  value={item.complexity} disabled={readOnly}
+                                  onChange={e => onUpdateItem(price.id, { complexity: Number(e.target.value) })}
+                                  className="flex-1 cursor-pointer" style={{ accentColor: "#f59e0b", height: 4 }} />
+                                <input type="number" min={1} max={10} value={item.complexity} disabled={readOnly}
+                                  onChange={e => onUpdateItem(price.id, { complexity: Math.min(10, Math.max(1, Number(e.target.value) || 1)) })}
+                                  className={inputCls} style={{ color: "#f59e0b", borderColor: "#f59e0b30" }} />
+                              </div>
                             </div>
-                          </div>
-                          {/* Итог */}
-                          <div className="py-3 text-center flex-shrink-0" style={{ width: 72 }}>
-                            <div className="flex flex-col items-center gap-0.5">
+                            {/* Влияние */}
+                            <div className="flex-1 px-4 py-3">
+                              <div className="flex items-center gap-3">
+                                <input type="range" min={1} max={10} step={1}
+                                  value={item.weight} disabled={readOnly}
+                                  onChange={e => onUpdateItem(price.id, { weight: Number(e.target.value) })}
+                                  className="flex-1 cursor-pointer" style={{ accentColor: "#8b5cf6", height: 4 }} />
+                                <input type="number" min={1} max={10} value={item.weight} disabled={readOnly}
+                                  onChange={e => onUpdateItem(price.id, { weight: Math.min(10, Math.max(1, Number(e.target.value) || 1)) })}
+                                  className={inputCls} style={{ color: "#8b5cf6", borderColor: "#8b5cf630" }} />
+                              </div>
+                            </div>
+                            {/* Итог */}
+                            <div className="py-3 text-center flex-shrink-0" style={{ width: 72 }}>
                               <span className="text-sm font-black px-2 py-0.5 rounded-md"
                                 style={{ color: scoreColor, background: scoreBg }}>{score}</span>
-                              <span className="text-[9px] font-mono"
+                              <div className="text-[9px] font-mono mt-0.5"
                                 style={{ color: isDark ? "rgba(255,255,255,0.25)" : "#d1d5db" }}>
                                 {item.complexity}×{item.weight}/10
-                              </span>
+                              </div>
                             </div>
                           </div>
+                          {/* AI подсказка — раскрывается при наведении */}
+                          {isHovered && (
+                            <div className="flex px-4 pb-2.5 gap-6" style={{ marginLeft: 160 }}>
+                              <div className="flex-1">
+                                <span className="text-[9px] font-bold uppercase tracking-wider mr-1.5" style={{ color: "#f59e0b" }}>
+                                  Сложность {(aiItem?.ai_complexity ?? item.complexity)}/10
+                                </span>
+                                <span className="text-[10px] italic" style={{ color: isDark ? "rgba(255,255,255,0.45)" : "#6b7280" }}>
+                                  {aiItem?.reason?.trim() || "AI готовит объяснение..."}
+                                </span>
+                              </div>
+                              <div className="flex-1">
+                                <span className="text-[9px] font-bold uppercase tracking-wider mr-1.5" style={{ color: "#8b5cf6" }}>
+                                  Влияние {(aiItem?.ai_weight ?? item.weight)}/10
+                                </span>
+                                <span className="text-[10px] italic" style={{ color: isDark ? "rgba(255,255,255,0.45)" : "#6b7280" }}>
+                                  {aiItem?.weight_reason?.trim() || "AI готовит объяснение..."}
+                                </span>
+                              </div>
+                              <div style={{ width: 72 }} />
+                            </div>
+                          )}
                         </div>
                       );
                     })}
@@ -307,84 +314,7 @@ export default function ComplexityPriceTable({
               </div>
             </div>
 
-            {/* Правая панель подсказок AI */}
-            <div className="flex-shrink-0 flex flex-col" style={{ width: 260, position: "sticky", top: 0, alignSelf: "flex-start", maxHeight: "80vh", overflowY: "auto" }}>
-              {/* Заголовок панели */}
-              <div className="px-4 py-2.5 flex items-center gap-2" style={{ background: isDark ? "#0f0f1a" : "#f9fafb", borderBottom: `1px solid ${border2}` }}>
-                <Icon name="Sparkles" size={11} style={{ color: "#a78bfa" }} />
-                <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: "#a78bfa" }}>AI объяснение</span>
-              </div>
-
-              {/* Контент панели */}
-              <div className="flex-1 px-4 py-4 flex flex-col" style={{ minHeight: 120 }}>
-                {hoveredPrice ? (
-                  <div className="space-y-3">
-                    {/* Название позиции */}
-                    <div className="pb-2" style={{ borderBottom: `1px solid ${border2}` }}>
-                      <p className="text-[11px] font-bold leading-snug" style={{ color: isDark ? "rgba(255,255,255,0.8)" : "#111" }}>
-                        {hoveredPrice.name}
-                      </p>
-                      {hoveredId === null && lastId !== null && (
-                        <p className="text-[9px] mt-0.5" style={{ color: isDark ? "rgba(255,255,255,0.25)" : "#c4c4c4" }}>
-                          последняя просмотренная
-                        </p>
-                      )}
-                    </div>
-                    {/* Сложность */}
-                    <div>
-                      <div className="flex items-center gap-1.5 mb-1">
-                        <span className="text-[9px] font-bold uppercase tracking-wider" style={{ color: "#f59e0b" }}>Сложность</span>
-                        <span className="text-[10px] font-black" style={{ color: "#f59e0b" }}>
-                          {hoveredItem?.ai_complexity ?? hoveredItem?.complexity ?? getItem(hoveredPrice.id).complexity}/10
-                        </span>
-                      </div>
-                      {hoveredItem?.reason?.trim() ? (
-                        <p className="text-[11px] leading-relaxed" style={{ color: isDark ? "rgba(255,255,255,0.55)" : "#6b7280" }}>
-                          {hoveredItem.reason}
-                        </p>
-                      ) : (
-                        <div className="flex items-center gap-1.5">
-                          <div className="w-2.5 h-2.5 rounded-full border-2 border-violet-400/30 border-t-violet-400 animate-spin flex-shrink-0" />
-                          <span className="text-[10px]" style={{ color: isDark ? "rgba(255,255,255,0.2)" : "#c4c4c4" }}>
-                            AI готовит объяснение...
-                          </span>
-                        </div>
-                      )}
-                    </div>
-                    {/* Влияние */}
-                    <div>
-                      <div className="flex items-center gap-1.5 mb-1">
-                        <span className="text-[9px] font-bold uppercase tracking-wider" style={{ color: "#8b5cf6" }}>Влияние</span>
-                        <span className="text-[10px] font-black" style={{ color: "#8b5cf6" }}>
-                          {hoveredItem?.ai_weight ?? hoveredItem?.weight ?? getItem(hoveredPrice.id).weight}/10
-                        </span>
-                      </div>
-                      {hoveredItem?.weight_reason?.trim() ? (
-                        <p className="text-[11px] leading-relaxed" style={{ color: isDark ? "rgba(255,255,255,0.55)" : "#6b7280" }}>
-                          {hoveredItem.weight_reason}
-                        </p>
-                      ) : (
-                        <div className="flex items-center gap-1.5">
-                          <div className="w-2.5 h-2.5 rounded-full border-2 border-violet-400/30 border-t-violet-400 animate-spin flex-shrink-0" />
-                          <span className="text-[10px]" style={{ color: isDark ? "rgba(255,255,255,0.2)" : "#c4c4c4" }}>
-                            AI готовит объяснение...
-                          </span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                ) : (
-                  <div className="flex flex-col items-center justify-center flex-1">
-                    <Icon name="Sparkles" size={20} style={{ color: "rgba(139,92,246,0.2)", marginBottom: 8 }} />
-                    <p className="text-[11px] text-center" style={{ color: isDark ? "rgba(255,255,255,0.2)" : "#c4c4c4" }}>
-                      Наведи на позицию — увидишь объяснение AI
-                    </p>
-                  </div>
-                )}
-              </div>
-            </div>
-
-          </div>{/* конец flex layout */}
+          </div>{/* конец списка */}
 
           {/* Кнопки */}
           {!readOnly && (
