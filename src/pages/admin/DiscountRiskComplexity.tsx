@@ -225,6 +225,17 @@ export default function DiscountRiskComplexity({ isDark, theme, readOnly }: Prop
     setTimeout(() => setSavedPrompts(false), 2000);
   };
 
+  const handleImprovePrompts = () => {
+    import("./discountRiskTypes").then(({ DEFAULT_COMPLEXITY_PROMPTS: improved }) => {
+      setComplexityPrompts(improved);
+      localStorage.setItem(COMPLEXITY_PROMPTS_KEY, JSON.stringify(improved));
+      localStorage.setItem(COMPLEXITY_FORMULA_KEY, formula);
+      window.dispatchEvent(new StorageEvent("storage", { key: COMPLEXITY_LS_KEY }));
+      setSavedPrompts(true);
+      setTimeout(() => setSavedPrompts(false), 2000);
+    });
+  };
+
   // Вычисления
   const totalWeightedScore = prices.length > 0
     ? Math.round(prices.reduce((s, p) => s + getItem(p.id).complexity * getItem(p.id).weight / 10, 0) * 10) / 10
@@ -341,6 +352,7 @@ export default function DiscountRiskComplexity({ isDark, theme, readOnly }: Prop
         setActivePromptTab={setActivePromptTab}
         savedPrompts={savedPrompts}
         onSavePrompts={handleSavePrompts}
+        onImprovePrompts={handleImprovePrompts}
       />
 
     </div>

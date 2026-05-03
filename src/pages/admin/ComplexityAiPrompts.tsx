@@ -1,6 +1,5 @@
-import { useState } from "react";
 import Icon from "@/components/ui/icon";
-import { ComplexityPrompts, ThemeClasses, DEFAULT_COMPLEXITY_PROMPTS, DEFAULT_FORMULA } from "./discountRiskTypes";
+import { ComplexityPrompts, ThemeClasses, DEFAULT_FORMULA } from "./discountRiskTypes";
 
 interface Props {
   isDark: boolean;
@@ -14,6 +13,7 @@ interface Props {
   setActivePromptTab: (t: "math" | "semantic" | "combine") => void;
   savedPrompts: boolean;
   onSavePrompts: () => void;
+  onImprovePrompts: () => void;
 }
 
 export default function ComplexityAiPrompts({
@@ -21,15 +21,8 @@ export default function ComplexityAiPrompts({
   formula, setFormula,
   complexityPrompts, setComplexityPrompts,
   activePromptTab, setActivePromptTab,
-  savedPrompts, onSavePrompts,
+  savedPrompts, onSavePrompts, onImprovePrompts,
 }: Props) {
-  const [improved, setImproved] = useState(false);
-
-  const handleImprove = () => {
-    setComplexityPrompts(DEFAULT_COMPLEXITY_PROMPTS);
-    setImproved(true);
-    setTimeout(() => setImproved(false), 2500);
-  };
 
   return (
     <div className={`rounded-2xl p-4 space-y-3 ${theme.bg} border ${theme.border}`}>
@@ -105,11 +98,11 @@ export default function ComplexityAiPrompts({
             <Icon name={savedPrompts ? "Check" : "Save"} size={12} />
             {savedPrompts ? "Сохранено" : "Сохранить промпты и формулу"}
           </button>
-          <button onClick={handleImprove}
+          <button onClick={onImprovePrompts}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-bold transition hover:opacity-80"
-            style={{ background: improved ? "rgba(16,185,129,0.12)" : "rgba(245,158,11,0.12)", color: improved ? "#10b981" : "#f59e0b", border: `1px solid ${improved ? "rgba(16,185,129,0.3)" : "rgba(245,158,11,0.3)"}` }}>
-            <Icon name={improved ? "CheckCircle2" : "Wand2"} size={12} />
-            {improved ? "Промпты улучшены!" : "Улучшить промпты"}
+            style={{ background: savedPrompts ? "rgba(16,185,129,0.12)" : "rgba(245,158,11,0.12)", color: savedPrompts ? "#10b981" : "#f59e0b", border: `1px solid ${savedPrompts ? "rgba(16,185,129,0.3)" : "rgba(245,158,11,0.3)"}` }}>
+            <Icon name={savedPrompts ? "CheckCircle2" : "Wand2"} size={12} />
+            {savedPrompts ? "Сохранено!" : "Улучшить промпты"}
           </button>
         </div>
       )}
