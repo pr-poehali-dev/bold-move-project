@@ -6,7 +6,7 @@ import { AddFinRowInline, RowWithToggle } from "./DrawerFinRowHelpers";
 import Icon from "@/components/ui/icon";
 import { useTheme } from "./themeContext";
 import { AutoRulesModal, type CostRowDef } from "./DrawerAutoRulesModal";
-import { PaymentStatusBadge } from "./PaymentConfirmModal";
+import { PaymentStatusBadge, CustomPaymentBadge } from "./PaymentConfirmModal";
 import { useAutoRules, RuleEntry } from "@/hooks/useAutoRules";
 
 const LS_FIN_LABELS = "crm_fin_row_labels";
@@ -215,20 +215,20 @@ export function DrawerIncomeBlock({
               extra_payment: { def: "Доплата",        save: v => saveWithLog({ extra_payment: +v || null } as Partial<Client>, `Доплата: +${(+v).toLocaleString("ru-RU")} ₽`,   "Wallet",   "#10b981") },
             };
             const isPayment = key === "prepayment" || key === "extra_payment";
+            const badge = isPayment ? (
+              <PaymentStatusBadge
+                client={data}
+                field={key}
+                plannedAmount={Number(data[key]) || null}
+                label={getLabel(key, defs[key].def)}
+                onConfirmed={() => onReload?.()}
+              />
+            ) : undefined;
             return (
               <RowWithToggle key={key} rowKey={key} visible onToggle={() => {}} editMode={incomeEdit}
                 editableLabel={getLabel(key, defs[key].def)} onLabelChange={l => renameLabel(key, l)}
-                onDelete={() => toggleRowVisibility(key)}
-                extra={isPayment ? (
-                  <PaymentStatusBadge
-                    client={data}
-                    field={key}
-                    plannedAmount={Number(data[key]) || null}
-                    label={getLabel(key, defs[key].def)}
-                    onConfirmed={() => onReload?.()}
-                  />
-                ) : undefined}>
-                <InlineField label={getLabel(key, defs[key].def)} value={data[key]} onSave={defs[key].save} type="number" placeholder="—" />
+                onDelete={() => toggleRowVisibility(key)}>
+                <InlineField label={getLabel(key, defs[key].def)} value={data[key]} onSave={defs[key].save} type="number" placeholder="—" labelExtra={badge} />
               </RowWithToggle>
             );
           })}
@@ -238,11 +238,20 @@ export function DrawerIncomeBlock({
           .map(r => {
             const lsKey = `fin_row_${data.id}_${r.key}`;
             const val = localStorage.getItem(lsKey) || "";
+            const customBadge = (
+              <CustomPaymentBadge
+                clientId={data.id}
+                rowKey={r.key}
+                plannedAmount={val ? +val : null}
+                label={r.label}
+              />
+            );
             return (
               <RowWithToggle key={r.key} rowKey={r.key} visible onToggle={() => {}} editMode={incomeEdit}
                 editableLabel={r.label} onLabelChange={label => updateCustomFinRow(r.key, label)}
                 onDelete={() => { deleteCustomFinRow(r.key); }}>
                 <InlineField label={r.label} value={val} type="number" placeholder="—"
+                  labelExtra={customBadge}
                   onSave={v => { localStorage.setItem(lsKey, v); logAction("Plus", "#10b981", `${r.label}: ${(+v).toLocaleString("ru-RU")} ₽`); }} />
               </RowWithToggle>
             );

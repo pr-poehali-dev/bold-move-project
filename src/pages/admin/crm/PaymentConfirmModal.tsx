@@ -303,3 +303,81 @@ function PaymentConfirmModal({
     document.body
   );
 }
+
+// ── Кнопка «Получено?» для кастомных строк (localStorage) ────────────────────
+const LS_CUSTOM = "crm_custom_payment_fact_";
+
+interface CustomFact { confirmed: boolean; amount: number; confirmedAt: string; }
+
+function loadCustomFact(clientId: number, key: string): CustomFact | null {
+  try { return JSON.parse(localStorage.getItem(`${LS_CUSTOM}${clientId}_${key}`) || "null"); } catch { return null; }
+}
+function saveCustomFact(clientId: number, key: string, f: CustomFact) {
+  localStorage.setItem(`${LS_CUSTOM}${clientId}_${key}`, JSON.stringify(f));
+}
+function clearCustomFact(clientId: number, key: string) {
+  localStorage.removeItem(`${LS_CUSTOM}${clientId}_${key}`);
+}
+
+export function CustomPaymentBadge({ clientId, rowKey, plannedAmount, label }: {
+  clientId: number;
+  rowKey: string;
+  plannedAmount?: number | null;
+  label: string;
+}) {
+  const [fact, setFact]         = useState<CustomFact | null>(() => loadCustomFact(clientId, rowKey));
+  const [modalOpen, setModalOpen] = useState(false);
+
+  const handleConfirm = (amount: number) => {
+    const f: CustomFact = { confirmed: true, amount, confirmedAt: new Date().toISOString() };
+    saveCustomFact(clientId, rowKey, f);
+    setFact(f);
+    setModalOpen(false);
+  };
+
+  const handleReset = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    clearCustomFact(clientId, rowKey);
+    setFact(null);
+  };
+
+  if (fact?.confirmed) {
+    return (
+      <>
+        <button onClick={() => setModalOpen(true)}
+          className="flex items-center gap-1 px-1.5 py-0.5 rounded-md transition hover:opacity-80 flex-shrink-0"
+          style={{ background: "rgba(16,185,129,0.15)", border: "1px solid rgba(16,185,129,0.3)" }}>
+          <Icon name="CheckCircle2" size={11} style={{ color: "#10b981" }} />
+          <span className="text-[10px] font-bold" style={{ color: "#10b981" }}>
+            {fact.amount > 0 ? Math.round(fact.amount).toLocaleString("ru-RU") + " ₽" : "Получено"}
+          </span>
+        </button>
+        <button onClick={handleReset} className="p-0.5 rounded hover:bg-white/10 transition flex-shrink-0"
+          style={{ color: "rgba(255,255,255,0.2)" }}>
+          <Icon name="X" size={10} />
+        </button>
+        {modalOpen && (
+          <PaymentConfirmModal label={label} plannedAmount={plannedAmount}
+            existingAmount={fact.amount} existingReceipt={null}
+            onConfirm={handleConfirm} onClose={() => setModalOpen(false)} />
+        )}
+      </>
+    );
+  }
+
+  return (
+    <>
+      <button onClick={() => setModalOpen(true)}
+        className="flex items-center gap-1 px-1.5 py-0.5 rounded-md transition hover:opacity-80 flex-shrink-0"
+        style={{ background: "rgba(245,158,11,0.1)", border: "1px solid rgba(245,158,11,0.25)" }}>
+        <Icon name="CircleDollarSign" size={11} style={{ color: "#f59e0b" }} />
+        <span className="text-[10px] font-semibold" style={{ color: "#f59e0b" }}>Получено?</span>
+      </button>
+      {modalOpen && (
+        <PaymentConfirmModal label={label} plannedAmount={plannedAmount}
+          existingAmount={null} existingReceipt={null}
+          onConfirm={handleConfirm} onClose={() => setModalOpen(false)} />
+      )}
+    </>
+  );
+}

@@ -1,4 +1,5 @@
 import { useState, useRef, type ChangeEvent } from "react";
+import type React from "react";
 import { useTheme } from "./themeContext";
 import { DateTimePickerPopup } from "./DateTimePicker";
 
@@ -21,13 +22,14 @@ function isPhoneValid(masked: string): boolean {
   return masked.replace(/\D/g, "").length === 11;
 }
 
-export function InlineField({ label, value, onSave, type = "text", placeholder = "—", hideLabel }: {
+export function InlineField({ label, value, onSave, type = "text", placeholder = "—", hideLabel, labelExtra }: {
   label: string;
   value: string | number | null | undefined;
   onSave: (v: string) => void;
   type?: string;
   placeholder?: string;
   hideLabel?: boolean;
+  labelExtra?: React.ReactNode;
 }) {
   const t = useTheme();
   const [editing,      setEditing]      = useState(false);
@@ -81,7 +83,12 @@ export function InlineField({ label, value, onSave, type = "text", placeholder =
   return (
     <div style={{ borderBottom: `1px solid ${t.border2}`, minHeight: 36 }}>
       <div className="flex items-center justify-between group">
-        {!hideLabel && <span className="text-xs flex-shrink-0 w-36 py-2" style={{ color: "#d4d4d4" }}>{label}</span>}
+        {!hideLabel && (
+          <div className="flex items-center gap-1.5 flex-shrink-0 w-36 py-2">
+            <span className="text-xs" style={{ color: "#d4d4d4" }}>{label}</span>
+            {labelExtra}
+          </div>
+        )}
 
         {isDatetime ? (
           <>
