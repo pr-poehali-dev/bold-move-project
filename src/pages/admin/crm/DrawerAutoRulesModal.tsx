@@ -57,7 +57,9 @@ const DEFAULT_COST_ROWS: CostRowDef[] = [
   { key: "install_cost",  label: "Монтаж" },
 ];
 const DEFAULT_INCOME_ROWS: CostRowDef[] = [
-  { key: "contract_sum", label: "Сумма договора" },
+  { key: "contract_sum",  label: "Сумма договора" },
+  { key: "prepayment",    label: "Предоплата" },
+  { key: "extra_payment", label: "Доплата" },
 ];
 
 // ── Компоненты ────────────────────────────────────────────────────────────
