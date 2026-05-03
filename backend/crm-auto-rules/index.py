@@ -54,9 +54,11 @@ def get_company_id(event):
 def ensure_defaults(cur, company_id):
     """Добавить дефолтные правила если их нет у компании"""
     for r in DEFAULT_RULES:
+        enabled = "true" if r.get("enabled", True) else "false"
+        visible = "true" if r.get("visible", True) else "false"
         cur.execute(f"""
-            INSERT INTO {SCHEMA}.auto_rules_v2 (company_id, key, label, row_type, sort_order, is_default)
-            VALUES ({company_id}, '{r["key"]}', '{r["label"]}', '{r["row_type"]}', {r["sort_order"]}, true)
+            INSERT INTO {SCHEMA}.auto_rules_v2 (company_id, key, label, row_type, sort_order, is_default, enabled, visible)
+            VALUES ({company_id}, '{r["key"]}', '{r["label"]}', '{r["row_type"]}', {r["sort_order"]}, true, {enabled}, {visible})
             ON CONFLICT (company_id, key) DO NOTHING
         """)
 
