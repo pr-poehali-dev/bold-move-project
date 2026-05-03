@@ -89,26 +89,20 @@ export function DiscountSliderPanel({
             <div className="text-sm font-black text-white/70">−{fmt(baseIncome * discount / 100)} ₽</div>
           </div>
           <div className="rounded-xl px-3 py-2.5 text-center"
-            style={{
-              background: isRealLoss ? "#ef444412" : isOverMinMargin ? "#f59e0b12" : "#10b98112",
-              border: `1px solid ${isRealLoss ? "#ef444430" : isOverMinMargin ? "#f59e0b30" : "#10b98125"}`,
-            }}>
+            style={{ background: accentColor + "18", border: `1px solid ${accentColor}35` }}>
             <div className="text-[9px] uppercase tracking-wider font-semibold mb-1"
-              style={{ color: isRealLoss ? "#ef4444" : isOverMinMargin ? "#f59e0b" : "#10b981" }}>
+              style={{ color: accentColor }}>
               {isRealLoss ? "Убыток" : "Прибыль"}
             </div>
-            <div className="text-sm font-black" style={{ color: isRealLoss ? "#ef4444" : isOverMinMargin ? "#f59e0b" : "#10b981" }}>
+            <div className="text-sm font-black" style={{ color: accentColor }}>
               {isRealLoss ? "" : "+"}{fmt(discountedProfit)} ₽
             </div>
           </div>
           <div className="rounded-xl px-3 py-2.5 text-center"
-            style={{
-              background: isRealLoss ? "#ef444412" : isOverMinMargin ? "#f59e0b12" : "#10b98112",
-              border: `1px solid ${isRealLoss ? "#ef444430" : isOverMinMargin ? "#f59e0b30" : "#10b98125"}`,
-            }}>
+            style={{ background: accentColor + "18", border: `1px solid ${accentColor}35` }}>
             <div className="text-[9px] uppercase tracking-wider font-semibold mb-1"
-              style={{ color: isRealLoss ? "#ef4444" : isOverMinMargin ? "#f59e0b" : "#10b981" }}>Маржа</div>
-            <div className="text-sm font-black" style={{ color: isRealLoss ? "#ef4444" : isOverMinMargin ? "#f59e0b" : "#10b981" }}>
+              style={{ color: accentColor }}>Маржа</div>
+            <div className="text-sm font-black" style={{ color: accentColor }}>
               {isRealLoss ? "—" : `${discountedMargin}%`}
             </div>
           </div>
@@ -325,11 +319,11 @@ export function DiscountSliderPanel({
                 <span className="text-[11px] font-bold text-white/70">{fmt(discountedIncome)} ₽</span>
               </div>
               <div className="flex items-center justify-between px-3 py-2 rounded-xl"
-                style={{ background: isRealLoss ? "#ef444410" : isOverMinMargin ? "#f59e0b10" : "#10b98110", border: `1px solid ${isRealLoss ? "#ef444430" : isOverMinMargin ? "#f59e0b30" : "#10b98130"}` }}>
-                <span className="text-[10px]" style={{ color: isRealLoss ? "#ef4444" : isOverMinMargin ? "#f59e0b" : "#10b981" }}>
+                style={{ background: accentColor + "15", border: `1px solid ${accentColor}35` }}>
+                <span className="text-[10px]" style={{ color: accentColor }}>
                   {isRealLoss ? "Убыток" : "Заработаете"}
                 </span>
-                <span className="text-[11px] font-bold" style={{ color: isRealLoss ? "#ef4444" : isOverMinMargin ? "#f59e0b" : "#10b981" }}>
+                <span className="text-[11px] font-bold" style={{ color: accentColor }}>
                   {isRealLoss ? "" : "+"}{fmt(discountedProfit)} ₽
                 </span>
               </div>
