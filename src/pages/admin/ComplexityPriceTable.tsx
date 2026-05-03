@@ -37,14 +37,7 @@ export default function ComplexityPriceTable({
   onAiEvaluate, onAiErrorClose, onSaveItems, onResetAll, onUpdateItem,
 }: Props) {
   const border2 = isDark ? "rgba(255,255,255,0.05)" : "#f3f4f6";
-  const [hoveredId, setHoveredId] = useState<number | null>(null);
-
-  const hoveredItem = hoveredId !== null ? complexityItems[hoveredId] : null;
-  const hoveredReason = hoveredItem?.reason || "";
-  const hoveredWeightReason = hoveredItem?.weight_reason || "";
-  const hoveredComplexity = hoveredItem?.ai_complexity ?? hoveredItem?.complexity ?? null;
-  const hoveredWeight = hoveredItem?.ai_weight ?? hoveredItem?.weight ?? null;
-  const hasAnyReason = Object.values(complexityItems).some(i => i.reason && i.weight_reason);
+  const [tooltipId, setTooltipId] = useState<number | null>(null);
 
   const getItem = (id: number): ComplexityItem =>
     complexityItems[id] || { priceId: id, complexity: 5, weight: 5 };
@@ -189,74 +182,6 @@ export default function ComplexityPriceTable({
             </span>
           </div>
 
-          {/* Sticky шапка с AI-подсказками — вне таблицы, липнет к скроллу страницы */}
-          <div className="sticky z-20 px-0" style={{
-            top: 0,
-            background: isDark ? "#0f0f1a" : "#f9fafb",
-            borderBottom: `1px solid ${isDark ? "rgba(255,255,255,0.07)" : "#e5e7eb"}`,
-          }}>
-            <div className="flex items-start text-xs" style={{ minWidth: 640 }}>
-              {/* Название */}
-              <div className="px-4 py-3 flex-shrink-0" style={{ minWidth: 160 }}>
-                <div className={`font-semibold ${theme.sub}`}>Название позиции</div>
-                <div className="text-[9px] mt-0.5" style={{ color: isDark ? "rgba(255,255,255,0.2)" : "#c4c4c4" }}>из прайса компании</div>
-              </div>
-              {/* Сложность */}
-              <div className="px-4 py-3 flex-1">
-                <div className="font-bold" style={{ color: "#f59e0b" }}>
-                  Сложность монтажа <span className="font-normal text-[10px]">1–10</span>
-                </div>
-                <div className="text-[9px] mt-0.5 leading-relaxed" style={{ minHeight: 28 }}>
-                  {hoveredReason ? (
-                    <span className="flex items-start gap-1.5">
-                      <Icon name="Sparkles" size={9} style={{ color: "#a78bfa", marginTop: 1, flexShrink: 0 }} />
-                      <span>
-                        <span className="font-bold mr-1" style={{ color: "#f59e0b" }}>{hoveredComplexity}/10</span>
-                        <span style={{ color: isDark ? "rgba(255,255,255,0.55)" : "#6b7280", fontStyle: "italic" }}>{hoveredReason}</span>
-                      </span>
-                    </span>
-                  ) : !hasAnyReason ? (
-                    <span className="flex items-center gap-1">
-                      <Icon name="Sparkles" size={9} style={{ color: "rgba(139,92,246,0.4)" }} />
-                      <span style={{ color: isDark ? "rgba(255,255,255,0.25)" : "#c4c4c4", fontStyle: "italic" }}>нажми «AI оценить»</span>
-                    </span>
-                  ) : (
-                    <span style={{ color: isDark ? "rgba(255,255,255,0.2)" : "#c4c4c4", fontStyle: "italic" }}>наведи на позицию</span>
-                  )}
-                </div>
-              </div>
-              {/* Влияние */}
-              <div className="px-4 py-3 flex-1">
-                <div className="font-bold" style={{ color: "#8b5cf6" }}>
-                  Влияние на скидку <span className="font-normal text-[10px]">1–10</span>
-                </div>
-                <div className="text-[9px] mt-0.5 leading-relaxed" style={{ minHeight: 28 }}>
-                  {hoveredWeightReason ? (
-                    <span className="flex items-start gap-1.5">
-                      <Icon name="Sparkles" size={9} style={{ color: "#a78bfa", marginTop: 1, flexShrink: 0 }} />
-                      <span>
-                        <span className="font-bold mr-1" style={{ color: "#8b5cf6" }}>{hoveredWeight}/10</span>
-                        <span style={{ color: isDark ? "rgba(255,255,255,0.55)" : "#6b7280", fontStyle: "italic" }}>{hoveredWeightReason}</span>
-                      </span>
-                    </span>
-                  ) : !hasAnyReason ? (
-                    <span className="flex items-center gap-1">
-                      <Icon name="Sparkles" size={9} style={{ color: "rgba(139,92,246,0.4)" }} />
-                      <span style={{ color: isDark ? "rgba(255,255,255,0.25)" : "#c4c4c4", fontStyle: "italic" }}>нажми «AI оценить»</span>
-                    </span>
-                  ) : (
-                    <span style={{ color: isDark ? "rgba(255,255,255,0.2)" : "#c4c4c4", fontStyle: "italic" }}>наведи на позицию</span>
-                  )}
-                </div>
-              </div>
-              {/* Итог */}
-              <div className="px-4 py-3 text-center flex-shrink-0" style={{ width: 90 }}>
-                <div className="font-bold" style={{ color: "#a78bfa" }}>Итог</div>
-                <div className="text-[9px] font-mono mt-0.5" style={{ color: isDark ? "rgba(255,255,255,0.25)" : "#c4c4c4" }}>сл×вес/10</div>
-              </div>
-            </div>
-          </div>
-
           {/* Таблица */}
           <div className="overflow-x-auto">
             <table className="w-full text-xs" style={{ minWidth: 640 }}>
@@ -265,7 +190,27 @@ export default function ComplexityPriceTable({
                 <col style={{ width: "35%" }} />
                 <col style={{ width: "35%" }} />
                 <col style={{ width: 90 }} />
+                <col style={{ width: 32 }} />
               </colgroup>
+              <thead>
+                <tr style={{ borderBottom: `1px solid ${isDark ? "rgba(255,255,255,0.07)" : "#e5e7eb"}`, background: isDark ? "#0f0f1a" : "#f9fafb" }}>
+                  <th className="text-left px-4 py-3" style={{ minWidth: 160 }}>
+                    <div className={`font-semibold ${theme.sub}`}>Название позиции</div>
+                    <div className="text-[9px] mt-0.5" style={{ color: isDark ? "rgba(255,255,255,0.2)" : "#c4c4c4" }}>из прайса компании</div>
+                  </th>
+                  <th className="text-left px-4 py-3">
+                    <div className="font-bold" style={{ color: "#f59e0b" }}>Сложность монтажа <span className="font-normal text-[10px]">1–10</span></div>
+                  </th>
+                  <th className="text-left px-4 py-3">
+                    <div className="font-bold" style={{ color: "#8b5cf6" }}>Влияние на скидку <span className="font-normal text-[10px]">1–10</span></div>
+                  </th>
+                  <th className="text-center px-4 py-3">
+                    <div className="font-bold" style={{ color: "#a78bfa" }}>Итог</div>
+                    <div className="text-[9px] font-mono mt-0.5" style={{ color: isDark ? "rgba(255,255,255,0.25)" : "#c4c4c4" }}>сл×вес/10</div>
+                  </th>
+                  <th />
+                </tr>
+              </thead>
               <tbody>
               {Object.entries(byCategory).map(([cat, catPrices]) => {
                 const catAvg = Math.round(
@@ -292,10 +237,7 @@ export default function ComplexityPriceTable({
                       const scoreBg    = score <= 3 ? "rgba(16,185,129,0.12)" : score <= 6 ? "rgba(245,158,11,0.12)" : "rgba(239,68,68,0.12)";
                       const inputCls   = `w-10 text-center text-sm font-black rounded-md px-1 py-0.5 outline-none border transition ${isDark ? "bg-white/[0.06] border-white/10 focus:border-violet-500/50 text-white" : "bg-gray-50 border-gray-200 focus:border-violet-400 text-gray-900"}`;
                       return (
-                        <tr key={price.id} style={{ borderTop: `1px solid ${border2}` }} className="transition hover:bg-white/[0.015]"
-                          onMouseEnter={() => setHoveredId(price.id)}
-                          onMouseLeave={() => setHoveredId(null)}
-                        >
+                        <tr key={price.id} style={{ borderTop: `1px solid ${border2}` }} className="transition hover:bg-white/[0.015]">
                           <td className="px-4 py-3">
                             <div className="flex items-center gap-2">
                               <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: scoreColor }} />
@@ -336,6 +278,48 @@ export default function ComplexityPriceTable({
                               </span>
                             </div>
                           </td>
+                          {/* AI-подсказка справа */}
+                          <td className="pr-3 py-3" style={{ width: 32 }}>
+                            {(item.reason || item.weight_reason) && (
+                              <div className="relative flex justify-center"
+                                onMouseEnter={() => setTooltipId(price.id)}
+                                onMouseLeave={() => setTooltipId(null)}
+                              >
+                                <div className="w-5 h-5 rounded-full flex items-center justify-center cursor-help flex-shrink-0"
+                                  style={{ background: "rgba(139,92,246,0.12)", border: "1px solid rgba(139,92,246,0.25)" }}>
+                                  <Icon name="Sparkles" size={10} style={{ color: "#a78bfa" }} />
+                                </div>
+                                {tooltipId === price.id && (
+                                  <div className="absolute right-full mr-2 top-1/2 -translate-y-1/2 z-50 rounded-xl px-3 py-2.5 shadow-2xl pointer-events-none"
+                                    style={{
+                                      width: 280,
+                                      background: isDark ? "rgba(15,10,40,0.98)" : "#fff",
+                                      border: "1px solid rgba(139,92,246,0.3)",
+                                      boxShadow: "0 8px 32px rgba(139,92,246,0.2)",
+                                    }}>
+                                    {item.reason && (
+                                      <div className="flex items-start gap-1.5 mb-2">
+                                        <span className="text-[9px] font-bold uppercase tracking-wider flex-shrink-0 mt-0.5" style={{ color: "#f59e0b" }}>Сл</span>
+                                        <span className="text-[11px] leading-relaxed" style={{ color: isDark ? "rgba(255,255,255,0.75)" : "#374151" }}>
+                                          <span className="font-bold mr-1" style={{ color: "#f59e0b" }}>{item.ai_complexity ?? item.complexity}/10</span>
+                                          {item.reason}
+                                        </span>
+                                      </div>
+                                    )}
+                                    {item.weight_reason && (
+                                      <div className="flex items-start gap-1.5">
+                                        <span className="text-[9px] font-bold uppercase tracking-wider flex-shrink-0 mt-0.5" style={{ color: "#8b5cf6" }}>Вл</span>
+                                        <span className="text-[11px] leading-relaxed" style={{ color: isDark ? "rgba(255,255,255,0.75)" : "#374151" }}>
+                                          <span className="font-bold mr-1" style={{ color: "#8b5cf6" }}>{item.ai_weight ?? item.weight}/10</span>
+                                          {item.weight_reason}
+                                        </span>
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </td>
                         </tr>
                       );
                     })}
@@ -356,6 +340,7 @@ export default function ComplexityPriceTable({
                   <td className="px-4 py-2.5 text-center">
                     <span className="text-base font-black" style={{ color: "#a78bfa" }}>{totalWeightedScore}</span>
                   </td>
+                  <td />
                 </tr>
               </tfoot>
             </table>
