@@ -5,6 +5,7 @@ import TabRules from "./admin/TabRules";
 import TabPrompt from "./admin/TabPrompt";
 import TabFaq from "./admin/TabFaq";
 import TabCorrections from "./admin/TabCorrections";
+import TabDefaultAutoRules from "./admin/TabDefaultAutoRules";
 import CrmPanel from "./admin/crm/CrmPanel";
 import { setCrmToken } from "./admin/crm/crmApi";
 import TeamPanel from "./admin/team/TeamPanel";
@@ -432,7 +433,7 @@ export default function AdminPanel() {
           {/* Суб-вкладки — только с правом view */}
           <div className="px-4 flex gap-0.5 pt-2 overflow-x-auto flex-shrink-0"
             style={{ borderBottom: `1px solid ${isDark ? "rgba(255,255,255,0.1)" : "#e5e7eb"}` }}>
-            {AGENT_TABS.filter(t => agentPerms[t.id].view).map(t => (
+            {AGENT_TABS.filter(t => agentPerms[t.id as keyof typeof agentPerms]?.view ?? true).map(t => (
               <button key={t.id} onClick={() => setAgentTab(t.id)}
                 className={`flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-t-lg transition whitespace-nowrap ${
                   agentTab === t.id
@@ -443,19 +444,29 @@ export default function AdminPanel() {
                 }`}>
                 <Icon name={t.icon} size={13} />
                 {t.label}
-                {!agentPerms[t.id].edit && (
-                  <Icon name="Eye" size={10} className="ml-0.5 opacity-50" />
-                )}
               </button>
             ))}
+            {/* Вкладка только для мастера */}
+            {user?.is_master && (
+              <button onClick={() => setAgentTab("default-rules")}
+                className={`flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-t-lg transition whitespace-nowrap ${
+                  agentTab === "default-rules"
+                    ? isDark ? "bg-violet-600/15 text-violet-300 border-b-2 border-violet-500" : "bg-violet-600/10 text-violet-700 border-b-2 border-violet-600"
+                    : isDark ? "text-white/40 hover:text-white/70" : "text-gray-500 hover:text-gray-800"
+                }`}>
+                <Icon name="ShieldCheck" size={13} />
+                Дефолты по ролям
+              </button>
+            )}
           </div>
 
           <div className="flex-1 overflow-y-auto p-4 max-w-6xl mx-auto w-full">
-            {agentTab === "prices"      && agentPerms.prices.view      && <TabPrices      token={authToken} onItemAdded={handleItemAdded} isDark={isDark} readOnly={!agentPerms.prices.edit} />}
-            {agentTab === "rules"       && agentPerms.rules.view       && <TabRules       token={authToken} hint={newItemHint} isDark={isDark} readOnly={!agentPerms.rules.edit} />}
-            {agentTab === "prompt"      && agentPerms.prompt.view      && <TabPrompt      token={authToken} isDark={isDark} readOnly={!agentPerms.prompt.edit} />}
-            {agentTab === "faq"         && agentPerms.faq.view         && <TabFaq         token={authToken} isDark={isDark} readOnly={!agentPerms.faq.edit} />}
-            {agentTab === "corrections" && agentPerms.corrections.view && <TabCorrections token={authToken} isDark={isDark} readOnly={!agentPerms.corrections.edit} />}
+            {agentTab === "prices"        && agentPerms.prices.view      && <TabPrices      token={authToken} onItemAdded={handleItemAdded} isDark={isDark} readOnly={!agentPerms.prices.edit} />}
+            {agentTab === "rules"         && agentPerms.rules.view       && <TabRules       token={authToken} hint={newItemHint} isDark={isDark} readOnly={!agentPerms.rules.edit} />}
+            {agentTab === "prompt"        && agentPerms.prompt.view      && <TabPrompt      token={authToken} isDark={isDark} readOnly={!agentPerms.prompt.edit} />}
+            {agentTab === "faq"           && agentPerms.faq.view         && <TabFaq         token={authToken} isDark={isDark} readOnly={!agentPerms.faq.edit} />}
+            {agentTab === "corrections"   && agentPerms.corrections.view && <TabCorrections token={authToken} isDark={isDark} readOnly={!agentPerms.corrections.edit} />}
+            {agentTab === "default-rules" && user?.is_master             && <TabDefaultAutoRules isDark={isDark} />}
           </div>
         </div>
       )}

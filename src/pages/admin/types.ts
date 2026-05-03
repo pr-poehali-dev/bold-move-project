@@ -1,5 +1,5 @@
 export type AdminTab = "prices" | "rules" | "prompt" | "faq" | "corrections" | "crm";
-export type AgentSubTab = "prices" | "rules" | "prompt" | "faq" | "corrections";
+export type AgentSubTab = "prices" | "rules" | "prompt" | "faq" | "corrections" | "default-rules";
 
 export interface FaqItem {
   id: number;

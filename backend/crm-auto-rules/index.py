@@ -2,17 +2,23 @@ import json, os
 import psycopg2
 
 SCHEMA = os.environ.get("DB_SCHEMA", "t_p45929761_bold_move_project")
+MASTER_EMAIL = "19.jeka.94@gmail.com"
 CORS = {
     "Access-Control-Allow-Origin": "*",
     "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
     "Access-Control-Allow-Headers": "Content-Type, X-Authorization, Authorization",
 }
 
-DEFAULT_RULES = [
-    {"key": "measure_cost",  "label": "Замер",      "row_type": "cost",   "sort_order": 1, "is_default": True},
-    {"key": "install_cost",  "label": "Монтаж",     "row_type": "cost",   "sort_order": 2, "is_default": True},
-    {"key": "prepayment",    "label": "Предоплата", "row_type": "income", "sort_order": 1, "is_default": True},
-    {"key": "extra_payment", "label": "Доплата",    "row_type": "income", "sort_order": 2, "is_default": True},
+# Структура правил по умолчанию (если в default_auto_rules ничего нет)
+FALLBACK_RULES = [
+    {"key": "measure_cost",   "label": "Замер",         "row_type": "cost",   "sort_order": 1, "enabled": False, "visible": True},
+    {"key": "install_cost",   "label": "Монтаж",        "row_type": "cost",   "sort_order": 2, "enabled": False, "visible": True},
+    {"key": "manager_cost",   "label": "Менеджер",      "row_type": "cost",   "sort_order": 3, "enabled": False, "visible": True},
+    {"key": "technolog_cost", "label": "Технолог",      "row_type": "cost",   "sort_order": 4, "enabled": False, "visible": True},
+    {"key": "ads_cost",       "label": "Реклама (CAC)", "row_type": "cost",   "sort_order": 5, "enabled": False, "visible": True},
+    {"key": "other_cost",     "label": "Другое",        "row_type": "cost",   "sort_order": 6, "enabled": False, "visible": True},
+    {"key": "prepayment",     "label": "Предоплата",    "row_type": "income", "sort_order": 1, "enabled": True,  "visible": True},
+    {"key": "extra_payment",  "label": "Доплата",       "row_type": "income", "sort_order": 2, "enabled": True,  "visible": True},
 ]
 
 def get_conn():
@@ -24,13 +30,13 @@ def ok(data):
 def err(msg, code=400):
     return {"statusCode": code, "headers": {**CORS, "Content-Type": "application/json"}, "body": json.dumps({"error": msg}, ensure_ascii=False)}
 
-def get_company_id(event):
-    """Получить company_id из токена"""
+def get_session(event):
+    """Получить данные сессии из токена. Возвращает (company_id, role, is_master)"""
     token = (event.get("headers") or {}).get("X-Authorization", "")
     if token.startswith("Bearer "):
         token = token[7:]
     if not token:
-        return None
+        return None, None, False
     conn = get_conn()
     cur = conn.cursor()
     cur.execute(f"""
@@ -43,41 +49,132 @@ def get_company_id(event):
     cur.close()
     conn.close()
     if not row:
-        return None
+        return None, None, False
     uid, uemail, urole, ucompany_id = row
-    if uemail == "19.jeka.94@gmail.com":
-        return 0  # мастер — company_id=0 (общие правила)
+    if uemail == MASTER_EMAIL:
+        return 0, "master", True
     if urole == "manager" and ucompany_id:
-        return ucompany_id
-    return uid
+        # Менеджер — берём роль владельца компании
+        conn2 = get_conn()
+        cur2 = conn2.cursor()
+        cur2.execute(f"SELECT role FROM {SCHEMA}.users WHERE id = {ucompany_id}")
+        owner = cur2.fetchone()
+        cur2.close()
+        conn2.close()
+        owner_role = owner[0] if owner else "company"
+        return ucompany_id, owner_role, False
+    return uid, urole, False
 
-def ensure_defaults(cur, company_id):
-    """Добавить дефолтные правила если их нет у компании"""
-    for r in DEFAULT_RULES:
-        enabled = "true" if r.get("enabled", True) else "false"
+def get_defaults_for_role(cur, role):
+    """Получить дефолтные правила для роли из БД"""
+    cur.execute(f"""
+        SELECT key, label, pct, enabled, visible, row_type, sort_order
+        FROM {SCHEMA}.default_auto_rules
+        WHERE role = '{role}'
+        ORDER BY row_type, sort_order
+    """)
+    rows = cur.fetchall()
+    if rows:
+        return [{"key": r[0], "label": r[1], "pct": float(r[2]) if r[2] is not None else None,
+                 "enabled": r[3], "visible": r[4], "row_type": r[5], "sort_order": r[6]} for r in rows]
+    # Фоллбэк если для роли нет записей
+    return FALLBACK_RULES
+
+def ensure_defaults(cur, company_id, role):
+    """Добавить дефолтные правила если их нет у компании (по роли)"""
+    defaults = get_defaults_for_role(cur, role)
+    for r in defaults:
+        pct_val = str(r["pct"]) if r.get("pct") is not None else "NULL"
+        enabled = "true" if r.get("enabled", False) else "false"
         visible = "true" if r.get("visible", True) else "false"
         cur.execute(f"""
-            INSERT INTO {SCHEMA}.auto_rules_v2 (company_id, key, label, row_type, sort_order, is_default, enabled, visible)
-            VALUES ({company_id}, '{r["key"]}', '{r["label"]}', '{r["row_type"]}', {r["sort_order"]}, true, {enabled}, {visible})
+            INSERT INTO {SCHEMA}.auto_rules_v2 (company_id, key, label, pct, row_type, sort_order, is_default, enabled, visible)
+            VALUES ({company_id}, '{r["key"]}', '{r["label"]}', {pct_val}, '{r["row_type"]}', {r["sort_order"]}, true, {enabled}, {visible})
             ON CONFLICT (company_id, key) DO NOTHING
         """)
 
 def handler(event: dict, context) -> dict:
-    """Управление правилами авто-расчёта расходов и доходов по компании"""
+    """Управление правилами авто-расчёта расходов и доходов по компании + дефолты по ролям для мастера"""
     if event.get("httpMethod") == "OPTIONS":
         return {"statusCode": 200, "headers": CORS, "body": ""}
 
-    company_id = get_company_id(event)
+    company_id, role, is_master = get_session(event)
     if company_id is None:
         return err("Unauthorized", 401)
 
     method = event.get("httpMethod", "GET")
+    qs = event.get("queryStringParameters") or {}
+    resource = qs.get("r", "rules")  # rules | defaults
 
-    # GET — загрузить правила
+    # ── УПРАВЛЕНИЕ ДЕФОЛТАМИ ПО РОЛЯМ (только мастер) ─────────────────────
+    if resource == "defaults":
+        if not is_master:
+            return err("Forbidden", 403)
+
+        if method == "GET":
+            conn = get_conn()
+            cur = conn.cursor()
+            cur.execute(f"""
+                SELECT role, key, label, pct, enabled, visible, row_type, sort_order
+                FROM {SCHEMA}.default_auto_rules
+                ORDER BY role, row_type, sort_order
+            """)
+            rows = cur.fetchall()
+            cur.close()
+            conn.close()
+            result = {}
+            for r in rows:
+                role_key = r[0]
+                if role_key not in result:
+                    result[role_key] = []
+                result[role_key].append({
+                    "key": r[1], "label": r[2],
+                    "pct": float(r[3]) if r[3] is not None else None,
+                    "enabled": r[4], "visible": r[5],
+                    "row_type": r[6], "sort_order": r[7],
+                })
+            return ok(result)
+
+        if method == "POST":
+            body = json.loads(event.get("body") or "{}")
+            target_role = body.get("role", "")
+            rules = body.get("rules", [])
+            if not target_role:
+                return err("role required")
+            conn = get_conn()
+            cur = conn.cursor()
+            for i, r in enumerate(rules):
+                key = r.get("key", "").replace("'", "''")
+                label = r.get("label", "").replace("'", "''")
+                pct = r.get("pct")
+                pct_val = str(pct) if pct is not None else "NULL"
+                enabled = "true" if r.get("enabled", False) else "false"
+                visible = "true" if r.get("visible", True) else "false"
+                row_type = r.get("row_type", "cost")
+                sort_order = r.get("sort_order", i)
+                cur.execute(f"""
+                    INSERT INTO {SCHEMA}.default_auto_rules (role, key, label, pct, enabled, visible, row_type, sort_order)
+                    VALUES ('{target_role}', '{key}', '{label}', {pct_val}, {enabled}, {visible}, '{row_type}', {sort_order})
+                    ON CONFLICT (role, key) DO UPDATE SET
+                        label = EXCLUDED.label,
+                        pct = EXCLUDED.pct,
+                        enabled = EXCLUDED.enabled,
+                        visible = EXCLUDED.visible,
+                        sort_order = EXCLUDED.sort_order,
+                        updated_at = NOW()
+                """)
+            conn.commit()
+            cur.close()
+            conn.close()
+            return ok({"ok": True})
+
+    # ── ПРАВИЛА КОМПАНИИ ────────────────────────────────────────────────────
+
+    # GET — загрузить правила компании
     if method == "GET":
         conn = get_conn()
         cur = conn.cursor()
-        ensure_defaults(cur, company_id)
+        ensure_defaults(cur, company_id, role)
         conn.commit()
 
         cur.execute(f"""
@@ -104,7 +201,7 @@ def handler(event: dict, context) -> dict:
         ]
         return ok({"rules": rules, "auto_mode": settings[0] if settings else False})
 
-    # POST — сохранить правила
+    # POST — сохранить правила компании
     if method == "POST":
         body = json.loads(event.get("body") or "{}")
         rules = body.get("rules", [])
@@ -113,14 +210,12 @@ def handler(event: dict, context) -> dict:
         conn = get_conn()
         cur = conn.cursor()
 
-        # Сохраняем auto_mode
         cur.execute(f"""
             INSERT INTO {SCHEMA}.auto_rules_settings (company_id, auto_mode)
             VALUES ({company_id}, {'true' if auto_mode else 'false'})
             ON CONFLICT (company_id) DO UPDATE SET auto_mode = EXCLUDED.auto_mode, updated_at = NOW()
         """)
 
-        # Удаляем кастомные (не дефолтные) правила и перезаписываем
         cur.execute(f"""
             DELETE FROM {SCHEMA}.auto_rules_v2
             WHERE company_id = {company_id} AND is_default = false
