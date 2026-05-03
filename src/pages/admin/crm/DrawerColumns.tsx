@@ -156,7 +156,7 @@ export function DrawerColumns(props: ColumnsProps) {
       {/* Двухколоночная сетка — выровненные блоки */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3 items-stretch">
         {/* Левый столбец */}
-        <div className="flex flex-col gap-3 min-w-0">
+        <div className="flex flex-col gap-3 min-w-0 h-full">
           {col0Narrow.map(b => (
             <DraggableBlock key={b.id} blockId={b.id} onDragStart={onDragStart} onDragOver={onDragOver} onDrop={onDrop}>
               {renderColBlock(b)}
@@ -184,7 +184,7 @@ export function DrawerColumns(props: ColumnsProps) {
         </div>
 
         {/* Правый столбец */}
-        <div className="flex flex-col gap-3 min-w-0">
+        <div className="flex flex-col gap-3 min-w-0 h-full">
           {col1Narrow.map(b => (
             <DraggableBlock key={b.id} blockId={b.id} onDragStart={onDragStart} onDragOver={onDragOver} onDrop={onDrop}>
               {renderColBlock(b)}
@@ -214,14 +214,7 @@ export function DrawerColumns(props: ColumnsProps) {
         </DraggableBlock>
       ))}
 
-      {/* Кнопка добавить широкий блок */}
-      <button onClick={() => onAddBlock("wide")}
-        className="w-full flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-medium transition border-2 border-dashed hover:border-violet-500/40 hover:text-violet-400"
-        style={{ borderColor: t.border, color: "#a3a3a3" }}>
-        <Icon name="Plus" size={13} />
-        <Icon name="LayoutTemplate" size={13} />
-        Добавить широкий блок
-      </button>
+
     </div>
   );
 }
