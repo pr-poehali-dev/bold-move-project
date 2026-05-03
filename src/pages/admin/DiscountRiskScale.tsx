@@ -24,15 +24,15 @@ export default function DiscountRiskScale({ s, isDark, theme }: Props) {
       <div className="relative h-8 rounded-xl overflow-hidden flex mb-2">
         <div style={{ width: `${greenPct}%`, background: "linear-gradient(90deg,#10b981,#84cc16)" }}
           className="flex items-center justify-center">
-          {greenPct > 12 && <span className="text-[10px] font-bold text-white/90">Низкий</span>}
+          {greenPct > 12 && <span className="text-[10px] font-bold text-white/90">Безопасно</span>}
         </div>
         <div style={{ width: `${yellowPct}%`, background: "linear-gradient(90deg,#f59e0b,#f97316)" }}
           className="flex items-center justify-center">
-          {yellowPct > 12 && <span className="text-[10px] font-bold text-white/90">Средний</span>}
+          {yellowPct > 12 && <span className="text-[10px] font-bold text-white/90">Умеренно</span>}
         </div>
         <div style={{ width: `${redPct}%`, background: "linear-gradient(90deg,#ef4444,#dc2626)" }}
           className="flex items-center justify-center">
-          {redPct > 12 && <span className="text-[10px] font-bold text-white/90">Высокий</span>}
+          {redPct > 12 && <span className="text-[10px] font-bold text-white/90">Осторожно</span>}
         </div>
       </div>
       <div className="flex justify-between text-[10px]" style={{ color: isDark ? "rgba(255,255,255,0.3)" : "#9ca3af" }}>

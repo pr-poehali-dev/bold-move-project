@@ -141,13 +141,13 @@ export function DiscountSliderPanel({
                 style={{ background: `linear-gradient(90deg, #16a34a 0%, #84cc16 ${lowPct * 0.6}%, #f59e0b ${lowPct}%, #f97316 ${midPct * 0.7}%, #ef4444 ${midPct}%, #dc2626 100%)` }}>
                 <div className="absolute inset-0 flex">
                   <div style={{ width: `${lowPct}%` }} className="flex items-center justify-center">
-                    {lowPct > 15 && <span className="text-[10px] font-black text-white" style={{ textShadow: "0 1px 3px rgba(0,0,0,0.5)" }}>Низкий</span>}
+                    {lowPct > 15 && <span className="text-[10px] font-black text-white" style={{ textShadow: "0 1px 3px rgba(0,0,0,0.5)" }}>Безопасно</span>}
                   </div>
                   <div style={{ width: `${midPct - lowPct}%` }} className="flex items-center justify-center">
-                    {(midPct - lowPct) > 15 && <span className="text-[10px] font-black text-white" style={{ textShadow: "0 1px 3px rgba(0,0,0,0.5)" }}>Средний</span>}
+                    {(midPct - lowPct) > 15 && <span className="text-[10px] font-black text-white" style={{ textShadow: "0 1px 3px rgba(0,0,0,0.5)" }}>Умеренно</span>}
                   </div>
                   <div style={{ width: `${100 - midPct}%` }} className="flex items-center justify-center">
-                    {(100 - midPct) > 15 && <span className="text-[10px] font-black text-white" style={{ textShadow: "0 1px 3px rgba(0,0,0,0.5)" }}>Высокий</span>}
+                    {(100 - midPct) > 15 && <span className="text-[10px] font-black text-white" style={{ textShadow: "0 1px 3px rgba(0,0,0,0.5)" }}>Осторожно</span>}
                   </div>
                 </div>
               </div>
@@ -189,11 +189,11 @@ export function DiscountSliderPanel({
           {/* Легенда */}
           <div className="flex flex-wrap gap-3 pt-1">
             {[
-              { color: "#10b981", label: "Низкий риск",  range: `0–${zoneLow}%` },
-              { color: "#f59e0b", label: "Средний риск", range: `${zoneLow}–${zoneMid}%` },
-              { color: "#ef4444", label: "Высокий риск", range: `${zoneMid}–${sliderMax}%` },
+              { color: "#10b981", label: "Низкий риск",    hint: "маржа в безопасной зоне", range: `0–${zoneLow}%` },
+              { color: "#f59e0b", label: "Средний риск",   hint: "стоит взвесить",           range: `${zoneLow}–${zoneMid}%` },
+              { color: "#ef4444", label: "Высокий риск",   hint: "маржа под угрозой",        range: `${zoneMid}–${sliderMax}%` },
             ].map(z => (
-              <div key={z.color} className="flex items-center gap-1.5">
+              <div key={z.color} className="flex items-center gap-1.5" title={z.hint}>
                 <div className="w-2 h-2 rounded-full" style={{ background: z.color }} />
                 <span className="text-[10px] font-semibold" style={{ color: z.color }}>{z.label}</span>
                 <span className="text-[9px] text-white/25">{z.range}</span>
