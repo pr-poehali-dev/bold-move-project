@@ -644,7 +644,8 @@ def handler(event: dict, context) -> dict:
 
         cur.execute(f"""
             SELECT u.id, u.email, u.name, u.phone, u.discount, u.role, u.estimates_balance,
-                   u.trial_until, (u.trial_until IS NOT NULL AND u.trial_until < NOW()) AS trial_expired
+                   u.trial_until, (u.trial_until IS NOT NULL AND u.trial_until < NOW()) AS trial_expired,
+                   u.company_id
             FROM {SCHEMA}.user_sessions s
             JOIN {SCHEMA}.users u ON u.id = s.user_id
             WHERE s.token=%s AND s.expires_at > NOW()
@@ -652,7 +653,15 @@ def handler(event: dict, context) -> dict:
         row = cur.fetchone()
         if not row:
             return err("Токен недействителен", 401)
-        user_id, email, user_name, phone, user_discount, user_role, estimates_balance, trial_until, trial_expired = row
+        user_id, email, user_name, phone, user_discount, user_role, estimates_balance, trial_until, trial_expired, u_company_id = row
+
+        # Определяем company_id для записи в CRM
+        if user_role in ("company", "installer"):
+            crm_company_id = user_id
+        elif user_role == "manager" and u_company_id:
+            crm_company_id = u_company_id
+        else:
+            crm_company_id = user_id
 
         # Для монтажников/компаний проверяем и списываем баланс
         if user_role in BUSINESS_ROLES:
@@ -721,8 +730,8 @@ def handler(event: dict, context) -> dict:
         session_id = f"estimate-{estimate_id}-{sec.token_hex(6)}"
         cur.execute(f"""
             INSERT INTO {SCHEMA}.live_chats
-              (session_id, client_name, phone, status, source, contract_sum, material_cost)
-            VALUES (%s, %s, %s, 'new', 'estimate', %s, %s)
+              (session_id, client_name, phone, status, source, contract_sum, material_cost, company_id)
+            VALUES (%s, %s, %s, 'new', 'estimate', %s, %s, %s)
             RETURNING id
         """, (
             session_id,
@@ -730,6 +739,7 @@ def handler(event: dict, context) -> dict:
             phone or "",
             total_standard,
             material_cost_total if material_cost_total > 0 else None,
+            crm_company_id,
         ))
         chat_id = cur.fetchone()[0]
 
