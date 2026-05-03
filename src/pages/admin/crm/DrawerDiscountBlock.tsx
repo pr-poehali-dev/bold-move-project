@@ -374,16 +374,6 @@ export function DrawerDiscountBlock({ data, customFinRows, onContractSumUpdated 
         <span className="text-xs font-bold uppercase tracking-wider flex-1 text-yellow-400">
           Оценка риска скидки
         </span>
-        {/* Кнопка AI */}
-        <button onClick={runAiRisk} disabled={aiLoading}
-          className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-bold transition disabled:opacity-50 hover:opacity-80"
-          style={{ background: "rgba(139,92,246,0.15)", color: "#a78bfa", border: "1px solid rgba(139,92,246,0.3)" }}>
-          {aiLoading
-            ? <><div className="w-2.5 h-2.5 border-2 border-current/30 border-t-current rounded-full animate-spin" /> AI...</>
-            : <><Icon name="Sparkles" size={11} /> Оценить AI</>
-          }
-        </button>
-
         {/* Кнопка 3-этапного анализа */}
         <button onClick={runComplexityAnalysis} disabled={analysisLoading}
           className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-bold transition disabled:opacity-50 hover:opacity-80"
