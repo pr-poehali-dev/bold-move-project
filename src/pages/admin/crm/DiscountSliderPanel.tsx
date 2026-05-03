@@ -1,3 +1,4 @@
+import { useState } from "react";
 import Icon from "@/components/ui/icon";
 import { useTheme } from "./themeContext";
 import { AiRisk, RiskSettings } from "./discountBlockTypes";
@@ -32,6 +33,7 @@ interface Props {
   onAnalysisClick: () => void;
   onApplyDiscount: () => void;
   onResetDiscount: () => void;
+  onUpdateDiscount: (newPct: number) => void;
   hasAppliedDiscount: boolean;
   appliedDiscountPct: number;
   discountHistory: DiscountEntry[];
@@ -47,14 +49,28 @@ export function DiscountSliderPanel({
   currentZone, accentColor, borderColor,
   effectiveMax, sliderMax, zoneLow, zoneMid,
   risk, aiRisk, aiError,
-  fmt, onAnalysisClick, onApplyDiscount, onResetDiscount,
+  fmt, onAnalysisClick, onApplyDiscount, onResetDiscount, onUpdateDiscount,
   hasAppliedDiscount, appliedDiscountPct,
   discountHistory, totalDiscountAmount, setApplied,
 }: Props) {
   const t = useTheme();
+  const [editingPct, setEditingPct] = useState<string>("");
+  const [isEditing,  setIsEditing]  = useState(false);
 
   const aiLevelColor = aiRisk?.level === "low" ? "#10b981" : aiRisk?.level === "mid" ? "#f59e0b" : "#ef4444";
   const aiLevelLabel = aiRisk?.level === "low" ? "Низкая сложность" : aiRisk?.level === "mid" ? "Средняя сложность" : "Высокая сложность";
+
+  const startEdit = () => {
+    setEditingPct(String(appliedDiscountPct));
+    setIsEditing(true);
+  };
+  const commitEdit = () => {
+    const val = parseFloat(editingPct);
+    if (!isNaN(val) && val > 0 && val !== appliedDiscountPct) {
+      onUpdateDiscount(val);
+    }
+    setIsEditing(false);
+  };
 
   return (
     <div className="rounded-2xl overflow-hidden" style={{ border: `1px solid ${borderColor}`, background: "#f59e0b08" }}>
@@ -76,7 +92,98 @@ export function DiscountSliderPanel({
         </button>
       </div>
 
-      <div className="px-4 py-4 space-y-4">
+      {/* ── РЕЖИМ: скидка уже применена ── */}
+      {hasAppliedDiscount && discountHistory.length > 0 && (
+        <div className="px-4 py-4 space-y-3">
+          {/* Плитки с текущими значениями */}
+          <div className="grid grid-cols-4 gap-2">
+            <div className="rounded-xl px-3 py-2.5 text-center" style={{ background: "#f59e0b18", border: "1px solid #f59e0b35" }}>
+              <div className="text-[9px] uppercase tracking-wider font-semibold mb-1" style={{ color: "#f59e0b" }}>Скидка</div>
+              <div className="text-base font-black" style={{ color: "#f59e0b" }}>{appliedDiscountPct}%</div>
+            </div>
+            <div className="rounded-xl px-3 py-2.5 text-center" style={{ background: "#ffffff08", border: `1px solid ${t.border}` }}>
+              <div className="text-[9px] uppercase tracking-wider font-semibold mb-1 text-white/40">Сумма скидки</div>
+              <div className="text-sm font-black text-white/70">−{fmt(totalDiscountAmount)} ₽</div>
+            </div>
+            <div className="rounded-xl px-3 py-2.5 text-center"
+              style={{ background: accentColor + "18", border: `1px solid ${accentColor}35` }}>
+              <div className="text-[9px] uppercase tracking-wider font-semibold mb-1" style={{ color: accentColor }}>
+                {isRealLoss ? "Убыток" : "Прибыль"}
+              </div>
+              <div className="text-sm font-black" style={{ color: accentColor }}>
+                {isRealLoss ? "" : "+"}{fmt(discountedProfit)} ₽
+              </div>
+            </div>
+            <div className="rounded-xl px-3 py-2.5 text-center"
+              style={{ background: accentColor + "18", border: `1px solid ${accentColor}35` }}>
+              <div className="text-[9px] uppercase tracking-wider font-semibold mb-1" style={{ color: accentColor }}>Маржа</div>
+              <div className="text-sm font-black" style={{ color: accentColor }}>
+                {isRealLoss ? "—" : `${discountedMargin}%`}
+              </div>
+            </div>
+          </div>
+
+          {/* Редактор скидки */}
+          <div className="rounded-xl overflow-hidden" style={{ border: "1px solid #f59e0b30", background: "#f59e0b06" }}>
+            <div className="flex items-center justify-between px-4 py-3">
+              <div className="flex items-center gap-3">
+                <Icon name="Tag" size={14} style={{ color: "#f59e0b" }} />
+                {isEditing ? (
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="number" min={0.5} max={effectiveMax || 99} step={0.5}
+                      value={editingPct}
+                      onChange={e => setEditingPct(e.target.value)}
+                      onKeyDown={e => { if (e.key === "Enter") commitEdit(); if (e.key === "Escape") setIsEditing(false); }}
+                      autoFocus
+                      className="w-20 rounded-lg px-2 py-1 text-sm font-bold focus:outline-none"
+                      style={{ background: "rgba(245,158,11,0.15)", border: "1px solid #f59e0b50", color: "#f59e0b" }}
+                    />
+                    <span className="text-sm font-bold text-yellow-400">%</span>
+                    <button onClick={commitEdit} disabled={applying}
+                      className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-bold transition disabled:opacity-50"
+                      style={{ background: "#f59e0b20", color: "#f59e0b", border: "1px solid #f59e0b40" }}>
+                      {applying ? <div className="w-3 h-3 border-2 border-current/30 border-t-current rounded-full animate-spin" /> : <Icon name="Check" size={11} />}
+                      Сохранить
+                    </button>
+                    <button onClick={() => setIsEditing(false)}
+                      className="px-2 py-1 rounded-lg text-[10px] transition hover:opacity-80"
+                      style={{ color: "rgba(255,255,255,0.3)" }}>
+                      Отмена
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-bold text-white">Скидка {appliedDiscountPct}% применена</span>
+                    <span className="text-xs text-white/40">−{fmt(totalDiscountAmount)} ₽</span>
+                  </div>
+                )}
+              </div>
+              {!isEditing && (
+                <div className="flex items-center gap-2">
+                  <button onClick={startEdit} disabled={applying}
+                    className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-bold transition hover:opacity-80 disabled:opacity-40"
+                    style={{ background: "rgba(245,158,11,0.12)", color: "#f59e0b", border: "1px solid rgba(245,158,11,0.3)" }}>
+                    <Icon name="Pencil" size={10} /> Изменить
+                  </button>
+                  <button onClick={onResetDiscount} disabled={applying}
+                    className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-bold transition hover:opacity-80 disabled:opacity-40"
+                    style={{ background: "#ef444415", color: "#ef4444", border: "1px solid #ef444430" }}>
+                    {applying
+                      ? <div className="w-3 h-3 border-2 border-current/30 border-t-current rounded-full animate-spin" />
+                      : <Icon name="Trash2" size={10} />
+                    }
+                    Удалить
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── РЕЖИМ: скидка не применена (слайдер) ── */}
+      {!hasAppliedDiscount && <div className="px-4 py-4 space-y-4">
 
         {/* 4 плитки */}
         <div className="grid grid-cols-4 gap-2">
@@ -155,54 +262,6 @@ export function DiscountSliderPanel({
             <div className="text-[10px] text-emerald-300">Скидка применена — смета и P&L обновлены</div>
           </div>
         )}
-        {hasAppliedDiscount && !applied && discountHistory.length > 0 && (
-          <div className="rounded-xl overflow-hidden"
-            style={{ border: "1px solid #f59e0b30", background: "#f59e0b08" }}>
-            {/* Шапка */}
-            <div className="flex items-center justify-between px-3 py-2"
-              style={{ borderBottom: "1px solid #f59e0b20" }}>
-              <div className="flex items-center gap-2">
-                <Icon name="History" size={12} style={{ color: "#f59e0b" }} />
-                <span className="text-[10px] font-bold uppercase tracking-wider text-yellow-400">
-                  История скидок ({discountHistory.length})
-                </span>
-              </div>
-              <span className="text-[10px] font-bold text-yellow-300">
-                −{fmt(totalDiscountAmount)} ₽ итого
-              </span>
-            </div>
-            {/* Строки */}
-            <div className="divide-y" style={{ borderColor: "#f59e0b15" }}>
-              {discountHistory.map((entry, i) => {
-                const isLast = i === discountHistory.length - 1;
-                const date = new Date(entry.created_at).toLocaleDateString("ru-RU", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
-                return (
-                  <div key={entry.id} className="flex items-center justify-between gap-2 px-3 py-2">
-                    <div className="flex items-center gap-2 min-w-0">
-                      <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md flex-shrink-0"
-                        style={{ background: "#f59e0b20", color: "#f59e0b" }}>
-                        −{entry.discount_pct}%
-                      </span>
-                      <span className="text-[10px] text-white/40 truncate">{date}</span>
-                      <span className="text-[10px] font-semibold text-yellow-300/70 whitespace-nowrap">
-                        −{fmt(entry.discount_amount)} ₽
-                      </span>
-                    </div>
-                    {isLast && (
-                      <button onClick={onResetDiscount} disabled={applying}
-                        className="flex items-center gap-1 px-2 py-1 rounded-lg text-[9px] font-bold transition hover:opacity-80 flex-shrink-0 disabled:opacity-40"
-                        style={{ background: "#ef444415", color: "#ef4444", border: "1px solid #ef444430" }}>
-                        <Icon name="RotateCcw" size={9} />
-                        Откатить
-                      </button>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
-
         {/* Шкала + слайдер */}
         <div className="space-y-1">
           {/* Цветная шкала */}
@@ -341,7 +400,7 @@ export function DiscountSliderPanel({
           </button>
         </div>
 
-      </div>
+      </div>}
     </div>
   );
 }
