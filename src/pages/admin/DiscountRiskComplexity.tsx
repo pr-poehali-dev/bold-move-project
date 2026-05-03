@@ -119,7 +119,48 @@ export default function DiscountRiskComplexity({ isDark, theme, readOnly }: Prop
 
   useEffect(() => { loadPrices(); }, [loadPrices]);
 
+  // Тихий автозапуск только для подсказок (reason/weight_reason) — слайдеры не трогает
+  useEffect(() => {
+    if (prices.length === 0 || readOnly) return;
+    const hasHints = Object.values(complexityItems).some(i => i.reason && i.weight_reason);
+    if (hasHints) return;
 
+    const fetchHints = async () => {
+      const BATCH = 10;
+      const current: Record<number, ComplexityItem> = { ...complexityItems };
+      for (let i = 0; i < prices.length; i += BATCH) {
+        const batch = prices.slice(i, i + BATCH);
+        try {
+          const res = await fetch(`${AUTH_URL}?action=complexity-eval`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ items: batch.map(p => ({ id: p.id, name: p.name })) }),
+          }).then(r => r.json());
+          if (res.results && Array.isArray(res.results)) {
+            res.results.forEach((item: { id: number; complexity: number; weight: number; reason?: string; weight_reason?: string }) => {
+              const existing = current[item.id];
+              const aiComplexity = Math.min(10, Math.max(1, Math.round(item.complexity)));
+              const aiWeight = Math.min(10, Math.max(1, Math.round(item.weight)));
+              current[item.id] = {
+                priceId: item.id,
+                complexity: existing?.complexity ?? aiComplexity,
+                weight: existing?.weight ?? aiWeight,
+                reason: item.reason || "",
+                weight_reason: item.weight_reason || "",
+                ai_complexity: aiComplexity,
+                ai_weight: aiWeight,
+              } as ComplexityItem;
+            });
+          }
+        } catch { /* тихо игнорируем */ }
+      }
+      setComplexityItems({ ...current });
+      saveComplexityItems(current);
+    };
+
+    fetchHints();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [prices]);
 
   const getItem = (id: number): ComplexityItem =>
     complexityItems[id] || { priceId: id, complexity: 5, weight: 5 };
