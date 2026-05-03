@@ -67,6 +67,10 @@ export default function ComplexityPriceTable({
           Позиции прайса
         </span>
 
+        {prices.length > 0 && (
+          <span className={`text-[10px] ${theme.sub}`}>{prices.length} позиций</span>
+        )}
+
         {/* AI кнопка */}
         {prices.length > 0 && !readOnly && (
           <button
@@ -86,10 +90,6 @@ export default function ComplexityPriceTable({
               <><Icon name="Sparkles" size={12} /> AI оценить</>
             )}
           </button>
-        )}
-
-        {prices.length > 0 && (
-          <span className={`text-[10px] ${theme.sub}`}>{prices.length} позиций</span>
         )}
       </div>
 
