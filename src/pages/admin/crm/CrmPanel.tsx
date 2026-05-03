@@ -53,9 +53,11 @@ export default function CrmPanel({ theme, initialOrderId }: { theme: Theme; init
   const [clients, setClients]       = useState<Client[]>([]);
   const [loading, setLoading]       = useState(true);
   const [calendarOpenId, setCalendarOpenId] = useState<number | null>(null);
+  const [calendarOpenKey, setCalendarOpenKey] = useState(0);
 
   const handleCalendarSelectClient = (id: number) => {
     setCalendarOpenId(id);
+    setCalendarOpenKey(k => k + 1); // форсируем ремонтирование CrmOrders
     setTab("orders");
   };
 
@@ -205,6 +207,7 @@ export default function CrmPanel({ theme, initialOrderId }: { theme: Theme; init
                 </button>
               )}
               <CrmOrders
+                key={calendarOpenKey || undefined}
                 clients={clients} loading={loading}
                 onStatusChange={updateClientStatus}
                 onClientRemoved={removeClient}

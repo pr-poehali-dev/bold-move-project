@@ -42,9 +42,9 @@ export default function CrmOrders({ clients: allClients, loading, onStatusChange
   const [selected, setSelected]   = useState<Client | null>(null);
   const [viewMode, setViewMode]   = useState<"grid" | "list" | "kanban">("grid");
 
-  // Open client from URL ?order=
+  // Open client from URL ?order= or from calendar
   useEffect(() => {
-    if (!initialOrderId || loading || allClients.length === 0) return;
+    if (!initialOrderId || allClients.length === 0) return;
     const found = allClients.find(c => c.id === initialOrderId);
     if (found) {
       setSelected(found);
@@ -52,7 +52,7 @@ export default function CrmOrders({ clients: allClients, loading, onStatusChange
       url.searchParams.delete("order");
       window.history.replaceState({}, "", url.toString());
     }
-  }, [initialOrderId, loading, allClients]);
+  }, [initialOrderId, allClients]);
 
   // ── Tabs/columns — single source of truth ────────────────────────────────
   const [tabLabels,  setTabLabels]  = useState<Record<string, string>>(loadSyncedLabels);
