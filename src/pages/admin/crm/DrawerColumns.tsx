@@ -190,23 +190,18 @@ export function DrawerColumns(props: ColumnsProps) {
               {renderColBlock(b)}
             </DraggableBlock>
           ))}
-          {/* Растягивающаяся зона — занимает оставшееся место и кликабельна для добавления блока */}
+          {/* Drop-зона для перетаскивания в правую колонку */}
           <div
-            className="flex-1 rounded-xl flex flex-col items-center justify-center gap-1.5 cursor-pointer transition-all"
+            className="flex-1 rounded-xl flex flex-col items-center justify-center transition-all"
             style={{
               minHeight: 80,
-              border: `2px dashed ${dropOverCol === 1 ? "#7c3aed" : "#ffffff18"}`,
+              border: `2px dashed ${dropOverCol === 1 ? "#7c3aed" : "transparent"}`,
               background: dropOverCol === 1 ? "#7c3aed08" : "transparent",
             }}
-            onClick={() => onAddBlock(1)}
             {...makeColDropZone(1)}
           >
-            {dropOverCol === 1 ? (
+            {dropOverCol === 1 && (
               <span className="text-xs text-violet-400">Перетащи сюда</span>
-            ) : (
-              <span className="text-[11px]" style={{ color: "#ffffff30" }}>
-                + Добавить блок
-              </span>
             )}
           </div>
         </div>
@@ -219,21 +214,7 @@ export function DrawerColumns(props: ColumnsProps) {
         </DraggableBlock>
       ))}
 
-      {/* Кнопки добавления в колонки */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-        <button onClick={() => onAddBlock(0)}
-          className="flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-medium transition border-2 border-dashed hover:border-violet-500/40 hover:text-violet-400"
-          style={{ borderColor: t.border, color: "#a3a3a3" }}>
-          <Icon name="Plus" size={12} /> Блок в левую
-        </button>
-        <button onClick={() => onAddBlock(1)}
-          className="flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-medium transition border-2 border-dashed hover:border-violet-500/40 hover:text-violet-400"
-          style={{ borderColor: t.border, color: "#a3a3a3" }}>
-          <Icon name="Plus" size={12} /> Блок в правую
-        </button>
-      </div>
-
-      {/* Кнопка добавить широкий блок — самая последняя */}
+      {/* Кнопка добавить широкий блок */}
       <button onClick={() => onAddBlock("wide")}
         className="w-full flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-medium transition border-2 border-dashed hover:border-violet-500/40 hover:text-violet-400"
         style={{ borderColor: t.border, color: "#a3a3a3" }}>
