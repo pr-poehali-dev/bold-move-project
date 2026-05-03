@@ -44,7 +44,7 @@ export default function ComplexityPriceTable({
   const hoveredWeightReason = hoveredItem?.weight_reason || "";
   const hoveredComplexity = hoveredItem?.complexity ?? null;
   const hoveredWeight = hoveredItem?.weight ?? null;
-  const hasAnyReason = Object.values(complexityItems).some(i => i.reason);
+  const hasAnyReason = Object.values(complexityItems).some(i => i.reason && i.weight_reason);
 
   const getItem = (id: number): ComplexityItem =>
     complexityItems[id] || { priceId: id, complexity: 5, weight: 5 };

@@ -110,11 +110,11 @@ export default function DiscountRiskComplexity({ isDark, theme, readOnly }: Prop
 
   useEffect(() => { loadPrices(); }, [loadPrices]);
 
-  // Автозапуск AI если прайс загружен, но нет объяснений
+  // Автозапуск AI если прайс загружен, но нет полных объяснений (reason + weight_reason)
   useEffect(() => {
     if (prices.length === 0 || aiLoading || readOnly) return;
-    const hasReasons = Object.values(complexityItems).some(i => i.reason);
-    if (!hasReasons) {
+    const hasFullReasons = Object.values(complexityItems).some(i => i.reason && i.weight_reason);
+    if (!hasFullReasons) {
       runAiEvaluation();
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
