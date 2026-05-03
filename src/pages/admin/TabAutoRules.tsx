@@ -42,6 +42,8 @@ function saveCustomRows(lsKey: string, rows: CustomRow[]) {
 const DEFAULT_COST_ROWS: CustomRow[] = [
   { key: "measure_cost",  label: "Замер" },
   { key: "install_cost",  label: "Монтаж" },
+  { key: "ads_cost",      label: "Реклама (CAC)" },
+  { key: "other_cost",    label: "Другое" },
 ];
 
 const DEFAULT_INCOME_ROWS: CustomRow[] = [

@@ -54,6 +54,8 @@ function saveCustomModalRows(lsKey: string, rows: CostRowDef[]) {
 const DEFAULT_COST_ROWS: CostRowDef[] = [
   { key: "measure_cost",  label: "Замер" },
   { key: "install_cost",  label: "Монтаж" },
+  { key: "ads_cost",      label: "Реклама (CAC)" },
+  { key: "other_cost",    label: "Другое" },
 ];
 const DEFAULT_INCOME_ROWS: CostRowDef[] = [
   { key: "prepayment",    label: "Предоплата" },
