@@ -183,126 +183,115 @@ export default function ComplexityPriceTable({
             </span>
           </div>
 
-          {/* Layout: таблица слева + панель подсказок справа */}
+          {/* Layout: список слева + панель подсказок справа */}
           <div className="flex" style={{ borderTop: `1px solid ${border2}` }}>
 
-            {/* Таблица слайдеров */}
-            <div className="flex-1 overflow-x-auto" style={{ borderRight: `1px solid ${border2}` }}>
-              <table className="w-full text-xs" style={{ minWidth: 480 }}>
-                <colgroup>
-                  <col style={{ minWidth: 130 }} />
-                  <col style={{ width: "40%" }} />
-                  <col style={{ width: "40%" }} />
-                  <col style={{ width: 80 }} />
-                </colgroup>
-                <thead>
-                  <tr style={{ background: isDark ? "#0f0f1a" : "#f9fafb", borderBottom: `1px solid ${border2}` }}>
-                    <th className="text-left px-4 py-2.5">
-                      <span className={`text-[10px] font-semibold ${theme.sub}`}>Название</span>
-                    </th>
-                    <th className="text-left px-4 py-2.5">
-                      <span className="text-[10px] font-bold" style={{ color: "#f59e0b" }}>Сложность 1–10</span>
-                    </th>
-                    <th className="text-left px-4 py-2.5">
-                      <span className="text-[10px] font-bold" style={{ color: "#8b5cf6" }}>Влияние 1–10</span>
-                    </th>
-                    <th className="text-center px-3 py-2.5">
-                      <span className="text-[10px] font-bold" style={{ color: "#a78bfa" }}>Итог</span>
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                {Object.entries(byCategory).map(([cat, catPrices]) => {
-                  const catAvg = Math.round(
-                    catPrices.reduce((s, p) => s + getItem(p.id).complexity * getItem(p.id).weight / 10, 0)
-                    / catPrices.length * 10
-                  ) / 10;
-                  return (
-                    <tbody key={cat}>
-                      <tr style={{ background: isDark ? "rgba(139,92,246,0.06)" : "rgba(139,92,246,0.04)" }}>
-                        <td colSpan={4} className="px-4 py-1.5">
-                          <div className="flex items-center gap-2">
-                            <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: "#a78bfa" }}>{cat}</span>
-                            <span className="text-[9px] px-1.5 py-0.5 rounded-full"
-                              style={{ background: "rgba(139,92,246,0.12)", color: "#a78bfa" }}>
-                              {catPrices.length} поз. · ср. {catAvg}/10
-                            </span>
+            {/* Левая часть — список позиций */}
+            <div className="flex-1 min-w-0" style={{ borderRight: `1px solid ${border2}` }}>
+
+              {/* Заголовок колонок */}
+              <div className="flex items-center px-4 py-2.5 text-[10px] font-bold"
+                style={{ background: isDark ? "#0f0f1a" : "#f9fafb", borderBottom: `1px solid ${border2}` }}>
+                <div style={{ width: 160, flexShrink: 0 }} className={theme.sub}>Название</div>
+                <div className="flex-1" style={{ color: "#f59e0b" }}>Сложность монтажа 1–10</div>
+                <div className="flex-1" style={{ color: "#8b5cf6" }}>Влияние на скидку 1–10</div>
+                <div style={{ width: 72, textAlign: "center", color: "#a78bfa" }}>Итог<div className="text-[9px] font-normal font-mono" style={{ color: isDark ? "rgba(255,255,255,0.25)" : "#c4c4c4" }}>сл×вес/10</div></div>
+              </div>
+
+              {/* Строки по категориям */}
+              {Object.entries(byCategory).map(([cat, catPrices]) => {
+                const catAvg = Math.round(
+                  catPrices.reduce((s, p) => s + getItem(p.id).complexity * getItem(p.id).weight / 10, 0)
+                  / catPrices.length * 10
+                ) / 10;
+                return (
+                  <div key={cat}>
+                    {/* Категория */}
+                    <div className="flex items-center gap-2 px-4 py-1.5"
+                      style={{ background: isDark ? "rgba(139,92,246,0.06)" : "rgba(139,92,246,0.04)", borderBottom: `1px solid ${border2}` }}>
+                      <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: "#a78bfa" }}>{cat}</span>
+                      <span className="text-[9px] px-1.5 py-0.5 rounded-full"
+                        style={{ background: "rgba(139,92,246,0.12)", color: "#a78bfa" }}>
+                        {catPrices.length} поз. · ср. {catAvg}/10
+                      </span>
+                    </div>
+
+                    {/* Позиции */}
+                    {catPrices.map((price) => {
+                      const item = getItem(price.id);
+                      const score = Math.round(item.complexity * item.weight / 10 * 10) / 10;
+                      const scoreColor = score <= 3 ? "#10b981" : score <= 6 ? "#f59e0b" : "#ef4444";
+                      const scoreBg    = score <= 3 ? "rgba(16,185,129,0.12)" : score <= 6 ? "rgba(245,158,11,0.12)" : "rgba(239,68,68,0.12)";
+                      const inputCls   = `w-10 text-center text-sm font-black rounded-md px-1 py-0.5 outline-none border transition ${isDark ? "bg-white/[0.06] border-white/10 focus:border-violet-500/50 text-white" : "bg-gray-50 border-gray-200 focus:border-violet-400 text-gray-900"}`;
+                      const isHovered  = hoveredId === price.id;
+                      return (
+                        <div key={price.id}
+                          className="flex items-center transition cursor-default"
+                          style={{
+                            borderBottom: `1px solid ${border2}`,
+                            background: isHovered ? (isDark ? "rgba(139,92,246,0.06)" : "rgba(139,92,246,0.03)") : "transparent",
+                          }}
+                          onMouseEnter={() => setHoveredId(price.id)}
+                          onMouseLeave={() => setHoveredId(null)}
+                        >
+                          {/* Название */}
+                          <div className="px-4 py-3 flex items-center gap-2 text-xs" style={{ width: 160, flexShrink: 0 }}>
+                            <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: scoreColor }} />
+                            <span className={`font-medium ${theme.text} leading-snug`}>{price.name}</span>
                           </div>
-                        </td>
-                      </tr>
-                      {catPrices.map((price) => {
-                        const item  = getItem(price.id);
-                        const score = Math.round(item.complexity * item.weight / 10 * 10) / 10;
-                        const scoreColor = score <= 3 ? "#10b981" : score <= 6 ? "#f59e0b" : "#ef4444";
-                        const scoreBg    = score <= 3 ? "rgba(16,185,129,0.12)" : score <= 6 ? "rgba(245,158,11,0.12)" : "rgba(239,68,68,0.12)";
-                        const inputCls   = `w-10 text-center text-sm font-black rounded-md px-1 py-0.5 outline-none border transition ${isDark ? "bg-white/[0.06] border-white/10 focus:border-violet-500/50 text-white" : "bg-gray-50 border-gray-200 focus:border-violet-400 text-gray-900"}`;
-                        const isHovered  = hoveredId === price.id;
-                        return (
-                          <tr key={price.id}
-                            style={{ borderTop: `1px solid ${border2}`, background: isHovered ? (isDark ? "rgba(139,92,246,0.06)" : "rgba(139,92,246,0.03)") : "transparent" }}
-                            className="transition cursor-default"
-                            onMouseEnter={() => setHoveredId(price.id)}
-                            onMouseLeave={() => setHoveredId(null)}
-                          >
-                            <td className="px-4 py-3">
-                              <div className="flex items-center gap-2">
-                                <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: scoreColor }} />
-                                <span className={`font-medium ${theme.text} leading-snug`}>{price.name}</span>
-                              </div>
-                            </td>
-                            <td className="px-4 py-3">
-                              <div className="flex items-center gap-3">
-                                <input type="range" min={1} max={10} step={1}
-                                  value={item.complexity} disabled={readOnly}
-                                  onChange={e => onUpdateItem(price.id, { complexity: Number(e.target.value) })}
-                                  className="flex-1 cursor-pointer" style={{ accentColor: "#f59e0b", height: 4 }} />
-                                <input type="number" min={1} max={10} value={item.complexity} disabled={readOnly}
-                                  onChange={e => onUpdateItem(price.id, { complexity: Math.min(10, Math.max(1, Number(e.target.value) || 1)) })}
-                                  className={inputCls} style={{ color: "#f59e0b", borderColor: "#f59e0b30" }} />
-                              </div>
-                            </td>
-                            <td className="px-4 py-3">
-                              <div className="flex items-center gap-3">
-                                <input type="range" min={1} max={10} step={1}
-                                  value={item.weight} disabled={readOnly}
-                                  onChange={e => onUpdateItem(price.id, { weight: Number(e.target.value) })}
-                                  className="flex-1 cursor-pointer" style={{ accentColor: "#8b5cf6", height: 4 }} />
-                                <input type="number" min={1} max={10} value={item.weight} disabled={readOnly}
-                                  onChange={e => onUpdateItem(price.id, { weight: Math.min(10, Math.max(1, Number(e.target.value) || 1)) })}
-                                  className={inputCls} style={{ color: "#8b5cf6", borderColor: "#8b5cf630" }} />
-                              </div>
-                            </td>
-                            <td className="px-3 py-3 text-center">
-                              <div className="flex flex-col items-center gap-0.5">
-                                <span className="text-sm font-black px-2 py-0.5 rounded-md"
-                                  style={{ color: scoreColor, background: scoreBg }}>
-                                  {score}
-                                </span>
-                                <span className="text-[9px] font-mono"
-                                  style={{ color: isDark ? "rgba(255,255,255,0.25)" : "#d1d5db" }}>
-                                  {item.complexity}×{item.weight}/10
-                                </span>
-                              </div>
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  );
-                })}
-                </tbody>
-                <tfoot>
-                  <tr style={{ borderTop: `2px solid ${isDark ? "rgba(139,92,246,0.2)" : "rgba(139,92,246,0.15)"}`, background: isDark ? "rgba(139,92,246,0.05)" : "rgba(139,92,246,0.03)" }}>
-                    <td colSpan={3} className="px-4 py-2.5">
-                      <span className="text-[11px] font-bold" style={{ color: "#a78bfa" }}>Суммарный удельный вес</span>
-                      <span className={`text-[10px] ml-2 ${theme.sub}`}>({filteredPrices.length} позиций)</span>
-                    </td>
-                    <td className="px-3 py-2.5 text-center">
-                      <span className="text-base font-black" style={{ color: "#a78bfa" }}>{totalWeightedScore}</span>
-                    </td>
-                  </tr>
-                </tfoot>
-              </table>
+                          {/* Сложность */}
+                          <div className="flex-1 px-4 py-3">
+                            <div className="flex items-center gap-3">
+                              <input type="range" min={1} max={10} step={1}
+                                value={item.complexity} disabled={readOnly}
+                                onChange={e => onUpdateItem(price.id, { complexity: Number(e.target.value) })}
+                                className="flex-1 cursor-pointer" style={{ accentColor: "#f59e0b", height: 4 }} />
+                              <input type="number" min={1} max={10} value={item.complexity} disabled={readOnly}
+                                onChange={e => onUpdateItem(price.id, { complexity: Math.min(10, Math.max(1, Number(e.target.value) || 1)) })}
+                                className={inputCls} style={{ color: "#f59e0b", borderColor: "#f59e0b30" }} />
+                            </div>
+                          </div>
+                          {/* Влияние */}
+                          <div className="flex-1 px-4 py-3">
+                            <div className="flex items-center gap-3">
+                              <input type="range" min={1} max={10} step={1}
+                                value={item.weight} disabled={readOnly}
+                                onChange={e => onUpdateItem(price.id, { weight: Number(e.target.value) })}
+                                className="flex-1 cursor-pointer" style={{ accentColor: "#8b5cf6", height: 4 }} />
+                              <input type="number" min={1} max={10} value={item.weight} disabled={readOnly}
+                                onChange={e => onUpdateItem(price.id, { weight: Math.min(10, Math.max(1, Number(e.target.value) || 1)) })}
+                                className={inputCls} style={{ color: "#8b5cf6", borderColor: "#8b5cf630" }} />
+                            </div>
+                          </div>
+                          {/* Итог */}
+                          <div className="py-3 text-center flex-shrink-0" style={{ width: 72 }}>
+                            <div className="flex flex-col items-center gap-0.5">
+                              <span className="text-sm font-black px-2 py-0.5 rounded-md"
+                                style={{ color: scoreColor, background: scoreBg }}>{score}</span>
+                              <span className="text-[9px] font-mono"
+                                style={{ color: isDark ? "rgba(255,255,255,0.25)" : "#d1d5db" }}>
+                                {item.complexity}×{item.weight}/10
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              })}
+
+              {/* Итоговая строка */}
+              <div className="flex items-center px-4 py-2.5"
+                style={{ borderTop: `2px solid ${isDark ? "rgba(139,92,246,0.2)" : "rgba(139,92,246,0.15)"}`, background: isDark ? "rgba(139,92,246,0.05)" : "rgba(139,92,246,0.03)" }}>
+                <div className="flex-1 text-[11px]">
+                  <span className="font-bold" style={{ color: "#a78bfa" }}>Суммарный удельный вес</span>
+                  <span className={`text-[10px] ml-2 ${theme.sub}`}>({filteredPrices.length} позиций)</span>
+                </div>
+                <div className="text-center flex-shrink-0" style={{ width: 72 }}>
+                  <span className="text-base font-black" style={{ color: "#a78bfa" }}>{totalWeightedScore}</span>
+                </div>
+              </div>
             </div>
 
             {/* Правая панель подсказок AI */}
