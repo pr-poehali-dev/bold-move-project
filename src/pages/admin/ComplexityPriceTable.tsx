@@ -38,8 +38,13 @@ export default function ComplexityPriceTable({
 }: Props) {
   const border2 = isDark ? "rgba(255,255,255,0.05)" : "#f3f4f6";
   const [hoveredId, setHoveredId] = useState<number | null>(null);
+
+  // Ищем данные по hoveredId — перебираем все ключи т.к. могут быть числовыми или строковыми
   const hoveredItem = hoveredId !== null
-    ? (complexityItems[hoveredId] || complexityItems[String(hoveredId)] || null)
+    ? Object.values(complexityItems).find(i => i.priceId === hoveredId) || null
+    : null;
+  const hoveredPrice = hoveredId !== null
+    ? prices.find(p => p.id === hoveredId) || null
     : null;
 
   const getItem = (id: number): ComplexityItem =>
@@ -306,50 +311,44 @@ export default function ComplexityPriceTable({
               </div>
 
               {/* Контент панели */}
-              <div className="flex-1 px-4 py-4 flex flex-col justify-center" style={{ minHeight: 120 }}>
-                {hoveredItem ? (
+              <div className="flex-1 px-4 py-4 flex flex-col" style={{ minHeight: 120 }}>
+                {hoveredPrice ? (
                   <div className="space-y-3">
-                    {hoveredItem.reason?.trim() ? (
-                      <div>
-                        <div className="flex items-center gap-1.5 mb-1">
-                          <span className="text-[9px] font-bold uppercase tracking-wider" style={{ color: "#f59e0b" }}>Сложность</span>
-                          <span className="text-[10px] font-black" style={{ color: "#f59e0b" }}>{hoveredItem.ai_complexity ?? hoveredItem.complexity}/10</span>
-                        </div>
-                        <p className="text-[11px] leading-relaxed" style={{ color: isDark ? "rgba(255,255,255,0.6)" : "#6b7280" }}>
-                          {hoveredItem.reason}
-                        </p>
+                    {/* Название позиции */}
+                    <div className="pb-2" style={{ borderBottom: `1px solid ${border2}` }}>
+                      <p className="text-[11px] font-bold leading-snug" style={{ color: isDark ? "rgba(255,255,255,0.8)" : "#111" }}>
+                        {hoveredPrice.name}
+                      </p>
+                    </div>
+                    {/* Сложность */}
+                    <div>
+                      <div className="flex items-center gap-1.5 mb-1">
+                        <span className="text-[9px] font-bold uppercase tracking-wider" style={{ color: "#f59e0b" }}>Сложность</span>
+                        <span className="text-[10px] font-black" style={{ color: "#f59e0b" }}>
+                          {hoveredItem?.ai_complexity ?? hoveredItem?.complexity ?? getItem(hoveredPrice.id).complexity}/10
+                        </span>
                       </div>
-                    ) : null}
-                    {hoveredItem.weight_reason?.trim() ? (
-                      <div>
-                        <div className="flex items-center gap-1.5 mb-1">
-                          <span className="text-[9px] font-bold uppercase tracking-wider" style={{ color: "#8b5cf6" }}>Влияние</span>
-                          <span className="text-[10px] font-black" style={{ color: "#8b5cf6" }}>{hoveredItem.ai_weight ?? hoveredItem.weight}/10</span>
-                        </div>
-                        <p className="text-[11px] leading-relaxed" style={{ color: isDark ? "rgba(255,255,255,0.6)" : "#6b7280" }}>
-                          {hoveredItem.weight_reason}
-                        </p>
+                      <p className="text-[11px] leading-relaxed" style={{ color: isDark ? "rgba(255,255,255,0.55)" : "#6b7280" }}>
+                        {hoveredItem?.reason?.trim() || "AI анализирует..."}
+                      </p>
+                    </div>
+                    {/* Влияние */}
+                    <div>
+                      <div className="flex items-center gap-1.5 mb-1">
+                        <span className="text-[9px] font-bold uppercase tracking-wider" style={{ color: "#8b5cf6" }}>Влияние</span>
+                        <span className="text-[10px] font-black" style={{ color: "#8b5cf6" }}>
+                          {hoveredItem?.ai_weight ?? hoveredItem?.weight ?? getItem(hoveredPrice.id).weight}/10
+                        </span>
                       </div>
-                    ) : null}
-                    {!hoveredItem.reason?.trim() && !hoveredItem.weight_reason?.trim() && (
-                      <div className="text-center">
-                        <p className="text-[11px] mb-3" style={{ color: isDark ? "rgba(255,255,255,0.3)" : "#9ca3af" }}>
-                          Нет объяснения AI.<br />Нажми «AI оценить»
-                        </p>
-                        {!readOnly && (
-                          <button onClick={onAiEvaluate}
-                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-bold mx-auto transition hover:opacity-80"
-                            style={{ background: "rgba(139,92,246,0.15)", color: "#a78bfa", border: "1px solid rgba(139,92,246,0.3)" }}>
-                            <Icon name="Sparkles" size={11} /> AI оценить
-                          </button>
-                        )}
-                      </div>
-                    )}
+                      <p className="text-[11px] leading-relaxed" style={{ color: isDark ? "rgba(255,255,255,0.55)" : "#6b7280" }}>
+                        {hoveredItem?.weight_reason?.trim() || "AI анализирует..."}
+                      </p>
+                    </div>
                   </div>
                 ) : (
-                  <div className="text-center">
-                    <Icon name="Sparkles" size={20} style={{ color: "rgba(139,92,246,0.2)", margin: "0 auto 8px" }} />
-                    <p className="text-[11px]" style={{ color: isDark ? "rgba(255,255,255,0.2)" : "#c4c4c4" }}>
+                  <div className="flex flex-col items-center justify-center flex-1">
+                    <Icon name="Sparkles" size={20} style={{ color: "rgba(139,92,246,0.2)", marginBottom: 8 }} />
+                    <p className="text-[11px] text-center" style={{ color: isDark ? "rgba(255,255,255,0.2)" : "#c4c4c4" }}>
                       Наведи на позицию — увидишь объяснение AI
                     </p>
                   </div>
