@@ -166,8 +166,8 @@ export function DrawerColumns(props: ColumnsProps) {
           <div
             className="flex-1 rounded-xl flex flex-col items-center justify-center gap-1.5 cursor-pointer transition-all"
             style={{
-              minHeight: 48,
-              border: `2px dashed ${dropOverCol === 0 ? "#7c3aed80" : "transparent"}`,
+              minHeight: 80,
+              border: `2px dashed ${dropOverCol === 0 ? "#7c3aed" : "#ffffff18"}`,
               background: dropOverCol === 0 ? "#7c3aed08" : "transparent",
             }}
             onClick={() => onAddBlock(0)}
@@ -176,8 +176,8 @@ export function DrawerColumns(props: ColumnsProps) {
             {dropOverCol === 0 ? (
               <span className="text-xs text-violet-400">Перетащи сюда</span>
             ) : (
-              <span className="text-[11px] opacity-0 hover:opacity-100 transition-opacity" style={{ color: "#a3a3a3" }}>
-                + Блок в левую
+              <span className="text-[11px]" style={{ color: "#ffffff30" }}>
+                + Добавить блок
               </span>
             )}
           </div>
@@ -194,8 +194,8 @@ export function DrawerColumns(props: ColumnsProps) {
           <div
             className="flex-1 rounded-xl flex flex-col items-center justify-center gap-1.5 cursor-pointer transition-all"
             style={{
-              minHeight: 48,
-              border: `2px dashed ${dropOverCol === 1 ? "#7c3aed80" : "transparent"}`,
+              minHeight: 80,
+              border: `2px dashed ${dropOverCol === 1 ? "#7c3aed" : "#ffffff18"}`,
               background: dropOverCol === 1 ? "#7c3aed08" : "transparent",
             }}
             onClick={() => onAddBlock(1)}
@@ -204,8 +204,8 @@ export function DrawerColumns(props: ColumnsProps) {
             {dropOverCol === 1 ? (
               <span className="text-xs text-violet-400">Перетащи сюда</span>
             ) : (
-              <span className="text-[11px] opacity-0 hover:opacity-100 transition-opacity" style={{ color: "#a3a3a3" }}>
-                + Блок в правую
+              <span className="text-[11px]" style={{ color: "#ffffff30" }}>
+                + Добавить блок
               </span>
             )}
           </div>
