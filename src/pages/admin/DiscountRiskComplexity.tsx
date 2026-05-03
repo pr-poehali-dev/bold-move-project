@@ -132,7 +132,8 @@ export default function DiscountRiskComplexity({ isDark, theme, readOnly }: Prop
 
     const fetchHints = async () => {
       const BATCH = 10;
-      const current: Record<number, ComplexityItem> = { ...complexityItems };
+      // Собираем результаты отдельно, не трогаем complexityItems до конца
+      const hintsResult: Record<number, Partial<ComplexityItem>> = {};
       for (let i = 0; i < needHints.length; i += BATCH) {
         const batch = needHints.slice(i, i + BATCH);
         try {
@@ -143,24 +144,33 @@ export default function DiscountRiskComplexity({ isDark, theme, readOnly }: Prop
           }).then(r => r.json());
           if (res.results && Array.isArray(res.results)) {
             res.results.forEach((item: { id: number; complexity: number; weight: number; reason?: string; weight_reason?: string }) => {
-              const existing = current[item.id];
               const aiComplexity = Math.min(10, Math.max(1, Math.round(item.complexity)));
               const aiWeight = Math.min(10, Math.max(1, Math.round(item.weight)));
-              current[item.id] = {
-                priceId: item.id,
-                complexity: existing?.complexity ?? aiComplexity,
-                weight: existing?.weight ?? aiWeight,
-                reason: item.reason?.trim() || existing?.reason || "",
-                weight_reason: item.weight_reason?.trim() || existing?.weight_reason || "",
+              hintsResult[item.id] = {
+                reason: item.reason?.trim() || "",
+                weight_reason: item.weight_reason?.trim() || "",
                 ai_complexity: aiComplexity,
                 ai_weight: aiWeight,
-              } as ComplexityItem;
+              };
             });
           }
         } catch { /* тихо */ }
       }
-      setComplexityItems({ ...current });
-      saveComplexityItems(current);
+      // Применяем только подсказки поверх актуального state (не трогаем complexity/weight)
+      setComplexityItems(prev => {
+        const next = { ...prev };
+        for (const [idStr, hints] of Object.entries(hintsResult)) {
+          const id = Number(idStr);
+          const existing = next[id] || Object.values(next).find(i => i.priceId === id);
+          if (existing) {
+            next[id] = { ...existing, ...hints };
+          } else {
+            next[id] = { priceId: id, complexity: 5, weight: 5, ...hints } as ComplexityItem;
+          }
+        }
+        saveComplexityItems(next);
+        return next;
+      });
     };
 
     fetchHints();
