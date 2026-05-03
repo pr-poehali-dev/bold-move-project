@@ -100,8 +100,12 @@ export function DrawerDiscountBlock({ data, customFinRows, onContractSumUpdated 
     ? Math.round((discountedProfit / baseIncome) * 100)
     : 0;
 
-  const isNegative = discountedProfit < 0 || (!risk.allow_zero_margin && discountedMargin < risk.min_margin);
-  const isWarning  = !isNegative && discountedMargin < risk.warn_margin;
+  // isNegative = только реальный убыток (прибыль < 0)
+  // isOverMinMargin = нарушение минимальной маржи (но прибыль ещё положительная)
+  const isRealLoss     = discountedProfit < 0;
+  const isOverMinMargin = !isRealLoss && !risk.allow_zero_margin && discountedMargin < risk.min_margin;
+  const isNegative     = isRealLoss || isOverMinMargin;
+  const isWarning      = !isNegative && discountedMargin < risk.warn_margin;
   const isOverMax  = discount > effectiveMax && effectiveMax > 0;
 
   const currentZone: "none" | "low" | "mid" | "high" = discount === 0 ? "none"
@@ -390,6 +394,8 @@ export function DrawerDiscountBlock({ data, customFinRows, onContractSumUpdated 
         discountedProfit={discountedProfit}
         discountedMargin={discountedMargin}
         isNegative={isNegative}
+        isRealLoss={isRealLoss}
+        isOverMinMargin={isOverMinMargin}
         isWarning={isWarning}
         isOverMax={isOverMax}
         currentZone={currentZone}

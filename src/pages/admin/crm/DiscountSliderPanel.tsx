@@ -14,6 +14,8 @@ interface Props {
   discountedProfit: number;
   discountedMargin: number;
   isNegative: boolean;
+  isRealLoss: boolean;
+  isOverMinMargin: boolean;
   isWarning: boolean;
   isOverMax: boolean;
   currentZone: "none" | "low" | "mid" | "high";
@@ -41,7 +43,7 @@ export function DiscountSliderPanel({
   discount, setDiscount,
   applying, applied, analysisLoading,
   baseIncome, discountedIncome, discountedProfit, discountedMargin,
-  isNegative, isWarning, isOverMax,
+  isNegative, isRealLoss, isOverMinMargin, isWarning, isOverMax,
   currentZone, accentColor, borderColor,
   effectiveMax, sliderMax, zoneLow, zoneMid,
   risk, aiRisk, aiError,
@@ -87,35 +89,58 @@ export function DiscountSliderPanel({
             <div className="text-sm font-black text-white/70">−{fmt(baseIncome * discount / 100)} ₽</div>
           </div>
           <div className="rounded-xl px-3 py-2.5 text-center"
-            style={{ background: isNegative ? "#ef444412" : "#10b98112", border: `1px solid ${isNegative ? "#ef444430" : "#10b98125"}` }}>
+            style={{
+              background: isRealLoss ? "#ef444412" : isOverMinMargin ? "#f59e0b12" : "#10b98112",
+              border: `1px solid ${isRealLoss ? "#ef444430" : isOverMinMargin ? "#f59e0b30" : "#10b98125"}`,
+            }}>
             <div className="text-[9px] uppercase tracking-wider font-semibold mb-1"
-              style={{ color: isNegative ? "#ef4444" : "#10b981" }}>
-              {isNegative ? "Убыток" : "Прибыль"}
+              style={{ color: isRealLoss ? "#ef4444" : isOverMinMargin ? "#f59e0b" : "#10b981" }}>
+              {isRealLoss ? "Убыток" : "Прибыль"}
             </div>
-            <div className="text-sm font-black" style={{ color: isNegative ? "#ef4444" : "#10b981" }}>
-              {isNegative ? "" : "+"}{fmt(discountedProfit)} ₽
+            <div className="text-sm font-black" style={{ color: isRealLoss ? "#ef4444" : isOverMinMargin ? "#f59e0b" : "#10b981" }}>
+              {isRealLoss ? "" : "+"}{fmt(discountedProfit)} ₽
             </div>
           </div>
           <div className="rounded-xl px-3 py-2.5 text-center"
-            style={{ background: isNegative ? "#ef444412" : "#10b98112", border: `1px solid ${isNegative ? "#ef444430" : "#10b98125"}` }}>
+            style={{
+              background: isRealLoss ? "#ef444412" : isOverMinMargin ? "#f59e0b12" : "#10b98112",
+              border: `1px solid ${isRealLoss ? "#ef444430" : isOverMinMargin ? "#f59e0b30" : "#10b98125"}`,
+            }}>
             <div className="text-[9px] uppercase tracking-wider font-semibold mb-1"
-              style={{ color: isNegative ? "#ef4444" : "#10b981" }}>Маржа</div>
-            <div className="text-sm font-black" style={{ color: isNegative ? "#ef4444" : "#10b981" }}>
-              {isNegative ? "—" : `${discountedMargin}%`}
+              style={{ color: isRealLoss ? "#ef4444" : isOverMinMargin ? "#f59e0b" : "#10b981" }}>Маржа</div>
+            <div className="text-sm font-black" style={{ color: isRealLoss ? "#ef4444" : isOverMinMargin ? "#f59e0b" : "#10b981" }}>
+              {isRealLoss ? "—" : `${discountedMargin}%`}
             </div>
           </div>
         </div>
 
         {/* Предупреждения */}
-        {(isNegative || isOverMax) && (
+        {(isOverMax) && (
+          <div className="flex items-center gap-2 px-3 py-2.5 rounded-xl animate-pulse"
+            style={{ background: "#ef444415", border: "1px solid #ef444435" }}>
+            <Icon name="AlertTriangle" size={14} style={{ color: "#ef4444", flexShrink: 0 }} />
+            <div>
+              <div className="text-[11px] font-black uppercase tracking-wide text-red-400">Превышен лимит скидки</div>
+              <div className="text-[10px] text-red-300/70">Максимум {effectiveMax}% для этого заказа</div>
+            </div>
+          </div>
+        )}
+        {isRealLoss && !isOverMax && (
           <div className="flex items-center gap-2 px-3 py-2.5 rounded-xl animate-pulse"
             style={{ background: "#ef444415", border: "1px solid #ef444435" }}>
             <Icon name="AlertTriangle" size={14} style={{ color: "#ef4444", flexShrink: 0 }} />
             <div>
               <div className="text-[11px] font-black uppercase tracking-wide text-red-400">Нельзя давать такую скидку</div>
-              <div className="text-[10px] text-red-300/70">
-                {isOverMax ? `Превышен максимум ${effectiveMax}% для этого заказа` : "Объект становится убыточным"}
-              </div>
+              <div className="text-[10px] text-red-300/70">Объект становится убыточным</div>
+            </div>
+          </div>
+        )}
+        {isOverMinMargin && !isRealLoss && !isOverMax && (
+          <div className="flex items-center gap-2 px-3 py-2.5 rounded-xl"
+            style={{ background: "#f59e0b15", border: "1px solid #f59e0b30" }}>
+            <Icon name="AlertCircle" size={14} style={{ color: "#f59e0b", flexShrink: 0 }} />
+            <div className="text-[10px] text-yellow-300/80">
+              Маржа {discountedMargin}% ниже минимума {risk.min_margin}% — скидка рискованная
             </div>
           </div>
         )}
@@ -124,7 +149,7 @@ export function DiscountSliderPanel({
             style={{ background: "#f59e0b15", border: "1px solid #f59e0b30" }}>
             <Icon name="AlertCircle" size={14} style={{ color: "#f59e0b", flexShrink: 0 }} />
             <div className="text-[10px] text-yellow-300/80">
-              Маржа ниже {risk.warn_margin}% — скидка рискованная
+              Маржа {discountedMargin}% ниже {risk.warn_margin}% — скидка рискованная
               {currentZone === "high" && " (высокий риск по правилам)"}
             </div>
           </div>
