@@ -50,7 +50,7 @@ export function AddFinRowInline({ block, onAdd, forceOpen, onClose }: {
   );
 }
 
-export function RowWithToggle({ rowKey, visible, onToggle, children, editMode, editableLabel, onLabelChange, onDelete }: {
+export function RowWithToggle({ rowKey, visible, onToggle, children, editMode, editableLabel, onLabelChange, onDelete, extra }: {
   rowKey: string;
   visible: boolean;
   onToggle: (key: string) => void;
@@ -59,6 +59,7 @@ export function RowWithToggle({ rowKey, visible, onToggle, children, editMode, e
   editableLabel?: string;
   onLabelChange?: (label: string) => void;
   onDelete?: () => void;
+  extra?: React.ReactNode;
 }) {
   const [labelVal, setLabelVal] = useState(editableLabel || "");
 
@@ -85,6 +86,9 @@ export function RowWithToggle({ rowKey, visible, onToggle, children, editMode, e
         </div>
       ) : (
         <div className="flex-1 min-w-0">{children}</div>
+      )}
+      {extra && !editMode && (
+        <div className="flex items-center gap-1 flex-shrink-0">{extra}</div>
       )}
       {editMode && (
         <div className="flex items-center gap-1.5 flex-shrink-0">

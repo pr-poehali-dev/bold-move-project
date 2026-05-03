@@ -9,6 +9,7 @@ import {
   AutoRulesModal, loadAutoRules, loadIncomeRules, loadAutoMode,
   type CostRowDef,
 } from "./DrawerAutoRulesModal";
+import { PaymentStatusBadge } from "./PaymentConfirmModal";
 
 const LS_FIN_LABELS = "crm_fin_row_labels";
 
@@ -213,10 +214,19 @@ export function DrawerIncomeBlock({
               prepayment:    { def: "Предоплата",     save: v => saveWithLog({ prepayment:    +v || null } as Partial<Client>, `Предоплата: +${(+v).toLocaleString("ru-RU")} ₽`, "Wallet",   "#10b981") },
               extra_payment: { def: "Доплата",        save: v => saveWithLog({ extra_payment: +v || null } as Partial<Client>, `Доплата: +${(+v).toLocaleString("ru-RU")} ₽`,   "Wallet",   "#10b981") },
             };
+            const isPayment = key === "prepayment" || key === "extra_payment";
             return (
               <RowWithToggle key={key} rowKey={key} visible onToggle={() => {}} editMode={incomeEdit}
                 editableLabel={getLabel(key, defs[key].def)} onLabelChange={l => renameLabel(key, l)}
-                onDelete={() => toggleRowVisibility(key)}>
+                onDelete={() => toggleRowVisibility(key)}
+                extra={isPayment ? (
+                  <PaymentStatusBadge
+                    clientId={data.id}
+                    field={key}
+                    plannedAmount={Number(data[key]) || null}
+                    label={getLabel(key, defs[key].def)}
+                  />
+                ) : undefined}>
                 <InlineField label={getLabel(key, defs[key].def)} value={data[key]} onSave={defs[key].save} type="number" placeholder="—" />
               </RowWithToggle>
             );
