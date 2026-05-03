@@ -30,13 +30,16 @@ export function DrawerPLBlock({ data, isHidden, toggleHidden, customFinRows }: {
   ].filter(r => r.value > 0);
   const plCosts = costRows.reduce((s, r) => s + r.value, 0);
 
-  const contractSum = Number(data.contract_sum) || 0;
-  const plIncome    = contractSum + (customIncomeRows.reduce((s, r) => s + r.value, 0));
+  const contractSum  = Number(data.contract_sum)   || 0;
+  const discountAmt  = Number(data.discount_amount) || 0;
+  const discountPct  = Number(data.discount_pct)    || 0;
+  const plIncome     = contractSum + (customIncomeRows.reduce((s, r) => s + r.value, 0));
 
-  const incomeRows: { label: string; value: number }[] = [
+  const incomeRows: { label: string; value: number; isDiscount?: boolean }[] = [
     { label: "Договор", value: contractSum },
+    ...(discountAmt > 0 ? [{ label: `Скидка ${discountPct}%`, value: -discountAmt, isDiscount: true }] : []),
     ...customIncomeRows,
-  ].filter(r => r.value > 0);
+  ].filter(r => r.isDiscount || r.value > 0);
 
   const plProfit = plIncome - plCosts;
   const margin   = plIncome > 0 ? Math.round((plProfit / plIncome) * 100) : null;
@@ -124,8 +127,11 @@ export function DrawerPLBlock({ data, isHidden, toggleHidden, customFinRows }: {
                 <div className="divide-y" style={{ borderColor: t.border2 }}>
                   {incomeRows.map(r => (
                     <div key={r.label} className="flex items-center justify-between px-3 py-2">
-                      <span className="text-xs" style={{ color: t.textSub }}>{r.label}</span>
-                      <span className="text-xs font-semibold text-emerald-400">{fmt(r.value)} ₽</span>
+                      <span className="text-xs" style={{ color: r.isDiscount ? "#f59e0b" : t.textSub }}>{r.label}</span>
+                      <span className="text-xs font-semibold whitespace-nowrap"
+                        style={{ color: r.isDiscount ? "#f59e0b" : "#10b981" }}>
+                        {r.isDiscount ? `−${fmt(Math.abs(r.value))}` : fmt(r.value)} ₽
+                      </span>
                     </div>
                   ))}
                 </div>
@@ -174,8 +180,11 @@ export function DrawerPLBlock({ data, isHidden, toggleHidden, customFinRows }: {
                 <div className="space-y-1.5">
                   {incomeRows.map(r => (
                     <div key={r.label} className="flex items-center justify-between gap-2">
-                      <span className="text-xs truncate" style={{ color: "#a3a3a3" }}>{r.label}</span>
-                      <span className="text-xs font-semibold text-emerald-400 whitespace-nowrap">{fmt(r.value)} ₽</span>
+                      <span className="text-xs truncate" style={{ color: r.isDiscount ? "#f59e0b" : "#a3a3a3" }}>{r.label}</span>
+                      <span className="text-xs font-semibold whitespace-nowrap"
+                        style={{ color: r.isDiscount ? "#f59e0b" : "#10b981" }}>
+                        {r.isDiscount ? `−${fmt(Math.abs(r.value))}` : fmt(r.value)} ₽
+                      </span>
                     </div>
                   ))}
                   {incomeRows.length > 1 && (

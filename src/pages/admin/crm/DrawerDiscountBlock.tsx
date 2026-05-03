@@ -301,7 +301,12 @@ export function DrawerDiscountBlock({ data, customFinRows, onContractSumUpdated 
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ blocks: newBlocks, totals: newTotals }),
       });
-      await crmFetch("clients", { method: "PUT", body: JSON.stringify({ contract_sum: standard }) }, { id: String(data.id) });
+      const discountAmt = Math.round(baseIncome * discount / 100);
+      await crmFetch("clients", { method: "PUT", body: JSON.stringify({
+        contract_sum: standard,
+        discount_pct: discount,
+        discount_amount: discountAmt,
+      }) }, { id: String(data.id) });
       onContractSumUpdated?.(standard);
       setApplied(true);
       setDiscount(0);

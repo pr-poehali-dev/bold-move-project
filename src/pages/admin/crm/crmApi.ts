@@ -161,6 +161,8 @@ export interface Client {
   cancel_reason: string | null;
   sub_status: string | null;
   updated_at: string | null;
+  discount_pct: number | null;
+  discount_amount: number | null;
 }
 
 export function fmt(n: number): string {
