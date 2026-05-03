@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import Icon from "@/components/ui/icon";
 import { ComplexityPrompts, ThemeClasses, DEFAULT_FORMULA } from "./discountRiskTypes";
 
@@ -24,6 +25,18 @@ export default function ComplexityAiPrompts({
   activePromptTab, setActivePromptTab,
   savedPrompts, improvedPrompts, onSavePrompts, onImprovePrompts,
 }: Props) {
+  const [animating, setAnimating] = useState(false);
+  const [animStep,  setAnimStep]  = useState(0); // 0=idle 1=улучшаю 2=готово
+
+  useEffect(() => {
+    if (!improvedPrompts) return;
+    // Запускаем анимацию
+    setAnimating(true);
+    setAnimStep(1);
+    const t1 = setTimeout(() => setAnimStep(2), 1200);
+    const t2 = setTimeout(() => { setAnimating(false); setAnimStep(0); }, 2800);
+    return () => { clearTimeout(t1); clearTimeout(t2); };
+  }, [improvedPrompts]);
 
   return (
     <div className={`rounded-2xl p-4 space-y-3 ${theme.bg} border ${theme.border}`}>
@@ -71,15 +84,62 @@ export default function ComplexityAiPrompts({
         {activePromptTab === "combine" && "Получает результаты этапов 1 и 2. Выдаёт итоговую оценку, рекомендуемую скидку и вывод для менеджера в JSON."}
       </p>
 
-      <textarea disabled={readOnly} rows={7}
-        value={complexityPrompts[activePromptTab]}
-        onChange={e => setComplexityPrompts({ ...complexityPrompts, [activePromptTab]: e.target.value })}
-        className={`w-full rounded-xl px-3 py-2.5 text-xs font-mono outline-none transition resize-none ${
-          isDark
-            ? "bg-white/[0.04] border border-white/10 text-white/75 focus:border-violet-500/50"
-            : "bg-gray-50 border border-gray-200 text-gray-700 focus:border-violet-400"
-        }`}
-      />
+      <div className="relative">
+        <textarea disabled={readOnly || animating} rows={7}
+          value={complexityPrompts[activePromptTab]}
+          onChange={e => setComplexityPrompts({ ...complexityPrompts, [activePromptTab]: e.target.value })}
+          className={`w-full rounded-xl px-3 py-2.5 text-xs font-mono outline-none transition resize-none ${
+            isDark
+              ? "bg-white/[0.04] border border-white/10 text-white/75 focus:border-violet-500/50"
+              : "bg-gray-50 border border-gray-200 text-gray-700 focus:border-violet-400"
+          }`}
+          style={{ transition: "opacity 0.3s", opacity: animating ? 0.15 : 1 }}
+        />
+
+        {/* Анимация улучшения */}
+        {animating && (
+          <div className="absolute inset-0 rounded-xl flex flex-col items-center justify-center gap-3"
+            style={{ background: "rgba(139,92,246,0.12)", border: "1px solid rgba(139,92,246,0.4)" }}>
+
+            {animStep === 1 ? (
+              <>
+                {/* Бегущие строки — имитация печатания */}
+                <div className="w-full px-5 space-y-1.5">
+                  {["Анализирую структуру промптов...", "Оптимизирую логику расчёта скидки...", "Добавляю правила стабилизации..."].map((line, i) => (
+                    <div key={i} className="flex items-center gap-2"
+                      style={{ animationDelay: `${i * 0.2}s`, opacity: 0, animation: "fadeInLine 0.4s ease forwards", animationDelay: `${i * 350}ms` }}>
+                      <div className="w-1.5 h-1.5 rounded-full flex-shrink-0 animate-pulse" style={{ background: "#a78bfa" }} />
+                      <span className="text-[11px] font-mono" style={{ color: "#c4b5fd" }}>{line}</span>
+                    </div>
+                  ))}
+                </div>
+                <div className="flex items-center gap-2 mt-1">
+                  <div className="w-4 h-4 border-2 border-violet-400/30 border-t-violet-400 rounded-full animate-spin" />
+                  <span className="text-xs font-bold" style={{ color: "#a78bfa" }}>Улучшаю промпты...</span>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="w-12 h-12 rounded-full flex items-center justify-center"
+                  style={{ background: "rgba(16,185,129,0.2)", border: "2px solid rgba(16,185,129,0.5)" }}>
+                  <Icon name="CheckCircle2" size={24} style={{ color: "#10b981" }} />
+                </div>
+                <div className="text-center">
+                  <div className="text-sm font-bold text-emerald-400">Промпты улучшены!</div>
+                  <div className="text-[10px] text-white/40 mt-0.5">Скидка теперь считается стабильнее</div>
+                </div>
+              </>
+            )}
+          </div>
+        )}
+      </div>
+
+      <style>{`
+        @keyframes fadeInLine {
+          from { opacity: 0; transform: translateX(-8px); }
+          to   { opacity: 1; transform: translateX(0); }
+        }
+      `}</style>
 
       <div className={`text-[10px] p-2.5 rounded-lg ${isDark ? "bg-white/[0.03]" : "bg-gray-50"}`}
         style={{ border: `1px solid ${isDark ? "rgba(255,255,255,0.06)" : "#e5e7eb"}` }}>
