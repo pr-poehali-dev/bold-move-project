@@ -73,11 +73,10 @@ export default function DiscountRiskComplexity({ isDark, theme, readOnly }: Prop
             const aiWeight = Math.min(10, Math.max(1, Math.round(item.weight)));
             newItems[item.id] = {
               priceId: item.id,
-              complexity: existing?.complexity ?? aiComplexity,
-              weight: existing?.weight ?? aiWeight,
+              complexity: aiComplexity,   // AI оценить всегда перезаписывает слайдеры
+              weight: aiWeight,
               reason: item.reason || "",
               weight_reason: item.weight_reason || "",
-              // Сохраняем AI-рекомендации отдельно для справки в подсказке
               ai_complexity: aiComplexity,
               ai_weight: aiWeight,
             } as ComplexityItem;
