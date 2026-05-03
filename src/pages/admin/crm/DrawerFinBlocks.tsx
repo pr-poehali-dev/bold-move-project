@@ -6,7 +6,7 @@ import { AddFinRowInline, RowWithToggle } from "./DrawerFinRowHelpers";
 import Icon from "@/components/ui/icon";
 import { useTheme } from "./themeContext";
 import {
-  AutoRulesModal, loadAutoRules, loadAutoMode,
+  AutoRulesModal, loadAutoRules, loadIncomeRules, loadAutoMode,
   type CostRowDef,
 } from "./DrawerAutoRulesModal";
 
@@ -53,39 +53,51 @@ export function DrawerIncomeBlock({
     saveFinLabel(key, label);
   };
 
+  // Читаем правила доходов — чтобы скрыть строки у которых visible=false
+  const incomeRules = loadIncomeRules();
+  const isIncomeVisible = (key: string) => {
+    const e = incomeRules[key];
+    // Если правило есть и visible явно выключен — скрываем; иначе показываем
+    return !e || e.visible !== false;
+  };
+
   return (
     <Section icon="Banknote" title="Доходы" color="#10b981"
       hidden={isHidden}
       onToggleHidden={() => toggleHidden(id)}
       onEdit={!isHidden ? () => setEditingBlock(incomeEdit ? null : id) : undefined}>
 
-      {(["contract_sum", "prepayment", "extra_payment"] as const).filter(key => rowVisibility[key] !== false).map(key => {
-        const defs: Record<string, { def: string; save: (v: string) => void }> = {
-          contract_sum:  { def: "Сумма договора", save: v => saveWithLog({ contract_sum:  +v || null } as Partial<Client>, `Договор: ${(+v).toLocaleString("ru-RU")} ₽`,   "FileText", "#10b981") },
-          prepayment:    { def: "Предоплата",     save: v => saveWithLog({ prepayment:    +v || null } as Partial<Client>, `Предоплата: +${(+v).toLocaleString("ru-RU")} ₽`, "Wallet",   "#10b981") },
-          extra_payment: { def: "Доплата",        save: v => saveWithLog({ extra_payment: +v || null } as Partial<Client>, `Доплата: +${(+v).toLocaleString("ru-RU")} ₽`,   "Wallet",   "#10b981") },
-        };
-        return (
-          <RowWithToggle key={key} rowKey={key} visible onToggle={() => {}} editMode={incomeEdit}
-            editableLabel={getLabel(key, defs[key].def)} onLabelChange={l => renameLabel(key, l)}
-            onDelete={() => toggleRowVisibility(key)}>
-            <InlineField label={getLabel(key, defs[key].def)} value={data[key]} onSave={defs[key].save} type="number" placeholder="—" />
-          </RowWithToggle>
-        );
-      })}
+      {(["contract_sum", "prepayment", "extra_payment"] as const)
+        .filter(key => rowVisibility[key] !== false && isIncomeVisible(key))
+        .map(key => {
+          const defs: Record<string, { def: string; save: (v: string) => void }> = {
+            contract_sum:  { def: "Сумма договора", save: v => saveWithLog({ contract_sum:  +v || null } as Partial<Client>, `Договор: ${(+v).toLocaleString("ru-RU")} ₽`,   "FileText", "#10b981") },
+            prepayment:    { def: "Предоплата",     save: v => saveWithLog({ prepayment:    +v || null } as Partial<Client>, `Предоплата: +${(+v).toLocaleString("ru-RU")} ₽`, "Wallet",   "#10b981") },
+            extra_payment: { def: "Доплата",        save: v => saveWithLog({ extra_payment: +v || null } as Partial<Client>, `Доплата: +${(+v).toLocaleString("ru-RU")} ₽`,   "Wallet",   "#10b981") },
+          };
+          return (
+            <RowWithToggle key={key} rowKey={key} visible onToggle={() => {}} editMode={incomeEdit}
+              editableLabel={getLabel(key, defs[key].def)} onLabelChange={l => renameLabel(key, l)}
+              onDelete={() => toggleRowVisibility(key)}>
+              <InlineField label={getLabel(key, defs[key].def)} value={data[key]} onSave={defs[key].save} type="number" placeholder="—" />
+            </RowWithToggle>
+          );
+        })}
 
-      {customFinRows.filter(r => r.block === "income" && rowVisibility[r.key] !== false).map(r => {
-        const lsKey = `fin_row_${data.id}_${r.key}`;
-        const val = localStorage.getItem(lsKey) || "";
-        return (
-          <RowWithToggle key={r.key} rowKey={r.key} visible onToggle={() => {}} editMode={incomeEdit}
-            editableLabel={r.label} onLabelChange={label => updateCustomFinRow(r.key, label)}
-            onDelete={() => { deleteCustomFinRow(r.key); }}>
-            <InlineField label={r.label} value={val} type="number" placeholder="—"
-              onSave={v => { localStorage.setItem(lsKey, v); logAction("Plus", "#10b981", `${r.label}: ${(+v).toLocaleString("ru-RU")} ₽`); }} />
-          </RowWithToggle>
-        );
-      })}
+      {customFinRows
+        .filter(r => r.block === "income" && rowVisibility[r.key] !== false && isIncomeVisible(r.key))
+        .map(r => {
+          const lsKey = `fin_row_${data.id}_${r.key}`;
+          const val = localStorage.getItem(lsKey) || "";
+          return (
+            <RowWithToggle key={r.key} rowKey={r.key} visible onToggle={() => {}} editMode={incomeEdit}
+              editableLabel={r.label} onLabelChange={label => updateCustomFinRow(r.key, label)}
+              onDelete={() => { deleteCustomFinRow(r.key); }}>
+              <InlineField label={r.label} value={val} type="number" placeholder="—"
+                onSave={v => { localStorage.setItem(lsKey, v); logAction("Plus", "#10b981", `${r.label}: ${(+v).toLocaleString("ru-RU")} ₽`); }} />
+            </RowWithToggle>
+          );
+        })}
 
       <AddFinRowInline block="income" onAdd={addCustomFinRow}
         forceOpen={incomeEdit}
@@ -132,6 +144,12 @@ export function DrawerCostsBlock({
 
   const contractSum = Number(data.contract_sum) || 0;
   const rulesMap = loadAutoRules();
+
+  // Видимость строки затрат по полю visible из правил (undefined/true = показывать)
+  const isCostVisible = (key: string) => {
+    const e = rulesMap[key];
+    return !e || e.visible !== false;
+  };
 
   // Есть ли хоть одно включённое правило с процентом для видимых строк
   const hasRules = costRows.some(row => {
@@ -264,7 +282,7 @@ export function DrawerCostsBlock({
             measure_cost:  { def: "Замер",     save: v => { saveWithLog({ measure_cost:  +v || null } as Partial<Client>, `Замер: ${(+v).toLocaleString("ru-RU")} ₽`,  "Ruler",   "#ef4444"); setAutoFilled(false); } },
             install_cost:  { def: "Монтаж",    save: v => { saveWithLog({ install_cost:  +v || null } as Partial<Client>, `Монтаж: ${(+v).toLocaleString("ru-RU")} ₽`, "Wrench",  "#ef4444"); setAutoFilled(false); } },
           };
-          return rowVisibility[key] === false ? null : (
+          return rowVisibility[key] === false || !isCostVisible(key) ? null : (
             <RowWithToggle key={key} rowKey={key} visible onToggle={() => {}} editMode={costsEdit}
               editableLabel={getLabel(key, defs[key].def)} onLabelChange={l => renameLabel(key, l)}
               onDelete={() => toggleRowVisibility(key)}>
@@ -273,7 +291,7 @@ export function DrawerCostsBlock({
           );
         })}
 
-        {customFinRows.filter(r => r.block === "costs" && rowVisibility[r.key] !== false).map(r => {
+        {customFinRows.filter(r => r.block === "costs" && rowVisibility[r.key] !== false && isCostVisible(r.key)).map(r => {
           const lsKey = `fin_row_${data.id}_${r.key}`;
           const val = localStorage.getItem(lsKey) || "";
           return (
