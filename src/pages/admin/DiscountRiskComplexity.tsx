@@ -247,10 +247,16 @@ export default function DiscountRiskComplexity({ isDark, theme, readOnly }: Prop
                         const score = Math.round(item.complexity * item.weight / 10 * 10) / 10;
                         const scoreColor = score <= 3 ? "#10b981" : score <= 6 ? "#f59e0b" : "#ef4444";
                         const scoreBg    = score <= 3 ? "rgba(16,185,129,0.12)" : score <= 6 ? "rgba(245,158,11,0.12)" : "rgba(239,68,68,0.12)";
+
+                        const numInputCls = `w-10 text-center text-sm font-black rounded-md px-1 py-0.5 outline-none border transition
+                          ${isDark
+                            ? "bg-white/[0.06] border-white/10 focus:border-violet-500/50 text-white"
+                            : "bg-gray-50 border-gray-200 focus:border-violet-400 text-gray-900"}`;
+
                         return (
                           <tr key={price.id} style={{ borderTop: `1px solid ${border2}` }} className="transition hover:bg-white/[0.015]">
 
-                            {/* Название */}
+                            {/* 1. Название */}
                             <td className="px-4 py-3">
                               <div className="flex items-center gap-2">
                                 <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: scoreColor }} />
@@ -258,41 +264,57 @@ export default function DiscountRiskComplexity({ isDark, theme, readOnly }: Prop
                               </div>
                             </td>
 
-                            {/* Слайдер Сложность */}
+                            {/* 2. Сложность: слайдер + редактируемое поле */}
                             <td className="px-4 py-3">
                               <div className="flex items-center gap-3">
                                 <input type="range" min={1} max={10} step={1}
                                   value={item.complexity} disabled={readOnly}
                                   onChange={e => updateItem(price.id, { complexity: Number(e.target.value) })}
                                   className="flex-1 cursor-pointer" style={{ accentColor: "#f59e0b", height: 4 }} />
-                                <span className="text-sm font-black w-6 text-center flex-shrink-0" style={{ color: "#f59e0b" }}>
-                                  {item.complexity}
-                                </span>
+                                <input
+                                  type="number" min={1} max={10}
+                                  value={item.complexity}
+                                  disabled={readOnly}
+                                  onChange={e => {
+                                    const v = Math.min(10, Math.max(1, Number(e.target.value) || 1));
+                                    updateItem(price.id, { complexity: v });
+                                  }}
+                                  className={numInputCls}
+                                  style={{ color: "#f59e0b", borderColor: "#f59e0b30" }}
+                                />
                               </div>
                             </td>
 
-                            {/* Слайдер Вес */}
+                            {/* 3. Влияние на скидку: слайдер + редактируемое поле */}
                             <td className="px-4 py-3">
                               <div className="flex items-center gap-3">
                                 <input type="range" min={1} max={10} step={1}
                                   value={item.weight} disabled={readOnly}
                                   onChange={e => updateItem(price.id, { weight: Number(e.target.value) })}
                                   className="flex-1 cursor-pointer" style={{ accentColor: "#8b5cf6", height: 4 }} />
-                                <span className="text-sm font-black w-6 text-center flex-shrink-0" style={{ color: "#8b5cf6" }}>
-                                  {item.weight}
-                                </span>
+                                <input
+                                  type="number" min={1} max={10}
+                                  value={item.weight}
+                                  disabled={readOnly}
+                                  onChange={e => {
+                                    const v = Math.min(10, Math.max(1, Number(e.target.value) || 1));
+                                    updateItem(price.id, { weight: v });
+                                  }}
+                                  className={numInputCls}
+                                  style={{ color: "#8b5cf6", borderColor: "#8b5cf630" }}
+                                />
                               </div>
                             </td>
 
-                            {/* Итог = сл × вес / 10 */}
+                            {/* 4. Итог */}
                             <td className="px-4 py-3 text-center">
                               <div className="flex flex-col items-center gap-0.5">
-                                <span className="text-sm font-black"
-                                  style={{ color: scoreColor }}>
+                                <span className="text-sm font-black px-2 py-0.5 rounded-md"
+                                  style={{ color: scoreColor, background: scoreBg }}>
                                   {score}
                                 </span>
-                                <span className="text-[8px] font-mono"
-                                  style={{ color: isDark ? "rgba(255,255,255,0.2)" : "#d1d5db" }}>
+                                <span className="text-[9px] font-mono"
+                                  style={{ color: isDark ? "rgba(255,255,255,0.25)" : "#d1d5db" }}>
                                   {item.complexity}×{item.weight}/10
                                 </span>
                               </div>
