@@ -56,45 +56,24 @@ export default function DiscountRiskComplexity({ isDark, theme, readOnly }: Prop
     try {
       for (let b = 0; b < batches.length; b++) {
         const batch = batches[b];
-        const prompt = `Ты эксперт по монтажу натяжных потолков.
-Оцени каждую позицию из списка по двум параметрам от 1 до 10:
-- complexity (сложность монтажа): 1=очень просто, 10=очень сложно
-- weight (влияние на риск скидки): 1=почти не влияет, 10=критически важно
 
-Позиции:
-${batch.map((p, i) => `${i + 1}. ${p.name}`).join("\n")}
-
-Ответь строго в JSON массиве (без markdown):
-[{"id": <порядковый номер 1..N>, "complexity": <1-10>, "weight": <1-10>}, ...]`;
-
-        const res = await fetch(`${AUTH_URL}?action=crm-risk-ai`, {
+        const res = await fetch(`${AUTH_URL}?action=complexity-eval`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            items: batch.map(p => p.name),
-            max_discount: 30,
-            custom_prompt: prompt,
+            items: batch.map(p => ({ id: p.id, name: p.name })),
           }),
         }).then(r => r.json());
 
-        // Парсим JSON из ответа AI
-        try {
-          const raw = res.reason || res.summary || res.result || "";
-          const jsonMatch = raw.match(/\[[\s\S]*\]/);
-          if (jsonMatch) {
-            const parsed: Array<{ id: number; complexity: number; weight: number }> = JSON.parse(jsonMatch[0]);
-            parsed.forEach(item => {
-              const price = batch[item.id - 1];
-              if (price) {
-                newItems[price.id] = {
-                  priceId: price.id,
-                  complexity: Math.min(10, Math.max(1, Math.round(item.complexity))),
-                  weight: Math.min(10, Math.max(1, Math.round(item.weight))),
-                };
-              }
-            });
-          }
-        } catch { /* пропускаем батч при ошибке парсинга */ }
+        if (res.results && Array.isArray(res.results)) {
+          res.results.forEach((item: { id: number; complexity: number; weight: number }) => {
+            newItems[item.id] = {
+              priceId: item.id,
+              complexity: Math.min(10, Math.max(1, Math.round(item.complexity))),
+              weight: Math.min(10, Math.max(1, Math.round(item.weight))),
+            };
+          });
+        }
 
         setAiProgress(b + 1);
       }

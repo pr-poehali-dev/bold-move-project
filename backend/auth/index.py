@@ -2317,4 +2317,67 @@ def handler(event: dict, context) -> dict:
         except Exception as e:
             return err(f"AI ошибка: {str(e)[:100]}")
 
+    # ── AI оценка сложности позиций прайса ───────────────────────────────────
+    if action == "complexity-eval" and method == "POST":
+        items = body.get("items", [])  # [{"id": int, "name": str}, ...]
+        if not items:
+            return err("items обязателен")
+
+        or_key = os.environ.get("OPENROUTER_API_KEY_2", "") or os.environ.get("OPENROUTER_API_KEY", "")
+        if not or_key:
+            return err("AI недоступен — нет ключа")
+
+        names_list = "\n".join(f'{i+1}. {it["name"]}' for i, it in enumerate(items[:15]))
+        prompt = (
+            f"Ты эксперт по монтажу натяжных потолков. "
+            f"Оцени каждую позицию из списка по двум параметрам от 1 до 10:\n"
+            f"- complexity: сложность монтажа (1=очень просто, 10=очень сложно)\n"
+            f"- weight: насколько эта позиция влияет на риск скидки (1=не влияет, 10=критически)\n\n"
+            f"Позиции:\n{names_list}\n\n"
+            f"Ответь строго JSON массивом без markdown, ровно {len(items)} элементов:\n"
+            f'[{{"idx":1,"complexity":5,"weight":5}}, ...]'
+        )
+
+        import urllib.request as _req3
+        import re as _re3
+        payload = json.dumps({
+            "model": "openai/gpt-4o-mini",
+            "messages": [
+                {"role": "system", "content": "Отвечай только JSON массивом без markdown и пояснений."},
+                {"role": "user", "content": prompt},
+            ],
+            "max_tokens": 800,
+            "temperature": 0,
+        }).encode()
+        req3 = _req3.Request(
+            "https://openrouter.ai/api/v1/chat/completions",
+            data=payload,
+            headers={
+                "Authorization": f"Bearer {or_key}",
+                "Content-Type": "application/json",
+                "HTTP-Referer": "https://mospotolki.ru",
+            },
+            method="POST",
+        )
+        try:
+            with _req3.urlopen(req3, timeout=30) as r3:
+                ai_resp = json.loads(r3.read().decode())
+            content = ai_resp["choices"][0]["message"]["content"]
+            m = _re3.search(r'\[[\s\S]*\]', content)
+            if not m:
+                return err("AI вернул неожиданный формат")
+            parsed = json.loads(m.group(0))
+            # Возвращаем с оригинальными id позиций
+            result = []
+            for i, entry in enumerate(parsed):
+                if i < len(items):
+                    result.append({
+                        "id": items[i]["id"],
+                        "complexity": max(1, min(10, int(entry.get("complexity", 5)))),
+                        "weight": max(1, min(10, int(entry.get("weight", 5)))),
+                    })
+            return ok({"results": result})
+        except Exception as e:
+            return err(f"AI ошибка: {str(e)[:100]}")
+
     return err("Неизвестное действие", 404)
