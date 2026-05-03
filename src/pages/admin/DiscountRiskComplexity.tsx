@@ -14,9 +14,12 @@ interface Props {
   readOnly: boolean;
 }
 
+const fmt = (n: number | undefined) =>
+  n != null ? n.toLocaleString("ru-RU") : "—";
+
 export default function DiscountRiskComplexity({ isDark, theme, readOnly }: Props) {
-  const [open,            setOpen]            = useState(false);
-  const [innerTab,        setInnerTab]        = useState<"items" | "prompts">("items");
+  const [open,          setOpen]          = useState(false);
+  const [innerTab,      setInnerTab]      = useState<"items" | "prompts">("items");
 
   // Вкладка «Позиции»
   const [prices,          setPrices]          = useState<PriceItem[]>([]);
@@ -38,7 +41,7 @@ export default function DiscountRiskComplexity({ isDark, theme, readOnly }: Prop
       const func2url = await import("@/../backend/func2url.json");
       const url = (func2url as unknown as Record<string, string>)["get-prices"];
       const res = await fetch(url).then(r => r.json());
-      setPrices(res.prices || []);
+      setPrices((res.prices || []).filter((p: PriceItem) => p.active !== false));
     } catch {
       setPrices([]);
     } finally {
@@ -85,15 +88,33 @@ export default function DiscountRiskComplexity({ isDark, theme, readOnly }: Prop
     setTimeout(() => setSavedPrompts(false), 2000);
   };
 
-  const categories = ["all", ...Array.from(new Set(prices.map(p => p.category).filter(Boolean)))];
+  // Группировка по категориям
+  const categories = Array.from(new Set(prices.map(p => p.category).filter(Boolean)));
   const filteredPrices = categoryFilter === "all" ? prices : prices.filter(p => p.category === categoryFilter);
+  const byCategory: Record<string, PriceItem[]> = {};
+  filteredPrices.forEach(p => {
+    const cat = p.category || "Без категории";
+    if (!byCategory[cat]) byCategory[cat] = [];
+    byCategory[cat].push(p);
+  });
 
+  // Средний удельный вес
   const avgScore = prices.length > 0
     ? Math.round(prices.reduce((s, p) => {
         const it = getItem(p.id);
         return s + (it.complexity * it.weight) / 10;
       }, 0) / prices.length * 10) / 10
     : 0;
+
+  // Итоговый суммарный вес по всем позициям
+  const totalWeightedScore = prices.length > 0
+    ? Math.round(prices.reduce((s, p) => {
+        const it = getItem(p.id);
+        return s + (it.complexity * it.weight) / 10;
+      }, 0) * 10) / 10
+    : 0;
+
+  const border2 = isDark ? "rgba(255,255,255,0.05)" : "#f3f4f6";
 
   return (
     <div className={`rounded-2xl overflow-hidden ${theme.bg} border ${theme.border}`}>
@@ -109,11 +130,14 @@ export default function DiscountRiskComplexity({ isDark, theme, readOnly }: Prop
         {prices.length > 0 && (
           <span className="text-[9px] px-2 py-0.5 rounded-full mr-1"
             style={{ background: "rgba(139,92,246,0.15)", color: "#a78bfa", border: "1px solid rgba(139,92,246,0.25)" }}>
-            ср. вес {avgScore}/10
+            ср. {avgScore}/10
           </span>
         )}
-        <span className={`text-[9px] ${theme.sub} mr-2`}>{prices.length > 0 ? `${prices.length} позиций` : "Вес и сложность для AI"}</span>
-        <Icon name={open ? "ChevronUp" : "ChevronDown"} size={13} style={{ color: isDark ? "rgba(255,255,255,0.3)" : "#9ca3af" }} />
+        <span className={`text-[9px] ${theme.sub} mr-2`}>
+          {prices.length > 0 ? `${prices.length} позиций` : "Вес и сложность для AI"}
+        </span>
+        <Icon name={open ? "ChevronUp" : "ChevronDown"} size={13}
+          style={{ color: isDark ? "rgba(255,255,255,0.3)" : "#9ca3af" }} />
       </button>
 
       {open && (
@@ -143,25 +167,21 @@ export default function DiscountRiskComplexity({ isDark, theme, readOnly }: Prop
             </div>
           </div>
 
-          {/* ── Вкладка ПОЗИЦИИ ──────────────────────────────────────────── */}
+          {/* ── Вкладка ПОЗИЦИИ ────────────────────────────────────────────── */}
           {innerTab === "items" && (
-            <div className="space-y-3">
-
-              {/* Пояснение формулы */}
-              <div className="px-4">
-                <div className={`flex items-center gap-2 px-3 py-2 rounded-lg text-[10px] ${theme.sub}`}
-                  style={{ background: isDark ? "rgba(139,92,246,0.06)" : "rgba(139,92,246,0.04)", border: `1px solid ${isDark ? "rgba(139,92,246,0.15)" : "rgba(139,92,246,0.12)"}` }}>
-                  <Icon name="Info" size={11} style={{ color: "#a78bfa", flexShrink: 0 }} />
-                  <span>
-                    Удельный вес = <span style={{ color: "#a78bfa" }}>Сложность × Вес / 10</span>.
-                    Чем выше итог — тем меньше скидки AI рекомендует для этой позиции.
-                  </span>
-                </div>
-              </div>
-
+            <div>
               {/* Фильтр по категории */}
               {categories.length > 1 && (
-                <div className="px-4 flex flex-wrap gap-1.5">
+                <div className="px-4 pb-2 flex flex-wrap gap-1.5">
+                  <button onClick={() => setCategoryFilter("all")}
+                    className="px-2.5 py-1 rounded-lg text-[10px] font-semibold transition"
+                    style={{
+                      background: categoryFilter === "all" ? "rgba(139,92,246,0.2)" : isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.05)",
+                      color: categoryFilter === "all" ? "#a78bfa" : isDark ? "rgba(255,255,255,0.5)" : "#6b7280",
+                      border: `1px solid ${categoryFilter === "all" ? "rgba(139,92,246,0.4)" : "transparent"}`,
+                    }}>
+                    Все
+                  </button>
                   {categories.map(cat => (
                     <button key={cat} onClick={() => setCategoryFilter(cat)}
                       className="px-2.5 py-1 rounded-lg text-[10px] font-semibold transition"
@@ -170,111 +190,203 @@ export default function DiscountRiskComplexity({ isDark, theme, readOnly }: Prop
                         color: categoryFilter === cat ? "#a78bfa" : isDark ? "rgba(255,255,255,0.5)" : "#6b7280",
                         border: `1px solid ${categoryFilter === cat ? "rgba(139,92,246,0.4)" : "transparent"}`,
                       }}>
-                      {cat === "all" ? "Все категории" : cat}
+                      {cat}
                     </button>
                   ))}
                 </div>
               )}
 
-              {/* Таблица */}
+              {/* Загрузка / пусто */}
               {pricesLoading ? (
-                <div className="flex items-center gap-2 py-8 justify-center">
+                <div className="flex items-center gap-2 py-10 justify-center">
                   <div className="w-4 h-4 border-2 border-violet-500/30 border-t-violet-500 rounded-full animate-spin" />
                   <span className={`text-xs ${theme.sub}`}>Загрузка прайса...</span>
                 </div>
               ) : filteredPrices.length === 0 ? (
-                <p className={`text-xs ${theme.sub} py-6 text-center`}>Позиции прайса не найдены</p>
+                <p className={`text-xs ${theme.sub} py-8 text-center`}>Позиции прайса не найдены</p>
               ) : (
-                <div className="overflow-x-auto" style={{ borderTop: `1px solid ${isDark ? "rgba(255,255,255,0.05)" : "#f3f4f6"}` }}>
-                  <table className="w-full text-xs">
-                    <thead>
-                      <tr style={{ background: isDark ? "rgba(255,255,255,0.03)" : "#f9fafb", borderBottom: `1px solid ${isDark ? "rgba(255,255,255,0.06)" : "#e5e7eb"}` }}>
-                        <th className={`text-left px-4 py-2.5 font-semibold ${theme.sub}`}>Название</th>
-                        <th className={`text-center px-3 py-2.5 font-semibold ${theme.sub}`} style={{ width: 60 }}>Ед.</th>
-                        <th className="text-center px-3 py-2.5 font-semibold" style={{ color: "#f59e0b", width: 140 }}>
-                          Сложность <span className={`font-normal ${theme.sub}`}>(1–10)</span>
-                        </th>
-                        <th className="text-center px-3 py-2.5 font-semibold" style={{ color: "#8b5cf6", width: 140 }}>
-                          Вес <span className={`font-normal ${theme.sub}`}>(1–10)</span>
-                        </th>
-                        <th className="text-center px-3 py-2.5 font-semibold" style={{ color: "#a78bfa", width: 72 }}>
-                          Итог
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {filteredPrices.map((price, idx) => {
-                        const item  = getItem(price.id);
-                        const score = Math.round(item.complexity * item.weight / 10 * 10) / 10;
-                        const scoreColor = score <= 3 ? "#10b981" : score <= 6 ? "#f59e0b" : "#ef4444";
-                        const scoreBg    = score <= 3 ? "rgba(16,185,129,0.12)" : score <= 6 ? "rgba(245,158,11,0.12)" : "rgba(239,68,68,0.12)";
+                <div>
+                  {/* Заголовок таблицы */}
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-xs" style={{ minWidth: 680 }}>
+                      <thead>
+                        <tr style={{
+                          background: isDark ? "rgba(255,255,255,0.03)" : "#f9fafb",
+                          borderTop: `1px solid ${border2}`,
+                          borderBottom: `1px solid ${isDark ? "rgba(255,255,255,0.07)" : "#e5e7eb"}`,
+                        }}>
+                          <th className={`text-left px-4 py-2.5 font-semibold ${theme.sub}`} style={{ width: "35%" }}>
+                            Название
+                          </th>
+                          <th className={`text-right px-3 py-2.5 font-semibold ${theme.sub}`} style={{ width: 80 }}>
+                            Продажа ₽
+                          </th>
+                          <th className={`text-right px-3 py-2.5 font-semibold ${theme.sub}`} style={{ width: 80 }}>
+                            Закупка ₽
+                          </th>
+                          <th className={`text-center px-2 py-2.5 font-semibold ${theme.sub}`} style={{ width: 40 }}>
+                            Ед.
+                          </th>
+                          <th className="text-center px-3 py-2.5 font-semibold" style={{ color: "#f59e0b", width: 130 }}>
+                            Сложность <span className={`font-normal ${theme.sub}`}>1–10</span>
+                          </th>
+                          <th className="text-center px-3 py-2.5 font-semibold" style={{ color: "#8b5cf6", width: 130 }}>
+                            Вес <span className={`font-normal ${theme.sub}`}>1–10</span>
+                          </th>
+                          <th className="text-center px-3 py-2.5 font-semibold" style={{ color: "#a78bfa", width: 60 }}>
+                            Итог
+                          </th>
+                        </tr>
+                      </thead>
+
+                      {/* По категориям */}
+                      {Object.entries(byCategory).map(([cat, catPrices]) => {
+                        const catAvg = Math.round(
+                          catPrices.reduce((s, p) => { const it = getItem(p.id); return s + it.complexity * it.weight / 10; }, 0)
+                          / catPrices.length * 10
+                        ) / 10;
+
                         return (
-                          <tr key={price.id}
-                            style={{ borderTop: idx === 0 ? "none" : `1px solid ${isDark ? "rgba(255,255,255,0.04)" : "#f3f4f6"}` }}
-                            className="group hover:bg-white/[0.015] transition">
-                            <td className="px-4 py-2.5">
-                              <div className="flex items-center gap-2">
-                                <div className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: scoreColor }} />
-                                <span className={`font-medium ${theme.text}`}>{price.name}</span>
-                              </div>
-                            </td>
-                            <td className="px-3 py-2.5 text-center">
-                              <span className={`text-[10px] ${theme.sub}`}>{price.unit || "—"}</span>
-                            </td>
-                            <td className="px-3 py-2.5">
-                              <div className="flex items-center gap-2 w-full">
-                                <input type="range" min={1} max={10} step={1}
-                                  value={item.complexity} disabled={readOnly}
-                                  onChange={e => updateItem(price.id, { complexity: Number(e.target.value) })}
-                                  className="flex-1 accent-amber-400 cursor-pointer" style={{ height: 3 }} />
-                                <span className="text-[11px] font-black w-4 text-right flex-shrink-0" style={{ color: "#f59e0b" }}>
-                                  {item.complexity}
-                                </span>
-                              </div>
-                            </td>
-                            <td className="px-3 py-2.5">
-                              <div className="flex items-center gap-2 w-full">
-                                <input type="range" min={1} max={10} step={1}
-                                  value={item.weight} disabled={readOnly}
-                                  onChange={e => updateItem(price.id, { weight: Number(e.target.value) })}
-                                  className="flex-1 accent-violet-500 cursor-pointer" style={{ height: 3 }} />
-                                <span className="text-[11px] font-black w-4 text-right flex-shrink-0" style={{ color: "#8b5cf6" }}>
-                                  {item.weight}
-                                </span>
-                              </div>
-                            </td>
-                            <td className="px-3 py-2.5 text-center">
-                              <span className="text-xs font-black px-2 py-0.5 rounded-md"
-                                style={{ color: scoreColor, background: scoreBg }}>
-                                {score}
-                              </span>
-                            </td>
-                          </tr>
+                          <tbody key={cat}>
+                            {/* Заголовок категории */}
+                            <tr style={{ background: isDark ? "rgba(139,92,246,0.06)" : "rgba(139,92,246,0.04)" }}>
+                              <td colSpan={7} className="px-4 py-1.5">
+                                <div className="flex items-center gap-2">
+                                  <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: "#a78bfa" }}>
+                                    {cat}
+                                  </span>
+                                  <span className="text-[9px] px-1.5 py-0.5 rounded-full"
+                                    style={{ background: "rgba(139,92,246,0.12)", color: "#a78bfa" }}>
+                                    {catPrices.length} поз. · ср. {catAvg}/10
+                                  </span>
+                                </div>
+                              </td>
+                            </tr>
+
+                            {/* Строки позиций */}
+                            {catPrices.map((price, idx) => {
+                              const item  = getItem(price.id);
+                              const score = Math.round(item.complexity * item.weight / 10 * 10) / 10;
+                              const scoreColor = score <= 3 ? "#10b981" : score <= 6 ? "#f59e0b" : "#ef4444";
+                              const scoreBg    = score <= 3 ? "rgba(16,185,129,0.12)" : score <= 6 ? "rgba(245,158,11,0.12)" : "rgba(239,68,68,0.12)";
+
+                              return (
+                                <tr key={price.id}
+                                  style={{ borderTop: idx === 0 ? `1px solid ${border2}` : `1px solid ${border2}` }}
+                                  className="transition hover:bg-white/[0.015]">
+
+                                  {/* Название */}
+                                  <td className="px-4 py-2">
+                                    <div className="flex items-center gap-2">
+                                      <div className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: scoreColor }} />
+                                      <span className={`font-medium ${theme.text} leading-tight`}>{price.name}</span>
+                                    </div>
+                                  </td>
+
+                                  {/* Продажа */}
+                                  <td className="px-3 py-2 text-right">
+                                    <span className="font-semibold" style={{ color: "#10b981" }}>
+                                      {price.price != null ? price.price.toLocaleString("ru-RU") : <span className={theme.sub}>—</span>}
+                                    </span>
+                                  </td>
+
+                                  {/* Закупка */}
+                                  <td className="px-3 py-2 text-right">
+                                    <span style={{ color: isDark ? "rgba(255,255,255,0.45)" : "#6b7280" }}>
+                                      {fmt(price.purchase_price)}
+                                    </span>
+                                  </td>
+
+                                  {/* Единица */}
+                                  <td className="px-2 py-2 text-center">
+                                    <span className={`text-[10px] ${theme.sub}`}>{price.unit || "—"}</span>
+                                  </td>
+
+                                  {/* Слайдер Сложность */}
+                                  <td className="px-3 py-2">
+                                    <div className="flex items-center gap-2">
+                                      <input type="range" min={1} max={10} step={1}
+                                        value={item.complexity} disabled={readOnly}
+                                        onChange={e => updateItem(price.id, { complexity: Number(e.target.value) })}
+                                        className="flex-1 cursor-pointer"
+                                        style={{ accentColor: "#f59e0b", height: 3 }} />
+                                      <span className="text-[11px] font-black w-5 text-right flex-shrink-0"
+                                        style={{ color: "#f59e0b" }}>
+                                        {item.complexity}
+                                      </span>
+                                    </div>
+                                  </td>
+
+                                  {/* Слайдер Вес */}
+                                  <td className="px-3 py-2">
+                                    <div className="flex items-center gap-2">
+                                      <input type="range" min={1} max={10} step={1}
+                                        value={item.weight} disabled={readOnly}
+                                        onChange={e => updateItem(price.id, { weight: Number(e.target.value) })}
+                                        className="flex-1 cursor-pointer"
+                                        style={{ accentColor: "#8b5cf6", height: 3 }} />
+                                      <span className="text-[11px] font-black w-5 text-right flex-shrink-0"
+                                        style={{ color: "#8b5cf6" }}>
+                                        {item.weight}
+                                      </span>
+                                    </div>
+                                  </td>
+
+                                  {/* Итог */}
+                                  <td className="px-3 py-2 text-center">
+                                    <span className="text-xs font-black px-2 py-0.5 rounded-md"
+                                      style={{ color: scoreColor, background: scoreBg }}>
+                                      {score}
+                                    </span>
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
                         );
                       })}
-                    </tbody>
-                  </table>
-                </div>
-              )}
 
-              {/* Кнопки позиций */}
-              {!readOnly && filteredPrices.length > 0 && (
-                <div className="px-4 flex items-center gap-2 pt-1">
-                  <button onClick={handleSaveItems}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-bold transition hover:opacity-80"
-                    style={{ background: "rgba(139,92,246,0.15)", color: "#a78bfa", border: "1px solid rgba(139,92,246,0.3)" }}>
-                    <Icon name={savedItems ? "Check" : "Save"} size={12} />
-                    {savedItems ? "Сохранено" : "Сохранить"}
-                  </button>
-                  <button onClick={resetAll}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-bold transition hover:opacity-80 ${theme.sub}`}
-                    style={{ background: isDark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.04)", border: `1px solid ${isDark ? "rgba(255,255,255,0.08)" : "#e5e7eb"}` }}>
-                    <Icon name="RotateCcw" size={12} />
-                    Сбросить (5/5)
-                  </button>
-                  <span className={`text-[10px] ml-auto ${theme.sub}`}>
-                    Среднее: <span style={{ color: "#a78bfa" }}>{avgScore}/10</span>
-                  </span>
+                      {/* Итоговая строка */}
+                      <tfoot>
+                        <tr style={{ borderTop: `2px solid ${isDark ? "rgba(139,92,246,0.2)" : "rgba(139,92,246,0.15)"}`, background: isDark ? "rgba(139,92,246,0.05)" : "rgba(139,92,246,0.03)" }}>
+                          <td colSpan={6} className="px-4 py-2.5">
+                            <span className="text-[11px] font-bold" style={{ color: "#a78bfa" }}>
+                              Суммарный удельный вес по прайсу
+                            </span>
+                            <span className={`text-[10px] ml-2 ${theme.sub}`}>
+                              Σ(сл × вес / 10) по {prices.length} позициям
+                            </span>
+                          </td>
+                          <td className="px-3 py-2.5 text-center">
+                            <span className="text-sm font-black" style={{ color: "#a78bfa" }}>
+                              {totalWeightedScore}
+                            </span>
+                          </td>
+                        </tr>
+                      </tfoot>
+                    </table>
+                  </div>
+
+                  {/* Кнопки */}
+                  {!readOnly && (
+                    <div className="px-4 pt-3 flex items-center gap-2">
+                      <button onClick={handleSaveItems}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-bold transition hover:opacity-80"
+                        style={{ background: "rgba(139,92,246,0.15)", color: "#a78bfa", border: "1px solid rgba(139,92,246,0.3)" }}>
+                        <Icon name={savedItems ? "Check" : "Save"} size={12} />
+                        {savedItems ? "Сохранено" : "Сохранить"}
+                      </button>
+                      <button onClick={resetAll}
+                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-bold transition hover:opacity-80 ${theme.sub}`}
+                        style={{ background: isDark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.04)", border: `1px solid ${isDark ? "rgba(255,255,255,0.08)" : "#e5e7eb"}` }}>
+                        <Icon name="RotateCcw" size={12} />
+                        Сбросить (5/5)
+                      </button>
+                      <span className={`text-[10px] ml-auto ${theme.sub}`}>
+                        Среднее: <span style={{ color: "#a78bfa" }}>{avgScore}/10</span>
+                      </span>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -295,7 +407,7 @@ export default function DiscountRiskComplexity({ isDark, theme, readOnly }: Prop
                 <p className={`text-[10px] mt-1 ${theme.sub}`}>Передаётся в AI как контекст расчёта</p>
               </div>
 
-              {/* Табы трёх промптов */}
+              {/* Табы промптов */}
               <div className="flex items-center gap-2">
                 <Icon name="Sparkles" size={13} style={{ color: "#a78bfa" }} />
                 <span className={`text-xs font-bold uppercase tracking-wider ${isDark ? "text-violet-300" : "text-violet-600"}`}>
@@ -347,7 +459,6 @@ export default function DiscountRiskComplexity({ isDark, theme, readOnly }: Prop
                 </span>
               </div>
 
-              {/* Кнопки промптов */}
               {!readOnly && (
                 <div className="flex items-center gap-2 pb-1">
                   <button onClick={handleSavePrompts}

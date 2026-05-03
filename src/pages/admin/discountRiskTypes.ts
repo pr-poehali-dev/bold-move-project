@@ -60,6 +60,9 @@ export interface PriceItem {
   name: string;
   unit: string;
   category: string;
+  price?: number;
+  purchase_price?: number;
+  active?: boolean;
 }
 
 export interface ComplexityItem {
