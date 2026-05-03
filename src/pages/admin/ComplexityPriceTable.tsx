@@ -37,7 +37,8 @@ export default function ComplexityPriceTable({
   onAiEvaluate, onAiErrorClose, onSaveItems, onResetAll, onUpdateItem,
 }: Props) {
   const border2 = isDark ? "rgba(255,255,255,0.05)" : "#f3f4f6";
-  const [tooltipId, setTooltipId] = useState<number | null>(null);
+  const [hoveredId, setHoveredId] = useState<number | null>(null);
+  const hoveredItem = hoveredId !== null ? (complexityItems[hoveredId] || null) : null;
 
   const getItem = (id: number): ComplexityItem =>
     complexityItems[id] || { priceId: id, complexity: 5, weight: 5 };
@@ -182,169 +183,180 @@ export default function ComplexityPriceTable({
             </span>
           </div>
 
-          {/* Таблица */}
-          <div className="overflow-x-auto">
-            <table className="w-full text-xs" style={{ minWidth: 640 }}>
-              <colgroup>
-                <col style={{ minWidth: 160 }} />
-                <col style={{ width: "35%" }} />
-                <col style={{ width: "35%" }} />
-                <col style={{ width: 90 }} />
-                <col style={{ width: 32 }} />
-              </colgroup>
-              <thead>
-                <tr style={{ borderBottom: `1px solid ${isDark ? "rgba(255,255,255,0.07)" : "#e5e7eb"}`, background: isDark ? "#0f0f1a" : "#f9fafb" }}>
-                  <th className="text-left px-4 py-3" style={{ minWidth: 160 }}>
-                    <div className={`font-semibold ${theme.sub}`}>Название позиции</div>
-                    <div className="text-[9px] mt-0.5" style={{ color: isDark ? "rgba(255,255,255,0.2)" : "#c4c4c4" }}>из прайса компании</div>
-                  </th>
-                  <th className="text-left px-4 py-3">
-                    <div className="font-bold" style={{ color: "#f59e0b" }}>Сложность монтажа <span className="font-normal text-[10px]">1–10</span></div>
-                  </th>
-                  <th className="text-left px-4 py-3">
-                    <div className="font-bold" style={{ color: "#8b5cf6" }}>Влияние на скидку <span className="font-normal text-[10px]">1–10</span></div>
-                  </th>
-                  <th className="text-center px-4 py-3">
-                    <div className="font-bold" style={{ color: "#a78bfa" }}>Итог</div>
-                    <div className="text-[9px] font-mono mt-0.5" style={{ color: isDark ? "rgba(255,255,255,0.25)" : "#c4c4c4" }}>сл×вес/10</div>
-                  </th>
-                  <th />
-                </tr>
-              </thead>
-              <tbody>
-              {Object.entries(byCategory).map(([cat, catPrices]) => {
-                const catAvg = Math.round(
-                  catPrices.reduce((s, p) => s + getItem(p.id).complexity * getItem(p.id).weight / 10, 0)
-                  / catPrices.length * 10
-                ) / 10;
-                return (
-                  <tbody key={cat}>
-                    <tr style={{ background: isDark ? "rgba(139,92,246,0.06)" : "rgba(139,92,246,0.04)" }}>
-                      <td colSpan={4} className="px-4 py-1.5">
-                        <div className="flex items-center gap-2">
-                          <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: "#a78bfa" }}>{cat}</span>
-                          <span className="text-[9px] px-1.5 py-0.5 rounded-full"
-                            style={{ background: "rgba(139,92,246,0.12)", color: "#a78bfa" }}>
-                            {catPrices.length} поз. · ср. {catAvg}/10
-                          </span>
-                        </div>
-                      </td>
-                    </tr>
-                    {catPrices.map((price) => {
-                      const item  = getItem(price.id);
-                      const score = Math.round(item.complexity * item.weight / 10 * 10) / 10;
-                      const scoreColor = score <= 3 ? "#10b981" : score <= 6 ? "#f59e0b" : "#ef4444";
-                      const scoreBg    = score <= 3 ? "rgba(16,185,129,0.12)" : score <= 6 ? "rgba(245,158,11,0.12)" : "rgba(239,68,68,0.12)";
-                      const inputCls   = `w-10 text-center text-sm font-black rounded-md px-1 py-0.5 outline-none border transition ${isDark ? "bg-white/[0.06] border-white/10 focus:border-violet-500/50 text-white" : "bg-gray-50 border-gray-200 focus:border-violet-400 text-gray-900"}`;
-                      return (
-                        <tr key={price.id} style={{ borderTop: `1px solid ${border2}` }} className="transition hover:bg-white/[0.015]">
-                          <td className="px-4 py-3">
-                            <div className="flex items-center gap-2">
-                              <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: scoreColor }} />
-                              <span className={`font-medium ${theme.text} leading-snug`}>{price.name}</span>
-                            </div>
-                          </td>
-                          <td className="px-4 py-3">
-                            <div className="flex items-center gap-3">
-                              <input type="range" min={1} max={10} step={1}
-                                value={item.complexity} disabled={readOnly}
-                                onChange={e => onUpdateItem(price.id, { complexity: Number(e.target.value) })}
-                                className="flex-1 cursor-pointer" style={{ accentColor: "#f59e0b", height: 4 }} />
-                              <input type="number" min={1} max={10} value={item.complexity} disabled={readOnly}
-                                onChange={e => onUpdateItem(price.id, { complexity: Math.min(10, Math.max(1, Number(e.target.value) || 1)) })}
-                                className={inputCls} style={{ color: "#f59e0b", borderColor: "#f59e0b30" }} />
-                            </div>
-                          </td>
-                          <td className="px-4 py-3">
-                            <div className="flex items-center gap-3">
-                              <input type="range" min={1} max={10} step={1}
-                                value={item.weight} disabled={readOnly}
-                                onChange={e => onUpdateItem(price.id, { weight: Number(e.target.value) })}
-                                className="flex-1 cursor-pointer" style={{ accentColor: "#8b5cf6", height: 4 }} />
-                              <input type="number" min={1} max={10} value={item.weight} disabled={readOnly}
-                                onChange={e => onUpdateItem(price.id, { weight: Math.min(10, Math.max(1, Number(e.target.value) || 1)) })}
-                                className={inputCls} style={{ color: "#8b5cf6", borderColor: "#8b5cf630" }} />
-                            </div>
-                          </td>
-                          <td className="px-4 py-3 text-center">
-                            <div className="flex flex-col items-center gap-0.5">
-                              <span className="text-sm font-black px-2 py-0.5 rounded-md"
-                                style={{ color: scoreColor, background: scoreBg }}>
-                                {score}
-                              </span>
-                              <span className="text-[9px] font-mono"
-                                style={{ color: isDark ? "rgba(255,255,255,0.25)" : "#d1d5db" }}>
-                                {item.complexity}×{item.weight}/10
-                              </span>
-                            </div>
-                          </td>
-                          {/* AI-подсказка справа */}
-                          <td className="pr-3 py-3" style={{ width: 32 }}>
-                            {(item.reason || item.weight_reason) && (
-                              <div className="relative flex justify-center"
-                                onMouseEnter={() => setTooltipId(price.id)}
-                                onMouseLeave={() => setTooltipId(null)}
-                              >
-                                <div className="w-5 h-5 rounded-full flex items-center justify-center cursor-help flex-shrink-0"
-                                  style={{ background: "rgba(139,92,246,0.12)", border: "1px solid rgba(139,92,246,0.25)" }}>
-                                  <Icon name="Sparkles" size={10} style={{ color: "#a78bfa" }} />
-                                </div>
-                                {tooltipId === price.id && (
-                                  <div className="absolute right-full mr-2 top-1/2 -translate-y-1/2 z-50 rounded-xl px-3 py-2.5 shadow-2xl pointer-events-none"
-                                    style={{
-                                      width: 280,
-                                      background: isDark ? "rgba(15,10,40,0.98)" : "#fff",
-                                      border: "1px solid rgba(139,92,246,0.3)",
-                                      boxShadow: "0 8px 32px rgba(139,92,246,0.2)",
-                                    }}>
-                                    {item.reason && (
-                                      <div className="flex items-start gap-1.5 mb-2">
-                                        <span className="text-[9px] font-bold uppercase tracking-wider flex-shrink-0 mt-0.5" style={{ color: "#f59e0b" }}>Сл</span>
-                                        <span className="text-[11px] leading-relaxed" style={{ color: isDark ? "rgba(255,255,255,0.75)" : "#374151" }}>
-                                          <span className="font-bold mr-1" style={{ color: "#f59e0b" }}>{item.ai_complexity ?? item.complexity}/10</span>
-                                          {item.reason}
-                                        </span>
-                                      </div>
-                                    )}
-                                    {item.weight_reason && (
-                                      <div className="flex items-start gap-1.5">
-                                        <span className="text-[9px] font-bold uppercase tracking-wider flex-shrink-0 mt-0.5" style={{ color: "#8b5cf6" }}>Вл</span>
-                                        <span className="text-[11px] leading-relaxed" style={{ color: isDark ? "rgba(255,255,255,0.75)" : "#374151" }}>
-                                          <span className="font-bold mr-1" style={{ color: "#8b5cf6" }}>{item.ai_weight ?? item.weight}/10</span>
-                                          {item.weight_reason}
-                                        </span>
-                                      </div>
-                                    )}
-                                  </div>
-                                )}
-                              </div>
-                            )}
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                );
-              })}
-              </tbody>
+          {/* Layout: таблица слева + панель подсказок справа */}
+          <div className="flex" style={{ borderTop: `1px solid ${border2}` }}>
 
-              <tfoot>
-                <tr style={{
-                  borderTop: `2px solid ${isDark ? "rgba(139,92,246,0.2)" : "rgba(139,92,246,0.15)"}`,
-                  background: isDark ? "rgba(139,92,246,0.05)" : "rgba(139,92,246,0.03)",
-                }}>
-                  <td colSpan={3} className="px-4 py-2.5">
-                    <span className="text-[11px] font-bold" style={{ color: "#a78bfa" }}>Суммарный удельный вес</span>
-                    <span className={`text-[10px] ml-2 ${theme.sub}`}>({filteredPrices.length} позиций)</span>
-                  </td>
-                  <td className="px-4 py-2.5 text-center">
-                    <span className="text-base font-black" style={{ color: "#a78bfa" }}>{totalWeightedScore}</span>
-                  </td>
-                  <td />
-                </tr>
-              </tfoot>
-            </table>
-          </div>
+            {/* Таблица слайдеров */}
+            <div className="flex-1 overflow-x-auto" style={{ borderRight: `1px solid ${border2}` }}>
+              <table className="w-full text-xs" style={{ minWidth: 480 }}>
+                <colgroup>
+                  <col style={{ minWidth: 130 }} />
+                  <col style={{ width: "40%" }} />
+                  <col style={{ width: "40%" }} />
+                  <col style={{ width: 80 }} />
+                </colgroup>
+                <thead>
+                  <tr style={{ background: isDark ? "#0f0f1a" : "#f9fafb", borderBottom: `1px solid ${border2}` }}>
+                    <th className="text-left px-4 py-2.5">
+                      <span className={`text-[10px] font-semibold ${theme.sub}`}>Название</span>
+                    </th>
+                    <th className="text-left px-4 py-2.5">
+                      <span className="text-[10px] font-bold" style={{ color: "#f59e0b" }}>Сложность 1–10</span>
+                    </th>
+                    <th className="text-left px-4 py-2.5">
+                      <span className="text-[10px] font-bold" style={{ color: "#8b5cf6" }}>Влияние 1–10</span>
+                    </th>
+                    <th className="text-center px-3 py-2.5">
+                      <span className="text-[10px] font-bold" style={{ color: "#a78bfa" }}>Итог</span>
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                {Object.entries(byCategory).map(([cat, catPrices]) => {
+                  const catAvg = Math.round(
+                    catPrices.reduce((s, p) => s + getItem(p.id).complexity * getItem(p.id).weight / 10, 0)
+                    / catPrices.length * 10
+                  ) / 10;
+                  return (
+                    <tbody key={cat}>
+                      <tr style={{ background: isDark ? "rgba(139,92,246,0.06)" : "rgba(139,92,246,0.04)" }}>
+                        <td colSpan={4} className="px-4 py-1.5">
+                          <div className="flex items-center gap-2">
+                            <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: "#a78bfa" }}>{cat}</span>
+                            <span className="text-[9px] px-1.5 py-0.5 rounded-full"
+                              style={{ background: "rgba(139,92,246,0.12)", color: "#a78bfa" }}>
+                              {catPrices.length} поз. · ср. {catAvg}/10
+                            </span>
+                          </div>
+                        </td>
+                      </tr>
+                      {catPrices.map((price) => {
+                        const item  = getItem(price.id);
+                        const score = Math.round(item.complexity * item.weight / 10 * 10) / 10;
+                        const scoreColor = score <= 3 ? "#10b981" : score <= 6 ? "#f59e0b" : "#ef4444";
+                        const scoreBg    = score <= 3 ? "rgba(16,185,129,0.12)" : score <= 6 ? "rgba(245,158,11,0.12)" : "rgba(239,68,68,0.12)";
+                        const inputCls   = `w-10 text-center text-sm font-black rounded-md px-1 py-0.5 outline-none border transition ${isDark ? "bg-white/[0.06] border-white/10 focus:border-violet-500/50 text-white" : "bg-gray-50 border-gray-200 focus:border-violet-400 text-gray-900"}`;
+                        const isHovered  = hoveredId === price.id;
+                        return (
+                          <tr key={price.id}
+                            style={{ borderTop: `1px solid ${border2}`, background: isHovered ? (isDark ? "rgba(139,92,246,0.06)" : "rgba(139,92,246,0.03)") : "transparent" }}
+                            className="transition cursor-default"
+                            onMouseEnter={() => setHoveredId(price.id)}
+                            onMouseLeave={() => setHoveredId(null)}
+                          >
+                            <td className="px-4 py-3">
+                              <div className="flex items-center gap-2">
+                                <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: scoreColor }} />
+                                <span className={`font-medium ${theme.text} leading-snug`}>{price.name}</span>
+                              </div>
+                            </td>
+                            <td className="px-4 py-3">
+                              <div className="flex items-center gap-3">
+                                <input type="range" min={1} max={10} step={1}
+                                  value={item.complexity} disabled={readOnly}
+                                  onChange={e => onUpdateItem(price.id, { complexity: Number(e.target.value) })}
+                                  className="flex-1 cursor-pointer" style={{ accentColor: "#f59e0b", height: 4 }} />
+                                <input type="number" min={1} max={10} value={item.complexity} disabled={readOnly}
+                                  onChange={e => onUpdateItem(price.id, { complexity: Math.min(10, Math.max(1, Number(e.target.value) || 1)) })}
+                                  className={inputCls} style={{ color: "#f59e0b", borderColor: "#f59e0b30" }} />
+                              </div>
+                            </td>
+                            <td className="px-4 py-3">
+                              <div className="flex items-center gap-3">
+                                <input type="range" min={1} max={10} step={1}
+                                  value={item.weight} disabled={readOnly}
+                                  onChange={e => onUpdateItem(price.id, { weight: Number(e.target.value) })}
+                                  className="flex-1 cursor-pointer" style={{ accentColor: "#8b5cf6", height: 4 }} />
+                                <input type="number" min={1} max={10} value={item.weight} disabled={readOnly}
+                                  onChange={e => onUpdateItem(price.id, { weight: Math.min(10, Math.max(1, Number(e.target.value) || 1)) })}
+                                  className={inputCls} style={{ color: "#8b5cf6", borderColor: "#8b5cf630" }} />
+                              </div>
+                            </td>
+                            <td className="px-3 py-3 text-center">
+                              <div className="flex flex-col items-center gap-0.5">
+                                <span className="text-sm font-black px-2 py-0.5 rounded-md"
+                                  style={{ color: scoreColor, background: scoreBg }}>
+                                  {score}
+                                </span>
+                                <span className="text-[9px] font-mono"
+                                  style={{ color: isDark ? "rgba(255,255,255,0.25)" : "#d1d5db" }}>
+                                  {item.complexity}×{item.weight}/10
+                                </span>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  );
+                })}
+                </tbody>
+                <tfoot>
+                  <tr style={{ borderTop: `2px solid ${isDark ? "rgba(139,92,246,0.2)" : "rgba(139,92,246,0.15)"}`, background: isDark ? "rgba(139,92,246,0.05)" : "rgba(139,92,246,0.03)" }}>
+                    <td colSpan={3} className="px-4 py-2.5">
+                      <span className="text-[11px] font-bold" style={{ color: "#a78bfa" }}>Суммарный удельный вес</span>
+                      <span className={`text-[10px] ml-2 ${theme.sub}`}>({filteredPrices.length} позиций)</span>
+                    </td>
+                    <td className="px-3 py-2.5 text-center">
+                      <span className="text-base font-black" style={{ color: "#a78bfa" }}>{totalWeightedScore}</span>
+                    </td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+
+            {/* Правая панель подсказок AI */}
+            <div className="flex-shrink-0 flex flex-col" style={{ width: 260 }}>
+              {/* Заголовок панели */}
+              <div className="px-4 py-2.5 flex items-center gap-2" style={{ background: isDark ? "#0f0f1a" : "#f9fafb", borderBottom: `1px solid ${border2}` }}>
+                <Icon name="Sparkles" size={11} style={{ color: "#a78bfa" }} />
+                <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: "#a78bfa" }}>AI объяснение</span>
+              </div>
+
+              {/* Контент панели */}
+              <div className="flex-1 px-4 py-4 flex flex-col justify-center" style={{ minHeight: 120 }}>
+                {hoveredItem ? (
+                  <div className="space-y-3">
+                    {hoveredItem.reason && (
+                      <div>
+                        <div className="flex items-center gap-1.5 mb-1">
+                          <span className="text-[9px] font-bold uppercase tracking-wider" style={{ color: "#f59e0b" }}>Сложность</span>
+                          <span className="text-[10px] font-black" style={{ color: "#f59e0b" }}>{hoveredItem.ai_complexity ?? hoveredItem.complexity}/10</span>
+                        </div>
+                        <p className="text-[11px] leading-relaxed" style={{ color: isDark ? "rgba(255,255,255,0.6)" : "#6b7280" }}>
+                          {hoveredItem.reason}
+                        </p>
+                      </div>
+                    )}
+                    {hoveredItem.weight_reason && (
+                      <div>
+                        <div className="flex items-center gap-1.5 mb-1">
+                          <span className="text-[9px] font-bold uppercase tracking-wider" style={{ color: "#8b5cf6" }}>Влияние</span>
+                          <span className="text-[10px] font-black" style={{ color: "#8b5cf6" }}>{hoveredItem.ai_weight ?? hoveredItem.weight}/10</span>
+                        </div>
+                        <p className="text-[11px] leading-relaxed" style={{ color: isDark ? "rgba(255,255,255,0.6)" : "#6b7280" }}>
+                          {hoveredItem.weight_reason}
+                        </p>
+                      </div>
+                    )}
+                    {!hoveredItem.reason && !hoveredItem.weight_reason && (
+                      <p className="text-[11px] text-center" style={{ color: isDark ? "rgba(255,255,255,0.2)" : "#c4c4c4" }}>
+                        Нет данных AI
+                      </p>
+                    )}
+                  </div>
+                ) : (
+                  <div className="text-center">
+                    <Icon name="Sparkles" size={20} style={{ color: "rgba(139,92,246,0.2)", margin: "0 auto 8px" }} />
+                    <p className="text-[11px]" style={{ color: isDark ? "rgba(255,255,255,0.2)" : "#c4c4c4" }}>
+                      Наведи на позицию — увидишь объяснение AI
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+
+          </div>{/* конец flex layout */}
 
           {/* Кнопки */}
           {!readOnly && (
