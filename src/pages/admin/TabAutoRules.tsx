@@ -46,7 +46,9 @@ const DEFAULT_COST_ROWS: CustomRow[] = [
 ];
 
 const DEFAULT_INCOME_ROWS: CustomRow[] = [
-  { key: "contract_sum", label: "Сумма договора" },
+  { key: "contract_sum",  label: "Сумма договора" },
+  { key: "prepayment",    label: "Предоплата" },
+  { key: "extra_payment", label: "Доплата" },
 ];
 
 interface Props { isDark?: boolean; readOnly?: boolean; }
