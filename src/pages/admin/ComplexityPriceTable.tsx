@@ -183,8 +183,86 @@ export default function ComplexityPriceTable({
             </span>
           </div>
 
-          {/* Список позиций */}
-          <div style={{ borderTop: `1px solid ${border2}` }}>
+          {/* ── МОБИЛЬНЫЙ список ── */}
+          <div className="sm:hidden" style={{ borderTop: `1px solid ${border2}` }}>
+            {Object.entries(byCategory).map(([cat, catPrices]) => (
+              <div key={cat}>
+                <div className="px-4 py-2 flex items-center gap-2"
+                  style={{ background: isDark ? "rgba(139,92,246,0.06)" : "rgba(139,92,246,0.04)", borderBottom: `1px solid ${border2}` }}>
+                  <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: "#a78bfa" }}>{cat}</span>
+                  <span className="text-[9px] px-1.5 py-0.5 rounded-full"
+                    style={{ background: "rgba(139,92,246,0.12)", color: "#a78bfa" }}>
+                    {catPrices.length} поз.
+                  </span>
+                </div>
+                {catPrices.map(price => {
+                  const item = getItem(price.id);
+                  const score = Math.round(item.complexity * item.weight / 10 * 10) / 10;
+                  const scoreColor = score <= 3 ? "#10b981" : score <= 6 ? "#f59e0b" : "#ef4444";
+                  const scoreBg    = score <= 3 ? "rgba(16,185,129,0.12)" : score <= 6 ? "rgba(245,158,11,0.12)" : "rgba(239,68,68,0.12)";
+                  const aiItem = Object.values(complexityItems).find(i => i.priceId === price.id) || null;
+                  return (
+                    <div key={price.id} className="px-4 py-3 space-y-2.5" style={{ borderBottom: `1px solid ${border2}` }}>
+                      {/* Название + итог */}
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: scoreColor }} />
+                          <span className="text-xs font-semibold leading-snug truncate" style={{ color: isDark ? "#fff" : "#111" }}>{price.name}</span>
+                        </div>
+                        <span className="text-sm font-black px-2 py-0.5 rounded-md flex-shrink-0"
+                          style={{ color: scoreColor, background: scoreBg }}>{score}</span>
+                      </div>
+                      {/* Сложность */}
+                      <div>
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-[10px] font-bold uppercase tracking-wide" style={{ color: "#f59e0b" }}>
+                            Сложность монтажа
+                          </span>
+                          <span className="text-xs font-black" style={{ color: "#f59e0b" }}>{item.complexity}/10</span>
+                        </div>
+                        <input type="range" min={1} max={10} step={1}
+                          value={item.complexity} disabled={readOnly}
+                          onChange={e => onUpdateItem(price.id, { complexity: Number(e.target.value) })}
+                          className="w-full cursor-pointer" style={{ accentColor: "#f59e0b", height: 4 }} />
+                        {aiItem?.reason && (
+                          <p className="text-[9px] mt-1 italic" style={{ color: isDark ? "rgba(255,255,255,0.4)" : "#9ca3af" }}>
+                            {aiItem.reason}
+                          </p>
+                        )}
+                      </div>
+                      {/* Влияние */}
+                      <div>
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-[10px] font-bold uppercase tracking-wide" style={{ color: "#8b5cf6" }}>
+                            Влияние на скидку
+                          </span>
+                          <span className="text-xs font-black" style={{ color: "#8b5cf6" }}>{item.weight}/10</span>
+                        </div>
+                        <input type="range" min={1} max={10} step={1}
+                          value={item.weight} disabled={readOnly}
+                          onChange={e => onUpdateItem(price.id, { weight: Number(e.target.value) })}
+                          className="w-full cursor-pointer" style={{ accentColor: "#8b5cf6", height: 4 }} />
+                        {aiItem?.weight_reason && (
+                          <p className="text-[9px] mt-1 italic" style={{ color: isDark ? "rgba(255,255,255,0.4)" : "#9ca3af" }}>
+                            {aiItem.weight_reason}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ))}
+            {/* Итог мобиле */}
+            <div className="flex items-center justify-between px-4 py-3"
+              style={{ borderTop: `2px solid rgba(139,92,246,0.2)`, background: "rgba(139,92,246,0.05)" }}>
+              <span className="text-[11px] font-bold" style={{ color: "#a78bfa" }}>Суммарный удельный вес</span>
+              <span className="text-base font-black" style={{ color: "#a78bfa" }}>{totalWeightedScore}</span>
+            </div>
+          </div>
+
+          {/* ── ДЕСКТОП список ── */}
+          <div className="hidden sm:block" style={{ borderTop: `1px solid ${border2}` }}>
 
             {/* Заголовок колонок */}
             <div className="flex items-center px-4 py-2.5 text-[10px] font-bold"
@@ -314,7 +392,7 @@ export default function ComplexityPriceTable({
               </div>
             </div>
 
-          </div>{/* конец списка */}
+          </div>{/* конец десктоп списка */}
 
           {/* Кнопки */}
           {!readOnly && (
