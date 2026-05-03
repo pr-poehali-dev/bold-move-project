@@ -3,13 +3,32 @@ import { useTheme } from "./themeContext";
 import Icon from "@/components/ui/icon";
 import { CalEvent, MONTH_NAMES, EVENT_COLORS } from "./calendarTypes";
 
+const EVENT_TYPE_ICONS: Record<string, string> = {
+  measure: "Ruler",
+  install: "Wrench",
+  payment: "Banknote",
+  call:    "Phone",
+  other:   "Circle",
+};
+
 // ── Бейдж события в месячной сетке ──────────────────────────────────────────
 export function EventBadge({ e, onClick }: { e: CalEvent; onClick: (e: CalEvent) => void }) {
+  const time = new Date(e.start_time).toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" });
+  const icon = EVENT_TYPE_ICONS[e.event_type] || "Circle";
   return (
     <div onClick={ev => { ev.stopPropagation(); onClick(e); }}
-      className="truncate rounded-md px-1.5 py-0.5 text-[10px] font-medium leading-tight cursor-pointer hover:brightness-110 transition mb-0.5"
-      style={{ background: e.color + "28", color: e.color, borderLeft: `2.5px solid ${e.color}` }}>
-      {new Date(e.start_time).toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" })} {e.title}
+      className="rounded-md px-1.5 py-0.5 cursor-pointer hover:brightness-110 transition mb-0.5"
+      style={{ background: e.color + "22", borderLeft: `2.5px solid ${e.color}` }}>
+      <div className="flex items-center gap-1 min-w-0">
+        <Icon name={icon} size={9} style={{ color: e.color, flexShrink: 0 }} />
+        <span className="text-[10px] font-semibold truncate" style={{ color: e.color }}>{time}</span>
+        <span className="text-[10px] font-medium truncate" style={{ color: e.color + "cc" }}>{e.title}</span>
+      </div>
+      {e.client_name && (
+        <div className="text-[9px] truncate mt-0.5 pl-3.5" style={{ color: e.color + "99" }}>
+          {e.client_name}
+        </div>
+      )}
     </div>
   );
 }
@@ -149,32 +168,69 @@ export function CalendarDaySidebar({
           </div>
         )}
         <div className="space-y-2">
-          {selectedEvents.map(e => (
-            <div key={e.id}
-              className="rounded-xl p-3 transition"
-              style={{ background: e.color + "15", border: `1px solid ${e.color}30` }}>
-              <div className="flex items-center gap-2 mb-1.5 cursor-pointer" onClick={() => onEditEvent(e)}>
-                <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: e.color }} />
-                <span className="text-xs font-bold truncate" style={{ color: t.text }}>{e.title}</span>
+          {selectedEvents.map(e => {
+            const icon = EVENT_TYPE_ICONS[e.event_type] || "Circle";
+            const startTime = new Date(e.start_time).toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" });
+            const endTime   = e.end_time ? new Date(e.end_time).toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" }) : null;
+            return (
+              <div key={e.id}
+                className="rounded-xl overflow-hidden transition"
+                style={{ border: `1px solid ${e.color}35` }}>
+
+                {/* Цветная полоска-шапка */}
+                <div className="px-3 py-2 flex items-center gap-2 cursor-pointer"
+                  style={{ background: e.color + "20" }}
+                  onClick={() => onEditEvent(e)}>
+                  <div className="w-6 h-6 rounded-lg flex items-center justify-center flex-shrink-0"
+                    style={{ background: e.color + "30" }}>
+                    <Icon name={icon} size={12} style={{ color: e.color }} />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="text-xs font-bold truncate" style={{ color: t.text }}>{e.title}</div>
+                    <div className="text-[10px] font-semibold" style={{ color: e.color }}>
+                      {EVENT_TYPE_LABELS[e.event_type] || e.event_type}
+                    </div>
+                  </div>
+                  <Icon name="Pencil" size={11} style={{ color: t.textMute, flexShrink: 0 }} />
+                </div>
+
+                {/* Тело */}
+                <div className="px-3 py-2 space-y-1" style={{ background: e.color + "08" }}>
+                  {/* Время */}
+                  <div className="flex items-center gap-1.5">
+                    <Icon name="Clock" size={10} style={{ color: t.textMute, flexShrink: 0 }} />
+                    <span className="text-[11px] font-semibold" style={{ color: t.textSub }}>
+                      {startTime}{endTime && ` — ${endTime}`}
+                    </span>
+                  </div>
+                  {/* Клиент */}
+                  {e.client_name && (
+                    <div className="flex items-center gap-1.5">
+                      <Icon name="User" size={10} style={{ color: t.textMute, flexShrink: 0 }} />
+                      <span className="text-[11px] truncate" style={{ color: t.textSub }}>{e.client_name}</span>
+                    </div>
+                  )}
+                  {/* Описание / адрес */}
+                  {e.description && (
+                    <div className="flex items-start gap-1.5">
+                      <Icon name="MapPin" size={10} style={{ color: t.textMute, flexShrink: 0, marginTop: 1 }} />
+                      <span className="text-[10px] leading-relaxed" style={{ color: t.textMute }}>{e.description}</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Кнопка перехода в заказ */}
+                {e.client_id && onSelectClient && (
+                  <button onClick={() => onSelectClient(e.client_id!)}
+                    className="w-full px-3 py-2 flex items-center justify-center gap-1.5 text-[10px] font-bold transition hover:opacity-90"
+                    style={{ background: e.color + "18", color: e.color, borderTop: `1px solid ${e.color}25` }}>
+                    <Icon name="ExternalLink" size={10} />
+                    Открыть заявку
+                  </button>
+                )}
               </div>
-              <div className="text-[10px] mb-1 font-medium" style={{ color: e.color }}>
-                {EVENT_TYPE_LABELS[e.event_type] || e.event_type}
-              </div>
-              <div className="text-[10px]" style={{ color: t.textSub }}>
-                {new Date(e.start_time).toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" })}
-                {e.end_time && " — " + new Date(e.end_time).toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" })}
-              </div>
-              {e.client_name && <div className="text-[10px] mt-0.5" style={{ color: t.textMute }}>{e.client_name}</div>}
-              {e.description && <div className="text-[10px] mt-1 cursor-pointer" onClick={() => onEditEvent(e)} style={{ color: t.textMute }}>{e.description}</div>}
-              {e.client_id && onSelectClient && (
-                <button onClick={() => onSelectClient(e.client_id!)}
-                  className="mt-2 text-[10px] font-semibold px-2 py-1 rounded-lg w-full text-center transition hover:opacity-80"
-                  style={{ background: e.color + "25", color: e.color }}>
-                  Открыть заказ →
-                </button>
-              )}
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
 

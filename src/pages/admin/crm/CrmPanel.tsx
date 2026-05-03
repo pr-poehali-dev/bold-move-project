@@ -58,6 +58,11 @@ export default function CrmPanel({ theme, initialOrderId }: { theme: Theme; init
     setCalendarOpenId(id);
     setTab("orders");
   };
+
+  const handleBackToCalendar = () => {
+    setCalendarOpenId(null);
+    setTab("calendar");
+  };
   const [kanbanEnabled, setKanbanEnabled] = useState<boolean>(
     () => canKanban && localStorage.getItem(LS_KANBAN_ENABLED) === "true"
   );
@@ -190,25 +195,35 @@ export default function CrmPanel({ theme, initialOrderId }: { theme: Theme; init
             />
           )}
           {tab === "orders" && (
-            <CrmOrders
-              clients={clients} loading={loading}
-              onStatusChange={updateClientStatus}
-              onClientRemoved={removeClient}
-              onReload={loadClients}
-              initialOrderId={calendarOpenId ?? initialOrderId}
-              canEdit={canClientsEdit}
-              canOrdersEdit={canOrdersEdit}
-              canFinance={canFinance}
-              canFiles={canFilesEdit}
-              canFieldContacts={canFieldContacts}
-              canFieldAddress={canFieldAddress}
-              canFieldDates={canFieldDates}
-              canFieldFinance={canFieldFinance}
-              canFieldFiles={canFieldFiles}
-              canFieldCancel={canFieldCancel}
-              substatuses={substatuses}
-              onSubstatusesChange={setSubstatuses}
-            />
+            <>
+              {calendarOpenId && (
+                <button onClick={handleBackToCalendar}
+                  className="flex items-center gap-2 mb-4 px-3 py-2 rounded-xl text-xs font-semibold transition hover:opacity-80"
+                  style={{ background: "#7c3aed18", color: "#a78bfa", border: "1px solid #7c3aed30" }}>
+                  <Icon name="ChevronLeft" size={13} />
+                  Назад в календарь
+                </button>
+              )}
+              <CrmOrders
+                clients={clients} loading={loading}
+                onStatusChange={updateClientStatus}
+                onClientRemoved={removeClient}
+                onReload={loadClients}
+                initialOrderId={calendarOpenId ?? initialOrderId}
+                canEdit={canClientsEdit}
+                canOrdersEdit={canOrdersEdit}
+                canFinance={canFinance}
+                canFiles={canFilesEdit}
+                canFieldContacts={canFieldContacts}
+                canFieldAddress={canFieldAddress}
+                canFieldDates={canFieldDates}
+                canFieldFinance={canFieldFinance}
+                canFieldFiles={canFieldFiles}
+                canFieldCancel={canFieldCancel}
+                substatuses={substatuses}
+                onSubstatusesChange={setSubstatuses}
+              />
+            </>
           )}
           {tab === "calendar" && canCalendar && <CrmCalendar onSelectClient={handleCalendarSelectClient} canEdit={canCalendarEdit} />}
           {tab === "kanban"   && canKanban   && <CrmKanban clients={[]} loading={false} onStatusChange={() => {}} onClientRemoved={() => {}} onReload={() => {}} onRemoveBoard={disableKanban} canEdit={canKanbanEdit} />}

@@ -56,7 +56,8 @@ export function CalendarMonthGrid({
               <div className="space-y-0.5 px-1">
                 {dayEvents.slice(0, 3).map(ev => (
                   <EventBadge key={ev.id} e={ev} onClick={() => {
-                    if (ev.client_id && onSelectClient) onSelectClient(ev.client_id);
+                    // Клик на карточку — выбираем день (открываем в сайдбаре), не переходим сразу в заказ
+                    onSelectDay(c.day);
                   }} />
                 ))}
                 {dayEvents.length > 3 && (
