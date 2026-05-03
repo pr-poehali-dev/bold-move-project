@@ -218,7 +218,7 @@ export function DrawerDiscountBlock({ data, customFinRows, onContractSumUpdated 
       const mathRes = await fetch(`${AUTH_URL}?action=crm-risk-ai`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ items: [mathPromptText], max_discount: maxDiscount, custom_prompt: "Дай краткий аналитический вывод (2-3 предложения) без рекомендаций по скидке." }),
+        body: JSON.stringify({ items: [mathPromptText], max_discount: maxDiscount, custom_prompt: mathPromptText, raw_mode: true }),
       }).then(r => r.json());
       const mathResult = mathRes.reason || mathRes.summary || "Математический анализ завершён";
 
@@ -230,7 +230,7 @@ export function DrawerDiscountBlock({ data, customFinRows, onContractSumUpdated 
       const semanticRes = await fetch(`${AUTH_URL}?action=crm-risk-ai`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ items: matchedItems.map(i => i.name), max_discount: maxDiscount, custom_prompt: semanticPromptText }),
+        body: JSON.stringify({ items: matchedItems.map(i => i.name), max_discount: maxDiscount, custom_prompt: semanticPromptText, raw_mode: true }),
       }).then(r => r.json());
       const semanticResult = semanticRes.reason || semanticRes.summary || "Семантический анализ завершён";
 

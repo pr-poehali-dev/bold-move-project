@@ -2270,6 +2270,7 @@ def handler(event: dict, context) -> dict:
         items = body.get("items", [])
         max_discount = body.get("max_discount", 30)
         custom_prompt = body.get("custom_prompt", "")
+        raw_mode = body.get("raw_mode", False)  # True = текстовый ответ (этапы 1 и 2)
         if not items:
             return err("items обязателен")
 
@@ -2280,30 +2281,40 @@ def handler(event: dict, context) -> dict:
             "сложный (многоуровневый, ниши, много закладных) → минимальная скидка."
         )
 
-        prompt = (
-            f"{base_prompt}\n\n"
-            f"Позиции сметы:\n"
-            + "\n".join(f"{i+1}. {it}" for i, it in enumerate(items[:40]))
-            + f"\n\nМаксимально допустимая скидка: {max_discount}%\n\n"
-            f"Ответь строго в JSON без markdown:\n"
-            f'{{"level":"low|mid|high",'
-            f'"recommended_discount":число от 0 до {max_discount},'
-            f'"reason":"краткое объяснение (1-2 предложения)",'
-            f'"items":["риск 1","риск 2"]}}'
-        )
+        if raw_mode:
+            # Этапы 1 и 2 — просто текстовый ответ, без JSON с recommended_discount
+            prompt = (
+                f"{base_prompt}\n\n"
+                f"Позиции сметы:\n"
+                + "\n".join(f"{i+1}. {it}" for i, it in enumerate(items[:40]))
+            )
+        else:
+            # Этап 3 — финальный JSON с recommended_discount
+            prompt = (
+                f"{base_prompt}\n\n"
+                f"Позиции сметы:\n"
+                + "\n".join(f"{i+1}. {it}" for i, it in enumerate(items[:40]))
+                + f"\n\nМаксимально допустимая скидка: {max_discount}%\n\n"
+                f"Ответь строго в JSON без markdown:\n"
+                f'{{"level":"low|mid|high",'
+                f'"recommended_discount":число от 0 до {max_discount},'
+                f'"reason":"краткое объяснение (1-2 предложения)",'
+                f'"items":["риск 1","риск 2"]}}'
+            )
 
         or_key = os.environ.get("OPENROUTER_API_KEY_2", "") or os.environ.get("OPENROUTER_API_KEY", "")
         if not or_key:
             return err("AI недоступен — нет ключа")
 
         import urllib.request as _req2
+        sys_msg = "Отвечай чётко и по делу." if raw_mode else "Отвечай только JSON без markdown."
         payload = json.dumps({
             "model": "openai/gpt-4o-mini",
             "messages": [
-                {"role": "system", "content": "Отвечай только JSON без markdown."},
+                {"role": "system", "content": sys_msg},
                 {"role": "user", "content": prompt},
             ],
-            "max_tokens": 400,
+            "max_tokens": 600 if raw_mode else 400,
             "temperature": 0,
         }).encode()
         req2 = _req2.Request(
@@ -2320,7 +2331,10 @@ def handler(event: dict, context) -> dict:
             with _req2.urlopen(req2, timeout=30) as r2:
                 ai_resp = json.loads(r2.read().decode())
             content = ai_resp["choices"][0]["message"]["content"]
-            # Вытаскиваем JSON из ответа
+            if raw_mode:
+                # Возвращаем текст напрямую
+                return ok({"reason": content.strip(), "summary": content.strip()})
+            # Этап 3 — парсим JSON
             import re as _re
             m = _re.search(r'\{[\s\S]*\}', content)
             if not m:
