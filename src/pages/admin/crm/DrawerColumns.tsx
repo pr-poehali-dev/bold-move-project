@@ -154,9 +154,9 @@ export function DrawerColumns(props: ColumnsProps) {
     <div className="flex flex-col gap-3">
 
       {/* Двухколоночная сетка — выровненные блоки */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 items-stretch">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3" style={{ alignItems: "stretch" }}>
         {/* Левый столбец */}
-        <div className="flex flex-col gap-3 min-w-0 h-full">
+        <div style={{ display: "flex", flexDirection: "column", gap: 12, minWidth: 0 }}>
           {col0Narrow.map(b => (
             <DraggableBlock key={b.id} blockId={b.id} onDragStart={onDragStart} onDragOver={onDragOver} onDrop={onDrop}>
               {renderColBlock(b)}
@@ -164,9 +164,10 @@ export function DrawerColumns(props: ColumnsProps) {
           ))}
           {/* Растягивающаяся зона — занимает оставшееся место и кликабельна для добавления блока */}
           <div
-            className="flex-1 rounded-xl flex flex-col items-center justify-center gap-1.5 cursor-pointer transition-all"
+            className="rounded-xl flex flex-col items-center justify-center gap-1.5 cursor-pointer transition-all"
             style={{
-              minHeight: 80,
+              flex: 1,
+              minHeight: 48,
               border: `2px dashed ${dropOverCol === 0 ? "#7c3aed" : "#ffffff18"}`,
               background: dropOverCol === 0 ? "#7c3aed08" : "transparent",
             }}
@@ -184,7 +185,7 @@ export function DrawerColumns(props: ColumnsProps) {
         </div>
 
         {/* Правый столбец */}
-        <div className="flex flex-col gap-3 min-w-0 h-full">
+        <div style={{ display: "flex", flexDirection: "column", gap: 12, minWidth: 0 }}>
           {col1Narrow.map(b => (
             <DraggableBlock key={b.id} blockId={b.id} onDragStart={onDragStart} onDragOver={onDragOver} onDrop={onDrop}>
               {renderColBlock(b)}
@@ -192,9 +193,10 @@ export function DrawerColumns(props: ColumnsProps) {
           ))}
           {/* Drop-зона для перетаскивания в правую колонку */}
           <div
-            className="flex-1 rounded-xl flex flex-col items-center justify-center transition-all"
+            className="rounded-xl flex flex-col items-center justify-center transition-all"
             style={{
-              minHeight: 80,
+              flex: 1,
+              minHeight: 4,
               border: `2px dashed ${dropOverCol === 1 ? "#7c3aed" : "transparent"}`,
               background: dropOverCol === 1 ? "#7c3aed08" : "transparent",
             }}
