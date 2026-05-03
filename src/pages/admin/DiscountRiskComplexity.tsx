@@ -123,7 +123,7 @@ export default function DiscountRiskComplexity({ isDark, theme, readOnly }: Prop
   // Тихий автозапуск только для подсказок (reason/weight_reason) — слайдеры не трогает
   useEffect(() => {
     if (prices.length === 0 || readOnly) return;
-    const hasHints = Object.values(complexityItems).some(i => i.reason && i.weight_reason);
+    const hasHints = Object.values(complexityItems).some(i => i.reason?.trim() && i.weight_reason?.trim());
     if (hasHints) return;
 
     const fetchHints = async () => {

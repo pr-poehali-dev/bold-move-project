@@ -306,7 +306,7 @@ export default function ComplexityPriceTable({
               <div className="flex-1 px-4 py-4 flex flex-col justify-center" style={{ minHeight: 120 }}>
                 {hoveredItem ? (
                   <div className="space-y-3">
-                    {hoveredItem.reason && (
+                    {hoveredItem.reason?.trim() ? (
                       <div>
                         <div className="flex items-center gap-1.5 mb-1">
                           <span className="text-[9px] font-bold uppercase tracking-wider" style={{ color: "#f59e0b" }}>Сложность</span>
@@ -316,8 +316,8 @@ export default function ComplexityPriceTable({
                           {hoveredItem.reason}
                         </p>
                       </div>
-                    )}
-                    {hoveredItem.weight_reason && (
+                    ) : null}
+                    {hoveredItem.weight_reason?.trim() ? (
                       <div>
                         <div className="flex items-center gap-1.5 mb-1">
                           <span className="text-[9px] font-bold uppercase tracking-wider" style={{ color: "#8b5cf6" }}>Влияние</span>
@@ -327,11 +327,20 @@ export default function ComplexityPriceTable({
                           {hoveredItem.weight_reason}
                         </p>
                       </div>
-                    )}
-                    {!hoveredItem.reason && !hoveredItem.weight_reason && (
-                      <p className="text-[11px] text-center" style={{ color: isDark ? "rgba(255,255,255,0.2)" : "#c4c4c4" }}>
-                        Нет данных AI
-                      </p>
+                    ) : null}
+                    {!hoveredItem.reason?.trim() && !hoveredItem.weight_reason?.trim() && (
+                      <div className="text-center">
+                        <p className="text-[11px] mb-3" style={{ color: isDark ? "rgba(255,255,255,0.3)" : "#9ca3af" }}>
+                          Нет объяснения AI.<br />Нажми «AI оценить»
+                        </p>
+                        {!readOnly && (
+                          <button onClick={onAiEvaluate}
+                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-bold mx-auto transition hover:opacity-80"
+                            style={{ background: "rgba(139,92,246,0.15)", color: "#a78bfa", border: "1px solid rgba(139,92,246,0.3)" }}>
+                            <Icon name="Sparkles" size={11} /> AI оценить
+                          </button>
+                        )}
+                      </div>
                     )}
                   </div>
                 ) : (
