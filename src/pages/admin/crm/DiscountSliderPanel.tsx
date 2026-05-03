@@ -264,7 +264,8 @@ export function DiscountSliderPanel({
             onChange={e => { setDiscount(Number(e.target.value)); setApplied(false); }}
             className="w-full cursor-pointer"
             style={{
-              accentColor: isNegative || isOverMax ? "#ef4444"
+              accentColor: isRealLoss || isOverMax ? "#ef4444"
+                : isOverMinMargin ? "#f59e0b"
                 : currentZone === "low" ? "#10b981"
                 : currentZone === "mid" ? "#f59e0b"
                 : "#ef4444",
@@ -324,19 +325,19 @@ export function DiscountSliderPanel({
                 <span className="text-[11px] font-bold text-white/70">{fmt(discountedIncome)} ₽</span>
               </div>
               <div className="flex items-center justify-between px-3 py-2 rounded-xl"
-                style={{ background: isNegative ? "#ef444410" : "#10b98110", border: `1px solid ${isNegative ? "#ef444430" : "#10b98130"}` }}>
-                <span className="text-[10px]" style={{ color: isNegative ? "#ef4444" : "#10b981" }}>
-                  {isNegative ? "Убыток" : "Заработаете"}
+                style={{ background: isRealLoss ? "#ef444410" : isOverMinMargin ? "#f59e0b10" : "#10b98110", border: `1px solid ${isRealLoss ? "#ef444430" : isOverMinMargin ? "#f59e0b30" : "#10b98130"}` }}>
+                <span className="text-[10px]" style={{ color: isRealLoss ? "#ef4444" : isOverMinMargin ? "#f59e0b" : "#10b981" }}>
+                  {isRealLoss ? "Убыток" : "Заработаете"}
                 </span>
-                <span className="text-[11px] font-bold" style={{ color: isNegative ? "#ef4444" : "#10b981" }}>
-                  {isNegative ? "" : "+"}{fmt(discountedProfit)} ₽
+                <span className="text-[11px] font-bold" style={{ color: isRealLoss ? "#ef4444" : isOverMinMargin ? "#f59e0b" : "#10b981" }}>
+                  {isRealLoss ? "" : "+"}{fmt(discountedProfit)} ₽
                 </span>
               </div>
             </div>
           )}
           <button
             onClick={onApplyDiscount}
-            disabled={discount === 0 || isNegative || isOverMax || applying}
+            disabled={discount === 0 || isRealLoss || isOverMax || applying}
             className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-[11px] font-bold transition disabled:opacity-30 disabled:cursor-not-allowed hover:opacity-80 flex-shrink-0"
             style={{ background: "rgba(245,158,11,0.15)", color: "#f59e0b", border: "1px solid rgba(245,158,11,0.3)" }}>
             {applying
