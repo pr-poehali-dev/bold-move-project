@@ -36,6 +36,7 @@ export default function DiscountRiskComplexity({ isDark, theme, readOnly }: Prop
   const [aiTotal,    setAiTotal]    = useState(0);
   const [aiError,    setAiError]    = useState<string | null>(null);
   const [aiDone,     setAiDone]     = useState(false);
+  const [aiConfirm,  setAiConfirm]  = useState(false);
 
   const runAiEvaluation = async () => {
     if (!prices.length || aiLoading) return;
@@ -64,13 +65,21 @@ export default function DiscountRiskComplexity({ isDark, theme, readOnly }: Prop
 
         if (res.results && Array.isArray(res.results)) {
           res.results.forEach((item: { id: number; complexity: number; weight: number; reason?: string; weight_reason?: string }) => {
+            const existing = newItems[item.id];
+            // Сохраняем ручные настройки слайдеров если они уже есть,
+            // AI обновляет только подсказки + ставит значения если позиция новая
+            const aiComplexity = Math.min(10, Math.max(1, Math.round(item.complexity)));
+            const aiWeight = Math.min(10, Math.max(1, Math.round(item.weight)));
             newItems[item.id] = {
               priceId: item.id,
-              complexity: Math.min(10, Math.max(1, Math.round(item.complexity))),
-              weight: Math.min(10, Math.max(1, Math.round(item.weight))),
+              complexity: existing?.complexity ?? aiComplexity,
+              weight: existing?.weight ?? aiWeight,
               reason: item.reason || "",
               weight_reason: item.weight_reason || "",
-            };
+              // Сохраняем AI-рекомендации отдельно для справки в подсказке
+              ai_complexity: aiComplexity,
+              ai_weight: aiWeight,
+            } as ComplexityItem;
           });
         }
         setAiProgress(b + 1);
@@ -110,15 +119,7 @@ export default function DiscountRiskComplexity({ isDark, theme, readOnly }: Prop
 
   useEffect(() => { loadPrices(); }, [loadPrices]);
 
-  // Автозапуск AI если прайс загружен, но нет полных объяснений (reason + weight_reason)
-  useEffect(() => {
-    if (prices.length === 0 || aiLoading || readOnly) return;
-    const hasFullReasons = Object.values(complexityItems).some(i => i.reason && i.weight_reason);
-    if (!hasFullReasons) {
-      runAiEvaluation();
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [prices]);
+
 
   const getItem = (id: number): ComplexityItem =>
     complexityItems[id] || { priceId: id, complexity: 5, weight: 5 };
@@ -213,12 +214,50 @@ export default function DiscountRiskComplexity({ isDark, theme, readOnly }: Prop
         totalWeightedScore={totalWeightedScore}
         formula={formula}
         setFormula={setFormula}
-        onAiEvaluate={runAiEvaluation}
+        onAiEvaluate={() => setAiConfirm(true)}
         onAiErrorClose={() => setAiError(null)}
         onSaveItems={handleSaveItems}
         onResetAll={resetAll}
         onUpdateItem={updateItem}
       />
+
+      {/* Модальное предупреждение перед AI оценкой */}
+      {aiConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          style={{ background: "rgba(0,0,0,0.7)", backdropFilter: "blur(4px)" }}>
+          <div className="rounded-2xl p-6 max-w-md w-full shadow-2xl"
+            style={{ background: isDark ? "#0f0f1a" : "#fff", border: "1px solid rgba(139,92,246,0.3)" }}>
+            <div className="flex items-start gap-3 mb-4">
+              <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
+                style={{ background: "rgba(239,68,68,0.12)", border: "1px solid rgba(239,68,68,0.3)" }}>
+                <span style={{ color: "#ef4444", fontSize: 18 }}>⚠️</span>
+              </div>
+              <div>
+                <div className="font-bold text-sm mb-1" style={{ color: isDark ? "#fff" : "#111" }}>
+                  AI перезапишет все текущие оценки
+                </div>
+                <div className="text-xs leading-relaxed" style={{ color: isDark ? "rgba(255,255,255,0.5)" : "#6b7280" }}>
+                  Все значения сложности и влияния на скидку, которые ты настроил вручную, будут заменены оценками AI.
+                  <br /><br />
+                  <span style={{ color: "#ef4444", fontWeight: 600 }}>Этот процесс невозможно отменить.</span>
+                </div>
+              </div>
+            </div>
+            <div className="flex gap-2 mt-5">
+              <button onClick={() => setAiConfirm(false)}
+                className="flex-1 py-2 rounded-xl text-sm font-semibold transition"
+                style={{ background: isDark ? "rgba(255,255,255,0.06)" : "#f3f4f6", color: isDark ? "rgba(255,255,255,0.6)" : "#6b7280" }}>
+                Отмена
+              </button>
+              <button onClick={() => { setAiConfirm(false); runAiEvaluation(); }}
+                className="flex-1 py-2 rounded-xl text-sm font-bold transition"
+                style={{ background: "rgba(139,92,246,0.9)", color: "#fff" }}>
+                Да, запустить AI
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* AI промпты */}
       <ComplexityAiPrompts

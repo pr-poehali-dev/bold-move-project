@@ -67,10 +67,12 @@ export interface PriceItem {
 
 export interface ComplexityItem {
   priceId: number;
-  complexity: number;     // 1-10
-  weight: number;         // 1-10
-  reason?: string;        // объяснение AI — сложность
-  weight_reason?: string; // объяснение AI — влияние на скидку
+  complexity: number;      // 1-10 (текущее значение слайдера)
+  weight: number;          // 1-10 (текущее значение слайдера)
+  reason?: string;         // объяснение AI — сложность
+  weight_reason?: string;  // объяснение AI — влияние на скидку
+  ai_complexity?: number;  // оценка AI (не меняется при ручном редактировании)
+  ai_weight?: number;      // оценка AI (не меняется при ручном редактировании)
 }
 
 export interface ComplexityPrompts {

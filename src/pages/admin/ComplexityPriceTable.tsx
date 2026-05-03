@@ -42,8 +42,8 @@ export default function ComplexityPriceTable({
   const hoveredItem = hoveredId !== null ? complexityItems[hoveredId] : null;
   const hoveredReason = hoveredItem?.reason || "";
   const hoveredWeightReason = hoveredItem?.weight_reason || "";
-  const hoveredComplexity = hoveredItem?.complexity ?? null;
-  const hoveredWeight = hoveredItem?.weight ?? null;
+  const hoveredComplexity = hoveredItem?.ai_complexity ?? hoveredItem?.complexity ?? null;
+  const hoveredWeight = hoveredItem?.ai_weight ?? hoveredItem?.weight ?? null;
   const hasAnyReason = Object.values(complexityItems).some(i => i.reason && i.weight_reason);
 
   const getItem = (id: number): ComplexityItem =>
