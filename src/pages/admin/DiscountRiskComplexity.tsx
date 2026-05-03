@@ -63,11 +63,12 @@ export default function DiscountRiskComplexity({ isDark, theme, readOnly }: Prop
         }).then(r => r.json());
 
         if (res.results && Array.isArray(res.results)) {
-          res.results.forEach((item: { id: number; complexity: number; weight: number }) => {
+          res.results.forEach((item: { id: number; complexity: number; weight: number; reason?: string }) => {
             newItems[item.id] = {
               priceId: item.id,
               complexity: Math.min(10, Math.max(1, Math.round(item.complexity))),
               weight: Math.min(10, Math.max(1, Math.round(item.weight))),
+              reason: item.reason || "",
             };
           });
         }

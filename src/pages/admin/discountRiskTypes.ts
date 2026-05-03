@@ -69,6 +69,7 @@ export interface ComplexityItem {
   priceId: number;
   complexity: number; // 1-10
   weight: number;     // 1-10
+  reason?: string;    // объяснение AI
 }
 
 export interface ComplexityPrompts {
