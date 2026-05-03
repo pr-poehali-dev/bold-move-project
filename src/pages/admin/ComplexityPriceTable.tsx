@@ -304,7 +304,7 @@ export default function ComplexityPriceTable({
             </div>
 
             {/* Правая панель подсказок AI */}
-            <div className="flex-shrink-0 flex flex-col" style={{ width: 260 }}>
+            <div className="flex-shrink-0 flex flex-col" style={{ width: 260, position: "sticky", top: 0, alignSelf: "flex-start", maxHeight: "80vh", overflowY: "auto" }}>
               {/* Заголовок панели */}
               <div className="px-4 py-2.5 flex items-center gap-2" style={{ background: isDark ? "#0f0f1a" : "#f9fafb", borderBottom: `1px solid ${border2}` }}>
                 <Icon name="Sparkles" size={11} style={{ color: "#a78bfa" }} />
