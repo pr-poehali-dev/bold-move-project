@@ -54,9 +54,10 @@ export default function KanbanCard({ client, colColor, onOpen, onNextStep, dragg
   const contractSum = Number(client.contract_sum) || 0;
   const prepayment  = Number(client.prepayment) || 0;
   const extraPay    = Number(client.extra_payment) || 0;
-  // Доход = только сумма договора. Предоплата и доплата — это части одной суммы, не добавочный доход
   const income      = contractSum;
-  const paid        = prepayment + extraPay;
+  const paidPre   = client.prepayment_confirmed ? (Number(client.prepayment_fact) || prepayment) : 0;
+  const paidExtra = client.extra_payment_confirmed ? (Number(client.extra_payment_fact) || extraPay) : 0;
+  const paid        = paidPre + paidExtra;
   const debt        = contractSum - paid;
   const costs       = (Number(client.material_cost)||0) + (Number(client.measure_cost)||0) + (Number(client.install_cost)||0);
   const profit      = income - costs;

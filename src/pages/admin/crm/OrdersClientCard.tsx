@@ -96,8 +96,10 @@ export function OrdersClientCard({ c, onClick, onNextStep }: {
   const contractSum = Number(c.contract_sum) || 0;
   const prepayment  = Number(c.prepayment) || 0;
   const extraPay    = Number(c.extra_payment) || 0;
-  const income      = contractSum; // доход = сумма договора; предоплата и доплата — это части одной суммы
-  const paid        = prepayment + extraPay;
+  const income      = contractSum;
+  const paidPre   = c.prepayment_confirmed ? (Number(c.prepayment_fact) || prepayment) : 0;
+  const paidExtra = c.extra_payment_confirmed ? (Number(c.extra_payment_fact) || extraPay) : 0;
+  const paid        = paidPre + paidExtra;
   const costs       = (Number(c.material_cost)||0) + (Number(c.measure_cost)||0) + (Number(c.install_cost)||0);
   const debt        = contractSum - paid;
   const profit      = income - costs;

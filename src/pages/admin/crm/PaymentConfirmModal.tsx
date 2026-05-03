@@ -2,81 +2,102 @@ import { useState, useRef } from "react";
 import { createPortal } from "react-dom";
 import Icon from "@/components/ui/icon";
 import { useTheme } from "./themeContext";
-import { uploadFile } from "./crmApi";
+import { uploadFile, crmFetch, Client } from "./crmApi";
 
-// ── Типы ─────────────────────────────────────────────────────────────────────
-export interface PaymentFact {
-  confirmed: boolean;
-  amount: number;        // фактическая сумма
-  receiptUrl: string | null; // URL чека
-  confirmedAt: string;   // ISO дата
-}
+export type PaymentField = "prepayment" | "extra_payment";
 
-// ── localStorage helpers ──────────────────────────────────────────────────────
-const LS_PREFIX = "crm_payment_fact_";
-
-export function loadPaymentFact(clientId: number, field: "prepayment" | "extra_payment"): PaymentFact | null {
-  try {
-    const s = localStorage.getItem(`${LS_PREFIX}${clientId}_${field}`);
-    return s ? JSON.parse(s) : null;
-  } catch { return null; }
-}
-
-export function savePaymentFact(clientId: number, field: "prepayment" | "extra_payment", fact: PaymentFact) {
-  localStorage.setItem(`${LS_PREFIX}${clientId}_${field}`, JSON.stringify(fact));
-}
-
-export function clearPaymentFact(clientId: number, field: "prepayment" | "extra_payment") {
-  localStorage.removeItem(`${LS_PREFIX}${clientId}_${field}`);
-}
+// ── Определяем поля confirmed по типу ────────────────────────────────────────
+const CONFIRMED_FIELDS: Record<PaymentField, {
+  confirmed: keyof Client;
+  confirmed_at: keyof Client;
+  fact: keyof Client;
+}> = {
+  prepayment: {
+    confirmed:    "prepayment_confirmed",
+    confirmed_at: "prepayment_confirmed_at",
+    fact:         "prepayment_fact",
+  },
+  extra_payment: {
+    confirmed:    "extra_payment_confirmed",
+    confirmed_at: "extra_payment_confirmed_at",
+    fact:         "extra_payment_fact",
+  },
+};
 
 // ── Кнопка-индикатор рядом со строкой ────────────────────────────────────────
 export function PaymentStatusBadge({
-  clientId,
+  client,
   field,
   plannedAmount,
   label,
   onConfirmed,
 }: {
-  clientId: number;
-  field: "prepayment" | "extra_payment";
+  client: Client;
+  field: PaymentField;
   plannedAmount: number | null | undefined;
   label: string;
-  onConfirmed?: (fact: PaymentFact) => void;
+  onConfirmed?: () => void;
 }) {
   const [modalOpen, setModalOpen] = useState(false);
-  const [fact, setFact] = useState<PaymentFact | null>(() => loadPaymentFact(clientId, field));
+  const [saving, setSaving] = useState(false);
+  const fields = CONFIRMED_FIELDS[field];
 
-  const handleConfirmed = (newFact: PaymentFact) => {
-    savePaymentFact(clientId, field, newFact);
-    setFact(newFact);
-    onConfirmed?.(newFact);
-    setModalOpen(false);
+  const isConfirmed = !!client[fields.confirmed];
+  const factAmount  = Number(client[fields.fact]) || 0;
+  const receiptUrl  = null; // чек пока только в модале
+
+  const handleConfirmed = async (amount: number, receipt: string | null) => {
+    setSaving(true);
+    try {
+      await crmFetch("clients", {
+        method: "PUT",
+        body: JSON.stringify({
+          [fields.confirmed]:    true,
+          [fields.confirmed_at]: new Date().toISOString(),
+          [fields.fact]:         amount,
+        }),
+      }, { id: String(client.id) });
+      onConfirmed?.();
+    } finally {
+      setSaving(false);
+      setModalOpen(false);
+    }
   };
 
-  const handleReset = (e: React.MouseEvent) => {
+  const handleReset = async (e: React.MouseEvent) => {
     e.stopPropagation();
-    clearPaymentFact(clientId, field);
-    setFact(null);
+    setSaving(true);
+    try {
+      await crmFetch("clients", {
+        method: "PUT",
+        body: JSON.stringify({
+          [fields.confirmed]:    false,
+          [fields.confirmed_at]: null,
+          [fields.fact]:         null,
+        }),
+      }, { id: String(client.id) });
+      onConfirmed?.();
+    } finally {
+      setSaving(false);
+    }
   };
 
-  if (fact?.confirmed) {
+  if (isConfirmed) {
     return (
       <>
         <button
           onClick={() => setModalOpen(true)}
+          disabled={saving}
           className="flex items-center gap-1 px-1.5 py-0.5 rounded-md transition hover:opacity-80 flex-shrink-0"
           style={{ background: "rgba(16,185,129,0.15)", border: "1px solid rgba(16,185,129,0.3)" }}
           title="Оплата подтверждена — нажмите чтобы изменить">
           <Icon name="CheckCircle2" size={11} style={{ color: "#10b981" }} />
           <span className="text-[10px] font-bold" style={{ color: "#10b981" }}>
-            {fact.amount > 0 ? Math.round(fact.amount).toLocaleString("ru-RU") + " ₽" : "Получено"}
+            {factAmount > 0 ? Math.round(factAmount).toLocaleString("ru-RU") + " ₽" : "Получено"}
           </span>
-          {fact.receiptUrl && (
-            <Icon name="Paperclip" size={10} style={{ color: "#10b981" }} />
-          )}
         </button>
-        <button onClick={handleReset} className="p-0.5 rounded hover:bg-white/10 transition flex-shrink-0"
+        <button onClick={handleReset} disabled={saving}
+          className="p-0.5 rounded hover:bg-white/10 transition flex-shrink-0"
           title="Сбросить подтверждение" style={{ color: "rgba(255,255,255,0.2)" }}>
           <Icon name="X" size={10} />
         </button>
@@ -84,7 +105,8 @@ export function PaymentStatusBadge({
           <PaymentConfirmModal
             label={label}
             plannedAmount={plannedAmount}
-            existingFact={fact}
+            existingAmount={factAmount}
+            existingReceipt={receiptUrl}
             onConfirm={handleConfirmed}
             onClose={() => setModalOpen(false)}
           />
@@ -97,6 +119,7 @@ export function PaymentStatusBadge({
     <>
       <button
         onClick={() => setModalOpen(true)}
+        disabled={saving}
         className="flex items-center gap-1 px-1.5 py-0.5 rounded-md transition hover:opacity-80 flex-shrink-0"
         style={{ background: "rgba(245,158,11,0.1)", border: "1px solid rgba(245,158,11,0.25)" }}
         title={plannedAmount ? `Подтвердить получение ${Math.round(plannedAmount).toLocaleString("ru-RU")} ₽` : "Подтвердить получение"}>
@@ -107,7 +130,8 @@ export function PaymentStatusBadge({
         <PaymentConfirmModal
           label={label}
           plannedAmount={plannedAmount}
-          existingFact={null}
+          existingAmount={null}
+          existingReceipt={null}
           onConfirm={handleConfirmed}
           onClose={() => setModalOpen(false)}
         />
@@ -120,23 +144,24 @@ export function PaymentStatusBadge({
 function PaymentConfirmModal({
   label,
   plannedAmount,
-  existingFact,
+  existingAmount,
+  existingReceipt,
   onConfirm,
   onClose,
 }: {
   label: string;
   plannedAmount: number | null | undefined;
-  existingFact: PaymentFact | null;
-  onConfirm: (fact: PaymentFact) => void;
+  existingAmount: number | null;
+  existingReceipt: string | null;
+  onConfirm: (amount: number, receipt: string | null) => void;
   onClose: () => void;
 }) {
   const t = useTheme();
-  const [amount,    setAmount]    = useState<string>(
-    existingFact?.amount
-      ? String(Math.round(existingFact.amount))
-      : plannedAmount ? String(Math.round(plannedAmount)) : ""
+  const [amount,     setAmount]     = useState<string>(
+    existingAmount ? String(Math.round(existingAmount))
+    : plannedAmount ? String(Math.round(plannedAmount)) : ""
   );
-  const [receiptUrl, setReceiptUrl] = useState<string | null>(existingFact?.receiptUrl ?? null);
+  const [receiptUrl, setReceiptUrl] = useState<string | null>(existingReceipt);
   const [uploading,  setUploading]  = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -153,16 +178,6 @@ function PaymentConfirmModal({
       setUploading(false);
       if (fileRef.current) fileRef.current.value = "";
     }
-  };
-
-  const handleConfirm = () => {
-    const numAmount = parseFloat(amount) || 0;
-    onConfirm({
-      confirmed: true,
-      amount: numAmount,
-      receiptUrl,
-      confirmedAt: new Date().toISOString(),
-    });
   };
 
   const diffAmount = plannedAmount && parseFloat(amount)
@@ -195,7 +210,6 @@ function PaymentConfirmModal({
         </div>
 
         <div className="p-5 space-y-4 overflow-y-auto flex-1">
-
           {/* Сумма */}
           <div>
             <label className="text-xs font-semibold uppercase tracking-wider mb-1.5 block"
@@ -209,25 +223,18 @@ function PaymentConfirmModal({
                 onChange={e => setAmount(e.target.value)}
                 autoFocus
                 className="flex-1 rounded-xl px-3 py-2.5 text-sm font-bold focus:outline-none transition"
-                style={{
-                  background: t.surface2,
-                  border: `1px solid ${t.border}`,
-                  color: t.text,
-                  fontSize: 16,
-                }}
+                style={{ background: t.surface2, border: `1px solid ${t.border}`, color: t.text, fontSize: 16 }}
                 placeholder="0"
               />
               <span className="text-sm font-bold flex-shrink-0" style={{ color: t.textMute }}>₽</span>
             </div>
-
-            {/* Плановая сумма и расхождение */}
             {plannedAmount != null && plannedAmount > 0 && (
               <div className="flex items-center justify-between mt-1.5">
                 <span className="text-[11px]" style={{ color: t.textMute }}>
                   Плановая: {Math.round(plannedAmount).toLocaleString("ru-RU")} ₽
                 </span>
-                {diffAmount !== null && diffAmount !== 0 && (
-                  <span className="text-[11px] font-semibold"
+                {diffAmount !== null && Math.abs(diffAmount) > 0 && (
+                  <span className="text-[11px] font-bold"
                     style={{ color: diffAmount > 0 ? "#10b981" : "#ef4444" }}>
                     {diffAmount > 0 ? "+" : ""}{Math.round(diffAmount).toLocaleString("ru-RU")} ₽
                   </span>
@@ -236,97 +243,59 @@ function PaymentConfirmModal({
             )}
           </div>
 
-          {/* Загрузка чека */}
+          {/* Чек */}
           <div>
             <label className="text-xs font-semibold uppercase tracking-wider mb-1.5 block"
               style={{ color: t.textMute }}>
-              Чек / подтверждение
+              Квитанция / чек (необязательно)
             </label>
-
             {receiptUrl ? (
-              <div className="space-y-2">
+              <div className="relative rounded-xl overflow-hidden"
+                style={{ border: `1px solid ${t.border}` }}>
                 {isImage(receiptUrl) ? (
-                  <div className="relative group">
-                    <img src={receiptUrl} alt="чек"
-                      className="w-full rounded-xl object-cover cursor-pointer hover:opacity-90 transition"
-                      style={{ maxHeight: 200, border: `1px solid ${t.border}` }}
-                      onClick={() => window.open(receiptUrl!, "_blank")} />
-                    <button
-                      onClick={() => setReceiptUrl(null)}
-                      className="absolute top-2 right-2 w-6 h-6 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition"
-                      style={{ background: "rgba(0,0,0,0.6)" }}>
-                      <Icon name="X" size={12} style={{ color: "#fff" }} />
-                    </button>
-                  </div>
+                  <img src={receiptUrl} alt="Чек" className="w-full max-h-40 object-cover" />
                 ) : (
-                  <div className="flex items-center gap-2 px-3 py-2.5 rounded-xl"
-                    style={{ background: t.surface2, border: `1px solid ${t.border}` }}>
-                    <Icon name="FileText" size={14} style={{ color: "#a78bfa" }} />
-                    <a href={receiptUrl} target="_blank" rel="noreferrer"
-                      className="text-xs text-violet-400 underline truncate flex-1 hover:text-violet-300 transition">
-                      {receiptUrl.split("/").pop()}
-                    </a>
-                    <button onClick={() => setReceiptUrl(null)}
-                      className="p-0.5 rounded hover:text-red-400 transition flex-shrink-0"
-                      style={{ color: t.textMute }}>
-                      <Icon name="X" size={12} />
-                    </button>
-                  </div>
+                  <a href={receiptUrl} target="_blank" rel="noopener noreferrer"
+                    className="flex items-center gap-2 px-3 py-2.5 hover:opacity-80 transition"
+                    style={{ color: "#60a5fa" }}>
+                    <Icon name="FileText" size={14} />
+                    <span className="text-xs font-medium truncate">Открыть документ</span>
+                  </a>
                 )}
-                <button onClick={() => fileRef.current?.click()}
-                  className="text-xs underline transition hover:opacity-70 flex items-center gap-1"
-                  style={{ color: t.textMute }}>
-                  <Icon name="RefreshCw" size={11} />
-                  Заменить файл
+                <button onClick={() => setReceiptUrl(null)}
+                  className="absolute top-1.5 right-1.5 w-6 h-6 rounded-full flex items-center justify-center hover:opacity-80 transition"
+                  style={{ background: "rgba(0,0,0,0.6)" }}>
+                  <Icon name="X" size={12} style={{ color: "#fff" }} />
                 </button>
               </div>
             ) : (
-              <button
-                onClick={() => fileRef.current?.click()}
-                disabled={uploading}
-                className="w-full flex flex-col items-center gap-2 py-6 rounded-xl border-2 border-dashed transition hover:border-emerald-500/50 hover:bg-emerald-500/5 disabled:opacity-50"
-                style={{ borderColor: "rgba(255,255,255,0.12)" }}>
-                {uploading ? (
-                  <>
-                    <div className="w-5 h-5 border-2 border-emerald-500/30 border-t-emerald-500 rounded-full animate-spin" />
-                    <span className="text-xs" style={{ color: t.textMute }}>Загрузка...</span>
-                  </>
-                ) : (
-                  <>
-                    <div className="w-10 h-10 rounded-xl flex items-center justify-center"
-                      style={{ background: "rgba(16,185,129,0.1)" }}>
-                      <Icon name="Upload" size={18} style={{ color: "#10b981" }} />
-                    </div>
-                    <div className="text-center">
-                      <div className="text-xs font-semibold" style={{ color: "#10b981" }}>Загрузить чек</div>
-                      <div className="text-[10px] mt-0.5" style={{ color: t.textMute }}>
-                        Фото, скриншот или PDF
-                      </div>
-                    </div>
-                  </>
-                )}
+              <button onClick={() => fileRef.current?.click()} disabled={uploading}
+                className="w-full flex items-center justify-center gap-2 py-3 rounded-xl transition hover:opacity-80 disabled:opacity-50"
+                style={{ background: t.surface2, border: `1px dashed ${t.border}`, color: t.textMute }}>
+                {uploading
+                  ? <><div className="w-4 h-4 border-2 border-current/30 border-t-current rounded-full animate-spin" /> Загрузка...</>
+                  : <><Icon name="Upload" size={14} /> Прикрепить чек</>
+                }
               </button>
             )}
             <input ref={fileRef} type="file" accept="image/*,.pdf" className="hidden" onChange={handleFile} />
           </div>
-
         </div>
 
-        {/* Кнопки */}
-        <div className="flex gap-2 px-5 pb-5 pt-3 flex-shrink-0"
-          style={{ borderTop: `1px solid ${t.border}` }}>
-          <button
-            onClick={handleConfirm}
-            disabled={!amount || parseFloat(amount) <= 0}
-            className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-bold text-white transition disabled:opacity-30 disabled:cursor-not-allowed"
-            style={{ background: "#10b981" }}>
-            <Icon name="CheckCircle2" size={15} />
-            Подтвердить получение
-          </button>
+        {/* Футер */}
+        <div className="px-5 py-4 flex gap-2" style={{ borderTop: `1px solid ${t.border}` }}>
           <button onClick={onClose}
-            className="px-4 py-2.5 rounded-xl text-sm transition"
+            className="flex-1 py-2.5 rounded-xl text-sm font-semibold transition hover:opacity-80"
             style={{ background: t.surface2, color: t.textMute }}>
             Отмена
+          </button>
+          <button
+            onClick={() => onConfirm(parseFloat(amount) || 0, receiptUrl)}
+            disabled={!amount || parseFloat(amount) <= 0}
+            className="flex-2 flex items-center justify-center gap-1.5 px-5 py-2.5 rounded-xl text-sm font-bold transition hover:opacity-90 disabled:opacity-40"
+            style={{ background: "#10b981", color: "#fff", flex: 2 }}>
+            <Icon name="CheckCircle2" size={14} />
+            Подтвердить получение
           </button>
         </div>
       </div>

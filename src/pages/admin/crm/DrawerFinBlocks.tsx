@@ -34,12 +34,14 @@ interface FinBlockProps {
   addCustomFinRow: (label: string, block: "income" | "costs") => void;
   deleteCustomFinRow: (key: string) => void;
   updateCustomFinRow: (key: string, label: string) => void;
+  onReload?: () => void;
 }
 
 export function DrawerIncomeBlock({
   data, editingBlock, hiddenBlocks, rowVisibility, customFinRows,
   toggleHidden, setEditingBlock, saveWithLog, logAction,
   toggleRowVisibility, addCustomFinRow, deleteCustomFinRow, updateCustomFinRow,
+  onReload,
 }: FinBlockProps) {
   const id: BlockId = "income";
   const isHidden = hiddenBlocks.has(id);
@@ -219,10 +221,11 @@ export function DrawerIncomeBlock({
                 onDelete={() => toggleRowVisibility(key)}
                 extra={isPayment ? (
                   <PaymentStatusBadge
-                    clientId={data.id}
+                    client={data}
                     field={key}
                     plannedAmount={Number(data[key]) || null}
                     label={getLabel(key, defs[key].def)}
+                    onConfirmed={() => onReload?.()}
                   />
                 ) : undefined}>
                 <InlineField label={getLabel(key, defs[key].def)} value={data[key]} onSave={defs[key].save} type="number" placeholder="—" />

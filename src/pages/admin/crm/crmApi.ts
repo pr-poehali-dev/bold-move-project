@@ -163,6 +163,12 @@ export interface Client {
   updated_at: string | null;
   discount_pct: number | null;
   discount_amount: number | null;
+  prepayment_confirmed: boolean | null;
+  prepayment_confirmed_at: string | null;
+  prepayment_fact: number | null;
+  extra_payment_confirmed: boolean | null;
+  extra_payment_confirmed_at: string | null;
+  extra_payment_fact: number | null;
 }
 
 export function fmt(n: number): string {

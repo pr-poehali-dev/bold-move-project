@@ -51,6 +51,7 @@ interface ColumnsProps {
   canFieldFinance?:  boolean;
   canFieldFiles?:    boolean;
   canFieldCancel?:   boolean;
+  onReload?: () => void;
 }
 
 export function DrawerColumns(props: ColumnsProps) {
@@ -62,6 +63,7 @@ export function DrawerColumns(props: ColumnsProps) {
     canFinance = true, canFiles = true,
     canFieldContacts = true, canFieldAddress = true, canFieldDates = true,
     canFieldFinance = true, canFieldFiles = true, canFieldCancel = true,
+    onReload,
   } = props;
   const t = useTheme();
 
@@ -74,6 +76,7 @@ export function DrawerColumns(props: ColumnsProps) {
     data, editingBlock, hiddenBlocks, rowVisibility, customFinRows,
     toggleHidden, setEditingBlock, saveWithLog, logAction,
     toggleRowVisibility, addCustomFinRow, deleteCustomFinRow, updateCustomFinRow,
+    onReload,
   };
 
   // ── renderBlock ──────────────────────────────────────────────────────────────

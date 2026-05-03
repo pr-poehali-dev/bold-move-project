@@ -33,9 +33,10 @@ interface Props {
   canFieldFinance?:  boolean;
   canFieldFiles?:    boolean;
   canFieldCancel?:   boolean;
+  onReload?: () => void;
 }
 
-export default function DrawerInfoTab({ data, client, setData, save, setComments, hideHidden, canEdit = true, canOrdersEdit = true, canFinance = true, canFiles = true, canFieldContacts = true, canFieldAddress = true, canFieldDates = true, canFieldFinance = true, canFieldFiles = true, canFieldCancel = true }: Props) {
+export default function DrawerInfoTab({ data, client, setData, save, setComments, hideHidden, canEdit = true, canOrdersEdit = true, canFinance = true, canFiles = true, canFieldContacts = true, canFieldAddress = true, canFieldDates = true, canFieldFinance = true, canFieldFiles = true, canFieldCancel = true, onReload }: Props) {
   const t = useTheme();
 
   // ── state ────────────────────────────────────────────────────────────────────
@@ -260,6 +261,7 @@ export default function DrawerInfoTab({ data, client, setData, save, setComments
         canFieldFinance={canFieldFinance}
         canFieldFiles={canFieldFiles}
         canFieldCancel={canFieldCancel}
+        onReload={onReload}
       />
 
       {/* Активность — под блоками, всегда видна */}

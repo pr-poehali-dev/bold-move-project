@@ -383,6 +383,7 @@ export default function ClientDrawer({ client, allClientOrders, onClose, onUpdat
                       canFieldFinance={canFieldFinance}
                       canFieldFiles={canFieldFiles}
                       canFieldCancel={canFieldCancel}
+                      onReload={onUpdated}
                     />
                   )}
                   {orderInnerTab === "estimate" && (
