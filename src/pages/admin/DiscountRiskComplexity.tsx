@@ -156,17 +156,127 @@ export default function DiscountRiskComplexity({ isDark, theme, readOnly }: Prop
     byCategory[cat].push(p);
   });
 
-  const avgScore = prices.length > 0
-    ? Math.round(prices.reduce((s, p) => s + getItem(p.id).complexity * getItem(p.id).weight / 10, 0) / prices.length * 10) / 10
-    : 0;
   const totalWeightedScore = prices.length > 0
     ? Math.round(prices.reduce((s, p) => s + getItem(p.id).complexity * getItem(p.id).weight / 10, 0) * 10) / 10
     : 0;
+  const avgScore = prices.length > 0
+    ? Math.round(totalWeightedScore / prices.length * 10) / 10
+    : 0;
+
+  // Нормализация: максимально возможный вес (все слайдеры на 10) = 10 × 10 / 10 × N = 10N
+  const maxPossibleScore = prices.length * 10; // каждая позиция максимум 10
+  const complexityPct = maxPossibleScore > 0
+    ? Math.round(totalWeightedScore / maxPossibleScore * 100)
+    : 0;
+  // Рекомендованная скидка = макс_скидка × (1 - сложность%)
+  // берём из localStorage если есть
+  const riskMaxDiscount = (() => {
+    try { return JSON.parse(localStorage.getItem("discount_risk_settings") || "{}").max_discount || 30; }
+    catch { return 30; }
+  })();
+  const recommendedDiscount = Math.round(riskMaxDiscount * (1 - complexityPct / 100));
+
+  // Цвет сложности
+  const complexityColor = complexityPct <= 30 ? "#10b981"
+    : complexityPct <= 60 ? "#f59e0b"
+    : "#ef4444";
+  const complexityLabel = complexityPct <= 30 ? "Простые объекты"
+    : complexityPct <= 60 ? "Средняя сложность"
+    : "Сложные объекты";
 
   const border2 = isDark ? "rgba(255,255,255,0.05)" : "#f3f4f6";
+  const surf = isDark ? "rgba(255,255,255,0.03)" : "#ffffff";
+  const brd  = isDark ? "rgba(255,255,255,0.08)" : "#e5e7eb";
 
   return (
     <div className="space-y-5">
+
+      {/* ── KPI БЛОКИ ───────────────────────────────────────────────────── */}
+      {prices.length > 0 && (
+        <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
+
+          {/* Сложность прайса % */}
+          <div className="rounded-2xl p-5 relative overflow-hidden"
+            style={{ background: surf, border: `1px solid ${brd}` }}>
+            <div className="w-9 h-9 rounded-xl flex items-center justify-center mb-3"
+              style={{ background: complexityColor + "18" }}>
+              <Icon name="BarChart3" size={17} style={{ color: complexityColor }} />
+            </div>
+            <div className="text-xs mb-0.5" style={{ color: isDark ? "rgba(255,255,255,0.45)" : "#6b7280" }}>
+              Сложность прайса
+            </div>
+            <div className="text-2xl font-bold" style={{ color: complexityColor }}>
+              {complexityPct}%
+            </div>
+            <div className="text-xs mt-0.5" style={{ color: isDark ? "rgba(255,255,255,0.35)" : "#9ca3af" }}>
+              {complexityLabel}
+            </div>
+            <div className="absolute -bottom-5 -right-5 w-20 h-20 rounded-full opacity-[0.06]"
+              style={{ background: complexityColor }} />
+          </div>
+
+          {/* Рекомендованная скидка */}
+          <div className="rounded-2xl p-5 relative overflow-hidden"
+            style={{ background: surf, border: `1px solid ${brd}` }}>
+            <div className="w-9 h-9 rounded-xl flex items-center justify-center mb-3"
+              style={{ background: "#f59e0b18" }}>
+              <Icon name="Percent" size={17} style={{ color: "#f59e0b" }} />
+            </div>
+            <div className="text-xs mb-0.5" style={{ color: isDark ? "rgba(255,255,255,0.45)" : "#6b7280" }}>
+              Рекомендованная скидка
+            </div>
+            <div className="text-2xl font-bold" style={{ color: "#f59e0b" }}>
+              {recommendedDiscount}%
+            </div>
+            <div className="text-xs mt-0.5" style={{ color: isDark ? "rgba(255,255,255,0.35)" : "#9ca3af" }}>
+              из макс. {riskMaxDiscount}% · по сложности
+            </div>
+            <div className="absolute -bottom-5 -right-5 w-20 h-20 rounded-full opacity-[0.06]"
+              style={{ background: "#f59e0b" }} />
+          </div>
+
+          {/* Суммарный вес */}
+          <div className="rounded-2xl p-5 relative overflow-hidden"
+            style={{ background: surf, border: `1px solid ${brd}` }}>
+            <div className="w-9 h-9 rounded-xl flex items-center justify-center mb-3"
+              style={{ background: "#a78bfa18" }}>
+              <Icon name="Sigma" size={17} style={{ color: "#a78bfa" }} />
+            </div>
+            <div className="text-xs mb-0.5" style={{ color: isDark ? "rgba(255,255,255,0.45)" : "#6b7280" }}>
+              Суммарный вес
+            </div>
+            <div className="text-2xl font-bold" style={{ color: "#a78bfa" }}>
+              {totalWeightedScore}
+            </div>
+            <div className="text-xs mt-0.5" style={{ color: isDark ? "rgba(255,255,255,0.35)" : "#9ca3af" }}>
+              из {maxPossibleScore} макс. · {prices.length} позиций
+            </div>
+            <div className="absolute -bottom-5 -right-5 w-20 h-20 rounded-full opacity-[0.06]"
+              style={{ background: "#a78bfa" }} />
+          </div>
+
+          {/* Средний балл */}
+          <div className="rounded-2xl p-5 relative overflow-hidden"
+            style={{ background: surf, border: `1px solid ${brd}` }}>
+            <div className="w-9 h-9 rounded-xl flex items-center justify-center mb-3"
+              style={{ background: "#8b5cf618" }}>
+              <Icon name="Target" size={17} style={{ color: "#8b5cf6" }} />
+            </div>
+            <div className="text-xs mb-0.5" style={{ color: isDark ? "rgba(255,255,255,0.45)" : "#6b7280" }}>
+              Средний балл позиции
+            </div>
+            <div className="text-2xl font-bold" style={{ color: "#8b5cf6" }}>
+              {avgScore}/10
+            </div>
+            <div className="text-xs mt-0.5" style={{ color: isDark ? "rgba(255,255,255,0.35)" : "#9ca3af" }}>
+              сл × вес / 10 на позицию
+            </div>
+            <div className="absolute -bottom-5 -right-5 w-20 h-20 rounded-full opacity-[0.06]"
+              style={{ background: "#8b5cf6" }} />
+          </div>
+
+        </div>
+      )}
 
       {/* ── ТАБЛИЦА ПОЗИЦИЙ ─────────────────────────────────────────────── */}
       <div className={`rounded-2xl overflow-hidden ${theme.bg} border ${theme.border}`}>
