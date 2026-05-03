@@ -191,19 +191,24 @@ export function DrawerColumns(props: ColumnsProps) {
               {renderColBlock(b)}
             </DraggableBlock>
           ))}
-          {/* Drop-зона для перетаскивания в правую колонку */}
+          {/* Автоподстраивающийся блок — зеркало левого */}
           <div
-            className="rounded-xl flex flex-col items-center justify-center transition-all"
+            className="rounded-xl flex flex-col items-center justify-center gap-1.5 cursor-pointer transition-all"
             style={{
               flex: 1,
-              minHeight: 4,
-              border: `2px dashed ${dropOverCol === 1 ? "#7c3aed" : "transparent"}`,
+              minHeight: 48,
+              border: `2px dashed ${dropOverCol === 1 ? "#7c3aed" : "#ffffff18"}`,
               background: dropOverCol === 1 ? "#7c3aed08" : "transparent",
             }}
+            onClick={() => onAddBlock(1)}
             {...makeColDropZone(1)}
           >
-            {dropOverCol === 1 && (
+            {dropOverCol === 1 ? (
               <span className="text-xs text-violet-400">Перетащи сюда</span>
+            ) : (
+              <span className="text-[11px]" style={{ color: "#ffffff30" }}>
+                + Добавить блок
+              </span>
             )}
           </div>
         </div>
