@@ -6,6 +6,7 @@ import {
   COMPLEXITY_LS_KEY, COMPLEXITY_PROMPTS_KEY, COMPLEXITY_FORMULA_KEY,
   loadComplexityItems, saveComplexityItems,
   loadComplexityPrompts, loadFormula,
+  getComplexityHint, getWeightHint,
 } from "./discountRiskTypes";
 import ComplexityKpiCards from "./ComplexityKpiCards";
 import ComplexityPriceTable from "./ComplexityPriceTable";
@@ -167,7 +168,17 @@ export default function DiscountRiskComplexity({ isDark, theme, readOnly }: Prop
 
   const updateItem = (id: number, patch: Partial<ComplexityItem>) => {
     setComplexityItems(prev => {
-      const next = { ...prev, [id]: { ...getItem(id), ...patch } };
+      const current = prev[id] || getItem(id);
+      const merged = { ...current, ...patch };
+      // Если пользователь изменил complexity — обновляем reason под новое значение
+      if ("complexity" in patch && patch.complexity !== current.ai_complexity) {
+        merged.reason = `${patch.complexity}/10 (вручную) — ${getComplexityHint(patch.complexity!)}`;
+      }
+      // Если пользователь изменил weight — обновляем weight_reason под новое значение
+      if ("weight" in patch && patch.weight !== current.ai_weight) {
+        merged.weight_reason = `${patch.weight}/10 (вручную) — ${getWeightHint(patch.weight!)}`;
+      }
+      const next = { ...prev, [id]: merged };
       saveComplexityItems(next);
       return next;
     });

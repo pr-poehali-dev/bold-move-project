@@ -106,6 +106,23 @@ export const DEFAULT_COMPLEXITY_PROMPTS: ComplexityPrompts = {
 Ответь строго в JSON: {"score": 7, "recommended_discount": 5, "level": "high", "summary": "текст"}`,
 };
 
+// ── Текстовые подсказки по значению слайдера ─────────────────────────────
+export function getComplexityHint(v: number): string {
+  if (v <= 2) return "Очень простая операция, минимальные трудозатраты.";
+  if (v <= 4) return "Несложная позиция, выполняется быстро и без рисков.";
+  if (v <= 6) return "Средняя сложность, требует внимательности и опыта.";
+  if (v <= 8) return "Сложная позиция, высокий риск ошибок при монтаже.";
+  return "Очень сложная операция, требует максимальной квалификации.";
+}
+
+export function getWeightHint(v: number): string {
+  if (v <= 2) return "Почти не влияет на риск — позиция с низкой маржинальностью.";
+  if (v <= 4) return "Слабое влияние на скидку, риск минимален.";
+  if (v <= 6) return "Умеренное влияние — скидка может снизить рентабельность.";
+  if (v <= 8) return "Высокое влияние на риск, скидка нежелательна.";
+  return "Критическое влияние — скидка по этой позиции крайне рискованна.";
+}
+
 export function loadComplexityItems(): Record<number, ComplexityItem> {
   try {
     const s = localStorage.getItem(COMPLEXITY_LS_KEY);
