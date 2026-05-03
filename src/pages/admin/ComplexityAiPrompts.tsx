@@ -12,6 +12,7 @@ interface Props {
   activePromptTab: "math" | "semantic" | "combine";
   setActivePromptTab: (t: "math" | "semantic" | "combine") => void;
   savedPrompts: boolean;
+  improvedPrompts?: boolean;
   onSavePrompts: () => void;
   onImprovePrompts: () => void;
 }
@@ -21,7 +22,7 @@ export default function ComplexityAiPrompts({
   formula, setFormula,
   complexityPrompts, setComplexityPrompts,
   activePromptTab, setActivePromptTab,
-  savedPrompts, onSavePrompts, onImprovePrompts,
+  savedPrompts, improvedPrompts, onSavePrompts, onImprovePrompts,
 }: Props) {
 
   return (
@@ -100,9 +101,13 @@ export default function ComplexityAiPrompts({
           </button>
           <button onClick={onImprovePrompts}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-bold transition hover:opacity-80"
-            style={{ background: savedPrompts ? "rgba(16,185,129,0.12)" : "rgba(245,158,11,0.12)", color: savedPrompts ? "#10b981" : "#f59e0b", border: `1px solid ${savedPrompts ? "rgba(16,185,129,0.3)" : "rgba(245,158,11,0.3)"}` }}>
-            <Icon name={savedPrompts ? "CheckCircle2" : "Wand2"} size={12} />
-            {savedPrompts ? "Сохранено!" : "Улучшить промпты"}
+            style={{
+              background: improvedPrompts ? "rgba(16,185,129,0.15)" : "rgba(245,158,11,0.12)",
+              color:      improvedPrompts ? "#10b981" : "#f59e0b",
+              border:     `1px solid ${improvedPrompts ? "rgba(16,185,129,0.4)" : "rgba(245,158,11,0.3)"}`,
+            }}>
+            <Icon name={improvedPrompts ? "CheckCircle2" : "Wand2"} size={12} />
+            {improvedPrompts ? "✓ Промпты улучшены и сохранены!" : "Улучшить промпты"}
           </button>
         </div>
       )}

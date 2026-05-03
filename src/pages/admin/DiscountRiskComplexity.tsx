@@ -30,6 +30,7 @@ export default function DiscountRiskComplexity({ isDark, theme, readOnly }: Prop
   const [formula,           setFormula]           = useState(loadFormula);
   const [activePromptTab,   setActivePromptTab]   = useState<"math" | "semantic" | "combine">("math");
   const [savedPrompts,      setSavedPrompts]      = useState(false);
+  const [improvedPrompts,   setImprovedPrompts]   = useState(false);
 
   // AI оценка
   const [aiLoading,  setAiLoading]  = useState(false);
@@ -231,8 +232,10 @@ export default function DiscountRiskComplexity({ isDark, theme, readOnly }: Prop
       localStorage.setItem(COMPLEXITY_PROMPTS_KEY, JSON.stringify(improved));
       localStorage.setItem(COMPLEXITY_FORMULA_KEY, formula);
       window.dispatchEvent(new StorageEvent("storage", { key: COMPLEXITY_LS_KEY }));
-      setSavedPrompts(true);
-      setTimeout(() => setSavedPrompts(false), 2000);
+      setImprovedPrompts(true);
+      // Переключаем таб на «Объединение» чтобы сразу видеть ключевой промпт
+      setActivePromptTab("combine");
+      setTimeout(() => setImprovedPrompts(false), 3000);
     });
   };
 
@@ -353,6 +356,7 @@ export default function DiscountRiskComplexity({ isDark, theme, readOnly }: Prop
         savedPrompts={savedPrompts}
         onSavePrompts={handleSavePrompts}
         onImprovePrompts={handleImprovePrompts}
+        improvedPrompts={improvedPrompts}
       />
 
     </div>
