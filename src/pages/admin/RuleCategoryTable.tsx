@@ -68,9 +68,9 @@ export default function RuleCategoryTable({
             return (
               <div key={item.id} className={!item.active ? "opacity-40" : ""}>
                 {/* Строка-заголовок карточки */}
-                <button
+                <div
                   onClick={() => onOpenRow(item)}
-                  className={`w-full flex items-center gap-2 px-3 py-3 text-left transition ${isExpanded ? "bg-violet-500/10" : ""}`}>
+                  className={`w-full flex items-center gap-2 px-3 py-3 text-left transition cursor-pointer ${isExpanded ? "bg-violet-500/10" : ""}`}>
                   <Icon name={isExpanded ? "ChevronUp" : "ChevronDown"} size={13} className={muted} />
                   <span className={`flex-1 text-sm font-medium ${isDark ? "text-white/80" : "text-gray-700"}`}>{item.name}</span>
                   {(item.when_condition || item.when_not_condition || item.calc_rule) && (
@@ -93,7 +93,7 @@ export default function RuleCategoryTable({
                       )}
                     </div>
                   )}
-                </button>
+                </div>
 
                 {/* Раскрытый редактор (мобиле) */}
                 {isExpanded && d && (
