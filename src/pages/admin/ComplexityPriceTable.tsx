@@ -189,7 +189,9 @@ export default function ComplexityPriceTable({
           <div className="flex" style={{ borderTop: `1px solid ${border2}` }}>
 
             {/* Левая часть — список позиций */}
-            <div className="flex-1 min-w-0" style={{ borderRight: `1px solid ${border2}` }}>
+            <div className="flex-1 min-w-0" style={{ borderRight: `1px solid ${border2}` }}
+              onMouseLeave={() => setHoveredId(null)}
+            >
 
               {/* Заголовок колонок */}
               <div className="flex items-center px-4 py-2.5 text-[10px] font-bold"
@@ -233,8 +235,7 @@ export default function ComplexityPriceTable({
                             borderBottom: `1px solid ${border2}`,
                             background: isHovered ? (isDark ? "rgba(139,92,246,0.06)" : "rgba(139,92,246,0.03)") : "transparent",
                           }}
-                          onMouseEnter={() => setHoveredId(price.id)}
-                          onMouseLeave={() => setHoveredId(null)}
+                          onMouseOver={() => setHoveredId(price.id)}
                         >
                           {/* Название */}
                           <div className="px-4 py-3 flex items-center gap-2 text-xs" style={{ width: 160, flexShrink: 0 }}>
@@ -306,6 +307,7 @@ export default function ComplexityPriceTable({
 
               {/* Контент панели */}
               <div className="flex-1 px-4 py-4 flex flex-col justify-center" style={{ minHeight: 120 }}>
+                {hoveredId && <div className="text-[9px] mb-2 opacity-30">id: {hoveredId} | reason: {hoveredItem?.reason ? "✓" : "✗"}</div>}
                 {hoveredItem ? (
                   <div className="space-y-3">
                     {hoveredItem.reason?.trim() ? (
