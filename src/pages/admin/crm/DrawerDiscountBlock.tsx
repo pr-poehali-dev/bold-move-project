@@ -92,8 +92,8 @@ export function DrawerDiscountBlock({ data, customFinRows, onContractSumUpdated 
 
   const discountedIncome = baseIncome * (1 - discount / 100);
   const discountedProfit = discountedIncome - plCosts;
-  const discountedMargin = discountedIncome > 0
-    ? Math.round((discountedProfit / discountedIncome) * 100)
+  const discountedMargin = baseIncome > 0
+    ? Math.round((discountedProfit / baseIncome) * 100)
     : 0;
 
   const isNegative = discountedProfit < 0 || (!risk.allow_zero_margin && discountedMargin < risk.min_margin);
