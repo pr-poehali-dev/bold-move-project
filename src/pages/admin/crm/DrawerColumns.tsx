@@ -190,14 +190,25 @@ export function DrawerColumns(props: ColumnsProps) {
               {renderColBlock(b)}
             </DraggableBlock>
           ))}
-          {dropOverCol === 1 && (
-            <div className="rounded-xl flex items-center justify-center py-3"
-              style={{ border: `2px dashed #7c3aed80`, background: "#7c3aed08" }}
-              {...makeColDropZone(1)}>
+          {/* Растягивающаяся зона — занимает оставшееся место и кликабельна для добавления блока */}
+          <div
+            className="flex-1 rounded-xl flex flex-col items-center justify-center gap-1.5 cursor-pointer transition-all"
+            style={{
+              minHeight: 48,
+              border: `2px dashed ${dropOverCol === 1 ? "#7c3aed80" : "transparent"}`,
+              background: dropOverCol === 1 ? "#7c3aed08" : "transparent",
+            }}
+            onClick={() => onAddBlock(1)}
+            {...makeColDropZone(1)}
+          >
+            {dropOverCol === 1 ? (
               <span className="text-xs text-violet-400">Перетащи сюда</span>
-            </div>
-          )}
-          {dropOverCol !== 1 && <div style={{ height: 0 }} {...makeColDropZone(1)} />}
+            ) : (
+              <span className="text-[11px] opacity-0 hover:opacity-100 transition-opacity" style={{ color: "#a3a3a3" }}>
+                + Блок в правую
+              </span>
+            )}
+          </div>
         </div>
       </div>
 
