@@ -33,29 +33,59 @@ export default function TabRules({ token, hint, isDark = true, readOnly = false 
     ? "text-white/40 hover:text-white/70"
     : "text-gray-500 hover:text-gray-800";
 
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const activeTab = SUB_TABS.find(t => t.id === sub)!;
+
   return (
     <div className="flex flex-col gap-0 h-full">
 
-      {/* Мобиле: селект-дропдаун */}
-      <div className="sm:hidden mb-4 flex-shrink-0">
-        <div className="relative">
-          <select
-            value={sub}
-            onChange={e => setSub(e.target.value as RulesSub)}
-            className="w-full rounded-xl px-3 py-2.5 pr-8 text-sm font-semibold appearance-none focus:outline-none transition"
-            style={{
-              background: isDark ? "rgba(139,92,246,0.12)" : "rgba(139,92,246,0.08)",
-              border: `1px solid ${isDark ? "rgba(139,92,246,0.35)" : "rgba(139,92,246,0.25)"}`,
-              color: isDark ? "#c4b5fd" : "#7c3aed",
-            }}>
-            {SUB_TABS.map(t => (
-              <option key={t.id} value={t.id}>{t.label}</option>
-            ))}
-          </select>
-          <div className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2">
-            <Icon name="ChevronDown" size={14} style={{ color: isDark ? "#a78bfa" : "#7c3aed" }} />
+      {/* Мобиле: кастомный dropdown */}
+      <div className="sm:hidden mb-4 flex-shrink-0 relative">
+        <button
+          onClick={() => setMobileOpen(v => !v)}
+          className="w-full flex items-center justify-between gap-2 px-4 py-3 rounded-xl font-semibold text-sm transition"
+          style={{
+            background: isDark ? "#1a1a2e" : "#f5f3ff",
+            border: `1px solid ${isDark ? "rgba(139,92,246,0.4)" : "rgba(139,92,246,0.3)"}`,
+            color: isDark ? "#c4b5fd" : "#7c3aed",
+          }}>
+          <div className="flex items-center gap-2">
+            <Icon name={activeTab.icon} size={15} style={{ color: isDark ? "#a78bfa" : "#7c3aed" }} />
+            {activeTab.label}
           </div>
-        </div>
+          <Icon name={mobileOpen ? "ChevronUp" : "ChevronDown"} size={15}
+            style={{ color: isDark ? "#a78bfa" : "#7c3aed", flexShrink: 0 }} />
+        </button>
+
+        {mobileOpen && (
+          <div className="absolute top-full left-0 right-0 z-50 mt-1 rounded-xl overflow-hidden shadow-2xl"
+            style={{
+              background: isDark ? "#13131f" : "#fff",
+              border: `1px solid ${isDark ? "rgba(139,92,246,0.35)" : "rgba(139,92,246,0.2)"}`,
+            }}>
+            {SUB_TABS.map((t, i) => (
+              <button key={t.id}
+                onClick={() => { setSub(t.id); setMobileOpen(false); }}
+                className="w-full flex items-center gap-3 px-4 py-3 text-sm font-semibold transition text-left"
+                style={{
+                  background: sub === t.id
+                    ? isDark ? "rgba(139,92,246,0.18)" : "rgba(139,92,246,0.1)"
+                    : "transparent",
+                  color: sub === t.id
+                    ? isDark ? "#c4b5fd" : "#7c3aed"
+                    : isDark ? "rgba(255,255,255,0.65)" : "#374151",
+                  borderTop: i > 0 ? `1px solid ${isDark ? "rgba(255,255,255,0.05)" : "#f3f4f6"}` : "none",
+                }}>
+                <Icon name={t.icon} size={14}
+                  style={{ color: sub === t.id ? (isDark ? "#a78bfa" : "#7c3aed") : isDark ? "rgba(255,255,255,0.3)" : "#9ca3af", flexShrink: 0 }} />
+                {t.label}
+                {sub === t.id && (
+                  <Icon name="Check" size={12} style={{ color: "#a78bfa", marginLeft: "auto" }} />
+                )}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Десктоп: табы */}
