@@ -82,7 +82,7 @@ export function OrdersClientRow({ c, onClick, onNextStep }: {
   const contractSum = Number(c.contract_sum) || 0;
   const prepayment  = Number(c.prepayment) || 0;
   const extraPay    = Number(c.extra_payment) || 0;
-  const income      = contractSum + prepayment + extraPay;
+  const income      = contractSum; // доход = сумма договора; предоплата и доплата — части одной суммы
   const paid        = prepayment + extraPay;
   const debt        = contractSum - paid;
   const costs       = (Number(c.material_cost)||0) + (Number(c.measure_cost)||0) + (Number(c.install_cost)||0);
