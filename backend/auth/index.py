@@ -1000,10 +1000,23 @@ def handler(event: dict, context) -> dict:
 
         # По умолчанию — все права отключены (владелец сам настроит)
         default_permissions = {
-            "crm_view": False, "crm_edit": False,
-            "finance": False, "calendar": False,
-            "analytics": False, "kanban": False,
-            "files": False, "settings": False,
+            "crm_view": False, "agent_view": False, "admin_panel_view": False,
+            "clients_view": False, "clients_edit": False,
+            "orders_edit": False,
+            "kanban_view": False, "kanban_edit": False,
+            "calendar_view": False, "calendar_edit": False,
+            "analytics_view": False,
+            "finance_view": False,
+            "files_view": False, "files_edit": False,
+            "prices_view": False, "prices_edit": False,
+            "rules_view": False, "rules_edit": False,
+            "prompt_view": False, "prompt_edit": False,
+            "faq_view": False, "faq_edit": False,
+            "corrections_view": False, "corrections_edit": False,
+            "field_contacts": False, "field_address": False,
+            "field_dates": False, "field_finance": False,
+            "field_notes": False, "field_files": False,
+            "field_cancel": False,
         }
 
         cur.execute(f"""
