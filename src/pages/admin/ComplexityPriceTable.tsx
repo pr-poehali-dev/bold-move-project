@@ -37,7 +37,9 @@ export default function ComplexityPriceTable({
   onAiEvaluate, onAiErrorClose, onSaveItems, onResetAll, onUpdateItem,
 }: Props) {
   const border2 = isDark ? "rgba(255,255,255,0.05)" : "#f3f4f6";
-  const [tooltipId, setTooltipId] = useState<number | null>(null);
+  const [hoveredId, setHoveredId] = useState<number | null>(null);
+
+  const hoveredReason = hoveredId !== null ? (complexityItems[hoveredId]?.reason || "") : "";
 
   const getItem = (id: number): ComplexityItem =>
     complexityItems[id] || { priceId: id, complexity: 5, weight: 5 };
@@ -203,11 +205,20 @@ export default function ComplexityPriceTable({
                       <div className="font-bold" style={{ color: "#f59e0b" }}>
                         Сложность монтажа <span className="font-normal text-[10px]">1–10</span>
                       </div>
-                      <div className="text-[9px] font-normal mt-0.5 leading-relaxed" style={{ color: isDark ? "rgba(255,255,255,0.3)" : "#9ca3af" }}>
-                        Насколько трудно выполнить физически.<br />
-                        <span style={{ color: "#10b981" }}>1–3</span> = просто (профиль, полотно ПВХ)&nbsp;
-                        <span style={{ color: "#f59e0b" }}>4–6</span> = средне (ниши, парящий)&nbsp;
-                        <span style={{ color: "#ef4444" }}>7–10</span> = сложно (многоуровневый, высота)
+                      <div className="text-[9px] font-normal mt-0.5 leading-relaxed" style={{ color: isDark ? "rgba(255,255,255,0.3)" : "#9ca3af", minHeight: 32 }}>
+                        {hoveredReason ? (
+                          <span className="flex items-start gap-1">
+                            <Icon name="Sparkles" size={9} style={{ color: "#a78bfa", marginTop: 1, flexShrink: 0 }} />
+                            <span style={{ color: isDark ? "rgba(255,255,255,0.55)" : "#6b7280", fontStyle: "italic" }}>{hoveredReason}</span>
+                          </span>
+                        ) : (
+                          <>
+                            Насколько трудно выполнить физически.<br />
+                            <span style={{ color: "#10b981" }}>1–3</span> = просто (профиль, полотно ПВХ)&nbsp;
+                            <span style={{ color: "#f59e0b" }}>4–6</span> = средне (ниши, парящий)&nbsp;
+                            <span style={{ color: "#ef4444" }}>7–10</span> = сложно (многоуровневый, высота)
+                          </>
+                        )}
                       </div>
                     </div>
                   </th>
@@ -263,7 +274,10 @@ export default function ComplexityPriceTable({
                       const scoreBg    = score <= 3 ? "rgba(16,185,129,0.12)" : score <= 6 ? "rgba(245,158,11,0.12)" : "rgba(239,68,68,0.12)";
                       const inputCls   = `w-10 text-center text-sm font-black rounded-md px-1 py-0.5 outline-none border transition ${isDark ? "bg-white/[0.06] border-white/10 focus:border-violet-500/50 text-white" : "bg-gray-50 border-gray-200 focus:border-violet-400 text-gray-900"}`;
                       return (
-                        <tr key={price.id} style={{ borderTop: `1px solid ${border2}` }} className="transition hover:bg-white/[0.015]">
+                        <tr key={price.id} style={{ borderTop: `1px solid ${border2}` }} className="transition hover:bg-white/[0.015]"
+                          onMouseEnter={() => setHoveredId(price.id)}
+                          onMouseLeave={() => setHoveredId(null)}
+                        >
                           <td className="px-4 py-3">
                             <div className="flex items-center gap-2">
                               <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: scoreColor }} />
@@ -271,7 +285,7 @@ export default function ComplexityPriceTable({
                             </div>
                           </td>
                           <td className="px-4 py-3">
-                            <div className="flex items-center gap-3 relative">
+                            <div className="flex items-center gap-3">
                               <input type="range" min={1} max={10} step={1}
                                 value={item.complexity} disabled={readOnly}
                                 onChange={e => onUpdateItem(price.id, { complexity: Number(e.target.value) })}
@@ -279,35 +293,6 @@ export default function ComplexityPriceTable({
                               <input type="number" min={1} max={10} value={item.complexity} disabled={readOnly}
                                 onChange={e => onUpdateItem(price.id, { complexity: Math.min(10, Math.max(1, Number(e.target.value) || 1)) })}
                                 className={inputCls} style={{ color: "#f59e0b", borderColor: "#f59e0b30" }} />
-                              {item.reason && (
-                                <div className="relative flex-shrink-0"
-                                  onMouseEnter={() => setTooltipId(price.id)}
-                                  onMouseLeave={() => setTooltipId(null)}
-                                >
-                                  <div className="w-4 h-4 rounded-full flex items-center justify-center cursor-help"
-                                    style={{ background: "rgba(139,92,246,0.15)", border: "1px solid rgba(139,92,246,0.35)" }}>
-                                    <Icon name="Sparkles" size={9} style={{ color: "#a78bfa" }} />
-                                  </div>
-                                  {tooltipId === price.id && (
-                                    <div
-                                      className="absolute right-0 bottom-full mb-2 z-50 rounded-xl px-3 py-2 text-[11px] leading-relaxed shadow-xl pointer-events-none"
-                                      style={{
-                                        minWidth: 220,
-                                        maxWidth: 300,
-                                        background: isDark ? "rgba(20,12,50,0.98)" : "rgba(255,255,255,0.98)",
-                                        border: "1px solid rgba(139,92,246,0.35)",
-                                        color: isDark ? "rgba(255,255,255,0.8)" : "#374151",
-                                        boxShadow: "0 8px 32px rgba(139,92,246,0.22)",
-                                      }}
-                                    >
-                                      <div className="flex items-start gap-1.5">
-                                        <Icon name="Sparkles" size={11} style={{ color: "#a78bfa", marginTop: 1, flexShrink: 0 }} />
-                                        <span>{item.reason}</span>
-                                      </div>
-                                    </div>
-                                  )}
-                                </div>
-                              )}
                             </div>
                           </td>
                           <td className="px-4 py-3">
