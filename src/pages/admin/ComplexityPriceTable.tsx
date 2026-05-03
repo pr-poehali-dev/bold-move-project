@@ -183,41 +183,53 @@ export default function ComplexityPriceTable({
           {/* Таблица */}
           <div className="overflow-x-auto">
             <table className="w-full text-xs" style={{ minWidth: 640 }}>
-              <thead>
+              <thead className="sticky top-0 z-10"
+                style={{ background: isDark ? "#0f0f1a" : "#f9fafb" }}>
                 <tr style={{
-                  background: isDark ? "rgba(255,255,255,0.03)" : "#f9fafb",
                   borderBottom: `1px solid ${isDark ? "rgba(255,255,255,0.07)" : "#e5e7eb"}`,
                 }}>
                   <th className="text-left px-4 py-0" style={{ minWidth: 160, verticalAlign: "top" }}>
-                    <div className="py-2.5">
-                      <div className={`font-semibold ${theme.sub}`}>Название</div>
+                    <div className="py-3">
+                      <div className={`font-semibold ${theme.sub}`}>Название позиции</div>
+                      <div className="text-[9px] font-normal mt-0.5" style={{ color: isDark ? "rgba(255,255,255,0.2)" : "#c4c4c4" }}>
+                        из прайса компании
+                      </div>
                     </div>
                   </th>
                   <th className="text-left px-4 py-0" style={{ width: "35%", verticalAlign: "top" }}>
-                    <div className="py-2.5">
+                    <div className="py-3">
                       <div className="font-bold" style={{ color: "#f59e0b" }}>
                         Сложность монтажа <span className="font-normal text-[10px]">1–10</span>
                       </div>
-                      <div className="text-[9px] font-normal mt-0.5" style={{ color: isDark ? "rgba(255,255,255,0.3)" : "#9ca3af" }}>
-                        Насколько трудно выполнить — 1 просто, 10 очень сложно
+                      <div className="text-[9px] font-normal mt-0.5 leading-relaxed" style={{ color: isDark ? "rgba(255,255,255,0.3)" : "#9ca3af" }}>
+                        Насколько трудно выполнить физически.<br />
+                        <span style={{ color: "#10b981" }}>1–3</span> = просто (профиль, полотно ПВХ)&nbsp;
+                        <span style={{ color: "#f59e0b" }}>4–6</span> = средне (ниши, парящий)&nbsp;
+                        <span style={{ color: "#ef4444" }}>7–10</span> = сложно (многоуровневый, высота)
                       </div>
                     </div>
                   </th>
                   <th className="text-left px-4 py-0" style={{ width: "35%", verticalAlign: "top" }}>
-                    <div className="py-2.5">
+                    <div className="py-3">
                       <div className="font-bold" style={{ color: "#8b5cf6" }}>
                         Влияние на скидку <span className="font-normal text-[10px]">1–10</span>
                       </div>
-                      <div className="text-[9px] font-normal mt-0.5" style={{ color: isDark ? "rgba(255,255,255,0.3)" : "#9ca3af" }}>
-                        Насколько эта позиция влияет на итоговый риск скидки
+                      <div className="text-[9px] font-normal mt-0.5 leading-relaxed" style={{ color: isDark ? "rgba(255,255,255,0.3)" : "#9ca3af" }}>
+                        Насколько эта позиция увеличивает риск при скидке.<br />
+                        <span style={{ color: "#10b981" }}>1–3</span> = почти не влияет (лента, разводка)&nbsp;
+                        <span style={{ color: "#f59e0b" }}>4–6</span> = умеренно (закладная, блок питания)&nbsp;
+                        <span style={{ color: "#ef4444" }}>7–10</span> = критично (сложный монтаж, высота)
                       </div>
                     </div>
                   </th>
                   <th className="text-center px-4 py-0" style={{ width: 100, verticalAlign: "top" }}>
-                    <div className="py-2.5">
+                    <div className="py-3">
                       <div className="font-bold" style={{ color: "#a78bfa" }}>Итог</div>
                       <div className="text-[9px] font-normal mt-0.5 font-mono" style={{ color: isDark ? "rgba(255,255,255,0.3)" : "#9ca3af" }}>
                         сл × вес / 10
+                      </div>
+                      <div className="text-[9px] font-normal mt-0.5 leading-relaxed" style={{ color: isDark ? "rgba(255,255,255,0.2)" : "#c4c4c4" }}>
+                        чем выше — тем<br />меньше скидки
                       </div>
                     </div>
                   </th>
