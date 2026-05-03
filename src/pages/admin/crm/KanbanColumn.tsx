@@ -84,7 +84,7 @@ export function KanbanColumn({
     <div className="flex flex-shrink-0" style={{ width }}>
       <div
         className="flex flex-col rounded-2xl transition-all"
-        style={{ width: "100%", margin: "0 6px" }}
+        style={{ width: "100%" }}
         onDragOver={e => onDragOver(e, col.id)}
         onDragLeave={onDragLeave}
         onDrop={() => onDrop(col.id)}>

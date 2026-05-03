@@ -209,7 +209,7 @@ export default function CrmKanban({ clients, loading, onStatusChange, onClientRe
       </div>
 
       {/* ── ДЕСКТОП ── */}
-      <div className="hidden sm:flex overflow-x-auto pb-4 select-none" style={{ minHeight: 520, gap: 0 }}>
+      <div className="hidden sm:flex overflow-x-auto pb-4 select-none" style={{ minHeight: 520, gap: 12 }}>
         {allCols.map((col, colIdx) => (
           <KanbanColumn
             key={col.id}
