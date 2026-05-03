@@ -268,6 +268,50 @@ export function DrawerDiscountBlock({ data, customFinRows, onContractSumUpdated 
     }
   };
 
+  // Сбросить скидку — восстановить оригинальную сумму
+  const resetDiscount = async () => {
+    const discountPct = Number(data.discount_pct) || 0;
+    const discountAmt = Number(data.discount_amount) || 0;
+    if (!discountPct || !discountAmt) return;
+    setApplying(true);
+    try {
+      const d = await fetch(`${AUTH_URL}?action=estimate-by-chat&chat_id=${data.id}`).then(r => r.json());
+      if (!d.estimate) return;
+      const mult = 1 / (1 - discountPct / 100);
+      const newBlocks: EstimateBlock[] = d.estimate.blocks.map((block: EstimateBlock) => ({
+        ...block,
+        items: block.items.map(item => {
+          const p = parseValue(item.value);
+          if (!p) return item;
+          const newPrice = Math.round(p.price * mult);
+          const newTotal = Math.round(p.qty * newPrice);
+          return { ...item, value: `${p.qty} ${p.unit} × ${newPrice} ₽ = ${fmtEst(newTotal)} ₽` };
+        }),
+      }));
+      let standard = 0;
+      for (const block of newBlocks)
+        for (const item of block.items) { const p = parseValue(item.value); if (p) standard += p.total; }
+      const econom  = Math.round(standard * pricingRules.econom_mult);
+      const premium = Math.round(standard * pricingRules.premium_mult);
+      const newTotals = [
+        `${pricingRules.econom_label}: ${fmtEst(econom)} ₽`,
+        `${pricingRules.standard_label}: ${fmtEst(standard)} ₽`,
+        `${pricingRules.premium_label}: ${fmtEst(premium)} ₽`,
+      ];
+      await fetch(`${AUTH_URL}?action=update-estimate&id=${d.estimate.id}`, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ blocks: newBlocks, totals: newTotals }),
+      });
+      await crmFetch("clients", { method: "PUT", body: JSON.stringify({
+        contract_sum: standard,
+        discount_pct: null,
+        discount_amount: null,
+      }) }, { id: String(data.id) });
+      onContractSumUpdated?.(standard);
+      setApplied(false);
+    } finally { setApplying(false); }
+  };
+
   // Применить скидку к позициям сметы
   const applyDiscount = async () => {
     if (discount === 0 || isNegative || isOverMax) return;
@@ -343,6 +387,9 @@ export function DrawerDiscountBlock({ data, customFinRows, onContractSumUpdated 
         fmt={fmt}
         onAnalysisClick={runComplexityAnalysis}
         onApplyDiscount={applyDiscount}
+        onResetDiscount={resetDiscount}
+        hasAppliedDiscount={!!(data.discount_pct && data.discount_pct > 0)}
+        appliedDiscountPct={Number(data.discount_pct) || 0}
         setApplied={setApplied}
       />
 

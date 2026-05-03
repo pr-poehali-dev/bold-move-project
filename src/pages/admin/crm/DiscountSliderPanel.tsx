@@ -28,6 +28,9 @@ interface Props {
   fmt: (n: number) => string;
   onAnalysisClick: () => void;
   onApplyDiscount: () => void;
+  onResetDiscount: () => void;
+  hasAppliedDiscount: boolean;
+  appliedDiscountPct: number;
   setApplied: (v: boolean) => void;
 }
 
@@ -39,7 +42,8 @@ export function DiscountSliderPanel({
   currentZone, accentColor, borderColor,
   effectiveMax, sliderMax, zoneLow, zoneMid,
   risk, aiRisk, aiError,
-  fmt, onAnalysisClick, onApplyDiscount, setApplied,
+  fmt, onAnalysisClick, onApplyDiscount, onResetDiscount,
+  hasAppliedDiscount, appliedDiscountPct, setApplied,
 }: Props) {
   const t = useTheme();
 
@@ -126,6 +130,23 @@ export function DiscountSliderPanel({
             style={{ background: "#10b98115", border: "1px solid #10b98130" }}>
             <Icon name="CheckCircle2" size={14} style={{ color: "#10b981", flexShrink: 0 }} />
             <div className="text-[10px] text-emerald-300">Скидка применена — смета и P&L обновлены</div>
+          </div>
+        )}
+        {hasAppliedDiscount && !applied && (
+          <div className="flex items-center justify-between gap-3 px-3 py-2.5 rounded-xl"
+            style={{ background: "#f59e0b10", border: "1px solid #f59e0b30" }}>
+            <div className="flex items-center gap-2 min-w-0">
+              <Icon name="Tag" size={13} style={{ color: "#f59e0b", flexShrink: 0 }} />
+              <span className="text-[11px] font-bold text-yellow-400">
+                Скидка {appliedDiscountPct}% применена к договору
+              </span>
+            </div>
+            <button onClick={onResetDiscount} disabled={applying}
+              className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-bold transition hover:opacity-80 flex-shrink-0 disabled:opacity-40"
+              style={{ background: "#ef444418", color: "#ef4444", border: "1px solid #ef444435" }}>
+              <Icon name="RotateCcw" size={10} />
+              Сбросить
+            </button>
           </div>
         )}
 
