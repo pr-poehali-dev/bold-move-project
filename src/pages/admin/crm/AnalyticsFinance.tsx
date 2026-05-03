@@ -31,7 +31,7 @@ export default function AnalyticsFinance({ s, costPie }: Props) {
 
       {/* Финансовые KPI */}
       {(() => {
-        const income = s.total_contract + s.total_received;
+        const income = s.total_contract; // доход = сумма договоров
         const margin = income > 0 ? Math.round((s.total_profit / income) * 100) : 0;
         return (
           <div className="grid grid-cols-2 xl:grid-cols-5 gap-4">

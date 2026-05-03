@@ -31,14 +31,10 @@ export function DrawerPLBlock({ data, isHidden, toggleHidden, customFinRows }: {
   const plCosts = costRows.reduce((s, r) => s + r.value, 0);
 
   const contractSum = Number(data.contract_sum) || 0;
-  const prepayment  = Number(data.prepayment)   || 0;
-  const extraPay    = Number(data.extra_payment) || 0;
   const plIncome    = contractSum + (customIncomeRows.reduce((s, r) => s + r.value, 0));
 
   const incomeRows: { label: string; value: number }[] = [
-    { label: "Договор",   value: contractSum },
-    ...(prepayment ? [{ label: "Предоплата", value: prepayment }] : []),
-    ...(extraPay   ? [{ label: "Доплата",    value: extraPay   }] : []),
+    { label: "Договор", value: contractSum },
     ...customIncomeRows,
   ].filter(r => r.value > 0);
 
