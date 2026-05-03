@@ -265,37 +265,13 @@ export default function ComplexityPriceTable({
                       return (
                         <tr key={price.id} style={{ borderTop: `1px solid ${border2}` }} className="transition hover:bg-white/[0.015]">
                           <td className="px-4 py-3">
-                            <div className="flex items-center gap-2 relative">
+                            <div className="flex items-center gap-2">
                               <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: scoreColor }} />
-                              <span
-                                className={`font-medium ${theme.text} leading-snug ${item.reason ? "cursor-help underline decoration-dotted decoration-violet-400/50" : ""}`}
-                                onMouseEnter={() => item.reason && setTooltipId(price.id)}
-                                onMouseLeave={() => setTooltipId(null)}
-                              >
-                                {price.name}
-                              </span>
-                              {item.reason && tooltipId === price.id && (
-                                <div
-                                  className="absolute left-0 top-full mt-1 z-50 rounded-xl px-3 py-2 text-[11px] leading-relaxed shadow-xl pointer-events-none"
-                                  style={{
-                                    minWidth: 220,
-                                    maxWidth: 320,
-                                    background: isDark ? "rgba(30,20,60,0.97)" : "rgba(255,255,255,0.98)",
-                                    border: "1px solid rgba(139,92,246,0.3)",
-                                    color: isDark ? "rgba(255,255,255,0.75)" : "#374151",
-                                    boxShadow: "0 8px 32px rgba(139,92,246,0.18)",
-                                  }}
-                                >
-                                  <div className="flex items-start gap-1.5">
-                                    <Icon name="Sparkles" size={11} style={{ color: "#a78bfa", marginTop: 1, flexShrink: 0 }} />
-                                    <span>{item.reason}</span>
-                                  </div>
-                                </div>
-                              )}
+                              <span className={`font-medium ${theme.text} leading-snug`}>{price.name}</span>
                             </div>
                           </td>
                           <td className="px-4 py-3">
-                            <div className="flex items-center gap-3">
+                            <div className="flex items-center gap-3 relative">
                               <input type="range" min={1} max={10} step={1}
                                 value={item.complexity} disabled={readOnly}
                                 onChange={e => onUpdateItem(price.id, { complexity: Number(e.target.value) })}
@@ -303,6 +279,35 @@ export default function ComplexityPriceTable({
                               <input type="number" min={1} max={10} value={item.complexity} disabled={readOnly}
                                 onChange={e => onUpdateItem(price.id, { complexity: Math.min(10, Math.max(1, Number(e.target.value) || 1)) })}
                                 className={inputCls} style={{ color: "#f59e0b", borderColor: "#f59e0b30" }} />
+                              {item.reason && (
+                                <div className="relative flex-shrink-0"
+                                  onMouseEnter={() => setTooltipId(price.id)}
+                                  onMouseLeave={() => setTooltipId(null)}
+                                >
+                                  <div className="w-4 h-4 rounded-full flex items-center justify-center cursor-help"
+                                    style={{ background: "rgba(139,92,246,0.15)", border: "1px solid rgba(139,92,246,0.35)" }}>
+                                    <Icon name="Sparkles" size={9} style={{ color: "#a78bfa" }} />
+                                  </div>
+                                  {tooltipId === price.id && (
+                                    <div
+                                      className="absolute right-0 bottom-full mb-2 z-50 rounded-xl px-3 py-2 text-[11px] leading-relaxed shadow-xl pointer-events-none"
+                                      style={{
+                                        minWidth: 220,
+                                        maxWidth: 300,
+                                        background: isDark ? "rgba(20,12,50,0.98)" : "rgba(255,255,255,0.98)",
+                                        border: "1px solid rgba(139,92,246,0.35)",
+                                        color: isDark ? "rgba(255,255,255,0.8)" : "#374151",
+                                        boxShadow: "0 8px 32px rgba(139,92,246,0.22)",
+                                      }}
+                                    >
+                                      <div className="flex items-start gap-1.5">
+                                        <Icon name="Sparkles" size={11} style={{ color: "#a78bfa", marginTop: 1, flexShrink: 0 }} />
+                                        <span>{item.reason}</span>
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+                              )}
                             </div>
                           </td>
                           <td className="px-4 py-3">
