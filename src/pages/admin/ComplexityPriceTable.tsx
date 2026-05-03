@@ -204,7 +204,7 @@ export default function ComplexityPriceTable({
                 <div style={{ width: 160, flexShrink: 0 }} className={theme.sub}>Название</div>
                 <div className="flex-1" style={{ color: "#f59e0b" }}>Сложность монтажа</div>
                 <div className="flex-1" style={{ color: "#8b5cf6" }}>Влияние на скидку</div>
-                <div style={{ width: 72, textAlign: "center", color: "#a78bfa" }}>Итог<div className="text-[9px] font-normal font-mono" style={{ color: isDark ? "rgba(255,255,255,0.25)" : "#c4c4c4" }}>сл×вес/10</div></div>
+                <div style={{ width: 72, textAlign: "center", color: "#a78bfa" }}></div></div>
               </div>
 
               {/* Строки по категориям */}
