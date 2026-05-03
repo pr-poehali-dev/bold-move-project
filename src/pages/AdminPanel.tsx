@@ -38,6 +38,62 @@ const buildMainTabs = (canCrm: boolean, canAgent: boolean, hasTeam: boolean): Ta
   ...(hasTeam  ? [{ id: "own-agent" as MainTab, icon: "Bot",             label: "Свой агент" }] : []),
 ];
 
+function AgentTabDropdown({ tabs, active, isDark, onChange, activeLabel, activeIcon }: {
+  tabs: { id: AgentSubTab; label: string; icon: string }[];
+  active: AgentSubTab;
+  isDark: boolean;
+  onChange: (t: AgentSubTab) => void;
+  activeLabel: string;
+  activeIcon: string;
+}) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="relative w-full">
+      <button
+        onClick={() => setOpen(v => !v)}
+        className="w-full flex items-center justify-between gap-2 px-4 py-3 rounded-xl font-semibold text-sm transition"
+        style={{
+          background: isDark ? "#1a1a2e" : "#f5f3ff",
+          border: `1px solid ${isDark ? "rgba(139,92,246,0.4)" : "rgba(139,92,246,0.3)"}`,
+          color: isDark ? "#c4b5fd" : "#7c3aed",
+        }}>
+        <div className="flex items-center gap-2">
+          <Icon name={activeIcon} size={15} style={{ color: isDark ? "#a78bfa" : "#7c3aed" }} />
+          {activeLabel}
+        </div>
+        <Icon name={open ? "ChevronUp" : "ChevronDown"} size={15}
+          style={{ color: isDark ? "#a78bfa" : "#7c3aed", flexShrink: 0 }} />
+      </button>
+      {open && (
+        <>
+          <div className="fixed inset-0 z-[90]" onClick={() => setOpen(false)} />
+          <div className="absolute top-full left-0 right-0 z-[91] mt-1 rounded-xl overflow-hidden shadow-2xl"
+            style={{
+              background: isDark ? "#13131f" : "#fff",
+              border: `1px solid ${isDark ? "rgba(139,92,246,0.35)" : "rgba(139,92,246,0.2)"}`,
+            }}>
+            {tabs.map((t, i) => (
+              <button key={t.id}
+                onClick={() => { onChange(t.id); setOpen(false); }}
+                className="w-full flex items-center gap-3 px-4 py-3 text-sm font-semibold transition text-left"
+                style={{
+                  background: active === t.id ? (isDark ? "rgba(139,92,246,0.18)" : "rgba(139,92,246,0.1)") : "transparent",
+                  color: active === t.id ? (isDark ? "#c4b5fd" : "#7c3aed") : isDark ? "rgba(255,255,255,0.65)" : "#374151",
+                  borderTop: i > 0 ? `1px solid ${isDark ? "rgba(255,255,255,0.05)" : "#f3f4f6"}` : "none",
+                }}>
+                <Icon name={t.icon} size={14}
+                  style={{ color: active === t.id ? (isDark ? "#a78bfa" : "#7c3aed") : isDark ? "rgba(255,255,255,0.3)" : "#9ca3af", flexShrink: 0 }} />
+                {t.label}
+                {active === t.id && <Icon name="Check" size={12} style={{ color: "#a78bfa", marginLeft: "auto" }} />}
+              </button>
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
 function MobileTabMenu({ mainTab, isDark, tabs, onSelect }: {
   mainTab: MainTab; isDark: boolean; tabs: TabConfig[];
   onSelect: (t: MainTab) => void;
@@ -430,35 +486,44 @@ export default function AdminPanel() {
       {/* ── Управление агентом ── */}
       {mainTab === "agent" && canAgent && (
         <div className="flex-1 flex flex-col overflow-hidden">
-          {/* Суб-вкладки — только с правом view */}
-          <div className="px-4 flex gap-0.5 pt-2 overflow-x-auto flex-shrink-0"
-            style={{ borderBottom: `1px solid ${isDark ? "rgba(255,255,255,0.1)" : "#e5e7eb"}` }}>
-            {AGENT_TABS.filter(t => agentPerms[t.id as keyof typeof agentPerms]?.view ?? true).map(t => (
-              <button key={t.id} onClick={() => setAgentTab(t.id)}
-                className={`flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-t-lg transition whitespace-nowrap ${
-                  agentTab === t.id
-                    ? isDark
-                      ? "bg-violet-600/15 text-violet-300 border-b-2 border-violet-500"
-                      : "bg-violet-600/10 text-violet-700 border-b-2 border-violet-600"
-                    : isDark ? "text-white/40 hover:text-white/70" : "text-gray-500 hover:text-gray-800"
-                }`}>
-                <Icon name={t.icon} size={13} />
-                {t.label}
-              </button>
-            ))}
-            {/* Вкладка только для мастера */}
-            {user?.is_master && (
-              <button onClick={() => setAgentTab("default-rules")}
-                className={`flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-t-lg transition whitespace-nowrap ${
-                  agentTab === "default-rules"
-                    ? isDark ? "bg-violet-600/15 text-violet-300 border-b-2 border-violet-500" : "bg-violet-600/10 text-violet-700 border-b-2 border-violet-600"
-                    : isDark ? "text-white/40 hover:text-white/70" : "text-gray-500 hover:text-gray-800"
-                }`}>
-                <Icon name="ShieldCheck" size={13} />
-                Дефолты по ролям
-              </button>
-            )}
-          </div>
+          {/* Суб-вкладки */}
+          {(() => {
+            const visibleTabs = [
+              ...AGENT_TABS.filter(t => agentPerms[t.id as keyof typeof agentPerms]?.view ?? true),
+              ...(user?.is_master ? [{ id: "default-rules" as AgentSubTab, label: "Дефолты по ролям", icon: "ShieldCheck" }] : []),
+            ];
+            const activeAgentTab = visibleTabs.find(t => t.id === agentTab) ?? visibleTabs[0];
+            return (
+              <>
+                {/* Мобиле: кастомный dropdown */}
+                <div className="sm:hidden px-4 pt-3 pb-2 flex-shrink-0 relative" style={{ zIndex: 20 }}>
+                  <AgentTabDropdown
+                    tabs={visibleTabs}
+                    active={agentTab}
+                    isDark={isDark}
+                    onChange={setAgentTab}
+                    activeLabel={activeAgentTab?.label ?? ""}
+                    activeIcon={activeAgentTab?.icon ?? "Tag"}
+                  />
+                </div>
+                {/* Десктоп: обычные табы */}
+                <div className="hidden sm:flex px-4 gap-0.5 pt-2 flex-shrink-0"
+                  style={{ borderBottom: `1px solid ${isDark ? "rgba(255,255,255,0.1)" : "#e5e7eb"}` }}>
+                  {visibleTabs.map(t => (
+                    <button key={t.id} onClick={() => setAgentTab(t.id)}
+                      className={`flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-t-lg transition whitespace-nowrap ${
+                        agentTab === t.id
+                          ? isDark ? "bg-violet-600/15 text-violet-300 border-b-2 border-violet-500" : "bg-violet-600/10 text-violet-700 border-b-2 border-violet-600"
+                          : isDark ? "text-white/40 hover:text-white/70" : "text-gray-500 hover:text-gray-800"
+                      }`}>
+                      <Icon name={t.icon} size={13} />
+                      {t.label}
+                    </button>
+                  ))}
+                </div>
+              </>
+            );
+          })()}
 
           <div className="flex-1 overflow-y-auto p-4 max-w-6xl mx-auto w-full">
             {agentTab === "prices"        && agentPerms.prices.view      && <TabPrices      token={authToken} onItemAdded={handleItemAdded} isDark={isDark} readOnly={!agentPerms.prices.edit} />}
