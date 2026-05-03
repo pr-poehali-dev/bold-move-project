@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import Icon from "@/components/ui/icon";
+import { apiFetch } from "./api";
 import {
   PriceItem, ComplexityItem, ComplexityPrompts, ThemeClasses,
   COMPLEXITY_LS_KEY, COMPLEXITY_PROMPTS_KEY, COMPLEXITY_FORMULA_KEY,
@@ -38,10 +39,14 @@ export default function DiscountRiskComplexity({ isDark, theme, readOnly }: Prop
     if (prices.length > 0) return;
     setPricesLoading(true);
     try {
-      const func2url = await import("@/../backend/func2url.json");
-      const url = (func2url as unknown as Record<string, string>)["get-prices"];
-      const res = await fetch(url).then(r => r.json());
-      setPrices((res.prices || []).filter((p: PriceItem) => p.active !== false));
+      const r = await apiFetch("prices");
+      if (r.ok) {
+        const d = await r.json();
+        const items: PriceItem[] = (d.items || []).filter((p: PriceItem) => p.active !== false);
+        setPrices(items);
+      } else {
+        setPrices([]);
+      }
     } catch {
       setPrices([]);
     } finally {
