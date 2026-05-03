@@ -32,8 +32,14 @@ function loadAutoMode(): boolean {
 function saveAutoMode(v: boolean) {
   localStorage.setItem(LS_AUTO_MODE, String(v));
 }
+// Устаревшие ключи которые были перенесены в DEFAULT_COST_ROWS и больше не должны быть кастомными
+const DEPRECATED_CUSTOM_KEYS = ["material_cost", "ads_cost", "other_cost"];
+
 function loadCustomRows(lsKey: string): CustomRow[] {
-  try { return JSON.parse(localStorage.getItem(lsKey) || "[]"); } catch { return []; }
+  try {
+    const rows = JSON.parse(localStorage.getItem(lsKey) || "[]");
+    return rows.filter((r: CustomRow) => !DEPRECATED_CUSTOM_KEYS.includes(r.key));
+  } catch { return []; }
 }
 function saveCustomRows(lsKey: string, rows: CustomRow[]) {
   localStorage.setItem(lsKey, JSON.stringify(rows));
@@ -42,8 +48,6 @@ function saveCustomRows(lsKey: string, rows: CustomRow[]) {
 const DEFAULT_COST_ROWS: CustomRow[] = [
   { key: "measure_cost",  label: "Замер" },
   { key: "install_cost",  label: "Монтаж" },
-  { key: "ads_cost",      label: "Реклама (CAC)" },
-  { key: "other_cost",    label: "Другое" },
 ];
 
 const DEFAULT_INCOME_ROWS: CustomRow[] = [

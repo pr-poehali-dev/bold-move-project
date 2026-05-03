@@ -43,8 +43,13 @@ export function loadAutoMode(): boolean {
 export function saveAutoMode(v: boolean) {
   localStorage.setItem(LS_AUTO_MODE, String(v));
 }
+const DEPRECATED_CUSTOM_KEYS = ["material_cost", "ads_cost", "other_cost"];
+
 function loadCustomModalRows(lsKey: string): CostRowDef[] {
-  try { return JSON.parse(localStorage.getItem(lsKey) || "[]"); } catch { return []; }
+  try {
+    const rows = JSON.parse(localStorage.getItem(lsKey) || "[]");
+    return rows.filter((r: CostRowDef) => !DEPRECATED_CUSTOM_KEYS.includes(r.key));
+  } catch { return []; }
 }
 function saveCustomModalRows(lsKey: string, rows: CostRowDef[]) {
   localStorage.setItem(lsKey, JSON.stringify(rows));
@@ -54,8 +59,6 @@ function saveCustomModalRows(lsKey: string, rows: CostRowDef[]) {
 const DEFAULT_COST_ROWS: CostRowDef[] = [
   { key: "measure_cost",  label: "Замер" },
   { key: "install_cost",  label: "Монтаж" },
-  { key: "ads_cost",      label: "Реклама (CAC)" },
-  { key: "other_cost",    label: "Другое" },
 ];
 const DEFAULT_INCOME_ROWS: CostRowDef[] = [
   { key: "prepayment",    label: "Предоплата" },
