@@ -67,7 +67,7 @@ export default function ComplexityPriceTable({
   void numInputCls; // used below with inline style override
 
   return (
-    <div className={`rounded-2xl overflow-hidden ${theme.bg} border ${theme.border}`}>
+    <div className={`rounded-2xl ${theme.bg} border ${theme.border}`} style={{ overflow: "visible" }}>
 
       {/* Шапка */}
       <div className="flex items-center gap-3 px-4 py-3" style={{ borderBottom: `1px solid ${border2}` }}>
@@ -189,92 +189,84 @@ export default function ComplexityPriceTable({
             </span>
           </div>
 
+          {/* Sticky шапка с AI-подсказками — вне таблицы, липнет к скроллу страницы */}
+          <div className="sticky z-20 px-0" style={{
+            top: 0,
+            background: isDark ? "#0f0f1a" : "#f9fafb",
+            borderBottom: `1px solid ${isDark ? "rgba(255,255,255,0.07)" : "#e5e7eb"}`,
+          }}>
+            <div className="flex items-start text-xs" style={{ minWidth: 640 }}>
+              {/* Название */}
+              <div className="px-4 py-3 flex-shrink-0" style={{ minWidth: 160 }}>
+                <div className={`font-semibold ${theme.sub}`}>Название позиции</div>
+                <div className="text-[9px] mt-0.5" style={{ color: isDark ? "rgba(255,255,255,0.2)" : "#c4c4c4" }}>из прайса компании</div>
+              </div>
+              {/* Сложность */}
+              <div className="px-4 py-3 flex-1">
+                <div className="font-bold" style={{ color: "#f59e0b" }}>
+                  Сложность монтажа <span className="font-normal text-[10px]">1–10</span>
+                </div>
+                <div className="text-[9px] mt-0.5 leading-relaxed" style={{ minHeight: 28 }}>
+                  {hoveredReason ? (
+                    <span className="flex items-start gap-1.5">
+                      <Icon name="Sparkles" size={9} style={{ color: "#a78bfa", marginTop: 1, flexShrink: 0 }} />
+                      <span>
+                        <span className="font-bold mr-1" style={{ color: "#f59e0b" }}>{hoveredComplexity}/10</span>
+                        <span style={{ color: isDark ? "rgba(255,255,255,0.55)" : "#6b7280", fontStyle: "italic" }}>{hoveredReason}</span>
+                      </span>
+                    </span>
+                  ) : !hasAnyReason ? (
+                    <span className="flex items-center gap-1">
+                      <Icon name="Sparkles" size={9} style={{ color: "rgba(139,92,246,0.4)" }} />
+                      <span style={{ color: isDark ? "rgba(255,255,255,0.25)" : "#c4c4c4", fontStyle: "italic" }}>нажми «AI оценить»</span>
+                    </span>
+                  ) : (
+                    <span style={{ color: isDark ? "rgba(255,255,255,0.2)" : "#c4c4c4", fontStyle: "italic" }}>наведи на позицию</span>
+                  )}
+                </div>
+              </div>
+              {/* Влияние */}
+              <div className="px-4 py-3 flex-1">
+                <div className="font-bold" style={{ color: "#8b5cf6" }}>
+                  Влияние на скидку <span className="font-normal text-[10px]">1–10</span>
+                </div>
+                <div className="text-[9px] mt-0.5 leading-relaxed" style={{ minHeight: 28 }}>
+                  {hoveredWeightReason ? (
+                    <span className="flex items-start gap-1.5">
+                      <Icon name="Sparkles" size={9} style={{ color: "#a78bfa", marginTop: 1, flexShrink: 0 }} />
+                      <span>
+                        <span className="font-bold mr-1" style={{ color: "#8b5cf6" }}>{hoveredWeight}/10</span>
+                        <span style={{ color: isDark ? "rgba(255,255,255,0.55)" : "#6b7280", fontStyle: "italic" }}>{hoveredWeightReason}</span>
+                      </span>
+                    </span>
+                  ) : !hasAnyReason ? (
+                    <span className="flex items-center gap-1">
+                      <Icon name="Sparkles" size={9} style={{ color: "rgba(139,92,246,0.4)" }} />
+                      <span style={{ color: isDark ? "rgba(255,255,255,0.25)" : "#c4c4c4", fontStyle: "italic" }}>нажми «AI оценить»</span>
+                    </span>
+                  ) : (
+                    <span style={{ color: isDark ? "rgba(255,255,255,0.2)" : "#c4c4c4", fontStyle: "italic" }}>наведи на позицию</span>
+                  )}
+                </div>
+              </div>
+              {/* Итог */}
+              <div className="px-4 py-3 text-center flex-shrink-0" style={{ width: 90 }}>
+                <div className="font-bold" style={{ color: "#a78bfa" }}>Итог</div>
+                <div className="text-[9px] font-mono mt-0.5" style={{ color: isDark ? "rgba(255,255,255,0.25)" : "#c4c4c4" }}>сл×вес/10</div>
+              </div>
+            </div>
+          </div>
+
           {/* Таблица */}
-          <div className="overflow-auto" style={{ maxHeight: "60vh" }}>
+          <div className="overflow-x-auto">
             <table className="w-full text-xs" style={{ minWidth: 640 }}>
-              <thead className="sticky top-0 z-10"
-                style={{ background: isDark ? "#0f0f1a" : "#f9fafb" }}>
-                <tr style={{
-                  borderBottom: `1px solid ${isDark ? "rgba(255,255,255,0.07)" : "#e5e7eb"}`,
-                }}>
-                  <th className="text-left px-4 py-0" style={{ minWidth: 160, verticalAlign: "top" }}>
-                    <div className="py-3">
-                      <div className={`font-semibold ${theme.sub}`}>Название позиции</div>
-                      <div className="text-[9px] font-normal mt-0.5" style={{ color: isDark ? "rgba(255,255,255,0.2)" : "#c4c4c4" }}>
-                        из прайса компании
-                      </div>
-                    </div>
-                  </th>
-                  <th className="text-left px-4 py-0" style={{ width: "35%", verticalAlign: "top" }}>
-                    <div className="py-3">
-                      <div className="font-bold" style={{ color: "#f59e0b" }}>
-                        Сложность монтажа <span className="font-normal text-[10px]">1–10</span>
-                      </div>
-                      <div className="text-[9px] font-normal mt-0.5 leading-relaxed" style={{ color: isDark ? "rgba(255,255,255,0.3)" : "#9ca3af", minHeight: 32 }}>
-                        {hoveredReason ? (
-                          <span className="flex items-start gap-1.5">
-                            <Icon name="Sparkles" size={9} style={{ color: "#a78bfa", marginTop: 1, flexShrink: 0 }} />
-                            <span>
-                              <span className="font-bold mr-1" style={{ color: "#f59e0b" }}>{hoveredComplexity}/10</span>
-                              <span style={{ color: isDark ? "rgba(255,255,255,0.55)" : "#6b7280", fontStyle: "italic" }}>{hoveredReason}</span>
-                            </span>
-                          </span>
-                        ) : !hasAnyReason ? (
-                          <span className="flex items-start gap-1">
-                            <Icon name="Sparkles" size={9} style={{ color: "rgba(139,92,246,0.4)", marginTop: 1, flexShrink: 0 }} />
-                            <span style={{ color: isDark ? "rgba(255,255,255,0.25)" : "#c4c4c4", fontStyle: "italic" }}>
-                              AI анализирует позиции...
-                            </span>
-                          </span>
-                        ) : (
-                          <span style={{ color: isDark ? "rgba(255,255,255,0.2)" : "#c4c4c4", fontStyle: "italic" }}>
-                            наведи на позицию — увидишь объяснение AI
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  </th>
-                  <th className="text-left px-4 py-0" style={{ width: "35%", verticalAlign: "top" }}>
-                    <div className="py-3">
-                      <div className="font-bold" style={{ color: "#8b5cf6" }}>
-                        Влияние на скидку <span className="font-normal text-[10px]">1–10</span>
-                      </div>
-                      <div className="text-[9px] font-normal mt-0.5 leading-relaxed" style={{ color: isDark ? "rgba(255,255,255,0.3)" : "#9ca3af", minHeight: 32 }}>
-                        {hoveredWeightReason ? (
-                          <span className="flex items-start gap-1.5">
-                            <Icon name="Sparkles" size={9} style={{ color: "#a78bfa", marginTop: 1, flexShrink: 0 }} />
-                            <span>
-                              <span className="font-bold mr-1" style={{ color: "#8b5cf6" }}>{hoveredWeight}/10</span>
-                              <span style={{ color: isDark ? "rgba(255,255,255,0.55)" : "#6b7280", fontStyle: "italic" }}>{hoveredWeightReason}</span>
-                            </span>
-                          </span>
-                        ) : !hasAnyReason ? (
-                          <span className="flex items-start gap-1">
-                            <Icon name="Sparkles" size={9} style={{ color: "rgba(139,92,246,0.4)", marginTop: 1, flexShrink: 0 }} />
-                            <span style={{ color: isDark ? "rgba(255,255,255,0.25)" : "#c4c4c4", fontStyle: "italic" }}>
-                              AI анализирует позиции...
-                            </span>
-                          </span>
-                        ) : (
-                          <span style={{ color: isDark ? "rgba(255,255,255,0.2)" : "#c4c4c4", fontStyle: "italic" }}>
-                            наведи на позицию — увидишь объяснение AI
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  </th>
-
-                  <th className="text-center px-4 py-0" style={{ width: 90, verticalAlign: "middle" }}>
-                    <div className="py-3">
-                      <div className="font-bold" style={{ color: "#a78bfa" }}>Итог</div>
-                      <div className="text-[9px] font-normal mt-0.5 font-mono" style={{ color: isDark ? "rgba(255,255,255,0.25)" : "#c4c4c4" }}>
-                        сл×вес/10
-                      </div>
-                    </div>
-                  </th>
-                </tr>
-              </thead>
-
+              <colgroup>
+                <col style={{ minWidth: 160 }} />
+                <col style={{ width: "35%" }} />
+                <col style={{ width: "35%" }} />
+                <col style={{ width: 90 }} />
+              </colgroup>
+              <tbody>
               {Object.entries(byCategory).map(([cat, catPrices]) => {
                 const catAvg = Math.round(
                   catPrices.reduce((s, p) => s + getItem(p.id).complexity * getItem(p.id).weight / 10, 0)
@@ -350,6 +342,7 @@ export default function ComplexityPriceTable({
                   </tbody>
                 );
               })}
+              </tbody>
 
               <tfoot>
                 <tr style={{
