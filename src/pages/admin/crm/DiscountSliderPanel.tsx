@@ -155,21 +155,27 @@ export function DiscountSliderPanel({
           })()}
 
           {/* Метки */}
-          <div className="relative h-4">
+          <div className="relative h-4 overflow-hidden">
             <span className="absolute left-0 text-[9px] text-white/30">0%</span>
             {sliderMax > 0 && (() => {
-              const lowPct = Math.min(96, (zoneLow / sliderMax) * 100);
-              const midPct = Math.min(96, (zoneMid / sliderMax) * 100);
+              const rawLow = (zoneLow / sliderMax) * 100;
+              const rawMid = (zoneMid / sliderMax) * 100;
+              // Зажимаем позиции чтобы не вылезали за края и не перекрывались
+              const lowPct = Math.min(Math.max(rawLow, 5), 90);
+              const midPct = Math.min(Math.max(rawMid, lowPct + 8), 92);
+              const showLow = Math.abs(rawLow - rawMid) > 7;
               return (
                 <>
-                  <span className="absolute text-[9px] font-bold"
-                    style={{ left: `${lowPct}%`, color: "#f59e0b", transform: "translateX(-50%)" }}>↑ {zoneLow}%</span>
-                  <span className="absolute text-[9px] font-bold"
+                  {showLow && (
+                    <span className="absolute text-[9px] font-bold whitespace-nowrap"
+                      style={{ left: `${lowPct}%`, color: "#f59e0b", transform: "translateX(-50%)" }}>↑ {zoneLow}%</span>
+                  )}
+                  <span className="absolute text-[9px] font-bold whitespace-nowrap"
                     style={{ left: `${midPct}%`, color: "#ef4444", transform: "translateX(-50%)" }}>↑ {zoneMid}%</span>
                 </>
               );
             })()}
-            <span className="absolute right-0 text-[9px] text-white/30">max {sliderMax}%</span>
+            <span className="absolute right-0 text-[9px] text-white/30">{sliderMax}%</span>
           </div>
 
           {/* Слайдер */}
