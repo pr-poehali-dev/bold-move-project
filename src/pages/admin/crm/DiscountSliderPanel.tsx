@@ -3,6 +3,7 @@ import Icon from "@/components/ui/icon";
 import { useTheme } from "./themeContext";
 import { AiRisk, RiskSettings } from "./discountBlockTypes";
 import { DiscountEntry } from "@/hooks/useDiscountHistory";
+import { DiscountRiskPopup } from "./DiscountRiskPopup";
 
 interface Props {
   discount: number;
@@ -54,8 +55,9 @@ export function DiscountSliderPanel({
   discountHistory, totalDiscountAmount, setApplied,
 }: Props) {
   const t = useTheme();
-  const [editingPct, setEditingPct] = useState<string>("");
-  const [isEditing,  setIsEditing]  = useState(false);
+  const [editingPct,   setEditingPct]   = useState<string>("");
+  const [isEditing,    setIsEditing]    = useState(false);
+  const [riskPopupOpen, setRiskPopupOpen] = useState(false);
 
   const aiLevelColor = aiRisk?.level === "low" ? "#10b981" : aiRisk?.level === "mid" ? "#f59e0b" : "#ef4444";
   const aiLevelLabel = aiRisk?.level === "low" ? "Низкая сложность" : aiRisk?.level === "mid" ? "Средняя сложность" : "Высокая сложность";
@@ -81,6 +83,13 @@ export function DiscountSliderPanel({
         <span className="text-xs font-bold uppercase tracking-wider flex-1 text-yellow-400">
           Оценка риска скидки
         </span>
+        {/* Кнопка настроек */}
+        <button onClick={() => setRiskPopupOpen(true)}
+          className="flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-bold transition hover:opacity-80"
+          style={{ background: "rgba(139,92,246,0.1)", color: "#a78bfa", border: "1px solid rgba(139,92,246,0.25)" }}
+          title="Настройки правил скидки">
+          <Icon name="Settings2" size={11} />
+        </button>
         {/* Кнопка 3-этапного анализа */}
         <button onClick={onAnalysisClick} disabled={analysisLoading}
           className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-bold transition disabled:opacity-50 hover:opacity-80"
@@ -91,6 +100,7 @@ export function DiscountSliderPanel({
           }
         </button>
       </div>
+      {riskPopupOpen && <DiscountRiskPopup onClose={() => setRiskPopupOpen(false)} />}
 
       {/* ── РЕЖИМ: скидка уже применена ── */}
       {hasAppliedDiscount && discountHistory.length > 0 && (
