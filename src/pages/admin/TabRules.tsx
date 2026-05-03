@@ -35,8 +35,31 @@ export default function TabRules({ token, hint, isDark = true, readOnly = false 
 
   return (
     <div className="flex flex-col gap-0 h-full">
-      {/* Подвкладки */}
-      <div className="flex gap-0.5 mb-5 flex-shrink-0"
+
+      {/* Мобиле: селект-дропдаун */}
+      <div className="sm:hidden mb-4 flex-shrink-0">
+        <div className="relative">
+          <select
+            value={sub}
+            onChange={e => setSub(e.target.value as RulesSub)}
+            className="w-full rounded-xl px-3 py-2.5 pr-8 text-sm font-semibold appearance-none focus:outline-none transition"
+            style={{
+              background: isDark ? "rgba(139,92,246,0.12)" : "rgba(139,92,246,0.08)",
+              border: `1px solid ${isDark ? "rgba(139,92,246,0.35)" : "rgba(139,92,246,0.25)"}`,
+              color: isDark ? "#c4b5fd" : "#7c3aed",
+            }}>
+            {SUB_TABS.map(t => (
+              <option key={t.id} value={t.id}>{t.label}</option>
+            ))}
+          </select>
+          <div className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2">
+            <Icon name="ChevronDown" size={14} style={{ color: isDark ? "#a78bfa" : "#7c3aed" }} />
+          </div>
+        </div>
+      </div>
+
+      {/* Десктоп: табы */}
+      <div className="hidden sm:flex gap-0.5 mb-5 flex-shrink-0"
         style={{ borderBottom: `1px solid ${isDark ? "rgba(255,255,255,0.07)" : "#e5e7eb"}` }}>
         {SUB_TABS.map(t => (
           <button key={t.id} onClick={() => setSub(t.id)}
