@@ -1,3 +1,4 @@
+import { useState } from "react";
 import Icon from "@/components/ui/icon";
 import { PriceItem, ComplexityItem, ThemeClasses } from "./discountRiskTypes";
 
@@ -36,6 +37,7 @@ export default function ComplexityPriceTable({
   onAiEvaluate, onAiErrorClose, onSaveItems, onResetAll, onUpdateItem,
 }: Props) {
   const border2 = isDark ? "rgba(255,255,255,0.05)" : "#f3f4f6";
+  const [tooltipId, setTooltipId] = useState<number | null>(null);
 
   const getItem = (id: number): ComplexityItem =>
     complexityItems[id] || { priceId: id, complexity: 5, weight: 5 };
@@ -263,9 +265,33 @@ export default function ComplexityPriceTable({
                       return (
                         <tr key={price.id} style={{ borderTop: `1px solid ${border2}` }} className="transition hover:bg-white/[0.015]">
                           <td className="px-4 py-3">
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-2 relative">
                               <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: scoreColor }} />
-                              <span className={`font-medium ${theme.text} leading-snug`}>{price.name}</span>
+                              <span
+                                className={`font-medium ${theme.text} leading-snug ${item.reason ? "cursor-help underline decoration-dotted decoration-violet-400/50" : ""}`}
+                                onMouseEnter={() => item.reason && setTooltipId(price.id)}
+                                onMouseLeave={() => setTooltipId(null)}
+                              >
+                                {price.name}
+                              </span>
+                              {item.reason && tooltipId === price.id && (
+                                <div
+                                  className="absolute left-0 top-full mt-1 z-50 rounded-xl px-3 py-2 text-[11px] leading-relaxed shadow-xl pointer-events-none"
+                                  style={{
+                                    minWidth: 220,
+                                    maxWidth: 320,
+                                    background: isDark ? "rgba(30,20,60,0.97)" : "rgba(255,255,255,0.98)",
+                                    border: "1px solid rgba(139,92,246,0.3)",
+                                    color: isDark ? "rgba(255,255,255,0.75)" : "#374151",
+                                    boxShadow: "0 8px 32px rgba(139,92,246,0.18)",
+                                  }}
+                                >
+                                  <div className="flex items-start gap-1.5">
+                                    <Icon name="Sparkles" size={11} style={{ color: "#a78bfa", marginTop: 1, flexShrink: 0 }} />
+                                    <span>{item.reason}</span>
+                                  </div>
+                                </div>
+                              )}
                             </div>
                           </td>
                           <td className="px-4 py-3">
