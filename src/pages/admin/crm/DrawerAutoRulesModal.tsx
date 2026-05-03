@@ -2,70 +2,14 @@ import { useState } from "react";
 import { createPortal } from "react-dom";
 import Icon from "@/components/ui/icon";
 import { useTheme } from "./themeContext";
+import { useAutoRules, RuleEntry } from "@/hooks/useAutoRules";
 
-export const LS_AUTO_RULES   = "crm_costs_auto_rules_v2";
-export const LS_INCOME_RULES = "crm_income_auto_rules_v1";
-export const LS_AUTO_MODE    = "crm_costs_auto_mode";
-export const LS_CUSTOM_COST_ROWS_MODAL   = "crm_auto_custom_cost_rows";
-export const LS_CUSTOM_INCOME_ROWS_MODAL = "crm_auto_custom_income_rows";
-
-export interface RuleEntry {
-  pct: number | null;
-  enabled: boolean;  // применять в расчёте
-  visible: boolean;  // показывать в карточке / P&L
-}
-export type AutoRulesMap = Record<string, RuleEntry>;
-
+// Экспортируем типы для обратной совместимости
+export type { RuleEntry };
+export type AutoRulesMap = Record<string, Pick<RuleEntry, "pct" | "enabled" | "visible">>;
 export interface CostRowDef { key: string; label: string; }
 
-// ── Загрузка / сохранение ─────────────────────────────────────────────────
-export function loadAutoRules(): AutoRulesMap {
-  try {
-    const v = JSON.parse(localStorage.getItem(LS_AUTO_RULES) || "{}");
-    return typeof v === "object" && v !== null ? v : {};
-  } catch { return {}; }
-}
-export function saveAutoRules(r: AutoRulesMap) {
-  localStorage.setItem(LS_AUTO_RULES, JSON.stringify(r));
-}
-export function loadIncomeRules(): AutoRulesMap {
-  try {
-    const v = JSON.parse(localStorage.getItem(LS_INCOME_RULES) || "{}");
-    return typeof v === "object" && v !== null ? v : {};
-  } catch { return {}; }
-}
-export function saveIncomeRules(r: AutoRulesMap) {
-  localStorage.setItem(LS_INCOME_RULES, JSON.stringify(r));
-}
-export function loadAutoMode(): boolean {
-  return localStorage.getItem(LS_AUTO_MODE) === "true";
-}
-export function saveAutoMode(v: boolean) {
-  localStorage.setItem(LS_AUTO_MODE, String(v));
-}
-const DEPRECATED_CUSTOM_KEYS = ["material_cost", "ads_cost", "other_cost"];
-
-function loadCustomModalRows(lsKey: string): CostRowDef[] {
-  try {
-    const rows = JSON.parse(localStorage.getItem(lsKey) || "[]");
-    return rows.filter((r: CostRowDef) => !DEPRECATED_CUSTOM_KEYS.includes(r.key));
-  } catch { return []; }
-}
-function saveCustomModalRows(lsKey: string, rows: CostRowDef[]) {
-  localStorage.setItem(lsKey, JSON.stringify(rows));
-}
-
-// ── Дефолтные строки ──────────────────────────────────────────────────────
-const DEFAULT_COST_ROWS: CostRowDef[] = [
-  { key: "measure_cost",  label: "Замер" },
-  { key: "install_cost",  label: "Монтаж" },
-];
-const DEFAULT_INCOME_ROWS: CostRowDef[] = [
-  { key: "prepayment",    label: "Предоплата" },
-  { key: "extra_payment", label: "Доплата" },
-];
-
-// ── Компоненты ────────────────────────────────────────────────────────────
+// ── Toggle ─────────────────────────────────────────────────────────────────
 function Toggle({ enabled, onChange, color = "#ef4444" }: {
   enabled: boolean; onChange: (v: boolean) => void; color?: string;
 }) {
@@ -80,67 +24,61 @@ function Toggle({ enabled, onChange, color = "#ef4444" }: {
 }
 
 // ── Основной модал ────────────────────────────────────────────────────────
-export function AutoRulesModal({ onClose, costRows, defaultTab = "costs" }: { onClose: () => void; costRows: CostRowDef[]; defaultTab?: "costs" | "income" }) {
+export function AutoRulesModal({ onClose, defaultTab = "costs" }: {
+  onClose: () => void;
+  costRows?: CostRowDef[]; // оставлен для совместимости, больше не используется
+  defaultTab?: "costs" | "income";
+}) {
   const t = useTheme();
-  const [tab,       setTab]       = useState<"costs" | "income">(defaultTab);
-  const [costRules, setCostRules] = useState<AutoRulesMap>(loadAutoRules);
-  const [incRules,  setIncRules]  = useState<AutoRulesMap>(loadIncomeRules);
-  const [autoMode,  setAutoMode]  = useState<boolean>(loadAutoMode);
+  const { rules, auto_mode, loading, saving, save } = useAutoRules();
 
-  const [customCostRows,   setCustomCostRows]   = useState<CostRowDef[]>(() => loadCustomModalRows(LS_CUSTOM_COST_ROWS_MODAL));
-  const [customIncomeRows, setCustomIncomeRows] = useState<CostRowDef[]>(() => loadCustomModalRows(LS_CUSTOM_INCOME_ROWS_MODAL));
-  const [addingRow,  setAddingRow]  = useState(false);
-  const [newLabel,   setNewLabel]   = useState("");
+  const [tab,         setTab]         = useState<"costs" | "income">(defaultTab);
+  const [localRules,  setLocalRules]  = useState<RuleEntry[] | null>(null);
+  const [localAutoMode, setLocalAutoMode] = useState<boolean | null>(null);
+  const [addingRow,   setAddingRow]   = useState(false);
+  const [newLabel,    setNewLabel]    = useState("");
 
-  const isCosts    = tab === "costs";
-  const rules      = isCosts ? costRules    : incRules;
-  const setRules   = isCosts ? setCostRules : setIncRules;
-  const customRows = isCosts ? customCostRows : customIncomeRows;
-  const setCustomRows = isCosts
-    ? (rows: CostRowDef[]) => { setCustomCostRows(rows);   saveCustomModalRows(LS_CUSTOM_COST_ROWS_MODAL,   rows); }
-    : (rows: CostRowDef[]) => { setCustomIncomeRows(rows); saveCustomModalRows(LS_CUSTOM_INCOME_ROWS_MODAL, rows); };
+  const currentRules    = localRules    ?? rules;
+  const currentAutoMode = localAutoMode ?? auto_mode;
 
-  // Для затрат — строки из карточки (costRows prop) + кастомные из модала
-  // Для доходов — дефолт + кастомные
-  const baseRows   = isCosts ? costRows : DEFAULT_INCOME_ROWS;
-  const allRows    = [...baseRows, ...customRows.filter(cr => !baseRows.some(br => br.key === cr.key))];
-
+  const isCosts     = tab === "costs";
+  const rowType     = isCosts ? "cost" : "income";
   const accentColor = isCosts ? "#ef4444" : "#10b981";
+  const tabRules    = currentRules.filter(r => r.row_type === rowType);
 
-  const getEntry = (key: string): RuleEntry =>
-    rules[key] ?? { pct: null, enabled: true, visible: true };
+  const setEntry = (key: string, patch: Partial<RuleEntry>) => {
+    setLocalRules(prev => (prev ?? rules).map(r => r.key === key ? { ...r, ...patch } : r));
+  };
 
-  const setEntry = (key: string, patch: Partial<RuleEntry>) =>
-    setRules(r => ({ ...r, [key]: { ...getEntry(key), ...patch } }));
-
-  const save = () => {
-    saveAutoRules(costRules);
-    saveIncomeRules(incRules);
-    saveAutoMode(autoMode);
-    window.dispatchEvent(new StorageEvent("storage", { key: LS_AUTO_RULES }));
-    window.dispatchEvent(new StorageEvent("storage", { key: LS_INCOME_RULES }));
+  const handleSave = async () => {
+    await save(currentRules, currentAutoMode);
     onClose();
   };
 
   const addCustomRow = () => {
     const label = newLabel.trim();
     if (!label) return;
-    const key = `custom_${tab}_modal_${Date.now()}`;
-    setCustomRows([...customRows, { key, label }]);
+    const key = `custom_${rowType}_${Date.now()}`;
+    const newRow: RuleEntry = {
+      key, label,
+      pct: null,
+      enabled: true,
+      visible: true,
+      row_type: rowType,
+      sort_order: tabRules.length + 1,
+      is_default: false,
+    };
+    setLocalRules(prev => [...(prev ?? rules), newRow]);
     setNewLabel("");
     setAddingRow(false);
   };
 
   const removeCustomRow = (key: string) => {
-    setCustomRows(customRows.filter(r => r.key !== key));
-    setRules(prev => { const next = { ...prev }; delete next[key]; return next; });
+    setLocalRules(prev => (prev ?? rules).filter(r => r.key !== key));
   };
 
   const exampleSum = 100_000;
-  const hasAny = allRows.some(row => {
-    const e = getEntry(row.key);
-    return e.enabled && e.pct != null && e.pct > 0;
-  });
+  const hasAny = tabRules.some(r => r.enabled && r.pct != null && r.pct > 0);
 
   return createPortal(
     <div className="fixed inset-0 z-[200] flex items-center justify-center p-4"
@@ -160,7 +98,7 @@ export function AutoRulesModal({ onClose, costRows, defaultTab = "costs" }: { on
             <span className="text-sm font-bold" style={{ color: t.text }}>Правила авто-расчёта</span>
           </div>
           <div className="flex items-center gap-2">
-            <Toggle enabled={autoMode} onChange={setAutoMode} color={accentColor} />
+            <Toggle enabled={currentAutoMode} onChange={v => setLocalAutoMode(v)} color={accentColor} />
             <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-white/5 transition"
               style={{ color: t.textMute }}>
               <Icon name="X" size={15} />
@@ -191,10 +129,10 @@ export function AutoRulesModal({ onClose, costRows, defaultTab = "costs" }: { on
         {/* Подсказка авто-режима */}
         <div className="px-5 pt-2">
           <div className="rounded-xl px-3 py-2 flex items-center gap-2"
-            style={{ background: autoMode ? `${accentColor}15` : "rgba(255,255,255,0.04)", border: `1px solid ${autoMode ? `${accentColor}30` : t.border}` }}>
-            <Icon name="Zap" size={13} style={{ color: autoMode ? accentColor : t.textMute, flexShrink: 0 }} />
-            <span className="text-xs leading-relaxed" style={{ color: autoMode ? (isCosts ? "#fca5a5" : "#6ee7b7") : t.textMute }}>
-              {autoMode
+            style={{ background: currentAutoMode ? `${accentColor}15` : "rgba(255,255,255,0.04)", border: `1px solid ${currentAutoMode ? `${accentColor}30` : t.border}` }}>
+            <Icon name="Zap" size={13} style={{ color: currentAutoMode ? accentColor : t.textMute, flexShrink: 0 }} />
+            <span className="text-xs leading-relaxed" style={{ color: currentAutoMode ? (isCosts ? "#fca5a5" : "#6ee7b7") : t.textMute }}>
+              {currentAutoMode
                 ? "Авто-режим включён — правила применяются при изменении суммы договора"
                 : "Авто-режим выключен — нажмите «Авто» вручную в блоке затрат"}
             </span>
@@ -209,77 +147,81 @@ export function AutoRulesModal({ onClose, costRows, defaultTab = "costs" }: { on
               : "Укажите дополнительные статьи доходов в % от суммы договора."}
           </p>
 
-          {allRows.map(row => {
-            const entry    = getEntry(row.key);
-            const isCustom = customRows.some(cr => cr.key === row.key);
-            return (
-              <div key={row.key} className="rounded-xl p-3 space-y-2.5"
-                style={{ background: t.surface2, border: `1px solid ${entry.enabled ? `${accentColor}40` : t.border}`, opacity: entry.enabled ? 1 : 0.55 }}>
+          {loading ? (
+            <div className="flex items-center justify-center py-8 gap-2" style={{ color: t.textMute }}>
+              <Icon name="Loader" size={16} className="animate-spin" />
+              <span className="text-xs">Загрузка…</span>
+            </div>
+          ) : tabRules.map(row => (
+            <div key={row.key} className="rounded-xl p-3 space-y-2.5"
+              style={{ background: t.surface2, border: `1px solid ${row.enabled ? `${accentColor}40` : t.border}`, opacity: row.enabled ? 1 : 0.55 }}>
 
-                {/* Шапка строки с двумя переключателями */}
-                <div className="flex items-center justify-between gap-2">
-                  <span className="text-xs font-semibold truncate" style={{ color: accentColor }}>{row.label}</span>
-                  <div className="flex items-center gap-3 flex-shrink-0">
-                    {/* Переключатель 1: Применять */}
-                    <div className="flex flex-col items-center gap-0.5">
-                      <span className="text-[8px] uppercase tracking-wide font-semibold" style={{ color: t.textMute }}>применять</span>
-                      <Toggle enabled={entry.enabled} onChange={v => setEntry(row.key, { enabled: v })} color={accentColor} />
-                    </div>
-                    {/* Переключатель 2: Показывать в карточке */}
-                    <div className="flex flex-col items-center gap-0.5">
-                      <span className="text-[8px] uppercase tracking-wide font-semibold" style={{ color: t.textMute }}>в карточке</span>
-                      <Toggle enabled={entry.visible} onChange={v => setEntry(row.key, { visible: v })} color="#8b5cf6" />
-                    </div>
-                    {/* Удалить кастомную строку */}
-                    {isCustom && (
-                      <button onClick={() => removeCustomRow(row.key)}
-                        className="p-1 rounded-lg hover:bg-white/10 transition">
-                        <Icon name="Trash2" size={12} style={{ color: "#ef4444" }} />
-                      </button>
-                    )}
+              {/* Шапка строки с двумя переключателями */}
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-xs font-semibold truncate" style={{ color: accentColor }}>{row.label}</span>
+                <div className="flex items-center gap-3 flex-shrink-0">
+                  <div className="flex flex-col items-center gap-0.5">
+                    <span className="text-[8px] uppercase tracking-wide font-semibold" style={{ color: t.textMute }}>применять</span>
+                    <Toggle enabled={row.enabled} onChange={v => setEntry(row.key, { enabled: v })} color={accentColor} />
                   </div>
-                </div>
-
-                {/* Поле % */}
-                <div className="flex items-center gap-2">
-                  <input type="number" min={0} max={100}
-                    value={entry.pct ?? ""}
-                    onChange={e => setEntry(row.key, { pct: e.target.value === "" ? null : +e.target.value })}
-                    disabled={!entry.enabled}
-                    className="flex-1 rounded-lg px-3 py-1.5 text-sm focus:outline-none"
-                    style={{ background: t.surface, border: `1px solid ${t.border}`, color: t.text }}
-                    placeholder="0" />
-                  <span className="text-sm font-bold" style={{ color: t.textMute }}>%</span>
-                  <span className="text-xs whitespace-nowrap" style={{ color: t.textMute }}>от договора</span>
+                  <div className="flex flex-col items-center gap-0.5">
+                    <span className="text-[8px] uppercase tracking-wide font-semibold" style={{ color: t.textMute }}>в карточке</span>
+                    <Toggle enabled={row.visible} onChange={v => setEntry(row.key, { visible: v })} color="#8b5cf6" />
+                  </div>
+                  {!row.is_default && (
+                    <button onClick={() => removeCustomRow(row.key)}
+                      className="p-1 rounded-lg hover:bg-white/10 transition">
+                      <Icon name="Trash2" size={12} style={{ color: "#ef4444" }} />
+                    </button>
+                  )}
                 </div>
               </div>
-            );
-          })}
+
+              {/* Поле % */}
+              <div className="flex items-center gap-2">
+                <input type="number" min={0} max={100}
+                  value={row.pct ?? ""}
+                  onChange={e => setEntry(row.key, { pct: e.target.value === "" ? null : +e.target.value })}
+                  disabled={!row.enabled}
+                  className="flex-1 rounded-lg px-3 py-1.5 text-sm focus:outline-none"
+                  style={{ background: "rgba(255,255,255,0.06)", border: `1px solid ${row.enabled ? `${accentColor}30` : t.border}`, color: t.text }}
+                  placeholder="0"
+                />
+                <span className="text-xs font-bold" style={{ color: t.textMute }}>%</span>
+                <span className="text-xs" style={{ color: t.textMute }}>от договора</span>
+              </div>
+            </div>
+          ))}
 
           {/* Добавить своё правило */}
           <div className="pt-1">
             {addingRow ? (
               <div className="flex items-center gap-2">
-                <input autoFocus type="text" value={newLabel}
+                <input
+                  autoFocus
+                  type="text"
+                  value={newLabel}
                   onChange={e => setNewLabel(e.target.value)}
                   onKeyDown={e => { if (e.key === "Enter") addCustomRow(); if (e.key === "Escape") { setAddingRow(false); setNewLabel(""); } }}
                   className="flex-1 rounded-xl px-3 py-2 text-sm focus:outline-none"
-                  style={{ background: t.surface2, border: `1px solid ${accentColor}50`, color: t.text }}
-                  placeholder="Название правила..." />
+                  style={{ background: "rgba(255,255,255,0.06)", border: `1px solid ${accentColor}50`, color: t.text }}
+                  placeholder="Название правила..."
+                />
                 <button onClick={addCustomRow}
-                  className="px-3 py-2 rounded-xl text-xs font-bold transition"
-                  style={{ background: `${accentColor}20`, color: accentColor, border: `1px solid ${accentColor}40` }}>
+                  className="px-3 py-2 rounded-xl text-xs font-bold"
+                  style={{ background: accentColor, color: "#fff" }}>
                   Добавить
                 </button>
                 <button onClick={() => { setAddingRow(false); setNewLabel(""); }}
-                  className="p-2 rounded-xl hover:bg-white/10 transition">
-                  <Icon name="X" size={12} style={{ color: t.textMute }} />
+                  className="px-3 py-2 rounded-xl text-xs font-bold"
+                  style={{ background: "rgba(255,255,255,0.06)", color: t.textMute }}>
+                  Отмена
                 </button>
               </div>
             ) : (
               <button onClick={() => setAddingRow(true)}
-                className="flex items-center gap-1.5 text-xs font-semibold transition hover:opacity-80"
-                style={{ color: t.textMute }}>
+                className="flex items-center gap-1.5 text-xs font-semibold hover:opacity-80 transition"
+                style={{ color: accentColor }}>
                 <Icon name="Plus" size={13} />
                 Добавить своё правило
               </button>
@@ -288,40 +230,37 @@ export function AutoRulesModal({ onClose, costRows, defaultTab = "costs" }: { on
 
           {/* Пример */}
           {hasAny && (
-            <div className="rounded-xl px-3 py-2.5 text-xs space-y-1"
-              style={{ background: `${accentColor}10`, border: `1px solid ${accentColor}30` }}>
-              <div className="font-medium mb-1" style={{ color: accentColor }}>Пример при договоре 100 000 ₽:</div>
-              {allRows.map(row => {
-                const e = getEntry(row.key);
-                if (!e.enabled || !e.pct) return null;
-                return (
-                  <div key={row.key} className="flex items-center gap-2" style={{ color: t.textMute }}>
-                    <span>{row.label} = {(exampleSum * e.pct / 100).toLocaleString("ru-RU")} ₽</span>
-                    {!e.visible && (
-                      <span className="text-[9px] px-1.5 py-0.5 rounded-full"
-                        style={{ background: "rgba(139,92,246,0.2)", color: "#a78bfa" }}>скрыто</span>
-                    )}
-                  </div>
-                );
-              })}
+            <div className="rounded-xl px-3 py-2.5 mt-1"
+              style={{ background: `${accentColor}08`, border: `1px solid ${accentColor}20` }}>
+              <div className="text-xs font-bold mb-1.5" style={{ color: accentColor }}>
+                Пример при договоре {exampleSum.toLocaleString("ru-RU")} ₽:
+              </div>
+              {tabRules.filter(r => r.enabled && r.pct != null && r.pct > 0).map(r => (
+                <div key={r.key} className="flex items-center justify-between text-xs">
+                  <span style={{ color: t.textMute }}>{r.label}</span>
+                  <span className="font-bold" style={{ color: accentColor }}>
+                    = {(exampleSum * (r.pct ?? 0) / 100).toLocaleString("ru-RU")} ₽
+                  </span>
+                </div>
+              ))}
             </div>
           )}
         </div>
 
-        {/* Кнопки */}
-        <div className="flex gap-2 px-5 pb-5 pt-3 flex-shrink-0"
-          style={{ borderTop: `1px solid ${t.border}` }}>
-          <button onClick={save}
-            className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-white transition"
-            style={{ background: accentColor }}>
-            Сохранить
+        {/* Футер */}
+        <div className="px-5 py-4 flex gap-3" style={{ borderTop: `1px solid ${t.border}` }}>
+          <button onClick={handleSave} disabled={saving || loading}
+            className="flex-1 py-2.5 rounded-xl text-sm font-bold transition"
+            style={{ background: accentColor, color: "#fff", opacity: saving ? 0.7 : 1 }}>
+            {saving ? "Сохранение…" : "Сохранить"}
           </button>
           <button onClick={onClose}
-            className="px-4 py-2.5 rounded-xl text-sm transition"
-            style={{ background: t.surface2, color: t.textMute }}>
+            className="px-4 py-2.5 rounded-xl text-sm font-semibold transition hover:opacity-80"
+            style={{ background: "rgba(255,255,255,0.07)", color: t.textMute }}>
             Отмена
           </button>
         </div>
+
       </div>
     </div>,
     document.body

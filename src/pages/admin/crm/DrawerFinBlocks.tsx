@@ -5,11 +5,9 @@ import { BlockId, CustomFinRow } from "./drawerTypes";
 import { AddFinRowInline, RowWithToggle } from "./DrawerFinRowHelpers";
 import Icon from "@/components/ui/icon";
 import { useTheme } from "./themeContext";
-import {
-  AutoRulesModal, loadAutoRules, loadIncomeRules, loadAutoMode,
-  type CostRowDef,
-} from "./DrawerAutoRulesModal";
+import { AutoRulesModal, type CostRowDef } from "./DrawerAutoRulesModal";
 import { PaymentStatusBadge } from "./PaymentConfirmModal";
+import { useAutoRules, RuleEntry } from "@/hooks/useAutoRules";
 
 const LS_FIN_LABELS = "crm_fin_row_labels";
 
@@ -46,6 +44,7 @@ export function DrawerIncomeBlock({
   const id: BlockId = "income";
   const isHidden = hiddenBlocks.has(id);
   const incomeEdit = editingBlock === id;
+  const { rules: autoRules, auto_mode: autoMode } = useAutoRules();
   const [labels,     setLabels]     = useState<Record<string, string>>(loadFinLabels);
   const [showRules,  setShowRules]  = useState(false);
   const [autoFilled, setAutoFilled] = useState(false);
@@ -72,7 +71,9 @@ export function DrawerIncomeBlock({
   ];
 
   const contractSum = Number(data.contract_sum) || 0;
-  const incomeRulesMap = loadIncomeRules();
+  const incomeRulesMap: Record<string, RuleEntry> = Object.fromEntries(
+    autoRules.filter(r => r.row_type === "income").map(r => [r.key, r])
+  );
 
   // Видимость строки по полю visible из правил
   const isIncomeVisible = (key: string) => {
@@ -89,14 +90,12 @@ export function DrawerIncomeBlock({
   // Применить авто-расчёт доходов
   const applyIncomeAutoWithSum = (sum: number) => {
     if (!sum) return;
-    const r = loadIncomeRules();
     const patch: Partial<Client> = {};
     let hasCustom = false;
 
     incomeRows.forEach(row => {
-      const e = r[row.key];
+      const e = incomeRulesMap[row.key];
       if (!e || !e.enabled || !e.pct) return;
-      // contract_sum — база расчёта, не перезаписываем чтобы избежать цикла
       if (row.key === "contract_sum") return;
       const val = Math.round(sum * e.pct / 100);
       if (row.key === "prepayment" || row.key === "extra_payment") {
@@ -120,7 +119,7 @@ export function DrawerIncomeBlock({
   // Авто-применение при изменении суммы
   const prevSumRef = useRef<number>(-1);
   useEffect(() => {
-    if (!contractSum || !hasIncomeRules || !loadAutoMode()) {
+    if (!contractSum || !hasIncomeRules || !autoMode) {
       prevSumRef.current = contractSum;
       return;
     }
@@ -129,9 +128,8 @@ export function DrawerIncomeBlock({
     prevSumRef.current = contractSum;
 
     if (isFirstRender) {
-      const r = loadIncomeRules();
       const rowsWithRules = incomeRows.filter(row => {
-        const e = r[row.key];
+        const e = incomeRulesMap[row.key];
         return e && e.enabled && e.pct != null && e.pct > 0;
       });
       const targetRowsEmpty = rowsWithRules
@@ -146,7 +144,7 @@ export function DrawerIncomeBlock({
     } else if (sumChanged) {
       applyIncomeAutoWithSum(contractSum);
     }
-  }, [data.id, contractSum]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [data.id, contractSum, autoMode, autoRules]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <>
@@ -179,7 +177,7 @@ export function DrawerIncomeBlock({
             {!hasIncomeRules && (
               <span className="text-[10px]" style={{ color: "#6b7280" }}>Настройте правило →</span>
             )}
-            {hasIncomeRules && loadAutoMode() && (
+            {hasIncomeRules && autoMode && (
               <div className="flex items-center gap-1 px-2 py-0.5 rounded-full ml-auto"
                 style={{ background: "#10b98118", border: "1px solid #10b98135" }}
                 title="Авто-режим включён — доходы пересчитываются при изменении суммы">
@@ -264,6 +262,7 @@ export function DrawerCostsBlock({
   const id: BlockId = "costs";
   const isHidden = hiddenBlocks.has(id);
   const costsEdit = editingBlock === id;
+  const { rules: autoRules, auto_mode: autoMode } = useAutoRules();
   const [labels, setLabels] = useState<Record<string, string>>(loadFinLabels);
   const [showRules, setShowRules] = useState(false);
   const [autoFilled, setAutoFilled] = useState(false);
@@ -292,9 +291,11 @@ export function DrawerCostsBlock({
   ];
 
   const contractSum = Number(data.contract_sum) || 0;
-  const rulesMap = loadAutoRules();
+  const rulesMap: Record<string, RuleEntry> = Object.fromEntries(
+    autoRules.filter(r => r.row_type === "cost").map(r => [r.key, r])
+  );
 
-  // Видимость строки затрат по полю visible из правил (undefined/true = показывать)
+  // Видимость строки затрат по полю visible из правил
   const isCostVisible = (key: string) => {
     const e = rulesMap[key];
     return !e || e.visible !== false;
@@ -306,15 +307,14 @@ export function DrawerCostsBlock({
     return e && e.enabled && e.pct != null && e.pct > 0;
   });
 
-  // Применить авто-расчёт: встроенные строки — через saveWithLog, кастомные — в localStorage
+  // Применить авто-расчёт
   const applyAutoWithSum = (sum: number) => {
     if (!sum) return;
-    const r = loadAutoRules();
     const patch: Partial<Client> = {};
     let hasCustom = false;
 
     costRows.forEach(row => {
-      const e = r[row.key];
+      const e = rulesMap[row.key];
       if (!e || !e.enabled || !e.pct) return;
       const val = Math.round(sum * e.pct / 100);
       if (row.key === "material_cost" || row.key === "measure_cost" || row.key === "install_cost") {
@@ -335,10 +335,10 @@ export function DrawerCostsBlock({
 
   const applyAuto = () => applyAutoWithSum(contractSum);
 
-  // Авто-применение правил
-  const prevContractSumRef = useRef<number>(-1); // -1 = первый рендер
+  // Авто-применение правил при изменении суммы
+  const prevContractSumRef = useRef<number>(-1);
   useEffect(() => {
-    if (!contractSum || !hasRules || !loadAutoMode()) {
+    if (!contractSum || !hasRules || !autoMode) {
       prevContractSumRef.current = contractSum;
       return;
     }
@@ -347,8 +347,6 @@ export function DrawerCostsBlock({
     prevContractSumRef.current = contractSum;
 
     if (isFirstRender) {
-      // При открытии карточки: применяем только для строк с правилами у которых значение пустое
-      const rulesMap = loadAutoRules();
       const rowsWithRules = costRows.filter(row => {
         const e = rulesMap[row.key];
         return e && e.enabled && e.pct != null && e.pct > 0;
@@ -361,10 +359,9 @@ export function DrawerCostsBlock({
       });
       if (rowsWithRules.length > 0 && targetRowsEmpty) applyAutoWithSum(contractSum);
     } else if (sumChanged) {
-      // При изменении суммы — всегда пересчитываем
       applyAutoWithSum(contractSum);
     }
-  }, [data.id, contractSum]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [data.id, contractSum, autoMode, autoRules]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <>
@@ -398,7 +395,7 @@ export function DrawerCostsBlock({
               <span className="text-[10px]" style={{ color: "#6b7280" }}>Настройте правило →</span>
             )}
             {/* Индикатор авто-режима — правый край */}
-            {hasRules && loadAutoMode() && (
+            {hasRules && autoMode && (
               <div className="flex items-center gap-1 px-2 py-0.5 rounded-full ml-auto"
                 style={{ background: "#ef444418", border: "1px solid #ef444435" }}
                 title="Авто-режим включён — затраты пересчитываются при изменении суммы">
