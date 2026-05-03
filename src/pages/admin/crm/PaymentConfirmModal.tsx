@@ -161,9 +161,12 @@ function PaymentConfirmModal({
     existingAmount ? String(Math.round(existingAmount))
     : plannedAmount ? String(Math.round(plannedAmount)) : ""
   );
-  const [receiptUrl, setReceiptUrl] = useState<string | null>(existingReceipt);
-  const [uploading,  setUploading]  = useState(false);
+  const [receiptUrl,  setReceiptUrl]  = useState<string | null>(existingReceipt);
+  const [uploading,   setUploading]   = useState(false);
+  const [noReceipt,   setNoReceipt]   = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+
+  const receiptOk = !!receiptUrl || noReceipt;
 
   const isImage = (u: string) => /\.(jpg|jpeg|png|webp|gif)$/i.test(u);
 
@@ -245,15 +248,33 @@ function PaymentConfirmModal({
 
           {/* Чек — обязательно */}
           <div>
-            <label className="text-xs font-semibold uppercase tracking-wider mb-1.5 flex items-center gap-1.5"
-              style={{ color: receiptUrl ? "#10b981" : "#ef4444" }}>
-              <Icon name={receiptUrl ? "CheckCircle2" : "AlertCircle"} size={12} />
-              Квитанция / чек
-              <span className="font-normal text-[10px]" style={{ color: receiptUrl ? "#10b981" : "#ef4444" }}>
-                (обязательно)
-              </span>
-            </label>
-            {receiptUrl ? (
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="text-xs font-semibold uppercase tracking-wider flex items-center gap-1.5"
+                style={{ color: receiptUrl ? "#10b981" : noReceipt ? t.textMute : "#ef4444" }}>
+                <Icon name={receiptUrl ? "CheckCircle2" : noReceipt ? "MinusCircle" : "AlertCircle"} size={12} />
+                Квитанция / чек
+                <span className="font-normal text-[10px]">
+                  {noReceipt ? "(пропущено)" : "(обязательно)"}
+                </span>
+              </label>
+              {/* Чекбокс "Нет чека" */}
+              <button onClick={() => { setNoReceipt(v => !v); if (!noReceipt) setReceiptUrl(null); }}
+                className="flex items-center gap-1.5 text-[10px] font-semibold transition hover:opacity-80"
+                style={{ color: noReceipt ? "#a78bfa" : t.textMute }}>
+                <div className="w-3.5 h-3.5 rounded flex items-center justify-center flex-shrink-0 transition"
+                  style={{ background: noReceipt ? "#8b5cf6" : "transparent", border: `1.5px solid ${noReceipt ? "#8b5cf6" : t.textMute}` }}>
+                  {noReceipt && <Icon name="Check" size={9} style={{ color: "#fff" }} />}
+                </div>
+                Нет чека
+              </button>
+            </div>
+            {noReceipt ? (
+              <div className="flex items-center gap-2 px-3 py-2.5 rounded-xl"
+                style={{ background: "rgba(139,92,246,0.08)", border: "1px dashed rgba(139,92,246,0.25)" }}>
+                <Icon name="Info" size={13} style={{ color: "#a78bfa", flexShrink: 0 }} />
+                <span className="text-xs" style={{ color: "#a78bfa" }}>Платёж будет подтверждён без чека</span>
+              </div>
+            ) : receiptUrl ? (
               <div className="relative rounded-xl overflow-hidden"
                 style={{ border: "1px solid rgba(16,185,129,0.4)" }}>
                 {isImage(receiptUrl) ? (
@@ -295,7 +316,7 @@ function PaymentConfirmModal({
           </button>
           <button
             onClick={() => onConfirm(parseFloat(amount) || 0, receiptUrl)}
-            disabled={!amount || parseFloat(amount) <= 0 || !receiptUrl}
+            disabled={!amount || parseFloat(amount) <= 0 || !receiptOk}
             className="flex-2 flex items-center justify-center gap-1.5 px-5 py-2.5 rounded-xl text-sm font-bold transition hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed"
             style={{ background: "#10b981", color: "#fff", flex: 2 }}>
             <Icon name="CheckCircle2" size={14} />
