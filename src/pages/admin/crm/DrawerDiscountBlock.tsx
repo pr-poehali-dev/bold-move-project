@@ -10,6 +10,7 @@ import {
 } from "./discountBlockTypes";
 import { DiscountSliderPanel } from "./DiscountSliderPanel";
 import { DiscountAnalysisModal } from "./DiscountAnalysisModal";
+import { useDiscountHistory } from "@/hooks/useDiscountHistory";
 
 const GET_PRICES_URL = (func2url as Record<string, string>)["get-prices"];
 
@@ -37,6 +38,9 @@ export function DrawerDiscountBlock({ data, customFinRows, onContractSumUpdated 
   const [analysis,        setAnalysis]        = useState<ComplexityAnalysis | null>(null);
 
   const fmt = (n: number) => Math.round(n).toLocaleString("ru-RU");
+
+  // История скидок
+  const { history: discountHistory, addEntry, deactivateLast, totalDiscountAmount, lastEntry } = useDiscountHistory(data.id);
 
   // Настройки управления риском — реактивно обновляются при изменении localStorage
   const [risk, setRisk] = useState<RiskSettings>(loadRiskSettings);
@@ -268,16 +272,17 @@ export function DrawerDiscountBlock({ data, customFinRows, onContractSumUpdated 
     }
   };
 
-  // Сбросить скидку — восстановить оригинальную сумму
+  // Сбросить последнюю скидку из истории
   const resetDiscount = async () => {
-    const discountPct = Number(data.discount_pct) || 0;
-    const discountAmt = Number(data.discount_amount) || 0;
-    if (!discountPct || !discountAmt) return;
+    if (!lastEntry) return;
     setApplying(true);
     try {
       const d = await fetch(`${AUTH_URL}?action=estimate-by-chat&chat_id=${data.id}`).then(r => r.json());
       if (!d.estimate) return;
-      const mult = 1 / (1 - discountPct / 100);
+      // Восстанавливаем сумму до последней скидки напрямую (не пересчёт позиций)
+      const targetSum = lastEntry.contract_sum_before;
+      const currentSum = Number(data.contract_sum) || 0;
+      const mult = currentSum > 0 ? targetSum / currentSum : 1;
       const newBlocks: EstimateBlock[] = d.estimate.blocks.map((block: EstimateBlock) => ({
         ...block,
         items: block.items.map(item => {
@@ -302,11 +307,17 @@ export function DrawerDiscountBlock({ data, customFinRows, onContractSumUpdated 
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ blocks: newBlocks, totals: newTotals }),
       });
+      // Вычисляем суммарную скидку без последней записи
+      const remainingHistory = discountHistory.slice(0, -1);
+      const remainingPct = remainingHistory.length > 0
+        ? remainingHistory[remainingHistory.length - 1].discount_pct : null;
+      const remainingAmt = remainingHistory.reduce((s, e) => s + Number(e.discount_amount), 0);
       await crmFetch("clients", { method: "PUT", body: JSON.stringify({
         contract_sum: standard,
-        discount_pct: null,
-        discount_amount: null,
+        discount_pct: remainingPct,
+        discount_amount: remainingAmt > 0 ? remainingAmt : null,
       }) }, { id: String(data.id) });
+      await deactivateLast();
       onContractSumUpdated?.(standard);
       setApplied(false);
     } finally { setApplying(false); }
@@ -346,11 +357,18 @@ export function DrawerDiscountBlock({ data, customFinRows, onContractSumUpdated 
         body: JSON.stringify({ blocks: newBlocks, totals: newTotals }),
       });
       const discountAmt = Math.round(baseIncome * discount / 100);
+      const contractBefore = Number(data.contract_sum) || 0;
       await crmFetch("clients", { method: "PUT", body: JSON.stringify({
         contract_sum: standard,
         discount_pct: discount,
         discount_amount: discountAmt,
       }) }, { id: String(data.id) });
+      await addEntry({
+        discount_pct: discount,
+        discount_amount: discountAmt,
+        contract_sum_before: contractBefore,
+        contract_sum_after: standard,
+      });
       onContractSumUpdated?.(standard);
       setApplied(true);
       setDiscount(0);
@@ -388,8 +406,10 @@ export function DrawerDiscountBlock({ data, customFinRows, onContractSumUpdated 
         onAnalysisClick={runComplexityAnalysis}
         onApplyDiscount={applyDiscount}
         onResetDiscount={resetDiscount}
-        hasAppliedDiscount={!!(data.discount_pct && data.discount_pct > 0)}
-        appliedDiscountPct={Number(data.discount_pct) || 0}
+        hasAppliedDiscount={discountHistory.length > 0}
+        appliedDiscountPct={lastEntry?.discount_pct ?? 0}
+        discountHistory={discountHistory}
+        totalDiscountAmount={totalDiscountAmount}
         setApplied={setApplied}
       />
 

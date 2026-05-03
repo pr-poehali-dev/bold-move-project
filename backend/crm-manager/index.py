@@ -809,6 +809,54 @@ def handler(event: dict, context) -> dict:
                 conn.commit()
                 return ok({"deleted": True})
 
+        # ── discount-history ──────────────────────────────────────────────────
+        if resource == "discount-history":
+            cid = qs.get("client_id")
+            if not cid:
+                return err("client_id required")
+            cid = int(cid)
+
+            if method == "GET":
+                cur.execute(f"""
+                    SELECT id, discount_pct, discount_amount, contract_sum_before, contract_sum_after, is_active, created_at
+                    FROM {SCHEMA}.discount_history
+                    WHERE client_id = %s AND is_active = true
+                    ORDER BY created_at ASC
+                """, (cid,))
+                cols = [d[0] for d in cur.description]
+                return ok([dict(zip(cols, r)) for r in cur.fetchall()])
+
+            if method == "POST":
+                pct    = body.get("discount_pct", 0)
+                amount = body.get("discount_amount", 0)
+                before = body.get("contract_sum_before", 0)
+                after  = body.get("contract_sum_after", 0)
+                if not pct or not amount:
+                    return err("discount_pct and discount_amount required")
+                comp = company_id if company_id is not None else 0
+                cur.execute(f"""
+                    INSERT INTO {SCHEMA}.discount_history
+                        (client_id, company_id, discount_pct, discount_amount, contract_sum_before, contract_sum_after)
+                    VALUES (%s, %s, %s, %s, %s, %s)
+                    RETURNING id
+                """, (cid, comp, pct, amount, before, after))
+                new_id = cur.fetchone()[0]
+                conn.commit()
+                return ok({"id": new_id})
+
+            if method == "PUT":
+                # Пометить запись неактивной (мягкое удаление)
+                rid = qs.get("id")
+                if not rid:
+                    return err("id required")
+                cur.execute(f"""
+                    UPDATE {SCHEMA}.discount_history
+                    SET is_active = false
+                    WHERE id = %s AND client_id = %s
+                """, (int(rid), cid))
+                conn.commit()
+                return ok({"deactivated": True})
+
         return err("unknown resource", 404)
 
     except Exception as e:

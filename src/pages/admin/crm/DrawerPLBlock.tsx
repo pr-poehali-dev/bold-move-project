@@ -2,6 +2,7 @@ import Icon from "@/components/ui/icon";
 import { useTheme } from "./themeContext";
 import { Client } from "./crmApi";
 import { BlockId, CustomFinRow } from "./drawerTypes";
+import { useDiscountHistory } from "@/hooks/useDiscountHistory";
 
 export function DrawerPLBlock({ data, isHidden, toggleHidden, customFinRows }: {
   data: Client;
@@ -11,6 +12,7 @@ export function DrawerPLBlock({ data, isHidden, toggleHidden, customFinRows }: {
 }) {
   const t = useTheme();
   const fmt = (n: number) => n.toLocaleString("ru-RU");
+  const { history: discountHistory } = useDiscountHistory(data.id);
 
   const customCostRows = customFinRows
     .filter(r => r.block === "costs")
@@ -30,14 +32,16 @@ export function DrawerPLBlock({ data, isHidden, toggleHidden, customFinRows }: {
   ].filter(r => r.value > 0);
   const plCosts = costRows.reduce((s, r) => s + r.value, 0);
 
-  const contractSum  = Number(data.contract_sum)   || 0;
-  const discountAmt  = Number(data.discount_amount) || 0;
-  const discountPct  = Number(data.discount_pct)    || 0;
+  const contractSum  = Number(data.contract_sum) || 0;
   const plIncome     = contractSum + (customIncomeRows.reduce((s, r) => s + r.value, 0));
 
   const incomeRows: { label: string; value: number; isDiscount?: boolean }[] = [
     { label: "Договор", value: contractSum },
-    ...(discountAmt > 0 ? [{ label: `Скидка ${discountPct}%`, value: -discountAmt, isDiscount: true }] : []),
+    ...discountHistory.map((e, i) => ({
+      label: `Скидка ${i + 1} (${e.discount_pct}%)`,
+      value: -Number(e.discount_amount),
+      isDiscount: true,
+    })),
     ...customIncomeRows,
   ].filter(r => r.isDiscount || r.value > 0);
 

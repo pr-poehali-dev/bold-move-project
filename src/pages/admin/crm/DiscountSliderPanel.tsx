@@ -1,6 +1,7 @@
 import Icon from "@/components/ui/icon";
 import { useTheme } from "./themeContext";
 import { AiRisk, RiskSettings } from "./discountBlockTypes";
+import { DiscountEntry } from "@/hooks/useDiscountHistory";
 
 interface Props {
   discount: number;
@@ -31,6 +32,8 @@ interface Props {
   onResetDiscount: () => void;
   hasAppliedDiscount: boolean;
   appliedDiscountPct: number;
+  discountHistory: DiscountEntry[];
+  totalDiscountAmount: number;
   setApplied: (v: boolean) => void;
 }
 
@@ -43,7 +46,8 @@ export function DiscountSliderPanel({
   effectiveMax, sliderMax, zoneLow, zoneMid,
   risk, aiRisk, aiError,
   fmt, onAnalysisClick, onApplyDiscount, onResetDiscount,
-  hasAppliedDiscount, appliedDiscountPct, setApplied,
+  hasAppliedDiscount, appliedDiscountPct,
+  discountHistory, totalDiscountAmount, setApplied,
 }: Props) {
   const t = useTheme();
 
@@ -132,21 +136,51 @@ export function DiscountSliderPanel({
             <div className="text-[10px] text-emerald-300">Скидка применена — смета и P&L обновлены</div>
           </div>
         )}
-        {hasAppliedDiscount && !applied && (
-          <div className="flex items-center justify-between gap-3 px-3 py-2.5 rounded-xl"
-            style={{ background: "#f59e0b10", border: "1px solid #f59e0b30" }}>
-            <div className="flex items-center gap-2 min-w-0">
-              <Icon name="Tag" size={13} style={{ color: "#f59e0b", flexShrink: 0 }} />
-              <span className="text-[11px] font-bold text-yellow-400">
-                Скидка {appliedDiscountPct}% применена к договору
+        {hasAppliedDiscount && !applied && discountHistory.length > 0 && (
+          <div className="rounded-xl overflow-hidden"
+            style={{ border: "1px solid #f59e0b30", background: "#f59e0b08" }}>
+            {/* Шапка */}
+            <div className="flex items-center justify-between px-3 py-2"
+              style={{ borderBottom: "1px solid #f59e0b20" }}>
+              <div className="flex items-center gap-2">
+                <Icon name="History" size={12} style={{ color: "#f59e0b" }} />
+                <span className="text-[10px] font-bold uppercase tracking-wider text-yellow-400">
+                  История скидок ({discountHistory.length})
+                </span>
+              </div>
+              <span className="text-[10px] font-bold text-yellow-300">
+                −{fmt(totalDiscountAmount)} ₽ итого
               </span>
             </div>
-            <button onClick={onResetDiscount} disabled={applying}
-              className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-bold transition hover:opacity-80 flex-shrink-0 disabled:opacity-40"
-              style={{ background: "#ef444418", color: "#ef4444", border: "1px solid #ef444435" }}>
-              <Icon name="RotateCcw" size={10} />
-              Сбросить
-            </button>
+            {/* Строки */}
+            <div className="divide-y" style={{ borderColor: "#f59e0b15" }}>
+              {discountHistory.map((entry, i) => {
+                const isLast = i === discountHistory.length - 1;
+                const date = new Date(entry.created_at).toLocaleDateString("ru-RU", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+                return (
+                  <div key={entry.id} className="flex items-center justify-between gap-2 px-3 py-2">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md flex-shrink-0"
+                        style={{ background: "#f59e0b20", color: "#f59e0b" }}>
+                        −{entry.discount_pct}%
+                      </span>
+                      <span className="text-[10px] text-white/40 truncate">{date}</span>
+                      <span className="text-[10px] font-semibold text-yellow-300/70 whitespace-nowrap">
+                        −{fmt(entry.discount_amount)} ₽
+                      </span>
+                    </div>
+                    {isLast && (
+                      <button onClick={onResetDiscount} disabled={applying}
+                        className="flex items-center gap-1 px-2 py-1 rounded-lg text-[9px] font-bold transition hover:opacity-80 flex-shrink-0 disabled:opacity-40"
+                        style={{ background: "#ef444415", color: "#ef4444", border: "1px solid #ef444430" }}>
+                        <Icon name="RotateCcw" size={9} />
+                        Откатить
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
           </div>
         )}
 
