@@ -123,12 +123,20 @@ export const DEFAULT_TAGS = [
   { label: "Важно",   color: "#f59e0b" },
 ];
 
+export interface ClientStatus {
+  id: number;
+  name: string;
+  color: string;
+  sort_order: number;
+}
+
 export interface Client {
   id: number;
   session_id: string;
   client_name: string;
   phone: string;
   status: string;
+  client_status: string | null;
   measure_date: string | null;
   install_date: string | null;
   notes: string | null;

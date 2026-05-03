@@ -1,4 +1,4 @@
-import { STATUS_LABELS, STATUS_COLORS, LEAD_STATUSES, ORDER_STATUSES } from "./crmApi";
+import { STATUS_LABELS, STATUS_COLORS, LEAD_STATUSES, ORDER_STATUSES, ClientStatus } from "./crmApi";
 import { useTheme } from "./themeContext";
 import Icon from "@/components/ui/icon";
 
@@ -10,24 +10,27 @@ export interface FiltersState {
   sourceFilter: string;
   dateFrom: string;
   dateTo: string;
+  clientStatusFilter: string;
 }
 
 export function ClientsFilters({
-  filters, onChange, activeFilters, onClear,
+  filters, onChange, activeFilters, onClear, statuses = [],
 }: {
   filters: FiltersState;
   onChange: (patch: Partial<FiltersState>) => void;
   activeFilters: number;
   onClear: () => void;
+  statuses?: ClientStatus[];
 }) {
   const t = useTheme();
-  const { search, statusFilter, sourceFilter, dateFrom, dateTo } = filters;
+  const { search, statusFilter, sourceFilter, dateFrom, dateTo, clientStatusFilter } = filters;
+  const activeClientStatus = statuses.find(s => s.name === clientStatusFilter);
 
   return (
     <div className="rounded-2xl p-3 space-y-2"
       style={{ background: t.surface, border: `1px solid ${t.border}` }}>
 
-      {/* Поиск — всегда во всю ширину */}
+      {/* Поиск */}
       <div className="relative w-full">
         <Icon name="Search" size={13} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: t.textMute }} />
         <input value={search} onChange={e => onChange({ search: e.target.value })}
@@ -36,17 +39,33 @@ export function ClientsFilters({
           style={{ background: t.surface2, border: `1px solid ${t.border}`, color: t.text }} />
       </div>
 
-      {/* Фильтры — горизонтальный скролл на мобиле */}
+      {/* Фильтры */}
       <div className="flex items-center gap-2 overflow-x-auto pb-0.5">
 
-        {/* Статус */}
+        {/* Статус клиента (кастомный) */}
+        {statuses.length > 0 && (
+          <div className="relative flex-shrink-0">
+            <select value={clientStatusFilter} onChange={e => onChange({ clientStatusFilter: e.target.value })}
+              className="appearance-none pl-3 pr-7 py-2 rounded-xl text-xs font-semibold focus:outline-none transition cursor-pointer"
+              style={activeClientStatus
+                ? { background: activeClientStatus.color + "18", color: activeClientStatus.color, border: `1px solid ${activeClientStatus.color}40` }
+                : { background: t.surface2, color: t.textMute, border: `1px solid ${t.border}` }}>
+              <option value="">Все клиенты</option>
+              {statuses.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
+            </select>
+            <Icon name="ChevronDown" size={11} className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none"
+              style={{ color: activeClientStatus ? activeClientStatus.color : t.textMute }} />
+          </div>
+        )}
+
+        {/* Статус воронки */}
         <div className="relative flex-shrink-0">
           <select value={statusFilter} onChange={e => onChange({ statusFilter: e.target.value })}
             className="appearance-none pl-3 pr-7 py-2 rounded-xl text-xs font-semibold focus:outline-none transition cursor-pointer"
             style={statusFilter
               ? { background: STATUS_COLORS[statusFilter] + "18", color: STATUS_COLORS[statusFilter], border: `1px solid ${STATUS_COLORS[statusFilter]}40` }
               : { background: t.surface2, color: t.textMute, border: `1px solid ${t.border}` }}>
-            <option value="">Все статусы</option>
+            <option value="">Этап воронки</option>
             {ALL_STATUSES.map(s => <option key={s} value={s}>{STATUS_LABELS[s]}</option>)}
           </select>
           <Icon name="ChevronDown" size={11} className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none"

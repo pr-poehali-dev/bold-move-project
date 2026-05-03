@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { crmFetch, STATUS_LABELS, STATUS_COLORS, Client } from "./crmApi";
+import { crmFetch, STATUS_LABELS, STATUS_COLORS, Client, ClientStatus } from "./crmApi";
 import Icon from "@/components/ui/icon";
 import { useTheme } from "./themeContext";
 import EstimateEditor from "./EstimateEditor";
@@ -25,9 +25,10 @@ interface Props {
   canFieldFinance?:  boolean;
   canFieldFiles?:    boolean;
   canFieldCancel?:   boolean;
+  statuses?:         ClientStatus[];
 }
 
-export default function ClientDrawer({ client, allClientOrders, onClose, onUpdated, onDeleted, isLocalCard, defaultTab = "client", defaultOrderId, canEdit = true, canOrdersEdit = true, canFinance = true, canFiles = true, canFieldContacts = true, canFieldAddress = true, canFieldDates = true, canFieldFinance = true, canFieldFiles = true, canFieldCancel = true }: Props) {
+export default function ClientDrawer({ client, allClientOrders, onClose, onUpdated, onDeleted, isLocalCard, defaultTab = "client", defaultOrderId, canEdit = true, canOrdersEdit = true, canFinance = true, canFiles = true, canFieldContacts = true, canFieldAddress = true, canFieldDates = true, canFieldFinance = true, canFieldFiles = true, canFieldCancel = true, statuses = [] }: Props) {
   const t = useTheme();
   const [data, setData]               = useState<Client>(client);
   const [saving, setSaving]           = useState(false);
@@ -132,12 +133,31 @@ export default function ClientDrawer({ client, allClientOrders, onClose, onUpdat
                 </div>
               )}
 
-              {/* Статус + сумма */}
+              {/* Статус + статус клиента + сумма */}
               <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
                 <span className="text-[10px] sm:text-[11px] px-1.5 sm:px-2 py-0.5 rounded-md font-semibold flex-shrink-0"
                   style={{ background: displayColor + "25", color: displayColor }}>
                   {STATUS_LABELS[ord.status] || ord.status}
                 </span>
+                {/* Выбор статуса клиента */}
+                {statuses.length > 0 && (
+                  <div className="relative flex-shrink-0">
+                    <select
+                      value={data.client_status || ""}
+                      onChange={e => save({ client_status: e.target.value || null })}
+                      disabled={!canEdit}
+                      className="appearance-none text-[10px] sm:text-[11px] px-2 py-0.5 rounded-md font-semibold focus:outline-none cursor-pointer transition pr-5"
+                      style={data.client_status
+                        ? (() => { const s = statuses.find(s => s.name === data.client_status); return s ? { background: s.color + "25", color: s.color, border: `1px solid ${s.color}40` } : { background: "rgba(255,255,255,0.07)", color: t.textMute }; })()
+                        : { background: "rgba(255,255,255,0.07)", color: t.textMute, border: "1px solid transparent" }
+                      }>
+                      <option value="">— Статус клиента</option>
+                      {statuses.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
+                    </select>
+                    <Icon name="ChevronDown" size={9} className="absolute right-1 top-1/2 -translate-y-1/2 pointer-events-none"
+                      style={{ color: data.client_status ? statuses.find(s => s.name === data.client_status)?.color : t.textMute }} />
+                  </div>
+                )}
                 {canFinance && ord.contract_sum ? (
                   <span className="text-xs font-bold text-emerald-400 flex-shrink-0">
                     {ord.contract_sum.toLocaleString("ru-RU")} ₽

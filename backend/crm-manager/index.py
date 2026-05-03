@@ -36,7 +36,7 @@ def err(msg, code=400):
     return {"statusCode": code, "headers": {**CORS, "Content-Type": "application/json"}, "body": json.dumps({"error": msg}, ensure_ascii=False)}
 
 ALL_CLIENT_FIELDS = [
-    "client_name", "phone", "status", "sub_status", "measure_date", "install_date",
+    "client_name", "phone", "status", "sub_status", "client_status", "measure_date", "install_date",
     "notes", "address", "area", "budget", "source",
     "contract_sum", "prepayment", "extra_payment", "extra_agreement_sum",
     "responsible_phone", "map_link", "tags",
@@ -169,7 +169,7 @@ def handler(event: dict, context) -> dict:
                 mode = qs.get("mode", "")  # "leads" | "orders" | "" = all
 
                 sql = f"""
-                    SELECT id, session_id, client_name, phone, status, sub_status,
+                    SELECT id, session_id, client_name, phone, status, sub_status, client_status,
                            measure_date, install_date, notes, address, area, budget, source, created_at,
                            contract_sum, prepayment, extra_payment, extra_agreement_sum,
                            responsible_phone, map_link, tags,
@@ -210,16 +210,17 @@ def handler(event: dict, context) -> dict:
 
                 cur.execute(
                     f"""INSERT INTO {SCHEMA}.live_chats
-                        (session_id, client_name, phone, status, measure_date, install_date,
+                        (session_id, client_name, phone, status, client_status, measure_date, install_date,
                          notes, address, area, budget, source,
                          contract_sum, prepayment, responsible_phone, map_link, tags, company_id)
-                        VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                        VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
                         RETURNING id""",
                     (
                         body.get("session_id", f"manual_{datetime.now().timestamp()}"),
                         body.get("client_name", ""),
                         body.get("phone", ""),
                         body.get("status", "new"),
+                        body.get("client_status"),
                         body.get("measure_date"),
                         body.get("install_date"),
                         body.get("notes", ""),
@@ -336,6 +337,78 @@ def handler(event: dict, context) -> dict:
                 cur.execute(f"UPDATE {SCHEMA}.live_chats SET status='deleted' WHERE id=%s", (int(cid),))
                 conn.commit()
                 return ok({"deleted": True})
+
+        # ── CLIENT STATUSES ───────────────────────────────────────────────────
+        if resource == "client_statuses":
+            cid_filter = company_id if company_id is not None else 2  # мастер видит компанию 2
+
+            if method == "GET":
+                cur.execute(f"""
+                    SELECT id, name, color, sort_order FROM {SCHEMA}.client_statuses
+                    WHERE company_id = %s ORDER BY sort_order, id
+                """, (cid_filter,))
+                rows = [{"id": r[0], "name": r[1], "color": r[2], "sort_order": r[3]} for r in cur.fetchall()]
+                # Если нет статусов — вернуть дефолтные
+                if not rows:
+                    defaults = [
+                        ("Новый", "#6366f1"), ("Активный", "#10b981"),
+                        ("VIP", "#f59e0b"), ("Холодный", "#64748b"), ("Отказник", "#ef4444"),
+                    ]
+                    for i, (name, color) in enumerate(defaults):
+                        cur.execute(f"""
+                            INSERT INTO {SCHEMA}.client_statuses (company_id, name, color, sort_order)
+                            VALUES (%s, %s, %s, %s) RETURNING id
+                        """, (cid_filter, name, color, i))
+                        new_id = cur.fetchone()[0]
+                        rows.append({"id": new_id, "name": name, "color": color, "sort_order": i})
+                    conn.commit()
+                return ok(rows)
+
+            if method == "POST":
+                name = (body.get("name") or "").strip()
+                color = body.get("color", "#7c3aed")
+                if not name:
+                    return err("name required")
+                cur.execute(f"SELECT COALESCE(MAX(sort_order)+1,0) FROM {SCHEMA}.client_statuses WHERE company_id=%s", (cid_filter,))
+                sort_order = cur.fetchone()[0]
+                cur.execute(f"""
+                    INSERT INTO {SCHEMA}.client_statuses (company_id, name, color, sort_order)
+                    VALUES (%s,%s,%s,%s) RETURNING id
+                """, (cid_filter, name, color, sort_order))
+                new_id = cur.fetchone()[0]
+                conn.commit()
+                return ok({"id": new_id, "name": name, "color": color, "sort_order": sort_order})
+
+            if method == "PUT":
+                sid = qs.get("id") or body.get("id")
+                if not sid:
+                    return err("id required")
+                sets, vals = [], []
+                if "name" in body:
+                    sets.append("name=%s"); vals.append(body["name"])
+                if "color" in body:
+                    sets.append("color=%s"); vals.append(body["color"])
+                if "sort_order" in body:
+                    sets.append("sort_order=%s"); vals.append(body["sort_order"])
+                if not sets:
+                    return err("nothing to update")
+                vals.extend([int(sid), cid_filter])
+                cur.execute(f"UPDATE {SCHEMA}.client_statuses SET {', '.join(sets)} WHERE id=%s AND company_id=%s", vals)
+                conn.commit()
+                return ok({"ok": True})
+
+            if method == "DELETE":
+                sid = qs.get("id") or body.get("id")
+                if not sid:
+                    return err("id required")
+                # Снимаем статус у клиентов которые его используют
+                cur.execute(f"SELECT name FROM {SCHEMA}.client_statuses WHERE id=%s AND company_id=%s", (int(sid), cid_filter))
+                row = cur.fetchone()
+                if row:
+                    cur.execute(f"UPDATE {SCHEMA}.live_chats SET client_status=NULL WHERE client_status=%s AND company_id=%s", (row[0], cid_filter))
+                cur.execute(f"DELETE FROM {SCHEMA}.client_statuses WHERE id=%s AND company_id=%s", (int(sid), cid_filter))
+                conn.commit()
+                return ok({"ok": True})
 
         # ── STATS ─────────────────────────────────────────────────────────────
         if resource == "stats":
