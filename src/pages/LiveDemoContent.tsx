@@ -119,8 +119,8 @@ export default function LiveDemoContent({
                       <span className="text-white/75 truncate">{it.name}</span>
                     </div>
                     <div className="flex items-center gap-3 flex-shrink-0">
-                      <span className="text-white/30 font-mono text-[10px]">{it.qty}</span>
-                      <span className="text-white font-bold tabular-nums">{it.price.toLocaleString("ru-RU")} ₽</span>
+                      <span className="text-white/30 font-mono text-[10px] w-12 text-right">{it.qty}</span>
+                      <span className="text-white font-bold tabular-nums w-20 text-right">{it.price.toLocaleString("ru-RU")} ₽</span>
                     </div>
                   </div>
                 ))}
