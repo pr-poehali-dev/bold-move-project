@@ -74,13 +74,14 @@ export default function EstimateTable({ text, items, onSaveRequest }: {
     ];
   }, [blocks, findItem, pricing, parsed.totals]);
 
-  const { finalPhrase } = parsed;
-  const totals = computedTotals;
   const [downloading,   setDownloading]   = useState(false);
   const [saving,        setSaving]        = useState(false);
   const [saved,         setSaved]         = useState(false);
   const [saveError,     setSaveError]     = useState("");
   const [showAuthForPdf, setShowAuthForPdf] = useState(false);
+
+  const { finalPhrase } = parsed;
+  const totals = computedTotals;
 
   const handleDownload = async () => {
     if (!user) { setShowAuthForPdf(true); return; }
