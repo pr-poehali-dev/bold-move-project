@@ -88,18 +88,19 @@ export default function EstimateTable({ text, items, onSaveRequest }: {
     setDownloading(true);
     try {
       const { generateEstimatePdf } = await import("./estimatePdf");
-      // Для WL — бренд из BrandContext; для авторизованного бизнеса — из user.brand
+      // WL-компания (isCustom) → бренд из BrandContext (загружен по ?c=ID)
+      // Авторизованный бизнес → только данные из его профиля, без fallback на DEFAULT_BRAND
       const pdfBrand = isCustom ? brand : (user?.brand ? {
-        ...brand,
-        company_name:       user.company_name         || brand.company_name,
-        support_phone:      user.brand.support_phone  || brand.support_phone,
-        website:            user.brand.website        || brand.website,
-        pdf_footer_address: user.brand.pdf_footer_address || user.company_addr || brand.pdf_footer_address,
-        working_hours:      user.brand.working_hours  || brand.working_hours,
-        telegram_url:       user.brand.telegram_url   || brand.telegram_url,
-        brand_color:        user.brand.brand_color    || brand.brand_color,
-        brand_logo_url:     user.brand.brand_logo_url || brand.brand_logo_url,
-        pdf_text_color:     user.brand.pdf_text_color || brand.pdf_text_color,
+        ...brand,                          // базовые поля (логотип MosPotolki и т.п.)
+        company_name:       user.company_name                  || undefined,
+        support_phone:      user.brand.support_phone           || undefined,
+        website:            user.brand.website                 || undefined,
+        pdf_footer_address: user.brand.pdf_footer_address || user.company_addr || undefined,
+        working_hours:      user.brand.working_hours           || undefined,
+        telegram_url:       user.brand.telegram_url            || undefined,
+        brand_color:        user.brand.brand_color             || brand.brand_color,
+        brand_logo_url:     user.brand.brand_logo_url          || brand.brand_logo_url,
+        pdf_text_color:     user.brand.pdf_text_color          || brand.pdf_text_color,
       } : brand);
       await generateEstimatePdf(parsed, { brand: pdfBrand, isCustom });
     } catch {
