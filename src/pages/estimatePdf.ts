@@ -20,22 +20,22 @@ interface PdfOptions {
 
 async function fetchPdfBlob(parsed: ParsedEstimate, opt?: PdfOptions): Promise<Blob> {
   const body: Record<string, unknown> = { ...parsed };
-  if (opt?.isCustom && opt.brand) {
+  if (opt?.brand) {
     body.company_id = opt.brand.company_id ?? undefined;
     body.brand = {
-      company_name:       opt.brand.company_name,
-      brand_logo_url:     opt.brand.brand_logo_url,
-      brand_logo_url_dark: opt.brand.brand_logo_url_dark,
+      company_name:           opt.brand.company_name,
+      brand_logo_url:         opt.brand.brand_logo_url,
+      brand_logo_url_dark:    opt.brand.brand_logo_url_dark,
       brand_logo_orientation: opt.brand.brand_logo_orientation,
-      pdf_logo_bg:        opt.brand.pdf_logo_bg,
-      brand_color:        opt.brand.brand_color,
-      pdf_text_color:     opt.brand.pdf_text_color,
-      support_phone:      opt.brand.support_phone,
-      website:            opt.brand.website,
-      telegram:           opt.brand.telegram_url,
-      max_url:            opt.brand.max_url,
-      working_hours:      opt.brand.working_hours,
-      pdf_footer_address: opt.brand.pdf_footer_address,
+      pdf_logo_bg:            opt.brand.pdf_logo_bg,
+      brand_color:            opt.brand.brand_color,
+      pdf_text_color:         opt.brand.pdf_text_color,
+      support_phone:          opt.brand.support_phone,
+      website:                opt.brand.website,
+      telegram:               opt.brand.telegram_url,
+      max_url:                opt.brand.max_url,
+      working_hours:          opt.brand.working_hours,
+      pdf_footer_address:     opt.brand.pdf_footer_address,
     };
   }
 
@@ -57,8 +57,7 @@ export async function generateEstimatePdf(parsed: ParsedEstimate, opt?: PdfOptio
   const today = new Date().toLocaleDateString("ru-RU", {
     day: "2-digit", month: "2-digit", year: "numeric",
   });
-  // Имя файла: бренд компании или дефолт MosPotolki
-  const brandSlug = (opt?.isCustom && opt.brand?.company_name)
+  const brandSlug = opt?.brand?.company_name
     ? opt.brand.company_name.replace(/[^a-zA-Z0-9А-Яа-я]+/g, "_").replace(/^_+|_+$/g, "")
     : "MosPotolki";
   const a = document.createElement("a");
