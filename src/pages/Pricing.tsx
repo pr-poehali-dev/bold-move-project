@@ -3,6 +3,7 @@ import PricingHeroAndTrial from "./pricing/PricingHeroAndTrial";
 import PricingPackages from "./pricing/PricingPackages";
 import PricingFeatures from "./pricing/PricingFeatures";
 import PricingCompare from "./pricing/PricingCompare";
+import PricingEcosystem from "./pricing/PricingEcosystem";
 import PricingPayment from "./pricing/PricingPayment";
 import PricingOwnAgent from "./pricing/PricingOwnAgent";
 
@@ -22,6 +23,7 @@ export default function Pricing() {
       <PricingPackages selected={selected} onSelect={choosePackage} />
       <PricingFeatures />
       <PricingCompare />
+      <PricingEcosystem />
       <PricingOwnAgent />
       <PricingPayment selectedId={selected} />
     </div>

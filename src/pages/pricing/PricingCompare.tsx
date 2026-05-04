@@ -22,17 +22,16 @@ const ROWS = [
     ],
   },
   {
-    category: "Встройка на ваш сайт",
+    category: "Ваш полноценный сервис",
     items: [
-      { label: "Агент на вашем домене",             business: false, wl: true  },
-      { label: "Ссылка potolki-kazan.ru/agent",     business: false, wl: true  },
+      { label: "Ссылка ai-potolki.ru/ваш агент",    business: false, wl: true  },
       { label: "Клиенты думают — это ваш сервис",   business: false, wl: true  },
     ],
   },
   {
     category: "Интеграции",
     items: [
-      { label: "Уведомления о заявках в Telegram",  business: false, wl: true  },
+      { label: "Уведомления о заявках в Telegram или Max", business: false, wl: true  },
       { label: "Ваш бот — ваши заявки напрямую",    business: false, wl: true  },
     ],
   },
