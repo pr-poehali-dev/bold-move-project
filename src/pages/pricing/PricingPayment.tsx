@@ -98,14 +98,15 @@ export default function PricingPayment({ selectedId }: Props) {
                   href="https://t.me/poehalidev"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex items-center justify-center gap-2 rounded-2xl px-7 py-3 transition-all hover:-translate-y-0.5 w-full lg:w-auto whitespace-nowrap"
+                  className="group relative overflow-hidden flex items-center justify-center gap-3 rounded-2xl px-7 py-3.5 sm:py-5 md:py-6 transition-all hover:-translate-y-0.5 w-full lg:w-auto whitespace-nowrap"
                   style={{
-                    background: "rgba(167,139,250,0.12)",
-                    border: "1.5px solid rgba(167,139,250,0.35)",
-                    color: "#a78bfa",
+                    background: "linear-gradient(135deg, #7c3aed, #a78bfa)",
+                    boxShadow: "0 12px 35px rgba(167,139,250,0.35), 0 0 0 1.5px rgba(255,255,255,0.12) inset",
                   }}>
-                  <Icon name="Bot" size={16} style={{ color: "#a78bfa" }} />
-                  <span className="text-sm font-black uppercase tracking-wider">Купить агента</span>
+                  <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                    style={{ background: "linear-gradient(135deg, #a78bfa, #c4b5fd)" }} />
+                  <Icon name="Bot" size={18} style={{ color: "#fff" }} className="relative" />
+                  <span className="relative text-sm sm:text-base md:text-lg font-black text-white uppercase tracking-wider">Купить агента</span>
                 </a>
               </div>
             </div>
