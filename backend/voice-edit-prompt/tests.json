@@ -1,0 +1,17 @@
+{
+  "tests": [
+    {
+      "name": "Edit prompt by voice command",
+      "method": "POST",
+      "path": "/",
+      "body": {
+        "prompt": "Оцени сложность монтажа по формуле. Выдай только число от 1 до 10.",
+        "command": "добавь что максимум 3 предложения в выводе",
+        "promptType": "math"
+      },
+      "expectedStatus": 200,
+      "expectedBody": {},
+      "bodyMatcher": "partial"
+    }
+  ]
+}
