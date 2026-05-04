@@ -3,40 +3,16 @@ import { Client } from "./crmApi";
 import { InlineField, Section } from "./drawerComponents";
 import { BlockId, CustomFinRow } from "./drawerTypes";
 import { AddFinRowInline, RowWithToggle } from "./DrawerFinRowHelpers";
-import Icon from "@/components/ui/icon";
 import { useTheme } from "./themeContext";
 import { AutoRulesModal, type CostRowDef } from "./DrawerAutoRulesModal";
 import { PaymentStatusBadge, CustomPaymentBadge } from "./PaymentConfirmModal";
 import { useAutoRules, RuleEntry } from "@/hooks/useAutoRules";
 import { useDiscountHistory } from "@/hooks/useDiscountHistory";
+import { loadFinLabels, saveFinLabel, FinBlockProps } from "./DrawerFinLabels";
+import { DrawerIncomeAutoSection } from "./DrawerIncomeAutoSection";
+import { DrawerCostsAutoSection } from "./DrawerCostsAutoSection";
 
-const LS_FIN_LABELS = "crm_fin_row_labels";
-
-function loadFinLabels(): Record<string, string> {
-  try { return JSON.parse(localStorage.getItem(LS_FIN_LABELS) || "{}"); } catch { return {}; }
-}
-function saveFinLabel(key: string, label: string) {
-  const curr = loadFinLabels();
-  curr[key] = label;
-  localStorage.setItem(LS_FIN_LABELS, JSON.stringify(curr));
-}
-
-interface FinBlockProps {
-  data: Client;
-  editingBlock: BlockId | null;
-  hiddenBlocks: Set<BlockId>;
-  rowVisibility: Record<string, boolean>;
-  customFinRows: CustomFinRow[];
-  toggleHidden: (id: BlockId) => void;
-  setEditingBlock: (id: BlockId | null) => void;
-  saveWithLog: (patch: Partial<Client>, logText: string, icon?: string, color?: string) => void;
-  logAction: (icon: string, color: string, text: string) => void;
-  toggleRowVisibility: (key: string) => void;
-  addCustomFinRow: (label: string, block: "income" | "costs") => void;
-  deleteCustomFinRow: (key: string) => void;
-  updateCustomFinRow: (key: string, label: string) => void;
-  onReload?: () => void;
-}
+export type { FinBlockProps };
 
 export function DrawerIncomeBlock({
   data, editingBlock, hiddenBlocks, rowVisibility, customFinRows,
@@ -58,7 +34,6 @@ export function DrawerIncomeBlock({
     saveFinLabel(key, label);
   };
 
-  // Строки доходов для модалки
   const BUILTIN_INCOME_DEFS: Record<string, string> = {
     contract_sum:  "Сумма договора",
     prepayment:    "Предоплата",
@@ -78,19 +53,16 @@ export function DrawerIncomeBlock({
     autoRules.filter(r => r.row_type === "income").map(r => [r.key, r])
   );
 
-  // Видимость строки по полю visible из правил
   const isIncomeVisible = (key: string) => {
     const e = incomeRulesMap[key];
     return !e || e.visible !== false;
   };
 
-  // Есть ли включённые правила доходов
   const hasIncomeRules = incomeRows.some(row => {
     const e = incomeRulesMap[row.key];
     return e && e.enabled && e.pct != null && e.pct > 0;
   });
 
-  // Применить авто-расчёт доходов
   const applyIncomeAutoWithSum = (sum: number) => {
     if (!sum) return;
     const patch: Partial<Client> = {};
@@ -119,7 +91,6 @@ export function DrawerIncomeBlock({
 
   const applyIncomeAuto = () => applyIncomeAutoWithSum(contractSum);
 
-  // Авто-применение при изменении суммы
   const prevSumRef = useRef<number>(-1);
   const rulesAppliedRef = useRef(false);
   useEffect(() => {
@@ -163,53 +134,16 @@ export function DrawerIncomeBlock({
         onToggleHidden={() => toggleHidden(id)}
         onEdit={!isHidden ? () => setEditingBlock(incomeEdit ? null : id) : undefined}>
 
-        {/* Кнопки авто-расчёта доходов */}
         {!isHidden && (
-          <div className="flex items-center gap-1.5 pt-2 pb-1 w-full">
-            <button
-              onClick={applyIncomeAuto}
-              disabled={!hasIncomeRules || !contractSum}
-              title={!contractSum ? "Сначала укажите сумму договора" : !hasIncomeRules ? "Настройте правило (шестерёнка)" : "Авто-расчёт по правилу"}
-              className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold transition disabled:opacity-30"
-              style={{ background: "#10b98115", color: "#10b981", border: "1px solid #10b98130" }}>
-              <Icon name="Zap" size={11} />
-              Авто
-            </button>
-            <button
-              onClick={() => setShowRules(true)}
-              title="Настроить правила авто-расчёта доходов"
-              className="p-1 rounded-lg transition hover:bg-white/5"
-              style={{ color: "#6b7280" }}>
-              <Icon name="Settings2" size={13} />
-            </button>
-            {!hasIncomeRules && (
-              <span className="text-[10px]" style={{ color: "#6b7280" }}>Настройте правило →</span>
-            )}
-            {hasIncomeRules && autoMode && (
-              <div className="flex items-center gap-1 px-2 py-0.5 rounded-full ml-auto"
-                style={{ background: "#10b98118", border: "1px solid #10b98135" }}
-                title="Авто-режим включён — доходы пересчитываются при изменении суммы">
-                <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: "#10b981" }} />
-                <span className="text-[10px] font-medium" style={{ color: "#10b981" }}>авто</span>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Предупреждение об авто-заполнении */}
-        {autoFilled && !isHidden && (
-          <div className="flex items-start gap-2 rounded-lg px-2.5 py-2 mb-1"
-            style={{ background: "#10b98112", border: "1px solid #10b98130" }}>
-            <Icon name="Zap" size={12} style={{ color: "#10b981", flexShrink: 0, marginTop: 1 }} />
-            <div className="flex-1">
-              <span className="text-[11px] leading-relaxed" style={{ color: "#6ee7b7" }}>
-                Доходы заполнены автоматически по правилу. Можно изменить вручную.
-              </span>
-            </div>
-            <button onClick={() => setAutoFilled(false)} style={{ color: "#10b98160" }}>
-              <Icon name="X" size={11} />
-            </button>
-          </div>
+          <DrawerIncomeAutoSection
+            hasIncomeRules={hasIncomeRules}
+            contractSum={contractSum}
+            autoMode={autoMode}
+            autoFilled={autoFilled}
+            onApplyAuto={applyIncomeAuto}
+            onOpenRules={() => setShowRules(true)}
+            onDismissAutoFilled={() => setAutoFilled(false)}
+          />
         )}
 
         {(["contract_sum", "prepayment", "extra_payment"] as const)
@@ -292,14 +226,12 @@ export function DrawerCostsBlock({
     saveFinLabel(key, label);
   };
 
-  // Метки встроенных строк затрат
   const BUILTIN_COST_DEFS: Record<string, string> = {
     material_cost: "Материалы",
     measure_cost:  "Замер",
     install_cost:  "Монтаж",
   };
 
-  // Список всех видимых строк затрат для модалки правил
   const costRows: CostRowDef[] = [
     ...(["material_cost", "measure_cost", "install_cost"] as const)
       .filter(key => rowVisibility[key] !== false)
@@ -314,19 +246,16 @@ export function DrawerCostsBlock({
     autoRules.filter(r => r.row_type === "cost").map(r => [r.key, r])
   );
 
-  // Видимость строки затрат по полю visible из правил
   const isCostVisible = (key: string) => {
     const e = rulesMap[key];
     return !e || e.visible !== false;
   };
 
-  // Есть ли хоть одно включённое правило с процентом для видимых строк
   const hasRules = costRows.some(row => {
     const e = rulesMap[row.key];
     return e && e.enabled && e.pct != null && e.pct > 0;
   });
 
-  // Применить авто-расчёт
   const applyAutoWithSum = (sum: number) => {
     if (!sum) return;
     const patch: Partial<Client> = {};
@@ -354,7 +283,6 @@ export function DrawerCostsBlock({
 
   const applyAuto = () => applyAutoWithSum(contractSum);
 
-  // Авто-применение правил при изменении суммы
   const prevContractSumRef = useRef<number>(-1);
   const costsAppliedRef = useRef(false);
   useEffect(() => {
@@ -396,54 +324,16 @@ export function DrawerCostsBlock({
         onToggleHidden={() => toggleHidden(id)}
         onEdit={!isHidden ? () => setEditingBlock(costsEdit ? null : id) : undefined}>
 
-        {/* Кнопки авто-расчёта */}
         {!isHidden && (
-          <div className="flex items-center gap-1.5 pt-2 pb-1 w-full">
-            <button
-              onClick={applyAuto}
-              disabled={!hasRules || !contractSum}
-              title={!contractSum ? "Сначала укажите сумму договора" : !hasRules ? "Настройте правило (шестерёнка)" : "Авто-расчёт по правилу"}
-              className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold transition disabled:opacity-30"
-              style={{ background: "#ef444415", color: "#ef4444", border: "1px solid #ef444430" }}>
-              <Icon name="Zap" size={11} />
-              Авто
-            </button>
-            <button
-              onClick={() => setShowRules(true)}
-              title="Настроить правила авто-расчёта"
-              className="p-1 rounded-lg transition hover:bg-white/5"
-              style={{ color: "#6b7280" }}>
-              <Icon name="Settings2" size={13} />
-            </button>
-            {!hasRules && (
-              <span className="text-[10px]" style={{ color: "#6b7280" }}>Настройте правило →</span>
-            )}
-            {/* Индикатор авто-режима — правый край */}
-            {hasRules && autoMode && (
-              <div className="flex items-center gap-1 px-2 py-0.5 rounded-full ml-auto"
-                style={{ background: "#ef444418", border: "1px solid #ef444435" }}
-                title="Авто-режим включён — затраты пересчитываются при изменении суммы">
-                <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: "#ef4444" }} />
-                <span className="text-[10px] font-medium" style={{ color: "#ef4444" }}>авто</span>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Предупреждение об авто-заполнении */}
-        {autoFilled && !isHidden && (
-          <div className="flex items-start gap-2 rounded-lg px-2.5 py-2 mb-1"
-            style={{ background: "#ef444412", border: "1px solid #ef444430" }}>
-            <Icon name="Zap" size={12} style={{ color: "#ef4444", flexShrink: 0, marginTop: 1 }} />
-            <div className="flex-1">
-              <span className="text-[11px] leading-relaxed" style={{ color: "#fca5a5" }}>
-                Затраты заполнены автоматически по правилу. Можно изменить вручную.
-              </span>
-            </div>
-            <button onClick={() => setAutoFilled(false)} style={{ color: "#ef444460" }}>
-              <Icon name="X" size={11} />
-            </button>
-          </div>
+          <DrawerCostsAutoSection
+            hasRules={hasRules}
+            contractSum={contractSum}
+            autoMode={autoMode}
+            autoFilled={autoFilled}
+            onApplyAuto={applyAuto}
+            onOpenRules={() => setShowRules(true)}
+            onDismissAutoFilled={() => setAutoFilled(false)}
+          />
         )}
 
         {(["material_cost", "measure_cost", "install_cost"] as const).map(key => {
@@ -474,7 +364,6 @@ export function DrawerCostsBlock({
           );
         })}
 
-        {/* Скидка — отображается только если применена */}
         {discountHistory.length > 0 && (
           <div style={{ borderBottom: `1px solid ${t.border2}`, minHeight: 36 }}>
             <div className="flex items-center justify-between group">
