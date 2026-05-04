@@ -88,7 +88,7 @@ export default function Index() {
     };
   }, [messages]);
 
-  const sendPreset = (text: string) => { isPresetMsg.current = true; sendMsg(text, true); };
+  const sendPreset = (text: string) => { isPresetMsg.current = true; sendMsg(text, true, true); };
 
   const BOOKING_RE = /запис|замер|выезд|приедет|технолог|вызов|когда приедет|вызвать|заказать замер/i;
 
@@ -131,7 +131,7 @@ export default function Index() {
       .finally(() => { clearTimeout(timer); setTyping(false); });
   }, [messages, typing]);
 
-  const askFromPanel = (q: string) => { setPanel("none"); setTimeout(() => sendMsg(q), 100); };
+  const askFromPanel = (q: string) => { setPanel("none"); setTimeout(() => sendMsg(q, false, true), 100); };
   const closePanel   = () => setPanel("none");
   const hasPanel     = panel !== "none";
 
