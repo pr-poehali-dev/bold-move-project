@@ -3,7 +3,7 @@ import { DEMO_STATUSES } from "./wlTypes";
 import type { DemoPipelineCompany, DemoStatus } from "./wlTypes";
 import { WLPipelineActionButtons } from "./WLPipelineActionButtons";
 
-const DEMO_DAYS = 10;
+const DEMO_DAYS = 7;
 
 interface Props {
   c:        DemoPipelineCompany;

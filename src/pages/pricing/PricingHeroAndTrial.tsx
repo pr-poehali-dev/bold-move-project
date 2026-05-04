@@ -65,7 +65,7 @@ function TrialBanner() {
                   style={{ background: "#10b981", color: "#0a0a14" }}>FREE</span>
               </div>
               <div className="text-[11px] text-white/55 leading-snug">
-                Зарегистрируйся как монтажник или компания — получи <b className="text-[#10b981]">20 смет</b> на <b className="text-[#10b981]">4 дня</b>. Без оплаты.
+                Зарегистрируйся как монтажник или компания — получи <b className="text-[#10b981]">20 смет</b> на <b className="text-[#10b981]">7 дней</b>. Без оплаты.
               </div>
             </div>
             {!user && (

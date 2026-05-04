@@ -31,7 +31,7 @@ interface Props {
   onReorder:      (orderedIds: number[]) => void;
 }
 
-const DEMO_DAYS = 10;
+const DEMO_DAYS = 7;
 function demoDaysLeft(c: DemoPipelineCompany) {
   const passed = Math.floor((Date.now() - new Date(c.created_at).getTime()) / 86400000);
   return Math.max(0, DEMO_DAYS - passed);

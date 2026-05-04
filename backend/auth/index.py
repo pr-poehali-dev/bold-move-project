@@ -9,7 +9,7 @@ BUSINESS_ROLES = ("installer", "company")
 DISCOUNT_ROLES = ("designer", "foreman")
 DEFAULT_DISCOUNT = 10  # % для designer/foreman
 TRIAL_ESTIMATES = 20   # бесплатный пакет при регистрации
-TRIAL_DAYS      = 4    # срок действия триала
+TRIAL_DAYS      = 7    # срок действия триала/демо
 
 def get_conn():
     return psycopg2.connect(os.environ["DATABASE_URL"])
