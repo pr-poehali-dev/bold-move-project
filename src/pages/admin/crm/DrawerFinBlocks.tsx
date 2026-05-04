@@ -47,7 +47,7 @@ export function DrawerIncomeBlock({
   const id: BlockId = "income";
   const isHidden = hiddenBlocks.has(id);
   const incomeEdit = editingBlock === id;
-  const { rules: autoRules, auto_mode: autoMode } = useAutoRules();
+  const { rules: autoRules, auto_mode: autoMode, loading: autoLoading } = useAutoRules();
   const [labels,     setLabels]     = useState<Record<string, string>>(loadFinLabels);
   const [showRules,  setShowRules]  = useState(false);
   const [autoFilled, setAutoFilled] = useState(false);
@@ -121,16 +121,21 @@ export function DrawerIncomeBlock({
 
   // Авто-применение при изменении суммы
   const prevSumRef = useRef<number>(-1);
+  const rulesAppliedRef = useRef(false);
   useEffect(() => {
-    if (!contractSum || !hasIncomeRules || !autoMode) {
-      prevSumRef.current = contractSum;
+    if (data.id) { prevSumRef.current = -1; rulesAppliedRef.current = false; }
+  }, [data.id]);  
+  useEffect(() => {
+    if (autoLoading || !contractSum || !hasIncomeRules || !autoMode) {
+      if (!autoLoading) prevSumRef.current = contractSum;
       return;
     }
-    const isFirstRender = prevSumRef.current === -1;
+    const isFirstRender = prevSumRef.current === -1 || !rulesAppliedRef.current;
     const sumChanged = contractSum !== prevSumRef.current;
     prevSumRef.current = contractSum;
 
     if (isFirstRender) {
+      rulesAppliedRef.current = true;
       const rowsWithRules = incomeRows.filter(row => {
         const e = incomeRulesMap[row.key];
         return e && e.enabled && e.pct != null && e.pct > 0;
@@ -147,7 +152,7 @@ export function DrawerIncomeBlock({
     } else if (sumChanged) {
       applyIncomeAutoWithSum(contractSum);
     }
-  }, [data.id, contractSum, autoMode, autoRules]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [data.id, contractSum, autoMode, autoRules, autoLoading]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <>
@@ -275,7 +280,7 @@ export function DrawerCostsBlock({
   const id: BlockId = "costs";
   const isHidden = hiddenBlocks.has(id);
   const costsEdit = editingBlock === id;
-  const { rules: autoRules, auto_mode: autoMode } = useAutoRules();
+  const { rules: autoRules, auto_mode: autoMode, loading: autoLoading } = useAutoRules();
   const { history: discountHistory, totalDiscountAmount } = useDiscountHistory(data.id);
   const [labels, setLabels] = useState<Record<string, string>>(loadFinLabels);
   const [showRules, setShowRules] = useState(false);
@@ -351,16 +356,21 @@ export function DrawerCostsBlock({
 
   // Авто-применение правил при изменении суммы
   const prevContractSumRef = useRef<number>(-1);
+  const costsAppliedRef = useRef(false);
   useEffect(() => {
-    if (!contractSum || !hasRules || !autoMode) {
-      prevContractSumRef.current = contractSum;
+    if (data.id) { prevContractSumRef.current = -1; costsAppliedRef.current = false; }
+  }, [data.id]);  
+  useEffect(() => {
+    if (autoLoading || !contractSum || !hasRules || !autoMode) {
+      if (!autoLoading) prevContractSumRef.current = contractSum;
       return;
     }
-    const isFirstRender = prevContractSumRef.current === -1;
+    const isFirstRender = prevContractSumRef.current === -1 || !costsAppliedRef.current;
     const sumChanged = contractSum !== prevContractSumRef.current;
     prevContractSumRef.current = contractSum;
 
     if (isFirstRender) {
+      costsAppliedRef.current = true;
       const rowsWithRules = costRows.filter(row => {
         const e = rulesMap[row.key];
         return e && e.enabled && e.pct != null && e.pct > 0;
@@ -375,7 +385,7 @@ export function DrawerCostsBlock({
     } else if (sumChanged) {
       applyAutoWithSum(contractSum);
     }
-  }, [data.id, contractSum, autoMode, autoRules]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [data.id, contractSum, autoMode, autoRules, autoLoading]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <>
