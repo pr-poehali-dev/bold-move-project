@@ -27,6 +27,21 @@ def check_auth(headers: dict) -> bool:
         return False
     return hashlib.sha256(token.encode()).hexdigest() == hashlib.sha256(ADMIN_PASSWORD.encode()).hexdigest()
 
+def get_company_id_from_token(headers: dict):
+    """Возвращает (user_id, role) по X-Authorization токену сессии, или (None, None)."""
+    token = headers.get('x-authorization', '') or headers.get('X-Authorization', '')
+    if not token:
+        return None, None
+    conn = get_conn(); cur = conn.cursor()
+    cur.execute(
+        f"SELECT u.id, u.role FROM {SCHEMA}.user_sessions s JOIN {SCHEMA}.users u ON u.id=s.user_id WHERE s.token=%s AND s.expires_at>NOW()",
+        (token,)
+    )
+    row = cur.fetchone(); cur.close(); conn.close()
+    if not row:
+        return None, None
+    return row[0], row[1]
+
 def get_conn():
     return psycopg2.connect(os.environ['DATABASE_URL'])
 
@@ -316,14 +331,24 @@ def handler(event: dict, context) -> dict:
 
     # --- GET ?r=corrections
     if r == 'corrections' and method == 'GET':
+        user_id, user_role = get_company_id_from_token(hdrs)
+        is_master = check_auth(hdrs)
         conn = get_conn(); cur = conn.cursor()
-        cur.execute(f"SELECT id, session_id, user_text, recognized_json, corrected_json, status, created_at, suggested_items, llm_answer FROM {SCHEMA}.bot_corrections ORDER BY created_at DESC LIMIT 200")
-        rows = cur.fetchall()
-        cur.close(); conn.close()
         def fmt_dt(v):
             if v is None: return None
             s = str(v)
             return s if '+' in s or s.endswith('Z') else s + '+00:00'
+        if is_master:
+            # Мастер видит все
+            cur.execute(f"SELECT id, session_id, user_text, recognized_json, corrected_json, status, created_at, suggested_items, llm_answer FROM {SCHEMA}.bot_corrections ORDER BY created_at DESC LIMIT 500")
+        elif user_id and user_role in ('company', 'installer'):
+            # Компания/монтажник видит только свои
+            cur.execute(f"SELECT id, session_id, user_text, recognized_json, corrected_json, status, created_at, suggested_items, llm_answer FROM {SCHEMA}.bot_corrections WHERE company_id=%s ORDER BY created_at DESC LIMIT 200", (user_id,))
+        else:
+            cur.close(); conn.close()
+            return resp(401, {'error': 'Unauthorized'})
+        rows = cur.fetchall()
+        cur.close(); conn.close()
         return resp(200, {'items': [{'id': row[0], 'session_id': row[1] or '', 'user_text': row[2], 'recognized_json': row[3], 'corrected_json': row[4], 'status': row[5], 'created_at': fmt_dt(row[6]), 'suggested_items': row[7], 'llm_answer': row[8]} for row in rows]})
 
     # --- PUT ?r=corrections&id=X

@@ -221,14 +221,14 @@ def eval_calc_rule(rule: str, area: float, perim: float) -> float | None:
         return None
 
 
-def save_correction(user_text: str, recognized_json: dict | None, session_id: str = '') -> None:
+def save_correction(user_text: str, recognized_json: dict | None, session_id: str = '', company_id: int | None = None) -> None:
     """Сохраняет нераспознанный/неточный запрос клиента для обучения."""
     try:
         conn = psycopg2.connect(os.environ['DATABASE_URL'])
         cur = conn.cursor()
         cur.execute(
-            f"INSERT INTO {SCHEMA}.bot_corrections (session_id, user_text, recognized_json, status) VALUES (%s, %s, %s, 'pending')",
-            (session_id, user_text, json.dumps(recognized_json, ensure_ascii=False) if recognized_json else None)
+            f"INSERT INTO {SCHEMA}.bot_corrections (session_id, user_text, recognized_json, status, company_id) VALUES (%s, %s, %s, 'pending', %s)",
+            (session_id, user_text, json.dumps(recognized_json, ensure_ascii=False) if recognized_json else None, company_id)
         )
         conn.commit(); cur.close(); conn.close()
     except Exception as e:

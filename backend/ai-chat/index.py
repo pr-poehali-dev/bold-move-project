@@ -1407,7 +1407,7 @@ def handler(event, context):
 
     # Обычные запросы — всегда в LLM
     skip_info = get_skip_reason(last_user_text.lower().strip())
-    save_correction(last_user_text, skip_info, session_id)
+    save_correction(last_user_text, skip_info, session_id, company_id=int(company_id) if company_id else None)
 
     # Загружаем базу знаний и цены из БД
     knowledge = get_knowledge(last_user_text)

@@ -39,11 +39,14 @@ export function useCorrectionsList(token: string) {
 
   const load = useCallback(async () => {
     setLoading(true);
-    const [cr, pr] = await Promise.all([apiFetch("corrections"), apiFetch("prices")]);
+    const [cr, pr] = await Promise.all([
+      apiFetch("corrections", undefined, undefined, undefined, token),
+      apiFetch("prices"),
+    ]);
     if (cr.ok) { const d = await cr.json(); setItems(d.items); }
     if (pr.ok) { const d = await pr.json(); setPrices(d.items); }
     setLoading(false);
-  }, []);
+  }, [token]);
 
   useEffect(() => { load(); }, [load]);
 

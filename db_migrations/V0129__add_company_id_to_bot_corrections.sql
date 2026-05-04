@@ -1,0 +1,1 @@
+ALTER TABLE bot_corrections ADD COLUMN IF NOT EXISTS company_id INTEGER;
