@@ -672,8 +672,6 @@ def handler(event: dict, context) -> dict:
 
         # Для монтажников/компаний проверяем и списываем баланс
         if user_role in BUSINESS_ROLES:
-            if trial_expired:
-                return err("Пробный период закончился. Пополните пакет.", 403)
             if (estimates_balance or 0) <= 0:
                 return err("Недостаточно смет на балансе. Пополните пакет.", 403)
             cur.execute(f"""
