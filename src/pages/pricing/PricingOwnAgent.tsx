@@ -170,7 +170,7 @@ export default function PricingOwnAgent() {
                 className="flex-1 flex items-center justify-center gap-2 py-3.5 rounded-xl text-sm font-bold text-white transition hover:opacity-90"
                 style={{ background: "#a78bfa", color: "#0a0a14" }}>
                 <Icon name="Send" size={15} />
-                Заказать своего агента в Telegram
+                Обсудить и заказать агента
               </a>
               <a href="https://t.me/JoniKras" target="_blank" rel="noreferrer"
                 className="sm:w-auto px-5 flex items-center justify-center gap-2 py-3.5 rounded-xl text-sm font-bold transition"
