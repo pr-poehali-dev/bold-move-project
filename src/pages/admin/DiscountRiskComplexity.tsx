@@ -18,9 +18,10 @@ interface Props {
   isDark: boolean;
   theme: ThemeClasses;
   readOnly: boolean;
+  hidePrompts?: boolean;
 }
 
-export default function DiscountRiskComplexity({ isDark, theme, readOnly }: Props) {
+export default function DiscountRiskComplexity({ isDark, theme, readOnly, hidePrompts = false }: Props) {
   const [prices,          setPrices]          = useState<PriceItem[]>([]);
   const [pricesLoading,   setPricesLoading]   = useState(false);
   const [complexityItems, setComplexityItems] = useState<Record<number, ComplexityItem>>(loadComplexityItems);
@@ -342,22 +343,24 @@ export default function DiscountRiskComplexity({ isDark, theme, readOnly }: Prop
         </div>
       )}
 
-      {/* AI промпты */}
-      <ComplexityAiPrompts
-        isDark={isDark}
-        theme={theme}
-        readOnly={readOnly}
-        formula={formula}
-        setFormula={setFormula}
-        complexityPrompts={complexityPrompts}
-        setComplexityPrompts={setComplexityPrompts}
-        activePromptTab={activePromptTab}
-        setActivePromptTab={setActivePromptTab}
-        savedPrompts={savedPrompts}
-        onSavePrompts={handleSavePrompts}
-        onImprovePrompts={handleImprovePrompts}
-        improvedPrompts={improvedPrompts}
-      />
+      {/* AI промпты — скрыты если вынесены в отдельную вкладку */}
+      {!hidePrompts && (
+        <ComplexityAiPrompts
+          isDark={isDark}
+          theme={theme}
+          readOnly={readOnly}
+          formula={formula}
+          setFormula={setFormula}
+          complexityPrompts={complexityPrompts}
+          setComplexityPrompts={setComplexityPrompts}
+          activePromptTab={activePromptTab}
+          setActivePromptTab={setActivePromptTab}
+          savedPrompts={savedPrompts}
+          onSavePrompts={handleSavePrompts}
+          onImprovePrompts={handleImprovePrompts}
+          improvedPrompts={improvedPrompts}
+        />
+      )}
 
     </div>
   );
