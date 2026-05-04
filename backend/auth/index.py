@@ -713,7 +713,7 @@ def handler(event: dict, context) -> dict:
         material_cost_total = 0
         try:
             import re as _re
-            cur.execute(f"SELECT name, purchase_price FROM {SCHEMA}.ai_prices WHERE active=true AND purchase_price > 0 AND category != 'Монтаж'")
+            cur.execute(f"SELECT p.name, p.purchase_price FROM {SCHEMA}.ai_prices p JOIN {SCHEMA}.price_category_settings s ON s.category = p.category WHERE p.active=true AND p.purchase_price > 0 AND s.is_material=true")
             price_map = {row[0].strip().lower(): float(row[1]) for row in cur.fetchall()}
             for block in blocks:
                 for item in block.get("items", []):

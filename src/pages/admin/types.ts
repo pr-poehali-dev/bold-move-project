@@ -30,6 +30,7 @@ export interface PriceItem {
   bundle: string;
   when_condition: string;
   when_not_condition: string;
+  is_material?: boolean;
 }
 
 export interface SuggestedItem {

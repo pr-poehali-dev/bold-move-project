@@ -22,7 +22,7 @@ export default function TabPrices({ token, onItemAdded, isDark = true, readOnly 
   const bgInput = isDark ? "bg-white/5"      : "bg-gray-50";
   const borderInput = isDark ? "border-white/15" : "border-gray-200";
   const selectBg = isDark ? "#0b0b11" : "#ffffff";
-  const { prices, loading, aiLoadingId, aiDescLoadingId, byCategory, saveField, toggleActive, deleteItem, renameCategory, generateSynonyms, generateDescription, moveItem, load } = usePriceList(token);
+  const { prices, loading, aiLoadingId, aiDescLoadingId, byCategory, saveField, toggleActive, deleteItem, renameCategory, generateSynonyms, generateDescription, moveItem, setCategoryMaterial, load } = usePriceList(token);
   const dragItem = useRef<PriceItem | null>(null);
   const dragOver = useRef<PriceItem | null>(null);
   const [dragOverId, setDragOverId] = useState<number | null>(null);
@@ -85,9 +85,11 @@ export default function TabPrices({ token, onItemAdded, isDark = true, readOnly 
     <div className="flex flex-col gap-6">
       <p className={`${muted} text-sm`}>Нажмите на ячейку — сохраняется мгновенно. Кружок = включить/выключить позицию.</p>
 
-      {Object.entries(byCategory).map(([category, items]) => (
+      {Object.entries(byCategory).map(([category, items]) => {
+        const isMaterial = items[0]?.is_material !== false;
+        return (
         <div key={category}>
-          <div className="flex items-center gap-2 mb-2 px-1 group">
+          <div className="flex items-center gap-3 mb-2 px-1 group">
             {editingCat === category ? (
               <input autoFocus value={editingCatVal}
                 onChange={e => setEditingCatVal(e.target.value)}
@@ -102,6 +104,19 @@ export default function TabPrices({ token, onItemAdded, isDark = true, readOnly 
                 {category}
                 <Icon name="Pencil" size={10} className="opacity-0 group-hover:opacity-40 transition" />
               </h3>
+            )}
+            {!readOnly && (
+              <button
+                onClick={() => setCategoryMaterial(category, !isMaterial)}
+                title={isMaterial ? "Учитывается в закупке — нажмите чтобы отключить" : "Не учитывается в закупке — нажмите чтобы включить"}
+                className={`flex items-center gap-1.5 text-xs px-2 py-0.5 rounded-full border transition-all ${
+                  isMaterial
+                    ? isDark ? "bg-blue-500/15 border-blue-500/30 text-blue-300 hover:bg-blue-500/25" : "bg-blue-50 border-blue-200 text-blue-600 hover:bg-blue-100"
+                    : isDark ? "bg-white/5 border-white/10 text-white/30 hover:text-white/50 hover:border-white/20" : "bg-gray-50 border-gray-200 text-gray-400 hover:text-gray-500"
+                }`}>
+                <Icon name={isMaterial ? "ShoppingCart" : "ShoppingCart"} size={10} />
+                {isMaterial ? "в закупке" : "не в закупке"}
+              </button>
             )}
           </div>
 
@@ -319,7 +334,8 @@ export default function TabPrices({ token, onItemAdded, isDark = true, readOnly 
             )}
           </div>
         </div>
-      ))}
+        );
+      })}
 
       {/* Новая категория */}
       {!readOnly && addingCat ? (
