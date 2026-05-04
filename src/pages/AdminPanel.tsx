@@ -8,6 +8,7 @@ import { buildMainTabs, MainTab } from "./AdminPanelDropdowns";
 import { AdminPanelLoadingScreen, AdminPanelAccessScreen } from "./AdminPanelAccess";
 import { AdminPanelHeader } from "./AdminPanelHeader";
 import { AdminPanelContent } from "./AdminPanelContent";
+import { TrialBanner } from "./admin/TrialBanner";
 
 // Роли с доступом к /company
 const ALLOWED_ROLES = ["installer", "company", "manager"];
@@ -113,6 +114,7 @@ export default function AdminPanel() {
     <div className="min-h-screen flex flex-col transition-colors duration-300 overflow-x-hidden"
       style={{ background: isDark ? "#07070f" : "#eef0f6", color: headerText }}>
 
+      {user.role === "company" && <TrialBanner user={user} isDark={isDark} />}
       <AdminPanelHeader
         user={user}
         isDark={isDark}
