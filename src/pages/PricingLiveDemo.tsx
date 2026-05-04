@@ -39,7 +39,7 @@ export default function PricingLiveDemo() {
   // Scroll-lock: только при первом проигрывании (шаги 0-5)
   useEffect(() => {
     if (hasPlayed.current) return; // уже играло — не лочим
-    const isAnimating = step >= 0 && step <= 5;
+    const isAnimating = step >= 0 && step <= 3;
     if (isAnimating) {
       document.body.style.overflow    = "hidden";
       document.body.style.touchAction = "none";
