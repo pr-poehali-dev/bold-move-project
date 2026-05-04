@@ -712,17 +712,19 @@ def handler(event: dict, context) -> dict:
 
         material_cost_total = 0
         try:
-            cur.execute(f"SELECT name, purchase_price FROM {SCHEMA}.ai_prices WHERE active=true AND purchase_price > 0")
-            price_map = {row[0].strip().lower(): int(row[1]) for row in cur.fetchall()}
+            import re as _re
+            cur.execute(f"SELECT name, purchase_price FROM {SCHEMA}.ai_prices WHERE active=true AND purchase_price > 0 AND category != 'Монтаж'")
+            price_map = {row[0].strip().lower(): float(row[1]) for row in cur.fetchall()}
             for block in blocks:
                 for item in block.get("items", []):
                     item_name = item.get("name", "").strip().lower()
-                    val_str = item.get("value", "")
-                    import re as _re
-                    nums = _re.findall(r"\d[\d\s]*", str(val_str).replace("\u00a0", " "))
-                    qty = int("".join(nums[0].split())) if nums else 1
+                    val_str = str(item.get("value", "")).replace("\u00a0", " ")
+                    # Берём первое число (целое или дробное) — это количество
+                    m = _re.match(r"([\d]+(?:[.,]\d+)?)", val_str.strip())
+                    qty = float(m.group(1).replace(",", ".")) if m else 1.0
                     if item_name in price_map:
                         material_cost_total += price_map[item_name] * qty
+            material_cost_total = int(round(material_cost_total))
         except Exception:
             material_cost_total = 0
 
