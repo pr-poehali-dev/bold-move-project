@@ -75,7 +75,7 @@ export default function PricingPayment({ selectedId }: Props) {
                 </p>
               </div>
 
-              <div>
+              <div className="flex flex-col gap-3">
                 <button
                   onClick={() => {
                     document.querySelector("#packages-grid")?.scrollIntoView({ behavior: "smooth", block: "center" });
@@ -94,6 +94,19 @@ export default function PricingPayment({ selectedId }: Props) {
                     </span>
                   </div>
                 </button>
+                <a
+                  href="https://t.me/poehalidev"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center justify-center gap-2 rounded-2xl px-7 py-3 transition-all hover:-translate-y-0.5 w-full lg:w-auto whitespace-nowrap"
+                  style={{
+                    background: "rgba(167,139,250,0.12)",
+                    border: "1.5px solid rgba(167,139,250,0.35)",
+                    color: "#a78bfa",
+                  }}>
+                  <Icon name="Bot" size={16} style={{ color: "#a78bfa" }} />
+                  <span className="text-sm font-black uppercase tracking-wider">Купить агента</span>
+                </a>
               </div>
             </div>
 
