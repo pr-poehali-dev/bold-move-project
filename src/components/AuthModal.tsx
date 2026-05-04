@@ -52,6 +52,7 @@ export default function AuthModal({ onClose, defaultTab = "login", onPending, on
   const [role,     setRole]     = useState<UserRole>("client");
   const [name,        setName]        = useState("");
   const [companyName, setCompanyName] = useState("");
+  const [companyAddr, setCompanyAddr] = useState("");
   const [phone,    setPhone]    = useState("+7 (");
   const [email,    setEmail]    = useState("");
   const [password, setPassword] = useState("");
@@ -113,7 +114,7 @@ export default function AuthModal({ onClose, defaultTab = "login", onPending, on
           return;
         }
         const phoneVal = isValidPhone(phone) ? phone : undefined;
-        const res = await register(email, password, name, role, phoneVal, isBusiness ? companyName : undefined);
+        const res = await register(email, password, name, role, phoneVal, isBusiness ? companyName : undefined, isBusiness ? companyAddr : undefined);
         if (res.pending) { onPending?.(res.role || role); onClose(); return; }
       }
       onSuccess?.();
@@ -308,12 +309,20 @@ export default function AuthModal({ onClose, defaultTab = "login", onPending, on
                 </div>
 
                 {isBusiness && (
-                  <div>
-                    <label className="text-[11px] text-white/40 mb-1.5 block font-medium">Название компании</label>
-                    <input value={companyName} onChange={e => setCompanyName(e.target.value)}
-                      placeholder="ООО «Потолки Москвы»"
-                      className="w-full rounded-xl px-4 py-2.5 text-sm bg-white/[0.05] border border-white/[0.08] text-white placeholder-white/20 focus:outline-none focus:border-orange-500/50 transition" />
-                  </div>
+                  <>
+                    <div>
+                      <label className="text-[11px] text-white/40 mb-1.5 block font-medium">Название компании</label>
+                      <input value={companyName} onChange={e => setCompanyName(e.target.value)}
+                        placeholder="ООО «Потолки Москвы»"
+                        className="w-full rounded-xl px-4 py-2.5 text-sm bg-white/[0.05] border border-white/[0.08] text-white placeholder-white/20 focus:outline-none focus:border-orange-500/50 transition" />
+                    </div>
+                    <div>
+                      <label className="text-[11px] text-white/40 mb-1.5 block font-medium">Город / адрес</label>
+                      <input value={companyAddr} onChange={e => setCompanyAddr(e.target.value)}
+                        placeholder="Москва, Мытищи, Краснодар…"
+                        className="w-full rounded-xl px-4 py-2.5 text-sm bg-white/[0.05] border border-white/[0.08] text-white placeholder-white/20 focus:outline-none focus:border-orange-500/50 transition" />
+                    </div>
+                  </>
                 )}
 
                 <div>

@@ -21,6 +21,8 @@ interface Props { isDark: boolean }
 export default function OwnAgentEditor({ isDark }: Props) {
   const { user, token, updateUser } = useAuth();
 
+  // Если контакты пустые — автоподставляем из профиля (телефон из user.phone)
+  const _phone = user?.brand?.support_phone || user?.phone || "";
   const [brand, setBrand] = useState<Brand>({
     bot_name:           user?.brand?.bot_name           ?? "",
     bot_greeting:       user?.brand?.bot_greeting       ?? "",
@@ -30,11 +32,11 @@ export default function OwnAgentEditor({ isDark }: Props) {
     brand_logo_orientation: user?.brand?.brand_logo_orientation ?? "horizontal",
     pdf_logo_bg:        user?.brand?.pdf_logo_bg        ?? "auto",
     brand_color:        user?.brand?.brand_color        ?? "#f97316",
-    support_phone:      user?.brand?.support_phone      ?? "",
+    support_phone:      _phone,
     support_email:      user?.brand?.support_email      ?? "",
     max_url:            user?.brand?.max_url            ?? "",
     working_hours:      user?.brand?.working_hours      ?? "",
-    pdf_footer_address: user?.brand?.pdf_footer_address ?? "",
+    pdf_footer_address: user?.brand?.pdf_footer_address ?? user?.company_addr ?? "",
     telegram_url:       user?.brand?.telegram_url       ?? "",
     pdf_text_color:     user?.brand?.pdf_text_color     ?? "#111827",
   });
