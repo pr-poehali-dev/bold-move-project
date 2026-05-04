@@ -2,6 +2,7 @@ import { useState } from "react";
 import PricingHeroAndTrial from "./pricing/PricingHeroAndTrial";
 import PricingPackages from "./pricing/PricingPackages";
 import PricingFeatures from "./pricing/PricingFeatures";
+import PricingCompare from "./pricing/PricingCompare";
 import PricingPayment from "./pricing/PricingPayment";
 import PricingOwnAgent from "./pricing/PricingOwnAgent";
 
@@ -20,6 +21,7 @@ export default function Pricing() {
       <PricingHeroAndTrial />
       <PricingPackages selected={selected} onSelect={choosePackage} />
       <PricingFeatures />
+      <PricingCompare />
       <PricingOwnAgent />
       <PricingPayment selectedId={selected} />
     </div>
