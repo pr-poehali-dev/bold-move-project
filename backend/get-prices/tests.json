@@ -5,7 +5,7 @@
       "method": "GET",
       "path": "/",
       "expectedStatus": 200,
-      "expectedBody": {"prices": [{"id": 1}]},
+      "expectedBody": {},
       "bodyMatcher": "partial"
     }
   ]

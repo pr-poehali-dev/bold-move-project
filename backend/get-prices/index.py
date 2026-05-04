@@ -27,6 +27,16 @@ def handler(event: dict, context) -> dict:
         ORDER BY sort_order, id
     """)
     rows = cur.fetchall()
+
+    pricing = {'econom_mult': 0.85, 'premium_mult': 1.27, 'econom_label': 'Econom', 'standard_label': 'Standard', 'premium_label': 'Premium'}
+    try:
+        cur.execute(f"SELECT econom_mult, premium_mult, econom_label, standard_label, premium_label FROM {SCHEMA}.pricing_settings LIMIT 1")
+        pr = cur.fetchone()
+        if pr:
+            pricing = {'econom_mult': float(pr[0]), 'premium_mult': float(pr[1]), 'econom_label': pr[2], 'standard_label': pr[3], 'premium_label': pr[4]}
+    except Exception:
+        pass
+
     cur.close()
     conn.close()
 
@@ -44,5 +54,5 @@ def handler(event: dict, context) -> dict:
     return {
         'statusCode': 200,
         'headers': {**cors, 'Cache-Control': 'max-age=300'},
-        'body': json.dumps({'prices': prices}),
+        'body': json.dumps({'prices': prices, 'pricing': pricing}),
     }

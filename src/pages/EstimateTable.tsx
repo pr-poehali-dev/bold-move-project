@@ -2,7 +2,8 @@ import { useState, useMemo } from "react";
 import { useAuth, CLIENT_ROLES } from "@/context/AuthContext";
 import { useBrand } from "@/context/BrandContext";
 import func2url from "@/../backend/func2url.json";
-import { parseEstimateBlocks, type LLMItem } from "./estimateUtils";
+import { parseEstimateBlocks, resolveItem, type LLMItem } from "./estimateUtils";
+import { usePricing } from "./usePrices";
 import EstimateBody from "./EstimateBody";
 import EstimateActions from "./EstimateActions";
 import EstimateContactModal from "./EstimateContactModal";
@@ -21,6 +22,7 @@ export default function EstimateTable({ text, items, onSaveRequest }: {
   const { user, token } = useAuth();
   const { brand, isCustom } = useBrand();
   const parsed = useMemo(() => parseEstimateBlocks(text), [text]);
+  const { blocks } = parsed;
 
   const [showContact,   setShowContact]   = useState(false);
   const [contactName,   setContactName]   = useState("");
@@ -46,7 +48,34 @@ export default function EstimateTable({ text, items, onSaveRequest }: {
     return undefined;
   };
 
-  const { blocks, totals, finalPhrase } = parsed;
+  const pricing = usePricing();
+
+  // Считаем итог сами из позиций — суммируем qty × price по всем блокам
+  const computedTotals = useMemo(() => {
+    let standard = 0;
+    for (const block of blocks) {
+      for (const item of block.items) {
+        const { formula, total } = resolveItem(item, findItem);
+        if (!formula && !total) continue;
+        // Извлекаем число из total ("1 200 ₽" → 1200)
+        const totalStr = total || "";
+        const num = parseFloat(totalStr.replace(/\s/g, "").replace("₽", "").replace(",", "."));
+        if (!isNaN(num) && num > 0) standard += num;
+      }
+    }
+    if (standard === 0) return parsed.totals; // fallback на AI-текст если не удалось посчитать
+    const econom   = Math.round(standard * pricing.econom_mult);
+    const premium  = Math.round(standard * pricing.premium_mult);
+    const fmt = (n: number) => n.toLocaleString("ru-RU") + " ₽";
+    return [
+      `${pricing.econom_label}:   ${fmt(econom)}`,
+      `${pricing.standard_label}: ${fmt(standard)}`,
+      `${pricing.premium_label}:  ${fmt(premium)}`,
+    ];
+  }, [blocks, findItem, pricing, parsed.totals]);
+
+  const { finalPhrase } = parsed;
+  const totals = computedTotals;
   const [downloading,   setDownloading]   = useState(false);
   const [saving,        setSaving]        = useState(false);
   const [saved,         setSaved]         = useState(false);

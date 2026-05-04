@@ -13,7 +13,24 @@ export interface PriceItem {
   synonyms: string;
 }
 
+export interface PricingSettings {
+  econom_mult: number;
+  premium_mult: number;
+  econom_label: string;
+  standard_label: string;
+  premium_label: string;
+}
+
+const DEFAULT_PRICING: PricingSettings = {
+  econom_mult: 0.85,
+  premium_mult: 1.27,
+  econom_label: "Econom",
+  standard_label: "Standard",
+  premium_label: "Premium",
+};
+
 let _cache: PriceItem[] | null = null;
+let _pricingCache: PricingSettings | null = null;
 
 export function usePrices(): PriceItem[] {
   const [prices, setPrices] = useState<PriceItem[]>(_cache ?? []);
@@ -26,12 +43,33 @@ export function usePrices(): PriceItem[] {
       .then((r) => r.json())
       .then((d) => {
         _cache = d.prices ?? [];
+        _pricingCache = d.pricing ?? null;
         setPrices(_cache!);
       })
       .catch(() => {});
   }, []);
 
   return prices;
+}
+
+export function usePricing(): PricingSettings {
+  const [pricing, setPricing] = useState<PricingSettings>(_pricingCache ?? DEFAULT_PRICING);
+  const fetched = useRef(false);
+
+  useEffect(() => {
+    if (_pricingCache || fetched.current) return;
+    fetched.current = true;
+    fetch(PRICES_URL)
+      .then((r) => r.json())
+      .then((d) => {
+        _cache = d.prices ?? _cache;
+        _pricingCache = d.pricing ?? null;
+        setPricing(_pricingCache ?? DEFAULT_PRICING);
+      })
+      .catch(() => {});
+  }, []);
+
+  return pricing;
 }
 
 // Поиск ближайшей позиции в прайсе по названию (используется вне хука)
