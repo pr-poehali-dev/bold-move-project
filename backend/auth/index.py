@@ -51,11 +51,12 @@ def handler(event: dict, context) -> dict:
 
     # ── Регистрация ──────────────────────────────────────────────────────────
     if action == "register" and method == "POST":
-        email    = (body.get("email") or "").strip().lower()
-        password = body.get("password") or ""
-        name     = (body.get("name") or "").strip()
-        phone    = (body.get("phone") or "").strip()
-        role     = (body.get("role") or "client").strip()
+        email        = (body.get("email") or "").strip().lower()
+        password     = body.get("password") or ""
+        name         = (body.get("name") or "").strip()
+        phone        = (body.get("phone") or "").strip()
+        role         = (body.get("role") or "client").strip()
+        company_name = (body.get("company_name") or "").strip() or None
 
         if role not in ("client", "designer", "foreman", "installer", "company"):
             role = "client"
@@ -80,10 +81,10 @@ def handler(event: dict, context) -> dict:
 
         cur.execute(
             f"""INSERT INTO {SCHEMA}.users
-                (email, password_hash, name, phone, role, approved, discount, estimates_balance, trial_until)
-                VALUES (%s,%s,%s,%s,%s,%s,%s,%s, {trial_sql})
+                (email, password_hash, name, phone, role, approved, discount, estimates_balance, trial_until, company_name)
+                VALUES (%s,%s,%s,%s,%s,%s,%s,%s, {trial_sql}, %s)
                 RETURNING id""",
-            (email, hash_password(password), name, phone or None, role, approved, discount, init_balance)
+            (email, hash_password(password), name, phone or None, role, approved, discount, init_balance, company_name)
         )
         user_id = cur.fetchone()[0]
 

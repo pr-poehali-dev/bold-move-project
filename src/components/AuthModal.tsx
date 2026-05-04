@@ -50,7 +50,8 @@ export default function AuthModal({ onClose, defaultTab = "login", onPending, on
   const [tab,      setTab]      = useState<"login" | "register">(defaultTab);
   const [step,     setStep]     = useState<"role" | "form" | "reset">(defaultTab === "register" ? "role" : "form");
   const [role,     setRole]     = useState<UserRole>("client");
-  const [name,     setName]     = useState("");
+  const [name,        setName]        = useState("");
+  const [companyName, setCompanyName] = useState("");
   const [phone,    setPhone]    = useState("+7 (");
   const [email,    setEmail]    = useState("");
   const [password, setPassword] = useState("");
@@ -112,7 +113,7 @@ export default function AuthModal({ onClose, defaultTab = "login", onPending, on
           return;
         }
         const phoneVal = isValidPhone(phone) ? phone : undefined;
-        const res = await register(email, password, name, role, phoneVal);
+        const res = await register(email, password, name, role, phoneVal, isBusiness ? companyName : undefined);
         if (res.pending) { onPending?.(res.role || role); onClose(); return; }
       }
       onSuccess?.();
@@ -294,9 +295,9 @@ export default function AuthModal({ onClose, defaultTab = "login", onPending, on
                 </button>
                 <div className="flex items-center gap-2 px-3 py-2 rounded-xl mb-1"
                   style={{ background: `${selectedRole.color}15`, border: `1px solid ${selectedRole.color}40` }}>
-                  <Icon name={selectedRole.icon} size={13} style={{ color: selectedRole.color }} />
-                  <span className="text-xs font-semibold" style={{ color: selectedRole.color }}>{selectedRole.label}</span>
-                  <span className="text-xs text-white/30 ml-1">— {selectedRole.benefit}</span>
+                  <Icon name={selectedRole.icon} size={13} style={{ color: selectedRole.color }} className="flex-shrink-0" />
+                  <span className="text-xs font-semibold flex-shrink-0" style={{ color: selectedRole.color }}>{selectedRole.label}</span>
+                  <span className="text-xs text-white/30 ml-1 leading-snug">— {selectedRole.benefit}</span>
                 </div>
 
                 <div>
@@ -305,6 +306,15 @@ export default function AuthModal({ onClose, defaultTab = "login", onPending, on
                     placeholder="Иван Петров" autoFocus
                     className="w-full rounded-xl px-4 py-2.5 text-sm bg-white/[0.05] border border-white/[0.08] text-white placeholder-white/20 focus:outline-none focus:border-orange-500/50 transition" />
                 </div>
+
+                {isBusiness && (
+                  <div>
+                    <label className="text-[11px] text-white/40 mb-1.5 block font-medium">Название компании</label>
+                    <input value={companyName} onChange={e => setCompanyName(e.target.value)}
+                      placeholder="ООО «Потолки Москвы»"
+                      className="w-full rounded-xl px-4 py-2.5 text-sm bg-white/[0.05] border border-white/[0.08] text-white placeholder-white/20 focus:outline-none focus:border-orange-500/50 transition" />
+                  </div>
+                )}
 
                 <div>
                   <label className="text-[11px] text-white/40 mb-1.5 block font-medium">Телефон</label>
