@@ -156,9 +156,9 @@ export default function PricingFeatures() {
           <p className="text-sm text-white/40">Всё, что нужно мастеру — в одном сервисе</p>
         </div>
 
-        {/* Десктоп — все карточки сразу */}
+        {/* Десктоп — первые 8 карточек */}
         <div className="hidden sm:grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
-          {ADVANTAGES.map(a => (
+          {ADVANTAGES.slice(0, 8).map(a => (
             <AdvCard key={a.title} a={a} />
           ))}
         </div>
