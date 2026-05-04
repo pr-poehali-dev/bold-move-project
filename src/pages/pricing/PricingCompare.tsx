@@ -67,14 +67,10 @@ export default function PricingCompare() {
           <Icon name="Zap" size={10} />
           В чём разница
         </div>
-        <h2 className="text-xl sm:text-2xl font-black text-white mb-2 leading-tight">
-          Хотите, чтобы клиенты видели<br className="hidden sm:block" />
+        <h2 className="text-xl sm:text-2xl font-black text-white mb-1 leading-tight">
+          Хотите, чтобы клиенты видели
           <span style={{ color: "#a78bfa" }}> только ваш бренд?</span>
         </h2>
-        <p className="text-xs text-white/45 max-w-md mx-auto leading-relaxed">
-          С бизнес-пакетом вы работаете через наш сервис.
-          Со своим агентом — клиенты видят только вас.
-        </p>
       </div>
 
       {/* Таблица */}

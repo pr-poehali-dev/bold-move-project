@@ -22,8 +22,8 @@ export default function Pricing() {
       <PricingHeroAndTrial />
       <PricingPackages selected={selected} onSelect={choosePackage} />
       <PricingFeatures />
-      <PricingCompare />
       <PricingEcosystem />
+      <PricingCompare />
       <PricingOwnAgent />
       <PricingPayment selectedId={selected} />
     </div>
