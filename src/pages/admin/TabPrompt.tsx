@@ -21,10 +21,17 @@ interface PriceItem { category: string; name: string; price: number; unit: strin
 interface RuleItem { name: string; category: string; when_condition: string; when_not_condition: string; calc_rule: string; bundle: string; client_changes: string; }
 interface RuleType { id: number; name: string; label: string; }
 
+function normalizeAddr(raw?: string | null): string {
+  if (!raw) return "Мытищи";
+  const l = raw.toLowerCase();
+  if (l.includes("москв") || l.includes(" мо") || l.includes("московск")) return "Москва и МО";
+  return raw.trim();
+}
+
 function buildTemplateGeneral(u?: UserProfile | null): string {
   const company  = u?.company_name  || "MosPotolki";
   const phone    = u?.brand?.support_phone || "+7(977)606-89-01";
-  const addr     = u?.company_addr  || "Мытищи";
+  const addr     = normalizeAddr(u?.company_addr);
   const hours    = u?.brand?.working_hours || "Ежедневно 8:00–22:00";
   const site     = u?.website       || "mospotolki.net";
   const botName  = u?.brand?.bot_name || "сметчик-технолог";

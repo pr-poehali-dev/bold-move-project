@@ -1232,7 +1232,7 @@ def fetch_brand(company_id):
         cur.execute(f"""
             SELECT role, has_own_agent, company_name, bot_name,
                    support_phone, telegram, max_url, working_hours,
-                   pdf_footer_address, website
+                   pdf_footer_address, website, company_addr
             FROM {SCHEMA}.users
             WHERE id=%s AND removed_at IS NULL
         """, (int(company_id),))
@@ -1240,7 +1240,15 @@ def fetch_brand(company_id):
         cur.close(); conn.close()
         if not r:
             return None
-        role, has_agent, company_name, bot_name, phone, telegram, max_url, hours, addr, website = r
+        role, has_agent, company_name, bot_name, phone, telegram, max_url, hours, pdf_addr, website, company_addr = r
+        # Адрес: берём pdf_footer_address если есть, иначе нормализуем company_addr
+        addr = pdf_addr
+        if not addr and company_addr:
+            ca = company_addr.strip().lower()
+            if any(x in ca for x in ('москв', ' мо', 'московск')):
+                addr = 'Москва и МО'
+            else:
+                addr = company_addr.strip().title()
         if not has_agent or role != 'company':
             return None
         # Нормализация Telegram-ника в URL
