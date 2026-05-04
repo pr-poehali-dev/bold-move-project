@@ -22,21 +22,43 @@ def db():
     return psycopg2.connect(os.environ["DATABASE_URL"])
 
 
-def tg_send(text: str, reply_to: int = None) -> int:
-    """Отправляет сообщение в Telegram, возвращает message_id."""
-    if not TG_TOKEN or not TG_CHAT_ID:
+def tg_send(text: str, reply_to: int = None, token: str = None, chat_id: str = None) -> int:
+    """Отправляет сообщение в Telegram, возвращает message_id.
+    Если token/chat_id переданы — использует их (токен компании), иначе общий."""
+    _token  = token   or TG_TOKEN
+    _chat   = chat_id or TG_CHAT_ID
+    if not _token or not _chat:
         return 0
-    payload = {"chat_id": TG_CHAT_ID, "text": text, "parse_mode": "HTML"}
+    payload = {"chat_id": _chat, "text": text, "parse_mode": "HTML"}
     if reply_to:
         payload["reply_to_message_id"] = reply_to
     try:
-        r = requests.post(f"https://api.telegram.org/bot{TG_TOKEN}/sendMessage", json=payload, timeout=10)
+        r = requests.post(f"https://api.telegram.org/bot{_token}/sendMessage", json=payload, timeout=10)
         data = r.json()
         if data.get("ok"):
             return data["result"]["message_id"]
     except Exception:
         pass
     return 0
+
+
+def get_company_tg(company_id) -> tuple:
+    """Возвращает (tg_bot_token, tg_notify_chat_id) компании или (None, None)."""
+    if not company_id:
+        return None, None
+    try:
+        conn = db(); cur = conn.cursor()
+        cur.execute(
+            f"SELECT tg_bot_token, tg_notify_chat_id FROM {SCHEMA}.users WHERE id=%s AND has_own_agent=true",
+            (int(company_id),)
+        )
+        row = cur.fetchone()
+        cur.close(); conn.close()
+        if row and row[0] and row[1]:
+            return row[0], row[1]
+    except Exception:
+        pass
+    return None, None
 
 
 def handler(event, context):
@@ -92,6 +114,8 @@ def handler(event, context):
         session_id = body.get("session_id") or str(uuid.uuid4())
         text = (body.get("text") or "").strip()
         client_name = body.get("name", "Клиент с сайта")
+        company_id  = body.get("company_id")
+        cmp_tg_token, cmp_tg_chat = get_company_tg(company_id)
 
         if not text:
             return {"statusCode": 400, "headers": CORS, "body": json.dumps({"error": "empty"})}
@@ -135,8 +159,8 @@ def handler(event, context):
         else:
             tg_text = f"👤 <b>{client_name}</b>:\n{text}"
 
-        msg_id = tg_send(tg_text)
-        print(f"Sent to TG, msg_id={msg_id}, is_new={is_new}, session={session_id}")
+        msg_id = tg_send(tg_text, token=cmp_tg_token, chat_id=cmp_tg_chat)
+        print(f"Sent to TG, msg_id={msg_id}, is_new={is_new}, session={session_id}, company={company_id}")
 
         # Сохраняем msg_id для привязки reply
         if msg_id:
@@ -212,6 +236,8 @@ def handler(event, context):
         date = (body.get("date") or "").strip()
         time = (body.get("time") or "").strip()
         comment = (body.get("comment") or "").strip()
+        b_company_id = body.get("company_id")
+        b_tg_token, b_tg_chat = get_company_tg(b_company_id)
 
         if not name or not phone:
             return {"statusCode": 400, "headers": CORS, "body": json.dumps({"error": "name and phone required"})}
@@ -228,7 +254,7 @@ def handler(event, context):
         lines.append("\n<i>Заявка с сайта mospotolki.ru</i>")
         tg_text = "\n".join(lines)
 
-        tg_send(tg_text)
+        tg_send(tg_text, token=b_tg_token, chat_id=b_tg_chat)
         return {"statusCode": 200, "headers": CORS, "body": json.dumps({"ok": True})}
 
     # ── Загрузка чанка файла ──────────────────────────────────────────────────

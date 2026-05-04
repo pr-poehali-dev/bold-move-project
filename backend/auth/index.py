@@ -158,7 +158,8 @@ def handler(event: dict, context) -> dict:
                    u.brand_color, u.support_phone, u.support_email, u.max_url,
                    u.working_hours, u.pdf_footer_address, u.telegram_url, u.pdf_text_color,
                    u.brand_logo_url_dark, u.brand_logo_orientation, u.pdf_logo_bg,
-                   u.bot_avatar_bg, u.kanban_enabled
+                   u.bot_avatar_bg, u.kanban_enabled,
+                   u.tg_bot_token, u.tg_notify_chat_id
             FROM {SCHEMA}.user_sessions s
             JOIN {SCHEMA}.users u ON u.id = s.user_id
             WHERE s.token=%s AND s.expires_at > NOW()
@@ -172,7 +173,8 @@ def handler(event: dict, context) -> dict:
          ucompany_id, has_own_agent, agent_purchased_at,
          bot_name, bot_greeting, bot_avatar_url, brand_logo_url, brand_color,
          support_phone, support_email, max_url, working_hours, pdf_footer_address, telegram_url, pdf_text_color,
-         brand_logo_url_dark, brand_logo_orientation, pdf_logo_bg, bot_avatar_bg, kanban_enabled) = row
+         brand_logo_url_dark, brand_logo_orientation, pdf_logo_bg, bot_avatar_bg, kanban_enabled,
+         tg_bot_token, tg_notify_chat_id) = row
 
         return ok({"user": {
             "id": uid, "email": email, "name": name, "phone": phone,
@@ -187,6 +189,8 @@ def handler(event: dict, context) -> dict:
             "has_own_agent": bool(has_own_agent),
             "agent_purchased_at": str(agent_purchased_at)[:19] if agent_purchased_at else None,
             "kanban_enabled": bool(kanban_enabled),
+            "tg_bot_token":      tg_bot_token or None,
+            "tg_notify_chat_id": tg_notify_chat_id or None,
             "brand": {
                 "bot_name": bot_name, "bot_greeting": bot_greeting,
                 "bot_avatar_url": bot_avatar_url,
@@ -372,6 +376,7 @@ def handler(event: dict, context) -> dict:
             "support_phone", "support_email", "max_url",
             "working_hours", "pdf_footer_address", "telegram_url", "pdf_text_color",
             "brand_logo_url_dark", "brand_logo_orientation", "pdf_logo_bg",
+            "tg_bot_token", "tg_notify_chat_id",
         ]
         sets = []
         vals = []
@@ -782,6 +787,39 @@ def handler(event: dict, context) -> dict:
         # Читаем актуальный баланс после возможного списания
         cur.execute(f"SELECT estimates_balance FROM {SCHEMA}.users WHERE id=%s", (user_id,))
         new_balance = cur.fetchone()[0] or 0
+
+        # Уведомление в Telegram компании (только если has_own_agent и есть tg-интеграция)
+        try:
+            cur2 = conn.cursor()
+            cur2.execute(f"SELECT has_own_agent, tg_bot_token, tg_notify_chat_id, company_name FROM {SCHEMA}.users WHERE id=%s", (crm_company_id,))
+            tg_row = cur2.fetchone()
+            cur2.close()
+            if tg_row and tg_row[0] and tg_row[1] and tg_row[2]:
+                tg_token, tg_chat = tg_row[1], tg_row[2]
+                cname = tg_row[3] or "Компания"
+                client_display = user_name or email or "—"
+                phone_display = phone or "не указан"
+                sum_display = f"{total_standard:,}".replace(",", " ") if total_standard else "—"
+                msg = (
+                    f"📋 <b>Новая заявка!</b>\n"
+                    f"👤 {client_display}\n"
+                    f"📞 {phone_display}\n"
+                    f"💰 Смета: <b>{sum_display} ₽</b>\n"
+                    f"🔗 /company?order={chat_id}"
+                )
+                import urllib.request as _ur, urllib.parse as _up
+                _payload = json.dumps({"chat_id": tg_chat, "text": msg, "parse_mode": "HTML"}).encode()
+                _req = _ur.Request(
+                    f"https://api.telegram.org/bot{tg_token}/sendMessage",
+                    data=_payload,
+                    headers={"Content-Type": "application/json"},
+                )
+                try:
+                    _ur.urlopen(_req, timeout=5)
+                except Exception:
+                    pass
+        except Exception:
+            pass
 
         return ok({
             "ok": True,

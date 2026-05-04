@@ -24,6 +24,8 @@ export interface Brand {
   brand_logo_orientation?: "horizontal" | "vertical" | string | null;
   pdf_logo_bg?:            string | null;
   bot_avatar_bg?:          string | null;
+  tg_bot_token?:           string | null;
+  tg_notify_chat_id?:      string | null;
 }
 
 export interface Permissions {
@@ -130,8 +132,10 @@ export interface AuthUser {
   company_name?: string | null;
   company_inn?:  string | null;
   company_addr?: string | null;
-  website?:      string | null;
-  telegram?:     string | null;
+  website?:           string | null;
+  telegram?:          string | null;
+  tg_bot_token?:      string | null;
+  tg_notify_chat_id?: string | null;
 }
 
 // Бизнес-роли: требуют одобрения, получают доступ к CRM
