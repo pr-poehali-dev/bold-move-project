@@ -58,7 +58,7 @@ function Cell({ value, highlight }: { value: boolean; highlight?: boolean }) {
 
 export default function PricingCompare() {
   return (
-    <section className="max-w-4xl mx-auto px-5 pb-12">
+    <section className="max-w-5xl mx-auto px-5 pb-12">
 
       {/* Заголовок */}
       <div className="text-center mb-6">
