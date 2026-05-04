@@ -342,7 +342,7 @@ def _try_simple_estimate_inner(text: str) -> tuple[str, dict] | None:
     # ─── ЦЕНЫ ИЗ БД — только из прайса, без придуманных позиций ────────────
     price_raskroy        = p('Раскрой ПВХ', 0)
     price_ogarp          = p('Огарпунивание ПВХ', 0)
-    price_profile        = p('Стеновой алюминий', 0)
+    price_profile        = p('Стеновой алюминиевый', 0)
     price_zakl_lyustra   = p('Под люстру планка', 0)
     price_zakl_svet      = p('Под светильник ∅90', 0)
     price_svetilnik_full = p('Светильник GX-53 + лампа', 0)
@@ -354,6 +354,7 @@ def _try_simple_estimate_inner(text: str) -> tuple[str, dict] | None:
     price_mount_zakl     = p('Монтаж закладной', 0)
     price_mount_svet     = p('Монтаж светильников GX-53', 0)
     price_mount_razv     = p('Монтаж разводки ГОСТ 0.75', 0)
+    price_mount_nisha    = p('Монтаж ниши', 0)
 
     # Светильники GX-53 — базовые слова + синонимы из БД
     _svet_base = r'светильник|gx.?53|вклейк'
@@ -433,7 +434,7 @@ def _try_simple_estimate_inner(text: str) -> tuple[str, dict] | None:
     # Все позиции у которых есть синонимы — проверяем совпадение в тексте
     _BUILTIN_NAMES = {
         'Раскрой ПВХ', 'Огарпунивание ПВХ',
-        'Стеновой алюминий', 'Стеновой ПВХ',
+        'Стеновой алюминиевый', 'Стеновой ПВХ',
         'Под люстру планка', 'Под люстру крюк', 'Под люстру крестовина',
         'Под светильник ∅90', 'Под светильник ∅100-300', 'Под светильник ∅300-600',
         'Светильник GX-53 + лампа',
@@ -503,11 +504,13 @@ def _try_simple_estimate_inner(text: str) -> tuple[str, dict] | None:
     mount_zakl    = (n_lyustra + n_svetilnik) * price_mount_zakl if (n_lyustra + n_svetilnik) > 0 else 0
     mount_svet    = n_svetilnik * price_mount_svet
     mount_razv    = n_svetilnik * price_mount_razv if n_svetilnik > 0 else 0
+    mount_nisha   = round(nisha_len * price_mount_nisha) if has_nisha and price_mount_nisha else 0
 
     dynamic_total = sum(x[3] for x in dynamic_extras)
     standard = (canvas_total + raskroy + ogarp + profile_total + nisha_total +
                 zakl_total + svet_total +
                 mount_canvas + mount_profile + mount_zakl + mount_svet + mount_razv +
+                mount_nisha +
                 dynamic_total)
     # Загружаем коэффициенты из БД (с fallback)
     _econom_mult   = 0.85
@@ -545,7 +548,7 @@ def _try_simple_estimate_inner(text: str) -> tuple[str, dict] | None:
     if price_profile:
         sec += 1
         lines.append(f"\n{sec}. Профиль:")
-        lines.append(f"  Стеновой алюминий  {profile_len} мп × {price_profile} ₽ = {fmt(profile_total)} ₽")
+        lines.append(f"  Стеновой алюминиевый  {profile_len} мп × {price_profile} ₽ = {fmt(profile_total)} ₽")
 
     # Ниша
     if has_nisha:
@@ -584,6 +587,8 @@ def _try_simple_estimate_inner(text: str) -> tuple[str, dict] | None:
         lines.append(f"  Монтаж светильников GX-53  {n_svetilnik} шт. × {price_mount_svet} ₽ = {fmt(mount_svet)} ₽")
     if mount_razv > 0 and price_mount_razv:
         lines.append(f"  Монтаж разводки ГОСТ 0.75  {n_svetilnik} шт. × {price_mount_razv} ₽ = {fmt(mount_razv)} ₽")
+    if mount_nisha > 0 and price_mount_nisha:
+        lines.append(f"  Монтаж ниши  {nisha_len} мп × {price_mount_nisha} ₽ = {fmt(mount_nisha)} ₽")
 
     # Дополнительные позиции из прайса (обученные)
     if dynamic_extras:
