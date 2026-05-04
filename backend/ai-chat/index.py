@@ -345,7 +345,9 @@ def _try_simple_estimate_inner(text: str) -> tuple[str, dict] | None:
     price_profile        = p('Стеновой алюминий', 0)
     price_zakl_lyustra   = p('Под люстру планка', 0)
     price_zakl_svet      = p('Под светильник ∅90', 0)
-    price_svetilnik      = p('Светильник GX-53 + лампа', 0)
+    price_svetilnik_full = p('Светильник GX-53 + лампа', 0)
+    _lampa_price         = 100  # цена лампы GX-53 отдельно
+    price_svetilnik      = price_svetilnik_full - _lampa_price if price_svetilnik_full > _lampa_price else price_svetilnik_full
     price_mount_pvh      = p('Монтаж полотна ПВХ', 0)
     price_mount_tkань    = p('Монтаж полотна ТКАНЬ', 0)
     price_mount_profile  = p('Монтаж профиля стандарт', 0)
@@ -491,8 +493,8 @@ def _try_simple_estimate_inner(text: str) -> tuple[str, dict] | None:
     zakl_svet    = n_svetilnik * price_zakl_svet
     zakl_total   = zakl_lyustra + zakl_svet
 
-    # 4. Освещение (лампа уже включена в цену светильника)
-    svet_total  = n_svetilnik * price_svetilnik
+    # 4. Освещение (светильник + лампа считаются отдельно)
+    svet_total  = n_svetilnik * price_svetilnik_full  # итого = полная цена (светильник + лампа)
 
     # 5. Монтаж
     price_mount_canvas = price_mount_pvh if is_pvh else price_mount_tkань
@@ -560,11 +562,14 @@ def _try_simple_estimate_inner(text: str) -> tuple[str, dict] | None:
         if n_svetilnik > 0 and price_zakl_svet:
             lines.append(f"  Под светильник ∅90  {n_svetilnik} шт. × {price_zakl_svet} ₽ = {fmt(zakl_svet)} ₽")
 
-    # Освещение
-    if svet_total > 0 and price_svetilnik:
+    # Освещение — светильник и лампа выводятся отдельными строками
+    if svet_total > 0 and price_svetilnik_full:
         sec += 1
         lines.append(f"\n{sec}. Освещение:")
-        lines.append(f"  Светильник GX-53 + лампа  {n_svetilnik} шт. × {price_svetilnik} ₽ = {fmt(svet_total)} ₽")
+        svet_only_total = n_svetilnik * price_svetilnik
+        lamp_only_total = n_svetilnik * _lampa_price
+        lines.append(f"  Светильник GX-53  {n_svetilnik} шт. × {price_svetilnik} ₽ = {fmt(svet_only_total)} ₽")
+        lines.append(f"  Лампа GX-53  {n_svetilnik} шт. × {_lampa_price} ₽ = {fmt(lamp_only_total)} ₽")
 
     # Монтаж
     sec += 1
