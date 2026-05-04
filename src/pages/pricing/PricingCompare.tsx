@@ -77,47 +77,38 @@ export default function PricingCompare() {
       <div className="rounded-2xl overflow-hidden"
         style={{ background: "#0a0a14", border: "1.5px solid rgba(255,255,255,0.07)" }}>
 
-        {/* Шапка */}
-        <div className="grid grid-cols-[1fr_80px_100px] sm:grid-cols-[1fr_130px_150px]"
-          style={{ borderBottom: "1px solid rgba(255,255,255,0.07)" }}>
-          <div className="px-4 py-3" />
-
-          {/* Бизнес */}
-          <div className="flex flex-col items-center justify-center px-2 py-3 gap-0.5"
-            style={{ borderLeft: "1px solid rgba(255,255,255,0.07)" }}>
-            <div className="text-[9px] font-black uppercase tracking-widest" style={{ color: "#f59e0b" }}>
-              Бизнес
-            </div>
-            <div className="text-[10px] text-white/30 hidden sm:block">от 490 ₽</div>
-          </div>
-
-          {/* WL */}
-          <div className="flex flex-col items-center justify-center px-2 py-3 gap-0.5 relative"
-            style={{
-              borderLeft: "1px solid rgba(167,139,250,0.25)",
-              background: "radial-gradient(180% 120% at 50% 0%, rgba(167,139,250,0.10), transparent 70%)",
-            }}>
-            <div className="text-[9px] font-black uppercase tracking-widest" style={{ color: "#a78bfa" }}>
-              Свой агент
-            </div>
-            <div className="text-[10px] text-white/30 hidden sm:block">80 000 ₽</div>
-            <div className="absolute -top-px left-0 right-0 h-[2px]"
-              style={{ background: "linear-gradient(90deg, transparent, #a78bfa, transparent)" }} />
-          </div>
-        </div>
-
         {/* Строки */}
         {ROWS.map((section, si) => (
           <div key={section.category}>
-            <div className="px-4 py-1.5"
+            <div className="grid grid-cols-[1fr_80px_100px] sm:grid-cols-[1fr_130px_150px]"
               style={{
                 background: "rgba(255,255,255,0.02)",
                 borderBottom: "1px solid rgba(255,255,255,0.04)",
                 borderTop: si > 0 ? "1px solid rgba(255,255,255,0.04)" : undefined,
               }}>
-              <span className="text-[9px] font-black uppercase tracking-widest text-white/25">
-                {section.category}
-              </span>
+              <div className="px-4 py-1.5 flex items-center">
+                <span className="text-[9px] font-black uppercase tracking-widest text-white/25">
+                  {section.category}
+                </span>
+              </div>
+              {si === 0 && <>
+                <div className="flex flex-col items-center justify-center px-2 py-1.5 gap-0"
+                  style={{ borderLeft: "1px solid rgba(255,255,255,0.06)" }}>
+                  <div className="text-[8px] font-black uppercase tracking-widest" style={{ color: "#f59e0b" }}>Бизнес</div>
+                  <div className="text-[9px] text-white/25 hidden sm:block">от 490 ₽</div>
+                </div>
+                <div className="flex flex-col items-center justify-center px-2 py-1.5 gap-0 relative"
+                  style={{ borderLeft: "1px solid rgba(167,139,250,0.20)", background: "rgba(167,139,250,0.04)" }}>
+                  <div className="absolute -top-px left-0 right-0 h-[2px]"
+                    style={{ background: "linear-gradient(90deg, transparent, #a78bfa, transparent)" }} />
+                  <div className="text-[8px] font-black uppercase tracking-widest" style={{ color: "#a78bfa" }}>Свой агент</div>
+                  <div className="text-[9px] text-white/25 hidden sm:block">80 000 ₽</div>
+                </div>
+              </>}
+              {si > 0 && <>
+                <div style={{ borderLeft: "1px solid rgba(255,255,255,0.04)" }} />
+                <div style={{ borderLeft: "1px solid rgba(167,139,250,0.10)", background: "rgba(167,139,250,0.02)" }} />
+              </>}
             </div>
 
             {section.items.map((row, ri) => (
