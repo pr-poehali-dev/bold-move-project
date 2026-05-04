@@ -405,7 +405,9 @@ def _try_simple_estimate_inner(text: str) -> tuple[str, dict] | None:
             _nisha_rule_item['calc_rule'] if _nisha_rule_item else 'perimeter*0.25',
             area, perim
         )
-        nisha_len = round(_nisha_default if _nisha_default is not None else perim * 0.25, 1)
+        import math as _math
+        _raw = _nisha_default if _nisha_default is not None else perim * 0.25
+        nisha_len = float(_math.ceil(_raw))  # округляем вверх до целого пог.м как AI
 
     # Тип и цена ниши — ищем сначала в БД по имени, fallback на хардкод
     nisha_price = 0
