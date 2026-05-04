@@ -92,17 +92,15 @@ export default function PricingCompare() {
                 </span>
               </div>
               {si === 0 && <>
-                <div className="flex flex-col items-center justify-center px-2 py-1.5 gap-0"
+                <div className="flex items-center justify-center px-2 py-2.5"
                   style={{ borderLeft: "1px solid rgba(255,255,255,0.06)" }}>
-                  <div className="text-[8px] font-black uppercase tracking-widest" style={{ color: "#f59e0b" }}>Бизнес</div>
-                  <div className="text-[9px] text-white/25 hidden sm:block">от 490 ₽</div>
+                  <div className="text-[10px] font-black uppercase tracking-widest" style={{ color: "#f59e0b" }}>Бизнес</div>
                 </div>
-                <div className="flex flex-col items-center justify-center px-2 py-1.5 gap-0 relative"
+                <div className="flex items-center justify-center px-2 py-2.5 relative"
                   style={{ borderLeft: "1px solid rgba(167,139,250,0.20)", background: "rgba(167,139,250,0.04)" }}>
                   <div className="absolute -top-px left-0 right-0 h-[2px]"
                     style={{ background: "linear-gradient(90deg, transparent, #a78bfa, transparent)" }} />
-                  <div className="text-[8px] font-black uppercase tracking-widest" style={{ color: "#a78bfa" }}>Свой агент</div>
-                  <div className="text-[9px] text-white/25 hidden sm:block">80 000 ₽</div>
+                  <div className="text-[10px] font-black uppercase tracking-widest" style={{ color: "#a78bfa" }}>Свой агент</div>
                 </div>
               </>}
               {si > 0 && <>
