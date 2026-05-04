@@ -879,7 +879,7 @@ def handler(event: dict, context) -> dict:
         if enable:
             cur.execute(f"""
                 UPDATE {SCHEMA}.users
-                SET has_own_agent=TRUE, agent_purchased_at=COALESCE(agent_purchased_at, NOW())
+                SET has_own_agent=TRUE, agent_purchased_at=COALESCE(agent_purchased_at, NOW()), trial_until=NULL
                 WHERE id=%s
             """, (uid,))
         else:
@@ -943,7 +943,7 @@ def handler(event: dict, context) -> dict:
         if balance < min_balance:
             added = min_balance - balance
             cur.execute(f"""
-                UPDATE {SCHEMA}.users SET estimates_balance = %s WHERE id=%s
+                UPDATE {SCHEMA}.users SET estimates_balance = %s, trial_until = NULL WHERE id=%s
             """, (min_balance, int(target_id)))
             cur.execute(f"""
                 INSERT INTO {SCHEMA}.balance_transactions (user_id, amount, reason)
