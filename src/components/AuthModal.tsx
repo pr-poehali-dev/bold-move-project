@@ -341,6 +341,7 @@ export default function AuthModal({ onClose, defaultTab = "login", onPending, on
                 onBlur={() => setEmailTouched(true)}
                 placeholder="email@example.com"
                 autoFocus={tab === "login"}
+                autoComplete={tab === "register" ? "off" : "email"}
                 className="w-full rounded-xl px-4 py-2.5 text-sm bg-white/[0.05] text-white placeholder-white/20 focus:outline-none transition"
                 style={{ border: emailError ? "1px solid rgba(239,68,68,0.6)" : "1px solid rgba(255,255,255,0.08)" }}
               />
@@ -351,6 +352,7 @@ export default function AuthModal({ onClose, defaultTab = "login", onPending, on
               <label className="text-[11px] text-white/40 mb-1.5 block font-medium">Пароль</label>
               <input type="password" value={password} onChange={e => setPassword(e.target.value)}
                 placeholder={tab === "register" ? "Минимум 6 символов" : "••••••••"}
+                autoComplete={tab === "register" ? "new-password" : "current-password"}
                 className="w-full rounded-xl px-4 py-2.5 text-sm bg-white/[0.05] border border-white/[0.08] text-white placeholder-white/20 focus:outline-none focus:border-orange-500/50 transition" />
             </div>
 
