@@ -149,32 +149,6 @@ export default function PricingCompare() {
           </div>
         ))}
 
-        {/* Футер */}
-        <div className="grid grid-cols-[1fr_80px_100px] sm:grid-cols-[1fr_130px_150px]"
-          style={{ borderTop: "1px solid rgba(255,255,255,0.07)" }}>
-          <div className="px-4 py-3 flex items-center">
-            <p className="text-[10px] text-white/30 leading-relaxed">
-              С White Label клиенты никогда не узнают, что за этим стоим мы.
-            </p>
-          </div>
-          <div className="flex items-center justify-center px-2 py-3"
-            style={{ borderLeft: "1px solid rgba(255,255,255,0.05)" }}>
-            <span className="text-[9px] text-white/25 text-center hidden sm:block">сразу</span>
-          </div>
-          <div className="flex flex-col items-center justify-center px-2 py-3 gap-1.5"
-            style={{
-              borderLeft: "1px solid rgba(167,139,250,0.15)",
-              background: "radial-gradient(180% 120% at 50% 100%, rgba(167,139,250,0.07), transparent 70%)",
-            }}>
-            <div className="text-sm font-black" style={{ color: "#a78bfa" }}>80 000 ₽</div>
-            <a href="https://t.me/poehalidev" target="_blank" rel="noopener noreferrer"
-              className="hidden sm:flex items-center gap-1 px-2.5 py-1 rounded-lg text-[9px] font-bold transition hover:opacity-80"
-              style={{ background: "rgba(167,139,250,0.18)", color: "#a78bfa" }}>
-              <Icon name="Send" size={9} />
-              Хочу
-            </a>
-          </div>
-        </div>
       </div>
 
       {/* Легенда */}
