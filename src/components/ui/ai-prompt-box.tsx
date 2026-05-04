@@ -1,6 +1,5 @@
 import React from "react";
 import { Send, Mic, StopCircle, Square, Paperclip, CheckCircle2, Loader2 } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
 import func2url from "@/../backend/func2url.json";
 import { usePhone } from "@/hooks/use-phone";
 
@@ -324,42 +323,26 @@ export const PromptInputBox = React.forwardRef<HTMLDivElement, Props>(
         )}
       >
         {/* Визуализация записи */}
-        <AnimatePresence>
-          {isRecording && (
-            <motion.div
-              key="recording"
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: "auto" }}
-              exit={{ opacity: 0, height: 0 }}
-              transition={{ duration: 0.22 }}
-              className="overflow-hidden"
-            >
-              <div className="flex flex-col items-center pt-3 pb-1 px-4">
-                <div className="flex items-center gap-2 mb-2">
-                  <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-                  <span className="font-mono text-xs text-white/60">{fmt(recTime)}</span>
-                  <span className="text-white/25 text-[11px]">· говорите сейчас</span>
-                </div>
-                <div className="w-full h-8 flex items-end justify-center gap-[3px]">
-                  {bars.map((h, i) => (
-                    <motion.div
-                      key={i}
-                      className="w-[3px] rounded-full bg-gradient-to-t from-orange-500 to-rose-400"
-                      animate={{ scaleY: [h, 1, h * 0.4, 0.9, h] }}
-                      transition={{
-                        duration: 0.7 + h * 0.5,
-                        repeat: Infinity,
-                        delay: i * 0.035,
-                        ease: "easeInOut",
-                      }}
-                      style={{ height: "100%", transformOrigin: "bottom" }}
-                    />
-                  ))}
-                </div>
+        {isRecording && (
+          <div className="overflow-hidden">
+            <div className="flex flex-col items-center pt-3 pb-1 px-4">
+              <div className="flex items-center gap-2 mb-2">
+                <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+                <span className="font-mono text-xs text-white/60">{fmt(recTime)}</span>
+                <span className="text-white/25 text-[11px]">· говорите сейчас</span>
               </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
+              <div className="w-full h-8 flex items-end justify-center gap-[3px]">
+                {bars.map((h, i) => (
+                  <div
+                    key={i}
+                    className="w-[3px] rounded-full bg-gradient-to-t from-orange-500 to-rose-400 animate-pulse"
+                    style={{ height: `${Math.round(h * 100)}%`, transformOrigin: "bottom", animationDelay: `${i * 35}ms`, animationDuration: `${700 + h * 500}ms` }}
+                  />
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* iOS: распознавание через Whisper */}
         {isTranscribing && (
@@ -370,30 +353,21 @@ export const PromptInputBox = React.forwardRef<HTMLDivElement, Props>(
         )}
 
         {/* Textarea */}
-        <AnimatePresence initial={false}>
-          {!isRecording && !isTranscribing && (
-            <motion.div
-              key="textarea"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.15 }}
-              className="flex items-end gap-2 px-3 pt-2.5 pb-0"
-            >
-              <textarea
-                ref={textareaRef}
-                value={value}
-                onChange={(e) => onValueChange(e.target.value)}
-                onKeyDown={handleKeyDown}
-                placeholder={placeholder}
-                rows={1}
-                disabled={isLoading}
-                style={{ resize: "none", minHeight: 38, maxHeight: 120 }}
-                className="flex-1 bg-transparent text-white text-[13px] outline-none placeholder:text-white/20 overflow-y-auto py-1 leading-relaxed"
-              />
-            </motion.div>
-          )}
-        </AnimatePresence>
+        {!isRecording && !isTranscribing && (
+          <div className="flex items-end gap-2 px-3 pt-2.5 pb-0">
+            <textarea
+              ref={textareaRef}
+              value={value}
+              onChange={(e) => onValueChange(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder={placeholder}
+              rows={1}
+              disabled={isLoading}
+              style={{ resize: "none", minHeight: 38, maxHeight: 120 }}
+              className="flex-1 bg-transparent text-white text-[13px] outline-none placeholder:text-white/20 overflow-y-auto py-1 leading-relaxed"
+            />
+          </div>
+        )}
 
         {/* Ошибка микрофона */}
         {speechError && (
@@ -409,7 +383,7 @@ export const PromptInputBox = React.forwardRef<HTMLDivElement, Props>(
           <input ref={fileInputRef} type="file" className="hidden" onChange={handleFileUpload}
             accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.dwg,.dxf" />
           {hasEstimate ? (
-            <motion.button
+            <button
               type="button"
               onClick={() => {
                 if (newEstimateConfirm) {
@@ -421,36 +395,26 @@ export const PromptInputBox = React.forwardRef<HTMLDivElement, Props>(
                   confirmTimerRef.current = setTimeout(() => setNewEstimateConfirm(false), 3000);
                 }
               }}
-              whileTap={{ scale: 0.92 }}
               title="Создать новую смету"
               className={cn(
-                "flex items-center gap-1.5 px-3 h-9 rounded-xl text-[11px] font-medium shrink-0 transition-all duration-200",
+                "flex items-center gap-1.5 px-3 h-9 rounded-xl text-[11px] font-medium shrink-0 transition-all duration-200 active:scale-95",
                 newEstimateConfirm
                   ? "bg-orange-500/30 text-orange-300 ring-1 ring-orange-500/50"
                   : "bg-orange-500/15 text-orange-400 hover:bg-orange-500/25"
               )}
             >
               <CheckCircle2 size={13} />
-              <AnimatePresence mode="wait">
-                {newEstimateConfirm ? (
-                  <motion.span key="confirm" initial={{ opacity: 0, width: 0 }} animate={{ opacity: 1, width: "auto" }} exit={{ opacity: 0, width: 0 }} className="overflow-hidden whitespace-nowrap">
-                    Уверены? Нажмите ещё раз
-                  </motion.span>
-                ) : (
-                  <motion.span key="default" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-                    Создать новую смету
-                  </motion.span>
-                )}
-              </AnimatePresence>
-            </motion.button>
+              <span className="whitespace-nowrap">
+                {newEstimateConfirm ? "Уверены? Нажмите ещё раз" : "Создать новую смету"}
+              </span>
+            </button>
           ) : (
-            <motion.button
+            <button
               type="button"
               onClick={() => uploadState === "idle" && fileInputRef.current?.click()}
-              whileTap={{ scale: 0.92 }}
               title="Загрузить проект"
               className={cn(
-                "flex items-center gap-1.5 px-3 h-9 rounded-xl text-[11px] font-medium shrink-0 transition-all duration-200",
+                "flex items-center gap-1.5 px-3 h-9 rounded-xl text-[11px] font-medium shrink-0 transition-all duration-200 active:scale-95",
                 uploadState === "done"  ? "bg-green-500/20 text-green-400"
                 : uploadState === "error"  ? "bg-red-500/20 text-red-400"
                 : uploadState === "loading" ? "bg-white/[0.06] text-white/40 cursor-wait"
@@ -466,7 +430,7 @@ export const PromptInputBox = React.forwardRef<HTMLDivElement, Props>(
                   : uploadState === "error" ? "Ошибка"
                   : "Загрузить проект"}
               </span>
-            </motion.button>
+            </button>
           )}
 
           {/* Кнопка микрофон */}
@@ -487,37 +451,20 @@ export const PromptInputBox = React.forwardRef<HTMLDivElement, Props>(
           </button>
 
           {/* Кнопка отправить */}
-          <motion.button
+          <button
             type="button"
             onClick={handleSend}
             disabled={!hasContent || isLoading || isRecording}
-            whileTap={{ scale: 0.85 }}
-            whileHover={{ scale: 1.06 }}
-            transition={{ type: "spring", stiffness: 400, damping: 18 }}
             title="Отправить"
             className={cn(
-              "w-9 h-9 rounded-xl flex items-center justify-center shrink-0 transition-colors duration-200",
+              "w-9 h-9 rounded-xl flex items-center justify-center shrink-0 transition-all duration-200 active:scale-90 hover:scale-105",
               hasContent && !isLoading && !isRecording
                 ? "bg-gradient-to-br from-orange-500 to-rose-500 text-white shadow-md shadow-orange-500/20"
                 : "bg-white/[0.06] text-white/20"
             )}
           >
-            <AnimatePresence mode="wait" initial={false}>
-              {isLoading ? (
-                <motion.span key="loading"
-                  initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 0 }}
-                  transition={{ duration: 0.12 }}>
-                  <Square size={13} className="fill-white" />
-                </motion.span>
-              ) : (
-                <motion.span key="send"
-                  initial={{ scale: 0, x: -3 }} animate={{ scale: 1, x: 0 }} exit={{ scale: 0 }}
-                  transition={{ duration: 0.12 }}>
-                  <Send size={15} className="-translate-x-px" />
-                </motion.span>
-              )}
-            </AnimatePresence>
-          </motion.button>
+            {isLoading ? <Square size={13} className="fill-white" /> : <Send size={15} className="-translate-x-px" />}
+          </button>
 
         </div>
       </div>
