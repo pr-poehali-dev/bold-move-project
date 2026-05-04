@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import Icon from "@/components/ui/icon";
-import { ComplexityPrompts, ThemeClasses, DEFAULT_FORMULA } from "./discountRiskTypes";
+import { ComplexityPrompts, ThemeClasses, DEFAULT_FORMULA, DEFAULT_COMPLEXITY_PROMPTS } from "./discountRiskTypes";
 
 interface Props {
   isDark: boolean;
@@ -152,7 +152,7 @@ export default function ComplexityAiPrompts({
       </div>
 
       {!readOnly && (
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <button onClick={onSavePrompts}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-bold transition hover:opacity-80"
             style={{ background: "rgba(139,92,246,0.15)", color: "#a78bfa", border: "1px solid rgba(139,92,246,0.3)" }}>
@@ -168,6 +168,18 @@ export default function ComplexityAiPrompts({
             }}>
             <Icon name={improvedPrompts ? "CheckCircle2" : "Wand2"} size={12} />
             {improvedPrompts ? "✓ Промпты улучшены и сохранены!" : "Улучшить промпты"}
+          </button>
+          <button
+            onClick={() => {
+              if (!confirm(`Сбросить промпт "${activePromptTab === "math" ? "Математика" : activePromptTab === "semantic" ? "Семантика" : "Объединение"}" к дефолту?`)) return;
+              const reset = { ...complexityPrompts, [activePromptTab]: DEFAULT_COMPLEXITY_PROMPTS[activePromptTab] };
+              if (activePromptTab === "math") setFormula(DEFAULT_FORMULA);
+              setComplexityPrompts(reset);
+            }}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-bold transition hover:opacity-80 ml-auto"
+            style={{ background: "rgba(239,68,68,0.08)", color: "rgba(239,68,68,0.6)", border: "1px solid rgba(239,68,68,0.2)" }}>
+            <Icon name="RotateCcw" size={12} />
+            Сбросить к дефолту
           </button>
         </div>
       )}
