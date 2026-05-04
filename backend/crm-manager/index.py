@@ -244,18 +244,18 @@ def handler(event: dict, context) -> dict:
                 )
                 new_id = cur.fetchone()[0]
 
-                # Авто-канбан — первая колонка
-                cur.execute(f"SELECT id FROM {SCHEMA}.kanban_columns ORDER BY position LIMIT 1")
+                # Авто-канбан — первая колонка (только своей компании)
+                cur.execute(f"SELECT id FROM {SCHEMA}.kanban_columns WHERE company_id=%s ORDER BY position LIMIT 1", (final_company_id,))
                 first_col = cur.fetchone()
                 if first_col:
                     col_id = first_col[0]
-                    cur.execute(f"SELECT COALESCE(MAX(position)+1,0) FROM {SCHEMA}.kanban_cards WHERE column_id=%s", (col_id,))
+                    cur.execute(f"SELECT COALESCE(MAX(position)+1,0) FROM {SCHEMA}.kanban_cards WHERE column_id=%s AND company_id=%s", (col_id, final_company_id))
                     pos = cur.fetchone()[0]
                     name = body.get("client_name", "") or "Новый клиент"
                     cur.execute(
-                        f"""INSERT INTO {SCHEMA}.kanban_cards (column_id, client_id, title, phone, priority, position)
-                            VALUES (%s,%s,%s,%s,'medium',%s)""",
-                        (col_id, new_id, name, body.get("phone", ""), pos)
+                        f"""INSERT INTO {SCHEMA}.kanban_cards (column_id, client_id, title, phone, priority, position, company_id)
+                            VALUES (%s,%s,%s,%s,'medium',%s,%s)""",
+                        (col_id, new_id, name, body.get("phone", ""), pos, final_company_id)
                     )
 
                 # Авто-календарь для замера
@@ -461,6 +461,7 @@ def handler(event: dict, context) -> dict:
             cancel_reasons = [{"reason": r[0], "count": r[1]} for r in cur.fetchall()]
 
             # Динамика по месяцам — все 12 месяцев скользящего окна с нулями для пустых
+            cmp_sql = f" AND company_id = {int(company_id)}" if company_id is not None else ""
             cur.execute(f"""
                 WITH months AS (
                     SELECT generate_series(
@@ -471,7 +472,7 @@ def handler(event: dict, context) -> dict:
                 ),
                 leads AS (
                     SELECT DATE_TRUNC('month', created_at) AS m, COUNT(*) AS cnt
-                    FROM {S}.live_chats WHERE status != 'deleted' GROUP BY 1
+                    FROM {S}.live_chats WHERE status != 'deleted'{cmp_sql} GROUP BY 1
                 )
                 SELECT TO_CHAR(months.m, 'YYYY-MM'), COALESCE(leads.cnt, 0)
                 FROM months LEFT JOIN leads ON months.m = leads.m ORDER BY months.m
@@ -488,7 +489,7 @@ def handler(event: dict, context) -> dict:
                 ),
                 done AS (
                     SELECT DATE_TRUNC('month', created_at) AS m, COUNT(*) AS cnt
-                    FROM {S}.live_chats WHERE status = 'done' GROUP BY 1
+                    FROM {S}.live_chats WHERE status = 'done'{cmp_sql} GROUP BY 1
                 )
                 SELECT TO_CHAR(months.m, 'YYYY-MM'), COALESCE(done.cnt, 0)
                 FROM months LEFT JOIN done ON months.m = done.m ORDER BY months.m
@@ -505,7 +506,7 @@ def handler(event: dict, context) -> dict:
                 ),
                 rev AS (
                     SELECT DATE_TRUNC('month', created_at) AS m, COALESCE(SUM(contract_sum), 0) AS s
-                    FROM {S}.live_chats WHERE contract_sum IS NOT NULL AND status != 'deleted' GROUP BY 1
+                    FROM {S}.live_chats WHERE contract_sum IS NOT NULL AND status != 'deleted'{cmp_sql} GROUP BY 1
                 )
                 SELECT TO_CHAR(months.m, 'YYYY-MM'), COALESCE(rev.s, 0)
                 FROM months LEFT JOIN rev ON months.m = rev.m ORDER BY months.m
@@ -523,7 +524,7 @@ def handler(event: dict, context) -> dict:
                 costs AS (
                     SELECT DATE_TRUNC('month', created_at) AS m,
                         COALESCE(SUM(material_cost),0) + COALESCE(SUM(measure_cost),0) + COALESCE(SUM(install_cost),0) AS s
-                    FROM {S}.live_chats WHERE status != 'deleted' GROUP BY 1
+                    FROM {S}.live_chats WHERE status != 'deleted'{cmp_sql} GROUP BY 1
                 )
                 SELECT TO_CHAR(months.m, 'YYYY-MM'), COALESCE(costs.s, 0)
                 FROM months LEFT JOIN costs ON months.m = costs.m ORDER BY months.m
@@ -541,7 +542,7 @@ def handler(event: dict, context) -> dict:
                 profit AS (
                     SELECT DATE_TRUNC('month', created_at) AS m,
                         COALESCE(SUM(contract_sum),0) - COALESCE(SUM(material_cost),0) - COALESCE(SUM(measure_cost),0) - COALESCE(SUM(install_cost),0) AS s
-                    FROM {S}.live_chats WHERE status != 'deleted' GROUP BY 1
+                    FROM {S}.live_chats WHERE status != 'deleted'{cmp_sql} GROUP BY 1
                 )
                 SELECT TO_CHAR(months.m, 'YYYY-MM'), COALESCE(profit.s, 0)
                 FROM months LEFT JOIN profit ON months.m = profit.m ORDER BY months.m
@@ -549,9 +550,9 @@ def handler(event: dict, context) -> dict:
             monthly_profit = [{"month": r[0], "profit": float(r[1])} for r in cur.fetchall()]
 
             # Средние значения
-            cur.execute(f"SELECT AVG(area) FROM {S}.live_chats WHERE area IS NOT NULL AND status != 'deleted'")
+            cur.execute(f"SELECT AVG(area) FROM {S}.live_chats WHERE area IS NOT NULL AND status != 'deleted'{cmp_sql}")
             avg_area = float(cur.fetchone()[0] or 0)
-            cur.execute(f"SELECT AVG(contract_sum) FROM {S}.live_chats WHERE contract_sum IS NOT NULL AND status != 'deleted'")
+            cur.execute(f"SELECT AVG(contract_sum) FROM {S}.live_chats WHERE contract_sum IS NOT NULL AND status != 'deleted'{cmp_sql}")
             avg_contract = float(cur.fetchone()[0] or 0)
 
             # Конверсия воронки
@@ -603,29 +604,34 @@ def handler(event: dict, context) -> dict:
 
         # ── KANBAN COLUMNS ────────────────────────────────────────────────────
         if resource == "kanban-columns":
+            # Определяем effective_company_id: мастер смотрит company_id=2 (свои)
+            kcmp = company_id if company_id is not None else 2
             if method == "GET":
-                cur.execute(f"SELECT id, title, color, position FROM {SCHEMA}.kanban_columns ORDER BY position")
+                cur.execute(f"SELECT id, title, color, position FROM {SCHEMA}.kanban_columns WHERE company_id=%s ORDER BY position", (kcmp,))
                 cols = [{"id": r[0], "title": r[1], "color": r[2], "position": r[3]} for r in cur.fetchall()]
                 return ok(cols)
             if method == "POST":
-                cur.execute(f"SELECT COALESCE(MAX(position)+1,0) FROM {SCHEMA}.kanban_columns")
+                cur.execute(f"SELECT COALESCE(MAX(position)+1,0) FROM {SCHEMA}.kanban_columns WHERE company_id=%s", (kcmp,))
                 pos = cur.fetchone()[0]
-                cur.execute(f"INSERT INTO {SCHEMA}.kanban_columns (title,color,position) VALUES (%s,%s,%s) RETURNING id",
-                            (body.get("title","Новая"), body.get("color","#7c3aed"), pos))
-                return ok({"id": cur.fetchone()[0]}), conn.commit() or None
+                cur.execute(f"INSERT INTO {SCHEMA}.kanban_columns (title,color,position,company_id) VALUES (%s,%s,%s,%s) RETURNING id",
+                            (body.get("title","Новая"), body.get("color","#7c3aed"), pos, kcmp))
+                new_id = cur.fetchone()[0]
+                conn.commit()
+                return ok({"id": new_id})
             if method == "PUT":
                 cid = qs.get("id")
                 if not cid: return err("id required")
                 sets, vals = [], []
                 for f in ["title","color","position"]:
                     if f in body: sets.append(f"{f}=%s"); vals.append(body[f])
-                vals.append(int(cid))
-                cur.execute(f"UPDATE {SCHEMA}.kanban_columns SET {','.join(sets)} WHERE id=%s", vals)
+                vals.extend([int(cid), kcmp])
+                cur.execute(f"UPDATE {SCHEMA}.kanban_columns SET {','.join(sets)} WHERE id=%s AND company_id=%s", vals)
                 conn.commit()
                 return ok({"updated": True})
 
         # ── KANBAN CARDS ──────────────────────────────────────────────────────
         if resource == "kanban-cards":
+            kcmp = company_id if company_id is not None else 2
             if method == "GET":
                 col_id = qs.get("column_id")
                 if col_id:
@@ -634,26 +640,26 @@ def handler(event: dict, context) -> dict:
                         lc.client_name, lc.status as client_status, lc.tags
                         FROM {SCHEMA}.kanban_cards kc
                         LEFT JOIN {SCHEMA}.live_chats lc ON kc.client_id=lc.id
-                        WHERE kc.column_id=%s ORDER BY kc.position""", (int(col_id),))
+                        WHERE kc.column_id=%s AND kc.company_id=%s ORDER BY kc.position""", (int(col_id), kcmp))
                 else:
                     cur.execute(f"""SELECT kc.id, kc.column_id, kc.client_id, kc.title, kc.description,
                         kc.phone, kc.amount, kc.priority, kc.position, kc.due_date, kc.created_at,
                         lc.client_name, lc.status as client_status, lc.tags
                         FROM {SCHEMA}.kanban_cards kc
                         LEFT JOIN {SCHEMA}.live_chats lc ON kc.client_id=lc.id
-                        ORDER BY kc.column_id, kc.position""")
+                        WHERE kc.company_id=%s ORDER BY kc.column_id, kc.position""", (kcmp,))
                 cols_desc = [d[0] for d in cur.description]
                 rows = [dict(zip(cols_desc, r)) for r in cur.fetchall()]
                 return ok(rows)
             if method == "POST":
-                cur.execute(f"SELECT COALESCE(MAX(position)+1,0) FROM {SCHEMA}.kanban_cards WHERE column_id=%s", (body.get("column_id"),))
+                cur.execute(f"SELECT COALESCE(MAX(position)+1,0) FROM {SCHEMA}.kanban_cards WHERE column_id=%s AND company_id=%s", (body.get("column_id"), kcmp))
                 pos = cur.fetchone()[0]
                 cur.execute(f"""INSERT INTO {SCHEMA}.kanban_cards
-                    (column_id,client_id,title,description,phone,amount,priority,position,due_date)
-                    VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s) RETURNING id""",
+                    (column_id,client_id,title,description,phone,amount,priority,position,due_date,company_id)
+                    VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s) RETURNING id""",
                     (body.get("column_id"), body.get("client_id"), body.get("title",""),
                      body.get("description",""), body.get("phone",""), body.get("amount"),
-                     body.get("priority","medium"), pos, body.get("due_date")))
+                     body.get("priority","medium"), pos, body.get("due_date"), kcmp))
                 new_id = cur.fetchone()[0]
                 conn.commit()
                 return ok({"id": new_id})
@@ -665,14 +671,14 @@ def handler(event: dict, context) -> dict:
                 for f in fields:
                     if f in body: sets.append(f"{f}=%s"); vals.append(body[f])
                 if not sets: return err("nothing to update")
-                vals.append(int(cid))
-                cur.execute(f"UPDATE {SCHEMA}.kanban_cards SET {','.join(sets)} WHERE id=%s", vals)
+                vals.extend([int(cid), kcmp])
+                cur.execute(f"UPDATE {SCHEMA}.kanban_cards SET {','.join(sets)} WHERE id=%s AND company_id=%s", vals)
                 conn.commit()
                 return ok({"updated": True})
             if method == "DELETE":
                 cid = qs.get("id")
                 if not cid: return err("id required")
-                cur.execute(f"UPDATE {SCHEMA}.kanban_cards SET id=id WHERE id=%s", (int(cid),))
+                cur.execute(f"DELETE FROM {SCHEMA}.kanban_cards WHERE id=%s AND company_id=%s", (int(cid), kcmp))
                 conn.commit()
                 return ok({"deleted": True})
 
