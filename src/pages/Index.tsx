@@ -92,7 +92,7 @@ export default function Index() {
 
   const BOOKING_RE = /запис|замер|выезд|приедет|технолог|вызов|когда приедет|вызвать|заказать замер/i;
 
-  const sendMsg = useCallback((text: string, fast = false) => {
+  const sendMsg = useCallback((text: string, fast = false, fresh = false) => {
     if (!text.trim() || typing) return;
     const userMsg: Msg = { id: Date.now(), role: "user", text: text.trim() };
     setMessages((p) => [...p, userMsg]);
@@ -100,8 +100,9 @@ export default function Index() {
     setTyping(true);
     if (BOOKING_RE.test(text)) setPanel("booking");
     const history = [...messages, userMsg].slice(-6).map((m) => ({ role: m.role, text: m.text }));
-    // Передаём items последней сметы — бэкенд использует при редактировании
-    const lastEstimateMsg = [...messages].reverse().find((m) => m.role === "assistant" && m.items?.length);
+    // Передаём items последней сметы — бэкенд использует при редактировании.
+    // При fresh=true (кнопка "повторить") — не передаём, чтобы AI считал заново, а не накладывал патч
+    const lastEstimateMsg = !fresh ? [...messages].reverse().find((m) => m.role === "assistant" && m.items?.length) : null;
     const prevItems = lastEstimateMsg?.items ?? null;
     const ctrl = new AbortController();
     const timer = setTimeout(() => ctrl.abort(), 90000);
@@ -216,6 +217,7 @@ export default function Index() {
           panel={panel}
           onInput={setInput}
           onSend={sendMsg}
+          onRepeat={(text) => sendMsg(text, false, true)}
           onPreset={sendPreset}
           onPanel={setPanel}
           onNewEstimate={handleNewEstimate}

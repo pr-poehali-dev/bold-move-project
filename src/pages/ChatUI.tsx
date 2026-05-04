@@ -48,13 +48,14 @@ interface Props {
   panel: Panel;
   onInput: (v: string) => void;
   onSend: (text: string) => void;
+  onRepeat: (text: string) => void;
   onPreset: (text: string) => void;
   onPanel: (p: Panel) => void;
   onNewEstimate?: () => void;
   onSaveRequest?: () => void;
 }
 
-export default function ChatUI({ messages, input, typing, panel, onInput, onSend, onPreset, onPanel, onNewEstimate, onSaveRequest }: Props) {
+export default function ChatUI({ messages, input, typing, panel, onInput, onSend, onRepeat, onPreset, onPanel, onNewEstimate, onSaveRequest }: Props) {
   const { brand } = useBrand();
   const avatarSrc = brand.bot_avatar_url || AVATAR;
   const botName   = brand.bot_name || "Женя";
@@ -111,7 +112,7 @@ export default function ChatUI({ messages, input, typing, panel, onInput, onSend
                     <MsgContent text={m.text} />
                   </div>
                   <button
-                    onClick={() => onSend(m.text)}
+                    onClick={() => onRepeat(m.text)}
                     className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] text-white/20 hover:text-orange-400 hover:bg-orange-500/10 transition-all duration-150"
                   >
                     <Icon name="RotateCcw" size={10} />
