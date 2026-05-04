@@ -156,7 +156,7 @@ def handler(event: dict, context) -> dict:
                    u.brand_color, u.support_phone, u.support_email, u.max_url,
                    u.working_hours, u.pdf_footer_address, u.telegram_url, u.pdf_text_color,
                    u.brand_logo_url_dark, u.brand_logo_orientation, u.pdf_logo_bg,
-                   u.bot_avatar_bg
+                   u.bot_avatar_bg, u.kanban_enabled
             FROM {SCHEMA}.user_sessions s
             JOIN {SCHEMA}.users u ON u.id = s.user_id
             WHERE s.token=%s AND s.expires_at > NOW()
@@ -170,7 +170,7 @@ def handler(event: dict, context) -> dict:
          ucompany_id, has_own_agent, agent_purchased_at,
          bot_name, bot_greeting, bot_avatar_url, brand_logo_url, brand_color,
          support_phone, support_email, max_url, working_hours, pdf_footer_address, telegram_url, pdf_text_color,
-         brand_logo_url_dark, brand_logo_orientation, pdf_logo_bg, bot_avatar_bg) = row
+         brand_logo_url_dark, brand_logo_orientation, pdf_logo_bg, bot_avatar_bg, kanban_enabled) = row
 
         return ok({"user": {
             "id": uid, "email": email, "name": name, "phone": phone,
@@ -184,6 +184,7 @@ def handler(event: dict, context) -> dict:
             "company_id": ucompany_id,
             "has_own_agent": bool(has_own_agent),
             "agent_purchased_at": str(agent_purchased_at)[:19] if agent_purchased_at else None,
+            "kanban_enabled": bool(kanban_enabled),
             "brand": {
                 "bot_name": bot_name, "bot_greeting": bot_greeting,
                 "bot_avatar_url": bot_avatar_url,
@@ -2453,5 +2454,23 @@ def handler(event: dict, context) -> dict:
             return ok({"results": result})
         except Exception as e:
             return err(f"AI ошибка: {str(e)[:100]}")
+
+    # ── Сохранить флаг канбана ────────────────────────────────────────────────
+    if action == "set-kanban" and method == "POST":
+        if not token:
+            return err("Требуется авторизация", 401)
+        cur.execute(f"""
+            SELECT u.id FROM {SCHEMA}.user_sessions s
+            JOIN {SCHEMA}.users u ON u.id = s.user_id
+            WHERE s.token=%s AND s.expires_at > NOW()
+        """, (token,))
+        row = cur.fetchone()
+        if not row:
+            return err("Токен недействителен", 401)
+        uid = row[0]
+        enabled = bool(body.get("enabled", False))
+        cur.execute(f"UPDATE {SCHEMA}.users SET kanban_enabled=%s WHERE id=%s", (enabled, uid))
+        conn.commit()
+        return ok({"ok": True, "kanban_enabled": enabled})
 
     return err("Неизвестное действие", 404)

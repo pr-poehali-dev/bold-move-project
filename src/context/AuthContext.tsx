@@ -125,6 +125,7 @@ export interface AuthUser {
   permissions?: Permissions | null;
   has_own_agent?: boolean;
   agent_purchased_at?: string | null;
+  kanban_enabled?: boolean;
   brand?: Brand | null;
   company_name?: string | null;
   company_inn?:  string | null;

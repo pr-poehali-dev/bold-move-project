@@ -10,8 +10,9 @@ import { SubstatusContext } from "./substatusContext";
 import { crmFetch, Client } from "./crmApi";
 import { useAuth, hasPermission, type Permissions } from "@/context/AuthContext";
 import { useSubstatuses } from "./OrdersTabs";
+import func2url from "@/../backend/func2url.json";
 
-const LS_KANBAN_ENABLED = "crm_kanban_board_enabled";
+const AUTH_URL = (func2url as Record<string, string>)["auth"];
 
 type CrmTab = "analytics" | "clients" | "orders" | "calendar" | "kanban";
 
@@ -24,7 +25,7 @@ const ALL_TABS: { id: CrmTab; label: string; icon: string; perm?: keyof Permissi
 ];
 
 export default function CrmPanel({ theme, initialOrderId }: { theme: Theme; initialOrderId?: number | null }) {
-  const { user } = useAuth();
+  const { user, token, updateUser } = useAuth();
 
   // Права пользователя — новая система
   const canClientsView  = hasPermission(user, "clients_view");
@@ -66,7 +67,7 @@ export default function CrmPanel({ theme, initialOrderId }: { theme: Theme; init
     setTab("calendar");
   };
   const [kanbanEnabled, setKanbanEnabled] = useState<boolean>(
-    () => canKanban && localStorage.getItem(LS_KANBAN_ENABLED) === "true"
+    () => canKanban && (user?.kanban_enabled ?? false)
   );
 
   const loadClients = () => {
@@ -87,16 +88,26 @@ export default function CrmPanel({ theme, initialOrderId }: { theme: Theme; init
 
   useEffect(() => { loadClients(); }, []);
 
+  const saveKanbanFlag = (enabled: boolean) => {
+    if (!token) return;
+    fetch(`${AUTH_URL}?action=set-kanban`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Authorization": `Bearer ${token}` },
+      body: JSON.stringify({ enabled }),
+    }).catch(() => {});
+    updateUser({ kanban_enabled: enabled });
+  };
+
   const enableKanban = () => {
-    localStorage.setItem(LS_KANBAN_ENABLED, "true");
     setKanbanEnabled(true);
     setTab("kanban");
+    saveKanbanFlag(true);
   };
 
   const disableKanban = () => {
-    localStorage.removeItem(LS_KANBAN_ENABLED);
     setKanbanEnabled(false);
     if (tab === "kanban") setTab("orders");
+    saveKanbanFlag(false);
   };
 
   const { substatuses, setSubstatuses } = useSubstatuses();
