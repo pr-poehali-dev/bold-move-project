@@ -29,6 +29,16 @@ interface User {
   is_master?: boolean;
   has_own_agent?: boolean;
   company_id?: number | null;
+  company_name?: string | null;
+  company_addr?: string | null;
+  website?: string | null;
+  brand?: {
+    support_phone?: string | null;
+    support_email?: string | null;
+    working_hours?: string | null;
+    telegram_url?:  string | null;
+    bot_name?:      string | null;
+  } | null;
 }
 
 interface Props {
@@ -128,7 +138,7 @@ export function AdminPanelContent({
           <div className="flex-1 overflow-y-auto p-4 max-w-6xl mx-auto w-full">
             {agentTab === "prices"        && agentPerms.prices.view      && <TabPrices      token={authToken} onItemAdded={handleItemAdded} isDark={isDark} readOnly={!agentPerms.prices.edit} />}
             {agentTab === "rules"         && agentPerms.rules.view       && <TabRules       token={authToken} hint={newItemHint} isDark={isDark} readOnly={!agentPerms.rules.edit} />}
-            {agentTab === "prompt"        && agentPerms.prompt.view      && <TabPrompt      token={authToken} isDark={isDark} readOnly={!agentPerms.prompt.edit} />}
+            {agentTab === "prompt"        && agentPerms.prompt.view      && <TabPrompt      token={authToken} isDark={isDark} readOnly={!agentPerms.prompt.edit} user={user} />}
             {agentTab === "faq"           && agentPerms.faq.view         && <TabFaq         token={authToken} isDark={isDark} readOnly={!agentPerms.faq.edit} />}
             {agentTab === "corrections"   && agentPerms.corrections.view && <TabCorrections token={authToken} isDark={isDark} readOnly={!agentPerms.corrections.edit} />}
             {agentTab === "default-rules" && user?.is_master             && <TabDefaultAutoRules isDark={isDark} />}

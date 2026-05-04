@@ -2,19 +2,42 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import Icon from "@/components/ui/icon";
 import { apiFetch } from "./api";
 
-interface Props { token: string; isDark?: boolean; readOnly?: boolean; }
+interface UserProfile {
+  company_name?: string | null;
+  company_addr?: string | null;
+  website?: string | null;
+  brand?: {
+    support_phone?: string | null;
+    support_email?: string | null;
+    working_hours?: string | null;
+    telegram_url?:  string | null;
+    bot_name?:      string | null;
+  } | null;
+}
+
+interface Props { token: string; isDark?: boolean; readOnly?: boolean; user?: UserProfile | null; }
 
 interface PriceItem { category: string; name: string; price: number; unit: string; description: string; active: boolean; }
 interface RuleItem { name: string; category: string; when_condition: string; when_not_condition: string; calc_rule: string; bundle: string; client_changes: string; }
 interface RuleType { id: number; name: string; label: string; }
 
-const TEMPLATE_GENERAL = `Ты сметчик-технолог компании MosPotolki (натяжные потолки, Мытищи, с 2009г). Отвечай по-русски. Тел:+7(977)606-89-01.
+function buildTemplateGeneral(u?: UserProfile | null): string {
+  const company  = u?.company_name  || "MosPotolki";
+  const phone    = u?.brand?.support_phone || "+7(977)606-89-01";
+  const addr     = u?.company_addr  || "Мытищи";
+  const hours    = u?.brand?.working_hours || "Ежедневно 8:00–22:00";
+  const site     = u?.website       || "mospotolki.net";
+  const botName  = u?.brand?.bot_name || "сметчик-технолог";
+  return `Ты ${botName} компании ${company} (натяжные потолки, ${addr}). Отвечай по-русски. Тел:${phone}.
 
 Твоя задача правильно создать смету по натяжным потолкам используя все актуальные правила, названия позиций и цены.
 
-КОМПАНИЯ: MosPotolki, Мытищи, с 2009г. Тел: +7(977)606-89-01. Ежедневно 8:00–22:00. Сайт: mospotolki.net`;
+КОМПАНИЯ: ${company}, ${addr}. Тел: ${phone}. ${hours}. Сайт: ${site}`;
+}
 
-const TEMPLATE_SYSTEM = `ВАЖНО: 
+function buildTemplateSystem(u?: UserProfile | null): string {
+  const site = u?.website || "mospotolki.net";
+  return `ВАЖНО: 
 Все названия позиций и цены берёшь СТРОГО из блока "АКТУАЛЬНЫЙ ПРАЙС-ЛИСТ" ниже.
 Все правила позиций берёшь СТРОГО из ПРАВИЛА ПО КАЖДОЙ ПОЗИЦИИ — смотри блок "ПРАВИЛА ПО ПОЗИЦИЯМ" ниже.
 Каждая запись содержит: условие добавления, исключения, формулу расчёта количества, что добавить вместе.
@@ -37,8 +60,9 @@ const TEMPLATE_SYSTEM = `ВАЖНО:
 - НЕ добавляй стандартный и теневой профиль на одну и ту же длину
 - "Без монтажа" = НЕ добавлять монтаж к этой позиции
 - НИКОГДА не добавляй все виды закладных сразу — только нужный тип
-- НИКОГДА не рекомендуй сторонние сайты, студии или компании — только mospotolki.net
+- НИКОГДА не рекомендуй сторонние сайты, студии или компании — только ${site}
 - НИКОГДА не пиши "предварительный расчёт" или "точную стоимость назовёт технолог"`;
+}
 
 const TEMPLATE_FORMAT = `ФОРМАТ КАЖДОЙ ПОЗИЦИИ — СТРОГО:
 Название  КОЛ-ВО ЕД × ЦЕНА ₽ = ИТОГО ₽
@@ -65,6 +89,12 @@ Premium:  X ₽  (Standard × 1.27)
 
 Финальная фраза ТОЛЬКО после создания сметы:
 "На какой день вас записать на бесплатный замер?"`;
+
+const SEP_G = "##GENERAL##";
+const SEP_S = "##SYSTEM##";
+const SEP_F = "##FORMAT##";
+const rebuildContent = (gen: string, sys: string, fmt: string) =>
+  `${SEP_G}\n${gen}\n${SEP_S}\n${sys}\n${SEP_F}\n${fmt}`;
 
 function TemplateButton({ template, onApply }: { template: string; onApply: (val: string) => void }) {
   const [confirm, setConfirm] = useState(false);
@@ -93,7 +123,7 @@ function parseBundleNames(bundle: string, nameMap: Record<number, string>): stri
   return "";
 }
 
-export default function TabPrompt({ token, isDark = true, readOnly = false }: Props) {
+export default function TabPrompt({ token, isDark = true, readOnly = false, user }: Props) {
   const [content, setContent] = useState("");
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState("");
@@ -106,7 +136,21 @@ export default function TabPrompt({ token, isDark = true, readOnly = false }: Pr
   const [dirty, setDirty] = useState(false);
 
   useEffect(() => {
-    apiFetch("prompt").then(r => r.ok && r.json().then(d => setContent(d.content)));
+    apiFetch("prompt").then(r => r.ok && r.json().then(d => {
+      const loaded = d.content || "";
+      if (!loaded.trim()) {
+        // Промпт пустой — автоподставляем шаблон с данными компании
+        const auto = rebuildContent(
+          buildTemplateGeneral(user),
+          buildTemplateSystem(user),
+          TEMPLATE_FORMAT,
+        );
+        setContent(auto);
+        setDirty(true);
+      } else {
+        setContent(loaded);
+      }
+    }));
     apiFetch("prices").then(r => r.ok && r.json().then(d => setPrices(d.items.filter((p: PriceItem) => p.active))));
     apiFetch("prices").then(r => r.ok && r.json().then(d => setRules(d.items)));
     apiFetch("rule-types").then(r => r.ok && r.json().then(d => setRuleTypes(d.items)));
@@ -145,10 +189,6 @@ export default function TabPrompt({ token, isDark = true, readOnly = false }: Pr
   }));
 
   // Делим промпт на три части по уникальным маркерам
-  const SEP_G = "##GENERAL##";
-  const SEP_S = "##SYSTEM##";
-  const SEP_F = "##FORMAT##";
-
   const idxG = content.indexOf(SEP_G);
   const idxS = content.indexOf(SEP_S);
   const idxF = content.indexOf(SEP_F);
@@ -162,9 +202,6 @@ export default function TabPrompt({ token, isDark = true, readOnly = false }: Pr
   const formatPart  = idxF >= 0
     ? content.slice(idxF + SEP_F.length).trim()
     : "";
-
-  const rebuildContent = (gen: string, sys: string, fmt: string) =>
-    `${SEP_G}\n${gen}\n${SEP_S}\n${sys}\n${SEP_F}\n${fmt}`;
 
   // Используем ref чтобы handlers всегда видели актуальные части
   const partsRef = useRef({ generalPart, systemPart, formatPart });
@@ -215,7 +252,7 @@ export default function TabPrompt({ token, isDark = true, readOnly = false }: Pr
           <div className="flex flex-col gap-2">
             <div className="flex flex-wrap items-start justify-between gap-2">
               <p className={`${isDark ? "text-white/30" : "text-gray-400"} text-xs flex-1 min-w-0`}>Роль бота, название компании, контакты, общее представление. Эта часть идёт первой в промпте.</p>
-              <TemplateButton onApply={handleGeneralChange} template={TEMPLATE_GENERAL} />
+              <TemplateButton onApply={handleGeneralChange} template={buildTemplateGeneral(user)} />
             </div>
             <textarea
               value={generalPart}
@@ -231,7 +268,7 @@ export default function TabPrompt({ token, isDark = true, readOnly = false }: Pr
           <div className="flex flex-col gap-2">
             <div className="flex flex-wrap items-start justify-between gap-2">
               <p className={`${isDark ? "text-white/30" : "text-gray-400"} text-xs flex-1 min-w-0`}>Общие принципы расчёта, ограничения. <span className="text-amber-500">Правила по конкретным позициям — во вкладке «Правила».</span></p>
-              <TemplateButton onApply={handleSystemChange} template={TEMPLATE_SYSTEM} />
+              <TemplateButton onApply={handleSystemChange} template={buildTemplateSystem(user)} />
             </div>
             <textarea
               value={systemPart}
