@@ -70,8 +70,8 @@ export default function PricingPayment({ selectedId }: Props) {
                 </h2>
 
                 <p className="text-sm text-white/55 max-w-lg leading-relaxed">
-                  Выбери тариф выше — и мы сразу покажем, как оплатить.
-                  Без сложных регистраций, форм и комиссий.
+                  Купи агента — и получи эксклюзивный доступ к новым AI-инструментам
+                  как только они выйдут. Первыми.
                 </p>
               </div>
 
@@ -115,22 +115,24 @@ export default function PricingPayment({ selectedId }: Props) {
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
               {[
                 {
-                  icon: "Zap",
+                  icon: "Mic",
                   iconColor: "#fbbf24",
                   iconBg: "rgba(251,191,36,0.14)",
                   border: "rgba(251,191,36,0.32)",
-                  value: "30 сек",
-                  title: "Расчёт сметы",
-                  text: "Загрузил план — получил готовую смету",
+                  value: "AI голос",
+                  title: "Построитель смет",
+                  text: "Диктуй замеры голосом — AI строит смету сам",
+                  badge: "Скоро",
                 },
                 {
-                  icon: "BadgePercent",
+                  icon: "ScanSearch",
                   iconColor: "#f97316",
                   iconBg: "rgba(249,115,22,0.14)",
                   border: "rgba(249,115,22,0.32)",
-                  value: "0%",
-                  title: "Комиссия СБП",
-                  text: "Платишь ровно столько, сколько в тарифе",
+                  value: "AI анализ",
+                  title: "Анализатор проектов",
+                  text: "Загрузи проект — AI найдёт ошибки и оптимизирует",
+                  badge: "Скоро",
                 },
                 {
                   icon: "Timer",
@@ -161,6 +163,12 @@ export default function PricingPayment({ selectedId }: Props) {
                     style={{ background: b.iconBg }}>
                     <Icon name={b.icon} size={14} style={{ color: b.iconColor }} />
                   </div>
+                  {'badge' in b && b.badge && (
+                    <div className="absolute top-2.5 right-2.5 px-1.5 py-0.5 rounded-md text-[8px] font-black uppercase tracking-wider"
+                      style={{ background: "rgba(167,139,250,0.2)", color: "#a78bfa", border: "1px solid rgba(167,139,250,0.35)" }}>
+                      {b.badge}
+                    </div>
+                  )}
                   <div className="text-xl sm:text-2xl md:text-3xl font-black leading-none mb-1"
                     style={{ color: b.iconColor }}>
                     {b.value}
