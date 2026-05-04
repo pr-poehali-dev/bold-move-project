@@ -744,6 +744,32 @@ def handler(event: dict, context) -> dict:
         chat_id = cur.fetchone()[0]
 
         cur.execute(f"UPDATE {SCHEMA}.saved_estimates SET chat_id=%s WHERE id=%s", (chat_id, estimate_id))
+
+        # Применяем авто-правила компании к новой заявке если auto_mode включён
+        if total_standard and crm_company_id:
+            cur.execute(f"SELECT auto_mode FROM {SCHEMA}.auto_rules_settings WHERE company_id=%s", (crm_company_id,))
+            settings_row = cur.fetchone()
+            if settings_row and settings_row[0]:
+                cur.execute(f"""
+                    SELECT key, pct, row_type
+                    FROM {SCHEMA}.auto_rules_v2
+                    WHERE company_id=%s AND enabled=true AND pct IS NOT NULL AND pct > 0
+                """, (crm_company_id,))
+                rules = cur.fetchall()
+                if rules:
+                    auto_patch = {}
+                    cost_keys = {"material_cost", "measure_cost", "install_cost"}
+                    income_keys = {"prepayment", "extra_payment"}
+                    for r_key, r_pct, r_type in rules:
+                        if r_key in cost_keys or r_key in income_keys:
+                            auto_patch[r_key] = int(round(float(total_standard) * float(r_pct) / 100))
+                    if auto_patch:
+                        set_parts = ", ".join(f"{k}=%s" for k in auto_patch)
+                        cur.execute(
+                            f"UPDATE {SCHEMA}.live_chats SET {set_parts} WHERE id=%s",
+                            list(auto_patch.values()) + [chat_id]
+                        )
+
         conn.commit()
 
         # Читаем актуальный баланс после возможного списания
