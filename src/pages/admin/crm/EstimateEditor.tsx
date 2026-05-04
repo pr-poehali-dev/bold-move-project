@@ -291,9 +291,9 @@ export default function EstimateEditor({ chatId, clientName, clientPhone }: {
         <div className="text-xs font-bold uppercase tracking-wider mb-3" style={{ color: t.textMute }}>Итого</div>
         <div className="space-y-2">
           {[
-            { label: "Econom",   val: Math.round(standardTotal * 0.85), color: "#10b981" },
-            { label: "Standard", val: standardTotal,                     color: "#f97316", bold: true },
-            { label: "Premium",  val: Math.round(standardTotal * 1.27), color: "#8b5cf6" },
+            { label: pricingRules.econom_label,   val: Math.round(standardTotal * pricingRules.econom_mult),   color: "#10b981" },
+            { label: pricingRules.standard_label, val: standardTotal,                                           color: "#f97316", bold: true },
+            { label: pricingRules.premium_label,  val: Math.round(standardTotal * pricingRules.premium_mult),  color: "#8b5cf6" },
           ].map(r => (
             <div key={r.label} className="flex justify-between items-center">
               <span className="text-sm" style={{ color: t.textMute }}>{r.label}</span>
@@ -303,6 +303,25 @@ export default function EstimateEditor({ chatId, clientName, clientPhone }: {
             </div>
           ))}
         </div>
+
+        {/* Разбивка: материалы / монтаж */}
+        {estimate?.material_cost != null && estimate.material_cost > 0 && (
+          <div className="mt-3 pt-3 space-y-1.5" style={{ borderTop: `1px solid ${t.border}` }}>
+            <div className="text-xs font-bold uppercase tracking-wider mb-2" style={{ color: t.textMute }}>Себестоимость (закупка)</div>
+            <div className="flex justify-between items-center">
+              <span className="text-xs" style={{ color: t.textMute }}>Материалы</span>
+              <span className="text-xs font-semibold text-blue-400">{fmt(estimate.material_cost)} ₽</span>
+            </div>
+            {standardTotal > 0 && (
+              <div className="flex justify-between items-center">
+                <span className="text-xs" style={{ color: t.textMute }}>Монтаж (продажа)</span>
+                <span className="text-xs font-semibold" style={{ color: t.textMute }}>
+                  {fmt(standardTotal - estimate.material_cost)} ₽
+                </span>
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );

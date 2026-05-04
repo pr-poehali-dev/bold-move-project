@@ -588,9 +588,12 @@ def handler(event: dict, context) -> dict:
         if not chat_id:
             return err("chat_id required")
         cur.execute(f"""
-            SELECT id, title, blocks, totals, final_phrase,
-                   total_econom, total_standard, total_premium, status, created_at
-            FROM {SCHEMA}.saved_estimates WHERE chat_id=%s ORDER BY id DESC LIMIT 1
+            SELECT e.id, e.title, e.blocks, e.totals, e.final_phrase,
+                   e.total_econom, e.total_standard, e.total_premium, e.status, e.created_at,
+                   lc.material_cost
+            FROM {SCHEMA}.saved_estimates e
+            LEFT JOIN {SCHEMA}.live_chats lc ON lc.id = e.chat_id
+            WHERE e.chat_id=%s ORDER BY e.id DESC LIMIT 1
         """, (int(chat_id),))
         row = cur.fetchone()
         if not row:
@@ -602,6 +605,7 @@ def handler(event: dict, context) -> dict:
             "total_standard": float(row[6]) if row[6] else None,
             "total_premium":  float(row[7]) if row[7] else None,
             "status": row[8], "created_at": str(row[9])[:19],
+            "material_cost":  int(row[10]) if row[10] else None,
         }})
 
     # ── Обновить смету ─────────────────────────────────────────────────────────

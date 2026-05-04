@@ -40,6 +40,7 @@ export interface SavedEstimate {
   total_econom: number | null;
   total_standard: number | null;
   total_premium: number | null;
+  material_cost: number | null;
   status: string;
   created_at: string;
 }
