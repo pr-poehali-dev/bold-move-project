@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import func2url from "@/../backend/func2url.json";
+import type { NavButton } from "@/context/AuthContext";
 
 const AUTH_URL = (func2url as Record<string, string>)["auth"];
 
@@ -26,6 +27,7 @@ export interface Brand {
   brand_logo_url_dark?:    string | null;
   brand_logo_orientation?: string | null;
   pdf_logo_bg?:            string | null;
+  nav_config?:             NavButton[] | null;
 }
 
 /** Дефолтные значения (как было до white-label). */
@@ -101,6 +103,7 @@ function mergeBrand(b: Partial<Brand> & { telegram?: string }, cid: number): Bra
     brand_logo_url_dark:  nonEmpty(b.brand_logo_url_dark)  ?? null,
     brand_logo_orientation: nonEmpty(b.brand_logo_orientation) ?? "horizontal",
     pdf_logo_bg:          nonEmpty(b.pdf_logo_bg)          ?? "auto",
+    nav_config:           (b as Brand).nav_config ?? null,
   };
 }
 

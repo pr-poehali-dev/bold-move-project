@@ -191,24 +191,36 @@ export default function ChatUI({ messages, input, typing, panel, onInput, onSend
         />
       </div>
 
-      {/* Nav — 4 кнопки */}
+      {/* Nav — кнопки (из nav_config или дефолт) */}
       <div className="shrink-0 px-4 md:px-8 pb-3 pt-1 flex items-center justify-center gap-1.5">
-        {NAV.map((n) => {
-          const isActive = panel === n.id;
+        {(brand.nav_config && brand.nav_config.length > 0 ? brand.nav_config : NAV).map((n) => {
+          const navBtn = n as typeof NAV[0] & { action?: string; value?: string | null };
+          const panelId = (navBtn.action === "chat" ? "none" : navBtn.action === "other" ? "other" : navBtn.id) as Panel;
+          const isActive = panel === navBtn.id || (navBtn.action === "other" && panel === "other");
+
+          const handleClick = () => {
+            if (navBtn.action === "url" && navBtn.value) { window.open(navBtn.value, "_blank"); return; }
+            if (navBtn.action === "phone" && navBtn.value) { window.location.href = `tel:${navBtn.value.replace(/\D/g, "").replace(/^8/, "+7")}`; return; }
+            if (navBtn.action === "whatsapp" && navBtn.value) { window.open(`https://wa.me/${navBtn.value.replace(/\D/g,"")}`, "_blank"); return; }
+            if (navBtn.action === "telegram" && navBtn.value) { window.open(navBtn.value.startsWith("http") ? navBtn.value : `https://t.me/${navBtn.value.replace("@","")}`, "_blank"); return; }
+            if (navBtn.action === "chat") { onPanel("none"); return; }
+            onPanel(isActive ? "none" : (panelId || navBtn.id as Panel));
+          };
+
           return (
             <button
-              key={n.id}
-              onClick={() => onPanel(isActive ? "none" : n.id)}
-              aria-label={n.label}
+              key={navBtn.id}
+              onClick={handleClick}
+              aria-label={navBtn.label}
               className={`flex-1 flex flex-col items-center justify-center gap-1 h-14 rounded-2xl ring-1 shadow-md transition-all duration-200 active:scale-95 ${
                 isActive
                   ? "bg-gradient-to-b from-orange-500/40 to-rose-600/40 ring-orange-500/50 text-orange-300"
                   : "bg-gradient-to-b from-neutral-800/60 to-neutral-900/70 ring-white/8 text-white/45 hover:text-white/75"
               }`}
             >
-              <Icon name={n.icon} size={15} />
+              <Icon name={navBtn.icon} size={15} />
               <span className={`text-[9px] font-medium leading-none text-center ${isActive ? "text-orange-300" : "text-white/35"}`}>
-                {n.label}
+                {navBtn.label}
               </span>
             </button>
           );
