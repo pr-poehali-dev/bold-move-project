@@ -30,45 +30,74 @@ export interface Brand {
 }
 
 // ── Конструктор страниц — блоки ──────────────────────────────────────────────
-export type PageBlockType = "heading" | "text" | "gallery" | "buttons" | "divider";
+export type PageBlockType = "heading" | "text" | "gallery" | "buttons" | "divider" | "video" | "spacer" | "card";
 
-export interface PageBlockHeading {
+// Общие поля позиционирования/стиля для каждого блока
+export interface PageBlockBase {
+  id:       string;
+  // Ширина блока: 25 | 33 | 50 | 67 | 75 | 100 (%)
+  width?:   25 | 33 | 50 | 67 | 75 | 100;
+  // Вертикальный отступ сверху/снизу (px)
+  paddingTop?:    number;
+  paddingBottom?: number;
+  // Фон блока (CSS-цвет или пустая строка)
+  bg?:      string;
+  // Скрыт ли блок
+  hidden?:  boolean;
+}
+
+export interface PageBlockHeading extends PageBlockBase {
   type:    "heading";
-  id:      string;
   text:    string;
-  size:    "xl" | "lg" | "md";  // h1 / h2 / h3
+  size:    "xl" | "lg" | "md";
   align:   "left" | "center" | "right";
 }
 
-export interface PageBlockText {
+export interface PageBlockText extends PageBlockBase {
   type:    "text";
-  id:      string;
   text:    string;
   align:   "left" | "center" | "right";
 }
 
-export interface PageBlockGallery {
+export interface PageBlockGallery extends PageBlockBase {
   type:    "gallery";
-  id:      string;
-  photos:  string[];           // массив URL
-  cols:    1 | 2 | 3 | 4;     // колонок в ряду
+  photos:  string[];
+  cols:    1 | 2 | 3 | 4;
   ratio:   "square" | "4/3" | "16/9";
 }
 
-export interface PageBlockButtons {
+export interface PageBlockButtons extends PageBlockBase {
   type:    "buttons";
-  id:      string;
   items:   {
     label:   string;
     action:  "phone" | "whatsapp" | "telegram" | "url";
     value:   string;
     style:   "primary" | "outline";
   }[];
+  align?:  "left" | "center" | "right";
 }
 
-export interface PageBlockDivider {
-  type: "divider";
-  id:   string;
+export interface PageBlockDivider extends PageBlockBase {
+  type:    "divider";
+  style?:  "line" | "dots" | "space";
+}
+
+export interface PageBlockVideo extends PageBlockBase {
+  type:    "video";
+  url:     string;  // YouTube / Vimeo URL
+}
+
+export interface PageBlockSpacer extends PageBlockBase {
+  type:    "spacer";
+  height:  number;  // px
+}
+
+export interface PageBlockCard extends PageBlockBase {
+  type:    "card";
+  icon:    string;    // emoji или название иконки lucide
+  title:   string;
+  text:    string;
+  align:   "left" | "center" | "right";
 }
 
 export type PageBlock =
@@ -76,7 +105,16 @@ export type PageBlock =
   | PageBlockText
   | PageBlockGallery
   | PageBlockButtons
-  | PageBlockDivider;
+  | PageBlockDivider
+  | PageBlockVideo
+  | PageBlockSpacer
+  | PageBlockCard;
+
+// Настройки страницы целиком
+export interface PageSettings {
+  maxWidth?: "sm" | "md" | "lg" | "xl" | "full";  // sm=360 md=480 lg=640 xl=800 full=100%
+  snap?:     boolean;                               // примагничивание блоков по сетке
+}
 
 export interface NavButtonContent {
   // legacy-поля (обратная совместимость)
@@ -88,6 +126,8 @@ export interface NavButtonContent {
   btn_value?:    string | null;
   // новые блоки конструктора
   blocks?:       PageBlock[] | null;
+  // настройки страницы
+  pageSettings?: PageSettings | null;
 }
 
 export interface NavButton {
