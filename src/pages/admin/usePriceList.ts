@@ -57,14 +57,21 @@ export function usePriceList(token: string) {
   };
 
   const setCategoryMaterial = async (category: string, is_material: boolean) => {
-    // Оптимистично обновляем UI сразу
     setPrices(prev => prev.map(p => p.category === category ? { ...p, is_material } : p));
-    const r = await apiFetch("category_settings", {
-      method: "PUT",
-      body: JSON.stringify({ category, is_material }),
-    }, token);
-    // Если запрос упал — перезагружаем актуальные данные
-    if (!r.ok) await load();
+    try {
+      const r = await apiFetch("category_settings", {
+        method: "PUT",
+        body: JSON.stringify({ category, is_material }),
+      }, token);
+      if (!r.ok) {
+        const err = await r.text();
+        console.error("setCategoryMaterial error", r.status, err);
+        await load();
+      }
+    } catch (e) {
+      console.error("setCategoryMaterial exception", e);
+      await load();
+    }
   };
 
   const generateSynonyms = async (item: PriceItem) => {

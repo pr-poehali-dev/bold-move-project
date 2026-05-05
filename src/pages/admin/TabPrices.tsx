@@ -109,7 +109,8 @@ export default function TabPrices({ token, onItemAdded, isDark = true, readOnly 
             </div>
             {!readOnly && (
               <button
-                onClick={() => setCategoryMaterial(category, !isMaterial)}
+                type="button"
+                onClick={(e) => { e.preventDefault(); e.stopPropagation(); setCategoryMaterial(category, !isMaterial); }}
                 title={isMaterial ? "Учитывается в закупке — нажмите чтобы отключить" : "Не учитывается в закупке — нажмите чтобы включить"}
                 className={`flex-shrink-0 flex items-center gap-1.5 text-xs px-2 py-0.5 rounded-full border transition-all ${
                   isMaterial
