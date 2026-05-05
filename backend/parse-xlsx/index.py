@@ -112,6 +112,7 @@ def handler(event: dict, context) -> dict:
     qs = event.get('queryStringParameters') or {}
     r = qs.get('r', '')
     body_str = event.get('body') or '{}'
+    print(f"[handler] method={method} r={r!r} qs={qs}")
 
     # --- POST ?r=login
     if r == 'login' and method == 'POST':
