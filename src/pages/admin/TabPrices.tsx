@@ -6,6 +6,42 @@ import { usePriceList } from "./usePriceList";
 import { apiFetch } from "./api";
 import { PRICE_UNITS } from "./constants";
 import type { PriceItem } from "./types";
+import func2url from "@/../backend/func2url.json";
+
+const BASE = (func2url as Record<string, string>)["parse-xlsx"];
+
+function MaterialButton({ category, initialValue, isDark }: { category: string; initialValue: boolean; isDark: boolean }) {
+  const [isMaterial, setIsMaterial] = useState(initialValue);
+  const [saving, setSaving] = useState(false);
+
+  const toggle = async () => {
+    const next = !isMaterial;
+    setIsMaterial(next);
+    setSaving(true);
+    await fetch(`${BASE}?r=category_settings`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ category, is_material: next }),
+    });
+    setSaving(false);
+  };
+
+  return (
+    <button
+      type="button"
+      onClick={toggle}
+      disabled={saving}
+      className={`flex-shrink-0 flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full border transition-all touch-manipulation disabled:opacity-50 ${
+        isMaterial
+          ? isDark ? "bg-blue-500/15 border-blue-500/30 text-blue-300" : "bg-blue-50 border-blue-200 text-blue-600"
+          : isDark ? "bg-white/5 border-white/10 text-white/30" : "bg-gray-50 border-gray-200 text-gray-400"
+      }`}
+    >
+      <Icon name={saving ? "Loader" : "ShoppingCart"} size={12} className={saving ? "animate-spin" : ""} />
+      {isMaterial ? "в закупке" : "не в закупке"}
+    </button>
+  );
+}
 
 const EMPTY_NEW = { name: "", price: "", purchase_price: "", unit: "шт", description: "" };
 const EMPTY_CAT = { name: "", firstItem: "", price: "", unit: "шт", description: "" };
@@ -108,18 +144,7 @@ export default function TabPrices({ token, onItemAdded, isDark = true, readOnly 
               )}
             </div>
             {!readOnly && (
-              <button
-                type="button"
-                onClick={(e) => { e.stopPropagation(); setCategoryMaterial(category, !isMaterial); }}
-                title={isMaterial ? "Учитывается в закупке — нажмите чтобы отключить" : "Не учитывается в закупке — нажмите чтобы включить"}
-                className={`flex-shrink-0 flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full border transition-all touch-manipulation ${
-                  isMaterial
-                    ? isDark ? "bg-blue-500/15 border-blue-500/30 text-blue-300 hover:bg-blue-500/25" : "bg-blue-50 border-blue-200 text-blue-600 hover:bg-blue-100"
-                    : isDark ? "bg-white/5 border-white/10 text-white/30 hover:text-white/50 hover:border-white/20" : "bg-gray-50 border-gray-200 text-gray-400 hover:text-gray-500"
-                }`}>
-                <Icon name="ShoppingCart" size={12} />
-                {isMaterial ? "в закупке" : "не в закупке"}
-              </button>
+              <MaterialButton category={category} initialValue={isMaterial} isDark={isDark} />
             )}
           </div>
 
