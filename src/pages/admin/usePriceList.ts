@@ -61,14 +61,6 @@ export function usePriceList(token: string) {
     if (r.ok) setPrices(prev => prev.map(p => p.category === oldName ? { ...p, category: newName } : p));
   };
 
-  const setCategoryMaterial = async (category: string, is_material: boolean) => {
-    await apiFetch("category_settings", {
-      method: "PUT",
-      body: JSON.stringify({ category, is_material }),
-    }, token);
-    await load();
-  };
-
   const generateSynonyms = async (item: PriceItem) => {
     setAiLoadingId(item.id);
     try {
@@ -143,6 +135,6 @@ export function usePriceList(token: string) {
   return {
     prices, loading, aiLoadingId, aiDescLoadingId, byCategory: byCategorySorted,
     load, saveField, toggleActive, addItem, deleteItem, renameCategory,
-    generateSynonyms, generateDescription, moveItem, setCategoryMaterial,
+    generateSynonyms, generateDescription, moveItem,
   };
 }
