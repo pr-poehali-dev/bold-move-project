@@ -23,9 +23,25 @@ def resp(status, body):
 
 def check_auth(headers: dict) -> bool:
     token = headers.get('x-admin-token', '') or headers.get('X-Admin-Token', '')
-    if not token or not ADMIN_PASSWORD:
+    if not token:
         return False
-    return hashlib.sha256(token.encode()).hexdigest() == hashlib.sha256(ADMIN_PASSWORD.encode()).hexdigest()
+    # 1. Проверка по паролю (legacy)
+    if ADMIN_PASSWORD and hashlib.sha256(token.encode()).hexdigest() == hashlib.sha256(ADMIN_PASSWORD.encode()).hexdigest():
+        return True
+    # 2. Проверка по сессионному токену пользователя с ролью admin/owner
+    clean = token.removeprefix('Bearer ').strip()
+    if not clean:
+        return False
+    try:
+        conn = get_conn(); cur = conn.cursor()
+        cur.execute(
+            f"SELECT u.role FROM {SCHEMA}.user_sessions s JOIN {SCHEMA}.users u ON u.id=s.user_id WHERE s.token=%s AND s.expires_at>NOW()",
+            (clean,)
+        )
+        row = cur.fetchone(); cur.close(); conn.close()
+        return row is not None and row[0] in ('admin', 'owner', 'manager')
+    except Exception:
+        return False
 
 def get_company_id_from_token(headers: dict):
     """Возвращает (user_id, role) по X-Authorization токену сессии, или (None, None)."""
@@ -229,14 +245,11 @@ def handler(event: dict, context) -> dict:
 
     # --- PUT ?r=category_settings  (обновление флага is_material)
     if r == 'category_settings' and method == 'PUT':
-        auth_ok = check_auth(hdrs)
-        print(f"[category_settings PUT] auth_ok={auth_ok} token_header={hdrs.get('x-admin-token','')[:20] if hdrs.get('x-admin-token') else 'MISSING'}")
-        if not auth_ok:
+        if not check_auth(hdrs):
             return resp(401, {'error': 'Unauthorized'})
         body = json.loads(body_str)
         category = body.get('category', '').strip()
         is_material = bool(body.get('is_material', True))
-        print(f"[category_settings PUT] category={category!r} is_material={is_material}")
         if not category:
             return resp(400, {'error': 'category required'})
         conn = get_conn(); cur = conn.cursor()
