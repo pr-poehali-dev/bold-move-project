@@ -27,13 +27,21 @@ import MobileContactBar from "./MobileContactBar";
 
 export default function Index() {
   const { user } = useAuth();
-  const { brand, isCustom } = useBrand();
+  const { brand, isCustom, patchBrand } = useBrand();
   const [showAuthModal,    setShowAuthModal]    = useState(false);
   const [pendingRole,      setPendingRole]      = useState<string | null>(null);
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [editingPanelId,   setEditingPanelId]   = useState<string | null>(null);
 
   const canEdit = !!(user?.role === "company" || user?.is_master);
+
+  // Когда владелец смотрит бот без ?c= в URL — синхронизируем nav_config из user.brand в BrandContext
+  useEffect(() => {
+    const hasCid = !!new URLSearchParams(window.location.search).get("c");
+    if (hasCid) return; // когда ?c= есть — BrandContext сам грузит с сервера
+    if (!user?.brand?.nav_config) return;
+    patchBrand({ nav_config: user.brand.nav_config });
+  }, [user?.brand?.nav_config]);
 
   // Приветствие: подменяется именем бота из бренда, если он кастомный
   const greeting: Msg = isCustom
