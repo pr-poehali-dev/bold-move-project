@@ -57,7 +57,7 @@ export default function PricingFeatures() {
           }}>
 
           {/* Шапка: заголовок + интеграции */}
-          <div className="flex items-start justify-between gap-4 flex-wrap mb-4 sm:mb-7">
+          <div className="flex items-start justify-between gap-4 mb-4 sm:mb-7">
             <div className="flex-1 min-w-0">
               {/* Бейдж */}
               <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider mb-3 sm:mb-5"
@@ -65,13 +65,27 @@ export default function PricingFeatures() {
                 <Icon name="Crown" size={12} />
                 Главная фишка сервиса
               </div>
-              <h2 className="text-xl sm:text-2xl md:text-4xl font-black leading-tight mb-2 sm:mb-3">
+              <h2 className="text-xl sm:text-2xl md:text-4xl font-black leading-tight mb-3 sm:mb-4">
                 Не упускай <span style={{ color: "#f97316" }}>СВОЕГО</span> клиента
               </h2>
+              {/* Интеграции — под заголовком на мобиле, справа на десктопе */}
+              <div className="flex items-center gap-2 sm:hidden">
+                <span className="text-[9px] font-black uppercase tracking-widest text-white/25">С:</span>
+                <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl"
+                  style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)" }}>
+                  <Icon name="Send" size={12} style={{ color: "#60a5fa" }} />
+                  <span className="text-[11px] font-bold text-white/80">Telegram</span>
+                </div>
+                <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl"
+                  style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)" }}>
+                  <Icon name="MessageSquare" size={12} style={{ color: "#a78bfa" }} />
+                  <span className="text-[11px] font-bold text-white/80">MAX</span>
+                </div>
+              </div>
             </div>
 
-            {/* Интеграции */}
-            <div className="flex-shrink-0 flex flex-col items-end gap-2 px-3 py-2.5 rounded-2xl"
+            {/* Интеграции — только на десктопе */}
+            <div className="hidden sm:flex flex-shrink-0 flex-col items-end gap-2 px-3 py-2.5 rounded-2xl"
               style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.09)" }}>
               <div className="text-[9px] font-black uppercase tracking-widest text-white/25 self-end">Интегрируется с</div>
               <div className="flex items-center gap-2">
