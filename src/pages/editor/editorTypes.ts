@@ -19,18 +19,18 @@ export function snap(val: number, grid: number, enabled: boolean) {
 export const SNAP_EDGE = 6;
 
 export const DEFAULT_SIZES: Record<string, { w: number; h: number }> = {
-  heading: { w: 300, h: 60 },
-  text:    { w: 300, h: 100 },
-  gallery: { w: 300, h: 200 },
-  buttons: { w: 240, h: 60 },
-  card:    { w: 160, h: 140 },
+  heading: { w: 220, h: 40 },
+  text:    { w: 240, h: 72 },
+  gallery: { w: 280, h: 200 },
+  buttons: { w: 160, h: 44 },
+  card:    { w: 180, h: 120 },
   video:   { w: 300, h: 180 },
-  divider: { w: 300, h: 24 },
-  spacer:  { w: 300, h: 48 },
+  divider: { w: 240, h: 20 },
+  spacer:  { w: 200, h: 32 },
 };
 
 export function defaultBlock(type: PageBlock["type"], x = 40, y = 40): PageBlock {
-  const sz = DEFAULT_SIZES[type] ?? { w: 240, h: 80 };
+  const sz = DEFAULT_SIZES[type] ?? { w: 200, h: 48 };
   const base = { id: genId(), x, y, w: sz.w, h: sz.h, zIndex: 1 };
   if (type === "heading")  return { ...base, type, text: "Заголовок", size: "lg", align: "left" };
   if (type === "text")     return { ...base, type, text: "Введите текст...", align: "left" };

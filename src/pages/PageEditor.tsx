@@ -267,6 +267,7 @@ export default function PageEditor({ panelId, onBack }: Props) {
           sendToBack={sendToBack}
           duplicateBlock={duplicateBlock}
           deleteBlock={deleteBlock}
+          updateBlock={updateBlock}
           canvasRef={canvasRef}
         />
 
