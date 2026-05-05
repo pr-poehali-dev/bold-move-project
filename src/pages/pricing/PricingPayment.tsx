@@ -71,7 +71,7 @@ export default function PricingPayment({ selectedId }: Props) {
 
                 <p className="text-sm text-white/55 max-w-lg leading-relaxed">
                   Купи агента — и получи эксклюзивный доступ к новым AI-инструментам
-                  как только они выйдут. Первыми. И <b className="text-white">бесплатно!</b>
+                  как только они выйдут. Первыми И <b className="text-white/55">БЕСПЛАТНО!</b>
                 </p>
               </div>
 
