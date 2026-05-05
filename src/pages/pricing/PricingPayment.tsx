@@ -112,7 +112,7 @@ export default function PricingPayment({ selectedId }: Props) {
             </div>
 
             {/* Преимущества — крупная сетка из 4 карточек */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3">
               {[
                 {
                   icon: "Mic",
@@ -121,7 +121,7 @@ export default function PricingPayment({ selectedId }: Props) {
                   border: "rgba(251,191,36,0.32)",
                   value: "AI Построитель",
                   title: "Голосовые сметы",
-                  text: "Диктуй замеры — AI сам строит смету. Руки свободны.",
+                  text: "Диктуй замеры — AI сам строит смету.",
                   badge: "Скоро",
                 },
                 {
@@ -131,7 +131,7 @@ export default function PricingPayment({ selectedId }: Props) {
                   border: "rgba(249,115,22,0.32)",
                   value: "AI Анализатор",
                   title: "КП за секунды",
-                  text: "Загрузи проект — получи готовое КП для клиента.",
+                  text: "Загрузи проект — получи готовое КП.",
                   badge: "Скоро",
                 },
                 {
@@ -141,7 +141,7 @@ export default function PricingPayment({ selectedId }: Props) {
                   border: "rgba(167,139,250,0.32)",
                   value: "15 мин",
                   title: "До старта",
-                  text: "Регистрация, настройка и первая смета — за 15 минут.",
+                  text: "Регистрация, настройка и первая смета.",
                 },
                 {
                   icon: "ShieldCheck",
@@ -150,31 +150,31 @@ export default function PricingPayment({ selectedId }: Props) {
                   border: "rgba(16,185,129,0.36)",
                   value: "100%",
                   title: "Возврат 14 дней",
-                  text: "Не подошло — вернём деньги без вопросов и лишних слов.",
+                  text: "Не подошло — вернём деньги без вопросов.",
                 },
               ].map(b => (
                 <div key={b.title}
-                  className="relative rounded-2xl p-3 sm:p-4 transition hover:-translate-y-0.5"
+                  className="relative rounded-xl sm:rounded-2xl p-2.5 sm:p-4 transition hover:-translate-y-0.5"
                   style={{
                     background: "rgba(255,255,255,0.035)",
                     border: `1.5px solid ${b.border}`,
                   }}>
-                  <div className="w-7 h-7 sm:w-9 sm:h-9 rounded-xl flex items-center justify-center mb-2 sm:mb-3"
+                  <div className="w-6 h-6 sm:w-9 sm:h-9 rounded-lg sm:rounded-xl flex items-center justify-center mb-1.5 sm:mb-3"
                     style={{ background: b.iconBg }}>
-                    <Icon name={b.icon} size={14} style={{ color: b.iconColor }} />
+                    <Icon name={b.icon} size={12} style={{ color: b.iconColor }} />
                   </div>
                   {'badge' in b && b.badge && (
-                    <div className="absolute top-2.5 right-2.5 px-1.5 py-0.5 rounded-md text-[8px] font-black uppercase tracking-wider"
+                    <div className="absolute top-2 right-2 px-1.5 py-0.5 rounded text-[7px] font-black uppercase tracking-wider"
                       style={{ background: "rgba(167,139,250,0.2)", color: "#a78bfa", border: "1px solid rgba(167,139,250,0.35)" }}>
                       {b.badge}
                     </div>
                   )}
-                  <div className="text-xl sm:text-2xl font-black leading-none mb-1 break-words"
+                  <div className="text-[13px] sm:text-2xl font-black leading-tight mb-0.5"
                     style={{ color: b.iconColor }}>
                     {b.value}
                   </div>
-                  <div className="text-[11px] sm:text-[12px] font-bold text-white mb-0.5">{b.title}</div>
-                  <div className="text-[10px] sm:text-[10.5px] text-white/45 leading-snug">{b.text}</div>
+                  <div className="text-[10px] sm:text-[12px] font-bold text-white mb-0.5 leading-tight">{b.title}</div>
+                  <div className="text-[9px] sm:text-[10.5px] text-white/45 leading-snug">{b.text}</div>
                 </div>
               ))}
             </div>
