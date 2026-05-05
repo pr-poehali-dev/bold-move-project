@@ -123,16 +123,72 @@ function BlockContent({ block, blockW, blockH, onLightbox }: { block: PageBlock;
   }
   if (block.type === "video") {
     const embed = getYouTubeEmbed(block.url);
+    if (!embed && block.url && (block.url.endsWith(".mp4") || block.url.endsWith(".webm") || block.url.includes("/bucket/"))) {
+      return <div className="w-full h-full rounded-xl overflow-hidden bg-black/40"><video src={block.url} className="w-full h-full object-cover" controls /></div>;
+    }
     if (!embed) return null;
     return <div className="w-full h-full rounded-xl overflow-hidden bg-black/40"><iframe src={embed} className="w-full h-full" allowFullScreen /></div>;
   }
-  if (block.type === "spacer") return <div className="w-full h-full" />;
   if (block.type === "card") {
+    const side    = block.photoSide ?? "left";
+    const hasPhoto = !!block.photoUrl;
+    if (side === "top") return (
+      <div className={`flex flex-col w-full ${ac(block.align ?? "left")}`}>
+        {hasPhoto && <img src={block.photoUrl} alt="" className="w-full object-cover rounded-xl mb-2" style={{ maxHeight: 160 }} />}
+        <p className="text-white font-bold text-sm leading-tight">{block.title}</p>
+        <p className="text-white/60 text-xs leading-relaxed mt-1">{block.text}</p>
+      </div>
+    );
+    if (!hasPhoto || side === "none") return (
+      <div className={`w-full ${ac(block.align ?? "left")}`}>
+        <p className="text-white font-bold text-sm leading-tight">{block.title}</p>
+        <p className="text-white/60 text-xs leading-relaxed mt-1">{block.text}</p>
+      </div>
+    );
     return (
-      <div className={`flex flex-col gap-1.5 p-3 h-full rounded-2xl bg-white/[0.03] border border-white/[0.06] ${ac(block.align)}`}>
-        <span className="text-3xl">{block.icon}</span>
-        <p className="text-white font-bold text-sm">{block.title}</p>
-        <p className="text-white/50 text-xs leading-relaxed">{block.text}</p>
+      <div className={`flex gap-3 w-full h-full ${side === "right" ? "flex-row-reverse" : "flex-row"}`}>
+        <img src={block.photoUrl} alt="" className="rounded-xl object-cover shrink-0" style={{ width: "38%", maxHeight: "100%" }} />
+        <div className={`flex flex-col justify-center min-w-0 ${ac(block.align ?? "left")}`}>
+          <p className="text-white font-bold text-sm leading-tight">{block.title}</p>
+          <p className="text-white/60 text-xs leading-relaxed mt-1">{block.text}</p>
+        </div>
+      </div>
+    );
+  }
+  if (block.type === "price") {
+    return (
+      <div className="w-full">
+        {block.title && <p className="text-white font-bold text-sm mb-2">{block.title}</p>}
+        <div className="space-y-1.5">
+          {block.items.map((item, i) => (
+            <div key={i} className="flex items-center justify-between gap-2 py-1 border-b border-white/[0.05] last:border-0">
+              <div className="flex items-center gap-1.5 min-w-0">
+                {item.icon && <span className="text-base">{item.icon}</span>}
+                <div className="min-w-0">
+                  <span className="text-white/80 text-sm">{item.name}</span>
+                  {item.desc && <p className="text-white/35 text-[10px]">{item.desc}</p>}
+                </div>
+              </div>
+              <span className="text-emerald-400 font-bold text-sm whitespace-nowrap shrink-0">{item.price}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+  if (block.type === "quote") {
+    return (
+      <div className="w-full h-full flex flex-col justify-between">
+        <p className="text-white/90 text-sm leading-relaxed italic">«{block.text}»</p>
+        {(block.author || block.avatar) && (
+          <div className="flex items-center gap-2 mt-3">
+            {block.avatar && <img src={block.avatar} alt="" className="w-8 h-8 rounded-full object-cover shrink-0" />}
+            <div>
+              {block.author && <p className="text-white text-xs font-semibold">{block.author}</p>}
+              {block.role   && <p className="text-white/40 text-[10px]">{block.role}</p>}
+            </div>
+          </div>
+        )}
       </div>
     );
   }

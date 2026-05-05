@@ -23,10 +23,11 @@ export const DEFAULT_SIZES: Record<string, { w: number; h: number }> = {
   text:    { w: 240, h: 72 },
   gallery: { w: 280, h: 200 },
   buttons: { w: 160, h: 44 },
-  card:    { w: 180, h: 120 },
-  video:   { w: 300, h: 180 },
+  card:    { w: 280, h: 120 },
+  video:   { w: 320, h: 180 },
   divider: { w: 240, h: 20 },
-  spacer:  { w: 200, h: 32 },
+  price:   { w: 320, h: 200 },
+  quote:   { w: 280, h: 120 },
 };
 
 export function defaultBlock(type: PageBlock["type"], x = 40, y = 40): PageBlock {
@@ -37,8 +38,9 @@ export function defaultBlock(type: PageBlock["type"], x = 40, y = 40): PageBlock
   if (type === "gallery")  return { ...base, type, photos: [], cols: 2, ratio: "4/3" };
   if (type === "buttons")  return { ...base, type, items: [{ label: "Позвонить", action: "phone", value: "", style: "primary" }] };
   if (type === "video")    return { ...base, type, url: "" };
-  if (type === "spacer")   return { ...base, type, height: 32 };
-  if (type === "card")     return { ...base, type, icon: "⭐", title: "Карточка", text: "Описание", align: "center" };
+  if (type === "card")     return { ...base, type, title: "Заголовок", text: "Описание", photoUrl: "", photoSide: "left", align: "left" };
+  if (type === "price")    return { ...base, type, title: "Наши цены", items: [{ icon: "✅", name: "Услуга", price: "от 1 000 ₽", desc: "" }] };
+  if (type === "quote")    return { ...base, type, text: "Отличная работа! Рекомендую.", author: "Иван Иванов", role: "Клиент", avatar: "" };
   return { ...base, type: "divider", style: "line" };
 }
 
@@ -49,14 +51,15 @@ export const ADD_BLOCKS: { type: PageBlock["type"]; icon: string; label: string;
   { type: "buttons",  icon: "MousePointer",  label: "Кнопки",      color: "#fca5a5", bg: "rgba(239,68,68,0.15)"  },
   { type: "card",     icon: "LayoutList",    label: "Карточка",    color: "#fcd34d", bg: "rgba(245,158,11,0.15)" },
   { type: "video",    icon: "Play",          label: "Видео",       color: "#f9a8d4", bg: "rgba(236,72,153,0.15)" },
+  { type: "price",    icon: "Tag",           label: "Цены",        color: "#86efac", bg: "rgba(34,197,94,0.15)"  },
+  { type: "quote",    icon: "Quote",         label: "Цитата",      color: "#fbbf24", bg: "rgba(251,191,36,0.13)" },
   { type: "divider",  icon: "Minus",         label: "Разделитель", color: "#94a3b8", bg: "rgba(148,163,184,0.12)"},
-  { type: "spacer",   icon: "ArrowUpDown",   label: "Отступ",      color: "#67e8f9", bg: "rgba(6,182,212,0.13)"  },
 ];
 
 export const BLOCK_LABELS: Record<string, string> = {
   heading: "Заголовок", text: "Текст", gallery: "Галерея",
   buttons: "Кнопки", divider: "Разделитель", video: "Видео",
-  spacer: "Отступ", card: "Карточка",
+  card: "Карточка", price: "Цены", quote: "Цитата",
 };
 
 export const HANDLES = ["n","ne","e","se","s","sw","w","nw"] as const;

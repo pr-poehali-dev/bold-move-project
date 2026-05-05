@@ -10,8 +10,14 @@ interface Props {
 }
 
 export function BlockFieldEditors({ block, onChange, token }: Props) {
-  const fileRef = useRef<HTMLInputElement>(null);
-  const [uploading, setUploading] = useState(false);
+  const fileRef    = useRef<HTMLInputElement>(null);
+  const cardImgRef = useRef<HTMLInputElement>(null);
+  const videoRef   = useRef<HTMLInputElement>(null);
+  const avatarRef  = useRef<HTMLInputElement>(null);
+  const [uploading,      setUploading]      = useState(false);
+  const [uploadingCard,  setUploadingCard]  = useState(false);
+  const [uploadingVideo, setUploadingVideo] = useState(false);
+  const [uploadingAvatar,setUploadingAvatar]= useState(false);
 
   const inp = "w-full px-3 py-2 rounded-xl text-sm text-white focus:outline-none bg-white/[0.06] border border-white/[0.1]";
   const lbl = "text-[10px] font-bold uppercase tracking-wider text-white/30 mb-1 block";
@@ -154,40 +160,135 @@ export function BlockFieldEditors({ block, onChange, token }: Props) {
         </button>
       </>)}
 
-      {block.type === "video" && (
-        <div><label className={lbl}>Ссылка YouTube / Vimeo</label>
-          <input className={inp} value={block.url} onChange={e => onChange({ ...block, url: e.target.value })} placeholder="https://youtube.com/watch?v=..." />
+      {block.type === "video" && (<>
+        <div><label className={lbl}>Ссылка (YouTube, Vimeo, прямой URL)</label>
+          <input className={inp} value={block.url} onChange={e => onChange({ ...block, url: e.target.value })} placeholder="https://youtube.com/watch?v=... или https://..." />
         </div>
-      )}
-
-      {block.type === "spacer" && (
-        <div><label className={lbl}>Высота (px)</label>
-          <div className="flex items-center gap-2">
-            <input type="range" min={8} max={200} step={4} value={block.height} onChange={e => onChange({ ...block, height: Number(e.target.value) })} className="flex-1" />
-            <span className="text-white/50 text-xs w-10 text-right">{block.height}px</span>
-          </div>
+        <div className="flex items-center gap-2">
+          <div className="flex-1 h-px bg-white/10" />
+          <span className="text-[10px] text-white/30">или загрузить файл</span>
+          <div className="flex-1 h-px bg-white/10" />
         </div>
-      )}
+        <input ref={videoRef} type="file" accept="video/*" className="hidden"
+          onChange={async e => {
+            const f = e.target.files?.[0]; if (!f) return;
+            setUploadingVideo(true);
+            try { const url = await uploadBrandImage(token, f); onChange({ ...block, url }); }
+            finally { setUploadingVideo(false); }
+          }} />
+        <button onClick={() => videoRef.current?.click()} disabled={uploadingVideo}
+          className="w-full flex items-center justify-center gap-2 py-2 rounded-xl border border-dashed border-white/10 hover:border-pink-500/40 text-white/30 hover:text-pink-400 text-xs transition">
+          <Icon name={uploadingVideo?"Loader":"Upload"} size={12} className={uploadingVideo?"animate-spin":""} />
+          {uploadingVideo?"Загрузка...":"Загрузить видео-файл (.mp4, .webm)"}
+        </button>
+      </>)}
 
       {block.type === "card" && (<>
-        <div className="grid grid-cols-2 gap-2">
-          <div><label className={lbl}>Иконка</label>
-            <input className={inp} value={block.icon} onChange={e => onChange({ ...block, icon: e.target.value })} /></div>
-          <div><label className={lbl}>Выравнивание</label>
-            <div className="flex gap-1">
-              {(["left","center","right"] as const).map(a => (
-                <button key={a} onClick={() => onChange({ ...block, align: a })}
-                  className={`flex-1 py-1.5 rounded-lg text-xs transition ${block.align===a?"bg-violet-500/30 text-violet-300 border border-violet-500/50":"bg-white/5 text-white/30 border border-white/10"}`}>
-                  <Icon name={a==="left"?"AlignLeft":a==="center"?"AlignCenter":"AlignRight"} size={11} />
-                </button>
-              ))}
+        {/* Фото */}
+        <div>
+          <label className={lbl}>Фото</label>
+          {block.photoUrl && (
+            <div className="relative mb-2 rounded-xl overflow-hidden" style={{ aspectRatio: "16/7" }}>
+              <img src={block.photoUrl} className="w-full h-full object-cover" alt="" />
+              <button onClick={() => onChange({ ...block, photoUrl: "" })}
+                className="absolute top-1.5 right-1.5 w-6 h-6 rounded-full bg-black/60 flex items-center justify-center text-white/60 hover:text-white">
+                <Icon name="X" size={11} />
+              </button>
             </div>
+          )}
+          <input ref={cardImgRef} type="file" accept="image/*" className="hidden"
+            onChange={async e => {
+              const f = e.target.files?.[0]; if (!f) return;
+              setUploadingCard(true);
+              try { const url = await uploadBrandImage(token, f); onChange({ ...block, photoUrl: url }); }
+              finally { setUploadingCard(false); }
+            }} />
+          <button onClick={() => cardImgRef.current?.click()} disabled={uploadingCard}
+            className="w-full flex items-center justify-center gap-2 py-2 rounded-xl border border-dashed border-white/10 hover:border-violet-500/40 text-white/30 hover:text-violet-400 text-xs transition">
+            <Icon name={uploadingCard?"Loader":"Image"} size={12} className={uploadingCard?"animate-spin":""} />
+            {uploadingCard?"Загрузка...":"Загрузить фото"}
+          </button>
+        </div>
+        {/* Расположение фото */}
+        <div><label className={lbl}>Фото относительно текста</label>
+          <div className="flex gap-1">
+            {(["left","right","top","none"] as const).map(s => (
+              <button key={s} onClick={() => onChange({ ...block, photoSide: s })}
+                className={`flex-1 py-1.5 rounded-lg text-[10px] transition ${(block.photoSide??"left")===s?"bg-violet-500/30 text-violet-300 border border-violet-500/50":"bg-white/5 text-white/40 border border-white/10"}`}>
+                {s==="left"?"← Лево":s==="right"?"Право →":s==="top"?"↑ Верх":"Нет"}
+              </button>
+            ))}
           </div>
         </div>
         <div><label className={lbl}>Заголовок</label>
           <input className={inp} value={block.title} onChange={e => onChange({ ...block, title: e.target.value })} /></div>
         <div><label className={lbl}>Текст</label>
           <textarea className={`${inp} resize-none`} rows={3} value={block.text} onChange={e => onChange({ ...block, text: e.target.value })} /></div>
+        <div><label className={lbl}>Выравнивание текста</label>
+          <div className="flex gap-1">
+            {(["left","center","right"] as const).map(a => (
+              <button key={a} onClick={() => onChange({ ...block, align: a })}
+                className={`flex-1 py-1.5 rounded-lg text-xs transition ${(block.align??"left")===a?"bg-violet-500/30 text-violet-300 border border-violet-500/50":"bg-white/5 text-white/30 border border-white/10"}`}>
+                <Icon name={a==="left"?"AlignLeft":a==="center"?"AlignCenter":"AlignRight"} size={11} />
+              </button>
+            ))}
+          </div>
+        </div>
+      </>)}
+
+      {block.type === "price" && (<>
+        <div><label className={lbl}>Заголовок (необязательно)</label>
+          <input className={inp} value={block.title ?? ""} onChange={e => onChange({ ...block, title: e.target.value })} placeholder="Наши цены" /></div>
+        {block.items.map((item, i) => (
+          <div key={i} className="p-2.5 rounded-xl bg-white/[0.03] border border-white/[0.07] space-y-1.5">
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] text-white/30">Позиция {i+1}</span>
+              <button onClick={() => onChange({ ...block, items: block.items.filter((_,j)=>j!==i) })} className="text-red-400/50 hover:text-red-400"><Icon name="X" size={12} /></button>
+            </div>
+            <div className="grid grid-cols-4 gap-1.5">
+              <div><label className={lbl}>Значок</label>
+                <input className={inp} value={item.icon??""} onChange={e => onChange({ ...block, items: block.items.map((it,j)=>j===i?{...it,icon:e.target.value}:it) })} placeholder="✅" /></div>
+              <div className="col-span-3"><label className={lbl}>Название</label>
+                <input className={inp} value={item.name} onChange={e => onChange({ ...block, items: block.items.map((it,j)=>j===i?{...it,name:e.target.value}:it) })} placeholder="Натяжной потолок" /></div>
+            </div>
+            <input className={inp} value={item.price} onChange={e => onChange({ ...block, items: block.items.map((it,j)=>j===i?{...it,price:e.target.value}:it) })} placeholder="от 1 200 ₽/м²" />
+            <input className={inp} value={item.desc??""} onChange={e => onChange({ ...block, items: block.items.map((it,j)=>j===i?{...it,desc:e.target.value}:it) })} placeholder="Пояснение (необязательно)" />
+          </div>
+        ))}
+        <button onClick={() => onChange({ ...block, items: [...block.items, { icon: "✅", name: "Услуга", price: "от 0 ₽", desc: "" }] })}
+          className="w-full py-2 rounded-xl border border-dashed border-white/10 hover:border-emerald-500/40 text-white/30 hover:text-emerald-400 text-xs transition">
+          + Добавить позицию
+        </button>
+      </>)}
+
+      {block.type === "quote" && (<>
+        <div><label className={lbl}>Текст цитаты / отзыва</label>
+          <textarea className={`${inp} resize-none`} rows={4} value={block.text} onChange={e => onChange({ ...block, text: e.target.value })} placeholder="Отличная работа! Рекомендую всем." /></div>
+        <div className="grid grid-cols-2 gap-2">
+          <div><label className={lbl}>Автор</label>
+            <input className={inp} value={block.author??""} onChange={e => onChange({ ...block, author: e.target.value })} placeholder="Иван Иванов" /></div>
+          <div><label className={lbl}>Должность</label>
+            <input className={inp} value={block.role??""} onChange={e => onChange({ ...block, role: e.target.value })} placeholder="Клиент" /></div>
+        </div>
+        {/* Аватар */}
+        {block.avatar && (
+          <div className="flex items-center gap-2">
+            <img src={block.avatar} className="w-10 h-10 rounded-full object-cover shrink-0" alt="" />
+            <button onClick={() => onChange({ ...block, avatar: "" })} className="text-red-400/50 hover:text-red-400 text-xs"><Icon name="X" size={11} /> Удалить</button>
+          </div>
+        )}
+        <input ref={avatarRef} type="file" accept="image/*" className="hidden"
+          onChange={async e => {
+            const f = e.target.files?.[0]; if (!f) return;
+            setUploadingAvatar(true);
+            try { const url = await uploadBrandImage(token, f); onChange({ ...block, avatar: url }); }
+            finally { setUploadingAvatar(false); }
+          }} />
+        <button onClick={() => avatarRef.current?.click()} disabled={uploadingAvatar}
+          className="w-full flex items-center justify-center gap-2 py-2 rounded-xl border border-dashed border-white/10 hover:border-amber-500/40 text-white/30 hover:text-amber-400 text-xs transition">
+          <Icon name={uploadingAvatar?"Loader":"UserCircle"} size={12} className={uploadingAvatar?"animate-spin":""} />
+          {uploadingAvatar?"Загрузка...":"Загрузить аватар автора"}
+        </button>
       </>)}
 
       {block.type === "divider" && (

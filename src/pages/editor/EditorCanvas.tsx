@@ -118,7 +118,7 @@ export function EditorCanvas({
     if (e.detail === 2) {
       e.stopPropagation();
       const block = blocks.find(b => b.id === id);
-      if (block && ["heading","text","card"].includes(block.type)) {
+      if (block && ["heading","text","card","quote"].includes(block.type)) {
         setEditingId(id);
       }
     }
@@ -174,7 +174,7 @@ export function EditorCanvas({
             const bh = block.h ?? DEFAULT_SIZES[block.type]?.h ?? 48;
             const isSelected = selectedId === block.id;
             const isEditing  = editingId  === block.id;
-            const canInline  = ["heading","text","card"].includes(block.type);
+            const canInline  = ["heading","text","card","quote"].includes(block.type);
 
             const extraStyle = blockStyleToCss(block.style_);
             const pad = block.style_?.padTop || block.style_?.padLeft ? extraStyle.padding : "6px 8px";
@@ -196,7 +196,7 @@ export function EditorCanvas({
                 }}
                 className={`group transition-shadow ${
                   // текстовые блоки: overflow visible чтобы текст не обрезался
-                  ["heading","text","card"].includes(block.type) ? "overflow-visible" : "overflow-hidden"
+                  ["heading","text","card","quote","price"].includes(block.type) ? "overflow-visible" : "overflow-hidden"
                 } ${
                   isEditing
                     ? ""

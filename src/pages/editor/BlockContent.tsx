@@ -74,23 +74,86 @@ export function BlockContent({ block, blockW, blockH }: { block: PageBlock; bloc
 
   if (block.type === "video") {
     const embed = getYouTubeEmbed(block.url);
-    if (!embed) return <div className="w-full h-full rounded-xl border-2 border-dashed border-white/10 flex items-center justify-center gap-2 text-white/20 text-xs"><Icon name="Play" size={14} />YouTube / Vimeo</div>;
+    // Прямой видео-файл (S3/mp4)
+    if (!embed && block.url && (block.url.endsWith(".mp4") || block.url.endsWith(".webm") || block.url.includes("/bucket/"))) {
+      return <div className="w-full h-full rounded-xl overflow-hidden bg-black/40"><video src={block.url} className="w-full h-full object-cover" controls /></div>;
+    }
+    if (!embed) return <div className="w-full h-full rounded-xl border-2 border-dashed border-white/10 flex items-center justify-center gap-2 text-white/20 text-xs"><Icon name="Play" size={14} />Ссылка или видео-файл</div>;
     return <div className="w-full h-full rounded-xl overflow-hidden bg-black/40"><iframe src={embed} className="w-full h-full" allowFullScreen /></div>;
   }
 
-  if (block.type === "spacer") {
-    return <div className="w-full h-full flex items-center justify-center text-white/15 text-[10px] border border-dashed border-white/10 rounded-lg">↕ {block.height}px</div>;
+  if (block.type === "card") {
+    const side     = block.photoSide ?? "left";
+    const titleFs  = Math.max(11, Math.min(Math.round(bw * 0.045), 22));
+    const descFs   = Math.max(9,  Math.min(Math.round(bw * 0.032), 14));
+    const hasPhoto = !!block.photoUrl;
+
+    if (side === "top") {
+      return (
+        <div className={`flex flex-col w-full overflow-hidden ${ac(block.align ?? "left")}`}>
+          {hasPhoto && <img src={block.photoUrl} alt="" className="w-full object-cover rounded-lg mb-2" style={{ height: Math.round(bh * 0.5) }} />}
+          <p className="text-white font-bold leading-tight" style={{ fontSize: titleFs }}>{block.title}</p>
+          <p className="text-white/60 leading-relaxed mt-0.5" style={{ fontSize: descFs }}>{block.text}</p>
+        </div>
+      );
+    }
+    if (side === "none" || !hasPhoto) {
+      return (
+        <div className={`flex flex-col justify-center w-full h-full ${ac(block.align ?? "left")}`}>
+          <p className="text-white font-bold leading-tight" style={{ fontSize: titleFs }}>{block.title}</p>
+          <p className="text-white/60 leading-relaxed mt-1" style={{ fontSize: descFs }}>{block.text}</p>
+        </div>
+      );
+    }
+    // left / right
+    const imgW = Math.round(bw * 0.38);
+    return (
+      <div className={`flex gap-3 w-full h-full overflow-hidden ${side === "right" ? "flex-row-reverse" : "flex-row"}`}>
+        <img src={block.photoUrl} alt="" className="rounded-lg object-cover shrink-0" style={{ width: imgW, height: "100%" }} />
+        <div className={`flex flex-col justify-center min-w-0 ${ac(block.align ?? "left")}`}>
+          <p className="text-white font-bold leading-tight" style={{ fontSize: titleFs }}>{block.title}</p>
+          <p className="text-white/60 leading-relaxed mt-0.5" style={{ fontSize: descFs }}>{block.text}</p>
+        </div>
+      </div>
+    );
   }
 
-  if (block.type === "card") {
-    const iconSz = Math.max(16, Math.round(bh * 0.2));
-    const titleFs = Math.max(10, Math.round(bh * 0.12));
-    const descFs  = Math.max(9,  Math.round(bh * 0.09));
+  if (block.type === "price") {
+    const titleFs = Math.max(10, Math.min(Math.round(bw * 0.04), 16));
+    const itemFs  = Math.max(9,  Math.min(Math.round(bw * 0.035), 13));
     return (
-      <div className={`flex flex-col gap-1 w-full h-full justify-center overflow-hidden ${ac(block.align)}`}>
-        <span style={{ fontSize: iconSz }}>{block.icon}</span>
-        <p className="text-white font-bold leading-tight" style={{ fontSize: titleFs }}>{block.title}</p>
-        <p className="text-white/50 leading-relaxed" style={{ fontSize: descFs }}>{block.text}</p>
+      <div className="w-full">
+        {block.title && <p className="text-white font-bold mb-1.5" style={{ fontSize: titleFs + 2 }}>{block.title}</p>}
+        <div className="space-y-1">
+          {block.items.map((item, i) => (
+            <div key={i} className="flex items-center gap-2 justify-between">
+              <div className="flex items-center gap-1.5 min-w-0">
+                {item.icon && <span style={{ fontSize: itemFs + 2 }}>{item.icon}</span>}
+                <span className="text-white/80 truncate" style={{ fontSize: itemFs }}>{item.name}</span>
+              </div>
+              <span className="text-emerald-400 font-bold whitespace-nowrap shrink-0" style={{ fontSize: itemFs }}>{item.price}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  if (block.type === "quote") {
+    const textFs   = Math.max(10, Math.min(Math.round(bw * 0.038), 16));
+    const authorFs = Math.max(9,  Math.min(Math.round(bw * 0.03),  12));
+    return (
+      <div className="w-full h-full flex flex-col justify-between">
+        <p className="text-white/90 leading-relaxed italic" style={{ fontSize: textFs }}>«{block.text}»</p>
+        {(block.author || block.avatar) && (
+          <div className="flex items-center gap-2 mt-2">
+            {block.avatar && <img src={block.avatar} alt="" className="w-7 h-7 rounded-full object-cover shrink-0" />}
+            <div>
+              {block.author && <p className="text-white font-semibold leading-none" style={{ fontSize: authorFs }}>{block.author}</p>}
+              {block.role   && <p className="text-white/40 leading-none mt-0.5" style={{ fontSize: authorFs - 1 }}>{block.role}</p>}
+            </div>
+          </div>
+        )}
       </div>
     );
   }
@@ -122,6 +185,9 @@ const PRESET_SHADOWS = [
   { label: "Красная",   x:0, y:0, blur:16, color:"rgba(239,68,68,0.5)" },
 ];
 
+// localStorage-ключ для буфера стилей
+const STYLE_CLIPBOARD_KEY = "pe_style_clipboard";
+
 export function StylePanel({ s, onChange }: { s: PageBlockStyle; onChange: (p: Partial<PageBlockStyle>) => void }) {
   const lbl = "text-[10px] font-bold uppercase tracking-wider text-white/30 mb-1.5 block";
   const numInp = "w-full px-2 py-1.5 rounded-lg text-xs text-white bg-white/[0.06] border border-white/[0.1] focus:outline-none";
@@ -129,8 +195,44 @@ export function StylePanel({ s, onChange }: { s: PageBlockStyle; onChange: (p: P
 
   const bgType = s.bgType ?? "none";
 
+  const [copied, setCopied] = React.useState(false);
+  const [hasPaste, setHasPaste] = React.useState(!!localStorage.getItem(STYLE_CLIPBOARD_KEY));
+
+  const handleCopy = () => {
+    localStorage.setItem(STYLE_CLIPBOARD_KEY, JSON.stringify(s));
+    setCopied(true);
+    setHasPaste(true);
+    setTimeout(() => setCopied(false), 1500);
+  };
+
+  const handlePaste = () => {
+    try {
+      const raw = localStorage.getItem(STYLE_CLIPBOARD_KEY);
+      if (!raw) return;
+      onChange(JSON.parse(raw) as PageBlockStyle);
+    } catch { /* ignore */ }
+  };
+
   return (
     <div className="space-y-4">
+
+      {/* ── Копировать / Вставить стиль ── */}
+      <div className="flex gap-2">
+        <button onClick={handleCopy}
+          className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-bold transition border ${
+            copied
+              ? "bg-emerald-500/20 text-emerald-400 border-emerald-500/30"
+              : "bg-white/[0.04] text-white/50 border-white/[0.08] hover:bg-white/[0.08] hover:text-white/80"
+          }`}>
+          <Icon name={copied ? "CheckCircle2" : "Copy"} size={12} />
+          {copied ? "Скопировано!" : "Копировать стиль"}
+        </button>
+        <button onClick={handlePaste} disabled={!hasPaste}
+          className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-bold transition border bg-violet-500/[0.06] text-violet-400 border-violet-500/20 hover:bg-violet-500/15 disabled:opacity-30 disabled:cursor-not-allowed">
+          <Icon name="ClipboardPaste" size={12} />
+          Вставить стиль
+        </button>
+      </div>
 
       {/* ── Фон ── */}
       <div className="rounded-2xl bg-white/[0.03] border border-white/[0.07] overflow-hidden">

@@ -30,7 +30,7 @@ export interface Brand {
 }
 
 // ── Конструктор страниц — блоки ──────────────────────────────────────────────
-export type PageBlockType = "heading" | "text" | "gallery" | "buttons" | "divider" | "video" | "spacer" | "card";
+export type PageBlockType = "heading" | "text" | "gallery" | "buttons" | "divider" | "video" | "card" | "price" | "quote";
 
 // ── Стили блока (расширенная стилизация) ─────────────────────────────────────
 export interface PageBlockStyle {
@@ -117,20 +117,38 @@ export interface PageBlockDivider extends PageBlockBase {
 
 export interface PageBlockVideo extends PageBlockBase {
   type:    "video";
-  url:     string;  // YouTube / Vimeo URL
+  url:     string;  // YouTube / Vimeo / прямой URL / S3 url
 }
 
-export interface PageBlockSpacer extends PageBlockBase {
-  type:    "spacer";
-  height:  number;  // px
-}
-
+// Карточка: фото слева или справа, заголовок + текст
 export interface PageBlockCard extends PageBlockBase {
-  type:    "card";
-  icon:    string;    // emoji или название иконки lucide
-  title:   string;
+  type:       "card";
+  title:      string;
+  text:       string;
+  photoUrl?:  string;                          // URL фото
+  photoSide?: "left" | "right" | "top" | "none"; // расположение фото
+  align?:     "left" | "center" | "right";
+}
+
+// Таблица цен / прайс-лист
+export interface PageBlockPrice extends PageBlockBase {
+  type:   "price";
+  title?: string;
+  items:  {
+    icon?:  string;   // emoji
+    name:   string;   // название позиции
+    price:  string;   // цена (строка: "от 1 200 ₽")
+    desc?:  string;   // пояснение
+  }[];
+}
+
+// Цитата / отзыв
+export interface PageBlockQuote extends PageBlockBase {
+  type:    "quote";
   text:    string;
-  align:   "left" | "center" | "right";
+  author?: string;   // имя автора
+  role?:   string;   // должность/подпись
+  avatar?: string;   // URL аватара
 }
 
 export type PageBlock =
@@ -140,8 +158,9 @@ export type PageBlock =
   | PageBlockButtons
   | PageBlockDivider
   | PageBlockVideo
-  | PageBlockSpacer
-  | PageBlockCard;
+  | PageBlockCard
+  | PageBlockPrice
+  | PageBlockQuote;
 
 // Настройки страницы целиком
 export interface PageSettings {
