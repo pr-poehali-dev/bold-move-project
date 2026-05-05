@@ -2,6 +2,7 @@ import React, { useRef, useState } from "react";
 import type { PageBlock } from "@/context/AuthContext";
 import Icon from "@/components/ui/icon";
 import { uploadBrandImage } from "@/pages/admin/own-agent/brandApi";
+import { RichTextEditor } from "./RichTextEditor";
 
 interface Props {
   block: PageBlock;
@@ -34,8 +35,15 @@ export function BlockFieldEditors({ block, onChange, token }: Props) {
   return (
     <>
       {block.type === "heading" && (<>
-        <div><label className={lbl}>Текст</label>
-          <input className={inp} value={block.text} onChange={e => onChange({ ...block, text: e.target.value })} /></div>
+        <div>
+          <label className={lbl}>Текст и форматирование</label>
+          <RichTextEditor
+            value={block.text}
+            onChange={html => onChange({ ...block, text: html })}
+            placeholder="Заголовок"
+            minHeight={44}
+          />
+        </div>
         <div><label className={lbl}>Размер</label>
           <div className="flex gap-1">
             {(["xl","lg","md"] as const).map(s => (
@@ -59,8 +67,15 @@ export function BlockFieldEditors({ block, onChange, token }: Props) {
       </>)}
 
       {block.type === "text" && (<>
-        <div><label className={lbl}>Текст</label>
-          <textarea className={`${inp} resize-none`} rows={5} value={block.text} onChange={e => onChange({ ...block, text: e.target.value })} /></div>
+        <div>
+          <label className={lbl}>Текст и форматирование</label>
+          <RichTextEditor
+            value={block.text}
+            onChange={html => onChange({ ...block, text: html })}
+            placeholder="Введите текст..."
+            minHeight={80}
+          />
+        </div>
         <div><label className={lbl}>Выравнивание</label>
           <div className="flex gap-1">
             {(["left","center","right"] as const).map(a => (
@@ -220,10 +235,14 @@ export function BlockFieldEditors({ block, onChange, token }: Props) {
             ))}
           </div>
         </div>
-        <div><label className={lbl}>Заголовок</label>
-          <input className={inp} value={block.title} onChange={e => onChange({ ...block, title: e.target.value })} /></div>
-        <div><label className={lbl}>Текст</label>
-          <textarea className={`${inp} resize-none`} rows={3} value={block.text} onChange={e => onChange({ ...block, text: e.target.value })} /></div>
+        <div>
+          <label className={lbl}>Заголовок</label>
+          <RichTextEditor value={block.title} onChange={html => onChange({ ...block, title: html })} placeholder="Заголовок" minHeight={36} />
+        </div>
+        <div>
+          <label className={lbl}>Текст</label>
+          <RichTextEditor value={block.text} onChange={html => onChange({ ...block, text: html })} placeholder="Описание" minHeight={60} />
+        </div>
         <div><label className={lbl}>Выравнивание текста</label>
           <div className="flex gap-1">
             {(["left","center","right"] as const).map(a => (
@@ -262,8 +281,10 @@ export function BlockFieldEditors({ block, onChange, token }: Props) {
       </>)}
 
       {block.type === "quote" && (<>
-        <div><label className={lbl}>Текст цитаты / отзыва</label>
-          <textarea className={`${inp} resize-none`} rows={4} value={block.text} onChange={e => onChange({ ...block, text: e.target.value })} placeholder="Отличная работа! Рекомендую всем." /></div>
+        <div>
+          <label className={lbl}>Текст цитаты / отзыва</label>
+          <RichTextEditor value={block.text} onChange={html => onChange({ ...block, text: html })} placeholder="Отличная работа! Рекомендую всем." minHeight={80} />
+        </div>
         <div className="grid grid-cols-2 gap-2">
           <div><label className={lbl}>Автор</label>
             <input className={inp} value={block.author??""} onChange={e => onChange({ ...block, author: e.target.value })} placeholder="Иван Иванов" /></div>

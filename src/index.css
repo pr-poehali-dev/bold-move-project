@@ -2,6 +2,38 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ── Rich text: теги форматирования в блоках ─────────────────────────── */
+[dangerouslySetInnerHTML],
+[data-rich] {
+  /* наследуют все стили */
+}
+/* Сохраняем форматирование внутри rich text блоков */
+.rich-content b,
+.rich-content strong {
+  font-weight: 700;
+}
+.rich-content i,
+.rich-content em {
+  font-style: italic;
+}
+.rich-content u {
+  text-decoration: underline;
+}
+.rich-content s,
+.rich-content strike {
+  text-decoration: line-through;
+}
+.rich-content span[style] {
+  /* инлайн цвет и размер через style */
+}
+/* contenteditable placeholder */
+[contenteditable]:empty::before {
+  content: attr(data-placeholder);
+  color: rgba(255, 255, 255, 0.25);
+  pointer-events: none;
+}
+/* ── Конец rich text ─────────────────────────────────────────────────── */
+
 /* Скрываем платформенную кнопку Поддержки */
 #pp-support-btn,
 [id*="pp-support"],

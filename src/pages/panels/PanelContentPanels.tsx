@@ -56,6 +56,7 @@ function BlockContent({ block, blockW, blockH, onLightbox }: { block: PageBlock;
   const ac = (a: string) => a === "center" ? "text-center" : a === "right" ? "text-right" : "text-left";
   const bh = blockH ?? (block.h ?? 48);
   const bw = blockW ?? (block.w ?? 200);
+  const isHtml = (s: string) => /<[a-z][\s\S]*>/i.test(s);
 
   if (block.type === "heading") {
     const pct = block.size === "xl" ? 0.07 : block.size === "lg" ? 0.055 : 0.042;
@@ -63,7 +64,10 @@ function BlockContent({ block, blockW, blockH, onLightbox }: { block: PageBlock;
     const fs  = Math.max(11, Math.min(Math.round(bw * pct), bh - 4));
     return (
       <div className={`w-full ${ac(block.align)}`} style={{ overflowWrap: "break-word" }}>
-        <p className="text-white w-full" style={{ fontSize: fs, fontWeight: fw, lineHeight: 1.2, wordBreak: "break-word" }}>{block.text}</p>
+        {isHtml(block.text)
+          ? <div className="text-white w-full" style={{ fontSize: fs, fontWeight: fw, lineHeight: 1.2, wordBreak: "break-word" }} dangerouslySetInnerHTML={{ __html: block.text }} />
+          : <p className="text-white w-full" style={{ fontSize: fs, fontWeight: fw, lineHeight: 1.2, wordBreak: "break-word" }}>{block.text}</p>
+        }
       </div>
     );
   }
@@ -71,7 +75,10 @@ function BlockContent({ block, blockW, blockH, onLightbox }: { block: PageBlock;
     const fs = Math.max(9, Math.min(Math.round(bw * 0.04), 18));
     return (
       <div className={`w-full ${ac(block.align)}`}>
-        <p className="text-white/80 whitespace-pre-wrap leading-relaxed w-full" style={{ fontSize: fs }}>{block.text}</p>
+        {isHtml(block.text)
+          ? <div className="text-white/80 leading-relaxed w-full" style={{ fontSize: fs }} dangerouslySetInnerHTML={{ __html: block.text }} />
+          : <p className="text-white/80 whitespace-pre-wrap leading-relaxed w-full" style={{ fontSize: fs }}>{block.text}</p>
+        }
       </div>
     );
   }

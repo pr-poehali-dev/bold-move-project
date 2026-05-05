@@ -8,35 +8,33 @@ export function BlockContent({ block, blockW, blockH }: { block: PageBlock; bloc
   const bh = blockH ?? (block.h ?? 48);
   const bw = blockW ?? (block.w ?? 200);
 
+  // Хелпер: определяет — HTML или plain text
+  const isHtml = (s: string) => /<[a-z][\s\S]*>/i.test(s);
+
   if (block.type === "heading") {
-    // Размер шрифта от ширины блока — текст всегда видим, не обрезается
-    // xl ≈ 6% ширины, lg ≈ 5%, md ≈ 4% — но не меньше 11px и не больше bh
     const pct = block.size === "xl" ? 0.07 : block.size === "lg" ? 0.055 : 0.042;
     const fw  = block.size === "xl" ? 900 : 700;
     const fs  = Math.max(11, Math.min(Math.round(bw * pct), bh - 4));
+    const text = block.text || "Заголовок";
     return (
       <div className={`w-full ${ac(block.align)}`} style={{ overflowWrap: "break-word" }}>
-        <p
-          className="text-white leading-tight w-full"
-          style={{ fontSize: fs, fontWeight: fw, lineHeight: 1.2, wordBreak: "break-word" }}
-        >
-          {block.text || "Заголовок"}
-        </p>
+        {isHtml(text)
+          ? <div className="text-white leading-tight w-full" style={{ fontSize: fs, fontWeight: fw, lineHeight: 1.2, wordBreak: "break-word" }} dangerouslySetInnerHTML={{ __html: text }} />
+          : <p className="text-white leading-tight w-full" style={{ fontSize: fs, fontWeight: fw, lineHeight: 1.2, wordBreak: "break-word" }}>{text}</p>
+        }
       </div>
     );
   }
 
   if (block.type === "text") {
-    // Размер шрифта от ширины: ≈4% ширины, минимум 9px
     const fs = Math.max(9, Math.min(Math.round(bw * 0.04), 18));
+    const text = block.text || "Текст";
     return (
       <div className={`w-full ${ac(block.align)}`}>
-        <p
-          className="text-white/80 whitespace-pre-wrap leading-relaxed w-full"
-          style={{ fontSize: fs }}
-        >
-          {block.text || "Текст"}
-        </p>
+        {isHtml(text)
+          ? <div className="text-white/80 leading-relaxed w-full" style={{ fontSize: fs }} dangerouslySetInnerHTML={{ __html: text }} />
+          : <p className="text-white/80 whitespace-pre-wrap leading-relaxed w-full" style={{ fontSize: fs }}>{text}</p>
+        }
       </div>
     );
   }
@@ -88,31 +86,34 @@ export function BlockContent({ block, blockW, blockH }: { block: PageBlock; bloc
     const descFs   = Math.max(9,  Math.min(Math.round(bw * 0.032), 14));
     const hasPhoto = !!block.photoUrl;
 
+    const renderTitle = (fs: number) => isHtml(block.title)
+      ? <div className="text-white font-bold leading-tight" style={{ fontSize: fs }} dangerouslySetInnerHTML={{ __html: block.title }} />
+      : <p className="text-white font-bold leading-tight" style={{ fontSize: fs }}>{block.title}</p>;
+    const renderDesc = (fs: number) => isHtml(block.text)
+      ? <div className="text-white/60 leading-relaxed mt-0.5" style={{ fontSize: fs }} dangerouslySetInnerHTML={{ __html: block.text }} />
+      : <p className="text-white/60 leading-relaxed mt-0.5" style={{ fontSize: fs }}>{block.text}</p>;
+
     if (side === "top") {
       return (
         <div className={`flex flex-col w-full overflow-hidden ${ac(block.align ?? "left")}`}>
           {hasPhoto && <img src={block.photoUrl} alt="" className="w-full object-cover rounded-lg mb-2" style={{ height: Math.round(bh * 0.5) }} />}
-          <p className="text-white font-bold leading-tight" style={{ fontSize: titleFs }}>{block.title}</p>
-          <p className="text-white/60 leading-relaxed mt-0.5" style={{ fontSize: descFs }}>{block.text}</p>
+          {renderTitle(titleFs)}{renderDesc(descFs)}
         </div>
       );
     }
     if (side === "none" || !hasPhoto) {
       return (
         <div className={`flex flex-col justify-center w-full h-full ${ac(block.align ?? "left")}`}>
-          <p className="text-white font-bold leading-tight" style={{ fontSize: titleFs }}>{block.title}</p>
-          <p className="text-white/60 leading-relaxed mt-1" style={{ fontSize: descFs }}>{block.text}</p>
+          {renderTitle(titleFs)}{renderDesc(descFs)}
         </div>
       );
     }
-    // left / right
     const imgW = Math.round(bw * 0.38);
     return (
       <div className={`flex gap-3 w-full h-full overflow-hidden ${side === "right" ? "flex-row-reverse" : "flex-row"}`}>
         <img src={block.photoUrl} alt="" className="rounded-lg object-cover shrink-0" style={{ width: imgW, height: "100%" }} />
         <div className={`flex flex-col justify-center min-w-0 ${ac(block.align ?? "left")}`}>
-          <p className="text-white font-bold leading-tight" style={{ fontSize: titleFs }}>{block.title}</p>
-          <p className="text-white/60 leading-relaxed mt-0.5" style={{ fontSize: descFs }}>{block.text}</p>
+          {renderTitle(titleFs)}{renderDesc(descFs)}
         </div>
       </div>
     );
@@ -144,7 +145,10 @@ export function BlockContent({ block, blockW, blockH }: { block: PageBlock; bloc
     const authorFs = Math.max(9,  Math.min(Math.round(bw * 0.03),  12));
     return (
       <div className="w-full h-full flex flex-col justify-between">
-        <p className="text-white/90 leading-relaxed italic" style={{ fontSize: textFs }}>«{block.text}»</p>
+        {isHtml(block.text)
+          ? <div className="text-white/90 leading-relaxed italic" style={{ fontSize: textFs }} dangerouslySetInnerHTML={{ __html: `«${block.text}»` }} />
+          : <p className="text-white/90 leading-relaxed italic" style={{ fontSize: textFs }}>«{block.text}»</p>
+        }
         {(block.author || block.avatar) && (
           <div className="flex items-center gap-2 mt-2">
             {block.avatar && <img src={block.avatar} alt="" className="w-7 h-7 rounded-full object-cover shrink-0" />}
