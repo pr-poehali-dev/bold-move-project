@@ -57,45 +57,45 @@ export default function PricingEcosystem() {
     <section className="max-w-5xl mx-auto px-5 pb-16">
 
       {/* Заголовок */}
-      <div className="text-center mb-10">
+      <div className="text-center mb-6 sm:mb-10">
         <div
-          className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest mb-4"
+          className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest mb-3"
           style={{ background: "rgba(96,165,250,0.12)", color: "#60a5fa", border: "1px solid rgba(96,165,250,0.25)" }}
         >
           <Icon name="Layers" size={10} />
           Только White Label
         </div>
-        <h2 className="text-2xl sm:text-3xl font-black text-white mb-3 leading-tight">
+        <h2 className="text-xl sm:text-3xl font-black text-white mb-2 leading-tight">
           Целая экосистема<br className="hidden sm:block" /> под вашим брендом
         </h2>
-        <p className="text-sm text-white/50 max-w-xl mx-auto leading-relaxed">
+        <p className="text-xs sm:text-sm text-white/50 max-w-xl mx-auto leading-relaxed">
           Не просто агент — полноценная платформа под вашим брендом.
           Партнёры работают со своими клиентами, клиенты видят только вас.
         </p>
       </div>
 
       {/* Карточки */}
-      <div className="grid sm:grid-cols-2 gap-4 mb-6">
+      <div className="grid sm:grid-cols-2 gap-3 mb-4">
         {PILLARS.map((p) => (
           <div
             key={p.title}
-            className="rounded-[24px] p-5 flex flex-col gap-4"
+            className="rounded-[20px] p-3.5 sm:p-5 flex flex-col gap-2.5 sm:gap-4"
             style={{
               background: `radial-gradient(140% 120% at 0% 0%, ${p.glow}, rgba(10,10,20,0) 60%), #0a0a14`,
               border: `1.5px solid ${p.glow.replace("0.18", "0.25")}`,
             }}
           >
             {/* Иконка + заголовок */}
-            <div className="flex items-start gap-3">
+            <div className="flex items-center gap-2.5">
               <div
-                className="w-10 h-10 rounded-2xl flex items-center justify-center flex-shrink-0 mt-0.5"
+                className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl flex items-center justify-center flex-shrink-0"
                 style={{ background: p.glow }}
               >
-                <Icon name={p.icon} size={18} style={{ color: p.color }} />
+                <Icon name={p.icon} size={15} style={{ color: p.color }} />
               </div>
               <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 flex-wrap mb-0.5">
-                  <div className="text-[14px] font-black text-white leading-snug">
+                <div className="flex items-center gap-1.5 flex-wrap mb-0.5">
+                  <div className="text-[13px] font-black text-white leading-snug">
                     {p.title}
                   </div>
                   {'soon' in p && p.soon && (
@@ -105,23 +105,23 @@ export default function PricingEcosystem() {
                     </span>
                   )}
                 </div>
-                <div className="text-[11px] font-medium" style={{ color: p.color }}>
+                <div className="text-[10px] font-medium" style={{ color: p.color }}>
                   {p.subtitle}
                 </div>
               </div>
             </div>
 
             {/* Пункты */}
-            <div className="flex flex-col gap-2 pl-1">
+            <div className="flex flex-col gap-1.5">
               {p.points.map((pt) => (
-                <div key={pt} className="flex items-start gap-2">
+                <div key={pt} className="flex items-start gap-1.5">
                   <div
-                    className="w-4 h-4 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5"
+                    className="w-3.5 h-3.5 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5"
                     style={{ background: p.glow }}
                   >
-                    <Icon name="Check" size={9} style={{ color: p.color }} />
+                    <Icon name="Check" size={8} style={{ color: p.color }} />
                   </div>
-                  <span className="text-[12px] text-white/60 leading-snug">{pt}</span>
+                  <span className="text-[11px] text-white/60 leading-snug">{pt}</span>
                 </div>
               ))}
             </div>
