@@ -384,7 +384,7 @@ export function DiscountSliderPanel({
             <div className="grid grid-cols-2 gap-2">
               <div className="flex items-center justify-between px-3 py-2 rounded-xl"
                 style={{ background: "#ffffff06", border: `1px solid ${t.border}` }}>
-                <span className="text-[10px] text-white/40 leading-tight">Выручка<br/>со скидкой</span>
+                <span className="text-[10px] text-white/40 leading-tight">Стоимость<br/>со скидкой</span>
                 <span className="text-[11px] font-bold text-white/70 whitespace-nowrap">{fmt(discountedIncome)} ₽</span>
               </div>
               <div className="flex items-center justify-between px-3 py-2 rounded-xl"
