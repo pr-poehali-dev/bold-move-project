@@ -231,19 +231,23 @@ export default function Index() {
           <div className="h-full bg-[#0e0e15]/98 backdrop-blur-2xl border-t border-white/[0.08] rounded-t-2xl overflow-hidden shadow-2xl shadow-black/50">
             {(() => {
               const canEdit = !!(user?.role === "company" || user?.is_master);
+              const navBtn = brand.nav_config?.find(b => b.id === panel);
               return (<>
-                {panel === "livechat"   && <LiveChat         onClose={closePanel} />}
-                {panel === "booking"    && <PanelBooking    onClose={closePanel} />}
-                {panel === "production" && !brand.nav_config && <PanelProduction onClose={closePanel} />}
-                {panel === "portfolio"  && !brand.nav_config && <PanelPortfolio  onClose={closePanel} />}
-                {panel === "tips"       && <PanelTips       onAsk={askFromPanel} onClose={closePanel} />}
-                {panel === "reviews"    && <PanelReviews    onClose={closePanel} />}
-                {panel === "faq"        && <PanelFaq        onClose={closePanel} />}
-                {panel === "contacts"   && <PanelContacts   onClose={closePanel} onPanel={setPanel} />}
-                {panel === "other"      && <PanelOther      onClose={closePanel} onPanel={setPanel} />}
-                {panel !== "none" && brand.nav_config && (() => {
-                  const btn = brand.nav_config!.find(b => b.id === panel && b.action === "panel");
-                  return btn ? <PanelCustom btn={btn} onClose={closePanel} onEdit={canEdit ? () => {} : undefined} /> : null;
+                {panel === "livechat" && <LiveChat onClose={closePanel} />}
+                {panel === "booking"  && <PanelBooking onClose={closePanel} />}
+                {panel === "tips"     && <PanelTips onAsk={askFromPanel} onClose={closePanel} />}
+                {panel === "reviews"  && <PanelReviews onClose={closePanel} />}
+                {panel === "faq"      && <PanelFaq onClose={closePanel} />}
+                {panel === "contacts" && <PanelContacts onClose={closePanel} onPanel={setPanel} />}
+                {panel === "other"    && !navBtn && <PanelOther onClose={closePanel} onPanel={setPanel} />}
+                {panel !== "none" && panel !== "livechat" && panel !== "booking" && panel !== "tips" && panel !== "reviews" && panel !== "faq" && panel !== "contacts" && (() => {
+                  if (navBtn && navBtn.action === "panel") {
+                    return <PanelCustom btn={navBtn} onClose={closePanel} onEdit={canEdit ? () => {} : undefined} />;
+                  }
+                  if (panel === "production") return <PanelProduction onClose={closePanel} />;
+                  if (panel === "portfolio")  return <PanelPortfolio  onClose={closePanel} />;
+                  if (panel === "other")      return <PanelOther onClose={closePanel} onPanel={setPanel} />;
+                  return null;
                 })()}
               </>);
             })()}
