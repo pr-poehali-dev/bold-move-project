@@ -29,12 +29,22 @@ export interface Brand {
   nav_config?:             NavButton[] | null;
 }
 
+export interface NavButtonContent {
+  title?:        string | null;
+  text?:         string | null;
+  photo_url?:    string | null;
+  btn_label?:    string | null;
+  btn_action?:   "phone" | "whatsapp" | "telegram" | "url" | null;
+  btn_value?:    string | null;
+}
+
 export interface NavButton {
-  id:     string;
-  label:  string;
-  icon:   string;
-  action: "chat" | "other" | "url" | "phone" | "whatsapp" | "telegram";
-  value?: string | null;
+  id:      string;
+  label:   string;
+  icon:    string;
+  action:  "chat" | "panel" | "other" | "url" | "phone" | "whatsapp" | "telegram";
+  value?:  string | null;
+  content?: NavButtonContent | null;
 }
 
 export interface Permissions {

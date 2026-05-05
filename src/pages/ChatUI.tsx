@@ -204,6 +204,7 @@ export default function ChatUI({ messages, input, typing, panel, onInput, onSend
             if (navBtn.action === "whatsapp" && navBtn.value) { window.open(`https://wa.me/${navBtn.value.replace(/\D/g,"")}`, "_blank"); return; }
             if (navBtn.action === "telegram" && navBtn.value) { window.open(navBtn.value.startsWith("http") ? navBtn.value : `https://t.me/${navBtn.value.replace("@","")}`, "_blank"); return; }
             if (navBtn.action === "chat") { onPanel("none"); return; }
+            if (navBtn.action === "panel") { onPanel(isActive ? "none" : navBtn.id as Panel); return; }
             onPanel(isActive ? "none" : (panelId || navBtn.id as Panel));
           };
 

@@ -20,6 +20,7 @@ import {
   PanelFaq,
   PanelContacts,
   PanelOther,
+  PanelCustom,
 } from "./ChatPanels";
 import MobileContactBar from "./MobileContactBar";
 
@@ -230,13 +231,17 @@ export default function Index() {
           <div className="h-full bg-[#0e0e15]/98 backdrop-blur-2xl border-t border-white/[0.08] rounded-t-2xl overflow-hidden shadow-2xl shadow-black/50">
             {panel === "livechat"   && <LiveChat         onClose={closePanel} />}
             {panel === "booking"    && <PanelBooking    onClose={closePanel} />}
-            {panel === "production" && <PanelProduction onClose={closePanel} />}
-            {panel === "portfolio"  && <PanelPortfolio  onClose={closePanel} />}
+            {panel === "production" && !brand.nav_config && <PanelProduction onClose={closePanel} />}
+            {panel === "portfolio"  && !brand.nav_config && <PanelPortfolio  onClose={closePanel} />}
             {panel === "tips"       && <PanelTips       onAsk={askFromPanel} onClose={closePanel} />}
             {panel === "reviews"    && <PanelReviews    onClose={closePanel} />}
             {panel === "faq"        && <PanelFaq        onClose={closePanel} />}
             {panel === "contacts"   && <PanelContacts   onClose={closePanel} onPanel={setPanel} />}
             {panel === "other"      && <PanelOther      onClose={closePanel} onPanel={setPanel} />}
+            {panel !== "none" && brand.nav_config && (() => {
+              const btn = brand.nav_config.find(b => b.id === panel && b.action === "panel");
+              return btn ? <PanelCustom btn={btn} onClose={closePanel} /> : null;
+            })()}
           </div>
         </div>
 

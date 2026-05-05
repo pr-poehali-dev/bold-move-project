@@ -240,6 +240,7 @@ export default function OwnAgentEditor({ isDark }: Props) {
           <SectionNav
             value={brand.nav_config}
             onChange={v => set("nav_config", v)}
+            token={token}
             isDark={isDark}
           />
 
