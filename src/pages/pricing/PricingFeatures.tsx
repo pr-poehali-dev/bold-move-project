@@ -71,8 +71,9 @@ export default function PricingFeatures() {
             </div>
 
             {/* Интеграции */}
-            <div className="flex-shrink-0 flex flex-col items-end gap-2">
-              <div className="text-[9px] font-black uppercase tracking-widest text-white/25 mb-0.5">Интегрируется с</div>
+            <div className="flex-shrink-0 flex flex-col items-end gap-2 px-3 py-2.5 rounded-2xl"
+              style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.09)" }}>
+              <div className="text-[9px] font-black uppercase tracking-widest text-white/25 self-end">Интегрируется с</div>
               <div className="flex items-center gap-2">
                 <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl"
                   style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)" }}>
