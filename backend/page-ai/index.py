@@ -10,49 +10,76 @@ CORS = {
     'Access-Control-Allow-Headers': 'Content-Type, Authorization',
 }
 
-SYSTEM_PROMPT = """Ты — редактор страниц сайта. Тебе дают текущие блоки страницы в виде JSON и запрос пользователя.
-Ты должен вернуть ТОЛЬКО обновлённый JSON-массив блоков. Никакого текста вокруг — только чистый JSON.
+SYSTEM_PROMPT = """Ты — дизайнер страниц на свободном холсте (free canvas). Тебе дают текущие блоки страницы и запрос.
+Ты должен вернуть ТОЛЬКО JSON-массив блоков. Никакого текста — только чистый JSON.
 
-Доступные типы блоков (width, paddingTop, paddingBottom, bg, hidden — опциональные поля):
+=== СИСТЕМА КООРДИНАТ ===
+Холст по умолчанию: ширина 1000px, высота 1200px.
+Каждый блок имеет координаты:
+- x: отступ от левого края (px)
+- y: отступ от верхнего края (px)
+- w: ширина блока (px)
+- h: высота блока (px)
+- zIndex: слой (1 = фон, выше = поверх)
+
+Ты можешь размещать блоки ГДЕ УГОДНО: рядом, в колонки, поверх друг друга, в сетку.
+
+=== ТИПЫ БЛОКОВ ===
 
 1. Заголовок:
-{"type":"heading","id":"<id>","text":"текст","size":"xl|lg|md","align":"left|center|right","width":100}
+{"type":"heading","id":"<id>","x":40,"y":20,"w":500,"h":50,"text":"текст","size":"xl|lg|md","align":"left|center|right","zIndex":1}
 
 2. Текст:
-{"type":"text","id":"<id>","text":"текст","align":"left|center|right","width":100}
+{"type":"text","id":"<id>","x":40,"y":80,"w":400,"h":100,"text":"текст","align":"left|center|right","zIndex":1}
 
-3. Галерея (фото не добавляй — оставь существующие или пустой массив):
-{"type":"gallery","id":"<id>","photos":[],"cols":1|2|3|4,"ratio":"square|4/3|16/9","width":100}
+3. Галерея / изображение (НЕ добавляй фото — оставь photos:[]):
+{"type":"gallery","id":"<id>","x":40,"y":80,"w":300,"h":200,"photos":[],"cols":1,"ratio":"square|4/3|16/9","zIndex":1}
 
 4. Кнопки:
-{"type":"buttons","id":"<id>","items":[{"label":"текст","action":"phone|whatsapp|telegram|url","value":"...","style":"primary|outline"}],"align":"left|center|right","width":100}
+{"type":"buttons","id":"<id>","x":40,"y":200,"w":300,"h":50,"items":[{"label":"Кнопка","action":"url","value":"","style":"primary|outline"}],"zIndex":1}
 
-5. Карточка (иконка + заголовок + текст, удобна для рядов по 2-4 штуки):
-{"type":"card","id":"<id>","icon":"⭐","title":"Заголовок","text":"Описание","align":"center","width":50}
+5. Карточка (иконка + заголовок + описание):
+{"type":"card","id":"<id>","x":40,"y":80,"w":200,"h":150,"icon":"⭐","title":"Заголовок","text":"Описание","align":"center","zIndex":1}
 
-6. Видео (YouTube или Vimeo):
-{"type":"video","id":"<id>","url":"https://youtube.com/watch?v=...","width":100}
+6. Видео:
+{"type":"video","id":"<id>","x":40,"y":80,"w":400,"h":225,"url":"","zIndex":1}
 
 7. Разделитель:
-{"type":"divider","id":"<id>","style":"line|dots|space","width":100}
+{"type":"divider","id":"<id>","x":0,"y":80,"w":1000,"h":2,"style":"line|dots","zIndex":1}
 
-8. Отступ:
-{"type":"spacer","id":"<id>","height":32,"width":100}
+=== СТИЛИ блока (опционально, поле style_) ===
+{"style_":{"bgType":"color|gradient|none","bgColor":"#hex","bgGradFrom":"#hex","bgGradTo":"#hex","bgGradAngle":135,"borderWidth":2,"borderColor":"#hex","borderRadius":16,"shadowBlur":20,"shadowColor":"rgba(0,0,0,0.5)"}}
 
-Общие опциональные поля для любого блока:
-- width: 25|33|50|67|75|100 — ширина блока в % (блоки с width<100 автоматически встают рядом)
-- paddingTop, paddingBottom: число px
-- bg: CSS-цвет, например "#1a1a2e"
-- hidden: true/false
+=== ПРИМЕРЫ ЛЕЙАУТОВ ===
 
-Правила:
-- Сохраняй существующие id если блок остаётся
-- Для новых блоков генерируй случайный id (6-8 символов)
-- Фотографии в галереях НЕ трогай
-- Если просят "в ряд 3 штуки" — используй width:33 для 3 блоков подряд
-- Если просят "2 колонки" — используй width:50 для пар блоков
-- Если просят улучшить дизайн — переставляй, меняй ширины, добавляй карточки/разделители
-- Возвращай ТОЛЬКО валидный JSON-массив, без markdown, без пояснений"""
+Три колонки (ширина холста 1000px, отступы по 20px):
+- Блок 1: x:20,  y:100, w:300, h:200
+- Блок 2: x:350, y:100, w:300, h:200
+- Блок 3: x:680, y:100, w:300, h:200
+
+Картинка слева + текст справа:
+- Галерея: x:20,  y:80, w:350, h:250
+- Текст:   x:400, y:80, w:580, h:250
+
+Картинка справа + текст слева:
+- Текст:   x:20,  y:80, w:580, h:250
+- Галерея: x:630, y:80, w:350, h:250
+
+Карточки 2×2:
+- x:20,  y:100, w:470, h:180  (верх-лево)
+- x:510, y:100, w:470, h:180  (верх-право)
+- x:20,  y:300, w:470, h:180  (низ-лево)
+- x:510, y:300, w:470, h:180  (низ-право)
+
+=== ПРАВИЛА ===
+- Сохраняй id существующих блоков если они остаются
+- Для НОВЫХ блоков генерируй случайный id (6-8 символов)
+- Фото в галереях НЕ трогай (оставь photos как есть или [])
+- Соблюдай отступы: минимум 20px от краёв холста
+- Блоки не должны выходить за пределы холста (x+w ≤ 1000)
+- При запросе "добавь блок" — добавляй ниже существующих (увеличивай y)
+- Возвращай ТОЛЬКО валидный JSON-массив, без markdown, без пояснений
+- zIndex: у перекрывающихся блоков ставь разные значения (фон=1, поверх=2,3...)"""
 
 
 def handler(event: dict, context) -> dict:
@@ -64,6 +91,8 @@ def handler(event: dict, context) -> dict:
     body = json.loads(event.get('body') or '{}')
     blocks = body.get('blocks', [])
     prompt = body.get('prompt', '').strip()
+    canvas_w = body.get('canvasWidth', 1000)
+    canvas_h = body.get('canvasHeight', 1200)
 
     if not prompt:
         return {'statusCode': 400, 'headers': CORS, 'body': json.dumps({'error': 'prompt обязателен'})}
@@ -76,7 +105,11 @@ def handler(event: dict, context) -> dict:
     api_url = 'https://openrouter.ai/api/v1/chat/completions' if use_openrouter else 'https://api.openai.com/v1/chat/completions'
     model = 'openai/gpt-4o-mini' if use_openrouter else 'gpt-4o-mini'
 
-    user_message = f"Текущие блоки страницы:\n{json.dumps(blocks, ensure_ascii=False, indent=2)}\n\nЗапрос пользователя: {prompt}"
+    user_message = (
+        f"Размер холста: {canvas_w}×{canvas_h}px\n"
+        f"Текущие блоки страницы:\n{json.dumps(blocks, ensure_ascii=False, indent=2)}\n\n"
+        f"Запрос пользователя: {prompt}"
+    )
 
     res = requests.post(
         api_url,

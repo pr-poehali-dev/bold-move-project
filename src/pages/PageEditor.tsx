@@ -220,7 +220,7 @@ export default function PageEditor({ panelId, onBack }: Props) {
     try {
       const res = await fetch(PAGE_AI_URL, {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ blocks, prompt: aiPrompt }),
+        body: JSON.stringify({ blocks, prompt: aiPrompt, canvasWidth: CW, canvasHeight: CH }),
       });
       const d = await res.json();
       if (!res.ok || d.error) { setAiError(d.error || "Ошибка AI"); return; }
