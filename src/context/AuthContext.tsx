@@ -26,6 +26,15 @@ export interface Brand {
   bot_avatar_bg?:          string | null;
   tg_bot_token?:           string | null;
   tg_notify_chat_id?:      string | null;
+  nav_config?:             NavButton[] | null;
+}
+
+export interface NavButton {
+  id:     string;
+  label:  string;
+  icon:   string;
+  action: "chat" | "other" | "url" | "phone" | "whatsapp" | "telegram";
+  value?: string | null;
 }
 
 export interface Permissions {

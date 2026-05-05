@@ -11,6 +11,7 @@ import {
   SectionContacts,
   SectionPdf,
 } from "./OwnAgentSections";
+import { SectionNav } from "./SectionNav";
 import func2url from "@/../backend/func2url.json";
 
 const PARSE_SITE_URL = (func2url as Record<string, string>)["parse-site"];
@@ -233,6 +234,12 @@ export default function OwnAgentEditor({ isDark }: Props) {
             brand={brand} set={set}
             website={website} runAi={runAi}
             aiAttempts={aiAttempts} aiBusy={aiBusy}
+            isDark={isDark}
+          />
+
+          <SectionNav
+            value={brand.nav_config}
+            onChange={v => set("nav_config", v)}
             isDark={isDark}
           />
 
