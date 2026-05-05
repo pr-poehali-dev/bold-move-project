@@ -56,16 +56,38 @@ export default function PricingFeatures() {
             boxShadow: "0 0 80px rgba(249,115,22,0.18)",
           }}>
 
-          {/* Бейдж */}
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider mb-3 sm:mb-5"
-            style={{ background: "rgba(249,115,22,0.18)", color: "#fbbf24", border: "1px solid rgba(249,115,22,0.4)" }}>
-            <Icon name="Crown" size={12} />
-            Главная фишка сервиса
+          {/* Шапка: заголовок + интеграции */}
+          <div className="flex items-start justify-between gap-4 flex-wrap mb-4 sm:mb-7">
+            <div className="flex-1 min-w-0">
+              {/* Бейдж */}
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider mb-3 sm:mb-5"
+                style={{ background: "rgba(249,115,22,0.18)", color: "#fbbf24", border: "1px solid rgba(249,115,22,0.4)" }}>
+                <Icon name="Crown" size={12} />
+                Главная фишка сервиса
+              </div>
+              <h2 className="text-xl sm:text-2xl md:text-4xl font-black leading-tight mb-2 sm:mb-3">
+                Не упускай <span style={{ color: "#f97316" }}>СВОЕГО</span> клиента
+              </h2>
+            </div>
+
+            {/* Интеграции */}
+            <div className="flex-shrink-0 flex flex-col items-end gap-2">
+              <div className="text-[9px] font-black uppercase tracking-widest text-white/25 mb-0.5">Интегрируется с</div>
+              <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl"
+                  style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)" }}>
+                  <Icon name="Send" size={13} style={{ color: "#60a5fa" }} />
+                  <span className="text-[12px] font-bold text-white/80">Telegram</span>
+                </div>
+                <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl"
+                  style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)" }}>
+                  <Icon name="MessageSquare" size={13} style={{ color: "#a78bfa" }} />
+                  <span className="text-[12px] font-bold text-white/80">MAX</span>
+                </div>
+              </div>
+            </div>
           </div>
 
-          <h2 className="text-xl sm:text-2xl md:text-4xl font-black leading-tight mb-2 sm:mb-3">
-            Не упускай <span style={{ color: "#f97316" }}>СВОЕГО</span> клиента
-          </h2>
           <p className="text-sm md:text-base text-white/65 max-w-2xl leading-relaxed mb-4 sm:mb-7">
             Сервис показывает <b className="text-white">сколько ты заработаешь</b> на заказе ещё до закупки материала.
             Значит ты <b style={{ color: "#10b981" }}>точно знаешь</b>, какую скидку можешь дать,
