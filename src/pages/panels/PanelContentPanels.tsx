@@ -4,7 +4,7 @@ import Lightbox from "@/components/ui/lightbox";
 import { PRODUCTION } from "../data/content";
 import { PORTFOLIO_ITEMS } from "../data/portfolio";
 import { PROD_FEATURES } from "../chatConfig";
-import type { NavButton, PageBlock, PageSettings } from "@/context/AuthContext";
+import type { NavButton, PageBlock, PageSettings, PageBlockStyle } from "@/context/AuthContext";
 import { PanelHeader } from "./PanelHeader";
 
 // ── helpers ───────────────────────────────────────────────────────────────────
@@ -25,6 +25,30 @@ function blockWidthClass(w?: number): string {
     case 75: return "w-3/4";
     default: return "w-full";
   }
+}
+
+function blockStyleToCss(s?: PageBlockStyle): React.CSSProperties {
+  if (!s) return {};
+  const css: React.CSSProperties = {};
+  if (s.bgType === "color" && s.bgColor) {
+    const op = s.bgOpacity ?? 100;
+    const r = parseInt(s.bgColor.slice(1,3),16), g = parseInt(s.bgColor.slice(3,5),16), b = parseInt(s.bgColor.slice(5,7),16);
+    css.backgroundColor = `rgba(${r},${g},${b},${op/100})`;
+  } else if (s.bgType === "gradient" && s.bgGradFrom && s.bgGradTo) {
+    css.background = `linear-gradient(${s.bgGradAngle ?? 135}deg, ${s.bgGradFrom}, ${s.bgGradTo})`;
+  }
+  if (s.borderWidth && s.borderWidth > 0) {
+    css.border = `${s.borderWidth}px ${s.borderStyle ?? "solid"} ${s.borderColor ?? "#ffffff33"}`;
+  }
+  if (s.borderRadius !== undefined) css.borderRadius = s.borderRadius;
+  if ((s.shadowBlur ?? 0) > 0 || (s.shadowX ?? 0) !== 0 || (s.shadowY ?? 0) !== 0) {
+    css.boxShadow = `${s.shadowX ?? 0}px ${s.shadowY ?? 0}px ${s.shadowBlur ?? 0}px ${s.shadowColor ?? "rgba(0,0,0,0.4)"}`;
+  }
+  if (s.padTop || s.padRight || s.padBottom || s.padLeft) {
+    css.padding = `${s.padTop ?? 0}px ${s.padRight ?? 0}px ${s.padBottom ?? 0}px ${s.padLeft ?? 0}px`;
+  }
+  if (s.opacity !== undefined && s.opacity < 100) css.opacity = s.opacity / 100;
+  return css;
 }
 
 // ── Block content renderer (shared) ──────────────────────────────────────────
@@ -118,22 +142,32 @@ function RenderBlocks({ blocks, pageSettings }: { blocks: PageBlock[]; pageSetti
           {[...blocks]
             .filter(b => !b.hidden)
             .sort((a, b) => (a.zIndex ?? 1) - (b.zIndex ?? 1))
-            .map(block => (
-              <div
-                key={block.id}
-                style={{
-                  position: "absolute",
-                  left: block.x ?? 0, top: block.y ?? 0,
-                  width: block.w ?? 240, height: block.h ?? 80,
-                  zIndex: block.zIndex ?? 1,
-                  background: block.bg || undefined,
-                  overflow: "hidden",
-                }}
-                className="rounded-xl"
-              >
-                <BlockContent block={block} onLightbox={(photos, idx) => setLightbox({ photos, idx })} />
-              </div>
-            ))}
+            .map(block => {
+              const es = blockStyleToCss(block.style_);
+              const padStyle = block.style_ ? { padding: es.padding } : { padding: "8px" };
+              return (
+                <div
+                  key={block.id}
+                  style={{
+                    position: "absolute",
+                    left: block.x ?? 0, top: block.y ?? 0,
+                    width: block.w ?? 240, height: block.h ?? 80,
+                    zIndex: block.zIndex ?? 1,
+                    background: es.background ?? (block.bg || undefined),
+                    backgroundColor: es.background ? undefined : es.backgroundColor,
+                    border: es.border,
+                    borderRadius: es.borderRadius ?? 12,
+                    boxShadow: es.boxShadow,
+                    opacity: es.opacity,
+                    overflow: "hidden",
+                  }}
+                >
+                  <div style={{ width: "100%", height: "100%", overflow: "hidden", ...padStyle }}>
+                    <BlockContent block={block} onLightbox={(photos, idx) => setLightbox({ photos, idx })} />
+                  </div>
+                </div>
+              );
+            })}
           {lightbox && (
             <Lightbox
               images={lightbox.photos.map(s => ({ src: s, alt: "" }))}

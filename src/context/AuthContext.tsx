@@ -32,6 +32,34 @@ export interface Brand {
 // ── Конструктор страниц — блоки ──────────────────────────────────────────────
 export type PageBlockType = "heading" | "text" | "gallery" | "buttons" | "divider" | "video" | "spacer" | "card";
 
+// ── Стили блока (расширенная стилизация) ─────────────────────────────────────
+export interface PageBlockStyle {
+  // Фон
+  bgType?:        "none" | "color" | "gradient";
+  bgColor?:       string;           // CSS цвет
+  bgGradFrom?:    string;           // цвет 1 градиента
+  bgGradTo?:      string;           // цвет 2 градиента
+  bgGradAngle?:   number;           // угол градиента (0-360)
+  bgOpacity?:     number;           // прозрачность фона 0-100
+  // Рамка
+  borderWidth?:   number;           // px
+  borderColor?:   string;
+  borderStyle?:   "solid" | "dashed" | "dotted";
+  borderRadius?:  number;           // px — радиус углов
+  // Тень
+  shadowX?:       number;
+  shadowY?:       number;
+  shadowBlur?:    number;
+  shadowColor?:   string;
+  // Отступы внутри
+  padTop?:        number;
+  padRight?:      number;
+  padBottom?:     number;
+  padLeft?:       number;
+  // Прозрачность всего блока
+  opacity?:       number;           // 0-100
+}
+
 // Общие поля позиционирования/стиля для каждого блока
 export interface PageBlockBase {
   id:       string;
@@ -42,11 +70,13 @@ export interface PageBlockBase {
   bg?:      string;
   hidden?:  boolean;
   // ── Free-canvas режим ──
-  x?:       number;   // px от левого края холста
-  y?:       number;   // px от верхнего края холста
-  w?:       number;   // ширина px
-  h?:       number;   // высота px
-  zIndex?:  number;   // слой (порядок перекрытия)
+  x?:       number;
+  y?:       number;
+  w?:       number;
+  h?:       number;
+  zIndex?:  number;
+  // ── Расширенные стили ──
+  style_?:  PageBlockStyle;         // подчёркивание чтобы не конфликтовать с .style у divider/spacer
 }
 
 export interface PageBlockHeading extends PageBlockBase {

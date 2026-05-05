@@ -1,7 +1,7 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { useBrand } from "@/context/BrandContext";
-import type { NavButton, PageBlock, PageSettings } from "@/context/AuthContext";
+import type { NavButton, PageBlock, PageSettings, PageBlockStyle } from "@/context/AuthContext";
 import { updateBrand, uploadBrandImage } from "./admin/own-agent/brandApi";
 import Icon from "@/components/ui/icon";
 import func2url from "@/../backend/func2url.json";
@@ -52,15 +52,15 @@ function defaultBlock(type: PageBlock["type"], x = 40, y = 40): PageBlock {
 }
 
 // ── Palette ────────────────────────────────────────────────────────────────────
-const ADD_BLOCKS: { type: PageBlock["type"]; icon: string; label: string }[] = [
-  { type: "heading",  icon: "Heading",       label: "Заголовок" },
-  { type: "text",     icon: "AlignLeft",     label: "Текст" },
-  { type: "gallery",  icon: "Image",         label: "Галерея" },
-  { type: "buttons",  icon: "MousePointer",  label: "Кнопки" },
-  { type: "card",     icon: "LayoutList",    label: "Карточка" },
-  { type: "video",    icon: "Play",          label: "Видео" },
-  { type: "divider",  icon: "Minus",         label: "Разделитель" },
-  { type: "spacer",   icon: "ArrowUpDown",   label: "Отступ" },
+const ADD_BLOCKS: { type: PageBlock["type"]; icon: string; label: string; color: string; bg: string }[] = [
+  { type: "heading",  icon: "Heading",       label: "Заголовок",   color: "#c4b5fd", bg: "rgba(139,92,246,0.15)" },
+  { type: "text",     icon: "AlignLeft",     label: "Текст",       color: "#93c5fd", bg: "rgba(59,130,246,0.15)" },
+  { type: "gallery",  icon: "Image",         label: "Галерея",     color: "#6ee7b7", bg: "rgba(16,185,129,0.15)" },
+  { type: "buttons",  icon: "MousePointer",  label: "Кнопки",      color: "#fca5a5", bg: "rgba(239,68,68,0.15)"  },
+  { type: "card",     icon: "LayoutList",    label: "Карточка",    color: "#fcd34d", bg: "rgba(245,158,11,0.15)" },
+  { type: "video",    icon: "Play",          label: "Видео",       color: "#f9a8d4", bg: "rgba(236,72,153,0.15)" },
+  { type: "divider",  icon: "Minus",         label: "Разделитель", color: "#94a3b8", bg: "rgba(148,163,184,0.12)"},
+  { type: "spacer",   icon: "ArrowUpDown",   label: "Отступ",      color: "#67e8f9", bg: "rgba(6,182,212,0.13)"  },
 ];
 
 const BLOCK_LABELS: Record<string, string> = {
@@ -125,6 +125,342 @@ function BlockContent({ block }: { block: PageBlock }) {
   return null;
 }
 
+// ── blockStyleToCss: PageBlockStyle → React.CSSProperties ─────────────────────
+function blockStyleToCss(s?: PageBlockStyle): React.CSSProperties {
+  if (!s) return {};
+  const css: React.CSSProperties = {};
+
+  // Фон
+  if (s.bgType === "color" && s.bgColor) {
+    css.backgroundColor = s.bgColor;
+    if (s.bgOpacity !== undefined) css.backgroundColor = hexWithOpacity(s.bgColor, s.bgOpacity);
+  } else if (s.bgType === "gradient" && s.bgGradFrom && s.bgGradTo) {
+    const angle = s.bgGradAngle ?? 135;
+    css.background = `linear-gradient(${angle}deg, ${s.bgGradFrom}, ${s.bgGradTo})`;
+  }
+
+  // Рамка
+  if (s.borderWidth && s.borderWidth > 0) {
+    css.border = `${s.borderWidth}px ${s.borderStyle ?? "solid"} ${s.borderColor ?? "#ffffff33"}`;
+  }
+  if (s.borderRadius !== undefined) css.borderRadius = s.borderRadius;
+
+  // Тень
+  if ((s.shadowBlur ?? 0) > 0 || (s.shadowX ?? 0) !== 0 || (s.shadowY ?? 0) !== 0) {
+    css.boxShadow = `${s.shadowX ?? 0}px ${s.shadowY ?? 0}px ${s.shadowBlur ?? 0}px ${s.shadowColor ?? "rgba(0,0,0,0.4)"}`;
+  }
+
+  // Внутренние отступы
+  if (s.padTop || s.padRight || s.padBottom || s.padLeft) {
+    css.padding = `${s.padTop ?? 0}px ${s.padRight ?? 0}px ${s.padBottom ?? 0}px ${s.padLeft ?? 0}px`;
+  }
+
+  // Прозрачность
+  if (s.opacity !== undefined && s.opacity < 100) {
+    css.opacity = s.opacity / 100;
+  }
+
+  return css;
+}
+
+function hexWithOpacity(hex: string, opacity: number): string {
+  const r = parseInt(hex.slice(1,3),16), g = parseInt(hex.slice(3,5),16), b = parseInt(hex.slice(5,7),16);
+  return `rgba(${r},${g},${b},${opacity/100})`;
+}
+
+// ── StylePanel — панель стилизации блока ──────────────────────────────────────
+const PRESET_GRADIENTS: { label: string; from: string; to: string; angle: number }[] = [
+  { label: "Закат",    from: "#f97316", to: "#e11d48", angle: 135 },
+  { label: "Ночь",     from: "#6366f1", to: "#0f172a", angle: 135 },
+  { label: "Океан",    from: "#0ea5e9", to: "#6366f1", angle: 135 },
+  { label: "Лес",      from: "#10b981", to: "#0f172a", angle: 135 },
+  { label: "Малина",   from: "#ec4899", to: "#8b5cf6", angle: 135 },
+  { label: "Золото",   from: "#f59e0b", to: "#ef4444", angle: 135 },
+  { label: "Лёд",      from: "#e0f2fe", to: "#6366f1", angle: 180 },
+  { label: "Туман",    from: "#374151", to: "#111827", angle: 135 },
+];
+
+const PRESET_SHADOWS = [
+  { label: "Нет",       x:0, y:0, blur:0,  color:"rgba(0,0,0,0.4)" },
+  { label: "Мягкая",    x:0, y:4, blur:12, color:"rgba(0,0,0,0.3)" },
+  { label: "Чёткая",    x:2, y:4, blur:6,  color:"rgba(0,0,0,0.5)" },
+  { label: "Свечение",  x:0, y:0, blur:20, color:"rgba(139,92,246,0.5)" },
+  { label: "Красная",   x:0, y:0, blur:16, color:"rgba(239,68,68,0.5)" },
+];
+
+function StylePanel({ s, onChange }: { s: PageBlockStyle; onChange: (p: Partial<PageBlockStyle>) => void }) {
+  const lbl = "text-[10px] font-bold uppercase tracking-wider text-white/30 mb-1.5 block";
+  const numInp = "w-full px-2 py-1.5 rounded-lg text-xs text-white bg-white/[0.06] border border-white/[0.1] focus:outline-none";
+  const tab2 = (v: boolean) => `flex-1 py-1.5 rounded-lg text-xs font-bold transition ${v ? "bg-violet-500/30 text-violet-300 border border-violet-500/40" : "bg-white/[0.04] text-white/30 border border-white/[0.07] hover:bg-white/[0.08]"}`;
+
+  const bgType = s.bgType ?? "none";
+
+  return (
+    <div className="space-y-4">
+
+      {/* ── Фон ── */}
+      <div className="rounded-2xl bg-white/[0.03] border border-white/[0.07] overflow-hidden">
+        <div className="px-3 pt-3 pb-2 flex items-center gap-2">
+          <div className="w-5 h-5 rounded-md bg-gradient-to-br from-orange-500 to-violet-600 flex items-center justify-center">
+            <Icon name="Palette" size={11} className="text-white" />
+          </div>
+          <span className="text-xs font-bold text-white/70">Фон</span>
+        </div>
+        <div className="px-3 pb-3 space-y-2.5">
+          {/* Тип */}
+          <div className="flex gap-1.5">
+            {(["none","color","gradient"] as const).map(t => (
+              <button key={t} onClick={() => onChange({ bgType: t })} className={tab2(bgType === t)}>
+                {t === "none" ? "Нет" : t === "color" ? "Цвет" : "Градиент"}
+              </button>
+            ))}
+          </div>
+
+          {bgType === "color" && (
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <input type="color" value={s.bgColor || "#1e1e2e"}
+                  onChange={e => onChange({ bgColor: e.target.value })}
+                  className="w-10 h-10 rounded-xl cursor-pointer border border-white/10 bg-transparent" />
+                <input value={s.bgColor || ""}
+                  onChange={e => onChange({ bgColor: e.target.value })}
+                  placeholder="#1e1e2e"
+                  className="flex-1 px-2 py-2 rounded-xl text-xs text-white bg-white/[0.06] border border-white/[0.1] focus:outline-none" />
+              </div>
+              <div>
+                <label className={lbl}>Прозрачность {s.bgOpacity ?? 100}%</label>
+                <input type="range" min={0} max={100} step={1}
+                  value={s.bgOpacity ?? 100}
+                  onChange={e => onChange({ bgOpacity: Number(e.target.value) })}
+                  className="w-full accent-violet-500" />
+              </div>
+            </div>
+          )}
+
+          {bgType === "gradient" && (
+            <div className="space-y-2.5">
+              {/* Пресеты */}
+              <div className="grid grid-cols-4 gap-1.5">
+                {PRESET_GRADIENTS.map(p => (
+                  <button key={p.label}
+                    onClick={() => onChange({ bgGradFrom: p.from, bgGradTo: p.to, bgGradAngle: p.angle })}
+                    title={p.label}
+                    style={{ background: `linear-gradient(${p.angle}deg, ${p.from}, ${p.to})` }}
+                    className="h-8 rounded-lg border-2 border-transparent hover:border-white/40 transition" />
+                ))}
+              </div>
+              {/* Цвета */}
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className={lbl}>Цвет 1</label>
+                  <div className="flex items-center gap-1.5">
+                    <input type="color" value={s.bgGradFrom || "#6366f1"}
+                      onChange={e => onChange({ bgGradFrom: e.target.value })}
+                      className="w-8 h-8 rounded-lg cursor-pointer border border-white/10" />
+                    <input value={s.bgGradFrom || ""}
+                      onChange={e => onChange({ bgGradFrom: e.target.value })}
+                      className="flex-1 px-2 py-1.5 rounded-lg text-[10px] text-white bg-white/[0.06] border border-white/[0.1] focus:outline-none" />
+                  </div>
+                </div>
+                <div>
+                  <label className={lbl}>Цвет 2</label>
+                  <div className="flex items-center gap-1.5">
+                    <input type="color" value={s.bgGradTo || "#0f172a"}
+                      onChange={e => onChange({ bgGradTo: e.target.value })}
+                      className="w-8 h-8 rounded-lg cursor-pointer border border-white/10" />
+                    <input value={s.bgGradTo || ""}
+                      onChange={e => onChange({ bgGradTo: e.target.value })}
+                      className="flex-1 px-2 py-1.5 rounded-lg text-[10px] text-white bg-white/[0.06] border border-white/[0.1] focus:outline-none" />
+                  </div>
+                </div>
+              </div>
+              {/* Угол */}
+              <div>
+                <label className={lbl}>Угол {s.bgGradAngle ?? 135}°</label>
+                <div className="flex items-center gap-2">
+                  <input type="range" min={0} max={360} step={15}
+                    value={s.bgGradAngle ?? 135}
+                    onChange={e => onChange({ bgGradAngle: Number(e.target.value) })}
+                    className="flex-1 accent-violet-500" />
+                  <div className="w-8 h-8 rounded-full border border-white/20 flex items-center justify-center shrink-0"
+                    style={{ background: `conic-gradient(from ${(s.bgGradAngle??135)}deg, ${s.bgGradFrom||"#6366f1"}, ${s.bgGradTo||"#0f172a"})` }} />
+                </div>
+              </div>
+              {/* Превью */}
+              <div className="w-full h-8 rounded-xl"
+                style={{ background: `linear-gradient(${s.bgGradAngle??135}deg, ${s.bgGradFrom||"#6366f1"}, ${s.bgGradTo||"#0f172a"})` }} />
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* ── Рамка ── */}
+      <div className="rounded-2xl bg-white/[0.03] border border-white/[0.07] overflow-hidden">
+        <div className="px-3 pt-3 pb-2 flex items-center gap-2">
+          <div className="w-5 h-5 rounded-md bg-blue-500/30 flex items-center justify-center">
+            <Icon name="Square" size={11} className="text-blue-400" />
+          </div>
+          <span className="text-xs font-bold text-white/70">Рамка</span>
+        </div>
+        <div className="px-3 pb-3 space-y-2.5">
+          {/* Стиль */}
+          <div className="flex gap-1.5">
+            {(["solid","dashed","dotted"] as const).map(st => (
+              <button key={st} onClick={() => onChange({ borderStyle: st })}
+                className={tab2((s.borderStyle ?? "solid") === st)}>
+                {st === "solid" ? "—" : st === "dashed" ? "- -" : "···"}
+              </button>
+            ))}
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label className={lbl}>Толщина</label>
+              <div className="flex items-center gap-1.5">
+                <input type="range" min={0} max={12} step={1}
+                  value={s.borderWidth ?? 0}
+                  onChange={e => onChange({ borderWidth: Number(e.target.value) })}
+                  className="flex-1 accent-blue-500" />
+                <span className="text-white/40 text-[10px] w-6 text-right">{s.borderWidth ?? 0}</span>
+              </div>
+            </div>
+            <div>
+              <label className={lbl}>Скругление</label>
+              <div className="flex items-center gap-1.5">
+                <input type="range" min={0} max={48} step={2}
+                  value={s.borderRadius ?? 12}
+                  onChange={e => onChange({ borderRadius: Number(e.target.value) })}
+                  className="flex-1 accent-blue-500" />
+                <span className="text-white/40 text-[10px] w-6 text-right">{s.borderRadius ?? 12}</span>
+              </div>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <label className={lbl + " mb-0"}>Цвет рамки</label>
+            <input type="color" value={s.borderColor || "#ffffff"}
+              onChange={e => onChange({ borderColor: e.target.value })}
+              className="w-8 h-8 rounded-lg cursor-pointer border border-white/10 ml-auto" />
+            <input value={s.borderColor || ""}
+              onChange={e => onChange({ borderColor: e.target.value })}
+              placeholder="#ffffff"
+              className="flex-1 px-2 py-1.5 rounded-lg text-[10px] text-white bg-white/[0.06] border border-white/[0.1] focus:outline-none" />
+          </div>
+          {/* Превью рамки */}
+          {(s.borderWidth ?? 0) > 0 && (
+            <div className="h-8 rounded-xl w-full"
+              style={{
+                border: `${s.borderWidth}px ${s.borderStyle ?? "solid"} ${s.borderColor ?? "#fff"}`,
+                borderRadius: s.borderRadius ?? 12,
+              }} />
+          )}
+        </div>
+      </div>
+
+      {/* ── Тень ── */}
+      <div className="rounded-2xl bg-white/[0.03] border border-white/[0.07] overflow-hidden">
+        <div className="px-3 pt-3 pb-2 flex items-center gap-2">
+          <div className="w-5 h-5 rounded-md bg-purple-500/30 flex items-center justify-center">
+            <Icon name="Layers" size={11} className="text-purple-400" />
+          </div>
+          <span className="text-xs font-bold text-white/70">Тень</span>
+        </div>
+        <div className="px-3 pb-3 space-y-2.5">
+          {/* Пресеты */}
+          <div className="flex flex-wrap gap-1.5">
+            {PRESET_SHADOWS.map(p => (
+              <button key={p.label}
+                onClick={() => onChange({ shadowX: p.x, shadowY: p.y, shadowBlur: p.blur, shadowColor: p.color })}
+                className="px-2.5 py-1 rounded-lg text-[10px] bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.07] text-white/50 hover:text-white/80 transition">
+                {p.label}
+              </button>
+            ))}
+          </div>
+          <div className="grid grid-cols-3 gap-1.5">
+            {([["shadowX","X"],["shadowY","Y"],["shadowBlur","Размытие"]] as const).map(([k, l]) => (
+              <div key={k}>
+                <label className={lbl}>{l}</label>
+                <input type="number" step={1} value={(s as Record<string, number>)[k] ?? 0}
+                  onChange={e => onChange({ [k]: Number(e.target.value) })}
+                  className={numInp} />
+              </div>
+            ))}
+          </div>
+          <div className="flex items-center gap-2">
+            <label className={lbl + " mb-0"}>Цвет тени</label>
+            <input type="color" value={s.shadowColor?.startsWith("#") ? s.shadowColor : "#000000"}
+              onChange={e => onChange({ shadowColor: e.target.value })}
+              className="w-8 h-8 rounded-lg cursor-pointer border border-white/10 ml-auto" />
+          </div>
+        </div>
+      </div>
+
+      {/* ── Отступы ── */}
+      <div className="rounded-2xl bg-white/[0.03] border border-white/[0.07] overflow-hidden">
+        <div className="px-3 pt-3 pb-2 flex items-center gap-2">
+          <div className="w-5 h-5 rounded-md bg-emerald-500/30 flex items-center justify-center">
+            <Icon name="Frame" size={11} className="text-emerald-400" />
+          </div>
+          <span className="text-xs font-bold text-white/70">Внутренние отступы</span>
+        </div>
+        <div className="px-3 pb-3">
+          {/* Диаграмма отступов */}
+          <div className="relative w-full aspect-square max-w-[160px] mx-auto mb-2">
+            <div className="absolute inset-0 border border-white/10 rounded-xl flex items-center justify-center">
+              <div className="w-1/2 h-1/2 border border-violet-500/30 rounded-lg bg-violet-500/10" />
+            </div>
+            {/* Top */}
+            <div className="absolute top-1 left-1/2 -translate-x-1/2 w-10">
+              <input type="number" min={0} max={80} step={4} value={s.padTop ?? 8}
+                onChange={e => onChange({ padTop: Number(e.target.value) })}
+                className="w-full text-center px-1 py-0.5 rounded text-[10px] text-white bg-black/40 border border-white/10 focus:outline-none" />
+            </div>
+            {/* Bottom */}
+            <div className="absolute bottom-1 left-1/2 -translate-x-1/2 w-10">
+              <input type="number" min={0} max={80} step={4} value={s.padBottom ?? 8}
+                onChange={e => onChange({ padBottom: Number(e.target.value) })}
+                className="w-full text-center px-1 py-0.5 rounded text-[10px] text-white bg-black/40 border border-white/10 focus:outline-none" />
+            </div>
+            {/* Left */}
+            <div className="absolute left-1 top-1/2 -translate-y-1/2 w-10">
+              <input type="number" min={0} max={80} step={4} value={s.padLeft ?? 8}
+                onChange={e => onChange({ padLeft: Number(e.target.value) })}
+                className="w-full text-center px-1 py-0.5 rounded text-[10px] text-white bg-black/40 border border-white/10 focus:outline-none" />
+            </div>
+            {/* Right */}
+            <div className="absolute right-1 top-1/2 -translate-y-1/2 w-10">
+              <input type="number" min={0} max={80} step={4} value={s.padRight ?? 8}
+                onChange={e => onChange({ padRight: Number(e.target.value) })}
+                className="w-full text-center px-1 py-0.5 rounded text-[10px] text-white bg-black/40 border border-white/10 focus:outline-none" />
+            </div>
+          </div>
+          <button onClick={() => onChange({ padTop:8, padRight:12, padBottom:8, padLeft:12 })}
+            className="w-full py-1.5 rounded-lg text-[10px] text-white/40 hover:text-white/60 border border-white/[0.07] hover:bg-white/[0.04] transition">
+            Сбросить
+          </button>
+        </div>
+      </div>
+
+      {/* ── Прозрачность блока ── */}
+      <div className="rounded-2xl bg-white/[0.03] border border-white/[0.07] p-3">
+        <div className="flex items-center gap-2 mb-2">
+          <div className="w-5 h-5 rounded-md bg-white/10 flex items-center justify-center">
+            <Icon name="Eye" size={11} className="text-white/60" />
+          </div>
+          <span className="text-xs font-bold text-white/70">Прозрачность блока</span>
+          <span className="ml-auto text-xs text-violet-300 font-bold">{s.opacity ?? 100}%</span>
+        </div>
+        <input type="range" min={10} max={100} step={5}
+          value={s.opacity ?? 100}
+          onChange={e => onChange({ opacity: Number(e.target.value) })}
+          className="w-full accent-violet-500" />
+        <div className="flex justify-between text-[9px] text-white/20 mt-1">
+          <span>10%</span><span>Видимый</span><span>100%</span>
+        </div>
+      </div>
+
+    </div>
+  );
+}
+
 // ── Resize handles ─────────────────────────────────────────────────────────────
 const HANDLES = ["n","ne","e","se","s","sw","w","nw"] as const;
 type Handle = typeof HANDLES[number];
@@ -157,9 +493,14 @@ function BlockEditor({
 }) {
   const fileRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
+  const [editorTab, setEditorTab] = useState<"content" | "style">("content");
 
   const inp = "w-full px-3 py-2 rounded-xl text-sm text-white focus:outline-none bg-white/[0.06] border border-white/[0.1]";
   const lbl = "text-[10px] font-bold uppercase tracking-wider text-white/30 mb-1 block";
+
+  const st = block.style_ ?? {};
+  const updateStyle = (patch: Partial<PageBlockStyle>) =>
+    onChange({ ...block, style_: { ...st, ...patch } });
 
   const handlePhotos = async (files: FileList) => {
     setUploading(true);
@@ -173,6 +514,24 @@ function BlockEditor({
   return (
     <div className="space-y-3">
 
+      {/* ── Табы Содержимое / Стиль ── */}
+      <div className="flex gap-1 p-1 rounded-xl bg-white/[0.04] border border-white/[0.06]">
+        {(["content","style"] as const).map(t => (
+          <button key={t} onClick={() => setEditorTab(t)}
+            className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-xs font-bold transition ${
+              editorTab === t
+                ? t === "style"
+                  ? "bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white shadow"
+                  : "bg-white/[0.08] text-white"
+                : "text-white/30 hover:text-white/60"
+            }`}>
+            <Icon name={t === "content" ? "AlignLeft" : "Palette"} size={11} />
+            {t === "content" ? "Содержимое" : "Стиль"}
+          </button>
+        ))}
+      </div>
+
+      {editorTab === "content" && (<>
       {/* Position & size */}
       <div className="grid grid-cols-2 gap-1.5">
         {(["x","y","w","h"] as const).map(k => (
@@ -196,26 +555,9 @@ function BlockEditor({
         </button>
       </div>
 
-      <div className="border-t border-white/[0.07]" />
-
-      {/* Background */}
-      <div>
-        <label className={lbl}>Фон блока</label>
-        <div className="flex items-center gap-2">
-          <input type="color" value={block.bg || "#1a1a2e"}
-            onChange={e => onChange({ ...block, bg: e.target.value })}
-            className="w-8 h-8 rounded-lg cursor-pointer border border-white/10 bg-transparent" />
-          <input value={block.bg || ""}
-            onChange={e => onChange({ ...block, bg: e.target.value })}
-            placeholder="прозрачный"
-            className="flex-1 px-2 py-1.5 rounded-lg text-xs text-white bg-white/[0.06] border border-white/[0.1] focus:outline-none" />
-          {block.bg && <button onClick={() => onChange({ ...block, bg: "" })} className="text-white/30 hover:text-white/60"><Icon name="X" size={11} /></button>}
-        </div>
-      </div>
-
       {/* Hidden toggle */}
-      <div className="flex items-center justify-between">
-        <label className={lbl + " mb-0"}>Скрыть</label>
+      <div className="flex items-center justify-between py-1.5 px-2 rounded-xl bg-white/[0.03] border border-white/[0.06]">
+        <label className={lbl + " mb-0"}>Скрыть блок</label>
         <button onClick={() => onChange({ ...block, hidden: !block.hidden })}
           className={`w-10 h-5 rounded-full transition-colors relative ${block.hidden ? "bg-white/10" : "bg-violet-600"}`}>
           <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-all ${block.hidden ? "left-0.5" : "left-5"}`} />
@@ -410,6 +752,24 @@ function BlockEditor({
           <Icon name="Trash2" size={12} /> Удалить
         </button>
       </div>
+      </>)}
+
+      {/* ── Вкладка Стиль ── */}
+      {editorTab === "style" && (
+        <>
+          <StylePanel s={st} onChange={updateStyle} />
+          <div className="flex gap-2 pt-2 border-t border-white/[0.07]">
+            <button onClick={onDuplicate}
+              className="flex-1 flex items-center justify-center gap-1 py-2 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.07] text-white/50 hover:text-white/80 text-xs transition">
+              <Icon name="Copy" size={12} /> Дублировать
+            </button>
+            <button onClick={onDelete}
+              className="flex-1 flex items-center justify-center gap-1 py-2 rounded-xl bg-red-500/[0.06] hover:bg-red-500/10 border border-red-500/10 hover:border-red-500/30 text-red-400/60 hover:text-red-400 text-xs transition">
+              <Icon name="Trash2" size={12} /> Удалить
+            </button>
+          </div>
+        </>
+      )}
     </div>
   );
 }
@@ -811,6 +1171,11 @@ export default function PageEditor({ panelId, onBack }: Props) {
                 const bh = block.h ?? DEFAULT_SIZES[block.type]?.h ?? 80;
                 const isSelected = selectedId === block.id;
 
+                const extraStyle = blockStyleToCss(block.style_);
+                const padStyle = block.style_
+                  ? { padding: extraStyle.padding }
+                  : { padding: "8px" };
+
                 return (
                   <div
                     key={block.id}
@@ -819,10 +1184,14 @@ export default function PageEditor({ panelId, onBack }: Props) {
                       left: bx, top: by,
                       width: bw, height: bh,
                       zIndex: block.zIndex ?? 1,
-                      opacity: block.hidden ? 0.25 : 1,
-                      background: block.bg || "transparent",
+                      opacity: block.hidden ? 0.25 : (extraStyle.opacity ?? 1),
+                      background: extraStyle.background ?? (block.bg || "transparent"),
+                      backgroundColor: extraStyle.background ? undefined : (extraStyle.backgroundColor ?? (block.bg || undefined)),
+                      border: extraStyle.border,
+                      borderRadius: extraStyle.borderRadius ?? 12,
+                      boxShadow: extraStyle.boxShadow,
                     }}
-                    className={`group rounded-xl overflow-hidden transition-shadow ${
+                    className={`group overflow-hidden transition-shadow ${
                       isSelected
                         ? "ring-2 ring-violet-500 shadow-lg shadow-violet-500/20"
                         : "ring-1 ring-white/[0.04] hover:ring-white/[0.12]"
@@ -830,7 +1199,7 @@ export default function PageEditor({ panelId, onBack }: Props) {
                     onMouseDown={e => onBlockMouseDown(e, block.id)}
                   >
                     {/* Content */}
-                    <div className="w-full h-full p-2 overflow-hidden" style={{ cursor: "move" }}>
+                    <div className="w-full h-full overflow-hidden" style={{ cursor: "move", ...padStyle }}>
                       <BlockContent block={block} />
                     </div>
 
@@ -925,40 +1294,58 @@ export default function PageEditor({ panelId, onBack }: Props) {
 
           ) : (
             <div className="flex-1 overflow-y-auto p-3">
-              <p className="text-[10px] font-bold text-white/30 uppercase tracking-wider mb-2">Перетащить или нажать</p>
-              <div className="grid grid-cols-2 gap-1.5">
-                {ADD_BLOCKS.map(({ type, icon, label }) => (
+              <p className="text-[10px] font-bold text-white/30 uppercase tracking-wider mb-2.5">Перетащить или нажать</p>
+              <div className="grid grid-cols-2 gap-2">
+                {ADD_BLOCKS.map(({ type, icon, label, color, bg }) => (
                   <div key={type}
                     draggable
                     onDragStart={() => { paletteType.current = type; setIsDroppingFromPalette(true); }}
                     onDragEnd={() => { paletteType.current = null; setIsDroppingFromPalette(false); }}
                     onClick={() => addBlock(type)}
-                    className="flex flex-col items-center gap-1.5 p-2.5 rounded-xl bg-white/[0.03] hover:bg-white/[0.07] border border-white/[0.06] hover:border-violet-500/30 transition group cursor-grab active:cursor-grabbing select-none">
-                    <div className="w-8 h-8 rounded-xl bg-white/[0.05] group-hover:bg-violet-500/15 flex items-center justify-center transition">
-                      <Icon name={icon} size={14} className="text-white/40 group-hover:text-violet-400 transition" />
+                    className="flex flex-col items-center gap-2 p-3 rounded-2xl border border-white/[0.07] hover:border-white/20 transition-all group cursor-grab active:cursor-grabbing select-none hover:scale-[1.03] active:scale-95"
+                    style={{ background: "rgba(255,255,255,0.025)" }}>
+                    {/* Иконка с цветным фоном */}
+                    <div className="w-10 h-10 rounded-xl flex items-center justify-center transition-transform group-hover:scale-110"
+                      style={{ background: bg }}>
+                      <Icon name={icon} size={17} style={{ color }} />
                     </div>
-                    <span className="text-[9px] text-white/40 group-hover:text-white/70 transition text-center leading-tight">{label}</span>
+                    <span className="text-[10px] font-semibold text-white/50 group-hover:text-white/80 transition text-center leading-tight">{label}</span>
+                    {/* Полоска-цвет снизу */}
+                    <div className="w-6 h-0.5 rounded-full opacity-50 group-hover:opacity-100 transition" style={{ background: color }} />
                   </div>
                 ))}
               </div>
 
               {blocks.length > 0 && (
-                <div className="mt-3 pt-3 border-t border-white/[0.06]">
+                <div className="mt-4 pt-3 border-t border-white/[0.06]">
                   <p className="text-[10px] font-bold text-white/20 uppercase tracking-wider mb-1.5">Слои ({blocks.length})</p>
                   <div className="space-y-0.5">
-                    {[...blocks].sort((a,b)=>(b.zIndex??1)-(a.zIndex??1)).map(block => (
-                      <button key={block.id} onClick={() => { setSelectedId(block.id); setSidebarTab("blocks"); }}
-                        className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-left transition group ${selectedId===block.id?"bg-violet-500/10 border border-violet-500/20":"hover:bg-white/[0.04]"}`}>
-                        <Icon name={ADD_BLOCKS.find(b=>b.type===block.type)?.icon??"Box"} size={10} className="text-white/25 group-hover:text-white/50 shrink-0" />
-                        <span className="text-[11px] text-white/35 group-hover:text-white/60 truncate flex-1">
-                          {block.type==="heading"?block.text:block.type==="text"?block.text.slice(0,24)+(block.text.length>24?"…":""):block.type==="card"?block.title:BLOCK_LABELS[block.type]}
-                        </span>
-                        <div className="flex items-center gap-1 shrink-0">
-                          {block.hidden && <Icon name="EyeOff" size={8} className="text-orange-400/60" />}
-                          <span className="text-[8px] text-white/15">{block.zIndex??1}</span>
-                        </div>
-                      </button>
-                    ))}
+                    {[...blocks].sort((a,b)=>(b.zIndex??1)-(a.zIndex??1)).map(block => {
+                      const pal = ADD_BLOCKS.find(b => b.type === block.type);
+                      return (
+                        <button key={block.id} onClick={() => { setSelectedId(block.id); setSidebarTab("blocks"); }}
+                          className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-xl text-left transition group ${selectedId===block.id?"bg-violet-500/10 border border-violet-500/20":"hover:bg-white/[0.04] border border-transparent"}`}>
+                          <div className="w-5 h-5 rounded-md flex items-center justify-center shrink-0"
+                            style={{ background: pal?.bg ?? "rgba(255,255,255,0.05)" }}>
+                            <Icon name={pal?.icon ?? "Box"} size={10} style={{ color: pal?.color ?? "#ffffff60" }} />
+                          </div>
+                          <span className="text-[11px] text-white/40 group-hover:text-white/70 truncate flex-1">
+                            {block.type==="heading"?block.text:block.type==="text"?block.text.slice(0,24)+(block.text.length>24?"…":""):block.type==="card"?block.title:BLOCK_LABELS[block.type]}
+                          </span>
+                          <div className="flex items-center gap-1 shrink-0">
+                            {block.hidden && <Icon name="EyeOff" size={8} className="text-orange-400/60" />}
+                            {block.style_?.bgType && block.style_.bgType !== "none" && (
+                              <div className="w-2 h-2 rounded-full" style={{
+                                background: block.style_.bgType === "gradient"
+                                  ? `linear-gradient(135deg,${block.style_.bgGradFrom},${block.style_.bgGradTo})`
+                                  : block.style_.bgColor
+                              }} />
+                            )}
+                            <span className="text-[8px] text-white/15">{block.zIndex??1}</span>
+                          </div>
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
               )}
