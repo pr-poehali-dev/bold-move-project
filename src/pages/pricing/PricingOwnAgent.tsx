@@ -106,25 +106,25 @@ export default function PricingOwnAgent() {
 
         {/* Раскрытое содержимое */}
         {open && (
-          <div className="border-t px-5 md:px-8 pb-7 pt-6"
+          <div className="border-t px-4 sm:px-5 md:px-8 pb-5 sm:pb-7 pt-4 sm:pt-6"
             style={{ borderColor: "rgba(167,139,250,0.20)" }}>
 
-            <p className="text-sm text-white/65 leading-relaxed mb-6 max-w-2xl">
+            <p className="text-xs sm:text-sm text-white/65 leading-relaxed mb-4 sm:mb-6 max-w-2xl">
               Вы получаете полностью брендированный сервис: клиенты заходят по своей ссылке,
               видят ваш логотип, ваше имя бота, ваши контакты и ваш цвет. Все сметы и письма уходят от вашего имени.
             </p>
 
             {/* Фичи */}
-            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3 mb-6">
+            <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-3 mb-4 sm:mb-6">
               {FEATURES.map(f => (
-                <div key={f.title} className="rounded-2xl p-4"
+                <div key={f.title} className="rounded-xl sm:rounded-2xl p-3 sm:p-4"
                   style={{ background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.05)" }}>
-                  <div className="w-9 h-9 rounded-xl flex items-center justify-center mb-2.5"
+                  <div className="w-7 h-7 sm:w-9 sm:h-9 rounded-lg sm:rounded-xl flex items-center justify-center mb-2"
                     style={{ background: "rgba(167,139,250,0.14)" }}>
-                    <Icon name={f.icon} size={16} style={{ color: "#a78bfa" }} />
+                    <Icon name={f.icon} size={13} style={{ color: "#a78bfa" }} />
                   </div>
-                  <div className="text-[13px] font-bold text-white mb-1">{f.title}</div>
-                  <div className="text-[11px] text-white/45 leading-snug">{f.text}</div>
+                  <div className="text-[12px] sm:text-[13px] font-bold text-white mb-0.5">{f.title}</div>
+                  <div className="text-[10px] sm:text-[11px] text-white/45 leading-snug">{f.text}</div>
                 </div>
               ))}
             </div>
