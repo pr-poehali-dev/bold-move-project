@@ -159,7 +159,7 @@ def handler(event: dict, context) -> dict:
                    u.working_hours, u.pdf_footer_address, u.telegram_url, u.pdf_text_color,
                    u.brand_logo_url_dark, u.brand_logo_orientation, u.pdf_logo_bg,
                    u.bot_avatar_bg, u.kanban_enabled,
-                   u.tg_bot_token, u.tg_notify_chat_id
+                   u.tg_bot_token, u.tg_notify_chat_id, u.nav_config
             FROM {SCHEMA}.user_sessions s
             JOIN {SCHEMA}.users u ON u.id = s.user_id
             WHERE s.token=%s AND s.expires_at > NOW()
@@ -174,7 +174,7 @@ def handler(event: dict, context) -> dict:
          bot_name, bot_greeting, bot_avatar_url, brand_logo_url, brand_color,
          support_phone, support_email, max_url, working_hours, pdf_footer_address, telegram_url, pdf_text_color,
          brand_logo_url_dark, brand_logo_orientation, pdf_logo_bg, bot_avatar_bg, kanban_enabled,
-         tg_bot_token, tg_notify_chat_id) = row
+         tg_bot_token, tg_notify_chat_id, nav_config) = row
 
         return ok({"user": {
             "id": uid, "email": email, "name": name, "phone": phone,
@@ -204,6 +204,7 @@ def handler(event: dict, context) -> dict:
                 "brand_logo_orientation": brand_logo_orientation or "horizontal",
                 "pdf_logo_bg":            pdf_logo_bg or "auto",
                 "bot_avatar_bg":          bot_avatar_bg or "transparent",
+                "nav_config":             nav_config or None,
             },
         }})
 
@@ -376,14 +377,17 @@ def handler(event: dict, context) -> dict:
             "support_phone", "support_email", "max_url",
             "working_hours", "pdf_footer_address", "telegram_url", "pdf_text_color",
             "brand_logo_url_dark", "brand_logo_orientation", "pdf_logo_bg",
-            "tg_bot_token", "tg_notify_chat_id",
+            "tg_bot_token", "tg_notify_chat_id", "nav_config",
         ]
         sets = []
         vals = []
+        import json as _json
         for k in ALLOWED:
             if k in body:
                 v = body.get(k)
-                if isinstance(v, str):
+                if k == "nav_config":
+                    v = _json.dumps(v, ensure_ascii=False) if v is not None else None
+                elif isinstance(v, str):
                     v = v.strip() or None
                 sets.append(f"{k}=%s")
                 vals.append(v)
@@ -407,7 +411,7 @@ def handler(event: dict, context) -> dict:
                    bot_name, bot_greeting, bot_avatar_url, brand_logo_url, brand_color,
                    support_phone, support_email, max_url, working_hours,
                    pdf_footer_address, company_name, telegram, website, telegram_url, pdf_text_color,
-                   brand_logo_url_dark, brand_logo_orientation, pdf_logo_bg
+                   brand_logo_url_dark, brand_logo_orientation, pdf_logo_bg, nav_config
             FROM {SCHEMA}.users
             WHERE id=%s AND removed_at IS NULL
         """, (int(company_id),))
@@ -417,7 +421,7 @@ def handler(event: dict, context) -> dict:
         cid, role, has_agent, bot_name, bot_greeting, bot_avatar_url, brand_logo_url, brand_color, \
             support_phone, support_email, max_url, working_hours, pdf_footer_address, \
             company_name, telegram, website, telegram_url, pdf_text_color, \
-            brand_logo_url_dark, brand_logo_orientation, pdf_logo_bg = r
+            brand_logo_url_dark, brand_logo_orientation, pdf_logo_bg, nav_config = r
         # Если у пользователя нет активной услуги — возвращаем пустой бренд
         if not has_agent or role != "company":
             return ok({"brand": None})
@@ -441,6 +445,7 @@ def handler(event: dict, context) -> dict:
             "brand_logo_url_dark":    brand_logo_url_dark,
             "brand_logo_orientation": brand_logo_orientation or "horizontal",
             "pdf_logo_bg":            pdf_logo_bg or "auto",
+            "nav_config":             nav_config or None,
         }})
 
     # ── Выход ─────────────────────────────────────────────────────────────────
