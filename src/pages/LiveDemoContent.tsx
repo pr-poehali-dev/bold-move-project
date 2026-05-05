@@ -43,34 +43,39 @@ export default function LiveDemoContent({
       )}
 
       {/* Тулбар как в браузере */}
-      <div className="flex items-center gap-2 px-4 py-2.5 border-b border-white/[0.06]"
+      <div className="px-4 py-2.5 border-b border-white/[0.06]"
         style={{ background: "rgba(255,255,255,0.025)" }}>
-        <div className="flex gap-1.5">
-          <div className="w-2.5 h-2.5 rounded-full" style={{ background: "#ef4444" }} />
-          <div className="w-2.5 h-2.5 rounded-full" style={{ background: "#f59e0b" }} />
-          <div className="w-2.5 h-2.5 rounded-full" style={{ background: "#10b981" }} />
-        </div>
-        <div className="flex-1 text-center text-[10px] text-white/35 font-mono">
-          Смета №1284 · Натяжные потолки · Квартира 32 м²
-        </div>
         <div className="flex items-center gap-2">
-          <button onClick={() => {
-              const url  = "https://mospotolki.poehali.dev/pricing";
-              const text = "Смотри как считают сметы на натяжные потолки за секунды 🚀";
-              if (navigator.share) {
-                navigator.share({ title: text, url });
-              } else {
-                window.open(`https://t.me/share/url?url=${encodeURIComponent(url)}&text=${encodeURIComponent(text)}`, "_blank");
-              }
-            }}
-            className="text-[10px] flex items-center gap-1 text-white/40 hover:text-white/80 transition">
-            <Icon name="Share2" size={11} /> Поделиться
-          </button>
-          <span className="text-white/15">|</span>
-          <button onClick={onRestart}
-            className="text-[10px] flex items-center gap-1 text-white/40 hover:text-white/80 transition">
-            <Icon name="RotateCcw" size={11} /> Заново
-          </button>
+          <div className="flex gap-1.5 flex-shrink-0">
+            <div className="w-2.5 h-2.5 rounded-full" style={{ background: "#ef4444" }} />
+            <div className="w-2.5 h-2.5 rounded-full" style={{ background: "#f59e0b" }} />
+            <div className="w-2.5 h-2.5 rounded-full" style={{ background: "#10b981" }} />
+          </div>
+          <div className="flex-1 text-center text-[10px] text-white/35 font-mono truncate">
+            Смета №1284
+          </div>
+          <div className="flex items-center gap-2 flex-shrink-0">
+            <button onClick={() => {
+                const url  = "https://mospotolki.poehali.dev/pricing";
+                const text = "Смотри как считают сметы на натяжные потолки за секунды 🚀";
+                if (navigator.share) {
+                  navigator.share({ title: text, url });
+                } else {
+                  window.open(`https://t.me/share/url?url=${encodeURIComponent(url)}&text=${encodeURIComponent(text)}`, "_blank");
+                }
+              }}
+              className="text-[10px] flex items-center gap-1 text-white/40 hover:text-white/80 transition">
+              <Icon name="Share2" size={11} /> Поделиться
+            </button>
+            <span className="text-white/15">|</span>
+            <button onClick={onRestart}
+              className="text-[10px] flex items-center gap-1 text-white/40 hover:text-white/80 transition">
+              <Icon name="RotateCcw" size={11} /> Заново
+            </button>
+          </div>
+        </div>
+        <div className="text-center text-[10px] text-white/25 font-mono mt-0.5">
+          Натяжные потолки · Квартира 32 м²
         </div>
       </div>
 
