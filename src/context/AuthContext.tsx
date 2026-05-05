@@ -35,15 +35,18 @@ export type PageBlockType = "heading" | "text" | "gallery" | "buttons" | "divide
 // Общие поля позиционирования/стиля для каждого блока
 export interface PageBlockBase {
   id:       string;
-  // Ширина блока: 25 | 33 | 50 | 67 | 75 | 100 (%)
+  // ── Flow-режим (старый блочный) ──
   width?:   25 | 33 | 50 | 67 | 75 | 100;
-  // Вертикальный отступ сверху/снизу (px)
   paddingTop?:    number;
   paddingBottom?: number;
-  // Фон блока (CSS-цвет или пустая строка)
   bg?:      string;
-  // Скрыт ли блок
   hidden?:  boolean;
+  // ── Free-canvas режим ──
+  x?:       number;   // px от левого края холста
+  y?:       number;   // px от верхнего края холста
+  w?:       number;   // ширина px
+  h?:       number;   // высота px
+  zIndex?:  number;   // слой (порядок перекрытия)
 }
 
 export interface PageBlockHeading extends PageBlockBase {
@@ -112,8 +115,12 @@ export type PageBlock =
 
 // Настройки страницы целиком
 export interface PageSettings {
-  maxWidth?: "sm" | "md" | "lg" | "xl" | "full";  // sm=360 md=480 lg=640 xl=800 full=100%
-  snap?:     boolean;                               // примагничивание блоков по сетке
+  maxWidth?:    "sm" | "md" | "lg" | "xl" | "full";
+  snap?:        boolean;   // примагничивание к сетке
+  freeCanvas?:  boolean;   // true = свободное позиционирование, false = flow
+  canvasHeight?: number;   // высота холста в free-режиме (px), по умолчанию 1200
+  canvasWidth?:  number;   // ширина холста (px), по умолчанию 390 (мобильный)
+  gridSize?:    number;    // размер ячейки сетки для snap (px), по умолчанию 8
 }
 
 export interface NavButtonContent {
