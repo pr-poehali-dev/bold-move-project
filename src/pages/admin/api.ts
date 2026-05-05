@@ -9,8 +9,8 @@ export function apiFetch(resource: string, opts?: RequestInit, token?: string, i
     ...opts,
     headers: {
       "Content-Type": "application/json",
-      ...(token ? { "X-Admin-Token": token } : {}),
-      ...(userToken ? { "Authorization": userToken } : {}),
+      ...(token ? { "Authorization": `Bearer ${token}` } : {}),
+      ...(userToken ? { "Authorization": `Bearer ${userToken}` } : {}),
       ...(opts?.headers || {}),
     },
   });

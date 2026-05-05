@@ -22,16 +22,18 @@ def resp(status, body):
     return {'statusCode': status, 'headers': {**CORS, 'Content-Type': 'application/json'}, 'body': json.dumps(body, ensure_ascii=False)}
 
 def check_auth(headers: dict) -> bool:
-    token = headers.get('x-admin-token', '') or headers.get('X-Admin-Token', '')
-    if not token:
+    # Платформа ремаппит Authorization → x-authorization
+    raw = (headers.get('x-authorization') or headers.get('X-Authorization')
+           or headers.get('x-admin-token') or headers.get('X-Admin-Token') or '')
+    if not raw:
         return False
-    # 1. Проверка по паролю (legacy)
-    if ADMIN_PASSWORD and hashlib.sha256(token.encode()).hexdigest() == hashlib.sha256(ADMIN_PASSWORD.encode()).hexdigest():
-        return True
-    # 2. Проверка по сессионному токену пользователя с ролью admin/owner
-    clean = token.removeprefix('Bearer ').strip()
+    clean = raw.removeprefix('Bearer ').strip()
     if not clean:
         return False
+    # 1. Проверка по паролю (legacy MasterAdmin)
+    if ADMIN_PASSWORD and hashlib.sha256(clean.encode()).hexdigest() == hashlib.sha256(ADMIN_PASSWORD.encode()).hexdigest():
+        return True
+    # 2. Проверка по сессионному токену пользователя
     try:
         conn = get_conn(); cur = conn.cursor()
         cur.execute(
@@ -112,7 +114,6 @@ def handler(event: dict, context) -> dict:
     qs = event.get('queryStringParameters') or {}
     r = qs.get('r', '')
     body_str = event.get('body') or '{}'
-    print(f"[handler] method={method} r={r!r} qs={qs}")
 
     # --- POST ?r=login
     if r == 'login' and method == 'POST':
@@ -246,15 +247,11 @@ def handler(event: dict, context) -> dict:
 
     # --- PUT ?r=category_settings  (обновление флага is_material)
     if r == 'category_settings' and method == 'PUT':
-        auth_ok = check_auth(hdrs)
-        token_val = hdrs.get('x-admin-token', 'MISSING')
-        print(f"[cat_settings] auth_ok={auth_ok} token_len={len(token_val)} token_start={token_val[:30]!r}")
-        if not auth_ok:
+        if not check_auth(hdrs):
             return resp(401, {'error': 'Unauthorized'})
         body = json.loads(body_str)
         category = body.get('category', '').strip()
         is_material = bool(body.get('is_material', True))
-        print(f"[cat_settings] saving category={category!r} is_material={is_material}")
         if not category:
             return resp(400, {'error': 'category required'})
         conn = get_conn(); cur = conn.cursor()
@@ -263,7 +260,6 @@ def handler(event: dict, context) -> dict:
             (category, is_material, is_material)
         )
         conn.commit(); cur.close(); conn.close()
-        print(f"[cat_settings] saved OK")
         return resp(200, {'ok': True})
 
     # --- GET ?r=prices
