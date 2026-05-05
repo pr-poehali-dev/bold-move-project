@@ -35,13 +35,20 @@ export default function Index() {
 
   const canEdit = !!(user?.role === "company" || user?.is_master);
 
-  // Когда владелец смотрит бот без ?c= в URL — синхронизируем nav_config из user.brand в BrandContext
+  // Когда владелец смотрит бот без ?c= в URL — синхронизируем nav_config из user.brand в BrandContext.
+  // Запускаем при каждом рендере после смены user — ref гарантирует что не делаем лишних обновлений.
+  const prevNavKeyRef = useRef<string>("");
+  const navConfigSig = user?.id
+    ? `${user.id}:${(user.brand?.nav_config ?? []).map(b => b.id + b.label).join(",")}`
+    : "none";
+
   useEffect(() => {
     const hasCid = !!new URLSearchParams(window.location.search).get("c");
-    if (hasCid) return; // когда ?c= есть — BrandContext сам грузит с сервера
-    if (!user?.brand?.nav_config) return;
-    patchBrand({ nav_config: user.brand.nav_config });
-  }, [user?.brand?.nav_config]);
+    if (hasCid) return;
+    if (prevNavKeyRef.current === navConfigSig) return;
+    prevNavKeyRef.current = navConfigSig;
+    patchBrand({ nav_config: user?.brand?.nav_config ?? null });
+  }); // без зависимостей — запускается после каждого рендера, ref отсекает лишние вызовы
 
   // Приветствие: подменяется именем бота из бренда, если он кастомный
   const greeting: Msg = isCustom
