@@ -229,11 +229,14 @@ def handler(event: dict, context) -> dict:
 
     # --- PUT ?r=category_settings  (обновление флага is_material)
     if r == 'category_settings' and method == 'PUT':
-        if not check_auth(hdrs):
+        auth_ok = check_auth(hdrs)
+        print(f"[category_settings PUT] auth_ok={auth_ok} token_header={hdrs.get('x-admin-token','')[:20] if hdrs.get('x-admin-token') else 'MISSING'}")
+        if not auth_ok:
             return resp(401, {'error': 'Unauthorized'})
         body = json.loads(body_str)
         category = body.get('category', '').strip()
         is_material = bool(body.get('is_material', True))
+        print(f"[category_settings PUT] category={category!r} is_material={is_material}")
         if not category:
             return resp(400, {'error': 'category required'})
         conn = get_conn(); cur = conn.cursor()
