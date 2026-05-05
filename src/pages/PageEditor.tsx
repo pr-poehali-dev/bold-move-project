@@ -8,6 +8,9 @@ import type {
 import { updateBrand } from "./admin/own-agent/brandApi";
 import { uploadBrandImage } from "./admin/own-agent/brandApi";
 import Icon from "@/components/ui/icon";
+import func2url from "@/../backend/func2url.json";
+
+const PAGE_AI_URL = (func2url as Record<string, string>)["page-ai"];
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 function genId() { return Math.random().toString(36).slice(2, 9); }
@@ -268,6 +271,9 @@ export default function PageEditor({ panelId, onBack }: Props) {
   const [saved, setSaved] = useState(false);
   const [dragIdx, setDragIdx] = useState<number | null>(null);
   const [dragOverIdx, setDragOverIdx] = useState<number | null>(null);
+  const [aiPrompt, setAiPrompt] = useState("");
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiError, setAiError] = useState("");
 
   const selectedBlock = blocks.find(b => b.id === selectedId) ?? null;
 
@@ -320,28 +326,69 @@ export default function PageEditor({ panelId, onBack }: Props) {
     } finally { setSaving(false); }
   };
 
+  const handleAi = async () => {
+    if (!aiPrompt.trim() || aiLoading) return;
+    setAiLoading(true);
+    setAiError("");
+    try {
+      const res = await fetch(PAGE_AI_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ blocks, prompt: aiPrompt }),
+      });
+      const d = await res.json();
+      if (!res.ok || d.error) { setAiError(d.error || "Ошибка AI"); return; }
+      setBlocks(d.blocks as PageBlock[]);
+      setAiPrompt("");
+      setSelectedId(null);
+    } catch { setAiError("Не удалось подключиться к AI"); }
+    finally { setAiLoading(false); }
+  };
+
   return (
     <div className="fixed inset-0 z-[200] bg-[#0a0a12] flex flex-col">
       {/* Header */}
-      <div className="shrink-0 flex items-center justify-between px-4 py-3 border-b border-white/[0.08] bg-[#0e0e1a]">
-        <div className="flex items-center gap-3">
-          <button onClick={onBack} className="p-2 rounded-xl hover:bg-white/5 text-white/40 hover:text-white/80 transition">
-            <Icon name="ArrowLeft" size={18} />
-          </button>
-          <div>
-            <input value={title} onChange={e => setTitle(e.target.value)}
-              className="bg-transparent text-white font-bold text-base focus:outline-none border-b border-transparent focus:border-white/20 transition min-w-[160px]"
-              placeholder="Название страницы" />
-            <p className="text-white/25 text-[10px]">{navBtn?.label}</p>
+      <div className="shrink-0 border-b border-white/[0.08] bg-[#0e0e1a]">
+        <div className="flex items-center justify-between px-4 py-3">
+          <div className="flex items-center gap-3">
+            <button onClick={onBack} className="p-2 rounded-xl hover:bg-white/5 text-white/40 hover:text-white/80 transition">
+              <Icon name="ArrowLeft" size={18} />
+            </button>
+            <div>
+              <input value={title} onChange={e => setTitle(e.target.value)}
+                className="bg-transparent text-white font-bold text-base focus:outline-none border-b border-transparent focus:border-white/20 transition min-w-[160px]"
+                placeholder="Название страницы" />
+              <p className="text-white/25 text-[10px]">{navBtn?.label}</p>
+            </div>
           </div>
+          <button onClick={handleSave} disabled={saving}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold text-white transition disabled:opacity-50 ${
+              saved ? "bg-emerald-500/80" : "bg-gradient-to-r from-orange-500 to-rose-500"
+            }`}>
+            <Icon name={saved ? "CheckCircle2" : saving ? "Loader" : "Save"} size={15} className={saving ? "animate-spin" : ""} />
+            {saved ? "Сохранено!" : saving ? "Сохраняем..." : "Сохранить"}
+          </button>
         </div>
-        <button onClick={handleSave} disabled={saving}
-          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold text-white transition disabled:opacity-50 ${
-            saved ? "bg-emerald-500/80" : "bg-gradient-to-r from-orange-500 to-rose-500"
-          }`}>
-          <Icon name={saved ? "CheckCircle2" : saving ? "Loader" : "Save"} size={15} className={saving ? "animate-spin" : ""} />
-          {saved ? "Сохранено!" : saving ? "Сохраняем..." : "Сохранить"}
-        </button>
+
+        {/* AI строка */}
+        <div className="px-4 pb-3 flex gap-2 items-center">
+          <div className="flex-1 flex items-center gap-2 px-3 py-2 rounded-xl bg-violet-500/[0.08] border border-violet-500/20 focus-within:border-violet-500/40 transition">
+            <Icon name="Sparkles" size={14} className="text-violet-400 shrink-0" />
+            <input
+              value={aiPrompt}
+              onChange={e => setAiPrompt(e.target.value)}
+              onKeyDown={e => e.key === "Enter" && handleAi()}
+              placeholder="Попросите AI улучшить страницу... (например: добавь заголовок и сделай 3 колонки в галерее)"
+              className="flex-1 bg-transparent text-sm text-white placeholder:text-white/25 focus:outline-none"
+            />
+          </div>
+          <button onClick={handleAi} disabled={aiLoading || !aiPrompt.trim()}
+            className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold text-white bg-violet-600 hover:bg-violet-500 disabled:opacity-40 transition shrink-0">
+            <Icon name={aiLoading ? "Loader" : "Wand2"} size={15} className={aiLoading ? "animate-spin" : ""} />
+            {aiLoading ? "Думаю..." : "Применить"}
+          </button>
+        </div>
+        {aiError && <p className="px-4 pb-2 text-xs text-red-400">{aiError}</p>}
       </div>
 
       {/* Body: canvas + sidebar */}
