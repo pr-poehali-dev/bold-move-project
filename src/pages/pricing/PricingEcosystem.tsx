@@ -19,6 +19,7 @@ const PILLARS = [
     glow: "rgba(249,115,22,0.18)",
     title: "Встроенный маркетолог",
     subtitle: "Акции, пуши, промо — одной кнопкой",
+    soon: true,
     points: [
       "AI сам предлагает что и когда отправить клиентам",
       "Акции, сезонные офферы, напоминания об услугах",
@@ -92,9 +93,17 @@ export default function PricingEcosystem() {
               >
                 <Icon name={p.icon} size={18} style={{ color: p.color }} />
               </div>
-              <div>
-                <div className="text-[14px] font-black text-white leading-snug mb-0.5">
-                  {p.title}
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 flex-wrap mb-0.5">
+                  <div className="text-[14px] font-black text-white leading-snug">
+                    {p.title}
+                  </div>
+                  {'soon' in p && p.soon && (
+                    <span className="px-1.5 py-0.5 rounded-md text-[8px] font-black uppercase tracking-wider flex-shrink-0"
+                      style={{ background: "rgba(167,139,250,0.18)", color: "#a78bfa", border: "1px solid rgba(167,139,250,0.35)" }}>
+                      Скоро
+                    </span>
+                  )}
                 </div>
                 <div className="text-[11px] font-medium" style={{ color: p.color }}>
                   {p.subtitle}
