@@ -3,33 +3,22 @@ import type { PageBlock, PageBlockStyle } from "@/context/AuthContext";
 import Icon from "@/components/ui/icon";
 import { getYouTubeEmbed } from "./editorTypes";
 
-// Вычисляет размер шрифта на основе высоты блока — текст заполняет контейнер пропорционально
-function scaledFontSize(bh: number, base: number): number {
-  // base — "эталонная" высота при которой шрифт base-size
-  // масштабируем относительно реального h блока
-  return Math.max(10, Math.round(base * (bh / 40)));
-}
-
 export function BlockContent({ block, blockW, blockH }: { block: PageBlock; blockW?: number; blockH?: number }) {
   const ac = (a: string) => a === "center" ? "text-center" : a === "right" ? "text-right" : "text-left";
   const bh = blockH ?? (block.h ?? 48);
   const bw = blockW ?? (block.w ?? 200);
 
   if (block.type === "heading") {
-    // Базовый размер: xl=28px при h=40, lg=22px при h=40, md=16px при h=40
-    const baseSize = block.size === "xl" ? 28 : block.size === "lg" ? 22 : 16;
-    const fw = block.size === "xl" ? 900 : 700;
-    // Ограничиваем: не меньше 10, не больше min(bh*0.8, bw*0.12)
-    const fs = Math.min(
-      Math.max(10, Math.round(baseSize * (bh / 40))),
-      Math.round(bh * 0.75),
-      Math.round(bw * 0.15)
-    );
+    // Размер шрифта от ширины блока — текст всегда видим, не обрезается
+    // xl ≈ 6% ширины, lg ≈ 5%, md ≈ 4% — но не меньше 11px и не больше bh
+    const pct = block.size === "xl" ? 0.07 : block.size === "lg" ? 0.055 : 0.042;
+    const fw  = block.size === "xl" ? 900 : 700;
+    const fs  = Math.max(11, Math.min(Math.round(bw * pct), bh - 4));
     return (
-      <div className={`w-full h-full flex items-center overflow-hidden ${ac(block.align)}`}>
+      <div className={`w-full ${ac(block.align)}`} style={{ overflowWrap: "break-word" }}>
         <p
-          className={`text-white break-words leading-tight w-full`}
-          style={{ fontSize: fs, fontWeight: fw, lineHeight: 1.1 }}
+          className="text-white leading-tight w-full"
+          style={{ fontSize: fs, fontWeight: fw, lineHeight: 1.2, wordBreak: "break-word" }}
         >
           {block.text || "Заголовок"}
         </p>
@@ -38,10 +27,10 @@ export function BlockContent({ block, blockW, blockH }: { block: PageBlock; bloc
   }
 
   if (block.type === "text") {
-    // Текст масштабируется от высоты: при h=72 → 14px, пропорционально
-    const fs = Math.min(Math.max(9, Math.round(14 * (bh / 72))), Math.round(bh * 0.4), Math.round(bw * 0.07));
+    // Размер шрифта от ширины: ≈4% ширины, минимум 9px
+    const fs = Math.max(9, Math.min(Math.round(bw * 0.04), 18));
     return (
-      <div className={`w-full h-full overflow-hidden ${ac(block.align)}`}>
+      <div className={`w-full ${ac(block.align)}`}>
         <p
           className="text-white/80 whitespace-pre-wrap leading-relaxed w-full"
           style={{ fontSize: fs }}

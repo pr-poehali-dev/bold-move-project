@@ -58,19 +58,19 @@ function BlockContent({ block, blockW, blockH, onLightbox }: { block: PageBlock;
   const bw = blockW ?? (block.w ?? 200);
 
   if (block.type === "heading") {
-    const baseSize = block.size === "xl" ? 28 : block.size === "lg" ? 22 : 16;
-    const fw = block.size === "xl" ? 900 : 700;
-    const fs = Math.min(Math.max(10, Math.round(baseSize * (bh / 40))), Math.round(bh * 0.75), Math.round(bw * 0.15));
+    const pct = block.size === "xl" ? 0.07 : block.size === "lg" ? 0.055 : 0.042;
+    const fw  = block.size === "xl" ? 900 : 700;
+    const fs  = Math.max(11, Math.min(Math.round(bw * pct), bh - 4));
     return (
-      <div className={`w-full h-full flex items-center overflow-hidden ${ac(block.align)}`}>
-        <p className="text-white break-words w-full" style={{ fontSize: fs, fontWeight: fw, lineHeight: 1.1 }}>{block.text}</p>
+      <div className={`w-full ${ac(block.align)}`} style={{ overflowWrap: "break-word" }}>
+        <p className="text-white w-full" style={{ fontSize: fs, fontWeight: fw, lineHeight: 1.2, wordBreak: "break-word" }}>{block.text}</p>
       </div>
     );
   }
   if (block.type === "text") {
-    const fs = Math.min(Math.max(9, Math.round(14 * (bh / 72))), Math.round(bh * 0.4), Math.round(bw * 0.07));
+    const fs = Math.max(9, Math.min(Math.round(bw * 0.04), 18));
     return (
-      <div className={`w-full h-full overflow-hidden ${ac(block.align)}`}>
+      <div className={`w-full ${ac(block.align)}`}>
         <p className="text-white/80 whitespace-pre-wrap leading-relaxed w-full" style={{ fontSize: fs }}>{block.text}</p>
       </div>
     );

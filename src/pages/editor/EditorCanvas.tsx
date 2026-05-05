@@ -194,7 +194,10 @@ export function EditorCanvas({
                   borderRadius: extraStyle.borderRadius ?? 8,
                   boxShadow: isEditing ? "0 0 0 3px rgba(139,92,246,0.15)" : extraStyle.boxShadow,
                 }}
-                className={`group overflow-hidden transition-shadow ${
+                className={`group transition-shadow ${
+                  // текстовые блоки: overflow visible чтобы текст не обрезался
+                  ["heading","text","card"].includes(block.type) ? "overflow-visible" : "overflow-hidden"
+                } ${
                   isEditing
                     ? ""
                     : isSelected
@@ -207,13 +210,16 @@ export function EditorCanvas({
                 }}
                 onClick={e => handleBlockClick(e, block.id)}
               >
-                {/* Content — заполняет весь блок */}
+                {/* Content — текстовые блоки могут выходить за высоту */}
                 <div
-                  className="w-full h-full overflow-hidden"
+                  className="w-full"
                   style={{
                     cursor: isEditing ? "text" : "move",
                     padding: pad,
                     boxSizing: "border-box",
+                    minHeight: "100%",
+                    // overflow visible чтобы текст не обрезался при любом масштабе
+                    overflow: ["heading","text","card"].includes(block.type) ? "visible" : "hidden",
                   }}
                 >
                   {isEditing
