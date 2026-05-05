@@ -218,7 +218,7 @@ export function EditorCanvas({
                 >
                   {isEditing
                     ? <InlineBlockEditor block={block} onChange={b => updateBlock(block.id, b)} />
-                    : <BlockContent block={block} />
+                    : <BlockContent block={block} blockW={bw} blockH={bh} />
                   }
                 </div>
 

@@ -3,16 +3,55 @@ import type { PageBlock, PageBlockStyle } from "@/context/AuthContext";
 import Icon from "@/components/ui/icon";
 import { getYouTubeEmbed } from "./editorTypes";
 
-export function BlockContent({ block }: { block: PageBlock }) {
+// Вычисляет размер шрифта на основе высоты блока — текст заполняет контейнер пропорционально
+function scaledFontSize(bh: number, base: number): number {
+  // base — "эталонная" высота при которой шрифт base-size
+  // масштабируем относительно реального h блока
+  return Math.max(10, Math.round(base * (bh / 40)));
+}
+
+export function BlockContent({ block, blockW, blockH }: { block: PageBlock; blockW?: number; blockH?: number }) {
   const ac = (a: string) => a === "center" ? "text-center" : a === "right" ? "text-right" : "text-left";
+  const bh = blockH ?? (block.h ?? 48);
+  const bw = blockW ?? (block.w ?? 200);
 
   if (block.type === "heading") {
-    const sz = block.size === "xl" ? "text-2xl font-black" : block.size === "lg" ? "text-xl font-bold" : "text-base font-bold";
-    return <p className={`${sz} text-white ${ac(block.align)} break-words leading-tight`}>{block.text || "Заголовок"}</p>;
+    // Базовый размер: xl=28px при h=40, lg=22px при h=40, md=16px при h=40
+    const baseSize = block.size === "xl" ? 28 : block.size === "lg" ? 22 : 16;
+    const fw = block.size === "xl" ? 900 : 700;
+    // Ограничиваем: не меньше 10, не больше min(bh*0.8, bw*0.12)
+    const fs = Math.min(
+      Math.max(10, Math.round(baseSize * (bh / 40))),
+      Math.round(bh * 0.75),
+      Math.round(bw * 0.15)
+    );
+    return (
+      <div className={`w-full h-full flex items-center overflow-hidden ${ac(block.align)}`}>
+        <p
+          className={`text-white break-words leading-tight w-full`}
+          style={{ fontSize: fs, fontWeight: fw, lineHeight: 1.1 }}
+        >
+          {block.text || "Заголовок"}
+        </p>
+      </div>
+    );
   }
+
   if (block.type === "text") {
-    return <p className={`text-white/70 text-sm leading-relaxed whitespace-pre-wrap ${ac(block.align)}`}>{block.text || "Текст"}</p>;
+    // Текст масштабируется от высоты: при h=72 → 14px, пропорционально
+    const fs = Math.min(Math.max(9, Math.round(14 * (bh / 72))), Math.round(bh * 0.4), Math.round(bw * 0.07));
+    return (
+      <div className={`w-full h-full overflow-hidden ${ac(block.align)}`}>
+        <p
+          className="text-white/80 whitespace-pre-wrap leading-relaxed w-full"
+          style={{ fontSize: fs }}
+        >
+          {block.text || "Текст"}
+        </p>
+      </div>
+    );
   }
+
   if (block.type === "gallery") {
     const cols = { 1: "grid-cols-1", 2: "grid-cols-2", 3: "grid-cols-3", 4: "grid-cols-4" }[block.cols];
     const ratio = block.ratio === "square" ? "aspect-square" : block.ratio === "16/9" ? "aspect-video" : "aspect-[4/3]";
@@ -21,35 +60,52 @@ export function BlockContent({ block }: { block: PageBlock }) {
     );
     return <div className={`grid ${cols} gap-1 h-full`}>{block.photos.slice(0,8).map((u,i) => <div key={i} className={`${ratio} rounded overflow-hidden`}><img src={u} className="w-full h-full object-cover" /></div>)}</div>;
   }
+
   if (block.type === "buttons") {
     const jc = block.align === "center" ? "justify-center" : block.align === "right" ? "justify-end" : "justify-start";
+    // Кнопки масштабируются от высоты блока
+    const btnH = Math.min(Math.max(24, Math.round(bh * 0.6)), bh - 8);
+    const fs = Math.max(9, Math.round(btnH * 0.35));
+    const px = Math.max(8, Math.round(btnH * 0.4));
     return (
-      <div className={`flex flex-wrap gap-1.5 ${jc}`}>
+      <div className={`flex flex-wrap gap-1.5 w-full h-full items-center ${jc}`}>
         {block.items.map((btn, i) => (
-          <div key={i} className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap ${
-            btn.style === "primary" ? "text-white bg-gradient-to-r from-orange-500 to-rose-500" : "text-orange-400 border border-orange-500/40 bg-orange-500/10"
-          }`}>{btn.label}</div>
+          <div key={i}
+            className={`rounded-xl font-bold whitespace-nowrap ${
+              btn.style === "primary" ? "text-white bg-gradient-to-r from-orange-500 to-rose-500" : "text-orange-400 border border-orange-500/40 bg-orange-500/10"
+            }`}
+            style={{ fontSize: fs, paddingTop: btnH * 0.2, paddingBottom: btnH * 0.2, paddingLeft: px, paddingRight: px }}
+          >
+            {btn.label}
+          </div>
         ))}
       </div>
     );
   }
+
   if (block.type === "video") {
     const embed = getYouTubeEmbed(block.url);
     if (!embed) return <div className="w-full h-full rounded-xl border-2 border-dashed border-white/10 flex items-center justify-center gap-2 text-white/20 text-xs"><Icon name="Play" size={14} />YouTube / Vimeo</div>;
     return <div className="w-full h-full rounded-xl overflow-hidden bg-black/40"><iframe src={embed} className="w-full h-full" allowFullScreen /></div>;
   }
+
   if (block.type === "spacer") {
     return <div className="w-full h-full flex items-center justify-center text-white/15 text-[10px] border border-dashed border-white/10 rounded-lg">↕ {block.height}px</div>;
   }
+
   if (block.type === "card") {
+    const iconSz = Math.max(16, Math.round(bh * 0.2));
+    const titleFs = Math.max(10, Math.round(bh * 0.12));
+    const descFs  = Math.max(9,  Math.round(bh * 0.09));
     return (
-      <div className={`flex flex-col gap-1 h-full justify-center ${ac(block.align)}`}>
-        <span className="text-2xl">{block.icon}</span>
-        <p className="text-white font-bold text-sm leading-tight">{block.title}</p>
-        <p className="text-white/50 text-xs leading-relaxed">{block.text}</p>
+      <div className={`flex flex-col gap-1 w-full h-full justify-center overflow-hidden ${ac(block.align)}`}>
+        <span style={{ fontSize: iconSz }}>{block.icon}</span>
+        <p className="text-white font-bold leading-tight" style={{ fontSize: titleFs }}>{block.title}</p>
+        <p className="text-white/50 leading-relaxed" style={{ fontSize: descFs }}>{block.text}</p>
       </div>
     );
   }
+
   if (block.type === "divider") {
     if (block.style === "dots") return <div className="flex items-center justify-center gap-2 h-full"><span className="w-1.5 h-1.5 rounded-full bg-white/20" /><span className="w-1.5 h-1.5 rounded-full bg-white/20" /><span className="w-1.5 h-1.5 rounded-full bg-white/20" /></div>;
     if (block.style === "space") return <div className="w-full h-full" />;

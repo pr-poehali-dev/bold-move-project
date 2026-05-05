@@ -52,15 +52,28 @@ function blockStyleToCss(s?: PageBlockStyle): React.CSSProperties {
 }
 
 // ── Block content renderer (shared) ──────────────────────────────────────────
-function BlockContent({ block, onLightbox }: { block: PageBlock; onLightbox?: (photos: string[], idx: number) => void }) {
+function BlockContent({ block, blockW, blockH, onLightbox }: { block: PageBlock; blockW?: number; blockH?: number; onLightbox?: (photos: string[], idx: number) => void }) {
   const ac = (a: string) => a === "center" ? "text-center" : a === "right" ? "text-right" : "text-left";
+  const bh = blockH ?? (block.h ?? 48);
+  const bw = blockW ?? (block.w ?? 200);
 
   if (block.type === "heading") {
-    const sz = block.size === "xl" ? "text-2xl font-black" : block.size === "lg" ? "text-xl font-bold" : "text-base font-bold";
-    return <p className={`${sz} text-white ${ac(block.align)} break-words leading-tight`}>{block.text}</p>;
+    const baseSize = block.size === "xl" ? 28 : block.size === "lg" ? 22 : 16;
+    const fw = block.size === "xl" ? 900 : 700;
+    const fs = Math.min(Math.max(10, Math.round(baseSize * (bh / 40))), Math.round(bh * 0.75), Math.round(bw * 0.15));
+    return (
+      <div className={`w-full h-full flex items-center overflow-hidden ${ac(block.align)}`}>
+        <p className="text-white break-words w-full" style={{ fontSize: fs, fontWeight: fw, lineHeight: 1.1 }}>{block.text}</p>
+      </div>
+    );
   }
   if (block.type === "text") {
-    return <p className={`text-white/70 text-sm leading-relaxed whitespace-pre-wrap ${ac(block.align)}`}>{block.text}</p>;
+    const fs = Math.min(Math.max(9, Math.round(14 * (bh / 72))), Math.round(bh * 0.4), Math.round(bw * 0.07));
+    return (
+      <div className={`w-full h-full overflow-hidden ${ac(block.align)}`}>
+        <p className="text-white/80 whitespace-pre-wrap leading-relaxed w-full" style={{ fontSize: fs }}>{block.text}</p>
+      </div>
+    );
   }
   if (block.type === "gallery") {
     const cols = { 1: "grid-cols-1", 2: "grid-cols-2", 3: "grid-cols-3", 4: "grid-cols-4" }[block.cols];
@@ -163,7 +176,7 @@ function RenderBlocks({ blocks, pageSettings }: { blocks: PageBlock[]; pageSetti
                   }}
                 >
                   <div style={{ width: "100%", height: "100%", overflow: "hidden", ...padStyle }}>
-                    <BlockContent block={block} onLightbox={(photos, idx) => setLightbox({ photos, idx })} />
+                    <BlockContent block={block} blockW={block.w ?? 240} blockH={block.h ?? 80} onLightbox={(photos, idx) => setLightbox({ photos, idx })} />
                   </div>
                 </div>
               );
