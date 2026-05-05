@@ -71,7 +71,7 @@ export default function PricingPayment({ selectedId }: Props) {
 
                 <p className="text-sm text-white/55 max-w-lg leading-relaxed">
                   Купи агента — и получи эксклюзивный доступ к новым AI-инструментам
-                  как только они выйдут. Первыми.
+                  как только они выйдут. Первыми. И <b className="text-white">бесплатно!</b>
                 </p>
               </div>
 
@@ -120,8 +120,8 @@ export default function PricingPayment({ selectedId }: Props) {
                   iconBg: "rgba(251,191,36,0.14)",
                   border: "rgba(251,191,36,0.32)",
                   value: "AI Построитель",
-                  title: "Построитель смет",
-                  text: "Диктуй замеры голосом — AI строит смету сам",
+                  title: "Голосовые сметы",
+                  text: "Диктуй замеры — AI сам строит смету. Руки свободны.",
                   badge: "Скоро",
                 },
                 {
@@ -130,8 +130,8 @@ export default function PricingPayment({ selectedId }: Props) {
                   iconBg: "rgba(249,115,22,0.14)",
                   border: "rgba(249,115,22,0.32)",
                   value: "AI Анализатор",
-                  title: "Анализатор проектов",
-                  text: "Просто загрузи проект и получи готовое КП для своего клиента",
+                  title: "КП за секунды",
+                  text: "Загрузи проект — получи готовое КП для клиента.",
                   badge: "Скоро",
                 },
                 {
@@ -141,7 +141,7 @@ export default function PricingPayment({ selectedId }: Props) {
                   border: "rgba(167,139,250,0.32)",
                   value: "15 мин",
                   title: "До старта",
-                  text: "Начислим сметы — и сразу в работу",
+                  text: "Регистрация, настройка и первая смета — за 15 минут.",
                 },
                 {
                   icon: "ShieldCheck",
@@ -150,7 +150,7 @@ export default function PricingPayment({ selectedId }: Props) {
                   border: "rgba(16,185,129,0.36)",
                   value: "100%",
                   title: "Возврат 14 дней",
-                  text: "Не подошло — вернём деньги без вопросов",
+                  text: "Не подошло — вернём деньги без вопросов и лишних слов.",
                 },
               ].map(b => (
                 <div key={b.title}
@@ -169,7 +169,7 @@ export default function PricingPayment({ selectedId }: Props) {
                       {b.badge}
                     </div>
                   )}
-                  <div className="text-xl sm:text-2xl md:text-3xl font-black leading-none mb-1"
+                  <div className="text-xl sm:text-2xl font-black leading-none mb-1 whitespace-nowrap"
                     style={{ color: b.iconColor }}>
                     {b.value}
                   </div>
