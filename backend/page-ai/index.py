@@ -52,17 +52,21 @@ def handler(event: dict, context) -> dict:
     if not prompt:
         return {'statusCode': 400, 'headers': CORS, 'body': json.dumps({'error': 'prompt обязателен'})}
 
-    api_key = os.environ.get('OPENAI_API_KEY', '')
+    api_key = os.environ.get('OPENROUTER_API_KEY_2', '') or os.environ.get('OPENAI_API_KEY', '')
     if not api_key:
         return {'statusCode': 500, 'headers': CORS, 'body': json.dumps({'error': 'AI не настроен'})}
+
+    use_openrouter = bool(os.environ.get('OPENROUTER_API_KEY_2', ''))
+    api_url = 'https://openrouter.ai/api/v1/chat/completions' if use_openrouter else 'https://api.openai.com/v1/chat/completions'
+    model = 'openai/gpt-4o-mini' if use_openrouter else 'gpt-4o-mini'
 
     user_message = f"Текущие блоки страницы:\n{json.dumps(blocks, ensure_ascii=False, indent=2)}\n\nЗапрос пользователя: {prompt}"
 
     res = requests.post(
-        'https://api.openai.com/v1/chat/completions',
+        api_url,
         headers={'Authorization': f'Bearer {api_key}', 'Content-Type': 'application/json'},
         json={
-            'model': 'gpt-4o-mini',
+            'model': model,
             'messages': [
                 {'role': 'system', 'content': SYSTEM_PROMPT},
                 {'role': 'user', 'content': user_message},
@@ -73,17 +77,20 @@ def handler(event: dict, context) -> dict:
         timeout=30,
     )
 
+    print(f"[page-ai] status={res.status_code} body_preview={res.text[:200]}")
+
     if not res.ok:
-        return {'statusCode': 500, 'headers': CORS, 'body': json.dumps({'error': 'Ошибка AI'})}
+        return {'statusCode': 500, 'headers': CORS, 'body': json.dumps({'error': f'AI вернул {res.status_code}: {res.text[:100]}'})}
 
     content = res.json()['choices'][0]['message']['content'].strip()
 
     # Чистим на случай если AI обернул в markdown
     if content.startswith('```'):
-        content = content.split('```')[1]
-        if content.startswith('json'):
-            content = content[4:]
+        lines = content.split('\n')
+        content = '\n'.join(lines[1:-1]) if lines[-1] == '```' else '\n'.join(lines[1:])
     content = content.strip()
+
+    print(f"[page-ai] parsed content preview: {content[:100]}")
 
     new_blocks = json.loads(content)
 
