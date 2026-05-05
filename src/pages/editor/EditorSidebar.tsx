@@ -1,9 +1,13 @@
-import React from "react";
+import React, { useState, useRef, useEffect, useCallback } from "react";
 import type { PageBlock, PageSettings } from "@/context/AuthContext";
 import Icon from "@/components/ui/icon";
 import { BlockEditor } from "./BlockEditor";
 import { CanvasSettingsPanel } from "./CanvasSettingsPanel";
 import { ADD_BLOCKS, BLOCK_LABELS } from "./editorTypes";
+
+const MIN_WIDTH = 220;
+const MAX_WIDTH = 680;
+const DEFAULT_WIDTH = 280;
 
 interface Props {
   blocks: PageBlock[];
@@ -33,9 +37,65 @@ export function EditorSidebar({
 }: Props) {
   const selectedBlock = blocks.find(b => b.id === selectedId) ?? null;
 
+  const [width, setWidth] = useState(DEFAULT_WIDTH);
+  const dragging = useRef(false);
+  const startX   = useRef(0);
+  const startW   = useRef(DEFAULT_WIDTH);
+
+  const onMouseDown = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    dragging.current = true;
+    startX.current   = e.clientX;
+    startW.current   = width;
+    document.body.style.cursor = "ew-resize";
+    document.body.style.userSelect = "none";
+  }, [width]);
+
+  useEffect(() => {
+    const onMove = (e: MouseEvent) => {
+      if (!dragging.current) return;
+      const delta = startX.current - e.clientX; // тянем влево = увеличиваем
+      const next  = Math.min(MAX_WIDTH, Math.max(MIN_WIDTH, startW.current + delta));
+      setWidth(next);
+    };
+    const onUp = () => {
+      if (!dragging.current) return;
+      dragging.current = false;
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
+    };
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup",   onUp);
+    return () => {
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup",   onUp);
+    };
+  }, []);
+
+  // Количество колонок в палитре в зависимости от ширины
+  const palCols = width >= 520 ? 4 : width >= 380 ? 3 : 2;
+  const palColClass = palCols === 4 ? "grid-cols-4" : palCols === 3 ? "grid-cols-3" : "grid-cols-2";
+
+  // Размер иконки в палитре
+  const iconSize = width >= 380 ? 20 : 17;
+  const iconBox  = width >= 380 ? "w-12 h-12" : "w-10 h-10";
+
   return (
-    <div className="w-64 shrink-0 border-l border-white/[0.07] bg-[#0c0c18] flex flex-col overflow-hidden">
-      {/* Tabs */}
+    <div
+      style={{ width }}
+      className="shrink-0 border-l border-white/[0.07] bg-[#0c0c18] flex flex-col overflow-hidden relative"
+    >
+      {/* ── Resize handle — левый край ───────────────────────────── */}
+      <div
+        onMouseDown={onMouseDown}
+        className="absolute left-0 top-0 bottom-0 w-1.5 z-30 cursor-ew-resize group hover:bg-violet-500/30 transition-colors"
+        title="Потяните чтобы изменить ширину"
+      >
+        {/* Визуальный индикатор */}
+        <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-12 rounded-full bg-white/10 group-hover:bg-violet-400/60 transition-colors" />
+      </div>
+
+      {/* ── Tabs ─────────────────────────────────────────────────── */}
       <div className="shrink-0 flex border-b border-white/[0.07]">
         {(["blocks","settings"] as const).map(tab => (
           <button key={tab} onClick={() => { onSidebarTabChange(tab); if (tab==="settings") onSelectId(null); }}
@@ -74,7 +134,7 @@ export function EditorSidebar({
       ) : (
         <div className="flex-1 overflow-y-auto p-3">
           <p className="text-[10px] font-bold text-white/30 uppercase tracking-wider mb-2.5">Перетащить или нажать</p>
-          <div className="grid grid-cols-2 gap-2">
+          <div className={`grid ${palColClass} gap-2`}>
             {ADD_BLOCKS.map(({ type, icon, label, color, bg }) => (
               <div key={type}
                 draggable
@@ -83,9 +143,9 @@ export function EditorSidebar({
                 onClick={() => addBlock(type)}
                 className="flex flex-col items-center gap-2 p-3 rounded-2xl border border-white/[0.07] hover:border-white/20 transition-all group cursor-grab active:cursor-grabbing select-none hover:scale-[1.03] active:scale-95"
                 style={{ background: "rgba(255,255,255,0.025)" }}>
-                <div className="w-10 h-10 rounded-xl flex items-center justify-center transition-transform group-hover:scale-110"
+                <div className={`${iconBox} rounded-xl flex items-center justify-center transition-transform group-hover:scale-110`}
                   style={{ background: bg }}>
-                  <Icon name={icon} size={17} style={{ color }} />
+                  <Icon name={icon} size={iconSize} style={{ color }} />
                 </div>
                 <span className="text-[10px] font-semibold text-white/50 group-hover:text-white/80 transition text-center leading-tight">{label}</span>
                 <div className="w-6 h-0.5 rounded-full opacity-50 group-hover:opacity-100 transition" style={{ background: color }} />
