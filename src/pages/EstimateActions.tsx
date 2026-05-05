@@ -18,7 +18,7 @@ export default function EstimateActions({ user, saved, saving, downloading, save
         <button
           onClick={onDownload}
           disabled={downloading}
-          className="flex-1 inline-flex items-center justify-center gap-2 bg-gradient-to-r from-orange-500 to-rose-500 text-white text-xs font-montserrat font-bold px-3 py-2.5 rounded-xl hover:scale-105 transition-transform disabled:opacity-50 shadow-lg shadow-orange-500/20"
+          className="flex-1 inline-flex items-center justify-center gap-2 bg-gradient-to-r from-orange-500 to-rose-500 text-white text-xs font-montserrat font-bold px-3 py-2.5 rounded-xl hover:scale-105 transition-transform disabled:opacity-50 shadow-lg shadow-orange-500/20 whitespace-nowrap h-11"
         >
           <Icon name="Download" size={14} />
           {downloading ? "Генерация..." : "Скачать PDF"}
@@ -33,7 +33,7 @@ export default function EstimateActions({ user, saved, saving, downloading, save
           <button
             onClick={onSave}
             disabled={saving}
-            className="flex-1 inline-flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-xs font-montserrat font-bold transition-all disabled:opacity-50"
+            className="flex-1 inline-flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-xs font-montserrat font-bold transition-all disabled:opacity-50 whitespace-nowrap h-11"
             style={{
               background: user ? "rgba(249,115,22,0.12)" : "rgba(255,255,255,0.06)",
               border: user ? "1px solid rgba(249,115,22,0.35)" : "1px solid rgba(255,255,255,0.1)",
