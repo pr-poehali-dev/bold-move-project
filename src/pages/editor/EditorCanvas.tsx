@@ -65,18 +65,12 @@ function InlineBlockEditor({ block, onChange }: { block: PageBlock; onChange: (b
   }
 
   if (block.type === "card") {
-    const ac = block.align === "center" ? "text-center items-center" : block.align === "right" ? "text-right items-end" : "text-left items-start";
+    const ac = (block.align ?? "left") === "center" ? "text-center items-center" : (block.align ?? "left") === "right" ? "text-right items-end" : "text-left items-start";
     return (
       <div className={`flex flex-col gap-1 w-full h-full justify-center ${ac}`}
         onClick={e => e.stopPropagation()} onMouseDown={e => e.stopPropagation()}>
         <input
           autoFocus
-          value={block.icon}
-          onChange={e => onChange({ ...block, icon: e.target.value })}
-          className="bg-transparent focus:outline-none text-2xl w-10 text-center"
-          style={{ caretColor: "#a78bfa" }}
-        />
-        <input
           value={block.title}
           onChange={e => onChange({ ...block, title: e.target.value })}
           className="bg-transparent focus:outline-none text-white font-bold text-sm w-full border-b border-violet-500/30 focus:border-violet-500"
