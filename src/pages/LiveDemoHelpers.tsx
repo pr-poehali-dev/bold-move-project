@@ -47,29 +47,39 @@ export function StepBar({ step }: { step: number }) {
   return (
     <div className="w-full px-3 py-2 border-b border-white/[0.05]"
       style={{ background: "rgba(255,255,255,0.015)" }}>
-      <div className="flex items-start w-full">
+      {/* Верхний ряд: кружки + линии */}
+      <div className="flex items-center w-full mb-1">
         {labels.map((l, i) => {
           const active = step >= i;
           const color  = active ? colors[i] : "rgba(255,255,255,0.15)";
           return (
             <div key={l} className="flex items-center flex-1 min-w-0">
-              <div className="flex flex-col items-center gap-0.5 flex-shrink-0">
-                <div className="w-[18px] h-[18px] rounded-full flex items-center justify-center transition-all"
-                  style={{
-                    background: active ? color : "rgba(255,255,255,0.07)",
-                    boxShadow: step === i ? `0 0 8px ${color}` : "none",
-                  }}>
-                  {active && <Icon name="Check" size={9} style={{ color: "#0a0a14" }} />}
-                </div>
-                <span className="text-[7px] font-bold uppercase tracking-wide leading-none text-center"
-                  style={{ color: active ? color : "rgba(255,255,255,0.2)" }}>
-                  {l}
-                </span>
+              <div className="w-[18px] h-[18px] rounded-full flex items-center justify-center flex-shrink-0 transition-all"
+                style={{
+                  background: active ? color : "rgba(255,255,255,0.07)",
+                  boxShadow: step === i ? `0 0 8px ${color}` : "none",
+                }}>
+                {active && <Icon name="Check" size={9} style={{ color: "#0a0a14" }} />}
               </div>
               {i < labels.length - 1 && (
-                <div className="flex-1 h-px mx-1 mt-[-9px]"
+                <div className="flex-1 h-px mx-1"
                   style={{ background: step > i ? LINE_ACTIVE : LINE_INACTIVE }} />
               )}
+            </div>
+          );
+        })}
+      </div>
+      {/* Нижний ряд: подписи */}
+      <div className="flex w-full">
+        {labels.map((l, i) => {
+          const active = step >= i;
+          const color  = active ? colors[i] : "rgba(255,255,255,0.2)";
+          return (
+            <div key={l} className="flex-1 min-w-0 flex justify-center">
+              <span className="text-[7px] font-bold uppercase tracking-wide leading-none text-center block truncate"
+                style={{ color }}>
+                {l}
+              </span>
             </div>
           );
         })}
