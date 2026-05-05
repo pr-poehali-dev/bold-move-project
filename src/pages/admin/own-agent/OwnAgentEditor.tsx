@@ -1,6 +1,7 @@
 import { useState } from "react";
 import Icon from "@/components/ui/icon";
 import { useAuth, type Brand } from "@/context/AuthContext";
+import { useBrand } from "@/context/BrandContext";
 import { updateBrand } from "./brandApi";
 import BrandPreview from "./BrandPreview";
 import { CopyLink } from "./OwnAgentFields";
@@ -21,6 +22,7 @@ interface Props { isDark: boolean }
 
 export default function OwnAgentEditor({ isDark }: Props) {
   const { user, token, updateUser } = useAuth();
+  const { patchBrand } = useBrand();
 
   // Если контакты пустые — автоподставляем из профиля (телефон из user.phone)
   const _phone = user?.brand?.support_phone || user?.phone || "";
@@ -148,7 +150,10 @@ export default function OwnAgentEditor({ isDark }: Props) {
         const d = await res.json();
         if (!res.ok || d.error) throw new Error(d.error || "Ошибка сохранения профиля");
       }
-      updateUser({ brand: { ...user?.brand, ...brand }, company_name: companyName, website });
+      const mergedBrand = { ...user?.brand, ...brand };
+      updateUser({ brand: mergedBrand, company_name: companyName, website });
+      // Сразу обновляем BrandContext чтобы бот отобразил новые вкладки без перезагрузки
+      patchBrand({ nav_config: brand.nav_config ?? null });
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
     } catch (e: unknown) {

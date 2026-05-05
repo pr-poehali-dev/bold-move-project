@@ -17,7 +17,7 @@ interface Props { panelId: string; onBack: () => void; }
 
 export default function PageEditor({ panelId, onBack }: Props) {
   const { token } = useAuth();
-  const { brand } = useBrand();
+  const { brand, patchBrand } = useBrand();
 
   const navBtn = brand.nav_config?.find(b => b.id === panelId) as NavButton | undefined;
   const initialBlocks: PageBlock[] = navBtn?.content?.blocks ?? [];
@@ -206,6 +206,7 @@ export default function PageEditor({ panelId, onBack }: Props) {
           : b
       );
       await updateBrand(token, { ...brand, nav_config: newNav } as Parameters<typeof updateBrand>[1]);
+      patchBrand({ nav_config: newNav });
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
       const cid = new URLSearchParams(window.location.search).get("c");

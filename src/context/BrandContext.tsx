@@ -52,9 +52,10 @@ interface BrandCtx {
   brand: Brand;
   loading: boolean;
   isCustom: boolean;        // true, если это бренд компании (не дефолт)
+  patchBrand: (patch: Partial<Brand>) => void;  // обновить бренд без перезагрузки
 }
 
-const Ctx = createContext<BrandCtx>({ brand: DEFAULT_BRAND, loading: false, isCustom: false });
+const Ctx = createContext<BrandCtx>({ brand: DEFAULT_BRAND, loading: false, isCustom: false, patchBrand: () => {} });
 
 const CACHE_PREFIX = "mp_brand_";
 const CACHE_TTL_MS = 1000 * 60 * 5; // 5 минут — чтобы изменения в редакторе отражались быстро
@@ -149,8 +150,12 @@ export function BrandProvider({ children }: { children: ReactNode }) {
     document.documentElement.style.setProperty("--brand-color", brand.brand_color);
   }, [brand.brand_color]);
 
+  const patchBrand = (patch: Partial<Brand>) => {
+    setBrand(prev => ({ ...prev, ...patch }));
+  };
+
   return (
-    <Ctx.Provider value={{ brand, loading, isCustom }}>
+    <Ctx.Provider value={{ brand, loading, isCustom, patchBrand }}>
       {children}
     </Ctx.Provider>
   );
