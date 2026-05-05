@@ -45,7 +45,7 @@ export function BlockContent({ block, blockW, blockH }: { block: PageBlock; bloc
     if (!block.photos.length) return (
       <div className="w-full h-full rounded-lg border-2 border-dashed border-white/10 flex items-center justify-center text-white/20 text-xs">Нет фото</div>
     );
-    return <div className={`grid ${cols} gap-1 h-full`}>{block.photos.slice(0,8).map((u,i) => <div key={i} className={`${ratio} rounded overflow-hidden`}><img src={u} className="w-full h-full object-cover" /></div>)}</div>;
+    return <div className={`grid ${cols} gap-1`}>{block.photos.map((u,i) => <div key={i} className={`${ratio} rounded overflow-hidden`}><img src={u} className="w-full h-full object-cover" /></div>)}</div>;
   }
 
   if (block.type === "buttons") {
