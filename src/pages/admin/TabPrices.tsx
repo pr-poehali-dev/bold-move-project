@@ -258,26 +258,32 @@ export default function TabPrices({ token, onItemAdded, isDark = true, readOnly 
                     </div>
                   </div>
                   {/* Строка 3: описание + AI */}
-                  <div className="flex items-center gap-2">
-                    <div className={`flex-1 text-xs ${muted}`}>
-                      <TruncatedCell value={item.description} onSave={v => saveField(item, "description", v)} placeholder="Описание для AI..." maxChars={40} />
+                  <div className="flex flex-col gap-0.5">
+                    <span className={`text-[9px] font-bold uppercase tracking-wider ${muted} opacity-50`}>Описание для AI</span>
+                    <div className="flex items-center gap-2">
+                      <div className={`flex-1 text-xs ${muted}`}>
+                        <TruncatedCell value={item.description} onSave={v => saveField(item, "description", v)} placeholder="Как AI понимает позицию..." maxChars={40} />
+                      </div>
+                      <button onClick={() => generateDescription(item)} disabled={aiDescLoadingId === item.id}
+                        className="flex-shrink-0 bg-violet-600/20 hover:bg-violet-600/40 border border-violet-500/30 text-violet-400 rounded px-2 py-1 disabled:opacity-40 transition flex items-center gap-1">
+                        {aiDescLoadingId === item.id ? <Icon name="Loader" size={11} className="animate-spin" /> : <Icon name="Sparkles" size={11} />}
+                        <span className="text-[10px]">AI</span>
+                      </button>
                     </div>
-                    <button onClick={() => generateDescription(item)} disabled={aiDescLoadingId === item.id}
-                      className="flex-shrink-0 bg-violet-600/20 hover:bg-violet-600/40 border border-violet-500/30 text-violet-400 rounded px-2 py-1 disabled:opacity-40 transition flex items-center gap-1">
-                      {aiDescLoadingId === item.id ? <Icon name="Loader" size={11} className="animate-spin" /> : <Icon name="Sparkles" size={11} />}
-                      <span className="text-[10px]">AI</span>
-                    </button>
                   </div>
                   {/* Строка 4: синонимы + AI */}
-                  <div className="flex items-center gap-2">
-                    <div className="flex-1 text-xs text-amber-400/60">
-                      <TruncatedCell value={item.synonyms || ""} onSave={v => saveField(item, "synonyms", v)} placeholder="Синонимы..." maxChars={40} />
+                  <div className="flex flex-col gap-0.5">
+                    <span className="text-[9px] font-bold uppercase tracking-wider text-amber-400/40">Синонимы поиска</span>
+                    <div className="flex items-center gap-2">
+                      <div className="flex-1 text-xs text-amber-400/60">
+                        <TruncatedCell value={item.synonyms || ""} onSave={v => saveField(item, "synonyms", v)} placeholder="карниз, гардина..." maxChars={40} />
+                      </div>
+                      <button onClick={() => generateSynonyms(item)} disabled={aiLoadingId === item.id}
+                        className="flex-shrink-0 bg-violet-600/20 hover:bg-violet-600/40 border border-violet-500/30 text-violet-400 rounded px-2 py-1 disabled:opacity-40 transition flex items-center gap-1">
+                        {aiLoadingId === item.id ? <Icon name="Loader" size={11} className="animate-spin" /> : <Icon name="Sparkles" size={11} />}
+                        <span className="text-[10px]">AI</span>
+                      </button>
                     </div>
-                    <button onClick={() => generateSynonyms(item)} disabled={aiLoadingId === item.id}
-                      className="flex-shrink-0 bg-violet-600/20 hover:bg-violet-600/40 border border-violet-500/30 text-violet-400 rounded px-2 py-1 disabled:opacity-40 transition flex items-center gap-1">
-                      {aiLoadingId === item.id ? <Icon name="Loader" size={11} className="animate-spin" /> : <Icon name="Sparkles" size={11} />}
-                      <span className="text-[10px]">AI</span>
-                    </button>
                   </div>
                 </div>
               ))}
