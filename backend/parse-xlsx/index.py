@@ -246,11 +246,15 @@ def handler(event: dict, context) -> dict:
 
     # --- PUT ?r=category_settings  (обновление флага is_material)
     if r == 'category_settings' and method == 'PUT':
-        if not check_auth(hdrs):
+        auth_ok = check_auth(hdrs)
+        token_val = hdrs.get('x-admin-token', 'MISSING')
+        print(f"[cat_settings] auth_ok={auth_ok} token_len={len(token_val)} token_start={token_val[:30]!r}")
+        if not auth_ok:
             return resp(401, {'error': 'Unauthorized'})
         body = json.loads(body_str)
         category = body.get('category', '').strip()
         is_material = bool(body.get('is_material', True))
+        print(f"[cat_settings] saving category={category!r} is_material={is_material}")
         if not category:
             return resp(400, {'error': 'category required'})
         conn = get_conn(); cur = conn.cursor()
@@ -259,6 +263,7 @@ def handler(event: dict, context) -> dict:
             (category, is_material, is_material)
         )
         conn.commit(); cur.close(); conn.close()
+        print(f"[cat_settings] saved OK")
         return resp(200, {'ok': True})
 
     # --- GET ?r=prices
