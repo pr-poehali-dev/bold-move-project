@@ -193,6 +193,7 @@ export default function EstimateTable({ text, items, onSaveRequest }: {
         name={contactName}
         phone={contactPhone}
         addr={contactAddr}
+        user={user}
         onChangeName={setContactName}
         onChangePhone={setContactPhone}
         onChangeAddr={setContactAddr}
