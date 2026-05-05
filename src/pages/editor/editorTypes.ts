@@ -19,15 +19,16 @@ export function snap(val: number, grid: number, enabled: boolean) {
 export const SNAP_EDGE = 6;
 
 export const DEFAULT_SIZES: Record<string, { w: number; h: number }> = {
-  heading: { w: 220, h: 40 },
-  text:    { w: 240, h: 72 },
-  gallery: { w: 280, h: 200 },
-  buttons: { w: 160, h: 44 },
-  card:    { w: 280, h: 120 },
-  video:   { w: 320, h: 180 },
-  divider: { w: 240, h: 20 },
-  price:   { w: 320, h: 200 },
-  quote:   { w: 280, h: 120 },
+  heading:   { w: 220, h: 40 },
+  text:      { w: 240, h: 72 },
+  gallery:   { w: 280, h: 200 },
+  buttons:   { w: 160, h: 44 },
+  card:      { w: 280, h: 120 },
+  video:     { w: 320, h: 180 },
+  divider:   { w: 240, h: 20 },
+  price:     { w: 320, h: 200 },
+  quote:     { w: 280, h: 120 },
+  "ai-image":{ w: 320, h: 320 },
 };
 
 export function defaultBlock(type: PageBlock["type"], x = 40, y = 40): PageBlock {
@@ -41,6 +42,7 @@ export function defaultBlock(type: PageBlock["type"], x = 40, y = 40): PageBlock
   if (type === "card")     return { ...base, type, title: "Заголовок", text: "Описание", photoUrl: "", photoSide: "left", align: "left" };
   if (type === "price")    return { ...base, type, title: "Наши цены", items: [{ icon: "✅", name: "Услуга", price: "от 1 000 ₽", desc: "" }] };
   if (type === "quote")    return { ...base, type, text: "Отличная работа! Рекомендую.", author: "Иван Иванов", role: "Клиент", avatar: "" };
+  if (type === "ai-image") return { ...base, type, imageUrl: "", prompt: "", fit: "cover" };
   return { ...base, type: "divider", style: "line" };
 }
 
@@ -53,6 +55,7 @@ export const ADD_BLOCKS: { type: PageBlock["type"]; icon: string; label: string;
   { type: "video",    icon: "Play",          label: "Видео",       color: "#f9a8d4", bg: "rgba(236,72,153,0.15)" },
   { type: "price",    icon: "Tag",           label: "Цены",        color: "#86efac", bg: "rgba(34,197,94,0.15)"  },
   { type: "quote",    icon: "Quote",         label: "Цитата",      color: "#fbbf24", bg: "rgba(251,191,36,0.13)" },
+  { type: "ai-image", icon: "Sparkles",      label: "AI Картинка", color: "#e879f9", bg: "rgba(217,70,239,0.15)" },
   { type: "divider",  icon: "Minus",         label: "Разделитель", color: "#94a3b8", bg: "rgba(148,163,184,0.12)"},
 ];
 
@@ -60,6 +63,7 @@ export const BLOCK_LABELS: Record<string, string> = {
   heading: "Заголовок", text: "Текст", gallery: "Галерея",
   buttons: "Кнопки", divider: "Разделитель", video: "Видео",
   card: "Карточка", price: "Цены", quote: "Цитата",
+  "ai-image": "AI Картинка",
 };
 
 export const HANDLES = ["n","ne","e","se","s","sw","w","nw"] as const;

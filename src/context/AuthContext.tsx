@@ -30,7 +30,7 @@ export interface Brand {
 }
 
 // ── Конструктор страниц — блоки ──────────────────────────────────────────────
-export type PageBlockType = "heading" | "text" | "gallery" | "buttons" | "divider" | "video" | "card" | "price" | "quote";
+export type PageBlockType = "heading" | "text" | "gallery" | "buttons" | "divider" | "video" | "card" | "price" | "quote" | "ai-image";
 
 // ── Стили блока (расширенная стилизация) ─────────────────────────────────────
 export interface PageBlockStyle {
@@ -151,6 +151,15 @@ export interface PageBlockQuote extends PageBlockBase {
   avatar?: string;   // URL аватара
 }
 
+// AI-генерированное изображение / мокап
+export interface PageBlockAiImage extends PageBlockBase {
+  type:       "ai-image";
+  imageUrl:   string;   // URL сгенерированного или загруженного изображения
+  prompt:     string;   // промпт которым оно было сгенерировано
+  alt?:       string;   // alt-текст
+  fit?:       "cover" | "contain" | "fill";  // object-fit
+}
+
 export type PageBlock =
   | PageBlockHeading
   | PageBlockText
@@ -160,7 +169,8 @@ export type PageBlock =
   | PageBlockVideo
   | PageBlockCard
   | PageBlockPrice
-  | PageBlockQuote;
+  | PageBlockQuote
+  | PageBlockAiImage;
 
 // Настройки страницы целиком
 export interface PageSettings {

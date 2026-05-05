@@ -3,6 +3,7 @@ import type { PageBlock, PageBlockStyle } from "@/context/AuthContext";
 import Icon from "@/components/ui/icon";
 import { StylePanel } from "./BlockContent";
 import { BlockFieldEditors } from "./BlockFieldEditors";
+import { AiImageModal } from "./AiImageModal";
 
 export { CanvasSettingsPanel } from "./CanvasSettingsPanel";
 
@@ -17,7 +18,8 @@ export function BlockEditor({
   onSendBack: () => void;
   token: string | null;
 }) {
-  const [editorTab, setEditorTab] = useState<"content" | "style">("content");
+  const [editorTab,     setEditorTab]     = useState<"content" | "style">("content");
+  const [showAiModal,   setShowAiModal]   = useState(false);
 
   const lbl = "text-[10px] font-bold uppercase tracking-wider text-white/30 mb-1 block";
 
@@ -93,10 +95,29 @@ export function BlockEditor({
 
         <div className="border-t border-white/[0.07]" />
 
+        {/* Для AI-изображения — большая кнопка генерации */}
+        {block.type === "ai-image" && (
+          <button onClick={() => setShowAiModal(true)}
+            className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-bold text-white bg-gradient-to-r from-fuchsia-600 to-violet-600 hover:brightness-110 transition">
+            <Icon name="Sparkles" size={15} />
+            {block.imageUrl ? "Перегенерировать / Заменить" : "Сгенерировать картинку"}
+          </button>
+        )}
+
         {/* Per-type content editors */}
         <BlockFieldEditors block={block} onChange={onChange} token={token} />
 
         {actionsRow}
+
+        {/* AI Image Modal */}
+        {showAiModal && block.type === "ai-image" && (
+          <AiImageModal
+            initialPrompt={block.prompt}
+            token={token}
+            onGenerated={(imageUrl, prompt) => onChange({ ...block, imageUrl, prompt })}
+            onClose={() => setShowAiModal(false)}
+          />
+        )}
       </>)}
 
       {editorTab === "style" && (<>

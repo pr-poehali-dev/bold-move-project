@@ -162,6 +162,26 @@ export function BlockContent({ block, blockW, blockH }: { block: PageBlock; bloc
     );
   }
 
+  if (block.type === "ai-image") {
+    if (!block.imageUrl) {
+      return (
+        <div className="w-full h-full rounded-xl border-2 border-dashed border-fuchsia-500/30 bg-fuchsia-500/5 flex flex-col items-center justify-center gap-2 text-fuchsia-400/70">
+          <Icon name="Sparkles" size={20} />
+          <span className="text-xs font-medium">Нажмите для генерации</span>
+          {block.prompt && <span className="text-[10px] text-fuchsia-400/40 text-center px-2 line-clamp-2">{block.prompt}</span>}
+        </div>
+      );
+    }
+    return (
+      <img
+        src={block.imageUrl}
+        alt={block.alt || block.prompt || "AI изображение"}
+        className="w-full h-full rounded-xl"
+        style={{ objectFit: block.fit ?? "cover" }}
+      />
+    );
+  }
+
   if (block.type === "divider") {
     if (block.style === "dots") return <div className="flex items-center justify-center gap-2 h-full"><span className="w-1.5 h-1.5 rounded-full bg-white/20" /><span className="w-1.5 h-1.5 rounded-full bg-white/20" /><span className="w-1.5 h-1.5 rounded-full bg-white/20" /></div>;
     if (block.style === "space") return <div className="w-full h-full" />;

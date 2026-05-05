@@ -312,6 +312,34 @@ export function BlockFieldEditors({ block, onChange, token }: Props) {
         </button>
       </>)}
 
+      {block.type === "ai-image" && (<>
+        {block.imageUrl ? (
+          <div className="rounded-xl overflow-hidden border border-white/[0.08] mb-2">
+            <img src={block.imageUrl} alt="" className="w-full object-contain max-h-48" />
+          </div>
+        ) : (
+          <div className="w-full h-24 rounded-xl border-2 border-dashed border-fuchsia-500/20 bg-fuchsia-500/5 flex items-center justify-center text-fuchsia-400/50 text-xs mb-2">
+            Изображение не сгенерировано
+          </div>
+        )}
+        <div><label className={lbl}>Промпт</label>
+          <textarea className={`${inp} resize-none`} rows={2} value={block.prompt}
+            onChange={e => onChange({ ...block, prompt: e.target.value })}
+            placeholder="Описание для генерации..." /></div>
+        <div><label className={lbl}>Масштаб изображения</label>
+          <div className="flex gap-1">
+            {(["cover","contain","fill"] as const).map(f => (
+              <button key={f} onClick={() => onChange({ ...block, fit: f })}
+                className={`flex-1 py-1.5 rounded-lg text-xs transition ${(block.fit??"cover")===f?"bg-violet-500/30 text-violet-300 border border-violet-500/50":"bg-white/5 text-white/40 border border-white/10"}`}>
+                {f==="cover"?"Заполнить":f==="contain"?"Вписать":"Растянуть"}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div><label className={lbl}>Alt-текст (для SEO)</label>
+          <input className={inp} value={block.alt??""} onChange={e => onChange({ ...block, alt: e.target.value })} placeholder="Описание изображения" /></div>
+      </>)}
+
       {block.type === "divider" && (
         <div><label className={lbl}>Стиль</label>
           <div className="flex gap-1">

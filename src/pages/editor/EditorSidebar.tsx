@@ -4,6 +4,7 @@ import Icon from "@/components/ui/icon";
 import { BlockEditor } from "./BlockEditor";
 import { CanvasSettingsPanel } from "./CanvasSettingsPanel";
 import { ADD_BLOCKS, BLOCK_LABELS } from "./editorTypes";
+import { AiImageModal } from "./AiImageModal";
 
 const MIN_WIDTH = 220;
 const MAX_WIDTH = 680;
@@ -36,6 +37,19 @@ export function EditorSidebar({
   updateBlock, deleteBlock, duplicateBlock, bringToFront, sendToBack,
 }: Props) {
   const selectedBlock = blocks.find(b => b.id === selectedId) ?? null;
+
+  // Показывать модалку при добавлении ai-image из палитры
+  const [showAiModal, setShowAiModal] = useState(false);
+  const pendingAiPos = useRef<{ cx?: number; cy?: number } | null>(null);
+
+  const handleAddBlock = (type: PageBlock["type"], cx?: number, cy?: number) => {
+    if (type === "ai-image") {
+      pendingAiPos.current = { cx, cy };
+      setShowAiModal(true);
+    } else {
+      addBlock(type, cx, cy);
+    }
+  };
 
   const [width, setWidth] = useState(DEFAULT_WIDTH);
   const dragging = useRef(false);
@@ -140,7 +154,7 @@ export function EditorSidebar({
                 draggable
                 onDragStart={() => { paletteType.current = type; setIsDroppingFromPalette(true); }}
                 onDragEnd={() => { paletteType.current = null; setIsDroppingFromPalette(false); }}
-                onClick={() => addBlock(type)}
+                onClick={() => handleAddBlock(type)}
                 className="flex flex-col items-center gap-2 p-3 rounded-2xl border border-white/[0.07] hover:border-white/20 transition-all group cursor-grab active:cursor-grabbing select-none hover:scale-[1.03] active:scale-95"
                 style={{ background: "rgba(255,255,255,0.025)" }}>
                 <div className={`${iconBox} rounded-xl flex items-center justify-center transition-transform group-hover:scale-110`}
@@ -187,6 +201,25 @@ export function EditorSidebar({
             </div>
           )}
         </div>
+      )}
+
+      {/* AI Image Modal — открывается при добавлении из палитры */}
+      {showAiModal && (
+        <AiImageModal
+          token={token}
+          onGenerated={(imageUrl, prompt) => {
+            // Добавляем блок через стандартный механизм, затем обновляем
+            addBlock("ai-image");
+            setShowAiModal(false);
+            pendingAiPos.current = null;
+            // Блок появится в blocks — находим последний ai-image без imageUrl и обновляем
+            requestAnimationFrame(() => {
+              const fresh = blocks.slice().reverse().find(b => b.type === "ai-image" && !b.imageUrl);
+              if (fresh) updateBlock(fresh.id, { ...fresh, imageUrl, prompt } as PageBlock);
+            });
+          }}
+          onClose={() => { setShowAiModal(false); pendingAiPos.current = null; }}
+        />
       )}
     </div>
   );

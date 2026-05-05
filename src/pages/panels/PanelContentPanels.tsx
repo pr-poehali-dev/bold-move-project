@@ -199,6 +199,17 @@ function BlockContent({ block, blockW, blockH, onLightbox }: { block: PageBlock;
       </div>
     );
   }
+  if (block.type === "ai-image") {
+    if (!block.imageUrl) return null;
+    return (
+      <img
+        src={block.imageUrl}
+        alt={block.alt || block.prompt || "AI изображение"}
+        className="w-full h-full rounded-xl"
+        style={{ objectFit: block.fit ?? "cover" }}
+      />
+    );
+  }
   return null;
 }
 
