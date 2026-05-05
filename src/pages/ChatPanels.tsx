@@ -12,7 +12,7 @@ import func2url from "@/../backend/func2url.json";
 
 const LIVE_CHAT_URL = func2url["live-chat"];
 
-export function PanelBooking({ onClose }: { onClose: () => void }) {
+export function PanelBooking({ onClose, onEdit }: { onClose: () => void; onEdit?: () => void }) {
   const [name, setName]   = useState("");
   const { phone, setPhone, handleChange: handlePhone, handleFocus: focusPhone, handleBlur: blurPhone, isValid: phoneValid } = usePhone("+7 (");
   const [date, setDate]   = useState("");
@@ -36,7 +36,7 @@ export function PanelBooking({ onClose }: { onClose: () => void }) {
 
   return (
     <div className="h-full flex flex-col">
-      <PanelHeader icon="CalendarCheck" title="Заказать замер" onClose={onClose} />
+      <PanelHeader icon="CalendarCheck" title="Заказать замер" onClose={onClose} onEdit={onEdit} />
       <div className="flex-1 overflow-y-auto p-4">
         {sent ? (
           <div className="h-full flex flex-col items-center justify-center gap-3 text-center">
@@ -114,28 +114,36 @@ export function PanelBooking({ onClose }: { onClose: () => void }) {
 }
 
 // ─── Shared panel header ──────────────────────────────────────────────────────
-function PanelHeader({ icon, title, onClose }: { icon: string; title: string; onClose: () => void }) {
+function PanelHeader({ icon, title, onClose, onEdit }: { icon: string; title: string; onClose: () => void; onEdit?: () => void }) {
   return (
     <div className="shrink-0 flex items-center justify-between px-5 py-3 border-b border-white/[0.06]">
       <div className="flex items-center gap-2">
         <Icon name={icon} size={15} className="text-orange-400" />
         <span className="text-sm font-semibold text-white/80">{title}</span>
       </div>
-      <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-white/5 text-white/30 hover:text-white/60 transition-all">
-        <Icon name="X" size={16} />
-      </button>
+      <div className="flex items-center gap-1">
+        {onEdit && (
+          <button onClick={onEdit} title="Редактировать"
+            className="p-1.5 rounded-lg hover:bg-violet-500/15 text-white/20 hover:text-violet-400 transition-all">
+            <Icon name="Pencil" size={15} />
+          </button>
+        )}
+        <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-white/5 text-white/30 hover:text-white/60 transition-all">
+          <Icon name="X" size={16} />
+        </button>
+      </div>
     </div>
   );
 }
 
 // ─── Production ───────────────────────────────────────────────────────────────
-export function PanelProduction({ onClose }: { onClose: () => void }) {
+export function PanelProduction({ onClose, onEdit }: { onClose: () => void; onEdit?: () => void }) {
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   const prodImages = PRODUCTION.map((item) => ({ src: item.img, alt: item.title }));
 
   return (
     <div className="h-full flex flex-col">
-      <PanelHeader icon="Factory" title="Собственное производство" onClose={onClose} />
+      <PanelHeader icon="Factory" title="Собственное производство" onClose={onClose} onEdit={onEdit} />
       <div className="flex-1 overflow-y-auto p-4">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mb-4">
           {PRODUCTION.map((item, i) => (
@@ -176,14 +184,14 @@ export function PanelProduction({ onClose }: { onClose: () => void }) {
 }
 
 // ─── Portfolio ────────────────────────────────────────────────────────────────
-export function PanelPortfolio({ onClose }: { onClose: () => void }) {
+export function PanelPortfolio({ onClose, onEdit }: { onClose: () => void; onEdit?: () => void }) {
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   const portfolioSlice = PORTFOLIO_ITEMS.slice(0, 12);
   const portImages = portfolioSlice.map((item) => ({ src: item.img, alt: `${item.room} · ${item.type}` }));
 
   return (
     <div className="h-full flex flex-col">
-      <PanelHeader icon="Image" title="Наши работы" onClose={onClose} />
+      <PanelHeader icon="Image" title="Наши работы" onClose={onClose} onEdit={onEdit} />
       <div className="flex-1 overflow-y-auto p-3">
         <div className="grid grid-cols-3 md:grid-cols-4 gap-2">
           {portfolioSlice.map((item, i) => (
@@ -214,7 +222,7 @@ export function PanelPortfolio({ onClose }: { onClose: () => void }) {
 }
 
 // ─── PanelCustom — универсальная кастомная панель ────────────────────────────
-export function PanelCustom({ btn, onClose }: { btn: NavButton; onClose: () => void }) {
+export function PanelCustom({ btn, onClose, onEdit }: { btn: NavButton; onClose: () => void; onEdit?: () => void }) {
   const c = btn.content || {};
 
   const handleBtnClick = () => {
@@ -227,7 +235,7 @@ export function PanelCustom({ btn, onClose }: { btn: NavButton; onClose: () => v
 
   return (
     <div className="h-full flex flex-col">
-      <PanelHeader icon={btn.icon} title={c.title || btn.label} onClose={onClose} />
+      <PanelHeader icon={btn.icon} title={c.title || btn.label} onClose={onClose} onEdit={onEdit} />
       <div className="flex-1 overflow-y-auto">
         {c.photo_url && (
           <div className="w-full" style={{ aspectRatio: "16/7" }}>
