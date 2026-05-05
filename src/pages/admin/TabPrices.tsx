@@ -110,14 +110,14 @@ export default function TabPrices({ token, onItemAdded, isDark = true, readOnly 
             {!readOnly && (
               <button
                 type="button"
-                onClick={(e) => { e.preventDefault(); e.stopPropagation(); setCategoryMaterial(category, !isMaterial); }}
+                onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); setCategoryMaterial(category, !isMaterial); }}
                 title={isMaterial ? "Учитывается в закупке — нажмите чтобы отключить" : "Не учитывается в закупке — нажмите чтобы включить"}
-                className={`flex-shrink-0 flex items-center gap-1.5 text-xs px-2 py-0.5 rounded-full border transition-all ${
+                className={`flex-shrink-0 flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full border transition-all touch-manipulation ${
                   isMaterial
                     ? isDark ? "bg-blue-500/15 border-blue-500/30 text-blue-300 hover:bg-blue-500/25" : "bg-blue-50 border-blue-200 text-blue-600 hover:bg-blue-100"
                     : isDark ? "bg-white/5 border-white/10 text-white/30 hover:text-white/50 hover:border-white/20" : "bg-gray-50 border-gray-200 text-gray-400 hover:text-gray-500"
                 }`}>
-                <Icon name="ShoppingCart" size={10} />
+                <Icon name="ShoppingCart" size={12} />
                 {isMaterial ? "в закупке" : "не в закупке"}
               </button>
             )}
