@@ -6,8 +6,81 @@ import { PORTFOLIO_ITEMS } from "../data/portfolio";
 import { PROD_FEATURES } from "../chatConfig";
 import { useBrand } from "@/context/BrandContext";
 import { useAuth } from "@/context/AuthContext";
-import type { NavButton } from "@/context/AuthContext";
+import type { NavButton, PageBlock } from "@/context/AuthContext";
 import { PanelHeader } from "./PanelHeader";
+
+// ── Renderer для блоков конструктора ─────────────────────────────────────────
+function RenderBlocks({ blocks }: { blocks: PageBlock[] }) {
+  const [lightbox, setLightbox] = useState<{ photos: string[]; idx: number } | null>(null);
+  return (
+    <div className="p-4 space-y-4">
+      {blocks.map(block => {
+        if (block.type === "heading") {
+          const size = block.size === "xl" ? "text-2xl font-black" : block.size === "lg" ? "text-xl font-bold" : "text-base font-bold";
+          const align = block.align === "center" ? "text-center" : block.align === "right" ? "text-right" : "text-left";
+          return <p key={block.id} className={`${size} text-white ${align}`}>{block.text}</p>;
+        }
+        if (block.type === "text") {
+          const align = block.align === "center" ? "text-center" : block.align === "right" ? "text-right" : "text-left";
+          return <p key={block.id} className={`text-white/70 text-sm leading-relaxed whitespace-pre-wrap ${align}`}>{block.text}</p>;
+        }
+        if (block.type === "gallery") {
+          const cols = { 1: "grid-cols-1", 2: "grid-cols-2", 3: "grid-cols-3", 4: "grid-cols-4" }[block.cols];
+          const ratio = block.ratio === "square" ? "aspect-square" : block.ratio === "16/9" ? "aspect-video" : "aspect-[4/3]";
+          if (!block.photos.length) return null;
+          return (
+            <div key={block.id} className={`grid ${cols} gap-1.5`}>
+              {block.photos.map((url, i) => (
+                <div key={i} className={`${ratio} rounded-lg overflow-hidden cursor-pointer`}
+                  onClick={() => setLightbox({ photos: block.photos, idx: i })}>
+                  <img src={url} className="w-full h-full object-cover hover:scale-105 transition-transform duration-300" />
+                </div>
+              ))}
+              {lightbox && (
+                <Lightbox
+                  images={lightbox.photos.map(s => ({ src: s, alt: "" }))}
+                  index={lightbox.idx}
+                  onClose={() => setLightbox(null)}
+                  onPrev={() => setLightbox(l => l ? { ...l, idx: (l.idx - 1 + l.photos.length) % l.photos.length } : null)}
+                  onNext={() => setLightbox(l => l ? { ...l, idx: (l.idx + 1) % l.photos.length } : null)}
+                />
+              )}
+            </div>
+          );
+        }
+        if (block.type === "buttons") {
+          return (
+            <div key={block.id} className="flex flex-wrap gap-2">
+              {block.items.map((btn, i) => {
+                const click = () => {
+                  if (!btn.value) return;
+                  if (btn.action === "phone") { window.location.href = `tel:${btn.value.replace(/\D/g,"").replace(/^8/,"+7")}`; return; }
+                  if (btn.action === "whatsapp") { window.open(`https://wa.me/${btn.value.replace(/\D/g,"")}`, "_blank"); return; }
+                  if (btn.action === "telegram") { window.open(btn.value.startsWith("http") ? btn.value : `https://t.me/${btn.value.replace("@","")}`, "_blank"); return; }
+                  window.open(btn.value, "_blank");
+                };
+                return (
+                  <button key={i} onClick={click}
+                    className={`px-5 py-2.5 rounded-xl text-sm font-bold transition active:scale-95 ${
+                      btn.style === "primary"
+                        ? "text-white bg-gradient-to-r from-orange-500 to-rose-500"
+                        : "text-orange-400 border border-orange-500/40 bg-orange-500/10 hover:bg-orange-500/20"
+                    }`}>
+                    {btn.label}
+                  </button>
+                );
+              })}
+            </div>
+          );
+        }
+        if (block.type === "divider") {
+          return <div key={block.id} className="w-full h-px bg-white/10" />;
+        }
+        return null;
+      })}
+    </div>
+  );
+}
 
 export function PanelProduction({ onClose, onEdit }: { onClose: () => void; onEdit?: () => void }) {
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
@@ -137,6 +210,8 @@ export function PanelCustom({ btn, onClose, onEdit }: { btn: NavButton; onClose:
     if (content.btn_action === "url") { window.open(content.btn_value, "_blank"); return; }
   };
 
+  const hasBlocks = !!(btn.content?.blocks?.length);
+
   return (
     <div className="h-full flex flex-col">
       <PanelHeader icon={btn.icon} title={editing ? "Редактирование" : (c.title || btn.label)} onClose={onClose}
@@ -144,22 +219,28 @@ export function PanelCustom({ btn, onClose, onEdit }: { btn: NavButton; onClose:
       <div className="flex-1 overflow-y-auto">
         {!editing ? (
           <>
-            {c.photo_url && (
-              <div className="w-full" style={{ aspectRatio: "16/7" }}>
-                <img src={c.photo_url} className="w-full h-full object-cover" alt={btn.label} />
-              </div>
+            {hasBlocks ? (
+              <RenderBlocks blocks={btn.content!.blocks!} />
+            ) : (
+              <>
+                {c.photo_url && (
+                  <div className="w-full" style={{ aspectRatio: "16/7" }}>
+                    <img src={c.photo_url} className="w-full h-full object-cover" alt={btn.label} />
+                  </div>
+                )}
+                <div className="p-4 space-y-4">
+                  {c.text && <p className="text-white/70 text-sm leading-relaxed whitespace-pre-wrap">{c.text}</p>}
+                  {!c.text && !c.photo_url && <p className="text-white/30 text-sm text-center py-8">Контент не настроен</p>}
+                  {c.btn_label && c.btn_action && c.btn_value && (
+                    <button onClick={handleBtnClick}
+                      className="w-full py-3 rounded-xl text-sm font-bold text-white transition active:scale-95"
+                      style={{ background: "linear-gradient(135deg, #f97316, #e11d48)" }}>
+                      {c.btn_label}
+                    </button>
+                  )}
+                </div>
+              </>
             )}
-            <div className="p-4 space-y-4">
-              {c.text && <p className="text-white/70 text-sm leading-relaxed whitespace-pre-wrap">{c.text}</p>}
-              {!c.text && !c.photo_url && <p className="text-white/30 text-sm text-center py-8">Контент не настроен</p>}
-              {c.btn_label && c.btn_action && c.btn_value && (
-                <button onClick={handleBtnClick}
-                  className="w-full py-3 rounded-xl text-sm font-bold text-white transition active:scale-95"
-                  style={{ background: "linear-gradient(135deg, #f97316, #e11d48)" }}>
-                  {c.btn_label}
-                </button>
-              )}
-            </div>
           </>
         ) : (
           <div className="p-4 space-y-3">

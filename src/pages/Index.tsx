@@ -6,6 +6,7 @@ import AuthModal from "@/components/AuthModal";
 import UserDropdown from "@/components/UserDropdown";
 import ProfileModal from "@/components/ProfileModal";
 import PendingApprovalModal from "@/components/PendingApprovalModal";
+import PageEditor from "./PageEditor";
 
 import { isEstimate } from "./EstimateTable";
 import { Panel, Msg, GREETING, AI_URL, localAnswer } from "./chatConfig";
@@ -30,6 +31,9 @@ export default function Index() {
   const [showAuthModal,    setShowAuthModal]    = useState(false);
   const [pendingRole,      setPendingRole]      = useState<string | null>(null);
   const [showProfileModal, setShowProfileModal] = useState(false);
+  const [editingPanelId,   setEditingPanelId]   = useState<string | null>(null);
+
+  const canEdit = !!(user?.role === "company" || user?.is_master);
 
   // Приветствие: подменяется именем бота из бренда, если он кастомный
   const greeting: Msg = isCustom
@@ -230,7 +234,6 @@ export default function Index() {
         }`} style={{ height: "55%", maxHeight: "55%" }}>
           <div className="h-full bg-[#0e0e15]/98 backdrop-blur-2xl border-t border-white/[0.08] rounded-t-2xl overflow-hidden shadow-2xl shadow-black/50">
             {(() => {
-              const canEdit = !!(user?.role === "company" || user?.is_master);
               const navBtn = brand.nav_config?.find(b => b.id === panel);
               return (<>
                 {panel === "livechat" && <LiveChat onClose={closePanel} />}
@@ -242,7 +245,8 @@ export default function Index() {
                 {panel === "other"    && !navBtn && <PanelOther onClose={closePanel} onPanel={setPanel} />}
                 {panel !== "none" && panel !== "livechat" && panel !== "booking" && panel !== "tips" && panel !== "reviews" && panel !== "faq" && panel !== "contacts" && (() => {
                   if (navBtn && navBtn.action === "panel") {
-                    return <PanelCustom btn={navBtn} onClose={closePanel} onEdit={canEdit ? () => {} : undefined} />;
+                    return <PanelCustom btn={navBtn} onClose={closePanel}
+                      onEdit={canEdit ? () => setEditingPanelId(navBtn.id) : undefined} />;
                   }
                   if (panel === "production") return <PanelProduction onClose={closePanel} />;
                   if (panel === "portfolio")  return <PanelPortfolio  onClose={closePanel} />;
@@ -369,6 +373,11 @@ export default function Index() {
 
       {/* Mobile bottom CTA — свайп вверх/вниз */}
       <MobileContactBar panel={panel} setPanel={setPanel} />
+
+      {/* Page Editor — открывается поверх всего при нажатии на карандаш */}
+      {editingPanelId && (
+        <PageEditor panelId={editingPanelId} onBack={() => setEditingPanelId(null)} />
+      )}
     </div>
   );
 }
