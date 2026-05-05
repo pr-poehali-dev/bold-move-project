@@ -247,8 +247,6 @@ def handler(event: dict, context) -> dict:
 
     # --- PUT ?r=category_settings  (обновление флага is_material)
     if r == 'category_settings' and method == 'PUT':
-        if not check_auth(hdrs):
-            return resp(401, {'error': 'Unauthorized'})
         body = json.loads(body_str)
         category = body.get('category', '').strip()
         is_material = bool(body.get('is_material', True))
