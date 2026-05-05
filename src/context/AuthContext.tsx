@@ -29,13 +29,65 @@ export interface Brand {
   nav_config?:             NavButton[] | null;
 }
 
+// ── Конструктор страниц — блоки ──────────────────────────────────────────────
+export type PageBlockType = "heading" | "text" | "gallery" | "buttons" | "divider";
+
+export interface PageBlockHeading {
+  type:    "heading";
+  id:      string;
+  text:    string;
+  size:    "xl" | "lg" | "md";  // h1 / h2 / h3
+  align:   "left" | "center" | "right";
+}
+
+export interface PageBlockText {
+  type:    "text";
+  id:      string;
+  text:    string;
+  align:   "left" | "center" | "right";
+}
+
+export interface PageBlockGallery {
+  type:    "gallery";
+  id:      string;
+  photos:  string[];           // массив URL
+  cols:    1 | 2 | 3 | 4;     // колонок в ряду
+  ratio:   "square" | "4/3" | "16/9";
+}
+
+export interface PageBlockButtons {
+  type:    "buttons";
+  id:      string;
+  items:   {
+    label:   string;
+    action:  "phone" | "whatsapp" | "telegram" | "url";
+    value:   string;
+    style:   "primary" | "outline";
+  }[];
+}
+
+export interface PageBlockDivider {
+  type: "divider";
+  id:   string;
+}
+
+export type PageBlock =
+  | PageBlockHeading
+  | PageBlockText
+  | PageBlockGallery
+  | PageBlockButtons
+  | PageBlockDivider;
+
 export interface NavButtonContent {
+  // legacy-поля (обратная совместимость)
   title?:        string | null;
   text?:         string | null;
   photo_url?:    string | null;
   btn_label?:    string | null;
   btn_action?:   "phone" | "whatsapp" | "telegram" | "url" | null;
   btn_value?:    string | null;
+  // новые блоки конструктора
+  blocks?:       PageBlock[] | null;
 }
 
 export interface NavButton {
