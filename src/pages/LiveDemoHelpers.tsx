@@ -41,33 +41,34 @@ export function Pulse({ color }: { color: string }) {
 
 export function StepBar({ step }: { step: number }) {
   const labels = ["План", "Материалы", "Сумма", "Прибыль", "Скидка", "Сделка"];
-  const colors = ["#a78bfa", "#a78bfa", "#fff", "#10b981", "#fbbf24", "#10b981"];
+  const colors = ["#a78bfa", "#a78bfa", "#ffffff", "#10b981", "#fbbf24", "#10b981"];
+  const LINE_ACTIVE = "rgba(255,255,255,0.35)";
+  const LINE_INACTIVE = "rgba(255,255,255,0.08)";
   return (
-    <div className="px-3 py-2 border-b border-white/[0.05]"
+    <div className="w-full px-3 py-2 border-b border-white/[0.05]"
       style={{ background: "rgba(255,255,255,0.015)" }}>
-      {/* Линия с точками */}
-      <div className="flex items-center">
+      <div className="flex items-start w-full">
         {labels.map((l, i) => {
           const active = step >= i;
           const color  = active ? colors[i] : "rgba(255,255,255,0.15)";
           return (
-            <div key={l} className="flex items-center flex-1">
+            <div key={l} className="flex items-center flex-1 min-w-0">
               <div className="flex flex-col items-center gap-0.5 flex-shrink-0">
-                <div className="w-4 h-4 rounded-full flex items-center justify-center transition-all"
+                <div className="w-[18px] h-[18px] rounded-full flex items-center justify-center transition-all"
                   style={{
-                    background: active ? color : "rgba(255,255,255,0.06)",
-                    boxShadow: step === i ? `0 0 10px ${color}` : "none",
+                    background: active ? color : "rgba(255,255,255,0.07)",
+                    boxShadow: step === i ? `0 0 8px ${color}` : "none",
                   }}>
                   {active && <Icon name="Check" size={9} style={{ color: "#0a0a14" }} />}
                 </div>
-                <span className="text-[8px] font-bold uppercase tracking-wide leading-none"
+                <span className="text-[7px] font-bold uppercase tracking-wide leading-none text-center"
                   style={{ color: active ? color : "rgba(255,255,255,0.2)" }}>
                   {l}
                 </span>
               </div>
               {i < labels.length - 1 && (
-                <div className="flex-1 h-px mx-1"
-                  style={{ background: step > i ? color : "rgba(255,255,255,0.06)" }} />
+                <div className="flex-1 h-px mx-1 mt-[-9px]"
+                  style={{ background: step > i ? LINE_ACTIVE : LINE_INACTIVE }} />
               )}
             </div>
           );
