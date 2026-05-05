@@ -89,32 +89,34 @@ export default function TabPrices({ token, onItemAdded, isDark = true, readOnly 
         const isMaterial = items[0]?.is_material !== false;
         return (
         <div key={category}>
-          <div className="flex items-center gap-3 mb-2 px-1 group">
-            {editingCat === category ? (
-              <input autoFocus value={editingCatVal}
-                onChange={e => setEditingCatVal(e.target.value)}
-                onBlur={() => handleRenameCategory(category)}
-                onKeyDown={e => { if (e.key === "Enter") handleRenameCategory(category); if (e.key === "Escape") setEditingCat(null); }}
-                className={`text-violet-500 text-xs font-semibold uppercase tracking-wider bg-violet-500/10 border border-violet-500/40 rounded px-2 py-0.5 outline-none w-64 ${isDark ? "" : "bg-violet-50"}`}
-              />
-            ) : (
-              <h3 className={`${isDark ? "text-violet-300 hover:text-violet-200" : "text-violet-600 hover:text-violet-700"} text-xs font-semibold uppercase tracking-wider cursor-pointer transition flex items-center gap-1.5`}
-                onClick={() => { setEditingCat(category); setEditingCatVal(category); }}
-                title="Нажмите чтобы переименовать группу">
-                {category}
-                <Icon name="Pencil" size={10} className="opacity-0 group-hover:opacity-40 transition" />
-              </h3>
-            )}
+          <div className="flex items-center justify-between mb-2 px-1 group">
+            <div className="flex items-center gap-2 min-w-0">
+              {editingCat === category ? (
+                <input autoFocus value={editingCatVal}
+                  onChange={e => setEditingCatVal(e.target.value)}
+                  onBlur={() => handleRenameCategory(category)}
+                  onKeyDown={e => { if (e.key === "Enter") handleRenameCategory(category); if (e.key === "Escape") setEditingCat(null); }}
+                  className={`text-violet-500 text-xs font-semibold uppercase tracking-wider bg-violet-500/10 border border-violet-500/40 rounded px-2 py-0.5 outline-none w-48 ${isDark ? "" : "bg-violet-50"}`}
+                />
+              ) : (
+                <h3 className={`${isDark ? "text-violet-300 hover:text-violet-200" : "text-violet-600 hover:text-violet-700"} text-xs font-semibold uppercase tracking-wider cursor-pointer transition flex items-center gap-1.5`}
+                  onClick={() => { setEditingCat(category); setEditingCatVal(category); }}
+                  title="Нажмите чтобы переименовать группу">
+                  {category}
+                  <Icon name="Pencil" size={10} className="opacity-0 group-hover:opacity-40 transition" />
+                </h3>
+              )}
+            </div>
             {!readOnly && (
               <button
                 onClick={() => setCategoryMaterial(category, !isMaterial)}
                 title={isMaterial ? "Учитывается в закупке — нажмите чтобы отключить" : "Не учитывается в закупке — нажмите чтобы включить"}
-                className={`flex items-center gap-1.5 text-xs px-2 py-0.5 rounded-full border transition-all ${
+                className={`flex-shrink-0 flex items-center gap-1.5 text-xs px-2 py-0.5 rounded-full border transition-all ${
                   isMaterial
                     ? isDark ? "bg-blue-500/15 border-blue-500/30 text-blue-300 hover:bg-blue-500/25" : "bg-blue-50 border-blue-200 text-blue-600 hover:bg-blue-100"
                     : isDark ? "bg-white/5 border-white/10 text-white/30 hover:text-white/50 hover:border-white/20" : "bg-gray-50 border-gray-200 text-gray-400 hover:text-gray-500"
                 }`}>
-                <Icon name={isMaterial ? "ShoppingCart" : "ShoppingCart"} size={10} />
+                <Icon name="ShoppingCart" size={10} />
                 {isMaterial ? "в закупке" : "не в закупке"}
               </button>
             )}
