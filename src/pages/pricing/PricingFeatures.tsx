@@ -160,14 +160,14 @@ export default function PricingFeatures() {
             <div className="text-[10px] font-bold text-white/40 uppercase tracking-wider mb-3">
               Пример расчёта по смете
             </div>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-3">
               {[
                 { label: "Сумма заказа",     value: "84 000 ₽", color: "#fff"    },
                 { label: "Расходы",           value: "−51 600 ₽", color: "#94a3b8" },
                 { label: "Чистая прибыль",    value: "32 400 ₽", color: "#10b981" },
                 { label: "Можно дать скидку до", value: "до 18%",   color: "#fbbf24", highlight: true },
               ].map(s => (
-                <div key={s.label} className="rounded-xl p-3"
+                <div key={s.label} className="rounded-xl p-2 sm:p-3"
                   style={{ background: s.highlight ? "rgba(251,191,36,0.08)" : "rgba(255,255,255,0.03)",
                            border: s.highlight ? "1px solid rgba(251,191,36,0.32)" : "1px solid transparent" }}>
                   <div className="text-[9px] font-semibold text-white/35 uppercase tracking-wider mb-1">{s.label}</div>

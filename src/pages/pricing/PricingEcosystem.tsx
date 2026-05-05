@@ -54,7 +54,7 @@ const PILLARS = [
 
 export default function PricingEcosystem() {
   return (
-    <section className="max-w-5xl mx-auto px-5 pb-16">
+    <section className="max-w-5xl mx-auto px-5 pb-8 sm:pb-16">
 
       {/* Заголовок */}
       <div className="text-center mb-6 sm:mb-10">
@@ -131,7 +131,7 @@ export default function PricingEcosystem() {
 
       {/* Нижняя плашка — итог */}
       <div
-        className="rounded-[24px] px-6 py-5 flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:gap-6"
+        className="rounded-[20px] px-4 py-4 sm:px-6 sm:py-5 flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-6"
         style={{
           background: "radial-gradient(160% 140% at 0% 50%, rgba(167,139,250,0.12), rgba(96,165,250,0.06) 50%, rgba(10,10,20,0) 80%), #0a0a14",
           border: "1.5px solid rgba(167,139,250,0.22)",

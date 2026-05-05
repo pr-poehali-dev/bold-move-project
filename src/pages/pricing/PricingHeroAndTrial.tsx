@@ -16,19 +16,19 @@ export default function PricingHeroAndTrial() {
       </div>
 
       {/* Hero */}
-      <section className="max-w-4xl mx-auto px-5 pt-10 pb-14 text-center">
+      <section className="max-w-4xl mx-auto px-5 pt-6 sm:pt-10 pb-8 sm:pb-14 text-center">
         <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold mb-5"
           style={{ background: "rgba(249,115,22,0.12)", color: "#f97316", border: "1px solid rgba(249,115,22,0.25)" }}>
           <Icon name="Sparkles" size={11} />
           ТАРИФЫ ДЛЯ МАСТЕРОВ
         </div>
-        <h1 className="text-3xl md:text-5xl font-black mb-4 leading-tight">
+        <h1 className="text-2xl sm:text-3xl md:text-5xl font-black mb-3 sm:mb-4 leading-tight">
           Считай сметы<br />
           <span style={{ background: "linear-gradient(90deg,#f97316,#fbbf24)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>
             быстрее в 10 раз
           </span>
         </h1>
-        <p className="text-sm md:text-base text-white/45 max-w-xl mx-auto">
+        <p className="text-xs sm:text-sm md:text-base text-white/45 max-w-xl mx-auto">
           Один пакет — десятки готовых смет. Платишь за результат, не за подписку.
           Никаких списаний — пока не используешь.
         </p>
@@ -58,7 +58,7 @@ function TrialBanner() {
               style={{ background: "rgba(16,185,129,0.18)" }}>
               <Icon name="Gift" size={22} style={{ color: "#10b981" }} />
             </div>
-            <div className="flex-1 min-w-[200px]">
+            <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 mb-0.5 flex-wrap">
                 <span className="text-sm font-black text-white">Бесплатно для новых мастеров</span>
                 <span className="px-2 py-0.5 rounded-md text-[9px] font-black uppercase tracking-wider"

@@ -141,7 +141,7 @@ export default function PricingCompare() {
       </div>
 
       {/* Легенда */}
-      <div className="mt-3 flex items-center gap-5 px-1">
+      <div className="mt-3 flex items-center gap-3 sm:gap-5 px-1 flex-wrap">
         <div className="flex items-center gap-1.5">
           <div className="w-4 h-4 rounded-full flex items-center justify-center"
             style={{ background: "rgba(167,139,250,0.22)" }}>

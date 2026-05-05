@@ -8,7 +8,7 @@ interface Props {
 
 export default function PricingPackages({ selected, onSelect }: Props) {
   return (
-    <section className="max-w-6xl mx-auto px-5 pb-14">
+    <section className="max-w-6xl mx-auto px-5 pb-8 sm:pb-14">
 
       {/* ── МОБИЛЕ: вертикальный список на всю ширину ── */}
       <div className="flex flex-col gap-3 sm:hidden">
@@ -65,9 +65,9 @@ export default function PricingPackages({ selected, onSelect }: Props) {
               </div>
 
               {/* Фичи — одна колонка */}
-              <div className="px-4 pb-3 flex flex-col gap-1">
+              <div className="px-4 pb-3 flex flex-col gap-0.5">
                 {pkg.features.map(f => (
-                  <div key={f} className="flex items-center gap-1.5 text-[11px] text-white/45">
+                  <div key={f} className="flex items-center gap-1.5 text-[10px] text-white/45">
                     <Icon name="Check" size={10} style={{ color: pkg.color, flexShrink: 0 }} />
                     <span>{f}</span>
                   </div>
