@@ -106,21 +106,21 @@ export function DiscountSliderPanel({
       {hasAppliedDiscount && discountHistory.length > 0 && (
         <div className="px-4 py-4 space-y-3">
           {/* Плитки с текущими значениями */}
-          <div className="grid grid-cols-4 gap-2">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
             <div className="rounded-xl px-3 py-2.5 text-center" style={{ background: "#f59e0b18", border: "1px solid #f59e0b35" }}>
               <div className="text-[9px] uppercase tracking-wider font-semibold mb-1" style={{ color: "#f59e0b" }}>Скидка</div>
               <div className="text-base font-black" style={{ color: "#f59e0b" }}>{appliedDiscountPct}%</div>
             </div>
             <div className="rounded-xl px-3 py-2.5 text-center" style={{ background: "#ffffff08", border: `1px solid ${t.border}` }}>
               <div className="text-[9px] uppercase tracking-wider font-semibold mb-1 text-white/40">Сумма скидки</div>
-              <div className="text-sm font-black text-white/70">−{fmt(totalDiscountAmount)} ₽</div>
+              <div className="text-sm font-black text-white/70 whitespace-nowrap">−{fmt(totalDiscountAmount)} ₽</div>
             </div>
             <div className="rounded-xl px-3 py-2.5 text-center"
               style={{ background: accentColor + "18", border: `1px solid ${accentColor}35` }}>
               <div className="text-[9px] uppercase tracking-wider font-semibold mb-1" style={{ color: accentColor }}>
                 {isRealLoss ? "Убыток" : "Прибыль"}
               </div>
-              <div className="text-sm font-black" style={{ color: accentColor }}>
+              <div className="text-sm font-black whitespace-nowrap" style={{ color: accentColor }}>
                 {isRealLoss ? "" : "+"}{fmt(discountedProfit)} ₽
               </div>
             </div>
@@ -379,20 +379,20 @@ export function DiscountSliderPanel({
         )}
 
         {/* Футер: итог + кнопка */}
-        <div className="flex items-center gap-3">
+        <div className="flex flex-col gap-2">
           {discount > 0 && (
-            <div className="flex-1 grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-2 gap-2">
               <div className="flex items-center justify-between px-3 py-2 rounded-xl"
                 style={{ background: "#ffffff06", border: `1px solid ${t.border}` }}>
-                <span className="text-[10px] text-white/40">Выручка со скидкой</span>
-                <span className="text-[11px] font-bold text-white/70">{fmt(discountedIncome)} ₽</span>
+                <span className="text-[10px] text-white/40 leading-tight">Выручка<br/>со скидкой</span>
+                <span className="text-[11px] font-bold text-white/70 whitespace-nowrap">{fmt(discountedIncome)} ₽</span>
               </div>
               <div className="flex items-center justify-between px-3 py-2 rounded-xl"
                 style={{ background: accentColor + "15", border: `1px solid ${accentColor}35` }}>
-                <span className="text-[10px]" style={{ color: accentColor }}>
+                <span className="text-[10px] leading-tight whitespace-nowrap" style={{ color: accentColor }}>
                   {isRealLoss ? "Убыток" : "Заработаете"}
                 </span>
-                <span className="text-[11px] font-bold" style={{ color: accentColor }}>
+                <span className="text-[11px] font-bold whitespace-nowrap" style={{ color: accentColor }}>
                   {isRealLoss ? "" : "+"}{fmt(discountedProfit)} ₽
                 </span>
               </div>
@@ -401,7 +401,7 @@ export function DiscountSliderPanel({
           <button
             onClick={onApplyDiscount}
             disabled={discount === 0 || isRealLoss || isOverMax || applying}
-            className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-[11px] font-bold transition disabled:opacity-30 disabled:cursor-not-allowed hover:opacity-80 flex-shrink-0"
+            className="w-full flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl text-[11px] font-bold transition disabled:opacity-30 disabled:cursor-not-allowed hover:opacity-80"
             style={{ background: "rgba(245,158,11,0.15)", color: "#f59e0b", border: "1px solid rgba(245,158,11,0.3)" }}>
             {applying
               ? <><div className="w-3 h-3 border-2 border-current/30 border-t-current rounded-full animate-spin" /> Применяем...</>
