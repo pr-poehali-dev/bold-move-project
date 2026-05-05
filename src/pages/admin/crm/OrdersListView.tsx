@@ -66,7 +66,8 @@ export function OrdersListView({
     return list.filter(c =>
       (c.client_name || "").toLowerCase().includes(q) ||
       (c.phone || "").includes(q) ||
-      (c.address || "").toLowerCase().includes(q)
+      (c.address || "").toLowerCase().includes(q) ||
+      String(c.id).includes(q)
     );
   };
 
