@@ -4,6 +4,7 @@ import Icon from "@/components/ui/icon";
 import PhoneInput from "@/components/ui/PhoneInput";
 import { useTheme } from "./themeContext";
 import { DateTimePickerPopup } from "./DateTimePicker";
+import { isPhoneValid } from "@/hooks/use-phone";
 
 const ALL_STATUSES = [...LEAD_STATUSES, ...ORDER_STATUSES];
 
@@ -81,7 +82,7 @@ export function AddClientModal({ form, onChange, onSave, onClose }: {
           </div>
         </div>
         <div className="flex flex-col-reverse sm:flex-row gap-3 mt-5">
-          <button onClick={onSave} disabled={!form.client_name.trim()}
+          <button onClick={onSave} disabled={!form.client_name.trim() || (!!form.phone && !isPhoneValid(form.phone))}
             className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-white transition disabled:opacity-40"
             style={{ background: "#7c3aed" }}>
             Создать клиента

@@ -1,5 +1,6 @@
 import Icon from "@/components/ui/icon";
 import PhoneInput from "@/components/ui/PhoneInput";
+import { isPhoneValid } from "@/hooks/use-phone";
 
 interface Props {
   show: boolean;
@@ -71,7 +72,7 @@ export default function EstimateContactModal({
                 </div>
               </div>
               <div className="flex gap-2 mt-5">
-                <button onClick={onSave} disabled={saving}
+                <button onClick={onSave} disabled={saving || !isPhoneValid(phone)}
                   className="flex-1 py-2.5 rounded-xl text-sm font-bold text-white transition disabled:opacity-50 bg-gradient-to-r from-orange-500 to-rose-500">
                   {saving ? "Сохраняем..." : "Отправить"}
                 </button>
