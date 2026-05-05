@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { apiFetch } from "./api";
 import type { PriceItem } from "./types";
 
@@ -7,6 +7,7 @@ export function usePriceList(token: string) {
   const [loading, setLoading] = useState(false);
   const [aiLoadingId, setAiLoadingId] = useState<number | null>(null);
   const [aiDescLoadingId, setAiDescLoadingId] = useState<number | null>(null);
+  const loadedRef = useRef(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -15,7 +16,11 @@ export function usePriceList(token: string) {
     setLoading(false);
   }, []);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    if (loadedRef.current) return;
+    loadedRef.current = true;
+    load();
+  }, [load]);
 
   const saveField = async (item: PriceItem, field: keyof PriceItem, val: string) => {
     const updated = { ...item, [field]: field === "price" ? parseInt(val) || 0 : val };
@@ -57,14 +62,12 @@ export function usePriceList(token: string) {
   };
 
   const setCategoryMaterial = async (category: string, is_material: boolean) => {
-    console.log("[setCategoryMaterial] START", { category, is_material, token: token?.slice(0, 20) });
     setPrices(prev => prev.map(p => p.category === category ? { ...p, is_material } : p));
     try {
       const r = await apiFetch("category_settings", {
         method: "PUT",
         body: JSON.stringify({ category, is_material }),
       }, token);
-      console.log("[setCategoryMaterial] response", r.status, r.ok);
       if (!r.ok) {
         const err = await r.text();
         console.error("[setCategoryMaterial] error", r.status, err);
