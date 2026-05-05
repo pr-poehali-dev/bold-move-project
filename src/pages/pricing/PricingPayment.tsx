@@ -169,7 +169,7 @@ export default function PricingPayment({ selectedId }: Props) {
                       {b.badge}
                     </div>
                   )}
-                  <div className="text-xl sm:text-2xl font-black leading-none mb-1 whitespace-nowrap"
+                  <div className="text-xl sm:text-2xl font-black leading-none mb-1 break-words"
                     style={{ color: b.iconColor }}>
                     {b.value}
                   </div>
