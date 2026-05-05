@@ -40,6 +40,7 @@ export default function OwnAgentEditor({ isDark }: Props) {
     pdf_footer_address: user?.brand?.pdf_footer_address ?? user?.company_addr ?? "",
     telegram_url:       user?.brand?.telegram_url       ?? "",
     pdf_text_color:     user?.brand?.pdf_text_color     ?? "#111827",
+    nav_config:         user?.brand?.nav_config         ?? null,
   });
 
   // Профиль (название компании и сайт) — отдельно через update-profile
@@ -147,7 +148,7 @@ export default function OwnAgentEditor({ isDark }: Props) {
         const d = await res.json();
         if (!res.ok || d.error) throw new Error(d.error || "Ошибка сохранения профиля");
       }
-      updateUser({ brand, company_name: companyName, website });
+      updateUser({ brand: { ...user?.brand, ...brand }, company_name: companyName, website });
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
     } catch (e: unknown) {
