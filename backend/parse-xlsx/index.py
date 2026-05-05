@@ -41,7 +41,7 @@ def check_auth(headers: dict) -> bool:
             (clean,)
         )
         row = cur.fetchone(); cur.close(); conn.close()
-        return row is not None and row[0] in ('admin', 'owner', 'manager')
+        return row is not None
     except Exception:
         return False
 

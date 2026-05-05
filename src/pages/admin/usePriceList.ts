@@ -62,21 +62,11 @@ export function usePriceList(token: string) {
   };
 
   const setCategoryMaterial = async (category: string, is_material: boolean) => {
-    setPrices(prev => prev.map(p => p.category === category ? { ...p, is_material } : p));
-    try {
-      const r = await apiFetch("category_settings", {
-        method: "PUT",
-        body: JSON.stringify({ category, is_material }),
-      }, token);
-      if (!r.ok) {
-        const err = await r.text();
-        console.error("[setCategoryMaterial] error", r.status, err);
-        await load();
-      }
-    } catch (e) {
-      console.error("[setCategoryMaterial] exception", e);
-      await load();
-    }
+    await apiFetch("category_settings", {
+      method: "PUT",
+      body: JSON.stringify({ category, is_material }),
+    }, token);
+    await load();
   };
 
   const generateSynonyms = async (item: PriceItem) => {
