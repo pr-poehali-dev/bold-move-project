@@ -230,13 +230,12 @@ export default function Index() {
         }`} style={{ height: "55%", maxHeight: "55%" }}>
           <div className="h-full bg-[#0e0e15]/98 backdrop-blur-2xl border-t border-white/[0.08] rounded-t-2xl overflow-hidden shadow-2xl shadow-black/50">
             {(() => {
-              const canEdit = user?.role === "company" || user?.is_master;
-              const goEdit = canEdit ? () => { window.location.href = "/company?tab=agent"; } : undefined;
+              const canEdit = !!(user?.role === "company" || user?.is_master);
               return (<>
                 {panel === "livechat"   && <LiveChat         onClose={closePanel} />}
-                {panel === "booking"    && <PanelBooking    onClose={closePanel} onEdit={goEdit} />}
-                {panel === "production" && !brand.nav_config && <PanelProduction onClose={closePanel} onEdit={goEdit} />}
-                {panel === "portfolio"  && !brand.nav_config && <PanelPortfolio  onClose={closePanel} onEdit={goEdit} />}
+                {panel === "booking"    && <PanelBooking    onClose={closePanel} />}
+                {panel === "production" && !brand.nav_config && <PanelProduction onClose={closePanel} />}
+                {panel === "portfolio"  && !brand.nav_config && <PanelPortfolio  onClose={closePanel} />}
                 {panel === "tips"       && <PanelTips       onAsk={askFromPanel} onClose={closePanel} />}
                 {panel === "reviews"    && <PanelReviews    onClose={closePanel} />}
                 {panel === "faq"        && <PanelFaq        onClose={closePanel} />}
@@ -244,7 +243,7 @@ export default function Index() {
                 {panel === "other"      && <PanelOther      onClose={closePanel} onPanel={setPanel} />}
                 {panel !== "none" && brand.nav_config && (() => {
                   const btn = brand.nav_config!.find(b => b.id === panel && b.action === "panel");
-                  return btn ? <PanelCustom btn={btn} onClose={closePanel} onEdit={goEdit} /> : null;
+                  return btn ? <PanelCustom btn={btn} onClose={closePanel} onEdit={canEdit ? () => {} : undefined} /> : null;
                 })()}
               </>);
             })()}
