@@ -131,36 +131,35 @@ export default function PricingEcosystem() {
 
       {/* Нижняя плашка — итог */}
       <div
-        className="rounded-[20px] px-4 py-4 sm:px-6 sm:py-5 flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-6"
+        className="rounded-[20px] px-3.5 py-3.5 sm:px-6 sm:py-5 flex items-center gap-3 sm:gap-6"
         style={{
           background: "radial-gradient(160% 140% at 0% 50%, rgba(167,139,250,0.12), rgba(96,165,250,0.06) 50%, rgba(10,10,20,0) 80%), #0a0a14",
           border: "1.5px solid rgba(167,139,250,0.22)",
         }}
       >
         <div
-          className="w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0"
+          className="w-8 h-8 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl flex items-center justify-center flex-shrink-0"
           style={{ background: "rgba(167,139,250,0.18)" }}
         >
-          <Icon name="Sparkles" size={22} style={{ color: "#a78bfa" }} />
+          <Icon name="Sparkles" size={15} style={{ color: "#a78bfa" }} />
         </div>
-        <div className="flex-1">
-          <div className="text-[15px] font-black text-white mb-1">
+        <div className="flex-1 min-w-0">
+          <div className="text-[13px] sm:text-[15px] font-black text-white mb-0.5 leading-snug">
             Ваши клиенты уверены — это ваш собственный сервис
           </div>
-          <div className="text-[12px] text-white/50 leading-relaxed">
-            Никакого упоминания нашего бренда. Ваш логотип, ваши цвета, ваши уведомления в Telegram или Max —
-            клиенты видят только вашу компанию.
+          <div className="text-[10px] sm:text-[12px] text-white/50 leading-snug">
+            Ваш логотип, цвета и контакты везде — клиенты видят только вас.
           </div>
         </div>
         <a
           href="https://t.me/poehalidev"
           target="_blank"
           rel="noopener noreferrer"
-          className="flex-shrink-0 flex items-center gap-2 px-5 py-3 rounded-2xl text-[13px] font-black transition hover:opacity-80 whitespace-nowrap"
+          className="flex-shrink-0 flex items-center gap-1.5 px-3.5 sm:px-5 py-2.5 sm:py-3 rounded-xl sm:rounded-2xl text-[11px] sm:text-[13px] font-black transition hover:opacity-80 whitespace-nowrap"
           style={{ background: "linear-gradient(135deg, #a78bfa, #60a5fa)", color: "#fff" }}
         >
-          <Icon name="Send" size={14} />
-          Обсудить с нами
+          <Icon name="Send" size={12} />
+          Обсудить
         </a>
       </div>
     </section>
