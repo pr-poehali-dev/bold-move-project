@@ -2,6 +2,15 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Скрыть скроллбар но сохранить скролл (для тулбара на мобиле) */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
 /* ── Rich text: теги форматирования в блоках ─────────────────────────── */
 [dangerouslySetInnerHTML],
 [data-rich] {
