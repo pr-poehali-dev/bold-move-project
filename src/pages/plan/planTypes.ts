@@ -644,17 +644,17 @@ export function rebuildFromAnglesAndLengths(
     chain.push(s.toId);
     cur = s.toId;
   }
-  if (chain.length !== points.length) return null;
+  if (chain.length !== points.length) { console.warn('[rebuild] chain mismatch', chain.length, points.length); return null; }
 
   const orderedSegs: Segment[] = [];
   for (let i = 0; i < chain.length; i++) {
     const s = segments.find(sg => sg.fromId === chain[i] && sg.toId === chain[(i + 1) % chain.length]);
-    if (!s) return null;
+    if (!s) { console.warn('[rebuild] missing seg at', i, chain[i], chain[(i+1)%chain.length]); return null; }
     orderedSegs.push(s);
   }
 
   // Все стороны должны быть введены
-  if (!orderedSegs.every(s => s.lengthCm !== null && s.lengthCm > 0)) return null;
+  if (!orderedSegs.every(s => s.lengthCm !== null && s.lengthCm > 0)) { console.warn('[rebuild] not all lengths set'); return null; }
 
   // Масштаб из первого введённого отрезка (или сохраняем существующий)
   let scale = baseScaleIn;
@@ -667,7 +667,7 @@ export function rebuildFromAnglesAndLengths(
       if (px > 0 && s.lengthCm) scale = px / s.lengthCm;
     }
   }
-  if (!scale) return null;
+  if (!scale) { console.warn('[rebuild] no scale'); return null; }
 
   // Строим новые координаты: A фиксирована, идём по направлениям оригинала × введённые длины
   const p0 = points.find(p => p.id === chain[0])!;
