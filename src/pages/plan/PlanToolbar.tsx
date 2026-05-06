@@ -1,6 +1,7 @@
 import React from "react";
 import Icon from "@/components/ui/icon";
 import type { ToolMode, PlanSettings, PlanState } from "./planTypes";
+import type { SaveStatus } from "./usePlanStorage";
 
 interface Props {
   tool: ToolMode;
@@ -10,6 +11,10 @@ interface Props {
   canUndo: boolean;
   canRedo: boolean;
   isMobile: boolean;
+  saveStatus: SaveStatus;
+  isDirty: boolean;
+  isLoggedIn: boolean;
+  currentPlanId: number | null;
   onToolChange: (t: ToolMode) => void;
   onSettingChange: (patch: Partial<PlanSettings>) => void;
   onUndo: () => void;
@@ -20,6 +25,8 @@ interface Props {
   onZoomFit: () => void;
   onOpenPanel: () => void;
   onExport: () => void;
+  onSave: () => void;
+  onOpenLibrary: () => void;
 }
 
 interface ToolDef {
@@ -43,11 +50,16 @@ const TOOLS: ToolDef[] = [
 
 export default function PlanToolbar({
   tool, phase, isClosed, settings, canUndo, canRedo, isMobile,
+  saveStatus, isDirty, isLoggedIn, currentPlanId,
   onToolChange, onSettingChange, onUndo, onRedo, onReset,
-  onZoomIn, onZoomOut, onZoomFit, onOpenPanel, onExport,
+  onZoomIn, onZoomOut, onZoomFit, onOpenPanel, onExport, onSave, onOpenLibrary,
 }: Props) {
 
   const [showMore, setShowMore] = React.useState(false);
+
+  // Иконка и цвет статуса сохранения
+  const saveIcon  = saveStatus === "saving" ? "Loader2" : saveStatus === "saved" ? "CheckCircle2" : saveStatus === "error" ? "AlertCircle" : isDirty ? "Save" : "Cloud";
+  const saveColor = saveStatus === "saving" ? "text-blue-400" : saveStatus === "saved" ? "text-emerald-400" : saveStatus === "error" ? "text-rose-400" : isDirty ? "text-amber-300" : "text-white/30";
 
   const toolBtn = (active: boolean, disabled: boolean, danger: boolean) =>
     [
@@ -164,6 +176,24 @@ export default function PlanToolbar({
           </span>
           <button className={iconBtn()} onClick={onZoomIn}><Icon name="ZoomIn" size={14} /></button>
           <button className={iconBtn()} onClick={onZoomFit}><Icon name="Maximize2" size={13} /></button>
+
+          {/* Сохранить */}
+          <button onClick={onSave} disabled={saveStatus === "saving"}
+            className={`w-9 h-9 rounded-lg flex items-center justify-center transition-all shrink-0 border ${
+              isDirty || !currentPlanId
+                ? "bg-violet-500/20 border-violet-500/40 text-violet-200 hover:bg-violet-500/30"
+                : `bg-white/[0.03] border-white/[0.07] ${saveColor}`
+            }`}
+            title="Сохранить (Ctrl+S)">
+            <Icon name={saveIcon} size={14} className={saveStatus === "saving" ? "animate-spin" : ""} />
+          </button>
+
+          {/* Библиотека */}
+          <button onClick={onOpenLibrary}
+            className="w-9 h-9 rounded-lg bg-white/[0.03] border border-white/[0.07] text-white/40 hover:bg-white/[0.08] flex items-center justify-center transition-all shrink-0"
+            title="Мои планы (L)">
+            <Icon name="FolderOpen" size={14} />
+          </button>
 
           {/* Экспорт */}
           <button onClick={onExport}
@@ -292,9 +322,32 @@ export default function PlanToolbar({
 
       <div className="flex-1 min-w-2" />
 
+      {/* Сохранить */}
+      <button onClick={onSave} disabled={saveStatus === "saving"}
+        className={`flex items-center gap-1.5 px-3 h-8 rounded-lg text-[11px] font-bold border transition-all shrink-0 disabled:opacity-50 ${
+          isDirty || !currentPlanId
+            ? "bg-violet-500/20 border-violet-500/40 text-violet-200 hover:bg-violet-500/30"
+            : `bg-white/[0.04] border-white/[0.08] ${saveColor} hover:bg-white/[0.08]`
+        }`}
+        title="Сохранить (Ctrl+S)">
+        <Icon name={saveIcon} size={12} className={saveStatus === "saving" ? "animate-spin" : ""} />
+        <span className="hidden sm:inline">
+          {saveStatus === "saving" ? "Сохранение…" : saveStatus === "saved" ? "Сохранён" : "Сохранить"}
+        </span>
+      </button>
+
+      {/* Мои планы */}
+      <button onClick={onOpenLibrary}
+        className="flex items-center gap-1.5 px-3 h-8 rounded-lg text-[11px] font-semibold border bg-white/[0.03] border-white/[0.08] text-white/45 hover:bg-white/[0.08] hover:text-white/70 transition-all shrink-0"
+        title="Мои планы (L)">
+        <Icon name="FolderOpen" size={12} />
+        <span className="hidden md:inline">Планы</span>
+      </button>
+
+      {/* Экспорт */}
       <button onClick={onExport}
         className="flex items-center gap-1.5 px-3 h-8 rounded-lg text-[11px] font-semibold border bg-emerald-500/10 border-emerald-500/20 text-emerald-400 hover:bg-emerald-500/20 transition-all shrink-0"
-        title="Экспорт SVG / PNG">
+        title="Экспорт SVG / PNG (E)">
         <Icon name="Download" size={12} />
         <span className="hidden sm:inline">Экспорт</span>
       </button>

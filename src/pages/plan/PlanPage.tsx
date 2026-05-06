@@ -4,8 +4,12 @@ import PlanToolbar from "./PlanToolbar";
 import PlanSidebar from "./PlanSidebar";
 import PlanBottomSheet from "./PlanBottomSheet";
 import PlanExportModal from "./PlanExportModal";
+import PlanLibraryModal from "./PlanLibraryModal";
+import Icon from "@/components/ui/icon";
 import type { PlanState, ToolMode, PlanSettings } from "./planTypes";
 import { INITIAL_STATE } from "./planTypes";
+import { usePlanStorage } from "./usePlanStorage";
+import { useAuth } from "@/context/AuthContext";
 
 // ── Undo/Redo ─────────────────────────────────────────────────────────────────
 const MAX_HISTORY = 80;
@@ -27,12 +31,17 @@ function useHistory(initial: PlanState) {
 
   const undo  = useCallback(() => setCursor(c => Math.max(0, c - 1)), []);
   const redo  = useCallback(() => setCursor(c => Math.min(history.length - 1, c + 1)), [history.length]);
-  const reset = useCallback(() => { setHistory([INITIAL_STATE]); setCursor(0); }, []);
+
+  // reset с возможностью передать новое начальное состояние
+  const reset = useCallback((next?: PlanState) => {
+    setHistory([next ?? INITIAL_STATE]);
+    setCursor(0);
+  }, []);
 
   return { state, push, undo, redo, reset, canUndo: cursor > 0, canRedo: cursor < history.length - 1 };
 }
 
-// ── Хук определения мобильного устройства ─────────────────────────────────────
+// ── Хук мобильного ─────────────────────────────────────────────────────────────
 function useIsMobile() {
   const [isMobile, setIsMobile] = React.useState(() => window.innerWidth < 768);
   useEffect(() => {
@@ -46,10 +55,46 @@ function useIsMobile() {
 // ── Главная страница ──────────────────────────────────────────────────────────
 export default function PlanPage() {
   const { state, push, undo, redo, reset, canUndo, canRedo } = useHistory(INITIAL_STATE);
+  const { user, token } = useAuth();
   const isMobile = useIsMobile();
-  const [sheetOpen,  setSheetOpen]  = React.useState(false);
-  const [exportOpen, setExportOpen] = React.useState(false);
 
+  const [sheetOpen,   setSheetOpen]   = React.useState(false);
+  const [exportOpen,  setExportOpen]  = React.useState(false);
+  const [libraryOpen, setLibraryOpen] = React.useState(false);
+
+  // ── Облачное хранилище ────────────────────────────────────────────────────
+  const storage = usePlanStorage();
+
+  // Загружаем список планов при логине
+  useEffect(() => {
+    if (token) storage.loadPlans(token);
+  }, [token]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Помечаем "грязным" при каждом изменении состояния
+  const prevStateRef = useRef(state);
+  useEffect(() => {
+    if (prevStateRef.current !== state) {
+      prevStateRef.current = state;
+      // Не помечаем грязным при первом рендере
+      if (state.points.length > 0 || state.segments.length > 0) {
+        storage.markDirty();
+      }
+    }
+  }, [state]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Автосохранение каждые 60 секунд если есть изменения
+  const autoSaveRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  useEffect(() => {
+    if (!token || !storage.currentPlanId) return;
+    autoSaveRef.current = setInterval(() => {
+      if (storage.isDirty) {
+        storage.save(state, token);
+      }
+    }, 60_000);
+    return () => { if (autoSaveRef.current) clearInterval(autoSaveRef.current); };
+  }, [token, storage.currentPlanId, storage.isDirty, state]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Обработчики изменений ─────────────────────────────────────────────────
   const handleChange = useCallback((patch: Partial<PlanState>) => {
     push({ ...state, ...patch });
   }, [state, push]);
@@ -62,7 +107,7 @@ export default function PlanPage() {
     push({ ...state, tool: t });
   }, [state, push]);
 
-  // Zoom
+  // ── Zoom ──────────────────────────────────────────────────────────────────
   const zoomIn = useCallback(() =>
     handleSettingChange({ zoom: Math.min(4, Math.round((state.settings.zoom + 0.2) * 10) / 10) }),
     [state, handleSettingChange]);
@@ -88,31 +133,68 @@ export default function PlanPage() {
     handleSettingChange({ zoom: newZoom, panX: Math.round(panX), panY: Math.round(panY) });
   }, [state.points, handleSettingChange]);
 
-  // Keyboard shortcuts
+  // ── Сохранение ───────────────────────────────────────────────────────────
+  const handleSave = useCallback(async () => {
+    if (!token) { setLibraryOpen(true); return; }
+    await storage.save(state, token);
+    storage.loadPlans(token);
+  }, [token, state, storage]);
+
+  const handleSaveAs = useCallback(async (name: string) => {
+    if (!token) return;
+    const id = await storage.saveAs(state, token, name);
+    if (id) storage.loadPlans(token);
+  }, [token, state, storage]);
+
+  const handleLoad = useCallback(async (planId: number) => {
+    if (!token) return;
+    const loaded = await storage.load(planId, token);
+    if (loaded) reset(loaded);
+  }, [token, storage, reset]);
+
+  const handleDelete = useCallback(async (planId: number) => {
+    if (!token) return;
+    await storage.deletePlan(planId, token);
+  }, [token, storage]);
+
+  const handleRename = useCallback(async (planId: number, name: string) => {
+    if (!token) return;
+    await storage.rename(planId, name, token);
+  }, [token, storage]);
+
+  const handleNew = useCallback(() => {
+    storage.newPlan();
+    reset(INITIAL_STATE);
+  }, [storage, reset]);
+
+  // ── Клавиатура ────────────────────────────────────────────────────────────
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const tag = (e.target as Element).tagName;
       if (["INPUT", "TEXTAREA", "SELECT"].includes(tag)) return;
 
+      // Ctrl+S — сохранить
+      if ((e.ctrlKey || e.metaKey) && e.key === "s") { e.preventDefault(); handleSave(); return; }
       if ((e.ctrlKey || e.metaKey) && e.key === "z") { e.preventDefault(); undo(); return; }
       if ((e.ctrlKey || e.metaKey) && (e.key === "y" || (e.shiftKey && e.key === "z"))) { e.preventDefault(); redo(); return; }
 
       const keys: Record<string, ToolMode> = { d: "draw", v: "move", s: "segment", g: "diagonal", a: "arc", r: "dimline", x: "delete" };
       const k = e.key.toLowerCase();
-      if (keys[k]) { handleToolChange(keys[k]); return; }
+      if (!e.ctrlKey && !e.metaKey && keys[k]) { handleToolChange(keys[k]); return; }
       if (k === "o") handleSettingChange({ ortho: !state.settings.ortho });
       if (k === "m") handleSettingChange({ snapToPoints: !state.settings.snapToPoints });
       if (k === "+" || k === "=") zoomIn();
       if (k === "-") zoomOut();
       if (k === "0") zoomFit();
       if (k === "p") setSheetOpen(v => !v);
-      if (k === "e") setExportOpen(true); // E = экспорт
+      if (k === "e") setExportOpen(true);
+      if (k === "l") setLibraryOpen(true);
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [undo, redo, handleToolChange, handleSettingChange, state.settings, zoomIn, zoomOut, zoomFit]);
+  }, [undo, redo, handleSave, handleToolChange, handleSettingChange, state.settings, zoomIn, zoomOut, zoomFit]);
 
-  // Resize боковой панели (только десктоп)
+  // ── Resize сайдбара ───────────────────────────────────────────────────────
   const [sidebarW, setSidebarW] = React.useState(300);
   const sidebarDragRef = useRef<{ startX: number; startW: number } | null>(null);
 
@@ -132,6 +214,9 @@ export default function PlanPage() {
     window.addEventListener("mouseup", onUp);
   };
 
+  const isLoggedIn = !!user && !!token;
+  const currentPlanName = storage.plans.find(p => p.id === storage.currentPlanId)?.name ?? state.room.name ?? "Без названия";
+
   return (
     <div className="flex flex-col bg-[#0f1117] overflow-hidden" style={{ height: "100dvh" }}>
 
@@ -144,27 +229,31 @@ export default function PlanPage() {
         canUndo={canUndo}
         canRedo={canRedo}
         isMobile={isMobile}
+        saveStatus={storage.saveStatus}
+        isDirty={storage.isDirty}
+        isLoggedIn={isLoggedIn}
+        currentPlanId={storage.currentPlanId}
         onToolChange={handleToolChange}
         onSettingChange={handleSettingChange}
         onUndo={undo}
         onRedo={redo}
-        onReset={reset}
+        onReset={() => reset()}
         onZoomIn={zoomIn}
         onZoomOut={zoomOut}
         onZoomFit={zoomFit}
         onOpenPanel={() => setSheetOpen(true)}
         onExport={() => setExportOpen(true)}
+        onSave={handleSave}
+        onOpenLibrary={() => setLibraryOpen(true)}
       />
 
       {/* Основная область */}
       <div className="flex flex-1 overflow-hidden relative">
 
-        {/* Холст — всегда на всю ширину на мобиле */}
         <div id="plan-canvas-wrap" className="flex-1 overflow-hidden">
           <PlanCanvas state={state} onChange={handleChange} />
         </div>
 
-        {/* Десктоп: боковая панель справа */}
         {!isMobile && (<>
           <div
             className="w-1 bg-white/[0.04] hover:bg-violet-500/30 cursor-col-resize transition-colors shrink-0"
@@ -175,12 +264,10 @@ export default function PlanPage() {
           </div>
         </>)}
 
-        {/* Мобиле: кнопка-таб открыть панель (если закрыта) */}
         {isMobile && !sheetOpen && (
           <button
             onClick={() => setSheetOpen(true)}
-            className="absolute bottom-4 right-4 w-12 h-12 rounded-2xl bg-violet-600 shadow-lg shadow-violet-500/30 flex items-center justify-center text-white z-20"
-          >
+            className="absolute bottom-4 right-4 w-12 h-12 rounded-2xl bg-violet-600 shadow-lg shadow-violet-500/30 flex items-center justify-center text-white z-20">
             <Icon name="PanelBottom" size={20} />
           </button>
         )}
@@ -196,9 +283,30 @@ export default function PlanPage() {
         />
       )}
 
-      {/* Модалка экспорта */}
+      {/* Модалки */}
       {exportOpen && (
         <PlanExportModal state={state} onClose={() => setExportOpen(false)} />
+      )}
+
+      {libraryOpen && (
+        <PlanLibraryModal
+          plans={storage.plans}
+          loading={storage.plansLoading}
+          saveStatus={storage.saveStatus}
+          lastSavedAt={storage.lastSavedAt}
+          isDirty={storage.isDirty}
+          currentPlanId={storage.currentPlanId}
+          currentPlanName={currentPlanName}
+          isLoggedIn={isLoggedIn}
+          onClose={() => setLibraryOpen(false)}
+          onLoad={handleLoad}
+          onSave={handleSave}
+          onSaveAs={handleSaveAs}
+          onDelete={handleDelete}
+          onRename={handleRename}
+          onNew={handleNew}
+          onLoginRequest={() => { setLibraryOpen(false); /* редиректим на /login если нужно */ }}
+        />
       )}
 
       {/* Статус-бар — только на десктопе */}
@@ -208,10 +316,23 @@ export default function PlanPage() {
           <span className="text-[10px] text-white/20 font-mono">Отрезков: {state.segments.length}</span>
           <span className="text-[10px] text-white/20 font-mono">Диаг: {state.diagonals.length}</span>
           {state.isClosed && <span className="text-[10px] text-emerald-500/50 font-mono">● Замкнуто</span>}
-          <span className="text-[10px] text-white/15 font-mono ml-auto">
+          {/* Статус сохранения */}
+          {isLoggedIn && (
+            <span className={`text-[10px] font-mono ml-auto mr-0 ${
+              storage.saveStatus === "saving" ? "text-blue-400/70" :
+              storage.saveStatus === "saved"  ? "text-emerald-500/50" :
+              storage.saveStatus === "error"  ? "text-rose-400/70" :
+              storage.isDirty ? "text-amber-400/60" : "text-white/15"
+            }`}>
+              {storage.saveStatus === "saving" ? "⟳ Сохранение…" :
+               storage.saveStatus === "saved"  ? "✓ Сохранён" :
+               storage.saveStatus === "error"  ? "✗ Ошибка" :
+               storage.isDirty ? "● Не сохранён" : "○ Актуален"}
+            </span>
+          )}
+          <span className="text-[10px] text-white/15 font-mono">
             {state.tool} · {Math.round(state.settings.zoom * 100)}%
             {state.settings.ortho ? " · Орто" : ""}
-            {state.settings.snapToPoints ? " · Магнит" : ""}
           </span>
         </div>
       )}
