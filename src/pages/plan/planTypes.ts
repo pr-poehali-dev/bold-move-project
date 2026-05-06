@@ -183,6 +183,89 @@ export function moveEndPoint(
 }
 
 /**
+ * Перестроить 4-угольник как правильный прямоугольник (все углы 90°).
+ * Фиксируем точку A (points[0]), строим B, C, D по осям X/Y.
+ * Размеры берём из lengthCm отрезков (если введены), иначе из пикселей/масштаба.
+ */
+export function buildOrthoRect(
+  points: Point[],
+  segments: Segment[],
+  baseScaleIn: number | null,
+): { points: Point[]; baseScale: number } | null {
+  if (points.length !== 4 || segments.length !== 4) return null;
+
+  // Строим цепочку A→B→C→D
+  const chain: string[] = [points[0].id];
+  let cur = points[0].id;
+  for (let i = 0; i < 4; i++) {
+    const s = segments.find(sg => sg.fromId === cur);
+    if (!s) return null;
+    if (chain.includes(s.toId)) break;
+    chain.push(s.toId);
+    cur = s.toId;
+  }
+  if (chain.length !== 4) return null;
+
+  const orderedSegs: Segment[] = [];
+  for (let i = 0; i < 4; i++) {
+    const s = segments.find(sg => sg.fromId === chain[i] && sg.toId === chain[(i + 1) % 4]);
+    if (!s) return null;
+    orderedSegs.push(s);
+  }
+
+  // Масштаб
+  let scale = baseScaleIn;
+  if (!scale) {
+    for (const s of orderedSegs) {
+      if (!s.lengthCm || s.lengthCm <= 0) continue;
+      const pa = points.find(p => p.id === s.fromId);
+      const pb = points.find(p => p.id === s.toId);
+      if (!pa || !pb) continue;
+      const px = distPx(pa, pb);
+      if (px > 0) { scale = px / s.lengthCm; break; }
+    }
+  }
+  if (!scale) return null;
+
+  // Длины в пикселях для каждого отрезка
+  const getLenPx = (s: Segment, idx: number): number => {
+    if (s.lengthCm && s.lengthCm > 0) return s.lengthCm * scale!;
+    const pa = points.find(p => p.id === s.fromId);
+    const pb = points.find(p => p.id === s.toId);
+    return pa && pb ? distPx(pa, pb) : 100;
+  };
+
+  const wPx = getLenPx(orderedSegs[0], 0); // A-B (горизонталь)
+  const hPx = getLenPx(orderedSegs[1], 1); // B-C (вертикаль)
+
+  // Определяем ориентацию по оригинальным точкам A и B
+  const ptA = points.find(p => p.id === chain[0])!;
+  const ptB = points.find(p => p.id === chain[1])!;
+  const dx = ptB.x - ptA.x;
+  const dy = ptB.y - ptA.y;
+  // Основная ось A-B
+  const abLen = Math.sqrt(dx * dx + dy * dy) || 1;
+  const ux = dx / abLen, uy = dy / abLen;
+  // Перпендикуляр (B-C)
+  const vx = -uy, vy = ux;
+
+  const ax = ptA.x, ay = ptA.y;
+  const bx = ax + ux * wPx, by = ay + uy * wPx;
+  const cx = bx + vx * hPx, cy = by + vy * hPx;
+  const dx2 = ax + vx * hPx, dy2 = ay + vy * hPx;
+
+  const coords: Record<string, { x: number; y: number }> = {
+    [chain[0]]: { x: ax, y: ay },
+    [chain[1]]: { x: bx, y: by },
+    [chain[2]]: { x: cx, y: cy },
+    [chain[3]]: { x: dx2, y: dy2 },
+  };
+
+  const newPoints = points.map(p => coords[p.id] ? { ...p, ...coords[p.id] } : p);
+  return { points: newPoints, baseScale: scale };
+}
+
+/**
  * Пересчитать позиции ВСЕХ точек фигуры по заданным длинам отрезков.
  *
  * baseScale (px/cm) устанавливается при первом вводе и НИКОГДА не меняется.

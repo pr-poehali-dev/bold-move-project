@@ -3,7 +3,7 @@ import Icon from "@/components/ui/icon";
 import type { PlanState, Segment, DiagonalDef, PlanSettings, RoomParams } from "./planTypes";
 import {
   pointLabel, segmentLabel, distPx, pxToCm, calcScale, angleDeg,
-  buildAutoDiagonals, polygonArea, polygonPerimeter, genId, moveEndPoint,
+  buildAutoDiagonals, polygonArea, polygonPerimeter, genId, moveEndPoint, buildOrthoRect,
 } from "./planTypes";
 import { Section, LengthRow } from "./PlanSidebarShared";
 
@@ -65,6 +65,15 @@ export default function DrawingTab({ state, onChange }: Props) {
   const updateSegment = (id: string, patch: Partial<Segment>) => {
     const newSegments = segments.map(s => s.id === id ? { ...s, ...patch } : s);
     if (patch.lengthCm !== undefined && patch.lengthCm !== null && patch.lengthCm > 0) {
+      // Ортогональный режим + 4 точки → строим правильный прямоугольник
+      if (settings.ortho && points.length === 4) {
+        const result = buildOrthoRect(points, newSegments, state.baseScale ?? null);
+        if (result) {
+          const newDiags = buildAutoDiagonals(result.points, diagonals);
+          onChange({ segments: newSegments, points: result.points, diagonals: newDiags, baseScale: result.baseScale });
+          return;
+        }
+      }
       const result = moveEndPoint(points, newSegments, id, patch.lengthCm, state.baseScale ?? null);
       if (result) {
         const newDiags = buildAutoDiagonals(result.points, diagonals);
