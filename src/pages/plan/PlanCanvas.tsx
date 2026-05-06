@@ -14,8 +14,8 @@ interface Props {
 
 const PT_R       = 7;    // радиус точки (чуть больше для тача)
 const PT_HIT     = 22;   // зона клика по точке на тач
-const SNAP_THR   = 20;
-const CLOSE_THR  = 28;   // порог замыкания (больше для пальца)
+const SNAP_THR   = 30;   // увеличен для надёжного снаппинга на тач
+const CLOSE_THR  = 30;   // порог замыкания (больше для пальца)
 const DIM_OFF    = 28;
 
 export default function PlanCanvas({ state, onChange }: Props) {
@@ -54,23 +54,37 @@ export default function PlanCanvas({ state, onChange }: Props) {
   }, [zoom, panX, panY]);
 
   const applySnap = useCallback((rawX: number, rawY: number, excludeId: string | null = null) => {
+    // Сначала пробуем привязку к точке — если нашли, ortho не трогаем
+    const snappedFirst = snapToPoint(rawX, rawY, points, excludeId, SNAP_THR, snapPts);
+    if (snappedFirst.snapped) {
+      return { x: snappedFirst.x, y: snappedFirst.y, snapped: true };
+    }
+    // Нет snap к точке — применяем сетку и ortho
     let x = snapVal(rawX, gridSize, showGrid);
     let y = snapVal(rawY, gridSize, showGrid);
     if (ortho && points.length > 0 && tool === "draw" && !isClosed) {
       const o = orthoPoint(points[points.length - 1], x, y);
       x = o.x; y = o.y;
     }
-    const snapped = snapToPoint(x, y, points, excludeId, SNAP_THR, snapPts);
-    return { x: snapped.x, y: snapped.y };
+    return { x, y, snapped: false };
   }, [gridSize, showGrid, ortho, points, tool, isClosed, snapPts]);
 
   // ── Ghost предпросмотр (только на десктопе) ──────────────────────────────
   const [ghost, setGhost] = React.useState<{ x: number; y: number; willClose: boolean } | null>(null);
 
+  // ── Инструмент dimline: первая выбранная точка ────────────────────────────
+  const [dimLineFrom, setDimLineFrom] = React.useState<string | null>(null);
+
   // ── Контекстное меню ─────────────────────────────────────────────────────
   const [ctxMenu, setCtxMenu] = React.useState<{
     x: number; y: number; type: "point" | "segment" | "diagonal"; id: string
   } | null>(null);
+
+  // ════════════════════════════════════════════════════════════════════════
+  // Сбрасываем dimLineFrom при смене инструмента
+  useEffect(() => {
+    if (tool !== "dimline") setDimLineFrom(null);
+  }, [tool]);
 
   // ════════════════════════════════════════════════════════════════════════
   // MOUSE EVENTS
@@ -88,6 +102,10 @@ export default function PlanCanvas({ state, onChange }: Props) {
       const { x, y } = applySnap(raw.x, raw.y);
       const willClose = points.length >= 3 && distPx({ id: "", x, y }, points[0]) < CLOSE_THR;
       setGhost({ x: willClose ? points[0].x : x, y: willClose ? points[0].y : y, willClose });
+    } else if (tool === "dimline" && dimLineFrom) {
+      const raw = clientToSvg(e.clientX, e.clientY);
+      const { x, y } = applySnap(raw.x, raw.y);
+      setGhost({ x, y, willClose: false });
     } else {
       setGhost(null);
     }
@@ -97,7 +115,7 @@ export default function PlanCanvas({ state, onChange }: Props) {
       const newPts = points.map(p => p.id === dragRef.current!.pointId ? { ...p, x, y } : p);
       onChange({ points: newPts, diagonals: buildAutoDiagonals(newPts, diagonals) });
     }
-  }, [tool, phase, isClosed, points, clientToSvg, applySnap, diagonals, onChange, settings, zoom]);
+  }, [tool, phase, isClosed, points, dimLineFrom, clientToSvg, applySnap, diagonals, onChange, settings, zoom]);
 
   const handleMouseDown = useCallback((e: React.MouseEvent<SVGSVGElement>) => {
     if (e.button === 1 || (e.button === 0 && e.altKey)) {
@@ -246,6 +264,15 @@ export default function PlanCanvas({ state, onChange }: Props) {
           const newSegs = segments.filter(s => s.fromId !== hitPt.id && s.toId !== hitPt.id);
           const newDiags = newPts.length >= 3 ? buildAutoDiagonals(newPts, diagonals) : [];
           onChange({ points: newPts, segments: newSegs, diagonals: newDiags, isClosed: isClosed && newPts.length >= 3, selectedPointId: null });
+        } else if (tool === "dimline") {
+          if (!dimLineFrom) {
+            setDimLineFrom(hitPt.id);
+            onChange({ selectedPointId: hitPt.id });
+          } else if (dimLineFrom !== hitPt.id) {
+            const newDl: DimLine = { id: genId("dl"), fromId: dimLineFrom, toId: hitPt.id, offsetPx: DIM_OFF, visible: true, labelCm: null };
+            onChange({ dimLines: [...dimLines, newDl], selectedDimLineId: newDl.id, selectedPointId: null });
+            setDimLineFrom(null);
+          }
         } else {
           onChange({ selectedPointId: hitPt.id, selectedSegmentId: null, selectedDiagonalId: null });
         }
@@ -305,7 +332,7 @@ export default function PlanCanvas({ state, onChange }: Props) {
     }
 
     dragRef.current = null; panRef.current = null; didMoveRef.current = false;
-  }, [tool, phase, isClosed, points, segments, diagonals, clientToSvg, applySnap, onChange, clearLongPress]);
+  }, [tool, phase, isClosed, points, segments, diagonals, dimLines, dimLineFrom, clientToSvg, applySnap, onChange, clearLongPress]);
 
   // ── Wheel zoom ────────────────────────────────────────────────────────────
   const handleWheel = useCallback((e: WheelEvent) => {
@@ -365,8 +392,43 @@ export default function PlanCanvas({ state, onChange }: Props) {
       onChange({ points: newPts, segments: newSegs, diagonals: newPts.length >= 3 ? buildAutoDiagonals(newPts, diagonals) : [], isClosed: isClosed && newPts.length >= 3, selectedPointId: null });
       return;
     }
+    // Размерная линия — двухшаговый режим
+    if (tool === "dimline") {
+      if (!dimLineFrom) {
+        setDimLineFrom(pointId);
+        onChange({ selectedPointId: pointId });
+      } else if (dimLineFrom !== pointId) {
+        const newDl: DimLine = { id: genId("dl"), fromId: dimLineFrom, toId: pointId, offsetPx: DIM_OFF, visible: true, labelCm: null };
+        onChange({ dimLines: [...dimLines, newDl], selectedDimLineId: newDl.id, selectedPointId: null });
+        setDimLineFrom(null);
+      }
+      return;
+    }
+    // В режиме draw — клик на точку = snap к ней
+    if (tool === "draw" && phase === "draw" && !isClosed) {
+      const pt = points.find(p => p.id === pointId);
+      if (!pt) return;
+      // Клик на первую точку = замыкание
+      if (pointId === points[0]?.id && points.length >= 3) {
+        const closing: Segment = { id: genId("s"), fromId: points[points.length - 1].id, toId: points[0].id, lengthCm: null, showLength: true, showDimLine: true, arcRadius: 0 };
+        const newSegs = [...segments, closing];
+        const newDiags = buildAutoDiagonals(points, diagonals);
+        onChange({ segments: newSegs, diagonals: newDiags, isClosed: true, phase: "lengths", tool: "move", activeInputIndex: 0, selectedSegmentId: newSegs[0]?.id ?? null });
+        setGhost(null);
+        return;
+      }
+      // Клик на последнюю точку — ничего не делаем
+      if (pointId === points[points.length - 1]?.id) return;
+      // Клик на любую другую точку — добавляем отрезок к ней (привязка)
+      const np = { ...pt, id: genId("pt") };
+      const newPts = [...points, np];
+      const newSegs = [...segments];
+      newSegs.push({ id: genId("s"), fromId: points[points.length - 1].id, toId: np.id, lengthCm: null, showLength: true, showDimLine: true, arcRadius: 0 });
+      onChange({ points: newPts, segments: newSegs });
+      return;
+    }
     onChange({ selectedPointId: pointId, selectedSegmentId: null, selectedDiagonalId: null, selectedArcId: null });
-  }, [tool, points, segments, isClosed, diagonals, onChange]);
+  }, [tool, phase, isClosed, points, segments, diagonals, dimLines, dimLineFrom, onChange]);
 
   const handlePointCtxMenu = useCallback((e: React.MouseEvent, pointId: string) => {
     e.preventDefault(); e.stopPropagation();
@@ -676,6 +738,22 @@ export default function PlanCanvas({ state, onChange }: Props) {
               fill={ghost.willClose ? "rgba(52,211,153,0.2)" : "rgba(129,140,248,0.3)"}
               stroke={ghost.willClose ? "#34d399" : "#818cf8"} strokeWidth={1.5} className="pointer-events-none" />
           )}
+          {/* Ghost для dimline — от первой точки к курсору */}
+          {ghost && tool === "dimline" && dimLineFrom && (() => {
+            const fromPt = points.find(p => p.id === dimLineFrom);
+            if (!fromPt) return null;
+            const { nx, ny } = segmentNormal(fromPt, { id: "", x: ghost.x, y: ghost.y });
+            const off = DIM_OFF;
+            const x1 = fromPt.x + nx * off, y1 = fromPt.y + ny * off;
+            const x2 = ghost.x + nx * off, y2 = ghost.y + ny * off;
+            return (
+              <g className="pointer-events-none">
+                <line x1={fromPt.x + nx*(off-6)} y1={fromPt.y + ny*(off-6)} x2={fromPt.x + nx*(off+6)} y2={fromPt.y + ny*(off+6)} stroke="#a78bfa" strokeWidth={1} opacity={0.6} />
+                <line x1={x1} y1={y1} x2={x2} y2={y2} stroke="#a78bfa" strokeWidth={1.5} strokeDasharray="5 3" opacity={0.7} />
+                <circle cx={ghost.x} cy={ghost.y} r={5} fill="rgba(167,139,250,0.25)" stroke="#a78bfa" strokeWidth={1.5} />
+              </g>
+            );
+          })()}
 
           {/* Точки */}
           {showPoints && points.map((pt, idx) => {
@@ -727,6 +805,17 @@ export default function PlanCanvas({ state, onChange }: Props) {
               Зажми и тяни точку пальцем
             </text>
           )}
+          {tool === "dimline" && (
+            <text x={12 / zoom} y={28 / zoom} fontSize={12 / zoom} fill="rgba(167,139,250,0.6)" fontFamily="sans-serif" className="pointer-events-none select-none">
+              {dimLineFrom ? "Теперь нажми вторую точку" : "Нажми первую точку размера"}
+            </text>
+          )}
+          {/* Подсветка первой точки dimline */}
+          {tool === "dimline" && dimLineFrom && (() => {
+            const pt = points.find(p => p.id === dimLineFrom);
+            if (!pt) return null;
+            return <circle cx={pt.x} cy={pt.y} r={PT_R + 8} fill="none" stroke="#a78bfa" strokeWidth={2} opacity={0.7} strokeDasharray="3 2" className="pointer-events-none" />;
+          })()}
         </g>
       </svg>
 
