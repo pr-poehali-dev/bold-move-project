@@ -303,20 +303,19 @@ export function InlineDimLabels({ state, onChange }: InlineDimProps) {
 
         const mid = midPoint(a, b);
         const { nx, ny } = segmentNormal(a, b);
-        const off = DIM_OFF + 6;
+        // Смещаем немного по нормали чтобы не перекрывать линию
+        const off = 14;
         const lx = mid.x + nx * off;
         const ly = mid.y + ny * off;
 
         const lenCm = seg.lengthCm ?? pxToCm(distPx(a, b), scale);
-        const label = lenCm !== null ? `${lenCm}` : "—";
+        const displayText = lenCm !== null ? `${lenCm} см` : "—";
 
         const isEditing = editingId === seg.id;
-        const segLbl = segmentLabel(points, seg);
 
         if (isEditing) {
-          // HTML input поверх SVG через foreignObject
           return (
-            <foreignObject key={seg.id} x={lx - 36} y={ly - 13} width={72} height={26}
+            <foreignObject key={seg.id} x={lx - 34} y={ly - 13} width={68} height={26}
               style={{ overflow: "visible" }}>
               <div style={{ display: "flex", alignItems: "center", gap: 2 }}>
                 <input
@@ -332,25 +331,23 @@ export function InlineDimLabels({ state, onChange }: InlineDimProps) {
                     e.stopPropagation();
                   }}
                   style={{
-                    width: 60,
-                    height: 24,
-                    background: "#fff",
-                    color: "#111",
-                    border: "none",
-                    borderRadius: 6,
+                    width: 54, height: 24,
+                    background: "#fff", color: "#111",
+                    border: "none", borderRadius: 6,
                     padding: "0 6px",
-                    fontSize: 11,
-                    fontFamily: "monospace",
-                    fontWeight: 700,
+                    fontSize: 11, fontFamily: "monospace", fontWeight: 700,
                     outline: "none",
-                    boxShadow: "0 2px 8px rgba(0,0,0,0.5)",
+                    boxShadow: "0 2px 10px rgba(0,0,0,0.6)",
                   }}
                 />
-                <span style={{ fontSize: 9, color: "rgba(255,255,255,0.5)", fontFamily: "monospace" }}>см</span>
+                <span style={{ fontSize: 9, color: "rgba(255,255,255,0.4)", fontFamily: "monospace" }}>см</span>
               </div>
             </foreignObject>
           );
         }
+
+        // Ширина метки зависит от длины текста
+        const textW = Math.max(38, displayText.length * 6.5 + 10);
 
         return (
           <g key={seg.id} style={{ cursor: "text" }}
@@ -359,18 +356,18 @@ export function InlineDimLabels({ state, onChange }: InlineDimProps) {
               setEditingId(seg.id);
               setDraft(lenCm !== null ? String(lenCm) : "");
             }}>
-            {/* Прозрачная зона клика */}
-            <rect x={lx - 28} y={ly - 10} width={56} height={20} rx={4}
-              fill="transparent" stroke="transparent" strokeWidth={10} />
-            {/* Фоновый прямоугольник */}
-            <rect x={lx - 26} y={ly - 9} width={52} height={18} rx={4}
-              fill="rgba(0,0,0,0.55)" stroke="rgba(255,255,255,0.15)" strokeWidth={0.8} />
+            {/* Зона клика */}
+            <rect x={lx - textW / 2 - 6} y={ly - 12} width={textW + 12} height={24}
+              rx={5} fill="transparent" />
+            {/* Фон метки */}
+            <rect x={lx - textW / 2} y={ly - 9} width={textW} height={18} rx={4}
+              fill="rgba(17,17,17,0.8)" stroke="rgba(255,255,255,0.18)" strokeWidth={0.8} />
             <text x={lx} y={ly + 1}
               textAnchor="middle" dominantBaseline="middle"
-              fontSize={10.5} fontFamily="monospace" fontWeight={700}
-              fill="rgba(255,255,255,0.85)"
+              fontSize={10} fontFamily="monospace" fontWeight={700}
+              fill="rgba(255,255,255,0.9)"
               className="select-none pointer-events-none">
-              {segLbl}: {label} см
+              {displayText}
             </text>
           </g>
         );

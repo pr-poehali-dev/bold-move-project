@@ -180,14 +180,17 @@ export function cmToPx(cm: number, scale: number): number {
   return cm * scale;
 }
 
-/** Угол interior в точке B между A-B и B-C (в градусах, 0–360) */
+/** Угол interior в точке B между A-B и B-C (в градусах, 0–360).
+ *  SVG-координаты: Y вниз, поэтому cross > 0 = поворот по часовой = внутренний угол < 180 для выпуклого полигона. */
 export function angleDeg(a: Point, b: Point, c: Point): number {
   const ax = a.x - b.x, ay = a.y - b.y;
   const cx = c.x - b.x, cy = c.y - b.y;
   const dot = ax * cx + ay * cy;
   const cross = ax * cy - ay * cx;
-  let angle = Math.atan2(Math.abs(cross), dot) * (180 / Math.PI);
-  if (cross < 0) angle = 360 - angle;
+  // Угол между векторами (0..180)
+  const between = Math.atan2(Math.abs(cross), dot) * (180 / Math.PI);
+  // cross > 0 в SVG (Y↓) = левый поворот = внутренний угол
+  const angle = cross > 0 ? between : 360 - between;
   return Math.round(angle * 10) / 10;
 }
 
@@ -244,6 +247,36 @@ export function polygonPerimeter(points: Point[]): number {
   return perim;
 }
 
+/** Проверяет пересечение двух отрезков (строго, без крайних точек) */
+function segmentsIntersect(
+  ax: number, ay: number, bx: number, by: number,
+  cx: number, cy: number, dx: number, dy: number,
+): boolean {
+  const denom = (by - ay) * (dx - cx) - (bx - ax) * (dy - cy);
+  if (Math.abs(denom) < 1e-10) return false;
+  const t = ((cx - ax) * (dy - cy) - (cy - ay) * (dx - cx)) / denom;
+  const u = ((cx - ax) * (by - ay) - (cy - ay) * (bx - ax)) / denom;
+  // Строго внутри (не на концах)
+  return t > 1e-8 && t < 1 - 1e-8 && u > 1e-8 && u < 1 - 1e-8;
+}
+
+/** Проверяет, проходит ли диагональ (from→to) сквозь стены фигуры */
+export function diagonalCrossesWall(
+  from: Point, to: Point,
+  points: Point[],
+  segments: { fromId: string; toId: string }[],
+): boolean {
+  for (const seg of segments) {
+    const a = points.find(p => p.id === seg.fromId);
+    const b = points.find(p => p.id === seg.toId);
+    if (!a || !b) continue;
+    // Не проверяем отрезки, которые смежны с from или to
+    if (a.id === from.id || a.id === to.id || b.id === from.id || b.id === to.id) continue;
+    if (segmentsIntersect(from.x, from.y, to.x, to.y, a.x, a.y, b.x, b.y)) return true;
+  }
+  return false;
+}
+
 export function buildAutoDiagonals(points: Point[], existingDiagonals: DiagonalDef[]): DiagonalDef[] {
   const n = points.length;
   if (n < 4) return [];
@@ -251,8 +284,15 @@ export function buildAutoDiagonals(points: Point[], existingDiagonals: DiagonalD
   for (let i = 0; i < n; i++) {
     for (let j = i + 2; j < n; j++) {
       if (i === 0 && j === n - 1) continue;
-      const fromId = points[i].id;
-      const toId = points[j].id;
+      const from = points[i];
+      const to   = points[j];
+      // Пропускаем диагонали, которые пересекают стены
+      if (diagonalCrossesWall(from, to, points, points.map((_, k) => ({
+        fromId: points[k].id,
+        toId:   points[(k + 1) % n].id,
+      })))) continue;
+      const fromId = from.id;
+      const toId   = to.id;
       const existing = existingDiagonals.find(
         d => (d.fromId === fromId && d.toId === toId) ||
              (d.fromId === toId && d.toId === fromId)

@@ -42,7 +42,7 @@ function AddDimLineForm({ points, onAdd }: { points: { id: string }[]; onAdd: (f
 
 // ─── Вкладка "Чертёж" ────────────────────────────────────────────────────────
 export default function DrawingTab({ state, onChange }: Props) {
-  const { points, segments, diagonals, dimLines, isClosed, settings, phase, activeInputIndex, room } = state;
+  const { points, segments, diagonals, dimLines, isClosed, settings, phase, room } = state;
   const scale = calcScale(points, segments);
 
   const updateSegment = (id: string, patch: Partial<Segment>) =>
@@ -189,19 +189,13 @@ export default function DrawingTab({ state, onChange }: Props) {
                 const b = points.find(p => p.id === seg.toId);
                 const lenPx = a && b ? distPx(a, b) : 0;
                 const autoCm = pxToCm(lenPx, scale);
-                const isActive = phase === "lengths" && activeInputIndex === idx;
                 return (
                   <LengthRow key={seg.id}
                     label={segmentLabel(points, seg)}
                     valueCm={seg.lengthCm}
                     placeholder={autoCm !== null ? String(autoCm) : "—"}
                     visible={seg.showLength}
-                    isActive={isActive}
                     onValueChange={v => updateSegment(seg.id, { lengthCm: v })}
-                    onCommit={() => {
-                      if (phase === "lengths")
-                        onChange({ activeInputIndex: (activeInputIndex + 1) % segments.length });
-                    }}
                     onVisibilityToggle={() => updateSegment(seg.id, { showLength: !seg.showLength })}
                     onFocus={() => onChange({ activeInputIndex: idx })}
                   />
@@ -210,34 +204,6 @@ export default function DrawingTab({ state, onChange }: Props) {
             </div>
           )
         }
-
-        {/* Дуги/скругления на отрезках */}
-        {segments.length > 0 && isClosed && (
-          <div className="mt-2.5 pt-2 border-t border-white/[0.06]">
-            <label className={lbl10}>Скругления углов (px)</label>
-            <div className="space-y-0.5">
-              {segments.map(seg => {
-                const toIdx = points.findIndex(p => p.id === seg.toId);
-                if (toIdx < 0) return null;
-                return (
-                  <div key={`arc-${seg.id}`} className="flex items-center gap-1.5">
-                    <span className="w-10 text-[11px] font-mono text-white/40 shrink-0">{pointLabel(toIdx)}</span>
-                    <input type="range" min={0} max={80} step={5}
-                      value={seg.arcRadius}
-                      onChange={e => updateSegment(seg.id, { arcRadius: Number(e.target.value) })}
-                      className="flex-1 accent-emerald-500"
-                    />
-                    <span className="text-[10px] text-white/30 w-6 text-right font-mono">{seg.arcRadius}</span>
-                    <button onClick={() => updateSegment(seg.id, { arcRadius: 0 })}
-                      className="p-1 rounded hover:bg-white/10 transition" title="Сбросить дугу">
-                      <Icon name="X" size={10} className="text-white/25" />
-                    </button>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
 
         {/* Размерные линии toggle */}
         <button onClick={() => updateSettings({ showDimLines: !settings.showDimLines })}
@@ -250,6 +216,59 @@ export default function DrawingTab({ state, onChange }: Props) {
           {settings.showDimLines ? "Размерные линии вкл" : "Размерные линии выкл"}
         </button>
       </Section>
+
+      {/* ── Скругления углов ── */}
+      {segments.length > 0 && isClosed && (
+        <Section title="Скругления углов" icon="Spline" iconColor="#10b981" defaultOpen={false}>
+          <p className="text-[10px] text-white/30 mb-2 leading-relaxed">
+            Скругление применяется к углу входящего конца каждого отрезка. Значение в пикселях холста.
+          </p>
+          <div className="space-y-1.5">
+            {segments.map(seg => {
+              const toIdx = points.findIndex(p => p.id === seg.toId);
+              if (toIdx < 0) return null;
+              return (
+                <div key={`arc-${seg.id}`} className="flex items-center gap-2">
+                  <span className="w-8 text-[11px] font-mono font-bold text-white/50 shrink-0">{pointLabel(toIdx)}</span>
+                  <div className="flex-1 flex items-center gap-2 bg-white/[0.04] rounded-xl px-2 py-1.5 border border-white/[0.06]">
+                    <input type="range" min={0} max={120} step={5}
+                      value={seg.arcRadius}
+                      onChange={e => updateSegment(seg.id, { arcRadius: Number(e.target.value) })}
+                      className="flex-1 accent-emerald-500 h-1.5"
+                    />
+                    <input type="number" min={0} max={120} step={1}
+                      value={seg.arcRadius || ""}
+                      placeholder="0"
+                      onChange={e => updateSegment(seg.id, { arcRadius: Number(e.target.value) || 0 })}
+                      className="w-12 bg-transparent text-[11px] text-white/70 font-mono text-right focus:outline-none"
+                    />
+                    <span className="text-[9px] text-white/25 shrink-0">px</span>
+                  </div>
+                  {seg.arcRadius > 0 && (
+                    <button onClick={() => updateSegment(seg.id, { arcRadius: 0 })}
+                      className="p-1 rounded hover:bg-white/10 transition shrink-0" title="Сбросить">
+                      <Icon name="X" size={10} className="text-white/30" />
+                    </button>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+          <div className="flex gap-1.5 mt-2">
+            <button onClick={() => {
+              const val = 20;
+              segments.forEach(seg => updateSegment(seg.id, { arcRadius: val }));
+            }} className="flex-1 py-1.5 rounded-lg text-[10px] font-semibold border bg-emerald-500/10 border-emerald-500/20 text-emerald-400 hover:bg-emerald-500/20 transition">
+              Все: 20px
+            </button>
+            <button onClick={() => {
+              segments.forEach(seg => updateSegment(seg.id, { arcRadius: 0 }));
+            }} className="flex-1 py-1.5 rounded-lg text-[10px] font-semibold border bg-white/[0.04] border-white/[0.08] text-white/35 hover:bg-white/[0.08] transition">
+              Сбросить все
+            </button>
+          </div>
+        </Section>
+      )}
 
       {/* ── Углы ── */}
       <Section title="Углы" icon="Angle" iconColor="#fbbf24"
@@ -264,9 +283,9 @@ export default function DrawingTab({ state, onChange }: Props) {
             {/* Быстрые действия */}
             <div className="flex gap-1.5 mb-2">
               <button className="flex-1 flex items-center justify-center gap-1 py-1.5 rounded-xl text-[11px] font-semibold border bg-amber-500/10 border-amber-500/20 text-amber-400 hover:bg-amber-500/20 transition"
-                onClick={() => onChange({ phase: "angles", activeInputIndex: 0 })} title="Перейти к вводу углов">
+                onClick={() => onChange({ phase: "angles", activeInputIndex: 0 })} title="Режим ввода углов">
                 <Icon name="Target" size={11} />
-                Указать угол {pointLabel(state.activeInputIndex)}
+                Ввод углов
               </button>
               <button
                 className="px-2.5 py-1.5 rounded-xl text-[11px] font-semibold border bg-white/[0.04] border-white/[0.08] text-white/40 hover:bg-white/[0.08] transition"
@@ -291,13 +310,10 @@ export default function DrawingTab({ state, onChange }: Props) {
             <div className="space-y-0.5">
               {points.map((pt, idx) => {
                 const deg = getAngle(idx);
-                const isActive = phase === "angles" && activeInputIndex === idx;
                 const isOdd = deg !== null && Math.abs(deg - Math.round(deg / 90) * 90) > 1.5;
                 return (
                   <div key={pt.id}
-                    className={`flex items-center gap-1.5 py-1 px-1.5 rounded-lg cursor-pointer transition-colors
-                      ${isActive ? "bg-amber-500/10 ring-1 ring-amber-500/30" : "hover:bg-white/[0.03]"}`}
-                    onClick={() => onChange({ activeInputIndex: idx })}>
+                    className="flex items-center gap-1.5 py-1 px-1.5 rounded-lg hover:bg-white/[0.03] transition-colors cursor-default">
                     <Icon name="Angle" size={11} className="text-amber-500/60 shrink-0" />
                     <span className="w-7 text-[11px] font-mono font-bold text-amber-300 shrink-0">{pointLabel(idx)}</span>
                     <div className={`flex-1 bg-white/[0.05] border rounded-lg px-2 py-1 text-[11px] font-mono text-center

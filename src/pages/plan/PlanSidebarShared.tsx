@@ -1,4 +1,4 @@
-import React, { useRef } from "react";
+import React from "react";
 import Icon from "@/components/ui/icon";
 
 // ─── Аккордеон-секция ─────────────────────────────────────────────────────────
@@ -34,46 +34,43 @@ export function Section({
 
 // ─── Строка длины ─────────────────────────────────────────────────────────────
 export function LengthRow({
-  label, valueCm, placeholder, visible, isActive,
-  onValueChange, onVisibilityToggle, onDelete, onFocus, onCommit,
+  label, valueCm, placeholder, visible,
+  onValueChange, onVisibilityToggle, onDelete, onFocus,
 }: {
   label: string; valueCm: number | null; placeholder?: string;
-  visible: boolean; isActive?: boolean;
+  visible: boolean;
   onValueChange: (v: number | null) => void;
   onVisibilityToggle: () => void;
   onDelete?: () => void;
   onFocus?: () => void;
-  onCommit?: () => void;
 }) {
-  const ref = useRef<HTMLInputElement>(null);
-  // Локальный стейт — чтобы пользователь мог набирать цифры не теряя фокус
+  // Локальный стейт — пользователь набирает цифры, фокус никуда не прыгает
   const [draft, setDraft] = React.useState<string>(valueCm !== null ? String(valueCm) : "");
+  const [focused, setFocused] = React.useState(false);
 
-  // Синхронизируем draft когда значение меняется снаружи (например сброс)
+  // Синхронизируем draft только когда поле НЕ в фокусе
   React.useEffect(() => {
-    setDraft(valueCm !== null ? String(valueCm) : "");
-  }, [valueCm]);
-
-  React.useEffect(() => { if (isActive && ref.current) ref.current.focus(); }, [isActive]);
+    if (!focused) {
+      setDraft(valueCm !== null ? String(valueCm) : "");
+    }
+  }, [valueCm, focused]);
 
   const commit = () => {
-    const v = draft === "" ? null : Number(draft);
-    onValueChange(isNaN(v as number) ? null : v);
-    onCommit?.();
+    const v = draft === "" ? null : parseFloat(draft);
+    onValueChange(v !== null && !isNaN(v) ? v : null);
   };
 
   return (
-    <div className={`flex items-center gap-1.5 py-1 rounded-lg px-1.5 transition-colors
-      ${isActive ? "bg-violet-500/10 ring-1 ring-violet-500/30" : "hover:bg-white/[0.03]"}`}>
-      <span className="w-10 text-[11px] font-mono font-bold text-white/60 shrink-0">{label}</span>
-      <input ref={ref} type="number" min={1} max={99999} step={0.5}
+    <div className="flex items-center gap-1.5 py-1.5 rounded-lg px-1.5 transition-colors hover:bg-white/[0.03]">
+      <span className="w-10 text-[11px] font-mono font-bold text-white/50 shrink-0">{label}</span>
+      <input type="number" min={1} max={99999} step={0.5}
         value={draft}
         placeholder={placeholder ?? "—"}
         onChange={e => setDraft(e.target.value)}
-        onBlur={commit}
-        onKeyDown={e => { if (e.key === "Enter") { commit(); } }}
-        onFocus={onFocus}
-        className="flex-1 bg-white/[0.06] border border-white/[0.1] rounded-lg px-2 py-1 text-[11px] text-white font-mono focus:outline-none focus:border-violet-500/60 focus:bg-violet-500/5 transition min-w-0"
+        onFocus={() => { setFocused(true); onFocus?.(); }}
+        onBlur={() => { setFocused(false); commit(); }}
+        onKeyDown={e => { if (e.key === "Enter") { (e.target as HTMLInputElement).blur(); } }}
+        className="flex-1 bg-white/[0.06] border border-white/[0.08] rounded-lg px-2 py-1.5 text-[11px] text-white font-mono focus:outline-none focus:border-white/30 focus:bg-white/[0.08] transition min-w-0"
       />
       <span className="text-[9px] text-white/25 shrink-0">см</span>
       <button onClick={onVisibilityToggle} className="p-1 rounded hover:bg-white/10 transition shrink-0" title="Показать/скрыть">
