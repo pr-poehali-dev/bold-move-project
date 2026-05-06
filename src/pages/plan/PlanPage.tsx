@@ -255,7 +255,7 @@ export default function PlanPage() {
   const currentPlanName = storage.plans.find(p => p.id === storage.currentPlanId)?.name ?? state.room.name ?? "Без названия";
 
   return (
-    <div className="flex flex-col bg-[#0f1117] overflow-hidden" style={{ height: "100dvh" }}>
+    <div className="flex flex-col bg-black overflow-hidden" style={{ height: "100dvh" }}>
 
       {/* Toolbar */}
       <PlanToolbar
@@ -372,7 +372,7 @@ export default function PlanPage() {
 
       {/* Статус-бар — только на десктопе */}
       {!isMobile && (
-        <div className="h-6 bg-[#0c0d16] border-t border-white/[0.04] flex items-center px-4 gap-5 shrink-0">
+        <div className="h-6 bg-black border-t border-white/[0.07] flex items-center px-4 gap-5 shrink-0">
           <span className="text-[10px] text-white/20 font-mono">Точек: {state.points.length}</span>
           <span className="text-[10px] text-white/20 font-mono">Отрезков: {state.segments.length}</span>
           <span className="text-[10px] text-white/20 font-mono">Диаг: {state.diagonals.length}</span>

@@ -20,7 +20,7 @@ export default function PlanSidebar({ state, onChange }: Props) {
   ];
 
   return (
-    <div className="h-full flex flex-col bg-[#12131e] text-white">
+    <div className="h-full flex flex-col bg-[#0d0d0d] text-white">
       {/* Вкладки */}
       <div className="flex border-b border-white/[0.07] shrink-0">
         {tabs.map(t => (
@@ -28,8 +28,8 @@ export default function PlanSidebar({ state, onChange }: Props) {
             onClick={() => onChange({ sidebarTab: t.id })}
             className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 text-[12px] font-semibold transition border-b-2 ${
               sidebarTab === t.id
-                ? "border-violet-500 text-violet-300 bg-violet-500/5"
-                : "border-transparent text-white/35 hover:text-white/60 hover:bg-white/[0.03]"
+                ? "border-white text-white bg-white/[0.04]"
+                : "border-transparent text-white/30 hover:text-white/60 hover:bg-white/[0.03]"
             }`}>
             <Icon name={t.icon} size={13} />
             {t.label}

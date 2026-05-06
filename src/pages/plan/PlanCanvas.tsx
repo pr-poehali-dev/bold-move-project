@@ -534,7 +534,7 @@ export default function PlanCanvas({ state, onChange }: Props) {
   };
 
   return (
-    <div className="w-full h-full overflow-hidden relative bg-[#0f1117] select-none touch-none">
+    <div className="w-full h-full overflow-hidden relative bg-[#080808] select-none touch-none">
       <svg
         ref={svgRef}
         width="100%" height="100%"
