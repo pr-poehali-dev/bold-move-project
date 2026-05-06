@@ -18,7 +18,8 @@ interface Props {
   onZoomIn: () => void;
   onZoomOut: () => void;
   onZoomFit: () => void;
-  onOpenPanel: () => void; // мобиле — открыть bottom sheet
+  onOpenPanel: () => void;
+  onExport: () => void;
 }
 
 interface ToolDef {
@@ -43,7 +44,7 @@ const TOOLS: ToolDef[] = [
 export default function PlanToolbar({
   tool, phase, isClosed, settings, canUndo, canRedo, isMobile,
   onToolChange, onSettingChange, onUndo, onRedo, onReset,
-  onZoomIn, onZoomOut, onZoomFit, onOpenPanel,
+  onZoomIn, onZoomOut, onZoomFit, onOpenPanel, onExport,
 }: Props) {
 
   const [showMore, setShowMore] = React.useState(false);
@@ -164,6 +165,13 @@ export default function PlanToolbar({
           <button className={iconBtn()} onClick={onZoomIn}><Icon name="ZoomIn" size={14} /></button>
           <button className={iconBtn()} onClick={onZoomFit}><Icon name="Maximize2" size={13} /></button>
 
+          {/* Экспорт */}
+          <button onClick={onExport}
+            className="w-9 h-9 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 hover:bg-emerald-500/20 flex items-center justify-center transition-all shrink-0"
+            title="Экспортировать">
+            <Icon name="Download" size={14} />
+          </button>
+
           {/* Очистить */}
           <button onClick={onReset}
             className="w-9 h-9 rounded-lg bg-white/[0.02] border border-white/[0.06] text-rose-400/50 hover:bg-rose-500/10 flex items-center justify-center transition-all shrink-0">
@@ -283,6 +291,13 @@ export default function PlanToolbar({
       )}
 
       <div className="flex-1 min-w-2" />
+
+      <button onClick={onExport}
+        className="flex items-center gap-1.5 px-3 h-8 rounded-lg text-[11px] font-semibold border bg-emerald-500/10 border-emerald-500/20 text-emerald-400 hover:bg-emerald-500/20 transition-all shrink-0"
+        title="Экспорт SVG / PNG">
+        <Icon name="Download" size={12} />
+        <span className="hidden sm:inline">Экспорт</span>
+      </button>
 
       <button onClick={onReset}
         className="flex items-center gap-1.5 px-3 h-8 rounded-lg text-[11px] font-semibold border bg-white/[0.02] border-white/[0.06] text-rose-400/50 hover:bg-rose-500/10 hover:text-rose-300 transition-all shrink-0">

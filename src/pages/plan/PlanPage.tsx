@@ -3,6 +3,7 @@ import PlanCanvas from "./PlanCanvas";
 import PlanToolbar from "./PlanToolbar";
 import PlanSidebar from "./PlanSidebar";
 import PlanBottomSheet from "./PlanBottomSheet";
+import PlanExportModal from "./PlanExportModal";
 import type { PlanState, ToolMode, PlanSettings } from "./planTypes";
 import { INITIAL_STATE } from "./planTypes";
 
@@ -46,7 +47,8 @@ function useIsMobile() {
 export default function PlanPage() {
   const { state, push, undo, redo, reset, canUndo, canRedo } = useHistory(INITIAL_STATE);
   const isMobile = useIsMobile();
-  const [sheetOpen, setSheetOpen] = React.useState(false);
+  const [sheetOpen,  setSheetOpen]  = React.useState(false);
+  const [exportOpen, setExportOpen] = React.useState(false);
 
   const handleChange = useCallback((patch: Partial<PlanState>) => {
     push({ ...state, ...patch });
@@ -103,7 +105,8 @@ export default function PlanPage() {
       if (k === "+" || k === "=") zoomIn();
       if (k === "-") zoomOut();
       if (k === "0") zoomFit();
-      if (k === "p") setSheetOpen(v => !v); // P = панель на мобиле
+      if (k === "p") setSheetOpen(v => !v);
+      if (k === "e") setExportOpen(true); // E = экспорт
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
@@ -150,6 +153,7 @@ export default function PlanPage() {
         onZoomOut={zoomOut}
         onZoomFit={zoomFit}
         onOpenPanel={() => setSheetOpen(true)}
+        onExport={() => setExportOpen(true)}
       />
 
       {/* Основная область */}
@@ -190,6 +194,11 @@ export default function PlanPage() {
           open={sheetOpen}
           onClose={() => setSheetOpen(false)}
         />
+      )}
+
+      {/* Модалка экспорта */}
+      {exportOpen && (
+        <PlanExportModal state={state} onClose={() => setExportOpen(false)} />
       )}
 
       {/* Статус-бар — только на десктопе */}
