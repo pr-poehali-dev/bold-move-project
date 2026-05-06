@@ -27,7 +27,11 @@ export function Section({
         tabIndex={0}
         className="w-full flex items-center gap-2 px-4 py-2.5 hover:bg-white/[0.025] transition-colors cursor-pointer"
         onClick={() => setOpen(o => !o)}
-        onKeyDown={e => { if (e.key === "Enter" || e.key === " ") setOpen(o => !o); }}
+        onKeyDown={e => {
+          // Не реагируем если фокус в дочернем элементе (например input)
+          if (e.target !== e.currentTarget) return;
+          if (e.key === "Enter" || e.key === " ") setOpen(o => !o);
+        }}
       >
         <Icon name={icon} size={13} style={{ color: iconColor }} />
         <span className="flex-1 text-left text-[13px] font-semibold text-white/75 select-none">{title}</span>
@@ -62,6 +66,7 @@ export function LengthRow({
 }) {
   const localRef = React.useRef<HTMLInputElement>(null);
   const ref = inputRef ?? localRef;
+  const committedByEnter = React.useRef(false);
 
   // Локальный стейт — пользователь набирает цифры, фокус никуда не прыгает
   const [draft, setDraft] = React.useState<string>(valueCm !== null ? String(valueCm) : "");
@@ -95,12 +100,20 @@ export function LengthRow({
         placeholder={placeholder ?? "—"}
         onChange={e => setDraft(e.target.value)}
         onFocus={() => { setFocused(true); onFocus?.(); }}
-        onBlur={() => { setFocused(false); commit(); }}
+        onBlur={() => {
+          setFocused(false);
+          // Не дублируем commit если уже сохранили по Enter
+          if (!committedByEnter.current) commit();
+          committedByEnter.current = false;
+        }}
         onKeyDown={e => {
+          // Не даём Enter всплыть до Section (он бы закрыл секцию)
+          e.stopPropagation();
           if (e.key === "Enter") {
+            e.preventDefault();
+            committedByEnter.current = true;
             commit();
             if (onEnterNext) {
-              e.preventDefault();
               onEnterNext();
             } else {
               (e.target as HTMLInputElement).blur();
