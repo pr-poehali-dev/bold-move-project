@@ -310,7 +310,7 @@ export function InlineDimLabels({ state, onChange }: InlineDimProps) {
         const lx = mid.x + nx * off;
         const ly = mid.y + ny * off;
 
-        const lenCm = seg.lengthCm ?? pxToCm(distPx(a, b), scale);
+        const lenCm = seg.lengthCm ?? null;
         const displayText = lenCm !== null ? `${lenCm} см` : "—";
 
         const isEditing = editingId === seg.id;
@@ -356,7 +356,7 @@ export function InlineDimLabels({ state, onChange }: InlineDimProps) {
             onClick={e => {
               e.stopPropagation();
               setEditingId(seg.id);
-              setDraft(lenCm !== null ? String(lenCm) : "");
+              setDraft(seg.lengthCm !== null ? String(seg.lengthCm) : "");
             }}>
             {/* Зона клика */}
             <rect x={lx - textW / 2 - 6} y={ly - 12} width={textW + 12} height={24}
