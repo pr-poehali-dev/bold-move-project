@@ -4,14 +4,22 @@ import Icon from "@/components/ui/icon";
 // ─── Аккордеон-секция ─────────────────────────────────────────────────────────
 export function Section({
   title, icon, iconColor, children, defaultOpen = true,
-  visible, onVisibilityToggle, badge,
+  visible, onVisibilityToggle, badge, forceOpen,
 }: {
   title: string; icon: string; iconColor: string;
   children: React.ReactNode; defaultOpen?: boolean;
   visible?: boolean; onVisibilityToggle?: () => void;
   badge?: string;
+  forceOpen?: boolean;
 }) {
   const [open, setOpen] = React.useState(defaultOpen);
+
+  // Авторазкрытие при изменении forceOpen (например после замыкания фигуры)
+  const prevForceOpen = React.useRef(forceOpen);
+  React.useEffect(() => {
+    if (forceOpen && !prevForceOpen.current) setOpen(true);
+    prevForceOpen.current = forceOpen;
+  }, [forceOpen]);
   return (
     <div className="border-b border-white/[0.06]">
       <button className="w-full flex items-center gap-2 px-4 py-2.5 hover:bg-white/[0.025] transition-colors"

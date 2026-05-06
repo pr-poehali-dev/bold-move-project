@@ -344,13 +344,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const saved = localStorage.getItem(TOKEN_KEY);
     if (!saved) { setLoading(false); return; }
     fetch(`${AUTH_URL}?action=me`, { headers: { "X-Authorization": `Bearer ${saved}` } })
-      .then(r => r.json())
-      .then(d => {
+      .then(async r => {
+        // Удаляем токен только при явном 401 (токен недействителен)
+        // При сетевой ошибке или 5xx — оставляем токен, попробуем потом
+        if (r.status === 401) { localStorage.removeItem(TOKEN_KEY); setLoading(false); return; }
+        const d = await r.json();
         if (d.user) { setUser(d.user); setToken(saved); setCrmToken(saved); }
-        else { localStorage.removeItem(TOKEN_KEY); }
+        // Если d.error но не 401 — не удаляем токен (возможно временная ошибка)
+        setLoading(false);
       })
-      .catch(() => localStorage.removeItem(TOKEN_KEY))
-      .finally(() => setLoading(false));
+      .catch(() => {
+        // Сетевая ошибка — НЕ удаляем токен, пользователь останется залогиненным
+        // Просто считаем loading=false
+        setLoading(false);
+      });
   }, []);
 
   // Принимаем токен от родительского окна (для iframe-режима /whitelabel)

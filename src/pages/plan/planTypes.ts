@@ -65,7 +65,7 @@ export type ToolMode =
 
 export type InputPhase = "draw" | "lengths" | "angles";
 
-export type SidebarTab = "drawing" | "calc" | "legend";
+export type SidebarTab = "drawing" | "markup" | "calc" | "legend";
 
 // ─── Настройки холста ────────────────────────────────────────────────────────
 
@@ -401,7 +401,7 @@ export const DEFAULT_SETTINGS: PlanSettings = {
   showSegmentLabels: false,  // по дефолту скрыты подписи A-B
   showAngleLabels: false,
   showDiagonals: false,
-  showDimLines: true,
+  showDimLines: false,
   showPoints: true,
   showPointLabels: true,
 };

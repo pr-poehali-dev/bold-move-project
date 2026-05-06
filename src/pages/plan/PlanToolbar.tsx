@@ -99,26 +99,40 @@ function DropUp({ label, icon, children, badge }: {
   label: string; icon: string; children: React.ReactNode; badge?: string;
 }) {
   const [open, setOpen] = React.useState(false);
-  const ref = React.useRef<HTMLDivElement>(null);
+  const [pos, setPos] = React.useState({ x: 0, y: 0 });
+  const btnRef = React.useRef<HTMLButtonElement>(null);
+  const menuRef = React.useRef<HTMLDivElement>(null);
+
+  const openMenu = () => {
+    if (btnRef.current) {
+      const r = btnRef.current.getBoundingClientRect();
+      setPos({ x: r.left, y: r.top });
+    }
+    setOpen(v => !v);
+  };
 
   React.useEffect(() => {
     if (!open) return;
     const handler = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+      if (
+        btnRef.current && !btnRef.current.contains(e.target as Node) &&
+        menuRef.current && !menuRef.current.contains(e.target as Node)
+      ) setOpen(false);
     };
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
   }, [open]);
 
   return (
-    <div className="relative shrink-0" ref={ref}>
+    <div className="relative shrink-0">
       <button
+        ref={btnRef}
         className={`flex items-center gap-1.5 h-7 px-2.5 text-[11px] font-semibold rounded-lg border transition-all ${
           open
             ? "bg-white/[0.1] border-white/[0.15] text-white"
             : "bg-transparent border-white/[0.1] text-white/45 hover:text-white hover:border-white/20"
         }`}
-        onClick={() => setOpen(v => !v)}
+        onClick={openMenu}
       >
         <Icon name={icon} size={12} />
         <span>{label}</span>
@@ -128,7 +142,9 @@ function DropUp({ label, icon, children, badge }: {
 
       {open && (
         <div
-          className="absolute bottom-full left-0 mb-1.5 z-50 bg-[#1c1c1c] border border-white/[0.12] rounded-xl shadow-2xl p-1.5 flex flex-col gap-0.5 min-w-[180px]"
+          ref={menuRef}
+          className="fixed z-[9999] bg-[#1c1c1c] border border-white/[0.12] rounded-xl shadow-2xl p-1.5 flex flex-col gap-0.5 min-w-[190px]"
+          style={{ left: pos.x, bottom: `calc(100vh - ${pos.y}px + 6px)` }}
           onClick={() => setOpen(false)}
         >
           {children}
@@ -243,8 +259,8 @@ export default function PlanToolbar(props: Props) {
   const fnCount = [settings.ortho, settings.snapToPoints].filter(Boolean).length;
 
   return (
-    <div className="flex items-center gap-0.5 px-2 bg-[#161616] border-b border-white/[0.08] shrink-0 overflow-x-auto"
-      style={{ height: 52 }}>
+    <div className="flex items-center gap-0.5 px-2 bg-[#161616] border-b border-white/[0.08] shrink-0"
+      style={{ height: 52, overflowX: "visible", overflowY: "visible" }}>
 
       {/* Лого */}
       <div className="w-7 h-7 rounded-lg bg-white flex items-center justify-center shrink-0 mr-1.5">

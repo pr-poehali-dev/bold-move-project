@@ -7,6 +7,7 @@ import {
 } from "./planTypes";
 import { Section, LengthRow } from "./PlanSidebarShared";
 
+
 interface Props {
   state: PlanState;
   onChange: (patch: Partial<PlanState>) => void;
@@ -84,7 +85,7 @@ export default function DrawingTab({ state, onChange }: Props) {
   return (
     <div>
       {/* ── Фигура ── */}
-      <Section title="Фигура" icon="Pentagon" iconColor="#a78bfa" defaultOpen>
+      <Section title="Фигура" icon="Pentagon" iconColor="#a78bfa" defaultOpen={false}>
 
         {/* Активная фигура */}
         <div className="mb-3">
@@ -174,12 +175,13 @@ export default function DrawingTab({ state, onChange }: Props) {
         )}
       </Section>
 
-      {/* ── Стороны ── */}
+      {/* ── Стороны — открывается автоматически после замыкания ── */}
       <Section title="Стороны, см" icon="Ruler" iconColor="#60a5fa"
         visible={settings.showSegmentLabels}
         onVisibilityToggle={() => updateSettings({ showSegmentLabels: !settings.showSegmentLabels })}
         badge={segments.length > 0 ? String(segments.length) : undefined}
-        defaultOpen>
+        defaultOpen={false}
+        forceOpen={isClosed}>
         {segments.length === 0
           ? <p className="text-[11px] text-white/20 text-center py-3">Нет отрезков</p>
           : (
@@ -275,7 +277,7 @@ export default function DrawingTab({ state, onChange }: Props) {
         visible={settings.showAngleLabels}
         onVisibilityToggle={() => updateSettings({ showAngleLabels: !settings.showAngleLabels })}
         badge={points.length > 0 ? String(points.length) : undefined}
-        defaultOpen>
+        defaultOpen={false}>
 
         {points.length === 0
           ? <p className="text-[11px] text-white/20 text-center py-3">Нет точек</p>
@@ -337,7 +339,7 @@ export default function DrawingTab({ state, onChange }: Props) {
         visible={settings.showDiagonals}
         onVisibilityToggle={() => updateSettings({ showDiagonals: !settings.showDiagonals })}
         badge={diagonals.length > 0 ? String(diagonals.length) : undefined}
-        defaultOpen>
+        defaultOpen={false}>
 
         {diagonals.length === 0
           ? <p className="text-[11px] text-white/20 text-center py-3">{isClosed ? "Нет диагоналей" : "Замкните фигуру"}</p>
@@ -418,78 +420,6 @@ export default function DrawingTab({ state, onChange }: Props) {
         )}
       </Section>
 
-      {/* ── Размерные линии ── */}
-      <Section title="Размерные линии, см" icon="ArrowLeftRight" iconColor="#a78bfa"
-        visible={settings.showDimLines}
-        onVisibilityToggle={() => updateSettings({ showDimLines: !settings.showDimLines })}
-        badge={dimLines.length > 0 ? String(dimLines.length) : undefined}
-        defaultOpen={false}>
-
-        {dimLines.length === 0
-          ? <p className="text-[11px] text-white/20 text-center py-3">Нет пользовательских линий</p>
-          : (
-            <div className="space-y-1">
-              {dimLines.map((dl, idx) => {
-                const a = points.find(p => p.id === dl.fromId);
-                const b = points.find(p => p.id === dl.toId);
-                const idxA = points.findIndex(p => p.id === dl.fromId);
-                const idxB = points.findIndex(p => p.id === dl.toId);
-                const lenPx = a && b ? distPx(a, b) : 0;
-                const autoCm = pxToCm(lenPx, scale);
-                return (
-                  <div key={dl.id} className="space-y-1">
-                    <LengthRow
-                      label={`${pointLabel(idxA)}-${pointLabel(idxB)}`}
-                      valueCm={dl.labelCm}
-                      placeholder={autoCm !== null ? String(autoCm) : "—"}
-                      visible={dl.visible}
-                      onValueChange={v => onChange({ dimLines: dimLines.map(d => d.id === dl.id ? { ...d, labelCm: v } : d) })}
-                      onVisibilityToggle={() => onChange({ dimLines: dimLines.map(d => d.id === dl.id ? { ...d, visible: !d.visible } : d) })}
-                      onDelete={() => onChange({ dimLines: dimLines.filter(d => d.id !== dl.id) })}
-                    />
-                    <div className="flex items-center gap-2 px-1.5">
-                      <span className="text-[9px] text-white/25">Смещение</span>
-                      <input type="range" min={15} max={100} step={5}
-                        value={dl.offsetPx}
-                        onChange={e => onChange({ dimLines: dimLines.map(d => d.id === dl.id ? { ...d, offsetPx: Number(e.target.value) } : d) })}
-                        className="flex-1 accent-violet-500"
-                      />
-                      <span className="text-[9px] text-white/25 w-5">{dl.offsetPx}</span>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )
-        }
-
-        {/* Добавить размерную линию */}
-        {isClosed && points.length >= 2 && (
-          <AddDimLineForm points={points} onAdd={(fromId, toId) => {
-            onChange({ dimLines: [...dimLines, { id: genId("dl"), fromId, toId, offsetPx: 40, visible: true, labelCm: null }] });
-          }} />
-        )}
-      </Section>
-
-      {/* ── Настройки ── */}
-      <Section title="Настройки сетки" icon="Settings2" iconColor="#94a3b8" defaultOpen={false}>
-        <div className="space-y-3">
-          <div>
-            <label className={lbl10}>Шаг сетки: {settings.gridSize} px</label>
-            <input type="range" min={10} max={80} step={5}
-              value={settings.gridSize}
-              onChange={e => updateSettings({ gridSize: Number(e.target.value) })}
-              className="w-full accent-violet-500" />
-          </div>
-          <div className="flex items-center gap-2">
-            <label className={lbl10 + " mb-0 flex-1"}>Метки точек</label>
-            <button onClick={() => updateSettings({ showPointLabels: !settings.showPointLabels })}
-              className={`px-3 py-1 rounded-lg text-[11px] font-semibold border transition ${settings.showPointLabels ? "bg-violet-500/20 border-violet-500/40 text-violet-300" : "bg-white/[0.04] border-white/[0.08] text-white/35"}`}>
-              {settings.showPointLabels ? "Вкл" : "Выкл"}
-            </button>
-          </div>
-        </div>
-      </Section>
     </div>
   );
 }
