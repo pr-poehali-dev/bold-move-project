@@ -238,16 +238,22 @@ export function buildOrthoRect(
   const wPx = getLenPx(orderedSegs[0], 0); // A-B (горизонталь)
   const hPx = getLenPx(orderedSegs[1], 1); // B-C (вертикаль)
 
-  // Определяем ориентацию по оригинальным точкам A и B
+  // Определяем ориентацию по оригинальным точкам A, B, C
   const ptA = points.find(p => p.id === chain[0])!;
   const ptB = points.find(p => p.id === chain[1])!;
+  const ptC = points.find(p => p.id === chain[2])!;
   const dx = ptB.x - ptA.x;
   const dy = ptB.y - ptA.y;
   // Основная ось A-B
   const abLen = Math.sqrt(dx * dx + dy * dy) || 1;
   const ux = dx / abLen, uy = dy / abLen;
-  // Перпендикуляр (B-C)
-  const vx = -uy, vy = ux;
+  // Два варианта перпендикуляра — выбираем тот что ближе к оригинальной точке C
+  const vx1 = -uy, vy1 = ux;
+  const vx2 = uy, vy2 = -ux;
+  const d1 = (ptB.x + vx1 - ptC.x) ** 2 + (ptB.y + vy1 - ptC.y) ** 2;
+  const d2 = (ptB.x + vx2 - ptC.x) ** 2 + (ptB.y + vy2 - ptC.y) ** 2;
+  const vx = d1 < d2 ? vx1 : vx2;
+  const vy = d1 < d2 ? vy1 : vy2;
 
   const ax = ptA.x, ay = ptA.y;
   const bx = ax + ux * wPx, by = ay + uy * wPx;
