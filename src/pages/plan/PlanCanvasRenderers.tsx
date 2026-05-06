@@ -2,7 +2,7 @@ import React from "react";
 import type { Point, Segment, DiagonalDef, DimLine, PlanState } from "./planTypes";
 import {
   pointLabel, segmentLabel, distPx, midPoint, segmentNormal,
-  pxToCm, calcScale, angleDeg, moveEndPoint, buildAutoDiagonals,
+  pxToCm, calcScale, angleDeg, buildAutoDiagonals,
 } from "./planTypes";
 import Icon from "@/components/ui/icon";
 import { DIM_OFF, PT_R, PT_HIT } from "./PlanCanvasUtils";
@@ -282,13 +282,20 @@ export function InlineDimLabels({ state, onChange }: InlineDimProps) {
     const val = parseFloat(draft);
     if (!isNaN(val) && val > 0) {
       const newSegments = segments.map(s => s.id === segId ? { ...s, lengthCm: val } : s);
-      const result = moveEndPoint(points, newSegments, segId, val, state.baseScale ?? null);
-      if (result) {
-        const newDiags = buildAutoDiagonals(result.points, diagonals);
-        onChange({ segments: newSegments, points: result.points, diagonals: newDiags, baseScale: result.baseScale });
-      } else {
-        onChange({ segments: newSegments });
+      // Точки не двигаем — только сохраняем lengthCm и baseScale
+      let baseScale = state.baseScale ?? null;
+      if (!baseScale) {
+        const seg = segments.find(s => s.id === segId);
+        if (seg) {
+          const a = points.find(p => p.id === seg.fromId);
+          const b = points.find(p => p.id === seg.toId);
+          if (a && b) {
+            const px = distPx(a, b);
+            if (px > 0) baseScale = px / val;
+          }
+        }
       }
+      onChange({ segments: newSegments, baseScale: baseScale ?? undefined });
     }
     setEditingId(null);
     setDraft("");

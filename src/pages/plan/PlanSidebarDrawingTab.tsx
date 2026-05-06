@@ -2,8 +2,8 @@ import React from "react";
 import Icon from "@/components/ui/icon";
 import type { PlanState, Segment, DiagonalDef, PlanSettings, RoomParams } from "./planTypes";
 import {
-  pointLabel, segmentLabel, distPx, pxToCm, calcScale, angleDeg,
-  buildAutoDiagonals, polygonArea, polygonPerimeter, genId, moveEndPoint, buildOrthoRect,
+  pointLabel, segmentLabel, distPx, calcScale, angleDeg,
+  buildAutoDiagonals, polygonArea, polygonPerimeter, genId,
 } from "./planTypes";
 import { Section, LengthRow } from "./PlanSidebarShared";
 
@@ -65,21 +65,21 @@ export default function DrawingTab({ state, onChange }: Props) {
   const updateSegment = (id: string, patch: Partial<Segment>) => {
     const newSegments = segments.map(s => s.id === id ? { ...s, ...patch } : s);
     if (patch.lengthCm !== undefined && patch.lengthCm !== null && patch.lengthCm > 0) {
-      // Ортогональный режим + 4 точки → строим правильный прямоугольник
-      if (settings.ortho && points.length === 4) {
-        const result = buildOrthoRect(points, newSegments, state.baseScale ?? null);
-        if (result) {
-          const newDiags = buildAutoDiagonals(result.points, diagonals);
-          onChange({ segments: newSegments, points: result.points, diagonals: newDiags, baseScale: result.baseScale });
-          return;
+      // Вычисляем baseScale при первом вводе — точки НЕ двигаем
+      let baseScale = state.baseScale ?? null;
+      if (!baseScale) {
+        const seg = segments.find(s => s.id === id);
+        if (seg) {
+          const a = points.find(p => p.id === seg.fromId);
+          const b = points.find(p => p.id === seg.toId);
+          if (a && b) {
+            const px = distPx(a, b);
+            if (px > 0) baseScale = px / patch.lengthCm;
+          }
         }
       }
-      const result = moveEndPoint(points, newSegments, id, patch.lengthCm, state.baseScale ?? null);
-      if (result) {
-        const newDiags = buildAutoDiagonals(result.points, diagonals);
-        onChange({ segments: newSegments, points: result.points, diagonals: newDiags, baseScale: result.baseScale });
-        return;
-      }
+      onChange({ segments: newSegments, baseScale: baseScale ?? undefined });
+      return;
     }
     onChange({ segments: newSegments });
   };
