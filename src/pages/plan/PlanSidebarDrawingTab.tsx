@@ -191,9 +191,9 @@ export default function DrawingTab({ state, onChange }: Props) {
                     placeholder={autoCm !== null ? String(autoCm) : "—"}
                     visible={seg.showLength}
                     isActive={isActive}
-                    onValueChange={v => {
-                      updateSegment(seg.id, { lengthCm: v });
-                      if (v !== null && phase === "lengths")
+                    onValueChange={v => updateSegment(seg.id, { lengthCm: v })}
+                    onCommit={() => {
+                      if (phase === "lengths")
                         onChange({ activeInputIndex: (activeInputIndex + 1) % segments.length });
                     }}
                     onVisibilityToggle={() => updateSegment(seg.id, { showLength: !seg.showLength })}
