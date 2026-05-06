@@ -28,6 +28,8 @@ export function usePlanCanvasEvents({ state, onChange, cs }: Params) {
   } = state;
 
   const { ortho, snapToPoints: snapPts, showGrid, gridSize, zoom, panX, panY } = settings;
+  // Если масштаб установлен — snap по 1 см, иначе по gridSize пикселей
+  const effectiveGridSize = state.baseScale ? state.baseScale : gridSize;
 
   // ── Конвертация координат ────────────────────────────────────────────────
   const clientToSvg = useCallback((clientX: number, clientY: number) => {
@@ -43,8 +45,8 @@ export function usePlanCanvasEvents({ state, onChange, cs }: Params) {
   const applySnap = useCallback((rawX: number, rawY: number, excludeId: string | null = null) => {
     const snappedFirst = snapToPoint(rawX, rawY, points, excludeId, SNAP_THR, snapPts);
     if (snappedFirst.snapped) return { x: snappedFirst.x, y: snappedFirst.y, snapped: true };
-    let x = snapVal(rawX, gridSize, showGrid);
-    let y = snapVal(rawY, gridSize, showGrid);
+    let x = snapVal(rawX, effectiveGridSize, showGrid);
+    let y = snapVal(rawY, effectiveGridSize, showGrid);
     if (ortho && points.length > 0 && tool === "draw" && !isClosed) {
       const o = orthoPoint(points[points.length - 1], x, y);
       x = o.x; y = o.y;
@@ -68,7 +70,7 @@ export function usePlanCanvasEvents({ state, onChange, cs }: Params) {
       }
     }
     return { x, y, snapped: false };
-  }, [gridSize, showGrid, ortho, points, tool, isClosed, snapPts, segments]);
+  }, [effectiveGridSize, gridSize, showGrid, ortho, points, tool, isClosed, snapPts, segments]);
 
   // ── Long press ────────────────────────────────────────────────────────────
   const clearLongPress = useCallback(() => {
