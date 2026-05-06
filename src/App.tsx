@@ -14,6 +14,7 @@ const MyOrders    = lazy(() => import("./pages/MyOrders"));
 const Pricing     = lazy(() => import("./pages/Pricing"));
 const WhiteLabel  = lazy(() => import("./pages/WhiteLabel"));
 const NotFound    = lazy(() => import("./pages/NotFound"));
+const PlanPage    = lazy(() => import("./pages/plan/PlanPage"));
 
 const queryClient = new QueryClient();
 
@@ -33,6 +34,7 @@ const App = () => (
                 <Route path="/my-orders" element={<MyOrders />} />
                 <Route path="/pricing"   element={<Pricing />} />
                 <Route path="/whitelabel" element={<WhiteLabel />} />
+                <Route path="/plan"      element={<PlanPage />} />
                 {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                 <Route path="*" element={<NotFound />} />
               </Routes>
