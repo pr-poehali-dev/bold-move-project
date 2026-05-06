@@ -22,10 +22,15 @@ export function Section({
   }, [forceOpen]);
   return (
     <div className="border-b border-white/[0.06]">
-      <button className="w-full flex items-center gap-2 px-4 py-2.5 hover:bg-white/[0.025] transition-colors"
-        onClick={() => setOpen(o => !o)}>
+      <div
+        role="button"
+        tabIndex={0}
+        className="w-full flex items-center gap-2 px-4 py-2.5 hover:bg-white/[0.025] transition-colors cursor-pointer"
+        onClick={() => setOpen(o => !o)}
+        onKeyDown={e => { if (e.key === "Enter" || e.key === " ") setOpen(o => !o); }}
+      >
         <Icon name={icon} size={13} style={{ color: iconColor }} />
-        <span className="flex-1 text-left text-[13px] font-semibold text-white/75">{title}</span>
+        <span className="flex-1 text-left text-[13px] font-semibold text-white/75 select-none">{title}</span>
         {badge && <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-white/[0.07] text-white/40">{badge}</span>}
         {onVisibilityToggle && (
           <button onClick={e => { e.stopPropagation(); onVisibilityToggle(); }}
@@ -34,7 +39,7 @@ export function Section({
           </button>
         )}
         <Icon name={open ? "ChevronUp" : "ChevronDown"} size={13} className="text-white/25 shrink-0" />
-      </button>
+      </div>
       {open && <div className="px-3 pb-3 pt-1">{children}</div>}
     </div>
   );

@@ -112,8 +112,13 @@ export default function PlanCanvas({ state, onChange }: Props) {
     if (dragRef.current && tool === "move") {
       const raw = clientToSvg(e.clientX, e.clientY);
       const { x, y } = applySnap(raw.x, raw.y, dragRef.current.pointId);
-      const newPts = points.map(p => p.id === dragRef.current!.pointId ? { ...p, x, y } : p);
-      onChange({ points: newPts, diagonals: buildAutoDiagonals(newPts, diagonals) });
+      const movedId = dragRef.current.pointId;
+      const newPts = points.map(p => p.id === movedId ? { ...p, x, y } : p);
+      // Сбрасываем lengthCm у отрезков связанных с перетаскиваемой точкой
+      const newSegs = segments.map(s =>
+        (s.fromId === movedId || s.toId === movedId) ? { ...s, lengthCm: null } : s
+      );
+      onChange({ points: newPts, segments: newSegs, diagonals: buildAutoDiagonals(newPts, diagonals) });
     }
   }, [tool, phase, isClosed, points, dimLineFrom, clientToSvg, applySnap, diagonals, onChange, settings, zoom]);
 
@@ -225,8 +230,12 @@ export default function PlanCanvas({ state, onChange }: Props) {
       if (dragRef.current && tool === "move") {
         const raw = clientToSvg(t.clientX, t.clientY);
         const { x, y } = applySnap(raw.x, raw.y, dragRef.current.pointId);
-        const newPts = points.map(p => p.id === dragRef.current!.pointId ? { ...p, x, y } : p);
-        onChange({ points: newPts, diagonals: buildAutoDiagonals(newPts, diagonals) });
+        const movedId = dragRef.current.pointId;
+        const newPts = points.map(p => p.id === movedId ? { ...p, x, y } : p);
+        const newSegs = segments.map(s =>
+          (s.fromId === movedId || s.toId === movedId) ? { ...s, lengthCm: null } : s
+        );
+        onChange({ points: newPts, segments: newSegs, diagonals: buildAutoDiagonals(newPts, diagonals) });
         didMoveRef.current = true;
         return;
       }
