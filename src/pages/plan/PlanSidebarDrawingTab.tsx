@@ -2,7 +2,7 @@ import React from "react";
 import Icon from "@/components/ui/icon";
 import type { PlanState, Segment, DiagonalDef, PlanSettings, RoomParams } from "./planTypes";
 import {
-  pointLabel, segmentLabel, distPx, pxToCm, calcScale, angleDeg,
+  pointLabel, segmentLabel, calcScale, angleDeg,
   buildAutoDiagonals, polygonArea, polygonPerimeter, genId, moveEndPoint,
 } from "./planTypes";
 import { Section, LengthRow } from "./PlanSidebarShared";
@@ -213,15 +213,11 @@ export default function DrawingTab({ state, onChange }: Props) {
           : (
             <div className="space-y-0.5">
               {segments.map((seg, idx) => {
-                const a = points.find(p => p.id === seg.fromId);
-                const b = points.find(p => p.id === seg.toId);
-                const lenPx = a && b ? distPx(a, b) : 0;
-                const autoCm = pxToCm(lenPx, scale);
                 return (
                   <LengthRow key={seg.id}
                     label={segmentLabel(points, seg)}
                     valueCm={seg.lengthCm}
-                    placeholder={autoCm !== null ? String(autoCm) : "—"}
+                    placeholder="—"
                     visible={seg.showLength}
                     inputRef={inputRefs.current[idx]}
                     autoFocus={idx === 0 && isClosed}
