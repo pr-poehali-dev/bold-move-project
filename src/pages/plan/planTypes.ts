@@ -580,7 +580,11 @@ export function diagonalCrossesWall(
   return false;
 }
 
-export function buildAutoDiagonals(points: Point[], existingDiagonals: DiagonalDef[]): DiagonalDef[] {
+export function buildAutoDiagonals(
+  points: Point[],
+  existingDiagonals: DiagonalDef[],
+  baseScale: number | null = null,
+): DiagonalDef[] {
   const n = points.length;
   if (n < 4) return [];
   const result: DiagonalDef[] = [];
@@ -589,7 +593,6 @@ export function buildAutoDiagonals(points: Point[], existingDiagonals: DiagonalD
       if (i === 0 && j === n - 1) continue;
       const from = points[i];
       const to   = points[j];
-      // Пропускаем диагонали, которые пересекают стены
       if (diagonalCrossesWall(from, to, points, points.map((_, k) => ({
         fromId: points[k].id,
         toId:   points[(k + 1) % n].id,
@@ -600,10 +603,16 @@ export function buildAutoDiagonals(points: Point[], existingDiagonals: DiagonalD
         d => (d.fromId === fromId && d.toId === toId) ||
              (d.fromId === toId && d.toId === fromId)
       );
+      // Автоматически вычисляем lengthCm если есть масштаб
+      const autoCm = baseScale && baseScale > 0
+        ? Math.round((distPx(from, to) / baseScale) * 10) / 10
+        : null;
       if (existing) {
-        result.push(existing);
+        // Обновляем lengthCm только если клиент не вводил вручную
+        const lenCm = existing.lengthCm !== null ? existing.lengthCm : autoCm;
+        result.push({ ...existing, lengthCm: lenCm });
       } else {
-        result.push({ id: genId("d"), fromId, toId, lengthCm: null, showLength: true, visible: true });
+        result.push({ id: genId("d"), fromId, toId, lengthCm: autoCm, showLength: true, visible: true });
       }
     }
   }

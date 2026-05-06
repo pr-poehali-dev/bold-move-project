@@ -78,7 +78,8 @@ export default function DrawingTab({ state, onChange }: Props) {
           }
         }
       }
-      onChange({ segments: newSegments, baseScale: baseScale ?? undefined });
+      const newDiags = buildAutoDiagonals(points, diagonals, baseScale);
+      onChange({ segments: newSegments, diagonals: newDiags, baseScale: baseScale ?? undefined });
       return;
     }
     onChange({ segments: newSegments });
@@ -447,7 +448,7 @@ export default function DrawingTab({ state, onChange }: Props) {
                 <Icon name="Plus" size={14} />
               </button>
             </div>
-            <button onClick={() => onChange({ diagonals: buildAutoDiagonals(points, diagonals) })}
+            <button onClick={() => onChange({ diagonals: buildAutoDiagonals(points, diagonals, state.baseScale ?? null) })}
               className="mt-1.5 w-full py-1.5 rounded-xl text-[11px] font-semibold border bg-white/[0.03] border-white/[0.07] text-white/35 hover:bg-white/[0.07] transition">
               Восстановить авто-диагонали
             </button>

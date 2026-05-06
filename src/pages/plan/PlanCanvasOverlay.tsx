@@ -53,7 +53,7 @@ export default function PlanCanvasOverlay({
             <CtxItem icon="Trash2" label="Удалить точку" danger onClick={() => {
               const newPts = points.filter(p => p.id !== ctxMenu.id);
               const newSegs = segments.filter(s => s.fromId !== ctxMenu.id && s.toId !== ctxMenu.id);
-              onChange({ points: newPts, segments: newSegs, diagonals: newPts.length >= 3 ? buildAutoDiagonals(newPts, diagonals) : [], isClosed: isClosed && newPts.length >= 3, selectedPointId: null });
+              onChange({ points: newPts, segments: newSegs, diagonals: newPts.length >= 3 ? buildAutoDiagonals(newPts, diagonals, state.baseScale ?? null) : [], isClosed: isClosed && newPts.length >= 3, selectedPointId: null });
             }} />
           </>)}
           {ctxMenu.type === "segment" && (<>
