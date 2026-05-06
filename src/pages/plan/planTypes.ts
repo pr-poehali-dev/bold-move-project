@@ -105,6 +105,8 @@ export interface PlanState {
   selectedArcId: string | null;
   selectedDimLineId: string | null;
   activeInputIndex: number;
+  /** Базовый масштаб px/cm, устанавливается при первом вводе длины стороны и больше не меняется */
+  baseScale: number | null;
 }
 
 // ─── Утилиты ─────────────────────────────────────────────────────────────────
@@ -134,19 +136,18 @@ export function distPx(a: Point, b: Point): number {
 /**
  * Пересчитать позиции ВСЕХ точек фигуры по заданным длинам отрезков.
  *
- * Алгоритм: единый масштаб px/cm вычисляется из изменяемого отрезка.
- * Все отрезки с введённой длиной получают размер = lengthCm * scale.
- * Отрезки без lengthCm сохраняют текущую пиксельную длину.
- * Направления всех отрезков не меняются (берутся из оригинальных точек).
+ * baseScale (px/cm) устанавливается при первом вводе и НИКОГДА не меняется.
+ * Это гарантирует что все 400 = 400px×scale — одинаковое расстояние на холсте.
  */
 export function resizeSegmentInPlace(
   points: Point[],
   segments: Segment[],
   segId: string,
   newLenCm: number,
-): Point[] {
-  if (newLenCm <= 0) return points;
-  if (points.length < 2 || segments.length < 2) return points;
+  baseScaleIn: number | null,
+): { points: Point[]; baseScale: number } | null {
+  if (newLenCm <= 0) return null;
+  if (points.length < 2 || segments.length < 2) return null;
 
   // Строим упорядоченную цепочку pointId[] начиная с points[0]
   const chain: string[] = [points[0].id];
@@ -158,7 +159,7 @@ export function resizeSegmentInPlace(
     chain.push(s.toId);
     cur = s.toId;
   }
-  if (chain.length < 2) return points;
+  if (chain.length < 2) return null;
 
   // Собираем отрезки в порядке цепочки
   const orderedSegs: Segment[] = [];
@@ -166,65 +167,39 @@ export function resizeSegmentInPlace(
     const fromId = chain[i];
     const toId = chain[(i + 1) % chain.length];
     const s = segments.find(sg => sg.fromId === fromId && sg.toId === toId);
-    if (!s) return points;
+    if (!s) return null;
     orderedSegs.push(s);
   }
 
-  // Целевая пиксельная длина для каждого отрезка:
-  // — изменяемый: newLenCm × (origPx / origLenCm) — масштаб самого отрезка до изменения
-  //   (origLenCm берём из segments ПЕРЕД обновлением, но segments уже содержит новый lengthCm)
-  //   Поэтому используем просто origPx × (newLenCm / prevLenCm)
-  //   Но prevLenCm неизвестен... Решение: пиксельная длина = newLenCm × globalScale,
-  //   где globalScale вычисляем по ПЕРВОМУ ранее введённому отрезку.
-  // — остальные с lengthCm: их пиксельная длина уже правильная (не трогаем)
-  // — без lengthCm: тоже не трогаем
-
-  // Глобальный масштаб: берём ПЕРВЫЙ уже введённый отрезок (не изменяемый)
-  let globalScale: number | null = null;
-  for (const s of orderedSegs) {
-    if (s.id === segId) continue;
-    if (s.lengthCm === null || s.lengthCm <= 0) continue;
-    const pa = points.find(p => p.id === s.fromId);
-    const pb = points.find(p => p.id === s.toId);
-    if (!pa || !pb) continue;
-    const px = distPx(pa, pb);
-    if (px > 0) { globalScale = px / s.lengthCm; break; }
-  }
-  // Если нет других введённых — изменяемый отрезок сам задаёт масштаб
-  if (!globalScale) {
+  // baseScale устанавливается ОДИН РАЗ при первом вводе и никогда не меняется.
+  // Это гарантирует что 400см = одинаковое расстояние на холсте для всех отрезков.
+  let scale = baseScaleIn;
+  if (!scale) {
+    // Первый ввод — вычисляем из текущего отрезка до его изменения
     const editedSeg = orderedSegs.find(s => s.id === segId);
-    if (!editedSeg) return points;
+    if (!editedSeg) return null;
     const eFrom = points.find(p => p.id === editedSeg.fromId);
     const eTo   = points.find(p => p.id === editedSeg.toId);
-    if (!eFrom || !eTo) return points;
+    if (!eFrom || !eTo) return null;
     const ePx = distPx(eFrom, eTo);
-    if (ePx === 0) return points;
-    globalScale = ePx / newLenCm;
+    if (ePx === 0) return null;
+    scale = ePx / newLenCm; // px / cm
   }
 
-  // Целевая пиксельная длина для каждого отрезка
+  // Целевая пиксельная длина: lengthCm × scale (одинаковый scale для всех)
   const targetPx = new Map<string, number>();
   for (const s of orderedSegs) {
     const pa = points.find(p => p.id === s.fromId);
     const pb = points.find(p => p.id === s.toId);
-    if (!pa || !pb) return points;
+    if (!pa || !pb) return null;
     const origPx = distPx(pa, pb);
-    if (s.id === segId) {
-      // Изменяемый: устанавливаем точную пиксельную длину через globalScale
-      targetPx.set(s.id, newLenCm * globalScale);
-    } else if (s.lengthCm !== null && s.lengthCm > 0) {
-      // Уже введённый другой отрезок: пиксельная длина = lengthCm * globalScale
-      // (это обеспечивает консистентность всех введённых длин)
-      targetPx.set(s.id, s.lengthCm * globalScale);
-    } else {
-      // Не введён: сохраняем текущую пиксельную длину
-      targetPx.set(s.id, origPx);
-    }
+    const lenCm = s.id === segId ? newLenCm : s.lengthCm;
+    targetPx.set(s.id, (lenCm !== null && lenCm > 0) ? lenCm * scale : origPx);
   }
 
-  // Строим новые координаты кинематически (p[0] — якорь)
+  // Строим новые координаты кинематически (p[0] — якорь, не двигается)
   const p0 = points.find(p => p.id === chain[0]);
-  if (!p0) return points;
+  if (!p0) return null;
   const newCoords = new Map<string, { x: number; y: number }>();
   newCoords.set(chain[0], { x: p0.x, y: p0.y });
 
@@ -236,7 +211,7 @@ export function resizeSegmentInPlace(
     const s = orderedSegs[i];
     const curFrom = newCoords.get(fromId)!;
 
-    // Направление из оригинальных точек
+    // Единичный вектор направления из ОРИГИНАЛЬНЫХ точек
     const origFrom = points.find(p => p.id === s.fromId)!;
     const origTo   = points.find(p => p.id === s.toId)!;
     const origLen  = distPx(origFrom, origTo);
@@ -247,10 +222,12 @@ export function resizeSegmentInPlace(
     newCoords.set(toId, { x: curFrom.x + ux * px, y: curFrom.y + uy * px });
   }
 
-  return points.map(p => {
+  const newPoints = points.map(p => {
     const nc = newCoords.get(p.id);
     return nc ? { ...p, x: nc.x, y: nc.y } : p;
   });
+
+  return { points: newPoints, baseScale: scale };
 }
 
 export function calcScale(points: Point[], segments: Segment[]): number | null {
@@ -526,4 +503,5 @@ export const INITIAL_STATE: PlanState = {
   selectedArcId: null,
   selectedDimLineId: null,
   activeInputIndex: 0,
+  baseScale: null,
 };

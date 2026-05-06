@@ -281,12 +281,14 @@ export function InlineDimLabels({ state, onChange }: InlineDimProps) {
   const commitEdit = (segId: string) => {
     const val = parseFloat(draft);
     if (!isNaN(val) && val > 0) {
-      // Обновляем длину отрезка
       const newSegments = segments.map(s => s.id === segId ? { ...s, lengthCm: val } : s);
-      // Пересчитываем позиции точек
-      const newPoints = resizeSegmentInPlace(points, newSegments, segId, val);
-      const newDiags = buildAutoDiagonals(newPoints, diagonals);
-      onChange({ segments: newSegments, points: newPoints, diagonals: newDiags });
+      const result = resizeSegmentInPlace(points, newSegments, segId, val, state.baseScale ?? null);
+      if (result) {
+        const newDiags = buildAutoDiagonals(result.points, diagonals);
+        onChange({ segments: newSegments, points: result.points, diagonals: newDiags, baseScale: result.baseScale });
+      } else {
+        onChange({ segments: newSegments });
+      }
     }
     setEditingId(null);
     setDraft("");

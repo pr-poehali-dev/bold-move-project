@@ -66,9 +66,13 @@ export default function DrawingTab({ state, onChange }: Props) {
     const newSegments = segments.map(s => s.id === id ? { ...s, ...patch } : s);
     // Если меняется длина — пересчитываем позиции точек на холсте
     if (patch.lengthCm !== undefined && patch.lengthCm !== null && patch.lengthCm > 0) {
-      const newPoints = resizeSegmentInPlace(points, newSegments, id, patch.lengthCm);
-      const newDiags = buildAutoDiagonals(newPoints, diagonals);
-      onChange({ segments: newSegments, points: newPoints, diagonals: newDiags });
+      const result = resizeSegmentInPlace(points, newSegments, id, patch.lengthCm, state.baseScale ?? null);
+      if (result) {
+        const newDiags = buildAutoDiagonals(result.points, diagonals);
+        onChange({ segments: newSegments, points: result.points, diagonals: newDiags, baseScale: result.baseScale });
+      } else {
+        onChange({ segments: newSegments });
+      }
     } else {
       onChange({ segments: newSegments });
     }
