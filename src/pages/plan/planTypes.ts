@@ -619,6 +619,63 @@ export function buildAutoDiagonals(
   return result;
 }
 
+/**
+ * Проверяет замкнутость фигуры по введённым длинам и направлениям отрезков.
+ * Возвращает погрешность в процентах (0 = идеально замкнута).
+ * Если не все стороны введены — возвращает null.
+ */
+export function checkClosureError(
+  points: Point[],
+  segments: Segment[],
+  baseScale: number | null,
+): number | null {
+  if (!baseScale || points.length < 3 || segments.length < 3) return null;
+
+  // Строим упорядоченную цепочку
+  const chain: string[] = [points[0].id];
+  let cur = points[0].id;
+  for (let i = 0; i < segments.length; i++) {
+    const s = segments.find(sg => sg.fromId === cur);
+    if (!s) break;
+    if (chain.includes(s.toId)) break;
+    chain.push(s.toId);
+    cur = s.toId;
+  }
+  if (chain.length !== points.length) return null;
+
+  const orderedSegs: Segment[] = [];
+  for (let i = 0; i < chain.length; i++) {
+    const s = segments.find(sg => sg.fromId === chain[i] && sg.toId === chain[(i + 1) % chain.length]);
+    if (!s) return null;
+    orderedSegs.push(s);
+  }
+
+  // Все стороны должны быть введены
+  if (!orderedSegs.every(s => s.lengthCm !== null && s.lengthCm > 0)) return null;
+
+  // Строим цепочку по направлениям из оригинальных точек + введённым длинам
+  let x = 0, y = 0;
+  let totalCm = 0;
+  for (const s of orderedSegs) {
+    const fromPt = points.find(p => p.id === s.fromId)!;
+    const toPt   = points.find(p => p.id === s.toId)!;
+    const origPx = distPx(fromPt, toPt);
+    if (origPx === 0) continue;
+    const ux = (toPt.x - fromPt.x) / origPx;
+    const uy = (toPt.y - fromPt.y) / origPx;
+    const lenCm = s.lengthCm!;
+    x += ux * lenCm;
+    y += uy * lenCm;
+    totalCm += lenCm;
+  }
+
+  if (totalCm === 0) return null;
+
+  // Расстояние от конечной точки до начала (должно быть 0)
+  const errorCm = Math.sqrt(x * x + y * y);
+  return Math.round((errorCm / totalCm) * 1000) / 10; // % с одним знаком
+}
+
 export function midPoint(a: Point, b: Point): Point {
   return { id: "", x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
 }

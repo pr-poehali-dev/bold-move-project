@@ -3,7 +3,7 @@ import Icon from "@/components/ui/icon";
 import type { PlanState, Segment, DiagonalDef, PlanSettings, RoomParams } from "./planTypes";
 import {
   pointLabel, segmentLabel, distPx, pxToCm, calcScale, angleDeg, polygonOrientation,
-  buildAutoDiagonals, polygonArea, polygonPerimeter, genId,
+  buildAutoDiagonals, polygonArea, polygonPerimeter, genId, checkClosureError,
 } from "./planTypes";
 import { Section, LengthRow } from "./PlanSidebarShared";
 
@@ -250,6 +250,17 @@ export default function DrawingTab({ state, onChange }: Props) {
         badge={segments.length > 0 ? String(segments.length) : undefined}
         defaultOpen={false}
         forceOpen={isClosed}>
+        {(() => {
+          const closureErr = isClosed ? checkClosureError(points, segments, state.baseScale ?? null) : null;
+          return closureErr !== null && closureErr > 2 ? (
+            <div className="mb-2 flex items-center gap-2 px-3 py-2 rounded-xl bg-yellow-500/10 border border-yellow-500/30">
+              <Icon name="AlertTriangle" size={13} className="text-yellow-400 shrink-0" />
+              <span className="text-[11px] font-semibold text-yellow-300">
+                Погрешность {closureErr}% — проверьте размеры
+              </span>
+            </div>
+          ) : null;
+        })()}
         {segments.length === 0
           ? <p className="text-[11px] text-white/20 text-center py-3">Нет отрезков</p>
           : (
