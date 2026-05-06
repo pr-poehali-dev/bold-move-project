@@ -66,29 +66,39 @@ export function LengthRow({
 }) {
   const localRef = React.useRef<HTMLInputElement>(null);
   const ref = inputRef ?? localRef;
-  const committedByEnter = React.useRef(false);
 
-  // Локальный стейт — пользователь набирает цифры, фокус никуда не прыгает
-  const [draft, setDraft] = React.useState<string>(valueCm !== null ? String(valueCm) : "");
-  const [focused, setFocused] = React.useState(false);
+  // Храним черновик в ref чтобы onBlur всегда видел актуальное значение
+  const draftRef = React.useRef<string>(valueCm !== null ? String(valueCm) : "");
+  const [draft, setDraftState] = React.useState<string>(valueCm !== null ? String(valueCm) : "");
+  const isFocused = React.useRef(false);
 
-  // Синхронизируем draft только когда поле НЕ в фокусе
+  const setDraft = (v: string) => {
+    draftRef.current = v;
+    setDraftState(v);
+  };
+
+  // Синхронизируем draft когда значение меняется снаружи и поле НЕ в фокусе
   React.useEffect(() => {
-    if (!focused) {
-      setDraft(valueCm !== null ? String(valueCm) : "");
+    if (!isFocused.current) {
+      const s = valueCm !== null ? String(valueCm) : "";
+      draftRef.current = s;
+      setDraftState(s);
     }
-  }, [valueCm, focused]);
+  }, [valueCm]);
 
   // Автофокус при появлении (после замыкания фигуры)
+  const didAutoFocus = React.useRef(false);
   React.useEffect(() => {
-    if (autoFocus) {
-      const id = setTimeout(() => ref.current?.focus(), 80);
+    if (autoFocus && !didAutoFocus.current) {
+      didAutoFocus.current = true;
+      const id = setTimeout(() => ref.current?.focus(), 100);
       return () => clearTimeout(id);
     }
   }, [autoFocus]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const commit = () => {
-    const v = draft === "" ? null : parseFloat(draft);
+    const raw = draftRef.current;
+    const v = raw === "" ? null : parseFloat(raw);
     onValueChange(v !== null && !isNaN(v) ? v : null);
   };
 
@@ -99,19 +109,16 @@ export function LengthRow({
         value={draft}
         placeholder={placeholder ?? "—"}
         onChange={e => setDraft(e.target.value)}
-        onFocus={() => { setFocused(true); onFocus?.(); }}
+        onFocus={() => { isFocused.current = true; onFocus?.(); }}
         onBlur={() => {
-          setFocused(false);
-          // Не дублируем commit если уже сохранили по Enter
-          if (!committedByEnter.current) commit();
-          committedByEnter.current = false;
+          isFocused.current = false;
+          commit();
         }}
         onKeyDown={e => {
           // Не даём Enter всплыть до Section (он бы закрыл секцию)
           e.stopPropagation();
           if (e.key === "Enter") {
             e.preventDefault();
-            committedByEnter.current = true;
             commit();
             if (onEnterNext) {
               onEnterNext();
