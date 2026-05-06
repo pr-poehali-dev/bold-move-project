@@ -85,8 +85,39 @@ export default function DrawingTab({ state, onChange }: Props) {
     onChange({ segments: newSegments });
   };
 
-  const updateDiagonal = (id: string, patch: Partial<DiagonalDef>) =>
-    onChange({ diagonals: diagonals.map(d => d.id === id ? { ...d, ...patch } : d) });
+  const updateDiagonal = (id: string, patch: Partial<DiagonalDef>) => {
+    const newDiagonals = diagonals.map(d => d.id === id ? { ...d, ...patch } : d);
+    // Если введена длина — двигаем конечную точку диагонали
+    if (patch.lengthCm !== undefined && patch.lengthCm !== null && patch.lengthCm > 0) {
+      const diag = diagonals.find(d => d.id === id);
+      if (diag && state.baseScale) {
+        const fromPt = points.find(p => p.id === diag.fromId);
+        const toPt   = points.find(p => p.id === diag.toId);
+        if (fromPt && toPt) {
+          const origPx = distPx(fromPt, toPt);
+          if (origPx > 0) {
+            const targetPx = patch.lengthCm * state.baseScale;
+            const ux = (toPt.x - fromPt.x) / origPx;
+            const uy = (toPt.y - fromPt.y) / origPx;
+            const newToPt = { x: fromPt.x + ux * targetPx, y: fromPt.y + uy * targetPx };
+            const newPoints = points.map(p => p.id === diag.toId ? { ...p, ...newToPt } : p);
+            // Пересчитываем lengthCm отрезков затронутых точкой toId
+            const newSegments = segments.map(s => {
+              if (s.fromId !== diag.toId && s.toId !== diag.toId) return s;
+              const a = newPoints.find(p => p.id === s.fromId);
+              const b = newPoints.find(p => p.id === s.toId);
+              const px = a && b ? distPx(a, b) : 0;
+              return { ...s, lengthCm: Math.round((px / state.baseScale!) * 10) / 10 };
+            });
+            const newDiags = buildAutoDiagonals(newPoints, newDiagonals, state.baseScale);
+            onChange({ points: newPoints, segments: newSegments, diagonals: newDiags });
+            return;
+          }
+        }
+      }
+    }
+    onChange({ diagonals: newDiagonals });
+  };
 
   const updateSettings = (patch: Partial<PlanSettings>) =>
     onChange({ settings: { ...settings, ...patch } });
