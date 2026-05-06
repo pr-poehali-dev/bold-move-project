@@ -108,9 +108,9 @@ export function LengthRow({
             e.preventDefault();
             commit(e.target as HTMLInputElement);
             if (onEnterNext) {
-              onEnterNext();
+              setTimeout(() => onEnterNext!(), 0);
             } else {
-              (e.target as HTMLInputElement).blur();
+              setTimeout(() => (e.target as HTMLInputElement).blur(), 0);
             }
           }
         }}
