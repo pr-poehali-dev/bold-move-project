@@ -620,6 +620,84 @@ export function buildAutoDiagonals(
 }
 
 /**
+ * Перестраивает фигуру по введённым длинам, сохраняя углы из оригинала.
+ * Точка A (points[0]) фиксирована.
+ * Срабатывает только когда введены ВСЕ стороны.
+ * Возвращает новые точки и обновлённый baseScale, или null если не все стороны введены.
+ */
+export function rebuildFromAnglesAndLengths(
+  points: Point[],
+  segments: Segment[],
+  baseScaleIn: number | null,
+): { points: Point[]; baseScale: number } | null {
+  if (points.length < 3 || segments.length < 3) return null;
+
+  // Строим упорядоченную цепочку
+  const chain: string[] = [points[0].id];
+  let cur = points[0].id;
+  for (let i = 0; i < segments.length; i++) {
+    const s = segments.find(sg => sg.fromId === cur);
+    if (!s) break;
+    if (chain.includes(s.toId)) break;
+    chain.push(s.toId);
+    cur = s.toId;
+  }
+  if (chain.length !== points.length) return null;
+
+  const orderedSegs: Segment[] = [];
+  for (let i = 0; i < chain.length; i++) {
+    const s = segments.find(sg => sg.fromId === chain[i] && sg.toId === chain[(i + 1) % chain.length]);
+    if (!s) return null;
+    orderedSegs.push(s);
+  }
+
+  // Все стороны должны быть введены
+  if (!orderedSegs.every(s => s.lengthCm !== null && s.lengthCm > 0)) return null;
+
+  // Масштаб из первого введённого отрезка (или сохраняем существующий)
+  let scale = baseScaleIn;
+  if (!scale) {
+    const s = orderedSegs[0];
+    const pa = points.find(p => p.id === s.fromId);
+    const pb = points.find(p => p.id === s.toId);
+    if (pa && pb) {
+      const px = distPx(pa, pb);
+      if (px > 0 && s.lengthCm) scale = px / s.lengthCm;
+    }
+  }
+  if (!scale) return null;
+
+  // Строим новые координаты: A фиксирована, идём по направлениям оригинала × введённые длины
+  const p0 = points.find(p => p.id === chain[0])!;
+  const newCoords = new Map<string, { x: number; y: number }>();
+  newCoords.set(chain[0], { x: p0.x, y: p0.y });
+
+  for (let i = 0; i < chain.length; i++) {
+    const toId = chain[(i + 1) % chain.length];
+    if (toId === chain[0]) break;
+    const s = orderedSegs[i];
+    const curFrom = newCoords.get(chain[i])!;
+
+    // Направление из ОРИГИНАЛЬНЫХ точек
+    const oFrom = points.find(p => p.id === s.fromId)!;
+    const oTo   = points.find(p => p.id === s.toId)!;
+    const oLen  = distPx(oFrom, oTo);
+    const ux = oLen > 0 ? (oTo.x - oFrom.x) / oLen : 0;
+    const uy = oLen > 0 ? (oTo.y - oFrom.y) / oLen : 0;
+
+    const targetPx = s.lengthCm! * scale;
+    newCoords.set(toId, { x: curFrom.x + ux * targetPx, y: curFrom.y + uy * targetPx });
+  }
+
+  const newPoints = points.map(p => {
+    const nc = newCoords.get(p.id);
+    return nc ? { ...p, ...nc } : p;
+  });
+
+  return { points: newPoints, baseScale: scale };
+}
+
+/**
  * Проверяет замкнутость фигуры по введённым длинам и направлениям отрезков.
  * Возвращает погрешность в процентах (0 = идеально замкнута).
  * Если не все стороны введены — возвращает null.

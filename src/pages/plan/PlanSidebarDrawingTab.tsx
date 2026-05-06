@@ -1,7 +1,7 @@
 import React from "react";
 import type { PlanState, Segment, DiagonalDef, PlanSettings, RoomParams } from "./planTypes";
 import {
-  distPx, calcScale, polygonArea, polygonPerimeter, buildAutoDiagonals,
+  distPx, calcScale, polygonArea, polygonPerimeter, buildAutoDiagonals, rebuildFromAnglesAndLengths,
 } from "./planTypes";
 import DrawingTabShapeSection from "./DrawingTabShapeSection";
 import DrawingTabSidesSection from "./DrawingTabSidesSection";
@@ -41,6 +41,16 @@ export default function DrawingTab({ state, onChange }: Props) {
             const px = distPx(a, b);
             if (px > 0) baseScale = px / patch.lengthCm;
           }
+        }
+      }
+      // Если все стороны введены — перестраиваем фигуру по углам + длинам
+      const allSet = newSegments.every(s => s.lengthCm !== null && s.lengthCm > 0);
+      if (allSet) {
+        const result = rebuildFromAnglesAndLengths(points, newSegments, baseScale);
+        if (result) {
+          const newDiags = buildAutoDiagonals(result.points, diagonals, result.baseScale);
+          onChange({ points: result.points, segments: newSegments, diagonals: newDiags, baseScale: result.baseScale });
+          return;
         }
       }
       const newDiags = buildAutoDiagonals(points, diagonals, baseScale);
