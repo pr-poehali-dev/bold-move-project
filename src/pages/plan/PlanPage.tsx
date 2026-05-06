@@ -5,6 +5,7 @@ import PlanSidebar from "./PlanSidebar";
 import PlanBottomSheet from "./PlanBottomSheet";
 import PlanExportModal from "./PlanExportModal";
 import PlanLibraryModal from "./PlanLibraryModal";
+import AuthModal from "@/components/AuthModal";
 import Icon from "@/components/ui/icon";
 import type { PlanState, ToolMode, PlanSettings } from "./planTypes";
 import { INITIAL_STATE } from "./planTypes";
@@ -83,6 +84,7 @@ export default function PlanPage() {
   const [sheetOpen,   setSheetOpen]   = React.useState(false);
   const [exportOpen,  setExportOpen]  = React.useState(false);
   const [libraryOpen, setLibraryOpen] = React.useState(false);
+  const [authOpen,    setAuthOpen]    = React.useState(false);
   // Онбординг: показываем подсказку для незарегистрированных через 3 сек
   const [showOnboarding, setShowOnboarding] = React.useState(false);
 
@@ -340,7 +342,7 @@ export default function PlanPage() {
           onDelete={handleDelete}
           onRename={handleRename}
           onNew={handleNew}
-          onLoginRequest={() => { setLibraryOpen(false); /* редиректим на /login если нужно */ }}
+          onLoginRequest={() => { setLibraryOpen(false); setAuthOpen(true); }}
         />
       )}
 
@@ -355,7 +357,7 @@ export default function PlanPage() {
               <p className="text-[13px] font-bold text-white/90 mb-0.5">Сохраняй планы в облако</p>
               <p className="text-[11px] text-white/45 leading-relaxed">Войди чтобы твои чертежи сохранялись и были доступны с любого устройства</p>
               <button
-                onClick={() => { setShowOnboarding(false); setLibraryOpen(true); }}
+                onClick={() => { setShowOnboarding(false); setAuthOpen(true); }}
                 className="mt-2.5 w-full py-2 rounded-xl bg-violet-500/25 border border-violet-500/40 text-violet-200 text-[12px] font-bold hover:bg-violet-500/35 transition">
                 Войти и сохранить
               </button>
@@ -394,6 +396,15 @@ export default function PlanPage() {
             {state.settings.ortho ? " · Орто" : ""}
           </span>
         </div>
+      )}
+
+      {/* ── Модал авторизации ── */}
+      {authOpen && (
+        <AuthModal
+          onClose={() => setAuthOpen(false)}
+          defaultTab="login"
+          onSuccess={() => setAuthOpen(false)}
+        />
       )}
     </div>
   );
