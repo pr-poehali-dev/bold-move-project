@@ -86,10 +86,16 @@ export function usePlanCanvasEvents({ state, onChange, cs }: Params) {
       const { x, y } = applySnap(raw.x, raw.y, dragRef.current.pointId);
       const movedId = dragRef.current.pointId;
       const newPts = points.map(p => p.id === movedId ? { ...p, x, y } : p);
-      const newSegs = segments.map(s =>
-        (s.fromId === movedId || s.toId === movedId) ? { ...s, lengthCm: null } : s
-      );
-      onChange({ points: newPts, segments: newSegs, diagonals: buildAutoDiagonals(newPts, diagonals), baseScale: null });
+      const baseScale = state.baseScale ?? null;
+      const newSegs = segments.map(s => {
+        if (s.fromId !== movedId && s.toId !== movedId) return s;
+        if (!baseScale) return { ...s, lengthCm: null };
+        const a = newPts.find(p => p.id === s.fromId);
+        const b = newPts.find(p => p.id === s.toId);
+        const px = a && b ? distPx(a, b) : 0;
+        return { ...s, lengthCm: Math.round((px / baseScale) * 10) / 10 };
+      });
+      onChange({ points: newPts, segments: newSegs, diagonals: buildAutoDiagonals(newPts, diagonals) });
     }
   }, [tool, phase, isClosed, points, dimLineFrom, clientToSvg, applySnap, diagonals, onChange, settings, zoom, panRef, dragRef, setGhost, segments]);
 
@@ -183,10 +189,16 @@ export function usePlanCanvasEvents({ state, onChange, cs }: Params) {
         const { x, y } = applySnap(raw.x, raw.y, dragRef.current.pointId);
         const movedId = dragRef.current.pointId;
         const newPts = points.map(p => p.id === movedId ? { ...p, x, y } : p);
-        const newSegs = segments.map(s =>
-          (s.fromId === movedId || s.toId === movedId) ? { ...s, lengthCm: null } : s
-        );
-        onChange({ points: newPts, segments: newSegs, diagonals: buildAutoDiagonals(newPts, diagonals), baseScale: null });
+        const baseScale = state.baseScale ?? null;
+        const newSegs = segments.map(s => {
+          if (s.fromId !== movedId && s.toId !== movedId) return s;
+          if (!baseScale) return { ...s, lengthCm: null };
+          const a = newPts.find(p => p.id === s.fromId);
+          const b = newPts.find(p => p.id === s.toId);
+          const px = a && b ? distPx(a, b) : 0;
+          return { ...s, lengthCm: Math.round((px / baseScale) * 10) / 10 };
+        });
+        onChange({ points: newPts, segments: newSegs, diagonals: buildAutoDiagonals(newPts, diagonals) });
         didMoveRef.current = true;
         return;
       }
