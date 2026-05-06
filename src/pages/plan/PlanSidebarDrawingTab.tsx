@@ -3,7 +3,7 @@ import Icon from "@/components/ui/icon";
 import type { PlanState, Segment, DiagonalDef, PlanSettings, RoomParams } from "./planTypes";
 import {
   pointLabel, segmentLabel, distPx, pxToCm, calcScale, angleDeg,
-  buildAutoDiagonals, polygonArea, polygonPerimeter, genId, resizeSegmentInPlace,
+  buildAutoDiagonals, polygonArea, polygonPerimeter, genId, rebuildFromLengths,
 } from "./planTypes";
 import { Section, LengthRow } from "./PlanSidebarShared";
 
@@ -64,18 +64,19 @@ export default function DrawingTab({ state, onChange }: Props) {
 
   const updateSegment = (id: string, patch: Partial<Segment>) => {
     const newSegments = segments.map(s => s.id === id ? { ...s, ...patch } : s);
-    // Если меняется длина — пересчитываем позиции точек на холсте
+    // Если введены ВСЕ длины — перестраиваем фигуру целиком
     if (patch.lengthCm !== undefined && patch.lengthCm !== null && patch.lengthCm > 0) {
-      const result = resizeSegmentInPlace(points, newSegments, id, patch.lengthCm, state.baseScale ?? null);
-      if (result) {
-        const newDiags = buildAutoDiagonals(result.points, diagonals);
-        onChange({ segments: newSegments, points: result.points, diagonals: newDiags, baseScale: result.baseScale });
-      } else {
-        onChange({ segments: newSegments });
+      const allFilled = newSegments.every(s => s.lengthCm !== null && s.lengthCm > 0);
+      if (allFilled) {
+        const result = rebuildFromLengths(points, newSegments, state.baseScale ?? null);
+        if (result) {
+          const newDiags = buildAutoDiagonals(result.points, diagonals);
+          onChange({ segments: newSegments, points: result.points, diagonals: newDiags, baseScale: result.baseScale });
+          return;
+        }
       }
-    } else {
-      onChange({ segments: newSegments });
     }
+    onChange({ segments: newSegments });
   };
 
   const updateDiagonal = (id: string, patch: Partial<DiagonalDef>) =>

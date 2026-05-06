@@ -230,6 +230,78 @@ export function resizeSegmentInPlace(
   return { points: newPoints, baseScale: scale };
 }
 
+/**
+ * Перестроить фигуру когда ВСЕ длины введены.
+ * Фиксируем точку p[0] и первый отрезок как эталон масштаба.
+ * Остальные точки строятся кинематически вдоль оригинальных направлений.
+ */
+export function rebuildFromLengths(
+  points: Point[],
+  segments: Segment[], // все lengthCm уже заполнены
+  baseScaleIn: number | null,
+): { points: Point[]; baseScale: number } | null {
+  if (points.length < 2 || segments.length < 2) return null;
+
+  // Упорядоченная цепочка от points[0]
+  const chain: string[] = [points[0].id];
+  let cur = points[0].id;
+  for (let i = 0; i < segments.length; i++) {
+    const s = segments.find(sg => sg.fromId === cur);
+    if (!s) break;
+    if (chain.includes(s.toId)) break;
+    chain.push(s.toId);
+    cur = s.toId;
+  }
+  if (chain.length < 2) return null;
+
+  const orderedSegs: Segment[] = [];
+  for (let i = 0; i < chain.length; i++) {
+    const s = segments.find(sg => sg.fromId === chain[i] && sg.toId === chain[(i + 1) % chain.length]);
+    if (!s) return null;
+    orderedSegs.push(s);
+  }
+
+  // Масштаб: фиксируем по первому отрезку раз и навсегда
+  let scale = baseScaleIn;
+  if (!scale) {
+    const s0 = orderedSegs[0];
+    const pa = points.find(p => p.id === s0.fromId);
+    const pb = points.find(p => p.id === s0.toId);
+    if (!pa || !pb || !s0.lengthCm) return null;
+    const px = distPx(pa, pb);
+    if (px === 0) return null;
+    scale = px / s0.lengthCm;
+  }
+
+  // Строим точки: p[0] фиксирован, каждая следующая = предыдущая + direction * lenCm * scale
+  const p0 = points.find(p => p.id === chain[0]);
+  if (!p0) return null;
+  const newCoords = new Map<string, { x: number; y: number }>();
+  newCoords.set(chain[0], { x: p0.x, y: p0.y });
+
+  for (let i = 0; i < chain.length; i++) {
+    const toId = chain[(i + 1) % chain.length];
+    if (toId === chain[0]) break;
+    const s = orderedSegs[i];
+    const curFrom = newCoords.get(chain[i])!;
+
+    // Оригинальное направление отрезка
+    const oFrom = points.find(p => p.id === s.fromId)!;
+    const oTo   = points.find(p => p.id === s.toId)!;
+    const oLen  = distPx(oFrom, oTo);
+    const ux = oLen > 0 ? (oTo.x - oFrom.x) / oLen : 0;
+    const uy = oLen > 0 ? (oTo.y - oFrom.y) / oLen : 0;
+
+    const px = (s.lengthCm ?? 0) * scale;
+    newCoords.set(toId, { x: curFrom.x + ux * px, y: curFrom.y + uy * px });
+  }
+
+  return {
+    points: points.map(p => { const nc = newCoords.get(p.id); return nc ? { ...p, ...nc } : p; }),
+    baseScale: scale,
+  };
+}
+
 export function calcScale(points: Point[], segments: Segment[]): number | null {
   for (const seg of segments) {
     if (seg.lengthCm === null || seg.lengthCm <= 0) continue;

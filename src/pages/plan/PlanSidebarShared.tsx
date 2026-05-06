@@ -14,12 +14,12 @@ export function Section({
 }) {
   const [open, setOpen] = React.useState(defaultOpen);
 
-  // Авторазкрытие при изменении forceOpen (например после замыкания фигуры)
   const prevForceOpen = React.useRef(forceOpen);
   React.useEffect(() => {
     if (forceOpen && !prevForceOpen.current) setOpen(true);
     prevForceOpen.current = forceOpen;
   }, [forceOpen]);
+
   return (
     <div className="border-b border-white/[0.06]">
       <div
@@ -28,7 +28,6 @@ export function Section({
         className="w-full flex items-center gap-2 px-4 py-2.5 hover:bg-white/[0.025] transition-colors cursor-pointer"
         onClick={() => setOpen(o => !o)}
         onKeyDown={e => {
-          // Не реагируем если фокус в дочернем элементе (например input)
           if (e.target !== e.currentTarget) return;
           if (e.key === "Enter" || e.key === " ") setOpen(o => !o);
         }}
@@ -67,59 +66,46 @@ export function LengthRow({
   const localRef = React.useRef<HTMLInputElement>(null);
   const ref = inputRef ?? localRef;
 
-  // Храним черновик в ref чтобы onBlur всегда видел актуальное значение
-  const draftRef = React.useRef<string>(valueCm !== null ? String(valueCm) : "");
-  const [draft, setDraftState] = React.useState<string>(valueCm !== null ? String(valueCm) : "");
-  const isFocused = React.useRef(false);
-
-  const setDraft = (v: string) => {
-    draftRef.current = v;
-    setDraftState(v);
-  };
-
-  // Синхронизируем draft когда значение меняется снаружи и поле НЕ в фокусе
-  React.useEffect(() => {
-    if (!isFocused.current) {
-      const s = valueCm !== null ? String(valueCm) : "";
-      draftRef.current = s;
-      setDraftState(s);
-    }
-  }, [valueCm]);
-
-  // Автофокус при появлении (после замыкания фигуры)
+  // Автофокус при появлении
   const didAutoFocus = React.useRef(false);
   React.useEffect(() => {
     if (autoFocus && !didAutoFocus.current) {
       didAutoFocus.current = true;
-      const id = setTimeout(() => ref.current?.focus(), 100);
+      const id = setTimeout(() => { ref.current?.focus(); ref.current?.select(); }, 120);
       return () => clearTimeout(id);
     }
   }, [autoFocus]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const commit = () => {
-    const raw = draftRef.current;
-    const v = raw === "" ? null : parseFloat(raw);
+  // Синхронизируем значение input с внешним valueCm когда поле не в фокусе
+  React.useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    if (document.activeElement !== el) {
+      el.value = valueCm !== null ? String(valueCm) : "";
+    }
+  }, [valueCm]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const commit = (el: HTMLInputElement) => {
+    const v = el.value === "" ? null : parseFloat(el.value);
     onValueChange(v !== null && !isNaN(v) ? v : null);
   };
 
   return (
     <div className="flex items-center gap-1.5 py-1.5 rounded-lg px-1.5 transition-colors hover:bg-white/[0.03]">
       <span className="w-10 text-[11px] font-mono font-bold text-white/50 shrink-0">{label}</span>
-      <input ref={ref} type="number" min={1} max={99999} step={0.5}
-        value={draft}
+      <input
+        ref={ref}
+        type="number"
+        min={1} max={99999} step={0.5}
+        defaultValue={valueCm ?? ""}
         placeholder={placeholder ?? "—"}
-        onChange={e => setDraft(e.target.value)}
-        onFocus={() => { isFocused.current = true; onFocus?.(); }}
-        onBlur={() => {
-          isFocused.current = false;
-          commit();
-        }}
+        onFocus={e => { e.target.select(); onFocus?.(); }}
+        onBlur={e => commit(e.target)}
         onKeyDown={e => {
-          // Не даём Enter всплыть до Section (он бы закрыл секцию)
           e.stopPropagation();
           if (e.key === "Enter") {
             e.preventDefault();
-            commit();
+            commit(e.target as HTMLInputElement);
             if (onEnterNext) {
               onEnterNext();
             } else {
