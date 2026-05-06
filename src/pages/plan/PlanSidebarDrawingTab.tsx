@@ -2,7 +2,7 @@ import React from "react";
 import Icon from "@/components/ui/icon";
 import type { PlanState, Segment, DiagonalDef, PlanSettings, RoomParams } from "./planTypes";
 import {
-  pointLabel, segmentLabel, distPx, calcScale, angleDeg,
+  pointLabel, segmentLabel, distPx, pxToCm, calcScale, angleDeg,
   buildAutoDiagonals, polygonArea, polygonPerimeter, genId, moveEndPoint,
 } from "./planTypes";
 import { Section, LengthRow } from "./PlanSidebarShared";
