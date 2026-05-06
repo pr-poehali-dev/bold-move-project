@@ -20,12 +20,16 @@ const DIM_OFF    = 28;
 
 export default function PlanCanvas({ state, onChange }: Props) {
   const svgRef    = useRef<SVGSVGElement>(null);
-  const dragRef   = useRef<{ pointId: string } | null>(null);
-  const panRef    = useRef<{ startX: number; startY: number; origPanX: number; origPanY: number } | null>(null);
-  const pinchRef  = useRef<{ dist: number; zoom: number } | null>(null);
-  const isPanning = useRef(false);
-  // Флаг — последнее действие было pan/pinch, а не tap
-  const didMoveRef = useRef(false);
+  const dragRef      = useRef<{ pointId: string } | null>(null);
+  const panRef       = useRef<{ startX: number; startY: number; origPanX: number; origPanY: number } | null>(null);
+  const pinchRef     = useRef<{ dist: number; zoom: number } | null>(null);
+  const isPanning    = useRef(false);
+  const didMoveRef   = useRef(false);
+  // Long press
+  const longPressRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const longPressPos = useRef<{ clientX: number; clientY: number; type: "point" | "segment" | "diagonal"; id: string } | null>(null);
+  // setVibrated нужен для принудительного ре-рендера после вибрации
+  const [, setVibrated] = React.useState(false);
 
   const {
     points, segments, diagonals, dimLines,
@@ -111,11 +115,20 @@ export default function PlanCanvas({ state, onChange }: Props) {
   // TOUCH EVENTS — полная поддержка пальца
   // ════════════════════════════════════════════════════════════════════════
 
+  // ── Очистка long press таймера ───────────────────────────────────────────
+  const clearLongPress = useCallback(() => {
+    if (longPressRef.current) {
+      clearTimeout(longPressRef.current);
+      longPressRef.current = null;
+    }
+    longPressPos.current = null;
+  }, []);
+
   const handleTouchStart = useCallback((e: React.TouchEvent<SVGSVGElement>) => {
     didMoveRef.current = false;
+    clearLongPress();
 
     if (e.touches.length === 2) {
-      // Pinch-to-zoom — запоминаем расстояние
       const dx = e.touches[0].clientX - e.touches[1].clientX;
       const dy = e.touches[0].clientY - e.touches[1].clientY;
       pinchRef.current = { dist: Math.sqrt(dx * dx + dy * dy), zoom };
@@ -125,24 +138,55 @@ export default function PlanCanvas({ state, onChange }: Props) {
 
     if (e.touches.length === 1) {
       const t = e.touches[0];
+      const raw = clientToSvg(t.clientX, t.clientY);
 
-      // Проверяем — попал ли палец на точку
-      if (tool === "move") {
-        const raw = clientToSvg(t.clientX, t.clientY);
-        const hitPt = points.find(p => distPx(p, { id: "", x: raw.x, y: raw.y }) < PT_HIT);
-        if (hitPt) {
-          dragRef.current = { pointId: hitPt.id };
-          return;
-        }
+      // Определяем что под пальцем для long press
+      const hitPt   = points.find(p => distPx(p, { id: "", x: raw.x, y: raw.y }) < PT_HIT);
+      const hitSeg  = !hitPt ? findNearestSegment(raw.x, raw.y, points, segments, 18) : null;
+      const hitDiag = !hitPt && !hitSeg ? findNearestDiagonal(raw.x, raw.y, points, diagonals, 18) : null;
+
+      // Запускаем long press (500мс)
+      if (hitPt || hitSeg || hitDiag) {
+        const type  = hitPt ? "point" : hitSeg ? "segment" : "diagonal";
+        const id    = (hitPt?.id ?? hitSeg?.id ?? hitDiag?.id)!;
+        longPressPos.current = { clientX: t.clientX, clientY: t.clientY, type, id };
+
+        longPressRef.current = setTimeout(() => {
+          if (!longPressPos.current) return;
+          // Вибрация если поддерживается
+          if ("vibrate" in navigator) navigator.vibrate(40);
+          setVibrated(true);
+          setTimeout(() => setVibrated(false), 300);
+          setCtxMenu({
+            x: longPressPos.current.clientX,
+            y: longPressPos.current.clientY,
+            type: longPressPos.current.type,
+            id:   longPressPos.current.id,
+          });
+          // Не считаем это tapом
+          didMoveRef.current = true;
+          dragRef.current = null;
+          panRef.current = null;
+          longPressPos.current = null;
+        }, 500);
       }
 
-      // Один палец без drag-точки — pan
+      // Drag точки (в режиме move)
+      if (tool === "move" && hitPt) {
+        dragRef.current = { pointId: hitPt.id };
+        return;
+      }
+
+      // Pan
       panRef.current = { startX: t.clientX, startY: t.clientY, origPanX: panX, origPanY: panY };
     }
-  }, [tool, points, clientToSvg, panX, panY, zoom]);
+  }, [tool, points, segments, diagonals, clientToSvg, panX, panY, zoom, clearLongPress]);
 
   const handleTouchMove = useCallback((e: React.TouchEvent<SVGSVGElement>) => {
-    e.preventDefault(); // запрет скролла страницы
+    e.preventDefault();
+
+    // Любое движение пальца отменяет long press
+    if (longPressRef.current) clearLongPress();
 
     if (e.touches.length === 2 && pinchRef.current) {
       // Pinch zoom
@@ -181,8 +225,8 @@ export default function PlanCanvas({ state, onChange }: Props) {
 
   const handleTouchEnd = useCallback((e: React.TouchEvent<SVGSVGElement>) => {
     pinchRef.current = null;
+    clearLongPress(); // всегда гасим таймер при отпускании
 
-    // Если был pinch или pan — не считаем тапом
     if (didMoveRef.current) {
       dragRef.current = null; panRef.current = null;
       didMoveRef.current = false;
@@ -261,7 +305,7 @@ export default function PlanCanvas({ state, onChange }: Props) {
     }
 
     dragRef.current = null; panRef.current = null; didMoveRef.current = false;
-  }, [tool, phase, isClosed, points, segments, diagonals, clientToSvg, applySnap, onChange]);
+  }, [tool, phase, isClosed, points, segments, diagonals, clientToSvg, applySnap, onChange, clearLongPress]);
 
   // ── Wheel zoom ────────────────────────────────────────────────────────────
   const handleWheel = useCallback((e: WheelEvent) => {
@@ -499,6 +543,28 @@ export default function PlanCanvas({ state, onChange }: Props) {
   const cursor = isPanning.current ? "grabbing" : tool === "draw" ? "crosshair" : tool === "move" ? "default" : tool === "delete" ? "not-allowed" : tool === "arc" ? "cell" : "default";
   const shapePath = buildShapePath(points, segments, isClosed);
 
+  // Позиция long-press индикатора (в координатах экрана)
+  const [lpIndicator, setLpIndicator] = React.useState<{ x: number; y: number } | null>(null);
+
+  // Запускаем индикатор вместе с таймером — патчим handleTouchStart через useEffect
+  useEffect(() => {
+    // Следим за longPressPos и показываем индикатор
+    const id = setInterval(() => {
+      if (longPressPos.current) {
+        const svg = svgRef.current;
+        if (!svg) return;
+        const rect = svg.getBoundingClientRect();
+        setLpIndicator({
+          x: longPressPos.current.clientX - rect.left,
+          y: longPressPos.current.clientY - rect.top,
+        });
+      } else {
+        setLpIndicator(null);
+      }
+    }, 50);
+    return () => clearInterval(id);
+  }, []);
+
   return (
     <div className="w-full h-full overflow-hidden relative bg-[#0f1117] select-none touch-none">
       <svg
@@ -664,10 +730,27 @@ export default function PlanCanvas({ state, onChange }: Props) {
         </g>
       </svg>
 
+      {/* Long-press индикатор — анимированный круг */}
+      {lpIndicator && (
+        <div
+          className="pointer-events-none absolute z-30"
+          style={{ left: lpIndicator.x, top: lpIndicator.y, transform: "translate(-50%,-50%)" }}
+        >
+          <div className="w-12 h-12 rounded-full border-2 border-violet-400/70 animate-ping" />
+          <div className="absolute inset-0 flex items-center justify-center">
+            <div className="w-4 h-4 rounded-full bg-violet-500/40" />
+          </div>
+        </div>
+      )}
+
       {/* Контекстное меню */}
       {ctxMenu && (
-        <div className="fixed z-50 bg-[#1a1b2e] border border-white/[0.12] rounded-xl shadow-2xl py-1 min-w-[160px]"
-          style={{ left: ctxMenu.x, top: ctxMenu.y }} onClick={() => setCtxMenu(null)}>
+        <div className="fixed z-50 bg-[#1a1b2e] border border-white/[0.12] rounded-xl shadow-2xl py-1 min-w-[180px]"
+          style={{
+            left: Math.min(ctxMenu.x, window.innerWidth - 196),
+            top:  Math.min(ctxMenu.y, window.innerHeight - 180),
+          }}
+          onClick={() => setCtxMenu(null)}>
           {ctxMenu.type === "point" && (<>
             <CtxItem icon="Move" label="Переместить" onClick={() => onChange({ tool: "move", selectedPointId: ctxMenu.id })} />
             <div className="h-px bg-white/[0.08] my-1" />
