@@ -89,7 +89,7 @@ export function usePlanCanvasEvents({ state, onChange, cs }: Params) {
       const newSegs = segments.map(s =>
         (s.fromId === movedId || s.toId === movedId) ? { ...s, lengthCm: null } : s
       );
-      onChange({ points: newPts, segments: newSegs, diagonals: buildAutoDiagonals(newPts, diagonals) });
+      onChange({ points: newPts, segments: newSegs, diagonals: buildAutoDiagonals(newPts, diagonals), baseScale: null });
     }
   }, [tool, phase, isClosed, points, dimLineFrom, clientToSvg, applySnap, diagonals, onChange, settings, zoom, panRef, dragRef, setGhost, segments]);
 
@@ -186,7 +186,7 @@ export function usePlanCanvasEvents({ state, onChange, cs }: Params) {
         const newSegs = segments.map(s =>
           (s.fromId === movedId || s.toId === movedId) ? { ...s, lengthCm: null } : s
         );
-        onChange({ points: newPts, segments: newSegs, diagonals: buildAutoDiagonals(newPts, diagonals) });
+        onChange({ points: newPts, segments: newSegs, diagonals: buildAutoDiagonals(newPts, diagonals), baseScale: null });
         didMoveRef.current = true;
         return;
       }

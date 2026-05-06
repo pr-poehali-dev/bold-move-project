@@ -64,16 +64,13 @@ export default function DrawingTab({ state, onChange }: Props) {
 
   const updateSegment = (id: string, patch: Partial<Segment>) => {
     const newSegments = segments.map(s => s.id === id ? { ...s, ...patch } : s);
-    // Если введены ВСЕ длины — перестраиваем фигуру целиком
+    // При изменении длины — всегда перестраиваем фигуру по введённым размерам
     if (patch.lengthCm !== undefined && patch.lengthCm !== null && patch.lengthCm > 0) {
-      const allFilled = newSegments.every(s => s.lengthCm !== null && s.lengthCm > 0);
-      if (allFilled) {
-        const result = rebuildFromLengths(points, newSegments, state.baseScale ?? null);
-        if (result) {
-          const newDiags = buildAutoDiagonals(result.points, diagonals);
-          onChange({ segments: newSegments, points: result.points, diagonals: newDiags, baseScale: result.baseScale });
-          return;
-        }
+      const result = rebuildFromLengths(points, newSegments, state.baseScale ?? null);
+      if (result) {
+        const newDiags = buildAutoDiagonals(result.points, diagonals);
+        onChange({ segments: newSegments, points: result.points, diagonals: newDiags, baseScale: result.baseScale });
+        return;
       }
     }
     onChange({ segments: newSegments });

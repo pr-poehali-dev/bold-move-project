@@ -261,19 +261,21 @@ export function rebuildFromLengths(
     orderedSegs.push(s);
   }
 
-  // Масштаб: фиксируем по первому отрезку раз и навсегда
+  // Масштаб: если передан baseScale — используем его, иначе вычисляем из первого отрезка с lengthCm
   let scale = baseScaleIn;
   if (!scale) {
-    const s0 = orderedSegs[0];
-    const pa = points.find(p => p.id === s0.fromId);
-    const pb = points.find(p => p.id === s0.toId);
-    if (!pa || !pb || !s0.lengthCm) return null;
-    const px = distPx(pa, pb);
-    if (px === 0) return null;
-    scale = px / s0.lengthCm;
+    for (const s of orderedSegs) {
+      if (!s.lengthCm || s.lengthCm <= 0) continue;
+      const pa = points.find(p => p.id === s.fromId);
+      const pb = points.find(p => p.id === s.toId);
+      if (!pa || !pb) continue;
+      const px = distPx(pa, pb);
+      if (px > 0) { scale = px / s.lengthCm; break; }
+    }
   }
+  if (!scale) return null;
 
-  // Строим точки: p[0] фиксирован, каждая следующая = предыдущая + direction * lenCm * scale
+  // Строим точки: p[0] фиксирован, каждая следующая = предыдущая + direction * targetPx
   const p0 = points.find(p => p.id === chain[0]);
   if (!p0) return null;
   const newCoords = new Map<string, { x: number; y: number }>();
@@ -285,15 +287,19 @@ export function rebuildFromLengths(
     const s = orderedSegs[i];
     const curFrom = newCoords.get(chain[i])!;
 
-    // Оригинальное направление отрезка
+    // Оригинальное направление отрезка из исходных точек
     const oFrom = points.find(p => p.id === s.fromId)!;
     const oTo   = points.find(p => p.id === s.toId)!;
     const oLen  = distPx(oFrom, oTo);
     const ux = oLen > 0 ? (oTo.x - oFrom.x) / oLen : 0;
     const uy = oLen > 0 ? (oTo.y - oFrom.y) / oLen : 0;
 
-    const px = (s.lengthCm ?? 0) * scale;
-    newCoords.set(toId, { x: curFrom.x + ux * px, y: curFrom.y + uy * px });
+    // Целевая пиксельная длина:
+    // — если lengthCm задана вручную → lengthCm * scale (единый масштаб)
+    // — если нет → оставляем оригинальную пиксельную длину
+    const hasManual = s.lengthCm !== null && s.lengthCm > 0;
+    const targetPx = hasManual ? s.lengthCm! * scale : oLen;
+    newCoords.set(toId, { x: curFrom.x + ux * targetPx, y: curFrom.y + uy * targetPx });
   }
 
   return {
