@@ -19,7 +19,7 @@ export function usePlanCanvasState(tool: string) {
   const svgRef      = useRef<SVGSVGElement>(null);
   const dragRef     = useRef<{ pointId: string } | null>(null);
   const panRef      = useRef<{ startX: number; startY: number; origPanX: number; origPanY: number } | null>(null);
-  const pinchRef    = useRef<{ dist: number; zoom: number } | null>(null);
+  const pinchRef    = useRef<{ dist: number; zoom: number; midX?: number; midY?: number } | null>(null);
   const isPanning   = useRef(false);
   const didMoveRef  = useRef(false);
 

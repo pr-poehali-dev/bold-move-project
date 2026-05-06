@@ -118,7 +118,7 @@ export function usePlanCanvasEvents({ state, onChange, cs }: Params) {
   }, [tool, phase, isClosed, points, dimLineFrom, clientToSvg, applySnap, diagonals, onChange, settings, zoom, panRef, dragRef, setGhost, segments]);
 
   const handleMouseDown = useCallback((e: React.MouseEvent<SVGSVGElement>) => {
-    if (e.button === 1 || (e.button === 0 && e.altKey)) {
+    if (e.button === 1 || e.button === 2 || (e.button === 0 && e.altKey)) {
       e.preventDefault();
       panRef.current = { startX: e.clientX, startY: e.clientY, origPanX: panX, origPanY: panY };
       isPanning.current = true;
@@ -195,7 +195,17 @@ export function usePlanCanvasEvents({ state, onChange, cs }: Params) {
       const dist = Math.sqrt(dx * dx + dy * dy);
       const ratio = dist / pinchRef.current.dist;
       const newZoom = Math.max(0.3, Math.min(4, Math.round(pinchRef.current.zoom * ratio * 10) / 10));
-      onChange({ settings: { ...settings, zoom: newZoom } });
+      // Pan двумя пальцами — двигаем по центру между касаниями
+      const midX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
+      const midY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+      let newSettings = { ...settings, zoom: newZoom };
+      if (pinchRef.current.midX !== undefined && pinchRef.current.midY !== undefined) {
+        const pdx = (midX - pinchRef.current.midX) / zoom;
+        const pdy = (midY - pinchRef.current.midY) / zoom;
+        newSettings = { ...newSettings, panX: settings.panX + pdx, panY: settings.panY + pdy };
+      }
+      pinchRef.current = { ...pinchRef.current, dist, midX, midY };
+      onChange({ settings: newSettings });
       didMoveRef.current = true;
       return;
     }
