@@ -2,7 +2,7 @@ import React from "react";
 import type { Point, Segment, DiagonalDef, DimLine, PlanState } from "./planTypes";
 import {
   pointLabel, segmentLabel, distPx, midPoint, segmentNormal,
-  pxToCm, calcScale, angleDeg, buildAutoDiagonals,
+  pxToCm, calcScale, angleDeg, polygonOrientation, buildAutoDiagonals,
 } from "./planTypes";
 import Icon from "@/components/ui/icon";
 import { DIM_OFF, PT_R, PT_HIT } from "./PlanCanvasUtils";
@@ -116,7 +116,8 @@ export function renderAngleLabel(pt: Point, idx: number, ctx: Pick<RenderContext
   const n = points.length;
   const prev = points[(idx - 1 + n) % n];
   const next = points[(idx + 1) % n];
-  const deg = angleDeg(prev, pt, next);
+  const isCW = polygonOrientation(points) > 0;
+  const deg = angleDeg(prev, pt, next, isCW);
   const ax = ((prev.x - pt.x) + (next.x - pt.x)) / 2;
   const ay = ((prev.y - pt.y) + (next.y - pt.y)) / 2;
   const alen = Math.sqrt(ax * ax + ay * ay) || 1;

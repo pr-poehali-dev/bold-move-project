@@ -2,7 +2,7 @@ import React from "react";
 import Icon from "@/components/ui/icon";
 import type { PlanState, Segment, DiagonalDef, PlanSettings, RoomParams } from "./planTypes";
 import {
-  pointLabel, segmentLabel, distPx, pxToCm, calcScale, angleDeg,
+  pointLabel, segmentLabel, distPx, pxToCm, calcScale, angleDeg, polygonOrientation,
   buildAutoDiagonals, polygonArea, polygonPerimeter, genId,
 } from "./planTypes";
 import { Section, LengthRow } from "./PlanSidebarShared";
@@ -106,10 +106,11 @@ export default function DrawingTab({ state, onChange }: Props) {
   const exactPerimM   = exactPerimCm ? Math.round(exactPerimCm / 100 * 100) / 100 : null;
   const displayPerimM = exactPerimM ?? perimM;
 
+  const isCW = polygonOrientation(points) > 0;
   const getAngle = (idx: number) => {
     if (!isClosed || points.length < 3) return null;
     const n = points.length;
-    return angleDeg(points[(idx - 1 + n) % n], points[idx], points[(idx + 1) % n]);
+    return angleDeg(points[(idx - 1 + n) % n], points[idx], points[(idx + 1) % n], isCW);
   };
 
   const [addDiagFrom, setAddDiagFrom] = React.useState("");

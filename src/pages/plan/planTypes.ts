@@ -468,17 +468,32 @@ export function cmToPx(cm: number, scale: number): number {
   return cm * scale;
 }
 
-/** Угол interior в точке B между A-B и B-C (в градусах, 0–360).
- *  SVG-координаты: Y вниз, поэтому cross > 0 = поворот по часовой = внутренний угол < 180 для выпуклого полигона. */
-export function angleDeg(a: Point, b: Point, c: Point): number {
+/** Знак ориентации полигона в SVG (Y↓).
+ *  > 0 = по часовой стрелке, < 0 = против часовой. */
+export function polygonOrientation(points: Point[]): number {
+  const n = points.length;
+  if (n < 3) return 1;
+  let sum = 0;
+  for (let i = 0; i < n; i++) {
+    const j = (i + 1) % n;
+    sum += (points[j].x - points[i].x) * (points[j].y + points[i].y);
+  }
+  return sum;
+}
+
+/** Внутренний угол в точке B между отрезками A-B и B-C (в градусах, 0–360).
+ *  isCW — полигон обходится по часовой стрелке (в SVG где Y↓). */
+export function angleDeg(a: Point, b: Point, c: Point, isCW = true): number {
   const ax = a.x - b.x, ay = a.y - b.y;
   const cx = c.x - b.x, cy = c.y - b.y;
   const dot = ax * cx + ay * cy;
   const cross = ax * cy - ay * cx;
-  // Угол между векторами (0..180)
   const between = Math.atan2(Math.abs(cross), dot) * (180 / Math.PI);
-  // cross > 0 в SVG (Y↓) = левый поворот = внутренний угол
-  const angle = cross > 0 ? between : 360 - between;
+  // В SVG Y↓: cross > 0 = поворот по часовой
+  // Для полигона по часовой — внутренний угол когда cross > 0
+  // Для полигона против часовой — внутренний угол когда cross < 0
+  const isInner = isCW ? cross > 0 : cross < 0;
+  const angle = isInner ? between : 360 - between;
   return Math.round(angle * 10) / 10;
 }
 
