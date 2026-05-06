@@ -11,34 +11,56 @@ import { INITIAL_STATE } from "./planTypes";
 import { usePlanStorage } from "./usePlanStorage";
 import { useAuth } from "@/context/AuthContext";
 
-// ── Undo/Redo ─────────────────────────────────────────────────────────────────
+// ── Undo/Redo — атомарный useReducer ────────────────────────────────────────
 const MAX_HISTORY = 80;
 
-function useHistory(initial: PlanState) {
-  const [history, setHistory] = React.useState<PlanState[]>([initial]);
-  const [cursor, setCursor]   = React.useState(0);
-  const state = history[cursor];
+interface HistoryStore { stack: PlanState[]; cursor: number; }
+type HistoryAction =
+  | { type: "push";  next: PlanState }
+  | { type: "undo" }
+  | { type: "redo" }
+  | { type: "reset"; next?: PlanState };
 
-  const push = useCallback((next: PlanState) => {
-    setHistory(h => {
-      const trimmed = h.slice(0, cursor + 1);
-      trimmed.push(next);
+function historyReducer(s: HistoryStore, a: HistoryAction): HistoryStore {
+  switch (a.type) {
+    case "push": {
+      const trimmed = s.stack.slice(0, s.cursor + 1);
+      trimmed.push(a.next);
       if (trimmed.length > MAX_HISTORY) trimmed.shift();
-      return trimmed;
-    });
-    setCursor(c => Math.min(c + 1, MAX_HISTORY - 1));
-  }, [cursor]);
+      return { stack: trimmed, cursor: trimmed.length - 1 };
+    }
+    case "undo":
+      return { ...s, cursor: Math.max(0, s.cursor - 1) };
+    case "redo":
+      return { ...s, cursor: Math.min(s.stack.length - 1, s.cursor + 1) };
+    case "reset":
+      return { stack: [a.next ?? INITIAL_STATE], cursor: 0 };
+    default:
+      return s;
+  }
+}
 
-  const undo  = useCallback(() => setCursor(c => Math.max(0, c - 1)), []);
-  const redo  = useCallback(() => setCursor(c => Math.min(history.length - 1, c + 1)), [history.length]);
+function useHistory(initial: PlanState) {
+  const [{ stack, cursor }, dispatch] = React.useReducer(
+    historyReducer,
+    { stack: [initial], cursor: 0 }
+  );
 
-  // reset с возможностью передать новое начальное состояние
-  const reset = useCallback((next?: PlanState) => {
-    setHistory([next ?? INITIAL_STATE]);
-    setCursor(0);
-  }, []);
+  // Защита от рассинхронизации cursor/stack
+  const safeCursor = Math.min(cursor, stack.length - 1);
+  const state = stack[safeCursor] ?? initial;
 
-  return { state, push, undo, redo, reset, canUndo: cursor > 0, canRedo: cursor < history.length - 1 };
+  const push  = useCallback((next: PlanState) => dispatch({ type: "push",  next }), []);
+  const undo  = useCallback(() => dispatch({ type: "undo" }), []);
+  const redo  = useCallback(() => dispatch({ type: "redo" }), []);
+  const reset = useCallback((next?: PlanState) => dispatch({ type: "reset", next }), []);
+
+  return {
+    state,
+    push, undo, redo, reset,
+    canUndo: safeCursor > 0,
+    canRedo: safeCursor < stack.length - 1,
+  };
 }
 
 // ── Хук мобильного ─────────────────────────────────────────────────────────────
@@ -61,6 +83,8 @@ export default function PlanPage() {
   const [sheetOpen,   setSheetOpen]   = React.useState(false);
   const [exportOpen,  setExportOpen]  = React.useState(false);
   const [libraryOpen, setLibraryOpen] = React.useState(false);
+  // Онбординг: показываем подсказку для незарегистрированных через 3 сек
+  const [showOnboarding, setShowOnboarding] = React.useState(false);
 
   // ── Облачное хранилище ────────────────────────────────────────────────────
   const storage = usePlanStorage();
@@ -70,56 +94,67 @@ export default function PlanPage() {
     if (token) storage.loadPlans(token);
   }, [token]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Помечаем "грязным" при каждом изменении состояния
-  const prevStateRef = useRef(state);
+  // Онбординг для незарегистрированных — через 3 сек после входа
   useEffect(() => {
-    if (prevStateRef.current !== state) {
-      prevStateRef.current = state;
-      // Не помечаем грязным при первом рендере
-      if (state.points.length > 0 || state.segments.length > 0) {
-        storage.markDirty();
-      }
+    if (!user) {
+      const id = setTimeout(() => setShowOnboarding(true), 3000);
+      return () => clearTimeout(id);
     }
+  }, [user]);
+
+  // Ref для актуального state (избегаем stale closure в callbacks)
+  const stateRef = useRef(state);
+  stateRef.current = state;
+
+  // Помечаем "грязным" при каждом изменении
+  const prevPointsLen = useRef(0);
+  useEffect(() => {
+    const len = state?.points?.length ?? 0;
+    if (len > 0 && len !== prevPointsLen.current) {
+      storage.markDirty();
+    }
+    prevPointsLen.current = len;
   }, [state]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Автосохранение каждые 60 секунд если есть изменения
-  const autoSaveRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  // Автосохранение каждые 60 секунд
   useEffect(() => {
     if (!token || !storage.currentPlanId) return;
-    autoSaveRef.current = setInterval(() => {
-      if (storage.isDirty) {
-        storage.save(state, token);
-      }
+    const id = setInterval(() => {
+      if (storage.isDirty) storage.save(stateRef.current, token);
     }, 60_000);
-    return () => { if (autoSaveRef.current) clearInterval(autoSaveRef.current); };
-  }, [token, storage.currentPlanId, storage.isDirty, state]); // eslint-disable-line react-hooks/exhaustive-deps
+    return () => clearInterval(id);
+  }, [token, storage.currentPlanId]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ── Обработчики изменений ─────────────────────────────────────────────────
+  // ── Обработчики изменений — используем ref чтобы не пересоздавать ─────────
   const handleChange = useCallback((patch: Partial<PlanState>) => {
-    push({ ...state, ...patch });
-  }, [state, push]);
+    push({ ...stateRef.current, ...patch });
+  }, [push]);
 
   const handleSettingChange = useCallback((patch: Partial<PlanSettings>) => {
-    push({ ...state, settings: { ...state.settings, ...patch } });
-  }, [state, push]);
+    const s = stateRef.current;
+    push({ ...s, settings: { ...s.settings, ...patch } });
+  }, [push]);
 
   const handleToolChange = useCallback((t: ToolMode) => {
-    push({ ...state, tool: t });
-  }, [state, push]);
+    push({ ...stateRef.current, tool: t });
+  }, [push]);
 
   // ── Zoom ──────────────────────────────────────────────────────────────────
-  const zoomIn = useCallback(() =>
-    handleSettingChange({ zoom: Math.min(4, Math.round((state.settings.zoom + 0.2) * 10) / 10) }),
-    [state, handleSettingChange]);
+  const zoomIn = useCallback(() => {
+    const z = stateRef.current.settings.zoom;
+    handleSettingChange({ zoom: Math.min(4, Math.round((z + 0.2) * 10) / 10) });
+  }, [handleSettingChange]);
 
-  const zoomOut = useCallback(() =>
-    handleSettingChange({ zoom: Math.max(0.3, Math.round((state.settings.zoom - 0.2) * 10) / 10) }),
-    [state, handleSettingChange]);
+  const zoomOut = useCallback(() => {
+    const z = stateRef.current.settings.zoom;
+    handleSettingChange({ zoom: Math.max(0.3, Math.round((z - 0.2) * 10) / 10) });
+  }, [handleSettingChange]);
 
   const zoomFit = useCallback(() => {
-    if (state.points.length < 2) { handleSettingChange({ zoom: 1, panX: 0, panY: 0 }); return; }
-    const xs = state.points.map(p => p.x);
-    const ys = state.points.map(p => p.y);
+    const pts = stateRef.current.points;
+    if (!pts || pts.length < 2) { handleSettingChange({ zoom: 1, panX: 0, panY: 0 }); return; }
+    const xs = pts.map((p: { x: number }) => p.x);
+    const ys = pts.map((p: { y: number }) => p.y);
     const minX = Math.min(...xs), maxX = Math.max(...xs);
     const minY = Math.min(...ys), maxY = Math.max(...ys);
     const w = maxX - minX || 100, h = maxY - minY || 100;
@@ -131,20 +166,20 @@ export default function PlanPage() {
     const panX = (cw / 2 / newZoom) - (minX + w / 2);
     const panY = (ch / 2 / newZoom) - (minY + h / 2);
     handleSettingChange({ zoom: newZoom, panX: Math.round(panX), panY: Math.round(panY) });
-  }, [state.points, handleSettingChange]);
+  }, [handleSettingChange]);
 
   // ── Сохранение ───────────────────────────────────────────────────────────
   const handleSave = useCallback(async () => {
     if (!token) { setLibraryOpen(true); return; }
-    await storage.save(state, token);
+    await storage.save(stateRef.current, token);
     storage.loadPlans(token);
-  }, [token, state, storage]);
+  }, [token, storage]);
 
   const handleSaveAs = useCallback(async (name: string) => {
     if (!token) return;
-    const id = await storage.saveAs(state, token, name);
+    const id = await storage.saveAs(stateRef.current, token, name);
     if (id) storage.loadPlans(token);
-  }, [token, state, storage]);
+  }, [token, storage]);
 
   const handleLoad = useCallback(async (planId: number) => {
     if (!token) return;
@@ -181,8 +216,8 @@ export default function PlanPage() {
       const keys: Record<string, ToolMode> = { d: "draw", v: "move", s: "segment", g: "diagonal", a: "arc", r: "dimline", x: "delete" };
       const k = e.key.toLowerCase();
       if (!e.ctrlKey && !e.metaKey && keys[k]) { handleToolChange(keys[k]); return; }
-      if (k === "o") handleSettingChange({ ortho: !state.settings.ortho });
-      if (k === "m") handleSettingChange({ snapToPoints: !state.settings.snapToPoints });
+      if (k === "o") handleSettingChange({ ortho: !stateRef.current.settings.ortho });
+      if (k === "m") handleSettingChange({ snapToPoints: !stateRef.current.settings.snapToPoints });
       if (k === "+" || k === "=") zoomIn();
       if (k === "-") zoomOut();
       if (k === "0") zoomFit();
@@ -192,7 +227,7 @@ export default function PlanPage() {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [undo, redo, handleSave, handleToolChange, handleSettingChange, state.settings, zoomIn, zoomOut, zoomFit]);
+  }, [undo, redo, handleSave, handleToolChange, handleSettingChange, zoomIn, zoomOut, zoomFit]);
 
   // ── Resize сайдбара ───────────────────────────────────────────────────────
   const [sidebarW, setSidebarW] = React.useState(300);
@@ -307,6 +342,30 @@ export default function PlanPage() {
           onNew={handleNew}
           onLoginRequest={() => { setLibraryOpen(false); /* редиректим на /login если нужно */ }}
         />
+      )}
+
+      {/* ── Онбординг для незарегистрированных ── */}
+      {showOnboarding && !isLoggedIn && (
+        <div className="fixed bottom-20 left-1/2 -translate-x-1/2 z-40 w-full max-w-sm px-4">
+          <div className="bg-[#1a1b2e] border border-violet-500/30 rounded-2xl shadow-2xl p-4 flex gap-3 items-start">
+            <div className="w-9 h-9 rounded-xl bg-violet-500/20 border border-violet-500/30 flex items-center justify-center shrink-0 mt-0.5">
+              <Icon name="Cloud" size={16} className="text-violet-300" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-[13px] font-bold text-white/90 mb-0.5">Сохраняй планы в облако</p>
+              <p className="text-[11px] text-white/45 leading-relaxed">Войди чтобы твои чертежи сохранялись и были доступны с любого устройства</p>
+              <button
+                onClick={() => { setShowOnboarding(false); setLibraryOpen(true); }}
+                className="mt-2.5 w-full py-2 rounded-xl bg-violet-500/25 border border-violet-500/40 text-violet-200 text-[12px] font-bold hover:bg-violet-500/35 transition">
+                Войти и сохранить
+              </button>
+            </div>
+            <button onClick={() => setShowOnboarding(false)}
+              className="w-7 h-7 rounded-lg hover:bg-white/10 flex items-center justify-center transition shrink-0">
+              <Icon name="X" size={13} className="text-white/30" />
+            </button>
+          </div>
+        </div>
       )}
 
       {/* Статус-бар — только на десктопе */}
