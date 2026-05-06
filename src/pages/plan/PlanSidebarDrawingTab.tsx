@@ -64,6 +64,12 @@ export default function DrawingTab({ state, onChange }: Props) {
   const perimCm = scale ? Math.round((perimPx / scale) * 10) / 10 : null;
   const perimM  = perimCm ? Math.round(perimCm / 100 * 100) / 100 : null;
 
+  // Если все стороны введены вручную — считаем периметр по ним точно
+  const allLengthsSet = segments.length > 0 && segments.every(s => s.lengthCm !== null && s.lengthCm > 0);
+  const exactPerimCm  = allLengthsSet ? segments.reduce((sum, s) => sum + (s.lengthCm ?? 0), 0) : null;
+  const exactPerimM   = exactPerimCm ? Math.round(exactPerimCm / 100 * 100) / 100 : null;
+  const displayPerimM = exactPerimM ?? perimM;
+
   const getAngle = (idx: number) => {
     if (!isClosed || points.length < 3) return null;
     const n = points.length;
@@ -92,7 +98,7 @@ export default function DrawingTab({ state, onChange }: Props) {
         {/* Статистика */}
         <div className="grid grid-cols-3 gap-1.5 mb-3">
           {([
-            ["Периметр", perimM ? `${perimM} м` : "—", "#60a5fa"],
+            ["Периметр", displayPerimM ? `${displayPerimM} м` : "—", "#60a5fa"],
             ["Площадь",  areaM2 ? `${areaM2} м²` : "—", "#34d399"],
             ["Углов",    points.length.toString(), "#a78bfa"],
           ] as const).map(([l, v, c]) => (

@@ -8,6 +8,7 @@ import { PT_HIT, SNAP_THR, CLOSE_THR, DIM_OFF, findNearestSegment, findNearestDi
 import {
   renderDimLine, renderSegmentLabel, renderAngleLabel, renderCornerArc, renderCustomDimLine,
   renderPoints, renderDiagonals, renderSegments, renderGhost, renderHints,
+  InlineDimLabels,
 } from "./PlanCanvasRenderers";
 import type { RenderContext, SegmentHandlers } from "./PlanCanvasRenderers";
 import { distPx } from "./planTypes";
@@ -534,7 +535,7 @@ export default function PlanCanvas({ state, onChange }: Props) {
   };
 
   return (
-    <div className="w-full h-full overflow-hidden relative bg-[#080808] select-none touch-none">
+    <div className="w-full h-full overflow-hidden relative bg-[#111] select-none touch-none">
       <svg
         ref={svgRef}
         width="100%" height="100%"
@@ -598,6 +599,11 @@ export default function PlanCanvas({ state, onChange }: Props) {
 
           {/* Ghost */}
           {renderGhost(ctx)}
+
+          {/* Inline-edit размеров на чертеже */}
+          {points.length >= 2 && (
+            <InlineDimLabels state={state} onChange={onChange} />
+          )}
 
           {/* Точки */}
           {renderPoints(ctx, handlers)}

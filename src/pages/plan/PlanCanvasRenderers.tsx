@@ -1,7 +1,8 @@
-import type { Point, Segment, DiagonalDef, DimLine } from "./planTypes";
+import React from "react";
+import type { Point, Segment, DiagonalDef, DimLine, PlanState } from "./planTypes";
 import {
   pointLabel, segmentLabel, distPx, midPoint, segmentNormal,
-  pxToCm, angleDeg,
+  pxToCm, calcScale, angleDeg, resizeSegmentInPlace, buildAutoDiagonals,
 } from "./planTypes";
 import Icon from "@/components/ui/icon";
 import { DIM_OFF, PT_R, PT_HIT } from "./PlanCanvasUtils";
@@ -254,6 +255,128 @@ export function renderDiagonals(ctx: RenderContext, handlers: Pick<SegmentHandle
       </g>
     );
   });
+}
+
+// ── Inline-edit размеров прямо на чертеже ─────────────────────────────────────
+
+interface InlineDimProps {
+  state: PlanState;
+  onChange: (patch: Partial<PlanState>) => void;
+}
+
+export function InlineDimLabels({ state, onChange }: InlineDimProps) {
+  const { points, segments, diagonals } = state;
+  const scale = calcScale(points, segments);
+  const [editingId, setEditingId] = React.useState<string | null>(null);
+  const [draft, setDraft] = React.useState("");
+  const inputRef = React.useRef<HTMLInputElement>(null);
+
+  React.useEffect(() => {
+    if (editingId && inputRef.current) {
+      inputRef.current.focus();
+      inputRef.current.select();
+    }
+  }, [editingId]);
+
+  const commitEdit = (segId: string) => {
+    const val = parseFloat(draft);
+    if (!isNaN(val) && val > 0) {
+      // Обновляем длину отрезка
+      const newSegments = segments.map(s => s.id === segId ? { ...s, lengthCm: val } : s);
+      // Пересчитываем позиции точек
+      const newPoints = resizeSegmentInPlace(points, newSegments, segId, val);
+      const newDiags = buildAutoDiagonals(newPoints, diagonals);
+      onChange({ segments: newSegments, points: newPoints, diagonals: newDiags });
+    }
+    setEditingId(null);
+    setDraft("");
+  };
+
+  const cancelEdit = () => { setEditingId(null); setDraft(""); };
+
+  return (
+    <>
+      {segments.map(seg => {
+        const a = points.find(p => p.id === seg.fromId);
+        const b = points.find(p => p.id === seg.toId);
+        if (!a || !b) return null;
+
+        const mid = midPoint(a, b);
+        const { nx, ny } = segmentNormal(a, b);
+        const off = DIM_OFF + 6;
+        const lx = mid.x + nx * off;
+        const ly = mid.y + ny * off;
+
+        const lenCm = seg.lengthCm ?? pxToCm(distPx(a, b), scale);
+        const label = lenCm !== null ? `${lenCm}` : "—";
+
+        const isEditing = editingId === seg.id;
+        const segLbl = segmentLabel(points, seg);
+
+        if (isEditing) {
+          // HTML input поверх SVG через foreignObject
+          return (
+            <foreignObject key={seg.id} x={lx - 36} y={ly - 13} width={72} height={26}
+              style={{ overflow: "visible" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 2 }}>
+                <input
+                  ref={inputRef}
+                  type="number"
+                  min={1} max={99999} step={0.5}
+                  value={draft}
+                  onChange={e => setDraft(e.target.value)}
+                  onBlur={() => commitEdit(seg.id)}
+                  onKeyDown={e => {
+                    if (e.key === "Enter") commitEdit(seg.id);
+                    if (e.key === "Escape") cancelEdit();
+                    e.stopPropagation();
+                  }}
+                  style={{
+                    width: 60,
+                    height: 24,
+                    background: "#fff",
+                    color: "#111",
+                    border: "none",
+                    borderRadius: 6,
+                    padding: "0 6px",
+                    fontSize: 11,
+                    fontFamily: "monospace",
+                    fontWeight: 700,
+                    outline: "none",
+                    boxShadow: "0 2px 8px rgba(0,0,0,0.5)",
+                  }}
+                />
+                <span style={{ fontSize: 9, color: "rgba(255,255,255,0.5)", fontFamily: "monospace" }}>см</span>
+              </div>
+            </foreignObject>
+          );
+        }
+
+        return (
+          <g key={seg.id} style={{ cursor: "text" }}
+            onClick={e => {
+              e.stopPropagation();
+              setEditingId(seg.id);
+              setDraft(lenCm !== null ? String(lenCm) : "");
+            }}>
+            {/* Прозрачная зона клика */}
+            <rect x={lx - 28} y={ly - 10} width={56} height={20} rx={4}
+              fill="transparent" stroke="transparent" strokeWidth={10} />
+            {/* Фоновый прямоугольник */}
+            <rect x={lx - 26} y={ly - 9} width={52} height={18} rx={4}
+              fill="rgba(0,0,0,0.55)" stroke="rgba(255,255,255,0.15)" strokeWidth={0.8} />
+            <text x={lx} y={ly + 1}
+              textAnchor="middle" dominantBaseline="middle"
+              fontSize={10.5} fontFamily="monospace" fontWeight={700}
+              fill="rgba(255,255,255,0.85)"
+              className="select-none pointer-events-none">
+              {segLbl}: {label} см
+            </text>
+          </g>
+        );
+      })}
+    </>
+  );
 }
 
 // ── Рендер отрезков (зоны клика) ─────────────────────────────────────────────

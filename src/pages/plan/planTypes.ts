@@ -131,6 +131,33 @@ export function distPx(a: Point, b: Point): number {
   return Math.sqrt((b.x - a.x) ** 2 + (b.y - a.y) ** 2);
 }
 
+/**
+ * Пересчитать позиции точек так, чтобы отрезок segId имел длину newLenCm при текущем масштабе.
+ * Перемещает toPoint отрезка вдоль его направления.
+ */
+export function resizeSegmentInPlace(
+  points: Point[],
+  segments: Segment[],
+  segId: string,
+  newLenCm: number,
+): Point[] {
+  const scale = calcScale(points, segments);
+  if (!scale || newLenCm <= 0) return points;
+  const seg = segments.find(s => s.id === segId);
+  if (!seg) return points;
+  const a = points.find(p => p.id === seg.fromId);
+  const b = points.find(p => p.id === seg.toId);
+  if (!a || !b) return points;
+  const curPx = distPx(a, b);
+  if (curPx === 0) return points;
+  const newPx = newLenCm * scale;
+  const ratio = newPx / curPx;
+  const dx = (b.x - a.x) * ratio;
+  const dy = (b.y - a.y) * ratio;
+  const newB = { ...b, x: a.x + dx, y: a.y + dy };
+  return points.map(p => p.id === b.id ? newB : p);
+}
+
 export function calcScale(points: Point[], segments: Segment[]): number | null {
   for (const seg of segments) {
     if (seg.lengthCm === null || seg.lengthCm <= 0) continue;
@@ -331,9 +358,9 @@ export const DEFAULT_SETTINGS: PlanSettings = {
   zoom: 1,
   panX: 0,
   panY: 0,
-  showSegmentLabels: true,
-  showAngleLabels: true,
-  showDiagonals: true,
+  showSegmentLabels: false,  // по дефолту скрыты подписи A-B
+  showAngleLabels: false,
+  showDiagonals: false,
   showDimLines: true,
   showPoints: true,
   showPointLabels: true,

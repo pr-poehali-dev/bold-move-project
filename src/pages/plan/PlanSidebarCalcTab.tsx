@@ -11,6 +11,10 @@ export default function CalcTab({ state }: { state: PlanState }) {
   const areaCm2 = scale ? areaPx / (scale * scale) : null;
   const areaM2  = areaCm2 ? Math.round(areaCm2 / 10000 * 100) / 100 : null;
   const perimM  = scale ? Math.round((perimPx / scale) / 100 * 100) / 100 : null;
+  // Если все стороны введены — точный периметр по ним
+  const allSet       = segments.length > 0 && segments.every(s => s.lengthCm !== null && s.lengthCm > 0);
+  const exactPerimM  = allSet ? Math.round(segments.reduce((s, seg) => s + (seg.lengthCm ?? 0), 0) / 100 * 100) / 100 : null;
+  const displayPerim = exactPerimM ?? perimM;
 
   const ceilH = room.floorToCeilCm;
   const dipMm = room.concreteDipMm;
@@ -28,7 +32,7 @@ export default function CalcTab({ state }: { state: PlanState }) {
       <div>
         <p className="text-[10px] font-bold uppercase tracking-widest text-white/25 mb-2">Размеры</p>
         {row("Площадь помещения", areaM2 ? String(areaM2) : "—", "м²", true)}
-        {row("Периметр", perimM ? String(perimM) : "—", "м")}
+        {row("Периметр", displayPerim ? String(displayPerim) : "—", "м")}
         {row("Кол-во углов", String(points.length))}
         {ceilH && row("Высота потолка", String(ceilH), "см")}
         {dipMm && row("Опуск от бетона", String(dipMm), "мм")}

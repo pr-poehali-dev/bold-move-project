@@ -20,7 +20,7 @@ export default function PlanSidebar({ state, onChange }: Props) {
   ];
 
   return (
-    <div className="h-full flex flex-col bg-[#0d0d0d] text-white">
+    <div className="h-full flex flex-col bg-[#161616] text-white">
       {/* Вкладки */}
       <div className="flex border-b border-white/[0.07] shrink-0">
         {tabs.map(t => (
