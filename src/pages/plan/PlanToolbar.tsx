@@ -106,7 +106,7 @@ function DropUp({ label, icon, children, badge }: {
   const openMenu = () => {
     if (btnRef.current) {
       const r = btnRef.current.getBoundingClientRect();
-      setPos({ x: r.left, y: r.top });
+      setPos({ x: r.left, y: r.bottom });
     }
     setOpen(v => !v);
   };
@@ -137,14 +137,14 @@ function DropUp({ label, icon, children, badge }: {
         <Icon name={icon} size={12} />
         <span>{label}</span>
         {badge && <span className="bg-white/20 rounded px-1 text-[9px] font-bold ml-0.5">{badge}</span>}
-        <Icon name="ChevronDown" size={9} className={`transition-transform opacity-60 ${open ? "rotate-180" : ""}`} />
+        <Icon name="ChevronDown" size={9} className={`transition-transform opacity-60 ${open ? "rotate-180" : "rotate-0"}`} />
       </button>
 
       {open && (
         <div
           ref={menuRef}
           className="fixed z-[9999] bg-[#1c1c1c] border border-white/[0.12] rounded-xl shadow-2xl p-1.5 flex flex-col gap-0.5 min-w-[190px]"
-          style={{ left: pos.x, bottom: `calc(100vh - ${pos.y}px + 6px)` }}
+          style={{ left: pos.x, top: pos.y + 4 }}
           onClick={() => setOpen(false)}
         >
           {children}
