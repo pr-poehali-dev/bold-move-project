@@ -104,6 +104,15 @@ export default function PlanPage() {
     }
   }, [user]);
 
+  // На мобиле: автоматически открываем сайдбар при замыкании фигуры
+  const prevIsClosed = useRef(state.isClosed);
+  useEffect(() => {
+    if (state.isClosed && !prevIsClosed.current && isMobile) {
+      setSheetOpen(true);
+    }
+    prevIsClosed.current = state.isClosed;
+  }, [state.isClosed, isMobile]);  
+
   // Ref для актуального state (избегаем stale closure в callbacks)
   const stateRef = useRef(state);
   stateRef.current = state;

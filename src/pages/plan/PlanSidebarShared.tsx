@@ -48,7 +48,7 @@ export function Section({
 // ─── Строка длины ─────────────────────────────────────────────────────────────
 export function LengthRow({
   label, valueCm, placeholder, visible,
-  onValueChange, onVisibilityToggle, onDelete, onFocus,
+  onValueChange, onVisibilityToggle, onDelete, onFocus, onEnterNext, inputRef, autoFocus,
 }: {
   label: string; valueCm: number | null; placeholder?: string;
   visible: boolean;
@@ -56,7 +56,13 @@ export function LengthRow({
   onVisibilityToggle: () => void;
   onDelete?: () => void;
   onFocus?: () => void;
+  onEnterNext?: () => void;
+  inputRef?: React.RefObject<HTMLInputElement>;
+  autoFocus?: boolean;
 }) {
+  const localRef = React.useRef<HTMLInputElement>(null);
+  const ref = inputRef ?? localRef;
+
   // Локальный стейт — пользователь набирает цифры, фокус никуда не прыгает
   const [draft, setDraft] = React.useState<string>(valueCm !== null ? String(valueCm) : "");
   const [focused, setFocused] = React.useState(false);
@@ -68,6 +74,14 @@ export function LengthRow({
     }
   }, [valueCm, focused]);
 
+  // Автофокус при появлении (после замыкания фигуры)
+  React.useEffect(() => {
+    if (autoFocus) {
+      const id = setTimeout(() => ref.current?.focus(), 80);
+      return () => clearTimeout(id);
+    }
+  }, [autoFocus]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const commit = () => {
     const v = draft === "" ? null : parseFloat(draft);
     onValueChange(v !== null && !isNaN(v) ? v : null);
@@ -76,13 +90,23 @@ export function LengthRow({
   return (
     <div className="flex items-center gap-1.5 py-1.5 rounded-lg px-1.5 transition-colors hover:bg-white/[0.03]">
       <span className="w-10 text-[11px] font-mono font-bold text-white/50 shrink-0">{label}</span>
-      <input type="number" min={1} max={99999} step={0.5}
+      <input ref={ref} type="number" min={1} max={99999} step={0.5}
         value={draft}
         placeholder={placeholder ?? "—"}
         onChange={e => setDraft(e.target.value)}
         onFocus={() => { setFocused(true); onFocus?.(); }}
         onBlur={() => { setFocused(false); commit(); }}
-        onKeyDown={e => { if (e.key === "Enter") { (e.target as HTMLInputElement).blur(); } }}
+        onKeyDown={e => {
+          if (e.key === "Enter") {
+            commit();
+            if (onEnterNext) {
+              e.preventDefault();
+              onEnterNext();
+            } else {
+              (e.target as HTMLInputElement).blur();
+            }
+          }
+        }}
         className="flex-1 bg-white/[0.06] border border-white/[0.08] rounded-lg px-2 py-1.5 text-[11px] text-white font-mono focus:outline-none focus:border-white/30 focus:bg-white/[0.08] transition min-w-0"
       />
       <span className="text-[9px] text-white/25 shrink-0">см</span>

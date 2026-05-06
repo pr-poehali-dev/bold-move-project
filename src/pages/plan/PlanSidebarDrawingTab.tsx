@@ -46,6 +46,22 @@ export default function DrawingTab({ state, onChange }: Props) {
   const { points, segments, diagonals, dimLines, isClosed, settings, phase, room } = state;
   const scale = calcScale(points, segments);
 
+  // Refs на все поля ввода длин (для навигации Enter)
+  const inputRefs = React.useRef<React.RefObject<HTMLInputElement>[]>([]);
+  // Пересоздаём массив refs при изменении количества отрезков
+  if (inputRefs.current.length !== segments.length) {
+    inputRefs.current = segments.map(() => React.createRef<HTMLInputElement>());
+  }
+
+  // Переход к следующему полю по индексу
+  const focusNext = (idx: number) => {
+    const next = inputRefs.current[idx + 1];
+    if (next?.current) {
+      next.current.focus();
+      next.current.select();
+    }
+  };
+
   const updateSegment = (id: string, patch: Partial<Segment>) =>
     onChange({ segments: segments.map(s => s.id === id ? { ...s, ...patch } : s) });
 
@@ -197,9 +213,12 @@ export default function DrawingTab({ state, onChange }: Props) {
                     valueCm={seg.lengthCm}
                     placeholder={autoCm !== null ? String(autoCm) : "—"}
                     visible={seg.showLength}
+                    inputRef={inputRefs.current[idx]}
+                    autoFocus={idx === 0 && isClosed}
                     onValueChange={v => updateSegment(seg.id, { lengthCm: v })}
                     onVisibilityToggle={() => updateSegment(seg.id, { showLength: !seg.showLength })}
                     onFocus={() => onChange({ activeInputIndex: idx })}
+                    onEnterNext={idx < segments.length - 1 ? () => focusNext(idx) : undefined}
                   />
                 );
               })}
