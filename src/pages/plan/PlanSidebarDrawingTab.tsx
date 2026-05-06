@@ -48,13 +48,26 @@ export default function DrawingTab({ state, onChange }: Props) {
       if (allSet) {
         const result = rebuildFromAnglesAndLengths(points, newSegments, baseScale);
         if (result) {
+          // Определяем какие стороны изменились (кроме той что ввёл пользователь)
+          const changedIds = newSegments
+            .filter(s => s.id !== id)
+            .filter(s => {
+              const oldSeg = segments.find(os => os.id === s.id);
+              if (!oldSeg || !oldSeg.lengthCm) return false;
+              return Math.abs((oldSeg.lengthCm ?? 0) - (s.lengthCm ?? 0)) > 0.05;
+            })
+            .map(s => s.id);
           const newDiags = buildAutoDiagonals(result.points, diagonals, result.baseScale);
-          onChange({ points: result.points, segments: newSegments, diagonals: newDiags, baseScale: result.baseScale });
+          onChange({ points: result.points, segments: newSegments, diagonals: newDiags, baseScale: result.baseScale, changedSegmentIds: changedIds });
+          // Сбрасываем подсветку через 2 секунды
+          if (changedIds.length > 0) {
+            setTimeout(() => onChange({ changedSegmentIds: [] }), 2000);
+          }
           return;
         }
       }
       const newDiags = buildAutoDiagonals(points, diagonals, baseScale);
-      onChange({ segments: newSegments, diagonals: newDiags, baseScale: baseScale ?? undefined });
+      onChange({ segments: newSegments, diagonals: newDiags, baseScale: baseScale ?? undefined, changedSegmentIds: [] });
       return;
     }
     onChange({ segments: newSegments });

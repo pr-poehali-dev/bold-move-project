@@ -51,7 +51,7 @@ export function Section({
 // ─── Строка длины ─────────────────────────────────────────────────────────────
 export function LengthRow({
   label, valueCm, placeholder, visible,
-  onValueChange, onVisibilityToggle, onDelete, onFocus, onEnterNext, inputRef, autoFocus,
+  onValueChange, onVisibilityToggle, onDelete, onFocus, onEnterNext, inputRef, autoFocus, highlighted,
 }: {
   label: string; valueCm: number | null; placeholder?: string;
   visible: boolean;
@@ -62,6 +62,7 @@ export function LengthRow({
   onEnterNext?: () => void;
   inputRef?: React.RefObject<HTMLInputElement>;
   autoFocus?: boolean;
+  highlighted?: boolean;
 }) {
   const localRef = React.useRef<HTMLInputElement>(null);
   const ref = inputRef ?? localRef;
@@ -91,7 +92,7 @@ export function LengthRow({
   };
 
   return (
-    <div className="flex items-center gap-1.5 py-1.5 rounded-lg px-1.5 transition-colors hover:bg-white/[0.03]">
+    <div className={`flex items-center gap-1.5 py-1.5 rounded-lg px-1.5 transition-colors ${highlighted ? "bg-rose-500/10" : "hover:bg-white/[0.03]"}`}>
       <span className="w-10 text-[11px] font-mono font-bold text-white/50 shrink-0">{label}</span>
       <input
         ref={ref}
@@ -113,7 +114,7 @@ export function LengthRow({
             }
           }
         }}
-        className="flex-1 bg-white/[0.06] border border-white/[0.08] rounded-lg px-2 py-1.5 text-[11px] text-white font-mono focus:outline-none focus:border-white/30 focus:bg-white/[0.08] transition min-w-0"
+        className={`flex-1 bg-white/[0.06] border rounded-lg px-2 py-1.5 text-[11px] font-mono focus:outline-none focus:bg-white/[0.08] transition min-w-0 ${highlighted ? "border-rose-500/50 text-rose-300" : "border-white/[0.08] text-white focus:border-white/30"}`}
       />
       <span className="text-[9px] text-white/25 shrink-0">см</span>
       <button onClick={onVisibilityToggle} className="p-1 rounded hover:bg-white/10 transition shrink-0" title="Показать/скрыть">
