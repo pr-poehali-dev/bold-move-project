@@ -57,6 +57,25 @@ export default function PlanCanvasOverlay({
             }} />
           </>)}
           {ctxMenu.type === "segment" && (<>
+            <CtxItem icon="MapPin" label="Добавить точку" onClick={() => {
+              const seg = segments.find(s => s.id === ctxMenu.id);
+              if (!seg) return;
+              const fromPt = points.find(p => p.id === seg.fromId);
+              const toPt   = points.find(p => p.id === seg.toId);
+              if (!fromPt || !toPt) return;
+              const mid = midPoint(fromPt, toPt);
+              const newPt = { id: genId("p"), x: mid.x, y: mid.y };
+              // Вставляем новую точку между fromId и toId
+              const ptIdx = points.findIndex(p => p.id === seg.toId);
+              const newPoints = [...points.slice(0, ptIdx), newPt, ...points.slice(ptIdx)];
+              // Заменяем отрезок A→B на A→newPt и newPt→B
+              const newSeg1 = { ...seg, id: genId("s"), toId: newPt.id, lengthCm: null, arcRadius: 0 };
+              const newSeg2 = { ...seg, id: genId("s"), fromId: newPt.id, lengthCm: null, arcRadius: 0 };
+              const newSegs = segments.map(s => s.id === ctxMenu.id ? newSeg1 : s);
+              newSegs.splice(newSegs.findIndex(s => s.id === newSeg1.id) + 1, 0, newSeg2);
+              const newDiags = buildAutoDiagonals(newPoints, diagonals, state.baseScale ?? null);
+              onChange({ points: newPoints, segments: newSegs, diagonals: newDiags, selectedSegmentId: null });
+            }} />
             <CtxItem icon="Spline" label="Добавить дугу" onClick={() => {
               const seg = segments.find(s => s.id === ctxMenu.id);
               if (seg) onChange({ segments: segments.map(s => s.id === ctxMenu.id ? { ...s, arcRadius: Math.max(20, s.arcRadius + 20) } : s) });
