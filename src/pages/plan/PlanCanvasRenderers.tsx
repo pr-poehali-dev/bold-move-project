@@ -2,7 +2,7 @@ import React from "react";
 import type { Point, Segment, DiagonalDef, DimLine, PlanState } from "./planTypes";
 import {
   pointLabel, segmentLabel, distPx, midPoint, segmentNormal,
-  pxToCm, calcScale, angleDeg, resizeSegmentInPlace, buildAutoDiagonals,
+  pxToCm, calcScale, angleDeg, moveEndPoint, buildAutoDiagonals,
 } from "./planTypes";
 import Icon from "@/components/ui/icon";
 import { DIM_OFF, PT_R, PT_HIT } from "./PlanCanvasUtils";
@@ -282,7 +282,7 @@ export function InlineDimLabels({ state, onChange }: InlineDimProps) {
     const val = parseFloat(draft);
     if (!isNaN(val) && val > 0) {
       const newSegments = segments.map(s => s.id === segId ? { ...s, lengthCm: val } : s);
-      const result = resizeSegmentInPlace(points, newSegments, segId, val, state.baseScale ?? null);
+      const result = moveEndPoint(points, newSegments, segId, val, state.baseScale ?? null);
       if (result) {
         const newDiags = buildAutoDiagonals(result.points, diagonals);
         onChange({ segments: newSegments, points: result.points, diagonals: newDiags, baseScale: result.baseScale });
