@@ -134,13 +134,10 @@ export function distPx(a: Point, b: Point): number {
 /**
  * Пересчитать позиции ВСЕХ точек фигуры по заданным длинам отрезков.
  *
- * Алгоритм кинематической цепочки:
- * 1. Строим упорядоченную цепочку: p0 → p1 → p2 → ... → p0 (замкнуто).
- * 2. Вычисляем масштаб по первому отрезку с введённой длиной.
- * 3. Для каждого отрезка: если длина введена — используем её, иначе — пиксельную длину / scale.
- * 4. Строим новые координаты: p0 фиксирован, каждая следующая точка = предыдущая + единичный вектор * newPxLen.
- *
- * Вызывается при любом изменении lengthCm — перестраивает всю фигуру корректно.
+ * Алгоритм: единый масштаб px/cm вычисляется из изменяемого отрезка.
+ * Все отрезки с введённой длиной получают размер = lengthCm * scale.
+ * Отрезки без lengthCm сохраняют текущую пиксельную длину.
+ * Направления всех отрезков не меняются (берутся из оригинальных точек).
  */
 export function resizeSegmentInPlace(
   points: Point[],
@@ -157,83 +154,94 @@ export function resizeSegmentInPlace(
   for (let i = 0; i < segments.length; i++) {
     const s = segments.find(sg => sg.fromId === cur);
     if (!s) break;
-    if (chain.includes(s.toId)) break; // замкнулись
+    if (chain.includes(s.toId)) break;
     chain.push(s.toId);
     cur = s.toId;
   }
   if (chain.length < 2) return points;
 
-  // Все отрезки в порядке цепочки, включая замыкающий
+  // Собираем отрезки в порядке цепочки
   const orderedSegs: Segment[] = [];
   for (let i = 0; i < chain.length; i++) {
     const fromId = chain[i];
     const toId = chain[(i + 1) % chain.length];
     const s = segments.find(sg => sg.fromId === fromId && sg.toId === toId);
-    if (!s) return points; // цепочка сломана
+    if (!s) return points;
     orderedSegs.push(s);
   }
 
-  // Вычисляем масштаб — ищем ЛЮБОЙ отрезок с введённой длиной
-  let scale: number | null = null;
+  // Целевая пиксельная длина для каждого отрезка:
+  // — изменяемый: newLenCm × (origPx / origLenCm) — масштаб самого отрезка до изменения
+  //   (origLenCm берём из segments ПЕРЕД обновлением, но segments уже содержит новый lengthCm)
+  //   Поэтому используем просто origPx × (newLenCm / prevLenCm)
+  //   Но prevLenCm неизвестен... Решение: пиксельная длина = newLenCm × globalScale,
+  //   где globalScale вычисляем по ПЕРВОМУ ранее введённому отрезку.
+  // — остальные с lengthCm: их пиксельная длина уже правильная (не трогаем)
+  // — без lengthCm: тоже не трогаем
+
+  // Глобальный масштаб: берём ПЕРВЫЙ уже введённый отрезок (не изменяемый)
+  let globalScale: number | null = null;
   for (const s of orderedSegs) {
+    if (s.id === segId) continue;
     if (s.lengthCm === null || s.lengthCm <= 0) continue;
     const pa = points.find(p => p.id === s.fromId);
     const pb = points.find(p => p.id === s.toId);
     if (!pa || !pb) continue;
     const px = distPx(pa, pb);
-    if (px > 0) { scale = px / s.lengthCm; break; }
+    if (px > 0) { globalScale = px / s.lengthCm; break; }
   }
-  // Если ни одного — берём текущий изменяемый как baseline
-  if (!scale) {
-    const sega = points.find(p => p.id === segments.find(sg => sg.id === segId)?.fromId);
-    const segb = points.find(p => p.id === segments.find(sg => sg.id === segId)?.toId);
-    if (sega && segb) {
-      const px = distPx(sega, segb);
-      if (px > 0) scale = px / newLenCm;
-    }
+  // Если нет других введённых — изменяемый отрезок сам задаёт масштаб
+  if (!globalScale) {
+    const editedSeg = orderedSegs.find(s => s.id === segId);
+    if (!editedSeg) return points;
+    const eFrom = points.find(p => p.id === editedSeg.fromId);
+    const eTo   = points.find(p => p.id === editedSeg.toId);
+    if (!eFrom || !eTo) return points;
+    const ePx = distPx(eFrom, eTo);
+    if (ePx === 0) return points;
+    globalScale = ePx / newLenCm;
   }
-  if (!scale) return points;
 
-  // Карта: segId → целевая длина в пикселях
+  // Целевая пиксельная длина для каждого отрезка
   const targetPx = new Map<string, number>();
   for (const s of orderedSegs) {
-    const len = s.id === segId ? newLenCm : s.lengthCm;
-    if (len !== null && len > 0) {
-      targetPx.set(s.id, len * scale);
+    const pa = points.find(p => p.id === s.fromId);
+    const pb = points.find(p => p.id === s.toId);
+    if (!pa || !pb) return points;
+    const origPx = distPx(pa, pb);
+    if (s.id === segId) {
+      // Изменяемый: устанавливаем точную пиксельную длину через globalScale
+      targetPx.set(s.id, newLenCm * globalScale);
+    } else if (s.lengthCm !== null && s.lengthCm > 0) {
+      // Уже введённый другой отрезок: пиксельная длина = lengthCm * globalScale
+      // (это обеспечивает консистентность всех введённых длин)
+      targetPx.set(s.id, s.lengthCm * globalScale);
     } else {
-      // Длина не задана — сохраняем текущую пиксельную длину
-      const pa = points.find(p => p.id === s.fromId);
-      const pb = points.find(p => p.id === s.toId);
-      if (pa && pb) targetPx.set(s.id, distPx(pa, pb));
+      // Не введён: сохраняем текущую пиксельную длину
+      targetPx.set(s.id, origPx);
     }
   }
 
-  // Строим новые координаты кинематически
-  // Первая точка — фиксирована
+  // Строим новые координаты кинематически (p[0] — якорь)
   const p0 = points.find(p => p.id === chain[0]);
   if (!p0) return points;
-
   const newCoords = new Map<string, { x: number; y: number }>();
   newCoords.set(chain[0], { x: p0.x, y: p0.y });
 
   for (let i = 0; i < chain.length; i++) {
     const fromId = chain[i];
-    const toId = chain[(i + 1) % chain.length];
-    if (toId === chain[0]) break; // не двигаем якорную точку
+    const toId   = chain[(i + 1) % chain.length];
+    if (toId === chain[0]) break;
 
     const s = orderedSegs[i];
-    const curFrom = newCoords.get(fromId) ?? points.find(p => p.id === fromId)!;
+    const curFrom = newCoords.get(fromId)!;
 
-    // Получаем ОРИГИНАЛЬНОЕ направление отрезка (из текущих точек, до перестройки)
+    // Направление из оригинальных точек
     const origFrom = points.find(p => p.id === s.fromId)!;
     const origTo   = points.find(p => p.id === s.toId)!;
     const origLen  = distPx(origFrom, origTo);
-
-    let ux = 0, uy = 0;
-    if (origLen > 0) {
-      ux = (origTo.x - origFrom.x) / origLen;
-      uy = (origTo.y - origFrom.y) / origLen;
-    }
+    const ux = origLen > 0 ? (origTo.x - origFrom.x) / origLen : 0;
+    const uy = origLen > 0 ? (origTo.y - origFrom.y) / origLen : 0;
 
     const px = targetPx.get(s.id) ?? origLen;
     newCoords.set(toId, { x: curFrom.x + ux * px, y: curFrom.y + uy * px });
