@@ -132,13 +132,15 @@ export function distPx(a: Point, b: Point): number {
 }
 
 /**
- * Пересчитать позиции точек так, чтобы отрезок segId имел длину newLenCm.
+ * Пересчитать позиции ВСЕХ точек фигуры по заданным длинам отрезков.
  *
- * Масштаб вычисляется по ДРУГОМУ отрезку (не изменяемому) — это даёт стабильный reference.
- * Если других отрезков с lengthCm нет, используем текущий отрезок как baseline.
+ * Алгоритм кинематической цепочки:
+ * 1. Строим упорядоченную цепочку: p0 → p1 → p2 → ... → p0 (замкнуто).
+ * 2. Вычисляем масштаб по первому отрезку с введённой длиной.
+ * 3. Для каждого отрезка: если длина введена — используем её, иначе — пиксельную длину / scale.
+ * 4. Строим новые координаты: p0 фиксирован, каждая следующая точка = предыдущая + единичный вектор * newPxLen.
  *
- * Стратегия: двигаем toPoint вдоль направления отрезка,
- * все последующие точки цепочки сдвигаются параллельно.
+ * Вызывается при любом изменении lengthCm — перестраивает всю фигуру корректно.
  */
 export function resizeSegmentInPlace(
   points: Point[],
@@ -147,74 +149,99 @@ export function resizeSegmentInPlace(
   newLenCm: number,
 ): Point[] {
   if (newLenCm <= 0) return points;
+  if (points.length < 2 || segments.length < 2) return points;
 
-  const seg = segments.find(s => s.id === segId);
-  if (!seg) return points;
+  // Строим упорядоченную цепочку pointId[] начиная с points[0]
+  const chain: string[] = [points[0].id];
+  let cur = points[0].id;
+  for (let i = 0; i < segments.length; i++) {
+    const s = segments.find(sg => sg.fromId === cur);
+    if (!s) break;
+    if (chain.includes(s.toId)) break; // замкнулись
+    chain.push(s.toId);
+    cur = s.toId;
+  }
+  if (chain.length < 2) return points;
 
-  const a = points.find(p => p.id === seg.fromId);
-  const b = points.find(p => p.id === seg.toId);
-  if (!a || !b) return points;
+  // Все отрезки в порядке цепочки, включая замыкающий
+  const orderedSegs: Segment[] = [];
+  for (let i = 0; i < chain.length; i++) {
+    const fromId = chain[i];
+    const toId = chain[(i + 1) % chain.length];
+    const s = segments.find(sg => sg.fromId === fromId && sg.toId === toId);
+    if (!s) return points; // цепочка сломана
+    orderedSegs.push(s);
+  }
 
-  const curPx = distPx(a, b);
-  if (curPx === 0) return points;
-
-  // Вычисляем масштаб по ДРУГОМУ отрезку (не текущему) для стабильности
-  // Это защищает от накопления погрешностей при последовательном вводе
+  // Вычисляем масштаб — ищем ЛЮБОЙ отрезок с введённой длиной
   let scale: number | null = null;
-  for (const s of segments) {
-    if (s.id === segId) continue; // пропускаем изменяемый отрезок
+  for (const s of orderedSegs) {
     if (s.lengthCm === null || s.lengthCm <= 0) continue;
-    const sa = points.find(p => p.id === s.fromId);
-    const sb = points.find(p => p.id === s.toId);
-    if (!sa || !sb) continue;
-    const spx = distPx(sa, sb);
-    if (spx === 0) continue;
-    scale = spx / s.lengthCm;
-    break;
+    const pa = points.find(p => p.id === s.fromId);
+    const pb = points.find(p => p.id === s.toId);
+    if (!pa || !pb) continue;
+    const px = distPx(pa, pb);
+    if (px > 0) { scale = px / s.lengthCm; break; }
   }
-
-  // Если нет других отрезков с lengthCm — используем текущий отрезок
-  // как baseline (первый ввод, масштаб устанавливается по нему)
+  // Если ни одного — берём текущий изменяемый как baseline
   if (!scale) {
-    scale = curPx / newLenCm;
+    const sega = points.find(p => p.id === segments.find(sg => sg.id === segId)?.fromId);
+    const segb = points.find(p => p.id === segments.find(sg => sg.id === segId)?.toId);
+    if (sega && segb) {
+      const px = distPx(sega, segb);
+      if (px > 0) scale = px / newLenCm;
+    }
+  }
+  if (!scale) return points;
+
+  // Карта: segId → целевая длина в пикселях
+  const targetPx = new Map<string, number>();
+  for (const s of orderedSegs) {
+    const len = s.id === segId ? newLenCm : s.lengthCm;
+    if (len !== null && len > 0) {
+      targetPx.set(s.id, len * scale);
+    } else {
+      // Длина не задана — сохраняем текущую пиксельную длину
+      const pa = points.find(p => p.id === s.fromId);
+      const pb = points.find(p => p.id === s.toId);
+      if (pa && pb) targetPx.set(s.id, distPx(pa, pb));
+    }
   }
 
-  const newPx = newLenCm * scale;
-  const ratio = newPx / curPx;
+  // Строим новые координаты кинематически
+  // Первая точка — фиксирована
+  const p0 = points.find(p => p.id === chain[0]);
+  if (!p0) return points;
 
-  // Новая позиция конечной точки — вдоль того же направления
-  const newBx = a.x + (b.x - a.x) * ratio;
-  const newBy = a.y + (b.y - a.y) * ratio;
+  const newCoords = new Map<string, { x: number; y: number }>();
+  newCoords.set(chain[0], { x: p0.x, y: p0.y });
 
-  // Вектор смещения
-  const ddx = newBx - b.x;
-  const ddy = newBy - b.y;
+  for (let i = 0; i < chain.length; i++) {
+    const fromId = chain[i];
+    const toId = chain[(i + 1) % chain.length];
+    if (toId === chain[0]) break; // не двигаем якорную точку
 
-  if (Math.abs(ddx) < 0.001 && Math.abs(ddy) < 0.001) return points;
+    const s = orderedSegs[i];
+    const curFrom = newCoords.get(fromId) ?? points.find(p => p.id === fromId)!;
 
-  // Строим порядок точек по цепочке отрезков начиная с fromId
-  const orderedPtIds: string[] = [seg.fromId];
-  let cur = seg.toId;
-  const visited = new Set<string>([seg.fromId]);
-  for (let i = 0; i < segments.length * 2; i++) {
-    if (visited.has(cur)) break;
-    orderedPtIds.push(cur);
-    visited.add(cur);
-    const next = segments.find(s => s.fromId === cur);
-    if (!next) break;
-    cur = next.toId;
+    // Получаем ОРИГИНАЛЬНОЕ направление отрезка (из текущих точек, до перестройки)
+    const origFrom = points.find(p => p.id === s.fromId)!;
+    const origTo   = points.find(p => p.id === s.toId)!;
+    const origLen  = distPx(origFrom, origTo);
+
+    let ux = 0, uy = 0;
+    if (origLen > 0) {
+      ux = (origTo.x - origFrom.x) / origLen;
+      uy = (origTo.y - origFrom.y) / origLen;
+    }
+
+    const px = targetPx.get(s.id) ?? origLen;
+    newCoords.set(toId, { x: curFrom.x + ux * px, y: curFrom.y + uy * px });
   }
-
-  // Все точки начиная с toPoint (включительно) сдвигаются на ddx/ddy
-  const toIdx = orderedPtIds.indexOf(seg.toId);
-  if (toIdx < 0) return points.map(p => p.id === b.id ? { ...p, x: newBx, y: newBy } : p);
-
-  const movedIds = new Set(orderedPtIds.slice(toIdx));
 
   return points.map(p => {
-    if (p.id === seg.fromId) return p; // якорная точка не двигается
-    if (movedIds.has(p.id)) return { ...p, x: p.x + ddx, y: p.y + ddy };
-    return p;
+    const nc = newCoords.get(p.id);
+    return nc ? { ...p, x: nc.x, y: nc.y } : p;
   });
 }
 
