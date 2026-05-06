@@ -134,11 +134,11 @@ export function distPx(a: Point, b: Point): number {
 /**
  * Пересчитать позиции точек так, чтобы отрезок segId имел длину newLenCm.
  *
- * Стратегия для замкнутого контура:
- * — Двигаем toPoint отрезка вдоль его текущего направления на нужную длину.
- * — Все последующие точки сдвигаются на тот же вектор смещения (параллельный перенос хвоста),
- *   пока не упрёмся в точку fromId первого отрезка (она фиксирована).
- * Это сохраняет направления всех остальных отрезков и корректно перестраивает фигуру.
+ * Масштаб вычисляется по ДРУГОМУ отрезку (не изменяемому) — это даёт стабильный reference.
+ * Если других отрезков с lengthCm нет, используем текущий отрезок как baseline.
+ *
+ * Стратегия: двигаем toPoint вдоль направления отрезка,
+ * все последующие точки цепочки сдвигаются параллельно.
  */
 export function resizeSegmentInPlace(
   points: Point[],
@@ -146,8 +146,7 @@ export function resizeSegmentInPlace(
   segId: string,
   newLenCm: number,
 ): Point[] {
-  const scale = calcScale(points, segments);
-  if (!scale || newLenCm <= 0) return points;
+  if (newLenCm <= 0) return points;
 
   const seg = segments.find(s => s.id === segId);
   if (!seg) return points;
@@ -159,6 +158,27 @@ export function resizeSegmentInPlace(
   const curPx = distPx(a, b);
   if (curPx === 0) return points;
 
+  // Вычисляем масштаб по ДРУГОМУ отрезку (не текущему) для стабильности
+  // Это защищает от накопления погрешностей при последовательном вводе
+  let scale: number | null = null;
+  for (const s of segments) {
+    if (s.id === segId) continue; // пропускаем изменяемый отрезок
+    if (s.lengthCm === null || s.lengthCm <= 0) continue;
+    const sa = points.find(p => p.id === s.fromId);
+    const sb = points.find(p => p.id === s.toId);
+    if (!sa || !sb) continue;
+    const spx = distPx(sa, sb);
+    if (spx === 0) continue;
+    scale = spx / s.lengthCm;
+    break;
+  }
+
+  // Если нет других отрезков с lengthCm — используем текущий отрезок
+  // как baseline (первый ввод, масштаб устанавливается по нему)
+  if (!scale) {
+    scale = curPx / newLenCm;
+  }
+
   const newPx = newLenCm * scale;
   const ratio = newPx / curPx;
 
@@ -166,13 +186,13 @@ export function resizeSegmentInPlace(
   const newBx = a.x + (b.x - a.x) * ratio;
   const newBy = a.y + (b.y - a.y) * ratio;
 
-  // Смещение конечной точки
+  // Вектор смещения
   const ddx = newBx - b.x;
   const ddy = newBy - b.y;
 
   if (Math.abs(ddx) < 0.001 && Math.abs(ddy) < 0.001) return points;
 
-  // Строим порядок точек по цепочке отрезков
+  // Строим порядок точек по цепочке отрезков начиная с fromId
   const orderedPtIds: string[] = [seg.fromId];
   let cur = seg.toId;
   const visited = new Set<string>([seg.fromId]);
@@ -185,11 +205,10 @@ export function resizeSegmentInPlace(
     cur = next.toId;
   }
 
-  // Индекс toPoint в цепочке
+  // Все точки начиная с toPoint (включительно) сдвигаются на ddx/ddy
   const toIdx = orderedPtIds.indexOf(seg.toId);
   if (toIdx < 0) return points.map(p => p.id === b.id ? { ...p, x: newBx, y: newBy } : p);
 
-  // Сдвигаем toPoint и все точки после него (до fromId), кроме самой fromId
   const movedIds = new Set(orderedPtIds.slice(toIdx));
 
   return points.map(p => {
