@@ -3,7 +3,7 @@ import Icon from "@/components/ui/icon";
 import type { PlanState, Segment, DiagonalDef, PlanSettings, RoomParams } from "./planTypes";
 import {
   pointLabel, segmentLabel, distPx, pxToCm, calcScale, angleDeg,
-  buildAutoDiagonals, polygonArea, polygonPerimeter, genId,
+  buildAutoDiagonals, polygonArea, polygonPerimeter, genId, resizeSegmentInPlace,
 } from "./planTypes";
 import { Section, LengthRow } from "./PlanSidebarShared";
 
@@ -62,8 +62,17 @@ export default function DrawingTab({ state, onChange }: Props) {
     }
   };
 
-  const updateSegment = (id: string, patch: Partial<Segment>) =>
-    onChange({ segments: segments.map(s => s.id === id ? { ...s, ...patch } : s) });
+  const updateSegment = (id: string, patch: Partial<Segment>) => {
+    const newSegments = segments.map(s => s.id === id ? { ...s, ...patch } : s);
+    // Если меняется длина — пересчитываем позиции точек на холсте
+    if (patch.lengthCm !== undefined && patch.lengthCm !== null && patch.lengthCm > 0) {
+      const newPoints = resizeSegmentInPlace(points, newSegments, id, patch.lengthCm);
+      const newDiags = buildAutoDiagonals(newPoints, diagonals);
+      onChange({ segments: newSegments, points: newPoints, diagonals: newDiags });
+    } else {
+      onChange({ segments: newSegments });
+    }
+  };
 
   const updateDiagonal = (id: string, patch: Partial<DiagonalDef>) =>
     onChange({ diagonals: diagonals.map(d => d.id === id ? { ...d, ...patch } : d) });
