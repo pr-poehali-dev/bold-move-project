@@ -3,7 +3,7 @@ import Icon from "@/components/ui/icon";
 import type { PlanState, Segment, DiagonalDef, PlanSettings, RoomParams } from "./planTypes";
 import {
   pointLabel, segmentLabel, distPx, pxToCm, calcScale, angleDeg,
-  buildAutoDiagonals, polygonArea, polygonPerimeter, genId, rebuildFromLengths,
+  buildAutoDiagonals, polygonArea, polygonPerimeter, genId, moveEndPoint,
 } from "./planTypes";
 import { Section, LengthRow } from "./PlanSidebarShared";
 
@@ -64,9 +64,8 @@ export default function DrawingTab({ state, onChange }: Props) {
 
   const updateSegment = (id: string, patch: Partial<Segment>) => {
     const newSegments = segments.map(s => s.id === id ? { ...s, ...patch } : s);
-    // При изменении длины — всегда перестраиваем фигуру по введённым размерам
     if (patch.lengthCm !== undefined && patch.lengthCm !== null && patch.lengthCm > 0) {
-      const result = rebuildFromLengths(points, newSegments, state.baseScale ?? null);
+      const result = moveEndPoint(points, newSegments, id, patch.lengthCm, state.baseScale ?? null);
       if (result) {
         const newDiags = buildAutoDiagonals(result.points, diagonals);
         onChange({ segments: newSegments, points: result.points, diagonals: newDiags, baseScale: result.baseScale });

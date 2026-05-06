@@ -134,6 +134,55 @@ export function distPx(a: Point, b: Point): number {
 }
 
 /**
+ * Сдвинуть только конечную точку отрезка segId на новую длину newLenCm.
+ * Все остальные точки остаются на месте.
+ * Соседние отрезки пересчитываются автоматически через новые координаты точки.
+ *
+ * baseScale устанавливается при первом вводе (когда baseScaleIn === null).
+ */
+export function moveEndPoint(
+  points: Point[],
+  segments: Segment[],
+  segId: string,
+  newLenCm: number,
+  baseScaleIn: number | null,
+): { points: Point[]; baseScale: number } | null {
+  if (newLenCm <= 0) return null;
+  if (points.length < 2 || segments.length < 2) return null;
+
+  const seg = segments.find(s => s.id === segId);
+  if (!seg) return null;
+
+  const fromPt = points.find(p => p.id === seg.fromId);
+  const toPt   = points.find(p => p.id === seg.toId);
+  if (!fromPt || !toPt) return null;
+
+  const origPx = distPx(fromPt, toPt);
+  if (origPx === 0) return null;
+
+  // Масштаб: устанавливается один раз при первом вводе
+  const scale = baseScaleIn ?? (origPx / newLenCm);
+
+  const targetPx = newLenCm * scale;
+
+  // Единичный вектор направления отрезка
+  const ux = (toPt.x - fromPt.x) / origPx;
+  const uy = (toPt.y - fromPt.y) / origPx;
+
+  // Новая позиция конечной точки
+  const newTo = {
+    x: fromPt.x + ux * targetPx,
+    y: fromPt.y + uy * targetPx,
+  };
+
+  const newPoints = points.map(p =>
+    p.id === seg.toId ? { ...p, ...newTo } : p
+  );
+
+  return { points: newPoints, baseScale: scale };
+}
+
+/**
  * Пересчитать позиции ВСЕХ точек фигуры по заданным длинам отрезков.
  *
  * baseScale (px/cm) устанавливается при первом вводе и НИКОГДА не меняется.
