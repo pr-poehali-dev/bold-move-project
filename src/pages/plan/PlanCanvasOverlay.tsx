@@ -1,5 +1,5 @@
 import type { PlanState } from "./planTypes";
-import { buildAutoDiagonals } from "./planTypes";
+import { buildAutoDiagonals, genId, midPoint } from "./planTypes";
 import Icon from "@/components/ui/icon";
 import { CtxItem } from "./PlanCanvasRenderers";
 
