@@ -54,7 +54,7 @@ function ToolBtn({ t, active, disabled, onClick }: {
   t: ToolDef; active: boolean; disabled: boolean; onClick: () => void;
 }) {
   const style = disabled
-    ? "opacity-20 cursor-not-allowed bg-transparent border-transparent text-white/25"
+    ? "opacity-40 cursor-not-allowed bg-transparent border-transparent text-white"
     : active
       ? t.danger
         ? "bg-red-500/25 border-red-500/40 text-red-300"
@@ -193,7 +193,7 @@ function MobileToolbar(props: Props) {
           const disabled = !!t.comingSoon || (!!t.needsClosed && !isClosed);
           const active   = !t.comingSoon && tool === t.id;
           const style = disabled
-            ? "opacity-20 cursor-not-allowed text-white/25"
+            ? "opacity-40 cursor-not-allowed text-white"
             : active
               ? t.danger ? "bg-red-500/25 border-red-500/40 text-red-300 border" : "bg-white/95 text-[#111] border border-white/80"
               : t.danger ? "text-white/35 hover:text-red-300" : "text-white/45 hover:text-white";
