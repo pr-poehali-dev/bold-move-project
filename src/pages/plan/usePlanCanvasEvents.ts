@@ -336,13 +336,32 @@ export function usePlanCanvasEvents({ state, onChange, cs }: Params) {
     onChange({ settings: { ...settings, zoom: newZoom } });
   }, [zoom, settings, onChange]);
 
+  // Ref для актуального handleTouchMove (чтобы не пересоздавать listener)
+  const touchMoveRef = useRef<(e: TouchEvent) => void>(() => {});
+  const touchStartRef = useRef<(e: TouchEvent) => void>(() => {});
+  const touchEndRef = useRef<(e: TouchEvent) => void>(() => {});
+
+  useEffect(() => { touchMoveRef.current = handleTouchMove as unknown as (e: TouchEvent) => void; }, [handleTouchMove]);
+  useEffect(() => { touchStartRef.current = handleTouchStart as unknown as (e: TouchEvent) => void; }, [handleTouchStart]);
+  useEffect(() => { touchEndRef.current = handleTouchEnd as unknown as (e: TouchEvent) => void; }, [handleTouchEnd]);
+
   useEffect(() => {
     const svg = svgRef.current;
     if (!svg) return;
-    svg.addEventListener("wheel", handleWheel, { passive: false });
-    svg.addEventListener("touchmove", (e) => e.preventDefault(), { passive: false });
-    return () => { svg.removeEventListener("wheel", handleWheel); };
-  }, [handleWheel, svgRef]);
+    const onMove  = (e: TouchEvent) => touchMoveRef.current(e);
+    const onStart = (e: TouchEvent) => touchStartRef.current(e);
+    const onEnd   = (e: TouchEvent) => touchEndRef.current(e);
+    svg.addEventListener("wheel",      handleWheel, { passive: false });
+    svg.addEventListener("touchmove",  onMove,  { passive: false });
+    svg.addEventListener("touchstart", onStart, { passive: false });
+    svg.addEventListener("touchend",   onEnd,   { passive: false });
+    return () => {
+      svg.removeEventListener("wheel",      handleWheel);
+      svg.removeEventListener("touchmove",  onMove);
+      svg.removeEventListener("touchstart", onStart);
+      svg.removeEventListener("touchend",   onEnd);
+    };
+  }, [handleWheel, svgRef]);  
 
   // ── Click (мышь) ──────────────────────────────────────────────────────────
   const handleCanvasClick = useCallback((e: React.MouseEvent<SVGSVGElement>) => {
