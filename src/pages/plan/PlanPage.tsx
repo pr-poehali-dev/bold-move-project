@@ -101,6 +101,7 @@ export default function PlanPage() {
   const isMobile = useIsMobile();
 
   const [sheetOpen,   setSheetOpen]   = React.useState(false);
+  const [sheetHeight, setSheetHeight] = React.useState(0);
   const [exportOpen,  setExportOpen]  = React.useState(false);
   const [libraryOpen, setLibraryOpen] = React.useState(false);
   const [authOpen,    setAuthOpen]    = React.useState(false);
@@ -128,11 +129,19 @@ export default function PlanPage() {
   useEffect(() => {
     if (state.isClosed && !prevIsClosed.current && isMobile) {
       setSheetOpen(true);
-      // zoomFit с учётом того что нижние 50% займёт шит
-      setTimeout(() => zoomFit(0.5), 100);
     }
     prevIsClosed.current = state.isClosed;
-  }, [state.isClosed, isMobile]); // eslint-disable-line react-hooks/exhaustive-deps  
+  }, [state.isClosed, isMobile]);  
+
+  // При изменении высоты нижнего бара — пересчитываем зум/пан чтобы чертёж оставался по центру
+  const prevSheetHeight = useRef(0);
+  useEffect(() => {
+    if (!isMobile) return;
+    if (sheetHeight === prevSheetHeight.current) return;
+    prevSheetHeight.current = sheetHeight;
+    // Небольшая задержка чтобы DOM успел обновиться
+    setTimeout(() => zoomFit(sheetHeight / window.innerHeight), 50);
+  }, [sheetHeight, isMobile]); // eslint-disable-line react-hooks/exhaustive-deps  
 
   // Ref для актуального state (избегаем stale closure в callbacks)
   const stateRef = useRef(state);
@@ -329,7 +338,7 @@ export default function PlanPage() {
       <div className="flex flex-1 overflow-hidden relative">
 
         <div id="plan-canvas-wrap" className="flex-1 overflow-hidden"
-          style={isMobile && sheetOpen ? { paddingBottom: Math.round(window.innerHeight * 0.5) } : undefined}>
+          style={isMobile && sheetHeight > 0 ? { paddingBottom: sheetHeight } : undefined}>
           <PlanCanvas state={state} onChange={handleChange} />
         </div>
 
@@ -359,7 +368,8 @@ export default function PlanPage() {
           state={state}
           onChange={handleChange}
           open={sheetOpen}
-          onClose={() => setSheetOpen(false)}
+          onClose={() => { setSheetOpen(false); setSheetHeight(0); }}
+          onSheetHeightChange={setSheetHeight}
         />
       )}
 

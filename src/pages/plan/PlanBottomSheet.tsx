@@ -8,6 +8,7 @@ interface Props {
   onChange: (patch: Partial<PlanState>) => void;
   open: boolean;
   onClose: () => void;
+  onSheetHeightChange?: (heightPx: number) => void;
 }
 
 // Высоты шита: peek (подглядывание) / half / full
@@ -17,7 +18,7 @@ const PEEK_H  = 52;   // только ручка видна
 const HALF_H  = 0.5;  // 50% экрана (доля)
 const FULL_H  = 0.92; // 92% экрана
 
-export default function PlanBottomSheet({ state, onChange, open, onClose }: Props) {
+export default function PlanBottomSheet({ state, onChange, open, onClose, onSheetHeightChange }: Props) {
   const sheetRef    = useRef<HTMLDivElement>(null);
   const dragRef     = useRef<{ startY: number; startH: number } | null>(null);
   const [snap, setSnap]   = React.useState<SheetSnap>("half");
@@ -54,6 +55,11 @@ export default function PlanBottomSheet({ state, onChange, open, onClose }: Prop
   useEffect(() => {
     setHeight(snapToHeight(snap));
   }, [snap]);
+
+  // Сообщаем родителю о высоте шита (для центрирования чертежа)
+  useEffect(() => {
+    onSheetHeightChange?.(open ? height : 0);
+  }, [height, open]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Drag handle
   const onDragStart = (e: React.TouchEvent | React.MouseEvent) => {
