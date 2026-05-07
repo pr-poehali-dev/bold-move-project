@@ -29,6 +29,10 @@ export default function DrawingTab({ state, onChange }: Props) {
 
   // Набор сегментов с "перевёрнутым" направлением (против часовой)
   const flippedSegIds = React.useRef<Set<string>>(new Set());
+  // Снимок точек сразу после первого rebuild (исходный квадрат/прямоугольник)
+  const builtPoints = React.useRef<import("./planTypes").Point[] | null>(null);
+  // Снимок сегментов сразу после первого rebuild
+  const builtSegments = React.useRef<import("./planTypes").Segment[] | null>(null);
   // Длины сегментов ДО авто-пересчёта (для восстановления при флипе)
   const prevLengths = React.useRef<Map<string, number>>(new Map());
 
@@ -40,75 +44,52 @@ export default function DrawingTab({ state, onChange }: Props) {
       flippedSegIds.current.add(id);
     }
 
-    // Немедленно пересчитываем с новым направлением.
-    // Алгоритм: сначала восстанавливаем фигуру с прямыми углами (все стороны текущие),
-    // потом применяем изменение в новом направлении.
+    // Флип: берём исходный квадрат (builtPoints/builtSegments),
+    // двигаем нужную точку от фиксированной в том же направлении на новую длину.
     if (!state.isBuilt || !state.baseScale || !isClosed) return;
     const seg = segments.find(s => s.id === id);
     if (!seg || !seg.lengthCm) return;
+    if (!builtPoints.current || !builtSegments.current) return;
 
     const isFlipped = flippedSegIds.current.has(id);
-    const baseScale = state.baseScale;
+    const baseScale  = state.baseScale;
 
-    // Алгоритм флипа:
-    // 1. Определяем какой сегмент был авто-пересчитан (тот что сейчас косой)
-    // 2. Сбрасываем его длину назад к значению до редактирования (берём из Map prevLengths)
-    // 3. Делаем rebuild с прямыми углами — фигура выравнивается
-    // 4. Применяем изменение с новым направлением
+    // Исходные (до любых редактирований) точки и сегменты
+    const srcPoints   = builtPoints.current;
+    const srcSegments = builtSegments.current;
 
-    // Находим авто-пересчитанный сегмент (тот в changedSegmentIds)
-    const prevChangedId = (state.changedSegmentIds ?? [])[0];
-    const prevChangedSeg = prevChangedId ? segments.find(s => s.id === prevChangedId) : null;
+    // Фиксированная точка и двигающаяся — в исходной фигуре
+    // Без флипа: фиксирован fromId (B), двигается toId (C)
+    // С флипом:  фиксирован toId (C),   двигается fromId (B)
+    const fixedPtId = isFlipped ? seg.toId   : seg.fromId;
+    const movedPtId = isFlipped ? seg.fromId : seg.toId;
 
-    // Восстанавливаем его длину из prevLengths (если есть), иначе из сохранённого значения
-    const prevLen = prevChangedSeg ? prevLengths.current.get(prevChangedId!) : null;
-    const restoredSegments = segments.map(s => {
-      if (s.id === prevChangedId && prevLen !== undefined && prevLen !== null) {
-        return { ...s, lengthCm: prevLen };
-      }
-      return s;
-    });
+    const fixedPoint = srcPoints.find(p => p.id === fixedPtId);
+    const movedPoint = srcPoints.find(p => p.id === movedPtId);
+    if (!fixedPoint || !movedPoint) return;
 
-    // Rebuild восстановленной фигуры с прямыми углами.
-    // rebuildWithRightAngles строит фигуру начиная с points[0] (A) по часовой.
-    // При флипе нам нужно чтобы фиксированной точкой был toId (C для B-C).
-    // Для этого передаём chain начиная с toId — rebuild начнёт строить от C.
-    // Реализуем через обратный rebuild: передаём сегменты в обратном порядке
-    // и начинаем цепочку от fixedPtId.
+    // Направление от fixedPoint к movedPoint в исходной фигуре
+    const origLen = distPx(fixedPoint, movedPoint);
+    if (origLen === 0) return;
+    const ux = (movedPoint.x - fixedPoint.x) / origLen;
+    const uy = (movedPoint.y - fixedPoint.y) / origLen;
 
-    // Простой подход: используем rebuilt как есть — он уже построил B-C=300
-    // начиная от A→B→C→D→A. При этом B и C уже на правильных местах.
-    // Нам нужен rebuild начиная от C (toId) чтобы C осталась на месте, а B двигалась.
-    // Для этого просто сдвигаем всю фигуру так чтобы C совпала с оригинальной C.
+    // Двигаем точку на новую длину
+    const newLenPx = seg.lengthCm * baseScale;
+    const newMovedCoord = { x: fixedPoint.x + ux * newLenPx, y: fixedPoint.y + uy * newLenPx };
+    const newPoints = srcPoints.map(p => p.id === movedPtId ? { ...p, ...newMovedCoord } : p);
 
-    // Шаг 1: rebuild от points[0] → получаем выровненную фигуру
-    const rebuilt = rebuildWithRightAngles(points, restoredSegments, baseScale);
-    if (!rebuilt) return;
-
-    // Шаг 2: определяем смещение — хотим зафиксировать toId (C) на месте
-    const fixedPtId = isFlipped ? seg.toId : seg.fromId; // C при флипе
-    const movedPtId = isFlipped ? seg.fromId : seg.toId; // B при флипе
-
-    const origFixed  = points.find(p => p.id === fixedPtId);      // C до редактирования
-    const builtFixed = rebuilt.points.find(p => p.id === fixedPtId); // C после rebuild
-    if (!origFixed || !builtFixed) return;
-
-    // Сдвигаем всю rebuilt фигуру так чтобы C оказалась там где была до редактирования
-    const dx = origFixed.x - builtFixed.x;
-    const dy = origFixed.y - builtFixed.y;
-    const newPoints = rebuilt.points.map(p => ({ ...p, x: p.x + dx, y: p.y + dy }));
-
-    // Пересчитываем соседний сегмент (тот где movedPtId участвует)
+    // Пересчитываем соседний сегмент
     const autoRecalcIds: string[] = [];
     const affectedSeg = isFlipped
-      ? (restoredSegments.find(s => s.id !== id && s.toId   === movedPtId) ??
-         (restoredSegments.every(s => s.id === id || s.toId !== movedPtId)
-           ? restoredSegments.find(s => s.id !== id && s.fromId === movedPtId) : undefined))
-      : (restoredSegments.find(s => s.id !== id && s.fromId === movedPtId) ??
-         (restoredSegments.every(s => s.id === id || s.fromId !== movedPtId)
-           ? restoredSegments.find(s => s.id !== id && s.toId === movedPtId) : undefined));
+      ? (srcSegments.find(s => s.id !== id && s.toId   === movedPtId) ??
+         (srcSegments.every(s => s.id === id || s.toId !== movedPtId)
+           ? srcSegments.find(s => s.id !== id && s.fromId === movedPtId) : undefined))
+      : (srcSegments.find(s => s.id !== id && s.fromId === movedPtId) ??
+         (srcSegments.every(s => s.id === id || s.fromId !== movedPtId)
+           ? srcSegments.find(s => s.id !== id && s.toId === movedPtId) : undefined));
 
-    const updatedSegments = restoredSegments.map(s => {
+    const updatedSegments = srcSegments.map(s => {
       if (s.id === id) return s;
       if (!affectedSeg || s.id !== affectedSeg.id) return s;
       const a = newPoints.find(p => p.id === s.fromId);
@@ -161,6 +142,9 @@ export default function DrawingTab({ state, onChange }: Props) {
       if (!isEditMode && allSetAfter && baseScale && isClosed) {
         const result = rebuildWithRightAngles(points, newSegments, baseScale);
         if (result) {
+          // Сохраняем исходные точки и сегменты — они нужны для корректного флипа
+          builtPoints.current  = result.points;
+          builtSegments.current = newSegments;
           const newDiags = buildAutoDiagonals(result.points, diagonals, baseScale);
           onChange({ points: result.points, segments: newSegments, diagonals: newDiags, baseScale, isBuilt: true, changedSegmentIds: [] });
           return;
