@@ -50,6 +50,8 @@ export default function DrawingTab({ state, onChange }: Props) {
 
     if (patch.lengthCm !== undefined && patch.lengthCm !== null && patch.lengthCm > 0) {
       let baseScale = state.baseScale ?? null;
+      // Пользователь сам ввёл значение — снимаем жёлтую подсветку с этого сегмента
+      const cleanedChangedIds = (state.changedSegmentIds ?? []).filter(cid => cid !== id);
 
       // Вычисляем baseScale из текущего сегмента если ещё нет
       if (!baseScale) {
@@ -131,7 +133,9 @@ export default function DrawingTab({ state, onChange }: Props) {
               });
 
               const newDiags = buildAutoDiagonals(newPoints, diagonals, baseScale);
-              onChange({ points: newPoints, segments: updatedSegments, diagonals: newDiags, baseScale, changedSegmentIds: autoRecalcIds });
+              // Убираем текущий сегмент из подсветки, добавляем пересчитанные соседи
+              const finalChangedIds = [...cleanedChangedIds.filter(cid => !autoRecalcIds.includes(cid)), ...autoRecalcIds];
+              onChange({ points: newPoints, segments: updatedSegments, diagonals: newDiags, baseScale, changedSegmentIds: finalChangedIds });
               return;
             }
           }
