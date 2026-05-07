@@ -29,12 +29,63 @@ export default function DrawingTab({ state, onChange }: Props) {
   const [, forceFlipRender] = React.useState(0);
 
   const onFlipSegment = (id: string) => {
+    // Переключаем флаг
     if (flippedSegIds.current.has(id)) {
       flippedSegIds.current.delete(id);
     } else {
       flippedSegIds.current.add(id);
     }
     forceFlipRender(n => n + 1);
+
+    // Немедленно пересчитываем фигуру с новым направлением если режим редактирования
+    if (!state.isBuilt || !state.baseScale || !isClosed) return;
+    const seg = segments.find(s => s.id === id);
+    if (!seg || !seg.lengthCm) return;
+
+    const isFlipped = flippedSegIds.current.has(id); // уже обновлён выше
+    const fixedPtId = isFlipped ? seg.toId   : seg.fromId;
+    const movedPtId = isFlipped ? seg.fromId : seg.toId;
+
+    const fixedPoint = points.find(p => p.id === fixedPtId);
+    const movedPoint = points.find(p => p.id === movedPtId);
+    if (!fixedPoint || !movedPoint) return;
+
+    const origLen = distPx(fixedPoint, movedPoint);
+    if (origLen === 0) return;
+
+    const ux = (movedPoint.x - fixedPoint.x) / origLen;
+    const uy = (movedPoint.y - fixedPoint.y) / origLen;
+    const newLenPx = seg.lengthCm * state.baseScale;
+    const newMovedCoord = { x: fixedPoint.x + ux * newLenPx, y: fixedPoint.y + uy * newLenPx };
+
+    const newPoints = points.map(p =>
+      p.id === movedPtId ? { ...p, ...newMovedCoord } : p
+    );
+
+    const autoRecalcIds: string[] = [];
+    const affectedSeg = isFlipped
+      ? (segments.find(s => s.id !== id && s.toId   === movedPtId) ??
+         (segments.every(s => s.id === id || s.toId !== movedPtId)
+           ? segments.find(s => s.id !== id && s.fromId === movedPtId)
+           : undefined))
+      : (segments.find(s => s.id !== id && s.fromId === movedPtId) ??
+         (segments.every(s => s.id === id || s.fromId !== movedPtId)
+           ? segments.find(s => s.id !== id && s.toId === movedPtId)
+           : undefined));
+
+    const updatedSegments = segments.map(s => {
+      if (s.id === id) return s;
+      if (!affectedSeg || s.id !== affectedSeg.id) return s;
+      const a = newPoints.find(p => p.id === s.fromId);
+      const b = newPoints.find(p => p.id === s.toId);
+      if (!a || !b) return s;
+      const px = distPx(a, b);
+      autoRecalcIds.push(s.id);
+      return { ...s, lengthCm: Math.round((px / state.baseScale!) * 10) / 10 };
+    });
+
+    const newDiags = buildAutoDiagonals(newPoints, diagonals, state.baseScale);
+    onChange({ points: newPoints, segments: updatedSegments, diagonals: newDiags, changedSegmentIds: autoRecalcIds });
   };
 
   // Ref для функции фокуса первой незаполненной диагонали
