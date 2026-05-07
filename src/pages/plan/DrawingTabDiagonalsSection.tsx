@@ -51,7 +51,7 @@ export default function DrawingTabDiagonalsSection({ state, onChange, updateDiag
   }, [diagonals, focusDiagonalRef]);
 
   return (
-    <Section title="Диагонали, см" icon="ArrowUpRight" iconColor="#f97316"
+    <Section title="Диагонали" icon="ArrowUpRight" iconColor="#f97316"
       visible={settings.showDiagonals}
       onVisibilityToggle={() => updateSettings({ showDiagonals: !settings.showDiagonals })}
       badge={diagonals.length > 0 ? String(diagonals.length) : undefined}

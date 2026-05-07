@@ -26,7 +26,7 @@ export default function DrawingTabSidesSection({
   return (
     <>
       {/* ── Стороны ── */}
-      <Section title="Стороны, см" icon="Ruler" iconColor="#60a5fa"
+      <Section title="Стороны" icon="Ruler" iconColor="#60a5fa"
         visible={settings.showSegmentLabels}
         onVisibilityToggle={() => updateSettings({ showSegmentLabels: !settings.showSegmentLabels })}
         badge={segments.length > 0 ? String(segments.length) : undefined}
