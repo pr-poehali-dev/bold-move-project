@@ -17,10 +17,23 @@ const MAX_HISTORY = 80;
 
 interface HistoryStore { stack: PlanState[]; cursor: number; }
 type HistoryAction =
-  | { type: "push";  next: PlanState }
+  | { type: "push";    next: PlanState }
+  | { type: "replace"; next: PlanState }
   | { type: "undo" }
   | { type: "redo" }
   | { type: "reset"; next?: PlanState };
+
+// Поля которые НЕ являются геометрией — изменения по ним не пишутся в историю
+const NON_GEOMETRY_KEYS: (keyof import("./planTypes").PlanState)[] = [
+  "settings", "tool", "phase", "sidebarTab",
+  "selectedPointId", "selectedSegmentId", "selectedDiagonalId",
+  "selectedArcId", "selectedDimLineId", "activeInputIndex",
+  "changedSegmentIds",
+];
+
+function isGeometryPatch(patch: Partial<import("./planTypes").PlanState>): boolean {
+  return Object.keys(patch).some(k => !NON_GEOMETRY_KEYS.includes(k as keyof import("./planTypes").PlanState));
+}
 
 function historyReducer(s: HistoryStore, a: HistoryAction): HistoryStore {
   switch (a.type) {
@@ -29,6 +42,11 @@ function historyReducer(s: HistoryStore, a: HistoryAction): HistoryStore {
       trimmed.push(a.next);
       if (trimmed.length > MAX_HISTORY) trimmed.shift();
       return { stack: trimmed, cursor: trimmed.length - 1 };
+    }
+    case "replace": {
+      const stack = [...s.stack];
+      stack[s.cursor] = a.next;
+      return { ...s, stack };
     }
     case "undo":
       return { ...s, cursor: Math.max(0, s.cursor - 1) };
@@ -51,14 +69,15 @@ function useHistory(initial: PlanState) {
   const safeCursor = Math.min(cursor, stack.length - 1);
   const state = stack[safeCursor] ?? initial;
 
-  const push  = useCallback((next: PlanState) => dispatch({ type: "push",  next }), []);
-  const undo  = useCallback(() => dispatch({ type: "undo" }), []);
-  const redo  = useCallback(() => dispatch({ type: "redo" }), []);
-  const reset = useCallback((next?: PlanState) => dispatch({ type: "reset", next }), []);
+  const push    = useCallback((next: PlanState) => dispatch({ type: "push",    next }), []);
+  const replace = useCallback((next: PlanState) => dispatch({ type: "replace", next }), []);
+  const undo    = useCallback(() => dispatch({ type: "undo" }), []);
+  const redo    = useCallback(() => dispatch({ type: "redo" }), []);
+  const reset   = useCallback((next?: PlanState) => dispatch({ type: "reset", next }), []);
 
   return {
     state,
-    push, undo, redo, reset,
+    push, replace, undo, redo, reset,
     canUndo: safeCursor > 0,
     canRedo: safeCursor < stack.length - 1,
   };
@@ -77,7 +96,7 @@ function useIsMobile() {
 
 // ── Главная страница ──────────────────────────────────────────────────────────
 export default function PlanPage() {
-  const { state, push, undo, redo, reset, canUndo, canRedo } = useHistory(INITIAL_STATE);
+  const { state, push, replace, undo, redo, reset, canUndo, canRedo } = useHistory(INITIAL_STATE);
   const { user, token } = useAuth();
   const isMobile = useIsMobile();
 
@@ -138,8 +157,13 @@ export default function PlanPage() {
 
   // ── Обработчики изменений — используем ref чтобы не пересоздавать ─────────
   const handleChange = useCallback((patch: Partial<PlanState>) => {
-    push({ ...stateRef.current, ...patch });
-  }, [push]);
+    const next = { ...stateRef.current, ...patch };
+    if (isGeometryPatch(patch)) {
+      push(next);
+    } else {
+      replace(next);
+    }
+  }, [push, replace]);
 
   const handleSettingChange = useCallback((patch: Partial<PlanSettings>) => {
     const s = stateRef.current;
