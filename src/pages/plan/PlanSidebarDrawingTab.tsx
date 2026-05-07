@@ -86,10 +86,10 @@ export default function DrawingTab({ state, onChange }: Props) {
         if (seg && patch.lengthCm) {
           const isFlipped = flippedSegIds.current.has(id);
 
-          // По умолчанию (по часовой): фиксирован toId, двигается fromId
-          // Флип (против часовой):     фиксирован fromId, двигается toId
-          const fixedPtId  = isFlipped ? seg.fromId : seg.toId;
-          const movedPtId  = isFlipped ? seg.toId   : seg.fromId;
+          // По умолчанию (по часовой): фиксирован fromId (B), двигается toId (C)
+          // Флип (против часовой):     фиксирован toId (C), двигается fromId (B)
+          const fixedPtId  = isFlipped ? seg.toId   : seg.fromId;
+          const movedPtId  = isFlipped ? seg.fromId : seg.toId;
 
           const fixedPoint = points.find(p => p.id === fixedPtId);
           const movedPoint = points.find(p => p.id === movedPtId);
@@ -107,15 +107,11 @@ export default function DrawingTab({ state, onChange }: Props) {
               );
 
               // Пересчитываем соседний сегмент:
-              // По часовой (fromId двигается) → следующий: тот где movedPtId=fromId,
-              //   если нет — тот где movedPtId=toId (замыкающий случай)
-              // Против часовой (toId двигается) → предыдущий: тот где movedPtId=toId,
-              //   если нет — тот где movedPtId=fromId
+              // По умолчанию (по часовой): двигается toId (C) → следующий: где movedPtId=fromId (C-D).
+              //   Фолбек: где movedPtId=toId — только если нет сегмента с fromId=movedPtId.
+              // Флип (против часовой): двигается fromId (B) → предыдущий: где movedPtId=toId (A-B).
+              //   Фолбек: где movedPtId=fromId — только если нет сегмента с toId=movedPtId.
               const autoRecalcIds: string[] = [];
-              // По часовой: двигается fromId → ищем сегмент где movedPtId = fromId (следующий).
-              // Фолбек на toId ТОЛЬКО если такого сегмента нет совсем (замыкающий H-A: H нигде не fromId).
-              // Против часовой: двигается toId → ищем сегмент где movedPtId = toId (предыдущий).
-              // Фолбек на fromId ТОЛЬКО если такого сегмента нет совсем.
               const affectedSeg = isFlipped
                 ? (newSegments.find(s => s.id !== id && s.toId   === movedPtId) ??
                    (newSegments.every(s => s.id === id || s.toId !== movedPtId)
