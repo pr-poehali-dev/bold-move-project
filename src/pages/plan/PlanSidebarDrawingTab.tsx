@@ -83,6 +83,11 @@ export default function DrawingTab({ state, onChange }: Props) {
       // ── РЕЖИМ РЕДАКТИРОВАНИЯ: rebuild уже был, пользователь меняет сторону ───
       if (isEditMode && baseScale && isClosed) {
         const seg = segments.find(s => s.id === id);
+        // Если значение не изменилось — ничего не делаем, только сохраняем сегмент
+        if (seg && patch.lengthCm && patch.lengthCm === seg.lengthCm) {
+          onChange({ segments: newSegments, changedSegmentIds: [] });
+          return;
+        }
         if (seg && patch.lengthCm) {
           const isFlipped = flippedSegIds.current.has(id);
 
