@@ -24,6 +24,19 @@ export default function DrawingTab({ state, onChange }: Props) {
     inputRefs.current = segments.map(() => React.createRef<HTMLInputElement>());
   }
 
+  // Набор сегментов с "перевёрнутым" направлением (против часовой)
+  const flippedSegIds = React.useRef<Set<string>>(new Set());
+  const [, forceFlipRender] = React.useState(0);
+
+  const onFlipSegment = (id: string) => {
+    if (flippedSegIds.current.has(id)) {
+      flippedSegIds.current.delete(id);
+    } else {
+      flippedSegIds.current.add(id);
+    }
+    forceFlipRender(n => n + 1);
+  };
+
   // Ref для функции фокуса первой незаполненной диагонали
   const focusDiagonalRef = React.useRef<(() => void) | null>(null);
 
@@ -72,27 +85,43 @@ export default function DrawingTab({ state, onChange }: Props) {
       if (allSetBefore && baseScale && isClosed) {
         const seg = segments.find(s => s.id === id);
         if (seg && patch.lengthCm) {
-          const toPoint   = points.find(p => p.id === seg.toId);   // фиксирован
-          const fromPoint = points.find(p => p.id === seg.fromId); // двигается
-          if (toPoint && fromPoint) {
-            const origLen = distPx(toPoint, fromPoint);
-            if (origLen > 0) {
-              // Направление toId → fromId (по часовой: fromId — это "С" в B-C)
-              const ux = (fromPoint.x - toPoint.x) / origLen;
-              const uy = (fromPoint.y - toPoint.y) / origLen;
-              const newLenPx = patch.lengthCm * baseScale;
-              const newFromCoord = { x: toPoint.x + ux * newLenPx, y: toPoint.y + uy * newLenPx };
+          const isFlipped = flippedSegIds.current.has(id);
 
-              // Обновляем координату fromId
+          // По умолчанию (по часовой): фиксирован toId, двигается fromId
+          // Флип (против часовой):     фиксирован fromId, двигается toId
+          const fixedPtId  = isFlipped ? seg.fromId : seg.toId;
+          const movedPtId  = isFlipped ? seg.toId   : seg.fromId;
+
+          const fixedPoint = points.find(p => p.id === fixedPtId);
+          const movedPoint = points.find(p => p.id === movedPtId);
+
+          if (fixedPoint && movedPoint) {
+            const origLen = distPx(fixedPoint, movedPoint);
+            if (origLen > 0) {
+              const ux = (movedPoint.x - fixedPoint.x) / origLen;
+              const uy = (movedPoint.y - fixedPoint.y) / origLen;
+              const newLenPx = patch.lengthCm * baseScale;
+              const newMovedCoord = { x: fixedPoint.x + ux * newLenPx, y: fixedPoint.y + uy * newLenPx };
+
               const newPoints = points.map(p =>
-                p.id === seg.fromId ? { ...p, ...newFromCoord } : p
+                p.id === movedPtId ? { ...p, ...newMovedCoord } : p
               );
 
-              // Пересчитываем lengthCm у соседних сегментов (те, что касаются fromId)
+              // Пересчитываем соседний сегмент:
+              // По часовой (fromId двигается) → следующий: тот где movedPtId=fromId,
+              //   если нет — тот где movedPtId=toId (замыкающий случай)
+              // Против часовой (toId двигается) → предыдущий: тот где movedPtId=toId,
+              //   если нет — тот где movedPtId=fromId
               const autoRecalcIds: string[] = [];
+              const affectedSeg = isFlipped
+                ? (newSegments.find(s => s.id !== id && s.toId   === movedPtId) ??
+                   newSegments.find(s => s.id !== id && s.fromId === movedPtId))
+                : (newSegments.find(s => s.id !== id && s.fromId === movedPtId) ??
+                   newSegments.find(s => s.id !== id && s.toId   === movedPtId));
+
               const updatedSegments = newSegments.map(s => {
-                if (s.id === id) return s; // изменённый — уже обновлён
-                if (s.fromId !== seg.fromId && s.toId !== seg.fromId) return s; // не касается
+                if (s.id === id) return s;
+                if (!affectedSeg || s.id !== affectedSeg.id) return s;
                 const a = newPoints.find(p => p.id === s.fromId);
                 const b = newPoints.find(p => p.id === s.toId);
                 if (!a || !b) return s;
@@ -201,6 +230,8 @@ export default function DrawingTab({ state, onChange }: Props) {
         updateSettings={updateSettings}
         focusNext={focusNext}
         onFocusDiagonal={() => focusDiagonalRef.current?.()}
+        flippedSegIds={flippedSegIds.current}
+        onFlipSegment={onFlipSegment}
       />
       <DrawingTabAnglesSection
         state={state}

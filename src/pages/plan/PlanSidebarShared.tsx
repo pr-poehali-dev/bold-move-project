@@ -52,6 +52,7 @@ export function Section({
 export function LengthRow({
   label, valueCm, placeholder, visible,
   onValueChange, onVisibilityToggle, onDelete, onFocus, onEnterNext, inputRef, autoFocus, highlighted, autoRecalc,
+  onFlipDirection, directionFlipped,
 }: {
   label: string; valueCm: number | null; placeholder?: string;
   visible: boolean;
@@ -64,6 +65,8 @@ export function LengthRow({
   autoFocus?: boolean;
   highlighted?: boolean;
   autoRecalc?: boolean;
+  onFlipDirection?: () => void;
+  directionFlipped?: boolean;
 }) {
   const localRef = React.useRef<HTMLInputElement>(null);
   const ref = inputRef ?? localRef;
@@ -145,6 +148,18 @@ export function LengthRow({
         className={`flex-1 bg-white/[0.06] border rounded-lg px-2 py-1.5 text-[11px] font-mono focus:outline-none focus:bg-white/[0.08] transition min-w-0 ${inputCls}`}
       />
       <span className="text-[9px] text-white/25 shrink-0">см</span>
+      {onFlipDirection && (
+        <button
+          onClick={onFlipDirection}
+          className={`p-1 rounded transition shrink-0 ${directionFlipped ? "bg-violet-500/20 hover:bg-violet-500/30" : "hover:bg-white/10"}`}
+          title={directionFlipped ? "Против часовой (вернуть)" : "По часовой (изменить направление)"}>
+          <Icon
+            name={directionFlipped ? "RotateCcw" : "RotateCw"}
+            size={11}
+            className={directionFlipped ? "text-violet-400" : "text-white/25"}
+          />
+        </button>
+      )}
       <button onClick={onVisibilityToggle} className="p-1 rounded hover:bg-white/10 transition shrink-0" title="Показать/скрыть">
         <Icon name={visible ? "Eye" : "EyeOff"} size={11} className={visible ? "text-white/35" : "text-white/15"} />
       </button>
