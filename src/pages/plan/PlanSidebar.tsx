@@ -6,9 +6,10 @@ interface Props {
   state: PlanState;
   onChange: (patch: Partial<PlanState>) => void;
   onSectionOpen?: () => void;
+  noAutoOpen?: boolean;
 }
 
-export default function PlanSidebar({ state, onChange, onSectionOpen }: Props) {
+export default function PlanSidebar({ state, onChange, onSectionOpen, noAutoOpen }: Props) {
   const { sidebarTab } = state;
   const isDrawing = sidebarTab !== "calc";
 
@@ -40,7 +41,7 @@ export default function PlanSidebar({ state, onChange, onSectionOpen }: Props) {
 
       {/* Контент */}
       <div className="flex-1 overflow-y-auto">
-        {isDrawing  && <DrawingTab state={state} onChange={onChange} onSectionOpen={onSectionOpen} />}
+        {isDrawing  && <DrawingTab state={state} onChange={onChange} onSectionOpen={onSectionOpen} noAutoOpen={noAutoOpen} />}
         {!isDrawing && <CalcTab    state={state} />}
       </div>
     </div>

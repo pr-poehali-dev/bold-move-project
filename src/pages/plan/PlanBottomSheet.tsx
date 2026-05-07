@@ -186,7 +186,7 @@ export default function PlanBottomSheet({ state, onChange, open, onClose, onShee
 
         {/* ── Контент сайдбара ── */}
         <div className="flex-1 overflow-hidden">
-          <PlanSidebar state={state} onChange={onChange} onSectionOpen={() => {
+          <PlanSidebar state={state} onChange={onChange} noAutoOpen={true} onSectionOpen={() => {
             setSnap("full");
             setHeight(snapToHeight("full"));
             onSectionOpen?.();

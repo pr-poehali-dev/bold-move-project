@@ -13,9 +13,10 @@ interface Props {
   state: PlanState;
   onChange: (patch: Partial<PlanState>) => void;
   onSectionOpen?: () => void;
+  noAutoOpen?: boolean;
 }
 
-export default function DrawingTab({ state, onChange, onSectionOpen }: Props) {
+export default function DrawingTab({ state, onChange, onSectionOpen, noAutoOpen }: Props) {
   const { points, segments, diagonals, isClosed, settings } = state;
   const scale = calcScale(points, segments);
 
@@ -356,6 +357,7 @@ export default function DrawingTab({ state, onChange, onSectionOpen }: Props) {
         lastChangedSegId={lastChangedSegId}
         onFlipSegment={onFlipSegment}
         onSectionOpen={onSectionOpen}
+        noAutoOpen={noAutoOpen}
       />
       <DrawingTabAnglesSection
         state={state}
