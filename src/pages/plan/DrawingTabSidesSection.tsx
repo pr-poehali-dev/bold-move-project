@@ -1,7 +1,7 @@
 import React from "react";
 import Icon from "@/components/ui/icon";
 import type { PlanState, Segment, PlanSettings } from "./planTypes";
-import { segmentLabel, pointLabel, checkClosureError } from "./planTypes";
+import { segmentLabel, checkClosureError } from "./planTypes";
 import { Section, LengthRow } from "./PlanSidebarShared";
 
 interface Props {
@@ -96,55 +96,7 @@ export default function DrawingTabSidesSection({
         </button>
       </Section>
 
-      {/* ── Скругления углов ── */}
-      {segments.length > 0 && isClosed && (
-        <Section title="Скругления углов" icon="Spline" iconColor="#10b981" defaultOpen={false}>
-          <p className="text-[10px] text-white/30 mb-2 leading-relaxed">
-            Скругление применяется к углу входящего конца каждого отрезка. Значение в пикселях холста.
-          </p>
-          <div className="space-y-1.5">
-            {segments.map(seg => {
-              const toIdx = points.findIndex(p => p.id === seg.toId);
-              if (toIdx < 0) return null;
-              return (
-                <div key={`arc-${seg.id}`} className="flex items-center gap-2">
-                  <span className="w-8 text-[11px] font-mono font-bold text-white/50 shrink-0">{pointLabel(toIdx)}</span>
-                  <div className="flex-1 flex items-center gap-2 bg-white/[0.04] rounded-xl px-2 py-1.5 border border-white/[0.06]">
-                    <input type="range" min={0} max={120} step={5}
-                      value={seg.arcRadius}
-                      onChange={e => updateSegment(seg.id, { arcRadius: Number(e.target.value) })}
-                      className="flex-1 accent-emerald-500 h-1.5"
-                    />
-                    <input type="number" min={0} max={120} step={1}
-                      value={seg.arcRadius || ""}
-                      placeholder="0"
-                      onChange={e => updateSegment(seg.id, { arcRadius: Number(e.target.value) || 0 })}
-                      className="w-12 bg-transparent text-[11px] text-white/70 font-mono text-right focus:outline-none"
-                    />
-                    <span className="text-[9px] text-white/25 shrink-0">px</span>
-                  </div>
-                  {seg.arcRadius > 0 && (
-                    <button onClick={() => updateSegment(seg.id, { arcRadius: 0 })}
-                      className="p-1 rounded hover:bg-white/10 transition shrink-0" title="Сбросить">
-                      <Icon name="X" size={10} className="text-white/30" />
-                    </button>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-          <div className="flex gap-1.5 mt-2">
-            <button onClick={() => segments.forEach(seg => updateSegment(seg.id, { arcRadius: 20 }))}
-              className="flex-1 py-1.5 rounded-lg text-[10px] font-semibold border bg-emerald-500/10 border-emerald-500/20 text-emerald-400 hover:bg-emerald-500/20 transition">
-              Все: 20px
-            </button>
-            <button onClick={() => segments.forEach(seg => updateSegment(seg.id, { arcRadius: 0 }))}
-              className="flex-1 py-1.5 rounded-lg text-[10px] font-semibold border bg-white/[0.04] border-white/[0.08] text-white/35 hover:bg-white/[0.08] transition">
-              Сбросить все
-            </button>
-          </div>
-        </Section>
-      )}
+
     </>
   );
 }
