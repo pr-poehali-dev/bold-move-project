@@ -64,16 +64,8 @@ export default function DrawingTab({ state, onChange }: Props) {
               const newLenPx = patch.lengthCm * baseScale;
               const newFrom = { x: toPoint.x + ux * newLenPx, y: toPoint.y + uy * newLenPx };
               const newPoints = points.map(p => p.id === seg.fromId ? { ...p, ...newFrom } : p);
-              const updatedSegs = newSegments.map(s => {
-                if (s.fromId !== seg.fromId && s.toId !== seg.fromId) return s;
-                const a = newPoints.find(p => p.id === s.fromId);
-                const b = newPoints.find(p => p.id === s.toId);
-                const px = a && b ? distPx(a, b) : 0;
-                if (s.id === id) return s;
-                return { ...s, lengthCm: baseScale && px > 0 ? Math.round((px / baseScale) * 10) / 10 : s.lengthCm };
-              });
               const newDiags = buildAutoDiagonals(newPoints, diagonals, baseScale);
-              onChange({ points: newPoints, segments: updatedSegs, diagonals: newDiags, baseScale, changedSegmentIds: [] });
+              onChange({ points: newPoints, segments: newSegments, diagonals: newDiags, baseScale, changedSegmentIds: [] });
               return;
             }
           }
