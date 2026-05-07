@@ -24,9 +24,11 @@ export default function DrawingTab({ state, onChange }: Props) {
     inputRefs.current = segments.map(() => React.createRef<HTMLInputElement>());
   }
 
+  // Последний сегмент изменённый пользователем (для показа кнопки флипа)
+  const [lastChangedSegId, setLastChangedSegId] = React.useState<string | null>(null);
+
   // Набор сегментов с "перевёрнутым" направлением (против часовой)
   const flippedSegIds = React.useRef<Set<string>>(new Set());
-  const [, forceFlipRender] = React.useState(0);
 
   const onFlipSegment = (id: string) => {
     // Переключаем флаг
@@ -35,7 +37,6 @@ export default function DrawingTab({ state, onChange }: Props) {
     } else {
       flippedSegIds.current.add(id);
     }
-    forceFlipRender(n => n + 1);
 
     // Немедленно пересчитываем фигуру с новым направлением если режим редактирования
     if (!state.isBuilt || !state.baseScale || !isClosed) return;
@@ -86,6 +87,8 @@ export default function DrawingTab({ state, onChange }: Props) {
 
     const newDiags = buildAutoDiagonals(newPoints, diagonals, state.baseScale);
     onChange({ points: newPoints, segments: updatedSegments, diagonals: newDiags, changedSegmentIds: autoRecalcIds });
+    // Сбрасываем — кнопка флипа исчезает после нажатия
+    setLastChangedSegId(null);
   };
 
   // Ref для функции фокуса первой незаполненной диагонали
@@ -140,6 +143,7 @@ export default function DrawingTab({ state, onChange }: Props) {
           return;
         }
         if (seg && patch.lengthCm) {
+          setLastChangedSegId(id);
           const isFlipped = flippedSegIds.current.has(id);
 
           // По умолчанию (по часовой): фиксирован fromId (B), двигается toId (C)
@@ -290,7 +294,7 @@ export default function DrawingTab({ state, onChange }: Props) {
         updateSettings={updateSettings}
         focusNext={focusNext}
         onFocusDiagonal={() => focusDiagonalRef.current?.()}
-        flippedSegIds={flippedSegIds.current}
+        lastChangedSegId={lastChangedSegId}
         onFlipSegment={onFlipSegment}
       />
       <DrawingTabAnglesSection

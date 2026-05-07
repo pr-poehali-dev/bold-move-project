@@ -52,7 +52,7 @@ export function Section({
 export function LengthRow({
   label, valueCm, placeholder, visible,
   onValueChange, onVisibilityToggle, onDelete, onFocus, onEnterNext, inputRef, autoFocus, highlighted, autoRecalc,
-  onFlipDirection, directionFlipped,
+  onFlipDirection,
 }: {
   label: string; valueCm: number | null; placeholder?: string;
   visible: boolean;
@@ -66,7 +66,6 @@ export function LengthRow({
   highlighted?: boolean;
   autoRecalc?: boolean;
   onFlipDirection?: () => void;
-  directionFlipped?: boolean;
 }) {
   const localRef = React.useRef<HTMLInputElement>(null);
   const ref = inputRef ?? localRef;
@@ -157,13 +156,9 @@ export function LengthRow({
       {onFlipDirection && (
         <button
           onClick={onFlipDirection}
-          className={`p-1 rounded transition shrink-0 ${directionFlipped ? "bg-violet-500/20 hover:bg-violet-500/30" : "hover:bg-white/10"}`}
-          title={directionFlipped ? "Против часовой (вернуть)" : "По часовой (изменить направление)"}>
-          <Icon
-            name={directionFlipped ? "RotateCcw" : "RotateCw"}
-            size={11}
-            className={directionFlipped ? "text-violet-400" : "text-white/25"}
-          />
+          className="p-1 rounded hover:bg-violet-500/20 transition shrink-0"
+          title="Изменить какая сторона пересчитается">
+          <Icon name="ArrowLeftRight" size={11} className="text-violet-400" />
         </button>
       )}
       <button onClick={onVisibilityToggle} className="p-1 rounded hover:bg-white/10 transition shrink-0" title="Показать/скрыть">

@@ -12,13 +12,13 @@ interface Props {
   updateSettings: (patch: Partial<PlanSettings>) => void;
   focusNext: (idx: number) => void;
   onFocusDiagonal?: () => void;
-  flippedSegIds: Set<string>;
+  lastChangedSegId: string | null;
   onFlipSegment: (id: string) => void;
 }
 
 export default function DrawingTabSidesSection({
   state, onChange, inputRefs, updateSegment, updateSettings, focusNext, onFocusDiagonal,
-  flippedSegIds, onFlipSegment,
+  lastChangedSegId, onFlipSegment,
 }: Props) {
   const { points, segments, isClosed, settings } = state;
   const closureErr = isClosed ? checkClosureError(points, segments, state.baseScale ?? null) : null;
@@ -68,8 +68,7 @@ export default function DrawingTabSidesSection({
                   autoRecalc={!!state.isBuilt && (state.changedSegmentIds?.includes(seg.id) ?? false)}
                   onValueChange={v => updateSegment(seg.id, { lengthCm: v })}
                   onVisibilityToggle={() => updateSegment(seg.id, { showLength: !seg.showLength })}
-                  onFlipDirection={() => onFlipSegment(seg.id)}
-                  directionFlipped={flippedSegIds.has(seg.id)}
+                  onFlipDirection={seg.id === lastChangedSegId ? () => onFlipSegment(seg.id) : undefined}
                   onFocus={() => {
                     onChange({
                       activeInputIndex: idx,
