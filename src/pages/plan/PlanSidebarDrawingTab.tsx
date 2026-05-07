@@ -29,6 +29,8 @@ export default function DrawingTab({ state, onChange }: Props) {
 
   // Набор сегментов с "перевёрнутым" направлением (против часовой)
   const flippedSegIds = React.useRef<Set<string>>(new Set());
+  // Длины сегментов ДО авто-пересчёта (для восстановления при флипе)
+  const prevLengths = React.useRef<Map<string, number>>(new Map());
 
   const onFlipSegment = (id: string) => {
     // Переключаем флаг
@@ -48,11 +50,31 @@ export default function DrawingTab({ state, onChange }: Props) {
     const isFlipped = flippedSegIds.current.has(id);
     const baseScale = state.baseScale;
 
-    // Шаг 1: восстанавливаем прямоугольную фигуру из текущих lengthCm
-    const rebuilt = rebuildWithRightAngles(points, segments, baseScale);
-    const basePoints = rebuilt ? rebuilt.points : points;
+    // Алгоритм флипа:
+    // 1. Определяем какой сегмент был авто-пересчитан (тот что сейчас косой)
+    // 2. Сбрасываем его длину назад к значению до редактирования (берём из Map prevLengths)
+    // 3. Делаем rebuild с прямыми углами — фигура выравнивается
+    // 4. Применяем изменение с новым направлением
 
-    // Шаг 2: от восстановленной фигуры применяем сдвиг в нужном направлении
+    // Находим авто-пересчитанный сегмент (тот в changedSegmentIds)
+    const prevChangedId = (state.changedSegmentIds ?? [])[0];
+    const prevChangedSeg = prevChangedId ? segments.find(s => s.id === prevChangedId) : null;
+
+    // Восстанавливаем его длину из prevLengths (если есть), иначе из сохранённого значения
+    const prevLen = prevChangedSeg ? prevLengths.current.get(prevChangedId!) : null;
+    const restoredSegments = segments.map(s => {
+      if (s.id === prevChangedId && prevLen !== undefined && prevLen !== null) {
+        return { ...s, lengthCm: prevLen };
+      }
+      return s;
+    });
+
+    // Rebuild восстановленной фигуры с прямыми углами
+    const rebuilt = rebuildWithRightAngles(points, restoredSegments, baseScale);
+    const basePoints = rebuilt ? rebuilt.points : points;
+    const baseSegs   = restoredSegments;
+
+    // Применяем изменение с новым направлением от восстановленной фигуры
     const fixedPtId = isFlipped ? seg.toId   : seg.fromId;
     const movedPtId = isFlipped ? seg.fromId : seg.toId;
     const fixedPoint = basePoints.find(p => p.id === fixedPtId);
@@ -67,17 +89,17 @@ export default function DrawingTab({ state, onChange }: Props) {
     const newMovedCoord = { x: fixedPoint.x + ux * newLenPx, y: fixedPoint.y + uy * newLenPx };
     const newPoints = basePoints.map(p => p.id === movedPtId ? { ...p, ...newMovedCoord } : p);
 
-    // Шаг 3: пересчитываем соседний сегмент
+    // Пересчитываем соседний сегмент
     const autoRecalcIds: string[] = [];
     const affectedSeg = isFlipped
-      ? (segments.find(s => s.id !== id && s.toId   === movedPtId) ??
-         (segments.every(s => s.id === id || s.toId !== movedPtId)
-           ? segments.find(s => s.id !== id && s.fromId === movedPtId) : undefined))
-      : (segments.find(s => s.id !== id && s.fromId === movedPtId) ??
-         (segments.every(s => s.id === id || s.fromId !== movedPtId)
-           ? segments.find(s => s.id !== id && s.toId === movedPtId) : undefined));
+      ? (baseSegs.find(s => s.id !== id && s.toId   === movedPtId) ??
+         (baseSegs.every(s => s.id === id || s.toId !== movedPtId)
+           ? baseSegs.find(s => s.id !== id && s.fromId === movedPtId) : undefined))
+      : (baseSegs.find(s => s.id !== id && s.fromId === movedPtId) ??
+         (baseSegs.every(s => s.id === id || s.fromId !== movedPtId)
+           ? baseSegs.find(s => s.id !== id && s.toId === movedPtId) : undefined));
 
-    const updatedSegments = segments.map(s => {
+    const updatedSegments = baseSegs.map(s => {
       if (s.id === id) return s;
       if (!affectedSeg || s.id !== affectedSeg.id) return s;
       const a = newPoints.find(p => p.id === s.fromId);
@@ -193,6 +215,12 @@ export default function DrawingTab({ state, onChange }: Props) {
                 const px = distPx(a, b);
                 autoRecalcIds.push(s.id);
                 return { ...s, lengthCm: Math.round((px / baseScale!) * 10) / 10 };
+              });
+
+              // Сохраняем длины авто-пересчитанных сегментов ДО изменения (для восстановления при флипе)
+              autoRecalcIds.forEach(sid => {
+                const orig = segments.find(s => s.id === sid);
+                if (orig?.lengthCm != null) prevLengths.current.set(sid, orig.lengthCm);
               });
 
               const newDiags = buildAutoDiagonals(newPoints, diagonals, baseScale);
