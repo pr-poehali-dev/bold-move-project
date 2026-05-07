@@ -24,7 +24,7 @@ export default function PlanCanvas({ state, onChange }: Props) {
     ? "grabbing"
     : tool === "draw" ? "crosshair"
     : tool === "move" ? "default"
-    : tool === "delete" ? "not-allowed"
+    : tool === "delete" ? "crosshair"
     : tool === "arc" ? "cell"
     : "default";
 
