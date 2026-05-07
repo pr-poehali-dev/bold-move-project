@@ -8,8 +8,9 @@ import PlanExportModal from "./PlanExportModal";
 import PlanLibraryModal from "./PlanLibraryModal";
 import AuthModal from "@/components/AuthModal";
 import Icon from "@/components/ui/icon";
-import type { PlanState, ToolMode, PlanSettings, Segment } from "./planTypes";
+import type { PlanState, ToolMode, PlanSettings, Segment, DiagonalDef } from "./planTypes";
 import { updateSegmentWithRebuild } from "./planSegmentUpdate";
+import { PANEL_WIDTH } from "./PlanRightInputPanel";
 import { INITIAL_STATE } from "./planTypes";
 import { usePlanStorage } from "./usePlanStorage";
 import { useAuth } from "@/context/AuthContext";
@@ -132,21 +133,24 @@ export default function PlanPage() {
   useEffect(() => {
     if (state.isClosed && !prevIsClosed.current && isMobile) {
       setRightPanelOpen(true);
+      setTimeout(() => zoomFit(0, PANEL_WIDTH), 80);
     }
     if (!state.isClosed && prevIsClosed.current) {
       setRightPanelOpen(false);
+      setTimeout(() => zoomFit(0, 0), 80);
     }
     prevIsClosed.current = state.isClosed;
-  }, [state.isClosed, isMobile]);
+  }, [state.isClosed, isMobile]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Когда rebuild завершён (isBuilt стал true) — закрываем правую панель
+  // Когда rebuild завершён (isBuilt стал true) — закрываем правую панель и пересчитываем зум
   const prevIsBuilt = useRef(state.isBuilt);
   useEffect(() => {
     if (state.isBuilt && !prevIsBuilt.current && isMobile) {
       setRightPanelOpen(false);
+      setTimeout(() => zoomFit(0, 0), 80);
     }
     prevIsBuilt.current = state.isBuilt;
-  }, [state.isBuilt, isMobile]);  
+  }, [state.isBuilt, isMobile]); // eslint-disable-line react-hooks/exhaustive-deps  
 
   // При изменении высоты нижнего бара — пересчитываем зум/пан чтобы чертёж оставался по центру
   const prevSheetHeight = useRef(0);
@@ -203,6 +207,13 @@ export default function PlanPage() {
     push({ ...s, ...statePatch });
   }, [push]);
 
+  // Обновление диагонали для правой панели ввода
+  const handleUpdateDiagonal = useCallback((id: string, patch: Partial<DiagonalDef>) => {
+    const s = stateRef.current;
+    const diagonals = s.diagonals.map(d => d.id === id ? { ...d, ...patch } : d);
+    push({ ...s, diagonals });
+  }, [push]);
+
   const handleToolChange = useCallback((t: ToolMode) => {
     push({ ...stateRef.current, tool: t });
   }, [push]);
@@ -218,7 +229,7 @@ export default function PlanPage() {
     handleSettingChange({ zoom: Math.max(0.3, Math.round((z - 0.2) * 10) / 10) });
   }, [handleSettingChange]);
 
-  const zoomFit = useCallback((reservedBottomPx = 0) => {
+  const zoomFit = useCallback((reservedBottomPx = 0, reservedRightPx = 0) => {
     const pts = stateRef.current.points;
     if (!pts || pts.length < 2) { handleSettingChange({ zoom: 1, panX: 0, panY: 0 }); return; }
     const xs = pts.map((p: { x: number }) => p.x);
@@ -228,17 +239,15 @@ export default function PlanPage() {
     const w = maxX - minX || 100, h = maxY - minY || 100;
     const el = document.getElementById("plan-canvas-wrap");
     if (!el) return;
-    const PAD_H = 50;  // отступ по горизонтали
+    const PAD_H = 50;   // отступ по горизонтали
     const PAD_TOP = 90; // отступ сверху (с запасом для меток точек B, C...)
     const PAD_BOT = 50; // отступ снизу
-    // reservedBottomPx — пикселей занятых нижней панелью
-    const cw = el.clientWidth  - PAD_H * 2;
+    const cw = el.clientWidth  - PAD_H * 2 - reservedRightPx;
     const ch = el.clientHeight - reservedBottomPx - PAD_TOP - PAD_BOT;
     if (cw <= 0 || ch <= 0) return;
     const z = Math.max(0.2, Math.min(3, Math.min(cw / w, ch / h)));
     const newZoom = Math.round(z * 10) / 10;
     const panX = (cw / 2 / newZoom) - (minX + w / 2);
-    // Смещаем центр вниз на разницу отступов (TOP больше BOT → чертёж опускается)
     const vertOffset = (PAD_TOP - PAD_BOT) / 2 / newZoom;
     const panY = (ch / 2 / newZoom) - (minY + h / 2) + vertOffset;
     handleSettingChange({ zoom: newZoom, panX: Math.round(panX), panY: Math.round(panY) });
@@ -394,9 +403,8 @@ export default function PlanPage() {
         <PlanRightInputPanel
           state={state}
           onUpdateSegment={handleUpdateSegment}
-          onClose={() => {
-            setRightPanelOpen(false);
-          }}
+          onUpdateDiagonal={handleUpdateDiagonal}
+          onClose={() => setRightPanelOpen(false)}
         />
       )}
 
