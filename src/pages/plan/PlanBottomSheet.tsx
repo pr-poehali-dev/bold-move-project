@@ -41,11 +41,11 @@ export default function PlanBottomSheet({ state, onChange, open, onClose }: Prop
       if (state.sidebarTab !== "drawing") {
         onChange({ sidebarTab: "drawing" });
       }
-      // Фокусируем первое поле ввода длины после анимации
+      // Фокусируем первое поле ввода длины после анимации шита
       const t = setTimeout(() => {
         const input = document.querySelector<HTMLInputElement>('[data-sides-first-input]');
         if (input) { input.focus(); input.select(); }
-      }, 300);
+      }, 400);
       return () => clearTimeout(t);
     }
   }, [open]); // eslint-disable-line react-hooks/exhaustive-deps

@@ -123,14 +123,16 @@ export default function PlanPage() {
     }
   }, [user]);
 
-  // На мобиле: автоматически открываем сайдбар при замыкании фигуры
+  // На мобиле: автоматически открываем сайдбар при замыкании фигуры + zoomFit
   const prevIsClosed = useRef(state.isClosed);
   useEffect(() => {
     if (state.isClosed && !prevIsClosed.current && isMobile) {
       setSheetOpen(true);
+      // zoomFit с учётом того что нижние 50% займёт шит
+      setTimeout(() => zoomFit(0.5), 100);
     }
     prevIsClosed.current = state.isClosed;
-  }, [state.isClosed, isMobile]);  
+  }, [state.isClosed, isMobile]); // eslint-disable-line react-hooks/exhaustive-deps  
 
   // Ref для актуального state (избегаем stale closure в callbacks)
   const stateRef = useRef(state);
@@ -185,7 +187,7 @@ export default function PlanPage() {
     handleSettingChange({ zoom: Math.max(0.3, Math.round((z - 0.2) * 10) / 10) });
   }, [handleSettingChange]);
 
-  const zoomFit = useCallback(() => {
+  const zoomFit = useCallback((bottomFraction = 0) => {
     const pts = stateRef.current.points;
     if (!pts || pts.length < 2) { handleSettingChange({ zoom: 1, panX: 0, panY: 0 }); return; }
     const xs = pts.map((p: { x: number }) => p.x);
@@ -195,11 +197,14 @@ export default function PlanPage() {
     const w = maxX - minX || 100, h = maxY - minY || 100;
     const el = document.getElementById("plan-canvas-wrap");
     if (!el) return;
-    const cw = el.clientWidth - 80, ch = el.clientHeight - 80;
+    // bottomFraction — доля экрана занятая нижней панелью (0..1)
+    const reservedBottom = Math.round(window.innerHeight * bottomFraction);
+    const cw = el.clientWidth - 80;
+    const ch = el.clientHeight - reservedBottom - 80;
     const z  = Math.max(0.3, Math.min(3, Math.min(cw / w, ch / h)));
     const newZoom = Math.round(z * 10) / 10;
     const panX = (cw / 2 / newZoom) - (minX + w / 2);
-    const panY = (ch / 2 / newZoom) - (minY + h / 2);
+    const panY = ((ch / 2) / newZoom) - (minY + h / 2);
     handleSettingChange({ zoom: newZoom, panX: Math.round(panX), panY: Math.round(panY) });
   }, [handleSettingChange]);
 
@@ -323,7 +328,8 @@ export default function PlanPage() {
       {/* Основная область */}
       <div className="flex flex-1 overflow-hidden relative">
 
-        <div id="plan-canvas-wrap" className="flex-1 overflow-hidden">
+        <div id="plan-canvas-wrap" className="flex-1 overflow-hidden"
+          style={isMobile && sheetOpen ? { paddingBottom: Math.round(window.innerHeight * 0.5) } : undefined}>
           <PlanCanvas state={state} onChange={handleChange} />
         </div>
 
