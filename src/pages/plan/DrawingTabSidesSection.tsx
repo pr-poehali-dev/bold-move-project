@@ -65,7 +65,12 @@ export default function DrawingTabSidesSection({
                   autoRecalc={state.changedSegmentIds?.includes(seg.id)}
                   onValueChange={v => updateSegment(seg.id, { lengthCm: v })}
                   onVisibilityToggle={() => updateSegment(seg.id, { showLength: !seg.showLength })}
-                  onFocus={() => onChange({ activeInputIndex: idx })}
+                  onFocus={() => {
+                    onChange({
+                      activeInputIndex: idx,
+                      changedSegmentIds: (state.changedSegmentIds ?? []).filter(id => id !== seg.id),
+                    });
+                  }}
                   onEnterNext={idx < segments.length - 1 ? () => focusNext(idx) : undefined}
                 />
               ))}
