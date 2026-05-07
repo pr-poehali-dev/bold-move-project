@@ -117,7 +117,6 @@ export default function DrawingTab({ state, onChange }: Props) {
               // Флип (против часовой): двигается fromId (B) → предыдущий: где movedPtId=toId (A-B).
               //   Фолбек: где movedPtId=fromId — только если нет сегмента с toId=movedPtId.
               const autoRecalcIds: string[] = [];
-              console.log('[edit] movedPtId:', movedPtId, 'segments:', newSegments.map(s => ({ id: s.id, fromId: s.fromId, toId: s.toId })));
               const affectedSeg = isFlipped
                 ? (newSegments.find(s => s.id !== id && s.toId   === movedPtId) ??
                    (newSegments.every(s => s.id === id || s.toId !== movedPtId)
@@ -128,7 +127,6 @@ export default function DrawingTab({ state, onChange }: Props) {
                      ? newSegments.find(s => s.id !== id && s.toId === movedPtId)
                      : undefined));
 
-              console.log('[edit] affectedSeg:', affectedSeg?.id, affectedSeg?.fromId, affectedSeg?.toId);
               const updatedSegments = newSegments.map(s => {
                 if (s.id === id) return s;
                 if (!affectedSeg || s.id !== affectedSeg.id) return s;
