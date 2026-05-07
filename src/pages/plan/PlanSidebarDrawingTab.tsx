@@ -45,6 +45,7 @@ export default function DrawingTab({ state, onChange }: Props) {
       }
       // Если все стороны введены — перестраиваем фигуру по углам + длинам
       const allSet = newSegments.every(s => s.lengthCm !== null && s.lengthCm > 0);
+      console.log('[updateSegment] allSet:', allSet, 'isClosed:', isClosed, newSegments.map(s => s.lengthCm));
       if (allSet && isClosed) {
         const result = rebuildFromAnglesAndLengths(points, newSegments, baseScale);
 
