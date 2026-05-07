@@ -12,7 +12,8 @@ export function Section({
   badge?: string;
   forceOpen?: boolean;
 }) {
-  const [open, setOpen] = React.useState(defaultOpen);
+  // Если forceOpen уже true при монтировании — открываем сразу
+  const [open, setOpen] = React.useState(defaultOpen || !!forceOpen);
 
   const prevForceOpen = React.useRef(forceOpen);
   React.useEffect(() => {

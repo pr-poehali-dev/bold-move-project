@@ -43,10 +43,19 @@ export default function PlanBottomSheet({ state, onChange, open, onClose, onShee
         onChange({ sidebarTab: "drawing" });
       }
       // Фокусируем первое поле ввода длины после анимации шита
-      const t = setTimeout(() => {
+      // Пробуем несколько раз — секция Стороны может рендериться с задержкой
+      let attempts = 0;
+      const tryFocus = () => {
         const input = document.querySelector<HTMLInputElement>('[data-sides-first-input]');
-        if (input) { input.focus(); input.select(); }
-      }, 400);
+        if (input) {
+          input.focus();
+          input.select();
+        } else if (attempts < 5) {
+          attempts++;
+          setTimeout(tryFocus, 150);
+        }
+      };
+      const t = setTimeout(tryFocus, 300);
       return () => clearTimeout(t);
     }
   }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
