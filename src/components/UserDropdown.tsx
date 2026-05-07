@@ -136,6 +136,9 @@ export default function UserDropdown({ onShowProfile }: Props) {
               </>
             )}
 
+            <MenuItem icon="PenTool" label="Построитель"
+              onClick={() => { setOpen(false); window.location.href = "/plan"; }} />
+
             {hasPermission(user, "support_view") && (
               <a href="https://t.me/JoniKras" target="_blank" rel="noreferrer"
                 onClick={() => setOpen(false)}
