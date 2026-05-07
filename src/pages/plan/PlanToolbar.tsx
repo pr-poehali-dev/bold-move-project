@@ -184,10 +184,6 @@ function MobileToolbar(props: Props) {
   return (
     <div className="bg-[#161616] border-b border-white/[0.08] shrink-0">
       <div className="flex items-center gap-1.5 px-2 pt-1" style={{ height: 50 }}>
-        <div className="w-7 h-7 rounded-lg bg-white flex items-center justify-center shrink-0">
-          <Icon name="PenTool" size={13} className="text-[#111]" />
-        </div>
-        <div className="w-px h-4 bg-white/10 mx-0.5 shrink-0" />
         <IconBtn icon="Undo2" onClick={onUndo} disabled={!canUndo} title="Отменить" />
         <IconBtn icon="Redo2" onClick={onRedo} disabled={!canRedo} title="Повторить" />
         <div className="w-px h-4 bg-white/10 mx-0.5 shrink-0" />
@@ -330,17 +326,7 @@ export default function PlanToolbar(props: Props) {
       <IconBtn icon="Maximize2" onClick={onZoomFit} title="По размеру (0)" size={13} />
 
       {/* Фаза */}
-      {phase !== "draw" && isClosed && (
-        <>
-          <Sep />
-          <div className={`flex items-center gap-1.5 px-2.5 h-7 rounded-lg text-[11px] font-bold border shrink-0 ${
-            phase === "lengths" ? "bg-white/10 border-white/20 text-white" : "bg-white/[0.07] border-white/[0.12] text-white/70"
-          }`}>
-            <Icon name={phase === "lengths" ? "Ruler" : "Angle"} size={12} />
-            <span>{phase === "lengths" ? "Ввод длин" : "Ввод углов"}</span>
-          </div>
-        </>
-      )}
+
 
       <div className="flex-1 min-w-2" />
 
