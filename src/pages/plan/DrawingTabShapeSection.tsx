@@ -14,7 +14,7 @@ interface Props {
 
 const lbl10 = "block text-[10px] font-bold uppercase tracking-widest text-white/25 mb-1";
 
-export default function DrawingTabShapeSection({ state, displayPerimM, areaM2, updateRoom }: Props) {
+export default function DrawingTabShapeSection({ state, displayPerimM, areaM2, updateRoom, onSectionOpen }: Props) {
   const { points, room } = state;
 
   return (
