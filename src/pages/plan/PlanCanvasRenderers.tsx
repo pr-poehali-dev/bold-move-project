@@ -28,6 +28,7 @@ export interface RenderContext {
   selectedDiagonalId: string | null;
   selectedArcId: string | null;
   selectedDimLineId: string | null;
+  intersectingSegIds: string[];
   ghost: { x: number; y: number; willClose: boolean } | null;
   dimLineFrom: string | null;
   zoom: number;
@@ -412,12 +413,13 @@ export function InlineDimLabels({ state, onChange }: InlineDimProps) {
 // ── Рендер отрезков (зоны клика) ─────────────────────────────────────────────
 
 export function renderSegments(ctx: RenderContext, handlers: Pick<SegmentHandlers, "onSegmentClick" | "onSegmentCtxMenu">) {
-  const { points, segments, tool, selectedSegmentId } = ctx;
+  const { points, segments, tool, selectedSegmentId, intersectingSegIds } = ctx;
   return segments.map(seg => {
     const a = points.find(p => p.id === seg.fromId);
     const b = points.find(p => p.id === seg.toId);
     if (!a || !b) return null;
     const isSel = seg.id === selectedSegmentId;
+    const isIntersecting = intersectingSegIds?.includes(seg.id);
     return (
       <g key={seg.id}>
         <line x1={a.x} y1={a.y} x2={b.x} y2={b.y} stroke="transparent" strokeWidth={20}
@@ -425,6 +427,7 @@ export function renderSegments(ctx: RenderContext, handlers: Pick<SegmentHandler
           onClick={e => handlers.onSegmentClick(e, seg.id)}
           onContextMenu={e => handlers.onSegmentCtxMenu(e, seg.id)}
         />
+        {isIntersecting && <line x1={a.x} y1={a.y} x2={b.x} y2={b.y} stroke="#f87171" strokeWidth={2.5} opacity={0.8} className="pointer-events-none" />}
         {isSel && <line x1={a.x} y1={a.y} x2={b.x} y2={b.y} stroke="#c4b5fd" strokeWidth={3} strokeDasharray="6 3" className="pointer-events-none" />}
       </g>
     );

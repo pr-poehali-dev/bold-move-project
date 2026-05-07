@@ -1,6 +1,6 @@
 import React from "react";
 import type { PlanState } from "./planTypes";
-import { calcScale, buildShapePath } from "./planTypes";
+import { calcScale, buildShapePath, findSelfIntersections } from "./planTypes";
 import {
   renderDimLine, renderSegmentLabel, renderAngleLabel, renderCornerArc, renderCustomDimLine,
   renderPoints, renderDiagonals, renderSegments, renderGhost, renderHints,
@@ -47,12 +47,13 @@ export default function PlanCanvasSvg({
 
   const scale = calcScale(points, segments);
   const shapePath = buildShapePath(points, segments, isClosed);
+  const intersectingSegIds = isClosed ? findSelfIntersections(points, segments) : [];
 
   const ctx: RenderContext = {
     points, segments, diagonals, dimLines, scale, isClosed, tool,
     showDimLines, showSegmentLabels, showAngleLabels, showDiagonals, showPoints, showPointLabels,
     selectedPointId, selectedSegmentId, selectedDiagonalId, selectedArcId, selectedDimLineId,
-    ghost, dimLineFrom, zoom, phase,
+    ghost, dimLineFrom, zoom, phase, intersectingSegIds,
   };
 
   return (

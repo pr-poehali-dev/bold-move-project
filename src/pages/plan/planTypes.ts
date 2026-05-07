@@ -582,6 +582,30 @@ export function diagonalCrossesWall(
   return false;
 }
 
+/** Возвращает id отрезков которые пересекаются с другими отрезками фигуры */
+export function findSelfIntersections(points: Point[], segments: Segment[]): string[] {
+  const result = new Set<string>();
+  for (let i = 0; i < segments.length; i++) {
+    const si = segments[i];
+    const ai = points.find(p => p.id === si.fromId);
+    const bi = points.find(p => p.id === si.toId);
+    if (!ai || !bi) continue;
+    for (let j = i + 2; j < segments.length; j++) {
+      // Пропускаем смежные отрезки (замыкающий со стартовым)
+      if (i === 0 && j === segments.length - 1) continue;
+      const sj = segments[j];
+      const aj = points.find(p => p.id === sj.fromId);
+      const bj = points.find(p => p.id === sj.toId);
+      if (!aj || !bj) continue;
+      if (segmentsIntersect(ai.x, ai.y, bi.x, bi.y, aj.x, aj.y, bj.x, bj.y)) {
+        result.add(si.id);
+        result.add(sj.id);
+      }
+    }
+  }
+  return Array.from(result);
+}
+
 export function buildAutoDiagonals(
   points: Point[],
   existingDiagonals: DiagonalDef[],
