@@ -655,20 +655,44 @@ export function rebuildFromAnglesAndLengths(
   points: Point[],
   segments: Segment[],
   baseScaleIn: number | null,
+  changedSegId?: string,
 ): { points: Point[]; baseScale: number } | null {
   if (points.length < 3 || segments.length < 3) return null;
 
-  // Строим упорядоченную цепочку
-  const chain: string[] = [points[0].id];
-  let cur = points[0].id;
-  for (let i = 0; i < segments.length; i++) {
-    const s = segments.find(sg => sg.fromId === cur);
-    if (!s) break;
-    if (chain.includes(s.toId)) break;
-    chain.push(s.toId);
-    cur = s.toId;
+  // Строим полную упорядоченную цепочку начиная с points[0]
+  const buildChainFrom = (startId: string): string[] | null => {
+    const chain: string[] = [startId];
+    let cur = startId;
+    for (let i = 0; i < segments.length; i++) {
+      const s = segments.find(sg => sg.fromId === cur);
+      if (!s) break;
+      if (chain.includes(s.toId)) break;
+      chain.push(s.toId);
+      cur = s.toId;
+    }
+    return chain.length === points.length ? chain : null;
+  };
+
+  // Базовая цепочка с points[0]
+  let chain = buildChainFrom(points[0].id);
+  if (!chain) return null;
+
+  // Если изменённый сегмент оказывается замыкающим — переставляем стартовую точку
+  // так, чтобы изменённый сегмент был первым (не замыкающим)
+  if (changedSegId) {
+    const changedSeg = segments.find(s => s.id === changedSegId);
+    if (changedSeg) {
+      // Замыкающий сег в текущей цепочке — между chain[last] и chain[0]
+      const lastIdx = chain.length - 1;
+      const closingIsChanged =
+        chain[lastIdx] === changedSeg.fromId && chain[0] === changedSeg.toId;
+      if (closingIsChanged) {
+        // Перестраиваем цепочку начиная с fromId изменённого сегмента
+        const newChain = buildChainFrom(changedSeg.fromId);
+        if (newChain) chain = newChain;
+      }
+    }
   }
-  if (chain.length !== points.length) return null;
 
   const orderedSegs: Segment[] = [];
   for (let i = 0; i < chain.length; i++) {
