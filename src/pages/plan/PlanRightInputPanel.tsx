@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState, useCallback } from "react";
 import type { PlanState, Segment, DiagonalDef } from "./planTypes";
 import { segmentLabel, pointLabel, angleDeg, polygonOrientation, distPx, calcScale, pxToCm } from "./planTypes";
 
@@ -18,6 +18,29 @@ export default function PlanRightInputPanel({ state, onUpdateSegment, onUpdateDi
   const { segments, points, diagonals } = state;
   const [tab, setTab] = React.useState<Tab>("sides");
   const [dropOpen, setDropOpen] = useState(false);
+
+  // Свайп вправо — закрыть панель
+  const swipeRef = useRef<{ startX: number; startY: number } | null>(null);
+  const [swipeDx, setSwipeDx] = useState(0);
+
+  const onTouchStart = useCallback((e: React.TouchEvent) => {
+    swipeRef.current = { startX: e.touches[0].clientX, startY: e.touches[0].clientY };
+    setSwipeDx(0);
+  }, []);
+
+  const onTouchMove = useCallback((e: React.TouchEvent) => {
+    if (!swipeRef.current) return;
+    const dx = e.touches[0].clientX - swipeRef.current.startX;
+    const dy = Math.abs(e.touches[0].clientY - swipeRef.current.startY);
+    if (dy > 20) { swipeRef.current = null; return; } // вертикальный скролл — игнорируем
+    if (dx > 0) setSwipeDx(dx);
+  }, []);
+
+  const onTouchEnd = useCallback(() => {
+    if (swipeDx > PANEL_WIDTH * 0.5) onClose();
+    else setSwipeDx(0);
+    swipeRef.current = null;
+  }, [swipeDx, onClose]);
 
   // ── Стороны ──
   const segInputRefs = useRef<(HTMLInputElement | null)[]>([]);
@@ -114,7 +137,15 @@ export default function PlanRightInputPanel({ state, onUpdateSegment, onUpdateDi
   return (
     <div
       className="fixed right-0 top-0 bottom-0 z-30 flex flex-col bg-[#12131e] border-l border-white/[0.08] shadow-2xl"
-      style={{ width: PANEL_WIDTH }}
+      style={{
+        width: PANEL_WIDTH,
+        transform: swipeDx > 0 ? `translateX(${swipeDx}px)` : undefined,
+        transition: swipeDx === 0 ? "transform 0.2s ease" : "none",
+        opacity: swipeDx > 0 ? Math.max(0.3, 1 - swipeDx / PANEL_WIDTH) : 1,
+      }}
+      onTouchStart={onTouchStart}
+      onTouchMove={onTouchMove}
+      onTouchEnd={onTouchEnd}
     >
       {/* Шапка */}
       <div className="flex items-center justify-between px-2 pt-3 pb-2 shrink-0 relative">
@@ -240,11 +271,17 @@ export default function PlanRightInputPanel({ state, onUpdateSegment, onUpdateDi
         })}
       </div>
 
-      {/* Подсказка */}
-      <div className="px-2 pb-3 shrink-0">
-        <p className="text-[9px] text-white/15 text-center leading-snug">
-          {tab === "sides" ? "Enter → след. сторона" : tab === "diagonals" ? "Enter → след. диагональ" : "Только просмотр"}
+      {/* Кнопка закрыть */}
+      <div className="px-2 pb-4 pt-1 shrink-0 flex flex-col gap-1">
+        <p className="text-[9px] text-white/15 text-center">
+          {tab === "sides" ? "Enter → след." : tab === "diagonals" ? "Enter → след." : "Просмотр"}
         </p>
+        <button
+          onClick={onClose}
+          className="w-full py-2 rounded-xl bg-red-500/15 border border-red-500/25 text-red-400 text-[11px] font-semibold active:bg-red-500/25 transition"
+        >
+          Закрыть
+        </button>
       </div>
     </div>
   );
