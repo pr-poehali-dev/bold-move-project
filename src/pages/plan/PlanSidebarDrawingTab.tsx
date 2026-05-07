@@ -23,6 +23,9 @@ export default function DrawingTab({ state, onChange }: Props) {
     inputRefs.current = segments.map(() => React.createRef<HTMLInputElement>());
   }
 
+  // Ref для функции фокуса первой незаполненной диагонали
+  const focusDiagonalRef = React.useRef<(() => void) | null>(null);
+
   const focusNext = (idx: number) => {
     const next = inputRefs.current[idx + 1];
     if (next?.current) { next.current.focus(); next.current.select(); }
@@ -140,6 +143,7 @@ export default function DrawingTab({ state, onChange }: Props) {
         updateSegment={updateSegment}
         updateSettings={updateSettings}
         focusNext={focusNext}
+        onFocusDiagonal={() => focusDiagonalRef.current?.()}
       />
       <DrawingTabAnglesSection
         state={state}
@@ -151,6 +155,7 @@ export default function DrawingTab({ state, onChange }: Props) {
         onChange={onChange}
         updateDiagonal={updateDiagonal}
         updateSettings={updateSettings}
+        focusDiagonalRef={focusDiagonalRef}
       />
     </div>
   );

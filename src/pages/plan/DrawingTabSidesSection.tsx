@@ -11,10 +11,11 @@ interface Props {
   updateSegment: (id: string, patch: Partial<Segment>) => void;
   updateSettings: (patch: Partial<PlanSettings>) => void;
   focusNext: (idx: number) => void;
+  onFocusDiagonal?: () => void;
 }
 
 export default function DrawingTabSidesSection({
-  state, onChange, inputRefs, updateSegment, updateSettings, focusNext,
+  state, onChange, inputRefs, updateSegment, updateSettings, focusNext, onFocusDiagonal,
 }: Props) {
   const { points, segments, isClosed, settings } = state;
   const closureErr = isClosed ? checkClosureError(points, segments, state.baseScale ?? null) : null;
@@ -30,11 +31,21 @@ export default function DrawingTabSidesSection({
         forceOpen={isClosed}>
 
         {closureErr !== null && closureErr > 2 && (
-          <div className="mb-2 flex items-center gap-2 px-3 py-2 rounded-xl bg-yellow-500/10 border border-yellow-500/30">
-            <Icon name="AlertTriangle" size={13} className="text-yellow-400 shrink-0" />
-            <span className="text-[11px] font-semibold text-yellow-300">
-              Погрешность {closureErr}% — проверьте размеры
-            </span>
+          <div className="mb-2 px-3 py-2 rounded-xl bg-yellow-500/10 border border-yellow-500/30">
+            <div className="flex items-center gap-2">
+              <Icon name="AlertTriangle" size={13} className="text-yellow-400 shrink-0" />
+              <span className="text-[11px] font-semibold text-yellow-300">
+                Погрешность {closureErr}%
+              </span>
+            </div>
+            {onFocusDiagonal && (
+              <button
+                onClick={onFocusDiagonal}
+                className="mt-1.5 w-full flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-[10px] font-semibold bg-yellow-500/15 border border-yellow-500/30 text-yellow-300 hover:bg-yellow-500/25 transition">
+                <Icon name="ArrowUpRight" size={11} />
+                Ввести диагональ
+              </button>
+            )}
           </div>
         )}
 

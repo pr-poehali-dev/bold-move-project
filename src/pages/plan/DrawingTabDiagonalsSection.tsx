@@ -9,22 +9,49 @@ interface Props {
   onChange: (patch: Partial<PlanState>) => void;
   updateDiagonal: (id: string, patch: Partial<DiagonalDef>) => void;
   updateSettings: (patch: Partial<PlanSettings>) => void;
+  focusDiagonalRef?: React.MutableRefObject<(() => void) | null>;
 }
 
 const lbl10 = "block text-[10px] font-bold uppercase tracking-widest text-white/25 mb-1";
 
-export default function DrawingTabDiagonalsSection({ state, onChange, updateDiagonal, updateSettings }: Props) {
+export default function DrawingTabDiagonalsSection({ state, onChange, updateDiagonal, updateSettings, focusDiagonalRef }: Props) {
   const { points, diagonals, isClosed, settings } = state;
   const scale = calcScale(points, state.segments);
   const [addDiagFrom, setAddDiagFrom] = React.useState("");
   const [addDiagTo, setAddDiagTo]     = React.useState("");
+  const [forceOpen, setForceOpen]     = React.useState(false);
+
+  // Refs для полей ввода диагоналей
+  const diagInputRefs = React.useRef<React.RefObject<HTMLInputElement>[]>([]);
+  if (diagInputRefs.current.length !== diagonals.length) {
+    diagInputRefs.current = diagonals.map(() => React.createRef<HTMLInputElement>());
+  }
+
+  // Передаём функцию фокуса первой незаполненной диагонали наружу
+  React.useEffect(() => {
+    if (!focusDiagonalRef) return;
+    focusDiagonalRef.current = () => {
+      setForceOpen(true);
+      setTimeout(() => {
+        // Ищем первую диагональ без lengthCm
+        const idx = diagonals.findIndex(d => d.lengthCm === null);
+        const ref = diagInputRefs.current[idx >= 0 ? idx : 0];
+        if (ref?.current) {
+          ref.current.focus();
+          ref.current.select();
+          ref.current.scrollIntoView({ behavior: "smooth", block: "center" });
+        }
+      }, 150);
+    };
+  }, [diagonals, focusDiagonalRef]);
 
   return (
     <Section title="Диагонали, см" icon="ArrowUpRight" iconColor="#f97316"
       visible={settings.showDiagonals}
       onVisibilityToggle={() => updateSettings({ showDiagonals: !settings.showDiagonals })}
       badge={diagonals.length > 0 ? String(diagonals.length) : undefined}
-      defaultOpen={false}>
+      defaultOpen={false}
+      forceOpen={forceOpen}>
 
       {diagonals.length === 0
         ? <p className="text-[11px] text-white/20 text-center py-3">{isClosed ? "Нет диагоналей" : "Замкните фигуру"}</p>
@@ -43,7 +70,7 @@ export default function DrawingTabDiagonalsSection({ state, onChange, updateDiag
             </button>
           </div>
           <div className="space-y-0.5">
-            {diagonals.map(diag => {
+            {diagonals.map((diag, idx) => {
               const a = points.find(p => p.id === diag.fromId);
               const b = points.find(p => p.id === diag.toId);
               const idxA = points.findIndex(p => p.id === diag.fromId);
@@ -56,6 +83,7 @@ export default function DrawingTabDiagonalsSection({ state, onChange, updateDiag
                   valueCm={diag.lengthCm}
                   placeholder={autoCm !== null ? String(autoCm) : "—"}
                   visible={diag.visible}
+                  inputRef={diagInputRefs.current[idx]}
                   onValueChange={v => updateDiagonal(diag.id, { lengthCm: v })}
                   onVisibilityToggle={() => updateDiagonal(diag.id, { visible: !diag.visible })}
                   onDelete={() => onChange({ diagonals: diagonals.filter(d => d.id !== diag.id) })}
