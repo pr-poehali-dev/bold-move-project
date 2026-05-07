@@ -175,54 +175,28 @@ const Sep = () => <div className="w-px h-5 bg-white/[0.08] mx-1 flex-shrink-0" /
 
 function MobileToolbar(props: Props) {
   const {
-    tool, phase, isClosed, settings, canUndo, canRedo,
-    saveStatus, isDirty, currentPlanId,
-    onToolChange, onSettingChange, onUndo, onRedo, onSave, onOpenPanel,
+    tool, isClosed,
+    canUndo, canRedo,
+    onToolChange, onUndo, onRedo, onOpenPanel,
   } = props;
-  const saveIcon = saveStatus === "saving" ? "Loader2" : saveStatus === "saved" ? "CheckCircle2" : isDirty ? "Save" : "Cloud";
 
   return (
-    <div className="bg-[#161616] border-b border-white/[0.08] shrink-0">
-      <div className="flex items-center gap-1.5 px-2 pt-1" style={{ height: 50 }}>
-        <IconBtn icon="Undo2" onClick={onUndo} disabled={!canUndo} title="Отменить" />
-        <IconBtn icon="Redo2" onClick={onRedo} disabled={!canRedo} title="Повторить" />
-        <div className="w-px h-4 bg-white/10 mx-0.5 shrink-0" />
-        <div className="flex items-center gap-1 overflow-x-auto flex-1 no-scrollbar">
-          {TOOLS.map(t => (
-            <ToolBtn key={t.id} t={t} active={tool === t.id}
-              disabled={!!t.needsClosed && !isClosed}
-              onClick={() => (!t.needsClosed || isClosed) && onToolChange(t.id)} />
-          ))}
-        </div>
-        <div className="w-px h-4 bg-white/10 mx-0.5 shrink-0" />
-        <button onClick={onOpenPanel}
-          className="w-9 h-9 rounded-xl bg-white/[0.07] border border-white/[0.1] text-white/60 flex items-center justify-center shrink-0">
-          <Icon name="PanelRight" size={16} />
-        </button>
+    <div className="bg-[#161616] border-b border-white/[0.08] shrink-0 flex items-center gap-1 px-2" style={{ height: 52 }}>
+      <IconBtn icon="Undo2" onClick={onUndo} disabled={!canUndo} title="Отменить" />
+      <IconBtn icon="Redo2" onClick={onRedo} disabled={!canRedo} title="Повторить" />
+      <div className="w-px h-4 bg-white/10 mx-0.5 shrink-0" />
+      <div className="flex items-center gap-0.5 overflow-x-auto flex-1 no-scrollbar">
+        {TOOLS.map(t => (
+          <ToolBtn key={t.id} t={t} active={tool === t.id}
+            disabled={!!t.needsClosed && !isClosed}
+            onClick={() => (!t.needsClosed || isClosed) && onToolChange(t.id)} />
+        ))}
       </div>
-
-      <div className="flex items-center gap-1.5 px-2 pb-2 pt-1">
-        <button
-          className={`flex items-center gap-1.5 h-8 px-2.5 text-xs font-semibold rounded-xl border transition-all ${settings.ortho ? "bg-white text-[#111] border-white" : "bg-transparent border-white/[0.12] text-white/45"}`}
-          onClick={() => onSettingChange({ ortho: !settings.ortho })}>
-          <Icon name="Axis3d" size={12} /><span>Ортогональный</span>
-        </button>
-        <button
-          className={`flex items-center gap-1.5 h-8 px-2.5 text-xs font-semibold rounded-xl border transition-all ${settings.snapToPoints ? "bg-white text-[#111] border-white" : "bg-transparent border-white/[0.12] text-white/45"}`}
-          onClick={() => onSettingChange({ snapToPoints: !settings.snapToPoints })}>
-          <Icon name="Magnet" size={12} /><span>Магнит</span>
-        </button>
-        <div className="flex-1" />
-        <button onClick={onSave} disabled={saveStatus === "saving"}
-          className={`flex items-center gap-1.5 px-3 h-8 rounded-xl text-[11px] font-bold border transition-all shrink-0 ${
-            isDirty || !currentPlanId ? "bg-white text-[#111] border-white" : "bg-transparent border-white/[0.12] text-white/45"
-          }`}>
-          <Icon name={saveIcon} size={12} className={saveStatus === "saving" ? "animate-spin" : ""} />
-          <span>{saveStatus === "saving" ? "Сохранение…" : "Сохранить"}</span>
-        </button>
-      </div>
-
-
+      <div className="w-px h-4 bg-white/10 mx-0.5 shrink-0" />
+      <button onClick={onOpenPanel}
+        className="w-9 h-9 rounded-xl bg-white/[0.07] border border-white/[0.1] text-white/60 flex items-center justify-center shrink-0 active:bg-white/[0.12]">
+        <Icon name="PanelBottom" size={16} />
+      </button>
     </div>
   );
 }
