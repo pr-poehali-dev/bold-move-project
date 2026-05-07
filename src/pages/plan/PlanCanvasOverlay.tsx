@@ -108,20 +108,18 @@ export default function PlanCanvasOverlay({
         </div>
       )}
 
-      {/* Мини zoom — только на десктопе */}
-      {!isMobile && (
-        <div className="absolute bottom-4 right-3 flex flex-col gap-1">
-          <button onClick={() => onChange({ settings: { ...settings, zoom: Math.min(4, Math.round((zoom + 0.2) * 10) / 10) } })}
-            className="w-9 h-9 rounded-xl bg-white/[0.07] border border-white/[0.1] text-white/50 hover:bg-white/[0.14] flex items-center justify-center transition active:scale-95">
-            <Icon name="Plus" size={15} />
-          </button>
-          <div className="w-9 h-6 flex items-center justify-center text-[10px] text-white/30 font-mono">{Math.round(zoom * 100)}%</div>
-          <button onClick={() => onChange({ settings: { ...settings, zoom: Math.max(0.3, Math.round((zoom - 0.2) * 10) / 10) } })}
-            className="w-9 h-9 rounded-xl bg-white/[0.07] border border-white/[0.1] text-white/50 hover:bg-white/[0.14] flex items-center justify-center transition active:scale-95">
-            <Icon name="Minus" size={15} />
-          </button>
-        </div>
-      )}
+      {/* Зум — десктоп и мобиле */}
+      <div className={`absolute flex flex-col gap-1 z-10 ${isMobile ? "bottom-20 right-3" : "bottom-4 right-3"}`}>
+        <button onClick={() => onChange({ settings: { ...settings, zoom: Math.min(4, Math.round((zoom + 0.2) * 10) / 10) } })}
+          className="w-9 h-9 rounded-xl bg-white/[0.07] border border-white/[0.1] text-white/50 active:bg-white/[0.14] flex items-center justify-center transition active:scale-95">
+          <Icon name="Plus" size={15} />
+        </button>
+        <div className="w-9 h-6 flex items-center justify-center text-[10px] text-white/30 font-mono">{Math.round(zoom * 100)}%</div>
+        <button onClick={() => onChange({ settings: { ...settings, zoom: Math.max(0.3, Math.round((zoom - 0.2) * 10) / 10) } })}
+          className="w-9 h-9 rounded-xl bg-white/[0.07] border border-white/[0.1] text-white/50 active:bg-white/[0.14] flex items-center justify-center transition active:scale-95">
+          <Icon name="Minus" size={15} />
+        </button>
+      </div>
 
       {/* Мобиле: кнопка функций в нижнем левом углу */}
       {isMobile && onSettingChange && (
