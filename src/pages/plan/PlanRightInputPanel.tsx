@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import type { PlanState, Segment, DiagonalDef } from "./planTypes";
 import { segmentLabel, pointLabel, angleDeg, polygonOrientation, distPx, calcScale, pxToCm } from "./planTypes";
 
@@ -16,6 +16,7 @@ interface Props {
 export default function PlanRightInputPanel({ state, onUpdateSegment, onUpdateDiagonal, onClose }: Props) {
   const { segments, points, diagonals } = state;
   const [tab, setTab] = React.useState<Tab>("sides");
+  const [dropOpen, setDropOpen] = useState(false);
 
   // ── Стороны ──
   const segInputRefs = useRef<(HTMLInputElement | null)[]>([]);
@@ -97,10 +98,11 @@ export default function PlanRightInputPanel({ state, onUpdateSegment, onUpdateDi
   };
 
   const TABS: { id: Tab; label: string }[] = [
-    { id: "sides",     label: "Ст" },
-    { id: "diagonals", label: "Дг" },
-    { id: "angles",    label: "Ур" },
+    { id: "sides",     label: "Стороны" },
+    { id: "diagonals", label: "Диагонали" },
+    { id: "angles",    label: "Углы" },
   ];
+  const currentLabel = TABS.find(t => t.id === tab)?.label ?? "Стороны";
 
   return (
     <div
@@ -108,22 +110,37 @@ export default function PlanRightInputPanel({ state, onUpdateSegment, onUpdateDi
       style={{ width: PANEL_WIDTH }}
     >
       {/* Шапка */}
-      <div className="flex items-center justify-between px-2.5 pt-3 pb-2 shrink-0">
-        <div className="flex gap-0.5 bg-white/[0.05] rounded-lg p-0.5">
-          {TABS.map(t => (
-            <button
-              key={t.id}
-              onClick={() => setTab(t.id)}
-              className={`px-2 py-0.5 rounded-md text-[10px] font-bold transition ${
-                tab === t.id
-                  ? "bg-white text-[#111]"
-                  : "text-white/40 hover:text-white/70"
-              }`}
-            >
-              {t.label}
-            </button>
-          ))}
+      <div className="flex items-center justify-between px-2 pt-3 pb-2 shrink-0 relative">
+        {/* Дропдаун-кнопка */}
+        <div className="relative">
+          <button
+            onClick={() => setDropOpen(v => !v)}
+            className="flex items-center gap-1 px-2 py-1 rounded-lg bg-white/[0.06] text-[10px] font-bold text-white/70 hover:text-white hover:bg-white/[0.1] transition"
+          >
+            {currentLabel}
+            <svg width="8" height="8" viewBox="0 0 8 8" fill="none" className={`transition-transform ${dropOpen ? "rotate-180" : ""}`}>
+              <path d="M1 2.5l3 3 3-3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+          </button>
+          {dropOpen && (
+            <div className="absolute top-full left-0 mt-1 bg-[#1e1f2e] border border-white/[0.1] rounded-xl shadow-2xl z-50 overflow-hidden min-w-[110px]">
+              {TABS.map(t => (
+                <button
+                  key={t.id}
+                  onClick={() => { setTab(t.id); setDropOpen(false); }}
+                  className={`w-full text-left px-3 py-2 text-[11px] font-semibold transition ${
+                    tab === t.id
+                      ? "bg-white/[0.08] text-white"
+                      : "text-white/50 hover:bg-white/[0.05] hover:text-white"
+                  }`}
+                >
+                  {t.label}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
+
         <button
           onClick={onClose}
           className="w-5 h-5 rounded flex items-center justify-center text-white/25 hover:text-white/60 transition"
