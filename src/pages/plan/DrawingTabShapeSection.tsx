@@ -9,6 +9,7 @@ interface Props {
   displayPerimM: number | null;
   areaM2: number | null;
   updateRoom: (patch: Partial<RoomParams>) => void;
+  onSectionOpen?: () => void;
 }
 
 const lbl10 = "block text-[10px] font-bold uppercase tracking-widest text-white/25 mb-1";
@@ -17,7 +18,7 @@ export default function DrawingTabShapeSection({ state, displayPerimM, areaM2, u
   const { points, room } = state;
 
   return (
-    <Section title="Фигура" icon="Pentagon" iconColor="#a78bfa" defaultOpen={false}>
+    <Section title="Фигура" icon="Pentagon" iconColor="#a78bfa" defaultOpen={false} onOpen={onSectionOpen}>
       <div className="mb-3">
         <label className={lbl10}>Активная фигура</label>
         <input value={room.name}

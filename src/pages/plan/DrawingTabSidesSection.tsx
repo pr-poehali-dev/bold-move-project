@@ -14,11 +14,12 @@ interface Props {
   onFocusDiagonal?: () => void;
   lastChangedSegId: string | null;
   onFlipSegment: (id: string) => void;
+  onSectionOpen?: () => void;
 }
 
 export default function DrawingTabSidesSection({
   state, onChange, inputRefs, updateSegment, updateSettings, focusNext, onFocusDiagonal,
-  lastChangedSegId, onFlipSegment,
+  lastChangedSegId, onFlipSegment, onSectionOpen,
 }: Props) {
   const { points, segments, isClosed, settings } = state;
   const closureErr = isClosed ? checkClosureError(points, segments, state.baseScale ?? null) : null;
@@ -31,7 +32,8 @@ export default function DrawingTabSidesSection({
         onVisibilityToggle={() => updateSettings({ showSegmentLabels: !settings.showSegmentLabels })}
         badge={segments.length > 0 ? String(segments.length) : undefined}
         defaultOpen={false}
-        forceOpen={isClosed}>
+        forceOpen={isClosed}
+        onOpen={onSectionOpen}>
 
         {closureErr !== null && closureErr > 2 && (
           <div className="mb-2 px-3 py-2 rounded-xl bg-yellow-500/10 border border-yellow-500/30">

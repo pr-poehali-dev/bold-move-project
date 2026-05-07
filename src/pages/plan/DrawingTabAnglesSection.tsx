@@ -8,9 +8,10 @@ interface Props {
   state: PlanState;
   onChange: (patch: Partial<PlanState>) => void;
   updateSettings: (patch: Partial<PlanSettings>) => void;
+  onSectionOpen?: () => void;
 }
 
-export default function DrawingTabAnglesSection({ state, onChange, updateSettings }: Props) {
+export default function DrawingTabAnglesSection({ state, onChange, updateSettings, onSectionOpen }: Props) {
   const { points, isClosed, settings } = state;
   const isCW = polygonOrientation(points) > 0;
 
@@ -25,7 +26,8 @@ export default function DrawingTabAnglesSection({ state, onChange, updateSetting
       visible={settings.showAngleLabels}
       onVisibilityToggle={() => updateSettings({ showAngleLabels: !settings.showAngleLabels })}
       badge={points.length > 0 ? String(points.length) : undefined}
-      defaultOpen={false}>
+      defaultOpen={false}
+      onOpen={onSectionOpen}>
 
       {points.length === 0
         ? <p className="text-[11px] text-white/20 text-center py-3">Нет точек</p>

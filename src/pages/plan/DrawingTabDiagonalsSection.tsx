@@ -11,11 +11,12 @@ interface Props {
   updateSettings: (patch: Partial<PlanSettings>) => void;
   focusDiagonalRef?: React.MutableRefObject<(() => void) | null>;
   autoOpen?: boolean;
+  onSectionOpen?: () => void;
 }
 
 const lbl10 = "block text-[10px] font-bold uppercase tracking-widest text-white/25 mb-1";
 
-export default function DrawingTabDiagonalsSection({ state, onChange, updateDiagonal, updateSettings, focusDiagonalRef, autoOpen }: Props) {
+export default function DrawingTabDiagonalsSection({ state, onChange, updateDiagonal, updateSettings, focusDiagonalRef, autoOpen, onSectionOpen }: Props) {
   const { points, diagonals, isClosed, settings } = state;
   const scale = calcScale(points, state.segments);
   const [addDiagFrom, setAddDiagFrom] = React.useState("");
@@ -56,7 +57,8 @@ export default function DrawingTabDiagonalsSection({ state, onChange, updateDiag
       onVisibilityToggle={() => updateSettings({ showDiagonals: !settings.showDiagonals })}
       badge={diagonals.length > 0 ? String(diagonals.length) : undefined}
       defaultOpen={false}
-      forceOpen={forceOpen}>
+      forceOpen={forceOpen}
+      onOpen={onSectionOpen}>
 
       {diagonals.length === 0
         ? <p className="text-[11px] text-white/20 text-center py-3">{isClosed ? "Нет диагоналей" : "Замкните фигуру"}</p>

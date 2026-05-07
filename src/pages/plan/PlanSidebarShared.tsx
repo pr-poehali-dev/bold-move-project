@@ -4,13 +4,14 @@ import Icon from "@/components/ui/icon";
 // ─── Аккордеон-секция ─────────────────────────────────────────────────────────
 export function Section({
   title, icon, iconColor, children, defaultOpen = true,
-  visible, onVisibilityToggle, badge, forceOpen,
+  visible, onVisibilityToggle, badge, forceOpen, onOpen,
 }: {
   title: string; icon: string; iconColor: string;
   children: React.ReactNode; defaultOpen?: boolean;
   visible?: boolean; onVisibilityToggle?: () => void;
   badge?: string;
   forceOpen?: boolean;
+  onOpen?: () => void;
 }) {
   // Если forceOpen уже true при монтировании — открываем сразу
   const [open, setOpen] = React.useState(defaultOpen || !!forceOpen);
@@ -21,16 +22,22 @@ export function Section({
     prevForceOpen.current = forceOpen;
   }, [forceOpen]);
 
+  const handleToggle = () => {
+    const next = !open;
+    setOpen(next);
+    if (next) onOpen?.();
+  };
+
   return (
     <div className="border-b border-white/[0.06]">
       <div
         role="button"
         tabIndex={0}
         className="w-full flex items-center gap-2 px-4 py-2.5 hover:bg-white/[0.025] transition-colors cursor-pointer"
-        onClick={() => setOpen(o => !o)}
+        onClick={handleToggle}
         onKeyDown={e => {
           if (e.target !== e.currentTarget) return;
-          if (e.key === "Enter" || e.key === " ") setOpen(o => !o);
+          if (e.key === "Enter" || e.key === " ") handleToggle();
         }}
       >
         <Icon name={icon} size={13} style={{ color: iconColor }} />

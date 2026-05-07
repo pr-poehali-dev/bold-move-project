@@ -12,9 +12,10 @@ import DrawingTabDiagonalsSection from "./DrawingTabDiagonalsSection";
 interface Props {
   state: PlanState;
   onChange: (patch: Partial<PlanState>) => void;
+  onSectionOpen?: () => void;
 }
 
-export default function DrawingTab({ state, onChange }: Props) {
+export default function DrawingTab({ state, onChange, onSectionOpen }: Props) {
   const { points, segments, diagonals, isClosed, settings } = state;
   const scale = calcScale(points, segments);
 
@@ -342,6 +343,7 @@ export default function DrawingTab({ state, onChange }: Props) {
         displayPerimM={displayPerimM}
         areaM2={areaM2}
         updateRoom={updateRoom}
+        onSectionOpen={onSectionOpen}
       />
       <DrawingTabSidesSection
         state={state}
@@ -353,11 +355,13 @@ export default function DrawingTab({ state, onChange }: Props) {
         onFocusDiagonal={() => focusDiagonalRef.current?.()}
         lastChangedSegId={lastChangedSegId}
         onFlipSegment={onFlipSegment}
+        onSectionOpen={onSectionOpen}
       />
       <DrawingTabAnglesSection
         state={state}
         onChange={onChange}
         updateSettings={updateSettings}
+        onSectionOpen={onSectionOpen}
       />
       <DrawingTabDiagonalsSection
         state={state}
@@ -366,6 +370,7 @@ export default function DrawingTab({ state, onChange }: Props) {
         updateSettings={updateSettings}
         focusDiagonalRef={focusDiagonalRef}
         autoOpen={hasSkews}
+        onSectionOpen={onSectionOpen}
       />
     </div>
   );

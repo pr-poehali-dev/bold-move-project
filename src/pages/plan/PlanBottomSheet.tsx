@@ -10,6 +10,7 @@ interface Props {
   onClose: () => void;
   onSheetHeightChange?: (heightPx: number) => void;
   initialSnap?: SheetSnap;
+  onSectionOpen?: () => void;
 }
 
 // Высоты шита: peek (подглядывание) / half / full
@@ -19,7 +20,7 @@ const PEEK_H  = 52;   // только ручка видна
 const HALF_H  = 0.5;  // 50% экрана (доля)
 const FULL_H  = 0.92; // 92% экрана
 
-export default function PlanBottomSheet({ state, onChange, open, onClose, onSheetHeightChange, initialSnap = "half" }: Props) {
+export default function PlanBottomSheet({ state, onChange, open, onClose, onSheetHeightChange, initialSnap = "half", onSectionOpen }: Props) {
   const sheetRef    = useRef<HTMLDivElement>(null);
   const dragRef     = useRef<{ startY: number; startH: number } | null>(null);
   const [snap, setSnap]   = React.useState<SheetSnap>("half");
@@ -185,7 +186,11 @@ export default function PlanBottomSheet({ state, onChange, open, onClose, onShee
 
         {/* ── Контент сайдбара ── */}
         <div className="flex-1 overflow-hidden">
-          <PlanSidebar state={state} onChange={onChange} />
+          <PlanSidebar state={state} onChange={onChange} onSectionOpen={() => {
+            setSnap("full");
+            setHeight(snapToHeight("full"));
+            onSectionOpen?.();
+          }} />
         </div>
       </div>
     </>

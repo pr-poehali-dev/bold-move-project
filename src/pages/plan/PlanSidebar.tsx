@@ -5,9 +5,10 @@ import CalcTab    from "./PlanSidebarCalcTab";
 interface Props {
   state: PlanState;
   onChange: (patch: Partial<PlanState>) => void;
+  onSectionOpen?: () => void;
 }
 
-export default function PlanSidebar({ state, onChange }: Props) {
+export default function PlanSidebar({ state, onChange, onSectionOpen }: Props) {
   const { sidebarTab } = state;
   const isDrawing = sidebarTab !== "calc";
 
@@ -39,7 +40,7 @@ export default function PlanSidebar({ state, onChange }: Props) {
 
       {/* Контент */}
       <div className="flex-1 overflow-y-auto">
-        {isDrawing  && <DrawingTab state={state} onChange={onChange} />}
+        {isDrawing  && <DrawingTab state={state} onChange={onChange} onSectionOpen={onSectionOpen} />}
         {!isDrawing && <CalcTab    state={state} />}
       </div>
     </div>
