@@ -54,6 +54,7 @@ export default function PlanCanvasSvg({
     showDimLines, showSegmentLabels, showAngleLabels, showDiagonals, showPoints, showPointLabels,
     selectedPointId, selectedSegmentId, selectedDiagonalId, selectedArcId, selectedDimLineId,
     ghost, dimLineFrom, zoom, phase, intersectingSegIds,
+    changedSegmentIds: state.changedSegmentIds ?? [],
   };
 
   return (

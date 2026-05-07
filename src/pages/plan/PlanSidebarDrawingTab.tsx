@@ -24,6 +24,13 @@ export default function DrawingTab({ state, onChange }: Props) {
     inputRefs.current = segments.map(() => React.createRef<HTMLInputElement>());
   }
 
+  // Сброс changedSegmentIds через 1.5с после подсветки
+  React.useEffect(() => {
+    if (!state.changedSegmentIds?.length) return;
+    const t = setTimeout(() => onChange({ changedSegmentIds: [] }), 1500);
+    return () => clearTimeout(t);
+  }, [state.changedSegmentIds]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // Ref для функции фокуса первой незаполненной диагонали
   const focusDiagonalRef = React.useRef<(() => void) | null>(null);
 
@@ -89,6 +96,7 @@ export default function DrawingTab({ state, onChange }: Props) {
               );
 
               // Пересчитываем lengthCm у соседних сегментов (те, что касаются fromId)
+              const autoRecalcIds: string[] = [];
               const updatedSegments = newSegments.map(s => {
                 if (s.id === id) return s; // изменённый — уже обновлён
                 if (s.fromId !== seg.fromId && s.toId !== seg.fromId) return s; // не касается
@@ -96,11 +104,12 @@ export default function DrawingTab({ state, onChange }: Props) {
                 const b = newPoints.find(p => p.id === s.toId);
                 if (!a || !b) return s;
                 const px = distPx(a, b);
+                autoRecalcIds.push(s.id);
                 return { ...s, lengthCm: Math.round((px / baseScale!) * 10) / 10 };
               });
 
               const newDiags = buildAutoDiagonals(newPoints, diagonals, baseScale);
-              onChange({ points: newPoints, segments: updatedSegments, diagonals: newDiags, baseScale, changedSegmentIds: [] });
+              onChange({ points: newPoints, segments: updatedSegments, diagonals: newDiags, baseScale, changedSegmentIds: autoRecalcIds });
               return;
             }
           }

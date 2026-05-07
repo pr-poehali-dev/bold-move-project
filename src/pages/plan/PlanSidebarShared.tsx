@@ -51,7 +51,7 @@ export function Section({
 // ─── Строка длины ─────────────────────────────────────────────────────────────
 export function LengthRow({
   label, valueCm, placeholder, visible,
-  onValueChange, onVisibilityToggle, onDelete, onFocus, onEnterNext, inputRef, autoFocus, highlighted,
+  onValueChange, onVisibilityToggle, onDelete, onFocus, onEnterNext, inputRef, autoFocus, highlighted, autoRecalc,
 }: {
   label: string; valueCm: number | null; placeholder?: string;
   visible: boolean;
@@ -63,9 +63,22 @@ export function LengthRow({
   inputRef?: React.RefObject<HTMLInputElement>;
   autoFocus?: boolean;
   highlighted?: boolean;
+  autoRecalc?: boolean;
 }) {
   const localRef = React.useRef<HTMLInputElement>(null);
   const ref = inputRef ?? localRef;
+
+  // Мигание при автопересчёте
+  const [flash, setFlash] = React.useState(false);
+  const prevAutoRecalc = React.useRef(autoRecalc);
+  React.useEffect(() => {
+    if (autoRecalc && !prevAutoRecalc.current) {
+      setFlash(true);
+      const t = setTimeout(() => setFlash(false), 1500);
+      return () => clearTimeout(t);
+    }
+    prevAutoRecalc.current = autoRecalc;
+  }, [autoRecalc]);
 
   // Автофокус при появлении
   const didAutoFocus = React.useRef(false);
@@ -91,8 +104,20 @@ export function LengthRow({
     onValueChange(v !== null && !isNaN(v) ? v : null);
   };
 
+  const rowCls = flash
+    ? "bg-yellow-500/15 ring-1 ring-yellow-500/40"
+    : highlighted
+      ? "bg-rose-500/10"
+      : "hover:bg-white/[0.03]";
+
+  const inputCls = flash
+    ? "border-yellow-400/60 text-yellow-200"
+    : highlighted
+      ? "border-rose-500/50 text-rose-300"
+      : "border-white/[0.08] text-white focus:border-white/30";
+
   return (
-    <div className={`flex items-center gap-1.5 py-1.5 rounded-lg px-1.5 transition-colors ${highlighted ? "bg-rose-500/10" : "hover:bg-white/[0.03]"}`}>
+    <div className={`flex items-center gap-1.5 py-1.5 rounded-lg px-1.5 transition-all duration-300 ${rowCls}`}>
       <span className="w-10 text-[11px] font-mono font-bold text-white/50 shrink-0">{label}</span>
       <input
         ref={ref}
@@ -114,7 +139,7 @@ export function LengthRow({
             }
           }
         }}
-        className={`flex-1 bg-white/[0.06] border rounded-lg px-2 py-1.5 text-[11px] font-mono focus:outline-none focus:bg-white/[0.08] transition min-w-0 ${highlighted ? "border-rose-500/50 text-rose-300" : "border-white/[0.08] text-white focus:border-white/30"}`}
+        className={`flex-1 bg-white/[0.06] border rounded-lg px-2 py-1.5 text-[11px] font-mono focus:outline-none focus:bg-white/[0.08] transition min-w-0 ${inputCls}`}
       />
       <span className="text-[9px] text-white/25 shrink-0">см</span>
       <button onClick={onVisibilityToggle} className="p-1 rounded hover:bg-white/10 transition shrink-0" title="Показать/скрыть">

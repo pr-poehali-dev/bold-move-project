@@ -58,13 +58,14 @@ export function renderPoints(ctx: RenderContext, handlers: SegmentHandlers) {
 // ── Рендер отрезков (зоны клика) ─────────────────────────────────────────────
 
 export function renderSegments(ctx: RenderContext, handlers: Pick<SegmentHandlers, "onSegmentClick" | "onSegmentCtxMenu">) {
-  const { points, segments, tool, selectedSegmentId, intersectingSegIds } = ctx;
+  const { points, segments, tool, selectedSegmentId, intersectingSegIds, changedSegmentIds } = ctx;
   return segments.map(seg => {
     const a = points.find(p => p.id === seg.fromId);
     const b = points.find(p => p.id === seg.toId);
     if (!a || !b) return null;
     const isSel = seg.id === selectedSegmentId;
     const isIntersecting = intersectingSegIds?.includes(seg.id);
+    const isChanged = changedSegmentIds?.includes(seg.id);
     return (
       <g key={seg.id}>
         <line x1={a.x} y1={a.y} x2={b.x} y2={b.y} stroke="transparent" strokeWidth={20}
@@ -72,6 +73,7 @@ export function renderSegments(ctx: RenderContext, handlers: Pick<SegmentHandler
           onClick={e => handlers.onSegmentClick(e, seg.id)}
           onContextMenu={e => handlers.onSegmentCtxMenu(e, seg.id)}
         />
+        {isChanged && <line x1={a.x} y1={a.y} x2={b.x} y2={b.y} stroke="#facc15" strokeWidth={3} opacity={0.9} className="pointer-events-none seg-recalc-flash" />}
         {isIntersecting && <line x1={a.x} y1={a.y} x2={b.x} y2={b.y} stroke="#f87171" strokeWidth={2.5} opacity={0.8} className="pointer-events-none" />}
         {isSel && <line x1={a.x} y1={a.y} x2={b.x} y2={b.y} stroke="#c4b5fd" strokeWidth={3} strokeDasharray="6 3" className="pointer-events-none" />}
       </g>

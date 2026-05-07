@@ -24,6 +24,7 @@ export interface RenderContext {
   selectedArcId: string | null;
   selectedDimLineId: string | null;
   intersectingSegIds: string[];
+  changedSegmentIds: string[];
   ghost: { x: number; y: number; willClose: boolean } | null;
   dimLineFrom: string | null;
   zoom: number;
