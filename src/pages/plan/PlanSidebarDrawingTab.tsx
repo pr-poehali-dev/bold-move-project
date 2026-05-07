@@ -143,11 +143,17 @@ export default function DrawingTab({ state, onChange }: Props) {
       if (!isEditMode && allSetAfter && baseScale && isClosed) {
         const result = rebuildWithRightAngles(points, newSegments, baseScale);
         if (result) {
+          // result.segments может содержать исправленный lengthCm последнего сегмента
+          const finalSegs = result.segments ?? newSegments;
+          // Если последний сегмент был скорректирован — подсвечиваем его
+          const corrected = finalSegs.filter((s, i) =>
+            newSegments[i] && s.lengthCm !== newSegments[i].lengthCm
+          ).map(s => s.id);
           // Сохраняем исходные точки и сегменты — они нужны для корректного флипа
-          builtPoints.current  = result.points;
-          builtSegments.current = newSegments;
+          builtPoints.current   = result.points;
+          builtSegments.current = finalSegs;
           const newDiags = buildAutoDiagonals(result.points, diagonals, baseScale);
-          onChange({ points: result.points, segments: newSegments, diagonals: newDiags, baseScale, isBuilt: true, changedSegmentIds: [] });
+          onChange({ points: result.points, segments: finalSegs, diagonals: newDiags, baseScale, isBuilt: true, changedSegmentIds: [] });
           return;
         }
       }

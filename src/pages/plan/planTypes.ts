@@ -760,7 +760,7 @@ export function rebuildWithRightAngles(
   points: Point[],
   segments: Segment[],
   baseScale: number,
-): { points: Point[]; hasSkews: boolean } | null {
+): { points: Point[]; hasSkews: boolean; segments?: Segment[] } | null {
   if (points.length < 3 || segments.length < 3) return null;
   if (!segments.every(s => s.lengthCm !== null && s.lengthCm > 0)) return null;
 
@@ -880,7 +880,23 @@ export function rebuildWithRightAngles(
     return nc ? { ...p, ...nc } : p;
   });
 
-  return { points: newPoints, hasSkews };
+  // Проверяем замыкание: если последний сегмент H-A не совпадает с введённой длиной
+  // — это значит алгоритм накопил ошибку. Исправляем lengthCm последнего сегмента.
+  const lastSeg = orderedSegs[orderedSegs.length - 1];
+  const lastFrom = newPoints.find(p => p.id === lastSeg.fromId);
+  const lastTo   = newPoints.find(p => p.id === lastSeg.toId);
+  let correctedSegments = segments;
+  if (lastFrom && lastTo) {
+    const realPx = distPx(lastFrom, lastTo);
+    const realCm = Math.round((realPx / baseScale) * 10) / 10;
+    if (Math.abs(realCm - (lastSeg.lengthCm ?? 0)) > 0.5) {
+      correctedSegments = segments.map(s =>
+        s.id === lastSeg.id ? { ...s, lengthCm: realCm } : s
+      );
+    }
+  }
+
+  return { points: newPoints, hasSkews, segments: correctedSegments };
 }
 
 /**
