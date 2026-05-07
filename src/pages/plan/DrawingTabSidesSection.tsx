@@ -64,8 +64,8 @@ export default function DrawingTabSidesSection({
                   visible={seg.showLength}
                   inputRef={inputRefs.current[idx]}
                   autoFocus={idx === 0 && isClosed}
-                  highlighted={state.changedSegmentIds?.includes(seg.id)}
-                  autoRecalc={state.changedSegmentIds?.includes(seg.id)}
+                  highlighted={!!state.isBuilt && (state.changedSegmentIds?.includes(seg.id) ?? false)}
+                  autoRecalc={!!state.isBuilt && (state.changedSegmentIds?.includes(seg.id) ?? false)}
                   onValueChange={v => updateSegment(seg.id, { lengthCm: v })}
                   onVisibilityToggle={() => updateSegment(seg.id, { showLength: !seg.showLength })}
                   onFlipDirection={() => onFlipSegment(seg.id)}
@@ -73,7 +73,10 @@ export default function DrawingTabSidesSection({
                   onFocus={() => {
                     onChange({
                       activeInputIndex: idx,
-                      changedSegmentIds: (state.changedSegmentIds ?? []).filter(id => id !== seg.id),
+                      // В режиме построения — всегда чисто. В режиме редактирования — убираем только этот сегмент.
+                      changedSegmentIds: state.isBuilt
+                        ? (state.changedSegmentIds ?? []).filter(id => id !== seg.id)
+                        : [],
                     });
                   }}
                   onEnterNext={idx < segments.length - 1 ? () => focusNext(idx) : undefined}
