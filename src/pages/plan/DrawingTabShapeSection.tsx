@@ -1,6 +1,6 @@
 import React from "react";
 import type { PlanState, RoomParams } from "./planTypes";
-import { polygonArea, polygonPerimeter, calcScale } from "./planTypes";
+import { calcScale } from "./planTypes";
 import { Section } from "./PlanSidebarShared";
 
 interface Props {
@@ -13,12 +13,11 @@ interface Props {
 
 const lbl10 = "block text-[10px] font-bold uppercase tracking-widest text-white/25 mb-1";
 
-export default function DrawingTabShapeSection({ state, onChange, displayPerimM, areaM2, updateRoom }: Props) {
-  const { points, isClosed, room } = state;
+export default function DrawingTabShapeSection({ state, displayPerimM, areaM2, updateRoom }: Props) {
+  const { points, room } = state;
 
   return (
     <Section title="Фигура" icon="Pentagon" iconColor="#a78bfa" defaultOpen={false}>
-      {/* Активная фигура */}
       <div className="mb-3">
         <label className={lbl10}>Активная фигура</label>
         <input value={room.name}
@@ -27,8 +26,7 @@ export default function DrawingTabShapeSection({ state, onChange, displayPerimM,
         />
       </div>
 
-      {/* Статистика */}
-      <div className="grid grid-cols-3 gap-1.5 mb-3">
+      <div className="grid grid-cols-3 gap-1.5">
         {([
           ["Периметр", displayPerimM ? `${displayPerimM} м` : "—", "#60a5fa"],
           ["Площадь",  areaM2 ? `${areaM2} м²` : "—", "#34d399"],
@@ -40,45 +38,6 @@ export default function DrawingTabShapeSection({ state, onChange, displayPerimM,
           </div>
         ))}
       </div>
-
-      {/* Параметры помещения */}
-      <div className="space-y-2.5">
-        <div className="grid grid-cols-2 gap-2">
-          <div>
-            <label className={lbl10}>Высота от пола до чернового потолка, см</label>
-            <input type="number" min={100} max={500} step={1}
-              value={room.floorToCeilCm ?? ""}
-              placeholder="—"
-              onChange={e => updateRoom({ floorToCeilCm: e.target.value ? Number(e.target.value) : null })}
-              className="w-full bg-white/[0.06] border border-white/[0.1] rounded-xl px-2 py-2 text-[12px] text-white focus:outline-none focus:border-violet-500/50 transition"
-            />
-          </div>
-          <div>
-            <label className={lbl10}>Мансардный потолок</label>
-            <button
-              onClick={() => updateRoom({ mansardCeiling: !room.mansardCeiling })}
-              className={`w-full py-2 px-3 rounded-xl text-[12px] font-semibold border transition ${
-                room.mansardCeiling
-                  ? "bg-violet-500/20 border-violet-500/40 text-violet-300"
-                  : "bg-white/[0.05] border-white/[0.1] text-white/40"
-              }`}
-            >
-              {room.mansardCeiling ? "Да" : "Нет"}
-            </button>
-          </div>
-        </div>
-        <div>
-          <label className={lbl10}>Опуск от бетона, мм</label>
-          <input type="number" min={0} max={500} step={1}
-            value={room.concreteDipMm ?? ""}
-            placeholder="—"
-            onChange={e => updateRoom({ concreteDipMm: e.target.value ? Number(e.target.value) : null })}
-            className="w-full bg-white/[0.06] border border-white/[0.1] rounded-xl px-2 py-2 text-[12px] text-white focus:outline-none focus:border-violet-500/50 transition"
-          />
-        </div>
-      </div>
-
-
     </Section>
   );
 }
