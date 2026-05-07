@@ -674,20 +674,36 @@ export function rebuildFromAnglesAndLengths(
   const newCoords = new Map<string, { x: number; y: number }>();
   newCoords.set(chain[0], { x: p0.x, y: p0.y });
 
+  // Строим точки вперёд по цепочке (все кроме последнего замыкающего сегмента)
   for (let i = 0; i < chain.length - 1; i++) {
     const toId = chain[i + 1];
     const s = orderedSegs[i];
     const curFrom = newCoords.get(chain[i])!;
-
-    // Направление из ОРИГИНАЛЬНЫХ точек
     const oFrom = points.find(p => p.id === s.fromId)!;
     const oTo   = points.find(p => p.id === s.toId)!;
     const oLen  = distPx(oFrom, oTo);
     const ux = oLen > 0 ? (oTo.x - oFrom.x) / oLen : 0;
     const uy = oLen > 0 ? (oTo.y - oFrom.y) / oLen : 0;
-
     const targetPx = s.lengthCm! * scale;
     newCoords.set(toId, { x: curFrom.x + ux * targetPx, y: curFrom.y + uy * targetPx });
+  }
+  // Последний сегмент (замыкающий, например D-A): строим предпоследнюю точку
+  // через обратное направление от A
+  {
+    const lastSeg = orderedSegs[chain.length - 1]; // D-A
+    const secondLast = chain[chain.length - 1];     // D
+    if (!newCoords.has(secondLast)) {
+      // D = A - direction(D→A) * lengthCm
+      const oFrom = points.find(p => p.id === lastSeg.fromId)!; // D orig
+      const oTo   = points.find(p => p.id === lastSeg.toId)!;   // A orig
+      const oLen  = distPx(oFrom, oTo);
+      // Направление D→A в оригинале, берём обратное A→D
+      const ux = oLen > 0 ? (oFrom.x - oTo.x) / oLen : 0;
+      const uy = oLen > 0 ? (oFrom.y - oTo.y) / oLen : 0;
+      const targetPx = lastSeg.lengthCm! * scale;
+      const aCoord = newCoords.get(chain[0])!;
+      newCoords.set(secondLast, { x: aCoord.x + ux * targetPx, y: aCoord.y + uy * targetPx });
+    }
   }
 
   const newPoints = points.map(p => {
