@@ -222,14 +222,7 @@ function MobileToolbar(props: Props) {
         </button>
       </div>
 
-      {phase !== "draw" && isClosed && (
-        <div className={`mx-2 mb-2 flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold border ${
-          phase === "lengths" ? "bg-white/10 border-white/20 text-white" : "bg-white/[0.07] border-white/[0.12] text-white/70"
-        }`}>
-          <Icon name={phase === "lengths" ? "Ruler" : "Angle"} size={13} />
-          {phase === "lengths" ? "Введи длины сторон →" : "Введи углы →"}
-        </div>
-      )}
+
     </div>
   );
 }
