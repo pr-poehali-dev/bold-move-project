@@ -219,7 +219,7 @@ export default function PlanPage() {
   const handleLoad = useCallback(async (planId: number) => {
     if (!token) return;
     const loaded = await storage.load(planId, token);
-    if (loaded) reset(loaded);
+    if (loaded) reset({ ...loaded, changedSegmentIds: [] });
   }, [token, storage, reset]);
 
   const handleDelete = useCallback(async (planId: number) => {
