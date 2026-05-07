@@ -46,7 +46,7 @@ const TOOLS: ToolDef[] = [
   { id: "diagonal", icon: "ArrowUpRight",  label: "Диагонали",   shortcut: "G",  comingSoon: true },
   { id: "arc",      icon: "Spline",        label: "Дуги",        shortcut: "A",  comingSoon: true },
   { id: "dimline",  icon: "Ruler",         label: "Размеры",     shortcut: "R",  comingSoon: true },
-  { id: "ruler",    icon: "ScanLine",      label: "Линейка",     shortcut: "",   comingSoon: true },
+
   { id: "delete",   icon: "Trash2",        label: "Удалить",     shortcut: "X",  comingSoon: true, danger: true },
 ];
 
