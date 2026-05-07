@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import type { PlanState, Segment, DiagonalDef } from "./planTypes";
 import { segmentLabel, pointLabel, angleDeg, polygonOrientation, distPx, calcScale, pxToCm } from "./planTypes";
 
-export const PANEL_WIDTH = 128;
+export const PANEL_WIDTH = 80;
 
 type Tab = "sides" | "diagonals" | "angles";
 
