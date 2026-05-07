@@ -90,7 +90,8 @@ export default function DrawingTab({ state, onChange }: Props) {
            ? srcSegments.find(s => s.id !== id && s.toId === movedPtId) : undefined));
 
     const updatedSegments = srcSegments.map(s => {
-      if (s.id === id) return s;
+      // Изменённый сегмент — берём с введённой длиной (не из srcSegments где было 400)
+      if (s.id === id) return { ...s, lengthCm: seg.lengthCm };
       if (!affectedSeg || s.id !== affectedSeg.id) return s;
       const a = newPoints.find(p => p.id === s.fromId);
       const b = newPoints.find(p => p.id === s.toId);
