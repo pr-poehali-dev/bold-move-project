@@ -134,9 +134,8 @@ export default function DrawingTab({ state, onChange }: Props) {
               });
 
               const newDiags = buildAutoDiagonals(newPoints, diagonals, baseScale);
-              // Убираем текущий сегмент из подсветки, добавляем пересчитанные соседи
-              const finalChangedIds = [...cleanedChangedIds.filter(cid => !autoRecalcIds.includes(cid)), ...autoRecalcIds];
-              onChange({ points: newPoints, segments: updatedSegments, diagonals: newDiags, baseScale, changedSegmentIds: finalChangedIds });
+              // Только авто-пересчитанные соседи. Никаких старых ID.
+              onChange({ points: newPoints, segments: updatedSegments, diagonals: newDiags, baseScale, changedSegmentIds: autoRecalcIds });
               return;
             }
           }
