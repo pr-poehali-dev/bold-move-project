@@ -334,7 +334,9 @@ export function InlineDimLabels({ state, onChange }: InlineDimProps) {
         const ly = mid.y + ny * off;
 
         const lenCm = seg.lengthCm ?? null;
-        const displayText = lenCm !== null ? `${lenCm} см` : "—";
+        // Не показываем метку если размер не введён
+        if (lenCm === null) return null;
+        const displayText = `${lenCm} см`;
 
         const isEditing = editingId === seg.id;
 
