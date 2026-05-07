@@ -34,10 +34,11 @@ export default function DrawingTab({ state, onChange }: Props) {
 
   const updateSegment = (id: string, patch: Partial<Segment>) => {
     const newSegments = segments.map(s => s.id === id ? { ...s, ...patch } : s);
+
     if (patch.lengthCm !== undefined && patch.lengthCm !== null && patch.lengthCm > 0) {
-      // Используем существующий baseScale (он отражает масштаб холста)
-      // Если ещё не задан — вычисляем из изменённой стороны как начальный
       let baseScale = state.baseScale ?? null;
+
+      // Вычисляем baseScale из текущего сегмента если ещё нет
       if (!baseScale) {
         const seg = segments.find(s => s.id === id);
         if (seg) {
@@ -49,28 +50,70 @@ export default function DrawingTab({ state, onChange }: Props) {
           }
         }
       }
-      // Если все стороны заполнены и есть baseScale — полностью перестраиваем фигуру
-      // с точными 90° для прямых углов. Это единственный способ избежать накопленной погрешности.
-      const allSet = newSegments.every(s => s.lengthCm !== null && s.lengthCm > 0);
-      if (baseScale && isClosed && allSet) {
+
+      const allSetBefore = segments.every(s => s.lengthCm !== null && s.lengthCm > 0);
+      const allSetAfter  = newSegments.every(s => s.lengthCm !== null && s.lengthCm > 0);
+
+      // ── РЕЖИМ ПОСТРОЕНИЯ: все стороны только что заполнены впервые ──────────
+      // Перестраиваем фигуру с точными 90° (один раз при завершении ввода)
+      if (!allSetBefore && allSetAfter && baseScale && isClosed) {
         const result = rebuildWithRightAngles(points, newSegments, baseScale);
         if (result) {
           const newDiags = buildAutoDiagonals(result.points, diagonals, baseScale);
-          onChange({
-            points: result.points,
-            segments: newSegments,
-            diagonals: newDiags,
-            baseScale,
-            changedSegmentIds: [],
-          });
+          onChange({ points: result.points, segments: newSegments, diagonals: newDiags, baseScale, changedSegmentIds: [] });
           return;
         }
       }
-      // Если не все стороны ещё введены — просто сохраняем lengthCm без движения точек
+
+      // ── РЕЖИМ РЕДАКТИРОВАНИЯ: все стороны уже были заполнены ────────────────
+      // Двигаем fromId изменённого сегмента вдоль toId→fromId на новую длину.
+      // Соседние сегменты (где fromId участвует) — пересчитываем lengthCm автоматически.
+      // Остальные — не трогаем.
+      if (allSetBefore && baseScale && isClosed) {
+        const seg = segments.find(s => s.id === id);
+        if (seg && patch.lengthCm) {
+          const toPoint   = points.find(p => p.id === seg.toId);   // фиксирован
+          const fromPoint = points.find(p => p.id === seg.fromId); // двигается
+          if (toPoint && fromPoint) {
+            const origLen = distPx(toPoint, fromPoint);
+            if (origLen > 0) {
+              // Направление toId → fromId (по часовой: fromId — это "С" в B-C)
+              const ux = (fromPoint.x - toPoint.x) / origLen;
+              const uy = (fromPoint.y - toPoint.y) / origLen;
+              const newLenPx = patch.lengthCm * baseScale;
+              const newFromCoord = { x: toPoint.x + ux * newLenPx, y: toPoint.y + uy * newLenPx };
+
+              // Обновляем координату fromId
+              const newPoints = points.map(p =>
+                p.id === seg.fromId ? { ...p, ...newFromCoord } : p
+              );
+
+              // Пересчитываем lengthCm у соседних сегментов (те, что касаются fromId)
+              const updatedSegments = newSegments.map(s => {
+                if (s.id === id) return s; // изменённый — уже обновлён
+                if (s.fromId !== seg.fromId && s.toId !== seg.fromId) return s; // не касается
+                const a = newPoints.find(p => p.id === s.fromId);
+                const b = newPoints.find(p => p.id === s.toId);
+                if (!a || !b) return s;
+                const px = distPx(a, b);
+                return { ...s, lengthCm: Math.round((px / baseScale!) * 10) / 10 };
+              });
+
+              const newDiags = buildAutoDiagonals(newPoints, diagonals, baseScale);
+              onChange({ points: newPoints, segments: updatedSegments, diagonals: newDiags, baseScale, changedSegmentIds: [] });
+              return;
+            }
+          }
+        }
+      }
+
+      // ── Режим построения: не все стороны ещё введены ────────────────────────
+      // Просто сохраняем lengthCm, точки не двигаем
       const newDiags = buildAutoDiagonals(points, diagonals, baseScale);
       onChange({ segments: newSegments, diagonals: newDiags, baseScale: baseScale ?? undefined, changedSegmentIds: [] });
       return;
     }
+
     onChange({ segments: newSegments });
   };
 
