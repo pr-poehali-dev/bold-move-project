@@ -69,37 +69,46 @@ export default function DrawingTab({ state, onChange }: Props) {
       return s;
     });
 
-    // Rebuild восстановленной фигуры с прямыми углами
+    // Rebuild восстановленной фигуры с прямыми углами.
+    // rebuildWithRightAngles строит фигуру начиная с points[0] (A) по часовой.
+    // При флипе нам нужно чтобы фиксированной точкой был toId (C для B-C).
+    // Для этого передаём chain начиная с toId — rebuild начнёт строить от C.
+    // Реализуем через обратный rebuild: передаём сегменты в обратном порядке
+    // и начинаем цепочку от fixedPtId.
+
+    // Простой подход: используем rebuilt как есть — он уже построил B-C=300
+    // начиная от A→B→C→D→A. При этом B и C уже на правильных местах.
+    // Нам нужен rebuild начиная от C (toId) чтобы C осталась на месте, а B двигалась.
+    // Для этого просто сдвигаем всю фигуру так чтобы C совпала с оригинальной C.
+
+    // Шаг 1: rebuild от points[0] → получаем выровненную фигуру
     const rebuilt = rebuildWithRightAngles(points, restoredSegments, baseScale);
-    const basePoints = rebuilt ? rebuilt.points : points;
-    const baseSegs   = restoredSegments;
+    if (!rebuilt) return;
 
-    // Применяем изменение с новым направлением от восстановленной фигуры
-    const fixedPtId = isFlipped ? seg.toId   : seg.fromId;
-    const movedPtId = isFlipped ? seg.fromId : seg.toId;
-    const fixedPoint = basePoints.find(p => p.id === fixedPtId);
-    const movedPoint = basePoints.find(p => p.id === movedPtId);
-    if (!fixedPoint || !movedPoint) return;
+    // Шаг 2: определяем смещение — хотим зафиксировать toId (C) на месте
+    const fixedPtId = isFlipped ? seg.toId : seg.fromId; // C при флипе
+    const movedPtId = isFlipped ? seg.fromId : seg.toId; // B при флипе
 
-    const origLen = distPx(fixedPoint, movedPoint);
-    if (origLen === 0) return;
-    const ux = (movedPoint.x - fixedPoint.x) / origLen;
-    const uy = (movedPoint.y - fixedPoint.y) / origLen;
-    const newLenPx = seg.lengthCm * baseScale;
-    const newMovedCoord = { x: fixedPoint.x + ux * newLenPx, y: fixedPoint.y + uy * newLenPx };
-    const newPoints = basePoints.map(p => p.id === movedPtId ? { ...p, ...newMovedCoord } : p);
+    const origFixed  = points.find(p => p.id === fixedPtId);      // C до редактирования
+    const builtFixed = rebuilt.points.find(p => p.id === fixedPtId); // C после rebuild
+    if (!origFixed || !builtFixed) return;
 
-    // Пересчитываем соседний сегмент
+    // Сдвигаем всю rebuilt фигуру так чтобы C оказалась там где была до редактирования
+    const dx = origFixed.x - builtFixed.x;
+    const dy = origFixed.y - builtFixed.y;
+    const newPoints = rebuilt.points.map(p => ({ ...p, x: p.x + dx, y: p.y + dy }));
+
+    // Пересчитываем соседний сегмент (тот где movedPtId участвует)
     const autoRecalcIds: string[] = [];
     const affectedSeg = isFlipped
-      ? (baseSegs.find(s => s.id !== id && s.toId   === movedPtId) ??
-         (baseSegs.every(s => s.id === id || s.toId !== movedPtId)
-           ? baseSegs.find(s => s.id !== id && s.fromId === movedPtId) : undefined))
-      : (baseSegs.find(s => s.id !== id && s.fromId === movedPtId) ??
-         (baseSegs.every(s => s.id === id || s.fromId !== movedPtId)
-           ? baseSegs.find(s => s.id !== id && s.toId === movedPtId) : undefined));
+      ? (restoredSegments.find(s => s.id !== id && s.toId   === movedPtId) ??
+         (restoredSegments.every(s => s.id === id || s.toId !== movedPtId)
+           ? restoredSegments.find(s => s.id !== id && s.fromId === movedPtId) : undefined))
+      : (restoredSegments.find(s => s.id !== id && s.fromId === movedPtId) ??
+         (restoredSegments.every(s => s.id === id || s.fromId !== movedPtId)
+           ? restoredSegments.find(s => s.id !== id && s.toId === movedPtId) : undefined));
 
-    const updatedSegments = baseSegs.map(s => {
+    const updatedSegments = restoredSegments.map(s => {
       if (s.id === id) return s;
       if (!affectedSeg || s.id !== affectedSeg.id) return s;
       const a = newPoints.find(p => p.id === s.fromId);
