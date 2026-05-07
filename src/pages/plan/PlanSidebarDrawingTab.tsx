@@ -38,7 +38,9 @@ export default function DrawingTab({ state, onChange }: Props) {
       flippedSegIds.current.add(id);
     }
 
-    // Немедленно пересчитываем с новым направлением
+    // Немедленно пересчитываем с новым направлением.
+    // Алгоритм: сначала восстанавливаем фигуру с прямыми углами (все стороны текущие),
+    // потом применяем изменение в новом направлении.
     if (!state.isBuilt || !state.baseScale || !isClosed) return;
     const seg = segments.find(s => s.id === id);
     if (!seg || !seg.lengthCm) return;
@@ -46,52 +48,26 @@ export default function DrawingTab({ state, onChange }: Props) {
     const isFlipped = flippedSegIds.current.has(id);
     const baseScale = state.baseScale;
 
-    // Определяем фиксированную и двигающуюся точку
+    // Шаг 1: восстанавливаем прямоугольную фигуру из текущих lengthCm
+    const rebuilt = rebuildWithRightAngles(points, segments, baseScale);
+    const basePoints = rebuilt ? rebuilt.points : points;
+
+    // Шаг 2: от восстановленной фигуры применяем сдвиг в нужном направлении
     const fixedPtId = isFlipped ? seg.toId   : seg.fromId;
     const movedPtId = isFlipped ? seg.fromId : seg.toId;
-    const fixedPoint = points.find(p => p.id === fixedPtId);
-    if (!fixedPoint) return;
+    const fixedPoint = basePoints.find(p => p.id === fixedPtId);
+    const movedPoint = basePoints.find(p => p.id === movedPtId);
+    if (!fixedPoint || !movedPoint) return;
 
-    // Вычисляем новую позицию двигающейся точки.
-    // Нельзя использовать текущий вектор — он уже искажён предыдущим редактированием.
-    // Вместо этого восстанавливаем оригинальное направление сегмента:
-    // находим угол через смежный прямой сегмент (перпендикуляр к нему).
-    // Смежный прямой сегмент — тот который касается fixedPtId с другой стороны.
-    const adjacentSeg = segments.find(s => s.id !== id && (s.fromId === fixedPtId || s.toId === fixedPtId));
-    let dirX = 0, dirY = 0;
-    if (adjacentSeg) {
-      const adjFrom = points.find(p => p.id === adjacentSeg.fromId);
-      const adjTo   = points.find(p => p.id === adjacentSeg.toId);
-      if (adjFrom && adjTo) {
-        const adjLen = distPx(adjFrom, adjTo);
-        if (adjLen > 0) {
-          // Направление вдоль смежного сегмента
-          const adjDx = (adjTo.x - adjFrom.x) / adjLen;
-          const adjDy = (adjTo.y - adjFrom.y) / adjLen;
-          // Перпендикуляр к нему (90° поворот) — это направление нашего сегмента
-          // Выбираем правильный перпендикуляр исходя из ориентации полигона
-          const isCW = polygonOrientation(points) > 0;
-          dirX = isCW ?  adjDy : -adjDy;
-          dirY = isCW ? -adjDx :  adjDx;
-        }
-      }
-    }
-
-    // Если не удалось определить направление — используем текущий вектор
-    if (dirX === 0 && dirY === 0) {
-      const movedPoint = points.find(p => p.id === movedPtId);
-      if (!movedPoint) return;
-      const d = distPx(fixedPoint, movedPoint);
-      if (d === 0) return;
-      dirX = (movedPoint.x - fixedPoint.x) / d;
-      dirY = (movedPoint.y - fixedPoint.y) / d;
-    }
-
+    const origLen = distPx(fixedPoint, movedPoint);
+    if (origLen === 0) return;
+    const ux = (movedPoint.x - fixedPoint.x) / origLen;
+    const uy = (movedPoint.y - fixedPoint.y) / origLen;
     const newLenPx = seg.lengthCm * baseScale;
-    const newMovedCoord = { x: fixedPoint.x + dirX * newLenPx, y: fixedPoint.y + dirY * newLenPx };
-    const newPoints = points.map(p => p.id === movedPtId ? { ...p, ...newMovedCoord } : p);
+    const newMovedCoord = { x: fixedPoint.x + ux * newLenPx, y: fixedPoint.y + uy * newLenPx };
+    const newPoints = basePoints.map(p => p.id === movedPtId ? { ...p, ...newMovedCoord } : p);
 
-    // Пересчитываем соседний сегмент
+    // Шаг 3: пересчитываем соседний сегмент
     const autoRecalcIds: string[] = [];
     const affectedSeg = isFlipped
       ? (segments.find(s => s.id !== id && s.toId   === movedPtId) ??
