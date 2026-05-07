@@ -239,7 +239,7 @@ export default function PlanPage() {
     const w = maxX - minX || 100, h = maxY - minY || 100;
     const el = document.getElementById("plan-canvas-wrap");
     if (!el) return;
-    const PAD_LEFT = 70;  // отступ слева (с запасом для букв A, B, C...)
+    const PAD_LEFT = 90;  // отступ слева (с запасом для букв A, B, C...)
     const PAD_RIGHT = 30; // отступ справа
     const PAD_TOP = 90;   // отступ сверху
     const PAD_BOT = 50;   // отступ снизу
