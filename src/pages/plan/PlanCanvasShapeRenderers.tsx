@@ -135,11 +135,7 @@ export function renderHints(ctx: RenderContext) {
           Нажми на отрезок чтобы добавить скругление
         </text>
       )}
-      {tool === "move" && (
-        <text x={12 / zoom} y={28 / zoom} fontSize={12 / zoom} fill="rgba(255,255,255,0.2)" fontFamily="sans-serif" className="pointer-events-none select-none">
-          Зажми и тяни точку пальцем
-        </text>
-      )}
+
       {tool === "dimline" && (
         <text x={12 / zoom} y={28 / zoom} fontSize={12 / zoom} fill="rgba(167,139,250,0.6)" fontFamily="sans-serif" className="pointer-events-none select-none">
           {dimLineFrom ? "Теперь нажми вторую точку" : "Нажми первую точку размера"}
