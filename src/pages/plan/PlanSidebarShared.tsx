@@ -76,12 +76,18 @@ export function LengthRow({
   const [flash, setFlash] = React.useState(false);
   const prevAutoRecalc = React.useRef(autoRecalc);
   React.useEffect(() => {
-    if (autoRecalc && !prevAutoRecalc.current) {
+    const prev = prevAutoRecalc.current;
+    prevAutoRecalc.current = autoRecalc;
+    if (autoRecalc && !prev) {
+      // autoRecalc только что стал true → запускаем мигание
       setFlash(true);
       const t = setTimeout(() => setFlash(false), 1200);
       return () => clearTimeout(t);
     }
-    prevAutoRecalc.current = autoRecalc;
+    if (!autoRecalc) {
+      // autoRecalc сброшен → гасим flash немедленно
+      setFlash(false);
+    }
   }, [autoRecalc]);
 
   // Автофокус при появлении
