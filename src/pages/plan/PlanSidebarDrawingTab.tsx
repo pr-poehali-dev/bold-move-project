@@ -38,13 +38,83 @@ export default function DrawingTab({ state, onChange }: Props) {
       flippedSegIds.current.add(id);
     }
 
-    // Немедленно пересчитываем — просто вызываем updateSegment с тем же значением
-    // Флаг уже обновлён, updateSegment его прочитает и применит новое направление
+    // Немедленно пересчитываем с новым направлением
     if (!state.isBuilt || !state.baseScale || !isClosed) return;
     const seg = segments.find(s => s.id === id);
     if (!seg || !seg.lengthCm) return;
+
+    const isFlipped = flippedSegIds.current.has(id);
+    const baseScale = state.baseScale;
+
+    // Определяем фиксированную и двигающуюся точку
+    const fixedPtId = isFlipped ? seg.toId   : seg.fromId;
+    const movedPtId = isFlipped ? seg.fromId : seg.toId;
+    const fixedPoint = points.find(p => p.id === fixedPtId);
+    if (!fixedPoint) return;
+
+    // Вычисляем новую позицию двигающейся точки.
+    // Нельзя использовать текущий вектор — он уже искажён предыдущим редактированием.
+    // Вместо этого восстанавливаем оригинальное направление сегмента:
+    // находим угол через смежный прямой сегмент (перпендикуляр к нему).
+    // Смежный прямой сегмент — тот который касается fixedPtId с другой стороны.
+    const adjacentSeg = segments.find(s => s.id !== id && (s.fromId === fixedPtId || s.toId === fixedPtId));
+    let dirX = 0, dirY = 0;
+    if (adjacentSeg) {
+      const adjFrom = points.find(p => p.id === adjacentSeg.fromId);
+      const adjTo   = points.find(p => p.id === adjacentSeg.toId);
+      if (adjFrom && adjTo) {
+        const adjLen = distPx(adjFrom, adjTo);
+        if (adjLen > 0) {
+          // Направление вдоль смежного сегмента
+          const adjDx = (adjTo.x - adjFrom.x) / adjLen;
+          const adjDy = (adjTo.y - adjFrom.y) / adjLen;
+          // Перпендикуляр к нему (90° поворот) — это направление нашего сегмента
+          // Выбираем правильный перпендикуляр исходя из ориентации полигона
+          const isCW = polygonOrientation(points) > 0;
+          dirX = isCW ?  adjDy : -adjDy;
+          dirY = isCW ? -adjDx :  adjDx;
+        }
+      }
+    }
+
+    // Если не удалось определить направление — используем текущий вектор
+    if (dirX === 0 && dirY === 0) {
+      const movedPoint = points.find(p => p.id === movedPtId);
+      if (!movedPoint) return;
+      const d = distPx(fixedPoint, movedPoint);
+      if (d === 0) return;
+      dirX = (movedPoint.x - fixedPoint.x) / d;
+      dirY = (movedPoint.y - fixedPoint.y) / d;
+    }
+
+    const newLenPx = seg.lengthCm * baseScale;
+    const newMovedCoord = { x: fixedPoint.x + dirX * newLenPx, y: fixedPoint.y + dirY * newLenPx };
+    const newPoints = points.map(p => p.id === movedPtId ? { ...p, ...newMovedCoord } : p);
+
+    // Пересчитываем соседний сегмент
+    const autoRecalcIds: string[] = [];
+    const affectedSeg = isFlipped
+      ? (segments.find(s => s.id !== id && s.toId   === movedPtId) ??
+         (segments.every(s => s.id === id || s.toId !== movedPtId)
+           ? segments.find(s => s.id !== id && s.fromId === movedPtId) : undefined))
+      : (segments.find(s => s.id !== id && s.fromId === movedPtId) ??
+         (segments.every(s => s.id === id || s.fromId !== movedPtId)
+           ? segments.find(s => s.id !== id && s.toId === movedPtId) : undefined));
+
+    const updatedSegments = segments.map(s => {
+      if (s.id === id) return s;
+      if (!affectedSeg || s.id !== affectedSeg.id) return s;
+      const a = newPoints.find(p => p.id === s.fromId);
+      const b = newPoints.find(p => p.id === s.toId);
+      if (!a || !b) return s;
+      const px = distPx(a, b);
+      autoRecalcIds.push(s.id);
+      return { ...s, lengthCm: Math.round((px / baseScale) * 10) / 10 };
+    });
+
+    const newDiags = buildAutoDiagonals(newPoints, diagonals, baseScale);
     setLastChangedSegId(null);
-    updateSegment(id, { lengthCm: seg.lengthCm }, true);
+    onChange({ points: newPoints, segments: updatedSegments, diagonals: newDiags, changedSegmentIds: autoRecalcIds });
   };
 
   // Ref для функции фокуса первой незаполненной диагонали
