@@ -835,9 +835,12 @@ export function rebuildWithRightAngles(
     const toId = chain[i + 1];
 
     // Следующая точка в направлении dirRad на lenPx
+    // Снапим cos/sin к точным 0/±1 для осевых направлений
+    const cosD = Math.abs(Math.cos(dirRad)) < 1e-10 ? 0 : Math.cos(dirRad);
+    const sinD = Math.abs(Math.sin(dirRad)) < 1e-10 ? 0 : Math.sin(dirRad);
     newCoords.set(toId, {
-      x: fromCoord.x + Math.cos(dirRad) * lenPx,
-      y: fromCoord.y + Math.sin(dirRad) * lenPx,
+      x: fromCoord.x + cosD * lenPx,
+      y: fromCoord.y + sinD * lenPx,
     });
 
     // Поворачиваем направление для следующего сегмента
@@ -853,8 +856,15 @@ export function rebuildWithRightAngles(
         ? (isCW ? -Math.PI / 2 : Math.PI / 2)
         : (isCW ? Math.PI / 2 : -Math.PI / 2);
       dirRad += turnRad;
-      // Нормализуем
-      dirRad = Math.atan2(Math.sin(dirRad), Math.cos(dirRad));
+      // Снапим к ближайшей оси (0°, ±90°, ±180°) чтобы не накапливать float-погрешность
+      const axisDeg = [0, Math.PI / 2, Math.PI, -Math.PI / 2, -Math.PI];
+      let snapDiff = Infinity;
+      let snapVal = dirRad;
+      for (const ax of axisDeg) {
+        const diff = Math.abs(dirRad - ax);
+        if (diff < snapDiff) { snapDiff = diff; snapVal = ax; }
+      }
+      dirRad = snapVal;
     } else if (snapped === null && i < chain.length - 2) {
       // Скос: берём оригинальный вектор следующего сегмента
       const nextSeg = orderedSegs[i + 1];
