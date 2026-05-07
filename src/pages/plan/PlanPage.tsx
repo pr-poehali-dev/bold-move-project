@@ -104,6 +104,7 @@ export default function PlanPage() {
   const isMobile = useIsMobile();
 
   const [sheetOpen,      setSheetOpen]      = React.useState(false);
+  const [sheetSnap,      setSheetSnap]      = React.useState<"half"|"full">("full");
   const [sheetHeight,    setSheetHeight]    = React.useState(0);
   const [rightPanelOpen, setRightPanelOpen] = React.useState(false);
   const [exportOpen,     setExportOpen]     = React.useState(false);
@@ -394,7 +395,7 @@ export default function PlanPage() {
         {/* Мобиле: кнопка открытия панели */}
         {isMobile && !sheetOpen && (
           <button
-            onClick={() => setSheetOpen(true)}
+            onClick={() => { setSheetSnap("full"); setSheetOpen(true); }}
             className="absolute bottom-4 right-4 w-12 h-12 rounded-2xl bg-violet-600 shadow-lg shadow-violet-500/30 flex items-center justify-center text-white z-20 active:scale-95 transition-transform">
             <Icon name="PanelBottom" size={20} />
           </button>
@@ -417,6 +418,7 @@ export default function PlanPage() {
           state={state}
           onChange={handleChange}
           open={sheetOpen}
+          initialSnap={sheetSnap}
           onClose={() => { setSheetOpen(false); setSheetHeight(0); }}
           onSheetHeightChange={setSheetHeight}
         />

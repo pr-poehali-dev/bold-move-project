@@ -9,6 +9,7 @@ interface Props {
   open: boolean;
   onClose: () => void;
   onSheetHeightChange?: (heightPx: number) => void;
+  initialSnap?: SheetSnap;
 }
 
 // Высоты шита: peek (подглядывание) / half / full
@@ -18,7 +19,7 @@ const PEEK_H  = 52;   // только ручка видна
 const HALF_H  = 0.5;  // 50% экрана (доля)
 const FULL_H  = 0.92; // 92% экрана
 
-export default function PlanBottomSheet({ state, onChange, open, onClose, onSheetHeightChange }: Props) {
+export default function PlanBottomSheet({ state, onChange, open, onClose, onSheetHeightChange, initialSnap = "half" }: Props) {
   const sheetRef    = useRef<HTMLDivElement>(null);
   const dragRef     = useRef<{ startY: number; startH: number } | null>(null);
   const [snap, setSnap]   = React.useState<SheetSnap>("half");
@@ -33,11 +34,11 @@ export default function PlanBottomSheet({ state, onChange, open, onClose, onShee
     return Math.round(wh * FULL_H);
   };
 
-  // При открытии — устанавливаем half + переключаем на чертёж + фокус первого поля
+  // При открытии — устанавливаем initialSnap + переключаем на чертёж + фокус первого поля
   useEffect(() => {
     if (open) {
-      setSnap("half");
-      setHeight(snapToHeight("half"));
+      setSnap(initialSnap);
+      setHeight(snapToHeight(initialSnap));
       // Переключаем на чертёж если не там
       if (state.sidebarTab !== "drawing") {
         onChange({ sidebarTab: "drawing" });
