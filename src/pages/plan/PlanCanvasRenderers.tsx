@@ -197,11 +197,23 @@ export function renderPoints(ctx: RenderContext, handlers: SegmentHandlers) {
     selectedPointId, ghost,
   } = ctx;
   if (!showPoints) return null;
+  // Центр фигуры для определения направления меток наружу
+  const cx = points.length > 0 ? points.reduce((s, p) => s + p.x, 0) / points.length : 0;
+  const cy = points.length > 0 ? points.reduce((s, p) => s + p.y, 0) / points.length : 0;
+
   return points.map((pt, idx) => {
     const isSel = pt.id === selectedPointId;
     const isFirst = idx === 0;
     const seg = segments.find(s => s.toId === pt.id);
     const hasArc = seg ? seg.arcRadius > 0 : false;
+
+    // Направление метки — от центра фигуры наружу
+    const dx = pt.x - cx;
+    const dy = pt.y - cy;
+    const dlen = Math.sqrt(dx * dx + dy * dy) || 1;
+    const lx = pt.x + (dx / dlen) * 14;
+    const ly = pt.y + (dy / dlen) * 14;
+
     return (
       <g key={pt.id}
         style={{ cursor: tool === "move" ? "grab" : tool === "delete" ? "not-allowed" : "pointer" }}
@@ -221,7 +233,9 @@ export function renderPoints(ctx: RenderContext, handlers: SegmentHandlers) {
           fill={isSel ? "#c4b5fd" : isFirst && !isClosed ? "#34d399" : "#7c3aed"}
           stroke={isSel ? "#a78bfa" : "#4c1d95"} strokeWidth={2} />
         {showPointLabels && (
-          <text x={pt.x + 11} y={pt.y - 11} fontSize={11} fontWeight={700} fill="#e2e8f0" fontFamily="monospace" className="pointer-events-none select-none">{pointLabel(idx)}</text>
+          <text x={lx} y={ly} fontSize={11} fontWeight={700} fill="#e2e8f0" fontFamily="monospace"
+            textAnchor="middle" dominantBaseline="middle"
+            className="pointer-events-none select-none">{pointLabel(idx)}</text>
         )}
       </g>
     );
@@ -313,8 +327,9 @@ export function InlineDimLabels({ state, onChange }: InlineDimProps) {
 
         const mid = midPoint(a, b);
         const { nx, ny } = segmentNormal(a, b);
-        // Смещаем немного по нормали чтобы не перекрывать линию
-        const off = 14;
+        // Смещение по нормали: минимум 14px, но увеличиваем для коротких отрезков
+        const segLen = distPx(a, b);
+        const off = Math.max(14, 28 - segLen * 0.3);
         const lx = mid.x + nx * off;
         const ly = mid.y + ny * off;
 
