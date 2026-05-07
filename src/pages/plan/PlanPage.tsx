@@ -28,7 +28,7 @@ const NON_GEOMETRY_KEYS: (keyof import("./planTypes").PlanState)[] = [
   "settings", "tool", "phase", "sidebarTab",
   "selectedPointId", "selectedSegmentId", "selectedDiagonalId",
   "selectedArcId", "selectedDimLineId", "activeInputIndex",
-  "changedSegmentIds",
+  "changedSegmentIds", "isBuilt",
 ];
 
 function isGeometryPatch(patch: Partial<import("./planTypes").PlanState>): boolean {
@@ -219,7 +219,10 @@ export default function PlanPage() {
   const handleLoad = useCallback(async (planId: number) => {
     if (!token) return;
     const loaded = await storage.load(planId, token);
-    if (loaded) reset({ ...loaded, changedSegmentIds: [] });
+    if (loaded) {
+      const allSet = loaded.segments?.length > 0 && loaded.segments.every((s: import("./planTypes").Segment) => s.lengthCm !== null && s.lengthCm > 0);
+      reset({ ...loaded, changedSegmentIds: [], isBuilt: loaded.isBuilt ?? (!!loaded.baseScale && allSet) });
+    }
   }, [token, storage, reset]);
 
   const handleDelete = useCallback(async (planId: number) => {

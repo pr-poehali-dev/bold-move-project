@@ -107,6 +107,8 @@ export interface PlanState {
   activeInputIndex: number;
   /** Базовый масштаб px/cm, устанавливается при первом вводе длины стороны и больше не меняется */
   baseScale: number | null;
+  /** Фигура перестроена (все стороны введены и выполнен rebuild). Включает режим редактирования. */
+  isBuilt: boolean;
   /** ID сторон которые были автоматически пересчитаны при последней перестройке (для подсветки) */
   changedSegmentIds: string[];
 }
@@ -1053,5 +1055,6 @@ export const INITIAL_STATE: PlanState = {
   selectedDimLineId: null,
   activeInputIndex: 0,
   baseScale: null,
+  isBuilt: false,
   changedSegmentIds: [],
 };

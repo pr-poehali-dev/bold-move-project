@@ -66,27 +66,21 @@ export default function DrawingTab({ state, onChange }: Props) {
         }
       }
 
-      const allSetBefore = segments.every(s => s.lengthCm !== null && s.lengthCm > 0);
-      const allSetAfter  = newSegments.every(s => s.lengthCm !== null && s.lengthCm > 0);
-      // Фигура считается "перестроенной" только если baseScale был установлен ДО этого ввода
-      // (т.е. rebuild уже произошёл ранее). Это отличает режим построения от редактирования.
-      const isEditMode = allSetBefore && !!state.baseScale;
+      const allSetAfter = newSegments.every(s => s.lengthCm !== null && s.lengthCm > 0);
+      // Режим редактирования — только если rebuild уже был выполнен (isBuilt=true)
+      const isEditMode = !!state.isBuilt;
 
-      // ── РЕЖИМ ПОСТРОЕНИЯ: все стороны только что заполнены впервые ──────────
-      // Перестраиваем фигуру с точными 90° (один раз при завершении ввода)
+      // ── РЕЖИМ ПОСТРОЕНИЯ: все стороны заполнены и rebuild ещё не был ─────────
       if (!isEditMode && allSetAfter && baseScale && isClosed) {
         const result = rebuildWithRightAngles(points, newSegments, baseScale);
         if (result) {
           const newDiags = buildAutoDiagonals(result.points, diagonals, baseScale);
-          onChange({ points: result.points, segments: newSegments, diagonals: newDiags, baseScale, changedSegmentIds: [] });
+          onChange({ points: result.points, segments: newSegments, diagonals: newDiags, baseScale, isBuilt: true, changedSegmentIds: [] });
           return;
         }
       }
 
-      // ── РЕЖИМ РЕДАКТИРОВАНИЯ: фигура уже была перестроена ───────────────────
-      // Двигаем fromId изменённого сегмента вдоль toId→fromId на новую длину.
-      // Соседние сегменты (где fromId участвует) — пересчитываем lengthCm автоматически.
-      // Остальные — не трогаем.
+      // ── РЕЖИМ РЕДАКТИРОВАНИЯ: rebuild уже был, пользователь меняет сторону ───
       if (isEditMode && baseScale && isClosed) {
         const seg = segments.find(s => s.id === id);
         if (seg && patch.lengthCm) {
