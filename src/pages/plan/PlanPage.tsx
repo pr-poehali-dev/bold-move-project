@@ -28,7 +28,7 @@ const NON_GEOMETRY_KEYS: (keyof import("./planTypes").PlanState)[] = [
   "settings", "tool", "phase", "sidebarTab",
   "selectedPointId", "selectedSegmentId", "selectedDiagonalId",
   "selectedArcId", "selectedDimLineId", "activeInputIndex",
-  "changedSegmentIds", "isBuilt",
+  "changedSegmentIds",
 ];
 
 function isGeometryPatch(patch: Partial<import("./planTypes").PlanState>): boolean {

@@ -148,9 +148,9 @@ export default function DrawingTab({ state, onChange }: Props) {
       }
 
       // ── Режим построения: не все стороны ещё введены ────────────────────────
-      // Просто сохраняем lengthCm, точки не двигаем
+      // Просто сохраняем lengthCm, точки не двигаем. Подсветка всегда пуста.
       const newDiags = buildAutoDiagonals(points, diagonals, baseScale);
-      onChange({ segments: newSegments, diagonals: newDiags, baseScale: baseScale ?? undefined, changedSegmentIds: [] });
+      onChange({ segments: newSegments, diagonals: newDiags, baseScale: baseScale ?? undefined, isBuilt: false, changedSegmentIds: [] });
       return;
     }
 
