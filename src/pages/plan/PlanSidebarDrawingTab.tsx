@@ -68,10 +68,13 @@ export default function DrawingTab({ state, onChange }: Props) {
 
       const allSetBefore = segments.every(s => s.lengthCm !== null && s.lengthCm > 0);
       const allSetAfter  = newSegments.every(s => s.lengthCm !== null && s.lengthCm > 0);
+      // Фигура считается "перестроенной" только если baseScale был установлен ДО этого ввода
+      // (т.е. rebuild уже произошёл ранее). Это отличает режим построения от редактирования.
+      const isEditMode = allSetBefore && !!state.baseScale;
 
       // ── РЕЖИМ ПОСТРОЕНИЯ: все стороны только что заполнены впервые ──────────
       // Перестраиваем фигуру с точными 90° (один раз при завершении ввода)
-      if (!allSetBefore && allSetAfter && baseScale && isClosed) {
+      if (!isEditMode && allSetAfter && baseScale && isClosed) {
         const result = rebuildWithRightAngles(points, newSegments, baseScale);
         if (result) {
           const newDiags = buildAutoDiagonals(result.points, diagonals, baseScale);
@@ -80,11 +83,11 @@ export default function DrawingTab({ state, onChange }: Props) {
         }
       }
 
-      // ── РЕЖИМ РЕДАКТИРОВАНИЯ: все стороны уже были заполнены ────────────────
+      // ── РЕЖИМ РЕДАКТИРОВАНИЯ: фигура уже была перестроена ───────────────────
       // Двигаем fromId изменённого сегмента вдоль toId→fromId на новую длину.
       // Соседние сегменты (где fromId участвует) — пересчитываем lengthCm автоматически.
       // Остальные — не трогаем.
-      if (allSetBefore && baseScale && isClosed) {
+      if (isEditMode && baseScale && isClosed) {
         const seg = segments.find(s => s.id === id);
         if (seg && patch.lengthCm) {
           const isFlipped = flippedSegIds.current.has(id);
