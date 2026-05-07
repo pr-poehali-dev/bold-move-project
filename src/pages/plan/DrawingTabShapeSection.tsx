@@ -1,5 +1,4 @@
 import React from "react";
-import Icon from "@/components/ui/icon";
 import type { PlanState, RoomParams } from "./planTypes";
 import { polygonArea, polygonPerimeter, calcScale } from "./planTypes";
 import { Section } from "./PlanSidebarShared";
@@ -15,7 +14,7 @@ interface Props {
 const lbl10 = "block text-[10px] font-bold uppercase tracking-widest text-white/25 mb-1";
 
 export default function DrawingTabShapeSection({ state, onChange, displayPerimM, areaM2, updateRoom }: Props) {
-  const { points, isClosed, room, phase } = state;
+  const { points, isClosed, room } = state;
 
   return (
     <Section title="Фигура" icon="Pentagon" iconColor="#a78bfa" defaultOpen={false}>
@@ -79,32 +78,7 @@ export default function DrawingTabShapeSection({ state, onChange, displayPerimM,
         </div>
       </div>
 
-      {/* Статус */}
-      <div className={`mt-3 flex items-center gap-2 px-3 py-2 rounded-xl text-[11px] font-semibold border ${
-        isClosed
-          ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-400"
-          : "bg-amber-500/10 border-amber-500/20 text-amber-400"
-      }`}>
-        <Icon name={isClosed ? "CheckCircle2" : "Circle"} size={12} />
-        {isClosed ? "Фигура замкнута" : points.length < 3 ? `Нужно ≥3 точки (сейчас ${points.length})` : "Фигура не замкнута — кликни первую точку"}
-      </div>
 
-      {/* Фаза */}
-      {isClosed && (
-        <div className="flex gap-1.5 mt-2">
-          {(["lengths", "angles"] as const).map(p => (
-            <button key={p}
-              onClick={() => onChange({ phase: p, activeInputIndex: 0 })}
-              className={`flex-1 py-1.5 rounded-xl text-[11px] font-bold border transition ${
-                phase === p
-                  ? "bg-violet-500/20 border-violet-500/40 text-violet-300"
-                  : "bg-white/[0.03] border-white/[0.07] text-white/35 hover:bg-white/[0.07]"
-              }`}>
-              {p === "lengths" ? "Длины" : "Углы"}
-            </button>
-          ))}
-        </div>
-      )}
     </Section>
   );
 }
