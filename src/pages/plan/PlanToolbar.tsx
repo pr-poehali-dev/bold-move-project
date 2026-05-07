@@ -206,26 +206,6 @@ function MobileToolbar(props: Props) {
           );
         })}
       </div>
-      <div className="w-px h-4 bg-white/10 mx-0.5 shrink-0" />
-      {/* Функции — дропдаун */}
-      <DropUp label="" icon="SlidersHorizontal">
-        <div className="px-2 pt-1.5 pb-0.5">
-          <p className="text-[10px] text-white/30 uppercase tracking-widest font-bold">Рисование</p>
-        </div>
-        <DropItem active={settings.ortho} label="Ортогональный" icon="Axis3d"
-          onClick={() => onSettingChange({ ortho: !settings.ortho })} />
-        <DropItem active={settings.snapToPoints} label="Магнит к точкам" icon="Magnet"
-          onClick={() => onSettingChange({ snapToPoints: !settings.snapToPoints })} />
-        <div className="px-2 pt-2 pb-0.5">
-          <p className="text-[10px] text-white/30 uppercase tracking-widest font-bold">Отображение</p>
-        </div>
-        <DropItem active={settings.showGrid} label="Сетка" icon="Grid3x3"
-          onClick={() => onSettingChange({ showGrid: !settings.showGrid })} />
-        <DropItem active={settings.showPoints} label="Точки" icon="CircleDot"
-          onClick={() => onSettingChange({ showPoints: !settings.showPoints })} />
-        <DropItem active={settings.showSegmentLabels} label="Подписи A-B" icon="Type"
-          onClick={() => onSettingChange({ showSegmentLabels: !settings.showSegmentLabels })} />
-      </DropUp>
     </div>
   );
 }

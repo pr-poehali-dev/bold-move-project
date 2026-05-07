@@ -66,6 +66,7 @@ export default function PlanCanvas({ state, onChange }: Props) {
         ctxMenu={cs.ctxMenu}
         onCloseCtxMenu={() => cs.setCtxMenu(null)}
         lpIndicator={cs.lpIndicator}
+        onSettingChange={patch => onChange({ settings: { ...state.settings, ...patch } })}
       />
     </div>
   );
