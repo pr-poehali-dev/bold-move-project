@@ -10,16 +10,21 @@ interface Props {
   updateDiagonal: (id: string, patch: Partial<DiagonalDef>) => void;
   updateSettings: (patch: Partial<PlanSettings>) => void;
   focusDiagonalRef?: React.MutableRefObject<(() => void) | null>;
+  autoOpen?: boolean;
 }
 
 const lbl10 = "block text-[10px] font-bold uppercase tracking-widest text-white/25 mb-1";
 
-export default function DrawingTabDiagonalsSection({ state, onChange, updateDiagonal, updateSettings, focusDiagonalRef }: Props) {
+export default function DrawingTabDiagonalsSection({ state, onChange, updateDiagonal, updateSettings, focusDiagonalRef, autoOpen }: Props) {
   const { points, diagonals, isClosed, settings } = state;
   const scale = calcScale(points, state.segments);
   const [addDiagFrom, setAddDiagFrom] = React.useState("");
   const [addDiagTo, setAddDiagTo]     = React.useState("");
   const [forceOpen, setForceOpen]     = React.useState(false);
+
+  React.useEffect(() => {
+    if (autoOpen) setForceOpen(true);
+  }, [autoOpen]);
 
   // Refs для полей ввода диагоналей
   const diagInputRefs = React.useRef<React.RefObject<HTMLInputElement>[]>([]);

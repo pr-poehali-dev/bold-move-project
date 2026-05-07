@@ -1,7 +1,8 @@
 import React from "react";
 import type { PlanState, Segment, DiagonalDef, PlanSettings, RoomParams } from "./planTypes";
 import {
-  distPx, calcScale, polygonArea, polygonPerimeter, buildAutoDiagonals, rebuildFromAnglesAndLengths,
+  distPx, calcScale, polygonArea, polygonPerimeter, buildAutoDiagonals, rebuildFromAnglesAndLengths, rebuildWithRightAngles,
+  angleDeg, polygonOrientation,
 } from "./planTypes";
 import DrawingTabShapeSection from "./DrawingTabShapeSection";
 import DrawingTabSidesSection from "./DrawingTabSidesSection";
@@ -48,29 +49,24 @@ export default function DrawingTab({ state, onChange }: Props) {
           }
         }
       }
-      // Если baseScale известен — двигаем fromId изменённого сегмента по направлению сегмента
-      // на новую длину (lengthCm × scale). toId остаётся на месте.
-      // Это самый предсказуемый результат: пользователь растянул сторону — тянется fromId.
-      if (baseScale && isClosed) {
-        const seg = segments.find(s => s.id === id);
-        if (seg && patch.lengthCm) {
-          const toPoint = points.find(p => p.id === seg.toId);
-          const fromPoint = points.find(p => p.id === seg.fromId);
-          if (toPoint && fromPoint) {
-            const origLen = distPx(fromPoint, toPoint);
-            if (origLen > 0) {
-              const ux = (fromPoint.x - toPoint.x) / origLen;
-              const uy = (fromPoint.y - toPoint.y) / origLen;
-              const newLenPx = patch.lengthCm * baseScale;
-              const newFrom = { x: toPoint.x + ux * newLenPx, y: toPoint.y + uy * newLenPx };
-              const newPoints = points.map(p => p.id === seg.fromId ? { ...p, ...newFrom } : p);
-              const newDiags = buildAutoDiagonals(newPoints, diagonals, baseScale);
-              onChange({ points: newPoints, segments: newSegments, diagonals: newDiags, baseScale, changedSegmentIds: [] });
-              return;
-            }
-          }
+      // Если все стороны заполнены и есть baseScale — полностью перестраиваем фигуру
+      // с точными 90° для прямых углов. Это единственный способ избежать накопленной погрешности.
+      const allSet = newSegments.every(s => s.lengthCm !== null && s.lengthCm > 0);
+      if (baseScale && isClosed && allSet) {
+        const result = rebuildWithRightAngles(points, newSegments, baseScale);
+        if (result) {
+          const newDiags = buildAutoDiagonals(result.points, diagonals, baseScale);
+          onChange({
+            points: result.points,
+            segments: newSegments,
+            diagonals: newDiags,
+            baseScale,
+            changedSegmentIds: [],
+          });
+          return;
         }
       }
+      // Если не все стороны ещё введены — просто сохраняем lengthCm без движения точек
       const newDiags = buildAutoDiagonals(points, diagonals, baseScale);
       onChange({ segments: newSegments, diagonals: newDiags, baseScale: baseScale ?? undefined, changedSegmentIds: [] });
       return;
@@ -128,6 +124,21 @@ export default function DrawingTab({ state, onChange }: Props) {
   const exactPerimM   = exactPerimCm ? Math.round(exactPerimCm / 100 * 100) / 100 : null;
   const displayPerimM = exactPerimM ?? perimM;
 
+  // Определяем есть ли скосы (не-прямые углы) — чтобы открыть секцию диагоналей
+  const hasSkews = allLengthsSet && isClosed && (() => {
+    if (points.length < 3) return false;
+    const isCW = polygonOrientation(points) > 0;
+    const SNAP_TOL = 15;
+    return points.some((pt, idx) => {
+      const n = points.length;
+      const prev = points[(idx - 1 + n) % n];
+      const next = points[(idx + 1) % n];
+      const deg = angleDeg(prev, pt, next, isCW);
+      const snapped = Math.abs(deg - 90) <= SNAP_TOL || Math.abs(deg - 270) <= SNAP_TOL;
+      return !snapped;
+    });
+  })();
+
   return (
     <div>
       <DrawingTabShapeSection
@@ -157,6 +168,7 @@ export default function DrawingTab({ state, onChange }: Props) {
         updateDiagonal={updateDiagonal}
         updateSettings={updateSettings}
         focusDiagonalRef={focusDiagonalRef}
+        autoOpen={hasSkews}
       />
     </div>
   );

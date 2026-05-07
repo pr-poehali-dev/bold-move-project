@@ -742,6 +742,136 @@ export function rebuildFromAnglesAndLengths(
 }
 
 /**
+ * Перестраивает фигуру с точными 90° для «прямых» углов.
+ * Углы ≈90° или ≈270° (±SNAP_TOL) заменяются на ровно 90°/270°.
+ * Скосы (остальные углы) — сохраняют оригинальное направление.
+ * Требует: все lengthCm заполнены, baseScale задан.
+ *
+ * Алгоритм:
+ * 1. Упорядочиваем цепочку точек через сегменты.
+ * 2. Первый сегмент — «базовое» направление (определяем ближайшее горизонт/вертик или скос).
+ * 3. Для каждого следующего угла: если ≈90° — поворот на 90°, если ≈270° — поворот на -90°,
+ *    иначе — поворот на оригинальный вектор следующего сегмента.
+ * 4. Длины — из lengthCm * baseScale.
+ */
+export function rebuildWithRightAngles(
+  points: Point[],
+  segments: Segment[],
+  baseScale: number,
+): { points: Point[]; hasSkews: boolean } | null {
+  if (points.length < 3 || segments.length < 3) return null;
+  if (!segments.every(s => s.lengthCm !== null && s.lengthCm > 0)) return null;
+
+  const SNAP_TOL = 15; // ±15° считаем "прямым углом"
+
+  // Строим упорядоченную цепочку
+  const chain: string[] = [points[0].id];
+  let cur = points[0].id;
+  for (let i = 0; i < segments.length; i++) {
+    const s = segments.find(sg => sg.fromId === cur);
+    if (!s) break;
+    if (chain.includes(s.toId)) break;
+    chain.push(s.toId);
+    cur = s.toId;
+  }
+  if (chain.length !== points.length) return null;
+
+  const orderedSegs: Segment[] = [];
+  for (let i = 0; i < chain.length; i++) {
+    const s = segments.find(sg => sg.fromId === chain[i] && sg.toId === chain[(i + 1) % chain.length]);
+    if (!s) return null;
+    orderedSegs.push(s);
+  }
+
+  const isCW = polygonOrientation(points) > 0;
+
+  // Вычисляем нарисованные углы в каждой точке цепочки
+  const drawnAngles: number[] = chain.map((ptId, i) => {
+    const pt   = points.find(p => p.id === ptId)!;
+    const prev = points.find(p => p.id === chain[(i - 1 + chain.length) % chain.length])!;
+    const next = points.find(p => p.id === chain[(i + 1) % chain.length])!;
+    return angleDeg(prev, pt, next, isCW);
+  });
+
+  // Снапим каждый угол к 90° или 270° если близко
+  const snapAngle = (deg: number): number | null => {
+    if (Math.abs(deg - 90) <= SNAP_TOL) return 90;
+    if (Math.abs(deg - 270) <= SNAP_TOL) return 270;
+    return null; // скос — оставляем как есть
+  };
+
+  const snappedAngles = drawnAngles.map(snapAngle);
+  const hasSkews = snappedAngles.some(a => a === null);
+
+  // Определяем начальное направление первого сегмента
+  // Снапим к ближайшей оси (0°, 90°, 180°, 270°) если угол к оси < SNAP_TOL
+  const oFrom0 = points.find(p => p.id === orderedSegs[0].fromId)!;
+  const oTo0   = points.find(p => p.id === orderedSegs[0].toId)!;
+  const rawAngle0 = Math.atan2(oTo0.y - oFrom0.y, oTo0.x - oFrom0.x) * 180 / Math.PI;
+  const axisAngles = [0, 90, 180, -90, -180];
+  let initAngleDeg = rawAngle0;
+  let minDiff = Infinity;
+  for (const ax of axisAngles) {
+    const diff = Math.abs(rawAngle0 - ax);
+    if (diff < minDiff && diff <= SNAP_TOL) {
+      minDiff = diff;
+      initAngleDeg = ax;
+    }
+  }
+
+  // Строим координаты цепочки
+  const anchor = points.find(p => p.id === chain[0])!;
+  const newCoords = new Map<string, { x: number; y: number }>();
+  newCoords.set(chain[0], { x: anchor.x, y: anchor.y });
+
+  let dirRad = initAngleDeg * Math.PI / 180;
+
+  for (let i = 0; i < chain.length - 1; i++) {
+    const seg = orderedSegs[i];
+    const lenPx = seg.lengthCm! * baseScale;
+    const fromCoord = newCoords.get(chain[i])!;
+    const toId = chain[i + 1];
+
+    // Следующая точка в направлении dirRad на lenPx
+    newCoords.set(toId, {
+      x: fromCoord.x + Math.cos(dirRad) * lenPx,
+      y: fromCoord.y + Math.sin(dirRad) * lenPx,
+    });
+
+    // Поворачиваем направление для следующего сегмента
+    // Угол в точке toId (chain[i+1]) определяет поворот
+    const nextAngleIdx = i + 1; // угол в точке chain[i+1]
+    const snapped = snappedAngles[nextAngleIdx];
+
+    if (snapped === 90 || snapped === 270) {
+      // Прямой угол: поворачиваем на ±90°
+      // Внутренний угол 90° (CW полигон) = поворот влево (против часовой) = -90°
+      // Внутренний угол 270° (CW полигон) = поворот вправо (по часовой) = +90°
+      const turnRad = (snapped === 90)
+        ? (isCW ? -Math.PI / 2 : Math.PI / 2)
+        : (isCW ? Math.PI / 2 : -Math.PI / 2);
+      dirRad += turnRad;
+      // Нормализуем
+      dirRad = Math.atan2(Math.sin(dirRad), Math.cos(dirRad));
+    } else if (snapped === null && i < chain.length - 2) {
+      // Скос: берём оригинальный вектор следующего сегмента
+      const nextSeg = orderedSegs[i + 1];
+      const nFrom = points.find(p => p.id === nextSeg.fromId)!;
+      const nTo   = points.find(p => p.id === nextSeg.toId)!;
+      dirRad = Math.atan2(nTo.y - nFrom.y, nTo.x - nFrom.x);
+    }
+    // Для последнего перехода (замыкание) — направление уже не нужно
+  }
+
+  const newPoints = points.map(p => {
+    const nc = newCoords.get(p.id);
+    return nc ? { ...p, ...nc } : p;
+  });
+
+  return { points: newPoints, hasSkews };
+}
+
+/**
  * Проверяет замкнутость фигуры по введённым длинам и направлениям отрезков.
  * Возвращает погрешность в процентах (0 = идеально замкнута).
  * Если не все стороны введены — возвращает null.
