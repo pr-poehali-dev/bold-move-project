@@ -3,11 +3,13 @@ import PlanCanvas from "./PlanCanvas";
 import PlanToolbar from "./PlanToolbar";
 import PlanSidebar from "./PlanSidebar";
 import PlanBottomSheet from "./PlanBottomSheet";
+import PlanRightInputPanel from "./PlanRightInputPanel";
 import PlanExportModal from "./PlanExportModal";
 import PlanLibraryModal from "./PlanLibraryModal";
 import AuthModal from "@/components/AuthModal";
 import Icon from "@/components/ui/icon";
-import type { PlanState, ToolMode, PlanSettings } from "./planTypes";
+import type { PlanState, ToolMode, PlanSettings, Segment } from "./planTypes";
+import { updateSegmentWithRebuild } from "./planSegmentUpdate";
 import { INITIAL_STATE } from "./planTypes";
 import { usePlanStorage } from "./usePlanStorage";
 import { useAuth } from "@/context/AuthContext";
@@ -100,11 +102,12 @@ export default function PlanPage() {
   const { user, token } = useAuth();
   const isMobile = useIsMobile();
 
-  const [sheetOpen,   setSheetOpen]   = React.useState(false);
-  const [sheetHeight, setSheetHeight] = React.useState(0);
-  const [exportOpen,  setExportOpen]  = React.useState(false);
-  const [libraryOpen, setLibraryOpen] = React.useState(false);
-  const [authOpen,    setAuthOpen]    = React.useState(false);
+  const [sheetOpen,      setSheetOpen]      = React.useState(false);
+  const [sheetHeight,    setSheetHeight]    = React.useState(0);
+  const [rightPanelOpen, setRightPanelOpen] = React.useState(false);
+  const [exportOpen,     setExportOpen]     = React.useState(false);
+  const [libraryOpen,    setLibraryOpen]    = React.useState(false);
+  const [authOpen,       setAuthOpen]       = React.useState(false);
   // Онбординг: показываем подсказку для незарегистрированных через 3 сек
   const [showOnboarding, setShowOnboarding] = React.useState(false);
 
@@ -124,14 +127,26 @@ export default function PlanPage() {
     }
   }, [user]);
 
-  // На мобиле: автоматически открываем сайдбар при замыкании фигуры + zoomFit
+  // На мобиле: автоматически открываем правую панель ввода при замыкании фигуры
   const prevIsClosed = useRef(state.isClosed);
   useEffect(() => {
     if (state.isClosed && !prevIsClosed.current && isMobile) {
-      setSheetOpen(true);
+      setRightPanelOpen(true);
+    }
+    if (!state.isClosed && prevIsClosed.current) {
+      setRightPanelOpen(false);
     }
     prevIsClosed.current = state.isClosed;
-  }, [state.isClosed, isMobile]);  
+  }, [state.isClosed, isMobile]);
+
+  // Когда rebuild завершён (isBuilt стал true) — закрываем правую панель
+  const prevIsBuilt = useRef(state.isBuilt);
+  useEffect(() => {
+    if (state.isBuilt && !prevIsBuilt.current && isMobile) {
+      setRightPanelOpen(false);
+    }
+    prevIsBuilt.current = state.isBuilt;
+  }, [state.isBuilt, isMobile]);  
 
   // При изменении высоты нижнего бара — пересчитываем зум/пан чтобы чертёж оставался по центру
   const prevSheetHeight = useRef(0);
@@ -179,6 +194,13 @@ export default function PlanPage() {
   const handleSettingChange = useCallback((patch: Partial<PlanSettings>) => {
     const s = stateRef.current;
     push({ ...s, settings: { ...s.settings, ...patch } });
+  }, [push]);
+
+  // Обновление сегмента с rebuild для правой панели ввода
+  const handleUpdateSegment = useCallback((id: string, patch: Partial<Segment>) => {
+    const s = stateRef.current;
+    const statePatch = updateSegmentWithRebuild(s, id, patch);
+    push({ ...s, ...statePatch });
   }, [push]);
 
   const handleToolChange = useCallback((t: ToolMode) => {
@@ -366,6 +388,17 @@ export default function PlanPage() {
           </button>
         )}
       </div>
+
+      {/* Мобиле: правая панель быстрого ввода сторон */}
+      {isMobile && rightPanelOpen && (
+        <PlanRightInputPanel
+          state={state}
+          onUpdateSegment={handleUpdateSegment}
+          onClose={() => {
+            setRightPanelOpen(false);
+          }}
+        />
+      )}
 
       {/* Мобиле: bottom sheet */}
       {isMobile && (
