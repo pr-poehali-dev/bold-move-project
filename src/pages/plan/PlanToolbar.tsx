@@ -251,12 +251,12 @@ export default function PlanToolbar(props: Props) {
   const saveLabel = saveStatus === "saving" ? "Сохранение…" : saveStatus === "saved" ? "Сохранён" : "Сохранить";
   const saveIcon  = saveStatus === "saving" ? "Loader2" : saveStatus === "saved" ? "CheckCircle2" : isDirty ? "Save" : "Cloud";
 
-  const layerCount = [
-    settings.showSegmentLabels, settings.showAngleLabels,
-    settings.showDiagonals, settings.showDimLines, settings.showPointLabels,
+  const fnCount = [
+    settings.ortho, settings.snapToPoints,
+    settings.showGrid, settings.showPoints,
+    settings.showDimLines, settings.showSegmentLabels,
+    settings.showAngleLabels, settings.showDiagonals, settings.showPointLabels,
   ].filter(Boolean).length;
-
-  const fnCount = [settings.ortho, settings.snapToPoints].filter(Boolean).length;
 
   return (
     <div className="flex items-center gap-0.5 px-2 bg-[#161616] border-b border-white/[0.08] shrink-0"
@@ -288,27 +288,25 @@ export default function PlanToolbar(props: Props) {
 
       <Sep />
 
-      {/* ФУНКЦИИ */}
+      {/* ФУНКЦИИ (объединяет Функции + Разметка + Слои) */}
       <DropUp label="Функции" icon="Zap" badge={fnCount > 0 ? String(fnCount) : undefined}>
         <div className="px-2 pt-1.5 pb-0.5">
-          <p className="text-[10px] text-white/30 uppercase tracking-widest font-bold">Режим рисования</p>
+          <p className="text-[10px] text-white/30 uppercase tracking-widest font-bold">Рисование</p>
         </div>
         <DropItem active={settings.ortho} label="Ортогональный" icon="Axis3d"
           onClick={() => onSettingChange({ ortho: !settings.ortho })} />
         <DropItem active={settings.snapToPoints} label="Магнит к точкам" icon="Magnet"
           onClick={() => onSettingChange({ snapToPoints: !settings.snapToPoints })} />
-      </DropUp>
-
-      {/* РАЗМЕТКА */}
-      <DropUp label="Разметка" icon="Grid3x3">
+        <div className="px-2 pt-2 pb-0.5">
+          <p className="text-[10px] text-white/30 uppercase tracking-widest font-bold">Разметка</p>
+        </div>
         <DropItem active={settings.showGrid} label="Сетка" icon="Grid3x3"
           onClick={() => onSettingChange({ showGrid: !settings.showGrid })} />
         <DropItem active={settings.showPoints} label="Точки" icon="CircleDot"
           onClick={() => onSettingChange({ showPoints: !settings.showPoints })} />
-      </DropUp>
-
-      {/* СЛОИ */}
-      <DropUp label="Слои" icon="Layers" badge={layerCount > 0 ? String(layerCount) : undefined}>
+        <div className="px-2 pt-2 pb-0.5">
+          <p className="text-[10px] text-white/30 uppercase tracking-widest font-bold">Слои</p>
+        </div>
         <DropItem active={settings.showDimLines} label="Размерные линии" icon="ArrowLeftRight"
           onClick={() => onSettingChange({ showDimLines: !settings.showDimLines })} />
         <DropItem active={settings.showSegmentLabels} label="Подписи A-B" icon="Type"
