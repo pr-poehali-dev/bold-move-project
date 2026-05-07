@@ -206,15 +206,19 @@ export default function PlanPage() {
     const w = maxX - minX || 100, h = maxY - minY || 100;
     const el = document.getElementById("plan-canvas-wrap");
     if (!el) return;
-    const PAD = 60; // отступ со всех сторон
+    const PAD_H = 50;  // отступ по горизонтали
+    const PAD_TOP = 90; // отступ сверху (с запасом для меток точек B, C...)
+    const PAD_BOT = 50; // отступ снизу
     // reservedBottomPx — пикселей занятых нижней панелью
-    const cw = el.clientWidth  - PAD * 2;
-    const ch = el.clientHeight - reservedBottomPx - PAD * 2;
+    const cw = el.clientWidth  - PAD_H * 2;
+    const ch = el.clientHeight - reservedBottomPx - PAD_TOP - PAD_BOT;
     if (cw <= 0 || ch <= 0) return;
     const z = Math.max(0.2, Math.min(3, Math.min(cw / w, ch / h)));
     const newZoom = Math.round(z * 10) / 10;
     const panX = (cw / 2 / newZoom) - (minX + w / 2);
-    const panY = (ch / 2 / newZoom) - (minY + h / 2);
+    // Смещаем центр вниз на разницу отступов (TOP больше BOT → чертёж опускается)
+    const vertOffset = (PAD_TOP - PAD_BOT) / 2 / newZoom;
+    const panY = (ch / 2 / newZoom) - (minY + h / 2) + vertOffset;
     handleSettingChange({ zoom: newZoom, panX: Math.round(panX), panY: Math.round(panY) });
   }, [handleSettingChange]);
 
