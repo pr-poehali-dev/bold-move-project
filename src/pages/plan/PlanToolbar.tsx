@@ -36,6 +36,7 @@ interface ToolDef {
   shortcut: string;
   needsClosed?: boolean;
   danger?: boolean;
+  comingSoon?: boolean;
 }
 
 const TOOLS: ToolDef[] = [
@@ -45,6 +46,7 @@ const TOOLS: ToolDef[] = [
   { id: "diagonal", icon: "ArrowUpRight",  label: "Диагонали",   shortcut: "G", needsClosed: true },
   { id: "arc",      icon: "Spline",        label: "Дуги",        shortcut: "A" },
   { id: "dimline",  icon: "Ruler",         label: "Размеры",     shortcut: "R", needsClosed: true },
+  { id: "ruler",    icon: "ScanLine",      label: "Линейка",     shortcut: "", comingSoon: true },
   { id: "delete",   icon: "Trash2",        label: "Удалить",     shortcut: "X", danger: true },
 ];
 
@@ -188,8 +190,8 @@ function MobileToolbar(props: Props) {
       {/* Инструменты — компактные иконки без подписей */}
       <div className="flex items-center gap-0.5 flex-1">
         {TOOLS.map(t => {
-          const disabled = !!t.needsClosed && !isClosed;
-          const active   = tool === t.id;
+          const disabled = !!t.comingSoon || (!!t.needsClosed && !isClosed);
+          const active   = !t.comingSoon && tool === t.id;
           const style = disabled
             ? "opacity-20 cursor-not-allowed text-white/25"
             : active
@@ -250,9 +252,9 @@ export default function PlanToolbar(props: Props) {
       {/* ИНСТРУМЕНТЫ */}
       <div className="flex items-center gap-0 bg-white/[0.04] border border-white/[0.07] rounded-xl px-1 py-1 shrink-0">
         {TOOLS.map(t => {
-          const disabled = !!t.needsClosed && !isClosed;
+          const disabled = !!t.comingSoon || (!!t.needsClosed && !isClosed);
           return (
-            <ToolBtn key={t.id} t={t} active={tool === t.id} disabled={disabled}
+            <ToolBtn key={t.id} t={t} active={!t.comingSoon && tool === t.id} disabled={disabled}
               onClick={() => !disabled && onToolChange(t.id)} />
           );
         })}

@@ -61,6 +61,7 @@ export type ToolMode =
   | "diagonal"
   | "arc"
   | "dimline"
+  | "ruler"
   | "delete";
 
 export type InputPhase = "draw" | "lengths" | "angles";
