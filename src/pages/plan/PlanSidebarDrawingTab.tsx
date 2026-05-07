@@ -34,16 +34,15 @@ export default function DrawingTab({ state, onChange }: Props) {
   const updateSegment = (id: string, patch: Partial<Segment>) => {
     const newSegments = segments.map(s => s.id === id ? { ...s, ...patch } : s);
     if (patch.lengthCm !== undefined && patch.lengthCm !== null && patch.lengthCm > 0) {
+      // Пересчитываем baseScale из изменённой стороны — это даёт актуальный масштаб
       let baseScale = state.baseScale ?? null;
-      if (!baseScale) {
-        const seg = segments.find(s => s.id === id);
-        if (seg) {
-          const a = points.find(p => p.id === seg.fromId);
-          const b = points.find(p => p.id === seg.toId);
-          if (a && b) {
-            const px = distPx(a, b);
-            if (px > 0) baseScale = px / patch.lengthCm;
-          }
+      const seg = segments.find(s => s.id === id);
+      if (seg) {
+        const a = points.find(p => p.id === seg.fromId);
+        const b = points.find(p => p.id === seg.toId);
+        if (a && b) {
+          const px = distPx(a, b);
+          if (px > 0) baseScale = px / patch.lengthCm;
         }
       }
       // Если все стороны введены — перестраиваем фигуру по углам + длинам
