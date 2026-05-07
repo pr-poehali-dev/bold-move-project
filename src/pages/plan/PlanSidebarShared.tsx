@@ -52,7 +52,7 @@ export function Section({
 export function LengthRow({
   label, valueCm, placeholder, visible,
   onValueChange, onVisibilityToggle, onDelete, onFocus, onEnterNext, inputRef, autoFocus, highlighted, autoRecalc,
-  onFlipDirection,
+  onFlipDirection, firstInput,
 }: {
   label: string; valueCm: number | null; placeholder?: string;
   visible: boolean;
@@ -66,6 +66,7 @@ export function LengthRow({
   highlighted?: boolean;
   autoRecalc?: boolean;
   onFlipDirection?: () => void;
+  firstInput?: boolean;
 }) {
   const localRef = React.useRef<HTMLInputElement>(null);
   const ref = inputRef ?? localRef;
@@ -136,6 +137,7 @@ export function LengthRow({
         min={1} max={99999} step={0.5}
         defaultValue={valueCm ?? ""}
         placeholder={placeholder ?? "—"}
+        {...(firstInput ? { 'data-sides-first-input': 'true' } : {})}
         onFocus={e => { e.target.select(); onFocus?.(); }}
         onBlur={e => commit(e.target)}
         onKeyDown={e => {

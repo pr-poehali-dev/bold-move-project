@@ -64,6 +64,7 @@ export default function DrawingTabSidesSection({
                   visible={seg.showLength}
                   inputRef={inputRefs.current[idx]}
                   autoFocus={idx === 0 && isClosed}
+                  firstInput={idx === 0}
                   highlighted={!!state.isBuilt && (state.changedSegmentIds?.includes(seg.id) ?? false)}
                   autoRecalc={!!state.isBuilt && (state.changedSegmentIds?.includes(seg.id) ?? false)}
                   onValueChange={v => updateSegment(seg.id, { lengthCm: v })}

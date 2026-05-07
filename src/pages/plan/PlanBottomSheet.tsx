@@ -32,13 +32,23 @@ export default function PlanBottomSheet({ state, onChange, open, onClose }: Prop
     return Math.round(wh * FULL_H);
   };
 
-  // При открытии — устанавливаем high
+  // При открытии — устанавливаем half + переключаем на чертёж + фокус первого поля
   useEffect(() => {
     if (open) {
       setSnap("half");
       setHeight(snapToHeight("half"));
+      // Переключаем на чертёж если не там
+      if (state.sidebarTab !== "drawing") {
+        onChange({ sidebarTab: "drawing" });
+      }
+      // Фокусируем первое поле ввода длины после анимации
+      const t = setTimeout(() => {
+        const input = document.querySelector<HTMLInputElement>('[data-sides-first-input]');
+        if (input) { input.focus(); input.select(); }
+      }, 300);
+      return () => clearTimeout(t);
     }
-  }, [open]);
+  }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Обновить высоту при смене снапа
   useEffect(() => {
