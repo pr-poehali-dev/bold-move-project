@@ -175,28 +175,57 @@ const Sep = () => <div className="w-px h-5 bg-white/[0.08] mx-1 flex-shrink-0" /
 
 function MobileToolbar(props: Props) {
   const {
-    tool, isClosed,
+    tool, isClosed, settings,
     canUndo, canRedo,
-    onToolChange, onUndo, onRedo, onOpenPanel,
+    onToolChange, onUndo, onRedo, onSettingChange,
   } = props;
 
   return (
-    <div className="bg-[#161616] border-b border-white/[0.08] shrink-0 flex items-center gap-1 px-2" style={{ height: 52 }}>
+    <div className="bg-[#161616] border-b border-white/[0.08] shrink-0 flex items-center gap-0.5 px-2" style={{ height: 52 }}>
       <IconBtn icon="Undo2" onClick={onUndo} disabled={!canUndo} title="Отменить" />
       <IconBtn icon="Redo2" onClick={onRedo} disabled={!canRedo} title="Повторить" />
       <div className="w-px h-4 bg-white/10 mx-0.5 shrink-0" />
-      <div className="flex items-center gap-0.5 overflow-x-auto flex-1 no-scrollbar">
-        {TOOLS.map(t => (
-          <ToolBtn key={t.id} t={t} active={tool === t.id}
-            disabled={!!t.needsClosed && !isClosed}
-            onClick={() => (!t.needsClosed || isClosed) && onToolChange(t.id)} />
-        ))}
+      {/* Инструменты — компактные иконки без подписей */}
+      <div className="flex items-center gap-0.5 flex-1">
+        {TOOLS.map(t => {
+          const disabled = !!t.needsClosed && !isClosed;
+          const active   = tool === t.id;
+          const style = disabled
+            ? "opacity-20 cursor-not-allowed text-white/25"
+            : active
+              ? t.danger ? "bg-red-500/25 border-red-500/40 text-red-300 border" : "bg-white/95 text-[#111] border border-white/80"
+              : t.danger ? "text-white/35 hover:text-red-300" : "text-white/45 hover:text-white";
+          return (
+            <button key={t.id}
+              className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 transition-all ${style}`}
+              disabled={disabled}
+              title={t.label}
+              onClick={() => !disabled && onToolChange(t.id)}>
+              <Icon name={t.icon} size={16} />
+            </button>
+          );
+        })}
       </div>
       <div className="w-px h-4 bg-white/10 mx-0.5 shrink-0" />
-      <button onClick={onOpenPanel}
-        className="w-9 h-9 rounded-xl bg-white/[0.07] border border-white/[0.1] text-white/60 flex items-center justify-center shrink-0 active:bg-white/[0.12]">
-        <Icon name="PanelBottom" size={16} />
-      </button>
+      {/* Функции — дропдаун */}
+      <DropUp label="" icon="SlidersHorizontal">
+        <div className="px-2 pt-1.5 pb-0.5">
+          <p className="text-[10px] text-white/30 uppercase tracking-widest font-bold">Рисование</p>
+        </div>
+        <DropItem active={settings.ortho} label="Ортогональный" icon="Axis3d"
+          onClick={() => onSettingChange({ ortho: !settings.ortho })} />
+        <DropItem active={settings.snapToPoints} label="Магнит к точкам" icon="Magnet"
+          onClick={() => onSettingChange({ snapToPoints: !settings.snapToPoints })} />
+        <div className="px-2 pt-2 pb-0.5">
+          <p className="text-[10px] text-white/30 uppercase tracking-widest font-bold">Отображение</p>
+        </div>
+        <DropItem active={settings.showGrid} label="Сетка" icon="Grid3x3"
+          onClick={() => onSettingChange({ showGrid: !settings.showGrid })} />
+        <DropItem active={settings.showPoints} label="Точки" icon="CircleDot"
+          onClick={() => onSettingChange({ showPoints: !settings.showPoints })} />
+        <DropItem active={settings.showSegmentLabels} label="Подписи A-B" icon="Type"
+          onClick={() => onSettingChange({ showSegmentLabels: !settings.showSegmentLabels })} />
+      </DropUp>
     </div>
   );
 }

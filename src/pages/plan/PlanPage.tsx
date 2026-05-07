@@ -337,7 +337,14 @@ export default function PlanPage() {
           </div>
         </>)}
 
-
+        {/* Мобиле: кнопка открытия панели */}
+        {isMobile && !sheetOpen && (
+          <button
+            onClick={() => setSheetOpen(true)}
+            className="absolute bottom-4 right-4 w-12 h-12 rounded-2xl bg-violet-600 shadow-lg shadow-violet-500/30 flex items-center justify-center text-white z-20 active:scale-95 transition-transform">
+            <Icon name="PanelBottom" size={20} />
+          </button>
+        )}
       </div>
 
       {/* Мобиле: bottom sheet */}
