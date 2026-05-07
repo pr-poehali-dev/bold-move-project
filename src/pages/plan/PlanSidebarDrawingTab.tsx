@@ -47,7 +47,6 @@ export default function DrawingTab({ state, onChange }: Props) {
       const allSet = newSegments.every(s => s.lengthCm !== null && s.lengthCm > 0);
       if (allSet && isClosed) {
         const result = rebuildFromAnglesAndLengths(points, newSegments, baseScale);
-        console.log('[rebuild] old pts:', points.map(p=>`(${Math.round(p.x)},${Math.round(p.y)})`), '→ new:', result?.points.map(p=>`(${Math.round(p.x)},${Math.round(p.y)})`));
 
         if (result) {
           // Определяем какие стороны изменились (кроме той что ввёл пользователь)
