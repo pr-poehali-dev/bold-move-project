@@ -211,8 +211,8 @@ export function renderPoints(ctx: RenderContext, handlers: SegmentHandlers) {
     const dx = pt.x - cx;
     const dy = pt.y - cy;
     const dlen = Math.sqrt(dx * dx + dy * dy) || 1;
-    const lx = pt.x + (dx / dlen) * 14;
-    const ly = pt.y + (dy / dlen) * 14;
+    const lx = pt.x + (dx / dlen) * 18;
+    const ly = pt.y + (dy / dlen) * 18;
 
     return (
       <g key={pt.id}
@@ -327,9 +327,9 @@ export function InlineDimLabels({ state, onChange }: InlineDimProps) {
 
         const mid = midPoint(a, b);
         const { nx, ny } = segmentNormal(a, b);
-        // Смещение по нормали: минимум 14px, но увеличиваем для коротких отрезков
         const segLen = distPx(a, b);
-        const off = Math.max(14, 28 - segLen * 0.3);
+        // Для коротких отрезков (<30px) — большое смещение по нормали чтобы метка была видна
+        const off = segLen < 30 ? 36 : segLen < 60 ? 24 : 14;
         const lx = mid.x + nx * off;
         const ly = mid.y + ny * off;
 
@@ -381,6 +381,12 @@ export function InlineDimLabels({ state, onChange }: InlineDimProps) {
               setEditingId(seg.id);
               setDraft(seg.lengthCm !== null ? String(seg.lengthCm) : "");
             }}>
+            {/* Линия-выноска для коротких отрезков */}
+            {segLen < 30 && (
+              <line x1={mid.x} y1={mid.y} x2={lx} y2={ly}
+                stroke="rgba(255,255,255,0.2)" strokeWidth={0.8} strokeDasharray="2 2"
+                className="pointer-events-none" />
+            )}
             {/* Зона клика */}
             <rect x={lx - textW / 2 - 6} y={ly - 12} width={textW + 12} height={24}
               rx={5} fill="transparent" />
