@@ -68,13 +68,14 @@ export function LengthRow({
   const localRef = React.useRef<HTMLInputElement>(null);
   const ref = inputRef ?? localRef;
 
-  // Мигание при автопересчёте
+  // Мигание при автопересчёте: flash = анимация запущена (сбрасывается через 1.2с)
+  // autoRecalc = остаётся true → поле остаётся жёлтым до следующего изменения
   const [flash, setFlash] = React.useState(false);
   const prevAutoRecalc = React.useRef(autoRecalc);
   React.useEffect(() => {
     if (autoRecalc && !prevAutoRecalc.current) {
       setFlash(true);
-      const t = setTimeout(() => setFlash(false), 1500);
+      const t = setTimeout(() => setFlash(false), 1200);
       return () => clearTimeout(t);
     }
     prevAutoRecalc.current = autoRecalc;
@@ -104,13 +105,15 @@ export function LengthRow({
     onValueChange(v !== null && !isNaN(v) ? v : null);
   };
 
-  const rowCls = flash
-    ? "bg-yellow-500/15 ring-1 ring-yellow-500/40"
+  const isYellow = autoRecalc || flash;
+
+  const rowCls = isYellow
+    ? `bg-yellow-500/15 ring-1 ring-yellow-500/40 ${flash ? "animate-pulse" : ""}`
     : highlighted
       ? "bg-rose-500/10"
       : "hover:bg-white/[0.03]";
 
-  const inputCls = flash
+  const inputCls = isYellow
     ? "border-yellow-400/60 text-yellow-200"
     : highlighted
       ? "border-rose-500/50 text-rose-300"

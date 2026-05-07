@@ -24,13 +24,6 @@ export default function DrawingTab({ state, onChange }: Props) {
     inputRefs.current = segments.map(() => React.createRef<HTMLInputElement>());
   }
 
-  // Сброс changedSegmentIds через 1.5с после подсветки
-  React.useEffect(() => {
-    if (!state.changedSegmentIds?.length) return;
-    const t = setTimeout(() => onChange({ changedSegmentIds: [] }), 1500);
-    return () => clearTimeout(t);
-  }, [state.changedSegmentIds]); // eslint-disable-line react-hooks/exhaustive-deps
-
   // Ref для функции фокуса первой незаполненной диагонали
   const focusDiagonalRef = React.useRef<(() => void) | null>(null);
 

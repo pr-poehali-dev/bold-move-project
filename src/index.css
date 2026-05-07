@@ -7,21 +7,21 @@
   0% {
     opacity: 0.9;
   }
-  30% {
-    opacity: 0.2;
+  25% {
+    opacity: 0.15;
   }
-  60% {
+  50% {
     opacity: 0.9;
   }
-  80% {
-    opacity: 0.3;
+  75% {
+    opacity: 0.15;
   }
   100% {
-    opacity: 0;
+    opacity: 0.9;
   }
 }
 .seg-recalc-flash {
-  animation: seg-recalc 1.5s ease-out forwards;
+  animation: seg-recalc 1.2s ease-in-out;
 }
 
 /* Скрыть скроллбар но сохранить скролл (для тулбара на мобиле) */
