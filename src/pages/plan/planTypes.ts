@@ -677,20 +677,17 @@ export function rebuildFromAnglesAndLengths(
   let chain = buildChainFrom(points[0].id);
   if (!chain) return null;
 
-  // Если изменённый сегмент оказывается замыкающим — переставляем стартовую точку
-  // так, чтобы изменённый сегмент был первым (не замыкающим)
+  // Если указан изменённый сегмент — строим цепочку от его toId.
+  // Логика: toId фиксируется (не двигается), fromId вычисляется через замыкание.
+  // Изменённый сегмент будет замыкающим — но его длина применяется через scale,
+  // который мы вычисляем отдельно из изменённого сегмента в PlanSidebarDrawingTab.
+  // Таким образом все остальные точки перестраиваются с учётом нового масштаба,
+  // а toId изменённого сегмента остаётся на месте.
   if (changedSegId) {
     const changedSeg = segments.find(s => s.id === changedSegId);
     if (changedSeg) {
-      // Замыкающий сег в текущей цепочке — между chain[last] и chain[0]
-      const lastIdx = chain.length - 1;
-      const closingIsChanged =
-        chain[lastIdx] === changedSeg.fromId && chain[0] === changedSeg.toId;
-      if (closingIsChanged) {
-        // Перестраиваем цепочку начиная с fromId изменённого сегмента
-        const newChain = buildChainFrom(changedSeg.fromId);
-        if (newChain) chain = newChain;
-      }
+      const newChain = buildChainFrom(changedSeg.toId);
+      if (newChain) chain = newChain;
     }
   }
 

@@ -34,39 +34,49 @@ export default function DrawingTab({ state, onChange }: Props) {
   const updateSegment = (id: string, patch: Partial<Segment>) => {
     const newSegments = segments.map(s => s.id === id ? { ...s, ...patch } : s);
     if (patch.lengthCm !== undefined && patch.lengthCm !== null && patch.lengthCm > 0) {
-      // Пересчитываем baseScale из изменённой стороны — это даёт актуальный масштаб
+      // Используем существующий baseScale (он отражает масштаб холста)
+      // Если ещё не задан — вычисляем из изменённой стороны как начальный
       let baseScale = state.baseScale ?? null;
-      const seg = segments.find(s => s.id === id);
-      if (seg) {
-        const a = points.find(p => p.id === seg.fromId);
-        const b = points.find(p => p.id === seg.toId);
-        if (a && b) {
-          const px = distPx(a, b);
-          if (px > 0) baseScale = px / patch.lengthCm;
+      if (!baseScale) {
+        const seg = segments.find(s => s.id === id);
+        if (seg) {
+          const a = points.find(p => p.id === seg.fromId);
+          const b = points.find(p => p.id === seg.toId);
+          if (a && b) {
+            const px = distPx(a, b);
+            if (px > 0) baseScale = px / patch.lengthCm;
+          }
         }
       }
-      // Если все стороны введены — перестраиваем фигуру по углам + длинам
-      const allSet = newSegments.every(s => s.lengthCm !== null && s.lengthCm > 0);
-      if (allSet && isClosed) {
-        const result = rebuildFromAnglesAndLengths(points, newSegments, baseScale, id);
-
-        if (result) {
-          // Определяем какие стороны изменились (кроме той что ввёл пользователь)
-          const changedIds = newSegments
-            .filter(s => s.id !== id)
-            .filter(s => {
-              const oldSeg = segments.find(os => os.id === s.id);
-              if (!oldSeg || !oldSeg.lengthCm) return false;
-              return Math.abs((oldSeg.lengthCm ?? 0) - (s.lengthCm ?? 0)) > 0.05;
-            })
-            .map(s => s.id);
-          const newDiags = buildAutoDiagonals(result.points, diagonals, result.baseScale);
-          onChange({ points: result.points, segments: newSegments, diagonals: newDiags, baseScale: result.baseScale, changedSegmentIds: changedIds });
-          // Сбрасываем подсветку через 2 секунды
-          if (changedIds.length > 0) {
-            setTimeout(() => onChange({ changedSegmentIds: [] }), 2000);
+      // Если baseScale известен — двигаем fromId изменённого сегмента по направлению сегмента
+      // на новую длину (lengthCm × scale). toId остаётся на месте.
+      // Это самый предсказуемый результат: пользователь растянул сторону — тянется fromId.
+      if (baseScale && isClosed) {
+        const seg = segments.find(s => s.id === id);
+        if (seg && patch.lengthCm) {
+          const toPoint = points.find(p => p.id === seg.toId);
+          const fromPoint = points.find(p => p.id === seg.fromId);
+          if (toPoint && fromPoint) {
+            const origLen = distPx(fromPoint, toPoint);
+            if (origLen > 0) {
+              const ux = (fromPoint.x - toPoint.x) / origLen;
+              const uy = (fromPoint.y - toPoint.y) / origLen;
+              const newLenPx = patch.lengthCm * baseScale;
+              const newFrom = { x: toPoint.x + ux * newLenPx, y: toPoint.y + uy * newLenPx };
+              const newPoints = points.map(p => p.id === seg.fromId ? { ...p, ...newFrom } : p);
+              const updatedSegs = newSegments.map(s => {
+                if (s.fromId !== seg.fromId && s.toId !== seg.fromId) return s;
+                const a = newPoints.find(p => p.id === s.fromId);
+                const b = newPoints.find(p => p.id === s.toId);
+                const px = a && b ? distPx(a, b) : 0;
+                if (s.id === id) return s;
+                return { ...s, lengthCm: baseScale && px > 0 ? Math.round((px / baseScale) * 10) / 10 : s.lengthCm };
+              });
+              const newDiags = buildAutoDiagonals(newPoints, diagonals, baseScale);
+              onChange({ points: newPoints, segments: updatedSegs, diagonals: newDiags, baseScale, changedSegmentIds: [] });
+              return;
+            }
           }
-          return;
         }
       }
       const newDiags = buildAutoDiagonals(points, diagonals, baseScale);
