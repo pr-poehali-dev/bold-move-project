@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect } from "react";
+import React, { useCallback, useEffect, useRef } from "react";
 import type { PlanState, Point, Segment, DimLine } from "./planTypes";
 import {
   snapVal, snapToPoint, orthoPoint, buildAutoDiagonals, genId,
