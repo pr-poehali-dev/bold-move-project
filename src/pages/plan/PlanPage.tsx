@@ -143,6 +143,19 @@ export default function PlanPage() {
     prevIsClosed.current = state.isClosed;
   }, [state.isClosed, isMobile]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // На мобиле: нажатие на сторону → открываем правую панель с фокусом на нужном поле
+  const [focusSegmentId, setFocusSegmentId] = React.useState<string | null>(null);
+  const prevSelectedSegId = useRef(state.selectedSegmentId);
+  useEffect(() => {
+    if (!isMobile) return;
+    if (state.selectedSegmentId && state.selectedSegmentId !== prevSelectedSegId.current && state.isClosed) {
+      setFocusSegmentId(state.selectedSegmentId);
+      setRightPanelOpen(true);
+      if (!rightPanelOpen) setTimeout(() => zoomFit(0, PANEL_WIDTH), 80);
+    }
+    prevSelectedSegId.current = state.selectedSegmentId;
+  }, [state.selectedSegmentId]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // Когда rebuild завершён (isBuilt стал true) — закрываем правую панель и пересчитываем зум
   const prevIsBuilt = useRef(state.isBuilt);
   useEffect(() => {
@@ -408,7 +421,8 @@ export default function PlanPage() {
           state={state}
           onUpdateSegment={handleUpdateSegment}
           onUpdateDiagonal={handleUpdateDiagonal}
-          onClose={() => setRightPanelOpen(false)}
+          focusSegmentId={focusSegmentId}
+          onClose={() => { setRightPanelOpen(false); setFocusSegmentId(null); }}
         />
       )}
 

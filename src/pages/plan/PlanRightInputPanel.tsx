@@ -11,9 +11,10 @@ interface Props {
   onUpdateSegment: (id: string, patch: Partial<Segment>) => void;
   onUpdateDiagonal: (id: string, patch: Partial<DiagonalDef>) => void;
   onClose: () => void;
+  focusSegmentId?: string | null;
 }
 
-export default function PlanRightInputPanel({ state, onUpdateSegment, onUpdateDiagonal, onClose }: Props) {
+export default function PlanRightInputPanel({ state, onUpdateSegment, onUpdateDiagonal, onClose, focusSegmentId }: Props) {
   const { segments, points, diagonals } = state;
   const [tab, setTab] = React.useState<Tab>("sides");
   const [dropOpen, setDropOpen] = useState(false);
@@ -28,15 +29,21 @@ export default function PlanRightInputPanel({ state, onUpdateSegment, onUpdateDi
     setSegValues(segments.map(s => (s.lengthCm != null ? String(s.lengthCm) : "")));
   }, [segments.length]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Фокус на первый пустой при открытии
+  // Фокус: на конкретный сегмент (если передан) или первый пустой
   useEffect(() => {
-    const firstEmpty = segments.findIndex(s => s.lengthCm == null || s.lengthCm <= 0);
-    const idx = firstEmpty >= 0 ? firstEmpty : 0;
+    let idx = 0;
+    if (focusSegmentId) {
+      const found = segments.findIndex(s => s.id === focusSegmentId);
+      if (found >= 0) { idx = found; setTab("sides"); }
+    } else {
+      const firstEmpty = segments.findIndex(s => s.lengthCm == null || s.lengthCm <= 0);
+      idx = firstEmpty >= 0 ? firstEmpty : 0;
+    }
     setTimeout(() => {
       segInputRefs.current[idx]?.focus();
       segInputRefs.current[idx]?.select();
     }, 80);
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [focusSegmentId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const commitSeg = (idx: number, raw: string) => {
     const v = parseFloat(raw.replace(",", "."));
