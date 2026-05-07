@@ -102,7 +102,7 @@ export default function DrawingTab({ state, onChange }: Props) {
     });
 
     const newDiags = buildAutoDiagonals(newPoints, diagonals, baseScale);
-    setLastChangedSegId(null);
+    // Не сбрасываем lastChangedSegId — кнопка остаётся, можно переключать туда-обратно
     onChange({ points: newPoints, segments: updatedSegments, diagonals: newDiags, changedSegmentIds: autoRecalcIds });
   };
 
