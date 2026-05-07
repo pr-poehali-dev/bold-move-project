@@ -128,7 +128,7 @@ export default function PlanCanvasOverlay({
         <div ref={fnRef} className="absolute bottom-4 left-3 z-20">
           {/* Меню открывается вверх */}
           {fnOpen && (
-            <div className="absolute bottom-12 left-0 bg-[#1c1c1c] border border-white/[0.12] rounded-xl shadow-2xl p-1.5 flex flex-col gap-0.5 min-w-[200px]">
+            <div className="absolute bottom-12 left-0 bg-[#1c1c1c] border border-white/[0.12] rounded-xl shadow-2xl p-1.5 flex flex-col gap-0.5 min-w-[210px] max-h-[70vh] overflow-y-auto">
               <div className="px-2 pt-1 pb-0.5">
                 <p className="text-[10px] text-white/30 uppercase tracking-widest font-bold">Рисование</p>
               </div>
@@ -152,9 +152,13 @@ export default function PlanCanvasOverlay({
                 <p className="text-[10px] text-white/30 uppercase tracking-widest font-bold">Отображение</p>
               </div>
               {[
-                { key: "showGrid",          label: "Сетка",        icon: "Grid3x3"     },
-                { key: "showPoints",        label: "Точки",        icon: "CircleDot"   },
-                { key: "showSegmentLabels", label: "Подписи A-B",  icon: "Type"        },
+                { key: "showGrid",          label: "Сетка",           icon: "Grid3x3"      },
+                { key: "showPoints",        label: "Точки",           icon: "CircleDot"    },
+                { key: "showSegmentLabels", label: "Подписи A-B",     icon: "Type"         },
+                { key: "showAngleLabels",   label: "Метки углов",     icon: "Angle"        },
+                { key: "showDiagonals",     label: "Диагонали",       icon: "ArrowUpRight" },
+                { key: "showPointLabels",   label: "Метки точек",     icon: "Tag"          },
+                { key: "showDimLines",      label: "Размерные линии", icon: "ArrowLeftRight"},
               ].map(({ key, label, icon }) => (
                 <button key={key}
                   className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-[12px] font-medium transition-all text-left w-full ${
