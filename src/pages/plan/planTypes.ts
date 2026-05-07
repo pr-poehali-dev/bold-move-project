@@ -900,6 +900,75 @@ export function rebuildWithRightAngles(
 }
 
 /**
+ * Вычисляет длину единственного незаполненного сегмента по геометрии замыкания.
+ * Работает когда заполнены ровно N-1 сторон из N.
+ * Строит цепочку по направлениям × длинам и измеряет расстояние до anchor.
+ * Возвращает { segId, lengthCm } или null если нельзя вычислить.
+ */
+export function calcMissingSegmentLength(
+  points: Point[],
+  segments: Segment[],
+  baseScale: number,
+): { segId: string; lengthCm: number } | null {
+  if (points.length < 3 || segments.length < 3) return null;
+
+  const missing = segments.filter(s => s.lengthCm === null || s.lengthCm <= 0);
+  if (missing.length !== 1) return null;
+
+  const missingSeg = missing[0];
+
+  // Строим упорядоченную цепочку
+  const chain: string[] = [points[0].id];
+  let cur = points[0].id;
+  for (let i = 0; i < segments.length; i++) {
+    const s = segments.find(sg => sg.fromId === cur);
+    if (!s) break;
+    if (chain.includes(s.toId)) break;
+    chain.push(s.toId);
+    cur = s.toId;
+  }
+  if (chain.length !== points.length) return null;
+
+  const orderedSegs: Segment[] = [];
+  for (let i = 0; i < chain.length; i++) {
+    const s = segments.find(sg => sg.fromId === chain[i] && sg.toId === chain[(i + 1) % chain.length]);
+    if (!s) return null;
+    orderedSegs.push(s);
+  }
+
+  // Пропускаем незаполненный сегмент и строим цепочку от его toId
+  // до достижения его fromId — расстояние и есть искомая длина
+  const missingIdx = orderedSegs.findIndex(s => s.id === missingSeg.id);
+  if (missingIdx < 0) return null;
+
+  // Начинаем цепочку с toId незаполненного сегмента
+  const startIdx = (missingIdx + 1) % orderedSegs.length;
+  let x = 0, y = 0;
+
+  for (let i = 0; i < orderedSegs.length - 1; i++) {
+    const idx = (startIdx + i) % orderedSegs.length;
+    const s = orderedSegs[idx];
+    if (!s.lengthCm || s.lengthCm <= 0) return null;
+
+    const fromPt = points.find(p => p.id === s.fromId)!;
+    const toPt   = points.find(p => p.id === s.toId)!;
+    const origPx = distPx(fromPt, toPt);
+    if (origPx === 0) return null;
+
+    const ux = (toPt.x - fromPt.x) / origPx;
+    const uy = (toPt.y - fromPt.y) / origPx;
+    x += ux * s.lengthCm;
+    y += uy * s.lengthCm;
+  }
+
+  // Длина незаполненного = расстояние от конца цепочки до начальной точки
+  const lengthCm = Math.round(Math.sqrt(x * x + y * y) * 10) / 10;
+  if (lengthCm <= 0) return null;
+
+  return { segId: missingSeg.id, lengthCm };
+}
+
+/**
  * Проверяет замкнутость фигуры по введённым длинам и направлениям отрезков.
  * Возвращает погрешность в процентах (0 = идеально замкнута).
  * Если не все стороны введены — возвращает null.

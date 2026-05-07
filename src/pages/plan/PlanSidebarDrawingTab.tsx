@@ -2,7 +2,7 @@ import React from "react";
 import type { PlanState, Segment, DiagonalDef, PlanSettings, RoomParams } from "./planTypes";
 import {
   distPx, calcScale, polygonArea, polygonPerimeter, buildAutoDiagonals, rebuildFromAnglesAndLengths, rebuildWithRightAngles,
-  angleDeg, polygonOrientation,
+  angleDeg, polygonOrientation, calcMissingSegmentLength,
 } from "./planTypes";
 import DrawingTabShapeSection from "./DrawingTabShapeSection";
 import DrawingTabSidesSection from "./DrawingTabSidesSection";
@@ -233,6 +233,33 @@ export default function DrawingTab({ state, onChange }: Props) {
       }
 
       // ── Режим построения: не все стороны ещё введены ────────────────────────
+      // Если заполнены N-1 сторон — авторасчёт последней замыкающей
+      if (!isEditMode && baseScale && isClosed) {
+        const missing = calcMissingSegmentLength(points, newSegments, baseScale);
+        if (missing) {
+          const autoFilledSegs = newSegments.map(s =>
+            s.id === missing.segId ? { ...s, lengthCm: missing.lengthCm } : s
+          );
+          // Проверяем — может теперь все заполнены → делаем rebuild
+          const allNowSet = autoFilledSegs.every(s => s.lengthCm !== null && s.lengthCm > 0);
+          if (allNowSet) {
+            const result = rebuildWithRightAngles(points, autoFilledSegs, baseScale);
+            if (result) {
+              const finalSegs = result.segments ?? autoFilledSegs;
+              builtPoints.current   = result.points;
+              builtSegments.current = finalSegs;
+              const newDiags = buildAutoDiagonals(result.points, diagonals, baseScale);
+              onChange({ points: result.points, segments: finalSegs, diagonals: newDiags, baseScale, isBuilt: true, changedSegmentIds: [missing.segId] });
+              return;
+            }
+          }
+          // Если rebuild не сработал — просто сохраняем с авторасчётом
+          const newDiags = buildAutoDiagonals(points, diagonals, baseScale);
+          onChange({ segments: autoFilledSegs, diagonals: newDiags, baseScale, isBuilt: false, changedSegmentIds: [] });
+          return;
+        }
+      }
+
       // Просто сохраняем lengthCm, точки не двигаем. Подсветка всегда пуста.
       const newDiags = buildAutoDiagonals(points, diagonals, baseScale);
       onChange({ segments: newSegments, diagonals: newDiags, baseScale: baseScale ?? undefined, isBuilt: false, changedSegmentIds: [] });
