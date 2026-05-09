@@ -38,10 +38,15 @@ export default function PlanPage() {
   // ── Каталог ──────────────────────────────────────────────────────────────
   const [catalogOpen,     setCatalogOpen]     = useState(false);
   const [prices,          setPrices]          = useState<PriceEntry[]>([]);
+  // Активные товары внизу экрана — массив (можно несколько сразу)
+  const [activeItems,     setActiveItems]     = useState<SegmentPriceItem[]>([]);
+  // Какой товар сейчас тащится пальцем (для drag-ghost на десктопе)
   const [dragItem,        setDragItem]        = useState<SegmentPriceItem | null>(null);
   const [dragPos,         setDragPos]         = useState<{ x: number; y: number } | null>(null);
   const dragPosRef = useRef<{ x: number; y: number } | null>(null);
   const [hoverSegId,      setHoverSegId]      = useState<string | null>(null);
+  // Какой активный товар сейчас в режиме "тап на стену"
+  const [tapActiveId,     setTapActiveId]     = useState<number | null>(null);
   const [filterAttached,  setFilterAttached]  = useState(false);
   const stateRef = useRef(state);
   // Флаг: план загружается из библиотеки — не открывать панели автоматически
@@ -57,38 +62,62 @@ export default function PlanPage() {
       .catch(() => {});
   }, []);
 
-  // Drag: товар летит за курсором/пальцем и ищет ближайшую стену
+  // Утилита: найти ближайший сегмент к точке экрана
+  const findClosestSeg = useCallback((clientX: number, clientY: number, useLargeThreshold = false) => {
+    const s = stateRef.current;
+    if (!s.isClosed || s.segments.length === 0) return null;
+    const zoom = s.settings.zoom;
+    const panX = s.settings.panX ?? 0;
+    const panY = s.settings.panY ?? 0;
+    const canvasEl = document.getElementById("plan-canvas-wrap");
+    if (!canvasEl) return null;
+    const rect = canvasEl.getBoundingClientRect();
+    const cx = (clientX - rect.left) / zoom - panX;
+    const cy = (clientY - rect.top) / zoom - panY;
+    let bestId: string | null = null;
+    let bestDist = Infinity;
+    for (const seg of s.segments) {
+      const a = s.points.find(p => p.id === seg.fromId);
+      const b = s.points.find(p => p.id === seg.toId);
+      if (!a || !b) continue;
+      const dx = b.x - a.x, dy = b.y - a.y;
+      const len2 = dx * dx + dy * dy;
+      const t = len2 > 0 ? Math.max(0, Math.min(1, ((cx - a.x) * dx + (cy - a.y) * dy) / len2)) : 0;
+      const px = a.x + t * dx - cx, py = a.y + t * dy - cy;
+      const dist = Math.sqrt(px * px + py * py);
+      if (dist < bestDist) { bestDist = dist; bestId = seg.id; }
+    }
+    const threshold = useLargeThreshold ? 200 / zoom : 80 / zoom;
+    return bestDist < threshold ? bestId : null;
+  }, []);
+
+  // Привязать товар к стене (не убирает карточку)
+  const assignItemToSeg = useCallback((item: SegmentPriceItem, segId: string) => {
+    const s = stateRef.current;
+    const newSegments = s.segments.map(seg => {
+      if (seg.id !== segId) return seg;
+      const existing = seg.items ?? [];
+      if (existing.some(it => it.priceId === item.priceId)) return seg;
+      return { ...seg, items: [...existing, item] };
+    });
+    push({ ...s, segments: newSegments });
+  }, [push]);
+
+  // Удалить товар со всех стен и убрать карточку
+  const removeActiveItem = useCallback((priceId: number) => {
+    const s = stateRef.current;
+    const newSegments = s.segments.map(seg => ({
+      ...seg,
+      items: (seg.items ?? []).filter(it => it.priceId !== priceId),
+    }));
+    push({ ...s, segments: newSegments });
+    setActiveItems(prev => prev.filter(it => it.priceId !== priceId));
+    if (tapActiveId === priceId) setTapActiveId(null);
+  }, [push, tapActiveId]);
+
+  // Drag: товар летит за курсором/пальцем (десктоп)
   useEffect(() => {
     if (!dragItem) return;
-
-    const findClosestSeg = (clientX: number, clientY: number) => {
-      const s = stateRef.current;
-      if (!s.isClosed || s.segments.length === 0) return null;
-      const zoom = s.settings.zoom;
-      const panX = s.settings.panX ?? 0;
-      const panY = s.settings.panY ?? 0;
-      const canvasEl = document.getElementById("plan-canvas-wrap");
-      if (!canvasEl) return null;
-      const rect = canvasEl.getBoundingClientRect();
-      const cx = (clientX - rect.left) / zoom - panX;
-      const cy = (clientY - rect.top) / zoom - panY;
-      let bestId: string | null = null;
-      let bestDist = Infinity;
-      for (const seg of s.segments) {
-        const a = s.points.find(p => p.id === seg.fromId);
-        const b = s.points.find(p => p.id === seg.toId);
-        if (!a || !b) continue;
-        const dx = b.x - a.x, dy = b.y - a.y;
-        const len2 = dx * dx + dy * dy;
-        const t = len2 > 0 ? Math.max(0, Math.min(1, ((cx - a.x) * dx + (cy - a.y) * dy) / len2)) : 0;
-        const px = a.x + t * dx - cx, py = a.y + t * dy - cy;
-        const dist = Math.sqrt(px * px + py * py);
-        if (dist < bestDist) { bestDist = dist; bestId = seg.id; }
-      }
-      // На мобиле без drag (карточка внизу) — большой порог, тап в любом месте стены
-      const threshold = dragPosRef.current ? 80 / zoom : 200 / zoom;
-      return bestDist < threshold ? bestId : null;
-    };
 
     const onMove = (e: MouseEvent | TouchEvent) => {
       const { clientX, clientY } = "touches" in e ? e.touches[0] : e;
@@ -100,16 +129,7 @@ export default function PlanPage() {
     const onEnd = (e: MouseEvent | TouchEvent) => {
       const pt = "changedTouches" in e ? e.changedTouches[0] : e;
       const closestId = findClosestSeg(pt.clientX, pt.clientY);
-      if (closestId && dragItem) {
-        const s = stateRef.current;
-        const newSegments = s.segments.map(seg => {
-          if (seg.id !== closestId) return seg;
-          const existing = seg.items ?? [];
-          if (existing.some(it => it.priceId === dragItem.priceId)) return seg;
-          return { ...seg, items: [...existing, dragItem] };
-        });
-        push({ ...s, segments: newSegments });
-      }
+      if (closestId) assignItemToSeg(dragItem, closestId);
       setDragItem(null);
       setDragPos(null);
       dragPosRef.current = null;
@@ -126,7 +146,27 @@ export default function PlanPage() {
       window.removeEventListener("mouseup", onEnd);
       window.removeEventListener("touchend", onEnd);
     };
-  }, [dragItem, push]);
+  }, [dragItem, findClosestSeg, assignItemToSeg]);
+
+  // Тап на стену для активного товара (мобиле — карточка внизу)
+  useEffect(() => {
+    if (tapActiveId === null || activeItems.length === 0) return;
+    const item = activeItems.find(it => it.priceId === tapActiveId);
+    if (!item) return;
+
+    const onTouchEnd = (e: TouchEvent) => {
+      const pt = e.changedTouches[0];
+      const closestId = findClosestSeg(pt.clientX, pt.clientY, true);
+      if (closestId) {
+        assignItemToSeg(item, closestId);
+        // Вибрация подтверждения
+        navigator.vibrate?.(30);
+      }
+    };
+
+    window.addEventListener("touchend", onTouchEnd);
+    return () => window.removeEventListener("touchend", onTouchEnd);
+  }, [tapActiveId, activeItems, findClosestSeg, assignItemToSeg]);
 
   // Онбординг для незарегистрированных — через 3 сек
   useEffect(() => {
@@ -366,119 +406,110 @@ export default function PlanPage() {
           setCatalogOpen(false);
           const selectedSeg = stateRef.current.selectedSegmentId;
           if (selectedSeg) {
-            // Есть выбранная сторона — привязываем сразу без drag
-            const s = stateRef.current;
-            const newSegments = s.segments.map(seg => {
-              if (seg.id !== selectedSeg) return seg;
-              const existing = seg.items ?? [];
-              if (existing.some(it => it.priceId === item.priceId)) return seg;
-              return { ...seg, items: [...existing, item] };
-            });
-            push({ ...s, segments: newSegments });
+            // Есть выбранная сторона — привязываем сразу
+            assignItemToSeg(item, selectedSeg);
           } else {
-            // Нет выбранной стороны — стандартный drag
-            setDragItem(item);
+            // Добавляем в активные карточки внизу (если ещё нет)
+            setActiveItems(prev =>
+              prev.some(it => it.priceId === item.priceId)
+                ? prev
+                : [...prev, item]
+            );
+            setTapActiveId(item.priceId);
           }
         }}
       />
 
-      {/* ── Drag ghost — товар летит за курсором (десктоп) или висит внизу (мобиле) ── */}
-      {dragItem && (
-        dragPos ? (
-          /* Десктоп/тач-drag: следует за пальцем */
-          <div
-            style={{
-              position: "fixed",
-              left: dragPos.x - 22,
-              top:  dragPos.y - 22,
-              zIndex: 9999,
-              pointerEvents: "none",
-              display: "flex",
-              alignItems: "center",
-              gap: 8,
-              background: "rgba(15,16,23,0.92)",
-              border: `1px solid ${hoverSegId ? "rgba(124,58,237,0.7)" : "rgba(255,255,255,0.15)"}`,
-              borderRadius: 12,
-              padding: "6px 10px 6px 6px",
-              boxShadow: hoverSegId ? "0 0 20px rgba(124,58,237,0.4)" : "0 4px 20px rgba(0,0,0,0.5)",
-              transition: "border-color 0.15s, box-shadow 0.15s",
-              maxWidth: 180,
-            }}
-          >
-            <div style={{
-              width: 32, height: 32, borderRadius: 8, overflow: "hidden", flexShrink: 0,
-              background: "rgba(255,255,255,0.06)", display: "flex", alignItems: "center", justifyContent: "center",
-            }}>
-              {dragItem.imageUrl
-                ? <img src={dragItem.imageUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                : <span style={{ fontSize: 16 }}>📦</span>
-              }
-            </div>
-            <span style={{
-              fontSize: 11, fontWeight: 600,
-              color: hoverSegId ? "rgba(167,139,250,1)" : "rgba(255,255,255,0.8)",
-              overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-              transition: "color 0.15s",
-            }}>
-              {dragItem.name}
-            </span>
+      {/* ── Drag ghost — летит за курсором на десктопе ── */}
+      {dragItem && dragPos && (
+        <div style={{
+          position: "fixed",
+          left: dragPos.x - 22, top: dragPos.y - 22,
+          zIndex: 9999, pointerEvents: "none",
+          display: "flex", alignItems: "center", gap: 8,
+          background: "rgba(15,16,23,0.92)",
+          border: `1px solid ${hoverSegId ? "rgba(124,58,237,0.7)" : "rgba(255,255,255,0.15)"}`,
+          borderRadius: 12, padding: "6px 10px 6px 6px",
+          boxShadow: hoverSegId ? "0 0 20px rgba(124,58,237,0.4)" : "0 4px 20px rgba(0,0,0,0.5)",
+          transition: "border-color 0.15s, box-shadow 0.15s", maxWidth: 180,
+        }}>
+          <div style={{
+            width: 32, height: 32, borderRadius: 8, overflow: "hidden", flexShrink: 0,
+            background: "rgba(255,255,255,0.06)", display: "flex", alignItems: "center", justifyContent: "center",
+          }}>
+            {dragItem.imageUrl
+              ? <img src={dragItem.imageUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+              : <span style={{ fontSize: 16 }}>📦</span>}
           </div>
-        ) : (
-          /* Мобиле: товар выбран из каталога — карточка внизу по центру, тап на стену привяжет */
-          <div
-            style={{
-              position: "fixed",
-              bottom: 90,
-              left: "50%",
-              transform: "translateX(-50%)",
-              zIndex: 9999,
-              display: "flex",
-              alignItems: "center",
-              gap: 10,
-              background: "rgba(15,16,23,0.95)",
-              border: `1px solid ${hoverSegId ? "rgba(124,58,237,0.8)" : "rgba(124,58,237,0.35)"}`,
-              borderRadius: 16,
-              padding: "10px 16px 10px 10px",
-              boxShadow: hoverSegId
-                ? "0 0 28px rgba(124,58,237,0.5), 0 8px 32px rgba(0,0,0,0.6)"
-                : "0 0 18px rgba(124,58,237,0.2), 0 8px 32px rgba(0,0,0,0.6)",
-              transition: "border-color 0.15s, box-shadow 0.15s",
-              maxWidth: 260,
-              cursor: "pointer",
-              backdropFilter: "blur(12px)",
-            }}
-            onClick={() => { setDragItem(null); setHoverSegId(null); }}
-          >
-            <div style={{
-              width: 40, height: 40, borderRadius: 10, overflow: "hidden", flexShrink: 0,
-              background: "rgba(124,58,237,0.15)", border: "1px solid rgba(124,58,237,0.3)",
-              display: "flex", alignItems: "center", justifyContent: "center",
-            }}>
-              {dragItem.imageUrl
-                ? <img src={dragItem.imageUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                : <span style={{ fontSize: 20 }}>📦</span>
-              }
-            </div>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{
-                fontSize: 13, fontWeight: 700,
-                color: hoverSegId ? "rgba(167,139,250,1)" : "rgba(255,255,255,0.9)",
-                overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-              }}>
-                {dragItem.name}
+          <span style={{
+            fontSize: 11, fontWeight: 600,
+            color: hoverSegId ? "rgba(167,139,250,1)" : "rgba(255,255,255,0.8)",
+            overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+          }}>{dragItem.name}</span>
+        </div>
+      )}
+
+      {/* ── Активные карточки внизу (мобиле) ── */}
+      {activeItems.length > 0 && (
+        <div style={{
+          position: "fixed", bottom: 90, left: "50%", transform: "translateX(-50%)",
+          zIndex: 9999, display: "flex", gap: 8, alignItems: "flex-end",
+          pointerEvents: "all",
+        }}>
+          {activeItems.map(item => {
+            const isActive = tapActiveId === item.priceId;
+            return (
+              <div key={item.priceId} style={{
+                display: "flex", alignItems: "center", gap: 10,
+                background: "rgba(12,10,28,0.96)",
+                border: `1px solid ${isActive ? "rgba(124,58,237,0.8)" : "rgba(124,58,237,0.25)"}`,
+                borderRadius: 16, padding: "10px 10px 10px 10px",
+                boxShadow: isActive
+                  ? "0 0 24px rgba(124,58,237,0.45), 0 8px 24px rgba(0,0,0,0.6)"
+                  : "0 4px 16px rgba(0,0,0,0.5)",
+                backdropFilter: "blur(14px)",
+                cursor: "pointer",
+                transition: "border-color 0.15s, box-shadow 0.15s",
+                opacity: isActive ? 1 : 0.7,
+              }}
+                onClick={() => setTapActiveId(item.priceId)}
+              >
+                {/* Иконка */}
+                <div style={{
+                  width: 38, height: 38, borderRadius: 10, overflow: "hidden", flexShrink: 0,
+                  background: "rgba(124,58,237,0.15)", border: "1px solid rgba(124,58,237,0.3)",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                }}>
+                  {item.imageUrl
+                    ? <img src={item.imageUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                    : <span style={{ fontSize: 20 }}>📦</span>}
+                </div>
+                {/* Название + подсказка */}
+                <div style={{ minWidth: 0 }}>
+                  <div style={{
+                    fontSize: 12, fontWeight: 700,
+                    color: isActive ? "rgba(196,181,253,1)" : "rgba(255,255,255,0.75)",
+                    overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                    maxWidth: 120,
+                  }}>{item.name}</div>
+                  <div style={{ fontSize: 10, color: "rgba(167,139,250,0.55)", marginTop: 1 }}>
+                    {isActive ? "Нажми на стену" : "Нажми чтобы выбрать"}
+                  </div>
+                </div>
+                {/* Крестик — удалить везде */}
+                <button
+                  onClick={e => { e.stopPropagation(); removeActiveItem(item.priceId); }}
+                  style={{
+                    width: 24, height: 24, borderRadius: 8, flexShrink: 0,
+                    background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)",
+                    color: "rgba(255,255,255,0.35)", fontSize: 11, cursor: "pointer",
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                  }}
+                >✕</button>
               </div>
-              <div style={{ fontSize: 10, color: "rgba(167,139,250,0.6)", marginTop: 2 }}>
-                {hoverSegId ? "Отпусти для привязки" : "Нажми на стену"}
-              </div>
-            </div>
-            <div style={{
-              fontSize: 10, color: "rgba(255,255,255,0.25)", flexShrink: 0,
-              padding: "2px 6px", borderRadius: 6, background: "rgba(255,255,255,0.05)",
-            }}>
-              ✕
-            </div>
-          </div>
-        )
+            );
+          })}
+        </div>
       )}
     </div>
   );
