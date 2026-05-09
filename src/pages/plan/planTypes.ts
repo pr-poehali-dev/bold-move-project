@@ -13,7 +13,19 @@ export interface SegmentPriceItem {
   category: string;
   imageUrl: string | null;
   categoryImageUrl: string | null;
-  quantity?: number; // кол-во штук/метров на этой стене (по умолчанию 1)
+  unit: string; // единица измерения из прайса
+  quantity?: number; // кол-во (метры для стен, штуки для полотна)
+}
+
+// Товар брошенный на полотно (не на стену) — штуки/ед. из прайса
+export interface FloorItem {
+  id: string;       // уникальный id размещения
+  priceId: number;
+  name: string;
+  category: string;
+  imageUrl: string | null;
+  unit: string;     // единица измерения из прайса
+  quantity: number; // кол-во введённое пользователем
 }
 
 export interface Segment {
@@ -124,6 +136,8 @@ export interface PlanState {
   isBuilt: boolean;
   /** ID сторон которые были автоматически пересчитаны при последней перестройке (для подсветки) */
   changedSegmentIds: string[];
+  /** Товары брошенные на полотно (не на стену) */
+  floorItems: FloorItem[];
 }
 
 // ─── Утилиты ─────────────────────────────────────────────────────────────────
@@ -1165,4 +1179,5 @@ export const INITIAL_STATE: PlanState = {
   baseScale: null,
   isBuilt: false,
   changedSegmentIds: [],
+  floorItems: [],
 };

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { PriceEntry } from "./CategoryDrumPanel";
-import type { PlanState, SegmentPriceItem } from "./planTypes";
+import type { FloorItem, PlanState, SegmentPriceItem } from "./planTypes";
+import { genId } from "./planTypes";
 import func2url from "@/../backend/func2url.json";
 
 const PRICES_URL = (func2url as Record<string, string>)["get-prices"];
@@ -28,6 +29,10 @@ export interface PlanCatalogState {
   findClosestSeg: (clientX: number, clientY: number, useLargeThreshold?: boolean) => string | null;
   assignItemToSeg: (item: SegmentPriceItem, segId: string) => void;
   removeActiveItem: (priceId: number) => void;
+  // Модалка для добавления на полотно
+  pendingFloorItem: SegmentPriceItem | null;
+  setPendingFloorItem: (item: SegmentPriceItem | null) => void;
+  confirmFloorItem: (quantity: number) => void;
 }
 
 export function usePlanCatalog(
@@ -44,7 +49,8 @@ export function usePlanCatalog(
   const [tapActiveId,    setTapActiveId]    = useState<number | null>(null);
   const [dragCardItem,   setDragCardItem]   = useState<SegmentPriceItem | null>(null);
   const [dragCardPos,    setDragCardPos]    = useState<{ x: number; y: number } | null>(null);
-  const [filterAttached, setFilterAttached] = useState(false);
+  const [filterAttached,    setFilterAttached]    = useState(false);
+  const [pendingFloorItem,  setPendingFloorItem]  = useState<SegmentPriceItem | null>(null);
 
   // Загружаем прайс один раз
   useEffect(() => {
@@ -109,6 +115,49 @@ export function usePlanCatalog(
     setTapActiveId(prev => (prev === priceId ? null : prev));
   }, [stateRef, push]);
 
+  // Утилита: точка (cx,cy) в canvas-координатах внутри полигона?
+  const isInsidePolygon = useCallback((clientX: number, clientY: number): boolean => {
+    const s = stateRef.current;
+    if (!s.isClosed || s.points.length < 3) return false;
+    const zoom = s.settings.zoom;
+    const panX = s.settings.panX ?? 0;
+    const panY = s.settings.panY ?? 0;
+    const canvasEl = document.getElementById("plan-canvas-wrap");
+    if (!canvasEl) return false;
+    const rect = canvasEl.getBoundingClientRect();
+    const cx = (clientX - rect.left) / zoom - panX;
+    const cy = (clientY - rect.top) / zoom - panY;
+    // Ray casting
+    const pts = s.points;
+    let inside = false;
+    for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) {
+      const xi = pts[i].x, yi = pts[i].y;
+      const xj = pts[j].x, yj = pts[j].y;
+      if (((yi > cy) !== (yj > cy)) && (cx < (xj - xi) * (cy - yi) / (yj - yi) + xi)) {
+        inside = !inside;
+      }
+    }
+    return inside;
+  }, [stateRef]);
+
+  // Подтвердить добавление на полотно с введённым количеством
+  const confirmFloorItem = useCallback((quantity: number) => {
+    const item = pendingFloorItem;
+    if (!item) return;
+    const s = stateRef.current;
+    const newFloorItem: FloorItem = {
+      id: genId("fi"),
+      priceId: item.priceId,
+      name: item.name,
+      category: item.category,
+      imageUrl: item.imageUrl,
+      unit: item.unit,
+      quantity,
+    };
+    push({ ...s, floorItems: [...(s.floorItems ?? []), newFloorItem] });
+    setPendingFloorItem(null);
+  }, [pendingFloorItem, stateRef, push]);
+
   // Drag: товар летит за курсором/пальцем (десктоп)
   useEffect(() => {
     if (!dragItem) return;
@@ -123,7 +172,11 @@ export function usePlanCatalog(
     const onEnd = (e: MouseEvent | TouchEvent) => {
       const pt = "changedTouches" in e ? e.changedTouches[0] : e;
       const closestId = findClosestSeg(pt.clientX, pt.clientY);
-      if (closestId) assignItemToSeg(dragItem, closestId);
+      if (closestId) {
+        assignItemToSeg(dragItem, closestId);
+      } else if (isInsidePolygon(pt.clientX, pt.clientY)) {
+        setPendingFloorItem(dragItem);
+      }
       setDragItem(null);
       setDragPos(null);
       dragPosRef.current = null;
@@ -212,6 +265,8 @@ export function usePlanCatalog(
       if (closestId) {
         assignItemToSeg(draggingItem, closestId);
         navigator.vibrate?.(30);
+      } else if (isInsidePolygon(pt.clientX, pt.clientY)) {
+        setPendingFloorItem(draggingItem);
       }
       draggingItem = null;
       isDragging = false;
@@ -244,7 +299,11 @@ export function usePlanCatalog(
     const onMouseUp = (e: MouseEvent) => {
       if (!draggingItem || !isDragging) { draggingItem = null; isDragging = false; return; }
       const closestId = findClosestSeg(e.clientX, e.clientY, false);
-      if (closestId) assignItemToSeg(draggingItem, closestId);
+      if (closestId) {
+        assignItemToSeg(draggingItem, closestId);
+      } else if (isInsidePolygon(e.clientX, e.clientY)) {
+        setPendingFloorItem(draggingItem);
+      }
       draggingItem = null; isDragging = false;
       setHoverSegId(null); setDragCardItem(null); setDragCardPos(null);
     };
@@ -263,7 +322,7 @@ export function usePlanCatalog(
       window.removeEventListener("mousemove", onMouseMove);
       window.removeEventListener("mouseup", onMouseUp);
     };
-  }, [activeItems, findClosestSeg, assignItemToSeg]);
+  }, [activeItems, findClosestSeg, assignItemToSeg, isInsidePolygon]);
 
   // Кол-во уникальных товаров на холсте
   const attachedPriceIds = new Set<number>();
@@ -287,5 +346,6 @@ export function usePlanCatalog(
     filterAttached, setFilterAttached,
     attachedCount,
     findClosestSeg, assignItemToSeg, removeActiveItem,
+    pendingFloorItem, setPendingFloorItem, confirmFloorItem,
   };
 }

@@ -9,6 +9,7 @@ import MobileBottomBar from "./MobileBottomBar";
 import useVoiceDraw from "./useVoiceDraw";
 import PlanCatalogPanel from "./PlanCatalogPanel";
 import PlanDragGhosts from "./PlanDragGhosts";
+import PlanQuantityModal from "./PlanQuantityModal";
 import { usePlanCatalog } from "./usePlanCatalog";
 import type { PlanState } from "./planTypes";
 import { INITIAL_STATE } from "./planTypes";
@@ -290,6 +291,13 @@ export default function PlanPage() {
         }}
       />
 
+      {/* ── Модалка количества для floorItems ── */}
+      <PlanQuantityModal
+        item={catalog.pendingFloorItem}
+        onConfirm={catalog.confirmFloorItem}
+        onCancel={() => catalog.setPendingFloorItem(null)}
+      />
+
       {/* ── Ghost-оверлеи и слайдер активных карточек ── */}
       <PlanDragGhosts
         dragItem={catalog.dragItem}
@@ -301,6 +309,7 @@ export default function PlanPage() {
         hoverSegId={catalog.hoverSegId}
         isMobile={isMobile}
         segments={state.segments}
+        floorItems={state.floorItems ?? []}
         anyPanelOpen={sheetOpen || sidebarOpen || rightPanelOpen || catalog.catalogOpen || exportOpen || libraryOpen || authOpen}
         onTapActiveId={catalog.setTapActiveId}
         onRemoveActiveItem={catalog.removeActiveItem}

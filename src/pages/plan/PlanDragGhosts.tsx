@@ -1,4 +1,4 @@
-import type { Segment, SegmentPriceItem } from "./planTypes";
+import type { FloorItem, Segment, SegmentPriceItem } from "./planTypes";
 
 interface Props {
   dragItem: SegmentPriceItem | null;
@@ -10,6 +10,7 @@ interface Props {
   hoverSegId: string | null;
   isMobile: boolean;
   segments: Segment[];
+  floorItems: FloorItem[];
   anyPanelOpen: boolean;
   onTapActiveId: (id: number) => void;
   onRemoveActiveItem: (priceId: number) => void;
@@ -20,17 +21,20 @@ export default function PlanDragGhosts({
   dragCardItem, dragCardPos,
   activeItems, tapActiveId,
   hoverSegId, isMobile,
-  segments, anyPanelOpen,
+  segments, floorItems, anyPanelOpen,
   onTapActiveId, onRemoveActiveItem,
 }: Props) {
-  // Считаем суммарные метры товара по всем стенам
-  const totalMByPriceId = (priceId: number): number =>
-    Math.round(
-      segments.reduce((sum, seg) => {
-        const found = (seg.items ?? []).find(it => it.priceId === priceId);
-        return sum + (found ? (found.quantity ?? 0) : 0);
-      }, 0) * 100
-    ) / 100;
+  // Суммарное кол-во по стенам + полотну
+  const totalByPriceId = (priceId: number): number => {
+    const fromSegs = segments.reduce((sum, seg) => {
+      const found = (seg.items ?? []).find(it => it.priceId === priceId);
+      return sum + (found ? (found.quantity ?? 0) : 0);
+    }, 0);
+    const fromFloor = (floorItems ?? [])
+      .filter(fi => fi.priceId === priceId)
+      .reduce((sum, fi) => sum + fi.quantity, 0);
+    return Math.round((fromSegs + fromFloor) * 100) / 100;
+  };
   return (
     <>
       {/* ── Drag ghost — летит за курсором на десктопе ── */}
@@ -127,7 +131,8 @@ export default function PlanDragGhosts({
         }}>
           {activeItems.map(item => {
             const isActive = tapActiveId === item.priceId;
-            const total = totalMByPriceId(item.priceId);
+            const total = totalByPriceId(item.priceId);
+            const unit = item.unit || "";
             return (
               <div
                 key={item.priceId}
@@ -201,7 +206,7 @@ export default function PlanDragGhosts({
                     whiteSpace: "nowrap",
                   }}>
                     <span style={{ fontSize: 9, fontWeight: 800, color: "#fff", lineHeight: 1 }}>
-                      {total}м
+                      {total}{unit ? ` ${unit}` : ""}
                     </span>
                   </div>
                 )}

@@ -7,6 +7,7 @@ export interface PriceEntry {
   category: string;
   image_url: string | null;
   category_image_url: string | null;
+  unit: string; // единица измерения из прайса (шт, м, м², и др.)
 }
 
 interface ArcItem {
@@ -349,7 +350,7 @@ export default function CategoryDrumPanel({ open, onClose, prices, onDragItem }:
   const handleItemClick = useCallback((itemValue: string) => {
     const price = prices.find(p => String(p.id) === itemValue);
     if (!price) return;
-    onDragItem({ priceId: price.id, name: price.name, category: price.category, imageUrl: price.image_url, categoryImageUrl: price.category_image_url });
+    onDragItem({ priceId: price.id, name: price.name, category: price.category, imageUrl: price.image_url, categoryImageUrl: price.category_image_url, unit: price.unit ?? "" });
     onClose();
   }, [prices, onDragItem, onClose]);
 

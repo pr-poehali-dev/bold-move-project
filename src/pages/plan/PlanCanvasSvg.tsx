@@ -39,8 +39,12 @@ export default function PlanCanvasSvg({
     points, segments, diagonals, dimLines,
     isClosed, settings,
     selectedPointId, selectedSegmentId, selectedDiagonalId, selectedArcId, selectedDimLineId,
-    tool, phase,
+    tool, phase, floorItems,
   } = state;
+
+  // Центр масс полигона (для размещения floorItems)
+  const polyCx = points.length > 0 ? points.reduce((s, p) => s + p.x, 0) / points.length : 0;
+  const polyCy = points.length > 0 ? points.reduce((s, p) => s + p.y, 0) / points.length : 0;
 
   const {
     showGrid, gridSize, zoom, panX, panY,
@@ -150,6 +154,51 @@ export default function PlanCanvasSvg({
             }}
           />
         ))}
+
+        {/* Товары на полотне (floorItems) */}
+        {isClosed && (floorItems ?? []).map((fi, idx) => {
+          const FW = 140, FH = 24, FY_STEP = 30;
+          const fx = polyCx;
+          const fy = polyCy - ((floorItems.length - 1) * FY_STEP) / 2 + idx * FY_STEP;
+          const label = fi.name.length > 16 ? fi.name.slice(0, 14) + "…" : fi.name;
+          return (
+            <g key={fi.id}>
+              <rect x={fx - FW / 2} y={fy - FH / 2} width={FW} height={FH} rx={8}
+                fill="rgba(17,12,36,0.92)" stroke="rgba(124,58,237,0.35)" strokeWidth={1}
+                style={{ pointerEvents: "none" }}
+              />
+              {fi.imageUrl && (
+                <image href={fi.imageUrl} x={fx - FW / 2 + 5} y={fy - 9} width={18} height={18}
+                  preserveAspectRatio="xMidYMid slice" style={{ pointerEvents: "none" }} />
+              )}
+              <text x={fi.imageUrl ? fx - FW / 2 + 28 : fx - FW / 2 + 8} y={fy + 4}
+                fontSize={9} fill="rgba(196,181,253,0.85)"
+                fontFamily="system-ui, sans-serif" fontWeight={500}
+                className="pointer-events-none select-none">
+                {label}
+              </text>
+              {/* Кол-во + единица */}
+              <text x={fx + FW / 2 - 28} y={fy + 4} textAnchor="middle"
+                fontSize={8.5} fontWeight={700} fill="rgba(167,139,250,0.9)"
+                fontFamily="monospace" className="pointer-events-none select-none">
+                {fi.quantity} {fi.unit}
+              </text>
+              {/* Крестик */}
+              <g style={{ cursor: "pointer" }}
+                onClick={e => {
+                  e.stopPropagation();
+                  onChange({ floorItems: (floorItems ?? []).filter(f => f.id !== fi.id) });
+                }}>
+                <circle cx={fx + FW / 2 - 7} cy={fy} r={8}
+                  fill="rgba(239,68,68,0.15)" stroke="rgba(239,68,68,0.45)" strokeWidth={0.8} />
+                <line x1={fx + FW / 2 - 10} y1={fy - 3} x2={fx + FW / 2 - 4} y2={fy + 3}
+                  stroke="rgba(255,255,255,0.7)" strokeWidth={1.2} strokeLinecap="round" />
+                <line x1={fx + FW / 2 - 4} y1={fy - 3} x2={fx + FW / 2 - 10} y2={fy + 3}
+                  stroke="rgba(255,255,255,0.7)" strokeWidth={1.2} strokeLinecap="round" />
+              </g>
+            </g>
+          );
+        })}
 
         {/* Точки */}
         {renderPoints(ctx, handlers)}
