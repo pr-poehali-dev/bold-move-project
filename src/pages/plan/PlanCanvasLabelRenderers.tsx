@@ -65,11 +65,8 @@ interface SegmentItemsBadgesProps {
 }
 
 export function SegmentItemsBadges({
-  seg, ctx, allSegments, onRemoveItem, onUpdateQuantity,
+  seg, ctx, allSegments,
 }: SegmentItemsBadgesProps) {
-  const [editKey, setEditKey] = React.useState<string | null>(null); // `${segId}-${priceId}`
-  const [draft, setDraft]     = React.useState("");
-
   const items = seg.items;
   if (!items || items.length === 0) return null;
   const a = ctx.points.find(p => p.id === seg.fromId);
@@ -92,13 +89,6 @@ export function SegmentItemsBadges({
   const ux        = (b.x - a.x) / segLen;
   const uy        = (b.y - a.y) / segLen;
 
-  const commitEdit = (key: string, segId: string, priceId: number) => {
-    const v = parseFloat(draft.replace(",", "."));
-    if (!isNaN(v) && v > 0 && onUpdateQuantity) onUpdateQuantity(segId, priceId, v);
-    setEditKey(null);
-    setDraft("");
-  };
-
   return (
     <g key={`seg-items-${seg.id}`}>
       {items.map((item, idx) => {
@@ -106,7 +96,7 @@ export function SegmentItemsBadges({
         const px    = mid.x - nx * OFF + ux * along;
         const py    = mid.y - ny * OFF + uy * along;
         const label = item.name.length > 14 ? item.name.slice(0, 12) + "…" : item.name;
-        const key   = `${seg.id}-${item.priceId}`;
+        const itemKey = `${seg.id}-${item.priceId}`;
         const qty   = item.quantity ?? 1;
 
         // Суммарное кол-во этого товара по всему потолку
@@ -115,21 +105,12 @@ export function SegmentItemsBadges({
           return sum + (found ? (found.quantity ?? 1) : 0);
         }, 0);
 
-        const isEditing = editKey === key;
-
         return (
-          <g key={key} transform={`translate(${px},${py}) rotate(${na})`}>
+          <g key={itemKey} transform={`translate(${px},${py}) rotate(${na})`}>
             {/* Фон-таблетка */}
             <rect x={-W / 2} y={-H / 2} width={W} height={H} rx={8}
               fill="rgba(17,12,36,0.92)" stroke="rgba(124,58,237,0.55)" strokeWidth={1}
-              style={{ cursor: "pointer" }}
-              onClick={(e) => {
-                e.stopPropagation();
-                if (!isEditing) {
-                  setEditKey(key);
-                  setDraft(String(qty));
-                }
-              }}
+              style={{ pointerEvents: "none" }}
             />
 
             {/* Картинка */}
@@ -138,66 +119,24 @@ export function SegmentItemsBadges({
                 preserveAspectRatio="xMidYMid slice" style={{ pointerEvents: "none" }} />
             )}
 
-            {isEditing ? (
-              /* Инлайн-редактор количества */
-              <foreignObject x={-W / 2 + 26} y={-H / 2 + 2} width={W - 56} height={H - 4}>
-                <input
-                  type="number" min={1} step={1}
-                  value={draft}
-                  autoFocus
-                  onChange={e => setDraft(e.target.value)}
-                  onBlur={() => commitEdit(key, seg.id, item.priceId)}
-                  onKeyDown={e => {
-                    if (e.key === "Enter") commitEdit(key, seg.id, item.priceId);
-                    if (e.key === "Escape") { setEditKey(null); setDraft(""); }
-                    e.stopPropagation();
-                  }}
-                  onClick={e => e.stopPropagation()}
-                  style={{
-                    width: "100%", height: "100%",
-                    background: "rgba(17,12,36,0.98)", color: "rgba(196,181,253,1)",
-                    border: "1px solid rgba(124,58,237,0.7)", borderRadius: 5,
-                    padding: "0 4px", fontSize: 11, fontWeight: 700,
-                    outline: "none", boxSizing: "border-box",
-                  }}
-                />
-              </foreignObject>
-            ) : (
-              /* Название */
-              <text x={item.imageUrl ? -W / 2 + 28 : -W / 2 + 8} y={4}
-                fontSize={9} fill="rgba(196,181,253,0.95)"
-                fontFamily="system-ui, sans-serif" fontWeight={500}
-                className="pointer-events-none select-none">
-                {label}
-              </text>
-            )}
+            {/* Название */}
+            <text x={item.imageUrl ? -W / 2 + 28 : -W / 2 + 8} y={4}
+              fontSize={9} fill="rgba(196,181,253,0.95)"
+              fontFamily="system-ui, sans-serif" fontWeight={500}
+              className="pointer-events-none select-none">
+              {label}
+            </text>
 
             {/* Счётчик: количество на этой стене / итого по потолку */}
-            {!isEditing && (
-              <g style={{ cursor: "pointer" }}
-                onClick={e => { e.stopPropagation(); setEditKey(key); setDraft(String(qty)); }}>
-                <rect x={W / 2 - 40} y={-H / 2 + 3} width={30} height={H - 6} rx={4}
-                  fill="rgba(124,58,237,0.22)" stroke="rgba(124,58,237,0.4)" strokeWidth={0.6} />
-                <text x={W / 2 - 25} y={4} textAnchor="middle"
-                  fontSize={8.5} fontWeight={700} fill="rgba(196,181,253,0.9)"
-                  fontFamily="monospace" className="select-none">
-                  {qty}/{totalQty}
-                </text>
-              </g>
-            )}
-
-            {/* Крестик */}
-            {onRemoveItem && !isEditing && (
-              <g onClick={e => { e.stopPropagation(); onRemoveItem(seg.id, item.priceId); }}
-                style={{ cursor: "pointer" }}>
-                <circle cx={W / 2 - 7} cy={0} r={7}
-                  fill="rgba(239,68,68,0.2)" stroke="rgba(239,68,68,0.55)" strokeWidth={0.8} />
-                <line x1={W / 2 - 10} y1={-3} x2={W / 2 - 4} y2={3}
-                  stroke="rgba(255,255,255,0.75)" strokeWidth={1.2} strokeLinecap="round" />
-                <line x1={W / 2 - 4} y1={-3} x2={W / 2 - 10} y2={3}
-                  stroke="rgba(255,255,255,0.75)" strokeWidth={1.2} strokeLinecap="round" />
-              </g>
-            )}
+            <g style={{ pointerEvents: "none" }}>
+              <rect x={W / 2 - 40} y={-H / 2 + 3} width={30} height={H - 6} rx={4}
+                fill="rgba(124,58,237,0.22)" stroke="rgba(124,58,237,0.4)" strokeWidth={0.6} />
+              <text x={W / 2 - 25} y={4} textAnchor="middle"
+                fontSize={8.5} fontWeight={700} fill="rgba(196,181,253,0.9)"
+                fontFamily="monospace" className="select-none">
+                {qty}/{totalQty}
+              </text>
+            </g>
           </g>
         );
       })}

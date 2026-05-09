@@ -1,4 +1,4 @@
-import type { SegmentPriceItem } from "./planTypes";
+import type { Segment, SegmentPriceItem } from "./planTypes";
 
 interface Props {
   dragItem: SegmentPriceItem | null;
@@ -9,6 +9,7 @@ interface Props {
   tapActiveId: number | null;
   hoverSegId: string | null;
   isMobile: boolean;
+  segments: Segment[];
   onTapActiveId: (id: number) => void;
   onRemoveActiveItem: (priceId: number) => void;
 }
@@ -18,8 +19,15 @@ export default function PlanDragGhosts({
   dragCardItem, dragCardPos,
   activeItems, tapActiveId,
   hoverSegId, isMobile,
+  segments,
   onTapActiveId, onRemoveActiveItem,
 }: Props) {
+  // Считаем суммарное кол-во товара по всем стенам
+  const totalByPriceId = (priceId: number): number =>
+    segments.reduce((sum, seg) => {
+      const found = (seg.items ?? []).find(it => it.priceId === priceId);
+      return sum + (found ? (found.quantity ?? 1) : 0);
+    }, 0);
   return (
     <>
       {/* ── Drag ghost — летит за курсором на десктопе ── */}
@@ -116,11 +124,13 @@ export default function PlanDragGhosts({
         }}>
           {activeItems.map(item => {
             const isActive = tapActiveId === item.priceId;
+            const total = totalByPriceId(item.priceId);
             return (
               <div
                 key={item.priceId}
                 data-active-item={String(item.priceId)}
                 style={{
+                  position: "relative",
                   display: "flex", alignItems: "center", gap: 10,
                   background: "rgba(12,10,28,0.96)",
                   border: `1px solid ${hoverSegId && isActive ? "rgba(124,58,237,1)" : isActive ? "rgba(124,58,237,0.8)" : "rgba(124,58,237,0.25)"}`,
@@ -174,6 +184,23 @@ export default function PlanDragGhosts({
                     display: "flex", alignItems: "center", justifyContent: "center",
                   }}
                 >✕</button>
+
+                {/* Кружок с суммарным количеством */}
+                {total > 0 && (
+                  <div style={{
+                    position: "absolute", top: -8, right: -8,
+                    minWidth: 20, height: 20, borderRadius: 10,
+                    background: "rgba(124,58,237,1)",
+                    border: "2px solid rgba(12,10,28,0.96)",
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    padding: "0 5px",
+                    pointerEvents: "none",
+                  }}>
+                    <span style={{ fontSize: 10, fontWeight: 800, color: "#fff", lineHeight: 1 }}>
+                      {total}
+                    </span>
+                  </div>
+                )}
               </div>
             );
           })}

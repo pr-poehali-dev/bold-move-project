@@ -300,6 +300,7 @@ export default function PlanPage() {
         tapActiveId={catalog.tapActiveId}
         hoverSegId={catalog.hoverSegId}
         isMobile={isMobile}
+        segments={state.segments}
         onTapActiveId={catalog.setTapActiveId}
         onRemoveActiveItem={catalog.removeActiveItem}
       />
