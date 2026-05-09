@@ -44,6 +44,8 @@ export default function PlanPage() {
   const [hoverSegId,      setHoverSegId]      = useState<string | null>(null);
   const [filterAttached,  setFilterAttached]  = useState(false);
   const stateRef = useRef(state);
+  // Флаг: план загружается из библиотеки — не открывать панели автоматически
+  const loadingFromLibraryRef = useRef(false);
   stateRef.current = state;
 
   // Загружаем прайс один раз
@@ -164,12 +166,14 @@ export default function PlanPage() {
     setRightPanelOpen,
     setFocusSegmentId,
     sheetHeight,
+    onBeforeLoad: () => { loadingFromLibraryRef.current = true; },
+    onAfterLoad:  () => { loadingFromLibraryRef.current = false; },
   });
 
   // При замыкании фигуры
   const prevIsClosed = useRef(state.isClosed);
   useEffect(() => {
-    if (state.isClosed && !prevIsClosed.current) {
+    if (state.isClosed && !prevIsClosed.current && !loadingFromLibraryRef.current) {
       if (!isMobile) {
         // ПК: открываем сайдбар + zoomFit
         setSidebarOpen(true);

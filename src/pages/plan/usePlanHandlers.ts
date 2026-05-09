@@ -22,6 +22,8 @@ interface UseHandlersOpts {
   setRightPanelOpen: (v: boolean) => void;
   setFocusSegmentId: (v: string | null) => void;
   sheetHeight: number;
+  onBeforeLoad?: () => void;
+  onAfterLoad?: () => void;
 }
 
 export function usePlanHandlers({
@@ -29,6 +31,7 @@ export function usePlanHandlers({
   isMobile, token,
   setSheetOpen, setExportOpen, setLibraryOpen, setAuthOpen,
   setRightPanelOpen, setFocusSegmentId, sheetHeight,
+  onBeforeLoad, onAfterLoad,
 }: UseHandlersOpts) {
   const storage = usePlanStorage();
   const stateRef = useRef(state);
@@ -133,13 +136,16 @@ export function usePlanHandlers({
 
   const handleLoad = useCallback(async (planId: number) => {
     if (!token) return;
+    onBeforeLoad?.();
     const loaded = await storage.load(planId, token);
     if (loaded) {
       const allSet = loaded.segments?.length > 0 && loaded.segments.every((s: Segment) => s.lengthCm !== null && s.lengthCm > 0);
       reset({ ...loaded, changedSegmentIds: [], isBuilt: loaded.isBuilt ?? (!!loaded.baseScale && allSet) });
-      setTimeout(() => zoomFit(), 150);
+      setTimeout(() => { zoomFit(); onAfterLoad?.(); }, 150);
+    } else {
+      onAfterLoad?.();
     }
-  }, [token, storage, reset, isMobile, setFocusSegmentId, setRightPanelOpen, zoomFit]);
+  }, [token, storage, reset, zoomFit, onBeforeLoad, onAfterLoad]);
 
   const handleDelete = useCallback(async (planId: number) => {
     if (!token) return;
