@@ -202,9 +202,9 @@ function MobileToolDropdown({ tool, onToolChange }: {
 
   return (
     <div ref={ref} className="relative shrink-0">
-      {/* Дропдаун вверх */}
+      {/* Дропдаун вниз — поверх холста */}
       {open && (
-        <div className="absolute bottom-11 left-0 bg-[#1a1b2e] border border-white/[0.12] rounded-xl shadow-2xl p-1.5 flex flex-col gap-1 min-w-[160px] z-50">
+        <div className="absolute top-11 left-0 bg-[#1a1b2e] border border-white/[0.12] rounded-xl shadow-2xl p-1.5 flex flex-col gap-1 min-w-[160px] z-[9999]">
           {EXTRA_TOOLS.map(t => (
             <button
               key={t.id}
@@ -237,7 +237,7 @@ function MobileToolDropdown({ tool, onToolChange }: {
               : "text-white/45 hover:text-white"
         }`}
       >
-        <Icon name={activeExtra?.icon ?? "Minus"} size={16} />
+        <Icon name={activeExtra?.icon ?? "Shapes"} size={16} />
         {/* Маленький индикатор раскрытия */}
         <span className="absolute bottom-1 right-1 w-1 h-1 rounded-full bg-current opacity-40" />
       </button>
