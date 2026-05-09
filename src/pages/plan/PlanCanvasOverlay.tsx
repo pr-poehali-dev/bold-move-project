@@ -18,10 +18,11 @@ interface Props {
   onCloseCtxMenu: () => void;
   lpIndicator: { x: number; y: number } | null;
   onSettingChange?: (patch: Partial<PlanSettings>) => void;
+  onOpenCatalog?: () => void;
 }
 
 export default function PlanCanvasOverlay({
-  state, onChange, ctxMenu, onCloseCtxMenu, lpIndicator, onSettingChange,
+  state, onChange, ctxMenu, onCloseCtxMenu, lpIndicator, onSettingChange, onOpenCatalog,
 }: Props) {
   const { points, segments, diagonals, isClosed, settings } = state;
   const { zoom } = settings;
@@ -199,6 +200,27 @@ export default function PlanCanvasOverlay({
             <Icon name="SlidersHorizontal" size={16} />
           </button>
         </div>
+      )}
+
+      {/* Кнопка каталога — мобиле: правый нижний угол */}
+      {isMobile && onOpenCatalog && (
+        <button
+          onClick={onOpenCatalog}
+          className="absolute bottom-20 right-3 w-10 h-10 rounded-xl bg-white/[0.06] border border-white/[0.1] text-white/50 active:bg-white/[0.12] flex items-center justify-center transition active:scale-95 z-10"
+        >
+          <Icon name="LayoutGrid" size={16} />
+        </button>
+      )}
+
+      {/* Кнопка каталога — десктоп: левый нижний угол */}
+      {!isMobile && onOpenCatalog && (
+        <button
+          onClick={onOpenCatalog}
+          title="Каталог материалов"
+          className="absolute bottom-4 left-3 w-9 h-9 rounded-xl bg-white/[0.07] border border-white/[0.1] text-white/50 hover:bg-white/[0.14] flex items-center justify-center transition active:scale-95 z-10"
+        >
+          <Icon name="LayoutGrid" size={15} />
+        </button>
       )}
     </>
   );

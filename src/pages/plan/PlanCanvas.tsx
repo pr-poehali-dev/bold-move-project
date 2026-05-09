@@ -8,9 +8,10 @@ import type { SegmentHandlers } from "./PlanCanvasRenderers";
 interface Props {
   state: PlanState;
   onChange: (patch: Partial<PlanState>) => void;
+  onOpenCatalog?: () => void;
 }
 
-export default function PlanCanvas({ state, onChange }: Props) {
+export default function PlanCanvas({ state, onChange, onOpenCatalog }: Props) {
   const { tool } = state;
 
   // ── Локальные стейты и refs ───────────────────────────────────────────────
@@ -67,6 +68,7 @@ export default function PlanCanvas({ state, onChange }: Props) {
         onCloseCtxMenu={() => cs.setCtxMenu(null)}
         lpIndicator={cs.lpIndicator}
         onSettingChange={patch => onChange({ settings: { ...state.settings, ...patch } })}
+        onOpenCatalog={onOpenCatalog}
       />
     </div>
   );
