@@ -105,12 +105,14 @@ export function usePlanHandlers({
     if (!pts || pts.length < 2) { handleSettingChange({ zoom: 1, panX: 0, panY: 0 }); return; }
     const xs = pts.map((p: { x: number }) => p.x);
     const ys = pts.map((p: { y: number }) => p.y);
-    const minX = Math.min(...xs), maxX = Math.max(...xs);
-    const minY = Math.min(...ys), maxY = Math.max(...ys);
+    // Расширяем bbox на 30 SVG-единиц — место под метки A,B,C,D (18px offset + шрифт)
+    const LABEL_MARGIN = 30;
+    const minX = Math.min(...xs) - LABEL_MARGIN, maxX = Math.max(...xs) + LABEL_MARGIN;
+    const minY = Math.min(...ys) - LABEL_MARGIN, maxY = Math.max(...ys) + LABEL_MARGIN;
     const w = maxX - minX || 100, h = maxY - minY || 100;
     const el = document.getElementById("plan-canvas-wrap");
     if (!el) return;
-    const PAD_LEFT = 90, PAD_RIGHT = 30, PAD_TOP = 90, PAD_BOT = 50;
+    const PAD_LEFT = 40, PAD_RIGHT = 40, PAD_TOP = 40, PAD_BOT = 40;
     const cw = el.clientWidth  - PAD_LEFT - PAD_RIGHT - reservedRightPx;
     const ch = el.clientHeight - reservedBottomPx - PAD_TOP - PAD_BOT;
     if (cw <= 0 || ch <= 0) return;
