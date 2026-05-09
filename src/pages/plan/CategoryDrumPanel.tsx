@@ -357,7 +357,7 @@ export default function CategoryDrumPanel({ open, onClose, prices, onDragItem }:
         opacity: visible ? 1 : 0,
         transition: "transform 0.3s cubic-bezier(0.34,1.2,0.64,1), opacity 0.25s ease",
         zIndex: 41,
-        width: 260,
+        width: 200,
         display: "flex",
         flexDirection: "column",
         justifyContent: "center",
