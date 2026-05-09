@@ -49,10 +49,10 @@ export default function MobileBottomBar({
   ];
 
   return (
-    <div className="absolute bottom-4 left-0 right-0 flex items-end justify-center gap-3 z-20 pointer-events-none px-4">
+    <div className="absolute bottom-4 left-0 right-0 flex items-end justify-center gap-3 z-20 px-4">
 
       {/* 1. Настройки */}
-      <div ref={settingsRef} className="relative pointer-events-auto">
+      <div ref={settingsRef} className="relative">
         {settingsOpen && (
           <div className="absolute bottom-14 left-0 bg-[#1a1b2e] border border-white/[0.12] rounded-2xl shadow-2xl p-2 flex flex-col gap-0.5 min-w-[200px] max-h-[60vh] overflow-y-auto">
             {SETTINGS_ITEMS.map(({ key, label, icon }) => (
@@ -79,7 +79,7 @@ export default function MobileBottomBar({
       </div>
 
       {/* 2. Зум */}
-      <div ref={zoomRef} className="relative pointer-events-auto">
+      <div ref={zoomRef} className="relative">
         {zoomOpen && (
           <div className="absolute bottom-14 left-1/2 -translate-x-1/2 bg-[#1a1b2e] border border-white/[0.12] rounded-2xl shadow-2xl p-2 flex flex-col items-center gap-1 min-w-[52px]">
             <button
