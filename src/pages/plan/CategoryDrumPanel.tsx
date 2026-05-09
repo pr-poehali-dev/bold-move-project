@@ -398,12 +398,13 @@ export default function CategoryDrumPanel({ open, onClose, prices, onDragItem }:
           <div style={{
             position: "absolute",
             top: "50%",
-            right: -8,
+            // сдвигаем вправо за пределы контейнера — половина круга уходит за правый край
+            right: -180,
             transform: "translateY(-50%)",
-            width: 260,
-            height: 380,
+            width: 360,
+            height: 360,
             borderRadius: "50%",
-            background: "radial-gradient(ellipse 100% 100% at 90% 50%, rgba(14,10,30,0.85) 0%, rgba(14,10,30,0.55) 45%, rgba(14,10,30,0.15) 70%, transparent 100%)",
+            background: "radial-gradient(circle, rgba(14,10,30,0.82) 0%, rgba(14,10,30,0.45) 50%, transparent 75%)",
             pointerEvents: "none",
             zIndex: 0,
           }} />
