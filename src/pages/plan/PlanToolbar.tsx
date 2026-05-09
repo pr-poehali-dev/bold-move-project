@@ -222,7 +222,7 @@ function MobileToolDropdown({ tool, pinned, onToolChange, onTogglePin }: {
   return (
     <div ref={ref} className="relative shrink-0">
       {open && (
-        <div className="absolute top-11 left-0 bg-[#1a1b2e] border border-white/[0.12] rounded-xl shadow-2xl p-1.5 flex flex-col gap-0.5 min-w-[210px] z-[9999]">
+        <div className="fixed bg-[#1a1b2e] border border-white/[0.12] rounded-xl shadow-2xl p-1.5 flex flex-col gap-0.5 w-[210px] z-[9999]" style={{ top: 52, right: 8 }}>
           <p className="text-[10px] text-white/30 px-3 pt-1 pb-0.5 uppercase tracking-wide font-semibold">Инструменты</p>
           {ALL_TOOLS_MENU.map(t => {
             const pinnedIdx = pinned.indexOf(t.id);
@@ -246,7 +246,6 @@ function MobileToolDropdown({ tool, pinned, onToolChange, onTogglePin }: {
                   <Icon name={t.icon} size={14} />
                   <span className="flex-1">{t.label}</span>
                   {t.comingSoon && <span className="text-[9px] text-white/25 font-normal">скоро</span>}
-                  {isActive && !t.comingSoon && <Icon name="Check" size={11} className="opacity-60" />}
                 </button>
                 {/* Звёздочка с номером позиции */}
                 <button
