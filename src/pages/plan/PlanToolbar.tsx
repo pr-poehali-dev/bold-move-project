@@ -179,8 +179,10 @@ function MobileToolbar(props: Props) {
   const {
     tool, isClosed,
     canUndo, canRedo,
-    onToolChange, onUndo, onRedo, onOpenLibrary,
+    onToolChange, onUndo, onRedo, onOpenLibrary, onReset,
   } = props;
+
+  const [confirmReset, setConfirmReset] = React.useState(false);
 
   return (
     <div className="bg-[#161616] border-b border-white/[0.08] shrink-0 flex items-center gap-0.5 px-2" style={{ height: 52 }}>
@@ -208,6 +210,34 @@ function MobileToolbar(props: Props) {
           );
         })}
       </div>
+
+      {/* Очистить холст */}
+      <div className="w-px h-4 bg-white/10 mx-0.5 shrink-0" />
+      {confirmReset ? (
+        <div className="flex items-center gap-1 shrink-0">
+          <button
+            onClick={() => { onReset(); setConfirmReset(false); }}
+            className="h-8 px-2.5 rounded-lg bg-rose-600/80 border border-rose-400/30 text-white text-[11px] font-bold hover:bg-rose-600 transition active:scale-95"
+          >
+            Стереть
+          </button>
+          <button
+            onClick={() => setConfirmReset(false)}
+            className="w-8 h-8 rounded-lg flex items-center justify-center text-white/40 hover:bg-white/[0.07] transition"
+          >
+            <Icon name="X" size={14} />
+          </button>
+        </div>
+      ) : (
+        <button
+          onClick={() => setConfirmReset(true)}
+          title="Очистить холст"
+          className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0 transition-all text-white/35 hover:text-rose-400 hover:bg-rose-500/10"
+        >
+          <Icon name="Trash2" size={16} />
+        </button>
+      )}
+
       {/* Сохранённые — справа */}
       <div className="w-px h-4 bg-white/10 mx-0.5 shrink-0" />
       <button
