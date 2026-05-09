@@ -204,8 +204,6 @@ function ArcDrum({ items, value, onChange, onClick }: {
 
         // Горизонтальное смещение по дуге (параболическое — сильный изгиб)
         const arcX = (1 - Math.cos(norm * Math.PI * 0.85)) * ARC_R * 0.55;
-        // Поворот элемента вдоль дуги
-        const rotate = norm * 28; // градусы
         // Масштаб и прозрачность
         const scale   = Math.max(0.65, 1 - Math.abs(norm) * 0.32);
         const opacity = Math.max(0.15, 1 - Math.abs(norm) * 0.82);
@@ -236,7 +234,7 @@ function ArcDrum({ items, value, onChange, onClick }: {
               gap: 10,
               padding: "0 12px 0 8px",
               cursor: "pointer",
-              transform: `scale(${scale}) rotate(${rotate}deg)`,
+              transform: `scale(${scale})`,
               transformOrigin: "right center",
               opacity,
               transition: "none",
@@ -269,9 +267,9 @@ function ArcDrum({ items, value, onChange, onClick }: {
         );
       })}
 
-      {/* Маски сверху/снизу */}
-      <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: ITEM_H * 1.5, background: "linear-gradient(to bottom, rgba(0,0,0,0.85) 0%, transparent 100%)", pointerEvents: "none", zIndex: 5 }} />
-      <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: ITEM_H * 1.5, background: "linear-gradient(to top, rgba(0,0,0,0.85) 0%, transparent 100%)", pointerEvents: "none", zIndex: 5 }} />
+      {/* Маски — только прозрачность, без чёрного */}
+      <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: ITEM_H * 1.2, background: "linear-gradient(to bottom, rgba(0,0,0,0.0) 0%, transparent 100%)", pointerEvents: "none", zIndex: 5 }} />
+      <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: ITEM_H * 1.2, background: "linear-gradient(to top, rgba(0,0,0,0.0) 0%, transparent 100%)", pointerEvents: "none", zIndex: 5 }} />
     </div>
   );
 }
