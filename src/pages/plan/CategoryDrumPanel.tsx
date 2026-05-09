@@ -31,17 +31,19 @@ const PADDING  = ITEM_H * Math.floor(VISIBLE / 2);
 
 // ── Барабан с дугой ───────────────────────────────────────────────────────────
 
-function ArcDrum({ items, value, onChange, onClick, initialIdx }: {
+function ArcDrum({ items, value, onChange, onClick, initialIdx, onSwipeRight }: {
   items: ArcItem[];
   value: string;
   onChange: (v: string) => void;
   onClick: (v: string) => void;
   initialIdx?: number;
+  onSwipeRight?: () => void;
 }) {
   const scrollRef   = useRef<HTMLDivElement>(null);
   const isDragging  = useRef(false);
   const didDrag     = useRef(false);
   const startY      = useRef(0);
+  const startX      = useRef(0);
   const startScroll = useRef(0);
   const lastY       = useRef(0);
   const lastTime    = useRef(0);
@@ -116,6 +118,7 @@ function ArcDrum({ items, value, onChange, onClick, initialIdx }: {
     if (rafId.current) cancelAnimationFrame(rafId.current);
     isSnapping.current = false; isDragging.current = true; didDrag.current = false;
     startY.current = e.touches[0].clientY;
+    startX.current = e.touches[0].clientX;
     startScroll.current = scrollRef.current?.scrollTop ?? 0;
     lastY.current = e.touches[0].clientY; lastTime.current = performance.now(); velocity.current = 0;
   }, []);
@@ -130,11 +133,18 @@ function ArcDrum({ items, value, onChange, onClick, initialIdx }: {
     setScrollTop(scrollRef.current.scrollTop);
   }, []);
 
-  const onTouchEnd = useCallback(() => {
+  const onTouchEnd = useCallback((e: React.TouchEvent) => {
     isDragging.current = false;
+    const dx = (e.changedTouches[0]?.clientX ?? startX.current) - startX.current;
+    const dy = Math.abs((e.changedTouches[0]?.clientY ?? startY.current) - startY.current);
+    // свайп вправо: горизонтальное смещение > 50px и больше чем вертикальное
+    if (dx > 50 && dx > dy * 1.5 && onSwipeRight) {
+      onSwipeRight();
+      return;
+    }
     startInertia();
     setTimeout(() => { didDrag.current = false; }, 50);
-  }, [startInertia]);
+  }, [startInertia, onSwipeRight]);
 
   const onMouseDown = useCallback((e: React.MouseEvent) => {
     if (rafId.current) cancelAnimationFrame(rafId.current);
@@ -365,28 +375,7 @@ export default function CategoryDrumPanel({ open, onClose, prices, onDragItem }:
         pointerEvents: "none",
         background: "transparent",
       }}>
-        {/* Кнопка назад — абсолютно, не влияет на центровку */}
-        {mode === "items" && (
-          <button
-            onClick={e => { e.stopPropagation(); setMode("categories"); setSelectedCategory(""); }}
-            style={{
-              position: "absolute",
-              top: 20,
-              right: 8,
-              pointerEvents: "all",
-              background: "rgba(124,58,237,0.18)",
-              border: "1px solid rgba(124,58,237,0.35)",
-              borderRadius: 8,
-              padding: "3px 10px",
-              color: "rgba(196,181,253,0.85)",
-              fontSize: 10,
-              fontWeight: 600,
-              cursor: "pointer",
-            }}
-          >
-            ← назад
-          </button>
-        )}
+
 
         <div style={{
           pointerEvents: "all",
@@ -425,6 +414,7 @@ export default function CategoryDrumPanel({ open, onClose, prices, onDragItem }:
               value={selectedItem || (catItems[0]?.value ?? "")}
               onChange={setSelectedItem}
               onClick={handleItemClick}
+              onSwipeRight={() => { setMode("categories"); setSelectedCategory(""); }}
             />
           )}
         </div>
