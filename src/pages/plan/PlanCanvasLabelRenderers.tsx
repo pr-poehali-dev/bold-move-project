@@ -80,7 +80,8 @@ export function renderSegmentItems(
   const W = 130;
 
   return (
-    <g key={`seg-items-${seg.id}`} transform={`rotate(${na},${ox},${oy})`}
+    <g key={`seg-items-${seg.id}`}
+      transform={`translate(${ox},${oy}) rotate(${na})`}
       style={{ cursor: onRemoveItem ? "pointer" : "default" }}>
       {/* Фон-таблетка */}
       <rect x={-W / 2} y={-11} width={W} height={22} rx={7}
