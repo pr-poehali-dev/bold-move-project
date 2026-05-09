@@ -366,13 +366,15 @@ export default function PlanPage() {
             onZoomOut={zoomOut}
             onZoomFit={zoomFit}
             onOpenPanel={isMobile
-              ? () => { setSheetSnap("half"); setSheetOpen(true); }
+              ? () => { if (sheetOpen) { setSheetOpen(false); } else { setSheetSnap("half"); setSheetOpen(true); } }
               : () => setSidebarOpen(v => !v)
             }
-            onOpenCatalog={() => setCatalogOpen(true)}
+            onOpenCatalog={() => setCatalogOpen(v => !v)}
             onOpenSides={() => {
-              setFocusSegmentId(state.selectedSegmentId);
-              setRightPanelOpen(true);
+              if (rightPanelOpen) { setRightPanelOpen(false); } else {
+                setFocusSegmentId(state.selectedSegmentId);
+                setRightPanelOpen(true);
+              }
             }}
             selectedSegmentId={state.selectedSegmentId}
             sheetOpen={isMobile ? sheetOpen : sidebarOpen}
