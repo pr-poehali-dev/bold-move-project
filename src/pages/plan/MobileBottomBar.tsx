@@ -25,6 +25,7 @@ interface Props {
   filterAttached?: boolean;
   onToggleFilterAttached?: () => void;
   isMobile?: boolean;
+  onSettingsOpenChange?: (open: boolean) => void;
 }
 
 // Стиль единой кнопки — как фиолетовая кнопка PanelBottom
@@ -38,9 +39,12 @@ export default function MobileBottomBar({
   sheetOpen = false, catalogOpen = false, rightPanelOpen = false,
   onToggleVoiceDraw, isVoiceDrawing = false, isVoiceProcessing = false, voiceStatus, voiceInterim,
   attachedCount = 0, filterAttached = false, onToggleFilterAttached, isMobile = false,
+  onSettingsOpenChange,
 }: Props) {
   const [zoomOpen,     setZoomOpen]     = React.useState(false);
   const [settingsOpen, setSettingsOpen] = React.useState(false);
+
+  const setSettings = (v: boolean) => { setSettingsOpen(v); onSettingsOpenChange?.(v); };
   const zoomRef     = useRef<HTMLDivElement>(null);
   const settingsRef = useRef<HTMLDivElement>(null);
 
@@ -48,7 +52,7 @@ export default function MobileBottomBar({
   React.useEffect(() => {
     const handler = (e: MouseEvent | TouchEvent) => {
       if (zoomRef.current && !zoomRef.current.contains(e.target as Node)) setZoomOpen(false);
-      if (settingsRef.current && !settingsRef.current.contains(e.target as Node)) setSettingsOpen(false);
+      if (settingsRef.current && !settingsRef.current.contains(e.target as Node)) setSettings(false);
     };
     document.addEventListener("mousedown", handler);
     document.addEventListener("touchstart", handler);
@@ -113,7 +117,7 @@ export default function MobileBottomBar({
           </div>
         )}
         <button
-          onClick={() => { setSettingsOpen(v => !v); setZoomOpen(false); }}
+          onClick={() => { setSettings(!settingsOpen); setZoomOpen(false); }}
           className={settingsOpen ? BTN_ACTIVE : BTN_DEFAULT}
         >
           <Icon name="SlidersHorizontal" size={20} />
@@ -142,7 +146,7 @@ export default function MobileBottomBar({
           </div>
         )}
         <button
-          onClick={() => { setZoomOpen(v => !v); setSettingsOpen(false); }}
+          onClick={() => { setZoomOpen(v => !v); setSettings(false); }}
           className={zoomOpen ? BTN_ACTIVE : BTN_DEFAULT}
         >
           <span className="text-[11px] font-bold font-mono">{Math.round(zoom * 100)}</span>

@@ -30,6 +30,7 @@ export default function PlanPage() {
   const [exportOpen,     setExportOpen]     = useState(false);
   const [libraryOpen,    setLibraryOpen]    = useState(false);
   const [authOpen,       setAuthOpen]       = useState(false);
+  const [bottomSettingsOpen, setBottomSettingsOpen] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [focusSegmentId, setFocusSegmentId] = useState<string | null>(null);
 
@@ -225,6 +226,7 @@ export default function PlanPage() {
             attachedCount={catalog.attachedCount}
             filterAttached={catalog.filterAttached}
             onToggleFilterAttached={() => catalog.setFilterAttached(v => !v)}
+            onSettingsOpenChange={setBottomSettingsOpen}
           />
         )}
       </div>
@@ -310,7 +312,7 @@ export default function PlanPage() {
         isMobile={isMobile}
         segments={state.segments}
         floorItems={state.floorItems ?? []}
-        anyPanelOpen={sheetOpen || sidebarOpen || rightPanelOpen || catalog.catalogOpen || exportOpen || libraryOpen || authOpen}
+        anyPanelOpen={sheetOpen || sidebarOpen || rightPanelOpen || catalog.catalogOpen || exportOpen || libraryOpen || authOpen || bottomSettingsOpen}
         onTapActiveId={catalog.setTapActiveId}
         onRemoveActiveItem={catalog.removeActiveItem}
       />
