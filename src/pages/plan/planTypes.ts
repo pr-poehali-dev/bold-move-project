@@ -6,6 +6,15 @@ export interface Point {
   y: number;
 }
 
+// Товар из прайса, прикреплённый к стене
+export interface SegmentPriceItem {
+  priceId: number;
+  name: string;
+  category: string;
+  imageUrl: string | null;
+  categoryImageUrl: string | null;
+}
+
 export interface Segment {
   id: string;
   fromId: string;
@@ -15,6 +24,8 @@ export interface Segment {
   showDimLine: boolean;
   // радиус скругления угла в точке "to" (0 = нет дуги)
   arcRadius: number;
+  // товары прикреплённые к этой стене
+  items?: SegmentPriceItem[];
 }
 
 export interface DiagonalDef {
