@@ -74,11 +74,11 @@ export default function usePlanVoiceInput({ segments, onUpdateSegment }: Props) 
   const [interimText, setInterimText] = useState("");
 
   const recognitionRef = useRef<SpeechRecognition | null>(null);
-  const activeIdxRef = useRef(0); // ref чтобы onresult всегда видел актуальный индекс
+  const activeIdxRef = useRef(0);
   const segmentsRef = useRef(segments);
   segmentsRef.current = segments;
 
-  const isMobile = typeof navigator !== "undefined" && /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+  const isIOS = typeof navigator !== "undefined" && /iPhone|iPad|iPod/i.test(navigator.userAgent);
 
   const hasSpeech = typeof window !== "undefined" &&
     ("SpeechRecognition" in window || "webkitSpeechRecognition" in window);
@@ -120,7 +120,7 @@ export default function usePlanVoiceInput({ segments, onUpdateSegment }: Props) 
     const recognition = new SR();
     recognition.lang = "ru-RU";
     recognition.interimResults = true;
-    recognition.continuous = !isMobile;
+    recognition.continuous = !isIOS;
     recognition.maxAlternatives = 3;
     recognitionRef.current = recognition;
 
@@ -185,15 +185,16 @@ export default function usePlanVoiceInput({ segments, onUpdateSegment }: Props) 
 
     recognition.onend = () => {
       if (!recognitionRef.current) return;
-      // Перезапускаем на десктопе (мобиле перезапускает сам через onend)
-      if (!isMobile) {
-        try { recognitionRef.current.start(); } catch { setIsListening(false); }
+      if (isIOS) {
+        // iOS: не перезапускаем — ждём следующего касания
+        setIsListening(false);
+        recognitionRef.current = null;
       } else {
-        // Мобиле: перезапускаем если ещё слушаем
+        // Android + десктоп: перезапускаем автоматически
         try {
           setTimeout(() => {
             if (recognitionRef.current) recognitionRef.current.start();
-          }, 200);
+          }, 150);
         } catch {
           setIsListening(false);
           recognitionRef.current = null;

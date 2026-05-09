@@ -7,10 +7,21 @@ declare global {
   }
 }
 
+// iOS не поддерживает перезапуск recognition — просто останавливается после фразы
+// Android поддерживает перезапуск через onend (как десктоп)
+function detectPlatform() {
+  if (typeof navigator === "undefined") return { isIOS: false, isAndroid: false };
+  const ua = navigator.userAgent;
+  return {
+    isIOS:     /iPhone|iPad|iPod/i.test(ua),
+    isAndroid: /Android/i.test(ua),
+  };
+}
+
 export default function useVoiceInput(setInput: (value: string) => void) {
   const [isListening, setIsListening] = useState(false);
   const recognitionRef = useRef<SpeechRecognition | null>(null);
-  const isMobile = typeof navigator !== "undefined" && /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+  const { isIOS } = detectPlatform();
 
   const toggleVoice = () => {
     if (isListening) {
@@ -30,8 +41,8 @@ export default function useVoiceInput(setInput: (value: string) => void) {
     const recognition = new SR();
     recognition.lang = "ru-RU";
     recognition.interimResults = true;
-    // На мобильных continuous не работает — используем разовый режим
-    recognition.continuous = !isMobile;
+    // iOS не поддерживает continuous — только разовый режим
+    recognition.continuous = !isIOS;
     recognition.maxAlternatives = 1;
     recognitionRef.current = recognition;
 
@@ -52,12 +63,13 @@ export default function useVoiceInput(setInput: (value: string) => void) {
 
     recognition.onend = () => {
       if (!recognitionRef.current) return;
-      // На мобильных НЕ перезапускаем — один раз сказал, поле заполнено
-      if (!isMobile) {
-        try { recognitionRef.current.start(); } catch { setIsListening(false); }
-      } else {
+      if (isIOS) {
+        // iOS: не перезапускаем, ждём следующего касания
         setIsListening(false);
         recognitionRef.current = null;
+      } else {
+        // Android + десктоп: перезапускаем после каждой фразы
+        try { recognitionRef.current.start(); } catch { setIsListening(false); }
       }
     };
 
