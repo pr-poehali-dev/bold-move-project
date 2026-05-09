@@ -40,6 +40,7 @@ export default function PlanPage() {
   const [prices,          setPrices]          = useState<PriceEntry[]>([]);
   const [dragItem,        setDragItem]        = useState<SegmentPriceItem | null>(null);
   const [dragPos,         setDragPos]         = useState<{ x: number; y: number } | null>(null);
+  const dragPosRef = useRef<{ x: number; y: number } | null>(null);
   const [hoverSegId,      setHoverSegId]      = useState<string | null>(null);
   const [filterAttached,  setFilterAttached]  = useState(false);
   const stateRef = useRef(state);
@@ -82,11 +83,14 @@ export default function PlanPage() {
         const dist = Math.sqrt(px * px + py * py);
         if (dist < bestDist) { bestDist = dist; bestId = seg.id; }
       }
-      return bestDist < 80 / zoom ? bestId : null;
+      // На мобиле без drag (карточка внизу) — большой порог, тап в любом месте стены
+      const threshold = dragPosRef.current ? 80 / zoom : 200 / zoom;
+      return bestDist < threshold ? bestId : null;
     };
 
     const onMove = (e: MouseEvent | TouchEvent) => {
       const { clientX, clientY } = "touches" in e ? e.touches[0] : e;
+      dragPosRef.current = { x: clientX, y: clientY };
       setDragPos({ x: clientX, y: clientY });
       setHoverSegId(findClosestSeg(clientX, clientY));
     };
@@ -106,6 +110,7 @@ export default function PlanPage() {
       }
       setDragItem(null);
       setDragPos(null);
+      dragPosRef.current = null;
       setHoverSegId(null);
     };
 
@@ -371,45 +376,103 @@ export default function PlanPage() {
         }}
       />
 
-      {/* ── Drag ghost — товар летит за курсором ── */}
-      {dragItem && dragPos && (
-        <div
-          style={{
-            position: "fixed",
-            left: dragPos.x - 22,
-            top:  dragPos.y - 22,
-            zIndex: 9999,
-            pointerEvents: "none",
-            display: "flex",
-            alignItems: "center",
-            gap: 8,
-            background: "rgba(15,16,23,0.92)",
-            border: `1px solid ${hoverSegId ? "rgba(124,58,237,0.7)" : "rgba(255,255,255,0.15)"}`,
-            borderRadius: 12,
-            padding: "6px 10px 6px 6px",
-            boxShadow: hoverSegId ? "0 0 20px rgba(124,58,237,0.4)" : "0 4px 20px rgba(0,0,0,0.5)",
-            transition: "border-color 0.15s, box-shadow 0.15s",
-            maxWidth: 180,
-          }}
-        >
-          <div style={{
-            width: 32, height: 32, borderRadius: 8, overflow: "hidden", flexShrink: 0,
-            background: "rgba(255,255,255,0.06)", display: "flex", alignItems: "center", justifyContent: "center",
-          }}>
-            {dragItem.imageUrl
-              ? <img src={dragItem.imageUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-              : <span style={{ fontSize: 16 }}>📦</span>
-            }
+      {/* ── Drag ghost — товар летит за курсором (десктоп) или висит внизу (мобиле) ── */}
+      {dragItem && (
+        dragPos ? (
+          /* Десктоп/тач-drag: следует за пальцем */
+          <div
+            style={{
+              position: "fixed",
+              left: dragPos.x - 22,
+              top:  dragPos.y - 22,
+              zIndex: 9999,
+              pointerEvents: "none",
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+              background: "rgba(15,16,23,0.92)",
+              border: `1px solid ${hoverSegId ? "rgba(124,58,237,0.7)" : "rgba(255,255,255,0.15)"}`,
+              borderRadius: 12,
+              padding: "6px 10px 6px 6px",
+              boxShadow: hoverSegId ? "0 0 20px rgba(124,58,237,0.4)" : "0 4px 20px rgba(0,0,0,0.5)",
+              transition: "border-color 0.15s, box-shadow 0.15s",
+              maxWidth: 180,
+            }}
+          >
+            <div style={{
+              width: 32, height: 32, borderRadius: 8, overflow: "hidden", flexShrink: 0,
+              background: "rgba(255,255,255,0.06)", display: "flex", alignItems: "center", justifyContent: "center",
+            }}>
+              {dragItem.imageUrl
+                ? <img src={dragItem.imageUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                : <span style={{ fontSize: 16 }}>📦</span>
+              }
+            </div>
+            <span style={{
+              fontSize: 11, fontWeight: 600,
+              color: hoverSegId ? "rgba(167,139,250,1)" : "rgba(255,255,255,0.8)",
+              overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+              transition: "color 0.15s",
+            }}>
+              {dragItem.name}
+            </span>
           </div>
-          <span style={{
-            fontSize: 11, fontWeight: 600,
-            color: hoverSegId ? "rgba(167,139,250,1)" : "rgba(255,255,255,0.8)",
-            overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-            transition: "color 0.15s",
-          }}>
-            {dragItem.name}
-          </span>
-        </div>
+        ) : (
+          /* Мобиле: товар выбран из каталога — карточка внизу по центру, тап на стену привяжет */
+          <div
+            style={{
+              position: "fixed",
+              bottom: 90,
+              left: "50%",
+              transform: "translateX(-50%)",
+              zIndex: 9999,
+              display: "flex",
+              alignItems: "center",
+              gap: 10,
+              background: "rgba(15,16,23,0.95)",
+              border: `1px solid ${hoverSegId ? "rgba(124,58,237,0.8)" : "rgba(124,58,237,0.35)"}`,
+              borderRadius: 16,
+              padding: "10px 16px 10px 10px",
+              boxShadow: hoverSegId
+                ? "0 0 28px rgba(124,58,237,0.5), 0 8px 32px rgba(0,0,0,0.6)"
+                : "0 0 18px rgba(124,58,237,0.2), 0 8px 32px rgba(0,0,0,0.6)",
+              transition: "border-color 0.15s, box-shadow 0.15s",
+              maxWidth: 260,
+              cursor: "pointer",
+              backdropFilter: "blur(12px)",
+            }}
+            onClick={() => { setDragItem(null); setHoverSegId(null); }}
+          >
+            <div style={{
+              width: 40, height: 40, borderRadius: 10, overflow: "hidden", flexShrink: 0,
+              background: "rgba(124,58,237,0.15)", border: "1px solid rgba(124,58,237,0.3)",
+              display: "flex", alignItems: "center", justifyContent: "center",
+            }}>
+              {dragItem.imageUrl
+                ? <img src={dragItem.imageUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                : <span style={{ fontSize: 20 }}>📦</span>
+              }
+            </div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{
+                fontSize: 13, fontWeight: 700,
+                color: hoverSegId ? "rgba(167,139,250,1)" : "rgba(255,255,255,0.9)",
+                overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+              }}>
+                {dragItem.name}
+              </div>
+              <div style={{ fontSize: 10, color: "rgba(167,139,250,0.6)", marginTop: 2 }}>
+                {hoverSegId ? "Отпусти для привязки" : "Нажми на стену"}
+              </div>
+            </div>
+            <div style={{
+              fontSize: 10, color: "rgba(255,255,255,0.25)", flexShrink: 0,
+              padding: "2px 6px", borderRadius: 6, background: "rgba(255,255,255,0.05)",
+            }}>
+              ✕
+            </div>
+          </div>
+        )
       )}
     </div>
   );
