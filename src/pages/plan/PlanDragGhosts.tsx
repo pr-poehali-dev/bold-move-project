@@ -131,20 +131,26 @@ export default function PlanDragGhosts({
 
       {/* ── Активные карточки внизу — горизонтальный слайдер ── */}
       {activeItems.length > 0 && !anyPanelOpen && (
-        <div ref={scrollRef} style={{
+        <div style={{
           position: "fixed",
           bottom: isMobile ? 90 : 110,
           left: 0,
           right: 0,
           zIndex: 9999,
-          display: "flex", gap: 8, alignItems: "flex-end",
+          display: "flex",
           justifyContent: "center",
+          pointerEvents: "none",
+          padding: "16px 0 0 0", // отступ сверху для бейджа
+        }}>
+        <div ref={scrollRef} style={{
+          display: "flex", gap: 8, alignItems: "flex-end",
           overflowX: "auto", overflowY: "visible",
-          padding: "4px 20px 4px 20px",
+          padding: "16px 20px 4px 20px",
           scrollSnapType: "x mandatory",
           WebkitOverflowScrolling: "touch",
           scrollbarWidth: "none",
           pointerEvents: "none",
+          maxWidth: "100%",
         }}>
           {activeItems.map(item => {
             const isActive = tapActiveId === item.priceId;
@@ -231,6 +237,7 @@ export default function PlanDragGhosts({
               </div>
             );
           })}
+        </div>
         </div>
       )}
     </>

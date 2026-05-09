@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import type { SegmentPriceItem } from "./planTypes";
 
 interface Props {
@@ -27,7 +28,7 @@ export default function PlanQuantityModal({ item, onConfirm, onCancel }: Props) 
     if (!isNaN(n) && n > 0) onConfirm(n);
   };
 
-  return (
+  return createPortal(
     <div
       style={{
         position: "fixed", inset: 0, zIndex: 10000,
@@ -132,6 +133,7 @@ export default function PlanQuantityModal({ item, onConfirm, onCancel }: Props) 
           >Добавить</button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

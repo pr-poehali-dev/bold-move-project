@@ -280,7 +280,7 @@ export default function PlanPage() {
       <PlanCatalogPanel
         open={catalog.catalogOpen}
         filteredPrices={catalog.filteredPrices}
-        selectedSegmentId={stateRef.current.selectedSegmentId}
+        selectedSegmentId={null}
         onClose={() => catalog.setCatalogOpen(false)}
         onAssignToSeg={catalog.assignItemToSeg}
         onAddToActive={item => {
