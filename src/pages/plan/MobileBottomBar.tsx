@@ -24,6 +24,7 @@ interface Props {
   attachedCount?: number;
   filterAttached?: boolean;
   onToggleFilterAttached?: () => void;
+  isMobile?: boolean;
 }
 
 // Стиль единой кнопки — как фиолетовая кнопка PanelBottom
@@ -36,7 +37,7 @@ export default function MobileBottomBar({
   onOpenSides, selectedSegmentId,
   sheetOpen = false, catalogOpen = false, rightPanelOpen = false,
   onToggleVoiceDraw, isVoiceDrawing = false, isVoiceProcessing = false, voiceStatus, voiceInterim,
-  attachedCount = 0, filterAttached = false, onToggleFilterAttached,
+  attachedCount = 0, filterAttached = false, onToggleFilterAttached, isMobile = false,
 }: Props) {
   const [zoomOpen,     setZoomOpen]     = React.useState(false);
   const [settingsOpen, setSettingsOpen] = React.useState(false);
@@ -156,21 +157,25 @@ export default function MobileBottomBar({
         <Icon name="LayoutGrid" size={20} />
       </button>
 
-      {/* 4. Чертёж (bottom sheet) */}
-      <button
-        onClick={onOpenPanel}
-        className={sheetOpen ? BTN_ACTIVE : BTN_DEFAULT}
-      >
-        <Icon name="PanelBottom" size={20} />
-      </button>
+      {/* 4. Чертёж (bottom sheet) — только мобайл */}
+      {isMobile && (
+        <button
+          onClick={onOpenPanel}
+          className={sheetOpen ? BTN_ACTIVE : BTN_DEFAULT}
+        >
+          <Icon name="PanelBottom" size={20} />
+        </button>
+      )}
 
-      {/* 5. Стороны (правая панель ввода) */}
-      <button
-        onClick={onOpenSides}
-        className={rightPanelOpen ? BTN_ACTIVE : BTN_DEFAULT}
-      >
-        <Icon name="PanelRight" size={20} />
-      </button>
+      {/* 5. Стороны (правая панель ввода) — только мобайл */}
+      {isMobile && (
+        <button
+          onClick={onOpenSides}
+          className={rightPanelOpen ? BTN_ACTIVE : BTN_DEFAULT}
+        >
+          <Icon name="PanelRight" size={20} />
+        </button>
+      )}
 
       {/* 6. Голосовое рисование */}
       {onToggleVoiceDraw && (

@@ -262,6 +262,7 @@ export default function PlanPage() {
             sheetOpen={sheetOpen}
             catalogOpen={catalogOpen}
             rightPanelOpen={rightPanelOpen}
+            isMobile={isMobile}
             onToggleVoiceDraw={voiceDraw.hasSpeech ? voiceDraw.toggle : undefined}
             isVoiceDrawing={voiceDraw.isListening}
             isVoiceProcessing={voiceDraw.isProcessing}
