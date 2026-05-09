@@ -193,7 +193,7 @@ function ArcDrum({ items, value, onChange, onClick, initialIdx }: {
 
   return (
     <div
-      style={{ height: TOTAL_H, position: "relative", userSelect: "none", width: "100%", overflow: "hidden", clipPath: `inset(0 -200px 0 0)` }}
+      style={{ height: TOTAL_H, position: "relative", userSelect: "none", width: "100%", overflow: "hidden", clipPath: `inset(0 -200px 0 0)`, touchAction: "none" }}
       onTouchStart={onTouchStart}
       onTouchMove={onTouchMove}
       onTouchEnd={onTouchEnd}
@@ -388,7 +388,17 @@ export default function CategoryDrumPanel({ open, onClose, prices, onDragItem }:
           </button>
         )}
 
-        <div style={{ pointerEvents: "all" }}>
+        <div style={{
+          pointerEvents: "all",
+          backdropFilter: "blur(18px)",
+          WebkitBackdropFilter: "blur(18px)",
+          background: "rgba(10,10,20,0.55)",
+          borderRadius: "18px 0 0 18px",
+          border: "1px solid rgba(124,58,237,0.2)",
+          borderRight: "none",
+          padding: "12px 0 12px 6px",
+          touchAction: "none",
+        }}>
           {mode === "categories" && (
             <ArcDrum
               key="cats"
