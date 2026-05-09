@@ -69,54 +69,71 @@ export function renderSegmentItems(
 
   const mid = midPoint(a, b);
   const { nx, ny } = segmentNormal(a, b);
-  const ox = mid.x - nx * 24;
-  const oy = mid.y - ny * 24;
   const angle = Math.atan2(b.y - a.y, b.x - a.x) * 180 / Math.PI;
-  const na = angle > 90 || angle < -90 ? angle + 180 : angle;
+  const na    = angle > 90 || angle < -90 ? angle + 180 : angle;
 
-  const first = items[0];
-  const more  = items.length > 1 ? ` +${items.length - 1}` : "";
-  const label = first.name.length > 18 ? first.name.slice(0, 16) + "…" : first.name;
-  const W = 130;
+  const W    = 140; // ширина одного бейджа
+  const H    = 22;  // высота одного бейджа
+  const GAP  = 4;   // зазор между бейджами
+  const OFF  = 26;  // отступ от стены
+
+  // Общая высота стопки — центрируем вдоль нормали
+  const totalH = items.length * H + (items.length - 1) * GAP;
+  const startOffset = -(totalH / 2) + H / 2;
 
   return (
-    <g key={`seg-items-${seg.id}`}
-      transform={`translate(${ox},${oy}) rotate(${na})`}
-      style={{ cursor: onRemoveItem ? "pointer" : "default" }}>
-      {/* Фон-таблетка */}
-      <rect x={-W / 2} y={-11} width={W} height={22} rx={7}
-        fill="rgba(124,58,237,0.18)" stroke="rgba(124,58,237,0.50)" strokeWidth={0.8} />
-      {/* Картинка товара */}
-      {first.imageUrl && (
-        <image
-          href={first.imageUrl}
-          x={-W / 2 + 4} y={-8} width={16} height={16}
-          preserveAspectRatio="xMidYMid slice"
-        />
-      )}
-      {/* Название */}
-      <text
-        x={first.imageUrl ? -W / 2 + 24 : -W / 2 + 8}
-        y={4}
-        fontSize={9}
-        fill="rgba(196,181,253,0.95)"
-        fontFamily="system-ui, sans-serif"
-        fontWeight={500}
-        className="pointer-events-none select-none"
-      >
-        {label}{more}
-      </text>
-      {/* Крестик — удалить первый товар */}
-      {onRemoveItem && (
-        <g
-          onClick={(e) => { e.stopPropagation(); onRemoveItem(seg.id, first.priceId); }}
-          style={{ cursor: "pointer" }}
-        >
-          <circle cx={W / 2 - 8} cy={0} r={7} fill="rgba(239,68,68,0.25)" stroke="rgba(239,68,68,0.6)" strokeWidth={0.8} />
-          <line x1={W / 2 - 11} y1={-3} x2={W / 2 - 5} y2={3} stroke="rgba(255,255,255,0.8)" strokeWidth={1.2} strokeLinecap="round" />
-          <line x1={W / 2 - 5} y1={-3} x2={W / 2 - 11} y2={3} stroke="rgba(255,255,255,0.8)" strokeWidth={1.2} strokeLinecap="round" />
-        </g>
-      )}
+    <g key={`seg-items-${seg.id}`}>
+      {items.map((item, idx) => {
+        // Каждый бейдж смещается вдоль направления стены
+        const alongOffset = startOffset + idx * (H + GAP);
+        const px = mid.x - nx * OFF + (b.x - a.x) / Math.hypot(b.x - a.x, b.y - a.y) * alongOffset;
+        const py = mid.y - ny * OFF + (b.y - a.y) / Math.hypot(b.x - a.x, b.y - a.y) * alongOffset;
+        const label = item.name.length > 16 ? item.name.slice(0, 14) + "…" : item.name;
+
+        return (
+          <g key={`item-${seg.id}-${item.priceId}`}
+            transform={`translate(${px},${py}) rotate(${na})`}
+            style={{ cursor: onRemoveItem ? "pointer" : "default" }}>
+            {/* Фон-таблетка */}
+            <rect x={-W / 2} y={-H / 2} width={W} height={H} rx={7}
+              fill="rgba(124,58,237,0.18)" stroke="rgba(124,58,237,0.50)" strokeWidth={0.8} />
+            {/* Картинка */}
+            {item.imageUrl && (
+              <image
+                href={item.imageUrl}
+                x={-W / 2 + 4} y={-8} width={16} height={16}
+                preserveAspectRatio="xMidYMid slice"
+              />
+            )}
+            {/* Название */}
+            <text
+              x={item.imageUrl ? -W / 2 + 24 : -W / 2 + 8}
+              y={4}
+              fontSize={9}
+              fill="rgba(196,181,253,0.95)"
+              fontFamily="system-ui, sans-serif"
+              fontWeight={500}
+              className="pointer-events-none select-none"
+            >
+              {label}
+            </text>
+            {/* Крестик — удалить этот товар */}
+            {onRemoveItem && (
+              <g
+                onClick={(e) => { e.stopPropagation(); onRemoveItem(seg.id, item.priceId); }}
+                style={{ cursor: "pointer" }}
+              >
+                <circle cx={W / 2 - 9} cy={0} r={7}
+                  fill="rgba(239,68,68,0.25)" stroke="rgba(239,68,68,0.6)" strokeWidth={0.8} />
+                <line x1={W / 2 - 12} y1={-3} x2={W / 2 - 6} y2={3}
+                  stroke="rgba(255,255,255,0.8)" strokeWidth={1.2} strokeLinecap="round" />
+                <line x1={W / 2 - 6} y1={-3} x2={W / 2 - 12} y2={3}
+                  stroke="rgba(255,255,255,0.8)" strokeWidth={1.2} strokeLinecap="round" />
+              </g>
+            )}
+          </g>
+        );
+      })}
     </g>
   );
 }
