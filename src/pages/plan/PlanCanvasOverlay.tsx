@@ -1,6 +1,6 @@
 import React from "react";
 import type { PlanState, PlanSettings } from "./planTypes";
-import { buildAutoDiagonals, genId, midPoint } from "./planTypes";
+import { buildAutoDiagonals, genId, midPoint, distPx } from "./planTypes";
 import Icon from "@/components/ui/icon";
 import { CtxItem } from "./PlanCanvasRenderers";
 
@@ -72,9 +72,17 @@ export default function PlanCanvasOverlay({
               // Вставляем новую точку между fromId и toId
               const ptIdx = points.findIndex(p => p.id === seg.toId);
               const newPoints = [...points.slice(0, ptIdx), newPt, ...points.slice(ptIdx)];
+              // Рассчитываем lengthCm пропорционально если исходный сегмент имел длину
+              const totalPx = distPx(fromPt, toPt);
+              const px1 = distPx(fromPt, newPt);
+              const px2 = distPx(newPt, toPt);
+              const ratio1 = totalPx > 0 ? px1 / totalPx : 0.5;
+              const ratio2 = totalPx > 0 ? px2 / totalPx : 0.5;
+              const len1 = seg.lengthCm != null ? Math.round(seg.lengthCm * ratio1 * 10) / 10 : null;
+              const len2 = seg.lengthCm != null ? Math.round(seg.lengthCm * ratio2 * 10) / 10 : null;
               // Заменяем отрезок A→B на A→newPt и newPt→B
-              const newSeg1 = { ...seg, id: genId("s"), toId: newPt.id, lengthCm: null, arcRadius: 0 };
-              const newSeg2 = { ...seg, id: genId("s"), fromId: newPt.id, lengthCm: null, arcRadius: 0 };
+              const newSeg1 = { ...seg, id: genId("s"), toId: newPt.id, lengthCm: len1, arcRadius: 0 };
+              const newSeg2 = { ...seg, id: genId("s"), fromId: newPt.id, lengthCm: len2, arcRadius: 0 };
               const newSegs = segments.map(s => s.id === ctxMenu.id ? newSeg1 : s);
               newSegs.splice(newSegs.findIndex(s => s.id === newSeg1.id) + 1, 0, newSeg2);
               const newDiags = buildAutoDiagonals(newPoints, diagonals, state.baseScale ?? null);
