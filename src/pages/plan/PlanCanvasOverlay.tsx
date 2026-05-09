@@ -96,33 +96,7 @@ export default function PlanCanvasOverlay({
         </div>
       )}
 
-      {/* Зум — десктоп: правый нижний угол */}
-      {!isMobile && (
-        <div className="absolute bottom-4 right-3 flex flex-col gap-1 z-10">
-          <button onClick={() => onChange({ settings: { ...settings, zoom: Math.min(4, Math.round((zoom + 0.2) * 10) / 10) } })}
-            className="w-9 h-9 rounded-xl bg-white/[0.07] border border-white/[0.1] text-white/50 hover:bg-white/[0.14] flex items-center justify-center transition active:scale-95">
-            <Icon name="Plus" size={15} />
-          </button>
-          <div className="w-9 h-6 flex items-center justify-center text-[10px] text-white/30 font-mono">{Math.round(zoom * 100)}%</div>
-          <button onClick={() => onChange({ settings: { ...settings, zoom: Math.max(0.3, Math.round((zoom - 0.2) * 10) / 10) } })}
-            className="w-9 h-9 rounded-xl bg-white/[0.07] border border-white/[0.1] text-white/50 hover:bg-white/[0.14] flex items-center justify-center transition active:scale-95">
-            <Icon name="Minus" size={15} />
-          </button>
-        </div>
-      )}
-
-      {/* Мобильные кнопки управления перенесены в PlanPage (MobileBottomBar) */}
-
-      {/* Кнопка каталога — десктоп: левый нижний угол */}
-      {!isMobile && onOpenCatalog && (
-        <button
-          onClick={onOpenCatalog}
-          title="Каталог материалов"
-          className="absolute bottom-4 left-3 w-9 h-9 rounded-xl bg-white/[0.07] border border-white/[0.1] text-white/50 hover:bg-white/[0.14] flex items-center justify-center transition active:scale-95 z-10"
-        >
-          <Icon name="LayoutGrid" size={15} />
-        </button>
-      )}
+      {/* Зум и каталог перенесены в MobileBottomBar */}
     </>
   );
 }

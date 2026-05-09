@@ -149,15 +149,13 @@ export default function MobileBottomBar({
         </button>
       </div>}
 
-      {/* 3. Расчёт (каталог) — только мобайл */}
-      {isMobile && (
-        <button
-          onClick={onOpenCatalog}
-          className={catalogOpen ? BTN_ACTIVE : BTN_DEFAULT}
-        >
-          <Icon name="LayoutGrid" size={20} />
-        </button>
-      )}
+      {/* 3. Каталог */}
+      <button
+        onClick={onOpenCatalog}
+        className={catalogOpen ? BTN_ACTIVE : BTN_DEFAULT}
+      >
+        <Icon name="LayoutGrid" size={20} />
+      </button>
 
       {/* 4. Чертёж: bottom sheet (мобайл) / toggle сайдбара (ПК) */}
       <button
