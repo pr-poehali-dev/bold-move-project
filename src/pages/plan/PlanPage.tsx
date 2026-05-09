@@ -301,6 +301,7 @@ export default function PlanPage() {
         hoverSegId={catalog.hoverSegId}
         isMobile={isMobile}
         segments={state.segments}
+        anyPanelOpen={sheetOpen || sidebarOpen || rightPanelOpen || catalog.catalogOpen || exportOpen || libraryOpen || authOpen}
         onTapActiveId={catalog.setTapActiveId}
         onRemoveActiveItem={catalog.removeActiveItem}
       />

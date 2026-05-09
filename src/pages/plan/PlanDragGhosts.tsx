@@ -10,6 +10,7 @@ interface Props {
   hoverSegId: string | null;
   isMobile: boolean;
   segments: Segment[];
+  anyPanelOpen: boolean;
   onTapActiveId: (id: number) => void;
   onRemoveActiveItem: (priceId: number) => void;
 }
@@ -19,7 +20,7 @@ export default function PlanDragGhosts({
   dragCardItem, dragCardPos,
   activeItems, tapActiveId,
   hoverSegId, isMobile,
-  segments,
+  segments, anyPanelOpen,
   onTapActiveId, onRemoveActiveItem,
 }: Props) {
   // Считаем суммарное кол-во товара по всем стенам
@@ -109,7 +110,7 @@ export default function PlanDragGhosts({
       )}
 
       {/* ── Активные карточки внизу — горизонтальный слайдер ── */}
-      {activeItems.length > 0 && (
+      {activeItems.length > 0 && !anyPanelOpen && (
         <div style={{
           position: "fixed", bottom: isMobile ? 90 : 16, left: 0, right: isMobile ? 0 : "auto",
           ...(isMobile ? {} : { left: "50%", transform: "translateX(-50%)" }),
