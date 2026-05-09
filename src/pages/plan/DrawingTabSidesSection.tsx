@@ -3,6 +3,7 @@ import Icon from "@/components/ui/icon";
 import type { PlanState, Segment, PlanSettings } from "./planTypes";
 import { segmentLabel, checkClosureError } from "./planTypes";
 import { Section, LengthRow } from "./PlanSidebarShared";
+import usePlanVoiceInput from "./usePlanVoiceInput";
 
 interface Props {
   state: PlanState;
@@ -24,6 +25,11 @@ export default function DrawingTabSidesSection({
 }: Props) {
   const { points, segments, isClosed, settings } = state;
   const closureErr = isClosed ? checkClosureError(points, segments, state.baseScale ?? null) : null;
+
+  const voice = usePlanVoiceInput({
+    segments,
+    onUpdateSegment: updateSegment,
+  });
 
   return (
     <>
@@ -55,6 +61,35 @@ export default function DrawingTabSidesSection({
           </div>
         )}
 
+        {/* Кнопка голосового ввода — только если форма замкнута и браузер поддерживает */}
+        {isClosed && segments.length > 0 && voice.hasSpeech && (
+          <div className="mb-2">
+            <button
+              onClick={voice.toggle}
+              className={`w-full flex items-center justify-center gap-2 py-2 rounded-xl border text-[12px] font-semibold transition-all ${
+                voice.isListening
+                  ? "bg-red-500/15 border-red-500/40 text-red-300 animate-pulse"
+                  : "bg-white/[0.04] border-white/[0.1] text-white/50 hover:bg-white/[0.08] hover:text-white/80"
+              }`}
+            >
+              <Icon name={voice.isListening ? "MicOff" : "Mic"} size={13} />
+              {voice.isListening
+                ? `Слушаю... сторона ${segmentLabel(points, segments[voice.activeIdx]) ?? voice.activeIdx + 1}`
+                : "Диктовать размеры"}
+            </button>
+            {voice.isListening && voice.interimText && (
+              <div className="mt-1 px-3 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.07]">
+                <span className="text-[11px] text-white/40 italic">{voice.interimText}</span>
+              </div>
+            )}
+            {voice.isListening && (
+              <p className="mt-1 text-[10px] text-white/25 text-center">
+                Скажите число → пауза или «следующая» → следующая сторона
+              </p>
+            )}
+          </div>
+        )}
+
         {segments.length === 0
           ? <p className="text-[11px] text-white/20 text-center py-3">Нет отрезков</p>
           : (
@@ -68,7 +103,10 @@ export default function DrawingTabSidesSection({
                   inputRef={inputRefs.current[idx]}
                   autoFocus={idx === 0 && isClosed}
                   firstInput={idx === 0}
-                  highlighted={!!state.isBuilt && (state.changedSegmentIds?.includes(seg.id) ?? false)}
+                  highlighted={
+                    (voice.isListening && voice.activeIdx === idx) ||
+                    (!!state.isBuilt && (state.changedSegmentIds?.includes(seg.id) ?? false))
+                  }
                   autoRecalc={!!state.isBuilt && (state.changedSegmentIds?.includes(seg.id) ?? false)}
                   onValueChange={v => updateSegment(seg.id, { lengthCm: v })}
                   onVisibilityToggle={() => updateSegment(seg.id, { showLength: !seg.showLength })}
