@@ -390,15 +390,28 @@ export default function CategoryDrumPanel({ open, onClose, prices, onDragItem }:
 
         <div style={{
           pointerEvents: "all",
-          backdropFilter: "blur(18px)",
-          WebkitBackdropFilter: "blur(18px)",
-          background: "rgba(10,10,20,0.55)",
-          borderRadius: "18px 0 0 18px",
-          border: "1px solid rgba(124,58,237,0.2)",
-          borderRight: "none",
+          position: "relative",
           padding: "12px 0 12px 6px",
           touchAction: "none",
         }}>
+          {/* Полукруг с backdrop-filter за барабаном */}
+          <div style={{
+            position: "absolute",
+            top: "50%",
+            right: 0,
+            transform: "translateY(-50%)",
+            width: 320,
+            height: 320,
+            borderRadius: "50%",
+            backdropFilter: "blur(16px)",
+            WebkitBackdropFilter: "blur(16px)",
+            background: "rgba(8,6,20,0.52)",
+            border: "1px solid rgba(124,58,237,0.22)",
+            pointerEvents: "none",
+            zIndex: 0,
+            // оставляем левую половину — ту что выступает за барабан в экран
+            clipPath: "inset(0 50% 0 0)",
+          }} />
           {mode === "categories" && (
             <ArcDrum
               key="cats"
