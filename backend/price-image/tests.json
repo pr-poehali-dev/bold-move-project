@@ -1,0 +1,12 @@
+{
+  "tests": [
+    {
+      "name": "GET item image",
+      "method": "GET",
+      "path": "/?type=item&id=1",
+      "expectedStatus": 200,
+      "expectedBody": {"url": null},
+      "bodyMatcher": "partial"
+    }
+  ]
+}
