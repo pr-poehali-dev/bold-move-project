@@ -7,9 +7,10 @@ interface Props {
   onChange: (patch: Partial<PlanState>) => void;
   onSectionOpen?: () => void;
   noAutoOpen?: boolean;
+  onOpenCatalog?: () => void;
 }
 
-export default function PlanSidebar({ state, onChange, onSectionOpen, noAutoOpen }: Props) {
+export default function PlanSidebar({ state, onChange, onSectionOpen, noAutoOpen, onOpenCatalog }: Props) {
   const { sidebarTab } = state;
   const isDrawing = sidebarTab !== "calc";
 
@@ -28,13 +29,9 @@ export default function PlanSidebar({ state, onChange, onSectionOpen, noAutoOpen
             Чертёж
           </button>
           <button
-            onClick={() => onChange({ sidebarTab: "calc" })}
-            className={`flex-1 py-1.5 rounded-lg text-[12px] font-semibold transition ${
-              !isDrawing
-                ? "bg-white text-[#111] shadow-sm"
-                : "text-white/40 hover:text-white/70"
-            }`}>
-            Расчёт
+            onClick={() => onOpenCatalog?.()}
+            className="flex-1 py-1.5 rounded-lg text-[12px] font-semibold transition text-white/40 hover:text-white/70">
+            Номенклатура
           </button>
         </div>
       </div>

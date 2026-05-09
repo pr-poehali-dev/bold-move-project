@@ -240,7 +240,7 @@ export default function PlanPage() {
             onMouseDown={onSidebarDragStart}
           />
           <div className="shrink-0 overflow-hidden border-l border-white/[0.06]" style={{ width: sidebarW }}>
-            <PlanSidebar state={state} onChange={handleChange} />
+            <PlanSidebar state={state} onChange={handleChange} onOpenCatalog={() => setCatalogOpen(true)} />
           </div>
         </>)}
 
