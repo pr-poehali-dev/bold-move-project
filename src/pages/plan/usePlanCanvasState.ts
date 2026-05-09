@@ -20,6 +20,8 @@ export function usePlanCanvasState(tool: string) {
   const dragRef     = useRef<{ pointId: string } | null>(null);
   // Ближайшая точка при touchStart — для lazy grab при движении { id, dist }
   const nearbyPtRef = useRef<{ id: string; dist: number } | null>(null);
+  // Время начала касания — для dead zone 100мс перед началом drag
+  const touchStartTimeRef = useRef<number>(0);
   const panRef      = useRef<{ startX: number; startY: number; origPanX: number; origPanY: number } | null>(null);
   const pinchRef    = useRef<{ dist: number; zoom: number; midX?: number; midY?: number } | null>(null);
   const isPanning   = useRef(false);
@@ -71,6 +73,7 @@ export function usePlanCanvasState(tool: string) {
     svgRef,
     dragRef,
     nearbyPtRef,
+    touchStartTimeRef,
     panRef,
     pinchRef,
     isPanning,

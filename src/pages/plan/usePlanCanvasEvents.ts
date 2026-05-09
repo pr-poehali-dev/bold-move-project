@@ -17,7 +17,7 @@ interface Params {
 /** Хук: все обработчики событий холста (mouse, touch, wheel, keyboard) */
 export function usePlanCanvasEvents({ state, onChange, onReplace, cs }: Params) {
   const {
-    svgRef, dragRef, nearbyPtRef, panRef, pinchRef, isPanning, didMoveRef,
+    svgRef, dragRef, nearbyPtRef, touchStartTimeRef, panRef, pinchRef, isPanning, didMoveRef,
     longPressRef, longPressPos, setVibrated,
     setGhost, dimLineFrom, setDimLineFrom, setCtxMenu,
   } = cs;
@@ -157,6 +157,7 @@ export function usePlanCanvasEvents({ state, onChange, onReplace, cs }: Params) 
     }
 
     if (e.touches.length === 1) {
+      touchStartTimeRef.current = performance.now();
       const t = e.touches[0];
       const raw = clientToSvg(t.clientX, t.clientY);
 
@@ -233,9 +234,10 @@ export function usePlanCanvasEvents({ state, onChange, onReplace, cs }: Params) 
 
     if (e.touches.length === 1) {
       const t = e.touches[0];
-      // Lazy grab: захватываем ближайшую точку при первом движении пальца
-      if (!dragRef.current && nearbyPtRef.current && toolRef.current === "move") {
-        // Порог: 150px экрана, переведённые в SVG-единицы
+      // Lazy grab: захватываем ближайшую точку при движении пальца
+      // Dead zone 100мс — защита от случайных сдвигов при тапе
+      const elapsed = performance.now() - touchStartTimeRef.current;
+      if (!dragRef.current && nearbyPtRef.current && toolRef.current === "move" && elapsed >= 100) {
         const LAZY_THR = 150 / zoom;
         if (nearbyPtRef.current.dist < LAZY_THR) {
           dragRef.current = { pointId: nearbyPtRef.current.id };
