@@ -1,29 +1,20 @@
 /**
- * Голосовое построение чертежа. v2 (isIOS fix)
- * Пользователь диктует: "354 вправо 422 влево 354 вправо 422" → замкнутый прямоугольник.
- * Первый отрезок A→B всегда идёт горизонтально вправо.
- * Точка A — нижний левый угол (фиксированная стартовая позиция).
- * Android: continuous=true + restart в onend (как десктоп).
- * iOS: continuous=false, без рестарта.
+ * Голосовое построение чертежа через MediaRecorder + Groq Whisper.
+ * Пользователь держит кнопку → говорит всю фразу → отпускает → Whisper расшифровывает.
+ * Пример: "350 вправо 250 вправо 350 вправо 250 замкнуть"
+ * Точка A — нижний левый угол, первый отрезок идёт вверх.
  */
 import { useState, useRef, useCallback } from "react";
 import type { PlanState, Point, Segment } from "./planTypes";
 import { genId, buildAutoDiagonals } from "./planTypes";
+import func2url from "@/../backend/func2url.json";
 
-declare global {
-  interface Window {
-    SpeechRecognition: typeof SpeechRecognition;
-    webkitSpeechRecognition: typeof SpeechRecognition;
-  }
-}
+const TRANSCRIBE_URL = (func2url as Record<string, string>)["voice-transcribe"];
 
 // ── Константы ─────────────────────────────────────────────────────────────────
 
-// Стартовая позиция точки A (нижний левый угол, в px-координатах холста)
 const START_X = 200;
 const START_Y = 700;
-// Длина в px для первого отрезка (масштаб установится позже)
-// Используем 1cm = 2px пока не получим первый размер
 const SCALE_INIT = 2; // px/cm
 
 // Направления
@@ -31,12 +22,11 @@ type Dir = "right" | "up" | "left" | "down";
 
 const DIR_DELTA: Record<Dir, { dx: number; dy: number }> = {
   right: { dx: 1,  dy: 0  },
-  down:  { dx: 0,  dy: 1  },  // вниз по экрану = на юг
+  down:  { dx: 0,  dy: 1  },
   left:  { dx: -1, dy: 0  },
   up:    { dx: 0,  dy: -1 },
 };
 
-// Поворот текущего направления
 function turnRight(dir: Dir): Dir {
   const order: Dir[] = ["right", "down", "left", "up"];
   return order[(order.indexOf(dir) + 1) % 4];
@@ -88,6 +78,47 @@ function parseTurnOrClose(text: string): "right" | "left" | "straight" | "close"
   return parseDirection(t);
 }
 
+// Парсим всю фразу целиком: "350 вправо 250 вправо 350 вправо 250 замкнуть"
+// Возвращает список команд [{len, turn}]
+interface Cmd { len: number; turn: "right" | "left" | "straight" | "close" }
+
+function parseFullPhrase(text: string): Cmd[] {
+  const tokens = text.toLowerCase().trim().split(/\s+/);
+  const cmds: Cmd[] = [];
+  let pendingLen: number | null = null;
+
+  for (const token of tokens) {
+    const num = parseNumber(token);
+    if (num !== null) {
+      if (pendingLen !== null) {
+        // Число за числом — предыдущее без поворота, идём прямо
+        cmds.push({ len: pendingLen, turn: "straight" });
+      }
+      pendingLen = num;
+      continue;
+    }
+
+    const turn = parseTurnOrClose(token);
+    if (turn !== null) {
+      if (pendingLen !== null) {
+        cmds.push({ len: pendingLen, turn });
+        pendingLen = null;
+        if (turn === "close") break;
+      } else if (turn === "close") {
+        cmds.push({ len: 0, turn: "close" });
+        break;
+      }
+    }
+  }
+
+  // Если осталась длина без поворота — добавляем как прямо
+  if (pendingLen !== null) {
+    cmds.push({ len: pendingLen, turn: "straight" });
+  }
+
+  return cmds;
+}
+
 // ── Хук ───────────────────────────────────────────────────────────────────────
 
 interface Props {
@@ -95,56 +126,41 @@ interface Props {
   onChange: (patch: Partial<PlanState>) => void;
 }
 
-export default function useVoiceDraw({ state, onChange }: Props) {
-  const [isListening, setIsListening] = useState(false);
-  const [interimText, setInterimText] = useState("");
-  const [status, setStatus] = useState<string>(""); // подсказка пользователю
+export default function useVoiceDraw({ onChange }: Props) {
+  const [isListening, setIsListening]   = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [status, setStatus]             = useState<string>("");
+  const [interimText, setInterimText]   = useState<string>("");
 
-  const recognitionRef  = useRef<SpeechRecognition | null>(null);
-  const stateRef        = useRef(state);
-  stateRef.current      = state;
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const chunksRef        = useRef<Blob[]>([]);
 
-  // Строительное состояние
   const buildRef = useRef<{
-    points:    Point[];
-    segments:  Segment[];
+    points:     Point[];
+    segments:   Segment[];
     currentDir: Dir;
-    baseScale: number | null; // px/cm
-    pendingLen: number | null; // размер без поворота
+    baseScale:  number | null;
   }>({
-    points:    [],
-    segments:  [],
-    currentDir: "right",
-    baseScale: null,
-    pendingLen: null,
+    points:     [],
+    segments:   [],
+    currentDir: "up",
+    baseScale:  null,
   });
 
-  const isIOS = typeof navigator !== "undefined" && /iPhone|iPad|iPod/i.test(navigator.userAgent);
-  const hasSpeech = typeof window !== "undefined" &&
-    ("SpeechRecognition" in window || "webkitSpeechRecognition" in window);
+  const hasSpeech = typeof navigator !== "undefined" && !!navigator.mediaDevices?.getUserMedia;
 
-  // Сбросить строительное состояние
   const resetBuild = useCallback(() => {
-    buildRef.current = {
-      points:    [],
-      segments:  [],
-      currentDir: "right",
-      baseScale: null,
-      pendingLen: null,
-    };
+    buildRef.current = { points: [], segments: [], currentDir: "up", baseScale: null };
   }, []);
 
-  // Добавить отрезок в строящийся чертёж
   const addSegment = useCallback((lengthCm: number, dir: Dir) => {
     const b = buildRef.current;
     const scale = b.baseScale ?? SCALE_INIT;
     const lenPx = lengthCm * scale;
     const { dx, dy } = DIR_DELTA[dir];
 
-    // Если точек нет — создаём точку A
     if (b.points.length === 0) {
-      const ptA: Point = { id: genId("pt"), x: START_X, y: START_Y };
-      b.points.push(ptA);
+      b.points.push({ id: genId("pt"), x: START_X, y: START_Y });
     }
 
     const lastPt = b.points[b.points.length - 1];
@@ -155,29 +171,24 @@ export default function useVoiceDraw({ state, onChange }: Props) {
     };
     b.points.push(newPt);
 
-    const newSeg: Segment = {
+    b.segments.push({
       id: genId("s"),
       fromId: lastPt.id,
-      toId:   newPt.id,
+      toId: newPt.id,
       lengthCm,
       showLength: true,
       showDimLine: true,
       arcRadius: 0,
-    };
-    b.segments.push(newSeg);
+    });
 
-    // Публикуем промежуточное состояние
     onChange({
       points:   [...b.points],
       segments: [...b.segments],
       tool:     "move",
       phase:    "draw",
     });
-
-    setStatus(`Отрезок ${b.segments.length}: ${lengthCm} см → ожидаю поворот`);
   }, [onChange]);
 
-  // Замкнуть фигуру
   const closeFigure = useCallback(() => {
     const b = buildRef.current;
     if (b.points.length < 3) return;
@@ -193,146 +204,148 @@ export default function useVoiceDraw({ state, onChange }: Props) {
     b.segments.push(closing);
     const newDiags = buildAutoDiagonals(b.points, [], b.baseScale);
     onChange({
-      points:   [...b.points],
-      segments: [...b.segments],
+      points:    [...b.points],
+      segments:  [...b.segments],
       diagonals: newDiags,
-      isClosed: true,
-      phase:    "lengths",
-      tool:     "move",
-      activeInputIndex: 0,
+      isClosed:  true,
+      phase:     "lengths",
+      tool:      "move",
+      activeInputIndex:  0,
       selectedSegmentId: b.segments[0]?.id ?? null,
       sidebarTab: "drawing",
     });
     setStatus("Фигура замкнута!");
-    stop();
-  }, [onChange]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [onChange]);
 
-  // Обработка финального текста от распознавания
-  const processFinal = useCallback((text: string) => {
+  // Обрабатываем распознанный текст
+  const processText = useCallback((text: string) => {
+    console.log(`[VoiceDraw] распознано: "${text}"`);
+    setInterimText(text);
+
     const b = buildRef.current;
-    console.log(`[VoiceDraw] слышу: "${text}" | pendingLen=${b.pendingLen} dir=${b.currentDir} сегментов=${b.segments.length}`);
+    if (b.baseScale === null) b.baseScale = SCALE_INIT;
 
-    // Сначала ищем поворот (если есть pendingLen)
-    if (b.pendingLen !== null) {
-      const turn = parseTurnOrClose(text);
-      if (turn === "close") { closeFigure(); return; }
-      if (turn !== null) {
-        const dir = turn === "right"    ? turnRight(b.currentDir)
-                  : turn === "left"     ? turnLeft(b.currentDir)
-                  : b.currentDir; // straight
-        console.log(`[VoiceDraw] поворот "${turn}" → новое направление "${dir}", рисую ${b.pendingLen}см`);
-        b.currentDir = dir;
-        addSegment(b.pendingLen, dir);
-        b.pendingLen = null;
-        setStatus(`Жду следующий размер или «замкнуть»`);
+    const cmds = parseFullPhrase(text);
+    console.log(`[VoiceDraw] команды:`, cmds);
+
+    for (const cmd of cmds) {
+      if (cmd.turn === "close") {
+        if (cmd.len > 0) {
+          const dir = b.currentDir;
+          addSegment(cmd.len, dir);
+        }
+        closeFigure();
         return;
       }
-      console.log(`[VoiceDraw] ожидал поворот, но не распознал — игнорирую: "${text}"`);
-    }
 
-    // Ищем размер
-    const num = parseNumber(text);
-    if (num !== null) {
-      if (b.baseScale === null) {
-        console.log(`[VoiceDraw] первый отрезок ${num}см → вверх`);
-        b.baseScale = SCALE_INIT;
-        addSegment(num, "up");
-        b.currentDir = "up";
-        b.pendingLen = null;
-        setStatus(`Первый отрезок ${num} см. Скажите поворот: «вправо», «влево», «прямо» или «замкнуть»`);
-      } else {
-        console.log(`[VoiceDraw] длина ${num}см — жду поворот`);
-        b.pendingLen = num;
-        setStatus(`${num} см — скажите поворот: «вправо», «влево», «прямо» или «замкнуть»`);
+      if (cmd.len > 0) {
+        const dir = cmd.turn === "right"   ? turnRight(b.currentDir)
+                  : cmd.turn === "left"    ? turnLeft(b.currentDir)
+                  : b.currentDir;
+        b.currentDir = dir;
+        addSegment(cmd.len, dir);
       }
-      return;
     }
 
-    // Поворот без pending (на случай если сказали поворот после первого числа)
-    const turn = parseTurnOrClose(text);
-    if (turn === "close") { closeFigure(); return; }
-    if (turn !== null && b.pendingLen !== null) {
-      const dir = turn === "right" ? turnRight(b.currentDir) : turn === "left" ? turnLeft(b.currentDir) : b.currentDir;
-      console.log(`[VoiceDraw] поворот (fallback) "${turn}" → "${dir}"`);
-      b.currentDir = dir;
-      addSegment(b.pendingLen, dir);
-      b.pendingLen = null;
-    }
-
-    console.log(`[VoiceDraw] не распознано ничего в: "${text}"`);
+    setStatus(`Добавлено отрезков: ${b.segments.length}. Скажите продолжение или «замкнуть».`);
   }, [addSegment, closeFigure]);
 
-  const stop = useCallback(() => {
-    const r = recognitionRef.current;
-    recognitionRef.current = null;
-    r?.stop();
+  // Остановить запись и отправить на сервер
+  const stopAndTranscribe = useCallback(async () => {
+    const mr = mediaRecorderRef.current;
+    if (!mr || mr.state === "inactive") return;
+
     setIsListening(false);
-    setInterimText("");
-  }, []);
+    setStatus("Распознаю...");
 
-  const toggle = useCallback(() => {
-    if (isListening) { stop(); return; }
+    await new Promise<void>(resolve => {
+      mr.onstop = () => resolve();
+      mr.stop();
+    });
 
-    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SR) { alert("Голосовой ввод не поддерживается. Используйте Chrome."); return; }
+    mediaRecorderRef.current = null;
 
-    // Сброс чертежа — начинаем заново
-    resetBuild();
-    onChange({ points: [], segments: [], diagonals: [], isClosed: false, isBuilt: false, baseScale: null, phase: "draw", tool: "draw" });
-    setStatus("Скажите длину первого отрезка A→B (например: «354»)");
+    const chunks = chunksRef.current;
+    if (chunks.length === 0) { setStatus("Ничего не записано"); return; }
 
-    const recognition = new SR();
-    recognition.lang = "ru-RU";
-    recognition.interimResults = true;
-    recognition.continuous = false; // было: !isIOS (iOS=false, Android=true)
-    recognition.maxAlternatives = 3;
-    recognitionRef.current = recognition;
+    const mimeType = chunks[0].type || "audio/webm";
+    const blob = new Blob(chunks, { type: mimeType });
+    chunksRef.current = [];
 
-    recognition.onresult = (e: SpeechRecognitionEvent) => {
-      let finalText = "";
-      let interimBuf = "";
-      for (let i = e.resultIndex; i < e.results.length; i++) {
-        const res = e.results[i];
-        if (res.isFinal) {
-          let best = res[0].transcript;
-          for (let a = 0; a < res.length; a++) {
-            if (parseNumber(res[a].transcript) !== null || parseTurnOrClose(res[a].transcript) !== null) {
-              best = res[a].transcript; break;
-            }
-          }
-          finalText += best + " ";
-        } else {
-          interimBuf += res[0].transcript;
-        }
+    setIsProcessing(true);
+    try {
+      const arrayBuffer = await blob.arrayBuffer();
+      const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
+
+      const res = await fetch(TRANSCRIBE_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ audio: base64, mimeType }),
+      });
+
+      const data = await res.json();
+      if (data.text) {
+        processText(data.text);
+      } else {
+        setStatus("Не удалось распознать речь");
       }
-      if (interimBuf) setInterimText(interimBuf);
-      if (finalText.trim()) { setInterimText(""); processFinal(finalText.trim()); }
-    };
+    } catch (e) {
+      console.error("[VoiceDraw] transcribe error:", e);
+      setStatus("Ошибка распознавания");
+    } finally {
+      setIsProcessing(false);
+    }
+  }, [processText]);
 
-    recognition.onend = () => {
-      if (!recognitionRef.current) return;
-      // Не перезапускаем — ждём следующего касания (как iOS)
-      {
-        setIsListening(false);
-        recognitionRef.current = null;
-      }
-    };
-
-    recognition.onerror = (e: SpeechRecognitionErrorEvent) => {
-      if (e.error === "not-allowed") {
-        alert("Доступ к микрофону запрещён.");
-        recognitionRef.current = null;
-        setIsListening(false);
-      }
-    };
+  // Начать запись
+  const startRecording = useCallback(async () => {
+    if (isListening || isProcessing) return;
 
     try {
-      recognition.start();
-      setIsListening(true);
-    } catch (err) {
-      console.error("[VoiceDraw] start failed:", err);
-    }
-  }, [isListening, isIOS, stop, resetBuild, onChange, processFinal]);
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
 
-  return { isListening, interimText, status, hasSpeech, toggle, stop };
+      // Выбираем поддерживаемый формат
+      const mimeType = MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
+        ? "audio/webm;codecs=opus"
+        : MediaRecorder.isTypeSupported("audio/webm")
+        ? "audio/webm"
+        : "audio/mp4";
+
+      const mr = new MediaRecorder(stream, { mimeType });
+      mediaRecorderRef.current = mr;
+      chunksRef.current = [];
+
+      mr.ondataavailable = (e) => {
+        if (e.data.size > 0) chunksRef.current.push(e.data);
+      };
+
+      mr.start(100); // чанки каждые 100мс
+      setIsListening(true);
+      setInterimText("");
+      setStatus("Говорите... (нажмите ещё раз чтобы остановить)");
+    } catch {
+      alert("Доступ к микрофону запрещён. Разрешите доступ в настройках браузера.");
+    }
+  }, [isListening, isProcessing]);
+
+  // Toggle: старт / стоп
+  const toggle = useCallback(() => {
+    if (isListening) {
+      stopAndTranscribe();
+    } else {
+      // Сброс чертежа при первом старте
+      if (buildRef.current.segments.length === 0) {
+        resetBuild();
+        onChange({ points: [], segments: [], diagonals: [], isClosed: false, isBuilt: false, baseScale: null, phase: "draw", tool: "draw" });
+        setStatus("Говорите: «350 вправо 250 вправо 350 вправо 250 замкнуть»");
+      }
+      startRecording();
+    }
+  }, [isListening, stopAndTranscribe, startRecording, resetBuild, onChange]);
+
+  const stop = useCallback(() => {
+    if (isListening) stopAndTranscribe();
+  }, [isListening, stopAndTranscribe]);
+
+  return { isListening, isProcessing, interimText, status, hasSpeech, toggle, stop };
 }

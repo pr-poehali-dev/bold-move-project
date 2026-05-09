@@ -264,6 +264,7 @@ export default function PlanPage() {
             rightPanelOpen={rightPanelOpen}
             onToggleVoiceDraw={voiceDraw.hasSpeech ? voiceDraw.toggle : undefined}
             isVoiceDrawing={voiceDraw.isListening}
+            isVoiceProcessing={voiceDraw.isProcessing}
             voiceStatus={voiceDraw.status}
             voiceInterim={voiceDraw.interimText}
             attachedCount={attachedCount}

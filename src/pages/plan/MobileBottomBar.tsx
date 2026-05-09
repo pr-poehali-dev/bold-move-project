@@ -18,6 +18,7 @@ interface Props {
   rightPanelOpen?: boolean;
   onToggleVoiceDraw?: () => void;
   isVoiceDrawing?: boolean;
+  isVoiceProcessing?: boolean;
   voiceStatus?: string;
   voiceInterim?: string;
   attachedCount?: number;
@@ -34,7 +35,7 @@ export default function MobileBottomBar({
   zoom, settings, onSettingChange, onZoomIn, onZoomOut, onZoomFit, onOpenPanel, onOpenCatalog,
   onOpenSides, selectedSegmentId,
   sheetOpen = false, catalogOpen = false, rightPanelOpen = false,
-  onToggleVoiceDraw, isVoiceDrawing = false, voiceStatus, voiceInterim,
+  onToggleVoiceDraw, isVoiceDrawing = false, isVoiceProcessing = false, voiceStatus, voiceInterim,
   attachedCount = 0, filterAttached = false, onToggleFilterAttached,
 }: Props) {
   const [zoomOpen,     setZoomOpen]     = React.useState(false);
@@ -175,24 +176,28 @@ export default function MobileBottomBar({
       {onToggleVoiceDraw && (
         <div className="relative">
           {/* Всплывающая подсказка над кнопкой */}
-          {isVoiceDrawing && (voiceStatus || voiceInterim) && (
+          {(isVoiceDrawing || isVoiceProcessing) && (voiceStatus || voiceInterim) && (
             <div className="absolute bottom-14 right-0 bg-[#1a1b2e] border border-violet-500/30 rounded-2xl shadow-2xl p-3 w-56 z-50">
               {voiceStatus && (
                 <p className="text-[11px] text-violet-300 font-medium leading-snug">{voiceStatus}</p>
               )}
               {voiceInterim && (
-                <p className="text-[10px] text-white/40 italic mt-1">{voiceInterim}</p>
+                <p className="text-[10px] text-white/40 italic mt-1 line-clamp-3">"{voiceInterim}"</p>
               )}
             </div>
           )}
           <button
             onClick={onToggleVoiceDraw}
-            className={`${isVoiceDrawing
-              ? "w-12 h-12 rounded-2xl flex items-center justify-center text-white transition-all active:scale-95 shadow-lg bg-red-600 shadow-red-500/40 animate-pulse"
-              : BTN_DEFAULT
+            disabled={isVoiceProcessing}
+            className={`${
+              isVoiceProcessing
+                ? "w-12 h-12 rounded-2xl flex items-center justify-center text-white transition-all shadow-lg bg-amber-600 shadow-amber-500/40 opacity-80"
+                : isVoiceDrawing
+                ? "w-12 h-12 rounded-2xl flex items-center justify-center text-white transition-all active:scale-95 shadow-lg bg-red-600 shadow-red-500/40"
+                : BTN_DEFAULT
             }`}
           >
-            <Icon name={isVoiceDrawing ? "MicOff" : "Mic"} size={20} />
+            <Icon name={isVoiceProcessing ? "Loader" : isVoiceDrawing ? "MicOff" : "Mic"} size={20} className={isVoiceProcessing ? "animate-spin" : ""} />
           </button>
         </div>
       )}
