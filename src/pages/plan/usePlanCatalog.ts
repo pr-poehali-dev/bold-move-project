@@ -84,14 +84,15 @@ export function usePlanCatalog(
     return bestDist < threshold ? bestId : null;
   }, [stateRef]);
 
-  // Привязать товар к стене
+  // Привязать товар к стене (quantity = длина стены в метрах, округлено до 0.01)
   const assignItemToSeg = useCallback((item: SegmentPriceItem, segId: string) => {
     const s = stateRef.current;
     const newSegments = s.segments.map(seg => {
       if (seg.id !== segId) return seg;
       const existing = seg.items ?? [];
       if (existing.some(it => it.priceId === item.priceId)) return seg;
-      return { ...seg, items: [...existing, item] };
+      const meters = seg.lengthCm ? Math.round(seg.lengthCm / 100 * 100) / 100 : 1;
+      return { ...seg, items: [...existing, { ...item, quantity: meters }] };
     });
     push({ ...s, segments: newSegments });
   }, [stateRef, push]);

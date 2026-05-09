@@ -23,12 +23,14 @@ export default function PlanDragGhosts({
   segments, anyPanelOpen,
   onTapActiveId, onRemoveActiveItem,
 }: Props) {
-  // Считаем суммарное кол-во товара по всем стенам
-  const totalByPriceId = (priceId: number): number =>
-    segments.reduce((sum, seg) => {
-      const found = (seg.items ?? []).find(it => it.priceId === priceId);
-      return sum + (found ? (found.quantity ?? 1) : 0);
-    }, 0);
+  // Считаем суммарные метры товара по всем стенам
+  const totalMByPriceId = (priceId: number): number =>
+    Math.round(
+      segments.reduce((sum, seg) => {
+        const found = (seg.items ?? []).find(it => it.priceId === priceId);
+        return sum + (found ? (found.quantity ?? 0) : 0);
+      }, 0) * 100
+    ) / 100;
   return (
     <>
       {/* ── Drag ghost — летит за курсором на десктопе ── */}
@@ -125,7 +127,7 @@ export default function PlanDragGhosts({
         }}>
           {activeItems.map(item => {
             const isActive = tapActiveId === item.priceId;
-            const total = totalByPriceId(item.priceId);
+            const total = totalMByPriceId(item.priceId);
             return (
               <div
                 key={item.priceId}
@@ -135,7 +137,7 @@ export default function PlanDragGhosts({
                   display: "flex", alignItems: "center", gap: 10,
                   background: "rgba(12,10,28,0.96)",
                   border: `1px solid ${hoverSegId && isActive ? "rgba(124,58,237,1)" : isActive ? "rgba(124,58,237,0.8)" : "rgba(124,58,237,0.25)"}`,
-                  borderRadius: 16, padding: "10px 10px 10px 10px",
+                  borderRadius: 16, padding: "12px 12px 12px 12px",
                   boxShadow: hoverSegId && isActive
                     ? "0 0 32px rgba(124,58,237,0.7), 0 8px 24px rgba(0,0,0,0.6)"
                     : isActive
@@ -186,19 +188,20 @@ export default function PlanDragGhosts({
                   }}
                 >✕</button>
 
-                {/* Кружок с суммарным количеством */}
+                {/* Кружок с суммарными метрами */}
                 {total > 0 && (
                   <div style={{
-                    position: "absolute", top: -8, right: -8,
-                    minWidth: 20, height: 20, borderRadius: 10,
+                    position: "absolute", top: -10, right: -10,
+                    minWidth: 26, height: 20, borderRadius: 10,
                     background: "rgba(124,58,237,1)",
                     border: "2px solid rgba(12,10,28,0.96)",
                     display: "flex", alignItems: "center", justifyContent: "center",
                     padding: "0 5px",
                     pointerEvents: "none",
+                    whiteSpace: "nowrap",
                   }}>
-                    <span style={{ fontSize: 10, fontWeight: 800, color: "#fff", lineHeight: 1 }}>
-                      {total}
+                    <span style={{ fontSize: 9, fontWeight: 800, color: "#fff", lineHeight: 1 }}>
+                      {total}м
                     </span>
                   </div>
                 )}
