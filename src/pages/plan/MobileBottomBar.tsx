@@ -179,7 +179,7 @@ export default function MobileBottomBar({
           {(isVoiceDrawing || isVoiceProcessing) && (voiceStatus || voiceInterim) && (
             <div className="absolute bottom-14 right-0 bg-[#1a1b2e] border border-violet-500/30 rounded-2xl shadow-2xl p-3 w-56 z-50">
               {voiceStatus && (
-                <p className="text-[11px] text-violet-300 font-medium leading-snug">{voiceStatus}</p>
+                <p className="text-[11px] text-violet-300 font-medium leading-snug whitespace-pre-line">{voiceStatus}</p>
               )}
               {voiceInterim && (
                 <p className="text-[10px] text-white/40 italic mt-1 line-clamp-3">"{voiceInterim}"</p>
