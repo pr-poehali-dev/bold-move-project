@@ -174,14 +174,10 @@ export function usePlanHandlers({
     return () => window.removeEventListener("keydown", onKey);
   }, [undo, redo, handleSave, handleToolChange, handleSettingChange, zoomIn, zoomOut, zoomFit, setSheetOpen, setExportOpen, setLibraryOpen]);
 
-  // ── Мобиле: автооткрытие правой панели при замыкании фигуры ─────────────
+  // ── Мобиле: при размыкании — закрываем правую панель ────────────────────
   const prevIsClosed = useRef(state.isClosed);
   useEffect(() => {
-    if (state.isClosed && !prevIsClosed.current && isMobile) {
-      setRightPanelOpen(true);
-      setTimeout(() => zoomFit(0, PANEL_WIDTH), 80);
-    }
-    if (!state.isClosed && prevIsClosed.current) {
+    if (!state.isClosed && prevIsClosed.current && isMobile) {
       setRightPanelOpen(false);
       setTimeout(() => zoomFit(0, 0), 80);
     }
