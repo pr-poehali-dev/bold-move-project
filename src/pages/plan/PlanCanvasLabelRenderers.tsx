@@ -79,23 +79,18 @@ export function SegmentItemsBadges({
   const na    = angle > 90 || angle < -90 ? angle + 180 : angle;
 
   const H   = 24;
-  const GAP = 5;
-  const OFF = 28;
+  const GAP = 6;
+  const OFF = 28; // отступ первого бейджа от стены
   const IMG = 18;
-  const X_BTN = 14; // радиус зоны крестика
-
-  const totalH   = items.length * H + (items.length - 1) * GAP;
-  const startOff = -(totalH / 2) + H / 2;
-  const segLen   = Math.hypot(b.x - a.x, b.y - a.y) || 1;
-  const ux       = (b.x - a.x) / segLen;
-  const uy       = (b.y - a.y) / segLen;
+  const X_BTN = 14;
 
   return (
     <g key={`seg-items-${seg.id}`}>
       {items.map((item, idx) => {
-        const along   = startOff + idx * (H + GAP);
-        const px      = mid.x - nx * OFF + ux * along;
-        const py      = mid.y - ny * OFF + uy * along;
+        // Каждый следующий бейдж — дальше от стены по нормали
+        const dist = OFF + idx * (H + GAP);
+        const px   = mid.x - nx * dist;
+        const py   = mid.y - ny * dist;
         const itemKey = `${seg.id}-${item.priceId}`;
 
         // Ширина подбирается под длину названия (минимум 120, максимум 220)
