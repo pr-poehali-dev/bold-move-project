@@ -82,9 +82,12 @@ function ArcDrum({ items, value, onChange, onClick }: {
   }, [items, onChange]);
 
   useEffect(() => {
+    if (items.length === 0) return;
+    // Стартуем с середины списка
+    const midIdx = Math.floor(items.length / 2);
     const el = scrollRef.current;
-    if (el) { el.scrollTop = 0; setScrollTop(0); isSnapping.current = false; }
-    if (items.length > 0) onChange(items[0].value);
+    if (el) { el.scrollTop = midIdx * ITEM_H; setScrollTop(midIdx * ITEM_H); isSnapping.current = false; }
+    onChange(items[midIdx].value);
   }, [items.length]); // eslint-disable-line
 
   useEffect(() => {
@@ -269,7 +272,8 @@ function ArcDrum({ items, value, onChange, onClick }: {
               fontSize: isCenter ? 13 : 11,
               fontWeight: isCenter ? 700 : 500,
               color: isCenter ? "rgba(255,255,255,0.95)" : "rgba(255,255,255,0.5)",
-              overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1,
+              flex: 1,
+              lineHeight: 1.3,
             }}>
               {item.label}
             </span>
@@ -343,7 +347,7 @@ export default function CategoryDrumPanel({ open, onClose, prices, onDragItem }:
         opacity: visible ? 1 : 0,
         transition: "transform 0.3s cubic-bezier(0.34,1.2,0.64,1), opacity 0.25s ease",
         zIndex: 41,
-        width: 210,
+        width: 260,
         display: "flex",
         flexDirection: "column",
         justifyContent: "center",
