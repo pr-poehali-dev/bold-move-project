@@ -41,8 +41,9 @@ export default function PlanQuantityModal({ item, onConfirm, onCancel }: Props) 
           background: "rgba(17,12,36,0.98)",
           border: "1px solid rgba(124,58,237,0.4)",
           borderRadius: 20,
-          padding: "24px 24px 20px",
-          width: 280,
+          padding: "24px 20px 20px",
+          width: "min(300px, calc(100vw - 32px))",
+          boxSizing: "border-box",
           boxShadow: "0 8px 40px rgba(0,0,0,0.7)",
         }}
         onClick={e => e.stopPropagation()}
