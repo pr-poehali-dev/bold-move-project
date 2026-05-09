@@ -137,8 +137,16 @@ export function usePlanHandlers({
     if (loaded) {
       const allSet = loaded.segments?.length > 0 && loaded.segments.every((s: Segment) => s.lengthCm !== null && s.lengthCm > 0);
       reset({ ...loaded, changedSegmentIds: [], isBuilt: loaded.isBuilt ?? (!!loaded.baseScale && allSet) });
+      // На мобиле после загрузки — открываем правую панель и масштабируем
+      if (isMobile && loaded.isClosed) {
+        setFocusSegmentId(loaded.segments?.[0]?.id ?? null);
+        setRightPanelOpen(true);
+        setTimeout(() => zoomFit(), 150);
+      } else {
+        setTimeout(() => zoomFit(), 150);
+      }
     }
-  }, [token, storage, reset]);
+  }, [token, storage, reset, isMobile, setFocusSegmentId, setRightPanelOpen, zoomFit]);
 
   const handleDelete = useCallback(async (planId: number) => {
     if (!token) return;
