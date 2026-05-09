@@ -18,8 +18,8 @@ export function usePlanCanvasState(tool: string) {
   // ── Refs для управления жестами ──────────────────────────────────────────
   const svgRef      = useRef<SVGSVGElement>(null);
   const dragRef     = useRef<{ pointId: string } | null>(null);
-  // Ближайшая точка при touchStart — для lazy grab при движении
-  const nearbyPtRef = useRef<string | null>(null);
+  // Ближайшая точка при touchStart — для lazy grab при движении { id, dist }
+  const nearbyPtRef = useRef<{ id: string; dist: number } | null>(null);
   const panRef      = useRef<{ startX: number; startY: number; origPanX: number; origPanY: number } | null>(null);
   const pinchRef    = useRef<{ dist: number; zoom: number; midX?: number; midY?: number } | null>(null);
   const isPanning   = useRef(false);

@@ -184,14 +184,13 @@ export function usePlanCanvasEvents({ state, onChange, cs }: Params) {
           nearbyPtRef.current = null;
           return;
         }
-        // Lazy grab — ищем ближайшую точку в увеличенной зоне (80px) для захвата при движении
-        const LAZY_HIT = 80;
+        // Lazy grab — берём ближайшую точку, сохраняем id + dist для решения drag vs pan
         const nearbyPt = points.reduce<{ pt: typeof points[0]; dist: number } | null>((best, p) => {
           const d = distPx(p, { id: "", x: raw.x, y: raw.y });
-          if (d < LAZY_HIT && (!best || d < best.dist)) return { pt: p, dist: d };
+          if (!best || d < best.dist) return { pt: p, dist: d };
           return best;
         }, null);
-        nearbyPtRef.current = nearbyPt?.pt.id ?? null;
+        nearbyPtRef.current = nearbyPt ? { id: nearbyPt.pt.id, dist: nearbyPt.dist } : null;
       }
       panRef.current = { startX: t.clientX, startY: t.clientY, origPanX: panX, origPanY: panY };
     }
@@ -225,12 +224,18 @@ export function usePlanCanvasEvents({ state, onChange, cs }: Params) {
 
     if (e.touches.length === 1) {
       const t = e.touches[0];
-      // Lazy grab: если есть кандидат и drag ещё не начат — захватываем при первом движении
+      // Lazy grab: захватываем точку при движении если палец был близко (< 120px в SVG координатах)
       if (!dragRef.current && nearbyPtRef.current && tool === "move") {
-        dragRef.current = { pointId: nearbyPtRef.current };
-        nearbyPtRef.current = null;
-        panRef.current = null;
-        clearLongPress();
+        const LAZY_THR = 120 / zoom; // 120px экрана → в SVG координатах
+        if (nearbyPtRef.current.dist < LAZY_THR) {
+          dragRef.current = { pointId: nearbyPtRef.current.id };
+          nearbyPtRef.current = null;
+          panRef.current = null;
+          clearLongPress();
+        } else {
+          // Далеко от точек — это pan, сбрасываем кандидата
+          nearbyPtRef.current = null;
+        }
       }
       if (dragRef.current && tool === "move") {
         const raw = clientToSvg(t.clientX, t.clientY);
