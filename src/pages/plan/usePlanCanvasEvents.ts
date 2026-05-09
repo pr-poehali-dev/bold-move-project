@@ -58,21 +58,24 @@ export function usePlanCanvasEvents({ state, onChange, onReplace, cs }: Params) 
       x = o.x; y = o.y;
     }
     // Ортогональное перетаскивание: привязываем к соседним точкам по горизонтали/вертикали
+    // Срабатывает только если точка близко к оси соседа (порог ORTHO_SNAP_THR)
+    const ORTHO_SNAP_THR = 12; // px — мягкий порог притяжения к оси
     if (ortho && tool === "move" && excludeId) {
       const neighbors = segments
         .filter(s => s.fromId === excludeId || s.toId === excludeId)
         .map(s => points.find(p => p.id === (s.fromId === excludeId ? s.toId : s.fromId)))
         .filter(Boolean) as typeof points;
       if (neighbors.length > 0) {
-        // Берём ближайшего соседа по оси к которой мы ближе
-        let bestX = x, bestY = y, bestDist = Infinity;
+        let bestX = x, bestY = y;
+        let snapX = false, snapY = false;
         for (const nb of neighbors) {
-          const dx = Math.abs(x - nb.x);
-          const dy = Math.abs(y - nb.y);
-          if (dx < bestDist) { bestDist = dx; bestX = nb.x; bestY = y; }
-          if (dy < bestDist) { bestDist = dy; bestX = x; bestY = nb.y; }
+          // Привязываем по X только если очень близко к вертикали соседа
+          if (Math.abs(x - nb.x) < ORTHO_SNAP_THR) { bestX = nb.x; snapX = true; }
+          // Привязываем по Y только если очень близко к горизонтали соседа
+          if (Math.abs(y - nb.y) < ORTHO_SNAP_THR) { bestY = nb.y; snapY = true; }
         }
-        x = bestX; y = bestY;
+        if (snapX) x = bestX;
+        if (snapY) y = bestY;
       }
     }
     return { x, y, snapped: false };
