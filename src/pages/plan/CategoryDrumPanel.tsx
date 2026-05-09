@@ -22,12 +22,14 @@ interface Props {
   onDragItem: (item: SegmentPriceItem) => void;
 }
 
-const ITEM_H      = 60;
-const VISIBLE     = 5;
-const CONTAINER_H = ITEM_H * VISIBLE;
-const PADDING     = ITEM_H * Math.floor(VISIBLE / 2);
+// Параметры дуги
+const ITEM_H   = 58;   // высота одного слота
+const VISIBLE  = 7;    // сколько слотов видно
+const ARC_R    = 220;  // радиус дуги (чем меньше — тем сильнее изгиб)
+const TOTAL_H  = ITEM_H * VISIBLE;
+const PADDING  = ITEM_H * Math.floor(VISIBLE / 2);
 
-// ── Барабан ───────────────────────────────────────────────────────────────────
+// ── Барабан с дугой ───────────────────────────────────────────────────────────
 
 function ArcDrum({ items, value, onChange, onClick }: {
   items: ArcItem[];
@@ -45,6 +47,8 @@ function ArcDrum({ items, value, onChange, onClick }: {
   const velocity    = useRef(0);
   const rafId       = useRef<number | null>(null);
   const isSnapping  = useRef(false);
+  // Текущий scroll для рендера дуги
+  const [scrollTop, setScrollTop] = useState(0);
 
   const selectedIdx = items.findIndex(i => i.value === value);
 
@@ -53,7 +57,7 @@ function ArcDrum({ items, value, onChange, onClick }: {
     if (!el || items.length === 0) return;
     const clamped = Math.max(0, Math.min(items.length - 1, idx));
     const target  = clamped * ITEM_H;
-    if (!smooth) { el.scrollTop = target; return; }
+    if (!smooth) { el.scrollTop = target; setScrollTop(target); return; }
     isSnapping.current = true;
     const start = el.scrollTop;
     const diff  = target - start;
@@ -63,9 +67,11 @@ function ArcDrum({ items, value, onChange, onClick }: {
       const t    = Math.min(1, (now - ts0) / dur);
       const ease = 1 - Math.pow(1 - t, 3);
       el.scrollTop = start + diff * ease;
+      setScrollTop(el.scrollTop);
       if (t < 1) { rafId.current = requestAnimationFrame(step); }
       else {
         el.scrollTop = target;
+        setScrollTop(target);
         isSnapping.current = false;
         navigator.vibrate?.(8);
         onChange(items[clamped].value);
@@ -77,7 +83,7 @@ function ArcDrum({ items, value, onChange, onClick }: {
 
   useEffect(() => {
     const el = scrollRef.current;
-    if (el) { el.scrollTop = 0; isSnapping.current = false; }
+    if (el) { el.scrollTop = 0; setScrollTop(0); isSnapping.current = false; }
     if (items.length > 0) onChange(items[0].value);
   }, [items.length]); // eslint-disable-line
 
@@ -93,6 +99,7 @@ function ArcDrum({ items, value, onChange, onClick }: {
       if (isSnapping.current) return;
       v *= 0.92;
       el.scrollTop += v;
+      setScrollTop(el.scrollTop);
       if (Math.abs(v) > 0.5) { rafId.current = requestAnimationFrame(step); }
       else snapToIndex(Math.round(el.scrollTop / ITEM_H));
     };
@@ -115,6 +122,7 @@ function ArcDrum({ items, value, onChange, onClick }: {
     if (dt > 0) velocity.current = (lastY.current - y) / dt * 16;
     lastY.current = y; lastTime.current = now;
     scrollRef.current.scrollTop = startScroll.current + (startY.current - y);
+    setScrollTop(scrollRef.current.scrollTop);
   }, []);
 
   const onTouchEnd = useCallback(() => { isDragging.current = false; startInertia(); }, [startInertia]);
@@ -134,6 +142,7 @@ function ArcDrum({ items, value, onChange, onClick }: {
     if (dt > 0) velocity.current = (lastY.current - y) / dt * 16;
     lastY.current = y; lastTime.current = now;
     scrollRef.current.scrollTop = startScroll.current + (startY.current - y);
+    setScrollTop(scrollRef.current.scrollTop);
   }, []);
 
   const onMouseUp = useCallback(() => {
@@ -151,54 +160,118 @@ function ArcDrum({ items, value, onChange, onClick }: {
     e.preventDefault();
     if (isSnapping.current || !scrollRef.current) return;
     scrollRef.current.scrollTop += e.deltaY;
+    setScrollTop(scrollRef.current.scrollTop);
     if (rafId.current) cancelAnimationFrame(rafId.current);
     setTimeout(() => { snapToIndex(Math.round((scrollRef.current?.scrollTop ?? 0) / ITEM_H)); }, 120);
   }, [snapToIndex]);
 
   const onScroll = useCallback(() => {
     if (isSnapping.current || isDragging.current || !scrollRef.current) return;
+    setScrollTop(scrollRef.current.scrollTop);
     const idx = Math.round(scrollRef.current.scrollTop / ITEM_H);
     const clamped = Math.max(0, Math.min(items.length - 1, idx));
     if (items[clamped]?.value !== value) onChange(items[clamped].value);
   }, [items, value, onChange]);
 
+  // Вычисляем дугообразное смещение для каждого элемента
+  // scrollTop определяет текущую центральную позицию
+  const centerPos = scrollTop + TOTAL_H / 2 - ITEM_H / 2;
+
   return (
-    <div style={{ height: CONTAINER_H, position: "relative", userSelect: "none", width: "100%" }}>
-      {/* Маски — фейд без фона */}
-      <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: PADDING, background: "linear-gradient(to bottom, rgba(0,0,0,0.75) 0%, transparent 100%)", zIndex: 2, pointerEvents: "none" }} />
-      <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: PADDING, background: "linear-gradient(to top, rgba(0,0,0,0.75) 0%, transparent 100%)", zIndex: 2, pointerEvents: "none" }} />
-      {/* Рамка центра */}
-      <div style={{ position: "absolute", top: "50%", left: 6, right: 6, height: ITEM_H, transform: "translateY(-50%)", border: "1px solid rgba(124,58,237,0.5)", background: "rgba(124,58,237,0.07)", borderRadius: 16, zIndex: 3, pointerEvents: "none" }} />
-      {/* Список */}
-      <div ref={scrollRef} onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd} onMouseDown={onMouseDown} onWheel={onWheel} onScroll={onScroll} style={{ height: "100%", overflowY: "scroll", scrollbarWidth: "none" }}>
-        <div style={{ paddingTop: PADDING, paddingBottom: PADDING }}>
-          {items.map((item, idx) => {
-            const dist    = Math.abs(idx - selectedIdx);
-            const scale   = Math.max(0.7, 1 - dist * 0.1);
-            const opacity = Math.max(0.2, 1 - dist * 0.3);
-            const isCenter = idx === selectedIdx;
-            return (
-              <div
-                key={item.value}
-                onClick={() => { if (!didDrag.current) { if (isCenter) onClick(item.value); else snapToIndex(idx); } }}
-                style={{ height: ITEM_H, display: "flex", alignItems: "center", gap: 10, padding: "0 14px 0 8px", cursor: "pointer", transform: `scale(${scale})`, opacity, transition: "transform 0.15s, opacity 0.15s" }}
-              >
-                <div style={{ width: 38, height: 38, borderRadius: 10, overflow: "hidden", flexShrink: 0, background: "rgba(124,58,237,0.18)", border: "1px solid rgba(124,58,237,0.3)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                  {item.imageUrl
-                    ? <img src={item.imageUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                    : <span style={{ fontSize: 20 }}>📦</span>}
-                </div>
-                <span style={{ fontSize: 12, fontWeight: isCenter ? 700 : 500, color: isCenter ? "rgba(255,255,255,0.95)" : "rgba(255,255,255,0.55)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 }}>
-                  {item.label}
-                </span>
-                {isCenter && (
-                  <span style={{ fontSize: 9, color: "rgba(196,181,253,0.6)", flexShrink: 0 }}>▶</span>
-                )}
-              </div>
-            );
-          })}
-        </div>
+    <div style={{ height: TOTAL_H, position: "relative", userSelect: "none", width: "100%", overflow: "hidden" }}>
+      {/* Скрытый скролл для механики */}
+      <div
+        ref={scrollRef}
+        onTouchStart={onTouchStart}
+        onTouchMove={onTouchMove}
+        onTouchEnd={onTouchEnd}
+        onMouseDown={onMouseDown}
+        onWheel={onWheel}
+        onScroll={onScroll}
+        style={{ position: "absolute", inset: 0, overflowY: "scroll", scrollbarWidth: "none", opacity: 0, zIndex: 10 }}
+      >
+        <div style={{ height: items.length * ITEM_H + PADDING * 2 }} />
       </div>
+
+      {/* Визуальные элементы — рендерим сами по дуге */}
+      {items.map((item, idx) => {
+        // Позиция центра элемента в пространстве скролла
+        const itemCenter = PADDING + idx * ITEM_H + ITEM_H / 2;
+        // Смещение от текущего центра (-TOTAL_H/2 .. +TOTAL_H/2)
+        const offset = itemCenter - centerPos;
+        // Нормализованное смещение от центра (-1 при крайних)
+        const norm = Math.max(-1, Math.min(1, offset / (TOTAL_H / 2)));
+
+        // Горизонтальное смещение по дуге (параболическое — сильный изгиб)
+        const arcX = (1 - Math.cos(norm * Math.PI * 0.85)) * ARC_R * 0.55;
+        // Поворот элемента вдоль дуги
+        const rotate = norm * 28; // градусы
+        // Масштаб и прозрачность
+        const scale   = Math.max(0.65, 1 - Math.abs(norm) * 0.32);
+        const opacity = Math.max(0.15, 1 - Math.abs(norm) * 0.82);
+        const isCenter = Math.abs(norm) < 0.18;
+
+        // Вертикальная позиция на экране
+        const y = TOTAL_H / 2 + offset - ITEM_H / 2;
+
+        // Скрываем элементы вне видимой зоны
+        if (y < -ITEM_H || y > TOTAL_H) return null;
+
+        return (
+          <div
+            key={item.value}
+            onClick={() => {
+              if (didDrag.current) return;
+              if (isCenter) onClick(item.value);
+              else snapToIndex(idx);
+            }}
+            style={{
+              position: "absolute",
+              top: y,
+              right: 0,
+              width: `calc(100% - ${Math.round(arcX)}px)`,
+              height: ITEM_H,
+              display: "flex",
+              alignItems: "center",
+              gap: 10,
+              padding: "0 12px 0 8px",
+              cursor: "pointer",
+              transform: `scale(${scale}) rotate(${rotate}deg)`,
+              transformOrigin: "right center",
+              opacity,
+              transition: "none",
+              background: isCenter ? "rgba(124,58,237,0.12)" : "transparent",
+              borderRadius: 14,
+              border: isCenter ? "1px solid rgba(124,58,237,0.45)" : "1px solid transparent",
+              boxSizing: "border-box",
+            }}
+          >
+            <div style={{
+              width: 36, height: 36, borderRadius: 9, overflow: "hidden", flexShrink: 0,
+              background: "rgba(124,58,237,0.18)",
+              border: `1px solid rgba(124,58,237,${isCenter ? 0.5 : 0.2})`,
+              display: "flex", alignItems: "center", justifyContent: "center",
+            }}>
+              {item.imageUrl
+                ? <img src={item.imageUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                : <span style={{ fontSize: 18 }}>📦</span>
+              }
+            </div>
+            <span style={{
+              fontSize: isCenter ? 13 : 11,
+              fontWeight: isCenter ? 700 : 500,
+              color: isCenter ? "rgba(255,255,255,0.95)" : "rgba(255,255,255,0.5)",
+              overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1,
+            }}>
+              {item.label}
+            </span>
+          </div>
+        );
+      })}
+
+      {/* Маски сверху/снизу */}
+      <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: ITEM_H * 1.5, background: "linear-gradient(to bottom, rgba(0,0,0,0.85) 0%, transparent 100%)", pointerEvents: "none", zIndex: 5 }} />
+      <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: ITEM_H * 1.5, background: "linear-gradient(to top, rgba(0,0,0,0.85) 0%, transparent 100%)", pointerEvents: "none", zIndex: 5 }} />
     </div>
   );
 }
@@ -254,35 +327,55 @@ export default function CategoryDrumPanel({ open, onClose, prices, onDragItem }:
     <>
       <div onClick={onClose} style={{ position: "fixed", inset: 0, zIndex: 40 }} />
       <div style={{
-        position: "fixed", right: 0, top: "50%",
-        transform: `translateY(-50%) translateX(${visible ? 0 : 80}px)`,
+        position: "fixed",
+        right: 0,
+        top: "50%",
+        transform: `translateY(-50%) translateX(${visible ? 0 : 60}px)`,
         opacity: visible ? 1 : 0,
-        transition: "transform 0.3s cubic-bezier(0.34,1.2,0.64,1), opacity 0.2s ease",
-        zIndex: 41, width: 210,
-        display: "flex", flexDirection: "column",
+        transition: "transform 0.3s cubic-bezier(0.34,1.2,0.64,1), opacity 0.25s ease",
+        zIndex: 41,
+        width: 200,
       }}>
-        {/* Шапка */}
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 10px 2px" }}>
-          {mode === "items" ? (
-            <button onClick={e => { e.stopPropagation(); setMode("categories"); setSelectedCategory(""); }}
-              style={{ background: "rgba(124,58,237,0.15)", border: "1px solid rgba(124,58,237,0.3)", borderRadius: 8, padding: "2px 10px", color: "rgba(196,181,253,0.9)", fontSize: 10, fontWeight: 600, cursor: "pointer" }}>
-              ← Назад
-            </button>
-          ) : (
-            <span style={{ fontSize: 9, color: "rgba(255,255,255,0.2)", fontWeight: 700, letterSpacing: 1 }}>КАТАЛОГ</span>
-          )}
-          <button onClick={e => { e.stopPropagation(); onClose(); }}
-            style={{ background: "none", border: "none", color: "rgba(255,255,255,0.2)", cursor: "pointer", fontSize: 18, lineHeight: 1 }}>×</button>
-        </div>
-        <p style={{ fontSize: 9, color: "rgba(255,255,255,0.18)", textAlign: "center", margin: "2px 0 4px", padding: "0 8px" }}>
-          {mode === "categories" ? "Нажмите на центральный элемент" : selectedCategory}
-        </p>
-        {/* Барабан */}
+        {/* Кнопка назад — только в режиме товаров */}
+        {mode === "items" && (
+          <button
+            onClick={e => { e.stopPropagation(); setMode("categories"); setSelectedCategory(""); }}
+            style={{
+              display: "block",
+              marginLeft: "auto",
+              marginRight: 8,
+              marginBottom: 4,
+              background: "rgba(124,58,237,0.18)",
+              border: "1px solid rgba(124,58,237,0.35)",
+              borderRadius: 8,
+              padding: "3px 10px",
+              color: "rgba(196,181,253,0.85)",
+              fontSize: 10,
+              fontWeight: 600,
+              cursor: "pointer",
+            }}
+          >
+            ← назад
+          </button>
+        )}
+
         {mode === "categories" && (
-          <ArcDrum key="cats" items={categories} value={selectedCategory || (categories[0]?.value ?? "")} onChange={setSelectedCategory} onClick={handleCategoryClick} />
+          <ArcDrum
+            key="cats"
+            items={categories}
+            value={selectedCategory || (categories[0]?.value ?? "")}
+            onChange={setSelectedCategory}
+            onClick={handleCategoryClick}
+          />
         )}
         {mode === "items" && (
-          <ArcDrum key={`items-${selectedCategory}`} items={catItems} value={selectedItem || (catItems[0]?.value ?? "")} onChange={setSelectedItem} onClick={handleItemClick} />
+          <ArcDrum
+            key={`items-${selectedCategory}`}
+            items={catItems}
+            value={selectedItem || (catItems[0]?.value ?? "")}
+            onChange={setSelectedItem}
+            onClick={handleItemClick}
+          />
         )}
       </div>
     </>
