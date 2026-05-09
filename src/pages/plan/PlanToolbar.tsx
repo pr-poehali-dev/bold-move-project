@@ -172,20 +172,38 @@ function DropItem({ active, label, icon, onClick }: {
 
 const Sep = () => <div className="w-px h-5 bg-white/[0.08] mx-1 flex-shrink-0" />;
 
-// Раскрывающееся меню дополнительных инструментов (вместо кнопки "Отрезок")
-const EXTRA_TOOLS = [
-  { id: "segment" as ToolMode, icon: "Minus",  label: "Отрезки",        danger: false },
-  { id: "delete"  as ToolMode, icon: "Eraser", label: "Удалить элемент", danger: true  },
+// Все инструменты для дропдауна
+const ALL_TOOLS_MENU: { id: ToolMode; icon: string; label: string; danger?: boolean; comingSoon?: boolean }[] = [
+  { id: "draw",     icon: "Pencil",        label: "Рисовать"         },
+  { id: "move",     icon: "MousePointer2", label: "Перемещение"      },
+  { id: "segment",  icon: "Minus",         label: "Отрезки",    comingSoon: true },
+  { id: "arc",      icon: "Spline",        label: "Дуги",       comingSoon: true },
+  { id: "dimline",  icon: "Ruler",         label: "Размеры",    comingSoon: true },
+  { id: "delete",   icon: "Eraser",        label: "Удалить элемент", danger: true },
 ];
+
+const DEFAULT_PINNED: ToolMode[] = ["draw", "move"];
+const LS_KEY = "plan_pinned_tools";
+
+function loadPinned(): ToolMode[] {
+  try {
+    const v = localStorage.getItem(LS_KEY);
+    if (v) return JSON.parse(v);
+  } catch { /* ignore */ }
+  return DEFAULT_PINNED;
+}
+
+function savePinned(pinned: ToolMode[]) {
+  try { localStorage.setItem(LS_KEY, JSON.stringify(pinned)); } catch { /* ignore */ }
+}
 
 function MobileToolDropdown({ tool, onToolChange }: {
   tool: ToolMode;
   onToolChange: (t: ToolMode) => void;
 }) {
   const [open, setOpen] = React.useState(false);
+  const [pinned, setPinned] = React.useState<ToolMode[]>(loadPinned);
   const ref = React.useRef<HTMLDivElement>(null);
-
-  const activeExtra = EXTRA_TOOLS.find(t => t.id === tool);
 
   React.useEffect(() => {
     if (!open) return;
@@ -200,45 +218,69 @@ function MobileToolDropdown({ tool, onToolChange }: {
     };
   }, [open]);
 
+  const togglePin = (id: ToolMode, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const next = pinned.includes(id)
+      ? pinned.filter(p => p !== id)
+      : [...pinned, id];
+    setPinned(next);
+    savePinned(next);
+  };
+
   return (
     <div ref={ref} className="relative shrink-0">
       {/* Дропдаун вниз — поверх холста */}
       {open && (
-        <div className="absolute top-11 left-0 bg-[#1a1b2e] border border-white/[0.12] rounded-xl shadow-2xl p-1.5 flex flex-col gap-1 min-w-[160px] z-[9999]">
-          {EXTRA_TOOLS.map(t => (
-            <button
-              key={t.id}
-              onClick={() => { onToolChange(t.id); setOpen(false); }}
-              className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-[12px] font-medium transition-all text-left w-full ${
-                tool === t.id
-                  ? t.danger ? "bg-rose-500/20 text-rose-300 border border-rose-500/30" : "bg-white/10 text-white"
-                  : t.danger ? "text-white/50 hover:bg-rose-500/10 hover:text-rose-300" : "text-white/50 hover:bg-white/[0.07] hover:text-white"
-              }`}
-            >
-              <Icon name={t.icon} size={14} />
-              <span>{t.label}</span>
-              {tool === t.id && <Icon name="Check" size={11} className="ml-auto" />}
-            </button>
-          ))}
+        <div className="absolute top-11 left-0 bg-[#1a1b2e] border border-white/[0.12] rounded-xl shadow-2xl p-1.5 flex flex-col gap-0.5 min-w-[200px] z-[9999]">
+          <p className="text-[10px] text-white/30 px-3 pt-1 pb-0.5 uppercase tracking-wide font-semibold">Инструменты</p>
+          {ALL_TOOLS_MENU.map(t => {
+            const isPinned = pinned.includes(t.id);
+            const isActive = tool === t.id;
+            return (
+              <div key={t.id} className={`flex items-center rounded-lg transition-all ${
+                isActive
+                  ? t.danger ? "bg-rose-500/15 border border-rose-500/25" : "bg-white/[0.08] border border-white/[0.1]"
+                  : "border border-transparent"
+              }`}>
+                <button
+                  onClick={() => { if (!t.comingSoon) { onToolChange(t.id); setOpen(false); } }}
+                  className={`flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-[12px] font-medium transition-all text-left flex-1 ${
+                    t.comingSoon ? "opacity-40 cursor-not-allowed" :
+                    isActive
+                      ? t.danger ? "text-rose-300" : "text-white"
+                      : t.danger ? "text-white/50 hover:text-rose-300" : "text-white/60 hover:text-white"
+                  }`}
+                >
+                  <Icon name={t.icon} size={14} />
+                  <span className="flex-1">{t.label}</span>
+                  {t.comingSoon && <span className="text-[9px] text-white/25 font-normal">скоро</span>}
+                  {isActive && !t.comingSoon && <Icon name="Check" size={11} className="opacity-60" />}
+                </button>
+                {/* Звёздочка — добавить в быстрый доступ */}
+                <button
+                  onClick={e => togglePin(t.id, e)}
+                  className={`w-8 h-8 flex items-center justify-center shrink-0 mr-1 rounded-lg transition-all ${
+                    isPinned ? "text-amber-400" : "text-white/25 hover:text-amber-300"
+                  }`}
+                  title={isPinned ? "Убрать из панели" : "Закрепить в панели"}
+                >
+                  <Icon name="Star" size={13} style={{ fill: isPinned ? "currentColor" : "none" }} />
+                </button>
+              </div>
+            );
+          })}
         </div>
       )}
 
-      {/* Кнопка — показывает активный инструмент или Minus по умолчанию */}
+      {/* Кнопка открытия дропдауна */}
       <button
         onClick={() => setOpen(v => !v)}
-        title="Дополнительные инструменты"
+        title="Все инструменты"
         className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 transition-all relative ${
-          activeExtra
-            ? activeExtra.danger
-              ? "bg-rose-500/25 border border-rose-500/40 text-rose-300"
-              : "bg-white/95 text-[#111] border border-white/80"
-            : open
-              ? "bg-white/10 text-white"
-              : "text-white/45 hover:text-white"
+          open ? "bg-white/10 text-white" : "text-white/45 hover:text-white"
         }`}
       >
-        <Icon name={activeExtra?.icon ?? "Shapes"} size={16} />
-        {/* Маленький индикатор раскрытия */}
+        <Icon name="Shapes" size={16} />
         <span className="absolute bottom-1 right-1 w-1 h-1 rounded-full bg-current opacity-40" />
       </button>
     </div>
@@ -253,42 +295,54 @@ function MobileToolbar(props: Props) {
   } = props;
 
   const [confirmReset, setConfirmReset] = React.useState(false);
+  const [pinned, setPinned] = React.useState<ToolMode[]>(loadPinned);
+
+  // Синхронизируем pinned при изменении в дропдауне
+  React.useEffect(() => {
+    const handler = () => setPinned(loadPinned());
+    window.addEventListener("storage", handler);
+    return () => window.removeEventListener("storage", handler);
+  }, []);
+
+  // Перечитываем при каждом рендере чтобы подхватить изменения из дропдауна
+  const pinnedTools = React.useMemo(() => {
+    const saved = loadPinned();
+    if (JSON.stringify(saved) !== JSON.stringify(pinned)) setPinned(saved);
+    return saved;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tool]);
 
   return (
     <div className="bg-[#161616] border-b border-white/[0.08] shrink-0 flex items-center gap-0.5 px-2" style={{ height: 52 }}>
       <IconBtn icon="Undo2" onClick={onUndo} disabled={!canUndo} title="Отменить" />
       <IconBtn icon="Redo2" onClick={onRedo} disabled={!canRedo} title="Повторить" />
       <div className="w-px h-4 bg-white/10 mx-0.5 shrink-0" />
-      {/* Инструменты — компактные иконки без подписей */}
+
+      {/* Быстрый доступ — закреплённые инструменты */}
       <div className="flex items-center gap-0.5 flex-1">
-        {TOOLS.map(t => {
-          // "segment" — раскрывающееся меню с дополнительными инструментами
-          if (t.id === "segment") {
-            return (
-              <MobileToolDropdown
-                key="extra-tools"
-                tool={tool}
-                onToolChange={onToolChange}
-              />
-            );
-          }
-          const disabled = !!t.comingSoon || (!!t.needsClosed && !isClosed);
-          const active   = !t.comingSoon && tool === t.id;
-          const style = disabled
-            ? "opacity-40 cursor-not-allowed text-white"
-            : active
-              ? "bg-white/95 text-[#111] border border-white/80"
-              : "text-white/45 hover:text-white";
+        {pinnedTools.map(id => {
+          const t = ALL_TOOLS_MENU.find(x => x.id === id);
+          if (!t) return null;
+          const disabled = !!t.comingSoon || (!!isClosed === false && false);
+          const active = !disabled && tool === id;
           return (
-            <button key={t.id}
-              className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 transition-all ${style}`}
+            <button key={id}
+              className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 transition-all ${
+                disabled ? "opacity-40 cursor-not-allowed text-white/30" :
+                active
+                  ? t.danger ? "bg-rose-500/25 border border-rose-500/40 text-rose-300" : "bg-white/95 text-[#111] border border-white/80"
+                  : t.danger ? "text-white/35 hover:text-rose-400" : "text-white/45 hover:text-white"
+              }`}
               disabled={disabled}
               title={t.label}
-              onClick={() => !disabled && onToolChange(t.id)}>
+              onClick={() => !disabled && onToolChange(id)}>
               <Icon name={t.icon} size={16} />
             </button>
           );
         })}
+
+        {/* Кнопка раскрытия всех инструментов */}
+        <MobileToolDropdown tool={tool} onToolChange={id => { onToolChange(id); setPinned(loadPinned()); }} />
       </div>
 
       {/* Очистить холст */}
