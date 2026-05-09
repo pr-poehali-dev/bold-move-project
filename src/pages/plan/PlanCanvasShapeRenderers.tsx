@@ -29,7 +29,7 @@ export function renderPoints(ctx: RenderContext, handlers: SegmentHandlers) {
 
     return (
       <g key={pt.id}
-        style={{ cursor: tool === "move" ? "grab" : tool === "delete" ? "not-allowed" : "pointer" }}
+        style={{ cursor: tool === "move" ? "grab" : "pointer" }}
         onClick={e => handlers.onPointClick(e, pt.id)}
         onMouseDown={e => handlers.onPointMouseDown(e, pt.id)}
         onContextMenu={e => handlers.onPointCtxMenu(e, pt.id)}
@@ -69,7 +69,7 @@ export function renderSegments(ctx: RenderContext, handlers: Pick<SegmentHandler
     return (
       <g key={seg.id}>
         <line x1={a.x} y1={a.y} x2={b.x} y2={b.y} stroke="transparent" strokeWidth={20}
-          style={{ cursor: tool === "delete" ? "not-allowed" : "pointer" }}
+          style={{ cursor: "pointer" }}
           onClick={e => handlers.onSegmentClick(e, seg.id)}
           onContextMenu={e => handlers.onSegmentCtxMenu(e, seg.id)}
         />

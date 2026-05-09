@@ -19,7 +19,7 @@ export function usePlanCanvasEvents({ state, onChange, onReplace, cs }: Params) 
   const {
     svgRef, dragRef, nearbyPtRef, touchStartTimeRef, panRef, pinchRef, isPanning, didMoveRef,
     longPressRef, longPressPos, setVibrated,
-    setGhost, dimLineFrom, setDimLineFrom, setCtxMenu,
+    setGhost, dimLineFrom, setDimLineFrom, setCtxMenu, setDeleteHover,
   } = cs;
 
   const {
@@ -100,12 +100,33 @@ export function usePlanCanvasEvents({ state, onChange, onReplace, cs }: Params) 
       const { x, y } = applySnap(raw.x, raw.y);
       const willClose = points.length >= 3 && distPx({ id: "", x, y }, points[0]) < CLOSE_THR;
       setGhost({ x: willClose ? points[0].x : x, y: willClose ? points[0].y : y, willClose });
+      setDeleteHover(null);
     } else if (tool === "dimline" && dimLineFrom) {
       const raw = clientToSvg(e.clientX, e.clientY);
       const { x, y } = applySnap(raw.x, raw.y);
       setGhost({ x, y, willClose: false });
+      setDeleteHover(null);
+    } else if (tool === "delete") {
+      setGhost(null);
+      const raw = clientToSvg(e.clientX, e.clientY);
+      const hitPt = points.find(p => distPx(p, { id: "", x: raw.x, y: raw.y }) < PT_HIT);
+      if (hitPt) {
+        setDeleteHover({ x: hitPt.x, y: hitPt.y, type: "point" });
+      } else {
+        const hitSeg = findNearestSegment(raw.x, raw.y, points, segments, 14);
+        if (hitSeg) {
+          const a = points.find(p => p.id === hitSeg.fromId);
+          const b = points.find(p => p.id === hitSeg.toId);
+          if (a && b) {
+            setDeleteHover({ x: (a.x + b.x) / 2, y: (a.y + b.y) / 2, type: "segment" });
+          } else setDeleteHover(null);
+        } else {
+          setDeleteHover(null);
+        }
+      }
     } else {
       setGhost(null);
+      setDeleteHover(null);
     }
     if (dragRef.current && tool === "move") {
       const raw = clientToSvg(e.clientX, e.clientY);
@@ -124,7 +145,7 @@ export function usePlanCanvasEvents({ state, onChange, onReplace, cs }: Params) 
       // replace — не добавляет в историю, drag завершится push'ем в handleMouseUp
       onReplace({ points: newPts, segments: newSegs, diagonals: buildAutoDiagonals(newPts, diagonals, state.baseScale ?? null) });
     }
-  }, [tool, phase, isClosed, points, dimLineFrom, clientToSvg, applySnap, diagonals, onChange, onReplace, settings, zoom, panRef, dragRef, setGhost, segments]);
+  }, [tool, phase, isClosed, points, segments, dimLineFrom, clientToSvg, applySnap, diagonals, onChange, onReplace, settings, zoom, panRef, dragRef, setGhost, setDeleteHover]);
 
   const handleMouseDown = useCallback((e: React.MouseEvent<SVGSVGElement>) => {
     if (e.button === 1 || e.button === 2 || (e.button === 0 && e.altKey)) {

@@ -52,6 +52,7 @@ export default function PlanCanvas({ state, onChange, onReplace, onOpenCatalog }
         dimLineFrom={cs.dimLineFrom}
         isPanning={cs.isPanning}
         handlers={handlers}
+        deleteHover={cs.deleteHover}
         onMouseMove={events.handleMouseMove}
         onMouseDown={events.handleMouseDown}
         onMouseUp={events.handleMouseUp}

@@ -26,13 +26,14 @@ interface Props {
   onTouchMove: (e: React.TouchEvent<SVGSVGElement>) => void;
   onTouchEnd: (e: React.TouchEvent<SVGSVGElement>) => void;
   onDimLineClick: (e: React.MouseEvent, dlId: string) => void;
+  deleteHover?: { x: number; y: number; type: "point" | "segment" } | null;
 }
 
 export default function PlanCanvasSvg({
   svgRef, state, onChange, cursor, ghost, dimLineFrom,
   handlers, onMouseMove, onMouseDown, onMouseUp,
   onCanvasClick, onTouchStart, onTouchMove, onTouchEnd,
-  onDimLineClick,
+  onDimLineClick, deleteHover,
 }: Props) {
   const {
     points, segments, diagonals, dimLines,
@@ -140,6 +141,18 @@ export default function PlanCanvasSvg({
 
         {/* Подсказки */}
         {renderHints(ctx)}
+
+        {/* Крестик-цель при инструменте delete */}
+        {deleteHover && (
+          <g className="pointer-events-none">
+            <circle cx={deleteHover.x} cy={deleteHover.y} r={deleteHover.type === "point" ? 14 : 10}
+              fill="rgba(239,68,68,0.12)" stroke="rgba(239,68,68,0.7)" strokeWidth={1.5} />
+            <line x1={deleteHover.x - 6} y1={deleteHover.y - 6} x2={deleteHover.x + 6} y2={deleteHover.y + 6}
+              stroke="rgba(239,68,68,0.9)" strokeWidth={2} strokeLinecap="round" />
+            <line x1={deleteHover.x + 6} y1={deleteHover.y - 6} x2={deleteHover.x - 6} y2={deleteHover.y + 6}
+              stroke="rgba(239,68,68,0.9)" strokeWidth={2} strokeLinecap="round" />
+          </g>
+        )}
       </g>
     </svg>
   );

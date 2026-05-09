@@ -43,6 +43,9 @@ export function usePlanCanvasState(tool: string) {
   // ── Контекстное меню ─────────────────────────────────────────────────────
   const [ctxMenu, setCtxMenu] = React.useState<CtxMenuState | null>(null);
 
+  // ── Hover-цель для инструмента delete (SVG координаты) ──────────────────
+  const [deleteHover, setDeleteHover] = React.useState<{ x: number; y: number; type: "point" | "segment" } | null>(null);
+
   // ── Long-press индикатор (координаты экрана) ─────────────────────────────
   const [lpIndicator, setLpIndicator] = React.useState<{ x: number; y: number } | null>(null);
 
@@ -85,6 +88,7 @@ export function usePlanCanvasState(tool: string) {
     dimLineFrom, setDimLineFrom,
     ctxMenu, setCtxMenu,
     lpIndicator,
+    deleteHover, setDeleteHover,
   };
 }
 
