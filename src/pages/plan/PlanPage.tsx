@@ -158,14 +158,13 @@ export default function PlanPage() {
     sheetHeight,
   });
 
-  // Мобиле: нажатие на сторону → правая панель с фокусом
+  // Мобиле: нажатие на сторону → открываем каталог (сторона уже подсвечена через selectedSegmentId)
   const prevSelectedSegId = useRef(state.selectedSegmentId);
   useEffect(() => {
     if (!isMobile) return;
     if (state.selectedSegmentId && state.selectedSegmentId !== prevSelectedSegId.current && state.isClosed) {
-      setFocusSegmentId(state.selectedSegmentId);
-      setRightPanelOpen(true);
-      if (!rightPanelOpen) setTimeout(() => zoomFit(0, PANEL_WIDTH), 80);
+      // Открываем каталог — товар прикрепится к выбранной стороне
+      setCatalogOpen(true);
     }
     prevSelectedSegId.current = state.selectedSegmentId;
   }, [state.selectedSegmentId]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -251,6 +250,11 @@ export default function PlanPage() {
             onZoomFit={zoomFit}
             onOpenPanel={() => { setSheetSnap("half"); setSheetOpen(true); }}
             onOpenCatalog={() => setCatalogOpen(true)}
+            onOpenSides={() => {
+              setFocusSegmentId(state.selectedSegmentId);
+              setRightPanelOpen(true);
+            }}
+            selectedSegmentId={state.selectedSegmentId}
             attachedCount={attachedCount}
             filterAttached={filterAttached}
             onToggleFilterAttached={() => setFilterAttached(v => !v)}
@@ -312,7 +316,21 @@ export default function PlanPage() {
         prices={filteredPrices}
         onDragItem={item => {
           setCatalogOpen(false);
-          setDragItem(item);
+          const selectedSeg = stateRef.current.selectedSegmentId;
+          if (selectedSeg) {
+            // Есть выбранная сторона — привязываем сразу без drag
+            const s = stateRef.current;
+            const newSegments = s.segments.map(seg => {
+              if (seg.id !== selectedSeg) return seg;
+              const existing = seg.items ?? [];
+              if (existing.some(it => it.priceId === item.priceId)) return seg;
+              return { ...seg, items: [...existing, item] };
+            });
+            push({ ...s, segments: newSegments });
+          } else {
+            // Нет выбранной стороны — стандартный drag
+            setDragItem(item);
+          }
         }}
       />
 

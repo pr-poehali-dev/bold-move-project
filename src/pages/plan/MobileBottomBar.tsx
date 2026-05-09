@@ -11,8 +11,10 @@ interface Props {
   onZoomFit: () => void;
   onOpenPanel: () => void;
   onOpenCatalog: () => void;
-  attachedCount?: number;           // кол-во товаров на холсте
-  filterAttached?: boolean;         // фильтр активен
+  onOpenSides: () => void;          // правая панель ввода сторон
+  selectedSegmentId?: string | null;// подсвечена ли сторона
+  attachedCount?: number;
+  filterAttached?: boolean;
   onToggleFilterAttached?: () => void;
 }
 
@@ -23,6 +25,7 @@ const BTN_ACTIVE  = `${BTN} bg-violet-600 shadow-violet-500/40 text-white`;
 
 export default function MobileBottomBar({
   zoom, settings, onSettingChange, onZoomIn, onZoomOut, onZoomFit, onOpenPanel, onOpenCatalog,
+  onOpenSides, selectedSegmentId,
   attachedCount = 0, filterAttached = false, onToggleFilterAttached,
 }: Props) {
   const [zoomOpen,     setZoomOpen]     = React.useState(false);
@@ -149,6 +152,18 @@ export default function MobileBottomBar({
         className={BTN_DEFAULT}
       >
         <Icon name="LayoutGrid" size={20} />
+      </button>
+
+      {/* 5. Стороны (правая панель ввода) */}
+      <button
+        onClick={onOpenSides}
+        className={`${BTN_DEFAULT} relative overflow-hidden`}
+      >
+        {/* Фиолетовая полоска слева если выбрана сторона */}
+        {selectedSegmentId && (
+          <span className="absolute left-0 top-2 bottom-2 w-[3px] bg-violet-500 rounded-r-full" />
+        )}
+        <Icon name="Ruler" size={20} />
       </button>
     </div>
   );
