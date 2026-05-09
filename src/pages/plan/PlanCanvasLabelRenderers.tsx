@@ -315,12 +315,12 @@ export function InlineDimLabels({ state, onChange }: InlineDimProps) {
                   }}
                   style={{
                     width: 54, height: 24,
-                    background: "#fff", color: "#111",
-                    border: "none", borderRadius: 6,
+                    background: "rgba(17,17,30,0.95)", color: "rgba(255,255,255,0.9)",
+                    border: "1px solid rgba(124,58,237,0.6)", borderRadius: 6,
                     padding: "0 6px",
                     fontSize: 11, fontFamily: "monospace", fontWeight: 700,
                     outline: "none",
-                    boxShadow: "0 2px 10px rgba(0,0,0,0.6)",
+                    boxShadow: "0 0 10px rgba(124,58,237,0.3), 0 2px 10px rgba(0,0,0,0.6)",
                   }}
                 />
                 <span style={{ fontSize: 9, color: "rgba(255,255,255,0.4)", fontFamily: "monospace" }}>см</span>
