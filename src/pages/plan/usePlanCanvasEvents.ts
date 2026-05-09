@@ -235,10 +235,10 @@ export function usePlanCanvasEvents({ state, onChange, onReplace, cs }: Params) 
     if (e.touches.length === 1) {
       const t = e.touches[0];
       // Lazy grab: захватываем ближайшую точку при движении пальца
-      // Dead zone 100мс — защита от случайных сдвигов при тапе
+      // Dead zone 500мс — защита от случайных сдвигов при тапе
       const elapsed = performance.now() - touchStartTimeRef.current;
-      if (!dragRef.current && nearbyPtRef.current && toolRef.current === "move" && elapsed >= 100) {
-        const LAZY_THR = 150 / zoom;
+      if (!dragRef.current && nearbyPtRef.current && toolRef.current === "move" && elapsed >= 500) {
+        const LAZY_THR = 80 / zoom;
         if (nearbyPtRef.current.dist < LAZY_THR) {
           dragRef.current = { pointId: nearbyPtRef.current.id };
           panRef.current = null;

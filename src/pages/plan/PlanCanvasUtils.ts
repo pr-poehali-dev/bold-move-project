@@ -2,7 +2,7 @@ import type { Point, Segment, DiagonalDef } from "./planTypes";
 
 // ── Константы ─────────────────────────────────────────────────────────────────
 export const PT_R      = 7;   // радиус точки (чуть больше для тача)
-export const PT_HIT    = 44;  // зона клика/захвата точки на тач
+export const PT_HIT    = 28;  // зона точного попадания по точке на тач
 export const SNAP_THR  = 30;  // увеличен для надёжного снаппинга на тач
 export const CLOSE_THR = 30;  // порог замыкания (больше для пальца)
 export const DIM_OFF   = 28;
