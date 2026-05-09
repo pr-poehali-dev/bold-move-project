@@ -180,8 +180,9 @@ function ArcDrum({ items, value, onChange, onClick }: {
     if (items[clamped]?.value !== value) onChange(items[clamped].value);
   }, [items, value, onChange]);
 
-  const centerPos = scrollTop + TOTAL_H / 2 - ITEM_H / 2;
-  // Строго один центральный — ближайший к реальному центру
+  // Визуальная позиция центра элемента idx: PADDING + idx*ITEM_H + ITEM_H/2 - scrollTop
+  // Центр экрана: TOTAL_H / 2
+  // offset = визуальная позиция - центр экрана
   const centerIdx = Math.round(scrollTop / ITEM_H);
   const clampedCenterIdx = Math.max(0, Math.min(items.length - 1, centerIdx));
 
@@ -205,8 +206,10 @@ function ArcDrum({ items, value, onChange, onClick }: {
 
       {/* Визуальные элементы — рендерим сами по дуге */}
       {items.map((item, idx) => {
-        const itemCenter = PADDING + idx * ITEM_H + ITEM_H / 2;
-        const offset = itemCenter - centerPos;
+        // Визуальная Y-позиция центра элемента относительно контейнера
+        const itemVisualCenter = PADDING + idx * ITEM_H + ITEM_H / 2 - scrollTop;
+        // Смещение от центра контейнера
+        const offset = itemVisualCenter - TOTAL_H / 2;
         const norm = Math.max(-1, Math.min(1, offset / (TOTAL_H / 2)));
 
         // Дуга: квадратичная парабола
@@ -334,22 +337,28 @@ export default function CategoryDrumPanel({ open, onClose, prices, onDragItem }:
       <div style={{
         position: "fixed",
         right: 0,
-        top: "50%",
-        transform: `translateY(-50%) translateX(${visible ? 0 : 60}px)`,
+        top: 0,
+        bottom: 0,
+        transform: `translateX(${visible ? 0 : 60}px)`,
         opacity: visible ? 1 : 0,
         transition: "transform 0.3s cubic-bezier(0.34,1.2,0.64,1), opacity 0.25s ease",
         zIndex: 41,
-        width: 200,
+        width: 210,
+        display: "flex",
+        flexDirection: "column",
+        justifyContent: "center",
+        alignItems: "stretch",
+        pointerEvents: "none",
       }}>
-        {/* Кнопка назад — только в режиме товаров */}
+        {/* Кнопка назад — абсолютно, не влияет на центровку */}
         {mode === "items" && (
           <button
             onClick={e => { e.stopPropagation(); setMode("categories"); setSelectedCategory(""); }}
             style={{
-              display: "block",
-              marginLeft: "auto",
-              marginRight: 8,
-              marginBottom: 4,
+              position: "absolute",
+              top: 20,
+              right: 8,
+              pointerEvents: "all",
               background: "rgba(124,58,237,0.18)",
               border: "1px solid rgba(124,58,237,0.35)",
               borderRadius: 8,
@@ -364,24 +373,26 @@ export default function CategoryDrumPanel({ open, onClose, prices, onDragItem }:
           </button>
         )}
 
-        {mode === "categories" && (
-          <ArcDrum
-            key="cats"
-            items={categories}
-            value={selectedCategory || (categories[0]?.value ?? "")}
-            onChange={setSelectedCategory}
-            onClick={handleCategoryClick}
-          />
-        )}
-        {mode === "items" && (
-          <ArcDrum
-            key={`items-${selectedCategory}`}
-            items={catItems}
-            value={selectedItem || (catItems[0]?.value ?? "")}
-            onChange={setSelectedItem}
-            onClick={handleItemClick}
-          />
-        )}
+        <div style={{ pointerEvents: "all" }}>
+          {mode === "categories" && (
+            <ArcDrum
+              key="cats"
+              items={categories}
+              value={selectedCategory || (categories[0]?.value ?? "")}
+              onChange={setSelectedCategory}
+              onClick={handleCategoryClick}
+            />
+          )}
+          {mode === "items" && (
+            <ArcDrum
+              key={`items-${selectedCategory}`}
+              items={catItems}
+              value={selectedItem || (catItems[0]?.value ?? "")}
+              onChange={setSelectedItem}
+              onClick={handleItemClick}
+            />
+          )}
+        </div>
       </div>
     </>
   );
