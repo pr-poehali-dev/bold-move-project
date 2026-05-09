@@ -24,6 +24,17 @@
   animation: seg-recalc 1.2s ease-in-out;
 }
 
+@keyframes pulse {
+  from {
+    opacity: 0.6;
+    transform: translateX(0);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(4px);
+  }
+}
+
 /* Скрыть скроллбар но сохранить скролл (для тулбара на мобиле) */
 .no-scrollbar::-webkit-scrollbar {
   display: none;

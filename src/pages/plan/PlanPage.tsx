@@ -47,6 +47,9 @@ export default function PlanPage() {
   const [hoverSegId,      setHoverSegId]      = useState<string | null>(null);
   // Какой активный товар сейчас в режиме "тап на стену"
   const [tapActiveId,     setTapActiveId]     = useState<number | null>(null);
+  // Позиция пальца при drag карточки из нижней панели
+  const [dragCardItem,    setDragCardItem]    = useState<SegmentPriceItem | null>(null);
+  const [dragCardPos,     setDragCardPos]     = useState<{ x: number; y: number } | null>(null);
   const [filterAttached,  setFilterAttached]  = useState(false);
   const stateRef = useRef(state);
   // Флаг: план загружается из библиотеки — не открывать панели автоматически
@@ -199,7 +202,11 @@ export default function PlanPage() {
       }
 
       if (isDragging) {
-        setHoverSegId(findClosestSeg(e.touches[0].clientX, e.touches[0].clientY));
+        const tx = e.touches[0].clientX;
+        const ty = e.touches[0].clientY;
+        setDragCardItem(draggingItem);
+        setDragCardPos({ x: tx, y: ty });
+        setHoverSegId(findClosestSeg(tx, ty));
       }
     };
 
@@ -210,6 +217,8 @@ export default function PlanPage() {
         directionDecided = false;
         isHorizontal = false;
         setHoverSegId(null);
+        setDragCardItem(null);
+        setDragCardPos(null);
         return;
       }
       const pt = e.changedTouches[0];
@@ -223,6 +232,8 @@ export default function PlanPage() {
       directionDecided = false;
       isHorizontal = false;
       setHoverSegId(null);
+      setDragCardItem(null);
+      setDragCardPos(null);
     };
 
     window.addEventListener("touchstart", onTouchStart, { passive: true });
@@ -515,6 +526,56 @@ export default function PlanPage() {
             color: hoverSegId ? "rgba(167,139,250,1)" : "rgba(255,255,255,0.8)",
             overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
           }}>{dragItem.name}</span>
+        </div>
+      )}
+
+      {/* ── Ghost карточки при drag из нижней панели (мобиле) ── */}
+      {dragCardItem && dragCardPos && (
+        <div
+          style={{
+            position: "fixed",
+            left: dragCardPos.x - 70,
+            top:  dragCardPos.y - 30,
+            zIndex: 9998,
+            pointerEvents: "none",
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
+            background: hoverSegId ? "rgba(124,58,237,0.25)" : "rgba(12,10,28,0.88)",
+            border: `1.5px solid ${hoverSegId ? "rgba(124,58,237,0.9)" : "rgba(124,58,237,0.4)"}`,
+            borderRadius: 14,
+            padding: "7px 12px 7px 8px",
+            backdropFilter: "blur(16px)",
+            boxShadow: hoverSegId
+              ? "0 0 28px rgba(124,58,237,0.6), 0 8px 24px rgba(0,0,0,0.5)"
+              : "0 4px 20px rgba(0,0,0,0.5)",
+            transform: hoverSegId ? "scale(0.88)" : "scale(1)",
+            opacity: hoverSegId ? 0.85 : 1,
+            transition: "transform 0.18s ease, opacity 0.18s ease, background 0.15s, box-shadow 0.15s",
+            maxWidth: 180,
+          }}
+        >
+          <div style={{
+            width: 30, height: 30, borderRadius: 8, overflow: "hidden", flexShrink: 0,
+            background: "rgba(124,58,237,0.2)", border: "1px solid rgba(124,58,237,0.35)",
+            display: "flex", alignItems: "center", justifyContent: "center",
+          }}>
+            {dragCardItem.imageUrl
+              ? <img src={dragCardItem.imageUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+              : <span style={{ fontSize: 16 }}>📦</span>}
+          </div>
+          <span style={{
+            fontSize: 11, fontWeight: 700,
+            color: hoverSegId ? "rgba(196,181,253,1)" : "rgba(255,255,255,0.85)",
+            overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+            transition: "color 0.15s",
+          }}>{dragCardItem.name}</span>
+          {/* Анимированная стрелка при наведении на стену */}
+          {hoverSegId && (
+            <span style={{ fontSize: 14, marginLeft: 2, animation: "pulse 0.6s ease-in-out infinite alternate" }}>
+              →
+            </span>
+          )}
         </div>
       )}
 
