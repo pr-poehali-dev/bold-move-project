@@ -1,8 +1,10 @@
 /**
- * Голосовое построение чертежа.
+ * Голосовое построение чертежа. v2 (isIOS fix)
  * Пользователь диктует: "354 вправо 422 влево 354 вправо 422" → замкнутый прямоугольник.
  * Первый отрезок A→B всегда идёт горизонтально вправо.
  * Точка A — нижний левый угол (фиксированная стартовая позиция).
+ * Android: continuous=true + restart в onend (как десктоп).
+ * iOS: continuous=false, без рестарта.
  */
 import { useState, useRef, useCallback } from "react";
 import type { PlanState, Point, Segment } from "./planTypes";
