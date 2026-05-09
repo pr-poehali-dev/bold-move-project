@@ -11,6 +11,9 @@ interface Props {
   onZoomFit: () => void;
   onOpenPanel: () => void;
   onOpenCatalog: () => void;
+  attachedCount?: number;           // кол-во товаров на холсте
+  filterAttached?: boolean;         // фильтр активен
+  onToggleFilterAttached?: () => void;
 }
 
 // Стиль единой кнопки — как фиолетовая кнопка PanelBottom
@@ -20,6 +23,7 @@ const BTN_ACTIVE  = `${BTN} bg-violet-600 shadow-violet-500/40 text-white`;
 
 export default function MobileBottomBar({
   zoom, settings, onSettingChange, onZoomIn, onZoomOut, onZoomFit, onOpenPanel, onOpenCatalog,
+  attachedCount = 0, filterAttached = false, onToggleFilterAttached,
 }: Props) {
   const [zoomOpen,     setZoomOpen]     = React.useState(false);
   const [settingsOpen, setSettingsOpen] = React.useState(false);
@@ -38,14 +42,15 @@ export default function MobileBottomBar({
   }, []);
 
   const SETTINGS_ITEMS = [
-    { key: "ortho",             label: "Ортогональный",   icon: "Axis3d"       },
-    { key: "snapToPoints",      label: "Магнит",          icon: "Magnet"       },
-    { key: "showGrid",          label: "Сетка",           icon: "Grid3x3"      },
-    { key: "showPoints",        label: "Точки",           icon: "CircleDot"    },
-    { key: "showSegmentLabels", label: "Подписи",         icon: "Type"         },
-    { key: "showAngleLabels",   label: "Углы",            icon: "Angle"        },
-    { key: "showDiagonals",     label: "Диагонали",       icon: "ArrowUpRight" },
-    { key: "showDimLines",      label: "Размерные линии", icon: "ArrowLeftRight"},
+    { key: "ortho",             label: "Ортогональный",   icon: "Axis3d"        },
+    { key: "snapToPoints",      label: "Магнит",          icon: "Magnet"        },
+    { key: "showGrid",          label: "Сетка",           icon: "Grid3x3"       },
+    { key: "showPoints",        label: "Точки",           icon: "CircleDot"     },
+    { key: "showPointLabels",   label: "Метки точек",     icon: "Tag"           },
+    { key: "showSegmentLabels", label: "Подписи",         icon: "Type"          },
+    { key: "showAngleLabels",   label: "Углы",            icon: "Angle"         },
+    { key: "showDiagonals",     label: "Диагонали",       icon: "ArrowUpRight"  },
+    { key: "showDimLines",      label: "Размерные линии", icon: "ArrowLeftRight" },
   ];
 
   return (
@@ -54,7 +59,7 @@ export default function MobileBottomBar({
       {/* 1. Настройки */}
       <div ref={settingsRef} className="relative">
         {settingsOpen && (
-          <div className="absolute bottom-14 left-0 bg-[#1a1b2e] border border-white/[0.12] rounded-2xl shadow-2xl p-2 flex flex-col gap-0.5 min-w-[200px] max-h-[60vh] overflow-y-auto">
+          <div className="absolute bottom-14 left-0 bg-[#1a1b2e] border border-white/[0.12] rounded-2xl shadow-2xl p-2 flex flex-col gap-0.5 min-w-[210px] max-h-[65vh] overflow-y-auto">
             {SETTINGS_ITEMS.map(({ key, label, icon }) => (
               <button key={key}
                 className={`flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-[12px] font-medium transition-all text-left w-full ${
@@ -68,6 +73,29 @@ export default function MobileBottomBar({
                 {settings[key as keyof typeof settings] && <Icon name="Check" size={11} className="text-violet-400" />}
               </button>
             ))}
+            {/* Фильтр — только добавленные на холст */}
+            {onToggleFilterAttached && (
+              <>
+                <div className="h-px bg-white/[0.08] my-1" />
+                <button
+                  className={`flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-[12px] font-medium transition-all text-left w-full ${
+                    filterAttached
+                      ? "bg-emerald-600/20 text-emerald-200 border border-emerald-500/30"
+                      : "text-white/60 hover:bg-white/[0.06]"
+                  }`}
+                  onClick={onToggleFilterAttached}
+                >
+                  <Icon name="Pin" size={14} />
+                  <span className="flex-1">На холсте</span>
+                  {attachedCount > 0 && (
+                    <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-emerald-500/20 text-emerald-300 font-bold">
+                      {attachedCount}
+                    </span>
+                  )}
+                  {filterAttached && <Icon name="Check" size={11} className="text-emerald-400 ml-1" />}
+                </button>
+              </>
+            )}
           </div>
         )}
         <button

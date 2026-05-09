@@ -34,11 +34,12 @@ export default function PlanPage() {
   const [focusSegmentId, setFocusSegmentId] = useState<string | null>(null);
 
   // ── Каталог ──────────────────────────────────────────────────────────────
-  const [catalogOpen, setCatalogOpen] = useState(false);
-  const [prices,      setPrices]      = useState<PriceEntry[]>([]);
-  const [dragItem,    setDragItem]    = useState<SegmentPriceItem | null>(null);
-  const [dragPos,     setDragPos]     = useState<{ x: number; y: number } | null>(null);
-  const [hoverSegId,  setHoverSegId]  = useState<string | null>(null);
+  const [catalogOpen,     setCatalogOpen]     = useState(false);
+  const [prices,          setPrices]          = useState<PriceEntry[]>([]);
+  const [dragItem,        setDragItem]        = useState<SegmentPriceItem | null>(null);
+  const [dragPos,         setDragPos]         = useState<{ x: number; y: number } | null>(null);
+  const [hoverSegId,      setHoverSegId]      = useState<string | null>(null);
+  const [filterAttached,  setFilterAttached]  = useState(false);
   const stateRef = useRef(state);
   stateRef.current = state;
 
@@ -173,10 +174,20 @@ export default function PlanPage() {
   const currentPlanName = storage.plans.find(p => p.id === storage.currentPlanId)?.name
     ?? (state as PlanState).room.name ?? "Без названия";
 
+  // Кол-во уникальных товаров на холсте
+  const attachedPriceIds = new Set<number>();
+  state.segments.forEach(seg => seg.items?.forEach(it => attachedPriceIds.add(it.priceId)));
+  const attachedCount = attachedPriceIds.size;
+
   // При hover подсвечиваем стену через selectedSegmentId
   const displayState = hoverSegId
     ? { ...state, selectedSegmentId: hoverSegId }
     : state;
+
+  // Фильтруем прайс если активен фильтр «На холсте»
+  const filteredPrices = filterAttached && attachedPriceIds.size > 0
+    ? prices.filter(p => attachedPriceIds.has(p.id))
+    : prices;
 
   return (
     <div className="flex flex-col bg-[#111] overflow-hidden" style={{ height: "100dvh" }}>
@@ -240,6 +251,9 @@ export default function PlanPage() {
             onZoomFit={zoomFit}
             onOpenPanel={() => { setSheetSnap("half"); setSheetOpen(true); }}
             onOpenCatalog={() => setCatalogOpen(true)}
+            attachedCount={attachedCount}
+            filterAttached={filterAttached}
+            onToggleFilterAttached={() => setFilterAttached(v => !v)}
           />
         )}
       </div>
@@ -295,7 +309,7 @@ export default function PlanPage() {
       <CategoryDrumPanel
         open={catalogOpen}
         onClose={() => setCatalogOpen(false)}
-        prices={prices}
+        prices={filteredPrices}
         onDragItem={item => {
           setCatalogOpen(false);
           setDragItem(item);
