@@ -10,11 +10,12 @@ import type { PlanCanvasState } from "./usePlanCanvasState";
 interface Params {
   state: PlanState;
   onChange: (patch: Partial<PlanState>) => void;
+  onReplace: (patch: Partial<PlanState>) => void; // replace без записи в историю (для drag)
   cs: PlanCanvasState;
 }
 
 /** Хук: все обработчики событий холста (mouse, touch, wheel, keyboard) */
-export function usePlanCanvasEvents({ state, onChange, cs }: Params) {
+export function usePlanCanvasEvents({ state, onChange, onReplace, cs }: Params) {
   const {
     svgRef, dragRef, nearbyPtRef, panRef, pinchRef, isPanning, didMoveRef,
     longPressRef, longPressPos, setVibrated,
@@ -120,9 +121,10 @@ export function usePlanCanvasEvents({ state, onChange, cs }: Params) {
         const px = a && b ? distPx(a, b) : 0;
         return { ...s, lengthCm: Math.round((px / baseScale) * 10) / 10 };
       });
-      onChange({ points: newPts, segments: newSegs, diagonals: buildAutoDiagonals(newPts, diagonals, state.baseScale ?? null) });
+      // replace — не добавляет в историю, drag завершится push'ем в handleMouseUp
+      onReplace({ points: newPts, segments: newSegs, diagonals: buildAutoDiagonals(newPts, diagonals, state.baseScale ?? null) });
     }
-  }, [tool, phase, isClosed, points, dimLineFrom, clientToSvg, applySnap, diagonals, onChange, settings, zoom, panRef, dragRef, setGhost, segments]);
+  }, [tool, phase, isClosed, points, dimLineFrom, clientToSvg, applySnap, diagonals, onChange, onReplace, settings, zoom, panRef, dragRef, setGhost, segments]);
 
   const handleMouseDown = useCallback((e: React.MouseEvent<SVGSVGElement>) => {
     if (e.button === 1 || e.button === 2 || (e.button === 0 && e.altKey)) {
@@ -133,8 +135,10 @@ export function usePlanCanvasEvents({ state, onChange, cs }: Params) {
   }, [panX, panY, panRef, isPanning]);
 
   const handleMouseUp = useCallback(() => {
+    // Если был drag — фиксируем финальное состояние в историю (один шаг undo)
+    if (dragRef.current) onChange({ points, segments, diagonals });
     dragRef.current = null; panRef.current = null; isPanning.current = false;
-  }, [dragRef, panRef, isPanning]);
+  }, [dragRef, panRef, isPanning, onChange, points, segments, diagonals]);
 
   // ════════════════════════════════════════════════════════════════════════
   // TOUCH EVENTS
@@ -254,7 +258,8 @@ export function usePlanCanvasEvents({ state, onChange, cs }: Params) {
           const px = a && b ? distPx(a, b) : 0;
           return { ...s, lengthCm: Math.round((px / baseScale) * 10) / 10 };
         });
-        onChange({ points: newPts, segments: newSegs, diagonals: buildAutoDiagonals(newPts, diagonals, state.baseScale ?? null) });
+        // replace — не добавляет в историю, drag завершится push'ем в handleTouchEnd
+        onReplace({ points: newPts, segments: newSegs, diagonals: buildAutoDiagonals(newPts, diagonals, state.baseScale ?? null) });
         didMoveRef.current = true;
         return;
       }
@@ -265,7 +270,7 @@ export function usePlanCanvasEvents({ state, onChange, cs }: Params) {
         didMoveRef.current = true;
       }
     }
-  }, [tool, points, segments, clientToSvg, applySnap, diagonals, onChange, settings, zoom,
+  }, [tool, points, segments, clientToSvg, applySnap, diagonals, onChange, onReplace, settings, zoom,
       clearLongPress, pinchRef, panRef, dragRef, nearbyPtRef, didMoveRef, longPressRef]);
 
   const handleTouchEnd = useCallback((e: React.TouchEvent<SVGSVGElement>) => {
@@ -274,6 +279,8 @@ export function usePlanCanvasEvents({ state, onChange, cs }: Params) {
     clearLongPress();
 
     if (didMoveRef.current) {
+      // Если был drag точки — фиксируем финальное состояние одним шагом в историю
+      if (dragRef.current) onChange({ points, segments, diagonals });
       dragRef.current = null; panRef.current = null;
       didMoveRef.current = false;
       return;
@@ -352,8 +359,8 @@ export function usePlanCanvasEvents({ state, onChange, cs }: Params) {
 
     dragRef.current = null; panRef.current = null; didMoveRef.current = false;
   }, [tool, phase, isClosed, points, segments, diagonals, dimLines, dimLineFrom,
-      clientToSvg, applySnap, onChange, clearLongPress,
-      pinchRef, panRef, dragRef, didMoveRef, setDimLineFrom]);
+      clientToSvg, applySnap, onChange, onReplace, clearLongPress,
+      pinchRef, panRef, dragRef, nearbyPtRef, didMoveRef, setDimLineFrom]);
 
   // ── Wheel zoom ────────────────────────────────────────────────────────────
   const handleWheel = useCallback((e: WheelEvent) => {

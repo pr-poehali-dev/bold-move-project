@@ -62,6 +62,11 @@ export function usePlanHandlers({
     if (isGeometryPatch(patch)) push(next); else replace(next);
   }, [push, replace]);
 
+  // replace без добавления в историю — используется во время drag
+  const handleReplace = useCallback((patch: Partial<PlanState>) => {
+    replace({ ...stateRef.current, ...patch });
+  }, [replace]);
+
   const handleSettingChange = useCallback((patch: Partial<PlanSettings>) => {
     const s = stateRef.current;
     push({ ...s, settings: { ...s.settings, ...patch } });
@@ -227,6 +232,7 @@ export function usePlanHandlers({
     storage,
     stateRef,
     handleChange,
+    handleReplace,
     handleSettingChange,
     handleUpdateSegment,
     handleUpdateDiagonal,

@@ -137,6 +137,7 @@ export default function PlanPage() {
   const {
     storage,
     handleChange,
+    handleReplace,
     handleSettingChange,
     handleUpdateSegment,
     handleUpdateDiagonal,
@@ -255,6 +256,7 @@ export default function PlanPage() {
           <PlanCanvas
             state={displayState}
             onChange={handleChange}
+            onReplace={handleReplace}
             onOpenCatalog={() => setCatalogOpen(true)}
           />
         </div>
