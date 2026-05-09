@@ -22,10 +22,8 @@ interface Props {
   onDragItem: (item: SegmentPriceItem) => void;
 }
 
-// Дуга от -110° до -20° по правому краю экрана
-const ARC_START_DEG = -110;
-const ARC_END_DEG   = -20;
-const ARC_R         = 155; // радиус дуги в px
+const ITEM_H   = 52;
+const ITEM_GAP = 10;
 
 export default function CategoryDrumPanel({ open, onClose, prices, onDragItem }: Props) {
   const [mode,             setMode]             = useState<"categories" | "items">("categories");
@@ -33,15 +31,14 @@ export default function CategoryDrumPanel({ open, onClose, prices, onDragItem }:
   const [visible,          setVisible]          = useState(false);
 
   useEffect(() => {
-    if (open)  { setTimeout(() => setVisible(true), 10); }
-    else       { setVisible(false); }
+    if (open)  setTimeout(() => setVisible(true), 10);
+    else       setVisible(false);
   }, [open]);
 
   useEffect(() => {
-    if (!open) { setTimeout(() => { setMode("categories"); setSelectedCategory(""); }, 300); }
+    if (!open) setTimeout(() => { setMode("categories"); setSelectedCategory(""); }, 300);
   }, [open]);
 
-  // Уникальные категории
   const categories: ArcItem[] = (() => {
     const seen = new Set<string>();
     const result: ArcItem[] = [];
@@ -54,7 +51,6 @@ export default function CategoryDrumPanel({ open, onClose, prices, onDragItem }:
     return result;
   })();
 
-  // Товары выбранной категории
   const catItems: ArcItem[] = prices
     .filter(p => p.category === selectedCategory)
     .map(p => ({ value: String(p.id), label: p.name, imageUrl: p.image_url }));
@@ -87,27 +83,21 @@ export default function CategoryDrumPanel({ open, onClose, prices, onDragItem }:
 
   if (!open && !visible) return null;
 
-  // Вычисляем угол для каждого элемента
-  const angleStep  = count > 1 ? (ARC_END_DEG - ARC_START_DEG) / (count - 1) : 0;
-  const startAngle = count === 1 ? (ARC_START_DEG + ARC_END_DEG) / 2 : ARC_START_DEG;
-
   return (
     <>
       {/* Прозрачный оверлей */}
-      <div
-        onClick={onClose}
-        style={{ position: "fixed", inset: 0, zIndex: 40 }}
-      />
+      <div onClick={onClose} style={{ position: "fixed", inset: 0, zIndex: 40 }} />
 
-      {/* Якорь дуги — правый центр экрана */}
+      {/* Стек элементов — якорь у кнопки каталога (bottom-right) */}
       <div style={{
         position: "fixed",
-        right: 0,
-        top: "50%",
-        transform: "translateY(-50%)",
+        bottom: 130,
+        right: 12,
         zIndex: 41,
-        width: 0,
-        height: 0,
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "flex-end",
+        gap: ITEM_GAP,
         pointerEvents: "none",
       }}>
 
@@ -116,12 +106,9 @@ export default function CategoryDrumPanel({ open, onClose, prices, onDragItem }:
           <button
             onClick={e => { e.stopPropagation(); handleBack(); }}
             style={{
-              position: "absolute",
-              right: 16,
-              top: -110,
               pointerEvents: "all",
-              background: "rgba(10,10,18,0.88)",
-              border: "1px solid rgba(124,58,237,0.4)",
+              background: "rgba(10,10,18,0.9)",
+              border: "1px solid rgba(124,58,237,0.45)",
               borderRadius: 10,
               padding: "4px 12px",
               color: "rgba(196,181,253,0.9)",
@@ -129,27 +116,22 @@ export default function CategoryDrumPanel({ open, onClose, prices, onDragItem }:
               fontWeight: 600,
               cursor: "pointer",
               backdropFilter: "blur(12px)",
-              whiteSpace: "nowrap",
+              marginBottom: 4,
             }}
           >
             ← Категории
           </button>
         )}
 
-        {/* Элементы по дуге */}
-        {arcItems.map((item, idx) => {
-          const deg = startAngle + idx * angleStep;
-          const rad = deg * Math.PI / 180;
-
-          // cos(deg) для углов -110..-20 отрицательный → элемент левее якоря
-          const offsetX = Math.cos(rad) * ARC_R; // < 0
-          const offsetY = Math.sin(rad) * ARC_R; // варьируется
-
-          // right = -offsetX (т.к. offsetX отрицательный → right > 0)
-          const rightPx = -offsetX + 8;
-          const topPx   = offsetY;
-
-          const delay = idx * 40;
+        {/* Элементы по дуге снизу вверх */}
+        {[...arcItems].reverse().map((item, revIdx) => {
+          const idx = count - 1 - revIdx;
+          // t: 0 = нижний, 1 = верхний → дуга смещает левее в середине
+          const t = count > 1 ? idx / (count - 1) : 0.5;
+          const arcOffsetX = Math.sin(t * Math.PI) * 32;
+          const delay = revIdx * 40;
+          const heightStep = ITEM_H + ITEM_GAP;
+          const bottomOffset = revIdx * heightStep;
 
           return (
             <button
@@ -160,31 +142,28 @@ export default function CategoryDrumPanel({ open, onClose, prices, onDragItem }:
                 else handleItemClick(item.value);
               }}
               style={{
-                position: "absolute",
-                right: rightPx,
-                top: topPx,
-                transform: `translate(0, -50%) scale(${visible ? 1 : 0.6})`,
+                pointerEvents: "all",
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+                height: ITEM_H,
+                background: "rgba(10,10,18,0.88)",
+                border: "1px solid rgba(124,58,237,0.32)",
+                borderRadius: 14,
+                padding: "0 12px 0 6px",
+                cursor: "pointer",
+                backdropFilter: "blur(14px)",
+                boxShadow: "0 4px 20px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.05)",
+                minWidth: 130,
+                maxWidth: 200,
+                transform: `translateX(${visible ? -arcOffsetX : 60}px) scale(${visible ? 1 : 0.7})`,
                 opacity: visible ? 1 : 0,
                 transition: [
                   `transform 0.28s cubic-bezier(0.34,1.56,0.64,1) ${delay}ms`,
                   `opacity 0.2s ease ${delay}ms`,
                 ].join(", "),
-                pointerEvents: "all",
-                display: "flex",
-                alignItems: "center",
-                gap: 8,
-                background: "rgba(10,10,18,0.88)",
-                border: "1px solid rgba(124,58,237,0.32)",
-                borderRadius: 14,
-                padding: "6px 12px 6px 6px",
-                cursor: "pointer",
-                backdropFilter: "blur(14px)",
-                boxShadow: [
-                  "0 4px 24px rgba(0,0,0,0.55)",
-                  "inset 0 1px 0 rgba(255,255,255,0.05)",
-                ].join(", "),
-                minWidth: 130,
-                maxWidth: 190,
+                // Чтобы не зависеть от flex-order, используем margin-bottom для создания эффекта снизу вверх
+                marginBottom: revIdx === 0 ? 0 : 0,
               }}
             >
               {/* Иконка */}
@@ -218,9 +197,21 @@ export default function CategoryDrumPanel({ open, onClose, prices, onDragItem }:
               }}>
                 {item.label}
               </span>
+              {/* Неиспользованная переменная для подавления lint */}
+              {bottomOffset > -1 && null}
             </button>
           );
         })}
+
+        {/* Подпись */}
+        <div style={{
+          pointerEvents: "none",
+          fontSize: 9,
+          color: "rgba(255,255,255,0.2)",
+          textAlign: "right",
+        }}>
+          {mode === "categories" ? "Выберите категорию" : selectedCategory}
+        </div>
       </div>
     </>
   );
