@@ -173,9 +173,10 @@ function ArcDrum({ items, value, onChange, onClick }: {
     if (items[clamped]?.value !== value) onChange(items[clamped].value);
   }, [items, value, onChange]);
 
-  // Вычисляем дугообразное смещение для каждого элемента
-  // scrollTop определяет текущую центральную позицию
   const centerPos = scrollTop + TOTAL_H / 2 - ITEM_H / 2;
+  // Строго один центральный — ближайший к реальному центру
+  const centerIdx = Math.round(scrollTop / ITEM_H);
+  const clampedCenterIdx = Math.max(0, Math.min(items.length - 1, centerIdx));
 
   return (
     <div style={{ height: TOTAL_H, position: "relative", userSelect: "none", width: "100%", overflow: "hidden" }}>
@@ -195,20 +196,16 @@ function ArcDrum({ items, value, onChange, onClick }: {
 
       {/* Визуальные элементы — рендерим сами по дуге */}
       {items.map((item, idx) => {
-        // Позиция центра элемента в пространстве скролла
         const itemCenter = PADDING + idx * ITEM_H + ITEM_H / 2;
-        // Смещение от текущего центра (-TOTAL_H/2 .. +TOTAL_H/2)
         const offset = itemCenter - centerPos;
-        // Нормализованное смещение от центра (-1 при крайних)
         const norm = Math.max(-1, Math.min(1, offset / (TOTAL_H / 2)));
 
-        // Горизонтальное смещение по дуге — квадратичная парабола (круг, не ромб)
-        // norm² даёт плавную дугу: 0 в центре, 1 на краях
-        const arcX = norm * norm * 90; // px вправо от правого края (сужает width)
-        // Масштаб — тоже квадратичный
+        // Дуга: квадратичная парабола
+        const arcX    = norm * norm * 90;
         const scale   = Math.max(0.72, 1 - norm * norm * 0.28);
         const opacity = Math.max(0.2, 1 - norm * norm * 0.78);
-        const isCenter = Math.abs(norm) < 0.2;
+        // Строго один центральный
+        const isCenter = idx === clampedCenterIdx;
 
         // Вертикальная позиция на экране
         const y = TOTAL_H / 2 + offset - ITEM_H / 2;
