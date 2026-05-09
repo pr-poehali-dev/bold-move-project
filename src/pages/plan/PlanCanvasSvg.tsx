@@ -6,6 +6,7 @@ import {
   renderPoints, renderDiagonals, renderSegments, renderGhost, renderHints,
   InlineDimLabels,
 } from "./PlanCanvasRenderers";
+import { renderSegmentItems } from "./PlanCanvasLabelRenderers";
 import type { RenderContext, SegmentHandlers } from "./PlanCanvasRenderers";
 
 interface Props {
@@ -124,6 +125,9 @@ export default function PlanCanvasSvg({
         {points.length >= 2 && (
           <InlineDimLabels state={state} onChange={onChange} />
         )}
+
+        {/* Товары на стенах */}
+        {isClosed && segments.map(seg => renderSegmentItems(seg, ctx))}
 
         {/* Точки */}
         {renderPoints(ctx, handlers)}
