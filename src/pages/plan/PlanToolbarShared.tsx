@@ -49,6 +49,7 @@ export const TOOLS: ToolDef[] = [
   { id: "segment",  icon: "Minus",         label: "Отрезки",     shortcut: "S",  comingSoon: true },
   { id: "arc",      icon: "Spline",        label: "Дуги",        shortcut: "A",  comingSoon: true },
   { id: "dimline",  icon: "Ruler",         label: "Размеры",     shortcut: "R",  comingSoon: true },
+  { id: "delete",   icon: "Eraser",        label: "Удалить",     shortcut: "X",  danger: true },
 ];
 
 export const ALL_TOOLS_MENU: { id: ToolMode; icon: string; label: string; danger?: boolean; comingSoon?: boolean }[] = [
