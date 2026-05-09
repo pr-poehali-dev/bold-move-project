@@ -295,6 +295,8 @@ export default function PlanPage() {
             attachedCount={attachedCount}
             filterAttached={filterAttached}
             onToggleFilterAttached={() => setFilterAttached(v => !v)}
+            onOpenLibrary={() => setLibraryOpen(true)}
+            plansCount={storage.plans?.length ?? 0}
           />
         )}
       </div>
