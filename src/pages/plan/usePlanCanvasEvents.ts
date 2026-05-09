@@ -326,7 +326,8 @@ export function usePlanCanvasEvents({ state, onChange, onReplace, cs }: Params) 
             newSegs = [...newSegs, { ...prevSeg, id: genId("s"), toId: nextSeg.toId, lengthCm: null }];
           }
           const newDiags = newPts.length >= 3 ? buildAutoDiagonals(newPts, diagonals) : [];
-          onChange({ points: newPts, segments: newSegs, diagonals: newDiags, isClosed: isClosed && newPts.length >= 3, selectedPointId: null });
+          const newIsClosed = isClosed && newPts.length >= 3;
+          onChange({ points: newPts, segments: newSegs, diagonals: newDiags, isClosed: newIsClosed, phase: newIsClosed ? undefined : "draw", selectedPointId: null });
         } else if (tool === "dimline") {
           if (!dimLineFrom) {
             setDimLineFrom(hitPt.id);
@@ -346,7 +347,7 @@ export function usePlanCanvasEvents({ state, onChange, onReplace, cs }: Params) 
       const hitSeg = findNearestSegment(raw.x, raw.y, points, segments, 16);
       if (hitSeg) {
         if (tool === "delete") {
-          onChange({ segments: segments.filter(s => s.id !== hitSeg.id), isClosed: false });
+          onChange({ segments: segments.filter(s => s.id !== hitSeg.id), isClosed: false, phase: "draw" });
         } else if (tool === "arc") {
           const newR = (hitSeg.arcRadius + 15) % 90;
           onChange({ segments: segments.map(s => s.id === hitSeg.id ? { ...s, arcRadius: newR } : s) });
@@ -469,7 +470,8 @@ export function usePlanCanvasEvents({ state, onChange, onReplace, cs }: Params) 
       if (prevSeg && nextSeg && newPts.length >= 2) {
         newSegs = [...newSegs, { ...prevSeg, id: genId("s"), toId: nextSeg.toId, lengthCm: null }];
       }
-      onChange({ points: newPts, segments: newSegs, diagonals: newPts.length >= 3 ? buildAutoDiagonals(newPts, diagonals) : [], isClosed: isClosed && newPts.length >= 3, selectedPointId: null });
+      const newIsClosed2 = isClosed && newPts.length >= 3;
+      onChange({ points: newPts, segments: newSegs, diagonals: newPts.length >= 3 ? buildAutoDiagonals(newPts, diagonals) : [], isClosed: newIsClosed2, phase: newIsClosed2 ? undefined : "draw", selectedPointId: null });
       return;
     }
     if (tool === "dimline") {

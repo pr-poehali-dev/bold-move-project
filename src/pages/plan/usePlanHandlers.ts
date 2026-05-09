@@ -86,7 +86,10 @@ export function usePlanHandlers({
   }, [push]);
 
   const handleToolChange = useCallback((t: ToolMode) => {
-    push({ ...stateRef.current, tool: t });
+    const s = stateRef.current;
+    // При переключении на draw — сбрасываем phase в "draw" если фигура не замкнута
+    const phase = t === "draw" && !s.isClosed ? "draw" : s.phase;
+    push({ ...s, tool: t, phase });
   }, [push]);
 
   // ── Zoom ─────────────────────────────────────────────────────────────────
