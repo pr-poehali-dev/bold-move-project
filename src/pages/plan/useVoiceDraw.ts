@@ -21,7 +21,7 @@ declare global {
 
 // Стартовая позиция точки A (нижний левый угол, в px-координатах холста)
 const START_X = 200;
-const START_Y = 400;
+const START_Y = 700;
 // Длина в px для первого отрезка (масштаб установится позже)
 // Используем 1cm = 2px пока не получим первый размер
 const SCALE_INIT = 2; // px/cm
@@ -234,10 +234,10 @@ export default function useVoiceDraw({ state, onChange }: Props) {
     const num = parseNumber(text);
     if (num !== null) {
       if (b.baseScale === null) {
-        console.log(`[VoiceDraw] первый отрезок ${num}см → вправо`);
+        console.log(`[VoiceDraw] первый отрезок ${num}см → вверх`);
         b.baseScale = SCALE_INIT;
-        addSegment(num, "right");
-        b.currentDir = "right";
+        addSegment(num, "up");
+        b.currentDir = "up";
         b.pendingLen = null;
         setStatus(`Первый отрезок ${num} см. Скажите поворот: «вправо», «влево», «прямо» или «замкнуть»`);
       } else {
