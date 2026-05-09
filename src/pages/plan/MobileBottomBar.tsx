@@ -168,7 +168,7 @@ export default function MobileBottomBar({
         onClick={onOpenSides}
         className={rightPanelOpen ? BTN_ACTIVE : BTN_DEFAULT}
       >
-        <Icon name="Ruler" size={20} />
+        <Icon name="PanelRight" size={20} />
       </button>
 
       {/* 6. Голосовое рисование */}
