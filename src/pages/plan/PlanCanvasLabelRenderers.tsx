@@ -65,7 +65,7 @@ interface SegmentItemsBadgesProps {
 }
 
 export function SegmentItemsBadges({
-  seg, ctx, allSegments,
+  seg, ctx, allSegments, onRemoveItem,
 }: SegmentItemsBadgesProps) {
   const items = seg.items;
   if (!items || items.length === 0) return null;
@@ -78,32 +78,34 @@ export function SegmentItemsBadges({
   const angle = Math.atan2(b.y - a.y, b.x - a.x) * 180 / Math.PI;
   const na    = angle > 90 || angle < -90 ? angle + 180 : angle;
 
-  const W   = 148;
   const H   = 24;
   const GAP = 5;
   const OFF = 28;
+  const IMG = 18;
+  const X_BTN = 14; // радиус зоны крестика
 
-  const totalH    = items.length * H + (items.length - 1) * GAP;
-  const startOff  = -(totalH / 2) + H / 2;
-  const segLen    = Math.hypot(b.x - a.x, b.y - a.y) || 1;
-  const ux        = (b.x - a.x) / segLen;
-  const uy        = (b.y - a.y) / segLen;
+  const totalH   = items.length * H + (items.length - 1) * GAP;
+  const startOff = -(totalH / 2) + H / 2;
+  const segLen   = Math.hypot(b.x - a.x, b.y - a.y) || 1;
+  const ux       = (b.x - a.x) / segLen;
+  const uy       = (b.y - a.y) / segLen;
 
   return (
     <g key={`seg-items-${seg.id}`}>
       {items.map((item, idx) => {
-        const along = startOff + idx * (H + GAP);
-        const px    = mid.x - nx * OFF + ux * along;
-        const py    = mid.y - ny * OFF + uy * along;
-        const label = item.name.length > 14 ? item.name.slice(0, 12) + "…" : item.name;
+        const along   = startOff + idx * (H + GAP);
+        const px      = mid.x - nx * OFF + ux * along;
+        const py      = mid.y - ny * OFF + uy * along;
         const itemKey = `${seg.id}-${item.priceId}`;
-        const qty   = item.quantity ?? 1;
 
-        // Суммарное кол-во этого товара по всему потолку
-        const totalQty = allSegments.reduce((sum, s) => {
-          const found = (s.items ?? []).find(it => it.priceId === item.priceId);
-          return sum + (found ? (found.quantity ?? 1) : 0);
-        }, 0);
+        // Ширина подбирается под длину названия (минимум 120, максимум 220)
+        const nameLen = item.name.length;
+        const W = Math.min(220, Math.max(120, nameLen * 6 + (item.imageUrl ? 44 : 24) + X_BTN * 2 + 8));
+
+        const textX = item.imageUrl ? -W / 2 + IMG + 10 : -W / 2 + 8;
+        // Максимальная длина названия чтобы не наезжать на крестик
+        const maxChars = Math.floor((W - (item.imageUrl ? IMG + 10 : 8) - X_BTN * 2 - 10) / 5.5);
+        const label = item.name.length > maxChars ? item.name.slice(0, maxChars - 1) + "…" : item.name;
 
         return (
           <g key={itemKey} transform={`translate(${px},${py}) rotate(${na})`}>
@@ -115,28 +117,30 @@ export function SegmentItemsBadges({
 
             {/* Картинка */}
             {item.imageUrl && (
-              <image href={item.imageUrl} x={-W / 2 + 5} y={-9} width={18} height={18}
+              <image href={item.imageUrl} x={-W / 2 + 5} y={-9} width={IMG} height={IMG}
                 preserveAspectRatio="xMidYMid slice" style={{ pointerEvents: "none" }} />
             )}
 
             {/* Название */}
-            <text x={item.imageUrl ? -W / 2 + 28 : -W / 2 + 8} y={4}
+            <text x={textX} y={4}
               fontSize={9} fill="rgba(196,181,253,0.95)"
               fontFamily="system-ui, sans-serif" fontWeight={500}
               className="pointer-events-none select-none">
               {label}
             </text>
 
-            {/* Счётчик: количество на этой стене / итого по потолку */}
-            <g style={{ pointerEvents: "none" }}>
-              <rect x={W / 2 - 40} y={-H / 2 + 3} width={30} height={H - 6} rx={4}
-                fill="rgba(124,58,237,0.22)" stroke="rgba(124,58,237,0.4)" strokeWidth={0.6} />
-              <text x={W / 2 - 25} y={4} textAnchor="middle"
-                fontSize={8.5} fontWeight={700} fill="rgba(196,181,253,0.9)"
-                fontFamily="monospace" className="select-none">
-                {qty}/{totalQty}
-              </text>
-            </g>
+            {/* Крестик */}
+            {onRemoveItem && (
+              <g onClick={e => { e.stopPropagation(); onRemoveItem(seg.id, item.priceId); }}
+                style={{ cursor: "pointer" }}>
+                <circle cx={W / 2 - X_BTN} cy={0} r={X_BTN - 1}
+                  fill="rgba(239,68,68,0.2)" stroke="rgba(239,68,68,0.55)" strokeWidth={0.8} />
+                <line x1={W / 2 - X_BTN - 3} y1={-3} x2={W / 2 - X_BTN + 3} y2={3}
+                  stroke="rgba(255,255,255,0.75)" strokeWidth={1.2} strokeLinecap="round" />
+                <line x1={W / 2 - X_BTN + 3} y1={-3} x2={W / 2 - X_BTN - 3} y2={3}
+                  stroke="rgba(255,255,255,0.75)" strokeWidth={1.2} strokeLinecap="round" />
+              </g>
+            )}
           </g>
         );
       })}
