@@ -6,7 +6,7 @@ import {
   renderPoints, renderDiagonals, renderSegments, renderGhost, renderHints,
   InlineDimLabels,
 } from "./PlanCanvasRenderers";
-import { renderSegmentItems } from "./PlanCanvasLabelRenderers";
+import { SegmentItemsBadges } from "./PlanCanvasLabelRenderers";
 import type { RenderContext, SegmentHandlers } from "./PlanCanvasRenderers";
 
 interface Props {
@@ -128,13 +128,28 @@ export default function PlanCanvasSvg({
         )}
 
         {/* Товары на стенах */}
-        {isClosed && segments.map(seg => renderSegmentItems(seg, ctx, (segId, priceId) => {
-          const newSegs = segments.map(s => {
-            if (s.id !== segId) return s;
-            return { ...s, items: (s.items ?? []).filter(it => it.priceId !== priceId) };
-          });
-          onChange({ segments: newSegs });
-        }))}
+        {isClosed && segments.map(seg => (
+          <SegmentItemsBadges
+            key={seg.id}
+            seg={seg}
+            ctx={ctx}
+            allSegments={segments}
+            onRemoveItem={(segId, priceId) => {
+              const newSegs = segments.map(s => {
+                if (s.id !== segId) return s;
+                return { ...s, items: (s.items ?? []).filter(it => it.priceId !== priceId) };
+              });
+              onChange({ segments: newSegs });
+            }}
+            onUpdateQuantity={(segId, priceId, quantity) => {
+              const newSegs = segments.map(s => {
+                if (s.id !== segId) return s;
+                return { ...s, items: (s.items ?? []).map(it => it.priceId === priceId ? { ...it, quantity } : it) };
+              });
+              onChange({ segments: newSegs });
+            }}
+          />
+        ))}
 
         {/* Точки */}
         {renderPoints(ctx, handlers)}

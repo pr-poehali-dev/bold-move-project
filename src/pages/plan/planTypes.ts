@@ -13,6 +13,7 @@ export interface SegmentPriceItem {
   category: string;
   imageUrl: string | null;
   categoryImageUrl: string | null;
+  quantity?: number; // кол-во штук/метров на этой стене (по умолчанию 1)
 }
 
 export interface Segment {
