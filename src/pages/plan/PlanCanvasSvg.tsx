@@ -127,7 +127,13 @@ export default function PlanCanvasSvg({
         )}
 
         {/* Товары на стенах */}
-        {isClosed && segments.map(seg => renderSegmentItems(seg, ctx))}
+        {isClosed && segments.map(seg => renderSegmentItems(seg, ctx, (segId, priceId) => {
+          const newSegs = segments.map(s => {
+            if (s.id !== segId) return s;
+            return { ...s, items: (s.items ?? []).filter(it => it.priceId !== priceId) };
+          });
+          onChange({ segments: newSegs });
+        }))}
 
         {/* Точки */}
         {renderPoints(ctx, handlers)}

@@ -56,7 +56,11 @@ export function renderSegmentLabel(seg: Segment, ctx: Pick<RenderContext, "point
 
 // ── renderSegmentItems — товары прикреплённые к стене ────────────────────────
 
-export function renderSegmentItems(seg: Segment, ctx: Pick<RenderContext, "points">) {
+export function renderSegmentItems(
+  seg: Segment,
+  ctx: Pick<RenderContext, "points">,
+  onRemoveItem?: (segId: string, priceId: number) => void,
+) {
   const items = seg.items;
   if (!items || items.length === 0) return null;
   const a = ctx.points.find(p => p.id === seg.fromId);
@@ -65,21 +69,19 @@ export function renderSegmentItems(seg: Segment, ctx: Pick<RenderContext, "point
 
   const mid = midPoint(a, b);
   const { nx, ny } = segmentNormal(a, b);
-  // Смещаем внутрь (против нормали — в сторону интерьера)
   const ox = mid.x - nx * 24;
   const oy = mid.y - ny * 24;
   const angle = Math.atan2(b.y - a.y, b.x - a.x) * 180 / Math.PI;
-  // Разворачиваем текст чтобы он всегда читался слева направо
   const na = angle > 90 || angle < -90 ? angle + 180 : angle;
 
   const first = items[0];
   const more  = items.length > 1 ? ` +${items.length - 1}` : "";
   const label = first.name.length > 18 ? first.name.slice(0, 16) + "…" : first.name;
-  const W = 124; // ширина таблетки
+  const W = 130;
 
   return (
-    <g key={`seg-items-${seg.id}`} className="pointer-events-none"
-      transform={`rotate(${na},${ox},${oy})`}>
+    <g key={`seg-items-${seg.id}`} transform={`rotate(${na},${ox},${oy})`}
+      style={{ cursor: onRemoveItem ? "pointer" : "default" }}>
       {/* Фон-таблетка */}
       <rect x={-W / 2} y={-11} width={W} height={22} rx={7}
         fill="rgba(124,58,237,0.18)" stroke="rgba(124,58,237,0.50)" strokeWidth={0.8} />
@@ -89,7 +91,6 @@ export function renderSegmentItems(seg: Segment, ctx: Pick<RenderContext, "point
           href={first.imageUrl}
           x={-W / 2 + 4} y={-8} width={16} height={16}
           preserveAspectRatio="xMidYMid slice"
-          style={{ borderRadius: 4 }}
         />
       )}
       {/* Название */}
@@ -100,9 +101,21 @@ export function renderSegmentItems(seg: Segment, ctx: Pick<RenderContext, "point
         fill="rgba(196,181,253,0.95)"
         fontFamily="system-ui, sans-serif"
         fontWeight={500}
+        className="pointer-events-none select-none"
       >
         {label}{more}
       </text>
+      {/* Крестик — удалить первый товар */}
+      {onRemoveItem && (
+        <g
+          onClick={(e) => { e.stopPropagation(); onRemoveItem(seg.id, first.priceId); }}
+          style={{ cursor: "pointer" }}
+        >
+          <circle cx={W / 2 - 8} cy={0} r={7} fill="rgba(239,68,68,0.25)" stroke="rgba(239,68,68,0.6)" strokeWidth={0.8} />
+          <line x1={W / 2 - 11} y1={-3} x2={W / 2 - 5} y2={3} stroke="rgba(255,255,255,0.8)" strokeWidth={1.2} strokeLinecap="round" />
+          <line x1={W / 2 - 5} y1={-3} x2={W / 2 - 11} y2={3} stroke="rgba(255,255,255,0.8)" strokeWidth={1.2} strokeLinecap="round" />
+        </g>
+      )}
     </g>
   );
 }
