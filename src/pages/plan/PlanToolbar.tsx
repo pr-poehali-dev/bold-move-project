@@ -43,11 +43,8 @@ const TOOLS: ToolDef[] = [
   { id: "draw",     icon: "Pencil",        label: "Рисовать",    shortcut: "D" },
   { id: "move",     icon: "MousePointer2", label: "Перемещение", shortcut: "V" },
   { id: "segment",  icon: "Minus",         label: "Отрезки",     shortcut: "S",  comingSoon: true },
-  { id: "diagonal", icon: "ArrowUpRight",  label: "Диагонали",   shortcut: "G",  comingSoon: true },
   { id: "arc",      icon: "Spline",        label: "Дуги",        shortcut: "A",  comingSoon: true },
   { id: "dimline",  icon: "Ruler",         label: "Размеры",     shortcut: "R",  comingSoon: true },
-
-  { id: "delete",   icon: "Trash2",        label: "Удалить",     shortcut: "X",  comingSoon: true, danger: true },
 ];
 
 function ToolBtn({ t, active, disabled, onClick }: {
