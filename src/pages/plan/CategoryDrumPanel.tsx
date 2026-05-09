@@ -202,12 +202,13 @@ function ArcDrum({ items, value, onChange, onClick }: {
         // Нормализованное смещение от центра (-1 при крайних)
         const norm = Math.max(-1, Math.min(1, offset / (TOTAL_H / 2)));
 
-        // Горизонтальное смещение по дуге (параболическое — сильный изгиб)
-        const arcX = (1 - Math.cos(norm * Math.PI * 0.85)) * ARC_R * 0.55;
-        // Масштаб и прозрачность
-        const scale   = Math.max(0.65, 1 - Math.abs(norm) * 0.32);
-        const opacity = Math.max(0.15, 1 - Math.abs(norm) * 0.82);
-        const isCenter = Math.abs(norm) < 0.18;
+        // Горизонтальное смещение по дуге — квадратичная парабола (круг, не ромб)
+        // norm² даёт плавную дугу: 0 в центре, 1 на краях
+        const arcX = norm * norm * 90; // px вправо от правого края (сужает width)
+        // Масштаб — тоже квадратичный
+        const scale   = Math.max(0.72, 1 - norm * norm * 0.28);
+        const opacity = Math.max(0.2, 1 - norm * norm * 0.78);
+        const isCenter = Math.abs(norm) < 0.2;
 
         // Вертикальная позиция на экране
         const y = TOTAL_H / 2 + offset - ITEM_H / 2;
