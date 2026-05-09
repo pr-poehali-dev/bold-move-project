@@ -133,7 +133,7 @@ export default function PlanDragGhosts({
       {activeItems.length > 0 && !anyPanelOpen && (
         <div ref={scrollRef} style={{
           position: "fixed",
-          bottom: isMobile ? 90 : 80,
+          bottom: isMobile ? 90 : 110,
           left: 0,
           right: 0,
           zIndex: 9999,
