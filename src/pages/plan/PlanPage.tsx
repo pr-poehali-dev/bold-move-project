@@ -6,6 +6,7 @@ import PlanBottomSheet from "./PlanBottomSheet";
 import PlanRightInputPanel from "./PlanRightInputPanel";
 import PlanModals from "./PlanModals";
 import MobileBottomBar from "./MobileBottomBar";
+import useVoiceDraw from "./useVoiceDraw";
 import CategoryDrumPanel from "./CategoryDrumPanel";
 import type { PriceEntry } from "./CategoryDrumPanel";
 import type { PlanState, SegmentPriceItem } from "./planTypes";
@@ -169,6 +170,9 @@ export default function PlanPage() {
     prevSelectedSegId.current = state.selectedSegmentId;
   }, [state.selectedSegmentId]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // ── Голосовое рисование ───────────────────────────────────────────────────
+  const voiceDraw = useVoiceDraw({ state, onChange: handleChange });
+
   const isLoggedIn = !!user && !!token;
   const currentPlanName = storage.plans.find(p => p.id === storage.currentPlanId)?.name
     ?? (state as PlanState).room.name ?? "Без названия";
@@ -255,6 +259,10 @@ export default function PlanPage() {
               setRightPanelOpen(true);
             }}
             selectedSegmentId={state.selectedSegmentId}
+            onToggleVoiceDraw={voiceDraw.hasSpeech ? voiceDraw.toggle : undefined}
+            isVoiceDrawing={voiceDraw.isListening}
+            voiceStatus={voiceDraw.status}
+            voiceInterim={voiceDraw.interimText}
             attachedCount={attachedCount}
             filterAttached={filterAttached}
             onToggleFilterAttached={() => setFilterAttached(v => !v)}

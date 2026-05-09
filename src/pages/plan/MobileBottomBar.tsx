@@ -11,8 +11,12 @@ interface Props {
   onZoomFit: () => void;
   onOpenPanel: () => void;
   onOpenCatalog: () => void;
-  onOpenSides: () => void;          // правая панель ввода сторон
-  selectedSegmentId?: string | null;// подсвечена ли сторона
+  onOpenSides: () => void;
+  selectedSegmentId?: string | null;
+  onToggleVoiceDraw?: () => void;   // голосовое рисование
+  isVoiceDrawing?: boolean;
+  voiceStatus?: string;
+  voiceInterim?: string;
   attachedCount?: number;
   filterAttached?: boolean;
   onToggleFilterAttached?: () => void;
@@ -26,6 +30,7 @@ const BTN_ACTIVE  = `${BTN} bg-violet-600 shadow-violet-500/40 text-white`;
 export default function MobileBottomBar({
   zoom, settings, onSettingChange, onZoomIn, onZoomOut, onZoomFit, onOpenPanel, onOpenCatalog,
   onOpenSides, selectedSegmentId,
+  onToggleVoiceDraw, isVoiceDrawing = false, voiceStatus, voiceInterim,
   attachedCount = 0, filterAttached = false, onToggleFilterAttached,
 }: Props) {
   const [zoomOpen,     setZoomOpen]     = React.useState(false);
@@ -159,12 +164,37 @@ export default function MobileBottomBar({
         onClick={onOpenSides}
         className={`${BTN_DEFAULT} relative overflow-hidden`}
       >
-        {/* Фиолетовая полоска слева если выбрана сторона */}
         {selectedSegmentId && (
           <span className="absolute left-0 top-2 bottom-2 w-[3px] bg-violet-500 rounded-r-full" />
         )}
         <Icon name="Ruler" size={20} />
       </button>
+
+      {/* 6. Голосовое рисование */}
+      {onToggleVoiceDraw && (
+        <div className="relative">
+          {/* Всплывающая подсказка над кнопкой */}
+          {isVoiceDrawing && (voiceStatus || voiceInterim) && (
+            <div className="absolute bottom-14 right-0 bg-[#1a1b2e] border border-violet-500/30 rounded-2xl shadow-2xl p-3 w-56 z-50">
+              {voiceStatus && (
+                <p className="text-[11px] text-violet-300 font-medium leading-snug">{voiceStatus}</p>
+              )}
+              {voiceInterim && (
+                <p className="text-[10px] text-white/40 italic mt-1">{voiceInterim}</p>
+              )}
+            </div>
+          )}
+          <button
+            onClick={onToggleVoiceDraw}
+            className={`${isVoiceDrawing
+              ? "w-12 h-12 rounded-2xl flex items-center justify-center text-white transition-all active:scale-95 shadow-lg bg-red-600 shadow-red-500/40 animate-pulse"
+              : BTN_DEFAULT
+            }`}
+          >
+            <Icon name={isVoiceDrawing ? "MicOff" : "Mic"} size={20} />
+          </button>
+        </div>
+      )}
     </div>
   );
 }
