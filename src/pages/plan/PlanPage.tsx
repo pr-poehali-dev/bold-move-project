@@ -28,6 +28,7 @@ export default function PlanPage() {
   const [sheetSnap,      setSheetSnap]      = useState<"half" | "full">("full");
   const [sheetHeight,    setSheetHeight]    = useState(0);
   const [rightPanelOpen, setRightPanelOpen] = useState(false);
+  const [sidebarOpen,    setSidebarOpen]    = useState(true);
   const [exportOpen,     setExportOpen]     = useState(false);
   const [libraryOpen,    setLibraryOpen]    = useState(false);
   const [authOpen,       setAuthOpen]       = useState(false);
@@ -233,7 +234,7 @@ export default function PlanPage() {
           />
         </div>
 
-        {!isMobile && (<>
+        {!isMobile && sidebarOpen && (<>
           <div
             className="w-1 bg-white/[0.04] hover:bg-violet-500/30 cursor-col-resize transition-colors shrink-0"
             onMouseDown={onSidebarDragStart}
@@ -252,14 +253,17 @@ export default function PlanPage() {
             onZoomIn={zoomIn}
             onZoomOut={zoomOut}
             onZoomFit={zoomFit}
-            onOpenPanel={() => { setSheetSnap("half"); setSheetOpen(true); }}
+            onOpenPanel={isMobile
+              ? () => { setSheetSnap("half"); setSheetOpen(true); }
+              : () => setSidebarOpen(v => !v)
+            }
             onOpenCatalog={() => setCatalogOpen(true)}
             onOpenSides={() => {
               setFocusSegmentId(state.selectedSegmentId);
               setRightPanelOpen(true);
             }}
             selectedSegmentId={state.selectedSegmentId}
-            sheetOpen={sheetOpen}
+            sheetOpen={isMobile ? sheetOpen : sidebarOpen}
             catalogOpen={catalogOpen}
             rightPanelOpen={rightPanelOpen}
             isMobile={isMobile}

@@ -120,8 +120,8 @@ export default function MobileBottomBar({
         </button>
       </div>
 
-      {/* 2. Зум */}
-      <div ref={zoomRef} className="relative">
+      {/* 2. Зум — только мобайл */}
+      {isMobile && <div ref={zoomRef} className="relative">
         {zoomOpen && (
           <div className="absolute bottom-14 left-1/2 -translate-x-1/2 bg-[#1a1b2e] border border-white/[0.12] rounded-2xl shadow-2xl p-2 flex flex-col items-center gap-1 min-w-[52px]">
             <button
@@ -147,25 +147,25 @@ export default function MobileBottomBar({
         >
           <span className="text-[11px] font-bold font-mono">{Math.round(zoom * 100)}</span>
         </button>
-      </div>
+      </div>}
 
-      {/* 3. Расчёт (каталог) */}
-      <button
-        onClick={onOpenCatalog}
-        className={catalogOpen ? BTN_ACTIVE : BTN_DEFAULT}
-      >
-        <Icon name="LayoutGrid" size={20} />
-      </button>
-
-      {/* 4. Чертёж (bottom sheet) — только мобайл */}
+      {/* 3. Расчёт (каталог) — только мобайл */}
       {isMobile && (
         <button
-          onClick={onOpenPanel}
-          className={sheetOpen ? BTN_ACTIVE : BTN_DEFAULT}
+          onClick={onOpenCatalog}
+          className={catalogOpen ? BTN_ACTIVE : BTN_DEFAULT}
         >
-          <Icon name="PanelBottom" size={20} />
+          <Icon name="LayoutGrid" size={20} />
         </button>
       )}
+
+      {/* 4. Чертёж: bottom sheet (мобайл) / toggle сайдбара (ПК) */}
+      <button
+        onClick={onOpenPanel}
+        className={sheetOpen ? BTN_ACTIVE : BTN_DEFAULT}
+      >
+        <Icon name="PanelBottom" size={20} />
+      </button>
 
       {/* 5. Стороны (правая панель ввода) — только мобайл */}
       {isMobile && (
