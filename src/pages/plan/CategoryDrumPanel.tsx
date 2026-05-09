@@ -399,10 +399,10 @@ export default function CategoryDrumPanel({ open, onClose, prices, onDragItem }:
             position: "absolute",
             top: "50%",
             // сдвигаем вправо за пределы контейнера — половина круга уходит за правый край
-            right: -180,
+            right: -210,
             transform: "translateY(-50%)",
-            width: 360,
-            height: 360,
+            width: 420,
+            height: 420,
             borderRadius: "50%",
             background: "radial-gradient(circle, rgba(14,10,30,0.82) 0%, rgba(14,10,30,0.45) 50%, transparent 75%)",
             pointerEvents: "none",
