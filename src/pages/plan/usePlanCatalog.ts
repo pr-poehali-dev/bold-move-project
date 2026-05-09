@@ -171,11 +171,17 @@ export function usePlanCatalog(
 
     const onEnd = (e: MouseEvent | TouchEvent) => {
       const pt = "changedTouches" in e ? e.changedTouches[0] : e;
-      const closestId = findClosestSeg(pt.clientX, pt.clientY);
-      if (closestId) {
-        assignItemToSeg(dragItem, closestId);
-      } else if (isInsidePolygon(pt.clientX, pt.clientY)) {
-        setPendingFloorItem(dragItem);
+      // Полотно имеет приоритет над стеной при малом пороге
+      if (isInsidePolygon(pt.clientX, pt.clientY)) {
+        const closestId = findClosestSeg(pt.clientX, pt.clientY);
+        if (closestId) {
+          assignItemToSeg(dragItem, closestId);
+        } else {
+          setPendingFloorItem(dragItem);
+        }
+      } else {
+        const closestId = findClosestSeg(pt.clientX, pt.clientY, true);
+        if (closestId) assignItemToSeg(dragItem, closestId);
       }
       setDragItem(null);
       setDragPos(null);
@@ -261,12 +267,13 @@ export function usePlanCatalog(
         return;
       }
       const pt = e.changedTouches[0];
-      const closestId = findClosestSeg(pt.clientX, pt.clientY, false);
-      if (closestId) {
-        assignItemToSeg(draggingItem, closestId);
-        navigator.vibrate?.(30);
-      } else if (isInsidePolygon(pt.clientX, pt.clientY)) {
-        setPendingFloorItem(draggingItem);
+      if (isInsidePolygon(pt.clientX, pt.clientY)) {
+        const closestId = findClosestSeg(pt.clientX, pt.clientY, false);
+        if (closestId) { assignItemToSeg(draggingItem, closestId); navigator.vibrate?.(30); }
+        else setPendingFloorItem(draggingItem);
+      } else {
+        const closestId = findClosestSeg(pt.clientX, pt.clientY, true);
+        if (closestId) { assignItemToSeg(draggingItem, closestId); navigator.vibrate?.(30); }
       }
       draggingItem = null;
       isDragging = false;
@@ -298,11 +305,13 @@ export function usePlanCatalog(
     };
     const onMouseUp = (e: MouseEvent) => {
       if (!draggingItem || !isDragging) { draggingItem = null; isDragging = false; return; }
-      const closestId = findClosestSeg(e.clientX, e.clientY, false);
-      if (closestId) {
-        assignItemToSeg(draggingItem, closestId);
-      } else if (isInsidePolygon(e.clientX, e.clientY)) {
-        setPendingFloorItem(draggingItem);
+      if (isInsidePolygon(e.clientX, e.clientY)) {
+        const closestId = findClosestSeg(e.clientX, e.clientY, false);
+        if (closestId) assignItemToSeg(draggingItem, closestId);
+        else setPendingFloorItem(draggingItem);
+      } else {
+        const closestId = findClosestSeg(e.clientX, e.clientY, true);
+        if (closestId) assignItemToSeg(draggingItem, closestId);
       }
       draggingItem = null; isDragging = false;
       setHoverSegId(null); setDragCardItem(null); setDragCardPos(null);
