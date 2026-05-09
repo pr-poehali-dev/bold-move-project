@@ -23,9 +23,9 @@ interface Props {
 }
 
 // Параметры дуги
-const ITEM_H   = 58;   // высота одного слота
-const VISIBLE  = 7;    // сколько слотов видно
-const ARC_R    = 220;  // радиус дуги (чем меньше — тем сильнее изгиб)
+const ITEM_H   = 62;   // высота одного слота
+const VISIBLE  = 5;    // 1 центральная + 2 сверху + 2 снизу
+const ARC_R    = 220;  // радиус дуги
 const TOTAL_H  = ITEM_H * VISIBLE;
 const PADDING  = ITEM_H * Math.floor(VISIBLE / 2);
 
@@ -125,7 +125,11 @@ function ArcDrum({ items, value, onChange, onClick }: {
     setScrollTop(scrollRef.current.scrollTop);
   }, []);
 
-  const onTouchEnd = useCallback(() => { isDragging.current = false; startInertia(); }, [startInertia]);
+  const onTouchEnd = useCallback(() => {
+    isDragging.current = false;
+    startInertia();
+    setTimeout(() => { didDrag.current = false; }, 50);
+  }, [startInertia]);
 
   const onMouseDown = useCallback((e: React.MouseEvent) => {
     if (rafId.current) cancelAnimationFrame(rafId.current);
@@ -147,7 +151,10 @@ function ArcDrum({ items, value, onChange, onClick }: {
 
   const onMouseUp = useCallback(() => {
     if (!isDragging.current) return;
-    isDragging.current = false; startInertia();
+    isDragging.current = false;
+    startInertia();
+    // сбрасываем didDrag после завершения — следующий клик будет чистым
+    setTimeout(() => { didDrag.current = false; }, 50);
   }, [startInertia]);
 
   useEffect(() => {
@@ -179,17 +186,19 @@ function ArcDrum({ items, value, onChange, onClick }: {
   const clampedCenterIdx = Math.max(0, Math.min(items.length - 1, centerIdx));
 
   return (
-    <div style={{ height: TOTAL_H, position: "relative", userSelect: "none", width: "100%", overflow: "hidden" }}>
-      {/* Скрытый скролл для механики */}
+    <div
+      style={{ height: TOTAL_H, position: "relative", userSelect: "none", width: "100%", overflow: "hidden" }}
+      onTouchStart={onTouchStart}
+      onTouchMove={onTouchMove}
+      onTouchEnd={onTouchEnd}
+      onMouseDown={onMouseDown}
+      onWheel={onWheel}
+    >
+      {/* Скрытый скролл — только для механики, не перехватывает клики */}
       <div
         ref={scrollRef}
-        onTouchStart={onTouchStart}
-        onTouchMove={onTouchMove}
-        onTouchEnd={onTouchEnd}
-        onMouseDown={onMouseDown}
-        onWheel={onWheel}
         onScroll={onScroll}
-        style={{ position: "absolute", inset: 0, overflowY: "scroll", scrollbarWidth: "none", opacity: 0, zIndex: 10 }}
+        style={{ position: "absolute", inset: 0, overflowY: "scroll", scrollbarWidth: "none", opacity: 0, pointerEvents: "none" }}
       >
         <div style={{ height: items.length * ITEM_H + PADDING * 2 }} />
       </div>
