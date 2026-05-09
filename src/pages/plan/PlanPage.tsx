@@ -5,9 +5,9 @@ import PlanSidebar from "./PlanSidebar";
 import PlanBottomSheet from "./PlanBottomSheet";
 import PlanRightInputPanel from "./PlanRightInputPanel";
 import PlanModals from "./PlanModals";
+import MobileBottomBar from "./MobileBottomBar";
 import CategoryDrumPanel from "./CategoryDrumPanel";
 import type { PriceEntry } from "./CategoryDrumPanel";
-import Icon from "@/components/ui/icon";
 import type { PlanState, SegmentPriceItem } from "./planTypes";
 import { INITIAL_STATE } from "./planTypes";
 import { PANEL_WIDTH } from "./PlanRightInputPanel";
@@ -229,14 +229,18 @@ export default function PlanPage() {
           </div>
         </>)}
 
-        {/* Мобиле: кнопка открытия панели */}
-        {isMobile && !sheetOpen && (
-          <button
-            onClick={() => { setSheetSnap("half"); setSheetOpen(true); }}
-            className="absolute bottom-4 right-4 w-12 h-12 rounded-2xl bg-violet-600 shadow-lg shadow-violet-500/30 flex items-center justify-center text-white z-20 active:scale-95 transition-transform"
-          >
-            <Icon name="PanelBottom" size={20} />
-          </button>
+        {/* Мобиле: нижняя панель кнопок */}
+        {isMobile && (
+          <MobileBottomBar
+            zoom={state.settings.zoom}
+            settings={state.settings}
+            onSettingChange={handleSettingChange}
+            onZoomIn={zoomIn}
+            onZoomOut={zoomOut}
+            onZoomFit={zoomFit}
+            onOpenPanel={() => { setSheetSnap("half"); setSheetOpen(true); }}
+            onOpenCatalog={() => setCatalogOpen(true)}
+          />
         )}
       </div>
 

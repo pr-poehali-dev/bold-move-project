@@ -27,19 +27,6 @@ export default function PlanCanvasOverlay({
   const { points, segments, diagonals, isClosed, settings } = state;
   const { zoom } = settings;
   const isMobile = window.innerWidth < 768;
-  const [fnOpen, setFnOpen] = React.useState(false);
-  const fnRef = React.useRef<HTMLDivElement>(null);
-
-  // Закрываем меню при клике вне
-  React.useEffect(() => {
-    if (!fnOpen) return;
-    const handler = (e: MouseEvent) => {
-      if (fnRef.current && !fnRef.current.contains(e.target as Node)) setFnOpen(false);
-    };
-    document.addEventListener("mousedown", handler);
-    document.addEventListener("touchstart", handler);
-    return () => { document.removeEventListener("mousedown", handler); document.removeEventListener("touchstart", handler); };
-  }, [fnOpen]);
 
   return (
     <>
@@ -124,93 +111,7 @@ export default function PlanCanvasOverlay({
         </div>
       )}
 
-      {/* Мобиле: зум-кнопки над настройками (слева) */}
-      {isMobile && (
-        <div className="absolute bottom-20 left-3 flex flex-col gap-1 z-10">
-          <button onClick={() => onChange({ settings: { ...settings, zoom: Math.min(4, Math.round((zoom + 0.2) * 10) / 10) } })}
-            className="w-10 h-10 rounded-xl bg-white/[0.06] border border-white/[0.1] text-white/50 active:bg-white/[0.12] flex items-center justify-center transition active:scale-95">
-            <Icon name="Plus" size={16} />
-          </button>
-          <div className="w-10 h-6 flex items-center justify-center text-[10px] text-white/25 font-mono">{Math.round(zoom * 100)}%</div>
-          <button onClick={() => onChange({ settings: { ...settings, zoom: Math.max(0.3, Math.round((zoom - 0.2) * 10) / 10) } })}
-            className="w-10 h-10 rounded-xl bg-white/[0.06] border border-white/[0.1] text-white/50 active:bg-white/[0.12] flex items-center justify-center transition active:scale-95">
-            <Icon name="Minus" size={16} />
-          </button>
-        </div>
-      )}
-
-      {/* Мобиле: кнопка функций в нижнем левом углу */}
-      {isMobile && onSettingChange && (
-        <div ref={fnRef} className="absolute bottom-4 left-3 z-20">
-          {/* Меню открывается вверх */}
-          {fnOpen && (
-            <div className="absolute bottom-12 left-0 bg-[#1c1c1c] border border-white/[0.12] rounded-xl shadow-2xl p-1.5 flex flex-col gap-0.5 min-w-[210px] max-h-[70vh] overflow-y-auto">
-              <div className="px-2 pt-1 pb-0.5">
-                <p className="text-[10px] text-white/30 uppercase tracking-widest font-bold">Рисование</p>
-              </div>
-              {[
-                { key: "ortho",         label: "Ортогональный",  icon: "Axis3d"    },
-                { key: "snapToPoints",  label: "Магнит к точкам", icon: "Magnet"   },
-              ].map(({ key, label, icon }) => (
-                <button key={key}
-                  className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-[12px] font-medium transition-all text-left w-full ${
-                    settings[key as keyof typeof settings]
-                      ? "bg-white text-[#111]"
-                      : "text-white/60 hover:bg-white/[0.07] hover:text-white"
-                  }`}
-                  onClick={() => onSettingChange({ [key]: !settings[key as keyof typeof settings] })}>
-                  <Icon name={icon} size={13} />
-                  <span className="flex-1">{label}</span>
-                  {settings[key as keyof typeof settings] && <Icon name="Check" size={11} />}
-                </button>
-              ))}
-              <div className="px-2 pt-2 pb-0.5">
-                <p className="text-[10px] text-white/30 uppercase tracking-widest font-bold">Отображение</p>
-              </div>
-              {[
-                { key: "showGrid",          label: "Сетка",           icon: "Grid3x3"      },
-                { key: "showPoints",        label: "Точки",           icon: "CircleDot"    },
-                { key: "showSegmentLabels", label: "Подписи A-B",     icon: "Type"         },
-                { key: "showAngleLabels",   label: "Метки углов",     icon: "Angle"        },
-                { key: "showDiagonals",     label: "Диагонали",       icon: "ArrowUpRight" },
-                { key: "showPointLabels",   label: "Метки точек",     icon: "Tag"          },
-                { key: "showDimLines",      label: "Размерные линии", icon: "ArrowLeftRight"},
-              ].map(({ key, label, icon }) => (
-                <button key={key}
-                  className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-[12px] font-medium transition-all text-left w-full ${
-                    settings[key as keyof typeof settings]
-                      ? "bg-white text-[#111]"
-                      : "text-white/60 hover:bg-white/[0.07] hover:text-white"
-                  }`}
-                  onClick={() => onSettingChange({ [key]: !settings[key as keyof typeof settings] })}>
-                  <Icon name={icon} size={13} />
-                  <span className="flex-1">{label}</span>
-                  {settings[key as keyof typeof settings] && <Icon name="Check" size={11} />}
-                </button>
-              ))}
-            </div>
-          )}
-          <button
-            onClick={() => setFnOpen(v => !v)}
-            className={`w-10 h-10 rounded-xl flex items-center justify-center border transition-all ${
-              fnOpen
-                ? "bg-white/[0.12] border-white/[0.2] text-white"
-                : "bg-white/[0.06] border-white/[0.1] text-white/50"
-            }`}>
-            <Icon name="SlidersHorizontal" size={16} />
-          </button>
-        </div>
-      )}
-
-      {/* Кнопка каталога — мобиле: правый нижний угол */}
-      {isMobile && onOpenCatalog && (
-        <button
-          onClick={onOpenCatalog}
-          className="absolute bottom-20 right-3 w-10 h-10 rounded-xl bg-white/[0.06] border border-white/[0.1] text-white/50 active:bg-white/[0.12] flex items-center justify-center transition active:scale-95 z-10"
-        >
-          <Icon name="LayoutGrid" size={16} />
-        </button>
-      )}
+      {/* Мобильные кнопки управления перенесены в PlanPage (MobileBottomBar) */}
 
       {/* Кнопка каталога — десктоп: левый нижний угол */}
       {!isMobile && onOpenCatalog && (
