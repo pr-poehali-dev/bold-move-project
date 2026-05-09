@@ -8,9 +8,11 @@ interface Props {
   onSectionOpen?: () => void;
   noAutoOpen?: boolean;
   onOpenCatalog?: () => void;
+  onRemoveItem?: (segId: string, priceId: number) => void;
+  onUpdateQuantity?: (segId: string, priceId: number, quantity: number) => void;
 }
 
-export default function PlanSidebar({ state, onChange, onSectionOpen, noAutoOpen, onOpenCatalog }: Props) {
+export default function PlanSidebar({ state, onChange, onSectionOpen, noAutoOpen, onOpenCatalog, onRemoveItem, onUpdateQuantity }: Props) {
   const { sidebarTab } = state;
   const isDrawing = sidebarTab !== "calc";
 
@@ -29,9 +31,13 @@ export default function PlanSidebar({ state, onChange, onSectionOpen, noAutoOpen
             Чертёж
           </button>
           <button
-            onClick={() => onOpenCatalog?.()}
-            className="flex-1 py-1.5 rounded-lg text-[12px] font-semibold transition text-white/40 hover:text-white/70">
-            Номенклатура
+            onClick={() => onChange({ sidebarTab: "calc" })}
+            className={`flex-1 py-1.5 rounded-lg text-[12px] font-semibold transition ${
+              !isDrawing
+                ? "bg-white text-[#111] shadow-sm"
+                : "text-white/40 hover:text-white/70"
+            }`}>
+            Материалы
           </button>
         </div>
       </div>
@@ -39,7 +45,7 @@ export default function PlanSidebar({ state, onChange, onSectionOpen, noAutoOpen
       {/* Контент */}
       <div className="flex-1 overflow-y-auto">
         {isDrawing  && <DrawingTab state={state} onChange={onChange} onSectionOpen={onSectionOpen} noAutoOpen={noAutoOpen} />}
-        {!isDrawing && <CalcTab    state={state} />}
+        {!isDrawing && <CalcTab state={state} onRemoveItem={onRemoveItem} onUpdateQuantity={onUpdateQuantity} />}
       </div>
     </div>
   );

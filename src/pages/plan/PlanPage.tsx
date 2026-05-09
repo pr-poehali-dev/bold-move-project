@@ -236,13 +236,46 @@ export default function PlanPage() {
       setDragCardPos(null);
     };
 
+    // Mouse drag (десктоп)
+    const onMouseDown = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      const card = target.closest("[data-active-item]") as HTMLElement | null;
+      if (!card) return;
+      const priceId = parseInt(card.dataset.activeItem ?? "0");
+      const item = activeItems.find(it => it.priceId === priceId);
+      if (!item) return;
+      draggingItem = item;
+      isDragging = true;
+      startX = e.clientX; startY = e.clientY;
+      e.preventDefault();
+    };
+    const onMouseMove = (e: MouseEvent) => {
+      if (!draggingItem || !isDragging) return;
+      setDragCardItem(draggingItem);
+      setDragCardPos({ x: e.clientX, y: e.clientY });
+      setHoverSegId(findClosestSeg(e.clientX, e.clientY));
+    };
+    const onMouseUp = (e: MouseEvent) => {
+      if (!draggingItem || !isDragging) { draggingItem = null; isDragging = false; return; }
+      const closestId = findClosestSeg(e.clientX, e.clientY, false);
+      if (closestId) assignItemToSeg(draggingItem, closestId);
+      draggingItem = null; isDragging = false;
+      setHoverSegId(null); setDragCardItem(null); setDragCardPos(null);
+    };
+
     window.addEventListener("touchstart", onTouchStart, { passive: true });
     window.addEventListener("touchmove", onTouchMove, { passive: false });
     window.addEventListener("touchend", onTouchEnd);
+    window.addEventListener("mousedown", onMouseDown);
+    window.addEventListener("mousemove", onMouseMove);
+    window.addEventListener("mouseup", onMouseUp);
     return () => {
       window.removeEventListener("touchstart", onTouchStart);
       window.removeEventListener("touchmove", onTouchMove);
       window.removeEventListener("touchend", onTouchEnd);
+      window.removeEventListener("mousedown", onMouseDown);
+      window.removeEventListener("mousemove", onMouseMove);
+      window.removeEventListener("mouseup", onMouseUp);
     };
   }, [activeItems, findClosestSeg, assignItemToSeg]);
 
@@ -389,7 +422,25 @@ export default function PlanPage() {
             onMouseDown={onSidebarDragStart}
           />
           <div className="shrink-0 overflow-hidden border-l border-white/[0.06]" style={{ width: sidebarW }}>
-            <PlanSidebar state={state} onChange={handleChange} onOpenCatalog={() => setCatalogOpen(true)} />
+            <PlanSidebar
+              state={state}
+              onChange={handleChange}
+              onOpenCatalog={() => setCatalogOpen(true)}
+              onRemoveItem={(segId, priceId) => {
+                const newSegs = state.segments.map(s => {
+                  if (s.id !== segId) return s;
+                  return { ...s, items: (s.items ?? []).filter(it => it.priceId !== priceId) };
+                });
+                handleChange({ segments: newSegs });
+              }}
+              onUpdateQuantity={(segId, priceId, quantity) => {
+                const newSegs = state.segments.map(s => {
+                  if (s.id !== segId) return s;
+                  return { ...s, items: (s.items ?? []).map(it => it.priceId === priceId ? { ...it, quantity } : it) };
+                });
+                handleChange({ segments: newSegs });
+              }}
+            />
           </div>
         </>)}
 
@@ -579,10 +630,11 @@ export default function PlanPage() {
         </div>
       )}
 
-      {/* ── Активные карточки внизу (мобиле) — горизонтальный слайдер ── */}
+      {/* ── Активные карточки внизу — горизонтальный слайдер ── */}
       {activeItems.length > 0 && (
         <div style={{
-          position: "fixed", bottom: 90, left: 0, right: 0,
+          position: "fixed", bottom: isMobile ? 90 : 16, left: 0, right: isMobile ? 0 : "auto",
+          ...(isMobile ? {} : { left: "50%", transform: "translateX(-50%)" }),
           zIndex: 9999,
           display: "flex", gap: 8, alignItems: "flex-end",
           overflowX: "auto", overflowY: "visible",
