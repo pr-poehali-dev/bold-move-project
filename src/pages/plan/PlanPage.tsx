@@ -243,8 +243,8 @@ export default function PlanPage() {
           </div>
         </>)}
 
-        {/* Мобиле: нижняя панель кнопок */}
-        {isMobile && (
+        {/* Нижняя панель кнопок */}
+        {(
           <MobileBottomBar
             zoom={state.settings.zoom}
             settings={state.settings}
