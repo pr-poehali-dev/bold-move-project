@@ -259,6 +259,9 @@ export default function PlanPage() {
               setRightPanelOpen(true);
             }}
             selectedSegmentId={state.selectedSegmentId}
+            sheetOpen={sheetOpen}
+            catalogOpen={catalogOpen}
+            rightPanelOpen={rightPanelOpen}
             onToggleVoiceDraw={voiceDraw.hasSpeech ? voiceDraw.toggle : undefined}
             isVoiceDrawing={voiceDraw.isListening}
             voiceStatus={voiceDraw.status}

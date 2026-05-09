@@ -13,7 +13,10 @@ interface Props {
   onOpenCatalog: () => void;
   onOpenSides: () => void;
   selectedSegmentId?: string | null;
-  onToggleVoiceDraw?: () => void;   // голосовое рисование
+  sheetOpen?: boolean;
+  catalogOpen?: boolean;
+  rightPanelOpen?: boolean;
+  onToggleVoiceDraw?: () => void;
   isVoiceDrawing?: boolean;
   voiceStatus?: string;
   voiceInterim?: string;
@@ -30,6 +33,7 @@ const BTN_ACTIVE  = `${BTN} bg-violet-600 shadow-violet-500/40 text-white`;
 export default function MobileBottomBar({
   zoom, settings, onSettingChange, onZoomIn, onZoomOut, onZoomFit, onOpenPanel, onOpenCatalog,
   onOpenSides, selectedSegmentId,
+  sheetOpen = false, catalogOpen = false, rightPanelOpen = false,
   onToggleVoiceDraw, isVoiceDrawing = false, voiceStatus, voiceInterim,
   attachedCount = 0, filterAttached = false, onToggleFilterAttached,
 }: Props) {
@@ -143,30 +147,27 @@ export default function MobileBottomBar({
         </button>
       </div>
 
-      {/* 3. Чертёж (bottom sheet) */}
-      <button
-        onClick={onOpenPanel}
-        className={BTN_ACTIVE}
-      >
-        <Icon name="PanelBottom" size={20} />
-      </button>
-
-      {/* 4. Расчёт (каталог) */}
+      {/* 3. Расчёт (каталог) */}
       <button
         onClick={onOpenCatalog}
-        className={BTN_DEFAULT}
+        className={catalogOpen ? BTN_ACTIVE : BTN_DEFAULT}
       >
         <Icon name="LayoutGrid" size={20} />
+      </button>
+
+      {/* 4. Чертёж (bottom sheet) */}
+      <button
+        onClick={onOpenPanel}
+        className={sheetOpen ? BTN_ACTIVE : BTN_DEFAULT}
+      >
+        <Icon name="PanelBottom" size={20} />
       </button>
 
       {/* 5. Стороны (правая панель ввода) */}
       <button
         onClick={onOpenSides}
-        className={`${BTN_DEFAULT} relative overflow-hidden`}
+        className={rightPanelOpen ? BTN_ACTIVE : BTN_DEFAULT}
       >
-        {selectedSegmentId && (
-          <span className="absolute left-0 top-2 bottom-2 w-[3px] bg-violet-500 rounded-r-full" />
-        )}
         <Icon name="Ruler" size={20} />
       </button>
 
