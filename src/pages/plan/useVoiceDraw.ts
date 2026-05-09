@@ -210,6 +210,7 @@ export default function useVoiceDraw({ state, onChange }: Props) {
   // Обработка финального текста от распознавания
   const processFinal = useCallback((text: string) => {
     const b = buildRef.current;
+    console.log(`[VoiceDraw] слышу: "${text}" | pendingLen=${b.pendingLen} dir=${b.currentDir} сегментов=${b.segments.length}`);
 
     // Сначала ищем поворот (если есть pendingLen)
     if (b.pendingLen !== null) {
@@ -219,26 +220,28 @@ export default function useVoiceDraw({ state, onChange }: Props) {
         const dir = turn === "right"    ? turnRight(b.currentDir)
                   : turn === "left"     ? turnLeft(b.currentDir)
                   : b.currentDir; // straight
+        console.log(`[VoiceDraw] поворот "${turn}" → новое направление "${dir}", рисую ${b.pendingLen}см`);
         b.currentDir = dir;
         addSegment(b.pendingLen, dir);
         b.pendingLen = null;
         setStatus(`Жду следующий размер или «замкнуть»`);
         return;
       }
+      console.log(`[VoiceDraw] ожидал поворот, но не распознал — игнорирую: "${text}"`);
     }
 
     // Ищем размер
     const num = parseNumber(text);
     if (num !== null) {
       if (b.baseScale === null) {
-        // Первый отрезок — сразу идёт вправо, масштаб пока SCALE_INIT
+        console.log(`[VoiceDraw] первый отрезок ${num}см → вправо`);
         b.baseScale = SCALE_INIT;
         addSegment(num, "right");
         b.currentDir = "right";
         b.pendingLen = null;
         setStatus(`Первый отрезок ${num} см. Скажите поворот: «вправо», «влево», «прямо» или «замкнуть»`);
       } else {
-        // Запоминаем длину — ждём поворот
+        console.log(`[VoiceDraw] длина ${num}см — жду поворот`);
         b.pendingLen = num;
         setStatus(`${num} см — скажите поворот: «вправо», «влево», «прямо» или «замкнуть»`);
       }
@@ -250,10 +253,13 @@ export default function useVoiceDraw({ state, onChange }: Props) {
     if (turn === "close") { closeFigure(); return; }
     if (turn !== null && b.pendingLen !== null) {
       const dir = turn === "right" ? turnRight(b.currentDir) : turn === "left" ? turnLeft(b.currentDir) : b.currentDir;
+      console.log(`[VoiceDraw] поворот (fallback) "${turn}" → "${dir}"`);
       b.currentDir = dir;
       addSegment(b.pendingLen, dir);
       b.pendingLen = null;
     }
+
+    console.log(`[VoiceDraw] не распознано ничего в: "${text}"`);
   }, [addSegment, closeFigure]);
 
   const stop = useCallback(() => {
@@ -278,7 +284,7 @@ export default function useVoiceDraw({ state, onChange }: Props) {
     const recognition = new SR();
     recognition.lang = "ru-RU";
     recognition.interimResults = true;
-    recognition.continuous = !isIOS;
+    recognition.continuous = false; // было: !isIOS (iOS=false, Android=true)
     recognition.maxAlternatives = 3;
     recognitionRef.current = recognition;
 
