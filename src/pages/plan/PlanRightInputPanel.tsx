@@ -1,6 +1,8 @@
 import React, { useEffect, useRef, useState, useCallback } from "react";
 import type { PlanState, Segment, DiagonalDef } from "./planTypes";
 import { segmentLabel, pointLabel, angleDeg, polygonOrientation, distPx, calcScale, pxToCm } from "./planTypes";
+import Icon from "@/components/ui/icon";
+import usePlanVoiceInput from "./usePlanVoiceInput";
 
 export const PANEL_WIDTH = 80;
 
@@ -118,6 +120,19 @@ export default function PlanRightInputPanel({ state, onUpdateSegment, onUpdateDi
     return angleDeg(points[(idx - 1 + n) % n], points[idx], points[(idx + 1) % n], isCW);
   };
 
+  // ── Голосовой ввод ──
+  const voice = usePlanVoiceInput({
+    segments,
+    onUpdateSegment: (id, patch) => {
+      onUpdateSegment(id, patch);
+      // Синхронизируем локальный стейт инпутов
+      const idx = segments.findIndex(s => s.id === id);
+      if (idx >= 0 && patch.lengthCm != null) {
+        setSegValues(prev => { const next = [...prev]; next[idx] = String(patch.lengthCm); return next; });
+      }
+    },
+  });
+
   // ── Авто-подсчёт длины диагонали из координат ──
   const scale = calcScale(points, segments);
   const diagAutoLen = (d: DiagonalDef) => {
@@ -179,18 +194,49 @@ export default function PlanRightInputPanel({ state, onUpdateSegment, onUpdateDi
           )}
         </div>
 
-        <button
-          onClick={onClose}
-          className="w-5 h-5 rounded flex items-center justify-center text-white/25 hover:text-white/60 transition"
-        >
-          <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
-            <path d="M1 1l8 8M9 1L1 9" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-          </svg>
-        </button>
+        <div className="flex items-center gap-1">
+          {/* Кнопка микрофона — только на вкладке Стороны */}
+          {tab === "sides" && voice.hasSpeech && segments.length > 0 && (
+            <button
+              onClick={voice.toggle}
+              title={voice.isListening ? "Остановить" : "Диктовать размеры"}
+              className={`w-6 h-6 rounded-lg flex items-center justify-center transition ${
+                voice.isListening
+                  ? "bg-red-500/20 text-red-400 animate-pulse"
+                  : "text-white/30 hover:text-white/70 hover:bg-white/[0.08]"
+              }`}
+            >
+              <Icon name={voice.isListening ? "MicOff" : "Mic"} size={12} />
+            </button>
+          )}
+          <button
+            onClick={onClose}
+            className="w-5 h-5 rounded flex items-center justify-center text-white/25 hover:text-white/60 transition"
+          >
+            <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+              <path d="M1 1l8 8M9 1L1 9" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+            </svg>
+          </button>
+        </div>
       </div>
 
       {/* Контент */}
       <div className="flex-1 overflow-y-auto px-2 pb-3 space-y-1.5">
+
+        {/* Голосовой индикатор */}
+        {tab === "sides" && voice.isListening && (
+          <div className="mb-1 px-1">
+            <div className="flex items-center gap-1.5 py-1.5 px-2 rounded-lg bg-red-500/10 border border-red-500/20">
+              <Icon name="Mic" size={10} className="text-red-400 shrink-0 animate-pulse" />
+              <span className="text-[10px] text-red-300 font-semibold truncate">
+                {segmentLabel(points, segments[voice.activeIdx]) ?? `сторона ${voice.activeIdx + 1}`}
+              </span>
+            </div>
+            {voice.interimText && (
+              <p className="mt-0.5 text-[9px] text-white/30 italic px-1 truncate">{voice.interimText}</p>
+            )}
+          </div>
+        )}
 
         {/* Стороны */}
         {tab === "sides" && segments.map((seg, idx) => {
@@ -211,7 +257,12 @@ export default function PlanRightInputPanel({ state, onUpdateSegment, onUpdateDi
                   onBlur={() => commitSeg(idx, segValues[idx])}
                   onFocus={e => e.target.select()}
                   className={`w-full rounded-lg border px-2 py-1.5 text-[12px] font-semibold text-right pr-6 outline-none transition bg-transparent
-                    ${filled ? "border-white/[0.12] text-white" : "border-white/[0.07] text-white/50"}
+                    ${voice.isListening && voice.activeIdx === idx
+                      ? "border-red-500/50 bg-red-500/5 text-white"
+                      : filled
+                        ? "border-white/[0.12] text-white"
+                        : "border-white/[0.07] text-white/50"
+                    }
                     focus:border-violet-500/60 focus:bg-violet-500/5 focus:text-white`}
                 />
                 <span className="absolute right-1.5 text-[9px] text-white/25 pointer-events-none">см</span>
