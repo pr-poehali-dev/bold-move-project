@@ -160,24 +160,33 @@ export default function PlanPage() {
     sheetHeight,
   });
 
-  // ПК: при замыкании фигуры — открываем сайдбар и делаем zoomFit
+  // При замыкании фигуры
   const prevIsClosed = useRef(state.isClosed);
   useEffect(() => {
-    if (!isMobile && state.isClosed && !prevIsClosed.current) {
-      setSidebarOpen(true);
-      // Небольшая задержка чтобы сайдбар успел открыться и canvas пересчитал размер
-      setTimeout(() => zoomFit(), 100);
+    if (state.isClosed && !prevIsClosed.current) {
+      if (!isMobile) {
+        // ПК: открываем сайдбар + zoomFit
+        setSidebarOpen(true);
+        setTimeout(() => zoomFit(), 100);
+      } else {
+        // Мобиле: открываем правую панель ввода сторон
+        setFocusSegmentId(state.segments[0]?.id ?? null);
+        setRightPanelOpen(true);
+        setTimeout(() => zoomFit(), 100);
+      }
     }
     prevIsClosed.current = state.isClosed;
   }, [state.isClosed]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Мобиле: нажатие на сторону → открываем каталог (сторона уже подсвечена через selectedSegmentId)
+  // Мобиле: нажатие на сторону → каталог только если все размеры заполнены
   const prevSelectedSegId = useRef(state.selectedSegmentId);
   useEffect(() => {
     if (!isMobile) return;
     if (state.selectedSegmentId && state.selectedSegmentId !== prevSelectedSegId.current && state.isClosed) {
-      // Открываем каталог — товар прикрепится к выбранной стороне
-      setCatalogOpen(true);
+      const allFilled = state.segments.every(s => s.lengthCm && s.lengthCm > 0);
+      if (allFilled) {
+        setCatalogOpen(true);
+      }
     }
     prevSelectedSegId.current = state.selectedSegmentId;
   }, [state.selectedSegmentId]); // eslint-disable-line react-hooks/exhaustive-deps
