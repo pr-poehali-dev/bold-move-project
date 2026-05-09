@@ -28,7 +28,7 @@ export default function PlanPage() {
   const [sheetSnap,      setSheetSnap]      = useState<"half" | "full">("full");
   const [sheetHeight,    setSheetHeight]    = useState(0);
   const [rightPanelOpen, setRightPanelOpen] = useState(false);
-  const [sidebarOpen,    setSidebarOpen]    = useState(true);
+  const [sidebarOpen,    setSidebarOpen]    = useState(false);
   const [exportOpen,     setExportOpen]     = useState(false);
   const [libraryOpen,    setLibraryOpen]    = useState(false);
   const [authOpen,       setAuthOpen]       = useState(false);
@@ -159,6 +159,17 @@ export default function PlanPage() {
     setFocusSegmentId,
     sheetHeight,
   });
+
+  // ПК: при замыкании фигуры — открываем сайдбар и делаем zoomFit
+  const prevIsClosed = useRef(state.isClosed);
+  useEffect(() => {
+    if (!isMobile && state.isClosed && !prevIsClosed.current) {
+      setSidebarOpen(true);
+      // Небольшая задержка чтобы сайдбар успел открыться и canvas пересчитал размер
+      setTimeout(() => zoomFit(), 100);
+    }
+    prevIsClosed.current = state.isClosed;
+  }, [state.isClosed]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Мобиле: нажатие на сторону → открываем каталог (сторона уже подсвечена через selectedSegmentId)
   const prevSelectedSegId = useRef(state.selectedSegmentId);
