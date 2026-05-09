@@ -172,6 +172,79 @@ function DropItem({ active, label, icon, onClick }: {
 
 const Sep = () => <div className="w-px h-5 bg-white/[0.08] mx-1 flex-shrink-0" />;
 
+// Раскрывающееся меню дополнительных инструментов (вместо кнопки "Отрезок")
+const EXTRA_TOOLS = [
+  { id: "segment" as ToolMode, icon: "Minus",  label: "Отрезки",        danger: false },
+  { id: "delete"  as ToolMode, icon: "Eraser", label: "Удалить элемент", danger: true  },
+];
+
+function MobileToolDropdown({ tool, onToolChange }: {
+  tool: ToolMode;
+  onToolChange: (t: ToolMode) => void;
+}) {
+  const [open, setOpen] = React.useState(false);
+  const ref = React.useRef<HTMLDivElement>(null);
+
+  const activeExtra = EXTRA_TOOLS.find(t => t.id === tool);
+
+  React.useEffect(() => {
+    if (!open) return;
+    const handler = (e: MouseEvent | TouchEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", handler);
+    document.addEventListener("touchstart", handler);
+    return () => {
+      document.removeEventListener("mousedown", handler);
+      document.removeEventListener("touchstart", handler);
+    };
+  }, [open]);
+
+  return (
+    <div ref={ref} className="relative shrink-0">
+      {/* Дропдаун вверх */}
+      {open && (
+        <div className="absolute bottom-11 left-0 bg-[#1a1b2e] border border-white/[0.12] rounded-xl shadow-2xl p-1.5 flex flex-col gap-1 min-w-[160px] z-50">
+          {EXTRA_TOOLS.map(t => (
+            <button
+              key={t.id}
+              onClick={() => { onToolChange(t.id); setOpen(false); }}
+              className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-[12px] font-medium transition-all text-left w-full ${
+                tool === t.id
+                  ? t.danger ? "bg-rose-500/20 text-rose-300 border border-rose-500/30" : "bg-white/10 text-white"
+                  : t.danger ? "text-white/50 hover:bg-rose-500/10 hover:text-rose-300" : "text-white/50 hover:bg-white/[0.07] hover:text-white"
+              }`}
+            >
+              <Icon name={t.icon} size={14} />
+              <span>{t.label}</span>
+              {tool === t.id && <Icon name="Check" size={11} className="ml-auto" />}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* Кнопка — показывает активный инструмент или Minus по умолчанию */}
+      <button
+        onClick={() => setOpen(v => !v)}
+        title="Дополнительные инструменты"
+        className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 transition-all relative ${
+          activeExtra
+            ? activeExtra.danger
+              ? "bg-rose-500/25 border border-rose-500/40 text-rose-300"
+              : "bg-white/95 text-[#111] border border-white/80"
+            : open
+              ? "bg-white/10 text-white"
+              : "text-white/45 hover:text-white"
+        }`}
+      >
+        <Icon name={activeExtra?.icon ?? "Minus"} size={16} />
+        {/* Маленький индикатор раскрытия */}
+        <span className="absolute bottom-1 right-1 w-1 h-1 rounded-full bg-current opacity-40" />
+      </button>
+    </div>
+  );
+}
+
 function MobileToolbar(props: Props) {
   const {
     tool, isClosed,
@@ -189,13 +262,23 @@ function MobileToolbar(props: Props) {
       {/* Инструменты — компактные иконки без подписей */}
       <div className="flex items-center gap-0.5 flex-1">
         {TOOLS.map(t => {
+          // "segment" — раскрывающееся меню с дополнительными инструментами
+          if (t.id === "segment") {
+            return (
+              <MobileToolDropdown
+                key="extra-tools"
+                tool={tool}
+                onToolChange={onToolChange}
+              />
+            );
+          }
           const disabled = !!t.comingSoon || (!!t.needsClosed && !isClosed);
           const active   = !t.comingSoon && tool === t.id;
           const style = disabled
             ? "opacity-40 cursor-not-allowed text-white"
             : active
-              ? t.danger ? "bg-red-500/25 border-red-500/40 text-red-300 border" : "bg-white/95 text-[#111] border border-white/80"
-              : t.danger ? "text-white/35 hover:text-red-300" : "text-white/45 hover:text-white";
+              ? "bg-white/95 text-[#111] border border-white/80"
+              : "text-white/45 hover:text-white";
           return (
             <button key={t.id}
               className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 transition-all ${style}`}
