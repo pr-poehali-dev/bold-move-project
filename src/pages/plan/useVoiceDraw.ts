@@ -311,18 +311,10 @@ export default function useVoiceDraw({ state, onChange }: Props) {
 
     recognition.onend = () => {
       if (!recognitionRef.current) return;
-      if (isIOS) {
-        // iOS: не перезапускаем
+      // Не перезапускаем — ждём следующего касания (как iOS)
+      {
         setIsListening(false);
         recognitionRef.current = null;
-      } else {
-        // Android + десктоп: перезапускаем автоматически
-        try {
-          setTimeout(() => { if (recognitionRef.current) recognitionRef.current.start(); }, 150);
-        } catch {
-          setIsListening(false);
-          recognitionRef.current = null;
-        }
       }
     };
 

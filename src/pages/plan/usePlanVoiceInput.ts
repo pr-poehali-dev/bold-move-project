@@ -185,21 +185,9 @@ export default function usePlanVoiceInput({ segments, onUpdateSegment }: Props) 
 
     recognition.onend = () => {
       if (!recognitionRef.current) return;
-      if (isIOS) {
-        // iOS: не перезапускаем — ждём следующего касания
-        setIsListening(false);
-        recognitionRef.current = null;
-      } else {
-        // Android + десктоп: перезапускаем автоматически
-        try {
-          setTimeout(() => {
-            if (recognitionRef.current) recognitionRef.current.start();
-          }, 150);
-        } catch {
-          setIsListening(false);
-          recognitionRef.current = null;
-        }
-      }
+      // Не перезапускаем — ждём следующего касания (как iOS)
+      setIsListening(false);
+      recognitionRef.current = null;
     };
 
     recognition.onerror = (e: SpeechRecognitionErrorEvent) => {
