@@ -1,139 +1,28 @@
 import React, { useState, useRef } from "react";
 import Icon from "@/components/ui/icon";
-import EditableCell from "./EditableCell";
-import TruncatedCell from "./TruncatedCell";
 import { usePriceList } from "./usePriceList";
 import { apiFetch } from "./api";
 import { PRICE_UNITS } from "./constants";
 import type { PriceItem } from "./types";
-import func2url from "@/../backend/func2url.json";
-
-const BASE      = (func2url as Record<string, string>)["parse-xlsx"];
-const IMAGE_URL = (func2url as Record<string, string>)["price-image"];
-
-// ── Кнопка загрузки картинки ─────────────────────────────────────────────────
-function ImageUploadButton({
-  currentUrl,
-  uploadEndpoint,
-  onUploaded,
-  isDark,
-}: {
-  currentUrl?: string | null;
-  uploadEndpoint: string;    // полный URL с query-параметрами
-  onUploaded: (url: string) => void;
-  isDark: boolean;
-}) {
-  const [loading, setLoading] = useState(false);
-  const inputRef = useRef<HTMLInputElement>(null);
-
-  const handleFile = async (file: File) => {
-    if (!file) return;
-    setLoading(true);
-    const reader = new FileReader();
-    reader.onload = async () => {
-      const b64 = reader.result as string;
-      try {
-        const res = await fetch(uploadEndpoint, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ image: b64, content_type: file.type }),
-        });
-        const data = await res.json();
-        if (data.url) onUploaded(data.url);
-      } finally {
-        setLoading(false);
-      }
-    };
-    reader.readAsDataURL(file);
-  };
-
-  return (
-    <div className="flex items-center gap-1 flex-shrink-0">
-      {currentUrl && (
-        <img src={currentUrl} alt="" className="w-7 h-7 rounded object-cover border border-white/10" />
-      )}
-      <button
-        type="button"
-        onClick={() => inputRef.current?.click()}
-        disabled={loading}
-        title={currentUrl ? "Сменить картинку" : "Добавить картинку"}
-        className={`flex-shrink-0 flex items-center justify-center w-6 h-6 rounded border transition disabled:opacity-40 ${
-          isDark
-            ? "border-white/10 text-white/25 hover:text-white/60 hover:border-white/30"
-            : "border-gray-200 text-gray-400 hover:text-gray-600 hover:border-gray-300"
-        }`}
-      >
-        {loading
-          ? <Icon name="Loader" size={10} className="animate-spin" />
-          : <Icon name={currentUrl ? "RefreshCw" : "ImagePlus"} size={10} />
-        }
-      </button>
-      <input
-        ref={inputRef}
-        type="file"
-        accept="image/*"
-        className="hidden"
-        onChange={e => { const f = e.target.files?.[0]; if (f) handleFile(f); e.target.value = ""; }}
-      />
-    </div>
-  );
-}
-
-function MaterialButton({ category, initialValue, isDark }: { category: string; initialValue: boolean; isDark: boolean }) {
-  const [isMaterial, setIsMaterial] = useState(initialValue);
-  const [saving, setSaving] = useState(false);
-
-  const toggle = async () => {
-    const next = !isMaterial;
-    setIsMaterial(next);
-    setSaving(true);
-    await fetch(`${BASE}?r=category_settings`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ category, is_material: next }),
-    });
-    setSaving(false);
-  };
-
-  return (
-    <button
-      type="button"
-      onClick={toggle}
-      disabled={saving}
-      className={`flex-shrink-0 flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full border transition-all touch-manipulation disabled:opacity-50 ${
-        isMaterial
-          ? isDark ? "bg-blue-500/15 border-blue-500/30 text-blue-300" : "bg-blue-50 border-blue-200 text-blue-600"
-          : isDark ? "bg-white/5 border-white/10 text-white/30" : "bg-gray-50 border-gray-200 text-gray-400"
-      }`}
-    >
-      <Icon name={saving ? "Loader" : "ShoppingCart"} size={12} className={saving ? "animate-spin" : ""} />
-      {isMaterial ? "в закупке" : "не в закупке"}
-    </button>
-  );
-}
-
-const EMPTY_NEW = { name: "", price: "", purchase_price: "", unit: "шт", description: "" };
-const EMPTY_CAT = { name: "", firstItem: "", price: "", unit: "шт", description: "" };
+import { buildTheme, EMPTY_NEW, EMPTY_CAT } from "./TabPricesShared";
+import TabPriceCategoryBlock from "./TabPriceCategoryBlock";
 
 interface Props { token: string; onItemAdded?: (name: string) => void; isDark?: boolean; readOnly?: boolean; }
 
 export default function TabPrices({ token, onItemAdded, isDark = true, readOnly = false }: Props) {
-  const text    = isDark ? "text-white"     : "text-gray-900";
-  const muted   = isDark ? "text-white/40"  : "text-gray-500";
-  const muted2  = isDark ? "text-white/30"  : "text-gray-400";
-  const border  = isDark ? "border-white/10" : "border-gray-200";
-  const border2 = isDark ? "border-white/5"  : "border-gray-100";
-  const bg      = isDark ? "bg-white/[0.03]" : "bg-white";
-  const bgInput = isDark ? "bg-white/5"      : "bg-gray-50";
-  const borderInput = isDark ? "border-white/15" : "border-gray-200";
-  const selectBg = isDark ? "#0b0b11" : "#ffffff";
-  const { prices, loading, aiLoadingId, aiDescLoadingId, byCategory, saveField, toggleActive, deleteItem, renameCategory, generateSynonyms, generateDescription, moveItem, load } = usePriceList(token);
+  const theme   = buildTheme(isDark);
+  const { text, muted, muted2, border, bg, bgInput, borderInput } = theme;
 
-  // Локальные URL картинок (обновляются без перезагрузки всего прайса)
+  const {
+    prices, loading, aiLoadingId, aiDescLoadingId, byCategory,
+    saveField, toggleActive, deleteItem, renameCategory,
+    generateSynonyms, generateDescription, moveItem, load,
+  } = usePriceList(token);
+
+  // ── Картинки ───────────────────────────────────────────────────────────────
   const [itemImages, setItemImages] = useState<Record<number, string>>({});
   const [catImages,  setCatImages]  = useState<Record<string, string>>({});
 
-  // Синхронизируем с данными прайса при загрузке
   React.useEffect(() => {
     if (prices.length === 0) return;
     const imgs: Record<number, string> = {};
@@ -146,46 +35,47 @@ export default function TabPrices({ token, onItemAdded, isDark = true, readOnly 
     setCatImages(prev => ({ ...cats, ...prev }));
   }, [prices.length]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Кнопка сама делает PUT и получает url — мы только сохраняем локально
-  const uploadItemImage = (item: PriceItem, url: string) => {
-    setItemImages(prev => ({ ...prev, [item.id]: url }));
-  };
+  const uploadItemImage = (item: PriceItem, url: string) => setItemImages(prev => ({ ...prev, [item.id]: url }));
+  const uploadCatImage  = (category: string, url: string) => setCatImages(prev => ({ ...prev, [category]: url }));
 
-  const uploadCatImage = (category: string, url: string) => {
-    setCatImages(prev => ({ ...prev, [category]: url }));
-  };
-
-  const dragItem = useRef<PriceItem | null>(null);
-  const dragOver = useRef<PriceItem | null>(null);
+  // ── Drag-and-drop сортировка ───────────────────────────────────────────────
+  const dragItemRef = useRef<PriceItem | null>(null);
+  const dragOverRef = useRef<PriceItem | null>(null);
   const [dragOverId, setDragOverId] = useState<number | null>(null);
 
-  const handleDragStart = (item: PriceItem) => { dragItem.current = item; };
-  const handleDragEnter = (item: PriceItem) => { dragOver.current = item; setDragOverId(item.id); };
-  const handleDragEnd = async () => {
+  const handleDragStart = (item: PriceItem) => { dragItemRef.current = item; };
+  const handleDragEnter = (item: PriceItem) => { dragOverRef.current = item; setDragOverId(item.id); };
+  const handleDragEnd   = async () => {
     setDragOverId(null);
-    if (!dragItem.current || !dragOver.current) return;
-    if (dragItem.current.id === dragOver.current.id) return;
-    if (dragItem.current.category !== dragOver.current.category) return;
-    await moveItem(dragItem.current, dragOver.current);
-    dragItem.current = null;
-    dragOver.current = null;
+    if (!dragItemRef.current || !dragOverRef.current) return;
+    if (dragItemRef.current.id === dragOverRef.current.id) return;
+    if (dragItemRef.current.category !== dragOverRef.current.category) return;
+    await moveItem(dragItemRef.current, dragOverRef.current);
+    dragItemRef.current = null;
+    dragOverRef.current = null;
   };
 
+  // ── Добавление позиции ─────────────────────────────────────────────────────
   const [addingInCat, setAddingInCat] = useState<string | null>(null);
-  const [newItem, setNewItem] = useState(EMPTY_NEW);
-  const [addingCat, setAddingCat] = useState(false);
-  const [newCat, setNewCat] = useState(EMPTY_CAT);
-  const [editingCat, setEditingCat] = useState<string | null>(null);
-  const [editingCatVal, setEditingCatVal] = useState("");
+  const [newItem,     setNewItem]     = useState(EMPTY_NEW);
 
   const handleAddItem = async (category: string) => {
     if (!newItem.name.trim()) return;
     const r = await apiFetch("prices", {
       method: "POST",
-      body: JSON.stringify({ ...newItem, category, price: parseInt(newItem.price) || 0, purchase_price: parseInt(newItem.purchase_price) || 0 }),
+      body: JSON.stringify({
+        ...newItem,
+        category,
+        price: parseInt(newItem.price) || 0,
+        purchase_price: parseInt(newItem.purchase_price) || 0,
+      }),
     }, token);
     if (r.ok) { setAddingInCat(null); setNewItem(EMPTY_NEW); load(); onItemAdded?.(newItem.name.trim()); }
   };
+
+  // ── Добавление категории ───────────────────────────────────────────────────
+  const [addingCat, setAddingCat] = useState(false);
+  const [newCat,    setNewCat]    = useState(EMPTY_CAT);
 
   const handleAddCategory = async () => {
     if (!newCat.name.trim() || !newCat.firstItem.trim()) return;
@@ -198,6 +88,10 @@ export default function TabPrices({ token, onItemAdded, isDark = true, readOnly 
     }, token);
     if (r.ok) { setAddingCat(false); setNewCat(EMPTY_CAT); load(); }
   };
+
+  // ── Переименование категории ───────────────────────────────────────────────
+  const [editingCat,    setEditingCat]    = useState<string | null>(null);
+  const [editingCatVal, setEditingCatVal] = useState("");
 
   const handleRenameCategory = async (category: string) => {
     const newName = editingCatVal.trim();
@@ -217,277 +111,41 @@ export default function TabPrices({ token, onItemAdded, isDark = true, readOnly 
     <div className="flex flex-col gap-6">
       <p className={`${muted} text-sm`}>Нажмите на ячейку — сохраняется мгновенно. Кружок = включить/выключить позицию.</p>
 
-      {Object.entries(byCategory).map(([category, items]) => {
-        const isMaterial = items[0]?.is_material !== false;
-        return (
-        <div key={category}>
-          <div className="flex items-center justify-between mb-2 px-1 group">
-            <div className="flex items-center gap-2 min-w-0">
-              {/* Картинка категории */}
-              {!readOnly && (
-                <ImageUploadButton
-                  currentUrl={catImages[category]}
-                  uploadEndpoint={`${IMAGE_URL}?type=category&category=${encodeURIComponent(category)}`}
-                  isDark={isDark}
-                  onUploaded={url => uploadCatImage(category, url)}
-                />
-              )}
-              {catImages[category] && readOnly && (
-                <img src={catImages[category]} alt="" className="w-6 h-6 rounded object-cover" />
-              )}
-              {editingCat === category ? (
-                <input autoFocus value={editingCatVal}
-                  onChange={e => setEditingCatVal(e.target.value)}
-                  onBlur={() => handleRenameCategory(category)}
-                  onKeyDown={e => { if (e.key === "Enter") handleRenameCategory(category); if (e.key === "Escape") setEditingCat(null); }}
-                  className={`text-violet-500 text-xs font-semibold uppercase tracking-wider bg-violet-500/10 border border-violet-500/40 rounded px-2 py-0.5 outline-none w-48 ${isDark ? "" : "bg-violet-50"}`}
-                />
-              ) : (
-                <h3 className={`${isDark ? "text-violet-300 hover:text-violet-200" : "text-violet-600 hover:text-violet-700"} text-xs font-semibold uppercase tracking-wider cursor-pointer transition flex items-center gap-1.5`}
-                  onClick={() => { setEditingCat(category); setEditingCatVal(category); }}
-                  title="Нажмите чтобы переименовать группу">
-                  {category}
-                  <Icon name="Pencil" size={10} className="opacity-0 group-hover:opacity-40 transition" />
-                </h3>
-              )}
-            </div>
-            {!readOnly && (
-              <MaterialButton category={category} initialValue={isMaterial} isDark={isDark} />
-            )}
-          </div>
-
-          <div className={`${bg} border ${border} rounded-xl overflow-hidden`}>
-            {/* ── Десктоп: таблица ── */}
-            <table className="hidden sm:table w-full text-sm">
-              <thead>
-                <tr className={`border-b ${border}`}>
-                  <th className="px-2 py-2.5 w-6" />
-                  <th className={`text-left ${muted2} font-normal px-4 py-2.5 w-[32%]`}>Название</th>
-                  <th className={`text-right ${muted2} font-normal px-4 py-2.5 w-[9%] whitespace-nowrap`}>Продажа ₽</th>
-                  <th className={`text-right ${muted2} font-normal px-4 py-2.5 w-[9%] whitespace-nowrap`}>Закупка ₽</th>
-                  <th className={`text-left ${muted2} font-normal px-4 py-2.5 w-[6%] whitespace-nowrap`}>Ед.</th>
-                  <th className={`text-left ${muted2} font-normal px-4 py-2.5 w-[20%] whitespace-nowrap`}>Описание (AI)</th>
-                  <th className={`text-left ${muted2} font-normal px-4 py-2.5 whitespace-nowrap`}>Синонимы</th>
-                  <th className="px-3 py-2.5 w-8" />
-                </tr>
-              </thead>
-              <tbody>
-                {items.map((item, idx) => (
-                  <tr
-                    key={item.id}
-                    draggable
-                    onDragStart={() => handleDragStart(item)}
-                    onDragEnter={() => handleDragEnter(item)}
-                    onDragEnd={handleDragEnd}
-                    onDragOver={e => e.preventDefault()}
-                    className={`border-b ${border2} last:border-0 transition-colors cursor-grab active:cursor-grabbing
-                      ${!item.active ? "opacity-40" : ""}
-                      ${idx % 2 ? (isDark ? "bg-white/[0.01]" : "bg-gray-50/50") : ""}
-                      ${dragOverId === item.id ? "bg-violet-500/10 border-violet-500/30" : ""}
-                    `}>
-                    <td className="px-2 py-2.5 w-6">
-                      {!readOnly && <Icon name="GripVertical" size={14} className={`${isDark ? "text-white/15 hover:text-white/40" : "text-gray-300 hover:text-gray-500"} transition mx-auto`} />}
-                    </td>
-                    <td className={`px-4 py-2.5 ${text}`}>
-                      <div className="flex items-center gap-2">
-                        <button onClick={e => { e.stopPropagation(); toggleActive(item); }}
-                          title={item.active ? "Отключить" : "Включить"}
-                          className={`w-3 h-3 rounded-full border flex-shrink-0 transition ${item.active ? "bg-green-400 border-green-400" : isDark ? "border-white/20 hover:border-white/40" : "border-gray-300 hover:border-gray-400"}`} />
-                        <EditableCell value={item.name} onSave={v => saveField(item, "name", v)} />
-                      </div>
-                    </td>
-                    <td className="px-4 py-2.5 text-right font-mono text-green-400">
-                      <EditableCell value={item.price} type="number" onSave={v => saveField(item, "price", v)} className="text-right" />
-                    </td>
-                    <td className="px-4 py-2.5 text-right font-mono text-blue-400">
-                      <EditableCell value={item.purchase_price ?? ""} type="number" onSave={v => saveField(item, "purchase_price", v)} className="text-right" placeholder="—" />
-                    </td>
-                    <td className={`px-4 py-2.5 ${muted} text-xs`}>
-                      <select value={item.unit} onChange={e => saveField(item, "unit", e.target.value)}
-                        className={`bg-transparent text-sm outline-none cursor-pointer transition appearance-none ${muted}`}
-                        style={{ colorScheme: isDark ? "dark" : "light" }}>
-                        {PRICE_UNITS.map(u => <option key={u} value={u} style={{ background: selectBg }}>{u}</option>)}
-                      </select>
-                    </td>
-                    <td className={`px-4 py-2.5 ${muted} text-xs`}>
-                      <div className="flex items-center gap-1 min-w-0">
-                        <div className="flex-1 min-w-0">
-                          <TruncatedCell value={item.description} onSave={v => saveField(item, "description", v)} placeholder="Как AI понимает позицию..." maxChars={28} />
-                        </div>
-                        <button onClick={() => generateDescription(item)} disabled={aiDescLoadingId === item.id}
-                          title="Сгенерировать описание через AI"
-                          className="flex-shrink-0 bg-violet-600/20 hover:bg-violet-600/40 border border-violet-500/30 text-violet-400 rounded px-1.5 py-0.5 disabled:opacity-40 transition flex items-center gap-1">
-                          {aiDescLoadingId === item.id
-                            ? <Icon name="Loader" size={11} className="animate-spin" />
-                            : <Icon name="Sparkles" size={11} />}
-                          <span className="text-[10px]">AI</span>
-                        </button>
-                      </div>
-                    </td>
-                    <td className="px-4 py-2.5 text-amber-400/60 text-xs w-[180px] max-w-[180px]">
-                      <div className="flex items-center gap-1 min-w-0">
-                        <div className="flex-1 min-w-0 overflow-hidden">
-                          <TruncatedCell value={item.synonyms || ""} onSave={v => saveField(item, "synonyms", v)} placeholder="карниз, гардина..." maxChars={25} />
-                        </div>
-                        <button onClick={() => generateSynonyms(item)} disabled={aiLoadingId === item.id}
-                          title="Сгенерировать синонимы через AI"
-                          className="flex-shrink-0 bg-violet-600/20 hover:bg-violet-600/40 border border-violet-500/30 text-violet-400 rounded px-1.5 py-0.5 disabled:opacity-40 transition flex items-center gap-1">
-                          {aiLoadingId === item.id
-                            ? <Icon name="Loader" size={11} className="animate-spin" />
-                            : <Icon name="Sparkles" size={11} />}
-                          <span className="text-[10px]">AI</span>
-                        </button>
-                      </div>
-                    </td>
-                    <td className="px-3 py-2.5 w-16">
-                      <div className="flex items-center gap-1.5 justify-end">
-                        {!readOnly && (
-                          <ImageUploadButton
-                            currentUrl={itemImages[item.id] ?? (item as PriceItem & { image_url?: string }).image_url}
-                            uploadEndpoint={`${IMAGE_URL}?type=item&id=${item.id}`}
-                            isDark={isDark}
-                            onUploaded={url => uploadItemImage(item, url)}
-                          />
-                        )}
-                        {!readOnly && (
-                          <button onClick={() => handleDeleteItem(item)} title="Удалить"
-                            className={`${isDark ? "text-white/20" : "text-gray-300"} hover:text-red-400 transition`}>
-                            <Icon name="X" size={13} />
-                          </button>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-
-            {/* ── Мобиле: карточки ── */}
-            <div className="sm:hidden flex flex-col divide-y" style={{ borderColor: isDark ? "rgba(255,255,255,0.05)" : "#f3f4f6" }}>
-              {items.map(item => (
-                <div key={item.id} className={`px-3 py-3 flex flex-col gap-2.5 ${!item.active ? "opacity-40" : ""}`}>
-                  {/* Строка 1: активность + название + удалить */}
-                  <div className="flex items-center gap-2">
-                    <button onClick={() => toggleActive(item)}
-                      className={`w-3.5 h-3.5 rounded-full border flex-shrink-0 transition ${item.active ? "bg-green-400 border-green-400" : isDark ? "border-white/25" : "border-gray-300"}`} />
-                    <div className={`flex-1 font-medium text-sm ${text}`}>
-                      <EditableCell value={item.name} onSave={v => saveField(item, "name", v)} />
-                    </div>
-                    {!readOnly && (
-                      <button onClick={() => handleDeleteItem(item)}
-                        className={`${isDark ? "text-white/20" : "text-gray-300"} hover:text-red-400 transition p-1`}>
-                        <Icon name="X" size={13} />
-                      </button>
-                    )}
-                  </div>
-                  {/* Строка 2: цены + единица */}
-                  <div className="flex items-center gap-3">
-                    <div className="flex flex-col gap-0.5 flex-1">
-                      <span className={`text-[10px] ${muted2}`}>Продажа ₽</span>
-                      <div className="font-mono text-green-400 text-sm">
-                        <EditableCell value={item.price} type="number" onSave={v => saveField(item, "price", v)} />
-                      </div>
-                    </div>
-                    <div className="flex flex-col gap-0.5 flex-1">
-                      <span className={`text-[10px] ${muted2}`}>Закупка ₽</span>
-                      <div className="font-mono text-blue-400 text-sm">
-                        <EditableCell value={item.purchase_price ?? ""} type="number" onSave={v => saveField(item, "purchase_price", v)} placeholder="—" />
-                      </div>
-                    </div>
-                    <div className="flex flex-col gap-0.5">
-                      <span className={`text-[10px] ${muted2}`}>Ед.</span>
-                      <select value={item.unit} onChange={e => saveField(item, "unit", e.target.value)}
-                        className={`bg-transparent text-sm outline-none cursor-pointer appearance-none ${muted}`}
-                        style={{ colorScheme: isDark ? "dark" : "light" }}>
-                        {PRICE_UNITS.map(u => <option key={u} value={u} style={{ background: selectBg }}>{u}</option>)}
-                      </select>
-                    </div>
-                  </div>
-                  {/* Строка 3: описание + AI */}
-                  <div className="flex flex-col gap-0.5">
-                    <span className={`text-[9px] font-bold uppercase tracking-wider ${muted} opacity-50`}>Описание для AI</span>
-                    <div className="flex items-center gap-2">
-                      <div className={`flex-1 text-xs ${muted}`}>
-                        <TruncatedCell value={item.description} onSave={v => saveField(item, "description", v)} placeholder="Как AI понимает позицию..." maxChars={40} />
-                      </div>
-                      <button onClick={() => generateDescription(item)} disabled={aiDescLoadingId === item.id}
-                        className="flex-shrink-0 bg-violet-600/20 hover:bg-violet-600/40 border border-violet-500/30 text-violet-400 rounded px-2 py-1 disabled:opacity-40 transition flex items-center gap-1">
-                        {aiDescLoadingId === item.id ? <Icon name="Loader" size={11} className="animate-spin" /> : <Icon name="Sparkles" size={11} />}
-                        <span className="text-[10px]">AI</span>
-                      </button>
-                    </div>
-                  </div>
-                  {/* Строка 4: синонимы + AI */}
-                  <div className="flex flex-col gap-0.5">
-                    <span className="text-[9px] font-bold uppercase tracking-wider text-amber-400/40">Синонимы поиска</span>
-                    <div className="flex items-center gap-2">
-                      <div className="flex-1 text-xs text-amber-400/60">
-                        <TruncatedCell value={item.synonyms || ""} onSave={v => saveField(item, "synonyms", v)} placeholder="карниз, гардина..." maxChars={40} />
-                      </div>
-                      <button onClick={() => generateSynonyms(item)} disabled={aiLoadingId === item.id}
-                        className="flex-shrink-0 bg-violet-600/20 hover:bg-violet-600/40 border border-violet-500/30 text-violet-400 rounded px-2 py-1 disabled:opacity-40 transition flex items-center gap-1">
-                        {aiLoadingId === item.id ? <Icon name="Loader" size={11} className="animate-spin" /> : <Icon name="Sparkles" size={11} />}
-                        <span className="text-[10px]">AI</span>
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            {!readOnly && addingInCat === category ? (
-              <div className={`border-t ${border} px-4 py-3 flex gap-2 items-end flex-wrap bg-violet-500/5`}>
-                <div className="flex flex-col gap-1 flex-1 min-w-[150px]">
-                  <span className={`${muted2} text-xs`}>Название</span>
-                  <input autoFocus value={newItem.name} onChange={e => setNewItem(p => ({ ...p, name: e.target.value }))}
-                    onKeyDown={e => e.key === "Enter" && handleAddItem(category)}
-                    placeholder="Новая позиция..."
-                    className={`${bgInput} border ${borderInput} rounded-lg px-3 py-1.5 ${text} text-sm outline-none focus:border-violet-500`} />
-                </div>
-                <div className="flex flex-col gap-1 w-24">
-                  <span className={`${muted2} text-xs`}>Цена продажи ₽</span>
-                  <input type="number" value={newItem.price} onChange={e => setNewItem(p => ({ ...p, price: e.target.value }))}
-                    placeholder="0"
-                    className={`${bgInput} border ${borderInput} rounded-lg px-3 py-1.5 text-green-500 text-sm outline-none focus:border-violet-500 font-mono`} />
-                </div>
-                <div className="flex flex-col gap-1 w-24">
-                  <span className={`${muted2} text-xs`}>Цена закупки ₽</span>
-                  <input type="number" value={newItem.purchase_price} onChange={e => setNewItem(p => ({ ...p, purchase_price: e.target.value }))}
-                    placeholder="0"
-                    className={`${bgInput} border ${borderInput} rounded-lg px-3 py-1.5 text-blue-500 text-sm outline-none focus:border-violet-500 font-mono`} />
-                </div>
-                <div className="flex flex-col gap-1 w-24">
-                  <span className={`${muted2} text-xs`}>Единица</span>
-                  <select value={newItem.unit} onChange={e => setNewItem(p => ({ ...p, unit: e.target.value }))}
-                    className={`${bgInput} border ${borderInput} rounded-lg px-3 py-1.5 ${text} text-sm outline-none focus:border-violet-500 cursor-pointer`}>
-                    {PRICE_UNITS.map(u => <option key={u} value={u}>{u}</option>)}
-                  </select>
-                </div>
-                <div className="flex flex-col gap-1 flex-[2] min-w-[150px]">
-                  <span className={`${muted2} text-xs`}>Описание для AI</span>
-                  <input value={newItem.description} onChange={e => setNewItem(p => ({ ...p, description: e.target.value }))}
-                    placeholder="Как AI понимает позицию..."
-                    className={`${bgInput} border ${borderInput} rounded-lg px-3 py-1.5 ${text} text-sm outline-none focus:border-violet-500`} />
-                </div>
-                <div className="flex gap-2 pb-0.5">
-                  <button onClick={() => handleAddItem(category)}
-                    className="bg-violet-600 hover:bg-violet-700 text-white rounded-lg px-4 py-1.5 text-sm transition">Добавить</button>
-                  <button onClick={() => { setAddingInCat(null); setNewItem(EMPTY_NEW); }}
-                    className={`${muted} hover:${text} text-sm transition`}>Отмена</button>
-                </div>
-              </div>
-            ) : (
-              !readOnly && (
-                <button onClick={() => { setAddingInCat(category); setNewItem(EMPTY_NEW); }}
-                  className={`w-full py-2.5 ${isDark ? "text-violet-400/60" : "text-violet-500/70"} hover:text-violet-400 text-xs flex items-center justify-center gap-1.5 border-t ${border2} transition hover:bg-violet-500/5`}>
-                  <Icon name="Plus" size={13} /> Добавить позицию в «{category}»
-                </button>
-              )
-            )}
-          </div>
-        </div>
-        );
-      })}
+      {Object.entries(byCategory).map(([category, items]) => (
+        <TabPriceCategoryBlock
+          key={category}
+          category={category}
+          items={items}
+          isDark={isDark}
+          readOnly={readOnly}
+          theme={theme}
+          dragOverId={dragOverId}
+          itemImages={itemImages}
+          catImages={catImages}
+          aiLoadingId={aiLoadingId}
+          aiDescLoadingId={aiDescLoadingId}
+          addingInCat={addingInCat}
+          newItem={newItem}
+          editingCat={editingCat}
+          editingCatVal={editingCatVal}
+          onDragStart={handleDragStart}
+          onDragEnter={handleDragEnter}
+          onDragEnd={handleDragEnd}
+          onToggleActive={toggleActive}
+          onSaveField={saveField}
+          onDelete={handleDeleteItem}
+          onGenerateDescription={generateDescription}
+          onGenerateSynonyms={generateSynonyms}
+          onImageUploaded={uploadItemImage}
+          onCatImageUploaded={uploadCatImage}
+          onSetAddingInCat={setAddingInCat}
+          onSetNewItem={setNewItem}
+          onAddItem={handleAddItem}
+          onSetEditingCat={setEditingCat}
+          onSetEditingCatVal={setEditingCatVal}
+          onRenameCategory={handleRenameCategory}
+        />
+      ))}
 
       {/* Новая категория */}
       {!readOnly && addingCat ? (
@@ -498,49 +156,76 @@ export default function TabPrices({ token, onItemAdded, isDark = true, readOnly 
           <div className="flex gap-3 flex-wrap">
             <div className="flex flex-col gap-1 flex-1 min-w-[160px]">
               <span className={`${muted2} text-xs`}>Название категории</span>
-              <input autoFocus value={newCat.name} onChange={e => setNewCat(p => ({ ...p, name: e.target.value }))}
+              <input
+                autoFocus
+                value={newCat.name}
+                onChange={e => setNewCat(p => ({ ...p, name: e.target.value }))}
                 placeholder="Например: Акции, Доп. услуги..."
-                className={`${bgInput} border ${borderInput} rounded-lg px-3 py-2 ${text} text-sm outline-none focus:border-violet-500`} />
+                className={`${bgInput} border ${borderInput} rounded-lg px-3 py-2 ${text} text-sm outline-none focus:border-violet-500`}
+              />
             </div>
             <div className="flex flex-col gap-1 flex-[2] min-w-[160px]">
               <span className={`${muted2} text-xs`}>Первая позиция</span>
-              <input value={newCat.firstItem} onChange={e => setNewCat(p => ({ ...p, firstItem: e.target.value }))}
+              <input
+                value={newCat.firstItem}
+                onChange={e => setNewCat(p => ({ ...p, firstItem: e.target.value }))}
                 placeholder="Название первого товара/услуги..."
-                className={`${bgInput} border ${borderInput} rounded-lg px-3 py-2 ${text} text-sm outline-none focus:border-violet-500`} />
+                className={`${bgInput} border ${borderInput} rounded-lg px-3 py-2 ${text} text-sm outline-none focus:border-violet-500`}
+              />
             </div>
           </div>
           <div className="flex gap-3 flex-wrap">
             <div className="flex flex-col gap-1 w-28">
               <span className={`${muted2} text-xs`}>Цена ₽</span>
-              <input type="number" value={newCat.price} onChange={e => setNewCat(p => ({ ...p, price: e.target.value }))}
+              <input
+                type="number"
+                value={newCat.price}
+                onChange={e => setNewCat(p => ({ ...p, price: e.target.value }))}
                 placeholder="0"
-                className={`${bgInput} border ${borderInput} rounded-lg px-3 py-2 ${text} text-sm outline-none focus:border-violet-500 font-mono`} />
+                className={`${bgInput} border ${borderInput} rounded-lg px-3 py-2 ${text} text-sm outline-none focus:border-violet-500 font-mono`}
+              />
             </div>
             <div className="flex flex-col gap-1 w-24">
               <span className={`${muted2} text-xs`}>Единица</span>
-              <select value={newCat.unit} onChange={e => setNewCat(p => ({ ...p, unit: e.target.value }))}
-                className={`${bgInput} border ${borderInput} rounded-lg px-3 py-2 ${text} text-sm outline-none focus:border-violet-500 cursor-pointer`}>
+              <select
+                value={newCat.unit}
+                onChange={e => setNewCat(p => ({ ...p, unit: e.target.value }))}
+                className={`${bgInput} border ${borderInput} rounded-lg px-3 py-2 ${text} text-sm outline-none focus:border-violet-500 cursor-pointer`}
+              >
                 {PRICE_UNITS.map(u => <option key={u} value={u}>{u}</option>)}
               </select>
             </div>
             <div className="flex flex-col gap-1 flex-1 min-w-[160px]">
               <span className={`${muted2} text-xs`}>Описание для AI</span>
-              <input value={newCat.description} onChange={e => setNewCat(p => ({ ...p, description: e.target.value }))}
+              <input
+                value={newCat.description}
+                onChange={e => setNewCat(p => ({ ...p, description: e.target.value }))}
                 placeholder="Как AI понимает эту позицию..."
-                className={`${bgInput} border ${borderInput} rounded-lg px-3 py-2 ${text} text-sm outline-none focus:border-violet-500`} />
+                className={`${bgInput} border ${borderInput} rounded-lg px-3 py-2 ${text} text-sm outline-none focus:border-violet-500`}
+              />
             </div>
           </div>
           <div className="flex gap-2">
-            <button onClick={handleAddCategory}
-              className="bg-violet-600 hover:bg-violet-700 text-white rounded-lg px-5 py-2 text-sm font-medium transition">Создать категорию</button>
-            <button onClick={() => { setAddingCat(false); setNewCat(EMPTY_CAT); }}
-              className={`${muted} hover:${text} text-sm transition`}>Отмена</button>
+            <button
+              onClick={handleAddCategory}
+              className="bg-violet-600 hover:bg-violet-700 text-white rounded-lg px-5 py-2 text-sm font-medium transition"
+            >
+              Создать категорию
+            </button>
+            <button
+              onClick={() => { setAddingCat(false); setNewCat(EMPTY_CAT); }}
+              className={`${muted} hover:${text} text-sm transition`}
+            >
+              Отмена
+            </button>
           </div>
         </div>
       ) : (
         !readOnly && (
-          <button onClick={() => setAddingCat(true)}
-            className={`border border-dashed border-violet-500/30 hover:border-violet-500/60 rounded-xl py-3 ${isDark ? "text-violet-400/60" : "text-violet-500/70"} hover:text-violet-400 text-sm flex items-center justify-center gap-2 transition`}>
+          <button
+            onClick={() => setAddingCat(true)}
+            className={`border border-dashed border-violet-500/30 hover:border-violet-500/60 rounded-xl py-3 ${isDark ? "text-violet-400/60" : "text-violet-500/70"} hover:text-violet-400 text-sm flex items-center justify-center gap-2 transition`}
+          >
             <Icon name="FolderPlus" size={15} /> Добавить новую категорию
           </button>
         )
