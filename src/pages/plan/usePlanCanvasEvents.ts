@@ -378,7 +378,7 @@ export function usePlanCanvasEvents({ state, onChange, onReplace, cs }: Params) 
           const closing: Segment = { id: genId("s"), fromId: points[points.length - 1].id, toId: points[0].id, lengthCm: null, showLength: true, showDimLine: true, arcRadius: 0 };
           const newSegs = [...segments, closing];
           const newDiags = buildAutoDiagonals(points, diagonals);
-          onChange({ segments: newSegs, diagonals: newDiags, isClosed: true, phase: "lengths", tool: "move", activeInputIndex: 0, selectedSegmentId: newSegs[0]?.id ?? null, sidebarTab: "drawing" });
+          onChange({ segments: newSegs, diagonals: newDiags, isClosed: true, phase: "lengths", tool: "move", activeInputIndex: 0, selectedSegmentId: null, sidebarTab: "drawing" });
         } else {
           const np: Point = { id: genId("pt"), x, y };
           const newPts = [...points, np];
@@ -447,7 +447,7 @@ export function usePlanCanvasEvents({ state, onChange, onReplace, cs }: Params) 
         const closing: Segment = { id: genId("s"), fromId: points[points.length - 1].id, toId: points[0].id, lengthCm: null, showLength: true, showDimLine: true, arcRadius: 0 };
         const newSegs = [...segments, closing];
         const newDiags = buildAutoDiagonals(points, diagonals);
-        onChange({ segments: newSegs, diagonals: newDiags, isClosed: true, phase: "lengths", tool: "move", activeInputIndex: 0, selectedSegmentId: newSegs[0]?.id ?? null, sidebarTab: "drawing" });
+        onChange({ segments: newSegs, diagonals: newDiags, isClosed: true, phase: "lengths", tool: "move", activeInputIndex: 0, selectedSegmentId: null, sidebarTab: "drawing" });
         setGhost(null);
         return;
       }

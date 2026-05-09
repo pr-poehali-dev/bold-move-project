@@ -211,7 +211,7 @@ export default function useVoiceDraw({ onChange }: Props) {
       phase:     "lengths",
       tool:      "move",
       activeInputIndex:  0,
-      selectedSegmentId: b.segments[0]?.id ?? null,
+      selectedSegmentId: null,
       sidebarTab: "drawing",
     });
     setStatus("Фигура замкнута!");
