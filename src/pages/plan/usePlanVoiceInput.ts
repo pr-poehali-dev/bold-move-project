@@ -219,7 +219,7 @@ export default function usePlanVoiceInput({ segments, onUpdateSegment }: Props) 
     } catch (err) {
       console.error("[PlanVoice] start failed:", err);
     }
-  }, [isListening, isMobile, goNext, stop, onUpdateSegment]);
+  }, [isListening, isIOS, goNext, stop, onUpdateSegment]);
 
   return {
     isListening,
