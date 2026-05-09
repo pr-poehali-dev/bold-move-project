@@ -295,8 +295,15 @@ export function usePlanCanvasEvents({ state, onChange, onReplace, cs }: Params) 
       const hitPt = points.find(p => distPx(p, { id: "", x: raw.x, y: raw.y }) < PT_HIT);
       if (hitPt) {
         if (tool === "delete") {
-          const newPts = points.filter(p => p.id !== hitPt.id);
-          const newSegs = segments.filter(s => s.fromId !== hitPt.id && s.toId !== hitPt.id);
+          // Удаляем угол: убираем точку + оба отрезка, соединяем соседей напрямую
+          const prevSeg = segments.find(s => s.toId === hitPt.id);
+          const nextSeg = segments.find(s => s.fromId === hitPt.id);
+          const newPts  = points.filter(p => p.id !== hitPt.id);
+          let newSegs   = segments.filter(s => s.fromId !== hitPt.id && s.toId !== hitPt.id);
+          if (prevSeg && nextSeg && newPts.length >= 2) {
+            // Соединяем предыдущий и следующий узлы новым отрезком
+            newSegs = [...newSegs, { ...prevSeg, id: genId("s"), toId: nextSeg.toId, lengthCm: null }];
+          }
           const newDiags = newPts.length >= 3 ? buildAutoDiagonals(newPts, diagonals) : [];
           onChange({ points: newPts, segments: newSegs, diagonals: newDiags, isClosed: isClosed && newPts.length >= 3, selectedPointId: null });
         } else if (tool === "dimline") {
@@ -433,8 +440,14 @@ export function usePlanCanvasEvents({ state, onChange, onReplace, cs }: Params) 
   const handlePointClick = useCallback((e: React.MouseEvent, pointId: string) => {
     e.stopPropagation(); setCtxMenu(null);
     if (tool === "delete") {
-      const newPts = points.filter(p => p.id !== pointId);
-      const newSegs = segments.filter(s => s.fromId !== pointId && s.toId !== pointId);
+      // Удаляем угол: убираем точку + оба отрезка, соединяем соседей напрямую
+      const prevSeg = segments.find(s => s.toId === pointId);
+      const nextSeg = segments.find(s => s.fromId === pointId);
+      const newPts  = points.filter(p => p.id !== pointId);
+      let newSegs   = segments.filter(s => s.fromId !== pointId && s.toId !== pointId);
+      if (prevSeg && nextSeg && newPts.length >= 2) {
+        newSegs = [...newSegs, { ...prevSeg, id: genId("s"), toId: nextSeg.toId, lengthCm: null }];
+      }
       onChange({ points: newPts, segments: newSegs, diagonals: newPts.length >= 3 ? buildAutoDiagonals(newPts, diagonals) : [], isClosed: isClosed && newPts.length >= 3, selectedPointId: null });
       return;
     }
