@@ -177,9 +177,9 @@ const Sep = () => <div className="w-px h-5 bg-white/[0.08] mx-1 flex-shrink-0" /
 
 function MobileToolbar(props: Props) {
   const {
-    tool, isClosed, settings,
+    tool, isClosed,
     canUndo, canRedo,
-    onToolChange, onUndo, onRedo, onSettingChange,
+    onToolChange, onUndo, onRedo, onOpenLibrary,
   } = props;
 
   return (
@@ -208,6 +208,15 @@ function MobileToolbar(props: Props) {
           );
         })}
       </div>
+      {/* Сохранённые — справа */}
+      <div className="w-px h-4 bg-white/10 mx-0.5 shrink-0" />
+      <button
+        onClick={onOpenLibrary}
+        title="Сохранённые планы"
+        className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0 transition-all text-white/45 hover:text-white hover:bg-white/[0.07]"
+      >
+        <Icon name="FolderOpen" size={16} />
+      </button>
     </div>
   );
 }

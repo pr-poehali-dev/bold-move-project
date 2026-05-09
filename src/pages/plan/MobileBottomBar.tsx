@@ -25,8 +25,6 @@ interface Props {
   filterAttached?: boolean;
   onToggleFilterAttached?: () => void;
   isMobile?: boolean;
-  onOpenLibrary?: () => void;
-  plansCount?: number;
 }
 
 // Стиль единой кнопки — как фиолетовая кнопка PanelBottom
@@ -40,7 +38,6 @@ export default function MobileBottomBar({
   sheetOpen = false, catalogOpen = false, rightPanelOpen = false,
   onToggleVoiceDraw, isVoiceDrawing = false, isVoiceProcessing = false, voiceStatus, voiceInterim,
   attachedCount = 0, filterAttached = false, onToggleFilterAttached, isMobile = false,
-  onOpenLibrary, plansCount = 0,
 }: Props) {
   const [zoomOpen,     setZoomOpen]     = React.useState(false);
   const [settingsOpen, setSettingsOpen] = React.useState(false);
@@ -159,21 +156,6 @@ export default function MobileBottomBar({
       >
         <Icon name="LayoutGrid" size={20} />
       </button>
-
-      {/* 3.5 Сохранённые потолки */}
-      {onOpenLibrary && (
-        <button
-          onClick={onOpenLibrary}
-          className={`${BTN_DEFAULT} relative`}
-        >
-          <Icon name="FolderOpen" size={20} />
-          {plansCount > 0 && (
-            <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-violet-600 text-[9px] font-bold text-white flex items-center justify-center leading-none">
-              {plansCount > 9 ? "9+" : plansCount}
-            </span>
-          )}
-        </button>
-      )}
 
       {/* 4. Чертёж: bottom sheet (мобайл) / toggle сайдбара (ПК) */}
       <button
