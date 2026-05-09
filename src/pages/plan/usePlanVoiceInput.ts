@@ -120,7 +120,7 @@ export default function usePlanVoiceInput({ segments, onUpdateSegment }: Props) 
     const recognition = new SR();
     recognition.lang = "ru-RU";
     recognition.interimResults = true;
-    recognition.continuous = !isIOS;
+    recognition.continuous = false; // было: !isIOS (iOS=false, Android=true)
     recognition.maxAlternatives = 3;
     recognitionRef.current = recognition;
 
