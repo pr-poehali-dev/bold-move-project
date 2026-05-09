@@ -332,7 +332,7 @@ export default function useVoiceDraw({ state, onChange }: Props) {
     } catch (err) {
       console.error("[VoiceDraw] start failed:", err);
     }
-  }, [isListening, isMobile, stop, resetBuild, onChange, processFinal]);
+  }, [isListening, isIOS, stop, resetBuild, onChange, processFinal]);
 
   return { isListening, interimText, status, hasSpeech, toggle, stop };
 }
