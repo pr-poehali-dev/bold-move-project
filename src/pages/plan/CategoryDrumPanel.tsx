@@ -394,23 +394,22 @@ export default function CategoryDrumPanel({ open, onClose, prices, onDragItem }:
           padding: "12px 0 12px 6px",
           touchAction: "none",
         }}>
-          {/* Полукруг с backdrop-filter за барабаном */}
+          {/* Дымчатый полукруг за барабаном */}
           <div style={{
             position: "absolute",
             top: "50%",
-            right: 0,
+            right: -8,
             transform: "translateY(-50%)",
-            width: 320,
-            height: 320,
+            width: 240,
+            height: 360,
             borderRadius: "50%",
-            backdropFilter: "blur(16px)",
-            WebkitBackdropFilter: "blur(16px)",
-            background: "rgba(8,6,20,0.52)",
-            border: "1px solid rgba(124,58,237,0.22)",
+            backdropFilter: "blur(20px)",
+            WebkitBackdropFilter: "blur(20px)",
+            background: "radial-gradient(ellipse at right center, rgba(12,8,28,0.72) 30%, rgba(12,8,28,0.18) 70%, transparent 100%)",
+            WebkitMaskImage: "radial-gradient(ellipse at right center, black 25%, rgba(0,0,0,0.6) 55%, transparent 85%)",
+            maskImage: "radial-gradient(ellipse at right center, black 25%, rgba(0,0,0,0.6) 55%, transparent 85%)",
             pointerEvents: "none",
             zIndex: 0,
-            // оставляем левую половину — ту что выступает за барабан в экран
-            clipPath: "inset(0 50% 0 0)",
           }} />
           {mode === "categories" && (
             <ArcDrum
