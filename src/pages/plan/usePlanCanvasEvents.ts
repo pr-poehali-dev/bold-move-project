@@ -16,7 +16,7 @@ interface Params {
 /** Хук: все обработчики событий холста (mouse, touch, wheel, keyboard) */
 export function usePlanCanvasEvents({ state, onChange, cs }: Params) {
   const {
-    svgRef, dragRef, panRef, pinchRef, isPanning, didMoveRef,
+    svgRef, dragRef, nearbyPtRef, panRef, pinchRef, isPanning, didMoveRef,
     longPressRef, longPressPos, setVibrated,
     setGhost, dimLineFrom, setDimLineFrom, setCtxMenu,
   } = cs;
@@ -178,14 +178,25 @@ export function usePlanCanvasEvents({ state, onChange, cs }: Params) {
         }, 500);
       }
 
-      if (tool === "move" && hitPt) {
-        dragRef.current = { pointId: hitPt.id };
-        return;
+      if (tool === "move") {
+        if (hitPt) {
+          dragRef.current = { pointId: hitPt.id };
+          nearbyPtRef.current = null;
+          return;
+        }
+        // Lazy grab — ищем ближайшую точку в увеличенной зоне (80px) для захвата при движении
+        const LAZY_HIT = 80;
+        const nearbyPt = points.reduce<{ pt: typeof points[0]; dist: number } | null>((best, p) => {
+          const d = distPx(p, { id: "", x: raw.x, y: raw.y });
+          if (d < LAZY_HIT && (!best || d < best.dist)) return { pt: p, dist: d };
+          return best;
+        }, null);
+        nearbyPtRef.current = nearbyPt?.pt.id ?? null;
       }
       panRef.current = { startX: t.clientX, startY: t.clientY, origPanX: panX, origPanY: panY };
     }
   }, [tool, points, segments, diagonals, clientToSvg, panX, panY, zoom, clearLongPress,
-      pinchRef, panRef, dragRef, didMoveRef, longPressRef, longPressPos, setVibrated, setCtxMenu]);
+      pinchRef, panRef, dragRef, nearbyPtRef, didMoveRef, longPressRef, longPressPos, setVibrated, setCtxMenu]);
 
   const handleTouchMove = useCallback((e: React.TouchEvent<SVGSVGElement>) => {
     e.preventDefault();
@@ -214,6 +225,13 @@ export function usePlanCanvasEvents({ state, onChange, cs }: Params) {
 
     if (e.touches.length === 1) {
       const t = e.touches[0];
+      // Lazy grab: если есть кандидат и drag ещё не начат — захватываем при первом движении
+      if (!dragRef.current && nearbyPtRef.current && tool === "move") {
+        dragRef.current = { pointId: nearbyPtRef.current };
+        nearbyPtRef.current = null;
+        panRef.current = null;
+        clearLongPress();
+      }
       if (dragRef.current && tool === "move") {
         const raw = clientToSvg(t.clientX, t.clientY);
         const { x, y } = applySnap(raw.x, raw.y, dragRef.current.pointId);
@@ -240,10 +258,11 @@ export function usePlanCanvasEvents({ state, onChange, cs }: Params) {
       }
     }
   }, [tool, points, segments, clientToSvg, applySnap, diagonals, onChange, settings, zoom,
-      clearLongPress, pinchRef, panRef, dragRef, didMoveRef, longPressRef]);
+      clearLongPress, pinchRef, panRef, dragRef, nearbyPtRef, didMoveRef, longPressRef]);
 
   const handleTouchEnd = useCallback((e: React.TouchEvent<SVGSVGElement>) => {
     pinchRef.current = null;
+    nearbyPtRef.current = null;
     clearLongPress();
 
     if (didMoveRef.current) {
