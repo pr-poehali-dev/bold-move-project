@@ -357,7 +357,7 @@ export default function CategoryDrumPanel({ open, onClose, prices, onDragItem }:
 
   return (
     <>
-      <div onClick={onClose} style={{ position: "fixed", inset: 0, zIndex: 40 }} />
+      <div onClick={onClose} style={{ position: "fixed", top: 0, bottom: 0, right: 0, width: 210, zIndex: 40 }} />
       <div style={{
         position: "fixed",
         right: -8,
