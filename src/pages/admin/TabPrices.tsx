@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import React, { useState, useRef } from "react";
 import Icon from "@/components/ui/icon";
 import EditableCell from "./EditableCell";
 import TruncatedCell from "./TruncatedCell";
@@ -8,7 +8,76 @@ import { PRICE_UNITS } from "./constants";
 import type { PriceItem } from "./types";
 import func2url from "@/../backend/func2url.json";
 
-const BASE = (func2url as Record<string, string>)["parse-xlsx"];
+const BASE      = (func2url as Record<string, string>)["parse-xlsx"];
+const IMAGE_URL = (func2url as Record<string, string>)["price-image"];
+
+// ── Кнопка загрузки картинки ─────────────────────────────────────────────────
+function ImageUploadButton({
+  currentUrl,
+  uploadEndpoint,
+  onUploaded,
+  isDark,
+}: {
+  currentUrl?: string | null;
+  uploadEndpoint: string;    // полный URL с query-параметрами
+  onUploaded: (url: string) => void;
+  isDark: boolean;
+}) {
+  const [loading, setLoading] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const handleFile = async (file: File) => {
+    if (!file) return;
+    setLoading(true);
+    const reader = new FileReader();
+    reader.onload = async () => {
+      const b64 = reader.result as string;
+      try {
+        const res = await fetch(uploadEndpoint, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ image: b64, content_type: file.type }),
+        });
+        const data = await res.json();
+        if (data.url) onUploaded(data.url);
+      } finally {
+        setLoading(false);
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
+  return (
+    <div className="flex items-center gap-1 flex-shrink-0">
+      {currentUrl && (
+        <img src={currentUrl} alt="" className="w-7 h-7 rounded object-cover border border-white/10" />
+      )}
+      <button
+        type="button"
+        onClick={() => inputRef.current?.click()}
+        disabled={loading}
+        title={currentUrl ? "Сменить картинку" : "Добавить картинку"}
+        className={`flex-shrink-0 flex items-center justify-center w-6 h-6 rounded border transition disabled:opacity-40 ${
+          isDark
+            ? "border-white/10 text-white/25 hover:text-white/60 hover:border-white/30"
+            : "border-gray-200 text-gray-400 hover:text-gray-600 hover:border-gray-300"
+        }`}
+      >
+        {loading
+          ? <Icon name="Loader" size={10} className="animate-spin" />
+          : <Icon name={currentUrl ? "RefreshCw" : "ImagePlus"} size={10} />
+        }
+      </button>
+      <input
+        ref={inputRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={e => { const f = e.target.files?.[0]; if (f) handleFile(f); e.target.value = ""; }}
+      />
+    </div>
+  );
+}
 
 function MaterialButton({ category, initialValue, isDark }: { category: string; initialValue: boolean; isDark: boolean }) {
   const [isMaterial, setIsMaterial] = useState(initialValue);
@@ -59,6 +128,33 @@ export default function TabPrices({ token, onItemAdded, isDark = true, readOnly 
   const borderInput = isDark ? "border-white/15" : "border-gray-200";
   const selectBg = isDark ? "#0b0b11" : "#ffffff";
   const { prices, loading, aiLoadingId, aiDescLoadingId, byCategory, saveField, toggleActive, deleteItem, renameCategory, generateSynonyms, generateDescription, moveItem, load } = usePriceList(token);
+
+  // Локальные URL картинок (обновляются без перезагрузки всего прайса)
+  const [itemImages, setItemImages] = useState<Record<number, string>>({});
+  const [catImages,  setCatImages]  = useState<Record<string, string>>({});
+
+  // Синхронизируем с данными прайса при загрузке
+  React.useEffect(() => {
+    if (prices.length === 0) return;
+    const imgs: Record<number, string> = {};
+    const cats: Record<string, string> = {};
+    prices.forEach((p: PriceItem & { image_url?: string; category_image_url?: string }) => {
+      if (p.image_url) imgs[p.id] = p.image_url;
+      if (p.category_image_url && !cats[p.category]) cats[p.category] = p.category_image_url;
+    });
+    setItemImages(prev => ({ ...imgs, ...prev }));
+    setCatImages(prev => ({ ...cats, ...prev }));
+  }, [prices.length]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Кнопка сама делает PUT и получает url — мы только сохраняем локально
+  const uploadItemImage = (item: PriceItem, url: string) => {
+    setItemImages(prev => ({ ...prev, [item.id]: url }));
+  };
+
+  const uploadCatImage = (category: string, url: string) => {
+    setCatImages(prev => ({ ...prev, [category]: url }));
+  };
+
   const dragItem = useRef<PriceItem | null>(null);
   const dragOver = useRef<PriceItem | null>(null);
   const [dragOverId, setDragOverId] = useState<number | null>(null);
@@ -127,6 +223,18 @@ export default function TabPrices({ token, onItemAdded, isDark = true, readOnly 
         <div key={category}>
           <div className="flex items-center justify-between mb-2 px-1 group">
             <div className="flex items-center gap-2 min-w-0">
+              {/* Картинка категории */}
+              {!readOnly && (
+                <ImageUploadButton
+                  currentUrl={catImages[category]}
+                  uploadEndpoint={`${IMAGE_URL}?type=category&category=${encodeURIComponent(category)}`}
+                  isDark={isDark}
+                  onUploaded={url => uploadCatImage(category, url)}
+                />
+              )}
+              {catImages[category] && readOnly && (
+                <img src={catImages[category]} alt="" className="w-6 h-6 rounded object-cover" />
+              )}
               {editingCat === category ? (
                 <input autoFocus value={editingCatVal}
                   onChange={e => setEditingCatVal(e.target.value)}
@@ -231,13 +339,23 @@ export default function TabPrices({ token, onItemAdded, isDark = true, readOnly 
                         </button>
                       </div>
                     </td>
-                    <td className="px-3 py-2.5 w-8">
-                      {!readOnly && (
-                        <button onClick={() => handleDeleteItem(item)} title="Удалить"
-                          className={`${isDark ? "text-white/20" : "text-gray-300"} hover:text-red-400 transition`}>
-                          <Icon name="X" size={13} />
-                        </button>
-                      )}
+                    <td className="px-3 py-2.5 w-16">
+                      <div className="flex items-center gap-1.5 justify-end">
+                        {!readOnly && (
+                          <ImageUploadButton
+                            currentUrl={itemImages[item.id] ?? (item as PriceItem & { image_url?: string }).image_url}
+                            uploadEndpoint={`${IMAGE_URL}?type=item&id=${item.id}`}
+                            isDark={isDark}
+                            onUploaded={url => uploadItemImage(item, url)}
+                          />
+                        )}
+                        {!readOnly && (
+                          <button onClick={() => handleDeleteItem(item)} title="Удалить"
+                            className={`${isDark ? "text-white/20" : "text-gray-300"} hover:text-red-400 transition`}>
+                            <Icon name="X" size={13} />
+                          </button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))}
