@@ -148,25 +148,66 @@ export default function PlanPage() {
     };
   }, [dragItem, findClosestSeg, assignItemToSeg]);
 
-  // Тап на стену для активного товара (мобиле — карточка внизу)
+  // Drag карточки активного товара на стену (мобиле)
+  // Пользователь должен ФИЗИЧЕСКИ потянуть карточку на стену
   useEffect(() => {
-    if (tapActiveId === null || activeItems.length === 0) return;
-    const item = activeItems.find(it => it.priceId === tapActiveId);
-    if (!item) return;
+    if (activeItems.length === 0) return;
 
-    const onTouchEnd = (e: TouchEvent) => {
-      const pt = e.changedTouches[0];
-      const closestId = findClosestSeg(pt.clientX, pt.clientY, true);
-      if (closestId) {
-        assignItemToSeg(item, closestId);
-        // Вибрация подтверждения
-        navigator.vibrate?.(30);
+    let draggingItem: SegmentPriceItem | null = null;
+    let isDragging = false;
+    let startX = 0, startY = 0;
+
+    const onTouchStart = (e: TouchEvent) => {
+      // Проверяем что касание началось на карточке активного товара
+      const target = e.target as HTMLElement;
+      const card = target.closest("[data-active-item]") as HTMLElement | null;
+      if (!card) return;
+      const priceId = parseInt(card.dataset.activeItem ?? "0");
+      const item = activeItems.find(it => it.priceId === priceId);
+      if (!item) return;
+      draggingItem = item;
+      isDragging = false;
+      startX = e.touches[0].clientX;
+      startY = e.touches[0].clientY;
+    };
+
+    const onTouchMove = (e: TouchEvent) => {
+      if (!draggingItem) return;
+      const dx = Math.abs(e.touches[0].clientX - startX);
+      const dy = Math.abs(e.touches[0].clientY - startY);
+      if (dx > 8 || dy > 8) isDragging = true;
+      if (isDragging) {
+        setHoverSegId(findClosestSeg(e.touches[0].clientX, e.touches[0].clientY));
       }
     };
 
+    const onTouchEnd = (e: TouchEvent) => {
+      if (!draggingItem || !isDragging) {
+        draggingItem = null;
+        isDragging = false;
+        setHoverSegId(null);
+        return;
+      }
+      const pt = e.changedTouches[0];
+      const closestId = findClosestSeg(pt.clientX, pt.clientY, false);
+      if (closestId) {
+        assignItemToSeg(draggingItem, closestId);
+        navigator.vibrate?.(30);
+      }
+      draggingItem = null;
+      isDragging = false;
+      setHoverSegId(null);
+    };
+
+    window.addEventListener("touchstart", onTouchStart, { passive: true });
+    window.addEventListener("touchmove", onTouchMove, { passive: true });
     window.addEventListener("touchend", onTouchEnd);
-    return () => window.removeEventListener("touchend", onTouchEnd);
-  }, [tapActiveId, activeItems, findClosestSeg, assignItemToSeg]);
+    return () => {
+      window.removeEventListener("touchstart", onTouchStart);
+      window.removeEventListener("touchmove", onTouchMove);
+      window.removeEventListener("touchend", onTouchEnd);
+    };
+  }, [activeItems, findClosestSeg, assignItemToSeg]);
 
   // Онбординг для незарегистрированных — через 3 сек
   useEffect(() => {
@@ -459,19 +500,26 @@ export default function PlanPage() {
           {activeItems.map(item => {
             const isActive = tapActiveId === item.priceId;
             return (
-              <div key={item.priceId} style={{
-                display: "flex", alignItems: "center", gap: 10,
-                background: "rgba(12,10,28,0.96)",
-                border: `1px solid ${isActive ? "rgba(124,58,237,0.8)" : "rgba(124,58,237,0.25)"}`,
-                borderRadius: 16, padding: "10px 10px 10px 10px",
-                boxShadow: isActive
-                  ? "0 0 24px rgba(124,58,237,0.45), 0 8px 24px rgba(0,0,0,0.6)"
-                  : "0 4px 16px rgba(0,0,0,0.5)",
-                backdropFilter: "blur(14px)",
-                cursor: "pointer",
-                transition: "border-color 0.15s, box-shadow 0.15s",
-                opacity: isActive ? 1 : 0.7,
-              }}
+              <div
+                key={item.priceId}
+                data-active-item={String(item.priceId)}
+                style={{
+                  display: "flex", alignItems: "center", gap: 10,
+                  background: "rgba(12,10,28,0.96)",
+                  border: `1px solid ${hoverSegId && isActive ? "rgba(124,58,237,1)" : isActive ? "rgba(124,58,237,0.8)" : "rgba(124,58,237,0.25)"}`,
+                  borderRadius: 16, padding: "10px 10px 10px 10px",
+                  boxShadow: hoverSegId && isActive
+                    ? "0 0 32px rgba(124,58,237,0.7), 0 8px 24px rgba(0,0,0,0.6)"
+                    : isActive
+                      ? "0 0 24px rgba(124,58,237,0.45), 0 8px 24px rgba(0,0,0,0.6)"
+                      : "0 4px 16px rgba(0,0,0,0.5)",
+                  backdropFilter: "blur(14px)",
+                  cursor: "grab",
+                  transition: "border-color 0.15s, box-shadow 0.15s",
+                  opacity: isActive ? 1 : 0.7,
+                  userSelect: "none",
+                  touchAction: "none",
+                }}
                 onClick={() => setTapActiveId(item.priceId)}
               >
                 {/* Иконка */}
@@ -492,8 +540,8 @@ export default function PlanPage() {
                     overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
                     maxWidth: 120,
                   }}>{item.name}</div>
-                  <div style={{ fontSize: 10, color: "rgba(167,139,250,0.55)", marginTop: 1 }}>
-                    {isActive ? "Нажми на стену" : "Нажми чтобы выбрать"}
+                  <div style={{ fontSize: 10, color: hoverSegId && isActive ? "rgba(167,139,250,0.9)" : "rgba(167,139,250,0.55)", marginTop: 1 }}>
+                    {hoverSegId && isActive ? "Отпусти на стену" : "Потяни на стену"}
                   </div>
                 </div>
                 {/* Крестик — удалить везде */}
