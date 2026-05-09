@@ -28,6 +28,11 @@ export function usePlanCanvasEvents({ state, onChange, cs }: Params) {
   } = state;
 
   const { ortho, snapToPoints: snapPts, showGrid, gridSize, zoom, panX, panY } = settings;
+
+  // Ref для актуального tool — чтобы обработчики через addEventListener читали текущее значение
+  const toolRef = useRef(tool);
+  useEffect(() => { toolRef.current = tool; }, [tool]);
+
   // Если масштаб установлен — snap по 1 см, иначе по gridSize пикселей
   const effectiveGridSize = state.baseScale ? state.baseScale : gridSize;
 
@@ -178,7 +183,7 @@ export function usePlanCanvasEvents({ state, onChange, cs }: Params) {
         }, 500);
       }
 
-      if (tool === "move") {
+      if (toolRef.current === "move") {
         if (hitPt) {
           dragRef.current = { pointId: hitPt.id };
           nearbyPtRef.current = null;
@@ -224,20 +229,18 @@ export function usePlanCanvasEvents({ state, onChange, cs }: Params) {
 
     if (e.touches.length === 1) {
       const t = e.touches[0];
-      // Lazy grab: захватываем точку при движении если палец был близко (< 120px в SVG координатах)
-      if (!dragRef.current && nearbyPtRef.current && tool === "move") {
-        const LAZY_THR = 120 / zoom; // 120px экрана → в SVG координатах
+      // Lazy grab: захватываем ближайшую точку при первом движении пальца
+      if (!dragRef.current && nearbyPtRef.current && toolRef.current === "move") {
+        // Порог: 150px экрана, переведённые в SVG-единицы
+        const LAZY_THR = 150 / zoom;
         if (nearbyPtRef.current.dist < LAZY_THR) {
           dragRef.current = { pointId: nearbyPtRef.current.id };
-          nearbyPtRef.current = null;
           panRef.current = null;
           clearLongPress();
-        } else {
-          // Далеко от точек — это pan, сбрасываем кандидата
-          nearbyPtRef.current = null;
         }
+        nearbyPtRef.current = null;
       }
-      if (dragRef.current && tool === "move") {
+      if (dragRef.current && toolRef.current === "move") {
         const raw = clientToSvg(t.clientX, t.clientY);
         const { x, y } = applySnap(raw.x, raw.y, dragRef.current.pointId);
         const movedId = dragRef.current.pointId;
