@@ -74,8 +74,8 @@ export default function MobileBottomBar({
   return (
     <div className="absolute bottom-4 left-0 right-0 flex items-end justify-center gap-3 z-20 px-4">
 
-      {/* 1. Настройки */}
-      <div ref={settingsRef} className="relative">
+      {/* 1. Настройки — только мобайл */}
+      {isMobile && <div ref={settingsRef} className="relative">
         {settingsOpen && (
           <div className="absolute bottom-14 left-0 bg-[#1a1b2e] border border-white/[0.12] rounded-2xl shadow-2xl p-2 flex flex-col gap-0.5 min-w-[210px] max-h-[65vh] overflow-y-auto">
             {SETTINGS_ITEMS.map(({ key, label, icon }) => (
@@ -122,7 +122,7 @@ export default function MobileBottomBar({
         >
           <Icon name="SlidersHorizontal" size={20} />
         </button>
-      </div>
+      </div>}
 
       {/* 2. Зум — только мобайл */}
       {isMobile && <div ref={zoomRef} className="relative">
@@ -155,7 +155,7 @@ export default function MobileBottomBar({
 
       {/* 3. Каталог */}
       <button
-        onClick={onOpenCatalog}
+        onClick={() => { onOpenCatalog(); setSettings(false); setZoomOpen(false); }}
         className={catalogOpen ? BTN_ACTIVE : BTN_DEFAULT}
       >
         <Icon name="LayoutGrid" size={20} />
@@ -163,7 +163,7 @@ export default function MobileBottomBar({
 
       {/* 4. Чертёж: bottom sheet (мобайл) / toggle сайдбара (ПК) */}
       <button
-        onClick={onOpenPanel}
+        onClick={() => { onOpenPanel(); setSettings(false); setZoomOpen(false); }}
         className={sheetOpen ? BTN_ACTIVE : BTN_DEFAULT}
       >
         <Icon name="PanelBottom" size={20} />
@@ -172,7 +172,7 @@ export default function MobileBottomBar({
       {/* 5. Стороны (правая панель ввода) — только мобайл */}
       {isMobile && (
         <button
-          onClick={onOpenSides}
+          onClick={() => { onOpenSides(); setSettings(false); setZoomOpen(false); }}
           className={rightPanelOpen ? BTN_ACTIVE : BTN_DEFAULT}
         >
           <Icon name="PanelRight" size={20} />
