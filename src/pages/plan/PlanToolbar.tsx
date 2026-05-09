@@ -197,12 +197,13 @@ function savePinned(pinned: ToolMode[]) {
   try { localStorage.setItem(LS_KEY, JSON.stringify(pinned)); } catch { /* ignore */ }
 }
 
-function MobileToolDropdown({ tool, onToolChange }: {
+function MobileToolDropdown({ tool, pinned, onToolChange, onTogglePin }: {
   tool: ToolMode;
+  pinned: ToolMode[];
   onToolChange: (t: ToolMode) => void;
+  onTogglePin: (id: ToolMode) => void;
 }) {
   const [open, setOpen] = React.useState(false);
-  const [pinned, setPinned] = React.useState<ToolMode[]>(loadPinned);
   const ref = React.useRef<HTMLDivElement>(null);
 
   React.useEffect(() => {
@@ -218,24 +219,15 @@ function MobileToolDropdown({ tool, onToolChange }: {
     };
   }, [open]);
 
-  const togglePin = (id: ToolMode, e: React.MouseEvent) => {
-    e.stopPropagation();
-    const next = pinned.includes(id)
-      ? pinned.filter(p => p !== id)
-      : [...pinned, id];
-    setPinned(next);
-    savePinned(next);
-  };
-
   return (
     <div ref={ref} className="relative shrink-0">
-      {/* Дропдаун вниз — поверх холста */}
       {open && (
-        <div className="absolute top-11 left-0 bg-[#1a1b2e] border border-white/[0.12] rounded-xl shadow-2xl p-1.5 flex flex-col gap-0.5 min-w-[200px] z-[9999]">
+        <div className="absolute top-11 left-0 bg-[#1a1b2e] border border-white/[0.12] rounded-xl shadow-2xl p-1.5 flex flex-col gap-0.5 min-w-[210px] z-[9999]">
           <p className="text-[10px] text-white/30 px-3 pt-1 pb-0.5 uppercase tracking-wide font-semibold">Инструменты</p>
           {ALL_TOOLS_MENU.map(t => {
-            const isPinned = pinned.includes(t.id);
-            const isActive = tool === t.id;
+            const pinnedIdx = pinned.indexOf(t.id);
+            const isPinned  = pinnedIdx !== -1;
+            const isActive  = tool === t.id;
             return (
               <div key={t.id} className={`flex items-center rounded-lg transition-all ${
                 isActive
@@ -256,15 +248,20 @@ function MobileToolDropdown({ tool, onToolChange }: {
                   {t.comingSoon && <span className="text-[9px] text-white/25 font-normal">скоро</span>}
                   {isActive && !t.comingSoon && <Icon name="Check" size={11} className="opacity-60" />}
                 </button>
-                {/* Звёздочка — добавить в быстрый доступ */}
+                {/* Звёздочка с номером позиции */}
                 <button
-                  onClick={e => togglePin(t.id, e)}
-                  className={`w-8 h-8 flex items-center justify-center shrink-0 mr-1 rounded-lg transition-all ${
-                    isPinned ? "text-amber-400" : "text-white/25 hover:text-amber-300"
+                  onClick={e => { e.stopPropagation(); onTogglePin(t.id); }}
+                  className={`w-8 h-8 flex items-center justify-center shrink-0 mr-1 rounded-lg transition-all relative ${
+                    isPinned ? "text-amber-400" : "text-white/20 hover:text-amber-300"
                   }`}
-                  title={isPinned ? "Убрать из панели" : "Закрепить в панели"}
+                  title={isPinned ? `Позиция ${pinnedIdx + 1} — убрать` : "Закрепить в панели"}
                 >
                   <Icon name="Star" size={13} style={{ fill: isPinned ? "currentColor" : "none" }} />
+                  {isPinned && (
+                    <span className="absolute -top-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-amber-500 text-[8px] font-bold text-black flex items-center justify-center leading-none">
+                      {pinnedIdx + 1}
+                    </span>
+                  )}
                 </button>
               </div>
             );
@@ -272,7 +269,6 @@ function MobileToolDropdown({ tool, onToolChange }: {
         </div>
       )}
 
-      {/* Кнопка открытия дропдауна */}
       <button
         onClick={() => setOpen(v => !v)}
         title="Все инструменты"
@@ -295,22 +291,18 @@ function MobileToolbar(props: Props) {
   } = props;
 
   const [confirmReset, setConfirmReset] = React.useState(false);
+  // Единственный источник правды для pinned — здесь
   const [pinned, setPinned] = React.useState<ToolMode[]>(loadPinned);
 
-  // Синхронизируем pinned при изменении в дропдауне
-  React.useEffect(() => {
-    const handler = () => setPinned(loadPinned());
-    window.addEventListener("storage", handler);
-    return () => window.removeEventListener("storage", handler);
+  const handleTogglePin = React.useCallback((id: ToolMode) => {
+    setPinned(prev => {
+      const next = prev.includes(id)
+        ? prev.filter(p => p !== id)
+        : [...prev, id];
+      savePinned(next);
+      return next;
+    });
   }, []);
-
-  // Перечитываем при каждом рендере чтобы подхватить изменения из дропдауна
-  const pinnedTools = React.useMemo(() => {
-    const saved = loadPinned();
-    if (JSON.stringify(saved) !== JSON.stringify(pinned)) setPinned(saved);
-    return saved;
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tool]);
 
   return (
     <div className="bg-[#161616] border-b border-white/[0.08] shrink-0 flex items-center gap-0.5 px-2" style={{ height: 52 }}>
@@ -318,12 +310,12 @@ function MobileToolbar(props: Props) {
       <IconBtn icon="Redo2" onClick={onRedo} disabled={!canRedo} title="Повторить" />
       <div className="w-px h-4 bg-white/10 mx-0.5 shrink-0" />
 
-      {/* Быстрый доступ — закреплённые инструменты */}
+      {/* Быстрый доступ — закреплённые инструменты слева направо */}
       <div className="flex items-center gap-0.5 flex-1">
-        {pinnedTools.map(id => {
+        {pinned.map(id => {
           const t = ALL_TOOLS_MENU.find(x => x.id === id);
           if (!t) return null;
-          const disabled = !!t.comingSoon || (!!isClosed === false && false);
+          const disabled = !!t.comingSoon;
           const active = !disabled && tool === id;
           return (
             <button key={id}
@@ -342,7 +334,12 @@ function MobileToolbar(props: Props) {
         })}
 
         {/* Кнопка раскрытия всех инструментов */}
-        <MobileToolDropdown tool={tool} onToolChange={id => { onToolChange(id); setPinned(loadPinned()); }} />
+        <MobileToolDropdown
+          tool={tool}
+          pinned={pinned}
+          onToolChange={onToolChange}
+          onTogglePin={handleTogglePin}
+        />
       </div>
 
       {/* Очистить холст */}
