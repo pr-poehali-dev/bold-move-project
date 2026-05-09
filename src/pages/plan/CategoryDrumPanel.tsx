@@ -193,7 +193,7 @@ function ArcDrum({ items, value, onChange, onClick, initialIdx }: {
 
   return (
     <div
-      style={{ height: TOTAL_H, position: "relative", userSelect: "none", width: "100%", overflow: "hidden" }}
+      style={{ height: TOTAL_H, position: "relative", userSelect: "none", width: "100%", overflow: "hidden", clipPath: `inset(0 -200px 0 0)` }}
       onTouchStart={onTouchStart}
       onTouchMove={onTouchMove}
       onTouchEnd={onTouchEnd}
@@ -350,10 +350,10 @@ export default function CategoryDrumPanel({ open, onClose, prices, onDragItem }:
       <div onClick={onClose} style={{ position: "fixed", inset: 0, zIndex: 40 }} />
       <div style={{
         position: "fixed",
-        right: 0,
+        right: -8,
         top: 0,
         bottom: 0,
-        transform: `translateX(${visible ? 0 : 60}px)`,
+        transform: `translateX(${visible ? 0 : 80}px)`,
         opacity: visible ? 1 : 0,
         transition: "transform 0.3s cubic-bezier(0.34,1.2,0.64,1), opacity 0.25s ease",
         zIndex: 41,
@@ -363,6 +363,7 @@ export default function CategoryDrumPanel({ open, onClose, prices, onDragItem }:
         justifyContent: "center",
         alignItems: "stretch",
         pointerEvents: "none",
+        background: "transparent",
       }}>
         {/* Кнопка назад — абсолютно, не влияет на центровку */}
         {mode === "items" && (
