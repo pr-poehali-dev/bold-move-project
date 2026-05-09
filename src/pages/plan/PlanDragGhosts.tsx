@@ -27,12 +27,16 @@ export default function PlanDragGhosts({
 }: Props) {
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  // При добавлении нового товара — скроллим к последнему
+  // При смене активного товара — скроллим к его карточке
   useEffect(() => {
     const el = scrollRef.current;
-    if (!el) return;
-    el.scrollTo({ left: el.scrollWidth, behavior: "smooth" });
-  }, [activeItems.length]);
+    if (!el || tapActiveId == null) return;
+    const card = el.querySelector(`[data-active-item="${tapActiveId}"]`) as HTMLElement | null;
+    if (!card) return;
+    const containerLeft = el.getBoundingClientRect().left;
+    const cardLeft = card.getBoundingClientRect().left;
+    el.scrollBy({ left: cardLeft - containerLeft - 20, behavior: "smooth" });
+  }, [tapActiveId]);
 
   // Суммарное кол-во по стенам + полотну
   const totalByPriceId = (priceId: number): number => {
