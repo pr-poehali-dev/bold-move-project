@@ -171,11 +171,33 @@ export default function PlanPage() {
       startY = e.touches[0].clientY;
     };
 
+    let directionDecided = false;
+    let isHorizontal = false;
+
     const onTouchMove = (e: TouchEvent) => {
       if (!draggingItem) return;
-      const dx = Math.abs(e.touches[0].clientX - startX);
-      const dy = Math.abs(e.touches[0].clientY - startY);
-      if (dx > 8 || dy > 8) isDragging = true;
+      const dx = e.touches[0].clientX - startX;
+      const dy = e.touches[0].clientY - startY;
+      const adx = Math.abs(dx), ady = Math.abs(dy);
+
+      // Определяем направление при первом значимом движении
+      if (!directionDecided && (adx > 5 || ady > 5)) {
+        directionDecided = true;
+        isHorizontal = adx > ady;
+      }
+
+      // Горизонталь — это скролл слайдера, не drag
+      if (isHorizontal) {
+        draggingItem = null;
+        return;
+      }
+
+      // Вертикаль вверх — drag товара на стену
+      if (directionDecided && !isHorizontal && ady > 10) {
+        isDragging = true;
+        e.preventDefault(); // блокируем скролл при вертикальном drag
+      }
+
       if (isDragging) {
         setHoverSegId(findClosestSeg(e.touches[0].clientX, e.touches[0].clientY));
       }
@@ -185,6 +207,8 @@ export default function PlanPage() {
       if (!draggingItem || !isDragging) {
         draggingItem = null;
         isDragging = false;
+        directionDecided = false;
+        isHorizontal = false;
         setHoverSegId(null);
         return;
       }
@@ -196,11 +220,13 @@ export default function PlanPage() {
       }
       draggingItem = null;
       isDragging = false;
+      directionDecided = false;
+      isHorizontal = false;
       setHoverSegId(null);
     };
 
     window.addEventListener("touchstart", onTouchStart, { passive: true });
-    window.addEventListener("touchmove", onTouchMove, { passive: true });
+    window.addEventListener("touchmove", onTouchMove, { passive: false });
     window.addEventListener("touchend", onTouchEnd);
     return () => {
       window.removeEventListener("touchstart", onTouchStart);
@@ -526,7 +552,7 @@ export default function PlanPage() {
                   transition: "border-color 0.15s, box-shadow 0.15s",
                   opacity: isActive ? 1 : 0.7,
                   userSelect: "none",
-                  touchAction: "none",
+                  touchAction: "pan-x",
                   flexShrink: 0,
                   scrollSnapAlign: "start",
                   maxWidth: 220,
