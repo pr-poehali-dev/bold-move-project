@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react";
 import type { FloorItem, Segment, SegmentPriceItem } from "./planTypes";
 
 interface Props {
@@ -24,6 +25,15 @@ export default function PlanDragGhosts({
   segments, floorItems, anyPanelOpen,
   onTapActiveId, onRemoveActiveItem,
 }: Props) {
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  // При добавлении нового товара — скроллим к последнему
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    el.scrollTo({ left: el.scrollWidth, behavior: "smooth" });
+  }, [activeItems.length]);
+
   // Суммарное кол-во по стенам + полотну
   const totalByPriceId = (priceId: number): number => {
     const fromSegs = segments.reduce((sum, seg) => {
@@ -117,13 +127,13 @@ export default function PlanDragGhosts({
 
       {/* ── Активные карточки внизу — горизонтальный слайдер ── */}
       {activeItems.length > 0 && !anyPanelOpen && (
-        <div style={{
+        <div ref={scrollRef} style={{
           position: "fixed", bottom: isMobile ? 90 : 16, left: 0, right: isMobile ? 0 : "auto",
           ...(isMobile ? {} : { left: "50%", transform: "translateX(-50%)" }),
           zIndex: 9999,
           display: "flex", gap: 8, alignItems: "flex-end",
           overflowX: "auto", overflowY: "visible",
-          padding: "4px 16px 4px 16px",
+          padding: "4px 20px 4px 20px",
           scrollSnapType: "x mandatory",
           WebkitOverflowScrolling: "touch",
           scrollbarWidth: "none",
@@ -156,7 +166,7 @@ export default function PlanDragGhosts({
                   touchAction: "pan-x",
                   flexShrink: 0,
                   scrollSnapAlign: "start",
-                  maxWidth: 220,
+                  maxWidth: 280,
                 }}
                 onClick={() => onTapActiveId(item.priceId)}
               >
@@ -176,7 +186,7 @@ export default function PlanDragGhosts({
                     fontSize: 12, fontWeight: 700,
                     color: isActive ? "rgba(196,181,253,1)" : "rgba(255,255,255,0.75)",
                     overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-                    maxWidth: 120,
+                    maxWidth: 170,
                   }}>{item.name}</div>
                   <div style={{ fontSize: 10, color: hoverSegId && isActive ? "rgba(167,139,250,0.9)" : "rgba(167,139,250,0.55)", marginTop: 1 }}>
                     {hoverSegId && isActive ? "Отпустите на стене" : "Тяните на стену →"}
