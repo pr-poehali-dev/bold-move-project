@@ -490,11 +490,17 @@ export default function PlanPage() {
         </div>
       )}
 
-      {/* ── Активные карточки внизу (мобиле) ── */}
+      {/* ── Активные карточки внизу (мобиле) — горизонтальный слайдер ── */}
       {activeItems.length > 0 && (
         <div style={{
-          position: "fixed", bottom: 90, left: "50%", transform: "translateX(-50%)",
-          zIndex: 9999, display: "flex", gap: 8, alignItems: "flex-end",
+          position: "fixed", bottom: 90, left: 0, right: 0,
+          zIndex: 9999,
+          display: "flex", gap: 8, alignItems: "flex-end",
+          overflowX: "auto", overflowY: "visible",
+          padding: "4px 16px 4px 16px",
+          scrollSnapType: "x mandatory",
+          WebkitOverflowScrolling: "touch",
+          scrollbarWidth: "none",
           pointerEvents: "all",
         }}>
           {activeItems.map(item => {
@@ -519,6 +525,9 @@ export default function PlanPage() {
                   opacity: isActive ? 1 : 0.7,
                   userSelect: "none",
                   touchAction: "none",
+                  flexShrink: 0,
+                  scrollSnapAlign: "start",
+                  maxWidth: 220,
                 }}
                 onClick={() => setTapActiveId(item.priceId)}
               >
