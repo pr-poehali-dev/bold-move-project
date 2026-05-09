@@ -31,11 +31,12 @@ const PADDING  = ITEM_H * Math.floor(VISIBLE / 2);
 
 // ── Барабан с дугой ───────────────────────────────────────────────────────────
 
-function ArcDrum({ items, value, onChange, onClick }: {
+function ArcDrum({ items, value, onChange, onClick, initialIdx }: {
   items: ArcItem[];
   value: string;
   onChange: (v: string) => void;
   onClick: (v: string) => void;
+  initialIdx?: number;
 }) {
   const scrollRef   = useRef<HTMLDivElement>(null);
   const isDragging  = useRef(false);
@@ -83,11 +84,12 @@ function ArcDrum({ items, value, onChange, onClick }: {
 
   useEffect(() => {
     if (items.length === 0) return;
-    // Стартуем с середины списка
-    const midIdx = Math.floor(items.length / 2);
+    const startIdx = (initialIdx !== undefined && initialIdx >= 0 && initialIdx < items.length)
+      ? initialIdx
+      : Math.floor(items.length / 2);
     const el = scrollRef.current;
-    if (el) { el.scrollTop = midIdx * ITEM_H; setScrollTop(midIdx * ITEM_H); isSnapping.current = false; }
-    onChange(items[midIdx].value);
+    if (el) { el.scrollTop = startIdx * ITEM_H; setScrollTop(startIdx * ITEM_H); isSnapping.current = false; }
+    onChange(items[startIdx].value);
   }, [items.length]); // eslint-disable-line
 
   useEffect(() => {
@@ -321,6 +323,14 @@ export default function CategoryDrumPanel({ open, onClose, prices, onDragItem }:
     .filter(p => p.category === selectedCategory)
     .map(p => ({ value: String(p.id), label: p.name, imageUrl: p.image_url }));
 
+  // Стартовый индекс категорий — ищем "профил" по подстроке (без учёта регистра)
+  const catStartIdx = (() => {
+    const profileIdx = categories.findIndex(c =>
+      c.label.toLowerCase().includes("профил")
+    );
+    return profileIdx >= 0 ? profileIdx : Math.floor(categories.length / 2);
+  })();
+
   const handleCategoryClick = useCallback((cat: string) => {
     setSelectedCategory(cat);
     setMode("items");
@@ -382,9 +392,10 @@ export default function CategoryDrumPanel({ open, onClose, prices, onDragItem }:
             <ArcDrum
               key="cats"
               items={categories}
-              value={selectedCategory || (categories[0]?.value ?? "")}
+              value={selectedCategory || (categories[catStartIdx]?.value ?? "")}
               onChange={setSelectedCategory}
               onClick={handleCategoryClick}
+              initialIdx={catStartIdx}
             />
           )}
           {mode === "items" && (
