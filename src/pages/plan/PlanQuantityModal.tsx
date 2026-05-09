@@ -14,7 +14,8 @@ export default function PlanQuantityModal({ item, onConfirm, onCancel }: Props) 
 
   useEffect(() => {
     if (item) {
-      setValue("1");
+      // При редактировании подставляем текущее количество если есть
+      setValue(String((item as SegmentPriceItem & { quantity?: number }).quantity ?? 1));
       setTimeout(() => { inputRef.current?.select(); }, 50);
     }
   }, [item]);
@@ -75,11 +76,11 @@ export default function PlanQuantityModal({ item, onConfirm, onCancel }: Props) 
           <div style={{ fontSize: 11, color: "rgba(255,255,255,0.35)", marginBottom: 8, textTransform: "uppercase", letterSpacing: "0.08em" }}>
             Количество, {unit}
           </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, overflow: "visible" }}>
             <button
               onClick={() => setValue(v => { const n = parseFloat(v) || 1; return String(Math.max(1, n - 1)); })}
               style={{
-                width: 36, height: 36, borderRadius: 10, flexShrink: 0,
+                width: 32, height: 36, borderRadius: 10, flexShrink: 0,
                 background: "rgba(124,58,237,0.15)", border: "1px solid rgba(124,58,237,0.3)",
                 color: "rgba(196,181,253,1)", fontSize: 18, cursor: "pointer",
                 display: "flex", alignItems: "center", justifyContent: "center",
@@ -95,7 +96,7 @@ export default function PlanQuantityModal({ item, onConfirm, onCancel }: Props) 
                 if (e.key === "Escape") onCancel();
               }}
               style={{
-                flex: 1, height: 36, borderRadius: 10, textAlign: "center",
+                flex: 1, minWidth: 0, height: 36, borderRadius: 10, textAlign: "center",
                 background: "rgba(255,255,255,0.06)", border: "1px solid rgba(124,58,237,0.4)",
                 color: "#fff", fontSize: 16, fontWeight: 700,
                 outline: "none",
@@ -104,7 +105,7 @@ export default function PlanQuantityModal({ item, onConfirm, onCancel }: Props) 
             <button
               onClick={() => setValue(v => String((parseFloat(v) || 0) + 1))}
               style={{
-                width: 36, height: 36, borderRadius: 10, flexShrink: 0,
+                width: 32, height: 36, borderRadius: 10, flexShrink: 0,
                 background: "rgba(124,58,237,0.15)", border: "1px solid rgba(124,58,237,0.3)",
                 color: "rgba(196,181,253,1)", fontSize: 18, cursor: "pointer",
                 display: "flex", alignItems: "center", justifyContent: "center",

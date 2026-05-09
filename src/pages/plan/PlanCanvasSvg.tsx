@@ -27,13 +27,14 @@ interface Props {
   onTouchEnd: (e: React.TouchEvent<SVGSVGElement>) => void;
   onDimLineClick: (e: React.MouseEvent, dlId: string) => void;
   deleteHover?: { x: number; y: number; type: "point" | "segment" } | null;
+  onEditFloorItem?: (id: string) => void;
 }
 
 export default function PlanCanvasSvg({
   svgRef, state, onChange, cursor, ghost, dimLineFrom,
   handlers, onMouseMove, onMouseDown, onMouseUp,
   onCanvasClick, onTouchStart, onTouchMove, onTouchEnd,
-  onDimLineClick, deleteHover,
+  onDimLineClick, deleteHover, onEditFloorItem,
 }: Props) {
   const {
     points, segments, diagonals, dimLines,
@@ -163,6 +164,12 @@ export default function PlanCanvasSvg({
           const label = fi.name.length > 16 ? fi.name.slice(0, 14) + "…" : fi.name;
           return (
             <g key={fi.id}>
+              {/* Кликабельная область бейджа — открывает редактирование */}
+              <rect x={fx - FW / 2} y={fy - FH / 2} width={FW - 20} height={FH} rx={8}
+                fill="transparent" stroke="none"
+                style={{ cursor: "pointer" }}
+                onClick={e => { e.stopPropagation(); onEditFloorItem?.(fi.id); }}
+              />
               <rect x={fx - FW / 2} y={fy - FH / 2} width={FW} height={FH} rx={8}
                 fill="rgba(17,12,36,0.92)" stroke="rgba(124,58,237,0.35)" strokeWidth={1}
                 style={{ pointerEvents: "none" }}

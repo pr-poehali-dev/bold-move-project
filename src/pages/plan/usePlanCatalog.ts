@@ -33,6 +33,11 @@ export interface PlanCatalogState {
   pendingFloorItem: SegmentPriceItem | null;
   setPendingFloorItem: (item: SegmentPriceItem | null) => void;
   confirmFloorItem: (quantity: number) => void;
+  // Модалка редактирования существующего floorItem
+  editingFloorId: string | null;
+  setEditingFloorId: (id: string | null) => void;
+  editingFloorItem: (SegmentPriceItem & { quantity: number }) | null;
+  confirmEditFloorItem: (quantity: number) => void;
 }
 
 export function usePlanCatalog(
@@ -51,6 +56,8 @@ export function usePlanCatalog(
   const [dragCardPos,    setDragCardPos]    = useState<{ x: number; y: number } | null>(null);
   const [filterAttached,    setFilterAttached]    = useState(false);
   const [pendingFloorItem,  setPendingFloorItem]  = useState<SegmentPriceItem | null>(null);
+  // Редактирование существующего floorItem (id + данные для модалки)
+  const [editingFloorId,    setEditingFloorId]    = useState<string | null>(null);
 
   // Загружаем прайс один раз
   useEffect(() => {
@@ -157,6 +164,26 @@ export function usePlanCatalog(
     push({ ...s, floorItems: [...(s.floorItems ?? []), newFloorItem] });
     setPendingFloorItem(null);
   }, [pendingFloorItem, stateRef, push]);
+
+  // Подтвердить редактирование существующего floorItem
+  const confirmEditFloorItem = useCallback((quantity: number) => {
+    if (!editingFloorId) return;
+    const s = stateRef.current;
+    push({ ...s, floorItems: (s.floorItems ?? []).map(fi =>
+      fi.id === editingFloorId ? { ...fi, quantity } : fi
+    )});
+    setEditingFloorId(null);
+  }, [editingFloorId, stateRef, push]);
+
+  // Данные редактируемого floorItem для модалки
+  const editingFloorItem = editingFloorId
+    ? (() => {
+        const fi = stateRef.current.floorItems?.find(f => f.id === editingFloorId);
+        if (!fi) return null;
+        return { priceId: fi.priceId, name: fi.name, category: fi.category,
+          imageUrl: fi.imageUrl, categoryImageUrl: null, unit: fi.unit, quantity: fi.quantity } as SegmentPriceItem & { quantity: number };
+      })()
+    : null;
 
   // Drag: товар летит за курсором/пальцем (десктоп)
   useEffect(() => {
@@ -356,5 +383,6 @@ export function usePlanCatalog(
     attachedCount,
     findClosestSeg, assignItemToSeg, removeActiveItem,
     pendingFloorItem, setPendingFloorItem, confirmFloorItem,
+    editingFloorId, setEditingFloorId, editingFloorItem, confirmEditFloorItem,
   };
 }

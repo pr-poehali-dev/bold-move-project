@@ -162,6 +162,7 @@ export default function PlanPage() {
             onChange={handleChange}
             onReplace={handleReplace}
             onOpenCatalog={() => catalog.setCatalogOpen(true)}
+            onEditFloorItem={catalog.setEditingFloorId}
           />
         </div>
 
@@ -293,11 +294,17 @@ export default function PlanPage() {
         }}
       />
 
-      {/* ── Модалка количества для floorItems ── */}
+      {/* ── Модалка добавления на полотно ── */}
       <PlanQuantityModal
         item={catalog.pendingFloorItem}
         onConfirm={catalog.confirmFloorItem}
         onCancel={() => catalog.setPendingFloorItem(null)}
+      />
+      {/* ── Модалка редактирования quantity floorItem ── */}
+      <PlanQuantityModal
+        item={catalog.editingFloorItem}
+        onConfirm={catalog.confirmEditFloorItem}
+        onCancel={() => catalog.setEditingFloorId(null)}
       />
 
       {/* ── Ghost-оверлеи и слайдер активных карточек ── */}
