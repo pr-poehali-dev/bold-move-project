@@ -124,9 +124,6 @@ export default function DrawingTabSidesSection({
                         : [],
                     });
                   }}
-                  onBlur={() => {
-                    onChange({ selectedSegmentId: null });
-                  }}
                   onEnterNext={idx < segments.length - 1 ? () => focusNext(idx) : undefined}
                 />
               ))}

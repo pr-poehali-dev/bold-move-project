@@ -59,7 +59,7 @@ export function Section({
 // ─── Строка длины ─────────────────────────────────────────────────────────────
 export function LengthRow({
   label, valueCm, placeholder, visible,
-  onValueChange, onVisibilityToggle, onDelete, onFocus, onBlur, onEnterNext, inputRef, autoFocus, highlighted, autoRecalc,
+  onValueChange, onVisibilityToggle, onDelete, onFocus, onEnterNext, inputRef, autoFocus, highlighted, autoRecalc,
   onFlipDirection, firstInput,
 }: {
   label: string; valueCm: number | null; placeholder?: string;
@@ -68,7 +68,6 @@ export function LengthRow({
   onVisibilityToggle: () => void;
   onDelete?: () => void;
   onFocus?: () => void;
-  onBlur?: () => void;
   onEnterNext?: () => void;
   inputRef?: React.RefObject<HTMLInputElement>;
   autoFocus?: boolean;
@@ -148,7 +147,7 @@ export function LengthRow({
         placeholder={placeholder ?? "—"}
         {...(firstInput ? { 'data-sides-first-input': 'true' } : {})}
         onFocus={e => { e.target.select(); onFocus?.(); }}
-        onBlur={e => { commit(e.target); onBlur?.(); }}
+        onBlur={e => commit(e.target)}
         onKeyDown={e => {
           e.stopPropagation();
           if (e.key === "Enter") {
