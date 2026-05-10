@@ -284,11 +284,18 @@ export default function useVoiceDraw({ onChange }: Props) {
   const closeFigure = useCallback(() => {
     const b = buildRef.current;
     if (b.points.length < 3) return;
+    const lastPt  = b.points[b.points.length - 1];
+    const firstPt = b.points[0];
+    const scale   = b.baseScale ?? SCALE_INIT;
+    const dx = firstPt.x - lastPt.x;
+    const dy = firstPt.y - lastPt.y;
+    const distPx = Math.sqrt(dx * dx + dy * dy);
+    const lengthCm = distPx > 0.5 ? Math.round(distPx / scale) : null;
     const closing: Segment = {
       id: genId("s"),
-      fromId: b.points[b.points.length - 1].id,
-      toId:   b.points[0].id,
-      lengthCm: null,
+      fromId: lastPt.id,
+      toId:   firstPt.id,
+      lengthCm,
       showLength: true,
       showDimLine: true,
       arcRadius: 0,
