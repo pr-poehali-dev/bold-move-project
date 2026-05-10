@@ -185,13 +185,28 @@ export default function MobileBottomBar({
       {onToggleVoiceDraw && (
         <div className="relative">
           {/* Всплывающая подсказка над кнопкой */}
-          {(isVoiceDrawing || isVoiceProcessing) && (voiceStatus || voiceInterim) && (
-            <div className="absolute bottom-14 right-0 bg-[#1a1b2e] border border-violet-500/30 rounded-2xl shadow-2xl p-3 w-56 z-50">
-              {voiceStatus && (
-                <p className="text-[11px] text-violet-300 font-medium leading-snug whitespace-pre-line">{voiceStatus}</p>
+          {(voiceStatus || voiceInterim) && (
+            <div
+              className="absolute bottom-14 right-0 bg-[#1a1b2e] border border-violet-500/30 rounded-2xl shadow-2xl p-3 w-64 z-50"
+              onClick={e => e.stopPropagation()}
+            >
+              {/* Заголовок */}
+              {isVoiceProcessing && (
+                <p className="text-[10px] text-amber-400 font-semibold mb-1 uppercase tracking-wide">Распознаю...</p>
               )}
+              {isVoiceDrawing && !isVoiceProcessing && (
+                <p className="text-[10px] text-red-400 font-semibold mb-1 uppercase tracking-wide">● Запись</p>
+              )}
+              {!isVoiceDrawing && !isVoiceProcessing && voiceInterim && (
+                <p className="text-[10px] text-emerald-400 font-semibold mb-1 uppercase tracking-wide">Распознано:</p>
+              )}
+              {/* Распознанный текст — крупно */}
               {voiceInterim && (
-                <p className="text-[10px] text-white/40 italic mt-1 line-clamp-3">"{voiceInterim}"</p>
+                <p className="text-[13px] text-white font-medium leading-snug mb-1.5">«{voiceInterim}»</p>
+              )}
+              {/* Статус */}
+              {voiceStatus && (
+                <p className="text-[11px] text-violet-300 leading-snug whitespace-pre-line">{voiceStatus}</p>
               )}
             </div>
           )}
