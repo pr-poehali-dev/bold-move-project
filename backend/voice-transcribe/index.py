@@ -24,6 +24,7 @@ def handler(event: dict, context) -> dict:
             return {"statusCode": 400, "headers": cors, "body": json.dumps({"error": "audio required"})}
 
         audio_bytes = base64.b64decode(audio_b64)
+        print(f"[voice-transcribe] received audio: {len(audio_bytes)} bytes, mime: {mime_type}")
 
         ext_map = {
             "audio/webm": ".webm",
@@ -51,6 +52,7 @@ def handler(event: dict, context) -> dict:
         os.unlink(tmp_path)
 
         text = result if isinstance(result, str) else getattr(result, "text", str(result))
+        print(f"[voice-transcribe] result: '{text.strip()[:100]}'")
         return {
             "statusCode": 200,
             "headers": {**cors, "Content-Type": "application/json"},
@@ -58,6 +60,7 @@ def handler(event: dict, context) -> dict:
         }
 
     except Exception as e:
+        print(f"[voice-transcribe] ERROR: {e}")
         return {
             "statusCode": 500,
             "headers": cors,

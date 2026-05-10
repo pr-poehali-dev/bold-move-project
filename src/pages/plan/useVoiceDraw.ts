@@ -269,15 +269,24 @@ export default function useVoiceDraw({ onChange }: Props) {
     setIsListening(false);
     setStatus("Распознаю...");
 
+    // Запрашиваем последний чанк явно (важно на Android)
+    if (mr.state === "recording") {
+      try { mr.requestData(); } catch { /* игнорируем */ }
+    }
+
     await new Promise<void>(resolve => {
       mr.onstop = () => resolve();
-      mr.stop();
+      // Небольшая задержка чтобы ondataavailable успел сработать
+      setTimeout(() => mr.stop(), 150);
     });
 
     mediaRecorderRef.current = null;
 
+    // Ещё небольшая пауза чтобы последний ondataavailable точно отработал
+    await new Promise(r => setTimeout(r, 100));
+
     const chunks = chunksRef.current;
-    if (chunks.length === 0) { setStatus("Ничего не записано"); return; }
+    if (chunks.length === 0) { setStatus("Ничего не записано — попробуйте ещё раз"); return; }
 
     // Берём реальный mimeType из первого чанка (браузер мог скорректировать)
     const mimeType = (chunks[0].type && chunks[0].type !== "") ? chunks[0].type.split(";")[0] : "audio/webm";
@@ -305,12 +314,15 @@ export default function useVoiceDraw({ onChange }: Props) {
       const data = await res.json();
       if (data.text) {
         processText(data.text);
+      } else if (data.error) {
+        console.error("[VoiceDraw] server error:", data.error);
+        setStatus(`Ошибка: ${data.error}`);
       } else {
-        setStatus("Не удалось распознать речь");
+        setStatus("Не удалось распознать речь — говорите чётче");
       }
     } catch (e) {
       console.error("[VoiceDraw] transcribe error:", e);
-      setStatus("Ошибка распознавания");
+      setStatus("Ошибка соединения — проверьте интернет");
     } finally {
       setIsProcessing(false);
     }
