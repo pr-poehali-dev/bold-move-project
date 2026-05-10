@@ -97,79 +97,70 @@ function tryParseShape(text: string): Cmd[] | null {
   }
 
   // ── Квадрат: "квадрат 250" ────────────────────────────────────────────────
-  // 4 точки, 1 число
-  //   F──────E
+  // 4 точки (A B C D), 3 явных отрезка + closeFigure замыкает D→A
+  //   D──────C
   //   |      |
-  //   A──────B  (A=лево-низ, обход: →↑←↓)
+  //   A──────B
   if (/квадрат/.test(t) && nums.length >= 1) {
     const s = nums[0];
     return [
       { len: s, turn: "straight" }, // A→B вправо
       { len: s, turn: "left"     }, // B→C вверх
       { len: s, turn: "left"     }, // C→D влево
-      { len: s, turn: "close"    }, // D→A вниз (замыкание)
+      { len: 0, turn: "close"    }, // замыкаем D→A геометрически
     ];
   }
 
   // ── Прямоугольник: "прямоугольник 400 на 300" или "400 на 300" ────────────
-  // 4 точки, 2 числа (ширина × высота)
+  // 4 точки, 3 явных отрезка + closeFigure
   if ((/прямоугольник|прямоугол/.test(t) || /\bна\b/.test(t)) && nums.length >= 2) {
     const w = nums[0], h = nums[1];
     return [
-      { len: w, turn: "straight" }, // →
-      { len: h, turn: "left"     }, // ↑
-      { len: w, turn: "left"     }, // ←
-      { len: h, turn: "close"    }, // ↓ замыкание
+      { len: w, turn: "straight" }, // A→B →
+      { len: h, turn: "left"     }, // B→C ↑
+      { len: w, turn: "left"     }, // C→D ←
+      { len: 0, turn: "close"    }, // замыкаем D→A геометрически
     ];
   }
 
-  // ── Г-образная: "г-образная 400 300 150 200" ─────────────────────────────
-  // 6 точек, вырез в правом верхнем углу
-  // Принимает 4 числа: W(полная ширина), H(полная высота), w(ширина выступа), h(высота выступа)
-  //
+  // ── Г-образная: "г-образная 400 300 150 100" ─────────────────────────────
+  // 6 точек, 5 явных отрезков + closeFigure
   //   F──────────E
   //   |          |
-  //   |       C──D   ← выступ справа
+  //   |       C──D
   //   |       |
   //   A───────B
-  //
-  // Обход A→B→C→D→E→F→A: →, ↑(часть), →, ↑(остаток), ←(полная), ↓(замыкание)
   if (/г.обр|г-обр|г обр|г-образн|г образн/.test(t) && nums.length >= 4) {
     const [W, H, w, h] = nums;
     return [
-      { len: W - w, turn: "straight" }, // A→B вправо (нижняя короткая часть)
-      { len: h,     turn: "left"     }, // B→C вверх (правая нижняя)
-      { len: w,     turn: "right"    }, // C→D вправо (выступ низ)
-      { len: H - h, turn: "left"     }, // D→E вверх (правая верхняя)
-      { len: W,     turn: "left"     }, // E→F влево (верх полная)
-      { len: H,     turn: "close"    }, // F→A вниз (лево, замыкание)
+      { len: W - w, turn: "straight" }, // A→B →
+      { len: h,     turn: "left"     }, // B→C ↑
+      { len: w,     turn: "right"    }, // C→D →
+      { len: H - h, turn: "left"     }, // D→E ↑
+      { len: W,     turn: "left"     }, // E→F ←
+      { len: 0,     turn: "close"    }, // замыкаем F→A геометрически
     ];
   }
 
   // ── П-образная: "п-образная 500 400 200 150" ─────────────────────────────
-  // 8 точек, ниша снизу по центру
-  // Принимает 4 числа: W(полная ширина), H(полная высота), nW(ширина ниши), nH(глубина ниши)
-  //
+  // 8 точек, 7 явных отрезков + closeFigure
   //   H──────────────────G
   //   |                  |
   //   |   D──────────C   |
   //   |   |          |   |
   //   A───B          E───F
-  //
-  // side = (W - nW) / 2
-  // Обход A→B→C→D→E→F→G→H→A: →, ↑, ←, ↓, →, ↑, ←, ↓(close)
   if (/п.обр|п-обр|п обр|п-образн|п образн/.test(t) && nums.length >= 4) {
     const [W, H, nW, nH] = nums;
     const side = Math.round((W - nW) / 2);
     return [
-      { len: side, turn: "straight" }, // A→B вправо
-      { len: nH,   turn: "left"     }, // B→C вверх
-      { len: nW,   turn: "left"     }, // C→D влево
-      { len: nH,   turn: "left"     }, // D→E вниз
-      { len: side, turn: "left"     }, // E→F вправо
-      { len: H,    turn: "left"     }, // F→G вверх
-      { len: W,    turn: "left"     }, // G→H влево
-      { len: H,    turn: "close"    }, // H→A вниз (замыкание)
+      { len: side, turn: "straight" }, // A→B →
+      { len: nH,   turn: "left"     }, // B→C ↑
+      { len: nW,   turn: "left"     }, // C→D ←
+      { len: nH,   turn: "left"     }, // D→E ↓
+      { len: side, turn: "left"     }, // E→F →
+      { len: H,    turn: "left"     }, // F→G ↑
+      { len: W,    turn: "left"     }, // G→H ←
+      { len: 0,    turn: "close"    }, // замыкаем H→A геометрически
     ];
   }
 
