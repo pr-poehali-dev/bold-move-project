@@ -268,14 +268,22 @@ export default function useVoiceDraw({ onChange }: Props) {
     const chunks = chunksRef.current;
     if (chunks.length === 0) { setStatus("Ничего не записано"); return; }
 
-    const mimeType = chunks[0].type || "audio/webm";
+    // Берём реальный mimeType из первого чанка (браузер мог скорректировать)
+    const mimeType = (chunks[0].type && chunks[0].type !== "") ? chunks[0].type.split(";")[0] : "audio/webm";
     const blob = new Blob(chunks, { type: mimeType });
     chunksRef.current = [];
 
     setIsProcessing(true);
     try {
       const arrayBuffer = await blob.arrayBuffer();
-      const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
+      const bytes = new Uint8Array(arrayBuffer);
+      // btoa со спредом падает на Android при большом аудио — конвертируем чанками
+      let binary = "";
+      const CHUNK = 8192;
+      for (let i = 0; i < bytes.length; i += CHUNK) {
+        binary += String.fromCharCode(...bytes.subarray(i, i + CHUNK));
+      }
+      const base64 = btoa(binary);
 
       const res = await fetch(TRANSCRIBE_URL, {
         method: "POST",
@@ -304,14 +312,18 @@ export default function useVoiceDraw({ onChange }: Props) {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
 
-      // Выбираем поддерживаемый формат
-      const mimeType = MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
-        ? "audio/webm;codecs=opus"
-        : MediaRecorder.isTypeSupported("audio/webm")
-        ? "audio/webm"
-        : "audio/mp4";
+      // Выбираем поддерживаемый формат (Android Chrome часто поддерживает только audio/webm или audio/ogg)
+      const MIME_CANDIDATES = [
+        "audio/webm;codecs=opus",
+        "audio/ogg;codecs=opus",
+        "audio/webm",
+        "audio/ogg",
+        "audio/mp4",
+        "",
+      ];
+      const mimeType = MIME_CANDIDATES.find(m => !m || MediaRecorder.isTypeSupported(m)) ?? "";
 
-      const mr = new MediaRecorder(stream, { mimeType });
+      const mr = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
       mediaRecorderRef.current = mr;
       chunksRef.current = [];
 
