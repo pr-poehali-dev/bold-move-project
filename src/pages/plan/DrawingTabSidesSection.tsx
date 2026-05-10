@@ -114,11 +114,18 @@ export default function DrawingTabSidesSection({
                   onFocus={() => {
                     onChange({
                       activeInputIndex: idx,
+                      // Подсвечиваем сегмент на холсте
+                      selectedSegmentId: seg.id,
+                      selectedPointId: null,
+                      selectedDiagonalId: null,
                       // В режиме построения — всегда чисто. В режиме редактирования — убираем только этот сегмент.
                       changedSegmentIds: state.isBuilt
                         ? (state.changedSegmentIds ?? []).filter(id => id !== seg.id)
                         : [],
                     });
+                  }}
+                  onBlur={() => {
+                    onChange({ selectedSegmentId: null });
                   }}
                   onEnterNext={idx < segments.length - 1 ? () => focusNext(idx) : undefined}
                 />
