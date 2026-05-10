@@ -35,29 +35,48 @@ def handler(event: dict, context) -> dict:
         }
         ext = ext_map.get(mime_type.split(";")[0].strip(), ".webm")
 
-        client = Groq(api_key=os.environ["GROQ_API_KEY"])
-
         with tempfile.NamedTemporaryFile(suffix=ext, delete=False) as f:
             f.write(audio_bytes)
             tmp_path = f.name
 
-        with open(tmp_path, "rb") as f:
-            result = client.audio.transcriptions.create(
-                file=(f"audio{ext}", f, mime_type),
-                model="whisper-large-v3-turbo",
-                language="ru",
-                response_format="text",
-            )
+        # Пробуем оба ключа по очереди
+        api_keys = [k for k in [
+            os.environ.get("GROQ_API_KEY"),
+            os.environ.get("GROQ_API_KEY2"),
+        ] if k]
 
-        os.unlink(tmp_path)
+        last_error = None
+        text = None
+        for api_key in api_keys:
+            try:
+                client = Groq(api_key=api_key)
+                with open(tmp_path, "rb") as f:
+                    result = client.audio.transcriptions.create(
+                        file=(f"audio{ext}", f, mime_type),
+                        model="whisper-large-v3-turbo",
+                        language="ru",
+                        response_format="text",
+                    )
+                text = result if isinstance(result, str) else getattr(result, "text", str(result))
+                print(f"[voice-transcribe] result: '{text.strip()[:100]}'")
+                break
+            except Exception as e:
+                last_error = e
+                print(f"[voice-transcribe] key failed: {e}")
 
-        text = result if isinstance(result, str) else getattr(result, "text", str(result))
-        print(f"[voice-transcribe] result: '{text.strip()[:100]}'")
-        return {
-            "statusCode": 200,
-            "headers": {**cors, "Content-Type": "application/json"},
-            "body": json.dumps({"text": text.strip()}),
-        }
+        try:
+            os.unlink(tmp_path)
+        except Exception:
+            pass
+
+        if text is not None:
+            return {
+                "statusCode": 200,
+                "headers": {**cors, "Content-Type": "application/json"},
+                "body": json.dumps({"text": text.strip()}),
+            }
+
+        raise last_error or Exception("No API keys available")
 
     except Exception as e:
         print(f"[voice-transcribe] ERROR: {e}")
