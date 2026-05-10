@@ -184,10 +184,13 @@ export default function usePlanVoiceInput({ segments, onUpdateSegment }: Props) 
     };
 
     recognition.onend = () => {
+      // Если пользователь не остановил вручную — перезапускаем (continuous через restart)
       if (!recognitionRef.current) return;
-      // Не перезапускаем — ждём следующего касания (как iOS)
-      setIsListening(false);
-      recognitionRef.current = null;
+      try {
+        recognitionRef.current.start();
+      } catch {
+        // Уже запущен или недоступен — игнорируем
+      }
     };
 
     recognition.onerror = (e: SpeechRecognitionErrorEvent) => {
