@@ -134,6 +134,10 @@ export default function useVoiceDraw({ onChange }: Props) {
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef        = useRef<Blob[]>([]);
+  const analyserRef      = useRef<AnalyserNode | null>(null);
+  const audioCtxRef      = useRef<AudioContext | null>(null);
+  const rafRef           = useRef<number>(0);
+  const [volume, setVolume] = useState(0); // 0..1
 
   const buildRef = useRef<{
     points:     Point[];
@@ -255,6 +259,13 @@ export default function useVoiceDraw({ onChange }: Props) {
     const mr = mediaRecorderRef.current;
     if (!mr || mr.state === "inactive") return;
 
+    // Останавливаем анализатор громкости
+    cancelAnimationFrame(rafRef.current);
+    analyserRef.current = null;
+    audioCtxRef.current?.close().catch(() => {});
+    audioCtxRef.current = null;
+    setVolume(0);
+
     setIsListening(false);
     setStatus("Распознаю...");
 
@@ -331,6 +342,29 @@ export default function useVoiceDraw({ onChange }: Props) {
         if (e.data.size > 0) chunksRef.current.push(e.data);
       };
 
+      // ── Анализатор громкости ──────────────────────────────────────────────
+      try {
+        const ctx = new AudioContext();
+        audioCtxRef.current = ctx;
+        const source = ctx.createMediaStreamSource(stream);
+        const analyser = ctx.createAnalyser();
+        analyser.fftSize = 256;
+        analyser.smoothingTimeConstant = 0.6;
+        source.connect(analyser);
+        analyserRef.current = analyser;
+
+        const buf = new Uint8Array(analyser.frequencyBinCount);
+        const tick = () => {
+          analyser.getByteFrequencyData(buf);
+          let sum = 0;
+          for (let i = 0; i < buf.length; i++) sum += buf[i];
+          const avg = sum / buf.length / 255;
+          setVolume(avg);
+          rafRef.current = requestAnimationFrame(tick);
+        };
+        rafRef.current = requestAnimationFrame(tick);
+      } catch { /* AudioContext может быть недоступен */ }
+
       mr.start(100); // чанки каждые 100мс
       setIsListening(true);
       setInterimText("");
@@ -359,5 +393,5 @@ export default function useVoiceDraw({ onChange }: Props) {
     if (isListening) stopAndTranscribe();
   }, [isListening, stopAndTranscribe]);
 
-  return { isListening, isProcessing, interimText, status, hasSpeech, toggle, stop };
+  return { isListening, isProcessing, interimText, status, hasSpeech, toggle, stop, volume };
 }

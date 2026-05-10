@@ -21,6 +21,7 @@ interface Props {
   isVoiceProcessing?: boolean;
   voiceStatus?: string;
   voiceInterim?: string;
+  voiceVolume?: number;
   attachedCount?: number;
   filterAttached?: boolean;
   onToggleFilterAttached?: () => void;
@@ -38,6 +39,7 @@ export default function MobileBottomBar({
   onOpenSides, selectedSegmentId,
   sheetOpen = false, catalogOpen = false, rightPanelOpen = false,
   onToggleVoiceDraw, isVoiceDrawing = false, isVoiceProcessing = false, voiceStatus, voiceInterim,
+  voiceVolume = 0,
   attachedCount = 0, filterAttached = false, onToggleFilterAttached, isMobile = false,
   onSettingsOpenChange,
 }: Props) {
@@ -196,7 +198,7 @@ export default function MobileBottomBar({
           <button
             onClick={onToggleVoiceDraw}
             disabled={isVoiceProcessing}
-            className={`${
+            className={`relative overflow-hidden ${
               isVoiceProcessing
                 ? "w-12 h-12 rounded-2xl flex items-center justify-center text-white transition-all shadow-lg bg-amber-600 shadow-amber-500/40 opacity-80"
                 : isVoiceDrawing
@@ -204,6 +206,28 @@ export default function MobileBottomBar({
                 : BTN_DEFAULT
             }`}
           >
+            {/* Индикатор громкости — волна снизу */}
+            {isVoiceDrawing && !isVoiceProcessing && (
+              <svg
+                viewBox="0 0 48 48" width="48" height="48"
+                className="absolute inset-0 pointer-events-none"
+                style={{ opacity: 0.55 }}
+              >
+                {/* 5 столбиков эквалайзера */}
+                {[6, 14, 22, 30, 38].map((x, i) => {
+                  const h = Math.max(4, Math.round(voiceVolume * 28 * (0.6 + 0.4 * Math.sin(i * 1.3))));
+                  return (
+                    <rect
+                      key={i}
+                      x={x} y={48 - h} width={6} height={h}
+                      rx={3}
+                      fill="rgba(255,255,255,0.7)"
+                      style={{ transition: "height 0.08s, y 0.08s" }}
+                    />
+                  );
+                })}
+              </svg>
+            )}
             <Icon name={isVoiceProcessing ? "Loader" : isVoiceDrawing ? "MicOff" : "Mic"} size={20} className={isVoiceProcessing ? "animate-spin" : ""} />
           </button>
         </div>
