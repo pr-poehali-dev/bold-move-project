@@ -264,12 +264,11 @@ export function renderDiagonals(ctx: RenderContext, handlers: Pick<SegmentHandle
     const a = points.find(p => p.id === diag.fromId);
     const b = points.find(p => p.id === diag.toId);
     if (!a || !b) return null;
-    const mid = midPoint(a, b);
     const lenCm = diag.lengthCm ?? pxToCm(distPx(a, b), scale);
-    const idxA = points.findIndex(p => p.id === diag.fromId);
-    const idxB = points.findIndex(p => p.id === diag.toId);
-    const lbl = `${pointLabel(idxA)}-${pointLabel(idxB)}`;
     const isSel = diag.id === selectedDiagonalId;
+    // Лейбл размещаем на 1/4 от точки A (подальше от центра пересечения)
+    const tx = a.x + (b.x - a.x) * 0.25;
+    const ty = a.y + (b.y - a.y) * 0.25;
     return (
       <g key={diag.id}>
         <line x1={a.x} y1={a.y} x2={b.x} y2={b.y} stroke="transparent" strokeWidth={16}
@@ -282,13 +281,13 @@ export function renderDiagonals(ctx: RenderContext, handlers: Pick<SegmentHandle
           const na = angle > 90 || angle < -90 ? angle + 180 : angle;
           return (
             <text
-              x={mid.x} y={mid.y}
-              transform={`rotate(${na},${mid.x},${mid.y})`}
+              x={tx} y={ty}
+              transform={`rotate(${na},${tx},${ty})`}
               textAnchor="middle" dominantBaseline="auto" dy={-5}
               fontSize={9.5} fill={isSel ? "#fb923c" : "#f59e0b"}
               fontFamily="monospace"
               className="pointer-events-none select-none"
-            >{lbl}: {lenCm} см</text>
+            >{lenCm} см</text>
           );
         })()}
       </g>
