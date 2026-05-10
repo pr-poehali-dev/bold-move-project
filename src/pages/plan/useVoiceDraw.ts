@@ -147,14 +147,14 @@ export default function useVoiceDraw({ onChange }: Props) {
   }>({
     points:     [],
     segments:   [],
-    currentDir: "up",
+    currentDir: "right",
     baseScale:  null,
   });
 
   const hasSpeech = typeof navigator !== "undefined" && !!navigator.mediaDevices?.getUserMedia;
 
   const resetBuild = useCallback(() => {
-    buildRef.current = { points: [], segments: [], currentDir: "up", baseScale: null };
+    buildRef.current = { points: [], segments: [], currentDir: "right", baseScale: null };
   }, []);
 
   const addSegment = useCallback((lengthCm: number, dir: Dir) => {
@@ -325,8 +325,17 @@ export default function useVoiceDraw({ onChange }: Props) {
       setStatus("Ошибка соединения — проверьте интернет");
     } finally {
       setIsProcessing(false);
+      // Авто-замыкание: если набрали ≥ 3 точек и фигура ещё не замкнута — замыкаем
+      const b = buildRef.current;
+      if (b.points.length >= 3 && b.segments.length >= 2) {
+        const lastSeg = b.segments[b.segments.length - 1];
+        const alreadyClosed = lastSeg?.toId === b.points[0]?.id;
+        if (!alreadyClosed) {
+          closeFigure();
+        }
+      }
     }
-  }, [processText]);
+  }, [processText, closeFigure]);
 
   // Начать запись
   const startRecording = useCallback(async () => {
