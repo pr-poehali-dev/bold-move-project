@@ -82,7 +82,53 @@ function parseTurnOrClose(text: string): "right" | "left" | "straight" | "close"
 // Возвращает список команд [{len, turn}]
 interface Cmd { len: number; turn: "right" | "left" | "straight" | "close" }
 
+// Пробуем распознать шаблон фигуры: "квадрат 250" или "250 на 250" или "прямоугольник 300 на 200"
+// Возвращает команды для прямоугольника (4 стороны + замыкание) или null
+function tryParseShape(text: string): Cmd[] | null {
+  const t = text.toLowerCase().trim();
+
+  // Собираем числа из текста
+  const nums: number[] = [];
+  for (const token of t.split(/\s+/)) {
+    const n = parseNumber(token);
+    if (n !== null) nums.push(n);
+  }
+
+  const isSquareWord  = /квадрат/.test(t);
+  const isRectWord    = /прямоугольник|прямоугол/.test(t);
+  const hasByWord     = /\bна\b/.test(t);          // "250 на 300"
+
+  // квадрат N  →  4 стороны по N
+  if (isSquareWord && nums.length >= 1) {
+    const s = nums[0];
+    return [
+      { len: s, turn: "right" },
+      { len: s, turn: "right" },
+      { len: s, turn: "right" },
+      { len: s, turn: "close" },
+    ];
+  }
+
+  // прямоугольник W на H  или  W на H  (два числа с "на" между ними)
+  if ((isRectWord || hasByWord) && nums.length >= 2) {
+    const w = nums[0];
+    const h = nums[1];
+    return [
+      { len: w, turn: "right" },
+      { len: h, turn: "right" },
+      { len: w, turn: "right" },
+      { len: h, turn: "close" },
+    ];
+  }
+
+  return null;
+}
+
 function parseFullPhrase(text: string): Cmd[] {
+  // Сначала проверяем шаблоны фигур
+  const shape = tryParseShape(text);
+  if (shape) return shape;
+
   const tokens = text.toLowerCase().trim().split(/\s+/);
   const cmds: Cmd[] = [];
   let pendingLen: number | null = null;
