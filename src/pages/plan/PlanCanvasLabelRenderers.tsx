@@ -73,67 +73,90 @@ export function SegmentItemsBadges({
   const b = ctx.points.find(p => p.id === seg.toId);
   if (!a || !b) return null;
 
+  // Размеры иконки и отступы
+  const S   = 28;   // размер иконки (квадрат)
+  const GAP = 6;    // зазор между иконками вдоль стены
+  const OFF = 20;   // отступ от стены по нормали
+  const CR  = 7;    // радиус крестика-кружка
+
   const mid = midPoint(a, b);
   const { nx, ny } = segmentNormal(a, b);
-  const angle = Math.atan2(b.y - a.y, b.x - a.x) * 180 / Math.PI;
-  const na    = angle > 90 || angle < -90 ? angle + 180 : angle;
 
-  const H   = 24;
-  const GAP = 6;
-  const OFF = 28; // отступ первого бейджа от стены
-  const IMG = 18;
-  const X_BTN = 14;
+  // Вектор вдоль стены (нормализованный)
+  const segLen = distPx(a, b) || 1;
+  const tx = (b.x - a.x) / segLen;
+  const ty = (b.y - a.y) / segLen;
+
+  // Центр группы иконок — середина стены, сдвинутая по нормали
+  const cx = mid.x - nx * OFF;
+  const cy = mid.y - ny * OFF;
+
+  // Суммарная ширина всех иконок — центрируем группу вдоль стены
+  const totalW = items.length * S + (items.length - 1) * GAP;
+  const startOffset = -totalW / 2 + S / 2;
 
   return (
     <g key={`seg-items-${seg.id}`}>
       {items.map((item, idx) => {
-        // Каждый следующий бейдж — дальше от стены по нормали
-        const dist = OFF + idx * (H + GAP);
-        const px   = mid.x - nx * dist;
-        const py   = mid.y - ny * dist;
+        const offset = startOffset + idx * (S + GAP);
+        // Позиция иконки: центр стены + смещение вдоль стены
+        const px = cx + tx * offset;
+        const py = cy + ty * offset;
         const itemKey = `${seg.id}-${item.priceId}`;
-
-        // Ширина подбирается под длину названия (минимум 120, максимум 220)
-        const nameLen = item.name.length;
-        const W = Math.min(220, Math.max(120, nameLen * 6 + (item.imageUrl ? 44 : 24) + X_BTN * 2 + 8));
-
-        const textX = item.imageUrl ? -W / 2 + IMG + 10 : -W / 2 + 8;
-        // Максимальная длина названия чтобы не наезжать на крестик
-        const maxChars = Math.floor((W - (item.imageUrl ? IMG + 10 : 8) - X_BTN * 2 - 10) / 5.5);
-        const label = item.name.length > maxChars ? item.name.slice(0, maxChars - 1) + "…" : item.name;
+        const hasImg = !!item.imageUrl;
 
         return (
-          <g key={itemKey} transform={`translate(${px},${py}) rotate(${na})`}>
-            {/* Фон-таблетка */}
-            <rect x={-W / 2} y={-H / 2} width={W} height={H} rx={8}
-              fill="rgba(17,12,36,0.92)" stroke="rgba(124,58,237,0.55)" strokeWidth={1}
+          <g key={itemKey}>
+            {/* Фон иконки */}
+            <rect
+              x={px - S / 2} y={py - S / 2} width={S} height={S} rx={6}
+              fill="rgba(17,12,36,0.92)" stroke="rgba(124,58,237,0.6)" strokeWidth={1.2}
               style={{ pointerEvents: "none" }}
             />
 
-            {/* Картинка */}
-            {item.imageUrl && (
-              <image href={item.imageUrl} x={-W / 2 + 5} y={-9} width={IMG} height={IMG}
-                preserveAspectRatio="xMidYMid slice" style={{ pointerEvents: "none" }} />
+            {/* Картинка товара */}
+            {hasImg ? (
+              <image
+                href={item.imageUrl!}
+                x={px - S / 2 + 2} y={py - S / 2 + 2}
+                width={S - 4} height={S - 4}
+                preserveAspectRatio="xMidYMid meet"
+                style={{ pointerEvents: "none" }}
+              />
+            ) : (
+              /* Заглушка если нет иконки — первая буква названия */
+              <text
+                x={px} y={py + 1}
+                textAnchor="middle" dominantBaseline="middle"
+                fontSize={11} fontWeight={700}
+                fill="rgba(196,181,253,0.9)"
+                fontFamily="system-ui, sans-serif"
+                className="pointer-events-none select-none"
+              >
+                {item.name.charAt(0).toUpperCase()}
+              </text>
             )}
 
-            {/* Название */}
-            <text x={textX} y={4}
-              fontSize={9} fill="rgba(196,181,253,0.95)"
-              fontFamily="system-ui, sans-serif" fontWeight={500}
-              className="pointer-events-none select-none">
-              {label}
-            </text>
-
-            {/* Крестик */}
+            {/* Крестик — правый верхний угол */}
             {onRemoveItem && (
-              <g onClick={e => { e.stopPropagation(); onRemoveItem(seg.id, item.priceId); }}
-                style={{ cursor: "pointer" }}>
-                <circle cx={W / 2 - X_BTN} cy={0} r={X_BTN - 1}
-                  fill="rgba(239,68,68,0.2)" stroke="rgba(239,68,68,0.55)" strokeWidth={0.8} />
-                <line x1={W / 2 - X_BTN - 3} y1={-3} x2={W / 2 - X_BTN + 3} y2={3}
-                  stroke="rgba(255,255,255,0.75)" strokeWidth={1.2} strokeLinecap="round" />
-                <line x1={W / 2 - X_BTN + 3} y1={-3} x2={W / 2 - X_BTN - 3} y2={3}
-                  stroke="rgba(255,255,255,0.75)" strokeWidth={1.2} strokeLinecap="round" />
+              <g
+                onClick={e => { e.stopPropagation(); onRemoveItem(seg.id, item.priceId); }}
+                style={{ cursor: "pointer" }}
+              >
+                <circle
+                  cx={px + S / 2 - CR + 1} cy={py - S / 2 + CR - 1} r={CR}
+                  fill="rgba(17,12,36,0.95)" stroke="rgba(239,68,68,0.7)" strokeWidth={1}
+                />
+                <line
+                  x1={px + S / 2 - CR - 2} y1={py - S / 2 + CR - 4}
+                  x2={px + S / 2 - CR + 4} y2={py - S / 2 + CR + 2}
+                  stroke="rgba(255,255,255,0.85)" strokeWidth={1.2} strokeLinecap="round"
+                />
+                <line
+                  x1={px + S / 2 - CR + 4} y1={py - S / 2 + CR - 4}
+                  x2={px + S / 2 - CR - 2} y2={py - S / 2 + CR + 2}
+                  stroke="rgba(255,255,255,0.85)" strokeWidth={1.2} strokeLinecap="round"
+                />
               </g>
             )}
           </g>
