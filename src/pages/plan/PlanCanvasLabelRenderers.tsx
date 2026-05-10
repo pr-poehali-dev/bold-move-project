@@ -277,9 +277,20 @@ export function renderDiagonals(ctx: RenderContext, handlers: Pick<SegmentHandle
           onClick={e => handlers.onDiagonalClick(e, diag.id)}
         />
         <line x1={a.x} y1={a.y} x2={b.x} y2={b.y} stroke={isSel ? "#fb923c" : "#92400e"} strokeWidth={isSel ? 1.8 : 1.2} strokeDasharray="7 4" className="pointer-events-none" />
-        {diag.showLength && lenCm !== null && (
-          <text x={mid.x + 4} y={mid.y - 5} fontSize={9.5} fill={isSel ? "#fb923c" : "#f59e0b"} fontFamily="monospace" className="pointer-events-none select-none">{lbl}: {lenCm} см</text>
-        )}
+        {diag.showLength && lenCm !== null && (() => {
+          const angle = Math.atan2(b.y - a.y, b.x - a.x) * 180 / Math.PI;
+          const na = angle > 90 || angle < -90 ? angle + 180 : angle;
+          return (
+            <text
+              x={mid.x} y={mid.y}
+              transform={`rotate(${na},${mid.x},${mid.y})`}
+              textAnchor="middle" dominantBaseline="auto" dy={-5}
+              fontSize={9.5} fill={isSel ? "#fb923c" : "#f59e0b"}
+              fontFamily="monospace"
+              className="pointer-events-none select-none"
+            >{lbl}: {lenCm} см</text>
+          );
+        })()}
       </g>
     );
   });
