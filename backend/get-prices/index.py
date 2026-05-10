@@ -21,7 +21,7 @@ def handler(event: dict, context) -> dict:
     conn = psycopg2.connect(os.environ['DATABASE_URL'])
     cur = conn.cursor()
     cur.execute(f"""
-        SELECT id, name, price, unit, category, synonyms
+        SELECT id, name, price, unit, category, synonyms, image_url, category_image_url
         FROM {SCHEMA}.ai_prices
         WHERE active = true
         ORDER BY sort_order, id
@@ -49,6 +49,8 @@ def handler(event: dict, context) -> dict:
             'unit': row[3] or '',
             'category': row[4] or '',
             'synonyms': row[5] or '',
+            'image_url': row[6],
+            'category_image_url': row[7],
         })
 
     return {
