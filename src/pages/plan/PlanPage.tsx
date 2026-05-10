@@ -204,12 +204,33 @@ export default function PlanPage() {
             onZoomOut={zoomOut}
             onZoomFit={zoomFit}
             onOpenPanel={isMobile
-              ? () => { if (sheetOpen) { setSheetOpen(false); } else { setSheetSnap("half"); setSheetOpen(true); } }
-              : () => setSidebarOpen(v => !v)
+              ? () => {
+                  if (sheetOpen) { setSheetOpen(false); } else {
+                    catalog.setCatalogOpen(false);
+                    setRightPanelOpen(false);
+                    setSheetSnap("half"); setSheetOpen(true);
+                  }
+                }
+              : () => {
+                  if (sidebarOpen) { setSidebarOpen(false); } else {
+                    catalog.setCatalogOpen(false);
+                    setSidebarOpen(true);
+                  }
+                }
             }
-            onOpenCatalog={() => catalog.setCatalogOpen(v => !v)}
+            onOpenCatalog={() => {
+              const next = !catalog.catalogOpen;
+              catalog.setCatalogOpen(next);
+              if (next) {
+                setSheetOpen(false);
+                setSidebarOpen(false);
+                setRightPanelOpen(false);
+              }
+            }}
             onOpenSides={() => {
               if (rightPanelOpen) { setRightPanelOpen(false); } else {
+                catalog.setCatalogOpen(false);
+                setSheetOpen(false);
                 setFocusSegmentId(state.selectedSegmentId);
                 setRightPanelOpen(true);
               }
