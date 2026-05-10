@@ -1,4 +1,4 @@
-import React, { useRef } from "react";
+import React, { useRef, useState } from "react";
 import Icon from "@/components/ui/icon";
 import type { PlanSettings } from "./planTypes";
 
@@ -45,6 +45,7 @@ export default function MobileBottomBar({
 }: Props) {
   const [zoomOpen,     setZoomOpen]     = React.useState(false);
   const [settingsOpen, setSettingsOpen] = React.useState(false);
+  const [hintsOpen,    setHintsOpen]    = useState(false);
 
   const setSettings = (v: boolean) => { setSettingsOpen(v); onSettingsOpenChange?.(v); };
   const zoomRef     = useRef<HTMLDivElement>(null);
@@ -184,13 +185,41 @@ export default function MobileBottomBar({
       {/* 6. Голосовое рисование */}
       {onToggleVoiceDraw && (
         <div className="relative">
-          {/* Всплывающая подсказка над кнопкой */}
-          {(voiceStatus || voiceInterim) && (
+
+          {/* Подсказки по формам — только когда не идёт запись */}
+          {hintsOpen && !isVoiceDrawing && !isVoiceProcessing && (
             <div
-              className="absolute bottom-14 right-0 bg-[#1a1b2e] border border-violet-500/30 rounded-2xl shadow-2xl p-3 w-64 z-50"
+              className="absolute bottom-14 right-0 bg-[#1a1b2e] border border-violet-500/30 rounded-2xl shadow-2xl p-3 z-50"
+              style={{ width: "17rem" }}
               onClick={e => e.stopPropagation()}
             >
-              {/* Заголовок */}
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-[10px] text-violet-400 font-semibold uppercase tracking-wide">Примеры фраз</p>
+                <button onClick={() => setHintsOpen(false)} className="text-white/30 hover:text-white/70">
+                  <Icon name="X" size={12} />
+                </button>
+              </div>
+              {[
+                { label: "Квадрат",       example: "квадрат 250" },
+                { label: "Прямоугольник", example: "прямоугольник 400 на 300" },
+                { label: "Г-образная",    example: "г-образная 400 300 150 100" },
+                { label: "П-образная",    example: "п-образная 500 400 200 150" },
+                { label: "Любая форма",   example: "400 вправо 300 вправо 400 замкнуть" },
+              ].map(({ label, example }) => (
+                <div key={label} className="mb-1.5 last:mb-0">
+                  <p className="text-[9px] text-white/35 uppercase tracking-wide mb-0.5">{label}</p>
+                  <p className="text-[11px] text-white/80 font-mono bg-white/[0.05] rounded-lg px-2 py-1">«{example}»</p>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Статус записи — только когда идёт запись или распознавание */}
+          {(isVoiceDrawing || isVoiceProcessing || voiceInterim) && (
+            <div
+              className="absolute bottom-14 right-0 bg-[#1a1b2e] border border-violet-500/30 rounded-2xl shadow-2xl p-3 w-56 z-50"
+              onClick={e => e.stopPropagation()}
+            >
               {isVoiceProcessing && (
                 <p className="text-[10px] text-amber-400 font-semibold mb-1 uppercase tracking-wide">Распознаю...</p>
               )}
@@ -200,18 +229,21 @@ export default function MobileBottomBar({
               {!isVoiceDrawing && !isVoiceProcessing && voiceInterim && (
                 <p className="text-[10px] text-emerald-400 font-semibold mb-1 uppercase tracking-wide">Распознано:</p>
               )}
-              {/* Распознанный текст — крупно */}
               {voiceInterim && (
-                <p className="text-[13px] text-white font-medium leading-snug mb-1.5">«{voiceInterim}»</p>
+                <p className="text-[13px] text-white font-medium leading-snug mb-1">«{voiceInterim}»</p>
               )}
-              {/* Статус */}
               {voiceStatus && (
-                <p className="text-[11px] text-violet-300 leading-snug whitespace-pre-line">{voiceStatus}</p>
+                <p className="text-[11px] text-violet-300 leading-snug">{voiceStatus}</p>
               )}
             </div>
           )}
+
+          {/* Кнопка микрофона */}
           <button
-            onClick={onToggleVoiceDraw}
+            onClick={() => {
+              setHintsOpen(false);
+              onToggleVoiceDraw();
+            }}
             disabled={isVoiceProcessing}
             className={`relative overflow-hidden ${
               isVoiceProcessing
@@ -221,30 +253,27 @@ export default function MobileBottomBar({
                 : BTN_DEFAULT
             }`}
           >
-            {/* Индикатор громкости — волна снизу */}
             {isVoiceDrawing && !isVoiceProcessing && (
-              <svg
-                viewBox="0 0 48 48" width="48" height="48"
-                className="absolute inset-0 pointer-events-none"
-                style={{ opacity: 0.55 }}
-              >
-                {/* 5 столбиков эквалайзера */}
+              <svg viewBox="0 0 48 48" width="48" height="48" className="absolute inset-0 pointer-events-none" style={{ opacity: 0.55 }}>
                 {[6, 14, 22, 30, 38].map((x, i) => {
                   const h = Math.max(4, Math.round(voiceVolume * 28 * (0.6 + 0.4 * Math.sin(i * 1.3))));
-                  return (
-                    <rect
-                      key={i}
-                      x={x} y={48 - h} width={6} height={h}
-                      rx={3}
-                      fill="rgba(255,255,255,0.7)"
-                      style={{ transition: "height 0.08s, y 0.08s" }}
-                    />
-                  );
+                  return <rect key={i} x={x} y={48 - h} width={6} height={h} rx={3} fill="rgba(255,255,255,0.7)" style={{ transition: "height 0.08s, y 0.08s" }} />;
                 })}
               </svg>
             )}
             <Icon name={isVoiceProcessing ? "Loader" : isVoiceDrawing ? "MicOff" : "Mic"} size={20} className={isVoiceProcessing ? "animate-spin" : ""} />
           </button>
+
+          {/* Кнопка подсказок — только когда не записываем */}
+          {!isVoiceDrawing && !isVoiceProcessing && (
+            <button
+              onClick={() => setHintsOpen(v => !v)}
+              className="absolute -top-1 -left-1 w-4 h-4 rounded-full bg-violet-600/80 flex items-center justify-center text-white hover:bg-violet-500 transition-all"
+              title="Примеры фраз"
+            >
+              <Icon name="HelpCircle" size={10} />
+            </button>
+          )}
         </div>
       )}
     </div>

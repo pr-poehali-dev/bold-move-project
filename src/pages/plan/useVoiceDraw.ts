@@ -486,7 +486,7 @@ export default function useVoiceDraw({ onChange }: Props) {
       mr.start(100); // чанки каждые 100мс
       setIsListening(true);
       setInterimText("");
-      setStatus("Говорите размеры и повороты, например:\n«350 вправо 250 вправо 350 вправо 250 замкнуть»\nНажмите ещё раз чтобы остановить.");
+      setStatus("Говорите — нажмите стоп когда закончите.");
     } catch {
       alert("Доступ к микрофону запрещён. Разрешите доступ в настройках браузера.");
     }
@@ -501,7 +501,7 @@ export default function useVoiceDraw({ onChange }: Props) {
       if (buildRef.current.segments.length === 0) {
         resetBuild();
         onChange({ points: [], segments: [], diagonals: [], isClosed: false, isBuilt: false, baseScale: null, phase: "draw", tool: "draw" });
-        setStatus("Говорите: «350 вправо 250 вправо 350 вправо 250 замкнуть»");
+        setStatus("");
       }
       startRecording();
     }
