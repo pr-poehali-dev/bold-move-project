@@ -82,42 +82,94 @@ function parseTurnOrClose(text: string): "right" | "left" | "straight" | "close"
 // Возвращает список команд [{len, turn}]
 interface Cmd { len: number; turn: "right" | "left" | "straight" | "close" }
 
-// Пробуем распознать шаблон фигуры: "квадрат 250" или "250 на 250" или "прямоугольник 300 на 200"
-// Возвращает команды для прямоугольника (4 стороны + замыкание) или null
+// Пробуем распознать шаблон фигуры по ключевому слову.
+// Все шаблоны: обход против часовой на экране (Y↓), точка A = левый нижний, первый шаг вправо.
+// turn "right"/"left" — относительно текущего направления движения.
+// Последняя команда всегда close (замыкает фигуру к точке A).
 function tryParseShape(text: string): Cmd[] | null {
   const t = text.toLowerCase().trim();
 
-  // Собираем числа из текста
+  // Собираем числа из текста по порядку
   const nums: number[] = [];
   for (const token of t.split(/\s+/)) {
     const n = parseNumber(token);
     if (n !== null) nums.push(n);
   }
 
-  const isSquareWord  = /квадрат/.test(t);
-  const isRectWord    = /прямоугольник|прямоугол/.test(t);
-  const hasByWord     = /\bна\b/.test(t);          // "250 на 300"
-
-  // квадрат N  →  4 стороны по N
-  if (isSquareWord && nums.length >= 1) {
+  // ── Квадрат: "квадрат 250" ────────────────────────────────────────────────
+  // 4 точки, 1 число
+  //   F──────E
+  //   |      |
+  //   A──────B  (A=лево-низ, обход: →↑←↓)
+  if (/квадрат/.test(t) && nums.length >= 1) {
     const s = nums[0];
     return [
-      { len: s, turn: "right" },
-      { len: s, turn: "right" },
-      { len: s, turn: "right" },
-      { len: s, turn: "close" },
+      { len: s, turn: "straight" }, // A→B вправо
+      { len: s, turn: "left"     }, // B→C вверх
+      { len: s, turn: "left"     }, // C→D влево
+      { len: s, turn: "close"    }, // D→A вниз (замыкание)
     ];
   }
 
-  // прямоугольник W на H  или  W на H  (два числа с "на" между ними)
-  if ((isRectWord || hasByWord) && nums.length >= 2) {
-    const w = nums[0];
-    const h = nums[1];
+  // ── Прямоугольник: "прямоугольник 400 на 300" или "400 на 300" ────────────
+  // 4 точки, 2 числа (ширина × высота)
+  if ((/прямоугольник|прямоугол/.test(t) || /\bна\b/.test(t)) && nums.length >= 2) {
+    const w = nums[0], h = nums[1];
     return [
-      { len: w, turn: "right" },
-      { len: h, turn: "right" },
-      { len: w, turn: "right" },
-      { len: h, turn: "close" },
+      { len: w, turn: "straight" }, // →
+      { len: h, turn: "left"     }, // ↑
+      { len: w, turn: "left"     }, // ←
+      { len: h, turn: "close"    }, // ↓ замыкание
+    ];
+  }
+
+  // ── Г-образная: "г-образная 400 300 150 200" ─────────────────────────────
+  // 6 точек, вырез в правом верхнем углу
+  // Принимает 4 числа: W(полная ширина), H(полная высота), w(ширина выступа), h(высота выступа)
+  //
+  //   F──────────E
+  //   |          |
+  //   |       C──D   ← выступ справа
+  //   |       |
+  //   A───────B
+  //
+  // Обход A→B→C→D→E→F→A: →, ↑(часть), →, ↑(остаток), ←(полная), ↓(замыкание)
+  if (/г.обр|г-обр|г обр|г-образн|г образн/.test(t) && nums.length >= 4) {
+    const [W, H, w, h] = nums;
+    return [
+      { len: W - w, turn: "straight" }, // A→B вправо (нижняя короткая часть)
+      { len: h,     turn: "left"     }, // B→C вверх (правая нижняя)
+      { len: w,     turn: "right"    }, // C→D вправо (выступ низ)
+      { len: H - h, turn: "left"     }, // D→E вверх (правая верхняя)
+      { len: W,     turn: "left"     }, // E→F влево (верх полная)
+      { len: H,     turn: "close"    }, // F→A вниз (лево, замыкание)
+    ];
+  }
+
+  // ── П-образная: "п-образная 500 400 200 150" ─────────────────────────────
+  // 8 точек, ниша снизу по центру
+  // Принимает 4 числа: W(полная ширина), H(полная высота), nW(ширина ниши), nH(глубина ниши)
+  //
+  //   H──────────────────G
+  //   |                  |
+  //   |   D──────────C   |
+  //   |   |          |   |
+  //   A───B          E───F
+  //
+  // side = (W - nW) / 2
+  // Обход A→B→C→D→E→F→G→H→A: →, ↑, ←, ↓, →, ↑, ←, ↓(close)
+  if (/п.обр|п-обр|п обр|п-образн|п образн/.test(t) && nums.length >= 4) {
+    const [W, H, nW, nH] = nums;
+    const side = Math.round((W - nW) / 2);
+    return [
+      { len: side, turn: "straight" }, // A→B вправо
+      { len: nH,   turn: "left"     }, // B→C вверх
+      { len: nW,   turn: "left"     }, // C→D влево
+      { len: nH,   turn: "left"     }, // D→E вниз
+      { len: side, turn: "left"     }, // E→F вправо
+      { len: H,    turn: "left"     }, // F→G вверх
+      { len: W,    turn: "left"     }, // G→H влево
+      { len: H,    turn: "close"    }, // H→A вниз (замыкание)
     ];
   }
 
