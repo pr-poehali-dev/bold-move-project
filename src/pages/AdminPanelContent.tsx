@@ -122,7 +122,7 @@ export function AdminPanelContent({
                   {visibleTabs.map(t => (
                     <button key={t.id} onClick={() => setAgentTab(t.id)}
                       className={`flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-t-lg transition whitespace-nowrap ${
-                        agentTab === t.id
+                        activeAgentTab?.id === t.id
                           ? isDark ? "bg-violet-600/15 text-violet-300 border-b-2 border-violet-500" : "bg-violet-600/10 text-violet-700 border-b-2 border-violet-600"
                           : isDark ? "text-white/40 hover:text-white/70" : "text-gray-500 hover:text-gray-800"
                       }`}>
@@ -136,12 +136,12 @@ export function AdminPanelContent({
           })()}
 
           <div className="flex-1 overflow-y-auto p-4 max-w-6xl mx-auto w-full">
-            {agentTab === "prices"        && agentPerms.prices.view      && <TabPrices      token={authToken} onItemAdded={handleItemAdded} isDark={isDark} readOnly={!agentPerms.prices.edit} />}
-            {agentTab === "rules"         && agentPerms.rules.view       && <TabRules       token={authToken} hint={newItemHint} isDark={isDark} readOnly={!agentPerms.rules.edit} />}
-            {agentTab === "prompt"        && agentPerms.prompt.view      && <TabPrompt      token={authToken} isDark={isDark} readOnly={!agentPerms.prompt.edit} user={user} />}
-            {agentTab === "faq"           && agentPerms.faq.view         && <TabFaq         token={authToken} isDark={isDark} readOnly={!agentPerms.faq.edit} />}
-            {agentTab === "corrections"   && agentPerms.corrections.view && <TabCorrections token={authToken} isDark={isDark} readOnly={!agentPerms.corrections.edit} />}
-            {agentTab === "default-rules" && user?.is_master             && <TabDefaultAutoRules isDark={isDark} />}
+            {activeAgentTab?.id === "prices"        && agentPerms.prices.view      && <TabPrices      token={authToken} onItemAdded={handleItemAdded} isDark={isDark} readOnly={!agentPerms.prices.edit} />}
+            {activeAgentTab?.id === "rules"         && agentPerms.rules.view       && <TabRules       token={authToken} hint={newItemHint} isDark={isDark} readOnly={!agentPerms.rules.edit} />}
+            {activeAgentTab?.id === "prompt"        && agentPerms.prompt.view      && <TabPrompt      token={authToken} isDark={isDark} readOnly={!agentPerms.prompt.edit} user={user} />}
+            {activeAgentTab?.id === "faq"           && agentPerms.faq.view         && <TabFaq         token={authToken} isDark={isDark} readOnly={!agentPerms.faq.edit} />}
+            {activeAgentTab?.id === "corrections"   && agentPerms.corrections.view && <TabCorrections token={authToken} isDark={isDark} readOnly={!agentPerms.corrections.edit} />}
+            {activeAgentTab?.id === "default-rules" && user?.is_master             && <TabDefaultAutoRules isDark={isDark} />}
           </div>
         </div>
       )}
