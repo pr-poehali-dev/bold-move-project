@@ -1,13 +1,12 @@
 import type { SegmentPriceItem } from "./planTypes";
 
 interface Props {
-  dragCardItem: SegmentPriceItem | null;
-  dragCardPos: { x: number; y: number } | null;
+  dragCardItem: SegmentPriceItem;
+  dragCardPos: { x: number; y: number };
   hoverSegId: string | null;
 }
 
 export default function DragCardGhost({ dragCardItem, dragCardPos, hoverSegId }: Props) {
-  if (!dragCardItem || !dragCardPos) return null;
   return (
     <div
       style={{
