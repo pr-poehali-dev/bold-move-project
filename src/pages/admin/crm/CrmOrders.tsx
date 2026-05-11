@@ -44,16 +44,18 @@ export default function CrmOrders({ clients: allClients, loading, onStatusChange
   const [viewMode, setViewMode]   = useState<"grid" | "list" | "kanban">("grid");
 
   // Open client from URL ?order= or from calendar
+  const [initialHandled, setInitialHandled] = useState(false);
   useEffect(() => {
-    if (!initialOrderId || allClients.length === 0) return;
+    if (!initialOrderId || allClients.length === 0 || initialHandled) return;
     const found = allClients.find(c => c.id === initialOrderId);
     if (found) {
       setSelected(found);
+      setInitialHandled(true);
       const url = new URL(window.location.href);
       url.searchParams.delete("order");
       window.history.replaceState({}, "", url.toString());
     }
-  }, [initialOrderId, allClients]);
+  }, [initialOrderId, allClients, initialHandled]);
 
   // ── Tabs/columns — single source of truth ────────────────────────────────
   const [tabLabels,  setTabLabels]  = useState<Record<string, string>>(loadSyncedLabels);

@@ -53,10 +53,13 @@ export default function AdminPanel() {
   } as const;
 
   // mainTab — из URL-параметра ?tab=... или из localStorage или первая доступная
-  const urlTab = new URLSearchParams(window.location.search).get("tab") as MainTab | null;
+  // Если есть ?order= — принудительно открываем crm
+  const urlParams = new URLSearchParams(window.location.search);
+  const urlTab = urlParams.get("tab") as MainTab | null;
+  const hasOrderParam = !!urlParams.get("order");
   const LS_TAB_KEY = "admin_main_tab";
   const savedTab = localStorage.getItem(LS_TAB_KEY) as MainTab | null;
-  const [mainTab, setMainTab] = useState<MainTab>(urlTab ?? savedTab ?? "crm");
+  const [mainTab, setMainTab] = useState<MainTab>(hasOrderParam ? "crm" : (urlTab ?? savedTab ?? "crm"));
 
   useEffect(() => {
     if (loading || !user) return;
@@ -65,7 +68,8 @@ export default function AdminPanel() {
       hasPermission(user, "agent_view"),
       user.role === "company" || !!user.is_master,
     );
-    const preferred = urlTab ?? savedTab;
+    // Если есть ?order= — всегда открываем crm
+    const preferred = hasOrderParam ? "crm" : (urlTab ?? savedTab);
     const target = preferred && allowed.find(t => t.id === preferred) ? preferred : allowed[0]?.id ?? "crm";
     setMainTab(target as MainTab);
   }, [loading, user?.id]);  // eslint-disable-line react-hooks/exhaustive-deps
