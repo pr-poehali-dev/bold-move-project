@@ -116,10 +116,12 @@ function NewsEditor({ item, token, onSave, onCancel }: {
   onSave: () => void;
   onCancel: () => void;
 }) {
-  const [title, setTitle]       = useState(item?.title ?? "");
-  const [coverUrl, setCoverUrl] = useState(item?.cover_url ?? "");
+  const [title, setTitle]         = useState(item?.title ?? "");
+  const [coverUrl, setCoverUrl]   = useState(item?.cover_url ?? "");
   const [published, setPublished] = useState(item?.published ?? false);
-  const [saving, setSaving]     = useState(false);
+  const [saving, setSaving]       = useState(false);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiStats, setAiStats]     = useState<Record<string, number> | null>(null);
   const editorRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -132,6 +134,24 @@ function NewsEditor({ item, token, onSave, onCancel }: {
     document.execCommand(cmd, false, val);
     editorRef.current?.focus();
   }, []);
+
+  const handleAiDraft = async () => {
+    setAiLoading(true);
+    try {
+      const res  = await fetch(`${NEWS_URL}?action=ai_draft`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-Auth-Token": token },
+      });
+      const data = await res.json();
+      if (data.title)   setTitle(data.title);
+      if (data.content && editorRef.current) editorRef.current.innerHTML = data.content;
+      if (data.stats)   setAiStats(data.stats);
+    } catch {
+      // ignore
+    } finally {
+      setAiLoading(false);
+    }
+  };
 
   const handleSave = async () => {
     setSaving(true);
@@ -152,9 +172,25 @@ function NewsEditor({ item, token, onSave, onCancel }: {
     <div className="rounded-2xl overflow-hidden" style={{ background: "#0e0e1c", border: "1px solid rgba(249,115,22,0.2)" }}>
       <div className="flex items-center justify-between px-4 py-3 border-b border-white/[0.06]">
         <span className="text-[13px] font-bold text-white">{item?.id ? "Редактировать новость" : "Новая новость"}</span>
-        <button onClick={onCancel} className="text-white/40 hover:text-white transition">
-          <Icon name="X" size={16} />
-        </button>
+        <div className="flex items-center gap-2">
+          {/* Кнопка AI */}
+          <button
+            onClick={handleAiDraft}
+            disabled={aiLoading}
+            title="Сгенерировать черновик из событий системы"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-bold transition disabled:opacity-60"
+            style={{ background: "linear-gradient(135deg, rgba(168,85,247,0.2), rgba(249,115,22,0.2))", border: "1px solid rgba(168,85,247,0.35)", color: "#c084fc" }}
+          >
+            {aiLoading
+              ? <Icon name="Loader2" size={13} className="animate-spin" />
+              : <Icon name="Sparkles" size={13} />
+            }
+            {aiLoading ? "Генерирую..." : "AI черновик"}
+          </button>
+          <button onClick={onCancel} className="text-white/40 hover:text-white transition">
+            <Icon name="X" size={16} />
+          </button>
+        </div>
       </div>
 
       <div className="p-4 flex flex-col gap-3">
@@ -189,6 +225,27 @@ function NewsEditor({ item, token, onSave, onCancel }: {
             data-placeholder="Текст новости..."
           />
         </div>
+
+        {/* Блок статистики после AI-генерации */}
+        {aiStats && (
+          <div className="rounded-xl p-3 flex flex-wrap gap-3"
+            style={{ background: "rgba(168,85,247,0.06)", border: "1px solid rgba(168,85,247,0.15)" }}>
+            <span className="text-[10px] font-bold w-full" style={{ color: "#c084fc" }}>
+              ✦ Данные за 7 дней (использованы для черновика)
+            </span>
+            {[
+              ["Новых заявок", aiStats.new_chats],
+              ["Новых смет", aiStats.new_estimates],
+              ["Обновлено цен", aiStats.updated_prices],
+              ["Всего заявок", aiStats.total_chats],
+            ].map(([label, val]) => (
+              <div key={label} className="flex flex-col">
+                <span className="text-[15px] font-black text-white">{val}</span>
+                <span className="text-[10px] text-white/40">{label}</span>
+              </div>
+            ))}
+          </div>
+        )}
 
         {/* Публикация + кнопки */}
         <div className="flex items-center justify-between gap-3">
