@@ -319,12 +319,20 @@ export default function CategoryDrumPanel({ open, onClose, prices, onDragItem }:
   }, [open]);
 
   const categories: ArcItem[] = (() => {
+    // Сначала собираем лучшую картинку для каждой категории (любая ненулевая)
+    const catImgMap = new Map<string, string | null>();
+    for (const p of prices) {
+      if (!catImgMap.has(p.category)) catImgMap.set(p.category, null);
+      if (p.category_image_url && !catImgMap.get(p.category)) {
+        catImgMap.set(p.category, p.category_image_url);
+      }
+    }
     const seen = new Set<string>();
     const result: ArcItem[] = [];
     for (const p of prices) {
       if (!seen.has(p.category)) {
         seen.add(p.category);
-        result.push({ value: p.category, label: p.category, imageUrl: p.category_image_url });
+        result.push({ value: p.category, label: p.category, imageUrl: catImgMap.get(p.category) ?? null });
       }
     }
     return result;
