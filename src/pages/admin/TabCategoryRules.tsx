@@ -5,6 +5,8 @@ import { apiFetch } from "./api";
 interface CategorySetting {
   category: string;
   is_material: boolean;
+  is_wall_item?: boolean;
+  show_in_drum?: boolean;
   category_rule: string;
 }
 
@@ -61,7 +63,13 @@ export default function TabCategoryRules({ token, isDark = true, readOnly = fals
     const joined = joinRules(newRules);
     await apiFetch("category_settings", {
       method: "PUT",
-      body: JSON.stringify({ category: cat.category, is_material: cat.is_material, category_rule: joined }),
+      body: JSON.stringify({
+        category: cat.category,
+        is_material: cat.is_material,
+        is_wall_item: cat.is_wall_item !== false,
+        show_in_drum: cat.show_in_drum !== false,
+        category_rule: joined,
+      }),
     }, token);
     setItems(prev => prev.map(it => it.category === cat.category ? { ...it, category_rule: joined } : it));
     setSaving(null);

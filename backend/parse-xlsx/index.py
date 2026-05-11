@@ -394,22 +394,52 @@ def handler(event: dict, context) -> dict:
     if r == 'category_settings' and method == 'PUT':
         body = json.loads(body_str)
         category = body.get('category', '').strip()
-        is_material = bool(body.get('is_material', True))
-        is_wall_item = bool(body.get('is_wall_item', True))
-        show_in_drum = bool(body.get('show_in_drum', True))
-        category_rule = body.get('category_rule', '').strip()
         if not category:
             return resp(400, {'error': 'category required'})
+        # Читаем только переданные поля; None = не передано, не перезаписываем
+        is_material  = bool(body['is_material'])  if 'is_material'  in body else None
+        is_wall_item = bool(body['is_wall_item']) if 'is_wall_item' in body else None
+        show_in_drum = bool(body['show_in_drum']) if 'show_in_drum' in body else None
+        category_rule = body['category_rule'].strip() if 'category_rule' in body else None
+
         conn = get_conn(); cur = conn.cursor()
+        table = f"{SCHEMA}.wl_category_settings" if wl_id else f"{SCHEMA}.price_category_settings"
+
+        # Строим динамический UPDATE только для переданных полей
+        update_parts = []
+        params = []
+        if is_material  is not None: update_parts.append("is_material=%s");  params.append(is_material)
+        if is_wall_item is not None: update_parts.append("is_wall_item=%s"); params.append(is_wall_item)
+        if show_in_drum is not None: update_parts.append("show_in_drum=%s"); params.append(show_in_drum)
+        if category_rule is not None: update_parts.append("category_rule=%s"); params.append(category_rule)
+        update_parts.append("updated_at=now()")
+
         if wl_id:
+            # INSERT с дефолтами, ON CONFLICT обновляет только переданные поля
+            ins_cols = "wl_manager_id, category"
+            ins_vals = [wl_id, category]
+            if is_material  is not None: ins_cols += ", is_material";  ins_vals.append(is_material)
+            if is_wall_item is not None: ins_cols += ", is_wall_item"; ins_vals.append(is_wall_item)
+            if show_in_drum is not None: ins_cols += ", show_in_drum"; ins_vals.append(show_in_drum)
+            if category_rule is not None: ins_cols += ", category_rule"; ins_vals.append(category_rule)
+            placeholders = ", ".join(["%s"] * len(ins_vals))
+            upd = ", ".join(update_parts)
             cur.execute(
-                f"INSERT INTO {SCHEMA}.wl_category_settings (wl_manager_id, category, is_material, category_rule, is_wall_item, show_in_drum, updated_at) VALUES (%s,%s,%s,%s,%s,%s,now()) ON CONFLICT (wl_manager_id, category) DO UPDATE SET is_material=%s, category_rule=%s, is_wall_item=%s, show_in_drum=%s, updated_at=now()",
-                (wl_id, category, is_material, category_rule, is_wall_item, show_in_drum, is_material, category_rule, is_wall_item, show_in_drum)
+                f"INSERT INTO {table} ({ins_cols}) VALUES ({placeholders}) ON CONFLICT (wl_manager_id, category) DO UPDATE SET {upd}",
+                ins_vals + params
             )
         else:
+            ins_cols = "category"
+            ins_vals = [category]
+            if is_material  is not None: ins_cols += ", is_material";  ins_vals.append(is_material)
+            if is_wall_item is not None: ins_cols += ", is_wall_item"; ins_vals.append(is_wall_item)
+            if show_in_drum is not None: ins_cols += ", show_in_drum"; ins_vals.append(show_in_drum)
+            if category_rule is not None: ins_cols += ", category_rule"; ins_vals.append(category_rule)
+            placeholders = ", ".join(["%s"] * len(ins_vals))
+            upd = ", ".join(update_parts)
             cur.execute(
-                f"INSERT INTO {SCHEMA}.price_category_settings (category, is_material, category_rule, is_wall_item, show_in_drum, updated_at) VALUES (%s, %s, %s, %s, %s, now()) ON CONFLICT (category) DO UPDATE SET is_material=%s, category_rule=%s, is_wall_item=%s, show_in_drum=%s, updated_at=now()",
-                (category, is_material, category_rule, is_wall_item, show_in_drum, is_material, category_rule, is_wall_item, show_in_drum)
+                f"INSERT INTO {table} ({ins_cols}) VALUES ({placeholders}) ON CONFLICT (category) DO UPDATE SET {upd}",
+                ins_vals + params
             )
         conn.commit(); cur.close(); conn.close()
         return resp(200, {'ok': True})
