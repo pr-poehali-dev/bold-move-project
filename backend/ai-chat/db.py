@@ -324,36 +324,36 @@ def build_rules_prompt(rules: list) -> str:
 
         # Условие добавления
         if r.get('when_condition'):
-            parts.append(f"добавляется если: {r['when_condition']}")
+            parts.append(f"ОБЯЗАТЕЛЬНО ДОБАВИТЬ ЕСЛИ: {r['when_condition']}")
         if r.get('when_not_condition'):
-            parts.append(f"НЕ добавляется если: {r['when_not_condition']}")
+            parts.append(f"ЗАПРЕЩЕНО ДОБАВЛЯТЬ ЕСЛИ: {r['when_not_condition']}")
 
         # Количество / расчёт — формулы переводим в человекочитаемый текст для LLM
         _formula_human = {
-            'perimeter*0.25': 'длину указывает клиент; если не указана — взять 1 сторону (периметр ÷ 4)',
-            'perimeter*0.5':  'длину указывает клиент; если не указана — взять 2 стороны (периметр ÷ 2)',
-            'perimeter':      'равно периметру комнаты',
-            'area':           'равно площади комнаты',
+            'perimeter*0.25': 'qty = периметр ÷ 4 (одна сторона)',
+            'perimeter*0.5':  'qty = периметр ÷ 2 (две стороны)',
+            'perimeter':      'qty = периметр комнаты целиком',
+            'area':           'qty = площадь комнаты',
         }
         if r.get('calc_rule'):
             human = _formula_human.get(r['calc_rule'].strip(), r['calc_rule'])
-            parts.append(f"количество: {human}")
+            parts.append(f"КАК СЧИТАТЬ КОЛИЧЕСТВО: {human}")
 
         # Изменения клиента
         if r.get('client_changes'):
-            parts.append(f"‼️ ПРИОРИТЕТНОЕ ИЗМЕНЕНИЕ (исполнять СТРОГО, важнее всех других правил): {r['client_changes']}")
+            parts.append(f"‼️ АБСОЛЮТНЫЙ ПРИОРИТЕТ — ИСПОЛНИТЬ ТОЧНО: {r['client_changes']}")
 
         # Комплект — что добавить вместе
         try:
             bundle_ids = json.loads(r['bundle'])
             if bundle_ids:
                 names = [id_to_name.get(i, f'#{i}') for i in bundle_ids]
-                parts.append(f"вместе добавить: {', '.join(names)}")
+                parts.append(f"ВМЕСТЕ С ЭТИМ ОБЯЗАТЕЛЬНО ДОБАВИТЬ В СМЕТУ: {', '.join(names)}")
         except Exception:
             pass
 
         if parts:
-            rule_lines.append(f"• {r['name']} [{r['category']}]: " + '; '.join(parts))
+            rule_lines.append(f"▶ {r['name']} [{r['category']}]:\n  " + '\n  '.join(parts))
 
         # Синонимы
         if r.get('synonyms'):
@@ -369,7 +369,7 @@ def build_rules_prompt(rules: list) -> str:
         result += '\n'.join(f"• {cr['category']}: {cr['category_rule']}" for cr in cat_rules)
 
     if rule_lines:
-        result += '\n\n=== ПРАВИЛА ПО ПОЗИЦИЯМ ===\n'
+        result += '\n\n=== ОБЯЗАТЕЛЬНЫЕ ПРАВИЛА ПО КАЖДОЙ ПОЗИЦИИ (исполнять ТОЧНО, без исключений) ===\n'
         result += '\n'.join(rule_lines)
 
     if synonym_lines:
