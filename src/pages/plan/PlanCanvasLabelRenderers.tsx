@@ -177,13 +177,38 @@ export function renderSegmentItems(
 
 // ── renderAngleLabel ──────────────────────────────────────────────────────────
 
-export function renderAngleLabel(pt: import("./planTypes").Point, idx: number, ctx: Pick<RenderContext, "points" | "isClosed" | "showAngleLabels">) {
-  const { points, isClosed, showAngleLabels } = ctx;
+// Строим упорядоченную цепочку точек через сегменты (кэш на уровне вызова)
+function buildChainFromSegments(points: import("./planTypes").Point[], segments: import("./planTypes").Segment[]): string[] | null {
+  if (!points.length || !segments.length) return null;
+  const chain: string[] = [points[0].id];
+  let cur = points[0].id;
+  for (let i = 0; i < segments.length; i++) {
+    const s = segments.find(sg => sg.fromId === cur);
+    if (!s) break;
+    if (chain.includes(s.toId)) break;
+    chain.push(s.toId);
+    cur = s.toId;
+  }
+  return chain.length === points.length ? chain : null;
+}
+
+export function renderAngleLabel(pt: import("./planTypes").Point, idx: number, ctx: Pick<RenderContext, "points" | "segments" | "isClosed" | "showAngleLabels">) {
+  const { points, segments, isClosed, showAngleLabels } = ctx;
   if (!showAngleLabels || !isClosed) return null;
-  const n = points.length;
-  const prev = points[(idx - 1 + n) % n];
-  const next = points[(idx + 1) % n];
-  const isCW = polygonOrientation(points) > 0;
+
+  // Строим правильную цепочку через сегменты
+  const chain = buildChainFromSegments(points, segments);
+  const orderedPoints = chain ? chain.map(id => points.find(p => p.id === id)!) : points;
+  const n = orderedPoints.length;
+
+  // Находим индекс точки в упорядоченной цепочке
+  const orderedIdx = orderedPoints.findIndex(p => p.id === pt.id);
+  if (orderedIdx < 0) return null;
+
+  const prev = orderedPoints[(orderedIdx - 1 + n) % n];
+  const next = orderedPoints[(orderedIdx + 1) % n];
+
+  const isCW = polygonOrientation(orderedPoints) > 0;
   const deg = angleDeg(prev, pt, next, isCW);
   const ax = ((prev.x - pt.x) + (next.x - pt.x)) / 2;
   const ay = ((prev.y - pt.y) + (next.y - pt.y)) / 2;

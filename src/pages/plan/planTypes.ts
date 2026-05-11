@@ -912,10 +912,8 @@ export function rebuildWithRightAngles(
     return nc ? { ...p, ...nc } : p;
   });
 
-  // Проверяем замыкание: последний сегмент (замыкающий) строится автоматически
-  // из цепочки N-1 предыдущих. Если расхождение с введённой длиной > 20% —
-  // алгоритм дал некорректный результат (ошибка ориентации или направления).
-  // В этом случае пробуем с инвертированной ориентацией.
+  // Проверяем замыкание: последний сегмент строится автоматически из N-1 предыдущих.
+  // Вычисляем реальное расстояние и сравниваем с введённой длиной.
   const lastSeg = orderedSegs[orderedSegs.length - 1];
   const lastFrom = newPoints.find(p => p.id === lastSeg.fromId);
   const lastTo   = newPoints.find(p => p.id === lastSeg.toId);
@@ -924,14 +922,16 @@ export function rebuildWithRightAngles(
     const realPx = distPx(lastFrom, lastTo);
     const realCm = Math.round((realPx / baseScale) * 10) / 10;
     const expectedCm = lastSeg.lengthCm ?? 0;
-    // Если расхождение > 20% от ожидаемой длины — результат некорректен
-    if (expectedCm > 0 && Math.abs(realCm - expectedCm) / expectedCm > 0.20) {
-      // Пробуем с инвертированной ориентацией (только один раз)
+
+    // Если расхождение катастрофическое (>3x) — ориентация явно неверна, пробуем инверсию
+    if (expectedCm > 0 && realCm > expectedCm * 3) {
       if (_forceCW === undefined) {
         return rebuildWithRightAngles(points, segments, baseScale, !isCW);
       }
-      return null;
+      // Оба варианта плохи — принимаем как есть с исправленным lengthCm
     }
+
+    // Если небольшое расхождение (накопленная погрешность) — корректируем lengthCm
     if (Math.abs(realCm - expectedCm) > 0.5) {
       correctedSegments = segments.map(s =>
         s.id === lastSeg.id ? { ...s, lengthCm: realCm } : s
