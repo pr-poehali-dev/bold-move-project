@@ -218,13 +218,8 @@ export function usePlanCanvasEvents({ state, onChange, onReplace, cs }: Params) 
           nearbyPtRef.current = null;
           return;
         }
-        // Lazy grab — берём ближайшую точку, сохраняем id + dist для решения drag vs pan
-        const nearbyPt = points.reduce<{ pt: typeof points[0]; dist: number } | null>((best, p) => {
-          const d = distPx(p, { id: "", x: raw.x, y: raw.y });
-          if (!best || d < best.dist) return { pt: p, dist: d };
-          return best;
-        }, null);
-        nearbyPtRef.current = nearbyPt ? { id: nearbyPt.pt.id, dist: nearbyPt.dist } : null;
+        // Нет прямого попадания в точку — drag не начинаем, только pan
+        nearbyPtRef.current = null;
       }
       panRef.current = { startX: t.clientX, startY: t.clientY, origPanX: panX, origPanY: panY };
     }
@@ -258,18 +253,7 @@ export function usePlanCanvasEvents({ state, onChange, onReplace, cs }: Params) 
 
     if (e.touches.length === 1) {
       const t = e.touches[0];
-      // Lazy grab: захватываем ближайшую точку при движении пальца
-      // Dead zone 500мс — защита от случайных сдвигов при тапе
-      const elapsed = performance.now() - touchStartTimeRef.current;
-      if (!dragRef.current && nearbyPtRef.current && toolRef.current === "move" && elapsed >= 500) {
-        const LAZY_THR = 80 / zoom;
-        if (nearbyPtRef.current.dist < LAZY_THR) {
-          dragRef.current = { pointId: nearbyPtRef.current.id };
-          panRef.current = null;
-          clearLongPress();
-        }
-        nearbyPtRef.current = null;
-      }
+      // Drag точки — только если tool === "move" и dragRef уже установлен в touchStart
       if (dragRef.current && toolRef.current === "move") {
         const raw = clientToSvg(t.clientX, t.clientY);
         const { x, y } = applySnap(raw.x, raw.y, dragRef.current.pointId);
@@ -297,7 +281,7 @@ export function usePlanCanvasEvents({ state, onChange, onReplace, cs }: Params) 
       }
     }
   }, [tool, points, segments, clientToSvg, applySnap, diagonals, onChange, onReplace, settings, zoom,
-      clearLongPress, pinchRef, panRef, dragRef, nearbyPtRef, didMoveRef, longPressRef]);
+      clearLongPress, pinchRef, panRef, dragRef, didMoveRef, longPressRef]);
 
   const handleTouchEnd = useCallback((e: React.TouchEvent<SVGSVGElement>) => {
     pinchRef.current = null;
