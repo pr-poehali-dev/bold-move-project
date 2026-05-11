@@ -158,8 +158,10 @@ function NewsEditor({ item, token, onSave, onCancel }: {
       const res  = await fetch(`${NEWS_URL}?action=ai_draft`, {
         method: "POST",
         headers: { "Content-Type": "application/json", "X-Auth-Token": token },
+        body: JSON.stringify({}),
       });
-      const data = await res.json();
+      const raw  = await res.text();
+      const data = (() => { try { const p = JSON.parse(raw); return typeof p === "string" ? JSON.parse(p) : p; } catch { return {}; } })();
       if (!res.ok) { setAiError(`Ошибка ${res.status}: ${data.error ?? "неизвестная ошибка"}`); return; }
       if (data.title)   setTitle(data.title);
       if (data.content && editorRef.current) editorRef.current.innerHTML = data.content;
@@ -362,13 +364,20 @@ export default function NewsPage() {
 
   const load = useCallback(async () => {
     setLoading(true);
-    const url = isMaster ? `${NEWS_URL}?all=1` : NEWS_URL;
-    const res = await fetch(url, {
-      headers: token ? { "X-Auth-Token": token } : {},
-    });
-    const data = await res.json();
-    setItems(data.items ?? []);
-    setLoading(false);
+    try {
+      const url = isMaster ? `${NEWS_URL}?all=1` : NEWS_URL;
+      const res = await fetch(url, {
+        headers: token ? { "X-Auth-Token": token } : {},
+      });
+      const raw = await res.text();
+      const data = typeof raw === "string" ? JSON.parse(raw) : raw;
+      const parsed = typeof data === "string" ? JSON.parse(data) : data;
+      setItems(parsed.items ?? []);
+    } catch {
+      setItems([]);
+    } finally {
+      setLoading(false);
+    }
   }, [isMaster, token]);
 
   useEffect(() => { load(); }, [load]);

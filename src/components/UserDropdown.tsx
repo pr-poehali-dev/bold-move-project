@@ -133,6 +133,8 @@ export default function UserDropdown({ onShowProfile }: Props) {
                   <MenuItem icon="LayoutDashboard" label="Панель управления"
                     onClick={() => { setOpen(false); window.location.href = "/company?tab=crm"; }} />
                 )}
+                <MenuItem icon="Newspaper" label="Новости"
+                  onClick={() => { setOpen(false); window.location.href = "/news"; }} />
               </>
             )}
 
