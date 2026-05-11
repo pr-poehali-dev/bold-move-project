@@ -12,7 +12,7 @@ import PlanDragGhosts from "./PlanDragGhosts";
 import PlanQuantityModal from "./PlanQuantityModal";
 import { usePlanCatalog } from "./usePlanCatalog";
 import type { PlanState } from "./planTypes";
-import { INITIAL_STATE, polygonArea } from "./planTypes";
+import { INITIAL_STATE, polygonArea, polygonPerimeter } from "./planTypes";
 import { useHistory, useIsMobile } from "./usePlanHistory";
 import { usePlanHandlers } from "./usePlanHandlers";
 import { useAuth } from "@/context/AuthContext";
@@ -123,13 +123,27 @@ export default function PlanPage() {
     ? { ...state, selectedSegmentId: catalog.hoverSegId }
     : state;
 
-  // Площадь полотна в м² (для подстановки в модалку добавления на полотно)
-  const floorAreaM2 = (() => {
+  // Дефолтное количество для модалки "добавить на полотно" в зависимости от категории:
+  // - Полотна → площадь в м²
+  // - Профили (стандартный, теневой, парящий, ниши) → периметр в пог.м
+  // - Остальные → 1
+  const getFloorDefault = (category?: string): number | undefined => {
     if (!state.isClosed || !state.baseScale || state.points.length < 3) return undefined;
-    const areaPx2 = polygonArea(state.points);
-    const areaCm2 = areaPx2 / (state.baseScale * state.baseScale);
-    return Math.round(areaCm2 / 100) / 100; // м², округлено до 0.01
-  })();
+    const cat = (category || "").toLowerCase();
+    const isCanvas = cat.includes("полотн");
+    const isProfile = cat.includes("профил") || cat.includes("нишa") || cat.includes("ниш") || cat.includes("двухур");
+    if (isCanvas) {
+      const areaPx2 = polygonArea(state.points);
+      const areaCm2 = areaPx2 / (state.baseScale * state.baseScale);
+      return Math.round(areaCm2 / 100) / 100; // м²
+    }
+    if (isProfile) {
+      const perimPx = polygonPerimeter(state.points);
+      const perimM = perimPx / (state.baseScale * 100);
+      return Math.round(perimM * 100) / 100; // пог.м
+    }
+    return undefined; // остальные → дефолт 1 в модалке
+  };
 
   return (
     <div className="flex flex-col bg-[#111] overflow-hidden" style={{ height: "100dvh" }}>
@@ -330,7 +344,7 @@ export default function PlanPage() {
         item={catalog.pendingFloorItem}
         onConfirm={catalog.confirmFloorItem}
         onCancel={() => catalog.setPendingFloorItem(null)}
-        defaultQuantity={floorAreaM2}
+        defaultQuantity={getFloorDefault(catalog.pendingFloorItem?.category)}
       />
       {/* ── Модалка редактирования quantity floorItem ── */}
       <PlanQuantityModal
