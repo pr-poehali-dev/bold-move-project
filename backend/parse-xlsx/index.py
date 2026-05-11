@@ -292,6 +292,14 @@ def handler(event: dict, context) -> dict:
         )
         new_id = cur.fetchone()[0]
         _save_complex_exceptions(conn, cur, synonyms, name)
+        # Автоматически создаём запись в price_category_settings если категория новая
+        cur2 = conn.cursor()
+        cur2.execute(
+            f"INSERT INTO {SCHEMA}.price_category_settings (category, is_material, category_rule, updated_at) VALUES (%s, true, '', now()) ON CONFLICT (category) DO NOTHING",
+            (category,)
+        )
+        conn.commit()
+        cur2.close()
         cur.close(); conn.close()
         return resp(200, {'id': new_id, 'ok': True})
 
