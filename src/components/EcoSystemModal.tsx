@@ -19,6 +19,7 @@ interface Feature {
   href?: string;
 }
 
+// Порядок: ready → beta → soon
 const FEATURES: Feature[] = [
   {
     icon: "Bot",
@@ -30,6 +31,28 @@ const FEATURES: Feature[] = [
     badgeIcon: "Mic",
     status: "ready",
     href: "/",
+  },
+  {
+    icon: "LayoutDashboard",
+    tag: "CRM",
+    title: "Все заявки в одном месте",
+    desc: "Канбан, статусы, история общения, сметы, документы — всё по каждому клиенту. Ничего не теряется.",
+    accent: "#10b981",
+    badge: "Всё в одном",
+    badgeIcon: "CheckSquare",
+    status: "ready",
+    href: "/company?tab=crm",
+  },
+  {
+    icon: "BarChart3",
+    tag: "Аналитика",
+    title: "Никаких Excel — всё видно сразу",
+    desc: "Выручка, средний чек, конверсия, лучшие менеджеры — живые цифры вашего бизнеса прямо в системе.",
+    accent: "#f59e0b",
+    badge: "Живые данные",
+    badgeIcon: "TrendingUp",
+    status: "ready",
+    href: "/company?tab=crm",
   },
   {
     icon: "PenTool",
@@ -61,28 +84,6 @@ const FEATURES: Feature[] = [
     badge: "Автопилот",
     badgeIcon: "Zap",
     status: "soon",
-  },
-  {
-    icon: "LayoutDashboard",
-    tag: "CRM",
-    title: "Все заявки в одном месте",
-    desc: "Канбан, статусы, история общения, сметы, документы — всё по каждому клиенту. Ничего не теряется.",
-    accent: "#10b981",
-    badge: "Всё в одном",
-    badgeIcon: "CheckSquare",
-    status: "ready",
-    href: "/company?tab=crm",
-  },
-  {
-    icon: "BarChart3",
-    tag: "Аналитика",
-    title: "Никаких Excel — всё видно сразу",
-    desc: "Выручка, средний чек, конверсия, лучшие менеджеры — живые цифры вашего бизнеса прямо в системе.",
-    accent: "#f59e0b",
-    badge: "Живые данные",
-    badgeIcon: "TrendingUp",
-    status: "ready",
-    href: "/company?tab=crm",
   },
 ];
 
@@ -145,13 +146,14 @@ export default function EcoSystemModal({ onClose }: Props) {
   }, [onClose]);
 
   const handleCardClick = (f: Feature) => {
-    if (f.status === "soon" || f.status === "beta") {
-      setSoonFeature(f);
+    // Если есть ссылка — переходим (и для ready, и для beta)
+    if (f.href) {
+      onClose();
+      window.location.href = f.href;
       return;
     }
-    if (f.href) {
-      window.location.href = f.href;
-    }
+    // Нет ссылки (soon) — показываем заглушку
+    setSoonFeature(f);
   };
 
   return (
@@ -193,7 +195,7 @@ export default function EcoSystemModal({ onClose }: Props) {
           <div className="px-4 pb-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
             {FEATURES.map((f) => {
               const st = STATUS_CONFIG[f.status];
-              const clickable = f.status === "ready";
+              const clickable = !!f.href;
               return (
                 <button
                   key={f.tag}
