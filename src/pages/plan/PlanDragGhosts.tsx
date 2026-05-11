@@ -32,6 +32,7 @@ export default function PlanDragGhosts({
 }: Props) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [expandedId, setExpandedId] = useState<number | null>(null);
+  const [popupPos, setPopupPos] = useState<{ x: number; bottom: number } | null>(null);
 
   // При смене активного товара — скроллим к его карточке
   useEffect(() => {
@@ -51,6 +52,7 @@ export default function PlanDragGhosts({
       const target = e.target as HTMLElement;
       if (!target.closest("[data-active-item]") && !target.closest("[data-item-popup]")) {
         setExpandedId(null);
+        setPopupPos(null);
       }
     };
     window.addEventListener("mousedown", handler);
@@ -73,9 +75,20 @@ export default function PlanDragGhosts({
     return Math.round((fromSegs + fromFloor) * 100) / 100;
   };
 
-  const handleCardClick = (priceId: number) => {
+  const handleCardClick = (priceId: number, e: React.MouseEvent) => {
     onTapActiveId(priceId);
-    setExpandedId(prev => prev === priceId ? null : priceId);
+    if (expandedId === priceId) {
+      setExpandedId(null);
+      setPopupPos(null);
+      return;
+    }
+    // Вычисляем позицию карточки для попапа в fixed-координатах
+    const card = (e.currentTarget as HTMLElement);
+    const rect = card.getBoundingClientRect();
+    const centerX = rect.left + rect.width / 2;
+    const bottomFromTop = window.innerHeight - rect.top + 8; // отступ снизу экрана
+    setExpandedId(priceId);
+    setPopupPos({ x: centerX, bottom: bottomFromTop });
   };
 
   return (
@@ -193,113 +206,6 @@ export default function PlanDragGhosts({
                 key={item.priceId}
                 style={{ position: "relative", flexShrink: 0, scrollSnapAlign: "start" }}
               >
-                {/* Pop-up панель — раскрывается вверх */}
-                {isExpanded && (
-                  <div
-                    data-item-popup="1"
-                    style={{
-                      position: "absolute",
-                      bottom: "calc(100% + 8px)",
-                      left: "50%",
-                      transform: "translateX(-50%)",
-                      background: "rgba(14,12,30,0.97)",
-                      border: "1px solid rgba(124,58,237,0.5)",
-                      borderRadius: 14,
-                      padding: "12px 14px",
-                      minWidth: 200,
-                      boxShadow: "0 0 24px rgba(124,58,237,0.3), 0 8px 32px rgba(0,0,0,0.7)",
-                      backdropFilter: "blur(20px)",
-                      zIndex: 10001,
-                      pointerEvents: "all",
-                      animation: "slideUpFade 0.18s ease",
-                    }}
-                  >
-                    {/* Название */}
-                    <div style={{
-                      fontSize: 11, fontWeight: 700, color: "rgba(196,181,253,1)",
-                      marginBottom: 10, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
-                    }}>{item.name}</div>
-
-                    {/* Итого на чертеже */}
-                    {total > 0 && (
-                      <div style={{
-                        fontSize: 10, color: "rgba(255,255,255,0.4)",
-                        marginBottom: 10,
-                      }}>
-                        На чертеже: <span style={{ color: "rgba(167,139,250,0.9)", fontWeight: 600 }}>{total} {unit}</span>
-                      </div>
-                    )}
-
-                    {/* Разделитель */}
-                    <div style={{ height: 1, background: "rgba(255,255,255,0.07)", marginBottom: 10 }} />
-
-                    {/* Чекбокс: добавить/убрать со всех стен */}
-                    {hasSegments && (
-                      <label
-                        style={{
-                          display: "flex", alignItems: "center", gap: 8,
-                          cursor: "pointer", marginBottom: 10,
-                        }}
-                        onClick={e => {
-                          e.stopPropagation();
-                          if (onAllSegs) {
-                            onRemoveFromAllSegs(item.priceId);
-                          } else {
-                            onAssignToAllSegs(item);
-                          }
-                        }}
-                      >
-                        {/* Кастомный чекбокс */}
-                        <div style={{
-                          width: 18, height: 18, borderRadius: 5, flexShrink: 0,
-                          border: `1.5px solid ${onAllSegs ? "rgba(124,58,237,1)" : "rgba(255,255,255,0.25)"}`,
-                          background: onAllSegs ? "rgba(124,58,237,1)" : "transparent",
-                          display: "flex", alignItems: "center", justifyContent: "center",
-                          transition: "all 0.15s",
-                        }}>
-                          {onAllSegs && (
-                            <svg width="10" height="8" viewBox="0 0 10 8" fill="none">
-                              <path d="M1 4L3.5 6.5L9 1" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                            </svg>
-                          )}
-                        </div>
-                        <span style={{ fontSize: 11, color: "rgba(255,255,255,0.75)", userSelect: "none" }}>
-                          {onAllSegs ? "Убрать со всех стен" : "Добавить на все стены"}
-                        </span>
-                      </label>
-                    )}
-
-                    {/* Кнопка удалить карточку */}
-                    <button
-                      onClick={e => {
-                        e.stopPropagation();
-                        setExpandedId(null);
-                        onRemoveActiveItem(item.priceId);
-                      }}
-                      style={{
-                        width: "100%", padding: "6px 10px",
-                        background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.25)",
-                        borderRadius: 8, color: "rgba(248,113,113,0.9)",
-                        fontSize: 11, fontWeight: 600, cursor: "pointer",
-                        display: "flex", alignItems: "center", justifyContent: "center", gap: 5,
-                        transition: "background 0.15s",
-                      }}
-                    >
-                      <span style={{ fontSize: 13 }}>✕</span> Убрать карточку
-                    </button>
-
-                    {/* Треугольник-стрелка вниз */}
-                    <div style={{
-                      position: "absolute", bottom: -6, left: "50%", transform: "translateX(-50%)",
-                      width: 10, height: 6,
-                      background: "rgba(14,12,30,0.97)",
-                      clipPath: "polygon(0 0, 100% 0, 50% 100%)",
-                      borderLeft: "1px solid rgba(124,58,237,0.5)",
-                      borderRight: "1px solid rgba(124,58,237,0.5)",
-                    }} />
-                  </div>
-                )}
-
                 {/* Сама карточка */}
                 <div
                   data-active-item={String(item.priceId)}
@@ -325,7 +231,7 @@ export default function PlanDragGhosts({
                     maxWidth: 280,
                     pointerEvents: "all",
                   }}
-                  onClick={() => handleCardClick(item.priceId)}
+                  onClick={e => handleCardClick(item.priceId, e)}
                 >
                   {/* Иконка */}
                   <div style={{
@@ -374,6 +280,112 @@ export default function PlanDragGhosts({
         </div>
         </div>
       )}
+
+      {/* ── Попап активного товара — fixed поверх всего ── */}
+      {expandedId != null && popupPos && (() => {
+        const item = activeItems.find(it => it.priceId === expandedId);
+        if (!item) return null;
+        const total = totalByPriceId(item.priceId);
+        const unit = item.unit || "";
+        const onAllSegs = isItemOnAllSegs(item.priceId);
+        // Ограничиваем x чтобы попап не вышел за края экрана
+        const popupW = 210;
+        const clampedX = Math.max(popupW / 2 + 8, Math.min(window.innerWidth - popupW / 2 - 8, popupPos.x));
+        return (
+          <div
+            data-item-popup="1"
+            style={{
+              position: "fixed",
+              bottom: popupPos.bottom,
+              left: clampedX,
+              transform: "translateX(-50%)",
+              background: "rgba(14,12,30,0.97)",
+              border: "1px solid rgba(124,58,237,0.5)",
+              borderRadius: 14,
+              padding: "12px 14px",
+              width: popupW,
+              boxShadow: "0 0 24px rgba(124,58,237,0.3), 0 8px 32px rgba(0,0,0,0.7)",
+              backdropFilter: "blur(20px)",
+              zIndex: 10002,
+              pointerEvents: "all",
+              animation: "slideUpFade 0.18s ease",
+            }}
+          >
+            {/* Название */}
+            <div style={{
+              fontSize: 11, fontWeight: 700, color: "rgba(196,181,253,1)",
+              marginBottom: total > 0 ? 6 : 10,
+              whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
+            }}>{item.name}</div>
+
+            {/* Итого на чертеже */}
+            {total > 0 && (
+              <div style={{ fontSize: 10, color: "rgba(255,255,255,0.4)", marginBottom: 10 }}>
+                На чертеже: <span style={{ color: "rgba(167,139,250,0.9)", fontWeight: 600 }}>{total} {unit}</span>
+              </div>
+            )}
+
+            <div style={{ height: 1, background: "rgba(255,255,255,0.07)", marginBottom: 10 }} />
+
+            {/* Чекбокс: добавить/убрать со всех стен */}
+            {hasSegments && (
+              <label
+                style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", marginBottom: 10 }}
+                onClick={e => {
+                  e.stopPropagation();
+                  if (onAllSegs) onRemoveFromAllSegs(item.priceId);
+                  else onAssignToAllSegs(item);
+                }}
+              >
+                <div style={{
+                  width: 18, height: 18, borderRadius: 5, flexShrink: 0,
+                  border: `1.5px solid ${onAllSegs ? "rgba(124,58,237,1)" : "rgba(255,255,255,0.25)"}`,
+                  background: onAllSegs ? "rgba(124,58,237,1)" : "transparent",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  transition: "all 0.15s",
+                }}>
+                  {onAllSegs && (
+                    <svg width="10" height="8" viewBox="0 0 10 8" fill="none">
+                      <path d="M1 4L3.5 6.5L9 1" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                  )}
+                </div>
+                <span style={{ fontSize: 11, color: "rgba(255,255,255,0.75)", userSelect: "none" }}>
+                  {onAllSegs ? "Убрать со всех стен" : "Добавить на все стены"}
+                </span>
+              </label>
+            )}
+
+            {/* Кнопка удалить карточку */}
+            <button
+              onClick={e => {
+                e.stopPropagation();
+                setExpandedId(null);
+                setPopupPos(null);
+                onRemoveActiveItem(item.priceId);
+              }}
+              style={{
+                width: "100%", padding: "6px 10px",
+                background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.25)",
+                borderRadius: 8, color: "rgba(248,113,113,0.9)",
+                fontSize: 11, fontWeight: 600, cursor: "pointer",
+                display: "flex", alignItems: "center", justifyContent: "center", gap: 5,
+              }}
+            >
+              <span style={{ fontSize: 13 }}>✕</span> Убрать карточку
+            </button>
+
+            {/* Стрелка вниз */}
+            <div style={{
+              position: "absolute", bottom: -6, left: "50%", transform: "translateX(-50%)",
+              width: 12, height: 7,
+              borderLeft: "6px solid transparent",
+              borderRight: "6px solid transparent",
+              borderTop: "7px solid rgba(124,58,237,0.5)",
+            }} />
+          </div>
+        );
+      })()}
 
       <style>{`
         @keyframes slideUpFade {

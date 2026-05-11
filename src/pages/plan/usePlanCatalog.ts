@@ -344,26 +344,44 @@ export function usePlanCatalog(
     };
 
     // Mouse drag (десктоп)
+    let mouseStartX = 0, mouseStartY = 0;
+    let mouseDragging = false; // true только после реального движения мыши
+    const MOUSE_DRAG_THRESHOLD = 6; // px — минимальное движение чтобы считать drag
+
     const onMouseDown = (e: MouseEvent) => {
       const target = e.target as HTMLElement;
+      // Не перехватываем клики на попапе или кнопках внутри карточки
+      if (target.closest("[data-item-popup]")) return;
       const card = target.closest("[data-active-item]") as HTMLElement | null;
       if (!card) return;
       const priceId = parseInt(card.dataset.activeItem ?? "0");
       const item = activeItems.find(it => it.priceId === priceId);
       if (!item) return;
       draggingItem = item;
-      isDragging = true;
-      startX = e.clientX; startY = e.clientY;
-      e.preventDefault();
+      isDragging = false;   // ← drag НЕ начат, пока мышь не двинулась
+      mouseDragging = false;
+      mouseStartX = e.clientX;
+      mouseStartY = e.clientY;
     };
     const onMouseMove = (e: MouseEvent) => {
-      if (!draggingItem || !isDragging) return;
+      if (!draggingItem) return;
+      const dx = Math.abs(e.clientX - mouseStartX);
+      const dy = Math.abs(e.clientY - mouseStartY);
+      if (!mouseDragging && (dx > MOUSE_DRAG_THRESHOLD || dy > MOUSE_DRAG_THRESHOLD)) {
+        mouseDragging = true;
+        isDragging = true;
+      }
+      if (!isDragging) return;
       setDragCardItem(draggingItem);
       setDragCardPos({ x: e.clientX, y: e.clientY });
       setHoverSegId(findClosestSeg(e.clientX, e.clientY));
     };
     const onMouseUp = (e: MouseEvent) => {
-      if (!draggingItem || !isDragging) { draggingItem = null; isDragging = false; return; }
+      if (!draggingItem || !isDragging) {
+        // Просто клик — не привязываем к стене
+        draggingItem = null; isDragging = false; mouseDragging = false;
+        return;
+      }
       if (isInsidePolygon(e.clientX, e.clientY)) {
         const closestId = findClosestSeg(e.clientX, e.clientY, false);
         if (closestId) assignItemToSeg(draggingItem, closestId);
@@ -372,7 +390,7 @@ export function usePlanCatalog(
         const closestId = findClosestSeg(e.clientX, e.clientY, true);
         if (closestId) assignItemToSeg(draggingItem, closestId);
       }
-      draggingItem = null; isDragging = false;
+      draggingItem = null; isDragging = false; mouseDragging = false;
       setHoverSegId(null); setDragCardItem(null); setDragCardPos(null);
     };
 
