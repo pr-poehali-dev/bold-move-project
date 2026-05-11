@@ -298,6 +298,12 @@ export default function PlanDragGhosts({
         const item = activeItems.find(it => it.priceId === expandedId);
         if (!item) return null;
         const total = totalByPriceId(item.priceId);
+        // Количество на одной стене (не суммарное) — то что реально меняем
+        const perWallQty = (() => {
+          const seg = segments.find(s => (s.items ?? []).some(it => it.priceId === item.priceId));
+          const found = seg?.items?.find(it => it.priceId === item.priceId);
+          return Math.round((found?.quantity ?? 1) * 100) / 100;
+        })();
         const unit = item.unit || "";
         const onAllSegs = isItemOnAllSegs(item.priceId);
         const isWall = item.isWallItem !== false; // по умолчанию true
@@ -332,7 +338,7 @@ export default function PlanDragGhosts({
                 }}>{item.name}</div>
                 {total > 0 && (
                   <div style={{ fontSize: 9.5, color: "rgba(167,139,250,0.65)", marginTop: 1 }}>
-                    {total} {unit} на чертеже
+                    итого {total} {unit} на чертеже
                   </div>
                 )}
               </div>
@@ -414,7 +420,7 @@ export default function PlanDragGhosts({
                       data-item-popup="1"
                       onClick={e => {
                         e.stopPropagation();
-                        setQtyInput(String(total > 0 ? total : 1));
+                        setQtyInput(String(perWallQty > 0 ? perWallQty : 1));
                         setQtyEditing(true);
                         setTimeout(() => { qtyInputRef.current?.select(); }, 10);
                       }}
@@ -426,7 +432,7 @@ export default function PlanDragGhosts({
                         userSelect: "none",
                       }}
                     >
-                      {total > 0 ? total : 0}
+                      {perWallQty}
                       {unit && <span style={{ fontSize: 8.5, color: "rgba(167,139,250,0.55)" }}>{unit}</span>}
                     </div>
                   )}
