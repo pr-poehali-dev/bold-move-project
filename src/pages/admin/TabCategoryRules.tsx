@@ -44,7 +44,7 @@ export default function TabCategoryRules({ token, isDark = true, readOnly = fals
       const initOpen:  Record<string, boolean>  = {};
       for (const it of d.items) {
         initRules[it.category] = parseRules(it.category_rule || "");
-        initOpen[it.category]  = (it.category_rule || "").length > 0;
+        initOpen[it.category]  = false;
       }
       setRules(initRules);
       setOpen(initOpen);
