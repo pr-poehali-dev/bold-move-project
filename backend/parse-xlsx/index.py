@@ -15,30 +15,53 @@ ADMIN_PASSWORD = os.environ.get('ADMIN_PASSWORD', '').strip() or 'Sdauxbasstre22
 CORS = {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type, X-Admin-Token',
+    'Access-Control-Allow-Headers': 'Content-Type, X-Admin-Token, Authorization',
 }
 
 def resp(status, body):
     return {'statusCode': status, 'headers': {**CORS, 'Content-Type': 'application/json'}, 'body': json.dumps(body, ensure_ascii=False)}
 
-def check_auth(headers: dict) -> bool:
-    # Платформа ремаппит Authorization → x-authorization
+def get_conn():
+    return psycopg2.connect(os.environ['DATABASE_URL'])
+
+def _extract_token(headers: dict) -> str:
     raw = (headers.get('x-authorization') or headers.get('X-Authorization')
            or headers.get('x-admin-token') or headers.get('X-Admin-Token') or '')
-    if not raw:
-        return False
-    clean = raw.removeprefix('Bearer ').strip()
-    if not clean:
-        return False
-    # 1. Проверка по паролю (legacy MasterAdmin)
-    if ADMIN_PASSWORD and hashlib.sha256(clean.encode()).hexdigest() == hashlib.sha256(ADMIN_PASSWORD.encode()).hexdigest():
-        return True
-    # 2. Проверка по сессионному токену пользователя
+    return raw.removeprefix('Bearer ').strip()
+
+def get_wl_id(headers: dict):
+    """Возвращает wl_manager_id если запрос от WL-клиента, иначе None.
+    WL-клиент = сессия с session_type='wl_manager' в user_sessions."""
+    token = _extract_token(headers)
+    if not token:
+        return None
+    # Мастер-пароль → не WL
+    if ADMIN_PASSWORD and hashlib.sha256(token.encode()).hexdigest() == hashlib.sha256(ADMIN_PASSWORD.encode()).hexdigest():
+        return None
     try:
         conn = get_conn(); cur = conn.cursor()
         cur.execute(
-            f"SELECT u.role FROM {SCHEMA}.user_sessions s JOIN {SCHEMA}.users u ON u.id=s.user_id WHERE s.token=%s AND s.expires_at>NOW()",
-            (clean,)
+            f"SELECT user_id FROM {SCHEMA}.user_sessions WHERE token=%s AND expires_at>NOW() AND session_type='wl_manager'",
+            (token,)
+        )
+        row = cur.fetchone(); cur.close(); conn.close()
+        return row[0] if row else None
+    except Exception:
+        return None
+
+def check_auth(headers: dict) -> bool:
+    token = _extract_token(headers)
+    if not token:
+        return False
+    # 1. Мастер-пароль
+    if ADMIN_PASSWORD and hashlib.sha256(token.encode()).hexdigest() == hashlib.sha256(ADMIN_PASSWORD.encode()).hexdigest():
+        return True
+    # 2. Сессионный токен (любой пользователь или WL-менеджер)
+    try:
+        conn = get_conn(); cur = conn.cursor()
+        cur.execute(
+            f"SELECT s.id FROM {SCHEMA}.user_sessions s WHERE s.token=%s AND s.expires_at>NOW()",
+            (token,)
         )
         row = cur.fetchone(); cur.close(); conn.close()
         return row is not None
@@ -47,7 +70,7 @@ def check_auth(headers: dict) -> bool:
 
 def get_company_id_from_token(headers: dict):
     """Возвращает (user_id, role) по X-Authorization токену сессии, или (None, None)."""
-    token = headers.get('x-authorization', '') or headers.get('X-Authorization', '')
+    token = _extract_token(headers)
     if not token:
         return None, None
     conn = get_conn(); cur = conn.cursor()
@@ -59,9 +82,6 @@ def get_company_id_from_token(headers: dict):
     if not row:
         return None, None
     return row[0], row[1]
-
-def get_conn():
-    return psycopg2.connect(os.environ['DATABASE_URL'])
 
 def load_xlsx():
     r = requests.get(XLSX_URL, timeout=15)
@@ -101,10 +121,52 @@ def _save_complex_exceptions(conn, cur, synonyms_str: str, name: str):
                 )
     conn.commit()
 
+def _ensure_wl_initialized(conn, cur, wl_id: int, resource: str):
+    """Если WL-клиент первый раз открывает FAQ или questions — копируем глобальные данные."""
+    flag_col = 'faq_initialized' if resource == 'faq' else 'questions_initialized'
+    cur.execute(
+        f"INSERT INTO {SCHEMA}.wl_data_initialized (wl_manager_id) VALUES (%s) ON CONFLICT DO NOTHING",
+        (wl_id,)
+    )
+    cur.execute(
+        f"SELECT {flag_col} FROM {SCHEMA}.wl_data_initialized WHERE wl_manager_id=%s",
+        (wl_id,)
+    )
+    row = cur.fetchone()
+    if row and row[0]:
+        return  # уже инициализировано
+    # Копируем глобальные данные
+    if resource == 'faq':
+        cur.execute(f"SELECT title, content, used FROM {SCHEMA}.faq_items ORDER BY id")
+        global_rows = cur.fetchall()
+        for gr in global_rows:
+            cur.execute(
+                f"INSERT INTO {SCHEMA}.wl_faq_items (wl_manager_id, title, content, used) VALUES (%s,%s,%s,%s)",
+                (wl_id, gr[0], gr[1], gr[2])
+            )
+        cur.execute(
+            f"UPDATE {SCHEMA}.wl_data_initialized SET faq_initialized=TRUE WHERE wl_manager_id=%s",
+            (wl_id,)
+        )
+    else:
+        cur.execute(f"SELECT pattern, answer, active FROM {SCHEMA}.ai_quick_questions ORDER BY id")
+        global_rows = cur.fetchall()
+        for gr in global_rows:
+            cur.execute(
+                f"INSERT INTO {SCHEMA}.wl_quick_questions (wl_manager_id, pattern, answer, active) VALUES (%s,%s,%s,%s)",
+                (wl_id, gr[0], gr[1], gr[2])
+            )
+        cur.execute(
+            f"UPDATE {SCHEMA}.wl_data_initialized SET questions_initialized=TRUE WHERE wl_manager_id=%s",
+            (wl_id,)
+        )
+    conn.commit()
+
 
 def handler(event: dict, context) -> dict:
     """Управление AI-конфигурацией: промпт, база знаний, быстрые вопросы, импорт XLSX.
-    Маршрутизация через query-параметр: ?r=prompt|faq|questions|login
+    Маршрутизация через query-параметр: ?r=prompt|faq|questions|prices|login
+    WL-клиенты получают свои данные через override-таблицы, мастер работает с глобальными.
     """
     if event.get('httpMethod') == 'OPTIONS':
         return {'statusCode': 200, 'headers': CORS, 'body': ''}
@@ -115,6 +177,10 @@ def handler(event: dict, context) -> dict:
     r = qs.get('r', '')
     body_str = event.get('body') or '{}'
 
+    # Определяем: мастер или WL-клиент
+    wl_id = get_wl_id(hdrs)
+    is_master = (wl_id is None) and check_auth(hdrs)
+
     # --- POST ?r=login
     if r == 'login' and method == 'POST':
         body = json.loads(body_str)
@@ -124,9 +190,21 @@ def handler(event: dict, context) -> dict:
             return resp(200, {'token': password})
         return resp(401, {'error': 'Неверный пароль'})
 
+    # ══════════════════════════════════════════════════════════════
+    # ПРОМПТ
+    # ══════════════════════════════════════════════════════════════
+
     # --- GET ?r=prompt
     if r == 'prompt' and method == 'GET':
         conn = get_conn(); cur = conn.cursor()
+        if wl_id:
+            # WL: сначала своё переопределение
+            cur.execute(f"SELECT content, updated_at FROM {SCHEMA}.wl_prompt_override WHERE wl_manager_id=%s", (wl_id,))
+            row = cur.fetchone()
+            if row:
+                cur.close(); conn.close()
+                return resp(200, {'id': wl_id, 'content': row[0], 'updated_at': str(row[1])})
+        # Глобальный промпт (мастер или WL без своего)
         cur.execute(f"SELECT id, content, updated_at FROM {SCHEMA}.ai_system_prompt ORDER BY id LIMIT 1")
         row = cur.fetchone()
         cur.close(); conn.close()
@@ -143,14 +221,33 @@ def handler(event: dict, context) -> dict:
         if not content:
             return resp(400, {'error': 'content required'})
         conn = get_conn(); cur = conn.cursor()
-        cur.execute(f"UPDATE {SCHEMA}.ai_system_prompt SET content = %s, updated_at = now() WHERE id = (SELECT id FROM {SCHEMA}.ai_system_prompt ORDER BY id LIMIT 1)", (content,))
+        if wl_id:
+            # WL: сохраняем в своё переопределение
+            cur.execute(
+                f"INSERT INTO {SCHEMA}.wl_prompt_override (wl_manager_id, content, updated_at) VALUES (%s,%s,now()) ON CONFLICT (wl_manager_id) DO UPDATE SET content=%s, updated_at=now()",
+                (wl_id, content, content)
+            )
+        else:
+            # Мастер: обновляет глобальный
+            cur.execute(
+                f"UPDATE {SCHEMA}.ai_system_prompt SET content=%s, updated_at=now() WHERE id=(SELECT id FROM {SCHEMA}.ai_system_prompt ORDER BY id LIMIT 1)",
+                (content,)
+            )
         conn.commit(); cur.close(); conn.close()
         return resp(200, {'ok': True})
+
+    # ══════════════════════════════════════════════════════════════
+    # FAQ
+    # ══════════════════════════════════════════════════════════════
 
     # --- GET ?r=faq
     if r == 'faq' and method == 'GET':
         conn = get_conn(); cur = conn.cursor()
-        cur.execute(f"SELECT id, title, content, used, created_at FROM {SCHEMA}.faq_items ORDER BY id")
+        if wl_id:
+            _ensure_wl_initialized(conn, cur, wl_id, 'faq')
+            cur.execute(f"SELECT id, title, content, used, created_at FROM {SCHEMA}.wl_faq_items WHERE wl_manager_id=%s ORDER BY id", (wl_id,))
+        else:
+            cur.execute(f"SELECT id, title, content, used, created_at FROM {SCHEMA}.faq_items ORDER BY id")
         rows = cur.fetchall()
         cur.close(); conn.close()
         return resp(200, {'items': [{'id': row[0], 'title': row[1], 'content': row[2], 'used': row[3], 'created_at': str(row[4])} for row in rows]})
@@ -165,7 +262,11 @@ def handler(event: dict, context) -> dict:
         if not title or not content:
             return resp(400, {'error': 'title and content required'})
         conn = get_conn(); cur = conn.cursor()
-        cur.execute(f"INSERT INTO {SCHEMA}.faq_items (title, content, used) VALUES (%s, %s, true) RETURNING id", (title, content))
+        if wl_id:
+            _ensure_wl_initialized(conn, cur, wl_id, 'faq')
+            cur.execute(f"INSERT INTO {SCHEMA}.wl_faq_items (wl_manager_id, title, content, used) VALUES (%s,%s,%s,true) RETURNING id", (wl_id, title, content))
+        else:
+            cur.execute(f"INSERT INTO {SCHEMA}.faq_items (title, content, used) VALUES (%s, %s, true) RETURNING id", (title, content))
         new_id = cur.fetchone()[0]
         conn.commit(); cur.close(); conn.close()
         return resp(200, {'id': new_id, 'ok': True})
@@ -177,8 +278,16 @@ def handler(event: dict, context) -> dict:
         faq_id = int(qs.get('id', '0'))
         body = json.loads(body_str)
         conn = get_conn(); cur = conn.cursor()
-        cur.execute(f"UPDATE {SCHEMA}.faq_items SET title=%s, content=%s, used=%s WHERE id=%s",
-                    (body.get('title',''), body.get('content',''), body.get('used', True), faq_id))
+        if wl_id:
+            cur.execute(
+                f"UPDATE {SCHEMA}.wl_faq_items SET title=%s, content=%s, used=%s WHERE id=%s AND wl_manager_id=%s",
+                (body.get('title',''), body.get('content',''), body.get('used', True), faq_id, wl_id)
+            )
+        else:
+            cur.execute(
+                f"UPDATE {SCHEMA}.faq_items SET title=%s, content=%s, used=%s WHERE id=%s",
+                (body.get('title',''), body.get('content',''), body.get('used', True), faq_id)
+            )
         conn.commit(); cur.close(); conn.close()
         return resp(200, {'ok': True})
 
@@ -188,14 +297,25 @@ def handler(event: dict, context) -> dict:
             return resp(401, {'error': 'Unauthorized'})
         faq_id = int(qs.get('id', '0'))
         conn = get_conn(); cur = conn.cursor()
-        cur.execute(f"DELETE FROM {SCHEMA}.faq_items WHERE id = %s", (faq_id,))
+        if wl_id:
+            cur.execute(f"DELETE FROM {SCHEMA}.wl_faq_items WHERE id=%s AND wl_manager_id=%s", (faq_id, wl_id))
+        else:
+            cur.execute(f"DELETE FROM {SCHEMA}.faq_items WHERE id = %s", (faq_id,))
         conn.commit(); cur.close(); conn.close()
         return resp(200, {'ok': True})
+
+    # ══════════════════════════════════════════════════════════════
+    # БЫСТРЫЕ ОТВЕТЫ
+    # ══════════════════════════════════════════════════════════════
 
     # --- GET ?r=questions
     if r == 'questions' and method == 'GET':
         conn = get_conn(); cur = conn.cursor()
-        cur.execute(f"SELECT id, pattern, answer, active FROM {SCHEMA}.ai_quick_questions ORDER BY id")
+        if wl_id:
+            _ensure_wl_initialized(conn, cur, wl_id, 'questions')
+            cur.execute(f"SELECT id, pattern, answer, active FROM {SCHEMA}.wl_quick_questions WHERE wl_manager_id=%s ORDER BY id", (wl_id,))
+        else:
+            cur.execute(f"SELECT id, pattern, answer, active FROM {SCHEMA}.ai_quick_questions ORDER BY id")
         rows = cur.fetchall()
         cur.close(); conn.close()
         return resp(200, {'items': [{'id': row[0], 'pattern': row[1], 'answer': row[2], 'active': row[3]} for row in rows]})
@@ -210,7 +330,11 @@ def handler(event: dict, context) -> dict:
         if not pattern or not answer:
             return resp(400, {'error': 'pattern and answer required'})
         conn = get_conn(); cur = conn.cursor()
-        cur.execute(f"INSERT INTO {SCHEMA}.ai_quick_questions (pattern, answer, active) VALUES (%s, %s, true) RETURNING id", (pattern, answer))
+        if wl_id:
+            _ensure_wl_initialized(conn, cur, wl_id, 'questions')
+            cur.execute(f"INSERT INTO {SCHEMA}.wl_quick_questions (wl_manager_id, pattern, answer, active) VALUES (%s,%s,%s,true) RETURNING id", (wl_id, pattern, answer))
+        else:
+            cur.execute(f"INSERT INTO {SCHEMA}.ai_quick_questions (pattern, answer, active) VALUES (%s, %s, true) RETURNING id", (pattern, answer))
         new_id = cur.fetchone()[0]
         conn.commit(); cur.close(); conn.close()
         return resp(200, {'id': new_id, 'ok': True})
@@ -222,8 +346,16 @@ def handler(event: dict, context) -> dict:
         q_id = int(qs.get('id', '0'))
         body = json.loads(body_str)
         conn = get_conn(); cur = conn.cursor()
-        cur.execute(f"UPDATE {SCHEMA}.ai_quick_questions SET pattern=%s, answer=%s, active=%s WHERE id=%s",
-                    (body.get('pattern',''), body.get('answer',''), body.get('active', True), q_id))
+        if wl_id:
+            cur.execute(
+                f"UPDATE {SCHEMA}.wl_quick_questions SET pattern=%s, answer=%s, active=%s WHERE id=%s AND wl_manager_id=%s",
+                (body.get('pattern',''), body.get('answer',''), body.get('active', True), q_id, wl_id)
+            )
+        else:
+            cur.execute(
+                f"UPDATE {SCHEMA}.ai_quick_questions SET pattern=%s, answer=%s, active=%s WHERE id=%s",
+                (body.get('pattern',''), body.get('answer',''), body.get('active', True), q_id)
+            )
         conn.commit(); cur.close(); conn.close()
         return resp(200, {'ok': True})
 
@@ -233,19 +365,32 @@ def handler(event: dict, context) -> dict:
             return resp(401, {'error': 'Unauthorized'})
         q_id = int(qs.get('id', '0'))
         conn = get_conn(); cur = conn.cursor()
-        cur.execute(f"DELETE FROM {SCHEMA}.ai_quick_questions WHERE id = %s", (q_id,))
+        if wl_id:
+            cur.execute(f"DELETE FROM {SCHEMA}.wl_quick_questions WHERE id=%s AND wl_manager_id=%s", (q_id, wl_id))
+        else:
+            cur.execute(f"DELETE FROM {SCHEMA}.ai_quick_questions WHERE id = %s", (q_id,))
         conn.commit(); cur.close(); conn.close()
         return resp(200, {'ok': True})
+
+    # ══════════════════════════════════════════════════════════════
+    # НАСТРОЙКИ КАТЕГОРИЙ
+    # ══════════════════════════════════════════════════════════════
 
     # --- GET ?r=category_settings
     if r == 'category_settings' and method == 'GET':
         conn = get_conn(); cur = conn.cursor()
+        # Глобальные
         cur.execute(f"SELECT category, is_material, category_rule FROM {SCHEMA}.price_category_settings ORDER BY category")
-        rows = cur.fetchall()
+        global_rows = {row[0]: {'category': row[0], 'is_material': row[1], 'category_rule': row[2] or ''} for row in cur.fetchall()}
+        if wl_id:
+            # Накладываем WL-переопределения
+            cur.execute(f"SELECT category, is_material, category_rule FROM {SCHEMA}.wl_category_settings WHERE wl_manager_id=%s", (wl_id,))
+            for row in cur.fetchall():
+                global_rows[row[0]] = {'category': row[0], 'is_material': row[1], 'category_rule': row[2] or ''}
         cur.close(); conn.close()
-        return resp(200, {'items': [{'category': row[0], 'is_material': row[1], 'category_rule': row[2] or ''} for row in rows]})
+        return resp(200, {'items': list(global_rows.values())})
 
-    # --- PUT ?r=category_settings  (обновление флагов is_material и category_rule)
+    # --- PUT ?r=category_settings
     if r == 'category_settings' and method == 'PUT':
         body = json.loads(body_str)
         category = body.get('category', '').strip()
@@ -254,12 +399,22 @@ def handler(event: dict, context) -> dict:
         if not category:
             return resp(400, {'error': 'category required'})
         conn = get_conn(); cur = conn.cursor()
-        cur.execute(
-            f"INSERT INTO {SCHEMA}.price_category_settings (category, is_material, category_rule, updated_at) VALUES (%s, %s, %s, now()) ON CONFLICT (category) DO UPDATE SET is_material=%s, category_rule=%s, updated_at=now()",
-            (category, is_material, category_rule, is_material, category_rule)
-        )
+        if wl_id:
+            cur.execute(
+                f"INSERT INTO {SCHEMA}.wl_category_settings (wl_manager_id, category, is_material, category_rule, updated_at) VALUES (%s,%s,%s,%s,now()) ON CONFLICT (wl_manager_id, category) DO UPDATE SET is_material=%s, category_rule=%s, updated_at=now()",
+                (wl_id, category, is_material, category_rule, is_material, category_rule)
+            )
+        else:
+            cur.execute(
+                f"INSERT INTO {SCHEMA}.price_category_settings (category, is_material, category_rule, updated_at) VALUES (%s, %s, %s, now()) ON CONFLICT (category) DO UPDATE SET is_material=%s, category_rule=%s, updated_at=now()",
+                (category, is_material, category_rule, is_material, category_rule)
+            )
         conn.commit(); cur.close(); conn.close()
         return resp(200, {'ok': True})
+
+    # ══════════════════════════════════════════════════════════════
+    # ПРАЙС
+    # ══════════════════════════════════════════════════════════════
 
     # --- GET ?r=prices
     if r == 'prices' and method == 'GET':
@@ -268,22 +423,62 @@ def handler(event: dict, context) -> dict:
         rows = cur.fetchall()
         cur.execute(f"SELECT category, is_material FROM {SCHEMA}.price_category_settings")
         cat_settings = {row[0]: row[1] for row in cur.fetchall()}
-        cur.close(); conn.close()
-        return resp(200, {'items': [{'id': row[0], 'category': row[1], 'name': row[2], 'price': row[3], 'unit': row[4], 'description': row[5], 'sort_order': row[6], 'active': row[7], 'calc_rule': row[8] or '', 'bundle': row[9] or '[]', 'synonyms': row[10] or '', 'when_condition': row[11] or '', 'when_not_condition': row[12] or '', 'client_changes': row[13] or '', 'purchase_price': row[14] or 0, 'is_material': cat_settings.get(row[1], True), 'image_url': row[15], 'category_image_url': row[16]} for row in rows]})
 
-    # --- POST ?r=prices  (добавление позиции)
+        wl_overrides = {}
+        if wl_id:
+            cur.execute(f"SELECT price_id, price, purchase_price, active, description, synonyms, image_url, category_image_url FROM {SCHEMA}.wl_price_overrides WHERE wl_manager_id=%s", (wl_id,))
+            for ov in cur.fetchall():
+                wl_overrides[ov[0]] = {
+                    'price': ov[1], 'purchase_price': ov[2], 'active': ov[3],
+                    'description': ov[4], 'synonyms': ov[5],
+                    'image_url': ov[6], 'category_image_url': ov[7],
+                }
+            # WL category_settings тоже
+            cur.execute(f"SELECT category, is_material FROM {SCHEMA}.wl_category_settings WHERE wl_manager_id=%s", (wl_id,))
+            for row in cur.fetchall():
+                cat_settings[row[0]] = row[1]
+
+        cur.close(); conn.close()
+
+        items = []
+        for row in rows:
+            pid = row[0]
+            ov = wl_overrides.get(pid, {})
+            items.append({
+                'id': pid,
+                'category': row[1],
+                'name': row[2],
+                'price': ov['price'] if ov.get('price') is not None else row[3],
+                'unit': row[4],
+                'description': ov['description'] if ov.get('description') is not None else (row[5] or ''),
+                'sort_order': row[6],
+                'active': ov['active'] if ov.get('active') is not None else row[7],
+                'calc_rule': row[8] or '',
+                'bundle': row[9] or '[]',
+                'synonyms': ov['synonyms'] if ov.get('synonyms') is not None else (row[10] or ''),
+                'when_condition': row[11] or '',
+                'when_not_condition': row[12] or '',
+                'client_changes': row[13] or '',
+                'purchase_price': ov['purchase_price'] if ov.get('purchase_price') is not None else (row[14] or 0),
+                'is_material': cat_settings.get(row[1], True),
+                'image_url': ov['image_url'] if ov.get('image_url') is not None else row[15],
+                'category_image_url': ov['category_image_url'] if ov.get('category_image_url') is not None else row[16],
+            })
+        return resp(200, {'items': items})
+
+    # --- POST ?r=prices  (добавление позиции — только мастер)
     if r == 'prices' and method == 'POST':
         if not check_auth(hdrs):
             return resp(401, {'error': 'Unauthorized'})
+        if wl_id:
+            return resp(403, {'error': 'WL-клиент не может добавлять позиции прайса'})
         body = json.loads(body_str)
         category = body.get('category', '').strip()
         name = body.get('name', '').strip()
         if not category or not name:
             return resp(400, {'error': 'category and name required'})
         conn = get_conn(); cur = conn.cursor()
-        cur.execute(
-            f"SELECT COALESCE(MAX(sort_order), 0) + 10 FROM {SCHEMA}.ai_prices WHERE category = %s", (category,)
-        )
+        cur.execute(f"SELECT COALESCE(MAX(sort_order), 0) + 10 FROM {SCHEMA}.ai_prices WHERE category = %s", (category,))
         sort_order = cur.fetchone()[0]
         synonyms = body.get('synonyms', '')
         cur.execute(
@@ -292,48 +487,74 @@ def handler(event: dict, context) -> dict:
         )
         new_id = cur.fetchone()[0]
         _save_complex_exceptions(conn, cur, synonyms, name)
-        # Автоматически создаём запись в price_category_settings если категория новая
         cur2 = conn.cursor()
         cur2.execute(
             f"INSERT INTO {SCHEMA}.price_category_settings (category, is_material, category_rule, updated_at) VALUES (%s, true, '', now()) ON CONFLICT (category) DO NOTHING",
             (category,)
         )
         conn.commit()
-        cur2.close()
-        cur.close(); conn.close()
+        cur2.close(); cur.close(); conn.close()
         return resp(200, {'id': new_id, 'ok': True})
 
-    # --- PUT ?r=prices&id=X  (обновление цены)
-    if r == 'prices' and method == 'PUT':
+    # --- PUT ?r=prices&id=X  (обновление позиции)
+    if r == 'prices' and method == 'PUT' and 'rename_category' not in qs:
         if not check_auth(hdrs):
             return resp(401, {'error': 'Unauthorized'})
         price_id = int(qs.get('id', '0'))
         body = json.loads(body_str)
         conn = get_conn(); cur = conn.cursor()
-        synonyms = body.get('synonyms', '')
-        sort_order = body.get('sort_order')
-        when_condition = body.get('when_condition', '')
-        when_not_condition = body.get('when_not_condition', '')
-        client_changes = body.get('client_changes', '')
-        purchase_price = int(body.get('purchase_price', 0))
-        if sort_order is not None:
+
+        if wl_id:
+            # WL: сохраняем только изменённые поля в override-таблицу
+            ov_price = body.get('price')
+            ov_purchase = body.get('purchase_price')
+            ov_active = body.get('active')
+            ov_desc = body.get('description')
+            ov_syn = body.get('synonyms')
             cur.execute(
-                f"UPDATE {SCHEMA}.ai_prices SET name=%s, price=%s, purchase_price=%s, unit=%s, description=%s, active=%s, calc_rule=%s, bundle=%s, synonyms=%s, when_condition=%s, when_not_condition=%s, client_changes=%s, sort_order=%s, updated_at=now() WHERE id=%s",
-                (body.get('name',''), int(body.get('price', 0)), purchase_price, body.get('unit',''), body.get('description',''), body.get('active', True), body.get('calc_rule',''), body.get('bundle','[]'), synonyms, when_condition, when_not_condition, client_changes, int(sort_order), price_id)
+                f"""INSERT INTO {SCHEMA}.wl_price_overrides (wl_manager_id, price_id, price, purchase_price, active, description, synonyms, updated_at)
+                    VALUES (%s,%s,%s,%s,%s,%s,%s,now())
+                    ON CONFLICT (wl_manager_id, price_id) DO UPDATE SET
+                        price=COALESCE(EXCLUDED.price, {SCHEMA}.wl_price_overrides.price),
+                        purchase_price=COALESCE(EXCLUDED.purchase_price, {SCHEMA}.wl_price_overrides.purchase_price),
+                        active=COALESCE(EXCLUDED.active, {SCHEMA}.wl_price_overrides.active),
+                        description=COALESCE(EXCLUDED.description, {SCHEMA}.wl_price_overrides.description),
+                        synonyms=COALESCE(EXCLUDED.synonyms, {SCHEMA}.wl_price_overrides.synonyms),
+                        updated_at=now()""",
+                (wl_id, price_id,
+                 int(ov_price) if ov_price is not None else None,
+                 int(ov_purchase) if ov_purchase is not None else None,
+                 ov_active, ov_desc, ov_syn)
             )
         else:
-            cur.execute(
-                f"UPDATE {SCHEMA}.ai_prices SET name=%s, price=%s, purchase_price=%s, unit=%s, description=%s, active=%s, calc_rule=%s, bundle=%s, synonyms=%s, when_condition=%s, when_not_condition=%s, client_changes=%s, updated_at=now() WHERE id=%s",
-                (body.get('name',''), int(body.get('price', 0)), purchase_price, body.get('unit',''), body.get('description',''), body.get('active', True), body.get('calc_rule',''), body.get('bundle','[]'), synonyms, when_condition, when_not_condition, client_changes, price_id)
-            )
-        _save_complex_exceptions(conn, cur, synonyms, body.get('name', ''))
-        cur.close(); conn.close()
+            # Мастер: обновляет глобальный прайс
+            synonyms = body.get('synonyms', '')
+            sort_order = body.get('sort_order')
+            when_condition = body.get('when_condition', '')
+            when_not_condition = body.get('when_not_condition', '')
+            client_changes = body.get('client_changes', '')
+            purchase_price = int(body.get('purchase_price', 0))
+            if sort_order is not None:
+                cur.execute(
+                    f"UPDATE {SCHEMA}.ai_prices SET name=%s, price=%s, purchase_price=%s, unit=%s, description=%s, active=%s, calc_rule=%s, bundle=%s, synonyms=%s, when_condition=%s, when_not_condition=%s, client_changes=%s, sort_order=%s, updated_at=now() WHERE id=%s",
+                    (body.get('name',''), int(body.get('price', 0)), purchase_price, body.get('unit',''), body.get('description',''), body.get('active', True), body.get('calc_rule',''), body.get('bundle','[]'), synonyms, when_condition, when_not_condition, client_changes, int(sort_order), price_id)
+                )
+            else:
+                cur.execute(
+                    f"UPDATE {SCHEMA}.ai_prices SET name=%s, price=%s, purchase_price=%s, unit=%s, description=%s, active=%s, calc_rule=%s, bundle=%s, synonyms=%s, when_condition=%s, when_not_condition=%s, client_changes=%s, updated_at=now() WHERE id=%s",
+                    (body.get('name',''), int(body.get('price', 0)), purchase_price, body.get('unit',''), body.get('description',''), body.get('active', True), body.get('calc_rule',''), body.get('bundle','[]'), synonyms, when_condition, when_not_condition, client_changes, price_id)
+                )
+            _save_complex_exceptions(conn, cur, synonyms, body.get('name', ''))
+
+        conn.commit(); cur.close(); conn.close()
         return resp(200, {'ok': True})
 
-    # --- PUT ?r=prices&rename_category  (переименование категории)
+    # --- PUT ?r=prices&rename_category  (переименование категории — только мастер)
     if r == 'prices' and method == 'PUT' and 'rename_category' in qs:
         if not check_auth(hdrs):
             return resp(401, {'error': 'Unauthorized'})
+        if wl_id:
+            return resp(403, {'error': 'WL-клиент не может переименовывать категории'})
         body = json.loads(body_str)
         old_name = body.get('old_name', '').strip()
         new_name = body.get('new_name', '').strip()
@@ -344,31 +565,36 @@ def handler(event: dict, context) -> dict:
         conn.commit(); cur.close(); conn.close()
         return resp(200, {'ok': True})
 
-    # --- DELETE ?r=prices&id=X
+    # --- DELETE ?r=prices&id=X  (удаление — только мастер)
     if r == 'prices' and method == 'DELETE':
         if not check_auth(hdrs):
             return resp(401, {'error': 'Unauthorized'})
+        if wl_id:
+            return resp(403, {'error': 'WL-клиент не может удалять позиции прайса'})
         price_id = int(qs.get('id', '0'))
         conn = get_conn(); cur = conn.cursor()
         cur.execute(f"DELETE FROM {SCHEMA}.ai_prices WHERE id = %s", (price_id,))
         conn.commit(); cur.close(); conn.close()
         return resp(200, {'ok': True})
 
-    # --- GET ?r=corrections
+    # ══════════════════════════════════════════════════════════════
+    # КОРРЕКЦИИ (уже изолированы по company_id, не меняем)
+    # ══════════════════════════════════════════════════════════════
+
     if r == 'corrections' and method == 'GET':
         user_id, user_role = get_company_id_from_token(hdrs)
-        is_master = check_auth(hdrs)
+        is_master_corr = check_auth(hdrs) and not wl_id
         conn = get_conn(); cur = conn.cursor()
         def fmt_dt(v):
             if v is None: return None
             s = str(v)
             return s if '+' in s or s.endswith('Z') else s + '+00:00'
-        if is_master:
-            # Мастер видит все
+        if is_master_corr:
             cur.execute(f"SELECT id, session_id, user_text, recognized_json, corrected_json, status, created_at, suggested_items, llm_answer FROM {SCHEMA}.bot_corrections ORDER BY created_at DESC LIMIT 500")
         elif user_id and user_role in ('company', 'installer'):
-            # Компания/монтажник видит только свои
             cur.execute(f"SELECT id, session_id, user_text, recognized_json, corrected_json, status, created_at, suggested_items, llm_answer FROM {SCHEMA}.bot_corrections WHERE company_id=%s ORDER BY created_at DESC LIMIT 200", (user_id,))
+        elif wl_id:
+            cur.execute(f"SELECT id, session_id, user_text, recognized_json, corrected_json, status, created_at, suggested_items, llm_answer FROM {SCHEMA}.bot_corrections WHERE company_id=%s ORDER BY created_at DESC LIMIT 200", (wl_id,))
         else:
             cur.close(); conn.close()
             return resp(401, {'error': 'Unauthorized'})
@@ -376,7 +602,6 @@ def handler(event: dict, context) -> dict:
         cur.close(); conn.close()
         return resp(200, {'items': [{'id': row[0], 'session_id': row[1] or '', 'user_text': row[2], 'recognized_json': row[3], 'corrected_json': row[4], 'status': row[5], 'created_at': fmt_dt(row[6]), 'suggested_items': row[7], 'llm_answer': row[8]} for row in rows]})
 
-    # --- PUT ?r=corrections&id=X
     if r == 'corrections' and method == 'PUT':
         if not check_auth(hdrs):
             return resp(401, {'error': 'Unauthorized'})
@@ -392,7 +617,6 @@ def handler(event: dict, context) -> dict:
         conn.commit(); cur.close(); conn.close()
         return resp(200, {'ok': True})
 
-    # --- DELETE ?r=corrections&id=X
     if r == 'corrections' and method == 'DELETE':
         if not check_auth(hdrs):
             return resp(401, {'error': 'Unauthorized'})
@@ -403,7 +627,10 @@ def handler(event: dict, context) -> dict:
         conn.commit(); cur.close(); conn.close()
         return resp(200, {'ok': True})
 
-    # --- GET ?r=stop-words
+    # ══════════════════════════════════════════════════════════════
+    # СТОП-СЛОВА (только мастер)
+    # ══════════════════════════════════════════════════════════════
+
     if r == 'stop-words' and method == 'GET':
         conn = get_conn(); cur = conn.cursor()
         cur.execute(f"SELECT id, word, created_at FROM {SCHEMA}.stop_words ORDER BY created_at DESC")
@@ -411,7 +638,6 @@ def handler(event: dict, context) -> dict:
         cur.close(); conn.close()
         return resp(200, {'items': [{'id': r[0], 'word': r[1], 'created_at': str(r[2])} for r in rows]})
 
-    # --- POST ?r=stop-words  { word }
     if r == 'stop-words' and method == 'POST':
         if not check_auth(hdrs):
             return resp(401, {'error': 'Unauthorized'})
@@ -424,7 +650,6 @@ def handler(event: dict, context) -> dict:
         conn.commit(); cur.close(); conn.close()
         return resp(200, {'ok': True})
 
-    # --- DELETE ?r=stop-words&id=X
     if r == 'stop-words' and method == 'DELETE':
         if not check_auth(hdrs):
             return resp(401, {'error': 'Unauthorized'})
@@ -434,7 +659,10 @@ def handler(event: dict, context) -> dict:
         conn.commit(); cur.close(); conn.close()
         return resp(200, {'ok': True})
 
-    # --- GET ?r=rule-types  (список типов правил)
+    # ══════════════════════════════════════════════════════════════
+    # ТИПЫ И ЗНАЧЕНИЯ ПРАВИЛ (только мастер, WL только читает)
+    # ══════════════════════════════════════════════════════════════
+
     if r == 'rule-types' and method == 'GET':
         conn = get_conn(); cur = conn.cursor()
         cur.execute(f"SELECT id, name, label, description, placeholder, sort_order, active FROM {SCHEMA}.ai_rule_types ORDER BY sort_order, id")
@@ -442,10 +670,9 @@ def handler(event: dict, context) -> dict:
         cur.close(); conn.close()
         return resp(200, {'items': [{'id': r[0], 'name': r[1], 'label': r[2], 'description': r[3], 'placeholder': r[4], 'sort_order': r[5], 'active': r[6]} for r in rows]})
 
-    # --- POST ?r=rule-types  (создать тип правила)
     if r == 'rule-types' and method == 'POST':
-        if not check_auth(hdrs):
-            return resp(401, {'error': 'Unauthorized'})
+        if not check_auth(hdrs) or wl_id:
+            return resp(403, {'error': 'Только мастер может создавать типы правил'})
         body = json.loads(body_str)
         label = body.get('label', '').strip()
         name = body.get('name', '').strip() or label.lower().replace(' ', '_').replace('-', '_')[:30]
@@ -462,10 +689,9 @@ def handler(event: dict, context) -> dict:
         conn.commit(); cur.close(); conn.close()
         return resp(200, {'id': new_id, 'ok': True})
 
-    # --- PUT ?r=rule-types&id=X  (обновить тип правила)
     if r == 'rule-types' and method == 'PUT':
-        if not check_auth(hdrs):
-            return resp(401, {'error': 'Unauthorized'})
+        if not check_auth(hdrs) or wl_id:
+            return resp(403, {'error': 'Только мастер может изменять типы правил'})
         rule_id = int(qs.get('id', '0'))
         body = json.loads(body_str)
         conn = get_conn(); cur = conn.cursor()
@@ -476,10 +702,9 @@ def handler(event: dict, context) -> dict:
         conn.commit(); cur.close(); conn.close()
         return resp(200, {'ok': True})
 
-    # --- DELETE ?r=rule-types&id=X  (удалить тип правила)
     if r == 'rule-types' and method == 'DELETE':
-        if not check_auth(hdrs):
-            return resp(401, {'error': 'Unauthorized'})
+        if not check_auth(hdrs) or wl_id:
+            return resp(403, {'error': 'Только мастер может удалять типы правил'})
         rule_id = int(qs.get('id', '0'))
         conn = get_conn(); cur = conn.cursor()
         cur.execute(f"DELETE FROM {SCHEMA}.ai_rule_values WHERE rule_type_id = %s", (rule_id,))
@@ -487,7 +712,6 @@ def handler(event: dict, context) -> dict:
         conn.commit(); cur.close(); conn.close()
         return resp(200, {'ok': True})
 
-    # --- GET ?r=rule-values&price_id=X  (значения правил для позиции)
     if r == 'rule-values' and method == 'GET':
         price_id = int(qs.get('price_id', '0'))
         conn = get_conn(); cur = conn.cursor()
@@ -496,10 +720,9 @@ def handler(event: dict, context) -> dict:
         cur.close(); conn.close()
         return resp(200, {'values': {str(r[0]): r[1] for r in rows}})
 
-    # --- POST ?r=rule-values  (сохранить значение правила)
     if r == 'rule-values' and method == 'POST':
-        if not check_auth(hdrs):
-            return resp(401, {'error': 'Unauthorized'})
+        if not check_auth(hdrs) or wl_id:
+            return resp(403, {'error': 'Только мастер может изменять значения правил'})
         body = json.loads(body_str)
         price_id = int(body.get('price_id', 0))
         rule_type_id = int(body.get('rule_type_id', 0))
@@ -512,7 +735,10 @@ def handler(event: dict, context) -> dict:
         conn.commit(); cur.close(); conn.close()
         return resp(200, {'ok': True})
 
-    # --- GET/PUT ?r=settings
+    # ══════════════════════════════════════════════════════════════
+    # НАСТРОЙКИ AI (только мастер)
+    # ══════════════════════════════════════════════════════════════
+
     if r == 'settings' and method == 'GET':
         conn = get_conn(); cur = conn.cursor()
         cur.execute(f"SELECT key, value FROM {SCHEMA}.ai_settings")
@@ -533,7 +759,10 @@ def handler(event: dict, context) -> dict:
         conn.commit(); cur.close(); conn.close()
         return resp(200, {'ok': True})
 
-    # --- POST ?r=match-synonym  { word, prices: [...] }
+    # ══════════════════════════════════════════════════════════════
+    # ПОДБОР СИНОНИМОВ / ГЕНЕРАЦИЯ (мастер и WL могут использовать)
+    # ══════════════════════════════════════════════════════════════
+
     if r == 'match-synonym' and method == 'POST':
         if not check_auth(hdrs):
             return resp(401, {'error': 'Unauthorized'})
@@ -547,7 +776,6 @@ def handler(event: dict, context) -> dict:
         if not openrouter_key:
             return resp(500, {'error': 'No LLM key'})
 
-        # ── Режим генерации описания ──────────────────────────────────────────
         if word.startswith('GENERATE_DESCRIPTION:'):
             parts = word[len('GENERATE_DESCRIPTION:'):].split('|')
             item_name = parts[0].strip() if parts else word
@@ -570,7 +798,6 @@ def handler(event: dict, context) -> dict:
                 return resp(500, {'error': str(e)})
             return resp(500, {'error': 'LLM failed'})
 
-        # ── Режим генерации синонимов ─────────────────────────────────────────
         if word.startswith('GENERATE_SYNONYMS:'):
             parts = word[len('GENERATE_SYNONYMS:'):].split('|')
             item_name = parts[0].strip() if parts else word
@@ -598,17 +825,14 @@ def handler(event: dict, context) -> dict:
                 return resp(500, {'error': str(e)})
             return resp(500, {'error': 'LLM failed'})
 
-        # ── Режим подбора позиции из прайса ──────────────────────────────────
         if not prices_list:
             return resp(400, {'error': 'prices required'})
 
-        # Строим список позиций для LLM
         prices_text = '\n'.join(
             f"{p['id']}. {p['name']} ({p['category']})"
             + (f" [синонимы: {p['synonyms']}]" if p.get('synonyms') else '')
             for p in prices_list[:80]
         )
-
         prompt = f"""Ты помощник сметчика натяжных потолков. 
 Тебе дано слово/фраза из запроса клиента: «{word}»
 
@@ -619,20 +843,11 @@ def handler(event: dict, context) -> dict:
 {prices_text}
 
 Ответ (только число):"""
-
         try:
             llm_resp = requests.post(
                 'https://openrouter.ai/api/v1/chat/completions',
-                json={
-                    'model': 'openai/gpt-4o-mini',
-                    'messages': [{'role': 'user', 'content': prompt}],
-                    'max_tokens': 10,
-                    'temperature': 0,
-                },
-                headers={
-                    'Authorization': f'Bearer {openrouter_key}',
-                    'Content-Type': 'application/json',
-                },
+                json={'model': 'openai/gpt-4o-mini', 'messages': [{'role': 'user', 'content': prompt}], 'max_tokens': 10, 'temperature': 0},
+                headers={'Authorization': f'Bearer {openrouter_key}', 'Content-Type': 'application/json'},
                 timeout=15,
             )
             if llm_resp.status_code != 200:
@@ -643,7 +858,10 @@ def handler(event: dict, context) -> dict:
         except Exception as e:
             return resp(500, {'error': str(e)})
 
-    # --- XLSX import (legacy, ?action=read|import)
+    # ══════════════════════════════════════════════════════════════
+    # XLSX IMPORT (только мастер)
+    # ══════════════════════════════════════════════════════════════
+
     action = qs.get('action', '')
     if action in ('read', 'import'):
         items, headers_list = load_xlsx()
@@ -673,4 +891,4 @@ def handler(event: dict, context) -> dict:
             conn.commit(); cur.close(); conn.close()
             return resp(200, {'ok': True, 'imported': imported})
 
-    return resp(400, {'error': 'unknown resource. Use ?r=prompt|faq|questions|login'})
+    return resp(400, {'error': 'unknown resource. Use ?r=prompt|faq|questions|prices|login'})
