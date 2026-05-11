@@ -24,7 +24,7 @@ const ALL_TABS: { id: CrmTab; label: string; icon: string; perm?: keyof Permissi
   { id: "analytics", label: "Аналитика", icon: "BarChart2",    perm: "analytics_view"},
 ];
 
-export default function CrmPanel({ theme, initialOrderId }: { theme: Theme; initialOrderId?: number | null }) {
+export default function CrmPanel({ theme, initialOrderId, initialTab }: { theme: Theme; initialOrderId?: number | null; initialTab?: CrmTab }) {
   const { user, token, updateUser } = useAuth();
 
   // Права пользователя — новая система
@@ -50,7 +50,7 @@ export default function CrmPanel({ theme, initialOrderId }: { theme: Theme; init
   // Доступные фиксированные табы
   const visibleTabs = ALL_TABS.filter(tb => !tb.perm || hasPermission(user, tb.perm));
 
-  const [tab, setTab]               = useState<CrmTab>("orders");
+  const [tab, setTab]               = useState<CrmTab>(initialTab ?? "orders");
   const [clients, setClients]       = useState<Client[]>([]);
   const [loading, setLoading]       = useState(true);
   const [calendarOpenId, setCalendarOpenId] = useState<number | null>(null);

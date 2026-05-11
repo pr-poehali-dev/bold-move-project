@@ -52,7 +52,7 @@ const FEATURES: Feature[] = [
     badge: "Живые данные",
     badgeIcon: "TrendingUp",
     status: "ready",
-    href: "/company?tab=crm",
+    href: "/company?tab=crm&crm_tab=analytics",
   },
   {
     icon: "PenTool",

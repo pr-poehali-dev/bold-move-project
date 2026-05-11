@@ -73,7 +73,7 @@ export function AdminPanelContent({
       {mainTab === "crm" && canCrm && (
         <div className="flex-1 overflow-hidden">
           {crmReady
-            ? <CrmPanel theme={theme} initialOrderId={initialOrderId} />
+            ? <CrmPanel theme={theme} initialOrderId={initialOrderId} initialTab={(new URLSearchParams(window.location.search).get("crm_tab") as "analytics" | "clients" | "orders" | "calendar" | "kanban" | null) ?? undefined} />
             : <div className="flex items-center justify-center h-64"><div className="w-7 h-7 border-2 border-violet-500 border-t-transparent rounded-full animate-spin" /></div>
           }
         </div>
