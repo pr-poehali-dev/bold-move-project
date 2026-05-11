@@ -3,7 +3,8 @@ import { useAuth } from "@/context/AuthContext";
 import Icon from "@/components/ui/icon";
 import func2url from "@/../backend/func2url.json";
 
-const NEWS_URL = func2url["news"];
+const NEWS_URL      = func2url["news"];
+const LIVE_CHAT_URL = func2url["live-chat"];
 
 interface NewsItem {
   id: number;
@@ -21,7 +22,10 @@ function formatDate(iso: string) {
 }
 
 // ── Тулбар редактора ────────────────────────────────────────────────────────
-function EditorToolbar({ onCommand }: { onCommand: (cmd: string, val?: string) => void }) {
+function EditorToolbar({ onCommand, onLink }: {
+  onCommand: (cmd: string, val?: string) => void;
+  onLink: () => void;
+}) {
   const btn = (icon: string, cmd: string, title: string, val?: string) => (
     <button
       type="button"
@@ -47,6 +51,15 @@ function EditorToolbar({ onCommand }: { onCommand: (cmd: string, val?: string) =
       <div className="w-px h-5 bg-white/10 mx-1" />
       {btn("AlignLeft", "justifyLeft", "По левому краю")}
       {btn("AlignCenter", "justifyCenter", "По центру")}
+      <div className="w-px h-5 bg-white/10 mx-1" />
+      <button
+        type="button"
+        title="Добавить ссылку"
+        onMouseDown={e => { e.preventDefault(); onLink(); }}
+        className="w-8 h-8 flex items-center justify-center rounded-lg transition hover:bg-white/10 text-white/60 hover:text-white"
+      >
+        <Icon name="Link" size={14} />
+      </button>
     </div>
   );
 }
@@ -122,6 +135,9 @@ function NewsEditor({ item, token, onSave, onCancel }: {
   const [saving, setSaving]       = useState(false);
   const [aiLoading, setAiLoading] = useState(false);
   const [aiStats, setAiStats]     = useState<Record<string, number> | null>(null);
+  const [aiError, setAiError]     = useState("");
+  const [coverUploading, setCoverUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const editorRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -137,19 +153,56 @@ function NewsEditor({ item, token, onSave, onCancel }: {
 
   const handleAiDraft = async () => {
     setAiLoading(true);
+    setAiError("");
     try {
       const res  = await fetch(`${NEWS_URL}?action=ai_draft`, {
         method: "POST",
         headers: { "Content-Type": "application/json", "X-Auth-Token": token },
       });
       const data = await res.json();
+      if (!res.ok) { setAiError(`Ошибка ${res.status}: ${data.error ?? "неизвестная ошибка"}`); return; }
       if (data.title)   setTitle(data.title);
       if (data.content && editorRef.current) editorRef.current.innerHTML = data.content;
       if (data.stats)   setAiStats(data.stats);
+      if (data.error)   setAiError(`AI недоступен, сгенерирован базовый текст`);
+    } catch (e) {
+      setAiError("Ошибка соединения с сервером");
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
+  const handleCoverUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setCoverUploading(true);
+    try {
+      const buf = await file.arrayBuffer();
+      const bytes = new Uint8Array(buf);
+      let bin = "";
+      for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+      const b64 = btoa(bin);
+      const fileId = `news-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+      const res = await fetch(`${LIVE_CHAT_URL}?action=chunk`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ file_id: fileId, filename: file.name, chunk_index: 0, total_chunks: 1, data: b64 }),
+      });
+      const data = await res.json();
+      if (data.url) setCoverUrl(data.url);
+      else if (data.cdn_url) setCoverUrl(data.cdn_url);
     } catch {
       // ignore
     } finally {
-      setAiLoading(false);
+      setCoverUploading(false);
+    }
+  };
+
+  const handleLink = () => {
+    const url = prompt("Введите URL ссылки:");
+    if (url) {
+      document.execCommand("createLink", false, url);
+      editorRef.current?.focus();
     }
   };
 
@@ -202,20 +255,41 @@ function NewsEditor({ item, token, onSave, onCancel }: {
           className="w-full bg-white/[0.04] border border-white/[0.08] rounded-xl px-3 py-2.5 text-[14px] font-bold text-white placeholder-white/25 outline-none focus:border-orange-500/40"
         />
 
-        {/* URL обложки */}
-        <input
-          value={coverUrl}
-          onChange={e => setCoverUrl(e.target.value)}
-          placeholder="URL обложки (необязательно)"
-          className="w-full bg-white/[0.04] border border-white/[0.08] rounded-xl px-3 py-2 text-[13px] text-white/70 placeholder-white/25 outline-none focus:border-orange-500/40"
-        />
+        {/* Обложка — файл или URL */}
+        <div className="flex gap-2">
+          <input
+            value={coverUrl}
+            onChange={e => setCoverUrl(e.target.value)}
+            placeholder="URL обложки или загрузи файл →"
+            className="flex-1 bg-white/[0.04] border border-white/[0.08] rounded-xl px-3 py-2 text-[13px] text-white/70 placeholder-white/25 outline-none focus:border-orange-500/40"
+          />
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={coverUploading}
+            className="shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-xl text-[12px] font-medium transition hover:opacity-80 disabled:opacity-50"
+            style={{ background: "rgba(249,115,22,0.12)", color: "#f97316", border: "1px solid rgba(249,115,22,0.2)" }}
+          >
+            {coverUploading ? <Icon name="Loader2" size={13} className="animate-spin" /> : <Icon name="ImagePlus" size={13} />}
+            {coverUploading ? "..." : "Фото"}
+          </button>
+          <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleCoverUpload} />
+        </div>
         {coverUrl && (
           <img src={coverUrl} alt="" className="w-full h-40 object-cover rounded-xl" onError={e => (e.currentTarget.style.display = "none")} />
         )}
 
+        {/* Показываем ошибку AI если есть */}
+        {aiError && (
+          <div className="px-3 py-2 rounded-xl text-[12px]"
+            style={{ background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.2)", color: "#f87171" }}>
+            {aiError}
+          </div>
+        )}
+
         {/* Редактор */}
         <div className="rounded-xl overflow-hidden" style={{ border: "1px solid rgba(255,255,255,0.08)" }}>
-          <EditorToolbar onCommand={execCmd} />
+          <EditorToolbar onCommand={execCmd} onLink={handleLink} />
           <div
             ref={editorRef}
             contentEditable
@@ -386,7 +460,10 @@ export default function NewsPage() {
         .news-content b, .news-content strong { color: white; font-weight: 700; }
         .news-content u  { text-decoration: underline; }
         .news-content s, .news-content strike { text-decoration: line-through; }
+        .news-content a  { color: #f97316; text-decoration: underline; cursor: pointer; }
+        .news-content a:hover { color: #fb923c; }
         [contenteditable]:empty:before { content: attr(data-placeholder); color: rgba(255,255,255,0.2); pointer-events: none; }
+        [contenteditable] a { color: #f97316; text-decoration: underline; }
       `}</style>
     </div>
   );

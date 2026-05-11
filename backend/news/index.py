@@ -168,48 +168,49 @@ def _row_to_dict(row) -> dict:
 
 
 def _build_ai_draft(cur) -> dict:
-    """Собирает события из БД за последние 7 дней и генерирует черновик новости через OpenAI."""
+    """Собирает события из БД за последние 24 часа и генерирует черновик новости через OpenAI."""
 
-    # ── Собираем статистику ─────────────────────────────────────────────────
+    # ── Собираем статистику за 24 часа ──────────────────────────────────────
     cur.execute(f"""
         SELECT
-          (SELECT COUNT(*) FROM {SCHEMA}.live_chats WHERE created_at > now() - interval '7 days') AS new_chats,
-          (SELECT COUNT(*) FROM {SCHEMA}.saved_estimates WHERE created_at > now() - interval '7 days') AS new_estimates,
+          (SELECT COUNT(*) FROM {SCHEMA}.live_chats WHERE created_at > now() - interval '24 hours') AS new_chats,
+          (SELECT COUNT(*) FROM {SCHEMA}.saved_estimates WHERE created_at > now() - interval '24 hours') AS new_estimates,
           (SELECT COUNT(*) FROM {SCHEMA}.live_chats WHERE status='new') AS open_chats,
           (SELECT COUNT(*) FROM {SCHEMA}.live_chats) AS total_chats,
           (SELECT COUNT(*) FROM {SCHEMA}.saved_estimates) AS total_estimates,
-          (SELECT COUNT(*) FROM {SCHEMA}.ai_prices WHERE updated_at > now() - interval '7 days') AS updated_prices
+          (SELECT COUNT(*) FROM {SCHEMA}.ai_prices WHERE updated_at > now() - interval '24 hours') AS updated_prices
     """)
     row = cur.fetchone()
     stats = {
         "new_chats": row[0], "new_estimates": row[1], "open_chats": row[2],
         "total_chats": row[3], "total_estimates": row[4], "updated_prices": row[5],
     }
+    print(f"[ai_draft] stats={stats}")
 
-    # ── Последние изменения прайса ─────────────────────────────────────────
+    # ── Последние изменения прайса за 24 часа ──────────────────────────────
     cur.execute(f"""
         SELECT name, price, category FROM {SCHEMA}.ai_prices
-        WHERE updated_at > now() - interval '7 days'
+        WHERE updated_at > now() - interval '24 hours'
         ORDER BY updated_at DESC LIMIT 8
     """)
     price_changes = [{"name": r[0], "price": r[1], "category": r[2]} for r in cur.fetchall()]
 
-    # ── Последние сметы (топ по сумме) ─────────────────────────────────────
+    # ── Последние сметы (топ по сумме) за 24 часа ──────────────────────────
     cur.execute(f"""
         SELECT total_standard, created_at FROM {SCHEMA}.saved_estimates
-        WHERE created_at > now() - interval '7 days' AND total_standard IS NOT NULL
+        WHERE created_at > now() - interval '24 hours' AND total_standard IS NOT NULL
         ORDER BY total_standard DESC LIMIT 5
     """)
-    top_estimates = [{"total": float(r[0]), "date": r[1].strftime("%d.%m")} for r in cur.fetchall()]
+    top_estimates = [{"total": float(r[0]), "date": r[1].strftime("%d.%m %H:%M")} for r in cur.fetchall()]
 
     # ── Формируем контекст для AI ──────────────────────────────────────────
     price_lines = "\n".join([f"- {p['name']} ({p['category']}): {p['price']} ₽" for p in price_changes]) or "Изменений не было"
     estimate_lines = "\n".join([f"- {e['date']}: {int(e['total']):,} ₽".replace(",", " ") for e in top_estimates]) or "Нет данных"
 
-    context = f"""Статистика системы AI-potolki за последние 7 дней:
+    context = f"""Статистика системы AI-potolki за последние 24 часа:
 - Новых заявок: {stats['new_chats']}
 - Новых смет: {stats['new_estimates']}
-- Открытых заявок: {stats['open_chats']}
+- Открытых заявок сейчас: {stats['open_chats']}
 - Всего заявок в системе: {stats['total_chats']}
 - Всего смет в системе: {stats['total_estimates']}
 - Обновлено позиций в прайсе: {stats['updated_prices']}
@@ -220,9 +221,12 @@ def _build_ai_draft(cur) -> dict:
 Топ смет по сумме:
 {estimate_lines}"""
 
+    print(f"[ai_draft] context built, calling OpenAI...")
+
     # ── Вызываем OpenAI ─────────────────────────────────────────────────────
     api_key = os.environ.get("OPENAI_API_KEY", "")
     if not api_key:
+        print("[ai_draft] ERROR: no OPENAI_API_KEY")
         return {"title": "Обновление системы", "content": f"<p>{context}</p>", "error": "no_api_key"}
 
     prompt = f"""Ты — редактор новостей сервиса AI-potolki (экосистема для натяжных потолков).
@@ -241,10 +245,12 @@ def _build_ai_draft(cur) -> dict:
             "https://api.openai.com/v1/chat/completions",
             headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
             json={"model": "gpt-4o-mini", "messages": [{"role": "user", "content": prompt}], "temperature": 0.7},
-            timeout=20,
+            timeout=25,
         )
+        print(f"[ai_draft] OpenAI status={resp.status_code}")
         data = resp.json()
         text = data["choices"][0]["message"]["content"].strip()
+        print(f"[ai_draft] OpenAI response: {text[:200]}")
         # Извлекаем JSON из ответа
         m = re.search(r'\{.*\}', text, re.DOTALL)
         if m:
@@ -255,5 +261,5 @@ def _build_ai_draft(cur) -> dict:
 
     # Fallback — без AI
     title = f"Обновление {datetime.now().strftime('%d.%m.%Y')}"
-    content = f"<p>За последнюю неделю в системе AI-potolki: {stats['new_chats']} новых заявок, {stats['new_estimates']} смет. Продолжаем развивать экосистему!</p>"
-    return {"title": title, "content": content, "stats": stats}
+    content = f"<p>За последние 24 часа в системе AI-potolki: {stats['new_chats']} новых заявок, {stats['new_estimates']} смет. Продолжаем развивать экосистему!</p>"
+    return {"title": title, "content": content, "stats": stats, "error": "ai_failed"}
