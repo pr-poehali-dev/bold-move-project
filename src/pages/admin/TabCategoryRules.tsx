@@ -10,17 +10,17 @@ interface CategorySetting {
 
 interface Props { token: string; isDark?: boolean; readOnly?: boolean; }
 
-// Парсим правило-строку в массив отдельных пунктов (по ". " или ".\n")
+// Парсим правило-строку в массив отдельных пунктов (по \n)
 function parseRules(raw: string): string[] {
   if (!raw.trim()) return [];
   return raw
-    .split(/\.\s*\n|\n/)
-    .map(s => s.trim().replace(/^[-•]\s*/, "").replace(/\.$/, "").trim())
+    .split("\n")
+    .map(s => s.trim().replace(/^[-•]\s*/, "").trim())
     .filter(Boolean);
 }
 
 function joinRules(rules: string[]): string {
-  return rules.filter(Boolean).join(". ");
+  return rules.filter(Boolean).join("\n");
 }
 
 export default function TabCategoryRules({ token, isDark = true, readOnly = false }: Props) {
