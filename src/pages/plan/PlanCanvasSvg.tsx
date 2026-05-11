@@ -158,37 +158,45 @@ export default function PlanCanvasSvg({
 
         {/* Товары на полотне (floorItems) */}
         {isClosed && (floorItems ?? []).map((fi, idx) => {
-          const FW = 140, FH = 24, FY_STEP = 30;
+          const FH = 24, FY_STEP = 30;
+          const IMG_W = fi.imageUrl ? 23 : 0;
+          const qtyStr = `${fi.quantity} ${fi.unit}`;
+          // Динамическая ширина: символы × ~5.5px + отступы
+          const nameW = fi.name.length * 5.5;
+          const qtyW  = qtyStr.length * 5.5;
+          const FW = Math.max(120, IMG_W + 8 + nameW + 6 + qtyW + 24 + 8);
           const fx = polyCx;
           const fy = polyCy - ((floorItems.length - 1) * FY_STEP) / 2 + idx * FY_STEP;
-          const label = fi.name.length > 16 ? fi.name.slice(0, 14) + "…" : fi.name;
+          const nameX = fx - FW / 2 + IMG_W + 8;
+          const qtyX  = fx + FW / 2 - 24;
           return (
             <g key={fi.id}>
-              {/* Кликабельная область бейджа — открывает редактирование */}
+              {/* Фон бейджа */}
+              <rect x={fx - FW / 2} y={fy - FH / 2} width={FW} height={FH} rx={8}
+                fill="rgba(17,12,36,0.92)" stroke="rgba(124,58,237,0.35)" strokeWidth={1}
+                style={{ pointerEvents: "none" }}
+              />
+              {/* Кликабельная область (всё кроме крестика) */}
               <rect x={fx - FW / 2} y={fy - FH / 2} width={FW - 20} height={FH} rx={8}
                 fill="transparent" stroke="none"
                 style={{ cursor: "pointer" }}
                 onClick={e => { e.stopPropagation(); onEditFloorItem?.(fi.id); }}
               />
-              <rect x={fx - FW / 2} y={fy - FH / 2} width={FW} height={FH} rx={8}
-                fill="rgba(17,12,36,0.92)" stroke="rgba(124,58,237,0.35)" strokeWidth={1}
-                style={{ pointerEvents: "none" }}
-              />
               {fi.imageUrl && (
                 <image href={fi.imageUrl} x={fx - FW / 2 + 5} y={fy - 9} width={18} height={18}
                   preserveAspectRatio="xMidYMid slice" style={{ pointerEvents: "none" }} />
               )}
-              <text x={fi.imageUrl ? fx - FW / 2 + 28 : fx - FW / 2 + 8} y={fy + 4}
+              <text x={nameX} y={fy + 4}
                 fontSize={9} fill="rgba(196,181,253,0.85)"
                 fontFamily="system-ui, sans-serif" fontWeight={500}
                 className="pointer-events-none select-none">
-                {label}
+                {fi.name}
               </text>
               {/* Кол-во + единица */}
-              <text x={fx + FW / 2 - 28} y={fy + 4} textAnchor="middle"
+              <text x={qtyX} y={fy + 4} textAnchor="middle"
                 fontSize={8.5} fontWeight={700} fill="rgba(167,139,250,0.9)"
                 fontFamily="monospace" className="pointer-events-none select-none">
-                {fi.quantity} {fi.unit}
+                {qtyStr}
               </text>
               {/* Крестик */}
               <g style={{ cursor: "pointer" }}
