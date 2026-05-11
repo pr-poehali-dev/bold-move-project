@@ -264,12 +264,12 @@ def handler(event: dict, context) -> dict:
     # --- GET ?r=prices
     if r == 'prices' and method == 'GET':
         conn = get_conn(); cur = conn.cursor()
-        cur.execute(f"SELECT id, category, name, price, unit, description, sort_order, active, calc_rule, bundle, synonyms, when_condition, when_not_condition, client_changes, purchase_price FROM {SCHEMA}.ai_prices ORDER BY sort_order, id")
+        cur.execute(f"SELECT id, category, name, price, unit, description, sort_order, active, calc_rule, bundle, synonyms, when_condition, when_not_condition, client_changes, purchase_price, image_url, category_image_url FROM {SCHEMA}.ai_prices ORDER BY sort_order, id")
         rows = cur.fetchall()
         cur.execute(f"SELECT category, is_material FROM {SCHEMA}.price_category_settings")
         cat_settings = {row[0]: row[1] for row in cur.fetchall()}
         cur.close(); conn.close()
-        return resp(200, {'items': [{'id': row[0], 'category': row[1], 'name': row[2], 'price': row[3], 'unit': row[4], 'description': row[5], 'sort_order': row[6], 'active': row[7], 'calc_rule': row[8] or '', 'bundle': row[9] or '[]', 'synonyms': row[10] or '', 'when_condition': row[11] or '', 'when_not_condition': row[12] or '', 'client_changes': row[13] or '', 'purchase_price': row[14] or 0, 'is_material': cat_settings.get(row[1], True)} for row in rows]})
+        return resp(200, {'items': [{'id': row[0], 'category': row[1], 'name': row[2], 'price': row[3], 'unit': row[4], 'description': row[5], 'sort_order': row[6], 'active': row[7], 'calc_rule': row[8] or '', 'bundle': row[9] or '[]', 'synonyms': row[10] or '', 'when_condition': row[11] or '', 'when_not_condition': row[12] or '', 'client_changes': row[13] or '', 'purchase_price': row[14] or 0, 'is_material': cat_settings.get(row[1], True), 'image_url': row[15], 'category_image_url': row[16]} for row in rows]})
 
     # --- POST ?r=prices  (добавление позиции)
     if r == 'prices' and method == 'POST':

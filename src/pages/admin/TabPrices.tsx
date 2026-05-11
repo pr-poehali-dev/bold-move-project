@@ -31,9 +31,10 @@ export default function TabPrices({ token, onItemAdded, isDark = true, readOnly 
       if (p.image_url) imgs[p.id] = p.image_url;
       if (p.category_image_url && !cats[p.category]) cats[p.category] = p.category_image_url;
     });
-    setItemImages(prev => ({ ...imgs, ...prev }));
-    setCatImages(prev => ({ ...cats, ...prev }));
-  }, [prices.length]); // eslint-disable-line react-hooks/exhaustive-deps
+    // БД-данные приоритетнее локального state (иначе после перезагрузки картинки не восстанавливались)
+    setItemImages(prev => ({ ...prev, ...imgs }));
+    setCatImages(prev => ({ ...prev, ...cats }));
+  }, [prices]);  
 
   const uploadItemImage = (item: PriceItem, url: string) => setItemImages(prev => ({ ...prev, [item.id]: url }));
   const uploadCatImage  = (category: string, url: string) => setCatImages(prev => ({ ...prev, [category]: url }));
