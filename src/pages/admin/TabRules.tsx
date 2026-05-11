@@ -257,8 +257,8 @@ ${pricesList}
     if (!d) return;
     setSaving(item.id);
     const bundleVal = JSON.stringify(d.bundleIds);
-    const updated = { ...item, calc_rule: d.calc_rule, when_condition: d.when_condition || "", when_not_condition: d.when_not_condition || "", client_changes: d.client_changes || "" };
-    await saveField(item, "calc_rule", d.calc_rule);
+    const updated = { ...item, calc_rule: d.calc_rule, when_condition: d.when_condition || "", when_not_condition: d.when_not_condition || "", client_changes: d.client_changes || "", bundle: bundleVal };
+    await saveField(updated, "calc_rule", d.calc_rule);
     await saveField(updated, "when_condition", d.when_condition || "");
     await saveField(updated, "when_not_condition", d.when_not_condition || "");
     await saveField(updated, "bundle", bundleVal);
