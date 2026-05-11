@@ -97,24 +97,7 @@ export default function TabPriceCategoryBlock({
             </h3>
           )}
 
-          {/* Бейджи активных функций */}
-          <div className="flex items-center gap-1 ml-1">
-            {!isMaterial && (
-              <span className={`text-[9px] px-1.5 py-0.5 rounded-full border font-medium ${
-                isDark ? "bg-white/5 border-white/10 text-white/30" : "bg-gray-100 border-gray-200 text-gray-400"
-              }`}>не в закупке</span>
-            )}
-            {!isWall && (
-              <span className={`text-[9px] px-1.5 py-0.5 rounded-full border font-medium ${
-                isDark ? "bg-amber-500/15 border-amber-500/25 text-amber-400" : "bg-amber-50 border-amber-200 text-amber-600"
-              }`}>на полотно</span>
-            )}
-            {!showInDrum && (
-              <span className={`text-[9px] px-1.5 py-0.5 rounded-full border font-medium ${
-                isDark ? "bg-white/5 border-white/10 text-white/25" : "bg-gray-100 border-gray-200 text-gray-400"
-              }`}>скрыта</span>
-            )}
-          </div>
+
         </div>
         {!readOnly && (
           <CategoryFunctionsButton

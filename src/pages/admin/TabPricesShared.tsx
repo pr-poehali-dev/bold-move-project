@@ -192,9 +192,7 @@ export function CategoryFunctionsButton({
     await save(mat, wall, drum);
   };
 
-  // Суммарный «статус» для кнопки
-  const label = !isMaterial ? "не в закупке" : !isWall ? "на полотно" : !showInDrum ? "скрыта" : "функции";
-  // (isWall=true → к стенам; isWall=false → на полотно — тогл показывает "включено = на полотно")
+  // Кнопка всегда называется "настройки"
 
   const ToggleRow = ({ active, color, label: lbl, sub, onClick }: {
     active: boolean; color: string; label: string; sub: string; onClick: () => void;
@@ -217,7 +215,23 @@ export function CategoryFunctionsButton({
   const sep = <div className={`mx-3 my-1 h-px ${isDark ? "bg-white/5" : "bg-gray-100"}`} />;
 
   return (
-    <div ref={ref} className="relative flex-shrink-0">
+    <div ref={ref} className="relative flex-shrink-0 flex items-center gap-1.5">
+      {/* Бейджи — реагируют мгновенно на изменение тоглов */}
+      {!isMaterial && (
+        <span className={`text-[9px] px-1.5 py-0.5 rounded-full border font-medium cursor-pointer ${
+          isDark ? "bg-white/5 border-white/10 text-white/30" : "bg-gray-100 border-gray-200 text-gray-400"
+        }`} onClick={() => setOpen(v => !v)}>не в закупке</span>
+      )}
+      {!isWall && (
+        <span className={`text-[9px] px-1.5 py-0.5 rounded-full border font-medium cursor-pointer ${
+          isDark ? "bg-amber-500/15 border-amber-500/25 text-amber-400" : "bg-amber-50 border-amber-200 text-amber-600"
+        }`} onClick={() => setOpen(v => !v)}>на полотно</span>
+      )}
+      {!showInDrum && (
+        <span className={`text-[9px] px-1.5 py-0.5 rounded-full border font-medium cursor-pointer ${
+          isDark ? "bg-white/5 border-white/10 text-white/25" : "bg-gray-100 border-gray-200 text-gray-400"
+        }`} onClick={() => setOpen(v => !v)}>скрыта</span>
+      )}
       <button
         type="button"
         onClick={() => setOpen(v => !v)}
@@ -229,7 +243,7 @@ export function CategoryFunctionsButton({
         }`}
       >
         <Icon name={saving ? "Loader" : "Settings2"} size={12} className={saving ? "animate-spin" : ""} />
-        {label}
+        настройки
       </button>
 
       {open && (
