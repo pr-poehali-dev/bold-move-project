@@ -141,6 +141,7 @@ export default function TabPrompt({ token, isDark = true, readOnly = false, user
   const [categorySettings, setCategorySettings] = useState<CategorySetting[]>([]);
   const [showPrices, setShowPrices] = useState(false);
   const [showRules, setShowRules] = useState(false);
+  const [showCatRules, setShowCatRules] = useState(false);
   const [activeTab, setActiveTab] = useState<"general" | "system" | "format">("general");
   const [dirty, setDirty] = useState(false);
 
@@ -328,7 +329,9 @@ export default function TabPrompt({ token, isDark = true, readOnly = false, user
       {/* Превью правил по категориям */}
       {categorySettings.some(c => c.category_rule) && (
         <div className="border border-white/10 rounded-xl overflow-hidden">
-          <div className="w-full flex items-center justify-between px-4 py-3">
+          <button
+            onClick={() => setShowCatRules(v => !v)}
+            className="w-full flex items-center justify-between px-4 py-3 hover:bg-white/[0.02] transition">
             <div className="flex items-center gap-2">
               <Icon name="FolderOpen" size={15} className="text-teal-400" />
               <span className="text-white/70 text-sm font-medium">Правила по категориям — подставляются в AI автоматически</span>
@@ -336,16 +339,19 @@ export default function TabPrompt({ token, isDark = true, readOnly = false, user
                 ({categorySettings.filter(c => c.category_rule).length} категорий)
               </span>
             </div>
-          </div>
-          <div className="border-t border-white/10 px-4 py-3 flex flex-col gap-2">
-            <p className="text-white/30 text-xs mb-1">Редактируется во вкладке «Правила к категориям».</p>
-            {categorySettings.filter(c => c.category_rule).map(c => (
-              <div key={c.category} className="bg-white/[0.02] border border-white/5 rounded-lg px-3 py-2 text-xs">
-                <span className="text-teal-300 font-semibold">{c.category}:</span>{" "}
-                <span className="text-white/50">{c.category_rule}</span>
-              </div>
-            ))}
-          </div>
+            <Icon name={showCatRules ? "ChevronUp" : "ChevronDown"} size={15} className="text-white/30" />
+          </button>
+          {showCatRules && (
+            <div className="border-t border-white/10 px-4 py-3 flex flex-col gap-2">
+              <p className="text-white/30 text-xs mb-1">Редактируется во вкладке «Правила к категориям».</p>
+              {categorySettings.filter(c => c.category_rule).map(c => (
+                <div key={c.category} className="bg-white/[0.02] border border-white/5 rounded-lg px-3 py-2 text-xs">
+                  <span className="text-teal-300 font-semibold">{c.category}:</span>{" "}
+                  <span className="text-white/50">{c.category_rule.replace(/\n/g, " · ")}</span>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
