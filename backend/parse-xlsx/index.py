@@ -240,22 +240,23 @@ def handler(event: dict, context) -> dict:
     # --- GET ?r=category_settings
     if r == 'category_settings' and method == 'GET':
         conn = get_conn(); cur = conn.cursor()
-        cur.execute(f"SELECT category, is_material FROM {SCHEMA}.price_category_settings ORDER BY category")
+        cur.execute(f"SELECT category, is_material, category_rule FROM {SCHEMA}.price_category_settings ORDER BY category")
         rows = cur.fetchall()
         cur.close(); conn.close()
-        return resp(200, {'items': [{'category': row[0], 'is_material': row[1]} for row in rows]})
+        return resp(200, {'items': [{'category': row[0], 'is_material': row[1], 'category_rule': row[2] or ''} for row in rows]})
 
-    # --- PUT ?r=category_settings  (обновление флага is_material)
+    # --- PUT ?r=category_settings  (обновление флагов is_material и category_rule)
     if r == 'category_settings' and method == 'PUT':
         body = json.loads(body_str)
         category = body.get('category', '').strip()
         is_material = bool(body.get('is_material', True))
+        category_rule = body.get('category_rule', '').strip()
         if not category:
             return resp(400, {'error': 'category required'})
         conn = get_conn(); cur = conn.cursor()
         cur.execute(
-            f"INSERT INTO {SCHEMA}.price_category_settings (category, is_material, updated_at) VALUES (%s, %s, now()) ON CONFLICT (category) DO UPDATE SET is_material=%s, updated_at=now()",
-            (category, is_material, is_material)
+            f"INSERT INTO {SCHEMA}.price_category_settings (category, is_material, category_rule, updated_at) VALUES (%s, %s, %s, now()) ON CONFLICT (category) DO UPDATE SET is_material=%s, category_rule=%s, updated_at=now()",
+            (category, is_material, category_rule, is_material, category_rule)
         )
         conn.commit(); cur.close(); conn.close()
         return resp(200, {'ok': True})

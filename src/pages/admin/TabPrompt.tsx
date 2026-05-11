@@ -20,6 +20,7 @@ interface Props { token: string; isDark?: boolean; readOnly?: boolean; user?: Us
 interface PriceItem { category: string; name: string; price: number; unit: string; description: string; active: boolean; }
 interface RuleItem { name: string; category: string; when_condition: string; when_not_condition: string; calc_rule: string; bundle: string; client_changes: string; }
 interface RuleType { id: number; name: string; label: string; }
+interface CategorySetting { category: string; is_material: boolean; category_rule: string; }
 
 function normalizeAddr(raw?: string | null): string {
   if (!raw) return "Мытищи";
@@ -137,6 +138,7 @@ export default function TabPrompt({ token, isDark = true, readOnly = false, user
   const [prices, setPrices] = useState<PriceItem[]>([]);
   const [rules, setRules] = useState<RuleItem[]>([]);
   const [ruleTypes, setRuleTypes] = useState<RuleType[]>([]);
+  const [categorySettings, setCategorySettings] = useState<CategorySetting[]>([]);
   const [showPrices, setShowPrices] = useState(false);
   const [showRules, setShowRules] = useState(false);
   const [activeTab, setActiveTab] = useState<"general" | "system" | "format">("general");
@@ -161,6 +163,7 @@ export default function TabPrompt({ token, isDark = true, readOnly = false, user
     apiFetch("prices").then(r => r.ok && r.json().then(d => setPrices(d.items.filter((p: PriceItem) => p.active))));
     apiFetch("prices").then(r => r.ok && r.json().then(d => setRules(d.items)));
     apiFetch("rule-types").then(r => r.ok && r.json().then(d => setRuleTypes(d.items)));
+    apiFetch("category_settings").then(r => r.ok && r.json().then(d => setCategorySettings(d.items)));
   }, []);
 
   const save = useCallback(async (contentToSave?: string) => {
@@ -321,6 +324,30 @@ export default function TabPrompt({ token, isDark = true, readOnly = false, user
           </div>
         )}
       </div>
+
+      {/* Превью правил по категориям */}
+      {categorySettings.some(c => c.category_rule) && (
+        <div className="border border-white/10 rounded-xl overflow-hidden">
+          <div className="w-full flex items-center justify-between px-4 py-3">
+            <div className="flex items-center gap-2">
+              <Icon name="FolderOpen" size={15} className="text-teal-400" />
+              <span className="text-white/70 text-sm font-medium">Правила по категориям — подставляются в AI автоматически</span>
+              <span className="text-white/30 text-xs">
+                ({categorySettings.filter(c => c.category_rule).length} категорий)
+              </span>
+            </div>
+          </div>
+          <div className="border-t border-white/10 px-4 py-3 flex flex-col gap-2">
+            <p className="text-white/30 text-xs mb-1">Редактируется во вкладке «Правила к категориям».</p>
+            {categorySettings.filter(c => c.category_rule).map(c => (
+              <div key={c.category} className="bg-white/[0.02] border border-white/5 rounded-lg px-3 py-2 text-xs">
+                <span className="text-teal-300 font-semibold">{c.category}:</span>{" "}
+                <span className="text-white/50">{c.category_rule}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Превью правил — что видит LLM */}
       <div className="border border-white/10 rounded-xl overflow-hidden">

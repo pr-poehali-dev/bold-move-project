@@ -288,6 +288,20 @@ def get_llm_threshold() -> int:
         return 0
 
 
+def get_category_rules() -> list:
+    """Загружает правила по категориям из price_category_settings."""
+    try:
+        conn = psycopg2.connect(os.environ['DATABASE_URL'])
+        cur = conn.cursor()
+        cur.execute(f"SELECT category, category_rule FROM {SCHEMA}.price_category_settings WHERE category_rule IS NOT NULL AND category_rule <> '' ORDER BY category")
+        rows = cur.fetchall()
+        cur.close(); conn.close()
+        return [{'category': row[0], 'category_rule': row[1]} for row in rows]
+    except Exception as e:
+        print(f"[category_rules] error: {e}")
+        return []
+
+
 def build_rules_prompt(rules: list) -> str:
     """Строит блок для SYSTEM_PROMPT с правилами расчёта, условиями и комплектами."""
     id_to_name = {r['id']: r['name'] for r in rules}
@@ -347,9 +361,15 @@ def build_rules_prompt(rules: list) -> str:
             if syns:
                 synonym_lines.append(f"• «{r['name']}» = {', '.join(syns)}")
 
+    cat_rules = get_category_rules()
+
     result = ''
+    if cat_rules:
+        result += '\n=== ПРАВИЛА ПО КАТЕГОРИЯМ ===\n'
+        result += '\n'.join(f"• {cr['category']}: {cr['category_rule']}" for cr in cat_rules)
+
     if rule_lines:
-        result += '\n=== ПРАВИЛА ПО ПОЗИЦИЯМ ===\n'
+        result += '\n\n=== ПРАВИЛА ПО ПОЗИЦИЯМ ===\n'
         result += '\n'.join(rule_lines)
 
     if synonym_lines:
