@@ -131,7 +131,7 @@ export default function UserDropdown({ onShowProfile }: Props) {
                 )}
                 {hasPermission(user, "admin_panel_view") && (
                   <MenuItem icon="LayoutDashboard" label="Панель управления"
-                    onClick={() => { setOpen(false); window.location.href = "/company"; }} />
+                    onClick={() => { setOpen(false); window.location.href = "/company?tab=crm"; }} />
                 )}
               </>
             )}
