@@ -24,6 +24,7 @@ import {
   PanelCustom,
 } from "./ChatPanels";
 import MobileContactBar from "./MobileContactBar";
+import EcoSystemModal from "@/components/EcoSystemModal";
 
 export default function Index() {
   const { user } = useAuth();
@@ -32,6 +33,7 @@ export default function Index() {
   const [pendingRole,      setPendingRole]      = useState<string | null>(null);
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [editingPanelId,   setEditingPanelId]   = useState<string | null>(null);
+  const [showEcoModal,     setShowEcoModal]     = useState(false);
 
   const canEdit = !!(user?.role === "company" || user?.is_master);
 
@@ -172,6 +174,15 @@ export default function Index() {
           : <span className="font-montserrat font-black text-sm tracking-wide">MOS<span style={{ color: brand.brand_color }}>POTOLKI</span></span>
         }
         <div className="ml-auto flex items-center gap-1.5">
+          {/* Кнопка экосистемы */}
+          <button
+            onClick={() => setShowEcoModal(true)}
+            className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all"
+            style={{ background: "rgba(249,115,22,0.12)", border: "1px solid rgba(249,115,22,0.3)", color: "#f97316" }}>
+            <Icon name="Menu" size={12} />
+            <span className="hidden sm:inline">Меню</span>
+          </button>
+
           <button
             onClick={() => setPanel(panel === "contacts" ? "none" : "contacts")}
             className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-medium transition-all"
@@ -210,6 +221,8 @@ export default function Index() {
           )}
         </div>
       </header>
+
+      {showEcoModal && <EcoSystemModal onClose={() => setShowEcoModal(false)} />}
 
       {showAuthModal && <AuthModal
         onClose={() => setShowAuthModal(false)}
