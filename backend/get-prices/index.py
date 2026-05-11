@@ -74,6 +74,15 @@ def handler(event: dict, context) -> dict:
     """)
     rows = cur.fetchall()
 
+    # Настройки категорий (is_wall_item)
+    cat_settings = {}
+    try:
+        cur.execute(f"SELECT category, is_wall_item FROM {SCHEMA}.price_category_settings")
+        for r in cur.fetchall():
+            cat_settings[r[0]] = r[1] if r[1] is not None else True
+    except Exception:
+        pass
+
     # Настройки pricing (мастер или WL-переопределение)
     pricing = {'econom_mult': 0.85, 'premium_mult': 1.27, 'econom_label': 'Econom', 'standard_label': 'Standard', 'premium_label': 'Premium'}
     try:
@@ -84,13 +93,19 @@ def handler(event: dict, context) -> dict:
     except Exception:
         pass
 
-    # WL-переопределения pricing
+    # WL-переопределения pricing и category_settings
     if wl_id:
         try:
             cur.execute(f"SELECT econom_mult, premium_mult, econom_label, standard_label, premium_label FROM {SCHEMA}.wl_pricing_settings WHERE wl_manager_id=%s", (wl_id,))
             wl_pr = cur.fetchone()
             if wl_pr:
                 pricing = {'econom_mult': float(wl_pr[0]), 'premium_mult': float(wl_pr[1]), 'econom_label': wl_pr[2], 'standard_label': wl_pr[3], 'premium_label': wl_pr[4]}
+        except Exception:
+            pass
+        try:
+            cur.execute(f"SELECT category, is_wall_item FROM {SCHEMA}.wl_category_settings WHERE wl_manager_id=%s", (wl_id,))
+            for r in cur.fetchall():
+                cat_settings[r[0]] = r[1] if r[1] is not None else True
         except Exception:
             pass
 
@@ -132,6 +147,7 @@ def handler(event: dict, context) -> dict:
             'synonyms': ov['synonyms'] if ov.get('synonyms') is not None else (row[5] or ''),
             'image_url': ov['image_url'] if ov.get('image_url') is not None else row[6],
             'category_image_url': ov['category_image_url'] if ov.get('category_image_url') is not None else row[7],
+            'is_wall_item': cat_settings.get(row[4] or '', True),
         })
 
     return {

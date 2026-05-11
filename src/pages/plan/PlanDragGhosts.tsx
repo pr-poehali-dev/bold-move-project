@@ -20,6 +20,7 @@ interface Props {
   isItemOnAllSegs: (priceId: number) => boolean;
   onAdjustQuantity: (priceId: number, delta: number) => void;
   onSetQuantity: (priceId: number, value: number) => void;
+  onAddToFloor?: (item: SegmentPriceItem) => void;
   hasSegments: boolean;
 }
 
@@ -30,7 +31,7 @@ export default function PlanDragGhosts({
   hoverSegId, isMobile,
   segments, floorItems, anyPanelOpen,
   onTapActiveId, onRemoveActiveItem,
-  onAssignToAllSegs, onRemoveFromAllSegs, isItemOnAllSegs, onAdjustQuantity, onSetQuantity, hasSegments,
+  onAssignToAllSegs, onRemoveFromAllSegs, isItemOnAllSegs, onAdjustQuantity, onSetQuantity, onAddToFloor, hasSegments,
 }: Props) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [expandedId, setExpandedId] = useState<number | null>(null);
@@ -206,6 +207,7 @@ export default function PlanDragGhosts({
             const total = totalByPriceId(item.priceId);
             const unit = item.unit || "";
             const onAllSegs = isItemOnAllSegs(item.priceId);
+            const isWallItem = item.isWallItem !== false;
 
             return (
               <div
@@ -258,7 +260,11 @@ export default function PlanDragGhosts({
                       maxWidth: 170,
                     }}>{item.name}</div>
                     <div style={{ fontSize: 10, color: hoverSegId && isActive ? "rgba(167,139,250,0.9)" : "rgba(167,139,250,0.55)", marginTop: 1 }}>
-                      {hoverSegId && isActive ? "Отпустите на стене" : isExpanded ? "Нажмите ещё раз чтобы закрыть" : "Тяните на стену →"}
+                      {hoverSegId && isActive
+                        ? (isWallItem ? "Отпустите на стене" : "Отпустите на полотне")
+                        : isExpanded
+                          ? "Нажмите ещё раз чтобы закрыть"
+                          : isWallItem ? "Тяните на стену →" : "Нажмите → на полотно"}
                     </div>
                   </div>
 
@@ -294,6 +300,7 @@ export default function PlanDragGhosts({
         const total = totalByPriceId(item.priceId);
         const unit = item.unit || "";
         const onAllSegs = isItemOnAllSegs(item.priceId);
+        const isWall = item.isWallItem !== false; // по умолчанию true
         const popupW = 224;
         const clampedX = Math.max(popupW / 2 + 8, Math.min(window.innerWidth - popupW / 2 - 8, popupPos.x));
         return (
@@ -438,8 +445,8 @@ export default function PlanDragGhosts({
                 </div>
               )}
 
-              {/* Тогл: все стены */}
-              {hasSegments && (
+              {/* Тогл: все стены (только для wall-items) или кнопка "На полотно" */}
+              {hasSegments && isWall && (
                 <button
                   data-item-popup="1"
                   onClick={e => {
@@ -461,6 +468,32 @@ export default function PlanDragGhosts({
                     ? <><svg width="10" height="8" viewBox="0 0 10 8" fill="none" style={{flexShrink:0}}><path d="M1 4L3.5 6.5L9 1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>Все стены</>
                     : <>+ Все стены</>
                   }
+                </button>
+              )}
+
+              {/* Кнопка "На полотно" для ceiling-items */}
+              {!isWall && (
+                <button
+                  data-item-popup="1"
+                  onClick={e => {
+                    e.stopPropagation();
+                    setExpandedId(null);
+                    setPopupPos(null);
+                    // Открываем модалку добавления на полотно
+                    // Через событие — используем pendingFloorItem из родителя
+                    onAddToFloor?.(item);
+                  }}
+                  style={{
+                    flex: 1, height: 26, borderRadius: 7, cursor: "pointer",
+                    border: "1px solid rgba(16,185,129,0.4)",
+                    background: "rgba(16,185,129,0.1)",
+                    color: "rgba(52,211,153,0.9)",
+                    fontSize: 10, fontWeight: 600,
+                    display: "flex", alignItems: "center", justifyContent: "center", gap: 5,
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  + На полотно
                 </button>
               )}
             </div>

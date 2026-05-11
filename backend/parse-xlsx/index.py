@@ -380,13 +380,13 @@ def handler(event: dict, context) -> dict:
     if r == 'category_settings' and method == 'GET':
         conn = get_conn(); cur = conn.cursor()
         # Глобальные
-        cur.execute(f"SELECT category, is_material, category_rule FROM {SCHEMA}.price_category_settings ORDER BY category")
-        global_rows = {row[0]: {'category': row[0], 'is_material': row[1], 'category_rule': row[2] or ''} for row in cur.fetchall()}
+        cur.execute(f"SELECT category, is_material, category_rule, is_wall_item FROM {SCHEMA}.price_category_settings ORDER BY category")
+        global_rows = {row[0]: {'category': row[0], 'is_material': row[1], 'category_rule': row[2] or '', 'is_wall_item': row[3] if row[3] is not None else True} for row in cur.fetchall()}
         if wl_id:
             # Накладываем WL-переопределения
-            cur.execute(f"SELECT category, is_material, category_rule FROM {SCHEMA}.wl_category_settings WHERE wl_manager_id=%s", (wl_id,))
+            cur.execute(f"SELECT category, is_material, category_rule, is_wall_item FROM {SCHEMA}.wl_category_settings WHERE wl_manager_id=%s", (wl_id,))
             for row in cur.fetchall():
-                global_rows[row[0]] = {'category': row[0], 'is_material': row[1], 'category_rule': row[2] or ''}
+                global_rows[row[0]] = {'category': row[0], 'is_material': row[1], 'category_rule': row[2] or '', 'is_wall_item': row[3] if row[3] is not None else True}
         cur.close(); conn.close()
         return resp(200, {'items': list(global_rows.values())})
 
@@ -395,19 +395,20 @@ def handler(event: dict, context) -> dict:
         body = json.loads(body_str)
         category = body.get('category', '').strip()
         is_material = bool(body.get('is_material', True))
+        is_wall_item = bool(body.get('is_wall_item', True))
         category_rule = body.get('category_rule', '').strip()
         if not category:
             return resp(400, {'error': 'category required'})
         conn = get_conn(); cur = conn.cursor()
         if wl_id:
             cur.execute(
-                f"INSERT INTO {SCHEMA}.wl_category_settings (wl_manager_id, category, is_material, category_rule, updated_at) VALUES (%s,%s,%s,%s,now()) ON CONFLICT (wl_manager_id, category) DO UPDATE SET is_material=%s, category_rule=%s, updated_at=now()",
-                (wl_id, category, is_material, category_rule, is_material, category_rule)
+                f"INSERT INTO {SCHEMA}.wl_category_settings (wl_manager_id, category, is_material, category_rule, is_wall_item, updated_at) VALUES (%s,%s,%s,%s,%s,now()) ON CONFLICT (wl_manager_id, category) DO UPDATE SET is_material=%s, category_rule=%s, is_wall_item=%s, updated_at=now()",
+                (wl_id, category, is_material, category_rule, is_wall_item, is_material, category_rule, is_wall_item)
             )
         else:
             cur.execute(
-                f"INSERT INTO {SCHEMA}.price_category_settings (category, is_material, category_rule, updated_at) VALUES (%s, %s, %s, now()) ON CONFLICT (category) DO UPDATE SET is_material=%s, category_rule=%s, updated_at=now()",
-                (category, is_material, category_rule, is_material, category_rule)
+                f"INSERT INTO {SCHEMA}.price_category_settings (category, is_material, category_rule, is_wall_item, updated_at) VALUES (%s, %s, %s, %s, now()) ON CONFLICT (category) DO UPDATE SET is_material=%s, category_rule=%s, is_wall_item=%s, updated_at=now()",
+                (category, is_material, category_rule, is_wall_item, is_material, category_rule, is_wall_item)
             )
         conn.commit(); cur.close(); conn.close()
         return resp(200, {'ok': True})
@@ -421,8 +422,8 @@ def handler(event: dict, context) -> dict:
         conn = get_conn(); cur = conn.cursor()
         cur.execute(f"SELECT id, category, name, price, unit, description, sort_order, active, calc_rule, bundle, synonyms, when_condition, when_not_condition, client_changes, purchase_price, image_url, category_image_url FROM {SCHEMA}.ai_prices ORDER BY sort_order, id")
         rows = cur.fetchall()
-        cur.execute(f"SELECT category, is_material FROM {SCHEMA}.price_category_settings")
-        cat_settings = {row[0]: row[1] for row in cur.fetchall()}
+        cur.execute(f"SELECT category, is_material, is_wall_item FROM {SCHEMA}.price_category_settings")
+        cat_settings = {row[0]: {'is_material': row[1], 'is_wall_item': row[2] if row[2] is not None else True} for row in cur.fetchall()}
 
         wl_overrides = {}
         if wl_id:
@@ -434,9 +435,9 @@ def handler(event: dict, context) -> dict:
                     'image_url': ov[6], 'category_image_url': ov[7],
                 }
             # WL category_settings тоже
-            cur.execute(f"SELECT category, is_material FROM {SCHEMA}.wl_category_settings WHERE wl_manager_id=%s", (wl_id,))
+            cur.execute(f"SELECT category, is_material, is_wall_item FROM {SCHEMA}.wl_category_settings WHERE wl_manager_id=%s", (wl_id,))
             for row in cur.fetchall():
-                cat_settings[row[0]] = row[1]
+                cat_settings[row[0]] = {'is_material': row[1], 'is_wall_item': row[2] if row[2] is not None else True}
 
         cur.close(); conn.close()
 
@@ -444,6 +445,7 @@ def handler(event: dict, context) -> dict:
         for row in rows:
             pid = row[0]
             ov = wl_overrides.get(pid, {})
+            cs = cat_settings.get(row[1], {})
             items.append({
                 'id': pid,
                 'category': row[1],
@@ -460,7 +462,8 @@ def handler(event: dict, context) -> dict:
                 'when_not_condition': row[12] or '',
                 'client_changes': row[13] or '',
                 'purchase_price': ov['purchase_price'] if ov.get('purchase_price') is not None else (row[14] or 0),
-                'is_material': cat_settings.get(row[1], True),
+                'is_material': cs.get('is_material', True),
+                'is_wall_item': cs.get('is_wall_item', True),
                 'image_url': ov['image_url'] if ov.get('image_url') is not None else row[15],
                 'category_image_url': ov['category_image_url'] if ov.get('category_image_url') is not None else row[16],
             })

@@ -1,0 +1,1 @@
+ALTER TABLE wl_category_settings ADD COLUMN IF NOT EXISTS is_wall_item BOOLEAN NOT NULL DEFAULT TRUE

@@ -15,6 +15,7 @@ export interface SegmentPriceItem {
   categoryImageUrl: string | null;
   unit: string; // единица измерения из прайса
   quantity?: number; // кол-во (метры для стен, штуки для полотна)
+  isWallItem?: boolean; // true = к стенам, false = на полотно (по умолчанию true)
 }
 
 // Товар брошенный на полотно (не на стену) — штуки/ед. из прайса

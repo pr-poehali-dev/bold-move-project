@@ -349,6 +349,7 @@ export default function PlanPage() {
         isItemOnAllSegs={catalog.isItemOnAllSegs}
         onAdjustQuantity={catalog.adjustItemQuantity}
         onSetQuantity={catalog.setItemQuantity}
+        onAddToFloor={catalog.setPendingFloorItem}
         hasSegments={state.isClosed && state.segments.length > 0}
       />
     </div>

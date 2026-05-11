@@ -8,6 +8,7 @@ export interface PriceEntry {
   image_url: string | null;
   category_image_url: string | null;
   unit: string; // единица измерения из прайса (шт, м, м², и др.)
+  is_wall_item?: boolean; // true = к стенам, false = на полотно (по умолчанию true)
 }
 
 interface ArcItem {
@@ -358,7 +359,7 @@ export default function CategoryDrumPanel({ open, onClose, prices, onDragItem }:
   const handleItemClick = useCallback((itemValue: string) => {
     const price = prices.find(p => String(p.id) === itemValue);
     if (!price) return;
-    onDragItem({ priceId: price.id, name: price.name, category: price.category, imageUrl: price.image_url, categoryImageUrl: price.category_image_url, unit: price.unit ?? "" });
+    onDragItem({ priceId: price.id, name: price.name, category: price.category, imageUrl: price.image_url, categoryImageUrl: price.category_image_url, unit: price.unit ?? "", isWallItem: price.is_wall_item !== false });
     onClose();
   }, [prices, onDragItem, onClose]);
 

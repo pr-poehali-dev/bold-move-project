@@ -1,5 +1,5 @@
 import Icon from "@/components/ui/icon";
-import { ImageUploadButton, MaterialButton, IMAGE_URL, EMPTY_NEW } from "./TabPricesShared";
+import { ImageUploadButton, CategoryFunctionsButton, IMAGE_URL, EMPTY_NEW } from "./TabPricesShared";
 import type { ThemeClasses } from "./TabPricesShared";
 import { PriceItemRow, PriceItemCard } from "./TabPriceItemRow";
 import { PRICE_UNITS } from "./constants";
@@ -36,6 +36,7 @@ interface Props {
   onSetEditingCat: (cat: string | null) => void;
   onSetEditingCatVal: (val: string) => void;
   onRenameCategory: (category: string) => void;
+  token?: string;
 }
 
 export default function TabPriceCategoryBlock({
@@ -49,9 +50,11 @@ export default function TabPriceCategoryBlock({
   onImageUploaded, onCatImageUploaded,
   onSetAddingInCat, onSetNewItem, onAddItem,
   onSetEditingCat, onSetEditingCatVal, onRenameCategory,
+  token,
 }: Props) {
   const { text, muted, muted2, border, border2, bg, bgInput, borderInput } = theme;
   const isMaterial = items[0]?.is_material !== false;
+  const isWall = items[0]?.is_wall_item !== false;
 
   return (
     <div>
@@ -94,7 +97,13 @@ export default function TabPriceCategoryBlock({
           )}
         </div>
         {!readOnly && (
-          <MaterialButton category={category} initialValue={isMaterial} isDark={isDark} />
+          <CategoryFunctionsButton
+            category={category}
+            initialIsMaterial={isMaterial}
+            initialIsWall={isWall}
+            isDark={isDark}
+            token={token}
+          />
         )}
       </div>
 

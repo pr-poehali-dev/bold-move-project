@@ -145,6 +145,7 @@ export default function TabPrices({ token, onItemAdded, isDark = true, readOnly 
           onSetEditingCat={setEditingCat}
           onSetEditingCatVal={setEditingCatVal}
           onRenameCategory={handleRenameCategory}
+          token={token}
         />
       ))}
 
