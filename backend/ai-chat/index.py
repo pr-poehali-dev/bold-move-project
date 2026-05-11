@@ -1823,6 +1823,14 @@ mounting_unit: пог.м или шт"""
                     })
                     print(f"[edit] mounting added: {actual_mounting_name} qty={qty} price={mounting_price}")
 
+            # ── Применяем bundle-правила в edit mode ──────────────────────────
+            # (лента, блок питания и пр. сопутствующие — автодобавляются как и при первичном расчёте)
+            if _rules_for_suggestions:
+                before_bundle = len(new_items)
+                new_items = _apply_bundles(new_items, _rules_for_suggestions)
+                if len(new_items) > before_bundle:
+                    print(f"[edit] bundles applied: added {len(new_items) - before_bundle} items")
+
             # Рендерим текст сметы детерминированно
             answer = f"{comment}\n\n" + _render_estimate_from_items(new_items)
             llm_items_json = {'items': new_items, 'area': 0}
