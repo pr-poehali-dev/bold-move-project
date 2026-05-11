@@ -254,6 +254,7 @@ export default function PlanPage() {
             voiceStatus={voiceDraw.status}
             voiceInterim={voiceDraw.interimText}
             voiceVolume={voiceDraw.volume}
+            isClosed={state.isClosed}
             attachedCount={catalog.attachedCount}
             filterAttached={catalog.filterAttached}
             onToggleFilterAttached={() => catalog.setFilterAttached(v => !v)}

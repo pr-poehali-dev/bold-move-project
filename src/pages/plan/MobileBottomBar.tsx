@@ -22,6 +22,7 @@ interface Props {
   voiceStatus?: string;
   voiceInterim?: string;
   voiceVolume?: number;
+  isClosed?: boolean;
   attachedCount?: number;
   filterAttached?: boolean;
   onToggleFilterAttached?: () => void;
@@ -39,7 +40,7 @@ export default function MobileBottomBar({
   onOpenSides, selectedSegmentId,
   sheetOpen = false, catalogOpen = false, rightPanelOpen = false,
   onToggleVoiceDraw, isVoiceDrawing = false, isVoiceProcessing = false, voiceStatus, voiceInterim,
-  voiceVolume = 0,
+  voiceVolume = 0, isClosed = false,
   attachedCount = 0, filterAttached = false, onToggleFilterAttached, isMobile = false,
   onSettingsOpenChange,
 }: Props) {
@@ -214,8 +215,8 @@ export default function MobileBottomBar({
             </div>
           )}
 
-          {/* Статус записи — только когда идёт запись или распознавание */}
-          {(isVoiceDrawing || isVoiceProcessing || voiceInterim) && (
+          {/* Статус записи — только когда идёт запись или распознавание; скрываем после замыкания */}
+          {(isVoiceDrawing || isVoiceProcessing || voiceInterim) && !isClosed && (
             <div
               className="absolute bottom-14 right-0 bg-[#1a1b2e] border border-violet-500/30 rounded-2xl shadow-2xl p-3 w-56 z-50"
               onClick={e => e.stopPropagation()}
