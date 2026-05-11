@@ -32,6 +32,7 @@ export interface PlanCatalogState {
   removeItemFromAllSegs: (priceId: number) => void;
   removeActiveItem: (priceId: number) => void;
   isItemOnAllSegs: (priceId: number) => boolean;
+  adjustItemQuantity: (priceId: number, delta: number) => void;
   // Модалка для добавления на полотно
   pendingFloorItem: SegmentPriceItem | null;
   setPendingFloorItem: (item: SegmentPriceItem | null) => void;
@@ -153,6 +154,20 @@ export function usePlanCatalog(
     if (!s.segments.length) return false;
     return s.segments.every(seg => (seg.items ?? []).some(it => it.priceId === priceId));
   }, [stateRef]);
+
+  // Изменить quantity товара на всех стенах на delta (±1), минимум 1
+  const adjustItemQuantity = useCallback((priceId: number, delta: number) => {
+    const s = stateRef.current;
+    const newSegments = s.segments.map(seg => ({
+      ...seg,
+      items: (seg.items ?? []).map(it => {
+        if (it.priceId !== priceId) return it;
+        const next = Math.max(0.1, Math.round(((it.quantity ?? 1) + delta) * 10) / 10);
+        return { ...it, quantity: next };
+      }),
+    }));
+    push({ ...s, segments: newSegments });
+  }, [stateRef, push]);
 
   // Утилита: точка (cx,cy) в canvas-координатах внутри полигона?
   const isInsidePolygon = useCallback((clientX: number, clientY: number): boolean => {
@@ -431,7 +446,7 @@ export function usePlanCatalog(
     hoverSegId, setHoverSegId,
     filterAttached, setFilterAttached,
     attachedCount,
-    findClosestSeg, assignItemToSeg, assignItemToAllSegs, removeItemFromAllSegs, removeActiveItem, isItemOnAllSegs,
+    findClosestSeg, assignItemToSeg, assignItemToAllSegs, removeItemFromAllSegs, removeActiveItem, isItemOnAllSegs, adjustItemQuantity,
     pendingFloorItem, setPendingFloorItem, confirmFloorItem,
     editingFloorId, setEditingFloorId, editingFloorItem, confirmEditFloorItem,
   };

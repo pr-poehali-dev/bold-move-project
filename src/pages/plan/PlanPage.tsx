@@ -347,6 +347,7 @@ export default function PlanPage() {
         onAssignToAllSegs={catalog.assignItemToAllSegs}
         onRemoveFromAllSegs={catalog.removeItemFromAllSegs}
         isItemOnAllSegs={catalog.isItemOnAllSegs}
+        onAdjustQuantity={catalog.adjustItemQuantity}
         hasSegments={state.isClosed && state.segments.length > 0}
       />
     </div>

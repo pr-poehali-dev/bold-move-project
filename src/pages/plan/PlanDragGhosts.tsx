@@ -18,6 +18,7 @@ interface Props {
   onAssignToAllSegs: (item: SegmentPriceItem) => void;
   onRemoveFromAllSegs: (priceId: number) => void;
   isItemOnAllSegs: (priceId: number) => boolean;
+  onAdjustQuantity: (priceId: number, delta: number) => void;
   hasSegments: boolean;
 }
 
@@ -28,7 +29,7 @@ export default function PlanDragGhosts({
   hoverSegId, isMobile,
   segments, floorItems, anyPanelOpen,
   onTapActiveId, onRemoveActiveItem,
-  onAssignToAllSegs, onRemoveFromAllSegs, isItemOnAllSegs, hasSegments,
+  onAssignToAllSegs, onRemoveFromAllSegs, isItemOnAllSegs, onAdjustQuantity, hasSegments,
 }: Props) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [expandedId, setExpandedId] = useState<number | null>(null);
@@ -288,8 +289,7 @@ export default function PlanDragGhosts({
         const total = totalByPriceId(item.priceId);
         const unit = item.unit || "";
         const onAllSegs = isItemOnAllSegs(item.priceId);
-        // Ограничиваем x чтобы попап не вышел за края экрана
-        const popupW = 210;
+        const popupW = 224;
         const clampedX = Math.max(popupW / 2 + 8, Math.min(window.innerWidth - popupW / 2 - 8, popupPos.x));
         return (
           <div
@@ -299,89 +299,124 @@ export default function PlanDragGhosts({
               bottom: popupPos.bottom,
               left: clampedX,
               transform: "translateX(-50%)",
-              background: "rgba(14,12,30,0.97)",
-              border: "1px solid rgba(124,58,237,0.5)",
-              borderRadius: 14,
-              padding: "12px 14px",
+              background: "rgba(12,10,28,0.98)",
+              border: "1px solid rgba(124,58,237,0.45)",
+              borderRadius: 12,
+              padding: "10px 10px 8px",
               width: popupW,
-              boxShadow: "0 0 24px rgba(124,58,237,0.3), 0 8px 32px rgba(0,0,0,0.7)",
-              backdropFilter: "blur(20px)",
+              boxShadow: "0 0 20px rgba(124,58,237,0.25), 0 8px 28px rgba(0,0,0,0.8)",
+              backdropFilter: "blur(24px)",
               zIndex: 10002,
               pointerEvents: "all",
-              animation: "slideUpFade 0.18s ease",
+              animation: "slideUpFade 0.16s ease",
             }}
           >
-            {/* Название */}
-            <div style={{
-              fontSize: 11, fontWeight: 700, color: "rgba(196,181,253,1)",
-              marginBottom: total > 0 ? 6 : 10,
-              whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
-            }}>{item.name}</div>
-
-            {/* Итого на чертеже */}
-            {total > 0 && (
-              <div style={{ fontSize: 10, color: "rgba(255,255,255,0.4)", marginBottom: 10 }}>
-                На чертеже: <span style={{ color: "rgba(167,139,250,0.9)", fontWeight: 600 }}>{total} {unit}</span>
+            {/* Строка: название + итого + корзина */}
+            <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{
+                  fontSize: 11, fontWeight: 700, color: "rgba(196,181,253,1)",
+                  whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
+                }}>{item.name}</div>
+                {total > 0 && (
+                  <div style={{ fontSize: 9.5, color: "rgba(167,139,250,0.65)", marginTop: 1 }}>
+                    {total} {unit} на чертеже
+                  </div>
+                )}
               </div>
-            )}
-
-            <div style={{ height: 1, background: "rgba(255,255,255,0.07)", marginBottom: 10 }} />
-
-            {/* Чекбокс: добавить/убрать со всех стен */}
-            {hasSegments && (
-              <label
-                style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", marginBottom: 10 }}
+              {/* Корзина — убрать карточку */}
+              <button
+                data-item-popup="1"
                 onClick={e => {
                   e.stopPropagation();
-                  if (onAllSegs) onRemoveFromAllSegs(item.priceId);
-                  else onAssignToAllSegs(item);
+                  setExpandedId(null);
+                  setPopupPos(null);
+                  onRemoveActiveItem(item.priceId);
+                }}
+                title="Убрать карточку"
+                style={{
+                  width: 28, height: 28, borderRadius: 7, flexShrink: 0,
+                  background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.2)",
+                  color: "rgba(248,113,113,0.8)", cursor: "pointer",
+                  display: "flex", alignItems: "center", justifyContent: "center",
                 }}
               >
-                <div style={{
-                  width: 18, height: 18, borderRadius: 5, flexShrink: 0,
-                  border: `1.5px solid ${onAllSegs ? "rgba(124,58,237,1)" : "rgba(255,255,255,0.25)"}`,
-                  background: onAllSegs ? "rgba(124,58,237,1)" : "transparent",
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                  transition: "all 0.15s",
-                }}>
-                  {onAllSegs && (
-                    <svg width="10" height="8" viewBox="0 0 10 8" fill="none">
-                      <path d="M1 4L3.5 6.5L9 1" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                    </svg>
-                  )}
-                </div>
-                <span style={{ fontSize: 11, color: "rgba(255,255,255,0.75)", userSelect: "none" }}>
-                  {onAllSegs ? "Убрать со всех стен" : "Добавить на все стены"}
-                </span>
-              </label>
-            )}
+                <svg width="13" height="13" viewBox="0 0 14 14" fill="none">
+                  <path d="M2 3.5h10M5.5 3.5V2.5a.5.5 0 01.5-.5h2a.5.5 0 01.5.5v1M12 3.5l-.7 7.7A1 1 0 0110.3 12H3.7a1 1 0 01-1-.8L2 3.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              </button>
+            </div>
 
-            {/* Кнопка удалить карточку */}
-            <button
-              onClick={e => {
-                e.stopPropagation();
-                setExpandedId(null);
-                setPopupPos(null);
-                onRemoveActiveItem(item.priceId);
-              }}
-              style={{
-                width: "100%", padding: "6px 10px",
-                background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.25)",
-                borderRadius: 8, color: "rgba(248,113,113,0.9)",
-                fontSize: 11, fontWeight: 600, cursor: "pointer",
-                display: "flex", alignItems: "center", justifyContent: "center", gap: 5,
-              }}
-            >
-              <span style={{ fontSize: 13 }}>✕</span> Убрать карточку
-            </button>
+            <div style={{ height: 1, background: "rgba(255,255,255,0.06)", marginBottom: 8 }} />
+
+            {/* Строка: счётчик + все стены */}
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+
+              {/* Счётчик количества (по стенам) */}
+              {onAllSegs && (
+                <div style={{ display: "flex", alignItems: "center", gap: 0, background: "rgba(255,255,255,0.05)", borderRadius: 7, overflow: "hidden", border: "1px solid rgba(255,255,255,0.08)" }}>
+                  <button
+                    data-item-popup="1"
+                    onClick={e => { e.stopPropagation(); onAdjustQuantity(item.priceId, -1); }}
+                    style={{
+                      width: 26, height: 26, border: "none", background: "transparent",
+                      color: "rgba(255,255,255,0.55)", fontSize: 15, cursor: "pointer",
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                    }}
+                  >−</button>
+                  <div style={{
+                    minWidth: 36, textAlign: "center",
+                    fontSize: 11, fontWeight: 700, color: "rgba(196,181,253,1)",
+                    padding: "0 2px",
+                  }}>
+                    {total > 0 ? `${total}` : "0"}<span style={{ fontSize: 8.5, color: "rgba(167,139,250,0.55)", marginLeft: 1 }}>{unit}</span>
+                  </div>
+                  <button
+                    data-item-popup="1"
+                    onClick={e => { e.stopPropagation(); onAdjustQuantity(item.priceId, 1); }}
+                    style={{
+                      width: 26, height: 26, border: "none", background: "transparent",
+                      color: "rgba(255,255,255,0.55)", fontSize: 15, cursor: "pointer",
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                    }}
+                  >+</button>
+                </div>
+              )}
+
+              {/* Тогл: все стены */}
+              {hasSegments && (
+                <button
+                  data-item-popup="1"
+                  onClick={e => {
+                    e.stopPropagation();
+                    if (onAllSegs) onRemoveFromAllSegs(item.priceId);
+                    else onAssignToAllSegs(item);
+                  }}
+                  style={{
+                    flex: 1, height: 26, borderRadius: 7, cursor: "pointer",
+                    border: `1px solid ${onAllSegs ? "rgba(124,58,237,0.6)" : "rgba(255,255,255,0.12)"}`,
+                    background: onAllSegs ? "rgba(124,58,237,0.18)" : "rgba(255,255,255,0.04)",
+                    color: onAllSegs ? "rgba(196,181,253,1)" : "rgba(255,255,255,0.45)",
+                    fontSize: 10, fontWeight: 600,
+                    display: "flex", alignItems: "center", justifyContent: "center", gap: 5,
+                    transition: "all 0.15s", whiteSpace: "nowrap",
+                  }}
+                >
+                  {onAllSegs
+                    ? <><svg width="10" height="8" viewBox="0 0 10 8" fill="none" style={{flexShrink:0}}><path d="M1 4L3.5 6.5L9 1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>Все стены</>
+                    : <>+ Все стены</>
+                  }
+                </button>
+              )}
+            </div>
 
             {/* Стрелка вниз */}
             <div style={{
-              position: "absolute", bottom: -6, left: "50%", transform: "translateX(-50%)",
-              width: 12, height: 7,
-              borderLeft: "6px solid transparent",
-              borderRight: "6px solid transparent",
-              borderTop: "7px solid rgba(124,58,237,0.5)",
+              position: "absolute", bottom: -5, left: "50%", transform: "translateX(-50%)",
+              width: 0, height: 0,
+              borderLeft: "5px solid transparent",
+              borderRight: "5px solid transparent",
+              borderTop: "5px solid rgba(124,58,237,0.45)",
             }} />
           </div>
         );
