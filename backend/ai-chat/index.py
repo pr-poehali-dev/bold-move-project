@@ -1157,6 +1157,13 @@ def _apply_bundles(items: list, rules: list) -> list:
     for item in items:
         item_name_low = item.get('name', '').lower().strip()
         rule = name_to_rule.get(item_name_low)
+        # Fuzzy fallback: ищем правило где имя из прайса содержится в названии позиции или наоборот
+        if not rule:
+            for rule_name, r in name_to_rule.items():
+                if rule_name in item_name_low or item_name_low in rule_name:
+                    rule = r
+                    print(f"[bundle] fuzzy match: '{item_name_low}' → '{rule_name}'")
+                    break
         if not rule:
             continue
         bundle_raw = rule.get('bundle') or '[]'
