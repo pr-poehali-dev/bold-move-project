@@ -36,6 +36,8 @@ interface Props {
   onSaveField: (item: PriceItem, field: string, val: string) => void;
   onSaveCustomValue: (priceId: number, ruleTypeId: number, value: string) => void;
   onPasteBundle?: (item: RuleItem, bundleJson: string) => void;
+  onAutoBundle?: (item: RuleItem) => void;
+  autoBundleLoadingId?: number | null;
 }
 
 export default function RuleCategoryTable({
@@ -47,6 +49,7 @@ export default function RuleCategoryTable({
   onDeleteRuleType, onSetConfirmDeleteId,
   onStartEditLabel, onEditLabelChange, onSaveLabel, onCancelEditLabel,
   onOpenBundleModal, onSaveField, onSaveCustomValue, onPasteBundle,
+  onAutoBundle, autoBundleLoadingId,
 }: Props) {
   const colTemplate = `1.2fr 1fr 1fr 1fr repeat(${activeRuleTypes.length}, 1fr) 32px`;
   const catHead = isDark ? "text-violet-300" : "text-violet-600";
@@ -164,6 +167,42 @@ export default function RuleCategoryTable({
                         />
                       </div>
                     ))}
+
+                    <div className="flex flex-col gap-1.5">
+                      <div className="flex items-center justify-between gap-2">
+                        <label className={`${isDark ? "text-white/60" : "text-gray-500"} text-xs font-medium flex items-center gap-1.5`}>
+                          <Icon name="Package" size={11} className="text-green-400" />
+                          Вместе добавить позиции
+                        </label>
+                        {onAutoBundle && (
+                          <button
+                            onClick={() => onAutoBundle(item)}
+                            disabled={autoBundleLoadingId === item.id}
+                            className="flex items-center gap-1 text-[10px] bg-violet-600/20 hover:bg-violet-600/40 border border-violet-500/30 text-violet-300 px-2 py-1 rounded-lg transition disabled:opacity-50"
+                            title="ИИ предложит подходящие позиции для комплекта"
+                          >
+                            {autoBundleLoadingId === item.id
+                              ? <Icon name="Loader2" size={10} className="animate-spin" />
+                              : <Icon name="Sparkles" size={10} />}
+                            Авто
+                          </button>
+                        )}
+                      </div>
+                      <BundleSelector
+                        prices={prices}
+                        selectedPriceId={item.id}
+                        excludeId={item.id}
+                        bundleIds={d.bundleIds}
+                        bundleSearch={d.bundleSearch}
+                        bundleOpen={d.bundleOpen}
+                        onToggleOpen={() => onPatchDraft(item.id, { bundleOpen: !d.bundleOpen })}
+                        onBundleSearchChange={v => onPatchDraft(item.id, { bundleSearch: v })}
+                        onToggleItem={id => onPatchDraft(item.id, {
+                          bundleIds: d.bundleIds.includes(id) ? d.bundleIds.filter(x => x !== id) : [...d.bundleIds, id]
+                        })}
+                        onRemoveItem={id => onPatchDraft(item.id, { bundleIds: d.bundleIds.filter(x => x !== id) })}
+                      />
+                    </div>
 
                     <div className="flex gap-2 pt-2 border-t" style={{ borderColor: isDark ? "rgba(255,255,255,0.06)" : "#e5e7eb" }}>
                       <button onClick={() => onSaveRow(item)} disabled={isSaving}
@@ -423,10 +462,25 @@ export default function RuleCategoryTable({
                   ))}
 
                   <div className="flex flex-col gap-1.5">
-                    <label className="text-white/60 text-xs font-medium flex items-center gap-1.5">
-                      <Icon name="Package" size={11} className="text-green-400" />
-                      Вместе добавить позиции
-                    </label>
+                    <div className="flex items-center justify-between gap-2">
+                      <label className="text-white/60 text-xs font-medium flex items-center gap-1.5">
+                        <Icon name="Package" size={11} className="text-green-400" />
+                        Вместе добавить позиции
+                      </label>
+                      {onAutoBundle && (
+                        <button
+                          onClick={() => onAutoBundle(item)}
+                          disabled={autoBundleLoadingId === item.id}
+                          className="flex items-center gap-1 text-[10px] bg-violet-600/20 hover:bg-violet-600/40 border border-violet-500/30 text-violet-300 px-2 py-1 rounded-lg transition disabled:opacity-50"
+                          title="ИИ предложит подходящие позиции для комплекта"
+                        >
+                          {autoBundleLoadingId === item.id
+                            ? <Icon name="Loader2" size={10} className="animate-spin" />
+                            : <Icon name="Sparkles" size={10} />}
+                          Авто
+                        </button>
+                      )}
+                    </div>
                     <BundleSelector
                       prices={prices}
                       selectedPriceId={item.id}

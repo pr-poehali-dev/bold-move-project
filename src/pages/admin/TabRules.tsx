@@ -12,6 +12,9 @@ import TabCategoryRules from "./TabCategoryRules";
 import { parseBundleIds } from "./RuleTypes";
 import type { RuleItem, RuleType, DraftMap } from "./RuleTypes";
 import type { PriceItem } from "./types";
+import func2url from "@/../backend/func2url.json";
+
+const PAGE_AI_URL = (func2url as Record<string, string>)["page-ai"];
 
 type RulesSub = "price_rules" | "category_rules" | "pricing_3" | "auto_rules" | "discount_risk";
 
@@ -131,6 +134,7 @@ function PriceRulesContent({ token, hint, isDark = true, readOnly = false }: Pro
   const [editingLabelVal, setEditingLabelVal] = useState("");
   const [bundleModal, setBundleModal] = useState<{ item: RuleItem } | null>(null);
   const [bundleModalState, setBundleModalState] = useState<{ ids: number[]; search: string; open: boolean }>({ ids: [], search: "", open: true });
+  const [autoBundleLoadingId, setAutoBundleLoadingId] = useState<number | null>(null);
 
   const openBundleModal = (item: RuleItem, e: { stopPropagation: () => void }) => {
     e.stopPropagation();
@@ -144,6 +148,60 @@ function PriceRulesContent({ token, hint, isDark = true, readOnly = false }: Pro
     const val = JSON.stringify(bundleModalState.ids);
     await saveField(bundleModal.item, "bundle", val);
     setBundleModal(null);
+  };
+
+  const handleAutoBundle = async (item: RuleItem) => {
+    setAutoBundleLoadingId(item.id);
+    try {
+      const pricesList = prices
+        .filter(p => p.id !== item.id)
+        .map(p => `id=${p.id} | ${p.name} | ${p.category}`)
+        .join("\n");
+
+      const prompt = `Ты помощник по настройке прайса натяжных потолков.
+
+Позиция: "${item.name}" (категория: ${item.category || "не указана"})
+Правило расчёта: ${item.calc_rule || "не задано"}
+Добавляется если: ${item.when_condition || "не задано"}
+
+Список всех позиций прайса (id | название | категория):
+${pricesList}
+
+Задача: определи какие позиции из прайса ОБЯЗАТЕЛЬНО должны добавляться вместе с "${item.name}" автоматически (bundle).
+Например: к парящему профилю → лента + блоки питания + монтаж; к закладной → монтаж закладной; к полотну ПВХ → раскрой + огарпунивание.
+
+Верни ТОЛЬКО JSON массив id позиций без пояснений. Пример: [41, 43, 44, 45]
+Если bundle не нужен — верни пустой массив: []`;
+
+      const res = await fetch(PAGE_AI_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prompt, max_tokens: 200 }),
+      });
+      const data = await res.json();
+      const text: string = data.result || data.text || data.answer || "";
+      const match = text.match(/\[[\d,\s]*\]/);
+      if (!match) return;
+
+      const suggested: number[] = JSON.parse(match[0]);
+      const valid = suggested.filter(id => prices.some(p => p.id === id && p.id !== item.id));
+      const current = parseBundleIds(item.bundle || "");
+      const merged = Array.from(new Set([...current, ...valid]));
+
+      // Обновляем черновик если строка раскрыта
+      setDrafts(prev => {
+        if (!prev[item.id]) return prev;
+        return { ...prev, [item.id]: { ...prev[item.id], bundleIds: merged, bundleOpen: true } };
+      });
+      // Если черновика нет — сохраняем напрямую
+      if (!drafts[item.id]) {
+        await saveField(item as PriceItem, "bundle", JSON.stringify(merged));
+      }
+    } catch (e) {
+      console.error("[autoBundle]", e);
+    } finally {
+      setAutoBundleLoadingId(null);
+    }
   };
 
   const saveLabel = async (rt: RuleType) => {
@@ -325,6 +383,8 @@ function PriceRulesContent({ token, hint, isDark = true, readOnly = false }: Pro
           onSaveField={(item, field, val) => saveField(item as PriceItem, field as keyof PriceItem, val)}
           onSaveCustomValue={saveCustomValue}
           onPasteBundle={pasteBundle}
+          onAutoBundle={handleAutoBundle}
+          autoBundleLoadingId={autoBundleLoadingId}
         />
       ))}
 
