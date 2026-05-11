@@ -6,19 +6,22 @@ interface Props {
   item: SegmentPriceItem | null;
   onConfirm: (quantity: number) => void;
   onCancel: () => void;
+  defaultQuantity?: number; // если передана площадь полотна — подставляем
 }
 
-export default function PlanQuantityModal({ item, onConfirm, onCancel }: Props) {
+export default function PlanQuantityModal({ item, onConfirm, onCancel, defaultQuantity }: Props) {
   const [value, setValue] = useState("1");
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (item) {
-      // При редактировании подставляем текущее количество если есть
-      setValue(String((item as SegmentPriceItem & { quantity?: number }).quantity ?? 1));
+      const existing = (item as SegmentPriceItem & { quantity?: number }).quantity;
+      // Приоритет: существующее quantity > площадь полотна > 1
+      const initial = existing ?? defaultQuantity ?? 1;
+      setValue(String(Math.round(initial * 100) / 100));
       setTimeout(() => { inputRef.current?.select(); }, 50);
     }
-  }, [item]);
+  }, [item, defaultQuantity]);
 
   if (!item) return null;
 

@@ -12,7 +12,7 @@ import PlanDragGhosts from "./PlanDragGhosts";
 import PlanQuantityModal from "./PlanQuantityModal";
 import { usePlanCatalog } from "./usePlanCatalog";
 import type { PlanState } from "./planTypes";
-import { INITIAL_STATE } from "./planTypes";
+import { INITIAL_STATE, polygonArea } from "./planTypes";
 import { useHistory, useIsMobile } from "./usePlanHistory";
 import { usePlanHandlers } from "./usePlanHandlers";
 import { useAuth } from "@/context/AuthContext";
@@ -122,6 +122,14 @@ export default function PlanPage() {
   const displayState = catalog.hoverSegId
     ? { ...state, selectedSegmentId: catalog.hoverSegId }
     : state;
+
+  // Площадь полотна в м² (для подстановки в модалку добавления на полотно)
+  const floorAreaM2 = (() => {
+    if (!state.isClosed || !state.baseScale || state.points.length < 3) return undefined;
+    const areaPx2 = polygonArea(state.points);
+    const areaCm2 = areaPx2 / (state.baseScale * state.baseScale);
+    return Math.round(areaCm2 / 100) / 100; // м², округлено до 0.01
+  })();
 
   return (
     <div className="flex flex-col bg-[#111] overflow-hidden" style={{ height: "100dvh" }}>
@@ -321,6 +329,7 @@ export default function PlanPage() {
         item={catalog.pendingFloorItem}
         onConfirm={catalog.confirmFloorItem}
         onCancel={() => catalog.setPendingFloorItem(null)}
+        defaultQuantity={floorAreaM2}
       />
       {/* ── Модалка редактирования quantity floorItem ── */}
       <PlanQuantityModal
