@@ -1,0 +1,1 @@
+CREATE TABLE IF NOT EXISTS wl_pricing_settings (wl_manager_id INTEGER NOT NULL PRIMARY KEY, econom_mult NUMERIC(5,3) NOT NULL DEFAULT 0.85, premium_mult NUMERIC(5,3) NOT NULL DEFAULT 1.27, econom_label TEXT NOT NULL DEFAULT 'Econom', standard_label TEXT NOT NULL DEFAULT 'Standard', premium_label TEXT NOT NULL DEFAULT 'Premium', updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW())

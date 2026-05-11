@@ -1,0 +1,1 @@
+CREATE INDEX IF NOT EXISTS idx_wl_quick_questions_wl ON wl_quick_questions(wl_manager_id)

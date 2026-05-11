@@ -1,0 +1,1 @@
+CREATE INDEX IF NOT EXISTS idx_wl_price_overrides_wl ON wl_price_overrides(wl_manager_id)

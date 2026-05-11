@@ -1,0 +1,1 @@
+CREATE TABLE IF NOT EXISTS wl_price_overrides (wl_manager_id INTEGER NOT NULL, price_id INTEGER NOT NULL, price INTEGER, purchase_price INTEGER, active BOOLEAN, description TEXT, synonyms TEXT, image_url TEXT, category_image_url TEXT, updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), PRIMARY KEY (wl_manager_id, price_id))

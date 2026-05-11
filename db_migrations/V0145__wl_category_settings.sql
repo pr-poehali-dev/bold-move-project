@@ -1,0 +1,1 @@
+CREATE TABLE IF NOT EXISTS wl_category_settings (wl_manager_id INTEGER NOT NULL, category TEXT NOT NULL, is_material BOOLEAN NOT NULL DEFAULT TRUE, category_rule TEXT NOT NULL DEFAULT '', updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), PRIMARY KEY (wl_manager_id, category))

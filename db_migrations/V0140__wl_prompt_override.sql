@@ -1,0 +1,1 @@
+CREATE TABLE IF NOT EXISTS wl_prompt_override (wl_manager_id INTEGER NOT NULL PRIMARY KEY, content TEXT NOT NULL, updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW())

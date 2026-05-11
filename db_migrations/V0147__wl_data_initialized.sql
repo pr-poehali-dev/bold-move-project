@@ -1,0 +1,1 @@
+CREATE TABLE IF NOT EXISTS wl_data_initialized (wl_manager_id INTEGER NOT NULL PRIMARY KEY, faq_initialized BOOLEAN NOT NULL DEFAULT FALSE, questions_initialized BOOLEAN NOT NULL DEFAULT FALSE, initialized_at TIMESTAMPTZ NOT NULL DEFAULT NOW())
