@@ -1900,15 +1900,31 @@ mounting_unit: пог.м или шт"""
 
         # ─── ПРАВИЛО 4: bundle — автодобавление ленты/блоков при парящем ─────
         if _rules_for_suggestions:
+            before_bundle = len(llm_items_list)
             llm_items_list = _apply_bundles(llm_items_list, _rules_for_suggestions)
+            bundles_added = len(llm_items_list) - before_bundle
+        else:
+            bundles_added = 0
 
-        answer = _patch_answer_with_prices(answer, llm_items_list, _rules_for_suggestions)
+        if llm_items_list:
+            # ─── Патчим цены из БД в список позиций ──────────────────────────
+            price_map_render = _build_price_map(_rules_for_suggestions) if _rules_for_suggestions else {}
+            for it in llm_items_list:
+                db_entry = _find_in_price_map(it.get('name', ''), price_map_render)
+                if db_entry:
+                    it['price'] = db_entry['price']
+                    it['unit'] = db_entry.get('unit') or it.get('unit', 'шт')
 
-        # ─── НАДБАВКИ: позиции с unit='%' пересчитываем от суммы монтажа ────
-        answer = _apply_surcharges(answer, _rules_for_suggestions)
-
-        # ─── ПЕРЕСЧИТЫВАЕМ ИТОГ: после всех патчей суммируем позиции заново ─
-        answer = _recalc_totals(answer)
+            # ─── Рендерим смету детерминированно — все позиции включая bundle ─
+            answer = _render_estimate_from_items(llm_items_list)
+            print(f"[initial] rendered from items: {len(llm_items_list)} items, bundles_added={bundles_added}")
+        else:
+            # Fallback: патчим текст ИИ если items список пуст
+            answer = _patch_answer_with_prices(answer, llm_items_list, _rules_for_suggestions)
+            # ─── НАДБАВКИ: позиции с unit='%' пересчитываем от суммы монтажа ────
+            answer = _apply_surcharges(answer, _rules_for_suggestions)
+            # ─── ПЕРЕСЧИТЫВАЕМ ИТОГ: после всех патчей суммируем позиции заново ─
+            answer = _recalc_totals(answer)
 
     try:
         if llm_items_json and llm_items_json.get('items'):
