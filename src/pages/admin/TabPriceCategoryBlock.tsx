@@ -53,8 +53,9 @@ export default function TabPriceCategoryBlock({
   token,
 }: Props) {
   const { text, muted, muted2, border, border2, bg, bgInput, borderInput } = theme;
-  const isMaterial = items[0]?.is_material !== false;
-  const isWall = items[0]?.is_wall_item !== false;
+  const isMaterial   = items[0]?.is_material  !== false;
+  const isWall       = items[0]?.is_wall_item !== false;
+  const showInDrum   = items[0]?.show_in_drum !== false;
 
   return (
     <div>
@@ -101,6 +102,7 @@ export default function TabPriceCategoryBlock({
             category={category}
             initialIsMaterial={isMaterial}
             initialIsWall={isWall}
+            initialShowInDrum={showInDrum}
             isDark={isDark}
             token={token}
           />

@@ -1,0 +1,1 @@
+ALTER TABLE price_category_settings ADD COLUMN IF NOT EXISTS show_in_drum BOOLEAN NOT NULL DEFAULT TRUE

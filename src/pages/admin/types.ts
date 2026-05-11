@@ -32,6 +32,7 @@ export interface PriceItem {
   when_not_condition: string;
   is_material?: boolean;
   is_wall_item?: boolean;
+  show_in_drum?: boolean;
 }
 
 export interface SuggestedItem {

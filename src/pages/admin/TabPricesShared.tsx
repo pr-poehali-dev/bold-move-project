@@ -112,12 +112,14 @@ export function MaterialButton({
   category,
   initialValue,
   initialIsWall = true,
+  initialShowInDrum = true,
   isDark,
   token,
 }: {
   category: string;
   initialValue: boolean;
   initialIsWall?: boolean;
+  initialShowInDrum?: boolean;
   isDark: boolean;
   token?: string;
 }) {
@@ -126,6 +128,7 @@ export function MaterialButton({
       category={category}
       initialIsMaterial={initialValue}
       initialIsWall={initialIsWall}
+      initialShowInDrum={initialShowInDrum}
       isDark={isDark}
       token={token}
     />
@@ -138,19 +141,22 @@ export function CategoryFunctionsButton({
   category,
   initialIsMaterial,
   initialIsWall,
+  initialShowInDrum = true,
   isDark,
   token,
 }: {
   category: string;
   initialIsMaterial: boolean;
   initialIsWall: boolean;
+  initialShowInDrum?: boolean;
   isDark: boolean;
   token?: string;
 }) {
-  const [open, setOpen]           = useState(false);
+  const [open, setOpen]             = useState(false);
   const [isMaterial, setIsMaterial] = useState(initialIsMaterial);
-  const [isWall, setIsWall]       = useState(initialIsWall);
-  const [saving, setSaving]       = useState(false);
+  const [isWall, setIsWall]         = useState(initialIsWall);
+  const [showInDrum, setShowInDrum] = useState(initialShowInDrum);
+  const [saving, setSaving]         = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
   // Закрываем при клике вне
@@ -163,7 +169,7 @@ export function CategoryFunctionsButton({
     return () => document.removeEventListener("mousedown", handler);
   });
 
-  const save = async (newMaterial: boolean, newWall: boolean) => {
+  const save = async (mat: boolean, wall: boolean, drum: boolean) => {
     setSaving(true);
     await fetch(`${BASE}?r=category_settings`, {
       method: "PUT",
@@ -171,25 +177,43 @@ export function CategoryFunctionsButton({
         "Content-Type": "application/json",
         ...(token ? { "Authorization": `Bearer ${token}` } : {}),
       },
-      body: JSON.stringify({ category, is_material: newMaterial, is_wall_item: newWall }),
+      body: JSON.stringify({ category, is_material: mat, is_wall_item: wall, show_in_drum: drum }),
     });
     setSaving(false);
   };
 
-  const toggleMaterial = async () => {
-    const next = !isMaterial;
-    setIsMaterial(next);
-    await save(next, isWall);
-  };
-
-  const toggleWall = async () => {
-    const next = !isWall;
-    setIsWall(next);
-    await save(isMaterial, next);
+  const toggle = async (field: "material" | "wall" | "drum") => {
+    const mat  = field === "material" ? !isMaterial : isMaterial;
+    const wall = field === "wall"     ? !isWall     : isWall;
+    const drum = field === "drum"     ? !showInDrum : showInDrum;
+    if (field === "material") setIsMaterial(mat);
+    if (field === "wall")     setIsWall(wall);
+    if (field === "drum")     setShowInDrum(drum);
+    await save(mat, wall, drum);
   };
 
   // Суммарный «статус» для кнопки
-  const label = !isMaterial ? "не в закупке" : !isWall ? "на полотно" : "функции";
+  const label = !isMaterial ? "не в закупке" : !isWall ? "на полотно" : !showInDrum ? "скрыта" : "функции";
+
+  const ToggleRow = ({ active, color, label: lbl, sub, onClick }: {
+    active: boolean; color: string; label: string; sub: string; onClick: () => void;
+  }) => (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-xs transition hover:bg-white/5 ${isDark ? "text-white/70" : "text-gray-700"}`}
+    >
+      <div className={`w-8 h-4 rounded-full flex items-center transition-all flex-shrink-0 ${active ? color : isDark ? "bg-white/10" : "bg-gray-200"}`}>
+        <div className={`w-3 h-3 rounded-full bg-white ml-0.5 transition-transform ${active ? "translate-x-4" : "translate-x-0"}`} />
+      </div>
+      <div className="flex flex-col items-start">
+        <span className="font-medium">{lbl}</span>
+        <span className={`text-[10px] ${isDark ? "text-white/30" : "text-gray-400"}`}>{sub}</span>
+      </div>
+    </button>
+  );
+
+  const sep = <div className={`mx-3 my-1 h-px ${isDark ? "bg-white/5" : "bg-gray-100"}`} />;
 
   return (
     <div ref={ref} className="relative flex-shrink-0">
@@ -208,50 +232,32 @@ export function CategoryFunctionsButton({
       </button>
 
       {open && (
-        <div className={`absolute right-0 top-full mt-1.5 z-50 rounded-xl shadow-xl border min-w-[200px] py-2 px-1 ${
+        <div className={`absolute right-0 top-full mt-1.5 z-50 rounded-xl shadow-xl border min-w-[210px] py-2 px-1 ${
           isDark ? "bg-[#0e0c1e] border-white/10" : "bg-white border-gray-200"
         }`}>
-          {/* Заголовок */}
           <div className={`text-[10px] uppercase tracking-wider px-3 pb-2 pt-1 ${isDark ? "text-white/25" : "text-gray-400"}`}>
             Функции категории
           </div>
-
-          {/* Переключатель: в закупке */}
-          <button
-            type="button"
-            onClick={() => { toggleMaterial(); }}
-            className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-xs transition hover:bg-white/5 ${isDark ? "text-white/70" : "text-gray-700"}`}
-          >
-            <div className={`w-8 h-4 rounded-full flex items-center transition-all flex-shrink-0 ${isMaterial ? "bg-blue-500" : isDark ? "bg-white/10" : "bg-gray-200"}`}>
-              <div className={`w-3 h-3 rounded-full bg-white ml-0.5 transition-transform ${isMaterial ? "translate-x-4" : "translate-x-0"}`} />
-            </div>
-            <div className="flex flex-col items-start">
-              <span className="font-medium">В закупке</span>
-              <span className={`text-[10px] ${isDark ? "text-white/30" : "text-gray-400"}`}>
-                {isMaterial ? "Учитывается в закупке" : "Не учитывается в закупке"}
-              </span>
-            </div>
-          </button>
-
-          {/* Разделитель */}
-          <div className={`mx-3 my-1.5 h-px ${isDark ? "bg-white/5" : "bg-gray-100"}`} />
-
-          {/* Переключатель: к стенам / на полотно */}
-          <button
-            type="button"
-            onClick={() => { toggleWall(); }}
-            className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-xs transition hover:bg-white/5 ${isDark ? "text-white/70" : "text-gray-700"}`}
-          >
-            <div className={`w-8 h-4 rounded-full flex items-center transition-all flex-shrink-0 ${isWall ? "bg-violet-500" : isDark ? "bg-white/10" : "bg-gray-200"}`}>
-              <div className={`w-3 h-3 rounded-full bg-white ml-0.5 transition-transform ${isWall ? "translate-x-4" : "translate-x-0"}`} />
-            </div>
-            <div className="flex flex-col items-start">
-              <span className="font-medium">{isWall ? "К стенам" : "На полотно"}</span>
-              <span className={`text-[10px] ${isDark ? "text-white/30" : "text-gray-400"}`}>
-                {isWall ? "Товар крепится к стенам" : "Товар размещается на полотне"}
-              </span>
-            </div>
-          </button>
+          <ToggleRow
+            active={isMaterial} color="bg-blue-500"
+            label="В закупке"
+            sub={isMaterial ? "Учитывается в закупке" : "Не учитывается в закупке"}
+            onClick={() => toggle("material")}
+          />
+          {sep}
+          <ToggleRow
+            active={isWall} color="bg-violet-500"
+            label={isWall ? "К стенам" : "На полотно"}
+            sub={isWall ? "Товар крепится к стенам" : "Товар на полотне"}
+            onClick={() => toggle("wall")}
+          />
+          {sep}
+          <ToggleRow
+            active={showInDrum} color="bg-emerald-500"
+            label="В барабане"
+            sub={showInDrum ? "Видна в каталоге /план" : "Скрыта в каталоге /план"}
+            onClick={() => toggle("drum")}
+          />
         </div>
       )}
     </div>

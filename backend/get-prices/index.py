@@ -74,12 +74,12 @@ def handler(event: dict, context) -> dict:
     """)
     rows = cur.fetchall()
 
-    # Настройки категорий (is_wall_item)
+    # Настройки категорий (is_wall_item, show_in_drum)
     cat_settings = {}
     try:
-        cur.execute(f"SELECT category, is_wall_item FROM {SCHEMA}.price_category_settings")
+        cur.execute(f"SELECT category, is_wall_item, show_in_drum FROM {SCHEMA}.price_category_settings")
         for r in cur.fetchall():
-            cat_settings[r[0]] = r[1] if r[1] is not None else True
+            cat_settings[r[0]] = {'is_wall_item': r[1] if r[1] is not None else True, 'show_in_drum': r[2] if r[2] is not None else True}
     except Exception:
         pass
 
@@ -103,9 +103,9 @@ def handler(event: dict, context) -> dict:
         except Exception:
             pass
         try:
-            cur.execute(f"SELECT category, is_wall_item FROM {SCHEMA}.wl_category_settings WHERE wl_manager_id=%s", (wl_id,))
+            cur.execute(f"SELECT category, is_wall_item, show_in_drum FROM {SCHEMA}.wl_category_settings WHERE wl_manager_id=%s", (wl_id,))
             for r in cur.fetchall():
-                cat_settings[r[0]] = r[1] if r[1] is not None else True
+                cat_settings[r[0]] = {'is_wall_item': r[1] if r[1] is not None else True, 'show_in_drum': r[2] if r[2] is not None else True}
         except Exception:
             pass
 
@@ -147,7 +147,8 @@ def handler(event: dict, context) -> dict:
             'synonyms': ov['synonyms'] if ov.get('synonyms') is not None else (row[5] or ''),
             'image_url': ov['image_url'] if ov.get('image_url') is not None else row[6],
             'category_image_url': ov['category_image_url'] if ov.get('category_image_url') is not None else row[7],
-            'is_wall_item': cat_settings.get(row[4] or '', True),
+            'is_wall_item': cat_settings.get(row[4] or '', {}).get('is_wall_item', True) if isinstance(cat_settings.get(row[4] or ''), dict) else True,
+            'show_in_drum': cat_settings.get(row[4] or '', {}).get('show_in_drum', True) if isinstance(cat_settings.get(row[4] or ''), dict) else True,
         })
 
     return {

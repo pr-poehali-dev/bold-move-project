@@ -9,6 +9,7 @@ export interface PriceEntry {
   category_image_url: string | null;
   unit: string; // единица измерения из прайса (шт, м, м², и др.)
   is_wall_item?: boolean; // true = к стенам, false = на полотно (по умолчанию true)
+  show_in_drum?: boolean; // true = показывать в барабане (по умолчанию true)
 }
 
 interface ArcItem {
@@ -328,10 +329,19 @@ export default function CategoryDrumPanel({ open, onClose, prices, onDragItem }:
         catImgMap.set(p.category, p.category_image_url);
       }
     }
+    // Категории скрытые из барабана (show_in_drum = false)
+    const hiddenCats = new Set<string>();
+    for (const p of prices) {
+      if (p.show_in_drum === false) hiddenCats.add(p.category);
+    }
+    // Но если хотя бы один товар категории show_in_drum = true — показываем
+    for (const p of prices) {
+      if (p.show_in_drum !== false) hiddenCats.delete(p.category);
+    }
     const seen = new Set<string>();
     const result: ArcItem[] = [];
     for (const p of prices) {
-      if (!seen.has(p.category)) {
+      if (!seen.has(p.category) && !hiddenCats.has(p.category)) {
         seen.add(p.category);
         result.push({ value: p.category, label: p.category, imageUrl: catImgMap.get(p.category) ?? null });
       }
