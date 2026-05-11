@@ -1,0 +1,1 @@
+UPDATE price_category_settings SET is_wall_item = FALSE WHERE category IN ('Освещение', 'Вентиляция', 'Закладные')
