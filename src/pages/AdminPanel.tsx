@@ -59,7 +59,7 @@ export default function AdminPanel() {
   const hasOrderParam = !!urlParams.get("order");
   const LS_TAB_KEY = "admin_main_tab";
   const savedTab = localStorage.getItem(LS_TAB_KEY) as MainTab | null;
-  const [mainTab, setMainTab] = useState<MainTab>(hasOrderParam ? "crm" : (urlTab ?? savedTab ?? "crm"));
+  const [mainTab, setMainTab] = useState<MainTab>(hasOrderParam ? "crm" : (urlTab ?? savedTab ?? "agent"));
 
   useEffect(() => {
     if (loading || !user) return;
@@ -69,8 +69,11 @@ export default function AdminPanel() {
       user.role === "company" || !!user.is_master,
     );
     // Если есть ?order= — всегда открываем crm
+    // Если есть сохранённая вкладка — используем её
+    // Иначе — первая доступная (не crm)
     const preferred = hasOrderParam ? "crm" : (urlTab ?? savedTab);
-    const target = preferred && allowed.find(t => t.id === preferred) ? preferred : allowed[0]?.id ?? "crm";
+    const firstNonCrm = allowed.find(t => t.id !== "crm")?.id ?? allowed[0]?.id ?? "agent";
+    const target = preferred && allowed.find(t => t.id === preferred) ? preferred : firstNonCrm;
     setMainTab(target as MainTab);
   }, [loading, user?.id]);  // eslint-disable-line react-hooks/exhaustive-deps
 
