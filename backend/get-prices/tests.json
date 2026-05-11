@@ -4,9 +4,7 @@
       "name": "Получить прайс",
       "method": "GET",
       "path": "/",
-      "expectedStatus": 200,
-      "expectedBody": {},
-      "bodyMatcher": "partial"
+      "expectedStatus": 200
     }
   ]
 }

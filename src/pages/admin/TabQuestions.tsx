@@ -12,9 +12,9 @@ export default function TabQuestions({ token }: Props) {
   const [newItem, setNewItem] = useState({ pattern: "", answer: "" });
 
   const load = useCallback(async () => {
-    const r = await apiFetch("questions");
+    const r = await apiFetch("questions", undefined, token);
     if (r.ok) { const d = await r.json(); setItems(d.items); }
-  }, []);
+  }, [token]);
 
   useEffect(() => { load(); }, [load]);
 

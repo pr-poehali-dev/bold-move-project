@@ -38,7 +38,7 @@ export default function TabCategoryRules({ token, isDark = true, readOnly = fals
   const editRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    apiFetch("category_settings").then(r => r.ok && r.json().then(d => {
+    apiFetch("category_settings", undefined, token).then(r => r.ok && r.json().then(d => {
       setItems(d.items);
       const initRules: Record<string, string[]> = {};
       const initOpen:  Record<string, boolean>  = {};
@@ -50,7 +50,7 @@ export default function TabCategoryRules({ token, isDark = true, readOnly = fals
       setOpen(initOpen);
       setLoading(false);
     }));
-  }, []);
+  }, [token]);
 
   useEffect(() => {
     if (editing) editRef.current?.focus();

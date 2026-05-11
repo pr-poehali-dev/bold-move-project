@@ -155,9 +155,9 @@ function PriceRulesContent({ token, hint, isDark = true, readOnly = false }: Pro
   };
 
   const loadRuleTypes = useCallback(async () => {
-    const r = await apiFetch("rule-types");
+    const r = await apiFetch("rule-types", undefined, token);
     if (r.ok) { const d = await r.json(); setRuleTypes(d.items); }
-  }, []);
+  }, [token]);
 
   useEffect(() => { loadRuleTypes(); }, [loadRuleTypes]);
 

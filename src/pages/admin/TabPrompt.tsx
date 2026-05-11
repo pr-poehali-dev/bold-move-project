@@ -146,7 +146,7 @@ export default function TabPrompt({ token, isDark = true, readOnly = false, user
   const [dirty, setDirty] = useState(false);
 
   useEffect(() => {
-    apiFetch("prompt").then(r => r.ok && r.json().then(d => {
+    apiFetch("prompt", undefined, token).then(r => r.ok && r.json().then(d => {
       const loaded = d.content || "";
       if (!loaded.trim()) {
         // Промпт пустой — автоподставляем шаблон с данными компании
@@ -161,11 +161,11 @@ export default function TabPrompt({ token, isDark = true, readOnly = false, user
         setContent(loaded);
       }
     }));
-    apiFetch("prices").then(r => r.ok && r.json().then(d => setPrices(d.items.filter((p: PriceItem) => p.active))));
-    apiFetch("prices").then(r => r.ok && r.json().then(d => setRules(d.items)));
-    apiFetch("rule-types").then(r => r.ok && r.json().then(d => setRuleTypes(d.items)));
-    apiFetch("category_settings").then(r => r.ok && r.json().then(d => setCategorySettings(d.items)));
-  }, []);
+    apiFetch("prices", undefined, token).then(r => r.ok && r.json().then(d => setPrices(d.items.filter((p: PriceItem) => p.active))));
+    apiFetch("prices", undefined, token).then(r => r.ok && r.json().then(d => setRules(d.items)));
+    apiFetch("rule-types", undefined, token).then(r => r.ok && r.json().then(d => setRuleTypes(d.items)));
+    apiFetch("category_settings", undefined, token).then(r => r.ok && r.json().then(d => setCategorySettings(d.items)));
+  }, [token]);
 
   const save = useCallback(async (contentToSave?: string) => {
     const val = contentToSave ?? content;

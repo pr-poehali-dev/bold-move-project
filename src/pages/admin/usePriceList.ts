@@ -11,10 +11,10 @@ export function usePriceList(token: string) {
 
   const load = useCallback(async () => {
     setLoading(true);
-    const r = await apiFetch("prices");
+    const r = await apiFetch("prices", undefined, token);
     if (r.ok) { const d = await r.json(); setPrices(d.items); }
     setLoading(false);
-  }, []);
+  }, [token]);
 
   useEffect(() => {
     if (loadedRef.current) return;
