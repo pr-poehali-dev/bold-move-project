@@ -787,11 +787,12 @@ export function rebuildWithRightAngles(
   points: Point[],
   segments: Segment[],
   baseScale: number,
+  _forceCW?: boolean,
 ): { points: Point[]; hasSkews: boolean; segments?: Segment[] } | null {
   if (points.length < 3 || segments.length < 3) return null;
   if (!segments.every(s => s.lengthCm !== null && s.lengthCm > 0)) return null;
 
-  const SNAP_TOL = 15; // ±15° считаем "прямым углом"
+  const SNAP_TOL = 30; // ±30° считаем "прямым углом"
 
   // Строим упорядоченную цепочку
   const chain: string[] = [points[0].id];
@@ -812,7 +813,11 @@ export function rebuildWithRightAngles(
     orderedSegs.push(s);
   }
 
-  const isCW = polygonOrientation(points) > 0;
+  // Ориентация по упорядоченной цепочке (не по порядку массива points)
+  const chainPoints = chain.map(id => points.find(p => p.id === id)!);
+  const orientVal = polygonOrientation(chainPoints);
+  // Если ориентация неопределённа (вырожденная фигура) — пробуем CW
+  const isCW = _forceCW !== undefined ? _forceCW : (orientVal !== 0 ? orientVal > 0 : true);
 
   // Вычисляем нарисованные углы в каждой точке цепочки
   const drawnAngles: number[] = chain.map((ptId, i) => {
@@ -907,8 +912,10 @@ export function rebuildWithRightAngles(
     return nc ? { ...p, ...nc } : p;
   });
 
-  // Проверяем замыкание: если последний сегмент H-A не совпадает с введённой длиной
-  // — это значит алгоритм накопил ошибку. Исправляем lengthCm последнего сегмента.
+  // Проверяем замыкание: последний сегмент (замыкающий) строится автоматически
+  // из цепочки N-1 предыдущих. Если расхождение с введённой длиной > 20% —
+  // алгоритм дал некорректный результат (ошибка ориентации или направления).
+  // В этом случае пробуем с инвертированной ориентацией.
   const lastSeg = orderedSegs[orderedSegs.length - 1];
   const lastFrom = newPoints.find(p => p.id === lastSeg.fromId);
   const lastTo   = newPoints.find(p => p.id === lastSeg.toId);
@@ -916,7 +923,16 @@ export function rebuildWithRightAngles(
   if (lastFrom && lastTo) {
     const realPx = distPx(lastFrom, lastTo);
     const realCm = Math.round((realPx / baseScale) * 10) / 10;
-    if (Math.abs(realCm - (lastSeg.lengthCm ?? 0)) > 0.5) {
+    const expectedCm = lastSeg.lengthCm ?? 0;
+    // Если расхождение > 20% от ожидаемой длины — результат некорректен
+    if (expectedCm > 0 && Math.abs(realCm - expectedCm) / expectedCm > 0.20) {
+      // Пробуем с инвертированной ориентацией (только один раз)
+      if (_forceCW === undefined) {
+        return rebuildWithRightAngles(points, segments, baseScale, !isCW);
+      }
+      return null;
+    }
+    if (Math.abs(realCm - expectedCm) > 0.5) {
       correctedSegments = segments.map(s =>
         s.id === lastSeg.id ? { ...s, lengthCm: realCm } : s
       );
