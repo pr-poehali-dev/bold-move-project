@@ -33,6 +33,7 @@ export interface PlanCatalogState {
   removeActiveItem: (priceId: number) => void;
   isItemOnAllSegs: (priceId: number) => boolean;
   adjustItemQuantity: (priceId: number, delta: number) => void;
+  setItemQuantity: (priceId: number, value: number) => void;
   // Модалка для добавления на полотно
   pendingFloorItem: SegmentPriceItem | null;
   setPendingFloorItem: (item: SegmentPriceItem | null) => void;
@@ -155,7 +156,7 @@ export function usePlanCatalog(
     return s.segments.every(seg => (seg.items ?? []).some(it => it.priceId === priceId));
   }, [stateRef]);
 
-  // Изменить quantity товара на всех стенах на delta (±1), минимум 1
+  // Изменить quantity товара на всех стенах на delta (±1), минимум 0.1
   const adjustItemQuantity = useCallback((priceId: number, delta: number) => {
     const s = stateRef.current;
     const newSegments = s.segments.map(seg => ({
@@ -165,6 +166,19 @@ export function usePlanCatalog(
         const next = Math.max(0.1, Math.round(((it.quantity ?? 1) + delta) * 10) / 10);
         return { ...it, quantity: next };
       }),
+    }));
+    push({ ...s, segments: newSegments });
+  }, [stateRef, push]);
+
+  // Установить конкретное значение quantity на всех стенах
+  const setItemQuantity = useCallback((priceId: number, value: number) => {
+    const s = stateRef.current;
+    const safeVal = Math.max(0.1, Math.round(value * 10) / 10);
+    const newSegments = s.segments.map(seg => ({
+      ...seg,
+      items: (seg.items ?? []).map(it =>
+        it.priceId === priceId ? { ...it, quantity: safeVal } : it
+      ),
     }));
     push({ ...s, segments: newSegments });
   }, [stateRef, push]);
@@ -446,7 +460,7 @@ export function usePlanCatalog(
     hoverSegId, setHoverSegId,
     filterAttached, setFilterAttached,
     attachedCount,
-    findClosestSeg, assignItemToSeg, assignItemToAllSegs, removeItemFromAllSegs, removeActiveItem, isItemOnAllSegs, adjustItemQuantity,
+    findClosestSeg, assignItemToSeg, assignItemToAllSegs, removeItemFromAllSegs, removeActiveItem, isItemOnAllSegs, adjustItemQuantity, setItemQuantity,
     pendingFloorItem, setPendingFloorItem, confirmFloorItem,
     editingFloorId, setEditingFloorId, editingFloorItem, confirmEditFloorItem,
   };

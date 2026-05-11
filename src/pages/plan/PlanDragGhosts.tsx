@@ -19,6 +19,7 @@ interface Props {
   onRemoveFromAllSegs: (priceId: number) => void;
   isItemOnAllSegs: (priceId: number) => boolean;
   onAdjustQuantity: (priceId: number, delta: number) => void;
+  onSetQuantity: (priceId: number, value: number) => void;
   hasSegments: boolean;
 }
 
@@ -29,11 +30,14 @@ export default function PlanDragGhosts({
   hoverSegId, isMobile,
   segments, floorItems, anyPanelOpen,
   onTapActiveId, onRemoveActiveItem,
-  onAssignToAllSegs, onRemoveFromAllSegs, isItemOnAllSegs, onAdjustQuantity, hasSegments,
+  onAssignToAllSegs, onRemoveFromAllSegs, isItemOnAllSegs, onAdjustQuantity, onSetQuantity, hasSegments,
 }: Props) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [expandedId, setExpandedId] = useState<number | null>(null);
   const [popupPos, setPopupPos] = useState<{ x: number; bottom: number } | null>(null);
+  const [qtyInput, setQtyInput] = useState<string>(""); // текст в инпуте количества
+  const [qtyEditing, setQtyEditing] = useState(false);
+  const qtyInputRef = useRef<HTMLInputElement>(null);
 
   // При смене активного товара — скроллим к его карточке
   useEffect(() => {
@@ -54,6 +58,7 @@ export default function PlanDragGhosts({
       if (!target.closest("[data-active-item]") && !target.closest("[data-item-popup]")) {
         setExpandedId(null);
         setPopupPos(null);
+        setQtyEditing(false);
       }
     };
     window.addEventListener("mousedown", handler);
@@ -354,7 +359,8 @@ export default function PlanDragGhosts({
 
               {/* Счётчик количества (по стенам) */}
               {onAllSegs && (
-                <div style={{ display: "flex", alignItems: "center", gap: 0, background: "rgba(255,255,255,0.05)", borderRadius: 7, overflow: "hidden", border: "1px solid rgba(255,255,255,0.08)" }}>
+                <div data-item-popup="1" style={{ display: "flex", alignItems: "center", gap: 0, background: "rgba(255,255,255,0.05)", borderRadius: 7, overflow: "hidden", border: "1px solid rgba(255,255,255,0.08)" }}>
+                  {/* Кнопка − */}
                   <button
                     data-item-popup="1"
                     onClick={e => { e.stopPropagation(); onAdjustQuantity(item.priceId, -1); }}
@@ -362,15 +368,63 @@ export default function PlanDragGhosts({
                       width: 26, height: 26, border: "none", background: "transparent",
                       color: "rgba(255,255,255,0.55)", fontSize: 15, cursor: "pointer",
                       display: "flex", alignItems: "center", justifyContent: "center",
+                      flexShrink: 0,
                     }}
                   >−</button>
-                  <div style={{
-                    minWidth: 36, textAlign: "center",
-                    fontSize: 11, fontWeight: 700, color: "rgba(196,181,253,1)",
-                    padding: "0 2px",
-                  }}>
-                    {total > 0 ? `${total}` : "0"}<span style={{ fontSize: 8.5, color: "rgba(167,139,250,0.55)", marginLeft: 1 }}>{unit}</span>
-                  </div>
+
+                  {/* Поле: клик → редактирование */}
+                  {qtyEditing ? (
+                    <input
+                      ref={qtyInputRef}
+                      data-item-popup="1"
+                      type="number"
+                      value={qtyInput}
+                      onChange={e => setQtyInput(e.target.value)}
+                      onBlur={e => {
+                        const v = parseFloat(e.target.value.replace(",", "."));
+                        if (!isNaN(v) && v > 0) onSetQuantity(item.priceId, v);
+                        setQtyEditing(false);
+                      }}
+                      onKeyDown={e => {
+                        if (e.key === "Enter") {
+                          const v = parseFloat(qtyInput.replace(",", "."));
+                          if (!isNaN(v) && v > 0) onSetQuantity(item.priceId, v);
+                          setQtyEditing(false);
+                        }
+                        if (e.key === "Escape") setQtyEditing(false);
+                        e.stopPropagation();
+                      }}
+                      onClick={e => e.stopPropagation()}
+                      style={{
+                        width: 48, height: 26, border: "none", outline: "none",
+                        background: "rgba(124,58,237,0.15)", textAlign: "center",
+                        fontSize: 11, fontWeight: 700, color: "rgba(196,181,253,1)",
+                        padding: 0,
+                      }}
+                    />
+                  ) : (
+                    <div
+                      data-item-popup="1"
+                      onClick={e => {
+                        e.stopPropagation();
+                        setQtyInput(String(total > 0 ? total : 1));
+                        setQtyEditing(true);
+                        setTimeout(() => { qtyInputRef.current?.select(); }, 10);
+                      }}
+                      title="Нажмите чтобы ввести значение"
+                      style={{
+                        width: 48, height: 26, textAlign: "center", cursor: "text",
+                        fontSize: 11, fontWeight: 700, color: "rgba(196,181,253,1)",
+                        display: "flex", alignItems: "center", justifyContent: "center", gap: 2,
+                        userSelect: "none",
+                      }}
+                    >
+                      {total > 0 ? total : 0}
+                      {unit && <span style={{ fontSize: 8.5, color: "rgba(167,139,250,0.55)" }}>{unit}</span>}
+                    </div>
+                  )}
+
+                  {/* Кнопка + */}
                   <button
                     data-item-popup="1"
                     onClick={e => { e.stopPropagation(); onAdjustQuantity(item.priceId, 1); }}
@@ -378,6 +432,7 @@ export default function PlanDragGhosts({
                       width: 26, height: 26, border: "none", background: "transparent",
                       color: "rgba(255,255,255,0.55)", fontSize: 15, cursor: "pointer",
                       display: "flex", alignItems: "center", justifyContent: "center",
+                      flexShrink: 0,
                     }}
                   >+</button>
                 </div>
