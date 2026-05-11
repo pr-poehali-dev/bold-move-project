@@ -152,7 +152,7 @@ export function PriceItemCard({
   aiLoadingId, aiDescLoadingId,
   onToggleActive, onSaveField, onDelete,
   onGenerateDescription, onGenerateSynonyms,
-}: Omit<RowProps, "idx" | "dragOverId" | "itemImageUrl" | "onDragStart" | "onDragEnter" | "onDragEnd" | "onImageUploaded">) {
+}: Omit<RowProps, "idx" | "dragOverId" | "itemImageUrl" | "token" | "onDragStart" | "onDragEnter" | "onDragEnd" | "onImageUploaded">) {
   const { text, muted, muted2, selectBg } = theme;
 
   return (
