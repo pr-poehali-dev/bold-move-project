@@ -194,6 +194,7 @@ export function CategoryFunctionsButton({
 
   // Суммарный «статус» для кнопки
   const label = !isMaterial ? "не в закупке" : !isWall ? "на полотно" : !showInDrum ? "скрыта" : "функции";
+  // (isWall=true → к стенам; isWall=false → на полотно — тогл показывает "включено = на полотно")
 
   const ToggleRow = ({ active, color, label: lbl, sub, onClick }: {
     active: boolean; color: string; label: string; sub: string; onClick: () => void;
@@ -246,9 +247,9 @@ export function CategoryFunctionsButton({
           />
           {sep}
           <ToggleRow
-            active={isWall} color="bg-violet-500"
-            label={isWall ? "К стенам" : "На полотно"}
-            sub={isWall ? "Товар крепится к стенам" : "Товар на полотне"}
+            active={!isWall} color="bg-amber-500"
+            label="На полотно"
+            sub={!isWall ? "Товар на полотне потолка" : "Товар крепится к стенам"}
             onClick={() => toggle("wall")}
           />
           {sep}

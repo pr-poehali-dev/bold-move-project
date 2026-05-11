@@ -61,7 +61,7 @@ export default function TabPriceCategoryBlock({
     <div>
       {/* Заголовок категории */}
       <div className="flex items-center justify-between mb-2 px-1 group">
-        <div className="flex items-center gap-2 min-w-0">
+        <div className="flex items-center gap-2 min-w-0 flex-1">
           {/* Картинка категории */}
           {!readOnly && (
             <ImageUploadButton
@@ -88,7 +88,7 @@ export default function TabPriceCategoryBlock({
             />
           ) : (
             <h3
-              className={`${isDark ? "text-violet-300 hover:text-violet-200" : "text-violet-600 hover:text-violet-700"} text-xs font-semibold uppercase tracking-wider cursor-pointer transition flex items-center gap-1.5`}
+              className={`${isDark ? "text-violet-300 hover:text-violet-200" : "text-violet-600 hover:text-violet-700"} text-xs font-semibold uppercase tracking-wider cursor-pointer transition flex items-center gap-1.5 shrink-0`}
               onClick={() => { onSetEditingCat(category); onSetEditingCatVal(category); }}
               title="Нажмите чтобы переименовать группу"
             >
@@ -96,6 +96,25 @@ export default function TabPriceCategoryBlock({
               <Icon name="Pencil" size={10} className="opacity-0 group-hover:opacity-40 transition" />
             </h3>
           )}
+
+          {/* Бейджи активных функций */}
+          <div className="flex items-center gap-1 ml-1">
+            {!isMaterial && (
+              <span className={`text-[9px] px-1.5 py-0.5 rounded-full border font-medium ${
+                isDark ? "bg-white/5 border-white/10 text-white/30" : "bg-gray-100 border-gray-200 text-gray-400"
+              }`}>не в закупке</span>
+            )}
+            {!isWall && (
+              <span className={`text-[9px] px-1.5 py-0.5 rounded-full border font-medium ${
+                isDark ? "bg-amber-500/15 border-amber-500/25 text-amber-400" : "bg-amber-50 border-amber-200 text-amber-600"
+              }`}>на полотно</span>
+            )}
+            {!showInDrum && (
+              <span className={`text-[9px] px-1.5 py-0.5 rounded-full border font-medium ${
+                isDark ? "bg-white/5 border-white/10 text-white/25" : "bg-gray-100 border-gray-200 text-gray-400"
+              }`}>скрыта</span>
+            )}
+          </div>
         </div>
         {!readOnly && (
           <CategoryFunctionsButton
