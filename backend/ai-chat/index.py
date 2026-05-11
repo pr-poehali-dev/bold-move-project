@@ -1009,9 +1009,97 @@ def _apply_edit_patch(prev_items: list, patch: dict, price_map: dict) -> list:
     return result
 
 
+def _calc_bundle_qty(trigger_qty: float, bundle_rule: dict) -> float:
+    """Вычисляет qty для bundle-позиции на основе calc_rule из БД.
+
+    Читает calc_rule текстом и применяет логику:
+    - 'кратно Nм' / 'кратно N м' → округляет вверх до кратного N, возвращает кол-во единиц
+    - 'до Xм → Yвт' / 'до X м → Y вт' → выбирает нужную мощность по длине (всегда qty=1)
+    - '1 шт' / 'количество = 1' → фиксировано 1
+    - иначе → qty триггера как есть
+    """
+    calc = (bundle_rule.get('calc_rule') or '').lower()
+    unit = (bundle_rule.get('unit') or '').lower()
+
+    # Паттерн: "кратно 5м" — лента продаётся катушками по N метров
+    m = re.search(r'кратно\s+(\d+)\s*м', calc)
+    if m:
+        step = int(m.group(1))
+        import math
+        rolls = math.ceil(trigger_qty / step)
+        print(f"[bundle] calc кратно {step}м: {trigger_qty}м → {rolls} катушек")
+        return max(1, rolls)
+
+    # Паттерн: "до Xм → Yвт" — блок питания по мощности исходя из длины ленты
+    # Ищем все пары "до X м → Y вт" и выбираем первый подходящий
+    pairs = re.findall(r'до\s+(\d+)\s*м[^→]*→\s*(\d+)\s*вт', calc)
+    if pairs:
+        for limit_str, _ in sorted(pairs, key=lambda p: int(p[0])):
+            limit = int(limit_str)
+            if trigger_qty <= limit:
+                print(f"[bundle] calc блок питания: {trigger_qty}м ленты → до {limit}м блок")
+                return 1
+        # Если длина больше всех лимитов — берём последний (самый мощный)
+        print(f"[bundle] calc блок питания: {trigger_qty}м ленты → максимальный блок")
+        return 1
+
+    # Паттерн: "1 шт" или "количество = 1"
+    if re.search(r'количество\s*=\s*1|фиксированно\s+1|\b1\s+шт', calc):
+        return 1
+
+    # По умолчанию — qty триггера
+    return trigger_qty
+
+
+def _select_bundle_item_by_calc(bundle_ids: list, id_to_rule: dict, trigger_qty: float) -> list:
+    """Если среди bundle несколько позиций с паттерном 'до Xм → Yвт' (блоки питания),
+    выбирает только ОДИН подходящий по мощности вместо всех сразу.
+    Остальные позиции без этого паттерна добавляются все.
+    """
+    power_group = []
+    regular = []
+
+    for bid in bundle_ids:
+        rule = id_to_rule.get(bid)
+        if not rule:
+            continue
+        calc = (rule.get('calc_rule') or '').lower()
+        if re.search(r'до\s+\d+\s*м[^→]*→\s*\d+\s*вт', calc):
+            power_group.append(rule)
+        else:
+            regular.append(rule)
+
+    result = list(regular)
+
+    if power_group:
+        # Сортируем по лимиту (до Xм) по возрастанию, выбираем первый подходящий
+        def get_min_limit(r):
+            pairs = re.findall(r'до\s+(\d+)\s*м', (r.get('calc_rule') or '').lower())
+            return int(pairs[0]) if pairs else 9999
+        power_group_sorted = sorted(power_group, key=get_min_limit)
+        chosen = None
+        for r in power_group_sorted:
+            pairs = re.findall(r'до\s+(\d+)\s*м', (r.get('calc_rule') or '').lower())
+            limit = int(pairs[0]) if pairs else 9999
+            if trigger_qty <= limit:
+                chosen = r
+                break
+        if not chosen:
+            chosen = power_group_sorted[-1]  # самый мощный
+        print(f"[bundle] выбран блок: {chosen['name']} для {trigger_qty}м ленты")
+        result.append(chosen)
+
+    return result
+
+
 def _apply_bundles(items: list, rules: list) -> list:
-    """Правило 4: если в смете есть товар с bundle — проверяем, что все bundle-позиции тоже есть.
-    Если какой-то позиции нет — добавляем автоматически с qty равным qty триггерного товара.
+    """Применяет bundle-правила: если в смете есть позиция с bundle —
+    автоматически добавляет сопутствующие позиции с учётом их calc_rule из БД.
+
+    Логика qty читается из calc_rule каждой bundle-позиции:
+    - лента: 'кратно 5м' → кол-во катушек (8м → 2 катушки)
+    - блок питания: 'до 5м → 100вт' → выбирает нужный блок, qty=1
+    - остальные: qty = qty триггера
     """
     if not rules or not items:
         return items
@@ -1041,15 +1129,33 @@ def _apply_bundles(items: list, rules: list) -> list:
         if not bundle_ids:
             continue
 
-        for bid in bundle_ids:
-            bundle_rule = id_to_rule.get(bid)
-            if not bundle_rule:
-                continue
+        trigger_qty = float(item.get('qty', 1))
+
+        # Сначала добавляем ленту (не блоки), считаем сколько метров ленты получилось
+        tape_qty = trigger_qty  # по умолчанию = длина профиля
+        selected_rules = _select_bundle_item_by_calc(bundle_ids, id_to_rule, trigger_qty)
+
+        for bundle_rule in selected_rules:
             bundle_name_low = bundle_rule['name'].lower().strip()
             if bundle_name_low in existing_names:
                 continue
-            # Определяем qty: для ленты/блоков берём qty парящего профиля
-            qty = item.get('qty', 1)
+
+            calc = (bundle_rule.get('calc_rule') or '').lower()
+            is_tape = bool(re.search(r'кратно\s+\d+\s*м', calc))
+            is_power = bool(re.search(r'до\s+\d+\s*м[^→]*→\s*\d+\s*вт', calc))
+
+            if is_tape:
+                qty = _calc_bundle_qty(trigger_qty, bundle_rule)
+                # Запоминаем реальный метраж ленты для выбора блока питания
+                step_m = re.search(r'кратно\s+(\d+)\s*м', calc)
+                if step_m:
+                    tape_qty = qty * int(step_m.group(1))
+            elif is_power:
+                # Блок выбирается по кол-ву метров ленты (tape_qty), а не по длине профиля
+                qty = _calc_bundle_qty(tape_qty, bundle_rule)
+            else:
+                qty = _calc_bundle_qty(trigger_qty, bundle_rule)
+
             items_to_add.append({
                 'name': bundle_rule['name'],
                 'qty': qty,
@@ -1058,7 +1164,7 @@ def _apply_bundles(items: list, rules: list) -> list:
                 'category': bundle_rule.get('category', ''),
             })
             existing_names.add(bundle_name_low)
-            print(f"[bundle] auto-added: {bundle_rule['name']} qty={qty} (triggered by {item.get('name')})")
+            print(f"[bundle] auto-added: {bundle_rule['name']} qty={qty} (triggered by {item.get('name')} qty={trigger_qty})")
 
     return items + items_to_add
 
