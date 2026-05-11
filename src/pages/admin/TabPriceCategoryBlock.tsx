@@ -17,6 +17,7 @@ interface Props {
   aiLoadingId: number | null;
   aiDescLoadingId: number | null;
   addingInCat: string | null;
+  addingItem?: boolean;
   newItem: typeof EMPTY_NEW;
   editingCat: string | null;
   editingCatVal: string;
@@ -43,7 +44,7 @@ export default function TabPriceCategoryBlock({
   category, items, isDark, readOnly, theme,
   dragOverId, itemImages, catImages,
   aiLoadingId, aiDescLoadingId,
-  addingInCat, newItem, editingCat, editingCatVal,
+  addingInCat, addingItem, newItem, editingCat, editingCatVal,
   onDragStart, onDragEnter, onDragEnd,
   onToggleActive, onSaveField, onDelete,
   onGenerateDescription, onGenerateSynonyms,
@@ -229,19 +230,29 @@ export default function TabPriceCategoryBlock({
                 className={`${bgInput} border ${borderInput} rounded-lg px-3 py-1.5 ${text} text-sm outline-none focus:border-violet-500`}
               />
             </div>
-            <div className="flex gap-2 pb-0.5">
+            <div className="flex gap-2 pb-0.5 items-center">
               <button
                 onClick={() => onAddItem(category)}
-                className="bg-violet-600 hover:bg-violet-700 text-white rounded-lg px-4 py-1.5 text-sm transition"
+                disabled={addingItem}
+                className="bg-violet-600 hover:bg-violet-700 disabled:opacity-60 disabled:cursor-not-allowed text-white rounded-lg px-4 py-1.5 text-sm transition flex items-center gap-2"
               >
-                Добавить
+                {addingItem ? (
+                  <>
+                    <Icon name="Loader2" size={14} className="animate-spin" />
+                    Добавляю «{newItem.name.trim()}»...
+                  </>
+                ) : (
+                  "Добавить"
+                )}
               </button>
-              <button
-                onClick={() => { onSetAddingInCat(null); onSetNewItem(() => ({ ...EMPTY_NEW })); }}
-                className={`${muted} hover:${text} text-sm transition`}
-              >
-                Отмена
-              </button>
+              {!addingItem && (
+                <button
+                  onClick={() => { onSetAddingInCat(null); onSetNewItem(() => ({ ...EMPTY_NEW })); }}
+                  className={`${muted} hover:${text} text-sm transition`}
+                >
+                  Отмена
+                </button>
+              )}
             </div>
           </div>
         ) : (

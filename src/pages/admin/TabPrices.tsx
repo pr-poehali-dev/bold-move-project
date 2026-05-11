@@ -59,19 +59,25 @@ export default function TabPrices({ token, onItemAdded, isDark = true, readOnly 
   // ── Добавление позиции ─────────────────────────────────────────────────────
   const [addingInCat, setAddingInCat] = useState<string | null>(null);
   const [newItem,     setNewItem]     = useState(EMPTY_NEW);
+  const [addingItem,  setAddingItem]  = useState(false);
 
   const handleAddItem = async (category: string) => {
-    if (!newItem.name.trim()) return;
-    const r = await apiFetch("prices", {
-      method: "POST",
-      body: JSON.stringify({
-        ...newItem,
-        category,
-        price: parseInt(newItem.price) || 0,
-        purchase_price: parseInt(newItem.purchase_price) || 0,
-      }),
-    }, token);
-    if (r.ok) { setAddingInCat(null); setNewItem(EMPTY_NEW); load(); onItemAdded?.(newItem.name.trim()); }
+    if (!newItem.name.trim() || addingItem) return;
+    setAddingItem(true);
+    try {
+      const r = await apiFetch("prices", {
+        method: "POST",
+        body: JSON.stringify({
+          ...newItem,
+          category,
+          price: parseInt(newItem.price) || 0,
+          purchase_price: parseInt(newItem.purchase_price) || 0,
+        }),
+      }, token);
+      if (r.ok) { setAddingInCat(null); setNewItem(EMPTY_NEW); load(); onItemAdded?.(newItem.name.trim()); }
+    } finally {
+      setAddingItem(false);
+    }
   };
 
   // ── Добавление категории ───────────────────────────────────────────────────
@@ -126,6 +132,7 @@ export default function TabPrices({ token, onItemAdded, isDark = true, readOnly 
           aiLoadingId={aiLoadingId}
           aiDescLoadingId={aiDescLoadingId}
           addingInCat={addingInCat}
+          addingItem={addingItem}
           newItem={newItem}
           editingCat={editingCat}
           editingCatVal={editingCatVal}
