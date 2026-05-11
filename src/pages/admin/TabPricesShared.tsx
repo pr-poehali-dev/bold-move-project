@@ -65,7 +65,7 @@ export function ImageUploadButton({
           body: JSON.stringify({ image: b64, content_type: file.type }),
         });
         const data = await res.json();
-        if (data.url) onUploaded(data.url);
+        if (data.url) onUploaded(data.url + "?t=" + Date.now());
       } finally {
         setLoading(false);
       }
