@@ -39,12 +39,8 @@ export default function ActiveItemPopup({
 
   const total = totalByPriceId(item.priceId);
 
-  // Количество на одной стене (не суммарное) — то что реально меняем
-  const perWallQty = (() => {
-    const seg = segments.find(s => (s.items ?? []).some(it => it.priceId === item.priceId));
-    const found = seg?.items?.find(it => it.priceId === item.priceId);
-    return Math.round((found?.quantity ?? 1) * 100) / 100;
-  })();
+  // Суммарное количество по всем стенам — то что показываем и меняем
+  const perWallQty = total > 0 ? total : 1;
 
   const unit = item.unit || "";
   const onAllSegs = isItemOnAllSegs(item.priceId);
