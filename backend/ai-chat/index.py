@@ -902,6 +902,44 @@ def _render_estimate_from_items(items: list, area: float = 0) -> str:
             blocks[block] = []
         blocks[block].append(it)
 
+    # ── Детерминированное вычитание парящего/теневого из стандартного профиля ──
+    # Находим суммарную длину парящих и теневых профилей
+    _FLOATING_KEYWORDS = ['парящий', 'flexy', 'fly', 'пк-6']
+    _SHADOW_KEYWORDS   = ['теневой', 'eurokraab', 'тень']
+    _STANDARD_KEYWORDS = ['стеновой алюминиевый', 'потолочный алюминиевый', 'стеновой пвх']
+
+    floating_total_len = 0.0
+    shadow_total_len   = 0.0
+    for it in items:
+        n = it['name'].lower()
+        if any(w in n for w in _FLOATING_KEYWORDS) and 'монтаж' not in n:
+            floating_total_len += float(it.get('qty', 0))
+        if any(w in n for w in _SHADOW_KEYWORDS) and 'монтаж' not in n:
+            shadow_total_len += float(it.get('qty', 0))
+
+    deduct_len = floating_total_len + shadow_total_len
+
+    if deduct_len > 0:
+        for it in items:
+            n = it['name'].lower()
+            if any(n == kw for kw in _STANDARD_KEYWORDS):
+                new_qty = max(0, float(it['qty']) - deduct_len)
+                if new_qty != float(it['qty']):
+                    print(f"[profile] deduct {deduct_len}м from '{it['name']}': {it['qty']} → {new_qty}")
+                    it['qty'] = new_qty
+
+    def _pluralize_unit(unit: str, qty) -> str:
+        """Склоняет единицу измерения под количество."""
+        q = abs(float(qty))
+        if unit == 'катушка':
+            if q == 1:
+                return 'катушка'
+            elif 2 <= q <= 4:
+                return 'катушки'
+            else:
+                return 'катушек'
+        return unit
+
     lines = []
     block_num = 1
     standard = 0
@@ -913,7 +951,7 @@ def _render_estimate_from_items(items: list, area: float = 0) -> str:
         for it in blocks[block_name]:
             qty = it['qty']
             price = int(it['price'])
-            unit = it.get('unit', 'шт')
+            unit = _pluralize_unit(it.get('unit', 'шт'), qty)
             discount = float(it.get('_discount') or 0)
             total = round(qty * price * (1 - discount / 100))
             standard += total

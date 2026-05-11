@@ -1,7 +1,7 @@
 export interface LLMItem { name: string; qty: number; price: number; unit?: string; }
 
 export const MUL_RE = /[×xх]/;
-export const UNITS = "м²|м2|мп|пм|пог\\.?м|шт\\.?|шт|%|м\\.п\\.?|м";
+export const UNITS = "м²|м2|мп|пм|пог\\.?м|катушек|катушки|катушка|шт\\.?|шт|%|м\\.п\\.?|м";
 
 export function isEstimate(text: string) {
   return (
@@ -85,7 +85,7 @@ export function parseEstimateBlocks(text: string) {
       }
 
       const calcBackend = cleanLine.match(new RegExp(
-        `^(.+?)\\s{2,}(\\d[\\d\\s,.]*\\s*(?:м²|м2|мп|пм|пог\\.?м|шт\\.?|шт|%|м\\.п\\.?|м)?\\s*${MUL}\\s*[\\d\\s,.]+\\s*[₽Рруб].*)`
+        `^(.+?)\\s{2,}(\\d[\\d\\s,.]*\\s*(?:м²|м2|мп|пм|пог\\.?м|катушек|катушки|катушка|шт\\.?|шт|%|м\\.п\\.?|м)?\\s*${MUL}\\s*[\\d\\s,.]+\\s*[₽Рруб].*)`
       ));
       if (calcBackend) {
         current.items.push({ name: calcBackend[1].trim(), value: calcBackend[2].trim() });
