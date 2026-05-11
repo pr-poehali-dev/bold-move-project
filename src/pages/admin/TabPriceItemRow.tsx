@@ -16,6 +16,7 @@ interface RowProps {
   itemImageUrl: string | undefined;
   aiLoadingId: number | null;
   aiDescLoadingId: number | null;
+  token?: string;
   onDragStart: (item: PriceItem) => void;
   onDragEnter: (item: PriceItem) => void;
   onDragEnd: () => void;
@@ -31,7 +32,7 @@ interface RowProps {
 
 export function PriceItemRow({
   item, idx, isDark, readOnly, theme, dragOverId,
-  itemImageUrl, aiLoadingId, aiDescLoadingId,
+  itemImageUrl, aiLoadingId, aiDescLoadingId, token,
   onDragStart, onDragEnter, onDragEnd, onToggleActive,
   onSaveField, onDelete, onGenerateDescription, onGenerateSynonyms, onImageUploaded,
 }: RowProps) {
@@ -125,6 +126,7 @@ export function PriceItemRow({
               currentUrl={itemImageUrl ?? (item as PriceItem & { image_url?: string }).image_url}
               uploadEndpoint={`${IMAGE_URL}?type=item&id=${item.id}`}
               isDark={isDark}
+              token={token}
               onUploaded={url => onImageUploaded(item, url)}
             />
           )}

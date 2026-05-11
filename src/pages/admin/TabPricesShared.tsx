@@ -43,11 +43,13 @@ export function ImageUploadButton({
   uploadEndpoint,
   onUploaded,
   isDark,
+  token,
 }: {
   currentUrl?: string | null;
   uploadEndpoint: string;
   onUploaded: (url: string) => void;
   isDark: boolean;
+  token?: string;
 }) {
   const [loading, setLoading] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -59,9 +61,11 @@ export function ImageUploadButton({
     reader.onload = async () => {
       const b64 = reader.result as string;
       try {
+        const headers: Record<string, string> = { "Content-Type": "application/json" };
+        if (token) headers["Authorization"] = `Bearer ${token}`;
         const res = await fetch(uploadEndpoint, {
           method: "PUT",
-          headers: { "Content-Type": "application/json" },
+          headers,
           body: JSON.stringify({ image: b64, content_type: file.type }),
         });
         const data = await res.json();

@@ -68,6 +68,7 @@ export default function TabPriceCategoryBlock({
               currentUrl={catImages[category]}
               uploadEndpoint={`${IMAGE_URL}?type=category&category=${encodeURIComponent(category)}`}
               isDark={isDark}
+              token={token}
               onUploaded={url => onCatImageUploaded(category, url)}
             />
           )}
@@ -140,6 +141,7 @@ export default function TabPriceCategoryBlock({
                 itemImageUrl={itemImages[item.id]}
                 aiLoadingId={aiLoadingId}
                 aiDescLoadingId={aiDescLoadingId}
+                token={token}
                 onDragStart={onDragStart}
                 onDragEnter={onDragEnter}
                 onDragEnd={onDragEnd}
