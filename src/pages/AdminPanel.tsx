@@ -21,7 +21,11 @@ export default function AdminPanel() {
   const initialOrderId = new URLSearchParams(window.location.search).get("order")
     ? Number(new URLSearchParams(window.location.search).get("order"))
     : null;
-  const [agentTab, setAgentTab] = useState<AgentSubTab>("prices");
+  const LS_AGENT_TAB_KEY = "admin_agent_tab";
+  const [agentTab, setAgentTabRaw] = useState<AgentSubTab>(
+    (localStorage.getItem(LS_AGENT_TAB_KEY) as AgentSubTab | null) ?? "prices"
+  );
+  const setAgentTab = (tab: AgentSubTab) => { setAgentTabRaw(tab); localStorage.setItem(LS_AGENT_TAB_KEY, tab); };
   const [newItemHint, setNewItemHint] = useState<string | null>(null);
   const [theme, setTheme] = useState<Theme>("dark");
   const toggleTheme = () => setTheme(t => t === "dark" ? "light" : "dark");
@@ -48,9 +52,11 @@ export default function AdminPanel() {
     corrections: { view: hasPermission(user, "corrections_view"), edit: hasPermission(user, "corrections_edit") },
   } as const;
 
-  // mainTab — из URL-параметра ?tab=... или первая доступная
+  // mainTab — из URL-параметра ?tab=... или из localStorage или первая доступная
   const urlTab = new URLSearchParams(window.location.search).get("tab") as MainTab | null;
-  const [mainTab, setMainTab] = useState<MainTab>(urlTab ?? "crm");
+  const LS_TAB_KEY = "admin_main_tab";
+  const savedTab = localStorage.getItem(LS_TAB_KEY) as MainTab | null;
+  const [mainTab, setMainTab] = useState<MainTab>(urlTab ?? savedTab ?? "crm");
 
   useEffect(() => {
     if (loading || !user) return;
@@ -59,14 +65,16 @@ export default function AdminPanel() {
       hasPermission(user, "agent_view"),
       user.role === "company" || !!user.is_master,
     );
-    const target = urlTab && allowed.find(t => t.id === urlTab) ? urlTab : allowed[0]?.id ?? "crm";
-    setMainTab(target);
+    const preferred = urlTab ?? savedTab;
+    const target = preferred && allowed.find(t => t.id === preferred) ? preferred : allowed[0]?.id ?? "crm";
+    setMainTab(target as MainTab);
   }, [loading, user?.id]);  // eslint-disable-line react-hooks/exhaustive-deps
 
   const safeSetMainTab = (tab: MainTab) => {
     const allowed = mainTabs.map(t => t.id);
-    if (allowed.includes(tab)) { setMainTab(tab); return; }
-    setMainTab(mainTabs[0]?.id ?? "crm");
+    const next = allowed.includes(tab) ? tab : (mainTabs[0]?.id ?? "crm");
+    setMainTab(next);
+    localStorage.setItem(LS_TAB_KEY, next);
   };
 
   useEffect(() => {
