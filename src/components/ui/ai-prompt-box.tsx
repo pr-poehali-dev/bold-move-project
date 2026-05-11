@@ -33,18 +33,10 @@ export const PromptInputBox = React.forwardRef<HTMLDivElement, Props>(
     const [isRecording, setIsRecording] = React.useState(false);
     const [recTime, setRecTime] = React.useState(0);
     const [speechError, setSpeechError] = React.useState("");
-    const dbg = (_msg: string) => {};
-    // Safari iOS: MediaRecorder+Deepgram. Chrome iOS (CriOS): Web Speech API как Android
-    const isIOS = !/CriOS/i.test(navigator.userAgent) && (
-      /iPad|iPhone|iPod/.test(navigator.userAgent)
-      || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
-    );
     const [bars] = React.useState(() =>
       Array.from({ length: 26 }, () => 0.2 + Math.random() * 0.8)
     );
     const timerRef = React.useRef<ReturnType<typeof setInterval>>();
-    const recognitionRef = React.useRef<SpeechRecognition | null>(null);
-    const stoppedByUserRef = React.useRef(false);
     const mediaRecorderRef = React.useRef<MediaRecorder | null>(null);
     const audioChunksRef = React.useRef<Blob[]>([]);
     const iosStreamRef = React.useRef<MediaStream | null>(null);
@@ -122,68 +114,63 @@ export const PromptInputBox = React.forwardRef<HTMLDivElement, Props>(
     }, [isRecording]);
 
 
-    // Safari iOS: MediaRecorder → Deepgram
-    const startIosRecording = async () => {
-      setSpeechError("");
-      let stream = iosStreamRef.current;
-      if (!stream || stream.getAudioTracks()[0]?.readyState === "ended") {
-        try {
-          stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-          iosStreamRef.current = stream;
-          dbg(`stream ok tracks=${stream.getAudioTracks().length}`);
-        } catch (err) {
-          dbg(`mic err: ${err}`);
-          setSpeechError("Нет доступа к микрофону");
-          return;
-        }
-      }
-      const formats = ["audio/webm;codecs=opus", "audio/webm", "audio/mp4", "audio/ogg", ""];
-      const mimeType = formats.find(m => m === "" || MediaRecorder.isTypeSupported(m)) ?? "";
-      dbg(`mimeType="${mimeType}" trackState=${stream.getAudioTracks()[0]?.readyState}`);
-      const recorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
-      audioChunksRef.current = [];
-      dbg(`recorder.state=${recorder.state}`);
-
-      const transcribeBlob = async (blob: Blob) => {
-        dbg(`blob size=${blob.size} type="${blob.type}" chunks=${audioChunksRef.current.length}`);
-        if (blob.size === 0) { setSpeechError("Пустая запись"); return; }
-        setIsTranscribing(true);
-        try {
-          const buf = await blob.arrayBuffer();
-          const bytes = new Uint8Array(buf);
-          let bin = "";
-          for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
-          const b64 = btoa(bin);
-          // Пробуем Deepgram (быстро), при ошибке — AssemblyAI (резерв)
-          let data: { text?: string; error?: string } = {};
-          let res = await fetch(TRANSCRIBE_URL, {
+    // Универсальная транскрибация через MediaRecorder (работает на iOS, Android, Desktop)
+    const transcribeBlob = async (blob: Blob) => {
+      if (blob.size === 0) { setSpeechError("Пустая запись"); return; }
+      setIsTranscribing(true);
+      try {
+        const buf = await blob.arrayBuffer();
+        const bytes = new Uint8Array(buf);
+        let bin = "";
+        for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+        const b64 = btoa(bin);
+        // Пробуем Deepgram (быстро), при ошибке — Whisper (резерв)
+        let data: { text?: string; error?: string } = {};
+        let res = await fetch(TRANSCRIBE_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ audio: b64, mimeType: blob.type || "audio/mp4" }),
+        });
+        data = await res.json();
+        if (!data.text && res.status !== 200) {
+          res = await fetch(WHISPER_URL, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ audio: b64, mimeType: blob.type || "audio/mp4" }),
           });
           data = await res.json();
-          if (!data.text && res.status !== 200) {
-            res = await fetch(WHISPER_URL, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ audio: b64, mimeType: blob.type || "audio/mp4" }),
-            });
-            data = await res.json();
-          }
-          if (data.text) onValueChange((value.trim() + " " + data.text).trim());
-          else if (data.error) setSpeechError(`Ошибка: ${data.error}`);
-        } catch {
-          setSpeechError("Ошибка распознавания");
-        } finally {
-          setIsTranscribing(false);
         }
-      };
+        if (data.text) onValueChange((value.trim() + " " + data.text).trim());
+        else if (data.error) setSpeechError(`Ошибка: ${data.error}`);
+      } catch {
+        setSpeechError("Ошибка распознавания");
+      } finally {
+        setIsTranscribing(false);
+      }
+    };
+
+    // MediaRecorder — непрерывная запись до нажатия стоп (без сбросов при паузе)
+    const startRecording = async () => {
+      setSpeechError("");
+      let stream: MediaStream;
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      } catch {
+        setSpeechError("Нет доступа к микрофону");
+        return;
+      }
+      iosStreamRef.current = stream;
+      const formats = ["audio/webm;codecs=opus", "audio/webm", "audio/mp4", "audio/ogg", ""];
+      const mimeType = formats.find(m => m === "" || MediaRecorder.isTypeSupported(m)) ?? "";
+      const recorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
+      audioChunksRef.current = [];
 
       recorder.ondataavailable = (e) => {
-        dbg(`chunk=${e.data.size}`);
         if (e.data.size > 0) audioChunksRef.current.push(e.data);
       };
       recorder.onstop = () => {
+        stream.getTracks().forEach(t => t.stop());
+        iosStreamRef.current = null;
         const blob = new Blob(audioChunksRef.current, { type: mimeType || "audio/mp4" });
         transcribeBlob(blob);
       };
@@ -192,81 +179,9 @@ export const PromptInputBox = React.forwardRef<HTMLDivElement, Props>(
       setIsRecording(true);
     };
 
-    const stopIosRecording = () => {
+    const stopRecording = () => {
       mediaRecorderRef.current?.stop();
       mediaRecorderRef.current = null;
-      setIsRecording(false);
-    };
-
-    // Android/Desktop: Web Speech API
-    const startRecording = () => {
-      if (isIOS) { startIosRecording(); return; }
-      setSpeechError("");
-      const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-      if (!SR) {
-        setSpeechError("Браузер не поддерживает голосовой ввод");
-        return;
-      }
-
-      stoppedByUserRef.current = false;
-      const savedText = { current: value };
-
-      const createAndStart = () => {
-        const recognition = new SR();
-        recognition.lang = "ru-RU";
-        recognition.continuous = true;
-        recognition.interimResults = true;
-
-        let sessionText = "";
-
-        recognition.onresult = (e: SpeechRecognitionEvent) => {
-          let lastFinal = "";
-          let interim = "";
-          for (let i = e.results.length - 1; i >= 0; i--) {
-            if (e.results[i].isFinal) {
-              lastFinal = e.results[i][0].transcript.trim();
-              break;
-            } else {
-              interim = e.results[i][0].transcript + interim;
-            }
-          }
-          if (lastFinal) sessionText = lastFinal;
-          const recognized = (savedText.current + " " + sessionText).trim();
-          onValueChange(interim ? (recognized + " " + interim).trim() : recognized);
-        };
-
-        recognition.onerror = (e: SpeechRecognitionErrorEvent) => {
-          if (e.error === "not-allowed") {
-            setSpeechError("Нет доступа к микрофону");
-            stoppedByUserRef.current = true;
-            setIsRecording(false);
-          }
-        };
-
-        recognition.onend = () => {
-          if (stoppedByUserRef.current) { setIsRecording(false); return; }
-          if (sessionText) savedText.current = (savedText.current + " " + sessionText).trim();
-          sessionText = "";
-          try { createAndStart(); } catch { setIsRecording(false); }
-        };
-
-        recognitionRef.current = recognition;
-        recognition.start();
-      };
-
-      try {
-        createAndStart();
-        setIsRecording(true);
-      } catch {
-        setSpeechError("Не удалось запустить микрофон");
-      }
-    };
-
-    const stopRecording = () => {
-      if (isIOS) { stopIosRecording(); return; }
-      stoppedByUserRef.current = true;
-      recognitionRef.current?.stop();
-      recognitionRef.current = null;
       setIsRecording(false);
     };
 
