@@ -1009,6 +1009,60 @@ def _apply_edit_patch(prev_items: list, patch: dict, price_map: dict) -> list:
     return result
 
 
+def _apply_bundles(items: list, rules: list) -> list:
+    """Правило 4: если в смете есть товар с bundle — проверяем, что все bundle-позиции тоже есть.
+    Если какой-то позиции нет — добавляем автоматически с qty равным qty триггерного товара.
+    """
+    if not rules or not items:
+        return items
+
+    id_to_rule = {r['id']: r for r in rules}
+    name_to_rule = {}
+    for r in rules:
+        name_to_rule[r['name'].lower().strip()] = r
+        for syn in (r.get('synonyms') or '').split(','):
+            s = syn.strip().lower()
+            if s:
+                name_to_rule[s] = r
+
+    existing_names = {it.get('name', '').lower().strip() for it in items}
+
+    items_to_add = []
+    for item in items:
+        item_name_low = item.get('name', '').lower().strip()
+        rule = name_to_rule.get(item_name_low)
+        if not rule:
+            continue
+        bundle_raw = rule.get('bundle') or '[]'
+        try:
+            bundle_ids = json.loads(bundle_raw)
+        except Exception:
+            continue
+        if not bundle_ids:
+            continue
+
+        for bid in bundle_ids:
+            bundle_rule = id_to_rule.get(bid)
+            if not bundle_rule:
+                continue
+            bundle_name_low = bundle_rule['name'].lower().strip()
+            if bundle_name_low in existing_names:
+                continue
+            # Определяем qty: для ленты/блоков берём qty парящего профиля
+            qty = item.get('qty', 1)
+            items_to_add.append({
+                'name': bundle_rule['name'],
+                'qty': qty,
+                'price': bundle_rule.get('price', 0),
+                'unit': bundle_rule.get('unit', 'шт'),
+                'category': bundle_rule.get('category', ''),
+            })
+            existing_names.add(bundle_name_low)
+            print(f"[bundle] auto-added: {bundle_rule['name']} qty={qty} (triggered by {item.get('name')})")
+
+    return items + items_to_add
+
+
 def _patch_answer_with_prices(answer: str, llm_items: list, rules: list | None = None) -> str:
     """Патчит ответ LLM — заменяет цены на актуальные из БД.
 
@@ -1729,6 +1783,11 @@ mounting_unit: пог.м или шт"""
 
         # ─── ПАТЧ ТЕКСТА: цены из БД приоритетнее JSON LLM ──────────────────
         llm_items_list = llm_items_json.get('items', []) if llm_items_json else []
+
+        # ─── ПРАВИЛО 4: bundle — автодобавление ленты/блоков при парящем ─────
+        if _rules_for_suggestions:
+            llm_items_list = _apply_bundles(llm_items_list, _rules_for_suggestions)
+
         answer = _patch_answer_with_prices(answer, llm_items_list, _rules_for_suggestions)
 
         # ─── НАДБАВКИ: позиции с unit='%' пересчитываем от суммы монтажа ────
