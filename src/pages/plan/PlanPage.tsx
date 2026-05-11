@@ -344,6 +344,10 @@ export default function PlanPage() {
         anyPanelOpen={sheetOpen || sidebarOpen || rightPanelOpen || catalog.catalogOpen || exportOpen || libraryOpen || authOpen || bottomSettingsOpen}
         onTapActiveId={catalog.setTapActiveId}
         onRemoveActiveItem={catalog.removeActiveItem}
+        onAssignToAllSegs={catalog.assignItemToAllSegs}
+        onRemoveFromAllSegs={catalog.removeItemFromAllSegs}
+        isItemOnAllSegs={catalog.isItemOnAllSegs}
+        hasSegments={state.isClosed && state.segments.length > 0}
       />
     </div>
   );

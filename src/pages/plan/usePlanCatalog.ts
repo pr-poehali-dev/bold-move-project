@@ -28,7 +28,10 @@ export interface PlanCatalogState {
   attachedCount: number;
   findClosestSeg: (clientX: number, clientY: number, useLargeThreshold?: boolean) => string | null;
   assignItemToSeg: (item: SegmentPriceItem, segId: string) => void;
+  assignItemToAllSegs: (item: SegmentPriceItem) => void;
+  removeItemFromAllSegs: (priceId: number) => void;
   removeActiveItem: (priceId: number) => void;
+  isItemOnAllSegs: (priceId: number) => boolean;
   // Модалка для добавления на полотно
   pendingFloorItem: SegmentPriceItem | null;
   setPendingFloorItem: (item: SegmentPriceItem | null) => void;
@@ -121,6 +124,35 @@ export function usePlanCatalog(
     setActiveItems(prev => prev.filter(it => it.priceId !== priceId));
     setTapActiveId(prev => (prev === priceId ? null : prev));
   }, [stateRef, push]);
+
+  // Добавить товар на все стены (quantity = длина каждой стены)
+  const assignItemToAllSegs = useCallback((item: SegmentPriceItem) => {
+    const s = stateRef.current;
+    const newSegments = s.segments.map(seg => {
+      const existing = seg.items ?? [];
+      if (existing.some(it => it.priceId === item.priceId)) return seg;
+      const meters = seg.lengthCm ? Math.round(seg.lengthCm / 100 * 100) / 100 : 1;
+      return { ...seg, items: [...existing, { ...item, quantity: meters }] };
+    });
+    push({ ...s, segments: newSegments });
+  }, [stateRef, push]);
+
+  // Удалить товар только со всех стен (карточку НЕ убираем)
+  const removeItemFromAllSegs = useCallback((priceId: number) => {
+    const s = stateRef.current;
+    const newSegments = s.segments.map(seg => ({
+      ...seg,
+      items: (seg.items ?? []).filter(it => it.priceId !== priceId),
+    }));
+    push({ ...s, segments: newSegments });
+  }, [stateRef, push]);
+
+  // Проверить: товар стоит на всех стенах?
+  const isItemOnAllSegs = useCallback((priceId: number): boolean => {
+    const s = stateRef.current;
+    if (!s.segments.length) return false;
+    return s.segments.every(seg => (seg.items ?? []).some(it => it.priceId === priceId));
+  }, [stateRef]);
 
   // Утилита: точка (cx,cy) в canvas-координатах внутри полигона?
   const isInsidePolygon = useCallback((clientX: number, clientY: number): boolean => {
@@ -381,7 +413,7 @@ export function usePlanCatalog(
     hoverSegId, setHoverSegId,
     filterAttached, setFilterAttached,
     attachedCount,
-    findClosestSeg, assignItemToSeg, removeActiveItem,
+    findClosestSeg, assignItemToSeg, assignItemToAllSegs, removeItemFromAllSegs, removeActiveItem, isItemOnAllSegs,
     pendingFloorItem, setPendingFloorItem, confirmFloorItem,
     editingFloorId, setEditingFloorId, editingFloorItem, confirmEditFloorItem,
   };
