@@ -1,7 +1,11 @@
+import { useState } from "react";
 import Icon from "@/components/ui/icon";
 import BundleSelector from "./BundleSelector";
 import type { RuleItem } from "./RuleTypes";
 import type { PriceItem } from "./types";
+import func2url from "@/../backend/func2url.json";
+
+const PAGE_AI_URL = (func2url as Record<string, string>)["page-ai"];
 
 interface BundleModalState {
   ids: number[];
@@ -19,6 +23,58 @@ interface Props {
 }
 
 export default function BundleModal({ item, prices, state, onChange, onSave, onClose }: Props) {
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiError, setAiError] = useState<string | null>(null);
+
+  const handleAutoSuggest = async () => {
+    setAiLoading(true);
+    setAiError(null);
+    try {
+      const pricesList = prices
+        .filter(p => p.id !== item.id)
+        .map(p => `id=${p.id} | ${p.name} | ${p.category}`)
+        .join("\n");
+
+      const prompt = `Ты помощник по настройке прайса натяжных потолков.
+
+Позиция: "${item.name}" (категория: ${item.category || "не указана"})
+Правило расчёта: ${item.calc_rule || "не задано"}
+Добавляется если: ${item.when_condition || "не задано"}
+
+Список всех позиций прайса (id | название | категория):
+${pricesList}
+
+Задача: определи какие позиции из прайса ОБЯЗАТЕЛЬНО должны добавляться вместе с "${item.name}" автоматически (bundle).
+Например: к парящему профилю → лента + блоки питания + монтаж; к закладной → монтаж закладной; к полотну ПВХ → раскрой + огарпунивание.
+
+Верни ТОЛЬКО JSON массив id позиций без пояснений. Пример: [41, 43, 44, 45]
+Если bundle не нужен — верни пустой массив: []`;
+
+      const res = await fetch(PAGE_AI_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prompt, max_tokens: 200 }),
+      });
+
+      const data = await res.json();
+      const text: string = data.result || data.text || data.answer || "";
+      const match = text.match(/\[[\d,\s]*\]/);
+      if (!match) throw new Error("ИИ не вернул массив");
+
+      const suggested: number[] = JSON.parse(match[0]);
+      const valid = suggested.filter(id => prices.some(p => p.id === id && p.id !== item.id));
+
+      // Объединяем с уже выбранными
+      const merged = Array.from(new Set([...state.ids, ...valid]));
+      onChange({ ids: merged });
+    } catch (e) {
+      setAiError("Не удалось получить предложение от ИИ");
+      console.error(e);
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
@@ -33,10 +89,35 @@ export default function BundleModal({ item, prices, state, onChange, onSave, onC
               Позиции которые добавятся вместе с <span className="text-violet-300">{item.name}</span>
             </p>
           </div>
-          <button onClick={onClose} className="text-white/30 hover:text-white/70 transition flex-shrink-0">
-            <Icon name="X" size={16} />
-          </button>
+          <div className="flex items-center gap-2 flex-shrink-0">
+            <button
+              onClick={handleAutoSuggest}
+              disabled={aiLoading}
+              className="flex items-center gap-1.5 text-xs bg-violet-600/20 hover:bg-violet-600/40 border border-violet-500/30 text-violet-300 px-3 py-1.5 rounded-lg transition disabled:opacity-50"
+              title="ИИ предложит подходящие позиции для комплекта"
+            >
+              {aiLoading
+                ? <Icon name="Loader2" size={12} className="animate-spin" />
+                : <Icon name="Sparkles" size={12} />}
+              Авто
+            </button>
+            <button onClick={onClose} className="text-white/30 hover:text-white/70 transition">
+              <Icon name="X" size={16} />
+            </button>
+          </div>
         </div>
+
+        {aiError && (
+          <p className="text-red-400 text-xs bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2">
+            {aiError}
+          </p>
+        )}
+
+        {aiLoading && (
+          <p className="text-violet-300/60 text-xs text-center py-2">
+            ИИ анализирует позицию и подбирает комплект...
+          </p>
+        )}
 
         <BundleSelector
           prices={prices}
