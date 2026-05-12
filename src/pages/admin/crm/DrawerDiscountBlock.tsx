@@ -347,8 +347,8 @@ export function DrawerDiscountBlock({ data, customFinRows, onContractSumUpdated,
         items: block.items.map(item => {
           const p = parseValue(item.value);
           if (!p) return item;
-          const newPrice = Math.round(p.price * totalMult);
-          const newTotal = Math.round(p.qty * newPrice);
+          const newTotal = Math.round(p.qty * p.price * totalMult);
+          const newPrice = p.qty > 0 ? Math.round(newTotal / p.qty) : Math.round(p.price * totalMult);
           return { ...item, value: `${p.qty} ${p.unit} × ${newPrice} ₽ = ${fmtEst(newTotal)} ₽` };
         }),
       }));
@@ -398,8 +398,8 @@ export function DrawerDiscountBlock({ data, customFinRows, onContractSumUpdated,
         items: block.items.map(item => {
           const p = parseValue(item.value);
           if (!p) return item;
-          const newPrice = Math.round(p.price * mult);
-          const newTotal = Math.round(p.qty * newPrice);
+          const newTotal = Math.round(p.qty * p.price * mult);
+          const newPrice = p.qty > 0 ? Math.round(newTotal / p.qty) : Math.round(p.price * mult);
           return { ...item, value: `${p.qty} ${p.unit} × ${newPrice} ₽ = ${fmtEst(newTotal)} ₽` };
         }),
       }));
