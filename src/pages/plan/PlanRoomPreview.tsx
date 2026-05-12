@@ -2,7 +2,11 @@ import { useMemo } from "react";
 import type { PlanState, Point, Segment } from "./planTypes";
 import { buildShapePath, calcScale, distPx, midPoint, segmentNormal, pxToCm, polygonArea, polygonPerimeter } from "./planTypes";
 
-const PAD = 16;
+// Логические размеры SVG-холста (viewBox)
+const VW = 300;
+const VH = 200;
+// Отступ внутри логического холста — чтобы подписи углов/длин не обрезались
+const PAD = 32;
 
 export interface RoomMeta {
   areaSqm: number | null;
@@ -48,20 +52,19 @@ export default function PlanRoomPreview({ data, width = 280, height = 160, showM
   const segments: Segment[] = state?.segments ?? [];
   const isClosed = state?.isClosed ?? false;
 
-  // Вычисляем fit: масштаб + смещение чтобы фигура полностью вписалась
+  // Вычисляем fit в логическом пространстве VW×VH
   const { fitScale, offX, offY } = useMemo(() => {
     if (!points.length) return { fitScale: 1, offX: 0, offY: 0 };
     const xs = points.map(p => p.x), ys = points.map(p => p.y);
     const minX = Math.min(...xs), maxX = Math.max(...xs);
     const minY = Math.min(...ys), maxY = Math.max(...ys);
     const pw = maxX - minX || 1, ph = maxY - minY || 1;
-    const s = Math.min((width - PAD * 2) / pw, (height - PAD * 2) / ph);
-    // Центрируем
-    const ox = (width  - pw * s) / 2 - minX * s;
-    const oy = (height - ph * s) / 2 - minY * s;
+    const s = Math.min((VW - PAD * 2) / pw, (VH - PAD * 2) / ph);
+    const ox = (VW - pw * s) / 2 - minX * s;
+    const oy = (VH - ph * s) / 2 - minY * s;
     return { fitScale: s, offX: ox, offY: oy };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [JSON.stringify(points), width, height]);
+  }, [JSON.stringify(points)]);
 
   const planScale = useMemo(() => calcScale(points, segments), [points, segments]);
   const meta = useMemo(() => getRoomMeta(data), [data]);
@@ -121,8 +124,8 @@ export default function PlanRoomPreview({ data, width = 280, height = 160, showM
     <div style={{ width: "100%", height: "100%" }}>
       <svg
         width="100%" height="100%"
-        viewBox={`0 0 ${width} ${height}`}
-        preserveAspectRatio="xMidYMid meet"
+        viewBox={`0 0 ${VW} ${VH}`}
+        preserveAspectRatio="none"
         style={{ display: "block" }}
       >
         <defs>
@@ -130,8 +133,8 @@ export default function PlanRoomPreview({ data, width = 280, height = 160, showM
             <circle cx={0} cy={0} r={0.7} fill="rgba(255,255,255,0.07)"/>
           </pattern>
         </defs>
-        <rect width={width} height={height} fill="#0a0a18"/>
-        <rect width={width} height={height} fill="url(#rp-grid)"/>
+        <rect width={VW} height={VH} fill="#0a0a18"/>
+        <rect width={VW} height={VH} fill="url(#rp-grid)"/>
 
         {/* Фигура в масштабированном пространстве */}
         <g transform={transformStr}>
