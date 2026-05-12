@@ -218,74 +218,52 @@ export default function PlanRoomsScreen({ token, project, onBack, onOpenRoom }: 
                   className="rounded-2xl flex flex-col overflow-visible"
                   style={{ background: "#0e0e1c", border: "1px solid rgba(255,255,255,0.07)" }}
                 >
-                  {/* Шапка: название + меню */}
-                  <div className="flex items-center justify-between px-3 pt-2.5 pb-1 gap-1">
-                    {isEditing ? (
-                      <div className="flex gap-1.5 flex-1">
-                        <input autoFocus value={editName}
-                          onChange={e => setEditName(e.target.value)}
-                          onKeyDown={e => { if (e.key==="Enter") handleRename(room.id); if (e.key==="Escape") setEditingId(null); }}
-                          className="flex-1 min-w-0 rounded-lg px-2 py-0.5 text-[13px] text-white focus:outline-none"
-                          style={{ background: "rgba(255,255,255,0.08)", border: "1px solid rgba(124,58,237,0.4)" }}
-                        />
-                        <button onClick={() => handleRename(room.id)} disabled={savingEdit}
-                          className="w-6 h-6 rounded-lg flex items-center justify-center disabled:opacity-40"
-                          style={{ background: "rgba(124,58,237,0.3)", color: "#a78bfa" }}>
-                          {savingEdit ? <div className="w-3 h-3 border border-violet-400/40 border-t-violet-400 rounded-full animate-spin"/> : <Icon name="Check" size={11}/>}
-                        </button>
-                        <button onClick={() => setEditingId(null)} style={{ color: "rgba(255,255,255,0.3)" }}>
-                          <Icon name="X" size={11}/>
-                        </button>
-                      </div>
-                    ) : (
-                      <span className="font-bold text-[13px] text-white truncate flex-1">{room.name}</span>
-                    )}
-
-                    {!isEditing && (
-                      <div className="relative shrink-0" ref={isMenuOpen ? menuRef : undefined}>
-                        <button onClick={() => setMenuOpenId(isMenuOpen ? null : room.id)}
-                          className="w-6 h-6 rounded-lg flex items-center justify-center transition hover:bg-white/10"
-                          style={{ color: "rgba(255,255,255,0.4)" }}>
-                          <Icon name="MoreVertical" size={14}/>
-                        </button>
-                        {isMenuOpen && (
-                          <div className="absolute right-0 top-7 z-50 rounded-xl py-1 min-w-[160px]"
-                            style={{ background: "#1a1a2e", border: "1px solid rgba(255,255,255,0.1)", boxShadow: "0 8px 24px rgba(0,0,0,0.5)" }}>
-                            <div className="px-3 py-1 text-[10px] font-bold uppercase tracking-wider" style={{ color: "rgba(255,255,255,0.3)" }}>Действия с комнатой</div>
-                            <button onClick={() => { setEditingId(room.id); setEditName(room.name); setMenuOpenId(null); }}
-                              className="w-full flex items-center gap-2 px-3 py-1.5 text-[12px] transition hover:bg-white/[0.06]" style={{ color: "rgba(255,255,255,0.8)" }}>
-                              <Icon name="Pencil" size={13}/> Переименовать
-                            </button>
-                            <button onClick={async () => { setMenuOpenId(null); await duplicateRoom(room); await loadRooms(project.id); }}
-                              className="w-full flex items-center gap-2 px-3 py-1.5 text-[12px] transition hover:bg-white/[0.06]" style={{ color: "rgba(255,255,255,0.8)" }}>
-                              <Icon name="Copy" size={13}/> Дублировать
-                            </button>
-                            <div style={{ height: 1, background: "rgba(255,255,255,0.06)", margin: "2px 0" }}/>
-                            <button onClick={() => { handleDelete(room.id); setMenuOpenId(null); }}
-                              className="w-full flex items-center gap-2 px-3 py-1.5 text-[12px] transition hover:bg-red-500/10" style={{ color: "#f87171" }}>
-                              <Icon name="Trash2" size={13}/> Удалить
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Превью — кликабельное, тёмный фон */}
+                  {/* Превью на весь верх — название + hover overlay */}
                   <button onClick={() => onOpenRoom(room)}
-                    className="relative group mx-2.5 rounded-xl overflow-hidden"
-                    style={{ height: 110 }}>
+                    className="relative group w-full rounded-t-2xl overflow-hidden"
+                    style={{ height: 180 }}>
+                    {/* Живой план */}
                     <div style={{ pointerEvents: "none", width: "100%", height: "100%" }}>
-                      <PlanRoomPreview data={room.data ?? {}} width={300} height={110}/>
+                      <PlanRoomPreview data={room.data ?? {}} width={400} height={180}/>
                     </div>
-                    <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition rounded-xl"
-                      style={{ background: "rgba(0,0,0,0.4)" }}>
+
+                    {/* Название поверх плана — левый нижний угол */}
+                    {!isEditing && (
+                      <div className="absolute bottom-0 left-0 right-0 px-3 py-2"
+                        style={{ background: "linear-gradient(to top, rgba(0,0,0,0.7) 0%, transparent 100%)" }}>
+                        <span className="font-bold text-[13px] text-white drop-shadow">{room.name}</span>
+                      </div>
+                    )}
+
+                    {/* Hover */}
+                    <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition"
+                      style={{ background: "rgba(0,0,0,0.35)" }}>
                       <span className="text-[11px] font-bold text-white px-2.5 py-1 rounded-lg" style={{ background: "rgba(0,0,0,0.6)" }}>Открыть</span>
                     </div>
                   </button>
 
+                  {/* Переименование (если активно) */}
+                  {isEditing && (
+                    <div className="flex gap-1.5 px-2.5 pt-2">
+                      <input autoFocus value={editName}
+                        onChange={e => setEditName(e.target.value)}
+                        onKeyDown={e => { if (e.key==="Enter") handleRename(room.id); if (e.key==="Escape") setEditingId(null); }}
+                        className="flex-1 min-w-0 rounded-lg px-2 py-1 text-[13px] text-white focus:outline-none"
+                        style={{ background: "rgba(255,255,255,0.08)", border: "1px solid rgba(124,58,237,0.4)" }}
+                      />
+                      <button onClick={() => handleRename(room.id)} disabled={savingEdit}
+                        className="w-7 h-7 rounded-lg flex items-center justify-center disabled:opacity-40"
+                        style={{ background: "rgba(124,58,237,0.3)", color: "#a78bfa" }}>
+                        {savingEdit ? <div className="w-3 h-3 border border-violet-400/40 border-t-violet-400 rounded-full animate-spin"/> : <Icon name="Check" size={12}/>}
+                      </button>
+                      <button onClick={() => setEditingId(null)} className="w-7 h-7 flex items-center justify-center" style={{ color: "rgba(255,255,255,0.3)" }}>
+                        <Icon name="X" size={12}/>
+                      </button>
+                    </div>
+                  )}
+
                   {/* Тогглы */}
-                  <div className="px-2.5 pt-2 space-y-1.5">
+                  <div className="px-2.5 pt-2.5 space-y-1.5">
                     {[
                       { key: "include_in_estimate" as const, label: "Включить в смету", val: room.include_in_estimate !== false },
                       { key: "include_drawing" as const,     label: "Чертёж в смете",   val: room.include_drawing !== false },
@@ -311,13 +289,42 @@ export default function PlanRoomsScreen({ token, project, onBack, onOpenRoom }: 
                     </div>
                   )}
 
-                  {/* Кнопка */}
-                  <div className="px-2.5 pt-2 pb-2.5">
-                    <button onClick={() => onOpenRoom(room)}
-                      className="w-full py-2 rounded-xl text-[12px] font-semibold transition hover:opacity-90"
-                      style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.09)", color: "rgba(255,255,255,0.8)" }}>
-                      Открыть план
+                  {/* Низ: кнопка "Варианты" + меню ⋮ */}
+                  <div className="flex items-center gap-2 px-2.5 pt-2 pb-2.5">
+                    {/* Кнопка Варианты (заглушка, логику объяснишь позже) */}
+                    <button className="flex-1 flex items-center justify-between px-3 py-2 rounded-xl text-[12px] font-semibold transition hover:bg-white/[0.06]"
+                      style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.7)" }}>
+                      <span>Вариант 1</span>
+                      <Icon name="ChevronDown" size={13} style={{ color: "rgba(255,255,255,0.4)" }}/>
                     </button>
+
+                    {/* Меню ⋮ */}
+                    <div className="relative shrink-0" ref={isMenuOpen ? menuRef : undefined}>
+                      <button onClick={() => setMenuOpenId(isMenuOpen ? null : room.id)}
+                        className="w-9 h-9 rounded-xl flex items-center justify-center transition hover:bg-white/10"
+                        style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.5)" }}>
+                        <Icon name="MoreHorizontal" size={15}/>
+                      </button>
+                      {isMenuOpen && (
+                        <div className="absolute right-0 bottom-10 z-50 rounded-xl py-1 min-w-[170px]"
+                          style={{ background: "#1a1a2e", border: "1px solid rgba(255,255,255,0.1)", boxShadow: "0 -8px 24px rgba(0,0,0,0.5)" }}>
+                          <div className="px-3 py-1 text-[10px] font-bold uppercase tracking-wider" style={{ color: "rgba(255,255,255,0.3)" }}>Действия с комнатой</div>
+                          <button onClick={() => { setEditingId(room.id); setEditName(room.name); setMenuOpenId(null); }}
+                            className="w-full flex items-center gap-2 px-3 py-1.5 text-[12px] transition hover:bg-white/[0.06]" style={{ color: "rgba(255,255,255,0.8)" }}>
+                            <Icon name="Pencil" size={13}/> Переименовать
+                          </button>
+                          <button onClick={async () => { setMenuOpenId(null); await duplicateRoom(room); await loadRooms(project.id); }}
+                            className="w-full flex items-center gap-2 px-3 py-1.5 text-[12px] transition hover:bg-white/[0.06]" style={{ color: "rgba(255,255,255,0.8)" }}>
+                            <Icon name="Copy" size={13}/> Дублировать
+                          </button>
+                          <div style={{ height: 1, background: "rgba(255,255,255,0.06)", margin: "2px 0" }}/>
+                          <button onClick={() => { handleDelete(room.id); setMenuOpenId(null); }}
+                            className="w-full flex items-center gap-2 px-3 py-1.5 text-[12px] transition hover:bg-red-500/10" style={{ color: "#f87171" }}>
+                            <Icon name="Trash2" size={13}/> Удалить
+                          </button>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
               );
