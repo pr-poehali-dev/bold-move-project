@@ -133,10 +133,14 @@ export function DrawerPLBlock({ data, isHidden, toggleHidden, customFinRows }: {
                 </div>
                 <div className="divide-y" style={{ borderColor: t.border2 }}>
                   {incomeRows.map(r => (
-                    <div key={r.label} className="flex items-center justify-between px-3 py-2">
-                      <span className="text-xs" style={{ color: r.isDiscount ? "#f59e0b" : t.textSub }}>{r.label}</span>
-                      <span className="text-xs font-semibold whitespace-nowrap"
-                        style={{ color: r.isDiscount ? "#f59e0b" : "#10b981" }}>
+                    <div key={r.label}
+                      className="flex items-center justify-between px-3 py-2"
+                      style={r.isDiscount ? { background: "rgba(239,68,68,0.07)", borderLeft: "2px solid #ef4444" } : {}}>
+                      <span className="text-xs font-semibold" style={{ color: r.isDiscount ? "#ef4444" : t.textSub }}>
+                        {r.isDiscount && <span className="mr-1">🏷</span>}{r.label}
+                      </span>
+                      <span className="text-xs font-bold whitespace-nowrap"
+                        style={{ color: r.isDiscount ? "#ef4444" : "#10b981" }}>
                         {r.isDiscount ? `−${fmt(Math.abs(r.value))}` : fmt(r.value)} ₽
                       </span>
                     </div>
@@ -186,10 +190,14 @@ export function DrawerPLBlock({ data, isHidden, toggleHidden, customFinRows }: {
               ) : (
                 <div className="space-y-1.5">
                   {incomeRows.map(r => (
-                    <div key={r.label} className="flex items-center justify-between gap-2">
-                      <span className="text-xs truncate" style={{ color: r.isDiscount ? "#f59e0b" : "#a3a3a3" }}>{r.label}</span>
-                      <span className="text-xs font-semibold whitespace-nowrap"
-                        style={{ color: r.isDiscount ? "#f59e0b" : "#10b981" }}>
+                    <div key={r.label}
+                      className="flex items-center justify-between gap-2"
+                      style={r.isDiscount ? { background: "rgba(239,68,68,0.06)", margin: "0 -4px", padding: "4px 4px", borderRadius: 6, border: "1px solid rgba(239,68,68,0.15)" } : {}}>
+                      <span className="text-xs truncate font-semibold" style={{ color: r.isDiscount ? "#ef4444" : "#a3a3a3" }}>
+                        {r.isDiscount && <span className="mr-1">🏷</span>}{r.label}
+                      </span>
+                      <span className="text-xs font-bold whitespace-nowrap"
+                        style={{ color: r.isDiscount ? "#ef4444" : "#10b981" }}>
                         {r.isDiscount ? `−${fmt(Math.abs(r.value))}` : fmt(r.value)} ₽
                       </span>
                     </div>

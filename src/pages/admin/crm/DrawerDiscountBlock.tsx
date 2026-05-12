@@ -96,8 +96,9 @@ export function DrawerDiscountBlock({ data, customFinRows, onContractSumUpdated 
 
   const discountedIncome = baseIncome * (1 - discount / 100);
   const discountedProfit = discountedIncome - plCosts;
-  const discountedMargin = baseIncome > 0
-    ? Math.round((discountedProfit / baseIncome) * 100)
+  // Маржа считается от discountedIncome — сколько % прибыли остаётся от фактической выручки
+  const discountedMargin = discountedIncome > 0
+    ? Math.round((discountedProfit / discountedIncome) * 100)
     : 0;
 
   // isNegative = только реальный убыток (прибыль < 0)
