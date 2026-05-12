@@ -198,7 +198,7 @@ export function DrawerPLBlock({ data, isHidden, toggleHidden, customFinRows, dis
                 <div className="space-y-1.5">
                   {incomeRows.map(r => (
                     <div key={r.label}
-                      className="flex items-center justify-between gap-2"
+                      className="flex items-center justify-between gap-2 px-1 my-1"
                       style={r.isDiscount ? { background: "rgba(239,68,68,0.06)", margin: "0 -4px", padding: "4px 4px", borderRadius: 6, border: "1px solid rgba(239,68,68,0.15)" } : {}}>
                       <span className="text-xs truncate font-semibold" style={{ color: r.isDiscount ? "#ef4444" : "#a3a3a3" }}>
                         {r.isDiscount && <span className="mr-1">🏷</span>}{r.label}
