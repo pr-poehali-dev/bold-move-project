@@ -68,6 +68,15 @@ export function PriceItemRow({
                 : isDark ? "border-white/20 hover:border-white/40" : "border-gray-300 hover:border-gray-400"
             }`}
           />
+          {!readOnly && (
+            <ImageUploadButton
+              currentUrl={itemImageUrl ?? (item as PriceItem & { image_url?: string }).image_url}
+              uploadEndpoint={`${IMAGE_URL}?type=item&id=${item.id}`}
+              isDark={isDark}
+              token={token}
+              onUploaded={url => onImageUploaded(item, url)}
+            />
+          )}
           <EditableCell value={item.name} onSave={v => onSaveField(item, "name", v)} />
         </div>
       </td>
@@ -119,17 +128,8 @@ export function PriceItemRow({
           </button>
         </div>
       </td>
-      <td className="px-3 py-2.5 w-16">
+      <td className="px-3 py-2.5 w-8">
         <div className="flex items-center gap-1.5 justify-end">
-          {!readOnly && (
-            <ImageUploadButton
-              currentUrl={itemImageUrl ?? (item as PriceItem & { image_url?: string }).image_url}
-              uploadEndpoint={`${IMAGE_URL}?type=item&id=${item.id}`}
-              isDark={isDark}
-              token={token}
-              onUploaded={url => onImageUploaded(item, url)}
-            />
-          )}
           {!readOnly && (
             <button
               onClick={() => onDelete(item)}
