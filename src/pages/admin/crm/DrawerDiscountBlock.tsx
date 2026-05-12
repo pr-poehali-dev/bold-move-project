@@ -283,7 +283,7 @@ export function DrawerDiscountBlock({ data, customFinRows, onContractSumUpdated 
     try {
       const d = await fetch(`${AUTH_URL}?action=estimate-by-chat&chat_id=${data.id}`).then(r => r.json());
       if (!d.estimate) return;
-      // Восстанавливаем сумму до последней скидки напрямую (не пересчёт позиций)
+      // Восстанавливаем сумму до последней скидки — берём напрямую из истории
       const targetSum = lastEntry.contract_sum_before;
       const currentSum = Number(data.contract_sum) || 0;
       const mult = currentSum > 0 ? targetSum / currentSum : 1;
@@ -297,9 +297,8 @@ export function DrawerDiscountBlock({ data, customFinRows, onContractSumUpdated 
           return { ...item, value: `${p.qty} ${p.unit} × ${newPrice} ₽ = ${fmtEst(newTotal)} ₽` };
         }),
       }));
-      let standard = 0;
-      for (const block of newBlocks)
-        for (const item of block.items) { const p = parseValue(item.value); if (p) standard += p.total; }
+      // Используем targetSum напрямую — избегаем накопленных ошибок округления
+      const standard = targetSum;
       const econom  = Math.round(standard * pricingRules.econom_mult);
       const premium = Math.round(standard * pricingRules.premium_mult);
       const newTotals = [
