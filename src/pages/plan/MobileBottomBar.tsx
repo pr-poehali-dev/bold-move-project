@@ -76,7 +76,7 @@ export default function MobileBottomBar({
   ];
 
   return (
-    <div className="absolute left-0 right-0 flex items-end justify-center gap-2 z-20 px-4" style={{ bottom: "72px" }}>
+    <div className="absolute left-0 right-0 flex items-end justify-center gap-2 z-20 px-4" style={{ bottom: "calc(8px + env(safe-area-inset-bottom, 0px))" }}>
 
       {/* 1. Настройки — только мобайл */}
       {isMobile && <div ref={settingsRef} className="relative">
