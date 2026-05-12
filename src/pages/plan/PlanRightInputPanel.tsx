@@ -229,25 +229,23 @@ export default function PlanRightInputPanel({ state, onUpdateSegment, onUpdateDi
 
         {/* Кнопка голосового ввода — стороны */}
         {tab === "sides" && voice.hasSpeech && segments.length > 0 && (
-          <button
-            onClick={voice.toggle}
-            className={`w-full flex items-center justify-center gap-1.5 py-2.5 rounded-xl border text-[12px] font-bold transition-all mb-1 active:scale-[0.97] ${
-              voice.isListening
-                ? "bg-red-500/15 border-red-400/50 text-red-300 animate-pulse"
-                : "border-violet-500/50 text-white hover:brightness-110"
-            }`}
-            style={voice.isListening ? {} : {
-              background: "linear-gradient(135deg, #7c3aed, #6d28d9)",
-              boxShadow: "0 3px 14px rgba(124,58,237,0.4)",
-            }}
-          >
-            <Icon name={voice.isListening ? "MicOff" : "Mic"} size={12} />
-            <span className="truncate">
-              {voice.isListening
-                ? `Слушаю...`
-                : "Диктовать"}
-            </span>
-          </button>
+          <div className="flex justify-center mb-2">
+            <button
+              onClick={voice.toggle}
+              title={voice.isListening ? "Остановить" : "Диктовать размеры"}
+              className={`w-11 h-11 rounded-full flex items-center justify-center transition-all active:scale-[0.93] ${
+                voice.isListening
+                  ? "bg-red-500/20 border border-red-400/50 text-red-300 animate-pulse"
+                  : "text-white hover:brightness-110"
+              }`}
+              style={voice.isListening ? {} : {
+                background: "linear-gradient(135deg, #7c3aed, #6d28d9)",
+                boxShadow: "0 3px 14px rgba(124,58,237,0.45)",
+              }}
+            >
+              <Icon name={voice.isListening ? "MicOff" : "Mic"} size={18} />
+            </button>
+          </div>
         )}
 
         {/* Стороны */}
