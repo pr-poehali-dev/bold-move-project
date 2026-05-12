@@ -51,8 +51,15 @@ export default function PlanRightInputPanel({ state, onUpdateSegment, onUpdateDi
   );
 
   useEffect(() => {
-    setSegValues(segments.map(s => (s.lengthCm != null ? String(s.lengthCm) : "")));
-  }, [segments.length]); // eslint-disable-line react-hooks/exhaustive-deps
+    setSegValues(prev => segments.map((s, i) => {
+      // Если голос/внешний апдейт установил значение — берём из state
+      // Если пользователь сейчас редактирует инпут руками — не перебиваем
+      const fromState = s.lengthCm != null ? String(s.lengthCm) : "";
+      const current = prev[i] ?? "";
+      // Перезаписываем если значение реально изменилось в state
+      return fromState !== "" ? fromState : current;
+    }));
+  }, [segments]);  
 
   // Фокус: на конкретный сегмент (если передан) или первый пустой
   useEffect(() => {
