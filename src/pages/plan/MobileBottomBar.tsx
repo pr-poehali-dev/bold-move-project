@@ -31,7 +31,7 @@ interface Props {
 }
 
 // Стиль единой кнопки — как фиолетовая кнопка PanelBottom
-const BTN = "w-12 h-12 rounded-2xl flex items-center justify-center text-white transition-all active:scale-95 shadow-lg";
+const BTN = "w-10 h-10 rounded-xl flex items-center justify-center text-white transition-all active:scale-95 shadow-lg";
 const BTN_DEFAULT = `${BTN} bg-[#1c1c2e] border border-white/[0.12] text-white/70 active:bg-white/[0.12]`;
 const BTN_ACTIVE  = `${BTN} bg-violet-600 shadow-violet-500/40 text-white`;
 
@@ -76,7 +76,7 @@ export default function MobileBottomBar({
   ];
 
   return (
-    <div className="absolute left-0 right-0 flex items-end justify-center gap-3 z-20 px-4" style={{ bottom: "calc(env(safe-area-inset-bottom, 0px) + 16px)" }}>
+    <div className="absolute left-0 right-0 flex items-end justify-center gap-2 z-20 px-4" style={{ bottom: "72px" }}>
 
       {/* 1. Настройки — только мобайл */}
       {isMobile && <div ref={settingsRef} className="relative">
