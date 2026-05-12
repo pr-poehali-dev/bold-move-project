@@ -3,8 +3,7 @@ import { useAuth } from "@/context/AuthContext";
 import Icon from "@/components/ui/icon";
 import func2url from "@/../backend/func2url.json";
 
-const NEWS_URL      = func2url["news"];
-const LIVE_CHAT_URL = func2url["live-chat"];
+const NEWS_URL = func2url["news"];
 
 interface NewsItem {
   id: number;
