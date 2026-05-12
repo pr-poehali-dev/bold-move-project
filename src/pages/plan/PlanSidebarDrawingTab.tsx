@@ -250,6 +250,11 @@ export default function DrawingTab({ state, onChange, onSectionOpen, noAutoOpen 
     const newDiagonals = diagonals.map(d => d.id === id ? { ...d, ...patch } : d);
     if (patch.lengthCm !== undefined && patch.lengthCm !== null && patch.lengthCm > 0) {
       const diag = diagonals.find(d => d.id === id);
+      // Если значение не изменилось — не делаем rebuild фигуры
+      if (diag && patch.lengthCm === diag.lengthCm) {
+        onChange({ diagonals: newDiagonals });
+        return;
+      }
       if (diag && state.baseScale) {
         const fromPt = points.find(p => p.id === diag.fromId);
         const toPt   = points.find(p => p.id === diag.toId);
