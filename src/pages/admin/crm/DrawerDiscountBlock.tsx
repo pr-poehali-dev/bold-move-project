@@ -384,15 +384,17 @@ export function DrawerDiscountBlock({ data, customFinRows, onContractSumUpdated,
     } finally { setApplying(false); }
   };
 
-  // Применить скидку к позициям сметы
-  const applyDiscount = async () => {
-    if (discount === 0 || isNegative || isOverMax) return;
+  // Применить скидку к позициям сметы (pct — опциональный, если пришёл из модалки)
+  const applyDiscount = async (pct?: number) => {
+    const effectiveDiscount = pct ?? discount;
+    if (effectiveDiscount === 0 || isOverMax) return;
+    if (pct !== undefined) setDiscount(pct);
     setApplying(true);
     setApplied(false);
     try {
       const d = await fetch(`${AUTH_URL}?action=estimate-by-chat&chat_id=${data.id}`).then(r => r.json());
       if (!d.estimate) return;
-      const mult = 1 - discount / 100;
+      const mult = 1 - effectiveDiscount / 100;
       const newBlocks: EstimateBlock[] = d.estimate.blocks.map((block: EstimateBlock) => ({
         ...block,
         items: block.items.map(item => {
@@ -417,20 +419,20 @@ export function DrawerDiscountBlock({ data, customFinRows, onContractSumUpdated,
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ blocks: newBlocks, totals: newTotals }),
       });
-      const discountAmt = Math.round(baseIncome * discount / 100);
+      const discountAmt = Math.round(baseIncome * effectiveDiscount / 100);
       const contractBefore = Number(data.contract_sum) || 0;
       await crmFetch("clients", { method: "PUT", body: JSON.stringify({
         contract_sum: standard,
-        discount_pct: discount,
+        discount_pct: effectiveDiscount,
         discount_amount: discountAmt,
       }) }, { id: String(data.id) });
       await addEntry({
-        discount_pct: discount,
+        discount_pct: effectiveDiscount,
         discount_amount: discountAmt,
         contract_sum_before: contractBefore,
         contract_sum_after: standard,
       });
-      onContractSumUpdated?.(standard, discount);
+      onContractSumUpdated?.(standard, effectiveDiscount);
       setApplied(true);
       setDiscount(0);
     } finally { setApplying(false); }

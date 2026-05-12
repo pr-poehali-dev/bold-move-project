@@ -32,7 +32,7 @@ interface Props {
   aiError: string | null;
   fmt: (n: number) => string;
   onAnalysisClick: () => void;
-  onApplyDiscount: () => void;
+  onApplyDiscount: (pct?: number) => void;
   onResetDiscount: () => void;
   onUpdateDiscount: (newPct: number) => void;
   hasAppliedDiscount: boolean;
@@ -40,6 +40,151 @@ interface Props {
   discountHistory: DiscountEntry[];
   totalDiscountAmount: number;
   setApplied: (v: boolean) => void;
+}
+
+// ── Модалка ввода скидки ────────────────────────────────────────────────────
+function DiscountInputModal({
+  baseIncome, initialPct, initialAmt, isApplied, applying, effectiveMax,
+  onConfirm, onClose,
+  defaultFocus = "pct",
+}: {
+  baseIncome: number;
+  initialPct: number;
+  initialAmt: number;
+  isApplied: boolean;
+  applying: boolean;
+  effectiveMax: number;
+  onConfirm: (pct: number) => void;
+  onClose: () => void;
+  defaultFocus?: "pct" | "amt";
+}) {
+  const [pct, setPct] = useState(initialPct > 0 ? String(initialPct) : "");
+  const [amt, setAmt] = useState(initialAmt > 0 ? String(initialAmt) : "");
+  const [focus, setFocus] = useState<"pct" | "amt">(defaultFocus);
+
+  const syncFromPct = (v: string) => {
+    setPct(v);
+    const n = parseFloat(v);
+    if (!isNaN(n) && n > 0 && baseIncome > 0) {
+      setAmt(String(Math.round(baseIncome * n / 100)));
+    } else {
+      setAmt("");
+    }
+  };
+  const syncFromAmt = (v: string) => {
+    setAmt(v);
+    const n = parseFloat(v);
+    if (!isNaN(n) && n > 0 && baseIncome > 0) {
+      setPct(String(Math.round(n / baseIncome * 1000) / 10));
+    } else {
+      setPct("");
+    }
+  };
+
+  const pctVal = parseFloat(pct) || 0;
+  const amtVal = parseFloat(amt) || 0;
+  const resultIncome = baseIncome - amtVal;
+  const valid = pctVal > 0 && pctVal <= (effectiveMax || 99) && amtVal > 0 && amtVal < baseIncome;
+
+  const handleConfirm = () => {
+    if (!valid) return;
+    onConfirm(pctVal);
+  };
+
+  return (
+    <div className="fixed inset-0 z-[500] flex items-end sm:items-center justify-center p-0 sm:p-4"
+      style={{ background: "rgba(0,0,0,0.75)", backdropFilter: "blur(8px)" }}
+      onClick={onClose}>
+      <div className="w-full sm:max-w-xs rounded-t-2xl sm:rounded-2xl overflow-hidden"
+        style={{ background: "#0e0e1c", border: "1px solid rgba(245,158,11,0.25)" }}
+        onClick={e => e.stopPropagation()}>
+
+        {/* Хэндл мобильный */}
+        <div className="flex justify-center pt-3 pb-1 sm:hidden">
+          <div className="w-10 h-1 rounded-full bg-white/20" />
+        </div>
+
+        {/* Шапка */}
+        <div className="flex items-center justify-between px-4 pt-3 pb-3">
+          <div className="flex items-center gap-2">
+            <Icon name="Tag" size={14} style={{ color: "#f59e0b" }} />
+            <span className="text-sm font-black text-white">
+              {isApplied ? "Изменить скидку" : "Задать скидку"}
+            </span>
+          </div>
+          <button onClick={onClose} className="w-7 h-7 rounded-lg flex items-center justify-center hover:bg-white/10 transition" style={{ color: "rgba(255,255,255,0.4)" }}>
+            <Icon name="X" size={14} />
+          </button>
+        </div>
+
+        <div className="px-4 pb-4 space-y-3">
+          {/* Два поля */}
+          <div className="grid grid-cols-2 gap-2">
+            {/* % */}
+            <div className={`rounded-xl p-3 transition cursor-text ${focus === "pct" ? "ring-2 ring-yellow-500/50" : ""}`}
+              style={{ background: focus === "pct" ? "rgba(245,158,11,0.12)" : "rgba(255,255,255,0.04)", border: "1px solid rgba(245,158,11,0.25)" }}
+              onClick={() => { setFocus("pct"); }}>
+              <div className="text-[9px] uppercase tracking-wider font-bold mb-2" style={{ color: "#f59e0b" }}>Скидка %</div>
+              <div className="flex items-center gap-1">
+                <input
+                  type="number" inputMode="decimal" min={0.1} max={effectiveMax || 99} step={0.5}
+                  value={pct}
+                  onChange={e => syncFromPct(e.target.value)}
+                  onFocus={() => setFocus("pct")}
+                  autoFocus={defaultFocus === "pct"}
+                  placeholder="0"
+                  className="flex-1 w-full bg-transparent text-xl font-black focus:outline-none"
+                  style={{ color: "#f59e0b" }}
+                />
+                <span className="text-sm font-bold" style={{ color: "rgba(245,158,11,0.5)" }}>%</span>
+              </div>
+            </div>
+
+            {/* Сумма */}
+            <div className={`rounded-xl p-3 transition cursor-text ${focus === "amt" ? "ring-2 ring-yellow-500/50" : ""}`}
+              style={{ background: focus === "amt" ? "rgba(245,158,11,0.12)" : "rgba(255,255,255,0.04)", border: "1px solid rgba(245,158,11,0.25)" }}
+              onClick={() => { setFocus("amt"); }}>
+              <div className="text-[9px] uppercase tracking-wider font-bold mb-2" style={{ color: "#f59e0b" }}>Сумма ₽</div>
+              <div className="flex items-center gap-1">
+                <input
+                  type="number" inputMode="numeric" min={1} step={100}
+                  value={amt}
+                  onChange={e => syncFromAmt(e.target.value)}
+                  onFocus={() => setFocus("amt")}
+                  autoFocus={defaultFocus === "amt"}
+                  placeholder="0"
+                  className="flex-1 w-full bg-transparent text-xl font-black focus:outline-none"
+                  style={{ color: "#f59e0b" }}
+                />
+                <span className="text-sm font-bold" style={{ color: "rgba(245,158,11,0.5)" }}>₽</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Итог */}
+          {valid && (
+            <div className="flex items-center justify-between px-3 py-2 rounded-xl"
+              style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}>
+              <span className="text-[11px] text-white/40">Итого клиент заплатит</span>
+              <span className="text-[13px] font-black text-white">{resultIncome.toLocaleString("ru-RU")} ₽</span>
+            </div>
+          )}
+
+          {/* Кнопка */}
+          <button
+            onClick={handleConfirm}
+            disabled={!valid || applying}
+            className="w-full py-3 rounded-xl text-[13px] font-black transition disabled:opacity-30 disabled:cursor-not-allowed active:scale-[0.98]"
+            style={{ background: valid ? "#f59e0b" : "rgba(245,158,11,0.15)", color: valid ? "#000" : "#f59e0b" }}>
+            {applying
+              ? <span className="flex items-center justify-center gap-2"><div className="w-4 h-4 border-2 border-black/30 border-t-black rounded-full animate-spin" /> Применяем...</span>
+              : isApplied ? "Сохранить изменения" : "Применить скидку"
+            }
+          </button>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 export function DiscountSliderPanel({
@@ -58,9 +203,23 @@ export function DiscountSliderPanel({
   const [editingPct,   setEditingPct]   = useState<string>("");
   const [isEditing,    setIsEditing]    = useState(false);
   const [riskPopupOpen, setRiskPopupOpen] = useState(false);
+  const [modalOpen,    setModalOpen]    = useState(false);
+  const [modalFocus,   setModalFocus]   = useState<"pct" | "amt">("pct");
 
   const aiLevelColor = aiRisk?.level === "low" ? "#10b981" : aiRisk?.level === "mid" ? "#f59e0b" : "#ef4444";
   const aiLevelLabel = aiRisk?.level === "low" ? "Низкая сложность" : aiRisk?.level === "mid" ? "Средняя сложность" : "Высокая сложность";
+
+  const openModal = (focus: "pct" | "amt") => { setModalFocus(focus); setModalOpen(true); };
+
+  const handleModalConfirm = (pct: number) => {
+    if (hasAppliedDiscount) {
+      onUpdateDiscount(pct);
+    } else {
+      setDiscount(pct);
+      onApplyDiscount(pct);
+    }
+    setModalOpen(false);
+  };
 
   const startEdit = () => {
     setEditingPct(String(appliedDiscountPct));
@@ -101,20 +260,45 @@ export function DiscountSliderPanel({
         </button>
       </div>
       {riskPopupOpen && <DiscountRiskPopup onClose={() => setRiskPopupOpen(false)} />}
+      {modalOpen && (
+        <DiscountInputModal
+          baseIncome={baseIncome}
+          initialPct={hasAppliedDiscount ? appliedDiscountPct : discount}
+          initialAmt={hasAppliedDiscount ? totalDiscountAmount : Math.round(baseIncome * discount / 100)}
+          isApplied={hasAppliedDiscount}
+          applying={applying}
+          effectiveMax={effectiveMax}
+          defaultFocus={modalFocus}
+          onConfirm={handleModalConfirm}
+          onClose={() => setModalOpen(false)}
+        />
+      )}
 
       {/* ── РЕЖИМ: скидка уже применена ── */}
       {hasAppliedDiscount && discountHistory.length > 0 && (
         <div className="px-4 py-4 space-y-3">
           {/* Плитки с текущими значениями */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-            <div className="rounded-xl px-3 py-2.5 text-center" style={{ background: "#f59e0b18", border: "1px solid #f59e0b35" }}>
-              <div className="text-[9px] uppercase tracking-wider font-semibold mb-1" style={{ color: "#f59e0b" }}>Скидка</div>
+            {/* Плитка СКИДКА — кликабельная */}
+            <button onClick={() => openModal("pct")}
+              className="rounded-xl px-3 py-2.5 text-center transition hover:brightness-125 active:scale-[0.97] group"
+              style={{ background: "#f59e0b18", border: "1px solid #f59e0b60", cursor: "pointer" }}>
+              <div className="flex items-center justify-center gap-1 mb-1">
+                <span className="text-[9px] uppercase tracking-wider font-semibold" style={{ color: "#f59e0b" }}>Скидка</span>
+                <Icon name="Pencil" size={9} style={{ color: "#f59e0b80" }} className="group-hover:opacity-100 opacity-60" />
+              </div>
               <div className="text-base font-black" style={{ color: "#f59e0b" }}>{appliedDiscountPct}%</div>
-            </div>
-            <div className="rounded-xl px-3 py-2.5 text-center" style={{ background: "#ffffff08", border: `1px solid ${t.border}` }}>
-              <div className="text-[9px] uppercase tracking-wider font-semibold mb-1 text-white/40">Сумма скидки</div>
+            </button>
+            {/* Плитка СУММА СКИДКИ — кликабельная */}
+            <button onClick={() => openModal("amt")}
+              className="rounded-xl px-3 py-2.5 text-center transition hover:brightness-125 active:scale-[0.97] group"
+              style={{ background: "#ffffff08", border: `1px solid rgba(245,158,11,0.35)`, cursor: "pointer" }}>
+              <div className="flex items-center justify-center gap-1 mb-1">
+                <span className="text-[9px] uppercase tracking-wider font-semibold text-white/40">Сумма скидки</span>
+                <Icon name="Pencil" size={9} style={{ color: "rgba(245,158,11,0.5)" }} className="group-hover:opacity-100 opacity-60" />
+              </div>
               <div className="text-sm font-black text-white/70 whitespace-nowrap">−{fmt(totalDiscountAmount)} ₽</div>
-            </div>
+            </button>
             <div className="rounded-xl px-3 py-2.5 text-center"
               style={{ background: accentColor + "18", border: `1px solid ${accentColor}35` }}>
               <div className="text-[9px] uppercase tracking-wider font-semibold mb-1" style={{ color: accentColor }}>
@@ -197,14 +381,26 @@ export function DiscountSliderPanel({
 
         {/* 4 плитки */}
         <div className="grid grid-cols-4 gap-2">
-          <div className="rounded-xl px-3 py-2.5 text-center" style={{ background: "#ffffff08", border: `1px solid ${t.border}` }}>
-            <div className="text-[9px] uppercase tracking-wider font-semibold mb-1 text-white/40">Скидка</div>
+          {/* Плитка СКИДКА — кликабельная */}
+          <button onClick={() => openModal("pct")}
+            className="rounded-xl px-3 py-2.5 text-center transition hover:brightness-125 active:scale-[0.97] group"
+            style={{ background: discount > 0 ? accentColor + "18" : "#ffffff08", border: `1px solid ${discount > 0 ? accentColor + "60" : "rgba(245,158,11,0.4)"}`, cursor: "pointer" }}>
+            <div className="flex items-center justify-center gap-1 mb-1">
+              <span className="text-[9px] uppercase tracking-wider font-semibold" style={{ color: "#f59e0b" }}>Скидка</span>
+              <Icon name="Pencil" size={9} style={{ color: "#f59e0b80" }} className="group-hover:opacity-100 opacity-60" />
+            </div>
             <div className="text-base font-black" style={{ color: accentColor }}>{discount}%</div>
-          </div>
-          <div className="rounded-xl px-3 py-2.5 text-center" style={{ background: "#ffffff08", border: `1px solid ${t.border}` }}>
-            <div className="text-[9px] uppercase tracking-wider font-semibold mb-1 text-white/40">Сумма скидки</div>
+          </button>
+          {/* Плитка СУММА СКИДКИ — кликабельная */}
+          <button onClick={() => openModal("amt")}
+            className="rounded-xl px-3 py-2.5 text-center transition hover:brightness-125 active:scale-[0.97] group"
+            style={{ background: "#ffffff08", border: `1px solid rgba(245,158,11,0.35)`, cursor: "pointer" }}>
+            <div className="flex items-center justify-center gap-1 mb-1">
+              <span className="text-[9px] uppercase tracking-wider font-semibold text-white/40">Сумма скидки</span>
+              <Icon name="Pencil" size={9} style={{ color: "rgba(245,158,11,0.5)" }} className="group-hover:opacity-100 opacity-60" />
+            </div>
             <div className="text-sm font-black text-white/70">−{fmt(baseIncome * discount / 100)} ₽</div>
-          </div>
+          </button>
           <div className="rounded-xl px-3 py-2.5 text-center"
             style={{ background: accentColor + "18", border: `1px solid ${accentColor}35` }}>
             <div className="text-[9px] uppercase tracking-wider font-semibold mb-1"
