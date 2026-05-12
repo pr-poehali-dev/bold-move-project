@@ -150,12 +150,12 @@ function TabSettingsPopup({ tab, tabLabels, tabColors, onSaveLabel, onSaveColor,
             onFocus={() => setEditing(true)}
             onKeyDown={e => { if (e.key === "Enter") commitLabel(); if (e.key === "Escape") { setLabelVal(tabLabels[tab.id] || tab.label); setEditing(false); } }}
             className="flex-1 text-xs rounded-lg px-2 py-1.5 focus:outline-none"
-            style={{ background: t.surface2, border: `1px solid ${editing ? "#7c3aed60" : t.border}`, color: t.text }}
+            style={{ background: t.surface2, border: `1px solid ${editing ? t.accent + "60" : t.border}`, color: t.text }}
           />
           {editing && (
             <button onClick={commitLabel}
               className="px-2 py-1 rounded-lg text-xs font-semibold"
-              style={{ background: "#7c3aed", color: "#fff" }}>ОК</button>
+              style={{ background: t.accent, color: "#fff" }}>ОК</button>
           )}
         </div>
       </div>
@@ -184,7 +184,7 @@ function TabSettingsPopup({ tab, tabLabels, tabColors, onSaveLabel, onSaveColor,
           <div className="text-[10px] uppercase tracking-wider" style={{ color: t.textMute }}>Подстатусы</div>
           <button onClick={() => setAdding(a => !a)}
             className="text-[10px] font-semibold flex items-center gap-0.5 transition"
-            style={{ color: "#a78bfa" }}>
+            style={{ color: t.accentLight }}>
             <Icon name="Plus" size={10} /> Добавить
           </button>
         </div>
@@ -202,7 +202,7 @@ function TabSettingsPopup({ tab, tabLabels, tabColors, onSaveLabel, onSaveColor,
                     onKeyDown={e => { if (e.key === "Enter") saveEdit(s.id); if (e.key === "Escape") setEditingSubId(null); }}
                     autoFocus
                     className="flex-1 text-xs rounded px-1.5 py-0.5 focus:outline-none"
-                    style={{ background: t.surface2, border: `1px solid #7c3aed60`, color: t.text }}
+                    style={{ background: t.surface2, border: `1px solid ${t.accent}60`, color: t.text }}
                   />
                   <div className="flex gap-0.5">
                     {PRESET_COLORS.map(c => (
@@ -264,7 +264,7 @@ function TabSettingsPopup({ tab, tabLabels, tabColors, onSaveLabel, onSaveColor,
             <div className="flex gap-1.5">
               <button onClick={addSubstatus}
                 className="flex-1 py-1 rounded-lg text-xs font-semibold"
-                style={{ background: "#7c3aed", color: "#fff" }}>Добавить</button>
+                style={{ background: t.accent, color: "#fff" }}>Добавить</button>
               <button onClick={() => setAdding(false)}
                 className="px-2 py-1 rounded-lg text-xs"
                 style={{ background: t.surface2, color: t.textMute }}>Отмена</button>

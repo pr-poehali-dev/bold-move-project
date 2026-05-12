@@ -123,7 +123,12 @@ export default function CrmPanel({ theme, initialOrderId, initialTab }: { theme:
     <SubstatusContext.Provider value={substatuses}>
     <ThemeContext.Provider value={ctx}>
       <div className="flex flex-col h-full transition-colors duration-300"
-        style={{ background: t.bg }}>
+        style={{
+          background: t.bg,
+          // CSS переменные акцента — используются во всех дочерних компонентах
+          "--crm-accent":       t.accent,
+          "--crm-accent-light": t.accentLight,
+        } as React.CSSProperties}>
 
         {/* Навигация */}
         <div className="flex items-center gap-0.5 px-2 sm:px-6 py-2.5 overflow-x-auto"
@@ -136,7 +141,7 @@ export default function CrmPanel({ theme, initialOrderId, initialTab }: { theme:
               <button key={tb.id} onClick={() => setTab(tb.id)}
                 className="flex items-center gap-1 sm:gap-2 px-2 sm:px-4 py-2 text-xs sm:text-sm rounded-xl transition whitespace-nowrap font-medium border"
                 style={active ? {
-                  background: "#7c3aed18", color: "#a78bfa", borderColor: "#7c3aed35",
+                  background: t.accent + "18", color: t.accentLight, borderColor: t.accent + "35",
                 } : {
                   color: t.textSub, borderColor: "transparent", background: "transparent",
                 }}>
@@ -151,7 +156,7 @@ export default function CrmPanel({ theme, initialOrderId, initialTab }: { theme:
             <button onClick={() => setTab("kanban")}
               className="flex items-center gap-1 sm:gap-2 px-2 sm:px-4 py-2 text-xs sm:text-sm rounded-xl transition whitespace-nowrap font-medium border"
               style={tab === "kanban" ? {
-                background: "#7c3aed18", color: "#a78bfa", borderColor: "#7c3aed35",
+                background: t.accent + "18", color: t.accentLight, borderColor: t.accent + "35",
               } : {
                 color: t.textSub, borderColor: "transparent", background: "transparent",
               }}>
@@ -166,14 +171,14 @@ export default function CrmPanel({ theme, initialOrderId, initialTab }: { theme:
           {/* Промо-блок канбана — только если есть право и канбан ещё не включён */}
           {!kanbanEnabled && canKanban && (
             <div className="hidden sm:flex items-center gap-3 px-4 py-1.5 rounded-xl"
-              style={{ background: "linear-gradient(135deg,#7c3aed12,#06b6d412)", border: `1px dashed #7c3aed40` }}>
-              <Icon name="Kanban" size={14} style={{ color: "#a78bfa" }} className="flex-shrink-0" />
+              style={{ background: "linear-gradient(135deg," + t.accent + "12,#06b6d412)", border: `1px dashed ${t.accent}40` }}>
+              <Icon name="Kanban" size={14} style={{ color: t.accentLight }} className="flex-shrink-0" />
               <span className="text-xs whitespace-nowrap" style={{ color: t.textMute }}>
                 Добавить новый канбан? <span style={{ color: t.textSub }}>(например для потенциальных клиентов)</span>
               </span>
               <button onClick={enableKanban}
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition whitespace-nowrap hover:opacity-90"
-                style={{ background: "#7c3aed", color: "#fff" }}>
+                style={{ background: t.accent, color: "#fff" }}>
                 <Icon name="Plus" size={12} /> Добавить
               </button>
             </div>
@@ -183,7 +188,7 @@ export default function CrmPanel({ theme, initialOrderId, initialTab }: { theme:
           {!kanbanEnabled && canKanban && (
             <button onClick={enableKanban}
               className="flex sm:hidden items-center gap-1 px-2.5 py-2 rounded-xl text-xs font-semibold transition whitespace-nowrap flex-shrink-0"
-              style={{ background: "#7c3aed18", color: "#a78bfa", border: "1px solid #7c3aed35" }}>
+              style={{ background: t.accent + "18", color: t.accentLight, border: `1px solid ${t.accent}35` }}>
               <Icon name="Plus" size={13} />
               Канбан
             </button>
@@ -212,7 +217,7 @@ export default function CrmPanel({ theme, initialOrderId, initialTab }: { theme:
               {calendarOpenId && (
                 <button onClick={handleBackToCalendar}
                   className="flex items-center gap-2 mb-4 px-3 py-2 rounded-xl text-xs font-semibold transition hover:opacity-80"
-                  style={{ background: "#7c3aed18", color: "#a78bfa", border: "1px solid #7c3aed30" }}>
+                  style={{ background: t.accent + "18", color: t.accentLight, border: `1px solid ${t.accent}30` }}>
                   <Icon name="ChevronLeft" size={13} />
                   Назад в календарь
                 </button>

@@ -113,8 +113,8 @@ export default function CrmOrders({ clients: allClients, loading, onStatusChange
               <button key={mode} onClick={() => setViewMode(mode)}
                 className="flex items-center gap-1.5 px-2.5 sm:px-3 py-2 text-xs font-semibold transition"
                 style={{
-                  background: viewMode === mode ? "#7c3aed22" : "transparent",
-                  color: viewMode === mode ? "#7c3aed" : t.textMute,
+                  background: viewMode === mode ? t.accent + "22" : "transparent",
+                  color: viewMode === mode ? t.accent : t.textMute,
                   borderRight: mode !== "kanban" ? `1px solid ${t.border}` : undefined,
                 }}>
                 <Icon name={icon} size={13} />
