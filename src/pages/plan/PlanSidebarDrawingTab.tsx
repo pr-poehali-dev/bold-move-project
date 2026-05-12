@@ -56,9 +56,9 @@ export default function DrawingTab({ state, onChange, onSectionOpen, noAutoOpen 
     const isFlipped = flippedSegIds.current.has(id);
     const baseScale  = state.baseScale;
 
-    // Исходные (до любых редактирований) точки и сегменты
-    const srcPoints   = builtPoints.current;
-    const srcSegments = builtSegments.current;
+    // Используем текущие точки и сегменты (не снимок после rebuild)
+    const srcPoints   = points;
+    const srcSegments = segments;
 
     // Фиксированная точка и двигающаяся — в исходной фигуре
     // Без флипа: фиксирован fromId (B), двигается toId (C)
@@ -157,15 +157,58 @@ export default function DrawingTab({ state, onChange, onSectionOpen, noAutoOpen 
       }
 
       // ── РЕЖИМ РЕДАКТИРОВАНИЯ: rebuild уже был, пользователь меняет сторону ───
-      // Просто обновляем lengthCm без пересчёта соседей и без сдвига точек.
-      // Пользователь сам контролирует все стороны.
       if (isEditMode && baseScale && isClosed) {
         const seg = segments.find(s => s.id === id);
         if (!forceRecalc && seg && patch.lengthCm && patch.lengthCm === seg.lengthCm) {
           onChange({ segments: newSegments, changedSegmentIds: [] });
           return;
         }
-        setLastChangedSegId(id); // показываем кнопку флипа для этой стороны
+        setLastChangedSegId(id);
+
+        if (seg && patch.lengthCm) {
+          const isFlipped = flippedSegIds.current.has(id);
+          const fixedPtId = isFlipped ? seg.toId   : seg.fromId;
+          const movedPtId = isFlipped ? seg.fromId : seg.toId;
+          const fixedPoint = points.find(p => p.id === fixedPtId);
+          const movedPoint = points.find(p => p.id === movedPtId);
+
+          if (fixedPoint && movedPoint) {
+            const origLen = distPx(fixedPoint, movedPoint);
+            if (origLen > 0) {
+              const ux = (movedPoint.x - fixedPoint.x) / origLen;
+              const uy = (movedPoint.y - fixedPoint.y) / origLen;
+              const newLenPx = patch.lengthCm * baseScale;
+              const newMovedCoord = { x: fixedPoint.x + ux * newLenPx, y: fixedPoint.y + uy * newLenPx };
+              const newPoints = points.map(p => p.id === movedPtId ? { ...p, ...newMovedCoord } : p);
+
+              // Пересчитываем ТОЛЬКО один соседний сегмент (тот что касается сдвинутой точки)
+              // без цепочного пересчёта всех остальных
+              const autoRecalcIds: string[] = [];
+              const affectedSeg = isFlipped
+                ? (newSegments.find(s => s.id !== id && s.toId   === movedPtId) ??
+                   (newSegments.every(s => s.id === id || s.toId !== movedPtId)
+                     ? newSegments.find(s => s.id !== id && s.fromId === movedPtId) : undefined))
+                : (newSegments.find(s => s.id !== id && s.fromId === movedPtId) ??
+                   (newSegments.every(s => s.id === id || s.fromId !== movedPtId)
+                     ? newSegments.find(s => s.id !== id && s.toId === movedPtId) : undefined));
+
+              const updatedSegments = newSegments.map(s => {
+                if (!affectedSeg || s.id !== affectedSeg.id) return s;
+                const a = newPoints.find(p => p.id === s.fromId);
+                const b = newPoints.find(p => p.id === s.toId);
+                if (!a || !b) return s;
+                const px = distPx(a, b);
+                autoRecalcIds.push(s.id);
+                return { ...s, lengthCm: Math.round((px / baseScale!) * 10) / 10 };
+              });
+
+              const newDiags = buildAutoDiagonals(newPoints, diagonals, baseScale);
+              onChange({ points: newPoints, segments: updatedSegments, diagonals: newDiags, changedSegmentIds: autoRecalcIds });
+              return;
+            }
+          }
+        }
+
         const newDiags = buildAutoDiagonals(points, diagonals, baseScale);
         onChange({ segments: newSegments, diagonals: newDiags, changedSegmentIds: [] });
         return;
