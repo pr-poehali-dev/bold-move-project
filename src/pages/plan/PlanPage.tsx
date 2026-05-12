@@ -19,6 +19,7 @@ import { useAuth } from "@/context/AuthContext";
 import PlanProjectsScreen from "./PlanProjectsScreen";
 import PlanRoomsScreen from "./PlanRoomsScreen";
 import type { PlanProject, PlanRoom } from "./usePlanProjects";
+import { useRoomAutoSave } from "./useRoomAutoSave";
 
 type PlanScreen = "projects" | "rooms" | "canvas";
 
@@ -31,6 +32,13 @@ export default function PlanPage() {
   const [screen,         setScreen]         = useState<PlanScreen>("projects");
   const [activeProject,  setActiveProject]  = useState<PlanProject | null>(null);
   const [activeRoom,     setActiveRoom]     = useState<PlanRoom | null>(null);
+
+  // ── Автосохранение в комнату ──────────────────────────────────────────────
+  const { saveStatus: roomSaveStatus } = useRoomAutoSave(
+    activeRoom?.id ?? null,
+    state,
+    token
+  );
 
   const [sheetOpen,      setSheetOpen]      = useState(false);
   const [sheetSnap,      setSheetSnap]      = useState<"half" | "full">("full");
@@ -225,6 +233,7 @@ export default function PlanPage() {
         onOpenLibrary={() => setLibraryOpen(true)}
         onBack={activeRoom ? () => setScreen("rooms") : undefined}
         backLabel={activeRoom?.name}
+        roomSaveStatus={roomSaveStatus}
       />
 
       {/* Основная область */}

@@ -9,7 +9,7 @@ export default function PlanToolbar(props: ToolbarProps) {
     saveStatus, isDirty, currentPlanId,
     onToolChange, onSettingChange, onUndo, onRedo, onReset,
     onZoomIn, onZoomOut, onZoomFit, onExport, onSave, onOpenLibrary,
-    onBack, backLabel,
+    onBack, backLabel, roomSaveStatus,
   } = props;
 
   if (isMobile) return <MobileToolbar {...props} />;
@@ -38,6 +38,12 @@ export default function PlanToolbar(props: ToolbarProps) {
         >
           <Icon name="ChevronLeft" size={13} />
           {backLabel && <span className="max-w-[80px] truncate">{backLabel}</span>}
+          {roomSaveStatus === "saving" && (
+            <Icon name="Loader2" size={11} className="animate-spin opacity-60 shrink-0" />
+          )}
+          {roomSaveStatus === "saved" && (
+            <Icon name="Check" size={11} className="opacity-60 shrink-0" />
+          )}
         </button>
       ) : (
         <div className="w-7 h-7 rounded-lg bg-white flex items-center justify-center shrink-0 mr-1.5">

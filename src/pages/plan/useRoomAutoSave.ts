@@ -1,0 +1,69 @@
+import { useEffect, useRef, useState } from "react";
+import type { PlanState } from "./planTypes";
+import func2url from "@/../backend/func2url.json";
+
+const CRM_URL = (func2url as Record<string, string>)["crm-manager"];
+
+export type RoomSaveStatus = "idle" | "saving" | "saved" | "error";
+
+const DEBOUNCE_MS = 3000;
+
+export function useRoomAutoSave(
+  roomId: number | null,
+  state: PlanState,
+  token: string | null | undefined
+) {
+  const [saveStatus, setSaveStatus] = useState<RoomSaveStatus>("idle");
+  const timerRef   = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const savedRef   = useRef<string>("");          // JSON последнего сохранения
+  const statusTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const stateStr = JSON.stringify(state);
+
+  const doSave = async (planState: PlanState) => {
+    if (!roomId || !token) return;
+    setSaveStatus("saving");
+    try {
+      await fetch(`${CRM_URL}?r=plan-rooms&id=${roomId}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`,
+        },
+        body: JSON.stringify({ data: planState }),
+      });
+      savedRef.current = JSON.stringify(planState);
+      setSaveStatus("saved");
+      if (statusTimer.current) clearTimeout(statusTimer.current);
+      statusTimer.current = setTimeout(() => setSaveStatus("idle"), 2500);
+    } catch {
+      setSaveStatus("error");
+      if (statusTimer.current) clearTimeout(statusTimer.current);
+      statusTimer.current = setTimeout(() => setSaveStatus("idle"), 3000);
+    }
+  };
+
+  useEffect(() => {
+    if (!roomId || !token) return;
+    // Не сохраняем если ничего не изменилось
+    if (stateStr === savedRef.current) return;
+
+    if (timerRef.current) clearTimeout(timerRef.current);
+    timerRef.current = setTimeout(() => doSave(state), DEBOUNCE_MS);
+
+    return () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [stateStr, roomId, token]);
+
+  // Сброс при смене комнаты
+  useEffect(() => {
+    savedRef.current = "";
+    setSaveStatus("idle");
+    if (timerRef.current) clearTimeout(timerRef.current);
+    if (statusTimer.current) clearTimeout(statusTimer.current);
+  }, [roomId]);
+
+  return { saveStatus };
+}
