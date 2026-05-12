@@ -9,6 +9,7 @@ export default function PlanToolbar(props: ToolbarProps) {
     saveStatus, isDirty, currentPlanId,
     onToolChange, onSettingChange, onUndo, onRedo, onReset,
     onZoomIn, onZoomOut, onZoomFit, onExport, onSave, onOpenLibrary,
+    onBack, backLabel,
   } = props;
 
   if (isMobile) return <MobileToolbar {...props} />;
@@ -27,10 +28,22 @@ export default function PlanToolbar(props: ToolbarProps) {
     <div className="flex items-center gap-0.5 px-2 bg-[#161616] border-b border-white/[0.08] shrink-0"
       style={{ height: 52, overflowX: "visible", overflowY: "visible" }}>
 
-      {/* Лого */}
-      <div className="w-7 h-7 rounded-lg bg-white flex items-center justify-center shrink-0 mr-1.5">
-        <Icon name="PenTool" size={13} className="text-[#111]" />
-      </div>
+      {/* Лого / кнопка назад */}
+      {onBack ? (
+        <button
+          onClick={onBack}
+          className="flex items-center gap-1 px-2 h-7 rounded-lg text-[11px] font-bold shrink-0 mr-1.5 transition hover:opacity-80 active:scale-[0.96]"
+          style={{ background: "rgba(124,58,237,0.25)", border: "1px solid rgba(124,58,237,0.4)", color: "#a78bfa" }}
+          title="Назад к комнатам"
+        >
+          <Icon name="ChevronLeft" size={13} />
+          {backLabel && <span className="max-w-[80px] truncate">{backLabel}</span>}
+        </button>
+      ) : (
+        <div className="w-7 h-7 rounded-lg bg-white flex items-center justify-center shrink-0 mr-1.5">
+          <Icon name="PenTool" size={13} className="text-[#111]" />
+        </div>
+      )}
 
       <Sep />
 

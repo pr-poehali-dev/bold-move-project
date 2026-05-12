@@ -29,6 +29,8 @@ export interface ToolbarProps {
   onExport: () => void;
   onSave: () => void;
   onOpenLibrary: () => void;
+  onBack?: () => void;
+  backLabel?: string;
 }
 
 // ── ToolDef ───────────────────────────────────────────────────────────────────

@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from "react";
-import Icon from "@/components/ui/icon";
 import PlanCanvas from "./PlanCanvas";
 import PlanToolbar from "./PlanToolbar";
 import PlanSidebar from "./PlanSidebar";
@@ -199,20 +198,6 @@ export default function PlanPage() {
   return (
     <div className="flex flex-col bg-[#111] overflow-hidden relative" style={{ height: "100dvh" }}>
 
-      {/* Кнопка назад к проекту */}
-      {activeRoom && activeProject && (
-        <div className="absolute top-2 left-2 z-50 flex items-center gap-2">
-          <button
-            onClick={() => setScreen("rooms")}
-            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[11px] font-semibold transition hover:opacity-80 active:scale-[0.96]"
-            style={{ background: "rgba(124,58,237,0.2)", border: "1px solid rgba(124,58,237,0.35)", color: "#a78bfa", backdropFilter: "blur(8px)" }}
-          >
-            <Icon name="ChevronLeft" size={13} />
-            {activeRoom.name}
-          </button>
-        </div>
-      )}
-
       {/* Toolbar */}
       <PlanToolbar
         tool={state.tool}
@@ -238,6 +223,8 @@ export default function PlanPage() {
         onExport={() => setExportOpen(true)}
         onSave={handleSave}
         onOpenLibrary={() => setLibraryOpen(true)}
+        onBack={activeRoom ? () => setScreen("rooms") : undefined}
+        backLabel={activeRoom?.name}
       />
 
       {/* Основная область */}
