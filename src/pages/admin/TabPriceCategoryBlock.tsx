@@ -63,8 +63,8 @@ export default function TabPriceCategoryBlock({
       {/* Заголовок категории */}
       <div className="flex items-center justify-between mb-2 px-1 group">
         <div className="flex items-center gap-2 min-w-0 flex-1">
-          {/* Картинка категории */}
-          {!readOnly && (
+          {/* Картинка категории — кликабельная, заменяет кнопку "изменить" */}
+          {!readOnly ? (
             <ImageUploadButton
               currentUrl={catImages[category]}
               uploadEndpoint={`${IMAGE_URL}?type=category&category=${encodeURIComponent(category)}`}
@@ -72,10 +72,9 @@ export default function TabPriceCategoryBlock({
               token={token}
               onUploaded={url => onCatImageUploaded(category, url)}
             />
-          )}
-          {catImages[category] && readOnly && (
-            <img src={catImages[category]} alt="" className="w-6 h-6 rounded object-cover" />
-          )}
+          ) : catImages[category] ? (
+            <img src={catImages[category]} alt="" className="w-8 h-8 rounded-lg object-cover flex-shrink-0" />
+          ) : null}
           {editingCat === category ? (
             <input
               autoFocus

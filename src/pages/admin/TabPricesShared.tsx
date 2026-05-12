@@ -78,25 +78,35 @@ export function ImageUploadButton({
   };
 
   return (
-    <div className="flex items-center gap-1 flex-shrink-0">
-      {currentUrl && (
-        <img src={currentUrl} alt="" className="w-7 h-7 rounded object-cover border border-white/10" />
-      )}
+    <div className="flex-shrink-0">
       <button
         type="button"
         onClick={() => inputRef.current?.click()}
         disabled={loading}
-        title={currentUrl ? "Сменить картинку" : "Добавить картинку"}
-        className={`flex-shrink-0 flex items-center justify-center w-6 h-6 rounded border transition disabled:opacity-40 ${
-          isDark
-            ? "border-white/10 text-white/25 hover:text-white/60 hover:border-white/30"
-            : "border-gray-200 text-gray-400 hover:text-gray-600 hover:border-gray-300"
-        }`}
+        title={currentUrl ? "Нажмите чтобы сменить картинку" : "Добавить картинку группы"}
+        className="relative group/img flex items-center justify-center flex-shrink-0 rounded-lg overflow-hidden transition"
+        style={{ width: 32, height: 32 }}
       >
-        {loading
-          ? <Icon name="Loader" size={10} className="animate-spin" />
-          : <Icon name={currentUrl ? "RefreshCw" : "ImagePlus"} size={10} />
-        }
+        {loading ? (
+          <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${isDark ? "bg-white/10" : "bg-gray-100"}`}>
+            <Icon name="Loader" size={13} className="animate-spin text-violet-400" />
+          </div>
+        ) : currentUrl ? (
+          <>
+            <img src={currentUrl} alt="" className="w-8 h-8 rounded-lg object-cover" />
+            {/* Оверлей при наведении */}
+            <div className="absolute inset-0 rounded-lg flex items-center justify-center opacity-0 group-hover/img:opacity-100 transition"
+              style={{ background: "rgba(0,0,0,0.55)" }}>
+              <Icon name="Camera" size={13} className="text-white" />
+            </div>
+          </>
+        ) : (
+          <div className={`w-8 h-8 rounded-lg flex items-center justify-center border border-dashed transition ${
+            isDark ? "border-white/20 text-white/30 hover:border-violet-500/50 hover:text-violet-400" : "border-gray-300 text-gray-400 hover:border-violet-400 hover:text-violet-500"
+          }`}>
+            <Icon name="ImagePlus" size={13} />
+          </div>
+        )}
       </button>
       <input
         ref={inputRef}
