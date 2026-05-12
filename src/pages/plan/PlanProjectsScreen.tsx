@@ -118,6 +118,7 @@ export default function PlanProjectsScreen({ token, onSelectProject }: Props) {
                   <input
                     value={form.phone}
                     onChange={e => setForm(f => ({ ...f, phone: e.target.value }))}
+                    onFocus={e => { if (!e.target.value) setForm(f => ({ ...f, phone: "+7 " })); }}
                     placeholder="+7 (___) ___-__-__"
                     type="tel"
                     className="w-full rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none transition"
