@@ -19,6 +19,7 @@ import { useAuth } from "@/context/AuthContext";
 import PlanProjectsScreen from "./PlanProjectsScreen";
 import PlanRoomsScreen from "./PlanRoomsScreen";
 import type { PlanProject, PlanRoom } from "./usePlanProjects";
+import { usePlanProjects } from "./usePlanProjects";
 import { useRoomAutoSave } from "./useRoomAutoSave";
 
 type PlanScreen = "projects" | "rooms" | "canvas";
@@ -32,6 +33,9 @@ export default function PlanPage() {
   const [screen,         setScreen]         = useState<PlanScreen>("projects");
   const [activeProject,  setActiveProject]  = useState<PlanProject | null>(null);
   const [activeRoom,     setActiveRoom]     = useState<PlanRoom | null>(null);
+
+  // ── Загрузка комнаты ──────────────────────────────────────────────────────
+  const { loadRoom } = usePlanProjects(token);
 
   // ── Автосохранение в комнату ──────────────────────────────────────────────
   const { saveStatus: roomSaveStatus } = useRoomAutoSave(
@@ -194,10 +198,14 @@ export default function PlanPage() {
         token={token}
         project={activeProject}
         onBack={() => setScreen("projects")}
-        onOpenRoom={room => {
+        onOpenRoom={async room => {
           setActiveRoom(room);
-          reset();
           setScreen("canvas");
+          // Загружаем сохранённые данные комнаты
+          const loaded = await loadRoom(room.id);
+          const savedData = loaded?.data as PlanState | undefined;
+          const hasData = savedData && Object.keys(savedData).length > 0 && savedData.points;
+          reset(hasData ? { ...INITIAL_STATE, ...savedData } : INITIAL_STATE);
         }}
       />
     );

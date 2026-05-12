@@ -82,6 +82,15 @@ export function usePlanProjects(token?: string | null) {
     return data.id as number;
   }, [token]);
 
+  const loadRoom = useCallback(async (roomId: number): Promise<PlanRoom | null> => {
+    const res = await fetch(`${CRM_URL}?r=plan-rooms&id=${roomId}`, {
+      headers: headers(token),
+    });
+    const data = await res.json();
+    if (data.error || !data.id) return null;
+    return data as PlanRoom;
+  }, [token]);
+
   const saveRoom = useCallback(async (roomId: number, planData: object, thumbnail?: string) => {
     await fetch(`${CRM_URL}?r=plan-rooms&id=${roomId}`, {
       method: "PUT",
@@ -90,5 +99,5 @@ export function usePlanProjects(token?: string | null) {
     });
   }, [token]);
 
-  return { projects, rooms, loading, loadProjects, createProject, loadRooms, createRoom, saveRoom };
+  return { projects, rooms, loading, loadProjects, createProject, loadRooms, createRoom, loadRoom, saveRoom };
 }
