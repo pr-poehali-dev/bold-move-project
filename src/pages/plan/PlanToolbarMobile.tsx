@@ -10,6 +10,7 @@ export default function MobileToolbar(props: ToolbarProps) {
     tool, isClosed,
     canUndo, canRedo,
     onToolChange, onUndo, onRedo, onOpenLibrary, onReset,
+    onBack,
   } = props;
 
   const [confirmReset, setConfirmReset] = React.useState(false);
@@ -27,6 +28,18 @@ export default function MobileToolbar(props: ToolbarProps) {
 
   return (
     <div className="bg-[#161616] border-b border-white/[0.08] shrink-0 flex items-center gap-0.5 px-2" style={{ height: 52 }}>
+      {onBack && (
+        <>
+          <button
+            onClick={onBack}
+            className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0 transition-all text-white/50 hover:text-white hover:bg-white/[0.07]"
+            title="Назад"
+          >
+            <Icon name="ChevronLeft" size={18} />
+          </button>
+          <div className="w-px h-4 bg-white/10 mx-0.5 shrink-0" />
+        </>
+      )}
       <IconBtn icon="Undo2" onClick={onUndo} disabled={!canUndo} title="Отменить" />
       <IconBtn icon="Redo2" onClick={onRedo} disabled={!canRedo} title="Повторить" />
       <div className="w-px h-4 bg-white/10 mx-0.5 shrink-0" />

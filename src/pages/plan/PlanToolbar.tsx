@@ -32,8 +32,8 @@ export default function PlanToolbar(props: ToolbarProps) {
       {onBack ? (
         <button
           onClick={onBack}
-          className="flex items-center gap-1 px-2 h-7 rounded-lg text-[11px] font-bold shrink-0 mr-1.5 transition hover:opacity-80 active:scale-[0.96]"
-          style={{ background: "rgba(124,58,237,0.25)", border: "1px solid rgba(124,58,237,0.4)", color: "#a78bfa" }}
+          className="flex items-center gap-1 px-2 h-7 rounded-lg text-[11px] font-bold shrink-0 mr-1.5 transition hover:bg-white/[0.1] active:scale-[0.96]"
+          style={{ background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.6)" }}
           title="Назад к комнатам"
         >
           <Icon name="ChevronLeft" size={13} />
