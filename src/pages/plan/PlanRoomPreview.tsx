@@ -121,20 +121,26 @@ export default function PlanRoomPreview({ data, width = 280, height = 160, showM
   const GRID = 18;
 
   return (
-    <div style={{ width: "100%", height: "100%" }}>
-      <svg
-        width="100%" height="100%"
-        viewBox={`0 0 ${VW} ${VH}`}
-        preserveAspectRatio="none"
-        style={{ display: "block" }}
-      >
+    <div style={{ width: "100%", height: "100%", background: "#0a0a18", position: "relative" }}>
+      {/* Сетка — на весь контейнер, растянута */}
+      <svg width="100%" height="100%" style={{ position: "absolute", inset: 0, display: "block" }}
+        preserveAspectRatio="none">
         <defs>
           <pattern id="rp-grid" width={GRID} height={GRID} patternUnits="userSpaceOnUse">
             <circle cx={0} cy={0} r={0.7} fill="rgba(255,255,255,0.07)"/>
           </pattern>
         </defs>
-        <rect width={VW} height={VH} fill="#0a0a18"/>
-        <rect width={VW} height={VH} fill="url(#rp-grid)"/>
+        <rect width="100%" height="100%" fill="url(#rp-grid)"/>
+      </svg>
+
+      {/* Фигура — сохраняет пропорции, центрируется */}
+      <svg
+        width="100%" height="100%"
+        viewBox={`0 0 ${VW} ${VH}`}
+        preserveAspectRatio="xMidYMid meet"
+        style={{ position: "absolute", inset: 0, display: "block" }}
+      >
+        <rect width={VW} height={VH} fill="transparent"/>
 
         {/* Фигура в масштабированном пространстве */}
         <g transform={transformStr}>
@@ -172,7 +178,7 @@ export default function PlanRoomPreview({ data, width = 280, height = 160, showM
       </svg>
 
       {showMeta && (meta.areaSqm !== null || meta.perimM !== null) && (
-        <div style={{ display: "flex", gap: 8, marginTop: 6, fontSize: 12, color: "#6366f1", fontWeight: 600 }}>
+        <div style={{ position: "relative", display: "flex", gap: 8, padding: "6px 8px 0", fontSize: 12, color: "#6366f1", fontWeight: 600 }}>
           {meta.areaSqm !== null && <span>Площадь {meta.areaSqm} м²</span>}
           {meta.areaSqm !== null && meta.perimM !== null && <span style={{ color: "#9ca3af" }}>•</span>}
           {meta.perimM !== null && <span>Периметр {meta.perimM} м</span>}
