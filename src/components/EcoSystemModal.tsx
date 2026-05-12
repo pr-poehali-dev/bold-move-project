@@ -17,9 +17,9 @@ interface Feature {
   badgeIcon: string;
   status: Status;
   href?: string;
+  image: string;
 }
 
-// Порядок: ready → beta → soon
 const FEATURES: Feature[] = [
   {
     icon: "Bot",
@@ -31,6 +31,7 @@ const FEATURES: Feature[] = [
     badgeIcon: "Mic",
     status: "ready",
     href: "/",
+    image: "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/files/8ca1f811-9c71-4742-bb4a-8a81b2a5952e.jpg",
   },
   {
     icon: "LayoutDashboard",
@@ -42,6 +43,7 @@ const FEATURES: Feature[] = [
     badgeIcon: "CheckSquare",
     status: "ready",
     href: "/company?tab=crm",
+    image: "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/files/25dd27b1-2d7d-427e-beca-0786d7b4f77d.jpg",
   },
   {
     icon: "BarChart3",
@@ -53,6 +55,7 @@ const FEATURES: Feature[] = [
     badgeIcon: "TrendingUp",
     status: "ready",
     href: "/company?tab=crm&crm_tab=analytics",
+    image: "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/files/ae4900c1-c75d-4914-ba7c-a46b470891dd.jpg",
   },
   {
     icon: "PenTool",
@@ -64,6 +67,7 @@ const FEATURES: Feature[] = [
     badgeIcon: "Mic2",
     status: "beta",
     href: "/plan",
+    image: "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/files/e60d5107-51f9-469f-8dad-ac02a6035ca4.jpg",
   },
   {
     icon: "FileSearch",
@@ -74,6 +78,7 @@ const FEATURES: Feature[] = [
     badge: "Загрузи файл",
     badgeIcon: "Upload",
     status: "soon",
+    image: "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/files/64d39d46-539d-49f3-be65-3281579c62ad.jpg",
   },
   {
     icon: "Megaphone",
@@ -84,13 +89,14 @@ const FEATURES: Feature[] = [
     badge: "Автопилот",
     badgeIcon: "Zap",
     status: "soon",
+    image: "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/files/8ca8e39a-1009-4258-a2cb-c1cdd8a0a50e.jpg",
   },
 ];
 
 const STATUS_CONFIG: Record<Status, { label: string; color: string; bg: string; border: string }> = {
-  ready: { label: "Готово",                        color: "#10b981", bg: "rgba(16,185,129,0.12)",  border: "rgba(16,185,129,0.3)"  },
-  beta:  { label: "BETA · ранний доступ",           color: "#e879f9", bg: "rgba(232,121,249,0.14)", border: "rgba(232,121,249,0.4)" },
-  soon:  { label: "В разработке",                   color: "#f59e0b", bg: "rgba(245,158,11,0.12)",  border: "rgba(245,158,11,0.3)"  },
+  ready: { label: "Готово",              color: "#10b981", bg: "rgba(16,185,129,0.15)",  border: "rgba(16,185,129,0.35)"  },
+  beta:  { label: "BETA · ранний доступ", color: "#e879f9", bg: "rgba(232,121,249,0.15)", border: "rgba(232,121,249,0.4)"  },
+  soon:  { label: "В разработке",         color: "#f59e0b", bg: "rgba(245,158,11,0.15)",  border: "rgba(245,158,11,0.35)"  },
 };
 
 function SoonModal({ feature, onClose }: { feature: Feature; onClose: () => void }) {
@@ -101,36 +107,42 @@ function SoonModal({ feature, onClose }: { feature: Feature; onClose: () => void
       onClick={onClose}
     >
       <div
-        className="w-full max-w-sm rounded-3xl p-6 flex flex-col items-center text-center gap-4"
+        className="w-full max-w-sm rounded-3xl overflow-hidden flex flex-col"
         style={{ background: "#0e0e1c", border: `1px solid ${feature.accent}30` }}
         onClick={e => e.stopPropagation()}
       >
-        <div className="w-14 h-14 rounded-2xl flex items-center justify-center"
-          style={{ background: `${feature.accent}18` }}>
-          <Icon name={feature.icon} size={26} style={{ color: feature.accent }} />
-        </div>
-        <div>
-          <div className="text-[11px] font-bold mb-1" style={{ color: feature.accent }}>{feature.tag}</div>
-          <div className="text-[17px] font-black text-white leading-tight mb-2">{feature.title}</div>
-          <div className="text-[13px] text-white/50 leading-relaxed">{feature.desc}</div>
-        </div>
-        <div className="w-full p-3 rounded-2xl flex items-start gap-3"
-          style={{ background: "rgba(249,115,22,0.07)", border: "1px solid rgba(249,115,22,0.15)" }}>
-          <Icon name="Rocket" size={16} style={{ color: "#f97316", flexShrink: 0, marginTop: 1 }} />
-          <div className="text-left">
-            <div className="text-[12px] font-bold text-white">Мы активно развиваем эко-систему</div>
-            <div className="text-[11px] text-white/40 mt-0.5">
-              Вернёмся к этой задаче совсем скоро. Следи за обновлениями в разделе Новости.
-            </div>
+        {/* Картинка */}
+        <div className="relative h-36 overflow-hidden">
+          <img src={feature.image} alt="" className="w-full h-full object-cover" style={{ opacity: 0.55 }} />
+          <div className="absolute inset-0" style={{ background: `linear-gradient(to bottom, transparent 30%, #0e0e1c)` }} />
+          <div className="absolute bottom-3 left-4">
+            <div className="text-[11px] font-bold" style={{ color: feature.accent }}>{feature.tag}</div>
           </div>
         </div>
-        <button
-          onClick={onClose}
-          className="w-full py-2.5 rounded-xl text-[13px] font-semibold transition hover:opacity-80"
-          style={{ background: "rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.6)" }}
-        >
-          Понятно
-        </button>
+
+        <div className="p-5 flex flex-col gap-4">
+          <div>
+            <div className="text-[17px] font-black text-white leading-tight mb-2">{feature.title}</div>
+            <div className="text-[13px] text-white/50 leading-relaxed">{feature.desc}</div>
+          </div>
+          <div className="w-full p-3 rounded-2xl flex items-start gap-3"
+            style={{ background: "rgba(249,115,22,0.07)", border: "1px solid rgba(249,115,22,0.15)" }}>
+            <Icon name="Rocket" size={16} style={{ color: "#f97316", flexShrink: 0, marginTop: 1 }} />
+            <div className="text-left">
+              <div className="text-[12px] font-bold text-white">Мы активно развиваем эко-систему</div>
+              <div className="text-[11px] text-white/40 mt-0.5">
+                Вернёмся к этой задаче совсем скоро. Следи за обновлениями в разделе Новости.
+              </div>
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            className="w-full py-2.5 rounded-xl text-[13px] font-semibold transition hover:opacity-80"
+            style={{ background: "rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.6)" }}
+          >
+            Понятно
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -146,13 +158,11 @@ export default function EcoSystemModal({ onClose }: Props) {
   }, [onClose]);
 
   const handleCardClick = (f: Feature) => {
-    // Если есть ссылка — переходим (и для ready, и для beta)
     if (f.href) {
       onClose();
       window.location.href = f.href;
       return;
     }
-    // Нет ссылки (soon) — показываем заглушку
     setSoonFeature(f);
   };
 
@@ -165,7 +175,7 @@ export default function EcoSystemModal({ onClose }: Props) {
       >
         <div
           className="relative w-full sm:max-w-2xl max-h-[92dvh] overflow-y-auto rounded-t-3xl sm:rounded-3xl"
-          style={{ background: "#0e0e1c", border: "1px solid rgba(255,255,255,0.07)" }}
+          style={{ background: "#0a0a16", border: "1px solid rgba(255,255,255,0.07)" }}
           onClick={e => e.stopPropagation()}
         >
           {/* Хэндл мобильный */}
@@ -174,15 +184,15 @@ export default function EcoSystemModal({ onClose }: Props) {
           </div>
 
           {/* Хедер */}
-          <div className="flex items-start justify-between px-5 pt-4 pb-3">
+          <div className="flex items-start justify-between px-5 pt-4 pb-4">
             <div>
-              <div className="flex items-center gap-2 mb-1">
-                <div className="px-2 py-0.5 rounded-full text-[10px] font-bold tracking-wider"
+              <div className="flex items-center gap-2 mb-1.5">
+                <div className="px-2.5 py-0.5 rounded-full text-[10px] font-black tracking-widest uppercase"
                   style={{ background: "rgba(249,115,22,0.15)", color: "#f97316", border: "1px solid rgba(249,115,22,0.3)" }}>
                   ЭКО-СИСТЕМА
                 </div>
               </div>
-              <h2 className="text-lg font-black text-white leading-tight">AI-potolki — всё в одном</h2>
+              <h2 className="text-xl font-black text-white leading-tight">AI-potolki — всё в одном</h2>
               <p className="text-[12px] text-white/40 mt-0.5">Полный цикл от заявки до аналитики</p>
             </div>
             <button onClick={onClose}
@@ -200,53 +210,65 @@ export default function EcoSystemModal({ onClose }: Props) {
                 <button
                   key={f.tag}
                   onClick={() => handleCardClick(f)}
-                  className="rounded-2xl p-4 flex flex-col gap-2 text-left transition-all active:scale-[0.98]"
+                  className="rounded-2xl flex flex-col text-left transition-all active:scale-[0.97] overflow-hidden group"
                   style={{
-                    background: `${f.accent}08`,
-                    border: `1px solid ${f.accent}22`,
+                    background: "#0e0e1c",
+                    border: `1px solid ${f.accent}25`,
                     cursor: clickable ? "pointer" : "default",
-                    opacity: f.status === "soon" ? 0.75 : 1,
                   }}
                 >
-                  {/* Строка: иконка + тег + статус */}
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2.5">
-                      <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
-                        style={{ background: `${f.accent}18` }}>
-                        <Icon name={f.icon} size={16} style={{ color: f.accent }} />
-                      </div>
-                      <span className="text-[11px] font-bold tracking-wide" style={{ color: f.accent }}>
-                        {f.tag}
-                      </span>
-                    </div>
-                    {/* Лейбл статуса */}
-                    <div className="flex items-center gap-1 px-2 py-0.5 rounded-full"
-                      style={{ background: st.bg, border: `1px solid ${st.border}` }}>
-                      <div className="w-1.5 h-1.5 rounded-full" style={{ background: st.color }} />
-                      <span className="text-[9px] font-bold" style={{ color: st.color }}>
+                  {/* Картинка */}
+                  <div className="relative h-32 overflow-hidden flex-shrink-0">
+                    <img
+                      src={f.image}
+                      alt={f.tag}
+                      className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                      style={{ opacity: f.status === "soon" ? 0.4 : 0.65 }}
+                    />
+                    {/* Градиент снизу */}
+                    <div className="absolute inset-0"
+                      style={{ background: `linear-gradient(to bottom, ${f.accent}10 0%, #0e0e1c 100%)` }} />
+                    {/* Акцентная полоска сверху */}
+                    <div className="absolute top-0 left-0 right-0 h-0.5"
+                      style={{ background: `linear-gradient(to right, ${f.accent}, transparent)` }} />
+                    {/* Бейдж статуса */}
+                    <div className="absolute top-3 right-3">
+                      <div className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold backdrop-blur-sm"
+                        style={{ background: st.bg, color: st.color, border: `1px solid ${st.border}` }}>
+                        <div className="w-1.5 h-1.5 rounded-full flex-shrink-0"
+                          style={{ background: st.color, boxShadow: `0 0 4px ${st.color}` }} />
                         {st.label}
-                      </span>
+                      </div>
+                    </div>
+                    {/* Тег + иконка */}
+                    <div className="absolute bottom-3 left-3 flex items-center gap-2">
+                      <div className="w-6 h-6 rounded-lg flex items-center justify-center"
+                        style={{ background: `${f.accent}25`, backdropFilter: "blur(4px)" }}>
+                        <Icon name={f.icon} size={13} style={{ color: f.accent }} />
+                      </div>
+                      <span className="text-[11px] font-bold" style={{ color: f.accent }}>{f.tag}</span>
                     </div>
                   </div>
 
-                  {/* Заголовок */}
-                  <div className="text-[14px] font-bold text-white leading-snug">{f.title}</div>
+                  {/* Контент */}
+                  <div className="p-4 flex flex-col gap-2 flex-1">
+                    <div className="text-[14px] font-black text-white leading-snug">{f.title}</div>
+                    <div className="text-[11px] leading-relaxed" style={{ color: "rgba(255,255,255,0.45)" }}>{f.desc}</div>
 
-                  {/* Описание */}
-                  <div className="text-[12px] text-white/50 leading-relaxed">{f.desc}</div>
-
-                  {/* Бейдж фичи + стрелка если готово */}
-                  <div className="flex items-center justify-between mt-0.5">
-                    <div className="flex items-center gap-1 px-2 py-0.5 rounded-full"
-                      style={{ background: `${f.accent}12`, border: `1px solid ${f.accent}20` }}>
-                      <Icon name={f.badgeIcon} size={9} style={{ color: f.accent }} />
-                      <span className="text-[9px] font-semibold" style={{ color: `${f.accent}cc` }}>
+                    {/* Футер */}
+                    <div className="flex items-center justify-between mt-auto pt-2">
+                      <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-semibold"
+                        style={{ background: `${f.accent}12`, color: f.accent }}>
+                        <Icon name={f.badgeIcon} size={11} />
                         {f.badge}
-                      </span>
+                      </div>
+                      {clickable && (
+                        <div className="w-6 h-6 rounded-lg flex items-center justify-center transition group-hover:translate-x-0.5"
+                          style={{ background: `${f.accent}15`, color: f.accent }}>
+                          <Icon name="ArrowRight" size={12} />
+                        </div>
+                      )}
                     </div>
-                    {clickable && (
-                      <Icon name="ArrowRight" size={13} style={{ color: `${f.accent}80` }} />
-                    )}
                   </div>
                 </button>
               );
@@ -255,29 +277,27 @@ export default function EcoSystemModal({ onClose }: Props) {
 
           {/* Футер */}
           <div className="mx-4 mb-4 p-3 rounded-2xl flex items-center gap-3"
-            style={{ background: "rgba(249,115,22,0.06)", border: "1px solid rgba(249,115,22,0.15)" }}>
-            <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
-              style={{ background: "rgba(249,115,22,0.15)" }}>
+            style={{ background: "rgba(249,115,22,0.06)", border: "1px solid rgba(249,115,22,0.12)" }}>
+            <div className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0"
+              style={{ background: "rgba(249,115,22,0.12)" }}>
               <Icon name="Sparkles" size={15} style={{ color: "#f97316" }} />
             </div>
             <div className="flex-1 min-w-0">
               <div className="text-[12px] font-bold text-white">Мы активно развиваем эко-систему</div>
-              <div className="text-[11px] text-white/40">Следи за обновлениями — всё только начинается</div>
+              <div className="text-[11px] text-white/35 mt-0.5">Следи за обновлениями — всё только начинается</div>
             </div>
             <button
               onClick={() => { onClose(); window.location.href = "/news"; }}
-              className="shrink-0 flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-[10px] font-bold transition hover:opacity-80"
-              style={{ background: "rgba(249,115,22,0.15)", color: "#f97316", border: "1px solid rgba(249,115,22,0.25)" }}>
-              <Icon name="Newspaper" size={11} />
+              className="px-3 py-1.5 rounded-xl text-[11px] font-bold transition hover:opacity-80 flex-shrink-0"
+              style={{ background: "#f97316", color: "#fff" }}
+            >
               Новости
             </button>
           </div>
         </div>
       </div>
 
-      {soonFeature && (
-        <SoonModal feature={soonFeature} onClose={() => setSoonFeature(null)} />
-      )}
+      {soonFeature && <SoonModal feature={soonFeature} onClose={() => setSoonFeature(null)} />}
     </>
   );
 }
