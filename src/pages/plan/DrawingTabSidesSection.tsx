@@ -42,7 +42,7 @@ export default function DrawingTabSidesSection({
         forceOpen={noAutoOpen ? false : isClosed}
         onOpen={onSectionOpen}>
 
-        {closureErr !== null && closureErr > 2 && (
+        {closureErr !== null && closureErr > 0.5 && (
           <div className="mb-2 px-3 py-2 rounded-xl bg-yellow-500/10 border border-yellow-500/30">
             <div className="flex items-center gap-2">
               <Icon name="AlertTriangle" size={13} className="text-yellow-400 shrink-0" />
