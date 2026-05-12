@@ -146,7 +146,7 @@ export default function PlanPage() {
   };
 
   return (
-    <div className="flex flex-col bg-[#111] overflow-hidden relative" style={{ height: "100dvh" }}>
+    <div className="flex flex-col bg-[#111] overflow-hidden relative" style={{ height: isMobile ? "calc(100dvh - 60px)" : "100dvh" }}>
 
       {/* Toolbar */}
       <PlanToolbar
