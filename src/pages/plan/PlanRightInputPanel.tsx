@@ -52,12 +52,13 @@ export default function PlanRightInputPanel({ state, onUpdateSegment, onUpdateDi
 
   useEffect(() => {
     setSegValues(prev => segments.map((s, i) => {
-      // Если голос/внешний апдейт установил значение — берём из state
-      // Если пользователь сейчас редактирует инпут руками — не перебиваем
       const fromState = s.lengthCm != null ? String(s.lengthCm) : "";
       const current = prev[i] ?? "";
-      // Перезаписываем если значение реально изменилось в state
-      return fromState !== "" ? fromState : current;
+      // Если в state есть значение — берём его (источник правды)
+      if (fromState !== "") return fromState;
+      // Если в state пусто, но в prev уже что-то записано голосом — сохраняем
+      if (current !== "") return current;
+      return "";
     }));
   }, [segments]);  
 
@@ -130,14 +131,7 @@ export default function PlanRightInputPanel({ state, onUpdateSegment, onUpdateDi
   // ── Голосовой ввод ──
   const voice = usePlanVoiceInput({
     segments,
-    onUpdateSegment: (id, patch) => {
-      onUpdateSegment(id, patch);
-      // Синхронизируем локальный стейт инпутов
-      const idx = segments.findIndex(s => s.id === id);
-      if (idx >= 0 && patch.lengthCm != null) {
-        setSegValues(prev => { const next = [...prev]; next[idx] = String(patch.lengthCm); return next; });
-      }
-    },
+    onUpdateSegment,
   });
 
   // ── Авто-подсчёт длины диагонали из координат ──
