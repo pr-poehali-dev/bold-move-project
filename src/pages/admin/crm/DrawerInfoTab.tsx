@@ -6,6 +6,7 @@ import { StatusSelector } from "./StatusSelector";
 import { DrawerPLBlock } from "./DrawerPLBlock";
 import { DrawerDiscountBlock } from "./DrawerDiscountBlock";
 import { ActivityFeed, ActivityEvent, appendActivityLog } from "./ActivityFeed";
+import { useDiscountHistory } from "@/hooks/useDiscountHistory";
 import { AddBlockModal } from "./DrawerBlockEditor";
 import { DrawerColumns } from "./DrawerColumns";
 import {
@@ -48,6 +49,9 @@ export default function DrawerInfoTab({ data, client, setData, save, setComments
   const [showAddBlock, setShowAddBlock]   = useState<0 | 1 | "wide" | null>(null);
   const [rowVisibility, setRowVisibility] = useState<Record<string, boolean>>(loadRowVisibility);
   const [customFinRows, setCustomFinRows] = useState<CustomFinRow[]>(loadCustomFinRows);
+
+  // Единый источник истории скидок — шарится между P&L и блоком скидки
+  const discountHistoryHook = useDiscountHistory(data.id);
 
   const toggleRowVisibility = (key: string) => {
     setRowVisibility(prev => {
@@ -210,6 +214,7 @@ export default function DrawerInfoTab({ data, client, setData, save, setComments
           isHidden={hiddenBlocks.has("pl")}
           toggleHidden={toggleHidden}
           customFinRows={customFinRows}
+          discountHistoryHook={discountHistoryHook}
         />
       )}
 
@@ -218,7 +223,11 @@ export default function DrawerInfoTab({ data, client, setData, save, setComments
         <DrawerDiscountBlock
           data={data}
           customFinRows={customFinRows}
-          onContractSumUpdated={newSum => save({ contract_sum: newSum })}
+          discountHistoryHook={discountHistoryHook}
+          onContractSumUpdated={newSum => {
+            save({ contract_sum: newSum });
+            onReload?.();
+          }}
         />
       )}
 

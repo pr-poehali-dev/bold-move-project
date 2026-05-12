@@ -4,15 +4,17 @@ import { Client } from "./crmApi";
 import { BlockId, CustomFinRow } from "./drawerTypes";
 import { useDiscountHistory } from "@/hooks/useDiscountHistory";
 
-export function DrawerPLBlock({ data, isHidden, toggleHidden, customFinRows }: {
+export function DrawerPLBlock({ data, isHidden, toggleHidden, customFinRows, discountHistoryHook }: {
   data: Client;
   isHidden: boolean;
   toggleHidden: (id: BlockId) => void;
   customFinRows: CustomFinRow[];
+  discountHistoryHook?: ReturnType<typeof useDiscountHistory>;
 }) {
   const t = useTheme();
   const fmt = (n: number) => n.toLocaleString("ru-RU");
-  const { history: discountHistory } = useDiscountHistory(data.id);
+  const ownHook = useDiscountHistory(data.id);
+  const { history: discountHistory } = discountHistoryHook ?? ownHook;
 
   const customCostRows = customFinRows
     .filter(r => r.block === "costs")

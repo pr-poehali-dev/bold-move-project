@@ -18,9 +18,10 @@ interface Props {
   data: Client;
   customFinRows: CustomFinRow[];
   onContractSumUpdated?: (newSum: number) => void;
+  discountHistoryHook?: ReturnType<typeof useDiscountHistory>;
 }
 
-export function DrawerDiscountBlock({ data, customFinRows, onContractSumUpdated }: Props) {
+export function DrawerDiscountBlock({ data, customFinRows, onContractSumUpdated, discountHistoryHook }: Props) {
   const [discount,  setDiscount]  = useState(0);
   const [applying,  setApplying]  = useState(false);
   const [applied,   setApplied]   = useState(false);
@@ -39,8 +40,9 @@ export function DrawerDiscountBlock({ data, customFinRows, onContractSumUpdated 
 
   const fmt = (n: number) => Math.round(n).toLocaleString("ru-RU");
 
-  // История скидок
-  const { history: discountHistory, addEntry, deactivateLast, totalDiscountAmount, lastEntry } = useDiscountHistory(data.id);
+  // История скидок — используем общий хук из родителя если передан
+  const ownHook = useDiscountHistory(data.id);
+  const { history: discountHistory, addEntry, deactivateLast, totalDiscountAmount, lastEntry } = discountHistoryHook ?? ownHook;
 
   // Настройки управления риском — реактивно обновляются при изменении localStorage
   const [risk, setRisk] = useState<RiskSettings>(loadRiskSettings);
