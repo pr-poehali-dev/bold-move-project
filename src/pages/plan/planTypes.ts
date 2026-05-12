@@ -926,7 +926,7 @@ export function rebuildWithRightAngles(
   points: Point[],
   segments: Segment[],
   baseScale: number,
-): { points: Point[]; hasSkews: boolean; segments?: Segment[] } | null {
+): { points: Point[]; hasSkews: boolean; segments?: Segment[]; correctedIds?: string[] } | null {
   if (points.length < 3 || segments.length < 3) return null;
   if (!segments.every(s => s.lengthCm !== null && s.lengthCm > 0)) return null;
 
@@ -1010,8 +1010,27 @@ export function rebuildWithRightAngles(
     return nc ? { ...p, ...nc } : p;
   });
 
-  // Возвращаем новые координаты точек, сегменты — без изменений (введённые пользователем значения сохраняются)
-  return { points: newPoints, hasSkews };
+  // Проверяем замыкание: последний сегмент строится кинематически автоматически.
+  // Его реальная длина в px может отличаться от введённой — это геометрическая погрешность.
+  // Корректируем lengthCm чтобы значение соответствовало реальной геометрии.
+  const lastSeg = orderedSegs[orderedSegs.length - 1];
+  const lastFrom = newPoints.find(p => p.id === lastSeg.fromId);
+  const lastTo   = newPoints.find(p => p.id === lastSeg.toId);
+  let correctedSegments = segments;
+  let correctedIds: string[] = [];
+  if (lastFrom && lastTo) {
+    const realPx = distPx(lastFrom, lastTo);
+    const realCm = Math.round((realPx / baseScale) * 10) / 10;
+    const expectedCm = lastSeg.lengthCm ?? 0;
+    if (Math.abs(realCm - expectedCm) > 0.05) { // порог 0.05 см — чистая геометрия
+      correctedSegments = segments.map(s =>
+        s.id === lastSeg.id ? { ...s, lengthCm: realCm } : s
+      );
+      correctedIds = [lastSeg.id];
+    }
+  }
+
+  return { points: newPoints, hasSkews, segments: correctedSegments, correctedIds };
 }
 
 /**

@@ -145,11 +145,13 @@ export default function DrawingTab({ state, onChange, onSectionOpen, noAutoOpen 
       if (!isEditMode && allSetAfter && baseScale && isClosed) {
         const result = rebuildWithRightAngles(points, newSegments, baseScale);
         if (result) {
-          // Сегменты не трогаем — введённые пользователем значения сохраняются как есть
+          // result.segments содержит геометрически скорректированный последний сегмент (если не сходится)
+          const finalSegs = result.segments ?? newSegments;
           builtPoints.current   = result.points;
-          builtSegments.current = newSegments;
+          builtSegments.current = finalSegs;
           const newDiags = buildAutoDiagonals(result.points, diagonals, baseScale);
-          onChange({ points: result.points, segments: newSegments, diagonals: newDiags, baseScale, isBuilt: true, changedSegmentIds: [] });
+          // correctedIds — ID сторон автоматически скорректированных геометрией (показываем жёлтым)
+          onChange({ points: result.points, segments: finalSegs, diagonals: newDiags, baseScale, isBuilt: true, changedSegmentIds: result.correctedIds ?? [] });
           return;
         }
       }
