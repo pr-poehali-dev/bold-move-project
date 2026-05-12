@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import type { PlanState } from "./planTypes";
+import { getSvgDataUrl } from "./planExport";
 import func2url from "@/../backend/func2url.json";
 
 const CRM_URL = (func2url as Record<string, string>)["crm-manager"];
@@ -7,6 +8,7 @@ const CRM_URL = (func2url as Record<string, string>)["crm-manager"];
 export type RoomSaveStatus = "idle" | "saving" | "saved" | "error";
 
 const DEBOUNCE_MS = 3000;
+const THUMBNAIL_MAX = 8000; // bytes для base64
 
 export function useRoomAutoSave(
   roomId: number | null,
@@ -14,8 +16,8 @@ export function useRoomAutoSave(
   token: string | null | undefined
 ) {
   const [saveStatus, setSaveStatus] = useState<RoomSaveStatus>("idle");
-  const timerRef   = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const savedRef   = useRef<string>("");          // JSON последнего сохранения
+  const timerRef    = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const savedRef    = useRef<string>("");
   const statusTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const stateStr = JSON.stringify(state);
@@ -24,15 +26,23 @@ export function useRoomAutoSave(
     if (!roomId || !token) return;
     setSaveStatus("saving");
     try {
+      // Генерируем SVG-превью если есть точки
+      const thumbnail = planState.points.length >= 2
+        ? (getSvgDataUrl(planState, 0.4) ?? "").slice(0, THUMBNAIL_MAX)
+        : null;
+
       await fetch(`${CRM_URL}?r=plan-rooms&id=${roomId}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
           "Authorization": `Bearer ${token}`,
         },
-        body: JSON.stringify({ data: planState }),
+        body: JSON.stringify({
+          data: planState,
+          ...(thumbnail ? { thumbnail } : {}),
+        }),
       });
-      savedRef.current = JSON.stringify(planState);
+      savedRef.current = stateStr;
       setSaveStatus("saved");
       if (statusTimer.current) clearTimeout(statusTimer.current);
       statusTimer.current = setTimeout(() => setSaveStatus("idle"), 2500);
@@ -45,7 +55,6 @@ export function useRoomAutoSave(
 
   useEffect(() => {
     if (!roomId || !token) return;
-    // Не сохраняем если ничего не изменилось
     if (stateStr === savedRef.current) return;
 
     if (timerRef.current) clearTimeout(timerRef.current);

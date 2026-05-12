@@ -91,6 +91,21 @@ export function usePlanProjects(token?: string | null) {
     return data as PlanRoom;
   }, [token]);
 
+  const updateRoom = useCallback(async (roomId: number, body: { name?: string; data?: object; thumbnail?: string }) => {
+    await fetch(`${CRM_URL}?r=plan-rooms&id=${roomId}`, {
+      method: "PUT",
+      headers: headers(token),
+      body: JSON.stringify(body),
+    });
+  }, [token]);
+
+  const deleteRoom = useCallback(async (roomId: number) => {
+    await fetch(`${CRM_URL}?r=plan-rooms&id=${roomId}`, {
+      method: "DELETE",
+      headers: headers(token),
+    });
+  }, [token]);
+
   const updateProject = useCallback(async (id: number, body: Partial<Pick<PlanProject, "name" | "client_name" | "address" | "phone" | "status">>) => {
     await fetch(`${CRM_URL}?r=plan-projects&id=${id}`, {
       method: "PUT",
@@ -114,5 +129,5 @@ export function usePlanProjects(token?: string | null) {
     });
   }, [token]);
 
-  return { projects, rooms, loading, loadProjects, createProject, updateProject, deleteProject, loadRooms, createRoom, loadRoom, saveRoom };
+  return { projects, rooms, loading, loadProjects, createProject, updateProject, deleteProject, loadRooms, createRoom, loadRoom, saveRoom, updateRoom, deleteRoom };
 }
