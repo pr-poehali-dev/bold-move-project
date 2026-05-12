@@ -88,9 +88,9 @@ const FEATURES: Feature[] = [
 ];
 
 const STATUS_CONFIG: Record<Status, { label: string; color: string; bg: string; border: string }> = {
-  ready: { label: "Готово", color: "#10b981", bg: "rgba(16,185,129,0.12)", border: "rgba(16,185,129,0.3)" },
-  beta:  { label: "В разработке", color: "#a855f7", bg: "rgba(168,85,247,0.12)", border: "rgba(168,85,247,0.3)" },
-  soon:  { label: "Скоро", color: "#f59e0b", bg: "rgba(245,158,11,0.12)", border: "rgba(245,158,11,0.3)" },
+  ready: { label: "Готово",                        color: "#10b981", bg: "rgba(16,185,129,0.12)",  border: "rgba(16,185,129,0.3)"  },
+  beta:  { label: "BETA · ранний доступ",           color: "#e879f9", bg: "rgba(232,121,249,0.14)", border: "rgba(232,121,249,0.4)" },
+  soon:  { label: "В разработке",                   color: "#f59e0b", bg: "rgba(245,158,11,0.12)",  border: "rgba(245,158,11,0.3)"  },
 };
 
 function SoonModal({ feature, onClose }: { feature: Feature; onClose: () => void }) {
