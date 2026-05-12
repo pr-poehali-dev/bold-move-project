@@ -77,6 +77,8 @@ export default function usePlanVoiceInput({ segments, onUpdateSegment }: Props) 
   const activeIdxRef = useRef(0);
   const segmentsRef = useRef(segments);
   segmentsRef.current = segments;
+  const onUpdateSegmentRef = useRef(onUpdateSegment);
+  onUpdateSegmentRef.current = onUpdateSegment;
 
   const isIOS = typeof navigator !== "undefined" && /iPhone|iPad|iPod/i.test(navigator.userAgent);
 
@@ -167,7 +169,7 @@ export default function usePlanVoiceInput({ segments, onUpdateSegment }: Props) 
       // Пробуем распознать число
       const value = parseNumber(finalText);
       if (value !== null && idx < segs.length) {
-        onUpdateSegment(segs[idx].id, { lengthCm: value });
+        onUpdateSegmentRef.current(segs[idx].id, { lengthCm: value });
         setInterimText("");
 
         // Автопереход к следующей если есть ещё стороны
@@ -210,7 +212,7 @@ export default function usePlanVoiceInput({ segments, onUpdateSegment }: Props) 
     } catch (err) {
       console.error("[PlanVoice] start failed:", err);
     }
-  }, [isListening, isIOS, goNext, stop, onUpdateSegment]);
+  }, [isListening, isIOS, goNext, stop]);
 
   return {
     isListening,
