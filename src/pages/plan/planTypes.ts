@@ -1020,7 +1020,7 @@ export function rebuildWithRightAngles(
     const realPx = distPx(lastFrom, lastTo);
     const realCm = Math.round((realPx / baseScale) * 10) / 10;
     const expectedCm = lastSeg.lengthCm ?? 0;
-    if (Math.abs(realCm - expectedCm) > 0.5) {
+    if (Math.abs(realCm - expectedCm) > 2) {
       correctedSegments = segments.map(s =>
         s.id === lastSeg.id ? { ...s, lengthCm: realCm } : s
       );

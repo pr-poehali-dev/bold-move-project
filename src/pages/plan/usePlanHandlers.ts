@@ -119,7 +119,7 @@ export function usePlanHandlers({
     const cw = el.clientWidth  - PAD_LEFT - PAD_RIGHT - reservedRightPx;
     const ch = el.clientHeight - reservedBottomPx - PAD_TOP - PAD_BOT;
     if (cw <= 0 || ch <= 0) return;
-    const z = Math.max(0.2, Math.min(3, Math.min(cw / w, ch / h)));
+    const z = Math.max(0.2, Math.min(8, Math.min(cw / w, ch / h)));
     const newZoom = Math.round(z * 10) / 10;
     const panX = (cw / 2 / newZoom) - (minX + w / 2) + (PAD_LEFT - PAD_RIGHT) / 2 / newZoom;
     const panY = (ch / 2 / newZoom) - (minY + h / 2) + (PAD_TOP - PAD_BOT) / 2 / newZoom;
