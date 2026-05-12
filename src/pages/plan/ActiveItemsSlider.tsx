@@ -97,7 +97,7 @@ export default function ActiveItemsSlider({
       {activeItems.length > 0 && !anyPanelOpen && (
         <div style={{
           position: "fixed",
-          bottom: isMobile ? 90 : 110,
+          bottom: isMobile ? 90 : 140,
           left: 0,
           right: 0,
           zIndex: 9999,
