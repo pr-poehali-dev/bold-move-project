@@ -2,11 +2,9 @@ import { useMemo } from "react";
 import type { PlanState, Point, Segment } from "./planTypes";
 import { buildShapePath, calcScale, distPx, midPoint, segmentNormal, pxToCm, polygonArea, polygonPerimeter } from "./planTypes";
 
-// Логические размеры SVG-холста (viewBox)
-const VW = 300;
-const VH = 200;
-// Отступ внутри логического холста — чтобы подписи углов/длин не обрезались
-const PAD = 32;
+// Отступ вокруг фигуры в единицах исходных координат
+// — чтобы подписи углов/длин не уходили за край
+const PAD_RATIO = 0.18; // 18% от размера фигуры с каждой стороны
 
 export interface RoomMeta {
   areaSqm: number | null;
@@ -20,7 +18,6 @@ export function getRoomMeta(data: object): RoomMeta {
   const isClosed = state?.isClosed ?? false;
   if (!isClosed || points.length < 3) return { areaSqm: null, perimM: null };
 
-  // Используем calcScale — он берёт масштаб из lengthCm введённых пользователем
   const scale = calcScale(points, segments);
   if (!scale) return { areaSqm: null, perimM: null };
 
@@ -28,13 +25,10 @@ export function getRoomMeta(data: object): RoomMeta {
   const areaCm2 = areaPx / (scale * scale);
   const areaM2  = Math.round(areaCm2 / 10000 * 100) / 100;
 
-  const perimPx = polygonPerimeter(points);
-
-  // Если все стороны введены — берём точный периметр из lengthCm
   const allSet = segments.length > 0 && segments.every(s => s.lengthCm !== null && s.lengthCm > 0);
   const perimM = allSet
     ? Math.round(segments.reduce((s, seg) => s + (seg.lengthCm ?? 0), 0) / 100 * 100) / 100
-    : Math.round((perimPx / scale) / 100 * 100) / 100;
+    : Math.round((polygonPerimeter(points) / scale) / 100 * 100) / 100;
 
   return { areaSqm: areaM2, perimM };
 }
@@ -52,17 +46,21 @@ export default function PlanRoomPreview({ data, width = 280, height = 160, showM
   const segments: Segment[] = state?.segments ?? [];
   const isClosed = state?.isClosed ?? false;
 
-  // Вычисляем fit в логическом пространстве VW×VH
-  const { fitScale, offX, offY } = useMemo(() => {
-    if (!points.length) return { fitScale: 1, offX: 0, offY: 0 };
+  // Вычисляем viewBox точно под фигуру + отступ для подписей
+  const { vx, vy, vw, vh } = useMemo(() => {
+    if (!points.length) return { vx: 0, vy: 0, vw: 100, vh: 100 };
     const xs = points.map(p => p.x), ys = points.map(p => p.y);
     const minX = Math.min(...xs), maxX = Math.max(...xs);
     const minY = Math.min(...ys), maxY = Math.max(...ys);
     const pw = maxX - minX || 1, ph = maxY - minY || 1;
-    const s = Math.min((VW - PAD * 2) / pw, (VH - PAD * 2) / ph);
-    const ox = (VW - pw * s) / 2 - minX * s;
-    const oy = (VH - ph * s) / 2 - minY * s;
-    return { fitScale: s, offX: ox, offY: oy };
+    const padX = pw * PAD_RATIO;
+    const padY = ph * PAD_RATIO;
+    return {
+      vx: minX - padX,
+      vy: minY - padY,
+      vw: pw + padX * 2,
+      vh: ph + padY * 2,
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [JSON.stringify(points)]);
 
@@ -81,9 +79,13 @@ export default function PlanRoomPreview({ data, width = 280, height = 160, showM
   }
 
   const shapePath = buildShapePath(points, segments, isClosed);
-  // Трансформ: сначала масштабируем, потом сдвигаем
-  const transformStr = `translate(${offX}, ${offY}) scale(${fitScale})`;
 
+  // strokeWidth и fontSize в единицах viewBox — адаптируем под размер фигуры
+  const strokeW  = Math.max(vw, vh) * 0.006;
+  const ptRadius = Math.max(vw, vh) * 0.012;
+  const fontSize = Math.max(vw, vh) * 0.045;
+
+  // Подписи длин — в координатах viewBox
   const segLabels = segments.flatMap(seg => {
     if (!seg.showLength) return [];
     const a = points.find(p => p.id === seg.fromId);
@@ -93,12 +95,11 @@ export default function PlanRoomPreview({ data, width = 280, height = 160, showM
     const { nx, ny } = segmentNormal(a, b);
     const lenCm = seg.lengthCm ?? pxToCm(distPx(a, b), planScale);
     if (lenCm === null) return [];
-    // Позиция в экранных координатах (после трансформа)
-    const sx = mid.x * fitScale + offX + nx * 13;
-    const sy = mid.y * fitScale + offY + ny * 13;
-    return [{ id: seg.id, x: sx, y: sy, label: `${lenCm} см` }];
+    const offset = Math.max(vw, vh) * 0.07;
+    return [{ id: seg.id, x: mid.x + nx * offset, y: mid.y + ny * offset, label: `${lenCm} см` }];
   });
 
+  // Угловые метки — в координатах viewBox
   const angleLabels = isClosed ? points.map((pt, idx) => {
     const n = points.length;
     const prev = points[(idx - 1 + n) % n];
@@ -112,66 +113,59 @@ export default function PlanRoomPreview({ data, width = 280, height = 160, showM
     const isOdd = Math.abs(deg - Math.round(deg / 90) * 90) > 1.5;
     const dx = ax / la + bx / lb, dy = ay / la + by / lb;
     const dl = Math.sqrt(dx * dx + dy * dy) || 1;
-    // Позиция в экранных координатах
-    const sx = pt.x * fitScale + offX + (dx / dl) * 14;
-    const sy = pt.y * fitScale + offY + (dy / dl) * 14;
-    return { id: pt.id, x: sx, y: sy, label: `${deg}°`, isOdd };
+    const offset = Math.max(vw, vh) * 0.08;
+    return { id: pt.id, x: pt.x + (dx / dl) * offset, y: pt.y + (dy / dl) * offset, label: `${deg}°`, isOdd };
   }) : [];
 
-  const GRID = 18;
+  const GRID = Math.max(vw, vh) * 0.08;
 
   return (
-    <div style={{ width: "100%", height: "100%", background: "#0a0a18", position: "relative" }}>
-      {/* Сетка — на весь контейнер, растянута */}
-      <svg width="100%" height="100%" style={{ position: "absolute", inset: 0, display: "block" }}
-        preserveAspectRatio="none">
+    <div style={{ width: "100%", height: "100%", position: "relative", background: "#0a0a18" }}>
+      {/* Сетка — на весь контейнер */}
+      <svg width="100%" height="100%" style={{ position: "absolute", inset: 0, display: "block" }}>
         <defs>
           <pattern id="rp-grid" width={GRID} height={GRID} patternUnits="userSpaceOnUse">
-            <circle cx={0} cy={0} r={0.7} fill="rgba(255,255,255,0.07)"/>
+            <circle cx={0} cy={0} r={0.8} fill="rgba(255,255,255,0.07)"/>
           </pattern>
         </defs>
         <rect width="100%" height="100%" fill="url(#rp-grid)"/>
       </svg>
 
-      {/* Фигура — сохраняет пропорции, центрируется */}
+      {/* Фигура — viewBox точно под bbox фигуры, meet без пустых полей */}
       <svg
         width="100%" height="100%"
-        viewBox={`0 0 ${VW} ${VH}`}
+        viewBox={`${vx} ${vy} ${vw} ${vh}`}
         preserveAspectRatio="xMidYMid meet"
         style={{ position: "absolute", inset: 0, display: "block" }}
       >
-        <rect width={VW} height={VH} fill="transparent"/>
-
-        {/* Фигура в масштабированном пространстве */}
-        <g transform={transformStr}>
-          {isClosed && points.length >= 3 && (
-            <path d={shapePath} fill="rgba(251,191,36,0.1)" stroke="none"/>
-          )}
-          <path
-            d={shapePath}
-            fill="none"
-            stroke="#f59e0b"
-            strokeWidth={2 / fitScale}
-            strokeLinejoin="round"
-            strokeLinecap="round"
-          />
-          {points.map(pt => (
-            <circle key={pt.id} cx={pt.x} cy={pt.y} r={3.5 / fitScale} fill="rgba(255,255,255,0.85)"/>
-          ))}
-        </g>
-
-        {/* Подписи длин — в экранных координатах */}
+        {/* Заливка */}
+        {isClosed && points.length >= 3 && (
+          <path d={shapePath} fill="rgba(251,191,36,0.1)" stroke="none"/>
+        )}
+        {/* Контур */}
+        <path
+          d={shapePath}
+          fill="none"
+          stroke="#f59e0b"
+          strokeWidth={strokeW}
+          strokeLinejoin="round"
+          strokeLinecap="round"
+        />
+        {/* Точки */}
+        {points.map(pt => (
+          <circle key={pt.id} cx={pt.x} cy={pt.y} r={ptRadius} fill="rgba(255,255,255,0.85)"/>
+        ))}
+        {/* Подписи длин */}
         {segLabels.map(l => (
           <text key={l.id} x={l.x} y={l.y} textAnchor="middle" dominantBaseline="middle"
-            fontSize={9} fill="rgba(255,255,255,0.6)" fontFamily="monospace" style={{ userSelect: "none" }}>
+            fontSize={fontSize} fill="rgba(255,255,255,0.65)" fontFamily="monospace">
             {l.label}
           </text>
         ))}
-
-        {/* Угловые метки — в экранных координатах */}
+        {/* Угловые метки */}
         {angleLabels.map(l => (
           <text key={l.id} x={l.x} y={l.y} textAnchor="middle" dominantBaseline="middle"
-            fontSize={8} fill={l.isOdd ? "#fb923c" : "rgba(255,255,255,0.4)"} fontFamily="monospace" style={{ userSelect: "none" }}>
+            fontSize={fontSize * 0.85} fill={l.isOdd ? "#fb923c" : "rgba(255,255,255,0.4)"} fontFamily="monospace">
             {l.label}
           </text>
         ))}
