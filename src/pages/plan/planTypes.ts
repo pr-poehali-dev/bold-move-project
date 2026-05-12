@@ -596,12 +596,28 @@ function segmentsIntersect(
   return t > 1e-8 && t < 1 - 1e-8 && u > 1e-8 && u < 1 - 1e-8;
 }
 
-/** Проверяет, проходит ли диагональ (from→to) сквозь стены фигуры */
+/** Ray-casting: проверяет что точка (px, py) находится внутри полигона */
+function pointInPolygon(px: number, py: number, poly: Point[]): boolean {
+  const n = poly.length;
+  let inside = false;
+  for (let i = 0, j = n - 1; i < n; j = i++) {
+    const xi = poly[i].x, yi = poly[i].y;
+    const xj = poly[j].x, yj = poly[j].y;
+    if (((yi > py) !== (yj > py)) && (px < (xj - xi) * (py - yi) / (yj - yi) + xi)) {
+      inside = !inside;
+    }
+  }
+  return inside;
+}
+
+/** Проверяет, проходит ли диагональ (from→to) сквозь стены фигуры или вне полигона.
+ *  Для вогнутых фигур дополнительно проверяем несколько промежуточных точек. */
 export function diagonalCrossesWall(
   from: Point, to: Point,
   points: Point[],
   segments: { fromId: string; toId: string }[],
 ): boolean {
+  // 1. Пересечение со стенами
   for (const seg of segments) {
     const a = points.find(p => p.id === seg.fromId);
     const b = points.find(p => p.id === seg.toId);
@@ -609,6 +625,15 @@ export function diagonalCrossesWall(
     // Не проверяем отрезки, которые смежны с from или to
     if (a.id === from.id || a.id === to.id || b.id === from.id || b.id === to.id) continue;
     if (segmentsIntersect(from.x, from.y, to.x, to.y, a.x, a.y, b.x, b.y)) return true;
+  }
+  // 2. Проверяем что несколько промежуточных точек находятся внутри полигона
+  // Для вогнутых фигур диагональ может не пересекать стены но проходить снаружи
+  const CHECKS = 5; // сколько промежуточных точек проверяем
+  for (let k = 1; k < CHECKS; k++) {
+    const t = k / CHECKS;
+    const mx = from.x + (to.x - from.x) * t;
+    const my = from.y + (to.y - from.y) * t;
+    if (!pointInPolygon(mx, my, points)) return true;
   }
   return false;
 }
