@@ -38,10 +38,13 @@ export function DrawerPLBlock({ data, isHidden, toggleHidden, customFinRows, dis
   const totalDiscount  = discountHistory.reduce((s, e) => s + Number(e.discount_amount), 0);
   const customIncomSum = customIncomeRows.reduce((s, r) => s + r.value, 0);
 
-  // contract_sum в БД уже хранится ПОСЛЕ применения скидки.
-  // Поэтому "Договор" показываем как originalSum (до скидки), а plIncome = contractSum (уже со скидкой).
-  const hasDiscount    = discountHistory.length > 0;
-  const originalSum    = hasDiscount ? contractSum + totalDiscount : contractSum;
+  // contract_sum в БД хранится ПОСЛЕ применения скидки.
+  // Оригинальная сумма договора — из первой записи истории (contract_sum_before).
+  // Никогда не пересчитываем обратно через +totalDiscount — там накапливается погрешность округления.
+  const hasDiscount = discountHistory.length > 0;
+  const originalSum = hasDiscount
+    ? Number(discountHistory[0].contract_sum_before) || contractSum
+    : contractSum;
   const plIncome       = contractSum + customIncomSum;
 
   const incomeRows: { label: string; value: number; isDiscount?: boolean }[] = [

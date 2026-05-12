@@ -73,8 +73,13 @@ export function DrawerDiscountBlock({ data, customFinRows, onContractSumUpdated,
     + (Number(data.install_cost) || 0)
     + customCostRows.reduce((s, r) => s + r.value, 0);
 
-  const baseIncome = (Number(data.contract_sum) || 0)
-    + customIncomeRows.reduce((s, r) => s + r.value, 0);
+  // baseIncome — всегда оригинальная сумма договора ДО скидок.
+  // Если скидка применена — берём contract_sum_before из первой записи истории.
+  const rawContractSum = Number(data.contract_sum) || 0;
+  const baseContractSum = discountHistory.length > 0
+    ? Number(discountHistory[0].contract_sum_before) || rawContractSum
+    : rawContractSum;
+  const baseIncome = baseContractSum + customIncomeRows.reduce((s, r) => s + r.value, 0);
 
   // Точка безубыточности
   const breakEvenDiscount = useMemo(() => {
