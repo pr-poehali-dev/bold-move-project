@@ -430,7 +430,6 @@ export default function PlanProjectsScreen({ token, onSelectProject }: Props) {
                     </div>
                   </div>
 
-                  <Icon name="ChevronRight" size={15} className="text-white/15 group-hover:text-white/40 transition flex-shrink-0 mt-1" />
                 </button>
 
                 {/* Кнопки действий */}
