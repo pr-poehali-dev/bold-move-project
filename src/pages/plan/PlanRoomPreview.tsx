@@ -55,11 +55,11 @@ export default function PlanRoomPreview({ data, width = 280, height = 160, showM
 
   if (points.length < 2) {
     return (
-      <div style={{ width, height, background: "#fff", borderRadius: 8, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 6 }}>
+      <div style={{ width, height, background: "#0a0a18", borderRadius: 8, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 6 }}>
         <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
-          <rect x="3" y="3" width="22" height="22" rx="3" stroke="#d1d5db" strokeWidth="1.5" strokeDasharray="4 3"/>
+          <rect x="3" y="3" width="22" height="22" rx="3" stroke="rgba(255,255,255,0.15)" strokeWidth="1.5" strokeDasharray="4 3"/>
         </svg>
-        <span style={{ fontSize: 11, color: "#9ca3af" }}>Пустой план</span>
+        <span style={{ fontSize: 11, color: "rgba(255,255,255,0.25)" }}>Пустой план</span>
       </div>
     );
   }
@@ -108,10 +108,10 @@ export default function PlanRoomPreview({ data, width = 280, height = 160, showM
       >
         <defs>
           <pattern id="rp-grid" width={GRID} height={GRID} patternUnits="userSpaceOnUse">
-            <path d={`M ${GRID} 0 L 0 0 0 ${GRID}`} fill="none" stroke="#e5e7eb" strokeWidth="0.5"/>
+            <circle cx={0} cy={0} r={0.7} fill="rgba(255,255,255,0.07)"/>
           </pattern>
         </defs>
-        <rect width={width} height={height} fill="#ffffff"/>
+        <rect width={width} height={height} fill="#0a0a18"/>
         <rect width={width} height={height} fill="url(#rp-grid)"/>
         <g transform={transformStr}>
           {isClosed && points.length >= 3 && (
@@ -126,18 +126,18 @@ export default function PlanRoomPreview({ data, width = 280, height = 160, showM
             strokeLinecap="round"
           />
           {points.map(pt => (
-            <circle key={pt.id} cx={pt.x} cy={pt.y} r={3 / fitScale} fill="#1e293b"/>
+            <circle key={pt.id} cx={pt.x} cy={pt.y} r={3 / fitScale} fill="rgba(255,255,255,0.8)"/>
           ))}
         </g>
         {segLabels.map(l => (
           <text key={l.id} x={l.x} y={l.y} textAnchor="middle" dominantBaseline="middle"
-            fontSize={9} fill="#374151" fontFamily="monospace" style={{ userSelect: "none" }}>
+            fontSize={9} fill="rgba(255,255,255,0.6)" fontFamily="monospace" style={{ userSelect: "none" }}>
             {l.label}
           </text>
         ))}
         {angleLabels.map(l => (
           <text key={l.id} x={l.x} y={l.y} textAnchor="middle" dominantBaseline="middle"
-            fontSize={8} fill={l.isOdd ? "#ef4444" : "#6b7280"} fontFamily="monospace" style={{ userSelect: "none" }}>
+            fontSize={8} fill={l.isOdd ? "#fb923c" : "rgba(255,255,255,0.4)"} fontFamily="monospace" style={{ userSelect: "none" }}>
             {l.label}
           </text>
         ))}

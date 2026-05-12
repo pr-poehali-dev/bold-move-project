@@ -108,6 +108,27 @@ export function usePlanProjects(token?: string | null) {
     });
   }, [token]);
 
+  const duplicateRoom = useCallback(async (room: PlanRoom): Promise<number> => {
+    const res = await fetch(`${CRM_URL}?r=plan-rooms`, {
+      method: "POST",
+      headers: headers(token),
+      body: JSON.stringify({ project_id: room.project_id, name: `${room.name} (копия)` }),
+    });
+    const created = await res.json();
+    const newId = created.id as number;
+    // Копируем данные плана
+    await fetch(`${CRM_URL}?r=plan-rooms&id=${newId}`, {
+      method: "PUT",
+      headers: headers(token),
+      body: JSON.stringify({
+        data: room.data,
+        include_in_estimate: room.include_in_estimate,
+        include_drawing: room.include_drawing,
+      }),
+    });
+    return newId;
+  }, [token]);
+
   const updateProject = useCallback(async (id: number, body: Partial<Pick<PlanProject, "name" | "client_name" | "address" | "phone" | "status">>) => {
     await fetch(`${CRM_URL}?r=plan-projects&id=${id}`, {
       method: "PUT",
@@ -131,5 +152,5 @@ export function usePlanProjects(token?: string | null) {
     });
   }, [token]);
 
-  return { projects, rooms, loading, loadProjects, createProject, updateProject, deleteProject, loadRooms, createRoom, loadRoom, saveRoom, updateRoom, deleteRoom };
+  return { projects, rooms, loading, loadProjects, createProject, updateProject, deleteProject, loadRooms, createRoom, loadRoom, saveRoom, updateRoom, deleteRoom, duplicateRoom };
 }

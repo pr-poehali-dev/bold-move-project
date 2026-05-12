@@ -22,7 +22,7 @@ const QUICK_ROOMS = [
 ];
 
 export default function PlanRoomsScreen({ token, project, onBack, onOpenRoom }: Props) {
-  const { rooms, loading, loadRooms, createRoom, updateRoom, deleteRoom } = usePlanProjects(token);
+  const { rooms, loading, loadRooms, createRoom, updateRoom, deleteRoom, duplicateRoom } = usePlanProjects(token);
 
   const [showForm,    setShowForm]    = useState(false);
   const [customName,  setCustomName]  = useState("");
@@ -215,64 +215,55 @@ export default function PlanRoomsScreen({ token, project, onBack, onOpenRoom }: 
               return (
                 <div
                   key={room.id}
-                  className="rounded-2xl overflow-hidden flex flex-col"
+                  className="rounded-2xl flex flex-col overflow-visible"
                   style={{ background: "#0e0e1c", border: "1px solid rgba(255,255,255,0.07)" }}
                 >
-                  {/* Шапка карточки */}
-                  <div className="flex items-center justify-between px-3 pt-3 pb-1">
+                  {/* Шапка: название + меню */}
+                  <div className="flex items-center justify-between px-3 pt-2.5 pb-1 gap-1">
                     {isEditing ? (
-                      <div className="flex gap-1.5 flex-1 mr-1">
-                        <input
-                          autoFocus
-                          value={editName}
+                      <div className="flex gap-1.5 flex-1">
+                        <input autoFocus value={editName}
                           onChange={e => setEditName(e.target.value)}
-                          onKeyDown={e => {
-                            if (e.key === "Enter") handleRename(room.id);
-                            if (e.key === "Escape") setEditingId(null);
-                          }}
-                          className="flex-1 min-w-0 rounded-lg px-2 py-1 text-[13px] text-white focus:outline-none"
+                          onKeyDown={e => { if (e.key==="Enter") handleRename(room.id); if (e.key==="Escape") setEditingId(null); }}
+                          className="flex-1 min-w-0 rounded-lg px-2 py-0.5 text-[13px] text-white focus:outline-none"
                           style={{ background: "rgba(255,255,255,0.08)", border: "1px solid rgba(124,58,237,0.4)" }}
                         />
                         <button onClick={() => handleRename(room.id)} disabled={savingEdit}
                           className="w-6 h-6 rounded-lg flex items-center justify-center disabled:opacity-40"
                           style={{ background: "rgba(124,58,237,0.3)", color: "#a78bfa" }}>
-                          {savingEdit ? <div className="w-3 h-3 border border-violet-400/40 border-t-violet-400 rounded-full animate-spin" /> : <Icon name="Check" size={11} />}
+                          {savingEdit ? <div className="w-3 h-3 border border-violet-400/40 border-t-violet-400 rounded-full animate-spin"/> : <Icon name="Check" size={11}/>}
                         </button>
                         <button onClick={() => setEditingId(null)} style={{ color: "rgba(255,255,255,0.3)" }}>
-                          <Icon name="X" size={11} />
+                          <Icon name="X" size={11}/>
                         </button>
                       </div>
                     ) : (
-                      <span className="font-bold text-[14px] text-white truncate">{room.name}</span>
+                      <span className="font-bold text-[13px] text-white truncate flex-1">{room.name}</span>
                     )}
 
-                    {/* Меню ⋮ */}
                     {!isEditing && (
                       <div className="relative shrink-0" ref={isMenuOpen ? menuRef : undefined}>
-                        <button
-                          onClick={() => setMenuOpenId(isMenuOpen ? null : room.id)}
-                          className="w-7 h-7 rounded-lg flex items-center justify-center transition hover:bg-white/10"
-                          style={{ color: "rgba(255,255,255,0.4)" }}
-                        >
-                          <Icon name="MoreVertical" size={15} />
+                        <button onClick={() => setMenuOpenId(isMenuOpen ? null : room.id)}
+                          className="w-6 h-6 rounded-lg flex items-center justify-center transition hover:bg-white/10"
+                          style={{ color: "rgba(255,255,255,0.4)" }}>
+                          <Icon name="MoreVertical" size={14}/>
                         </button>
                         {isMenuOpen && (
-                          <div className="absolute right-0 top-8 z-50 rounded-xl py-1 min-w-[170px]"
-                            style={{ background: "#1a1a2e", border: "1px solid rgba(255,255,255,0.1)", boxShadow: "0 8px 24px rgba(0,0,0,0.4)" }}>
-                            <div className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider" style={{ color: "rgba(255,255,255,0.3)" }}>
-                              Действия
-                            </div>
+                          <div className="absolute right-0 top-7 z-50 rounded-xl py-1 min-w-[160px]"
+                            style={{ background: "#1a1a2e", border: "1px solid rgba(255,255,255,0.1)", boxShadow: "0 8px 24px rgba(0,0,0,0.5)" }}>
+                            <div className="px-3 py-1 text-[10px] font-bold uppercase tracking-wider" style={{ color: "rgba(255,255,255,0.3)" }}>Действия с комнатой</div>
                             <button onClick={() => { setEditingId(room.id); setEditName(room.name); setMenuOpenId(null); }}
-                              className="w-full flex items-center gap-2.5 px-3 py-2 text-[13px] transition hover:bg-white/[0.06]"
-                              style={{ color: "rgba(255,255,255,0.8)" }}>
-                              <Icon name="Pencil" size={14} />
-                              Переименовать
+                              className="w-full flex items-center gap-2 px-3 py-1.5 text-[12px] transition hover:bg-white/[0.06]" style={{ color: "rgba(255,255,255,0.8)" }}>
+                              <Icon name="Pencil" size={13}/> Переименовать
                             </button>
+                            <button onClick={async () => { setMenuOpenId(null); await duplicateRoom(room); await loadRooms(project.id); }}
+                              className="w-full flex items-center gap-2 px-3 py-1.5 text-[12px] transition hover:bg-white/[0.06]" style={{ color: "rgba(255,255,255,0.8)" }}>
+                              <Icon name="Copy" size={13}/> Дублировать
+                            </button>
+                            <div style={{ height: 1, background: "rgba(255,255,255,0.06)", margin: "2px 0" }}/>
                             <button onClick={() => { handleDelete(room.id); setMenuOpenId(null); }}
-                              className="w-full flex items-center gap-2.5 px-3 py-2 text-[13px] transition hover:bg-red-500/10"
-                              style={{ color: "#f87171" }}>
-                              <Icon name="Trash2" size={14} />
-                              Удалить
+                              className="w-full flex items-center gap-2 px-3 py-1.5 text-[12px] transition hover:bg-red-500/10" style={{ color: "#f87171" }}>
+                              <Icon name="Trash2" size={13}/> Удалить
                             </button>
                           </div>
                         )}
@@ -280,75 +271,51 @@ export default function PlanRoomsScreen({ token, project, onBack, onOpenRoom }: 
                     )}
                   </div>
 
-                  {/* Превью плана */}
-                  <button
-                    onClick={() => onOpenRoom(room)}
-                    className="relative w-full group overflow-hidden mx-3 rounded-xl"
-                    style={{ width: "calc(100% - 24px)", height: 140, marginLeft: 12, marginRight: 12 }}
-                  >
-                    <div className="w-full h-full rounded-xl overflow-hidden" style={{ pointerEvents: "none" }}>
-                      <PlanRoomPreview data={room.data ?? {}} width={400} height={140} />
+                  {/* Превью — кликабельное, тёмный фон */}
+                  <button onClick={() => onOpenRoom(room)}
+                    className="relative group mx-2.5 rounded-xl overflow-hidden"
+                    style={{ height: 110 }}>
+                    <div style={{ pointerEvents: "none", width: "100%", height: "100%" }}>
+                      <PlanRoomPreview data={room.data ?? {}} width={300} height={110}/>
                     </div>
                     <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition rounded-xl"
-                      style={{ background: "rgba(0,0,0,0.35)" }}>
-                      <span className="text-[12px] font-bold text-white px-3 py-1.5 rounded-xl" style={{ background: "rgba(0,0,0,0.55)" }}>
-                        Открыть план
-                      </span>
+                      style={{ background: "rgba(0,0,0,0.4)" }}>
+                      <span className="text-[11px] font-bold text-white px-2.5 py-1 rounded-lg" style={{ background: "rgba(0,0,0,0.6)" }}>Открыть</span>
                     </div>
                   </button>
 
                   {/* Тогглы */}
-                  <div className="px-3 pt-3 space-y-2">
-                    <label className="flex items-center gap-3 cursor-pointer select-none">
-                      <div
-                        onClick={() => updateRoom(room.id, { include_in_estimate: !room.include_in_estimate }).then(() => loadRooms(project.id))}
-                        className="relative w-10 h-6 rounded-full transition-colors shrink-0"
-                        style={{ background: room.include_in_estimate !== false ? "#2563eb" : "rgba(255,255,255,0.12)" }}
-                      >
-                        <div className="absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-all"
-                          style={{ left: room.include_in_estimate !== false ? "calc(100% - 22px)" : "2px" }} />
-                      </div>
-                      <span className="text-[13px] text-white">Включить в смету</span>
-                    </label>
-                    <label className="flex items-center gap-3 cursor-pointer select-none">
-                      <div
-                        onClick={() => updateRoom(room.id, { include_drawing: !room.include_drawing }).then(() => loadRooms(project.id))}
-                        className="relative w-10 h-6 rounded-full transition-colors shrink-0"
-                        style={{ background: room.include_drawing !== false ? "#2563eb" : "rgba(255,255,255,0.12)" }}
-                      >
-                        <div className="absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-all"
-                          style={{ left: room.include_drawing !== false ? "calc(100% - 22px)" : "2px" }} />
-                      </div>
-                      <span className="text-[13px] text-white">Чертёж в смете</span>
-                    </label>
+                  <div className="px-2.5 pt-2 space-y-1.5">
+                    {[
+                      { key: "include_in_estimate" as const, label: "Включить в смету", val: room.include_in_estimate !== false },
+                      { key: "include_drawing" as const,     label: "Чертёж в смете",   val: room.include_drawing !== false },
+                    ].map(({ key, label, val }) => (
+                      <button key={key} onClick={() => updateRoom(room.id, { [key]: !val }).then(() => loadRooms(project.id))}
+                        className="flex items-center gap-2.5 w-full select-none">
+                        <div className="relative w-8 h-5 rounded-full transition-colors shrink-0"
+                          style={{ background: val ? "#2563eb" : "rgba(255,255,255,0.12)" }}>
+                          <div className="absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-all"
+                            style={{ left: val ? "calc(100% - 18px)" : "2px" }}/>
+                        </div>
+                        <span className="text-[12px]" style={{ color: "rgba(255,255,255,0.75)" }}>{label}</span>
+                      </button>
+                    ))}
                   </div>
 
                   {/* Площадь / периметр */}
                   {(meta.areaSqm !== null || meta.perimM !== null) && (
-                    <div className="flex items-center gap-2 px-3 pt-2 flex-wrap">
-                      {meta.areaSqm !== null && (
-                        <span className="text-[12px] font-semibold" style={{ color: "#818cf8" }}>
-                          Площадь {meta.areaSqm} м²
-                        </span>
-                      )}
-                      {meta.areaSqm !== null && meta.perimM !== null && (
-                        <span style={{ color: "rgba(255,255,255,0.2)", fontSize: 12 }}>•</span>
-                      )}
-                      {meta.perimM !== null && (
-                        <span className="text-[12px] font-semibold" style={{ color: "#818cf8" }}>
-                          Периметр {meta.perimM} м
-                        </span>
-                      )}
+                    <div className="px-2.5 pt-1.5 flex flex-wrap gap-x-2 gap-y-0.5">
+                      {meta.areaSqm !== null && <span className="text-[11px] font-semibold" style={{ color: "#818cf8" }}>Площадь {meta.areaSqm} м²</span>}
+                      {meta.areaSqm !== null && meta.perimM !== null && <span style={{ color: "rgba(255,255,255,0.2)", fontSize: 11 }}>•</span>}
+                      {meta.perimM !== null && <span className="text-[11px] font-semibold" style={{ color: "#818cf8" }}>Периметр {meta.perimM} м</span>}
                     </div>
                   )}
 
-                  {/* Кнопка открыть расчёт */}
-                  <div className="px-3 pt-2 pb-3">
-                    <button
-                      onClick={() => onOpenRoom(room)}
-                      className="w-full py-2.5 rounded-xl text-[13px] font-semibold transition hover:opacity-90 active:scale-[0.98]"
-                      style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.09)", color: "rgba(255,255,255,0.8)" }}
-                    >
+                  {/* Кнопка */}
+                  <div className="px-2.5 pt-2 pb-2.5">
+                    <button onClick={() => onOpenRoom(room)}
+                      className="w-full py-2 rounded-xl text-[12px] font-semibold transition hover:opacity-90"
+                      style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.09)", color: "rgba(255,255,255,0.8)" }}>
                       Открыть план
                     </button>
                   </div>
