@@ -25,11 +25,11 @@ type RoleOption = {
 };
 
 const ROLE_OPTIONS: RoleOption[] = [
-  { value: "client",    label: "Клиент",    icon: "Home",      desc: "Хочу натяжные потолки",       color: "#f97316", benefit: "Сохраните смету и следите за статусом заявки" },
-  { value: "designer",  label: "Дизайнер",  icon: "Pencil",    desc: "Работаю с интерьерами",        color: "#a78bfa", benefit: "Скидка 10% на все расчёты для ваших клиентов" },
-  { value: "foreman",   label: "Прораб",    icon: "HardHat",   desc: "Веду строительные проекты",    color: "#34d399", benefit: "Скидка 10% на все расчёты для ваших объектов" },
-  { value: "installer", label: "Монтажник", icon: "Wrench",    desc: "Монтирую натяжные потолки",    color: "#60a5fa", benefit: "Полный доступ к CRM и управлению агентом после одобрения" },
-  { value: "company",   label: "Компания",  icon: "Building2", desc: "Продаю и монтирую потолки",    color: "#f59e0b", benefit: "CRM, агент, аналитика и управление командой после одобрения" },
+  { value: "client",    label: "Клиент",    icon: "Home",      desc: "Хочу натяжные потолки",    color: "#f97316", benefit: "Получите смету за 30 секунд и контролируйте каждый этап монтажа" },
+  { value: "designer",  label: "Дизайнер",  icon: "Pencil",    desc: "Работаю с интерьерами",    color: "#a78bfa", benefit: "Партнёрская программа — зарабатывайте на каждом клиенте" },
+  { value: "foreman",   label: "Прораб",    icon: "HardHat",   desc: "Веду строительные проекты", color: "#34d399", benefit: "Партнёрская программа — получайте бонус с каждого объекта" },
+  { value: "installer", label: "Монтажник", icon: "Wrench",    desc: "Монтирую натяжные потолки", color: "#60a5fa", benefit: "Свой бизнес под ключ: CRM, AI-агент и поток заявок — всё готово" },
+  { value: "company",   label: "Компания",  icon: "Building2", desc: "Продаю и монтирую потолки", color: "#f59e0b", benefit: "Масштабируйте команду: CRM, аналитика и AI работают за вас" },
 ];
 
 const isValidEmail = (v: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.trim());
