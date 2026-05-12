@@ -1000,6 +1000,86 @@ def handler(event: dict, context) -> dict:
                 conn.commit()
                 return ok({"deleted": True})
 
+        # ── PLAN VARIANTS ────────────────────────────────────────────────────────
+        if resource == "plan-variants":
+            cmp = company_id if company_id is not None else 0
+
+            if method == "GET":
+                room_id = qs.get("room_id")
+                if not room_id: return err("room_id required")
+                # Проверяем что комната принадлежит компании
+                cur.execute(f"""
+                    SELECT r.id FROM {SCHEMA}.room_plans r
+                    JOIN {SCHEMA}.plan_projects p ON p.id = r.project_id
+                    WHERE r.id=%s AND p.company_id=%s
+                """, (int(room_id), cmp))
+                if not cur.fetchone(): return err("room not found", 404)
+                cur.execute(f"""
+                    SELECT id, room_id, name, data, thumbnail, is_active, created_at, updated_at
+                    FROM {SCHEMA}.plan_variants WHERE room_id=%s ORDER BY created_at ASC
+                """, (int(room_id),))
+                cols = [d[0] for d in cur.description]
+                rows = [dict(zip(cols, r)) for r in cur.fetchall()]
+                return ok(rows)
+
+            if method == "POST":
+                room_id = body.get("room_id")
+                if not room_id: return err("room_id required")
+                name = (body.get("name") or "Вариант 1").strip()
+                data = body.get("data", {})
+                thumbnail = body.get("thumbnail")
+                # Проверяем доступ
+                cur.execute(f"""
+                    SELECT r.id FROM {SCHEMA}.room_plans r
+                    JOIN {SCHEMA}.plan_projects p ON p.id = r.project_id
+                    WHERE r.id=%s AND p.company_id=%s
+                """, (int(room_id), cmp))
+                if not cur.fetchone(): return err("room not found", 404)
+                cur.execute(f"""
+                    INSERT INTO {SCHEMA}.plan_variants (room_id, name, data, thumbnail, is_active)
+                    VALUES (%s,%s,%s,%s,false) RETURNING id
+                """, (int(room_id), name, json.dumps(data), thumbnail))
+                new_id = cur.fetchone()[0]
+                conn.commit()
+                return ok({"id": new_id})
+
+            if method == "PUT":
+                vid = qs.get("id")
+                if not vid: return err("id required")
+                allowed = ["name","data","thumbnail","is_active"]
+                sets, vals = [], []
+                for f in allowed:
+                    if f in body:
+                        sets.append(f"{f}=%s")
+                        vals.append(json.dumps(body[f]) if f == "data" else body[f])
+                if not sets: return err("nothing to update")
+                sets.append("updated_at=NOW()")
+                vals.append(int(vid))
+                cur.execute(f"""
+                    UPDATE {SCHEMA}.plan_variants SET {','.join(sets)} WHERE id=%s
+                    AND room_id IN (
+                        SELECT r.id FROM {SCHEMA}.room_plans r
+                        JOIN {SCHEMA}.plan_projects p ON p.id=r.project_id
+                        WHERE p.company_id=%s
+                    )
+                """, vals + [cmp])
+                conn.commit()
+                return ok({"updated": True})
+
+            if method == "DELETE":
+                vid = qs.get("id")
+                if not vid: return err("id required")
+                cur.execute(f"""
+                    UPDATE {SCHEMA}.plan_variants SET name=CONCAT('[удалён] ', name) WHERE id=%s
+                    AND room_id IN (
+                        SELECT r.id FROM {SCHEMA}.room_plans r
+                        JOIN {SCHEMA}.plan_projects p ON p.id=r.project_id
+                        WHERE p.company_id=%s
+                    )
+                """, (int(vid), cmp))
+                conn.commit()
+                return ok({"deleted": True})
+
         return err("unknown resource", 404)
 
     except Exception as e:

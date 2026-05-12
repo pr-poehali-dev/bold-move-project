@@ -2,6 +2,7 @@ import React from "react";
 import Icon from "@/components/ui/icon";
 import type { ToolMode, PlanSettings, PlanState } from "./planTypes";
 import type { SaveStatus } from "./usePlanStorage";
+import type { PlanVariant } from "./usePlanVariants";
 
 // ── Props ─────────────────────────────────────────────────────────────────────
 
@@ -32,6 +33,12 @@ export interface ToolbarProps {
   onBack?: () => void;
   backLabel?: string;
   roomSaveStatus?: "idle" | "saving" | "saved" | "error";
+  onSaveVariant?: () => void;
+  variants?: PlanVariant[];
+  variantsLoading?: boolean;
+  onLoadVariant?: (data: object) => void;
+  onDeleteVariant?: (id: number) => void;
+  onRenameVariant?: (id: number, name: string) => void;
 }
 
 // ── ToolDef ───────────────────────────────────────────────────────────────────

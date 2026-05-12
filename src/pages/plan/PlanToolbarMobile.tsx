@@ -4,16 +4,18 @@ import type { ToolbarProps } from "./PlanToolbarShared";
 import { ALL_TOOLS_MENU, IconBtn, loadPinned, savePinned } from "./PlanToolbarShared";
 import type { ToolMode } from "./planTypes";
 import MobileToolDropdown from "./PlanToolbarMobileDropdown";
+import PlanVariantPickerMobile from "./PlanVariantPickerMobile";
 
 export default function MobileToolbar(props: ToolbarProps) {
   const {
     tool, isClosed,
     canUndo, canRedo,
     onToolChange, onUndo, onRedo, onOpenLibrary, onReset,
-    onBack,
+    onBack, onSaveVariant, variants, variantsLoading, onLoadVariant, onDeleteVariant, onRenameVariant,
   } = props;
 
-  const [confirmReset, setConfirmReset] = React.useState(false);
+  const [confirmReset,      setConfirmReset]      = React.useState(false);
+  const [variantPickerOpen, setVariantPickerOpen] = React.useState(false);
   const [pinned, setPinned] = React.useState<ToolMode[]>(loadPinned);
 
   const handleTogglePin = React.useCallback((id: ToolMode) => {
@@ -103,15 +105,42 @@ export default function MobileToolbar(props: ToolbarProps) {
         </button>
       )}
 
-      {/* Сохранённые — справа */}
+      {/* Справа: сохранить вариант или обычный архив */}
       <div className="w-px h-4 bg-white/10 mx-0.5 shrink-0" />
-      <button
-        onClick={onOpenLibrary}
-        title="Сохранённые планы"
-        className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0 transition-all text-white/45 hover:text-white hover:bg-white/[0.07]"
-      >
-        <Icon name="FolderOpen" size={16} />
-      </button>
+
+      {onSaveVariant ? (
+        <div className="relative flex items-center shrink-0">
+          <button onClick={onSaveVariant}
+            className="flex items-center gap-1 px-2 h-8 rounded-l-lg text-[11px] font-bold bg-white text-[#111] transition hover:bg-white/90">
+            <Icon name="Save" size={13} />
+            <span>Сохранить</span>
+          </button>
+          <div className="relative">
+            <button onClick={() => setVariantPickerOpen(v => !v)}
+              className="flex items-center justify-center w-8 h-8 rounded-r-lg bg-white text-[#111] border-l border-l-black/10 transition hover:bg-white/90">
+              <Icon name="ChevronDown" size={13} />
+            </button>
+            {variantPickerOpen && (
+              <PlanVariantPickerMobile
+                variants={variants ?? []}
+                loading={variantsLoading}
+                onLoad={v => { onLoadVariant?.(v.data); setVariantPickerOpen(false); }}
+                onDelete={id => onDeleteVariant?.(id)}
+                onRename={(id, name) => onRenameVariant?.(id, name)}
+                onClose={() => setVariantPickerOpen(false)}
+              />
+            )}
+          </div>
+        </div>
+      ) : (
+        <button
+          onClick={onOpenLibrary}
+          title="Сохранённые планы"
+          className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0 transition-all text-white/45 hover:text-white hover:bg-white/[0.07]"
+        >
+          <Icon name="FolderOpen" size={16} />
+        </button>
+      )}
     </div>
   );
 }

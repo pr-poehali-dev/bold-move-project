@@ -2,6 +2,8 @@ import { useEffect, useState, useRef } from "react";
 import Icon from "@/components/ui/icon";
 import { PlanProject, PlanRoom, usePlanProjects } from "./usePlanProjects";
 import PlanRoomPreview, { getRoomMeta } from "./PlanRoomPreview";
+import { usePlanVariants } from "./usePlanVariants";
+import PlanVariantPicker from "./PlanVariantPicker";
 
 interface Props {
   token?: string | null;
@@ -23,16 +25,21 @@ const QUICK_ROOMS = [
 
 export default function PlanRoomsScreen({ token, project, onBack, onOpenRoom }: Props) {
   const { rooms, loading, loadRooms, createRoom, updateRoom, deleteRoom, duplicateRoom } = usePlanProjects(token);
+  const { variants, loading: variantsLoading, loadVariants, deleteVariant, updateVariant } = usePlanVariants(token);
 
-  const [showForm,    setShowForm]    = useState(false);
-  const [customName,  setCustomName]  = useState("");
-  const [creating,    setCreating]    = useState(false);
-  const [editingId,   setEditingId]   = useState<number | null>(null);
-  const [editName,    setEditName]    = useState("");
-  const [savingEdit,  setSavingEdit]  = useState(false);
-  const [deletingId,  setDeletingId]  = useState<number | null>(null);
-  const [menuOpenId,  setMenuOpenId]  = useState<number | null>(null);
+  const [showForm,         setShowForm]         = useState(false);
+  const [customName,       setCustomName]        = useState("");
+  const [creating,         setCreating]          = useState(false);
+  const [editingId,        setEditingId]         = useState<number | null>(null);
+  const [editName,         setEditName]          = useState("");
+  const [savingEdit,       setSavingEdit]        = useState(false);
+  const [deletingId,       setDeletingId]        = useState<number | null>(null);
+  const [menuOpenId,       setMenuOpenId]        = useState<number | null>(null);
+  const [varPickerRoomId,  setVarPickerRoomId]   = useState<number | null>(null);
+  // варианты по roomId — кешируем при открытии
+  const [variantsByRoom,   setVariantsByRoom]    = useState<Record<number, typeof variants>>({});
   const menuRef = useRef<HTMLDivElement>(null);
+  const varPickerRef = useRef<HTMLDivElement>(null);
 
   // Закрываем меню при клике вне
   useEffect(() => {
@@ -291,12 +298,32 @@ export default function PlanRoomsScreen({ token, project, onBack, onOpenRoom }: 
 
                   {/* Низ: кнопка "Варианты" + меню ⋮ */}
                   <div className="flex items-center gap-2 px-2.5 pt-2 pb-2.5">
-                    {/* Кнопка Варианты (заглушка, логику объяснишь позже) */}
-                    <button className="flex-1 flex items-center justify-between px-3 py-2 rounded-xl text-[12px] font-semibold transition hover:bg-white/[0.06]"
-                      style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.7)" }}>
-                      <span>Вариант 1</span>
-                      <Icon name="ChevronDown" size={13} style={{ color: "rgba(255,255,255,0.4)" }}/>
-                    </button>
+                    {/* Кнопка Варианты */}
+                    <div className="relative flex-1" ref={varPickerRoomId === room.id ? varPickerRef : undefined}>
+                      <button
+                        onClick={async () => {
+                          if (varPickerRoomId === room.id) { setVarPickerRoomId(null); return; }
+                          const loaded = await loadVariants(room.id);
+                          void loaded;
+                          setVariantsByRoom(prev => ({ ...prev, [room.id]: variants }));
+                          setVarPickerRoomId(room.id);
+                        }}
+                        className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-[12px] font-semibold transition hover:bg-white/[0.06]"
+                        style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.7)" }}>
+                        <span>Варианты</span>
+                        <Icon name="ChevronDown" size={13} style={{ color: "rgba(255,255,255,0.4)" }}/>
+                      </button>
+                      {varPickerRoomId === room.id && (
+                        <PlanVariantPicker
+                          variants={variants}
+                          loading={variantsLoading}
+                          onLoad={v => { onOpenRoom({ ...room, data: v.data }); setVarPickerRoomId(null); }}
+                          onDelete={id => deleteVariant(id, room.id)}
+                          onRename={(id, name) => updateVariant(id, { name })}
+                          onClose={() => setVarPickerRoomId(null)}
+                        />
+                      )}
+                    </div>
 
                     {/* Меню ⋮ */}
                     <div className="relative shrink-0" ref={isMenuOpen ? menuRef : undefined}>

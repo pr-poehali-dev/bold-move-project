@@ -1,7 +1,9 @@
+import { useState } from "react";
 import Icon from "@/components/ui/icon";
 import type { ToolbarProps } from "./PlanToolbarShared";
 import { TOOLS, IconBtn, ToolBtn, DropUp, DropItem, Sep } from "./PlanToolbarShared";
 import MobileToolbar from "./PlanToolbarMobile";
+import PlanVariantPicker from "./PlanVariantPicker";
 
 export default function PlanToolbar(props: ToolbarProps) {
   const {
@@ -10,7 +12,10 @@ export default function PlanToolbar(props: ToolbarProps) {
     onToolChange, onSettingChange, onUndo, onRedo, onReset,
     onZoomIn, onZoomOut, onZoomFit, onExport, onSave, onOpenLibrary,
     onBack, backLabel, roomSaveStatus,
+    onSaveVariant, variants, variantsLoading, onLoadVariant, onDeleteVariant, onRenameVariant,
   } = props;
+
+  const [variantPickerOpen, setVariantPickerOpen] = useState(false);
 
   if (isMobile) return <MobileToolbar {...props} />;
 
@@ -120,23 +125,57 @@ export default function PlanToolbar(props: ToolbarProps) {
 
       <Sep />
 
-      <button onClick={onOpenLibrary}
-        className="flex items-center gap-1.5 px-3 h-8 rounded-lg text-[11px] font-semibold border transition-all shrink-0 bg-transparent border-white/[0.1] text-white/45 hover:bg-white/[0.07] hover:text-white"
-        title="Мои планы (L)">
-        <Icon name="FolderOpen" size={12} />
-        <span className="hidden md:inline">Планы</span>
-      </button>
+      {!onSaveVariant && (
+        <button onClick={onOpenLibrary}
+          className="flex items-center gap-1.5 px-3 h-8 rounded-lg text-[11px] font-semibold border transition-all shrink-0 bg-transparent border-white/[0.1] text-white/45 hover:bg-white/[0.07] hover:text-white"
+          title="Мои планы (L)">
+          <Icon name="FolderOpen" size={12} />
+          <span className="hidden md:inline">Планы</span>
+        </button>
+      )}
 
-      <button onClick={onSave} disabled={saveStatus === "saving"}
-        className={`flex items-center gap-1.5 px-3 h-8 rounded-lg text-[11px] font-bold border transition-all shrink-0 disabled:opacity-50 ${
-          isDirty || !currentPlanId
-            ? "bg-white text-[#111] border-white hover:bg-white/90"
-            : "bg-white/[0.08] border-white/[0.15] text-white/60 hover:bg-white/[0.12]"
-        }`}
-        title="Сохранить (Ctrl+S)">
-        <Icon name={saveIcon} size={12} className={saveStatus === "saving" ? "animate-spin" : ""} />
-        <span>{saveLabel}</span>
-      </button>
+      {/* Кнопка сохранить вариант (когда открыта комната проекта) */}
+      {onSaveVariant ? (
+        <div className="relative flex items-center shrink-0">
+          {/* Кнопка сохранить вариант */}
+          <button onClick={onSaveVariant}
+            className="flex items-center gap-1.5 px-3 h-8 rounded-l-lg text-[11px] font-bold border-y border-l transition-all bg-white text-[#111] border-white hover:bg-white/90"
+            title="Сохранить вариант">
+            <Icon name="Save" size={12} />
+            <span>Сохранить</span>
+          </button>
+          {/* Дропдаун вариантов */}
+          <div className="relative">
+            <button
+              onClick={() => setVariantPickerOpen(v => !v)}
+              className="flex items-center justify-center w-8 h-8 rounded-r-lg border text-[#111] bg-white border-white hover:bg-white/90 transition-all border-l border-l-black/10"
+              title="Варианты">
+              <Icon name="ChevronDown" size={12} />
+            </button>
+            {variantPickerOpen && (
+              <PlanVariantPicker
+                variants={variants ?? []}
+                loading={variantsLoading}
+                onLoad={v => { onLoadVariant?.(v.data); setVariantPickerOpen(false); }}
+                onDelete={id => { onDeleteVariant?.(id); }}
+                onRename={(id, name) => onRenameVariant?.(id, name)}
+                onClose={() => setVariantPickerOpen(false)}
+              />
+            )}
+          </div>
+        </div>
+      ) : (
+        <button onClick={onSave} disabled={saveStatus === "saving"}
+          className={`flex items-center gap-1.5 px-3 h-8 rounded-lg text-[11px] font-bold border transition-all shrink-0 disabled:opacity-50 ${
+            isDirty || !currentPlanId
+              ? "bg-white text-[#111] border-white hover:bg-white/90"
+              : "bg-white/[0.08] border-white/[0.15] text-white/60 hover:bg-white/[0.12]"
+          }`}
+          title="Сохранить (Ctrl+S)">
+          <Icon name={saveIcon} size={12} className={saveStatus === "saving" ? "animate-spin" : ""} />
+          <span>{saveLabel}</span>
+        </button>
+      )}
     </div>
   );
 }

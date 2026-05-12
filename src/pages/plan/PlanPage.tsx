@@ -21,6 +21,8 @@ import PlanRoomsScreen from "./PlanRoomsScreen";
 import type { PlanProject, PlanRoom } from "./usePlanProjects";
 import { usePlanProjects } from "./usePlanProjects";
 import { useRoomAutoSave } from "./useRoomAutoSave";
+import { usePlanVariants } from "./usePlanVariants";
+import PlanVariantSaveModal from "./PlanVariantSaveModal";
 
 type PlanScreen = "projects" | "rooms" | "canvas";
 
@@ -44,6 +46,20 @@ export default function PlanPage() {
     state,
     token
   );
+
+  // ── Варианты ─────────────────────────────────────────────────────────────
+  const { variants, loading: variantsLoading, saving: variantSaving, loadVariants, saveVariant, deleteVariant, updateVariant } = usePlanVariants(token);
+  const [variantModalOpen, setVariantModalOpen] = useState(false);
+
+  const handleSaveVariant = async (name: string) => {
+    if (!activeRoom) return;
+    await saveVariant(activeRoom.id, name, state);
+    setVariantModalOpen(false);
+  };
+
+  const handleLoadVariant = (variantData: object) => {
+    reset({ ...INITIAL_STATE, ...(variantData as Partial<typeof INITIAL_STATE>) });
+  };
 
   const [sheetOpen,      setSheetOpen]      = useState(false);
   const [sheetSnap,      setSheetSnap]      = useState<"half" | "full">("full");
@@ -203,8 +219,11 @@ export default function PlanPage() {
           setActiveRoom(room);
           setRoomLoading(true);
           setScreen("canvas");
-          // Загружаем сохранённые данные комнаты
-          const loaded = await loadRoom(room.id);
+          // Загружаем данные комнаты и варианты параллельно
+          const [loaded] = await Promise.all([
+            loadRoom(room.id),
+            loadVariants(room.id),
+          ]);
           const savedData = loaded?.data as PlanState | undefined;
           const hasData = savedData && Object.keys(savedData).length > 0 && savedData.points;
           reset(hasData ? { ...INITIAL_STATE, ...savedData } : INITIAL_STATE);
@@ -245,6 +264,12 @@ export default function PlanPage() {
         onBack={activeRoom ? () => setScreen("rooms") : undefined}
         backLabel={activeRoom?.name}
         roomSaveStatus={roomSaveStatus}
+        onSaveVariant={activeRoom ? () => setVariantModalOpen(true) : undefined}
+        variants={variants}
+        variantsLoading={variantsLoading}
+        onLoadVariant={handleLoadVariant}
+        onDeleteVariant={(id) => activeRoom && deleteVariant(id, activeRoom.id)}
+        onRenameVariant={(id, name) => updateVariant(id, { name })}
       />
 
       {/* Основная область */}
@@ -461,6 +486,14 @@ export default function PlanPage() {
         onSetQuantity={catalog.setItemQuantity}
         onAddToFloor={catalog.setPendingFloorItem}
         hasSegments={state.isClosed && state.segments.length > 0}
+      />
+
+      {/* Модалка сохранения варианта */}
+      <PlanVariantSaveModal
+        open={variantModalOpen}
+        saving={variantSaving}
+        onSave={handleSaveVariant}
+        onClose={() => setVariantModalOpen(false)}
       />
     </div>
   );
