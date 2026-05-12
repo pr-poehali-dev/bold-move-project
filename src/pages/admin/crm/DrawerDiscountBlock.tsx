@@ -329,8 +329,8 @@ export function DrawerDiscountBlock({ data, customFinRows, onContractSumUpdated,
     } finally { setApplying(false); }
   };
 
-  // Обновить существующую скидку (изменить %)
-  const updateDiscount = async (newPct: number) => {
+  // Обновить существующую скидку (изменить % или сумму)
+  const updateDiscount = async (newPct: number, exactAmt?: number) => {
     if (!lastEntry || newPct <= 0) return;
     setApplying(true);
     try {
@@ -366,7 +366,7 @@ export function DrawerDiscountBlock({ data, customFinRows, onContractSumUpdated,
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ blocks: newBlocks, totals: newTotals }),
       });
-      const newAmount = Math.round(originalSum * newPct / 100);
+      const newAmount = exactAmt ?? Math.round(originalSum * newPct / 100);
       // Деактивируем старую запись и добавляем новую
       await deactivateLast();
       await addEntry({
@@ -384,8 +384,8 @@ export function DrawerDiscountBlock({ data, customFinRows, onContractSumUpdated,
     } finally { setApplying(false); }
   };
 
-  // Применить скидку к позициям сметы (pct — опциональный, если пришёл из модалки)
-  const applyDiscount = async (pct?: number) => {
+  // Применить скидку к позициям сметы (pct/exactAmt — опциональные, если пришли из модалки)
+  const applyDiscount = async (pct?: number, exactAmt?: number) => {
     const effectiveDiscount = pct ?? discount;
     if (effectiveDiscount === 0 || isOverMax) return;
     if (pct !== undefined) setDiscount(pct);
@@ -419,7 +419,8 @@ export function DrawerDiscountBlock({ data, customFinRows, onContractSumUpdated,
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ blocks: newBlocks, totals: newTotals }),
       });
-      const discountAmt = Math.round(baseIncome * effectiveDiscount / 100);
+      // exactAmt — точная сумма скидки от пользователя (без погрешности округления %)
+      const discountAmt = exactAmt ?? Math.round(baseIncome * effectiveDiscount / 100);
       const contractBefore = Number(data.contract_sum) || 0;
       await crmFetch("clients", { method: "PUT", body: JSON.stringify({
         contract_sum: standard,

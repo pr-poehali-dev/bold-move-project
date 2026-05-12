@@ -32,9 +32,9 @@ interface Props {
   aiError: string | null;
   fmt: (n: number) => string;
   onAnalysisClick: () => void;
-  onApplyDiscount: (pct?: number) => void;
+  onApplyDiscount: (pct?: number, exactAmt?: number) => void;
   onResetDiscount: () => void;
-  onUpdateDiscount: (newPct: number) => void;
+  onUpdateDiscount: (newPct: number, exactAmt?: number) => void;
   hasAppliedDiscount: boolean;
   appliedDiscountPct: number;
   discountHistory: DiscountEntry[];
@@ -54,16 +54,18 @@ function DiscountInputModal({
   isApplied: boolean;
   applying: boolean;
   effectiveMax: number;
-  onConfirm: (pct: number) => void;
+  onConfirm: (pct: number, exactAmt: number) => void;
   onClose: () => void;
   defaultFocus?: "pct" | "amt";
 }) {
   const [pct, setPct] = useState(initialPct > 0 ? String(initialPct) : "");
   const [amt, setAmt] = useState(initialAmt > 0 ? String(initialAmt) : "");
+  const [lastEdited, setLastEdited] = useState<"pct" | "amt">(defaultFocus);
   const [focus, setFocus] = useState<"pct" | "amt">(defaultFocus);
 
   const syncFromPct = (v: string) => {
     setPct(v);
+    setLastEdited("pct");
     const n = parseFloat(v);
     if (!isNaN(n) && n > 0 && baseIncome > 0) {
       setAmt(String(Math.round(baseIncome * n / 100)));
@@ -73,8 +75,10 @@ function DiscountInputModal({
   };
   const syncFromAmt = (v: string) => {
     setAmt(v);
+    setLastEdited("amt");
     const n = parseFloat(v);
     if (!isNaN(n) && n > 0 && baseIncome > 0) {
+      // Показываем округлённый % только для отображения, не для расчёта
       setPct(String(Math.round(n / baseIncome * 1000) / 10));
     } else {
       setPct("");
@@ -88,7 +92,11 @@ function DiscountInputModal({
 
   const handleConfirm = () => {
     if (!valid) return;
-    onConfirm(pctVal);
+    // Если последнее что редактировали — сумма, передаём точную сумму
+    // Если % — пересчитываем сумму точно от %
+    const exactAmt = lastEdited === "amt" ? amtVal : Math.round(baseIncome * pctVal / 100);
+    const exactPct = lastEdited === "pct" ? pctVal : Math.round(amtVal / baseIncome * 1000) / 10;
+    onConfirm(exactPct, exactAmt);
   };
 
   return (
@@ -211,12 +219,12 @@ export function DiscountSliderPanel({
 
   const openModal = (focus: "pct" | "amt") => { setModalFocus(focus); setModalOpen(true); };
 
-  const handleModalConfirm = (pct: number) => {
+  const handleModalConfirm = (pct: number, exactAmt: number) => {
     if (hasAppliedDiscount) {
-      onUpdateDiscount(pct);
+      onUpdateDiscount(pct, exactAmt);
     } else {
       setDiscount(pct);
-      onApplyDiscount(pct);
+      onApplyDiscount(pct, exactAmt);
     }
     setModalOpen(false);
   };
