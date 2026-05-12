@@ -89,7 +89,14 @@ function TabSettingsPopup({ tab, tabLabels, tabColors, onSaveLabel, onSaveColor,
   };
 
   const posStyle = popupPos
-    ? { position: "fixed" as const, top: popupPos.top, left: popupPos.left, zIndex: 9999 }
+    ? {
+        position: "fixed" as const,
+        top: popupPos.top,
+        left: popupPos.left,
+        zIndex: 9999,
+        maxHeight: `calc(100dvh - ${popupPos.top + 8}px)`,
+        overflowY: "auto" as const,
+      }
     : { position: "absolute" as const, left: 0, top: "100%", marginTop: 4, zIndex: 50 };
 
   const addSubstatus = async () => {
@@ -338,7 +345,13 @@ export function OrdersTabs({
     const btn = gearRefs.current[tabId];
     if (!btn) return;
     const rect = btn.getBoundingClientRect();
-    setPopupPos({ top: rect.bottom + 6, left: rect.left });
+    const popupW = 260; // примерная ширина попапа (minWidth: 240)
+    const screenW = window.innerWidth;
+    // Если не влезает справа — открываем вправо-выровненным (right edge = rect.right)
+    const left = rect.left + popupW > screenW - 8
+      ? Math.max(8, rect.right - popupW)
+      : rect.left;
+    setPopupPos({ top: rect.bottom + 6, left });
     setOpenPopup(tabId);
   };
 
