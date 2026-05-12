@@ -8,16 +8,22 @@ interface Props {
 }
 
 const STATUSES = [
-  { id: "all",    label: "Все" },
-  { id: "draft",  label: "Черновик" },
-  { id: "active", label: "Активный" },
-  { id: "done",   label: "Завершён" },
+  { id: "all",       label: "Все" },
+  { id: "draft",     label: "Черновик" },
+  { id: "estimate",  label: "Предрасчёт ознакомлен" },
+  { id: "contract",  label: "Договор заключён" },
+  { id: "scheduled", label: "Монтаж запланирован" },
+  { id: "installed", label: "Монтаж завершён" },
+  { id: "done",      label: "Завершён" },
 ];
 
 const STATUS_COLORS: Record<string, { bg: string; text: string }> = {
-  draft:  { bg: "rgba(255,255,255,0.07)", text: "rgba(255,255,255,0.4)" },
-  active: { bg: "rgba(34,197,94,0.15)",  text: "#4ade80" },
-  done:   { bg: "rgba(99,102,241,0.15)", text: "#818cf8" },
+  draft:     { bg: "rgba(255,255,255,0.07)",  text: "rgba(255,255,255,0.4)" },
+  estimate:  { bg: "rgba(251,191,36,0.15)",   text: "#fbbf24" },
+  contract:  { bg: "rgba(59,130,246,0.15)",   text: "#60a5fa" },
+  scheduled: { bg: "rgba(249,115,22,0.15)",   text: "#fb923c" },
+  installed: { bg: "rgba(34,197,94,0.15)",    text: "#4ade80" },
+  done:      { bg: "rgba(99,102,241,0.15)",   text: "#818cf8" },
 };
 
 interface FormData {
@@ -105,12 +111,12 @@ function ProjectForm({
 
         <div>
           <label className="text-[11px] text-white/40 uppercase tracking-wider font-semibold mb-1.5 block">Статус</label>
-          <div className="flex gap-2">
+          <div className="grid grid-cols-3 gap-1.5">
             {STATUSES.filter(s => s.id !== "all").map(s => (
               <button
                 key={s.id}
                 onClick={() => setForm({ ...form, status: s.id })}
-                className="flex-1 py-2 rounded-xl text-[12px] font-semibold transition"
+                className="py-2 px-2 rounded-xl text-[11px] font-semibold transition text-center leading-tight"
                 style={{
                   background: form.status === s.id ? (STATUS_COLORS[s.id]?.bg ?? "rgba(255,255,255,0.07)") : "rgba(255,255,255,0.04)",
                   color: form.status === s.id ? (STATUS_COLORS[s.id]?.text ?? "#fff") : "rgba(255,255,255,0.35)",
@@ -277,9 +283,9 @@ export default function PlanProjectsScreen({ token, onSelectProject }: Props) {
 
         {/* Поиск + фильтр */}
         {!showCreate && (
-          <div className="flex flex-col sm:flex-row gap-3 mb-5">
+          <div className="flex flex-col gap-3 mb-5">
             {/* Поиск */}
-            <div className="relative flex-1">
+            <div className="relative">
               <Icon name="Search" size={14} className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: "rgba(255,255,255,0.3)" }} />
               <input
                 value={search}
@@ -294,16 +300,21 @@ export default function PlanProjectsScreen({ token, onSelectProject }: Props) {
                 </button>
               )}
             </div>
-            {/* Фильтр по статусу */}
-            <div className="flex gap-1 p-1 rounded-xl shrink-0" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)" }}>
+            {/* Фильтр по статусу — горизонтальный скролл */}
+            <div className="flex gap-1.5 overflow-x-auto pb-0.5" style={{ scrollbarWidth: "none" }}>
               {STATUSES.map(s => (
                 <button
                   key={s.id}
                   onClick={() => setFilterStatus(s.id)}
-                  className="px-3 py-1.5 rounded-lg text-[12px] font-semibold transition"
+                  className="px-3 py-1.5 rounded-full text-[12px] font-semibold transition whitespace-nowrap shrink-0"
                   style={{
-                    background: filterStatus === s.id ? "rgba(255,255,255,0.1)" : "transparent",
-                    color: filterStatus === s.id ? "#fff" : "rgba(255,255,255,0.35)",
+                    background: filterStatus === s.id
+                      ? (s.id === "all" ? "rgba(255,255,255,0.15)" : (STATUS_COLORS[s.id]?.bg ?? "rgba(255,255,255,0.1)"))
+                      : "rgba(255,255,255,0.05)",
+                    color: filterStatus === s.id
+                      ? (s.id === "all" ? "#fff" : (STATUS_COLORS[s.id]?.text ?? "#fff"))
+                      : "rgba(255,255,255,0.35)",
+                    border: `1px solid ${filterStatus === s.id ? "rgba(255,255,255,0.12)" : "rgba(255,255,255,0.06)"}`,
                   }}
                 >
                   {s.label}
