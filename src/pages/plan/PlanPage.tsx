@@ -36,6 +36,7 @@ export default function PlanPage() {
 
   // ── Загрузка комнаты ──────────────────────────────────────────────────────
   const { loadRoom } = usePlanProjects(token);
+  const [roomLoading, setRoomLoading] = useState(false);
 
   // ── Автосохранение в комнату ──────────────────────────────────────────────
   const { saveStatus: roomSaveStatus } = useRoomAutoSave(
@@ -200,12 +201,14 @@ export default function PlanPage() {
         onBack={() => setScreen("projects")}
         onOpenRoom={async room => {
           setActiveRoom(room);
+          setRoomLoading(true);
           setScreen("canvas");
           // Загружаем сохранённые данные комнаты
           const loaded = await loadRoom(room.id);
           const savedData = loaded?.data as PlanState | undefined;
           const hasData = savedData && Object.keys(savedData).length > 0 && savedData.points;
           reset(hasData ? { ...INITIAL_STATE, ...savedData } : INITIAL_STATE);
+          setRoomLoading(false);
         }}
       />
     );
@@ -247,7 +250,7 @@ export default function PlanPage() {
       {/* Основная область */}
       <div className="flex flex-1 overflow-hidden relative min-h-0">
 
-        <div id="plan-canvas-wrap" className="flex-1 overflow-hidden">
+        <div id="plan-canvas-wrap" className="flex-1 overflow-hidden relative">
           <PlanCanvas
             state={displayState}
             onChange={handleChange}
@@ -255,6 +258,15 @@ export default function PlanPage() {
             onOpenCatalog={() => catalog.setCatalogOpen(true)}
             onEditFloorItem={catalog.setEditingFloorId}
           />
+          {roomLoading && (
+            <div className="absolute inset-0 flex flex-col items-center justify-center z-50"
+              style={{ background: "rgba(7,7,15,0.75)", backdropFilter: "blur(4px)" }}>
+              <div className="w-10 h-10 border-2 border-white/10 border-t-white/60 rounded-full animate-spin mb-3" />
+              <span className="text-white/50 text-[13px] font-medium">
+                Загружаем {activeRoom?.name}…
+              </span>
+            </div>
+          )}
         </div>
 
         {!isMobile && sidebarOpen && (<>
