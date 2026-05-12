@@ -201,12 +201,12 @@ export function usePlanHandlers({
     prevIsClosed.current = state.isClosed;
   }, [state.isClosed, isMobile]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ── Мобиле: rebuild завершён → закрыть правую панель ────────────────────
+  // ── Rebuild завершён → zoomFit на всех устройствах ──────────────────────
   const prevIsBuilt = useRef(state.isBuilt);
   useEffect(() => {
-    if (state.isBuilt && !prevIsBuilt.current && isMobile) {
-      setRightPanelOpen(false);
-      setTimeout(() => zoomFit(0, 0), 80);
+    if (state.isBuilt && !prevIsBuilt.current) {
+      if (isMobile) setRightPanelOpen(false);
+      setTimeout(() => zoomFit(0, 0), 120);
     }
     prevIsBuilt.current = state.isBuilt;
   }, [state.isBuilt, isMobile]); // eslint-disable-line react-hooks/exhaustive-deps
