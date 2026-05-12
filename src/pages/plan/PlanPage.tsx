@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import Icon from "@/components/ui/icon";
 import PlanCanvas from "./PlanCanvas";
 import PlanToolbar from "./PlanToolbar";
 import PlanSidebar from "./PlanSidebar";
@@ -16,11 +17,21 @@ import { INITIAL_STATE, polygonArea, polygonPerimeter } from "./planTypes";
 import { useHistory, useIsMobile } from "./usePlanHistory";
 import { usePlanHandlers } from "./usePlanHandlers";
 import { useAuth } from "@/context/AuthContext";
+import PlanProjectsScreen from "./PlanProjectsScreen";
+import PlanRoomsScreen from "./PlanRoomsScreen";
+import type { PlanProject, PlanRoom } from "./usePlanProjects";
+
+type PlanScreen = "projects" | "rooms" | "canvas";
 
 export default function PlanPage() {
   const { state, push, replace, undo, redo, reset, canUndo, canRedo } = useHistory(INITIAL_STATE);
   const { user, token } = useAuth();
   const isMobile = useIsMobile();
+
+  // ── Флоу проектов ────────────────────────────────────────────────────────────
+  const [screen,         setScreen]         = useState<PlanScreen>("projects");
+  const [activeProject,  setActiveProject]  = useState<PlanProject | null>(null);
+  const [activeRoom,     setActiveRoom]     = useState<PlanRoom | null>(null);
 
   const [sheetOpen,      setSheetOpen]      = useState(false);
   const [sheetSnap,      setSheetSnap]      = useState<"half" | "full">("full");
@@ -157,8 +168,50 @@ export default function PlanPage() {
     return undefined; // остальные → дефолт 1 в модалке
   };
 
+  // ── Экраны проектов и комнат ─────────────────────────────────────────────────
+  if (screen === "projects") {
+    return (
+      <PlanProjectsScreen
+        token={token}
+        onSelectProject={project => {
+          setActiveProject(project);
+          setScreen("rooms");
+        }}
+      />
+    );
+  }
+
+  if (screen === "rooms" && activeProject) {
+    return (
+      <PlanRoomsScreen
+        token={token}
+        project={activeProject}
+        onBack={() => setScreen("projects")}
+        onOpenRoom={room => {
+          setActiveRoom(room);
+          reset();
+          setScreen("canvas");
+        }}
+      />
+    );
+  }
+
   return (
     <div className="flex flex-col bg-[#111] overflow-hidden relative" style={{ height: "100dvh" }}>
+
+      {/* Кнопка назад к проекту */}
+      {activeRoom && activeProject && (
+        <div className="absolute top-2 left-2 z-50 flex items-center gap-2">
+          <button
+            onClick={() => setScreen("rooms")}
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[11px] font-semibold transition hover:opacity-80 active:scale-[0.96]"
+            style={{ background: "rgba(124,58,237,0.2)", border: "1px solid rgba(124,58,237,0.35)", color: "#a78bfa", backdropFilter: "blur(8px)" }}
+          >
+            <Icon name="ChevronLeft" size={13} />
+            {activeRoom.name}
+          </button>
+        </div>
+      )}
 
       {/* Toolbar */}
       <PlanToolbar
