@@ -222,6 +222,12 @@ export default function PlanPage() {
                 });
                 handleChange({ segments: newSegs });
               }}
+              onRemoveFloorItem={(id) => {
+                handleChange({ floorItems: (state.floorItems ?? []).filter(fi => fi.id !== id) });
+              }}
+              onUpdateFloorQuantity={(id, quantity) => {
+                handleChange({ floorItems: (state.floorItems ?? []).map(fi => fi.id === id ? { ...fi, quantity } : fi) });
+              }}
             />
           </div>
         </>)}

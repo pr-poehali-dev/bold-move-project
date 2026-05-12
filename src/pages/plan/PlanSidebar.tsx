@@ -10,9 +10,11 @@ interface Props {
   onOpenCatalog?: () => void;
   onRemoveItem?: (segId: string, priceId: number) => void;
   onUpdateQuantity?: (segId: string, priceId: number, quantity: number) => void;
+  onRemoveFloorItem?: (id: string) => void;
+  onUpdateFloorQuantity?: (id: string, quantity: number) => void;
 }
 
-export default function PlanSidebar({ state, onChange, onSectionOpen, noAutoOpen, onOpenCatalog, onRemoveItem, onUpdateQuantity }: Props) {
+export default function PlanSidebar({ state, onChange, onSectionOpen, noAutoOpen, onOpenCatalog, onRemoveItem, onUpdateQuantity, onRemoveFloorItem, onUpdateFloorQuantity }: Props) {
   const { sidebarTab } = state;
   const isDrawing = sidebarTab !== "calc";
 
@@ -45,7 +47,7 @@ export default function PlanSidebar({ state, onChange, onSectionOpen, noAutoOpen
       {/* Контент */}
       <div className="flex-1 overflow-y-auto">
         {isDrawing  && <DrawingTab state={state} onChange={onChange} onSectionOpen={onSectionOpen} noAutoOpen={noAutoOpen} />}
-        {!isDrawing && <CalcTab state={state} onRemoveItem={onRemoveItem} onUpdateQuantity={onUpdateQuantity} />}
+        {!isDrawing && <CalcTab state={state} onRemoveItem={onRemoveItem} onUpdateQuantity={onUpdateQuantity} onRemoveFloorItem={onRemoveFloorItem} onUpdateFloorQuantity={onUpdateFloorQuantity} />}
       </div>
     </div>
   );
