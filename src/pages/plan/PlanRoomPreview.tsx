@@ -68,7 +68,7 @@ export default function PlanRoomPreview({ data, width = 280, height = 160, showM
 
   if (points.length < 2) {
     return (
-      <div style={{ width, height, background: "#0a0a18", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 6 }}>
+      <div style={{ width: "100%", height: "100%", background: "#0a0a18", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 6 }}>
         <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
           <rect x="3" y="3" width="22" height="22" rx="3" stroke="rgba(255,255,255,0.15)" strokeWidth="1.5" strokeDasharray="4 3"/>
         </svg>
@@ -118,10 +118,11 @@ export default function PlanRoomPreview({ data, width = 280, height = 160, showM
   const GRID = 18;
 
   return (
-    <div>
+    <div style={{ width: "100%", height: "100%" }}>
       <svg
-        width={width} height={height}
+        width="100%" height="100%"
         viewBox={`0 0 ${width} ${height}`}
+        preserveAspectRatio="xMidYMid meet"
         style={{ display: "block" }}
       >
         <defs>
