@@ -146,7 +146,7 @@ export default function PlanPage() {
   };
 
   return (
-    <div className="flex flex-col bg-[#111] overflow-hidden" style={{ height: "100dvh" }}>
+    <div className="flex flex-col bg-[#111] overflow-hidden relative" style={{ height: "100dvh" }}>
 
       {/* Toolbar */}
       <PlanToolbar
@@ -176,7 +176,7 @@ export default function PlanPage() {
       />
 
       {/* Основная область */}
-      <div className="flex flex-1 overflow-hidden relative">
+      <div className="flex flex-1 overflow-hidden relative min-h-0">
 
         <div id="plan-canvas-wrap" className="flex-1 overflow-hidden">
           <PlanCanvas
@@ -216,66 +216,65 @@ export default function PlanPage() {
           </div>
         </>)}
 
-        {/* Нижняя панель кнопок */}
-        {(
-          <MobileBottomBar
-            zoom={state.settings.zoom}
-            settings={state.settings}
-            onSettingChange={handleSettingChange}
-            onZoomIn={zoomIn}
-            onZoomOut={zoomOut}
-            onZoomFit={zoomFit}
-            onOpenPanel={isMobile
-              ? () => {
-                  if (sheetOpen) { setSheetOpen(false); } else {
-                    catalog.setCatalogOpen(false);
-                    setRightPanelOpen(false);
-                    setSheetSnap("half"); setSheetOpen(true);
-                  }
-                }
-              : () => {
-                  if (sidebarOpen) { setSidebarOpen(false); } else {
-                    catalog.setCatalogOpen(false);
-                    setSidebarOpen(true);
-                  }
-                }
-            }
-            onOpenCatalog={() => {
-              const next = !catalog.catalogOpen;
-              catalog.setCatalogOpen(next);
-              if (next) {
-                setSheetOpen(false);
-                setSidebarOpen(false);
-                setRightPanelOpen(false);
-              }
-            }}
-            onOpenSides={() => {
-              if (rightPanelOpen) { setRightPanelOpen(false); } else {
-                catalog.setCatalogOpen(false);
-                setSheetOpen(false);
-                setFocusSegmentId(state.selectedSegmentId);
-                setRightPanelOpen(true);
-              }
-            }}
-            selectedSegmentId={state.selectedSegmentId}
-            sheetOpen={isMobile ? sheetOpen : sidebarOpen}
-            catalogOpen={catalog.catalogOpen}
-            rightPanelOpen={rightPanelOpen}
-            isMobile={isMobile}
-            onToggleVoiceDraw={voiceDraw.hasSpeech ? voiceDraw.toggle : undefined}
-            isVoiceDrawing={voiceDraw.isListening}
-            isVoiceProcessing={voiceDraw.isProcessing}
-            voiceStatus={voiceDraw.status}
-            voiceInterim={voiceDraw.interimText}
-            voiceVolume={voiceDraw.volume}
-            isClosed={state.isClosed}
-            attachedCount={catalog.attachedCount}
-            filterAttached={catalog.filterAttached}
-            onToggleFilterAttached={() => catalog.setFilterAttached(v => !v)}
-            onSettingsOpenChange={setBottomSettingsOpen}
-          />
-        )}
       </div>
+
+      {/* Нижняя панель кнопок — вынесена из overflow-hidden, позиционируется абсолютно в корневом relative div */}
+      <MobileBottomBar
+        zoom={state.settings.zoom}
+        settings={state.settings}
+        onSettingChange={handleSettingChange}
+        onZoomIn={zoomIn}
+        onZoomOut={zoomOut}
+        onZoomFit={zoomFit}
+        onOpenPanel={isMobile
+          ? () => {
+              if (sheetOpen) { setSheetOpen(false); } else {
+                catalog.setCatalogOpen(false);
+                setRightPanelOpen(false);
+                setSheetSnap("half"); setSheetOpen(true);
+              }
+            }
+          : () => {
+              if (sidebarOpen) { setSidebarOpen(false); } else {
+                catalog.setCatalogOpen(false);
+                setSidebarOpen(true);
+              }
+            }
+        }
+        onOpenCatalog={() => {
+          const next = !catalog.catalogOpen;
+          catalog.setCatalogOpen(next);
+          if (next) {
+            setSheetOpen(false);
+            setSidebarOpen(false);
+            setRightPanelOpen(false);
+          }
+        }}
+        onOpenSides={() => {
+          if (rightPanelOpen) { setRightPanelOpen(false); } else {
+            catalog.setCatalogOpen(false);
+            setSheetOpen(false);
+            setFocusSegmentId(state.selectedSegmentId);
+            setRightPanelOpen(true);
+          }
+        }}
+        selectedSegmentId={state.selectedSegmentId}
+        sheetOpen={isMobile ? sheetOpen : sidebarOpen}
+        catalogOpen={catalog.catalogOpen}
+        rightPanelOpen={rightPanelOpen}
+        isMobile={isMobile}
+        onToggleVoiceDraw={voiceDraw.hasSpeech ? voiceDraw.toggle : undefined}
+        isVoiceDrawing={voiceDraw.isListening}
+        isVoiceProcessing={voiceDraw.isProcessing}
+        voiceStatus={voiceDraw.status}
+        voiceInterim={voiceDraw.interimText}
+        voiceVolume={voiceDraw.volume}
+        isClosed={state.isClosed}
+        attachedCount={catalog.attachedCount}
+        filterAttached={catalog.filterAttached}
+        onToggleFilterAttached={() => catalog.setFilterAttached(v => !v)}
+        onSettingsOpenChange={setBottomSettingsOpen}
+      />
 
       {/* Мобиле: правая панель быстрого ввода сторон */}
       {isMobile && rightPanelOpen && (
