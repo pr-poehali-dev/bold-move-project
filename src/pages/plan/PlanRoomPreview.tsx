@@ -2,19 +2,7 @@ import { useMemo } from "react";
 import type { PlanState, Point, Segment } from "./planTypes";
 import { buildShapePath, calcScale, distPx, midPoint, segmentNormal, pxToCm, polygonArea, polygonPerimeter } from "./planTypes";
 
-const PAD = 20;
-
-function fitPoints(points: Point[], w: number, h: number, pad: number) {
-  if (!points.length) return { tx: (x: number) => x, ty: (y: number) => y, fitScale: 1 };
-  const xs = points.map(p => p.x), ys = points.map(p => p.y);
-  const minX = Math.min(...xs), maxX = Math.max(...xs);
-  const minY = Math.min(...ys), maxY = Math.max(...ys);
-  const pw = maxX - minX || 1, ph = maxY - minY || 1;
-  const s = Math.min((w - pad * 2) / pw, (h - pad * 2) / ph);
-  const ox = (w - pw * s) / 2 - minX * s;
-  const oy = (h - ph * s) / 2 - minY * s;
-  return { tx: (x: number) => x * s + ox, ty: (y: number) => y * s + oy, fitScale: s };
-}
+const PAD = 16;
 
 export interface RoomMeta {
   areaSqm: number | null;
@@ -26,13 +14,25 @@ export function getRoomMeta(data: object): RoomMeta {
   const points: Point[]     = state?.points   ?? [];
   const segments: Segment[] = state?.segments ?? [];
   const isClosed = state?.isClosed ?? false;
-  const baseScale = state?.baseScale ?? null;
-  if (!isClosed || points.length < 3 || !baseScale) return { areaSqm: null, perimM: null };
-  const areaPx2 = polygonArea(points);
-  const areaSqm = Math.round(areaPx2 / (baseScale * baseScale)) / 100;
+  if (!isClosed || points.length < 3) return { areaSqm: null, perimM: null };
+
+  // Используем calcScale — он берёт масштаб из lengthCm введённых пользователем
+  const scale = calcScale(points, segments);
+  if (!scale) return { areaSqm: null, perimM: null };
+
+  const areaPx  = polygonArea(points);
+  const areaCm2 = areaPx / (scale * scale);
+  const areaM2  = Math.round(areaCm2 / 10000 * 100) / 100;
+
   const perimPx = polygonPerimeter(points);
-  const perimM  = Math.round(perimPx / (baseScale * 100) * 100) / 100;
-  return { areaSqm, perimM };
+
+  // Если все стороны введены — берём точный периметр из lengthCm
+  const allSet = segments.length > 0 && segments.every(s => s.lengthCm !== null && s.lengthCm > 0);
+  const perimM = allSet
+    ? Math.round(segments.reduce((s, seg) => s + (seg.lengthCm ?? 0), 0) / 100 * 100) / 100
+    : Math.round((perimPx / scale) / 100 * 100) / 100;
+
+  return { areaSqm: areaM2, perimM };
 }
 
 interface Props {
@@ -48,14 +48,27 @@ export default function PlanRoomPreview({ data, width = 280, height = 160, showM
   const segments: Segment[] = state?.segments ?? [];
   const isClosed = state?.isClosed ?? false;
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  const { tx, ty, fitScale } = useMemo(() => fitPoints(points, width, height, PAD), [JSON.stringify(points), width, height]);
+  // Вычисляем fit: масштаб + смещение чтобы фигура полностью вписалась
+  const { fitScale, offX, offY } = useMemo(() => {
+    if (!points.length) return { fitScale: 1, offX: 0, offY: 0 };
+    const xs = points.map(p => p.x), ys = points.map(p => p.y);
+    const minX = Math.min(...xs), maxX = Math.max(...xs);
+    const minY = Math.min(...ys), maxY = Math.max(...ys);
+    const pw = maxX - minX || 1, ph = maxY - minY || 1;
+    const s = Math.min((width - PAD * 2) / pw, (height - PAD * 2) / ph);
+    // Центрируем
+    const ox = (width  - pw * s) / 2 - minX * s;
+    const oy = (height - ph * s) / 2 - minY * s;
+    return { fitScale: s, offX: ox, offY: oy };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [JSON.stringify(points), width, height]);
+
   const planScale = useMemo(() => calcScale(points, segments), [points, segments]);
   const meta = useMemo(() => getRoomMeta(data), [data]);
 
   if (points.length < 2) {
     return (
-      <div style={{ width, height, background: "#0a0a18", borderRadius: 8, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 6 }}>
+      <div style={{ width, height, background: "#0a0a18", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 6 }}>
         <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
           <rect x="3" y="3" width="22" height="22" rx="3" stroke="rgba(255,255,255,0.15)" strokeWidth="1.5" strokeDasharray="4 3"/>
         </svg>
@@ -65,9 +78,8 @@ export default function PlanRoomPreview({ data, width = 280, height = 160, showM
   }
 
   const shapePath = buildShapePath(points, segments, isClosed);
-  const minXpt = Math.min(...points.map(p => p.x));
-  const minYpt = Math.min(...points.map(p => p.y));
-  const transformStr = `translate(${tx(minXpt) - minXpt * fitScale},${ty(minYpt) - minYpt * fitScale}) scale(${fitScale})`;
+  // Трансформ: сначала масштабируем, потом сдвигаем
+  const transformStr = `translate(${offX}, ${offY}) scale(${fitScale})`;
 
   const segLabels = segments.flatMap(seg => {
     if (!seg.showLength) return [];
@@ -78,7 +90,10 @@ export default function PlanRoomPreview({ data, width = 280, height = 160, showM
     const { nx, ny } = segmentNormal(a, b);
     const lenCm = seg.lengthCm ?? pxToCm(distPx(a, b), planScale);
     if (lenCm === null) return [];
-    return [{ id: seg.id, x: tx(mid.x) + nx * 13, y: ty(mid.y) + ny * 13, label: `${lenCm} см` }];
+    // Позиция в экранных координатах (после трансформа)
+    const sx = mid.x * fitScale + offX + nx * 13;
+    const sy = mid.y * fitScale + offY + ny * 13;
+    return [{ id: seg.id, x: sx, y: sy, label: `${lenCm} см` }];
   });
 
   const angleLabels = isClosed ? points.map((pt, idx) => {
@@ -94,7 +109,10 @@ export default function PlanRoomPreview({ data, width = 280, height = 160, showM
     const isOdd = Math.abs(deg - Math.round(deg / 90) * 90) > 1.5;
     const dx = ax / la + bx / lb, dy = ay / la + by / lb;
     const dl = Math.sqrt(dx * dx + dy * dy) || 1;
-    return { id: pt.id, x: tx(pt.x) + (dx / dl) * 14, y: ty(pt.y) + (dy / dl) * 14, label: `${deg}°`, isOdd };
+    // Позиция в экранных координатах
+    const sx = pt.x * fitScale + offX + (dx / dl) * 14;
+    const sy = pt.y * fitScale + offY + (dy / dl) * 14;
+    return { id: pt.id, x: sx, y: sy, label: `${deg}°`, isOdd };
   }) : [];
 
   const GRID = 18;
@@ -104,7 +122,7 @@ export default function PlanRoomPreview({ data, width = 280, height = 160, showM
       <svg
         width={width} height={height}
         viewBox={`0 0 ${width} ${height}`}
-        style={{ display: "block", borderRadius: 8 }}
+        style={{ display: "block" }}
       >
         <defs>
           <pattern id="rp-grid" width={GRID} height={GRID} patternUnits="userSpaceOnUse">
@@ -113,9 +131,11 @@ export default function PlanRoomPreview({ data, width = 280, height = 160, showM
         </defs>
         <rect width={width} height={height} fill="#0a0a18"/>
         <rect width={width} height={height} fill="url(#rp-grid)"/>
+
+        {/* Фигура в масштабированном пространстве */}
         <g transform={transformStr}>
           {isClosed && points.length >= 3 && (
-            <path d={shapePath} fill="rgba(251,191,36,0.12)" stroke="none"/>
+            <path d={shapePath} fill="rgba(251,191,36,0.1)" stroke="none"/>
           )}
           <path
             d={shapePath}
@@ -126,15 +146,19 @@ export default function PlanRoomPreview({ data, width = 280, height = 160, showM
             strokeLinecap="round"
           />
           {points.map(pt => (
-            <circle key={pt.id} cx={pt.x} cy={pt.y} r={3 / fitScale} fill="rgba(255,255,255,0.8)"/>
+            <circle key={pt.id} cx={pt.x} cy={pt.y} r={3.5 / fitScale} fill="rgba(255,255,255,0.85)"/>
           ))}
         </g>
+
+        {/* Подписи длин — в экранных координатах */}
         {segLabels.map(l => (
           <text key={l.id} x={l.x} y={l.y} textAnchor="middle" dominantBaseline="middle"
             fontSize={9} fill="rgba(255,255,255,0.6)" fontFamily="monospace" style={{ userSelect: "none" }}>
             {l.label}
           </text>
         ))}
+
+        {/* Угловые метки — в экранных координатах */}
         {angleLabels.map(l => (
           <text key={l.id} x={l.x} y={l.y} textAnchor="middle" dominantBaseline="middle"
             fontSize={8} fill={l.isOdd ? "#fb923c" : "rgba(255,255,255,0.4)"} fontFamily="monospace" style={{ userSelect: "none" }}>
@@ -142,6 +166,7 @@ export default function PlanRoomPreview({ data, width = 280, height = 160, showM
           </text>
         ))}
       </svg>
+
       {showMeta && (meta.areaSqm !== null || meta.perimM !== null) && (
         <div style={{ display: "flex", gap: 8, marginTop: 6, fontSize: 12, color: "#6366f1", fontWeight: 600 }}>
           {meta.areaSqm !== null && <span>Площадь {meta.areaSqm} м²</span>}
