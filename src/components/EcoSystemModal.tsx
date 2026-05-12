@@ -217,55 +217,54 @@ export default function EcoSystemModal({ onClose }: Props) {
                     cursor: clickable ? "pointer" : "default",
                   }}
                 >
-                  {/* Картинка */}
-                  <div className="relative h-32 overflow-hidden flex-shrink-0">
+                  {/* Картинка — компактная */}
+                  <div className="relative h-20 overflow-hidden flex-shrink-0">
                     <img
                       src={f.image}
                       alt={f.tag}
                       className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                      style={{ opacity: f.status === "soon" ? 0.4 : 0.65 }}
+                      style={{ opacity: f.status === "soon" ? 0.35 : 0.6 }}
                     />
-                    {/* Градиент снизу */}
                     <div className="absolute inset-0"
-                      style={{ background: `linear-gradient(to bottom, ${f.accent}10 0%, #0e0e1c 100%)` }} />
-                    {/* Акцентная полоска сверху */}
+                      style={{ background: `linear-gradient(to bottom, ${f.accent}08 0%, #0e0e1c 100%)` }} />
                     <div className="absolute top-0 left-0 right-0 h-0.5"
                       style={{ background: `linear-gradient(to right, ${f.accent}, transparent)` }} />
                     {/* Бейдж статуса */}
-                    <div className="absolute top-3 right-3">
-                      <div className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold backdrop-blur-sm"
+                    <div className="absolute top-2 right-2">
+                      <div className="flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9px] font-bold backdrop-blur-sm"
                         style={{ background: st.bg, color: st.color, border: `1px solid ${st.border}` }}>
-                        <div className="w-1.5 h-1.5 rounded-full flex-shrink-0"
+                        <div className="w-1 h-1 rounded-full flex-shrink-0"
                           style={{ background: st.color, boxShadow: `0 0 4px ${st.color}` }} />
                         {st.label}
                       </div>
                     </div>
-                    {/* Тег + иконка */}
-                    <div className="absolute bottom-3 left-3 flex items-center gap-2">
-                      <div className="w-6 h-6 rounded-lg flex items-center justify-center"
-                        style={{ background: `${f.accent}25`, backdropFilter: "blur(4px)" }}>
-                        <Icon name={f.icon} size={13} style={{ color: f.accent }} />
-                      </div>
-                      <span className="text-[11px] font-bold" style={{ color: f.accent }}>{f.tag}</span>
-                    </div>
                   </div>
 
                   {/* Контент */}
-                  <div className="p-4 flex flex-col gap-2 flex-1">
-                    <div className="text-[14px] font-black text-white leading-snug">{f.title}</div>
-                    <div className="text-[11px] leading-relaxed" style={{ color: "rgba(255,255,255,0.45)" }}>{f.desc}</div>
+                  <div className="px-3 pt-2.5 pb-3 flex flex-col gap-1.5 flex-1">
+                    {/* Тег — крупный акцент */}
+                    <div className="flex items-center gap-1.5">
+                      <div className="w-5 h-5 rounded-md flex items-center justify-center flex-shrink-0"
+                        style={{ background: `${f.accent}20` }}>
+                        <Icon name={f.icon} size={11} style={{ color: f.accent }} />
+                      </div>
+                      <span className="text-[15px] font-black tracking-tight" style={{ color: f.accent }}>{f.tag}</span>
+                    </div>
+
+                    <div className="text-[12px] font-bold text-white leading-snug">{f.title}</div>
+                    <div className="text-[10px] leading-relaxed" style={{ color: "rgba(255,255,255,0.4)" }}>{f.desc}</div>
 
                     {/* Футер */}
-                    <div className="flex items-center justify-between mt-auto pt-2">
-                      <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-semibold"
+                    <div className="flex items-center justify-between mt-auto pt-1.5">
+                      <div className="flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-semibold"
                         style={{ background: `${f.accent}12`, color: f.accent }}>
-                        <Icon name={f.badgeIcon} size={11} />
+                        <Icon name={f.badgeIcon} size={10} />
                         {f.badge}
                       </div>
                       {clickable && (
-                        <div className="w-6 h-6 rounded-lg flex items-center justify-center transition group-hover:translate-x-0.5"
+                        <div className="w-5 h-5 rounded-md flex items-center justify-center transition group-hover:translate-x-0.5"
                           style={{ background: `${f.accent}15`, color: f.accent }}>
-                          <Icon name="ArrowRight" size={12} />
+                          <Icon name="ArrowRight" size={10} />
                         </div>
                       )}
                     </div>
