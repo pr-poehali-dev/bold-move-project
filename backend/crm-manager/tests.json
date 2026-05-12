@@ -47,6 +47,14 @@
       "method": "GET",
       "path": "/?r=substatuses",
       "expectedStatus": 200
+    },
+    {
+      "name": "GET plan-projects",
+      "method": "GET",
+      "path": "/?r=plan-projects",
+      "expectedStatus": 200,
+      "expectedBody": [],
+      "bodyMatcher": "partial"
     }
   ]
 }

@@ -867,6 +867,137 @@ def handler(event: dict, context) -> dict:
                 conn.commit()
                 return ok({"deactivated": True})
 
+        # ── PLAN PROJECTS ─────────────────────────────────────────────────────
+        if resource == "plan-projects":
+            cmp = company_id if company_id is not None else 0
+
+            if method == "GET":
+                pid = qs.get("id")
+                if pid:
+                    cur.execute(f"""
+                        SELECT id, company_id, name, client_name, address, phone, status, created_at, updated_at
+                        FROM {SCHEMA}.plan_projects WHERE id=%s AND company_id=%s
+                    """, (int(pid), cmp))
+                    row = cur.fetchone()
+                    if not row: return err("not found", 404)
+                    cols = [d[0] for d in cur.description]
+                    return ok(dict(zip(cols, row)))
+                cur.execute(f"""
+                    SELECT id, company_id, name, client_name, address, phone, status, created_at, updated_at
+                    FROM {SCHEMA}.plan_projects WHERE company_id=%s ORDER BY updated_at DESC
+                """, (cmp,))
+                cols = [d[0] for d in cur.description]
+                return ok([dict(zip(cols, r)) for r in cur.fetchall()])
+
+            if method == "POST":
+                name = (body.get("name") or "").strip()
+                if not name: return err("name required")
+                cur.execute(f"""
+                    INSERT INTO {SCHEMA}.plan_projects (company_id, name, client_name, address, phone, status)
+                    VALUES (%s,%s,%s,%s,%s,%s) RETURNING id
+                """, (cmp, name, body.get("client_name"), body.get("address"), body.get("phone"), body.get("status","draft")))
+                new_id = cur.fetchone()[0]
+                conn.commit()
+                return ok({"id": new_id})
+
+            if method == "PUT":
+                pid = qs.get("id")
+                if not pid: return err("id required")
+                allowed = ["name","client_name","address","phone","status"]
+                sets, vals = [], []
+                for f in allowed:
+                    if f in body: sets.append(f"{f}=%s"); vals.append(body[f])
+                if not sets: return err("nothing to update")
+                sets.append("updated_at=NOW()")
+                vals += [int(pid), cmp]
+                cur.execute(f"UPDATE {SCHEMA}.plan_projects SET {','.join(sets)} WHERE id=%s AND company_id=%s", vals)
+                conn.commit()
+                return ok({"updated": True})
+
+            if method == "DELETE":
+                pid = qs.get("id")
+                if not pid: return err("id required")
+                cur.execute(f"UPDATE {SCHEMA}.plan_projects SET status='deleted' WHERE id=%s AND company_id=%s", (int(pid), cmp))
+                conn.commit()
+                return ok({"deleted": True})
+
+        # ── PLAN ROOMS ────────────────────────────────────────────────────────
+        if resource == "plan-rooms":
+            cmp = company_id if company_id is not None else 0
+            project_id = qs.get("project_id") or body.get("project_id")
+
+            if method == "GET":
+                rid = qs.get("id")
+                if rid:
+                    cur.execute(f"""
+                        SELECT r.id, r.project_id, r.name, r.data, r.thumbnail, r.created_at, r.updated_at
+                        FROM {SCHEMA}.room_plans r
+                        JOIN {SCHEMA}.plan_projects p ON p.id = r.project_id
+                        WHERE r.id=%s AND p.company_id=%s
+                    """, (int(rid), cmp))
+                    row = cur.fetchone()
+                    if not row: return err("not found", 404)
+                    cols = [d[0] for d in cur.description]
+                    return ok(dict(zip(cols, row)))
+                if not project_id: return err("project_id required")
+                cur.execute(f"""
+                    SELECT r.id, r.project_id, r.name, r.data, r.thumbnail, r.created_at, r.updated_at
+                    FROM {SCHEMA}.room_plans r
+                    JOIN {SCHEMA}.plan_projects p ON p.id = r.project_id
+                    WHERE r.project_id=%s AND p.company_id=%s
+                    ORDER BY r.created_at ASC
+                """, (int(project_id), cmp))
+                cols = [d[0] for d in cur.description]
+                return ok([dict(zip(cols, r)) for r in cur.fetchall()])
+
+            if method == "POST":
+                if not project_id: return err("project_id required")
+                name = (body.get("name") or "Новая комната").strip()
+                # Проверяем что проект принадлежит компании
+                cur.execute(f"SELECT id FROM {SCHEMA}.plan_projects WHERE id=%s AND company_id=%s", (int(project_id), cmp))
+                if not cur.fetchone(): return err("project not found", 404)
+                cur.execute(f"""
+                    INSERT INTO {SCHEMA}.room_plans (user_id, project_id, name, data)
+                    VALUES (%s,%s,%s,'{{}}') RETURNING id
+                """, (cmp, int(project_id), name))
+                new_id = cur.fetchone()[0]
+                # Обновляем updated_at проекта
+                cur.execute(f"UPDATE {SCHEMA}.plan_projects SET updated_at=NOW() WHERE id=%s", (int(project_id),))
+                conn.commit()
+                return ok({"id": new_id})
+
+            if method == "PUT":
+                rid = qs.get("id")
+                if not rid: return err("id required")
+                allowed = ["name","data","thumbnail"]
+                sets, vals = [], []
+                for f in allowed:
+                    if f in body:
+                        sets.append(f"{f}=%s")
+                        vals.append(json.dumps(body[f]) if f == "data" else body[f])
+                if not sets: return err("nothing to update")
+                sets.append("updated_at=NOW()")
+                vals.append(int(rid))
+                cur.execute(f"""
+                    UPDATE {SCHEMA}.room_plans SET {','.join(sets)} WHERE id=%s
+                    AND project_id IN (SELECT id FROM {SCHEMA}.plan_projects WHERE company_id=%s)
+                """, vals + [cmp])
+                # Обновляем updated_at проекта
+                if project_id:
+                    cur.execute(f"UPDATE {SCHEMA}.plan_projects SET updated_at=NOW() WHERE id=%s", (int(project_id),))
+                conn.commit()
+                return ok({"updated": True})
+
+            if method == "DELETE":
+                rid = qs.get("id")
+                if not rid: return err("id required")
+                cur.execute(f"""
+                    UPDATE {SCHEMA}.room_plans SET name=CONCAT('[удалена] ', name) WHERE id=%s
+                    AND project_id IN (SELECT id FROM {SCHEMA}.plan_projects WHERE company_id=%s)
+                """, (int(rid), cmp))
+                conn.commit()
+                return ok({"deleted": True})
+
         return err("unknown resource", 404)
 
     except Exception as e:
