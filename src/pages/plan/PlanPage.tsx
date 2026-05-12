@@ -92,21 +92,23 @@ export default function PlanPage() {
     onAfterLoad:  () => { loadingFromLibraryRef.current = false; },
   });
 
-  // При замыкании фигуры
-  const prevIsClosed = useRef(state.isClosed);
+  // При замыкании фигуры — отслеживаем по ID последнего сегмента
+  // чтобы не пропустить голосовой ввод (там onChange вызывается через ref)
+  const lastClosedSegId = useRef<string | null>(null);
   useEffect(() => {
-    if (state.isClosed && !prevIsClosed.current && !loadingFromLibraryRef.current) {
-      if (!isMobile) {
-        setSidebarOpen(true);
-        setTimeout(() => zoomFit(), 100);
-      } else {
-        setFocusSegmentId(state.segments[0]?.id ?? null);
-        setRightPanelOpen(true);
-        setTimeout(() => zoomFit(), 100);
-      }
+    if (!state.isClosed || loadingFromLibraryRef.current) return;
+    const lastSeg = state.segments[state.segments.length - 1];
+    if (!lastSeg || lastSeg.id === lastClosedSegId.current) return;
+    lastClosedSegId.current = lastSeg.id;
+    if (!isMobile) {
+      setSidebarOpen(true);
+      setTimeout(() => zoomFit(), 100);
+    } else {
+      setFocusSegmentId(state.segments[0]?.id ?? null);
+      setRightPanelOpen(true);
+      setTimeout(() => zoomFit(), 100);
     }
-    prevIsClosed.current = state.isClosed;
-  }, [state.isClosed]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [state.isClosed, state.segments]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Мобиле: нажатие на сторону → каталог только если все размеры заполнены
   const prevSelectedSegId = useRef(state.selectedSegmentId);
