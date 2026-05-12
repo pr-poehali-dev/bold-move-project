@@ -102,27 +102,40 @@ export default function CalcTab({
 
         {/* Три главные метрики — компактный ряд блоков */}
         <div className="grid grid-cols-3 gap-1.5 mb-2">
-          <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-xl px-2 py-2 flex flex-col items-center gap-0.5">
-            <span className="text-[9px] text-emerald-400/70 font-semibold uppercase tracking-wide leading-none">Площадь</span>
-            <span className="text-[15px] font-bold font-mono text-emerald-300 leading-tight">{areaM2 ?? "—"}</span>
-            <span className="text-[9px] text-emerald-400/50">м²</span>
+          <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-xl px-2 py-2.5 flex flex-col items-center gap-1">
+            <span className="text-[10px] text-emerald-400/80 font-bold uppercase tracking-wider leading-none">Площадь</span>
+            <span className="text-[18px] font-bold font-mono text-emerald-300 leading-none">{areaM2 ?? "—"}</span>
+            <span className="text-[11px] text-emerald-400/60 font-medium">м²</span>
           </div>
-          <div className="bg-white/[0.04] border border-white/[0.08] rounded-xl px-2 py-2 flex flex-col items-center gap-0.5">
-            <span className="text-[9px] text-white/40 font-semibold uppercase tracking-wide leading-none">Периметр</span>
-            <span className="text-[15px] font-bold font-mono text-white/80 leading-tight">{displayPerim ?? "—"}</span>
-            <span className="text-[9px] text-white/30">м</span>
+          <div className="bg-white/[0.05] border border-white/[0.1] rounded-xl px-2 py-2.5 flex flex-col items-center gap-1">
+            <span className="text-[10px] text-white/50 font-bold uppercase tracking-wider leading-none">Периметр</span>
+            <span className="text-[18px] font-bold font-mono text-white/90 leading-none">{displayPerim ?? "—"}</span>
+            <span className="text-[11px] text-white/40 font-medium">м</span>
           </div>
-          <div className="bg-white/[0.04] border border-white/[0.08] rounded-xl px-2 py-2 flex flex-col items-center gap-0.5">
-            <span className="text-[9px] text-white/40 font-semibold uppercase tracking-wide leading-none">Углов</span>
-            <span className="text-[15px] font-bold font-mono text-white/80 leading-tight">{points.length}</span>
-            <span className="text-[9px] text-white/30">шт</span>
+          <div className="bg-white/[0.05] border border-white/[0.1] rounded-xl px-2 py-2.5 flex flex-col items-center gap-1">
+            <span className="text-[10px] text-white/50 font-bold uppercase tracking-wider leading-none">Углов</span>
+            <span className="text-[18px] font-bold font-mono text-white/90 leading-none">{points.length}</span>
+            <span className="text-[11px] text-white/40 font-medium">шт</span>
           </div>
         </div>
 
-        {/* Дополнительные параметры (высота и т.д.) */}
-        {ceilH && row("Высота потолка", String(ceilH), "см")}
-        {dipMm && row("Опуск от бетона", String(dipMm), "мм")}
-        {finishH && row("Чистовая высота", String(Math.round(finishH * 10) / 10), "см", true)}
+        {/* Высота/опуск — только если заполнены в параметрах помещения */}
+        {(ceilH || dipMm || finishH) && (
+          <div className="bg-white/[0.03] border border-white/[0.06] rounded-xl px-3 py-2 space-y-1">
+            {ceilH && <div className="flex justify-between items-center">
+              <span className="text-[11px] text-white/50">Высота потолка</span>
+              <span className="text-[12px] font-bold font-mono text-white/70">{ceilH} <span className="text-[10px] font-normal text-white/30">см</span></span>
+            </div>}
+            {dipMm && <div className="flex justify-between items-center">
+              <span className="text-[11px] text-white/50">Опуск от бетона</span>
+              <span className="text-[12px] font-bold font-mono text-white/70">{dipMm} <span className="text-[10px] font-normal text-white/30">мм</span></span>
+            </div>}
+            {finishH && <div className="flex justify-between items-center">
+              <span className="text-[11px] text-emerald-400/80">Чистовая высота</span>
+              <span className="text-[12px] font-bold font-mono text-emerald-300">{Math.round(finishH * 10) / 10} <span className="text-[10px] font-normal text-emerald-400/40">см</span></span>
+            </div>}
+          </div>
+        )}
       </div>
 
       {!scale && (
