@@ -645,38 +645,146 @@ export function buildAutoDiagonals(
 ): DiagonalDef[] {
   const n = points.length;
   if (n < 4) return [];
-  const result: DiagonalDef[] = [];
+
+  // ── 1. Строим упорядоченную цепочку через segments (порядок обхода полигона) ──
+  // points уже упорядочены по порядку обхода полигона, используем их напрямую
+  const chain = points; // points[0..n-1] — вершины в порядке обхода
+
+  // Стены полигона: chain[i] → chain[(i+1)%n]
+  const walls = chain.map((_, k) => ({
+    fromId: chain[k].id,
+    toId:   chain[(k + 1) % n].id,
+  }));
+
+  // ── 2. Вычисляем внутренний угол в каждой вершине ──
+  const isCW = polygonOrientation(chain) > 0;
+  const cornerAngles: number[] = chain.map((_, i) => {
+    const prev = chain[(i - 1 + n) % n];
+    const cur  = chain[i];
+    const next = chain[(i + 1) % n];
+    return angleDeg(prev, cur, next, isCW);
+  });
+
+  // ── 3. Все возможные диагонали (не пересекают стены) ──
+  // Пара (i, j) — индексы в chain, i < j, не смежные вершины
+  interface CandidateDiag {
+    i: number; j: number;
+    from: Point; to: Point;
+    distPx: number;
+  }
+  const allCandidates: CandidateDiag[] = [];
   for (let i = 0; i < n; i++) {
     for (let j = i + 2; j < n; j++) {
-      if (i === 0 && j === n - 1) continue;
-      const from = points[i];
-      const to   = points[j];
-      if (diagonalCrossesWall(from, to, points, points.map((_, k) => ({
-        fromId: points[k].id,
-        toId:   points[(k + 1) % n].id,
-      })))) continue;
-      const fromId = from.id;
-      const toId   = to.id;
-      const existing = existingDiagonals.find(
-        d => (d.fromId === fromId && d.toId === toId) ||
-             (d.fromId === toId && d.toId === fromId)
-      );
-      // Автоматически вычисляем lengthCm если есть масштаб
-      const autoCm = baseScale && baseScale > 0
-        ? Math.round((distPx(from, to) / baseScale) * 10) / 10
-        : null;
-      if (existing) {
-        // При drag (forceRecalc) — всегда берём autoCm, если нет userSet
-        // Иначе — сохраняем введённое вручную (userSet) или вычисляем auto
-        const lenCm = (forceRecalc && !existing.userSet)
-          ? autoCm
-          : (existing.userSet ? existing.lengthCm : autoCm ?? existing.lengthCm);
-        result.push({ ...existing, lengthCm: lenCm });
-      } else {
-        result.push({ id: genId("d"), fromId, toId, lengthCm: autoCm, showLength: true, visible: true });
+      if (i === 0 && j === n - 1) continue; // смежные через замыкание
+      const from = chain[i];
+      const to   = chain[j];
+      if (diagonalCrossesWall(from, to, chain, walls)) continue;
+      allCandidates.push({ i, j, from, to, distPx: distPx(from, to) });
+    }
+  }
+
+  // ── 4. Для каждой вершины определяем нужное кол-во диагоналей ──
+  // Угол ≥ 270° → 3 диагонали, угол ≤ 90° → 2 диагонали, остальные → 1
+  const minDiagsPerVertex: number[] = cornerAngles.map(a => {
+    if (a >= 250) return 3;  // вогнутый / широкий угол
+    if (a <= 100) return 2;  // острый / прямой угол
+    return 1;
+  });
+
+  // ── 5. Набираем нужные диагонали для каждой вершины ──
+  // Выбираем диагонали максимально «разнесённые» по направлению друг от друга
+  const selectedPairs = new Set<string>(); // ключ "minI-maxJ"
+
+  const pairKey = (i: number, j: number) => `${Math.min(i,j)}-${Math.max(i,j)}`;
+
+  for (let vi = 0; vi < n; vi++) {
+    const needed = minDiagsPerVertex[vi];
+    // Кандидаты от этой вершины
+    const fromVertex = allCandidates.filter(c => c.i === vi || c.j === vi);
+    if (fromVertex.length === 0) continue;
+
+    if (fromVertex.length <= needed) {
+      // Берём все что есть
+      fromVertex.forEach(c => selectedPairs.add(pairKey(c.i, c.j)));
+      continue;
+    }
+
+    // Выбираем `needed` диагоналей максимально разнесённых по углу от вершины vi
+    const vpt = chain[vi];
+    // Вычисляем угол каждой диагонали относительно вершины
+    const withAngles = fromVertex.map(c => {
+      const other = c.i === vi ? c.to : c.from;
+      const angle = Math.atan2(other.y - vpt.y, other.x - vpt.x);
+      return { c, angle };
+    });
+    withAngles.sort((a, b) => a.angle - b.angle);
+
+    if (needed === 1) {
+      // Берём самую длинную
+      const longest = fromVertex.reduce((best, c) => c.distPx > best.distPx ? c : best);
+      selectedPairs.add(pairKey(longest.i, longest.j));
+    } else {
+      // Жадный алгоритм: берём диагонали с максимальным угловым разносом
+      // Первая — самая длинная
+      const first = fromVertex.reduce((best, c) => c.distPx > best.distPx ? c : best);
+      selectedPairs.add(pairKey(first.i, first.j));
+
+      const firstPt  = first.i === vi ? first.to : first.from;
+      const firstAngle = Math.atan2(firstPt.y - vpt.y, firstPt.x - vpt.x);
+
+      // Остальные — максимально далёкие по углу от уже выбранных
+      const chosen: number[] = [firstAngle]; // углы уже выбранных
+
+      for (let k = 1; k < needed; k++) {
+        let bestScore = -1;
+        let bestC: CandidateDiag | null = null;
+        for (const { c, angle } of withAngles) {
+          if (selectedPairs.has(pairKey(c.i, c.j))) continue;
+          // Минимальный угловой разнос от уже выбранных
+          const minDiff = Math.min(...chosen.map(ch => {
+            let diff = Math.abs(angle - ch);
+            if (diff > Math.PI) diff = 2 * Math.PI - diff;
+            return diff;
+          }));
+          if (minDiff > bestScore) { bestScore = minDiff; bestC = c; }
+        }
+        if (bestC) {
+          selectedPairs.add(pairKey(bestC.i, bestC.j));
+          const pt = bestC.i === vi ? bestC.to : bestC.from;
+          chosen.push(Math.atan2(pt.y - vpt.y, pt.x - vpt.x));
+        }
       }
     }
   }
+
+  // ── 6. Формируем результат — только выбранные диагонали ──
+  const result: DiagonalDef[] = [];
+  for (const key of selectedPairs) {
+    const [si, sj] = key.split("-").map(Number);
+    const from = chain[si];
+    const to   = chain[sj];
+    const fromId = from.id;
+    const toId   = to.id;
+
+    const existing = existingDiagonals.find(
+      d => (d.fromId === fromId && d.toId === toId) ||
+           (d.fromId === toId   && d.toId === fromId)
+    );
+
+    const autoCm = baseScale && baseScale > 0
+      ? Math.round((distPx(from, to) / baseScale) * 10) / 10
+      : null;
+
+    if (existing) {
+      const lenCm = (forceRecalc && !existing.userSet)
+        ? autoCm
+        : (existing.userSet ? existing.lengthCm : autoCm ?? existing.lengthCm);
+      result.push({ ...existing, fromId, toId, lengthCm: lenCm });
+    } else {
+      result.push({ id: genId("d"), fromId, toId, lengthCm: autoCm, showLength: true, visible: true });
+    }
+  }
+
   return result;
 }
 
