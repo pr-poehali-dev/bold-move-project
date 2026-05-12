@@ -269,7 +269,7 @@ export default function MobileBottomBar({
           {!isVoiceDrawing && !isVoiceProcessing && (
             <button
               onClick={() => setHintsOpen(v => !v)}
-              className="absolute -top-1 -left-1 w-4 h-4 rounded-full bg-violet-600/80 flex items-center justify-center text-white hover:bg-violet-500 transition-all"
+              className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-violet-600/80 flex items-center justify-center text-white hover:bg-violet-500 transition-all"
               title="Примеры фраз"
             >
               <Icon name="HelpCircle" size={10} />
