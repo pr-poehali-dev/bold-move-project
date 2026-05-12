@@ -239,6 +239,23 @@ export default function PlanRightInputPanel({ state, onUpdateSegment, onUpdateDi
           </div>
         )}
 
+        {/* Кнопка голосового ввода — стороны */}
+        {tab === "sides" && voice.hasSpeech && segments.length > 0 && (
+          <button
+            onClick={voice.toggle}
+            className={`w-full flex items-center justify-center gap-2 py-2 rounded-xl border text-[12px] font-semibold transition-all mb-1 ${
+              voice.isListening
+                ? "bg-red-500/15 border-red-500/40 text-red-300 animate-pulse"
+                : "bg-white/[0.04] border-white/[0.1] text-white/50 hover:bg-white/[0.08] hover:text-white/80"
+            }`}
+          >
+            <Icon name={voice.isListening ? "MicOff" : "Mic"} size={13} />
+            {voice.isListening
+              ? `Слушаю... ${segmentLabel(points, segments[voice.activeIdx]) ?? ""}`
+              : "Диктовать размеры"}
+          </button>
+        )}
+
         {/* Стороны */}
         {tab === "sides" && segments.map((seg, idx) => {
           const label = segmentLabel(points, seg);
