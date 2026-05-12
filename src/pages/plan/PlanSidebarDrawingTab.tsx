@@ -165,6 +165,7 @@ export default function DrawingTab({ state, onChange, onSectionOpen, noAutoOpen 
           onChange({ segments: newSegments, changedSegmentIds: [] });
           return;
         }
+        setLastChangedSegId(id); // показываем кнопку флипа для этой стороны
         const newDiags = buildAutoDiagonals(points, diagonals, baseScale);
         onChange({ segments: newSegments, diagonals: newDiags, changedSegmentIds: [] });
         return;
