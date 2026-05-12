@@ -145,93 +145,27 @@ export default function DrawingTab({ state, onChange, onSectionOpen, noAutoOpen 
       if (!isEditMode && allSetAfter && baseScale && isClosed) {
         const result = rebuildWithRightAngles(points, newSegments, baseScale);
         if (result) {
-          // result.segments может содержать исправленный lengthCm последнего сегмента
-          const finalSegs = result.segments ?? newSegments;
-          // Если последний сегмент был скорректирован — подсвечиваем его
-          const corrected = finalSegs.filter((s, i) =>
-            newSegments[i] && s.lengthCm !== newSegments[i].lengthCm
-          ).map(s => s.id);
-          // Сохраняем исходные точки и сегменты — они нужны для корректного флипа
+          // Сегменты не трогаем — введённые пользователем значения сохраняются как есть
           builtPoints.current   = result.points;
-          builtSegments.current = finalSegs;
+          builtSegments.current = newSegments;
           const newDiags = buildAutoDiagonals(result.points, diagonals, baseScale);
-          onChange({ points: result.points, segments: finalSegs, diagonals: newDiags, baseScale, isBuilt: true, changedSegmentIds: [] });
+          onChange({ points: result.points, segments: newSegments, diagonals: newDiags, baseScale, isBuilt: true, changedSegmentIds: [] });
           return;
         }
       }
 
       // ── РЕЖИМ РЕДАКТИРОВАНИЯ: rebuild уже был, пользователь меняет сторону ───
+      // Просто обновляем lengthCm без пересчёта соседей и без сдвига точек.
+      // Пользователь сам контролирует все стороны.
       if (isEditMode && baseScale && isClosed) {
         const seg = segments.find(s => s.id === id);
-        // Если значение не изменилось и нет принудительного пересчёта — ничего не делаем
         if (!forceRecalc && seg && patch.lengthCm && patch.lengthCm === seg.lengthCm) {
           onChange({ segments: newSegments, changedSegmentIds: [] });
           return;
         }
-        if (seg && patch.lengthCm) {
-          setLastChangedSegId(id);
-          const isFlipped = flippedSegIds.current.has(id);
-
-          // По умолчанию (по часовой): фиксирован fromId (B), двигается toId (C)
-          // Флип (против часовой):     фиксирован toId (C), двигается fromId (B)
-          const fixedPtId  = isFlipped ? seg.toId   : seg.fromId;
-          const movedPtId  = isFlipped ? seg.fromId : seg.toId;
-
-          const fixedPoint = points.find(p => p.id === fixedPtId);
-          const movedPoint = points.find(p => p.id === movedPtId);
-
-          if (fixedPoint && movedPoint) {
-            const origLen = distPx(fixedPoint, movedPoint);
-            if (origLen > 0) {
-              const ux = (movedPoint.x - fixedPoint.x) / origLen;
-              const uy = (movedPoint.y - fixedPoint.y) / origLen;
-              const newLenPx = patch.lengthCm * baseScale;
-              const newMovedCoord = { x: fixedPoint.x + ux * newLenPx, y: fixedPoint.y + uy * newLenPx };
-
-              const newPoints = points.map(p =>
-                p.id === movedPtId ? { ...p, ...newMovedCoord } : p
-              );
-
-              // Пересчитываем соседний сегмент:
-              // По умолчанию (по часовой): двигается toId (C) → следующий: где movedPtId=fromId (C-D).
-              //   Фолбек: где movedPtId=toId — только если нет сегмента с fromId=movedPtId.
-              // Флип (против часовой): двигается fromId (B) → предыдущий: где movedPtId=toId (A-B).
-              //   Фолбек: где movedPtId=fromId — только если нет сегмента с toId=movedPtId.
-              const autoRecalcIds: string[] = [];
-              const affectedSeg = isFlipped
-                ? (newSegments.find(s => s.id !== id && s.toId   === movedPtId) ??
-                   (newSegments.every(s => s.id === id || s.toId !== movedPtId)
-                     ? newSegments.find(s => s.id !== id && s.fromId === movedPtId)
-                     : undefined))
-                : (newSegments.find(s => s.id !== id && s.fromId === movedPtId) ??
-                   (newSegments.every(s => s.id === id || s.fromId !== movedPtId)
-                     ? newSegments.find(s => s.id !== id && s.toId === movedPtId)
-                     : undefined));
-
-              const updatedSegments = newSegments.map(s => {
-                if (s.id === id) return s;
-                if (!affectedSeg || s.id !== affectedSeg.id) return s;
-                const a = newPoints.find(p => p.id === s.fromId);
-                const b = newPoints.find(p => p.id === s.toId);
-                if (!a || !b) return s;
-                const px = distPx(a, b);
-                autoRecalcIds.push(s.id);
-                return { ...s, lengthCm: Math.round((px / baseScale!) * 10) / 10 };
-              });
-
-              // Сохраняем длины авто-пересчитанных сегментов ДО изменения (для восстановления при флипе)
-              autoRecalcIds.forEach(sid => {
-                const orig = segments.find(s => s.id === sid);
-                if (orig?.lengthCm != null) prevLengths.current.set(sid, orig.lengthCm);
-              });
-
-              const newDiags = buildAutoDiagonals(newPoints, diagonals, baseScale);
-              // Только авто-пересчитанные соседи. Никаких старых ID.
-              onChange({ points: newPoints, segments: updatedSegments, diagonals: newDiags, baseScale, changedSegmentIds: autoRecalcIds });
-              return;
-            }
-          }
-        }
+        const newDiags = buildAutoDiagonals(points, diagonals, baseScale);
+        onChange({ segments: newSegments, diagonals: newDiags, changedSegmentIds: [] });
+        return;
       }
 
       // ── Авторасчёт последней стороны ОТКЛЮЧЁН ────────────────────────────────

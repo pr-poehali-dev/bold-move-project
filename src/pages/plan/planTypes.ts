@@ -1010,24 +1010,8 @@ export function rebuildWithRightAngles(
     return nc ? { ...p, ...nc } : p;
   });
 
-  // Проверяем замыкание: последний сегмент (H→A) строится автоматически.
-  // Корректируем его lengthCm если есть небольшое расхождение с пикселями.
-  const lastSeg = orderedSegs[orderedSegs.length - 1];
-  const lastFrom = newPoints.find(p => p.id === lastSeg.fromId);
-  const lastTo   = newPoints.find(p => p.id === lastSeg.toId);
-  let correctedSegments = segments;
-  if (lastFrom && lastTo) {
-    const realPx = distPx(lastFrom, lastTo);
-    const realCm = Math.round((realPx / baseScale) * 10) / 10;
-    const expectedCm = lastSeg.lengthCm ?? 0;
-    if (Math.abs(realCm - expectedCm) > 2) {
-      correctedSegments = segments.map(s =>
-        s.id === lastSeg.id ? { ...s, lengthCm: realCm } : s
-      );
-    }
-  }
-
-  return { points: newPoints, hasSkews, segments: correctedSegments };
+  // Возвращаем новые координаты точек, сегменты — без изменений (введённые пользователем значения сохраняются)
+  return { points: newPoints, hasSkews };
 }
 
 /**
