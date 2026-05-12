@@ -38,6 +38,16 @@ export default function PlanPage() {
   const loadingFromLibraryRef = useRef(false);
   stateRef.current = state;
 
+  useEffect(() => {
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    document.documentElement.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prev;
+      document.documentElement.style.overflow = "";
+    };
+  }, []);
+
   const catalog = usePlanCatalog(stateRef, push);
 
   // Онбординг для незарегистрированных — через 3 сек
@@ -146,7 +156,7 @@ export default function PlanPage() {
   };
 
   return (
-    <div className="flex flex-col bg-[#111] overflow-hidden relative" style={{ height: isMobile ? "calc(100dvh - 60px)" : "100dvh" }}>
+    <div className="flex flex-col bg-[#111] overflow-hidden relative" style={{ height: "100dvh" }}>
 
       {/* Toolbar */}
       <PlanToolbar
