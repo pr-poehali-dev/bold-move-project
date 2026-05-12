@@ -84,16 +84,16 @@ export default function DrawingTabSidesSection({
                 ? `Слушаю... сторона ${segmentLabel(points, segments[voice.activeIdx]) ?? voice.activeIdx + 1}`
                 : "Диктовать размеры"}
             </button>
-            {/* Десктоп — скромная кнопка */}
+            {/* Десктоп — заметная, но не кричащая */}
             <button
               onClick={voice.toggle}
-              className={`hidden sm:flex w-full items-center justify-center gap-1.5 py-1.5 rounded-lg text-[11px] font-semibold transition-all ${
+              className={`hidden sm:flex w-full items-center justify-center gap-1.5 py-2 rounded-xl border text-[12px] font-semibold transition-all ${
                 voice.isListening
-                  ? "bg-red-500/15 border border-red-400/30 text-red-400 animate-pulse"
-                  : "bg-white/[0.04] border border-white/[0.1] text-white/50 hover:text-white/80 hover:bg-white/[0.08]"
+                  ? "bg-red-500/15 border-red-400/30 text-red-400 animate-pulse"
+                  : "border-violet-500/30 text-violet-300 hover:border-violet-400/60 hover:text-violet-200 hover:bg-violet-500/10"
               }`}
             >
-              <Icon name={voice.isListening ? "MicOff" : "Mic"} size={12} />
+              <Icon name={voice.isListening ? "MicOff" : "Mic"} size={13} />
               {voice.isListening
                 ? `Слушаю... сторона ${segmentLabel(points, segments[voice.activeIdx]) ?? voice.activeIdx + 1}`
                 : "Диктовать размеры"}
