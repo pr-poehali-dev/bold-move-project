@@ -64,9 +64,10 @@ export default function DrawingTabSidesSection({
         {/* Кнопка голосового ввода — только если форма замкнута и браузер поддерживает */}
         {isClosed && segments.length > 0 && voice.hasSpeech && (
           <div className="mb-2">
+            {/* Мобиле — яркая кнопка */}
             <button
               onClick={voice.toggle}
-              className={`w-full flex items-center justify-center gap-2 py-3 rounded-xl border text-[13px] font-bold transition-all shadow-lg ${
+              className={`sm:hidden w-full flex items-center justify-center gap-2 py-3 rounded-xl border text-[13px] font-bold transition-all shadow-lg ${
                 voice.isListening
                   ? "bg-red-500/20 border-red-400/50 text-red-300 animate-pulse shadow-red-500/20"
                   : "border-violet-500/50 text-white hover:brightness-110 hover:scale-[1.02] active:scale-[0.98]"
@@ -79,6 +80,20 @@ export default function DrawingTabSidesSection({
               <div className={`flex items-center justify-center w-6 h-6 rounded-full ${voice.isListening ? "bg-red-400/20" : "bg-white/20"}`}>
                 <Icon name={voice.isListening ? "MicOff" : "Mic"} size={14} />
               </div>
+              {voice.isListening
+                ? `Слушаю... сторона ${segmentLabel(points, segments[voice.activeIdx]) ?? voice.activeIdx + 1}`
+                : "Диктовать размеры"}
+            </button>
+            {/* Десктоп — скромная кнопка */}
+            <button
+              onClick={voice.toggle}
+              className={`hidden sm:flex w-full items-center justify-center gap-1.5 py-1.5 rounded-lg text-[11px] font-semibold transition-all ${
+                voice.isListening
+                  ? "bg-red-500/15 border border-red-400/30 text-red-400 animate-pulse"
+                  : "bg-white/[0.04] border border-white/[0.1] text-white/50 hover:text-white/80 hover:bg-white/[0.08]"
+              }`}
+            >
+              <Icon name={voice.isListening ? "MicOff" : "Mic"} size={12} />
               {voice.isListening
                 ? `Слушаю... сторона ${segmentLabel(points, segments[voice.activeIdx]) ?? voice.activeIdx + 1}`
                 : "Диктовать размеры"}
