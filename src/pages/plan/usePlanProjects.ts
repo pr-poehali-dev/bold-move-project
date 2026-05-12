@@ -29,6 +29,8 @@ export interface PlanRoom {
   thumbnail: string | null;
   created_at: string;
   updated_at: string;
+  include_in_estimate: boolean;
+  include_drawing: boolean;
 }
 
 export function usePlanProjects(token?: string | null) {
@@ -91,7 +93,7 @@ export function usePlanProjects(token?: string | null) {
     return data as PlanRoom;
   }, [token]);
 
-  const updateRoom = useCallback(async (roomId: number, body: { name?: string; data?: object; thumbnail?: string }) => {
+  const updateRoom = useCallback(async (roomId: number, body: { name?: string; data?: object; thumbnail?: string; include_in_estimate?: boolean; include_drawing?: boolean }) => {
     await fetch(`${CRM_URL}?r=plan-rooms&id=${roomId}`, {
       method: "PUT",
       headers: headers(token),

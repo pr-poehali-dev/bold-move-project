@@ -930,7 +930,8 @@ def handler(event: dict, context) -> dict:
                 rid = qs.get("id")
                 if rid:
                     cur.execute(f"""
-                        SELECT r.id, r.project_id, r.name, r.data, r.thumbnail, r.created_at, r.updated_at
+                        SELECT r.id, r.project_id, r.name, r.data, r.thumbnail, r.created_at, r.updated_at,
+                               r.include_in_estimate, r.include_drawing
                         FROM {SCHEMA}.room_plans r
                         JOIN {SCHEMA}.plan_projects p ON p.id = r.project_id
                         WHERE r.id=%s AND p.company_id=%s
@@ -941,7 +942,8 @@ def handler(event: dict, context) -> dict:
                     return ok(dict(zip(cols, row)))
                 if not project_id: return err("project_id required")
                 cur.execute(f"""
-                    SELECT r.id, r.project_id, r.name, r.data, r.thumbnail, r.created_at, r.updated_at
+                    SELECT r.id, r.project_id, r.name, r.data, r.thumbnail, r.created_at, r.updated_at,
+                           r.include_in_estimate, r.include_drawing
                     FROM {SCHEMA}.room_plans r
                     JOIN {SCHEMA}.plan_projects p ON p.id = r.project_id
                     WHERE r.project_id=%s AND p.company_id=%s
@@ -969,7 +971,7 @@ def handler(event: dict, context) -> dict:
             if method == "PUT":
                 rid = qs.get("id")
                 if not rid: return err("id required")
-                allowed = ["name","data","thumbnail"]
+                allowed = ["name","data","thumbnail","include_in_estimate","include_drawing"]
                 sets, vals = [], []
                 for f in allowed:
                     if f in body:
