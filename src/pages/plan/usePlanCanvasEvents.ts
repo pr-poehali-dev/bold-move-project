@@ -146,7 +146,7 @@ export function usePlanCanvasEvents({ state, onChange, onReplace, cs }: Params) 
         return { ...s, lengthCm: Math.round((px / baseScale) * 10) / 10 };
       });
       // replace — не добавляет в историю, drag завершится push'ем в handleMouseUp
-      onReplace({ points: newPts, segments: newSegs, diagonals: buildAutoDiagonals(newPts, diagonals, state.baseScale ?? null) });
+      onReplace({ points: newPts, segments: newSegs, diagonals: buildAutoDiagonals(newPts, diagonals, state.baseScale ?? null, true) });
     }
   }, [tool, phase, isClosed, points, segments, dimLineFrom, clientToSvg, applySnap, diagonals, onChange, onReplace, settings, zoom, panRef, dragRef, setGhost, setDeleteHover]);
 
@@ -269,7 +269,7 @@ export function usePlanCanvasEvents({ state, onChange, onReplace, cs }: Params) 
           return { ...s, lengthCm: Math.round((px / baseScale) * 10) / 10 };
         });
         // replace — не добавляет в историю, drag завершится push'ем в handleTouchEnd
-        onReplace({ points: newPts, segments: newSegs, diagonals: buildAutoDiagonals(newPts, diagonals, state.baseScale ?? null) });
+        onReplace({ points: newPts, segments: newSegs, diagonals: buildAutoDiagonals(newPts, diagonals, state.baseScale ?? null, true) });
         didMoveRef.current = true;
         return;
       }

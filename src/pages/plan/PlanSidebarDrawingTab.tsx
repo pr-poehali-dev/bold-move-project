@@ -247,7 +247,11 @@ export default function DrawingTab({ state, onChange, onSectionOpen, noAutoOpen 
   };
 
   const updateDiagonal = (id: string, patch: Partial<DiagonalDef>) => {
-    const newDiagonals = diagonals.map(d => d.id === id ? { ...d, ...patch } : d);
+    // Помечаем что пользователь вручную ввёл длину — drag не будет перезаписывать
+    const patchWithFlag = patch.lengthCm !== undefined && patch.lengthCm !== null && patch.lengthCm > 0
+      ? { ...patch, userSet: true }
+      : patch;
+    const newDiagonals = diagonals.map(d => d.id === id ? { ...d, ...patchWithFlag } : d);
     if (patch.lengthCm !== undefined && patch.lengthCm !== null && patch.lengthCm > 0) {
       const diag = diagonals.find(d => d.id === id);
       // Если значение не изменилось — не делаем rebuild фигуры

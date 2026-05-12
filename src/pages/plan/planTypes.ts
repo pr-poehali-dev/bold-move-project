@@ -49,6 +49,7 @@ export interface DiagonalDef {
   lengthCm: number | null;
   showLength: boolean;
   visible: boolean;
+  userSet?: boolean; // true = пользователь вручную ввёл длину, не перезаписывать при drag
 }
 
 export interface ArcDef {
@@ -640,6 +641,7 @@ export function buildAutoDiagonals(
   points: Point[],
   existingDiagonals: DiagonalDef[],
   baseScale: number | null = null,
+  forceRecalc = false, // true при drag — всегда пересчитываем lengthCm из координат
 ): DiagonalDef[] {
   const n = points.length;
   if (n < 4) return [];
@@ -664,8 +666,11 @@ export function buildAutoDiagonals(
         ? Math.round((distPx(from, to) / baseScale) * 10) / 10
         : null;
       if (existing) {
-        // Обновляем lengthCm только если клиент не вводил вручную
-        const lenCm = existing.lengthCm !== null ? existing.lengthCm : autoCm;
+        // При drag (forceRecalc) — всегда берём autoCm, если нет userSet
+        // Иначе — сохраняем введённое вручную (userSet) или вычисляем auto
+        const lenCm = (forceRecalc && !existing.userSet)
+          ? autoCm
+          : (existing.userSet ? existing.lengthCm : autoCm ?? existing.lengthCm);
         result.push({ ...existing, lengthCm: lenCm });
       } else {
         result.push({ id: genId("d"), fromId, toId, lengthCm: autoCm, showLength: true, visible: true });
