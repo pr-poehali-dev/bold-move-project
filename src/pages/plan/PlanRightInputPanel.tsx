@@ -197,19 +197,7 @@ export default function PlanRightInputPanel({ state, onUpdateSegment, onUpdateDi
 
         <div className="flex items-center gap-1">
           {/* Кнопка микрофона — только на вкладке Стороны */}
-          {tab === "sides" && voice.hasSpeech && segments.length > 0 && (
-            <button
-              onClick={voice.toggle}
-              title={voice.isListening ? "Остановить" : "Диктовать размеры"}
-              className={`w-6 h-6 rounded-lg flex items-center justify-center transition ${
-                voice.isListening
-                  ? "bg-red-500/20 text-red-400 animate-pulse"
-                  : "text-white/30 hover:text-white/70 hover:bg-white/[0.08]"
-              }`}
-            >
-              <Icon name={voice.isListening ? "MicOff" : "Mic"} size={12} />
-            </button>
-          )}
+          {/* Иконка микрофона в шапке убрана — кнопка есть в контенте */}
           <button
             onClick={onClose}
             className="w-5 h-5 rounded flex items-center justify-center text-white/25 hover:text-white/60 transition"
@@ -253,12 +241,12 @@ export default function PlanRightInputPanel({ state, onUpdateSegment, onUpdateDi
               boxShadow: "0 3px 14px rgba(124,58,237,0.4)",
             }}
           >
-            <div className={`flex items-center justify-center w-5 h-5 rounded-full ${voice.isListening ? "bg-red-400/20" : "bg-white/20"}`}>
-              <Icon name={voice.isListening ? "MicOff" : "Mic"} size={11} />
-            </div>
-            {voice.isListening
-              ? `Слушаю... ${segmentLabel(points, segments[voice.activeIdx]) ?? ""}`
-              : "Диктовать размеры"}
+            <Icon name={voice.isListening ? "MicOff" : "Mic"} size={12} />
+            <span className="truncate">
+              {voice.isListening
+                ? `Слушаю...`
+                : "Диктовать"}
+            </span>
           </button>
         )}
 
