@@ -99,9 +99,27 @@ export default function CalcTab({
       {/* Размеры */}
       <div>
         <p className="text-[10px] font-bold uppercase tracking-widest text-white/25 mb-2">Размеры</p>
-        {row("Площадь помещения", areaM2 ? String(areaM2) : "—", "м²", true)}
-        {row("Периметр", displayPerim ? String(displayPerim) : "—", "м")}
-        {row("Кол-во углов", String(points.length))}
+
+        {/* Три главные метрики — компактный ряд блоков */}
+        <div className="grid grid-cols-3 gap-1.5 mb-2">
+          <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-xl px-2 py-2 flex flex-col items-center gap-0.5">
+            <span className="text-[9px] text-emerald-400/70 font-semibold uppercase tracking-wide leading-none">Площадь</span>
+            <span className="text-[15px] font-bold font-mono text-emerald-300 leading-tight">{areaM2 ?? "—"}</span>
+            <span className="text-[9px] text-emerald-400/50">м²</span>
+          </div>
+          <div className="bg-white/[0.04] border border-white/[0.08] rounded-xl px-2 py-2 flex flex-col items-center gap-0.5">
+            <span className="text-[9px] text-white/40 font-semibold uppercase tracking-wide leading-none">Периметр</span>
+            <span className="text-[15px] font-bold font-mono text-white/80 leading-tight">{displayPerim ?? "—"}</span>
+            <span className="text-[9px] text-white/30">м</span>
+          </div>
+          <div className="bg-white/[0.04] border border-white/[0.08] rounded-xl px-2 py-2 flex flex-col items-center gap-0.5">
+            <span className="text-[9px] text-white/40 font-semibold uppercase tracking-wide leading-none">Углов</span>
+            <span className="text-[15px] font-bold font-mono text-white/80 leading-tight">{points.length}</span>
+            <span className="text-[9px] text-white/30">шт</span>
+          </div>
+        </div>
+
+        {/* Дополнительные параметры (высота и т.д.) */}
         {ceilH && row("Высота потолка", String(ceilH), "см")}
         {dipMm && row("Опуск от бетона", String(dipMm), "мм")}
         {finishH && row("Чистовая высота", String(Math.round(finishH * 10) / 10), "см", true)}
