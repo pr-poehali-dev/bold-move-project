@@ -122,7 +122,7 @@ export default function usePlanVoiceInput({ segments, onUpdateSegment }: Props) 
     const recognition = new SR();
     recognition.lang = "ru-RU";
     recognition.interimResults = true;
-    recognition.continuous = false; // было: !isIOS (iOS=false, Android=true)
+    recognition.continuous = true; // непрерывный режим — нет прерываний между словами
     recognition.maxAlternatives = 3;
     recognitionRef.current = recognition;
 
@@ -186,12 +186,14 @@ export default function usePlanVoiceInput({ segments, onUpdateSegment }: Props) 
     };
 
     recognition.onend = () => {
-      // Если пользователь не остановил вручную — перезапускаем (continuous через restart)
+      // continuous=true: onend срабатывает только при явной остановке или ошибке
+      // Если не остановили вручную (recognitionRef ещё есть) — перезапускаем
+      // (страховка на случай если браузер всё же прервал)
       if (!recognitionRef.current) return;
       try {
         recognitionRef.current.start();
       } catch {
-        // Уже запущен или недоступен — игнорируем
+        // Уже запущен — игнорируем
       }
     };
 
