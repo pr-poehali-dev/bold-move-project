@@ -215,8 +215,8 @@ export default function MobileBottomBar({
             </div>
           )}
 
-          {/* Статус записи — только когда идёт запись или распознавание; скрываем после замыкания */}
-          {(isVoiceDrawing || isVoiceProcessing || voiceInterim) && !isClosed && (
+          {/* Статус записи — только когда активно идёт запись или распознавание */}
+          {(isVoiceDrawing || isVoiceProcessing) && !isClosed && (
             <div
               className="absolute bottom-14 right-0 bg-[#1a1b2e] border border-violet-500/30 rounded-2xl shadow-2xl p-3 w-56 z-50"
               onClick={e => e.stopPropagation()}
