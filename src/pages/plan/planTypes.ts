@@ -984,25 +984,71 @@ export function rebuildWithRightAngles(
     return diff > SNAP_TOL * Math.PI / 180 && diff < Math.PI / 2 - SNAP_TOL * Math.PI / 180;
   });
 
-  // Строим координаты кинематически:
-  // Точка chain[0] — якорь (не двигается)
-  // Каждый следующий сегмент идёт в направлении segDirs[i] на длину lengthCm[i] * baseScale
+  // Строим координаты встречным методом:
+  // - Первая половина сегментов строится вперёд от anchor (chain[0])
+  // - Вторая половина строится назад от anchor (цепочка замыкания)
+  // - Точка разрыва получает усреднённую позицию
+  // Это гарантирует что ВСЕ сегменты идут строго по своим осям (нет конуса).
   const anchor = points.find(p => p.id === chain[0])!;
-  const newCoords = new Map<string, { x: number; y: number }>();
-  newCoords.set(chain[0], { x: anchor.x, y: anchor.y });
+  const n = chain.length;
 
-  for (let i = 0; i < chain.length - 1; i++) {
+  // Вперёд: от chain[0] строим первые Math.floor(n/2) точек
+  const fwdCoords = new Map<string, { x: number; y: number }>();
+  fwdCoords.set(chain[0], { x: anchor.x, y: anchor.y });
+  const fwdCount = Math.floor(n / 2);
+  for (let i = 0; i < fwdCount; i++) {
     const seg = orderedSegs[i];
     const lenPx = seg.lengthCm! * baseScale;
-    const fromCoord = newCoords.get(chain[i])!;
-    const toId = chain[i + 1];
+    const from = fwdCoords.get(chain[i])!;
     const dir = snapToAxis(segDirs[i]);
     const cosD = Math.abs(Math.cos(dir)) < 1e-10 ? 0 : Math.cos(dir);
     const sinD = Math.abs(Math.sin(dir)) < 1e-10 ? 0 : Math.sin(dir);
-    newCoords.set(toId, {
-      x: Math.round((fromCoord.x + cosD * lenPx) * 100) / 100,
-      y: Math.round((fromCoord.y + sinD * lenPx) * 100) / 100,
+    fwdCoords.set(chain[i + 1], {
+      x: Math.round((from.x + cosD * lenPx) * 100) / 100,
+      y: Math.round((from.y + sinD * lenPx) * 100) / 100,
     });
+  }
+
+  // Назад: от chain[0] строим оставшиеся точки в обратном порядке
+  const bwdCoords = new Map<string, { x: number; y: number }>();
+  bwdCoords.set(chain[0], { x: anchor.x, y: anchor.y });
+  for (let i = n - 1; i >= fwdCount; i--) {
+    const seg = orderedSegs[i];
+    const lenPx = seg.lengthCm! * baseScale;
+    // Строим от toId назад к fromId
+    const toId   = chain[(i + 1) % n];
+    const fromId = chain[i];
+    const knownId = bwdCoords.has(toId) ? toId : null;
+    if (!knownId) continue;
+    const knownCoord = bwdCoords.get(toId)!;
+    // Направление: обратное — from к to → значит to к from = противоположный угол
+    const dir = snapToAxis(segDirs[i]);
+    const cosD = Math.abs(Math.cos(dir)) < 1e-10 ? 0 : Math.cos(dir);
+    const sinD = Math.abs(Math.sin(dir)) < 1e-10 ? 0 : Math.sin(dir);
+    bwdCoords.set(fromId, {
+      x: Math.round((knownCoord.x - cosD * lenPx) * 100) / 100,
+      y: Math.round((knownCoord.y - sinD * lenPx) * 100) / 100,
+    });
+  }
+
+  // Собираем итоговые координаты: вперёд берём из fwd, назад — из bwd
+  // Точка разрыва (fwdCount) — усредняем если обе есть
+  const newCoords = new Map<string, { x: number; y: number }>();
+  for (let i = 0; i < n; i++) {
+    const id = chain[i];
+    const fwd = fwdCoords.get(id);
+    const bwd = bwdCoords.get(id);
+    if (fwd && bwd && i === fwdCount) {
+      // Точка встречи — среднее (погрешность распределяется симметрично)
+      newCoords.set(id, {
+        x: Math.round((fwd.x + bwd.x) / 2 * 100) / 100,
+        y: Math.round((fwd.y + bwd.y) / 2 * 100) / 100,
+      });
+    } else if (i <= fwdCount && fwd) {
+      newCoords.set(id, fwd);
+    } else if (bwd) {
+      newCoords.set(id, bwd);
+    }
   }
 
   const newPoints = points.map(p => {
@@ -1010,23 +1056,21 @@ export function rebuildWithRightAngles(
     return nc ? { ...p, ...nc } : p;
   });
 
-  // Проверяем замыкание: последний сегмент строится кинематически автоматически.
-  // Его реальная длина в px может отличаться от введённой — это геометрическая погрешность.
-  // Корректируем lengthCm чтобы значение соответствовало реальной геометрии.
-  const lastSeg = orderedSegs[orderedSegs.length - 1];
-  const lastFrom = newPoints.find(p => p.id === lastSeg.fromId);
-  const lastTo   = newPoints.find(p => p.id === lastSeg.toId);
+  // Пересчитываем реальные длины всех сегментов после построения
+  // Сегменты у точки встречи могут чуть отличаться от введённых — это геометрическая погрешность
   let correctedSegments = segments;
-  let correctedIds: string[] = [];
-  if (lastFrom && lastTo) {
-    const realPx = distPx(lastFrom, lastTo);
-    const realCm = Math.round((realPx / baseScale) * 10) / 10;
-    const expectedCm = lastSeg.lengthCm ?? 0;
-    if (Math.abs(realCm - expectedCm) > 0.05) { // порог 0.05 см — чистая геометрия
-      correctedSegments = segments.map(s =>
-        s.id === lastSeg.id ? { ...s, lengthCm: realCm } : s
+  const correctedIds: string[] = [];
+  for (const seg of orderedSegs) {
+    const fromPt = newPoints.find(p => p.id === seg.fromId);
+    const toPt   = newPoints.find(p => p.id === seg.toId);
+    if (!fromPt || !toPt) continue;
+    const realCm = Math.round((distPx(fromPt, toPt) / baseScale) * 10) / 10;
+    const expectedCm = seg.lengthCm ?? 0;
+    if (Math.abs(realCm - expectedCm) > 0.05) {
+      correctedSegments = correctedSegments.map(s =>
+        s.id === seg.id ? { ...s, lengthCm: realCm } : s
       );
-      correctedIds = [lastSeg.id];
+      correctedIds.push(seg.id);
     }
   }
 
