@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import Icon from "@/components/ui/icon";
 import { PlanProject, PlanRoom, usePlanProjects } from "./usePlanProjects";
+import PlanRoomPreview from "./PlanRoomPreview";
 
 interface Props {
   token?: string | null;
@@ -200,35 +201,26 @@ export default function PlanRoomsScreen({ token, project, onBack, onOpenRoom }: 
                 <div
                   key={room.id}
                   className="rounded-2xl overflow-hidden flex flex-col"
-                  style={{ background: "#0e0e1c", border: "1px solid rgba(255,255,255,0.06)" }}
+                  style={{ background: "#fff", border: "1px solid #e5e7eb", boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}
                 >
-                  {/* Превью — кликабельное */}
+                  {/* Превью — живой SVG-рендер */}
                   <button
                     onClick={() => onOpenRoom(room)}
-                    className="relative w-full group"
-                    style={{ height: 120 }}
+                    className="relative w-full group overflow-hidden"
+                    style={{ height: 140 }}
                   >
-                    {room.thumbnail ? (
-                      <img
-                        src={room.thumbnail}
-                        alt={room.name}
-                        className="w-full h-full object-contain p-2"
-                        style={{ background: "#0a0a18" }}
+                    <div className="w-full h-full">
+                      <PlanRoomPreview
+                        data={room.data && Object.keys(room.data).length > 0 ? room.data : {}}
+                        width={300}
+                        height={140}
                       />
-                    ) : (
-                      <div className="w-full h-full flex flex-col items-center justify-center gap-1.5"
-                        style={{ background: "rgba(124,58,237,0.05)" }}>
-                        <Icon name="SquareDashed" size={28} style={{ color: "rgba(124,58,237,0.25)" }} />
-                        <span className="text-[10px] font-medium" style={{ color: "rgba(255,255,255,0.2)" }}>
-                          Пустой план
-                        </span>
-                      </div>
-                    )}
+                    </div>
                     {/* Hover оверлей */}
                     <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition"
-                      style={{ background: "rgba(0,0,0,0.55)" }}>
+                      style={{ background: "rgba(0,0,0,0.35)" }}>
                       <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl text-[12px] font-bold text-white"
-                        style={{ background: "rgba(124,58,237,0.8)" }}>
+                        style={{ background: "rgba(0,0,0,0.6)" }}>
                         <Icon name="Pencil" size={13} />
                         Открыть
                       </div>
@@ -236,9 +228,9 @@ export default function PlanRoomsScreen({ token, project, onBack, onOpenRoom }: 
                   </button>
 
                   {/* Название + дата */}
-                  <div className="px-3 pt-2.5 pb-1.5 flex items-start justify-between gap-1">
+                  <div className="px-3 pt-2.5 pb-1.5 border-t" style={{ borderColor: "#f3f4f6" }}>
                     {isEditing ? (
-                      <div className="flex gap-1.5 flex-1">
+                      <div className="flex gap-1.5">
                         <input
                           autoFocus
                           value={editName}
@@ -247,58 +239,58 @@ export default function PlanRoomsScreen({ token, project, onBack, onOpenRoom }: 
                             if (e.key === "Enter") handleRename(room.id);
                             if (e.key === "Escape") setEditingId(null);
                           }}
-                          className="flex-1 min-w-0 rounded-lg px-2 py-1 text-[12px] text-white focus:outline-none"
-                          style={{ background: "rgba(255,255,255,0.08)", border: "1px solid rgba(124,58,237,0.4)" }}
+                          className="flex-1 min-w-0 rounded-lg px-2 py-1 text-[12px] focus:outline-none"
+                          style={{ background: "#f3f4f6", border: "1px solid #d1d5db", color: "#111" }}
                         />
                         <button
                           onClick={() => handleRename(room.id)}
                           disabled={savingEdit}
                           className="w-6 h-6 rounded-lg flex items-center justify-center transition hover:opacity-80 disabled:opacity-40"
-                          style={{ background: "rgba(124,58,237,0.3)", color: "#a78bfa" }}
+                          style={{ background: "#e0e7ff", color: "#4f46e5" }}
                         >
                           {savingEdit
-                            ? <div className="w-3 h-3 border border-violet-400/40 border-t-violet-400 rounded-full animate-spin" />
+                            ? <div className="w-3 h-3 border border-indigo-400/40 border-t-indigo-500 rounded-full animate-spin" />
                             : <Icon name="Check" size={11} />
                           }
                         </button>
                         <button
                           onClick={() => setEditingId(null)}
                           className="w-6 h-6 rounded-lg flex items-center justify-center transition hover:opacity-80"
-                          style={{ color: "rgba(255,255,255,0.3)" }}
+                          style={{ color: "#9ca3af" }}
                         >
                           <Icon name="X" size={11} />
                         </button>
                       </div>
                     ) : (
-                      <>
+                      <div className="flex items-center justify-between gap-1">
                         <div className="flex-1 min-w-0">
-                          <div className="text-white font-semibold text-[13px] truncate">{room.name}</div>
-                          <div className="text-[10px] mt-0.5" style={{ color: "rgba(255,255,255,0.25)" }}>{dateStr}</div>
+                          <div className="font-semibold text-[13px] truncate" style={{ color: "#111827" }}>{room.name}</div>
+                          <div className="text-[10px] mt-0.5" style={{ color: "#9ca3af" }}>{dateStr}</div>
                         </div>
-                      </>
+                      </div>
                     )}
                   </div>
 
                   {/* Кнопки действий */}
                   {!isEditing && (
-                    <div className="flex border-t mx-0" style={{ borderColor: "rgba(255,255,255,0.05)" }}>
+                    <div className="flex border-t" style={{ borderColor: "#f3f4f6" }}>
                       <button
                         onClick={() => { setEditingId(room.id); setEditName(room.name); }}
-                        className="flex-1 flex items-center justify-center gap-1 py-2 text-[11px] font-semibold transition hover:bg-white/[0.04]"
-                        style={{ color: "rgba(255,255,255,0.35)" }}
+                        className="flex-1 flex items-center justify-center gap-1 py-2 text-[11px] font-semibold transition hover:bg-gray-50"
+                        style={{ color: "#6b7280" }}
                       >
                         <Icon name="Pencil" size={11} />
                         Переим.
                       </button>
-                      <div className="w-px" style={{ background: "rgba(255,255,255,0.05)" }} />
+                      <div className="w-px" style={{ background: "#f3f4f6" }} />
                       <button
                         onClick={() => handleDelete(room.id)}
                         disabled={isDeleting}
-                        className="flex items-center justify-center gap-1 px-3 py-2 text-[11px] font-semibold transition hover:bg-red-500/10 disabled:opacity-50"
-                        style={{ color: "rgba(239,68,68,0.55)" }}
+                        className="flex items-center justify-center gap-1 px-3 py-2 text-[11px] font-semibold transition hover:bg-red-50 disabled:opacity-50"
+                        style={{ color: "#ef4444" }}
                       >
                         {isDeleting
-                          ? <div className="w-3 h-3 border border-red-400/40 border-t-red-400 rounded-full animate-spin" />
+                          ? <div className="w-3 h-3 border border-red-300 border-t-red-500 rounded-full animate-spin" />
                           : <Icon name="Trash2" size={11} />
                         }
                       </button>
@@ -311,13 +303,13 @@ export default function PlanRoomsScreen({ token, project, onBack, onOpenRoom }: 
             {/* Добавить ещё */}
             <button
               onClick={() => { setShowForm(true); setCustomName(""); }}
-              className="rounded-2xl flex flex-col items-center justify-center gap-2 transition hover:brightness-110 active:scale-[0.97]"
-              style={{ minHeight: 160, background: "rgba(124,58,237,0.05)", border: "1px dashed rgba(124,58,237,0.25)" }}
+              className="rounded-2xl flex flex-col items-center justify-center gap-2 transition hover:bg-gray-100 active:scale-[0.97]"
+              style={{ minHeight: 180, background: "#f9fafb", border: "1.5px dashed #d1d5db" }}
             >
-              <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: "rgba(124,58,237,0.15)" }}>
-                <Icon name="Plus" size={18} style={{ color: "#a78bfa" }} />
+              <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: "#e0e7ff" }}>
+                <Icon name="Plus" size={18} style={{ color: "#4f46e5" }} />
               </div>
-              <span className="text-[12px] font-semibold" style={{ color: "rgba(124,58,237,0.6)" }}>Добавить</span>
+              <span className="text-[12px] font-semibold" style={{ color: "#6b7280" }}>Добавить</span>
             </button>
           </div>
         )}
