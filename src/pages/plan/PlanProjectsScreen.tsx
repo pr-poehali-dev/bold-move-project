@@ -408,7 +408,7 @@ export default function PlanProjectsScreen({ token, onSelectProject }: Props) {
                         {STATUSES.find(s => s.id === project.status)?.label ?? project.status}
                       </span>
                     </div>
-                    <div className="flex flex-wrap items-center gap-x-4 gap-y-0.5">
+                    <div className="flex flex-col gap-0.5">
                       {project.client_name && (
                         <span className="flex items-center gap-1 text-[12px]" style={{ color: "rgba(255,255,255,0.4)" }}>
                           <Icon name="User" size={11} />
@@ -416,7 +416,7 @@ export default function PlanProjectsScreen({ token, onSelectProject }: Props) {
                         </span>
                       )}
                       {project.address && (
-                        <span className="flex items-center gap-1 text-[12px] truncate max-w-[180px]" style={{ color: "rgba(255,255,255,0.4)" }}>
+                        <span className="flex items-center gap-1 text-[12px]" style={{ color: "rgba(255,255,255,0.4)" }}>
                           <Icon name="MapPin" size={11} />
                           {project.address}
                         </span>
@@ -440,7 +440,6 @@ export default function PlanProjectsScreen({ token, onSelectProject }: Props) {
                     className="flex-1 flex items-center justify-center gap-1.5 py-2.5 text-[12px] font-semibold transition hover:bg-white/[0.04]"
                     style={{ color: "rgba(255,255,255,0.4)" }}
                   >
-                    <Icon name="Pencil" size={13} />
                     Редактировать
                   </button>
                   <div className="w-px" style={{ background: "rgba(255,255,255,0.05)" }} />
