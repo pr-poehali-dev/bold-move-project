@@ -224,8 +224,8 @@ export default function DrawerInfoTab({ data, client, setData, save, setComments
           data={data}
           customFinRows={customFinRows}
           discountHistoryHook={discountHistoryHook}
-          onContractSumUpdated={newSum => {
-            save({ contract_sum: newSum });
+          onContractSumUpdated={(newSum, discountPct) => {
+            save({ contract_sum: newSum, discount_pct: discountPct ?? undefined });
             onReload?.();
           }}
         />

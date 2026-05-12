@@ -289,8 +289,10 @@ export function DrawerCostsBlock({
     if (data.id) { prevContractSumRef.current = -1; costsAppliedRef.current = false; }
   }, [data.id]);  
   useEffect(() => {
-    // Блокируем авторасчёт затрат если применена скидка — иначе затраты пересчитаются от уменьшенной суммы
-    const hasDiscount = discountHistory.length > 0;
+    // Блокируем авторасчёт затрат если применена скидка.
+    // Используем data.discount_pct — оно обновляется в том же PUT что и contract_sum,
+    // поэтому нет race condition в отличие от discountHistory (который загружается отдельным запросом)
+    const hasDiscount = (Number(data.discount_pct) || 0) > 0 || discountHistory.length > 0;
     if (autoLoading || !contractSum || !hasRules || !autoMode || hasDiscount) {
       if (!autoLoading) prevContractSumRef.current = contractSum;
       return;
@@ -315,7 +317,7 @@ export function DrawerCostsBlock({
     } else if (sumChanged) {
       applyAutoWithSum(contractSum);
     }
-  }, [data.id, contractSum, autoMode, autoRules, autoLoading, discountHistory.length]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [data.id, contractSum, autoMode, autoRules, autoLoading, discountHistory.length, data.discount_pct]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <>

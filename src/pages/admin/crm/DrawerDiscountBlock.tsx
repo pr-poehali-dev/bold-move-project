@@ -17,7 +17,7 @@ const GET_PRICES_URL = (func2url as Record<string, string>)["get-prices"];
 interface Props {
   data: Client;
   customFinRows: CustomFinRow[];
-  onContractSumUpdated?: (newSum: number) => void;
+  onContractSumUpdated?: (newSum: number, discountPct: number | null) => void;
   discountHistoryHook?: ReturnType<typeof useDiscountHistory>;
 }
 
@@ -324,7 +324,7 @@ export function DrawerDiscountBlock({ data, customFinRows, onContractSumUpdated,
         discount_amount: remainingAmt > 0 ? remainingAmt : null,
       }) }, { id: String(data.id) });
       await deactivateLast();
-      onContractSumUpdated?.(standard);
+      onContractSumUpdated?.(standard, remainingPct);
       setApplied(false);
     } finally { setApplying(false); }
   };
@@ -380,7 +380,7 @@ export function DrawerDiscountBlock({ data, customFinRows, onContractSumUpdated,
         discount_pct: newPct,
         discount_amount: newAmount,
       }) }, { id: String(data.id) });
-      onContractSumUpdated?.(standard);
+      onContractSumUpdated?.(standard, newPct);
     } finally { setApplying(false); }
   };
 
@@ -430,7 +430,7 @@ export function DrawerDiscountBlock({ data, customFinRows, onContractSumUpdated,
         contract_sum_before: contractBefore,
         contract_sum_after: standard,
       });
-      onContractSumUpdated?.(standard);
+      onContractSumUpdated?.(standard, discount);
       setApplied(true);
       setDiscount(0);
     } finally { setApplying(false); }
