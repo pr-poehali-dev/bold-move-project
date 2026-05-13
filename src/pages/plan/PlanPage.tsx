@@ -48,7 +48,11 @@ export default function PlanPage() {
   );
 
   // ── Варианты ─────────────────────────────────────────────────────────────
-  const { variants, loading: variantsLoading, saving: variantSaving, loadVariants, saveVariant, deleteVariant, updateVariant } = usePlanVariants(token);
+  const {
+    variants, loading: variantsLoading,
+    activeVariantId, setActiveVariantId,
+    loadVariants, saveVariant, deleteVariant, updateVariant, overwriteVariant,
+  } = usePlanVariants(token);
   const [variantModalOpen, setVariantModalOpen] = useState(false);
 
   const handleSaveVariant = async (name: string) => {
@@ -57,8 +61,33 @@ export default function PlanPage() {
     setVariantModalOpen(false);
   };
 
-  const handleLoadVariant = (variantData: object) => {
-    reset({ ...INITIAL_STATE, ...(variantData as Partial<typeof INITIAL_STATE>) });
+  // Перезаписать текущий активный вариант
+  const handleOverwriteVariant = async () => {
+    if (!activeRoom || !activeVariantId) return;
+    await overwriteVariant(activeVariantId, activeRoom.id, state);
+  };
+
+  const handleLoadVariant = async (variantId: number, variantData: object) => {
+    if (!activeRoom) return;
+    // Загружаем данные в холст
+    const newState = { ...INITIAL_STATE, ...(variantData as Partial<typeof INITIAL_STATE>) };
+    reset(newState);
+    // Помечаем вариант активным (is_active) и сохраняем в комнату
+    await updateVariant(variantId, { is_active: true });
+    setActiveVariantId(variantId);
+    // Сохраняем данные варианта в саму комнату
+    try {
+      const { getSvgDataUrl } = await import("./planExport");
+      const thumbnail = newState.points?.length >= 2
+        ? (getSvgDataUrl(newState as import("./planTypes").PlanState, 0.4) ?? "").slice(0, 8000)
+        : null;
+      const CRM_URL = (await import("@/../backend/func2url.json")).default["crm-manager"];
+      await fetch(`${CRM_URL}?r=plan-rooms&id=${activeRoom.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
+        body: JSON.stringify({ data: newState, ...(thumbnail ? { thumbnail } : {}) }),
+      });
+    } catch { /* молча */ }
   };
 
   const [sheetOpen,      setSheetOpen]      = useState(false);
@@ -265,9 +294,11 @@ export default function PlanPage() {
         backLabel={activeRoom?.name}
         roomSaveStatus={roomSaveStatus}
         onSaveVariant={activeRoom ? () => setVariantModalOpen(true) : undefined}
+        onOverwriteVariant={activeRoom && activeVariantId ? handleOverwriteVariant : undefined}
         variants={variants}
         variantsLoading={variantsLoading}
-        onLoadVariant={handleLoadVariant}
+        activeVariantId={activeVariantId}
+        onLoadVariant={(id, data) => handleLoadVariant(id, data)}
         onDeleteVariant={(id) => activeRoom && deleteVariant(id, activeRoom.id)}
         onRenameVariant={(id, name) => updateVariant(id, { name })}
       />

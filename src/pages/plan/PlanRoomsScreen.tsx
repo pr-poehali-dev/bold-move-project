@@ -317,6 +317,7 @@ export default function PlanRoomsScreen({ token, project, onBack, onOpenRoom }: 
                         <PlanVariantPicker
                           variants={variants}
                           loading={variantsLoading}
+                          activeVariantId={null}
                           onLoad={v => { onOpenRoom({ ...room, data: v.data }); setVarPickerRoomId(null); }}
                           onDelete={id => deleteVariant(id, room.id)}
                           onRename={(id, name) => updateVariant(id, { name })}

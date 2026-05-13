@@ -23,9 +23,10 @@ export interface PlanVariant {
 }
 
 export function usePlanVariants(token?: string | null) {
-  const [variants,  setVariants]  = useState<PlanVariant[]>([]);
-  const [loading,   setLoading]   = useState(false);
-  const [saving,    setSaving]    = useState(false);
+  const [variants,         setVariants]         = useState<PlanVariant[]>([]);
+  const [loading,          setLoading]           = useState(false);
+  const [saving,           setSaving]            = useState(false);
+  const [activeVariantId,  setActiveVariantId]   = useState<number | null>(null);
 
   const loadVariants = useCallback(async (roomId: number) => {
     setLoading(true);
@@ -34,7 +35,10 @@ export function usePlanVariants(token?: string | null) {
         headers: headers(token),
       });
       const data = await res.json();
-      setVariants(Array.isArray(data) ? data : []);
+      const list: PlanVariant[] = Array.isArray(data) ? data : [];
+      setVariants(list);
+      const active = list.find(v => v.is_active);
+      if (active) setActiveVariantId(active.id);
     } finally {
       setLoading(false);
     }
@@ -58,13 +62,16 @@ export function usePlanVariants(token?: string | null) {
           room_id: roomId,
           name,
           data: state,
+          is_active: true,
           ...(thumbnail ? { thumbnail } : {}),
         }),
       });
       const data = await res.json();
       if (data.error) return null;
+      const newId = data.id as number;
+      setActiveVariantId(newId);
       await loadVariants(roomId);
-      return data.id as number;
+      return newId;
     } finally {
       setSaving(false);
     }
@@ -79,15 +86,53 @@ export function usePlanVariants(token?: string | null) {
       headers: headers(token),
       body: JSON.stringify(body),
     });
+    if (body.is_active) {
+      setActiveVariantId(variantId);
+      setVariants(prev => prev.map(v => ({ ...v, is_active: v.id === variantId })));
+    }
   }, [token]);
 
+  const overwriteVariant = useCallback(async (
+    variantId: number,
+    roomId: number,
+    state: PlanState
+  ) => {
+    setSaving(true);
+    try {
+      const thumbnail = state.points.length >= 2
+        ? (getSvgDataUrl(state, 0.4) ?? "").slice(0, 8000)
+        : null;
+      await fetch(`${CRM_URL}?r=plan-variants&id=${variantId}`, {
+        method: "PUT",
+        headers: headers(token),
+        body: JSON.stringify({
+          data: state,
+          is_active: true,
+          ...(thumbnail ? { thumbnail } : {}),
+        }),
+      });
+      await loadVariants(roomId);
+    } finally {
+      setSaving(false);
+    }
+  }, [token, loadVariants]);
+
   const deleteVariant = useCallback(async (variantId: number, roomId: number) => {
+    // Оптимистичное удаление — сразу убираем из списка
+    setVariants(prev => prev.filter(v => v.id !== variantId));
+    if (activeVariantId === variantId) setActiveVariantId(null);
     await fetch(`${CRM_URL}?r=plan-variants&id=${variantId}`, {
       method: "DELETE",
       headers: headers(token),
     });
+    // Перегружаем чтобы убедиться в синхронизации
     await loadVariants(roomId);
-  }, [token, loadVariants]);
+  }, [token, loadVariants, activeVariantId]);
 
-  return { variants, loading, saving, loadVariants, saveVariant, updateVariant, deleteVariant, setVariants };
+  return {
+    variants, loading, saving,
+    activeVariantId, setActiveVariantId,
+    loadVariants, saveVariant, updateVariant, overwriteVariant, deleteVariant,
+    setVariants,
+  };
 }

@@ -12,7 +12,8 @@ export default function PlanToolbar(props: ToolbarProps) {
     onToolChange, onSettingChange, onUndo, onRedo, onReset,
     onZoomIn, onZoomOut, onZoomFit, onExport, onSave, onOpenLibrary,
     onBack, backLabel, roomSaveStatus,
-    onSaveVariant, variants, variantsLoading, onLoadVariant, onDeleteVariant, onRenameVariant,
+    onSaveVariant, onOverwriteVariant, variants, variantsLoading, activeVariantId,
+    onLoadVariant, onDeleteVariant, onRenameVariant,
   } = props;
 
   const [variantPickerOpen, setVariantPickerOpen] = useState(false);
@@ -137,13 +138,24 @@ export default function PlanToolbar(props: ToolbarProps) {
       {/* Кнопка сохранить вариант (когда открыта комната проекта) */}
       {onSaveVariant ? (
         <div className="relative flex items-center shrink-0">
-          {/* Кнопка сохранить вариант */}
+          {/* Кнопка "Сохранить вариант" — создаёт новый */}
           <button onClick={onSaveVariant}
             className="flex items-center gap-1.5 px-3 h-8 rounded-l-lg text-[11px] font-bold border-y border-l transition-all bg-white text-[#111] border-white hover:bg-white/90"
-            title="Сохранить вариант">
+            title="Сохранить как новый вариант">
             <Icon name="Save" size={12} />
             <span>Сохранить</span>
           </button>
+          {/* Галочка — перезаписывает активный вариант */}
+          {onOverwriteVariant && (
+            <button
+              onClick={onOverwriteVariant}
+              className="flex items-center justify-center w-8 h-8 bg-white text-[#111] border-l border-l-black/10 hover:bg-white/90 transition-all"
+              title="Обновить текущий вариант"
+              style={{ borderTop: "1px solid white", borderBottom: "1px solid white" }}
+            >
+              <Icon name="Check" size={13} />
+            </button>
+          )}
           {/* Дропдаун вариантов */}
           <div className="relative">
             <button
@@ -156,7 +168,8 @@ export default function PlanToolbar(props: ToolbarProps) {
               <PlanVariantPicker
                 variants={variants ?? []}
                 loading={variantsLoading}
-                onLoad={v => { onLoadVariant?.(v.data); setVariantPickerOpen(false); }}
+                activeVariantId={activeVariantId}
+                onLoad={v => { onLoadVariant?.(v.id, v.data); setVariantPickerOpen(false); }}
                 onDelete={id => { onDeleteVariant?.(id); }}
                 onRename={(id, name) => onRenameVariant?.(id, name)}
                 onClose={() => setVariantPickerOpen(false)}

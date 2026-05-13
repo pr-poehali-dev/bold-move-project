@@ -1,146 +1,195 @@
 import React from "react";
 import Icon from "@/components/ui/icon";
 import type { ToolbarProps } from "./PlanToolbarShared";
-import { ALL_TOOLS_MENU, IconBtn, loadPinned, savePinned } from "./PlanToolbarShared";
+import { ALL_TOOLS_MENU, loadPinned } from "./PlanToolbarShared";
 import type { ToolMode } from "./planTypes";
-import MobileToolDropdown from "./PlanToolbarMobileDropdown";
 import PlanVariantPickerMobile from "./PlanVariantPickerMobile";
 
 export default function MobileToolbar(props: ToolbarProps) {
   const {
-    tool, isClosed,
+    tool,
     canUndo, canRedo,
     onToolChange, onUndo, onRedo, onOpenLibrary, onReset,
-    onBack, onSaveVariant, variants, variantsLoading, onLoadVariant, onDeleteVariant, onRenameVariant,
+    onBack, onSaveVariant, onOverwriteVariant, variants, variantsLoading,
+    activeVariantId, onLoadVariant, onDeleteVariant, onRenameVariant,
   } = props;
 
-  const [confirmReset,      setConfirmReset]      = React.useState(false);
-  const [variantPickerOpen, setVariantPickerOpen] = React.useState(false);
-  const [pinned, setPinned] = React.useState<ToolMode[]>(loadPinned);
+  const [toolsOpen,         setToolsOpen]         = React.useState(false);
+  const [confirmReset,      setConfirmReset]       = React.useState(false);
+  const [variantPickerOpen, setVariantPickerOpen]  = React.useState(false);
+  const [pinned]            = React.useState<ToolMode[]>(loadPinned);
 
-  const handleTogglePin = React.useCallback((id: ToolMode) => {
-    setPinned(prev => {
-      const next = prev.includes(id)
-        ? prev.filter(p => p !== id)
-        : [...prev, id];
-      savePinned(next);
-      return next;
-    });
-  }, []);
+  const activeToolDef = ALL_TOOLS_MENU.find(t => t.id === tool);
 
   return (
-    <div className="bg-[#161616] border-b border-white/[0.08] shrink-0 flex items-center gap-0.5 px-2" style={{ height: 52 }}>
-      {onBack && (
-        <>
-          <button
-            onClick={onBack}
-            className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0 transition-all text-white/50 hover:text-white hover:bg-white/[0.07]"
-            title="Назад"
-          >
-            <Icon name="ChevronLeft" size={18} />
-          </button>
-          <div className="w-px h-4 bg-white/10 mx-0.5 shrink-0" />
-        </>
-      )}
-      <IconBtn icon="Undo2" onClick={onUndo} disabled={!canUndo} title="Отменить" />
-      <IconBtn icon="Redo2" onClick={onRedo} disabled={!canRedo} title="Повторить" />
-      <div className="w-px h-4 bg-white/10 mx-0.5 shrink-0" />
-
-      {/* Быстрый доступ — закреплённые инструменты слева направо */}
-      <div className="flex items-center gap-0.5 flex-1">
-        {pinned.map(id => {
-          const t = ALL_TOOLS_MENU.find(x => x.id === id);
-          if (!t) return null;
-          const disabled = !!t.comingSoon;
-          const active = !disabled && tool === id;
-          return (
-            <button key={id}
-              className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 transition-all ${
-                disabled ? "opacity-40 cursor-not-allowed text-white/30" :
-                active
-                  ? t.danger ? "bg-rose-500/25 border border-rose-500/40 text-rose-300" : "bg-white/95 text-[#111] border border-white/80"
-                  : t.danger ? "text-white/35 hover:text-rose-400" : "text-white/45 hover:text-white"
-              }`}
-              disabled={disabled}
-              title={t.label}
-              onClick={() => !disabled && onToolChange(id)}>
-              <Icon name={t.icon} size={16} />
+    <>
+      {/* ── Основная панель ─────────────────────────────────────────────────── */}
+      <div
+        className="bg-[#161616] border-b border-white/[0.08] shrink-0 flex items-center gap-1 px-2"
+        style={{ height: 52 }}
+      >
+        {/* Назад */}
+        {onBack && (
+          <>
+            <button
+              onClick={onBack}
+              className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0 transition-all text-white/50 hover:text-white hover:bg-white/[0.07]"
+              title="Назад"
+            >
+              <Icon name="ChevronLeft" size={18} />
             </button>
-          );
-        })}
+            <div className="w-px h-4 bg-white/10 shrink-0" />
+          </>
+        )}
 
-        {/* Кнопка раскрытия всех инструментов */}
-        <MobileToolDropdown
-          tool={tool}
-          pinned={pinned}
-          onToolChange={onToolChange}
-          onTogglePin={handleTogglePin}
-        />
+        {/* Undo / Redo */}
+        <button
+          onClick={onUndo}
+          disabled={!canUndo}
+          className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0 transition-all disabled:opacity-30 text-white/50 hover:text-white hover:bg-white/[0.07]"
+        >
+          <Icon name="Undo2" size={16} />
+        </button>
+        <button
+          onClick={onRedo}
+          disabled={!canRedo}
+          className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0 transition-all disabled:opacity-30 text-white/50 hover:text-white hover:bg-white/[0.07]"
+        >
+          <Icon name="Redo2" size={16} />
+        </button>
+
+        <div className="w-px h-4 bg-white/10 shrink-0" />
+
+        {/* Кнопка "Инструменты" — показывает текущий активный инструмент */}
+        <button
+          onClick={() => setToolsOpen(v => !v)}
+          className={`flex items-center gap-1.5 h-9 px-2.5 rounded-lg shrink-0 transition-all text-[12px] font-semibold ${
+            toolsOpen
+              ? "bg-violet-600/30 border border-violet-500/50 text-violet-300"
+              : "bg-white/[0.06] border border-white/[0.08] text-white/70 hover:bg-white/[0.10]"
+          }`}
+          title="Инструменты"
+        >
+          <Icon name={activeToolDef?.icon ?? "Pencil"} size={15} />
+          <span className="hidden xs:inline">{activeToolDef?.label ?? "Инструменты"}</span>
+          <Icon name={toolsOpen ? "ChevronUp" : "ChevronDown"} size={12} className="opacity-60" />
+        </button>
+
+        <div className="flex-1" />
+
+        {/* Сохранить / варианты */}
+        {onSaveVariant ? (
+          <div className="relative flex items-center shrink-0">
+            <button onClick={onSaveVariant}
+              className="flex items-center gap-1 px-2.5 h-8 rounded-l-lg text-[11px] font-bold bg-white text-[#111] transition hover:bg-white/90"
+              title="Сохранить как новый вариант">
+              <Icon name="Save" size={13} />
+              <span>Сохранить</span>
+            </button>
+            {onOverwriteVariant && (
+              <button onClick={onOverwriteVariant}
+                className="flex items-center justify-center w-8 h-8 bg-white text-[#111] border-l border-l-black/10 transition hover:bg-white/90"
+                style={{ borderTop: "1px solid white", borderBottom: "1px solid white" }}
+                title="Обновить текущий вариант">
+                <Icon name="Check" size={14} />
+              </button>
+            )}
+            <div className="relative">
+              <button onClick={() => setVariantPickerOpen(v => !v)}
+                className="flex items-center justify-center w-8 h-8 rounded-r-lg bg-white text-[#111] border-l border-l-black/10 transition hover:bg-white/90">
+                <Icon name="ChevronDown" size={13} />
+              </button>
+              {variantPickerOpen && (
+                <PlanVariantPickerMobile
+                  variants={variants ?? []}
+                  loading={variantsLoading}
+                  activeVariantId={activeVariantId}
+                  onLoad={v => { onLoadVariant?.(v.id, v.data); setVariantPickerOpen(false); }}
+                  onDelete={id => onDeleteVariant?.(id)}
+                  onRename={(id, name) => onRenameVariant?.(id, name)}
+                  onClose={() => setVariantPickerOpen(false)}
+                />
+              )}
+            </div>
+          </div>
+        ) : (
+          <button
+            onClick={onOpenLibrary}
+            title="Сохранённые планы"
+            className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0 transition-all text-white/45 hover:text-white hover:bg-white/[0.07]"
+          >
+            <Icon name="FolderOpen" size={16} />
+          </button>
+        )}
       </div>
 
-      {/* Очистить холст */}
-      <div className="w-px h-4 bg-white/10 mx-0.5 shrink-0" />
-      {confirmReset ? (
-        <div className="flex items-center gap-1 shrink-0">
-          <button
-            onClick={() => { onReset(); setConfirmReset(false); }}
-            className="h-8 px-2.5 rounded-lg bg-rose-600/80 border border-rose-400/30 text-white text-[11px] font-bold hover:bg-rose-600 transition active:scale-95"
-          >
-            Стереть
-          </button>
-          <button
-            onClick={() => setConfirmReset(false)}
-            className="w-8 h-8 rounded-lg flex items-center justify-center text-white/40 hover:bg-white/[0.07] transition"
-          >
-            <Icon name="X" size={14} />
-          </button>
-        </div>
-      ) : (
-        <button
-          onClick={() => setConfirmReset(true)}
-          title="Очистить холст"
-          className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0 transition-all text-white/35 hover:text-rose-400 hover:bg-rose-500/10"
+      {/* ── Подпанель инструментов ───────────────────────────────────────────── */}
+      {toolsOpen && (
+        <div
+          className="shrink-0 border-b border-white/[0.06] px-2 py-2 flex flex-col gap-2"
+          style={{ background: "#121220" }}
         >
-          <Icon name="Trash2" size={16} />
-        </button>
-      )}
+          {/* Инструменты */}
+          <div className="flex items-center gap-1.5 flex-wrap">
+            {ALL_TOOLS_MENU.map(t => {
+              const disabled = !!t.comingSoon;
+              const active = !disabled && tool === t.id;
+              return (
+                <button
+                  key={t.id}
+                  onClick={() => { if (!disabled) { onToolChange(t.id); setToolsOpen(false); } }}
+                  disabled={disabled}
+                  title={t.label}
+                  className={`flex items-center gap-1.5 h-9 px-3 rounded-lg text-[12px] font-semibold transition-all shrink-0 ${
+                    disabled
+                      ? "opacity-30 cursor-not-allowed text-white/30"
+                      : active
+                        ? t.danger
+                          ? "bg-rose-500/25 border border-rose-500/40 text-rose-300"
+                          : "bg-white text-[#111]"
+                        : t.danger
+                          ? "text-rose-400/70 hover:bg-rose-500/10 border border-transparent"
+                          : "text-white/60 hover:text-white hover:bg-white/[0.07] border border-transparent"
+                  }`}
+                >
+                  <Icon name={t.icon} size={15} />
+                  <span>{t.label}</span>
+                  {disabled && <span className="text-[9px] opacity-50">скоро</span>}
+                </button>
+              );
+            })}
+          </div>
 
-      {/* Справа: сохранить вариант или обычный архив */}
-      <div className="w-px h-4 bg-white/10 mx-0.5 shrink-0" />
-
-      {onSaveVariant ? (
-        <div className="relative flex items-center shrink-0">
-          <button onClick={onSaveVariant}
-            className="flex items-center gap-1 px-2 h-8 rounded-l-lg text-[11px] font-bold bg-white text-[#111] transition hover:bg-white/90">
-            <Icon name="Save" size={13} />
-            <span>Сохранить</span>
-          </button>
-          <div className="relative">
-            <button onClick={() => setVariantPickerOpen(v => !v)}
-              className="flex items-center justify-center w-8 h-8 rounded-r-lg bg-white text-[#111] border-l border-l-black/10 transition hover:bg-white/90">
-              <Icon name="ChevronDown" size={13} />
-            </button>
-            {variantPickerOpen && (
-              <PlanVariantPickerMobile
-                variants={variants ?? []}
-                loading={variantsLoading}
-                onLoad={v => { onLoadVariant?.(v.data); setVariantPickerOpen(false); }}
-                onDelete={id => onDeleteVariant?.(id)}
-                onRename={(id, name) => onRenameVariant?.(id, name)}
-                onClose={() => setVariantPickerOpen(false)}
-              />
+          {/* Разделитель + Очистить */}
+          <div className="flex items-center gap-2">
+            <div className="flex-1 h-px bg-white/[0.05]" />
+            {confirmReset ? (
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={() => { onReset(); setConfirmReset(false); setToolsOpen(false); }}
+                  className="h-7 px-3 rounded-lg bg-rose-600/80 border border-rose-400/30 text-white text-[11px] font-bold hover:bg-rose-600 transition"
+                >
+                  Стереть всё
+                </button>
+                <button
+                  onClick={() => setConfirmReset(false)}
+                  className="w-7 h-7 rounded-lg flex items-center justify-center text-white/40 hover:bg-white/[0.07] transition"
+                >
+                  <Icon name="X" size={13} />
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={() => setConfirmReset(true)}
+                className="flex items-center gap-1.5 h-7 px-3 rounded-lg text-[11px] text-rose-400/70 hover:text-rose-400 hover:bg-rose-500/10 transition"
+              >
+                <Icon name="Trash2" size={13} />
+                Очистить
+              </button>
             )}
           </div>
         </div>
-      ) : (
-        <button
-          onClick={onOpenLibrary}
-          title="Сохранённые планы"
-          className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0 transition-all text-white/45 hover:text-white hover:bg-white/[0.07]"
-        >
-          <Icon name="FolderOpen" size={16} />
-        </button>
       )}
-    </div>
+    </>
   );
 }

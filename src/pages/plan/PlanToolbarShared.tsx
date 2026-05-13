@@ -34,9 +34,11 @@ export interface ToolbarProps {
   backLabel?: string;
   roomSaveStatus?: "idle" | "saving" | "saved" | "error";
   onSaveVariant?: () => void;
+  onOverwriteVariant?: () => void;
   variants?: PlanVariant[];
   variantsLoading?: boolean;
-  onLoadVariant?: (data: object) => void;
+  activeVariantId?: number | null;
+  onLoadVariant?: (id: number, data: object) => void;
   onDeleteVariant?: (id: number) => void;
   onRenameVariant?: (id: number, name: string) => void;
 }
