@@ -1,15 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import PlanCanvas from "./PlanCanvas";
 import PlanToolbar from "./PlanToolbar";
-import PlanSidebar from "./PlanSidebar";
-import PlanBottomSheet from "./PlanBottomSheet";
-import PlanRightInputPanel from "./PlanRightInputPanel";
-import PlanModals from "./PlanModals";
-import MobileBottomBar from "./MobileBottomBar";
 import useVoiceDraw from "./useVoiceDraw";
-import PlanCatalogPanel from "./PlanCatalogPanel";
-import PlanDragGhosts from "./PlanDragGhosts";
-import PlanQuantityModal from "./PlanQuantityModal";
 import { usePlanCatalog } from "./usePlanCatalog";
 import type { PlanState } from "./planTypes";
 import { INITIAL_STATE, polygonArea, polygonPerimeter } from "./planTypes";
@@ -22,7 +13,9 @@ import type { PlanProject, PlanRoom } from "./usePlanProjects";
 import { usePlanProjects } from "./usePlanProjects";
 import { useRoomAutoSave } from "./useRoomAutoSave";
 import { usePlanVariants } from "./usePlanVariants";
-import PlanVariantSaveModal from "./PlanVariantSaveModal";
+import { usePlanVariantHandlers } from "./usePlanVariantHandlers";
+import PlanCanvasArea from "./PlanCanvasArea";
+import PlanPagePanels from "./PlanPagePanels";
 
 type PlanScreen = "projects" | "rooms" | "canvas";
 
@@ -32,9 +25,9 @@ export default function PlanPage() {
   const isMobile = useIsMobile();
 
   // ── Флоу проектов ────────────────────────────────────────────────────────────
-  const [screen,         setScreen]         = useState<PlanScreen>("projects");
-  const [activeProject,  setActiveProject]  = useState<PlanProject | null>(null);
-  const [activeRoom,     setActiveRoom]     = useState<PlanRoom | null>(null);
+  const [screen,        setScreen]        = useState<PlanScreen>("projects");
+  const [activeProject, setActiveProject] = useState<PlanProject | null>(null);
+  const [activeRoom,    setActiveRoom]    = useState<PlanRoom | null>(null);
 
   // ── Загрузка комнаты ──────────────────────────────────────────────────────
   const { loadRoom } = usePlanProjects(token);
@@ -48,64 +41,31 @@ export default function PlanPage() {
   );
 
   // ── Варианты ─────────────────────────────────────────────────────────────
+  const variantsHook = usePlanVariants(token);
   const {
     variants, loading: variantsLoading, saving: variantSaving,
-    activeVariantId, setActiveVariantId,
-    loadVariants, saveVariant, deleteVariant, updateVariant, overwriteVariant,
-  } = usePlanVariants(token);
+    activeVariantId, loadVariants,
+  } = variantsHook;
   const [variantModalOpen, setVariantModalOpen] = useState(false);
 
-  const handleSaveVariant = async (name: string) => {
-    if (!activeRoom) return;
-    await saveVariant(activeRoom.id, name, state);
-    setVariantModalOpen(false);
-  };
-
-  // Перезаписать текущий активный вариант
-  const handleOverwriteVariant = async () => {
-    if (!activeRoom || !activeVariantId) return;
-    await overwriteVariant(activeVariantId, activeRoom.id, state);
-  };
-
-  const handleLoadVariant = async (variantId: number, variantData: object) => {
-    if (!activeRoom) return;
-    // Загружаем данные в холст
-    const newState = { ...INITIAL_STATE, ...(variantData as Partial<typeof INITIAL_STATE>) };
-    reset(newState);
-    // Помечаем вариант активным (is_active) и сохраняем в комнату
-    await updateVariant(variantId, { is_active: true });
-    setActiveVariantId(variantId);
-    // Сохраняем данные варианта в саму комнату
-    try {
-      const { getSvgDataUrl } = await import("./planExport");
-      const thumbnail = newState.points?.length >= 2
-        ? (getSvgDataUrl(newState as import("./planTypes").PlanState, 0.4) ?? "").slice(0, 8000)
-        : null;
-      const CRM_URL = (await import("@/../backend/func2url.json")).default["crm-manager"];
-      await fetch(`${CRM_URL}?r=plan-rooms&id=${activeRoom.id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
-        body: JSON.stringify({ data: newState, ...(thumbnail ? { thumbnail } : {}) }),
-      });
-    } catch { /* молча */ }
-  };
-
-  const [sheetOpen,      setSheetOpen]      = useState(false);
-  const [sheetSnap,      setSheetSnap]      = useState<"half" | "full">("full");
-  const [sheetHeight,    setSheetHeight]    = useState(0);
-  const [rightPanelOpen, setRightPanelOpen] = useState(false);
-  const [sidebarOpen,    setSidebarOpen]    = useState(false);
-  const [exportOpen,     setExportOpen]     = useState(false);
-  const [libraryOpen,    setLibraryOpen]    = useState(false);
-  const [authOpen,       setAuthOpen]       = useState(false);
+  // ── UI-флаги ──────────────────────────────────────────────────────────────
+  const [sheetOpen,          setSheetOpen]          = useState(false);
+  const [sheetSnap,          setSheetSnap]          = useState<"half" | "full">("full");
+  const [sheetHeight,        setSheetHeight]        = useState(0);
+  const [rightPanelOpen,     setRightPanelOpen]     = useState(false);
+  const [sidebarOpen,        setSidebarOpen]        = useState(false);
+  const [exportOpen,         setExportOpen]         = useState(false);
+  const [libraryOpen,        setLibraryOpen]        = useState(false);
+  const [authOpen,           setAuthOpen]           = useState(false);
   const [bottomSettingsOpen, setBottomSettingsOpen] = useState(false);
-  const [showOnboarding, setShowOnboarding] = useState(false);
-  const [focusSegmentId, setFocusSegmentId] = useState<string | null>(null);
+  const [showOnboarding,     setShowOnboarding]     = useState(false);
+  const [focusSegmentId,     setFocusSegmentId]     = useState<string | null>(null);
 
   const stateRef = useRef(state);
   const loadingFromLibraryRef = useRef(false);
   stateRef.current = state;
 
+  // Блокируем скролл страницы
   useEffect(() => {
     const prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";
@@ -160,8 +120,7 @@ export default function PlanPage() {
     onAfterLoad:  () => { loadingFromLibraryRef.current = false; },
   });
 
-  // При замыкании фигуры — отслеживаем по ID последнего сегмента
-  // чтобы не пропустить голосовой ввод (там onChange вызывается через ref)
+  // При замыкании фигуры открываем боковую/правую панель
   const lastClosedSegId = useRef<string | null>(null);
   useEffect(() => {
     if (!state.isClosed || loadingFromLibraryRef.current) return;
@@ -194,6 +153,15 @@ export default function PlanPage() {
   // ── Голосовое рисование ───────────────────────────────────────────────────
   const voiceDraw = useVoiceDraw({ state, onChange: handleChange });
 
+  // ── Обработчики вариантов ────────────────────────────────────────────────
+  const variantHandlers = usePlanVariantHandlers({
+    activeRoom,
+    token,
+    reset,
+    variants: variantsHook,
+    setVariantModalOpen,
+  });
+
   const isLoggedIn = !!user && !!token;
   const currentPlanName = storage.plans.find(p => p.id === storage.currentPlanId)?.name
     ?? (state as PlanState).room.name ?? "Без названия";
@@ -203,10 +171,7 @@ export default function PlanPage() {
     ? { ...state, selectedSegmentId: catalog.hoverSegId }
     : state;
 
-  // Дефолтное количество для модалки "добавить на полотно" в зависимости от категории:
-  // - Полотна → площадь в м²
-  // - Профили (стандартный, теневой, парящий, ниши) → периметр в пог.м
-  // - Остальные → 1
+  // Дефолтное количество для модалки "добавить на полотно"
   const getFloorDefault = (category?: string): number | undefined => {
     if (!state.isClosed || !state.baseScale || state.points.length < 3) return undefined;
     const cat = (category || "").toLowerCase();
@@ -215,14 +180,14 @@ export default function PlanPage() {
     if (isCanvas) {
       const areaPx2 = polygonArea(state.points);
       const areaCm2 = areaPx2 / (state.baseScale * state.baseScale);
-      return Math.round(areaCm2 / 100) / 100; // м²
+      return Math.round(areaCm2 / 100) / 100;
     }
     if (isProfile) {
       const perimPx = polygonPerimeter(state.points);
       const perimM = perimPx / (state.baseScale * 100);
-      return Math.round(perimM * 100) / 100; // пог.м
+      return Math.round(perimM * 100) / 100;
     }
-    return undefined; // остальные → дефолт 1 в модалке
+    return undefined;
   };
 
   // ── Экраны проектов и комнат ─────────────────────────────────────────────────
@@ -248,7 +213,6 @@ export default function PlanPage() {
           setActiveRoom(room);
           setRoomLoading(true);
           setScreen("canvas");
-          // Загружаем данные комнаты и варианты параллельно
           const [loaded] = await Promise.all([
             loadRoom(room.id),
             loadVariants(room.id),
@@ -265,7 +229,6 @@ export default function PlanPage() {
   return (
     <div className="flex flex-col bg-[#111] overflow-hidden relative" style={{ height: "100dvh" }}>
 
-      {/* Toolbar */}
       <PlanToolbar
         tool={state.tool}
         phase={state.phase}
@@ -294,238 +257,68 @@ export default function PlanPage() {
         backLabel={activeRoom?.name}
         roomSaveStatus={roomSaveStatus}
         onSaveVariant={activeRoom ? () => setVariantModalOpen(true) : undefined}
-        onOverwriteVariant={activeRoom && activeVariantId ? handleOverwriteVariant : undefined}
+        onOverwriteVariant={activeRoom && activeVariantId ? () => variantHandlers.handleOverwriteVariant(state) : undefined}
         variants={variants}
         variantsLoading={variantsLoading}
         activeVariantId={activeVariantId}
-        onLoadVariant={(id, data) => handleLoadVariant(id, data)}
-        onDeleteVariant={(id) => activeRoom && deleteVariant(id, activeRoom.id)}
-        onRenameVariant={(id, name) => updateVariant(id, { name })}
+        onLoadVariant={(id, data) => variantHandlers.handleLoadVariant(id, data)}
+        onDeleteVariant={variantHandlers.handleDeleteVariant}
+        onRenameVariant={variantHandlers.handleRenameVariant}
       />
 
-      {/* Основная область */}
-      <div className="flex flex-1 overflow-hidden relative min-h-0">
-
-        <div id="plan-canvas-wrap" className="flex-1 overflow-hidden relative">
-          <PlanCanvas
-            state={displayState}
-            onChange={handleChange}
-            onReplace={handleReplace}
-            onOpenCatalog={() => catalog.setCatalogOpen(true)}
-            onEditFloorItem={catalog.setEditingFloorId}
-          />
-          {roomLoading && (
-            <div className="absolute inset-0 flex flex-col items-center justify-center z-50"
-              style={{ background: "rgba(7,7,15,0.75)", backdropFilter: "blur(4px)" }}>
-              <div className="w-10 h-10 border-2 border-white/10 border-t-white/60 rounded-full animate-spin mb-3" />
-              <span className="text-white/50 text-[13px] font-medium">
-                Загружаем {activeRoom?.name}…
-              </span>
-            </div>
-          )}
-        </div>
-
-        {!isMobile && sidebarOpen && (<>
-          <div
-            className="w-1 bg-white/[0.04] hover:bg-violet-500/30 cursor-col-resize transition-colors shrink-0"
-            onMouseDown={onSidebarDragStart}
-          />
-          <div className="shrink-0 overflow-hidden border-l border-white/[0.06]" style={{ width: sidebarW }}>
-            <PlanSidebar
-              state={state}
-              onChange={handleChange}
-              onOpenCatalog={() => catalog.setCatalogOpen(true)}
-              onRemoveItem={(segId, priceId) => {
-                const newSegs = state.segments.map(s => {
-                  if (s.id !== segId) return s;
-                  return { ...s, items: (s.items ?? []).filter(it => it.priceId !== priceId) };
-                });
-                handleChange({ segments: newSegs });
-              }}
-              onUpdateQuantity={(segId, priceId, quantity) => {
-                const newSegs = state.segments.map(s => {
-                  if (s.id !== segId) return s;
-                  return { ...s, items: (s.items ?? []).map(it => it.priceId === priceId ? { ...it, quantity } : it) };
-                });
-                handleChange({ segments: newSegs });
-              }}
-              onRemoveFloorItem={(id) => {
-                handleChange({ floorItems: (state.floorItems ?? []).filter(fi => fi.id !== id) });
-              }}
-              onUpdateFloorQuantity={(id, quantity) => {
-                handleChange({ floorItems: (state.floorItems ?? []).map(fi => fi.id === id ? { ...fi, quantity } : fi) });
-              }}
-            />
-          </div>
-        </>)}
-
-      </div>
-
-      {/* Нижняя панель кнопок — вынесена из overflow-hidden, позиционируется абсолютно в корневом relative div */}
-      <MobileBottomBar
-        zoom={state.settings.zoom}
-        settings={state.settings}
-        onSettingChange={handleSettingChange}
-        onZoomIn={zoomIn}
-        onZoomOut={zoomOut}
-        onZoomFit={zoomFit}
-        onOpenPanel={isMobile
-          ? () => {
-              if (sheetOpen) { setSheetOpen(false); } else {
-                catalog.setCatalogOpen(false);
-                setRightPanelOpen(false);
-                setSheetSnap("half"); setSheetOpen(true);
-              }
-            }
-          : () => {
-              if (sidebarOpen) { setSidebarOpen(false); } else {
-                catalog.setCatalogOpen(false);
-                setSidebarOpen(true);
-              }
-            }
-        }
-        onOpenCatalog={() => {
-          const next = !catalog.catalogOpen;
-          catalog.setCatalogOpen(next);
-          if (next) {
-            setSheetOpen(false);
-            setSidebarOpen(false);
-            setRightPanelOpen(false);
-          }
-        }}
-        onOpenSides={() => {
-          if (rightPanelOpen) { setRightPanelOpen(false); } else {
-            catalog.setCatalogOpen(false);
-            setSheetOpen(false);
-            setFocusSegmentId(state.selectedSegmentId);
-            setRightPanelOpen(true);
-          }
-        }}
-        selectedSegmentId={state.selectedSegmentId}
-        sheetOpen={isMobile ? sheetOpen : sidebarOpen}
-        catalogOpen={catalog.catalogOpen}
-        rightPanelOpen={rightPanelOpen}
+      <PlanCanvasArea
+        displayState={displayState}
+        state={state}
         isMobile={isMobile}
-        onToggleVoiceDraw={voiceDraw.hasSpeech ? voiceDraw.toggle : undefined}
-        isVoiceDrawing={voiceDraw.isListening}
-        isVoiceProcessing={voiceDraw.isProcessing}
-        voiceStatus={voiceDraw.status}
-        voiceInterim={voiceDraw.interimText}
-        voiceVolume={voiceDraw.volume}
-        isClosed={state.isClosed}
-        attachedCount={catalog.attachedCount}
-        filterAttached={catalog.filterAttached}
-        onToggleFilterAttached={() => catalog.setFilterAttached(v => !v)}
-        onSettingsOpenChange={setBottomSettingsOpen}
+        sidebarOpen={sidebarOpen}
+        sidebarW={sidebarW}
+        roomLoading={roomLoading}
+        activeRoomName={activeRoom?.name}
+        catalog={catalog}
+        onSidebarDragStart={onSidebarDragStart}
+        handleChange={handleChange}
+        handleReplace={handleReplace}
       />
 
-      {/* Мобиле: правая панель быстрого ввода сторон */}
-      {isMobile && rightPanelOpen && (
-        <PlanRightInputPanel
-          state={state}
-          onUpdateSegment={handleUpdateSegment}
-          onUpdateDiagonal={handleUpdateDiagonal}
-          focusSegmentId={focusSegmentId}
-          onClose={() => { setRightPanelOpen(false); setFocusSegmentId(null); }}
-        />
-      )}
-
-      {/* Мобиле: bottom sheet */}
-      {isMobile && (
-        <PlanBottomSheet
-          state={state}
-          onChange={handleChange}
-          open={sheetOpen}
-          initialSnap={sheetSnap}
-          onClose={() => { setSheetOpen(false); setSheetHeight(0); }}
-          onSheetHeightChange={setSheetHeight}
-        />
-      )}
-
-      {/* Модалки, онбординг, статус-бар */}
-      <PlanModals
+      <PlanPagePanels
         state={state}
         isMobile={isMobile}
         isLoggedIn={isLoggedIn}
         currentPlanName={currentPlanName}
-        exportOpen={exportOpen}
-        libraryOpen={libraryOpen}
-        authOpen={authOpen}
-        showOnboarding={showOnboarding}
+        sheetOpen={sheetOpen}                   setSheetOpen={setSheetOpen}
+        sheetSnap={sheetSnap}                   setSheetSnap={setSheetSnap}
+        sheetHeight={sheetHeight}               setSheetHeight={setSheetHeight}
+        rightPanelOpen={rightPanelOpen}         setRightPanelOpen={setRightPanelOpen}
+        sidebarOpen={sidebarOpen}               setSidebarOpen={setSidebarOpen}
+        exportOpen={exportOpen}                 setExportOpen={setExportOpen}
+        libraryOpen={libraryOpen}               setLibraryOpen={setLibraryOpen}
+        authOpen={authOpen}                     setAuthOpen={setAuthOpen}
+        bottomSettingsOpen={bottomSettingsOpen} setBottomSettingsOpen={setBottomSettingsOpen}
+        showOnboarding={showOnboarding}         setShowOnboarding={setShowOnboarding}
+        focusSegmentId={focusSegmentId}         setFocusSegmentId={setFocusSegmentId}
+        handleChange={handleChange}
+        handleUpdateSegment={handleUpdateSegment}
+        handleUpdateDiagonal={handleUpdateDiagonal}
+        handleSave={handleSave}
+        handleSaveAs={handleSaveAs}
+        handleLoad={handleLoad}
+        handleDelete={handleDelete}
+        handleRename={handleRename}
+        handleNew={handleNew}
+        handleSettingChange={handleSettingChange}
+        zoomIn={zoomIn}
+        zoomOut={zoomOut}
+        zoomFit={zoomFit}
         storage={storage}
-        onCloseExport={() => setExportOpen(false)}
-        onCloseLibrary={() => setLibraryOpen(false)}
-        onCloseAuth={() => setAuthOpen(false)}
-        onCloseOnboarding={() => setShowOnboarding(false)}
-        onLoginRequest={() => { setLibraryOpen(false); setAuthOpen(true); }}
-        onLoad={handleLoad}
-        onSave={handleSave}
-        onSaveAs={handleSaveAs}
-        onDelete={handleDelete}
-        onRename={handleRename}
-        onNew={handleNew}
+        catalog={catalog}
+        getFloorDefault={getFloorDefault}
+        voiceDraw={voiceDraw}
+        variantModalOpen={variantModalOpen}
+        variantSaving={variantSaving}
+        onSaveVariant={(name) => variantHandlers.handleSaveVariantWithState(name, state)}
+        onCloseVariantModal={() => setVariantModalOpen(false)}
       />
 
-      {/* ── Каталог материалов ── */}
-      <PlanCatalogPanel
-        open={catalog.catalogOpen}
-        filteredPrices={catalog.filteredPrices}
-        selectedSegmentId={null}
-        onClose={() => catalog.setCatalogOpen(false)}
-        onAssignToSeg={catalog.assignItemToSeg}
-        onAddToActive={item => {
-          catalog.setActiveItems(prev =>
-            prev.some(it => it.priceId === item.priceId) ? prev : [...prev, item]
-          );
-          catalog.setTapActiveId(item.priceId);
-        }}
-      />
-
-      {/* ── Модалка добавления на полотно ── */}
-      <PlanQuantityModal
-        item={catalog.pendingFloorItem}
-        onConfirm={catalog.confirmFloorItem}
-        onCancel={() => catalog.setPendingFloorItem(null)}
-        defaultQuantity={getFloorDefault(catalog.pendingFloorItem?.category)}
-      />
-      {/* ── Модалка редактирования quantity floorItem ── */}
-      <PlanQuantityModal
-        item={catalog.editingFloorItem}
-        onConfirm={catalog.confirmEditFloorItem}
-        onCancel={() => catalog.setEditingFloorId(null)}
-      />
-
-      {/* ── Ghost-оверлеи и слайдер активных карточек ── */}
-      <PlanDragGhosts
-        dragItem={catalog.dragItem}
-        dragPos={catalog.dragPos}
-        dragCardItem={catalog.dragCardItem}
-        dragCardPos={catalog.dragCardPos}
-        activeItems={catalog.activeItems}
-        tapActiveId={catalog.tapActiveId}
-        hoverSegId={catalog.hoverSegId}
-        isMobile={isMobile}
-        segments={state.segments}
-        floorItems={state.floorItems ?? []}
-        anyPanelOpen={sheetOpen || sidebarOpen || rightPanelOpen || catalog.catalogOpen || exportOpen || libraryOpen || authOpen || bottomSettingsOpen}
-        onTapActiveId={catalog.setTapActiveId}
-        onRemoveActiveItem={catalog.removeActiveItem}
-        onAssignToAllSegs={catalog.assignItemToAllSegs}
-        onRemoveFromAllSegs={catalog.removeItemFromAllSegs}
-        isItemOnAllSegs={catalog.isItemOnAllSegs}
-        onAdjustQuantity={catalog.adjustItemQuantity}
-        onSetQuantity={catalog.setItemQuantity}
-        onAddToFloor={catalog.setPendingFloorItem}
-        hasSegments={state.isClosed && state.segments.length > 0}
-      />
-
-      {/* Модалка сохранения варианта */}
-      <PlanVariantSaveModal
-        open={variantModalOpen}
-        saving={variantSaving}
-        onSave={handleSaveVariant}
-        onClose={() => setVariantModalOpen(false)}
-      />
     </div>
   );
 }
