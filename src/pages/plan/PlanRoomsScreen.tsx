@@ -88,6 +88,7 @@ export default function PlanRoomsScreen({ token, project, onBack, onOpenRoom }: 
       const newRoom: PlanRoom = {
         id, project_id: project.id, name: name.trim(),
         data: {}, thumbnail: null, created_at: "", updated_at: "",
+        include_in_estimate: true, include_drawing: true,
       };
       setShowForm(false);
       onOpenRoom(newRoom);
