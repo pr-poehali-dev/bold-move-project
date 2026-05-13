@@ -35,9 +35,11 @@ export default function PlanRoomsScreen({ token, project, onBack, onOpenRoom }: 
   const [savingEdit,       setSavingEdit]        = useState(false);
   const [deletingId,       setDeletingId]        = useState<number | null>(null);
   const [menuOpenId,       setMenuOpenId]        = useState<number | null>(null);
-  const [varPickerRoomId,  setVarPickerRoomId]   = useState<number | null>(null);
+  const [varPickerRoomId,       setVarPickerRoomId]       = useState<number | null>(null);
   // варианты по roomId — кешируем при открытии
-  const [variantsByRoom,   setVariantsByRoom]    = useState<Record<number, typeof variants>>({});
+  const [variantsByRoom,        setVariantsByRoom]        = useState<Record<number, typeof variants>>({});
+  // активный вариант по roomId — кешируем выбор
+  const [activeVarByRoom,       setActiveVarByRoom]       = useState<Record<number, number | null>>({});
   const menuRef = useRef<HTMLDivElement>(null);
   const varPickerRef = useRef<HTMLDivElement>(null);
 
@@ -226,7 +228,11 @@ export default function PlanRoomsScreen({ token, project, onBack, onOpenRoom }: 
                   style={{ background: "#0e0e1c", border: "1px solid rgba(255,255,255,0.07)" }}
                 >
                   {/* Превью на весь верх — название + hover overlay */}
-                  <button onClick={() => onOpenRoom(room)}
+                  <button onClick={() => {
+                    const activeId = activeVarByRoom[room.id];
+                    const activeVar = activeId != null ? variantsByRoom[room.id]?.find(v => v.id === activeId) : null;
+                    onOpenRoom(activeVar ? { ...room, data: activeVar.data } : room);
+                  }}
                     className="relative group w-full rounded-t-2xl overflow-hidden"
                     style={{ height: 180 }}>
                     {/* Живой план */}
@@ -303,24 +309,45 @@ export default function PlanRoomsScreen({ token, project, onBack, onOpenRoom }: 
                       <button
                         onClick={async () => {
                           if (varPickerRoomId === room.id) { setVarPickerRoomId(null); return; }
-                          const loaded = await loadVariants(room.id);
-                          void loaded;
-                          setVariantsByRoom(prev => ({ ...prev, [room.id]: variants }));
+                          const list = await loadVariants(room.id);
+                          const activeId = list.find(v => v.is_active)?.id ?? null;
+                          setVariantsByRoom(prev => ({ ...prev, [room.id]: list }));
+                          setActiveVarByRoom(prev => ({ ...prev, [room.id]: activeId }));
                           setVarPickerRoomId(room.id);
                         }}
                         className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-[12px] font-semibold transition hover:bg-white/[0.06]"
                         style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.7)" }}>
-                        <span>Варианты</span>
-                        <Icon name="ChevronDown" size={13} style={{ color: "rgba(255,255,255,0.4)" }}/>
+                        <span className="truncate">
+                          {activeVarByRoom[room.id] != null
+                            ? (variantsByRoom[room.id]?.find(v => v.id === activeVarByRoom[room.id])?.name ?? "Варианты")
+                            : "Варианты"}
+                        </span>
+                        <Icon name="ChevronDown" size={13} className="shrink-0 ml-1" style={{ color: "rgba(255,255,255,0.4)" }}/>
                       </button>
                       {varPickerRoomId === room.id && (
                         <PlanVariantPicker
-                          variants={variants}
+                          variants={variantsByRoom[room.id] ?? variants}
                           loading={variantsLoading}
-                          activeVariantId={null}
+                          activeVariantId={activeVarByRoom[room.id] ?? null}
+                          onSelect={v => {
+                            setActiveVarByRoom(prev => ({ ...prev, [room.id]: v.id }));
+                            updateVariant(v.id, { is_active: true });
+                            setVarPickerRoomId(null);
+                          }}
                           onLoad={v => { onOpenRoom({ ...room, data: v.data }); setVarPickerRoomId(null); }}
-                          onDelete={id => deleteVariant(id, room.id)}
-                          onRename={(id, name) => updateVariant(id, { name })}
+                          onDelete={async id => {
+                            await deleteVariant(id, room.id);
+                            if (activeVarByRoom[room.id] === id) setActiveVarByRoom(prev => ({ ...prev, [room.id]: null }));
+                            const refreshed = await loadVariants(room.id);
+                            setVariantsByRoom(prev => ({ ...prev, [room.id]: refreshed }));
+                          }}
+                          onRename={(id, name) => {
+                            updateVariant(id, { name });
+                            setVariantsByRoom(prev => ({
+                              ...prev,
+                              [room.id]: (prev[room.id] ?? []).map(v => v.id === id ? { ...v, name } : v),
+                            }));
+                          }}
                           onClose={() => setVarPickerRoomId(null)}
                         />
                       )}

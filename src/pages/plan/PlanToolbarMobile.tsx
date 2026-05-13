@@ -11,7 +11,7 @@ export default function MobileToolbar(props: ToolbarProps) {
     canUndo, canRedo,
     onToolChange, onUndo, onRedo, onOpenLibrary, onReset,
     onBack, onSaveVariant, onOverwriteVariant, variants, variantsLoading,
-    activeVariantId, onLoadVariant, onDeleteVariant, onRenameVariant,
+    activeVariantId, onLoadVariant, onDeleteVariant, onRenameVariant, onSelectVariant,
   } = props;
 
   const [toolsOpen,         setToolsOpen]         = React.useState(false);
@@ -104,6 +104,7 @@ export default function MobileToolbar(props: ToolbarProps) {
                   variants={variants ?? []}
                   loading={variantsLoading}
                   activeVariantId={activeVariantId}
+                  onSelect={v => { onSelectVariant?.(v.id); setVariantPickerOpen(false); }}
                   onLoad={v => { onLoadVariant?.(v.id, v.data); setVariantPickerOpen(false); }}
                   onDelete={id => onDeleteVariant?.(id)}
                   onRename={(id, name) => onRenameVariant?.(id, name)}

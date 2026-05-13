@@ -7,13 +7,14 @@ interface Props {
   variants: PlanVariant[];
   loading?: boolean;
   activeVariantId?: number | null;
+  onSelect: (variant: PlanVariant) => void;
   onLoad: (variant: PlanVariant) => void;
   onDelete: (variantId: number) => void;
   onRename: (variantId: number, name: string) => void;
   onClose: () => void;
 }
 
-export default function PlanVariantPickerMobile({ variants, loading, activeVariantId, onLoad, onDelete, onRename, onClose }: Props) {
+export default function PlanVariantPickerMobile({ variants, loading, activeVariantId, onSelect, onLoad, onDelete, onRename, onClose }: Props) {
   const [renamingId, setRenamingId] = useState<number | null>(null);
   const [renameName, setRenameName] = useState("");
 
@@ -64,14 +65,9 @@ export default function PlanVariantPickerMobile({ variants, loading, activeVaria
                 }}>
 
                 {/* Превью */}
-                <button onClick={() => onLoad(v)} className="relative w-full group" style={{ height: 110 }}>
+                <div className="relative w-full" style={{ height: 110 }}>
                   <div style={{ pointerEvents: "none", width: "100%", height: "100%" }}>
                     <PlanRoomPreview data={v.data ?? {}} width={300} height={110} />
-                  </div>
-                  <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition"
-                    style={{ background: "rgba(0,0,0,0.4)" }}>
-                    <span className="text-[12px] font-bold text-white px-3 py-1.5 rounded-xl"
-                      style={{ background: "rgba(124,58,237,0.8)" }}>Загрузить</span>
                   </div>
                   {isActive && (
                     <div className="absolute top-2 right-2 w-6 h-6 rounded-full flex items-center justify-center"
@@ -79,7 +75,7 @@ export default function PlanVariantPickerMobile({ variants, loading, activeVaria
                       <Icon name="Check" size={11} className="text-white" />
                     </div>
                   )}
-                </button>
+                </div>
 
                 {/* Имя + действия */}
                 <div className="flex items-center gap-2 px-3 py-2.5 border-t" style={{ borderColor: "rgba(255,255,255,0.06)" }}>
@@ -103,10 +99,29 @@ export default function PlanVariantPickerMobile({ variants, loading, activeVaria
                   ) : (
                     <>
                       <span className="flex-1 text-[13px] font-semibold text-white truncate">{v.name}</span>
-                      {isActive && <span className="text-[10px] shrink-0 font-bold" style={{ color: "#a78bfa" }}>активный</span>}
                       <span className="text-[11px] shrink-0" style={{ color: "rgba(255,255,255,0.3)" }}>
                         {new Date(v.created_at).toLocaleDateString("ru-RU", { day: "numeric", month: "short" })}
                       </span>
+                      {/* Выбрать для сметы */}
+                      <button
+                        onClick={() => onSelect(v)}
+                        title={isActive ? "Выбранный вариант" : "Выбрать для сметы"}
+                        className="w-8 h-8 flex items-center justify-center rounded-lg transition shrink-0"
+                        style={{
+                          background: isActive ? "rgba(124,58,237,0.3)" : "rgba(255,255,255,0.06)",
+                          color: isActive ? "#a78bfa" : "rgba(255,255,255,0.3)",
+                          border: isActive ? "1px solid rgba(124,58,237,0.5)" : "1px solid transparent",
+                        }}>
+                        <Icon name="Check" size={13} />
+                      </button>
+                      {/* Открыть чертёж */}
+                      <button
+                        onClick={() => onLoad(v)}
+                        title="Открыть чертёж"
+                        className="w-8 h-8 flex items-center justify-center rounded-lg transition hover:bg-white/10 shrink-0"
+                        style={{ color: "rgba(255,255,255,0.4)" }}>
+                        <Icon name="FolderOpen" size={13} />
+                      </button>
                       <button onClick={() => { setRenamingId(v.id); setRenameName(v.name); }}
                         className="w-8 h-8 flex items-center justify-center rounded-lg transition hover:bg-white/10"
                         style={{ color: "rgba(255,255,255,0.35)" }}>

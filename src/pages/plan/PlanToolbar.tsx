@@ -13,7 +13,7 @@ export default function PlanToolbar(props: ToolbarProps) {
     onZoomIn, onZoomOut, onZoomFit, onExport, onSave, onOpenLibrary,
     onBack, backLabel, roomSaveStatus,
     onSaveVariant, onOverwriteVariant, variants, variantsLoading, activeVariantId,
-    onLoadVariant, onDeleteVariant, onRenameVariant,
+    onLoadVariant, onDeleteVariant, onRenameVariant, onSelectVariant,
   } = props;
 
   const [variantPickerOpen, setVariantPickerOpen] = useState(false);
@@ -169,6 +169,7 @@ export default function PlanToolbar(props: ToolbarProps) {
                 variants={variants ?? []}
                 loading={variantsLoading}
                 activeVariantId={activeVariantId}
+                onSelect={v => { onSelectVariant?.(v.id); setVariantPickerOpen(false); }}
                 onLoad={v => { onLoadVariant?.(v.id, v.data); setVariantPickerOpen(false); }}
                 onDelete={id => { onDeleteVariant?.(id); }}
                 onRename={(id, name) => onRenameVariant?.(id, name)}

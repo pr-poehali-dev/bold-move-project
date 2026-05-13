@@ -28,7 +28,7 @@ export function usePlanVariants(token?: string | null) {
   const [saving,           setSaving]            = useState(false);
   const [activeVariantId,  setActiveVariantId]   = useState<number | null>(null);
 
-  const loadVariants = useCallback(async (roomId: number) => {
+  const loadVariants = useCallback(async (roomId: number): Promise<PlanVariant[]> => {
     setLoading(true);
     try {
       const res = await fetch(`${CRM_URL}?r=plan-variants&room_id=${roomId}`, {
@@ -39,6 +39,7 @@ export function usePlanVariants(token?: string | null) {
       setVariants(list);
       const active = list.find(v => v.is_active);
       if (active) setActiveVariantId(active.id);
+      return list;
     } finally {
       setLoading(false);
     }

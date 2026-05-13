@@ -41,6 +41,7 @@ export interface ToolbarProps {
   onLoadVariant?: (id: number, data: object) => void;
   onDeleteVariant?: (id: number) => void;
   onRenameVariant?: (id: number, name: string) => void;
+  onSelectVariant?: (id: number) => void;
 }
 
 // ── ToolDef ───────────────────────────────────────────────────────────────────

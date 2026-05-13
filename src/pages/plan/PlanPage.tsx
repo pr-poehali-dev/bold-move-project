@@ -12,7 +12,7 @@ import PlanRoomsScreen from "./PlanRoomsScreen";
 import type { PlanProject, PlanRoom } from "./usePlanProjects";
 import { usePlanProjects } from "./usePlanProjects";
 import { useRoomAutoSave } from "./useRoomAutoSave";
-import { usePlanVariants } from "./usePlanVariants";
+import { usePlanVariants, type PlanVariant } from "./usePlanVariants";
 import { usePlanVariantHandlers } from "./usePlanVariantHandlers";
 import PlanCanvasArea from "./PlanCanvasArea";
 import PlanPagePanels from "./PlanPagePanels";
@@ -214,15 +214,23 @@ export default function PlanPage() {
           setActiveRoom(room);
           setRoomLoading(true);
           setScreen("canvas");
-          const [loaded] = await Promise.all([
+          const [loaded, variantList] = await Promise.all([
             loadRoom(room.id),
             loadVariants(room.id),
           ]);
-          const savedData = loaded?.data as PlanState | undefined;
-          const hasData = savedData && Object.keys(savedData).length > 0 && savedData.points;
+          // Если room.data уже передан с данными варианта — используем его.
+          // Иначе ищем активный вариант из только что загруженного списка.
+          const activeVariant = (variantList as PlanVariant[]).find(v => v.is_active);
+          const roomHasOverrideData = room.data && Object.keys(room.data as object).length > 0 && (room.data as PlanState).points;
+          const dataSource: PlanState | undefined = roomHasOverrideData
+            ? (room.data as PlanState)
+            : activeVariant
+              ? (activeVariant.data as PlanState)
+              : (loaded?.data as PlanState | undefined);
+          const hasData = dataSource && Object.keys(dataSource).length > 0 && dataSource.points;
           loadingFromRoomRef.current = true;
           lastClosedSegId.current = null;
-          reset(hasData ? { ...INITIAL_STATE, ...savedData, selectedSegmentId: null } : INITIAL_STATE);
+          reset(hasData ? { ...INITIAL_STATE, ...dataSource, selectedSegmentId: null } : INITIAL_STATE);
           // Сбрасываем флаг после следующего рендера
           setTimeout(() => { loadingFromRoomRef.current = false; }, 150);
           setRoomLoading(false);
@@ -269,6 +277,7 @@ export default function PlanPage() {
         onLoadVariant={(id, data) => variantHandlers.handleLoadVariant(id, data)}
         onDeleteVariant={variantHandlers.handleDeleteVariant}
         onRenameVariant={variantHandlers.handleRenameVariant}
+        onSelectVariant={activeRoom ? (id) => variantsHook.updateVariant(id, { is_active: true }) : undefined}
       />
 
       <PlanCanvasArea
