@@ -967,7 +967,8 @@ def handler(event: dict, context) -> dict:
                 with_active = qs.get("with_active_variant") == "true"
                 if with_active:
                     cur.execute(f"""
-                        SELECT r.id, r.project_id, r.name, r.data, r.thumbnail, r.created_at, r.updated_at,
+                        SELECT DISTINCT ON (r.id)
+                               r.id, r.project_id, r.name, r.data, r.thumbnail, r.created_at, r.updated_at,
                                r.include_in_estimate, r.include_drawing,
                                v.id AS active_variant_id, v.name AS active_variant_name,
                                v.thumbnail AS active_variant_thumbnail
@@ -976,7 +977,7 @@ def handler(event: dict, context) -> dict:
                         LEFT JOIN {SCHEMA}.plan_variants v ON v.room_id = r.id AND v.is_active = true
                         WHERE r.project_id=%s AND p.company_id=%s
                           AND r.name NOT LIKE '[удалена]%%'
-                        ORDER BY r.created_at ASC
+                        ORDER BY r.id, r.created_at ASC
                     """, (int(project_id), cmp))
                 else:
                     cur.execute(f"""
