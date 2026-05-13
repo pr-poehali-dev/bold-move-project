@@ -29,11 +29,11 @@ export default function PlanVariantPicker({ variants, loading, activeVariantId, 
   return (
     <div
       ref={ref}
-      className="absolute bottom-full left-0 mb-2 z-50 rounded-2xl overflow-hidden"
+      className="absolute top-full right-0 mt-2 z-50 rounded-2xl overflow-hidden"
       style={{
         background: "#0e0e1c",
         border: "1px solid rgba(255,255,255,0.1)",
-        boxShadow: "0 -12px 40px rgba(0,0,0,0.5)",
+        boxShadow: "0 12px 40px rgba(0,0,0,0.5)",
         width: "min(360px, 92vw)",
       }}
     >
