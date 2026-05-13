@@ -127,68 +127,63 @@ export default function MobileToolbar(props: ToolbarProps) {
       {/* ── Подпанель инструментов ───────────────────────────────────────────── */}
       {toolsOpen && (
         <div
-          className="shrink-0 border-b border-white/[0.06] px-2 py-2 flex flex-col gap-2"
+          className="shrink-0 border-b border-white/[0.06] px-2 py-1.5 flex items-center gap-1"
           style={{ background: "#121220" }}
         >
-          {/* Инструменты */}
-          <div className="flex items-center gap-1.5 flex-wrap">
-            {ALL_TOOLS_MENU.map(t => {
-              const disabled = !!t.comingSoon;
-              const active = !disabled && tool === t.id;
-              return (
-                <button
-                  key={t.id}
-                  onClick={() => { if (!disabled) { onToolChange(t.id); setToolsOpen(false); } }}
-                  disabled={disabled}
-                  title={t.label}
-                  className={`flex items-center gap-1.5 h-9 px-3 rounded-lg text-[12px] font-semibold transition-all shrink-0 ${
-                    disabled
-                      ? "opacity-30 cursor-not-allowed text-white/30"
-                      : active
-                        ? t.danger
-                          ? "bg-rose-500/25 border border-rose-500/40 text-rose-300"
-                          : "bg-white text-[#111]"
-                        : t.danger
-                          ? "text-rose-400/70 hover:bg-rose-500/10 border border-transparent"
-                          : "text-white/60 hover:text-white hover:bg-white/[0.07] border border-transparent"
-                  }`}
-                >
-                  <Icon name={t.icon} size={15} />
-                  <span>{t.label}</span>
-                  {disabled && <span className="text-[9px] opacity-50">скоро</span>}
-                </button>
-              );
-            })}
-          </div>
-
-          {/* Разделитель + Очистить */}
-          <div className="flex items-center gap-2">
-            <div className="flex-1 h-px bg-white/[0.05]" />
-            {confirmReset ? (
-              <div className="flex items-center gap-1">
-                <button
-                  onClick={() => { onReset(); setConfirmReset(false); setToolsOpen(false); }}
-                  className="h-7 px-3 rounded-lg bg-rose-600/80 border border-rose-400/30 text-white text-[11px] font-bold hover:bg-rose-600 transition"
-                >
-                  Стереть всё
-                </button>
-                <button
-                  onClick={() => setConfirmReset(false)}
-                  className="w-7 h-7 rounded-lg flex items-center justify-center text-white/40 hover:bg-white/[0.07] transition"
-                >
-                  <Icon name="X" size={13} />
-                </button>
-              </div>
-            ) : (
+          {/* Инструменты — иконки без подписей, один ряд */}
+          {ALL_TOOLS_MENU.map(t => {
+            const disabled = !!t.comingSoon;
+            const active = !disabled && tool === t.id;
+            return (
               <button
-                onClick={() => setConfirmReset(true)}
-                className="flex items-center gap-1.5 h-7 px-3 rounded-lg text-[11px] text-rose-400/70 hover:text-rose-400 hover:bg-rose-500/10 transition"
+                key={t.id}
+                onClick={() => { if (!disabled) { onToolChange(t.id); setToolsOpen(false); } }}
+                disabled={disabled}
+                title={t.label}
+                className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 transition-all ${
+                  disabled
+                    ? "opacity-25 cursor-not-allowed text-white/30"
+                    : active
+                      ? t.danger
+                        ? "bg-rose-500/25 border border-rose-500/40 text-rose-300"
+                        : "bg-white text-[#111]"
+                      : t.danger
+                        ? "text-rose-400/70 hover:bg-rose-500/10 border border-transparent"
+                        : "text-white/50 hover:text-white hover:bg-white/[0.07] border border-transparent"
+                }`}
               >
-                <Icon name="Trash2" size={13} />
-                Очистить
+                <Icon name={t.icon} size={16} />
               </button>
-            )}
-          </div>
+            );
+          })}
+
+          <div className="flex-1" />
+
+          {/* Очистить */}
+          {confirmReset ? (
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => { onReset(); setConfirmReset(false); setToolsOpen(false); }}
+                className="h-8 px-3 rounded-lg bg-rose-600/80 border border-rose-400/30 text-white text-[11px] font-bold hover:bg-rose-600 transition"
+              >
+                Стереть всё
+              </button>
+              <button
+                onClick={() => setConfirmReset(false)}
+                className="w-8 h-8 rounded-lg flex items-center justify-center text-white/40 hover:bg-white/[0.07] transition"
+              >
+                <Icon name="X" size={13} />
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={() => setConfirmReset(true)}
+              className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0 text-rose-400/60 hover:text-rose-400 hover:bg-rose-500/10 transition"
+              title="Очистить"
+            >
+              <Icon name="Trash2" size={15} />
+            </button>
+          )}
         </div>
       )}
     </>
