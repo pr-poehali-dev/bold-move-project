@@ -81,15 +81,21 @@ export function usePlanVariants(token?: string | null) {
     variantId: number,
     body: { name?: string; data?: PlanState; thumbnail?: string; is_active?: boolean }
   ) => {
+    // Оптимистичное обновление локального списка
+    setVariants(prev => prev.map(v => {
+      if (v.id !== variantId) return body.is_active ? { ...v, is_active: false } : v;
+      return {
+        ...v,
+        ...(body.name !== undefined ? { name: body.name } : {}),
+        ...(body.is_active !== undefined ? { is_active: body.is_active } : {}),
+      };
+    }));
+    if (body.is_active) setActiveVariantId(variantId);
     await fetch(`${CRM_URL}?r=plan-variants&id=${variantId}`, {
       method: "PUT",
       headers: headers(token),
       body: JSON.stringify(body),
     });
-    if (body.is_active) {
-      setActiveVariantId(variantId);
-      setVariants(prev => prev.map(v => ({ ...v, is_active: v.id === variantId })));
-    }
   }, [token]);
 
   const overwriteVariant = useCallback(async (
@@ -117,17 +123,15 @@ export function usePlanVariants(token?: string | null) {
     }
   }, [token, loadVariants]);
 
-  const deleteVariant = useCallback(async (variantId: number, roomId: number) => {
-    // Оптимистичное удаление — сразу убираем из списка
+  const deleteVariant = useCallback(async (variantId: number, _roomId: number) => {
+    // Оптимистичное удаление — убираем сразу и не перезагружаем
     setVariants(prev => prev.filter(v => v.id !== variantId));
     if (activeVariantId === variantId) setActiveVariantId(null);
     await fetch(`${CRM_URL}?r=plan-variants&id=${variantId}`, {
       method: "DELETE",
       headers: headers(token),
     });
-    // Перегружаем чтобы убедиться в синхронизации
-    await loadVariants(roomId);
-  }, [token, loadVariants, activeVariantId]);
+  }, [token, activeVariantId]);
 
   return {
     variants, loading, saving,
