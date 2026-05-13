@@ -53,7 +53,30 @@ export default function PlanRoomsScreen({ token, project, onBack, onOpenRoom }: 
     return () => document.removeEventListener("mousedown", handler);
   }, [menuOpenId]);
 
-  useEffect(() => { loadRooms(project.id); }, [project.id, loadRooms]);
+  useEffect(() => {
+    loadRooms(project.id).then(list => {
+      // Заполняем кеш активных вариантов из данных, пришедших с бэкенда
+      const newActiveMap: Record<number, number | null> = {};
+      const newVarMap: Record<number, typeof variants> = {};
+      list.forEach(room => {
+        if (room.active_variant_id != null) {
+          newActiveMap[room.id] = room.active_variant_id;
+          newVarMap[room.id] = [{
+            id: room.active_variant_id,
+            room_id: room.id,
+            name: room.active_variant_name ?? "Вариант",
+            data: {},
+            thumbnail: room.active_variant_thumbnail ?? null,
+            is_active: true,
+            created_at: "",
+            updated_at: "",
+          }];
+        }
+      });
+      setActiveVarByRoom(newActiveMap);
+      setVariantsByRoom(prev => ({ ...prev, ...newVarMap }));
+    });
+  }, [project.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Создать ──────────────────────────────────────────────────────────────────
   const handleCreate = async (name: string) => {

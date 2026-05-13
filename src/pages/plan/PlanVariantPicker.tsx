@@ -72,10 +72,15 @@ export default function PlanVariantPicker({ variants, loading, activeVariantId, 
                 border: isActive ? "1px solid rgba(124,58,237,0.4)" : "1px solid rgba(255,255,255,0.06)",
               }}>
 
-              {/* Превью */}
-              <div className="relative w-full" style={{ height: 90 }}>
+              {/* Превью — клик открывает чертёж */}
+              <button onClick={() => onLoad(v)} className="relative w-full group block" style={{ height: 90 }}>
                 <div style={{ pointerEvents: "none", width: "100%", height: "100%" }}>
                   <PlanRoomPreview data={v.data ?? {}} width={300} height={90} />
+                </div>
+                <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition"
+                  style={{ background: "rgba(0,0,0,0.45)" }}>
+                  <span className="text-[11px] font-bold text-white px-2.5 py-1 rounded-lg"
+                    style={{ background: "rgba(124,58,237,0.8)" }}>Открыть</span>
                 </div>
                 {isActive && (
                   <div className="absolute top-2 right-2 w-5 h-5 rounded-full flex items-center justify-center"
@@ -83,7 +88,7 @@ export default function PlanVariantPicker({ variants, loading, activeVariantId, 
                     <Icon name="Check" size={10} className="text-white" />
                   </div>
                 )}
-              </div>
+              </button>
 
               {/* Имя + действия */}
               <div className="flex items-center gap-2 px-3 py-2 border-t" style={{ borderColor: "rgba(255,255,255,0.06)" }}>

@@ -52,8 +52,14 @@
       "name": "GET plan-projects",
       "method": "GET",
       "path": "/?r=plan-projects",
-      "expectedStatus": 200,
-      "expectedBody": [],
+      "expectedStatus": 200
+    },
+    {
+      "name": "GET plan-rooms-by-chat missing chat_id",
+      "method": "GET",
+      "path": "/?r=plan-rooms-by-chat",
+      "expectedStatus": 400,
+      "expectedBody": {"error": "chat_id required"},
       "bodyMatcher": "partial"
     }
   ]

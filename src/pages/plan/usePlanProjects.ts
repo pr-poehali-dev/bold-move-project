@@ -31,6 +31,10 @@ export interface PlanRoom {
   updated_at: string;
   include_in_estimate: boolean;
   include_drawing: boolean;
+  // Возвращается при with_active_variant=true
+  active_variant_id?: number | null;
+  active_variant_name?: string | null;
+  active_variant_thumbnail?: string | null;
 }
 
 export function usePlanProjects(token?: string | null) {
@@ -61,14 +65,16 @@ export function usePlanProjects(token?: string | null) {
     return data.id as number;
   }, [token]);
 
-  const loadRooms = useCallback(async (projectId: number) => {
+  const loadRooms = useCallback(async (projectId: number): Promise<PlanRoom[]> => {
     setLoading(true);
     try {
-      const res = await fetch(`${CRM_URL}?r=plan-rooms&project_id=${projectId}`, {
+      const res = await fetch(`${CRM_URL}?r=plan-rooms&project_id=${projectId}&with_active_variant=true`, {
         headers: headers(token),
       });
       const data = await res.json();
-      setRooms(Array.isArray(data) ? data : []);
+      const list: PlanRoom[] = Array.isArray(data) ? data : [];
+      setRooms(list);
+      return list;
     } finally {
       setLoading(false);
     }

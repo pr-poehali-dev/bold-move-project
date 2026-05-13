@@ -45,6 +45,7 @@ ALL_CLIENT_FIELDS = [
     "responsible_phone", "map_link", "tags",
     "photo_before_url", "photo_after_url", "document_url",
     "material_cost", "measure_cost", "install_cost", "cancel_reason",
+    "project_id",
 ]
 
 def handler(event: dict, context) -> dict:
@@ -181,7 +182,7 @@ def handler(event: dict, context) -> dict:
                            responsible_phone, map_link, tags,
                            photo_before_url, photo_after_url, document_url,
                            material_cost, measure_cost, install_cost, cancel_reason,
-                           updated_at
+                           updated_at, project_id
                     FROM {SCHEMA}.live_chats
                     WHERE status != 'deleted'
                 """
@@ -867,6 +868,28 @@ def handler(event: dict, context) -> dict:
                 conn.commit()
                 return ok({"deactivated": True})
 
+        # ── PLAN ROOMS BY CHAT (для сметы) ────────────────────────────────────
+        if resource == "plan-rooms-by-chat":
+            cmp = company_id if company_id is not None else 0
+            chat_id = qs.get("chat_id")
+            if not chat_id: return err("chat_id required")
+            if method == "GET":
+                cur.execute(f"""
+                    SELECT r.id, r.name, r.data, r.thumbnail, r.include_in_estimate, r.include_drawing,
+                           v.id AS active_variant_id, v.name AS active_variant_name,
+                           v.data AS active_variant_data, v.thumbnail AS active_variant_thumbnail
+                    FROM {SCHEMA}.live_chats c
+                    JOIN {SCHEMA}.plan_projects p ON p.id = c.project_id
+                    JOIN {SCHEMA}.room_plans r ON r.project_id = p.id
+                    LEFT JOIN {SCHEMA}.plan_variants v ON v.room_id = r.id AND v.is_active = true
+                    WHERE c.id=%s AND c.company_id=%s
+                      AND r.name NOT LIKE '[удалена]%%'
+                    ORDER BY r.created_at ASC
+                """, (int(chat_id), cmp))
+                cols = [d[0] for d in cur.description]
+                rows = [dict(zip(cols, r)) for r in cur.fetchall()]
+                return ok(rows)
+
         # ── PLAN PROJECTS ─────────────────────────────────────────────────────
         if resource == "plan-projects":
             cmp = company_id if company_id is not None else 0
@@ -941,15 +964,30 @@ def handler(event: dict, context) -> dict:
                     cols = [d[0] for d in cur.description]
                     return ok(dict(zip(cols, row)))
                 if not project_id: return err("project_id required")
-                cur.execute(f"""
-                    SELECT r.id, r.project_id, r.name, r.data, r.thumbnail, r.created_at, r.updated_at,
-                           r.include_in_estimate, r.include_drawing
-                    FROM {SCHEMA}.room_plans r
-                    JOIN {SCHEMA}.plan_projects p ON p.id = r.project_id
-                    WHERE r.project_id=%s AND p.company_id=%s
-                      AND r.name NOT LIKE '[удалена]%%'
-                    ORDER BY r.created_at ASC
-                """, (int(project_id), cmp))
+                with_active = qs.get("with_active_variant") == "true"
+                if with_active:
+                    cur.execute(f"""
+                        SELECT r.id, r.project_id, r.name, r.data, r.thumbnail, r.created_at, r.updated_at,
+                               r.include_in_estimate, r.include_drawing,
+                               v.id AS active_variant_id, v.name AS active_variant_name,
+                               v.thumbnail AS active_variant_thumbnail
+                        FROM {SCHEMA}.room_plans r
+                        JOIN {SCHEMA}.plan_projects p ON p.id = r.project_id
+                        LEFT JOIN {SCHEMA}.plan_variants v ON v.room_id = r.id AND v.is_active = true
+                        WHERE r.project_id=%s AND p.company_id=%s
+                          AND r.name NOT LIKE '[удалена]%%'
+                        ORDER BY r.created_at ASC
+                    """, (int(project_id), cmp))
+                else:
+                    cur.execute(f"""
+                        SELECT r.id, r.project_id, r.name, r.data, r.thumbnail, r.created_at, r.updated_at,
+                               r.include_in_estimate, r.include_drawing
+                        FROM {SCHEMA}.room_plans r
+                        JOIN {SCHEMA}.plan_projects p ON p.id = r.project_id
+                        WHERE r.project_id=%s AND p.company_id=%s
+                          AND r.name NOT LIKE '[удалена]%%'
+                        ORDER BY r.created_at ASC
+                    """, (int(project_id), cmp))
                 cols = [d[0] for d in cur.description]
                 return ok([dict(zip(cols, r)) for r in cur.fetchall()])
 

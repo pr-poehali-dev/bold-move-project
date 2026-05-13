@@ -2,6 +2,20 @@ import func2url from "@/../backend/func2url.json";
 
 export const AUTH_URL   = (func2url as Record<string, string>)["auth"];
 export const PRICES_URL = (func2url as Record<string, string>)["get-prices"];
+export const CRM_URL    = (func2url as Record<string, string>)["crm-manager"];
+
+export interface PlanRoomForEstimate {
+  id: number;
+  name: string;
+  data: object;
+  thumbnail: string | null;
+  include_in_estimate: boolean;
+  include_drawing: boolean;
+  active_variant_id: number | null;
+  active_variant_name: string | null;
+  active_variant_data: object | null;
+  active_variant_thumbnail: string | null;
+}
 
 // Кэш коэффициентов 3 цен
 export const pricingRules = {
