@@ -947,6 +947,7 @@ def handler(event: dict, context) -> dict:
                     FROM {SCHEMA}.room_plans r
                     JOIN {SCHEMA}.plan_projects p ON p.id = r.project_id
                     WHERE r.project_id=%s AND p.company_id=%s
+                      AND r.name NOT LIKE '[удалена]%%'
                     ORDER BY r.created_at ASC
                 """, (int(project_id), cmp))
                 cols = [d[0] for d in cur.description]
