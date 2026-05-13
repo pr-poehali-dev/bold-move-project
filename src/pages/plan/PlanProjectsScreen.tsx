@@ -1,6 +1,7 @@
 import { useEffect, useState, useMemo } from "react";
 import Icon from "@/components/ui/icon";
 import { PlanProject, usePlanProjects } from "./usePlanProjects";
+import PlanExportModal from "./PlanExportMenu";
 
 interface Props {
   token?: string | null;
@@ -156,6 +157,7 @@ function ProjectForm({
 export default function PlanProjectsScreen({ token, onSelectProject }: Props) {
   const { projects, loading, loadProjects, createProject, updateProject, deleteProject } = usePlanProjects(token);
 
+  const [exportOpen,   setExportOpen]   = useState(false);
   const [showCreate,   setShowCreate]   = useState(false);
   const [editingId,    setEditingId]    = useState<number | null>(null);
   const [deletingId,   setDeletingId]   = useState<number | null>(null);
@@ -254,15 +256,32 @@ export default function PlanProjectsScreen({ token, onSelectProject }: Props) {
           </div>
           <span className="text-white font-bold text-lg">Проекты</span>
         </div>
-        <button
-          onClick={() => { setShowCreate(true); setEditingId(null); setForm(EMPTY_FORM); setError(""); }}
-          className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition hover:opacity-90 active:scale-[0.97]"
-          style={{ background: "linear-gradient(135deg,#7c3aed,#6d28d9)", color: "#fff" }}
-        >
-          <Icon name="Plus" size={15} />
-          Новый проект
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setExportOpen(true)}
+            className="w-9 h-9 flex items-center justify-center rounded-xl transition hover:bg-white/10"
+            style={{ color: "rgba(255,255,255,0.5)", border: "1px solid rgba(255,255,255,0.09)" }}
+            title="Выгрузить смету"
+          >
+            <Icon name="FileText" size={16} />
+          </button>
+          <button
+            onClick={() => { setShowCreate(true); setEditingId(null); setForm(EMPTY_FORM); setError(""); }}
+            className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition hover:opacity-90 active:scale-[0.97]"
+            style={{ background: "linear-gradient(135deg,#7c3aed,#6d28d9)", color: "#fff" }}
+          >
+            <Icon name="Plus" size={15} />
+            Новый проект
+          </button>
+        </div>
       </div>
+
+      <PlanExportModal
+        open={exportOpen}
+        onClose={() => setExportOpen(false)}
+        onExport={cfg => { console.log("export", cfg); }}
+        showScope={true}
+      />
 
       {/* Контент */}
       <div className="flex-1 px-4 sm:px-8 py-5 max-w-3xl mx-auto w-full">

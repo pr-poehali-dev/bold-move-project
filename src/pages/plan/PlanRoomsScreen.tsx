@@ -4,6 +4,7 @@ import { PlanProject, PlanRoom, usePlanProjects } from "./usePlanProjects";
 import PlanRoomPreview, { getRoomMeta } from "./PlanRoomPreview";
 import { usePlanVariants, PlanVariant } from "./usePlanVariants";
 import PlanVariantPicker from "./PlanVariantPicker";
+import PlanExportModal from "./PlanExportMenu";
 
 interface Props {
   token?: string | null;
@@ -27,6 +28,7 @@ export default function PlanRoomsScreen({ token, project, onBack, onOpenRoom }: 
   const { rooms, loading, loadRooms, createRoom, updateRoom, deleteRoom, duplicateRoom } = usePlanProjects(token);
   const { variants, loading: variantsLoading, loadVariants, deleteVariant, updateVariant } = usePlanVariants(token);
 
+  const [exportOpen,       setExportOpen]       = useState(false);
   const [showForm,         setShowForm]         = useState(false);
   const [customName,       setCustomName]        = useState("");
   const [creating,         setCreating]          = useState(false);
@@ -141,6 +143,15 @@ export default function PlanRoomsScreen({ token, project, onBack, onOpenRoom }: 
             </div>
           )}
         </div>
+        {/* Кнопка сметы */}
+        <button
+          onClick={() => setExportOpen(true)}
+          className="w-9 h-9 flex items-center justify-center rounded-xl transition hover:bg-white/10 flex-shrink-0"
+          style={{ color: "rgba(255,255,255,0.5)", border: "1px solid rgba(255,255,255,0.09)" }}
+          title="Выгрузить смету"
+        >
+          <Icon name="FileText" size={16} />
+        </button>
         <button
           onClick={() => { setShowForm(v => !v); setCustomName(""); }}
           className="flex items-center gap-2 px-3 py-2 rounded-xl text-[12px] font-bold transition hover:opacity-90 active:scale-[0.97] flex-shrink-0"
@@ -150,6 +161,13 @@ export default function PlanRoomsScreen({ token, project, onBack, onOpenRoom }: 
           Комната
         </button>
       </div>
+
+      <PlanExportModal
+        open={exportOpen}
+        onClose={() => setExportOpen(false)}
+        onExport={cfg => { console.log("export", cfg); }}
+        showScope={true}
+      />
 
       {/* Контент */}
       <div className="flex-1 px-4 sm:px-8 py-6 max-w-4xl mx-auto w-full">
