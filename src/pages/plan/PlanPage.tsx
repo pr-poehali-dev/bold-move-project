@@ -121,13 +121,17 @@ export default function PlanPage() {
     onAfterLoad:  () => { loadingFromLibraryRef.current = false; },
   });
 
-  // При замыкании фигуры открываем боковую/правую панель
+  // При замыкании фигуры открываем боковую/правую панель ТОЛЬКО если размеры не заполнены
+  // (т.е. пользователь только что нарисовал руками, а не загрузил готовый план)
   const lastClosedSegId = useRef<string | null>(null);
   useEffect(() => {
     if (!state.isClosed || loadingFromLibraryRef.current || loadingFromRoomRef.current) return;
     const lastSeg = state.segments[state.segments.length - 1];
     if (!lastSeg || lastSeg.id === lastClosedSegId.current) return;
     lastClosedSegId.current = lastSeg.id;
+    // Если все размеры уже заполнены — план загружен, не открываем панель
+    const allSizesFilled = state.segments.every(s => s.lengthCm && s.lengthCm > 0);
+    if (allSizesFilled) return;
     if (!isMobile) {
       setSidebarOpen(true);
       setTimeout(() => zoomFit(), 100);
