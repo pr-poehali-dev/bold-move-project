@@ -26,7 +26,7 @@ export default function PlanVariantPickerMobile({ variants, loading, activeVaria
     >
       <div
         className="rounded-t-2xl flex flex-col"
-        style={{ background: "#0e0e1c", border: "1px solid rgba(255,255,255,0.1)", maxHeight: "75vh" }}
+        style={{ background: "#0e0e1c", border: "1px solid rgba(255,255,255,0.1)", maxHeight: "80vh" }}
         onClick={e => e.stopPropagation()}
       >
         {/* Шапка */}
@@ -64,23 +64,31 @@ export default function PlanVariantPickerMobile({ variants, loading, activeVaria
                   border: isActive ? "1px solid rgba(124,58,237,0.4)" : "1px solid rgba(255,255,255,0.06)",
                 }}>
 
-                {/* Превью — клик открывает чертёж */}
-                <button onClick={() => onLoad(v)} className="relative w-full group block" style={{ height: 110 }}>
-                  <div style={{ pointerEvents: "none", width: "100%", height: "100%" }}>
-                    <PlanRoomPreview data={v.data ?? {}} width={300} height={110} />
+                {/* Превью — кнопка "Открыть" всегда видна поверх */}
+                <div className="relative w-full" style={{ height: 120 }}>
+                  <div style={{ width: "100%", height: "100%" }}>
+                    <PlanRoomPreview data={v.data ?? {}} width={340} height={120} />
                   </div>
-                  <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition"
-                    style={{ background: "rgba(0,0,0,0.45)" }}>
-                    <span className="text-[12px] font-bold text-white px-3 py-1.5 rounded-xl"
-                      style={{ background: "rgba(124,58,237,0.8)" }}>Открыть</span>
-                  </div>
+                  {/* Кнопка "Открыть" — поверх превью, всегда видна */}
+                  <button
+                    onClick={() => onLoad(v)}
+                    className="absolute inset-0 w-full flex items-center justify-center"
+                    style={{ background: "rgba(0,0,0,0.25)" }}
+                  >
+                    <span
+                      className="text-[13px] font-bold text-white px-4 py-2 rounded-xl pointer-events-none"
+                      style={{ background: "rgba(124,58,237,0.85)" }}
+                    >
+                      Открыть
+                    </span>
+                  </button>
                   {isActive && (
-                    <div className="absolute top-2 right-2 w-6 h-6 rounded-full flex items-center justify-center"
+                    <div className="absolute top-2 right-2 w-6 h-6 rounded-full flex items-center justify-center pointer-events-none"
                       style={{ background: "#7c3aed" }}>
                       <Icon name="Check" size={11} className="text-white" />
                     </div>
                   )}
-                </button>
+                </div>
 
                 {/* Имя + действия */}
                 <div className="flex items-center gap-2 px-3 py-2.5 border-t" style={{ borderColor: "rgba(255,255,255,0.06)" }}>
@@ -118,14 +126,6 @@ export default function PlanVariantPickerMobile({ variants, loading, activeVaria
                           border: isActive ? "1px solid rgba(124,58,237,0.5)" : "1px solid transparent",
                         }}>
                         <Icon name="Check" size={13} />
-                      </button>
-                      {/* Открыть чертёж */}
-                      <button
-                        onClick={() => onLoad(v)}
-                        title="Открыть чертёж"
-                        className="w-8 h-8 flex items-center justify-center rounded-lg transition hover:bg-white/10 shrink-0"
-                        style={{ color: "rgba(255,255,255,0.4)" }}>
-                        <Icon name="FolderOpen" size={13} />
                       </button>
                       <button onClick={() => { setRenamingId(v.id); setRenameName(v.name); }}
                         className="w-8 h-8 flex items-center justify-center rounded-lg transition hover:bg-white/10"
