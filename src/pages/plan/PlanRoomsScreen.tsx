@@ -46,11 +46,11 @@ export default function PlanRoomsScreen({ token, project, onBack, onOpenRoom }: 
   // Закрываем меню при клике вне
   useEffect(() => {
     if (!menuOpenId) return;
-    const handler = (e: MouseEvent) => {
+    const handler = (e: PointerEvent) => {
       if (menuRef.current && !menuRef.current.contains(e.target as Node)) setMenuOpenId(null);
     };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
+    document.addEventListener("pointerdown", handler);
+    return () => document.removeEventListener("pointerdown", handler);
   }, [menuOpenId]);
 
   useEffect(() => {
@@ -243,7 +243,7 @@ export default function PlanRoomsScreen({ token, project, onBack, onOpenRoom }: 
                 : "Новая";
 
               const meta = getRoomMeta(room.data ?? {});
-              const isMenuOpen = menuOpenId === room.id;
+              const isMenuOpen = menuOpenId !== null && menuOpenId === room.id;
 
               return (
                 <div
