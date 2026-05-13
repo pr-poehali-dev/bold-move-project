@@ -63,6 +63,7 @@ export default function PlanPage() {
 
   const stateRef = useRef(state);
   const loadingFromLibraryRef = useRef(false);
+  const loadingFromRoomRef = useRef(false);
   stateRef.current = state;
 
   // Блокируем скролл страницы
@@ -123,7 +124,7 @@ export default function PlanPage() {
   // При замыкании фигуры открываем боковую/правую панель
   const lastClosedSegId = useRef<string | null>(null);
   useEffect(() => {
-    if (!state.isClosed || loadingFromLibraryRef.current) return;
+    if (!state.isClosed || loadingFromLibraryRef.current || loadingFromRoomRef.current) return;
     const lastSeg = state.segments[state.segments.length - 1];
     if (!lastSeg || lastSeg.id === lastClosedSegId.current) return;
     lastClosedSegId.current = lastSeg.id;
@@ -219,7 +220,11 @@ export default function PlanPage() {
           ]);
           const savedData = loaded?.data as PlanState | undefined;
           const hasData = savedData && Object.keys(savedData).length > 0 && savedData.points;
-          reset(hasData ? { ...INITIAL_STATE, ...savedData } : INITIAL_STATE);
+          loadingFromRoomRef.current = true;
+          lastClosedSegId.current = null;
+          reset(hasData ? { ...INITIAL_STATE, ...savedData, selectedSegmentId: null } : INITIAL_STATE);
+          // Сбрасываем флаг после следующего рендера
+          setTimeout(() => { loadingFromRoomRef.current = false; }, 150);
           setRoomLoading(false);
         }}
       />
