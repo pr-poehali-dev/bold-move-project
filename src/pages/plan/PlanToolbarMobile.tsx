@@ -4,7 +4,7 @@ import type { ToolbarProps } from "./PlanToolbarShared";
 import { ALL_TOOLS_MENU, loadPinned } from "./PlanToolbarShared";
 import type { ToolMode } from "./planTypes";
 import PlanVariantPickerMobile from "./PlanVariantPickerMobile";
-import { PlanExportInline, EXPORT_TYPES } from "./PlanExportMenu";
+import { EXPORT_TYPES } from "./PlanExportMenu";
 import type { ExportConfig, ExportType } from "./PlanExportMenu";
 
 export default function MobileToolbar(props: ToolbarProps) {
@@ -204,56 +204,30 @@ export default function MobileToolbar(props: ToolbarProps) {
         </div>
       )}
 
-      {/* ── Подпанель сметы ──────────────────────────────────────────────────── */}
+      {/* ── Подпанель сметы — 7 иконок, без скролла ─────────────────────────── */}
       {exportOpen && (
         <div
-          className="shrink-0 border-b border-white/[0.06] px-2 py-1.5 flex items-center gap-1 overflow-x-auto"
+          className="shrink-0 border-b border-white/[0.06] px-2 py-1.5 flex items-center justify-between"
           style={{ background: "#121220" }}
         >
-          {/* Переключатель Общий / Покомнатный */}
-          <div className="flex items-center shrink-0 rounded-lg overflow-hidden mr-1"
-            style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.09)" }}>
-            {(["project", "room"] as Array<"project" | "room">).map(s => (
+          {EXPORT_TYPES.map(t => {
+            const active = exportCfg.type === t.id;
+            return (
               <button
-                key={s}
-                onClick={() => setExportCfg(c => ({ ...c, scope: s }))}
-                className="h-9 px-2.5 text-[10px] font-bold transition whitespace-nowrap"
+                key={t.id}
+                onClick={() => setExportCfg(c => ({ ...c, type: t.id as ExportType }))}
+                title={t.label}
+                className="flex-1 mx-0.5 h-9 flex items-center justify-center rounded-lg transition"
                 style={{
-                  background: exportCfg.scope === s ? "rgba(124,58,237,0.35)" : "transparent",
-                  color: exportCfg.scope === s ? "#c4b5fd" : "rgba(255,255,255,0.4)",
-                  borderRight: s === "project" ? "1px solid rgba(255,255,255,0.08)" : undefined,
+                  background: active ? "rgba(124,58,237,0.35)" : "rgba(255,255,255,0.05)",
+                  border: active ? "1px solid rgba(124,58,237,0.5)" : "1px solid rgba(255,255,255,0.08)",
+                  color: active ? "#c4b5fd" : "rgba(255,255,255,0.45)",
                 }}
               >
-                {s === "project" ? "Общий" : "Покомнат."}
+                <Icon name={t.icon} size={15} fallback="FileText" />
               </button>
-            ))}
-          </div>
-
-          {/* 7 типов смет */}
-          {EXPORT_TYPES.map(t => (
-            <button
-              key={t.id}
-              onClick={() => setExportCfg(c => ({ ...c, type: t.id as ExportType }))}
-              title={t.label}
-              className="w-9 h-9 flex items-center justify-center rounded-lg transition shrink-0"
-              style={{
-                background: exportCfg.type === t.id ? "rgba(124,58,237,0.35)" : "rgba(255,255,255,0.05)",
-                border: exportCfg.type === t.id
-                  ? "1px solid rgba(124,58,237,0.5)"
-                  : "1px solid rgba(255,255,255,0.08)",
-                color: exportCfg.type === t.id ? "#c4b5fd" : "rgba(255,255,255,0.45)",
-              }}
-            >
-              <Icon name={t.icon} size={15} fallback="FileText" />
-            </button>
-          ))}
-
-          <div className="flex-1 min-w-2" />
-
-          {/* Подпись выбранного типа */}
-          <span className="text-[10px] shrink-0 whitespace-nowrap" style={{ color: "rgba(255,255,255,0.35)" }}>
-            {EXPORT_TYPES.find(t => t.id === exportCfg.type)?.label}
-          </span>
+            );
+          })}
         </div>
       )}
     </>
