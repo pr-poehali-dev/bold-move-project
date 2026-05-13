@@ -2,7 +2,7 @@ import { useEffect, useState, useRef } from "react";
 import Icon from "@/components/ui/icon";
 import { PlanProject, PlanRoom, usePlanProjects } from "./usePlanProjects";
 import PlanRoomPreview, { getRoomMeta } from "./PlanRoomPreview";
-import { usePlanVariants } from "./usePlanVariants";
+import { usePlanVariants, PlanVariant } from "./usePlanVariants";
 import PlanVariantPicker from "./PlanVariantPicker";
 
 interface Props {
@@ -37,7 +37,7 @@ export default function PlanRoomsScreen({ token, project, onBack, onOpenRoom }: 
   const [menuOpenId,       setMenuOpenId]        = useState<number | null>(null);
   const [varPickerRoomId,       setVarPickerRoomId]       = useState<number | null>(null);
   // варианты по roomId — кешируем при открытии
-  const [variantsByRoom,        setVariantsByRoom]        = useState<Record<number, typeof variants>>({});
+  const [variantsByRoom,        setVariantsByRoom]        = useState<Record<number, PlanVariant[]>>({});
   // активный вариант по roomId — кешируем выбор
   const [activeVarByRoom,       setActiveVarByRoom]       = useState<Record<number, number | null>>({});
   const menuRef = useRef<HTMLDivElement>(null);
@@ -57,7 +57,7 @@ export default function PlanRoomsScreen({ token, project, onBack, onOpenRoom }: 
     loadRooms(project.id).then(list => {
       // Заполняем кеш активных вариантов из данных, пришедших с бэкенда
       const newActiveMap: Record<number, number | null> = {};
-      const newVarMap: Record<number, typeof variants> = {};
+      const newVarMap: Record<number, PlanVariant[]> = {};
       list.forEach(room => {
         if (room.active_variant_id != null) {
           newActiveMap[room.id] = room.active_variant_id;
