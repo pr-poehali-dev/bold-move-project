@@ -79,18 +79,21 @@ export default function MobileToolbar(props: ToolbarProps) {
 
         {/* Сохранить / варианты */}
         {onSaveVariant ? (
-          <div className="relative flex items-center shrink-0">
+          <div className="relative flex items-center gap-1 shrink-0">
+            {/* Кнопка сохранить — компактная, только иконка + текст */}
             <button onClick={onSaveVariant}
-              className="flex items-center gap-1 px-2.5 h-8 rounded-l-lg text-[11px] font-bold bg-white text-[#111] transition hover:bg-white/90"
-              title="Сохранить как новый вариант">
+              className="flex items-center gap-1.5 h-8 px-2.5 rounded-lg text-[11px] font-bold bg-white text-[#111] transition hover:bg-white/90 shrink-0"
+              title="Сохранить вариант">
               <Icon name="Save" size={13} />
               <span>Сохранить</span>
             </button>
-
+            {/* Кнопка вариантов — отдельная */}
             <div className="relative">
               <button onClick={() => setVariantPickerOpen(v => !v)}
-                className="flex items-center justify-center w-8 h-8 rounded-r-lg bg-white text-[#111] border-l border-l-black/10 transition hover:bg-white/90">
-                <Icon name="ChevronDown" size={13} />
+                className="w-8 h-8 flex items-center justify-center rounded-lg transition shrink-0"
+                style={{ background: "rgba(255,255,255,0.09)", border: "1px solid rgba(255,255,255,0.12)", color: "rgba(255,255,255,0.6)" }}
+                title="Варианты">
+                <Icon name="Layers" size={14} />
               </button>
               {variantPickerOpen && (
                 <PlanVariantPickerMobile
