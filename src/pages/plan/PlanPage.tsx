@@ -49,7 +49,7 @@ export default function PlanPage() {
 
   // ── Варианты ─────────────────────────────────────────────────────────────
   const {
-    variants, loading: variantsLoading,
+    variants, loading: variantsLoading, saving: variantSaving,
     activeVariantId, setActiveVariantId,
     loadVariants, saveVariant, deleteVariant, updateVariant, overwriteVariant,
   } = usePlanVariants(token);
