@@ -145,17 +145,7 @@ export default function PlanToolbar(props: ToolbarProps) {
             <Icon name="Save" size={12} />
             <span>Сохранить</span>
           </button>
-          {/* Галочка — перезаписывает активный вариант */}
-          {onOverwriteVariant && (
-            <button
-              onClick={onOverwriteVariant}
-              className="flex items-center justify-center w-8 h-8 bg-white text-[#111] border-l border-l-black/10 hover:bg-white/90 transition-all"
-              title="Обновить текущий вариант"
-              style={{ borderTop: "1px solid white", borderBottom: "1px solid white" }}
-            >
-              <Icon name="Check" size={13} />
-            </button>
-          )}
+
           {/* Дропдаун вариантов */}
           <div className="relative">
             <button

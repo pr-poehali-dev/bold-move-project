@@ -13,7 +13,7 @@ export default function PlanVariantSaveModal({ open, defaultName = "", saving, o
   const [name, setName] = useState(defaultName);
 
   useEffect(() => {
-    if (open) setName(defaultName || `Вариант ${new Date().toLocaleDateString("ru-RU", { day: "numeric", month: "short" })}`);
+    if (open) setName(defaultName || "");
   }, [open, defaultName]);
 
   if (!open) return null;

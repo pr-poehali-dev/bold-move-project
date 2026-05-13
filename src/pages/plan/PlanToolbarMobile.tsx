@@ -86,14 +86,7 @@ export default function MobileToolbar(props: ToolbarProps) {
               <Icon name="Save" size={13} />
               <span>Сохранить</span>
             </button>
-            {onOverwriteVariant && (
-              <button onClick={onOverwriteVariant}
-                className="flex items-center justify-center w-8 h-8 bg-white text-[#111] border-l border-l-black/10 transition hover:bg-white/90"
-                style={{ borderTop: "1px solid white", borderBottom: "1px solid white" }}
-                title="Обновить текущий вариант">
-                <Icon name="Check" size={14} />
-              </button>
-            )}
+
             <div className="relative">
               <button onClick={() => setVariantPickerOpen(v => !v)}
                 className="flex items-center justify-center w-8 h-8 rounded-r-lg bg-white text-[#111] border-l border-l-black/10 transition hover:bg-white/90">
