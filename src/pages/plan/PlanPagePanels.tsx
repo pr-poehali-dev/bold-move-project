@@ -125,7 +125,7 @@ export default function PlanPagePanels({
         catalogOpen={catalog.catalogOpen}
         rightPanelOpen={rightPanelOpen}
         isMobile={isMobile}
-        onToggleVoiceDraw={voiceDraw.hasSpeech ? voiceDraw.toggle : undefined}
+        onToggleVoiceDraw={voiceDraw.hasSpeech && state.points.length === 0 ? voiceDraw.toggle : undefined}
         isVoiceDrawing={voiceDraw.isListening}
         isVoiceProcessing={voiceDraw.isProcessing}
         voiceStatus={voiceDraw.status}
