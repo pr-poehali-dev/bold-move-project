@@ -1017,7 +1017,8 @@ def handler(event: dict, context) -> dict:
                 if not cur.fetchone(): return err("room not found", 404)
                 cur.execute(f"""
                     SELECT id, room_id, name, data, thumbnail, is_active, created_at, updated_at
-                    FROM {SCHEMA}.plan_variants WHERE room_id=%s ORDER BY created_at ASC
+                    FROM {SCHEMA}.plan_variants WHERE room_id=%s AND name NOT LIKE '[удалён]%%'
+                    ORDER BY created_at ASC
                 """, (int(room_id),))
                 cols = [d[0] for d in cur.description]
                 rows = [dict(zip(cols, r)) for r in cur.fetchall()]
