@@ -47,48 +47,48 @@ export function DiscountSliderView({
   const aiLevelLabel = aiRisk?.level === "low" ? "Низкая сложность" : aiRisk?.level === "mid" ? "Средняя сложность" : "Высокая сложность";
 
   return (
-    <div className="px-4 py-4 space-y-4">
+    <div className="px-3 py-3 space-y-3">
 
-      {/* 4 плитки */}
-      <div className="grid grid-cols-4 gap-2">
+      {/* 4 плитки: 2+2 на мобиле, 4 в ряд на десктопе */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
         {/* СКИДКА — кликабельная */}
         <button onClick={() => onOpenModal("pct")}
-          className="rounded-xl px-3 py-2.5 text-center transition hover:brightness-125 active:scale-[0.97] group"
+          className="rounded-xl px-2.5 py-2 text-center transition hover:brightness-125 active:scale-[0.97] group"
           style={{ background: discount > 0 ? accentColor + "18" : "#ffffff08", border: `1px solid ${discount > 0 ? accentColor + "60" : "rgba(245,158,11,0.4)"}`, cursor: "pointer" }}>
-          <div className="flex items-center justify-center gap-1 mb-1">
+          <div className="flex items-center justify-center gap-1 mb-0.5">
             <span className="text-[9px] uppercase tracking-wider font-semibold" style={{ color: "#f59e0b" }}>Скидка</span>
-            <Icon name="Pencil" size={9} style={{ color: "#f59e0b80" }} className="group-hover:opacity-100 opacity-60" />
+            <Icon name="Pencil" size={8} style={{ color: "#f59e0b80" }} className="group-hover:opacity-100 opacity-60" />
           </div>
-          <div className="text-base font-black" style={{ color: accentColor }}>{discount}%</div>
+          <div className="text-base font-black leading-none" style={{ color: accentColor }}>{discount}%</div>
         </button>
 
         {/* СУММА СКИДКИ — кликабельная */}
         <button onClick={() => onOpenModal("amt")}
-          className="rounded-xl px-3 py-2.5 text-center transition hover:brightness-125 active:scale-[0.97] group"
+          className="rounded-xl px-2.5 py-2 text-center transition hover:brightness-125 active:scale-[0.97] group"
           style={{ background: "#ffffff08", border: "1px solid rgba(245,158,11,0.35)", cursor: "pointer" }}>
-          <div className="flex items-center justify-center gap-1 mb-1">
+          <div className="flex items-center justify-center gap-1 mb-0.5">
             <span className="text-[9px] uppercase tracking-wider font-semibold text-white/40">Сумма скидки</span>
-            <Icon name="Pencil" size={9} style={{ color: "rgba(245,158,11,0.5)" }} className="group-hover:opacity-100 opacity-60" />
+            <Icon name="Pencil" size={8} style={{ color: "rgba(245,158,11,0.5)" }} className="group-hover:opacity-100 opacity-60" />
           </div>
-          <div className="text-sm font-black text-white/70">−{fmt(baseIncome * discount / 100)} ₽</div>
+          <div className="text-sm font-black text-white/70 leading-none">−{fmt(baseIncome * discount / 100)} ₽</div>
         </button>
 
         {/* ПРИБЫЛЬ */}
-        <div className="rounded-xl px-3 py-2.5 text-center"
+        <div className="rounded-xl px-2.5 py-2 text-center"
           style={{ background: accentColor + "18", border: `1px solid ${accentColor}35` }}>
-          <div className="text-[9px] uppercase tracking-wider font-semibold mb-1" style={{ color: accentColor }}>
+          <div className="text-[9px] uppercase tracking-wider font-semibold mb-0.5" style={{ color: accentColor }}>
             {isRealLoss ? "Убыток" : "Прибыль"}
           </div>
-          <div className="text-sm font-black" style={{ color: accentColor }}>
+          <div className="text-sm font-black leading-none" style={{ color: accentColor }}>
             {isRealLoss ? "" : "+"}{fmt(discountedProfit)} ₽
           </div>
         </div>
 
         {/* МАРЖА */}
-        <div className="rounded-xl px-3 py-2.5 text-center"
+        <div className="rounded-xl px-2.5 py-2 text-center"
           style={{ background: accentColor + "18", border: `1px solid ${accentColor}35` }}>
-          <div className="text-[9px] uppercase tracking-wider font-semibold mb-1" style={{ color: accentColor }}>Маржа</div>
-          <div className="text-sm font-black" style={{ color: accentColor }}>
+          <div className="text-[9px] uppercase tracking-wider font-semibold mb-0.5" style={{ color: accentColor }}>Маржа</div>
+          <div className="text-sm font-black leading-none" style={{ color: accentColor }}>
             {isRealLoss ? "—" : `${discountedMargin}%`}
           </div>
         </div>
@@ -206,16 +206,16 @@ export function DiscountSliderView({
         />
 
         {/* Легенда */}
-        <div className="flex flex-wrap gap-3 pt-1">
+        <div className="grid grid-cols-3 gap-1 pt-0.5">
           {[
-            { color: "#10b981", label: "Низкий риск",  hint: "маржа в безопасной зоне", range: `0–${zoneLow}%` },
-            { color: "#f59e0b", label: "Средний риск", hint: "стоит взвесить",           range: `${zoneLow}–${zoneMid}%` },
-            { color: "#ef4444", label: "Высокий риск", hint: "маржа под угрозой",        range: `${zoneMid}–${sliderMax}%` },
+            { color: "#10b981", label: "Низкий",  hint: "маржа в безопасной зоне", range: `0–${zoneLow}%` },
+            { color: "#f59e0b", label: "Средний", hint: "стоит взвесить",           range: `${zoneLow}–${zoneMid}%` },
+            { color: "#ef4444", label: "Высокий", hint: "маржа под угрозой",        range: `${zoneMid}–${sliderMax}%` },
           ].map(z => (
-            <div key={z.color} className="flex items-center gap-1.5" title={z.hint}>
-              <div className="w-2 h-2 rounded-full" style={{ background: z.color }} />
-              <span className="text-[10px] font-semibold" style={{ color: z.color }}>{z.label}</span>
-              <span className="text-[9px] text-white/25">{z.range}</span>
+            <div key={z.color} className="flex items-center gap-1 min-w-0" title={z.hint}>
+              <div className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: z.color }} />
+              <span className="text-[9px] font-semibold truncate" style={{ color: z.color }}>{z.label}</span>
+              <span className="text-[9px] text-white/25 flex-shrink-0">{z.range}</span>
             </div>
           ))}
         </div>
@@ -251,17 +251,17 @@ export function DiscountSliderView({
       <div className="flex flex-col gap-2">
         {discount > 0 && (
           <div className="grid grid-cols-2 gap-2">
-            <div className="flex items-center justify-between px-3 py-2 rounded-xl"
+            <div className="flex flex-col gap-0.5 px-2.5 py-2 rounded-xl"
               style={{ background: "#ffffff06", border: `1px solid ${t.border}` }}>
-              <span className="text-[10px] text-white/40 leading-tight">Стоимость<br/>со скидкой</span>
-              <span className="text-[11px] font-bold text-white/70 whitespace-nowrap">{fmt(discountedIncome)} ₽</span>
+              <span className="text-[9px] text-white/40 leading-tight">Стоимость со скидкой</span>
+              <span className="text-[12px] font-bold text-white/70 whitespace-nowrap">{fmt(discountedIncome)} ₽</span>
             </div>
-            <div className="flex items-center justify-between px-3 py-2 rounded-xl"
+            <div className="flex flex-col gap-0.5 px-2.5 py-2 rounded-xl"
               style={{ background: accentColor + "15", border: `1px solid ${accentColor}35` }}>
-              <span className="text-[10px] leading-tight whitespace-nowrap" style={{ color: accentColor }}>
+              <span className="text-[9px] leading-tight whitespace-nowrap" style={{ color: accentColor }}>
                 {isRealLoss ? "Убыток" : "Заработаете"}
               </span>
-              <span className="text-[11px] font-bold whitespace-nowrap" style={{ color: accentColor }}>
+              <span className="text-[12px] font-bold whitespace-nowrap" style={{ color: accentColor }}>
                 {isRealLoss ? "" : "+"}{fmt(discountedProfit)} ₽
               </span>
             </div>

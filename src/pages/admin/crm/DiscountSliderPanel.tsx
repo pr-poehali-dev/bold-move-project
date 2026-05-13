@@ -76,23 +76,23 @@ export function DiscountSliderPanel({
     <div className="rounded-2xl overflow-hidden" style={{ border: `1px solid ${borderColor}`, background: "#f59e0b08" }}>
 
       {/* Шапка */}
-      <div className="flex items-center gap-2 px-4 py-2.5" style={{ borderBottom: `1px solid ${borderColor}` }}>
-        <Icon name="Tag" size={13} style={{ color: "#f59e0b" }} />
-        <span className="text-xs font-bold uppercase tracking-wider flex-1 text-yellow-400">
+      <div className="flex items-center gap-2 px-3 py-2" style={{ borderBottom: `1px solid ${borderColor}` }}>
+        <Icon name="Tag" size={12} style={{ color: "#f59e0b", flexShrink: 0 }} />
+        <span className="text-[11px] font-bold uppercase tracking-wider flex-1 min-w-0 truncate text-yellow-400">
           Оценка риска скидки
         </span>
         <button onClick={() => setRiskPopupOpen(true)}
-          className="flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-bold transition hover:opacity-80"
+          className="flex items-center justify-center w-7 h-7 rounded-lg transition hover:opacity-80 flex-shrink-0"
           style={{ background: "rgba(139,92,246,0.1)", color: "#a78bfa", border: "1px solid rgba(139,92,246,0.25)" }}
           title="Настройки правил скидки">
-          <Icon name="Settings2" size={11} />
+          <Icon name="Settings2" size={12} />
         </button>
         <button onClick={onAnalysisClick} disabled={analysisLoading}
-          className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-bold transition disabled:opacity-50 hover:opacity-80"
+          className="flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-bold transition disabled:opacity-50 hover:opacity-80 flex-shrink-0 whitespace-nowrap"
           style={{ background: "rgba(16,185,129,0.12)", color: "#34d399", border: "1px solid rgba(16,185,129,0.3)" }}>
           {analysisLoading
-            ? <><div className="w-2.5 h-2.5 border-2 border-current/30 border-t-current rounded-full animate-spin" /> Анализ...</>
-            : <><Icon name="BarChart2" size={11} /> Анализ объекта</>
+            ? <><div className="w-2.5 h-2.5 border-2 border-current/30 border-t-current rounded-full animate-spin" /><span className="hidden sm:inline">Анализ...</span></>
+            : <><Icon name="BarChart2" size={11} /><span className="hidden sm:inline"> Анализ объекта</span><span className="sm:hidden">Анализ</span></>
           }
         </button>
       </div>
