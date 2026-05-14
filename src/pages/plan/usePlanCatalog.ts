@@ -222,12 +222,14 @@ export function usePlanCatalog(
     push({ ...s, segments: newSegments });
   }, [stateRef, push]);
 
-  // Установить суммарное количество — распределяем поровну по всем стенам
+  // Установить суммарное количество — делим поровну, округляя вверх до кратного 2
   const setItemQuantity = useCallback((priceId: number, value: number) => {
     const s = stateRef.current;
     const segsWithItem = s.segments.filter(seg => (seg.items ?? []).some(it => it.priceId === priceId));
     const count = segsWithItem.length || 1;
-    const perSeg = Math.max(0.01, Math.round((value / count) * 100) / 100);
+    const raw = value / count;
+    // Округляем вверх до кратного 2
+    const perSeg = Math.max(2, Math.ceil(raw / 2) * 2);
     const newSegments = s.segments.map(seg => ({
       ...seg,
       items: (seg.items ?? []).map(it =>
