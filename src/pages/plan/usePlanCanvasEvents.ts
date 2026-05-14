@@ -22,6 +22,9 @@ export function usePlanCanvasEvents({ state, onChange, onReplace, cs }: Params) 
     setGhost, dimLineFrom, setDimLineFrom, setCtxMenu, setDeleteHover,
   } = cs;
 
+  // Блокируем mouse-click после touch чтобы избежать двойного вызова
+  const lastTouchEndRef = useRef<number>(0);
+
   const {
     points, segments, diagonals, dimLines,
     isClosed, settings, tool, phase,
@@ -366,7 +369,7 @@ export function usePlanCanvasEvents({ state, onChange, onReplace, cs }: Params) 
         return;
       }
 
-      const hitSeg = findNearestSegment(raw.x, raw.y, points, segments, 16);
+      const hitSeg = findNearestSegment(raw.x, raw.y, points, segments, 28);
       if (hitSeg) {
         if (tool === "delete") {
           onChange({ segments: segments.filter(s => s.id !== hitSeg.id), isClosed: false, phase: "draw" });
@@ -414,6 +417,7 @@ export function usePlanCanvasEvents({ state, onChange, onReplace, cs }: Params) 
     }
 
     dragRef.current = null; panRef.current = null; didMoveRef.current = false;
+    lastTouchEndRef.current = Date.now();
   }, [tool, phase, isClosed, points, segments, diagonals, dimLines, dimLineFrom,
       clientToSvg, applySnap, onChange, onReplace, clearLongPress,
       pinchRef, panRef, dragRef, nearbyPtRef, didMoveRef, setDimLineFrom]);
@@ -456,6 +460,7 @@ export function usePlanCanvasEvents({ state, onChange, onReplace, cs }: Params) 
   // ── Click (мышь) ──────────────────────────────────────────────────────────
   const handleCanvasClick = useCallback((e: React.MouseEvent<SVGSVGElement>) => {
     if (isPanning.current) return;
+    if (Date.now() - lastTouchEndRef.current < 350) return;
     setCtxMenu(null);
     const isCanvas = e.target === svgRef.current || (e.target as Element).classList.contains("canvas-bg");
     if (!isCanvas) {
@@ -545,6 +550,7 @@ export function usePlanCanvasEvents({ state, onChange, onReplace, cs }: Params) 
 
   const handleSegmentClick = useCallback((e: React.MouseEvent, segId: string) => {
     e.stopPropagation(); setCtxMenu(null);
+    if (Date.now() - lastTouchEndRef.current < 350) return;
     if (tool === "delete") { onChange({ segments: segments.filter(s => s.id !== segId), isClosed: false }); return; }
     if (tool === "arc") {
       const seg = segments.find(s => s.id === segId);
