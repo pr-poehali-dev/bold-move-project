@@ -284,8 +284,8 @@ export default function PlanRoomsScreen({ token, project, onBack, onOpenRoom }: 
 
                     {/* Название поверх плана — левый нижний угол */}
                     {!isEditing && (
-                      <div className="absolute bottom-0 left-0 right-0 px-3 pb-3 pt-6"
-                        style={{ background: "linear-gradient(to top, rgba(0,0,0,0.75) 0%, transparent 100%)" }}>
+                      <div className="absolute bottom-0 left-0 right-0 px-3 pb-5 pt-10"
+                        style={{ background: "linear-gradient(to top, rgba(0,0,0,0.85) 0%, transparent 100%)" }}>
                         <span className="font-bold text-[13px] text-white drop-shadow">{room.name}</span>
                       </div>
                     )}
