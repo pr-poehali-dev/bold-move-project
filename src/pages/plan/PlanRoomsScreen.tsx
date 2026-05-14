@@ -281,10 +281,10 @@ export default function PlanRoomsScreen({ token, project, onBack, onOpenRoom }: 
                     <div style={{ pointerEvents: "none", width: "100%", height: 164 }}>
                       <PlanRoomPreview data={room.data ?? {}} width={400} height={164}/>
                     </div>
-                    {/* Полоска с названием — 36px снизу, не перекрывает чертёж */}
+                    {/* Полоска с названием — 36px снизу с градиентом */}
                     {!isEditing && (
-                      <div className="absolute bottom-0 left-0 right-0 flex items-center justify-center"
-                        style={{ height: 36, background: "rgba(10,10,24,0.95)", borderTop: "1px solid rgba(255,255,255,0.06)" }}>
+                      <div className="absolute bottom-0 left-0 right-0 flex items-end justify-center pb-2"
+                        style={{ height: 56, background: "linear-gradient(to top, rgba(10,10,24,1) 0%, rgba(10,10,24,0.7) 50%, transparent 100%)" }}>
                         <span className="font-bold text-[13px] text-white truncate px-3">{room.name}</span>
                       </div>
                     )}
