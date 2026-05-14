@@ -413,10 +413,10 @@ export default function PlanProjectsScreen({ token, onSelectProject }: Props) {
                 style={{ background: "#0e0e1c", border: "1px solid rgba(255,255,255,0.06)" }}
               >
                 {/* Статус — вертикальная полоска слева */}
-                <div className="flex-shrink-0 flex items-center justify-center w-10 self-stretch"
-                  style={{ background: `linear-gradient(to bottom, ${sc.glow ?? sc.bg}, ${sc.bg}, transparent)` }}>
+                <div className="flex-shrink-0 flex items-center justify-center w-12 self-stretch px-1"
+                  style={{ background: `linear-gradient(to right, ${sc.glow ?? sc.bg}, transparent)` }}>
                   <span className="font-bold uppercase whitespace-nowrap select-none"
-                    style={{ color: sc.text, writingMode: "vertical-rl", transform: "rotate(180deg)", fontSize: 11, letterSpacing: "0.12em" }}>
+                    style={{ color: sc.text, writingMode: "vertical-rl", transform: "rotate(180deg)", fontSize: 10, letterSpacing: "0.1em" }}>
                     {STATUSES.find(s => s.id === project.status)?.label ?? project.status}
                   </span>
                 </div>
