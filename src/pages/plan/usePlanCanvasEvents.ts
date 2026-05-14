@@ -25,6 +25,9 @@ export function usePlanCanvasEvents({ state, onChange, onReplace, cs }: Params) 
   // Блокируем mouse-click после touch чтобы избежать двойного вызова
   const lastTouchEndRef = useRef<number>(0);
 
+  // Двойной тап по пустой области полигона → выбрать все стены
+  const lastEmptyTapRef = useRef<number>(0);
+
   const {
     points, segments, diagonals, dimLines,
     isClosed, settings, tool, phase,
@@ -421,7 +424,15 @@ export function usePlanCanvasEvents({ state, onChange, onReplace, cs }: Params) 
           onChange({ points: newPts, segments: newSegs });
         }
       } else {
-        onChange({ selectedPointId: null, selectedSegmentId: null, selectedSegmentIds: [], selectedDiagonalId: null });
+        const now = Date.now();
+        if (isClosed && now - lastEmptyTapRef.current < 300) {
+          // Двойной тап внутри полигона — выбрать все стены
+          lastEmptyTapRef.current = 0;
+          onChange({ selectedSegmentIds: segments.map(s => s.id), selectedSegmentId: segments[segments.length - 1]?.id ?? null, selectedPointId: null, selectedDiagonalId: null });
+        } else {
+          lastEmptyTapRef.current = now;
+          onChange({ selectedPointId: null, selectedSegmentId: null, selectedSegmentIds: [], selectedDiagonalId: null });
+        }
       }
     }
 
