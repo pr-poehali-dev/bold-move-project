@@ -8,7 +8,7 @@ interface Props {
   selectedSegmentId: string | null;
   selectedSegmentIds?: string[];
   onClose: () => void;
-  onAssignToSeg: (item: SegmentPriceItem, segId: string) => void;
+  onAssignToSegs: (item: SegmentPriceItem, segIds: string[]) => void;
   onAddToActive: (item: SegmentPriceItem) => void;
 }
 
@@ -18,7 +18,7 @@ export default function PlanCatalogPanel({
   selectedSegmentId,
   selectedSegmentIds,
   onClose,
-  onAssignToSeg,
+  onAssignToSegs,
   onAddToActive,
 }: Props) {
   return (
@@ -32,8 +32,10 @@ export default function PlanCatalogPanel({
           ? selectedSegmentIds
           : selectedSegmentId ? [selectedSegmentId] : [];
         if (ids.length > 0) {
-          ids.forEach(segId => onAssignToSeg(item, segId));
+          // Назначаем на все выбранные стены атомарно (один push)
+          onAssignToSegs(item, ids);
         } else {
+          // Нет выбранных стен — просто добавляем в нижнюю панель
           onAddToActive(item);
         }
       }}

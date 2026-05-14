@@ -28,6 +28,7 @@ export interface PlanCatalogState {
   attachedCount: number;
   findClosestSeg: (clientX: number, clientY: number, useLargeThreshold?: boolean) => string | null;
   assignItemToSeg: (item: SegmentPriceItem, segId: string) => void;
+  assignItemToSegs: (item: SegmentPriceItem, segIds: string[]) => void;
   assignItemToAllSegs: (item: SegmentPriceItem) => void;
   removeItemFromAllSegs: (priceId: number) => void;
   removeActiveItem: (priceId: number) => void;
@@ -125,6 +126,22 @@ export function usePlanCatalog(
     push({ ...s, segments: newSegments });
     setActiveItems(prev => prev.filter(it => it.priceId !== priceId));
     setTapActiveId(prev => (prev === priceId ? null : prev));
+  }, [stateRef, push]);
+
+  // Привязать товар сразу к нескольким стенам одним push (атомарно)
+  const assignItemToSegs = useCallback((item: SegmentPriceItem, segIds: string[]) => {
+    const s = stateRef.current;
+    const idSet = new Set(segIds);
+    const newSegments = s.segments.map(seg => {
+      if (!idSet.has(seg.id)) return seg;
+      const existing = seg.items ?? [];
+      if (existing.some(it => it.priceId === item.priceId)) return seg;
+      const meters = seg.lengthCm ? Math.round(seg.lengthCm / 100 * 100) / 100 : 1;
+      return { ...seg, items: [...existing, { ...item, quantity: meters }] };
+    });
+    push({ ...s, segments: newSegments });
+    setActiveItems(prev => prev.some(it => it.priceId === item.priceId) ? prev : [...prev, item]);
+    setTapActiveId(item.priceId);
   }, [stateRef, push]);
 
   // Добавить товар на все стены (quantity = длина каждой стены)
@@ -460,7 +477,7 @@ export function usePlanCatalog(
     hoverSegId, setHoverSegId,
     filterAttached, setFilterAttached,
     attachedCount,
-    findClosestSeg, assignItemToSeg, assignItemToAllSegs, removeItemFromAllSegs, removeActiveItem, isItemOnAllSegs, adjustItemQuantity, setItemQuantity,
+    findClosestSeg, assignItemToSeg, assignItemToSegs, assignItemToAllSegs, removeItemFromAllSegs, removeActiveItem, isItemOnAllSegs, adjustItemQuantity, setItemQuantity,
     pendingFloorItem, setPendingFloorItem, confirmFloorItem,
     editingFloorId, setEditingFloorId, editingFloorItem, confirmEditFloorItem,
   };
