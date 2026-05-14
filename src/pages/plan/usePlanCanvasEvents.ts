@@ -348,6 +348,19 @@ export function usePlanCanvasEvents({ state, onChange, onReplace, cs }: Params) 
       const t = e.changedTouches[0];
       const raw = clientToSvg(t.clientX, t.clientY);
 
+      // Двойной тап в любом месте полигона — выбрать все стены
+      if (isClosed) {
+        const now = Date.now();
+        if (now - lastEmptyTapRef.current < 300) {
+          lastEmptyTapRef.current = 0;
+          dragRef.current = null; panRef.current = null;
+          onChange({ selectedSegmentIds: segments.map(s => s.id), selectedSegmentId: segments[segments.length - 1]?.id ?? null, selectedPointId: null, selectedDiagonalId: null });
+          lastTouchEndRef.current = Date.now();
+          return;
+        }
+        lastEmptyTapRef.current = now;
+      }
+
       const hitPt = points.find(p => distPx(p, { id: "", x: raw.x, y: raw.y }) < PT_HIT);
       if (hitPt) {
         if (tool === "delete") {
@@ -424,15 +437,7 @@ export function usePlanCanvasEvents({ state, onChange, onReplace, cs }: Params) 
           onChange({ points: newPts, segments: newSegs });
         }
       } else {
-        const now = Date.now();
-        if (isClosed && now - lastEmptyTapRef.current < 300) {
-          // Двойной тап внутри полигона — выбрать все стены
-          lastEmptyTapRef.current = 0;
-          onChange({ selectedSegmentIds: segments.map(s => s.id), selectedSegmentId: segments[segments.length - 1]?.id ?? null, selectedPointId: null, selectedDiagonalId: null });
-        } else {
-          lastEmptyTapRef.current = now;
-          onChange({ selectedPointId: null, selectedSegmentId: null, selectedSegmentIds: [], selectedDiagonalId: null });
-        }
+        onChange({ selectedPointId: null, selectedSegmentId: null, selectedSegmentIds: [], selectedDiagonalId: null });
       }
     }
 
@@ -483,6 +488,11 @@ export function usePlanCanvasEvents({ state, onChange, onReplace, cs }: Params) 
     if (Date.now() - lastTouchEndRef.current < 350) return;
     setCtxMenu(null);
     const isCanvas = e.target === svgRef.current || (e.target as Element).classList.contains("canvas-bg");
+    // Двойной клик работает в любом месте полигона, не только по пустому фону
+    if (isClosed && e.detail === 2) {
+      onChange({ selectedSegmentIds: segments.map(s => s.id), selectedSegmentId: segments[segments.length - 1]?.id ?? null, selectedPointId: null, selectedDiagonalId: null });
+      return;
+    }
     if (!isCanvas) {
       if (tool !== "draw") onChange({ selectedPointId: null, selectedSegmentId: null, selectedSegmentIds: [], selectedDiagonalId: null, selectedArcId: null, selectedDimLineId: null });
       return;
@@ -504,12 +514,7 @@ export function usePlanCanvasEvents({ state, onChange, onReplace, cs }: Params) 
       if (points.length > 0) newSegs.push({ id: genId("s"), fromId: points[points.length - 1].id, toId: np.id, lengthCm: null, showLength: true, showDimLine: true, arcRadius: 0 });
       onChange({ points: newPts, segments: newSegs });
     } else {
-      if (isClosed && e.detail === 2) {
-        // Двойной клик по пустой области — выбрать все стены
-        onChange({ selectedSegmentIds: segments.map(s => s.id), selectedSegmentId: segments[segments.length - 1]?.id ?? null, selectedPointId: null, selectedDiagonalId: null });
-      } else {
-        onChange({ selectedPointId: null, selectedSegmentId: null, selectedSegmentIds: [], selectedDiagonalId: null, selectedArcId: null, selectedDimLineId: null });
-      }
+      onChange({ selectedPointId: null, selectedSegmentId: null, selectedSegmentIds: [], selectedDiagonalId: null, selectedArcId: null, selectedDimLineId: null });
     }
   }, [tool, phase, isClosed, points, segments, diagonals, clientToSvg, applySnap, onChange, isPanning, svgRef, setCtxMenu, setGhost]);
 
