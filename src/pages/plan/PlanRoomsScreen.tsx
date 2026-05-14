@@ -284,8 +284,8 @@ export default function PlanRoomsScreen({ token, project, onBack, onOpenRoom }: 
 
                     {/* Название поверх плана — левый нижний угол */}
                     {!isEditing && (
-                      <div className="absolute bottom-0 left-0 right-0 px-3 py-2"
-                        style={{ background: "linear-gradient(to top, rgba(0,0,0,0.7) 0%, transparent 100%)" }}>
+                      <div className="absolute bottom-0 left-0 right-0 px-3 pb-3 pt-6"
+                        style={{ background: "linear-gradient(to top, rgba(0,0,0,0.75) 0%, transparent 100%)" }}>
                         <span className="font-bold text-[13px] text-white drop-shadow">{room.name}</span>
                       </div>
                     )}
@@ -339,7 +339,7 @@ export default function PlanRoomsScreen({ token, project, onBack, onOpenRoom }: 
                   {(meta.areaSqm !== null || meta.perimM !== null) && (
                     <div className="px-2.5 pt-1.5 flex flex-wrap gap-x-2 gap-y-0.5">
                       {meta.areaSqm !== null && <span className="text-[11px] font-semibold" style={{ color: "#818cf8" }}>Площадь {meta.areaSqm} м²</span>}
-                      {meta.areaSqm !== null && meta.perimM !== null && <span style={{ color: "rgba(255,255,255,0.2)", fontSize: 11 }}>•</span>}
+                      {meta.areaSqm !== null && meta.perimM !== null && <span style={{ color: "rgba(255,255,255,0.2)", fontSize: 11 }}> </span>}
                       {meta.perimM !== null && <span className="text-[11px] font-semibold" style={{ color: "#818cf8" }}>Периметр {meta.perimM} м</span>}
                     </div>
                   )}
