@@ -409,26 +409,26 @@ export default function PlanProjectsScreen({ token, onSelectProject }: Props) {
             return (
               <div
                 key={project.id}
-                className="rounded-2xl overflow-hidden transition group"
+                className="rounded-2xl overflow-hidden transition group flex"
                 style={{ background: "#0e0e1c", border: "1px solid rgba(255,255,255,0.06)" }}
               >
+                {/* Статус — вертикальная полоска слева */}
+                <div className="flex-shrink-0 flex items-center justify-center w-8 self-stretch"
+                  style={{ background: `linear-gradient(to bottom, ${sc.bg}, ${sc.text}22)` }}>
+                  <span className="text-[9px] font-bold uppercase tracking-widest whitespace-nowrap"
+                    style={{ color: sc.text, writingMode: "vertical-rl", transform: "rotate(180deg)" }}>
+                    {STATUSES.find(s => s.id === project.status)?.label ?? project.status}
+                  </span>
+                </div>
+
+                {/* Правая часть */}
+                <div className="flex-1 min-w-0">
                 {/* Основная строка */}
                 <div className="px-4 py-3.5 flex items-center gap-3">
-                  {/* Иконка */}
                   <button
                     className="flex items-start gap-3 flex-1 min-w-0 text-left hover:opacity-90 transition active:scale-[0.99]"
                     onClick={() => onSelectProject(project)}
                   >
-                    {/* Статус вертикально вместо иконки */}
-                    <div className="flex-shrink-0 flex flex-col items-center justify-center w-10 gap-0.5">
-                      {(STATUSES.find(s => s.id === project.status)?.label ?? project.status).split(" ").map((word, i) => (
-                        <span key={i} className="text-[9px] font-bold uppercase tracking-wide leading-tight text-center"
-                          style={{ color: sc.text }}>
-                          {word}
-                        </span>
-                      ))}
-                    </div>
-
                     {/* Данные */}
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1">
@@ -505,6 +505,7 @@ export default function PlanProjectsScreen({ token, onSelectProject }: Props) {
                     {isDeleting ? "..." : "Удалить"}
                   </button>
                 </div>
+                </div>{/* /правая часть */}
               </div>
             );
           })}
