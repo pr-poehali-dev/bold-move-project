@@ -257,6 +257,8 @@ export function usePlanCanvasEvents({ state, onChange, onReplace, cs }: Params) 
       const dx = e.touches[0].clientX - e.touches[1].clientX;
       const dy = e.touches[0].clientY - e.touches[1].clientY;
       const dist = Math.sqrt(dx * dx + dy * dy);
+      // Игнорируем микро-дрожание < 2px
+      if (Math.abs(dist - pinchRef.current.dist) < 2) return;
       // ratio от предыдущего шага (не от начала) — точный инкрементальный зум
       const stepRatio = dist / pinchRef.current.dist;
       const cur = settingsRef.current;
