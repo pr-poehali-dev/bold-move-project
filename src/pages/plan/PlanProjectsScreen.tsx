@@ -419,19 +419,20 @@ export default function PlanProjectsScreen({ token, onSelectProject }: Props) {
                     className="flex items-start gap-3 flex-1 min-w-0 text-left hover:opacity-90 transition active:scale-[0.99]"
                     onClick={() => onSelectProject(project)}
                   >
-                    <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 mt-0.5"
-                      style={{ background: "rgba(124,58,237,0.12)" }}>
-                      <Icon name="Building2" size={18} style={{ color: "#a78bfa" }} />
+                    {/* Статус вертикально вместо иконки */}
+                    <div className="flex-shrink-0 flex flex-col items-center justify-center w-10 gap-0.5">
+                      {(STATUSES.find(s => s.id === project.status)?.label ?? project.status).split(" ").map((word, i) => (
+                        <span key={i} className="text-[9px] font-bold uppercase tracking-wide leading-tight text-center"
+                          style={{ color: sc.text }}>
+                          {word}
+                        </span>
+                      ))}
                     </div>
 
                     {/* Данные */}
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1">
                         <span className="text-white font-bold text-[14px] truncate">{project.name}</span>
-                        <span className="text-[10px] px-2 py-0.5 rounded-full font-bold flex-shrink-0 uppercase tracking-wide"
-                          style={{ background: sc.bg, color: sc.text }}>
-                          {STATUSES.find(s => s.id === project.status)?.label ?? project.status}
-                        </span>
                       </div>
                       <div className="flex flex-col gap-0.5">
                         {project.client_name && (
