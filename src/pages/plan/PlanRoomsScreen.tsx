@@ -269,32 +269,31 @@ export default function PlanRoomsScreen({ token, project, onBack, onOpenRoom }: 
                   className="rounded-2xl flex flex-col overflow-visible"
                   style={{ background: "#0e0e1c", border: "1px solid rgba(255,255,255,0.07)" }}
                 >
-                  {/* Превью на весь верх — название + hover overlay */}
+                  {/* Превью с названием внутри */}
                   <button onClick={() => {
                     const activeId = activeVarByRoom[room.id];
                     const activeVar = activeId != null ? variantsByRoom[room.id]?.find(v => v.id === activeId) : null;
                     onOpenRoom(activeVar ? { ...room, data: activeVar.data } : room);
                   }}
                     className="relative group w-full rounded-t-2xl overflow-hidden"
-                    style={{ height: 180 }}>
-                    {/* Живой план */}
-                    <div style={{ pointerEvents: "none", width: "100%", height: "100%" }}>
-                      <PlanRoomPreview data={room.data ?? {}} width={400} height={180}/>
+                    style={{ height: 200 }}>
+                    {/* Живой план — только верхние 164px, снизу место для названия */}
+                    <div style={{ pointerEvents: "none", width: "100%", height: 164 }}>
+                      <PlanRoomPreview data={room.data ?? {}} width={400} height={164}/>
                     </div>
-
+                    {/* Полоска с названием — 36px снизу, не перекрывает чертёж */}
+                    {!isEditing && (
+                      <div className="absolute bottom-0 left-0 right-0 flex items-center justify-center"
+                        style={{ height: 36, background: "rgba(10,10,24,0.95)", borderTop: "1px solid rgba(255,255,255,0.06)" }}>
+                        <span className="font-bold text-[13px] text-white truncate px-3">{room.name}</span>
+                      </div>
+                    )}
                     {/* Hover */}
                     <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition"
                       style={{ background: "rgba(0,0,0,0.35)" }}>
                       <span className="text-[11px] font-bold text-white px-2.5 py-1 rounded-lg" style={{ background: "rgba(0,0,0,0.6)" }}>Открыть</span>
                     </div>
                   </button>
-
-                  {/* Название под превью */}
-                  {!isEditing && (
-                    <div className="flex justify-center items-center py-2">
-                      <span className="font-bold text-[13px] text-white text-center">{room.name}</span>
-                    </div>
-                  )}
 
                   {/* Переименование (если активно) */}
                   {isEditing && (
