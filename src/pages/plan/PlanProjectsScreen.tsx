@@ -2,6 +2,7 @@ import { useEffect, useState, useMemo } from "react";
 import Icon from "@/components/ui/icon";
 import { PlanProject, usePlanProjects } from "./usePlanProjects";
 import PlanExportModal from "./PlanExportMenu";
+import PlanMaterialsScreen from "./PlanMaterialsScreen";
 
 interface Props {
   token?: string | null;
@@ -157,8 +158,9 @@ function ProjectForm({
 export default function PlanProjectsScreen({ token, onSelectProject }: Props) {
   const { projects, loading, loadProjects, createProject, updateProject, deleteProject } = usePlanProjects(token);
 
-  const [exportOpen,   setExportOpen]   = useState(false);
-  const [exportProject, setExportProject] = useState<PlanProject | null>(null);
+  const [exportOpen,      setExportOpen]      = useState(false);
+  const [exportProject,   setExportProject]   = useState<PlanProject | null>(null);
+  const [materialsProject, setMaterialsProject] = useState<PlanProject | null>(null);
   const [showCreate,   setShowCreate]   = useState(false);
   const [editingId,    setEditingId]    = useState<number | null>(null);
   const [deletingId,   setDeletingId]   = useState<number | null>(null);
@@ -245,6 +247,16 @@ export default function PlanProjectsScreen({ token, onSelectProject }: Props) {
       await loadProjects();
     } finally { setDeletingId(null); }
   };
+
+  if (materialsProject) {
+    return (
+      <PlanMaterialsScreen
+        project={materialsProject}
+        token={token}
+        onBack={() => setMaterialsProject(null)}
+      />
+    );
+  }
 
   return (
     <div className="min-h-screen flex flex-col" style={{ background: "#07070f" }}>
@@ -444,19 +456,29 @@ export default function PlanProjectsScreen({ token, onSelectProject }: Props) {
                     </div>
                   </button>
 
-                  {/* Кнопка Смета — большой блок справа */}
-                  <button
-                    onClick={() => { setExportProject(project); setExportOpen(true); }}
-                    className="flex-shrink-0 flex flex-col items-center justify-center gap-1.5 rounded-xl transition hover:brightness-110 active:scale-95"
-                    style={{
-                      width: 68, height: 68,
-                      background: "rgba(124,58,237,0.12)",
-                      border: "1px solid rgba(124,58,237,0.25)",
-                    }}
-                  >
-                    <Icon name="FileDown" size={22} style={{ color: "#a78bfa" }} />
-                    <span className="text-[10px] font-bold uppercase tracking-wide" style={{ color: "#a78bfa" }}>Смета</span>
-                  </button>
+                  {/* Две кнопки справа */}
+                  <div className="flex-shrink-0 flex flex-col gap-1.5">
+                    {/* Скачать смету */}
+                    <button
+                      onClick={() => { setExportProject(project); setExportOpen(true); }}
+                      className="flex flex-col items-center justify-center gap-1 rounded-xl transition hover:brightness-110 active:scale-95"
+                      style={{ width: 64, height: 52, background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)" }}
+                      title="Скачать смету"
+                    >
+                      <Icon name="FileDown" size={18} style={{ color: "rgba(255,255,255,0.8)" }} />
+                      <span className="text-[9px] font-bold uppercase tracking-wide" style={{ color: "rgba(255,255,255,0.55)" }}>Смета</span>
+                    </button>
+                    {/* Материалы */}
+                    <button
+                      onClick={() => setMaterialsProject(project)}
+                      className="flex flex-col items-center justify-center gap-1 rounded-xl transition hover:brightness-110 active:scale-95"
+                      style={{ width: 64, height: 52, background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)" }}
+                      title="Материалы"
+                    >
+                      <Icon name="ClipboardList" size={18} style={{ color: "rgba(255,255,255,0.8)" }} />
+                      <span className="text-[9px] font-bold uppercase tracking-wide" style={{ color: "rgba(255,255,255,0.55)" }}>Состав</span>
+                    </button>
+                  </div>
                 </div>
 
                 {/* Кнопки действий */}
