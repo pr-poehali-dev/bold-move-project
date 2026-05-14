@@ -34,6 +34,10 @@ export function usePlanCanvasEvents({ state, onChange, onReplace, cs }: Params) 
   const toolRef = useRef(tool);
   useEffect(() => { toolRef.current = tool; }, [tool]);
 
+  // Ref для актуальных settings — чтобы pinch/pan всегда читал свежие zoom/panX/panY
+  const settingsRef = useRef(settings);
+  useEffect(() => { settingsRef.current = settings; }, [settings]);
+
   // Если масштаб установлен — snap по 1 см, иначе по gridSize пикселей
   const effectiveGridSize = state.baseScale ? state.baseScale : gridSize;
 
@@ -176,8 +180,12 @@ export function usePlanCanvasEvents({ state, onChange, onReplace, cs }: Params) 
       e.preventDefault();
       const dx = e.touches[0].clientX - e.touches[1].clientX;
       const dy = e.touches[0].clientY - e.touches[1].clientY;
-      pinchRef.current = { dist: Math.sqrt(dx * dx + dy * dy), zoom };
+      const midX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
+      const midY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+      pinchRef.current = { dist: Math.sqrt(dx * dx + dy * dy), zoom: settingsRef.current.zoom, midX, midY };
       panRef.current = null;
+      dragRef.current = null;
+      clearLongPress();
       return;
     }
 
@@ -225,18 +233,34 @@ export function usePlanCanvasEvents({ state, onChange, onReplace, cs }: Params) 
       panRef.current = { startX: t.clientX, startY: t.clientY, origPanX: panX, origPanY: panY };
     }
   }, [tool, points, segments, diagonals, clientToSvg, panX, panY, zoom, clearLongPress,
-      pinchRef, panRef, dragRef, nearbyPtRef, didMoveRef, longPressRef, longPressPos, setVibrated, setCtxMenu]);
+      pinchRef, panRef, dragRef, nearbyPtRef, didMoveRef, longPressRef, longPressPos, setVibrated, setCtxMenu, settingsRef]);
 
   const handleTouchMove = useCallback((e: React.TouchEvent<SVGSVGElement>) => {
     e.preventDefault();
     if (longPressRef.current) clearLongPress();
 
-    if (e.touches.length === 2 && pinchRef.current) {
+    if (e.touches.length === 2) {
+      // Сбрасываем pan — мы в режиме pinch
+      panRef.current = null;
+      dragRef.current = null;
+
+      if (!pinchRef.current) {
+        // Инициализируем pinch если ещё не было (второй палец лёг во время move)
+        const dx0 = e.touches[0].clientX - e.touches[1].clientX;
+        const dy0 = e.touches[0].clientY - e.touches[1].clientY;
+        const mid0X = (e.touches[0].clientX + e.touches[1].clientX) / 2;
+        const mid0Y = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+        pinchRef.current = { dist: Math.sqrt(dx0 * dx0 + dy0 * dy0), zoom: settingsRef.current.zoom, midX: mid0X, midY: mid0Y };
+        return;
+      }
+
       const dx = e.touches[0].clientX - e.touches[1].clientX;
       const dy = e.touches[0].clientY - e.touches[1].clientY;
       const dist = Math.sqrt(dx * dx + dy * dy);
-      const ratio = dist / pinchRef.current.dist;
-      const newZoom = Math.max(0.3, Math.min(4, pinchRef.current.zoom * ratio));
+      // ratio от предыдущего шага (не от начала) — точный инкрементальный зум
+      const stepRatio = dist / pinchRef.current.dist;
+      const cur = settingsRef.current;
+      const newZoom = Math.max(0.3, Math.min(4, cur.zoom * stepRatio));
 
       const svg = svgRef.current;
       const rect = svg ? svg.getBoundingClientRect() : { left: 0, top: 0 };
@@ -244,17 +268,18 @@ export function usePlanCanvasEvents({ state, onChange, onReplace, cs }: Params) 
       const midY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
 
       // Зум к точке под пальцами: точка в SVG-координатах остаётся на месте
-      const originX = (midX - rect.left) / zoom - settings.panX;
-      const originY = (midY - rect.top)  / zoom - settings.panY;
+      const originX = (midX - rect.left) / cur.zoom - cur.panX;
+      const originY = (midY - rect.top)  / cur.zoom - cur.panY;
       const newPanX = (midX - rect.left) / newZoom - originX;
       const newPanY = (midY - rect.top)  / newZoom - originY;
 
-      // Дополнительный пан если центр между пальцами сместился
+      // Пан от смещения центра между пальцами
       const panDx = pinchRef.current.midX !== undefined ? (midX - pinchRef.current.midX) / newZoom : 0;
       const panDy = pinchRef.current.midY !== undefined ? (midY - pinchRef.current.midY) / newZoom : 0;
 
+      // Обновляем dist и mid для следующего шага
       pinchRef.current = { ...pinchRef.current, dist, midX, midY };
-      onChange({ settings: { ...settings, zoom: newZoom, panX: newPanX + panDx, panY: newPanY + panDy } });
+      onChange({ settings: { ...cur, zoom: newZoom, panX: newPanX + panDx, panY: newPanY + panDy } });
       didMoveRef.current = true;
       return;
     }
@@ -289,7 +314,7 @@ export function usePlanCanvasEvents({ state, onChange, onReplace, cs }: Params) 
       }
     }
   }, [tool, points, segments, clientToSvg, applySnap, diagonals, onChange, onReplace, settings, zoom,
-      clearLongPress, pinchRef, panRef, dragRef, didMoveRef, longPressRef, svgRef]);
+      clearLongPress, pinchRef, panRef, dragRef, didMoveRef, longPressRef, svgRef, settingsRef]);
 
   const handleTouchEnd = useCallback((e: React.TouchEvent<SVGSVGElement>) => {
     pinchRef.current = null;
