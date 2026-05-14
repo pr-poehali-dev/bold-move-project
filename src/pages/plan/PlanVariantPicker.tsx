@@ -85,18 +85,15 @@ export default function PlanVariantPicker({ variants, loading, activeVariantId, 
                   border: isActive ? "1px solid rgba(124,58,237,0.4)" : "1px solid rgba(255,255,255,0.06)",
                 }}>
 
-                {/* Превью — кнопка "Открыть" всегда видна */}
-                <div className="relative w-full" style={{ height: 110 }}>
+                {/* Превью — кнопка "Открыть" только при наведении */}
+                <div className="relative w-full group/prev" style={{ height: 110 }}>
                   <div style={{ width: "100%", height: "100%" }}>
                     <PlanRoomPreview data={v.data ?? {}} width={340} height={110} />
                   </div>
-                  {/* Кнопка "Открыть" — всегда поверх превью */}
                   <button
                     onClick={() => onLoad(v)}
-                    className="absolute inset-0 w-full flex items-center justify-center transition"
-                    style={{ background: "rgba(0,0,0,0)" }}
-                    onMouseEnter={e => (e.currentTarget.style.background = "rgba(0,0,0,0.4)")}
-                    onMouseLeave={e => (e.currentTarget.style.background = "rgba(0,0,0,0)")}
+                    className="absolute inset-0 w-full flex items-center justify-center transition opacity-0 group-hover/prev:opacity-100"
+                    style={{ background: "rgba(0,0,0,0.35)" }}
                   >
                     <span
                       className="text-[12px] font-bold text-white px-3 py-1.5 rounded-xl pointer-events-none"

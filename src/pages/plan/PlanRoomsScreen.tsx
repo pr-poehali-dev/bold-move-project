@@ -373,6 +373,10 @@ export default function PlanRoomsScreen({ token, project, onBack, onOpenRoom }: 
                           activeVariantId={activeVarByRoom[room.id] ?? null}
                           onSelect={v => {
                             setActiveVarByRoom(prev => ({ ...prev, [room.id]: v.id }));
+                            setVariantsByRoom(prev => ({
+                              ...prev,
+                              [room.id]: (prev[room.id] ?? []).map(x => ({ ...x, is_active: x.id === v.id })),
+                            }));
                             updateVariant(v.id, { is_active: true });
                             setVarPickerRoomId(null);
                           }}

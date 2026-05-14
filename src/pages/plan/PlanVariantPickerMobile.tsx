@@ -64,20 +64,20 @@ export default function PlanVariantPickerMobile({ variants, loading, activeVaria
                   border: isActive ? "1px solid rgba(124,58,237,0.4)" : "1px solid rgba(255,255,255,0.06)",
                 }}>
 
-                {/* Превью — кнопка "Открыть" всегда видна поверх */}
+                {/* Превью — кнопка "Открыть" снизу, не перекрывает чертёж */}
                 <div className="relative w-full" style={{ height: 120 }}>
                   <div style={{ width: "100%", height: "100%" }}>
                     <PlanRoomPreview data={v.data ?? {}} width={340} height={120} />
                   </div>
-                  {/* Кнопка "Открыть" — поверх превью, всегда видна */}
+                  {/* Кнопка "Открыть" — прозрачный оверлей, label внизу */}
                   <button
                     onClick={() => onLoad(v)}
-                    className="absolute inset-0 w-full flex items-center justify-center"
-                    style={{ background: "rgba(0,0,0,0.25)" }}
+                    className="absolute inset-0 w-full flex items-end justify-start pb-2 pl-2.5"
+                    style={{ background: "transparent" }}
                   >
                     <span
-                      className="text-[13px] font-bold text-white px-4 py-2 rounded-xl pointer-events-none"
-                      style={{ background: "rgba(124,58,237,0.85)" }}
+                      className="text-[11px] font-bold text-white px-2.5 py-1 rounded-lg pointer-events-none"
+                      style={{ background: "rgba(0,0,0,0.55)", border: "1px solid rgba(255,255,255,0.12)" }}
                     >
                       Открыть
                     </span>
