@@ -13,12 +13,15 @@ const THUMBNAIL_MAX = 8000; // bytes для base64
 export function useRoomAutoSave(
   roomId: number | null,
   state: PlanState,
-  token: string | null | undefined
+  token: string | null | undefined,
+  activeVariantId?: number | null
 ) {
   const [saveStatus, setSaveStatus] = useState<RoomSaveStatus>("idle");
   const timerRef    = useRef<ReturnType<typeof setTimeout> | null>(null);
   const savedRef    = useRef<string>("");
   const statusTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const variantIdRef = useRef<number | null | undefined>(activeVariantId);
+  variantIdRef.current = activeVariantId;
 
   const stateStr = JSON.stringify(state);
 
@@ -26,17 +29,27 @@ export function useRoomAutoSave(
     if (!roomId || !token) return;
     setSaveStatus("saving");
     try {
-      // Генерируем SVG-превью если есть точки
       const thumbnail = planState.points.length >= 2
         ? (getSvgDataUrl(planState, 0.4) ?? "").slice(0, THUMBNAIL_MAX)
         : null;
 
+      const varId = variantIdRef.current;
+      if (varId) {
+        // Есть активный вариант — перезаписываем его
+        await fetch(`${CRM_URL}?r=plan-variants&id=${varId}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
+          body: JSON.stringify({
+            data: planState,
+            is_active: true,
+            ...(thumbnail ? { thumbnail } : {}),
+          }),
+        });
+      }
+      // Всегда обновляем room.data как черновик (для быстрой загрузки)
       await fetch(`${CRM_URL}?r=plan-rooms&id=${roomId}`, {
         method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`,
-        },
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
         body: JSON.stringify({
           data: planState,
           ...(thumbnail ? { thumbnail } : {}),

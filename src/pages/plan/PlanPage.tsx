@@ -33,19 +33,20 @@ export default function PlanPage() {
   const { loadRoom } = usePlanProjects(token);
   const [roomLoading, setRoomLoading] = useState(false);
 
-  // ── Автосохранение в комнату ──────────────────────────────────────────────
-  const { saveStatus: roomSaveStatus } = useRoomAutoSave(
-    activeRoom?.id ?? null,
-    state,
-    token
-  );
-
   // ── Варианты ─────────────────────────────────────────────────────────────
   const variantsHook = usePlanVariants(token);
   const {
     variants, loading: variantsLoading, saving: variantSaving,
     activeVariantId, loadVariants,
   } = variantsHook;
+
+  // ── Автосохранение в комнату ──────────────────────────────────────────────
+  const { saveStatus: roomSaveStatus } = useRoomAutoSave(
+    activeRoom?.id ?? null,
+    state,
+    token,
+    activeVariantId
+  );
   const [variantModalOpen, setVariantModalOpen] = useState(false);
 
   // ── UI-флаги ──────────────────────────────────────────────────────────────
