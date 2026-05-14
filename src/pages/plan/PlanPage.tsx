@@ -161,9 +161,9 @@ export default function PlanPage() {
   const currentPlanName = storage.plans.find(p => p.id === storage.currentPlanId)?.name
     ?? (state as PlanState).room.name ?? "Без названия";
 
-  // При hover подсвечиваем стену через selectedSegmentId
+  // При hover подсвечиваем стену через selectedSegmentId (только визуально, selectedSegmentIds не меняем)
   const displayState = catalog.hoverSegId
-    ? { ...state, selectedSegmentId: catalog.hoverSegId }
+    ? { ...state, selectedSegmentId: catalog.hoverSegId, selectedSegmentIds: state.selectedSegmentIds ?? [] }
     : state;
 
   // Дефолтное количество для модалки "добавить на полотно"

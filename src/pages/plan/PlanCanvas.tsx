@@ -7,20 +7,21 @@ import type { SegmentHandlers } from "./PlanCanvasRenderers";
 
 interface Props {
   state: PlanState;
+  eventState?: PlanState;
   onChange: (patch: Partial<PlanState>) => void;
   onReplace: (patch: Partial<PlanState>) => void;
   onOpenCatalog?: () => void;
   onEditFloorItem?: (id: string) => void;
 }
 
-export default function PlanCanvas({ state, onChange, onReplace, onOpenCatalog, onEditFloorItem }: Props) {
+export default function PlanCanvas({ state, eventState, onChange, onReplace, onOpenCatalog, onEditFloorItem }: Props) {
   const { tool } = state;
 
   // ── Локальные стейты и refs ───────────────────────────────────────────────
   const cs = usePlanCanvasState(tool);
 
-  // ── Все обработчики событий ───────────────────────────────────────────────
-  const events = usePlanCanvasEvents({ state, onChange, onReplace, cs });
+  // ── Все обработчики событий (используем реальный state, не display) ───────
+  const events = usePlanCanvasEvents({ state: eventState ?? state, onChange, onReplace, cs });
 
   // ── Cursor ────────────────────────────────────────────────────────────────
   const cursor = cs.isPanning.current

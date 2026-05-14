@@ -36,6 +36,7 @@ export default function PlanCanvasArea({
       <div id="plan-canvas-wrap" className="flex-1 overflow-hidden relative">
         <PlanCanvas
           state={displayState}
+          eventState={state}
           onChange={handleChange}
           onReplace={handleReplace}
           onOpenCatalog={() => catalog.setCatalogOpen(true)}
