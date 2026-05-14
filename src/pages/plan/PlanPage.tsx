@@ -78,7 +78,7 @@ export default function PlanPage() {
     };
   }, []);
 
-  const catalog = usePlanCatalog(stateRef, push);
+  const catalog = usePlanCatalog(stateRef, push, state);
 
   // Онбординг для незарегистрированных — через 3 сек
   useEffect(() => {
@@ -231,6 +231,7 @@ export default function PlanPage() {
           const hasData = dataSource && Object.keys(dataSource).length > 0 && dataSource.points;
           loadingFromRoomRef.current = true;
           lastClosedSegId.current = null;
+          catalog.setTapActiveId(null);
           reset(hasData ? { ...INITIAL_STATE, ...dataSource, selectedSegmentId: null } : INITIAL_STATE);
           // Сбрасываем флаг после следующего рендера
           setTimeout(() => { loadingFromRoomRef.current = false; }, 150);
@@ -282,6 +283,7 @@ export default function PlanPage() {
           setSheetOpen(false);
           setSidebarOpen(false);
           catalog.setCatalogOpen(false);
+          catalog.setTapActiveId(null);
           setTimeout(() => { loadingFromRoomRef.current = false; }, 150);
           variantHandlers.handleLoadVariant(id, data);
         }}

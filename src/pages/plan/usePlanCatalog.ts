@@ -49,6 +49,7 @@ export interface PlanCatalogState {
 export function usePlanCatalog(
   stateRef: React.MutableRefObject<PlanState>,
   push: (s: PlanState) => void,
+  state: PlanState,
 ): PlanCatalogState {
   const [catalogOpen,    setCatalogOpen]    = useState(false);
   const [prices,         setPrices]         = useState<PriceEntry[]>([]);
@@ -64,6 +65,34 @@ export function usePlanCatalog(
   const [pendingFloorItem,  setPendingFloorItem]  = useState<SegmentPriceItem | null>(null);
   // Редактирование существующего floorItem (id + данные для модалки)
   const [editingFloorId,    setEditingFloorId]    = useState<string | null>(null);
+
+  // Синхронизация activeItems с товарами в сегментах текущего варианта/комнаты
+  // Собираем уникальные товары из всех segments[].items и floorItems
+  useEffect(() => {
+    const seenPriceIds = new Set<number>();
+    const derived: SegmentPriceItem[] = [];
+    for (const seg of state.segments) {
+      for (const it of seg.items ?? []) {
+        if (!seenPriceIds.has(it.priceId)) {
+          seenPriceIds.add(it.priceId);
+          derived.push(it);
+        }
+      }
+    }
+    setActiveItems(prev => {
+      // Добавляем новые товары из сегментов, убираем те которых больше нет
+      const next = derived.filter(d => {
+        // Товар есть в сегментах — оставляем
+        return true;
+      });
+      // Если набор priceId совпадает — не обновляем (избегаем лишних ре-рендеров)
+      const prevIds = new Set(prev.map(i => i.priceId));
+      const nextIds = new Set(next.map(i => i.priceId));
+      const sameSet = prevIds.size === nextIds.size && [...nextIds].every(id => prevIds.has(id));
+      if (sameSet) return prev;
+      return next;
+    });
+  }, [state.segments]);
 
   // Загружаем прайс один раз
   useEffect(() => {
