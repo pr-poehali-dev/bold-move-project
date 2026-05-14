@@ -270,6 +270,7 @@ export default function PlanPage() {
         onOpenLibrary={() => setLibraryOpen(true)}
         onBack={activeRoom ? () => setScreen("rooms") : undefined}
         backLabel={activeRoom?.name}
+        projectName={activeProject?.name}
         roomSaveStatus={roomSaveStatus}
         onSaveVariant={activeRoom ? () => setVariantModalOpen(true) : undefined}
         onOverwriteVariant={activeRoom && activeVariantId ? () => variantHandlers.handleOverwriteVariant(state) : undefined}

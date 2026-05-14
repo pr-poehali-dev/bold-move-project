@@ -12,7 +12,7 @@ export default function MobileToolbar(props: ToolbarProps) {
     tool,
     canUndo, canRedo,
     onToolChange, onUndo, onRedo, onOpenLibrary, onReset,
-    onBack, onSaveVariant, onOverwriteVariant, variants, variantsLoading,
+    onBack, backLabel, projectName, onSaveVariant, onOverwriteVariant, variants, variantsLoading,
     activeVariantId, onLoadVariant, onDeleteVariant, onRenameVariant, onSelectVariant,
   } = props;
 
@@ -60,15 +60,20 @@ export default function MobileToolbar(props: ToolbarProps) {
         className="bg-[#161616] border-b border-white/[0.08] shrink-0 flex items-center gap-1 px-2"
         style={{ height: 52 }}
       >
-        {/* Назад */}
+        {/* Назад + название комнаты */}
         {onBack && (
           <>
             <button
               onClick={onBack}
-              className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0 transition-all text-white/50 hover:text-white hover:bg-white/[0.07]"
+              className="flex items-center gap-1 h-9 px-1.5 rounded-lg shrink-0 transition-all text-white/50 hover:text-white hover:bg-white/[0.07]"
               title="Назад"
             >
               <Icon name="ChevronLeft" size={18} />
+              {backLabel && (
+                <span className="text-[11px] font-medium text-white/60 max-w-[90px] truncate leading-none">
+                  {backLabel}
+                </span>
+              )}
             </button>
             <div className="w-px h-4 bg-white/10 shrink-0" />
           </>
