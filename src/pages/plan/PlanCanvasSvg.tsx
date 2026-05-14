@@ -95,6 +95,11 @@ export default function PlanCanvasSvg({
           <path d={shapePath} fill="rgba(139,92,246,0.07)" stroke="none" className="pointer-events-none" />
         )}
 
+        {/* Зона двойного клика внутри полигона — меняет курсор, намекая на "выбрать все" */}
+        {isClosed && points.length >= 3 && tool !== "draw" && (
+          <path d={shapePath} fill="transparent" stroke="none" style={{ cursor: "cell", pointerEvents: "fill" }} />
+        )}
+
         {/* Контур */}
         {points.length >= 2 && (
           <path d={shapePath} fill="none" stroke={isClosed ? "#a78bfa" : "#6366f1"} strokeWidth={2} strokeLinejoin="round" className="pointer-events-none" />
