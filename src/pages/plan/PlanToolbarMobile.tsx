@@ -18,16 +18,40 @@ export default function MobileToolbar(props: ToolbarProps) {
 
   const [toolsOpen,         setToolsOpen]         = React.useState(false);
   const [exportOpen,        setExportOpen]         = React.useState(false);
+  const [settingsOpen,      setSettingsOpen]       = React.useState(false);
   const [confirmReset,      setConfirmReset]       = React.useState(false);
   const [variantPickerOpen, setVariantPickerOpen]  = React.useState(false);
   const [pinned]            = React.useState<ToolMode[]>(loadPinned);
   const [exportCfg,         setExportCfg]          = React.useState<ExportConfig>({ scope: "project", type: "offer" });
 
+  const { settings, onSettingChange } = props;
+
+  const SETTINGS_ITEMS = [
+    { key: "ortho",             label: "Ортогональный",   icon: "Axis3d"         },
+    { key: "snapToPoints",      label: "Магнит",          icon: "Magnet"         },
+    { key: "showGrid",          label: "Сетка",           icon: "Grid3x3"        },
+    { key: "showPoints",        label: "Точки",           icon: "CircleDot"      },
+    { key: "showPointLabels",   label: "Метки точек",     icon: "Tag"            },
+    { key: "showSegmentLabels", label: "Подписи",         icon: "Type"           },
+    { key: "showAngleLabels",   label: "Углы",            icon: "Angle"          },
+    { key: "showDiagonals",     label: "Диагонали",       icon: "ArrowUpRight"   },
+    { key: "showDimLines",      label: "Размерные линии", icon: "ArrowLeftRight" },
+  ];
+
   const activeToolDef = ALL_TOOLS_MENU.find(t => t.id === tool);
 
+  // Закрываем настройки при клике вне
+  React.useEffect(() => {
+    if (!settingsOpen) return;
+    const handler = (e: MouseEvent | TouchEvent) => setSettingsOpen(false);
+    document.addEventListener("mousedown", handler);
+    document.addEventListener("touchstart", handler);
+    return () => { document.removeEventListener("mousedown", handler); document.removeEventListener("touchstart", handler); };
+  }, [settingsOpen]);
+
   // Закрываем одну панель при открытии другой
-  const openTools  = () => { setToolsOpen(v => !v); setExportOpen(false); };
-  const openExport = () => { setExportOpen(v => !v); setToolsOpen(false); };
+  const openTools  = () => { setToolsOpen(v => !v); setExportOpen(false); setSettingsOpen(false); };
+  const openExport = () => { setExportOpen(v => !v); setToolsOpen(false); setSettingsOpen(false); };
 
   return (
     <>
@@ -99,6 +123,42 @@ export default function MobileToolbar(props: ToolbarProps) {
         )}
 
         <div className="flex-1" />
+
+        {/* Кнопка настроек */}
+        <div className="relative shrink-0">
+          {settingsOpen && (
+            <div
+              className="fixed z-[9999] bg-[#1c1c2e] border border-white/[0.12] rounded-2xl shadow-2xl p-2 flex flex-col gap-0.5 min-w-[210px]"
+              style={{ right: 8, top: 56 }}
+              onClick={e => e.stopPropagation()}
+            >
+              {SETTINGS_ITEMS.map(({ key, label, icon }) => (
+                <button key={key}
+                  className={`flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-[12px] font-medium transition-all text-left w-full ${
+                    settings[key as keyof typeof settings]
+                      ? "bg-violet-600/20 text-violet-200 border border-violet-500/30"
+                      : "text-white/60 hover:bg-white/[0.06]"
+                  }`}
+                  onClick={() => onSettingChange({ [key]: !settings[key as keyof typeof settings] })}>
+                  <Icon name={icon} size={14} />
+                  <span className="flex-1">{label}</span>
+                  {settings[key as keyof typeof settings] && <Icon name="Check" size={11} className="text-violet-400" />}
+                </button>
+              ))}
+            </div>
+          )}
+          <button
+            onClick={() => setSettingsOpen(v => !v)}
+            className={`w-9 h-9 flex items-center justify-center rounded-lg transition-all ${
+              settingsOpen
+                ? "bg-violet-600/30 border border-violet-500/50 text-violet-300"
+                : "bg-white/[0.06] border border-white/[0.08] text-white/70 hover:bg-white/[0.10]"
+            }`}
+            title="Настройки"
+          >
+            <Icon name="SlidersHorizontal" size={15} />
+          </button>
+        </div>
 
         {/* Сохранить / варианты */}
         {onSaveVariant ? (
