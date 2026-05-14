@@ -1096,6 +1096,12 @@ def handler(event: dict, context) -> dict:
                 if not sets: return err("nothing to update")
                 sets.append("updated_at=NOW()")
                 vals.append(int(vid))
+                if body.get("is_active"):
+                    cur.execute(f"""
+                        UPDATE {SCHEMA}.plan_variants SET is_active=false
+                        WHERE room_id=(SELECT room_id FROM {SCHEMA}.plan_variants WHERE id=%s)
+                        AND id != %s
+                    """, (int(vid), int(vid)))
                 cur.execute(f"""
                     UPDATE {SCHEMA}.plan_variants SET {','.join(sets)} WHERE id=%s
                     AND room_id IN (
