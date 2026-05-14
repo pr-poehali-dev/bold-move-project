@@ -277,14 +277,14 @@ export default function PlanRoomsScreen({ token, project, onBack, onOpenRoom }: 
                   }}
                     className="relative group w-full rounded-t-2xl overflow-hidden"
                     style={{ height: 200 }}>
-                    {/* Живой план — только верхние 164px, снизу место для названия */}
+                    {/* Живой план — только верхние 164px */}
                     <div style={{ pointerEvents: "none", width: "100%", height: 164 }}>
                       <PlanRoomPreview data={room.data ?? {}} width={400} height={164}/>
                     </div>
-                    {/* Полоска с названием — 36px снизу с градиентом */}
+                    {/* Название — нижние 36px с градиентом только внутри этой зоны */}
                     {!isEditing && (
-                      <div className="absolute bottom-0 left-0 right-0 flex items-end justify-center pb-2"
-                        style={{ height: 56, background: "linear-gradient(to top, rgba(10,10,24,1) 0%, rgba(10,10,24,0.7) 50%, transparent 100%)" }}>
+                      <div className="flex items-center justify-center"
+                        style={{ height: 36, background: "linear-gradient(to bottom, rgba(10,10,24,0) 0%, rgba(10,10,24,0.95) 40%, rgba(10,10,24,1) 100%)" }}>
                         <span className="font-bold text-[13px] text-white truncate px-3">{room.name}</span>
                       </div>
                     )}
