@@ -37,6 +37,10 @@ export function usePlanCanvasEvents({ state, onChange, onReplace, cs }: Params) 
   const toolRef = useRef(tool);
   useEffect(() => { toolRef.current = tool; }, [tool]);
 
+  // Ref для актуального selectedSegmentIds — чтобы избежать stale closure в touch-обработчиках
+  const selectedSegmentIdsRef = useRef<string[]>(state.selectedSegmentIds ?? []);
+  useEffect(() => { selectedSegmentIdsRef.current = state.selectedSegmentIds ?? []; }, [state.selectedSegmentIds]);
+
   // Ref для актуальных settings — чтобы pinch/pan всегда читал свежие zoom/panX/panY
   const settingsRef = useRef(settings);
   useEffect(() => { settingsRef.current = settings; }, [settings]);
@@ -198,8 +202,8 @@ export function usePlanCanvasEvents({ state, onChange, onReplace, cs }: Params) 
       const raw = clientToSvg(t.clientX, t.clientY);
 
       const hitPt   = points.find(p => distPx(p, { id: "", x: raw.x, y: raw.y }) < PT_HIT);
-      const hitSeg  = !hitPt ? findNearestSegment(raw.x, raw.y, points, segments, 18) : null;
-      const hitDiag = !hitPt && !hitSeg ? findNearestDiagonal(raw.x, raw.y, points, diagonals, 18) : null;
+      const hitSeg  = !hitPt ? findNearestSegment(raw.x, raw.y, points, segments, 28) : null;
+      const hitDiag = !hitPt && !hitSeg ? findNearestDiagonal(raw.x, raw.y, points, diagonals, 28) : null;
 
       if (hitPt || hitSeg || hitDiag) {
         const type = hitPt ? "point" : hitSeg ? "segment" : "diagonal";
@@ -233,7 +237,10 @@ export function usePlanCanvasEvents({ state, onChange, onReplace, cs }: Params) 
         // Нет прямого попадания в точку — drag не начинаем, только pan
         nearbyPtRef.current = null;
       }
-      panRef.current = { startX: t.clientX, startY: t.clientY, origPanX: panX, origPanY: panY };
+      // Если попали в сегмент — не устанавливаем pan, чтобы дрожание пальца не сбивало клик
+      if (!hitSeg) {
+        panRef.current = { startX: t.clientX, startY: t.clientY, origPanX: panX, origPanY: panY };
+      }
     }
   }, [tool, points, segments, diagonals, clientToSvg, panX, panY, zoom, clearLongPress,
       pinchRef, panRef, dragRef, nearbyPtRef, didMoveRef, longPressRef, longPressPos, setVibrated, setCtxMenu, settingsRef]);
@@ -371,13 +378,15 @@ export function usePlanCanvasEvents({ state, onChange, onReplace, cs }: Params) 
 
       const hitSeg = findNearestSegment(raw.x, raw.y, points, segments, 28);
       if (hitSeg) {
+        e.preventDefault();
+        lastTouchEndRef.current = Date.now();
         if (tool === "delete") {
           onChange({ segments: segments.filter(s => s.id !== hitSeg.id), isClosed: false, phase: "draw" });
         } else if (tool === "arc") {
           const newR = (hitSeg.arcRadius + 15) % 90;
           onChange({ segments: segments.map(s => s.id === hitSeg.id ? { ...s, arcRadius: newR } : s) });
         } else {
-          const prev2 = state.selectedSegmentIds ?? [];
+          const prev2 = selectedSegmentIdsRef.current;
           const isSelected2 = prev2.includes(hitSeg.id);
           const next2 = isSelected2 ? prev2.filter(id => id !== hitSeg.id) : [...prev2, hitSeg.id];
           onChange({ selectedSegmentIds: next2, selectedSegmentId: next2.length > 0 ? next2[next2.length - 1] : null, selectedPointId: null });
@@ -557,7 +566,7 @@ export function usePlanCanvasEvents({ state, onChange, onReplace, cs }: Params) 
       if (seg) onChange({ segments: segments.map(s => s.id === segId ? { ...s, arcRadius: (seg.arcRadius + 15) % 90 } : s) });
       return;
     }
-    const prev = state.selectedSegmentIds ?? [];
+    const prev = selectedSegmentIdsRef.current;
     const isSelected = prev.includes(segId);
     const next = isSelected ? prev.filter(id => id !== segId) : [...prev, segId];
     onChange({
