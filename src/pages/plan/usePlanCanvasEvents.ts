@@ -351,7 +351,7 @@ export function usePlanCanvasEvents({ state, onChange, onReplace, cs }: Params) 
       // Двойной тап в любом месте полигона — выбрать все стены
       if (isClosed) {
         const now = Date.now();
-        if (now - lastEmptyTapRef.current < 300) {
+        if (now - lastEmptyTapRef.current < 450) {
           lastEmptyTapRef.current = 0;
           dragRef.current = null; panRef.current = null;
           onChange({ selectedSegmentIds: segments.map(s => s.id), selectedSegmentId: segments[segments.length - 1]?.id ?? null, selectedPointId: null, selectedDiagonalId: null });
