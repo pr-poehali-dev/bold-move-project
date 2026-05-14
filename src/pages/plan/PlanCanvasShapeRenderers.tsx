@@ -14,6 +14,7 @@ export function renderPoints(ctx: RenderContext, handlers: SegmentHandlers) {
   if (!showPoints) return null;
   const cx = points.length > 0 ? points.reduce((s, p) => s + p.x, 0) / points.length : 0;
   const cy = points.length > 0 ? points.reduce((s, p) => s + p.y, 0) / points.length : 0;
+  const n = points.length;
 
   return points.map((pt, idx) => {
     const isSel = pt.id === selectedPointId;
@@ -21,11 +22,32 @@ export function renderPoints(ctx: RenderContext, handlers: SegmentHandlers) {
     const seg = segments.find(s => s.toId === pt.id);
     const hasArc = seg ? seg.arcRadius > 0 : false;
 
-    const dx = pt.x - cx;
-    const dy = pt.y - cy;
-    const dlen = Math.sqrt(dx * dx + dy * dy) || 1;
-    const lx = pt.x + (dx / dlen) * 18;
-    const ly = pt.y + (dy / dlen) * 18;
+    // Биссектриса угла: среднее направление от двух соседних рёбер
+    let lx: number, ly: number;
+    if (isClosed && n >= 3) {
+      const prev = points[(idx - 1 + n) % n];
+      const next = points[(idx + 1) % n];
+      // Единичные векторы вдоль рёбер от pt
+      const ax = prev.x - pt.x, ay = prev.y - pt.y;
+      const bx = next.x - pt.x, by = next.y - pt.y;
+      const la = Math.sqrt(ax * ax + ay * ay) || 1;
+      const lb = Math.sqrt(bx * bx + by * by) || 1;
+      let ox = ax / la + bx / lb;
+      let oy = ay / la + by / lb;
+      const ol = Math.sqrt(ox * ox + oy * oy) || 1;
+      ox /= ol; oy /= ol;
+      // Проверяем что направление — наружу (от центра), иначе инвертируем
+      const toCenter = { x: cx - pt.x, y: cy - pt.y };
+      if (ox * toCenter.x + oy * toCenter.y > 0) { ox = -ox; oy = -oy; }
+      lx = pt.x + ox * 18;
+      ly = pt.y + oy * 18;
+    } else {
+      const dx = pt.x - cx;
+      const dy = pt.y - cy;
+      const dlen = Math.sqrt(dx * dx + dy * dy) || 1;
+      lx = pt.x + (dx / dlen) * 18;
+      ly = pt.y + (dy / dlen) * 18;
+    }
 
     return (
       <g key={pt.id}
