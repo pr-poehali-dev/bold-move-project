@@ -284,7 +284,7 @@ export default function PlanRoomsScreen({ token, project, onBack, onOpenRoom }: 
                     {/* Название — нижние 36px с градиентом только внутри этой зоны */}
                     {!isEditing && (
                       <div className="flex items-center justify-center"
-                        style={{ height: 36, background: "linear-gradient(to bottom, rgba(10,10,24,0) 0%, rgba(10,10,24,0.95) 40%, rgba(10,10,24,1) 100%)" }}>
+                        style={{ height: 36, background: "linear-gradient(to bottom, rgba(10,10,24,0.6) 0%, rgba(10,10,24,1) 100%)" }}>
                         <span className="font-bold text-[13px] text-white truncate px-3">{room.name}</span>
                       </div>
                     )}
