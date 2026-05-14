@@ -222,14 +222,21 @@ export default function PlanPage() {
             loadRoom(room.id),
             loadVariants(room.id),
           ]);
-          // Если room.data уже передан с данными варианта — используем его.
-          // Иначе ищем активный вариант из только что загруженного списка.
-          const activeVariant = (variantList as PlanVariant[]).find(v => v.is_active);
-          const roomHasOverrideData = room.data && Object.keys(room.data as object).length > 0 && (room.data as PlanState).points;
-          const dataSource: PlanState | undefined = roomHasOverrideData
-            ? (room.data as PlanState)
-            : activeVariant
-              ? (activeVariant.data as PlanState)
+          // Активный вариант имеет наивысший приоритет.
+          // Только если вариантов нет — берём room.data или loaded.data.
+          const vlist = variantList as PlanVariant[];
+          let activeVariant = vlist.find(v => v.is_active);
+          // Если варианты есть, но ни один не активен — авто-активируем первый
+          if (!activeVariant && vlist.length > 0) {
+            activeVariant = vlist[0];
+            variantsHook.updateVariant(activeVariant.id, { is_active: true });
+          }
+          const hasVariants = vlist.length > 0;
+          const roomHasOverrideData = !hasVariants && room.data && Object.keys(room.data as object).length > 0 && (room.data as PlanState).points;
+          const dataSource: PlanState | undefined = activeVariant
+            ? (activeVariant.data as PlanState)
+            : roomHasOverrideData
+              ? (room.data as PlanState)
               : (loaded?.data as PlanState | undefined);
           const hasData = dataSource && Object.keys(dataSource).length > 0 && dataSource.points;
           loadingFromRoomRef.current = true;
