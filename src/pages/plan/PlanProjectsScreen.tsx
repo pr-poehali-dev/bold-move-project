@@ -324,13 +324,13 @@ export default function PlanProjectsScreen({ token, onSelectProject }: Props) {
                 </button>
               )}
             </div>
-            {/* Фильтр по статусу — перенос на мобиле, обёртка на ПК */}
-            <div className="flex flex-wrap gap-1.5">
+            {/* Фильтр по статусу — один ряд */}
+            <div className="flex gap-1.5 overflow-x-auto" style={{ scrollbarWidth: "none" }}>
               {STATUSES.map(s => (
                 <button
                   key={s.id}
                   onClick={() => setFilterStatus(s.id)}
-                  className="px-3 py-1.5 rounded-full text-[12px] font-semibold transition whitespace-nowrap"
+                  className="px-2.5 py-1 rounded-full text-[11px] font-semibold transition whitespace-nowrap shrink-0"
                   style={{
                     background: filterStatus === s.id
                       ? (s.id === "all" ? "rgba(255,255,255,0.15)" : (STATUS_COLORS[s.id]?.bg ?? "rgba(255,255,255,0.1)"))
