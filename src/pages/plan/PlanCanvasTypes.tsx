@@ -20,6 +20,7 @@ export interface RenderContext {
   showPointLabels: boolean;
   selectedPointId: string | null;
   selectedSegmentId: string | null;
+  selectedSegmentIds: string[];
   selectedDiagonalId: string | null;
   selectedArcId: string | null;
   selectedDimLineId: string | null;

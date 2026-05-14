@@ -360,7 +360,7 @@ export function usePlanCanvasEvents({ state, onChange, onReplace, cs }: Params) 
             setDimLineFrom(null);
           }
         } else {
-          onChange({ selectedPointId: hitPt.id, selectedSegmentId: null, selectedDiagonalId: null });
+          onChange({ selectedPointId: hitPt.id, selectedSegmentId: null, selectedSegmentIds: [], selectedDiagonalId: null });
         }
         dragRef.current = null; panRef.current = null;
         return;
@@ -374,7 +374,10 @@ export function usePlanCanvasEvents({ state, onChange, onReplace, cs }: Params) 
           const newR = (hitSeg.arcRadius + 15) % 90;
           onChange({ segments: segments.map(s => s.id === hitSeg.id ? { ...s, arcRadius: newR } : s) });
         } else {
-          onChange({ selectedSegmentId: hitSeg.id, selectedPointId: null });
+          const prev2 = state.selectedSegmentIds ?? [];
+          const isSelected2 = prev2.includes(hitSeg.id);
+          const next2 = isSelected2 ? prev2.filter(id => id !== hitSeg.id) : [...prev2, hitSeg.id];
+          onChange({ selectedSegmentIds: next2, selectedSegmentId: next2.length > 0 ? next2[next2.length - 1] : null, selectedPointId: null });
         }
         dragRef.current = null; panRef.current = null;
         return;
@@ -397,7 +400,7 @@ export function usePlanCanvasEvents({ state, onChange, onReplace, cs }: Params) 
           const closing: Segment = { id: genId("s"), fromId: points[points.length - 1].id, toId: points[0].id, lengthCm: null, showLength: true, showDimLine: true, arcRadius: 0 };
           const newSegs = [...segments, closing];
           const newDiags = buildAutoDiagonals(points, diagonals);
-          onChange({ segments: newSegs, diagonals: newDiags, isClosed: true, phase: "lengths", tool: "move", activeInputIndex: 0, selectedSegmentId: null, sidebarTab: "drawing" });
+          onChange({ segments: newSegs, diagonals: newDiags, isClosed: true, phase: "lengths", tool: "move", activeInputIndex: 0, selectedSegmentId: null, selectedSegmentIds: [], sidebarTab: "drawing" });
         } else {
           const np: Point = { id: genId("pt"), x, y };
           const newPts = [...points, np];
@@ -406,7 +409,7 @@ export function usePlanCanvasEvents({ state, onChange, onReplace, cs }: Params) 
           onChange({ points: newPts, segments: newSegs });
         }
       } else {
-        onChange({ selectedPointId: null, selectedSegmentId: null, selectedDiagonalId: null });
+        onChange({ selectedPointId: null, selectedSegmentId: null, selectedSegmentIds: [], selectedDiagonalId: null });
       }
     }
 
@@ -456,7 +459,7 @@ export function usePlanCanvasEvents({ state, onChange, onReplace, cs }: Params) 
     setCtxMenu(null);
     const isCanvas = e.target === svgRef.current || (e.target as Element).classList.contains("canvas-bg");
     if (!isCanvas) {
-      if (tool !== "draw") onChange({ selectedPointId: null, selectedSegmentId: null, selectedDiagonalId: null, selectedArcId: null, selectedDimLineId: null });
+      if (tool !== "draw") onChange({ selectedPointId: null, selectedSegmentId: null, selectedSegmentIds: [], selectedDiagonalId: null, selectedArcId: null, selectedDimLineId: null });
       return;
     }
     if (tool === "draw" && phase === "draw" && !isClosed) {
@@ -466,7 +469,7 @@ export function usePlanCanvasEvents({ state, onChange, onReplace, cs }: Params) 
         const closing: Segment = { id: genId("s"), fromId: points[points.length - 1].id, toId: points[0].id, lengthCm: null, showLength: true, showDimLine: true, arcRadius: 0 };
         const newSegs = [...segments, closing];
         const newDiags = buildAutoDiagonals(points, diagonals);
-        onChange({ segments: newSegs, diagonals: newDiags, isClosed: true, phase: "lengths", tool: "move", activeInputIndex: 0, selectedSegmentId: null, sidebarTab: "drawing" });
+        onChange({ segments: newSegs, diagonals: newDiags, isClosed: true, phase: "lengths", tool: "move", activeInputIndex: 0, selectedSegmentId: null, selectedSegmentIds: [], sidebarTab: "drawing" });
         setGhost(null);
         return;
       }
@@ -476,7 +479,7 @@ export function usePlanCanvasEvents({ state, onChange, onReplace, cs }: Params) 
       if (points.length > 0) newSegs.push({ id: genId("s"), fromId: points[points.length - 1].id, toId: np.id, lengthCm: null, showLength: true, showDimLine: true, arcRadius: 0 });
       onChange({ points: newPts, segments: newSegs });
     } else {
-      onChange({ selectedPointId: null, selectedSegmentId: null, selectedDiagonalId: null, selectedArcId: null, selectedDimLineId: null });
+      onChange({ selectedPointId: null, selectedSegmentId: null, selectedSegmentIds: [], selectedDiagonalId: null, selectedArcId: null, selectedDimLineId: null });
     }
   }, [tool, phase, isClosed, points, segments, diagonals, clientToSvg, applySnap, onChange, isPanning, svgRef, setCtxMenu, setGhost]);
 
@@ -526,7 +529,7 @@ export function usePlanCanvasEvents({ state, onChange, onReplace, cs }: Params) 
       onChange({ points: newPts, segments: newSegs });
       return;
     }
-    onChange({ selectedPointId: pointId, selectedSegmentId: null, selectedDiagonalId: null, selectedArcId: null });
+    onChange({ selectedPointId: pointId, selectedSegmentId: null, selectedSegmentIds: [], selectedDiagonalId: null, selectedArcId: null });
   }, [tool, phase, isClosed, points, segments, diagonals, dimLines, dimLineFrom, onChange, setCtxMenu, setDimLineFrom, setGhost]);
 
   const handlePointCtxMenu = useCallback((e: React.MouseEvent, pointId: string) => {
@@ -548,8 +551,17 @@ export function usePlanCanvasEvents({ state, onChange, onReplace, cs }: Params) 
       if (seg) onChange({ segments: segments.map(s => s.id === segId ? { ...s, arcRadius: (seg.arcRadius + 15) % 90 } : s) });
       return;
     }
-    onChange({ selectedSegmentId: segId, selectedPointId: null, selectedDiagonalId: null, selectedArcId: null });
-  }, [tool, segments, onChange, setCtxMenu]);
+    const prev = state.selectedSegmentIds ?? [];
+    const isSelected = prev.includes(segId);
+    const next = isSelected ? prev.filter(id => id !== segId) : [...prev, segId];
+    onChange({
+      selectedSegmentIds: next,
+      selectedSegmentId: next.length > 0 ? next[next.length - 1] : null,
+      selectedPointId: null,
+      selectedDiagonalId: null,
+      selectedArcId: null,
+    });
+  }, [tool, segments, state.selectedSegmentIds, onChange, setCtxMenu]);
 
   const handleSegmentCtxMenu = useCallback((e: React.MouseEvent, segId: string) => {
     e.preventDefault(); e.stopPropagation();
@@ -559,13 +571,13 @@ export function usePlanCanvasEvents({ state, onChange, onReplace, cs }: Params) 
   const handleDiagonalClick = useCallback((e: React.MouseEvent, diagId: string) => {
     e.stopPropagation(); setCtxMenu(null);
     if (tool === "delete") { onChange({ diagonals: diagonals.filter(d => d.id !== diagId) }); return; }
-    onChange({ selectedDiagonalId: diagId, selectedPointId: null, selectedSegmentId: null, selectedArcId: null });
+    onChange({ selectedDiagonalId: diagId, selectedPointId: null, selectedSegmentId: null, selectedSegmentIds: [], selectedArcId: null });
   }, [tool, diagonals, onChange, setCtxMenu]);
 
   const handleDimLineClick = useCallback((e: React.MouseEvent, dlId: string) => {
     e.stopPropagation();
     if (tool === "delete") { onChange({ dimLines: dimLines.filter(d => d.id !== dlId) }); return; }
-    onChange({ selectedDimLineId: dlId, selectedPointId: null, selectedSegmentId: null });
+    onChange({ selectedDimLineId: dlId, selectedPointId: null, selectedSegmentId: null, selectedSegmentIds: [] });
   }, [tool, dimLines, onChange]);
 
   // ── Escape / Delete ───────────────────────────────────────────────────────
@@ -575,7 +587,7 @@ export function usePlanCanvasEvents({ state, onChange, onReplace, cs }: Params) 
         setGhost(null); setCtxMenu(null);
         if (phase === "draw" && points.length > 0 && !isClosed)
           onChange({ points: points.slice(0, -1), segments: segments.slice(0, -1) });
-        onChange({ selectedPointId: null, selectedSegmentId: null, selectedDiagonalId: null, selectedArcId: null, selectedDimLineId: null });
+        onChange({ selectedPointId: null, selectedSegmentId: null, selectedSegmentIds: [], selectedDiagonalId: null, selectedArcId: null, selectedDimLineId: null });
       }
       if ((e.key === "Delete" || e.key === "Backspace") && !["INPUT","TEXTAREA","SELECT"].includes((e.target as Element).tagName)) {
         if (selectedPointId) {
@@ -583,7 +595,7 @@ export function usePlanCanvasEvents({ state, onChange, onReplace, cs }: Params) 
           const newSegs = segments.filter(s => s.fromId !== selectedPointId && s.toId !== selectedPointId);
           onChange({ points: newPts, segments: newSegs, diagonals: newPts.length >= 3 ? buildAutoDiagonals(newPts, diagonals) : [], isClosed: isClosed && newPts.length >= 3, selectedPointId: null });
         }
-        if (selectedSegmentId) onChange({ segments: segments.filter(s => s.id !== selectedSegmentId), isClosed: false, selectedSegmentId: null });
+        if (selectedSegmentId) onChange({ segments: segments.filter(s => s.id !== selectedSegmentId), isClosed: false, selectedSegmentId: null, selectedSegmentIds: [] });
         if (selectedDiagonalId) onChange({ diagonals: diagonals.filter(d => d.id !== selectedDiagonalId), selectedDiagonalId: null });
         if (selectedDimLineId) onChange({ dimLines: dimLines.filter(d => d.id !== selectedDimLineId), selectedDimLineId: null });
       }

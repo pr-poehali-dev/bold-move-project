@@ -128,6 +128,7 @@ export interface PlanState {
   room: RoomParams;
   selectedPointId: string | null;
   selectedSegmentId: string | null;
+  selectedSegmentIds: string[];
   selectedDiagonalId: string | null;
   selectedArcId: string | null;
   selectedDimLineId: string | null;
@@ -1323,6 +1324,7 @@ export const INITIAL_STATE: PlanState = {
   room: DEFAULT_ROOM,
   selectedPointId: null,
   selectedSegmentId: null,
+  selectedSegmentIds: [],
   selectedDiagonalId: null,
   selectedArcId: null,
   selectedDimLineId: null,

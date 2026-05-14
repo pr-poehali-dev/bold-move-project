@@ -39,7 +39,7 @@ export default function PlanCanvasSvg({
   const {
     points, segments, diagonals, dimLines,
     isClosed, settings,
-    selectedPointId, selectedSegmentId, selectedDiagonalId, selectedArcId, selectedDimLineId,
+    selectedPointId, selectedSegmentId, selectedSegmentIds, selectedDiagonalId, selectedArcId, selectedDimLineId,
     tool, phase, floorItems,
   } = state;
 
@@ -59,7 +59,7 @@ export default function PlanCanvasSvg({
   const ctx: RenderContext = {
     points, segments, diagonals, dimLines, scale, isClosed, tool,
     showDimLines, showSegmentLabels, showAngleLabels, showDiagonals, showPoints, showPointLabels,
-    selectedPointId, selectedSegmentId, selectedDiagonalId, selectedArcId, selectedDimLineId,
+    selectedPointId, selectedSegmentId, selectedSegmentIds, selectedDiagonalId, selectedArcId, selectedDimLineId,
     ghost, dimLineFrom, zoom, phase, intersectingSegIds,
     changedSegmentIds: state.isBuilt ? (state.changedSegmentIds ?? []) : [],
   };

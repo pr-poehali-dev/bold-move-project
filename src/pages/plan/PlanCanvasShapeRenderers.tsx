@@ -58,12 +58,13 @@ export function renderPoints(ctx: RenderContext, handlers: SegmentHandlers) {
 // ── Рендер отрезков (зоны клика) ─────────────────────────────────────────────
 
 export function renderSegments(ctx: RenderContext, handlers: Pick<SegmentHandlers, "onSegmentClick" | "onSegmentCtxMenu">) {
-  const { points, segments, tool, selectedSegmentId, intersectingSegIds, changedSegmentIds } = ctx;
+  const { points, segments, tool, selectedSegmentIds, intersectingSegIds, changedSegmentIds } = ctx;
+  const selIds = selectedSegmentIds ?? [];
   return segments.map(seg => {
     const a = points.find(p => p.id === seg.fromId);
     const b = points.find(p => p.id === seg.toId);
     if (!a || !b) return null;
-    const isSel = seg.id === selectedSegmentId;
+    const isSel = selIds.includes(seg.id);
     const isIntersecting = intersectingSegIds?.includes(seg.id);
     const isChanged = changedSegmentIds?.includes(seg.id);
     return (

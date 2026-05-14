@@ -137,6 +137,7 @@ export default function DrawingTabSidesSection({
                       activeInputIndex: idx,
                       // Подсвечиваем сегмент на холсте
                       selectedSegmentId: seg.id,
+                      selectedSegmentIds: [seg.id],
                       selectedPointId: null,
                       selectedDiagonalId: null,
                       // В режиме построения — всегда чисто. В режиме редактирования — убираем только этот сегмент.
