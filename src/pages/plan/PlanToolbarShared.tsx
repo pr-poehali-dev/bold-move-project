@@ -32,7 +32,6 @@ export interface ToolbarProps {
   onOpenLibrary: () => void;
   onBack?: () => void;
   backLabel?: string;
-  projectName?: string;
   roomSaveStatus?: "idle" | "saving" | "saved" | "error";
   onSaveVariant?: () => void;
   onOverwriteVariant?: () => void;

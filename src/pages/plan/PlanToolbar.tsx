@@ -11,7 +11,7 @@ export default function PlanToolbar(props: ToolbarProps) {
     saveStatus, isDirty, currentPlanId,
     onToolChange, onSettingChange, onUndo, onRedo, onReset,
     onZoomIn, onZoomOut, onZoomFit, onExport, onSave, onOpenLibrary,
-    onBack, backLabel, projectName, roomSaveStatus,
+    onBack, backLabel, roomSaveStatus,
     onSaveVariant, onOverwriteVariant, variants, variantsLoading, activeVariantId,
     onLoadVariant, onDeleteVariant, onRenameVariant, onSelectVariant,
   } = props;
@@ -118,21 +118,6 @@ export default function PlanToolbar(props: ToolbarProps) {
       </span>
       <IconBtn icon="ZoomIn" onClick={onZoomIn} title="Увеличить (+)" />
       <IconBtn icon="Maximize2" onClick={onZoomFit} title="По размеру (0)" size={13} />
-
-      <div className="flex-1 min-w-2" />
-
-      {/* Хлебная крошка: Проект / Комната */}
-      {backLabel && (
-        <div className="flex items-center gap-1 px-2 shrink-0 pointer-events-none select-none">
-          {projectName && (
-            <>
-              <span className="text-[11px] text-white/30 truncate max-w-[100px]">{projectName}</span>
-              <Icon name="ChevronRight" size={11} className="text-white/20 shrink-0" />
-            </>
-          )}
-          <span className="text-[11px] text-white/55 font-medium truncate max-w-[120px]">{backLabel}</span>
-        </div>
-      )}
 
       <div className="flex-1 min-w-2" />
 
