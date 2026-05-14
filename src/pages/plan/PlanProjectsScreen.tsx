@@ -158,6 +158,7 @@ export default function PlanProjectsScreen({ token, onSelectProject }: Props) {
   const { projects, loading, loadProjects, createProject, updateProject, deleteProject } = usePlanProjects(token);
 
   const [exportOpen,   setExportOpen]   = useState(false);
+  const [exportProject, setExportProject] = useState<PlanProject | null>(null);
   const [showCreate,   setShowCreate]   = useState(false);
   const [editingId,    setEditingId]    = useState<number | null>(null);
   const [deletingId,   setDeletingId]   = useState<number | null>(null);
@@ -258,14 +259,6 @@ export default function PlanProjectsScreen({ token, onSelectProject }: Props) {
         </div>
         <div className="flex items-center gap-2">
           <button
-            onClick={() => setExportOpen(true)}
-            className="w-9 h-9 flex items-center justify-center rounded-xl transition hover:bg-white/10"
-            style={{ color: "rgba(255,255,255,0.5)", border: "1px solid rgba(255,255,255,0.09)" }}
-            title="Выгрузить смету"
-          >
-            <Icon name="FileText" size={16} />
-          </button>
-          <button
             onClick={() => { setShowCreate(true); setEditingId(null); setForm(EMPTY_FORM); setError(""); }}
             className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition hover:opacity-90 active:scale-[0.97]"
             style={{ background: "linear-gradient(135deg,#7c3aed,#6d28d9)", color: "#fff" }}
@@ -278,8 +271,8 @@ export default function PlanProjectsScreen({ token, onSelectProject }: Props) {
 
       <PlanExportModal
         open={exportOpen}
-        onClose={() => setExportOpen(false)}
-        onExport={cfg => { console.log("export", cfg); }}
+        onClose={() => { setExportOpen(false); setExportProject(null); }}
+        onExport={cfg => { console.log("export", cfg, exportProject); }}
         showScope={true}
       />
 
@@ -332,7 +325,7 @@ export default function PlanProjectsScreen({ token, onSelectProject }: Props) {
                       : "rgba(255,255,255,0.05)",
                     color: filterStatus === s.id
                       ? (s.id === "all" ? "#fff" : (STATUS_COLORS[s.id]?.text ?? "#fff"))
-                      : "rgba(255,255,255,0.35)",
+                      : "rgba(255,255,255,0.65)",
                     border: `1px solid ${filterStatus === s.id ? "rgba(255,255,255,0.12)" : "rgba(255,255,255,0.06)"}`,
                   }}
                 >
@@ -429,19 +422,19 @@ export default function PlanProjectsScreen({ token, onSelectProject }: Props) {
                     </div>
                     <div className="flex flex-col gap-0.5">
                       {project.client_name && (
-                        <span className="flex items-center gap-1 text-[12px]" style={{ color: "rgba(255,255,255,0.4)" }}>
+                        <span className="flex items-center gap-1 text-[12px]" style={{ color: "rgba(255,255,255,0.75)" }}>
                           <Icon name="User" size={11} />
                           {project.client_name}
                         </span>
                       )}
                       {project.address && (
-                        <span className="flex items-center gap-1 text-[12px]" style={{ color: "rgba(255,255,255,0.4)" }}>
+                        <span className="flex items-center gap-1 text-[12px]" style={{ color: "rgba(255,255,255,0.75)" }}>
                           <Icon name="MapPin" size={11} />
                           {project.address}
                         </span>
                       )}
                       {project.phone && (
-                        <span className="flex items-center gap-1 text-[12px]" style={{ color: "rgba(255,255,255,0.4)" }}>
+                        <span className="flex items-center gap-1 text-[12px]" style={{ color: "rgba(255,255,255,0.75)" }}>
                           <Icon name="Phone" size={11} />
                           {project.phone}
                         </span>
@@ -456,9 +449,18 @@ export default function PlanProjectsScreen({ token, onSelectProject }: Props) {
                   <button
                     onClick={() => startEdit(project)}
                     className="flex-1 flex items-center justify-center gap-1.5 py-2.5 text-[12px] font-semibold transition hover:bg-white/[0.04]"
-                    style={{ color: "rgba(255,255,255,0.4)" }}
+                    style={{ color: "rgba(255,255,255,0.55)" }}
                   >
                     Редактировать
+                  </button>
+                  <div className="w-px" style={{ background: "rgba(255,255,255,0.05)" }} />
+                  <button
+                    onClick={() => { setExportProject(project); setExportOpen(true); }}
+                    className="flex items-center justify-center gap-1.5 px-4 py-2.5 text-[12px] font-semibold transition hover:bg-violet-500/10"
+                    style={{ color: "rgba(167,139,250,0.8)" }}
+                  >
+                    <Icon name="FileDown" size={13} />
+                    Смета
                   </button>
                   <div className="w-px" style={{ background: "rgba(255,255,255,0.05)" }} />
                   <button
