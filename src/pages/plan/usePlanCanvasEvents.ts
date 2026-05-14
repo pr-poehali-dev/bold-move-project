@@ -504,7 +504,12 @@ export function usePlanCanvasEvents({ state, onChange, onReplace, cs }: Params) 
       if (points.length > 0) newSegs.push({ id: genId("s"), fromId: points[points.length - 1].id, toId: np.id, lengthCm: null, showLength: true, showDimLine: true, arcRadius: 0 });
       onChange({ points: newPts, segments: newSegs });
     } else {
-      onChange({ selectedPointId: null, selectedSegmentId: null, selectedSegmentIds: [], selectedDiagonalId: null, selectedArcId: null, selectedDimLineId: null });
+      if (isClosed && e.detail === 2) {
+        // Двойной клик по пустой области — выбрать все стены
+        onChange({ selectedSegmentIds: segments.map(s => s.id), selectedSegmentId: segments[segments.length - 1]?.id ?? null, selectedPointId: null, selectedDiagonalId: null });
+      } else {
+        onChange({ selectedPointId: null, selectedSegmentId: null, selectedSegmentIds: [], selectedDiagonalId: null, selectedArcId: null, selectedDimLineId: null });
+      }
     }
   }, [tool, phase, isClosed, points, segments, diagonals, clientToSvg, applySnap, onChange, isPanning, svgRef, setCtxMenu, setGhost]);
 
