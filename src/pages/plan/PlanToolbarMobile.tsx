@@ -148,7 +148,7 @@ export default function MobileToolbar(props: ToolbarProps) {
             </div>
           )}
           <button
-            onClick={() => setSettingsOpen(v => !v)}
+            onClick={e => { e.stopPropagation(); setSettingsOpen(v => !v); }}
             className={`w-9 h-9 flex items-center justify-center rounded-lg transition-all ${
               settingsOpen
                 ? "bg-violet-600/30 border border-violet-500/50 text-violet-300"
