@@ -330,7 +330,7 @@ export default function PlanProjectsScreen({ token, onSelectProject }: Props) {
                 <button
                   key={s.id}
                   onClick={() => setFilterStatus(s.id)}
-                  className="flex-1 min-w-0 py-1 rounded-full text-[10px] font-semibold transition text-center truncate px-1"
+                  className={`py-1 rounded-full text-[10px] font-semibold transition text-center whitespace-nowrap ${s.short ? "px-3 shrink-0" : "flex-1 px-2"}`}
                   style={{
                     background: filterStatus === s.id
                       ? (s.id === "all" ? "rgba(255,255,255,0.15)" : (STATUS_COLORS[s.id]?.bg ?? "rgba(255,255,255,0.1)"))
