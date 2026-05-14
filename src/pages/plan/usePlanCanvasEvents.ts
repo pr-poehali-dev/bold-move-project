@@ -173,6 +173,7 @@ export function usePlanCanvasEvents({ state, onChange, onReplace, cs }: Params) 
     clearLongPress();
 
     if (e.touches.length === 2) {
+      e.preventDefault();
       const dx = e.touches[0].clientX - e.touches[1].clientX;
       const dy = e.touches[0].clientY - e.touches[1].clientY;
       pinchRef.current = { dist: Math.sqrt(dx * dx + dy * dy), zoom };
@@ -235,18 +236,25 @@ export function usePlanCanvasEvents({ state, onChange, onReplace, cs }: Params) 
       const dy = e.touches[0].clientY - e.touches[1].clientY;
       const dist = Math.sqrt(dx * dx + dy * dy);
       const ratio = dist / pinchRef.current.dist;
-      const newZoom = Math.max(0.3, Math.min(4, Math.round(pinchRef.current.zoom * ratio * 10) / 10));
-      // Pan двумя пальцами — двигаем по центру между касаниями
+      const newZoom = Math.max(0.3, Math.min(4, pinchRef.current.zoom * ratio));
+
+      const svg = svgRef.current;
+      const rect = svg ? svg.getBoundingClientRect() : { left: 0, top: 0 };
       const midX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
       const midY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
-      let newSettings = { ...settings, zoom: newZoom };
-      if (pinchRef.current.midX !== undefined && pinchRef.current.midY !== undefined) {
-        const pdx = (midX - pinchRef.current.midX) / zoom;
-        const pdy = (midY - pinchRef.current.midY) / zoom;
-        newSettings = { ...newSettings, panX: settings.panX + pdx, panY: settings.panY + pdy };
-      }
+
+      // Зум к точке под пальцами: точка в SVG-координатах остаётся на месте
+      const originX = (midX - rect.left) / zoom - settings.panX;
+      const originY = (midY - rect.top)  / zoom - settings.panY;
+      const newPanX = (midX - rect.left) / newZoom - originX;
+      const newPanY = (midY - rect.top)  / newZoom - originY;
+
+      // Дополнительный пан если центр между пальцами сместился
+      const panDx = pinchRef.current.midX !== undefined ? (midX - pinchRef.current.midX) / newZoom : 0;
+      const panDy = pinchRef.current.midY !== undefined ? (midY - pinchRef.current.midY) / newZoom : 0;
+
       pinchRef.current = { ...pinchRef.current, dist, midX, midY };
-      onChange({ settings: newSettings });
+      onChange({ settings: { ...settings, zoom: newZoom, panX: newPanX + panDx, panY: newPanY + panDy } });
       didMoveRef.current = true;
       return;
     }
@@ -281,7 +289,7 @@ export function usePlanCanvasEvents({ state, onChange, onReplace, cs }: Params) 
       }
     }
   }, [tool, points, segments, clientToSvg, applySnap, diagonals, onChange, onReplace, settings, zoom,
-      clearLongPress, pinchRef, panRef, dragRef, didMoveRef, longPressRef]);
+      clearLongPress, pinchRef, panRef, dragRef, didMoveRef, longPressRef, svgRef]);
 
   const handleTouchEnd = useCallback((e: React.TouchEvent<SVGSVGElement>) => {
     pinchRef.current = null;

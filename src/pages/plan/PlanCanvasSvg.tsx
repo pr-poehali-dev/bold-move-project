@@ -75,9 +75,6 @@ export default function PlanCanvasSvg({
       onMouseUp={onMouseUp}
       onMouseLeave={onMouseUp}
       onContextMenu={e => e.preventDefault()}
-      onTouchStart={onTouchStart}
-      onTouchMove={onTouchMove}
-      onTouchEnd={onTouchEnd}
     >
       <defs>
         {showGrid && (
