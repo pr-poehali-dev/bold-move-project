@@ -282,11 +282,11 @@ export default function PlanRoomsScreen({ token, project, onBack, onOpenRoom }: 
                       <PlanRoomPreview data={room.data ?? {}} width={400} height={180}/>
                     </div>
 
-                    {/* Название — внутри превью, прижато к самому низу */}
+                    {/* Название — внутри превью, по центру снизу с градиентом */}
                     {!isEditing && (
-                      <div className="absolute bottom-0 left-0 right-0 flex items-end"
-                        style={{ height: 32, background: "linear-gradient(to top, rgba(10,10,24,0.95) 0%, rgba(10,10,24,0) 100%)" }}>
-                        <span className="font-bold text-[13px] text-white drop-shadow px-3 pb-1.5">{room.name}</span>
+                      <div className="absolute bottom-0 left-0 right-0 flex justify-center items-end pb-2"
+                        style={{ height: 56, background: "linear-gradient(to top, rgba(10,10,24,0.92) 0%, rgba(10,10,24,0.5) 50%, transparent 100%)" }}>
+                        <span className="font-bold text-[13px] text-white drop-shadow">{room.name}</span>
                       </div>
                     )}
 
