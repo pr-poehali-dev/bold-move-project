@@ -99,23 +99,33 @@ export default function PlanRoomPreview({ data, width = 280, height = 160, showM
     return [{ id: seg.id, x: mid.x + nx * offset, y: mid.y + ny * offset, label: `${lenCm} см` }];
   });
 
-  // Угловые метки — в координатах viewBox
-  const angleLabels = isClosed ? points.map((pt, idx) => {
+  // Буквенные метки углов — наружу от полигона по биссектрисе угла
+  const cx = points.length > 0 ? points.reduce((s, p) => s + p.x, 0) / points.length : 0;
+  const cy = points.length > 0 ? points.reduce((s, p) => s + p.y, 0) / points.length : 0;
+  const LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+  const angleLabels = points.map((pt, idx) => {
     const n = points.length;
-    const prev = points[(idx - 1 + n) % n];
-    const next = points[(idx + 1) % n];
-    const ax = prev.x - pt.x, ay = prev.y - pt.y;
-    const bx = next.x - pt.x, by = next.y - pt.y;
-    const la = Math.sqrt(ax * ax + ay * ay) || 1;
-    const lb = Math.sqrt(bx * bx + by * by) || 1;
-    const cosA = Math.max(-1, Math.min(1, (ax * bx + ay * by) / (la * lb)));
-    const deg = Math.round(Math.acos(cosA) * 180 / Math.PI);
-    const isOdd = Math.abs(deg - Math.round(deg / 90) * 90) > 1.5;
-    const dx = ax / la + bx / lb, dy = ay / la + by / lb;
-    const dl = Math.sqrt(dx * dx + dy * dy) || 1;
-    const offset = Math.max(vw, vh) * 0.08;
-    return { id: pt.id, x: pt.x + (dx / dl) * offset, y: pt.y + (dy / dl) * offset, label: `${deg}°`, isOdd };
-  }) : [];
+    const offset = Math.max(vw, vh) * 0.09;
+    let ox: number, oy: number;
+    if (isClosed && n >= 3) {
+      const prev = points[(idx - 1 + n) % n];
+      const next = points[(idx + 1) % n];
+      const ax = prev.x - pt.x, ay = prev.y - pt.y;
+      const bx = next.x - pt.x, by = next.y - pt.y;
+      const la = Math.sqrt(ax * ax + ay * ay) || 1;
+      const lb = Math.sqrt(bx * bx + by * by) || 1;
+      ox = ax / la + bx / lb; oy = ay / la + by / lb;
+      const ol = Math.sqrt(ox * ox + oy * oy) || 1;
+      ox /= ol; oy /= ol;
+      // Инвертируем если направление к центру
+      if (ox * (cx - pt.x) + oy * (cy - pt.y) > 0) { ox = -ox; oy = -oy; }
+    } else {
+      const dx = pt.x - cx, dy = pt.y - cy;
+      const dl = Math.sqrt(dx * dx + dy * dy) || 1;
+      ox = dx / dl; oy = dy / dl;
+    }
+    return { id: pt.id, x: pt.x + ox * offset, y: pt.y + oy * offset, label: idx < 26 ? LETTERS[idx] : LETTERS[Math.floor(idx / 26) - 1] + LETTERS[idx % 26] };
+  });
 
   const GRID = Math.max(vw, vh) * 0.08;
 
@@ -162,10 +172,10 @@ export default function PlanRoomPreview({ data, width = 280, height = 160, showM
             {l.label}
           </text>
         ))}
-        {/* Угловые метки */}
+        {/* Буквенные метки углов */}
         {angleLabels.map(l => (
           <text key={l.id} x={l.x} y={l.y} textAnchor="middle" dominantBaseline="middle"
-            fontSize={fontSize * 0.85} fill={l.isOdd ? "#fb923c" : "rgba(255,255,255,0.4)"} fontFamily="monospace">
+            fontSize={fontSize * 0.85} fill="rgba(255,255,255,0.55)" fontFamily="monospace" fontWeight={700}>
             {l.label}
           </text>
         ))}
