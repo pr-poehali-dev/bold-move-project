@@ -222,20 +222,31 @@ export function usePlanCatalog(
     push({ ...s, segments: newSegments });
   }, [stateRef, push]);
 
-  // Установить суммарное количество — итог округляем вверх до кратного 2, делим поровну
+  // Установить суммарное количество — итог округляем вверх до чётного целого (шаг 2м)
+  // Примеры: 18.5→20, 19→20, 20→20, 21→22, 22→22, 23→24
   const setItemQuantity = useCallback((priceId: number, value: number) => {
     const s = stateRef.current;
     const segsWithItem = s.segments.filter(seg => (seg.items ?? []).some(it => it.priceId === priceId));
     const count = segsWithItem.length || 1;
-    // Итоговое значение — кратно 2 в большую сторону
-    const total = Math.max(2, Math.ceil(value / 2) * 2);
-    const perSeg = Math.max(0.01, Math.round((total / count) * 100) / 100);
-    const newSegments = s.segments.map(seg => ({
-      ...seg,
-      items: (seg.items ?? []).map(it =>
-        it.priceId === priceId ? { ...it, quantity: perSeg } : it
-      ),
-    }));
+    // Округляем вверх до чётного целого
+    const ceiled = Math.ceil(value);
+    const total = ceiled % 2 === 0 ? ceiled : ceiled + 1;
+    // Первые (count-1) стен получают floor(total/count), последняя — остаток
+    const base = Math.floor(total / count);
+    const remainder = total - base * count;
+    let segIdx = 0;
+    const newSegments = s.segments.map(seg => {
+      const hasItem = (seg.items ?? []).some(it => it.priceId === priceId);
+      if (!hasItem) return seg;
+      const qty = segIdx < (count - remainder) ? base : base + 1;
+      segIdx++;
+      return {
+        ...seg,
+        items: (seg.items ?? []).map(it =>
+          it.priceId === priceId ? { ...it, quantity: Math.max(1, qty) } : it
+        ),
+      };
+    });
     push({ ...s, segments: newSegments });
   }, [stateRef, push]);
 
