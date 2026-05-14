@@ -14,6 +14,7 @@ export default function MobileToolbar(props: ToolbarProps) {
     onToolChange, onUndo, onRedo, onOpenLibrary, onReset,
     onBack, onSaveVariant, onOverwriteVariant, variants, variantsLoading,
     activeVariantId, onLoadVariant, onDeleteVariant, onRenameVariant, onSelectVariant,
+    onVariantPickerOpenChange,
   } = props;
 
   const [toolsOpen,         setToolsOpen]         = React.useState(false);
@@ -21,6 +22,8 @@ export default function MobileToolbar(props: ToolbarProps) {
   const [settingsOpen,      setSettingsOpen]       = React.useState(false);
   const [confirmReset,      setConfirmReset]       = React.useState(false);
   const [variantPickerOpen, setVariantPickerOpen]  = React.useState(false);
+
+  const openVariantPicker = (v: boolean) => { setVariantPickerOpen(v); onVariantPickerOpenChange?.(v); };
   const [pinned]            = React.useState<ToolMode[]>(loadPinned);
   const [exportCfg,         setExportCfg]          = React.useState<ExportConfig>({ scope: "project", type: "offer" });
 
@@ -171,7 +174,7 @@ export default function MobileToolbar(props: ToolbarProps) {
             </button>
             {/* Кнопка вариантов */}
             <div className="relative">
-              <button onClick={() => setVariantPickerOpen(v => !v)}
+              <button onClick={() => openVariantPicker(!variantPickerOpen)}
                 className="w-9 h-9 flex items-center justify-center rounded-lg transition shrink-0"
                 style={{ background: "rgba(255,255,255,0.09)", border: "1px solid rgba(255,255,255,0.12)", color: "rgba(255,255,255,0.6)" }}
                 title="Варианты">
@@ -182,11 +185,11 @@ export default function MobileToolbar(props: ToolbarProps) {
                   variants={variants ?? []}
                   loading={variantsLoading}
                   activeVariantId={activeVariantId}
-                  onSelect={v => { onSelectVariant?.(v.id); setVariantPickerOpen(false); }}
-                  onLoad={v => { onLoadVariant?.(v.id, v.data); setVariantPickerOpen(false); }}
+                  onSelect={v => { onSelectVariant?.(v.id); openVariantPicker(false); }}
+                  onLoad={v => { onLoadVariant?.(v.id, v.data); openVariantPicker(false); }}
                   onDelete={id => onDeleteVariant?.(id)}
                   onRename={(id, name) => onRenameVariant?.(id, name)}
-                  onClose={() => setVariantPickerOpen(false)}
+                  onClose={() => openVariantPicker(false)}
                 />
               )}
             </div>

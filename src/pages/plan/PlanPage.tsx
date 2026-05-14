@@ -47,7 +47,8 @@ export default function PlanPage() {
     token,
     activeVariantId
   );
-  const [variantModalOpen, setVariantModalOpen] = useState(false);
+  const [variantModalOpen,       setVariantModalOpen]       = useState(false);
+  const [mobileVariantPickerOpen, setMobileVariantPickerOpen] = useState(false);
 
   // ── UI-флаги ──────────────────────────────────────────────────────────────
   const [sheetOpen,          setSheetOpen]          = useState(false);
@@ -293,6 +294,7 @@ export default function PlanPage() {
         onDeleteVariant={variantHandlers.handleDeleteVariant}
         onRenameVariant={variantHandlers.handleRenameVariant}
         onSelectVariant={activeRoom ? (id) => variantsHook.updateVariant(id, { is_active: true }) : undefined}
+        onVariantPickerOpenChange={setMobileVariantPickerOpen}
       />
 
       <PlanCanvasArea
@@ -346,6 +348,7 @@ export default function PlanPage() {
         variantSaving={variantSaving}
         onSaveVariant={(name) => variantHandlers.handleSaveVariantWithState(name, state)}
         onCloseVariantModal={() => setVariantModalOpen(false)}
+        mobileVariantPickerOpen={mobileVariantPickerOpen}
       />
 
     </div>

@@ -42,6 +42,7 @@ export interface ToolbarProps {
   onDeleteVariant?: (id: number) => void;
   onRenameVariant?: (id: number, name: string) => void;
   onSelectVariant?: (id: number) => void;
+  onVariantPickerOpenChange?: (open: boolean) => void;
 }
 
 // ── ToolDef ───────────────────────────────────────────────────────────────────

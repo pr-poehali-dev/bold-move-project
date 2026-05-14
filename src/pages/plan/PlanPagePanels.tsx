@@ -57,6 +57,7 @@ interface Props {
   variantSaving: boolean;
   onSaveVariant: (name: string) => Promise<void>;
   onCloseVariantModal: () => void;
+  mobileVariantPickerOpen?: boolean;
 }
 
 export default function PlanPagePanels({
@@ -77,6 +78,7 @@ export default function PlanPagePanels({
   handleSettingChange, zoomIn, zoomOut, zoomFit,
   storage, catalog, getFloorDefault, voiceDraw,
   variantModalOpen, variantSaving, onSaveVariant, onCloseVariantModal,
+  mobileVariantPickerOpen = false,
 }: Props) {
   return (
     <>
@@ -227,7 +229,7 @@ export default function PlanPagePanels({
         isMobile={isMobile}
         segments={state.segments}
         floorItems={state.floorItems ?? []}
-        anyPanelOpen={sheetOpen || sidebarOpen || rightPanelOpen || catalog.catalogOpen || exportOpen || libraryOpen || authOpen || bottomSettingsOpen}
+        anyPanelOpen={sheetOpen || sidebarOpen || rightPanelOpen || catalog.catalogOpen || exportOpen || libraryOpen || authOpen || bottomSettingsOpen || mobileVariantPickerOpen}
         onTapActiveId={catalog.setTapActiveId}
         onRemoveActiveItem={catalog.removeActiveItem}
         onAssignToAllSegs={catalog.assignItemToAllSegs}
