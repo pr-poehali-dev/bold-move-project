@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useRef, useCallback } from "react";
 import type { PlanState } from "./planTypes";
 import { calcScale, buildShapePath, findSelfIntersections } from "./planTypes";
 import {
@@ -47,6 +47,17 @@ export default function PlanCanvasSvg({
   const polyCx = points.length > 0 ? points.reduce((s, p) => s + p.x, 0) / points.length : 0;
   const polyCy = points.length > 0 ? points.reduce((s, p) => s + p.y, 0) / points.length : 0;
 
+  // Подсказка "двойной клик — выбрать все стены" — показывается один раз
+  const HINT_KEY = "plan_dblclick_hint_shown";
+  const [showDblHint, setShowDblHint] = useState(false);
+  const hintTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const handlePolygonEnter = useCallback(() => {
+    if (localStorage.getItem(HINT_KEY)) return;
+    localStorage.setItem(HINT_KEY, "1");
+    setShowDblHint(true);
+    hintTimerRef.current = setTimeout(() => setShowDblHint(false), 2500);
+  }, []);
+
   const {
     showGrid, gridSize, zoom, panX, panY,
     showSegmentLabels, showAngleLabels, showDiagonals, showDimLines, showPoints, showPointLabels,
@@ -65,6 +76,18 @@ export default function PlanCanvasSvg({
   };
 
   return (
+    <>
+    {showDblHint && (
+      <div style={{
+        position: "absolute", bottom: 80, left: "50%", transform: "translateX(-50%)",
+        background: "rgba(17,12,36,0.92)", border: "1px solid rgba(124,58,237,0.5)",
+        color: "#c4b5fd", fontSize: 13, padding: "7px 14px", borderRadius: 10,
+        pointerEvents: "none", zIndex: 50, whiteSpace: "nowrap",
+        animation: "fadeInUp 0.25s ease",
+      }}>
+        Двойной клик — выбрать все стены
+      </div>
+    )}
     <svg
       ref={svgRef}
       width="100%" height="100%"
@@ -97,7 +120,7 @@ export default function PlanCanvasSvg({
 
         {/* Зона двойного клика внутри полигона — меняет курсор, намекая на "выбрать все" */}
         {isClosed && points.length >= 3 && tool !== "draw" && (
-          <path d={shapePath} fill="transparent" stroke="none" style={{ cursor: "cell", pointerEvents: "fill" }} />
+          <path d={shapePath} fill="transparent" stroke="none" style={{ cursor: "cell", pointerEvents: "fill" }} onMouseEnter={handlePolygonEnter} />
         )}
 
         {/* Контур */}
@@ -238,5 +261,6 @@ export default function PlanCanvasSvg({
         )}
       </g>
     </svg>
+    </>
   );
 }
