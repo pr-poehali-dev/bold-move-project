@@ -143,18 +143,7 @@ export default function PlanPage() {
     }
   }, [state.isClosed, state.segments]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Мобиле: нажатие на сторону → каталог только если все размеры заполнены
-  const prevSelectedSegId = useRef(state.selectedSegmentId);
-  useEffect(() => {
-    if (!isMobile) return;
-    if (state.selectedSegmentId && state.selectedSegmentId !== prevSelectedSegId.current && state.isClosed) {
-      const allFilled = state.segments.every(s => s.lengthCm && s.lengthCm > 0);
-      if (allFilled) {
-        catalog.setCatalogOpen(true);
-      }
-    }
-    prevSelectedSegId.current = state.selectedSegmentId;
-  }, [state.selectedSegmentId]); // eslint-disable-line react-hooks/exhaustive-deps
+
 
   // ── Голосовое рисование ───────────────────────────────────────────────────
   const voiceDraw = useVoiceDraw({ state, onChange: handleChange });
