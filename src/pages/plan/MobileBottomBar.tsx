@@ -53,13 +53,15 @@ export default function MobileBottomBar({
 
 
 
-      {/* 3. Каталог */}
-      <button
-        onClick={onOpenCatalog}
-        className={catalogOpen ? BTN_ACTIVE : BTN_DEFAULT}
-      >
-        <Icon name="LayoutGrid" size={20} />
-      </button>
+      {/* 3. Стороны (правая панель ввода) — только мобайл */}
+      {isMobile && (
+        <button
+          onClick={onOpenSides}
+          className={rightPanelOpen ? BTN_ACTIVE : BTN_DEFAULT}
+        >
+          <Icon name="PanelRight" size={20} />
+        </button>
+      )}
 
       {/* 4. Чертёж: bottom sheet (мобайл) / toggle сайдбара (ПК) */}
       <button
@@ -69,15 +71,13 @@ export default function MobileBottomBar({
         <Icon name="PanelBottom" size={20} />
       </button>
 
-      {/* 5. Стороны (правая панель ввода) — только мобайл */}
-      {isMobile && (
-        <button
-          onClick={onOpenSides}
-          className={rightPanelOpen ? BTN_ACTIVE : BTN_DEFAULT}
-        >
-          <Icon name="PanelRight" size={20} />
-        </button>
-      )}
+      {/* 5. Каталог */}
+      <button
+        onClick={onOpenCatalog}
+        className={catalogOpen ? BTN_ACTIVE : BTN_DEFAULT}
+      >
+        <Icon name="LayoutGrid" size={20} />
+      </button>
 
       {/* 6. Голосовое рисование */}
       {onToggleVoiceDraw && (
