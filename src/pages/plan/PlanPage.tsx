@@ -278,7 +278,16 @@ export default function PlanPage() {
         variants={variants}
         variantsLoading={variantsLoading}
         activeVariantId={activeVariantId}
-        onLoadVariant={(id, data) => variantHandlers.handleLoadVariant(id, data)}
+        onLoadVariant={(id, data) => {
+          loadingFromRoomRef.current = true;
+          lastClosedSegId.current = null;
+          setRightPanelOpen(false);
+          setSheetOpen(false);
+          setSidebarOpen(false);
+          catalog.setCatalogOpen(false);
+          setTimeout(() => { loadingFromRoomRef.current = false; }, 150);
+          variantHandlers.handleLoadVariant(id, data);
+        }}
         onDeleteVariant={variantHandlers.handleDeleteVariant}
         onRenameVariant={variantHandlers.handleRenameVariant}
         onSelectVariant={activeRoom ? (id) => variantsHook.updateVariant(id, { is_active: true }) : undefined}

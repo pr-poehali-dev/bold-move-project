@@ -35,7 +35,7 @@ export function usePlanVariantHandlers({
 
   const handleLoadVariant = async (variantId: number, variantData: object) => {
     if (!activeRoom) return;
-    const newState = { ...INITIAL_STATE, ...(variantData as Partial<typeof INITIAL_STATE>) };
+    const newState = { ...INITIAL_STATE, ...(variantData as Partial<typeof INITIAL_STATE>), selectedSegmentId: null, selectedPointId: null };
     reset(newState);
     await updateVariant(variantId, { is_active: true });
     setActiveVariantId(variantId);
