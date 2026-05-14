@@ -106,12 +106,12 @@ export function SegmentItemsBadges({
         const hasImg = !!item.imageUrl;
 
         return (
-          <g key={itemKey}>
+          <g key={itemKey} onClick={e => e.stopPropagation()} onTouchEnd={e => e.stopPropagation()}>
             {/* Фон иконки */}
             <rect
               x={px - S / 2} y={py - S / 2} width={S} height={S} rx={6}
               fill="rgba(17,12,36,0.92)" stroke="rgba(124,58,237,0.6)" strokeWidth={1.2}
-              style={{ pointerEvents: "none" }}
+              style={{ pointerEvents: "all", cursor: "default" }}
             />
 
             {/* Картинка товара */}

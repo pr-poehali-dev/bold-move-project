@@ -202,8 +202,8 @@ export function usePlanCanvasEvents({ state, onChange, onReplace, cs }: Params) 
       const raw = clientToSvg(t.clientX, t.clientY);
 
       const hitPt   = points.find(p => distPx(p, { id: "", x: raw.x, y: raw.y }) < PT_HIT);
-      const hitSeg  = !hitPt ? findNearestSegment(raw.x, raw.y, points, segments, 28) : null;
-      const hitDiag = !hitPt && !hitSeg ? findNearestDiagonal(raw.x, raw.y, points, diagonals, 28) : null;
+      const hitSeg  = !hitPt ? findNearestSegment(raw.x, raw.y, points, segments, 20) : null;
+      const hitDiag = !hitPt && !hitSeg ? findNearestDiagonal(raw.x, raw.y, points, diagonals, 20) : null;
 
       if (hitPt || hitSeg || hitDiag) {
         const type = hitPt ? "point" : hitSeg ? "segment" : "diagonal";
@@ -376,7 +376,7 @@ export function usePlanCanvasEvents({ state, onChange, onReplace, cs }: Params) 
         return;
       }
 
-      const hitSeg = findNearestSegment(raw.x, raw.y, points, segments, 28);
+      const hitSeg = findNearestSegment(raw.x, raw.y, points, segments, 20);
       if (hitSeg) {
         e.preventDefault();
         lastTouchEndRef.current = Date.now();
