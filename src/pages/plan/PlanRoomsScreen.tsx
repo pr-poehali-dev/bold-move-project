@@ -282,19 +282,20 @@ export default function PlanRoomsScreen({ token, project, onBack, onOpenRoom }: 
                       <PlanRoomPreview data={room.data ?? {}} width={400} height={180}/>
                     </div>
 
+                    {/* Название поверх плана — левый нижний угол */}
+                    {!isEditing && (
+                      <div className="absolute bottom-0 left-0 right-0 px-3 pb-3 pt-6"
+                        style={{ background: "linear-gradient(to top, rgba(0,0,0,0.75) 0%, transparent 100%)" }}>
+                        <span className="font-bold text-[13px] text-white drop-shadow">{room.name}</span>
+                      </div>
+                    )}
+
                     {/* Hover */}
                     <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition"
                       style={{ background: "rgba(0,0,0,0.35)" }}>
                       <span className="text-[11px] font-bold text-white px-2.5 py-1 rounded-lg" style={{ background: "rgba(0,0,0,0.6)" }}>Открыть</span>
                     </div>
                   </button>
-
-                  {/* Название комнаты под превью */}
-                  {!isEditing && (
-                    <div className="px-2.5 pt-2 pb-0.5">
-                      <span className="font-bold text-[13px] text-white">{room.name}</span>
-                    </div>
-                  )}
 
                   {/* Переименование (если активно) */}
                   {isEditing && (
