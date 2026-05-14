@@ -233,8 +233,11 @@ export default function PlanPage() {
           lastClosedSegId.current = null;
           catalog.setTapActiveId(null);
           reset(hasData ? { ...INITIAL_STATE, ...dataSource, selectedSegmentId: null } : INITIAL_STATE);
-          // Сбрасываем флаг после следующего рендера
-          setTimeout(() => { loadingFromRoomRef.current = false; }, 150);
+          // Сбрасываем флаг и подгоняем вид под чертёж
+          setTimeout(() => {
+            loadingFromRoomRef.current = false;
+            if (hasData) zoomFit();
+          }, 200);
           setRoomLoading(false);
         }}
       />
