@@ -1,4 +1,4 @@
-import React, { useRef, useState } from "react";
+import { useState } from "react";
 import Icon from "@/components/ui/icon";
 import type { PlanSettings } from "./planTypes";
 
@@ -44,122 +44,18 @@ export default function MobileBottomBar({
   attachedCount = 0, filterAttached = false, onToggleFilterAttached, isMobile = false,
   onSettingsOpenChange,
 }: Props) {
-  const [zoomOpen,     setZoomOpen]     = React.useState(false);
-  const [settingsOpen, setSettingsOpen] = React.useState(false);
-  const [hintsOpen,    setHintsOpen]    = useState(false);
+  const [hintsOpen, setHintsOpen] = useState(false);
 
-  const setSettings = (v: boolean) => { setSettingsOpen(v); onSettingsOpenChange?.(v); };
-  const zoomRef     = useRef<HTMLDivElement>(null);
-  const settingsRef = useRef<HTMLDivElement>(null);
 
-  // Закрываем при клике вне
-  React.useEffect(() => {
-    const handler = (e: MouseEvent | TouchEvent) => {
-      if (zoomRef.current && !zoomRef.current.contains(e.target as Node)) setZoomOpen(false);
-      if (settingsRef.current && !settingsRef.current.contains(e.target as Node)) setSettings(false);
-    };
-    document.addEventListener("mousedown", handler);
-    document.addEventListener("touchstart", handler);
-    return () => { document.removeEventListener("mousedown", handler); document.removeEventListener("touchstart", handler); };
-  }, []);
-
-  const SETTINGS_ITEMS = [
-    { key: "ortho",             label: "Ортогональный",   icon: "Axis3d"        },
-    { key: "snapToPoints",      label: "Магнит",          icon: "Magnet"        },
-    { key: "showGrid",          label: "Сетка",           icon: "Grid3x3"       },
-    { key: "showPoints",        label: "Точки",           icon: "CircleDot"     },
-    { key: "showPointLabels",   label: "Метки точек",     icon: "Tag"           },
-    { key: "showSegmentLabels", label: "Подписи",         icon: "Type"          },
-    { key: "showAngleLabels",   label: "Углы",            icon: "Angle"         },
-    { key: "showDiagonals",     label: "Диагонали",       icon: "ArrowUpRight"  },
-    { key: "showDimLines",      label: "Размерные линии", icon: "ArrowLeftRight" },
-  ];
 
   return (
     <div className="absolute left-0 right-0 flex items-end justify-center gap-2 z-20 px-4" style={{ bottom: "calc(8px + env(safe-area-inset-bottom, 0px))" }}>
 
-      {/* 1. Настройки — только мобайл */}
-      {isMobile && <div ref={settingsRef} className="relative">
-        {settingsOpen && (
-          <div className="absolute bottom-14 left-0 bg-[#1a1b2e] border border-white/[0.12] rounded-2xl shadow-2xl p-2 flex flex-col gap-0.5 min-w-[210px] max-h-[65vh] overflow-y-auto">
-            {SETTINGS_ITEMS.map(({ key, label, icon }) => (
-              <button key={key}
-                className={`flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-[12px] font-medium transition-all text-left w-full ${
-                  settings[key as keyof typeof settings]
-                    ? "bg-violet-600/20 text-violet-200 border border-violet-500/30"
-                    : "text-white/60 hover:bg-white/[0.06]"
-                }`}
-                onClick={() => onSettingChange({ [key]: !settings[key as keyof typeof settings] })}>
-                <Icon name={icon} size={14} />
-                <span className="flex-1">{label}</span>
-                {settings[key as keyof typeof settings] && <Icon name="Check" size={11} className="text-violet-400" />}
-              </button>
-            ))}
-            {/* Фильтр — только добавленные на холст */}
-            {onToggleFilterAttached && (
-              <>
-                <div className="h-px bg-white/[0.08] my-1" />
-                <button
-                  className={`flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-[12px] font-medium transition-all text-left w-full ${
-                    filterAttached
-                      ? "bg-emerald-600/20 text-emerald-200 border border-emerald-500/30"
-                      : "text-white/60 hover:bg-white/[0.06]"
-                  }`}
-                  onClick={onToggleFilterAttached}
-                >
-                  <Icon name="Pin" size={14} />
-                  <span className="flex-1">На холсте</span>
-                  {attachedCount > 0 && (
-                    <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-emerald-500/20 text-emerald-300 font-bold">
-                      {attachedCount}
-                    </span>
-                  )}
-                  {filterAttached && <Icon name="Check" size={11} className="text-emerald-400 ml-1" />}
-                </button>
-              </>
-            )}
-          </div>
-        )}
-        <button
-          onClick={() => { setSettings(!settingsOpen); setZoomOpen(false); }}
-          className={settingsOpen ? BTN_ACTIVE : BTN_DEFAULT}
-        >
-          <Icon name="SlidersHorizontal" size={20} />
-        </button>
-      </div>}
 
-      {/* 2. Зум — только мобайл */}
-      {isMobile && <div ref={zoomRef} className="relative">
-        {zoomOpen && (
-          <div className="absolute bottom-14 left-1/2 -translate-x-1/2 bg-[#1a1b2e] border border-white/[0.12] rounded-2xl shadow-2xl p-2 flex flex-col items-center gap-1 min-w-[52px]">
-            <button
-              onClick={onZoomIn}
-              className="w-10 h-10 rounded-xl bg-white/[0.06] text-white/70 hover:bg-white/[0.12] flex items-center justify-center transition active:scale-95">
-              <Icon name="Plus" size={16} />
-            </button>
-            <button
-              onClick={onZoomFit}
-              className="text-[10px] text-white/40 font-mono py-1 hover:text-white/70 transition">
-              {Math.round(zoom * 100)}%
-            </button>
-            <button
-              onClick={onZoomOut}
-              className="w-10 h-10 rounded-xl bg-white/[0.06] text-white/70 hover:bg-white/[0.12] flex items-center justify-center transition active:scale-95">
-              <Icon name="Minus" size={16} />
-            </button>
-          </div>
-        )}
-        <button
-          onClick={() => { setZoomOpen(v => !v); setSettings(false); }}
-          className={zoomOpen ? BTN_ACTIVE : BTN_DEFAULT}
-        >
-          <span className="text-[11px] font-bold font-mono">{Math.round(zoom * 100)}</span>
-        </button>
-      </div>}
 
       {/* 3. Каталог */}
       <button
-        onClick={() => { onOpenCatalog(); setSettings(false); setZoomOpen(false); }}
+        onClick={onOpenCatalog}
         className={catalogOpen ? BTN_ACTIVE : BTN_DEFAULT}
       >
         <Icon name="LayoutGrid" size={20} />
@@ -167,7 +63,7 @@ export default function MobileBottomBar({
 
       {/* 4. Чертёж: bottom sheet (мобайл) / toggle сайдбара (ПК) */}
       <button
-        onClick={() => { onOpenPanel(); setSettings(false); setZoomOpen(false); }}
+        onClick={onOpenPanel}
         className={sheetOpen ? BTN_ACTIVE : BTN_DEFAULT}
       >
         <Icon name="PanelBottom" size={20} />
@@ -176,7 +72,7 @@ export default function MobileBottomBar({
       {/* 5. Стороны (правая панель ввода) — только мобайл */}
       {isMobile && (
         <button
-          onClick={() => { onOpenSides(); setSettings(false); setZoomOpen(false); }}
+          onClick={onOpenSides}
           className={rightPanelOpen ? BTN_ACTIVE : BTN_DEFAULT}
         >
           <Icon name="PanelRight" size={20} />
