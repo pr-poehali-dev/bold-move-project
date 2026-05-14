@@ -30,6 +30,8 @@ export function usePlanVariants(token?: string | null) {
 
   const loadVariants = useCallback(async (roomId: number): Promise<PlanVariant[]> => {
     setLoading(true);
+    setVariants([]);
+    setActiveVariantId(null);
     try {
       const res = await fetch(`${CRM_URL}?r=plan-variants&room_id=${roomId}`, {
         headers: headers(token),
@@ -38,7 +40,7 @@ export function usePlanVariants(token?: string | null) {
       const list: PlanVariant[] = Array.isArray(data) ? data : [];
       setVariants(list);
       const active = list.find(v => v.is_active);
-      if (active) setActiveVariantId(active.id);
+      setActiveVariantId(active ? active.id : null);
       return list;
     } finally {
       setLoading(false);
