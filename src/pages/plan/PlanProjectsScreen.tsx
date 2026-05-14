@@ -253,7 +253,7 @@ export default function PlanProjectsScreen({ token, onSelectProject }: Props) {
       <div className="flex items-center justify-between px-4 sm:px-8 py-4 border-b" style={{ borderColor: "rgba(255,255,255,0.07)" }}>
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: "linear-gradient(135deg,#7c3aed,#6d28d9)" }}>
-            <Icon name="Layers" size={16} className="text-white" />
+            <Icon name="Layers2" size={16} className="text-white" />
           </div>
           <span className="text-white font-bold text-lg">Проекты</span>
         </div>

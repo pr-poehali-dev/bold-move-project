@@ -115,7 +115,7 @@ export default function MobileToolbar(props: ToolbarProps) {
                 className="w-9 h-9 flex items-center justify-center rounded-lg transition shrink-0"
                 style={{ background: "rgba(255,255,255,0.09)", border: "1px solid rgba(255,255,255,0.12)", color: "rgba(255,255,255,0.6)" }}
                 title="Варианты">
-                <Icon name="Layers" size={15} />
+                <Icon name="Layers2" size={15} />
               </button>
               {variantPickerOpen && (
                 <PlanVariantPickerMobile
