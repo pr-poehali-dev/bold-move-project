@@ -400,49 +400,64 @@ export default function PlanProjectsScreen({ token, onSelectProject }: Props) {
                 className="rounded-2xl overflow-hidden transition group"
                 style={{ background: "#0e0e1c", border: "1px solid rgba(255,255,255,0.06)" }}
               >
-                {/* Основная строка — кликабельна */}
-                <button
-                  className="w-full text-left px-4 py-3.5 flex items-start gap-3 hover:bg-white/[0.02] transition active:scale-[0.99]"
-                  onClick={() => onSelectProject(project)}
-                >
+                {/* Основная строка */}
+                <div className="px-4 py-3.5 flex items-center gap-3">
                   {/* Иконка */}
-                  <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 mt-0.5"
-                    style={{ background: "rgba(124,58,237,0.12)" }}>
-                    <Icon name="Building2" size={18} style={{ color: "#a78bfa" }} />
-                  </div>
-
-                  {/* Данные */}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="text-white font-bold text-[14px] truncate">{project.name}</span>
-                      <span className="text-[10px] px-2 py-0.5 rounded-full font-bold flex-shrink-0 uppercase tracking-wide"
-                        style={{ background: sc.bg, color: sc.text }}>
-                        {STATUSES.find(s => s.id === project.status)?.label ?? project.status}
-                      </span>
+                  <button
+                    className="flex items-start gap-3 flex-1 min-w-0 text-left hover:opacity-90 transition active:scale-[0.99]"
+                    onClick={() => onSelectProject(project)}
+                  >
+                    <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 mt-0.5"
+                      style={{ background: "rgba(124,58,237,0.12)" }}>
+                      <Icon name="Building2" size={18} style={{ color: "#a78bfa" }} />
                     </div>
-                    <div className="flex flex-col gap-0.5">
-                      {project.client_name && (
-                        <span className="flex items-center gap-1 text-[12px]" style={{ color: "rgba(255,255,255,0.75)" }}>
-                          <Icon name="User" size={11} />
-                          {project.client_name}
-                        </span>
-                      )}
-                      {project.address && (
-                        <span className="flex items-center gap-1 text-[12px]" style={{ color: "rgba(255,255,255,0.75)" }}>
-                          <Icon name="MapPin" size={11} />
-                          {project.address}
-                        </span>
-                      )}
-                      {project.phone && (
-                        <span className="flex items-center gap-1 text-[12px]" style={{ color: "rgba(255,255,255,0.75)" }}>
-                          <Icon name="Phone" size={11} />
-                          {project.phone}
-                        </span>
-                      )}
-                    </div>
-                  </div>
 
-                </button>
+                    {/* Данные */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="text-white font-bold text-[14px] truncate">{project.name}</span>
+                        <span className="text-[10px] px-2 py-0.5 rounded-full font-bold flex-shrink-0 uppercase tracking-wide"
+                          style={{ background: sc.bg, color: sc.text }}>
+                          {STATUSES.find(s => s.id === project.status)?.label ?? project.status}
+                        </span>
+                      </div>
+                      <div className="flex flex-col gap-0.5">
+                        {project.client_name && (
+                          <span className="flex items-center gap-1 text-[12px]" style={{ color: "rgba(255,255,255,0.75)" }}>
+                            <Icon name="User" size={11} />
+                            {project.client_name}
+                          </span>
+                        )}
+                        {project.address && (
+                          <span className="flex items-center gap-1 text-[12px]" style={{ color: "rgba(255,255,255,0.75)" }}>
+                            <Icon name="MapPin" size={11} />
+                            {project.address}
+                          </span>
+                        )}
+                        {project.phone && (
+                          <span className="flex items-center gap-1 text-[12px]" style={{ color: "rgba(255,255,255,0.75)" }}>
+                            <Icon name="Phone" size={11} />
+                            {project.phone}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </button>
+
+                  {/* Кнопка Смета — большой блок справа */}
+                  <button
+                    onClick={() => { setExportProject(project); setExportOpen(true); }}
+                    className="flex-shrink-0 flex flex-col items-center justify-center gap-1.5 rounded-xl transition hover:brightness-110 active:scale-95"
+                    style={{
+                      width: 68, height: 68,
+                      background: "rgba(124,58,237,0.12)",
+                      border: "1px solid rgba(124,58,237,0.25)",
+                    }}
+                  >
+                    <Icon name="FileDown" size={22} style={{ color: "#a78bfa" }} />
+                    <span className="text-[10px] font-bold uppercase tracking-wide" style={{ color: "#a78bfa" }}>Смета</span>
+                  </button>
+                </div>
 
                 {/* Кнопки действий */}
                 <div className="flex border-t" style={{ borderColor: "rgba(255,255,255,0.05)" }}>
@@ -452,15 +467,6 @@ export default function PlanProjectsScreen({ token, onSelectProject }: Props) {
                     style={{ color: "rgba(255,255,255,0.55)" }}
                   >
                     Редактировать
-                  </button>
-                  <div className="w-px" style={{ background: "rgba(255,255,255,0.05)" }} />
-                  <button
-                    onClick={() => { setExportProject(project); setExportOpen(true); }}
-                    className="flex items-center justify-center gap-1.5 px-4 py-2.5 text-[12px] font-semibold transition hover:bg-violet-500/10"
-                    style={{ color: "rgba(167,139,250,0.8)" }}
-                  >
-                    <Icon name="FileDown" size={13} />
-                    Смета
                   </button>
                   <div className="w-px" style={{ background: "rgba(255,255,255,0.05)" }} />
                   <button
