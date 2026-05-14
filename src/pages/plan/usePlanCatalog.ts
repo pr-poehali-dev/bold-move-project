@@ -202,28 +202,36 @@ export function usePlanCatalog(
     return s.segments.every(seg => (seg.items ?? []).some(it => it.priceId === priceId));
   }, [stateRef]);
 
-  // Изменить quantity товара на всех стенах на delta (±1), минимум 0.1
+  // Изменить суммарное quantity на delta (±1) — делим поровну по стенам
   const adjustItemQuantity = useCallback((priceId: number, delta: number) => {
     const s = stateRef.current;
+    const segsWithItem = s.segments.filter(seg => (seg.items ?? []).some(it => it.priceId === priceId));
+    const count = segsWithItem.length || 1;
+    const currentTotal = segsWithItem.reduce((sum, seg) => {
+      const it = (seg.items ?? []).find(i => i.priceId === priceId);
+      return sum + (it?.quantity ?? 1);
+    }, 0);
+    const newTotal = Math.max(0.1, Math.round((currentTotal + delta) * 10) / 10);
+    const perSeg = Math.max(0.01, Math.round((newTotal / count) * 100) / 100);
     const newSegments = s.segments.map(seg => ({
       ...seg,
-      items: (seg.items ?? []).map(it => {
-        if (it.priceId !== priceId) return it;
-        const next = Math.max(0.1, Math.round(((it.quantity ?? 1) + delta) * 10) / 10);
-        return { ...it, quantity: next };
-      }),
+      items: (seg.items ?? []).map(it =>
+        it.priceId === priceId ? { ...it, quantity: perSeg } : it
+      ),
     }));
     push({ ...s, segments: newSegments });
   }, [stateRef, push]);
 
-  // Установить конкретное значение quantity на всех стенах
+  // Установить суммарное количество — распределяем поровну по всем стенам
   const setItemQuantity = useCallback((priceId: number, value: number) => {
     const s = stateRef.current;
-    const safeVal = Math.max(0.1, Math.round(value * 10) / 10);
+    const segsWithItem = s.segments.filter(seg => (seg.items ?? []).some(it => it.priceId === priceId));
+    const count = segsWithItem.length || 1;
+    const perSeg = Math.max(0.01, Math.round((value / count) * 100) / 100);
     const newSegments = s.segments.map(seg => ({
       ...seg,
       items: (seg.items ?? []).map(it =>
-        it.priceId === priceId ? { ...it, quantity: safeVal } : it
+        it.priceId === priceId ? { ...it, quantity: perSeg } : it
       ),
     }));
     push({ ...s, segments: newSegments });
