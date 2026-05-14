@@ -19,13 +19,13 @@ const STATUSES = [
   { id: "done",      label: "Завершён" },
 ];
 
-const STATUS_COLORS: Record<string, { bg: string; text: string }> = {
-  draft:     { bg: "rgba(255,255,255,0.07)",  text: "rgba(255,255,255,0.4)" },
-  estimate:  { bg: "rgba(251,191,36,0.15)",   text: "#fbbf24" },
-  contract:  { bg: "rgba(59,130,246,0.15)",   text: "#60a5fa" },
-  scheduled: { bg: "rgba(249,115,22,0.15)",   text: "#fb923c" },
-  installed: { bg: "rgba(34,197,94,0.15)",    text: "#4ade80" },
-  done:      { bg: "rgba(99,102,241,0.15)",   text: "#818cf8" },
+const STATUS_COLORS: Record<string, { bg: string; text: string; glow: string }> = {
+  draft:     { bg: "rgba(148,163,184,0.15)",  text: "#94a3b8", glow: "rgba(148,163,184,0.3)" },
+  estimate:  { bg: "rgba(251,191,36,0.18)",   text: "#fbbf24", glow: "rgba(251,191,36,0.4)" },
+  contract:  { bg: "rgba(59,130,246,0.18)",   text: "#60a5fa", glow: "rgba(59,130,246,0.4)" },
+  scheduled: { bg: "rgba(249,115,22,0.18)",   text: "#fb923c", glow: "rgba(249,115,22,0.4)" },
+  installed: { bg: "rgba(34,197,94,0.18)",    text: "#4ade80", glow: "rgba(34,197,94,0.4)" },
+  done:      { bg: "rgba(99,102,241,0.18)",   text: "#818cf8", glow: "rgba(99,102,241,0.4)" },
 };
 
 interface FormData {
@@ -413,10 +413,10 @@ export default function PlanProjectsScreen({ token, onSelectProject }: Props) {
                 style={{ background: "#0e0e1c", border: "1px solid rgba(255,255,255,0.06)" }}
               >
                 {/* Статус — вертикальная полоска слева */}
-                <div className="flex-shrink-0 flex items-center justify-center w-8 self-stretch"
-                  style={{ background: `linear-gradient(to bottom, ${sc.bg}, ${sc.text}22)` }}>
-                  <span className="text-[9px] font-bold uppercase tracking-widest whitespace-nowrap"
-                    style={{ color: sc.text, writingMode: "vertical-rl", transform: "rotate(180deg)" }}>
+                <div className="flex-shrink-0 flex items-center justify-center w-10 self-stretch"
+                  style={{ background: `linear-gradient(to bottom, ${sc.glow ?? sc.bg}, ${sc.bg}, transparent)` }}>
+                  <span className="font-bold uppercase whitespace-nowrap select-none"
+                    style={{ color: sc.text, writingMode: "vertical-rl", transform: "rotate(180deg)", fontSize: 11, letterSpacing: "0.12em" }}>
                     {STATUSES.find(s => s.id === project.status)?.label ?? project.status}
                   </span>
                 </div>
