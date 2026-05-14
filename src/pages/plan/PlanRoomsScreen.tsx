@@ -345,9 +345,9 @@ export default function PlanRoomsScreen({ token, project, onBack, onOpenRoom }: 
                   )}
 
                   {/* Низ: кнопка "Варианты" + меню ⋮ */}
-                  <div className="flex items-center gap-2 px-2.5 pt-2 pb-2.5">
+                  <div className="flex items-center gap-2 px-2.5 pt-2 pb-2.5 min-w-0">
                     {/* Кнопка Варианты */}
-                    <div className="relative flex-1" ref={varPickerRoomId === room.id ? varPickerRef : undefined}>
+                    <div className="relative flex-1 min-w-0" ref={varPickerRoomId === room.id ? varPickerRef : undefined}>
                       <button
                         onClick={async () => {
                           if (varPickerRoomId === room.id) { setVarPickerRoomId(null); return; }
