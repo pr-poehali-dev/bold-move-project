@@ -27,9 +27,87 @@ export interface VoiceCatalogItem {
   price?: number;
 }
 
+// Определяем ориентацию сегмента по координатам точек
+function segmentOrientation(ax: number, ay: number, bx: number, by: number): "top" | "bottom" | "left" | "right" | "diagonal" {
+  const dx = Math.abs(bx - ax);
+  const dy = Math.abs(by - ay);
+  if (dx > dy * 2) {
+    // горизонтальный — определяем верх/низ по Y (в SVG Y растёт вниз)
+    return ay < by ? "top" : ay > by ? "bottom" : (ax + bx) / 2 < 0 ? "top" : "top";
+  } else if (dy > dx * 2) {
+    // вертикальный — определяем лево/право по X
+    return ax < bx ? "left" : "right";
+  }
+  return "diagonal";
+}
+
+// Находим ID сегментов по текстовым подсказкам в транскрипте
+export function findTargetSegIds(transcript: string, state: PlanState): string[] | null {
+  const t = transcript.toLowerCase();
+  const { points, segments } = state;
+
+  // Буквенные метки A-Z (напр. "стена A-B", "отрезок BC", "сторона AB")
+  const labelMatch = t.match(/(?:стен[ауе]?|отрезк[еуа]?|сторон[еуа]?)\s+([a-zа-яё]{1,2}[-–—]?[a-zа-яё]{0,2})/i)
+    ?? t.match(/([a-zA-Z]{1,2})[-–—]([a-zA-Z]{1,2})/);
+  if (labelMatch) {
+    const raw = labelMatch[1]?.replace(/[-–—]/g, "") ?? "";
+    // Ищем сегмент где буква точки совпадает с алфавитным индексом
+    const matched: string[] = [];
+    segments.forEach((seg, i) => {
+      const fromLetter = String.fromCharCode(65 + i).toLowerCase();
+      const toLetter   = String.fromCharCode(65 + ((i + 1) % segments.length)).toLowerCase();
+      const segLabel   = `${fromLetter}${toLetter}`;
+      if (segLabel.includes(raw.toLowerCase()) || raw.toLowerCase().includes(fromLetter)) {
+        matched.push(seg.id);
+      }
+    });
+    if (matched.length > 0) return matched;
+  }
+
+  // Ориентация: верх/низ/лево/право + "следующий/предыдущий" относительно экрана
+  // Вычисляем bbox для нормализации
+  if (points.length < 2) return null;
+  const minX = Math.min(...points.map(p => p.x));
+  const maxX = Math.max(...points.map(p => p.x));
+  const minY = Math.min(...points.map(p => p.y));
+  const maxY = Math.max(...points.map(p => p.y));
+  const midX = (minX + maxX) / 2;
+  const midY = (minY + maxY) / 2;
+
+  const wantTop    = /верхн|сверху|наверху|верх/.test(t);
+  const wantBottom = /нижн|снизу|внизу|низ/.test(t);
+  const wantLeft   = /лев[ую]|слева/.test(t);
+  const wantRight  = /правую|справа|прав/.test(t);
+
+  if (!wantTop && !wantBottom && !wantLeft && !wantRight) return null;
+
+  const result: string[] = [];
+  segments.forEach(seg => {
+    const a = points.find(p => p.id === seg.fromId);
+    const b = points.find(p => p.id === seg.toId);
+    if (!a || !b) return;
+    const segMidX = (a.x + b.x) / 2;
+    const segMidY = (a.y + b.y) / 2;
+    const orient  = segmentOrientation(a.x, a.y, b.x, b.y);
+
+    if (wantTop    && orient === "top"    && segMidY <= midY) result.push(seg.id);
+    if (wantBottom && orient === "bottom" && segMidY >= midY) result.push(seg.id);
+    if (wantLeft   && orient === "left"   && segMidX <= midX) result.push(seg.id);
+    if (wantRight  && orient === "right"  && segMidX >= midX) result.push(seg.id);
+
+    // Запасной — по позиции mid относительно центра фигуры
+    if (wantTop    && segMidY < minY + (maxY - minY) * 0.35 && result.length === 0) result.push(seg.id);
+    if (wantBottom && segMidY > minY + (maxY - minY) * 0.65 && result.length === 0) result.push(seg.id);
+    if (wantLeft   && segMidX < minX + (maxX - minX) * 0.35 && result.length === 0) result.push(seg.id);
+    if (wantRight  && segMidX > minX + (maxX - minX) * 0.65 && result.length === 0) result.push(seg.id);
+  });
+
+  return result.length > 0 ? [...new Set(result)] : null;
+}
+
 interface Props {
   state: PlanState;
-  onItems: (items: VoiceCatalogItem[]) => void;
+  onItems: (items: VoiceCatalogItem[], targetSegIds: string[] | null) => void;
 }
 
 // Строим читаемый контекст помещения из состояния построителя
@@ -62,17 +140,39 @@ function buildRoomContext(state: PlanState): string {
   if (room.floorToCeilCm)  lines.push(`Высота потолка: ${room.floorToCeilCm} см`);
   if (room.concreteDipMm)  lines.push(`Провис перекрытия: ${room.concreteDipMm} мм`);
 
-  // Стены с длинами и уже добавленными товарами
+  // Стены с длинами, ориентацией и уже добавленными товарами
   if (segments.length > 0) {
-    lines.push("\nСтены помещения:");
+    const minX = points.length ? Math.min(...points.map(p => p.x)) : 0;
+    const maxX = points.length ? Math.max(...points.map(p => p.x)) : 0;
+    const minY = points.length ? Math.min(...points.map(p => p.y)) : 0;
+    const maxY = points.length ? Math.max(...points.map(p => p.y)) : 0;
+    const midX = (minX + maxX) / 2;
+    const midY = (minY + maxY) / 2;
+
+    lines.push("\nСтены помещения (буква = метка, ориентация = как видит зритель на экран):");
     segments.forEach((seg, i) => {
-      const label = String.fromCharCode(65 + i); // A, B, C...
-      const lenM  = seg.lengthCm ? (seg.lengthCm / 100).toFixed(2) + " м" : "?";
+      const fromLetter = String.fromCharCode(65 + i);
+      const toLetter   = String.fromCharCode(65 + ((i + 1) % segments.length));
+      const label      = `${fromLetter}-${toLetter}`;
+      const lenM       = seg.lengthCm ? (seg.lengthCm / 100).toFixed(2) + " м" : "?";
+      const a = points.find(p => p.id === seg.fromId);
+      const b = points.find(p => p.id === seg.toId);
+      let orient = "";
+      if (a && b) {
+        const segMidX = (a.x + b.x) / 2;
+        const segMidY = (a.y + b.y) / 2;
+        const o = segmentOrientation(a.x, a.y, b.x, b.y);
+        if (o === "top" || o === "bottom") {
+          orient = segMidY < midY ? " [верхняя]" : " [нижняя]";
+        } else if (o === "left" || o === "right") {
+          orient = segMidX < midX ? " [левая]" : " [правая]";
+        }
+      }
       const items = (seg.items ?? []).map(it =>
         `${it.name}${it.quantity ? ` ${it.quantity} ${it.unit ?? "м"}` : ""}`
       );
       const itemsStr = items.length > 0 ? ` [добавлено: ${items.join(", ")}]` : "";
-      lines.push(`  Стена ${label}: ${lenM}${itemsStr}`);
+      lines.push(`  Стена ${label}${orient}: ${lenM}${itemsStr}`);
     });
   }
 
@@ -144,10 +244,9 @@ export default function useVoiceCatalog({ state, onItems }: Props) {
   }, []);
 
   // ── Отправка в ai-chat с контекстом чертежа ─────────────────────────────────
-  const sendToAI = useCallback(async (transcript: string): Promise<VoiceCatalogItem[]> => {
+  const sendToAI = useCallback(async (transcript: string): Promise<{ items: VoiceCatalogItem[]; segIds: string[] | null }> => {
     const roomContext = buildRoomContext(stateRef.current);
 
-    // Системный контекст идёт первым сообщением, голос клиента — вторым
     const messages = [
       { role: "user", text: roomContext },
       { role: "user", text: transcript },
@@ -160,13 +259,13 @@ export default function useVoiceCatalog({ state, onItems }: Props) {
     });
     const data = await res.json();
 
-    // Бот возвращает { answer, items[] } — берём items
-    if (data.items && Array.isArray(data.items) && data.items.length > 0) {
-      return data.items as VoiceCatalogItem[];
-    }
+    // Определяем целевые сегменты по тексту транскрипта
+    const segIds = findTargetSegIds(transcript, stateRef.current);
 
-    // Если items нет — пробуем распарсить из answer (запасной вариант)
-    return [];
+    if (data.items && Array.isArray(data.items) && data.items.length > 0) {
+      return { items: data.items as VoiceCatalogItem[], segIds };
+    }
+    return { items: [], segIds };
   }, []);
 
   // ── Визуализация громкости ───────────────────────────────────────────────────
@@ -228,10 +327,10 @@ export default function useVoiceCatalog({ state, onItems }: Props) {
       try {
         const transcript = await transcribeBlob(blob);
         setStatus(`"${transcript}" — запрашиваю бота...`);
-        const items = await sendToAI(transcript);
+        const { items, segIds } = await sendToAI(transcript);
         if (items.length > 0) {
           setStatus(`Добавляю ${items.length} позиций в смету...`);
-          onItems(items);
+          onItems(items, segIds);
           setStatus("");
         } else {
           setStatus("Бот не нашёл подходящих товаров");

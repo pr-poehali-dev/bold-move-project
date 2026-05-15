@@ -16,7 +16,7 @@ interface Props {
   onAssignToAllSegs: (item: SegmentPriceItem) => void;
   onAddToActive: (item: SegmentPriceItem) => void;
   // один атомарный push для всех голосовых товаров сразу
-  onAssignMany: (wallItems: SegmentPriceItem[], activeItems: SegmentPriceItem[]) => void;
+  onAssignMany: (wallItems: SegmentPriceItem[], floorItems: SegmentPriceItem[], wallSegIds?: string[]) => void;
 }
 
 // Маппинг товара от бота → SegmentPriceItem через прайс
@@ -72,7 +72,7 @@ export default function PlanCatalogPanel({
 }: Props) {
 
   // Обработка items от бота: маппим по ПОЛНОМУ прайсу и добавляем ОДНИМ push
-  const handleVoiceItems = (items: VoiceCatalogItem[]) => {
+  const handleVoiceItems = (items: VoiceCatalogItem[], segIds: string[] | null) => {
     const wallItems: SegmentPriceItem[] = [];
     const floorItems: SegmentPriceItem[] = [];
 
@@ -80,14 +80,12 @@ export default function PlanCatalogPanel({
       const matched = matchItem(voiceItem, allPrices);
       if (!matched) return;
 
-      // Категория "Монтаж" — тихо добавляем в активные (полотно/смета), не на стены и не на чертёж
+      // Категория "Монтаж" — тихо в смету, не на чертёж
       if (matched.category === "Монтаж") {
         floorItems.push({ ...matched, quantity: voiceItem.qty ?? 1 });
         return;
       }
 
-      // is_wall_item берём СТРОГО из прайса (данные БД по категории)
-      // is_wall_item=true → на стены, is_wall_item=false → в полотно/смету
       if (matched.isWallItem && state.segments.length > 0) {
         wallItems.push(matched);
       } else {
@@ -96,7 +94,8 @@ export default function PlanCatalogPanel({
     });
 
     if (wallItems.length > 0 || floorItems.length > 0) {
-      onAssignMany(wallItems, floorItems);
+      // Передаём segIds — если клиент назвал конкретную стену, применяем только к ней
+      onAssignMany(wallItems, floorItems, segIds ?? undefined);
     }
   };
 

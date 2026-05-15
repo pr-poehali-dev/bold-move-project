@@ -10,7 +10,7 @@ import type { PlanState } from "./planTypes";
 
 interface Props {
   state: PlanState;
-  onItems: (items: VoiceCatalogItem[]) => void;
+  onItems: (items: VoiceCatalogItem[], segIds: string[] | null) => void;
 }
 
 export default function PlanVoiceCatalogButton({ state, onItems }: Props) {

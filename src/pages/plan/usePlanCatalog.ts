@@ -35,7 +35,7 @@ export interface PlanCatalogState {
   isItemOnAllSegs: (priceId: number) => boolean;
   adjustItemQuantity: (priceId: number, delta: number) => void;
   setItemQuantity: (priceId: number, value: number) => void;
-  assignManyItems: (wallItems: SegmentPriceItem[], activeItems: SegmentPriceItem[]) => void;
+  assignManyItems: (wallItems: SegmentPriceItem[], floorItems: SegmentPriceItem[], wallSegIds?: string[]) => void;
   // Модалка для добавления на полотно
   pendingFloorItem: SegmentPriceItem | null;
   setPendingFloorItem: (item: SegmentPriceItem | null) => void;
@@ -190,31 +190,42 @@ export function usePlanCatalog(
   // wallItems — на все стены, activeItems — в карточки без привязки к стенам
   const assignManyItems = useCallback((
     wallItems: SegmentPriceItem[],
-    newActiveItems: SegmentPriceItem[],
+    floorOrActiveItems: SegmentPriceItem[],
+    wallSegIds?: string[], // если задано — только на эти сегменты, иначе на все
   ) => {
     const s = stateRef.current;
-    // Применяем все настенные товары за один проход
+
+    // Настенные товары — один проход
     let newSegments = s.segments;
+    const targetSegIds = wallSegIds && wallSegIds.length > 0 ? new Set(wallSegIds) : null;
     for (const item of wallItems) {
       newSegments = newSegments.map(seg => {
+        if (targetSegIds && !targetSegIds.has(seg.id)) return seg;
         const existing = seg.items ?? [];
         if (existing.some(it => it.priceId === item.priceId)) return seg;
         const meters = seg.lengthCm ? Math.round(seg.lengthCm / 100 * 100) / 100 : 1;
         return { ...seg, items: [...existing, { ...item, quantity: meters }] };
       });
     }
-    push({ ...s, segments: newSegments });
-    // Активные товары (полотно / штучные) — в карточки
-    if (newActiveItems.length > 0) {
-      setActiveItems(prev => {
-        let next = [...prev];
-        for (const item of newActiveItems) {
-          if (!next.some(it => it.priceId === item.priceId)) next = [...next, item];
-        }
-        return next;
-      });
-      setTapActiveId(newActiveItems[newActiveItems.length - 1].priceId);
+
+    // Полотно/штучные — добавляем в state.floorItems (не в activeItems!)
+    let newFloorItems = s.floorItems ?? [];
+    for (const item of floorOrActiveItems) {
+      if (!newFloorItems.some(fi => fi.priceId === item.priceId)) {
+        const fi: FloorItem = {
+          id: genId("fi"),
+          priceId: item.priceId,
+          name: item.name,
+          category: item.category,
+          imageUrl: item.imageUrl,
+          unit: item.unit,
+          quantity: item.quantity ?? 1,
+        };
+        newFloorItems = [...newFloorItems, fi];
+      }
     }
+
+    push({ ...s, segments: newSegments, floorItems: newFloorItems });
   }, [stateRef, push]);
 
   // Удалить товар только со всех стен (карточку НЕ убираем)
