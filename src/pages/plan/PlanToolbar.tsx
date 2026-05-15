@@ -79,7 +79,7 @@ export default function PlanToolbar(props: ToolbarProps) {
       <Sep />
 
       {/* ФУНКЦИИ */}
-      <DropUp label="Функции" icon="Zap" badge={fnCount > 0 ? String(fnCount) : undefined}>
+      <DropUp label="Настройки" icon="SlidersHorizontal" badge={fnCount > 0 ? String(fnCount) : undefined}>
         <div className="px-2 pt-1.5 pb-0.5">
           <p className="text-[10px] text-white/30 uppercase tracking-widest font-bold">Рисование</p>
         </div>
@@ -121,7 +121,6 @@ export default function PlanToolbar(props: ToolbarProps) {
 
       <div className="flex-1 min-w-2" />
 
-      <IconBtn icon="Download" onClick={onExport} title="Экспорт (E)" />
       <IconBtn icon="RotateCcw" onClick={onReset} title="Очистить" />
 
       <Sep />
