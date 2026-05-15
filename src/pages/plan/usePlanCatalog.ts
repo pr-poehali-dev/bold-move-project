@@ -35,6 +35,7 @@ export interface PlanCatalogState {
   isItemOnAllSegs: (priceId: number) => boolean;
   adjustItemQuantity: (priceId: number, delta: number) => void;
   setItemQuantity: (priceId: number, value: number) => void;
+  assignManyItems: (wallItems: SegmentPriceItem[], activeItems: SegmentPriceItem[]) => void;
   // Модалка для добавления на полотно
   pendingFloorItem: SegmentPriceItem | null;
   setPendingFloorItem: (item: SegmentPriceItem | null) => void;
@@ -183,6 +184,37 @@ export function usePlanCatalog(
       return { ...seg, items: [...existing, { ...item, quantity: meters }] };
     });
     push({ ...s, segments: newSegments });
+  }, [stateRef, push]);
+
+  // Добавить СРАЗУ НЕСКОЛЬКО товаров за один push (для голосового ввода)
+  // wallItems — на все стены, activeItems — в карточки без привязки к стенам
+  const assignManyItems = useCallback((
+    wallItems: SegmentPriceItem[],
+    newActiveItems: SegmentPriceItem[],
+  ) => {
+    const s = stateRef.current;
+    // Применяем все настенные товары за один проход
+    let newSegments = s.segments;
+    for (const item of wallItems) {
+      newSegments = newSegments.map(seg => {
+        const existing = seg.items ?? [];
+        if (existing.some(it => it.priceId === item.priceId)) return seg;
+        const meters = seg.lengthCm ? Math.round(seg.lengthCm / 100 * 100) / 100 : 1;
+        return { ...seg, items: [...existing, { ...item, quantity: meters }] };
+      });
+    }
+    push({ ...s, segments: newSegments });
+    // Активные товары (полотно / штучные) — в карточки
+    if (newActiveItems.length > 0) {
+      setActiveItems(prev => {
+        let next = [...prev];
+        for (const item of newActiveItems) {
+          if (!next.some(it => it.priceId === item.priceId)) next = [...next, item];
+        }
+        return next;
+      });
+      setTapActiveId(newActiveItems[newActiveItems.length - 1].priceId);
+    }
   }, [stateRef, push]);
 
   // Удалить товар только со всех стен (карточку НЕ убираем)
@@ -527,7 +559,7 @@ export function usePlanCatalog(
     hoverSegId, setHoverSegId,
     filterAttached, setFilterAttached,
     attachedCount,
-    findClosestSeg, assignItemToSeg, assignItemToSegs, assignItemToAllSegs, removeItemFromAllSegs, removeActiveItem, isItemOnAllSegs, adjustItemQuantity, setItemQuantity,
+    findClosestSeg, assignItemToSeg, assignItemToSegs, assignItemToAllSegs, assignManyItems, removeItemFromAllSegs, removeActiveItem, isItemOnAllSegs, adjustItemQuantity, setItemQuantity,
     pendingFloorItem, setPendingFloorItem, confirmFloorItem,
     editingFloorId, setEditingFloorId, editingFloorItem, confirmEditFloorItem,
   };

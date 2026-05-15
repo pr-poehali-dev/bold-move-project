@@ -15,6 +15,8 @@ interface Props {
   onAssignToSegs: (item: SegmentPriceItem, segIds: string[]) => void;
   onAssignToAllSegs: (item: SegmentPriceItem) => void;
   onAddToActive: (item: SegmentPriceItem) => void;
+  // один атомарный push для всех голосовых товаров сразу
+  onAssignMany: (wallItems: SegmentPriceItem[], activeItems: SegmentPriceItem[]) => void;
 }
 
 // Маппинг товара от бота → SegmentPriceItem через прайс
@@ -64,26 +66,32 @@ export default function PlanCatalogPanel({
   state,
   onClose,
   onAssignToSegs,
-  onAssignToAllSegs,
+  onAssignToAllSegs: _onAssignToAllSegs,
   onAddToActive,
+  onAssignMany,
 }: Props) {
 
-  // Обработка items от бота: маппим по ПОЛНОМУ прайсу и добавляем в смету
+  // Обработка items от бота: маппим по ПОЛНОМУ прайсу и добавляем ОДНИМ push
   const handleVoiceItems = (items: VoiceCatalogItem[]) => {
     console.log("[VoiceCatalog] items from bot:", items);
-    let added = 0;
+    const wallItems: SegmentPriceItem[] = [];
+    const activeItems: SegmentPriceItem[] = [];
+
     items.forEach(voiceItem => {
       const matched = matchItem(voiceItem, allPrices);
       console.log(`[VoiceCatalog] "${voiceItem.name}" → ${matched ? matched.name : "NOT FOUND"}`);
       if (!matched) return;
-      added++;
       if (matched.isWallItem && state.segments.length > 0) {
-        onAssignToAllSegs(matched);
+        wallItems.push(matched);
       } else {
-        onAddToActive({ ...matched, quantity: voiceItem.qty ?? 1 });
+        activeItems.push({ ...matched, quantity: voiceItem.qty ?? 1 });
       }
     });
-    console.log(`[VoiceCatalog] добавлено ${added} из ${items.length}`);
+
+    console.log(`[VoiceCatalog] wall=${wallItems.length} active=${activeItems.length} из ${items.length}`);
+    if (wallItems.length > 0 || activeItems.length > 0) {
+      onAssignMany(wallItems, activeItems);
+    }
   };
 
 

@@ -198,6 +198,7 @@ export default function PlanPagePanels({
         onClose={() => catalog.setCatalogOpen(false)}
         onAssignToSegs={catalog.assignItemToSegs}
         onAssignToAllSegs={catalog.assignItemToAllSegs}
+        onAssignMany={catalog.assignManyItems}
         onAddToActive={item => {
           catalog.setActiveItems(prev =>
             prev.some(it => it.priceId === item.priceId) ? prev : [...prev, item]
