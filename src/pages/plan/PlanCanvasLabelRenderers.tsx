@@ -275,7 +275,7 @@ export function renderCustomDimLine(
       <line x1={b.x + nx * (off - 7)} y1={b.y + ny * (off - 7)} x2={b.x + nx * (off + 7)} y2={b.y + ny * (off + 7)} stroke={col} strokeWidth={1.5} />
       <line x1={x1} y1={y1} x2={x2} y2={y2} stroke={col} strokeWidth={isSel ? 2 : 1.5} />
       <line x1={x1} y1={y1} x2={x2} y2={y2} stroke="transparent" strokeWidth={14} />
-      {lenCm !== null && <text x={mx} y={my} transform={`rotate(${na},${mx},${my})`} textAnchor="middle" dominantBaseline="auto" dy={-5} fontSize={10} fill={col} fontFamily="monospace" className="select-none">{lenCm} см</text>}
+      {lenCm !== null && <text x={mx} y={my} transform={`rotate(${na},${mx},${my})`} textAnchor="middle" dominantBaseline="auto" dy={-5} fontSize={10} fill={col} fontFamily="monospace" className="select-none">{lenCm}</text>}
     </g>
   );
 }
@@ -312,7 +312,7 @@ export function renderDiagonals(ctx: RenderContext, handlers: Pick<SegmentHandle
               fontSize={9.5} fill={isSel ? "#fb923c" : "#f59e0b"}
               fontFamily="monospace"
               className="pointer-events-none select-none"
-            >{lenCm} см</text>
+            >{lenCm}</text>
           );
         })()}
       </g>
@@ -381,7 +381,7 @@ export function InlineDimLabels({ state, onChange }: InlineDimProps) {
 
         const lenCm = seg.lengthCm ?? null;
         if (lenCm === null) return null;
-        const displayText = `${lenCm} см`;
+        const displayText = `${lenCm}`;
 
         const isEditing = editingId === seg.id;
 
@@ -412,7 +412,7 @@ export function InlineDimLabels({ state, onChange }: InlineDimProps) {
                     boxShadow: "0 0 10px rgba(124,58,237,0.3), 0 2px 10px rgba(0,0,0,0.6)",
                   }}
                 />
-                <span style={{ fontSize: 9, color: "rgba(255,255,255,0.4)", fontFamily: "monospace" }}>см</span>
+                <span style={{ fontSize: 9, color: "rgba(255,255,255,0.4)", fontFamily: "monospace" }}></span>
               </div>
             </foreignObject>
           );
