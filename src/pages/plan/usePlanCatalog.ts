@@ -35,7 +35,7 @@ export interface PlanCatalogState {
   isItemOnAllSegs: (priceId: number) => boolean;
   adjustItemQuantity: (priceId: number, delta: number) => void;
   setItemQuantity: (priceId: number, value: number) => void;
-  assignManyItems: (wallItems: SegmentPriceItem[], floorItems: SegmentPriceItem[], wallSegIds?: string[]) => void;
+  assignManyItems: (wallItems: { item: SegmentPriceItem; segIds: string[] | null }[], floorItems: SegmentPriceItem[]) => void;
   // Модалка для добавления на полотно
   pendingFloorItem: SegmentPriceItem | null;
   setPendingFloorItem: (item: SegmentPriceItem | null) => void;
@@ -189,18 +189,18 @@ export function usePlanCatalog(
   // Добавить СРАЗУ НЕСКОЛЬКО товаров за один push (для голосового ввода)
   // wallItems — на все стены, activeItems — в карточки без привязки к стенам
   const assignManyItems = useCallback((
-    wallItems: SegmentPriceItem[],
+    // wallItems с опциональными segIds для каждого (null = на все стены)
+    wallItemsWithSegs: { item: SegmentPriceItem; segIds: string[] | null }[],
     floorOrActiveItems: SegmentPriceItem[],
-    wallSegIds?: string[], // если задано — только на эти сегменты, иначе на все
   ) => {
     const s = stateRef.current;
 
-    // Настенные товары — один проход
+    // Настенные товары — ОДИН проход по всем сегментам
     let newSegments = s.segments;
-    const targetSegIds = wallSegIds && wallSegIds.length > 0 ? new Set(wallSegIds) : null;
-    for (const item of wallItems) {
+    for (const { item, segIds } of wallItemsWithSegs) {
+      const targetSet = segIds && segIds.length > 0 ? new Set(segIds) : null;
       newSegments = newSegments.map(seg => {
-        if (targetSegIds && !targetSegIds.has(seg.id)) return seg;
+        if (targetSet && !targetSet.has(seg.id)) return seg;
         const existing = seg.items ?? [];
         if (existing.some(it => it.priceId === item.priceId)) return seg;
         const meters = seg.lengthCm ? Math.round(seg.lengthCm / 100 * 100) / 100 : 1;

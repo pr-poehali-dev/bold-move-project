@@ -17,7 +17,7 @@ interface Props {
   onAssignToAllSegs: (item: SegmentPriceItem) => void;
   onAddToActive: (item: SegmentPriceItem) => void;
   // один атомарный push для всех голосовых товаров сразу
-  onAssignMany: (wallItems: SegmentPriceItem[], floorItems: SegmentPriceItem[], wallSegIds?: string[]) => void;
+  onAssignMany: (wallItems: { item: SegmentPriceItem; segIds: string[] | null }[], floorItems: SegmentPriceItem[]) => void;
 }
 
 // Категории которые идут НА СТЕНЫ (пог.м вдоль периметра)
@@ -96,10 +96,8 @@ export default function PlanCatalogPanel({
 
   // Обработка items от бота: маппим по ПОЛНОМУ прайсу и добавляем ОДНИМ push
   const handleVoiceItems = (items: VoiceCatalogItem[], transcript: string) => {
+    const wallItemsWithSegs: { item: SegmentPriceItem; segIds: string[] | null }[] = [];
     const floorItems: SegmentPriceItem[] = [];
-
-    // Группируем настенные товары по segIds
-    const wallGroups = new Map<string, SegmentPriceItem[]>(); // key = segIds.join(",") или "all"
 
     items.forEach(voiceItem => {
       const matched = matchItem(voiceItem, allPrices);
@@ -118,23 +116,15 @@ export default function PlanCatalogPanel({
       if (matched.isWallItem && state.segments.length > 0) {
         // Ищем конкретные сегменты для ЭТОГО товара по контексту транскрипта
         const itemSegIds = findSegIdsForItem(matched.name, transcript, state);
-        const key = itemSegIds ? itemSegIds.join(",") : "all";
-        if (!wallGroups.has(key)) wallGroups.set(key, []);
-        wallGroups.get(key)!.push(matched);
+        wallItemsWithSegs.push({ item: matched, segIds: itemSegIds });
       } else {
         floorItems.push({ ...matched, quantity: voiceItem.qty ?? 1 });
       }
     });
 
-    // Выполняем push для каждой группы стен отдельно
-    wallGroups.forEach((groupItems, key) => {
-      const segIds = key === "all" ? undefined : key.split(",");
-      onAssignMany(groupItems, [], segIds);
-    });
-
-    // Полотно/смету добавляем одним push
-    if (floorItems.length > 0) {
-      onAssignMany([], floorItems);
+    // ОДИН push для всего — нет race condition
+    if (wallItemsWithSegs.length > 0 || floorItems.length > 0) {
+      onAssignMany(wallItemsWithSegs, floorItems);
     }
   };
 
