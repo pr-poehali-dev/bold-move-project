@@ -21,7 +21,7 @@ export function renderDimLine(seg: Segment, ctx: Pick<RenderContext, "points" | 
   const x2 = b.x + nx * off, y2 = b.y + ny * off;
   const mx = (x1 + x2) / 2, my = (y1 + y2) / 2;
   const lenCm = seg.lengthCm ?? null;
-  const label = lenCm !== null ? `${lenCm} см` : "";
+  const label = lenCm !== null ? `${lenCm}` : "";
   const angle = Math.atan2(y2 - y1, x2 - x1) * 180 / Math.PI;
   const na = angle > 90 || angle < -90 ? angle + 180 : angle;
   return (
@@ -46,7 +46,7 @@ export function renderSegmentLabel(seg: Segment, ctx: Pick<RenderContext, "point
   const { nx, ny } = segmentNormal(a, b);
   const lbl = segmentLabel(points, seg);
   const lenCm = seg.lengthCm ?? null;
-  const text = lenCm !== null ? `${lbl}: ${lenCm} см` : lbl;
+  const text = lenCm !== null ? `${lbl}: ${lenCm}` : lbl;
   return (
     <text key={`lbl-${seg.id}`} x={mid.x + nx * 13} y={mid.y + ny * 13}
       textAnchor="middle" dominantBaseline="middle" fontSize={11} fill="#e2e8f0" fontFamily="monospace"

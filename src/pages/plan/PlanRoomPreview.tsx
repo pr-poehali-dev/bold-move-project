@@ -96,7 +96,7 @@ export default function PlanRoomPreview({ data, width = 280, height = 160, showM
     const lenCm = seg.lengthCm ?? pxToCm(distPx(a, b), planScale);
     if (lenCm === null) return [];
     const offset = Math.max(vw, vh) * 0.07;
-    return [{ id: seg.id, x: mid.x + nx * offset, y: mid.y + ny * offset, label: `${lenCm} см` }];
+    return [{ id: seg.id, x: mid.x + nx * offset, y: mid.y + ny * offset, label: `${lenCm}` }];
   });
 
   // Буквенные метки углов — наружу от полигона по биссектрисе угла
