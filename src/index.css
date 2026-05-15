@@ -2,6 +2,13 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Скрываем ПК-кнопки на устройствах с touch (hover: none) */
+@media (hover: none) and (pointer: coarse) {
+  .hidden-on-touch {
+    display: none !important;
+  }
+}
+
 /* ── Подсказка двойного клика ─────────────────────────────────────────── */
 @keyframes fadeInUp {
   from {

@@ -28,9 +28,6 @@ function vibe(ms: number | number[]) {
   if (typeof navigator !== "undefined" && navigator.vibrate) navigator.vibrate(ms);
 }
 
-const isTouch = typeof window !== "undefined" &&
-  ("ontouchstart" in window || navigator.maxTouchPoints > 0);
-
 export default function PlanProjectCard({
   project, editingId, deletingId, form, setForm, saving, error,
   onSelect, onStartEdit, onCancelEdit, onUpdate, onDelete, onExport, onMaterials,
@@ -43,8 +40,9 @@ export default function PlanProjectCard({
   const [offset, setOffset] = useState(0);
   const [dragging, setDragging] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [confirmEdit, setConfirmEdit] = useState(false);
 
-  // Все мутабельные значения в refs — effect создаётся ОДИН раз
+  // touch tracking
   const sx = useRef(0);
   const sy = useRef(0);
   const lx = useRef(0);
@@ -53,28 +51,30 @@ export default function PlanProjectCard({
   const vibed = useRef(false);
   const offsetRef = useRef(0);
 
-  // Актуальные колбэки всегда свежие через ref
-  const cb = useRef({ onStartEdit, onDelete });
-  useEffect(() => { cb.current = { onStartEdit, onDelete }; });
-
-  // Все setState через ref — замыкание useEffect никогда не устаревает
-  const setOffsetSync = useRef((v: number) => { offsetRef.current = v; setOffset(v); });
-  const setConfirmSync = useRef((v: boolean) => { setConfirmDelete(v); });
+  // все setState через ref.current — замыкание useEffect не устаревает никогда
+  const setOffsetSync   = useRef((v: number)  => { offsetRef.current = v; setOffset(v); });
   const setDraggingSync = useRef((v: boolean) => { setDragging(v); });
-  // Обновляем .current при каждом рендере — setState всегда свежий
-  setOffsetSync.current = (v: number) => { offsetRef.current = v; setOffset(v); };
-  setConfirmSync.current = (v: boolean) => { setConfirmDelete(v); };
+  const setConfDelSync  = useRef((v: boolean) => { setConfirmDelete(v); });
+  const setConfEditSync = useRef((v: boolean) => { setConfirmEdit(v); });
+  setOffsetSync.current   = (v: number)  => { offsetRef.current = v; setOffset(v); };
   setDraggingSync.current = (v: boolean) => { setDragging(v); };
+  setConfDelSync.current  = (v: boolean) => { setConfirmDelete(v); };
+  setConfEditSync.current = (v: boolean) => { setConfirmEdit(v); };
 
+  // колбэки тоже через ref
+  const cb = useRef({ onStartEdit, onDelete });
+  cb.current = { onStartEdit, onDelete };
+
+  // эффект вешается ОДИН РАЗ — cardRef всегда в DOM (нет раннего return)
   useEffect(() => {
     const el = cardRef.current;
     if (!el) return;
 
     const onStart = (e: TouchEvent) => {
-      sx.current = e.touches[0].clientX;
-      sy.current = e.touches[0].clientY;
-      lx.current = sx.current;
-      axis.current = null;
+      sx.current  = e.touches[0].clientX;
+      sy.current  = e.touches[0].clientY;
+      lx.current  = sx.current;
+      axis.current  = null;
       alive.current = true;
       vibed.current = false;
       setDraggingSync.current(false);
@@ -116,39 +116,41 @@ export default function PlanProjectCard({
       if (cur >= THRESHOLD) {
         vibe(40);
         setOffsetSync.current(0);
-        cb.current.onStartEdit(project);
+        setConfEditSync.current(true);       // показываем подтверждение редактирования
       } else if (cur <= -THRESHOLD) {
         vibe([30, 60, 30]);
         setOffsetSync.current(0);
-        setConfirmSync.current(true);
+        setConfDelSync.current(true);        // показываем подтверждение удаления
       } else {
         setOffsetSync.current(0);
       }
     };
 
-    el.addEventListener("touchstart", onStart, { passive: true });
-    el.addEventListener("touchmove", onMove, { passive: false });
-    el.addEventListener("touchend", onEnd, { passive: true });
-    el.addEventListener("touchcancel", onEnd, { passive: true });
+    el.addEventListener("touchstart", onStart,  { passive: true });
+    el.addEventListener("touchmove",  onMove,   { passive: false });
+    el.addEventListener("touchend",   onEnd,    { passive: true });
+    el.addEventListener("touchcancel",onEnd,    { passive: true });
 
     return () => {
       el.removeEventListener("touchstart", onStart);
-      el.removeEventListener("touchmove", onMove);
-      el.removeEventListener("touchend", onEnd);
-      el.removeEventListener("touchcancel", onEnd);
+      el.removeEventListener("touchmove",  onMove);
+      el.removeEventListener("touchend",   onEnd);
+      el.removeEventListener("touchcancel",onEnd);
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // пустой массив — эффект создаётся ОДИН раз и не пересоздаётся
+   
+  }, []); // [] — регистрируем ОДИН РАЗ, cardRef всегда в DOM
 
-  const confirmAndDelete = () => {
-    vibe(80);
-    onDelete(project.id);
-    setConfirmSync.current(false);
-  };
+  const doDelete = () => { vibe(80); onDelete(project.id); setConfirmDelete(false); };
+  const doEdit   = () => { setConfirmEdit(false); onStartEdit(project); };
 
-  if (isEditing) {
-    return (
-      <div>
+  return (
+    <div
+      className="relative rounded-2xl overflow-hidden"
+      style={{ background: "#0e0e1c", border: "1px solid rgba(255,255,255,0.06)" }}
+    >
+
+      {/* ── Форма редактирования (вместо карточки) ── */}
+      {isEditing && (
         <PlanProjectForm
           title={`Редактировать: ${project.name}`}
           form={form}
@@ -159,34 +161,29 @@ export default function PlanProjectCard({
           error={error}
           submitLabel="Сохранить"
         />
-      </div>
-    );
-  }
+      )}
 
-  return (
-    <div
-      className="relative rounded-2xl overflow-hidden"
-      style={{ background: "#0e0e1c", border: "1px solid rgba(255,255,255,0.06)" }}
-    >
-      {/* Фон LEFT — Изменить */}
-      <div
-        className="absolute inset-y-0 left-0 flex flex-col items-center justify-center gap-1 pointer-events-none"
-        style={{ width: SNAP_WIDTH, background: "linear-gradient(135deg,#6d28d9,#7c3aed)", zIndex: 0 }}
-      >
-        <Icon name="Pencil" size={20} style={{ color: "#fff" }} />
-        <span className="text-[10px] font-bold uppercase tracking-wide text-white">Изменить</span>
-      </div>
+      {/* ── Фоны свайп-кнопок (всегда в DOM) ── */}
+      {!isEditing && (
+        <>
+          <div
+            className="absolute inset-y-0 left-0 flex flex-col items-center justify-center gap-1 pointer-events-none"
+            style={{ width: SNAP_WIDTH, background: "linear-gradient(135deg,#6d28d9,#7c3aed)", zIndex: 0 }}
+          >
+            <Icon name="Pencil" size={20} style={{ color: "#fff" }} />
+            <span className="text-[10px] font-bold uppercase tracking-wide text-white">Изменить</span>
+          </div>
+          <div
+            className="absolute inset-y-0 right-0 flex flex-col items-center justify-center gap-1 pointer-events-none"
+            style={{ width: SNAP_WIDTH, background: "linear-gradient(135deg,#dc2626,#ef4444)", zIndex: 0 }}
+          >
+            <Icon name="Trash2" size={20} style={{ color: "#fff" }} />
+            <span className="text-[10px] font-bold uppercase tracking-wide text-white">Удалить</span>
+          </div>
+        </>
+      )}
 
-      {/* Фон RIGHT — Удалить */}
-      <div
-        className="absolute inset-y-0 right-0 flex flex-col items-center justify-center gap-1 pointer-events-none"
-        style={{ width: SNAP_WIDTH, background: "linear-gradient(135deg,#dc2626,#ef4444)", zIndex: 0 }}
-      >
-        <Icon name="Trash2" size={20} style={{ color: "#fff" }} />
-        <span className="text-[10px] font-bold uppercase tracking-wide text-white">Удалить</span>
-      </div>
-
-      {/* Карточка */}
+      {/* ── Карточка (всегда в DOM — cardRef не теряется) ── */}
       <div
         ref={cardRef}
         style={{
@@ -197,6 +194,7 @@ export default function PlanProjectCard({
           background: "#0e0e1c",
           willChange: "transform",
           userSelect: "none",
+          display: isEditing ? "none" : undefined,   // скрываем при редактировании, но не размонтируем
         }}
       >
         <div className="flex">
@@ -267,36 +265,59 @@ export default function PlanProjectCard({
               </div>
             </div>
 
-            {/* ПК-кнопки */}
-            {!isTouch && (
-              <div className="flex border-t" style={{ borderColor: "rgba(255,255,255,0.05)" }}>
-                <button
-                  onClick={() => onStartEdit(project)}
-                  className="flex-1 flex items-center justify-center gap-1.5 py-2.5 text-[12px] font-semibold transition hover:bg-white/[0.04]"
-                  style={{ color: "rgba(255,255,255,0.55)" }}
-                >
-                  Редактировать
-                </button>
-                <div className="w-px" style={{ background: "rgba(255,255,255,0.05)" }} />
-                <button
-                  onClick={() => setConfirmSync.current(true)}
-                  disabled={isDeleting}
-                  className="flex items-center justify-center gap-1.5 px-5 py-2.5 text-[12px] font-semibold transition hover:bg-red-500/10 disabled:opacity-50"
-                  style={{ color: "rgba(239,68,68,0.6)" }}
-                >
-                  {isDeleting
-                    ? <div className="w-3.5 h-3.5 border border-red-400/40 border-t-red-400 rounded-full animate-spin" />
-                    : <Icon name="Trash2" size={13} />
-                  }
-                  {isDeleting ? "..." : "Удалить"}
-                </button>
-              </div>
-            )}
+            {/* ПК-кнопки — скрыты на touch через CSS media */}
+            <div className="hidden-on-touch flex border-t" style={{ borderColor: "rgba(255,255,255,0.05)" }}>
+              <button
+                onClick={() => onStartEdit(project)}
+                className="flex-1 flex items-center justify-center gap-1.5 py-2.5 text-[12px] font-semibold transition hover:bg-white/[0.04]"
+                style={{ color: "rgba(255,255,255,0.55)" }}
+              >
+                Редактировать
+              </button>
+              <div className="w-px" style={{ background: "rgba(255,255,255,0.05)" }} />
+              <button
+                onClick={() => setConfirmDelete(true)}
+                disabled={isDeleting}
+                className="flex items-center justify-center gap-1.5 px-5 py-2.5 text-[12px] font-semibold transition hover:bg-red-500/10 disabled:opacity-50"
+                style={{ color: "rgba(239,68,68,0.6)" }}
+              >
+                {isDeleting
+                  ? <div className="w-3.5 h-3.5 border border-red-400/40 border-t-red-400 rounded-full animate-spin" />
+                  : <Icon name="Trash2" size={13} />
+                }
+                {isDeleting ? "..." : "Удалить"}
+              </button>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Подтверждение удаления */}
+      {/* ── Подтверждение: Изменить ── */}
+      {confirmEdit && (
+        <div
+          className="absolute inset-0 flex items-center justify-center gap-3 z-20 rounded-2xl"
+          style={{ background: "rgba(8,8,18,0.96)", backdropFilter: "blur(4px)" }}
+        >
+          <Icon name="Pencil" size={16} style={{ color: "#a78bfa" }} />
+          <span className="text-white/85 text-[13px] font-semibold">Редактировать проект?</span>
+          <button
+            onClick={doEdit}
+            className="px-4 py-1.5 rounded-xl text-[12px] font-bold transition hover:opacity-90"
+            style={{ background: "linear-gradient(135deg,#6d28d9,#7c3aed)", color: "#fff" }}
+          >
+            Да
+          </button>
+          <button
+            onClick={() => setConfirmEdit(false)}
+            className="px-3 py-1.5 rounded-xl text-[12px] font-semibold transition"
+            style={{ color: "rgba(255,255,255,0.45)", border: "1px solid rgba(255,255,255,0.1)" }}
+          >
+            Отмена
+          </button>
+        </div>
+      )}
+
+      {/* ── Подтверждение: Удалить ── */}
       {confirmDelete && (
         <div
           className="absolute inset-0 flex items-center justify-center gap-3 z-20 rounded-2xl"
@@ -305,7 +326,7 @@ export default function PlanProjectCard({
           <Icon name="AlertTriangle" size={16} style={{ color: "#f87171" }} />
           <span className="text-white/85 text-[13px] font-semibold">Удалить проект?</span>
           <button
-            onClick={confirmAndDelete}
+            onClick={doDelete}
             disabled={isDeleting}
             className="px-4 py-1.5 rounded-xl text-[12px] font-bold transition hover:opacity-90 disabled:opacity-50"
             style={{ background: "rgba(239,68,68,0.9)", color: "#fff" }}
@@ -316,7 +337,7 @@ export default function PlanProjectCard({
             }
           </button>
           <button
-            onClick={() => setConfirmSync.current(false)}
+            onClick={() => setConfirmDelete(false)}
             className="px-3 py-1.5 rounded-xl text-[12px] font-semibold transition"
             style={{ color: "rgba(255,255,255,0.45)", border: "1px solid rgba(255,255,255,0.1)" }}
           >
