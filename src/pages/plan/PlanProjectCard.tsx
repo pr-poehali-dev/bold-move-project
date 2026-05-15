@@ -1,4 +1,4 @@
-import { useRef, useState, useCallback } from "react";
+import { useRef, useState, useEffect, useCallback } from "react";
 import Icon from "@/components/ui/icon";
 import { PlanProject } from "./usePlanProjects";
 import { STATUSES, STATUS_COLORS, FormData, EMPTY_FORM } from "./PlanProjectsConstants";
@@ -22,82 +22,10 @@ interface Props {
 }
 
 const ACTION_WIDTH = 80;
-const THRESHOLD = 40;
+const THRESHOLD = 50;
 
-function useSwipe(onEdit: () => void, onDeleteTap: () => void) {
-  const startX = useRef(0);
-  const startY = useRef(0);
-  const currentX = useRef(0);
-  const locked = useRef<"h" | "v" | null>(null);
-  const [offset, setOffset] = useState(0);
-  const [snapped, setSnapped] = useState<"edit" | "delete" | null>(null);
-  const [animating, setAnimating] = useState(false);
-
-  const vibrate = (ms: number | number[]) => {
-    if (navigator.vibrate) navigator.vibrate(ms);
-  };
-
-  const snapTo = useCallback((dir: "edit" | "delete" | null) => {
-    setAnimating(true);
-    if (dir === "edit") setOffset(ACTION_WIDTH);
-    else if (dir === "delete") setOffset(-ACTION_WIDTH);
-    else setOffset(0);
-    setSnapped(dir);
-  }, []);
-
-  const onTouchStart = (e: React.TouchEvent) => {
-    startX.current = e.touches[0].clientX;
-    startY.current = e.touches[0].clientY;
-    currentX.current = 0;
-    locked.current = null;
-    setAnimating(false);
-  };
-
-  const onTouchMove = (e: React.TouchEvent) => {
-    const dx = e.touches[0].clientX - startX.current;
-    const dy = e.touches[0].clientY - startY.current;
-
-    if (!locked.current) {
-      if (Math.abs(dx) < 5 && Math.abs(dy) < 5) return;
-      locked.current = Math.abs(dx) > Math.abs(dy) ? "h" : "v";
-    }
-
-    if (locked.current === "v") return;
-
-    e.preventDefault();
-    e.stopPropagation();
-
-    currentX.current = dx;
-    const clamped = Math.max(-ACTION_WIDTH, Math.min(ACTION_WIDTH, dx));
-    setOffset(clamped);
-  };
-
-  const onTouchEnd = () => {
-    if (locked.current !== "h") return;
-
-    if (currentX.current > THRESHOLD) {
-      snapTo("edit");
-      vibrate(40);
-    } else if (currentX.current < -THRESHOLD) {
-      snapTo("delete");
-      vibrate(40);
-    } else {
-      snapTo(null);
-    }
-  };
-
-  const reset = useCallback(() => {
-    setAnimating(true);
-    setOffset(0);
-    setSnapped(null);
-  }, []);
-
-  const handleCardClick = () => {
-    if (snapped === "edit") { reset(); onEdit(); return; }
-    if (snapped === "delete") { onDeleteTap(); return; }
-  };
-
-  return { offset, snapped, animating, onTouchStart, onTouchMove, onTouchEnd, reset, handleCardClick };
+function vibe(ms: number | number[]) {
+  if (typeof navigator !== "undefined" && navigator.vibrate) navigator.vibrate(ms);
 }
 
 export default function PlanProjectCard({
@@ -108,28 +36,106 @@ export default function PlanProjectCard({
   const isEditing = editingId === project.id;
   const isDeleting = deletingId === project.id;
 
+  const cardRef = useRef<HTMLDivElement>(null);
+  const [offset, setOffset] = useState(0);
+  const [isMoving, setIsMoving] = useState(false);
+  const [snapped, setSnapped] = useState<"edit" | "delete" | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
 
-  const vibrate = (ms: number | number[]) => {
-    if (navigator.vibrate) navigator.vibrate(ms);
-  };
+  const startX = useRef(0);
+  const startY = useRef(0);
+  const lastX = useRef(0);
+  const direction = useRef<"h" | "v" | null>(null);
+  const active = useRef(false);
 
-  const handleDeleteTap = () => {
-    if (!confirmDelete) {
-      setConfirmDelete(true);
-      vibrate([30, 60, 30]);
-    } else {
-      vibrate(80);
-      onDelete(project.id);
-      setConfirmDelete(false);
+  const snapTo = useCallback((s: "edit" | "delete" | null) => {
+    setIsMoving(false);
+    setSnapped(s);
+    setOffset(s === "edit" ? ACTION_WIDTH : s === "delete" ? -ACTION_WIDTH : 0);
+  }, []);
+
+  const reset = useCallback(() => {
+    snapTo(null);
+    setConfirmDelete(false);
+  }, [snapTo]);
+
+  useEffect(() => {
+    const el = cardRef.current;
+    if (!el) return;
+
+    const onStart = (e: TouchEvent) => {
+      startX.current = e.touches[0].clientX;
+      startY.current = e.touches[0].clientY;
+      lastX.current = e.touches[0].clientX;
+      direction.current = null;
+      active.current = true;
+      setIsMoving(false);
+    };
+
+    const onMove = (e: TouchEvent) => {
+      if (!active.current) return;
+      const dx = e.touches[0].clientX - startX.current;
+      const dy = e.touches[0].clientY - startY.current;
+      const adx = Math.abs(dx);
+      const ady = Math.abs(dy);
+
+      if (!direction.current) {
+        if (adx < 4 && ady < 4) return;
+        direction.current = adx > ady ? "h" : "v";
+      }
+
+      if (direction.current === "v") return;
+
+      e.preventDefault();
+      lastX.current = e.touches[0].clientX;
+      setIsMoving(true);
+      const raw = dx;
+      const clamped = Math.max(-ACTION_WIDTH, Math.min(ACTION_WIDTH, raw));
+      setOffset(clamped);
+    };
+
+    const onEnd = () => {
+      if (!active.current) return;
+      active.current = false;
+
+      if (direction.current !== "h") return;
+
+      const dx = lastX.current - startX.current;
+      if (dx > THRESHOLD) {
+        snapTo("edit");
+        vibe(40);
+      } else if (dx < -THRESHOLD) {
+        snapTo("delete");
+        vibe(40);
+      } else {
+        snapTo(null);
+      }
+    };
+
+    el.addEventListener("touchstart", onStart, { passive: true });
+    el.addEventListener("touchmove", onMove, { passive: false });
+    el.addEventListener("touchend", onEnd, { passive: true });
+    el.addEventListener("touchcancel", onEnd, { passive: true });
+
+    return () => {
+      el.removeEventListener("touchstart", onStart);
+      el.removeEventListener("touchmove", onMove);
+      el.removeEventListener("touchend", onEnd);
+      el.removeEventListener("touchcancel", onEnd);
+    };
+  }, [snapTo]);
+
+  const handleCardTap = () => {
+    if (snapped === "edit") { reset(); onStartEdit(project); return; }
+    if (snapped === "delete") {
+      if (!confirmDelete) { setConfirmDelete(true); vibe([30, 60, 30]); }
+      else { vibe(80); onDelete(project.id); setConfirmDelete(false); setOffset(0); setSnapped(null); }
+      return;
     }
   };
 
-  const { offset, snapped, animating, onTouchStart, onTouchMove, onTouchEnd, reset, handleCardClick } =
-    useSwipe(() => onStartEdit(project), handleDeleteTap);
-
-  // Сброс confirmDelete при закрытии свайпа
-  const handleReset = () => { reset(); setConfirmDelete(false); };
+  // Определяем touch-устройство
+  const isTouch = typeof window !== "undefined" && ("ontouchstart" in window || navigator.maxTouchPoints > 0);
 
   if (isEditing) {
     return (
@@ -153,28 +159,28 @@ export default function PlanProjectCard({
       className="relative rounded-2xl overflow-hidden"
       style={{ background: "#0e0e1c", border: "1px solid rgba(255,255,255,0.06)" }}
     >
-      {/* Фон LEFT — Редактировать (виден при свайпе вправо) */}
+      {/* Фон LEFT — Редактировать */}
       <div
         className="absolute inset-y-0 left-0 flex items-center justify-center"
         style={{ width: ACTION_WIDTH, background: "rgba(99,102,241,0.9)", zIndex: 0 }}
       >
-        <div className="flex flex-col items-center gap-1 pointer-events-none">
+        <div className="flex flex-col items-center gap-1">
           <Icon name="Pencil" size={18} style={{ color: "#fff" }} />
           <span className="text-[10px] font-bold uppercase tracking-wide text-white">Изменить</span>
         </div>
       </div>
 
-      {/* Фон RIGHT — Удалить (виден при свайпе влево) */}
+      {/* Фон RIGHT — Удалить */}
       <div
         className="absolute inset-y-0 right-0 flex items-center justify-center"
         style={{
           width: ACTION_WIDTH,
-          background: confirmDelete ? "rgba(220,38,38,0.95)" : "rgba(239,68,68,0.88)",
+          background: confirmDelete ? "rgba(185,28,28,0.95)" : "rgba(239,68,68,0.9)",
           zIndex: 0,
           transition: "background 0.15s",
         }}
       >
-        <div className="flex flex-col items-center gap-1 pointer-events-none">
+        <div className="flex flex-col items-center gap-1">
           {isDeleting
             ? <div className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
             : <Icon name={confirmDelete ? "AlertTriangle" : "Trash2"} size={18} style={{ color: "#fff" }} />
@@ -185,24 +191,22 @@ export default function PlanProjectCard({
         </div>
       </div>
 
-      {/* Карточка — сдвигается при свайпе */}
+      {/* Карточка — сдвигается */}
       <div
+        ref={cardRef}
         style={{
           position: "relative",
           zIndex: 1,
           transform: `translateX(${offset}px)`,
-          transition: animating ? "transform 0.25s cubic-bezier(0.25,1,0.5,1)" : "none",
+          transition: isMoving ? "none" : "transform 0.28s cubic-bezier(0.25,1,0.5,1)",
           background: "#0e0e1c",
           willChange: "transform",
-          touchAction: "pan-y",
+          userSelect: "none",
         }}
-        onTouchStart={onTouchStart}
-        onTouchMove={onTouchMove}
-        onTouchEnd={onTouchEnd}
-        onClick={handleCardClick}
+        onClick={snapped ? handleCardTap : undefined}
       >
         <div className="flex">
-          {/* Статус — вертикальная полоска слева */}
+          {/* Статус */}
           <div
             className="flex-shrink-0 flex items-center justify-center w-12 self-stretch px-1"
             style={{ background: `linear-gradient(to right, ${sc.glow ?? sc.bg}, transparent)` }}
@@ -217,14 +221,10 @@ export default function PlanProjectCard({
 
           {/* Правая часть */}
           <div className="flex-1 min-w-0">
-            {/* Основная строка */}
             <div className="px-4 py-3.5 flex items-center gap-3">
               <button
                 className="flex items-start gap-3 flex-1 min-w-0 text-left hover:opacity-90 transition active:scale-[0.99]"
-                onClick={e => {
-                  if (snapped) { e.stopPropagation(); handleReset(); return; }
-                  onSelect(project);
-                }}
+                onClick={() => { if (snapped) { reset(); return; } onSelect(project); }}
               >
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1">
@@ -253,22 +253,19 @@ export default function PlanProjectCard({
                 </div>
               </button>
 
-              {/* Кнопки справа */}
               <div className="flex-shrink-0 flex flex-col gap-1.5">
                 <button
-                  onClick={e => { e.stopPropagation(); handleReset(); onExport(project); }}
+                  onClick={() => { reset(); onExport(project); }}
                   className="flex flex-col items-center justify-center gap-1 rounded-xl transition hover:brightness-110 active:scale-95"
                   style={{ width: 64, height: 52, background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)" }}
-                  title="Скачать смету"
                 >
                   <Icon name="FileDown" size={18} style={{ color: "rgba(255,255,255,0.8)" }} />
                   <span className="text-[9px] font-bold uppercase tracking-wide" style={{ color: "rgba(255,255,255,0.55)" }}>Смета</span>
                 </button>
                 <button
-                  onClick={e => { e.stopPropagation(); handleReset(); onMaterials(project); }}
+                  onClick={() => { reset(); onMaterials(project); }}
                   className="flex flex-col items-center justify-center gap-1 rounded-xl transition hover:brightness-110 active:scale-95"
                   style={{ width: 64, height: 52, background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)" }}
-                  title="Материалы"
                 >
                   <Icon name="ClipboardList" size={18} style={{ color: "rgba(255,255,255,0.8)" }} />
                   <span className="text-[9px] font-bold uppercase tracking-wide" style={{ color: "rgba(255,255,255,0.55)" }}>Состав</span>
@@ -276,29 +273,31 @@ export default function PlanProjectCard({
               </div>
             </div>
 
-            {/* Кнопки действий — только на ПК (hover device) */}
-            <div className="hidden sm:flex border-t" style={{ borderColor: "rgba(255,255,255,0.05)" }}>
-              <button
-                onClick={() => onStartEdit(project)}
-                className="flex-1 flex items-center justify-center gap-1.5 py-2.5 text-[12px] font-semibold transition hover:bg-white/[0.04]"
-                style={{ color: "rgba(255,255,255,0.55)" }}
-              >
-                Редактировать
-              </button>
-              <div className="w-px" style={{ background: "rgba(255,255,255,0.05)" }} />
-              <button
-                onClick={() => onDelete(project.id)}
-                disabled={isDeleting}
-                className="flex items-center justify-center gap-1.5 px-5 py-2.5 text-[12px] font-semibold transition hover:bg-red-500/10 disabled:opacity-50"
-                style={{ color: "rgba(239,68,68,0.6)" }}
-              >
-                {isDeleting
-                  ? <div className="w-3.5 h-3.5 border border-red-400/40 border-t-red-400 rounded-full animate-spin" />
-                  : <Icon name="Trash2" size={13} />
-                }
-                {isDeleting ? "..." : "Удалить"}
-              </button>
-            </div>
+            {/* Кнопки внизу — на ПК всегда, на touch-устройстве скрыты */}
+            {!isTouch && (
+              <div className="flex border-t" style={{ borderColor: "rgba(255,255,255,0.05)" }}>
+                <button
+                  onClick={() => onStartEdit(project)}
+                  className="flex-1 flex items-center justify-center gap-1.5 py-2.5 text-[12px] font-semibold transition hover:bg-white/[0.04]"
+                  style={{ color: "rgba(255,255,255,0.55)" }}
+                >
+                  Редактировать
+                </button>
+                <div className="w-px" style={{ background: "rgba(255,255,255,0.05)" }} />
+                <button
+                  onClick={() => onDelete(project.id)}
+                  disabled={isDeleting}
+                  className="flex items-center justify-center gap-1.5 px-5 py-2.5 text-[12px] font-semibold transition hover:bg-red-500/10 disabled:opacity-50"
+                  style={{ color: "rgba(239,68,68,0.6)" }}
+                >
+                  {isDeleting
+                    ? <div className="w-3.5 h-3.5 border border-red-400/40 border-t-red-400 rounded-full animate-spin" />
+                    : <Icon name="Trash2" size={13} />
+                  }
+                  {isDeleting ? "..." : "Удалить"}
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </div>
