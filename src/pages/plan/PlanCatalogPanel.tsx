@@ -3,6 +3,7 @@ import type { PriceEntry } from "./CategoryDrumPanel";
 import type { PlanState, SegmentPriceItem } from "./planTypes";
 import PlanVoiceCatalogButton from "./PlanVoiceCatalogButton";
 import type { VoiceCatalogItem } from "./useVoiceCatalog";
+import { findSegIdsForItem } from "./useVoiceCatalog";
 
 interface Props {
   open: boolean;
@@ -94,15 +95,17 @@ export default function PlanCatalogPanel({
 }: Props) {
 
   // Обработка items от бота: маппим по ПОЛНОМУ прайсу и добавляем ОДНИМ push
-  const handleVoiceItems = (items: VoiceCatalogItem[], segIds: string[] | null) => {
-    const wallItems: SegmentPriceItem[] = [];
+  const handleVoiceItems = (items: VoiceCatalogItem[], transcript: string) => {
     const floorItems: SegmentPriceItem[] = [];
+
+    // Группируем настенные товары по segIds
+    const wallGroups = new Map<string, SegmentPriceItem[]>(); // key = segIds.join(",") или "all"
 
     items.forEach(voiceItem => {
       const matched = matchItem(voiceItem, allPrices);
       if (!matched) return;
 
-      // Монтаж, Раскрой, Огарпунивание — тихо в смету, не показываем на чертеже
+      // Монтаж, Раскрой, Огарпунивание — тихо в смету, не на чертёж
       if (
         SILENT_CATEGORIES.has(matched.category) ||
         matched.name === "Раскрой ПВХ" ||
@@ -112,18 +115,26 @@ export default function PlanCatalogPanel({
         return;
       }
 
-      // Профили и ниши → на стены
       if (matched.isWallItem && state.segments.length > 0) {
-        wallItems.push(matched);
+        // Ищем конкретные сегменты для ЭТОГО товара по контексту транскрипта
+        const itemSegIds = findSegIdsForItem(matched.name, transcript, state);
+        const key = itemSegIds ? itemSegIds.join(",") : "all";
+        if (!wallGroups.has(key)) wallGroups.set(key, []);
+        wallGroups.get(key)!.push(matched);
       } else {
-        // Полотна, освещение, закладные, вентиляция → на полотно/смету
         floorItems.push({ ...matched, quantity: voiceItem.qty ?? 1 });
       }
     });
 
-    if (wallItems.length > 0 || floorItems.length > 0) {
-      // Передаём segIds — если клиент назвал конкретную стену, применяем только к ней
-      onAssignMany(wallItems, floorItems, segIds ?? undefined);
+    // Выполняем push для каждой группы стен отдельно
+    wallGroups.forEach((groupItems, key) => {
+      const segIds = key === "all" ? undefined : key.split(",");
+      onAssignMany(groupItems, [], segIds);
+    });
+
+    // Полотно/смету добавляем одним push
+    if (floorItems.length > 0) {
+      onAssignMany([], floorItems);
     }
   };
 

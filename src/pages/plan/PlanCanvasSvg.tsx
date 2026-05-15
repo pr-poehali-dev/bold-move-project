@@ -183,8 +183,12 @@ export default function PlanCanvasSvg({
           />
         ))}
 
-        {/* Товары на полотне (floorItems) */}
-        {isClosed && (floorItems ?? []).map((fi, idx) => {
+        {/* Товары на полотне (floorItems) — монтаж, раскрой и огарпунивание не показываем на чертеже */}
+        {isClosed && (floorItems ?? []).filter(fi =>
+          fi.category !== "Монтаж" &&
+          fi.name !== "Раскрой ПВХ" &&
+          fi.name !== "Огарпунивание ПВХ"
+        ).map((fi, idx) => {
           const FH = 24, FY_STEP = 30;
           const IMG_W = fi.imageUrl ? 23 : 0;
           const qtyStr = `${fi.quantity} ${fi.unit}`;

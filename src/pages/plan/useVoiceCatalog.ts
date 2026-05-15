@@ -105,9 +105,23 @@ export function findTargetSegIds(transcript: string, state: PlanState): string[]
   return result.length > 0 ? [...new Set(result)] : null;
 }
 
+// Ищем сегменты для конкретного товара — смотрим контекст вокруг его названия в тексте
+export function findSegIdsForItem(itemName: string, transcript: string, state: PlanState): string[] | null {
+  const t    = transcript.toLowerCase();
+  const name = itemName.toLowerCase();
+
+  // Ищем позицию упоминания товара в тексте
+  const pos = t.indexOf(name.split(" ")[0]); // первое слово имени
+  if (pos === -1) return findTargetSegIds(transcript, state); // fallback — общий поиск
+
+  // Берём окно ±80 символов вокруг упоминания товара
+  const window = t.slice(Math.max(0, pos - 80), Math.min(t.length, pos + 80));
+  return findTargetSegIds(window, state) ?? findTargetSegIds(transcript, state);
+}
+
 interface Props {
   state: PlanState;
-  onItems: (items: VoiceCatalogItem[], targetSegIds: string[] | null) => void;
+  onItems: (items: VoiceCatalogItem[], transcript: string) => void;
 }
 
 // Строим читаемый контекст помещения из состояния построителя
@@ -244,7 +258,7 @@ export default function useVoiceCatalog({ state, onItems }: Props) {
   }, []);
 
   // ── Отправка в ai-chat с контекстом чертежа ─────────────────────────────────
-  const sendToAI = useCallback(async (transcript: string): Promise<{ items: VoiceCatalogItem[]; segIds: string[] | null }> => {
+  const sendToAI = useCallback(async (transcript: string): Promise<{ items: VoiceCatalogItem[]; transcript: string }> => {
     const roomContext = buildRoomContext(stateRef.current);
 
     const messages = [
@@ -259,13 +273,10 @@ export default function useVoiceCatalog({ state, onItems }: Props) {
     });
     const data = await res.json();
 
-    // Определяем целевые сегменты по тексту транскрипта
-    const segIds = findTargetSegIds(transcript, stateRef.current);
-
     if (data.items && Array.isArray(data.items) && data.items.length > 0) {
-      return { items: data.items as VoiceCatalogItem[], segIds };
+      return { items: data.items as VoiceCatalogItem[], transcript };
     }
-    return { items: [], segIds };
+    return { items: [], transcript };
   }, []);
 
   // ── Визуализация громкости ───────────────────────────────────────────────────
@@ -327,10 +338,10 @@ export default function useVoiceCatalog({ state, onItems }: Props) {
       try {
         const transcript = await transcribeBlob(blob);
         setStatus(`"${transcript}" — запрашиваю бота...`);
-        const { items, segIds } = await sendToAI(transcript);
+        const { items, transcript: fullTranscript } = await sendToAI(transcript);
         if (items.length > 0) {
           setStatus(`Добавляю ${items.length} позиций в смету...`);
-          onItems(items, segIds);
+          onItems(items, fullTranscript);
           setStatus("");
         } else {
           setStatus("Бот не нашёл подходящих товаров");
