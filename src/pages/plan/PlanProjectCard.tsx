@@ -58,12 +58,18 @@ export default function PlanProjectCard({
     if (confirmDelete) setConfirmDelete(false);
   };
 
+  const vibrate = (ms: number | number[]) => {
+    if (navigator.vibrate) navigator.vibrate(ms);
+  };
+
   const handleTouchEnd = () => {
     if (!isDragging.current) { setOffset(0); return; }
     if (offset < -SWIPE_THRESHOLD) {
       setOffset(-ACTION_WIDTH);
+      vibrate(40);
     } else if (offset > SWIPE_THRESHOLD) {
       setOffset(ACTION_WIDTH);
+      vibrate(40);
     } else {
       setOffset(0);
     }
@@ -75,7 +81,8 @@ export default function PlanProjectCard({
   const resetSwipe = () => { setOffset(0); setConfirmDelete(false); };
 
   const handleDeleteClick = () => {
-    if (!confirmDelete) { setConfirmDelete(true); return; }
+    if (!confirmDelete) { setConfirmDelete(true); vibrate([30, 60, 30]); return; }
+    vibrate(80);
     onDelete(project.id);
     setConfirmDelete(false);
     setOffset(0);
