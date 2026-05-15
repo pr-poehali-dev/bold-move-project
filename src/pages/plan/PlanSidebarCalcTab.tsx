@@ -1,6 +1,6 @@
 import React from "react";
 import Icon from "@/components/ui/icon";
-import type { PlanState, SegmentPriceItem, FloorItem } from "./planTypes";
+import type { PlanState, SegmentPriceItem } from "./planTypes";
 import { calcScale, polygonArea, polygonPerimeter, segmentLabel } from "./planTypes";
 
 // ─── Вкладка "Расчёт" ────────────────────────────────────────────────────────
@@ -40,58 +40,37 @@ export default function CalcTab({
     });
   });
 
-  // Итого по стенам — группировка по priceId
-  const wallTotals = new Map<number, { item: SegmentPriceItem; total: number }>();
-  wallItems.forEach(({ item }) => {
-    const existing = wallTotals.get(item.priceId);
-    if (existing) existing.total += (item.quantity ?? 1);
-    else wallTotals.set(item.priceId, { item, total: item.quantity ?? 1 });
-  });
-
-  // Итого по полотну — группировка по priceId
-  const floorTotals = new Map<number, { item: FloorItem; total: number }>();
-  floorItems.forEach(item => {
-    const existing = floorTotals.get(item.priceId);
-    if (existing) existing.total += item.quantity;
-    else floorTotals.set(item.priceId, { item, total: item.quantity });
-  });
-
-  // Общие итого (стены + полотно)
-  const allTotals = new Map<number, { name: string; imageUrl: string | null; unit: string; total: number }>();
-  wallTotals.forEach(({ item, total }) => {
-    allTotals.set(item.priceId, { name: item.name, imageUrl: item.imageUrl, unit: item.unit, total });
-  });
-  floorTotals.forEach(({ item, total }) => {
-    const existing = allTotals.get(item.priceId);
-    if (existing) existing.total += total;
-    else allTotals.set(item.priceId, { name: item.name, imageUrl: item.imageUrl, unit: item.unit, total });
-  });
-
   const hasWallItems = wallItems.length > 0;
   const hasFloorItems = floorItems.length > 0;
   const hasAnyItems = hasWallItems || hasFloorItems;
 
-  const [editKey, setEditKey] = React.useState<string | null>(null);
-  const [draft,   setDraft]   = React.useState("");
+  // Группировка всех товаров по категориям (как в PlanMaterialsScreen)
+  const grouped = React.useMemo(() => {
+    const map = new Map<string, { priceId: number; name: string; category: string; imageUrl: string | null; unit: string; total: number; isFloor: boolean; floorId?: string; segIds: string[] }[]>();
+    // Стены — агрегируем по priceId
+    const wallAgg = new Map<number, { priceId: number; name: string; category: string; imageUrl: string | null; unit: string; total: number; segIds: string[] }>();
+    wallItems.forEach(({ item, segId }) => {
+      const ex = wallAgg.get(item.priceId);
+      if (ex) { ex.total += (item.quantity ?? 1); ex.segIds.push(segId); }
+      else wallAgg.set(item.priceId, { priceId: item.priceId, name: item.name, category: item.category ?? "Прочее", imageUrl: item.imageUrl, unit: item.unit, total: item.quantity ?? 1, segIds: [segId] });
+    });
+    wallAgg.forEach(entry => {
+      const cat = entry.category;
+      if (!map.has(cat)) map.set(cat, []);
+      map.get(cat)!.push({ ...entry, isFloor: false });
+    });
+    // Полотно
+    floorItems.forEach(item => {
+      const cat = item.category ?? "Прочее";
+      if (!map.has(cat)) map.set(cat, []);
+      map.get(cat)!.push({ priceId: item.priceId, name: item.name, category: cat, imageUrl: item.imageUrl, unit: item.unit, total: item.quantity, isFloor: true, floorId: item.id, segIds: [] });
+    });
+    return map;
+  }, [wallItems, floorItems]);
 
-  const commitEdit = (segId: string, priceId: number) => {
-    const v = parseFloat(draft.replace(",", "."));
-    if (!isNaN(v) && v > 0) onUpdateQuantity?.(segId, priceId, v);
-    setEditKey(null); setDraft("");
-  };
+  const categories = Array.from(grouped.keys()).sort();
 
-  const commitFloorEdit = (id: string) => {
-    const v = parseFloat(draft.replace(",", "."));
-    if (!isNaN(v) && v > 0) onUpdateFloorQuantity?.(id, v);
-    setEditKey(null); setDraft("");
-  };
 
-  const row = (label: string, value: string, unit = "", accent = false) => (
-    <div className={`flex items-center justify-between py-2 border-b border-white/[0.05] ${accent ? "text-emerald-300" : "text-white/70"}`}>
-      <span className="text-[12px]">{label}</span>
-      <span className="text-[13px] font-bold font-mono">{value} <span className="text-[10px] font-normal text-white/30">{unit}</span></span>
-    </div>
-  );
 
   return (
     <div className="px-4 py-3 space-y-5">
@@ -145,135 +124,76 @@ export default function CalcTab({
         </div>
       )}
 
-      {/* Материалы */}
+      {/* Материалы — сгруппированные по категориям */}
       {hasAnyItems && (
-        <div>
-          <p className="text-[10px] font-bold uppercase tracking-widest text-white/25 mb-2">Материалы</p>
+        <div className="space-y-4">
+          {categories.map(cat => {
+            const lines = grouped.get(cat) ?? [];
+            return (
+              <div key={cat}>
+                {/* Заголовок категории */}
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-[10px] font-bold uppercase tracking-widest" style={{ color: "rgba(167,139,250,0.7)" }}>{cat}</span>
+                  <div className="flex-1 h-px" style={{ background: "rgba(124,58,237,0.15)" }} />
+                  <span className="text-[10px]" style={{ color: "rgba(255,255,255,0.25)" }}>{lines.length} поз.</span>
+                </div>
 
-          {/* Итого всё */}
-          <div className="mb-3 bg-violet-500/8 border border-violet-500/20 rounded-xl px-3 py-2.5 space-y-1.5">
-            <p className="text-[10px] text-violet-300/60 font-semibold uppercase tracking-wide mb-1">Итого</p>
-            {Array.from(allTotals.values()).map(({ name, imageUrl, unit, total }) => (
-              <div key={name} className="flex items-center gap-2">
-                {imageUrl && (
-                  <img src={imageUrl} className="w-5 h-5 rounded object-cover shrink-0 opacity-80" alt="" />
-                )}
-                <span className="text-[12px] text-white/70 flex-1 truncate">{name}</span>
-                <span className="text-[12px] font-bold text-violet-300 font-mono shrink-0">
-                  {Math.round(total * 100) / 100} <span className="text-[10px] font-normal text-violet-300/60">{unit}</span>
-                </span>
-              </div>
-            ))}
-          </div>
-
-          {/* Товары на стенах */}
-          {hasWallItems && (
-            <div className="mb-3">
-              <p className="text-[10px] text-white/25 font-semibold uppercase tracking-wide mb-1.5">На стенах</p>
-              <div className="space-y-1">
-                {wallItems.map(({ item, segId, segLabel }) => {
-                  const key = `wall-${segId}-${item.priceId}`;
-                  const qty = item.quantity ?? 1;
-                  return (
-                    <div key={key} className="flex items-center gap-2 py-1.5 border-b border-white/[0.05] group">
-                      {item.imageUrl && (
-                        <img src={item.imageUrl} className="w-6 h-6 rounded object-cover shrink-0" alt="" />
-                      )}
-                      <div className="flex-1 min-w-0">
-                        <p className="text-[11px] text-white/80 truncate">{item.name}</p>
-                        <p className="text-[10px] text-white/30">{segLabel}</p>
+                <div className="space-y-1.5">
+                  {lines.map(line => (
+                    <div
+                      key={`${line.isFloor ? "f" : "w"}-${line.priceId}`}
+                      className="flex items-center gap-2.5 rounded-xl px-2.5 py-2"
+                      style={{ background: "#0e0e1c", border: "1px solid rgba(255,255,255,0.06)" }}
+                    >
+                      {/* Картинка */}
+                      <div className="w-8 h-8 rounded-lg flex-shrink-0 overflow-hidden flex items-center justify-center"
+                        style={{ background: "rgba(124,58,237,0.1)" }}>
+                        {line.imageUrl
+                          ? <img src={line.imageUrl} alt={line.name} className="w-full h-full object-cover" />
+                          : <Icon name="Package" size={13} style={{ color: "#a78bfa" }} />
+                        }
                       </div>
 
-                      {editKey === key ? (
-                        <input
-                          autoFocus type="number" min={0.01} step={0.1}
-                          value={draft}
-                          onChange={e => setDraft(e.target.value)}
-                          onBlur={() => commitEdit(segId, item.priceId)}
-                          onKeyDown={e => {
-                            if (e.key === "Enter") commitEdit(segId, item.priceId);
-                            if (e.key === "Escape") { setEditKey(null); setDraft(""); }
-                          }}
-                          className="w-16 bg-[#1a1b2e] border border-violet-500/50 rounded-lg px-2 py-1 text-[12px] text-white font-bold text-center focus:outline-none"
-                        />
-                      ) : (
-                        <button
-                          onClick={() => { setEditKey(key); setDraft(String(qty)); }}
-                          className="flex items-center gap-1 px-2 py-1 rounded-lg bg-violet-500/15 border border-violet-500/25 hover:bg-violet-500/25 transition"
-                          title="Изменить количество"
-                        >
-                          <span className="text-[12px] font-bold text-violet-300 font-mono">{Math.round(qty * 100) / 100}</span>
-                          <span className="text-[10px] text-violet-300/50">{item.unit}</span>
-                          <Icon name="Pencil" size={9} className="text-violet-400/60" />
-                        </button>
-                      )}
-
-                      <button
-                        onClick={() => onRemoveItem?.(segId, item.priceId)}
-                        className="opacity-0 group-hover:opacity-100 w-6 h-6 flex items-center justify-center rounded-lg hover:bg-rose-500/20 transition text-white/30 hover:text-rose-400"
-                      >
-                        <Icon name="X" size={12} />
-                      </button>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-
-          {/* Товары на полотне */}
-          {hasFloorItems && (
-            <div>
-              <p className="text-[10px] text-white/25 font-semibold uppercase tracking-wide mb-1.5">На полотне</p>
-              <div className="space-y-1">
-                {floorItems.map(item => {
-                  const key = `floor-${item.id}`;
-                  return (
-                    <div key={key} className="flex items-center gap-2 py-1.5 border-b border-white/[0.05] group">
-                      {item.imageUrl && (
-                        <img src={item.imageUrl} className="w-6 h-6 rounded object-cover shrink-0" alt="" />
-                      )}
+                      {/* Название + единица */}
                       <div className="flex-1 min-w-0">
-                        <p className="text-[11px] text-white/80 truncate">{item.name}</p>
-                        <p className="text-[10px] text-white/30">Полотно</p>
+                        <div className="text-white text-[12px] font-semibold truncate">{line.name}</div>
+                        <div className="text-[10px]" style={{ color: "rgba(255,255,255,0.35)" }}>{line.unit}</div>
                       </div>
 
-                      {editKey === key ? (
-                        <input
-                          autoFocus type="number" min={0.01} step={0.1}
-                          value={draft}
-                          onChange={e => setDraft(e.target.value)}
-                          onBlur={() => commitFloorEdit(item.id)}
-                          onKeyDown={e => {
-                            if (e.key === "Enter") commitFloorEdit(item.id);
-                            if (e.key === "Escape") { setEditKey(null); setDraft(""); }
-                          }}
-                          className="w-16 bg-[#1a1b2e] border border-violet-500/50 rounded-lg px-2 py-1 text-[12px] text-white font-bold text-center focus:outline-none"
-                        />
-                      ) : (
+                      {/* −  кол-во  + */}
+                      <div className="flex items-center gap-1 shrink-0">
                         <button
-                          onClick={() => { setEditKey(key); setDraft(String(item.quantity)); }}
-                          className="flex items-center gap-1 px-2 py-1 rounded-lg bg-violet-500/15 border border-violet-500/25 hover:bg-violet-500/25 transition"
-                          title="Изменить количество"
+                          onClick={() => {
+                            const next = Math.max(0, parseFloat((line.total - (line.unit === "шт" ? 1 : 0.1)).toFixed(2)));
+                            if (line.isFloor && line.floorId) onUpdateFloorQuantity?.(line.floorId, next);
+                            else line.segIds.forEach(sid => onUpdateQuantity?.(sid, line.priceId, next / (line.segIds.length || 1)));
+                          }}
+                          className="w-6 h-6 rounded-lg flex items-center justify-center transition active:scale-90"
+                          style={{ background: "rgba(255,255,255,0.07)", color: "rgba(255,255,255,0.55)" }}
                         >
-                          <span className="text-[12px] font-bold text-violet-300 font-mono">{Math.round(item.quantity * 100) / 100}</span>
-                          <span className="text-[10px] text-violet-300/50">{item.unit}</span>
-                          <Icon name="Pencil" size={9} className="text-violet-400/60" />
+                          <Icon name="Minus" size={10} />
                         </button>
-                      )}
-
-                      <button
-                        onClick={() => onRemoveFloorItem?.(item.id)}
-                        className="opacity-0 group-hover:opacity-100 w-6 h-6 flex items-center justify-center rounded-lg hover:bg-rose-500/20 transition text-white/30 hover:text-rose-400"
-                      >
-                        <Icon name="X" size={12} />
-                      </button>
+                        <span className="w-12 text-center text-white font-bold text-[12px] font-mono">
+                          {Math.round(line.total * 100) / 100}
+                        </span>
+                        <button
+                          onClick={() => {
+                            const next = parseFloat((line.total + (line.unit === "шт" ? 1 : 0.1)).toFixed(2));
+                            if (line.isFloor && line.floorId) onUpdateFloorQuantity?.(line.floorId, next);
+                            else line.segIds.forEach(sid => onUpdateQuantity?.(sid, line.priceId, next / (line.segIds.length || 1)));
+                          }}
+                          className="w-6 h-6 rounded-lg flex items-center justify-center transition active:scale-90"
+                          style={{ background: "rgba(255,255,255,0.07)", color: "rgba(255,255,255,0.55)" }}
+                        >
+                          <Icon name="Plus" size={10} />
+                        </button>
+                      </div>
                     </div>
-                  );
-                })}
+                  ))}
+                </div>
               </div>
-            </div>
-          )}
+            );
+          })}
         </div>
       )}
 
