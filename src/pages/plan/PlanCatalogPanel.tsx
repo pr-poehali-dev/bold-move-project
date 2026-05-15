@@ -115,7 +115,7 @@ export default function PlanCatalogPanel({
 
       if (matched.isWallItem && state.segments.length > 0) {
         // Ищем конкретные сегменты для ЭТОГО товара по контексту транскрипта
-        const itemSegIds = findSegIdsForItem(matched.name, transcript, state);
+        const itemSegIds = findSegIdsForItem(matched.name, matched.category, transcript, state);
         wallItemsWithSegs.push({ item: matched, segIds: itemSegIds });
       } else {
         floorItems.push({ ...matched, quantity: voiceItem.qty ?? 1 });

@@ -74,12 +74,15 @@ export function findTargetSegIds(transcript: string, state: PlanState): string[]
   const midX = (minX + maxX) / 2;
   const midY = (minY + maxY) / 2;
 
-  const wantTop    = /верхн|сверху|наверху|верх/.test(t);
-  const wantBottom = /нижн|снизу|внизу|низ/.test(t);
-  const wantLeft   = /лев[ую]|слева/.test(t);
-  const wantRight  = /правую|справа|прав/.test(t);
+  const wantTop    = /верхн|сверху|наверху/.test(t);
+  const wantBottom = /нижн|снизу|внизу/.test(t);
+  const wantLeft   = /лев[оуыйаяе]|слева/.test(t);
+  const wantRight  = /прав[оуыйаяе]|справа/.test(t);
 
   if (!wantTop && !wantBottom && !wantLeft && !wantRight) return null;
+
+  const w = maxX - minX || 1;
+  const h = maxY - minY || 1;
 
   const result: string[] = [];
   segments.forEach(seg => {
@@ -88,35 +91,80 @@ export function findTargetSegIds(transcript: string, state: PlanState): string[]
     if (!a || !b) return;
     const segMidX = (a.x + b.x) / 2;
     const segMidY = (a.y + b.y) / 2;
-    const orient  = segmentOrientation(a.x, a.y, b.x, b.y);
 
-    if (wantTop    && orient === "top"    && segMidY <= midY) result.push(seg.id);
-    if (wantBottom && orient === "bottom" && segMidY >= midY) result.push(seg.id);
-    if (wantLeft   && orient === "left"   && segMidX <= midX) result.push(seg.id);
-    if (wantRight  && orient === "right"  && segMidX >= midX) result.push(seg.id);
+    // Нормализованное расстояние от центра (-1..1)
+    const relX = (segMidX - midX) / (w / 2);  // >0 = правая сторона, <0 = левая
+    const relY = (segMidY - midY) / (h / 2);  // >0 = нижняя, <0 = верхняя
 
-    // Запасной — по позиции mid относительно центра фигуры
-    if (wantTop    && segMidY < minY + (maxY - minY) * 0.35 && result.length === 0) result.push(seg.id);
-    if (wantBottom && segMidY > minY + (maxY - minY) * 0.65 && result.length === 0) result.push(seg.id);
-    if (wantLeft   && segMidX < minX + (maxX - minX) * 0.35 && result.length === 0) result.push(seg.id);
-    if (wantRight  && segMidX > minX + (maxX - minX) * 0.65 && result.length === 0) result.push(seg.id);
+    // Определяем доминирующую ось сегмента
+    const dx = Math.abs(b.x - a.x);
+    const dy = Math.abs(b.y - a.y);
+    const isHorizontal = dx > dy;
+    const isVertical   = dy > dx;
+
+    // Верх/низ — горизонтальные сегменты
+    if (wantTop    && isHorizontal && relY < -0.3) result.push(seg.id);
+    if (wantBottom && isHorizontal && relY >  0.3) result.push(seg.id);
+    // Лево/право — вертикальные сегменты
+    if (wantLeft   && isVertical   && relX < -0.3) result.push(seg.id);
+    if (wantRight  && isVertical   && relX >  0.3) result.push(seg.id);
   });
+
+  // Если ничего не нашли — fallback: просто по позиции mid без учёта ориентации
+  if (result.length === 0) {
+    segments.forEach(seg => {
+      const a = points.find(p => p.id === seg.fromId);
+      const b = points.find(p => p.id === seg.toId);
+      if (!a || !b) return;
+      const segMidX = (a.x + b.x) / 2;
+      const segMidY = (a.y + b.y) / 2;
+      if (wantTop    && segMidY < midY - h * 0.2) result.push(seg.id);
+      if (wantBottom && segMidY > midY + h * 0.2) result.push(seg.id);
+      if (wantLeft   && segMidX < midX - w * 0.2) result.push(seg.id);
+      if (wantRight  && segMidX > midX + w * 0.2) result.push(seg.id);
+    });
+  }
 
   return result.length > 0 ? [...new Set(result)] : null;
 }
 
-// Ищем сегменты для конкретного товара — смотрим контекст вокруг его названия в тексте
-export function findSegIdsForItem(itemName: string, transcript: string, state: PlanState): string[] | null {
+// Ключевые слова товаров для поиска в тексте транскрипта
+const ITEM_KEYWORDS: { pattern: RegExp; keywords: string[] }[] = [
+  { pattern: /парящ/,      keywords: ["парящ"] },
+  { pattern: /теневой|тенев|klassika|классик/i, keywords: ["теневой", "тенев", "классик"] },
+  { pattern: /flexy|флекси|световой|световые/i, keywords: ["flexy", "флекс", "световой"] },
+  { pattern: /стеновой|стандартный профиль|пвх профиль/i, keywords: ["стеновой", "стандарт", "профиль"] },
+  { pattern: /нишa|ниша|карниз/i,  keywords: ["ниша", "карниз"] },
+];
+
+// Ищем сегменты для конкретного товара — ищем ключевое слово товара в тексте,
+// затем берём ориентацию из ближайшего контекста
+export function findSegIdsForItem(itemName: string, itemCategory: string, transcript: string, state: PlanState): string[] | null {
   const t    = transcript.toLowerCase();
   const name = itemName.toLowerCase();
+  const cat  = itemCategory.toLowerCase();
 
-  // Ищем позицию упоминания товара в тексте
-  const pos = t.indexOf(name.split(" ")[0]); // первое слово имени
-  if (pos === -1) return findTargetSegIds(transcript, state); // fallback — общий поиск
+  // Находим ключевые слова для этого товара
+  const entry = ITEM_KEYWORDS.find(e => e.pattern.test(name) || e.pattern.test(cat));
 
-  // Берём окно ±80 символов вокруг упоминания товара
-  const window = t.slice(Math.max(0, pos - 80), Math.min(t.length, pos + 80));
-  return findTargetSegIds(window, state) ?? findTargetSegIds(transcript, state);
+  let searchPos = -1;
+  if (entry) {
+    // Ищем первое вхождение любого ключевого слова в тексте
+    for (const kw of entry.keywords) {
+      const p = t.indexOf(kw);
+      if (p !== -1 && (searchPos === -1 || p < searchPos)) searchPos = p;
+    }
+  }
+
+  // Если нашли позицию — берём окно вокруг неё
+  if (searchPos !== -1) {
+    const win = t.slice(Math.max(0, searchPos - 60), Math.min(t.length, searchPos + 60));
+    const result = findTargetSegIds(win, state);
+    if (result && result.length > 0) return result;
+  }
+
+  // Fallback — общий поиск по всему тексту
+  return findTargetSegIds(transcript, state);
 }
 
 interface Props {
