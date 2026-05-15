@@ -52,14 +52,19 @@ export default function PlanProjectCard({
   const alive = useRef(false);
   const vibed = useRef(false);
   const offsetRef = useRef(0);
-  const confirmRef = useRef(false);
 
   // Актуальные колбэки всегда свежие через ref
   const cb = useRef({ onStartEdit, onDelete });
   useEffect(() => { cb.current = { onStartEdit, onDelete }; });
 
-  const setOffsetSync = (v: number) => { offsetRef.current = v; setOffset(v); };
-  const setConfirmSync = (v: boolean) => { confirmRef.current = v; setConfirmDelete(v); };
+  // Все setState через ref — замыкание useEffect никогда не устаревает
+  const setOffsetSync = useRef((v: number) => { offsetRef.current = v; setOffset(v); });
+  const setConfirmSync = useRef((v: boolean) => { setConfirmDelete(v); });
+  const setDraggingSync = useRef((v: boolean) => { setDragging(v); });
+  // Обновляем .current при каждом рендере — setState всегда свежий
+  setOffsetSync.current = (v: number) => { offsetRef.current = v; setOffset(v); };
+  setConfirmSync.current = (v: boolean) => { setConfirmDelete(v); };
+  setDraggingSync.current = (v: boolean) => { setDragging(v); };
 
   useEffect(() => {
     const el = cardRef.current;
@@ -72,7 +77,7 @@ export default function PlanProjectCard({
       axis.current = null;
       alive.current = true;
       vibed.current = false;
-      setDragging(false);
+      setDraggingSync.current(false);
     };
 
     const onMove = (e: TouchEvent) => {
@@ -88,10 +93,10 @@ export default function PlanProjectCard({
 
       e.preventDefault();
       lx.current = e.touches[0].clientX;
-      setDragging(true);
+      setDraggingSync.current(true);
 
       const clamped = Math.max(-SNAP_WIDTH, Math.min(SNAP_WIDTH, dx));
-      setOffsetSync(clamped);
+      setOffsetSync.current(clamped);
 
       if (!vibed.current && Math.abs(dx) >= THRESHOLD) {
         vibe(25);
@@ -102,7 +107,7 @@ export default function PlanProjectCard({
     const onEnd = () => {
       if (!alive.current) return;
       alive.current = false;
-      setDragging(false);
+      setDraggingSync.current(false);
 
       if (axis.current !== "h") return;
 
@@ -110,14 +115,14 @@ export default function PlanProjectCard({
 
       if (cur >= THRESHOLD) {
         vibe(40);
-        setOffsetSync(0);
+        setOffsetSync.current(0);
         cb.current.onStartEdit(project);
       } else if (cur <= -THRESHOLD) {
         vibe([30, 60, 30]);
-        setOffsetSync(0);
-        setConfirmSync(true);
+        setOffsetSync.current(0);
+        setConfirmSync.current(true);
       } else {
-        setOffsetSync(0);
+        setOffsetSync.current(0);
       }
     };
 
@@ -138,7 +143,7 @@ export default function PlanProjectCard({
   const confirmAndDelete = () => {
     vibe(80);
     onDelete(project.id);
-    setConfirmSync(false);
+    setConfirmSync.current(false);
   };
 
   if (isEditing) {
@@ -274,7 +279,7 @@ export default function PlanProjectCard({
                 </button>
                 <div className="w-px" style={{ background: "rgba(255,255,255,0.05)" }} />
                 <button
-                  onClick={() => setConfirmSync(true)}
+                  onClick={() => setConfirmSync.current(true)}
                   disabled={isDeleting}
                   className="flex items-center justify-center gap-1.5 px-5 py-2.5 text-[12px] font-semibold transition hover:bg-red-500/10 disabled:opacity-50"
                   style={{ color: "rgba(239,68,68,0.6)" }}
@@ -311,7 +316,7 @@ export default function PlanProjectCard({
             }
           </button>
           <button
-            onClick={() => setConfirmSync(false)}
+            onClick={() => setConfirmSync.current(false)}
             className="px-3 py-1.5 rounded-xl text-[12px] font-semibold transition"
             style={{ color: "rgba(255,255,255,0.45)", border: "1px solid rgba(255,255,255,0.1)" }}
           >
