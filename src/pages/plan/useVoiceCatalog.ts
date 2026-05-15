@@ -134,7 +134,7 @@ const ITEM_KEYWORDS: { pattern: RegExp; keywords: string[] }[] = [
   { pattern: /теневой|тенев|klassika|классик/i, keywords: ["теневой", "тенев", "классик"] },
   { pattern: /flexy|флекси|световой|световые/i, keywords: ["flexy", "флекс", "световой"] },
   { pattern: /стеновой|стандартный профиль|пвх профиль/i, keywords: ["стеновой", "стандарт", "профиль"] },
-  { pattern: /нишa|ниша|карниз/i,  keywords: ["ниша", "карниз"] },
+  { pattern: /ниш|карниз/i,  keywords: ["ниш", "карниз"] },
 ];
 
 // Ищем сегменты для конкретного товара — ищем ключевое слово товара в тексте,
@@ -156,9 +156,9 @@ export function findSegIdsForItem(itemName: string, itemCategory: string, transc
     }
   }
 
-  // Если нашли позицию — берём окно вокруг неё
+  // Если нашли позицию — берём широкое окно вокруг неё (±120 символов)
   if (searchPos !== -1) {
-    const win = t.slice(Math.max(0, searchPos - 60), Math.min(t.length, searchPos + 60));
+    const win = t.slice(Math.max(0, searchPos - 120), Math.min(t.length, searchPos + 120));
     const result = findTargetSegIds(win, state);
     if (result && result.length > 0) return result;
   }

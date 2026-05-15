@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback } from "react";
+import React, { useState, useRef, useCallback, useMemo } from "react";
 import type { PlanState } from "./planTypes";
 import { calcScale, buildShapePath, findSelfIntersections } from "./planTypes";
 import {
@@ -26,6 +26,7 @@ interface Props {
   onTouchMove: (e: React.TouchEvent<SVGSVGElement>) => void;
   onTouchEnd: (e: React.TouchEvent<SVGSVGElement>) => void;
   onDimLineClick: (e: React.MouseEvent, dlId: string) => void;
+  onCanvasDblClick?: (e: React.MouseEvent<SVGSVGElement>) => void;
   deleteHover?: { x: number; y: number; type: "point" | "segment" } | null;
   onEditFloorItem?: (id: string) => void;
 }
@@ -33,7 +34,7 @@ interface Props {
 export default function PlanCanvasSvg({
   svgRef, state, onChange, cursor, ghost, dimLineFrom,
   handlers, onMouseMove, onMouseDown, onMouseUp,
-  onCanvasClick, onTouchStart, onTouchMove, onTouchEnd,
+  onCanvasClick, onCanvasDblClick, onTouchStart, onTouchMove, onTouchEnd,
   onDimLineClick, deleteHover, onEditFloorItem,
 }: Props) {
   const {
@@ -46,6 +47,24 @@ export default function PlanCanvasSvg({
   // Центр масс полигона (для размещения floorItems)
   const polyCx = points.length > 0 ? points.reduce((s, p) => s + p.x, 0) / points.length : 0;
   const polyCy = points.length > 0 ? points.reduce((s, p) => s + p.y, 0) / points.length : 0;
+
+  // AABB внутреннего пространства полигона (для масштабирования floorItems)
+  const polyBBox = useMemo(() => {
+    if (points.length < 3) return null;
+    const xs = points.map(p => p.x);
+    const ys = points.map(p => p.y);
+    return {
+      minX: Math.min(...xs), maxX: Math.max(...xs),
+      minY: Math.min(...ys), maxY: Math.max(...ys),
+      w: Math.max(...xs) - Math.min(...xs),
+      h: Math.max(...ys) - Math.min(...ys),
+    };
+  }, [points]);
+
+  // Tooltip для иконок товаров
+  const [hoverTooltip, setHoverTooltip] = useState<{ x: number; y: number; name: string; qty: number; unit: string } | null>(null);
+  // Двойной клик для удаления иконки товара
+  const lastBadgeTapRef = useRef<{ key: string; t: number }>({ key: "", t: 0 });
 
   // Подсказка "двойной клик — выбрать все стены" — показывается один раз
   const HINT_KEY = "plan_dblclick_hint_shown";
@@ -93,6 +112,7 @@ export default function PlanCanvasSvg({
       width="100%" height="100%"
       style={{ cursor, userSelect: "none", touchAction: "none" }}
       onClick={onCanvasClick}
+      onDoubleClick={onCanvasDblClick}
       onMouseMove={onMouseMove}
       onMouseDown={onMouseDown}
       onMouseUp={onMouseUp}
@@ -180,71 +200,112 @@ export default function PlanCanvasSvg({
               });
               onChange({ segments: newSegs });
             }}
+            onMoveItemToSeg={(fromSegId, priceId, toSegId) => {
+              if (fromSegId === toSegId) return;
+              const fromSeg = segments.find(s => s.id === fromSegId);
+              const item = fromSeg?.items?.find(it => it.priceId === priceId);
+              if (!item) return;
+              const toSeg = segments.find(s => s.id === toSegId);
+              const meters = toSeg?.lengthCm ? Math.round(toSeg.lengthCm / 100 * 100) / 100 : item.quantity ?? 1;
+              const newSegs = segments.map(s => {
+                if (s.id === fromSegId) return { ...s, items: (s.items ?? []).filter(it => it.priceId !== priceId) };
+                if (s.id === toSegId) {
+                  const existing = s.items ?? [];
+                  if (existing.some(it => it.priceId === priceId)) {
+                    // Уже есть — прибавляем количество
+                    return { ...s, items: existing.map(it => it.priceId === priceId ? { ...it, quantity: (it.quantity ?? 1) + meters } : it) };
+                  }
+                  return { ...s, items: [...existing, { ...item, quantity: meters }] };
+                }
+                return s;
+              });
+              onChange({ segments: newSegs });
+            }}
           />
         ))}
 
-        {/* Товары на полотне (floorItems) — монтаж, раскрой и огарпунивание не показываем на чертеже */}
-        {isClosed && (floorItems ?? []).filter(fi =>
-          fi.category !== "Монтаж" &&
-          fi.name !== "Раскрой ПВХ" &&
-          fi.name !== "Огарпунивание ПВХ"
-        ).map((fi, idx) => {
-          const FH = 24, FY_STEP = 30;
-          const IMG_W = fi.imageUrl ? 23 : 0;
-          const qtyStr = `${fi.quantity} ${fi.unit}`;
-          // Динамическая ширина: символы × ~5.5px + отступы
-          const nameW = fi.name.length * 5.5;
-          const qtyW  = qtyStr.length * 5.5;
-          const FW = Math.max(120, IMG_W + 8 + nameW + 6 + qtyW + 24 + 8);
-          const fx = polyCx;
-          const fy = polyCy - ((floorItems.length - 1) * FY_STEP) / 2 + idx * FY_STEP;
-          const nameX = fx - FW / 2 + IMG_W + 8;
-          const qtyX  = fx + FW / 2 - 24;
-          return (
-            <g key={fi.id}>
-              {/* Фон бейджа */}
-              <rect x={fx - FW / 2} y={fy - FH / 2} width={FW} height={FH} rx={8}
-                fill="rgba(17,12,36,0.92)" stroke="rgba(124,58,237,0.35)" strokeWidth={1}
-                style={{ pointerEvents: "none" }}
-              />
-              {/* Кликабельная область (всё кроме крестика) */}
-              <rect x={fx - FW / 2} y={fy - FH / 2} width={FW - 20} height={FH} rx={8}
-                fill="transparent" stroke="none"
+        {/* Товары на полотне (floorItems) — монтаж, раскрой и огарпунивание не показываем */}
+        {isClosed && polyBBox && (() => {
+          const visibleItems = (floorItems ?? []).filter(fi =>
+            fi.category !== "Монтаж" &&
+            fi.name !== "Раскрой ПВХ" &&
+            fi.name !== "Огарпунивание ПВХ"
+          );
+          if (visibleItems.length === 0) return null;
+
+          // Иконки: S×S квадрат, выровнены по сетке внутри полигона
+          const S = Math.min(32, Math.max(20, (polyBBox.w * 0.12)));
+          const GAP = S * 0.3;
+          const cols = Math.max(1, Math.floor((polyBBox.w * 0.7) / (S + GAP)));
+          const rows = Math.ceil(visibleItems.length / cols);
+          const gridW = cols * (S + GAP) - GAP;
+          const gridH = rows * (S + GAP) - GAP;
+          const startX = polyCx - gridW / 2 + S / 2;
+          const startY = polyCy - gridH / 2 + S / 2;
+
+          return visibleItems.map((fi, idx) => {
+            const col = idx % cols;
+            const row = Math.floor(idx / cols);
+            const fx = startX + col * (S + GAP);
+            const fy = startY + row * (S + GAP);
+            const itemKey = `floor-${fi.id}`;
+
+            return (
+              <g key={fi.id}
                 style={{ cursor: "pointer" }}
                 onClick={e => { e.stopPropagation(); onEditFloorItem?.(fi.id); }}
-              />
-              {fi.imageUrl && (
-                <image href={fi.imageUrl} x={fx - FW / 2 + 5} y={fy - 9} width={18} height={18}
-                  preserveAspectRatio="xMidYMid slice" style={{ pointerEvents: "none" }} />
-              )}
-              <text x={nameX} y={fy + 4}
-                fontSize={9} fill="rgba(196,181,253,0.85)"
-                fontFamily="system-ui, sans-serif" fontWeight={500}
-                className="pointer-events-none select-none">
-                {fi.name}
-              </text>
-              {/* Кол-во + единица */}
-              <text x={qtyX} y={fy + 4} textAnchor="middle"
-                fontSize={8.5} fontWeight={700} fill="rgba(167,139,250,0.9)"
-                fontFamily="monospace" className="pointer-events-none select-none">
-                {qtyStr}
-              </text>
-              {/* Крестик */}
-              <g style={{ cursor: "pointer" }}
-                onClick={e => {
-                  e.stopPropagation();
-                  onChange({ floorItems: (floorItems ?? []).filter(f => f.id !== fi.id) });
-                }}>
-                <circle cx={fx + FW / 2 - 7} cy={fy} r={8}
-                  fill="rgba(239,68,68,0.15)" stroke="rgba(239,68,68,0.45)" strokeWidth={0.8} />
-                <line x1={fx + FW / 2 - 10} y1={fy - 3} x2={fx + FW / 2 - 4} y2={fy + 3}
-                  stroke="rgba(255,255,255,0.7)" strokeWidth={1.2} strokeLinecap="round" />
-                <line x1={fx + FW / 2 - 4} y1={fy - 3} x2={fx + FW / 2 - 10} y2={fy + 3}
-                  stroke="rgba(255,255,255,0.7)" strokeWidth={1.2} strokeLinecap="round" />
+                onDoubleClick={e => { e.stopPropagation(); onChange({ floorItems: (floorItems ?? []).filter(f => f.id !== fi.id) }); }}
+                onMouseEnter={() => setHoverTooltip({ x: fx, y: fy - S / 2 - 4, name: fi.name, qty: fi.quantity, unit: fi.unit })}
+                onMouseLeave={() => setHoverTooltip(null)}
+              >
+                {/* Фон иконки */}
+                <rect x={fx - S / 2} y={fy - S / 2} width={S} height={S} rx={S * 0.22}
+                  fill="rgba(17,12,36,0.92)" stroke="rgba(124,58,237,0.5)" strokeWidth={1.2}
+                />
+                {/* Изображение */}
+                {fi.imageUrl ? (
+                  <image href={fi.imageUrl} x={fx - S / 2 + 2} y={fy - S / 2 + 2}
+                    width={S - 4} height={S - 4}
+                    preserveAspectRatio="xMidYMid meet"
+                    style={{ pointerEvents: "none" }}
+                  />
+                ) : (
+                  <text x={fx} y={fy + 1} textAnchor="middle" dominantBaseline="middle"
+                    fontSize={S * 0.4} fontWeight={700} fill="rgba(196,181,253,0.9)"
+                    fontFamily="system-ui" className="pointer-events-none select-none">
+                    {fi.name.charAt(0).toUpperCase()}
+                  </text>
+                )}
+                {/* Количество — маленький бейдж снизу */}
+                <rect x={fx - S / 2} y={fy + S / 2 - 9} width={S} height={9} rx={3}
+                  fill="rgba(124,58,237,0.75)" className="pointer-events-none" />
+                <text x={fx} y={fy + S / 2 - 4} textAnchor="middle" dominantBaseline="middle"
+                  fontSize={6.5} fontWeight={700} fill="#e9d5ff"
+                  fontFamily="monospace" className="pointer-events-none select-none">
+                  {fi.quantity} {fi.unit}
+                </text>
+                {/* Метка двойного клика — крестик при hover */}
+                <title>{fi.name} — {fi.quantity} {fi.unit} · двойной клик = удалить</title>
               </g>
-            </g>
-          );
-        })}
+            );
+          });
+        })()}
+
+        {/* Tooltip для floorItem иконок */}
+        {hoverTooltip && (
+          <g className="pointer-events-none">
+            <rect
+              x={hoverTooltip.x - 60} y={hoverTooltip.y - 28}
+              width={120} height={22} rx={6}
+              fill="rgba(17,12,36,0.97)" stroke="rgba(124,58,237,0.5)" strokeWidth={1}
+            />
+            <text x={hoverTooltip.x} y={hoverTooltip.y - 14}
+              textAnchor="middle" dominantBaseline="middle"
+              fontSize={9} fill="#e9d5ff" fontFamily="system-ui" fontWeight={600}>
+              {hoverTooltip.name} · {hoverTooltip.qty} {hoverTooltip.unit}
+            </text>
+          </g>
+        )}
 
         {/* Точки */}
         {renderPoints(ctx, handlers)}

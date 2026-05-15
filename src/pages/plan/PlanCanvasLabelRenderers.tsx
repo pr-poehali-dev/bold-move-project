@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useRef } from "react";
 import type { Segment, DiagonalDef, DimLine, PlanState } from "./planTypes";
 import {
   pointLabel, segmentLabel, distPx, midPoint, segmentNormal,
@@ -54,44 +54,45 @@ export function renderSegmentLabel(seg: Segment, ctx: Pick<RenderContext, "point
   );
 }
 
-// ── SegmentItemsBadges — товары прикреплённые к стене (компонент с попапом) ──
+// ── SegmentItemsBadges — товары прикреплённые к стене ────────────────────────
 
 interface SegmentItemsBadgesProps {
   seg: Segment;
   ctx: Pick<RenderContext, "points">;
-  allSegments: Segment[]; // для подсчёта суммы по всему потолку
+  allSegments: Segment[];
   onRemoveItem?: (segId: string, priceId: number) => void;
   onUpdateQuantity?: (segId: string, priceId: number, quantity: number) => void;
+  // Drag между стенами
+  onMoveItemToSeg?: (fromSegId: string, priceId: number, toSegId: string) => void;
 }
 
 export function SegmentItemsBadges({
-  seg, ctx, allSegments, onRemoveItem,
+  seg, ctx, allSegments, onRemoveItem, onMoveItemToSeg,
 }: SegmentItemsBadgesProps) {
+  // Хуки — ВСЕГДА до любых return
+  const [tooltip, setTooltip] = useState<{ px: number; py: number; name: string; qty: number; unit: string } | null>(null);
+  const [dragState, setDragState] = useState<{ priceId: number; x: number; y: number } | null>(null);
+  const dblRef  = useRef<{ key: string; t: number }>({ key: "", t: 0 });
+  const dragRef = useRef<{ priceId: number; startX: number; startY: number; moved: boolean } | null>(null);
+
   const items = seg.items;
   if (!items || items.length === 0) return null;
   const a = ctx.points.find(p => p.id === seg.fromId);
   const b = ctx.points.find(p => p.id === seg.toId);
   if (!a || !b) return null;
 
-  // Размеры иконки и отступы
-  const S   = 28;   // размер иконки (квадрат)
-  const GAP = 6;    // зазор между иконками вдоль стены
-  const OFF = 20;   // отступ от стены по нормали
-  const CR  = 7;    // радиус крестика-кружка
+  const S   = 28;
+  const GAP = 6;
+  const OFF = 20;
 
   const mid = midPoint(a, b);
   const { nx, ny } = segmentNormal(a, b);
-
-  // Вектор вдоль стены (нормализованный)
   const segLen = distPx(a, b) || 1;
   const tx = (b.x - a.x) / segLen;
   const ty = (b.y - a.y) / segLen;
-
-  // Центр группы иконок — середина стены, сдвинутая по нормали
   const cx = mid.x - nx * OFF;
   const cy = mid.y - ny * OFF;
 
-  // Суммарная ширина всех иконок — центрируем группу вдоль стены
   const totalW = items.length * S + (items.length - 1) * GAP;
   const startOffset = -totalW / 2 + S / 2;
 
@@ -99,19 +100,85 @@ export function SegmentItemsBadges({
     <g key={`seg-items-${seg.id}`}>
       {items.map((item, idx) => {
         const offset = startOffset + idx * (S + GAP);
-        // Позиция иконки: центр стены + смещение вдоль стены
         const px = cx + tx * offset;
         const py = cy + ty * offset;
         const itemKey = `${seg.id}-${item.priceId}`;
         const hasImg = !!item.imageUrl;
 
+        const handleClick = (e: React.MouseEvent) => {
+          e.stopPropagation();
+          const now = Date.now();
+          if (dblRef.current.key === itemKey && now - dblRef.current.t < 400) {
+            // Двойной клик — удалить
+            dblRef.current = { key: "", t: 0 };
+            onRemoveItem?.(seg.id, item.priceId);
+          } else {
+            dblRef.current = { key: itemKey, t: now };
+          }
+        };
+
+        const handleMouseDown = (e: React.MouseEvent) => {
+          if (!onMoveItemToSeg) return;
+          e.stopPropagation();
+          dragRef.current = { priceId: item.priceId, startX: e.clientX, startY: e.clientY, moved: false };
+          const onMove = (me: MouseEvent) => {
+            if (!dragRef.current) return;
+            const dx = Math.abs(me.clientX - dragRef.current.startX);
+            const dy = Math.abs(me.clientY - dragRef.current.startY);
+            if (dx > 6 || dy > 6) {
+              dragRef.current.moved = true;
+              setDragState({ priceId: item.priceId, x: px + (me.clientX - dragRef.current.startX), y: py + (me.clientY - dragRef.current.startY) });
+              setTooltip(null);
+            }
+          };
+          const onUp = (ue: MouseEvent) => {
+            window.removeEventListener("mousemove", onMove);
+            window.removeEventListener("mouseup", onUp);
+            if (dragRef.current?.moved) {
+              // Найти ближайший сегмент к точке drop через SVG-координаты
+              // Упрощённо: ищем сегмент, ближайший к финальной позиции drag
+              const finalPx = px + (ue.clientX - dragRef.current.startX);
+              const finalPy = py + (ue.clientY - dragRef.current.startY);
+              let bestSegId: string | null = null;
+              let bestDist = Infinity;
+              allSegments.forEach(s => {
+                const pa = ctx.points.find(p => p.id === s.fromId);
+                const pb = ctx.points.find(p => p.id === s.toId);
+                if (!pa || !pb) return;
+                const mX = (pa.x + pb.x) / 2;
+                const mY = (pa.y + pb.y) / 2;
+                // Отступ нормали как у badge
+                const { nx: snx, ny: sny } = segmentNormal(pa, pb);
+                const bx = mX - snx * OFF;
+                const by = mY - sny * OFF;
+                const d = Math.hypot(finalPx - bx, finalPy - by);
+                if (d < bestDist) { bestDist = d; bestSegId = s.id; }
+              });
+              if (bestSegId && bestSegId !== seg.id && bestDist < 120) {
+                onMoveItemToSeg(seg.id, item.priceId, bestSegId);
+              }
+            }
+            dragRef.current = null;
+            setDragState(null);
+          };
+          window.addEventListener("mousemove", onMove);
+          window.addEventListener("mouseup", onUp);
+        };
+
         return (
-          <g key={itemKey} onClick={e => e.stopPropagation()} onTouchEnd={e => e.stopPropagation()}>
+          <g key={itemKey}
+            onClick={handleClick}
+            onMouseDown={handleMouseDown}
+            onTouchEnd={e => e.stopPropagation()}
+            onMouseEnter={() => !dragRef.current && setTooltip({ px, py, name: item.name, qty: item.quantity ?? 1, unit: item.unit })}
+            onMouseLeave={() => setTooltip(null)}
+            style={{ cursor: onMoveItemToSeg ? "grab" : "pointer" }}
+          >
             {/* Фон иконки */}
             <rect
               x={px - S / 2} y={py - S / 2} width={S} height={S} rx={6}
               fill="rgba(17,12,36,0.92)" stroke="rgba(124,58,237,0.6)" strokeWidth={1.2}
-              style={{ pointerEvents: "all", cursor: "default" }}
+              style={{ pointerEvents: "all" }}
             />
 
             {/* Картинка товара */}
@@ -124,7 +191,6 @@ export function SegmentItemsBadges({
                 style={{ pointerEvents: "none" }}
               />
             ) : (
-              /* Заглушка если нет иконки — первая буква названия */
               <text
                 x={px} y={py + 1}
                 textAnchor="middle" dominantBaseline="middle"
@@ -137,31 +203,68 @@ export function SegmentItemsBadges({
               </text>
             )}
 
-            {/* Крестик — правый верхний угол */}
-            {onRemoveItem && (
-              <g
-                onClick={e => { e.stopPropagation(); onRemoveItem(seg.id, item.priceId); }}
-                style={{ cursor: "pointer" }}
-              >
-                <circle
-                  cx={px + S / 2 - CR + 1} cy={py - S / 2 + CR - 1} r={CR}
-                  fill="rgba(17,12,36,0.95)" stroke="rgba(239,68,68,0.7)" strokeWidth={1}
-                />
-                <line
-                  x1={px + S / 2 - CR - 2} y1={py - S / 2 + CR - 4}
-                  x2={px + S / 2 - CR + 4} y2={py - S / 2 + CR + 2}
-                  stroke="rgba(255,255,255,0.85)" strokeWidth={1.2} strokeLinecap="round"
-                />
-                <line
-                  x1={px + S / 2 - CR + 4} y1={py - S / 2 + CR - 4}
-                  x2={px + S / 2 - CR - 2} y2={py - S / 2 + CR + 2}
-                  stroke="rgba(255,255,255,0.85)" strokeWidth={1.2} strokeLinecap="round"
-                />
-              </g>
-            )}
+            {/* Подсказка — нативный SVG title (работает везде) */}
+            <title>{item.name} · {item.quantity ?? 1} {item.unit} · двойной клик = удалить</title>
           </g>
         );
       })}
+
+      {/* Tooltip при hover */}
+      {tooltip && (
+        <g className="pointer-events-none">
+          {/* Треугольник-стрелка вверх */}
+          <polygon
+            points={`${tooltip.px},${tooltip.py - S / 2 - 2} ${tooltip.px - 5},${tooltip.py - S / 2 - 8} ${tooltip.px + 5},${tooltip.py - S / 2 - 8}`}
+            fill="rgba(17,12,36,0.97)"
+          />
+          <rect
+            x={tooltip.px - 68} y={tooltip.py - S / 2 - 30}
+            width={136} height={22} rx={6}
+            fill="rgba(17,12,36,0.97)" stroke="rgba(124,58,237,0.45)" strokeWidth={1}
+          />
+          {/* Иконка товара */}
+          {items.find(it => it.name === tooltip.name)?.imageUrl && (
+            <image
+              href={items.find(it => it.name === tooltip.name)!.imageUrl!}
+              x={tooltip.px - 64} y={tooltip.py - S / 2 - 28}
+              width={16} height={16}
+              preserveAspectRatio="xMidYMid meet"
+            />
+          )}
+          <text
+            x={tooltip.px - 44} y={tooltip.py - S / 2 - 18}
+            textAnchor="start" dominantBaseline="middle"
+            fontSize={9} fill="#e9d5ff" fontFamily="system-ui" fontWeight={600}
+          >
+            {tooltip.name}
+          </text>
+          <text
+            x={tooltip.px + 60} y={tooltip.py - S / 2 - 18}
+            textAnchor="end" dominantBaseline="middle"
+            fontSize={9} fill="rgba(167,139,250,0.8)" fontFamily="monospace" fontWeight={700}
+          >
+            {tooltip.qty} {tooltip.unit}
+          </text>
+        </g>
+      )}
+
+      {/* Ghost иконка при drag */}
+      {dragState && (() => {
+        const dragItem = items.find(it => it.priceId === dragState.priceId);
+        if (!dragItem) return null;
+        return (
+          <g className="pointer-events-none" style={{ opacity: 0.75 }}>
+            <rect x={dragState.x - S / 2} y={dragState.y - S / 2} width={S} height={S} rx={6}
+              fill="rgba(124,58,237,0.7)" stroke="rgba(196,181,253,0.9)" strokeWidth={1.5}
+              strokeDasharray="4 2"
+            />
+            {dragItem.imageUrl && (
+              <image href={dragItem.imageUrl} x={dragState.x - S / 2 + 2} y={dragState.y - S / 2 + 2}
+                width={S - 4} height={S - 4} preserveAspectRatio="xMidYMid meet" />
+            )}
+          </g>
+        );
+      })()}
     </g>
   );
 }

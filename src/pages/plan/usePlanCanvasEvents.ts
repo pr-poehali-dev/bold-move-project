@@ -640,6 +640,18 @@ export function usePlanCanvasEvents({ state, onChange, onReplace, cs }: Params) 
     return () => window.removeEventListener("keydown", onKey);
   }, [phase, points, segments, isClosed, diagonals, dimLines, selectedPointId, selectedSegmentId, selectedDiagonalId, selectedDimLineId, onChange, setGhost, setCtxMenu]);
 
+  // Двойной клик мышью — выбрать все стены (работает и снаружи полигона)
+  const handleCanvasDblClick = useCallback((e: React.MouseEvent<SVGSVGElement>) => {
+    if (!isClosed) return;
+    e.stopPropagation();
+    onChange({
+      selectedSegmentIds: segments.map(s => s.id),
+      selectedSegmentId: segments[segments.length - 1]?.id ?? null,
+      selectedPointId: null,
+      selectedDiagonalId: null,
+    });
+  }, [isClosed, segments, onChange]);
+
   return {
     clientToSvg,
     applySnap,
@@ -650,6 +662,7 @@ export function usePlanCanvasEvents({ state, onChange, onReplace, cs }: Params) 
     handleTouchMove,
     handleTouchEnd,
     handleCanvasClick,
+    handleCanvasDblClick,
     handlePointClick,
     handlePointCtxMenu,
     handlePointMouseDown,

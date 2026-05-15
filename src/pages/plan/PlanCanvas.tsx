@@ -59,6 +59,7 @@ export default function PlanCanvas({ state, eventState, onChange, onReplace, onO
         onMouseDown={events.handleMouseDown}
         onMouseUp={events.handleMouseUp}
         onCanvasClick={events.handleCanvasClick}
+        onCanvasDblClick={events.handleCanvasDblClick}
         onTouchStart={events.handleTouchStart}
         onTouchMove={events.handleTouchMove}
         onTouchEnd={events.handleTouchEnd}
