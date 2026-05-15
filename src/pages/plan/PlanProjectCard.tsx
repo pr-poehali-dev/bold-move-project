@@ -21,8 +21,8 @@ interface Props {
   onMaterials: (p: PlanProject) => void;
 }
 
-const SNAP_WIDTH = 88;   // ширина открытой кнопки
-const THRESHOLD = 44;    // порог фиксации
+const SNAP_WIDTH = 88;
+const THRESHOLD = 44;
 
 function vibe(ms: number | number[]) {
   if (typeof navigator !== "undefined" && navigator.vibrate) navigator.vibrate(ms);
@@ -40,26 +40,26 @@ export default function PlanProjectCard({
   const isDeleting = deletingId === project.id;
 
   const cardRef = useRef<HTMLDivElement>(null);
-
-  // offset: >0 = сдвиг вправо (кнопка Edit слева), <0 = влево (кнопка Delete справа)
   const [offset, setOffset] = useState(0);
-  const [snapped, setSnapped] = useState<"edit" | "delete" | null>(null);
   const [dragging, setDragging] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
 
-  // touch tracking refs
-  const sx = useRef(0);   // startX
-  const sy = useRef(0);   // startY
-  const lx = useRef(0);   // lastX
+  // Все мутабельные значения в refs — effect создаётся ОДИН раз
+  const sx = useRef(0);
+  const sy = useRef(0);
+  const lx = useRef(0);
   const axis = useRef<"h" | "v" | null>(null);
   const alive = useRef(false);
   const vibed = useRef(false);
+  const offsetRef = useRef(0);
+  const confirmRef = useRef(false);
 
-  // keep latest handlers without re-registering listeners
-  const cbEdit = useRef(onStartEdit);
-  const cbDelete = useRef(onDelete);
-  useEffect(() => { cbEdit.current = onStartEdit; }, [onStartEdit]);
-  useEffect(() => { cbDelete.current = onDelete; }, [onDelete]);
+  // Актуальные колбэки всегда свежие через ref
+  const cb = useRef({ onStartEdit, onDelete });
+  useEffect(() => { cb.current = { onStartEdit, onDelete }; });
+
+  const setOffsetSync = (v: number) => { offsetRef.current = v; setOffset(v); };
+  const setConfirmSync = (v: boolean) => { confirmRef.current = v; setConfirmDelete(v); };
 
   useEffect(() => {
     const el = cardRef.current;
@@ -77,32 +77,24 @@ export default function PlanProjectCard({
 
     const onMove = (e: TouchEvent) => {
       if (!alive.current) return;
-
       const dx = e.touches[0].clientX - sx.current;
       const dy = e.touches[0].clientY - sy.current;
 
-      // определяем ось один раз
       if (!axis.current) {
         if (Math.abs(dx) < 5 && Math.abs(dy) < 5) return;
         axis.current = Math.abs(dx) >= Math.abs(dy) ? "h" : "v";
       }
+      if (axis.current === "v") return;
 
-      if (axis.current === "v") return; // вертикальный скролл — не трогаем
-
-      e.preventDefault(); // блокируем скролл только при горизонтали
-
+      e.preventDefault();
       lx.current = e.touches[0].clientX;
       setDragging(true);
 
-      // если уже зафиксировано — двигаем от позиции фиксации
-      const base = snapped === "edit" ? SNAP_WIDTH : snapped === "delete" ? -SNAP_WIDTH : 0;
-      const raw = base + dx;
-      const clamped = Math.max(-SNAP_WIDTH, Math.min(SNAP_WIDTH, raw));
-      setOffset(clamped);
+      const clamped = Math.max(-SNAP_WIDTH, Math.min(SNAP_WIDTH, dx));
+      setOffsetSync(clamped);
 
-      // вибрация при пересечении порога
       if (!vibed.current && Math.abs(dx) >= THRESHOLD) {
-        vibe(30);
+        vibe(25);
         vibed.current = true;
       }
     };
@@ -110,25 +102,22 @@ export default function PlanProjectCard({
     const onEnd = () => {
       if (!alive.current) return;
       alive.current = false;
-      if (axis.current !== "h") { setDragging(false); return; }
-
-      const dx = lx.current - sx.current;
-      const base = snapped === "edit" ? SNAP_WIDTH : snapped === "delete" ? -SNAP_WIDTH : 0;
-      const total = base + dx;
-
       setDragging(false);
 
-      if (total >= THRESHOLD) {
-        setOffset(SNAP_WIDTH);
-        setSnapped("edit");
+      if (axis.current !== "h") return;
+
+      const cur = offsetRef.current;
+
+      if (cur >= THRESHOLD) {
         vibe(40);
-      } else if (total <= -THRESHOLD) {
-        setOffset(-SNAP_WIDTH);
-        setSnapped("delete");
-        vibe(40);
+        setOffsetSync(0);
+        cb.current.onStartEdit(project);
+      } else if (cur <= -THRESHOLD) {
+        vibe([30, 60, 30]);
+        setOffsetSync(0);
+        setConfirmSync(true);
       } else {
-        setOffset(0);
-        setSnapped(null);
+        setOffsetSync(0);
       }
     };
 
@@ -143,26 +132,13 @@ export default function PlanProjectCard({
       el.removeEventListener("touchend", onEnd);
       el.removeEventListener("touchcancel", onEnd);
     };
-   
-  }, [snapped]);
-
-  const closeSwipe = () => { setOffset(0); setSnapped(null); };
-
-  const handleEditTap = () => {
-    closeSwipe();
-    cbEdit.current(project);
-  };
-
-  const handleDeleteTap = () => {
-    setConfirmDelete(true);
-    vibe([30, 60, 30]);
-  };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // пустой массив — эффект создаётся ОДИН раз и не пересоздаётся
 
   const confirmAndDelete = () => {
     vibe(80);
-    cbDelete.current(project.id);
-    setConfirmDelete(false);
-    closeSwipe();
+    onDelete(project.id);
+    setConfirmSync(false);
   };
 
   if (isEditing) {
@@ -187,39 +163,25 @@ export default function PlanProjectCard({
       className="relative rounded-2xl overflow-hidden"
       style={{ background: "#0e0e1c", border: "1px solid rgba(255,255,255,0.06)" }}
     >
-      {/* ── Фон LEFT: кнопка Редактировать ── */}
-      <button
-        onClick={handleEditTap}
-        className="absolute inset-y-0 left-0 flex flex-col items-center justify-center gap-1"
-        style={{
-          width: SNAP_WIDTH,
-          background: "linear-gradient(135deg,#6d28d9,#7c3aed)",
-          zIndex: 0,
-          border: "none",
-          cursor: "pointer",
-        }}
+      {/* Фон LEFT — Изменить */}
+      <div
+        className="absolute inset-y-0 left-0 flex flex-col items-center justify-center gap-1 pointer-events-none"
+        style={{ width: SNAP_WIDTH, background: "linear-gradient(135deg,#6d28d9,#7c3aed)", zIndex: 0 }}
       >
         <Icon name="Pencil" size={20} style={{ color: "#fff" }} />
         <span className="text-[10px] font-bold uppercase tracking-wide text-white">Изменить</span>
-      </button>
+      </div>
 
-      {/* ── Фон RIGHT: кнопка Удалить ── */}
-      <button
-        onClick={handleDeleteTap}
-        className="absolute inset-y-0 right-0 flex flex-col items-center justify-center gap-1"
-        style={{
-          width: SNAP_WIDTH,
-          background: "linear-gradient(135deg,#dc2626,#ef4444)",
-          zIndex: 0,
-          border: "none",
-          cursor: "pointer",
-        }}
+      {/* Фон RIGHT — Удалить */}
+      <div
+        className="absolute inset-y-0 right-0 flex flex-col items-center justify-center gap-1 pointer-events-none"
+        style={{ width: SNAP_WIDTH, background: "linear-gradient(135deg,#dc2626,#ef4444)", zIndex: 0 }}
       >
         <Icon name="Trash2" size={20} style={{ color: "#fff" }} />
         <span className="text-[10px] font-bold uppercase tracking-wide text-white">Удалить</span>
-      </button>
+      </div>
 
-      {/* ── Карточка (сдвигается) ── */}
+      {/* Карточка */}
       <div
         ref={cardRef}
         style={{
@@ -251,7 +213,7 @@ export default function PlanProjectCard({
             <div className="px-4 py-3.5 flex items-center gap-3">
               <button
                 className="flex items-start gap-3 flex-1 min-w-0 text-left hover:opacity-90 transition active:scale-[0.99]"
-                onClick={() => { if (snapped) { closeSwipe(); return; } onSelect(project); }}
+                onClick={() => onSelect(project)}
               >
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1">
@@ -282,7 +244,7 @@ export default function PlanProjectCard({
 
               <div className="flex-shrink-0 flex flex-col gap-1.5">
                 <button
-                  onClick={() => { closeSwipe(); onExport(project); }}
+                  onClick={() => onExport(project)}
                   className="flex flex-col items-center justify-center gap-1 rounded-xl transition hover:brightness-110 active:scale-95"
                   style={{ width: 64, height: 52, background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)" }}
                 >
@@ -290,7 +252,7 @@ export default function PlanProjectCard({
                   <span className="text-[9px] font-bold uppercase tracking-wide" style={{ color: "rgba(255,255,255,0.55)" }}>Смета</span>
                 </button>
                 <button
-                  onClick={() => { closeSwipe(); onMaterials(project); }}
+                  onClick={() => onMaterials(project)}
                   className="flex flex-col items-center justify-center gap-1 rounded-xl transition hover:brightness-110 active:scale-95"
                   style={{ width: 64, height: 52, background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)" }}
                 >
@@ -300,7 +262,7 @@ export default function PlanProjectCard({
               </div>
             </div>
 
-            {/* Кнопки внизу — только на мышиных устройствах */}
+            {/* ПК-кнопки */}
             {!isTouch && (
               <div className="flex border-t" style={{ borderColor: "rgba(255,255,255,0.05)" }}>
                 <button
@@ -312,7 +274,7 @@ export default function PlanProjectCard({
                 </button>
                 <div className="w-px" style={{ background: "rgba(255,255,255,0.05)" }} />
                 <button
-                  onClick={() => setConfirmDelete(true)}
+                  onClick={() => setConfirmSync(true)}
                   disabled={isDeleting}
                   className="flex items-center justify-center gap-1.5 px-5 py-2.5 text-[12px] font-semibold transition hover:bg-red-500/10 disabled:opacity-50"
                   style={{ color: "rgba(239,68,68,0.6)" }}
@@ -329,7 +291,7 @@ export default function PlanProjectCard({
         </div>
       </div>
 
-      {/* ── Подтверждение удаления (поверх всего) ── */}
+      {/* Подтверждение удаления */}
       {confirmDelete && (
         <div
           className="absolute inset-0 flex items-center justify-center gap-3 z-20 rounded-2xl"
@@ -349,7 +311,7 @@ export default function PlanProjectCard({
             }
           </button>
           <button
-            onClick={() => setConfirmDelete(false)}
+            onClick={() => setConfirmSync(false)}
             className="px-3 py-1.5 rounded-xl text-[12px] font-semibold transition"
             style={{ color: "rgba(255,255,255,0.45)", border: "1px solid rgba(255,255,255,0.1)" }}
           >
