@@ -19,6 +19,25 @@ interface Props {
   onAssignMany: (wallItems: SegmentPriceItem[], floorItems: SegmentPriceItem[], wallSegIds?: string[]) => void;
 }
 
+// Категории которые идут НА СТЕНЫ (пог.м вдоль периметра)
+const WALL_CATEGORIES = new Set([
+  "Профиль стандартный",
+  "Теневой профиль",
+  "Парящий профиль",
+  "Ниши для штор",
+  "Двухуровневые",
+  "Вставки и заглушки",
+  "Углы и заглушки",
+]);
+
+// Категории которые НЕ показываем на чертеже вообще (тихо в смету)
+const SILENT_CATEGORIES = new Set([
+  "Монтаж",
+]);
+
+// Категории на полотно (м², шт)
+// Полотна, Освещение, Закладные, Вентиляция, Дополнительно — всё остальное
+
 // Маппинг товара от бота → SegmentPriceItem через прайс
 function matchItem(voiceItem: VoiceCatalogItem, prices: PriceEntry[]): SegmentPriceItem | null {
   const name = voiceItem.name.toLowerCase().trim();
@@ -45,6 +64,9 @@ function matchItem(voiceItem: VoiceCatalogItem, prices: PriceEntry[]): SegmentPr
 
   if (!found) return null;
 
+  // is_wall_item определяем по категории — надёжнее чем поле из API
+  const isWall = WALL_CATEGORIES.has(found.category);
+
   return {
     priceId:          found.id,
     name:             found.name,
@@ -53,7 +75,7 @@ function matchItem(voiceItem: VoiceCatalogItem, prices: PriceEntry[]): SegmentPr
     categoryImageUrl: found.category_image_url,
     unit:             found.unit,
     quantity:         voiceItem.qty ?? 1,
-    isWallItem:       found.is_wall_item !== false,
+    isWallItem:       isWall,
   };
 }
 
@@ -80,15 +102,21 @@ export default function PlanCatalogPanel({
       const matched = matchItem(voiceItem, allPrices);
       if (!matched) return;
 
-      // Категория "Монтаж" — тихо в смету, не на чертёж
-      if (matched.category === "Монтаж") {
+      // Монтаж, Раскрой, Огарпунивание — тихо в смету, не показываем на чертеже
+      if (
+        SILENT_CATEGORIES.has(matched.category) ||
+        matched.name === "Раскрой ПВХ" ||
+        matched.name === "Огарпунивание ПВХ"
+      ) {
         floorItems.push({ ...matched, quantity: voiceItem.qty ?? 1 });
         return;
       }
 
+      // Профили и ниши → на стены
       if (matched.isWallItem && state.segments.length > 0) {
         wallItems.push(matched);
       } else {
+        // Полотна, освещение, закладные, вентиляция → на полотно/смету
         floorItems.push({ ...matched, quantity: voiceItem.qty ?? 1 });
       }
     });
