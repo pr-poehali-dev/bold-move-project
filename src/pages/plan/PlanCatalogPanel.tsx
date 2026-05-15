@@ -66,31 +66,37 @@ export default function PlanCatalogPanel({
   state,
   onClose,
   onAssignToSegs,
-  onAssignToAllSegs: _onAssignToAllSegs,
+  onAssignToAllSegs,
   onAddToActive,
   onAssignMany,
 }: Props) {
 
   // Обработка items от бота: маппим по ПОЛНОМУ прайсу и добавляем ОДНИМ push
   const handleVoiceItems = (items: VoiceCatalogItem[]) => {
-    console.log("[VoiceCatalog] items from bot:", items);
     const wallItems: SegmentPriceItem[] = [];
-    const activeItems: SegmentPriceItem[] = [];
+    const floorItems: SegmentPriceItem[] = [];
 
     items.forEach(voiceItem => {
       const matched = matchItem(voiceItem, allPrices);
-      console.log(`[VoiceCatalog] "${voiceItem.name}" → ${matched ? matched.name : "NOT FOUND"}`);
       if (!matched) return;
+
+      // Категория "Монтаж" — тихо добавляем в активные (полотно/смета), не на стены и не на чертёж
+      if (matched.category === "Монтаж") {
+        floorItems.push({ ...matched, quantity: voiceItem.qty ?? 1 });
+        return;
+      }
+
+      // is_wall_item берём СТРОГО из прайса (данные БД по категории)
+      // is_wall_item=true → на стены, is_wall_item=false → в полотно/смету
       if (matched.isWallItem && state.segments.length > 0) {
         wallItems.push(matched);
       } else {
-        activeItems.push({ ...matched, quantity: voiceItem.qty ?? 1 });
+        floorItems.push({ ...matched, quantity: voiceItem.qty ?? 1 });
       }
     });
 
-    console.log(`[VoiceCatalog] wall=${wallItems.length} active=${activeItems.length} из ${items.length}`);
-    if (wallItems.length > 0 || activeItems.length > 0) {
-      onAssignMany(wallItems, activeItems);
+    if (wallItems.length > 0 || floorItems.length > 0) {
+      onAssignMany(wallItems, floorItems);
     }
   };
 
