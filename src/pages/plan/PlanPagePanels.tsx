@@ -191,6 +191,7 @@ export default function PlanPagePanels({
       <PlanCatalogPanel
         open={catalog.catalogOpen}
         filteredPrices={catalog.filteredPrices}
+        allPrices={catalog.prices}
         selectedSegmentId={state.selectedSegmentId}
         selectedSegmentIds={state.selectedSegmentIds}
         state={state}

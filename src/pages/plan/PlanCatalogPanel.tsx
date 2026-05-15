@@ -7,6 +7,7 @@ import type { VoiceCatalogItem } from "./useVoiceCatalog";
 interface Props {
   open: boolean;
   filteredPrices: PriceEntry[];
+  allPrices: PriceEntry[];          // полный прайс для маппинга голосовых items
   selectedSegmentId: string | null;
   selectedSegmentIds?: string[];
   state: PlanState;
@@ -57,6 +58,7 @@ function matchItem(voiceItem: VoiceCatalogItem, prices: PriceEntry[]): SegmentPr
 export default function PlanCatalogPanel({
   open,
   filteredPrices,
+  allPrices,
   selectedSegmentId,
   selectedSegmentIds,
   state,
@@ -66,21 +68,25 @@ export default function PlanCatalogPanel({
   onAddToActive,
 }: Props) {
 
-  // Обработка items от бота: маппим и добавляем в смету
+  // Обработка items от бота: маппим по ПОЛНОМУ прайсу и добавляем в смету
   const handleVoiceItems = (items: VoiceCatalogItem[]) => {
+    console.log("[VoiceCatalog] items from bot:", items);
+    let added = 0;
     items.forEach(voiceItem => {
-      const matched = matchItem(voiceItem, filteredPrices);
+      const matched = matchItem(voiceItem, allPrices);
+      console.log(`[VoiceCatalog] "${voiceItem.name}" → ${matched ? matched.name : "NOT FOUND"}`);
       if (!matched) return;
-
+      added++;
       if (matched.isWallItem && state.segments.length > 0) {
-        // Настенный товар → на все стены (как assignItemToAllSegs)
         onAssignToAllSegs(matched);
       } else {
-        // Полотно / штучный товар → в активные (карточку)
         onAddToActive({ ...matched, quantity: voiceItem.qty ?? 1 });
       }
     });
+    console.log(`[VoiceCatalog] добавлено ${added} из ${items.length}`);
   };
+
+
 
   return (
     <div className="relative">
