@@ -204,7 +204,7 @@ export function SegmentItemsBadges({
             )}
 
             {/* Подсказка — нативный SVG title (работает везде) */}
-            <title>{item.name} · {item.quantity ?? 1} {item.unit} · двойной клик = удалить</title>
+            <title>{item.name} · двойной клик = удалить</title>
           </g>
         );
       })}
@@ -243,7 +243,7 @@ export function SegmentItemsBadges({
             textAnchor="end" dominantBaseline="middle"
             fontSize={9} fill="rgba(167,139,250,0.8)" fontFamily="monospace" fontWeight={700}
           >
-            {tooltip.qty} {tooltip.unit}
+            {tooltip.qty}
           </text>
         </g>
       )}
