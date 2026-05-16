@@ -55,9 +55,23 @@ export default function PlanProjectForm({
             <label className="text-[11px] text-white/40 uppercase tracking-wider font-semibold mb-1.5 block">Телефон</label>
             <input
               value={form.phone}
-              onChange={e => setForm({ ...form, phone: e.target.value })}
+              onChange={e => {
+                const digits = e.target.value.replace(/\D/g, "").replace(/^8/, "7").replace(/^7?/, "7").slice(0, 11);
+                let masked = "+7";
+                if (digits.length > 1) masked += " " + digits.slice(1, 4);
+                if (digits.length > 4) masked += " " + digits.slice(4, 7);
+                if (digits.length > 7) masked += "-" + digits.slice(7, 9);
+                if (digits.length > 9) masked += "-" + digits.slice(9, 11);
+                setForm({ ...form, phone: masked });
+              }}
               onFocus={e => { if (!e.target.value) setForm({ ...form, phone: "+7 " }); }}
-              placeholder="+7 (___) ___-__-__"
+              onKeyDown={e => {
+                if (e.key === "Backspace" && form.phone === "+7 ") {
+                  e.preventDefault();
+                  setForm({ ...form, phone: "" });
+                }
+              }}
+              placeholder="+7 977 606-89-01"
               type="tel"
               className="w-full rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none transition"
               style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)" }}
