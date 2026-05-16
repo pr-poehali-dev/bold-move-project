@@ -85,17 +85,25 @@ export default function PlanRoomPreview({ data, width = 280, height = 160, showM
   const ptRadius = Math.max(vw, vh) * 0.012;
   const fontSize = Math.max(vw, vh) * 0.045;
 
-  // Подписи длин — в координатах viewBox
+  // Центр масс полигона — для определения направления нормали (наружу)
+  const polyCx = points.length > 0 ? points.reduce((s, p) => s + p.x, 0) / points.length : 0;
+  const polyCy = points.length > 0 ? points.reduce((s, p) => s + p.y, 0) / points.length : 0;
+
+  // Подписи длин — СНАРУЖИ фигуры (нормаль от центра, не к центру)
   const segLabels = segments.flatMap(seg => {
     if (!seg.showLength) return [];
     const a = points.find(p => p.id === seg.fromId);
     const b = points.find(p => p.id === seg.toId);
     if (!a || !b) return [];
     const mid = midPoint(a, b);
-    const { nx, ny } = segmentNormal(a, b);
+    let { nx, ny } = segmentNormal(a, b);
+    // Если нормаль смотрит к центру полигона — инвертируем
+    const toCx = polyCx - mid.x;
+    const toCy = polyCy - mid.y;
+    if (nx * toCx + ny * toCy > 0) { nx = -nx; ny = -ny; }
     const lenCm = seg.lengthCm ?? pxToCm(distPx(a, b), planScale);
     if (lenCm === null) return [];
-    const offset = Math.max(vw, vh) * 0.12;
+    const offset = Math.max(vw, vh) * 0.1;
     return [{ id: seg.id, x: mid.x + nx * offset, y: mid.y + ny * offset, label: `${lenCm}` }];
   });
 
