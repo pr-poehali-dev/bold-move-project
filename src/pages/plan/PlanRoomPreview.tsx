@@ -103,7 +103,7 @@ export default function PlanRoomPreview({ data, width = 280, height = 160, showM
     if (nx * toCx + ny * toCy > 0) { nx = -nx; ny = -ny; }
     const lenCm = seg.lengthCm ?? pxToCm(distPx(a, b), planScale);
     if (lenCm === null) return [];
-    const offset = Math.max(vw, vh) * 0.1;
+    const offset = Math.max(vw, vh) * 0.055;
     return [{ id: seg.id, x: mid.x + nx * offset, y: mid.y + ny * offset, label: `${lenCm}` }];
   });
 
@@ -113,7 +113,7 @@ export default function PlanRoomPreview({ data, width = 280, height = 160, showM
   const LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
   const angleLabels = points.map((pt, idx) => {
     const n = points.length;
-    const offset = Math.max(vw, vh) * 0.13;
+    const offset = Math.max(vw, vh) * 0.07;
     let ox: number, oy: number;
     if (isClosed && n >= 3) {
       const prev = points[(idx - 1 + n) % n];
