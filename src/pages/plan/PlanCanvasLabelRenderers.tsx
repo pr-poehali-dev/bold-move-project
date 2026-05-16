@@ -58,7 +58,7 @@ export function renderSegmentLabel(seg: Segment, ctx: Pick<RenderContext, "point
 
 interface SegmentItemsBadgesProps {
   seg: Segment;
-  ctx: Pick<RenderContext, "points">;
+  ctx: Pick<RenderContext, "points" | "zoom">;
   allSegments: Segment[];
   onRemoveItem?: (segId: string, priceId: number) => void;
   onUpdateQuantity?: (segId: string, priceId: number, quantity: number) => void;
@@ -81,15 +81,23 @@ export function SegmentItemsBadges({
   const b = ctx.points.find(p => p.id === seg.toId);
   if (!a || !b) return null;
 
-  const S   = 28;
-  const GAP = 6;
-  const OFF = 20;
-
+  const zoom = ctx.zoom ?? 1;
   const mid = midPoint(a, b);
   const { nx, ny } = segmentNormal(a, b);
   const segLen = distPx(a, b) || 1;
   const tx = (b.x - a.x) / segLen;
   const ty = (b.y - a.y) / segLen;
+
+  // Умное масштабирование: иконка пропорциональна стене, но читаема при любом zoom
+  // MAX/MIN — в экранных пикселях, переводим в SVG-координаты через /zoom
+  const MAX_S_PX = 30;
+  const MIN_S_PX = 12;
+  const availablePerItem = (segLen * 0.7) / items.length;
+  const S_px = Math.min(MAX_S_PX, Math.max(MIN_S_PX, availablePerItem * zoom * 0.8));
+  const S   = S_px / zoom; // SVG-координаты
+  const GAP = S * 0.22;
+  const OFF = S * 0.9;
+
   const cx = mid.x - nx * OFF;
   const cy = mid.y - ny * OFF;
 
@@ -524,7 +532,19 @@ export function InlineDimLabels({ state, onChange }: InlineDimProps) {
         const mid = midPoint(a, b);
         const { nx, ny } = segmentNormal(a, b);
         const segLen = distPx(a, b);
-        const off = segLen < 30 ? 36 : segLen < 60 ? 24 : 14;
+        // Умный offset: адаптируем под длину стены и zoom
+        // Чем короче стена — тем дальше выносим метку, но в SVG-координатах
+        // делим на zoom чтобы метка оставалась читаемой при любом масштабе
+        const zoom = state.settings?.zoom ?? 1;
+        const BASE_OFF = 14; // базовый отступ в экранных пикселях
+        const svgOff = BASE_OFF / zoom; // переводим в SVG-координаты
+        // Для коротких стен добавляем вынос — но не более 60px в SVG
+        const extraOff = segLen < 20 / zoom
+          ? Math.min(60 / zoom, 30 / zoom)
+          : segLen < 50 / zoom
+            ? Math.min(40 / zoom, 20 / zoom)
+            : 0;
+        const off = svgOff + extraOff;
         const lx = mid.x + nx * off;
         const ly = mid.y + ny * off;
 
@@ -567,7 +587,12 @@ export function InlineDimLabels({ state, onChange }: InlineDimProps) {
           );
         }
 
-        const textW = Math.max(38, displayText.length * 6.5 + 10);
+        // Размер шрифта и бокса — фиксированный в экранных пикселях (делим на zoom)
+        const fs = Math.round(10 / zoom);
+        const charW = fs * 0.65;
+        const textW = Math.max(fs * 3.8, displayText.length * charW + fs);
+        const boxH = fs * 1.8;
+        const boxR = fs * 0.4;
 
         return (
           <g key={seg.id} style={{ cursor: "text" }}
@@ -576,18 +601,19 @@ export function InlineDimLabels({ state, onChange }: InlineDimProps) {
               setEditingId(seg.id);
               setDraft(seg.lengthCm !== null ? String(seg.lengthCm) : "");
             }}>
-            {segLen < 30 && (
+            {/* Линия-выноска для коротких стен */}
+            {(extraOff > 0) && (
               <line x1={mid.x} y1={mid.y} x2={lx} y2={ly}
-                stroke="rgba(255,255,255,0.2)" strokeWidth={0.8} strokeDasharray="2 2"
+                stroke="rgba(255,255,255,0.2)" strokeWidth={0.6 / zoom} strokeDasharray={`${3/zoom} ${2/zoom}`}
                 className="pointer-events-none" />
             )}
-            <rect x={lx - textW / 2 - 6} y={ly - 12} width={textW + 12} height={24}
-              rx={5} fill="transparent" />
-            <rect x={lx - textW / 2} y={ly - 9} width={textW} height={18} rx={4}
-              fill="rgba(17,17,17,0.8)" stroke="rgba(255,255,255,0.18)" strokeWidth={0.8} />
-            <text x={lx} y={ly + 1}
+            <rect x={lx - textW / 2 - fs * 0.6} y={ly - boxH / 2 - fs * 0.3} width={textW + fs * 1.2} height={boxH + fs * 0.6}
+              rx={boxR} fill="transparent" />
+            <rect x={lx - textW / 2} y={ly - boxH / 2} width={textW} height={boxH} rx={boxR}
+              fill="rgba(17,17,17,0.85)" stroke="rgba(255,255,255,0.2)" strokeWidth={0.7 / zoom} />
+            <text x={lx} y={ly + fs * 0.05}
               textAnchor="middle" dominantBaseline="middle"
-              fontSize={10} fontFamily="monospace" fontWeight={700}
+              fontSize={fs} fontFamily="monospace" fontWeight={700}
               fill="rgba(255,255,255,0.9)"
               className="select-none pointer-events-none">
               {displayText}
