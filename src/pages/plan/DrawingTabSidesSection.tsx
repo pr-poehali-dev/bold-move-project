@@ -131,6 +131,10 @@ export default function DrawingTabSidesSection({
                   autoRecalc={!!state.isBuilt && (state.changedSegmentIds?.includes(seg.id) ?? false)}
                   onValueChange={v => updateSegment(seg.id, { lengthCm: v })}
                   onVisibilityToggle={() => updateSegment(seg.id, { showLength: !seg.showLength })}
+                  onDelete={() => {
+                    const newSegs = state.segments.filter(s => s.id !== seg.id);
+                    onChange({ segments: newSegs, isClosed: false, phase: "draw", selectedSegmentId: null, selectedSegmentIds: [] });
+                  }}
                   onFlipDirection={seg.id === lastChangedSegId ? () => onFlipSegment(seg.id) : undefined}
                   onFocus={() => {
                     onChange({

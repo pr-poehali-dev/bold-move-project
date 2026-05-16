@@ -171,12 +171,13 @@ export function LengthRow({
           <Icon name="ArrowLeftRight" size={11} className="text-violet-400" />
         </button>
       )}
-      <button onClick={onVisibilityToggle} className="p-1 rounded hover:bg-white/10 transition shrink-0" title="Показать/скрыть">
-        <Icon name={visible ? "Eye" : "EyeOff"} size={11} className={visible ? "text-white/35" : "text-white/15"} />
-      </button>
-      {onDelete && (
-        <button onClick={onDelete} className="p-1 rounded hover:bg-rose-500/20 transition shrink-0" title="Удалить">
-          <Icon name="Trash2" size={11} className="text-rose-400/40 hover:text-rose-400" />
+      {onDelete ? (
+        <button onClick={onDelete} className="p-1 rounded hover:bg-rose-500/20 transition shrink-0" title="Удалить отрезок">
+          <Icon name="X" size={11} className="text-rose-400/50 hover:text-rose-400" />
+        </button>
+      ) : (
+        <button onClick={onVisibilityToggle} className="p-1 rounded hover:bg-white/10 transition shrink-0" title="Показать/скрыть">
+          <Icon name={visible ? "Eye" : "EyeOff"} size={11} className={visible ? "text-white/35" : "text-white/15"} />
         </button>
       )}
     </div>

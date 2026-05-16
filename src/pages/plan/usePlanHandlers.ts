@@ -95,7 +95,7 @@ export function usePlanHandlers({
   // ── Zoom ─────────────────────────────────────────────────────────────────
   const zoomIn = useCallback(() => {
     const z = stateRef.current.settings.zoom;
-    handleSettingChange({ zoom: Math.min(4, Math.round((z + 0.2) * 10) / 10) });
+    handleSettingChange({ zoom: Math.min(10, Math.round((z + 0.2) * 10) / 10) });
   }, [handleSettingChange]);
 
   const zoomOut = useCallback(() => {

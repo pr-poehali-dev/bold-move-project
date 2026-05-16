@@ -451,7 +451,7 @@ export function usePlanCanvasEvents({ state, onChange, onReplace, cs }: Params) 
   const handleWheel = useCallback((e: WheelEvent) => {
     e.preventDefault();
     const delta = e.deltaY > 0 ? -0.1 : 0.1;
-    const newZoom = Math.max(0.3, Math.min(4, Math.round((zoom + delta) * 10) / 10));
+    const newZoom = Math.max(0.3, Math.min(10, Math.round((zoom + delta) * 10) / 10));
     onChange({ settings: { ...settings, zoom: newZoom } });
   }, [zoom, settings, onChange]);
 
