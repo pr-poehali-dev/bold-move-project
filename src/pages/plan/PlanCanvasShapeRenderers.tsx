@@ -9,9 +9,18 @@ export function renderPoints(ctx: RenderContext, handlers: SegmentHandlers) {
   const {
     points, segments, isClosed, tool,
     showPoints, showPointLabels,
-    selectedPointId, ghost,
+    selectedPointId, ghost, zoom,
   } = ctx;
   if (!showPoints) return null;
+
+  // Все размеры в SVG-координатах = экранные пиксели / zoom
+  const z = zoom ?? 1;
+  const r      = PT_R   / z;   // радиус точки ~7px на экране
+  const hitR   = PT_HIT / z;   // зона касания ~28px на экране
+  const lblOff = 14    / z;    // отступ буквы от точки ~14px на экране
+  const fs     = 11    / z;    // размер шрифта ~11px на экране
+  const sw     = 1.5  / z;    // strokeWidth
+
   const cx = points.length > 0 ? points.reduce((s, p) => s + p.x, 0) / points.length : 0;
   const cy = points.length > 0 ? points.reduce((s, p) => s + p.y, 0) / points.length : 0;
   const n = points.length;
@@ -22,12 +31,11 @@ export function renderPoints(ctx: RenderContext, handlers: SegmentHandlers) {
     const seg = segments.find(s => s.toId === pt.id);
     const hasArc = seg ? seg.arcRadius > 0 : false;
 
-    // Биссектриса угла: среднее направление от двух соседних рёбер
+    // Биссектриса угла: среднее направление наружу
     let lx: number, ly: number;
     if (isClosed && n >= 3) {
       const prev = points[(idx - 1 + n) % n];
       const next = points[(idx + 1) % n];
-      // Единичные векторы вдоль рёбер от pt
       const ax = prev.x - pt.x, ay = prev.y - pt.y;
       const bx = next.x - pt.x, by = next.y - pt.y;
       const la = Math.sqrt(ax * ax + ay * ay) || 1;
@@ -36,17 +44,16 @@ export function renderPoints(ctx: RenderContext, handlers: SegmentHandlers) {
       let oy = ay / la + by / lb;
       const ol = Math.sqrt(ox * ox + oy * oy) || 1;
       ox /= ol; oy /= ol;
-      // Проверяем что направление — наружу (от центра), иначе инвертируем
       const toCenter = { x: cx - pt.x, y: cy - pt.y };
       if (ox * toCenter.x + oy * toCenter.y > 0) { ox = -ox; oy = -oy; }
-      lx = pt.x + ox * 18;
-      ly = pt.y + oy * 18;
+      lx = pt.x + ox * lblOff;
+      ly = pt.y + oy * lblOff;
     } else {
       const dx = pt.x - cx;
       const dy = pt.y - cy;
       const dlen = Math.sqrt(dx * dx + dy * dy) || 1;
-      lx = pt.x + (dx / dlen) * 18;
-      ly = pt.y + (dy / dlen) * 18;
+      lx = pt.x + (dx / dlen) * lblOff;
+      ly = pt.y + (dy / dlen) * lblOff;
     }
 
     return (
@@ -56,19 +63,19 @@ export function renderPoints(ctx: RenderContext, handlers: SegmentHandlers) {
         onMouseDown={e => handlers.onPointMouseDown(e, pt.id)}
         onContextMenu={e => handlers.onPointCtxMenu(e, pt.id)}
       >
-        <circle cx={pt.x} cy={pt.y} r={PT_HIT} fill="transparent" />
+        <circle cx={pt.x} cy={pt.y} r={hitR} fill="transparent" />
         {(isSel || (ghost?.willClose && isFirst)) && (
-          <circle cx={pt.x} cy={pt.y} r={PT_R + 6} fill="none"
-            stroke={ghost?.willClose && isFirst ? "#34d399" : "#c4b5fd"} strokeWidth={1.5} opacity={0.5} />
+          <circle cx={pt.x} cy={pt.y} r={r + 6 / z} fill="none"
+            stroke={ghost?.willClose && isFirst ? "#34d399" : "#c4b5fd"} strokeWidth={sw} opacity={0.5} />
         )}
         {hasArc && !isSel && (
-          <circle cx={pt.x} cy={pt.y} r={PT_R + 3} fill="none" stroke="#10b981" strokeWidth={1} opacity={0.4} />
+          <circle cx={pt.x} cy={pt.y} r={r + 3 / z} fill="none" stroke="#10b981" strokeWidth={sw * 0.7} opacity={0.4} />
         )}
-        <circle cx={pt.x} cy={pt.y} r={PT_R}
+        <circle cx={pt.x} cy={pt.y} r={r}
           fill={isSel ? "#c4b5fd" : isFirst && !isClosed ? "#34d399" : "#7c3aed"}
-          stroke={isSel ? "#a78bfa" : "#4c1d95"} strokeWidth={2} />
+          stroke={isSel ? "#a78bfa" : "#4c1d95"} strokeWidth={sw} />
         {showPointLabels && (
-          <text x={lx} y={ly} fontSize={11} fontWeight={700} fill="#e2e8f0" fontFamily="monospace"
+          <text x={lx} y={ly} fontSize={fs} fontWeight={700} fill="#e2e8f0" fontFamily="monospace"
             textAnchor="middle" dominantBaseline="middle"
             className="pointer-events-none select-none">{pointLabel(idx)}</text>
         )}
