@@ -4,7 +4,7 @@ import { buildShapePath, calcScale, distPx, midPoint, segmentNormal, pxToCm, pol
 
 // Отступ вокруг фигуры в единицах исходных координат
 // — чтобы подписи углов/длин не уходили за край
-const PAD_RATIO = 0.18; // 18% от размера фигуры с каждой стороны
+const PAD_RATIO = 0.34; // 34% от размера фигуры с каждой стороны — размерные подписи уходят за фигуру
 
 export interface RoomMeta {
   areaSqm: number | null;
@@ -95,7 +95,7 @@ export default function PlanRoomPreview({ data, width = 280, height = 160, showM
     const { nx, ny } = segmentNormal(a, b);
     const lenCm = seg.lengthCm ?? pxToCm(distPx(a, b), planScale);
     if (lenCm === null) return [];
-    const offset = Math.max(vw, vh) * 0.07;
+    const offset = Math.max(vw, vh) * 0.12;
     return [{ id: seg.id, x: mid.x + nx * offset, y: mid.y + ny * offset, label: `${lenCm}` }];
   });
 
@@ -105,7 +105,7 @@ export default function PlanRoomPreview({ data, width = 280, height = 160, showM
   const LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
   const angleLabels = points.map((pt, idx) => {
     const n = points.length;
-    const offset = Math.max(vw, vh) * 0.09;
+    const offset = Math.max(vw, vh) * 0.13;
     let ox: number, oy: number;
     if (isClosed && n >= 3) {
       const prev = points[(idx - 1 + n) % n];

@@ -124,7 +124,7 @@ export default function PlanRoomsScreen({ token, project, onBack, onOpenRoom }: 
   };
 
   return (
-    <div className="min-h-screen flex flex-col" style={{ background: "#07070f" }}>
+    <div className="min-h-screen flex flex-col overflow-y-auto" style={{ background: "#07070f" }}>
 
       {/* Шапка */}
       <div className="flex items-center gap-3 px-4 sm:px-8 py-4 border-b" style={{ borderColor: "rgba(255,255,255,0.07)" }}>
