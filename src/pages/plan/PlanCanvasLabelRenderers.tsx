@@ -117,6 +117,29 @@ export function SegmentItemsBadges({
           }
         };
 
+        // Общая функция поиска ближайшего сегмента и вызова onMoveItemToSeg
+        const finishDrag = (finalPx: number, finalPy: number) => {
+          let bestSegId: string | null = null;
+          let bestDist = Infinity;
+          allSegments.forEach(s => {
+            const pa = ctx.points.find(p => p.id === s.fromId);
+            const pb = ctx.points.find(p => p.id === s.toId);
+            if (!pa || !pb) return;
+            const mX = (pa.x + pb.x) / 2;
+            const mY = (pa.y + pb.y) / 2;
+            const { nx: snx, ny: sny } = segmentNormal(pa, pb);
+            const bx = mX - snx * OFF;
+            const by = mY - sny * OFF;
+            const d = Math.hypot(finalPx - bx, finalPy - by);
+            if (d < bestDist) { bestDist = d; bestSegId = s.id; }
+          });
+          if (bestSegId && bestSegId !== seg.id && bestDist < 120) {
+            onMoveItemToSeg!(seg.id, item.priceId, bestSegId);
+          }
+          dragRef.current = null;
+          setDragState(null);
+        };
+
         const handleMouseDown = (e: React.MouseEvent) => {
           if (!onMoveItemToSeg) return;
           e.stopPropagation();
@@ -135,41 +158,70 @@ export function SegmentItemsBadges({
             window.removeEventListener("mousemove", onMove);
             window.removeEventListener("mouseup", onUp);
             if (dragRef.current?.moved) {
-              // Найти ближайший сегмент к точке drop через SVG-координаты
-              // Упрощённо: ищем сегмент, ближайший к финальной позиции drag
-              const finalPx = px + (ue.clientX - dragRef.current.startX);
-              const finalPy = py + (ue.clientY - dragRef.current.startY);
-              let bestSegId: string | null = null;
-              let bestDist = Infinity;
-              allSegments.forEach(s => {
-                const pa = ctx.points.find(p => p.id === s.fromId);
-                const pb = ctx.points.find(p => p.id === s.toId);
-                if (!pa || !pb) return;
-                const mX = (pa.x + pb.x) / 2;
-                const mY = (pa.y + pb.y) / 2;
-                // Отступ нормали как у badge
-                const { nx: snx, ny: sny } = segmentNormal(pa, pb);
-                const bx = mX - snx * OFF;
-                const by = mY - sny * OFF;
-                const d = Math.hypot(finalPx - bx, finalPy - by);
-                if (d < bestDist) { bestDist = d; bestSegId = s.id; }
-              });
-              if (bestSegId && bestSegId !== seg.id && bestDist < 120) {
-                onMoveItemToSeg(seg.id, item.priceId, bestSegId);
-              }
+              finishDrag(px + (ue.clientX - dragRef.current.startX), py + (ue.clientY - dragRef.current.startY));
+            } else {
+              dragRef.current = null;
+              setDragState(null);
             }
-            dragRef.current = null;
-            setDragState(null);
           };
           window.addEventListener("mousemove", onMove);
           window.addEventListener("mouseup", onUp);
+        };
+
+        const handleTouchStart = (e: React.TouchEvent) => {
+          if (!onMoveItemToSeg) return;
+          e.stopPropagation();
+          const t = e.touches[0];
+          dragRef.current = { priceId: item.priceId, startX: t.clientX, startY: t.clientY, moved: false };
+        };
+
+        const handleTouchMove = (e: React.TouchEvent) => {
+          if (!dragRef.current || dragRef.current.priceId !== item.priceId) return;
+          e.stopPropagation();
+          const t = e.touches[0];
+          const dx = Math.abs(t.clientX - dragRef.current.startX);
+          const dy = Math.abs(t.clientY - dragRef.current.startY);
+          if (dx > 8 || dy > 8) {
+            dragRef.current.moved = true;
+            // Конвертируем clientX/Y delta в SVG-координаты через пропорцию
+            // Находим SVG-элемент через closest
+            const svgEl = (e.target as SVGElement).closest("svg");
+            let scaleX = 1, scaleY = 1;
+            if (svgEl) {
+              const rect = svgEl.getBoundingClientRect();
+              const vb = svgEl.viewBox.baseVal;
+              scaleX = vb.width / rect.width;
+              scaleY = vb.height / rect.height;
+            }
+            setDragState({
+              priceId: item.priceId,
+              x: px + (t.clientX - dragRef.current.startX) * scaleX,
+              y: py + (t.clientY - dragRef.current.startY) * scaleY,
+            });
+            setTooltip(null);
+          }
+        };
+
+        const handleTouchEnd = (e: React.TouchEvent) => {
+          if (!dragRef.current || dragRef.current.priceId !== item.priceId) return;
+          e.stopPropagation();
+          if (dragRef.current.moved && dragState) {
+            finishDrag(dragState.x, dragState.y);
+          } else {
+            // короткий тап — обрабатываем как клик
+            handleClick(e as unknown as React.MouseEvent);
+            dragRef.current = null;
+            setDragState(null);
+          }
         };
 
         return (
           <g key={itemKey}
             onClick={handleClick}
             onMouseDown={handleMouseDown}
-            onTouchEnd={e => e.stopPropagation()}
+            onTouchStart={handleTouchStart}
+            onTouchMove={handleTouchMove}
+            onTouchEnd={handleTouchEnd}
             onMouseEnter={() => !dragRef.current && setTooltip({ px, py, name: item.name, qty: item.quantity ?? 1, unit: item.unit })}
             onMouseLeave={() => setTooltip(null)}
             style={{ cursor: onMoveItemToSeg ? "grab" : "pointer" }}
@@ -232,19 +284,13 @@ export function SegmentItemsBadges({
             />
           )}
           <text
-            x={tooltip.px - 44} y={tooltip.py - S / 2 - 18}
-            textAnchor="start" dominantBaseline="middle"
+            x={tooltip.px} y={tooltip.py - S / 2 - 18}
+            textAnchor="middle" dominantBaseline="middle"
             fontSize={9} fill="#e9d5ff" fontFamily="system-ui" fontWeight={600}
           >
             {tooltip.name}
           </text>
-          <text
-            x={tooltip.px + 60} y={tooltip.py - S / 2 - 18}
-            textAnchor="end" dominantBaseline="middle"
-            fontSize={9} fill="rgba(167,139,250,0.8)" fontFamily="monospace" fontWeight={700}
-          >
-            {tooltip.qty}
-          </text>
+
         </g>
       )}
 
