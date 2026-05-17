@@ -37,12 +37,12 @@ export function renderPoints(ctx: RenderContext, handlers: SegmentHandlers) {
       const prev = points[(idx - 1 + n) % n];
       const next = points[(idx + 1) % n];
       const ax = prev.x - pt.x, ay = prev.y - pt.y;
-      const bx = next.x - pt.x, by = next.y - pt.x;  // направление по рёбрам
       const la = Math.sqrt(ax * ax + ay * ay) || 1;
-      const lb = Math.sqrt(bx * bx + (next.y - pt.y) ** 2) || 1;
+      const bxr = next.x - pt.x, byr = next.y - pt.y;
+      const lb = Math.sqrt(bxr * bxr + byr * byr) || 1;
       // Единичные векторы вдоль рёбер
       const uax = ax / la, uay = ay / la;
-      const ubx = (next.x - pt.x) / lb, uby = (next.y - pt.y) / lb;
+      const ubx = bxr / lb, uby = byr / lb;
       let ox = uax + ubx;
       let oy = uay + uby;
       const ol = Math.sqrt(ox * ox + oy * oy) || 1;
