@@ -31,50 +31,34 @@ export function renderPoints(ctx: RenderContext, handlers: SegmentHandlers) {
     const seg = segments.find(s => s.toId === pt.id);
     const hasArc = seg ? seg.arcRadius > 0 : false;
 
-    // Биссектриса угла: направление строго наружу от полигона
+    // Направление буквы: строго от центра масс наружу
     let lx: number, ly: number;
-    if (isClosed && n >= 3) {
-      const prev = points[(idx - 1 + n) % n];
-      const next = points[(idx + 1) % n];
-      const ax = prev.x - pt.x, ay = prev.y - pt.y;
-      const la = Math.sqrt(ax * ax + ay * ay) || 1;
-      const bxr = next.x - pt.x, byr = next.y - pt.y;
-      const lb = Math.sqrt(bxr * bxr + byr * byr) || 1;
-      // Единичные векторы вдоль рёбер
-      const uax = ax / la, uay = ay / la;
-      const ubx = bxr / lb, uby = byr / lb;
-      let ox = uax + ubx;
-      let oy = uay + uby;
-      const ol = Math.sqrt(ox * ox + oy * oy) || 1;
-      ox /= ol; oy /= ol;
-      // Гарантируем направление ОТ центра
-      const toCenter = { x: cx - pt.x, y: cy - pt.y };
-      if (ox * toCenter.x + oy * toCenter.y > 0) { ox = -ox; oy = -oy; }
-      // Начинаем с минимального offset и увеличиваем пока буква внутри полигона
-      let dist = lblOff;
-      lx = pt.x + ox * dist;
-      ly = pt.y + oy * dist;
-      // ray-cast проверка: буква должна быть снаружи
-      for (let step = 0; step < 8; step++) {
-        let inside = false;
-        for (let i = 0, j = n - 1; i < n; j = i++) {
-          const pi = points[i], pj = points[j];
-          if ((pi.y > ly) !== (pj.y > ly) &&
-              lx < (pj.x - pi.x) * (ly - pi.y) / (pj.y - pi.y) + pi.x) {
-            inside = !inside;
-          }
-        }
-        if (!inside) break;
-        dist += lblOff * 0.5;
-        lx = pt.x + ox * dist;
-        ly = pt.y + oy * dist;
-      }
-    } else {
+    {
       const dx = pt.x - cx;
       const dy = pt.y - cy;
       const dlen = Math.sqrt(dx * dx + dy * dy) || 1;
-      lx = pt.x + (dx / dlen) * lblOff;
-      ly = pt.y + (dy / dlen) * lblOff;
+      const ox = dx / dlen;
+      const oy = dy / dlen;
+      // Стартуем с lblOff и итеративно увеличиваем пока буква внутри полигона
+      let dist = lblOff;
+      lx = pt.x + ox * dist;
+      ly = pt.y + oy * dist;
+      if (isClosed && n >= 3) {
+        for (let step = 0; step < 16; step++) {
+          let inside = false;
+          for (let i = 0, j = n - 1; i < n; j = i++) {
+            const pi = points[i], pj = points[j];
+            if ((pi.y > ly) !== (pj.y > ly) &&
+                lx < (pj.x - pi.x) * (ly - pi.y) / (pj.y - pi.y) + pi.x) {
+              inside = !inside;
+            }
+          }
+          if (!inside) break;
+          dist += lblOff;
+          lx = pt.x + ox * dist;
+          ly = pt.y + oy * dist;
+        }
+      }
     }
 
     return (
