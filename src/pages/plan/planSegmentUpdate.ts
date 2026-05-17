@@ -37,6 +37,26 @@ export function updateSegmentWithRebuild(
   const isEditMode = !!state.isBuilt;
 
   // Режим построения: все стороны заполнены — rebuild
+  // Пересчитываем масштаб по наименьшей стороне чтобы все отрезки были хорошо видны
+  if (!isEditMode && allSetAfter && isClosed) {
+    let bestScale: number | null = null;
+    let minCm = Infinity;
+    for (const s of newSegments) {
+      if (!s.lengthCm || s.lengthCm <= 0) continue;
+      const a = points.find(p => p.id === s.fromId);
+      const b = points.find(p => p.id === s.toId);
+      if (!a || !b) continue;
+      const px = distPx(a, b);
+      if (px <= 0) continue;
+      // Берём отрезок с наименьшей длиной в см
+      if (s.lengthCm < minCm) {
+        minCm = s.lengthCm;
+        bestScale = px / s.lengthCm;
+      }
+    }
+    baseScale = bestScale ?? baseScale;
+  }
+
   if (!isEditMode && allSetAfter && baseScale && isClosed) {
     const result = rebuildWithRightAngles(points, newSegments, baseScale);
     if (result) {
