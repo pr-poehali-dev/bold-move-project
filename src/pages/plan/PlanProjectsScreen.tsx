@@ -117,7 +117,7 @@ export default function PlanProjectsScreen({ token, onSelectProject }: Props) {
   }
 
   return (
-    <div className="min-h-screen flex flex-col" style={{ background: "#07070f" }}>
+    <div className="h-screen flex flex-col overflow-y-auto" style={{ background: "#07070f" }}>
 
       {/* Шапка */}
       <div className="flex items-center justify-between px-4 sm:px-8 py-4 border-b" style={{ borderColor: "rgba(255,255,255,0.07)" }}>
