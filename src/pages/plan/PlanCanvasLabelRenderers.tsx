@@ -96,9 +96,9 @@ export function SegmentItemsBadges({
 
   // Фиксированный размер иконки в экранных пикселях — не зависит от зума
   const S_PX = 26; // экранных пикселей
-  const S    = S_PX / zoom; // SVG-координаты (уменьшается при зуме = иконка стабильна)
-  const GAP = S * 0.22;
-  const OFF = S * 0.9;
+  const S    = S_PX / Math.max(zoom, 0.1); // SVG-координаты
+  const GAP = S * 0.3;
+  const OFF = S * 1.2; // отступ от сегмента — чуть больше чтобы не прятаться за линией
 
   const cx = mid.x - nx * OFF;
   const cy = mid.y - ny * OFF;
@@ -247,8 +247,8 @@ export function SegmentItemsBadges({
             {hasImg ? (
               <image
                 href={item.imageUrl!}
-                x={px - S / 2 + 2} y={py - S / 2 + 2}
-                width={S - 4} height={S - 4}
+                x={px - S / 2 + S * 0.08} y={py - S / 2 + S * 0.08}
+                width={S * 0.84} height={S * 0.84}
                 preserveAspectRatio="xMidYMid meet"
                 style={{ pointerEvents: "none" }}
               />

@@ -121,7 +121,8 @@ export default function PlanCanvasSvg({
     >
       <defs>
         {showGrid && (
-          <pattern id="plan-grid" width={gridSize * zoom} height={gridSize * zoom} patternUnits="userSpaceOnUse">
+          <pattern id="plan-grid" width={gridSize} height={gridSize} patternUnits="userSpaceOnUse"
+            patternTransform={`translate(${panX * zoom},${panY * zoom}) scale(${zoom})`}>
             <circle cx={0} cy={0} r={0.8} fill="rgba(255,255,255,0.07)" />
           </pattern>
         )}
