@@ -276,37 +276,47 @@ export function SegmentItemsBadges({
       })}
 
       {/* Tooltip при hover */}
-      {tooltip && (
-        <g className="pointer-events-none">
-          {/* Треугольник-стрелка вверх */}
-          <polygon
-            points={`${tooltip.px},${tooltip.py - S / 2 - 2} ${tooltip.px - 5},${tooltip.py - S / 2 - 8} ${tooltip.px + 5},${tooltip.py - S / 2 - 8}`}
-            fill="rgba(17,12,36,0.97)"
-          />
-          <rect
-            x={tooltip.px - 68} y={tooltip.py - S / 2 - 30}
-            width={136} height={22} rx={6}
-            fill="rgba(17,12,36,0.97)" stroke="rgba(124,58,237,0.45)" strokeWidth={1}
-          />
-          {/* Иконка товара */}
-          {items.find(it => it.name === tooltip.name)?.imageUrl && (
-            <image
-              href={items.find(it => it.name === tooltip.name)!.imageUrl!}
-              x={tooltip.px - 64} y={tooltip.py - S / 2 - 28}
-              width={16} height={16}
-              preserveAspectRatio="xMidYMid meet"
+      {tooltip && (() => {
+        const hasTooltipImg = !!items.find(it => it.name === tooltip.name)?.imageUrl;
+        const maxChars = 28;
+        const displayName = tooltip.name.length > maxChars ? tooltip.name.slice(0, maxChars - 1) + "…" : tooltip.name;
+        const charW = 5.5;
+        const imgW = hasTooltipImg ? 20 : 0;
+        const pad = 16;
+        const tW = Math.max(80, displayName.length * charW + imgW + pad * 2);
+        const tx = tooltip.px;
+        const ty = tooltip.py - S / 2 - 30;
+        return (
+          <g className="pointer-events-none">
+            <polygon
+              points={`${tx},${tooltip.py - S / 2 - 2} ${tx - 5},${tooltip.py - S / 2 - 8} ${tx + 5},${tooltip.py - S / 2 - 8}`}
+              fill="rgba(17,12,36,0.97)"
             />
-          )}
-          <text
-            x={tooltip.px} y={tooltip.py - S / 2 - 18}
-            textAnchor="middle" dominantBaseline="middle"
-            fontSize={9} fill="#e9d5ff" fontFamily="system-ui" fontWeight={600}
-          >
-            {tooltip.name}
-          </text>
-
-        </g>
-      )}
+            <rect
+              x={tx - tW / 2} y={ty}
+              width={tW} height={22} rx={6}
+              fill="rgba(17,12,36,0.97)" stroke="rgba(124,58,237,0.45)" strokeWidth={1}
+            />
+            {hasTooltipImg && (
+              <image
+                href={items.find(it => it.name === tooltip.name)!.imageUrl!}
+                x={tx - tW / 2 + pad / 2} y={ty + 3}
+                width={16} height={16}
+                preserveAspectRatio="xMidYMid meet"
+              />
+            )}
+            <text
+              x={hasTooltipImg ? tx - tW / 2 + pad / 2 + 16 + 4 : tx}
+              y={ty + 11}
+              textAnchor={hasTooltipImg ? "start" : "middle"}
+              dominantBaseline="middle"
+              fontSize={9} fill="#e9d5ff" fontFamily="system-ui" fontWeight={600}
+            >
+              {displayName}
+            </text>
+          </g>
+        );
+      })()}
 
       {/* Ghost иконка при drag */}
       {dragState && (() => {
