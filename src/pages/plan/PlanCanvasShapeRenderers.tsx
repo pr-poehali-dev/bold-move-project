@@ -31,34 +31,46 @@ export function renderPoints(ctx: RenderContext, handlers: SegmentHandlers) {
     const seg = segments.find(s => s.toId === pt.id);
     const hasArc = seg ? seg.arcRadius > 0 : false;
 
-    // Направление буквы: строго от центра масс наружу
+    // Направление буквы: биссектриса угла, знак определяется ориентацией полигона (CW/CCW)
     let lx: number, ly: number;
-    {
+    if (isClosed && n >= 3) {
+      const prev = points[(idx - 1 + n) % n];
+      const next = points[(idx + 1) % n];
+      // Единичные векторы вдоль рёбер ОТ текущей точки
+      const ax = prev.x - pt.x, ay = prev.y - pt.y;
+      const bx = next.x - pt.x, by = next.y - pt.y;
+      const la = Math.sqrt(ax * ax + ay * ay) || 1;
+      const lb = Math.sqrt(bx * bx + by * by) || 1;
+      const uax = ax / la, uay = ay / la;
+      const ubx = bx / lb, uby = by / lb;
+      // Биссектриса — сумма единичных векторов
+      let ox = uax + ubx;
+      let oy = uay + uby;
+      // Если биссектриса вырождается (угол 180°) — берём нормаль к ребру
+      if (Math.sqrt(ox * ox + oy * oy) < 0.01) { ox = -uay; oy = uax; }
+      const ol = Math.sqrt(ox * ox + oy * oy) || 1;
+      ox /= ol; oy /= ol;
+      // Определяем ориентацию полигона (знак площади)
+      let area2 = 0;
+      for (let i = 0; i < n; i++) {
+        const pi = points[i], pj = points[(i + 1) % n];
+        area2 += (pi.x * pj.y - pj.x * pi.y);
+      }
+      // Знак cross-product двух рёбер в вершине: если совпадает с ориентацией — угол выпуклый (наружу)
+      const cross = ax * by - ay * bx; // >0 = CCW поворот, <0 = CW
+      // Если полигон CCW (area2>0) и крест >0 — выпуклый угол, биссектриса уже наружу
+      // Если полигон CW  (area2<0) и крест <0 — выпуклый угол, биссектриса уже наружу
+      // Иначе — вогнутый, инвертируем
+      const isConvex = area2 > 0 ? cross > 0 : cross < 0;
+      if (!isConvex) { ox = -ox; oy = -oy; }
+      lx = pt.x + ox * lblOff;
+      ly = pt.y + oy * lblOff;
+    } else {
       const dx = pt.x - cx;
       const dy = pt.y - cy;
       const dlen = Math.sqrt(dx * dx + dy * dy) || 1;
-      const ox = dx / dlen;
-      const oy = dy / dlen;
-      // Стартуем с lblOff и итеративно увеличиваем пока буква внутри полигона
-      let dist = lblOff;
-      lx = pt.x + ox * dist;
-      ly = pt.y + oy * dist;
-      if (isClosed && n >= 3) {
-        for (let step = 0; step < 16; step++) {
-          let inside = false;
-          for (let i = 0, j = n - 1; i < n; j = i++) {
-            const pi = points[i], pj = points[j];
-            if ((pi.y > ly) !== (pj.y > ly) &&
-                lx < (pj.x - pi.x) * (ly - pi.y) / (pj.y - pi.y) + pi.x) {
-              inside = !inside;
-            }
-          }
-          if (!inside) break;
-          dist += lblOff;
-          lx = pt.x + ox * dist;
-          ly = pt.y + oy * dist;
-        }
-      }
+      lx = pt.x + (dx / dlen) * lblOff;
+      ly = pt.y + (dy / dlen) * lblOff;
     }
 
     return (
