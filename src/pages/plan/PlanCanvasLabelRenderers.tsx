@@ -94,13 +94,9 @@ export function SegmentItemsBadges({
   const tx = (b.x - a.x) / segLen;
   const ty = (b.y - a.y) / segLen;
 
-  // Умное масштабирование: иконка пропорциональна стене, но читаема при любом zoom
-  // MAX/MIN — в экранных пикселях, переводим в SVG-координаты через /zoom
-  const MAX_S_PX = 30;
-  const MIN_S_PX = 12;
-  const availablePerItem = (segLen * 0.7) / items.length;
-  const S_px = Math.min(MAX_S_PX, Math.max(MIN_S_PX, availablePerItem * zoom * 0.8));
-  const S   = S_px / zoom; // SVG-координаты
+  // Фиксированный размер иконки в экранных пикселях — не зависит от зума
+  const S_PX = 26; // экранных пикселей
+  const S    = S_PX / zoom; // SVG-координаты (уменьшается при зуме = иконка стабильна)
   const GAP = S * 0.22;
   const OFF = S * 0.9;
 
