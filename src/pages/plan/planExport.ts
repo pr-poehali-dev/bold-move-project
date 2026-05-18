@@ -17,9 +17,15 @@ function bbox(points: Point[]): { minX: number; minY: number; maxX: number; maxY
 }
 
 // ── Генерация чистого SVG-документа ──────────────────────────────────────────
-export function generateSvgString(state: PlanState, exportScale = 1): string {
+export function generateSvgString(state: PlanState, exportScale = 1, forThumbnail = false): string {
   const { points, segments, diagonals, dimLines, isClosed, settings } = state;
-  const { showSegmentLabels, showAngleLabels, showDiagonals, showDimLines, showPoints, showPointLabels } = settings;
+  // Для превью (thumbnail) всегда показываем размеры, независимо от настроек
+  const showSegmentLabels = forThumbnail ? false : settings.showSegmentLabels;
+  const showAngleLabels   = forThumbnail ? false : settings.showAngleLabels;
+  const showDiagonals     = forThumbnail ? false : settings.showDiagonals;
+  const showDimLines      = forThumbnail ? true  : settings.showDimLines;
+  const showPoints        = forThumbnail ? true  : settings.showPoints;
+  const showPointLabels   = forThumbnail ? false : settings.showPointLabels;
 
   if (points.length < 2) return "";
 
@@ -242,8 +248,8 @@ export async function downloadPng(
 }
 
 // ── Получить data URL для превью ──────────────────────────────────────────────
-export function getSvgDataUrl(state: PlanState, exportScale = 1): string {
-  const svg = generateSvgString(state, exportScale);
+export function getSvgDataUrl(state: PlanState, exportScale = 1, forThumbnail = true): string {
+  const svg = generateSvgString(state, exportScale, forThumbnail);
   if (!svg) return "";
   const b64 = btoa(unescape(encodeURIComponent(svg)));
   return `data:image/svg+xml;base64,${b64}`;
