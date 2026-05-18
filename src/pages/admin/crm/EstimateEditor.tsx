@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { crmFetch } from "./crmApi";
-import { AUTH_URL, PRICES_URL, PriceItem, EstimateBlock, SavedEstimate, PlanRoomForEstimate } from "./estimateTypes";
+import { AUTH_URL, PRICES_URL, PriceItem, EstimateBlock, SavedEstimate, PlanRoomForEstimate, parseValue } from "./estimateTypes";
 import { buildBlocksFromRooms, recalcTotals, calcStandardTotal, generateCopyText, generatePrintHtml } from "./estimateUtils";
 import { EstimateFromPlanPreview, EstimateEmpty } from "./EstimatePreview";
 import EstimateToolbar from "./EstimateToolbar";
@@ -152,6 +152,24 @@ export default function EstimateEditor({ chatId, clientName, clientPhone, onEsti
     onEstimateSaved?.();
   };
 
+  const applyDiscountToEstimate = (pct: number, exactAmt: number) => {
+    const discountAmt = exactAmt > 0 ? exactAmt : Math.round(standardTotal * pct / 100);
+    if (discountAmt <= 0 || standardTotal <= 0) return;
+    const ratio = (standardTotal - discountAmt) / standardTotal;
+    const newBlocks = blocks.map(block => ({
+      ...block,
+      items: block.items.map(item => {
+        const p = parseValue(item.value);
+        if (!p) return item;
+        const newPrice = Math.round(p.price * ratio);
+        const newTotal = Math.round(p.qty * newPrice);
+        return { ...item, value: `${p.qty} ${p.unit} × ${newPrice} ₽ = ${newTotal.toLocaleString("ru-RU")} ₽` };
+      }),
+    }));
+    setBlocks(newBlocks);
+    setTotals(recalcTotals(newBlocks));
+  };
+
   const doPrint = ({ perRoom, includeDrawings }: { perRoom: boolean; includeDrawings: boolean }) => {
     setShowPdfModal(false);
     const html = generatePrintHtml(blocks, standardTotal, clientName, clientPhone, {
@@ -210,6 +228,7 @@ export default function EstimateEditor({ chatId, clientName, clientPhone, onEsti
         onDeleteItem={deleteItem}
         onAddItem={addItem}
         onChooseTier={chooseTier}
+        onApplyDiscount={applyDiscountToEstimate}
       />
     </div>
 

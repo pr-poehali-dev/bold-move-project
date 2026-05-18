@@ -3,6 +3,7 @@ import { useTheme } from "./themeContext";
 import Icon from "@/components/ui/icon";
 import { EstimateBlock, PlanRoomForEstimate, PriceItem, SavedEstimate, fmt, pricingRules, parseValue } from "./estimateTypes";
 import EstimateItemRow from "./EstimateItemRow";
+import { DiscountInputModal } from "./DiscountInputModal";
 
 interface Props {
   blocks: EstimateBlock[];
@@ -15,15 +16,20 @@ interface Props {
   onDeleteItem: (bi: number, ii: number) => void;
   onAddItem: (bi: number) => void;
   onChooseTier: (tier: "econom" | "standard" | "premium" | null) => void;
+  onApplyDiscount?: (pct: number, exactAmt: number) => void;
 }
 
 export default function EstimateTable({
   blocks, prices, planRooms, estimate, standardTotal, editMode,
-  onUpdateItem, onDeleteItem, onAddItem, onChooseTier,
+  onUpdateItem, onDeleteItem, onAddItem, onChooseTier, onApplyDiscount,
 }: Props) {
   const t = useTheme();
   const [perRoom, setPerRoom] = useState(false);
+  const [discountModalOpen, setDiscountModalOpen] = useState(false);
   const chosen = estimate.chosen_tier;
+
+  // В режиме редактирования — всегда По комнатам
+  const effectivePerRoom = editMode ? true : perRoom;
   const [confirmReset, setConfirmReset] = useState(false);
 
   const handleResetClick = useCallback(() => setConfirmReset(true), []);
@@ -123,34 +129,66 @@ export default function EstimateTable({
 
   return (
     <>
-      {/* Переключатель */}
-      <div className="flex rounded-xl overflow-hidden self-start" style={{ border: `1px solid ${t.border}` }}>
-        <button
-          onClick={() => setPerRoom(false)}
-          className="flex items-center gap-1.5 px-3 py-2 text-xs font-bold transition"
-          style={{
-            background: !perRoom ? "rgba(124,58,237,0.2)" : t.surface2,
-            color: !perRoom ? "#a78bfa" : t.textMute,
-            borderRight: `1px solid ${t.border}`,
-          }}
-        >
-          <Icon name="AlignJustify" size={12} />
-          Все вместе
-        </button>
-        <button
-          onClick={() => setPerRoom(true)}
-          className="flex items-center gap-1.5 px-3 py-2 text-xs font-bold transition"
-          style={{
-            background: perRoom ? "rgba(124,58,237,0.2)" : t.surface2,
-            color: perRoom ? "#a78bfa" : t.textMute,
-          }}
-        >
-          <Icon name="LayoutList" size={12} />
-          По комнатам
-        </button>
+      {/* Переключатель + кнопка скидки */}
+      <div className="flex items-center gap-2">
+        {/* Переключатель — скрываем в режиме редактирования */}
+        {!editMode && (
+          <div className="flex rounded-xl overflow-hidden" style={{ border: `1px solid ${t.border}` }}>
+            <button
+              onClick={() => setPerRoom(false)}
+              className="flex items-center gap-1.5 px-3 py-2 text-xs font-bold transition"
+              style={{
+                background: !perRoom ? "rgba(124,58,237,0.2)" : t.surface2,
+                color: !perRoom ? "#a78bfa" : t.textMute,
+                borderRight: `1px solid ${t.border}`,
+              }}
+            >
+              <Icon name="AlignJustify" size={12} />
+              Все вместе
+            </button>
+            <button
+              onClick={() => setPerRoom(true)}
+              className="flex items-center gap-1.5 px-3 py-2 text-xs font-bold transition"
+              style={{
+                background: perRoom ? "rgba(124,58,237,0.2)" : t.surface2,
+                color: perRoom ? "#a78bfa" : t.textMute,
+              }}
+            >
+              <Icon name="LayoutList" size={12} />
+              По комнатам
+            </button>
+          </div>
+        )}
+
+        {/* Кнопка скидки — только в режиме редактирования */}
+        {editMode && onApplyDiscount && (
+          <button
+            onClick={() => setDiscountModalOpen(true)}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition hover:brightness-110 active:scale-[0.97]"
+            style={{ background: "rgba(245,158,11,0.12)", color: "#f59e0b", border: "1px solid rgba(245,158,11,0.3)" }}
+          >
+            <Icon name="Tag" size={12} />
+            Скидка
+          </button>
+        )}
       </div>
 
-      {perRoom ? (
+      {/* Модалка скидки */}
+      {discountModalOpen && onApplyDiscount && (
+        <DiscountInputModal
+          baseIncome={standardTotal}
+          initialPct={0}
+          initialAmt={0}
+          isApplied={false}
+          applying={false}
+          effectiveMax={50}
+          onConfirm={(pct, amt) => { onApplyDiscount(pct, amt); setDiscountModalOpen(false); }}
+          onClose={() => setDiscountModalOpen(false)}
+          defaultFocus="pct"
+        />
+      )}
+
+      {effectivePerRoom ? (
         /* ── По комнатам ── */
         <>
           {blocks.map((block, bi) => {
