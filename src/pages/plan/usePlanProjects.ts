@@ -45,6 +45,7 @@ export function usePlanProjects(token?: string | null) {
   const [loading,  setLoading]  = useState(false);
 
   const loadProjects = useCallback(async () => {
+    if (!token) return;
     setLoading(true);
     try {
       const res = await fetch(`${CRM_URL}?r=plan-projects`, { headers: headers(token) });
