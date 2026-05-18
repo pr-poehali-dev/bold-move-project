@@ -48,6 +48,7 @@ export default function DrawerPlanTab({ chatId, projectId }: Props) {
   const [sharing, setSharing] = useState(false);
   const [shareUrl, setShareUrl] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Pinch zoom state
   const [zoom, setZoom] = useState(1);
@@ -296,36 +297,83 @@ export default function DrawerPlanTab({ chatId, projectId }: Props) {
         </div>
       ) : (
         <div className="flex flex-col gap-3">
-          <p className="text-[11px] font-bold uppercase tracking-widest" style={{ color: t.textMute }}>
-            Чертежи ({rooms.length})
-          </p>
+              <div className="flex items-center justify-between">
+            <p className="text-[11px] font-bold uppercase tracking-widest" style={{ color: t.textMute }}>
+              Чертежи ({rooms.length})
+            </p>
+            {shareMode && (
+              <button
+                onClick={() => { setShareMode(false); setShareUrl(null); setSelectedIds(new Set(rooms.map(r => r.id))); }}
+                className="text-[11px] font-semibold transition"
+                style={{ color: t.textMute }}
+              >
+                Отменить
+              </button>
+            )}
+          </div>
+          {!shareMode && (
+            <p className="text-[11px] md:hidden" style={{ color: t.textMute, opacity: 0.5 }}>
+              Удерживайте карточку чтобы выбрать
+            </p>
+          )}
           {rooms.map(room => {
             const preview = thumb(room);
             const isSelected = selectedIds.has(room.id);
+
+            const startLongPress = () => {
+              longPressTimer.current = setTimeout(() => {
+                if (navigator.vibrate) navigator.vibrate(40);
+                setShareMode(true);
+                setSelectedIds(new Set([room.id]));
+              }, 500);
+            };
+            const cancelLongPress = () => {
+              if (longPressTimer.current) clearTimeout(longPressTimer.current);
+            };
+            const handleClick = () => {
+              if (shareMode) {
+                toggleSelect(room.id);
+              } else {
+                setZoom(1); setPanX(0); setPanY(0); setFullscreenRoom(room);
+              }
+            };
+
             return (
               <div key={room.id} className="relative">
-                {/* Чекбокс выбора (в режиме шаринга) */}
+                {/* Чекбокс — в режиме шаринга всегда виден, на ПК ещё и при hover */}
                 {shareMode && (
-                  <button
-                    onClick={() => toggleSelect(room.id)}
-                    className="absolute top-2 left-2 z-10 w-6 h-6 rounded-full flex items-center justify-center transition"
+                  <div
+                    className="absolute top-2 left-2 z-10 w-6 h-6 rounded-full flex items-center justify-center pointer-events-none transition"
                     style={{
-                      background: isSelected ? "#7c3aed" : "rgba(0,0,0,0.5)",
-                      border: `2px solid ${isSelected ? "#7c3aed" : "rgba(255,255,255,0.3)"}`,
+                      background: isSelected ? "#7c3aed" : "rgba(0,0,0,0.55)",
+                      border: `2px solid ${isSelected ? "#7c3aed" : "rgba(255,255,255,0.35)"}`,
                     }}
                   >
                     {isSelected && <Icon name="Check" size={12} style={{ color: "#fff" }} />}
-                  </button>
+                  </div>
                 )}
 
                 <button
-                  onClick={() => { setZoom(1); setPanX(0); setPanY(0); setFullscreenRoom(room); }}
-                  className="rounded-2xl overflow-hidden text-left transition hover:brightness-110 active:scale-[0.99] w-full"
+                  onClick={handleClick}
+                  onTouchStart={shareMode ? undefined : startLongPress}
+                  onTouchEnd={shareMode ? undefined : cancelLongPress}
+                  onTouchMove={cancelLongPress}
+                  onMouseDown={shareMode ? undefined : startLongPress}
+                  onMouseUp={cancelLongPress}
+                  onMouseLeave={cancelLongPress}
+                  className="rounded-2xl overflow-hidden text-left transition hover:brightness-110 active:scale-[0.99] w-full group"
                   style={{
                     background: t.cardBg,
-                    border: shareMode && isSelected ? "2px solid #7c3aed" : `1px solid ${t.border}`,
+                    border: isSelected ? "2px solid #7c3aed" : `1px solid ${t.border}`,
                   }}
                 >
+                  {/* Чекбокс на ПК при hover (только не в режиме шаринга) */}
+                  {!shareMode && (
+                    <div
+                      className="absolute top-2 left-2 z-10 w-6 h-6 rounded-full items-center justify-center hidden md:group-hover:flex transition pointer-events-none"
+                      style={{ background: "rgba(0,0,0,0.55)", border: "2px solid rgba(255,255,255,0.35)" }}
+                    />
+                  )}
                   <div className="w-full flex items-center justify-center" style={{ height: 180, background: "rgba(124,58,237,0.07)" }}>
                     {preview ? (
                       <img src={preview} alt={room.name} className="w-full h-full object-contain" style={{ padding: 8 }} />
