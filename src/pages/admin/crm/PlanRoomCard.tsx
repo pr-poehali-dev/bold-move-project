@@ -76,7 +76,14 @@ export default function PlanRoomCard({ room, isSelected, shareMode, onOpen, onTo
 
         <div className="w-full flex items-center justify-center" style={{ height: 180, background: "rgba(124,58,237,0.07)" }}>
           {preview ? (
-            <img src={preview} alt={room.name} className="w-full h-full object-contain" style={{ padding: 8 }} />
+            <img
+              src={preview}
+              alt={room.name}
+              className="w-full h-full object-contain select-none"
+              style={{ padding: 8, WebkitUserSelect: "none", userSelect: "none" }}
+              onContextMenu={e => e.preventDefault()}
+              draggable={false}
+            />
           ) : (
             <div className="flex flex-col items-center gap-2 opacity-30">
               <Icon name="LayoutDashboard" size={36} style={{ color: "#7c3aed" }} />

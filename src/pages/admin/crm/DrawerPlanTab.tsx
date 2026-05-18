@@ -99,14 +99,16 @@ export default function DrawerPlanTab({ chatId, projectId }: Props) {
       const res = await crmFetch("plan-share", {
         method: "POST",
         body: JSON.stringify({
-          room_ids: Array.from(selectedIds),
+          room_ids: Array.from(selectedIds).map(Number),
           chat_id: chatId,
           title: project?.client_name ? `Чертежи — ${project.client_name}` : "Чертежи",
         }),
-      }) as { token?: string };
+      }) as { token?: string; error?: string };
       if (res.token) {
         setShareUrl(`${window.location.origin}/plan-share/${res.token}`);
       }
+    } catch (e) {
+      console.error("handleShare error", e);
     } finally {
       setSharing(false);
     }
@@ -156,7 +158,7 @@ export default function DrawerPlanTab({ chatId, projectId }: Props) {
   }
 
   return (
-    <div className="flex flex-col gap-3 p-4">
+    <div className="flex flex-col gap-3 p-4" onContextMenu={e => e.preventDefault()}>
 
       {/* Кнопки управления */}
       <div className="flex gap-2">
@@ -169,7 +171,15 @@ export default function DrawerPlanTab({ chatId, projectId }: Props) {
           В построителе
         </button>
         <button
-          onClick={() => { setShareMode(m => !m); setShareUrl(null); }}
+          onClick={() => {
+            setShareMode(m => {
+              if (!m && selectedIds.size === 0) {
+                setSelectedIds(new Set(rooms.map(r => r.id)));
+              }
+              return !m;
+            });
+            setShareUrl(null);
+          }}
           className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition hover:brightness-110 active:scale-[0.98]"
           style={{
             background: shareMode ? "rgba(124,58,237,0.25)" : "rgba(255,255,255,0.07)",
