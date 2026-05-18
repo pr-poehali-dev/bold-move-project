@@ -906,8 +906,9 @@ def handler(event: dict, context) -> dict:
                     cols = [d[0] for d in cur.description]
                     return ok(dict(zip(cols, row)))
                 cur.execute(f"""
-                    SELECT id, company_id, name, client_name, address, phone, status, created_at, updated_at
-                    FROM {SCHEMA}.plan_projects WHERE company_id=%s ORDER BY updated_at DESC
+                    SELECT p.id, p.company_id, p.name, p.client_name, p.address, p.phone, p.status, p.created_at, p.updated_at,
+                           (SELECT COUNT(*) FROM {SCHEMA}.room_plans r WHERE r.project_id = p.id) AS rooms_count
+                    FROM {SCHEMA}.plan_projects p WHERE p.company_id=%s ORDER BY p.updated_at DESC
                 """, (cmp,))
                 cols = [d[0] for d in cur.description]
                 return ok([dict(zip(cols, r)) for r in cur.fetchall()])

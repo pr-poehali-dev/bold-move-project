@@ -221,6 +221,15 @@ export default function PlanProjectCard({
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1">
                     <span className="text-white font-bold text-[14px] truncate">{project.name}</span>
+                    {(project.rooms_count ?? 0) > 0 && (
+                      <span
+                        className="flex-shrink-0 flex items-center gap-1 px-1.5 py-0.5 rounded-lg text-[10px] font-bold"
+                        style={{ background: "rgba(124,58,237,0.18)", color: "#a78bfa", border: "1px solid rgba(124,58,237,0.3)" }}
+                      >
+                        <Icon name="Layers" size={9} />
+                        {project.rooms_count}шт
+                      </span>
+                    )}
                   </div>
                   <div className="flex flex-col gap-0.5">
                     {project.client_name && (

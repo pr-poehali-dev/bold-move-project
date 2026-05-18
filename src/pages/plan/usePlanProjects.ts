@@ -19,6 +19,7 @@ export interface PlanProject {
   status: string;
   created_at: string;
   updated_at: string;
+  rooms_count?: number;
 }
 
 export interface PlanRoom {
