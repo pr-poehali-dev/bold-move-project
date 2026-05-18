@@ -664,7 +664,14 @@ def handler(event: dict, context) -> dict:
         if not est_id:
             return err("id required")
         tier = body.get("chosen_tier")  # "econom" | "standard" | "premium" | None
-        cur.execute(f"UPDATE {SCHEMA}.saved_estimates SET chosen_tier=%s, updated_at=NOW() WHERE id=%s", (tier, int(est_id)))
+        cur.execute(f"UPDATE {SCHEMA}.saved_estimates SET chosen_tier=%s, updated_at=NOW() WHERE id=%s RETURNING chat_id, total_econom, total_standard, total_premium", (tier, int(est_id)))
+        row = cur.fetchone()
+        if row and row[0]:
+            chat_id_val = row[0]
+            tier_map = {"econom": row[1], "standard": row[2], "premium": row[3]}
+            chosen_sum = tier_map.get(tier) if tier else None
+            if chosen_sum is not None:
+                cur.execute(f"UPDATE {SCHEMA}.live_chats SET contract_sum=%s WHERE id=%s", (chosen_sum, chat_id_val))
         conn.commit()
         return ok({"ok": True})
 
