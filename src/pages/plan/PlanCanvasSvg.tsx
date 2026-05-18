@@ -46,9 +46,9 @@ export default function PlanCanvasSvg({
     tool, phase, floorItems,
   } = state;
 
-  // Центр масс полигона (для размещения floorItems)
-  const polyCx = points.length > 0 ? points.reduce((s, p) => s + p.x, 0) / points.length : 0;
-  const polyCy = points.length > 0 ? points.reduce((s, p) => s + p.y, 0) / points.length : 0;
+  // Центр bounding box полигона (для размещения floorItems — точнее чем среднее арифметическое)
+  const polyCx = points.length > 0 ? (Math.min(...points.map(p => p.x)) + Math.max(...points.map(p => p.x))) / 2 : 0;
+  const polyCy = points.length > 0 ? (Math.min(...points.map(p => p.y)) + Math.max(...points.map(p => p.y))) / 2 : 0;
 
   // AABB внутреннего пространства полигона (для масштабирования floorItems)
   const polyBBox = useMemo(() => {
