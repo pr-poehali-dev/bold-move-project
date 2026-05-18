@@ -95,33 +95,31 @@ export function SegmentItemsBadges({
   const tx = (b.x - a.x) / segLen;
   const ty = (b.y - a.y) / segLen;
 
-  // Умный размер иконки на основе длины стены в см и кол-ва товаров
+  // Умный размер иконки: пропорционально длине стены на экране
   const n = items.length;
-  const wallCm = seg.lengthCm ?? null;
 
-  // Сколько экранных пикселей занимает стена (SVG-px * zoom)
+  // Длина стены в экранных пикселях
   const segLenPx = segLen * Math.max(zoom, 0.1);
 
-  // Размер иконки: помещаем n иконок + зазоры в 65% длины стены на экране
-  // Формула: totalW = n*S + (n-1)*0.25*S = S*(n + (n-1)*0.25)
-  // Хотим totalW = segLenPx * 0.65 → S = segLenPx * 0.65 / (n + (n-1)*0.25)
-  const denom = n + (n - 1) * 0.25;
-  const fitS_PX = segLenPx * 0.65 / denom;
+  // Вписываем n иконок + зазоры (25% от S) в 60% длины стены
+  // totalW = S * n + S*0.25*(n-1) = S*(n + 0.25*(n-1))
+  // totalW = segLenPx * 0.60 → S = segLenPx * 0.60 / (n + 0.25*(n-1))
+  const denom = n + 0.25 * (n - 1);
+  const fitS_PX = segLenPx * 0.60 / denom;
 
-  // Абсолютные ограничения в экранных пикселях
-  const MAX_S_PX = 52;
-  const MIN_S_PX = 10;
+  // Ограничения: не меньше 8px (показываем даже на коротких стенах) и не больше 48px
+  const MAX_S_PX = 48;
+  const MIN_S_PX = 8;
 
-  // Если стена < 20см — прячем иконки совсем (слишком маленький сегмент)
-  if (wallCm !== null && wallCm < 20) return null;
-  // Если иконка не влезает даже минимального размера — прячем
+  // Прячем только если совсем не влезает (< 8px)
   if (fitS_PX < MIN_S_PX) return null;
 
   const S_PX = Math.min(MAX_S_PX, fitS_PX);
   const S    = S_PX / Math.max(zoom, 0.1); // SVG-координаты
   const GAP = S * 0.25;
-  // Отступ от стены — иконки рисуются внутрь (противоположная сторона от лейблов)
-  const OFF = S * 0.9;
+  // Отступ от стены: фиксированный 20px экранных, не зависит от размера иконки
+  // Это предотвращает перекрытие лейбла длины
+  const OFF = 20 / Math.max(zoom, 0.1);
 
   const cx = mid.x - nx * OFF;
   const cy = mid.y - ny * OFF;
