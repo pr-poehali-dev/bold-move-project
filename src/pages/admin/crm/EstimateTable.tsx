@@ -14,14 +14,16 @@ interface Props {
   onUpdateItem: (bi: number, ii: number, name: string, qty: number, price: number, unit: string) => void;
   onDeleteItem: (bi: number, ii: number) => void;
   onAddItem: (bi: number) => void;
+  onChooseTier: (tier: "econom" | "standard" | "premium" | null) => void;
 }
 
 export default function EstimateTable({
   blocks, prices, planRooms, estimate, standardTotal, editMode,
-  onUpdateItem, onDeleteItem, onAddItem,
+  onUpdateItem, onDeleteItem, onAddItem, onChooseTier,
 }: Props) {
   const t = useTheme();
   const [perRoom, setPerRoom] = useState(false);
+  const chosen = estimate.chosen_tier;
 
   const blockTotal = (block: EstimateBlock) =>
     block.items.reduce((s, item) => {
@@ -29,22 +31,63 @@ export default function EstimateTable({
       return s + (p ? p.total : 0);
     }, 0);
 
+  const tiers: { key: "econom" | "standard" | "premium"; label: string; val: number; color: string }[] = [
+    { key: "econom",   label: pricingRules.econom_label,   val: Math.round(standardTotal * pricingRules.econom_mult),  color: "#10b981" },
+    { key: "standard", label: pricingRules.standard_label, val: standardTotal,                                          color: "#f97316" },
+    { key: "premium",  label: pricingRules.premium_label,  val: Math.round(standardTotal * pricingRules.premium_mult), color: "#8b5cf6" },
+  ];
+
   const totalsBlock = (
     <div className="rounded-2xl p-4" style={{ background: t.surface2, border: `1px solid ${t.border}` }}>
-      <div className="text-xs font-bold uppercase tracking-wider mb-3" style={{ color: t.textMute }}>Итого</div>
+      <div className="flex items-center justify-between mb-3">
+        <div className="text-xs font-bold uppercase tracking-wider" style={{ color: t.textMute }}>Итого</div>
+        {chosen && (
+          <button
+            onClick={() => onChooseTier(null)}
+            className="text-[10px] font-semibold flex items-center gap-1 transition hover:opacity-70"
+            style={{ color: t.textMute }}
+          >
+            <Icon name="X" size={10} /> Сбросить выбор
+          </button>
+        )}
+      </div>
       <div className="space-y-2">
-        {[
-          { label: pricingRules.econom_label,   val: Math.round(standardTotal * pricingRules.econom_mult),   color: "#10b981" },
-          { label: pricingRules.standard_label, val: standardTotal,                                           color: "#f97316", bold: true },
-          { label: pricingRules.premium_label,  val: Math.round(standardTotal * pricingRules.premium_mult),  color: "#8b5cf6" },
-        ].map(r => (
-          <div key={r.label} className="flex justify-between items-center">
-            <span className="text-sm" style={{ color: t.textMute }}>{r.label}</span>
-            <span className={`font-${r.bold ? "black text-base" : "semibold text-sm"}`} style={{ color: r.color }}>
-              {fmt(r.val)} ₽
-            </span>
-          </div>
-        ))}
+        {tiers
+          .filter(r => !chosen || r.key === chosen)
+          .map(r => {
+            const isChosen = chosen === r.key;
+            return (
+              <div
+                key={r.key}
+                className="flex justify-between items-center rounded-xl px-3 py-2 cursor-pointer transition"
+                style={{
+                  background: isChosen ? r.color + "18" : "transparent",
+                  border: isChosen ? `1px solid ${r.color}40` : "1px solid transparent",
+                }}
+                onClick={() => onChooseTier(chosen === r.key ? null : r.key)}
+                title={chosen ? "Сбросить" : "Выбрать как согласованную цену"}
+              >
+                <div className="flex items-center gap-2">
+                  {!chosen && (
+                    <div className="w-4 h-4 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition"
+                      style={{ borderColor: r.color + "60" }}>
+                    </div>
+                  )}
+                  {isChosen && (
+                    <div className="w-4 h-4 rounded-full flex items-center justify-center flex-shrink-0"
+                      style={{ background: r.color }}>
+                      <Icon name="Check" size={10} style={{ color: "#fff" }} />
+                    </div>
+                  )}
+                  <span className="text-sm font-semibold" style={{ color: isChosen ? r.color : t.textMute }}>{r.label}</span>
+                  {isChosen && <span className="text-[10px] px-1.5 py-0.5 rounded-md font-bold" style={{ background: r.color + "20", color: r.color }}>Согласовано</span>}
+                </div>
+                <span className={`font-${isChosen ? "black text-base" : "semibold text-sm"}`} style={{ color: r.color }}>
+                  {fmt(r.val)} ₽
+                </span>
+              </div>
+            );
+          })}
       </div>
       {estimate.material_cost != null && estimate.material_cost > 0 && (
         <div className="mt-3 pt-3 space-y-1.5" style={{ borderTop: `1px solid ${t.border}` }}>

@@ -141,6 +141,17 @@ export default function EstimateEditor({ chatId, clientName, clientPhone, onEsti
     setShowPdfModal(true);
   };
 
+  const chooseTier = async (tier: "econom" | "standard" | "premium" | null) => {
+    if (!estimate) return;
+    setEstimate(prev => prev ? { ...prev, chosen_tier: tier } : prev);
+    await fetch(`${AUTH_URL}?action=choose-estimate-tier&id=${estimate.id}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ chosen_tier: tier }),
+    });
+    onEstimateSaved?.();
+  };
+
   const doPrint = ({ perRoom, includeDrawings }: { perRoom: boolean; includeDrawings: boolean }) => {
     setShowPdfModal(false);
     const html = generatePrintHtml(blocks, standardTotal, clientName, clientPhone, {
@@ -198,6 +209,7 @@ export default function EstimateEditor({ chatId, clientName, clientPhone, onEsti
         onUpdateItem={updateItem}
         onDeleteItem={deleteItem}
         onAddItem={addItem}
+        onChooseTier={chooseTier}
       />
     </div>
 

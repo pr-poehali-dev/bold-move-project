@@ -603,7 +603,7 @@ def handler(event: dict, context) -> dict:
         cur.execute(f"""
             SELECT e.id, e.title, e.blocks, e.totals, e.final_phrase,
                    e.total_econom, e.total_standard, e.total_premium, e.status, e.created_at,
-                   lc.material_cost
+                   lc.material_cost, e.chosen_tier
             FROM {SCHEMA}.saved_estimates e
             LEFT JOIN {SCHEMA}.live_chats lc ON lc.id = e.chat_id
             WHERE e.chat_id=%s ORDER BY e.id DESC LIMIT 1
@@ -619,6 +619,7 @@ def handler(event: dict, context) -> dict:
             "total_premium":  float(row[7]) if row[7] else None,
             "status": row[8], "created_at": str(row[9])[:19],
             "material_cost":  int(row[10]) if row[10] else None,
+            "chosen_tier":    row[11],
         }})
 
     # ── Обновить смету ─────────────────────────────────────────────────────────
@@ -639,18 +640,31 @@ def handler(event: dict, context) -> dict:
                         return float(cleaned)
             return None
 
+        chosen_tier_val = body.get("chosen_tier", None)  # "econom" | "standard" | "premium" | None
         cur.execute(f"""
             UPDATE {SCHEMA}.saved_estimates
             SET blocks=%s, totals=%s,
                 total_econom=%s, total_standard=%s, total_premium=%s,
+                chosen_tier=%s,
                 updated_at=NOW()
             WHERE id=%s
         """, (
             json.dumps(blocks_new, ensure_ascii=False),
             json.dumps(totals_new, ensure_ascii=False),
             _extract("econom"), _extract("standard"), _extract("premium"),
+            chosen_tier_val,
             int(est_id),
         ))
+        conn.commit()
+        return ok({"ok": True})
+
+    # ── Выбрать согласованный тир сметы ────────────────────────────────────────
+    if action == "choose-estimate-tier" and method == "POST":
+        est_id = params.get("id")
+        if not est_id:
+            return err("id required")
+        tier = body.get("chosen_tier")  # "econom" | "standard" | "premium" | None
+        cur.execute(f"UPDATE {SCHEMA}.saved_estimates SET chosen_tier=%s, updated_at=NOW() WHERE id=%s", (tier, int(est_id)))
         conn.commit()
         return ok({"ok": True})
 

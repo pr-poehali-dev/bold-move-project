@@ -57,6 +57,7 @@ export interface SavedEstimate {
   material_cost: number | null;
   status: string;
   created_at: string;
+  chosen_tier: "econom" | "standard" | "premium" | null;
 }
 
 // Парсим "20 м² × 399 ₽ = 7 980 ₽" → { qty, unit, price, total }
