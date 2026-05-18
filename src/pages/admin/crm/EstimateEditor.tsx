@@ -7,11 +7,12 @@ import EstimateToolbar from "./EstimateToolbar";
 import EstimateTable from "./EstimateTable";
 import PdfOptionsModal from "./PdfOptionsModal";
 
-export default function EstimateEditor({ chatId, clientName, clientPhone, onEstimateSaved }: {
+export default function EstimateEditor({ chatId, clientName, clientPhone, onEstimateSaved, onContractSumChanged }: {
   chatId: number;
   clientName?: string | null;
   clientPhone?: string | null;
   onEstimateSaved?: () => void;
+  onContractSumChanged?: (sum: number) => void;
 }) {
   const [estimate, setEstimate] = useState<SavedEstimate | null>(null);
   const [loading,  setLoading]  = useState(true);
@@ -143,7 +144,25 @@ export default function EstimateEditor({ chatId, clientName, clientPhone, onEsti
 
   const chooseTier = async (tier: "econom" | "standard" | "premium" | null) => {
     if (!estimate) return;
+
+    // Если уже выбран другой тир — спрашиваем подтверждение
+    if (estimate.chosen_tier && estimate.chosen_tier !== tier && tier !== null) {
+      const ok = window.confirm(`Сменить согласованную цену на ${tier}?`);
+      if (!ok) return;
+    }
+
+    // Вычисляем новую сумму договора
+    const tierSums: Record<string, number | null> = {
+      econom:   estimate.total_econom,
+      standard: estimate.total_standard,
+      premium:  estimate.total_premium,
+    };
+    const newSum = tier ? (tierSums[tier] ?? null) : null;
+
+    // Обновляем локально сразу
     setEstimate(prev => prev ? { ...prev, chosen_tier: tier } : prev);
+    if (newSum !== null) onContractSumChanged?.(newSum);
+
     await fetch(`${AUTH_URL}?action=choose-estimate-tier&id=${estimate.id}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },

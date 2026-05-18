@@ -234,6 +234,10 @@ export default function ClientDrawer({ client, allClientOrders, onClose, onUpdat
                 onEstimateSaved={() => {
                   onUpdated();
                 }}
+                onContractSumChanged={(sum) => {
+                  setOrderData(prev => ({ ...prev, contract_sum: sum }));
+                  onUpdated();
+                }}
               />
             </div>
           )}
