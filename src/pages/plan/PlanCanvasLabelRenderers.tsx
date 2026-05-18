@@ -99,21 +99,24 @@ export function SegmentItemsBadges({
   const n = items.length;
   const z = Math.max(zoom, 0.1);
 
-  // Вписываем n иконок + зазоры в 45% длины стены (SVG-единицы)
+  // Вписываем n иконок + зазоры в 50% длины стены (SVG-единицы)
   const denom = n + 0.25 * (n - 1);
-  const fitS = segLen * 0.45 / denom;
+  const fitS = segLen * 0.50 / denom;
 
-  // Абсолютный максимум: 22px экранных (компактно), минимум: 6px экранных
-  const MAX_S = 22 / z;
-  const MIN_S = 6 / z;
+  // Абсолютный максимум: 48px экранных, минимум: 14px экранных
+  const MAX_S = 48 / z;
+  const MIN_S = 14 / z;
 
+  // Минимальный размер должен влезать в стену (n иконок + промежутки в 70% длины)
+  // Если даже минимальный размер не помещается — прячем
+  const minTotalW = n * MIN_S + (n - 1) * MIN_S * 0.25;
+  if (minTotalW > segLen * 0.70) return null;
   if (fitS < MIN_S) return null;
 
   const S   = Math.min(MAX_S, fitS);
   const GAP = S * 0.25;
 
-  // Проверяем: суммарная ширина иконок не должна превышать 80% длины стены
-  // Если не влезает — не рисуем совсем (иначе иконки вылезут за концы стены)
+  // Финальная проверка — иконки не должны выходить за пределы 80% длины стены
   const totalW = n * S + (n - 1) * GAP;
   if (totalW > segLen * 0.80) return null;
 
