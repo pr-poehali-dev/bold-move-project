@@ -100,22 +100,19 @@ export function SegmentItemsBadges({
   const z = Math.max(zoom, 0.1);
   const wallCm = seg.lengthCm ?? null;
 
-  // На коротких стенах (< 120 см) — не рисуем иконки совсем
-  // На таких стенах иконки заезжают на поля ввода соседних стен
-  if (wallCm !== null && wallCm < 120) return null;
-
-  // Плавное появление: 120–180 см → opacity от 0 до 1
+  // Показываем иконки на всех стенах от 10 до 1000+ см
+  // Плавное появление: 10–50 см → opacity от 0.2 до 1.0
   const fadeOpacity = wallCm !== null
-    ? Math.max(0, Math.min(1, (wallCm - 120) / (180 - 120)))
+    ? Math.max(0.2, Math.min(1, (wallCm - 10) / (50 - 10) * 0.8 + 0.2))
     : 1;
 
   // Размер иконки растёт линейно с длиной стены:
-  // wallCm 120 → S ~18px, wallCm 300 → S ~36px, wallCm 500+ → S ~52px (макс)
-  const MAX_S_PX = 52;
-  const MIN_S_PX = 18;
-  // Линейная интерполяция от 120см до 500см
+  // wallCm 10 → S ~8px, wallCm 100 → S ~20px, wallCm 500 → S ~44px, wallCm 1000+ → S ~60px
+  const MAX_S_PX = 60;
+  const MIN_S_PX = 8;
+  // Линейная интерполяция от 10см до 1000см
   const cmForSize = wallCm ?? 200;
-  const t = Math.max(0, Math.min(1, (cmForSize - 120) / (500 - 120)));
+  const t = Math.max(0, Math.min(1, (cmForSize - 10) / (1000 - 10)));
   const targetS_PX = MIN_S_PX + (MAX_S_PX - MIN_S_PX) * t;
   const targetS = targetS_PX / z;
 
@@ -126,11 +123,13 @@ export function SegmentItemsBadges({
   const S   = Math.min(targetS, fitS);
   const GAP = S * 0.25;
 
-  // Финальная проверка — иконки не должны выходить за пределы 60% длины стены
-  // (оставляем 20% по краям, чтобы не наезжать на лейблы соседних стен)
+  // Иконки занимают максимум 70% длины стены — чтобы не наезжать на лейблы соседних
   const totalW = n * S + (n - 1) * GAP;
-  if (totalW > segLen * 0.60) return null;
-  if (S < MIN_S_PX / z) return null;
+  if (totalW > segLen * 0.70) {
+    // Если не влезают — рисуем но с пониженной прозрачностью
+    // (только при S больше 4px, иначе совсем прячем)
+    if (S * z < 4) return null;
+  }
 
   // Отступ от стены: 30px экранных внутрь полигона
   // Это гарантирует что иконки не перекрывают лейбл длины (который снаружи)
