@@ -237,25 +237,25 @@ export default function PlanProjectCard({
               >
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center mb-1.5 min-w-0">
-                    <span className="text-white font-bold text-[14px] truncate">{project.name}</span>
+                    <span className="text-white font-bold text-[14px] leading-snug">{project.name}</span>
                   </div>
                   <div className="flex flex-col gap-0.5 min-w-0">
                     {project.client_name && (
-                      <span className="flex items-center gap-1 text-[12px] truncate" style={{ color: "rgba(255,255,255,0.75)" }}>
-                        <Icon name="User" size={11} className="flex-shrink-0" />
-                        <span className="truncate">{project.client_name}</span>
+                      <span className="flex items-start gap-1 text-[12px]" style={{ color: "rgba(255,255,255,0.75)" }}>
+                        <Icon name="User" size={11} className="flex-shrink-0 mt-0.5" />
+                        <span>{project.client_name}</span>
                       </span>
                     )}
                     {project.address && (
-                      <span className="flex items-center gap-1 text-[12px] truncate" style={{ color: "rgba(255,255,255,0.75)" }}>
-                        <Icon name="MapPin" size={11} className="flex-shrink-0" />
-                        <span className="truncate">{project.address}</span>
+                      <span className="flex items-start gap-1 text-[12px]" style={{ color: "rgba(255,255,255,0.75)" }}>
+                        <Icon name="MapPin" size={11} className="flex-shrink-0 mt-0.5" />
+                        <span>{project.address}</span>
                       </span>
                     )}
                     {project.phone && (
-                      <span className="flex items-center gap-1 text-[12px] truncate" style={{ color: "rgba(255,255,255,0.75)" }}>
-                        <Icon name="Phone" size={11} className="flex-shrink-0" />
-                        <span className="truncate">{project.phone}</span>
+                      <span className="flex items-start gap-1 text-[12px]" style={{ color: "rgba(255,255,255,0.75)" }}>
+                        <Icon name="Phone" size={11} className="flex-shrink-0 mt-0.5" />
+                        <span>{project.phone}</span>
                       </span>
                     )}
                   </div>
