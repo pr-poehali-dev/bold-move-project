@@ -1,10 +1,57 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { crmFetch } from "./crmApi";
 import { useTheme } from "./themeContext";
 import Icon from "@/components/ui/icon";
 import { AUTH_URL, PRICES_URL, PriceItem, EstimateBlock, SavedEstimate, PlanRoomForEstimate, parseValue, fmt, pricingRules } from "./estimateTypes";
 import EstimateItemRow from "./EstimateItemRow";
 import PlanRoomPreview from "@/pages/plan/PlanRoomPreview";
+
+// Генерация блоков сметы из данных комнат чертежа
+function buildBlocksFromRooms(rooms: PlanRoomForEstimate[], prices: PriceItem[]): EstimateBlock[] {
+  const priceMap = new Map(prices.map(p => [p.id, p]));
+  const blocks: EstimateBlock[] = [];
+
+  for (const room of rooms) {
+    if (!room.include_in_estimate) continue;
+    // Берём данные активного варианта или основные данные комнаты
+    const planData = (room.active_variant_data ?? room.data) as {
+      segments?: { items?: { priceId: number; name: string; unit: string; quantity: number }[] }[];
+      floorItems?: { priceId: number; name: string; unit: string; quantity: number }[];
+    };
+    if (!planData) continue;
+
+    // Агрегируем товары по priceId
+    const agg = new Map<number, { name: string; unit: string; qty: number }>();
+    const segments = planData.segments ?? [];
+    const floorItems = planData.floorItems ?? [];
+
+    for (const seg of segments) {
+      for (const item of seg.items ?? []) {
+        const ex = agg.get(item.priceId);
+        if (ex) ex.qty += item.quantity ?? 1;
+        else agg.set(item.priceId, { name: item.name, unit: item.unit, qty: item.quantity ?? 1 });
+      }
+    }
+    for (const item of floorItems) {
+      const ex = agg.get(item.priceId);
+      if (ex) ex.qty += item.quantity ?? 1;
+      else agg.set(item.priceId, { name: item.name, unit: item.unit, qty: item.quantity ?? 1 });
+    }
+
+    if (agg.size === 0) continue;
+
+    const items = Array.from(agg.entries()).map(([priceId, { name, unit, qty }]) => {
+      const p = priceMap.get(priceId);
+      const price = p?.price ?? 0;
+      const total = Math.round(qty * price);
+      return { name, value: `${qty} ${unit} × ${price} ₽ = ${fmt(total)} ₽` };
+    });
+
+    blocks.push({ title: room.name, numbered: false, items });
+  }
+
+  return blocks;
+}
 
 export default function EstimateEditor({ chatId, clientName, clientPhone }: {
   chatId: number;
@@ -22,25 +69,7 @@ export default function EstimateEditor({ chatId, clientName, clientPhone }: {
   const [prices,    setPrices]    = useState<PriceItem[]>([]);
   const [planRooms, setPlanRooms] = useState<PlanRoomForEstimate[]>([]);
 
-  useEffect(() => {
-    setLoading(true);
-    Promise.all([
-      fetch(`${AUTH_URL}?action=estimate-by-chat&chat_id=${chatId}`).then(r => r.json()),
-      fetch(PRICES_URL).then(r => r.json()).catch(() => ({ prices: [] })),
-      crmFetch("plan-rooms-by-chat", undefined, { chat_id: String(chatId) }).catch(() => []),
-    ]).then(([d, p, rooms]) => {
-      if (d.estimate) {
-        setEstimate(d.estimate);
-        setBlocks(d.estimate.blocks || []);
-        setTotals(d.estimate.totals || []);
-      }
-      if (p.prices) setPrices(p.prices);
-      if (Array.isArray(rooms)) setPlanRooms(rooms as PlanRoomForEstimate[]);
-      setLoading(false);
-    }).catch(() => setLoading(false));
-  }, [chatId]);
-
-  // Пересчёт итогов
+  // Пересчёт итогов (вынесен выше loadData чтобы использовать внутри)
   const recalcTotals = (bs: EstimateBlock[]) => {
     let standard = 0;
     for (const block of bs) {
@@ -57,6 +86,34 @@ export default function EstimateEditor({ chatId, clientName, clientPhone }: {
       `${pricingRules.premium_label}: ${fmt(premium)} ₽`,
     ];
   };
+
+  const loadData = useCallback(() => {
+    setLoading(true);
+    Promise.all([
+      fetch(`${AUTH_URL}?action=estimate-by-chat&chat_id=${chatId}`).then(r => r.json()),
+      fetch(PRICES_URL).then(r => r.json()).catch(() => ({ prices: [] })),
+      crmFetch("plan-rooms-by-chat", undefined, { chat_id: String(chatId) }).catch(() => []),
+    ]).then(([d, p, rooms]) => {
+      const priceList: PriceItem[] = p.prices ?? [];
+      const roomList: PlanRoomForEstimate[] = Array.isArray(rooms) ? rooms : [];
+      setPrices(priceList);
+      setPlanRooms(roomList);
+      if (d.estimate) {
+        setEstimate(d.estimate);
+        setBlocks(d.estimate.blocks || []);
+        setTotals(d.estimate.totals || []);
+      } else if (roomList.length > 0) {
+        // Автогенерация блоков из чертежа
+        const autoBlocks = buildBlocksFromRooms(roomList, priceList);
+        setBlocks(autoBlocks);
+        setTotals(recalcTotals(autoBlocks));
+      }
+      setLoading(false);
+    }).catch(() => setLoading(false));
+   
+  }, [chatId]);
+
+  useEffect(() => { loadData(); }, [loadData]);
 
   const updateItem = (bi: number, ii: number, name: string, qty: number, price: number, unit: string) => {
     const total = Math.round(qty * price);
@@ -193,15 +250,88 @@ export default function EstimateEditor({ chatId, clientName, clientPhone }: {
     </div>
   );
 
-  if (!estimate) return (
-    <div className="flex flex-col items-center justify-center py-12 gap-3" style={{ color: t.textMute }}>
-      <Icon name="FileSpreadsheet" size={32} className="opacity-20" />
-      <div className="text-sm text-center">
-        <p>К этой заявке нет сохранённой сметы</p>
-        <p className="text-xs mt-1 opacity-60">Смета создаётся когда клиент нажимает «Сохранить заявку» на сайте</p>
+  // Создать смету из автоблоков (когда estimate=null но есть planRooms)
+  const createEstimateFromPlan = async () => {
+    if (blocks.length === 0) return;
+    setSaving(true);
+    try {
+      const res = await fetch(`${AUTH_URL}?action=save-estimate`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          chat_id: chatId,
+          blocks,
+          totals,
+          client_name: clientName ?? "",
+          phone: clientPhone ?? "",
+          final_phrase: "",
+        }),
+      });
+      const data = await res.json();
+      if (data.ok || data.estimate_id) {
+        await loadData();
+      }
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (!estimate) {
+    if (blocks.length > 0) {
+      // Есть данные из чертежа — показываем предпросмотр с кнопкой создания
+      return (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between gap-3 flex-wrap">
+            <div>
+              <div className="text-sm font-semibold" style={{ color: t.text }}>Смета из чертежа</div>
+              <div className="text-xs mt-0.5" style={{ color: t.textMute }}>Сформирована автоматически по товарам на чертеже</div>
+            </div>
+            <button
+              onClick={createEstimateFromPlan}
+              disabled={saving}
+              className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold transition hover:brightness-110 active:scale-95 disabled:opacity-50"
+              style={{ background: "linear-gradient(135deg,#7c3aed,#6d28d9)", color: "#fff" }}
+            >
+              {saving
+                ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                : <Icon name="Save" size={14} />}
+              Сохранить смету
+            </button>
+          </div>
+          {blocks.map((block, bi) => (
+            <div key={bi} className="rounded-xl overflow-hidden" style={{ border: `1px solid ${t.border}` }}>
+              <div className="px-3 py-2 text-xs font-bold uppercase tracking-wider" style={{ background: t.surface2, color: "#f97316" }}>{block.title}</div>
+              {block.items.map((item, ii) => (
+                <div key={ii} className="flex justify-between items-center px-3 py-2 text-xs" style={{ borderTop: `1px solid ${t.border}`, color: t.text }}>
+                  <span>{item.name}</span>
+                  <span style={{ color: t.textMute }}>{item.value}</span>
+                </div>
+              ))}
+            </div>
+          ))}
+          {totals.length > 0 && (
+            <div className="rounded-xl p-3 space-y-1.5" style={{ background: t.surface2, border: `1px solid ${t.border}` }}>
+              {totals.map((line, i) => (
+                <div key={i} className="flex justify-between text-xs font-semibold" style={{ color: i === 1 ? "#f97316" : t.textMute }}>
+                  <span>{line.split(":")[0]}</span>
+                  <span>{line.split(":")[1]}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      );
+    }
+    return (
+      <div className="flex flex-col items-center justify-center py-12 gap-3" style={{ color: t.textMute }}>
+        <Icon name="FileSpreadsheet" size={32} className="opacity-20" />
+        <div className="text-sm text-center">
+          <p>К этой заявке нет сохранённой сметы</p>
+          <p className="text-xs mt-1 opacity-60">Добавьте товары на чертёж — смета сформируется автоматически</p>
+        </div>
       </div>
-    </div>
-  );
+    );
+  }
 
   return (
     <div className="space-y-4">
