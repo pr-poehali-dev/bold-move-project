@@ -196,7 +196,7 @@ export default function TabPricingRules({ token, readOnly = false }: Props) {
           <div className="text-left">
             <div className="text-sm font-semibold text-white/80">Запретить скидки при {rules.econom_label}</div>
             <div className="text-xs text-white/35 mt-0.5">
-              Кнопка «Скидка» и ползунок скидки будут заблокированы для тира {rules.econom_label}
+              Кнопка «Скидка» и ползунок скидки будут заблокированы для тарифа {rules.econom_label}
             </div>
           </div>
           <div

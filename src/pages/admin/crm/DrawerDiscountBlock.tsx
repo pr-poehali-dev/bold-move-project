@@ -90,7 +90,7 @@ export function DrawerDiscountBlock({ data, customFinRows, onContractSumUpdated,
         <div>
           <div className="text-sm font-semibold" style={{ color: "#ef4444" }}>Скидки недоступны</div>
           <div className="text-xs mt-0.5" style={{ color: "rgba(239,68,68,0.6)" }}>
-            Для тира {pricingRules.econom_label} скидки запрещены правилами расчёта
+            Для тарифа {pricingRules.econom_label} скидки запрещены правилами расчёта
           </div>
         </div>
       </div>

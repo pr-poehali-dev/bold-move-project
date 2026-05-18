@@ -190,7 +190,7 @@ export default function EstimateTable({
                 <div
                   className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold"
                   style={{ background: "rgba(239,68,68,0.08)", color: "#ef4444", border: "1px solid rgba(239,68,68,0.2)" }}
-                  title="Скидки запрещены для тира Econom"
+                  title="Скидки запрещены для тарифа Econom"
                 >
                   <Icon name="ShieldOff" size={12} />
                   Скидка недоступна
