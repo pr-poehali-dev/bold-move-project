@@ -19,11 +19,12 @@ export interface PlanRoomForEstimate {
 
 // Кэш коэффициентов 3 цен
 export const pricingRules = {
-  econom_mult:    0.85,
-  premium_mult:   1.27,
-  econom_label:   "Econom",
-  standard_label: "Standard",
-  premium_label:  "Premium",
+  econom_mult:           0.85,
+  premium_mult:          1.27,
+  econom_label:          "Econom",
+  standard_label:        "Standard",
+  premium_label:         "Premium",
+  no_discount_on_econom: false,
 };
 
 fetch(`${AUTH_URL}?action=get-pricing-rules`)

@@ -1415,19 +1415,21 @@ def handler(event: dict, context) -> dict:
     # ── Правила 3 цен: получить ───────────────────────────────────────────────
     if action == "get-pricing-rules" and method == "GET":
         cur.execute(f"""
-            SELECT econom_mult, premium_mult, econom_label, standard_label, premium_label
+            SELECT econom_mult, premium_mult, econom_label, standard_label, premium_label, no_discount_on_econom
             FROM {SCHEMA}.pricing_settings ORDER BY id LIMIT 1
         """)
         row = cur.fetchone()
         if not row:
             return ok({"econom_mult": 0.85, "premium_mult": 1.27,
-                       "econom_label": "Econom", "standard_label": "Standard", "premium_label": "Premium"})
+                       "econom_label": "Econom", "standard_label": "Standard", "premium_label": "Premium",
+                       "no_discount_on_econom": False})
         return ok({
-            "econom_mult":    float(row[0]),
-            "premium_mult":   float(row[1]),
-            "econom_label":   row[2],
-            "standard_label": row[3],
-            "premium_label":  row[4],
+            "econom_mult":          float(row[0]),
+            "premium_mult":         float(row[1]),
+            "econom_label":         row[2],
+            "standard_label":       row[3],
+            "premium_label":        row[4],
+            "no_discount_on_econom": bool(row[5]) if row[5] is not None else False,
         })
 
     # ── Правила 3 цен: сохранить (только мастер или company) ─────────────────
@@ -1447,11 +1449,12 @@ def handler(event: dict, context) -> dict:
         if not is_master and urole not in ("company", "installer"):
             return err("Нет прав на изменение правил цен", 403)
 
-        econom_mult    = float(body.get("econom_mult", 0.85))
-        premium_mult   = float(body.get("premium_mult", 1.27))
-        econom_label   = (body.get("econom_label") or "Econom").strip()
-        standard_label = (body.get("standard_label") or "Standard").strip()
-        premium_label  = (body.get("premium_label") or "Premium").strip()
+        econom_mult           = float(body.get("econom_mult", 0.85))
+        premium_mult          = float(body.get("premium_mult", 1.27))
+        econom_label          = (body.get("econom_label") or "Econom").strip()
+        standard_label        = (body.get("standard_label") or "Standard").strip()
+        premium_label         = (body.get("premium_label") or "Premium").strip()
+        no_discount_on_econom = bool(body.get("no_discount_on_econom", False))
 
         # Upsert: обновить первую запись или создать
         cur.execute(f"SELECT id FROM {SCHEMA}.pricing_settings LIMIT 1")
@@ -1461,15 +1464,16 @@ def handler(event: dict, context) -> dict:
                 UPDATE {SCHEMA}.pricing_settings
                 SET econom_mult=%s, premium_mult=%s,
                     econom_label=%s, standard_label=%s, premium_label=%s,
+                    no_discount_on_econom=%s,
                     updated_at=NOW()
                 WHERE id=%s
-            """, (econom_mult, premium_mult, econom_label, standard_label, premium_label, existing[0]))
+            """, (econom_mult, premium_mult, econom_label, standard_label, premium_label, no_discount_on_econom, existing[0]))
         else:
             cur.execute(f"""
                 INSERT INTO {SCHEMA}.pricing_settings
-                  (econom_mult, premium_mult, econom_label, standard_label, premium_label)
-                VALUES (%s, %s, %s, %s, %s)
-            """, (econom_mult, premium_mult, econom_label, standard_label, premium_label))
+                  (econom_mult, premium_mult, econom_label, standard_label, premium_label, no_discount_on_econom)
+                VALUES (%s, %s, %s, %s, %s, %s)
+            """, (econom_mult, premium_mult, econom_label, standard_label, premium_label, no_discount_on_econom))
         conn.commit()
         return ok({"ok": True})
 

@@ -1,4 +1,6 @@
-import { useState, useRef, type Dispatch, type SetStateAction } from "react";
+import { useState, useRef, useEffect, type Dispatch, type SetStateAction } from "react";
+import func2url from "@/../backend/func2url.json";
+const AUTH_URL_DIT = (func2url as Record<string, string>)["auth"];
 import { Client, STATUS_LABELS } from "./crmApi";
 import { useTheme } from "./themeContext";
 import { Section } from "./drawerComponents";
@@ -52,6 +54,15 @@ export default function DrawerInfoTab({ data, client, setData, save, setComments
 
   // Единый источник истории скидок — шарится между P&L и блоком скидки
   const discountHistoryHook = useDiscountHistory(data.id);
+
+  // Согласованный тир сметы (для блокировки скидок при Econom)
+  const [chosenTier, setChosenTier] = useState<string | null>(null);
+  useEffect(() => {
+    fetch(`${AUTH_URL_DIT}?action=estimate-by-chat&chat_id=${data.id}`)
+      .then(r => r.json())
+      .then(d => { if (d.estimate?.chosen_tier) setChosenTier(d.estimate.chosen_tier); })
+      .catch(() => {});
+  }, [data.id]);
 
   const toggleRowVisibility = (key: string) => {
     setRowVisibility(prev => {
@@ -224,6 +235,7 @@ export default function DrawerInfoTab({ data, client, setData, save, setComments
           data={data}
           customFinRows={customFinRows}
           discountHistoryHook={discountHistoryHook}
+          chosenTier={chosenTier}
           onContractSumUpdated={(newSum, discountPct) => {
             save({ contract_sum: newSum, discount_pct: discountPct ?? undefined });
             onReload?.();

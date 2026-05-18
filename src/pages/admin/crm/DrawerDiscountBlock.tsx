@@ -8,6 +8,8 @@ import { useDiscountHistory } from "@/hooks/useDiscountHistory";
 import { useDiscountCalculations } from "./useDiscountCalculations";
 import { useDiscountActions } from "./useDiscountActions";
 import { useComplexityAnalysis } from "./useComplexityAnalysis";
+import { pricingRules } from "./estimateTypes";
+import Icon from "@/components/ui/icon";
 
 void RISK_DEFAULTS;
 
@@ -16,9 +18,10 @@ interface Props {
   customFinRows: CustomFinRow[];
   onContractSumUpdated?: (newSum: number, discountPct: number | null) => void;
   discountHistoryHook?: ReturnType<typeof useDiscountHistory>;
+  chosenTier?: string | null;
 }
 
-export function DrawerDiscountBlock({ data, customFinRows, onContractSumUpdated, discountHistoryHook }: Props) {
+export function DrawerDiscountBlock({ data, customFinRows, onContractSumUpdated, discountHistoryHook, chosenTier }: Props) {
   const [discount,  setDiscount]  = useState(0);
   const [applying,  setApplying]  = useState(false);
   const [applied,   setApplied]   = useState(false);
@@ -76,6 +79,23 @@ export function DrawerDiscountBlock({ data, customFinRows, onContractSumUpdated,
   });
 
   if (calc.baseIncome <= 0 && calc.plCosts <= 0) return null;
+
+  // Блокировка скидок при Econom (если включено в правилах 3 цен)
+  const discountBlocked = pricingRules.no_discount_on_econom && chosenTier === "econom";
+  if (discountBlocked) {
+    return (
+      <div className="rounded-2xl px-4 py-3.5 flex items-center gap-3"
+        style={{ background: "rgba(239,68,68,0.06)", border: "1px solid rgba(239,68,68,0.15)" }}>
+        <Icon name="ShieldOff" size={15} style={{ color: "#ef4444" }} />
+        <div>
+          <div className="text-sm font-semibold" style={{ color: "#ef4444" }}>Скидки недоступны</div>
+          <div className="text-xs mt-0.5" style={{ color: "rgba(239,68,68,0.6)" }}>
+            Для тира {pricingRules.econom_label} скидки запрещены правилами расчёта
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <>

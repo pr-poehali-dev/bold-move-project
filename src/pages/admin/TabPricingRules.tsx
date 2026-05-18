@@ -5,11 +5,12 @@ import func2url from "@/../backend/func2url.json";
 const AUTH_URL = (func2url as Record<string, string>)["auth"];
 
 interface PricingRules {
-  econom_mult:    number;
-  premium_mult:   number;
-  econom_label:   string;
-  standard_label: string;
-  premium_label:  string;
+  econom_mult:           number;
+  premium_mult:          number;
+  econom_label:          string;
+  standard_label:        string;
+  premium_label:         string;
+  no_discount_on_econom: boolean;
 }
 
 interface Props { token: string; readOnly?: boolean; }
@@ -17,6 +18,7 @@ interface Props { token: string; readOnly?: boolean; }
 const DEFAULT: PricingRules = {
   econom_mult: 0.85, premium_mult: 1.27,
   econom_label: "Econom", standard_label: "Standard", premium_label: "Premium",
+  no_discount_on_econom: false,
 };
 
 export default function TabPricingRules({ token, readOnly = false }: Props) {
@@ -173,6 +175,40 @@ export default function TabPricingRules({ token, readOnly = false }: Props) {
             </div>
           </div>
         </div>
+      </div>
+
+      {/* Правила скидок */}
+      <div className="rounded-2xl p-5 space-y-3"
+        style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)" }}>
+        <div className="text-xs font-bold uppercase tracking-wider text-white/40 flex items-center gap-2">
+          <Icon name="ShieldOff" size={13} />
+          Правила скидок
+        </div>
+        <button
+          onClick={() => !readOnly && set("no_discount_on_econom", !rules.no_discount_on_econom)}
+          className="w-full flex items-center justify-between gap-3 rounded-xl px-4 py-3 transition"
+          style={{
+            background: rules.no_discount_on_econom ? "rgba(239,68,68,0.08)" : "rgba(255,255,255,0.03)",
+            border: `1px solid ${rules.no_discount_on_econom ? "rgba(239,68,68,0.25)" : "rgba(255,255,255,0.07)"}`,
+            cursor: readOnly ? "default" : "pointer",
+          }}
+        >
+          <div className="text-left">
+            <div className="text-sm font-semibold text-white/80">Запретить скидки при {rules.econom_label}</div>
+            <div className="text-xs text-white/35 mt-0.5">
+              Кнопка «Скидка» и ползунок скидки будут заблокированы для тира {rules.econom_label}
+            </div>
+          </div>
+          <div
+            className="flex-shrink-0 w-11 h-6 rounded-full transition-all duration-200 relative"
+            style={{ background: rules.no_discount_on_econom ? "#ef4444" : "rgba(255,255,255,0.12)" }}
+          >
+            <div
+              className="absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-all duration-200"
+              style={{ left: rules.no_discount_on_econom ? "calc(100% - 22px)" : "2px" }}
+            />
+          </div>
+        </button>
       </div>
 
       {/* Превью */}

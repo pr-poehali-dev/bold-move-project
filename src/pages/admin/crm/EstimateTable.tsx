@@ -183,17 +183,29 @@ export default function EstimateTable({
 
         {/* Кнопки скидки и наценки — только в режиме редактирования */}
         {editMode && (
-          <div className="flex gap-2">
-            {onApplyDiscount && (
-              <button
-                onClick={() => setDiscountModalOpen(true)}
-                className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition hover:brightness-110 active:scale-[0.97]"
-                style={{ background: "rgba(245,158,11,0.12)", color: "#f59e0b", border: "1px solid rgba(245,158,11,0.3)" }}
-              >
-                <Icon name="Tag" size={12} />
-                Скидка
-              </button>
-            )}
+          <div className="flex gap-2 flex-wrap">
+            {onApplyDiscount && (() => {
+              const discountBlocked = pricingRules.no_discount_on_econom && chosen === "econom";
+              return discountBlocked ? (
+                <div
+                  className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold"
+                  style={{ background: "rgba(239,68,68,0.08)", color: "#ef4444", border: "1px solid rgba(239,68,68,0.2)" }}
+                  title="Скидки запрещены для тира Econom"
+                >
+                  <Icon name="ShieldOff" size={12} />
+                  Скидка недоступна
+                </div>
+              ) : (
+                <button
+                  onClick={() => setDiscountModalOpen(true)}
+                  className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition hover:brightness-110 active:scale-[0.97]"
+                  style={{ background: "rgba(245,158,11,0.12)", color: "#f59e0b", border: "1px solid rgba(245,158,11,0.3)" }}
+                >
+                  <Icon name="Tag" size={12} />
+                  Скидка
+                </button>
+              );
+            })()}
             {onApplyMarkup && (
               <button
                 onClick={() => setMarkupModalOpen(true)}
