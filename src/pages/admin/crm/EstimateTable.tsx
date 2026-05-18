@@ -160,11 +160,8 @@ export default function EstimateTable({
             return (
               <div key={bi} className="rounded-2xl overflow-hidden" style={{ border: `1px solid ${t.border}` }}>
                 {/* Шапка комнаты */}
-                <div className="px-3 py-2 flex items-center justify-between" style={{ background: t.surface2, borderBottom: `1px solid ${t.border}` }}>
+                <div className="px-3 py-2" style={{ background: t.surface2, borderBottom: `1px solid ${t.border}` }}>
                   <span className="text-xs font-bold" style={{ color: "#f97316" }}>{block.title}</span>
-                  {roomTotal > 0 && (
-                    <span className="text-xs font-bold" style={{ color: "#f97316" }}>{fmt(roomTotal)} ₽</span>
-                  )}
                 </div>
                 <table className="w-full">
                   <thead className="hidden sm:table-header-group">
