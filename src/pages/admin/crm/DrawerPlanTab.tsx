@@ -243,7 +243,44 @@ export default function DrawerPlanTab({ chatId, projectId }: Props) {
           <p className="text-xs" style={{ color: t.textMute }}>Комнаты ещё не добавлены</p>
         </div>
       ) : viewMode === 1 ? (
-        /* ── Вид 1: большие карточки ── */
+        /* ── Вид 1: компактная сетка 2 колонки с тёмным фоном (как в построителе) ── */
+        <div className="flex flex-col gap-3">
+          <p className="text-[11px] font-bold uppercase tracking-widest" style={{ color: t.textMute }}>
+            Чертежи ({rooms.length})
+          </p>
+          <div className="grid grid-cols-2 gap-2">
+            {rooms.map(room => {
+              const thumb = room.active_variant_thumbnail || room.thumbnail;
+              return (
+                <button
+                  key={room.id}
+                  onClick={() => openRoom(room)}
+                  className="rounded-xl overflow-hidden text-left transition active:scale-[0.98]"
+                  style={{ border: `1px solid ${t.border}`, background: t.surface }}
+                >
+                  <div
+                    className="w-full flex items-center justify-center"
+                    style={{ height: 120, background: "rgba(124,58,237,0.06)" }}
+                  >
+                    {thumb ? (
+                      <img src={thumb} alt={room.name} className="w-full h-full object-contain" style={{ padding: 8 }} />
+                    ) : (
+                      <Icon name="LayoutDashboard" size={28} style={{ color: t.textMute, opacity: 0.3 }} />
+                    )}
+                  </div>
+                  <div className="px-2 py-1.5" style={{ borderTop: `1px solid ${t.border}` }}>
+                    <p className="text-xs font-semibold truncate" style={{ color: t.text }}>{room.name}</p>
+                    {room.active_variant_name && (
+                      <p className="text-[10px] truncate mt-0.5" style={{ color: t.textMute }}>{room.active_variant_name}</p>
+                    )}
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      ) : (
+        /* ── Вид 2: большие карточки ── */
         <div className="flex flex-col gap-3">
           <div className="flex items-center justify-between">
             <p className="text-[11px] font-bold uppercase tracking-widest" style={{ color: t.textMute }}>
@@ -275,43 +312,6 @@ export default function DrawerPlanTab({ chatId, projectId }: Props) {
               onActivateShareMode={activateShareMode}
             />
           ))}
-        </div>
-      ) : (
-        /* ── Вид 2: компактная сетка 2 колонки ── */
-        <div className="flex flex-col gap-3">
-          <p className="text-[11px] font-bold uppercase tracking-widest" style={{ color: t.textMute }}>
-            Чертежи ({rooms.length})
-          </p>
-          <div className="grid grid-cols-2 gap-2">
-            {rooms.map(room => {
-              const thumb = room.active_variant_thumbnail || room.thumbnail;
-              return (
-                <button
-                  key={room.id}
-                  onClick={() => openRoom(room)}
-                  className="rounded-xl overflow-hidden text-left transition active:scale-[0.98]"
-                  style={{ border: `1px solid ${t.border}`, background: t.surface }}
-                >
-                  <div
-                    className="w-full flex items-center justify-center bg-white"
-                    style={{ height: 120 }}
-                  >
-                    {thumb ? (
-                      <img src={thumb} alt={room.name} className="w-full h-full object-contain" style={{ padding: 8 }} />
-                    ) : (
-                      <Icon name="LayoutDashboard" size={28} style={{ color: t.textMute, opacity: 0.3 }} />
-                    )}
-                  </div>
-                  <div className="px-2 py-1.5" style={{ borderTop: `1px solid ${t.border}` }}>
-                    <p className="text-xs font-semibold truncate" style={{ color: t.text }}>{room.name}</p>
-                    {room.active_variant_name && (
-                      <p className="text-[10px] truncate mt-0.5" style={{ color: t.textMute }}>{room.active_variant_name}</p>
-                    )}
-                  </div>
-                </button>
-              );
-            })}
-          </div>
         </div>
       )}
 
