@@ -873,7 +873,7 @@ def handler(event: dict, context) -> dict:
 
         # ── PLAN ROOMS BY CHAT (для сметы) ────────────────────────────────────
         if resource == "plan-rooms-by-chat":
-            cmp = company_id if company_id is not None else 0
+            cmp = company_id if company_id is not None else master_uid
             chat_id = qs.get("chat_id")
             if not chat_id: return err("chat_id required")
             if method == "GET":
@@ -895,7 +895,7 @@ def handler(event: dict, context) -> dict:
 
         # ── PLAN PROJECTS ─────────────────────────────────────────────────────
         if resource == "plan-projects":
-            cmp = company_id if company_id is not None else 0
+            cmp = company_id if company_id is not None else master_uid
 
             if method == "GET":
                 pid = qs.get("id")
@@ -978,7 +978,7 @@ def handler(event: dict, context) -> dict:
 
         # ── PLAN ROOMS ────────────────────────────────────────────────────────
         if resource == "plan-rooms":
-            cmp = company_id if company_id is not None else 0
+            cmp = company_id if company_id is not None else master_uid
             project_id = qs.get("project_id") or body.get("project_id")
 
             if method == "GET":
@@ -1075,7 +1075,7 @@ def handler(event: dict, context) -> dict:
 
         # ── PLAN VARIANTS ────────────────────────────────────────────────────────
         if resource == "plan-variants":
-            cmp = company_id if company_id is not None else 0
+            cmp = company_id if company_id is not None else master_uid
 
             if method == "GET":
                 room_id = qs.get("room_id")
@@ -1162,7 +1162,7 @@ def handler(event: dict, context) -> dict:
 
         # ── PLAN-CRM-SYNC — синхронизация данных проект ↔ заявка CRM ────────────
         if resource == "plan-crm-sync":
-            cmp = company_id if company_id is not None else 0
+            cmp = company_id if company_id is not None else master_uid
 
             # GET: получить связанную заявку CRM по project_id
             if method == "GET":
