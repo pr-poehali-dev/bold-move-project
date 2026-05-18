@@ -95,25 +95,26 @@ export function SegmentItemsBadges({
   const tx = (b.x - a.x) / segLen;
   const ty = (b.y - a.y) / segLen;
 
-  // Умный размер иконки: пропорционально длине стены в SVG-пикселях
+  // Умный размер иконки: пропорционально длине стены
   const n = items.length;
   const z = Math.max(zoom, 0.1);
 
-  // Вписываем n иконок + зазоры в 50% длины стены (в SVG-единицах, зум-независимо)
-  // S * (n + 0.25*(n-1)) = segLen * 0.50
+  // Вписываем n иконок + зазоры в 45% длины стены (SVG-единицы)
   const denom = n + 0.25 * (n - 1);
-  const fitS = segLen * 0.50 / denom; // SVG-координаты
+  const fitS = segLen * 0.45 / denom;
 
-  // Ограничения в SVG-пикселях: max = 28px экранных / zoom, min = 6px экранных / zoom
-  const MAX_S = 28 / z;
+  // Абсолютный максимум: 22px экранных (компактно), минимум: 6px экранных
+  const MAX_S = 22 / z;
   const MIN_S = 6 / z;
 
   if (fitS < MIN_S) return null;
 
   const S   = Math.min(MAX_S, fitS);
   const GAP = S * 0.25;
-  // Отступ от стены: S/2 + 4px экранных — иконки не налезают на линию стены
-  const OFF = S / 2 + 4 / z;
+
+  // Отступ от стены: фиксированные 18px экранных внутрь полигона
+  // Это гарантирует что иконки не перекрывают лейбл длины (который снаружи)
+  const OFF = S / 2 + 18 / z;
 
   const cx = mid.x - nx * OFF;
   const cy = mid.y - ny * OFF;
