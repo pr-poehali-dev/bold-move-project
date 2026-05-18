@@ -1,16 +1,22 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { crmFetch } from "./crmApi";
 import Icon from "@/components/ui/icon";
 import { useTheme } from "./themeContext";
+import { getSvgDataUrl } from "@/pages/plan/planExport";
+import type { PlanState } from "@/pages/plan/planTypes";
+
+const THUMBNAIL_MAX = 8000;
 
 interface PlanRoom {
   id: number;
   name: string;
   thumbnail: string | null;
+  data?: object;
   include_in_estimate: boolean;
   active_variant_id: number | null;
   active_variant_name: string | null;
   active_variant_thumbnail: string | null;
+  active_variant_data?: object | null;
 }
 
 interface PlanProject {
@@ -32,6 +38,7 @@ export default function DrawerPlanTab({ chatId, projectId }: Props) {
   const [loading, setLoading] = useState(true);
   const [project, setProject] = useState<PlanProject | null>(null);
   const [fullscreenRoom, setFullscreenRoom] = useState<PlanRoom | null>(null);
+  const rebuiltRef = useRef<Set<number>>(new Set());
 
   useEffect(() => {
     setLoading(true);
@@ -47,8 +54,49 @@ export default function DrawerPlanTab({ chatId, projectId }: Props) {
     ]).then(([roomsData, projectData]) => {
       setRooms(roomsData);
       setProject(projectData);
+      // Пересчитываем thumbnails из данных чертежа (один раз за сессию)
+      rebuildThumbnails(roomsData);
     }).finally(() => setLoading(false));
-  }, [chatId, projectId]);
+  }, [chatId, projectId]);  
+
+  const rebuildThumbnails = async (roomList: PlanRoom[]) => {
+    for (const room of roomList) {
+      if (rebuiltRef.current.has(room.id)) continue;
+      rebuiltRef.current.add(room.id);
+
+      // Используем данные активного варианта или основные данные
+      const planData = (room.active_variant_data ?? room.data) as PlanState | undefined;
+      if (!planData?.points || planData.points.length < 2) continue;
+
+      try {
+        const newThumb = getSvgDataUrl(planData, 0.4, true).slice(0, THUMBNAIL_MAX);
+        if (!newThumb) continue;
+
+        // Обновляем превью локально
+        setRooms(prev => prev.map(r =>
+          r.id === room.id
+            ? room.active_variant_id
+              ? { ...r, active_variant_thumbnail: newThumb }
+              : { ...r, thumbnail: newThumb }
+            : r
+        ));
+        setFullscreenRoom(prev => prev?.id === room.id ? { ...prev, thumbnail: newThumb } : prev);
+
+        // Сохраняем в базу
+        if (room.active_variant_id) {
+          await crmFetch("plan-variants", {
+            method: "PUT",
+            body: JSON.stringify({ thumbnail: newThumb }),
+          }, { id: String(room.active_variant_id) });
+        } else {
+          await crmFetch("plan-rooms", {
+            method: "PUT",
+            body: JSON.stringify({ thumbnail: newThumb }),
+          }, { id: String(room.id) });
+        }
+      } catch { /* тихо игнорируем */ }
+    }
+  };
 
   const openInPlan = () => {
     window.open(`/plan${projectId ? `?project_id=${projectId}` : ""}`, "_blank");
