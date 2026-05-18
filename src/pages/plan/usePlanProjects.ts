@@ -20,6 +20,7 @@ export interface PlanProject {
   created_at: string;
   updated_at: string;
   rooms_count?: number;
+  crm_chat_id?: number | null;
 }
 
 export interface PlanRoom {
@@ -56,14 +57,22 @@ export function usePlanProjects(token?: string | null) {
 
   const createProject = useCallback(async (body: {
     name: string; client_name?: string; address?: string; phone?: string;
-  }): Promise<number> => {
+  }): Promise<{ id: number; crm_chat_id?: number }> => {
     const res = await fetch(`${CRM_URL}?r=plan-projects`, {
       method: "POST",
       headers: headers(token),
       body: JSON.stringify(body),
     });
     const data = await res.json();
-    return data.id as number;
+    return { id: data.id as number, crm_chat_id: data.crm_chat_id ?? undefined };
+  }, [token]);
+
+  const syncWithCrm = useCallback(async (projectId: number, patch: Partial<Pick<PlanProject, "name" | "client_name" | "address" | "phone" | "status">>) => {
+    await fetch(`${CRM_URL}?r=plan-crm-sync&project_id=${projectId}`, {
+      method: "PUT",
+      headers: headers(token),
+      body: JSON.stringify(patch),
+    });
   }, [token]);
 
   const loadRooms = useCallback(async (projectId: number): Promise<PlanRoom[]> => {
@@ -159,5 +168,5 @@ export function usePlanProjects(token?: string | null) {
     });
   }, [token]);
 
-  return { projects, rooms, loading, loadProjects, createProject, updateProject, deleteProject, loadRooms, createRoom, loadRoom, saveRoom, updateRoom, deleteRoom, duplicateRoom };
+  return { projects, rooms, loading, loadProjects, createProject, updateProject, deleteProject, loadRooms, createRoom, loadRoom, saveRoom, updateRoom, deleteRoom, duplicateRoom, syncWithCrm };
 }

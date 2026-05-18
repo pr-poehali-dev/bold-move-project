@@ -19,6 +19,7 @@ interface Props {
   onDelete: (id: number) => void;
   onExport: (p: PlanProject) => void;
   onMaterials: (p: PlanProject) => void;
+  onCrm?: (p: PlanProject) => void;
 }
 
 const SNAP_WIDTH = 88;
@@ -30,7 +31,7 @@ function vibe(ms: number | number[]) {
 
 export default function PlanProjectCard({
   project, editingId, deletingId, form, setForm, saving, error,
-  onSelect, onStartEdit, onCancelEdit, onUpdate, onDelete, onExport, onMaterials,
+  onSelect, onStartEdit, onCancelEdit, onUpdate, onDelete, onExport, onMaterials, onCrm,
 }: Props) {
   const sc = STATUS_COLORS[project.status] ?? STATUS_COLORS.draft;
   const isEditing = editingId === project.id;
@@ -271,6 +272,20 @@ export default function PlanProjectCard({
                   <Icon name="ClipboardList" size={18} style={{ color: "rgba(255,255,255,0.8)" }} />
                   <span className="text-[9px] font-bold uppercase tracking-wide" style={{ color: "rgba(255,255,255,0.55)" }}>Состав</span>
                 </button>
+                {onCrm && (
+                  <button
+                    onClick={() => onCrm(project)}
+                    className="flex flex-col items-center justify-center gap-1 rounded-xl transition hover:brightness-110 active:scale-95"
+                    style={{
+                      width: 64, height: 52,
+                      background: project.crm_chat_id ? "rgba(124,58,237,0.18)" : "rgba(255,255,255,0.06)",
+                      border: `1px solid ${project.crm_chat_id ? "rgba(124,58,237,0.5)" : "rgba(255,255,255,0.1)"}`,
+                    }}
+                  >
+                    <Icon name="LayoutDashboard" size={18} style={{ color: project.crm_chat_id ? "#a78bfa" : "rgba(255,255,255,0.8)" }} />
+                    <span className="text-[9px] font-bold uppercase tracking-wide" style={{ color: project.crm_chat_id ? "#a78bfa" : "rgba(255,255,255,0.55)" }}>CRM</span>
+                  </button>
+                )}
               </div>
             </div>
 

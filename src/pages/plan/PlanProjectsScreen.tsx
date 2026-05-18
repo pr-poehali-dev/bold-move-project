@@ -14,7 +14,7 @@ interface Props {
 }
 
 export default function PlanProjectsScreen({ token, onSelectProject }: Props) {
-  const { projects, loading, loadProjects, createProject, updateProject, deleteProject } = usePlanProjects(token);
+  const { projects, loading, loadProjects, createProject, updateProject, deleteProject, syncWithCrm } = usePlanProjects(token);
 
   const [exportOpen,       setExportOpen]       = useState(false);
   const [exportProject,    setExportProject]    = useState<PlanProject | null>(null);
@@ -51,7 +51,7 @@ export default function PlanProjectsScreen({ token, onSelectProject }: Props) {
     if (!form.name.trim()) { setError("Введите название проекта"); return; }
     setSaving(true); setError("");
     try {
-      const id = await createProject({
+      const { id, crm_chat_id } = await createProject({
         name: form.name.trim(),
         client_name: form.client_name.trim() || null,
         address: form.address.trim() || null,
@@ -67,6 +67,7 @@ export default function PlanProjectsScreen({ token, onSelectProject }: Props) {
         phone: form.phone || null,
         company_id: 0, status: "draft",
         created_at: "", updated_at: "",
+        crm_chat_id: crm_chat_id ?? null,
       };
       onSelectProject(created);
     } finally { setSaving(false); }
@@ -85,16 +86,26 @@ export default function PlanProjectsScreen({ token, onSelectProject }: Props) {
     if (!editingId) return;
     setSaving(true); setError("");
     try {
-      await updateProject(editingId, {
+      const patch = {
         name: form.name.trim(),
         client_name: form.client_name.trim() || null,
         address: form.address.trim() || null,
         phone: form.phone.trim() || null,
         status: form.status,
-      });
+      };
+      await updateProject(editingId, patch);
+      // Синхронизируем изменения в CRM
+      syncWithCrm(editingId, patch);
       await loadProjects();
       setEditingId(null);
     } finally { setSaving(false); }
+  };
+
+  // ── Перейти в CRM ────────────────────────────────────────────────────────────
+  const handleCrm = (p: PlanProject) => {
+    if (p.crm_chat_id) {
+      window.open(`/company?order=${p.crm_chat_id}`, "_blank");
+    }
   };
 
   // ── Удалить ──────────────────────────────────────────────────────────────────
@@ -226,6 +237,7 @@ export default function PlanProjectsScreen({ token, onSelectProject }: Props) {
               onDelete={handleDelete}
               onExport={p => { setExportProject(p); setExportOpen(true); }}
               onMaterials={setMaterialsProject}
+              onCrm={handleCrm}
             />
           ))}
         </div>

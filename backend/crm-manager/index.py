@@ -898,7 +898,7 @@ def handler(event: dict, context) -> dict:
                 pid = qs.get("id")
                 if pid:
                     cur.execute(f"""
-                        SELECT id, company_id, name, client_name, address, phone, status, created_at, updated_at
+                        SELECT id, company_id, name, client_name, address, phone, status, created_at, updated_at, crm_chat_id
                         FROM {SCHEMA}.plan_projects WHERE id=%s AND company_id=%s
                     """, (int(pid), cmp))
                     row = cur.fetchone()
@@ -908,6 +908,7 @@ def handler(event: dict, context) -> dict:
                 deleted_prefix = '\u0443\u0434\u0430\u043b\u0435\u043d\u0430'  # "удалена"
                 cur.execute(f"""
                     SELECT p.id, p.company_id, p.name, p.client_name, p.address, p.phone, p.status, p.created_at, p.updated_at,
+                           p.crm_chat_id,
                            (SELECT COUNT(*) FROM {SCHEMA}.room_plans r WHERE r.project_id = p.id AND r.name NOT LIKE %s) AS rooms_count
                     FROM {SCHEMA}.plan_projects p WHERE p.company_id=%s ORDER BY p.updated_at DESC
                 """, ('[' + deleted_prefix + ']%', cmp))
