@@ -149,29 +149,85 @@ export function generateSvgString(state: PlanState, exportScale = 1, forThumbnai
     `;
   };
 
+  // ── Цвета зависят от режима ───────────────────────────────────────────────
+  const bgColor      = forThumbnail ? "#ffffff" : "#0f1117";
+  const fillColor    = forThumbnail ? "rgba(99,102,241,0.08)" : "rgba(139,92,246,0.12)";
+  const strokeColor  = isClosed ? (forThumbnail ? "#6366f1" : "#a78bfa") : "#6366f1";
+  const dimColor     = forThumbnail ? "#3b82f6" : "#60a5fa";
+  const dimTextColor = forThumbnail ? "#1e40af" : "#93c5fd";
+  const ptColor      = forThumbnail ? "#6366f1" : "#7c3aed";
+  const ptStroke     = forThumbnail ? "#4338ca" : "#4c1d95";
+  const nameColor    = forThumbnail ? "rgba(0,0,0,0.2)" : "rgba(255,255,255,0.2)";
+
+  // Перегенерируем dimLineEl с правильными цветами для thumbnail
+  const dimLineElColored = (seg: Segment): string => {
+    if (!showDimLines || !seg.showDimLine) return "";
+    const a = pts.find(p => p.id === seg.fromId);
+    const b = pts.find(p => p.id === seg.toId);
+    if (!a || !b) return "";
+    const { nx, ny } = segmentNormal(a, b);
+    const off = ts(DIM_OFF);
+    const x1 = tx(a.x - ox) + nx * off, y1 = ty(a.y - oy) + ny * off;
+    const x2 = tx(b.x - ox) + nx * off, y2 = ty(b.y - oy) + ny * off;
+    const mx = (x1 + x2) / 2, my = (y1 + y2) / 2;
+    const lenCm = seg.lengthCm ?? pxToCm(distPx(a, b), scale);
+    const label = lenCm !== null ? `${lenCm} см` : "";
+    const angle = Math.atan2(y2 - y1, x2 - x1) * 180 / Math.PI;
+    const na = angle > 90 || angle < -90 ? angle + 180 : angle;
+    const tick = (px: number, py: number) =>
+      `<line x1="${px + nx * (off - ts(7))}" y1="${py + ny * (off - ts(7))}" x2="${px + nx * (off + ts(7))}" y2="${py + ny * (off + ts(7))}" stroke="${dimColor}" stroke-width="1"/>`;
+    return `
+      ${tick(tx(a.x - ox), ty(a.y - oy))}
+      ${tick(tx(b.x - ox), ty(b.y - oy))}
+      <line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${dimColor}" stroke-width="1" stroke-dasharray="4 2"/>
+      ${label ? `<text x="${mx}" y="${my}" transform="rotate(${na},${mx},${my})" text-anchor="middle" dominant-baseline="auto" dy="-4" font-size="${ts(10)}" fill="${dimTextColor}" font-family="monospace">${label}</text>` : ""}
+    `;
+  };
+
+  // ── Товары на стенах ───────────────────────────────────────────────────────
+  const wallItemsEl = (seg: Segment): string => {
+    if (!forThumbnail || !seg.items?.length) return "";
+    const a = pts.find(p => p.id === seg.fromId);
+    const b = pts.find(p => p.id === seg.toId);
+    if (!a || !b) return "";
+    const mid = midPoint(a, b);
+    const { nx, ny } = segmentNormal(a, b);
+    const inset = ts(18); // внутрь контура
+    const cx = tx(mid.x - ox) - nx * inset;
+    const cy = ty(mid.y - oy) - ny * inset;
+    const angle = Math.atan2(b.y - a.y, b.x - a.x) * 180 / Math.PI;
+    const na = angle > 90 || angle < -90 ? angle + 180 : angle;
+    const names = seg.items.map(it => `${it.name}${it.quantity ? ` ${it.quantity}${it.unit}` : ""}`).join(", ");
+    const short = names.length > 40 ? names.slice(0, 38) + "…" : names;
+    return `<text x="${cx}" y="${cy}" transform="rotate(${na},${cx},${cy})" text-anchor="middle" dominant-baseline="middle" font-size="${ts(8)}" fill="#7c3aed" font-family="sans-serif" font-weight="600">${escXml(short)}</text>`;
+  };
+
   // ── Сборка SVG ────────────────────────────────────────────────────────────
   const svg = `<?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" width="${svgW}" height="${svgH}" viewBox="0 0 ${svgW} ${svgH}">
   <!-- Фон -->
-  <rect width="${svgW}" height="${svgH}" fill="#0f1117"/>
+  <rect width="${svgW}" height="${svgH}" fill="${bgColor}"/>
 
   <!-- Заливка фигуры -->
   ${points.length >= 3 && isClosed
     ? `<g transform="translate(${ox * exportScale},${oy * exportScale}) scale(${exportScale})">
-        <path d="${rawPath}" fill="rgba(139,92,246,0.12)" stroke="none"/>
+        <path d="${rawPath}" fill="${fillColor}" stroke="none"/>
        </g>`
     : ""}
 
   <!-- Контур -->
   <g transform="translate(${ox * exportScale},${oy * exportScale}) scale(${exportScale})">
-    <path d="${rawPath}" fill="none" stroke="${isClosed ? "#a78bfa" : "#6366f1"}" stroke-width="${ts(2)}" stroke-linejoin="round"/>
+    <path d="${rawPath}" fill="none" stroke="${strokeColor}" stroke-width="${ts(2)}" stroke-linejoin="round"/>
   </g>
 
   <!-- Размерные линии отрезков -->
-  ${segments.map(seg => dimLineEl(seg)).join("")}
+  ${segments.map(seg => forThumbnail ? dimLineElColored(seg) : dimLineEl(seg)).join("")}
 
   <!-- Подписи отрезков -->
   ${segments.map(seg => segLabelEl(seg)).join("")}
+
+  <!-- Товары на стенах -->
+  ${segments.map(seg => wallItemsEl(seg)).join("")}
 
   <!-- Пользовательские размерные линии -->
   ${dimLines.map(dl => customDimEl(dl)).join("")}
@@ -186,13 +242,13 @@ export function generateSvgString(state: PlanState, exportScale = 1, forThumbnai
   ${showPoints ? pts.map((pt, idx) => {
     const isFirst = idx === 0;
     return `
-      <circle cx="${tx(pt.x - ox)}" cy="${ty(pt.y - oy)}" r="${ts(PT_R_EXPORT)}" fill="${isFirst && !isClosed ? "#34d399" : "#7c3aed"}" stroke="#4c1d95" stroke-width="${ts(2)}"/>
-      ${showPointLabels ? `<text x="${tx(pt.x - ox) + ts(11)}" y="${ty(pt.y - oy) - ts(11)}" font-size="${ts(11)}" font-weight="700" fill="#e2e8f0" font-family="monospace">${pointLabel(idx)}</text>` : ""}
+      <circle cx="${tx(pt.x - ox)}" cy="${ty(pt.y - oy)}" r="${ts(PT_R_EXPORT)}" fill="${isFirst && !isClosed ? "#34d399" : ptColor}" stroke="${ptStroke}" stroke-width="${ts(2)}"/>
+      ${showPointLabels ? `<text x="${tx(pt.x - ox) + ts(11)}" y="${ty(pt.y - oy) - ts(11)}" font-size="${ts(11)}" font-weight="700" fill="${forThumbnail ? "#111827" : "#e2e8f0"}" font-family="monospace">${pointLabel(idx)}</text>` : ""}
     `;
   }).join("") : ""}
 
   <!-- Название -->
-  <text x="${ts(12)}" y="${svgH - ts(10)}" font-size="${ts(10)}" fill="rgba(255,255,255,0.2)" font-family="sans-serif">${escXml(state.room.name)}</text>
+  <text x="${ts(12)}" y="${svgH - ts(10)}" font-size="${ts(10)}" fill="${nameColor}" font-family="sans-serif">${escXml(state.room.name)}</text>
 </svg>`;
 
   return svg;
