@@ -640,12 +640,19 @@ export function InlineDimLabels({ state, onChange, editingSegId, onSetEditingSeg
         // Во время редактирования прячем SVG-метку — вместо неё HTML-инпут
         if (isEditing) return null;
 
-        // Размер шрифта и бокса — фиксированный в экранных пикселях (делим на zoom)
-        const fs = Math.round(10 / zoom);
-        const charW = fs * 0.65;
-        const textW = Math.max(fs * 3.8, displayText.length * charW + fs);
-        const boxH = fs * 1.8;
-        const boxR = fs * 0.4;
+        // Фиксированные размеры в экранных пикселях — не зависят от zoom
+        const FS_PX = 11;     // font-size физических пикселей
+        const BOX_H_PX = 20;  // высота метки физических пикселей
+        const BOX_R_PX = 4;   // скругление
+        const CHAR_W_PX = FS_PX * 0.65;
+        const BOX_W_PX = Math.max(FS_PX * 3.8, displayText.length * CHAR_W_PX + FS_PX);
+        const PAD_PX = 6;
+        // Переводим в SVG-координаты — честное деление без округления
+        const fs = FS_PX / zoom;
+        const boxH = BOX_H_PX / zoom;
+        const boxR = BOX_R_PX / zoom;
+        const textW = BOX_W_PX / zoom;
+        const pad = PAD_PX / zoom;
 
         return (
           <g key={seg.id} style={{ cursor: "text" }}
@@ -659,11 +666,12 @@ export function InlineDimLabels({ state, onChange, editingSegId, onSetEditingSeg
                 stroke="rgba(255,255,255,0.2)" strokeWidth={0.6 / zoom} strokeDasharray={`${3/zoom} ${2/zoom}`}
                 className="pointer-events-none" />
             )}
-            <rect x={lx - textW / 2 - fs * 0.6} y={ly - boxH / 2 - fs * 0.3} width={textW + fs * 1.2} height={boxH + fs * 0.6}
+            {/* Расширенная зона клика */}
+            <rect x={lx - textW / 2 - pad} y={ly - boxH / 2 - pad / 2} width={textW + pad * 2} height={boxH + pad}
               rx={boxR} fill="transparent" />
             <rect x={lx - textW / 2} y={ly - boxH / 2} width={textW} height={boxH} rx={boxR}
               fill="rgba(17,17,17,0.85)" stroke="rgba(255,255,255,0.2)" strokeWidth={0.7 / zoom} />
-            <text x={lx} y={ly + fs * 0.05}
+            <text x={lx} y={ly}
               textAnchor="middle" dominantBaseline="middle"
               fontSize={fs} fontFamily="monospace" fontWeight={700}
               fill="rgba(255,255,255,0.9)"
