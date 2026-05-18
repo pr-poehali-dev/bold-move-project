@@ -96,15 +96,16 @@ export function SegmentItemsBadges({
   const ty = (b.y - a.y) / segLen;
 
   // Умный размер иконки: зависит от длины стены и количества товаров
-  // Максимум 70% длины стены занимают иконки, но не меньше 20px и не больше 56px (в экранных пикселях)
   const n = items.length;
   const MAX_S_PX = 56;
-  const MIN_S_PX = 20;
+  const MIN_S_PX = 14;
   // Сколько экранных пикселей занимает стена
   const segLenPx = segLen * Math.max(zoom, 0.1);
   // Подбираем размер так чтобы n иконок + промежутки = 70% длины стены
   const fitS_PX = Math.floor((segLenPx * 0.7) / (n + (n - 1) * 0.25));
-  const S_PX = Math.min(MAX_S_PX, Math.max(MIN_S_PX, fitS_PX));
+  // Жёсткое ограничение: иконка не крупнее 40% от длины стены / n (чтобы не переполнять короткие стены)
+  const hardMax_PX = Math.max(MIN_S_PX, Math.floor((segLenPx * 0.4) / n));
+  const S_PX = Math.min(MAX_S_PX, hardMax_PX, Math.max(MIN_S_PX, fitS_PX));
   const S    = S_PX / Math.max(zoom, 0.1); // SVG-координаты
   const GAP = S * 0.25;
   // Отступ от стены — иконки рисуются внутрь (противоположная сторона от лейблов)
