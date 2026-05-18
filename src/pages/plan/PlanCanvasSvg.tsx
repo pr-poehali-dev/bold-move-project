@@ -179,7 +179,7 @@ export default function PlanCanvasSvg({
 
         {/* Inline-edit размеров на чертеже */}
         {points.length >= 2 && (
-          <InlineDimLabels state={state} onChange={onChange} editingSegId={editingSegId} onSetEditingSegId={onSetEditingSegId} />
+          <InlineDimLabels state={state} onChange={onChange} editingSegId={editingSegId} onSetEditingSegId={onSetEditingSegId} svgRef={svgRef} />
         )}
 
         {/* Товары на стенах */}
