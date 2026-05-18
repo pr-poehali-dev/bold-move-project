@@ -1252,6 +1252,65 @@ def handler(event: dict, context) -> dict:
                 conn.commit()
                 return ok({"crm_chat_id": chat_id})
 
+        # ── PLAN-SHARE — публичные ссылки на чертежи ──────────────────────────
+        if resource == "plan-share":
+            import secrets as _secrets
+
+            # GET по токену — публичный доступ, без авторизации
+            if method == "GET":
+                token = qs.get("token")
+                if not token: return err("token required")
+                cur.execute(f"""
+                    SELECT ps.id, ps.token, ps.room_ids, ps.title, ps.chat_id,
+                           ps.created_at, ps.expires_at
+                    FROM {SCHEMA}.plan_shares ps
+                    WHERE ps.token=%s AND (ps.expires_at IS NULL OR ps.expires_at > NOW())
+                """, (token,))
+                row = cur.fetchone()
+                if not row: return err("not found", 404)
+                cols = [d[0] for d in cur.description]
+                share = dict(zip(cols, row))
+                room_ids = share["room_ids"] or []
+                # Загружаем комнаты
+                rooms = []
+                if room_ids:
+                    cur.execute(f"""
+                        SELECT r.id, r.name, r.data, r.thumbnail, r.include_in_estimate,
+                               v.id AS active_variant_id, v.name AS active_variant_name,
+                               v.data AS active_variant_data, v.thumbnail AS active_variant_thumbnail
+                        FROM {SCHEMA}.room_plans r
+                        LEFT JOIN {SCHEMA}.plan_variants v ON v.room_id = r.id AND v.is_active = true
+                        WHERE r.id = ANY(%s) AND r.name NOT LIKE '[удалена]%%'
+                        ORDER BY r.created_at ASC
+                    """, (room_ids,))
+                    rcols = [d[0] for d in cur.description]
+                    rooms = [dict(zip(rcols, r)) for r in cur.fetchall()]
+                return ok({"share": share, "rooms": rooms})
+
+            # POST — создать новую ссылку (требует авторизации)
+            if method == "POST":
+                insert_cmp = master_uid if (company_id is None or company_id == 0) else company_id
+                room_ids = body.get("room_ids", [])
+                chat_id_val = body.get("chat_id")
+                title = body.get("title", "Чертежи")
+                if not room_ids: return err("room_ids required")
+                token = _secrets.token_hex(12)
+                cur.execute(f"""
+                    INSERT INTO {SCHEMA}.plan_shares (token, company_id, chat_id, room_ids, title)
+                    VALUES (%s, %s, %s, %s, %s) RETURNING id, token
+                """, (token, insert_cmp, chat_id_val, room_ids, title))
+                row = cur.fetchone()
+                conn.commit()
+                return ok({"id": row[0], "token": row[1]})
+
+            # DELETE — удалить ссылку
+            if method == "DELETE":
+                token = qs.get("token") or body.get("token")
+                if not token: return err("token required")
+                cur.execute(f"DELETE FROM {SCHEMA}.plan_shares WHERE token=%s", (token,))
+                conn.commit()
+                return ok({"deleted": True})
+
         return err("unknown resource", 404)
 
     except Exception as e:

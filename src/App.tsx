@@ -14,8 +14,9 @@ const MyOrders    = lazy(() => import("./pages/MyOrders"));
 const Pricing     = lazy(() => import("./pages/Pricing"));
 const WhiteLabel  = lazy(() => import("./pages/WhiteLabel"));
 const NotFound    = lazy(() => import("./pages/NotFound"));
-const PlanPage    = lazy(() => import("./pages/plan/PlanPage"));
-const NewsPage    = lazy(() => import("./pages/NewsPage"));
+const PlanPage      = lazy(() => import("./pages/plan/PlanPage"));
+const NewsPage      = lazy(() => import("./pages/NewsPage"));
+const PlanSharePage = lazy(() => import("./pages/PlanSharePage"));
 
 const queryClient = new QueryClient();
 
@@ -37,6 +38,7 @@ const App = () => (
                 <Route path="/whitelabel" element={<WhiteLabel />} />
                 <Route path="/plan"      element={<PlanPage />} />
                 <Route path="/news"      element={<NewsPage />} />
+                <Route path="/plan-share/:token" element={<PlanSharePage />} />
                 {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                 <Route path="*" element={<NotFound />} />
               </Routes>

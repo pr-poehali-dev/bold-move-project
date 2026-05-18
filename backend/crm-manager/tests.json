@@ -69,6 +69,14 @@
       "expectedStatus": 404,
       "expectedBody": {"error": "not found"},
       "bodyMatcher": "partial"
+    },
+    {
+      "name": "GET plan-share missing token",
+      "method": "GET",
+      "path": "/?r=plan-share",
+      "expectedStatus": 400,
+      "expectedBody": {"error": "token required"},
+      "bodyMatcher": "partial"
     }
   ]
 }
