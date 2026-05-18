@@ -5,6 +5,7 @@ import { buildBlocksFromRooms, recalcTotals, calcStandardTotal, generateCopyText
 import { EstimateFromPlanPreview, EstimateEmpty } from "./EstimatePreview";
 import EstimateToolbar from "./EstimateToolbar";
 import EstimateTable from "./EstimateTable";
+import PdfOptionsModal from "./PdfOptionsModal";
 
 export default function EstimateEditor({ chatId, clientName, clientPhone, onEstimateSaved }: {
   chatId: number;
@@ -22,6 +23,7 @@ export default function EstimateEditor({ chatId, clientName, clientPhone, onEsti
   const [prices,    setPrices]    = useState<PriceItem[]>([]);
   const [planRooms, setPlanRooms] = useState<PlanRoomForEstimate[]>([]);
   const [editMode,  setEditMode]  = useState(false);
+  const [showPdfModal, setShowPdfModal] = useState(false);
 
   const loadData = useCallback(() => {
     setLoading(true);
@@ -136,7 +138,16 @@ export default function EstimateEditor({ chatId, clientName, clientPhone, onEsti
   };
 
   const printEstimate = () => {
-    const html = generatePrintHtml(blocks, standardTotal, clientName, clientPhone);
+    setShowPdfModal(true);
+  };
+
+  const doPrint = ({ perRoom, includeDrawings }: { perRoom: boolean; includeDrawings: boolean }) => {
+    setShowPdfModal(false);
+    const html = generatePrintHtml(blocks, standardTotal, clientName, clientPhone, {
+      perRoom,
+      includeDrawings,
+      planRooms,
+    });
     const w = window.open("", "_blank");
     if (w) { w.document.write(html); w.document.close(); w.focus(); w.print(); }
   };
@@ -162,6 +173,7 @@ export default function EstimateEditor({ chatId, clientName, clientPhone, onEsti
   }
 
   return (
+    <>
     <div className="space-y-4">
       <EstimateToolbar
         estimate={estimate}
@@ -188,5 +200,13 @@ export default function EstimateEditor({ chatId, clientName, clientPhone, onEsti
         onAddItem={addItem}
       />
     </div>
+
+    {showPdfModal && (
+      <PdfOptionsModal
+        onConfirm={doPrint}
+        onClose={() => setShowPdfModal(false)}
+      />
+    )}
+    </>
   );
 }

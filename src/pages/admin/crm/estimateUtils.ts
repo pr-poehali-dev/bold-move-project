@@ -107,37 +107,94 @@ export function generatePrintHtml(
   standardTotal: number,
   clientName?: string | null,
   clientPhone?: string | null,
+  opts?: { perRoom?: boolean; includeDrawings?: boolean; planRooms?: PlanRoomForEstimate[] },
 ): string {
   const name = clientName || "Клиент";
   const econom  = Math.round(standardTotal * pricingRules.econom_mult);
   const premium = Math.round(standardTotal * pricingRules.premium_mult);
-  let rows = "";
-  for (const block of blocks) {
-    rows += `<tr><td colspan="4" style="background:#1e1b4b;color:#f97316;font-weight:bold;padding:8px 12px;font-size:13px">${block.title}</td></tr>`;
+  const perRoom = opts?.perRoom ?? false;
+  const includeDrawings = opts?.includeDrawings ?? false;
+  const planRooms = opts?.planRooms ?? [];
+
+  const blockToRows = (block: EstimateBlock): string => {
+    let rows = `<tr><td colspan="4" style="background:#f3f0ff;color:#7c3aed;font-weight:bold;padding:8px 12px;font-size:13px;border-radius:4px">${block.title}</td></tr>`;
     for (const item of block.items) {
       const p = parseValue(item.value);
-      rows += `<tr style="border-bottom:1px solid #eee">
+      rows += `<tr style="border-bottom:1px solid #f0f0f0">
         <td style="padding:6px 12px;font-size:13px">${item.name}</td>
         <td style="padding:6px 8px;text-align:center;font-size:13px">${p ? p.qty : ""}</td>
         <td style="padding:6px 8px;text-align:center;font-size:12px;color:#888">${p ? p.unit : ""}</td>
         <td style="padding:6px 12px;text-align:right;font-weight:600;font-size:13px">${p ? fmt(p.total) + " ₽" : item.value}</td>
       </tr>`;
     }
+    return rows;
+  };
+
+  const totalsHtml = (total: number) => {
+    const ec = Math.round(total * pricingRules.econom_mult);
+    const pr = Math.round(total * pricingRules.premium_mult);
+    return `<div class="totals">
+      <div><span>${pricingRules.econom_label}</span><span style="color:#10b981;font-weight:600">${fmt(ec)} ₽</span></div>
+      <div><span>${pricingRules.standard_label}</span><span class="total-main">${fmt(total)} ₽</span></div>
+      <div><span>${pricingRules.premium_label}</span><span style="color:#8b5cf6;font-weight:600">${fmt(pr)} ₽</span></div>
+    </div>`;
+  };
+
+  const drawingImg = (room: PlanRoomForEstimate): string => {
+    if (!includeDrawings) return "";
+    const thumb = room.active_variant_thumbnail || room.thumbnail;
+    if (!thumb) return "";
+    return `<div style="margin:12px 0;text-align:center">
+      <img src="${thumb}" style="max-width:320px;max-height:220px;object-fit:contain;border:1px solid #e5e7eb;border-radius:8px" alt="${room.name}" />
+    </div>`;
+  };
+
+  let bodyContent = "";
+
+  if (perRoom && planRooms.length > 0) {
+    // По комнатам — каждый блок = отдельный раздел с чертежом
+    for (const block of blocks) {
+      const room = planRooms.find(r => r.name === block.title);
+      const blockTotal = block.items.reduce((sum, item) => {
+        const p = parseValue(item.value);
+        return sum + (p ? p.total : 0);
+      }, 0);
+      bodyContent += `<div class="room-section">
+        <h2 style="font-size:16px;font-weight:700;color:#7c3aed;margin:0 0 8px">${block.title}</h2>
+        ${room ? drawingImg(room) : ""}
+        <table>${blockToRows(block)}</table>
+        ${blockTotal > 0 ? `<div style="text-align:right;margin-top:8px;font-size:13px;color:#888">Итого по комнате: <strong style="color:#111">${fmt(blockTotal)} ₽</strong></div>` : ""}
+      </div>`;
+    }
+    bodyContent += totalsHtml(standardTotal);
+  } else {
+    // Всё вместе
+    let rows = "";
+    for (const block of blocks) {
+      const room = planRooms.find(r => r.name === block.title);
+      if (includeDrawings && room) {
+        rows += `</table>${drawingImg(room)}<table>`;
+      }
+      rows += blockToRows(block);
+    }
+    bodyContent = `<table>${rows}</table>${totalsHtml(standardTotal)}`;
   }
+
   return `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Смета — ${name}</title>
-  <style>body{font-family:sans-serif;padding:32px;color:#111}table{width:100%;border-collapse:collapse}
-  h1{font-size:20px;margin-bottom:4px}p{color:#666;font-size:14px;margin:0 0 24px}
-  .totals{margin-top:20px;background:#f5f5f5;padding:16px;border-radius:8px}
-  .totals div{display:flex;justify-content:space-between;padding:4px 0;font-size:14px}
-  .total-main{font-weight:800;font-size:18px;color:#f97316}</style></head>
+  <style>
+    body{font-family:sans-serif;padding:32px;color:#111;max-width:800px;margin:0 auto}
+    table{width:100%;border-collapse:collapse;margin-bottom:8px}
+    h1{font-size:20px;margin-bottom:4px}
+    .meta{color:#666;font-size:14px;margin:0 0 24px}
+    .totals{margin-top:20px;background:#f5f5f5;padding:16px;border-radius:8px}
+    .totals div{display:flex;justify-content:space-between;padding:4px 0;font-size:14px}
+    .total-main{font-weight:800;font-size:18px;color:#f97316}
+    .room-section{margin-bottom:28px;padding-bottom:20px;border-bottom:2px solid #f0f0f0}
+    @media print{.room-section{page-break-inside:avoid}}
+  </style></head>
   <body>
   <h1>Смета на натяжные потолки</h1>
-  <p>Клиент: ${name}${clientPhone ? " · " + clientPhone : ""} · Дата: ${new Date().toLocaleDateString("ru-RU")}</p>
-  <table>${rows}</table>
-  <div class="totals">
-    <div><span>${pricingRules.econom_label}</span><span style="color:#10b981;font-weight:600">${fmt(econom)} ₽</span></div>
-    <div><span>${pricingRules.standard_label}</span><span class="total-main">${fmt(standardTotal)} ₽</span></div>
-    <div><span>${pricingRules.premium_label}</span><span style="color:#8b5cf6;font-weight:600">${fmt(premium)} ₽</span></div>
-  </div>
+  <p class="meta">Клиент: ${name}${clientPhone ? " · " + clientPhone : ""} · Дата: ${new Date().toLocaleDateString("ru-RU")}</p>
+  ${bodyContent}
   </body></html>`;
 }
