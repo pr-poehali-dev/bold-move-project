@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import Icon from "@/components/ui/icon";
 
 interface Props {
@@ -44,6 +44,31 @@ export function DiscountInputModal({
     }
   };
 
+  // Следим за visualViewport чтобы модалка не перекрывалась клавиатурой
+  const [viewportTop, setViewportTop] = useState(0);
+  const [viewportHeight, setViewportHeight] = useState(window.innerHeight);
+  const rafRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    const vv = window.visualViewport;
+    if (!vv) return;
+    const update = () => {
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+      rafRef.current = requestAnimationFrame(() => {
+        setViewportTop(vv.offsetTop);
+        setViewportHeight(vv.height);
+      });
+    };
+    vv.addEventListener("resize", update);
+    vv.addEventListener("scroll", update);
+    update();
+    return () => {
+      vv.removeEventListener("resize", update);
+      vv.removeEventListener("scroll", update);
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    };
+  }, []);
+
   const pctVal = parseFloat(pct) || 0;
   const amtVal = parseFloat(amt) || 0;
   const resultIncome = baseIncome - amtVal;
@@ -56,13 +81,24 @@ export function DiscountInputModal({
     onConfirm(exactPct, exactAmt);
   };
 
+  // Модалка позиционируется в верхней трети видимой области (над клавиатурой)
+  const modalTop = viewportTop + Math.max(16, (viewportHeight - 320) / 4);
+
   return (
-    <div className="fixed inset-0 z-[500] flex items-center justify-center p-4"
+    <div
+      className="fixed inset-0 z-[500]"
       style={{ background: "rgba(0,0,0,0.75)", backdropFilter: "blur(8px)" }}
-      onClick={onClose}>
-      <div className="w-full max-w-xs rounded-2xl overflow-hidden"
-        style={{ background: "#0e0e1c", border: "1px solid rgba(245,158,11,0.25)" }}
-        onClick={e => e.stopPropagation()}>
+      onClick={onClose}
+    >
+      <div
+        className="absolute left-4 right-4 max-w-xs mx-auto rounded-2xl overflow-hidden"
+        style={{
+          top: modalTop,
+          background: "#0e0e1c",
+          border: "1px solid rgba(245,158,11,0.25)",
+        }}
+        onClick={e => e.stopPropagation()}
+      >
 
         <div className="flex items-center justify-between px-4 pt-3 pb-3">
           <div className="flex items-center gap-2">
