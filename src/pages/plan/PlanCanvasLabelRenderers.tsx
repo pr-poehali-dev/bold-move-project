@@ -578,10 +578,20 @@ export function InlineDimLabels({ state, onChange, editingSegId, onSetEditingSeg
         const isEditing = editingId === seg.id;
 
         if (isEditing) {
+          // Физические размеры поля — всегда фиксированы в экранных пикселях
+          const FW = 80, FH = 32;
+          // foreignObject в SVG-координатах, но внутри применяем обратный scale
+          const foW = FW / zoom, foH = FH / zoom;
           return (
-            <foreignObject key={seg.id} x={lx - 34} y={ly - 13} width={68} height={26}
+            <foreignObject key={seg.id}
+              x={lx - foW / 2} y={ly - foH / 2}
+              width={foW} height={foH}
               style={{ overflow: "visible" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 2 }}>
+              <div style={{
+                width: FW, height: FH,
+                transform: `scale(${1 / zoom})`,
+                transformOrigin: "0 0",
+              }}>
                 <input
                   ref={inputRef}
                   type="number"
@@ -595,16 +605,16 @@ export function InlineDimLabels({ state, onChange, editingSegId, onSetEditingSeg
                     e.stopPropagation();
                   }}
                   style={{
-                    width: 54, height: 24,
-                    background: "rgba(17,17,30,0.95)", color: "rgba(255,255,255,0.9)",
-                    border: "1px solid rgba(124,58,237,0.6)", borderRadius: 6,
-                    padding: "0 6px",
-                    fontSize: 11, fontFamily: "monospace", fontWeight: 700,
+                    width: FW, height: FH,
+                    background: "rgba(17,17,30,0.97)", color: "rgba(255,255,255,0.95)",
+                    border: "2px solid rgba(124,58,237,0.8)", borderRadius: 8,
+                    padding: "0 10px",
+                    fontSize: 15, fontFamily: "monospace", fontWeight: 700,
                     outline: "none",
-                    boxShadow: "0 0 10px rgba(124,58,237,0.3), 0 2px 10px rgba(0,0,0,0.6)",
+                    boxSizing: "border-box",
+                    boxShadow: "0 0 14px rgba(124,58,237,0.5), 0 2px 12px rgba(0,0,0,0.7)",
                   }}
                 />
-                <span style={{ fontSize: 9, color: "rgba(255,255,255,0.4)", fontFamily: "monospace" }}></span>
               </div>
             </foreignObject>
           );
