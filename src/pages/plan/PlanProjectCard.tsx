@@ -255,11 +255,11 @@ export default function PlanProjectCard({
                 </div>
               </button>
 
-              <div className="flex-shrink-0 flex flex-col gap-1.5">
+              <div className="flex-shrink-0 flex flex-row gap-1.5">
                 <button
                   onClick={() => onExport(project)}
                   className="flex flex-col items-center justify-center gap-1 rounded-xl transition hover:brightness-110 active:scale-95"
-                  style={{ width: 64, height: 52, background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)" }}
+                  style={{ width: 52, height: 52, background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)" }}
                 >
                   <Icon name="FileDown" size={18} style={{ color: "rgba(255,255,255,0.8)" }} />
                   <span className="text-[9px] font-bold uppercase tracking-wide" style={{ color: "rgba(255,255,255,0.55)" }}>Смета</span>
@@ -267,7 +267,7 @@ export default function PlanProjectCard({
                 <button
                   onClick={() => onMaterials(project)}
                   className="flex flex-col items-center justify-center gap-1 rounded-xl transition hover:brightness-110 active:scale-95"
-                  style={{ width: 64, height: 52, background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)" }}
+                  style={{ width: 52, height: 52, background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)" }}
                 >
                   <Icon name="ClipboardList" size={18} style={{ color: "rgba(255,255,255,0.8)" }} />
                   <span className="text-[9px] font-bold uppercase tracking-wide" style={{ color: "rgba(255,255,255,0.55)" }}>Состав</span>
@@ -277,7 +277,7 @@ export default function PlanProjectCard({
                     onClick={() => onCrm(project)}
                     className="flex flex-col items-center justify-center gap-1 rounded-xl transition hover:brightness-110 active:scale-95"
                     style={{
-                      width: 64, height: 52,
+                      width: 52, height: 52,
                       background: project.crm_chat_id ? "rgba(124,58,237,0.18)" : "rgba(255,255,255,0.06)",
                       border: `1px solid ${project.crm_chat_id ? "rgba(124,58,237,0.5)" : "rgba(255,255,255,0.1)"}`,
                     }}
