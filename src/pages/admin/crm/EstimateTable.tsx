@@ -39,9 +39,24 @@ export default function EstimateTable({
   const handleResetConfirm = useCallback(() => { setConfirmReset(false); onChooseTier(null); }, [onChooseTier]);
   const handleResetCancel  = useCallback(() => setConfirmReset(false), []);
 
+  // Коэффициент для выбранного тира (относительно standard)
+  const tierRatio = chosen === "econom" ? pricingRules.econom_mult
+    : chosen === "premium" ? pricingRules.premium_mult
+    : 1;
+
+  // Пересчитать value позиции по выбранному тиру
+  const applyTierToValue = (value: string): string => {
+    if (!chosen || chosen === "standard") return value;
+    const p = parseValue(value);
+    if (!p) return value;
+    const newPrice = Math.round(p.price * tierRatio);
+    const newTotal = Math.round(p.qty * newPrice);
+    return `${p.qty} ${p.unit} × ${newPrice} ₽ = ${newTotal.toLocaleString("ru-RU")} ₽`;
+  };
+
   const blockTotal = (block: EstimateBlock) =>
     block.items.reduce((s, item) => {
-      const p = parseValue(item.value);
+      const p = parseValue(applyTierToValue(item.value));
       return s + (p ? p.total : 0);
     }, 0);
 
@@ -245,7 +260,7 @@ export default function EstimateTable({
                     {block.items.map((item, ii) => (
                       <EstimateItemRow
                         key={`${bi}-${ii}`}
-                        item={item}
+                        item={editMode ? item : { ...item, value: applyTierToValue(item.value) }}
                         onChange={editMode ? (name, qty, price, unit) => onUpdateItem(bi, ii, name, qty, price, unit) : undefined}
                         onDelete={editMode ? () => onDeleteItem(bi, ii) : undefined}
                         prices={prices}
@@ -322,7 +337,7 @@ export default function EstimateTable({
                       {block.items.map((item, ii) => (
                         <EstimateItemRow
                           key={`${bi}-${ii}`}
-                          item={item}
+                          item={editMode ? item : { ...item, value: applyTierToValue(item.value) }}
                           onChange={editMode ? (name, qty, price, unit) => onUpdateItem(bi, ii, name, qty, price, unit) : undefined}
                           onDelete={editMode ? () => onDeleteItem(bi, ii) : undefined}
                           prices={prices}
