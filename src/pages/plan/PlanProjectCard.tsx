@@ -227,7 +227,7 @@ export default function PlanProjectCard({
               >
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1.5 min-w-0">
-                    <span className="text-white font-bold text-[14px] leading-tight break-words min-w-0" style={{ wordBreak: "break-word" }}>{project.name}</span>
+                    <span className="text-white font-bold text-[14px] truncate">{project.name}</span>
                     {(project.rooms_count ?? 0) > 0 && (
                       <span
                         className="flex-shrink-0 flex items-center gap-0.5 px-1 py-0.5 rounded-lg text-[9px] font-bold"
