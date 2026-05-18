@@ -90,11 +90,12 @@ export function DiscountAppliedView({
 
       {/* Редактор скидки */}
       <div className="rounded-xl overflow-hidden" style={{ border: "1px solid #f59e0b30", background: "#f59e0b06" }}>
-        <div className="flex items-center justify-between gap-2 px-4 py-3">
-          <div className="flex items-center gap-3 min-w-0 flex-1">
+        <div className="flex flex-col gap-2 px-4 py-3">
+          {/* Строка с иконкой и текстом */}
+          <div className="flex items-center gap-3">
             <Icon name="Tag" size={14} style={{ color: "#f59e0b" }} />
             {isEditing ? (
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <input
                   type="number" min={0.5} max={effectiveMax || 99} step={0.5}
                   value={editingPct}
@@ -118,21 +119,22 @@ export function DiscountAppliedView({
                 </button>
               </div>
             ) : (
-              <div className="flex items-center gap-2 min-w-0">
-                <span className="text-sm font-bold text-white whitespace-nowrap">Скидка {appliedDiscountPct}% применена</span>
-                <span className="text-xs text-white/40 whitespace-nowrap flex-shrink-0">−{fmt(totalDiscountAmount)} ₽</span>
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-bold text-white">Скидка {appliedDiscountPct}% применена</span>
+                <span className="text-xs text-white/40">−{fmt(totalDiscountAmount)} ₽</span>
               </div>
             )}
           </div>
+          {/* Кнопки — отдельная строка */}
           {!isEditing && (
-            <div className="flex items-center gap-2 flex-shrink-0">
+            <div className="flex items-center gap-2 pl-[22px]">
               <button onClick={startEdit} disabled={applying}
-                className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-bold transition hover:opacity-80 disabled:opacity-40"
+                className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-[11px] font-bold transition hover:opacity-80 disabled:opacity-40"
                 style={{ background: "rgba(245,158,11,0.12)", color: "#f59e0b", border: "1px solid rgba(245,158,11,0.3)" }}>
                 <Icon name="Pencil" size={10} /> Изменить
               </button>
               <button onClick={onResetDiscount} disabled={applying}
-                className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-bold transition hover:opacity-80 disabled:opacity-40"
+                className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-[11px] font-bold transition hover:opacity-80 disabled:opacity-40"
                 style={{ background: "#ef444415", color: "#ef4444", border: "1px solid #ef444430" }}>
                 {applying
                   ? <div className="w-3 h-3 border-2 border-current/30 border-t-current rounded-full animate-spin" />
