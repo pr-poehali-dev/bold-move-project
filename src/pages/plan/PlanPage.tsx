@@ -242,7 +242,7 @@ export default function PlanPage() {
           loadingFromRoomRef.current = true;
           lastClosedSegId.current = null;
           catalog.setTapActiveId(null);
-          reset(hasData ? { ...INITIAL_STATE, ...dataSource, selectedSegmentId: null } : INITIAL_STATE);
+          reset(hasData ? { ...INITIAL_STATE, ...dataSource, selectedSegmentId: null, selectedSegmentIds: [], selectedPointId: null } : INITIAL_STATE);
           // Сбрасываем флаг и подгоняем вид под чертёж
           setTimeout(() => {
             loadingFromRoomRef.current = false;
