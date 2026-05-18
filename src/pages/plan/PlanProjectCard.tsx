@@ -220,70 +220,70 @@ export default function PlanProjectCard({
                 onClick={() => onSelect(project)}
               >
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="text-white font-bold text-[14px] truncate">{project.name}</span>
+                  <div className="flex items-center gap-2 mb-1 min-w-0">
+                    <span className="text-white font-bold text-[13px] truncate">{project.name}</span>
                     {(project.rooms_count ?? 0) > 0 && (
                       <span
-                        className="flex-shrink-0 flex items-center gap-1 px-1.5 py-0.5 rounded-lg text-[10px] font-bold"
+                        className="flex-shrink-0 flex items-center gap-0.5 px-1 py-0.5 rounded-lg text-[9px] font-bold"
                         style={{ background: "rgba(124,58,237,0.18)", color: "#a78bfa", border: "1px solid rgba(124,58,237,0.3)" }}
                       >
-                        <Icon name="Layers" size={9} />
+                        <Icon name="Layers" size={8} />
                         {project.rooms_count}шт
                       </span>
                     )}
                   </div>
-                  <div className="flex flex-col gap-0.5">
+                  <div className="flex flex-col gap-0.5 min-w-0">
                     {project.client_name && (
-                      <span className="flex items-center gap-1 text-[12px]" style={{ color: "rgba(255,255,255,0.75)" }}>
-                        <Icon name="User" size={11} />
-                        {project.client_name}
+                      <span className="flex items-center gap-1 text-[11px] truncate" style={{ color: "rgba(255,255,255,0.75)" }}>
+                        <Icon name="User" size={10} className="flex-shrink-0" />
+                        <span className="truncate">{project.client_name}</span>
                       </span>
                     )}
                     {project.address && (
-                      <span className="flex items-center gap-1 text-[12px]" style={{ color: "rgba(255,255,255,0.75)" }}>
-                        <Icon name="MapPin" size={11} />
-                        {project.address}
+                      <span className="flex items-center gap-1 text-[11px] truncate" style={{ color: "rgba(255,255,255,0.75)" }}>
+                        <Icon name="MapPin" size={10} className="flex-shrink-0" />
+                        <span className="truncate">{project.address}</span>
                       </span>
                     )}
                     {project.phone && (
-                      <span className="flex items-center gap-1 text-[12px]" style={{ color: "rgba(255,255,255,0.75)" }}>
-                        <Icon name="Phone" size={11} />
-                        {project.phone}
+                      <span className="flex items-center gap-1 text-[11px] truncate" style={{ color: "rgba(255,255,255,0.75)" }}>
+                        <Icon name="Phone" size={10} className="flex-shrink-0" />
+                        <span className="truncate">{project.phone}</span>
                       </span>
                     )}
                   </div>
                 </div>
               </button>
 
-              <div className="flex-shrink-0 flex flex-row gap-1.5">
+              <div className="flex-shrink-0 flex flex-row gap-1">
                 <button
                   onClick={() => onExport(project)}
-                  className="flex flex-col items-center justify-center gap-1 rounded-xl transition hover:brightness-110 active:scale-95"
-                  style={{ width: 52, height: 52, background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)" }}
+                  className="flex flex-col items-center justify-center gap-0.5 rounded-xl transition hover:brightness-110 active:scale-95"
+                  style={{ width: 46, height: 46, background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)" }}
                 >
-                  <Icon name="FileDown" size={18} style={{ color: "rgba(255,255,255,0.8)" }} />
-                  <span className="text-[9px] font-bold uppercase tracking-wide" style={{ color: "rgba(255,255,255,0.55)" }}>Смета</span>
+                  <Icon name="FileDown" size={16} style={{ color: "rgba(255,255,255,0.8)" }} />
+                  <span className="text-[8px] font-bold uppercase tracking-wide" style={{ color: "rgba(255,255,255,0.55)" }}>Смета</span>
                 </button>
                 <button
                   onClick={() => onMaterials(project)}
-                  className="flex flex-col items-center justify-center gap-1 rounded-xl transition hover:brightness-110 active:scale-95"
-                  style={{ width: 52, height: 52, background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)" }}
+                  className="flex flex-col items-center justify-center gap-0.5 rounded-xl transition hover:brightness-110 active:scale-95"
+                  style={{ width: 46, height: 46, background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)" }}
                 >
-                  <Icon name="ClipboardList" size={18} style={{ color: "rgba(255,255,255,0.8)" }} />
-                  <span className="text-[9px] font-bold uppercase tracking-wide" style={{ color: "rgba(255,255,255,0.55)" }}>Состав</span>
+                  <Icon name="ClipboardList" size={16} style={{ color: "rgba(255,255,255,0.8)" }} />
+                  <span className="text-[8px] font-bold uppercase tracking-wide" style={{ color: "rgba(255,255,255,0.55)" }}>Состав</span>
                 </button>
                 {onCrm && (
                   <button
                     onClick={() => onCrm(project)}
-                    className="flex flex-col items-center justify-center gap-1 rounded-xl transition hover:brightness-110 active:scale-95"
+                    className="flex flex-col items-center justify-center gap-0.5 rounded-xl transition hover:brightness-110 active:scale-95"
                     style={{
-                      width: 52, height: 52,
+                      width: 46, height: 46,
                       background: project.crm_chat_id ? "rgba(124,58,237,0.18)" : "rgba(255,255,255,0.06)",
                       border: `1px solid ${project.crm_chat_id ? "rgba(124,58,237,0.5)" : "rgba(255,255,255,0.1)"}`,
                     }}
                   >
-                    <Icon name="LayoutDashboard" size={18} style={{ color: project.crm_chat_id ? "#a78bfa" : "rgba(255,255,255,0.8)" }} />
-                    <span className="text-[9px] font-bold uppercase tracking-wide" style={{ color: project.crm_chat_id ? "#a78bfa" : "rgba(255,255,255,0.55)" }}>CRM</span>
+                    <Icon name="LayoutDashboard" size={16} style={{ color: project.crm_chat_id ? "#a78bfa" : "rgba(255,255,255,0.8)" }} />
+                    <span className="text-[8px] font-bold uppercase tracking-wide" style={{ color: project.crm_chat_id ? "#a78bfa" : "rgba(255,255,255,0.55)" }}>CRM</span>
                   </button>
                 )}
               </div>
