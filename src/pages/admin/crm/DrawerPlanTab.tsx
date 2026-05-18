@@ -50,7 +50,7 @@ export default function DrawerPlanTab({ chatId, projectId }: Props) {
   }, [chatId, projectId]);
 
   const openInPlan = () => {
-    window.open(`/plan`, "_blank");
+    window.open(`/plan${projectId ? `?project_id=${projectId}` : ""}`, "_blank");
   };
 
   if (loading) {

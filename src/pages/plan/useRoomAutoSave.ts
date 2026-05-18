@@ -14,7 +14,8 @@ export function useRoomAutoSave(
   roomId: number | null,
   state: PlanState,
   token: string | null | undefined,
-  activeVariantId?: number | null
+  activeVariantId?: number | null,
+  projectId?: number | null
 ) {
   const [saveStatus, setSaveStatus] = useState<RoomSaveStatus>("idle");
   const timerRef    = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -22,6 +23,8 @@ export function useRoomAutoSave(
   const statusTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const variantIdRef = useRef<number | null | undefined>(activeVariantId);
   variantIdRef.current = activeVariantId;
+  const projectIdRef = useRef<number | null | undefined>(projectId);
+  projectIdRef.current = projectId;
 
   const stateStr = JSON.stringify(state);
 
@@ -55,6 +58,17 @@ export function useRoomAutoSave(
           ...(thumbnail ? { thumbnail } : {}),
         }),
       });
+
+      // Синхронизируем updated_at заявки в CRM — чтобы смета знала что состав изменился
+      const pid = projectIdRef.current;
+      if (pid) {
+        fetch(`${CRM_URL}?r=plan-crm-sync&project_id=${pid}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
+          body: JSON.stringify({}),
+        }).catch(() => {});
+      }
+
       savedRef.current = stateStr;
       setSaveStatus("saved");
       if (statusTimer.current) clearTimeout(statusTimer.current);

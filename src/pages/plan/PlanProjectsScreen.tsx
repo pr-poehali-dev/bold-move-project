@@ -11,9 +11,10 @@ import PlanProjectCard from "./PlanProjectCard";
 interface Props {
   token?: string | null;
   onSelectProject: (project: PlanProject) => void;
+  initialProjectId?: number;
 }
 
-export default function PlanProjectsScreen({ token, onSelectProject }: Props) {
+export default function PlanProjectsScreen({ token, onSelectProject, initialProjectId }: Props) {
   const { projects, loading, loadProjects, createProject, updateProject, deleteProject, syncWithCrm } = usePlanProjects(token);
 
   const [exportOpen,       setExportOpen]       = useState(false);
@@ -29,6 +30,13 @@ export default function PlanProjectsScreen({ token, onSelectProject }: Props) {
   const [filterStatus,     setFilterStatus]     = useState("all");
 
   useEffect(() => { loadProjects(); }, [loadProjects]);
+
+  // Автовыбор проекта по initialProjectId (переход из CRM)
+  useEffect(() => {
+    if (!initialProjectId || loading || projects.length === 0) return;
+    const found = projects.find(p => p.id === initialProjectId);
+    if (found) onSelectProject(found);
+  }, [initialProjectId, projects, loading]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Фильтрация ──────────────────────────────────────────────────────────────
   const visible = useMemo(() => {

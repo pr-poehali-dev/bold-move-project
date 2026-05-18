@@ -45,7 +45,8 @@ export default function PlanPage() {
     activeRoom?.id ?? null,
     state,
     token,
-    activeVariantId
+    activeVariantId,
+    activeProject?.id ?? null
   );
   const [variantModalOpen,       setVariantModalOpen]       = useState(false);
   const [mobileVariantPickerOpen, setMobileVariantPickerOpen] = useState(false);
@@ -188,12 +189,20 @@ export default function PlanPage() {
 
   // ── Экраны проектов и комнат ─────────────────────────────────────────────────
   if (screen === "projects") {
+    // Если открыт с ?project_id= (из CRM), автоматически выбираем нужный проект
+    const urlProjectId = new URLSearchParams(window.location.search).get("project_id");
+
     return (
       <PlanProjectsScreen
         token={token}
+        initialProjectId={urlProjectId ? Number(urlProjectId) : undefined}
         onSelectProject={project => {
           setActiveProject(project);
           setScreen("rooms");
+          // Убираем ?project_id= из URL
+          const url = new URL(window.location.href);
+          url.searchParams.delete("project_id");
+          window.history.replaceState({}, "", url.toString());
         }}
       />
     );
