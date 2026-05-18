@@ -90,8 +90,8 @@ export function DiscountAppliedView({
 
       {/* Редактор скидки */}
       <div className="rounded-xl overflow-hidden" style={{ border: "1px solid #f59e0b30", background: "#f59e0b06" }}>
-        <div className="flex items-center justify-between px-4 py-3">
-          <div className="flex items-center gap-3">
+        <div className="flex items-center justify-between gap-2 px-4 py-3">
+          <div className="flex items-center gap-3 min-w-0 flex-1">
             <Icon name="Tag" size={14} style={{ color: "#f59e0b" }} />
             {isEditing ? (
               <div className="flex items-center gap-2">
@@ -118,14 +118,14 @@ export function DiscountAppliedView({
                 </button>
               </div>
             ) : (
-              <div className="flex items-center gap-2">
-                <span className="text-sm font-bold text-white">Скидка {appliedDiscountPct}% применена</span>
-                <span className="text-xs text-white/40">−{fmt(totalDiscountAmount)} ₽</span>
+              <div className="flex items-center gap-2 min-w-0">
+                <span className="text-sm font-bold text-white whitespace-nowrap">Скидка {appliedDiscountPct}% применена</span>
+                <span className="text-xs text-white/40 whitespace-nowrap flex-shrink-0">−{fmt(totalDiscountAmount)} ₽</span>
               </div>
             )}
           </div>
           {!isEditing && (
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-shrink-0">
               <button onClick={startEdit} disabled={applying}
                 className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-bold transition hover:opacity-80 disabled:opacity-40"
                 style={{ background: "rgba(245,158,11,0.12)", color: "#f59e0b", border: "1px solid rgba(245,158,11,0.3)" }}>
