@@ -74,6 +74,7 @@ def handler(event: dict, context) -> dict:
 
     company_id = None   # None = мастер, видит всё
     is_master  = True
+    master_uid = 0      # реальный uid текущего пользователя (для вставок)
 
     if raw_token:
         cur.execute(f"""
@@ -88,8 +89,10 @@ def handler(event: dict, context) -> dict:
             if uemail == "19.jeka.94@gmail.com":
                 is_master  = True
                 company_id = None   # мастер видит всё
+                master_uid = uid    # реальный uid мастера для вставок
             else:
                 is_master  = False
+                master_uid = uid
                 # Менеджер привязан к компании → видит данные владельца
                 # Все остальные роли видят только свои данные (company_id = их uid)
                 if urole == "manager" and ucompany_id:
@@ -921,11 +924,13 @@ def handler(event: dict, context) -> dict:
                 client_name = body.get("client_name")
                 address = body.get("address")
                 phone = body.get("phone")
+                # Для вставок используем реальный uid (мастер имеет cmp=0, но uid реальный)
+                insert_cmp = master_uid if cmp == 0 else cmp
                 # 1. Создаём проект
                 cur.execute(f"""
                     INSERT INTO {SCHEMA}.plan_projects (company_id, name, client_name, address, phone, status)
                     VALUES (%s,%s,%s,%s,%s,%s) RETURNING id
-                """, (cmp, name, client_name, address, phone, body.get("status","draft")))
+                """, (insert_cmp, name, client_name, address, phone, body.get("status","draft")))
                 new_id = cur.fetchone()[0]
                 # 2. Автоматически создаём заявку в CRM
                 session_id = f"plan-{new_id}"
@@ -933,20 +938,20 @@ def handler(event: dict, context) -> dict:
                     INSERT INTO {SCHEMA}.live_chats
                         (session_id, client_name, phone, address, status, source, company_id, project_id)
                     VALUES (%s,%s,%s,%s,'new','plan',%s,%s) RETURNING id
-                """, (session_id, client_name or name, phone, address, cmp, new_id))
+                """, (session_id, client_name or name, phone, address, insert_cmp, new_id))
                 chat_id = cur.fetchone()[0]
                 # 3. Связываем проект с заявкой
                 cur.execute(f"UPDATE {SCHEMA}.plan_projects SET crm_chat_id=%s WHERE id=%s", (chat_id, new_id))
                 # 4. Ищем колонку "С построителя" и добавляем канбан-карточку
-                cur.execute(f"SELECT id FROM {SCHEMA}.kanban_columns WHERE title='С построителя' AND company_id=%s LIMIT 1", (cmp,))
+                cur.execute(f"SELECT id FROM {SCHEMA}.kanban_columns WHERE title='С построителя' AND company_id=%s LIMIT 1", (insert_cmp,))
                 col_row = cur.fetchone()
                 if col_row:
-                    cur.execute(f"SELECT COALESCE(MAX(position)+1,0) FROM {SCHEMA}.kanban_cards WHERE column_id=%s AND company_id=%s", (col_row[0], cmp))
+                    cur.execute(f"SELECT COALESCE(MAX(position)+1,0) FROM {SCHEMA}.kanban_cards WHERE column_id=%s AND company_id=%s", (col_row[0], insert_cmp))
                     pos = cur.fetchone()[0]
                     cur.execute(f"""INSERT INTO {SCHEMA}.kanban_cards
                         (column_id, client_id, title, phone, priority, position, company_id)
                         VALUES (%s,%s,%s,%s,'medium',%s,%s)""",
-                        (col_row[0], chat_id, name, phone or "", pos, cmp))
+                        (col_row[0], chat_id, name, phone or "", pos, insert_cmp))
                 conn.commit()
                 return ok({"id": new_id, "crm_chat_id": chat_id})
 
@@ -1022,13 +1027,14 @@ def handler(event: dict, context) -> dict:
             if method == "POST":
                 if not project_id: return err("project_id required")
                 name = (body.get("name") or "Новая комната").strip()
-                # Проверяем что проект принадлежит компании
-                cur.execute(f"SELECT id FROM {SCHEMA}.plan_projects WHERE id=%s AND company_id=%s", (int(project_id), cmp))
+                insert_cmp = master_uid if cmp == 0 else cmp
+                # Проверяем что проект принадлежит компании (мастер видит все через company_id=0 или свой uid)
+                cur.execute(f"SELECT id FROM {SCHEMA}.plan_projects WHERE id=%s AND (company_id=%s OR company_id=%s)", (int(project_id), cmp, insert_cmp))
                 if not cur.fetchone(): return err("project not found", 404)
                 cur.execute(f"""
                     INSERT INTO {SCHEMA}.room_plans (user_id, project_id, name, data)
                     VALUES (%s,%s,%s,'{{}}') RETURNING id
-                """, (cmp, int(project_id), name))
+                """, (insert_cmp, int(project_id), name))
                 new_id = cur.fetchone()[0]
                 # Обновляем updated_at проекта
                 cur.execute(f"UPDATE {SCHEMA}.plan_projects SET updated_at=NOW() WHERE id=%s", (int(project_id),))
