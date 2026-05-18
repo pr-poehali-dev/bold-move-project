@@ -1,4 +1,28 @@
-import { lazy, Suspense } from "react";
+import { lazy, Suspense, Component, ErrorInfo, ReactNode } from "react";
+
+class ErrorBoundary extends Component<{ children: ReactNode }, { error: Error | null }> {
+  state = { error: null };
+  static getDerivedStateFromError(error: Error) { return { error }; }
+  componentDidCatch(error: Error, info: ErrorInfo) {
+    console.error("[ErrorBoundary]", error.message, error.stack, info.componentStack);
+  }
+  render() {
+    if (this.state.error) {
+      const e = this.state.error as Error;
+      return (
+        <div style={{ padding: 24, fontFamily: "monospace", background: "#0b0b11", color: "#ef4444", minHeight: "100dvh" }}>
+          <div style={{ marginBottom: 8, fontWeight: "bold" }}>Ошибка: {e.message}</div>
+          <pre style={{ fontSize: 11, color: "#f87171", whiteSpace: "pre-wrap" }}>{e.stack}</pre>
+          <button onClick={() => { this.setState({ error: null }); window.location.reload(); }}
+            style={{ marginTop: 16, padding: "8px 16px", background: "#7c3aed", color: "#fff", border: "none", borderRadius: 8, cursor: "pointer" }}>
+            Перезагрузить
+          </button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -28,6 +52,7 @@ const App = () => (
         <Sonner />
         <BrowserRouter>
           <BrandProvider>
+            <ErrorBoundary>
             <Suspense fallback={<div className="bg-[#0b0b11]" style={{ height: "100dvh" }} />}>
               <Routes>
                 <Route path="/" element={<Index />} />
@@ -43,6 +68,7 @@ const App = () => (
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </Suspense>
+            </ErrorBoundary>
           </BrandProvider>
         </BrowserRouter>
       </TooltipProvider>
