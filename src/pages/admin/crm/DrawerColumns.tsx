@@ -194,9 +194,9 @@ export function DrawerColumns(props: ColumnsProps) {
               {renderColBlock(b)}
             </DraggableBlock>
           ))}
-          {/* Автоподстраивающийся блок — зеркало левого */}
+          {/* Зона добавления — скрыта на мобиле (там достаточно левой колонки) */}
           <div
-            className="rounded-xl flex flex-col items-center justify-center gap-1.5 cursor-pointer transition-all"
+            className="hidden md:flex rounded-xl flex-col items-center justify-center gap-1.5 cursor-pointer transition-all"
             style={{
               flex: 1,
               minHeight: 48,
