@@ -165,9 +165,9 @@ export function DrawerColumns(props: ColumnsProps) {
               {renderColBlock(b)}
             </DraggableBlock>
           ))}
-          {/* Пустой блок */}
+          {/* Зона drop на десктопе + кнопка добавления (скрыта на мобиле) */}
           <div
-            className="rounded-xl flex flex-col items-center justify-center gap-1.5 cursor-pointer transition-all"
+            className="hidden md:flex rounded-xl flex-col items-center justify-center gap-1.5 cursor-pointer transition-all"
             style={{
               flex: 1,
               minHeight: 48,

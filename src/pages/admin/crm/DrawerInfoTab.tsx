@@ -273,6 +273,19 @@ export default function DrawerInfoTab({ data, client, setData, save, setComments
         onReload={onReload}
       />
 
+      {/* Кнопка добавить блок — только на мобиле, над активностью */}
+      <div
+        className="md:hidden rounded-xl flex items-center justify-center cursor-pointer transition-all"
+        style={{
+          minHeight: 44,
+          border: "2px dashed #ffffff18",
+          background: "transparent",
+        }}
+        onClick={() => setShowAddBlock(0)}
+      >
+        <span className="text-[11px]" style={{ color: "#ffffff30" }}>+ Добавить блок</span>
+      </div>
+
       {/* Активность — под блоками, всегда видна */}
       <ActivityFeed
         client={data}
