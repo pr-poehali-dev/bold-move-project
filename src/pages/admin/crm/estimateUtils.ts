@@ -149,12 +149,15 @@ export function generatePrintHtml(
     </div>`;
   };
 
+  // Комнаты в том же порядке, что и блоки (только include_in_estimate)
+  const estimateRooms = planRooms.filter(r => r.include_in_estimate);
+
   let bodyContent = "";
 
-  if (perRoom && planRooms.length > 0) {
-    // По комнатам — каждый блок = отдельный раздел с чертежом
-    for (const block of blocks) {
-      const room = planRooms.find(r => r.name === block.title);
+  if (perRoom && estimateRooms.length > 0) {
+    // По комнатам — каждый блок = отдельный раздел с чертежом (по индексу)
+    blocks.forEach((block, idx) => {
+      const room = estimateRooms[idx] ?? null;
       const blockTotal = block.items.reduce((sum, item) => {
         const p = parseValue(item.value);
         return sum + (p ? p.total : 0);
@@ -165,18 +168,18 @@ export function generatePrintHtml(
         <table>${blockToRows(block)}</table>
         ${blockTotal > 0 ? `<div style="text-align:right;margin-top:8px;font-size:13px;color:#888">Итого по комнате: <strong style="color:#111">${fmt(blockTotal)} ₽</strong></div>` : ""}
       </div>`;
-    }
+    });
     bodyContent += totalsHtml(standardTotal);
   } else {
     // Всё вместе
     let rows = "";
-    for (const block of blocks) {
-      const room = planRooms.find(r => r.name === block.title);
+    blocks.forEach((block, idx) => {
+      const room = estimateRooms[idx] ?? null;
       if (includeDrawings && room) {
         rows += `</table>${drawingImg(room)}<table>`;
       }
       rows += blockToRows(block);
-    }
+    });
     bodyContent = `<table>${rows}</table>${totalsHtml(standardTotal)}`;
   }
 
