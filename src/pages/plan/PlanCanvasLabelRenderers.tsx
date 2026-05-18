@@ -119,25 +119,14 @@ export function SegmentItemsBadges({
 
   const totalW = n * S + (n - 1) * GAP;
 
-  // Отступ от стены увеличивается для коротких стен — чтобы не перекрывать лейбл длины (он в центре)
-  // wallCm 10 → OFF большой (далеко от стены)
-  // wallCm 200+ → OFF стандартный (близко к стене)
-  const isShortWall = wallCm !== null && wallCm < 150;
-  const extraOff = isShortWall ? (150 - (wallCm ?? 150)) * 0.5 / z : 0;
-  const OFF = S / 2 + 30 / z + extraOff;
+  // Фиксированный отступ от стены — 30px экранных внутрь полигона
+  const OFF = S / 2 + 30 / z;
 
   const cx = mid.x - nx * OFF;
   const cy = mid.y - ny * OFF;
 
-  // Если иконки шире стены — сдвигаем их вдоль стены (не центрируем)
-  // Лейбл длины в центре, иконки сдвигаем к одному из концов
-  let startOffset = -totalW / 2 + S / 2;
-  if (totalW > segLen * 0.7) {
-    // Сдвигаем иконки в сторону, чтобы не накладывались на лейбл в центре
-    // Сдвигаем на расстояние = половина totalW + половина ширины лейбла (~25px)
-    const shift = totalW / 2 + 25 / z;
-    startOffset = shift - totalW / 2 + S / 2;
-  }
+  // Иконки центрируются по середине стены
+  const startOffset = -totalW / 2 + S / 2;
 
   return (
     <g key={`seg-items-${seg.id}`} style={{ opacity: fadeOpacity, transition: "opacity 0.2s ease" }}>
