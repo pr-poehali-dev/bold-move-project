@@ -1,6 +1,5 @@
 import { useState, useRef, useEffect, type Dispatch, type SetStateAction } from "react";
 import func2url from "@/../backend/func2url.json";
-const AUTH_URL_DIT = (func2url as Record<string, string>)["auth"];
 import { Client, STATUS_LABELS } from "./crmApi";
 import { useTheme } from "./themeContext";
 import { Section } from "./drawerComponents";
@@ -18,6 +17,8 @@ import {
   loadRowVisibility, saveRowVisibility,
   loadCustomFinRows, saveCustomFinRows,
 } from "./drawerTypes";
+
+const AUTH_URL_DIT = (func2url as Record<string, string>)["auth"];
 
 interface Props {
   data: Client;
