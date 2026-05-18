@@ -95,16 +95,29 @@ export function SegmentItemsBadges({
   const tx = (b.x - a.x) / segLen;
   const ty = (b.y - a.y) / segLen;
 
-  // Умный размер иконки: зависит от длины стены и количества товаров
+  // Умный размер иконки на основе длины стены в см и кол-ва товаров
   const n = items.length;
-  const MAX_S_PX = 56;
-  // Сколько экранных пикселей занимает стена
+  const wallCm = seg.lengthCm ?? null;
+
+  // Сколько экранных пикселей занимает стена (SVG-px * zoom)
   const segLenPx = segLen * Math.max(zoom, 0.1);
-  // Размер = стена / (n иконок + промежутки), но не более MAX_S_PX
-  const fitS_PX = Math.floor((segLenPx * 0.7) / (n + (n - 1) * 0.25));
+
+  // Размер иконки: помещаем n иконок + зазоры в 65% длины стены на экране
+  // Формула: totalW = n*S + (n-1)*0.25*S = S*(n + (n-1)*0.25)
+  // Хотим totalW = segLenPx * 0.65 → S = segLenPx * 0.65 / (n + (n-1)*0.25)
+  const denom = n + (n - 1) * 0.25;
+  const fitS_PX = segLenPx * 0.65 / denom;
+
+  // Абсолютные ограничения в экранных пикселях
+  const MAX_S_PX = 52;
+  const MIN_S_PX = 10;
+
+  // Если стена < 20см — прячем иконки совсем (слишком маленький сегмент)
+  if (wallCm !== null && wallCm < 20) return null;
+  // Если иконка не влезает даже минимального размера — прячем
+  if (fitS_PX < MIN_S_PX) return null;
+
   const S_PX = Math.min(MAX_S_PX, fitS_PX);
-  // Если иконка меньше 10px экранных — не рисуем совсем
-  if (S_PX < 10) return null;
   const S    = S_PX / Math.max(zoom, 0.1); // SVG-координаты
   const GAP = S * 0.25;
   // Отступ от стены — иконки рисуются внутрь (противоположная сторона от лейблов)
