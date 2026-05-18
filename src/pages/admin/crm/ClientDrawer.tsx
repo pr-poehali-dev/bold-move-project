@@ -194,7 +194,7 @@ export default function ClientDrawer({ client, allClientOrders, onClose, onUpdat
         </div>
 
         {/* ── Табы ── */}
-        <div className="flex px-3 sm:px-6 gap-1 pt-2 sm:pt-3 flex-shrink-0" style={{ borderBottom: `1px solid ${t.border}` }}>
+        <div className="flex px-1 sm:px-6 gap-0 pt-2 sm:pt-3 flex-shrink-0 overflow-x-auto" style={{ borderBottom: `1px solid ${t.border}`, scrollbarWidth: "none" }}>
           {([
             { id: "client",   label: "Клиент",   icon: "User" },
             { id: "orders",   label: `Заявки (${allClientOrders.length})`, icon: "ClipboardList" },
@@ -202,7 +202,7 @@ export default function ClientDrawer({ client, allClientOrders, onClose, onUpdat
             ...(data.project_id ? [{ id: "plan", label: "Чертежи", icon: "LayoutDashboard" }] : []),
           ] as const).map((tab: { id: string; label: string; icon: string }) => (
             <button key={tab.id} onClick={() => setDrawerTab(tab.id as "client" | "orders" | "estimate" | "plan")}
-              className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-t-lg transition"
+              className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-t-lg transition whitespace-nowrap"
               style={drawerTab === tab.id
                 ? { color: "#7c3aed", borderBottom: "2px solid #7c3aed", marginBottom: -1 }
                 : { color: t.textMute }}>
