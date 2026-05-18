@@ -95,31 +95,25 @@ export function SegmentItemsBadges({
   const tx = (b.x - a.x) / segLen;
   const ty = (b.y - a.y) / segLen;
 
-  // Умный размер иконки: пропорционально длине стены на экране
+  // Умный размер иконки: пропорционально длине стены в SVG-пикселях
   const n = items.length;
+  const z = Math.max(zoom, 0.1);
 
-  // Длина стены в экранных пикселях
-  const segLenPx = segLen * Math.max(zoom, 0.1);
-
-  // Вписываем n иконок + зазоры (25% от S) в 60% длины стены
-  // totalW = S * n + S*0.25*(n-1) = S*(n + 0.25*(n-1))
-  // totalW = segLenPx * 0.60 → S = segLenPx * 0.60 / (n + 0.25*(n-1))
+  // Вписываем n иконок + зазоры в 50% длины стены (в SVG-единицах, зум-независимо)
+  // S * (n + 0.25*(n-1)) = segLen * 0.50
   const denom = n + 0.25 * (n - 1);
-  const fitS_PX = segLenPx * 0.60 / denom;
+  const fitS = segLen * 0.50 / denom; // SVG-координаты
 
-  // Ограничения: не меньше 8px (показываем даже на коротких стенах) и не больше 48px
-  const MAX_S_PX = 48;
-  const MIN_S_PX = 8;
+  // Ограничения в SVG-пикселях: max = 28px экранных / zoom, min = 6px экранных / zoom
+  const MAX_S = 28 / z;
+  const MIN_S = 6 / z;
 
-  // Прячем только если совсем не влезает (< 8px)
-  if (fitS_PX < MIN_S_PX) return null;
+  if (fitS < MIN_S) return null;
 
-  const S_PX = Math.min(MAX_S_PX, fitS_PX);
-  const S    = S_PX / Math.max(zoom, 0.1); // SVG-координаты
+  const S   = Math.min(MAX_S, fitS);
   const GAP = S * 0.25;
-  // Отступ от стены: фиксированный 20px экранных, не зависит от размера иконки
-  // Это предотвращает перекрытие лейбла длины
-  const OFF = 20 / Math.max(zoom, 0.1);
+  // Отступ от стены: S/2 + 4px экранных — иконки не налезают на линию стены
+  const OFF = S / 2 + 4 / z;
 
   const cx = mid.x - nx * OFF;
   const cy = mid.y - ny * OFF;
