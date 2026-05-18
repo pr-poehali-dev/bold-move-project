@@ -178,7 +178,7 @@ export default function DrawerPlanTab({ chatId, projectId }: Props) {
         {/* Переключатель Вид 1 / Вид 2 */}
         <div className="flex rounded-xl overflow-hidden" style={{ border: `1px solid ${t.border}` }}>
           <button
-            onClick={() => { setViewMode(1); setShareMode(false); setShareUrl(null); }}
+            onClick={() => setViewMode(1)}
             className="flex items-center justify-center gap-1.5 px-3 py-2.5 text-xs font-bold transition"
             style={{
               background: viewMode === 1 ? "rgba(124,58,237,0.25)" : "rgba(255,255,255,0.04)",
@@ -190,41 +190,40 @@ export default function DrawerPlanTab({ chatId, projectId }: Props) {
             Вид 1
           </button>
           <button
-            onClick={() => {
-              setViewMode(2);
-              setShareMode(true);
-              if (selectedIds.size === 0) setSelectedIds(new Set(rooms.map(r => r.id)));
-              setShareUrl(null);
-            }}
+            onClick={() => setViewMode(2)}
             className="flex items-center justify-center gap-1.5 px-3 py-2.5 text-xs font-bold transition"
             style={{
               background: viewMode === 2 ? "rgba(124,58,237,0.25)" : "rgba(255,255,255,0.04)",
               color: viewMode === 2 ? "#a78bfa" : t.textMute,
             }}
           >
-            <Icon name="Share2" size={13} />
+            <Icon name="LayoutGrid" size={13} />
             Вид 2
           </button>
         </div>
 
-        {/* Иконка поделиться (только в Виде 2) */}
-        {viewMode === 2 && (
-          <button
-            onClick={handleShare}
-            disabled={sharing || selectedIds.size === 0}
-            className="flex items-center justify-center w-11 rounded-xl transition hover:brightness-110 active:scale-[0.97] disabled:opacity-40"
-            style={{ background: "rgba(124,58,237,0.15)", border: "1px solid rgba(124,58,237,0.3)" }}
-            title="Поделиться"
-          >
-            {sharing
-              ? <div className="w-4 h-4 border-2 border-purple-400/30 border-t-purple-400 rounded-full animate-spin" />
-              : <Icon name="Share2" size={16} style={{ color: "#a78bfa" }} />}
-          </button>
-        )}
+        {/* Иконка поделиться — всегда */}
+        <button
+          onClick={() => {
+            setShareMode(m => {
+              if (!m && selectedIds.size === 0) setSelectedIds(new Set(rooms.map(r => r.id)));
+              return !m;
+            });
+            setShareUrl(null);
+          }}
+          className="flex items-center justify-center w-11 rounded-xl transition hover:brightness-110 active:scale-[0.97]"
+          style={{
+            background: shareMode ? "rgba(124,58,237,0.25)" : "rgba(255,255,255,0.06)",
+            border: shareMode ? "1px solid rgba(124,58,237,0.4)" : `1px solid ${t.border}`,
+          }}
+          title="Поделиться"
+        >
+          <Icon name="Share2" size={16} style={{ color: shareMode ? "#a78bfa" : t.textMute }} />
+        </button>
       </div>
 
-      {/* Панель шаринга (Вид 2) */}
-      {viewMode === 2 && (
+      {/* Панель шаринга */}
+      {shareMode && (
         <PlanSharePanel
           selectedCount={selectedIds.size}
           totalCount={rooms.length}
@@ -243,23 +242,24 @@ export default function DrawerPlanTab({ chatId, projectId }: Props) {
           <Icon name="FileQuestion" size={28} style={{ color: t.textMute }} />
           <p className="text-xs" style={{ color: t.textMute }}>Комнаты ещё не добавлены</p>
         </div>
-      ) : (
+      ) : viewMode === 1 ? (
+        /* ── Вид 1: большие карточки ── */
         <div className="flex flex-col gap-3">
           <div className="flex items-center justify-between">
             <p className="text-[11px] font-bold uppercase tracking-widest" style={{ color: t.textMute }}>
               Чертежи ({rooms.length})
             </p>
-            {viewMode === 2 && (
+            {shareMode && (
               <button
-                onClick={() => { setViewMode(1); setShareMode(false); setShareUrl(null); setSelectedIds(new Set(rooms.map(r => r.id))); }}
-                className="text-[11px] font-semibold transition"
+                onClick={() => { setShareMode(false); setShareUrl(null); setSelectedIds(new Set(rooms.map(r => r.id))); }}
+                className="text-[11px] font-semibold"
                 style={{ color: t.textMute }}
               >
                 Отменить
               </button>
             )}
           </div>
-          {viewMode === 1 && (
+          {!shareMode && (
             <p className="text-[11px] md:hidden" style={{ color: t.textMute, opacity: 0.5 }}>
               Удерживайте карточку чтобы выбрать
             </p>
@@ -269,12 +269,49 @@ export default function DrawerPlanTab({ chatId, projectId }: Props) {
               key={room.id}
               room={room}
               isSelected={selectedIds.has(room.id)}
-              shareMode={viewMode === 2}
+              shareMode={shareMode}
               onOpen={openRoom}
               onToggleSelect={toggleSelect}
               onActivateShareMode={activateShareMode}
             />
           ))}
+        </div>
+      ) : (
+        /* ── Вид 2: компактная сетка 2 колонки ── */
+        <div className="flex flex-col gap-3">
+          <p className="text-[11px] font-bold uppercase tracking-widest" style={{ color: t.textMute }}>
+            Чертежи ({rooms.length})
+          </p>
+          <div className="grid grid-cols-2 gap-2">
+            {rooms.map(room => {
+              const thumb = room.active_variant_thumbnail || room.thumbnail;
+              return (
+                <button
+                  key={room.id}
+                  onClick={() => openRoom(room)}
+                  className="rounded-xl overflow-hidden text-left transition active:scale-[0.98]"
+                  style={{ border: `1px solid ${t.border}`, background: t.surface }}
+                >
+                  <div
+                    className="w-full flex items-center justify-center bg-white"
+                    style={{ height: 120 }}
+                  >
+                    {thumb ? (
+                      <img src={thumb} alt={room.name} className="w-full h-full object-contain" style={{ padding: 8 }} />
+                    ) : (
+                      <Icon name="LayoutDashboard" size={28} style={{ color: t.textMute, opacity: 0.3 }} />
+                    )}
+                  </div>
+                  <div className="px-2 py-1.5" style={{ borderTop: `1px solid ${t.border}` }}>
+                    <p className="text-xs font-semibold truncate" style={{ color: t.text }}>{room.name}</p>
+                    {room.active_variant_name && (
+                      <p className="text-[10px] truncate mt-0.5" style={{ color: t.textMute }}>{room.active_variant_name}</p>
+                    )}
+                  </div>
+                </button>
+              );
+            })}
+          </div>
         </div>
       )}
 
