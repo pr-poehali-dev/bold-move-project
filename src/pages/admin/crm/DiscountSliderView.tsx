@@ -268,7 +268,7 @@ export function DiscountSliderView({
           </div>
         )}
         <button
-          onClick={onApplyDiscount}
+          onClick={() => onApplyDiscount()}
           disabled={discount === 0 || isRealLoss || isOverMax || applying}
           className="w-full flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl text-[11px] font-bold transition disabled:opacity-30 disabled:cursor-not-allowed hover:opacity-80"
           style={{ background: "rgba(245,158,11,0.15)", color: "#f59e0b", border: "1px solid rgba(245,158,11,0.3)" }}>
