@@ -100,11 +100,8 @@ export function SegmentItemsBadges({
   const z = Math.max(zoom, 0.1);
   const wallCm = seg.lengthCm ?? null;
 
-  // Показываем иконки на всех стенах от 10 до 1000+ см
-  // Плавное появление: 10–50 см → opacity от 0.2 до 1.0
-  const fadeOpacity = wallCm !== null
-    ? Math.max(0.2, Math.min(1, (wallCm - 10) / (50 - 10) * 0.8 + 0.2))
-    : 1;
+  // Все иконки полностью видимы
+  const fadeOpacity = 1;
 
   // Размер иконки растёт линейно с длиной стены:
   // wallCm 50 → S ~20px, wallCm 200 → S ~32px, wallCm 500 → S ~48px, wallCm 1000+ → S ~60px
