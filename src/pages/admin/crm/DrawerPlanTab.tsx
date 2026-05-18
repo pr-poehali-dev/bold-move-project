@@ -243,7 +243,7 @@ export default function DrawerPlanTab({ chatId, projectId }: Props) {
           <p className="text-xs" style={{ color: t.textMute }}>Комнаты ещё не добавлены</p>
         </div>
       ) : viewMode === 1 ? (
-        /* ── Вид 1: большие карточки (PlanRoomCard) ── */
+        /* ── Вид 1: большие карточки, белый фон превью ── */
         <div className="flex flex-col gap-3">
           <div className="flex items-center justify-between">
             <p className="text-[11px] font-bold uppercase tracking-widest" style={{ color: t.textMute }}>
@@ -270,6 +270,7 @@ export default function DrawerPlanTab({ chatId, projectId }: Props) {
               room={room}
               isSelected={selectedIds.has(room.id)}
               shareMode={shareMode}
+              darkBg={false}
               onOpen={openRoom}
               onToggleSelect={toggleSelect}
               onActivateShareMode={activateShareMode}
@@ -277,7 +278,7 @@ export default function DrawerPlanTab({ chatId, projectId }: Props) {
           ))}
         </div>
       ) : (
-        /* ── Вид 2: сетка 2 колонки с PlanRoomCard (тёмный стиль построителя) ── */
+        /* ── Вид 2: сетка 2 колонки, тёмный фон как в построителе ── */
         <div className="flex flex-col gap-3">
           <p className="text-[11px] font-bold uppercase tracking-widest" style={{ color: t.textMute }}>
             Чертежи ({rooms.length})
@@ -289,6 +290,7 @@ export default function DrawerPlanTab({ chatId, projectId }: Props) {
                 room={room}
                 isSelected={selectedIds.has(room.id)}
                 shareMode={shareMode}
+                darkBg={true}
                 onOpen={openRoom}
                 onToggleSelect={toggleSelect}
                 onActivateShareMode={activateShareMode}

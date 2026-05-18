@@ -8,12 +8,13 @@ interface Props {
   room: PlanRoom;
   isSelected: boolean;
   shareMode: boolean;
+  darkBg?: boolean;
   onOpen: (room: PlanRoom) => void;
   onToggleSelect: (id: number) => void;
   onActivateShareMode: (roomId: number) => void;
 }
 
-export default function PlanRoomCard({ room, isSelected, shareMode, onOpen, onToggleSelect, onActivateShareMode }: Props) {
+export default function PlanRoomCard({ room, isSelected, shareMode, darkBg = true, onOpen, onToggleSelect, onActivateShareMode }: Props) {
   const t = useTheme();
   const preview = getRoomThumb(room);
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -74,7 +75,7 @@ export default function PlanRoomCard({ room, isSelected, shareMode, onOpen, onTo
           />
         )}
 
-        <div className="w-full flex items-center justify-center" style={{ height: 180, background: "rgba(124,58,237,0.07)" }}>
+        <div className="w-full flex items-center justify-center" style={{ height: 180, background: darkBg ? "rgba(124,58,237,0.07)" : "#ffffff" }}>
           {preview ? (
             <img
               src={preview}
