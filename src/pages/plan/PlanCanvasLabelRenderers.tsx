@@ -107,38 +107,40 @@ export function SegmentItemsBadges({
     : 1;
 
   // Размер иконки растёт линейно с длиной стены:
-  // wallCm 10 → S ~8px, wallCm 100 → S ~20px, wallCm 500 → S ~44px, wallCm 1000+ → S ~60px
+  // wallCm 50 → S ~20px, wallCm 200 → S ~32px, wallCm 500 → S ~48px, wallCm 1000+ → S ~60px
   const MAX_S_PX = 60;
-  const MIN_S_PX = 8;
-  // Линейная интерполяция от 10см до 1000см
+  const MIN_S_PX = 20;
+  // Линейная интерполяция от 50см до 1000см
   const cmForSize = wallCm ?? 200;
-  const t = Math.max(0, Math.min(1, (cmForSize - 10) / (1000 - 10)));
+  const t = Math.max(0, Math.min(1, (cmForSize - 50) / (1000 - 50)));
   const targetS_PX = MIN_S_PX + (MAX_S_PX - MIN_S_PX) * t;
   const targetS = targetS_PX / z;
 
-  // Также ограничиваем по длине стены — все иконки должны влезть в 50% длины
-  const denom = n + 0.25 * (n - 1);
-  const fitS = segLen * 0.50 / denom;
-
-  const S   = Math.min(targetS, fitS);
+  // Ограничение по длине стены не применяем — иконки могут торчать наружу для коротких
+  const S   = targetS;
   const GAP = S * 0.25;
 
-  // Иконки занимают максимум 70% длины стены — чтобы не наезжать на лейблы соседних
   const totalW = n * S + (n - 1) * GAP;
-  if (totalW > segLen * 0.70) {
-    // Если не влезают — рисуем но с пониженной прозрачностью
-    // (только при S больше 4px, иначе совсем прячем)
-    if (S * z < 4) return null;
-  }
 
-  // Отступ от стены: 30px экранных внутрь полигона
-  // Это гарантирует что иконки не перекрывают лейбл длины (который снаружи)
-  const OFF = S / 2 + 30 / z;
+  // Отступ от стены увеличивается для коротких стен — чтобы не перекрывать лейбл длины (он в центре)
+  // wallCm 10 → OFF большой (далеко от стены)
+  // wallCm 200+ → OFF стандартный (близко к стене)
+  const isShortWall = wallCm !== null && wallCm < 150;
+  const extraOff = isShortWall ? (150 - (wallCm ?? 150)) * 0.5 / z : 0;
+  const OFF = S / 2 + 30 / z + extraOff;
 
   const cx = mid.x - nx * OFF;
   const cy = mid.y - ny * OFF;
 
-  const startOffset = -totalW / 2 + S / 2;
+  // Если иконки шире стены — сдвигаем их вдоль стены (не центрируем)
+  // Лейбл длины в центре, иконки сдвигаем к одному из концов
+  let startOffset = -totalW / 2 + S / 2;
+  if (totalW > segLen * 0.7) {
+    // Сдвигаем иконки в сторону, чтобы не накладывались на лейбл в центре
+    // Сдвигаем на расстояние = половина totalW + половина ширины лейбла (~25px)
+    const shift = totalW / 2 + 25 / z;
+    startOffset = shift - totalW / 2 + S / 2;
+  }
 
   return (
     <g key={`seg-items-${seg.id}`} style={{ opacity: fadeOpacity, transition: "opacity 0.2s ease" }}>
