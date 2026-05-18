@@ -2,7 +2,6 @@ import { useTheme } from "./themeContext";
 import Icon from "@/components/ui/icon";
 import { EstimateBlock, PlanRoomForEstimate, PriceItem, SavedEstimate, fmt, pricingRules } from "./estimateTypes";
 import EstimateItemRow from "./EstimateItemRow";
-import PlanRoomPreview from "@/pages/plan/PlanRoomPreview";
 
 interface Props {
   blocks: EstimateBlock[];
@@ -118,43 +117,7 @@ export default function EstimateTable({
         )}
       </div>
 
-      {/* Чертежи комнат из плана */}
-      {planRooms.length > 0 && (
-        <div className="rounded-2xl overflow-hidden" style={{ border: `1px solid ${t.border}` }}>
-          <div className="px-3 py-2.5 flex items-center gap-2" style={{ background: t.surface2, borderBottom: `1px solid ${t.border}` }}>
-            <Icon name="LayoutDashboard" size={13} style={{ color: t.textMute }} />
-            <span className="text-xs font-bold uppercase tracking-wider" style={{ color: t.textMute }}>Чертежи комнат</span>
-          </div>
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-px" style={{ background: t.border }}>
-            {planRooms.map(room => {
-              const drawData = room.active_variant_data ?? room.data;
-              const variantName = room.active_variant_name;
-              const hasVariant = !!room.active_variant_id;
-              return (
-                <div key={room.id} className="flex flex-col" style={{ background: t.bg }}>
-                  <div className="relative" style={{ height: 140 }}>
-                    <PlanRoomPreview data={drawData ?? {}} width={300} height={140} />
-                    {hasVariant && (
-                      <div
-                        className="absolute top-2 left-2 px-2 py-0.5 rounded-lg text-[10px] font-bold"
-                        style={{ background: "rgba(124,58,237,0.85)", color: "#fff" }}
-                      >
-                        {variantName}
-                      </div>
-                    )}
-                  </div>
-                  <div className="px-3 py-2 flex items-center gap-2" style={{ borderTop: `1px solid ${t.border}` }}>
-                    <span className="flex-1 text-xs font-semibold truncate" style={{ color: t.text }}>{room.name}</span>
-                    {!room.include_in_estimate && (
-                      <span className="text-[10px]" style={{ color: t.textMute }}>не в смете</span>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
+
     </>
   );
 }

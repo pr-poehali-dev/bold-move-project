@@ -23,6 +23,9 @@ export default function DrawerPlanTab({ chatId, projectId }: Props) {
   const [fullscreenRoom, setFullscreenRoom] = useState<PlanRoom | null>(null);
   const rebuiltRef = useRef<Set<number>>(new Set());
 
+  // View mode: 1 = карточки (текущий вид), 2 = режим шаринга
+  const [viewMode, setViewMode] = useState<1 | 2>(1);
+
   // Sharing
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [shareMode, setShareMode] = useState(false);
@@ -162,6 +165,7 @@ export default function DrawerPlanTab({ chatId, projectId }: Props) {
 
       {/* Кнопки управления */}
       <div className="flex gap-2">
+        {/* В построителе */}
         <button
           onClick={openInPlan}
           className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold transition hover:brightness-110 active:scale-[0.98]"
@@ -170,30 +174,57 @@ export default function DrawerPlanTab({ chatId, projectId }: Props) {
           <Icon name="Layers2" size={15} />
           В построителе
         </button>
-        <button
-          onClick={() => {
-            setShareMode(m => {
-              if (!m && selectedIds.size === 0) {
-                setSelectedIds(new Set(rooms.map(r => r.id)));
-              }
-              return !m;
-            });
-            setShareUrl(null);
-          }}
-          className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition hover:brightness-110 active:scale-[0.98]"
-          style={{
-            background: shareMode ? "rgba(124,58,237,0.25)" : "rgba(255,255,255,0.07)",
-            color: shareMode ? "#a78bfa" : t.textMute,
-            border: shareMode ? "1px solid rgba(124,58,237,0.4)" : `1px solid ${t.border}`,
-          }}
-        >
-          <Icon name="Share2" size={15} />
-          Поделиться
-        </button>
+
+        {/* Переключатель Вид 1 / Вид 2 */}
+        <div className="flex rounded-xl overflow-hidden" style={{ border: `1px solid ${t.border}` }}>
+          <button
+            onClick={() => { setViewMode(1); setShareMode(false); setShareUrl(null); }}
+            className="flex items-center justify-center gap-1.5 px-3 py-2.5 text-xs font-bold transition"
+            style={{
+              background: viewMode === 1 ? "rgba(124,58,237,0.25)" : "rgba(255,255,255,0.04)",
+              color: viewMode === 1 ? "#a78bfa" : t.textMute,
+              borderRight: `1px solid ${t.border}`,
+            }}
+          >
+            <Icon name="LayoutList" size={13} />
+            Вид 1
+          </button>
+          <button
+            onClick={() => {
+              setViewMode(2);
+              setShareMode(true);
+              if (selectedIds.size === 0) setSelectedIds(new Set(rooms.map(r => r.id)));
+              setShareUrl(null);
+            }}
+            className="flex items-center justify-center gap-1.5 px-3 py-2.5 text-xs font-bold transition"
+            style={{
+              background: viewMode === 2 ? "rgba(124,58,237,0.25)" : "rgba(255,255,255,0.04)",
+              color: viewMode === 2 ? "#a78bfa" : t.textMute,
+            }}
+          >
+            <Icon name="Share2" size={13} />
+            Вид 2
+          </button>
+        </div>
+
+        {/* Иконка поделиться (только в Виде 2) */}
+        {viewMode === 2 && (
+          <button
+            onClick={handleShare}
+            disabled={sharing || selectedIds.size === 0}
+            className="flex items-center justify-center w-11 rounded-xl transition hover:brightness-110 active:scale-[0.97] disabled:opacity-40"
+            style={{ background: "rgba(124,58,237,0.15)", border: "1px solid rgba(124,58,237,0.3)" }}
+            title="Поделиться"
+          >
+            {sharing
+              ? <div className="w-4 h-4 border-2 border-purple-400/30 border-t-purple-400 rounded-full animate-spin" />
+              : <Icon name="Share2" size={16} style={{ color: "#a78bfa" }} />}
+          </button>
+        )}
       </div>
 
-      {/* Панель шаринга */}
-      {shareMode && (
+      {/* Панель шаринга (Вид 2) */}
+      {viewMode === 2 && (
         <PlanSharePanel
           selectedCount={selectedIds.size}
           totalCount={rooms.length}
@@ -218,9 +249,9 @@ export default function DrawerPlanTab({ chatId, projectId }: Props) {
             <p className="text-[11px] font-bold uppercase tracking-widest" style={{ color: t.textMute }}>
               Чертежи ({rooms.length})
             </p>
-            {shareMode && (
+            {viewMode === 2 && (
               <button
-                onClick={cancelShareMode}
+                onClick={() => { setViewMode(1); setShareMode(false); setShareUrl(null); setSelectedIds(new Set(rooms.map(r => r.id))); }}
                 className="text-[11px] font-semibold transition"
                 style={{ color: t.textMute }}
               >
@@ -228,7 +259,7 @@ export default function DrawerPlanTab({ chatId, projectId }: Props) {
               </button>
             )}
           </div>
-          {!shareMode && (
+          {viewMode === 1 && (
             <p className="text-[11px] md:hidden" style={{ color: t.textMute, opacity: 0.5 }}>
               Удерживайте карточку чтобы выбрать
             </p>
@@ -238,7 +269,7 @@ export default function DrawerPlanTab({ chatId, projectId }: Props) {
               key={room.id}
               room={room}
               isSelected={selectedIds.has(room.id)}
-              shareMode={shareMode}
+              shareMode={viewMode === 2}
               onOpen={openRoom}
               onToggleSelect={toggleSelect}
               onActivateShareMode={activateShareMode}
