@@ -34,7 +34,7 @@ export default function ClientDrawer({ client, allClientOrders, onClose, onUpdat
   const [data, setData]               = useState<Client>(client);
   const [saving, setSaving]           = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
-  const [drawerTab, setDrawerTab]     = useState<"client" | "orders" | "estimate" | "plan">(defaultTab as "client" | "orders" | "estimate" | "plan");
+  const [drawerTab, setDrawerTab]     = useState<"client" | "orders" | "plan">(defaultTab as "client" | "orders" | "plan");
   const [comments, setComments]       = useState<{ text: string; date: string }[]>([]);
   const [editingTitle, setEditingTitle] = useState(false);
   const [copied, setCopied]           = useState(false);
