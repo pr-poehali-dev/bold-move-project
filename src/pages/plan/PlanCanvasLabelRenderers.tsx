@@ -104,6 +104,11 @@ export function SegmentItemsBadges({
   // На таких стенах иконки заезжают на поля ввода соседних стен
   if (wallCm !== null && wallCm < 120) return null;
 
+  // Плавное появление: 120–180 см → opacity от 0 до 1
+  const fadeOpacity = wallCm !== null
+    ? Math.max(0, Math.min(1, (wallCm - 120) / (180 - 120)))
+    : 1;
+
   // Размер иконки растёт линейно с длиной стены:
   // wallCm 120 → S ~18px, wallCm 300 → S ~36px, wallCm 500+ → S ~52px (макс)
   const MAX_S_PX = 52;
@@ -137,7 +142,7 @@ export function SegmentItemsBadges({
   const startOffset = -totalW / 2 + S / 2;
 
   return (
-    <g key={`seg-items-${seg.id}`}>
+    <g key={`seg-items-${seg.id}`} style={{ opacity: fadeOpacity, transition: "opacity 0.2s ease" }}>
       {items.map((item, idx) => {
         const offset = startOffset + idx * (S + GAP);
         const px = cx + tx * offset;
