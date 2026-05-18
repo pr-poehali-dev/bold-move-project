@@ -7,6 +7,9 @@ import { FormData, EMPTY_FORM } from "./PlanProjectsConstants";
 import PlanProjectForm from "./PlanProjectForm";
 import PlanProjectsSearchBar from "./PlanProjectsSearchBar";
 import PlanProjectCard from "./PlanProjectCard";
+import func2url from "@/../backend/func2url.json";
+
+const CRM_URL = (func2url as Record<string, string>)["crm-manager"];
 
 interface Props {
   token?: string | null;
@@ -110,10 +113,25 @@ export default function PlanProjectsScreen({ token, onSelectProject, initialProj
   };
 
   // ── Перейти в CRM ────────────────────────────────────────────────────────────
-  const handleCrm = (p: PlanProject) => {
+  const handleCrm = async (p: PlanProject) => {
     if (p.crm_chat_id) {
       window.open(`/company?order=${p.crm_chat_id}`, "_blank");
+      return;
     }
+    // Нет связи — создаём заявку в CRM через пересоздание проекта
+    if (!confirm(`Создать заявку в CRM для проекта "${p.name}"?`)) return;
+    try {
+      const res = await fetch(`${CRM_URL}?r=plan-crm-link&project_id=${p.id}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
+        body: JSON.stringify({}),
+      });
+      const data = await res.json();
+      if (data.crm_chat_id) {
+        await loadProjects();
+        window.open(`/company?order=${data.crm_chat_id}`, "_blank");
+      }
+    } catch { /* ignore */ }
   };
 
   // ── Удалить ──────────────────────────────────────────────────────────────────

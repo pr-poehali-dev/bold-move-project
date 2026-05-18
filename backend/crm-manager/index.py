@@ -1219,6 +1219,39 @@ def handler(event: dict, context) -> dict:
                 conn.commit()
                 return ok({"synced": True, "project_id": int(pid), "crm_chat_id": chat_id})
 
+        # ── PLAN-CRM-LINK — создать CRM-заявку для существующего проекта ─────────
+        if resource == "plan-crm-link":
+            if method == "POST":
+                pid = qs.get("project_id") or body.get("project_id")
+                if not pid: return err("project_id required")
+                insert_cmp = master_uid if (company_id is None or company_id == 0) else company_id
+                # Берём проект (мастер видит все)
+                cur.execute(f"SELECT id, name, client_name, phone, address, crm_chat_id FROM {SCHEMA}.plan_projects WHERE id=%s", (int(pid),))
+                row = cur.fetchone()
+                if not row: return err("project not found", 404)
+                proj_id, proj_name, client_name, phone, address, existing_chat = row
+                if existing_chat:
+                    return ok({"crm_chat_id": existing_chat, "already_linked": True})
+                # Создаём заявку
+                session_id = f"plan-{proj_id}"
+                cur.execute(f"""
+                    INSERT INTO {SCHEMA}.live_chats
+                        (session_id, client_name, phone, address, status, source, company_id, project_id)
+                    VALUES (%s,%s,%s,%s,'new','plan',%s,%s) RETURNING id
+                """, (session_id, client_name or proj_name, phone, address, insert_cmp, proj_id))
+                chat_id = cur.fetchone()[0]
+                cur.execute(f"UPDATE {SCHEMA}.plan_projects SET crm_chat_id=%s, company_id=%s WHERE id=%s", (chat_id, insert_cmp, proj_id))
+                # Канбан
+                cur.execute(f"SELECT id FROM {SCHEMA}.kanban_columns WHERE title='С построителя' AND company_id=%s LIMIT 1", (insert_cmp,))
+                col_row = cur.fetchone()
+                if col_row:
+                    cur.execute(f"SELECT COALESCE(MAX(position)+1,0) FROM {SCHEMA}.kanban_cards WHERE column_id=%s AND company_id=%s", (col_row[0], insert_cmp))
+                    pos = cur.fetchone()[0]
+                    cur.execute(f"INSERT INTO {SCHEMA}.kanban_cards (column_id, client_id, title, phone, priority, position, company_id) VALUES (%s,%s,%s,%s,'medium',%s,%s)",
+                        (col_row[0], chat_id, proj_name, phone or "", pos, insert_cmp))
+                conn.commit()
+                return ok({"crm_chat_id": chat_id})
+
         return err("unknown resource", 404)
 
     except Exception as e:

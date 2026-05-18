@@ -220,7 +220,7 @@ export default function PlanProjectCard({
 
           {/* Правая часть */}
           <div className="flex-1 min-w-0">
-            <div className="px-4 py-3.5 flex items-center gap-3" style={{ minHeight: 90 }}>
+            <div className="px-4 py-3.5 flex items-center gap-3" style={{ minHeight: 110 }}>
               <button
                 className="flex items-start gap-3 flex-1 min-w-0 text-left hover:opacity-90 transition active:scale-[0.99]"
                 onClick={() => onSelect(project)}
