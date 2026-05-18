@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { useTheme } from "./themeContext";
 import Icon from "@/components/ui/icon";
 import { EstimateBlock, PlanRoomForEstimate, PriceItem, SavedEstimate, fmt, pricingRules, parseValue } from "./estimateTypes";
@@ -24,6 +24,11 @@ export default function EstimateTable({
   const t = useTheme();
   const [perRoom, setPerRoom] = useState(false);
   const chosen = estimate.chosen_tier;
+  const [confirmReset, setConfirmReset] = useState(false);
+
+  const handleResetClick = useCallback(() => setConfirmReset(true), []);
+  const handleResetConfirm = useCallback(() => { setConfirmReset(false); onChooseTier(null); }, [onChooseTier]);
+  const handleResetCancel  = useCallback(() => setConfirmReset(false), []);
 
   const blockTotal = (block: EstimateBlock) =>
     block.items.reduce((s, item) => {
@@ -41,14 +46,21 @@ export default function EstimateTable({
     <div className="rounded-2xl p-4" style={{ background: t.surface2, border: `1px solid ${t.border}` }}>
       <div className="flex items-center justify-between mb-3">
         <div className="text-xs font-bold uppercase tracking-wider" style={{ color: t.textMute }}>Итого</div>
-        {chosen && (
+        {chosen && !confirmReset && (
           <button
-            onClick={() => onChooseTier(null)}
+            onClick={handleResetClick}
             className="text-[10px] font-semibold flex items-center gap-1 transition hover:opacity-70"
             style={{ color: t.textMute }}
           >
             <Icon name="X" size={10} /> Сбросить выбор
           </button>
+        )}
+        {chosen && confirmReset && (
+          <div className="flex items-center gap-2">
+            <span className="text-[10px]" style={{ color: t.textMute }}>Сбросить согласование?</span>
+            <button onClick={handleResetConfirm} className="text-[10px] font-bold px-2 py-0.5 rounded-lg transition" style={{ background: "#ef444420", color: "#ef4444" }}>Да</button>
+            <button onClick={handleResetCancel}  className="text-[10px] font-bold px-2 py-0.5 rounded-lg transition" style={{ background: t.surface, color: t.textMute }}>Нет</button>
+          </div>
         )}
       </div>
       <div className="space-y-2">
@@ -187,21 +199,27 @@ export default function EstimateTable({
                     )}
                   </tbody>
                 </table>
-                {/* Итоги по комнате */}
+                {/* Итоги по комнате — только выбранный тир если согласовано */}
                 {roomTotal > 0 && (
                   <div className="px-3 py-2.5 space-y-1" style={{ borderTop: `1px solid ${t.border}`, background: t.surface2 + "50" }}>
-                    <div className="flex justify-between text-xs">
-                      <span style={{ color: t.textMute }}>{pricingRules.econom_label}</span>
-                      <span style={{ color: "#10b981" }}>{fmt(econom)} ₽</span>
-                    </div>
-                    <div className="flex justify-between text-xs font-bold">
-                      <span style={{ color: t.textMute }}>{pricingRules.standard_label}</span>
-                      <span style={{ color: "#f97316" }}>{fmt(roomTotal)} ₽</span>
-                    </div>
-                    <div className="flex justify-between text-xs">
-                      <span style={{ color: t.textMute }}>{pricingRules.premium_label}</span>
-                      <span style={{ color: "#8b5cf6" }}>{fmt(premium)} ₽</span>
-                    </div>
+                    {(!chosen || chosen === "econom") && (
+                      <div className="flex justify-between text-xs" style={{ fontWeight: chosen === "econom" ? 700 : 400 }}>
+                        <span style={{ color: chosen === "econom" ? "#10b981" : t.textMute }}>{pricingRules.econom_label}</span>
+                        <span style={{ color: "#10b981" }}>{fmt(econom)} ₽</span>
+                      </div>
+                    )}
+                    {(!chosen || chosen === "standard") && (
+                      <div className="flex justify-between text-xs" style={{ fontWeight: chosen === "standard" ? 700 : 400 }}>
+                        <span style={{ color: chosen === "standard" ? "#f97316" : t.textMute }}>{pricingRules.standard_label}</span>
+                        <span style={{ color: "#f97316" }}>{fmt(roomTotal)} ₽</span>
+                      </div>
+                    )}
+                    {(!chosen || chosen === "premium") && (
+                      <div className="flex justify-between text-xs" style={{ fontWeight: chosen === "premium" ? 700 : 400 }}>
+                        <span style={{ color: chosen === "premium" ? "#8b5cf6" : t.textMute }}>{pricingRules.premium_label}</span>
+                        <span style={{ color: "#8b5cf6" }}>{fmt(premium)} ₽</span>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
