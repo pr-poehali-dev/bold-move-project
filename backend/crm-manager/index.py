@@ -1225,8 +1225,8 @@ def handler(event: dict, context) -> dict:
                 pid = qs.get("project_id") or body.get("project_id")
                 if not pid: return err("project_id required")
                 insert_cmp = master_uid if (company_id is None or company_id == 0) else company_id
-                # Берём проект (мастер видит все)
-                cur.execute(f"SELECT id, name, client_name, phone, address, crm_chat_id FROM {SCHEMA}.plan_projects WHERE id=%s", (int(pid),))
+                # Берём проект — проверяем владельца
+                cur.execute(f"SELECT id, name, client_name, phone, address, crm_chat_id FROM {SCHEMA}.plan_projects WHERE id=%s AND company_id=%s", (int(pid), insert_cmp))
                 row = cur.fetchone()
                 if not row: return err("project not found", 404)
                 proj_id, proj_name, client_name, phone, address, existing_chat = row
