@@ -72,32 +72,57 @@ export default function PlanSharePage() {
 
   const onTouchStart = (e: React.TouchEvent) => {
     if (e.touches.length === 2) {
-      lastDist.current = Math.hypot(
+      const dist = Math.hypot(
         e.touches[0].clientX - e.touches[1].clientX,
         e.touches[0].clientY - e.touches[1].clientY
       );
+      // Инициализируем только если расстояние разумное
+      lastDist.current = dist > 10 ? dist : 0;
+      lastPan.current = null; // сбрасываем пан при начале пинча
     } else if (e.touches.length === 1) {
+      lastDist.current = 0; // сбрасываем пинч при одном пальце
       lastPan.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
     }
   };
 
   const onTouchMove = (e: React.TouchEvent) => {
     e.preventDefault();
-    if (e.touches.length === 2 && lastDist.current > 0) {
+    if (e.touches.length === 2) {
       const dist = Math.hypot(
         e.touches[0].clientX - e.touches[1].clientX,
         e.touches[0].clientY - e.touches[1].clientY
       );
-      setZoom(z => Math.min(5, Math.max(0.5, z * (dist / lastDist.current))));
+      if (lastDist.current > 10 && dist > 10) {
+        const ratio = dist / lastDist.current;
+        // Защита от безумных скачков — не более 1.5x за одно событие
+        if (ratio > 0.5 && ratio < 2) {
+          setZoom(z => Math.min(5, Math.max(0.5, z * ratio)));
+        }
+      }
       lastDist.current = dist;
-    } else if (e.touches.length === 1 && lastPan.current && zoom > 1) {
-      setPanX(x => x + e.touches[0].clientX - lastPan.current!.x);
-      setPanY(y => y + e.touches[0].clientY - lastPan.current!.y);
+      lastPan.current = null;
+    } else if (e.touches.length === 1 && lastPan.current) {
+      const dx = e.touches[0].clientX - lastPan.current.x;
+      const dy = e.touches[0].clientY - lastPan.current.y;
+      // Защита от телепортации при смене режима
+      if (Math.abs(dx) < 100 && Math.abs(dy) < 100) {
+        setPanX(x => x + dx);
+        setPanY(y => y + dy);
+      }
       lastPan.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
     }
   };
 
-  const onTouchEnd = () => { lastDist.current = 0; lastPan.current = null; };
+  const onTouchEnd = (e: React.TouchEvent) => {
+    if (e.touches.length === 1) {
+      // Остался один палец — переключаемся в режим пана
+      lastDist.current = 0;
+      lastPan.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+    } else if (e.touches.length === 0) {
+      lastDist.current = 0;
+      lastPan.current = null;
+    }
+  };
 
   if (loading) return (
     <div className="min-h-screen flex items-center justify-center bg-white">
