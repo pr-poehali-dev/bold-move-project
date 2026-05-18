@@ -905,11 +905,12 @@ def handler(event: dict, context) -> dict:
                     if not row: return err("not found", 404)
                     cols = [d[0] for d in cur.description]
                     return ok(dict(zip(cols, row)))
+                deleted_prefix = '\u0443\u0434\u0430\u043b\u0435\u043d\u0430'  # "удалена"
                 cur.execute(f"""
                     SELECT p.id, p.company_id, p.name, p.client_name, p.address, p.phone, p.status, p.created_at, p.updated_at,
-                           (SELECT COUNT(*) FROM {SCHEMA}.room_plans r WHERE r.project_id = p.id AND r.name NOT LIKE '[удалена]%') AS rooms_count
+                           (SELECT COUNT(*) FROM {SCHEMA}.room_plans r WHERE r.project_id = p.id AND r.name NOT LIKE %s) AS rooms_count
                     FROM {SCHEMA}.plan_projects p WHERE p.company_id=%s ORDER BY p.updated_at DESC
-                """, (cmp,))
+                """, ('[' + deleted_prefix + ']%', cmp))
                 cols = [d[0] for d in cur.description]
                 return ok([dict(zip(cols, r)) for r in cur.fetchall()])
 
