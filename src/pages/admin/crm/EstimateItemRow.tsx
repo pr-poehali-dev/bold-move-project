@@ -6,12 +6,13 @@ import EstimatePricePicker from "./EstimatePricePicker";
 
 interface Props {
   item: { name: string; value: string };
-  onChange: (name: string, qty: number, price: number, unit: string) => void;
-  onDelete: () => void;
+  onChange?: (name: string, qty: number, price: number, unit: string) => void;
+  onDelete?: () => void;
   prices: PriceItem[];
+  readOnly?: boolean;
 }
 
-export default function EstimateItemRow({ item, onChange, onDelete, prices }: Props) {
+export default function EstimateItemRow({ item, onChange, onDelete, prices, readOnly }: Props) {
   const t = useTheme();
   const parsed = parseValue(item.value);
   const [name,       setName]       = useState(item.name);
@@ -23,7 +24,7 @@ export default function EstimateItemRow({ item, onChange, onDelete, prices }: Pr
   const total = Math.round(parseFloat(qty || "0") * parseInt(price || "0", 10));
 
   const commit = (overrideName?: string, overrideUnit?: string) => {
-    onChange(
+    onChange?.(
       (overrideName ?? name).trim() || item.name,
       parseFloat(qty || "0"),
       parseInt(price || "0", 10),
@@ -36,8 +37,18 @@ export default function EstimateItemRow({ item, onChange, onDelete, prices }: Pr
     setPrice(String(p.price));
     setUnit(p.unit || "шт");
     setShowPicker(false);
-    onChange(p.name, parseFloat(qty || "1"), p.price, p.unit || "шт");
+    onChange?.(p.name, parseFloat(qty || "1"), p.price, p.unit || "шт");
   };
+
+  // Режим просмотра — просто строка
+  if (readOnly) {
+    return (
+      <tr className="border-b" style={{ borderColor: t.border2 }}>
+        <td colSpan={5} className="px-3 py-2 text-sm" style={{ color: t.text }}>{item.name}</td>
+        <td className="px-3 py-2 text-xs text-right whitespace-nowrap" style={{ color: t.textMute }}>{item.value}</td>
+      </tr>
+    );
+  }
 
   return (
     <>

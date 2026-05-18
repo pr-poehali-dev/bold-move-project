@@ -68,6 +68,7 @@ export default function EstimateEditor({ chatId, clientName, clientPhone }: {
   const [totals,    setTotals]    = useState<string[]>([]);
   const [prices,    setPrices]    = useState<PriceItem[]>([]);
   const [planRooms, setPlanRooms] = useState<PlanRoomForEstimate[]>([]);
+  const [editMode,  setEditMode]  = useState(false);
 
   // Пересчёт итогов (вынесен выше loadData чтобы использовать внутри)
   const recalcTotals = (bs: EstimateBlock[]) => {
@@ -250,24 +251,15 @@ export default function EstimateEditor({ chatId, clientName, clientPhone }: {
     </div>
   );
 
-  // Создать смету из автоблоков (когда estimate=null но есть planRooms)
+  // Создать смету из автоблоков через crm-manager (не требует клиентского токена)
   const createEstimateFromPlan = async () => {
     if (blocks.length === 0) return;
     setSaving(true);
     try {
-      const res = await fetch(`${AUTH_URL}?action=save-estimate`, {
+      const data = await crmFetch("create-estimate-for-chat", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          chat_id: chatId,
-          blocks,
-          totals,
-          client_name: clientName ?? "",
-          phone: clientPhone ?? "",
-          final_phrase: "",
-        }),
-      });
-      const data = await res.json();
+        body: JSON.stringify({ chat_id: chatId, blocks, totals }),
+      }) as { ok?: boolean; estimate_id?: number };
       if (data.ok || data.estimate_id) {
         await loadData();
       }
@@ -357,17 +349,30 @@ export default function EstimateEditor({ chatId, clientName, clientPhone }: {
           <button onClick={printEstimate}
             className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-semibold transition"
             style={{ background: t.surface2, color: t.textSub, border: `1px solid ${t.border}` }}>
-            <Icon name="Printer" size={13} /> Печать / PDF
+            <Icon name="Printer" size={13} /> PDF
           </button>
-          <button onClick={saveEstimate} disabled={saving}
-            className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold text-white transition disabled:opacity-50"
-            style={{ background: saved ? "#10b981" : "#7c3aed" }}>
-            {saving
-              ? <><div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" /> Сохранение...</>
-              : saved
-              ? <><Icon name="CheckCircle2" size={13} /> Сохранено</>
-              : <><Icon name="Save" size={13} /> Сохранить</>}
+          <button
+            onClick={() => setEditMode(m => !m)}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-semibold transition"
+            style={{
+              background: editMode ? "rgba(124,58,237,0.2)" : t.surface2,
+              color: editMode ? "#a78bfa" : t.textSub,
+              border: `1px solid ${editMode ? "rgba(124,58,237,0.4)" : t.border}`,
+            }}>
+            <Icon name={editMode ? "Eye" : "Pencil"} size={13} />
+            {editMode ? "Просмотр" : "Редактировать"}
           </button>
+          {editMode && (
+            <button onClick={saveEstimate} disabled={saving}
+              className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold text-white transition disabled:opacity-50"
+              style={{ background: saved ? "#10b981" : "#7c3aed" }}>
+              {saving
+                ? <><div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" /> Сохранение...</>
+                : saved
+                ? <><Icon name="CheckCircle2" size={13} /> Сохранено</>
+                : <><Icon name="Save" size={13} /> Сохранить</>}
+            </button>
+          )}
         </div>
       </div>
 
@@ -399,20 +404,23 @@ export default function EstimateEditor({ chatId, clientName, clientPhone }: {
                   </tr>
                   {block.items.map((item, ii) => (
                     <EstimateItemRow key={`${bi}-${ii}`} item={item}
-                      onChange={(name, qty, price, unit) => updateItem(bi, ii, name, qty, price, unit)}
-                      onDelete={() => deleteItem(bi, ii)}
+                      onChange={editMode ? (name, qty, price, unit) => updateItem(bi, ii, name, qty, price, unit) : undefined}
+                      onDelete={editMode ? () => deleteItem(bi, ii) : undefined}
                       prices={prices}
+                      readOnly={!editMode}
                     />
                   ))}
-                  <tr key={`add-${bi}`}>
-                    <td colSpan={6} className="px-3 py-1.5">
-                      <button onClick={() => addItem(bi)}
-                        className="text-xs flex items-center gap-1.5 transition"
-                        style={{ color: t.textMute }}>
-                        <Icon name="Plus" size={11} /> Добавить позицию
-                      </button>
-                    </td>
-                  </tr>
+                  {editMode && (
+                    <tr key={`add-${bi}`}>
+                      <td colSpan={6} className="px-3 py-1.5">
+                        <button onClick={() => addItem(bi)}
+                          className="text-xs flex items-center gap-1.5 transition"
+                          style={{ color: t.textMute }}>
+                          <Icon name="Plus" size={11} /> Добавить позицию
+                        </button>
+                      </td>
+                    </tr>
+                  )}
                 </>
               );
             })}

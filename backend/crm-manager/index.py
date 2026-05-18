@@ -1252,6 +1252,54 @@ def handler(event: dict, context) -> dict:
                 conn.commit()
                 return ok({"crm_chat_id": chat_id})
 
+        # ── CREATE-ESTIMATE-FOR-CHAT — создать смету для существующей заявки ───
+        if resource == "create-estimate-for-chat":
+            if method == "POST":
+                chat_id_val = body.get("chat_id")
+                blocks_val  = body.get("blocks", [])
+                totals_val  = body.get("totals", [])
+                if not chat_id_val: return err("chat_id required")
+                if not blocks_val:  return err("blocks required")
+                import re as _re
+                # Извлекаем суммы из totals
+                def _extract(keyword):
+                    for t_line in totals_val:
+                        if keyword.lower() in t_line.lower():
+                            nums = _re.findall(r"[\d\s]+", t_line.replace("\u00a0", " "))
+                            cleaned = "".join("".join(nums).split())
+                            if cleaned.isdigit(): return float(cleaned)
+                    return None
+                total_econom   = _extract("econom")
+                total_standard = _extract("standard")
+                total_premium  = _extract("premium")
+                # Проверяем что заявка существует
+                cur.execute(f"SELECT id, company_id FROM {SCHEMA}.live_chats WHERE id=%s", (int(chat_id_val),))
+                chat_row = cur.fetchone()
+                if not chat_row: return err("chat not found", 404)
+                # Удаляем старую смету для этой заявки если есть
+                cur.execute(f"DELETE FROM {SCHEMA}.saved_estimates WHERE chat_id=%s", (int(chat_id_val),))
+                # Создаём новую смету
+                insert_cmp = master_uid if (company_id is None or company_id == 0) else company_id
+                cur.execute(f"""
+                    INSERT INTO {SCHEMA}.saved_estimates
+                      (user_id, chat_id, title, blocks, totals, total_econom, total_standard, total_premium, final_phrase)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, '')
+                    RETURNING id
+                """, (
+                    insert_cmp,
+                    int(chat_id_val),
+                    "Смета на натяжные потолки",
+                    json.dumps(blocks_val, ensure_ascii=False),
+                    json.dumps(totals_val, ensure_ascii=False),
+                    total_econom, total_standard, total_premium,
+                ))
+                new_id = cur.fetchone()[0]
+                # Обновляем contract_sum в заявке
+                if total_standard:
+                    cur.execute(f"UPDATE {SCHEMA}.live_chats SET contract_sum=%s WHERE id=%s", (total_standard, int(chat_id_val)))
+                conn.commit()
+                return ok({"ok": True, "estimate_id": new_id})
+
         # ── PLAN-SHARE — публичные ссылки на чертежи ──────────────────────────
         if resource == "plan-share":
             import secrets as _secrets
