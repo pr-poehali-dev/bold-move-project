@@ -85,8 +85,11 @@ export default function EstimateTable({
                   background: isChosen ? r.color + "18" : "transparent",
                   border: isChosen ? `1px solid ${r.color}40` : "1px solid transparent",
                 }}
-                onClick={() => onChooseTier(chosen === r.key ? null : r.key)}
-                title={chosen ? "Сбросить" : "Выбрать как согласованную цену"}
+                onClick={() => {
+                  if (chosen === r.key) return; // сброс только через кнопку "Сбросить выбор"
+                  onChooseTier(r.key);
+                }}
+                title={chosen ? undefined : "Выбрать как согласованную цену"}
               >
                 <div className="flex items-center gap-2">
                   {!chosen && (
