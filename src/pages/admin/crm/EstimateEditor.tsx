@@ -102,6 +102,7 @@ export default function EstimateEditor({ chatId, clientName, clientPhone, onEsti
         }
       }
       setSaved(true);
+      onEstimateSaved?.();
     } finally {
       setSaving(false);
     }
