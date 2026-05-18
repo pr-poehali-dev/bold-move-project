@@ -227,7 +227,14 @@ export default function ClientDrawer({ client, allClientOrders, onClose, onUpdat
           {/* СМЕТА */}
           {drawerTab === "estimate" && (
             <div className="px-3 sm:px-6 py-4">
-              <EstimateEditor chatId={orderData.id} clientName={orderData.client_name} clientPhone={orderData.phone} />
+              <EstimateEditor
+                chatId={orderData.id}
+                clientName={orderData.client_name}
+                clientPhone={orderData.phone}
+                onEstimateSaved={() => {
+                  onUpdated();
+                }}
+              />
             </div>
           )}
 

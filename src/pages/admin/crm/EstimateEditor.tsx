@@ -6,10 +6,11 @@ import { EstimateFromPlanPreview, EstimateEmpty } from "./EstimatePreview";
 import EstimateToolbar from "./EstimateToolbar";
 import EstimateTable from "./EstimateTable";
 
-export default function EstimateEditor({ chatId, clientName, clientPhone }: {
+export default function EstimateEditor({ chatId, clientName, clientPhone, onEstimateSaved }: {
   chatId: number;
   clientName?: string | null;
   clientPhone?: string | null;
+  onEstimateSaved?: () => void;
 }) {
   const [estimate, setEstimate] = useState<SavedEstimate | null>(null);
   const [loading,  setLoading]  = useState(true);
@@ -116,6 +117,7 @@ export default function EstimateEditor({ chatId, clientName, clientPhone }: {
       }) as { ok?: boolean; estimate_id?: number };
       if (data.ok || data.estimate_id) {
         await loadData();
+        onEstimateSaved?.();
       }
     } finally {
       setSaving(false);
