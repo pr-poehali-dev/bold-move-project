@@ -34,7 +34,7 @@ export default function ClientDrawer({ client, allClientOrders, onClose, onUpdat
   const [data, setData]               = useState<Client>(client);
   const [saving, setSaving]           = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
-  const [drawerTab, setDrawerTab]     = useState<"client" | "orders" | "plan">(defaultTab);
+  const [drawerTab, setDrawerTab]     = useState<"client" | "orders" | "estimate" | "plan">(defaultTab as "client" | "orders" | "estimate" | "plan");
   const [comments, setComments]       = useState<{ text: string; date: string }[]>([]);
   const [editingTitle, setEditingTitle] = useState(false);
   const [copied, setCopied]           = useState(false);
@@ -196,11 +196,12 @@ export default function ClientDrawer({ client, allClientOrders, onClose, onUpdat
         {/* ── Табы ── */}
         <div className="flex px-3 sm:px-6 gap-1 pt-2 sm:pt-3 flex-shrink-0" style={{ borderBottom: `1px solid ${t.border}` }}>
           {([
-            { id: "client",   label: "Клиент",  icon: "User" },
+            { id: "client",   label: "Клиент",   icon: "User" },
             { id: "orders",   label: `Заявки (${allClientOrders.length})`, icon: "ClipboardList" },
+            { id: "estimate", label: "Смета",    icon: "FileSpreadsheet" },
             ...(data.project_id ? [{ id: "plan", label: "Чертежи", icon: "LayoutDashboard" }] : []),
           ] as const).map((tab: { id: string; label: string; icon: string }) => (
-            <button key={tab.id} onClick={() => setDrawerTab(tab.id as "client" | "orders" | "plan")}
+            <button key={tab.id} onClick={() => setDrawerTab(tab.id as "client" | "orders" | "estimate" | "plan")}
               className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-t-lg transition"
               style={drawerTab === tab.id
                 ? { color: "#7c3aed", borderBottom: "2px solid #7c3aed", marginBottom: -1 }
@@ -221,6 +222,13 @@ export default function ClientDrawer({ client, allClientOrders, onClose, onUpdat
           {/* ЧЕРТЕЖИ */}
           {drawerTab === "plan" && (
             <DrawerPlanTab chatId={data.id} projectId={data.project_id} />
+          )}
+
+          {/* СМЕТА */}
+          {drawerTab === "estimate" && (
+            <div className="px-3 sm:px-6 py-4">
+              <EstimateEditor chatId={orderData.id} clientName={orderData.client_name} clientPhone={orderData.phone} />
+            </div>
           )}
 
           {/* ЗАЯВКИ */}
@@ -354,50 +362,27 @@ export default function ClientDrawer({ client, allClientOrders, onClose, onUpdat
 
               {/* Контент выбранной заявки */}
               <div className="flex-1 min-w-0 min-h-0 flex flex-col overflow-hidden">
-                {/* Внутренние табы */}
-                <div className="flex px-3 sm:px-4 gap-1 pt-2 flex-shrink-0" style={{ borderBottom: `1px solid ${t.border}` }}>
-                  {([
-                    { id: "info" as const,     label: "Заявка",  icon: "ClipboardEdit" },
-                    { id: "estimate" as const, label: "Смета",   icon: "FileSpreadsheet" },
-                  ]).map(tab => (
-                    <button key={tab.id} onClick={() => setOrderInnerTab(tab.id)}
-                      className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-t-lg transition"
-                      style={orderInnerTab === tab.id
-                        ? { color: "#7c3aed", borderBottom: "2px solid #7c3aed", marginBottom: -1 }
-                        : { color: t.textMute }}>
-                      <Icon name={tab.icon} size={12} /> {tab.label}
-                    </button>
-                  ))}
-                </div>
-
                 <div className="flex-1 overflow-y-auto">
-                  {orderInnerTab === "info" && (
-                    <DrawerInfoTab
-                      key={orderData.id}
-                      data={orderData}
-                      client={client}
-                      setData={setOrderData}
-                      save={saveOrder}
-                      setComments={setComments}
-                      hideHidden={hideHidden}
-                      canEdit={canEdit}
-                      canOrdersEdit={canOrdersEdit}
-                      canFinance={canFinance}
-                      canFiles={canFiles}
-                      canFieldContacts={canFieldContacts}
-                      canFieldAddress={canFieldAddress}
-                      canFieldDates={canFieldDates}
-                      canFieldFinance={canFieldFinance}
-                      canFieldFiles={canFieldFiles}
-                      canFieldCancel={canFieldCancel}
-                      onReload={onUpdated}
-                    />
-                  )}
-                  {orderInnerTab === "estimate" && (
-                    <div className="px-3 sm:px-6 py-4">
-                      <EstimateEditor chatId={orderData.id} clientName={orderData.client_name} clientPhone={orderData.phone} />
-                    </div>
-                  )}
+                  <DrawerInfoTab
+                    key={orderData.id}
+                    data={orderData}
+                    client={client}
+                    setData={setOrderData}
+                    save={saveOrder}
+                    setComments={setComments}
+                    hideHidden={hideHidden}
+                    canEdit={canEdit}
+                    canOrdersEdit={canOrdersEdit}
+                    canFinance={canFinance}
+                    canFiles={canFiles}
+                    canFieldContacts={canFieldContacts}
+                    canFieldAddress={canFieldAddress}
+                    canFieldDates={canFieldDates}
+                    canFieldFinance={canFieldFinance}
+                    canFieldFiles={canFieldFiles}
+                    canFieldCancel={canFieldCancel}
+                    onReload={onUpdated}
+                  />
                 </div>
               </div>
             </div>
