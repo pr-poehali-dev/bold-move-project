@@ -499,12 +499,20 @@ export function renderDiagonals(ctx: RenderContext, handlers: Pick<SegmentHandle
 interface InlineDimProps {
   state: PlanState;
   onChange: (patch: Partial<PlanState>) => void;
+  editingSegId?: string | null;
+  onSetEditingSegId?: (id: string | null) => void;
 }
 
-export function InlineDimLabels({ state, onChange }: InlineDimProps) {
-  const { points, segments, diagonals } = state;
+export function InlineDimLabels({ state, onChange, editingSegId, onSetEditingSegId }: InlineDimProps) {
+  const { points, segments } = state;
   const scale = calcScale(points, segments);
-  const [editingId, setEditingId] = React.useState<string | null>(null);
+  // Если editingSegId пробрасывается снаружи — используем его, иначе локальный стейт
+  const [localEditingId, setLocalEditingId] = React.useState<string | null>(null);
+  const editingId = editingSegId !== undefined ? editingSegId : localEditingId;
+  const setEditingId = (id: string | null) => {
+    setLocalEditingId(id);
+    onSetEditingSegId?.(id);
+  };
   const [draft, setDraft] = React.useState("");
   const inputRef = React.useRef<HTMLInputElement>(null);
 

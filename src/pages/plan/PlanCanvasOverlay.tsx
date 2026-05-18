@@ -19,10 +19,11 @@ interface Props {
   lpIndicator: { x: number; y: number } | null;
   onSettingChange?: (patch: Partial<PlanSettings>) => void;
   onOpenCatalog?: () => void;
+  onEditSegmentLength?: (segId: string) => void;
 }
 
 export default function PlanCanvasOverlay({
-  state, onChange, ctxMenu, onCloseCtxMenu, lpIndicator, onSettingChange, onOpenCatalog,
+  state, onChange, ctxMenu, onCloseCtxMenu, lpIndicator, onSettingChange, onOpenCatalog, onEditSegmentLength,
 }: Props) {
   const { points, segments, diagonals, isClosed, settings } = state;
   const { zoom } = settings;
@@ -61,6 +62,8 @@ export default function PlanCanvasOverlay({
             }} />
           </>)}
           {ctxMenu.type === "segment" && (<>
+            <CtxItem icon="Pencil" label="Редактировать длину" onClick={() => onEditSegmentLength?.(ctxMenu.id)} />
+            <div className="h-px bg-white/[0.08] my-1" />
             <CtxItem icon="MapPin" label="Добавить точку" onClick={() => {
               const seg = segments.find(s => s.id === ctxMenu.id);
               if (!seg) return;
@@ -69,10 +72,8 @@ export default function PlanCanvasOverlay({
               if (!fromPt || !toPt) return;
               const mid = midPoint(fromPt, toPt);
               const newPt = { id: genId("p"), x: mid.x, y: mid.y };
-              // Вставляем новую точку между fromId и toId
               const ptIdx = points.findIndex(p => p.id === seg.toId);
               const newPoints = [...points.slice(0, ptIdx), newPt, ...points.slice(ptIdx)];
-              // Рассчитываем lengthCm пропорционально если исходный сегмент имел длину
               const totalPx = distPx(fromPt, toPt);
               const px1 = distPx(fromPt, newPt);
               const px2 = distPx(newPt, toPt);
@@ -80,7 +81,6 @@ export default function PlanCanvasOverlay({
               const ratio2 = totalPx > 0 ? px2 / totalPx : 0.5;
               const len1 = seg.lengthCm != null ? Math.round(seg.lengthCm * ratio1 * 10) / 10 : null;
               const len2 = seg.lengthCm != null ? Math.round(seg.lengthCm * ratio2 * 10) / 10 : null;
-              // Заменяем отрезок A→B на A→newPt и newPt→B
               const newSeg1 = { ...seg, id: genId("s"), toId: newPt.id, lengthCm: len1, arcRadius: 0 };
               const newSeg2 = { ...seg, id: genId("s"), fromId: newPt.id, lengthCm: len2, arcRadius: 0 };
               const newSegs = segments.map(s => s.id === ctxMenu.id ? newSeg1 : s);
@@ -92,13 +92,10 @@ export default function PlanCanvasOverlay({
               const seg = segments.find(s => s.id === ctxMenu.id);
               if (seg) onChange({ segments: segments.map(s => s.id === ctxMenu.id ? { ...s, arcRadius: Math.max(20, s.arcRadius + 20) } : s) });
             }} />
-            <CtxItem icon="Eye" label="Скрыть длину" onClick={() => onChange({ segments: segments.map(s => s.id === ctxMenu.id ? { ...s, showLength: !s.showLength } : s) })} />
             <div className="h-px bg-white/[0.08] my-1" />
             <CtxItem icon="Trash2" label="Удалить отрезок" danger onClick={() => onChange({ segments: segments.filter(s => s.id !== ctxMenu.id), isClosed: false })} />
           </>)}
           {ctxMenu.type === "diagonal" && (<>
-            <CtxItem icon="Eye" label="Скрыть длину" onClick={() => onChange({ diagonals: diagonals.map(d => d.id === ctxMenu.id ? { ...d, showLength: !d.showLength } : d) })} />
-            <div className="h-px bg-white/[0.08] my-1" />
             <CtxItem icon="Trash2" label="Удалить" danger onClick={() => onChange({ diagonals: diagonals.filter(d => d.id !== ctxMenu.id) })} />
           </>)}
         </div>

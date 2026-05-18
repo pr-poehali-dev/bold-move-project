@@ -29,13 +29,15 @@ interface Props {
   onCanvasDblClick?: (e: React.MouseEvent<SVGSVGElement>) => void;
   deleteHover?: { x: number; y: number; type: "point" | "segment" } | null;
   onEditFloorItem?: (id: string) => void;
+  editingSegId?: string | null;
+  onSetEditingSegId?: (id: string | null) => void;
 }
 
 export default function PlanCanvasSvg({
   svgRef, state, onChange, cursor, ghost, dimLineFrom,
   handlers, onMouseMove, onMouseDown, onMouseUp,
   onCanvasClick, onCanvasDblClick, onTouchStart, onTouchMove, onTouchEnd,
-  onDimLineClick, deleteHover, onEditFloorItem,
+  onDimLineClick, deleteHover, onEditFloorItem, editingSegId, onSetEditingSegId,
 }: Props) {
   const {
     points, segments, diagonals, dimLines,
@@ -177,7 +179,7 @@ export default function PlanCanvasSvg({
 
         {/* Inline-edit размеров на чертеже */}
         {points.length >= 2 && (
-          <InlineDimLabels state={state} onChange={onChange} />
+          <InlineDimLabels state={state} onChange={onChange} editingSegId={editingSegId} onSetEditingSegId={onSetEditingSegId} />
         )}
 
         {/* Товары на стенах */}
