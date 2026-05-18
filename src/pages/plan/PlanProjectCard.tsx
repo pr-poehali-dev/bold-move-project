@@ -149,6 +149,16 @@ export default function PlanProjectCard({
       className="relative rounded-2xl overflow-hidden"
       style={{ background: "#0e0e1c", border: "1px solid rgba(255,255,255,0.06)" }}
     >
+      {/* Бейдж количества комнат — правый верхний угол */}
+      {!isEditing && (project.rooms_count ?? 0) > 0 && (
+        <span
+          className="absolute flex items-center gap-0.5 px-1.5 py-0.5 rounded-bl-xl text-[9px] font-bold z-10"
+          style={{ top: 0, right: 0, background: "rgba(124,58,237,0.22)", color: "#a78bfa", border: "1px solid rgba(124,58,237,0.3)", borderTop: "none", borderRight: "none" }}
+        >
+          <Icon name="Layers" size={8} />
+          {project.rooms_count}шт
+        </span>
+      )}
 
       {/* ── Форма редактирования (вместо карточки) ── */}
       {isEditing && (
@@ -226,17 +236,8 @@ export default function PlanProjectCard({
                 onClick={() => onSelect(project)}
               >
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1.5 min-w-0">
+                  <div className="flex items-center mb-1.5 min-w-0">
                     <span className="text-white font-bold text-[14px] truncate">{project.name}</span>
-                    {(project.rooms_count ?? 0) > 0 && (
-                      <span
-                        className="flex-shrink-0 flex items-center gap-0.5 px-1 py-0.5 rounded-lg text-[9px] font-bold"
-                        style={{ background: "rgba(124,58,237,0.18)", color: "#a78bfa", border: "1px solid rgba(124,58,237,0.3)" }}
-                      >
-                        <Icon name="Layers" size={8} />
-                        {project.rooms_count}шт
-                      </span>
-                    )}
                   </div>
                   <div className="flex flex-col gap-0.5 min-w-0">
                     {project.client_name && (
