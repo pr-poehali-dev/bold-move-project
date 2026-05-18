@@ -124,7 +124,6 @@ export function SegmentItemsBadges({
   const cx = mid.x - nx * OFF;
   const cy = mid.y - ny * OFF;
 
-  const totalW = items.length * S + (items.length - 1) * GAP;
   const startOffset = -totalW / 2 + S / 2;
 
   return (
