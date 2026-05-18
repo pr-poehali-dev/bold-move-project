@@ -152,6 +152,24 @@ export default function EstimateEditor({ chatId, clientName, clientPhone, onEsti
     onEstimateSaved?.();
   };
 
+  const applyMarkupToEstimate = (pct: number, exactAmt: number) => {
+    const markupAmt = exactAmt > 0 ? exactAmt : Math.round(standardTotal * pct / 100);
+    if (markupAmt <= 0 || standardTotal <= 0) return;
+    const ratio = (standardTotal + markupAmt) / standardTotal;
+    const newBlocks = blocks.map(block => ({
+      ...block,
+      items: block.items.map(item => {
+        const p = parseValue(item.value);
+        if (!p) return item;
+        const newPrice = Math.round(p.price * ratio);
+        const newTotal = Math.round(p.qty * newPrice);
+        return { ...item, value: `${p.qty} ${p.unit} × ${newPrice} ₽ = ${newTotal.toLocaleString("ru-RU")} ₽` };
+      }),
+    }));
+    setBlocks(newBlocks);
+    setTotals(recalcTotals(newBlocks));
+  };
+
   const applyDiscountToEstimate = (pct: number, exactAmt: number) => {
     const discountAmt = exactAmt > 0 ? exactAmt : Math.round(standardTotal * pct / 100);
     if (discountAmt <= 0 || standardTotal <= 0) return;
@@ -229,6 +247,7 @@ export default function EstimateEditor({ chatId, clientName, clientPhone, onEsti
         onAddItem={addItem}
         onChooseTier={chooseTier}
         onApplyDiscount={applyDiscountToEstimate}
+        onApplyMarkup={applyMarkupToEstimate}
       />
     </div>
 

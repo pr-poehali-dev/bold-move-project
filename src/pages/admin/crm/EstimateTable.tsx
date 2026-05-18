@@ -4,6 +4,7 @@ import Icon from "@/components/ui/icon";
 import { EstimateBlock, PlanRoomForEstimate, PriceItem, SavedEstimate, fmt, pricingRules, parseValue } from "./estimateTypes";
 import EstimateItemRow from "./EstimateItemRow";
 import { DiscountInputModal } from "./DiscountInputModal";
+import { MarkupInputModal } from "./MarkupInputModal";
 
 interface Props {
   blocks: EstimateBlock[];
@@ -17,15 +18,17 @@ interface Props {
   onAddItem: (bi: number) => void;
   onChooseTier: (tier: "econom" | "standard" | "premium" | null) => void;
   onApplyDiscount?: (pct: number, exactAmt: number) => void;
+  onApplyMarkup?: (pct: number, exactAmt: number) => void;
 }
 
 export default function EstimateTable({
   blocks, prices, planRooms, estimate, standardTotal, editMode,
-  onUpdateItem, onDeleteItem, onAddItem, onChooseTier, onApplyDiscount,
+  onUpdateItem, onDeleteItem, onAddItem, onChooseTier, onApplyDiscount, onApplyMarkup,
 }: Props) {
   const t = useTheme();
   const [perRoom, setPerRoom] = useState(false);
   const [discountModalOpen, setDiscountModalOpen] = useState(false);
+  const [markupModalOpen, setMarkupModalOpen] = useState(false);
   const chosen = estimate.chosen_tier;
 
   // В режиме редактирования — всегда По комнатам
@@ -160,16 +163,30 @@ export default function EstimateTable({
           </div>
         )}
 
-        {/* Кнопка скидки — только в режиме редактирования */}
-        {editMode && onApplyDiscount && (
-          <button
-            onClick={() => setDiscountModalOpen(true)}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition hover:brightness-110 active:scale-[0.97]"
-            style={{ background: "rgba(245,158,11,0.12)", color: "#f59e0b", border: "1px solid rgba(245,158,11,0.3)" }}
-          >
-            <Icon name="Tag" size={12} />
-            Скидка
-          </button>
+        {/* Кнопки скидки и наценки — только в режиме редактирования */}
+        {editMode && (
+          <div className="flex gap-2">
+            {onApplyDiscount && (
+              <button
+                onClick={() => setDiscountModalOpen(true)}
+                className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition hover:brightness-110 active:scale-[0.97]"
+                style={{ background: "rgba(245,158,11,0.12)", color: "#f59e0b", border: "1px solid rgba(245,158,11,0.3)" }}
+              >
+                <Icon name="Tag" size={12} />
+                Скидка
+              </button>
+            )}
+            {onApplyMarkup && (
+              <button
+                onClick={() => setMarkupModalOpen(true)}
+                className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition hover:brightness-110 active:scale-[0.97]"
+                style={{ background: "rgba(16,185,129,0.12)", color: "#10b981", border: "1px solid rgba(16,185,129,0.3)" }}
+              >
+                <Icon name="TrendingUp" size={12} />
+                Наценка
+              </button>
+            )}
+          </div>
         )}
       </div>
 
@@ -185,6 +202,15 @@ export default function EstimateTable({
           onConfirm={(pct, amt) => { onApplyDiscount(pct, amt); setDiscountModalOpen(false); }}
           onClose={() => setDiscountModalOpen(false)}
           defaultFocus="pct"
+        />
+      )}
+
+      {/* Модалка наценки */}
+      {markupModalOpen && onApplyMarkup && (
+        <MarkupInputModal
+          baseIncome={standardTotal}
+          onConfirm={(pct, amt) => { onApplyMarkup(pct, amt); setMarkupModalOpen(false); }}
+          onClose={() => setMarkupModalOpen(false)}
         />
       )}
 
