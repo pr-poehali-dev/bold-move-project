@@ -98,19 +98,23 @@ export function SegmentItemsBadges({
   // Умный размер иконки: пропорционально длине стены
   const n = items.length;
   const z = Math.max(zoom, 0.1);
+  const wallCm = seg.lengthCm ?? null;
 
-  // Вписываем n иконок + зазоры в 50% длины стены (SVG-единицы)
+  // На физически коротких стенах (< 50 см) — не рисуем иконки совсем
+  // Это убирает наложение на короткие сегменты типа H-G, F-E (10 см)
+  if (wallCm !== null && wallCm < 50) return null;
+
+  // Размер иконки пропорционален длине стены в SVG-пикселях
+  // Базовая формула: S зависит от segLen — чем длиннее стена, тем больше иконка
+  // segLen ~50 → S ~16, segLen ~500 → S ~50
   const denom = n + 0.25 * (n - 1);
-  const fitS = segLen * 0.50 / denom;
+  // Используем не 50%, а пропорцию от segLen с мягким ростом
+  const fitS = segLen * 0.30 / denom;
 
-  // Абсолютный максимум: 48px экранных, минимум: 14px экранных
-  const MAX_S = 48 / z;
-  const MIN_S = 14 / z;
+  // Абсолютный максимум: 56px экранных, минимум: 16px экранных
+  const MAX_S = 56 / z;
+  const MIN_S = 16 / z;
 
-  // Минимальный размер должен влезать в стену (n иконок + промежутки в 70% длины)
-  // Если даже минимальный размер не помещается — прячем
-  const minTotalW = n * MIN_S + (n - 1) * MIN_S * 0.25;
-  if (minTotalW > segLen * 0.70) return null;
   if (fitS < MIN_S) return null;
 
   const S   = Math.min(MAX_S, fitS);
@@ -120,9 +124,9 @@ export function SegmentItemsBadges({
   const totalW = n * S + (n - 1) * GAP;
   if (totalW > segLen * 0.80) return null;
 
-  // Отступ от стены: фиксированные 18px экранных внутрь полигона
+  // Отступ от стены: 30px экранных внутрь полигона
   // Это гарантирует что иконки не перекрывают лейбл длины (который снаружи)
-  const OFF = S / 2 + 18 / z;
+  const OFF = S / 2 + 30 / z;
 
   const cx = mid.x - nx * OFF;
   const cy = mid.y - ny * OFF;
