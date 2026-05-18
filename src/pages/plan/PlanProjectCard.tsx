@@ -214,14 +214,14 @@ export default function PlanProjectCard({
 
           {/* Правая часть */}
           <div className="flex-1 min-w-0">
-            <div className="px-4 py-3.5 flex items-center gap-3">
+            <div className="px-4 py-3.5 flex items-center gap-3" style={{ minHeight: 90 }}>
               <button
                 className="flex items-start gap-3 flex-1 min-w-0 text-left hover:opacity-90 transition active:scale-[0.99]"
                 onClick={() => onSelect(project)}
               >
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1 min-w-0">
-                    <span className="text-white font-bold text-[13px] truncate">{project.name}</span>
+                    <span className="text-white font-bold text-[14px] truncate">{project.name}</span>
                     {(project.rooms_count ?? 0) > 0 && (
                       <span
                         className="flex-shrink-0 flex items-center gap-0.5 px-1 py-0.5 rounded-lg text-[9px] font-bold"
@@ -234,20 +234,20 @@ export default function PlanProjectCard({
                   </div>
                   <div className="flex flex-col gap-0.5 min-w-0">
                     {project.client_name && (
-                      <span className="flex items-center gap-1 text-[11px] truncate" style={{ color: "rgba(255,255,255,0.75)" }}>
-                        <Icon name="User" size={10} className="flex-shrink-0" />
+                      <span className="flex items-center gap-1 text-[12px] truncate" style={{ color: "rgba(255,255,255,0.75)" }}>
+                        <Icon name="User" size={11} className="flex-shrink-0" />
                         <span className="truncate">{project.client_name}</span>
                       </span>
                     )}
                     {project.address && (
-                      <span className="flex items-center gap-1 text-[11px] truncate" style={{ color: "rgba(255,255,255,0.75)" }}>
-                        <Icon name="MapPin" size={10} className="flex-shrink-0" />
+                      <span className="flex items-center gap-1 text-[12px] truncate" style={{ color: "rgba(255,255,255,0.75)" }}>
+                        <Icon name="MapPin" size={11} className="flex-shrink-0" />
                         <span className="truncate">{project.address}</span>
                       </span>
                     )}
                     {project.phone && (
-                      <span className="flex items-center gap-1 text-[11px] truncate" style={{ color: "rgba(255,255,255,0.75)" }}>
-                        <Icon name="Phone" size={10} className="flex-shrink-0" />
+                      <span className="flex items-center gap-1 text-[12px] truncate" style={{ color: "rgba(255,255,255,0.75)" }}>
+                        <Icon name="Phone" size={11} className="flex-shrink-0" />
                         <span className="truncate">{project.phone}</span>
                       </span>
                     )}
