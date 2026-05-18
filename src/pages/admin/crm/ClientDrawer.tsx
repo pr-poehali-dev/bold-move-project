@@ -5,6 +5,7 @@ import { useTheme } from "./themeContext";
 import EstimateEditor from "./EstimateEditor";
 import DrawerInfoTab from "./DrawerInfoTab";
 import ClientTab from "./ClientTab";
+import DrawerPlanTab from "./DrawerPlanTab";
 
 interface Props {
   client: Client;
@@ -33,7 +34,7 @@ export default function ClientDrawer({ client, allClientOrders, onClose, onUpdat
   const [data, setData]               = useState<Client>(client);
   const [saving, setSaving]           = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
-  const [drawerTab, setDrawerTab]     = useState<"client" | "orders">(defaultTab);
+  const [drawerTab, setDrawerTab]     = useState<"client" | "orders" | "plan">(defaultTab);
   const [comments, setComments]       = useState<{ text: string; date: string }[]>([]);
   const [editingTitle, setEditingTitle] = useState(false);
   const [copied, setCopied]           = useState(false);
@@ -197,8 +198,9 @@ export default function ClientDrawer({ client, allClientOrders, onClose, onUpdat
           {([
             { id: "client",   label: "Клиент",  icon: "User" },
             { id: "orders",   label: `Заявки (${allClientOrders.length})`, icon: "ClipboardList" },
-          ] as const).map(tab => (
-            <button key={tab.id} onClick={() => setDrawerTab(tab.id)}
+            ...(data.project_id ? [{ id: "plan", label: "Чертежи", icon: "LayoutDashboard" }] : []),
+          ] as const).map((tab: { id: string; label: string; icon: string }) => (
+            <button key={tab.id} onClick={() => setDrawerTab(tab.id as "client" | "orders" | "plan")}
               className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-t-lg transition"
               style={drawerTab === tab.id
                 ? { color: "#7c3aed", borderBottom: "2px solid #7c3aed", marginBottom: -1 }
@@ -214,6 +216,11 @@ export default function ClientDrawer({ client, allClientOrders, onClose, onUpdat
           {/* КЛИЕНТ */}
           {drawerTab === "client" && (
             <ClientTab data={data} save={save} />
+          )}
+
+          {/* ЧЕРТЕЖИ */}
+          {drawerTab === "plan" && (
+            <DrawerPlanTab chatId={data.id} projectId={data.project_id} />
           )}
 
           {/* ЗАЯВКИ */}
