@@ -907,7 +907,7 @@ def handler(event: dict, context) -> dict:
                     return ok(dict(zip(cols, row)))
                 cur.execute(f"""
                     SELECT p.id, p.company_id, p.name, p.client_name, p.address, p.phone, p.status, p.created_at, p.updated_at,
-                           (SELECT COUNT(*) FROM {SCHEMA}.room_plans r WHERE r.project_id = p.id) AS rooms_count
+                           (SELECT COUNT(*) FROM {SCHEMA}.room_plans r WHERE r.project_id = p.id AND r.name NOT LIKE '[удалена]%') AS rooms_count
                     FROM {SCHEMA}.plan_projects p WHERE p.company_id=%s ORDER BY p.updated_at DESC
                 """, (cmp,))
                 cols = [d[0] for d in cur.description]
