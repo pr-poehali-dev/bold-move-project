@@ -205,12 +205,12 @@ export default function PlanProjectCard({
             const fontSize = label.length > 12 ? 8 : label.length > 8 ? 9 : 10;
             return (
               <div
-                className="flex-shrink-0 flex items-center justify-center w-12 self-stretch px-1 overflow-hidden"
+                className="flex-shrink-0 flex items-center justify-center w-12 self-stretch px-1 py-3 overflow-hidden"
                 style={{ background: `linear-gradient(to right, ${sc.glow ?? sc.bg}, transparent)` }}
               >
                 <span
                   className="font-bold uppercase select-none"
-                  style={{ color: sc.text, writingMode: "vertical-rl", transform: "rotate(180deg)", fontSize, letterSpacing: "0.08em", maxHeight: "100%", overflow: "hidden" }}
+                  style={{ color: sc.text, writingMode: "vertical-rl", transform: "rotate(180deg)", fontSize, letterSpacing: "0.08em" }}
                 >
                   {label}
                 </span>
@@ -220,14 +220,14 @@ export default function PlanProjectCard({
 
           {/* Правая часть */}
           <div className="flex-1 min-w-0">
-            <div className="px-4 py-3.5 flex items-center gap-3" style={{ minHeight: 110 }}>
+            <div className="px-4 py-3.5 flex items-center gap-3" style={{ minHeight: 130 }}>
               <button
                 className="flex items-start gap-3 flex-1 min-w-0 text-left hover:opacity-90 transition active:scale-[0.99]"
                 onClick={() => onSelect(project)}
               >
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1 min-w-0">
-                    <span className="text-white font-bold text-[14px] truncate">{project.name}</span>
+                  <div className="flex items-start gap-2 mb-1.5 flex-wrap">
+                    <span className="text-white font-bold text-[14px] leading-tight">{project.name}</span>
                     {(project.rooms_count ?? 0) > 0 && (
                       <span
                         className="flex-shrink-0 flex items-center gap-0.5 px-1 py-0.5 rounded-lg text-[9px] font-bold"
