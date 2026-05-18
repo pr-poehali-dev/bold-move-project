@@ -200,17 +200,23 @@ export default function PlanProjectCard({
       >
         <div className="flex">
           {/* Статус */}
-          <div
-            className="flex-shrink-0 flex items-center justify-center w-12 self-stretch px-1"
-            style={{ background: `linear-gradient(to right, ${sc.glow ?? sc.bg}, transparent)` }}
-          >
-            <span
-              className="font-bold uppercase whitespace-nowrap select-none"
-              style={{ color: sc.text, writingMode: "vertical-rl", transform: "rotate(180deg)", fontSize: 10, letterSpacing: "0.1em" }}
-            >
-              {STATUSES.find(s => s.id === project.status)?.label ?? project.status}
-            </span>
-          </div>
+          {(() => {
+            const label = STATUSES.find(s => s.id === project.status)?.label ?? project.status;
+            const fontSize = label.length > 12 ? 8 : label.length > 8 ? 9 : 10;
+            return (
+              <div
+                className="flex-shrink-0 flex items-center justify-center w-12 self-stretch px-1 overflow-hidden"
+                style={{ background: `linear-gradient(to right, ${sc.glow ?? sc.bg}, transparent)` }}
+              >
+                <span
+                  className="font-bold uppercase select-none"
+                  style={{ color: sc.text, writingMode: "vertical-rl", transform: "rotate(180deg)", fontSize, letterSpacing: "0.08em", maxHeight: "100%", overflow: "hidden" }}
+                >
+                  {label}
+                </span>
+              </div>
+            );
+          })()}
 
           {/* Правая часть */}
           <div className="flex-1 min-w-0">
