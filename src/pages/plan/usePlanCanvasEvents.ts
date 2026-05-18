@@ -3,7 +3,7 @@ import type { PlanState, Point, Segment, DimLine } from "./planTypes";
 import {
   snapVal, snapToPoint, orthoPoint, buildAutoDiagonals, genId,
 } from "./planTypes";
-import { PT_HIT, SNAP_THR, CLOSE_THR, DIM_OFF, findNearestSegment, findNearestDiagonal } from "./PlanCanvasUtils";
+import { PT_HIT, SNAP_THR, CLOSE_THR, DIM_OFF, findNearestSegment, findNearestDiagonal, ptToSegDist } from "./PlanCanvasUtils";
 import { distPx } from "./planTypes";
 import type { PlanCanvasState } from "./usePlanCanvasState";
 
@@ -269,11 +269,14 @@ export function usePlanCanvasEvents({ state, onChange, onReplace, cs }: Params) 
 
       const dx = e.touches[0].clientX - e.touches[1].clientX;
       const dy = e.touches[0].clientY - e.touches[1].clientY;
-      const dist = Math.sqrt(dx * dx + dy * dy);
-      // Игнорируем микро-дрожание < 2px
-      if (Math.abs(dist - pinchRef.current.dist) < 2) return;
-      // ratio от предыдущего шага (не от начала) — точный инкрементальный зум
-      const stepRatio = dist / pinchRef.current.dist;
+      const rawDist = Math.sqrt(dx * dx + dy * dy);
+      // Сглаживание расстояния (EMA α=0.35) — убирает дрожание пальцев
+      const dist = pinchRef.current.dist * 0.65 + rawDist * 0.35;
+      // Игнорируем микро-дрожание < 3px
+      if (Math.abs(rawDist - pinchRef.current.dist) < 3) return;
+      // ratio от предыдущего шага — ограничиваем макс изменение за кадр (не более 5%)
+      const rawRatio = rawDist / pinchRef.current.dist;
+      const stepRatio = Math.max(0.95, Math.min(1.05, rawRatio));
       const cur = settingsRef.current;
       const newZoom = Math.max(0.3, Math.min(4, cur.zoom * stepRatio));
 
@@ -292,7 +295,7 @@ export function usePlanCanvasEvents({ state, onChange, onReplace, cs }: Params) 
       const panDx = pinchRef.current.midX !== undefined ? (midX - pinchRef.current.midX) / newZoom : 0;
       const panDy = pinchRef.current.midY !== undefined ? (midY - pinchRef.current.midY) / newZoom : 0;
 
-      // Обновляем dist и mid для следующего шага
+      // Обновляем dist (сглаженный) и mid для следующего шага
       pinchRef.current = { ...pinchRef.current, dist, midX, midY };
       onChange({ settings: { ...cur, zoom: newZoom, panX: newPanX + panDx, panY: newPanY + panDy } });
       didMoveRef.current = true;
@@ -361,7 +364,25 @@ export function usePlanCanvasEvents({ state, onChange, onReplace, cs }: Params) 
         lastEmptyTapRef.current = now;
       }
 
-      const hitPt = points.find(p => distPx(p, { id: "", x: raw.x, y: raw.y }) < PT_HIT);
+      // Ищем ближайшую точку и ближайшую стену одновременно
+      // Threshold адаптирован к зуму: 20px экранных = 20/zoom в SVG-координатах
+      // При высоком зуме (крупный план) уменьшаем threshold чтобы не захватывать соседние тонкие стены
+      const SEG_HIT_THR = Math.max(8, 20 / zoom); // порог попадания в стену (px в SVG)
+      let hitPtCandidate = points.find(p => distPx(p, { id: "", x: raw.x, y: raw.y }) < PT_HIT) ?? null;
+      const hitSegCandidate = findNearestSegment(raw.x, raw.y, points, segments, SEG_HIT_THR);
+
+      // В режиме select/move: если стена ближе к пальцу чем точка — дать приоритет стене
+      // (решает проблему с тонкими стенами где угловые точки перекрывают всю стену)
+      if (hitPtCandidate && hitSegCandidate && tool !== "delete" && tool !== "dimline" && tool !== "draw") {
+        const ptDist = distPx(hitPtCandidate, { id: "", x: raw.x, y: raw.y });
+        const segA = points.find(p => p.id === hitSegCandidate.fromId);
+        const segB = points.find(p => p.id === hitSegCandidate.toId);
+        const segDist = segA && segB ? ptToSegDist(raw.x, raw.y, segA.x, segA.y, segB.x, segB.y) : Infinity;
+        // Если палец попал в зону стены ощутимо ближе чем к точке — выбираем стену
+        if (segDist + 8 < ptDist) hitPtCandidate = null;
+      }
+
+      const hitPt = hitPtCandidate;
       if (hitPt) {
         if (tool === "delete") {
           // Удаляем угол: убираем точку + оба отрезка, соединяем соседей напрямую
@@ -392,7 +413,7 @@ export function usePlanCanvasEvents({ state, onChange, onReplace, cs }: Params) 
         return;
       }
 
-      const hitSeg = findNearestSegment(raw.x, raw.y, points, segments, 20);
+      const hitSeg = hitSegCandidate ?? findNearestSegment(raw.x, raw.y, points, segments, SEG_HIT_THR);
       if (hitSeg) {
         e.preventDefault();
         lastTouchEndRef.current = Date.now();
@@ -445,7 +466,7 @@ export function usePlanCanvasEvents({ state, onChange, onReplace, cs }: Params) 
     lastTouchEndRef.current = Date.now();
   }, [tool, phase, isClosed, points, segments, diagonals, dimLines, dimLineFrom,
       clientToSvg, applySnap, onChange, onReplace, clearLongPress,
-      pinchRef, panRef, dragRef, nearbyPtRef, didMoveRef, setDimLineFrom]);
+      pinchRef, panRef, dragRef, nearbyPtRef, didMoveRef, setDimLineFrom, zoom]);
 
   // ── Wheel zoom ────────────────────────────────────────────────────────────
   const handleWheel = useCallback((e: WheelEvent) => {

@@ -104,7 +104,8 @@ export function renderPoints(ctx: RenderContext, handlers: SegmentHandlers) {
 // ── Рендер отрезков (зоны клика) ─────────────────────────────────────────────
 
 export function renderSegments(ctx: RenderContext, handlers: Pick<SegmentHandlers, "onSegmentClick" | "onSegmentCtxMenu">) {
-  const { points, segments, tool, selectedSegmentIds, intersectingSegIds, changedSegmentIds } = ctx;
+  const { points, segments, tool, selectedSegmentIds, intersectingSegIds, changedSegmentIds, zoom } = ctx;
+  const z = zoom ?? 1;
   const selIds = selectedSegmentIds ?? [];
   return segments.map(seg => {
     const a = points.find(p => p.id === seg.fromId);
@@ -113,9 +114,12 @@ export function renderSegments(ctx: RenderContext, handlers: Pick<SegmentHandler
     const isSel = selIds.includes(seg.id);
     const isIntersecting = intersectingSegIds?.includes(seg.id);
     const isChanged = changedSegmentIds?.includes(seg.id);
+    // Hit-зона: фиксированные 18px на экране, адаптированные к зуму
+    // При высоком зуме (крупный план) — не перекрываем соседние тонкие стены
+    const hitW = Math.max(8, 18 / z);
     return (
       <g key={seg.id}>
-        <line x1={a.x} y1={a.y} x2={b.x} y2={b.y} stroke="transparent" strokeWidth={20}
+        <line x1={a.x} y1={a.y} x2={b.x} y2={b.y} stroke="transparent" strokeWidth={hitW}
           style={{ cursor: "pointer" }}
           onClick={e => handlers.onSegmentClick(e, seg.id)}
           onContextMenu={e => handlers.onSegmentCtxMenu(e, seg.id)}
