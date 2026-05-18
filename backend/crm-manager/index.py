@@ -1322,15 +1322,18 @@ def handler(event: dict, context) -> dict:
                 # Загружаем комнаты
                 rooms = []
                 if room_ids:
+                    # psycopg2 требует tuple для ANY — конвертируем list в tuple
+                    ids_tuple = tuple(int(i) for i in room_ids)
+                    placeholders = ",".join(["%s"] * len(ids_tuple))
                     cur.execute(f"""
                         SELECT r.id, r.name, r.data, r.thumbnail, r.include_in_estimate,
                                v.id AS active_variant_id, v.name AS active_variant_name,
                                v.data AS active_variant_data, v.thumbnail AS active_variant_thumbnail
                         FROM {SCHEMA}.room_plans r
                         LEFT JOIN {SCHEMA}.plan_variants v ON v.room_id = r.id AND v.is_active = true
-                        WHERE r.id = ANY(%s) AND r.name NOT LIKE '[удалена]%%'
+                        WHERE r.id IN ({placeholders}) AND r.name NOT LIKE '[удалена]%%'
                         ORDER BY r.created_at ASC
-                    """, (room_ids,))
+                    """, ids_tuple)
                     rcols = [d[0] for d in cur.description]
                     rooms = [dict(zip(rcols, r)) for r in cur.fetchall()]
                 return ok({"share": share, "rooms": rooms})

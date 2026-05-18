@@ -38,23 +38,31 @@ export default function PlanSharePage() {
   useEffect(() => {
     if (!token) return;
     fetch(`${CRM_URL}?r=plan-share&token=${token}`)
-      .then(r => r.json())
-      .then((d: { share?: Share; rooms?: Room[] }) => {
-        if (!d.share) { setError(true); return; }
+      .then(r => {
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        return r.json();
+      })
+      .then((d: { share?: Share; rooms?: Room[]; error?: string }) => {
+        if (!d || d.error || !d.share) { setError(true); return; }
         setShare(d.share);
         const roomList = d.rooms ?? [];
-        // Пересчитываем thumbnails
+        // Пересчитываем thumbnails — каждую отдельно, не прерываем при ошибке
         const rebuilt = roomList.map(room => {
-          const planData = (room.active_variant_data ?? room.data) as PlanState | undefined;
-          if (!planData?.points || planData.points.length < 2) return room;
-          const newThumb = getSvgDataUrl(planData, 0.5, true).slice(0, 10000);
-          return room.active_variant_data
-            ? { ...room, active_variant_thumbnail: newThumb || room.active_variant_thumbnail }
-            : { ...room, thumbnail: newThumb || room.thumbnail };
+          try {
+            const planData = (room.active_variant_data ?? room.data) as PlanState | undefined;
+            if (!planData?.points || planData.points.length < 2) return room;
+            const newThumb = getSvgDataUrl(planData, 0.5, true).slice(0, 10000);
+            if (!newThumb) return room;
+            return room.active_variant_data
+              ? { ...room, active_variant_thumbnail: newThumb || room.active_variant_thumbnail }
+              : { ...room, thumbnail: newThumb || room.thumbnail };
+          } catch {
+            return room;
+          }
         });
         setRooms(rebuilt);
       })
-      .catch(() => setError(true))
+      .catch(e => { console.error("plan-share load error:", e); setError(true); })
       .finally(() => setLoading(false));
   }, [token]);
 
