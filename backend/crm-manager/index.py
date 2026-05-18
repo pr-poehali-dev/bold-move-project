@@ -917,13 +917,37 @@ def handler(event: dict, context) -> dict:
             if method == "POST":
                 name = (body.get("name") or "").strip()
                 if not name: return err("name required")
+                client_name = body.get("client_name")
+                address = body.get("address")
+                phone = body.get("phone")
+                # 1. Создаём проект
                 cur.execute(f"""
                     INSERT INTO {SCHEMA}.plan_projects (company_id, name, client_name, address, phone, status)
                     VALUES (%s,%s,%s,%s,%s,%s) RETURNING id
-                """, (cmp, name, body.get("client_name"), body.get("address"), body.get("phone"), body.get("status","draft")))
+                """, (cmp, name, client_name, address, phone, body.get("status","draft")))
                 new_id = cur.fetchone()[0]
+                # 2. Автоматически создаём заявку в CRM
+                session_id = f"plan-{new_id}"
+                cur.execute(f"""
+                    INSERT INTO {SCHEMA}.live_chats
+                        (session_id, client_name, phone, address, status, source, company_id, project_id)
+                    VALUES (%s,%s,%s,%s,'new','plan',%s,%s) RETURNING id
+                """, (session_id, client_name or name, phone, address, cmp, new_id))
+                chat_id = cur.fetchone()[0]
+                # 3. Связываем проект с заявкой
+                cur.execute(f"UPDATE {SCHEMA}.plan_projects SET crm_chat_id=%s WHERE id=%s", (chat_id, new_id))
+                # 4. Ищем колонку "С построителя" и добавляем канбан-карточку
+                cur.execute(f"SELECT id FROM {SCHEMA}.kanban_columns WHERE title='С построителя' AND company_id=%s LIMIT 1", (cmp,))
+                col_row = cur.fetchone()
+                if col_row:
+                    cur.execute(f"SELECT COALESCE(MAX(position)+1,0) FROM {SCHEMA}.kanban_cards WHERE column_id=%s AND company_id=%s", (col_row[0], cmp))
+                    pos = cur.fetchone()[0]
+                    cur.execute(f"""INSERT INTO {SCHEMA}.kanban_cards
+                        (column_id, client_id, title, phone, priority, position, company_id)
+                        VALUES (%s,%s,%s,%s,'medium',%s,%s)""",
+                        (col_row[0], chat_id, name, phone or "", pos, cmp))
                 conn.commit()
-                return ok({"id": new_id})
+                return ok({"id": new_id, "crm_chat_id": chat_id})
 
             if method == "PUT":
                 pid = qs.get("id")
@@ -1128,6 +1152,65 @@ def handler(event: dict, context) -> dict:
                 """, (int(vid), cmp))
                 conn.commit()
                 return ok({"deleted": True})
+
+        # ── PLAN-CRM-SYNC — синхронизация данных проект ↔ заявка CRM ────────────
+        if resource == "plan-crm-sync":
+            cmp = company_id if company_id is not None else 0
+
+            # GET: получить связанную заявку CRM по project_id
+            if method == "GET":
+                pid = qs.get("project_id")
+                if not pid: return err("project_id required")
+                cur.execute(f"""
+                    SELECT lc.id, lc.client_name, lc.phone, lc.address, lc.status,
+                           lc.contract_sum, lc.notes, lc.project_id, p.crm_chat_id,
+                           p.name as project_name
+                    FROM {SCHEMA}.plan_projects p
+                    LEFT JOIN {SCHEMA}.live_chats lc ON lc.id = p.crm_chat_id
+                    WHERE p.id=%s AND p.company_id=%s
+                """, (int(pid), cmp))
+                row = cur.fetchone()
+                if not row: return err("not found", 404)
+                cols = [d[0] for d in cur.description]
+                return ok(dict(zip(cols, row)))
+
+            # PUT: синхронизировать данные из построителя → CRM и обратно
+            if method == "PUT":
+                pid = qs.get("project_id")
+                if not pid: return err("project_id required")
+                # Получаем связанную заявку
+                cur.execute(f"""
+                    SELECT p.crm_chat_id FROM {SCHEMA}.plan_projects p
+                    WHERE p.id=%s AND p.company_id=%s
+                """, (int(pid), cmp))
+                row = cur.fetchone()
+                if not row: return err("project not found", 404)
+                chat_id = row[0]
+                # Обновляем поля которые пришли
+                plan_fields = ["name","client_name","address","phone","status"]
+                crm_fields  = ["client_name","phone","address","contract_sum","notes"]
+                # Синхронизируем plan_projects
+                p_sets, p_vals = [], []
+                for f in plan_fields:
+                    if f in body:
+                        p_sets.append(f"{f}=%s"); p_vals.append(body[f])
+                if p_sets:
+                    p_sets.append("updated_at=NOW()")
+                    p_vals += [int(pid), cmp]
+                    cur.execute(f"UPDATE {SCHEMA}.plan_projects SET {','.join(p_sets)} WHERE id=%s AND company_id=%s", p_vals)
+                # Синхронизируем live_chats если есть связь
+                if chat_id:
+                    c_sets, c_vals = [], []
+                    name_val = body.get("client_name") or body.get("name")
+                    if name_val: c_sets.append("client_name=%s"); c_vals.append(name_val)
+                    for f in ["phone","address","contract_sum","notes"]:
+                        if f in body: c_sets.append(f"{f}=%s"); c_vals.append(body[f])
+                    if c_sets:
+                        c_sets.append("updated_at=NOW()")
+                        c_vals.append(chat_id)
+                        cur.execute(f"UPDATE {SCHEMA}.live_chats SET {','.join(c_sets)} WHERE id=%s", c_vals)
+                conn.commit()
+                return ok({"synced": True, "project_id": int(pid), "crm_chat_id": chat_id})
 
         return err("unknown resource", 404)
 

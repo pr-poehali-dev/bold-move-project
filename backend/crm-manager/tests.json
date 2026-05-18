@@ -61,6 +61,14 @@
       "expectedStatus": 400,
       "expectedBody": {"error": "chat_id required"},
       "bodyMatcher": "partial"
+    },
+    {
+      "name": "GET plan-crm-sync missing project_id",
+      "method": "GET",
+      "path": "/?r=plan-crm-sync&project_id=0",
+      "expectedStatus": 404,
+      "expectedBody": {"error": "not found"},
+      "bodyMatcher": "partial"
     }
   ]
 }
