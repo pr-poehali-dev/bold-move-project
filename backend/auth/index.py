@@ -377,15 +377,16 @@ def handler(event: dict, context) -> dict:
             "support_phone", "support_email", "max_url",
             "working_hours", "pdf_footer_address", "telegram_url", "pdf_text_color",
             "brand_logo_url_dark", "brand_logo_orientation", "pdf_logo_bg",
-            "tg_bot_token", "tg_notify_chat_id", "nav_config",
+            "tg_bot_token", "tg_notify_chat_id", "nav_config", "nav_hidden_ids",
         ]
+        JSON_FIELDS = {"nav_config", "nav_hidden_ids"}
         sets = []
         vals = []
         import json as _json
         for k in ALLOWED:
             if k in body:
                 v = body.get(k)
-                if k == "nav_config":
+                if k in JSON_FIELDS:
                     v = _json.dumps(v, ensure_ascii=False) if v is not None else None
                 elif isinstance(v, str):
                     v = v.strip() or None
