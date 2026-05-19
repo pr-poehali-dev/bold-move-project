@@ -9,6 +9,7 @@ import { AdminPanelLoadingScreen, AdminPanelAccessScreen } from "./AdminPanelAcc
 import { AdminPanelHeader } from "./AdminPanelHeader";
 import { AdminPanelContent } from "./AdminPanelContent";
 import { TrialBanner } from "./admin/TrialBanner";
+import QuickAccessBar from "@/components/QuickAccessBar";
 
 // Роли с доступом к /company
 const ALLOWED_ROLES = ["installer", "company", "manager"];
@@ -161,6 +162,8 @@ export default function AdminPanel() {
         initialOrderId={initialOrderId}
         mainTabsLength={mainTabs.length}
       />
+
+      <QuickAccessBar />
     </div>
   );
 }

@@ -23,7 +23,7 @@ import {
   PanelOther,
   PanelCustom,
 } from "./ChatPanels";
-import MobileContactBar from "./MobileContactBar";
+import QuickAccessBar from "@/components/QuickAccessBar";
 import EcoSystemModal from "@/components/EcoSystemModal";
 
 export default function Index() {
@@ -399,8 +399,8 @@ export default function Index() {
         </div>
       </div>
 
-      {/* Mobile bottom CTA — свайп вверх/вниз */}
-      <MobileContactBar panel={panel} setPanel={setPanel} />
+      {/* Быстрое меню — свайп вверх/вниз */}
+      <QuickAccessBar onContacts={() => setPanel(panel === "contacts" ? "none" : "contacts")} />
 
       {/* Page Editor — открывается поверх всего при нажатии на карандаш */}
       {editingPanelId && (

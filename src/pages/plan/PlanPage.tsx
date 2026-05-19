@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import QuickAccessBar from "@/components/QuickAccessBar";
 import PlanToolbar from "./PlanToolbar";
 import useVoiceDraw from "./useVoiceDraw";
 import { usePlanCatalog } from "./usePlanCatalog";
@@ -189,32 +190,36 @@ export default function PlanPage() {
 
   // ── Экраны проектов и комнат ─────────────────────────────────────────────────
   if (screen === "projects") {
-    // Если открыт с ?project_id= (из CRM), автоматически выбираем нужный проект
     const urlProjectId = new URLSearchParams(window.location.search).get("project_id");
-
     return (
-      <PlanProjectsScreen
-        token={token}
-        initialProjectId={urlProjectId ? Number(urlProjectId) : undefined}
-        onSelectProject={project => {
-          setActiveProject(project);
-          setScreen("rooms");
-          // Убираем ?project_id= из URL
-          const url = new URL(window.location.href);
-          url.searchParams.delete("project_id");
-          window.history.replaceState({}, "", url.toString());
-        }}
-      />
+      <div className="flex flex-col" style={{ height: "100dvh" }}>
+        <div className="flex-1 overflow-hidden">
+          <PlanProjectsScreen
+            token={token}
+            initialProjectId={urlProjectId ? Number(urlProjectId) : undefined}
+            onSelectProject={project => {
+              setActiveProject(project);
+              setScreen("rooms");
+              const url = new URL(window.location.href);
+              url.searchParams.delete("project_id");
+              window.history.replaceState({}, "", url.toString());
+            }}
+          />
+        </div>
+        <QuickAccessBar />
+      </div>
     );
   }
 
   if (screen === "rooms" && activeProject) {
     return (
-      <PlanRoomsScreen
-        token={token}
-        project={activeProject}
-        onBack={() => setScreen("projects")}
-        onOpenRoom={async room => {
+      <div className="flex flex-col" style={{ height: "100dvh" }}>
+        <div className="flex-1 overflow-hidden">
+          <PlanRoomsScreen
+            token={token}
+            project={activeProject}
+            onBack={() => setScreen("projects")}
+            onOpenRoom={async room => {
           setActiveRoom(room);
           setRoomLoading(true);
           setScreen("canvas");
@@ -250,7 +255,10 @@ export default function PlanPage() {
           }, 200);
           setRoomLoading(false);
         }}
-      />
+          />
+        </div>
+        <QuickAccessBar />
+      </div>
     );
   }
 
@@ -360,6 +368,7 @@ export default function PlanPage() {
         mobileVariantPickerOpen={mobileVariantPickerOpen}
       />
 
+      <QuickAccessBar />
     </div>
   );
 }

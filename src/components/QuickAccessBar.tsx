@@ -1,0 +1,98 @@
+import { useState, useRef } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
+import Icon from "@/components/ui/icon";
+
+interface QuickItem {
+  id: string;
+  label: string;
+  icon: string;
+  path: string;
+}
+
+const ITEMS: QuickItem[] = [
+  { id: "agent",   label: "Агент",       icon: "Bot",          path: "/"        },
+  { id: "crm",     label: "CRM",         icon: "ClipboardList", path: "/company" },
+  { id: "plan",    label: "Построитель", icon: "PenTool",      path: "/plan"    },
+  { id: "contacts",label: "Контакты",    icon: "Phone",        path: "#contacts"},
+];
+
+interface Props {
+  onContacts?: () => void;
+}
+
+export default function QuickAccessBar({ onContacts }: Props) {
+  const [open, setOpen] = useState(false);
+  const navigate = useNavigate();
+  const location = useLocation();
+  const startYRef = useRef<number | null>(null);
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    startYRef.current = e.touches[0].clientY;
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (startYRef.current === null) return;
+    const dy = startYRef.current - e.changedTouches[0].clientY;
+    if (dy > 30) setOpen(true);
+    if (dy < -30) setOpen(false);
+    startYRef.current = null;
+  };
+
+  const handleItem = (item: QuickItem) => {
+    setOpen(false);
+    if (item.id === "contacts") {
+      onContacts?.();
+      return;
+    }
+    navigate(item.path);
+  };
+
+  const currentPath = location.pathname;
+
+  return (
+    <div
+      className="shrink-0 select-none z-50"
+      style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
+      onTouchStart={handleTouchStart}
+      onTouchEnd={handleTouchEnd}
+    >
+      {/* Ручка — всегда видна */}
+      <div
+        className="flex flex-col items-center justify-center py-1.5 cursor-pointer"
+        onClick={() => setOpen(v => !v)}
+      >
+        <div className="w-8 h-1 rounded-full bg-white/15" />
+        <span className="text-[9px] text-white/20 mt-1">
+          {open ? "скрыть" : "меню"}
+        </span>
+      </div>
+
+      {/* Панель кнопок */}
+      <div
+        className="overflow-hidden transition-all duration-300 ease-in-out"
+        style={{ maxHeight: open ? "80px" : "0px", opacity: open ? 1 : 0 }}
+      >
+        <div className="flex items-center gap-2 px-3 pb-3">
+          {ITEMS.map(item => {
+            const isActive = item.path !== "#contacts" && currentPath === item.path;
+            return (
+              <button
+                key={item.id}
+                onClick={() => handleItem(item)}
+                className="flex-1 flex flex-col items-center justify-center gap-1 py-2 rounded-xl text-[10px] font-medium active:scale-95 transition-transform"
+                style={{
+                  background: isActive ? "rgba(124,58,237,0.25)" : "rgba(255,255,255,0.07)",
+                  border: `1px solid ${isActive ? "rgba(124,58,237,0.5)" : "rgba(255,255,255,0.1)"}`,
+                  color: isActive ? "#a78bfa" : "rgba(255,255,255,0.6)",
+                }}
+              >
+                <Icon name={item.icon} size={14} />
+                {item.label}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
