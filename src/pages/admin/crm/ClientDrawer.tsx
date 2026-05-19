@@ -196,7 +196,7 @@ export default function ClientDrawer({ client, allClientOrders, onClose, onUpdat
         </div>
 
         {/* ── Табы ── */}
-        <div className="flex px-1 sm:px-6 gap-0 pt-2 sm:pt-3 flex-shrink-0 overflow-x-auto" style={{ borderBottom: `1px solid ${t.border}`, scrollbarWidth: "none" }}>
+        <div className="flex px-1 sm:px-6 gap-0 pt-2 sm:pt-3 flex-shrink-0" style={{ borderBottom: `1px solid ${t.border}` }}>
           {([
             { id: "client",   label: "Клиент",   icon: "User" },
             { id: "orders",   label: `Заявки (${allClientOrders.length})`, icon: "ClipboardList" },
@@ -218,11 +218,11 @@ export default function ClientDrawer({ client, allClientOrders, onClose, onUpdat
               setDrawerTab("estimate" as "client" | "orders" | "estimate" | "plan");
               setPdfModalOpen(true);
             }}
-            className="flex items-center justify-center w-8 h-8 rounded-lg my-1 transition hover:brightness-110 active:scale-[0.97] flex-shrink-0"
-            style={{ background: "rgba(124,58,237,0.12)", color: "#a78bfa" }}
+            className="flex items-center justify-center px-2 py-2 transition hover:opacity-70 active:scale-[0.97] flex-shrink-0"
+            style={{ color: t.textMute }}
             title="Настройки PDF"
           >
-            <Icon name="Printer" size={14} />
+            <Icon name="Share2" size={14} />
           </button>
         </div>
 
