@@ -117,6 +117,14 @@ export default function CrmOrders({ clients: allClients, loading, onStatusChange
 
       // Если проект уже привязан — просто открываем его
       if (client.project_id) {
+        // Сохраняем привязку к CRM-заявке чтобы смета сохранялась в неё же
+        localStorage.setItem("crm_linked_session", JSON.stringify({
+          chat_id: client.id,
+          session_id: client.session_id,
+          client_name: client.client_name || `Заявка №${client.id}`,
+          phone: client.phone || "",
+          address: client.address || "",
+        }));
         setActionModal(null);
         setActionLoading(false);
         navigate(`/plan?project_id=${client.project_id}`);
@@ -146,6 +154,14 @@ export default function CrmOrders({ clients: allClients, loading, onStatusChange
           method: "PUT",
           body: JSON.stringify({ project_id: data.id }),
         }, { id: String(client.id) });
+        // Сохраняем привязку к CRM-заявке чтобы смета сохранялась в неё же
+        localStorage.setItem("crm_linked_session", JSON.stringify({
+          chat_id: client.id,
+          session_id: client.session_id,
+          client_name: client.client_name || `Заявка №${client.id}`,
+          phone: client.phone || "",
+          address: client.address || "",
+        }));
         onReload();
         setActionModal(null);
         setActionLoading(false);

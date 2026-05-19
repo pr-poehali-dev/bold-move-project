@@ -714,9 +714,10 @@ def handler(event: dict, context) -> dict:
                 VALUES (%s, -1, 'estimate_created')
             """, (user_id,))
 
-        blocks       = body.get("blocks", [])
-        totals       = body.get("totals", [])
-        final_phrase = body.get("finalPhrase", "")
+        blocks         = body.get("blocks", [])
+        totals         = body.get("totals", [])
+        final_phrase   = body.get("finalPhrase", "")
+        linked_chat_id = body.get("linked_chat_id")  # ID существующей CRM-заявки
 
         def extract_sum(keyword):
             import re
@@ -766,21 +767,38 @@ def handler(event: dict, context) -> dict:
             material_cost_total = 0
 
         import secrets as sec
-        session_id = f"estimate-{estimate_id}-{sec.token_hex(6)}"
-        cur.execute(f"""
-            INSERT INTO {SCHEMA}.live_chats
-              (session_id, client_name, phone, status, source, contract_sum, material_cost, company_id)
-            VALUES (%s, %s, %s, 'new', 'estimate', %s, %s, %s)
-            RETURNING id
-        """, (
-            session_id,
-            user_name or email,
-            phone or "",
-            total_standard,
-            material_cost_total if material_cost_total > 0 else None,
-            crm_company_id,
-        ))
-        chat_id = cur.fetchone()[0]
+        # Если передан linked_chat_id — обновляем существующую заявку, не создаём новую
+        if linked_chat_id:
+            cur.execute(f"""
+                UPDATE {SCHEMA}.live_chats
+                SET contract_sum=%s, material_cost=%s
+                WHERE id=%s AND company_id=%s
+                RETURNING id
+            """, (
+                total_standard,
+                material_cost_total if material_cost_total > 0 else None,
+                int(linked_chat_id),
+                crm_company_id,
+            ))
+            row = cur.fetchone()
+            chat_id = row[0] if row else None
+
+        if not linked_chat_id or not chat_id:
+            session_id = f"estimate-{estimate_id}-{sec.token_hex(6)}"
+            cur.execute(f"""
+                INSERT INTO {SCHEMA}.live_chats
+                  (session_id, client_name, phone, status, source, contract_sum, material_cost, company_id)
+                VALUES (%s, %s, %s, 'new', 'estimate', %s, %s, %s)
+                RETURNING id
+            """, (
+                session_id,
+                user_name or email,
+                phone or "",
+                total_standard,
+                material_cost_total if material_cost_total > 0 else None,
+                crm_company_id,
+            ))
+            chat_id = cur.fetchone()[0]
 
         cur.execute(f"UPDATE {SCHEMA}.saved_estimates SET chat_id=%s WHERE id=%s", (chat_id, estimate_id))
 

@@ -18,7 +18,6 @@ export default function CrmClients({ canEdit = true, canFinance = true, canFiles
 }) {
   const t = useTheme();
   const [clients, setClients]   = useState<Client[]>([]);
-  const [clientOrders, setClientOrders] = useState<Client[]>([]);
   const [loading, setLoading]   = useState(true);
   const [selected, setSelected] = useState<Client | null>(null);
   const [showAdd, setShowAdd]   = useState(false);
@@ -226,7 +225,7 @@ export default function CrmClients({ canEdit = true, canFinance = true, canFiles
 
       {/* Drawer */}
       {selected && (
-        <ClientDrawer client={selected} allClientOrders={clientOrders} onClose={() => setSelected(null)}
+        <ClientDrawer client={selected} allClientOrders={getClientOrders(selected, clients)} onClose={() => setSelected(null)}
           onUpdated={() => { load(); }}
           onDeleted={() => { setSelected(null); load(); }}
           canEdit={canEdit} canFinance={canFinance} canFiles={canFiles}
