@@ -8,7 +8,7 @@ interface Props {
   onCreated: () => void;
 }
 
-export default function AddClientModal({ onClose, onCreated }: Props) {
+export function AddClientModal({ onClose, onCreated }: Props) {
   const t = useTheme();
   const [name,    setName]    = useState("");
   const [phone,   setPhone]   = useState("");

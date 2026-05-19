@@ -4,7 +4,7 @@ import { crmFetch, Client, getClientOrders, getCrmToken } from "./crmApi";
 import Icon from "@/components/ui/icon";
 import ClientDrawer from "./ClientDrawer";
 import CrmActionModal from "./CrmActionModal";
-import AddClientModal from "./AddClientModal";
+import { AddClientModal } from "./AddClientModal";
 import { useTheme } from "./themeContext";
 import { ORDERS_TABS } from "./ordersTypes";
 import func2url from "@/../backend/func2url.json";
