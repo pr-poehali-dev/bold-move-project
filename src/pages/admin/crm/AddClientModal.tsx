@@ -17,6 +17,35 @@ export function AddClientModal({ onClose, onCreated }: Props) {
   const [saving,  setSaving]  = useState(false);
   const [error,   setError]   = useState("");
 
+  const formatPhone = (raw: string): string => {
+    // Оставляем только цифры
+    const digits = raw.replace(/\D/g, "");
+    // Нормализуем: 8 → 7, остальное как есть
+    const normalized = digits.startsWith("8") ? "7" + digits.slice(1) : digits.startsWith("7") ? digits : "7" + digits;
+    const d = normalized.slice(1); // цифры после кода страны
+    let result = "+7";
+    if (d.length > 0) result += " " + d.slice(0, 3);
+    if (d.length > 3) result += " " + d.slice(3, 6);
+    if (d.length > 6) result += "-" + d.slice(6, 8);
+    if (d.length > 8) result += "-" + d.slice(8, 10);
+    return result;
+  };
+
+  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const raw = e.target.value;
+    // Разрешаем стирать до пустой строки
+    if (!raw.replace(/\D/g, "")) { setPhone(""); return; }
+    setPhone(formatPhone(raw));
+  };
+
+  const handlePhoneFocus = () => {
+    if (!phone) setPhone("+7 ");
+  };
+
+  const handlePhoneBlur = () => {
+    if (phone === "+7 " || phone === "+7") setPhone("");
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) { setError("Введите имя клиента"); return; }
@@ -91,9 +120,13 @@ export function AddClientModal({ onClose, onCreated }: Props) {
             <label className="text-xs font-semibold" style={{ color: t.textSub }}>Телефон</label>
             <input
               value={phone}
-              onChange={e => setPhone(e.target.value)}
-              placeholder="+7 (999) 000-00-00"
+              onChange={handlePhoneChange}
+              onFocus={handlePhoneFocus}
+              onBlur={handlePhoneBlur}
+              placeholder="+7 977 606-89-01"
               type="tel"
+              inputMode="numeric"
+              maxLength={16}
               className="w-full rounded-xl px-3.5 py-2.5 text-sm focus:outline-none transition"
               style={{ background: t.surface2, border: `1px solid ${t.border}`, color: t.text }}
             />
