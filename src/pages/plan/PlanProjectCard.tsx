@@ -177,16 +177,16 @@ export default function PlanProjectCard({
         </button>
       )}
 
-      {/* Бейдж «не привязан к заявке» — левый верхний угол */}
+      {/* Бейдж «не привязан к заявке» — правый нижний угол */}
       {!isEditing && !project.crm_chat_id && (onCreateLink || onAttachLink) && (
         <button
           title="Привязать к заявке"
           onClick={e => { e.stopPropagation(); setShowLinkMenu(v => !v); }}
-          className="absolute flex items-center gap-0.5 px-1.5 py-0.5 rounded-br-xl text-[9px] font-bold z-10 transition hover:brightness-125 active:scale-95"
-          style={{ top: 0, left: 0, background: "rgba(234,179,8,0.18)", color: "#facc15", border: "1px solid rgba(234,179,8,0.3)", borderTop: "none", borderLeft: "none" }}
+          className="absolute flex items-center gap-0.5 px-1.5 py-0.5 rounded-tl-xl text-[9px] font-bold z-10 transition hover:brightness-125 active:scale-95"
+          style={{ bottom: 0, right: 0, background: "rgba(239,68,68,0.15)", color: "#f87171", border: "1px solid rgba(239,68,68,0.25)", borderBottom: "none", borderRight: "none" }}
         >
           <Icon name="TriangleAlert" size={9} />
-          без заявки
+          CRM
         </button>
       )}
       {/* Мини-меню привязки */}
