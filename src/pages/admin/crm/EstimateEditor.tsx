@@ -7,12 +7,14 @@ import EstimateToolbar from "./EstimateToolbar";
 import EstimateTable from "./EstimateTable";
 import PdfOptionsModal from "./PdfOptionsModal";
 
-export default function EstimateEditor({ chatId, clientName, clientPhone, onEstimateSaved, onContractSumChanged }: {
+export default function EstimateEditor({ chatId, clientName, clientPhone, onEstimateSaved, onContractSumChanged, pdfModalOpen, onClosePdfModal }: {
   chatId: number;
   clientName?: string | null;
   clientPhone?: string | null;
   onEstimateSaved?: () => void;
   onContractSumChanged?: (sum: number) => void;
+  pdfModalOpen?: boolean;
+  onClosePdfModal?: () => void;
 }) {
   const [estimate, setEstimate] = useState<SavedEstimate | null>(null);
   const [loading,  setLoading]  = useState(true);
@@ -270,10 +272,10 @@ export default function EstimateEditor({ chatId, clientName, clientPhone, onEsti
       />
     </div>
 
-    {showPdfModal && (
+    {(showPdfModal || pdfModalOpen) && (
       <PdfOptionsModal
-        onConfirm={doPrint}
-        onClose={() => setShowPdfModal(false)}
+        onConfirm={opts => { doPrint(opts); onClosePdfModal?.(); }}
+        onClose={() => { setShowPdfModal(false); onClosePdfModal?.(); }}
       />
     )}
     </>

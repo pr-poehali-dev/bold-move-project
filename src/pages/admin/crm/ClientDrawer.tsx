@@ -6,6 +6,7 @@ import EstimateEditor from "./EstimateEditor";
 import DrawerInfoTab from "./DrawerInfoTab";
 import ClientTab from "./ClientTab";
 import DrawerPlanTab from "./DrawerPlanTab";
+import PdfOptionsModal from "./PdfOptionsModal";
 
 interface Props {
   client: Client;
@@ -42,6 +43,7 @@ export default function ClientDrawer({ client, allClientOrders, onClose, onUpdat
   const [selectedOrderId, setSelectedOrderId] = useState<number>(defaultOrderId ?? client.id);
   const [orderInnerTab, setOrderInnerTab] = useState<"info" | "estimate">("info");
   const [ordersListOpen, setOrdersListOpen] = useState(false);
+  const [pdfModalOpen, setPdfModalOpen] = useState(false);
 
   const save = async (patch: Partial<Client>) => {
     setData(prev => ({ ...prev, ...patch }));
@@ -209,6 +211,19 @@ export default function ClientDrawer({ client, allClientOrders, onClose, onUpdat
               <Icon name={tab.icon} size={13} /> {tab.label}
             </button>
           ))}
+          {/* Кнопка PDF — всегда справа */}
+          <div className="flex-1" />
+          <button
+            onClick={() => {
+              setDrawerTab("estimate" as "client" | "orders" | "estimate" | "plan");
+              setPdfModalOpen(true);
+            }}
+            className="flex items-center justify-center w-8 h-8 rounded-lg my-1 transition hover:brightness-110 active:scale-[0.97] flex-shrink-0"
+            style={{ background: "rgba(124,58,237,0.12)", color: "#a78bfa" }}
+            title="Настройки PDF"
+          >
+            <Icon name="Printer" size={14} />
+          </button>
         </div>
 
         {/* ── Контент ── */}
@@ -231,6 +246,8 @@ export default function ClientDrawer({ client, allClientOrders, onClose, onUpdat
                 chatId={orderData.id}
                 clientName={orderData.client_name}
                 clientPhone={orderData.phone}
+                pdfModalOpen={pdfModalOpen}
+                onClosePdfModal={() => setPdfModalOpen(false)}
                 onEstimateSaved={() => {
                   onUpdated();
                 }}
