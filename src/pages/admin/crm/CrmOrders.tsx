@@ -154,8 +154,7 @@ export default function CrmOrders({ clients: allClients, loading, onStatusChange
       }));
       setActionModal(null);
       setActionLoading(false);
-      localStorage.setItem("admin_main_tab", "agent");
-      navigate("/company");
+      navigate("/");
     }
   };
 
