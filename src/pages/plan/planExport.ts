@@ -3,59 +3,29 @@ import {
   pointLabel, segmentLabel, distPx, midPoint, segmentNormal,
   pxToCm, calcScale, angleDeg, buildShapePath,
 } from "./planTypes";
+import func2url from "@/../backend/func2url.json";
+
+const IMAGE_PROXY_URL = (func2url as Record<string, string>)["image-proxy"];
 
 const PAD = 60; // отступ вокруг фигуры в px экспортного SVG
 
-// ── Загрузка картинки → base64 через Canvas ──────────────────────────────────
+// ── Загрузка картинки → base64 через прокси-бэкенд (обход CORS) ──────────────
 const imageCache = new Map<string, string>();
 
 async function fetchImageAsBase64(url: string): Promise<string> {
   if (imageCache.has(url)) return imageCache.get(url)!;
-  // Метод 1: fetch + FileReader (лучший вариант при наличии CORS)
   try {
-    const res = await fetch(url, { mode: "cors" });
-    if (res.ok) {
-      const blob = await res.blob();
-      const b64 = await new Promise<string>((resolve) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result as string);
-        reader.onerror = () => resolve("");
-        reader.readAsDataURL(blob);
-      });
-      if (b64) {
-        imageCache.set(url, b64);
-        return b64;
-      }
+    const proxyUrl = `${IMAGE_PROXY_URL}?url=${encodeURIComponent(url)}`;
+    const res = await fetch(proxyUrl);
+    if (!res.ok) return "";
+    const data = await res.json();
+    const dataUrl = data.dataUrl as string;
+    if (dataUrl) {
+      imageCache.set(url, dataUrl);
+      return dataUrl;
     }
-  } catch { /* fallthrough */ }
-
-  // Метод 2: Image + Canvas с crossOrigin
-  return new Promise<string>((resolve) => {
-    const img = new Image();
-    img.crossOrigin = "anonymous";
-    img.onload = () => {
-      try {
-        const canvas = document.createElement("canvas");
-        canvas.width  = img.naturalWidth  || 64;
-        canvas.height = img.naturalHeight || 64;
-        const ctx = canvas.getContext("2d");
-        if (!ctx) { resolve(""); return; }
-        ctx.drawImage(img, 0, 0);
-        const b64 = canvas.toDataURL("image/png");
-        if (b64 && b64 !== "data:,") {
-          imageCache.set(url, b64);
-          resolve(b64);
-        } else {
-          resolve("");
-        }
-      } catch {
-        resolve("");
-      }
-    };
-    img.onerror = () => resolve("");
-    // небольшая задержка чтобы браузер не кэшировал без CORS-заголовков
-    img.src = url + (url.includes("?") ? "&_cb=1" : "?_cb=1");
-  });
+  } catch { /* ignore */ }
+  return "";
 }
 
 // ── Собрать все imageUrl из сегментов ────────────────────────────────────────
