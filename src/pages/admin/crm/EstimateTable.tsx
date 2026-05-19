@@ -263,10 +263,10 @@ export default function EstimateTable({
                   <thead className="hidden sm:table-header-group">
                     <tr style={{ background: t.surface2 + "60", borderBottom: `1px solid ${t.border}` }}>
                       <th className="text-left px-3 py-2 text-xs font-semibold uppercase tracking-wide" style={{ color: t.textMute }}>Позиция</th>
-                      <th className="text-center px-2 py-2 text-xs font-semibold uppercase tracking-wide w-24" style={{ color: t.textMute }}>Кол-во</th>
-                      <th className="px-1 py-2 w-12" />
-                      <th className="text-right px-2 py-2 text-xs font-semibold uppercase tracking-wide w-28" style={{ color: t.textMute }}>Цена</th>
-                      <th className="text-right px-3 py-2 text-xs font-semibold uppercase tracking-wide w-28" style={{ color: t.textMute }}>Итого</th>
+                      {editMode && <th className="text-center px-2 py-2 text-xs font-semibold uppercase tracking-wide w-24" style={{ color: t.textMute }}>Кол-во</th>}
+                      {editMode && <th className="px-1 py-2 w-12" />}
+                      {editMode && <th className="text-right px-2 py-2 text-xs font-semibold uppercase tracking-wide w-28" style={{ color: t.textMute }}>Цена</th>}
+                      <th className="text-right px-3 py-2 text-xs font-semibold uppercase tracking-wide w-56" style={{ color: t.textMute }}>Итого</th>
                       <th className="w-8" />
                     </tr>
                   </thead>
@@ -328,10 +328,7 @@ export default function EstimateTable({
               <thead className="hidden sm:table-header-group">
                 <tr style={{ background: t.surface2, borderBottom: `1px solid ${t.border}` }}>
                   <th className="text-left px-3 py-2.5 text-xs font-semibold uppercase tracking-wide" style={{ color: t.textMute }}>Позиция</th>
-                  <th className="text-center px-2 py-2.5 text-xs font-semibold uppercase tracking-wide w-24" style={{ color: t.textMute }}>Кол-во</th>
-                  <th className="px-1 py-2.5 w-12" />
-                  <th className="text-right px-2 py-2.5 text-xs font-semibold uppercase tracking-wide w-28" style={{ color: t.textMute }}>Цена</th>
-                  <th className="text-right px-3 py-2.5 text-xs font-semibold uppercase tracking-wide w-28" style={{ color: t.textMute }}>Итого</th>
+                  <th className="text-right px-3 py-2.5 text-xs font-semibold uppercase tracking-wide w-56" style={{ color: t.textMute }}>Итого</th>
                   <th className="w-8" />
                 </tr>
               </thead>
