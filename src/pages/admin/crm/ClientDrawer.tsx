@@ -202,7 +202,7 @@ export default function ClientDrawer({ client, allClientOrders, onClose, onUpdat
                 title={ord.project_id ? "Открыть чертёж" : "Создать чертёж"}
               >
                 <Icon name="PenTool" size={13} />
-                {ord.project_id ? "Чертёж" : "Построитель"}
+                Построитель
               </button>
             )}
 
