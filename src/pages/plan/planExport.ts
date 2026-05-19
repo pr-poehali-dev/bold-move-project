@@ -11,7 +11,25 @@ const imageCache = new Map<string, string>();
 
 async function fetchImageAsBase64(url: string): Promise<string> {
   if (imageCache.has(url)) return imageCache.get(url)!;
-  // Используем Image + Canvas для обхода CORS (работает с same-origin и CDN с CORS-заголовками)
+  // Метод 1: fetch + FileReader (лучший вариант при наличии CORS)
+  try {
+    const res = await fetch(url, { mode: "cors" });
+    if (res.ok) {
+      const blob = await res.blob();
+      const b64 = await new Promise<string>((resolve) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = () => resolve("");
+        reader.readAsDataURL(blob);
+      });
+      if (b64) {
+        imageCache.set(url, b64);
+        return b64;
+      }
+    }
+  } catch { /* fallthrough */ }
+
+  // Метод 2: Image + Canvas с crossOrigin
   return new Promise<string>((resolve) => {
     const img = new Image();
     img.crossOrigin = "anonymous";
@@ -24,14 +42,19 @@ async function fetchImageAsBase64(url: string): Promise<string> {
         if (!ctx) { resolve(""); return; }
         ctx.drawImage(img, 0, 0);
         const b64 = canvas.toDataURL("image/png");
-        imageCache.set(url, b64);
-        resolve(b64);
+        if (b64 && b64 !== "data:,") {
+          imageCache.set(url, b64);
+          resolve(b64);
+        } else {
+          resolve("");
+        }
       } catch {
         resolve("");
       }
     };
     img.onerror = () => resolve("");
-    img.src = url;
+    // небольшая задержка чтобы браузер не кэшировал без CORS-заголовков
+    img.src = url + (url.includes("?") ? "&_cb=1" : "?_cb=1");
   });
 }
 

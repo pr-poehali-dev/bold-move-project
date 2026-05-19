@@ -214,10 +214,7 @@ export default function ClientDrawer({ client, allClientOrders, onClose, onUpdat
           {/* Кнопка PDF — всегда справа */}
           <div className="flex-1" />
           <button
-            onClick={() => {
-              setDrawerTab("estimate" as "client" | "orders" | "estimate" | "plan");
-              setPdfModalOpen(true);
-            }}
+            onClick={() => setPdfModalOpen(true)}
             className="flex items-center justify-center px-2 py-2 transition hover:opacity-70 active:scale-[0.97] flex-shrink-0"
             style={{ color: t.textMute }}
             title="Настройки PDF"
@@ -240,24 +237,24 @@ export default function ClientDrawer({ client, allClientOrders, onClose, onUpdat
           )}
 
           {/* СМЕТА */}
-          {drawerTab === "estimate" && (
-            <div className="px-3 sm:px-6 py-4">
-              <EstimateEditor
-                chatId={orderData.id}
-                clientName={orderData.client_name}
-                clientPhone={orderData.phone}
-                pdfModalOpen={pdfModalOpen}
-                onClosePdfModal={() => setPdfModalOpen(false)}
-                onEstimateSaved={() => {
-                  onUpdated();
-                }}
-                onContractSumChanged={(sum) => {
-                  setOrderData(prev => ({ ...prev, contract_sum: sum }));
-                  onUpdated();
-                }}
-              />
-            </div>
-          )}
+          {/* EstimateEditor рендерится всегда чтобы PDF-модалка работала с любой вкладки */}
+          <div className={drawerTab === "estimate" ? "px-3 sm:px-6 py-4" : "hidden"}>
+            <EstimateEditor
+              chatId={orderData.id}
+              clientName={orderData.client_name}
+              clientPhone={orderData.phone}
+              pdfModalOpen={pdfModalOpen}
+              onClosePdfModal={() => setPdfModalOpen(false)}
+              onEstimateSaved={() => {
+                onUpdated();
+              }}
+              onContractSumChanged={(sum) => {
+                setOrderData(prev => ({ ...prev, contract_sum: sum }));
+                onUpdated();
+              }}
+            />
+          </div>
+
 
           {/* ЗАЯВКИ */}
           {drawerTab === "orders" && (
