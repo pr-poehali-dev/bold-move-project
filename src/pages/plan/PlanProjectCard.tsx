@@ -353,12 +353,12 @@ export default function PlanProjectCard({
                     className="flex flex-col items-center justify-center gap-0.5 rounded-xl transition hover:brightness-110 active:scale-95"
                     style={{
                       width: 46, height: 46,
-                      background: project.crm_chat_id ? "rgba(124,58,237,0.18)" : "rgba(255,255,255,0.06)",
-                      border: `1px solid ${project.crm_chat_id ? "rgba(124,58,237,0.5)" : "rgba(255,255,255,0.1)"}`,
+                      background: "rgba(255,255,255,0.06)",
+                      border: "1px solid rgba(255,255,255,0.1)",
                     }}
                   >
-                    <Icon name="LayoutDashboard" size={16} style={{ color: project.crm_chat_id ? "#a78bfa" : "rgba(255,255,255,0.8)" }} />
-                    <span className="text-[8px] font-bold uppercase tracking-wide" style={{ color: project.crm_chat_id ? "#a78bfa" : "rgba(255,255,255,0.55)" }}>CRM</span>
+                    <Icon name="LayoutDashboard" size={16} style={{ color: "rgba(255,255,255,0.8)" }} />
+                    <span className="text-[8px] font-bold uppercase tracking-wide" style={{ color: "rgba(255,255,255,0.55)" }}>CRM</span>
                   </button>
                 )}
               </div>
