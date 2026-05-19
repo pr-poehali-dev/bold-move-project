@@ -43,7 +43,7 @@ export default function QuickAccessBar() {
 
   return (
     <div
-      className="sm:hidden fixed bottom-0 left-0 right-0 select-none z-50"
+      className="sm:hidden shrink-0 select-none"
       style={{ paddingBottom: "env(safe-area-inset-bottom)", background: "rgba(10,10,18,0.95)", backdropFilter: "blur(12px)", borderTop: "1px solid rgba(255,255,255,0.07)" }}
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}

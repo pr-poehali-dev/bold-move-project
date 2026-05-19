@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import QuickAccessBar from "@/components/QuickAccessBar";
 import { setCrmToken } from "./admin/crm/crmApi";
 import { useAuth, hasPermission } from "@/context/AuthContext";
 import type { AgentSubTab } from "./admin/types";
@@ -151,6 +152,7 @@ export default function AdminPanel() {
         user={user}
         mainTabsLength={mainTabs.length}
       />
+      <QuickAccessBar />
     </div>
   );
 }

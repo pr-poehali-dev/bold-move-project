@@ -2,18 +2,6 @@
 @tailwind components;
 @tailwind utilities;
 
-/* ── QuickAccessBar: отступ снизу чтобы fixed меню не перекрывало контент ── */
-@media (max-width: 639px) {
-  body {
-    padding-bottom: 28px;
-  }
-  .overflow-y-auto,
-  .overflow-y-scroll,
-  .overflow-auto {
-    padding-bottom: 28px;
-  }
-}
-
 /* Скрываем ПК-кнопки на устройствах с touch (hover: none) */
 @media (hover: none) and (pointer: coarse) {
   .hidden-on-touch {

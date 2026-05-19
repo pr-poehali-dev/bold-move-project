@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect, useRef } from "react";
+import QuickAccessBar from "@/components/QuickAccessBar";
 import Icon from "@/components/ui/icon";
 import { useAuth } from "@/context/AuthContext";
 import { useBrand } from "@/context/BrandContext";
@@ -400,6 +401,8 @@ export default function Index() {
       </div>
 
 
+
+      <QuickAccessBar />
 
       {/* Page Editor — открывается поверх всего при нажатии на карандаш */}
       {editingPanelId && (

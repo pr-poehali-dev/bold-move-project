@@ -1,5 +1,4 @@
 import { lazy, Suspense, Component, ErrorInfo, ReactNode } from "react";
-import QuickAccessBar from "@/components/QuickAccessBar";
 
 class ErrorBoundary extends Component<{ children: ReactNode }, { error: Error | null }> {
   state = { error: null };
@@ -56,7 +55,6 @@ const App = () => (
           <BrandProvider>
             <ErrorBoundary>
             <Suspense fallback={<div className="bg-[#0b0b11]" style={{ height: "100dvh" }} />}>
-              <QuickAccessBar />
               <Routes>
                 <Route path="/" element={<Index />} />
                 <Route path="/company"    element={<AdminPanel />} />
