@@ -17,11 +17,7 @@ const ALLOWED_ROLES = ["installer", "company", "manager"];
 export default function AdminPanel() {
   const { user, token: authToken, loading, logout: authLogout } = useAuth();
 
-  const [crmReady,  setCrmReady]  = useState(false);
   const [showLogin, setShowLogin] = useState(false);
-  const initialOrderId = new URLSearchParams(window.location.search).get("order")
-    ? Number(new URLSearchParams(window.location.search).get("order"))
-    : null;
   const LS_AGENT_TAB_KEY = "admin_agent_tab";
   const [agentTab, setAgentTabRaw] = useState<AgentSubTab>(
     (localStorage.getItem(LS_AGENT_TAB_KEY) as AgentSubTab | null) ?? "prices"
@@ -31,20 +27,16 @@ export default function AdminPanel() {
   const [theme, setTheme] = useState<Theme>("dark");
   const toggleTheme = () => setTheme(t => t === "dark" ? "light" : "dark");
 
-  // Признак: текущий пользователь имеет доступ к /company
   const hasAccess =
     !!user &&
     !!authToken &&
     user.approved &&
     (user.is_master || ALLOWED_ROLES.includes(user.role));
 
-  // Права на вкладки
-  const canCrm   = hasPermission(user, "crm_view");
   const canAgent = hasPermission(user, "agent_view");
   const hasTeam  = user?.role === "company" || !!user?.is_master;
-  const mainTabs = buildMainTabs(canCrm, canAgent, hasTeam);
+  const mainTabs = buildMainTabs(false, canAgent, hasTeam);
 
-  // Права агента
   const agentPerms = {
     prices:      { view: hasPermission(user, "prices_view"),      edit: hasPermission(user, "prices_edit") },
     rules:       { view: hasPermission(user, "rules_view"),       edit: hasPermission(user, "rules_edit") },
@@ -53,34 +45,28 @@ export default function AdminPanel() {
     corrections: { view: hasPermission(user, "corrections_view"), edit: hasPermission(user, "corrections_edit") },
   } as const;
 
-  // mainTab — из URL-параметра ?tab=... или из localStorage или первая доступная
-  // Если есть ?order= — принудительно открываем crm
   const urlParams = new URLSearchParams(window.location.search);
   const urlTab = urlParams.get("tab") as MainTab | null;
-  const hasOrderParam = !!urlParams.get("order");
   const LS_TAB_KEY = "admin_main_tab";
   const savedTab = localStorage.getItem(LS_TAB_KEY) as MainTab | null;
-  const [mainTab, setMainTab] = useState<MainTab>(hasOrderParam ? "crm" : (urlTab ?? savedTab ?? "agent"));
+  const [mainTab, setMainTab] = useState<MainTab>(urlTab ?? savedTab ?? "agent");
 
   useEffect(() => {
     if (loading || !user) return;
     const allowed = buildMainTabs(
-      hasPermission(user, "crm_view"),
+      false,
       hasPermission(user, "agent_view"),
       user.role === "company" || !!user.is_master,
     );
-    // Если есть ?order= — всегда открываем crm
-    // Если есть сохранённая вкладка — используем её
-    // Иначе — первая доступная (не crm)
-    const preferred = hasOrderParam ? "crm" : (urlTab ?? savedTab);
-    const firstNonCrm = allowed.find(t => t.id !== "crm")?.id ?? allowed[0]?.id ?? "agent";
-    const target = preferred && allowed.find(t => t.id === preferred) ? preferred : firstNonCrm;
+    const preferred = urlTab ?? savedTab;
+    const firstTab = allowed[0]?.id ?? "agent";
+    const target = preferred && allowed.find(t => t.id === preferred) ? preferred : firstTab;
     setMainTab(target as MainTab);
   }, [loading, user?.id]);  // eslint-disable-line react-hooks/exhaustive-deps
 
   const safeSetMainTab = (tab: MainTab) => {
     const allowed = mainTabs.map(t => t.id);
-    const next = allowed.includes(tab) ? tab : (mainTabs[0]?.id ?? "crm");
+    const next = allowed.includes(tab) ? tab : (mainTabs[0]?.id ?? "agent");
     setMainTab(next);
     localStorage.setItem(LS_TAB_KEY, next);
   };
@@ -88,9 +74,6 @@ export default function AdminPanel() {
   useEffect(() => {
     if (hasAccess && authToken) {
       setCrmToken(authToken);
-      setCrmReady(true);
-    } else {
-      setCrmReady(false);
     }
   }, [hasAccess, authToken]);
 
@@ -146,12 +129,9 @@ export default function AdminPanel() {
 
       <AdminPanelContent
         mainTab={mainTab}
-        canCrm={canCrm}
         canAgent={canAgent}
         hasTeam={hasTeam}
-        crmReady={crmReady}
         isDark={isDark}
-        theme={theme}
         agentTab={agentTab}
         setAgentTab={setAgentTab}
         agentPerms={agentPerms}
@@ -159,7 +139,6 @@ export default function AdminPanel() {
         newItemHint={newItemHint}
         handleItemAdded={handleItemAdded}
         user={user}
-        initialOrderId={initialOrderId}
         mainTabsLength={mainTabs.length}
       />
 

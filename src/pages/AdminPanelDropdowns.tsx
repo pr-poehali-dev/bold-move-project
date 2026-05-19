@@ -2,7 +2,7 @@ import { useState } from "react";
 import Icon from "@/components/ui/icon";
 import type { AgentSubTab } from "./admin/types";
 
-export type MainTab = "crm" | "agent" | "team" | "own-agent";
+export type MainTab = "agent" | "team" | "own-agent";
 
 export const AGENT_TABS: { id: AgentSubTab; label: string; icon: string }[] = [
   { id: "prices",      label: "Цены",            icon: "Tag" },
@@ -14,8 +14,7 @@ export const AGENT_TABS: { id: AgentSubTab; label: string; icon: string }[] = [
 
 export interface TabConfig { id: MainTab; icon: string; label: string; }
 
-export const buildMainTabs = (canCrm: boolean, canAgent: boolean, hasTeam: boolean): TabConfig[] => [
-  ...(canCrm   ? [{ id: "crm"       as MainTab, icon: "LayoutDashboard", label: "CRM"        }] : []),
+export const buildMainTabs = (_canCrm: boolean, canAgent: boolean, hasTeam: boolean): TabConfig[] => [
   ...(canAgent ? [{ id: "agent"     as MainTab, icon: "BrainCircuit",    label: "Агент"      }] : []),
   ...(hasTeam  ? [{ id: "team"      as MainTab, icon: "Users",           label: "Команда"    }] : []),
   ...(hasTeam  ? [{ id: "own-agent" as MainTab, icon: "Bot",             label: "Свой агент" }] : []),

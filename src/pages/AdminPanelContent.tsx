@@ -5,13 +5,11 @@ import TabPrompt from "./admin/TabPrompt";
 import TabFaq from "./admin/TabFaq";
 import TabCorrections from "./admin/TabCorrections";
 import TabDefaultAutoRules from "./admin/TabDefaultAutoRules";
-import CrmPanel from "./admin/crm/CrmPanel";
 import TeamPanel from "./admin/team/TeamPanel";
 import OwnAgentTeaser from "./admin/own-agent/OwnAgentTeaser";
 import OwnAgentEditor from "./admin/own-agent/OwnAgentEditor";
 import { AgentTabDropdown, AGENT_TABS, MainTab } from "./AdminPanelDropdowns";
 import type { AgentSubTab } from "./admin/types";
-import type { Theme } from "./admin/crm/themeContext";
 
 interface AgentPerms {
   prices:      { view: boolean; edit: boolean };
@@ -43,12 +41,9 @@ interface User {
 
 interface Props {
   mainTab: MainTab;
-  canCrm: boolean;
   canAgent: boolean;
   hasTeam: boolean;
-  crmReady: boolean;
   isDark: boolean;
-  theme: Theme;
   agentTab: AgentSubTab;
   setAgentTab: (t: AgentSubTab) => void;
   agentPerms: AgentPerms;
@@ -56,29 +51,18 @@ interface Props {
   newItemHint: string | null;
   handleItemAdded: (name: string) => void;
   user: User | null;
-  initialOrderId: number | null;
   mainTabsLength: number;
 }
 
 export function AdminPanelContent({
-  mainTab, canCrm, canAgent, hasTeam,
-  crmReady, isDark, theme,
+  mainTab, canAgent, hasTeam,
+  isDark,
   agentTab, setAgentTab, agentPerms,
   authToken, newItemHint, handleItemAdded,
-  user, initialOrderId, mainTabsLength,
+  user, mainTabsLength,
 }: Props) {
   return (
     <>
-      {/* ── CRM ── */}
-      {mainTab === "crm" && canCrm && (
-        <div className="flex-1 overflow-hidden">
-          {crmReady
-            ? <CrmPanel theme={theme} initialOrderId={initialOrderId} initialTab={(new URLSearchParams(window.location.search).get("crm_tab") as "analytics" | "clients" | "orders" | "calendar" | "kanban" | null) ?? undefined} />
-            : <div className="flex items-center justify-center h-64"><div className="w-7 h-7 border-2 border-violet-500 border-t-transparent rounded-full animate-spin" /></div>
-          }
-        </div>
-      )}
-
       {/* ── Команда ── */}
       {mainTab === "team" && hasTeam && (
         <div className="flex-1 flex flex-col overflow-hidden">

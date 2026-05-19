@@ -41,6 +41,7 @@ const NotFound    = lazy(() => import("./pages/NotFound"));
 const PlanPage      = lazy(() => import("./pages/plan/PlanPage"));
 const NewsPage      = lazy(() => import("./pages/NewsPage"));
 const PlanSharePage = lazy(() => import("./pages/PlanSharePage"));
+const CrmPage       = lazy(() => import("./pages/CrmPage"));
 
 const queryClient = new QueryClient();
 
@@ -64,6 +65,7 @@ const App = () => (
                 <Route path="/plan"      element={<PlanPage />} />
                 <Route path="/news"      element={<NewsPage />} />
                 <Route path="/plan-share/:token" element={<PlanSharePage />} />
+                <Route path="/crm"       element={<CrmPage />} />
                 {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                 <Route path="*" element={<NotFound />} />
               </Routes>

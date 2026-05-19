@@ -11,7 +11,7 @@ interface QuickItem {
 
 const ITEMS: QuickItem[] = [
   { id: "agent",   label: "Агент",       icon: "Bot",          path: "/"        },
-  { id: "crm",     label: "CRM",         icon: "ClipboardList", path: "/company" },
+  { id: "crm",     label: "CRM",         icon: "ClipboardList", path: "/crm"     },
   { id: "plan",    label: "Построитель", icon: "PenTool",      path: "/plan"    },
   { id: "contacts",label: "Контакты",    icon: "Phone",        path: "#contacts"},
 ];
