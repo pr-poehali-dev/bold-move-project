@@ -143,6 +143,18 @@ export default function PlanRoomsScreen({ token, project, onBack, onOpenRoom }: 
             </div>
           )}
         </div>
+        {/* Кнопка CRM */}
+        {project.crm_chat_id && (
+          <button
+            onClick={() => window.open(`/crm?order=${project.crm_chat_id}`, "_blank")}
+            className="flex items-center gap-1.5 px-3 h-9 rounded-xl transition hover:brightness-110 active:scale-95 flex-shrink-0"
+            style={{ background: "rgba(124,58,237,0.18)", border: "1px solid rgba(124,58,237,0.4)", color: "#a78bfa" }}
+            title="Открыть заявку в CRM"
+          >
+            <Icon name="LayoutDashboard" size={14} />
+            <span className="text-[11px] font-bold uppercase tracking-wide hidden sm:inline">CRM</span>
+          </button>
+        )}
         {/* Кнопка сметы */}
         <button
           onClick={() => setExportOpen(true)}
