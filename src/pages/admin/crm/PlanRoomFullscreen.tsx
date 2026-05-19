@@ -72,6 +72,12 @@ export default function PlanRoomFullscreen({
     lastPan.current = null;
   };
 
+  const onWheel = (e: React.WheelEvent) => {
+    e.preventDefault();
+    const delta = e.deltaY > 0 ? 0.85 : 1.18;
+    onSetZoom(z => Math.min(5, Math.max(0.5, z * delta)));
+  };
+
   return (
     <div
       className="fixed inset-0 z-[200] flex flex-col"
@@ -128,13 +134,14 @@ export default function PlanRoomFullscreen({
         </div>
       </div>
 
-      {/* Изображение с pinch-zoom */}
+      {/* Изображение с pinch-zoom и wheel-zoom */}
       <div
         className="flex-1 overflow-hidden flex items-center justify-center"
         style={{ touchAction: "none" }}
         onTouchStart={onTouchStart}
         onTouchMove={onTouchMove}
         onTouchEnd={onTouchEnd}
+        onWheel={onWheel}
       >
         {preview ? (
           <img

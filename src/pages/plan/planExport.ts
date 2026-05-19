@@ -239,20 +239,21 @@ export function generateSvgString(state: PlanState, exportScale = 1, forThumbnai
     const na = angle > 90 || angle < -90 ? angle + 180 : angle;
     if (showImages) {
       // Режим картинок: рисуем миниатюры товаров вдоль стены
-      const imgSize = ts(20);
+      const imgSize = ts(48); // крупнее чтобы было видно
+      const insetPx = nx * ts(28) + ny * ts(28);
       const segLen = Math.sqrt((b.x - a.x) ** 2 + (b.y - a.y) ** 2) * exportScale;
-      const maxImgs = Math.max(1, Math.floor(segLen / (imgSize * 1.4)));
+      const maxImgs = Math.max(1, Math.floor(segLen / (imgSize * 1.3)));
       const items = seg.items.slice(0, maxImgs);
       const dx = (tx(b.x - ox) - tx(a.x - ox)) / (items.length + 1);
       const dy = (ty(b.y - oy) - ty(a.y - oy)) / (items.length + 1);
       return items.map((it, idx) => {
         const b64 = it.imageUrl ? imageMap.get(it.imageUrl) : null;
         if (!b64) return "";
-        const ix = tx(a.x - ox) + dx * (idx + 1) - nx * ts(16);
-        const iy = ty(a.y - oy) + dy * (idx + 1) - ny * ts(16);
+        const ix = tx(a.x - ox) + dx * (idx + 1) - nx * ts(28);
+        const iy = ty(a.y - oy) + dy * (idx + 1) - ny * ts(28);
         const half = imgSize / 2;
-        const r = ts(3);
-        return `<clipPath id="clip-img-${idx}-${seg.id}"><rect x="${ix - half}" y="${iy - half}" width="${imgSize}" height="${imgSize}" rx="${r}"/></clipPath><image href="${b64}" x="${ix - half}" y="${iy - half}" width="${imgSize}" height="${imgSize}" preserveAspectRatio="xMidYMid slice" clip-path="url(#clip-img-${idx}-${seg.id})"/>`;
+        const r = ts(6);
+        return `<clipPath id="clip-img-${idx}-${seg.id}"><rect x="${ix - half}" y="${iy - half}" width="${imgSize}" height="${imgSize}" rx="${r}"/></clipPath><image href="${b64}" x="${ix - half}" y="${iy - half}" width="${imgSize}" height="${imgSize}" preserveAspectRatio="xMidYMid slice" clip-path="url(#clip-img-${idx}-${seg.id})"/>`; void insetPx;
       }).join("");
     } else {
       // Режим текста: название товара
