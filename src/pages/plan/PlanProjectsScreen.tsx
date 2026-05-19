@@ -115,7 +115,7 @@ export default function PlanProjectsScreen({ token, onSelectProject, initialProj
   // ── Перейти в CRM ────────────────────────────────────────────────────────────
   const handleCrm = async (p: PlanProject) => {
     if (p.crm_chat_id) {
-      window.open(`/company?order=${p.crm_chat_id}`, "_blank");
+      window.open(`/crm?order=${p.crm_chat_id}`, "_blank");
       return;
     }
     // Нет связи — создаём заявку в CRM через пересоздание проекта
@@ -129,7 +129,7 @@ export default function PlanProjectsScreen({ token, onSelectProject, initialProj
       const data = await res.json();
       if (data.crm_chat_id) {
         await loadProjects();
-        window.open(`/company?order=${data.crm_chat_id}`, "_blank");
+        window.open(`/crm?order=${data.crm_chat_id}`, "_blank");
       }
     } catch { /* ignore */ }
   };
