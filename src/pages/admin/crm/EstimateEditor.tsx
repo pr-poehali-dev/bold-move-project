@@ -6,28 +6,41 @@ import { EstimateFromPlanPreview, EstimateEmpty } from "./EstimatePreview";
 import EstimateToolbar from "./EstimateToolbar";
 import EstimateTable from "./EstimateTable";
 import PdfOptionsModal from "./PdfOptionsModal";
+import type { EstimateData } from "./useEstimateData";
 
-export default function EstimateEditor({ chatId, clientName, clientPhone, onEstimateSaved, onContractSumChanged, onPrintReady }: {
+export default function EstimateEditor({ chatId, clientName, clientPhone, onEstimateSaved, onContractSumChanged, initialData }: {
   chatId: number;
   clientName?: string | null;
   clientPhone?: string | null;
   onEstimateSaved?: () => void;
   onContractSumChanged?: (sum: number) => void;
-  onPrintReady?: (fn: (opts: { perRoom: boolean; includeDrawings: boolean }) => void) => void;
+  initialData?: EstimateData;
 }) {
-  const [estimate, setEstimate] = useState<SavedEstimate | null>(null);
-  const [loading,  setLoading]  = useState(true);
+  const [estimate, setEstimate] = useState<SavedEstimate | null>(initialData?.estimate ?? null);
+  const [loading,  setLoading]  = useState(initialData ? initialData.loading : true);
   const [saving,   setSaving]   = useState(false);
   const [saved,    setSaved]    = useState(false);
   const [copied,   setCopied]   = useState(false);
-  const [blocks,    setBlocks]    = useState<EstimateBlock[]>([]);
-  const [totals,    setTotals]    = useState<string[]>([]);
-  const [prices,    setPrices]    = useState<PriceItem[]>([]);
-  const [planRooms, setPlanRooms] = useState<PlanRoomForEstimate[]>([]);
+  const [blocks,    setBlocks]    = useState<EstimateBlock[]>(initialData?.blocks ?? []);
+  const [totals,    setTotals]    = useState<string[]>(initialData?.totals ?? []);
+  const [prices,    setPrices]    = useState<PriceItem[]>(initialData?.prices ?? []);
+  const [planRooms, setPlanRooms] = useState<PlanRoomForEstimate[]>(initialData?.planRooms ?? []);
   const [editMode,  setEditMode]  = useState(false);
   const [showPdfModal, setShowPdfModal] = useState(false);
 
+  // Синхронизируем если initialData обновился (reload после сохранения)
+  useEffect(() => {
+    if (!initialData) return;
+    setEstimate(initialData.estimate);
+    setBlocks(initialData.blocks);
+    setTotals(initialData.totals);
+    setPrices(initialData.prices);
+    setPlanRooms(initialData.planRooms);
+    setLoading(initialData.loading);
+  }, [initialData?.estimate, initialData?.loading, initialData?.blocks.length]);
+
   const loadData = useCallback(() => {
+    if (initialData) { initialData.reload(); return; }
     setLoading(true);
     Promise.all([
       fetch(`${AUTH_URL}?action=estimate-by-chat&chat_id=${chatId}`).then(r => r.json()),
@@ -49,9 +62,11 @@ export default function EstimateEditor({ chatId, clientName, clientPhone, onEsti
       }
       setLoading(false);
     }).catch(() => setLoading(false));
-  }, [chatId]);
+  }, [chatId, initialData]);
 
-  useEffect(() => { loadData(); }, [loadData]);
+  useEffect(() => {
+    if (!initialData) loadData();
+  }, [loadData, initialData]);
 
   const updateItem = (bi: number, ii: number, name: string, qty: number, price: number, unit: string) => {
     const total = Math.round(qty * price);
@@ -218,10 +233,6 @@ export default function EstimateEditor({ chatId, clientName, clientPhone, onEsti
     const w = window.open("", "_blank");
     if (w) { w.document.write(html); w.document.close(); w.focus(); w.print(); }
   }, [blocks, standardTotal, clientName, clientPhone, planRooms]);
-
-  useEffect(() => {
-    onPrintReady?.(doPrint);
-  }, [doPrint, onPrintReady]);
 
   if (loading) return (
     <div className="flex items-center justify-center py-12">

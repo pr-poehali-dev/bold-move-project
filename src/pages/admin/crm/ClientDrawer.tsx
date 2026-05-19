@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from "react";
+import { useState } from "react";
 import { crmFetch, STATUS_LABELS, STATUS_COLORS, Client, ClientStatus } from "./crmApi";
 import Icon from "@/components/ui/icon";
 import { useTheme } from "./themeContext";
@@ -7,6 +7,7 @@ import DrawerInfoTab from "./DrawerInfoTab";
 import ClientTab from "./ClientTab";
 import DrawerPlanTab from "./DrawerPlanTab";
 import PdfOptionsModal from "./PdfOptionsModal";
+import { useEstimateData } from "./useEstimateData";
 
 interface Props {
   client: Client;
@@ -44,10 +45,7 @@ export default function ClientDrawer({ client, allClientOrders, onClose, onUpdat
   const [orderInnerTab, setOrderInnerTab] = useState<"info" | "estimate">("info");
   const [ordersListOpen, setOrdersListOpen] = useState(false);
   const [pdfModalOpen, setPdfModalOpen] = useState(false);
-  const doPrintRef = useRef<((opts: { perRoom: boolean; includeDrawings: boolean }) => void) | null>(null);
-  const handlePrintReady = useCallback((fn: (opts: { perRoom: boolean; includeDrawings: boolean }) => void) => {
-    doPrintRef.current = fn;
-  }, []);
+  const estimateData = useEstimateData(orderData.id, orderData.client_name, orderData.phone);
 
   const save = async (patch: Partial<Client>) => {
     setData(prev => ({ ...prev, ...patch }));
@@ -247,8 +245,9 @@ export default function ClientDrawer({ client, allClientOrders, onClose, onUpdat
                 chatId={orderData.id}
                 clientName={orderData.client_name}
                 clientPhone={orderData.phone}
-                onPrintReady={handlePrintReady}
+                initialData={estimateData}
                 onEstimateSaved={() => {
+                  estimateData.reload();
                   onUpdated();
                 }}
                 onContractSumChanged={(sum) => {
@@ -422,7 +421,7 @@ export default function ClientDrawer({ client, allClientOrders, onClose, onUpdat
       {/* PDF-модалка — доступна с любой вкладки */}
       {pdfModalOpen && (
         <PdfOptionsModal
-          onConfirm={opts => { doPrintRef.current?.(opts); setPdfModalOpen(false); }}
+          onConfirm={opts => { estimateData.doPrint(opts); setPdfModalOpen(false); }}
           onClose={() => setPdfModalOpen(false)}
         />
       )}
