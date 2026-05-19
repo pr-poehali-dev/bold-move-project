@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef, useCallback } from "react";
 import { crmFetch, STATUS_LABELS, STATUS_COLORS, Client, ClientStatus } from "./crmApi";
 import Icon from "@/components/ui/icon";
 import { useTheme } from "./themeContext";
@@ -44,6 +44,10 @@ export default function ClientDrawer({ client, allClientOrders, onClose, onUpdat
   const [orderInnerTab, setOrderInnerTab] = useState<"info" | "estimate">("info");
   const [ordersListOpen, setOrdersListOpen] = useState(false);
   const [pdfModalOpen, setPdfModalOpen] = useState(false);
+  const doPrintRef = useRef<((opts: { perRoom: boolean; includeDrawings: boolean }) => void) | null>(null);
+  const handlePrintReady = useCallback((fn: (opts: { perRoom: boolean; includeDrawings: boolean }) => void) => {
+    doPrintRef.current = fn;
+  }, []);
 
   const save = async (patch: Partial<Client>) => {
     setData(prev => ({ ...prev, ...patch }));
@@ -237,23 +241,23 @@ export default function ClientDrawer({ client, allClientOrders, onClose, onUpdat
           )}
 
           {/* СМЕТА */}
-          {/* EstimateEditor рендерится всегда чтобы PDF-модалка работала с любой вкладки */}
-          <div className={drawerTab === "estimate" ? "px-3 sm:px-6 py-4" : "hidden"}>
-            <EstimateEditor
-              chatId={orderData.id}
-              clientName={orderData.client_name}
-              clientPhone={orderData.phone}
-              pdfModalOpen={pdfModalOpen}
-              onClosePdfModal={() => setPdfModalOpen(false)}
-              onEstimateSaved={() => {
-                onUpdated();
-              }}
-              onContractSumChanged={(sum) => {
-                setOrderData(prev => ({ ...prev, contract_sum: sum }));
-                onUpdated();
-              }}
-            />
-          </div>
+          {drawerTab === "estimate" && (
+            <div className="px-3 sm:px-6 py-4">
+              <EstimateEditor
+                chatId={orderData.id}
+                clientName={orderData.client_name}
+                clientPhone={orderData.phone}
+                onPrintReady={handlePrintReady}
+                onEstimateSaved={() => {
+                  onUpdated();
+                }}
+                onContractSumChanged={(sum) => {
+                  setOrderData(prev => ({ ...prev, contract_sum: sum }));
+                  onUpdated();
+                }}
+              />
+            </div>
+          )}
 
 
           {/* ЗАЯВКИ */}
@@ -414,6 +418,14 @@ export default function ClientDrawer({ client, allClientOrders, onClose, onUpdat
           )}
         </div>
       </div>
+
+      {/* PDF-модалка — доступна с любой вкладки */}
+      {pdfModalOpen && (
+        <PdfOptionsModal
+          onConfirm={opts => { doPrintRef.current?.(opts); setPdfModalOpen(false); }}
+          onClose={() => setPdfModalOpen(false)}
+        />
+      )}
 
       {/* Подтверждение удаления */}
       {confirmDelete && (

@@ -7,14 +7,13 @@ import EstimateToolbar from "./EstimateToolbar";
 import EstimateTable from "./EstimateTable";
 import PdfOptionsModal from "./PdfOptionsModal";
 
-export default function EstimateEditor({ chatId, clientName, clientPhone, onEstimateSaved, onContractSumChanged, pdfModalOpen, onClosePdfModal }: {
+export default function EstimateEditor({ chatId, clientName, clientPhone, onEstimateSaved, onContractSumChanged, onPrintReady }: {
   chatId: number;
   clientName?: string | null;
   clientPhone?: string | null;
   onEstimateSaved?: () => void;
   onContractSumChanged?: (sum: number) => void;
-  pdfModalOpen?: boolean;
-  onClosePdfModal?: () => void;
+  onPrintReady?: (fn: (opts: { perRoom: boolean; includeDrawings: boolean }) => void) => void;
 }) {
   const [estimate, setEstimate] = useState<SavedEstimate | null>(null);
   const [loading,  setLoading]  = useState(true);
@@ -209,7 +208,7 @@ export default function EstimateEditor({ chatId, clientName, clientPhone, onEsti
     setTotals(recalcTotals(newBlocks));
   };
 
-  const doPrint = ({ perRoom, includeDrawings }: { perRoom: boolean; includeDrawings: boolean }) => {
+  const doPrint = useCallback(({ perRoom, includeDrawings }: { perRoom: boolean; includeDrawings: boolean }) => {
     setShowPdfModal(false);
     const html = generatePrintHtml(blocks, standardTotal, clientName, clientPhone, {
       perRoom,
@@ -218,7 +217,11 @@ export default function EstimateEditor({ chatId, clientName, clientPhone, onEsti
     });
     const w = window.open("", "_blank");
     if (w) { w.document.write(html); w.document.close(); w.focus(); w.print(); }
-  };
+  }, [blocks, standardTotal, clientName, clientPhone, planRooms]);
+
+  useEffect(() => {
+    onPrintReady?.(doPrint);
+  }, [doPrint, onPrintReady]);
 
   if (loading) return (
     <div className="flex items-center justify-center py-12">
@@ -272,10 +275,10 @@ export default function EstimateEditor({ chatId, clientName, clientPhone, onEsti
       />
     </div>
 
-    {(showPdfModal || pdfModalOpen) && (
+    {showPdfModal && (
       <PdfOptionsModal
-        onConfirm={opts => { doPrint(opts); onClosePdfModal?.(); }}
-        onClose={() => { setShowPdfModal(false); onClosePdfModal?.(); }}
+        onConfirm={opts => { doPrint(opts); }}
+        onClose={() => setShowPdfModal(false)}
       />
     )}
     </>
