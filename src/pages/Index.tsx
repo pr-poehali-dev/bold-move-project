@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect, useRef } from "react";
+import { useNavigate } from "react-router-dom";
 import QuickAccessBar from "@/components/QuickAccessBar";
 import Icon from "@/components/ui/icon";
 import { useAuth } from "@/context/AuthContext";
@@ -37,6 +38,7 @@ export default function Index() {
   const [showEcoModal,     setShowEcoModal]     = useState(false);
 
   const canEdit = !!(user?.role === "company" || user?.is_master);
+  const navigate = useNavigate();
 
   // Когда владелец смотрит бот без ?c= в URL — синхронизируем nav_config из user.brand в BrandContext.
   // Запускаем при каждом рендере после смены user — ref гарантирует что не делаем лишних обновлений.
@@ -175,39 +177,46 @@ export default function Index() {
           : <span className="font-montserrat font-black text-sm tracking-wide">MOS<span style={{ color: brand.brand_color }}>POTOLKI</span></span>
         }
         <div className="ml-auto flex items-center gap-1.5">
-          {/* Кнопка экосистемы */}
-          <button
-            onClick={() => setShowEcoModal(true)}
-            className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all"
-            style={{ background: "rgba(249,115,22,0.12)", border: "1px solid rgba(249,115,22,0.3)", color: "#f97316" }}>
-            <Icon name="Menu" size={12} />
-            <span className="hidden sm:inline">Меню</span>
-          </button>
+          {/* Быстрый доступ — только на десктопе */}
+          <nav className="hidden md:flex items-center gap-1">
+            <button onClick={() => navigate("/")}
+              className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-medium transition-all hover:bg-white/[0.08]"
+              style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.7)" }}>
+              <Icon name="Bot" size={12} /> Агент
+            </button>
+            <button onClick={() => navigate("/crm")}
+              className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-medium transition-all hover:bg-white/[0.08]"
+              style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.7)" }}>
+              <Icon name="ClipboardList" size={12} /> CRM
+            </button>
+            <button onClick={() => navigate("/plan")}
+              className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-medium transition-all hover:bg-white/[0.08]"
+              style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.7)" }}>
+              <Icon name="Layers" size={12} /> Построитель
+            </button>
+            {(user?.role === "company" || user?.is_master) && (
+              <button onClick={() => navigate("/company")}
+                className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-medium transition-all hover:bg-white/[0.08]"
+                style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.7)" }}>
+                <Icon name="Settings" size={12} /> Настройки
+              </button>
+            )}
+            <button
+              onClick={() => setPanel(panel === "contacts" ? "none" : "contacts")}
+              className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-medium transition-all"
+              style={{ background: `${brand.brand_color}1a`, border: `1px solid ${brand.brand_color}33`, color: brand.brand_color }}>
+              <Icon name="MapPin" size={12} /> Контакты
+            </button>
+          </nav>
 
+          {/* Контакты — только на мобайле */}
           <button
             onClick={() => setPanel(panel === "contacts" ? "none" : "contacts")}
-            className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-medium transition-all"
+            className="flex md:hidden items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-medium transition-all"
             style={{ background: `${brand.brand_color}1a`, border: `1px solid ${brand.brand_color}33`, color: brand.brand_color }}>
             <Icon name="MapPin" size={12} />
             <span className="hidden sm:inline">Контакты</span>
           </button>
-
-          <button
-            onClick={() => setPanel(panel === "livechat" ? "none" : "livechat")}
-            className="hidden md:flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-medium transition-all"
-            style={{ background: `${brand.brand_color}1a`, border: `1px solid ${brand.brand_color}33`, color: brand.brand_color }}>
-            <Icon name="MessageCircle" size={12} /> Чат
-          </button>
-          <a href={brand.telegram_url} target="_blank" rel="noreferrer"
-            className="hidden md:flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-medium transition-all"
-            style={{ background: `${brand.brand_color}1a`, border: `1px solid ${brand.brand_color}33`, color: brand.brand_color }}>
-            <Icon name="Send" size={12} /> Telegram
-          </a>
-          <a href={brand.max_url} target="_blank" rel="noreferrer"
-            className="hidden md:flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-medium transition-all"
-            style={{ background: `${brand.brand_color}1a`, border: `1px solid ${brand.brand_color}33`, color: brand.brand_color }}>
-            <Icon name="MessageSquare" size={12} /> MAX
-          </a>
 
           {/* Авторизация */}
           {user ? (
