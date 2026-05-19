@@ -302,7 +302,19 @@ export default function Index() {
                       await updateBrand(authToken, { ...brand, ...patch });
                     }}
                   />;
-                  if (panel === "portfolio") return <PanelPortfolio onClose={closePanel} />;
+                  if (panel === "portfolio") return <PanelPortfolio
+                    onClose={closePanel}
+                    canEdit={canEdit}
+                    items={brand.portfolio_items}
+                    pageTitle={brand.portfolio_title}
+                    pageHidden={brand.portfolio_hidden}
+                    token={authToken}
+                    onSave={async (items, title, hidden) => {
+                      const patch = { portfolio_items: items, portfolio_title: title, portfolio_hidden: hidden };
+                      patchBrand(patch);
+                      await updateBrand(authToken, { ...brand, ...patch });
+                    }}
+                  />;
                   return null;
                 })()}
               </>);

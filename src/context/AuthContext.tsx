@@ -30,12 +30,23 @@ export interface Brand {
   production_items?:       ProductionItem[] | null;
   production_title?:       string | null;
   production_hidden?:      boolean | null;
+  portfolio_items?:        PortfolioItem[] | null;
+  portfolio_title?:        string | null;
+  portfolio_hidden?:       boolean | null;
 }
 
 export interface ProductionItem {
   img:   string;
   title: string;
   desc:  string;
+}
+
+export interface PortfolioItem {
+  img:      string;
+  room:     string;
+  type:     string;
+  district: string;
+  area:     number;
 }
 
 // ── Конструктор страниц — блоки ──────────────────────────────────────────────

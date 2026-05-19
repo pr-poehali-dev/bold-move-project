@@ -197,6 +197,7 @@ export default function ChatUI({ messages, input, typing, panel, canEdit, onInpu
         {(brand.nav_config && brand.nav_config.length > 0 ? brand.nav_config : NAV).filter((n) => {
           // Скрываем скрытые системные страницы для не-редакторов
           if (n.id === "production" && brand.production_hidden && !canEdit) return false;
+          if (n.id === "portfolio"  && brand.portfolio_hidden  && !canEdit) return false;
           return true;
         }).map((n) => {
           const navBtn = n as typeof NAV[0] & { action?: string; value?: string | null };
