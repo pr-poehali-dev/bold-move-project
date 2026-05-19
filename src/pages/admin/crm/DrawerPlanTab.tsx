@@ -23,8 +23,11 @@ export default function DrawerPlanTab({ chatId, projectId }: Props) {
   const [fullscreenRoom, setFullscreenRoom] = useState<PlanRoom | null>(null);
   const rebuiltRef = useRef<Set<number>>(new Set());
 
-  // View mode: 1 = карточки (текущий вид), 2 = режим шаринга
+  // View mode: 1 = большие карточки, 2 = сетка
   const [viewMode, setViewMode] = useState<1 | 2>(1);
+  // Настройки превью
+  const [darkBg,     setDarkBg]     = useState(false);
+  const [showImages, setShowImages] = useState(false);
 
   // Sharing
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
@@ -57,14 +60,14 @@ export default function DrawerPlanTab({ chatId, projectId }: Props) {
     }).finally(() => setLoading(false));
   }, [chatId, projectId]);  
 
-  const rebuildThumbnails = async (roomList: PlanRoom[]) => {
+  const rebuildThumbnails = async (roomList: PlanRoom[], useDark = darkBg, useImages = showImages) => {
     for (const room of roomList) {
       if (rebuiltRef.current.has(room.id)) continue;
       rebuiltRef.current.add(room.id);
       const planData = (room.active_variant_data ?? room.data) as PlanState | undefined;
       if (!planData?.points || planData.points.length < 2) continue;
       try {
-        const newThumb = getSvgDataUrl(planData, 0.4, true).slice(0, THUMBNAIL_MAX);
+        const newThumb = getSvgDataUrl(planData, 0.4, true, useDark, useImages).slice(0, THUMBNAIL_MAX);
         if (!newThumb) continue;
         setRooms(prev => prev.map(r =>
           r.id === room.id
@@ -81,6 +84,18 @@ export default function DrawerPlanTab({ chatId, projectId }: Props) {
         }
       } catch { /* ignore */ }
     }
+  };
+
+  // Пересчитать превью при смене настроек отображения
+  const rebuildWithSettings = (useDark: boolean, useImages: boolean) => {
+    rebuiltRef.current.clear();
+    setRooms(prev => prev.map(r => ({ ...r, thumbnail: null, active_variant_thumbnail: null })));
+    setTimeout(() => {
+      setRooms(prev => {
+        rebuildThumbnails(prev, useDark, useImages);
+        return prev;
+      });
+    }, 50);
   };
 
   const openInPlan = () => {
@@ -163,63 +178,99 @@ export default function DrawerPlanTab({ chatId, projectId }: Props) {
   return (
     <div className="flex flex-col gap-3 p-4" onContextMenu={e => e.preventDefault()}>
 
-      {/* Кнопки управления */}
-      <div className="flex gap-2">
-        {/* В построителе */}
+      {/* Панель управления */}
+      <div className="flex items-center gap-2 flex-wrap">
+        {/* В построителе — компактнее */}
         <button
           onClick={openInPlan}
-          className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold transition hover:brightness-110 active:scale-[0.98]"
+          className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition hover:brightness-110 active:scale-[0.98]"
           style={{ background: "linear-gradient(135deg,#6d28d9,#7c3aed)", color: "#fff" }}
         >
-          <Icon name="Layers2" size={15} />
+          <Icon name="Layers2" size={13} />
           В построителе
         </button>
 
-        {/* Переключатель Вид 1 / Вид 2 */}
-        <div className="flex rounded-xl overflow-hidden" style={{ border: `1px solid ${t.border}` }}>
+        {/* Все переключатели в одной группе */}
+        <div className="flex rounded-xl overflow-hidden flex-1" style={{ border: `1px solid ${t.border}` }}>
+          {/* Вид 1 */}
           <button
             onClick={() => setViewMode(1)}
-            className="flex items-center justify-center gap-1.5 px-3 py-2.5 text-xs font-bold transition"
+            className="flex items-center justify-center px-2.5 py-2 text-[10px] font-bold transition flex-1"
             style={{
               background: viewMode === 1 ? "rgba(124,58,237,0.25)" : "rgba(255,255,255,0.04)",
               color: viewMode === 1 ? "#a78bfa" : t.textMute,
               borderRight: `1px solid ${t.border}`,
             }}
+            title="Вид 1 — большие карточки"
           >
-            <Icon name="LayoutList" size={13} />
-            Вид 1
+            <Icon name="LayoutList" size={12} />
           </button>
+          {/* Вид 2 */}
           <button
             onClick={() => setViewMode(2)}
-            className="flex items-center justify-center gap-1.5 px-3 py-2.5 text-xs font-bold transition"
+            className="flex items-center justify-center px-2.5 py-2 text-[10px] font-bold transition flex-1"
             style={{
               background: viewMode === 2 ? "rgba(124,58,237,0.25)" : "rgba(255,255,255,0.04)",
               color: viewMode === 2 ? "#a78bfa" : t.textMute,
+              borderRight: `1px solid ${t.border}`,
             }}
+            title="Вид 2 — сетка"
           >
-            <Icon name="LayoutGrid" size={13} />
-            Вид 2
+            <Icon name="LayoutGrid" size={12} />
+          </button>
+          {/* Тёмный/светлый фон */}
+          <button
+            onClick={() => {
+              const next = !darkBg;
+              setDarkBg(next);
+              rebuildWithSettings(next, showImages);
+            }}
+            className="flex items-center justify-center px-2.5 py-2 text-[10px] font-bold transition flex-1"
+            style={{
+              background: darkBg ? "rgba(124,58,237,0.25)" : "rgba(255,255,255,0.04)",
+              color: darkBg ? "#a78bfa" : t.textMute,
+              borderRight: `1px solid ${t.border}`,
+            }}
+            title={darkBg ? "Светлый фон" : "Тёмный фон"}
+          >
+            <Icon name={darkBg ? "Moon" : "Sun"} size={12} />
+          </button>
+          {/* Текст / Картинки товаров */}
+          <button
+            onClick={() => {
+              const next = !showImages;
+              setShowImages(next);
+              rebuildWithSettings(darkBg, next);
+            }}
+            className="flex items-center justify-center px-2.5 py-2 text-[10px] font-bold transition flex-1"
+            style={{
+              background: showImages ? "rgba(124,58,237,0.25)" : "rgba(255,255,255,0.04)",
+              color: showImages ? "#a78bfa" : t.textMute,
+              borderRight: `1px solid ${t.border}`,
+            }}
+            title={showImages ? "Показать текст" : "Показать картинки товаров"}
+          >
+            <Icon name={showImages ? "Image" : "Type"} size={12} />
+          </button>
+          {/* Поделиться */}
+          <button
+            onClick={() => {
+              setShareMode(m => {
+                if (!m && selectedIds.size === 0) setSelectedIds(new Set(rooms.map(r => r.id)));
+                return !m;
+              });
+              setShareUrl(null);
+            }}
+            className="flex items-center justify-center px-2.5 py-2 text-[10px] font-bold transition flex-1"
+            style={{
+              background: shareMode ? "rgba(124,58,237,0.25)" : "rgba(255,255,255,0.04)",
+              color: shareMode ? "#a78bfa" : t.textMute,
+            }}
+            title="Поделиться"
+          >
+            <Icon name="Share2" size={12} />
           </button>
         </div>
-
-        {/* Иконка поделиться — всегда */}
-        <button
-          onClick={() => {
-            setShareMode(m => {
-              if (!m && selectedIds.size === 0) setSelectedIds(new Set(rooms.map(r => r.id)));
-              return !m;
-            });
-            setShareUrl(null);
-          }}
-          className="flex items-center justify-center w-11 rounded-xl transition hover:brightness-110 active:scale-[0.97]"
-          style={{
-            background: shareMode ? "rgba(124,58,237,0.25)" : "rgba(255,255,255,0.06)",
-            border: shareMode ? "1px solid rgba(124,58,237,0.4)" : `1px solid ${t.border}`,
-          }}
-          title="Поделиться"
-        >
-          <Icon name="Share2" size={16} style={{ color: shareMode ? "#a78bfa" : t.textMute }} />
-        </button>
       </div>
 
       {/* Панель шаринга */}

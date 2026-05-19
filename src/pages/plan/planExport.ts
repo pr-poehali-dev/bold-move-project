@@ -17,7 +17,7 @@ function bbox(points: Point[]): { minX: number; minY: number; maxX: number; maxY
 }
 
 // ── Генерация чистого SVG-документа ──────────────────────────────────────────
-export function generateSvgString(state: PlanState, exportScale = 1, forThumbnail = false): string {
+export function generateSvgString(state: PlanState, exportScale = 1, forThumbnail = false, darkBg = false, showImages = false): string {
   const { points, segments, diagonals, dimLines, isClosed, settings } = state;
   // Для превью (thumbnail) всегда показываем размеры, независимо от настроек
   const showSegmentLabels = forThumbnail ? false : settings.showSegmentLabels;
@@ -150,14 +150,16 @@ export function generateSvgString(state: PlanState, exportScale = 1, forThumbnai
   };
 
   // ── Цвета зависят от режима ───────────────────────────────────────────────
-  const bgColor      = forThumbnail ? "#ffffff" : "#0f1117";
-  const fillColor    = forThumbnail ? "rgba(99,102,241,0.08)" : "rgba(139,92,246,0.12)";
-  const strokeColor  = isClosed ? (forThumbnail ? "#6366f1" : "#a78bfa") : "#6366f1";
-  const dimColor     = forThumbnail ? "#3b82f6" : "#60a5fa";
-  const dimTextColor = forThumbnail ? "#1e40af" : "#93c5fd";
-  const ptColor      = forThumbnail ? "#6366f1" : "#7c3aed";
-  const ptStroke     = forThumbnail ? "#4338ca" : "#4c1d95";
-  const nameColor    = forThumbnail ? "rgba(0,0,0,0.2)" : "rgba(255,255,255,0.2)";
+  // darkBg = тёмный фон (как в построителе), иначе светлый (белый)
+  const useDark      = darkBg || !forThumbnail;
+  const bgColor      = useDark ? "#0f1117" : "#ffffff";
+  const fillColor    = useDark ? "rgba(139,92,246,0.12)" : "rgba(99,102,241,0.08)";
+  const strokeColor  = isClosed ? (useDark ? "#a78bfa" : "#6366f1") : "#6366f1";
+  const dimColor     = useDark ? "#60a5fa" : "#3b82f6";
+  const dimTextColor = useDark ? "#93c5fd" : "#1e40af";
+  const ptColor      = useDark ? "#7c3aed" : "#6366f1";
+  const ptStroke     = useDark ? "#4c1d95" : "#4338ca";
+  const nameColor    = useDark ? "rgba(255,255,255,0.2)" : "rgba(0,0,0,0.2)";
 
   // Перегенерируем dimLineEl с правильными цветами для thumbnail
   const dimLineElColored = (seg: Segment): string => {
@@ -197,9 +199,28 @@ export function generateSvgString(state: PlanState, exportScale = 1, forThumbnai
     const cy = ty(mid.y - oy) - ny * inset;
     const angle = Math.atan2(b.y - a.y, b.x - a.x) * 180 / Math.PI;
     const na = angle > 90 || angle < -90 ? angle + 180 : angle;
-    const names = seg.items.map(it => `${it.name}${it.quantity ? ` ${it.quantity}${it.unit}` : ""}`).join(", ");
-    const short = names.length > 40 ? names.slice(0, 38) + "…" : names;
-    return `<text x="${cx}" y="${cy}" transform="rotate(${na},${cx},${cy})" text-anchor="middle" dominant-baseline="middle" font-size="${ts(8)}" fill="#7c3aed" font-family="sans-serif" font-weight="600">${escXml(short)}</text>`;
+    if (showImages) {
+      // Режим картинок: рисуем миниатюры товаров вдоль стены
+      const imgSize = ts(20);
+      const segLen = Math.sqrt((b.x - a.x) ** 2 + (b.y - a.y) ** 2) * exportScale;
+      const maxImgs = Math.max(1, Math.floor(segLen / (imgSize * 1.4)));
+      const items = seg.items.slice(0, maxImgs);
+      const dx = (tx(b.x - ox) - tx(a.x - ox)) / (items.length + 1);
+      const dy = (ty(b.y - oy) - ty(a.y - oy)) / (items.length + 1);
+      return items.map((it, idx) => {
+        const imgUrl = it.imageUrl;
+        if (!imgUrl) return "";
+        const ix = tx(a.x - ox) + dx * (idx + 1) - nx * ts(16);
+        const iy = ty(a.y - oy) + dy * (idx + 1) - ny * ts(16);
+        const half = imgSize / 2;
+        return `<image href="${imgUrl}" x="${ix - half}" y="${iy - half}" width="${imgSize}" height="${imgSize}" preserveAspectRatio="xMidYMid meet" style="border-radius:4px"/>`;
+      }).join("");
+    } else {
+      // Режим текста: название товара
+      const names = seg.items.map(it => `${it.name}${it.quantity ? ` ${it.quantity}${it.unit}` : ""}`).join(", ");
+      const short = names.length > 40 ? names.slice(0, 38) + "…" : names;
+      return `<text x="${cx}" y="${cy}" transform="rotate(${na},${cx},${cy})" text-anchor="middle" dominant-baseline="middle" font-size="${ts(8)}" fill="${useDark ? "#a78bfa" : "#7c3aed"}" font-family="sans-serif" font-weight="600">${escXml(short)}</text>`;
+    }
   };
 
   // ── Сборка SVG ────────────────────────────────────────────────────────────
@@ -304,8 +325,8 @@ export async function downloadPng(
 }
 
 // ── Получить data URL для превью ──────────────────────────────────────────────
-export function getSvgDataUrl(state: PlanState, exportScale = 1, forThumbnail = true): string {
-  const svg = generateSvgString(state, exportScale, forThumbnail);
+export function getSvgDataUrl(state: PlanState, exportScale = 1, forThumbnail = true, darkBg = false, showImages = false): string {
+  const svg = generateSvgString(state, exportScale, forThumbnail, darkBg, showImages);
   if (!svg) return "";
   const b64 = btoa(unescape(encodeURIComponent(svg)));
   return `data:image/svg+xml;base64,${b64}`;
