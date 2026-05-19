@@ -194,11 +194,12 @@ export default function Index() {
               style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.7)" }}>
               <Icon name="Layers" size={12} /> Построитель
             </button>
-            {(user?.role === "company" || user?.is_master) && (
+            {(user?.is_master || ["installer", "company", "manager"].includes(user?.role ?? "")) && (
               <button onClick={() => navigate("/company")}
-                className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-medium transition-all hover:bg-white/[0.08]"
-                style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.7)" }}>
-                <Icon name="Settings" size={12} /> Настройки
+                className="flex items-center justify-center px-2 py-1 rounded-lg text-[11px] font-medium transition-all hover:bg-white/[0.08]"
+                style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.7)" }}
+                title="Настройки">
+                <Icon name="Settings" size={14} />
               </button>
             )}
             <button
