@@ -31,6 +31,11 @@ export default function PlanProjectsScreen({ token, onSelectProject, initialProj
   const [error,            setError]            = useState("");
   const [search,           setSearch]           = useState("");
   const [filterStatus,     setFilterStatus]     = useState("all");
+  const [linkProject,      setLinkProject]      = useState<PlanProject | null>(null);
+  const [crmClients,       setCrmClients]       = useState<{id:number;client_name:string;phone:string|null;address:string|null}[]>([]);
+  const [crmSearch,        setCrmSearch]        = useState("");
+  const [crmLoading,       setCrmLoading]       = useState(false);
+  const [attachingId,      setAttachingId]      = useState<number | null>(null);
 
   useEffect(() => { loadProjects(); }, [loadProjects]);
 
@@ -132,6 +137,57 @@ export default function PlanProjectsScreen({ token, onSelectProject, initialProj
         window.open(`/crm?order=${data.crm_chat_id}`, "_blank");
       }
     } catch { /* ignore */ }
+  };
+
+  // ── Создать заявку и привязать ───────────────────────────────────────────────
+  const handleCreateLink = async (p: PlanProject) => {
+    try {
+      const res = await fetch(`${CRM_URL}?r=plan-crm-link&project_id=${p.id}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
+        body: JSON.stringify({}),
+      });
+      const data = await res.json();
+      if (data.crm_chat_id) {
+        await loadProjects();
+        window.open(`/crm?order=${data.crm_chat_id}`, "_blank");
+      }
+    } catch { /* ignore */ }
+  };
+
+  // ── Открыть модал выбора существующей заявки ─────────────────────────────────
+  const handleAttachLink = async (p: PlanProject) => {
+    setLinkProject(p);
+    setCrmSearch("");
+    setCrmClients([]);
+    setCrmLoading(true);
+    try {
+      const res = await fetch(`${CRM_URL}?r=clients`, {
+        headers: { "Authorization": `Bearer ${token}` },
+      });
+      const data = await res.json();
+      setCrmClients((Array.isArray(data) ? data : []).filter((c: {status:string}) => c.status !== "deleted"));
+    } catch { /* ignore */ }
+    setCrmLoading(false);
+  };
+
+  // ── Привязать к выбранной заявке ─────────────────────────────────────────────
+  const handleDoAttach = async (chatId: number) => {
+    if (!linkProject) return;
+    setAttachingId(chatId);
+    try {
+      const res = await fetch(`${CRM_URL}?r=plan-crm-attach&project_id=${linkProject.id}&chat_id=${chatId}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
+        body: JSON.stringify({}),
+      });
+      const data = await res.json();
+      if (data.ok) {
+        await loadProjects();
+        setLinkProject(null);
+      }
+    } catch { /* ignore */ }
+    setAttachingId(null);
   };
 
   // ── Удалить ──────────────────────────────────────────────────────────────────
@@ -264,10 +320,96 @@ export default function PlanProjectsScreen({ token, onSelectProject, initialProj
               onExport={p => { setExportProject(p); setExportOpen(true); }}
               onMaterials={setMaterialsProject}
               onCrm={handleCrm}
+              onCreateLink={handleCreateLink}
+              onAttachLink={handleAttachLink}
             />
           ))}
         </div>
       </div>
+
+      {/* Модал привязки к существующей заявке */}
+      {linkProject && (
+        <div
+          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center"
+          style={{ background: "rgba(0,0,0,0.7)", backdropFilter: "blur(6px)" }}
+          onClick={() => setLinkProject(null)}
+        >
+          <div
+            className="w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl flex flex-col overflow-hidden"
+            style={{ background: "#0e0e1c", border: "1px solid rgba(255,255,255,0.08)", maxHeight: "80vh" }}
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between px-5 pt-5 pb-3">
+              <div>
+                <div className="text-white font-bold text-[15px]">Привязать заявку</div>
+                <div className="text-[11px] mt-0.5" style={{ color: "rgba(255,255,255,0.4)" }}>
+                  Проект: {linkProject.name}
+                </div>
+              </div>
+              <button onClick={() => setLinkProject(null)} style={{ color: "rgba(255,255,255,0.4)" }}>
+                <Icon name="X" size={18} />
+              </button>
+            </div>
+
+            <div className="px-5 pb-3">
+              <div className="flex items-center gap-2 px-3 py-2 rounded-xl" style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)" }}>
+                <Icon name="Search" size={14} style={{ color: "rgba(255,255,255,0.35)" }} />
+                <input
+                  autoFocus
+                  value={crmSearch}
+                  onChange={e => setCrmSearch(e.target.value)}
+                  placeholder="Поиск по имени, телефону, адресу…"
+                  className="flex-1 bg-transparent outline-none text-[13px] placeholder:text-white/30"
+                  style={{ color: "rgba(255,255,255,0.85)" }}
+                />
+              </div>
+            </div>
+
+            <div className="flex-1 overflow-y-auto px-5 pb-5 space-y-1.5">
+              {crmLoading && (
+                <div className="flex justify-center py-8">
+                  <div className="w-5 h-5 border-2 border-violet-500/30 border-t-violet-500 rounded-full animate-spin" />
+                </div>
+              )}
+              {!crmLoading && crmClients.filter(c => {
+                const q = crmSearch.toLowerCase().trim();
+                if (!q) return true;
+                return (
+                  (c.client_name ?? "").toLowerCase().includes(q) ||
+                  (c.phone ?? "").toLowerCase().includes(q) ||
+                  (c.address ?? "").toLowerCase().includes(q)
+                );
+              }).map(c => (
+                <button
+                  key={c.id}
+                  disabled={attachingId === c.id}
+                  onClick={() => handleDoAttach(c.id)}
+                  className="w-full flex items-center justify-between px-4 py-3 rounded-xl text-left transition hover:brightness-110 active:scale-[0.98] disabled:opacity-50"
+                  style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)" }}
+                >
+                  <div className="flex flex-col gap-0.5">
+                    <span className="text-[13px] font-semibold text-white/90">{c.client_name || "Без имени"}</span>
+                    {(c.phone || c.address) && (
+                      <span className="text-[11px]" style={{ color: "rgba(255,255,255,0.4)" }}>
+                        {[c.phone, c.address].filter(Boolean).join(" · ")}
+                      </span>
+                    )}
+                  </div>
+                  {attachingId === c.id
+                    ? <div className="w-4 h-4 border border-violet-400/40 border-t-violet-400 rounded-full animate-spin" />
+                    : <Icon name="Link" size={14} style={{ color: "rgba(124,58,237,0.7)" }} />
+                  }
+                </button>
+              ))}
+              {!crmLoading && crmClients.length === 0 && (
+                <div className="text-center text-[13px] py-8" style={{ color: "rgba(255,255,255,0.3)" }}>
+                  Заявок не найдено
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

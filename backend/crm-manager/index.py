@@ -1264,6 +1264,26 @@ def handler(event: dict, context) -> dict:
                 conn.commit()
                 return ok({"crm_chat_id": chat_id})
 
+        # ── PLAN-CRM-ATTACH — привязать существующий проект к существующей заявке ─
+        if resource == "plan-crm-attach":
+            if method == "POST":
+                pid     = qs.get("project_id") or body.get("project_id")
+                chat_id = qs.get("chat_id")    or body.get("chat_id")
+                if not pid:     return err("project_id required")
+                if not chat_id: return err("chat_id required")
+                attach_cmp = master_uid if (company_id is None or company_id == 0) else company_id
+                # Проверяем что проект наш
+                cur.execute(f"SELECT id FROM {SCHEMA}.plan_projects WHERE id=%s AND company_id=%s", (int(pid), attach_cmp))
+                if not cur.fetchone(): return err("project not found", 404)
+                # Проверяем что заявка наша
+                cur.execute(f"SELECT id FROM {SCHEMA}.live_chats WHERE id=%s AND company_id=%s AND status!='deleted'", (int(chat_id), attach_cmp))
+                if not cur.fetchone(): return err("chat not found", 404)
+                # Связываем
+                cur.execute(f"UPDATE {SCHEMA}.plan_projects SET crm_chat_id=%s, updated_at=NOW() WHERE id=%s AND company_id=%s", (int(chat_id), int(pid), attach_cmp))
+                cur.execute(f"UPDATE {SCHEMA}.live_chats SET project_id=%s, updated_at=NOW() WHERE id=%s AND company_id=%s", (int(pid), int(chat_id), attach_cmp))
+                conn.commit()
+                return ok({"ok": True, "project_id": int(pid), "crm_chat_id": int(chat_id)})
+
         # ── CREATE-ESTIMATE-FOR-CHAT — создать смету для существующей заявки ───
         if resource == "create-estimate-for-chat":
             if method == "POST":

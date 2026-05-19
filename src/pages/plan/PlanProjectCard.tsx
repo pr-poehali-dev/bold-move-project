@@ -20,6 +20,8 @@ interface Props {
   onExport: (p: PlanProject) => void;
   onMaterials: (p: PlanProject) => void;
   onCrm?: (p: PlanProject) => void;
+  onCreateLink?: (p: PlanProject) => void;
+  onAttachLink?: (p: PlanProject) => void;
 }
 
 const SNAP_WIDTH = 88;
@@ -32,6 +34,7 @@ function vibe(ms: number | number[]) {
 export default function PlanProjectCard({
   project, editingId, deletingId, form, setForm, saving, error,
   onSelect, onStartEdit, onCancelEdit, onUpdate, onDelete, onExport, onMaterials, onCrm,
+  onCreateLink, onAttachLink,
 }: Props) {
   const sc = STATUS_COLORS[project.status] ?? STATUS_COLORS.draft;
   const isEditing = editingId === project.id;
@@ -42,6 +45,7 @@ export default function PlanProjectCard({
   const [dragging, setDragging] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [confirmEdit, setConfirmEdit] = useState(false);
+  const [showLinkMenu, setShowLinkMenu] = useState(false);
 
   // touch tracking
   const sx = useRef(0);
@@ -161,15 +165,54 @@ export default function PlanProjectCard({
       )}
 
       {/* Бейдж «не привязан к заявке» — левый верхний угол */}
-      {!isEditing && !project.crm_chat_id && (
-        <span
-          title="Проект не привязан к заявке"
-          className="absolute flex items-center gap-0.5 px-1.5 py-0.5 rounded-br-xl text-[9px] font-bold z-10"
+      {!isEditing && !project.crm_chat_id && (onCreateLink || onAttachLink) && (
+        <button
+          title="Привязать к заявке"
+          onClick={e => { e.stopPropagation(); setShowLinkMenu(v => !v); }}
+          className="absolute flex items-center gap-0.5 px-1.5 py-0.5 rounded-br-xl text-[9px] font-bold z-10 transition hover:brightness-125 active:scale-95"
           style={{ top: 0, left: 0, background: "rgba(234,179,8,0.18)", color: "#facc15", border: "1px solid rgba(234,179,8,0.3)", borderTop: "none", borderLeft: "none" }}
         >
           <Icon name="TriangleAlert" size={9} />
           без заявки
-        </span>
+        </button>
+      )}
+      {/* Мини-меню привязки */}
+      {showLinkMenu && !isEditing && (
+        <div
+          className="absolute z-30 flex flex-col gap-1 p-2 rounded-xl shadow-2xl"
+          style={{ top: 26, left: 0, minWidth: 210, background: "#13131f", border: "1px solid rgba(234,179,8,0.25)" }}
+        >
+          <div className="text-[10px] font-bold uppercase tracking-wide px-1 pb-1" style={{ color: "rgba(250,204,21,0.7)" }}>
+            Привязать к заявке CRM
+          </div>
+          {onCreateLink && (
+            <button
+              onClick={e => { e.stopPropagation(); setShowLinkMenu(false); onCreateLink(project); }}
+              className="flex items-center gap-2 px-3 py-2 rounded-lg text-[12px] font-semibold transition hover:brightness-110 active:scale-[0.98] text-left"
+              style={{ background: "rgba(124,58,237,0.18)", color: "#c4b5fd", border: "1px solid rgba(124,58,237,0.25)" }}
+            >
+              <Icon name="Plus" size={13} />
+              Создать новую заявку
+            </button>
+          )}
+          {onAttachLink && (
+            <button
+              onClick={e => { e.stopPropagation(); setShowLinkMenu(false); onAttachLink(project); }}
+              className="flex items-center gap-2 px-3 py-2 rounded-lg text-[12px] font-semibold transition hover:brightness-110 active:scale-[0.98] text-left"
+              style={{ background: "rgba(234,179,8,0.12)", color: "#fde68a", border: "1px solid rgba(234,179,8,0.2)" }}
+            >
+              <Icon name="Link" size={13} />
+              Привязать существующую
+            </button>
+          )}
+          <button
+            onClick={e => { e.stopPropagation(); setShowLinkMenu(false); }}
+            className="text-[11px] text-center pt-0.5 pb-1 transition"
+            style={{ color: "rgba(255,255,255,0.3)" }}
+          >
+            Отмена
+          </button>
+        </div>
       )}
 
       {/* ── Форма редактирования (вместо карточки) ── */}
