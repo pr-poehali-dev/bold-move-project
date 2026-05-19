@@ -190,7 +190,8 @@ export default function PlanPage() {
 
   // ── Экраны проектов и комнат ─────────────────────────────────────────────────
   if (screen === "projects") {
-    const urlProjectId = new URLSearchParams(window.location.search).get("project_id");
+    const urlParams = new URLSearchParams(window.location.search);
+    const urlProjectId = urlParams.get("project_id");
     return (
       <div className="flex flex-col bg-[#111]" style={{ height: "100dvh" }}>
         <div className="flex-1 overflow-hidden">
@@ -200,6 +201,7 @@ export default function PlanPage() {
             onSelectProject={project => {
               setActiveProject(project);
               setScreen("rooms");
+              // room_id и variant_id оставляем в URL — PlanRoomsScreen их прочитает
               const url = new URL(window.location.href);
               url.searchParams.delete("project_id");
               window.history.replaceState({}, "", url.toString());

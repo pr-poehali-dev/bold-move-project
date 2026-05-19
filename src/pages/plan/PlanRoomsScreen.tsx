@@ -56,6 +56,7 @@ export default function PlanRoomsScreen({ token, project, onBack, onOpenRoom }: 
   }, [menuOpenId]);
 
   useEffect(() => {
+    const urlRoomId = new URLSearchParams(window.location.search).get("room_id");
     loadRooms(project.id).then(list => {
       // Заполняем кеш активных вариантов из данных, пришедших с бэкенда
       const newActiveMap: Record<number, number | null> = {};
@@ -77,6 +78,19 @@ export default function PlanRoomsScreen({ token, project, onBack, onOpenRoom }: 
       });
       setActiveVarByRoom(newActiveMap);
       setVariantsByRoom(prev => ({ ...prev, ...newVarMap }));
+
+      // Авто-открытие конкретной комнаты если room_id передан в URL
+      if (urlRoomId) {
+        const targetRoom = list.find(r => r.id === Number(urlRoomId));
+        if (targetRoom) {
+          // Убираем room_id из URL
+          const url = new URL(window.location.href);
+          url.searchParams.delete("room_id");
+          url.searchParams.delete("variant_id");
+          window.history.replaceState({}, "", url.toString());
+          onOpenRoom(targetRoom);
+        }
+      }
     });
   }, [project.id]); // eslint-disable-line react-hooks/exhaustive-deps
 

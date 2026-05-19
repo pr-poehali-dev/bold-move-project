@@ -117,8 +117,12 @@ export default function DrawerPlanTab({ chatId, projectId }: Props) {
     }, 50);
   };
 
-  const openInPlan = () => {
-    window.open(`/plan${projectId ? `?project_id=${projectId}` : ""}`, "_blank");
+  const openInPlan = (room?: PlanRoom) => {
+    const params = new URLSearchParams();
+    if (projectId) params.set("project_id", String(projectId));
+    if (room?.id) params.set("room_id", String(room.id));
+    if (room?.active_variant_id) params.set("variant_id", String(room.active_variant_id));
+    window.open(`/plan?${params.toString()}`, "_blank");
   };
 
   const toggleSelect = (id: number) => {
@@ -450,7 +454,7 @@ export default function DrawerPlanTab({ chatId, projectId }: Props) {
           onSetPanX={setPanX}
           onSetPanY={setPanY}
           onClose={() => setFullscreenRoom(null)}
-          onOpenInPlan={openInPlan}
+          onOpenInPlan={() => openInPlan(fullscreenRoom)}
         />,
         document.body
       )}
