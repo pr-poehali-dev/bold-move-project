@@ -31,8 +31,10 @@ export default function EstimateTable({
   const [markupModalOpen, setMarkupModalOpen] = useState(false);
   const chosen = estimate.chosen_tier;
 
-  // В режиме редактирования — всегда По комнатам
-  const effectivePerRoom = editMode ? true : perRoom;
+  // Переключатель «По комнатам» актуален только для смет из чертежа
+  const hasRooms = planRooms.length > 0;
+  // В режиме редактирования — всегда По комнатам (только если есть комнаты)
+  const effectivePerRoom = hasRooms ? (editMode ? true : perRoom) : false;
   const [confirmReset, setConfirmReset] = useState(false);
 
   const handleResetClick = useCallback(() => setConfirmReset(true), []);
@@ -152,8 +154,8 @@ export default function EstimateTable({
     <>
       {/* Переключатель + кнопка скидки */}
       <div className="flex items-center gap-2">
-        {/* Переключатель — скрываем в режиме редактирования */}
-        {!editMode && (
+        {/* Переключатель — скрываем в режиме редактирования и для смет из бота */}
+        {!editMode && hasRooms && (
           <div className="flex rounded-xl overflow-hidden" style={{ border: `1px solid ${t.border}` }}>
             <button
               onClick={() => setPerRoom(false)}
