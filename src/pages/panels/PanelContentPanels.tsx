@@ -310,32 +310,40 @@ export function PanelProduction({
   onClose,
   canEdit,
   items: externalItems,
+  pageTitle: externalTitle,
+  pageHidden: externalHidden,
   token,
   onSave,
 }: {
-  onClose:  () => void;
-  canEdit?: boolean;
-  items?:   ProductionItem[] | null;
-  token?:   string | null;
-  onSave?:  (items: ProductionItem[]) => void;
+  onClose:      () => void;
+  canEdit?:     boolean;
+  items?:       ProductionItem[] | null;
+  pageTitle?:   string | null;
+  pageHidden?:  boolean | null;
+  token?:       string | null;
+  onSave?:      (items: ProductionItem[], title: string, hidden: boolean) => void;
 }) {
   const baseItems = (externalItems && externalItems.length > 0) ? externalItems : PRODUCTION;
-  const [editMode, setEditMode]         = useState(false);
-  const [items, setItems]               = useState<ProductionItem[]>(baseItems);
+  const [editMode, setEditMode]           = useState(false);
+  const [items, setItems]                 = useState<ProductionItem[]>(baseItems);
+  const [pageTitle, setPageTitle]         = useState(externalTitle || "Собственное производство");
+  const [pageHidden, setPageHidden]       = useState(!!externalHidden);
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
-  const [uploading, setUploading]       = useState<number | null>(null);
-  const [saving, setSaving]             = useState(false);
+  const [uploading, setUploading]         = useState<number | null>(null);
+  const [saving, setSaving]               = useState(false);
   const fileRefs = useRef<(HTMLInputElement | null)[]>([]);
   const prodImages = items.map((item) => ({ src: item.img, alt: item.title }));
 
   const handleEnterEdit = () => {
     setItems((externalItems && externalItems.length > 0) ? [...externalItems] : [...PRODUCTION]);
+    setPageTitle(externalTitle || "Собственное производство");
+    setPageHidden(!!externalHidden);
     setEditMode(true);
   };
 
   const handleSave = async () => {
     setSaving(true);
-    await onSave?.(items);
+    await onSave?.(items, pageTitle, pageHidden);
     setSaving(false);
     setEditMode(false);
   };
@@ -366,23 +374,48 @@ export function PanelProduction({
   if (editMode) {
     return (
       <div className="h-full flex flex-col">
-        <div className="shrink-0 flex items-center justify-between px-5 py-3 border-b border-white/[0.06]">
-          <div className="flex items-center gap-2">
-            <Icon name="Pencil" size={15} className="text-violet-400" />
-            <span className="text-sm font-semibold text-white/80">Редактирование производства</span>
+        {/* Шапка редактора */}
+        <div className="shrink-0 border-b border-white/[0.06]">
+          <div className="flex items-center justify-between px-5 py-3">
+            <div className="flex items-center gap-2">
+              <Icon name="Pencil" size={15} className="text-violet-400" />
+              <span className="text-sm font-semibold text-white/80">Редактирование страницы</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <button onClick={() => setEditMode(false)}
+                className="px-3 py-1.5 rounded-lg text-xs text-white/40 hover:text-white/70 transition">
+                Отмена
+              </button>
+              <button onClick={handleSave} disabled={saving}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition disabled:opacity-60"
+                style={{ background: "rgba(167,139,250,0.2)", border: "1px solid rgba(167,139,250,0.4)", color: "#a78bfa" }}>
+                {saving
+                  ? <span className="w-3 h-3 border-2 border-violet-400 border-t-transparent rounded-full animate-spin" />
+                  : <Icon name="Check" size={12} />}
+                Сохранить
+              </button>
+            </div>
           </div>
-          <div className="flex items-center gap-2">
-            <button onClick={() => setEditMode(false)}
-              className="px-3 py-1.5 rounded-lg text-xs text-white/40 hover:text-white/70 transition">
-              Отмена
-            </button>
-            <button onClick={handleSave} disabled={saving}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition disabled:opacity-60"
-              style={{ background: "rgba(167,139,250,0.2)", border: "1px solid rgba(167,139,250,0.4)", color: "#a78bfa" }}>
-              {saving
-                ? <span className="w-3 h-3 border-2 border-violet-400 border-t-transparent rounded-full animate-spin" />
-                : <Icon name="Check" size={12} />}
-              Сохранить
+          {/* Название страницы + видимость */}
+          <div className="flex items-center gap-2 px-5 pb-3">
+            <input
+              value={pageTitle}
+              onChange={e => setPageTitle(e.target.value)}
+              placeholder="Название страницы"
+              className="flex-1 px-3 py-1.5 rounded-lg text-sm font-semibold focus:outline-none transition"
+              style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "#fff" }}
+            />
+            <button
+              onClick={() => setPageHidden(v => !v)}
+              title={pageHidden ? "Страница скрыта — нажмите чтобы показать" : "Страница видна — нажмите чтобы скрыть"}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition shrink-0"
+              style={{
+                background: pageHidden ? "rgba(239,68,68,0.15)" : "rgba(34,197,94,0.15)",
+                border: `1px solid ${pageHidden ? "rgba(239,68,68,0.3)" : "rgba(34,197,94,0.3)"}`,
+                color: pageHidden ? "#f87171" : "#4ade80",
+              }}>
+              <Icon name={pageHidden ? "EyeOff" : "Eye"} size={13} />
+              {pageHidden ? "Скрыта" : "Видна"}
             </button>
           </div>
         </div>
@@ -450,9 +483,10 @@ export function PanelProduction({
   }
 
   /* ── Режим просмотра ── */
+  const displayTitle = externalTitle || "Собственное производство";
   return (
     <div className="h-full flex flex-col">
-      <PanelHeader icon="Factory" title="Собственное производство" onClose={onClose}
+      <PanelHeader icon="Factory" title={displayTitle} onClose={onClose}
         onEdit={canEdit ? handleEnterEdit : undefined} />
       <div className="flex-1 overflow-y-auto p-4">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mb-4">

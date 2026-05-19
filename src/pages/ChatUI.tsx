@@ -46,6 +46,7 @@ interface Props {
   input: string;
   typing: boolean;
   panel: Panel;
+  canEdit?: boolean;
   onInput: (v: string) => void;
   onSend: (text: string) => void;
   onRepeat: (text: string) => void;
@@ -55,7 +56,7 @@ interface Props {
   onSaveRequest?: () => void;
 }
 
-export default function ChatUI({ messages, input, typing, panel, onInput, onSend, onRepeat, onPreset, onPanel, onNewEstimate, onSaveRequest }: Props) {
+export default function ChatUI({ messages, input, typing, panel, canEdit, onInput, onSend, onRepeat, onPreset, onPanel, onNewEstimate, onSaveRequest }: Props) {
   const { brand } = useBrand();
   const avatarSrc = brand.bot_avatar_url || AVATAR;
   const botName   = brand.bot_name || "Женя";
@@ -193,7 +194,11 @@ export default function ChatUI({ messages, input, typing, panel, onInput, onSend
 
       {/* Nav — кнопки (из nav_config или дефолт) */}
       <div className="shrink-0 px-4 md:px-8 pb-3 pt-1 flex items-center justify-center gap-1.5">
-        {(brand.nav_config && brand.nav_config.length > 0 ? brand.nav_config : NAV).map((n) => {
+        {(brand.nav_config && brand.nav_config.length > 0 ? brand.nav_config : NAV).filter((n) => {
+          // Скрываем скрытые системные страницы для не-редакторов
+          if (n.id === "production" && brand.production_hidden && !canEdit) return false;
+          return true;
+        }).map((n) => {
           const navBtn = n as typeof NAV[0] & { action?: string; value?: string | null };
           const SYSTEM_IDS = ["production", "portfolio", "booking", "tips", "reviews", "faq", "contacts"];
           const isSystemBtn = SYSTEM_IDS.includes(navBtn.id);

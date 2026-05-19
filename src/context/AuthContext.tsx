@@ -28,6 +28,8 @@ export interface Brand {
   tg_notify_chat_id?:      string | null;
   nav_config?:             NavButton[] | null;
   production_items?:       ProductionItem[] | null;
+  production_title?:       string | null;
+  production_hidden?:      boolean | null;
 }
 
 export interface ProductionItem {

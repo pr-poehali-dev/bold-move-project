@@ -259,6 +259,7 @@ export default function Index() {
           input={input}
           typing={typing}
           panel={panel}
+          canEdit={canEdit}
           onInput={setInput}
           onSend={sendMsg}
           onRepeat={(text) => sendMsg(text, false, true)}
@@ -292,10 +293,13 @@ export default function Index() {
                     onClose={closePanel}
                     canEdit={canEdit}
                     items={brand.production_items}
+                    pageTitle={brand.production_title}
+                    pageHidden={brand.production_hidden}
                     token={authToken}
-                    onSave={async (items) => {
-                      patchBrand({ production_items: items });
-                      await updateBrand(authToken, { ...brand, production_items: items });
+                    onSave={async (items, title, hidden) => {
+                      const patch = { production_items: items, production_title: title, production_hidden: hidden };
+                      patchBrand(patch);
+                      await updateBrand(authToken, { ...brand, ...patch });
                     }}
                   />;
                   if (panel === "portfolio") return <PanelPortfolio onClose={closePanel} />;
