@@ -21,6 +21,7 @@ export interface PriceItem {
   name: string;
   price: number;
   purchase_price: number;
+  installation_price: number;
   unit: string;
   description: string;
   synonyms: string;
