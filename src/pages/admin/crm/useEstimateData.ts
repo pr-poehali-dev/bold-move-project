@@ -71,10 +71,11 @@ export function useEstimateData(
       perRoom,
       includeDrawings,
       planRooms,
+      chosenTier: estimate?.chosen_tier ?? null,
     });
     const w = window.open("", "_blank");
     if (w) { w.document.write(html); w.document.close(); w.focus(); w.print(); }
-  }, [blocks, clientName, clientPhone, planRooms]);
+  }, [blocks, clientName, clientPhone, planRooms, estimate]);
 
   return { estimate, blocks, totals, prices, planRooms, loading, reload: loadData, setBlocks, setTotals, setEstimate, doPrint };
 }

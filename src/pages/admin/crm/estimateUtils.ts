@@ -107,7 +107,7 @@ export function generatePrintHtml(
   standardTotal: number,
   clientName?: string | null,
   clientPhone?: string | null,
-  opts?: { perRoom?: boolean; includeDrawings?: boolean; planRooms?: PlanRoomForEstimate[] },
+  opts?: { perRoom?: boolean; includeDrawings?: boolean; planRooms?: PlanRoomForEstimate[]; chosenTier?: "econom" | "standard" | "premium" | null },
 ): string {
   const name = clientName || "Клиент";
   const econom  = Math.round(standardTotal * pricingRules.econom_mult);
@@ -115,6 +115,7 @@ export function generatePrintHtml(
   const perRoom = opts?.perRoom ?? false;
   const includeDrawings = opts?.includeDrawings ?? false;
   const planRooms = opts?.planRooms ?? [];
+  const chosenTier = opts?.chosenTier ?? null;
 
   const blockToRows = (block: EstimateBlock): string => {
     let rows = `<tr><td colspan="4" style="background:#f3f0ff;color:#7c3aed;font-weight:bold;padding:8px 12px;font-size:13px;border-radius:4px">${block.title}</td></tr>`;
@@ -133,6 +134,25 @@ export function generatePrintHtml(
   const totalsHtml = (total: number) => {
     const ec = Math.round(total * pricingRules.econom_mult);
     const pr = Math.round(total * pricingRules.premium_mult);
+
+    // Если цена согласована — показываем только её
+    if (chosenTier === "econom") {
+      return `<div class="totals">
+        <div><span style="font-weight:700">${pricingRules.econom_label}</span><span style="color:#10b981;font-weight:800;font-size:18px">${fmt(ec)} ₽</span></div>
+      </div>`;
+    }
+    if (chosenTier === "standard") {
+      return `<div class="totals">
+        <div><span style="font-weight:700">${pricingRules.standard_label}</span><span class="total-main">${fmt(total)} ₽</span></div>
+      </div>`;
+    }
+    if (chosenTier === "premium") {
+      return `<div class="totals">
+        <div><span style="font-weight:700">${pricingRules.premium_label}</span><span style="color:#8b5cf6;font-weight:800;font-size:18px">${fmt(pr)} ₽</span></div>
+      </div>`;
+    }
+
+    // Без согласования — все три варианта
     return `<div class="totals">
       <div><span>${pricingRules.econom_label}</span><span style="color:#10b981;font-weight:600">${fmt(ec)} ₽</span></div>
       <div><span>${pricingRules.standard_label}</span><span class="total-main">${fmt(total)} ₽</span></div>
