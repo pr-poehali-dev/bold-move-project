@@ -146,7 +146,7 @@ export default function CrmPanel({ theme, initialOrderId, initialTab }: { theme:
                   color: t.textSub, borderColor: "transparent", background: "transparent",
                 }}>
                 <Icon name={tb.icon} size={15} />
-                <span className="hidden sm:inline">{tb.label}</span>
+                <span>{tb.label}</span>
               </button>
             );
           })}
@@ -161,7 +161,7 @@ export default function CrmPanel({ theme, initialOrderId, initialTab }: { theme:
                 color: t.textSub, borderColor: "transparent", background: "transparent",
               }}>
               <Icon name="Kanban" size={15} />
-              <span className="hidden sm:inline">Канбан</span>
+              <span>Канбан</span>
             </button>
           )}
 
