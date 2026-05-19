@@ -924,6 +924,7 @@ def handler(event: dict, context) -> dict:
                 client_name = body.get("client_name")
                 address = body.get("address")
                 phone = body.get("phone")
+                crm_client_id = body.get("crm_client_id")  # ID существующей заявки CRM
                 # Для вставок используем реальный uid (мастер имеет cmp=0, но uid реальный)
                 insert_cmp = master_uid if cmp == 0 else cmp
                 # 1. Создаём проект
@@ -932,26 +933,37 @@ def handler(event: dict, context) -> dict:
                     VALUES (%s,%s,%s,%s,%s,%s) RETURNING id
                 """, (insert_cmp, name, client_name, address, phone, body.get("status","draft")))
                 new_id = cur.fetchone()[0]
-                # 2. Автоматически создаём заявку в CRM
-                session_id = f"plan-{new_id}"
-                cur.execute(f"""
-                    INSERT INTO {SCHEMA}.live_chats
-                        (session_id, client_name, phone, address, status, source, company_id, project_id)
-                    VALUES (%s,%s,%s,%s,'new','plan',%s,%s) RETURNING id
-                """, (session_id, client_name or name, phone, address, insert_cmp, new_id))
-                chat_id = cur.fetchone()[0]
+                # 2. Привязываем к существующей заявке CRM или создаём новую
+                if crm_client_id:
+                    # Привязываемся к существующей заявке — обновляем project_id
+                    cur.execute(f"UPDATE {SCHEMA}.live_chats SET project_id=%s WHERE id=%s AND company_id=%s RETURNING id",
+                                (new_id, crm_client_id, insert_cmp))
+                    row = cur.fetchone()
+                    chat_id = row[0] if row else None
+                    if not chat_id:
+                        # Заявка не найдена — создаём новую
+                        crm_client_id = None
+                if not crm_client_id:
+                    session_id = f"plan-{new_id}"
+                    cur.execute(f"""
+                        INSERT INTO {SCHEMA}.live_chats
+                            (session_id, client_name, phone, address, status, source, company_id, project_id)
+                        VALUES (%s,%s,%s,%s,'new','plan',%s,%s) RETURNING id
+                    """, (session_id, client_name or name, phone, address, insert_cmp, new_id))
+                    chat_id = cur.fetchone()[0]
                 # 3. Связываем проект с заявкой
                 cur.execute(f"UPDATE {SCHEMA}.plan_projects SET crm_chat_id=%s WHERE id=%s", (chat_id, new_id))
-                # 4. Ищем колонку "С построителя" и добавляем канбан-карточку
-                cur.execute(f"SELECT id FROM {SCHEMA}.kanban_columns WHERE title='С построителя' AND company_id=%s LIMIT 1", (insert_cmp,))
-                col_row = cur.fetchone()
-                if col_row:
-                    cur.execute(f"SELECT COALESCE(MAX(position)+1,0) FROM {SCHEMA}.kanban_cards WHERE column_id=%s AND company_id=%s", (col_row[0], insert_cmp))
-                    pos = cur.fetchone()[0]
-                    cur.execute(f"""INSERT INTO {SCHEMA}.kanban_cards
-                        (column_id, client_id, title, phone, priority, position, company_id)
-                        VALUES (%s,%s,%s,%s,'medium',%s,%s)""",
-                        (col_row[0], chat_id, name, phone or "", pos, insert_cmp))
+                # 4. Ищем колонку "С построителя" и добавляем канбан-карточку (только для новых заявок)
+                if not crm_client_id:
+                    cur.execute(f"SELECT id FROM {SCHEMA}.kanban_columns WHERE title='С построителя' AND company_id=%s LIMIT 1", (insert_cmp,))
+                    col_row = cur.fetchone()
+                    if col_row:
+                        cur.execute(f"SELECT COALESCE(MAX(position)+1,0) FROM {SCHEMA}.kanban_cards WHERE column_id=%s AND company_id=%s", (col_row[0], insert_cmp))
+                        pos = cur.fetchone()[0]
+                        cur.execute(f"""INSERT INTO {SCHEMA}.kanban_cards
+                            (column_id, client_id, title, phone, priority, position, company_id)
+                            VALUES (%s,%s,%s,%s,'medium',%s,%s)""",
+                            (col_row[0], chat_id, name, phone or "", pos, insert_cmp))
                 conn.commit()
                 return ok({"id": new_id, "crm_chat_id": chat_id})
 
