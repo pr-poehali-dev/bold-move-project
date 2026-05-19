@@ -309,22 +309,24 @@ function RenderBlocks({ blocks, pageSettings }: { blocks: PageBlock[]; pageSetti
 export function PanelProduction({
   onClose,
   canEdit,
+  startInEditMode,
   items: externalItems,
   pageTitle: externalTitle,
   pageHidden: externalHidden,
   token,
   onSave,
 }: {
-  onClose:      () => void;
-  canEdit?:     boolean;
-  items?:       ProductionItem[] | null;
-  pageTitle?:   string | null;
-  pageHidden?:  boolean | null;
-  token?:       string | null;
-  onSave?:      (items: ProductionItem[], title: string, hidden: boolean) => void;
+  onClose:           () => void;
+  canEdit?:          boolean;
+  startInEditMode?:  boolean;
+  items?:            ProductionItem[] | null;
+  pageTitle?:        string | null;
+  pageHidden?:       boolean | null;
+  token?:            string | null;
+  onSave?:           (items: ProductionItem[], title: string, hidden: boolean) => void;
 }) {
   const baseItems = (externalItems && externalItems.length > 0) ? externalItems : PRODUCTION;
-  const [editMode, setEditMode]           = useState(false);
+  const [editMode, setEditMode]           = useState(!!startInEditMode);
   const [items, setItems]                 = useState<ProductionItem[]>(baseItems);
   const [pageTitle, setPageTitle]         = useState(externalTitle || "Собственное производство");
   const [pageHidden, setPageHidden]       = useState(!!externalHidden);
@@ -530,26 +532,28 @@ export function PanelProduction({
 export function PanelPortfolio({
   onClose,
   canEdit,
+  startInEditMode,
   items: externalItems,
   pageTitle: externalTitle,
   pageHidden: externalHidden,
   token,
   onSave,
 }: {
-  onClose:     () => void;
-  canEdit?:    boolean;
-  items?:      PortfolioItem[] | null;
-  pageTitle?:  string | null;
-  pageHidden?: boolean | null;
-  token?:      string | null;
-  onSave?:     (items: PortfolioItem[], title: string, hidden: boolean) => void;
+  onClose:          () => void;
+  canEdit?:         boolean;
+  startInEditMode?: boolean;
+  items?:           PortfolioItem[] | null;
+  pageTitle?:       string | null;
+  pageHidden?:      boolean | null;
+  token?:           string | null;
+  onSave?:          (items: PortfolioItem[], title: string, hidden: boolean) => void;
 }) {
   const defaultItems: PortfolioItem[] = PORTFOLIO_ITEMS.slice(0, 12).map(i => ({
     img: i.img, room: i.room, type: i.type, district: i.district, area: i.area,
   }));
   const baseItems = (externalItems && externalItems.length > 0) ? externalItems : defaultItems;
 
-  const [editMode, setEditMode]           = useState(false);
+  const [editMode, setEditMode]           = useState(!!startInEditMode);
   const [items, setItems]                 = useState<PortfolioItem[]>(baseItems);
   const [pageTitle, setPageTitle]         = useState(externalTitle || "Наши работы");
   const [pageHidden, setPageHidden]       = useState(!!externalHidden);

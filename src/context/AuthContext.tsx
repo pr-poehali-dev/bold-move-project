@@ -33,6 +33,10 @@ export interface Brand {
   portfolio_items?:        PortfolioItem[] | null;
   portfolio_title?:        string | null;
   portfolio_hidden?:       boolean | null;
+  booking_hidden?:         boolean | null;
+  other_hidden?:           boolean | null;
+  contacts_hidden?:        boolean | null;
+  nav_hidden_ids?:         string[] | null;
 }
 
 export interface ProductionItem {

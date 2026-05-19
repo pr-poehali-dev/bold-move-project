@@ -64,7 +64,10 @@ export default function Index() {
       }
     : GREETING;
 
-  const [panel, setPanel]       = useState<Panel>("none");
+  // Открываем панель сразу в режиме редактирования если передан ?editPanel=
+  const _editPanelParam = new URLSearchParams(window.location.search).get("editPanel");
+  const [panel, setPanel]       = useState<Panel>((_editPanelParam as Panel) || "none");
+  const [editPanelId, setEditPanelId] = useState<string | null>(_editPanelParam);
   const [messages, setMessages] = useState<Msg[]>([greeting]);
   const [input, setInput]       = useState("");
   const [typing, setTyping]     = useState(false);
@@ -292,6 +295,7 @@ export default function Index() {
                   if (panel === "production") return <PanelProduction
                     onClose={closePanel}
                     canEdit={canEdit}
+                    startInEditMode={editPanelId === "production"}
                     items={brand.production_items}
                     pageTitle={brand.production_title}
                     pageHidden={brand.production_hidden}
@@ -305,6 +309,7 @@ export default function Index() {
                   if (panel === "portfolio") return <PanelPortfolio
                     onClose={closePanel}
                     canEdit={canEdit}
+                    startInEditMode={editPanelId === "portfolio"}
                     items={brand.portfolio_items}
                     pageTitle={brand.portfolio_title}
                     pageHidden={brand.portfolio_hidden}

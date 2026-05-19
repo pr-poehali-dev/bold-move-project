@@ -19,7 +19,6 @@ const ACTION_LABELS: Record<NavButton["action"], string> = {
   telegram:  "Telegram",
 };
 
-
 const DEFAULT_BUTTONS: NavButton[] = [
   { id: "booking",    label: "Заказать",     icon: "CalendarCheck", action: "chat" },
   { id: "production", label: "Производство", icon: "Factory",       action: "other" },
@@ -27,17 +26,24 @@ const DEFAULT_BUTTONS: NavButton[] = [
   { id: "other",      label: "Другое",       icon: "LayoutGrid",    action: "other" },
 ];
 
+// Системные id — у них есть встроенный редактор страницы
+const EDITABLE_SYSTEM_IDS = ["booking", "production", "portfolio", "other", "contacts"];
+
 function genId() { return Math.random().toString(36).slice(2, 8); }
 
 interface Props {
-  value:    NavButton[] | null | undefined;
-  onChange: (v: NavButton[]) => void;
-  token:    string | null;
-  isDark:   boolean;
+  value:         NavButton[] | null | undefined;
+  hiddenIds?:    string[] | null;
+  onChange:      (v: NavButton[]) => void;
+  onHiddenChange?: (ids: string[]) => void;
+  onEditPanel?:  (panelId: string) => void;
+  token:         string | null;
+  isDark:        boolean;
 }
 
-export function SectionNav({ value, onChange, token, isDark }: Props) {
+export function SectionNav({ value, hiddenIds, onChange, onHiddenChange, onEditPanel, token, isDark }: Props) {
   const buttons = value && value.length > 0 ? value : DEFAULT_BUTTONS;
+  const hidden = hiddenIds ?? [];
   const [editIdx, setEditIdx] = useState<number | null>(null);
   const { muted, border, bg, text } = fieldStyles(isDark);
 
@@ -62,27 +68,45 @@ export function SectionNav({ value, onChange, token, isDark }: Props) {
     setEditIdx(next.length - 1);
   };
 
+  const toggleHidden = (id: string) => {
+    const next = hidden.includes(id) ? hidden.filter(x => x !== id) : [...hidden, id];
+    onHiddenChange?.(next);
+  };
 
   const editing = editIdx !== null ? buttons[editIdx] : null;
   const content = editing?.content || {};
+
+  // Кнопку "Редактировать страницу" показываем для системных кнопок и кастомных panel
+  const canEditPage = editing && (
+    EDITABLE_SYSTEM_IDS.includes(editing.id) || editing.action === "panel"
+  );
 
   return (
     <Section title="Нижняя навигация" icon="LayoutGrid" isDark={isDark}>
       {/* Preview бар */}
       <div className="flex gap-1.5 p-2 rounded-xl mb-1" style={{ background: isDark ? "rgba(0,0,0,0.3)" : "#f3f4f6" }}>
-        {buttons.map((b, i) => (
-          <button key={b.id} onClick={() => setEditIdx(i === editIdx ? null : i)}
-            className="flex-1 flex flex-col items-center gap-1 py-2 rounded-lg transition"
-            style={{
-              background: editIdx === i ? (isDark ? "rgba(167,139,250,0.15)" : "#ede9fe") : "transparent",
-              border: editIdx === i ? "1px solid rgba(167,139,250,0.4)" : "1px solid transparent",
-            }}>
-            <Icon name={b.icon} size={15} style={{ color: editIdx === i ? "#a78bfa" : (isDark ? "rgba(255,255,255,0.4)" : "#9ca3af") }} />
-            <span className="text-[9px] leading-none text-center" style={{ color: editIdx === i ? "#a78bfa" : (isDark ? "rgba(255,255,255,0.3)" : "#9ca3af") }}>
-              {b.label}
-            </span>
-          </button>
-        ))}
+        {buttons.map((b, i) => {
+          const isHidden = hidden.includes(b.id);
+          return (
+            <button key={b.id} onClick={() => setEditIdx(i === editIdx ? null : i)}
+              className="flex-1 flex flex-col items-center gap-1 py-2 rounded-lg transition relative"
+              style={{
+                background: editIdx === i ? (isDark ? "rgba(167,139,250,0.15)" : "#ede9fe") : "transparent",
+                border: editIdx === i ? "1px solid rgba(167,139,250,0.4)" : "1px solid transparent",
+                opacity: isHidden ? 0.4 : 1,
+              }}>
+              <Icon name={b.icon} size={15} style={{ color: editIdx === i ? "#a78bfa" : (isDark ? "rgba(255,255,255,0.4)" : "#9ca3af") }} />
+              <span className="text-[9px] leading-none text-center" style={{ color: editIdx === i ? "#a78bfa" : (isDark ? "rgba(255,255,255,0.3)" : "#9ca3af") }}>
+                {b.label}
+              </span>
+              {isHidden && (
+                <div className="absolute top-1 right-1">
+                  <Icon name="EyeOff" size={8} style={{ color: isDark ? "rgba(255,255,255,0.3)" : "#9ca3af" }} />
+                </div>
+              )}
+            </button>
+          );
+        })}
         {buttons.length < 5 && (
           <button onClick={add} className="flex-none flex flex-col items-center justify-center w-12 py-2 rounded-lg transition"
             style={{ border: `1px dashed ${isDark ? "rgba(255,255,255,0.15)" : "#d1d5db"}` }}>
@@ -103,6 +127,22 @@ export function SectionNav({ value, onChange, token, isDark }: Props) {
               style={{ background: bg, border: `1px solid ${border}`, color: text }} />
           </div>
 
+          {/* Видна / Скрыта */}
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: muted }}>Видимость</span>
+            <button
+              onClick={() => toggleHidden(editing.id)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition"
+              style={{
+                background: hidden.includes(editing.id) ? "rgba(239,68,68,0.12)" : "rgba(34,197,94,0.12)",
+                border: `1px solid ${hidden.includes(editing.id) ? "rgba(239,68,68,0.3)" : "rgba(34,197,94,0.3)"}`,
+                color: hidden.includes(editing.id) ? "#f87171" : "#4ade80",
+              }}>
+              <Icon name={hidden.includes(editing.id) ? "EyeOff" : "Eye"} size={12} />
+              {hidden.includes(editing.id) ? "Скрыта" : "Видна"}
+            </button>
+          </div>
+
           {/* Название страницы — только для «Своя страница» */}
           {editing.action === "panel" && (
             <div>
@@ -114,14 +154,16 @@ export function SectionNav({ value, onChange, token, isDark }: Props) {
             </div>
           )}
 
-          {/* Кнопка Редактировать — заглушка */}
-          <button
-            disabled
-            className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold opacity-40 cursor-not-allowed"
-            style={{ background: isDark ? "rgba(167,139,250,0.1)" : "#ede9fe", border: "1px dashed rgba(167,139,250,0.4)", color: "#a78bfa" }}>
-            <Icon name="Pencil" size={13} />
-            Редактировать страницу
-          </button>
+          {/* Кнопка Редактировать страницу */}
+          {canEditPage && (
+            <button
+              onClick={() => onEditPanel?.(editing.id)}
+              className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold transition hover:opacity-90"
+              style={{ background: isDark ? "rgba(167,139,250,0.15)" : "#ede9fe", border: "1px solid rgba(167,139,250,0.4)", color: "#a78bfa" }}>
+              <Icon name="Pencil" size={13} />
+              Редактировать страницу
+            </button>
+          )}
 
           {/* Иконка */}
           <div>

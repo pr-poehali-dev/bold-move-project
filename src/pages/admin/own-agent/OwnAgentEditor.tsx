@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import Icon from "@/components/ui/icon";
 import { useAuth, type Brand } from "@/context/AuthContext";
 import { useBrand } from "@/context/BrandContext";
@@ -23,6 +24,7 @@ interface Props { isDark: boolean }
 export default function OwnAgentEditor({ isDark }: Props) {
   const { user, token, updateUser } = useAuth();
   const { patchBrand } = useBrand();
+  const navigate = useNavigate();
 
   // Если контакты пустые — автоподставляем из профиля (телефон из user.phone)
   const _phone = user?.brand?.support_phone || user?.phone || "";
@@ -43,6 +45,7 @@ export default function OwnAgentEditor({ isDark }: Props) {
     telegram_url:       user?.brand?.telegram_url       ?? "",
     pdf_text_color:     user?.brand?.pdf_text_color     ?? "#111827",
     nav_config:         user?.brand?.nav_config         ?? null,
+    nav_hidden_ids:     user?.brand?.nav_hidden_ids     ?? null,
   });
 
   // Профиль (название компании и сайт) — отдельно через update-profile
@@ -153,7 +156,7 @@ export default function OwnAgentEditor({ isDark }: Props) {
       const mergedBrand = { ...user?.brand, ...brand };
       updateUser({ brand: mergedBrand, company_name: companyName, website });
       // Сразу обновляем BrandContext чтобы бот отобразил новые вкладки без перезагрузки
-      patchBrand({ nav_config: brand.nav_config ?? null });
+      patchBrand({ nav_config: brand.nav_config ?? null, nav_hidden_ids: brand.nav_hidden_ids ?? null });
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
     } catch (e: unknown) {
@@ -245,7 +248,13 @@ export default function OwnAgentEditor({ isDark }: Props) {
 
           <SectionNav
             value={brand.nav_config}
+            hiddenIds={brand.nav_hidden_ids}
             onChange={v => set("nav_config", v)}
+            onHiddenChange={ids => set("nav_hidden_ids", ids)}
+            onEditPanel={panelId => {
+              // Сохраняем изменения и переходим на страницу агента для редактирования
+              navigate(`/?editPanel=${panelId}`);
+            }}
             token={token}
             isDark={isDark}
           />
