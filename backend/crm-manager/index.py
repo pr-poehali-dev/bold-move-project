@@ -1375,8 +1375,14 @@ def handler(event: dict, context) -> dict:
                 material_cost_total = 0
                 installation_cost_total = 0
                 try:
+                    # Глобальный флаг "Монтаж по прайсу"
+                    cmp_id = master_uid if (company_id is None or company_id == 0) else company_id
+                    cur.execute(f"SELECT use_installation_price FROM {SCHEMA}.auto_rules_settings WHERE company_id=%s", (cmp_id,))
+                    _s = cur.fetchone()
+                    use_install_global = bool(_s[0]) if _s else False
+
                     cur.execute(f"""
-                        SELECT p.name, p.purchase_price, p.installation_price, s.is_material, s.use_installation_price
+                        SELECT p.name, p.purchase_price, p.installation_price, s.is_material
                         FROM {SCHEMA}.ai_prices p
                         JOIN {SCHEMA}.price_category_settings s ON s.category = p.category
                         WHERE p.active=true AND (p.purchase_price > 0 OR p.installation_price > 0)
@@ -1387,7 +1393,7 @@ def handler(event: dict, context) -> dict:
                         name_key = row[0].strip().lower()
                         if row[3] and row[1]:
                             mat_map[name_key] = float(row[1])
-                        if row[4] and row[2]:
+                        if use_install_global and row[2]:
                             inst_map[name_key] = float(row[2])
                     for block in blocks_val:
                         for item in block.get("items", []):

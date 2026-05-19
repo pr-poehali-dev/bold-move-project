@@ -754,19 +754,24 @@ def handler(event: dict, context) -> dict:
         installation_cost_total = 0
         try:
             import re as _re
+            # Читаем глобальный флаг "Монтаж по прайсу"
+            cur.execute(f"SELECT use_installation_price FROM {SCHEMA}.auto_rules_settings WHERE company_id=%s", (crm_company_id,))
+            settings_row = cur.fetchone()
+            use_install_global = bool(settings_row[0]) if settings_row else False
+
             cur.execute(f"""
-                SELECT p.name, p.purchase_price, p.installation_price, s.is_material, s.use_installation_price
+                SELECT p.name, p.purchase_price, p.installation_price, s.is_material
                 FROM {SCHEMA}.ai_prices p
                 JOIN {SCHEMA}.price_category_settings s ON s.category = p.category
                 WHERE p.active=true AND (p.purchase_price > 0 OR p.installation_price > 0)
             """)
-            mat_map = {}   # name -> purchase_price (для is_material)
-            inst_map = {}  # name -> installation_price (для use_installation_price)
+            mat_map = {}
+            inst_map = {}
             for row in cur.fetchall():
                 name_key = row[0].strip().lower()
-                if row[3] and row[1]:  # is_material и purchase_price > 0
+                if row[3] and row[1]:
                     mat_map[name_key] = float(row[1])
-                if row[4] and row[2]:  # use_installation_price и installation_price > 0
+                if use_install_global and row[2]:
                     inst_map[name_key] = float(row[2])
             for block in blocks:
                 for item in block.get("items", []):

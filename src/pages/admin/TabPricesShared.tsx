@@ -156,7 +156,6 @@ export function CategoryFunctionsButton({
   initialIsMaterial,
   initialIsWall,
   initialShowInDrum = true,
-  initialUseInstallationPrice = false,
   isDark,
   token,
 }: {
@@ -164,7 +163,6 @@ export function CategoryFunctionsButton({
   initialIsMaterial: boolean;
   initialIsWall: boolean;
   initialShowInDrum?: boolean;
-  initialUseInstallationPrice?: boolean;
   isDark: boolean;
   token?: string;
 }) {
@@ -172,7 +170,6 @@ export function CategoryFunctionsButton({
   const [isMaterial, setIsMaterial] = useState(initialIsMaterial);
   const [isWall, setIsWall]         = useState(initialIsWall);
   const [showInDrum, setShowInDrum] = useState(initialShowInDrum);
-  const [useInstall, setUseInstall] = useState(initialUseInstallationPrice);
   const [saving, setSaving]         = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -186,7 +183,7 @@ export function CategoryFunctionsButton({
     return () => document.removeEventListener("mousedown", handler);
   });
 
-  const save = async (mat: boolean, wall: boolean, drum: boolean, install: boolean) => {
+  const save = async (mat: boolean, wall: boolean, drum: boolean) => {
     setSaving(true);
     await fetch(`${BASE}?r=category_settings`, {
       method: "PUT",
@@ -194,21 +191,19 @@ export function CategoryFunctionsButton({
         "Content-Type": "application/json",
         ...(token ? { "Authorization": `Bearer ${token}` } : {}),
       },
-      body: JSON.stringify({ category, is_material: mat, is_wall_item: wall, show_in_drum: drum, use_installation_price: install }),
+      body: JSON.stringify({ category, is_material: mat, is_wall_item: wall, show_in_drum: drum }),
     });
     setSaving(false);
   };
 
-  const toggle = async (field: "material" | "wall" | "drum" | "install") => {
-    const mat     = field === "material" ? !isMaterial : isMaterial;
-    const wall    = field === "wall"     ? !isWall     : isWall;
-    const drum    = field === "drum"     ? !showInDrum : showInDrum;
-    const install = field === "install"  ? !useInstall : useInstall;
+  const toggle = async (field: "material" | "wall" | "drum") => {
+    const mat  = field === "material" ? !isMaterial : isMaterial;
+    const wall = field === "wall"     ? !isWall     : isWall;
+    const drum = field === "drum"     ? !showInDrum : showInDrum;
     if (field === "material") setIsMaterial(mat);
     if (field === "wall")     setIsWall(wall);
     if (field === "drum")     setShowInDrum(drum);
-    if (field === "install")  setUseInstall(install);
-    await save(mat, wall, drum, install);
+    await save(mat, wall, drum);
   };
 
   // Кнопка всегда называется "настройки"
@@ -292,13 +287,7 @@ export function CategoryFunctionsButton({
             sub={showInDrum ? "Видна в каталоге /план" : "Скрыта в каталоге /план"}
             onClick={() => toggle("drum")}
           />
-          {sep}
-          <ToggleRow
-            active={useInstall} color="bg-cyan-500"
-            label="Монтаж по прайсу"
-            sub={useInstall ? "P&L берёт монтаж из колонки «Монтаж ₽»" : "Монтаж считается по авто-правилу"}
-            onClick={() => toggle("install")}
-          />
+
         </div>
       )}
     </div>

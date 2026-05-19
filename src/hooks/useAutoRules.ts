@@ -16,10 +16,11 @@ export interface RuleEntry {
 export interface AutoRulesState {
   rules: RuleEntry[];
   auto_mode: boolean;
+  use_installation_price: boolean;
   loading: boolean;
   saving: boolean;
   load: () => Promise<void>;
-  save: (rules: RuleEntry[], auto_mode: boolean) => Promise<void>;
+  save: (rules: RuleEntry[], auto_mode: boolean, use_installation_price?: boolean) => Promise<void>;
 }
 
 function getToken(): string {
@@ -29,6 +30,7 @@ function getToken(): string {
 export function useAutoRules(): AutoRulesState {
   const [rules, setRules] = useState<RuleEntry[]>([]);
   const [auto_mode, setAutoMode] = useState(false);
+  const [use_installation_price, setUseInstallationPrice] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -41,13 +43,15 @@ export function useAutoRules(): AutoRulesState {
       const data = await res.json();
       setRules(data.rules || []);
       setAutoMode(data.auto_mode ?? false);
+      setUseInstallationPrice(data.use_installation_price ?? false);
     } finally {
       setLoading(false);
     }
   }, []);
 
-  const save = useCallback(async (newRules: RuleEntry[], newAutoMode: boolean) => {
+  const save = useCallback(async (newRules: RuleEntry[], newAutoMode: boolean, newUseInstall?: boolean) => {
     setSaving(true);
+    const installVal = newUseInstall ?? use_installation_price;
     try {
       await fetch(API_URL, {
         method: "POST",
@@ -55,17 +59,18 @@ export function useAutoRules(): AutoRulesState {
           "Content-Type": "application/json",
           Authorization: `Bearer ${getToken()}`,
         },
-        body: JSON.stringify({ rules: newRules, auto_mode: newAutoMode }),
+        body: JSON.stringify({ rules: newRules, auto_mode: newAutoMode, use_installation_price: installVal }),
       });
       setRules(newRules);
       setAutoMode(newAutoMode);
+      setUseInstallationPrice(installVal);
       window.dispatchEvent(new CustomEvent("auto-rules-updated"));
     } finally {
       setSaving(false);
     }
-  }, []);
+  }, [use_installation_price]);
 
   useEffect(() => { load(); }, [load]);
 
-  return { rules, auto_mode, loading, saving, load, save };
+  return { rules, auto_mode, use_installation_price, loading, saving, load, save };
 }

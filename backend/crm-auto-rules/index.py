@@ -186,7 +186,7 @@ def handler(event: dict, context) -> dict:
         rows = cur.fetchall()
 
         cur.execute(f"""
-            SELECT auto_mode FROM {SCHEMA}.auto_rules_settings
+            SELECT auto_mode, use_installation_price FROM {SCHEMA}.auto_rules_settings
             WHERE company_id = {company_id}
         """)
         settings = cur.fetchone()
@@ -199,21 +199,27 @@ def handler(event: dict, context) -> dict:
              "sort_order": r[6], "is_default": r[7]}
             for r in rows
         ]
-        return ok({"rules": rules, "auto_mode": settings[0] if settings else False})
+        auto_mode = settings[0] if settings else False
+        use_installation_price = bool(settings[1]) if settings else False
+        return ok({"rules": rules, "auto_mode": auto_mode, "use_installation_price": use_installation_price})
 
     # POST — сохранить правила компании
     if method == "POST":
         body = json.loads(event.get("body") or "{}")
         rules = body.get("rules", [])
         auto_mode = body.get("auto_mode", False)
+        use_installation_price = bool(body.get("use_installation_price", False))
 
         conn = get_conn()
         cur = conn.cursor()
 
         cur.execute(f"""
-            INSERT INTO {SCHEMA}.auto_rules_settings (company_id, auto_mode)
-            VALUES ({company_id}, {'true' if auto_mode else 'false'})
-            ON CONFLICT (company_id) DO UPDATE SET auto_mode = EXCLUDED.auto_mode, updated_at = NOW()
+            INSERT INTO {SCHEMA}.auto_rules_settings (company_id, auto_mode, use_installation_price)
+            VALUES ({company_id}, {'true' if auto_mode else 'false'}, {'true' if use_installation_price else 'false'})
+            ON CONFLICT (company_id) DO UPDATE SET
+                auto_mode = EXCLUDED.auto_mode,
+                use_installation_price = EXCLUDED.use_installation_price,
+                updated_at = NOW()
         """)
 
         cur.execute(f"""
