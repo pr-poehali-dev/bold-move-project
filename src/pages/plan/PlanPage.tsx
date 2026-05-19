@@ -192,7 +192,7 @@ export default function PlanPage() {
   if (screen === "projects") {
     const urlProjectId = new URLSearchParams(window.location.search).get("project_id");
     return (
-      <div className="flex flex-col" style={{ height: "100dvh" }}>
+      <div className="flex flex-col bg-[#111]" style={{ height: "100dvh" }}>
         <div className="flex-1 overflow-hidden">
           <PlanProjectsScreen
             token={token}
@@ -213,7 +213,7 @@ export default function PlanPage() {
 
   if (screen === "rooms" && activeProject) {
     return (
-      <div className="flex flex-col" style={{ height: "100dvh" }}>
+      <div className="flex flex-col bg-[#111]" style={{ height: "100dvh" }}>
         <div className="flex-1 overflow-hidden">
           <PlanRoomsScreen
             token={token}
