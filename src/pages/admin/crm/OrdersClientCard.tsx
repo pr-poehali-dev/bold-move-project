@@ -318,9 +318,9 @@ export function OrdersClientCard({ c, onClick, onNextStep, onSwipeBuilder, onSwi
           {hasProject ? (
             <button
               onClick={() => window.open(`/plan?project_id=${c.project_id}`, "_blank")}
-              className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-bold transition hover:opacity-80"
-              style={{ background: "#3b82f618", color: "#3b82f6", border: "1px solid #3b82f630" }}>
-              <Icon name="ExternalLink" size={12} />
+              className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-semibold transition hover:opacity-80"
+              style={{ background: "#3b82f610", color: "#60a5fa", border: "1px dashed #3b82f640" }}>
+              <Icon name="Layers" size={12} />
               В построитель
             </button>
           ) : (
