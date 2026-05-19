@@ -10,6 +10,7 @@ import PlanRoomCard from "./PlanRoomCard";
 import PlanSharePanel from "./PlanSharePanel";
 import PlanRoomFullscreen from "./PlanRoomFullscreen";
 
+
 interface Props {
   chatId: number;
   projectId: number | null | undefined;
@@ -28,7 +29,7 @@ export default function DrawerPlanTab({ chatId, projectId }: Props) {
   // Настройки превью
   const [darkBg,      setDarkBg]      = useState(false);
   const [showImages,  setShowImages]  = useState(false);
-  const [showEstimate, setShowEstimate] = useState(false);
+
 
   // Sharing
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
@@ -156,6 +157,56 @@ export default function DrawerPlanTab({ chatId, projectId }: Props) {
     setSelectedIds(new Set(rooms.map(r => r.id)));
   };
 
+  // Печать PDF: чертежи + смета под каждым
+  const printWithEstimate = async () => {
+    const clientName = project?.client_name ?? "";
+    let html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Чертежи — ${clientName}</title>
+    <style>
+      body{font-family:sans-serif;padding:24px;color:#111;max-width:900px;margin:0 auto}
+      .room{margin-bottom:32px;page-break-inside:avoid}
+      .room-title{font-size:16px;font-weight:700;color:#7c3aed;margin-bottom:8px}
+      .drawing{text-align:center;margin-bottom:12px}
+      .drawing img{max-width:100%;max-height:400px;object-fit:contain;border:1px solid #e5e7eb;border-radius:8px}
+      table{width:100%;border-collapse:collapse;font-size:13px}
+      tr{border-bottom:1px solid #f0f0f0}
+      td{padding:5px 8px}
+      td:last-child{text-align:right;font-weight:600}
+      .total{margin-top:8px;text-align:right;font-size:12px;color:#666}
+      @media print{.room{page-break-inside:avoid}}
+    </style></head><body>
+    <h1 style="font-size:18px;margin-bottom:4px">Чертежи — ${clientName}</h1>
+    <p style="color:#888;font-size:13px;margin:0 0 24px">Дата: ${new Date().toLocaleDateString("ru-RU")}</p>`;
+
+    for (const room of rooms) {
+      const planData = (room.active_variant_data ?? room.data) as PlanState | undefined;
+      const thumb = room.active_variant_thumbnail || room.thumbnail;
+
+      // Товары комнаты
+      const itemsMap = new Map<string, { unit: string; qty: number }>();
+      for (const seg of (planData as { segments?: { items?: { name: string; unit: string; quantity?: number }[] }[] })?.segments ?? []) {
+        for (const it of seg.items ?? []) {
+          const ex = itemsMap.get(it.name);
+          if (ex) ex.qty += it.quantity ?? 1;
+          else itemsMap.set(it.name, { unit: it.unit, qty: it.quantity ?? 1 });
+        }
+      }
+
+      const rows = Array.from(itemsMap.entries()).map(([name, { qty, unit }]) =>
+        `<tr><td>${name}</td><td style="color:#666;text-align:center">${qty}</td><td>${unit}</td></tr>`
+      ).join("");
+
+      html += `<div class="room">
+        <div class="room-title">${room.name}${room.active_variant_name ? ` — ${room.active_variant_name}` : ""}</div>
+        ${thumb ? `<div class="drawing"><img src="${thumb}" alt="${room.name}"/></div>` : ""}
+        ${rows ? `<table><thead><tr style="background:#f9f7ff"><th style="text-align:left;padding:5px 8px">Позиция</th><th style="text-align:center;padding:5px 8px">Кол-во</th><th style="text-align:left;padding:5px 8px">Ед.</th></tr></thead><tbody>${rows}</tbody></table>` : ""}
+      </div>`;
+    }
+
+    html += `</body></html>`;
+    const w = window.open("", "_blank");
+    if (w) { w.document.write(html); w.document.close(); w.focus(); w.print(); }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-16">
@@ -253,16 +304,16 @@ export default function DrawerPlanTab({ chatId, projectId }: Props) {
           >
             <Icon name={showImages ? "Image" : "Type"} size={12} />
           </button>
-          {/* Смета под чертежом */}
+          {/* Выгрузка: чертежи + смета */}
           <button
-            onClick={() => setShowEstimate(v => !v)}
-            className="flex items-center justify-center px-2.5 py-2 text-[10px] font-bold transition flex-1"
+            onClick={printWithEstimate}
+            className="flex items-center justify-center px-2.5 py-2 text-[10px] font-bold transition flex-1 hover:brightness-110"
             style={{
-              background: showEstimate ? "rgba(124,58,237,0.25)" : "rgba(255,255,255,0.04)",
-              color: showEstimate ? "#a78bfa" : t.textMute,
+              background: "rgba(255,255,255,0.04)",
+              color: t.textMute,
               borderRight: `1px solid ${t.border}`,
             }}
-            title="Смета под чертежом"
+            title="PDF: чертежи со сметой"
           >
             <Icon name="FileText" size={12} />
           </button>
@@ -349,49 +400,18 @@ export default function DrawerPlanTab({ chatId, projectId }: Props) {
             Чертежи ({rooms.length})
           </p>
           <div className="grid grid-cols-2 gap-3">
-            {rooms.map(room => {
-              const planData = (room.active_variant_data ?? room.data) as {
-                segments?: { items?: { name: string; unit: string; quantity?: number }[] }[];
-                floorItems?: { name: string; unit: string; quantity?: number }[];
-              } | undefined;
-              // Собираем все товары комнаты
-              const items: { name: string; unit: string; qty: number }[] = [];
-              for (const seg of planData?.segments ?? []) {
-                for (const it of seg.items ?? []) {
-                  const ex = items.find(x => x.name === it.name);
-                  if (ex) ex.qty += it.quantity ?? 1;
-                  else items.push({ name: it.name, unit: it.unit, qty: it.quantity ?? 1 });
-                }
-              }
-              for (const it of planData?.floorItems ?? []) {
-                const ex = items.find(x => x.name === it.name);
-                if (ex) ex.qty += it.quantity ?? 1;
-                else items.push({ name: it.name, unit: it.unit, qty: it.quantity ?? 1 });
-              }
-              return (
-                <div key={room.id} className="flex flex-col gap-1">
-                  <PlanRoomCard
-                    room={room}
-                    isSelected={selectedIds.has(room.id)}
-                    shareMode={shareMode}
-                    darkBg={true}
-                    onOpen={openRoom}
-                    onToggleSelect={toggleSelect}
-                    onActivateShareMode={activateShareMode}
-                  />
-                  {showEstimate && items.length > 0 && (
-                    <div className="rounded-xl overflow-hidden" style={{ border: `1px solid ${t.border}`, background: t.surface2 }}>
-                      {items.map((it, i) => (
-                        <div key={i} className="flex items-center justify-between px-2 py-1" style={{ borderBottom: i < items.length - 1 ? `1px solid ${t.border}` : "none" }}>
-                          <span className="text-[9px] truncate flex-1 min-w-0" style={{ color: t.text }}>{it.name}</span>
-                          <span className="text-[9px] flex-shrink-0 ml-1" style={{ color: t.textMute }}>{it.qty} {it.unit}</span>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
+            {rooms.map(room => (
+              <PlanRoomCard
+                key={room.id}
+                room={room}
+                isSelected={selectedIds.has(room.id)}
+                shareMode={shareMode}
+                darkBg={true}
+                onOpen={openRoom}
+                onToggleSelect={toggleSelect}
+                onActivateShareMode={activateShareMode}
+              />
+            ))}
           </div>
         </div>
       )}
