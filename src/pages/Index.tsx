@@ -400,7 +400,7 @@ export default function Index() {
       </div>
 
       {/* Быстрое меню — свайп вверх/вниз */}
-      <QuickAccessBar onContacts={() => setPanel(panel === "contacts" ? "none" : "contacts")} />
+      <QuickAccessBar />
 
       {/* Page Editor — открывается поверх всего при нажатии на карандаш */}
       {editingPanelId && (

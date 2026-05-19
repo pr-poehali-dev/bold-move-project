@@ -13,14 +13,10 @@ const ITEMS: QuickItem[] = [
   { id: "agent",   label: "Агент",       icon: "Bot",          path: "/"        },
   { id: "crm",     label: "CRM",         icon: "ClipboardList", path: "/crm"     },
   { id: "plan",    label: "Построитель", icon: "PenTool",      path: "/plan"    },
-  { id: "contacts",label: "Контакты",    icon: "Phone",        path: "#contacts"},
+  { id: "settings", label: "Настройки",  icon: "Settings",     path: "/company" },
 ];
 
-interface Props {
-  onContacts?: () => void;
-}
-
-export default function QuickAccessBar({ onContacts }: Props) {
+export default function QuickAccessBar() {
   const [open, setOpen] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
@@ -40,10 +36,6 @@ export default function QuickAccessBar({ onContacts }: Props) {
 
   const handleItem = (item: QuickItem) => {
     setOpen(false);
-    if (item.id === "contacts") {
-      onContacts?.();
-      return;
-    }
     navigate(item.path);
   };
 
