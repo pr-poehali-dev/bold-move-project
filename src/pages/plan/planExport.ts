@@ -11,23 +11,28 @@ const imageCache = new Map<string, string>();
 
 async function fetchImageAsBase64(url: string): Promise<string> {
   if (imageCache.has(url)) return imageCache.get(url)!;
-  try {
-    const res = await fetch(url);
-    if (!res.ok) return "";
-    const blob = await res.blob();
-    return await new Promise<string>((resolve) => {
-      const reader = new FileReader();
-      reader.onload = () => {
-        const result = reader.result as string;
-        imageCache.set(url, result);
-        resolve(result);
-      };
-      reader.onerror = () => resolve("");
-      reader.readAsDataURL(blob);
-    });
-  } catch {
-    return "";
-  }
+  // Используем Image + Canvas для обхода CORS (работает с same-origin и CDN с CORS-заголовками)
+  return new Promise<string>((resolve) => {
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload = () => {
+      try {
+        const canvas = document.createElement("canvas");
+        canvas.width  = img.naturalWidth  || 64;
+        canvas.height = img.naturalHeight || 64;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) { resolve(""); return; }
+        ctx.drawImage(img, 0, 0);
+        const b64 = canvas.toDataURL("image/png");
+        imageCache.set(url, b64);
+        resolve(b64);
+      } catch {
+        resolve("");
+      }
+    };
+    img.onerror = () => resolve("");
+    img.src = url;
+  });
 }
 
 // ── Собрать все imageUrl из сегментов ────────────────────────────────────────
