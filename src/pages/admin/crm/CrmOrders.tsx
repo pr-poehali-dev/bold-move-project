@@ -113,7 +113,17 @@ export default function CrmOrders({ clients: allClients, loading, onStatusChange
     setActionLoading(true);
 
     if (actionModal.type === "builder") {
-      // Создаём проект в построителе с данными клиента
+      const client = actionModal.client;
+
+      // Если проект уже привязан — просто открываем его
+      if (client.project_id) {
+        setActionModal(null);
+        setActionLoading(false);
+        navigate(`/plan?project_id=${client.project_id}`);
+        return;
+      }
+
+      // Создаём новый проект в построителе с данными клиента
       const token = getCrmToken();
       const res = await fetch(`${CRM_URL}?r=plan-projects`, {
         method: "POST",
@@ -122,10 +132,11 @@ export default function CrmOrders({ clients: allClients, loading, onStatusChange
           ...(token ? { "X-Authorization": `Bearer ${token}` } : {}),
         },
         body: JSON.stringify({
-          name: actionModal.client.client_name || `Заявка №${actionModal.client.id}`,
-          client_name: actionModal.client.client_name || "",
-          address: actionModal.client.address || "",
-          phone: actionModal.client.phone || "",
+          name: client.client_name || `Заявка №${client.id}`,
+          client_name: client.client_name || "",
+          address: client.address || "",
+          phone: client.phone || "",
+          crm_client_id: client.id,
         }),
       });
       const data = await res.json();
@@ -134,11 +145,10 @@ export default function CrmOrders({ clients: allClients, loading, onStatusChange
         await crmFetch("clients", {
           method: "PUT",
           body: JSON.stringify({ project_id: data.id }),
-        }, { id: String(actionModal.client.id) });
+        }, { id: String(client.id) });
         onReload();
         setActionModal(null);
         setActionLoading(false);
-        // Переходим в построитель с новым проектом
         navigate(`/plan?project_id=${data.id}`);
       } else {
         setActionLoading(false);
