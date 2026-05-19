@@ -1,10 +1,14 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { crmFetch, Client, getClientOrders } from "./crmApi";
+import { crmFetch, Client, getClientOrders, getCrmToken } from "./crmApi";
 import Icon from "@/components/ui/icon";
 import ClientDrawer from "./ClientDrawer";
+import CrmActionModal from "./CrmActionModal";
 import { useTheme } from "./themeContext";
 import { ORDERS_TABS } from "./ordersTypes";
+import func2url from "@/../backend/func2url.json";
+
+const CRM_URL = (func2url as Record<string, string>)["crm-manager"];
 import {
   loadSyncedCustomCols, loadSyncedHidden, loadSyncedLabels, loadSyncedColors,
   saveSyncedLabels, saveSyncedColors,
@@ -95,30 +99,64 @@ export default function CrmOrders({ clients: allClients, loading, onStatusChange
     onStatusChange(id, nextStatus);
   };
 
-  // ── Свайп влево → Построитель страниц ────────────────────────────────────
-  const handleSwipeBuilder = (client: Client) => {
-    localStorage.setItem("crm_builder_client", JSON.stringify({
-      id: client.id,
-      name: client.client_name || `Заявка №${client.id}`,
-      phone: client.phone || "",
-      address: client.address || "",
-      notes: client.notes || "",
-    }));
-    navigate("/");
-    localStorage.setItem("open_page_editor", "1");
-  };
+  // ── Модалка подтверждения действия ───────────────────────────────────────
+  const [actionModal, setActionModal] = useState<{ type: "builder" | "agent"; client: Client } | null>(null);
+  const [actionLoading, setActionLoading] = useState(false);
 
-  // ── Свайп вправо → Агент ─────────────────────────────────────────────────
-  const handleSwipeAgent = (client: Client) => {
-    localStorage.setItem("crm_agent_client", JSON.stringify({
-      id: client.id,
-      name: client.client_name || `Заявка №${client.id}`,
-      phone: client.phone || "",
-      address: client.address || "",
-      notes: client.notes || "",
-    }));
-    localStorage.setItem("admin_main_tab", "agent");
-    navigate("/company");
+  const handleSwipeBuilder = (client: Client) => setActionModal({ type: "builder", client });
+  const handleSwipeAgent   = (client: Client) => setActionModal({ type: "agent",   client });
+
+  const handleActionConfirm = async () => {
+    if (!actionModal) return;
+    setActionLoading(true);
+
+    if (actionModal.type === "builder") {
+      // Создаём проект в построителе с данными клиента
+      const token = getCrmToken();
+      const res = await fetch(`${CRM_URL}?r=plan-projects`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { "X-Authorization": `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({
+          name: actionModal.client.client_name || `Заявка №${actionModal.client.id}`,
+          client_name: actionModal.client.client_name || "",
+          address: actionModal.client.address || "",
+          phone: actionModal.client.phone || "",
+        }),
+      });
+      const data = await res.json();
+      if (data.id) {
+        // Привязываем project_id к заявке в CRM
+        await crmFetch("clients", {
+          method: "PUT",
+          body: JSON.stringify({ project_id: data.id }),
+        }, { id: String(actionModal.client.id) });
+        onReload();
+        setActionModal(null);
+        setActionLoading(false);
+        // Переходим в построитель с новым проектом
+        navigate(`/plan?project_id=${data.id}`);
+      } else {
+        setActionLoading(false);
+      }
+
+    } else {
+      // Переходим в агент с привязкой к заявке через session_id
+      const client = actionModal.client;
+      localStorage.setItem("crm_linked_session", JSON.stringify({
+        chat_id: client.id,
+        session_id: client.session_id,
+        client_name: client.client_name || `Заявка №${client.id}`,
+        phone: client.phone || "",
+        address: client.address || "",
+      }));
+      setActionModal(null);
+      setActionLoading(false);
+      localStorage.setItem("admin_main_tab", "agent");
+      navigate("/company");
+    }
   };
 
   return (
@@ -223,6 +261,17 @@ export default function CrmOrders({ clients: allClients, loading, onStatusChange
           canFieldFinance={canFieldFinance}
           canFieldFiles={canFieldFiles}
           canFieldCancel={canFieldCancel}
+        />
+      )}
+
+      {/* Модалка подтверждения — Построитель / Агент */}
+      {actionModal && (
+        <CrmActionModal
+          type={actionModal.type}
+          clientName={actionModal.client.client_name || `Заявка №${actionModal.client.id}`}
+          loading={actionLoading}
+          onConfirm={handleActionConfirm}
+          onCancel={() => { if (!actionLoading) setActionModal(null); }}
         />
       )}
     </div>

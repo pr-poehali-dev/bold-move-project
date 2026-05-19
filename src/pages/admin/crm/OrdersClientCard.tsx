@@ -91,13 +91,12 @@ export function OrdersClientCard({ c, onClick, onNextStep, onSwipeBuilder, onSwi
   onSwipeAgent?: (client: Client) => void;
 }) {
   const t = useTheme();
-  const [stepping, setStepping]         = useState(false);
+  const [stepping, setStepping]             = useState(false);
   const [localSubStatus, setLocalSubStatus] = useState<string | null>(c.sub_status ?? null);
 
-  // свайп-состояние
-  const cardRef  = useRef<HTMLDivElement>(null);
-  const [offset, setOffset]   = useState(0);
-  const [dragging, setDragging] = useState(false);
+  const cardRef = useRef<HTMLDivElement>(null);
+  const [offset, setOffset]       = useState(0);
+  const [dragging, setDragging]   = useState(false);
   const [swipeHint, setSwipeHint] = useState<"builder" | "agent" | null>(null);
 
   const sx        = useRef(0);
@@ -120,75 +119,42 @@ export function OrdersClientCard({ c, onClick, onNextStep, onSwipeBuilder, onSwi
   useEffect(() => {
     const el = cardRef.current;
     if (!el) return;
-
     const onStart = (e: TouchEvent) => {
-      sx.current    = e.touches[0].clientX;
-      sy.current    = e.touches[0].clientY;
-      axis.current  = null;
-      alive.current = true;
-      vibed.current = false;
-      setDraggingSync.current(false);
-      setSwipeHintSync.current(null);
+      sx.current = e.touches[0].clientX; sy.current = e.touches[0].clientY;
+      axis.current = null; alive.current = true; vibed.current = false;
+      setDraggingSync.current(false); setSwipeHintSync.current(null);
     };
-
     const onMove = (e: TouchEvent) => {
       if (!alive.current) return;
       const dx = e.touches[0].clientX - sx.current;
       const dy = e.touches[0].clientY - sy.current;
-
       if (!axis.current) {
         if (Math.abs(dx) < 5 && Math.abs(dy) < 5) return;
         axis.current = Math.abs(dx) >= Math.abs(dy) ? "h" : "v";
       }
       if (axis.current === "v") return;
-
       e.preventDefault();
       setDraggingSync.current(true);
-
       const clamped = Math.max(-SNAP_WIDTH, Math.min(SNAP_WIDTH, dx));
       setOffsetSync.current(clamped);
-
-      // подсветка направления
       if (clamped >= THRESHOLD) setSwipeHintSync.current("agent");
       else if (clamped <= -THRESHOLD) setSwipeHintSync.current("builder");
       else setSwipeHintSync.current(null);
-
-      if (!vibed.current && Math.abs(dx) >= THRESHOLD) {
-        vibe(25);
-        vibed.current = true;
-      }
+      if (!vibed.current && Math.abs(dx) >= THRESHOLD) { vibe(25); vibed.current = true; }
     };
-
     const onEnd = () => {
       if (!alive.current) return;
-      alive.current = false;
-      setDraggingSync.current(false);
-      setSwipeHintSync.current(null);
-
+      alive.current = false; setDraggingSync.current(false); setSwipeHintSync.current(null);
       if (axis.current !== "h") return;
-
       const cur = offsetRef.current;
-
-      if (cur >= THRESHOLD) {
-        // свайп вправо → агент
-        vibe(40);
-        setOffsetSync.current(0);
-        cb.current.onSwipeAgent?.(cb.current.c);
-      } else if (cur <= -THRESHOLD) {
-        // свайп влево → построитель
-        vibe([30, 60, 30]);
-        setOffsetSync.current(0);
-        cb.current.onSwipeBuilder?.(cb.current.c);
-      } else {
-        setOffsetSync.current(0);
-      }
+      if (cur >= THRESHOLD) { vibe(40); setOffsetSync.current(0); cb.current.onSwipeAgent?.(cb.current.c); }
+      else if (cur <= -THRESHOLD) { vibe([30, 60, 30]); setOffsetSync.current(0); cb.current.onSwipeBuilder?.(cb.current.c); }
+      else setOffsetSync.current(0);
     };
-
     el.addEventListener("touchstart",  onStart, { passive: true });
     el.addEventListener("touchmove",   onMove,  { passive: false });
     el.addEventListener("touchend",    onEnd,   { passive: true });
     el.addEventListener("touchcancel", onEnd,   { passive: true });
-
     return () => {
       el.removeEventListener("touchstart",  onStart);
       el.removeEventListener("touchmove",   onMove);
@@ -209,12 +175,13 @@ export function OrdersClientCard({ c, onClick, onNextStep, onSwipeBuilder, onSwi
   const prepayment  = Number(c.prepayment) || 0;
   const extraPay    = Number(c.extra_payment) || 0;
   const income      = contractSum;
-  const paidPre   = c.prepayment_confirmed ? (Number(c.prepayment_fact) || prepayment) : 0;
-  const paidExtra = c.extra_payment_confirmed ? (Number(c.extra_payment_fact) || extraPay) : 0;
+  const paidPre     = c.prepayment_confirmed ? (Number(c.prepayment_fact) || prepayment) : 0;
+  const paidExtra   = c.extra_payment_confirmed ? (Number(c.extra_payment_fact) || extraPay) : 0;
   const paid        = paidPre + paidExtra;
   const costs       = (Number(c.material_cost)||0) + (Number(c.measure_cost)||0) + (Number(c.install_cost)||0);
   const debt        = contractSum - paid;
   const profit      = income - costs;
+  const hasProject  = !!c.project_id;
 
   const handleNext = async (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -228,52 +195,35 @@ export function OrdersClientCard({ c, onClick, onNextStep, onSwipeBuilder, onSwi
     <div className="relative rounded-2xl overflow-hidden"
       style={{ background: t.surface, border: `1px solid ${t.border}` }}>
 
-      {/* Фон свайпа вправо — Агент (зелёный) */}
-      <div className="absolute inset-y-0 left-0 flex flex-col items-center justify-center gap-1 pointer-events-none"
+      {/* Фоны свайпа — только мобайл */}
+      <div className="absolute inset-y-0 left-0 flex flex-col items-center justify-center gap-1 pointer-events-none sm:hidden"
         style={{
-          width: SNAP_WIDTH,
-          background: swipeHint === "agent"
-            ? "linear-gradient(135deg,#059669,#10b981)"
-            : "linear-gradient(135deg,#06573a,#0a7c50)",
-          zIndex: 0,
-          transition: "background 0.2s",
+          width: SNAP_WIDTH, zIndex: 0, transition: "background 0.2s",
+          background: swipeHint === "agent" ? "linear-gradient(135deg,#059669,#10b981)" : "linear-gradient(135deg,#065f46,#059669)",
         }}>
         <Icon name="Bot" size={20} style={{ color: "#fff" }} />
         <span className="text-[10px] font-bold uppercase tracking-wide text-white">Агент</span>
       </div>
-
-      {/* Фон свайпа влево — Построитель (синий) */}
-      <div className="absolute inset-y-0 right-0 flex flex-col items-center justify-center gap-1 pointer-events-none"
+      <div className="absolute inset-y-0 right-0 flex flex-col items-center justify-center gap-1 pointer-events-none sm:hidden"
         style={{
-          width: SNAP_WIDTH,
-          background: swipeHint === "builder"
-            ? "linear-gradient(135deg,#1d4ed8,#3b82f6)"
-            : "linear-gradient(135deg,#1e3a6e,#1d4ed8)",
-          zIndex: 0,
-          transition: "background 0.2s",
+          width: SNAP_WIDTH, zIndex: 0, transition: "background 0.2s",
+          background: swipeHint === "builder" ? "linear-gradient(135deg,#1d4ed8,#3b82f6)" : "linear-gradient(135deg,#1e3a6e,#1d4ed8)",
         }}>
         <Icon name="Layers" size={20} style={{ color: "#fff" }} />
-        <span className="text-[10px] font-bold uppercase tracking-wide text-white">Страница</span>
+        <span className="text-[10px] font-bold uppercase tracking-wide text-white">Построитель</span>
       </div>
 
-      {/* Карточка — двигается при свайпе */}
-      <div
-        ref={cardRef}
+      {/* Карточка */}
+      <div ref={cardRef} className="flex flex-col"
         style={{
-          position: "relative",
-          zIndex: 1,
+          position: "relative", zIndex: 1, background: t.surface,
+          willChange: "transform", userSelect: "none",
           transform: `translateX(${offset}px)`,
           transition: dragging ? "none" : "transform 0.3s cubic-bezier(0.25,1,0.5,1)",
-          background: t.surface,
-          willChange: "transform",
-          userSelect: "none",
-        }}
-        className="flex flex-col"
-      >
-        {/* Шапка */}
-        <div className="p-3 sm:p-4 cursor-pointer hover:brightness-[1.03] transition flex-1" onClick={onClick}>
+        }}>
 
-          {/* Клиент */}
+        {/* Основной контент */}
+        <div className="p-3 sm:p-4 cursor-pointer hover:brightness-[1.03] transition flex-1" onClick={onClick}>
           <div className="flex items-start mb-3">
             <div className="flex-1 min-w-0">
               <div className="flex items-center justify-between gap-2">
@@ -290,22 +240,19 @@ export function OrdersClientCard({ c, onClick, onNextStep, onSwipeBuilder, onSwi
               </div>
               <div className="space-y-1 mt-1.5">
                 {c.client_name && (
-                  <div className="flex items-center gap-1.5 text-xs px-2 py-1.5 rounded-lg"
-                    style={{ background: t.surface2 }}>
+                  <div className="flex items-center gap-1.5 text-xs px-2 py-1.5 rounded-lg" style={{ background: t.surface2 }}>
                     <Icon name="User" size={10} style={{ color: "#8b5cf6", flexShrink: 0 }} />
                     <span className="truncate" style={{ color: t.textSub }}>{c.client_name}</span>
                   </div>
                 )}
                 {c.phone && (
-                  <div className="flex items-center gap-1.5 text-xs px-2 py-1.5 rounded-lg"
-                    style={{ background: t.surface2 }}>
+                  <div className="flex items-center gap-1.5 text-xs px-2 py-1.5 rounded-lg" style={{ background: t.surface2 }}>
                     <Icon name="Phone" size={10} style={{ color: "#10b981", flexShrink: 0 }} />
                     <span className="truncate" style={{ color: t.textSub }}>{c.phone}</span>
                   </div>
                 )}
                 {(c.address || c.area) && (
-                  <div className="flex items-center gap-1.5 text-xs px-2 py-1.5 rounded-lg"
-                    style={{ background: t.surface2 }}>
+                  <div className="flex items-center gap-1.5 text-xs px-2 py-1.5 rounded-lg" style={{ background: t.surface2 }}>
                     <Icon name="MapPin" size={10} style={{ color: "#f59e0b", flexShrink: 0 }} />
                     <span className="truncate flex-1" style={{ color: t.textSub }}>{c.address || "Адрес не указан"}</span>
                     {c.area && <span className="flex-shrink-0 text-[10px] font-medium" style={{ color: t.textMute }}>{c.area} м²</span>}
@@ -315,7 +262,6 @@ export function OrdersClientCard({ c, onClick, onNextStep, onSwipeBuilder, onSwi
             </div>
           </div>
 
-          {/* Даты */}
           {(c.measure_date || c.install_date) && (
             <div className="flex gap-2 mb-3">
               {c.measure_date && (
@@ -341,12 +287,8 @@ export function OrdersClientCard({ c, onClick, onNextStep, onSwipeBuilder, onSwi
             </div>
           )}
 
-          {/* Подстатусы */}
-          {tab && (
-            <SubstatusPills client={clientWithSub} tabId={tab.id} onUpdate={setLocalSubStatus} />
-          )}
+          {tab && <SubstatusPills client={clientWithSub} tabId={tab.id} onUpdate={setLocalSubStatus} />}
 
-          {/* Финансы */}
           {income > 0 && (
             <div className="grid grid-cols-3 gap-2 pt-2.5 mt-1" style={{ borderTop: `1px solid ${t.border2}` }}>
               <Metric label="Доходы"  value={`${income.toLocaleString("ru-RU")} ₽`} color="#10b981" icon="TrendingUp" />
@@ -355,7 +297,6 @@ export function OrdersClientCard({ c, onClick, onNextStep, onSwipeBuilder, onSwi
             </div>
           )}
 
-          {/* Долг */}
           {contractSum > 0 && debt > 0 && !isDone && !isCancelled && (
             <div className="flex items-center gap-1.5 mt-2 text-[10px] px-2 py-1 rounded-md"
               style={{ background: "rgba(239,68,68,0.08)", color: "#ef4444" }}>
@@ -372,7 +313,35 @@ export function OrdersClientCard({ c, onClick, onNextStep, onSwipeBuilder, onSwi
           )}
         </div>
 
-        {/* Кнопка следующего шага */}
+        {/* Кнопки экосистемы — десктоп всегда видны, мобайл скрыты (там свайп) */}
+        <div className="hidden sm:flex items-center gap-1.5 px-3 pb-3" onClick={e => e.stopPropagation()}>
+          {hasProject ? (
+            <button
+              onClick={() => window.open(`/plan?project_id=${c.project_id}`, "_blank")}
+              className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-bold transition hover:opacity-80"
+              style={{ background: "#3b82f618", color: "#3b82f6", border: "1px solid #3b82f630" }}>
+              <Icon name="ExternalLink" size={12} />
+              Открыть проект
+            </button>
+          ) : (
+            <button
+              onClick={() => onSwipeBuilder?.(c)}
+              className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-semibold transition hover:opacity-80"
+              style={{ background: "#3b82f610", color: "#60a5fa", border: "1px dashed #3b82f640" }}>
+              <Icon name="Layers" size={12} />
+              В построитель
+            </button>
+          )}
+          <button
+            onClick={() => onSwipeAgent?.(c)}
+            className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-semibold transition hover:opacity-80"
+            style={{ background: "#10b98110", color: "#34d399", border: "1px dashed #10b98140" }}>
+            <Icon name="Bot" size={12} />
+            В агент
+          </button>
+        </div>
+
+        {/* Следующий шаг */}
         {nextStatus && !isDone && !isCancelled && (
           <button onClick={handleNext} disabled={stepping}
             className="w-full flex items-center justify-between px-4 py-3 sm:py-2.5 transition disabled:opacity-60 active:opacity-70"
@@ -383,8 +352,7 @@ export function OrdersClientCard({ c, onClick, onNextStep, onSwipeBuilder, onSwi
               </span>
             ) : (
               <span className="text-xs font-semibold flex items-center gap-1.5" style={{ color: STATUS_COLORS[nextStatus] }}>
-                <Icon name="ArrowRight" size={11} />
-                {nextLabel}
+                <Icon name="ArrowRight" size={11} />{nextLabel}
               </span>
             )}
             <Icon name="ChevronRight" size={13} style={{ color: STATUS_COLORS[nextStatus] + "80" }} />
