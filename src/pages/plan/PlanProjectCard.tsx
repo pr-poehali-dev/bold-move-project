@@ -236,6 +236,7 @@ export default function PlanProjectCard({
           setForm={setForm}
           onSubmit={onUpdate}
           onCancel={onCancelEdit}
+          onDelete={() => { onCancelEdit(); setConfirmDelete(true); }}
           saving={saving}
           error={error}
           submitLabel="Сохранить"

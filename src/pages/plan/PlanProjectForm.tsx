@@ -7,13 +7,14 @@ interface Props {
   setForm: (f: FormData) => void;
   onSubmit: () => void;
   onCancel: () => void;
+  onDelete?: () => void;
   saving: boolean;
   error: string;
   submitLabel: string;
 }
 
 export default function PlanProjectForm({
-  title, form, setForm, onSubmit, onCancel, saving, error, submitLabel,
+  title, form, setForm, onSubmit, onCancel, onDelete, saving, error, submitLabel,
 }: Props) {
   return (
     <div className="mb-5 rounded-2xl p-5 space-y-4" style={{ background: "#0e0e1c", border: "1px solid rgba(124,58,237,0.3)" }}>
@@ -129,6 +130,17 @@ export default function PlanProjectForm({
         >
           Отмена
         </button>
+        {onDelete && (
+          <button
+            onClick={onDelete}
+            disabled={saving}
+            className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-semibold transition hover:bg-red-500/15 disabled:opacity-40"
+            style={{ color: "rgba(239,68,68,0.75)", border: "1px solid rgba(239,68,68,0.2)" }}
+          >
+            <Icon name="Trash2" size={14} />
+            Удалить
+          </button>
+        )}
       </div>
     </div>
   );
