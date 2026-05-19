@@ -1,9 +1,16 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Client, STATUS_LABELS, STATUS_COLORS, crmFetch } from "./crmApi";
 import Icon from "@/components/ui/icon";
 import { useTheme } from "./themeContext";
 import { NEXT_STATUS, NEXT_LABEL, ORDERS_TABS } from "./ordersTypes";
 import { useSubstatuses } from "./substatusContext";
+
+const SNAP_WIDTH = 88;
+const THRESHOLD  = 44;
+
+function vibe(ms: number | number[]) {
+  if (typeof navigator !== "undefined" && navigator.vibrate) navigator.vibrate(ms);
+}
 
 function SubstatusPills({ client, tabId, onUpdate }: { client: Client; tabId: string; onUpdate: (v: string | null) => void }) {
   const allSubs = useSubstatuses();
@@ -63,14 +70,117 @@ function InstallProgress({ client }: { client: Client }) {
   );
 }
 
-export function OrdersClientRow({ c, onClick, onNextStep }: {
+export function OrdersClientRow({ c, onClick, onNextStep, onSwipeBuilder, onSwipeAgent }: {
   c: Client;
   onClick: () => void;
   onNextStep: (id: number, next: string) => void;
+  onSwipeBuilder?: (client: Client) => void;
+  onSwipeAgent?: (client: Client) => void;
 }) {
   const t = useTheme();
   const [stepping, setStepping] = useState(false);
   const [localSubStatus, setLocalSubStatus] = useState<string | null>(c.sub_status ?? null);
+
+  // свайп — только для мобильной карточки
+  const mobileRef = useRef<HTMLDivElement>(null);
+  const [offset, setOffset]     = useState(0);
+  const [dragging, setDragging] = useState(false);
+  const [swipeHint, setSwipeHint] = useState<"builder" | "agent" | null>(null);
+
+  const sx        = useRef(0);
+  const sy        = useRef(0);
+  const axis      = useRef<"h" | "v" | null>(null);
+  const alive     = useRef(false);
+  const vibed     = useRef(false);
+  const offsetRef = useRef(0);
+
+  const setOffsetSync    = useRef((v: number)  => { offsetRef.current = v; setOffset(v); });
+  const setDraggingSync  = useRef((v: boolean) => setDragging(v));
+  const setSwipeHintSync = useRef((v: "builder" | "agent" | null) => setSwipeHint(v));
+  setOffsetSync.current    = (v) => { offsetRef.current = v; setOffset(v); };
+  setDraggingSync.current  = (v) => setDragging(v);
+  setSwipeHintSync.current = (v) => setSwipeHint(v);
+
+  const cb = useRef({ onSwipeBuilder, onSwipeAgent, c });
+  cb.current = { onSwipeBuilder, onSwipeAgent, c };
+
+  useEffect(() => {
+    const el = mobileRef.current;
+    if (!el) return;
+
+    const onStart = (e: TouchEvent) => {
+      sx.current    = e.touches[0].clientX;
+      sy.current    = e.touches[0].clientY;
+      axis.current  = null;
+      alive.current = true;
+      vibed.current = false;
+      setDraggingSync.current(false);
+      setSwipeHintSync.current(null);
+    };
+
+    const onMove = (e: TouchEvent) => {
+      if (!alive.current) return;
+      const dx = e.touches[0].clientX - sx.current;
+      const dy = e.touches[0].clientY - sy.current;
+
+      if (!axis.current) {
+        if (Math.abs(dx) < 5 && Math.abs(dy) < 5) return;
+        axis.current = Math.abs(dx) >= Math.abs(dy) ? "h" : "v";
+      }
+      if (axis.current === "v") return;
+
+      e.preventDefault();
+      setDraggingSync.current(true);
+
+      const clamped = Math.max(-SNAP_WIDTH, Math.min(SNAP_WIDTH, dx));
+      setOffsetSync.current(clamped);
+
+      if (clamped >= THRESHOLD) setSwipeHintSync.current("agent");
+      else if (clamped <= -THRESHOLD) setSwipeHintSync.current("builder");
+      else setSwipeHintSync.current(null);
+
+      if (!vibed.current && Math.abs(dx) >= THRESHOLD) {
+        vibe(25);
+        vibed.current = true;
+      }
+    };
+
+    const onEnd = () => {
+      if (!alive.current) return;
+      alive.current = false;
+      setDraggingSync.current(false);
+      setSwipeHintSync.current(null);
+
+      if (axis.current !== "h") return;
+
+      const cur = offsetRef.current;
+
+      if (cur >= THRESHOLD) {
+        vibe(40);
+        setOffsetSync.current(0);
+        cb.current.onSwipeAgent?.(cb.current.c);
+      } else if (cur <= -THRESHOLD) {
+        vibe([30, 60, 30]);
+        setOffsetSync.current(0);
+        cb.current.onSwipeBuilder?.(cb.current.c);
+      } else {
+        setOffsetSync.current(0);
+      }
+    };
+
+    el.addEventListener("touchstart",  onStart, { passive: true });
+    el.addEventListener("touchmove",   onMove,  { passive: false });
+    el.addEventListener("touchend",    onEnd,   { passive: true });
+    el.addEventListener("touchcancel", onEnd,   { passive: true });
+
+    return () => {
+      el.removeEventListener("touchstart",  onStart);
+      el.removeEventListener("touchmove",   onMove);
+      el.removeEventListener("touchend",    onEnd);
+      el.removeEventListener("touchcancel", onEnd);
+    };
+  }, []);
+
   const clientWithSub = { ...c, sub_status: localSubStatus };
   const nextStatus  = NEXT_STATUS[c.status];
   const nextLabel   = NEXT_LABEL[c.status];
@@ -83,7 +193,6 @@ export function OrdersClientRow({ c, onClick, onNextStep }: {
   const prepayment  = Number(c.prepayment) || 0;
   const extraPay    = Number(c.extra_payment) || 0;
   const income      = contractSum;
-  // Платёж учитывается в долге только после подтверждения получения
   const paidPre   = c.prepayment_confirmed ? (Number(c.prepayment_fact) || prepayment) : 0;
   const paidExtra = c.extra_payment_confirmed ? (Number(c.extra_payment_fact) || extraPay) : 0;
   const paid        = paidPre + paidExtra;
@@ -104,73 +213,113 @@ export function OrdersClientRow({ c, onClick, onNextStep }: {
 
   return (
     <>
-      {/* ── МОБИЛЕ: компактная карточка ──────────────────────────────── */}
-      <div className="sm:hidden rounded-xl overflow-hidden"
-        style={{ background: t.surface, border: `1px solid ${t.border}`, borderLeft: `3px solid ${color}60` }}>
+      {/* ── МОБИЛЕ: компактная карточка со свайпом ────────────────── */}
+      <div className="sm:hidden relative rounded-xl overflow-hidden"
+        style={{ background: t.surface, border: `1px solid ${t.border}` }}>
 
-        <div className="flex items-center gap-3 px-3 py-2.5 cursor-pointer active:opacity-75 transition"
-          onClick={onClick}>
-          {/* Левая часть */}
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 mb-0.5">
-              <span className="text-sm font-bold truncate" style={{ color: t.text }}>{title}</span>
-            </div>
-            <div className="flex items-center gap-2 flex-wrap">
-              {c.client_name && (
-                <span className="text-xs" style={{ color: t.textMute }}>{c.client_name}</span>
-              )}
-              {c.phone && (
-                <span className="text-xs" style={{ color: t.textMute }}>{c.phone}</span>
-              )}
-            </div>
-            {c.address && (
-              <div className="flex items-center gap-1 mt-0.5 text-xs" style={{ color: t.textSub }}>
-                <Icon name="MapPin" size={9} style={{ color: "#f59e0b", flexShrink: 0 }} />
-                <span className="truncate">{c.address}</span>
-              </div>
-            )}
-          </div>
-
-          {/* Правая часть */}
-          <div className="flex-shrink-0 flex flex-col items-end gap-1">
-            {isInstall
-              ? <InstallProgress client={clientWithSub} />
-              : <span className="text-[10px] px-1.5 py-0.5 rounded-md font-semibold"
-                  style={{ background: color + "20", color }}>
-                  {STATUS_LABELS[c.status] || c.status}
-                </span>
-            }
-            {tab && <SubstatusPills client={clientWithSub} tabId={tab.id} onUpdate={setLocalSubStatus} />}
-            {income > 0 && (
-              <span className="text-xs font-bold text-emerald-500">{income.toLocaleString("ru-RU")} ₽</span>
-            )}
-            {debt > 0 && !isDone && !isCancelled && (
-              <span className="text-[10px] text-red-400">долг {debt.toLocaleString("ru-RU")} ₽</span>
-            )}
-          </div>
-
-          <Icon name="ChevronRight" size={14} style={{ color: t.textMute, flexShrink: 0 }} />
+        {/* Фон свайпа вправо — Агент */}
+        <div className="absolute inset-y-0 left-0 flex flex-col items-center justify-center gap-0.5 pointer-events-none"
+          style={{
+            width: SNAP_WIDTH,
+            background: swipeHint === "agent"
+              ? "linear-gradient(135deg,#059669,#10b981)"
+              : "linear-gradient(135deg,#06573a,#0a7c50)",
+            zIndex: 0,
+            transition: "background 0.2s",
+          }}>
+          <Icon name="Bot" size={18} style={{ color: "#fff" }} />
+          <span className="text-[9px] font-bold uppercase tracking-wide text-white">Агент</span>
         </div>
 
-        {/* Кнопка следующего шага — на всю ширину */}
-        {nextStatus && !isDone && !isCancelled && (
-          <button onClick={handleNext} disabled={stepping}
-            className="w-full flex items-center justify-between px-3 py-2.5 text-xs font-semibold transition active:opacity-70 disabled:opacity-50"
-            style={{ borderTop: `1px solid ${t.border2}`, background: STATUS_COLORS[nextStatus] + "0a", color: STATUS_COLORS[nextStatus] }}>
-            <span className="flex items-center gap-1.5">
-              <Icon name="ArrowRight" size={11} />
-              {stepping ? "Обновление..." : nextLabel}
-            </span>
-            <Icon name="ChevronRight" size={12} style={{ color: STATUS_COLORS[nextStatus] + "70" }} />
-          </button>
-        )}
-        {isDone && (
-          <div className="px-3 py-2 text-xs font-semibold text-emerald-500 flex items-center gap-1.5"
-            style={{ borderTop: `1px solid ${t.border2}`, background: "rgba(16,185,129,0.05)" }}>
-            <Icon name="CheckCircle2" size={11} /> Завершён
-            {contractSum > 0 && <span className="ml-auto">{contractSum.toLocaleString("ru-RU")} ₽</span>}
+        {/* Фон свайпа влево — Построитель */}
+        <div className="absolute inset-y-0 right-0 flex flex-col items-center justify-center gap-0.5 pointer-events-none"
+          style={{
+            width: SNAP_WIDTH,
+            background: swipeHint === "builder"
+              ? "linear-gradient(135deg,#1d4ed8,#3b82f6)"
+              : "linear-gradient(135deg,#1e3a6e,#1d4ed8)",
+            zIndex: 0,
+            transition: "background 0.2s",
+          }}>
+          <Icon name="Layers" size={18} style={{ color: "#fff" }} />
+          <span className="text-[9px] font-bold uppercase tracking-wide text-white">Страница</span>
+        </div>
+
+        {/* Карточка — двигается */}
+        <div
+          ref={mobileRef}
+          style={{
+            position: "relative",
+            zIndex: 1,
+            transform: `translateX(${offset}px)`,
+            transition: dragging ? "none" : "transform 0.3s cubic-bezier(0.25,1,0.5,1)",
+            background: t.surface,
+            borderLeft: `3px solid ${color}60`,
+            willChange: "transform",
+            userSelect: "none",
+          }}
+        >
+          <div className="flex items-center gap-3 px-3 py-2.5 cursor-pointer active:opacity-75 transition"
+            onClick={onClick}>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 mb-0.5">
+                <span className="text-sm font-bold truncate" style={{ color: t.text }}>{title}</span>
+              </div>
+              <div className="flex items-center gap-2 flex-wrap">
+                {c.client_name && (
+                  <span className="text-xs" style={{ color: t.textMute }}>{c.client_name}</span>
+                )}
+                {c.phone && (
+                  <span className="text-xs" style={{ color: t.textMute }}>{c.phone}</span>
+                )}
+              </div>
+              {c.address && (
+                <div className="flex items-center gap-1 mt-0.5 text-xs" style={{ color: t.textSub }}>
+                  <Icon name="MapPin" size={9} style={{ color: "#f59e0b", flexShrink: 0 }} />
+                  <span className="truncate">{c.address}</span>
+                </div>
+              )}
+            </div>
+
+            <div className="flex-shrink-0 flex flex-col items-end gap-1">
+              {isInstall
+                ? <InstallProgress client={clientWithSub} />
+                : <span className="text-[10px] px-1.5 py-0.5 rounded-md font-semibold"
+                    style={{ background: color + "20", color }}>
+                    {STATUS_LABELS[c.status] || c.status}
+                  </span>
+              }
+              {tab && <SubstatusPills client={clientWithSub} tabId={tab.id} onUpdate={setLocalSubStatus} />}
+              {income > 0 && (
+                <span className="text-xs font-bold text-emerald-500">{income.toLocaleString("ru-RU")} ₽</span>
+              )}
+              {debt > 0 && !isDone && !isCancelled && (
+                <span className="text-[10px] text-red-400">долг {debt.toLocaleString("ru-RU")} ₽</span>
+              )}
+            </div>
+
+            <Icon name="ChevronRight" size={14} style={{ color: t.textMute, flexShrink: 0 }} />
           </div>
-        )}
+
+          {nextStatus && !isDone && !isCancelled && (
+            <button onClick={handleNext} disabled={stepping}
+              className="w-full flex items-center justify-between px-3 py-2.5 text-xs font-semibold transition active:opacity-70 disabled:opacity-50"
+              style={{ borderTop: `1px solid ${t.border2}`, background: STATUS_COLORS[nextStatus] + "0a", color: STATUS_COLORS[nextStatus] }}>
+              <span className="flex items-center gap-1.5">
+                <Icon name="ArrowRight" size={11} />
+                {stepping ? "Обновление..." : nextLabel}
+              </span>
+              <Icon name="ChevronRight" size={12} style={{ color: STATUS_COLORS[nextStatus] + "70" }} />
+            </button>
+          )}
+          {isDone && (
+            <div className="px-3 py-2 text-xs font-semibold text-emerald-500 flex items-center gap-1.5"
+              style={{ borderTop: `1px solid ${t.border2}`, background: "rgba(16,185,129,0.05)" }}>
+              <Icon name="CheckCircle2" size={11} /> Завершён
+              {contractSum > 0 && <span className="ml-auto">{contractSum.toLocaleString("ru-RU")} ₽</span>}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* ── ДЕСКТОП: горизонтальная строка ───────────────────────────── */}
@@ -178,7 +327,6 @@ export function OrdersClientRow({ c, onClick, onNextStep }: {
         style={{ background: t.surface, border: `1px solid ${t.border}`, borderLeft: `3px solid ${color}50` }}
         onClick={onClick}>
 
-        {/* Клиент */}
         <div className="w-44 min-w-0 flex-shrink-0">
           <div className="text-sm font-semibold truncate" style={{ color: t.text }}>{title}</div>
           {(c.client_name || c.phone) && (
@@ -188,7 +336,6 @@ export function OrdersClientRow({ c, onClick, onNextStep }: {
           )}
         </div>
 
-        {/* Статус */}
         <div className="w-44 flex-shrink-0">
           {isInstall
             ? <InstallProgress client={clientWithSub} />
@@ -214,7 +361,6 @@ export function OrdersClientRow({ c, onClick, onNextStep }: {
           )}
         </div>
 
-        {/* Объект */}
         <div className="flex-1 min-w-0">
           {c.address ? (
             <div className="flex items-center gap-1 text-xs" style={{ color: t.textSub }}>
@@ -229,7 +375,6 @@ export function OrdersClientRow({ c, onClick, onNextStep }: {
           )}
         </div>
 
-        {/* Финансы */}
         <div className="flex items-center gap-4 flex-shrink-0">
           {income > 0 ? (
             <>
@@ -263,7 +408,6 @@ export function OrdersClientRow({ c, onClick, onNextStep }: {
           )}
         </div>
 
-        {/* Кнопка */}
         <div className="flex-shrink-0 w-36" onClick={e => e.stopPropagation()}>
           {nextStatus && !isDone && !isCancelled && (
             <button onClick={handleNext} disabled={stepping}

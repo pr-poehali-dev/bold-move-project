@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { crmFetch, Client, getClientOrders } from "./crmApi";
 import Icon from "@/components/ui/icon";
 import ClientDrawer from "./ClientDrawer";
@@ -38,6 +39,7 @@ interface Props {
 
 export default function CrmOrders({ clients: allClients, loading, onStatusChange, onClientRemoved, onReload, initialOrderId, onDrawerClose, canEdit = true, canOrdersEdit = true, canFinance = true, canFiles = true, canFieldContacts = true, canFieldAddress = true, canFieldDates = true, canFieldFinance = true, canFieldFiles = true, canFieldCancel = true, substatuses = [], onSubstatusesChange = () => {} }: Props) {
   const t = useTheme();
+  const navigate = useNavigate();
   const [search, setSearch]       = useState("");
   const [activeTab, setActiveTab] = useState("leads");
   const [selected, setSelected]   = useState<Client | null>(null);
@@ -91,6 +93,32 @@ export default function CrmOrders({ clients: allClients, loading, onStatusChange
   const handleNextStep = async (id: number, nextStatus: string) => {
     await crmFetch("clients", { method: "PUT", body: JSON.stringify({ status: nextStatus }) }, { id: String(id) });
     onStatusChange(id, nextStatus);
+  };
+
+  // ── Свайп влево → Построитель страниц ────────────────────────────────────
+  const handleSwipeBuilder = (client: Client) => {
+    localStorage.setItem("crm_builder_client", JSON.stringify({
+      id: client.id,
+      name: client.client_name || `Заявка №${client.id}`,
+      phone: client.phone || "",
+      address: client.address || "",
+      notes: client.notes || "",
+    }));
+    navigate("/");
+    localStorage.setItem("open_page_editor", "1");
+  };
+
+  // ── Свайп вправо → Агент ─────────────────────────────────────────────────
+  const handleSwipeAgent = (client: Client) => {
+    localStorage.setItem("crm_agent_client", JSON.stringify({
+      id: client.id,
+      name: client.client_name || `Заявка №${client.id}`,
+      phone: client.phone || "",
+      address: client.address || "",
+      notes: client.notes || "",
+    }));
+    localStorage.setItem("admin_main_tab", "agent");
+    navigate("/company");
   };
 
   return (
@@ -161,6 +189,8 @@ export default function CrmOrders({ clients: allClients, loading, onStatusChange
           onSelect={setSelected}
           onNextStep={handleNextStep}
           onSetActiveTab={setActiveTab}
+          onSwipeBuilder={handleSwipeBuilder}
+          onSwipeAgent={handleSwipeAgent}
           tabLabels={tabLabels}
           tabColors={tabColors}
           hiddenTabs={hiddenTabs}
