@@ -45,7 +45,7 @@ export default function Index() {
   // Запускаем при каждом рендере после смены user — ref гарантирует что не делаем лишних обновлений.
   const prevNavKeyRef = useRef<string>("");
   const navConfigSig = user?.id
-    ? `${user.id}:${(user.brand?.nav_config ?? []).map(b => b.id + b.label).join(",")}`
+    ? `${user.id}:${(user.brand?.nav_config ?? []).map(b => b.id + b.label).join(",")}:${(user.brand?.nav_hidden_ids ?? []).join(",")}`
     : "none";
 
   useEffect(() => {
@@ -53,7 +53,7 @@ export default function Index() {
     if (hasCid) return;
     if (prevNavKeyRef.current === navConfigSig) return;
     prevNavKeyRef.current = navConfigSig;
-    patchBrand({ nav_config: user?.brand?.nav_config ?? null });
+    patchBrand({ nav_config: user?.brand?.nav_config ?? null, nav_hidden_ids: user?.brand?.nav_hidden_ids ?? null });
   }); // без зависимостей — запускается после каждого рендера, ref отсекает лишние вызовы
 
   // Приветствие: подменяется именем бота из бренда, если он кастомный

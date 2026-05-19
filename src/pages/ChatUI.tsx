@@ -195,11 +195,11 @@ export default function ChatUI({ messages, input, typing, panel, canEdit, onInpu
       {/* Nav — кнопки (из nav_config или дефолт) */}
       <div className="shrink-0 px-4 md:px-8 pb-3 pt-1 flex items-center justify-center gap-1.5">
         {(brand.nav_config && brand.nav_config.length > 0 ? brand.nav_config : NAV).filter((n) => {
-          // Скрываем скрытые кнопки для не-редакторов
-          if (!canEdit && brand.nav_hidden_ids?.includes(n.id)) return false;
+          // Скрываем скрытые кнопки всегда (для всех, включая владельца в боте)
+          if (brand.nav_hidden_ids?.includes(n.id)) return false;
           // Обратная совместимость со старыми полями
-          if (n.id === "production" && brand.production_hidden && !canEdit) return false;
-          if (n.id === "portfolio"  && brand.portfolio_hidden  && !canEdit) return false;
+          if (n.id === "production" && brand.production_hidden) return false;
+          if (n.id === "portfolio"  && brand.portfolio_hidden)  return false;
           return true;
         }).map((n) => {
           const navBtn = n as typeof NAV[0] & { action?: string; value?: string | null };
