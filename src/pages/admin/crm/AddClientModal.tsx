@@ -1,97 +1,152 @@
 import { useState } from "react";
-import { STATUS_LABELS, LEAD_STATUSES, ORDER_STATUSES } from "./crmApi";
+import { crmFetch } from "./crmApi";
 import Icon from "@/components/ui/icon";
-import PhoneInput from "@/components/ui/PhoneInput";
 import { useTheme } from "./themeContext";
-import { DateTimePickerPopup } from "./DateTimePicker";
-import { isPhoneValid } from "@/hooks/use-phone";
 
-const ALL_STATUSES = [...LEAD_STATUSES, ...ORDER_STATUSES];
-
-type NewClientForm = { client_name: string; phone: string; status: string; address: string; notes: string; measure_date: string };
-
-export function AddClientModal({ form, onChange, onSave, onClose }: {
-  form: NewClientForm;
-  onChange: (patch: Partial<NewClientForm>) => void;
-  onSave: () => void;
+interface Props {
   onClose: () => void;
-}) {
+  onCreated: () => void;
+}
+
+export default function AddClientModal({ onClose, onCreated }: Props) {
   const t = useTheme();
-  const [datePickerOpen, setDatePickerOpen] = useState(false);
-  const [anchorRect, setAnchorRect] = useState<DOMRect | null>(null);
+  const [name,    setName]    = useState("");
+  const [phone,   setPhone]   = useState("");
+  const [address, setAddress] = useState("");
+  const [notes,   setNotes]   = useState("");
+  const [saving,  setSaving]  = useState(false);
+  const [error,   setError]   = useState("");
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!name.trim()) { setError("Введите имя клиента"); return; }
+    setSaving(true); setError("");
+    try {
+      await crmFetch("clients", {
+        method: "POST",
+        body: JSON.stringify({
+          client_name: name.trim(),
+          phone:       phone.trim() || undefined,
+          address:     address.trim() || undefined,
+          notes:       notes.trim() || undefined,
+          status:      "new",
+          source:      "manual",
+        }),
+      });
+      onCreated();
+      onClose();
+    } catch {
+      setError("Ошибка при создании заявки");
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return (
-    <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
-      <div className="rounded-2xl p-6 w-full max-w-md shadow-2xl" style={{ background: t.surface, border: `1px solid ${t.border}` }} onClick={e => e.stopPropagation()}>
-        <div className="flex items-center justify-between mb-5">
-          <h3 className="text-base font-bold" style={{ color: t.text }}>Новый клиент</h3>
-          <button onClick={onClose} style={{ color: t.textMute }}><Icon name="X" size={17} /></button>
-        </div>
-        <div className="space-y-3">
-          <div>
-            <label className="text-xs mb-1.5 block font-medium" style={{ color: t.textMute }}>Имя *</label>
-            <input value={form.client_name} onChange={e => onChange({ client_name: e.target.value })}
-              className="w-full rounded-xl px-4 py-2.5 text-sm focus:outline-none transition"
-              style={{ background: t.surface2, border: `1px solid ${t.border}`, color: t.text }} />
-          </div>
-          <div>
-            <label className="text-xs mb-1.5 block font-medium" style={{ color: t.textMute }}>Телефон</label>
-            <PhoneInput value={form.phone} onChange={(v) => onChange({ phone: v })} showValidation
-              className="w-full rounded-xl px-4 py-2.5 text-sm focus:outline-none transition"
-              style={{ background: t.surface2, border: `1px solid ${t.border}`, color: t.text }} />
-          </div>
-          <div>
-            <label className="text-xs mb-1.5 block font-medium" style={{ color: t.textMute }}>Адрес</label>
-            <input value={form.address} onChange={e => onChange({ address: e.target.value })}
-              className="w-full rounded-xl px-4 py-2.5 text-sm focus:outline-none transition"
-              style={{ background: t.surface2, border: `1px solid ${t.border}`, color: t.text }} />
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
-              <label className="text-xs mb-1.5 block font-medium" style={{ color: t.textMute }}>Статус</label>
-              <select value={form.status} onChange={e => onChange({ status: e.target.value })}
-                className="w-full rounded-xl px-4 py-2.5 text-sm focus:outline-none transition"
-                style={{ background: t.surface2, border: `1px solid ${t.border}`, color: t.text }}>
-                {ALL_STATUSES.map(s => <option key={s} value={s}>{STATUS_LABELS[s]}</option>)}
-              </select>
+    <div
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4"
+      style={{ background: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)" }}
+      onClick={onClose}
+    >
+      <div
+        className="w-full max-w-md rounded-2xl overflow-hidden"
+        style={{ background: t.surface, border: `1px solid ${t.border}` }}
+        onClick={e => e.stopPropagation()}
+      >
+        {/* Шапка */}
+        <div className="flex items-center justify-between px-5 py-4"
+          style={{ borderBottom: `1px solid ${t.border}` }}>
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-lg flex items-center justify-center"
+              style={{ background: t.accent + "20" }}>
+              <Icon name="UserPlus" size={16} style={{ color: t.accentLight }} />
             </div>
-            <div>
-              <label className="text-xs mb-1.5 block font-medium" style={{ color: t.textMute }}>Дата замера</label>
-              <button ref={dateRef}
-                onClick={e => { setAnchorRect(e.currentTarget.getBoundingClientRect()); setDatePickerOpen(true); }}
-                className="w-full rounded-xl px-4 py-2.5 text-sm text-left transition"
-                style={{ background: t.surface2, border: `1px solid ${datePickerOpen ? "#7c3aed80" : t.border}`, color: form.measure_date ? t.text : t.textMute }}>
-                {form.measure_date
-                  ? new Date(form.measure_date).toLocaleString("ru-RU", { day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" })
-                  : "Выбрать дату..."}
-              </button>
-              {datePickerOpen && (
-                <DateTimePickerPopup
-                  value={form.measure_date || null}
-                  anchorRect={anchorRect}
-                  onChange={iso => onChange({ measure_date: iso ?? "" })}
-                  onClose={() => setDatePickerOpen(false)}
-                />
-              )}
-            </div>
+            <span className="font-bold text-base" style={{ color: t.text }}>Новая заявка</span>
           </div>
-          <div>
-            <label className="text-xs mb-1.5 block font-medium" style={{ color: t.textMute }}>Заметка</label>
-            <textarea value={form.notes} onChange={e => onChange({ notes: e.target.value })} rows={2}
-              className="w-full rounded-xl px-4 py-2.5 text-sm focus:outline-none transition resize-none"
-              style={{ background: t.surface2, border: `1px solid ${t.border}`, color: t.text }} />
-          </div>
-        </div>
-        <div className="flex flex-col-reverse sm:flex-row gap-3 mt-5">
-          <button onClick={onSave} disabled={!form.client_name.trim() || (!!form.phone && !isPhoneValid(form.phone))}
-            className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-white transition disabled:opacity-40"
-            style={{ background: "#7c3aed" }}>
-            Создать клиента
-          </button>
-          <button onClick={onClose} className="px-5 py-2.5 rounded-xl text-sm transition"
-            style={{ background: t.surface2, color: t.textMute }}>
-            Отмена
+          <button onClick={onClose} className="p-1.5 rounded-lg transition hover:opacity-70"
+            style={{ color: t.textMute }}>
+            <Icon name="X" size={18} />
           </button>
         </div>
+
+        {/* Форма */}
+        <form onSubmit={handleSubmit} className="p-5 flex flex-col gap-3">
+          {/* Имя */}
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs font-semibold" style={{ color: t.textSub }}>
+              Имя клиента <span style={{ color: "#ef4444" }}>*</span>
+            </label>
+            <input
+              autoFocus
+              value={name}
+              onChange={e => setName(e.target.value)}
+              placeholder="Иван Иванов"
+              className="w-full rounded-xl px-3.5 py-2.5 text-sm focus:outline-none transition"
+              style={{ background: t.surface2, border: `1px solid ${t.border}`, color: t.text }}
+            />
+          </div>
+
+          {/* Телефон */}
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs font-semibold" style={{ color: t.textSub }}>Телефон</label>
+            <input
+              value={phone}
+              onChange={e => setPhone(e.target.value)}
+              placeholder="+7 (999) 000-00-00"
+              type="tel"
+              className="w-full rounded-xl px-3.5 py-2.5 text-sm focus:outline-none transition"
+              style={{ background: t.surface2, border: `1px solid ${t.border}`, color: t.text }}
+            />
+          </div>
+
+          {/* Адрес */}
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs font-semibold" style={{ color: t.textSub }}>Адрес объекта</label>
+            <input
+              value={address}
+              onChange={e => setAddress(e.target.value)}
+              placeholder="ул. Пушкина, д. 1"
+              className="w-full rounded-xl px-3.5 py-2.5 text-sm focus:outline-none transition"
+              style={{ background: t.surface2, border: `1px solid ${t.border}`, color: t.text }}
+            />
+          </div>
+
+          {/* Заметка */}
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs font-semibold" style={{ color: t.textSub }}>Заметка</label>
+            <textarea
+              value={notes}
+              onChange={e => setNotes(e.target.value)}
+              placeholder="Комментарий к заявке..."
+              rows={3}
+              className="w-full rounded-xl px-3.5 py-2.5 text-sm focus:outline-none transition resize-none"
+              style={{ background: t.surface2, border: `1px solid ${t.border}`, color: t.text }}
+            />
+          </div>
+
+          {error && (
+            <p className="text-xs text-red-400 flex items-center gap-1.5">
+              <Icon name="AlertCircle" size={12} /> {error}
+            </p>
+          )}
+
+          {/* Кнопки */}
+          <div className="flex gap-2 pt-1">
+            <button type="button" onClick={onClose}
+              className="flex-1 py-2.5 rounded-xl text-sm font-semibold transition hover:opacity-80"
+              style={{ background: t.surface2, color: t.textSub, border: `1px solid ${t.border}` }}>
+              Отмена
+            </button>
+            <button type="submit" disabled={saving}
+              className="flex-1 py-2.5 rounded-xl text-sm font-bold transition disabled:opacity-60 flex items-center justify-center gap-2"
+              style={{ background: t.accent, color: "#fff" }}>
+              {saving
+                ? <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                : <><Icon name="Plus" size={14} /> Создать</>
+              }
+            </button>
+          </div>
+        </form>
       </div>
     </div>
   );

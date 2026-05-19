@@ -4,6 +4,7 @@ import { crmFetch, Client, getClientOrders, getCrmToken } from "./crmApi";
 import Icon from "@/components/ui/icon";
 import ClientDrawer from "./ClientDrawer";
 import CrmActionModal from "./CrmActionModal";
+import AddClientModal from "./AddClientModal";
 import { useTheme } from "./themeContext";
 import { ORDERS_TABS } from "./ordersTypes";
 import func2url from "@/../backend/func2url.json";
@@ -100,6 +101,7 @@ export default function CrmOrders({ clients: allClients, loading, onStatusChange
   };
 
   // ── Модалка подтверждения действия ───────────────────────────────────────
+  const [showAddModal, setShowAddModal] = useState(false);
   const [actionModal, setActionModal] = useState<{ type: "builder" | "agent"; client: Client } | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
 
@@ -188,6 +190,14 @@ export default function CrmOrders({ clients: allClients, loading, onStatusChange
             ))}
           </div>
 
+          {/* Кнопка добавления */}
+          <button onClick={() => setShowAddModal(true)}
+            className="flex items-center gap-1.5 px-3 py-2.5 rounded-xl text-xs font-bold transition hover:opacity-90 flex-shrink-0"
+            style={{ background: t.accent, color: "#fff" }}>
+            <Icon name="Plus" size={14} />
+            <span className="hidden sm:inline">Заявка</span>
+          </button>
+
           {/* Search */}
           <div className="relative flex-1 sm:w-64 sm:flex-none min-w-[140px]">
             <Icon name="Search" size={13} className="absolute left-3.5 top-1/2 -translate-y-1/2" style={{ color: t.textMute }} />
@@ -260,6 +270,14 @@ export default function CrmOrders({ clients: allClients, loading, onStatusChange
           canFieldFinance={canFieldFinance}
           canFieldFiles={canFieldFiles}
           canFieldCancel={canFieldCancel}
+        />
+      )}
+
+      {/* Модалка добавления новой заявки */}
+      {showAddModal && (
+        <AddClientModal
+          onClose={() => setShowAddModal(false)}
+          onCreated={() => { onReload(); setShowAddModal(false); }}
         />
       )}
 
