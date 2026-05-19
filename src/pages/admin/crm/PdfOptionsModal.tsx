@@ -24,7 +24,7 @@ export default function PdfOptionsModal({ onConfirm, onClose }: Props) {
       onClick={onClose}
     >
       <div
-        className="w-full max-w-sm rounded-2xl overflow-hidden"
+        className="w-full max-w-sm rounded-2xl overflow-hidden bg-gray-900"
         style={{ background: t.card, border: `1px solid ${t.border}` }}
         onClick={e => e.stopPropagation()}
       >
