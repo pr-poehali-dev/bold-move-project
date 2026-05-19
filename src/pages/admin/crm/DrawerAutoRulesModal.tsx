@@ -1,8 +1,47 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 import Icon from "@/components/ui/icon";
 import { useTheme } from "./themeContext";
 import { useAutoRules, RuleEntry } from "@/hooks/useAutoRules";
+import func2url from "@/../backend/func2url.json";
+
+const PARSE_BASE = (func2url as Record<string, string>)["parse-xlsx"];
+
+interface CatSetting { category: string; use_installation_price: boolean; }
+
+function useCategoryInstallSettings() {
+  const [cats, setCats] = useState<CatSetting[]>([]);
+  const [saving, setSaving] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetch(`${PARSE_BASE}?r=category_settings`)
+      .then(r => r.json())
+      .then(d => {
+        const items: CatSetting[] = (d.items || []).map((c: Record<string, unknown>) => ({
+          category: c.category as string,
+          use_installation_price: Boolean(c.use_installation_price),
+        }));
+        setCats(items);
+      })
+      .catch(() => {});
+  }, []);
+
+  const toggle = async (category: string) => {
+    const current = cats.find(c => c.category === category);
+    if (!current) return;
+    const newVal = !current.use_installation_price;
+    setCats(prev => prev.map(c => c.category === category ? { ...c, use_installation_price: newVal } : c));
+    setSaving(category);
+    await fetch(`${PARSE_BASE}?r=category_settings`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ category, use_installation_price: newVal }),
+    }).catch(() => {});
+    setSaving(null);
+  };
+
+  return { cats, saving, toggle };
+}
 
 // Экспортируем типы для обратной совместимости
 export type { RuleEntry };
@@ -37,6 +76,7 @@ export function AutoRulesModal({ onClose, defaultTab = "costs" }: {
   const [localAutoMode, setLocalAutoMode] = useState<boolean | null>(null);
   const [addingRow,   setAddingRow]   = useState(false);
   const [newLabel,    setNewLabel]    = useState("");
+  const { cats: installCats, saving: installSaving, toggle: toggleInstall } = useCategoryInstallSettings();
 
   const currentRules    = localRules    ?? rules;
   const currentAutoMode = localAutoMode ?? auto_mode;
@@ -192,6 +232,33 @@ export function AutoRulesModal({ onClose, defaultTab = "costs" }: {
               </div>
             </div>
           ))}
+
+          {/* Монтаж по прайсу — только на вкладке Расходы */}
+          {isCosts && installCats.length > 0 && (
+            <div className="rounded-xl p-3 space-y-2 mt-1"
+              style={{ background: "rgba(6,182,212,0.06)", border: "1px solid rgba(6,182,212,0.2)" }}>
+              <div className="flex items-center gap-1.5 mb-1">
+                <Icon name="Wrench" size={12} style={{ color: "#06b6d4" }} />
+                <span className="text-[11px] font-bold uppercase tracking-wide" style={{ color: "#06b6d4" }}>Монтаж по прайсу</span>
+              </div>
+              <p className="text-[10px] leading-relaxed" style={{ color: t.textMute }}>
+                Если включено — P&amp;L считает монтаж по колонке «Монтаж ₽» прайса, авто-правило игнорируется.
+              </p>
+              {installCats.map(c => (
+                <div key={c.category} className="flex items-center justify-between gap-2">
+                  <span className="text-xs truncate" style={{ color: t.text }}>{c.category}</span>
+                  <button
+                    onClick={() => toggleInstall(c.category)}
+                    disabled={installSaving === c.category}
+                    className="relative flex-shrink-0 w-9 h-5 rounded-full transition-colors duration-200 focus:outline-none disabled:opacity-50"
+                    style={{ background: c.use_installation_price ? "#06b6d4" : "rgba(255,255,255,0.12)" }}>
+                    <span className="absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform duration-200"
+                      style={{ transform: c.use_installation_price ? "translateX(16px)" : "translateX(0)" }} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
 
           {/* Добавить своё правило */}
           <div className="pt-1">

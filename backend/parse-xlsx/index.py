@@ -380,13 +380,13 @@ def handler(event: dict, context) -> dict:
     if r == 'category_settings' and method == 'GET':
         conn = get_conn(); cur = conn.cursor()
         # Глобальные
-        cur.execute(f"SELECT category, is_material, category_rule, is_wall_item, show_in_drum FROM {SCHEMA}.price_category_settings ORDER BY category")
-        global_rows = {row[0]: {'category': row[0], 'is_material': row[1], 'category_rule': row[2] or '', 'is_wall_item': row[3] if row[3] is not None else True, 'show_in_drum': row[4] if row[4] is not None else True} for row in cur.fetchall()}
+        cur.execute(f"SELECT category, is_material, category_rule, is_wall_item, show_in_drum, use_installation_price FROM {SCHEMA}.price_category_settings ORDER BY category")
+        global_rows = {row[0]: {'category': row[0], 'is_material': row[1], 'category_rule': row[2] or '', 'is_wall_item': row[3] if row[3] is not None else True, 'show_in_drum': row[4] if row[4] is not None else True, 'use_installation_price': bool(row[5]) if row[5] is not None else False} for row in cur.fetchall()}
         if wl_id:
             # Накладываем WL-переопределения
             cur.execute(f"SELECT category, is_material, category_rule, is_wall_item, show_in_drum FROM {SCHEMA}.wl_category_settings WHERE wl_manager_id=%s", (wl_id,))
             for row in cur.fetchall():
-                global_rows[row[0]] = {'category': row[0], 'is_material': row[1], 'category_rule': row[2] or '', 'is_wall_item': row[3] if row[3] is not None else True, 'show_in_drum': row[4] if row[4] is not None else True}
+                global_rows[row[0]] = {'category': row[0], 'is_material': row[1], 'category_rule': row[2] or '', 'is_wall_item': row[3] if row[3] is not None else True, 'show_in_drum': row[4] if row[4] is not None else True, 'use_installation_price': global_rows.get(row[0], {}).get('use_installation_price', False)}
         cur.close(); conn.close()
         return resp(200, {'items': list(global_rows.values())})
 
@@ -401,6 +401,7 @@ def handler(event: dict, context) -> dict:
         is_wall_item = bool(body['is_wall_item']) if 'is_wall_item' in body else None
         show_in_drum = bool(body['show_in_drum']) if 'show_in_drum' in body else None
         category_rule = body['category_rule'].strip() if 'category_rule' in body else None
+        use_installation_price = bool(body['use_installation_price']) if 'use_installation_price' in body else None
 
         conn = get_conn(); cur = conn.cursor()
         table = f"{SCHEMA}.wl_category_settings" if wl_id else f"{SCHEMA}.price_category_settings"
@@ -412,6 +413,8 @@ def handler(event: dict, context) -> dict:
         if is_wall_item is not None: update_parts.append("is_wall_item=%s"); params.append(is_wall_item)
         if show_in_drum is not None: update_parts.append("show_in_drum=%s"); params.append(show_in_drum)
         if category_rule is not None: update_parts.append("category_rule=%s"); params.append(category_rule)
+        if use_installation_price is not None and not wl_id:
+            update_parts.append("use_installation_price=%s"); params.append(use_installation_price)
         update_parts.append("updated_at=now()")
 
         if wl_id:
@@ -435,6 +438,7 @@ def handler(event: dict, context) -> dict:
             if is_wall_item is not None: ins_cols += ", is_wall_item"; ins_vals.append(is_wall_item)
             if show_in_drum is not None: ins_cols += ", show_in_drum"; ins_vals.append(show_in_drum)
             if category_rule is not None: ins_cols += ", category_rule"; ins_vals.append(category_rule)
+            if use_installation_price is not None: ins_cols += ", use_installation_price"; ins_vals.append(use_installation_price)
             placeholders = ", ".join(["%s"] * len(ins_vals))
             upd = ", ".join(update_parts)
             cur.execute(
@@ -453,8 +457,8 @@ def handler(event: dict, context) -> dict:
         conn = get_conn(); cur = conn.cursor()
         cur.execute(f"SELECT id, category, name, price, unit, description, sort_order, active, calc_rule, bundle, synonyms, when_condition, when_not_condition, client_changes, purchase_price, image_url, category_image_url, installation_price FROM {SCHEMA}.ai_prices ORDER BY sort_order, id")
         rows = cur.fetchall()
-        cur.execute(f"SELECT category, is_material, is_wall_item, show_in_drum FROM {SCHEMA}.price_category_settings")
-        cat_settings = {row[0]: {'is_material': row[1], 'is_wall_item': row[2] if row[2] is not None else True, 'show_in_drum': row[3] if row[3] is not None else True} for row in cur.fetchall()}
+        cur.execute(f"SELECT category, is_material, is_wall_item, show_in_drum, use_installation_price FROM {SCHEMA}.price_category_settings")
+        cat_settings = {row[0]: {'is_material': row[1], 'is_wall_item': row[2] if row[2] is not None else True, 'show_in_drum': row[3] if row[3] is not None else True, 'use_installation_price': bool(row[4]) if row[4] is not None else False} for row in cur.fetchall()}
 
         wl_overrides = {}
         if wl_id:
@@ -497,6 +501,7 @@ def handler(event: dict, context) -> dict:
                 'is_material': cs.get('is_material', True),
                 'is_wall_item': cs.get('is_wall_item', True),
                 'show_in_drum': cs.get('show_in_drum', True),
+                'use_installation_price': cs.get('use_installation_price', False),
                 'image_url': ov['image_url'] if ov.get('image_url') is not None else row[15],
                 'category_image_url': ov['category_image_url'] if ov.get('category_image_url') is not None else row[16],
             })

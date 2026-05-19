@@ -34,6 +34,7 @@ export interface PriceItem {
   is_material?: boolean;
   is_wall_item?: boolean;
   show_in_drum?: boolean;
+  use_installation_price?: boolean;
 }
 
 export interface SuggestedItem {

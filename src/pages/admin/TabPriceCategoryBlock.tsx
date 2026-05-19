@@ -57,6 +57,7 @@ export default function TabPriceCategoryBlock({
   const isMaterial   = items[0]?.is_material  !== false;
   const isWall       = items[0]?.is_wall_item !== false;
   const showInDrum   = items[0]?.show_in_drum !== false;
+  const useInstall   = items[0]?.use_installation_price === true;
 
   return (
     <div>
@@ -106,6 +107,7 @@ export default function TabPriceCategoryBlock({
             initialIsMaterial={isMaterial}
             initialIsWall={isWall}
             initialShowInDrum={showInDrum}
+            initialUseInstallationPrice={useInstall}
             isDark={isDark}
             token={token}
           />
