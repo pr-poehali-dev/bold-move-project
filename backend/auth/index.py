@@ -835,9 +835,11 @@ def handler(event: dict, context) -> dict:
 
         # Применяем авто-правила компании к новой заявке если auto_mode включён
         if total_standard and crm_company_id:
-            cur.execute(f"SELECT auto_mode FROM {SCHEMA}.auto_rules_settings WHERE company_id=%s", (crm_company_id,))
+            cur.execute(f"SELECT auto_mode, use_installation_price, use_measure_price FROM {SCHEMA}.auto_rules_settings WHERE company_id=%s", (crm_company_id,))
             settings_row = cur.fetchone()
             if settings_row and settings_row[0]:
+                _use_install = bool(settings_row[1]) if settings_row[1] is not None else False
+                _use_measure = bool(settings_row[2]) if settings_row[2] is not None else False
                 cur.execute(f"""
                     SELECT key, pct, row_type
                     FROM {SCHEMA}.auto_rules_v2
@@ -849,6 +851,12 @@ def handler(event: dict, context) -> dict:
                     cost_keys = {"material_cost", "measure_cost", "install_cost"}
                     income_keys = {"prepayment", "extra_payment"}
                     for r_key, r_pct, r_type in rules:
+                        # Пропускаем install_cost если включён "Монтаж по прайсу"
+                        if r_key == "install_cost" and _use_install:
+                            continue
+                        # Пропускаем measure_cost если включён "Замер по прайсу"
+                        if r_key == "measure_cost" and _use_measure:
+                            continue
                         if r_key in cost_keys or r_key in income_keys:
                             auto_patch[r_key] = int(round(float(total_standard) * float(r_pct) / 100))
                     if auto_patch:
