@@ -149,7 +149,7 @@ export default function EstimateTable({ text, items, onSaveRequest }: {
         localStorage.removeItem("crm_linked_session");
         setSaved(true);
         setTimeout(() => {
-          window.location.href = `/company?order=${linked.chat_id}`;
+          window.location.href = `/crm?order=${linked.chat_id}`;
         }, 800);
         return;
       }
