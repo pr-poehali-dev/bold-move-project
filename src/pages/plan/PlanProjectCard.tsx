@@ -160,6 +160,18 @@ export default function PlanProjectCard({
         </span>
       )}
 
+      {/* Бейдж «не привязан к заявке» — левый верхний угол */}
+      {!isEditing && !project.crm_chat_id && (
+        <span
+          title="Проект не привязан к заявке"
+          className="absolute flex items-center gap-0.5 px-1.5 py-0.5 rounded-br-xl text-[9px] font-bold z-10"
+          style={{ top: 0, left: 0, background: "rgba(234,179,8,0.18)", color: "#facc15", border: "1px solid rgba(234,179,8,0.3)", borderTop: "none", borderLeft: "none" }}
+        >
+          <Icon name="TriangleAlert" size={9} />
+          без заявки
+        </span>
+      )}
+
       {/* ── Форма редактирования (вместо карточки) ── */}
       {isEditing && (
         <PlanProjectForm
