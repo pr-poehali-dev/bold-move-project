@@ -195,10 +195,14 @@ export default function ChatUI({ messages, input, typing, panel, onInput, onSend
       <div className="shrink-0 px-4 md:px-8 pb-3 pt-1 flex items-center justify-center gap-1.5">
         {(brand.nav_config && brand.nav_config.length > 0 ? brand.nav_config : NAV).map((n) => {
           const navBtn = n as typeof NAV[0] & { action?: string; value?: string | null };
-          const panelId = (navBtn.action === "chat" ? "none" : navBtn.action === "other" ? "other" : navBtn.id) as Panel;
-          const isActive = panel === navBtn.id || (navBtn.action === "other" && panel === "other");
+          const SYSTEM_IDS = ["production", "portfolio", "booking", "tips", "reviews", "faq", "contacts"];
+          const isSystemBtn = SYSTEM_IDS.includes(navBtn.id);
+          const panelId = (navBtn.action === "chat" ? "none" : (navBtn.action === "other" && !isSystemBtn) ? "other" : navBtn.id) as Panel;
+          const isActive = panel === navBtn.id || (!isSystemBtn && navBtn.action === "other" && panel === "other");
 
           const handleClick = () => {
+            // Системные кнопки всегда открывают свою панель по id
+            if (isSystemBtn) { onPanel(isActive ? "none" : navBtn.id as Panel); return; }
             if (navBtn.action === "url" && navBtn.value) { window.open(navBtn.value, "_blank"); return; }
             if (navBtn.action === "phone" && navBtn.value) { window.location.href = `tel:${navBtn.value.replace(/\D/g, "").replace(/^8/, "+7")}`; return; }
             if (navBtn.action === "whatsapp" && navBtn.value) { window.open(`https://wa.me/${navBtn.value.replace(/\D/g,"")}`, "_blank"); return; }
