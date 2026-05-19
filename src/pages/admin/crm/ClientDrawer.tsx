@@ -189,7 +189,7 @@ export default function ClientDrawer({ client, allClientOrders, onClose, onUpdat
                 title="Перейти в бот"
               >
                 <Icon name="Bot" size={13} />
-                Бот
+                Агент
               </button>
             )}
 
