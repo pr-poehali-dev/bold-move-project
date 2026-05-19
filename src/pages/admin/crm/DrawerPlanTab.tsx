@@ -2,7 +2,7 @@ import { useEffect, useState, useRef } from "react";
 import { crmFetch } from "./crmApi";
 import Icon from "@/components/ui/icon";
 import { useTheme } from "./themeContext";
-import { getSvgDataUrl } from "@/pages/plan/planExport";
+import { getSvgDataUrlAsync } from "@/pages/plan/planExport";
 import type { PlanState } from "@/pages/plan/planTypes";
 import type { PlanRoom, PlanProject } from "./PlanRoomTypes";
 import { THUMBNAIL_MAX } from "./PlanRoomTypes";
@@ -67,7 +67,7 @@ export default function DrawerPlanTab({ chatId, projectId }: Props) {
       const planData = (room.active_variant_data ?? room.data) as PlanState | undefined;
       if (!planData?.points || planData.points.length < 2) continue;
       try {
-        const newThumb = getSvgDataUrl(planData, 0.4, true, useDark, useImages).slice(0, THUMBNAIL_MAX);
+        const newThumb = (await getSvgDataUrlAsync(planData, 0.4, true, useDark, useImages)).slice(0, THUMBNAIL_MAX);
         if (!newThumb) continue;
         setRooms(prev => prev.map(r =>
           r.id === room.id

@@ -6,6 +6,46 @@ import {
 
 const PAD = 60; // отступ вокруг фигуры в px экспортного SVG
 
+// ── Загрузка картинки → base64 через Canvas ──────────────────────────────────
+const imageCache = new Map<string, string>();
+
+async function fetchImageAsBase64(url: string): Promise<string> {
+  if (imageCache.has(url)) return imageCache.get(url)!;
+  try {
+    const res = await fetch(url);
+    if (!res.ok) return "";
+    const blob = await res.blob();
+    return await new Promise<string>((resolve) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const result = reader.result as string;
+        imageCache.set(url, result);
+        resolve(result);
+      };
+      reader.onerror = () => resolve("");
+      reader.readAsDataURL(blob);
+    });
+  } catch {
+    return "";
+  }
+}
+
+// ── Собрать все imageUrl из сегментов ────────────────────────────────────────
+export async function preloadWallImages(state: PlanState): Promise<Map<string, string>> {
+  const urls = new Set<string>();
+  for (const seg of state.segments ?? []) {
+    for (const item of seg.items ?? []) {
+      if (item.imageUrl) urls.add(item.imageUrl);
+    }
+  }
+  const map = new Map<string, string>();
+  await Promise.all(Array.from(urls).map(async url => {
+    const b64 = await fetchImageAsBase64(url);
+    if (b64) map.set(url, b64);
+  }));
+  return map;
+}
+
 // ── Вычислить bounding box фигуры ─────────────────────────────────────────────
 function bbox(points: Point[]): { minX: number; minY: number; maxX: number; maxY: number; w: number; h: number } {
   if (points.length === 0) return { minX: 0, minY: 0, maxX: 400, maxY: 400, w: 400, h: 400 };
@@ -17,7 +57,7 @@ function bbox(points: Point[]): { minX: number; minY: number; maxX: number; maxY
 }
 
 // ── Генерация чистого SVG-документа ──────────────────────────────────────────
-export function generateSvgString(state: PlanState, exportScale = 1, forThumbnail = false, darkBg = false, showImages = false): string {
+export function generateSvgString(state: PlanState, exportScale = 1, forThumbnail = false, darkBg = false, showImages = false, imageMap: Map<string, string> = new Map()): string {
   const { points, segments, diagonals, dimLines, isClosed, settings } = state;
   // Для превью (thumbnail) всегда показываем размеры, независимо от настроек
   const showSegmentLabels = forThumbnail ? false : settings.showSegmentLabels;
@@ -208,12 +248,13 @@ export function generateSvgString(state: PlanState, exportScale = 1, forThumbnai
       const dx = (tx(b.x - ox) - tx(a.x - ox)) / (items.length + 1);
       const dy = (ty(b.y - oy) - ty(a.y - oy)) / (items.length + 1);
       return items.map((it, idx) => {
-        const imgUrl = it.imageUrl;
-        if (!imgUrl) return "";
+        const b64 = it.imageUrl ? imageMap.get(it.imageUrl) : null;
+        if (!b64) return "";
         const ix = tx(a.x - ox) + dx * (idx + 1) - nx * ts(16);
         const iy = ty(a.y - oy) + dy * (idx + 1) - ny * ts(16);
         const half = imgSize / 2;
-        return `<image href="${imgUrl}" x="${ix - half}" y="${iy - half}" width="${imgSize}" height="${imgSize}" preserveAspectRatio="xMidYMid meet" style="border-radius:4px"/>`;
+        const r = ts(3);
+        return `<clipPath id="clip-img-${idx}-${seg.id}"><rect x="${ix - half}" y="${iy - half}" width="${imgSize}" height="${imgSize}" rx="${r}"/></clipPath><image href="${b64}" x="${ix - half}" y="${iy - half}" width="${imgSize}" height="${imgSize}" preserveAspectRatio="xMidYMid slice" clip-path="url(#clip-img-${idx}-${seg.id})"/>`;
       }).join("");
     } else {
       // Режим текста: название товара
@@ -325,11 +366,17 @@ export async function downloadPng(
 }
 
 // ── Получить data URL для превью ──────────────────────────────────────────────
-export function getSvgDataUrl(state: PlanState, exportScale = 1, forThumbnail = true, darkBg = false, showImages = false): string {
-  const svg = generateSvgString(state, exportScale, forThumbnail, darkBg, showImages);
+export function getSvgDataUrl(state: PlanState, exportScale = 1, forThumbnail = true, darkBg = false, showImages = false, imageMap: Map<string, string> = new Map()): string {
+  const svg = generateSvgString(state, exportScale, forThumbnail, darkBg, showImages, imageMap);
   if (!svg) return "";
   const b64 = btoa(unescape(encodeURIComponent(svg)));
   return `data:image/svg+xml;base64,${b64}`;
+}
+
+// ── Асинхронная версия с загрузкой картинок ───────────────────────────────────
+export async function getSvgDataUrlAsync(state: PlanState, exportScale = 1, forThumbnail = true, darkBg = false, showImages = false): Promise<string> {
+  const imageMap = showImages ? await preloadWallImages(state) : new Map<string, string>();
+  return getSvgDataUrl(state, exportScale, forThumbnail, darkBg, showImages, imageMap);
 }
 
 // ── Триггер скачивания файла ──────────────────────────────────────────────────
