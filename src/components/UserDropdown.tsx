@@ -129,17 +129,10 @@ export default function UserDropdown({ onShowProfile }: Props) {
                   <MenuItem icon="Sparkles" label="Тарифы и пакеты"
                     onClick={() => { setOpen(false); window.location.href = "/pricing"; }} />
                 )}
-                {hasPermission(user, "admin_panel_view") && (
-                  <MenuItem icon="LayoutDashboard" label="Панель управления"
-                    onClick={() => { setOpen(false); window.location.href = "/company?tab=crm"; }} />
-                )}
                 <MenuItem icon="Newspaper" label="Новости"
                   onClick={() => { setOpen(false); window.location.href = "/news"; }} />
               </>
             )}
-
-            <MenuItem icon="PenTool" label="Построитель"
-              onClick={() => { setOpen(false); window.location.href = "/plan"; }} />
 
             {hasPermission(user, "support_view") && (
               <a href="https://t.me/JoniKras" target="_blank" rel="noreferrer"
