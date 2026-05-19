@@ -27,8 +27,9 @@ export default function DrawerPlanTab({ chatId, projectId }: Props) {
   // View mode: 1 = большие карточки, 2 = сетка
   const [viewMode, setViewMode] = useState<1 | 2>(1);
   // Настройки превью
-  const [darkBg,      setDarkBg]      = useState(false);
-  const [showImages,  setShowImages]  = useState(false);
+  const [darkBg,       setDarkBg]       = useState(false);
+  const [showImages,   setShowImages]   = useState(false);
+  const [showEstimate, setShowEstimate] = useState(false);
 
 
   // Sharing
@@ -157,8 +158,8 @@ export default function DrawerPlanTab({ chatId, projectId }: Props) {
     setSelectedIds(new Set(rooms.map(r => r.id)));
   };
 
-  // Печать PDF: чертежи + смета под каждым
-  const printWithEstimate = async () => {
+  // Печать PDF: чертежи, опционально со сметой под каждым
+  const printWithEstimate = async (withEstimate = false) => {
     const clientName = project?.client_name ?? "";
     let html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Чертежи — ${clientName}</title>
     <style>
@@ -198,7 +199,7 @@ export default function DrawerPlanTab({ chatId, projectId }: Props) {
       html += `<div class="room">
         <div class="room-title">${room.name}${room.active_variant_name ? ` — ${room.active_variant_name}` : ""}</div>
         ${thumb ? `<div class="drawing"><img src="${thumb}" alt="${room.name}"/></div>` : ""}
-        ${rows ? `<table><thead><tr style="background:#f9f7ff"><th style="text-align:left;padding:5px 8px">Позиция</th><th style="text-align:center;padding:5px 8px">Кол-во</th><th style="text-align:left;padding:5px 8px">Ед.</th></tr></thead><tbody>${rows}</tbody></table>` : ""}
+        ${withEstimate && rows ? `<table><thead><tr style="background:#f9f7ff"><th style="text-align:left;padding:5px 8px">Позиция</th><th style="text-align:center;padding:5px 8px">Кол-во</th><th style="text-align:left;padding:5px 8px">Ед.</th></tr></thead><tbody>${rows}</tbody></table>` : ""}
       </div>`;
     }
 
@@ -304,34 +305,28 @@ export default function DrawerPlanTab({ chatId, projectId }: Props) {
           >
             <Icon name={showImages ? "Image" : "Type"} size={12} />
           </button>
-          {/* Выгрузка: чертежи + смета */}
+          {/* Тоггл: включить смету в выгрузку */}
           <button
-            onClick={printWithEstimate}
-            className="flex items-center justify-center px-2.5 py-2 text-[10px] font-bold transition flex-1 hover:brightness-110"
+            onClick={() => setShowEstimate(v => !v)}
+            className="flex items-center justify-center px-2.5 py-2 text-[10px] font-bold transition flex-1"
             style={{
-              background: "rgba(255,255,255,0.04)",
-              color: t.textMute,
+              background: showEstimate ? "rgba(124,58,237,0.25)" : "rgba(255,255,255,0.04)",
+              color: showEstimate ? "#a78bfa" : t.textMute,
               borderRight: `1px solid ${t.border}`,
             }}
-            title="PDF: чертежи со сметой"
+            title={showEstimate ? "Смета в выгрузке (вкл)" : "Смета в выгрузке (выкл)"}
           >
             <Icon name="FileText" size={12} />
           </button>
-          {/* Поделиться */}
+          {/* Выгрузить PDF */}
           <button
-            onClick={() => {
-              setShareMode(m => {
-                if (!m && selectedIds.size === 0) setSelectedIds(new Set(rooms.map(r => r.id)));
-                return !m;
-              });
-              setShareUrl(null);
-            }}
+            onClick={() => printWithEstimate(showEstimate)}
             className="flex items-center justify-center px-2.5 py-2 text-[10px] font-bold transition flex-1"
             style={{
-              background: shareMode ? "rgba(124,58,237,0.25)" : "rgba(255,255,255,0.04)",
-              color: shareMode ? "#a78bfa" : t.textMute,
+              background: "rgba(255,255,255,0.04)",
+              color: t.textMute,
             }}
-            title="Поделиться"
+            title="Выгрузить PDF"
           >
             <Icon name="Share2" size={12} />
           </button>
