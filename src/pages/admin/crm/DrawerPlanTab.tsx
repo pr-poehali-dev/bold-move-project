@@ -71,20 +71,35 @@ export default function DrawerPlanTab({ chatId, projectId }: Props) {
       const planData = (room.active_variant_data ?? room.data) as PlanState | undefined;
       if (!planData?.points || planData.points.length < 2) continue;
       try {
-        const newThumb = (await getSvgDataUrlAsync(planData, 0.4, true, useDark, useImages)).slice(0, THUMBNAIL_MAX);
+        const newThumb = await getSvgDataUrlAsync(planData, 0.4, true, useDark, useImages);
         if (!newThumb) continue;
-        setRooms(prev => prev.map(r =>
-          r.id === room.id
-            ? room.active_variant_id
-              ? { ...r, active_variant_thumbnail: newThumb }
-              : { ...r, thumbnail: newThumb }
-            : r
-        ));
-        setFullscreenRoom(prev => prev?.id === room.id ? { ...prev, thumbnail: newThumb } : prev);
-        if (room.active_variant_id) {
-          await crmFetch("plan-variants", { method: "PUT", body: JSON.stringify({ thumbnail: newThumb }) }, { id: String(room.active_variant_id) });
+
+        if (useImages) {
+          // С картинками товаров — только локально, не сохраняем в БД (SVG слишком большой)
+          setRooms(prev => prev.map(r =>
+            r.id === room.id
+              ? room.active_variant_id
+                ? { ...r, active_variant_thumbnail: newThumb }
+                : { ...r, thumbnail: newThumb }
+              : r
+          ));
+          setFullscreenRoom(prev => prev?.id === room.id ? { ...prev, thumbnail: newThumb } : prev);
         } else {
-          await crmFetch("plan-rooms", { method: "PUT", body: JSON.stringify({ thumbnail: newThumb }) }, { id: String(room.id) });
+          // Без картинок — обрезаем и сохраняем в БД как обычно
+          const thumbForDb = newThumb.slice(0, THUMBNAIL_MAX);
+          setRooms(prev => prev.map(r =>
+            r.id === room.id
+              ? room.active_variant_id
+                ? { ...r, active_variant_thumbnail: thumbForDb }
+                : { ...r, thumbnail: thumbForDb }
+              : r
+          ));
+          setFullscreenRoom(prev => prev?.id === room.id ? { ...prev, thumbnail: thumbForDb } : prev);
+          if (room.active_variant_id) {
+            await crmFetch("plan-variants", { method: "PUT", body: JSON.stringify({ thumbnail: thumbForDb }) }, { id: String(room.active_variant_id) });
+          } else {
+            await crmFetch("plan-rooms", { method: "PUT", body: JSON.stringify({ thumbnail: thumbForDb }) }, { id: String(room.id) });
+          }
         }
       } catch { /* ignore */ }
     }
