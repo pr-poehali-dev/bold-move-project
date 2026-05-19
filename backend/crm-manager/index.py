@@ -1286,6 +1286,16 @@ def handler(event: dict, context) -> dict:
                     pos = cur.fetchone()[0]
                     cur.execute(f"INSERT INTO {SCHEMA}.kanban_cards (column_id, client_id, title, phone, priority, position, company_id) VALUES (%s,%s,%s,%s,'medium',%s,%s)",
                         (col_row[0], chat_id, proj_name, phone or "", pos, insert_cmp))
+                # Авто-синк сметы: если для проекта есть сохранённая смета в другой заявке — берём её сумму
+                cur.execute(f"""
+                    SELECT se.total_standard FROM {SCHEMA}.saved_estimates se
+                    JOIN {SCHEMA}.live_chats lc ON lc.id = se.chat_id
+                    WHERE lc.project_id = %s AND se.total_standard IS NOT NULL
+                    ORDER BY se.created_at DESC LIMIT 1
+                """, (proj_id,))
+                est_row = cur.fetchone()
+                if est_row and est_row[0]:
+                    cur.execute(f"UPDATE {SCHEMA}.live_chats SET contract_sum=%s WHERE id=%s", (est_row[0], chat_id))
                 conn.commit()
                 return ok({"crm_chat_id": chat_id})
 
@@ -1306,6 +1316,16 @@ def handler(event: dict, context) -> dict:
                 # Связываем
                 cur.execute(f"UPDATE {SCHEMA}.plan_projects SET crm_chat_id=%s, updated_at=NOW() WHERE id=%s AND company_id=%s", (int(chat_id), int(pid), attach_cmp))
                 cur.execute(f"UPDATE {SCHEMA}.live_chats SET project_id=%s, updated_at=NOW() WHERE id=%s AND company_id=%s", (int(pid), int(chat_id), attach_cmp))
+                # Авто-синк сметы: если у проекта уже есть сохранённая смета — обновляем contract_sum заявки
+                cur.execute(f"""
+                    SELECT se.total_standard FROM {SCHEMA}.saved_estimates se
+                    JOIN {SCHEMA}.live_chats lc ON lc.id = se.chat_id
+                    WHERE lc.project_id = %s AND se.total_standard IS NOT NULL
+                    ORDER BY se.created_at DESC LIMIT 1
+                """, (int(pid),))
+                est_row = cur.fetchone()
+                if est_row and est_row[0]:
+                    cur.execute(f"UPDATE {SCHEMA}.live_chats SET contract_sum=%s WHERE id=%s", (est_row[0], int(chat_id)))
                 conn.commit()
                 return ok({"ok": True, "project_id": int(pid), "crm_chat_id": int(chat_id)})
 
