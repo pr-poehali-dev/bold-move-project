@@ -373,19 +373,6 @@ export default function PlanProjectCard({
               >
                 Редактировать
               </button>
-              <div className="w-px" style={{ background: "rgba(255,255,255,0.05)" }} />
-              <button
-                onClick={() => setConfirmDelete(true)}
-                disabled={isDeleting}
-                className="flex items-center justify-center gap-1.5 py-2.5 text-[12px] font-semibold transition hover:bg-red-500/10 disabled:opacity-50"
-                style={{ color: "rgba(239,68,68,0.6)", paddingLeft: 20, paddingRight: 20, marginRight: project.crm_chat_id ? 48 : 0 }}
-              >
-                {isDeleting
-                  ? <div className="w-3.5 h-3.5 border border-red-400/40 border-t-red-400 rounded-full animate-spin" />
-                  : <Icon name="Trash2" size={13} />
-                }
-                {isDeleting ? "..." : "Удалить"}
-              </button>
             </div>
           </div>
         </div>
@@ -412,6 +399,14 @@ export default function PlanProjectCard({
             style={{ color: "rgba(255,255,255,0.45)", border: "1px solid rgba(255,255,255,0.1)" }}
           >
             Отмена
+          </button>
+          <button
+            onClick={() => { setConfirmEdit(false); setConfirmDelete(true); }}
+            className="flex items-center gap-1 px-3 py-1.5 rounded-xl text-[12px] font-semibold transition hover:bg-red-500/10"
+            style={{ color: "rgba(239,68,68,0.7)", border: "1px solid rgba(239,68,68,0.2)" }}
+          >
+            <Icon name="Trash2" size={12} />
+            Удалить
           </button>
         </div>
       )}
