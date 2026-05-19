@@ -27,7 +27,10 @@ export function useDiscountActions({
 
   // Применить скидку к позициям сметы
   const applyDiscount = async (pct?: number, exactAmt?: number) => {
-    const effectiveDiscount = pct ?? discount;
+    // Защита от передачи SyntheticEvent вместо числа
+    const safePct = typeof pct === "number" && isFinite(pct) ? pct : undefined;
+    const safeAmt = typeof exactAmt === "number" && isFinite(exactAmt) ? exactAmt : undefined;
+    const effectiveDiscount = safePct ?? discount;
     if (effectiveDiscount === 0 || isOverMax) return;
     if (pct !== undefined) setDiscount(pct);
     setApplying(true);
@@ -60,7 +63,7 @@ export function useDiscountActions({
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ blocks: newBlocks, totals: newTotals }),
       });
-      const discountAmt = exactAmt ?? Math.round(baseIncome * effectiveDiscount / 100);
+      const discountAmt = safeAmt ?? Math.round(baseIncome * effectiveDiscount / 100);
       const contractBefore = Number(data.contract_sum) || 0;
       await crmFetch("clients", { method: "PUT", body: JSON.stringify({
         contract_sum: standard,
