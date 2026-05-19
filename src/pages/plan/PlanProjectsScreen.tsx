@@ -7,6 +7,7 @@ import { FormData, EMPTY_FORM } from "./PlanProjectsConstants";
 import PlanProjectForm from "./PlanProjectForm";
 import PlanProjectsSearchBar from "./PlanProjectsSearchBar";
 import PlanProjectCard from "./PlanProjectCard";
+import { generateExportPdf } from "./PlanExportGenerator";
 import func2url from "@/../backend/func2url.json";
 
 const CRM_URL = (func2url as Record<string, string>)["crm-manager"];
@@ -18,7 +19,7 @@ interface Props {
 }
 
 export default function PlanProjectsScreen({ token, onSelectProject, initialProjectId }: Props) {
-  const { projects, loading, loadProjects, createProject, updateProject, deleteProject, syncWithCrm } = usePlanProjects(token);
+  const { projects, loading, loadProjects, createProject, updateProject, deleteProject, syncWithCrm, loadRooms } = usePlanProjects(token);
 
   const [exportOpen,       setExportOpen]       = useState(false);
   const [exportProject,    setExportProject]    = useState<PlanProject | null>(null);
@@ -235,7 +236,21 @@ export default function PlanProjectsScreen({ token, onSelectProject, initialProj
       <PlanExportModal
         open={exportOpen}
         onClose={() => { setExportOpen(false); setExportProject(null); }}
-        onExport={cfg => { console.log("export", cfg, exportProject); }}
+        onExport={async cfg => {
+          if (!exportProject) return;
+          const rooms = await loadRooms(exportProject.id);
+          await generateExportPdf({
+            type: cfg.type,
+            scope: cfg.scope,
+            project: {
+              name: exportProject.name,
+              client_name: exportProject.client_name,
+              phone: exportProject.phone,
+              address: exportProject.address,
+            },
+            rooms,
+          });
+        }}
         showScope={true}
       />
 

@@ -2,13 +2,13 @@ import Icon from "@/components/ui/icon";
 
 export type ExportScope = "project" | "room";
 export type ExportType =
-  | "offer"
-  | "offer_detail"
-  | "offer_materials"
-  | "works"
-  | "order"
-  | "cost"
-  | "editable";
+  | "kp_light"      // КП: лайт — без чертежей и без подписей стен
+  | "kp_detail"     // КП: детализация — с чертежами и подписями
+  | "kp_materials"  // КП: материалы (только материалы и количество, без цен)
+  | "kp_works"      // КП: работы (только монтажные работы и цены монтажа из прайса)
+  | "zp_install"    // ЗП монтажники — только чертежи, работы и цены из колонки Монтаж
+  | "zp_measure"    // ЗП замерщика — без чертежей, цены из колонки Замер
+  | "analytics";    // Аналитика по объекту (себестоимость, ЗП, продажа, прибыль)
 
 export interface ExportConfig {
   scope: ExportScope;
@@ -19,16 +19,17 @@ interface ExportTypeItem {
   id: ExportType;
   label: string;
   icon: string;
+  supportsScope: boolean; // Поддерживает ли переключатель Общий/Покомнатный
 }
 
 export const EXPORT_TYPES: ExportTypeItem[] = [
-  { id: "offer",           label: "Коммерческое предложение",                  icon: "ClipboardCheck" },
-  { id: "offer_detail",    label: "КП: детализация",                           icon: "ClipboardSearch" },
-  { id: "offer_materials", label: "КП: материалы и работы",                    icon: "ClipboardList" },
-  { id: "works",           label: "Перечень работ",                            icon: "Briefcase" },
-  { id: "order",           label: "Комплектация заказа",                       icon: "ShoppingList" },
-  { id: "cost",            label: "Смета себестоимостей",                      icon: "ReceiptText" },
-  { id: "editable",        label: "Редактируемая смета",                       icon: "FileEdit" },
+  { id: "kp_light",     label: "КП: Лайт",            icon: "ClipboardCheck",  supportsScope: true  },
+  { id: "kp_detail",    label: "КП: Детализация",     icon: "ClipboardList",   supportsScope: true  },
+  { id: "kp_materials", label: "КП: Материалы",       icon: "Package",         supportsScope: true  },
+  { id: "kp_works",     label: "КП: Работы",          icon: "FileEdit",        supportsScope: true  },
+  { id: "zp_install",   label: "ЗП монтажники",       icon: "Wrench",          supportsScope: false },
+  { id: "zp_measure",   label: "ЗП замерщика",        icon: "Ruler",           supportsScope: false },
+  { id: "analytics",    label: "Аналитика по объекту", icon: "TrendingUp",     supportsScope: false },
 ];
 
 // ─── Inline-панель (для тулбара — раскрывается в строку) ─────────────────────
@@ -95,9 +96,12 @@ interface ModalProps {
 
 export function PlanExportModal({ open, onClose, onExport, showScope = true }: ModalProps) {
   const [scope, setScope] = React.useState<ExportScope>("project");
-  const [type,  setType]  = React.useState<ExportType>("offer");
+  const [type,  setType]  = React.useState<ExportType>("kp_light");
 
   if (!open) return null;
+
+  const currentType = EXPORT_TYPES.find(t => t.id === type);
+  const scopeVisible = showScope && currentType?.supportsScope !== false;
 
   return (
     <div
@@ -126,8 +130,8 @@ export function PlanExportModal({ open, onClose, onExport, showScope = true }: M
           </button>
         </div>
 
-        {/* Переключатель */}
-        {showScope && (
+        {/* Переключатель — только для типов поддерживающих покомнатный режим */}
+        {scopeVisible && (
           <div>
             <p className="text-[11px] uppercase tracking-wider font-bold mb-2"
               style={{ color: "rgba(255,255,255,0.3)" }}>Смета по</p>

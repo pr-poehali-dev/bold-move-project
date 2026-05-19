@@ -25,7 +25,7 @@ export default function MobileToolbar(props: ToolbarProps) {
 
   const openVariantPicker = (v: boolean) => { setVariantPickerOpen(v); onVariantPickerOpenChange?.(v); };
   const [pinned]            = React.useState<ToolMode[]>(loadPinned);
-  const [exportCfg,         setExportCfg]          = React.useState<ExportConfig>({ scope: "project", type: "offer" });
+  const [exportCfg,         setExportCfg]          = React.useState<ExportConfig>({ scope: "project", type: "kp_light" });
 
   const { settings, onSettingChange } = props;
 

@@ -37,6 +37,7 @@ export interface PlanRoom {
   active_variant_id?: number | null;
   active_variant_name?: string | null;
   active_variant_thumbnail?: string | null;
+  active_variant_data?: object | null;
 }
 
 export function usePlanProjects(token?: string | null) {

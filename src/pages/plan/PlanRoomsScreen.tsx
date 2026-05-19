@@ -5,6 +5,7 @@ import PlanRoomPreview, { getRoomMeta } from "./PlanRoomPreview";
 import { usePlanVariants, PlanVariant } from "./usePlanVariants";
 import PlanVariantPicker from "./PlanVariantPicker";
 import PlanExportModal from "./PlanExportMenu";
+import { generateExportPdf } from "./PlanExportGenerator";
 
 interface Props {
   token?: string | null;
@@ -201,7 +202,19 @@ export default function PlanRoomsScreen({ token, project, onBack, onOpenRoom }: 
       <PlanExportModal
         open={exportOpen}
         onClose={() => setExportOpen(false)}
-        onExport={cfg => { console.log("export", cfg); }}
+        onExport={async cfg => {
+          await generateExportPdf({
+            type: cfg.type,
+            scope: cfg.scope,
+            project: {
+              name: project.name,
+              client_name: project.client_name,
+              phone: project.phone,
+              address: project.address,
+            },
+            rooms,
+          });
+        }}
         showScope={true}
       />
 
