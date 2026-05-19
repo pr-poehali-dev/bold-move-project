@@ -282,8 +282,8 @@ export default function Index() {
                 {panel === "reviews"  && <PanelReviews onClose={closePanel} />}
                 {panel === "faq"      && <PanelFaq onClose={closePanel} />}
                 {panel === "contacts" && <PanelContacts onClose={closePanel} onPanel={setPanel} />}
-                {panel === "other"    && !navBtn && <PanelOther onClose={closePanel} onPanel={setPanel} />}
-                {panel !== "none" && panel !== "livechat" && panel !== "booking" && panel !== "tips" && panel !== "reviews" && panel !== "faq" && panel !== "contacts" && (() => {
+                {panel === "other" && <PanelOther onClose={closePanel} onPanel={setPanel} />}
+                {panel !== "none" && panel !== "livechat" && panel !== "booking" && panel !== "tips" && panel !== "reviews" && panel !== "faq" && panel !== "contacts" && panel !== "other" && (() => {
                   if (navBtn && navBtn.action === "panel") {
                     return <PanelCustom btn={navBtn} onClose={closePanel}
                       onEdit={canEdit ? () => setEditingPanelId(navBtn.id) : undefined} />;
@@ -298,8 +298,7 @@ export default function Index() {
                       await updateBrand(authToken, { ...brand, production_items: items });
                     }}
                   />;
-                  if (panel === "portfolio")  return <PanelPortfolio  onClose={closePanel} />;
-                  if (panel === "other")      return <PanelOther onClose={closePanel} onPanel={setPanel} />;
+                  if (panel === "portfolio") return <PanelPortfolio onClose={closePanel} />;
                   return null;
                 })()}
               </>);
