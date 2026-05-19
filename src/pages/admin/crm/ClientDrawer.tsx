@@ -45,7 +45,6 @@ export default function ClientDrawer({ client, allClientOrders, onClose, onUpdat
   const [orderInnerTab, setOrderInnerTab] = useState<"info" | "estimate">("info");
   const [ordersListOpen, setOrdersListOpen] = useState(false);
   const [pdfModalOpen, setPdfModalOpen] = useState(false);
-  const estimateData = useEstimateData(orderData.id, orderData.client_name, orderData.phone);
 
   const save = async (patch: Partial<Client>) => {
     setData(prev => ({ ...prev, ...patch }));
@@ -59,6 +58,8 @@ export default function ClientDrawer({ client, allClientOrders, onClose, onUpdat
   const [orderData, setOrderData] = useState<Client>(
     allClientOrders.find(o => o.id === selectedOrderId) ?? allClientOrders[0] ?? data
   );
+
+  const estimateData = useEstimateData(orderData.id, orderData.client_name, orderData.phone);
 
   const saveOrder = async (patch: Partial<Client>) => {
     setOrderData(prev => ({ ...prev, ...patch }));
