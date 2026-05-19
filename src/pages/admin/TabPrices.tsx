@@ -6,6 +6,7 @@ import { PRICE_UNITS } from "./constants";
 import type { PriceItem } from "./types";
 import { buildTheme, EMPTY_NEW, EMPTY_CAT } from "./TabPricesShared";
 import TabPriceCategoryBlock from "./TabPriceCategoryBlock";
+import { useAutoRules } from "@/hooks/useAutoRules";
 
 interface Props { token: string; onItemAdded?: (name: string) => void; isDark?: boolean; readOnly?: boolean; }
 
@@ -18,6 +19,8 @@ export default function TabPrices({ token, onItemAdded, isDark = true, readOnly 
     saveField, toggleActive, deleteItem, renameCategory,
     generateSynonyms, generateDescription, moveItem, load,
   } = usePriceList(token);
+
+  const { use_installation_price, use_measure_price } = useAutoRules();
 
   // ── Картинки ───────────────────────────────────────────────────────────────
   const [itemImages, setItemImages] = useState<Record<number, string>>({});
@@ -116,7 +119,29 @@ export default function TabPrices({ token, onItemAdded, isDark = true, readOnly 
 
   return (
     <div className="flex flex-col gap-6">
-      <p className={`${muted} text-sm`}>Нажмите на ячейку — сохраняется мгновенно. Кружок = включить/выключить позицию.</p>
+      <div className="flex items-center gap-3 flex-wrap">
+        <p className={`${muted} text-sm`}>Нажмите на ячейку — сохраняется мгновенно. Кружок = включить/выключить позицию.</p>
+        <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold"
+            style={{
+              background: use_installation_price ? "rgba(6,182,212,0.12)" : "rgba(255,255,255,0.05)",
+              border: `1px solid ${use_installation_price ? "rgba(6,182,212,0.3)" : "rgba(255,255,255,0.08)"}`,
+              color: use_installation_price ? "#06b6d4" : (isDark ? "rgba(255,255,255,0.3)" : "#9ca3af"),
+            }}>
+            <Icon name="Wrench" size={11} />
+            Монтаж по прайсу: {use_installation_price ? "вкл" : "выкл"}
+          </div>
+          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold"
+            style={{
+              background: use_measure_price ? "rgba(20,184,166,0.12)" : "rgba(255,255,255,0.05)",
+              border: `1px solid ${use_measure_price ? "rgba(20,184,166,0.3)" : "rgba(255,255,255,0.08)"}`,
+              color: use_measure_price ? "#14b8a6" : (isDark ? "rgba(255,255,255,0.3)" : "#9ca3af"),
+            }}>
+            <Icon name="Ruler" size={11} />
+            Замер по прайсу: {use_measure_price ? "вкл" : "выкл"}
+          </div>
+        </div>
+      </div>
 
       {Object.entries(byCategory).map(([category, items]) => (
         <TabPriceCategoryBlock
