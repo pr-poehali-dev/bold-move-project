@@ -1,7 +1,6 @@
-import { useRef, useState } from "react";
+import { useState } from "react";
 import Icon from "@/components/ui/icon";
 import { Section, fieldStyles } from "./OwnAgentFields";
-import { uploadBrandImage } from "./brandApi";
 import type { NavButton, NavButtonContent } from "@/context/AuthContext";
 
 const ICONS = [
@@ -12,7 +11,7 @@ const ICONS = [
 
 const ACTION_LABELS: Record<NavButton["action"], string> = {
   chat:      "Открыть чат",
-  panel:     "Своя карточка",
+  panel:     "Своя страница",
   other:     "Меню «Другое»",
   url:       "Ссылка",
   phone:     "Позвонить",
@@ -20,12 +19,6 @@ const ACTION_LABELS: Record<NavButton["action"], string> = {
   telegram:  "Telegram",
 };
 
-const BTN_ACTION_LABELS: Record<string, string> = {
-  phone:    "Позвонить",
-  whatsapp: "WhatsApp",
-  telegram: "Telegram",
-  url:      "Ссылка",
-};
 
 const DEFAULT_BUTTONS: NavButton[] = [
   { id: "booking",    label: "Заказать",     icon: "CalendarCheck", action: "chat" },
@@ -46,8 +39,6 @@ interface Props {
 export function SectionNav({ value, onChange, token, isDark }: Props) {
   const buttons = value && value.length > 0 ? value : DEFAULT_BUTTONS;
   const [editIdx, setEditIdx] = useState<number | null>(null);
-  const [uploading, setUploading] = useState(false);
-  const fileRef = useRef<HTMLInputElement>(null);
   const { muted, border, bg, text } = fieldStyles(isDark);
 
   const update = (idx: number, patch: Partial<NavButton>) => {
@@ -71,15 +62,6 @@ export function SectionNav({ value, onChange, token, isDark }: Props) {
     setEditIdx(next.length - 1);
   };
 
-  const handlePhotoUpload = async (idx: number, file: File) => {
-    setUploading(true);
-    try {
-      const url = await uploadBrandImage(token, file);
-      updateContent(idx, { photo_url: url });
-    } finally {
-      setUploading(false);
-    }
-  };
 
   const editing = editIdx !== null ? buttons[editIdx] : null;
   const content = editing?.content || {};
@@ -115,117 +97,31 @@ export function SectionNav({ value, onChange, token, isDark }: Props) {
 
           {/* Название */}
           <div>
-            <div className="text-[10px] font-bold uppercase tracking-wider mb-1" style={{ color: muted }}>Название кнопки</div>
+            <div className="text-[10px] font-bold uppercase tracking-wider mb-1" style={{ color: muted }}>Название</div>
             <input value={editing.label} onChange={e => update(editIdx, { label: e.target.value })}
               className="w-full px-3 py-2 rounded-lg text-sm focus:outline-none"
               style={{ background: bg, border: `1px solid ${border}`, color: text }} />
           </div>
 
-          {/* Действие */}
-          <div>
-            <div className="text-[10px] font-bold uppercase tracking-wider mb-1" style={{ color: muted }}>Действие при нажатии</div>
-            <div className="flex flex-wrap gap-1.5">
-              {(Object.keys(ACTION_LABELS) as NavButton["action"][]).map(a => (
-                <button key={a} onClick={() => update(editIdx, { action: a, value: null })}
-                  className="px-2.5 py-1 rounded-lg text-xs transition"
-                  style={{
-                    background: editing.action === a ? "rgba(167,139,250,0.2)" : (isDark ? "rgba(255,255,255,0.05)" : "#f3f4f6"),
-                    border: editing.action === a ? "1px solid rgba(167,139,250,0.5)" : `1px solid ${border}`,
-                    color: editing.action === a ? "#a78bfa" : (isDark ? "rgba(255,255,255,0.5)" : "#6b7280"),
-                  }}>
-                  {ACTION_LABELS[a]}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Значение для url/phone/whatsapp/telegram */}
-          {["url","phone","whatsapp","telegram"].includes(editing.action) && (
+          {/* Название страницы — только для «Своя страница» */}
+          {editing.action === "panel" && (
             <div>
-              <div className="text-[10px] font-bold uppercase tracking-wider mb-1" style={{ color: muted }}>
-                {editing.action === "url" ? "Ссылка (https://...)" : editing.action === "phone" ? "Номер телефона" : "Username или ссылка"}
-              </div>
-              <input value={editing.value || ""} onChange={e => update(editIdx, { value: e.target.value })}
-                placeholder={editing.action === "url" ? "https://..." : editing.action === "phone" ? "+7 999 123-45-67" : "@username"}
+              <div className="text-[10px] font-bold uppercase tracking-wider mb-1" style={{ color: muted }}>Название страницы</div>
+              <input value={content.title || ""} onChange={e => updateContent(editIdx, { title: e.target.value })}
+                placeholder="Наше производство"
                 className="w-full px-3 py-2 rounded-lg text-sm focus:outline-none"
                 style={{ background: bg, border: `1px solid ${border}`, color: text }} />
             </div>
           )}
 
-          {/* Редактор карточки */}
-          {editing.action === "panel" && (
-            <div className="space-y-3 pt-2 border-t" style={{ borderColor: "rgba(167,139,250,0.2)" }}>
-              <div className="text-[10px] font-bold uppercase tracking-wider" style={{ color: "#a78bfa" }}>
-                Содержимое карточки
-              </div>
-
-              <div>
-                <div className="text-[10px] font-bold uppercase tracking-wider mb-1" style={{ color: muted }}>Заголовок</div>
-                <input value={content.title || ""} onChange={e => updateContent(editIdx, { title: e.target.value })}
-                  placeholder="Наше производство"
-                  className="w-full px-3 py-2 rounded-lg text-sm focus:outline-none"
-                  style={{ background: bg, border: `1px solid ${border}`, color: text }} />
-              </div>
-
-              <div>
-                <div className="text-[10px] font-bold uppercase tracking-wider mb-1" style={{ color: muted }}>Текст</div>
-                <textarea value={content.text || ""} onChange={e => updateContent(editIdx, { text: e.target.value })}
-                  placeholder="Расскажите о себе, услугах, преимуществах..."
-                  rows={4} className="w-full px-3 py-2 rounded-lg text-sm focus:outline-none resize-none"
-                  style={{ background: bg, border: `1px solid ${border}`, color: text }} />
-              </div>
-
-              <div>
-                <div className="text-[10px] font-bold uppercase tracking-wider mb-1" style={{ color: muted }}>Фото</div>
-                {content.photo_url && (
-                  <div className="relative mb-2 rounded-xl overflow-hidden" style={{ aspectRatio: "16/7" }}>
-                    <img src={content.photo_url} className="w-full h-full object-cover" />
-                    <button onClick={() => updateContent(editIdx, { photo_url: null })}
-                      className="absolute top-2 right-2 w-6 h-6 rounded-full bg-black/60 flex items-center justify-center hover:bg-red-500/80 transition">
-                      <Icon name="X" size={12} className="text-white" />
-                    </button>
-                  </div>
-                )}
-                <input ref={fileRef} type="file" accept="image/*" className="hidden"
-                  onChange={e => { const f = e.target.files?.[0]; if (f) handlePhotoUpload(editIdx, f); e.target.value = ""; }} />
-                <button onClick={() => fileRef.current?.click()} disabled={uploading}
-                  className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs transition disabled:opacity-50"
-                  style={{ background: isDark ? "rgba(255,255,255,0.06)" : "#f3f4f6", border: `1px solid ${border}`, color: isDark ? "rgba(255,255,255,0.5)" : "#6b7280" }}>
-                  <Icon name={uploading ? "Loader" : "Upload"} size={13} className={uploading ? "animate-spin" : ""} />
-                  {uploading ? "Загружаем..." : content.photo_url ? "Заменить фото" : "Загрузить фото"}
-                </button>
-              </div>
-
-              <div>
-                <div className="text-[10px] font-bold uppercase tracking-wider mb-1" style={{ color: muted }}>
-                  Кнопка в карточке <span style={{ color: isDark ? "rgba(255,255,255,0.25)" : "#9ca3af", fontWeight: 400, textTransform: "none", letterSpacing: 0 }}>(необязательно)</span>
-                </div>
-                <input value={content.btn_label || ""} onChange={e => updateContent(editIdx, { btn_label: e.target.value })}
-                  placeholder="Например: Позвонить нам"
-                  className="w-full px-3 py-2 rounded-lg text-sm focus:outline-none mb-1.5"
-                  style={{ background: bg, border: `1px solid ${border}`, color: text }} />
-                <div className="flex flex-wrap gap-1.5 mb-1.5">
-                  {(Object.keys(BTN_ACTION_LABELS)).map(a => (
-                    <button key={a} onClick={() => updateContent(editIdx, { btn_action: a as NavButtonContent["btn_action"], btn_value: null })}
-                      className="px-2.5 py-1 rounded-lg text-xs transition"
-                      style={{
-                        background: content.btn_action === a ? "rgba(167,139,250,0.2)" : (isDark ? "rgba(255,255,255,0.05)" : "#f3f4f6"),
-                        border: content.btn_action === a ? "1px solid rgba(167,139,250,0.5)" : `1px solid ${border}`,
-                        color: content.btn_action === a ? "#a78bfa" : (isDark ? "rgba(255,255,255,0.5)" : "#6b7280"),
-                      }}>
-                      {BTN_ACTION_LABELS[a]}
-                    </button>
-                  ))}
-                </div>
-                {content.btn_action && (
-                  <input value={content.btn_value || ""} onChange={e => updateContent(editIdx, { btn_value: e.target.value })}
-                    placeholder={content.btn_action === "url" ? "https://..." : content.btn_action === "phone" ? "+7 999 123-45-67" : "@username"}
-                    className="w-full px-3 py-2 rounded-lg text-sm focus:outline-none"
-                    style={{ background: bg, border: `1px solid ${border}`, color: text }} />
-                )}
-              </div>
-            </div>
-          )}
+          {/* Кнопка Редактировать — заглушка */}
+          <button
+            disabled
+            className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold opacity-40 cursor-not-allowed"
+            style={{ background: isDark ? "rgba(167,139,250,0.1)" : "#ede9fe", border: "1px dashed rgba(167,139,250,0.4)", color: "#a78bfa" }}>
+            <Icon name="Pencil" size={13} />
+            Редактировать страницу
+          </button>
 
           {/* Иконка */}
           <div>
