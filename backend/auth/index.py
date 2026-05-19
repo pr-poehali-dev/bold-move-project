@@ -411,7 +411,7 @@ def handler(event: dict, context) -> dict:
                    bot_name, bot_greeting, bot_avatar_url, brand_logo_url, brand_color,
                    support_phone, support_email, max_url, working_hours,
                    pdf_footer_address, company_name, telegram, website, telegram_url, pdf_text_color,
-                   brand_logo_url_dark, brand_logo_orientation, pdf_logo_bg, nav_config
+                   brand_logo_url_dark, brand_logo_orientation, pdf_logo_bg, nav_config, nav_hidden_ids
             FROM {SCHEMA}.users
             WHERE id=%s AND removed_at IS NULL
         """, (int(company_id),))
@@ -421,7 +421,7 @@ def handler(event: dict, context) -> dict:
         cid, role, has_agent, bot_name, bot_greeting, bot_avatar_url, brand_logo_url, brand_color, \
             support_phone, support_email, max_url, working_hours, pdf_footer_address, \
             company_name, telegram, website, telegram_url, pdf_text_color, \
-            brand_logo_url_dark, brand_logo_orientation, pdf_logo_bg, nav_config = r
+            brand_logo_url_dark, brand_logo_orientation, pdf_logo_bg, nav_config, nav_hidden_ids = r
         # Если у пользователя нет активной услуги — возвращаем пустой бренд
         if not has_agent or role != "company":
             return ok({"brand": None})
@@ -446,6 +446,7 @@ def handler(event: dict, context) -> dict:
             "brand_logo_orientation": brand_logo_orientation or "horizontal",
             "pdf_logo_bg":            pdf_logo_bg or "auto",
             "nav_config":             nav_config or None,
+            "nav_hidden_ids":         nav_hidden_ids or None,
         }})
 
     # ── Выход ─────────────────────────────────────────────────────────────────

@@ -28,6 +28,7 @@ export interface Brand {
   brand_logo_orientation?: string | null;
   pdf_logo_bg?:            string | null;
   nav_config?:             NavButton[] | null;
+  nav_hidden_ids?:         string[] | null;
 }
 
 /** Дефолтные значения (как было до white-label). */
@@ -104,7 +105,8 @@ function mergeBrand(b: Partial<Brand> & { telegram?: string }, cid: number): Bra
     brand_logo_url_dark:  nonEmpty(b.brand_logo_url_dark)  ?? null,
     brand_logo_orientation: nonEmpty(b.brand_logo_orientation) ?? "horizontal",
     pdf_logo_bg:          nonEmpty(b.pdf_logo_bg)          ?? "auto",
-    nav_config:           (b as Brand).nav_config ?? null,
+    nav_config:           (b as Brand).nav_config      ?? null,
+    nav_hidden_ids:       (b as Brand).nav_hidden_ids  ?? null,
   };
 }
 
