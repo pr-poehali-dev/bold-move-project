@@ -1174,6 +1174,29 @@ def handler(event: dict, context) -> dict:
                 conn.commit()
                 return ok({"deleted": True})
 
+        # ── PLAN-ROOMS-BY-CHAT — комнаты проекта по chat_id (для сметы в CRM) ────
+        if resource == "plan-rooms-by-chat":
+            chat_id_val = qs.get("chat_id") or body.get("chat_id")
+            if not chat_id_val: return err("chat_id required", 400)
+            cmp = company_id if company_id is not None else master_uid
+            if method == "GET":
+                cur.execute(f"""
+                    SELECT r.id, r.project_id, r.name, r.data, r.thumbnail,
+                           r.created_at, r.updated_at, r.include_in_estimate, r.include_drawing,
+                           v.id    AS active_variant_id,
+                           v.name  AS active_variant_name,
+                           v.thumbnail AS active_variant_thumbnail,
+                           v.data  AS active_variant_data
+                    FROM {SCHEMA}.plan_projects p
+                    JOIN {SCHEMA}.room_plans r ON r.project_id = p.id
+                    LEFT JOIN {SCHEMA}.plan_variants v ON v.room_id = r.id AND v.is_active = true
+                    WHERE p.crm_chat_id = %s AND p.company_id = %s
+                      AND r.name NOT LIKE '[удалена]%%'
+                    ORDER BY r.created_at ASC
+                """, (int(chat_id_val), cmp))
+                cols = [d[0] for d in cur.description]
+                return ok([dict(zip(cols, r)) for r in cur.fetchall()])
+
         # ── PLAN-CRM-SYNC — синхронизация данных проект ↔ заявка CRM ────────────
         if resource == "plan-crm-sync":
             cmp = company_id if company_id is not None else master_uid
