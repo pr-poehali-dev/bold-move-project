@@ -96,6 +96,9 @@ export function PriceItemRow({
         <td className="px-4 py-2.5 text-right font-mono text-cyan-400">
           <EditableCell value={item.installation_price ?? 100} type="number" onSave={v => onSaveField(item, "installation_price", v)} className="text-right" placeholder="—" />
         </td>
+        <td className="px-4 py-2.5 text-right font-mono text-teal-400">
+          <EditableCell value={item.measure_price ?? 100} type="number" onSave={v => onSaveField(item, "measure_price", v)} className="text-right" placeholder="—" />
+        </td>
         <td className={`px-4 py-2.5 ${muted} text-xs`}>
           <select
             value={item.unit}
@@ -225,6 +228,12 @@ export function PriceItemCard({
             <span className={`text-[10px] ${muted2}`}>Монтаж ₽</span>
             <div className="font-mono text-cyan-400 text-sm">
               <EditableCell value={item.installation_price ?? 100} type="number" onSave={v => onSaveField(item, "installation_price", v)} placeholder="—" />
+            </div>
+          </div>
+          <div className="flex flex-col gap-0.5 flex-1">
+            <span className={`text-[10px] ${muted2}`}>Замер ₽</span>
+            <div className="font-mono text-teal-400 text-sm">
+              <EditableCell value={item.measure_price ?? 100} type="number" onSave={v => onSaveField(item, "measure_price", v)} placeholder="—" />
             </div>
           </div>
           <div className="flex flex-col gap-0.5">

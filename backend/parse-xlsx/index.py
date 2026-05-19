@@ -455,7 +455,7 @@ def handler(event: dict, context) -> dict:
     # --- GET ?r=prices
     if r == 'prices' and method == 'GET':
         conn = get_conn(); cur = conn.cursor()
-        cur.execute(f"SELECT id, category, name, price, unit, description, sort_order, active, calc_rule, bundle, synonyms, when_condition, when_not_condition, client_changes, purchase_price, image_url, category_image_url, installation_price FROM {SCHEMA}.ai_prices ORDER BY sort_order, id")
+        cur.execute(f"SELECT id, category, name, price, unit, description, sort_order, active, calc_rule, bundle, synonyms, when_condition, when_not_condition, client_changes, purchase_price, image_url, category_image_url, installation_price, measure_price FROM {SCHEMA}.ai_prices ORDER BY sort_order, id")
         rows = cur.fetchall()
         cur.execute(f"SELECT category, is_material, is_wall_item, show_in_drum, use_installation_price FROM {SCHEMA}.price_category_settings")
         cat_settings = {row[0]: {'is_material': row[1], 'is_wall_item': row[2] if row[2] is not None else True, 'show_in_drum': row[3] if row[3] is not None else True, 'use_installation_price': bool(row[4]) if row[4] is not None else False} for row in cur.fetchall()}
@@ -498,6 +498,7 @@ def handler(event: dict, context) -> dict:
                 'client_changes': row[13] or '',
                 'purchase_price': ov['purchase_price'] if ov.get('purchase_price') is not None else (row[14] or 0),
                 'installation_price': row[17] if row[17] is not None else 100,
+                'measure_price': row[18] if row[18] is not None else 100,
                 'is_material': cs.get('is_material', True),
                 'is_wall_item': cs.get('is_wall_item', True),
                 'show_in_drum': cs.get('show_in_drum', True),
@@ -576,15 +577,16 @@ def handler(event: dict, context) -> dict:
             client_changes = body.get('client_changes', '')
             purchase_price = int(body.get('purchase_price', 0))
             installation_price = int(body.get('installation_price', 100))
+            measure_price = int(body.get('measure_price', 100))
             if sort_order is not None:
                 cur.execute(
-                    f"UPDATE {SCHEMA}.ai_prices SET name=%s, price=%s, purchase_price=%s, installation_price=%s, unit=%s, description=%s, active=%s, calc_rule=%s, bundle=%s, synonyms=%s, when_condition=%s, when_not_condition=%s, client_changes=%s, sort_order=%s, updated_at=now() WHERE id=%s",
-                    (body.get('name',''), int(body.get('price', 0)), purchase_price, installation_price, body.get('unit',''), body.get('description',''), body.get('active', True), body.get('calc_rule',''), body.get('bundle','[]'), synonyms, when_condition, when_not_condition, client_changes, int(sort_order), price_id)
+                    f"UPDATE {SCHEMA}.ai_prices SET name=%s, price=%s, purchase_price=%s, installation_price=%s, measure_price=%s, unit=%s, description=%s, active=%s, calc_rule=%s, bundle=%s, synonyms=%s, when_condition=%s, when_not_condition=%s, client_changes=%s, sort_order=%s, updated_at=now() WHERE id=%s",
+                    (body.get('name',''), int(body.get('price', 0)), purchase_price, installation_price, measure_price, body.get('unit',''), body.get('description',''), body.get('active', True), body.get('calc_rule',''), body.get('bundle','[]'), synonyms, when_condition, when_not_condition, client_changes, int(sort_order), price_id)
                 )
             else:
                 cur.execute(
-                    f"UPDATE {SCHEMA}.ai_prices SET name=%s, price=%s, purchase_price=%s, installation_price=%s, unit=%s, description=%s, active=%s, calc_rule=%s, bundle=%s, synonyms=%s, when_condition=%s, when_not_condition=%s, client_changes=%s, updated_at=now() WHERE id=%s",
-                    (body.get('name',''), int(body.get('price', 0)), purchase_price, installation_price, body.get('unit',''), body.get('description',''), body.get('active', True), body.get('calc_rule',''), body.get('bundle','[]'), synonyms, when_condition, when_not_condition, client_changes, price_id)
+                    f"UPDATE {SCHEMA}.ai_prices SET name=%s, price=%s, purchase_price=%s, installation_price=%s, measure_price=%s, unit=%s, description=%s, active=%s, calc_rule=%s, bundle=%s, synonyms=%s, when_condition=%s, when_not_condition=%s, client_changes=%s, updated_at=now() WHERE id=%s",
+                    (body.get('name',''), int(body.get('price', 0)), purchase_price, installation_price, measure_price, body.get('unit',''), body.get('description',''), body.get('active', True), body.get('calc_rule',''), body.get('bundle','[]'), synonyms, when_condition, when_not_condition, client_changes, price_id)
                 )
             _save_complex_exceptions(conn, cur, synonyms, body.get('name', ''))
 

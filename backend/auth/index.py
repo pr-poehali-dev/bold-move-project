@@ -1,4 +1,4 @@
-import json, os, hashlib, secrets, psycopg2, base64
+import json, os, hashlib, secrets, psycopg2, base64  # v2
 import urllib.request as _ureq
 import boto3
 from datetime import datetime
@@ -754,25 +754,29 @@ def handler(event: dict, context) -> dict:
         installation_cost_total = 0
         try:
             import re as _re
-            # Читаем глобальный флаг "Монтаж по прайсу"
-            cur.execute(f"SELECT use_installation_price FROM {SCHEMA}.auto_rules_settings WHERE company_id=%s", (crm_company_id,))
+            # Читаем глобальные флаги
+            cur.execute(f"SELECT use_installation_price, use_measure_price FROM {SCHEMA}.auto_rules_settings WHERE company_id=%s", (crm_company_id,))
             settings_row = cur.fetchone()
-            use_install_global = bool(settings_row[0]) if settings_row else False
+            use_install_global  = bool(settings_row[0]) if settings_row else False
+            use_measure_global  = bool(settings_row[1]) if settings_row else False
 
             cur.execute(f"""
-                SELECT p.name, p.purchase_price, p.installation_price, s.is_material
+                SELECT p.name, p.purchase_price, p.installation_price, p.measure_price, s.is_material
                 FROM {SCHEMA}.ai_prices p
                 JOIN {SCHEMA}.price_category_settings s ON s.category = p.category
-                WHERE p.active=true AND (p.purchase_price > 0 OR p.installation_price > 0)
+                WHERE p.active=true AND (p.purchase_price > 0 OR p.installation_price > 0 OR p.measure_price > 0)
             """)
             mat_map = {}
             inst_map = {}
+            meas_map = {}
             for row in cur.fetchall():
                 name_key = row[0].strip().lower()
-                if row[3] and row[1]:
+                if row[4] and row[1]:
                     mat_map[name_key] = float(row[1])
                 if use_install_global and row[2]:
                     inst_map[name_key] = float(row[2])
+                if use_measure_global and row[3]:
+                    meas_map[name_key] = float(row[3])
             for block in blocks:
                 for item in block.get("items", []):
                     item_name = item.get("name", "").strip().lower()
@@ -783,6 +787,8 @@ def handler(event: dict, context) -> dict:
                         material_cost_total += mat_map[item_name] * qty
                     if item_name in inst_map:
                         installation_cost_total += inst_map[item_name] * qty
+                    if item_name in meas_map:
+                        installation_cost_total += meas_map[item_name] * qty
             material_cost_total = int(round(material_cost_total))
             installation_cost_total = int(round(installation_cost_total))
         except Exception:
