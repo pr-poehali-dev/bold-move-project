@@ -124,9 +124,7 @@ export default function TabPriceCategoryBlock({
               <th className={`text-right ${muted2} font-normal px-4 py-2.5 w-[9%] whitespace-nowrap`}>Закупка ₽</th>
               <th className={`text-right ${muted2} font-normal px-4 py-2.5 w-[9%] whitespace-nowrap`}>Монтаж ₽</th>
               <th className={`text-left ${muted2} font-normal px-4 py-2.5 w-[6%] whitespace-nowrap`}>Ед.</th>
-              <th className={`text-left ${muted2} font-normal px-4 py-2.5 w-[20%] whitespace-nowrap`}>Описание (AI)</th>
-              <th className={`text-left ${muted2} font-normal px-4 py-2.5 whitespace-nowrap`}>Синонимы</th>
-              <th className="px-3 py-2.5 w-8" />
+              <th className="px-3 py-2.5" />
             </tr>
           </thead>
           <tbody>
