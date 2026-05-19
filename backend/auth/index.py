@@ -751,34 +751,51 @@ def handler(event: dict, context) -> dict:
         estimate_id = cur.fetchone()[0]
 
         material_cost_total = 0
+        installation_cost_total = 0
         try:
             import re as _re
-            cur.execute(f"SELECT p.name, p.purchase_price FROM {SCHEMA}.ai_prices p JOIN {SCHEMA}.price_category_settings s ON s.category = p.category WHERE p.active=true AND p.purchase_price > 0 AND s.is_material=true")
-            price_map = {row[0].strip().lower(): float(row[1]) for row in cur.fetchall()}
+            cur.execute(f"""
+                SELECT p.name, p.purchase_price, p.installation_price, s.is_material, s.use_installation_price
+                FROM {SCHEMA}.ai_prices p
+                JOIN {SCHEMA}.price_category_settings s ON s.category = p.category
+                WHERE p.active=true AND (p.purchase_price > 0 OR p.installation_price > 0)
+            """)
+            mat_map = {}   # name -> purchase_price (для is_material)
+            inst_map = {}  # name -> installation_price (для use_installation_price)
+            for row in cur.fetchall():
+                name_key = row[0].strip().lower()
+                if row[3] and row[1]:  # is_material и purchase_price > 0
+                    mat_map[name_key] = float(row[1])
+                if row[4] and row[2]:  # use_installation_price и installation_price > 0
+                    inst_map[name_key] = float(row[2])
             for block in blocks:
                 for item in block.get("items", []):
                     item_name = item.get("name", "").strip().lower()
                     val_str = str(item.get("value", "")).replace("\u00a0", " ")
-                    # Берём первое число (целое или дробное) — это количество
                     m = _re.match(r"([\d]+(?:[.,]\d+)?)", val_str.strip())
                     qty = float(m.group(1).replace(",", ".")) if m else 1.0
-                    if item_name in price_map:
-                        material_cost_total += price_map[item_name] * qty
+                    if item_name in mat_map:
+                        material_cost_total += mat_map[item_name] * qty
+                    if item_name in inst_map:
+                        installation_cost_total += inst_map[item_name] * qty
             material_cost_total = int(round(material_cost_total))
+            installation_cost_total = int(round(installation_cost_total))
         except Exception:
             material_cost_total = 0
+            installation_cost_total = 0
 
         import secrets as sec
         # Если передан linked_chat_id — обновляем существующую заявку, не создаём новую
         if linked_chat_id:
             cur.execute(f"""
                 UPDATE {SCHEMA}.live_chats
-                SET contract_sum=%s, material_cost=%s
+                SET contract_sum=%s, material_cost=%s, install_cost=%s
                 WHERE id=%s AND company_id=%s
                 RETURNING id
             """, (
                 total_standard,
                 material_cost_total if material_cost_total > 0 else None,
+                installation_cost_total if installation_cost_total > 0 else None,
                 int(linked_chat_id),
                 crm_company_id,
             ))
@@ -789,8 +806,8 @@ def handler(event: dict, context) -> dict:
             session_id = f"estimate-{estimate_id}-{sec.token_hex(6)}"
             cur.execute(f"""
                 INSERT INTO {SCHEMA}.live_chats
-                  (session_id, client_name, phone, status, source, contract_sum, material_cost, company_id)
-                VALUES (%s, %s, %s, 'new', 'estimate', %s, %s, %s)
+                  (session_id, client_name, phone, status, source, contract_sum, material_cost, install_cost, company_id)
+                VALUES (%s, %s, %s, 'new', 'estimate', %s, %s, %s, %s)
                 RETURNING id
             """, (
                 session_id,
@@ -798,6 +815,7 @@ def handler(event: dict, context) -> dict:
                 phone or "",
                 total_standard,
                 material_cost_total if material_cost_total > 0 else None,
+                installation_cost_total if installation_cost_total > 0 else None,
                 crm_company_id,
             ))
             chat_id = cur.fetchone()[0]

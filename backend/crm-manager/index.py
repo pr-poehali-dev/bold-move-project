@@ -1371,9 +1371,52 @@ def handler(event: dict, context) -> dict:
                     total_econom, total_standard, total_premium,
                 ))
                 new_id = cur.fetchone()[0]
-                # Обновляем contract_sum в заявке
+                # Считаем material_cost и installation_cost по прайсу
+                material_cost_total = 0
+                installation_cost_total = 0
+                try:
+                    cur.execute(f"""
+                        SELECT p.name, p.purchase_price, p.installation_price, s.is_material, s.use_installation_price
+                        FROM {SCHEMA}.ai_prices p
+                        JOIN {SCHEMA}.price_category_settings s ON s.category = p.category
+                        WHERE p.active=true AND (p.purchase_price > 0 OR p.installation_price > 0)
+                    """)
+                    mat_map = {}
+                    inst_map = {}
+                    for row in cur.fetchall():
+                        name_key = row[0].strip().lower()
+                        if row[3] and row[1]:
+                            mat_map[name_key] = float(row[1])
+                        if row[4] and row[2]:
+                            inst_map[name_key] = float(row[2])
+                    for block in blocks_val:
+                        for item in block.get("items", []):
+                            item_name = item.get("name", "").strip().lower()
+                            val_str = str(item.get("value", "")).replace("\u00a0", " ")
+                            m = _re.match(r"([\d]+(?:[.,]\d+)?)", val_str.strip())
+                            qty = float(m.group(1).replace(",", ".")) if m else 1.0
+                            if item_name in mat_map:
+                                material_cost_total += mat_map[item_name] * qty
+                            if item_name in inst_map:
+                                installation_cost_total += inst_map[item_name] * qty
+                    material_cost_total = int(round(material_cost_total))
+                    installation_cost_total = int(round(installation_cost_total))
+                except Exception:
+                    pass
+                # Обновляем contract_sum, material_cost, install_cost в заявке
+                update_parts = []
+                update_vals = []
                 if total_standard:
-                    cur.execute(f"UPDATE {SCHEMA}.live_chats SET contract_sum=%s WHERE id=%s", (total_standard, int(chat_id_val)))
+                    update_parts.append("contract_sum=%s"); update_vals.append(total_standard)
+                if material_cost_total > 0:
+                    update_parts.append("material_cost=%s"); update_vals.append(material_cost_total)
+                if installation_cost_total > 0:
+                    update_parts.append("install_cost=%s"); update_vals.append(installation_cost_total)
+                if update_parts:
+                    cur.execute(
+                        f"UPDATE {SCHEMA}.live_chats SET {', '.join(update_parts)} WHERE id=%s",
+                        update_vals + [int(chat_id_val)]
+                    )
                 conn.commit()
                 return ok({"ok": True, "estimate_id": new_id})
 
