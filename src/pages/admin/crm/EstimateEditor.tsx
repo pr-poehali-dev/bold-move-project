@@ -205,9 +205,10 @@ export default function EstimateEditor({ chatId, clientName, clientPhone, onEsti
     setTotals(recalcTotals(newBlocks));
   };
 
-  const applyDiscountToEstimate = (pct: number, exactAmt: number) => {
+  const applyDiscountToEstimate = async (pct: number, exactAmt: number) => {
     const discountAmt = exactAmt > 0 ? exactAmt : Math.round(standardTotal * pct / 100);
     if (discountAmt <= 0 || standardTotal <= 0) return;
+    const contractBefore = standardTotal;
     const ratio = (standardTotal - discountAmt) / standardTotal;
     const newBlocks = blocks.map(block => ({
       ...block,
@@ -219,8 +220,44 @@ export default function EstimateEditor({ chatId, clientName, clientPhone, onEsti
         return { ...item, value: `${p.qty} ${p.unit} × ${newPrice} ₽ = ${newTotal.toLocaleString("ru-RU")} ₽` };
       }),
     }));
+    const newTotals = recalcTotals(newBlocks);
     setBlocks(newBlocks);
-    setTotals(recalcTotals(newBlocks));
+    setTotals(newTotals);
+
+    // Считаем новый standard из пересчитанных блоков
+    let newStandard = 0;
+    for (const block of newBlocks)
+      for (const item of block.items) { const p = parseValue(item.value); if (p) newStandard += p.total; }
+
+    // Сохраняем смету в БД
+    if (estimate) {
+      await fetch(`${AUTH_URL}?action=update-estimate&id=${estimate.id}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ blocks: newBlocks, totals: newTotals }),
+      });
+    }
+
+    // Обновляем contract_sum и discount в клиенте
+    await crmFetch("clients", { method: "PUT", body: JSON.stringify({
+      contract_sum: newStandard,
+      discount_pct: pct,
+      discount_amount: discountAmt,
+    }) }, { id: String(chatId) });
+
+    // Записываем в discount_history
+    await crmFetch("discount-history", {
+      method: "POST",
+      body: JSON.stringify({
+        discount_pct: pct,
+        discount_amount: discountAmt,
+        contract_sum_before: contractBefore,
+        contract_sum_after: newStandard,
+      }),
+    }, { client_id: String(chatId) });
+
+    onContractSumChanged?.(newStandard);
+    onEstimateSaved?.();
   };
 
   const doPrint = useCallback(({ perRoom, includeDrawings }: { perRoom: boolean; includeDrawings: boolean }) => {
