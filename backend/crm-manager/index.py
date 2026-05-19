@@ -314,11 +314,16 @@ def handler(event: dict, context) -> dict:
                     ex = cur.fetchone()
                     if body["measure_date"]:
                         if ex:
-                            cur.execute(f"UPDATE {SCHEMA}.calendar_events SET start_time=%s, title=%s WHERE id=%s",
-                                        (body["measure_date"], f"Замер: {name}", ex[0]))
+                            # Обновляем существующее, включая company_id если он был null
+                            cur.execute(f"UPDATE {SCHEMA}.calendar_events SET start_time=%s, title=%s, company_id=COALESCE(company_id,%s) WHERE id=%s",
+                                        (body["measure_date"], f"Замер: {name}", company_id, ex[0]))
                         else:
                             cur.execute(f"""INSERT INTO {SCHEMA}.calendar_events (client_id,title,event_type,start_time,color,company_id)
                                 VALUES (%s,%s,'measure',%s,'#f59e0b',%s)""", (int(cid), f"Замер: {name}", body["measure_date"], company_id))
+                    else:
+                        # Дата удалена — обнуляем start_time (скрываем из диапазона)
+                        if ex:
+                            cur.execute(f"UPDATE {SCHEMA}.calendar_events SET start_time='2000-01-01'::timestamptz WHERE id=%s", (ex[0],))
 
                 # Синхронизируем дату монтажа в календаре
                 if "install_date" in body:
@@ -329,11 +334,14 @@ def handler(event: dict, context) -> dict:
                     ex = cur.fetchone()
                     if body["install_date"]:
                         if ex:
-                            cur.execute(f"UPDATE {SCHEMA}.calendar_events SET start_time=%s, title=%s WHERE id=%s",
-                                        (body["install_date"], f"Монтаж: {name}", ex[0]))
+                            cur.execute(f"UPDATE {SCHEMA}.calendar_events SET start_time=%s, title=%s, company_id=COALESCE(company_id,%s) WHERE id=%s",
+                                        (body["install_date"], f"Монтаж: {name}", company_id, ex[0]))
                         else:
                             cur.execute(f"""INSERT INTO {SCHEMA}.calendar_events (client_id,title,event_type,start_time,color,company_id)
                                 VALUES (%s,%s,'install',%s,'#f97316',%s)""", (int(cid), f"Монтаж: {name}", body["install_date"], company_id))
+                    else:
+                        if ex:
+                            cur.execute(f"UPDATE {SCHEMA}.calendar_events SET start_time='2000-01-01'::timestamptz WHERE id=%s", (ex[0],))
 
                 conn.commit()
                 return ok({"updated": True})
