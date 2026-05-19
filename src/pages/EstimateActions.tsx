@@ -42,7 +42,7 @@ export default function EstimateActions({ user, saved, saving, downloading, save
           >
             {saving
               ? <><div className="w-3 h-3 border border-current border-t-transparent rounded-full animate-spin" /> Сохраняем...</>
-              : <><Icon name={user ? "BarChart2" : "LogIn"} size={14} /> {user ? "Разбор сметы" : "Войти"}</>
+              : <><Icon name={user ? "ArrowUpRight" : "LogIn"} size={14} /> {user ? "Перейти в CRM" : "Войти"}</>
             }
           </button>
         )}

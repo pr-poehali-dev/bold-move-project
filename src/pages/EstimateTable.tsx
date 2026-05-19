@@ -115,6 +115,46 @@ export default function EstimateTable({ text, items, onSaveRequest }: {
     if (!user || !token) { onSaveRequest?.(); return; }
     setSaving(true); setSaveError("");
     try {
+      // Если пришли из CRM через агента — обновляем существующую заявку
+      const linkedRaw = localStorage.getItem("crm_linked_session");
+      if (linkedRaw) {
+        const linked = JSON.parse(linkedRaw) as { chat_id: number; session_id: string; client_name: string; phone: string; address: string };
+        // Сохраняем смету в backend (без создания новой заявки — просто сохраняем estimate)
+        const res = await fetch(`${AUTH_URL}?action=save-estimate`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "X-Authorization": `Bearer ${token}` },
+          body: JSON.stringify({ blocks, totals, finalPhrase, linked_chat_id: linked.chat_id }),
+        });
+        const data = await res.json();
+        if (!res.ok || data.error) {
+          const msg = data.error || "Ошибка сохранения";
+          if (res.status === 403 && /смет|пробн/i.test(msg)) {
+            setSaveError(msg + " Перенаправляем на страницу тарифов…");
+            setTimeout(() => { window.location.href = "/pricing"; }, 1500);
+            return;
+          }
+          throw new Error(msg);
+        }
+        // Обновляем заявку суммой из сметы
+        const sumMatch = totals.join(" ").match(/Standard[:\s]*([0-9\s]+)/i);
+        const contractSum = sumMatch ? parseInt(sumMatch[1].replace(/\s/g, ""), 10) : 0;
+        if (contractSum > 0) {
+          await fetch(`${CRM_URL}?r=clients&id=${linked.chat_id}`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json", "X-Authorization": `Bearer ${token}` },
+            body: JSON.stringify({ contract_sum: contractSum }),
+          });
+        }
+        // Чистим флаг и переходим в CRM к этой заявке
+        localStorage.removeItem("crm_linked_session");
+        setSaved(true);
+        setTimeout(() => {
+          window.location.href = `/company?order=${linked.chat_id}`;
+        }, 800);
+        return;
+      }
+
+      // Обычный сценарий — создаём новую заявку
       const res  = await fetch(`${AUTH_URL}?action=save-estimate`, {
         method: "POST",
         headers: { "Content-Type": "application/json", "X-Authorization": `Bearer ${token}` },
@@ -123,7 +163,6 @@ export default function EstimateTable({ text, items, onSaveRequest }: {
       const data = await res.json();
       if (!res.ok || data.error) {
         const msg = data.error || "Ошибка сохранения";
-        // Нет смет на балансе или истёк триал → отправляем на тарифы
         if (res.status === 403 && /смет|пробн/i.test(msg)) {
           setSaveError(msg + " Перенаправляем на страницу тарифов…");
           setTimeout(() => { window.location.href = "/pricing"; }, 1500);
