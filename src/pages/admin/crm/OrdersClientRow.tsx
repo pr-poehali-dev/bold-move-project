@@ -328,7 +328,7 @@ export function OrdersClientRow({ c, onClick, onNextStep, onSwipeBuilder, onSwip
               <button onClick={() => window.open(`/plan?project_id=${c.project_id}`, "_blank")}
                 className="flex-1 flex items-center justify-center gap-1 py-1.5 rounded-lg text-[11px] font-bold transition active:opacity-70"
                 style={{ background: "#3b82f618", color: "#3b82f6", border: "1px solid #3b82f630" }}>
-                <Icon name="ExternalLink" size={11} /> Открыть проект
+                <Icon name="ExternalLink" size={11} /> В построитель
               </button>
             ) : (
               <button onClick={() => cb.current.onSwipeBuilder?.(cb.current.c)}

@@ -321,7 +321,7 @@ export function OrdersClientCard({ c, onClick, onNextStep, onSwipeBuilder, onSwi
               className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-bold transition hover:opacity-80"
               style={{ background: "#3b82f618", color: "#3b82f6", border: "1px solid #3b82f630" }}>
               <Icon name="ExternalLink" size={12} />
-              Открыть проект
+              В построитель
             </button>
           ) : (
             <button
