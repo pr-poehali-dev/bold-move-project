@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef } from "react";
+import { createPortal } from "react-dom";
 import { crmFetch } from "./crmApi";
 import Icon from "@/components/ui/icon";
 import { useTheme } from "./themeContext";
@@ -28,7 +29,7 @@ export default function DrawerPlanTab({ chatId, projectId }: Props) {
   const [viewMode, setViewMode] = useState<1 | 2>(1);
   // Настройки превью
   const [darkBg,       setDarkBg]       = useState(false);
-  const [showImages,   setShowImages]   = useState(false);
+  const [showImages,   setShowImages]   = useState(true);
   const [showEstimate, setShowEstimate] = useState(false);
 
 
@@ -411,8 +412,8 @@ export default function DrawerPlanTab({ chatId, projectId }: Props) {
         </div>
       )}
 
-      {/* Fullscreen просмотр с pinch-zoom */}
-      {fullscreenRoom && (
+      {/* Fullscreen просмотр — через portal чтобы выйти за пределы stacking context дровера */}
+      {fullscreenRoom && createPortal(
         <PlanRoomFullscreen
           room={fullscreenRoom}
           zoom={zoom}
@@ -426,7 +427,8 @@ export default function DrawerPlanTab({ chatId, projectId }: Props) {
           onSetPanY={setPanY}
           onClose={() => setFullscreenRoom(null)}
           onOpenInPlan={openInPlan}
-        />
+        />,
+        document.body
       )}
     </div>
   );
