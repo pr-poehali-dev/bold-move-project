@@ -126,7 +126,7 @@ export default function UserDropdown({ onShowProfile }: Props) {
                     onClick={() => { setOpen(false); onShowProfile(); }} />
                 )}
                 {["installer","company"].includes(user.role) && hasPermission(user, "tariffs_view") && (
-                  <MenuItem icon="Sparkles" label="Тарифы и пакеты"
+                  <MenuItem icon="Sparkles" label="Купить сметы"
                     onClick={() => { setOpen(false); window.location.href = "/pricing"; }} />
                 )}
                 <MenuItem icon="Newspaper" label="Новости"
