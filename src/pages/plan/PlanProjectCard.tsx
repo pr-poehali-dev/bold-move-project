@@ -164,13 +164,13 @@ export default function PlanProjectCard({
         </span>
       )}
 
-      {/* Бейдж «привязан к заявке» — левый верхний угол */}
+      {/* Бейдж «привязан к заявке» — правый нижний угол */}
       {!isEditing && project.crm_chat_id && (
         <button
           title={`Открыть заявку CRM #${project.crm_chat_id}`}
           onClick={e => { e.stopPropagation(); window.open(`/crm?order=${project.crm_chat_id}`, "_blank"); }}
-          className="absolute flex items-center gap-0.5 px-1.5 py-0.5 rounded-br-xl text-[9px] font-bold z-10 transition hover:brightness-125 active:scale-95"
-          style={{ top: 0, left: 0, background: "rgba(34,197,94,0.15)", color: "#4ade80", border: "1px solid rgba(34,197,94,0.25)", borderTop: "none", borderLeft: "none" }}
+          className="absolute flex items-center gap-0.5 px-1.5 py-0.5 rounded-tl-xl text-[9px] font-bold z-10 transition hover:brightness-125 active:scale-95"
+          style={{ bottom: 0, right: 0, background: "rgba(34,197,94,0.15)", color: "#4ade80", border: "1px solid rgba(34,197,94,0.25)", borderBottom: "none", borderRight: "none" }}
         >
           <Icon name="CheckCircle" size={9} />
           CRM
