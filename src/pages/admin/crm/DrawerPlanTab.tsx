@@ -26,8 +26,9 @@ export default function DrawerPlanTab({ chatId, projectId }: Props) {
   // View mode: 1 = большие карточки, 2 = сетка
   const [viewMode, setViewMode] = useState<1 | 2>(1);
   // Настройки превью
-  const [darkBg,     setDarkBg]     = useState(false);
-  const [showImages, setShowImages] = useState(false);
+  const [darkBg,      setDarkBg]      = useState(false);
+  const [showImages,  setShowImages]  = useState(false);
+  const [showEstimate, setShowEstimate] = useState(false);
 
   // Sharing
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
@@ -180,14 +181,14 @@ export default function DrawerPlanTab({ chatId, projectId }: Props) {
 
       {/* Панель управления */}
       <div className="flex items-center gap-2 flex-wrap">
-        {/* В построителе — компактнее */}
+        {/* В построителе — только иконка */}
         <button
           onClick={openInPlan}
-          className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition hover:brightness-110 active:scale-[0.98]"
+          className="flex items-center justify-center w-10 h-10 rounded-xl transition hover:brightness-110 active:scale-[0.98] flex-shrink-0"
           style={{ background: "linear-gradient(135deg,#6d28d9,#7c3aed)", color: "#fff" }}
+          title="В построителе"
         >
-          <Icon name="Layers2" size={13} />
-          В построителе
+          <Icon name="Layers2" size={15} />
         </button>
 
         {/* Все переключатели в одной группе */}
@@ -251,6 +252,19 @@ export default function DrawerPlanTab({ chatId, projectId }: Props) {
             title={showImages ? "Показать текст" : "Показать картинки товаров"}
           >
             <Icon name={showImages ? "Image" : "Type"} size={12} />
+          </button>
+          {/* Смета под чертежом */}
+          <button
+            onClick={() => setShowEstimate(v => !v)}
+            className="flex items-center justify-center px-2.5 py-2 text-[10px] font-bold transition flex-1"
+            style={{
+              background: showEstimate ? "rgba(124,58,237,0.25)" : "rgba(255,255,255,0.04)",
+              color: showEstimate ? "#a78bfa" : t.textMute,
+              borderRight: `1px solid ${t.border}`,
+            }}
+            title="Смета под чертежом"
+          >
+            <Icon name="FileText" size={12} />
           </button>
           {/* Поделиться */}
           <button
@@ -335,18 +349,49 @@ export default function DrawerPlanTab({ chatId, projectId }: Props) {
             Чертежи ({rooms.length})
           </p>
           <div className="grid grid-cols-2 gap-3">
-            {rooms.map(room => (
-              <PlanRoomCard
-                key={room.id}
-                room={room}
-                isSelected={selectedIds.has(room.id)}
-                shareMode={shareMode}
-                darkBg={true}
-                onOpen={openRoom}
-                onToggleSelect={toggleSelect}
-                onActivateShareMode={activateShareMode}
-              />
-            ))}
+            {rooms.map(room => {
+              const planData = (room.active_variant_data ?? room.data) as {
+                segments?: { items?: { name: string; unit: string; quantity?: number }[] }[];
+                floorItems?: { name: string; unit: string; quantity?: number }[];
+              } | undefined;
+              // Собираем все товары комнаты
+              const items: { name: string; unit: string; qty: number }[] = [];
+              for (const seg of planData?.segments ?? []) {
+                for (const it of seg.items ?? []) {
+                  const ex = items.find(x => x.name === it.name);
+                  if (ex) ex.qty += it.quantity ?? 1;
+                  else items.push({ name: it.name, unit: it.unit, qty: it.quantity ?? 1 });
+                }
+              }
+              for (const it of planData?.floorItems ?? []) {
+                const ex = items.find(x => x.name === it.name);
+                if (ex) ex.qty += it.quantity ?? 1;
+                else items.push({ name: it.name, unit: it.unit, qty: it.quantity ?? 1 });
+              }
+              return (
+                <div key={room.id} className="flex flex-col gap-1">
+                  <PlanRoomCard
+                    room={room}
+                    isSelected={selectedIds.has(room.id)}
+                    shareMode={shareMode}
+                    darkBg={true}
+                    onOpen={openRoom}
+                    onToggleSelect={toggleSelect}
+                    onActivateShareMode={activateShareMode}
+                  />
+                  {showEstimate && items.length > 0 && (
+                    <div className="rounded-xl overflow-hidden" style={{ border: `1px solid ${t.border}`, background: t.surface2 }}>
+                      {items.map((it, i) => (
+                        <div key={i} className="flex items-center justify-between px-2 py-1" style={{ borderBottom: i < items.length - 1 ? `1px solid ${t.border}` : "none" }}>
+                          <span className="text-[9px] truncate flex-1 min-w-0" style={{ color: t.text }}>{it.name}</span>
+                          <span className="text-[9px] flex-shrink-0 ml-1" style={{ color: t.textMute }}>{it.qty} {it.unit}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         </div>
       )}
