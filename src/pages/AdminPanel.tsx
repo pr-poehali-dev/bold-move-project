@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { setCrmToken } from "./admin/crm/crmApi";
 import { useAuth, hasPermission } from "@/context/AuthContext";
 import type { AgentSubTab } from "./admin/types";
@@ -16,6 +17,15 @@ const ALLOWED_ROLES = ["installer", "company", "manager"];
 
 export default function AdminPanel() {
   const { user, token: authToken, loading, logout: authLogout } = useAuth();
+  const navigate = useNavigate();
+
+  // Редирект /company?tab=crm → /crm
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("tab") === "crm") {
+      navigate("/crm", { replace: true });
+    }
+  }, []);  // eslint-disable-line react-hooks/exhaustive-deps
 
   const [showLogin, setShowLogin] = useState(false);
   const LS_AGENT_TAB_KEY = "admin_agent_tab";
