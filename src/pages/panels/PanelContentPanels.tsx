@@ -1,11 +1,12 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import Icon from "@/components/ui/icon";
 import Lightbox from "@/components/ui/lightbox";
 import { PRODUCTION } from "../data/content";
 import { PORTFOLIO_ITEMS } from "../data/portfolio";
 import { PROD_FEATURES } from "../chatConfig";
-import type { NavButton, PageBlock, PageSettings, PageBlockStyle } from "@/context/AuthContext";
+import type { NavButton, PageBlock, PageSettings, PageBlockStyle, ProductionItem } from "@/context/AuthContext";
 import { PanelHeader } from "./PanelHeader";
+import { uploadBrandImage } from "../admin/own-agent/brandApi";
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 function getYouTubeEmbed(url: string): string | null {
@@ -305,16 +306,157 @@ function RenderBlocks({ blocks, pageSettings }: { blocks: PageBlock[]; pageSetti
   );
 }
 
-export function PanelProduction({ onClose, onEdit }: { onClose: () => void; onEdit?: () => void }) {
+export function PanelProduction({
+  onClose,
+  canEdit,
+  items: externalItems,
+  token,
+  onSave,
+}: {
+  onClose:  () => void;
+  canEdit?: boolean;
+  items?:   ProductionItem[] | null;
+  token?:   string | null;
+  onSave?:  (items: ProductionItem[]) => void;
+}) {
+  const baseItems = (externalItems && externalItems.length > 0) ? externalItems : PRODUCTION;
+  const [editMode, setEditMode]         = useState(false);
+  const [items, setItems]               = useState<ProductionItem[]>(baseItems);
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
-  const prodImages = PRODUCTION.map((item) => ({ src: item.img, alt: item.title }));
+  const [uploading, setUploading]       = useState<number | null>(null);
+  const [saving, setSaving]             = useState(false);
+  const fileRefs = useRef<(HTMLInputElement | null)[]>([]);
+  const prodImages = items.map((item) => ({ src: item.img, alt: item.title }));
 
+  const handleEnterEdit = () => {
+    setItems((externalItems && externalItems.length > 0) ? [...externalItems] : [...PRODUCTION]);
+    setEditMode(true);
+  };
+
+  const handleSave = async () => {
+    setSaving(true);
+    await onSave?.(items);
+    setSaving(false);
+    setEditMode(false);
+  };
+
+  const updateItem = (i: number, patch: Partial<ProductionItem>) => {
+    setItems(prev => prev.map((it, idx) => idx === i ? { ...it, ...patch } : it));
+  };
+
+  const removeItem = (i: number) => {
+    setItems(prev => prev.filter((_, idx) => idx !== i));
+  };
+
+  const addItem = () => {
+    setItems(prev => [...prev, { img: "", title: "Новая карточка", desc: "" }]);
+  };
+
+  const handleUpload = async (i: number, file: File) => {
+    setUploading(i);
+    try {
+      const url = await uploadBrandImage(token ?? null, file);
+      updateItem(i, { img: url });
+    } finally {
+      setUploading(null);
+    }
+  };
+
+  /* ── Режим редактирования ── */
+  if (editMode) {
+    return (
+      <div className="h-full flex flex-col">
+        <div className="shrink-0 flex items-center justify-between px-5 py-3 border-b border-white/[0.06]">
+          <div className="flex items-center gap-2">
+            <Icon name="Pencil" size={15} className="text-violet-400" />
+            <span className="text-sm font-semibold text-white/80">Редактирование производства</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <button onClick={() => setEditMode(false)}
+              className="px-3 py-1.5 rounded-lg text-xs text-white/40 hover:text-white/70 transition">
+              Отмена
+            </button>
+            <button onClick={handleSave} disabled={saving}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition disabled:opacity-60"
+              style={{ background: "rgba(167,139,250,0.2)", border: "1px solid rgba(167,139,250,0.4)", color: "#a78bfa" }}>
+              {saving
+                ? <span className="w-3 h-3 border-2 border-violet-400 border-t-transparent rounded-full animate-spin" />
+                : <Icon name="Check" size={12} />}
+              Сохранить
+            </button>
+          </div>
+        </div>
+
+        <div className="flex-1 overflow-y-auto p-3 space-y-2">
+          {items.map((item, i) => (
+            <div key={i} className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-3 flex gap-3">
+              {/* Фото */}
+              <div className="shrink-0 w-20 h-16 rounded-lg overflow-hidden relative"
+                style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}>
+                {item.img
+                  ? <img src={item.img} className="w-full h-full object-cover" />
+                  : <div className="w-full h-full flex items-center justify-center">
+                      <Icon name="Image" size={16} className="text-white/20" />
+                    </div>
+                }
+                <button
+                  onClick={() => fileRefs.current[i]?.click()}
+                  disabled={uploading === i}
+                  className="absolute inset-0 flex items-center justify-center bg-black/50 opacity-0 hover:opacity-100 transition rounded-lg">
+                  {uploading === i
+                    ? <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    : <Icon name="Upload" size={14} className="text-white" />}
+                </button>
+                <input ref={el => { fileRefs.current[i] = el; }} type="file" accept="image/*" className="hidden"
+                  onChange={e => { const f = e.target.files?.[0]; if (f) handleUpload(i, f); e.target.value = ""; }} />
+              </div>
+
+              {/* Поля */}
+              <div className="flex-1 flex flex-col gap-1.5 min-w-0">
+                <input
+                  value={item.title}
+                  onChange={e => updateItem(i, { title: e.target.value })}
+                  placeholder="Заголовок"
+                  className="w-full px-2.5 py-1.5 rounded-lg text-xs focus:outline-none"
+                  style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", color: "#fff" }}
+                />
+                <textarea
+                  value={item.desc}
+                  onChange={e => updateItem(i, { desc: e.target.value })}
+                  placeholder="Описание"
+                  rows={2}
+                  className="w-full px-2.5 py-1.5 rounded-lg text-xs focus:outline-none resize-none"
+                  style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.6)" }}
+                />
+              </div>
+
+              {/* Удалить */}
+              <button onClick={() => removeItem(i)}
+                className="shrink-0 p-1 text-white/20 hover:text-red-400 transition self-start">
+                <Icon name="X" size={14} />
+              </button>
+            </div>
+          ))}
+
+          {/* Добавить карточку */}
+          <button onClick={addItem}
+            className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-xs text-white/30 hover:text-white/50 transition"
+            style={{ border: "1px dashed rgba(255,255,255,0.1)" }}>
+            <Icon name="Plus" size={14} /> Добавить карточку
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  /* ── Режим просмотра ── */
   return (
     <div className="h-full flex flex-col">
-      <PanelHeader icon="Factory" title="Собственное производство" onClose={onClose} onEdit={onEdit} />
+      <PanelHeader icon="Factory" title="Собственное производство" onClose={onClose}
+        onEdit={canEdit ? handleEnterEdit : undefined} />
       <div className="flex-1 overflow-y-auto p-4">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mb-4">
-          {PRODUCTION.map((item, i) => (
+          {items.map((item, i) => (
             <div key={i} className="rounded-xl border border-white/[0.06] bg-white/[0.02] overflow-hidden group cursor-pointer"
               onClick={() => setLightboxIndex(i)}>
               <div className="aspect-[4/3] overflow-hidden">

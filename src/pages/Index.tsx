@@ -27,9 +27,10 @@ import {
 } from "./ChatPanels";
 
 import EcoSystemModal from "@/components/EcoSystemModal";
+import { updateBrand } from "./admin/own-agent/brandApi";
 
 export default function Index() {
-  const { user } = useAuth();
+  const { user, token: authToken } = useAuth();
   const { brand, isCustom, patchBrand } = useBrand();
   const [showAuthModal,    setShowAuthModal]    = useState(false);
   const [pendingRole,      setPendingRole]      = useState<string | null>(null);
@@ -287,7 +288,16 @@ export default function Index() {
                     return <PanelCustom btn={navBtn} onClose={closePanel}
                       onEdit={canEdit ? () => setEditingPanelId(navBtn.id) : undefined} />;
                   }
-                  if (panel === "production") return <PanelProduction onClose={closePanel} />;
+                  if (panel === "production") return <PanelProduction
+                    onClose={closePanel}
+                    canEdit={canEdit}
+                    items={brand.production_items}
+                    token={authToken}
+                    onSave={async (items) => {
+                      patchBrand({ production_items: items });
+                      await updateBrand(authToken, { ...brand, production_items: items });
+                    }}
+                  />;
                   if (panel === "portfolio")  return <PanelPortfolio  onClose={closePanel} />;
                   if (panel === "other")      return <PanelOther onClose={closePanel} onPanel={setPanel} />;
                   return null;

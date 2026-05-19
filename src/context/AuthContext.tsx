@@ -27,6 +27,13 @@ export interface Brand {
   tg_bot_token?:           string | null;
   tg_notify_chat_id?:      string | null;
   nav_config?:             NavButton[] | null;
+  production_items?:       ProductionItem[] | null;
+}
+
+export interface ProductionItem {
+  img:   string;
+  title: string;
+  desc:  string;
 }
 
 // ── Конструктор страниц — блоки ──────────────────────────────────────────────
