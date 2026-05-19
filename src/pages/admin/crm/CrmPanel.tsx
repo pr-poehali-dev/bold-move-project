@@ -131,7 +131,7 @@ export default function CrmPanel({ theme, initialOrderId, initialTab }: { theme:
         } as React.CSSProperties}>
 
         {/* Навигация */}
-        <div className="flex items-center gap-0.5 px-2 sm:px-6 py-2.5 overflow-x-auto"
+        <div className="flex items-center gap-0.5 px-2 sm:px-6 py-1 sm:py-2.5 overflow-x-auto"
           style={{ borderBottom: `1px solid ${t.border}`, background: t.surface }}>
 
           {/* Фиксированные вкладки (фильтрованные по правам) */}
@@ -139,14 +139,14 @@ export default function CrmPanel({ theme, initialOrderId, initialTab }: { theme:
             const active = tab === tb.id;
             return (
               <button key={tb.id} onClick={() => setTab(tb.id)}
-                className="flex items-center gap-1 sm:gap-2 px-2 sm:px-4 py-2 text-xs sm:text-sm rounded-xl transition whitespace-nowrap font-medium border"
+                className="flex flex-col sm:flex-row items-center gap-0.5 sm:gap-2 px-3 sm:px-4 py-2.5 sm:py-2 text-[10px] sm:text-sm rounded-xl transition whitespace-nowrap font-medium border"
                 style={active ? {
                   background: t.accent + "18", color: t.accentLight, borderColor: t.accent + "35",
                 } : {
                   color: t.textSub, borderColor: "transparent", background: "transparent",
                 }}>
-                <Icon name={tb.icon} size={15} />
-                <span>{tb.label}</span>
+                <Icon name={tb.icon} size={18} />
+                <span className="hidden sm:inline">{tb.label}</span>
               </button>
             );
           })}
@@ -154,14 +154,14 @@ export default function CrmPanel({ theme, initialOrderId, initialTab }: { theme:
           {/* Вкладка Канбан — если включена и есть право */}
           {kanbanEnabled && canKanban && (
             <button onClick={() => setTab("kanban")}
-              className="flex items-center gap-1 sm:gap-2 px-2 sm:px-4 py-2 text-xs sm:text-sm rounded-xl transition whitespace-nowrap font-medium border"
+              className="flex flex-col sm:flex-row items-center gap-0.5 sm:gap-2 px-3 sm:px-4 py-2.5 sm:py-2 text-[10px] sm:text-sm rounded-xl transition whitespace-nowrap font-medium border"
               style={tab === "kanban" ? {
                 background: t.accent + "18", color: t.accentLight, borderColor: t.accent + "35",
               } : {
                 color: t.textSub, borderColor: "transparent", background: "transparent",
               }}>
-              <Icon name="Kanban" size={15} />
-              <span>Канбан</span>
+              <Icon name="Kanban" size={18} />
+              <span className="hidden sm:inline">Канбан</span>
             </button>
           )}
 
