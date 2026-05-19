@@ -29,9 +29,11 @@ interface Props {
   canFieldFiles?:    boolean;
   canFieldCancel?:   boolean;
   statuses?:         ClientStatus[];
+  onOpenBuilder?: (client: Client) => void;
+  onOpenAgent?:   (client: Client) => void;
 }
 
-export default function ClientDrawer({ client, allClientOrders, onClose, onUpdated, onDeleted, isLocalCard, defaultTab = "client", defaultOrderId, canEdit = true, canOrdersEdit = true, canFinance = true, canFiles = true, canFieldContacts = true, canFieldAddress = true, canFieldDates = true, canFieldFinance = true, canFieldFiles = true, canFieldCancel = true, statuses = [] }: Props) {
+export default function ClientDrawer({ client, allClientOrders, onClose, onUpdated, onDeleted, isLocalCard, defaultTab = "client", defaultOrderId, canEdit = true, canOrdersEdit = true, canFinance = true, canFiles = true, canFieldContacts = true, canFieldAddress = true, canFieldDates = true, canFieldFinance = true, canFieldFiles = true, canFieldCancel = true, statuses = [], onOpenBuilder, onOpenAgent }: Props) {
   const t = useTheme();
   const [data, setData]               = useState<Client>(client);
   const [saving, setSaving]           = useState(false);
@@ -177,6 +179,32 @@ export default function ClientDrawer({ client, allClientOrders, onClose, onUpdat
           <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
             {saving && <div className="w-4 h-4 border-2 border-violet-500 border-t-transparent rounded-full animate-spin" />}
             {copied && <span className="hidden sm:inline text-xs text-violet-300 whitespace-nowrap">Скопировано!</span>}
+
+            {/* Перейти в бот — только на десктопе */}
+            {onOpenAgent && (
+              <button
+                onClick={() => onOpenAgent(ord)}
+                className="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition hover:opacity-90"
+                style={{ background: "rgba(124,58,237,0.15)", color: "#a78bfa", border: "1px solid rgba(124,58,237,0.25)" }}
+                title="Перейти в бот"
+              >
+                <Icon name="Bot" size={13} />
+                Бот
+              </button>
+            )}
+
+            {/* Перейти в построитель — только на десктопе */}
+            {onOpenBuilder && (
+              <button
+                onClick={() => onOpenBuilder(ord)}
+                className="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition hover:opacity-90"
+                style={{ background: "rgba(16,185,129,0.12)", color: "#10b981", border: "1px solid rgba(16,185,129,0.25)" }}
+                title={ord.project_id ? "Открыть чертёж" : "Создать чертёж"}
+              >
+                <Icon name="PenTool" size={13} />
+                {ord.project_id ? "Чертёж" : "Построитель"}
+              </button>
+            )}
 
             {/* Скрыть блоки — только на десктопе */}
             <button

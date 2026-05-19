@@ -296,6 +296,8 @@ export default function CrmOrders({ clients: allClients, loading, onStatusChange
           canFieldFinance={canFieldFinance}
           canFieldFiles={canFieldFiles}
           canFieldCancel={canFieldCancel}
+          onOpenBuilder={handleSwipeBuilder}
+          onOpenAgent={handleSwipeAgent}
         />
       )}
 
