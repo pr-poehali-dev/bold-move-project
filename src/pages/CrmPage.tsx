@@ -5,7 +5,7 @@ import type { Theme } from "./admin/crm/themeContext";
 import { AdminPanelLoadingScreen, AdminPanelAccessScreen } from "./AdminPanelAccess";
 import { TrialBanner } from "./admin/TrialBanner";
 import CrmPanel from "./admin/crm/CrmPanel";
-import QuickAccessBar from "@/components/QuickAccessBar";
+
 
 const ALLOWED_ROLES = ["installer", "company", "manager"];
 
@@ -75,8 +75,6 @@ export default function CrmPage() {
             </div>
         }
       </div>
-
-      <QuickAccessBar />
     </div>
   );
 }

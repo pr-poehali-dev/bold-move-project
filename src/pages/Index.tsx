@@ -23,7 +23,7 @@ import {
   PanelOther,
   PanelCustom,
 } from "./ChatPanels";
-import QuickAccessBar from "@/components/QuickAccessBar";
+
 import EcoSystemModal from "@/components/EcoSystemModal";
 
 export default function Index() {
@@ -399,8 +399,7 @@ export default function Index() {
         </div>
       </div>
 
-      {/* Быстрое меню — свайп вверх/вниз */}
-      <QuickAccessBar />
+
 
       {/* Page Editor — открывается поверх всего при нажатии на карандаш */}
       {editingPanelId && (

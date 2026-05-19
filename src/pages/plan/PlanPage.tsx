@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import QuickAccessBar from "@/components/QuickAccessBar";
+
 import PlanToolbar from "./PlanToolbar";
 import useVoiceDraw from "./useVoiceDraw";
 import { usePlanCatalog } from "./usePlanCatalog";
@@ -206,7 +206,6 @@ export default function PlanPage() {
             }}
           />
         </div>
-        <QuickAccessBar />
       </div>
     );
   }
@@ -257,7 +256,6 @@ export default function PlanPage() {
         }}
           />
         </div>
-        <QuickAccessBar />
       </div>
     );
   }

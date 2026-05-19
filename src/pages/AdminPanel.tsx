@@ -10,7 +10,7 @@ import { AdminPanelLoadingScreen, AdminPanelAccessScreen } from "./AdminPanelAcc
 import { AdminPanelHeader } from "./AdminPanelHeader";
 import { AdminPanelContent } from "./AdminPanelContent";
 import { TrialBanner } from "./admin/TrialBanner";
-import QuickAccessBar from "@/components/QuickAccessBar";
+
 
 // Роли с доступом к /company
 const ALLOWED_ROLES = ["installer", "company", "manager"];
@@ -120,8 +120,8 @@ export default function AdminPanel() {
   const headerText   = isDark ? "#ffffff" : "#0f1623";
 
   return (
-    <div className="flex flex-col transition-colors duration-300 overflow-x-hidden"
-      style={{ height: "100dvh", background: isDark ? "#07070f" : "#eef0f6", color: headerText }}>
+    <div className="min-h-screen flex flex-col transition-colors duration-300 overflow-x-hidden"
+      style={{ background: isDark ? "#07070f" : "#eef0f6", color: headerText }}>
 
       {user.role === "company" && <TrialBanner user={user} isDark={isDark} />}
       <AdminPanelHeader
@@ -151,8 +151,6 @@ export default function AdminPanel() {
         user={user}
         mainTabsLength={mainTabs.length}
       />
-
-      <QuickAccessBar />
     </div>
   );
 }
