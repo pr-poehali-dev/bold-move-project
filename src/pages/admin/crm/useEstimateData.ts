@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { crmFetch } from "./crmApi";
 import { AUTH_URL, PRICES_URL, PriceItem, EstimateBlock, SavedEstimate, PlanRoomForEstimate } from "./estimateTypes";
 import { buildBlocksFromRooms, recalcTotals, calcStandardTotal, generatePrintHtml } from "./estimateUtils";
@@ -28,6 +28,7 @@ export function useEstimateData(
   const [prices, setPrices]     = useState<PriceItem[]>([]);
   const [planRooms, setPlanRooms] = useState<PlanRoomForEstimate[]>([]);
   const [loading, setLoading]   = useState(true);
+  const autoSavedRef = useRef(false);
 
   const loadData = useCallback(() => {
     setLoading(true);
@@ -46,8 +47,17 @@ export function useEstimateData(
         setTotals(d.estimate.totals || []);
       } else if (roomList.length > 0) {
         const autoBlocks = buildBlocksFromRooms(roomList, priceList);
+        const autoTotals = recalcTotals(autoBlocks);
         setBlocks(autoBlocks);
-        setTotals(recalcTotals(autoBlocks));
+        setTotals(autoTotals);
+        // Авто-сохранение сметы если смета ещё не создана, но комнаты с данными есть
+        if (!autoSavedRef.current && calcStandardTotal(autoBlocks) > 0) {
+          autoSavedRef.current = true;
+          crmFetch("create-estimate-for-chat", {
+            method: "POST",
+            body: JSON.stringify({ chat_id: chatId, blocks: autoBlocks, totals: autoTotals }),
+          }).catch(() => { autoSavedRef.current = false; });
+        }
       }
       setLoading(false);
     }).catch(() => setLoading(false));
