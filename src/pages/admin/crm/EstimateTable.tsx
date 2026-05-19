@@ -335,17 +335,8 @@ export default function EstimateTable({
               </thead>
               <tbody>
                 {blocks.map((block, bi) => {
-                  let numCounter = 0;
-                  blocks.slice(0, bi).forEach(b => { if (b.numbered) numCounter++; });
-                  if (block.numbered) numCounter++;
-                  const label = block.numbered ? `${numCounter}. ${block.title}` : block.title;
                   return (
                     <>
-                      <tr key={`h-${bi}`} style={{ background: t.surface2 + "80" }}>
-                        <td colSpan={6} className="px-3 py-2 text-xs font-bold" style={{ color: "#f97316", borderBottom: `1px solid ${t.border2}` }}>
-                          {label}
-                        </td>
-                      </tr>
                       {block.items.map((item, ii) => (
                         <EstimateItemRow
                           key={`${bi}-${ii}`}
