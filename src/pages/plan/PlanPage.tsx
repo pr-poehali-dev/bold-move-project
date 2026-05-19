@@ -368,7 +368,6 @@ export default function PlanPage() {
         mobileVariantPickerOpen={mobileVariantPickerOpen}
       />
 
-      <QuickAccessBar />
     </div>
   );
 }
