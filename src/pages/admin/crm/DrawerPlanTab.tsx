@@ -177,22 +177,31 @@ export default function DrawerPlanTab({ chatId, projectId }: Props) {
   // Печать PDF: чертежи, опционально со сметой под каждым
   const printWithEstimate = async (withEstimate = false) => {
     const clientName = project?.client_name ?? "";
+    const isDark = darkBg;
+    const bgColor    = isDark ? "#0d0d1a" : "#ffffff";
+    const textColor  = isDark ? "#e5e7ef" : "#111111";
+    const subColor   = isDark ? "#9ca3af" : "#666666";
+    const accentColor = "#a78bfa";
+    const borderColor = isDark ? "#2d2d4a" : "#e5e7eb";
+    const thBg       = isDark ? "#1a1a2e" : "#f9f7ff";
+
     let html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Чертежи — ${clientName}</title>
     <style>
-      body{font-family:sans-serif;padding:24px;color:#111;max-width:900px;margin:0 auto}
+      body{font-family:sans-serif;padding:24px;color:${textColor};background:${bgColor};max-width:900px;margin:0 auto}
       .room{margin-bottom:32px;page-break-inside:avoid}
-      .room-title{font-size:16px;font-weight:700;color:#7c3aed;margin-bottom:8px}
+      .room-title{font-size:16px;font-weight:700;color:${accentColor};margin-bottom:8px}
       .drawing{text-align:center;margin-bottom:12px}
-      .drawing img{max-width:100%;max-height:400px;object-fit:contain;border:1px solid #e5e7eb;border-radius:8px}
+      .drawing img{max-width:100%;max-height:400px;object-fit:contain;border:1px solid ${borderColor};border-radius:8px}
       table{width:100%;border-collapse:collapse;font-size:13px}
-      tr{border-bottom:1px solid #f0f0f0}
-      td{padding:5px 8px}
+      tr{border-bottom:1px solid ${borderColor}}
+      td{padding:5px 8px;color:${textColor}}
       td:last-child{text-align:right;font-weight:600}
-      .total{margin-top:8px;text-align:right;font-size:12px;color:#666}
-      @media print{.room{page-break-inside:avoid}}
+      th{text-align:left;padding:5px 8px;color:${subColor};background:${thBg}}
+      .total{margin-top:8px;text-align:right;font-size:12px;color:${subColor}}
+      @media print{body{background:${bgColor} !important;-webkit-print-color-adjust:exact;print-color-adjust:exact}.room{page-break-inside:avoid}}
     </style></head><body>
-    <h1 style="font-size:18px;margin-bottom:4px">Чертежи — ${clientName}</h1>
-    <p style="color:#888;font-size:13px;margin:0 0 24px">Дата: ${new Date().toLocaleDateString("ru-RU")}</p>`;
+    <h1 style="font-size:18px;margin-bottom:4px;color:${textColor}">Чертежи — ${clientName}</h1>
+    <p style="color:${subColor};font-size:13px;margin:0 0 24px">Дата: ${new Date().toLocaleDateString("ru-RU")}</p>`;
 
     for (const room of rooms) {
       const planData = (room.active_variant_data ?? room.data) as PlanState | undefined;
@@ -215,7 +224,7 @@ export default function DrawerPlanTab({ chatId, projectId }: Props) {
       html += `<div class="room">
         <div class="room-title">${room.name}${room.active_variant_name ? ` — ${room.active_variant_name}` : ""}</div>
         ${thumb ? `<div class="drawing"><img src="${thumb}" alt="${room.name}"/></div>` : ""}
-        ${withEstimate && rows ? `<table><thead><tr style="background:#f9f7ff"><th style="text-align:left;padding:5px 8px">Позиция</th><th style="text-align:center;padding:5px 8px">Кол-во</th><th style="text-align:left;padding:5px 8px">Ед.</th></tr></thead><tbody>${rows}</tbody></table>` : ""}
+        ${withEstimate && rows ? `<table><thead><tr><th>Позиция</th><th style="text-align:center">Кол-во</th><th>Ед.</th></tr></thead><tbody>${rows}</tbody></table>` : ""}
       </div>`;
     }
 
