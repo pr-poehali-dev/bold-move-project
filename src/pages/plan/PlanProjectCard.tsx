@@ -170,7 +170,7 @@ export default function PlanProjectCard({
           title={`Открыть заявку CRM #${project.crm_chat_id}`}
           onClick={e => { e.stopPropagation(); window.open(`/crm?order=${project.crm_chat_id}`, "_blank"); }}
           className="absolute flex items-center gap-0.5 px-2 py-1 rounded-tl-xl text-[10px] font-bold z-10 transition hover:brightness-125 active:scale-95"
-          style={{ bottom: 38, right: 0, background: "rgba(34,197,94,0.15)", color: "#4ade80", border: "1px solid rgba(34,197,94,0.25)", borderRight: "none" }}
+          style={{ bottom: 0, right: 0, background: "rgba(34,197,94,0.15)", color: "#4ade80", border: "1px solid rgba(34,197,94,0.25)", borderBottom: "none", borderRight: "none" }}
         >
           <Icon name="CheckCircle" size={9} />
           CRM
@@ -378,7 +378,7 @@ export default function PlanProjectCard({
                 onClick={() => setConfirmDelete(true)}
                 disabled={isDeleting}
                 className="flex items-center justify-center gap-1.5 py-2.5 text-[12px] font-semibold transition hover:bg-red-500/10 disabled:opacity-50"
-                style={{ color: "rgba(239,68,68,0.6)", paddingLeft: 20, paddingRight: project.crm_chat_id ? 44 : 20 }}
+                style={{ color: "rgba(239,68,68,0.6)", paddingLeft: 20, paddingRight: 20, marginRight: project.crm_chat_id ? 48 : 0 }}
               >
                 {isDeleting
                   ? <div className="w-3.5 h-3.5 border border-red-400/40 border-t-red-400 rounded-full animate-spin" />
