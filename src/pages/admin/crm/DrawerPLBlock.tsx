@@ -27,9 +27,10 @@ export function DrawerPLBlock({ data, isHidden, toggleHidden, customFinRows, dis
     .filter(r => r.value > 0);
 
   const costRows: { label: string; value: number }[] = [
-    { label: "Материалы", value: Number(data.material_cost) || 0 },
-    { label: "Замер",     value: Number(data.measure_cost)  || 0 },
-    { label: "Монтаж",    value: Number(data.install_cost)  || 0 },
+    { label: "Материалы",  value: Number(data.material_cost)   || 0 },
+    { label: "Замер",      value: Number(data.measure_cost)    || 0 },
+    { label: "Монтаж",     value: Number(data.install_cost)    || 0 },
+    { label: "Менеджмент", value: Number(data.management_cost) || 0 },
     ...customCostRows,
   ].filter(r => r.value > 0);
   const plCosts = costRows.reduce((s, r) => s + r.value, 0);

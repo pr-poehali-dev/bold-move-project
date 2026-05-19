@@ -752,31 +752,36 @@ def handler(event: dict, context) -> dict:
 
         material_cost_total = 0
         installation_cost_total = 0
+        management_cost_total = 0
         try:
             import re as _re
             # Читаем глобальные флаги
-            cur.execute(f"SELECT use_installation_price, use_measure_price FROM {SCHEMA}.auto_rules_settings WHERE company_id=%s", (crm_company_id,))
+            cur.execute(f"SELECT use_installation_price, use_measure_price, use_management_price FROM {SCHEMA}.auto_rules_settings WHERE company_id=%s", (crm_company_id,))
             settings_row = cur.fetchone()
-            use_install_global  = bool(settings_row[0]) if settings_row else False
-            use_measure_global  = bool(settings_row[1]) if settings_row else False
+            use_install_global    = bool(settings_row[0]) if settings_row else False
+            use_measure_global    = bool(settings_row[1]) if settings_row else False
+            use_management_global = bool(settings_row[2]) if settings_row else False
 
             cur.execute(f"""
-                SELECT p.name, p.purchase_price, p.installation_price, p.measure_price, s.is_material
+                SELECT p.name, p.purchase_price, p.installation_price, p.measure_price, p.management_price, s.is_material
                 FROM {SCHEMA}.ai_prices p
                 JOIN {SCHEMA}.price_category_settings s ON s.category = p.category
-                WHERE p.active=true AND (p.purchase_price > 0 OR p.installation_price > 0 OR p.measure_price > 0)
+                WHERE p.active=true AND (p.purchase_price > 0 OR p.installation_price > 0 OR p.measure_price > 0 OR p.management_price > 0)
             """)
             mat_map = {}
             inst_map = {}
             meas_map = {}
+            mgmt_map = {}
             for row in cur.fetchall():
                 name_key = row[0].strip().lower()
-                if row[4] and row[1]:
+                if row[5] and row[1]:
                     mat_map[name_key] = float(row[1])
                 if use_install_global and row[2]:
                     inst_map[name_key] = float(row[2])
                 if use_measure_global and row[3]:
                     meas_map[name_key] = float(row[3])
+                if use_management_global and row[4]:
+                    mgmt_map[name_key] = float(row[4])
             for block in blocks:
                 for item in block.get("items", []):
                     item_name = item.get("name", "").strip().lower()
@@ -789,24 +794,29 @@ def handler(event: dict, context) -> dict:
                         installation_cost_total += inst_map[item_name] * qty
                     if item_name in meas_map:
                         installation_cost_total += meas_map[item_name] * qty
+                    if item_name in mgmt_map:
+                        management_cost_total += mgmt_map[item_name] * qty
             material_cost_total = int(round(material_cost_total))
             installation_cost_total = int(round(installation_cost_total))
+            management_cost_total = int(round(management_cost_total))
         except Exception:
             material_cost_total = 0
             installation_cost_total = 0
+            management_cost_total = 0
 
         import secrets as sec
         # Если передан linked_chat_id — обновляем существующую заявку, не создаём новую
         if linked_chat_id:
             cur.execute(f"""
                 UPDATE {SCHEMA}.live_chats
-                SET contract_sum=%s, material_cost=%s, install_cost=%s
+                SET contract_sum=%s, material_cost=%s, install_cost=%s, management_cost=%s
                 WHERE id=%s AND company_id=%s
                 RETURNING id
             """, (
                 total_standard,
                 material_cost_total if material_cost_total > 0 else None,
                 installation_cost_total if installation_cost_total > 0 else None,
+                management_cost_total if management_cost_total > 0 else None,
                 int(linked_chat_id),
                 crm_company_id,
             ))
@@ -817,8 +827,8 @@ def handler(event: dict, context) -> dict:
             session_id = f"estimate-{estimate_id}-{sec.token_hex(6)}"
             cur.execute(f"""
                 INSERT INTO {SCHEMA}.live_chats
-                  (session_id, client_name, phone, status, source, contract_sum, material_cost, install_cost, company_id)
-                VALUES (%s, %s, %s, 'new', 'estimate', %s, %s, %s, %s)
+                  (session_id, client_name, phone, status, source, contract_sum, material_cost, install_cost, management_cost, company_id)
+                VALUES (%s, %s, %s, 'new', 'estimate', %s, %s, %s, %s, %s)
                 RETURNING id
             """, (
                 session_id,
@@ -827,6 +837,7 @@ def handler(event: dict, context) -> dict:
                 total_standard,
                 material_cost_total if material_cost_total > 0 else None,
                 installation_cost_total if installation_cost_total > 0 else None,
+                management_cost_total if management_cost_total > 0 else None,
                 crm_company_id,
             ))
             chat_id = cur.fetchone()[0]
@@ -835,11 +846,12 @@ def handler(event: dict, context) -> dict:
 
         # Применяем авто-правила компании к новой заявке если auto_mode включён
         if total_standard and crm_company_id:
-            cur.execute(f"SELECT auto_mode, use_installation_price, use_measure_price FROM {SCHEMA}.auto_rules_settings WHERE company_id=%s", (crm_company_id,))
+            cur.execute(f"SELECT auto_mode, use_installation_price, use_measure_price, use_management_price FROM {SCHEMA}.auto_rules_settings WHERE company_id=%s", (crm_company_id,))
             settings_row = cur.fetchone()
             if settings_row and settings_row[0]:
-                _use_install = bool(settings_row[1]) if settings_row[1] is not None else False
-                _use_measure = bool(settings_row[2]) if settings_row[2] is not None else False
+                _use_install    = bool(settings_row[1]) if settings_row[1] is not None else False
+                _use_measure    = bool(settings_row[2]) if settings_row[2] is not None else False
+                _use_management = bool(settings_row[3]) if settings_row[3] is not None else False
                 cur.execute(f"""
                     SELECT key, pct, row_type
                     FROM {SCHEMA}.auto_rules_v2
@@ -848,14 +860,20 @@ def handler(event: dict, context) -> dict:
                 rules = cur.fetchall()
                 if rules:
                     auto_patch = {}
-                    cost_keys = {"material_cost", "measure_cost", "install_cost"}
+                    cost_keys = {"material_cost", "measure_cost", "install_cost", "management_cost"}
                     income_keys = {"prepayment", "extra_payment"}
                     for r_key, r_pct, r_type in rules:
+                        # manager_cost (старый ключ) → management_cost
+                        if r_key == "manager_cost":
+                            r_key = "management_cost"
                         # Пропускаем install_cost если включён "Монтаж по прайсу"
                         if r_key == "install_cost" and _use_install:
                             continue
                         # Пропускаем measure_cost если включён "Замер по прайсу"
                         if r_key == "measure_cost" and _use_measure:
+                            continue
+                        # Пропускаем management_cost если включён "Менеджмент по прайсу"
+                        if r_key == "management_cost" and _use_management:
                             continue
                         if r_key in cost_keys or r_key in income_keys:
                             auto_patch[r_key] = int(round(float(total_standard) * float(r_pct) / 100))

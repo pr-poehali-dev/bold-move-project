@@ -186,7 +186,7 @@ def handler(event: dict, context) -> dict:
         rows = cur.fetchall()
 
         cur.execute(f"""
-            SELECT auto_mode, use_installation_price, use_measure_price FROM {SCHEMA}.auto_rules_settings
+            SELECT auto_mode, use_installation_price, use_measure_price, use_management_price FROM {SCHEMA}.auto_rules_settings
             WHERE company_id = {company_id}
         """)
         settings = cur.fetchone()
@@ -202,7 +202,8 @@ def handler(event: dict, context) -> dict:
         auto_mode = settings[0] if settings else False
         use_installation_price = bool(settings[1]) if settings else False
         use_measure_price = bool(settings[2]) if settings else False
-        return ok({"rules": rules, "auto_mode": auto_mode, "use_installation_price": use_installation_price, "use_measure_price": use_measure_price})
+        use_management_price = bool(settings[3]) if settings else False
+        return ok({"rules": rules, "auto_mode": auto_mode, "use_installation_price": use_installation_price, "use_measure_price": use_measure_price, "use_management_price": use_management_price})
 
     # POST — сохранить правила компании
     if method == "POST":
@@ -211,17 +212,19 @@ def handler(event: dict, context) -> dict:
         auto_mode = body.get("auto_mode", False)
         use_installation_price = bool(body.get("use_installation_price", False))
         use_measure_price = bool(body.get("use_measure_price", False))
+        use_management_price = bool(body.get("use_management_price", False))
 
         conn = get_conn()
         cur = conn.cursor()
 
         cur.execute(f"""
-            INSERT INTO {SCHEMA}.auto_rules_settings (company_id, auto_mode, use_installation_price, use_measure_price)
-            VALUES ({company_id}, {'true' if auto_mode else 'false'}, {'true' if use_installation_price else 'false'}, {'true' if use_measure_price else 'false'})
+            INSERT INTO {SCHEMA}.auto_rules_settings (company_id, auto_mode, use_installation_price, use_measure_price, use_management_price)
+            VALUES ({company_id}, {'true' if auto_mode else 'false'}, {'true' if use_installation_price else 'false'}, {'true' if use_measure_price else 'false'}, {'true' if use_management_price else 'false'})
             ON CONFLICT (company_id) DO UPDATE SET
                 auto_mode = EXCLUDED.auto_mode,
                 use_installation_price = EXCLUDED.use_installation_price,
                 use_measure_price = EXCLUDED.use_measure_price,
+                use_management_price = EXCLUDED.use_management_price,
                 updated_at = NOW()
         """)
 

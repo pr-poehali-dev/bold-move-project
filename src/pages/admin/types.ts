@@ -23,6 +23,7 @@ export interface PriceItem {
   purchase_price: number;
   installation_price: number;
   measure_price: number;
+  management_price: number;
   unit: string;
   description: string;
   synonyms: string;

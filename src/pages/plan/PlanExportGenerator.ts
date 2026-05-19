@@ -15,6 +15,7 @@ interface PriceFull {
   purchase_price: number;
   installation_price: number;
   measure_price: number;
+  management_price: number;
   unit: string;
   category: string;
   is_material?: boolean;
@@ -30,6 +31,7 @@ interface AggregatedItem {
   purchase_price?: number;
   installation_price?: number;
   measure_price?: number;
+  management_price?: number;
   is_material?: boolean;
 }
 
@@ -81,6 +83,7 @@ function extractRoomItems(room: PlanRoom, prices: Map<number, PriceFull>): Aggre
         purchase_price: p?.purchase_price,
         installation_price: p?.installation_price,
         measure_price: p?.measure_price,
+        management_price: p?.management_price,
         is_material: p?.is_material,
       });
     }
@@ -197,6 +200,7 @@ export async function generateExportPdf(opts: GenerateOpts): Promise<void> {
     case "kp_works":      return openPrint(buildKpWorks(rooms, prices, scope, projectName, clientName, clientPhone, address));
     case "zp_install":    return openPrint(buildZpInstall(rooms, prices, projectName, clientName, clientPhone, address, thumbs));
     case "zp_measure":    return openPrint(buildZpMeasure(rooms, prices, projectName, clientName, clientPhone, address));
+    case "zp_management": return openPrint(buildZpManagement(rooms, prices, projectName, clientName, clientPhone, address));
     case "analytics":     return openPrint(buildAnalytics(rooms, prices, projectName, clientName, clientPhone, address));
   }
 }
@@ -443,7 +447,32 @@ function buildZpMeasure(rooms: PlanRoom[], prices: Map<number, PriceFull>, proje
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 7) АНАЛИТИКА ПО ОБЪЕКТУ — всё: себестоимость, ЗП, продажа, прибыль
+// 7) ЗП МЕНЕДЖМЕНТ — без чертежей, цены из колонки Менеджмент
+// ─────────────────────────────────────────────────────────────────────────────
+function buildZpManagement(rooms: PlanRoom[], prices: Map<number, PriceFull>, projectName: string, name: string | null, phone: string | null, address: string | null): string {
+  const items = groupAllRooms(rooms, prices).filter(it => (it.management_price ?? 0) > 0);
+  let total = 0;
+  const rows = items.map(it => {
+    const sum = (it.management_price ?? 0) * it.quantity;
+    total += sum;
+    return `<tr>
+      <td>${it.name}</td>
+      <td class="num">${fmt(it.quantity)}</td>
+      <td class="num">${it.unit}</td>
+      <td class="num">${fmt(it.management_price ?? 0)} ₽</td>
+      <td class="right">${fmt(sum)} ₽</td>
+    </tr>`;
+  }).join("");
+  const body = `<table>
+    <thead><tr><th>Позиция</th><th class="num">Кол-во</th><th class="num">Ед.</th><th class="num">Менеджмент</th><th class="right">Сумма</th></tr></thead>
+    <tbody>${rows || `<tr><td colspan="5" class="num" style="color:#999">Нет позиций для менеджмента</td></tr>`}</tbody>
+  </table>
+  <div class="summary"><div class="summary-row profit"><span>Итого к выплате менеджменту:</span><span>${fmt(total)} ₽</span></div></div>`;
+  return htmlWrapper(`ЗП менеджмент — ${projectName}`, name, phone, address, body);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 8) АНАЛИТИКА ПО ОБЪЕКТУ — всё: себестоимость, ЗП, продажа, прибыль
 // ─────────────────────────────────────────────────────────────────────────────
 function buildAnalytics(rooms: PlanRoom[], prices: Map<number, PriceFull>, projectName: string, name: string | null, phone: string | null, address: string | null): string {
   const items = groupAllRooms(rooms, prices);
@@ -451,40 +480,47 @@ function buildAnalytics(rooms: PlanRoom[], prices: Map<number, PriceFull>, proje
   let materialCost = 0;     // Себестоимость материалов
   let installCost = 0;      // ЗП монтажников
   let measureCost = 0;      // ЗП замерщика
+  let managementCost = 0;   // ЗП менеджмент
   let salesTotal = 0;       // Продажная сумма
 
   // Группируем по категориям для детального отчёта
-  const byCategory = new Map<string, { sales: number; material: number; install: number; measure: number; count: number }>();
+  const byCategory = new Map<string, { sales: number; material: number; install: number; measure: number; management: number; count: number }>();
 
   for (const it of items) {
     const sales = (it.price ?? 0) * it.quantity;
     const mat = it.is_material !== false ? (it.purchase_price ?? 0) * it.quantity : 0;
     const inst = (it.installation_price ?? 0) * it.quantity;
     const meas = (it.measure_price ?? 0) * it.quantity;
+    const mgmt = (it.management_price ?? 0) * it.quantity;
     salesTotal += sales;
     materialCost += mat;
     installCost += inst;
     measureCost += meas;
+    managementCost += mgmt;
 
     const cat = it.category || "Прочее";
-    const ex = byCategory.get(cat) ?? { sales: 0, material: 0, install: 0, measure: 0, count: 0 };
-    ex.sales += sales; ex.material += mat; ex.install += inst; ex.measure += meas; ex.count++;
+    const ex = byCategory.get(cat) ?? { sales: 0, material: 0, install: 0, measure: 0, management: 0, count: 0 };
+    ex.sales += sales; ex.material += mat; ex.install += inst; ex.measure += meas; ex.management += mgmt; ex.count++;
     byCategory.set(cat, ex);
   }
 
-  const totalCost = materialCost + installCost + measureCost;
+  const totalCost = materialCost + installCost + measureCost + managementCost;
   const profit = salesTotal - totalCost;
   const margin = salesTotal > 0 ? Math.round((profit / salesTotal) * 100) : 0;
 
-  const categoryRows = Array.from(byCategory.entries()).map(([cat, v]) => `<tr>
-    <td>${cat}</td>
-    <td class="num">${v.count}</td>
-    <td class="right" style="color:#16a34a">${fmt(v.sales)} ₽</td>
-    <td class="right" style="color:#ef4444">${fmt(v.material)} ₽</td>
-    <td class="right" style="color:#06b6d4">${fmt(v.install)} ₽</td>
-    <td class="right" style="color:#14b8a6">${fmt(v.measure)} ₽</td>
-    <td class="right" style="font-weight:800;color:${(v.sales - v.material - v.install - v.measure) >= 0 ? "#16a34a" : "#ef4444"}">${fmt(v.sales - v.material - v.install - v.measure)} ₽</td>
-  </tr>`).join("");
+  const categoryRows = Array.from(byCategory.entries()).map(([cat, v]) => {
+    const catProfit = v.sales - v.material - v.install - v.measure - v.management;
+    return `<tr>
+      <td>${cat}</td>
+      <td class="num">${v.count}</td>
+      <td class="right" style="color:#16a34a">${fmt(v.sales)} ₽</td>
+      <td class="right" style="color:#ef4444">${fmt(v.material)} ₽</td>
+      <td class="right" style="color:#06b6d4">${fmt(v.install)} ₽</td>
+      <td class="right" style="color:#14b8a6">${fmt(v.measure)} ₽</td>
+      <td class="right" style="color:#d946ef">${fmt(v.management)} ₽</td>
+      <td class="right" style="font-weight:800;color:${catProfit >= 0 ? "#16a34a" : "#ef4444"}">${fmt(catProfit)} ₽</td>
+    </tr>`;
+  }).join("");
 
   const body = `
     <div class="summary">
@@ -492,6 +528,7 @@ function buildAnalytics(rooms: PlanRoom[], prices: Map<number, PriceFull>, proje
       <div class="summary-row" style="color:#ef4444"><span>📦 Себестоимость материалов</span><span>−${fmt(materialCost)} ₽</span></div>
       <div class="summary-row" style="color:#06b6d4"><span>🔧 ЗП монтажников</span><span>−${fmt(installCost)} ₽</span></div>
       <div class="summary-row" style="color:#14b8a6"><span>📏 ЗП замерщика</span><span>−${fmt(measureCost)} ₽</span></div>
+      <div class="summary-row" style="color:#d946ef"><span>💼 ЗП менеджмента</span><span>−${fmt(managementCost)} ₽</span></div>
       <div class="summary-row" style="font-weight:700;border-top:1px solid #ddd;padding-top:8px;margin-top:6px"><span>Итого затрат</span><span>−${fmt(totalCost)} ₽</span></div>
       <div class="summary-row profit"><span>Прибыль (маржа ${margin}%)</span><span>${profit >= 0 ? "+" : ""}${fmt(profit)} ₽</span></div>
     </div>
@@ -504,6 +541,7 @@ function buildAnalytics(rooms: PlanRoom[], prices: Map<number, PriceFull>, proje
         <th class="right">Закупка</th>
         <th class="right">Монтаж</th>
         <th class="right">Замер</th>
+        <th class="right">Менеджмент</th>
         <th class="right">Прибыль</th>
       </tr></thead>
       <tbody>${categoryRows}</tbody>

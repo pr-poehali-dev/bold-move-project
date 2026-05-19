@@ -30,20 +30,22 @@ export function AutoRulesModal({ onClose, defaultTab = "costs" }: {
   defaultTab?: "costs" | "income";
 }) {
   const t = useTheme();
-  const { rules, auto_mode, use_installation_price, use_measure_price, loading, saving, save } = useAutoRules();
+  const { rules, auto_mode, use_installation_price, use_measure_price, use_management_price, loading, saving, save } = useAutoRules();
 
   const [tab,         setTab]         = useState<"costs" | "income">(defaultTab);
   const [localRules,  setLocalRules]  = useState<RuleEntry[] | null>(null);
   const [localAutoMode, setLocalAutoMode] = useState<boolean | null>(null);
   const [localUseInstall, setLocalUseInstall] = useState<boolean | null>(null);
   const [localUseMeasure, setLocalUseMeasure] = useState<boolean | null>(null);
+  const [localUseManagement, setLocalUseManagement] = useState<boolean | null>(null);
   const [addingRow,   setAddingRow]   = useState(false);
   const [newLabel,    setNewLabel]    = useState("");
 
-  const currentRules      = localRules      ?? rules;
-  const currentAutoMode   = localAutoMode   ?? auto_mode;
-  const currentUseInstall = localUseInstall ?? use_installation_price;
-  const currentUseMeasure = localUseMeasure ?? use_measure_price;
+  const currentRules         = localRules         ?? rules;
+  const currentAutoMode      = localAutoMode      ?? auto_mode;
+  const currentUseInstall    = localUseInstall    ?? use_installation_price;
+  const currentUseMeasure    = localUseMeasure    ?? use_measure_price;
+  const currentUseManagement = localUseManagement ?? use_management_price;
 
   const isCosts     = tab === "costs";
   const rowType     = isCosts ? "cost" : "income";
@@ -55,7 +57,7 @@ export function AutoRulesModal({ onClose, defaultTab = "costs" }: {
   };
 
   const handleSave = async () => {
-    await save(currentRules, currentAutoMode, currentUseInstall, currentUseMeasure);
+    await save(currentRules, currentAutoMode, currentUseInstall, currentUseMeasure, currentUseManagement);
     onClose();
   };
 
@@ -228,6 +230,21 @@ export function AutoRulesModal({ onClose, defaultTab = "costs" }: {
                     </div>
                   </div>
                   <Toggle enabled={currentUseMeasure} onChange={v => setLocalUseMeasure(v)} color="#14b8a6" />
+                </div>
+              </div>
+              <div className="rounded-xl p-3"
+                style={{ background: currentUseManagement ? "rgba(217,70,239,0.08)" : "rgba(255,255,255,0.03)", border: `1px solid ${currentUseManagement ? "rgba(217,70,239,0.25)" : t.border}` }}>
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <Icon name="Briefcase" size={13} style={{ color: currentUseManagement ? "#d946ef" : t.textMute }} />
+                    <div>
+                      <p className="text-xs font-semibold" style={{ color: currentUseManagement ? "#d946ef" : t.text }}>Менеджмент по прайсу</p>
+                      <p className="text-[10px] mt-0.5" style={{ color: t.textMute }}>
+                        {currentUseManagement ? "P&L берёт из колонки «Менеджмент ₽», авто-правило игнорируется" : "Считается по авто-правилу выше"}
+                      </p>
+                    </div>
+                  </div>
+                  <Toggle enabled={currentUseManagement} onChange={v => setLocalUseManagement(v)} color="#d946ef" />
                 </div>
               </div>
             </div>

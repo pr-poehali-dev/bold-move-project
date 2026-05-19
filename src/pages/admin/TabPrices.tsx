@@ -20,7 +20,7 @@ export default function TabPrices({ token, onItemAdded, isDark = true, readOnly 
     generateSynonyms, generateDescription, moveItem, load,
   } = usePriceList(token);
 
-  const { use_installation_price, use_measure_price, rules, auto_mode, save: saveAutoRules, loading: autoLoading } = useAutoRules();
+  const { use_installation_price, use_measure_price, use_management_price, rules, auto_mode, save: saveAutoRules, loading: autoLoading } = useAutoRules();
 
   // ── Картинки ───────────────────────────────────────────────────────────────
   const [itemImages, setItemImages] = useState<Record<number, string>>({});
@@ -122,7 +122,7 @@ export default function TabPrices({ token, onItemAdded, isDark = true, readOnly 
       <div className="flex items-center gap-2 flex-wrap">
         <button
           disabled={autoLoading}
-          onClick={() => saveAutoRules(rules, auto_mode, !use_installation_price, use_measure_price)}
+          onClick={() => saveAutoRules(rules, auto_mode, !use_installation_price, use_measure_price, use_management_price)}
           className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold transition hover:opacity-80 active:scale-[0.97] disabled:opacity-40"
           style={{
             background: use_installation_price ? "rgba(6,182,212,0.12)" : "rgba(255,255,255,0.05)",
@@ -134,7 +134,7 @@ export default function TabPrices({ token, onItemAdded, isDark = true, readOnly 
         </button>
         <button
           disabled={autoLoading}
-          onClick={() => saveAutoRules(rules, auto_mode, use_installation_price, !use_measure_price)}
+          onClick={() => saveAutoRules(rules, auto_mode, use_installation_price, !use_measure_price, use_management_price)}
           className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold transition hover:opacity-80 active:scale-[0.97] disabled:opacity-40"
           style={{
             background: use_measure_price ? "rgba(20,184,166,0.12)" : "rgba(255,255,255,0.05)",
@@ -143,6 +143,18 @@ export default function TabPrices({ token, onItemAdded, isDark = true, readOnly 
           }}>
           <Icon name="Ruler" size={11} />
           Замер по прайсу: {use_measure_price ? "вкл" : "выкл"}
+        </button>
+        <button
+          disabled={autoLoading}
+          onClick={() => saveAutoRules(rules, auto_mode, use_installation_price, use_measure_price, !use_management_price)}
+          className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold transition hover:opacity-80 active:scale-[0.97] disabled:opacity-40"
+          style={{
+            background: use_management_price ? "rgba(217,70,239,0.12)" : "rgba(255,255,255,0.05)",
+            border: `1px solid ${use_management_price ? "rgba(217,70,239,0.3)" : "rgba(255,255,255,0.08)"}`,
+            color: use_management_price ? "#d946ef" : (isDark ? "rgba(255,255,255,0.3)" : "#9ca3af"),
+          }}>
+          <Icon name="Briefcase" size={11} />
+          Менеджмент по прайсу: {use_management_price ? "вкл" : "выкл"}
         </button>
       </div>
 

@@ -44,7 +44,7 @@ ALL_CLIENT_FIELDS = [
     "extra_payment_confirmed", "extra_payment_confirmed_at", "extra_payment_fact",
     "responsible_phone", "map_link", "tags",
     "photo_before_url", "photo_after_url", "document_url",
-    "material_cost", "measure_cost", "install_cost", "cancel_reason",
+    "material_cost", "measure_cost", "install_cost", "management_cost", "cancel_reason",
     "project_id",
 ]
 
@@ -1379,34 +1379,39 @@ def handler(event: dict, context) -> dict:
                     total_econom, total_standard, total_premium,
                 ))
                 new_id = cur.fetchone()[0]
-                # Считаем material_cost и installation_cost по прайсу
+                # Считаем material_cost, installation_cost и management_cost по прайсу
                 material_cost_total = 0
                 installation_cost_total = 0
+                management_cost_total = 0
                 try:
                     # Глобальные флаги
                     cmp_id = master_uid if (company_id is None or company_id == 0) else company_id
-                    cur.execute(f"SELECT use_installation_price, use_measure_price FROM {SCHEMA}.auto_rules_settings WHERE company_id=%s", (cmp_id,))
+                    cur.execute(f"SELECT use_installation_price, use_measure_price, use_management_price FROM {SCHEMA}.auto_rules_settings WHERE company_id=%s", (cmp_id,))
                     _s = cur.fetchone()
-                    use_install_global = bool(_s[0]) if _s else False
-                    use_measure_global = bool(_s[1]) if _s else False
+                    use_install_global    = bool(_s[0]) if _s else False
+                    use_measure_global    = bool(_s[1]) if _s else False
+                    use_management_global = bool(_s[2]) if _s else False
 
                     cur.execute(f"""
-                        SELECT p.name, p.purchase_price, p.installation_price, p.measure_price, s.is_material
+                        SELECT p.name, p.purchase_price, p.installation_price, p.measure_price, p.management_price, s.is_material
                         FROM {SCHEMA}.ai_prices p
                         JOIN {SCHEMA}.price_category_settings s ON s.category = p.category
-                        WHERE p.active=true AND (p.purchase_price > 0 OR p.installation_price > 0 OR p.measure_price > 0)
+                        WHERE p.active=true AND (p.purchase_price > 0 OR p.installation_price > 0 OR p.measure_price > 0 OR p.management_price > 0)
                     """)
                     mat_map = {}
                     inst_map = {}
                     meas_map = {}
+                    mgmt_map = {}
                     for row in cur.fetchall():
                         name_key = row[0].strip().lower()
-                        if row[4] and row[1]:
+                        if row[5] and row[1]:
                             mat_map[name_key] = float(row[1])
                         if use_install_global and row[2]:
                             inst_map[name_key] = float(row[2])
                         if use_measure_global and row[3]:
                             meas_map[name_key] = float(row[3])
+                        if use_management_global and row[4]:
+                            mgmt_map[name_key] = float(row[4])
                     for block in blocks_val:
                         for item in block.get("items", []):
                             item_name = item.get("name", "").strip().lower()
@@ -1419,8 +1424,11 @@ def handler(event: dict, context) -> dict:
                                 installation_cost_total += inst_map[item_name] * qty
                             if item_name in meas_map:
                                 installation_cost_total += meas_map[item_name] * qty
+                            if item_name in mgmt_map:
+                                management_cost_total += mgmt_map[item_name] * qty
                     material_cost_total = int(round(material_cost_total))
                     installation_cost_total = int(round(installation_cost_total))
+                    management_cost_total = int(round(management_cost_total))
                 except Exception:
                     pass
                 # Обновляем contract_sum, material_cost, install_cost в заявке
@@ -1432,6 +1440,8 @@ def handler(event: dict, context) -> dict:
                     update_parts.append("material_cost=%s"); update_vals.append(material_cost_total)
                 if installation_cost_total > 0:
                     update_parts.append("install_cost=%s"); update_vals.append(installation_cost_total)
+                if management_cost_total > 0:
+                    update_parts.append("management_cost=%s"); update_vals.append(management_cost_total)
                 if update_parts:
                     cur.execute(
                         f"UPDATE {SCHEMA}.live_chats SET {', '.join(update_parts)} WHERE id=%s",
