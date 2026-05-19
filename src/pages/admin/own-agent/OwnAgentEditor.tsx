@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import Icon from "@/components/ui/icon";
 import { useAuth, type Brand } from "@/context/AuthContext";
@@ -25,6 +25,7 @@ export default function OwnAgentEditor({ isDark }: Props) {
   const { user, token, updateUser } = useAuth();
   const { patchBrand } = useBrand();
   const navigate = useNavigate();
+  const navAutoSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Если контакты пустые — автоподставляем из профиля (телефон из user.phone)
   const _phone = user?.brand?.support_phone || user?.phone || "";
@@ -110,6 +111,18 @@ export default function OwnAgentEditor({ isDark }: Props) {
   };
 
   const set = <K extends keyof Brand>(k: K, v: Brand[K]) => setBrand(b => ({ ...b, [k]: v }));
+
+  // Автосохранение nav_config / nav_hidden_ids — debounce 600мс
+  const autoSaveNav = useCallback((navConfig: Brand["nav_config"], navHiddenIds: Brand["nav_hidden_ids"]) => {
+    if (navAutoSaveTimer.current) clearTimeout(navAutoSaveTimer.current);
+    navAutoSaveTimer.current = setTimeout(async () => {
+      try {
+        const patch = { nav_config: navConfig ?? null, nav_hidden_ids: navHiddenIds ?? null };
+        await updateBrand(token, { ...user?.brand, ...patch });
+        patchBrand(patch);
+      } catch { /* тихо */ }
+    }, 600);
+  }, [token, user?.brand, patchBrand]);
 
   const testTelegram = async () => {
     if (!tgToken || !tgChat) return;
@@ -249,10 +262,15 @@ export default function OwnAgentEditor({ isDark }: Props) {
           <SectionNav
             value={brand.nav_config}
             hiddenIds={brand.nav_hidden_ids}
-            onChange={v => set("nav_config", v)}
-            onHiddenChange={ids => set("nav_hidden_ids", ids)}
+            onChange={v => {
+              set("nav_config", v);
+              autoSaveNav(v, brand.nav_hidden_ids);
+            }}
+            onHiddenChange={ids => {
+              set("nav_hidden_ids", ids);
+              autoSaveNav(brand.nav_config, ids);
+            }}
             onEditPanel={panelId => {
-              // Сохраняем изменения и переходим на страницу агента для редактирования
               navigate(`/?editPanel=${panelId}`);
             }}
             token={token}
