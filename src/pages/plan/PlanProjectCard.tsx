@@ -164,6 +164,18 @@ export default function PlanProjectCard({
         </span>
       )}
 
+      {/* Бейдж «привязан к заявке» — левый верхний угол */}
+      {!isEditing && project.crm_chat_id && (
+        <span
+          title={`Заявка CRM #${project.crm_chat_id}`}
+          className="absolute flex items-center gap-0.5 px-1.5 py-0.5 rounded-br-xl text-[9px] font-bold z-10"
+          style={{ top: 0, left: 0, background: "rgba(34,197,94,0.15)", color: "#4ade80", border: "1px solid rgba(34,197,94,0.25)", borderTop: "none", borderLeft: "none" }}
+        >
+          <Icon name="CheckCircle" size={9} />
+          CRM
+        </span>
+      )}
+
       {/* Бейдж «не привязан к заявке» — левый верхний угол */}
       {!isEditing && !project.crm_chat_id && (onCreateLink || onAttachLink) && (
         <button
