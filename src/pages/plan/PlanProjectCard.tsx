@@ -170,7 +170,7 @@ export default function PlanProjectCard({
           title={`Открыть заявку CRM #${project.crm_chat_id}`}
           onClick={e => { e.stopPropagation(); window.open(`/crm?order=${project.crm_chat_id}`, "_blank"); }}
           className="absolute flex items-center gap-0.5 px-2 py-1 rounded-tl-xl text-[10px] font-bold z-10 transition hover:brightness-125 active:scale-95"
-          style={{ bottom: 0, right: 0, background: "rgba(34,197,94,0.15)", color: "#4ade80", border: "1px solid rgba(34,197,94,0.25)", borderBottom: "none", borderRight: "none" }}
+          style={{ bottom: 38, right: 0, background: "rgba(34,197,94,0.15)", color: "#4ade80", border: "1px solid rgba(34,197,94,0.25)", borderRight: "none" }}
         >
           <Icon name="CheckCircle" size={9} />
           CRM
