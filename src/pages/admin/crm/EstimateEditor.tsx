@@ -117,6 +117,7 @@ export default function EstimateEditor({ chatId, clientName, clientPhone, onEsti
           const val = parseInt(nums.map(n => n.replace(/\s/g, "")).join("").slice(0, 8), 10);
           if (!isNaN(val)) {
             await crmFetch("clients", { method: "PUT", body: JSON.stringify({ contract_sum: val }) }, { id: String(chatId) });
+            onContractSumChanged?.(val);
           }
         }
       }
@@ -136,6 +137,8 @@ export default function EstimateEditor({ chatId, clientName, clientPhone, onEsti
         body: JSON.stringify({ chat_id: chatId, blocks, totals }),
       }) as { ok?: boolean; estimate_id?: number };
       if (data.ok || data.estimate_id) {
+        const std = calcStandardTotal(blocks);
+        if (std > 0) onContractSumChanged?.(std);
         await loadData();
         onEstimateSaved?.();
       }
