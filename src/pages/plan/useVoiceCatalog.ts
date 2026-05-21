@@ -497,5 +497,6 @@ export default function useVoiceCatalog({ state, onItems, onTranscript }: Props)
     volume,
     toggleRecording,
     stopRecording,
+    sendToAI,
   };
 }

@@ -17,6 +17,8 @@ export interface VoiceResultItem {
 interface Props {
   items: VoiceResultItem[];
   onClose: () => void;
+  onRetry?: () => void;       // кнопка ручного повтора (показывается после 1 авто-попытки)
+  isRetrying?: boolean;       // идёт автоматический повтор
 }
 
 // Разбивает транскрипт на позиции.
@@ -47,7 +49,7 @@ export function splitTranscriptToItems(transcript: string): string[] {
   return all.length > 0 ? all : [transcript.trim()];
 }
 
-export default function VoiceResultPopup({ items, onClose }: Props) {
+export default function VoiceResultPopup({ items, onClose, onRetry, isRetrying = false }: Props) {
   const allDone = items.length > 0 && items.every(it => it.status !== "pending");
   const hasFailures = items.some(it => it.status === "fail");
   const failItems = items.filter(it => it.status === "fail");
@@ -61,7 +63,12 @@ export default function VoiceResultPopup({ items, onClose }: Props) {
 
   if (items.length === 0) return null;
 
-  const displayItems = allDone && hasFailures ? failItems : items;
+  // Во время повтора показываем только нераспознанные (pending/fail), иначе — по состоянию
+  const displayItems = (allDone && hasFailures && !isRetrying)
+    ? failItems
+    : isRetrying
+      ? items.filter(it => it.status !== "ok")
+      : items;
 
   return (
     <div
@@ -100,35 +107,66 @@ export default function VoiceResultPopup({ items, onClose }: Props) {
         }
       `}</style>
 
-      {/* Шапка — только когда есть результат или ошибки */}
-      {allDone && (
+      {/* Шапка */}
+      {(allDone || isRetrying) && (
         <div style={{
           display: "flex", alignItems: "center", justifyContent: "space-between",
           padding: "8px 14px 7px",
           borderBottom: "1px solid rgba(255,255,255,0.06)",
         }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <div style={{
-              width: 6, height: 6, borderRadius: "50%",
-              background: hasFailures ? "#ef4444" : "#10b981",
-              boxShadow: hasFailures ? "0 0 8px #ef4444" : "0 0 8px #10b981",
-            }} />
+            {/* Индикатор */}
+            {isRetrying ? (
+              <div style={{
+                width: 12, height: 12, flexShrink: 0,
+                border: "2px solid rgba(124,58,237,0.3)",
+                borderTopColor: "#a78bfa",
+                borderRadius: "50%",
+                animation: "spinLoader 0.7s linear infinite",
+              }} />
+            ) : (
+              <div style={{
+                width: 6, height: 6, borderRadius: "50%",
+                background: hasFailures ? "#ef4444" : "#10b981",
+                boxShadow: hasFailures ? "0 0 8px #ef4444" : "0 0 8px #10b981",
+              }} />
+            )}
             <span style={{ fontSize: 11, fontWeight: 700, color: "rgba(196,181,253,0.9)", letterSpacing: "0.05em" }}>
-              {hasFailures ? `Не распознано: ${failItems.length} поз.` : "Все позиции добавлены"}
+              {isRetrying
+                ? "Уточняю позиции..."
+                : hasFailures
+                  ? `Не распознано: ${failItems.length} поз.`
+                  : "Все позиции добавлены"}
             </span>
           </div>
-          {hasFailures && (
-            <button
-              onClick={onClose}
-              style={{
-                width: 22, height: 22, borderRadius: 6,
-                background: "rgba(255,255,255,0.07)",
-                border: "none", cursor: "pointer",
-                display: "flex", alignItems: "center", justifyContent: "center",
-                color: "rgba(255,255,255,0.4)", fontSize: 14, lineHeight: 1,
-              }}
-            >×</button>
-          )}
+          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            {/* Кнопка повтора — только когда done и есть fail и передан onRetry */}
+            {allDone && hasFailures && onRetry && !isRetrying && (
+              <button
+                onClick={onRetry}
+                title="Попробовать распознать ещё раз"
+                style={{
+                  padding: "2px 8px", borderRadius: 6, height: 22,
+                  background: "rgba(124,58,237,0.15)",
+                  border: "1px solid rgba(124,58,237,0.4)",
+                  color: "rgba(196,181,253,0.9)", fontSize: 10,
+                  fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap",
+                }}
+              >↺ Ещё раз</button>
+            )}
+            {allDone && hasFailures && (
+              <button
+                onClick={onClose}
+                style={{
+                  width: 22, height: 22, borderRadius: 6,
+                  background: "rgba(255,255,255,0.07)",
+                  border: "none", cursor: "pointer",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  color: "rgba(255,255,255,0.4)", fontSize: 14, lineHeight: 1,
+                }}
+              >×</button>
+            )}
+          </div>
         </div>
       )}
 

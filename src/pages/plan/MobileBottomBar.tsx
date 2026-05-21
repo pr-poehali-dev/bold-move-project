@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef, useCallback } from "react";
 import Icon from "@/components/ui/icon";
 import type { PlanSettings, PlanState } from "./planTypes";
 import type { VoiceCatalogItem } from "./useVoiceCatalog";
@@ -56,28 +56,58 @@ export default function MobileBottomBar({
 }: Props) {
   const [hintsOpen, setHintsOpen] = useState(false);
   const [voicePopupItems, setVoicePopupItems] = useState<VoiceResultItem[]>([]);
+  const [isRetrying, setIsRetrying] = useState(false);
+  const retryCountRef = useRef(0); // сколько автоповторов уже было
+
+  // Обновляем статусы позиций по ответу бота.
+  // onlyPending=true — обновляем только те что в статусе pending (для retry)
+  const applyBotItems = useCallback((items: VoiceCatalogItem[], prevItems: VoiceResultItem[], onlyPending = false): VoiceResultItem[] => {
+    if (items.length === 0) {
+      return prevItems.map(p =>
+        onlyPending && p.status !== "pending" ? p : { ...p, status: "fail" as const }
+      );
+    }
+    const botNames = items.map(i => i.name.toLowerCase());
+    return prevItems.map(p => {
+      if (onlyPending && p.status !== "pending") return p; // не трогаем ok/fail
+      const labelWords = p.label.toLowerCase().split(/\s+/).filter(w => w.length > 2);
+      const matched = botNames.some(n => labelWords.some(w => n.includes(w) || w.includes(n)));
+      return { ...p, status: (matched ? "ok" : "fail") as "ok" | "fail" };
+    });
+  }, []);
 
   // Голосовое наполнение — используется когда полотно построено
   const catalogVoice = useVoiceCatalog({
     state: planState ?? ({ segments: [], points: [], floorItems: [] } as unknown as import("./planTypes").PlanState),
     onItems: (items, transcript) => {
-      // Обновляем статусы в попапе
       setVoicePopupItems(prev => {
         if (prev.length === 0) return prev;
-        if (items.length === 0) {
-          // Бот ничего не нашёл — все fail
-          return prev.map(p => ({ ...p, status: "fail" as const }));
+        const updated = applyBotItems(items, prev);
+
+        // Автоповтор: если есть fail и это первая попытка — перезапрашиваем автоматически
+        const failLabels = updated.filter(p => p.status === "fail").map(p => p.label);
+        if (failLabels.length > 0 && retryCountRef.current < 1) {
+          retryCountRef.current += 1;
+          setIsRetrying(true);
+          setTimeout(() => {
+            catalogVoice.sendToAI(failLabels.join(", "))
+              .then(({ items: retryItems }) => {
+                setVoicePopupItems(curr => {
+                  const retryUpdated = applyBotItems(retryItems, curr, true);
+                  if (retryItems.length > 0) onVoiceCatalogItems?.(retryItems, transcript);
+                  return retryUpdated;
+                });
+              })
+              .finally(() => setIsRetrying(false));
+          }, 800);
         }
-        const botNames = items.map(i => i.name.toLowerCase());
-        return prev.map(p => {
-          const labelWords = p.label.toLowerCase().split(/\s+/).filter(w => w.length > 2);
-          const matched = botNames.some(n => labelWords.some(w => n.includes(w) || w.includes(n)));
-          return { ...p, status: (matched ? "ok" : "fail") as "ok" | "fail" };
-        });
+
+        return updated;
       });
       if (items.length > 0) onVoiceCatalogItems?.(items, transcript);
     },
     onTranscript: (transcript) => {
+      retryCountRef.current = 0; // сбрасываем счётчик при новом запросе
       const labels = splitTranscriptToItems(transcript);
       setVoicePopupItems(labels.map(label => ({ label, status: "pending" as const })));
     },
@@ -249,7 +279,27 @@ export default function MobileBottomBar({
       {voicePopupItems.length > 0 && (
         <VoiceResultPopup
           items={voicePopupItems}
+          isRetrying={isRetrying}
           onClose={() => setVoicePopupItems([])}
+          onRetry={retryCountRef.current >= 1 ? () => {
+            const failLabels = voicePopupItems.filter(p => p.status === "fail").map(p => p.label);
+            if (failLabels.length === 0) return;
+            retryCountRef.current += 1;
+            setIsRetrying(true);
+            // Помечаем fail → pending перед повтором
+            setVoicePopupItems(prev => prev.map(p =>
+              p.status === "fail" ? { ...p, status: "pending" as const } : p
+            ));
+            catalogVoice.sendToAI(failLabels.join(", "))
+              .then(({ items: retryItems, transcript }) => {
+                setVoicePopupItems(curr => {
+                  const updated = applyBotItems(retryItems, curr, true);
+                  if (retryItems.length > 0) onVoiceCatalogItems?.(retryItems, transcript);
+                  return updated;
+                });
+              })
+              .finally(() => setIsRetrying(false));
+          } : undefined}
         />
       )}
     </div>
