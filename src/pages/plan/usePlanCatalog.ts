@@ -161,15 +161,28 @@ export function usePlanCatalog(
   // Привязать товар к стене (quantity = длина стены в метрах, округлено до 0.01)
   const assignItemToSeg = useCallback((item: SegmentPriceItem, segId: string) => {
     const s = stateRef.current;
+    const isNiche = NICHE_CATEGORIES.has(item.category);
     const newSegments = s.segments.map(seg => {
       if (seg.id !== segId) return seg;
       const existing = seg.items ?? [];
       if (existing.some(it => it.priceId === item.priceId)) return seg;
       const meters = seg.lengthCm ? Math.round(seg.lengthCm / 100 * 100) / 100 : 1;
-      return { ...seg, items: [...existing, { ...item, quantity: meters }] };
+      let updatedItems = [...existing, { ...item, quantity: meters }];
+
+      // ПРАВИЛО: при добавлении ниши вручную — автоматически добавить превалирующий профиль
+      if (isNiche) {
+        const hasWallProfile = existing.some(it => !NICHE_CATEGORIES.has(it.category));
+        if (!hasWallProfile) {
+          const dominant = findDominantWallProfile(s.segments);
+          if (dominant && !existing.some(it => it.priceId === dominant.priceId)) {
+            updatedItems = [...updatedItems, { ...dominant, quantity: meters }];
+          }
+        }
+      }
+      return { ...seg, items: updatedItems };
     });
     push({ ...s, segments: newSegments });
-  }, [stateRef, push]);
+  }, [stateRef, push, findDominantWallProfile]);
 
   // Удалить товар со всех стен и убрать карточку
   const removeActiveItem = useCallback((priceId: number) => {
@@ -211,6 +224,20 @@ export function usePlanCatalog(
     push({ ...s, segments: newSegments });
   }, [stateRef, push]);
 
+  // Найти превалирующий профиль для стен (самый часто встречающийся не-нишевый товар)
+  const findDominantWallProfile = useCallback((segments: typeof stateRef.current.segments): SegmentPriceItem | null => {
+    const counts = new Map<number, { item: SegmentPriceItem; count: number }>();
+    for (const seg of segments) {
+      for (const it of seg.items ?? []) {
+        if (NICHE_CATEGORIES.has(it.category)) continue; // пропускаем ниши
+        const prev = counts.get(it.priceId);
+        if (prev) { prev.count++; } else { counts.set(it.priceId, { item: it, count: 1 }); }
+      }
+    }
+    if (counts.size === 0) return null;
+    return [...counts.values()].sort((a, b) => b.count - a.count)[0].item;
+  }, []);
+
   // Добавить СРАЗУ НЕСКОЛЬКО товаров за один push (для голосового ввода)
   const assignManyItems = useCallback((
     wallItemsWithSegs: { item: SegmentPriceItem; segIds: string[] | null }[],
@@ -233,7 +260,18 @@ export function usePlanCatalog(
         if (isNiche) {
           // Ниши — добавляем вторым, не заменяем существующее
           if (existing.some(it => it.priceId === item.priceId)) return seg;
-          return { ...seg, items: [...existing, { ...item, quantity: meters }] };
+          let updatedItems = [...existing, { ...item, quantity: meters }];
+
+          // ОБЯЗАТЕЛЬНОЕ ПРАВИЛО: за нишей всегда должен быть профиль для стены.
+          // Если на этой стене нет ни одного не-нишевого профиля — добавляем превалирующий.
+          const hasWallProfile = existing.some(it => !NICHE_CATEGORIES.has(it.category));
+          if (!hasWallProfile) {
+            const dominant = findDominantWallProfile(newSegments);
+            if (dominant) {
+              updatedItems = [...updatedItems, { ...dominant, quantity: meters }];
+            }
+          }
+          return { ...seg, items: updatedItems };
         } else {
           // Обычный профиль — ЗАМЕНЯЕМ существующий той же категории на этой стене
           const sameCategory = existing.filter(it => it.category === item.category);
