@@ -7,6 +7,38 @@ import type { VoiceCatalogItem } from "./useVoiceCatalog";
 import { findSegIdsForItem, ALL_SEGS_SENTINEL } from "./useVoiceCatalog";
 import Icon from "@/components/ui/icon";
 
+// Гарантируем комплект светильника: если есть любая из трёх позиций — добавляем все три
+function ensureLightingBundle(items: VoiceCatalogItem[], prices: PriceEntry[]): VoiceCatalogItem[] {
+  const t = (s: string) => s.toLowerCase();
+  const isLight    = (n: string) => /светильник|gx.?53|споты|точечн|точки/i.test(n);
+  const isLamp     = (n: string) => /лампа.*gx|gx.*лампа/i.test(n);
+  const isZakladna = (n: string) => /под светильник|∅90|диаметр.*90|90.*диаметр/i.test(n);
+
+  const hasLight    = items.some(i => isLight(i.name) && !isLamp(i.name) && !isZakladna(i.name));
+  const hasLamp     = items.some(i => isLamp(i.name));
+  const hasZakladna = items.some(i => isZakladna(i.name));
+
+  if (!hasLight && !hasLamp && !hasZakladna) return items;
+
+  // Находим количество светильников (из любой уже добавленной позиции)
+  const lightItem = items.find(i => isLight(i.name)) || items.find(i => isLamp(i.name)) || items.find(i => isZakladna(i.name));
+  const qty = lightItem?.qty ?? 1;
+
+  const findInPrices = (pattern: RegExp) =>
+    prices.find(p => pattern.test(p.name))?.name;
+
+  const lightName    = findInPrices(/Светильник GX-53/) ?? "Светильник GX-53 + лампа";
+  const lampName     = findInPrices(/Лампа GX-53/) ?? "Лампа GX-53";
+  const zakladnaName = findInPrices(/Под светильник.*90|∅90/) ?? "Под светильник ∅90";
+
+  const result = [...items];
+  if (!hasLight)    result.push({ name: lightName,    qty, unit: "шт" });
+  if (!hasLamp)     result.push({ name: lampName,     qty, unit: "шт" });
+  if (!hasZakladna) result.push({ name: zakladnaName, qty, unit: "шт" });
+
+  return result;
+}
+
 // Товар "подвисший" — стена не определена, ждёт выбора пользователя
 interface PendingWallItem {
   item: SegmentPriceItem;
@@ -141,12 +173,19 @@ export default function PlanCatalogPanel({
     console.log("[voice] transcript:", transcript);
     console.log("[voice] items:", items.map(i => i.name));
 
+    // Гарантируем комплект светильника независимо от того что вернул AI
+    const guaranteedItems = ensureLightingBundle(items, allPrices);
+    if (guaranteedItems.length !== items.length) {
+      console.log("[voice] lighting bundle auto-completed:", guaranteedItems.map(i => i.name));
+    }
+    const items_ = guaranteedItems;
+
     // Команда замены: ставим новый товар на те же стены где стоял старый
     if (isReplaceCommand(transcript)) {
       const wallItemsWithSegs: { item: SegmentPriceItem; segIds: string[] | null }[] = [];
       const floorItems: SegmentPriceItem[] = [];
 
-      items.forEach(voiceItem => {
+      items_.forEach(voiceItem => {
         const matched = matchItem(voiceItem, allPrices);
         if (!matched) return;
         if (SILENT_CATEGORIES.has(matched.category) ||
@@ -157,10 +196,8 @@ export default function PlanCatalogPanel({
         if (matched.isWallItem && state.segments.length > 0) {
           const segsWithCategory = findSegsWithCategory(matched.category);
           if (segsWithCategory.length > 0) {
-            // Заменяем на тех же стенах
             wallItemsWithSegs.push({ item: matched, segIds: segsWithCategory });
           } else {
-            // Категории нет — добавляем на все стены
             wallItemsWithSegs.push({ item: matched, segIds: [ALL_SEGS_SENTINEL] });
           }
         } else {
@@ -179,7 +216,7 @@ export default function PlanCatalogPanel({
     const floorItems: SegmentPriceItem[] = [];
     const unknownWallItems: SegmentPriceItem[] = [];
 
-    items.forEach(voiceItem => {
+    items_.forEach(voiceItem => {
       const matched = matchItem(voiceItem, allPrices);
       if (!matched) { console.log("[voice] no match for:", voiceItem.name); return; }
 
