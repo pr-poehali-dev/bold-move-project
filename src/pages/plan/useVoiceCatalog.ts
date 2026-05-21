@@ -172,60 +172,62 @@ const ITEM_KEYWORDS: { pattern: RegExp; keywords: string[] }[] = [
   { pattern: /ниш|карниз/i,  keywords: ["ниш", "карниз"] },
 ];
 
-// Ищем сегменты для конкретного товара — ищем ключевое слово товара в тексте,
-// затем берём ориентацию ТОЛЬКО из ближайшего контекста (±50 символов).
-// НЕТ fallback на весь текст — иначе все направления из одной фразы
-// "на левую теневой, на правую парящий, сверху ниша" попадут в каждый товар.
+// Разбивает транскрипт на фрагменты по разделителям (запятая, "снизу", "сверху", "с X стороны")
+// Каждый фрагмент — отдельная фраза с одним направлением
+function splitTranscriptIntoFragments(t: string): string[] {
+  // Разбиваем по запятым, точкам, а также по границам направлений
+  const parts = t.split(/[,;.]+/).map(s => s.trim()).filter(Boolean);
+  const result: string[] = [];
+  for (const part of parts) {
+    // Дополнительно режем по "сверху", "снизу", "слева", "справа" если они в середине
+    const sub = part.split(/(?=\b(?:сверху|снизу|слева|справа|верхн|нижн)\b)/i)
+      .map(s => s.trim()).filter(Boolean);
+    result.push(...sub);
+  }
+  return result;
+}
+
+// Ищем сегменты для конкретного товара.
+// Стратегия: находим фрагмент транскрипта где упоминается товар,
+// и ищем направление ТОЛЬКО в этом фрагменте.
 export function findSegIdsForItem(itemName: string, itemCategory: string, transcript: string, state: PlanState): string[] | null {
   const t    = transcript.toLowerCase();
   const name = itemName.toLowerCase();
   const cat  = itemCategory.toLowerCase();
 
-  // Сначала ищем явную фразу "на <направление> <товар>" или "<товар> на <направление>"
-  // Паттерн: до 40 символов между направлением и ключевым словом товара
-  const directionPatterns = [
-    { re: /на левую|слева/,   extract: (pos: number) => t.slice(Math.max(0, pos - 5), pos + 60)  },
-    { re: /на правую|справа/, extract: (pos: number) => t.slice(Math.max(0, pos - 5), pos + 60)  },
-    { re: /сверху|верхн/,     extract: (pos: number) => t.slice(Math.max(0, pos - 5), pos + 60)  },
-    { re: /снизу|нижн/,       extract: (pos: number) => t.slice(Math.max(0, pos - 5), pos + 60)  },
-  ];
+  // Разбиваем на фрагменты и ищем тот где упоминается этот товар
+  const fragments = splitTranscriptIntoFragments(t);
 
-  // Находим ключевые слова для этого товара
+  // Ключевые слова для этого товара
   const entry = ITEM_KEYWORDS.find(e => e.pattern.test(name) || e.pattern.test(cat));
+  const itemKeywords: string[] = entry ? entry.keywords : [];
 
-  let searchPos = -1;
-  if (entry) {
-    for (const kw of entry.keywords) {
-      const p = t.indexOf(kw);
-      if (p !== -1 && (searchPos === -1 || p < searchPos)) searchPos = p;
+  // Дополнительно — первые 5 символов каждого значимого слова из названия
+  const nameWords = name.split(/\s+/).filter(w => w.length >= 5).map(w => w.slice(0, 5));
+  const allKeywords = [...itemKeywords, ...nameWords];
+
+  // Находим фрагмент(ы) где упоминается товар
+  const matchedFragments = fragments.filter(frag =>
+    allKeywords.some(kw => frag.includes(kw))
+  );
+
+  if (matchedFragments.length > 0) {
+    // Ищем направление только в найденных фрагментах
+    for (const frag of matchedFragments) {
+      const result = findTargetSegIds(frag, state);
+      if (result && result.length > 0) return result;
     }
+    // Если в фрагменте нет направления — товар упомянут но стена не указана
+    return null;
   }
 
-  if (searchPos === -1) {
-    // Пробуем найти часть названия товара в тексте (первые 5+ символов слова)
-    const nameWords = name.split(/\s+/).filter(w => w.length >= 5);
-    for (const w of nameWords) {
-      const p = t.indexOf(w.slice(0, 5));
-      if (p !== -1 && (searchPos === -1 || p < searchPos)) searchPos = p;
-    }
+  // Товар не упоминается в тексте явно — ищем по всему тексту как fallback
+  // но только если текст короткий (одна фраза без запятых)
+  if (!t.includes(",") && !t.includes(";")) {
+    return findTargetSegIds(t, state);
   }
 
-  if (searchPos === -1) return null; // товар не упоминается — нет контекста
-
-  // Берём УЗКОЕ окно ±50 символов вокруг упоминания товара
-  // Это исключает соседние товары с другими направлениями
-  const win = t.slice(Math.max(0, searchPos - 50), Math.min(t.length, searchPos + 50));
-  const result = findTargetSegIds(win, state);
-
-  // Если в узком окне не нашли — ищем в направлении НАЗАД (до предыдущей запятой)
-  if (!result || result.length === 0) {
-    const before = t.slice(0, searchPos);
-    const lastComma = before.lastIndexOf(",");
-    const segment = before.slice(lastComma + 1); // от последней запятой до товара
-    return findTargetSegIds(segment + " " + win, state);
-  }
-
-  return result;
+  return null;
 }
 
 interface Props {
