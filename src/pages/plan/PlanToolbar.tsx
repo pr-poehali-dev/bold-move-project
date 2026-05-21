@@ -4,7 +4,6 @@ import type { ToolbarProps } from "./PlanToolbarShared";
 import { TOOLS, IconBtn, ToolBtn, DropUp, DropItem, Sep } from "./PlanToolbarShared";
 import MobileToolbar from "./PlanToolbarMobile";
 import PlanVariantPicker from "./PlanVariantPicker";
-import QuickNavDesktop from "@/components/QuickNavDesktop";
 
 export default function PlanToolbar(props: ToolbarProps) {
   const {
@@ -121,11 +120,6 @@ export default function PlanToolbar(props: ToolbarProps) {
       <IconBtn icon="Maximize2" onClick={onZoomFit} title="По размеру (0)" size={13} />
 
       <div className="flex-1 min-w-2" />
-
-      {/* Быстрая навигация между модулями — только десктоп */}
-      <QuickNavDesktop />
-
-      <Sep />
 
       <IconBtn icon="RotateCcw" onClick={onReset} title="Очистить" />
 

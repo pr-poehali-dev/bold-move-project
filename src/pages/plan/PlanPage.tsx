@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import QuickAccessBar from "@/components/QuickAccessBar";
+import QuickNavDesktop from "@/components/QuickNavDesktop";
 import PlanToolbar from "./PlanToolbar";
 import useVoiceDraw from "./useVoiceDraw";
 import { usePlanCatalog } from "./usePlanCatalog";
@@ -194,6 +195,10 @@ export default function PlanPage() {
     const urlProjectId = urlParams.get("project_id");
     return (
       <div className="flex flex-col bg-[#111]" style={{ height: "100dvh" }}>
+        {/* Быстрая навигация — только десктоп, под шапкой экрана проектов */}
+        <div className="hidden sm:flex items-center px-6 py-2 flex-shrink-0 border-b border-white/[0.06]">
+          <QuickNavDesktop />
+        </div>
         <div className="flex-1 overflow-hidden">
           <PlanProjectsScreen
             token={token}
@@ -216,6 +221,10 @@ export default function PlanPage() {
   if (screen === "rooms" && activeProject) {
     return (
       <div className="flex flex-col bg-[#111]" style={{ height: "100dvh" }}>
+        {/* Быстрая навигация — только десктоп, под шапкой экрана комнат */}
+        <div className="hidden sm:flex items-center px-6 py-2 flex-shrink-0 border-b border-white/[0.06]">
+          <QuickNavDesktop />
+        </div>
         <div className="flex-1 overflow-hidden">
           <PlanRoomsScreen
             token={token}

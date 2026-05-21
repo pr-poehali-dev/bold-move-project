@@ -169,9 +169,6 @@ export default function CrmPanel({ theme, initialOrderId, initialTab }: { theme:
           {/* Разделитель */}
           <div className="flex-1" />
 
-          {/* Быстрая навигация между модулями — только десктоп */}
-          <QuickNavDesktop />
-
           {/* Промо-блок канбана — только если есть право и канбан ещё не включён */}
           {!kanbanEnabled && canKanban && (
             <div className="hidden sm:flex items-center gap-3 px-4 py-1.5 rounded-xl"
@@ -198,6 +195,12 @@ export default function CrmPanel({ theme, initialOrderId, initialTab }: { theme:
             </button>
           )}
 
+        </div>
+
+        {/* Быстрая навигация между модулями — только десктоп, под шапкой */}
+        <div className="hidden sm:flex items-center px-6 py-2 flex-shrink-0"
+          style={{ borderBottom: `1px solid ${t.border}`, background: t.surface }}>
+          <QuickNavDesktop />
         </div>
 
         {/* Контент */}
