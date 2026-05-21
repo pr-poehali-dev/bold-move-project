@@ -108,11 +108,55 @@ export default function PlanCatalogPanel({
   // Товар ожидающий выбора стены
   const [pendingWall, setPendingWall] = useState<PendingWallItem | null>(null);
 
+  // Детект команды замены
+  const isReplaceCommand = (t: string) =>
+    /замен|поменя|вместо|убери.{0,30}поставь|убери.{0,30}добавь/i.test(t);
+
+  // Найти все стены где стоит товар с данной категорией
+  const findSegsWithCategory = (category: string): string[] =>
+    state.segments
+      .filter(seg => (seg.items ?? []).some(it => it.category === category))
+      .map(seg => seg.id);
+
   // Обработка items от бота
   const handleVoiceItems = (items: VoiceCatalogItem[], transcript: string) => {
     console.log("[voice] transcript:", transcript);
     console.log("[voice] items:", items.map(i => i.name));
 
+    // Команда замены: ставим новый товар на те же стены где стоял старый
+    if (isReplaceCommand(transcript)) {
+      const wallItemsWithSegs: { item: SegmentPriceItem; segIds: string[] | null }[] = [];
+      const floorItems: SegmentPriceItem[] = [];
+
+      items.forEach(voiceItem => {
+        const matched = matchItem(voiceItem, allPrices);
+        if (!matched) return;
+        if (SILENT_CATEGORIES.has(matched.category) ||
+            matched.name === "Раскрой ПВХ" || matched.name === "Огарпунивание ПВХ") {
+          floorItems.push({ ...matched, quantity: voiceItem.qty ?? 1 });
+          return;
+        }
+        if (matched.isWallItem && state.segments.length > 0) {
+          const segsWithCategory = findSegsWithCategory(matched.category);
+          if (segsWithCategory.length > 0) {
+            // Заменяем на тех же стенах
+            wallItemsWithSegs.push({ item: matched, segIds: segsWithCategory });
+          } else {
+            // Категории нет — добавляем на все стены
+            wallItemsWithSegs.push({ item: matched, segIds: [ALL_SEGS_SENTINEL] });
+          }
+        } else {
+          floorItems.push({ ...matched, quantity: voiceItem.qty ?? 1 });
+        }
+      });
+
+      if (wallItemsWithSegs.length > 0 || floorItems.length > 0) {
+        onAssignMany(wallItemsWithSegs, floorItems);
+      }
+      return;
+    }
+
+    // Обычный режим добавления
     const wallItemsWithSegs: { item: SegmentPriceItem; segIds: string[] | null }[] = [];
     const floorItems: SegmentPriceItem[] = [];
     const unknownWallItems: SegmentPriceItem[] = [];
@@ -133,11 +177,9 @@ export default function PlanCatalogPanel({
       if (matched.isWallItem && state.segments.length > 0) {
         const itemSegIds = findSegIdsForItem(matched.name, matched.category, transcript, state);
         console.log("[voice] segIds for", matched.name, "->", itemSegIds);
-        // Если цель неизвестна — товар уходит в "подвисшие"
         if (!itemSegIds) {
           unknownWallItems.push(matched);
         } else {
-          // Передаём segIds как есть — ALL_SEGS_SENTINEL обработает assignManyItems
           wallItemsWithSegs.push({ item: matched, segIds: itemSegIds });
         }
       } else {
@@ -145,16 +187,14 @@ export default function PlanCatalogPanel({
       }
     });
 
-    // Сначала применяем всё что знаем
     if (wallItemsWithSegs.length > 0 || floorItems.length > 0) {
       onAssignMany(wallItemsWithSegs, floorItems);
     }
 
-    // Если есть неизвестные — показываем первый, остальные pending (без segIds: null!)
     if (unknownWallItems.length > 0) {
       setPendingWall({
         item: unknownWallItems[0],
-        otherWallItems: [],  // остальные пока игнорируем — показываем по одному
+        otherWallItems: [],
         floorItems: [],
       });
     }
