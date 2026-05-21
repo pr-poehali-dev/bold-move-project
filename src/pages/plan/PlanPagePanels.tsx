@@ -155,6 +155,24 @@ export default function PlanPagePanels({
         catalogOpen={catalog.catalogOpen}
         rightPanelOpen={rightPanelOpen}
         isMobile={isMobile}
+        onOpenMaterials={() => {
+          if (isMobile) {
+            handleChange({ sidebarTab: "calc" });
+            catalog.setCatalogOpen(false);
+            setRightPanelOpen(false);
+            setSheetSnap("half");
+            setSheetOpen(true);
+          } else {
+            handleChange({ sidebarTab: "calc" });
+            catalog.setCatalogOpen(false);
+            setSidebarOpen(true);
+          }
+        }}
+        materialsOpen={
+          isMobile
+            ? sheetOpen && state.sidebarTab === "calc"
+            : sidebarOpen && state.sidebarTab === "calc"
+        }
         onToggleVoiceDraw={voiceDraw.hasSpeech ? voiceDraw.toggle : undefined}
         isVoiceDrawing={voiceDraw.isListening}
         isVoiceProcessing={voiceDraw.isProcessing}

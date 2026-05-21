@@ -34,6 +34,8 @@ interface Props {
   // Режим наполнения (когда полотно построено)
   planState?: PlanState;
   onVoiceCatalogItems?: (items: VoiceCatalogItem[], transcript: string) => void;
+  onOpenMaterials?: () => void;
+  materialsOpen?: boolean;
 }
 
 // Стиль единой кнопки — как фиолетовая кнопка PanelBottom
@@ -50,6 +52,7 @@ export default function MobileBottomBar({
   attachedCount = 0, filterAttached = false, onToggleFilterAttached, isMobile = false,
   onSettingsOpenChange,
   planState, onVoiceCatalogItems,
+  onOpenMaterials, materialsOpen = false,
 }: Props) {
   const [hintsOpen, setHintsOpen] = useState(false);
   const [voicePopupItems, setVoicePopupItems] = useState<VoiceResultItem[]>([]);
@@ -101,7 +104,17 @@ export default function MobileBottomBar({
         <Icon name="PanelBottom" size={20} />
       </button>
 
-      {/* 5. Каталог */}
+      {/* 5. Материалы (смета) */}
+      {onOpenMaterials && (
+        <button
+          onClick={onOpenMaterials}
+          className={materialsOpen ? BTN_ACTIVE : BTN_DEFAULT}
+        >
+          <Icon name="Package" size={20} />
+        </button>
+      )}
+
+      {/* 6. Каталог */}
       <button
         onClick={onOpenCatalog}
         className={catalogOpen ? BTN_ACTIVE : BTN_DEFAULT}
