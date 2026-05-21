@@ -234,6 +234,8 @@ def handler(event: dict, context) -> dict:
         return {'statusCode': 200, 'headers': CORS, 'body': json.dumps({'items': [], 'error': str(e)})}
 
     content = resp_data.get('choices', [{}])[0].get('message', {}).get('content', '')
+    usage = resp_data.get('usage', {})
+    print(f"[plan-voice] tokens: prompt={usage.get('prompt_tokens')} completion={usage.get('completion_tokens')} total={usage.get('total_tokens')}")
     print(f"[plan-voice] LLM response: {content[:500]}")
 
     items = extract_items(content)
