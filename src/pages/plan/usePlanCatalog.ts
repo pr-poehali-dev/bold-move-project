@@ -220,8 +220,11 @@ export function usePlanCatalog(
 
     let newSegments = s.segments;
     for (const { item, segIds } of wallItemsWithSegs) {
-      // ALL_SEGS_SENTINEL или null (при явном "на все стены") — добавляем на все
-      const isAllSegs = !segIds || segIds.length === 0 || segIds[0] === ALL_SEGS_SENTINEL;
+      // На все стены ТОЛЬКО если явный sentinel — null больше не значит "на все"
+      const isAllSegs = !segIds || segIds.length === 0
+        ? false  // null/пустой = не добавляем никуда (не должен сюда попасть)
+        : segIds[0] === ALL_SEGS_SENTINEL;
+      if (!segIds || segIds.length === 0) continue; // защита: пропускаем неизвестные
       const targetSet = isAllSegs ? null : new Set(segIds);
       const isNiche = NICHE_CATEGORIES.has(item.category);
 

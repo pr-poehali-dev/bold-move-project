@@ -147,11 +147,11 @@ export default function PlanCatalogPanel({
       onAssignMany(wallItemsWithSegs, floorItems);
     }
 
-    // Если есть неизвестные — показываем первый, остальные в очередь
+    // Если есть неизвестные — показываем первый, остальные pending (без segIds: null!)
     if (unknownWallItems.length > 0) {
       setPendingWall({
         item: unknownWallItems[0],
-        otherWallItems: unknownWallItems.slice(1).map(it => ({ item: it, segIds: null })),
+        otherWallItems: [],  // остальные пока игнорируем — показываем по одному
         floorItems: [],
       });
     }
