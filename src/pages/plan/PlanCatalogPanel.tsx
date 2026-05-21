@@ -110,13 +110,16 @@ export default function PlanCatalogPanel({
 
   // Обработка items от бота
   const handleVoiceItems = (items: VoiceCatalogItem[], transcript: string) => {
+    console.log("[voice] transcript:", transcript);
+    console.log("[voice] items:", items.map(i => i.name));
+
     const wallItemsWithSegs: { item: SegmentPriceItem; segIds: string[] | null }[] = [];
     const floorItems: SegmentPriceItem[] = [];
     const unknownWallItems: SegmentPriceItem[] = [];
 
     items.forEach(voiceItem => {
       const matched = matchItem(voiceItem, allPrices);
-      if (!matched) return;
+      if (!matched) { console.log("[voice] no match for:", voiceItem.name); return; }
 
       if (
         SILENT_CATEGORIES.has(matched.category) ||
@@ -129,6 +132,7 @@ export default function PlanCatalogPanel({
 
       if (matched.isWallItem && state.segments.length > 0) {
         const itemSegIds = findSegIdsForItem(matched.name, matched.category, transcript, state);
+        console.log("[voice] segIds for", matched.name, "->", itemSegIds);
         // Если цель неизвестна — товар уходит в "подвисшие"
         if (!itemSegIds) {
           unknownWallItems.push(matched);
