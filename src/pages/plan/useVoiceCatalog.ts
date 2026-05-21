@@ -378,7 +378,7 @@ export default function useVoiceCatalog({ state, onItems }: Props) {
     const res  = await fetch(AI_CHAT_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ messages, fast: false }),
+      body: JSON.stringify({ messages, fast: true }),
     });
     const data = await res.json();
 
