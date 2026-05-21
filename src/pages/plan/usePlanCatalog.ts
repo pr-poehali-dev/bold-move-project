@@ -160,6 +160,21 @@ export function usePlanCatalog(
     return bestDist < threshold ? bestId : null;
   }, [stateRef]);
 
+  // Найти превалирующий профиль для стен (самый часто встречающийся не-нишевый товар)
+  // ВАЖНО: объявлен ДО assignItemToSeg чтобы избежать temporal dead zone
+  const findDominantWallProfile = useCallback((segments: typeof stateRef.current.segments): SegmentPriceItem | null => {
+    const counts = new Map<number, { item: SegmentPriceItem; count: number }>();
+    for (const seg of segments) {
+      for (const it of seg.items ?? []) {
+        if (NICHE_CATEGORIES.has(it.category)) continue;
+        const prev = counts.get(it.priceId);
+        if (prev) { prev.count++; } else { counts.set(it.priceId, { item: it, count: 1 }); }
+      }
+    }
+    if (counts.size === 0) return null;
+    return [...counts.values()].sort((a, b) => b.count - a.count)[0].item;
+  }, []);
+
   // Привязать товар к стене (quantity = длина стены в метрах, округлено до 0.01)
   const assignItemToSeg = useCallback((item: SegmentPriceItem, segId: string) => {
     const s = stateRef.current;
@@ -225,20 +240,6 @@ export function usePlanCatalog(
     });
     push({ ...s, segments: newSegments });
   }, [stateRef, push]);
-
-  // Найти превалирующий профиль для стен (самый часто встречающийся не-нишевый товар)
-  const findDominantWallProfile = useCallback((segments: typeof stateRef.current.segments): SegmentPriceItem | null => {
-    const counts = new Map<number, { item: SegmentPriceItem; count: number }>();
-    for (const seg of segments) {
-      for (const it of seg.items ?? []) {
-        if (NICHE_CATEGORIES.has(it.category)) continue; // пропускаем ниши
-        const prev = counts.get(it.priceId);
-        if (prev) { prev.count++; } else { counts.set(it.priceId, { item: it, count: 1 }); }
-      }
-    }
-    if (counts.size === 0) return null;
-    return [...counts.values()].sort((a, b) => b.count - a.count)[0].item;
-  }, []);
 
   // Добавить СРАЗУ НЕСКОЛЬКО товаров за один push (для голосового ввода)
   const assignManyItems = useCallback((

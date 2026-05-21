@@ -27,7 +27,6 @@ function fixShadowProfile(items: VoiceCatalogItem[], prices: PriceEntry[]): Voic
 
 // Гарантируем комплект светильника: если есть любая из трёх позиций — добавляем все три
 function ensureLightingBundle(items: VoiceCatalogItem[], prices: PriceEntry[]): VoiceCatalogItem[] {
-  const t = (s: string) => s.toLowerCase();
   const isLight    = (n: string) => /светильник|gx.?53|споты|точечн|точки/i.test(n);
   const isLamp     = (n: string) => /лампа.*gx|gx.*лампа/i.test(n);
   const isZakladna = (n: string) => /под светильник|∅90|диаметр.*90|90.*диаметр/i.test(n);
