@@ -23,6 +23,7 @@ interface Props {
   onClose: () => void;
   prices: PriceEntry[];
   onDragItem: (item: SegmentPriceItem) => void;
+  initialCategory?: string; // если передана — сразу открыть на этой категории
 }
 
 // Параметры дуги
@@ -305,16 +306,23 @@ function ArcDrum({ items, value, onChange, onClick, initialIdx, onSwipeRight }: 
 
 // ── Основной компонент ────────────────────────────────────────────────────────
 
-export default function CategoryDrumPanel({ open, onClose, prices, onDragItem }: Props) {
+export default function CategoryDrumPanel({ open, onClose, prices, onDragItem, initialCategory }: Props) {
   const [mode,             setMode]             = useState<"categories" | "items">("categories");
   const [selectedCategory, setSelectedCategory] = useState("");
   const [selectedItem,     setSelectedItem]     = useState("");
   const [visible,          setVisible]          = useState(false);
 
   useEffect(() => {
-    if (open)  setTimeout(() => setVisible(true), 10);
-    else       setVisible(false);
-  }, [open]);
+    if (open) {
+      setTimeout(() => setVisible(true), 10);
+      if (initialCategory) {
+        setSelectedCategory(initialCategory);
+        setMode("items");
+      }
+    } else {
+      setVisible(false);
+    }
+  }, [open, initialCategory]);
 
   useEffect(() => {
     if (!open) setTimeout(() => { setMode("categories"); setSelectedCategory(""); setSelectedItem(""); }, 300);

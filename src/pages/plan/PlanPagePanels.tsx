@@ -195,7 +195,7 @@ export default function PlanPagePanels({
         selectedSegmentId={state.selectedSegmentId}
         selectedSegmentIds={state.selectedSegmentIds}
         state={state}
-        onClose={() => catalog.setCatalogOpen(false)}
+        onClose={() => { catalog.setCatalogOpen(false); catalog.setReplaceCatalogCategory(null); }}
         onAssignToSegs={catalog.assignItemToSegs}
         onAssignToAllSegs={catalog.assignItemToAllSegs}
         onAssignMany={catalog.assignManyItems}
@@ -205,6 +205,7 @@ export default function PlanPagePanels({
           );
           catalog.setTapActiveId(item.priceId);
         }}
+        initialCategory={catalog.replaceCatalogCategory ?? undefined}
       />
 
       {/* Модалка добавления на полотно */}
@@ -219,6 +220,13 @@ export default function PlanPagePanels({
         item={catalog.editingFloorItem}
         onConfirm={catalog.confirmEditFloorItem}
         onCancel={() => catalog.setEditingFloorId(null)}
+        isEditing
+        onReplace={() => {
+          const cat = catalog.editingFloorItem?.category ?? null;
+          catalog.setEditingFloorId(null);
+          catalog.setReplaceCatalogCategory(cat);
+          catalog.setCatalogOpen(true);
+        }}
       />
 
       {/* Ghost-оверлеи и слайдер активных карточек */}

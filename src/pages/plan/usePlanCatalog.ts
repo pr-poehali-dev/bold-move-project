@@ -16,6 +16,8 @@ const PRICES_URL = (func2url as Record<string, string>)["get-prices"];
 export interface PlanCatalogState {
   catalogOpen: boolean;
   setCatalogOpen: (v: boolean | ((prev: boolean) => boolean)) => void;
+  replaceCatalogCategory: string | null;
+  setReplaceCatalogCategory: (cat: string | null) => void;
   prices: PriceEntry[];
   filteredPrices: PriceEntry[];
   activeItems: SegmentPriceItem[];
@@ -69,10 +71,10 @@ export function usePlanCatalog(
   const [tapActiveId,    setTapActiveId]    = useState<number | null>(null);
   const [dragCardItem,   setDragCardItem]   = useState<SegmentPriceItem | null>(null);
   const [dragCardPos,    setDragCardPos]    = useState<{ x: number; y: number } | null>(null);
-  const [filterAttached,    setFilterAttached]    = useState(false);
-  const [pendingFloorItem,  setPendingFloorItem]  = useState<SegmentPriceItem | null>(null);
-  // Редактирование существующего floorItem (id + данные для модалки)
-  const [editingFloorId,    setEditingFloorId]    = useState<string | null>(null);
+  const [filterAttached,         setFilterAttached]         = useState(false);
+  const [pendingFloorItem,       setPendingFloorItem]       = useState<SegmentPriceItem | null>(null);
+  const [editingFloorId,         setEditingFloorId]         = useState<string | null>(null);
+  const [replaceCatalogCategory, setReplaceCatalogCategory] = useState<string | null>(null);
 
   // Категории, которые НЕ показываются в нижней панели
   const HIDDEN_CATEGORIES = ["монтаж", "раскрой", "огарпунивание"];
@@ -651,5 +653,6 @@ export function usePlanCatalog(
     findClosestSeg, assignItemToSeg, assignItemToSegs, assignItemToAllSegs, assignManyItems, removeItemFromAllSegs, removeActiveItem, isItemOnAllSegs, adjustItemQuantity, setItemQuantity,
     pendingFloorItem, setPendingFloorItem, confirmFloorItem,
     editingFloorId, setEditingFloorId, editingFloorItem, confirmEditFloorItem,
+    replaceCatalogCategory, setReplaceCatalogCategory,
   };
 }

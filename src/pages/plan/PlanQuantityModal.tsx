@@ -6,10 +6,12 @@ interface Props {
   item: SegmentPriceItem | null;
   onConfirm: (quantity: number) => void;
   onCancel: () => void;
-  defaultQuantity?: number; // если передана площадь полотна — подставляем
+  defaultQuantity?: number;
+  isEditing?: boolean;         // true = режим редактирования (кнопка ОК вместо Добавить)
+  onReplace?: () => void;      // если передан — показываем кнопку "Заменить"
 }
 
-export default function PlanQuantityModal({ item, onConfirm, onCancel, defaultQuantity }: Props) {
+export default function PlanQuantityModal({ item, onConfirm, onCancel, defaultQuantity, isEditing, onReplace }: Props) {
   const [value, setValue] = useState("1");
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -69,7 +71,7 @@ export default function PlanQuantityModal({ item, onConfirm, onCancel, defaultQu
               {item.name}
             </div>
             <div style={{ fontSize: 11, color: "rgba(167,139,250,0.55)", marginTop: 2 }}>
-              Добавить на полотно
+              {isEditing ? "Редактирование количества" : "Добавить на полотно"}
             </div>
           </div>
         </div>
@@ -118,23 +120,36 @@ export default function PlanQuantityModal({ item, onConfirm, onCancel, defaultQu
         </div>
 
         {/* Кнопки */}
-        <div style={{ display: "flex", gap: 8 }}>
-          <button
-            onClick={onCancel}
-            style={{
-              flex: 1, height: 38, borderRadius: 12,
-              background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)",
-              color: "rgba(255,255,255,0.5)", fontSize: 13, cursor: "pointer",
-            }}
-          >Отмена</button>
-          <button
-            onClick={commit}
-            style={{
-              flex: 2, height: 38, borderRadius: 12,
-              background: "rgba(124,58,237,1)", border: "none",
-              color: "#fff", fontSize: 13, fontWeight: 700, cursor: "pointer",
-            }}
-          >Добавить</button>
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          {/* Кнопка Заменить — только в режиме редактирования */}
+          {isEditing && onReplace && (
+            <button
+              onClick={onReplace}
+              style={{
+                width: "100%", height: 38, borderRadius: 12,
+                background: "rgba(124,58,237,0.12)", border: "1px solid rgba(124,58,237,0.4)",
+                color: "rgba(196,181,253,1)", fontSize: 13, fontWeight: 600, cursor: "pointer",
+              }}
+            >Заменить товар</button>
+          )}
+          <div style={{ display: "flex", gap: 8 }}>
+            <button
+              onClick={onCancel}
+              style={{
+                flex: 1, height: 38, borderRadius: 12,
+                background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)",
+                color: "rgba(255,255,255,0.5)", fontSize: 13, cursor: "pointer",
+              }}
+            >Отмена</button>
+            <button
+              onClick={commit}
+              style={{
+                flex: 2, height: 38, borderRadius: 12,
+                background: "rgba(124,58,237,1)", border: "none",
+                color: "#fff", fontSize: 13, fontWeight: 700, cursor: "pointer",
+              }}
+            >{isEditing ? "ОК" : "Добавить"}</button>
+          </div>
         </div>
       </div>
     </div>,
