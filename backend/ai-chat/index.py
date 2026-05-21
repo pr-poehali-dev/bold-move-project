@@ -1610,6 +1610,57 @@ def handler(event, context):
             print(f"[fast] error in get_cached_answer: {e}")
             import traceback; traceback.print_exc()
 
+    # ─── РЕЖИМ ПОСТРОИТЕЛЯ: контекст помещения из чертежа → быстрый подбор items ──
+    # Определяем по маркеру в первом сообщении от "user"
+    first_user_text = next((m.get('text','') for m in messages if m.get('role')=='user'), '')
+    is_plan_mode = '=== ДАННЫЕ ПОМЕЩЕНИЯ' in first_user_text
+
+    if is_plan_mode:
+        openrouter_key = os.environ.get('OPENROUTER_API_KEY_2', '') or os.environ.get('OPENROUTER_API_KEY', '')
+        prices_block = get_prices_block()  # полный прайс как текст
+
+        plan_system = (
+            "Ты помощник по подбору материалов для натяжных потолков. "
+            "Получишь данные помещения (площадь, периметр, стены) и голосовой запрос клиента. "
+            "Верни ТОЛЬКО валидный JSON без пояснений и без markdown: "
+            "{\"items\":[{\"name\":\"...\",\"qty\":1,\"unit\":\"м\",\"price\":0}]}\n"
+            "Используй ТОЧНЫЕ названия из прайса ниже. Не придумывай позиции которых нет в прайсе.\n"
+            "qty — количество в единицах измерения (метры для профилей, м² для полотна, шт для штучных).\n\n"
+            f"ПРАЙС:{prices_block}"
+        )
+        plan_msgs = [
+            {'role': 'system', 'content': plan_system},
+            {'role': 'user',   'content': first_user_text},
+            {'role': 'user',   'content': last_user_text},
+        ]
+        try:
+            import requests as _req
+            headers = {
+                'Authorization': f'Bearer {openrouter_key}',
+                'Content-Type': 'application/json',
+                'HTTP-Referer': 'https://mospotolki.ru',
+            }
+            resp = _req.post(
+                'https://openrouter.ai/api/v1/chat/completions',
+                json={'model': 'openai/gpt-4o-mini', 'messages': plan_msgs, 'max_tokens': 1500, 'temperature': 0},
+                headers=headers,
+                timeout=25,
+            )
+            if resp.status_code == 200:
+                content = resp.json()['choices'][0]['message']['content']
+                # Парсим JSON из ответа
+                json_match = re.search(r'\{.*"items".*\}', content, re.DOTALL)
+                if json_match:
+                    parsed = json.loads(json_match.group(0))
+                    items = parsed.get('items', [])
+                    if items:
+                        print(f"[plan_mode] returned {len(items)} items")
+                        return {'statusCode': 200, 'headers': cors, 'body': json.dumps({'items': items})}
+        except Exception as e:
+            print(f"[plan_mode] error: {e}")
+        # Fallback: вернуть пустой список чтобы не зависать
+        return {'statusCode': 200, 'headers': cors, 'body': json.dumps({'items': []})}
+
     # Обычные запросы — всегда в LLM
     skip_info = get_skip_reason(last_user_text.lower().strip())
     save_correction(last_user_text, skip_info, session_id, company_id=int(company_id) if company_id else None)
