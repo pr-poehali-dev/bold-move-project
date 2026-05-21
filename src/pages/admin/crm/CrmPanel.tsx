@@ -1,5 +1,6 @@
 import { useState, useMemo, useEffect } from "react";
 import Icon from "@/components/ui/icon";
+import QuickNavDesktop from "@/components/QuickNavDesktop";
 import CrmAnalytics from "./CrmAnalytics";
 import CrmClients from "./CrmClients";
 import CrmOrders from "./CrmOrders";
@@ -167,6 +168,9 @@ export default function CrmPanel({ theme, initialOrderId, initialTab }: { theme:
 
           {/* Разделитель */}
           <div className="flex-1" />
+
+          {/* Быстрая навигация между модулями — только десктоп */}
+          <QuickNavDesktop />
 
           {/* Промо-блок канбана — только если есть право и канбан ещё не включён */}
           {!kanbanEnabled && canKanban && (
