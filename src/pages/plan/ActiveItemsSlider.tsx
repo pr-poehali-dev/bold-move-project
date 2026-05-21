@@ -151,7 +151,7 @@ export default function ActiveItemsSlider({
                     opacity: isActive || isExpanded ? 1 : 0.7,
                     userSelect: "none",
                     touchAction: "pan-x",
-                    maxWidth: 280,
+                    maxWidth: 320,
                     pointerEvents: "all",
                   }}
                   onClick={e => handleCardClick(item.priceId, e)}
@@ -167,14 +167,14 @@ export default function ActiveItemsSlider({
                       : <span style={{ fontSize: 20 }}>📦</span>}
                   </div>
                   {/* Название + подсказка */}
-                  <div style={{ minWidth: 0 }}>
+                  <div style={{ minWidth: 0, maxWidth: 220 }}>
                     <div style={{
                       fontSize: 12, fontWeight: 700,
                       color: isActive || isExpanded ? "rgba(196,181,253,1)" : "rgba(255,255,255,0.75)",
-                      overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-                      maxWidth: 170,
+                      wordBreak: "break-word",
+                      lineHeight: 1.3,
                     }}>{item.name}</div>
-                    <div style={{ fontSize: 10, color: hoverSegId && isActive ? "rgba(167,139,250,0.9)" : "rgba(167,139,250,0.55)", marginTop: 1 }}>
+                    <div style={{ fontSize: 10, color: hoverSegId && isActive ? "rgba(167,139,250,0.9)" : "rgba(167,139,250,0.55)", marginTop: 2, whiteSpace: "nowrap" }}>
                       {hoverSegId && isActive
                         ? (isWallItem ? "Отпустите на стене" : "Отпустите на полотне")
                         : isExpanded
