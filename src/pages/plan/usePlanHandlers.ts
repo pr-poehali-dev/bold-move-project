@@ -221,7 +221,7 @@ export function usePlanHandlers({
   }, [sheetHeight, isMobile]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Resize сайдбара ──────────────────────────────────────────────────────
-  const [sidebarW, setSidebarW] = React.useState(300);
+  const [sidebarW, setSidebarW] = React.useState(340);
   const sidebarDragRef = useRef<{ startX: number; startW: number } | null>(null);
 
   const onSidebarDragStart = (e: React.MouseEvent) => {
