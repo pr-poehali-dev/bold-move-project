@@ -156,7 +156,7 @@ export default function CalcTab({
 
                       {/* Название + единица */}
                       <div className="flex-1 min-w-0">
-                        <div className="text-white text-[12px] font-semibold truncate">{line.name}</div>
+                        <div className="text-white text-[12px] font-semibold leading-snug break-words">{line.name}</div>
                         <div className="text-[10px]" style={{ color: "rgba(255,255,255,0.35)" }}>{line.unit}</div>
                       </div>
 
@@ -173,9 +173,27 @@ export default function CalcTab({
                         >
                           <Icon name="Minus" size={10} />
                         </button>
-                        <span className="w-12 text-center text-white font-bold text-[12px] font-mono">
-                          {Math.round(line.total * 100) / 100}
-                        </span>
+                        <input
+                          type="number"
+                          value={Math.round(line.total * 100) / 100}
+                          onChange={e => {
+                            const next = parseFloat(e.target.value);
+                            if (isNaN(next) || next < 0) return;
+                            if (line.isFloor && line.floorId) onUpdateFloorQuantity?.(line.floorId, next);
+                            else line.segIds.forEach(sid => onUpdateQuantity?.(sid, line.priceId, next / (line.segIds.length || 1)));
+                          }}
+                          onClick={e => (e.target as HTMLInputElement).select()}
+                          className="text-center text-white font-bold text-[12px] font-mono rounded-md"
+                          style={{
+                            width: 44,
+                            background: "rgba(255,255,255,0.07)",
+                            border: "1px solid transparent",
+                            outline: "none",
+                            padding: "2px 2px",
+                          }}
+                          onFocus={e => { e.target.style.borderColor = "rgba(139,92,246,0.6)"; e.target.select(); }}
+                          onBlur={e => { e.target.style.borderColor = "transparent"; }}
+                        />
                         <button
                           onClick={() => {
                             const next = parseFloat((line.total + (line.unit === "шт" ? 1 : 0.1)).toFixed(2));
