@@ -487,7 +487,7 @@ def _try_simple_estimate_inner(text: str) -> tuple[str, dict] | None:
 
     # 2. Профиль — полный периметр, округлённый до кратного 2м в большую сторону
     import math
-    profile_len   = math.ceil(perim / 2) * 2
+    profile_len   = round(math.ceil(perim / 2) * 2, 1)
     profile_total = round(profile_len * price_profile)
     nisha_total   = round(nisha_len * nisha_price) if has_nisha else 0
 
