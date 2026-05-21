@@ -73,22 +73,20 @@ function TrialBanner() {
                 style={{ background: "#10b981", color: "#0a0a14" }}>FREE</span>
             </div>
             <div className="text-[11px] text-white/55 leading-snug">
-              Зарегистрируйся как монтажник или компания — получи <b className="text-[#10b981]">20 смет</b> на <b className="text-[#10b981]">7 дней</b>. Без оплаты.
+              Зарегистрируйся как монтажник или компания — получи <b className="text-[#10b981]">10 смет</b> на <b className="text-[#10b981]">10 дней</b>. Без оплаты.
             </div>
           </div>
-          {!user && (
-            <a href="/?auth=register"
-              className="group flex-shrink-0 w-full md:w-auto flex items-center justify-center gap-2 px-5 py-3 rounded-xl text-[13px] font-black uppercase tracking-wider transition-all hover:-translate-y-0.5 active:translate-y-0"
-              style={{
-                background: "linear-gradient(135deg, #10b981, #34d399)",
-                color: "#0a0a14",
-                boxShadow: "0 8px 24px rgba(16,185,129,0.35), 0 0 0 1.5px rgba(255,255,255,0.12) inset",
-              }}>
-              <Icon name="Rocket" size={14} />
-              <span>Попробуй бесплатно</span>
-              <Icon name="ArrowRight" size={14} className="transition-transform group-hover:translate-x-0.5" />
-            </a>
-          )}
+          <a href="/?auth=register"
+            className="group flex-shrink-0 w-full md:w-auto flex items-center justify-center gap-2 px-5 py-3 rounded-xl text-[13px] font-black uppercase tracking-wider transition-all hover:-translate-y-0.5 active:translate-y-0"
+            style={{
+              background: "linear-gradient(135deg, #10b981, #34d399)",
+              color: "#0a0a14",
+              boxShadow: "0 8px 24px rgba(16,185,129,0.35), 0 0 0 1.5px rgba(255,255,255,0.12) inset",
+            }}>
+            <Icon name="Rocket" size={14} />
+            <span>Попробовать сейчас</span>
+            <Icon name="ArrowRight" size={14} className="transition-transform group-hover:translate-x-0.5" />
+          </a>
         </div>
 
         {/* Статус триала — только для бизнес-пользователей */}
