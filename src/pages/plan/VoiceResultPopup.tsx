@@ -67,7 +67,7 @@ export default function VoiceResultPopup({ items, onClose }: Props) {
     <div
       style={{
         position: "fixed",
-        bottom: 100,
+        bottom: "calc(220px + env(safe-area-inset-bottom, 0px))",
         left: "50%",
         transform: "translateX(-50%)",
         zIndex: 10010,
