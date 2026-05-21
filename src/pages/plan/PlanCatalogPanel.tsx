@@ -7,6 +7,7 @@ import type { VoiceCatalogItem } from "./useVoiceCatalog";
 import { findSegIdsForItem, ALL_SEGS_SENTINEL } from "./useVoiceCatalog";
 import Icon from "@/components/ui/icon";
 import VoiceResultPopup, { splitTranscriptToItems, type VoiceResultItem } from "./VoiceResultPopup";
+import ReplaceItemModal from "./ReplaceItemModal";
 
 // Исправляем дефолт теневого профиля: если AI вернул просто "теневой" без уточнения
 // или вернул "Теневой профиль" как абстрактную категорию — заменяем на EuroKRAB стеновой
@@ -80,6 +81,7 @@ interface Props {
   onSegmentClickForPending?: (segId: string) => void;
   initialCategory?: string;
   onReplaceItem?: (item: SegmentPriceItem) => void; // режим замены: выбор товара вместо добавления
+  isMobile?: boolean;
 }
 
 // Категории которые идут НА СТЕНЫ (пог.м вдоль периметра)
@@ -157,6 +159,7 @@ export default function PlanCatalogPanel({
   onSegmentClickForPending,
   initialCategory,
   onReplaceItem,
+  isMobile,
 }: Props) {
   // Товар ожидающий выбора стены
   const [pendingWall, setPendingWall] = useState<PendingWallItem | null>(null);
@@ -164,6 +167,8 @@ export default function PlanCatalogPanel({
   const [pendingSelectedSegs, setPendingSelectedSegs] = useState<string[]>([]);
   // Попап результатов голосового распознавания
   const [voicePopupItems, setVoicePopupItems] = useState<VoiceResultItem[]>([]);
+  // ПК: режим списка вместо барабана
+  const [showListMode, setShowListMode] = useState(false);
 
   // Когда pendingWall активен — отслеживаем клики по стенам через selectedSegmentIds
   useEffect(() => {
@@ -310,6 +315,8 @@ export default function PlanCatalogPanel({
         onClose={onClose}
         prices={filteredPrices}
         initialCategory={initialCategory}
+        isMobile={isMobile}
+        onShowList={!isMobile ? () => setShowListMode(true) : undefined}
         onDragItem={item => {
           if (onReplaceItem) {
             onReplaceItem(item);
@@ -327,6 +334,31 @@ export default function PlanCatalogPanel({
           }
         }}
       />
+
+      {/* ПК: модалка-список для добавления товара */}
+      {!isMobile && (
+        <ReplaceItemModal
+          open={showListMode && open}
+          item={null}
+          prices={filteredPrices}
+          mode="add"
+          onReplace={(newItem) => {
+            setShowListMode(false);
+            onClose();
+            const ids = selectedSegmentIds && selectedSegmentIds.length > 0
+              ? selectedSegmentIds
+              : selectedSegmentId ? [selectedSegmentId] : [];
+            if (onReplaceItem) {
+              onReplaceItem(newItem);
+            } else if (ids.length > 0) {
+              onAssignToSegs(newItem, ids);
+            } else {
+              onAddToActive(newItem);
+            }
+          }}
+          onCancel={() => setShowListMode(false)}
+        />
+      )}
 
       {/* Кнопка микрофона — только когда каталог открыт */}
       {open && (

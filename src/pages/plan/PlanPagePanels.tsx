@@ -244,6 +244,7 @@ export default function PlanPagePanels({
           catalog.setTapActiveId(item.priceId);
         }}
         initialCategory={catalog.replaceCatalogCategory ?? undefined}
+        isMobile={isMobile}
       />
 
       {/* Модалка добавления на полотно */}

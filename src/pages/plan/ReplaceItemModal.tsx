@@ -1,25 +1,41 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import type { PriceEntry } from "./CategoryDrumPanel";
 import type { SegmentPriceItem } from "./planTypes";
 
 interface Props {
   open: boolean;
+  /** null в режиме добавления (mode="add") */
   item: (SegmentPriceItem & { quantity: number }) | null;
   prices: PriceEntry[];
   onReplace: (newItem: SegmentPriceItem, quantity: number) => void;
   onCancel: () => void;
+  /** "replace" (по умолчанию) или "add" — меняет заголовок и колбэк */
+  mode?: "replace" | "add";
 }
 
-export default function ReplaceItemModal({ open, item, prices, onReplace, onCancel }: Props) {
+export default function ReplaceItemModal({ open, item, prices, onReplace, onCancel, mode = "replace" }: Props) {
   const [selectedCategory, setSelectedCategory] = useState<string>("");
   const [search, setSearch] = useState("");
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (open && item) {
-      setSelectedCategory(item.category ?? "");
+    if (open) {
+      setSelectedCategory(item?.category ?? "");
       setSearch("");
+      setDropdownOpen(false);
     }
-  }, [open, item]);
+  }, [open, item?.category]);
+
+  // Закрываем dropdown при клике вне
+  useEffect(() => {
+    if (!dropdownOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (!dropdownRef.current?.contains(e.target as Node)) setDropdownOpen(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [dropdownOpen]);
 
   const HIDDEN = ["монтаж", "раскрой", "огарпунивание"];
   const isHidden = (cat: string) => HIDDEN.some(h => cat?.toLowerCase().includes(h));
@@ -43,7 +59,8 @@ export default function ReplaceItemModal({ open, item, prices, onReplace, onCanc
     });
   }, [visiblePrices, selectedCategory, search]);
 
-  if (!open || !item) return null;
+  if (!open) return null;
+  if (mode === "replace" && !item) return null;
 
   const handleSelect = (price: PriceEntry) => {
     const newItem: SegmentPriceItem = {
@@ -55,8 +72,10 @@ export default function ReplaceItemModal({ open, item, prices, onReplace, onCanc
       unit: price.unit,
       isWallItem: price.is_wall_item !== false,
     };
-    onReplace(newItem, item.quantity);
+    onReplace(newItem, item?.quantity ?? 1);
   };
+
+  const currentCatLabel = selectedCategory || "Все категории";
 
   return (
     <div
@@ -78,7 +97,7 @@ export default function ReplaceItemModal({ open, item, prices, onReplace, onCanc
           background: "#1e1b4b",
           border: "1px solid rgba(139,92,246,0.3)",
           borderRadius: 16,
-          width: 380,
+          width: 400,
           maxHeight: "85vh",
           display: "flex",
           flexDirection: "column",
@@ -89,169 +108,204 @@ export default function ReplaceItemModal({ open, item, prices, onReplace, onCanc
         onClick={e => e.stopPropagation()}
       >
         {/* Заголовок */}
-        <div style={{ padding: "16px 20px 12px", borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 12 }}>
-            {item.imageUrl && (
+        <div style={{ padding: "14px 16px 12px", borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
+            {item?.imageUrl && (
               <img
                 src={item.imageUrl}
                 alt={item.name}
-                style={{ width: 36, height: 36, borderRadius: 8, objectFit: "cover", opacity: 0.5 }}
+                style={{ width: 32, height: 32, borderRadius: 8, objectFit: "cover", opacity: 0.6, flexShrink: 0 }}
               />
             )}
-            <div>
-              <div style={{ color: "rgba(255,255,255,0.5)", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 2 }}>
-                Заменить товар
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ color: "rgba(255,255,255,0.4)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 1 }}>
+                {mode === "replace" ? "Заменить товар" : "Добавить товар"}
               </div>
-              <div style={{ color: "#fff", fontSize: 14, fontWeight: 600 }}>{item.name}</div>
+              {item && (
+                <div style={{ color: "#fff", fontSize: 13, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  {item.name}
+                </div>
+              )}
             </div>
+            <button
+              onClick={onCancel}
+              style={{
+                width: 26, height: 26, borderRadius: 8, flexShrink: 0,
+                background: "rgba(255,255,255,0.07)", border: "none",
+                color: "rgba(255,255,255,0.4)", cursor: "pointer",
+                display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16,
+              }}
+            >×</button>
           </div>
 
-          {/* Поиск */}
-          <input
-            type="text"
-            placeholder="Поиск товара..."
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            style={{
-              width: "100%",
-              background: "rgba(255,255,255,0.07)",
-              border: "1px solid rgba(255,255,255,0.12)",
-              borderRadius: 8,
-              padding: "8px 12px",
-              color: "#fff",
-              fontSize: 13,
-              outline: "none",
-              boxSizing: "border-box",
-            }}
-            autoFocus
-          />
-        </div>
-
-        {/* Категории */}
-        <div style={{
-          display: "flex", gap: 6, padding: "10px 20px",
-          overflowX: "auto", flexShrink: 0,
-          borderBottom: "1px solid rgba(255,255,255,0.08)",
-          scrollbarWidth: "none",
-        }}>
-          <button
-            onClick={() => setSelectedCategory("")}
-            style={{
-              flexShrink: 0,
-              padding: "5px 12px",
-              borderRadius: 20,
-              border: "1px solid rgba(255,255,255,0.15)",
-              background: selectedCategory === "" ? "rgba(139,92,246,0.4)" : "transparent",
-              color: "#fff",
-              fontSize: 12,
-              cursor: "pointer",
-              whiteSpace: "nowrap",
-            }}
-          >
-            Все
-          </button>
-          {categories.map(cat => (
-            <button
-              key={cat}
-              onClick={() => setSelectedCategory(cat === selectedCategory ? "" : cat)}
+          {/* Поиск + категория в одной строке */}
+          <div style={{ display: "flex", gap: 8 }}>
+            <input
+              type="text"
+              placeholder="Поиск товара..."
+              value={search}
+              onChange={e => setSearch(e.target.value)}
               style={{
-                flexShrink: 0,
-                padding: "5px 12px",
-                borderRadius: 20,
-                border: "1px solid rgba(255,255,255,0.15)",
-                background: cat === selectedCategory ? "rgba(139,92,246,0.4)" : "transparent",
-                color: cat === selectedCategory ? "#fff" : "rgba(255,255,255,0.7)",
-                fontSize: 12,
-                cursor: "pointer",
-                whiteSpace: "nowrap",
+                flex: 1, minWidth: 0,
+                background: "rgba(255,255,255,0.07)",
+                border: "1px solid rgba(255,255,255,0.12)",
+                borderRadius: 8,
+                padding: "7px 12px",
+                color: "#fff",
+                fontSize: 13,
+                outline: "none",
               }}
-            >
-              {cat}
-            </button>
-          ))}
+              autoFocus
+            />
+
+            {/* Выпадающий список категорий */}
+            <div ref={dropdownRef} style={{ position: "relative", flexShrink: 0 }}>
+              <button
+                onClick={() => setDropdownOpen(v => !v)}
+                style={{
+                  height: 34,
+                  padding: "0 10px",
+                  borderRadius: 8,
+                  background: selectedCategory ? "rgba(139,92,246,0.25)" : "rgba(255,255,255,0.07)",
+                  border: `1px solid ${selectedCategory ? "rgba(139,92,246,0.5)" : "rgba(255,255,255,0.12)"}`,
+                  color: selectedCategory ? "#c4b5fd" : "rgba(255,255,255,0.6)",
+                  fontSize: 12,
+                  cursor: "pointer",
+                  display: "flex", alignItems: "center", gap: 6,
+                  whiteSpace: "nowrap",
+                  maxWidth: 140,
+                }}
+              >
+                <span style={{ overflow: "hidden", textOverflow: "ellipsis", maxWidth: 100 }}>
+                  {currentCatLabel}
+                </span>
+                <svg width="10" height="6" viewBox="0 0 10 6" fill="none" style={{ flexShrink: 0, transform: dropdownOpen ? "rotate(180deg)" : undefined, transition: "transform 0.15s" }}>
+                  <path d="M1 1L5 5L9 1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              </button>
+
+              {dropdownOpen && (
+                <div style={{
+                  position: "absolute",
+                  top: "calc(100% + 4px)",
+                  right: 0,
+                  background: "#1a1535",
+                  border: "1px solid rgba(139,92,246,0.3)",
+                  borderRadius: 10,
+                  boxShadow: "0 8px 32px rgba(0,0,0,0.6)",
+                  zIndex: 10,
+                  minWidth: 180,
+                  maxHeight: 280,
+                  overflowY: "auto",
+                  scrollbarWidth: "thin",
+                  scrollbarColor: "rgba(139,92,246,0.3) transparent",
+                }}>
+                  {/* Все категории */}
+                  <button
+                    onClick={() => { setSelectedCategory(""); setDropdownOpen(false); }}
+                    style={{
+                      display: "block", width: "100%", padding: "8px 14px",
+                      background: selectedCategory === "" ? "rgba(139,92,246,0.2)" : "transparent",
+                      border: "none",
+                      color: selectedCategory === "" ? "#c4b5fd" : "rgba(255,255,255,0.7)",
+                      fontSize: 12, cursor: "pointer", textAlign: "left",
+                    }}
+                  >
+                    Все категории
+                  </button>
+                  <div style={{ height: 1, background: "rgba(255,255,255,0.06)", margin: "2px 0" }} />
+                  {categories.map(cat => (
+                    <button
+                      key={cat}
+                      onClick={() => { setSelectedCategory(cat); setDropdownOpen(false); }}
+                      style={{
+                        display: "block", width: "100%", padding: "8px 14px",
+                        background: cat === selectedCategory ? "rgba(139,92,246,0.2)" : "transparent",
+                        border: "none",
+                        color: cat === selectedCategory ? "#c4b5fd" : "rgba(255,255,255,0.7)",
+                        fontSize: 12, cursor: "pointer", textAlign: "left",
+                        transition: "background 0.1s",
+                      }}
+                      onMouseEnter={e => { if (cat !== selectedCategory) (e.currentTarget as HTMLButtonElement).style.background = "rgba(255,255,255,0.05)"; }}
+                      onMouseLeave={e => { if (cat !== selectedCategory) (e.currentTarget as HTMLButtonElement).style.background = "transparent"; }}
+                    >
+                      {cat}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
         </div>
 
         {/* Список товаров */}
-        <div style={{ overflowY: "auto", flex: 1, padding: "8px 12px" }}>
+        <div style={{ overflowY: "auto", flex: 1, padding: "6px 10px" }}>
           {filteredItems.length === 0 && (
             <div style={{ color: "rgba(255,255,255,0.3)", textAlign: "center", padding: "32px 0", fontSize: 13 }}>
               Ничего не найдено
             </div>
           )}
-          {filteredItems.map(price => (
-            <button
-              key={price.id}
-              onClick={() => handleSelect(price)}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 12,
-                width: "100%",
-                padding: "8px 10px",
-                borderRadius: 10,
-                border: price.id === item.priceId
-                  ? "1px solid rgba(139,92,246,0.6)"
-                  : "1px solid transparent",
-                background: price.id === item.priceId
-                  ? "rgba(139,92,246,0.15)"
-                  : "transparent",
-                cursor: "pointer",
-                textAlign: "left",
-                transition: "background 0.12s",
-              }}
-              onMouseEnter={e => {
-                if (price.id !== item.priceId)
-                  (e.currentTarget as HTMLButtonElement).style.background = "rgba(255,255,255,0.05)";
-              }}
-              onMouseLeave={e => {
-                if (price.id !== item.priceId)
-                  (e.currentTarget as HTMLButtonElement).style.background = "transparent";
-              }}
-            >
-              {/* Иконка */}
-              <div style={{
-                width: 40, height: 40, borderRadius: 8,
-                background: "rgba(255,255,255,0.07)",
-                flexShrink: 0,
-                display: "flex", alignItems: "center", justifyContent: "center",
-                overflow: "hidden",
-              }}>
-                {price.image_url
-                  ? <img src={price.image_url} alt={price.name} style={{ width: 40, height: 40, objectFit: "cover" }} />
-                  : <span style={{ fontSize: 18 }}>📦</span>
-                }
-              </div>
-              {/* Название */}
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ color: "#fff", fontSize: 13, fontWeight: 500, lineHeight: 1.3 }}>
-                  {price.name}
+          {filteredItems.map(price => {
+            const isCurrent = item && price.id === item.priceId;
+            return (
+              <button
+                key={price.id}
+                onClick={() => handleSelect(price)}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 10,
+                  width: "100%",
+                  padding: "7px 8px",
+                  borderRadius: 10,
+                  border: isCurrent ? "1px solid rgba(139,92,246,0.6)" : "1px solid transparent",
+                  background: isCurrent ? "rgba(139,92,246,0.15)" : "transparent",
+                  cursor: "pointer",
+                  textAlign: "left",
+                  transition: "background 0.1s",
+                }}
+                onMouseEnter={e => { if (!isCurrent) (e.currentTarget as HTMLButtonElement).style.background = "rgba(255,255,255,0.05)"; }}
+                onMouseLeave={e => { if (!isCurrent) (e.currentTarget as HTMLButtonElement).style.background = "transparent"; }}
+              >
+                <div style={{
+                  width: 38, height: 38, borderRadius: 8,
+                  background: "rgba(255,255,255,0.06)",
+                  flexShrink: 0,
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  overflow: "hidden",
+                }}>
+                  {price.image_url
+                    ? <img src={price.image_url} alt={price.name} style={{ width: 38, height: 38, objectFit: "cover" }} />
+                    : <span style={{ fontSize: 17 }}>📦</span>
+                  }
                 </div>
-                <div style={{ color: "rgba(255,255,255,0.35)", fontSize: 11, marginTop: 2 }}>
-                  {price.category}
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ color: "#fff", fontSize: 12, fontWeight: 500, lineHeight: 1.3 }}>
+                    {price.name}
+                  </div>
+                  <div style={{ color: "rgba(255,255,255,0.3)", fontSize: 10, marginTop: 1 }}>
+                    {price.category}
+                  </div>
                 </div>
-              </div>
-              {price.id === item.priceId && (
-                <div style={{ color: "rgba(139,92,246,0.8)", fontSize: 11, flexShrink: 0 }}>
-                  текущий
-                </div>
-              )}
-            </button>
-          ))}
+                {isCurrent && (
+                  <span style={{ color: "rgba(139,92,246,0.7)", fontSize: 10, flexShrink: 0 }}>текущий</span>
+                )}
+              </button>
+            );
+          })}
         </div>
 
         {/* Кнопка отмены */}
-        <div style={{ padding: "12px 20px", borderTop: "1px solid rgba(255,255,255,0.08)" }}>
+        <div style={{ padding: "10px 16px", borderTop: "1px solid rgba(255,255,255,0.07)" }}>
           <button
             onClick={onCancel}
             style={{
-              width: "100%",
-              padding: "10px",
+              width: "100%", padding: "9px",
               borderRadius: 10,
-              border: "1px solid rgba(255,255,255,0.15)",
+              border: "1px solid rgba(255,255,255,0.1)",
               background: "transparent",
-              color: "rgba(255,255,255,0.6)",
-              fontSize: 14,
-              cursor: "pointer",
+              color: "rgba(255,255,255,0.5)",
+              fontSize: 13, cursor: "pointer",
             }}
           >
             Отмена
