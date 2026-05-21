@@ -73,16 +73,41 @@ export default function MobileBottomBar({
           );
         }
 
-        // Собираем все названия что вернул бот в нижний регистр для сравнения
+        // Категории из транскрипта → ключевые слова из прайса
+        const SEMANTIC_MAP: Record<string, string[]> = {
+          парящ: ["flexy", "fly", "пк-6", "парящ"],
+          теневой: ["eurokraab", "eurokrab", "классика", "теневой", "shadow"],
+          тенев: ["eurokraab", "eurokrab", "теневой"],
+          люстр: ["люстру", "люстра"],
+          светильник: ["светильник", "gx-53", "gx53"],
+          спот: ["светильник", "gx-53"],
+          точечн: ["светильник", "gx-53"],
+          лампа: ["лампа"],
+          полотн: ["msd", "bauf", "descor", "пвх", "тканев"],
+          алюмин: ["алюминиевый"],
+          стеновой: ["стеновой"],
+          ниша: ["ниша", "пк-14", "пк-12", "пк-15"],
+        };
+
         const returnedNames = items.map(it => it.name.toLowerCase());
 
         return prev.map(p => {
-          // Ищем: есть ли в ответе бота позиция которая содержит слова из метки
-          const labelWords = p.label.toLowerCase().split(/\s+/).filter(w => w.length > 3);
-          const matched = returnedNames.some(name =>
+          const label = p.label.toLowerCase();
+
+          // Прямое совпадение слов (длиннее 3 букв)
+          const labelWords = label.split(/\s+/).filter(w => w.length > 3);
+          const directMatch = returnedNames.some(name =>
             labelWords.some(word => name.includes(word))
           );
-          return { ...p, status: matched ? "ok" as const : "fail" as const };
+          if (directMatch) return { ...p, status: "ok" as const };
+
+          // Семантическое совпадение — "парящий" → ищем "flexy"/"fly" в ответе
+          const semanticMatch = Object.entries(SEMANTIC_MAP).some(([trigger, targets]) =>
+            label.includes(trigger) &&
+            returnedNames.some(name => targets.some(t => name.includes(t)))
+          );
+
+          return { ...p, status: semanticMatch ? "ok" as const : "fail" as const };
         });
       });
       if (items.length > 0) onVoiceCatalogItems?.(items, transcript);
