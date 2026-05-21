@@ -218,7 +218,7 @@ export default function ActiveItemsSlider({
         const unit = item.unit || "";
         const onAllSegs = isItemOnAllSegs(item.priceId);
         const isWall = item.isWallItem !== false;
-        const popupW = 224;
+        const popupW = 280;
         const clampedX = Math.max(popupW / 2 + 8, Math.min(window.innerWidth - popupW / 2 - 8, popupPos.x));
         return (
           <div
@@ -245,7 +245,7 @@ export default function ActiveItemsSlider({
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{
                   fontSize: 11, fontWeight: 700, color: "rgba(196,181,253,1)",
-                  whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
+                  wordBreak: "break-word", lineHeight: 1.35,
                 }}>{item.name}</div>
                 {total > 0 && (
                   <div style={{ fontSize: 9.5, color: "rgba(167,139,250,0.65)", marginTop: 1 }}>
