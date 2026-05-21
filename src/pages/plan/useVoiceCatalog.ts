@@ -41,17 +41,28 @@ function segmentOrientation(ax: number, ay: number, bx: number, by: number): "to
   return "diagonal";
 }
 
-// Находим ID сегментов по текстовым подсказкам в транскрипте
+// Специальный sentinel: явная команда "на все стены"
+export const ALL_SEGS_SENTINEL = "__ALL__";
+
+// Находим ID сегментов по текстовым подсказкам в транскрипте.
+// Возвращает:
+//   [ALL_SEGS_SENTINEL]  — явная команда "на все стены"
+//   string[]             — конкретные ID сегментов
+//   null                 — неизвестно (нужно уточнить у пользователя)
 export function findTargetSegIds(transcript: string, state: PlanState): string[] | null {
   const t = transcript.toLowerCase();
   const { points, segments } = state;
+
+  // Явная команда "на все стены" — ТОЛЬКО при чётком упоминании
+  if (/на все стены|на каждую стену|по всем стенам|по периметру|везде/.test(t)) {
+    return [ALL_SEGS_SENTINEL];
+  }
 
   // Буквенные метки A-Z (напр. "стена A-B", "отрезок BC", "сторона AB")
   const labelMatch = t.match(/(?:стен[ауе]?|отрезк[еуа]?|сторон[еуа]?)\s+([a-zа-яё]{1,2}[-–—]?[a-zа-яё]{0,2})/i)
     ?? t.match(/([a-zA-Z]{1,2})[-–—]([a-zA-Z]{1,2})/);
   if (labelMatch) {
     const raw = labelMatch[1]?.replace(/[-–—]/g, "") ?? "";
-    // Ищем сегмент где буква точки совпадает с алфавитным индексом
     const matched: string[] = [];
     segments.forEach((seg, i) => {
       const fromLetter = String.fromCharCode(65 + i).toLowerCase();
@@ -64,8 +75,40 @@ export function findTargetSegIds(transcript: string, state: PlanState): string[]
     if (matched.length > 0) return matched;
   }
 
-  // Ориентация: верх/низ/лево/право + "следующий/предыдущий" относительно экрана
-  // Вычисляем bbox для нормализации
+  // Длинная / самая длинная стена
+  if (/длинн|самая длин|наибольш/.test(t)) {
+    const sorted = [...segments]
+      .filter(s => s.lengthCm)
+      .sort((a, b) => (b.lengthCm ?? 0) - (a.lengthCm ?? 0));
+    if (sorted.length > 0) return [sorted[0].id];
+  }
+
+  // Короткая / самая короткая стена
+  if (/коротк|самая коротк|наименьш/.test(t)) {
+    const sorted = [...segments]
+      .filter(s => s.lengthCm)
+      .sort((a, b) => (a.lengthCm ?? 0) - (b.lengthCm ?? 0));
+    if (sorted.length > 0) return [sorted[0].id];
+  }
+
+  // "на две стены" / "на три стены" — берём N самых длинных
+  const nMatch = t.match(/на\s+(дв[еухумя]+|тр[иёехём]+|четыр[её]+|пять)\s+стен/);
+  if (nMatch) {
+    const nMap: Record<string, number> = {
+      две: 2, двух: 2, двум: 2, двумя: 2,
+      три: 3, трёх: 3, трех: 3, трём: 3, трем: 3,
+      четыре: 4, четырёх: 4, четырех: 4,
+      пять: 5,
+    };
+    const n = nMap[nMatch[1]] ?? 2;
+    const sorted = [...segments]
+      .filter(s => s.lengthCm)
+      .sort((a, b) => (b.lengthCm ?? 0) - (a.lengthCm ?? 0))
+      .slice(0, n);
+    if (sorted.length > 0) return sorted.map(s => s.id);
+  }
+
+  // Ориентация: верх/низ/лево/право
   if (points.length < 2) return null;
   const minX = Math.min(...points.map(p => p.x));
   const maxX = Math.max(...points.map(p => p.x));
@@ -91,26 +134,18 @@ export function findTargetSegIds(transcript: string, state: PlanState): string[]
     if (!a || !b) return;
     const segMidX = (a.x + b.x) / 2;
     const segMidY = (a.y + b.y) / 2;
-
-    // Нормализованное расстояние от центра (-1..1)
-    const relX = (segMidX - midX) / (w / 2);  // >0 = правая сторона, <0 = левая
-    const relY = (segMidY - midY) / (h / 2);  // >0 = нижняя, <0 = верхняя
-
-    // Определяем доминирующую ось сегмента
+    const relX = (segMidX - midX) / (w / 2);
+    const relY = (segMidY - midY) / (h / 2);
     const dx = Math.abs(b.x - a.x);
     const dy = Math.abs(b.y - a.y);
     const isHorizontal = dx > dy;
     const isVertical   = dy > dx;
-
-    // Верх/низ — горизонтальные сегменты
     if (wantTop    && isHorizontal && relY < -0.3) result.push(seg.id);
     if (wantBottom && isHorizontal && relY >  0.3) result.push(seg.id);
-    // Лево/право — вертикальные сегменты
     if (wantLeft   && isVertical   && relX < -0.3) result.push(seg.id);
     if (wantRight  && isVertical   && relX >  0.3) result.push(seg.id);
   });
 
-  // Если ничего не нашли — fallback: просто по позиции mid без учёта ориентации
   if (result.length === 0) {
     segments.forEach(seg => {
       const a = points.find(p => p.id === seg.fromId);

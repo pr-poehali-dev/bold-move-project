@@ -2,7 +2,14 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { PriceEntry } from "./CategoryDrumPanel";
 import type { FloorItem, PlanState, SegmentPriceItem } from "./planTypes";
 import { genId } from "./planTypes";
+import { ALL_SEGS_SENTINEL } from "./useVoiceCatalog";
 import func2url from "@/../backend/func2url.json";
+
+// Категории ниш — не заменяются, а добавляются вторым товаром на стену
+const NICHE_CATEGORIES = new Set([
+  "Ниши для штор",
+  "Двухуровневые",
+]);
 
 const PRICES_URL = (func2url as Record<string, string>)["get-prices"];
 
@@ -205,24 +212,39 @@ export function usePlanCatalog(
   }, [stateRef, push]);
 
   // Добавить СРАЗУ НЕСКОЛЬКО товаров за один push (для голосового ввода)
-  // wallItems — на все стены, activeItems — в карточки без привязки к стенам
   const assignManyItems = useCallback((
-    // wallItems с опциональными segIds для каждого (null = на все стены)
     wallItemsWithSegs: { item: SegmentPriceItem; segIds: string[] | null }[],
     floorOrActiveItems: SegmentPriceItem[],
   ) => {
     const s = stateRef.current;
 
-    // Настенные товары — ОДИН проход по всем сегментам
     let newSegments = s.segments;
     for (const { item, segIds } of wallItemsWithSegs) {
-      const targetSet = segIds && segIds.length > 0 ? new Set(segIds) : null;
+      // ALL_SEGS_SENTINEL или null (при явном "на все стены") — добавляем на все
+      const isAllSegs = !segIds || segIds.length === 0 || segIds[0] === ALL_SEGS_SENTINEL;
+      const targetSet = isAllSegs ? null : new Set(segIds);
+      const isNiche = NICHE_CATEGORIES.has(item.category);
+
       newSegments = newSegments.map(seg => {
         if (targetSet && !targetSet.has(seg.id)) return seg;
         const existing = seg.items ?? [];
-        if (existing.some(it => it.priceId === item.priceId)) return seg;
         const meters = seg.lengthCm ? Math.round(seg.lengthCm / 100 * 100) / 100 : 1;
-        return { ...seg, items: [...existing, { ...item, quantity: meters }] };
+
+        if (isNiche) {
+          // Ниши — добавляем вторым, не заменяем существующее
+          if (existing.some(it => it.priceId === item.priceId)) return seg;
+          return { ...seg, items: [...existing, { ...item, quantity: meters }] };
+        } else {
+          // Обычный профиль — ЗАМЕНЯЕМ существующий той же категории на этой стене
+          const sameCategory = existing.filter(it => it.category === item.category);
+          if (sameCategory.length > 0) {
+            // Убираем старый, ставим новый
+            const filtered = existing.filter(it => it.category !== item.category);
+            return { ...seg, items: [...filtered, { ...item, quantity: meters }] };
+          }
+          if (existing.some(it => it.priceId === item.priceId)) return seg;
+          return { ...seg, items: [...existing, { ...item, quantity: meters }] };
+        }
       });
     }
 
