@@ -9,9 +9,10 @@ interface Props {
   defaultQuantity?: number;
   isEditing?: boolean;         // true = режим редактирования (кнопка ОК вместо Добавить)
   onReplace?: () => void;      // если передан — показываем кнопку "Заменить"
+  onDelete?: () => void;       // если передан — показываем корзинку (удалить товар)
 }
 
-export default function PlanQuantityModal({ item, onConfirm, onCancel, defaultQuantity, isEditing, onReplace }: Props) {
+export default function PlanQuantityModal({ item, onConfirm, onCancel, defaultQuantity, isEditing, onReplace, onDelete }: Props) {
   const [value, setValue] = useState("1");
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -66,7 +67,7 @@ export default function PlanQuantityModal({ item, onConfirm, onCancel, defaultQu
               ? <img src={item.imageUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
               : <span style={{ fontSize: 22 }}>📦</span>}
           </div>
-          <div>
+          <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontSize: 13, fontWeight: 700, color: "rgba(196,181,253,1)", lineHeight: 1.3 }}>
               {item.name}
             </div>
@@ -74,6 +75,22 @@ export default function PlanQuantityModal({ item, onConfirm, onCancel, defaultQu
               {isEditing ? "Редактирование количества" : "Добавить на полотно"}
             </div>
           </div>
+          {/* Корзинка — удалить товар */}
+          {isEditing && onDelete && (
+            <button
+              onClick={onDelete}
+              style={{
+                width: 32, height: 32, borderRadius: 9, flexShrink: 0,
+                background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.25)",
+                color: "rgba(248,113,113,0.85)", cursor: "pointer",
+                display: "flex", alignItems: "center", justifyContent: "center",
+              }}
+            >
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                <path d="M2 3.5h10M5.5 3.5V2.5a.5.5 0 01.5-.5h2a.5.5 0 01.5.5v1M12 3.5l-.7 7.7A1 1 0 0110.3 12H3.7a1 1 0 01-1-.8L2 3.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            </button>
+          )}
         </div>
 
         {/* Ввод количества */}

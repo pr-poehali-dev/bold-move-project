@@ -11,6 +11,7 @@ interface Props {
   onSheetHeightChange?: (heightPx: number) => void;
   initialSnap?: SheetSnap;
   onSectionOpen?: () => void;
+  onHideMaterialsButton?: () => void;
 }
 
 // Высоты шита: peek (подглядывание) / half / full
@@ -20,7 +21,7 @@ const PEEK_H  = 52;   // только ручка видна
 const HALF_H  = 0.5;  // 50% экрана (доля)
 const FULL_H  = 0.92; // 92% экрана
 
-export default function PlanBottomSheet({ state, onChange, open, onClose, onSheetHeightChange, initialSnap = "half", onSectionOpen }: Props) {
+export default function PlanBottomSheet({ state, onChange, open, onClose, onSheetHeightChange, initialSnap = "half", onSectionOpen, onHideMaterialsButton }: Props) {
   const sheetRef    = useRef<HTMLDivElement>(null);
   const dragRef     = useRef<{ startY: number; startH: number } | null>(null);
   const [snap, setSnap]   = React.useState<SheetSnap>("half");
@@ -40,8 +41,8 @@ export default function PlanBottomSheet({ state, onChange, open, onClose, onShee
     if (open) {
       setSnap(initialSnap);
       setHeight(snapToHeight(initialSnap));
-      // Переключаем на чертёж если не там
-      if (state.sidebarTab !== "drawing") {
+      // Переключаем на чертёж только если таб не выбран явно (не calc)
+      if (state.sidebarTab !== "calc") {
         onChange({ sidebarTab: "drawing" });
       }
       // Фокусируем первое поле ввода длины после анимации шита
@@ -186,7 +187,7 @@ export default function PlanBottomSheet({ state, onChange, open, onClose, onShee
 
         {/* ── Контент сайдбара ── */}
         <div className="flex-1 overflow-hidden">
-          <PlanSidebar state={state} onChange={onChange} noAutoOpen={true} onSectionOpen={() => {
+          <PlanSidebar state={state} onChange={onChange} noAutoOpen={true} onHideMaterialsButton={onHideMaterialsButton} onSectionOpen={() => {
             setSnap("full");
             setHeight(snapToHeight("full"));
             onSectionOpen?.();

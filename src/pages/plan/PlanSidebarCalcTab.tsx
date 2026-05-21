@@ -10,12 +10,14 @@ export default function CalcTab({
   onUpdateQuantity,
   onRemoveFloorItem,
   onUpdateFloorQuantity,
+  onHideMaterialsButton,
 }: {
   state: PlanState;
   onRemoveItem?: (segId: string, priceId: number) => void;
   onUpdateQuantity?: (segId: string, priceId: number, quantity: number) => void;
   onRemoveFloorItem?: (id: string) => void;
   onUpdateFloorQuantity?: (id: string, quantity: number) => void;
+  onHideMaterialsButton?: () => void;
 }) {
   const { points, segments, room, floorItems = [] } = state;
   const scale    = calcScale(points, segments);
@@ -77,7 +79,20 @@ export default function CalcTab({
 
       {/* Размеры */}
       <div>
-        <p className="text-[10px] font-bold uppercase tracking-widest text-white/25 mb-2">Размеры</p>
+        <div className="flex items-center justify-between mb-2">
+          <p className="text-[10px] font-bold uppercase tracking-widest text-white/25">Размеры</p>
+          {onHideMaterialsButton && (
+            <button
+              onClick={onHideMaterialsButton}
+              title="Скрыть кнопку Материалы из меню"
+              className="flex items-center gap-1 px-2 py-0.5 rounded-lg transition hover:bg-white/10"
+              style={{ color: "rgba(255,255,255,0.3)", fontSize: 10 }}
+            >
+              <Icon name="EyeOff" size={12} />
+              <span>Скрыть</span>
+            </button>
+          )}
+        </div>
 
         {/* Три главные метрики — компактный ряд блоков */}
         <div className="grid grid-cols-3 gap-1.5 mb-2">

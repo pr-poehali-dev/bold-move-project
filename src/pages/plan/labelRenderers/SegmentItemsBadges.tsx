@@ -22,8 +22,9 @@ export function SegmentItemsBadges({
   // Хуки — ВСЕГДА до любых return
   const [tooltip, setTooltip] = useState<{ px: number; py: number; name: string; qty: number; unit: string } | null>(null);
   const [dragState, setDragState] = useState<{ priceId: number; x: number; y: number } | null>(null);
-  const dblRef  = useRef<{ key: string; t: number }>({ key: "", t: 0 });
-  const dragRef = useRef<{ priceId: number; startX: number; startY: number; moved: boolean } | null>(null);
+  const dblRef       = useRef<{ key: string; t: number }>({ key: "", t: 0 });
+  const dragRef      = useRef<{ priceId: number; startX: number; startY: number; moved: boolean } | null>(null);
+  const longPressRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const items = seg.items;
   if (!items || items.length === 0) return null;
@@ -161,22 +162,30 @@ export function SegmentItemsBadges({
         };
 
         const handleTouchStart = (e: React.TouchEvent) => {
-          if (!onMoveItemToSeg) return;
           e.stopPropagation();
-          const t = e.touches[0];
-          dragRef.current = { priceId: item.priceId, startX: t.clientX, startY: t.clientY, moved: false };
+          const touch = e.touches[0];
+          dragRef.current = { priceId: item.priceId, startX: touch.clientX, startY: touch.clientY, moved: false };
+          // Long-press: через 500мс — открыть модалку редактирования
+          if (longPressRef.current) clearTimeout(longPressRef.current);
+          longPressRef.current = setTimeout(() => {
+            if (dragRef.current && !dragRef.current.moved) {
+              dragRef.current = null;
+              onEditSegItem?.(seg.id, item.priceId);
+            }
+          }, 500);
         };
 
         const handleTouchMove = (e: React.TouchEvent) => {
           if (!dragRef.current || dragRef.current.priceId !== item.priceId) return;
           e.stopPropagation();
-          const t = e.touches[0];
-          const dx = Math.abs(t.clientX - dragRef.current.startX);
-          const dy = Math.abs(t.clientY - dragRef.current.startY);
+          const touch = e.touches[0];
+          const dx = Math.abs(touch.clientX - dragRef.current.startX);
+          const dy = Math.abs(touch.clientY - dragRef.current.startY);
           if (dx > 8 || dy > 8) {
+            // Движение — отменяем long-press
+            if (longPressRef.current) { clearTimeout(longPressRef.current); longPressRef.current = null; }
+            if (!onMoveItemToSeg) return;
             dragRef.current.moved = true;
-            // Конвертируем clientX/Y delta в SVG-координаты через пропорцию
-            // Находим SVG-элемент через closest
             const svgEl = (e.target as SVGElement).closest("svg");
             let scaleX = 1, scaleY = 1;
             if (svgEl) {
@@ -187,21 +196,36 @@ export function SegmentItemsBadges({
             }
             setDragState({
               priceId: item.priceId,
-              x: px + (t.clientX - dragRef.current.startX) * scaleX,
-              y: py + (t.clientY - dragRef.current.startY) * scaleY,
+              x: px + (touch.clientX - dragRef.current.startX) * scaleX,
+              y: py + (touch.clientY - dragRef.current.startY) * scaleY,
             });
             setTooltip(null);
           }
         };
 
         const handleTouchEnd = (e: React.TouchEvent) => {
+          if (longPressRef.current) { clearTimeout(longPressRef.current); longPressRef.current = null; }
           if (!dragRef.current || dragRef.current.priceId !== item.priceId) return;
           e.stopPropagation();
           if (dragRef.current.moved && dragState) {
             finishDrag(dragState.x, dragState.y);
+          } else if (!dragRef.current.moved) {
+            // Короткий тап — открыть модалку
+            dragRef.current = null;
+            setDragState(null);
+            const now = Date.now();
+            if (dblRef.current.key === itemKey && now - dblRef.current.t < 400) {
+              dblRef.current = { key: "", t: 0 };
+              onRemoveItem?.(seg.id, item.priceId);
+            } else {
+              dblRef.current = { key: itemKey, t: now };
+              setTimeout(() => {
+                if (dblRef.current.key === itemKey) {
+                  onEditSegItem?.(seg.id, item.priceId);
+                }
+              }, 350);
+            }
           } else {
-            // короткий тап — обрабатываем как клик
-            handleClick(e as unknown as React.MouseEvent);
             dragRef.current = null;
             setDragState(null);
           }

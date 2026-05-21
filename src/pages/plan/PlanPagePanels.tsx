@@ -155,7 +155,7 @@ export default function PlanPagePanels({
         catalogOpen={catalog.catalogOpen}
         rightPanelOpen={rightPanelOpen}
         isMobile={isMobile}
-        onOpenMaterials={() => {
+        onOpenMaterials={state.settings.hideMaterialsButton ? undefined : () => {
           if (isMobile) {
             handleChange({ sidebarTab: "calc" });
             catalog.setCatalogOpen(false);
@@ -208,6 +208,10 @@ export default function PlanPagePanels({
           initialSnap={sheetSnap}
           onClose={() => { setSheetOpen(false); setSheetHeight(0); }}
           onSheetHeightChange={setSheetHeight}
+          onHideMaterialsButton={() => {
+            handleSettingChange({ hideMaterialsButton: true });
+            setSheetOpen(false);
+          }}
         />
       )}
 
@@ -288,6 +292,11 @@ export default function PlanPagePanels({
         onConfirm={catalog.confirmEditFloorItem}
         onCancel={() => catalog.setEditingFloorId(null)}
         isEditing
+        onDelete={() => {
+          const id = catalog.editingFloorId;
+          catalog.setEditingFloorId(null);
+          if (id) handleChange({ floorItems: (state.floorItems ?? []).filter(fi => fi.id !== id) });
+        }}
         onReplace={() => {
           if (isMobile) {
             const cat = catalog.editingFloorItem?.category ?? null;

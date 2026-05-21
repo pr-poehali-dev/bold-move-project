@@ -110,6 +110,7 @@ export interface PlanSettings {
   showDimLines: boolean;
   showPoints: boolean;
   showPointLabels: boolean;
+  hideMaterialsButton?: boolean;
 }
 
 // ─── Полное состояние плана ──────────────────────────────────────────────────
