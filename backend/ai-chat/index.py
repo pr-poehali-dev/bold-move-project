@@ -1559,6 +1559,68 @@ SYSTEM_PROMPT = """Ты сметчик-технолог компании MosPoto
 """
 
 
+def _extract_items_from_content(content: str) -> list:
+    """Извлекает массив items из ответа LLM.
+    Использует счётчик скобок чтобы найти валидный JSON даже если вокруг есть лишний текст.
+    """
+    # Убираем markdown-блоки ```json ... ```
+    content = re.sub(r'```(?:json)?\s*', '', content).strip()
+
+    # Ищем начало JSON объекта
+    start = content.find('{')
+    if start == -1:
+        # Может быть просто массив items
+        start = content.find('[')
+        if start == -1:
+            return []
+        # Пробуем распарсить как массив
+        try:
+            arr = json.loads(content[start:])
+            if isinstance(arr, list):
+                return arr
+        except Exception:
+            pass
+        return []
+
+    # Находим закрывающую скобку через счётчик
+    depth = 0
+    end = -1
+    for i, ch in enumerate(content[start:], start):
+        if ch == '{':
+            depth += 1
+        elif ch == '}':
+            depth -= 1
+            if depth == 0:
+                end = i + 1
+                break
+
+    if end == -1:
+        # Обрезанный JSON — пробуем закрыть и распарсить
+        candidate = content[start:] + ']}}'
+        try:
+            parsed = json.loads(candidate)
+            return parsed.get('items', [])
+        except Exception:
+            return []
+
+    candidate = content[start:end]
+    try:
+        parsed = json.loads(candidate)
+        items = parsed.get('items', [])
+        if isinstance(items, list):
+            return items
+    except Exception as e:
+        print(f"[plan_mode] json parse error: {e}, trying items array directly")
+        # Может быть AI вернул items как массив без обёртки
+        arr_match = re.search(r'"items"\s*:\s*(\[.*?\])', candidate, re.DOTALL)
+        if arr_match:
+            try:
+                return json.loads(arr_match.group(1))
+            except Exception:
+                pass
+    return []
+
+
 def handler(event, context):
     """Обрабатывает запросы к AI-чату MOSPOTOLKI."""
     if event.get('httpMethod') == 'OPTIONS':
@@ -1651,14 +1713,13 @@ def handler(event, context):
             )
             if resp.status_code == 200:
                 content = resp.json()['choices'][0]['message']['content']
-                # Парсим JSON из ответа
-                json_match = re.search(r'\{.*"items".*\}', content, re.DOTALL)
-                if json_match:
-                    parsed = json.loads(json_match.group(0))
-                    items = parsed.get('items', [])
-                    if items:
-                        print(f"[plan_mode] returned {len(items)} items")
-                        return {'statusCode': 200, 'headers': cors, 'body': json.dumps({'items': items})}
+                # Парсим JSON — ищем первый { и соответствующий } через счётчик скобок
+                items = _extract_items_from_content(content)
+                if items:
+                    print(f"[plan_mode] returned {len(items)} items")
+                    return {'statusCode': 200, 'headers': cors, 'body': json.dumps({'items': items})}
+                else:
+                    print(f"[plan_mode] no items parsed from: {content[:200]}")
         except Exception as e:
             print(f"[plan_mode] error: {e}")
         # Fallback: вернуть пустой список чтобы не зависать
