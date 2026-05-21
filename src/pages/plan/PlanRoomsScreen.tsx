@@ -23,6 +23,7 @@ const QUICK_ROOMS = [
   { name: "Коридор",  icon: "ArrowRight" },
   { name: "Детская",  icon: "Baby" },
   { name: "Кабинет",  icon: "Briefcase" },
+  { name: "Комната",  icon: "DoorOpen" },
 ];
 
 export default function PlanRoomsScreen({ token, project, onBack, onOpenRoom }: Props) {
