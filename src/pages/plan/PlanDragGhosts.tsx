@@ -23,6 +23,7 @@ interface Props {
   onAdjustQuantity: (priceId: number, delta: number) => void;
   onSetQuantity: (priceId: number, value: number) => void;
   onAddToFloor?: (item: SegmentPriceItem) => void;
+  onReplaceItem?: (item: SegmentPriceItem) => void;
   hasSegments: boolean;
 }
 
@@ -33,7 +34,7 @@ export default function PlanDragGhosts({
   hoverSegId, isMobile,
   segments, floorItems, anyPanelOpen,
   onTapActiveId, onRemoveActiveItem,
-  onAssignToAllSegs, onRemoveFromAllSegs, isItemOnAllSegs, onAdjustQuantity, onSetQuantity, onAddToFloor, hasSegments,
+  onAssignToAllSegs, onRemoveFromAllSegs, isItemOnAllSegs, onAdjustQuantity, onSetQuantity, onAddToFloor, onReplaceItem, hasSegments,
 }: Props) {
   return (
     <>
@@ -64,6 +65,7 @@ export default function PlanDragGhosts({
         onAdjustQuantity={onAdjustQuantity}
         onSetQuantity={onSetQuantity}
         onAddToFloor={onAddToFloor}
+        onReplaceItem={onReplaceItem}
         hasSegments={hasSegments}
       />
 

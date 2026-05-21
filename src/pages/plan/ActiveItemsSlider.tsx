@@ -17,6 +17,7 @@ interface ActiveItemsSliderProps {
   onAdjustQuantity: (priceId: number, delta: number) => void;
   onSetQuantity: (priceId: number, value: number) => void;
   onAddToFloor?: (item: SegmentPriceItem) => void;
+  onReplaceItem?: (item: SegmentPriceItem) => void;
   hasSegments: boolean;
 }
 
@@ -25,7 +26,7 @@ export default function ActiveItemsSlider({
   segments, floorItems, anyPanelOpen,
   onTapActiveId, onRemoveActiveItem,
   onAssignToAllSegs, onRemoveFromAllSegs, isItemOnAllSegs,
-  onAdjustQuantity, onSetQuantity, onAddToFloor, hasSegments,
+  onAdjustQuantity, onSetQuantity, onAddToFloor, onReplaceItem, hasSegments,
 }: ActiveItemsSliderProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [expandedId, setExpandedId] = useState<number | null>(null);
@@ -85,10 +86,11 @@ export default function ActiveItemsSlider({
     }
     const card = (e.currentTarget as HTMLElement);
     const rect = card.getBoundingClientRect();
-    const centerX = rect.left + rect.width / 2;
+    // Центрируем попап по центру иконки (38px + 12px padding слева)
+    const iconCenterX = rect.left + 12 + 19;
     const bottomFromTop = window.innerHeight - rect.top + 8;
     setExpandedId(priceId);
-    setPopupPos({ x: centerX, bottom: bottomFromTop });
+    setPopupPos({ x: iconCenterX, bottom: bottomFromTop });
   };
 
   return (
@@ -277,6 +279,30 @@ export default function ActiveItemsSlider({
             </div>
 
             <div style={{ height: 1, background: "rgba(255,255,255,0.06)", marginBottom: 8 }} />
+
+            {/* Кнопка: заменить товар */}
+            {onReplaceItem && (
+              <button
+                data-item-popup="1"
+                onClick={e => {
+                  e.stopPropagation();
+                  setExpandedId(null);
+                  setPopupPos(null);
+                  onReplaceItem(item);
+                }}
+                style={{
+                  width: "100%", height: 28, borderRadius: 7, cursor: "pointer", marginBottom: 8,
+                  border: "1px solid rgba(124,58,237,0.35)",
+                  background: "rgba(124,58,237,0.1)",
+                  color: "rgba(196,181,253,0.9)",
+                  fontSize: 10, fontWeight: 600,
+                  display: "flex", alignItems: "center", justifyContent: "center", gap: 5,
+                }}
+              >
+                <svg width="11" height="11" viewBox="0 0 14 14" fill="none"><path d="M1 7a6 6 0 1 0 6-6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/><path d="M1 3v4h4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                Заменить товар
+              </button>
+            )}
 
             {/* Строка: счётчик + все стены */}
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>

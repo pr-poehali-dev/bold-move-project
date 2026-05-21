@@ -83,6 +83,8 @@ export default function PlanPagePanels({
   mobileVariantPickerOpen = false,
 }: Props) {
   const [replaceModalOpen, setReplaceModalOpen] = useState(false);
+  // Замена из нижней панели активных карточек
+  const [replaceActiveItem, setReplaceActiveItem] = useState<import("./planTypes").SegmentPriceItem | null>(null);
 
   // Сохраняем segRef пока барабан открыт (для мобильной замены)
   const [mobileReplaceSegRef, setMobileReplaceSegRef] = useState<{ segId: string; priceId: number } | null>(null);
@@ -220,9 +222,14 @@ export default function PlanPagePanels({
           setMobileReplaceSegRef(null);
         }}
         onAssignToSegs={catalog.assignItemToSegs}
-        onReplaceItem={mobileReplaceSegRef ? (item) => {
-          catalog.replaceSegItem(item, mobileReplaceSegRef);
-          setMobileReplaceSegRef(null);
+        onReplaceItem={(mobileReplaceSegRef || replaceActiveItem) ? (item) => {
+          if (mobileReplaceSegRef) {
+            catalog.replaceSegItem(item, mobileReplaceSegRef);
+            setMobileReplaceSegRef(null);
+          } else if (replaceActiveItem) {
+            catalog.replaceActiveItemEverywhere(replaceActiveItem.priceId, item);
+            setReplaceActiveItem(null);
+          }
           catalog.setCatalogOpen(false);
           catalog.setReplaceCatalogCategory(null);
         } : undefined}
@@ -300,6 +307,20 @@ export default function PlanPagePanels({
         />
       )}
 
+      {/* Замена из нижней панели активных карточек (ПК) */}
+      {!isMobile && (
+        <ReplaceItemModal
+          open={!!replaceActiveItem}
+          item={replaceActiveItem ? { ...replaceActiveItem, quantity: 1 } : null}
+          prices={catalog.prices}
+          onReplace={(newItem) => {
+            if (replaceActiveItem) catalog.replaceActiveItemEverywhere(replaceActiveItem.priceId, newItem);
+            setReplaceActiveItem(null);
+          }}
+          onCancel={() => setReplaceActiveItem(null)}
+        />
+      )}
+
       {/* Ghost-оверлеи и слайдер активных карточек */}
       <PlanDragGhosts
         dragItem={catalog.dragItem}
@@ -321,6 +342,18 @@ export default function PlanPagePanels({
         onAdjustQuantity={catalog.adjustItemQuantity}
         onSetQuantity={catalog.setItemQuantity}
         onAddToFloor={catalog.setPendingFloorItem}
+        onReplaceItem={item => {
+          if (isMobile) {
+            // Мобиле: открываем барабан
+            catalog.setReplaceCatalogCategory(item.category ?? null);
+            setMobileReplaceSegRef(null);
+            setReplaceActiveItem(item);
+            catalog.setCatalogOpen(true);
+          } else {
+            // ПК: открываем модалку
+            setReplaceActiveItem(item);
+          }
+        }}
         hasSegments={state.isClosed && state.segments.length > 0}
       />
 

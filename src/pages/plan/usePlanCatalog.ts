@@ -454,6 +454,25 @@ export function usePlanCatalog(
     setEditingSegRef(null);
   }, [editingSegRef, stateRef, push]);
 
+  // Заменить активный товар везде (во всех сегментах и floorItems) на новый
+  const replaceActiveItemEverywhere = useCallback((oldPriceId: number, newItem: SegmentPriceItem) => {
+    const s = stateRef.current;
+    const newSegments = s.segments.map(seg => ({
+      ...seg,
+      items: (seg.items ?? []).map(it =>
+        it.priceId === oldPriceId ? { ...newItem, quantity: it.quantity } : it
+      ),
+    }));
+    const newFloorItems = (s.floorItems ?? []).map(fi =>
+      fi.priceId === oldPriceId
+        ? { ...fi, priceId: newItem.priceId, name: newItem.name, category: newItem.category, imageUrl: newItem.imageUrl, unit: newItem.unit }
+        : fi
+    );
+    push({ ...s, segments: newSegments, floorItems: newFloorItems });
+    // Обновляем activeItems
+    setActiveItems(prev => prev.map(it => it.priceId === oldPriceId ? { ...newItem } : it));
+  }, [stateRef, push, setActiveItems]);
+
   // Заменить floorItem: удалить старый, поставить новый с тем же quantity
   const replaceFloorItem = useCallback((newItem: SegmentPriceItem, quantity: number, targetId?: string) => {
     const id = targetId ?? editingFloorId;
@@ -696,7 +715,7 @@ export function usePlanCatalog(
     attachedCount,
     findClosestSeg, assignItemToSeg, assignItemToSegs, assignItemToAllSegs, assignManyItems, removeItemFromAllSegs, removeActiveItem, isItemOnAllSegs, adjustItemQuantity, setItemQuantity,
     pendingFloorItem, setPendingFloorItem, confirmFloorItem,
-    editingFloorId, setEditingFloorId, editingFloorItem, confirmEditFloorItem, replaceFloorItem,
+    editingFloorId, setEditingFloorId, editingFloorItem, confirmEditFloorItem, replaceFloorItem, replaceActiveItemEverywhere,
     editingSegRef, setEditingSegRef, editingSegItem, replaceSegItem,
     replaceCatalogCategory, setReplaceCatalogCategory,
   };
