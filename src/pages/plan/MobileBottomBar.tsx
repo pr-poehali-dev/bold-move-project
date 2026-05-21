@@ -64,18 +64,22 @@ export default function MobileBottomBar({
       // Обновляем статусы в попапе
       setVoicePopupItems(prev => {
         if (prev.length === 0) return prev;
+        if (items.length === 0) {
+          // Бот ничего не нашёл — все fail
+          return prev.map(p => ({ ...p, status: "fail" as const }));
+        }
         const botNames = items.map(i => i.name.toLowerCase());
         return prev.map(p => {
           const labelWords = p.label.toLowerCase().split(/\s+/).filter(w => w.length > 2);
           const matched = botNames.some(n => labelWords.some(w => n.includes(w) || w.includes(n)));
-          return { ...p, status: matched ? "ok" : "fail" };
+          return { ...p, status: (matched ? "ok" : "fail") as "ok" | "fail" };
         });
       });
-      onVoiceCatalogItems?.(items, transcript);
+      if (items.length > 0) onVoiceCatalogItems?.(items, transcript);
     },
     onTranscript: (transcript) => {
       const labels = splitTranscriptToItems(transcript);
-      setVoicePopupItems(labels.map(label => ({ label, status: "pending" })));
+      setVoicePopupItems(labels.map(label => ({ label, status: "pending" as const })));
     },
   });
 

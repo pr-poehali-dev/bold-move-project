@@ -450,9 +450,11 @@ export default function useVoiceCatalog({ state, onItems, onTranscript }: Props)
         onTranscript?.(transcript);
         setStatus(`"${transcript}" — запрашиваю бота...`);
         const { items, transcript: fullTranscript } = await sendToAI(transcript);
+        // Всегда вызываем onItems — даже если items.length === 0,
+        // чтобы MobileBottomBar мог обновить статусы в попапе (убрать спиннеры)
+        onItems(items, fullTranscript);
         if (items.length > 0) {
           setStatus(`Добавляю ${items.length} позиций в смету...`);
-          onItems(items, fullTranscript);
           setStatus("");
         } else {
           setStatus("Бот не нашёл подходящих товаров");
