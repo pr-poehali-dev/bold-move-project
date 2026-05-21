@@ -79,8 +79,11 @@ export function usePlanCatalog(
 
   // Категории, которые НЕ показываются в нижней панели
   const HIDDEN_CATEGORIES = ["монтаж", "раскрой", "огарпунивание"];
-  const isHiddenCategory = (cat: string) =>
-    HIDDEN_CATEGORIES.some(h => cat?.toLowerCase().includes(h));
+  // Имена товаров которые скрываем независимо от категории (т.к. категория "Полотна")
+  const HIDDEN_NAMES = ["Раскрой ПВХ", "Огарпунивание ПВХ"];
+  const isHiddenItem = (cat: string, name: string) =>
+    HIDDEN_CATEGORIES.some(h => cat?.toLowerCase().includes(h)) ||
+    HIDDEN_NAMES.some(n => name === n);
 
   // Синхронизация activeItems с товарами в сегментах + полотне
   // Собираем уникальные товары из segments[].items и floorItems (кроме скрытых категорий)
@@ -91,7 +94,7 @@ export function usePlanCatalog(
     // Сначала — товары со стен
     for (const seg of state.segments) {
       for (const it of seg.items ?? []) {
-        if (!seenPriceIds.has(it.priceId) && !isHiddenCategory(it.category)) {
+        if (!seenPriceIds.has(it.priceId) && !isHiddenItem(it.category, it.name)) {
           seenPriceIds.add(it.priceId);
           derived.push(it);
         }
@@ -100,7 +103,7 @@ export function usePlanCatalog(
 
     // Затем — товары с полотна (floorItems), которых ещё нет в списке
     for (const fi of state.floorItems ?? []) {
-      if (!seenPriceIds.has(fi.priceId) && !isHiddenCategory(fi.category)) {
+      if (!seenPriceIds.has(fi.priceId) && !isHiddenItem(fi.category, fi.name)) {
         seenPriceIds.add(fi.priceId);
         derived.push({
           priceId: fi.priceId,
@@ -202,14 +205,15 @@ export function usePlanCatalog(
     push({ ...s, segments: newSegments });
   }, [stateRef, push, findDominantWallProfile]);
 
-  // Удалить товар со всех стен и убрать карточку
+  // Удалить товар со всех стен, с полотна и убрать карточку
   const removeActiveItem = useCallback((priceId: number) => {
     const s = stateRef.current;
     const newSegments = s.segments.map(seg => ({
       ...seg,
       items: (seg.items ?? []).filter(it => it.priceId !== priceId),
     }));
-    push({ ...s, segments: newSegments });
+    const newFloorItems = (s.floorItems ?? []).filter(fi => fi.priceId !== priceId);
+    push({ ...s, segments: newSegments, floorItems: newFloorItems });
     setActiveItems(prev => prev.filter(it => it.priceId !== priceId));
     setTapActiveId(prev => (prev === priceId ? null : prev));
   }, [stateRef, push]);
