@@ -11,6 +11,7 @@ export default function CalcTab({
   onRemoveFloorItem,
   onUpdateFloorQuantity,
   onHideMaterialsButton,
+  onShowMaterialsButton,
 }: {
   state: PlanState;
   onRemoveItem?: (segId: string, priceId: number) => void;
@@ -18,6 +19,7 @@ export default function CalcTab({
   onRemoveFloorItem?: (id: string) => void;
   onUpdateFloorQuantity?: (id: string, quantity: number) => void;
   onHideMaterialsButton?: () => void;
+  onShowMaterialsButton?: () => void;
 }) {
   const { points, segments, room, floorItems = [] } = state;
   const scale    = calcScale(points, segments);
@@ -90,6 +92,17 @@ export default function CalcTab({
             >
               <Icon name="EyeOff" size={12} />
               <span>Скрыть</span>
+            </button>
+          )}
+          {onShowMaterialsButton && (
+            <button
+              onClick={onShowMaterialsButton}
+              title="Показать кнопку Материалы в меню"
+              className="flex items-center gap-1 px-2 py-0.5 rounded-lg transition hover:bg-white/10"
+              style={{ color: "rgba(167,139,250,0.6)", fontSize: 10 }}
+            >
+              <Icon name="Eye" size={12} />
+              <span>Показать в меню</span>
             </button>
           )}
         </div>

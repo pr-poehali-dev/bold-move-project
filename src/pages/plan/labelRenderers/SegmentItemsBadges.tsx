@@ -22,9 +22,24 @@ export function SegmentItemsBadges({
   // Хуки — ВСЕГДА до любых return
   const [tooltip, setTooltip] = useState<{ px: number; py: number; name: string; qty: number; unit: string } | null>(null);
   const [dragState, setDragState] = useState<{ priceId: number; x: number; y: number } | null>(null);
+  const dragStateRef = useRef<{ priceId: number; x: number; y: number } | null>(null);
+  // Mouse double-click ref
   const dblRef       = useRef<{ key: string; t: number }>({ key: "", t: 0 });
+  // Mouse drag ref
   const dragRef      = useRef<{ priceId: number; startX: number; startY: number; moved: boolean } | null>(null);
-  const longPressRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Touch state: таймер long-press, флаг что drag активирован
+  const touchRef = useRef<{
+    priceId: number;
+    key: string;
+    startX: number;
+    startY: number;
+    startPx: number; // SVG координата
+    startPy: number;
+    scaleX: number;
+    scaleY: number;
+    timer: ReturnType<typeof setTimeout> | null;
+    dragging: boolean; // true = long-press сработал, drag активен
+  } | null>(null);
 
   const items = seg.items;
   if (!items || items.length === 0) return null;
@@ -130,6 +145,7 @@ export function SegmentItemsBadges({
             onMoveItemToSeg!(seg.id, item.priceId, bestSegId);
           }
           dragRef.current = null;
+          dragStateRef.current = null;
           setDragState(null);
         };
 
@@ -163,71 +179,108 @@ export function SegmentItemsBadges({
 
         const handleTouchStart = (e: React.TouchEvent) => {
           e.stopPropagation();
+          // Отменяем предыдущий тач если был
+          if (touchRef.current?.timer) clearTimeout(touchRef.current.timer);
+
           const touch = e.touches[0];
-          dragRef.current = { priceId: item.priceId, startX: touch.clientX, startY: touch.clientY, moved: false };
-          // Long-press: через 500мс — открыть модалку редактирования
-          if (longPressRef.current) clearTimeout(longPressRef.current);
-          longPressRef.current = setTimeout(() => {
-            if (dragRef.current && !dragRef.current.moved) {
-              dragRef.current = null;
-              onEditSegItem?.(seg.id, item.priceId);
-            }
-          }, 500);
+          // Вычисляем scale SVG один раз при старте
+          const svgEl = (e.target as SVGElement).closest("svg");
+          let scaleX = 1, scaleY = 1;
+          if (svgEl) {
+            const rect = svgEl.getBoundingClientRect();
+            const vb = svgEl.viewBox.baseVal;
+            scaleX = vb.width / rect.width;
+            scaleY = vb.height / rect.height;
+          }
+
+          touchRef.current = {
+            priceId: item.priceId,
+            key: itemKey,
+            startX: touch.clientX,
+            startY: touch.clientY,
+            startPx: px,
+            startPy: py,
+            scaleX,
+            scaleY,
+            dragging: false,
+            // Таймер 500мс — активирует drag-режим
+            timer: onMoveItemToSeg ? setTimeout(() => {
+              if (touchRef.current && touchRef.current.key === itemKey) {
+                touchRef.current.dragging = true;
+                touchRef.current.timer = null;
+                // Показываем призрак в текущей позиции
+                setDragState({ priceId: item.priceId, x: px, y: py });
+                setTooltip(null);
+              }
+            }, 500) : null,
+          };
         };
 
         const handleTouchMove = (e: React.TouchEvent) => {
-          if (!dragRef.current || dragRef.current.priceId !== item.priceId) return;
-          e.stopPropagation();
+          const tr = touchRef.current;
+          if (!tr || tr.key !== itemKey) return;
           const touch = e.touches[0];
-          const dx = Math.abs(touch.clientX - dragRef.current.startX);
-          const dy = Math.abs(touch.clientY - dragRef.current.startY);
-          if (dx > 8 || dy > 8) {
-            // Движение — отменяем long-press
-            if (longPressRef.current) { clearTimeout(longPressRef.current); longPressRef.current = null; }
-            if (!onMoveItemToSeg) return;
-            dragRef.current.moved = true;
-            const svgEl = (e.target as SVGElement).closest("svg");
-            let scaleX = 1, scaleY = 1;
-            if (svgEl) {
-              const rect = svgEl.getBoundingClientRect();
-              const vb = svgEl.viewBox.baseVal;
-              scaleX = vb.width / rect.width;
-              scaleY = vb.height / rect.height;
-            }
-            setDragState({
+
+          if (tr.dragging) {
+            // Drag активен — двигаем призрак
+            e.stopPropagation();
+            const newDs = {
               priceId: item.priceId,
-              x: px + (touch.clientX - dragRef.current.startX) * scaleX,
-              y: py + (touch.clientY - dragRef.current.startY) * scaleY,
-            });
-            setTooltip(null);
+              x: tr.startPx + (touch.clientX - tr.startX) * tr.scaleX,
+              y: tr.startPy + (touch.clientY - tr.startY) * tr.scaleY,
+            };
+            dragStateRef.current = newDs;
+            setDragState(newDs);
+          } else {
+            // Drag ещё не активирован — если палец сдвинулся > 10px, отменяем таймер
+            const dx = Math.abs(touch.clientX - tr.startX);
+            const dy = Math.abs(touch.clientY - tr.startY);
+            if (dx > 10 || dy > 10) {
+              if (tr.timer) { clearTimeout(tr.timer); tr.timer = null; }
+              // Не сбрасываем touchRef — touchEnd нужен для обработки тапа
+            }
           }
         };
 
         const handleTouchEnd = (e: React.TouchEvent) => {
-          if (longPressRef.current) { clearTimeout(longPressRef.current); longPressRef.current = null; }
-          if (!dragRef.current || dragRef.current.priceId !== item.priceId) return;
+          const tr = touchRef.current;
+          if (!tr || tr.key !== itemKey) return;
           e.stopPropagation();
-          if (dragRef.current.moved && dragState) {
-            finishDrag(dragState.x, dragState.y);
-          } else if (!dragRef.current.moved) {
-            // Короткий тап — открыть модалку
-            dragRef.current = null;
-            setDragState(null);
-            const now = Date.now();
-            if (dblRef.current.key === itemKey && now - dblRef.current.t < 400) {
-              dblRef.current = { key: "", t: 0 };
-              onRemoveItem?.(seg.id, item.priceId);
-            } else {
-              dblRef.current = { key: itemKey, t: now };
-              setTimeout(() => {
-                if (dblRef.current.key === itemKey) {
-                  onEditSegItem?.(seg.id, item.priceId);
-                }
-              }, 350);
-            }
+
+          // Отменяем таймер long-press
+          if (tr.timer) { clearTimeout(tr.timer); tr.timer = null; }
+          touchRef.current = null;
+
+          if (tr.dragging) {
+            // Завершаем drag — ищем ближайшую стену (используем ref, т.к. state может быть stale)
+            const ds = dragStateRef.current;
+            dragStateRef.current = null;
+            if (ds) finishDrag(ds.x, ds.y);
+            else setDragState(null);
           } else {
-            dragRef.current = null;
+            // Короткий тап — обрабатываем одиночный / двойной
             setDragState(null);
+            const touch = e.changedTouches[0];
+            const dx = Math.abs(touch.clientX - tr.startX);
+            const dy = Math.abs(touch.clientY - tr.startY);
+            // Если палец почти не двигался — это тап
+            if (dx < 12 && dy < 12) {
+              const now = Date.now();
+              if (dblRef.current.key === itemKey && now - dblRef.current.t < 400) {
+                // Двойной тап — удалить
+                dblRef.current = { key: "", t: 0 };
+                onRemoveItem?.(seg.id, item.priceId);
+              } else {
+                // Одиночный тап — открыть модалку через 350мс (ждём второго тапа)
+                dblRef.current = { key: itemKey, t: now };
+                setTimeout(() => {
+                  if (dblRef.current.key === itemKey) {
+                    dblRef.current = { key: "", t: 0 };
+                    onEditSegItem?.(seg.id, item.priceId);
+                  }
+                }, 350);
+              }
+            }
           }
         };
 

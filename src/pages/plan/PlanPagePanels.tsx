@@ -208,10 +208,13 @@ export default function PlanPagePanels({
           initialSnap={sheetSnap}
           onClose={() => { setSheetOpen(false); setSheetHeight(0); }}
           onSheetHeightChange={setSheetHeight}
-          onHideMaterialsButton={() => {
+          onHideMaterialsButton={!state.settings.hideMaterialsButton ? () => {
             handleSettingChange({ hideMaterialsButton: true });
             setSheetOpen(false);
-          }}
+          } : undefined}
+          onShowMaterialsButton={state.settings.hideMaterialsButton ? () => {
+            handleSettingChange({ hideMaterialsButton: false });
+          } : undefined}
         />
       )}
 

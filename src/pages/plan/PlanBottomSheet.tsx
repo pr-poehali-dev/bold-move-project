@@ -12,6 +12,7 @@ interface Props {
   initialSnap?: SheetSnap;
   onSectionOpen?: () => void;
   onHideMaterialsButton?: () => void;
+  onShowMaterialsButton?: () => void;
 }
 
 // Высоты шита: peek (подглядывание) / half / full
@@ -21,7 +22,7 @@ const PEEK_H  = 52;   // только ручка видна
 const HALF_H  = 0.5;  // 50% экрана (доля)
 const FULL_H  = 0.92; // 92% экрана
 
-export default function PlanBottomSheet({ state, onChange, open, onClose, onSheetHeightChange, initialSnap = "half", onSectionOpen, onHideMaterialsButton }: Props) {
+export default function PlanBottomSheet({ state, onChange, open, onClose, onSheetHeightChange, initialSnap = "half", onSectionOpen, onHideMaterialsButton, onShowMaterialsButton }: Props) {
   const sheetRef    = useRef<HTMLDivElement>(null);
   const dragRef     = useRef<{ startY: number; startH: number } | null>(null);
   const [snap, setSnap]   = React.useState<SheetSnap>("half");
@@ -187,7 +188,7 @@ export default function PlanBottomSheet({ state, onChange, open, onClose, onShee
 
         {/* ── Контент сайдбара ── */}
         <div className="flex-1 overflow-hidden">
-          <PlanSidebar state={state} onChange={onChange} noAutoOpen={true} onHideMaterialsButton={onHideMaterialsButton} onSectionOpen={() => {
+          <PlanSidebar state={state} onChange={onChange} noAutoOpen={true} onHideMaterialsButton={onHideMaterialsButton} onShowMaterialsButton={onShowMaterialsButton} onSectionOpen={() => {
             setSnap("full");
             setHeight(snapToHeight("full"));
             onSectionOpen?.();

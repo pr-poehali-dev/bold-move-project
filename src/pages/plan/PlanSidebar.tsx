@@ -13,9 +13,10 @@ interface Props {
   onRemoveFloorItem?: (id: string) => void;
   onUpdateFloorQuantity?: (id: string, quantity: number) => void;
   onHideMaterialsButton?: () => void;
+  onShowMaterialsButton?: () => void;
 }
 
-export default function PlanSidebar({ state, onChange, onSectionOpen, noAutoOpen, onOpenCatalog, onRemoveItem, onUpdateQuantity, onRemoveFloorItem, onUpdateFloorQuantity, onHideMaterialsButton }: Props) {
+export default function PlanSidebar({ state, onChange, onSectionOpen, noAutoOpen, onOpenCatalog, onRemoveItem, onUpdateQuantity, onRemoveFloorItem, onUpdateFloorQuantity, onHideMaterialsButton, onShowMaterialsButton }: Props) {
   const { sidebarTab } = state;
   const isDrawing = sidebarTab !== "calc";
 
@@ -48,7 +49,7 @@ export default function PlanSidebar({ state, onChange, onSectionOpen, noAutoOpen
       {/* Контент */}
       <div className="flex-1 overflow-y-auto">
         {isDrawing  && <DrawingTab state={state} onChange={onChange} onSectionOpen={onSectionOpen} noAutoOpen={noAutoOpen} />}
-        {!isDrawing && <CalcTab state={state} onRemoveItem={onRemoveItem} onUpdateQuantity={onUpdateQuantity} onRemoveFloorItem={onRemoveFloorItem} onUpdateFloorQuantity={onUpdateFloorQuantity} onHideMaterialsButton={onHideMaterialsButton} />}
+        {!isDrawing && <CalcTab state={state} onRemoveItem={onRemoveItem} onUpdateQuantity={onUpdateQuantity} onRemoveFloorItem={onRemoveFloorItem} onUpdateFloorQuantity={onUpdateFloorQuantity} onHideMaterialsButton={onHideMaterialsButton} onShowMaterialsButton={onShowMaterialsButton} />}
       </div>
     </div>
   );
