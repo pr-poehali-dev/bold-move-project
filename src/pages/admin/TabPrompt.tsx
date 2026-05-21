@@ -101,8 +101,66 @@ Premium:  X ₽  (Standard × 1.27)
 const SEP_G = "##GENERAL##";
 const SEP_S = "##SYSTEM##";
 const SEP_F = "##FORMAT##";
-const rebuildContent = (gen: string, sys: string, fmt: string) =>
-  `${SEP_G}\n${gen}\n${SEP_S}\n${sys}\n${SEP_F}\n${fmt}`;
+const SEP_P = "##PLAN##";
+const rebuildContent = (gen: string, sys: string, fmt: string, plan: string) =>
+  `${SEP_G}\n${gen}\n${SEP_S}\n${sys}\n${SEP_F}\n${fmt}\n${SEP_P}\n${plan}`;
+
+const TEMPLATE_PLAN = `=== РЕЖИМ ПОСТРОИТЕЛЯ ===
+Получишь данные помещения (площадь, периметр, стены с длинами) и голосовой запрос монтажника.
+Верни ТОЛЬКО валидный JSON без пояснений и без markdown:
+{"items":[{"name":"...","qty":1,"unit":"м","price":0}]}
+Используй ТОЧНЫЕ названия из прайса. qty — метры для профилей, м² для полотна, шт для штучных.
+НЕ добавляй монтаж — только материалы и закладные.
+Количество бери из данных помещения (периметр, площадь, длины стен), а не придумывай.
+
+=== ОБЯЗАТЕЛЬНЫЕ ПРАВИЛА ===
+
+ПРАВИЛО 1 — СВЕТИЛЬНИКИ (КРИТИЧНО):
+Если упомянут «светильник», «точечный», «споты», «GX53», «точки» —
+ОБЯЗАТЕЛЬНО добавить ВСЕ ТРИ позиции с одинаковым qty:
+  1. «Светильник GX-53» qty=N шт
+  2. «Лампа GX-53» qty=N шт
+  3. «Под светильник ∅90» qty=N шт
+
+ПРАВИЛО 2 — ЛЮСТРА (КРИТИЧНО, НЕЛЬЗЯ ПРОПУСКАТЬ):
+Слово «люстра» в любой форме → добавить «Под люстру планка» qty=кол-во люстр шт.
+«одна люстра» → qty=1. «две люстры» → qty=2.
+
+ПРАВИЛО 3 — ТЕНЕВОЙ ПРОФИЛЬ:
+• «теневой» без уточнения → «EuroKRAAB стеновой»
+• «еврокраб», «краб» → «EuroKRAAB стеновой»
+• «потолочный еврокраб» → «EuroKRAAB потолочный»
+• «теневой классик», «классика», «KLASSIKA» → «Теневой классик (Flexy KLASSIKA 140)»
+Количество = длина указанных стен. Если не уточнил — весь периметр.
+
+ПРАВИЛО 4 — ПАРЯЩИЙ ПРОФИЛЬ:
+• «парящий» без уточнения → «Flexy FLY 02  с рассеивателем»
+• «ПК-6», «без рассеивателя» → «Парящий ПК-6 без рассеивателя»
+• «FLY 01» → «Flexy FLY 01 без рассеивателем»
+НИКОГДА не добавляй два вида парящего одновременно.
+Количество = длина указанных стен. Если не уточнил — весь периметр.
+
+ПРАВИЛО 5 — СТЕНОВОЙ ПРОФИЛЬ:
+ВСЕГДА добавлять «Стеновой алюминиевый» даже если есть теневой и парящий.
+Количество = периметр МИНУС длина теневого МИНУС длина парящего.
+
+ПРАВИЛО 6 — НИШИ ДЛЯ ШТОР:
+• «ПК-14» → «Ниша ПК-14 (2 ряда)»
+• «ПК-12» → «Ниша ПК-12 (3 ряда)»
+• «ПК-15» → «Ниша ПК-15 (2 ряда)»
+• «без перегиба» → «Ниша без перегиба»
+• «с перегибом» → «Ниша с перегибом»
+Количество = длина стены где указано.
+
+РАСЧЁТ ДЛИН:
+• «слева», «левая» → длина левой стены из данных помещения
+• «справа», «правая» → длина правой стены
+• «сверху», «верхняя» → длина верхней стены
+• «снизу», «нижняя» → длина нижней стены
+• «по одной стене» → периметр ÷ 4
+• «по двум стенам» → периметр ÷ 2
+• «по всему периметру» / без уточнения → весь периметр`;
+
 
 function TemplateButton({ template, onApply }: { template: string; onApply: (val: string) => void }) {
   const [confirm, setConfirm] = useState(false);
@@ -142,23 +200,29 @@ export default function TabPrompt({ token, isDark = true, readOnly = false, user
   const [showPrices, setShowPrices] = useState(false);
   const [showRules, setShowRules] = useState(false);
   const [showCatRules, setShowCatRules] = useState(false);
-  const [activeTab, setActiveTab] = useState<"general" | "system" | "format">("general");
+  const [activeTab, setActiveTab] = useState<"general" | "system" | "format" | "plan">("general");
   const [dirty, setDirty] = useState(false);
 
   useEffect(() => {
     apiFetch("prompt", undefined, token).then(r => r.ok && r.json().then(d => {
       const loaded = d.content || "";
       if (!loaded.trim()) {
-        // Промпт пустой — автоподставляем шаблон с данными компании
         const auto = rebuildContent(
           buildTemplateGeneral(user),
           buildTemplateSystem(user),
           TEMPLATE_FORMAT,
+          TEMPLATE_PLAN,
         );
         setContent(auto);
         setDirty(true);
       } else {
-        setContent(loaded);
+        // Если в старом промпте нет ##PLAN## — добавляем шаблон автоматически
+        if (!loaded.includes(SEP_P)) {
+          setContent(loaded + `\n${SEP_P}\n${TEMPLATE_PLAN}`);
+          setDirty(true);
+        } else {
+          setContent(loaded);
+        }
       }
     }));
     apiFetch("prices", undefined, token).then(r => r.ok && r.json().then(d => setPrices(d.items.filter((p: PriceItem) => p.active))));
@@ -199,38 +263,47 @@ export default function TabPrompt({ token, isDark = true, readOnly = false, user
     return [item.id, r.name];
   }));
 
-  // Делим промпт на три части по уникальным маркерам
+  // Делим промпт на четыре части по уникальным маркерам
   const idxG = content.indexOf(SEP_G);
   const idxS = content.indexOf(SEP_S);
   const idxF = content.indexOf(SEP_F);
+  const idxP = content.indexOf(SEP_P);
 
   const generalPart = idxS >= 0
     ? content.slice(idxG >= 0 ? idxG + SEP_G.length : 0, idxS).trim()
     : content.slice(idxG >= 0 ? idxG + SEP_G.length : 0).trim();
   const systemPart  = idxS >= 0
-    ? content.slice(idxS + SEP_S.length, idxF >= 0 ? idxF : undefined).trim()
+    ? content.slice(idxS + SEP_S.length, idxF >= 0 ? idxF : idxP >= 0 ? idxP : undefined).trim()
     : "";
   const formatPart  = idxF >= 0
-    ? content.slice(idxF + SEP_F.length).trim()
+    ? content.slice(idxF + SEP_F.length, idxP >= 0 ? idxP : undefined).trim()
+    : "";
+  const planPart    = idxP >= 0
+    ? content.slice(idxP + SEP_P.length).trim()
     : "";
 
   // Используем ref чтобы handlers всегда видели актуальные части
-  const partsRef = useRef({ generalPart, systemPart, formatPart });
-  partsRef.current = { generalPart, systemPart, formatPart };
+  const partsRef = useRef({ generalPart, systemPart, formatPart, planPart });
+  partsRef.current = { generalPart, systemPart, formatPart, planPart };
 
   const handleGeneralChange = useCallback((val: string) => {
-    const { systemPart: s, formatPart: f } = partsRef.current;
-    handleContentChange(rebuildContent(val, s, f));
+    const { systemPart: s, formatPart: f, planPart: p } = partsRef.current;
+    handleContentChange(rebuildContent(val, s, f, p));
   }, [handleContentChange]);
 
   const handleSystemChange = useCallback((val: string) => {
-    const { generalPart: g, formatPart: f } = partsRef.current;
-    handleContentChange(rebuildContent(g, val, f));
+    const { generalPart: g, formatPart: f, planPart: p } = partsRef.current;
+    handleContentChange(rebuildContent(g, val, f, p));
   }, [handleContentChange]);
 
   const handleFormatChange = useCallback((val: string) => {
-    const { generalPart: g, systemPart: s } = partsRef.current;
-    handleContentChange(rebuildContent(g, s, val));
+    const { generalPart: g, systemPart: s, planPart: p } = partsRef.current;
+    handleContentChange(rebuildContent(g, s, val, p));
+  }, [handleContentChange]);
+
+  const handlePlanChange = useCallback((val: string) => {
+    const { generalPart: g, systemPart: s, formatPart: f } = partsRef.current;
+    handleContentChange(rebuildContent(g, s, f, val));
   }, [handleContentChange]);
 
   return (
@@ -255,6 +328,10 @@ export default function TabPrompt({ token, isDark = true, readOnly = false, user
             <button onClick={() => setActiveTab("format")}
               className={`flex-1 text-xs px-2 py-1.5 rounded-md transition ${activeTab === "format" ? "bg-violet-600 text-white" : isDark ? "text-white/40 hover:text-white" : "text-gray-500 hover:text-gray-900"}`}>
               Формат ответа
+            </button>
+            <button onClick={() => setActiveTab("plan")}
+              className={`flex-1 text-xs px-2 py-1.5 rounded-md transition ${activeTab === "plan" ? "bg-violet-600 text-white" : isDark ? "text-white/40 hover:text-white" : "text-gray-500 hover:text-gray-900"}`}>
+              Построитель
             </button>
           </div>
         </div>
@@ -302,6 +379,24 @@ export default function TabPrompt({ token, isDark = true, readOnly = false, user
               onChange={e => handleFormatChange(e.target.value)}
               readOnly={readOnly}
               rows={18}
+              className={`w-full ${isDark ? "bg-white/5 border-white/10 text-white" : "bg-gray-50 border-gray-200 text-gray-900"} border rounded-xl px-4 py-3 text-sm font-mono resize-y outline-none focus:border-violet-500 transition`}
+            />
+          </div>
+        )}
+
+        {activeTab === "plan" && (
+          <div className="flex flex-col gap-2">
+            <div className="flex flex-wrap items-start justify-between gap-2">
+              <p className={`${isDark ? "text-white/30" : "text-gray-400"} text-xs flex-1 min-w-0`}>
+                Инструкции для голосового построителя планов. Используется вместо «Формата ответа» — возвращает JSON, а не текст. Количества берутся из данных помещения.
+              </p>
+              <TemplateButton onApply={handlePlanChange} template={TEMPLATE_PLAN} />
+            </div>
+            <textarea
+              value={planPart}
+              onChange={e => handlePlanChange(e.target.value)}
+              readOnly={readOnly}
+              rows={22}
               className={`w-full ${isDark ? "bg-white/5 border-white/10 text-white" : "bg-gray-50 border-gray-200 text-gray-900"} border rounded-xl px-4 py-3 text-sm font-mono resize-y outline-none focus:border-violet-500 transition`}
             />
           </div>

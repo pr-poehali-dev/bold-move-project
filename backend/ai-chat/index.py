@@ -8,7 +8,7 @@ import psycopg2
 
 from services import generate_image, web_search, search_price, call_llm, SEARCH_VISUAL, IMAGE_GEN
 from db import (
-    get_knowledge, get_system_prompt, get_faq_cache,
+    get_knowledge, get_system_prompt, get_plan_prompt, get_faq_cache,
     get_prices_block, get_canvas_prices, get_price_rules,
     build_rules_prompt, eval_calc_rule, save_correction, save_correction_answer, CANVAS_PRICES, SCHEMA,
     get_llm_threshold, get_complex_exceptions, get_stop_words,
@@ -1709,32 +1709,15 @@ def handler(event, context):
         rules_list     = get_price_rules()
         rules_hint     = build_rules_prompt(rules_list)
 
+        # Промпт для построителя: общий промпт (без ##FORMAT##) + прайс + правила + ##PLAN## из БД
+        plan_section = get_plan_prompt(fallback=(
+            "Верни ТОЛЬКО валидный JSON: {\"items\":[{\"name\":\"...\",\"qty\":1,\"unit\":\"м\",\"price\":0}]}"
+        ))
         plan_system = (
             get_system_prompt(fallback=SYSTEM_PROMPT)
             + f"\n\n=== АКТУАЛЬНЫЙ ПРАЙС-ЛИСТ ==={prices_block}"
             + (rules_hint or "")
-            + "\n\n=== РЕЖИМ ПОСТРОИТЕЛЯ ===\n"
-            "Получишь данные помещения (площадь, периметр, стены) и голосовой запрос клиента. "
-            "Верни ТОЛЬКО валидный JSON без пояснений и без markdown: "
-            "{\"items\":[{\"name\":\"...\",\"qty\":1,\"unit\":\"м\",\"price\":0}]}\n"
-            "Используй ТОЧНЫЕ названия из прайса. qty — метры для профилей, м² для полотна, шт для штучных.\n\n"
-            "=== ОБЯЗАТЕЛЬНЫЕ ПРАВИЛА (НАРУШАТЬ ЗАПРЕЩЕНО) ===\n\n"
-            "ПРАВИЛО 1 — СВЕТИЛЬНИКИ (КРИТИЧНО, НИКОГДА НЕ ИГНОРИРОВАТЬ):\n"
-            "Если клиент упоминает «точечный светильник», «светильник», «споты», «GX53», «точечники», «точки» —\n"
-            "ОБЯЗАТЕЛЬНО добавить ВСЕ ТРИ позиции вместе:\n"
-            "  1. «Светильник GX-53 + лампа» qty=N шт (где N — количество которое сказал клиент)\n"
-            "  2. «Лампа GX-53» qty=N шт\n"
-            "  3. «Под светильник ∅90» qty=N шт\n"
-            "НЕЛЬЗЯ добавить только закладную без светильника и лампы. НЕЛЬЗЯ добавить только светильник без закладной.\n"
-            "Всегда все три позиции одновременно.\n\n"
-            "ПРАВИЛО 2 — ТЕНЕВЫЕ ПРОФИЛИ (ОБЯЗАТЕЛЬНО):\n"
-            "• «теневой» без уточнения типа → ВСЕГДА «EuroKRAB стеновой» (это дефолт для теневых)\n"
-            "• «теневой еврокраб», «еврокраб», «еврокрап» → «EuroKRAB стеновой» (НЕ потолочный)\n"
-            "• «теневой классик», «классика», «флекси классика», «KLASSIKA» → «Теневой классик (Flexy KLASSIKA 140)»\n"
-            "• «парящий профиль», «парение», «парящий» → профиль из категории «Парящий профиль»\n\n"
-            "ПРАВИЛО 3 — ОСТАЛЬНЫЕ ПРОФИЛИ:\n"
-            "• «стеновой», «алюминиевый профиль», «обычный профиль» → «Стеновой алюминиевый»\n"
-            "• Если клиент говорит просто «профиль» без уточнения → «Стеновой алюминиевый»"
+            + f"\n\n{plan_section}"
         )
         plan_msgs = [
             {'role': 'system', 'content': plan_system},

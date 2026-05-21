@@ -41,7 +41,7 @@ def get_knowledge(query: str) -> str:
 
 
 def get_system_prompt(fallback: str = '') -> str:
-    """Загружает системный промпт из БД. Если нет — возвращает fallback."""
+    """Загружает системный промпт из БД (без ##PLAN##). Если нет — возвращает fallback."""
     try:
         conn = psycopg2.connect(os.environ['DATABASE_URL'])
         cur = conn.cursor()
@@ -50,13 +50,35 @@ def get_system_prompt(fallback: str = '') -> str:
         cur.close()
         conn.close()
         if row and row[0]:
-            # Убираем служебные маркеры разделов — они нужны только редактору
             content = row[0]
+            # Отрезаем ##PLAN## секцию — она только для построителя
+            plan_idx = content.find('##PLAN##')
+            if plan_idx >= 0:
+                content = content[:plan_idx]
             for marker in ('##GENERAL##', '##SYSTEM##', '##FORMAT##'):
                 content = content.replace(marker, '')
             return content.strip()
     except Exception as e:
         print(f"[prompt] error: {e}")
+    return fallback
+
+
+def get_plan_prompt(fallback: str = '') -> str:
+    """Загружает секцию ##PLAN## из промпта в БД — для построителя планов."""
+    try:
+        conn = psycopg2.connect(os.environ['DATABASE_URL'])
+        cur = conn.cursor()
+        cur.execute(f"SELECT content FROM {SCHEMA}.ai_system_prompt ORDER BY id LIMIT 1")
+        row = cur.fetchone()
+        cur.close()
+        conn.close()
+        if row and row[0]:
+            content = row[0]
+            plan_idx = content.find('##PLAN##')
+            if plan_idx >= 0:
+                return content[plan_idx + len('##PLAN##'):].strip()
+    except Exception as e:
+        print(f"[plan_prompt] error: {e}")
     return fallback
 
 
