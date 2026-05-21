@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import CategoryDrumPanel from "./CategoryDrumPanel";
 import type { PriceEntry } from "./CategoryDrumPanel";
 import type { PlanState, SegmentPriceItem } from "./planTypes";
@@ -107,6 +107,24 @@ export default function PlanCatalogPanel({
 }: Props) {
   // Товар ожидающий выбора стены
   const [pendingWall, setPendingWall] = useState<PendingWallItem | null>(null);
+  // Стены выбранные пользователем для pending товара (мультивыбор)
+  const [pendingSelectedSegs, setPendingSelectedSegs] = useState<string[]>([]);
+
+  // Когда pendingWall активен — отслеживаем клики по стенам через selectedSegmentIds
+  useEffect(() => {
+    if (!pendingWall) { setPendingSelectedSegs([]); return; }
+    const ids = state.selectedSegmentIds ?? [];
+    if (ids.length > 0) setPendingSelectedSegs(ids);
+  }, [state.selectedSegmentIds, pendingWall]);
+
+  // Подтверждение выбора стен (кнопка ОК)
+  const handlePendingConfirm = () => {
+    if (!pendingWall || pendingSelectedSegs.length === 0) return;
+    const { item, otherWallItems, floorItems } = pendingWall;
+    onAssignMany([{ item, segIds: pendingSelectedSegs }, ...otherWallItems], floorItems);
+    setPendingWall(null);
+    setPendingSelectedSegs([]);
+  };
 
   // Детект команды замены
   const isReplaceCommand = (t: string) =>
@@ -200,14 +218,8 @@ export default function PlanCatalogPanel({
     }
   };
 
-  // Пользователь выбрал стену для подвисшего товара (клик по стене на чертеже)
-  const handlePendingSegClick = (segId: string) => {
-    if (!pendingWall) return;
-    const { item, otherWallItems, floorItems } = pendingWall;
-    onAssignMany([{ item, segIds: [segId] }, ...otherWallItems], floorItems);
-    setPendingWall(null);
-    onSegmentClickForPending?.(segId);
-  };
+  // Старый обработчик оставляем для совместимости (не используется)
+  const handlePendingSegClick = (_segId: string) => { void _segId; };
 
 
 
@@ -237,70 +249,61 @@ export default function PlanCatalogPanel({
         </div>
       )}
 
-      {/* Баннер "выберите стену" — показывается поверх чертежа когда стена не определена */}
+      {/* Баннер "выберите стены на чертеже" — в центре полотна */}
       {pendingWall && (
         <div
-          className="fixed z-[10000] left-0 right-0 flex justify-center"
-          style={{ bottom: 160, pointerEvents: "none" }}
+          className="fixed z-[10000] inset-0 flex items-center justify-center"
+          style={{ pointerEvents: "none" }}
         >
           <div
-            className="flex items-center gap-3 px-4 py-3 rounded-2xl"
+            className="flex flex-col items-center gap-3 px-5 py-4 rounded-2xl"
             style={{
-              background: "rgba(12,10,28,0.97)",
+              background: "rgba(12,10,28,0.96)",
               border: "1.5px solid rgba(124,58,237,0.7)",
-              boxShadow: "0 0 32px rgba(124,58,237,0.4), 0 8px 24px rgba(0,0,0,0.7)",
-              backdropFilter: "blur(16px)",
+              boxShadow: "0 0 40px rgba(124,58,237,0.35), 0 8px 32px rgba(0,0,0,0.8)",
+              backdropFilter: "blur(20px)",
               pointerEvents: "all",
-              maxWidth: 420,
+              maxWidth: 340,
             }}
           >
-            {/* Картинка товара */}
-            <div
-              className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 overflow-hidden"
-              style={{ background: "rgba(124,58,237,0.18)", border: "1px solid rgba(124,58,237,0.3)" }}
-            >
-              {pendingWall.item.imageUrl
-                ? <img src={pendingWall.item.imageUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                : <Icon name="Package" size={20} style={{ color: "#a78bfa" }} />}
-            </div>
-
-            {/* Текст */}
-            <div className="flex-1 min-w-0">
-              <div className="text-[13px] font-black text-white truncate">{pendingWall.item.name}</div>
-              <div className="text-[11px] mt-0.5" style={{ color: "rgba(167,139,250,0.8)" }}>
-                Нажмите на стену чтобы добавить
+            {/* Шапка: картинка + название */}
+            <div className="flex items-center gap-3 w-full">
+              <div
+                className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 overflow-hidden"
+                style={{ background: "rgba(124,58,237,0.18)", border: "1px solid rgba(124,58,237,0.3)" }}
+              >
+                {pendingWall.item.imageUrl
+                  ? <img src={pendingWall.item.imageUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                  : <Icon name="Package" size={22} style={{ color: "#a78bfa" }} />}
               </div>
-            </div>
-
-            {/* Кнопки быстрого выбора по ориентации */}
-            <div className="flex items-center gap-1.5 flex-shrink-0">
-              {state.segments.map((seg, i) => {
-                const a = state.points.find(p => p.id === seg.fromId);
-                const b = state.points.find(p => p.id === seg.toId);
-                const label = `${String.fromCharCode(65 + i)}-${String.fromCharCode(65 + ((i + 1) % state.segments.length))}`;
-                const lenM = seg.lengthCm ? (seg.lengthCm / 100).toFixed(1) + "м" : "?";
-                return (
-                  <button
-                    key={seg.id}
-                    onClick={() => handlePendingSegClick(seg.id)}
-                    className="flex flex-col items-center px-2.5 py-1.5 rounded-xl text-[10px] font-bold transition hover:brightness-110 active:scale-95"
-                    style={{ background: "rgba(124,58,237,0.25)", color: "#c4b5fd", border: "1px solid rgba(124,58,237,0.4)", minWidth: 38 }}
-                    title={`Стена ${label} (${lenM})`}
-                  >
-                    <span>{label}</span>
-                    <span style={{ color: "rgba(196,181,253,0.6)", fontSize: 9 }}>{lenM}</span>
-                  </button>
-                );
-              })}
+              <div className="flex-1 min-w-0">
+                <div className="text-[13px] font-black text-white truncate">{pendingWall.item.name}</div>
+                <div className="text-[11px] mt-0.5" style={{ color: "rgba(167,139,250,0.75)" }}>
+                  {pendingSelectedSegs.length === 0
+                    ? "Нажмите на стену (или несколько) на чертеже"
+                    : `Выбрано стен: ${pendingSelectedSegs.length} — нажмите ОК`}
+                </div>
+              </div>
               <button
-                onClick={() => setPendingWall(null)}
-                className="w-7 h-7 flex items-center justify-center rounded-xl transition hover:bg-white/10"
+                onClick={() => { setPendingWall(null); setPendingSelectedSegs([]); }}
+                className="w-7 h-7 flex items-center justify-center rounded-lg transition hover:bg-white/10 flex-shrink-0"
                 style={{ color: "rgba(255,255,255,0.3)" }}
-                title="Отмена"
               >
                 <Icon name="X" size={13} />
               </button>
             </div>
+
+            {/* Кнопка ОК — появляется когда выбрана хотя бы одна стена */}
+            {pendingSelectedSegs.length > 0 && (
+              <button
+                onClick={handlePendingConfirm}
+                className="w-full py-2.5 rounded-xl text-[13px] font-black transition hover:opacity-90 active:scale-[0.98] flex items-center justify-center gap-2"
+                style={{ background: "linear-gradient(135deg,#7c3aed,#6d28d9)", color: "#fff" }}
+              >
+                <Icon name="Check" size={15} />
+                Добавить на {pendingSelectedSegs.length === 1 ? "стену" : `${pendingSelectedSegs.length} стены`}
+              </button>
+            )}
           </div>
         </div>
       )}
