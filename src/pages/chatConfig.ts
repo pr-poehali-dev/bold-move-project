@@ -18,7 +18,10 @@ export interface Msg {
 
 export const AVATAR = "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/files/60e2335c-4916-41e5-b894-7f4d9ca6a923.jpg";
 
-export const AI_URL = func2url["ai-chat"];
+// URL захардкожен напрямую — функция ai-chat не деплоится через нашу систему
+// поэтому func2url.json не содержит этот ключ после каждого билда
+export const AI_URL = (func2url as Record<string, string>)["ai-chat"]
+  || "https://functions.poehali.dev/f05382e5-8616-4209-bce6-00d9bcf86686";
 
 export const GREETING: Msg = {
   id: 0,

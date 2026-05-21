@@ -1,7 +1,8 @@
 import func2url from "@/../backend/func2url.json";
 
 export const AUTH_URL       = (func2url as Record<string, string>)["auth"];
-export const AI_URL         = (func2url as Record<string, string>)["ai-chat"];
+export const AI_URL         = (func2url as Record<string, string>)["ai-chat"]
+  || "https://functions.poehali.dev/f05382e5-8616-4209-bce6-00d9bcf86686";
 export const PDF_URL        = (func2url as Record<string, string>)["generate-pdf"];
 export const PARSE_SITE_URL = (func2url as Record<string, string>)["parse-site"];
 
