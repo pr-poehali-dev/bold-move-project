@@ -143,6 +143,9 @@ def handler(event: dict, context) -> dict:
     if not OPENROUTER_KEY:
         return {'statusCode': 500, 'headers': CORS, 'body': json.dumps({'error': 'No API key', 'items': []})}
 
+    print(f"[plan-voice] transcript: {transcript}")
+    print(f"[plan-voice] room_context: {room_context[:400]}")
+
     prices = get_prices()
     prices_text = build_prices_text(prices) if prices else "(прайс недоступен)"
 
