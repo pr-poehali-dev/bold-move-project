@@ -1,7 +1,8 @@
 """
 plan-voice — подбор товаров по голосовому запросу в построителе планов.
 Принимает: room_context (данные помещения) + transcript (речь клиента).
-Возвращает: {items: [{name, qty, unit, price}]}
+Возвращает: {items: [{name, qty, unit, price}], semantic_map: {...}}
+Синонимы загружаются из БД (price_synonyms) через get-prices — обновление автоматическое.
 """
 
 import json
@@ -37,6 +38,7 @@ def get_prices() -> list:
 
 
 def build_prices_text(prices: list) -> str:
+    """Строит текстовый прайс для промпта — с синонимами для каждой позиции."""
     lines = []
     cur_cat = None
     for p in prices:
@@ -44,11 +46,34 @@ def build_prices_text(prices: list) -> str:
         name = p.get('name', '')
         price = p.get('price', 0)
         unit = p.get('unit', '')
+        syns = p.get('synonyms', '')
         if cat != cur_cat:
             lines.append(f"\n[{cat}]")
             cur_cat = cat
-        lines.append(f"  {name} | {price} руб/{unit}")
+        syn_hint = f" (синонимы: {syns})" if syns else ""
+        lines.append(f"  {name}{syn_hint} | {price} руб/{unit}")
     return "\n".join(lines)
+
+
+def build_semantic_map(prices: list) -> dict:
+    """
+    Строит словарь: синоним_ключ → [точное_название_позиции, ...]
+    Используется в сравнении результатов — вместо хардкода.
+    """
+    semantic: dict = {}
+    for p in prices:
+        name = p.get('name', '')
+        syns_raw = p.get('synonyms', '') or ''
+        if not syns_raw:
+            continue
+        syns = [s.strip().lower() for s in syns_raw.split(',') if s.strip()]
+        for syn in syns:
+            # Ключ — первые слова синонима (для частичного совпадения)
+            key = syn[:6]  # первые 6 символов как ключ поиска
+            semantic.setdefault(key, []).append(name.lower())
+            # Также добавляем полный синоним
+            semantic.setdefault(syn, []).append(name.lower())
+    return semantic
 
 
 def extract_items(content: str) -> list:
@@ -148,9 +173,13 @@ def handler(event: dict, context) -> dict:
 
     prices = get_prices()
     prices_text = build_prices_text(prices) if prices else "(прайс недоступен)"
+    semantic_map = build_semantic_map(prices)
 
     system_prompt = f"""Ты — помощник монтажника натяжных потолков. Клиент надиктовал список материалов для конкретного помещения.
 Подбери точные позиции из прайса и верни JSON.
+
+В прайсе после каждой позиции в скобках указаны синонимы — слова, которыми клиент может называть эту позицию.
+Используй синонимы для распознавания запроса.
 
 === ПРАЙС-ЛИСТ ==={prices_text}
 
@@ -163,13 +192,13 @@ def handler(event: dict, context) -> dict:
 - Пример: периметр 8м, теневой 2м, парящий 2м → стеновой = 8 - 2 - 2 = 4м
 - Если клиент явно назвал стену со стеновым профилем ("снизу обычный") → взять длину той стены
 
-ТЕНЕВОЙ ПРОФИЛЬ (только если клиент упомянул "теневой"):
+ТЕНЕВОЙ ПРОФИЛЬ (только если клиент упомянул "теневой" или его синонимы из прайса):
 - По умолчанию → "EuroKRAAB стеновой"
 - Если клиент сказал "потолочный еврокраб" → "EuroKRAAB потолочный"
 - Если клиент сказал "классик" / "флекси классика" → "Теневой классик (Flexy KLASSIKA 140)"
 - Количество = длина стен где указано. Если не уточнил → весь периметр
 
-ПАРЯЩИЙ ПРОФИЛЬ (только если клиент упомянул "парящий"):
+ПАРЯЩИЙ ПРОФИЛЬ (только если клиент упомянул "парящий" или его синонимы из прайса):
 - По умолчанию → "Flexy FLY 02  с рассеивателем"
 - Если клиент сказал "ПК-6" или "без рассеивателя" → "Парящий ПК-6 без рассеивателя"
 - Если клиент сказал "FLY 01" → "Flexy FLY 01 без рассеивателем"
@@ -177,7 +206,7 @@ def handler(event: dict, context) -> dict:
 - Количество = длина стен где указано. Если не уточнил → весь периметр
 
 СВЕТИЛЬНИКИ (КРИТИЧНО — все три позиции ВСЕГДА вместе):
-- Если упомянут "точечный" / "GX-53" / "спот" → добавить ВСЕ 3 позиции с ОДИНАКОВЫМ количеством:
+- Если упомянут "точечный" / "GX-53" / "спот" / "светильник" → добавить ВСЕ 3 позиции с ОДИНАКОВЫМ количеством:
   1. "Светильник GX-53"
   2. "Лампа GX-53"
   3. "Под светильник ∅90"
@@ -249,8 +278,9 @@ def handler(event: dict, context) -> dict:
     items = extract_items(content)
     print(f"[plan-voice] extracted {len(items)} items")
 
+    # Возвращаем semantic_map чтобы фронт мог использовать актуальные синонимы из БД
     return {
         'statusCode': 200,
         'headers': CORS,
-        'body': json.dumps({'items': items}),
+        'body': json.dumps({'items': items, 'semantic_map': semantic_map}),
     }

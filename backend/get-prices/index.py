@@ -74,6 +74,15 @@ def handler(event: dict, context) -> dict:
     """)
     rows = cur.fetchall()
 
+    # Синонимы из отдельной таблицы price_synonyms (приоритетный источник правды)
+    db_synonyms: dict = {}
+    try:
+        cur.execute(f"SELECT price_name, synonym FROM {SCHEMA}.price_synonyms ORDER BY price_name, id")
+        for srow in cur.fetchall():
+            db_synonyms.setdefault(srow[0], []).append(srow[1])
+    except Exception:
+        pass
+
     # Настройки категорий (is_wall_item, show_in_drum)
     cat_settings = {}
     try:
@@ -138,13 +147,19 @@ def handler(event: dict, context) -> dict:
         if wl_id and ov.get('active') is False:
             continue
 
+        # Синонимы: таблица price_synonyms → WL-override → поле synonyms в ai_prices
+        name = row[1]
+        base_syns_list = db_synonyms.get(name, [])
+        base_syns = ', '.join(base_syns_list) if base_syns_list else (row[5] or '')
+        final_syns = ov['synonyms'] if ov.get('synonyms') is not None else base_syns
+
         prices.append({
             'id': pid,
-            'name': row[1],
+            'name': name,
             'price': ov['price'] if ov.get('price') is not None else row[2],
             'unit': row[3] or '',
             'category': row[4] or '',
-            'synonyms': ov['synonyms'] if ov.get('synonyms') is not None else (row[5] or ''),
+            'synonyms': final_syns,
             'image_url': ov['image_url'] if ov.get('image_url') is not None else row[6],
             'category_image_url': ov['category_image_url'] if ov.get('category_image_url') is not None else row[7],
             'is_wall_item': cat_settings.get(row[4] or '', {}).get('is_wall_item', True) if isinstance(cat_settings.get(row[4] or ''), dict) else True,

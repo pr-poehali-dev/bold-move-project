@@ -62,52 +62,39 @@ export default function MobileBottomBar({
   // Голосовое наполнение — используется когда полотно построено
   const catalogVoice = useVoiceCatalog({
     state: planState ?? ({ segments: [], points: [], floorItems: [] } as unknown as import("./planTypes").PlanState),
-    onItems: (items, transcript) => {
+    onItems: (items, transcript, semanticMap) => {
       setVoicePopupItems(prev => {
         if (prev.length === 0) return prev;
 
         if (items.length === 0) {
-          // Бот ничего не нашёл — все pending → fail
           return prev.map(p =>
             p.status === "pending" ? { ...p, status: "fail" as const } : p
           );
         }
-
-        // Категории из транскрипта → ключевые слова из прайса
-        const SEMANTIC_MAP: Record<string, string[]> = {
-          парящ: ["flexy", "fly", "пк-6", "парящ"],
-          теневой: ["eurokraab", "eurokrab", "классика", "теневой", "shadow"],
-          тенев: ["eurokraab", "eurokrab", "теневой"],
-          люстр: ["люстру", "люстра"],
-          светильник: ["светильник", "gx-53", "gx53"],
-          спот: ["светильник", "gx-53"],
-          точечн: ["светильник", "gx-53"],
-          лампа: ["лампа"],
-          полотн: ["msd", "bauf", "descor", "пвх", "тканев"],
-          алюмин: ["алюминиевый"],
-          стеновой: ["стеновой"],
-          ниша: ["ниша", "пк-14", "пк-12", "пк-15"],
-        };
 
         const returnedNames = items.map(it => it.name.toLowerCase());
 
         return prev.map(p => {
           const label = p.label.toLowerCase();
 
-          // Прямое совпадение слов (длиннее 3 букв)
+          // 1. Прямое совпадение слов (длиннее 3 букв)
           const labelWords = label.split(/\s+/).filter(w => w.length > 3);
           const directMatch = returnedNames.some(name =>
             labelWords.some(word => name.includes(word))
           );
           if (directMatch) return { ...p, status: "ok" as const };
 
-          // Семантическое совпадение — "парящий" → ищем "flexy"/"fly" в ответе
-          const semanticMatch = Object.entries(SEMANTIC_MAP).some(([trigger, targets]) =>
-            label.includes(trigger) &&
-            returnedNames.some(name => targets.some(t => name.includes(t)))
-          );
+          // 2. Семантическое совпадение через semanticMap из БД
+          // semanticMap: { "парящ": ["flexy fly 02  с рассеивателем", ...], ... }
+          if (semanticMap) {
+            const dbMatch = Object.entries(semanticMap).some(([trigger, targets]) => {
+              if (!label.includes(trigger)) return false;
+              return returnedNames.some(name => targets.some(t => name.includes(t)));
+            });
+            if (dbMatch) return { ...p, status: "ok" as const };
+          }
 
-          return { ...p, status: semanticMatch ? "ok" as const : "fail" as const };
+          return { ...p, status: "fail" as const };
         });
       });
       if (items.length > 0) onVoiceCatalogItems?.(items, transcript);

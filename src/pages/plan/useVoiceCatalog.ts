@@ -232,7 +232,7 @@ export function findSegIdsForItem(itemName: string, itemCategory: string, transc
 
 interface Props {
   state: PlanState;
-  onItems: (items: VoiceCatalogItem[], transcript: string) => void;
+  onItems: (items: VoiceCatalogItem[], transcript: string, semanticMap?: Record<string, string[]>) => void;
   onTranscript?: (transcript: string) => void; // вызывается сразу после распознавания речи, до бота
 }
 
@@ -368,7 +368,7 @@ export default function useVoiceCatalog({ state, onItems, onTranscript }: Props)
   }, []);
 
   // ── Отправка в plan-voice с контекстом чертежа ──────────────────────────────
-  const sendToAI = useCallback(async (transcript: string): Promise<{ items: VoiceCatalogItem[]; transcript: string }> => {
+  const sendToAI = useCallback(async (transcript: string): Promise<{ items: VoiceCatalogItem[]; transcript: string; semanticMap?: Record<string, string[]> }> => {
     const roomContext = buildRoomContext(stateRef.current);
 
     const res = await fetch(PLAN_VOICE_URL, {
@@ -379,9 +379,9 @@ export default function useVoiceCatalog({ state, onItems, onTranscript }: Props)
     const data = await res.json();
 
     if (data.items && Array.isArray(data.items) && data.items.length > 0) {
-      return { items: data.items as VoiceCatalogItem[], transcript };
+      return { items: data.items as VoiceCatalogItem[], transcript, semanticMap: data.semantic_map };
     }
-    return { items: [], transcript };
+    return { items: [], transcript, semanticMap: data.semantic_map };
   }, []);
 
   // ── Визуализация громкости ───────────────────────────────────────────────────
@@ -444,10 +444,10 @@ export default function useVoiceCatalog({ state, onItems, onTranscript }: Props)
         const transcript = await transcribeBlob(blob);
         onTranscript?.(transcript);
         setStatus(`"${transcript}" — запрашиваю бота...`);
-        const { items, transcript: fullTranscript } = await sendToAI(transcript);
+        const { items, transcript: fullTranscript, semanticMap } = await sendToAI(transcript);
         // Всегда вызываем onItems — даже если items.length === 0,
         // чтобы MobileBottomBar мог обновить статусы в попапе (убрать спиннеры)
-        onItems(items, fullTranscript);
+        onItems(items, fullTranscript, semanticMap);
         if (items.length > 0) {
           setStatus(`Добавляю ${items.length} позиций в смету...`);
           setStatus("");

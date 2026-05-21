@@ -1,4 +1,4 @@
-"""Database helpers: knowledge base, system prompt, FAQ cache, prices, rules. v2."""
+"""Database helpers: knowledge base, system prompt, FAQ cache, prices, rules. v3."""
 
 import os
 import re
@@ -79,12 +79,22 @@ def get_faq_cache(fallback: dict | None = None) -> dict:
 
 
 def get_prices_block() -> str:
-    """Загружает цены из БД и формирует блок для SYSTEM_PROMPT. Если нет — возвращает пустую строку."""
+    """Загружает цены + синонимы из БД и формирует блок для SYSTEM_PROMPT."""
     try:
         conn = psycopg2.connect(os.environ['DATABASE_URL'])
         cur = conn.cursor()
         cur.execute(f"SELECT category, name, price, unit FROM {SCHEMA}.ai_prices WHERE active = true ORDER BY sort_order, id")
         rows = cur.fetchall()
+
+        # Синонимы из таблицы price_synonyms
+        synonyms_map: dict = {}
+        try:
+            cur.execute(f"SELECT price_name, synonym FROM {SCHEMA}.price_synonyms ORDER BY price_name, id")
+            for srow in cur.fetchall():
+                synonyms_map.setdefault(srow[0], []).append(srow[1])
+        except Exception:
+            pass
+
         cur.close()
         conn.close()
         if not rows:
@@ -95,7 +105,9 @@ def get_prices_block() -> str:
             if category != current_cat:
                 current_cat = category
                 lines.append(f"\n{category.upper()}:")
-            lines.append(f"{name} — {price} ₽/{unit}")
+            syns = synonyms_map.get(name, [])
+            syn_hint = f" (клиент может называть: {', '.join(syns)})" if syns else ""
+            lines.append(f"{name}{syn_hint} — {price} ₽/{unit}")
         return '\n'.join(lines)
     except Exception as e:
         print(f"[prices] error: {e}")
