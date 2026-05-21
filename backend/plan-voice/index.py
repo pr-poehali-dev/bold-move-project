@@ -8,6 +8,7 @@ import json
 import os
 import re
 import urllib.request
+import psycopg2
 
 CORS = {
     'Access-Control-Allow-Origin': '*',
@@ -17,6 +18,7 @@ CORS = {
 
 GET_PRICES_URL = 'https://functions.poehali.dev/4a60d7e9-3b52-4eaa-b9f9-38653c3ef837'
 OPENROUTER_KEY = os.environ.get('OPENROUTER_API_KEY_2', '')
+SCHEMA = os.environ.get('MAIN_DB_SCHEMA', 'public')
 
 _prices_cache: list = []
 
@@ -34,6 +36,25 @@ def get_prices() -> list:
     except Exception as e:
         print(f"[plan-voice] get_prices error: {e}")
         return []
+
+
+def get_system_prompt() -> str:
+    """Загружает системный промпт из БД — единый источник правил."""
+    try:
+        conn = psycopg2.connect(os.environ['DATABASE_URL'])
+        cur = conn.cursor()
+        cur.execute(f"SELECT content FROM {SCHEMA}.ai_system_prompt ORDER BY id LIMIT 1")
+        row = cur.fetchone()
+        cur.close()
+        conn.close()
+        if row and row[0]:
+            content = row[0]
+            for marker in ('##GENERAL##', '##SYSTEM##', '##FORMAT##'):
+                content = content.replace(marker, '')
+            return content.strip()
+    except Exception as e:
+        print(f"[plan-voice] get_system_prompt error: {e}")
+    return ''
 
 
 def build_prices_text(prices: list) -> str:
@@ -55,7 +76,6 @@ def extract_items(content: str) -> list:
     """Извлекает список items из ответа LLM даже если JSON обрезан."""
     content = re.sub(r'```(?:json)?\s*', '', content).strip()
 
-    # Ищем начало JSON
     start = content.find('{')
     if start == -1:
         start = content.find('[')
@@ -69,7 +89,6 @@ def extract_items(content: str) -> list:
             pass
         return []
 
-    # Ищем конец через счётчик скобок
     depth = 0
     end = -1
     for i, ch in enumerate(content[start:], start):
@@ -82,7 +101,6 @@ def extract_items(content: str) -> list:
                 break
 
     if end == -1:
-        # JSON обрезан — пробуем несколько вариантов закрытия
         truncated = content[start:]
         for suffix in [']}', '"}]}', '"]}}', ']}}']: 
             try:
@@ -92,7 +110,6 @@ def extract_items(content: str) -> list:
                     return items
             except Exception:
                 pass
-        # Вытаскиваем все полные объекты через regex
         complete = re.findall(r'\{[^{}]+\}', truncated)
         result = []
         for obj_str in complete:
@@ -111,7 +128,6 @@ def extract_items(content: str) -> list:
         if isinstance(items, list):
             return items
     except Exception:
-        # Вытаскиваем полные объекты
         complete = re.findall(r'\{[^{}]+\}', candidate)
         result = []
         for obj_str in complete:
@@ -151,37 +167,18 @@ def handler(event: dict, context) -> dict:
     prices = get_prices()
     prices_text = build_prices_text(prices) if prices else "(прайс недоступен)"
 
-    system_prompt = f"""Ты — помощник монтажника натяжных потолков. Клиент надиктовал список материалов.
-Подбери точные позиции из прайса и верни JSON.
+    db_prompt = get_system_prompt()
+
+    system_prompt = f"""Ты — помощник монтажника натяжных потолков в режиме построителя плана.
+Клиент надиктовал список материалов. Подбери точные позиции из прайса и верни JSON.
+
+=== ПРАВИЛА КОМПАНИИ (из базы знаний) ===
+{db_prompt}
 
 === ПРАЙС-ЛИСТ ==={prices_text}
 
-=== ОБЯЗАТЕЛЬНЫЕ ПРАВИЛА (нарушать нельзя) ===
-
-ПРАВИЛО 1 — ТЕНЕВОЙ ПРОФИЛЬ:
-- Если клиент говорит "теневой" без уточнения конкретной модели → используй "Теневой классик (EuroKRAB 3D)"
-- Если клиент говорит "теневой Флекси" / "теневой световой" / "теневой с подсветкой" → используй "Flexy KLASSIKA 140" или ближайший Flexy из прайса
-- НИКОГДА не выбирай теневой профиль произвольно — только EuroKRAB по умолчанию
-
-ПРАВИЛО 2 — ПАРЯЩИЙ ПРОФИЛЬ:
-- Если клиент говорит "парящий" без уточнения конкретной модели → используй "Flexy FLY 02 без рассеивателя"
-- Если клиент говорит "парящий с рассеивателем" → используй "Flexy FLY 02 с рассеивателем"
-- Если клиент говорит "парящий ПК" / "парящий без подсветки" → используй "Парящий ПК-6 без рассеивателя"
-- НИКОГДА не выбирай парящий профиль произвольно — только Flexy FLY 02 по умолчанию
-
-ПРАВИЛО 3 — СВЕТИЛЬНИКИ:
-- "Светильник GX-53", "точечный", "споты" → добавляй ВСЕ 3 позиции сразу: "Светильник GX-53" + "Лампа GX-53" + "Под светильник ∅90" в одинаковом количестве
-- "Люстра" → добавь "Под люстру планка" (1 шт на 1 люстру)
-
-ПРАВИЛО 4 — КОЛИЧЕСТВО:
-- Профили (теневой, парящий, ниши) — количество в пог.м, равно длине стен где указано
-- Если направление не указано → используй полный периметр из данных помещения
-- Полотно — количество в м², равно площади помещения
-- Светильники — количество из запроса клиента
-
-ПРАВИЛО 5 — ТОЧНОСТЬ:
-- Используй ТОЛЬКО точные названия из прайса выше
-- Верни ТОЛЬКО валидный JSON без пояснений: {{"items":[{{"name":"...","qty":1,"unit":"м","price":0}}]}}"""
+=== ФОРМАТ ОТВЕТА ===
+Верни ТОЛЬКО валидный JSON без пояснений: {{"items":[{{"name":"...","qty":1,"unit":"м","price":0}}]}}"""
 
     user_message = f"{room_context}\n\n=== ЗАПРОС КЛИЕНТА ===\n{transcript}"
 
