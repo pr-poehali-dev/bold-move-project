@@ -6,6 +6,8 @@ import PlanCatalogPanel from "./PlanCatalogPanel";
 import PlanDragGhosts from "./PlanDragGhosts";
 import PlanQuantityModal from "./PlanQuantityModal";
 import PlanVariantSaveModal from "./PlanVariantSaveModal";
+import ReplaceItemModal from "./ReplaceItemModal";
+import { useState } from "react";
 import type { PlanState } from "./planTypes";
 import type { usePlanCatalog } from "./usePlanCatalog";
 import type { usePlanHandlers } from "./usePlanHandlers";
@@ -80,6 +82,8 @@ export default function PlanPagePanels({
   variantModalOpen, variantSaving, onSaveVariant, onCloseVariantModal,
   mobileVariantPickerOpen = false,
 }: Props) {
+  const [replaceModalOpen, setReplaceModalOpen] = useState(false);
+
   return (
     <>
       {/* Нижняя панель */}
@@ -222,12 +226,30 @@ export default function PlanPagePanels({
         onCancel={() => catalog.setEditingFloorId(null)}
         isEditing
         onReplace={() => {
-          const cat = catalog.editingFloorItem?.category ?? null;
-          catalog.setEditingFloorId(null);
-          catalog.setReplaceCatalogCategory(cat);
-          catalog.setCatalogOpen(true);
+          if (isMobile) {
+            const cat = catalog.editingFloorItem?.category ?? null;
+            catalog.setEditingFloorId(null);
+            catalog.setReplaceCatalogCategory(cat);
+            catalog.setCatalogOpen(true);
+          } else {
+            setReplaceModalOpen(true);
+          }
         }}
       />
+
+      {/* Модалка замены товара (только ПК) */}
+      {!isMobile && (
+        <ReplaceItemModal
+          open={replaceModalOpen}
+          item={catalog.editingFloorItem}
+          prices={catalog.prices}
+          onReplace={(newItem, quantity) => {
+            catalog.replaceFloorItem(newItem, quantity);
+            setReplaceModalOpen(false);
+          }}
+          onCancel={() => setReplaceModalOpen(false)}
+        />
+      )}
 
       {/* Ghost-оверлеи и слайдер активных карточек */}
       <PlanDragGhosts
