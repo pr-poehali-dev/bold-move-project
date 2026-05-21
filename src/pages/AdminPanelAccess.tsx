@@ -1,10 +1,11 @@
+import { useNavigate } from "react-router-dom";
 import Icon from "@/components/ui/icon";
 import AuthModal from "@/components/AuthModal";
 
 interface Props {
   loading: boolean;
   hasAccess: boolean;
-  user: { name?: string | null; email?: string | null; role?: string; approved?: boolean; is_master?: boolean } | null;
+  user: { name?: string | null; email?: string | null; role?: string; approved?: boolean; is_master?: boolean; trial_expired?: boolean } | null;
   showLogin: boolean;
   setShowLogin: (v: boolean) => void;
   logout: () => void;
@@ -19,9 +20,85 @@ export function AdminPanelLoadingScreen() {
 }
 
 export function AdminPanelAccessScreen({ user, showLogin, setShowLogin, logout }: Omit<Props, "loading" | "hasAccess">) {
+  const navigate = useNavigate();
   const ALLOWED_ROLES = ["installer", "company", "manager"];
-  const isWrongRole = !!user && !user.is_master && !ALLOWED_ROLES.includes(user.role ?? "");
-  const isPending   = !!user && !user.approved;
+  const isTrialExpired = !!user && !!user.trial_expired;
+  const isWrongRole    = !!user && !user.is_master && !ALLOWED_ROLES.includes(user.role ?? "") && !isTrialExpired;
+  const isPending      = !!user && !user.approved && !isTrialExpired;
+
+  // ── Экран "Демо истекло" ─────────────────────────────────────────────────
+  if (isTrialExpired) {
+    return (
+      <div className="min-h-screen flex items-center justify-center px-4" style={{ background: "#07070f" }}>
+        <div className="w-full max-w-md">
+
+          {/* Иконка */}
+          <div className="flex justify-center mb-6">
+            <div className="w-20 h-20 rounded-3xl flex items-center justify-center"
+              style={{ background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.2)" }}>
+              <Icon name="TimerOff" size={36} style={{ color: "#f87171" }} />
+            </div>
+          </div>
+
+          {/* Заголовок */}
+          <div className="text-center mb-6">
+            <h1 className="text-2xl font-black text-white mb-2">Демо-период завершён</h1>
+            <p className="text-sm leading-relaxed" style={{ color: "rgba(255,255,255,0.45)" }}>
+              Ваш бесплатный доступ на 10 дней истёк. Все проекты и сметы сохранены — продолжайте работу после подключения подписки.
+            </p>
+          </div>
+
+          {/* Карточка */}
+          <div className="rounded-2xl p-6 flex flex-col gap-4 mb-4"
+            style={{ background: "#0e0e1c", border: "1px solid rgba(255,255,255,0.08)" }}>
+
+            {/* Что сохранено */}
+            <div className="flex flex-col gap-2">
+              {[
+                { icon: "FolderOpen", text: "Все проекты и комнаты сохранены" },
+                { icon: "FileText",   text: "Созданные сметы доступны" },
+                { icon: "Users",      text: "База клиентов в CRM сохранена" },
+              ].map(item => (
+                <div key={item.text} className="flex items-center gap-2.5 text-[12px]"
+                  style={{ color: "rgba(255,255,255,0.55)" }}>
+                  <Icon name={item.icon} size={13} style={{ color: "#10b981", flexShrink: 0 }} />
+                  {item.text}
+                </div>
+              ))}
+            </div>
+
+            <div style={{ height: 1, background: "rgba(255,255,255,0.06)" }} />
+
+            {/* Кнопка подписки */}
+            <button
+              onClick={() => navigate("/pricing")}
+              className="w-full py-3.5 rounded-xl text-sm font-black text-white transition hover:opacity-90 active:scale-[0.98] flex items-center justify-center gap-2"
+              style={{ background: "linear-gradient(135deg, #7c3aed, #6d28d9)" }}
+            >
+              <Icon name="Zap" size={15} />
+              Купить подписку
+            </button>
+
+            <button
+              onClick={logout}
+              className="w-full py-2.5 rounded-xl text-xs font-medium transition hover:bg-white/5"
+              style={{ color: "rgba(255,255,255,0.35)", border: "1px solid rgba(255,255,255,0.07)" }}
+            >
+              Выйти из аккаунта
+            </button>
+          </div>
+
+          <p className="text-center text-[11px]" style={{ color: "rgba(255,255,255,0.2)" }}>
+            Есть вопросы?{" "}
+            <a href="https://t.me/poehalidev" target="_blank" rel="noopener noreferrer"
+              className="underline hover:opacity-80" style={{ color: "rgba(167,139,250,0.6)" }}>
+              Написать в поддержку
+            </a>
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <>

@@ -323,6 +323,7 @@ export interface AuthUser {
   discount: number;
   estimates_balance: number;
   trial_until?: string | null;
+  trial_expired?: boolean;
   is_master?: boolean;
   company_id?: number | null;
   permissions?: Permissions | null;
