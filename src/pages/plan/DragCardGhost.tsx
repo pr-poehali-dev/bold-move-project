@@ -11,8 +11,9 @@ export default function DragCardGhost({ dragCardItem, dragCardPos, hoverSegId }:
     <div
       style={{
         position: "fixed",
-        left: dragCardPos.x - 70,
-        top:  dragCardPos.y - 30,
+        left: dragCardPos.x,
+        top:  dragCardPos.y,
+        transform: hoverSegId ? "translate(-50%, -50%) scale(0.88)" : "translate(-50%, -50%) scale(1)",
         zIndex: 9998,
         pointerEvents: "none",
         display: "flex",
@@ -26,7 +27,7 @@ export default function DragCardGhost({ dragCardItem, dragCardPos, hoverSegId }:
         boxShadow: hoverSegId
           ? "0 0 28px rgba(124,58,237,0.6), 0 8px 24px rgba(0,0,0,0.5)"
           : "0 4px 20px rgba(0,0,0,0.5)",
-        transform: hoverSegId ? "scale(0.88)" : "scale(1)",
+
         opacity: hoverSegId ? 0.85 : 1,
         transition: "transform 0.18s ease, opacity 0.18s ease, background 0.15s, box-shadow 0.15s",
         maxWidth: 180,

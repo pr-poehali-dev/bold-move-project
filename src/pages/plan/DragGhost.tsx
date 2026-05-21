@@ -10,7 +10,8 @@ export default function DragGhost({ dragItem, dragPos, hoverSegId }: Props) {
   return (
     <div style={{
       position: "fixed",
-      left: dragPos.x - 22, top: dragPos.y - 22,
+      left: dragPos.x, top: dragPos.y,
+      transform: "translate(-50%, -50%)",
       zIndex: 9999, pointerEvents: "none",
       display: "flex", alignItems: "center", gap: 8,
       background: "rgba(15,16,23,0.92)",
