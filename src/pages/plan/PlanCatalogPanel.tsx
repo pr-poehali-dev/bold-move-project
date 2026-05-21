@@ -137,9 +137,8 @@ export default function PlanCatalogPanel({
         if (!itemSegIds) {
           unknownWallItems.push(matched);
         } else {
-          // ALL_SEGS_SENTINEL → передаём как null (добавить на все)
-          const finalIds = itemSegIds[0] === ALL_SEGS_SENTINEL ? null : itemSegIds;
-          wallItemsWithSegs.push({ item: matched, segIds: finalIds });
+          // Передаём segIds как есть — ALL_SEGS_SENTINEL обработает assignManyItems
+          wallItemsWithSegs.push({ item: matched, segIds: itemSegIds });
         }
       } else {
         floorItems.push({ ...matched, quantity: voiceItem.qty ?? 1 });
