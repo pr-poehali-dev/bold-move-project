@@ -82,6 +82,7 @@ interface Props {
   initialCategory?: string;
   onReplaceItem?: (item: SegmentPriceItem) => void; // режим замены: выбор товара вместо добавления
   isMobile?: boolean;
+  onRegisterVoiceHandler?: (fn: (items: VoiceCatalogItem[], transcript: string) => void) => void;
 }
 
 // Категории которые идут НА СТЕНЫ (пог.м вдоль периметра)
@@ -160,6 +161,7 @@ export default function PlanCatalogPanel({
   initialCategory,
   onReplaceItem,
   isMobile,
+  onRegisterVoiceHandler,
 }: Props) {
   // Товар ожидающий выбора стены
   const [pendingWall, setPendingWall] = useState<PendingWallItem | null>(null);
@@ -169,6 +171,11 @@ export default function PlanCatalogPanel({
   const [voicePopupItems, setVoicePopupItems] = useState<VoiceResultItem[]>([]);
   // ПК: режим списка вместо барабана
   const [showListMode, setShowListMode] = useState(false);
+
+  // Регистрируем handleVoiceItems чтобы внешние компоненты могли его вызвать
+  useEffect(() => {
+    onRegisterVoiceHandler?.(handleVoiceItems);
+  });  
 
   // Когда pendingWall активен — отслеживаем клики по стенам через selectedSegmentIds
   useEffect(() => {

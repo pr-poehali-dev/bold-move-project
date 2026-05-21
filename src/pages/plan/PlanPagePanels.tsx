@@ -7,7 +7,7 @@ import PlanDragGhosts from "./PlanDragGhosts";
 import PlanQuantityModal from "./PlanQuantityModal";
 import PlanVariantSaveModal from "./PlanVariantSaveModal";
 import ReplaceItemModal from "./ReplaceItemModal";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import type { PlanState } from "./planTypes";
 import type { usePlanCatalog } from "./usePlanCatalog";
 import type { usePlanHandlers } from "./usePlanHandlers";
@@ -83,6 +83,13 @@ export default function PlanPagePanels({
   mobileVariantPickerOpen = false,
 }: Props) {
   const [replaceModalOpen, setReplaceModalOpen] = useState(false);
+
+  // Голосовое наполнение из нижней кнопки — вызывает handleVoiceItems через PlanCatalogPanel
+  // Хранится как ref чтобы MobileBottomBar мог вызвать напрямую
+  const voiceItemsHandlerRef = useRef<((items: import("./useVoiceCatalog").VoiceCatalogItem[], transcript: string) => void) | null>(null);
+  const onVoiceItemsFromBottom = (items: import("./useVoiceCatalog").VoiceCatalogItem[], transcript: string) => {
+    voiceItemsHandlerRef.current?.(items, transcript);
+  };
   // Замена из нижней панели активных карточек
   const [replaceActiveItem, setReplaceActiveItem] = useState<import("./planTypes").SegmentPriceItem | null>(null);
 
@@ -148,13 +155,15 @@ export default function PlanPagePanels({
         catalogOpen={catalog.catalogOpen}
         rightPanelOpen={rightPanelOpen}
         isMobile={isMobile}
-        onToggleVoiceDraw={voiceDraw.hasSpeech && state.points.length === 0 ? voiceDraw.toggle : undefined}
+        onToggleVoiceDraw={voiceDraw.hasSpeech ? voiceDraw.toggle : undefined}
         isVoiceDrawing={voiceDraw.isListening}
         isVoiceProcessing={voiceDraw.isProcessing}
         voiceStatus={voiceDraw.status}
         voiceInterim={voiceDraw.interimText}
         voiceVolume={voiceDraw.volume}
         isClosed={state.isClosed}
+        planState={state}
+        onVoiceCatalogItems={onVoiceItemsFromBottom}
         attachedCount={catalog.attachedCount}
         filterAttached={catalog.filterAttached}
         onToggleFilterAttached={() => catalog.setFilterAttached(v => !v)}
@@ -245,6 +254,7 @@ export default function PlanPagePanels({
         }}
         initialCategory={catalog.replaceCatalogCategory ?? undefined}
         isMobile={isMobile}
+        onRegisterVoiceHandler={fn => { voiceItemsHandlerRef.current = fn; }}
       />
 
       {/* Модалка добавления на полотно */}

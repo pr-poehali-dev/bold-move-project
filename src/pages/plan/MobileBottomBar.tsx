@@ -1,6 +1,9 @@
 import { useState } from "react";
 import Icon from "@/components/ui/icon";
-import type { PlanSettings } from "./planTypes";
+import type { PlanSettings, PlanState } from "./planTypes";
+import type { VoiceCatalogItem } from "./useVoiceCatalog";
+import useVoiceCatalog from "./useVoiceCatalog";
+import VoiceResultPopup, { splitTranscriptToItems, type VoiceResultItem } from "./VoiceResultPopup";
 
 interface Props {
   zoom: number;
@@ -28,6 +31,9 @@ interface Props {
   onToggleFilterAttached?: () => void;
   isMobile?: boolean;
   onSettingsOpenChange?: (open: boolean) => void;
+  // Режим наполнения (когда полотно построено)
+  planState?: PlanState;
+  onVoiceCatalogItems?: (items: VoiceCatalogItem[], transcript: string) => void;
 }
 
 // Стиль единой кнопки — как фиолетовая кнопка PanelBottom
@@ -43,8 +49,32 @@ export default function MobileBottomBar({
   voiceVolume = 0, isClosed = false,
   attachedCount = 0, filterAttached = false, onToggleFilterAttached, isMobile = false,
   onSettingsOpenChange,
+  planState, onVoiceCatalogItems,
 }: Props) {
   const [hintsOpen, setHintsOpen] = useState(false);
+  const [voicePopupItems, setVoicePopupItems] = useState<VoiceResultItem[]>([]);
+
+  // Голосовое наполнение — используется когда полотно построено
+  const catalogVoice = useVoiceCatalog({
+    state: planState ?? ({ segments: [], points: [], floorItems: [] } as unknown as import("./planTypes").PlanState),
+    onItems: (items, transcript) => {
+      // Обновляем статусы в попапе
+      setVoicePopupItems(prev => {
+        if (prev.length === 0) return prev;
+        const botNames = items.map(i => i.name.toLowerCase());
+        return prev.map(p => {
+          const labelWords = p.label.toLowerCase().split(/\s+/).filter(w => w.length > 2);
+          const matched = botNames.some(n => labelWords.some(w => n.includes(w) || w.includes(n)));
+          return { ...p, status: matched ? "ok" : "fail" };
+        });
+      });
+      onVoiceCatalogItems?.(items, transcript);
+    },
+    onTranscript: (transcript) => {
+      const labels = splitTranscriptToItems(transcript);
+      setVoicePopupItems(labels.map(label => ({ label, status: "pending" })));
+    },
+  });
 
 
 
@@ -79,90 +109,100 @@ export default function MobileBottomBar({
         <Icon name="LayoutGrid" size={20} />
       </button>
 
-      {/* 6. Голосовое рисование */}
+      {/* 6. Голосовая кнопка — всегда видна если есть onToggleVoiceDraw */}
       {onToggleVoiceDraw && (
         <div className="relative">
 
-          {/* Подсказки по формам — только когда не идёт запись */}
-          {hintsOpen && !isVoiceDrawing && !isVoiceProcessing && (
-            <div
-              className="absolute bottom-14 right-0 bg-[#1a1b2e] border border-violet-500/30 rounded-2xl shadow-2xl p-3 z-50"
-              style={{ width: "17rem" }}
-              onClick={e => e.stopPropagation()}
-            >
-              <div className="flex items-center justify-between mb-2">
-                <p className="text-[10px] text-violet-400 font-semibold uppercase tracking-wide">Примеры фраз</p>
-                <button onClick={() => setHintsOpen(false)} className="text-white/30 hover:text-white/70">
-                  <Icon name="X" size={12} />
-                </button>
-              </div>
-              {[
-                { label: "Квадрат",       example: "квадрат 250" },
-                { label: "Прямоугольник", example: "прямоугольник 400 на 300" },
-                { label: "Г-образная",    example: "г-образная 400 300 150 100" },
-                { label: "П-образная",    example: "п-образная 500 400 200 150" },
-                { label: "Любая форма",   example: "400 вправо 300 вправо 400 замкнуть" },
-              ].map(({ label, example }) => (
-                <div key={label} className="mb-1.5 last:mb-0">
-                  <p className="text-[9px] text-white/35 uppercase tracking-wide mb-0.5">{label}</p>
-                  <p className="text-[11px] text-white/80 font-mono bg-white/[0.05] rounded-lg px-2 py-1">«{example}»</p>
+          {/* ── Режим рисования (полотно не построено) ── */}
+          {!isClosed && (
+            <>
+              {/* Подсказки по формам */}
+              {hintsOpen && !isVoiceDrawing && !isVoiceProcessing && (
+                <div
+                  className="absolute bottom-14 right-0 bg-[#1a1b2e] border border-violet-500/30 rounded-2xl shadow-2xl p-3 z-50"
+                  style={{ width: "17rem" }}
+                  onClick={e => e.stopPropagation()}
+                >
+                  <div className="flex items-center justify-between mb-2">
+                    <p className="text-[10px] text-violet-400 font-semibold uppercase tracking-wide">Примеры фраз</p>
+                    <button onClick={() => setHintsOpen(false)} className="text-white/30 hover:text-white/70">
+                      <Icon name="X" size={12} />
+                    </button>
+                  </div>
+                  {[
+                    { label: "Квадрат",       example: "квадрат 250" },
+                    { label: "Прямоугольник", example: "прямоугольник 400 на 300" },
+                    { label: "Г-образная",    example: "г-образная 400 300 150 100" },
+                    { label: "П-образная",    example: "п-образная 500 400 200 150" },
+                    { label: "Любая форма",   example: "400 вправо 300 вправо 400 замкнуть" },
+                  ].map(({ label, example }) => (
+                    <div key={label} className="mb-1.5 last:mb-0">
+                      <p className="text-[9px] text-white/35 uppercase tracking-wide mb-0.5">{label}</p>
+                      <p className="text-[11px] text-white/80 font-mono bg-white/[0.05] rounded-lg px-2 py-1">«{example}»</p>
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
+              )}
+
+              {/* Статус записи */}
+              {(isVoiceDrawing || isVoiceProcessing) && (
+                <div
+                  className="absolute bottom-14 right-0 bg-[#1a1b2e] border border-violet-500/30 rounded-2xl shadow-2xl p-3 w-56 z-50"
+                  onClick={e => e.stopPropagation()}
+                >
+                  {isVoiceProcessing && <p className="text-[10px] text-amber-400 font-semibold mb-1 uppercase tracking-wide">Распознаю...</p>}
+                  {isVoiceDrawing && !isVoiceProcessing && <p className="text-[10px] text-red-400 font-semibold mb-1 uppercase tracking-wide">● Запись</p>}
+                  {!isVoiceDrawing && !isVoiceProcessing && voiceInterim && <p className="text-[10px] text-emerald-400 font-semibold mb-1 uppercase tracking-wide">Распознано:</p>}
+                  {voiceInterim && <p className="text-[13px] text-white font-medium leading-snug mb-1">«{voiceInterim}»</p>}
+                  {voiceStatus && <p className="text-[11px] text-violet-300 leading-snug">{voiceStatus}</p>}
+                </div>
+              )}
+            </>
           )}
 
-          {/* Статус записи — только когда активно идёт запись или распознавание */}
-          {(isVoiceDrawing || isVoiceProcessing) && !isClosed && (
-            <div
-              className="absolute bottom-14 right-0 bg-[#1a1b2e] border border-violet-500/30 rounded-2xl shadow-2xl p-3 w-56 z-50"
-              onClick={e => e.stopPropagation()}
-            >
-              {isVoiceProcessing && (
-                <p className="text-[10px] text-amber-400 font-semibold mb-1 uppercase tracking-wide">Распознаю...</p>
-              )}
-              {isVoiceDrawing && !isVoiceProcessing && (
-                <p className="text-[10px] text-red-400 font-semibold mb-1 uppercase tracking-wide">● Запись</p>
-              )}
-              {!isVoiceDrawing && !isVoiceProcessing && voiceInterim && (
-                <p className="text-[10px] text-emerald-400 font-semibold mb-1 uppercase tracking-wide">Распознано:</p>
-              )}
-              {voiceInterim && (
-                <p className="text-[13px] text-white font-medium leading-snug mb-1">«{voiceInterim}»</p>
-              )}
-              {voiceStatus && (
-                <p className="text-[11px] text-violet-300 leading-snug">{voiceStatus}</p>
-              )}
-            </div>
-          )}
-
-          {/* Кнопка микрофона */}
+          {/* ── Кнопка микрофона (общая) ── */}
           <button
             onClick={() => {
               setHintsOpen(false);
-              onToggleVoiceDraw();
+              if (isClosed && onVoiceCatalogItems) {
+                // Режим наполнения — используем useVoiceCatalog
+                catalogVoice.toggleRecording();
+              } else {
+                // Режим рисования
+                onToggleVoiceDraw();
+              }
             }}
-            disabled={isVoiceProcessing}
+            disabled={isClosed ? catalogVoice.isProcessing : isVoiceProcessing}
             className={`relative overflow-hidden ${
-              isVoiceProcessing
+              (isClosed ? catalogVoice.isProcessing : isVoiceProcessing)
                 ? "w-12 h-12 rounded-2xl flex items-center justify-center text-white transition-all shadow-lg bg-amber-600 shadow-amber-500/40 opacity-80"
-                : isVoiceDrawing
+                : (isClosed ? catalogVoice.isRecording : isVoiceDrawing)
                 ? "w-12 h-12 rounded-2xl flex items-center justify-center text-white transition-all active:scale-95 shadow-lg bg-red-600 shadow-red-500/40"
                 : BTN_DEFAULT
             }`}
           >
-            {isVoiceDrawing && !isVoiceProcessing && (
+            {(isClosed ? catalogVoice.isRecording : isVoiceDrawing) && !(isClosed ? catalogVoice.isProcessing : isVoiceProcessing) && (
               <svg viewBox="0 0 48 48" width="48" height="48" className="absolute inset-0 pointer-events-none" style={{ opacity: 0.55 }}>
                 {[6, 14, 22, 30, 38].map((x, i) => {
-                  const h = Math.max(4, Math.round(voiceVolume * 28 * (0.6 + 0.4 * Math.sin(i * 1.3))));
+                  const vol = isClosed ? catalogVoice.volume : voiceVolume;
+                  const h = Math.max(4, Math.round(vol * 28 * (0.6 + 0.4 * Math.sin(i * 1.3))));
                   return <rect key={i} x={x} y={48 - h} width={6} height={h} rx={3} fill="rgba(255,255,255,0.7)" style={{ transition: "height 0.08s, y 0.08s" }} />;
                 })}
               </svg>
             )}
-            <Icon name={isVoiceProcessing ? "Loader" : isVoiceDrawing ? "MicOff" : "Mic"} size={20} className={isVoiceProcessing ? "animate-spin" : ""} />
+            <Icon
+              name={
+                (isClosed ? catalogVoice.isProcessing : isVoiceProcessing) ? "Loader"
+                : (isClosed ? catalogVoice.isRecording : isVoiceDrawing) ? "MicOff"
+                : "Mic"
+              }
+              size={20}
+              className={(isClosed ? catalogVoice.isProcessing : isVoiceProcessing) ? "animate-spin" : ""}
+            />
           </button>
 
-          {/* Кнопка подсказок — только когда не записываем */}
-          {!isVoiceDrawing && !isVoiceProcessing && (
+          {/* Кнопка подсказок — только в режиме рисования, когда не записываем */}
+          {!isClosed && !isVoiceDrawing && !isVoiceProcessing && (
             <button
               onClick={() => setHintsOpen(v => !v)}
               className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-violet-600/80 flex items-center justify-center text-white hover:bg-violet-500 transition-all"
@@ -171,7 +211,29 @@ export default function MobileBottomBar({
               <Icon name="HelpCircle" size={10} />
             </button>
           )}
+
+          {/* Статус наполнения — только в режиме наполнения */}
+          {isClosed && (catalogVoice.isRecording || catalogVoice.isProcessing || catalogVoice.status) && (
+            <div
+              className="absolute bottom-14 right-0 bg-[#1a1b2e] border border-violet-500/30 rounded-2xl shadow-2xl p-3 w-56 z-50"
+              onClick={e => e.stopPropagation()}
+            >
+              {catalogVoice.isProcessing && <p className="text-[10px] text-amber-400 font-semibold mb-1 uppercase tracking-wide">Обрабатываю...</p>}
+              {catalogVoice.isRecording && !catalogVoice.isProcessing && (
+                <p className="text-[10px] text-red-400 font-semibold mb-1 uppercase tracking-wide">● Говорите...</p>
+              )}
+              {catalogVoice.status && <p className="text-[11px] text-violet-300 leading-snug">{catalogVoice.status}</p>}
+            </div>
+          )}
         </div>
+      )}
+
+      {/* Попап результатов голосового наполнения */}
+      {voicePopupItems.length > 0 && (
+        <VoiceResultPopup
+          items={voicePopupItems}
+          onClose={() => setVoicePopupItems([])}
+        />
       )}
     </div>
   );
