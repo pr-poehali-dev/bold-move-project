@@ -15,7 +15,7 @@ interface Props {
 }
 
 const QUICK_ROOMS = [
-  { name: "Зал",      icon: "Sofa" },
+  { name: "Комната",  icon: "DoorOpen" },
   { name: "Гостиная", icon: "Tv2" },
   { name: "Кухня",    icon: "UtensilsCrossed" },
   { name: "Спальня",  icon: "BedDouble" },
@@ -23,7 +23,6 @@ const QUICK_ROOMS = [
   { name: "Коридор",  icon: "ArrowRight" },
   { name: "Детская",  icon: "Baby" },
   { name: "Кабинет",  icon: "Briefcase" },
-  { name: "Комната",  icon: "DoorOpen" },
 ];
 
 export default function PlanRoomsScreen({ token, project, onBack, onOpenRoom }: Props) {
