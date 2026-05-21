@@ -66,15 +66,24 @@ export default function MobileBottomBar({
       setVoicePopupItems(prev => {
         if (prev.length === 0) return prev;
 
-        if (items.length > 0) {
-          // Бот нашёл товары — все метки ok
-          return prev.map(p => ({ ...p, status: "ok" as const }));
-        } else {
-          // Бот ничего не нашёл — все pending-метки → fail
+        if (items.length === 0) {
+          // Бот ничего не нашёл — все pending → fail
           return prev.map(p =>
             p.status === "pending" ? { ...p, status: "fail" as const } : p
           );
         }
+
+        // Собираем все названия что вернул бот в нижний регистр для сравнения
+        const returnedNames = items.map(it => it.name.toLowerCase());
+
+        return prev.map(p => {
+          // Ищем: есть ли в ответе бота позиция которая содержит слова из метки
+          const labelWords = p.label.toLowerCase().split(/\s+/).filter(w => w.length > 3);
+          const matched = returnedNames.some(name =>
+            labelWords.some(word => name.includes(word))
+          );
+          return { ...p, status: matched ? "ok" as const : "fail" as const };
+        });
       });
       if (items.length > 0) onVoiceCatalogItems?.(items, transcript);
     },
