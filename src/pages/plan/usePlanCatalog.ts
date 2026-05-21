@@ -74,6 +74,7 @@ export function usePlanCatalog(
   const [filterAttached,         setFilterAttached]         = useState(false);
   const [pendingFloorItem,       setPendingFloorItem]       = useState<SegmentPriceItem | null>(null);
   const [editingFloorId,         setEditingFloorId]         = useState<string | null>(null);
+  const [editingSegRef,          setEditingSegRef]          = useState<{ segId: string; priceId: number } | null>(null);
   const [replaceCatalogCategory, setReplaceCatalogCategory] = useState<string | null>(null);
 
   // Категории, которые НЕ показываются в нижней панели
@@ -427,6 +428,31 @@ export function usePlanCatalog(
     setEditingFloorId(null);
   }, [editingFloorId, stateRef, push]);
 
+  // Данные редактируемого товара на стене для модалки
+  const editingSegItem = editingSegRef
+    ? (() => {
+        const seg = stateRef.current.segments.find(s => s.id === editingSegRef.segId);
+        const it = seg?.items?.find(i => i.priceId === editingSegRef.priceId);
+        if (!it) return null;
+        return { ...it } as SegmentPriceItem & { quantity: number };
+      })()
+    : null;
+
+  // Заменить товар на стене: все сегменты с этим priceId в этом сегменте
+  const replaceSegItem = useCallback((newItem: SegmentPriceItem) => {
+    if (!editingSegRef) return;
+    const s = stateRef.current;
+    push({ ...s, segments: s.segments.map(seg => {
+      if (seg.id !== editingSegRef.segId) return seg;
+      return { ...seg, items: (seg.items ?? []).map(it =>
+        it.priceId === editingSegRef.priceId
+          ? { ...newItem, quantity: it.quantity }
+          : it
+      )};
+    })});
+    setEditingSegRef(null);
+  }, [editingSegRef, stateRef, push]);
+
   // Заменить floorItem: удалить старый, поставить новый с тем же quantity
   const replaceFloorItem = useCallback((newItem: SegmentPriceItem, quantity: number) => {
     if (!editingFloorId) return;
@@ -666,6 +692,7 @@ export function usePlanCatalog(
     findClosestSeg, assignItemToSeg, assignItemToSegs, assignItemToAllSegs, assignManyItems, removeItemFromAllSegs, removeActiveItem, isItemOnAllSegs, adjustItemQuantity, setItemQuantity,
     pendingFloorItem, setPendingFloorItem, confirmFloorItem,
     editingFloorId, setEditingFloorId, editingFloorItem, confirmEditFloorItem, replaceFloorItem,
+    editingSegRef, setEditingSegRef, editingSegItem, replaceSegItem,
     replaceCatalogCategory, setReplaceCatalogCategory,
   };
 }

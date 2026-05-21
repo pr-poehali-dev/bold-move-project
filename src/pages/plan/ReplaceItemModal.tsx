@@ -57,22 +57,29 @@ export default function ReplaceItemModal({ open, item, prices, onReplace, onCanc
     <div
       style={{
         position: "fixed", inset: 0, zIndex: 1000,
-        background: "rgba(0,0,0,0.6)",
-        display: "flex", alignItems: "center", justifyContent: "center",
+        display: "flex", alignItems: "center", justifyContent: "flex-end",
+        paddingRight: 16,
+        pointerEvents: "none",
       }}
-      onClick={onCancel}
     >
+      {/* Клик по фону закрывает */}
+      <div
+        style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.3)", pointerEvents: "all" }}
+        onClick={onCancel}
+      />
       <div
         style={{
+          position: "relative",
           background: "#1e1b4b",
           border: "1px solid rgba(139,92,246,0.3)",
           borderRadius: 16,
-          width: 460,
-          maxHeight: "80vh",
+          width: 380,
+          maxHeight: "85vh",
           display: "flex",
           flexDirection: "column",
           overflow: "hidden",
-          boxShadow: "0 20px 60px rgba(0,0,0,0.5)",
+          boxShadow: "0 20px 60px rgba(0,0,0,0.7)",
+          pointerEvents: "all",
         }}
         onClick={e => e.stopPropagation()}
       >

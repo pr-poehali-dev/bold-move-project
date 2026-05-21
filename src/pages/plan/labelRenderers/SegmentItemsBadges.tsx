@@ -11,12 +11,13 @@ interface SegmentItemsBadgesProps {
   allSegments: Segment[];
   onRemoveItem?: (segId: string, priceId: number) => void;
   onUpdateQuantity?: (segId: string, priceId: number, quantity: number) => void;
+  onEditSegItem?: (segId: string, priceId: number) => void;
   // Drag между стенами
   onMoveItemToSeg?: (fromSegId: string, priceId: number, toSegId: string) => void;
 }
 
 export function SegmentItemsBadges({
-  seg, ctx, allSegments, onRemoveItem, onMoveItemToSeg,
+  seg, ctx, allSegments, onRemoveItem, onMoveItemToSeg, onEditSegItem,
 }: SegmentItemsBadgesProps) {
   // Хуки — ВСЕГДА до любых return
   const [tooltip, setTooltip] = useState<{ px: number; py: number; name: string; qty: number; unit: string } | null>(null);
@@ -99,6 +100,12 @@ export function SegmentItemsBadges({
             onRemoveItem?.(seg.id, item.priceId);
           } else {
             dblRef.current = { key: itemKey, t: now };
+            // Одиночный клик — открыть модалку редактирования/замены
+            setTimeout(() => {
+              if (dblRef.current.key === itemKey) {
+                onEditSegItem?.(seg.id, item.priceId);
+              }
+            }, 420);
           }
         };
 
