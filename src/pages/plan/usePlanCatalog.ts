@@ -67,33 +67,51 @@ export function usePlanCatalog(
   // Редактирование существующего floorItem (id + данные для модалки)
   const [editingFloorId,    setEditingFloorId]    = useState<string | null>(null);
 
-  // Синхронизация activeItems с товарами в сегментах текущего варианта/комнаты
-  // Собираем уникальные товары из всех segments[].items и floorItems
+  // Категории, которые НЕ показываются в нижней панели
+  const HIDDEN_CATEGORIES = ["монтаж", "раскрой", "огарпунивание"];
+  const isHiddenCategory = (cat: string) =>
+    HIDDEN_CATEGORIES.some(h => cat?.toLowerCase().includes(h));
+
+  // Синхронизация activeItems с товарами в сегментах + полотне
+  // Собираем уникальные товары из segments[].items и floorItems (кроме скрытых категорий)
   useEffect(() => {
     const seenPriceIds = new Set<number>();
     const derived: SegmentPriceItem[] = [];
+
+    // Сначала — товары со стен
     for (const seg of state.segments) {
       for (const it of seg.items ?? []) {
-        if (!seenPriceIds.has(it.priceId)) {
+        if (!seenPriceIds.has(it.priceId) && !isHiddenCategory(it.category)) {
           seenPriceIds.add(it.priceId);
           derived.push(it);
         }
       }
     }
+
+    // Затем — товары с полотна (floorItems), которых ещё нет в списке
+    for (const fi of state.floorItems ?? []) {
+      if (!seenPriceIds.has(fi.priceId) && !isHiddenCategory(fi.category)) {
+        seenPriceIds.add(fi.priceId);
+        derived.push({
+          priceId: fi.priceId,
+          name: fi.name,
+          category: fi.category,
+          imageUrl: fi.imageUrl,
+          categoryImageUrl: null,
+          unit: fi.unit,
+          isWallItem: false,
+        });
+      }
+    }
+
     setActiveItems(prev => {
-      // Добавляем новые товары из сегментов, убираем те которых больше нет
-      const next = derived.filter(d => {
-        // Товар есть в сегментах — оставляем
-        return true;
-      });
-      // Если набор priceId совпадает — не обновляем (избегаем лишних ре-рендеров)
       const prevIds = new Set(prev.map(i => i.priceId));
-      const nextIds = new Set(next.map(i => i.priceId));
+      const nextIds = new Set(derived.map(i => i.priceId));
       const sameSet = prevIds.size === nextIds.size && [...nextIds].every(id => prevIds.has(id));
       if (sameSet) return prev;
-      return next;
+      return derived;
     });
-  }, [state.segments]);
+  }, [state.segments, state.floorItems]);
 
   // Загружаем прайс один раз
   useEffect(() => {
