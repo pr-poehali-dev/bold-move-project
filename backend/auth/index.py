@@ -8,8 +8,8 @@ SCHEMA = os.environ.get("DB_SCHEMA", "t_p45929761_bold_move_project")
 BUSINESS_ROLES = ("installer", "company")
 DISCOUNT_ROLES = ("designer", "foreman")
 DEFAULT_DISCOUNT = 10  # % для designer/foreman
-TRIAL_ESTIMATES = 20   # бесплатный пакет при регистрации
-TRIAL_DAYS      = 7    # срок действия триала/демо
+TRIAL_ESTIMATES = 10   # смет на демо-период
+TRIAL_DAYS      = 10   # дней демо-доступа
 
 def get_conn():
     return psycopg2.connect(os.environ["DATABASE_URL"])
@@ -71,21 +71,23 @@ def handler(event: dict, context) -> dict:
         if cur.fetchone():
             return err("Email уже зарегистрирован")
 
-        # Бизнес-роли ждут одобрения; клиенты/дизайнеры/прорабы — сразу approved
-        approved = role not in BUSINESS_ROLES
-        discount = DEFAULT_DISCOUNT if role in DISCOUNT_ROLES else 0
-
-        # Триал для бизнес-ролей: TRIAL_ESTIMATES смет на TRIAL_DAYS дней
+        # Все роли сразу получают approved=True.
+        # Бизнес-роли получают демо-период: TRIAL_DAYS дней + TRIAL_ESTIMATES смет + свой агент.
+        approved    = True
+        discount    = DEFAULT_DISCOUNT if role in DISCOUNT_ROLES else 0
         is_business = role in BUSINESS_ROLES
         init_balance = TRIAL_ESTIMATES if is_business else 0
         trial_sql    = f"NOW() + INTERVAL '{TRIAL_DAYS} days'" if is_business else "NULL"
+        has_own_agent_val = "TRUE" if is_business else "FALSE"
 
         cur.execute(
             f"""INSERT INTO {SCHEMA}.users
-                (email, password_hash, name, phone, role, approved, discount, estimates_balance, trial_until, company_name, company_addr)
-                VALUES (%s,%s,%s,%s,%s,%s,%s,%s, {trial_sql}, %s, %s)
+                (email, password_hash, name, phone, role, approved, discount,
+                 estimates_balance, trial_until, has_own_agent, company_name, company_addr)
+                VALUES (%s,%s,%s,%s,%s,%s,%s,%s, {trial_sql}, {has_own_agent_val}, %s, %s)
                 RETURNING id""",
-            (email, hash_password(password), name, phone or None, role, approved, discount, init_balance, company_name, company_addr)
+            (email, hash_password(password), name, phone or None, role, approved, discount,
+             init_balance, company_name, company_addr)
         )
         user_id = cur.fetchone()[0]
 
@@ -95,20 +97,18 @@ def handler(event: dict, context) -> dict:
                 (user_id, TRIAL_ESTIMATES)
             )
 
-        if approved:
-            new_token = secrets.token_hex(32)
-            cur.execute(
-                f"INSERT INTO {SCHEMA}.user_sessions (user_id, token) VALUES (%s,%s)",
-                (user_id, new_token)
-            )
-            conn.commit()
-            return ok({"token": new_token, "user": {
-                "id": user_id, "email": email, "name": name,
-                "role": role, "approved": True, "discount": discount,
-            }})
-        else:
-            conn.commit()
-            return ok({"pending": True, "role": role})
+        new_token = secrets.token_hex(32)
+        cur.execute(
+            f"INSERT INTO {SCHEMA}.user_sessions (user_id, token) VALUES (%s,%s)",
+            (user_id, new_token)
+        )
+        conn.commit()
+        return ok({"token": new_token, "user": {
+            "id": user_id, "email": email, "name": name,
+            "role": role, "approved": True, "discount": discount,
+            "has_own_agent": is_business,
+            "trial_until": None,  # фронт получит реальное значение при следующем /me
+        }})
 
     # ── Вход ─────────────────────────────────────────────────────────────────
     if action == "login" and method == "POST":
@@ -176,14 +176,43 @@ def handler(event: dict, context) -> dict:
          brand_logo_url_dark, brand_logo_orientation, pdf_logo_bg, bot_avatar_bg, kanban_enabled,
          tg_bot_token, tg_notify_chat_id, nav_config, nav_hidden_ids) = row
 
+        # Проверка истечения демо-периода для бизнес-ролей.
+        # Если trial_until прошёл и нет активной подписки (subscription_end) —
+        # закрываем доступ: approved=False, has_own_agent=False.
+        # Данные пользователя при этом НЕ трогаем.
+        is_master = (email == "19.jeka.94@gmail.com")
+        trial_expired = False
+        if not is_master and role in BUSINESS_ROLES and trial_until and approved:
+            # Получаем subscription_end отдельно (нет в основном SELECT выше)
+            cur.execute(
+                f"SELECT subscription_end FROM {SCHEMA}.users WHERE id=%s",
+                (uid,)
+            )
+            sub_row = cur.fetchone()
+            subscription_end = sub_row[0] if sub_row else None
+            now = datetime.utcnow()
+            trial_expired_flag = trial_until.replace(tzinfo=None) < now
+            has_paid_sub = subscription_end and subscription_end.replace(tzinfo=None) > now
+            if trial_expired_flag and not has_paid_sub:
+                trial_expired = True
+                approved = False
+                has_own_agent = False
+                # Закрываем approved в БД чтобы не гонять этот запрос каждый раз
+                cur.execute(
+                    f"UPDATE {SCHEMA}.users SET approved=FALSE WHERE id=%s AND approved=TRUE",
+                    (uid,)
+                )
+                conn.commit()
+
         return ok({"user": {
             "id": uid, "email": email, "name": name, "phone": phone,
             "role": role or "client", "approved": approved, "discount": discount or 0,
-            "is_master": (email == "19.jeka.94@gmail.com"),
+            "is_master": is_master,
             "company_name": company_name, "company_inn": company_inn,
             "company_addr": company_addr, "website": website, "telegram": telegram,
             "estimates_balance": estimates_balance or 0,
             "trial_until": str(trial_until)[:19] if trial_until else None,
+            "trial_expired": trial_expired,
             "permissions": permissions,
             "company_id": ucompany_id,
             "has_own_agent": bool(has_own_agent),
