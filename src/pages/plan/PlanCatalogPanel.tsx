@@ -7,6 +7,24 @@ import type { VoiceCatalogItem } from "./useVoiceCatalog";
 import { findSegIdsForItem, ALL_SEGS_SENTINEL } from "./useVoiceCatalog";
 import Icon from "@/components/ui/icon";
 
+// Исправляем дефолт теневого профиля: если AI вернул просто "теневой" без уточнения
+// или вернул "Теневой профиль" как абстрактную категорию — заменяем на EuroKRAB стеновой
+function fixShadowProfile(items: VoiceCatalogItem[], prices: PriceEntry[]): VoiceCatalogItem[] {
+  const eurokrabName = prices.find(p => /EuroKRAB.*стеновой/i.test(p.name))?.name ?? "EuroKRAB стеновой";
+  return items.map(item => {
+    const n = item.name.toLowerCase();
+    // Абстрактный "теневой профиль" без уточнения конкретной модели
+    const isAbstractShadow =
+      /^теневой профиль$/i.test(item.name.trim()) ||
+      (n.includes("теневой") && !n.includes("классик") && !n.includes("flexy") && !n.includes("еврокраб") && !n.includes("eurokrab") && !n.includes("fly") && !n.includes("парящ"));
+    if (isAbstractShadow) {
+      console.log("[voice] shadow profile defaulted to EuroKRAB:", item.name, "→", eurokrabName);
+      return { ...item, name: eurokrabName };
+    }
+    return item;
+  });
+}
+
 // Гарантируем комплект светильника: если есть любая из трёх позиций — добавляем все три
 function ensureLightingBundle(items: VoiceCatalogItem[], prices: PriceEntry[]): VoiceCatalogItem[] {
   const t = (s: string) => s.toLowerCase();
@@ -173,8 +191,8 @@ export default function PlanCatalogPanel({
     console.log("[voice] transcript:", transcript);
     console.log("[voice] items:", items.map(i => i.name));
 
-    // Гарантируем комплект светильника независимо от того что вернул AI
-    const guaranteedItems = ensureLightingBundle(items, allPrices);
+    // Исправляем дефолт теневого профиля, затем гарантируем комплект светильника
+    const guaranteedItems = ensureLightingBundle(fixShadowProfile(items, allPrices), allPrices);
     if (guaranteedItems.length !== items.length) {
       console.log("[voice] lighting bundle auto-completed:", guaranteedItems.map(i => i.name));
     }
