@@ -21,22 +21,27 @@ export default function ReplaceItemModal({ open, item, prices, onReplace, onCanc
     }
   }, [open, item]);
 
+  const HIDDEN = ["монтаж", "раскрой", "огарпунивание"];
+  const isHidden = (cat: string) => HIDDEN.some(h => cat?.toLowerCase().includes(h));
+
+  const visiblePrices = useMemo(() => prices.filter(p => !isHidden(p.category)), [prices]);
+
   const categories = useMemo(() => {
     const seen = new Set<string>();
     const result: string[] = [];
-    for (const p of prices) {
+    for (const p of visiblePrices) {
       if (!seen.has(p.category)) { seen.add(p.category); result.push(p.category); }
     }
     return result;
-  }, [prices]);
+  }, [visiblePrices]);
 
   const filteredItems = useMemo(() => {
-    return prices.filter(p => {
+    return visiblePrices.filter(p => {
       const matchCat = !selectedCategory || p.category === selectedCategory;
       const matchSearch = !search || p.name.toLowerCase().includes(search.toLowerCase());
       return matchCat && matchSearch;
     });
-  }, [prices, selectedCategory, search]);
+  }, [visiblePrices, selectedCategory, search]);
 
   if (!open || !item) return null;
 

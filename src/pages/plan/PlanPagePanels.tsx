@@ -244,7 +244,7 @@ export default function PlanPagePanels({
         }}
       />
 
-      {/* Модалка замены товара (только ПК) */}
+      {/* Модалка замены товара на полотне (только ПК) */}
       {!isMobile && (
         <ReplaceItemModal
           open={replaceModalOpen}
@@ -261,6 +261,19 @@ export default function PlanPagePanels({
             setReplaceModalItem(null);
             setReplaceFloorId(null);
           }}
+        />
+      )}
+
+      {/* Модалка замены товара на стене (только ПК) */}
+      {!isMobile && (
+        <ReplaceItemModal
+          open={!!catalog.editingSegRef}
+          item={catalog.editingSegItem}
+          prices={catalog.prices}
+          onReplace={(newItem) => {
+            catalog.replaceSegItem(newItem);
+          }}
+          onCancel={() => catalog.setEditingSegRef(null)}
         />
       )}
 

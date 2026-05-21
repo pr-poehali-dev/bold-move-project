@@ -674,10 +674,13 @@ export function usePlanCatalog(
   stateRef.current.segments.forEach(seg => seg.items?.forEach(it => attachedPriceIds.add(it.priceId)));
   const attachedCount = attachedPriceIds.size;
 
+  const DRUM_HIDDEN = ["монтаж", "раскрой", "огарпунивание"];
+  const drumPrices = prices.filter(p => !DRUM_HIDDEN.some(h => p.category?.toLowerCase().includes(h)));
+
   // Фильтруем прайс если активен фильтр «На холсте»
   const filteredPrices = filterAttached && attachedPriceIds.size > 0
-    ? prices.filter(p => attachedPriceIds.has(p.id))
-    : prices;
+    ? drumPrices.filter(p => attachedPriceIds.has(p.id))
+    : drumPrices;
 
   return {
     catalogOpen, setCatalogOpen,

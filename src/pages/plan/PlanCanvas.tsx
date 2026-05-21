@@ -13,9 +13,10 @@ interface Props {
   onReplace: (patch: Partial<PlanState>) => void;
   onOpenCatalog?: () => void;
   onEditFloorItem?: (id: string) => void;
+  onEditSegItem?: (segId: string, priceId: number) => void;
 }
 
-export default function PlanCanvas({ state, eventState, onChange, onReplace, onOpenCatalog, onEditFloorItem }: Props) {
+export default function PlanCanvas({ state, eventState, onChange, onReplace, onOpenCatalog, onEditFloorItem, onEditSegItem }: Props) {
   const { tool } = state;
 
   // ── Локальные стейты и refs ───────────────────────────────────────────────
@@ -69,6 +70,7 @@ export default function PlanCanvas({ state, eventState, onChange, onReplace, onO
         onTouchEnd={events.handleTouchEnd}
         onDimLineClick={events.handleDimLineClick}
         onEditFloorItem={onEditFloorItem}
+        onEditSegItem={onEditSegItem}
         editingSegId={editingSegId}
         onSetEditingSegId={setEditingSegId}
       />

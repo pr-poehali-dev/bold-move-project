@@ -41,6 +41,7 @@ export default function PlanCanvasArea({
           onReplace={handleReplace}
           onOpenCatalog={() => catalog.setCatalogOpen(true)}
           onEditFloorItem={catalog.setEditingFloorId}
+          onEditSegItem={(segId, priceId) => catalog.setEditingSegRef({ segId, priceId })}
         />
         {roomLoading && (
           <div className="absolute inset-0 flex flex-col items-center justify-center z-50"

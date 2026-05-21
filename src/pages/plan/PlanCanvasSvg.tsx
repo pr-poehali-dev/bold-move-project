@@ -29,6 +29,7 @@ interface Props {
   onCanvasDblClick?: (e: React.MouseEvent<SVGSVGElement>) => void;
   deleteHover?: { x: number; y: number; type: "point" | "segment" } | null;
   onEditFloorItem?: (id: string) => void;
+  onEditSegItem?: (segId: string, priceId: number) => void;
   editingSegId?: string | null;
   onSetEditingSegId?: (id: string | null) => void;
 }
@@ -37,7 +38,7 @@ export default function PlanCanvasSvg({
   svgRef, state, onChange, cursor, ghost, dimLineFrom,
   handlers, onMouseMove, onMouseDown, onMouseUp,
   onCanvasClick, onCanvasDblClick, onTouchStart, onTouchMove, onTouchEnd,
-  onDimLineClick, deleteHover, onEditFloorItem, editingSegId, onSetEditingSegId,
+  onDimLineClick, deleteHover, onEditFloorItem, onEditSegItem, editingSegId, onSetEditingSegId,
 }: Props) {
   const {
     points, segments, diagonals, dimLines,
@@ -215,7 +216,6 @@ export default function PlanCanvasSvg({
                 if (s.id === toSegId) {
                   const existing = s.items ?? [];
                   if (existing.some(it => it.priceId === priceId)) {
-                    // Уже есть — прибавляем количество
                     return { ...s, items: existing.map(it => it.priceId === priceId ? { ...it, quantity: (it.quantity ?? 1) + meters } : it) };
                   }
                   return { ...s, items: [...existing, { ...item, quantity: meters }] };
@@ -224,6 +224,7 @@ export default function PlanCanvasSvg({
               });
               onChange({ segments: newSegs });
             }}
+            onEditSegItem={onEditSegItem}
           />
         ))}
 
