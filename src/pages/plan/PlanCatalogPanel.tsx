@@ -110,7 +110,7 @@ export default function PlanCatalogPanel({
 
   // Детект команды замены
   const isReplaceCommand = (t: string) =>
-    /замен|поменя|вместо|убери.{0,30}поставь|убери.{0,30}добавь/i.test(t);
+    /замен|поменя|вместо|измен|передел|переключ|смени|своп|убери.{0,30}поставь|убери.{0,30}добавь/i.test(t);
 
   // Найти все стены где стоит товар с данной категорией
   const findSegsWithCategory = (category: string): string[] =>
