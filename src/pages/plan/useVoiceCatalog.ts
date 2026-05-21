@@ -173,33 +173,59 @@ const ITEM_KEYWORDS: { pattern: RegExp; keywords: string[] }[] = [
 ];
 
 // Ищем сегменты для конкретного товара — ищем ключевое слово товара в тексте,
-// затем берём ориентацию из ближайшего контекста
+// затем берём ориентацию ТОЛЬКО из ближайшего контекста (±50 символов).
+// НЕТ fallback на весь текст — иначе все направления из одной фразы
+// "на левую теневой, на правую парящий, сверху ниша" попадут в каждый товар.
 export function findSegIdsForItem(itemName: string, itemCategory: string, transcript: string, state: PlanState): string[] | null {
   const t    = transcript.toLowerCase();
   const name = itemName.toLowerCase();
   const cat  = itemCategory.toLowerCase();
+
+  // Сначала ищем явную фразу "на <направление> <товар>" или "<товар> на <направление>"
+  // Паттерн: до 40 символов между направлением и ключевым словом товара
+  const directionPatterns = [
+    { re: /на левую|слева/,   extract: (pos: number) => t.slice(Math.max(0, pos - 5), pos + 60)  },
+    { re: /на правую|справа/, extract: (pos: number) => t.slice(Math.max(0, pos - 5), pos + 60)  },
+    { re: /сверху|верхн/,     extract: (pos: number) => t.slice(Math.max(0, pos - 5), pos + 60)  },
+    { re: /снизу|нижн/,       extract: (pos: number) => t.slice(Math.max(0, pos - 5), pos + 60)  },
+  ];
 
   // Находим ключевые слова для этого товара
   const entry = ITEM_KEYWORDS.find(e => e.pattern.test(name) || e.pattern.test(cat));
 
   let searchPos = -1;
   if (entry) {
-    // Ищем первое вхождение любого ключевого слова в тексте
     for (const kw of entry.keywords) {
       const p = t.indexOf(kw);
       if (p !== -1 && (searchPos === -1 || p < searchPos)) searchPos = p;
     }
   }
 
-  // Если нашли позицию — берём широкое окно вокруг неё (±120 символов)
-  if (searchPos !== -1) {
-    const win = t.slice(Math.max(0, searchPos - 120), Math.min(t.length, searchPos + 120));
-    const result = findTargetSegIds(win, state);
-    if (result && result.length > 0) return result;
+  if (searchPos === -1) {
+    // Пробуем найти часть названия товара в тексте (первые 5+ символов слова)
+    const nameWords = name.split(/\s+/).filter(w => w.length >= 5);
+    for (const w of nameWords) {
+      const p = t.indexOf(w.slice(0, 5));
+      if (p !== -1 && (searchPos === -1 || p < searchPos)) searchPos = p;
+    }
   }
 
-  // Fallback — общий поиск по всему тексту
-  return findTargetSegIds(transcript, state);
+  if (searchPos === -1) return null; // товар не упоминается — нет контекста
+
+  // Берём УЗКОЕ окно ±50 символов вокруг упоминания товара
+  // Это исключает соседние товары с другими направлениями
+  const win = t.slice(Math.max(0, searchPos - 50), Math.min(t.length, searchPos + 50));
+  const result = findTargetSegIds(win, state);
+
+  // Если в узком окне не нашли — ищем в направлении НАЗАД (до предыдущей запятой)
+  if (!result || result.length === 0) {
+    const before = t.slice(0, searchPos);
+    const lastComma = before.lastIndexOf(",");
+    const segment = before.slice(lastComma + 1); // от последней запятой до товара
+    return findTargetSegIds(segment + " " + win, state);
+  }
+
+  return result;
 }
 
 interface Props {
