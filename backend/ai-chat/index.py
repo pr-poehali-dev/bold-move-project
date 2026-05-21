@@ -1617,16 +1617,19 @@ def handler(event, context):
 
     if is_plan_mode:
         openrouter_key = os.environ.get('OPENROUTER_API_KEY_2', '') or os.environ.get('OPENROUTER_API_KEY', '')
-        prices_block = get_prices_block()  # полный прайс как текст
+        prices_block   = get_prices_block()
+        rules_list     = get_price_rules()
+        rules_hint     = build_rules_prompt(rules_list)
 
         plan_system = (
-            "Ты помощник по подбору материалов для натяжных потолков. "
+            get_system_prompt(fallback=SYSTEM_PROMPT)
+            + f"\n\n=== АКТУАЛЬНЫЙ ПРАЙС-ЛИСТ ==={prices_block}"
+            + (rules_hint or "")
+            + "\n\n=== РЕЖИМ ПОСТРОИТЕЛЯ ===\n"
             "Получишь данные помещения (площадь, периметр, стены) и голосовой запрос клиента. "
             "Верни ТОЛЬКО валидный JSON без пояснений и без markdown: "
             "{\"items\":[{\"name\":\"...\",\"qty\":1,\"unit\":\"м\",\"price\":0}]}\n"
-            "Используй ТОЧНЫЕ названия из прайса ниже. Не придумывай позиции которых нет в прайсе.\n"
-            "qty — количество в единицах измерения (метры для профилей, м² для полотна, шт для штучных).\n\n"
-            f"ПРАЙС:{prices_block}"
+            "Используй ТОЧНЫЕ названия из прайса. qty — метры для профилей, м² для полотна, шт для штучных."
         )
         plan_msgs = [
             {'role': 'system', 'content': plan_system},
@@ -1644,7 +1647,7 @@ def handler(event, context):
                 'https://openrouter.ai/api/v1/chat/completions',
                 json={'model': 'openai/gpt-4o-mini', 'messages': plan_msgs, 'max_tokens': 1500, 'temperature': 0},
                 headers=headers,
-                timeout=25,
+                timeout=55,
             )
             if resp.status_code == 200:
                 content = resp.json()['choices'][0]['message']['content']
