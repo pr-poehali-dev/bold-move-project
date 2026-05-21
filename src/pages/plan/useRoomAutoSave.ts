@@ -26,7 +26,32 @@ export function useRoomAutoSave(
   const projectIdRef = useRef<number | null | undefined>(projectId);
   projectIdRef.current = projectId;
 
-  const stateStr = JSON.stringify(state);
+  // Сравниваем только «важные» поля — геометрию и товары, без pan/zoom/tool/selection
+  const stateStr = JSON.stringify({
+    points:   state.points,
+    segments: state.segments,
+    isClosed: state.isClosed,
+    arcs:     state.arcs,
+    diagonals: state.diagonals,
+    dimLines: state.dimLines,
+    floorItems: state.floorItems,
+    room:     state.room,
+    baseScale: state.baseScale,
+    isBuilt:  state.isBuilt,
+    settings: {
+      ortho:              state.settings.ortho,
+      snapToPoints:       state.settings.snapToPoints,
+      showGrid:           state.settings.showGrid,
+      gridSize:           state.settings.gridSize,
+      showSegmentLabels:  state.settings.showSegmentLabels,
+      showAngleLabels:    state.settings.showAngleLabels,
+      showDiagonals:      state.settings.showDiagonals,
+      showDimLines:       state.settings.showDimLines,
+      showPoints:         state.settings.showPoints,
+      showPointLabels:    state.settings.showPointLabels,
+      // panX, panY, zoom — намеренно исключены
+    },
+  });
 
   const doSave = async (planState: PlanState) => {
     if (!roomId || !token) return;

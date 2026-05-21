@@ -7,7 +7,7 @@ import PlanDragGhosts from "./PlanDragGhosts";
 import PlanQuantityModal from "./PlanQuantityModal";
 import PlanVariantSaveModal from "./PlanVariantSaveModal";
 import ReplaceItemModal from "./ReplaceItemModal";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import type { PlanState } from "./planTypes";
 import type { usePlanCatalog } from "./usePlanCatalog";
 import type { usePlanHandlers } from "./usePlanHandlers";
@@ -83,6 +83,15 @@ export default function PlanPagePanels({
   mobileVariantPickerOpen = false,
 }: Props) {
   const [replaceModalOpen, setReplaceModalOpen] = useState(false);
+
+  // Мобиле: при клике на товар на стене — открываем барабан на нужной категории
+  useEffect(() => {
+    if (!isMobile || !catalog.editingSegRef) return;
+    const cat = catalog.editingSegItem?.category ?? null;
+    catalog.setReplaceCatalogCategory(cat);
+    catalog.setCatalogOpen(true);
+    catalog.setEditingSegRef(null);
+  }, [isMobile, catalog.editingSegRef]); // eslint-disable-line react-hooks/exhaustive-deps
   const [replaceModalItem, setReplaceModalItem] = useState<(import("./planTypes").SegmentPriceItem & { quantity: number }) | null>(null);
   const [replaceFloorId, setReplaceFloorId] = useState<string | null>(null);
 
@@ -264,7 +273,7 @@ export default function PlanPagePanels({
         />
       )}
 
-      {/* Модалка замены товара на стене (только ПК) */}
+      {/* Замена товара на стене: ПК — модалка, мобиле — через useEffect (барабан) */}
       {!isMobile && (
         <ReplaceItemModal
           open={!!catalog.editingSegRef}
