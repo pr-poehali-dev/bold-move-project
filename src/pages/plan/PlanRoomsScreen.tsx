@@ -167,28 +167,20 @@ export default function PlanRoomsScreen({ token, project, onBack, onOpenRoom }: 
             title="Открыть заявку в CRM"
           >
             <Icon name="LayoutDashboard" size={14} />
+            {/* CRM — только на десктопе */}
             <span className="text-[11px] font-bold uppercase tracking-wide hidden sm:inline">CRM</span>
           </button>
         )}
-        {/* Кнопка сметы */}
+        {/* Кнопка сметы — десктоп: со стилем CRM + подпись "Скачать", мобил: только иконка в стиле CRM */}
         <button
           onClick={() => setExportOpen(true)}
-          className="w-9 h-9 flex items-center justify-center rounded-xl transition hover:bg-white/10 flex-shrink-0"
-          style={{ color: "rgba(255,255,255,0.5)", border: "1px solid rgba(255,255,255,0.09)" }}
-          title="Выгрузить смету"
+          className="flex items-center gap-1.5 px-3 h-9 rounded-xl transition hover:brightness-110 active:scale-95 flex-shrink-0"
+          style={{ background: "rgba(124,58,237,0.18)", border: "1px solid rgba(124,58,237,0.4)", color: "#a78bfa" }}
+          title="Скачать смету"
         >
-          <Icon name="FileText" size={16} />
+          <Icon name="FileText" size={14} />
+          <span className="text-[11px] font-bold hidden sm:inline">Скачать</span>
         </button>
-        {/* Счётчик комнат */}
-        {rooms.filter(r => !r.name.startsWith("[удалена]")).length > 0 && (
-          <span
-            className="flex-shrink-0 flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-bold"
-            style={{ background: "rgba(124,58,237,0.18)", color: "#a78bfa", border: "1px solid rgba(124,58,237,0.3)" }}
-          >
-            <Icon name="Layers" size={10} />
-            {rooms.filter(r => !r.name.startsWith("[удалена]")).length}шт
-          </span>
-        )}
         <button
           onClick={() => { setShowForm(v => !v); setCustomName(""); }}
           className="flex items-center gap-2 px-3 py-2 rounded-xl text-[12px] font-bold transition hover:opacity-90 active:scale-[0.97] flex-shrink-0"
