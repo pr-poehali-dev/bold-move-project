@@ -8,7 +8,6 @@ import json
 import os
 import re
 import urllib.request
-import psycopg2
 
 CORS = {
     'Access-Control-Allow-Origin': '*',
@@ -18,7 +17,6 @@ CORS = {
 
 GET_PRICES_URL = 'https://functions.poehali.dev/4a60d7e9-3b52-4eaa-b9f9-38653c3ef837'
 OPENROUTER_KEY = os.environ.get('OPENROUTER_API_KEY_2', '')
-SCHEMA = os.environ.get('MAIN_DB_SCHEMA', 'public')
 
 _prices_cache: list = []
 
@@ -38,25 +36,6 @@ def get_prices() -> list:
         return []
 
 
-def get_system_prompt() -> str:
-    """Загружает системный промпт из БД — единый источник правил."""
-    try:
-        conn = psycopg2.connect(os.environ['DATABASE_URL'])
-        cur = conn.cursor()
-        cur.execute(f"SELECT content FROM {SCHEMA}.ai_system_prompt ORDER BY id LIMIT 1")
-        row = cur.fetchone()
-        cur.close()
-        conn.close()
-        if row and row[0]:
-            content = row[0]
-            for marker in ('##GENERAL##', '##SYSTEM##', '##FORMAT##'):
-                content = content.replace(marker, '')
-            return content.strip()
-    except Exception as e:
-        print(f"[plan-voice] get_system_prompt error: {e}")
-    return ''
-
-
 def build_prices_text(prices: list) -> str:
     lines = []
     cur_cat = None
@@ -66,9 +45,9 @@ def build_prices_text(prices: list) -> str:
         price = p.get('price', 0)
         unit = p.get('unit', '')
         if cat != cur_cat:
-            lines.append(f"\n{cat}:")
+            lines.append(f"\n[{cat}]")
             cur_cat = cat
-        lines.append(f"  - {name} | {price} руб/{unit}")
+        lines.append(f"  {name} | {price} руб/{unit}")
     return "\n".join(lines)
 
 
@@ -167,18 +146,54 @@ def handler(event: dict, context) -> dict:
     prices = get_prices()
     prices_text = build_prices_text(prices) if prices else "(прайс недоступен)"
 
-    db_prompt = get_system_prompt()
-
-    system_prompt = f"""Ты — помощник монтажника натяжных потолков в режиме построителя плана.
-Клиент надиктовал список материалов. Подбери точные позиции из прайса и верни JSON.
-
-=== ПРАВИЛА КОМПАНИИ (из базы знаний) ===
-{db_prompt}
+    system_prompt = f"""Ты — помощник монтажника натяжных потолков. Клиент надиктовал список материалов для конкретного помещения.
+Подбери точные позиции из прайса и верни JSON.
 
 === ПРАЙС-ЛИСТ ==={prices_text}
 
-=== ФОРМАТ ОТВЕТА ===
-Верни ТОЛЬКО валидный JSON без пояснений: {{"items":[{{"name":"...","qty":1,"unit":"м","price":0}}]}}"""
+=== ОБЯЗАТЕЛЬНЫЕ ПРАВИЛА ===
+
+ПРОФИЛЬ СТАНДАРТНЫЙ:
+- По умолчанию ВСЕГДА "Стеновой алюминиевый"
+- "Потолочный алюминиевый" — ТОЛЬКО если клиент явно сказал "потолочный профиль" или "крепление к потолку"
+- Количество = периметр МИНУС длина теневого и парящего профилей если они есть
+
+ТЕНЕВОЙ ПРОФИЛЬ (только если клиент упомянул "теневой"):
+- По умолчанию → "EuroKRAAB стеновой"
+- Если клиент сказал "потолочный еврокраб" → "EuroKRAAB потолочный"
+- Если клиент сказал "классик" / "флекси классика" → "Теневой классик (Flexy KLASSIKA 140)"
+- Количество = длина стен где указано. Если не уточнил → весь периметр
+
+ПАРЯЩИЙ ПРОФИЛЬ (только если клиент упомянул "парящий"):
+- По умолчанию → "Flexy FLY 02  с рассеивателем"
+- Если клиент сказал "ПК-6" или "без рассеивателя" → "Парящий ПК-6 без рассеивателя"
+- Если клиент сказал "FLY 01" → "Flexy FLY 01 без рассеивателем"
+- НИКОГДА не добавляй два вида парящего одновременно
+- Количество = длина стен где указано. Если не уточнил → весь периметр
+
+СВЕТИЛЬНИКИ (КРИТИЧНО — все три позиции ВСЕГДА вместе):
+- Если упомянут "точечный" / "GX-53" / "спот" → добавить ВСЕ 3 позиции с ОДИНАКОВЫМ количеством:
+  1. "Светильник GX-53"
+  2. "Лампа GX-53"
+  3. "Под светильник ∅90"
+- Количество у всех трёх = количеству светильников из запроса
+
+ЛЮСТРА:
+- Если упомянута "люстра" → добавить "Под люстру планка" (1 шт на 1 люстру)
+
+ПОЛОТНО:
+- Количество в м² = площадь помещения из данных
+
+РАСЧЁТ ДЛИН:
+- "по одной стене" = одна сторона помещения (периметр ÷ 4)
+- "по двум стенам" = периметр ÷ 2
+- "по трём стенам" = периметр × 3 ÷ 4
+- "по всему периметру" / без уточнения = весь периметр
+- Данные помещения (площадь, периметр, длины стен) — приоритет над словами клиента
+
+ВАЖНО:
+- Используй ТОЛЬКО точные названия из прайса выше
+- Верни ТОЛЬКО валидный JSON без пояснений: {{"items":[{{"name":"...","qty":1,"unit":"м","price":0}}]}}"""
 
     user_message = f"{room_context}\n\n=== ЗАПРОС КЛИЕНТА ===\n{transcript}"
 
@@ -211,7 +226,7 @@ def handler(event: dict, context) -> dict:
         return {'statusCode': 200, 'headers': CORS, 'body': json.dumps({'items': [], 'error': str(e)})}
 
     content = resp_data.get('choices', [{}])[0].get('message', {}).get('content', '')
-    print(f"[plan-voice] LLM response: {content[:300]}")
+    print(f"[plan-voice] LLM response: {content[:500]}")
 
     items = extract_items(content)
     print(f"[plan-voice] extracted {len(items)} items")
