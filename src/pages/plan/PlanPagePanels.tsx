@@ -84,10 +84,14 @@ export default function PlanPagePanels({
 }: Props) {
   const [replaceModalOpen, setReplaceModalOpen] = useState(false);
 
+  // Сохраняем segRef пока барабан открыт (для мобильной замены)
+  const [mobileReplaceSegRef, setMobileReplaceSegRef] = useState<{ segId: string; priceId: number } | null>(null);
+
   // Мобиле: при клике на товар на стене — открываем барабан на нужной категории
   useEffect(() => {
     if (!isMobile || !catalog.editingSegRef) return;
     const cat = catalog.editingSegItem?.category ?? null;
+    setMobileReplaceSegRef(catalog.editingSegRef);
     catalog.setReplaceCatalogCategory(cat);
     catalog.setCatalogOpen(true);
     catalog.setEditingSegRef(null);
@@ -210,8 +214,18 @@ export default function PlanPagePanels({
         selectedSegmentId={state.selectedSegmentId}
         selectedSegmentIds={state.selectedSegmentIds}
         state={state}
-        onClose={() => { catalog.setCatalogOpen(false); catalog.setReplaceCatalogCategory(null); }}
+        onClose={() => {
+          catalog.setCatalogOpen(false);
+          catalog.setReplaceCatalogCategory(null);
+          setMobileReplaceSegRef(null);
+        }}
         onAssignToSegs={catalog.assignItemToSegs}
+        onReplaceItem={mobileReplaceSegRef ? (item) => {
+          catalog.replaceSegItem(item, mobileReplaceSegRef);
+          setMobileReplaceSegRef(null);
+          catalog.setCatalogOpen(false);
+          catalog.setReplaceCatalogCategory(null);
+        } : undefined}
         onAssignToAllSegs={catalog.assignItemToAllSegs}
         onAssignMany={catalog.assignManyItems}
         onAddToActive={item => {

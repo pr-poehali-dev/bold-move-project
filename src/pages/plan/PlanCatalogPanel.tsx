@@ -77,7 +77,8 @@ interface Props {
   onAssignMany: (wallItems: { item: SegmentPriceItem; segIds: string[] | null }[], floorItems: SegmentPriceItem[]) => void;
   pendingItem?: SegmentPriceItem | null;
   onSegmentClickForPending?: (segId: string) => void;
-  initialCategory?: string; // открыть сразу на этой категории (для замены товара)
+  initialCategory?: string;
+  onReplaceItem?: (item: SegmentPriceItem) => void; // режим замены: выбор товара вместо добавления
 }
 
 // Категории которые идут НА СТЕНЫ (пог.м вдоль периметра)
@@ -154,6 +155,7 @@ export default function PlanCatalogPanel({
   onAssignMany,
   onSegmentClickForPending,
   initialCategory,
+  onReplaceItem,
 }: Props) {
   // Товар ожидающий выбора стены
   const [pendingWall, setPendingWall] = useState<PendingWallItem | null>(null);
@@ -286,6 +288,11 @@ export default function PlanCatalogPanel({
         prices={filteredPrices}
         initialCategory={initialCategory}
         onDragItem={item => {
+          if (onReplaceItem) {
+            onReplaceItem(item);
+            onClose();
+            return;
+          }
           onClose();
           const ids = selectedSegmentIds && selectedSegmentIds.length > 0
             ? selectedSegmentIds

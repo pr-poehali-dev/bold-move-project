@@ -439,13 +439,14 @@ export function usePlanCatalog(
     : null;
 
   // Заменить товар на стене: все сегменты с этим priceId в этом сегменте
-  const replaceSegItem = useCallback((newItem: SegmentPriceItem) => {
-    if (!editingSegRef) return;
+  const replaceSegItem = useCallback((newItem: SegmentPriceItem, targetRef?: { segId: string; priceId: number }) => {
+    const ref = targetRef ?? editingSegRef;
+    if (!ref) return;
     const s = stateRef.current;
     push({ ...s, segments: s.segments.map(seg => {
-      if (seg.id !== editingSegRef.segId) return seg;
+      if (seg.id !== ref.segId) return seg;
       return { ...seg, items: (seg.items ?? []).map(it =>
-        it.priceId === editingSegRef.priceId
+        it.priceId === ref.priceId
           ? { ...newItem, quantity: it.quantity }
           : it
       )};
