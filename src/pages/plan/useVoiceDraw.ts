@@ -495,12 +495,10 @@ export default function useVoiceDraw({ onChange }: Props) {
     if (isListening) {
       stopAndTranscribe();
     } else {
-      // Сброс чертежа при первом старте
-      if (buildRef.current.segments.length === 0) {
-        resetBuild();
-        onChange({ points: [], segments: [], diagonals: [], isClosed: false, isBuilt: false, baseScale: null, phase: "draw", tool: "draw" });
-        setStatus("");
-      }
+      // Всегда сбрасываем buildRef и чертёж при каждом новом старте
+      resetBuild();
+      onChange({ points: [], segments: [], diagonals: [], isClosed: false, isBuilt: false, baseScale: null, phase: "draw", tool: "draw" });
+      setStatus("");
       startRecording();
     }
   }, [isListening, stopAndTranscribe, startRecording, resetBuild, onChange]);
