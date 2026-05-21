@@ -11,11 +11,12 @@ import type { PlanState } from "./planTypes";
 interface Props {
   state: PlanState;
   onItems: (items: VoiceCatalogItem[], transcript: string) => void;
+  onTranscript?: (transcript: string) => void;
 }
 
-export default function PlanVoiceCatalogButton({ state, onItems }: Props) {
+export default function PlanVoiceCatalogButton({ state, onItems, onTranscript }: Props) {
   const { isRecording, isProcessing, status, recTime, fmtTime, volume, toggleRecording } =
-    useVoiceCatalog({ state, onItems });
+    useVoiceCatalog({ state, onItems, onTranscript });
 
   // Случайные высоты полос для визуализации — генерируем один раз
   const bars = useRef(Array.from({ length: 20 }, () => 0.2 + Math.random() * 0.8)).current;

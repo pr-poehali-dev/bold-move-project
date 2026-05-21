@@ -233,6 +233,7 @@ export function findSegIdsForItem(itemName: string, itemCategory: string, transc
 interface Props {
   state: PlanState;
   onItems: (items: VoiceCatalogItem[], transcript: string) => void;
+  onTranscript?: (transcript: string) => void; // вызывается сразу после распознавания речи, до бота
 }
 
 // Строим читаемый контекст помещения из состояния построителя
@@ -316,7 +317,7 @@ function buildRoomContext(state: PlanState): string {
   return lines.join("\n");
 }
 
-export default function useVoiceCatalog({ state, onItems }: Props) {
+export default function useVoiceCatalog({ state, onItems, onTranscript }: Props) {
   const [isRecording,    setIsRecording]    = useState(false);
   const [isProcessing,   setIsProcessing]   = useState(false);
   const [status,         setStatus]         = useState("");
@@ -446,6 +447,7 @@ export default function useVoiceCatalog({ state, onItems }: Props) {
       setStatus("Распознаю речь...");
       try {
         const transcript = await transcribeBlob(blob);
+        onTranscript?.(transcript);
         setStatus(`"${transcript}" — запрашиваю бота...`);
         const { items, transcript: fullTranscript } = await sendToAI(transcript);
         if (items.length > 0) {

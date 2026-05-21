@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import CategoryDrumPanel from "./CategoryDrumPanel";
 import type { PriceEntry } from "./CategoryDrumPanel";
 import type { PlanState, SegmentPriceItem } from "./planTypes";
@@ -6,6 +6,7 @@ import PlanVoiceCatalogButton from "./PlanVoiceCatalogButton";
 import type { VoiceCatalogItem } from "./useVoiceCatalog";
 import { findSegIdsForItem, ALL_SEGS_SENTINEL } from "./useVoiceCatalog";
 import Icon from "@/components/ui/icon";
+import VoiceResultPopup, { splitTranscriptToItems, type VoiceResultItem } from "./VoiceResultPopup";
 
 // Исправляем дефолт теневого профиля: если AI вернул просто "теневой" без уточнения
 // или вернул "Теневой профиль" как абстрактную категорию — заменяем на EuroKRAB стеновой
@@ -161,6 +162,8 @@ export default function PlanCatalogPanel({
   const [pendingWall, setPendingWall] = useState<PendingWallItem | null>(null);
   // Стены выбранные пользователем для pending товара (мультивыбор)
   const [pendingSelectedSegs, setPendingSelectedSegs] = useState<string[]>([]);
+  // Попап результатов голосового распознавания
+  const [voicePopupItems, setVoicePopupItems] = useState<VoiceResultItem[]>([]);
 
   // Когда pendingWall активен — отслеживаем клики по стенам через selectedSegmentIds
   useEffect(() => {
@@ -178,6 +181,12 @@ export default function PlanCatalogPanel({
     setPendingSelectedSegs([]);
   };
 
+  // Обработка транскрипта — запускаем анимацию до того как бот ответил
+  const handleTranscript = useCallback((transcript: string) => {
+    const labels = splitTranscriptToItems(transcript);
+    setVoicePopupItems(labels.map(label => ({ label, status: "pending" })));
+  }, []);
+
   // Детект команды замены
   const isReplaceCommand = (t: string) =>
     /замен|поменя|вместо|измен|передел|переключ|смени|своп|убери.{0,30}поставь|убери.{0,30}добавь/i.test(t);
@@ -192,6 +201,20 @@ export default function PlanCatalogPanel({
   const handleVoiceItems = (items: VoiceCatalogItem[], transcript: string) => {
     console.log("[voice] transcript:", transcript);
     console.log("[voice] items:", items.map(i => i.name));
+
+    // Обновляем статусы попапа по реальному результату
+    setVoicePopupItems(prev => {
+      if (prev.length === 0) return prev;
+      // Для каждой позиции проверяем — нашёл ли бот хоть что-то похожее
+      const botNames = items.map(i => i.name.toLowerCase());
+      return prev.map(p => {
+        const labelWords = p.label.toLowerCase().split(/\s+/).filter(w => w.length > 2);
+        const matched = botNames.some(n =>
+          labelWords.some(w => n.includes(w) || w.includes(n))
+        );
+        return { ...p, status: matched ? "ok" : "fail" };
+      });
+    });
 
     // Исправляем дефолт теневого профиля, затем гарантируем комплект светильника
     const guaranteedItems = ensureLightingBundle(fixShadowProfile(items, allPrices), allPrices);
@@ -308,8 +331,20 @@ export default function PlanCatalogPanel({
       {/* Кнопка микрофона — только когда каталог открыт */}
       {open && (
         <div className="fixed z-50" style={{ bottom: 96, right: 16 }}>
-          <PlanVoiceCatalogButton state={state} onItems={handleVoiceItems} />
+          <PlanVoiceCatalogButton
+            state={state}
+            onItems={handleVoiceItems}
+            onTranscript={handleTranscript}
+          />
         </div>
+      )}
+
+      {/* Попап результатов голосового распознавания */}
+      {voicePopupItems.length > 0 && (
+        <VoiceResultPopup
+          items={voicePopupItems}
+          onClose={() => setVoicePopupItems([])}
+        />
       )}
 
       {/* Баннер "выберите стены на чертеже" — в центре полотна */}
