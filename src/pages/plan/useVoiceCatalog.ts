@@ -18,7 +18,7 @@ import { calcScale, polygonArea, polygonPerimeter } from "./planTypes";
 
 const TRANSCRIBE_URL = (func2url as Record<string, string>)["deepgram-transcribe"];
 const WHISPER_URL    = (func2url as Record<string, string>)["whisper-transcribe"];
-const AI_CHAT_URL    = (func2url as Record<string, string>)["ai-chat"];
+const PLAN_VOICE_URL = (func2url as Record<string, string>)["plan-voice"];
 
 export interface VoiceCatalogItem {
   name: string;
@@ -367,19 +367,14 @@ export default function useVoiceCatalog({ state, onItems, onTranscript }: Props)
     return data.text;
   }, []);
 
-  // ── Отправка в ai-chat с контекстом чертежа ─────────────────────────────────
+  // ── Отправка в plan-voice с контекстом чертежа ──────────────────────────────
   const sendToAI = useCallback(async (transcript: string): Promise<{ items: VoiceCatalogItem[]; transcript: string }> => {
     const roomContext = buildRoomContext(stateRef.current);
 
-    const messages = [
-      { role: "user", text: roomContext },
-      { role: "user", text: transcript },
-    ];
-
-    const res  = await fetch(AI_CHAT_URL, {
+    const res = await fetch(PLAN_VOICE_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ messages, fast: false }),
+      body: JSON.stringify({ room_context: roomContext, transcript }),
     });
     const data = await res.json();
 

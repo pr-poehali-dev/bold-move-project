@@ -1595,13 +1595,34 @@ def _extract_items_from_content(content: str) -> list:
                 break
 
     if end == -1:
-        # Обрезанный JSON — пробуем закрыть и распарсить
-        candidate = content[start:] + ']}}'
-        try:
-            parsed = json.loads(candidate)
-            return parsed.get('items', [])
-        except Exception:
-            return []
+        # Обрезанный JSON — пробуем несколько стратегий восстановления
+        truncated = content[start:]
+
+        # Стратегия 1: добавить закрывающие скобки и распарсить
+        for suffix in [']}', '"]}}', '"}]}', '"]]}', '}}', ']}}'']:
+            try:
+                parsed = json.loads(truncated + suffix)
+                items = parsed.get('items', [])
+                if isinstance(items, list) and items:
+                    return items
+            except Exception:
+                pass
+
+        # Стратегия 2: вытащить все полные объекты из массива через regex
+        # Ищем завершённые JSON-объекты вида {...}
+        complete_objects = re.findall(r'\{[^{}]*(?:\{[^{}]*\}[^{}]*)?\}', truncated)
+        result = []
+        for obj_str in complete_objects:
+            try:
+                obj = json.loads(obj_str)
+                if isinstance(obj, dict) and 'name' in obj:
+                    result.append(obj)
+            except Exception:
+                pass
+        if result:
+            return result
+
+        return []
 
     candidate = content[start:end]
     try:
@@ -1611,13 +1632,18 @@ def _extract_items_from_content(content: str) -> list:
             return items
     except Exception as e:
         print(f"[plan_mode] json parse error: {e}, trying items array directly")
-        # Может быть AI вернул items как массив без обёртки
-        arr_match = re.search(r'"items"\s*:\s*(\[.*?\])', candidate, re.DOTALL)
-        if arr_match:
+        # Стратегия: вытащить все полные объекты из строки
+        complete_objects = re.findall(r'\{[^{}]*(?:\{[^{}]*\}[^{}]*)?\}', candidate)
+        result = []
+        for obj_str in complete_objects:
             try:
-                return json.loads(arr_match.group(1))
+                obj = json.loads(obj_str)
+                if isinstance(obj, dict) and 'name' in obj:
+                    result.append(obj)
             except Exception:
                 pass
+        if result:
+            return result
     return []
 
 
@@ -1724,7 +1750,7 @@ def handler(event, context):
             }
             resp = _req.post(
                 'https://openrouter.ai/api/v1/chat/completions',
-                json={'model': 'openai/gpt-4o-mini', 'messages': plan_msgs, 'max_tokens': 1500, 'temperature': 0},
+                json={'model': 'openai/gpt-4o-mini', 'messages': plan_msgs, 'max_tokens': 3000, 'temperature': 0},
                 headers=headers,
                 timeout=55,
             )
