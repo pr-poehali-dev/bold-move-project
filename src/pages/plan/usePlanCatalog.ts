@@ -454,11 +454,12 @@ export function usePlanCatalog(
   }, [editingSegRef, stateRef, push]);
 
   // Заменить floorItem: удалить старый, поставить новый с тем же quantity
-  const replaceFloorItem = useCallback((newItem: SegmentPriceItem, quantity: number) => {
-    if (!editingFloorId) return;
+  const replaceFloorItem = useCallback((newItem: SegmentPriceItem, quantity: number, targetId?: string) => {
+    const id = targetId ?? editingFloorId;
+    if (!id) return;
     const s = stateRef.current;
     push({ ...s, floorItems: (s.floorItems ?? []).map(fi =>
-      fi.id === editingFloorId
+      fi.id === id
         ? { ...fi, priceId: newItem.priceId, name: newItem.name, category: newItem.category, imageUrl: newItem.imageUrl, unit: newItem.unit, quantity }
         : fi
     )});

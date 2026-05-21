@@ -83,6 +83,8 @@ export default function PlanPagePanels({
   mobileVariantPickerOpen = false,
 }: Props) {
   const [replaceModalOpen, setReplaceModalOpen] = useState(false);
+  const [replaceModalItem, setReplaceModalItem] = useState<(import("./planTypes").SegmentPriceItem & { quantity: number }) | null>(null);
+  const [replaceFloorId, setReplaceFloorId] = useState<string | null>(null);
 
   return (
     <>
@@ -234,6 +236,9 @@ export default function PlanPagePanels({
             catalog.setReplaceCatalogCategory(cat);
             catalog.setCatalogOpen(true);
           } else {
+            setReplaceModalItem(catalog.editingFloorItem);
+            setReplaceFloorId(catalog.editingFloorId);
+            catalog.setEditingFloorId(null);
             setReplaceModalOpen(true);
           }
         }}
@@ -243,13 +248,19 @@ export default function PlanPagePanels({
       {!isMobile && (
         <ReplaceItemModal
           open={replaceModalOpen}
-          item={catalog.editingFloorItem}
+          item={replaceModalItem}
           prices={catalog.prices}
           onReplace={(newItem, quantity) => {
-            catalog.replaceFloorItem(newItem, quantity);
+            catalog.replaceFloorItem(newItem, quantity, replaceFloorId ?? undefined);
             setReplaceModalOpen(false);
+            setReplaceModalItem(null);
+            setReplaceFloorId(null);
           }}
-          onCancel={() => setReplaceModalOpen(false)}
+          onCancel={() => {
+            setReplaceModalOpen(false);
+            setReplaceModalItem(null);
+            setReplaceFloorId(null);
+          }}
         />
       )}
 
