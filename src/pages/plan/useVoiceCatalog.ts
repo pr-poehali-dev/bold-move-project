@@ -308,10 +308,8 @@ function buildRoomContext(state: PlanState): string {
   }
 
   lines.push("\n=== ЗАДАЧА ===");
-  lines.push("На основе голосового запроса клиента и данных помещения выше — подбери товары для сметы.");
-  lines.push("Верни JSON с массивом items. Каждый item: { name, qty, unit, price }.");
-  lines.push("Используй реальные названия из прайса натяжных потолков (профили, полотна, освещение, крепёж).");
-  lines.push("Объём/количество считай на основе точных данных помещения, не придумывай размеры.");
+  lines.push("Подбери товары по голосовому запросу. Верни ТОЛЬКО JSON: {\"items\":[{\"name\":\"...\",\"qty\":1,\"unit\":\"м\",\"price\":0}]}. Без текста.");
+  lines.push("Используй точные названия из прайса натяжных потолков. Количество считай по данным помещения выше.");
 
   return lines.join("\n");
 }
@@ -378,7 +376,7 @@ export default function useVoiceCatalog({ state, onItems }: Props) {
     const res  = await fetch(AI_CHAT_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ messages, fast: true }),
+      body: JSON.stringify({ messages, fast: false }),
     });
     const data = await res.json();
 
