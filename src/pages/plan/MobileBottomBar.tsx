@@ -57,7 +57,8 @@ export default function MobileBottomBar({
   const [hintsOpen, setHintsOpen] = useState(false);
   const [voicePopupItems, setVoicePopupItems] = useState<VoiceResultItem[]>([]);
   const [isRetrying, setIsRetrying] = useState(false);
-  const retryCountRef = useRef(0); // сколько автоповторов уже было
+  const retryCountRef = useRef(0);
+  const sendToAIRef = useRef<((t: string) => Promise<{ items: import("./useVoiceCatalog").VoiceCatalogItem[]; transcript: string; semanticMap?: Record<string, string[]> }>) | null>(null);
 
   // Голосовое наполнение — используется когда полотно построено
   const catalogVoice = useVoiceCatalog({
@@ -77,7 +78,7 @@ export default function MobileBottomBar({
         return prev.map(p => {
           const label = p.label.toLowerCase();
 
-          // 1. Прямое совпадение слов (длиннее 3 букв)
+          // 1. Прямое совпадение: слова из метки (длиннее 3 букв) встречаются в именах позиций
           const labelWords = label.split(/\s+/).filter(w => w.length > 3);
           const directMatch = returnedNames.some(name =>
             labelWords.some(word => name.includes(word))
@@ -85,19 +86,85 @@ export default function MobileBottomBar({
           if (directMatch) return { ...p, status: "ok" as const };
 
           // 2. Семантическое совпадение через semanticMap из БД
-          // semanticMap: { "парящ": ["flexy fly 02  с рассеивателем", ...], ... }
+          // semanticMap: { "парящий": ["flexy fly 02  с рассеивателем"], ... }
           if (semanticMap) {
             const dbMatch = Object.entries(semanticMap).some(([trigger, targets]) => {
+              // trigger может быть полным синонимом ИЛИ ключом (первые 6 символов)
+              // проверяем оба варианта
               if (!label.includes(trigger)) return false;
-              return returnedNames.some(name => targets.some(t => name.includes(t)));
+              return (targets as string[]).some(targetName =>
+                returnedNames.some(name =>
+                  name.includes(targetName) || targetName.includes(name)
+                )
+              );
             });
             if (dbMatch) return { ...p, status: "ok" as const };
           }
+
+          // 3. Ключевые слова типов профилей — захардкоженный фолбэк
+          const KEYWORD_MAP: Record<string, string[]> = {
+            "парящ": ["flexy", "fly", "пк-6", "парящ"],
+            "теневой": ["eurokraab", "eurokrab", "классик", "тенев"],
+            "тенев": ["eurokraab", "eurokrab", "тенев"],
+            "стеновой": ["стеновой алюминиевый"],
+            "алюминиев": ["стеновой алюминиевый", "потолочный алюминиевый"],
+            "люстр": ["под люстру", "планка"],
+          };
+          const fallbackMatch = Object.entries(KEYWORD_MAP).some(([kw, hints]) =>
+            label.includes(kw) &&
+            returnedNames.some(name => hints.some(h => name.includes(h)))
+          );
+          if (fallbackMatch) return { ...p, status: "ok" as const };
 
           return { ...p, status: "fail" as const };
         });
       });
       if (items.length > 0) onVoiceCatalogItems?.(items, transcript);
+
+      // Авто-повтор: если есть fail и ещё не было повторов — через 1.2с повторяем для fail-позиций
+      setVoicePopupItems(curr => {
+        const hasFail = curr.some(p => p.status === "fail");
+        if (hasFail && retryCountRef.current === 0) {
+          retryCountRef.current = 1;
+          const failLabels = curr.filter(p => p.status === "fail").map(p => p.label);
+          setTimeout(() => {
+            setIsRetrying(true);
+            setVoicePopupItems(c => c.map(p =>
+              p.status === "fail" ? { ...p, status: "pending" as const } : p
+            ));
+            (sendToAIRef.current?.(failLabels.join(", ")) ?? Promise.resolve({ items: [], transcript: "", semanticMap: undefined }))
+              .then(({ items: retryItems, transcript: retryTranscript, semanticMap: retryMap }) => {
+                if (retryItems.length > 0) {
+                  onVoiceCatalogItems?.(retryItems, retryTranscript);
+                }
+                const retryNames = retryItems.map(it => it.name.toLowerCase());
+                const KEYWORD_MAP: Record<string, string[]> = {
+                  "парящ": ["flexy", "fly", "пк-6"], "теневой": ["eurokraab", "eurokrab", "классик"],
+                  "стеновой": ["стеновой алюминиевый"], "алюминиев": ["алюминиевый"],
+                  "люстр": ["под люстру", "планка"], "светильник": ["gx-53", "светильник"],
+                };
+                setVoicePopupItems(c => c.map(p => {
+                  if (p.status !== "pending") return p;
+                  const lbl = p.label.toLowerCase();
+                  const lw = lbl.split(/\s+/).filter(w => w.length > 3);
+                  if (retryNames.some(n => lw.some(w => n.includes(w)))) return { ...p, status: "ok" as const };
+                  if (retryMap) {
+                    const sm = Object.entries(retryMap).some(([t, tgts]) =>
+                      lbl.includes(t) && (tgts as string[]).some(tgt => retryNames.some(n => n.includes(tgt)))
+                    );
+                    if (sm) return { ...p, status: "ok" as const };
+                  }
+                  const fb = Object.entries(KEYWORD_MAP).some(([kw, hints]) =>
+                    lbl.includes(kw) && retryNames.some(n => hints.some(h => n.includes(h)))
+                  );
+                  return { ...p, status: fb ? "ok" as const : "fail" as const };
+                }));
+              })
+              .finally(() => setIsRetrying(false));
+          }, 1200);
+        }
+        return curr;
+      });
     },
     onTranscript: (transcript) => {
       retryCountRef.current = 0;
@@ -106,7 +173,8 @@ export default function MobileBottomBar({
     },
   });
 
-
+  // Регистрируем sendToAI в ref чтобы использовать в авто-повторе
+  sendToAIRef.current = catalogVoice.sendToAI;
 
   return (
     <div className="absolute left-0 right-0 flex items-end justify-center gap-2 z-20 px-4" style={{ bottom: "calc(8px + env(safe-area-inset-bottom, 0px))" }}>

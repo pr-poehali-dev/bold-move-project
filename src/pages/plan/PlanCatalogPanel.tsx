@@ -217,14 +217,29 @@ export default function PlanCatalogPanel({
     // Обновляем статусы попапа по реальному результату
     setVoicePopupItems(prev => {
       if (prev.length === 0) return prev;
-      // Для каждой позиции проверяем — нашёл ли бот хоть что-то похожее
       const botNames = items.map(i => i.name.toLowerCase());
+      // Фолбэк-карта: слово из метки → что ищем в именах бота
+      const KEYWORD_MAP: Record<string, string[]> = {
+        "парящ": ["flexy", "fly", "пк-6"],
+        "теневой": ["eurokraab", "eurokrab", "классик"],
+        "тенев": ["eurokraab", "eurokrab"],
+        "стеновой": ["стеновой алюминиевый"],
+        "алюминиев": ["алюминиевый"],
+        "люстр": ["под люстру", "планка"],
+        "светильник": ["gx-53", "светильник"],
+        "ниша": ["ниша", "пк-14", "пк-12", "пк-15"],
+      };
       return prev.map(p => {
-        const labelWords = p.label.toLowerCase().split(/\s+/).filter(w => w.length > 2);
-        const matched = botNames.some(n =>
-          labelWords.some(w => n.includes(w) || w.includes(n))
+        const label = p.label.toLowerCase();
+        const labelWords = label.split(/\s+/).filter(w => w.length > 2);
+        // Прямое совпадение
+        const direct = botNames.some(n => labelWords.some(w => n.includes(w) || w.includes(n)));
+        if (direct) return { ...p, status: "ok" as const };
+        // Семантический фолбэк
+        const semantic = Object.entries(KEYWORD_MAP).some(([kw, hints]) =>
+          label.includes(kw) && botNames.some(n => hints.some(h => n.includes(h)))
         );
-        return { ...p, status: matched ? "ok" : "fail" };
+        return { ...p, status: semantic ? "ok" as const : "fail" as const };
       });
     });
 
