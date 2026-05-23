@@ -21,21 +21,16 @@ GET_PRICES_URL = 'https://functions.poehali.dev/4a60d7e9-3b52-4eaa-b9f9-38653c3e
 OPENROUTER_KEY = os.environ.get('OPENROUTER_API_KEY_2', '')
 SCHEMA = os.environ.get('MAIN_DB_SCHEMA', 'public')
 
-_plan_prompt_cache: str = ''  # сбрасывается при каждом деплое
-
 PLAN_PROMPT_FALLBACK = """=== РЕЖИМ ПОСТРОИТЕЛЯ ===
 Получишь данные помещения (площадь, периметр, стены с длинами) и голосовой запрос монтажника.
 Верни ТОЛЬКО валидный JSON без пояснений и без markdown:
 {"items":[{"name":"...","qty":1,"unit":"м","price":0}]}
 Используй ТОЧНЫЕ названия из прайса. qty — метры для профилей, м² для полотна, шт для штучных.
-НЕ добавляй монтаж. Количество бери из данных помещения."""
+Количество бери из данных помещения."""
 
 
 def get_plan_prompt() -> str:
-    """Загружает секцию ##PLAN## из ai_system_prompt в БД."""
-    global _plan_prompt_cache
-    if _plan_prompt_cache:
-        return _plan_prompt_cache
+    """Загружает секцию ##PLAN## из ai_system_prompt в БД без кэша — всегда актуальный промпт."""
     try:
         conn = psycopg2.connect(os.environ['DATABASE_URL'])
         cur = conn.cursor()
@@ -46,8 +41,7 @@ def get_plan_prompt() -> str:
         if row and row[0]:
             idx = row[0].find('##PLAN##')
             if idx >= 0:
-                _plan_prompt_cache = row[0][idx + len('##PLAN##'):].strip()
-                return _plan_prompt_cache
+                return row[0][idx + len('##PLAN##'):].strip()
     except Exception as e:
         print(f"[plan-voice] get_plan_prompt error: {e}")
     return PLAN_PROMPT_FALLBACK
