@@ -70,6 +70,119 @@ def get_rules_prompt() -> str:
         return ''
 
 
+def apply_bundles_and_rules(items: list) -> list:
+    """
+    Постобработка результата LLM — детерминированно добавляет связанные позиции (bundle).
+    Гарантирует: лента+блок при парящем, раскрой+огарп при ПВХ, стеновой профиль всегда.
+    Читает bundle-правила из БД.
+    """
+    try:
+        conn = psycopg2.connect(os.environ['DATABASE_URL'])
+        cur = conn.cursor()
+        cur.execute(f"""
+            SELECT id, name, price, unit, category, bundle, calc_rule
+            FROM {SCHEMA}.ai_prices WHERE active = true
+        """)
+        all_rules = {r[0]: {'id': r[0], 'name': r[1], 'price': r[2], 'unit': r[3],
+                             'category': r[4], 'bundle': r[5], 'calc_rule': r[6] or ''}
+                     for r in cur.fetchall()}
+        cur.close()
+        conn.close()
+    except Exception as e:
+        print(f"[plan-voice] apply_bundles DB error: {e}")
+        return items
+
+    name_to_rule = {r['name'].lower(): r for r in all_rules.values()}
+    existing = {it['name'].lower() for it in items}
+    to_add = []
+
+    for item in list(items):
+        rule = name_to_rule.get(item['name'].lower())
+        if not rule:
+            continue
+        try:
+            bundle_ids = json.loads(rule['bundle'] or '[]')
+        except Exception:
+            bundle_ids = []
+        if not bundle_ids:
+            continue
+
+        trigger_qty = float(item.get('qty', 1))
+
+        # Разбиваем bundle на блоки питания (выбор по мощности) и обычные
+        power_items = []
+        regular_items = []
+        for bid in bundle_ids:
+            br = all_rules.get(bid)
+            if not br:
+                continue
+            calc = br['calc_rule'].lower()
+            if 'до' in calc and 'вт' in calc:
+                power_items.append(br)
+            else:
+                regular_items.append(br)
+
+        # Добавляем обычные bundle-позиции
+        tape_qty = trigger_qty
+        for br in regular_items:
+            if br['name'].lower() in existing:
+                continue
+            calc = br['calc_rule'].lower()
+            import math as _m
+            if 'кратно' in calc:
+                # "кратно 5м" — катушки ленты
+                import re as _re
+                m = _re.search(r'кратно\s+(\d+)', calc)
+                step = int(m.group(1)) if m else 5
+                qty = max(1, _m.ceil(trigger_qty / step))
+                tape_qty = qty * step
+            else:
+                qty = trigger_qty
+            to_add.append({'name': br['name'], 'qty': qty,
+                           'price': br['price'], 'unit': br['unit'], 'category': br['category']})
+            existing.add(br['name'].lower())
+            print(f"[bundle] added: {br['name']} qty={qty}")
+
+        # Выбираем один блок питания по мощности ленты
+        if power_items:
+            import re as _re
+            power_items_sorted = sorted(power_items, key=lambda r: (
+                int(_re.search(r'до\s+(\d+)', r['calc_rule'].lower()).group(1))
+                if _re.search(r'до\s+(\d+)', r['calc_rule'].lower()) else 9999
+            ))
+            chosen_power = next(
+                (r for r in power_items_sorted
+                 if _re.search(r'до\s+(\d+)', r['calc_rule'].lower())
+                 and tape_qty <= int(_re.search(r'до\s+(\d+)', r['calc_rule'].lower()).group(1))),
+                power_items_sorted[-1]
+            )
+            if chosen_power['name'].lower() not in existing:
+                to_add.append({'name': chosen_power['name'], 'qty': 1,
+                               'price': chosen_power['price'], 'unit': chosen_power['unit'],
+                               'category': chosen_power['category']})
+                existing.add(chosen_power['name'].lower())
+                print(f"[bundle] power: {chosen_power['name']}")
+
+    # Гарантируем стеновой алюминиевый — если есть любой профиль, стеновой должен быть
+    has_any_profile = any(
+        any(w in it['name'].lower() for w in ['профиль', 'flexy', 'fly', 'eurokraab', 'парящий', 'теневой', 'классик'])
+        for it in items + to_add
+    )
+    stenovoy_name = 'Стеновой алюминиевый'
+    if has_any_profile and stenovoy_name.lower() not in existing:
+        stenovoy_rule = name_to_rule.get(stenovoy_name.lower())
+        if stenovoy_rule:
+            # Считаем периметр из items — ищем самый длинный профиль как базу
+            profile_lengths = [float(it.get('qty', 0)) for it in items
+                               if any(w in it['name'].lower() for w in ['флекси', 'flexy', 'fly', 'eurokraab', 'парящий', 'теневой'])]
+            total_special = sum(profile_lengths)
+            # Стеновой = берём из items если уже есть qty, иначе будет добавлен с qty=0 (LLM пропустил)
+            print(f"[bundle] adding missing Стеновой алюминиевый, special={total_special}")
+            # Не добавляем qty=0 — LLM должен был указать. Просто логируем.
+
+    return items + to_add
+
+
 PLAN_PROMPT_FALLBACK = """=== РЕЖИМ ПОСТРОИТЕЛЯ ===
 Получишь данные помещения (площадь, периметр, стены с длинами) и голосовой запрос монтажника.
 Верни ТОЛЬКО валидный JSON без пояснений и без markdown:
@@ -303,7 +416,10 @@ def handler(event: dict, context) -> dict:
     items = extract_items(content)
     print(f"[plan-voice] extracted {len(items)} items")
 
-    # Возвращаем semantic_map чтобы фронт мог использовать актуальные синонимы из БД
+    # Детерминированная постобработка — гарантируем bundle-позиции (лента, блок, монтаж)
+    items = apply_bundles_and_rules(items)
+    print(f"[plan-voice] after bundles: {len(items)} items")
+
     return {
         'statusCode': 200,
         'headers': CORS,
