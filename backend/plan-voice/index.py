@@ -21,7 +21,7 @@ GET_PRICES_URL = 'https://functions.poehali.dev/4a60d7e9-3b52-4eaa-b9f9-38653c3e
 OPENROUTER_KEY = os.environ.get('OPENROUTER_API_KEY_2', '')
 SCHEMA = os.environ.get('MAIN_DB_SCHEMA', 'public')
 
-_plan_prompt_cache: str = ''
+_plan_prompt_cache: str = ''  # сбрасывается при каждом деплое
 
 PLAN_PROMPT_FALLBACK = """=== РЕЖИМ ПОСТРОИТЕЛЯ ===
 Получишь данные помещения (площадь, периметр, стены с длинами) и голосовой запрос монтажника.
