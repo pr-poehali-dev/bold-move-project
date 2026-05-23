@@ -179,11 +179,9 @@ export function SegmentItemsBadges({
 
         const handleTouchStart = (e: React.TouchEvent) => {
           e.stopPropagation();
-          // Отменяем предыдущий тач если был
           if (touchRef.current?.timer) clearTimeout(touchRef.current.timer);
 
           const touch = e.touches[0];
-          // Вычисляем scale SVG один раз при старте
           const svgEl = (e.target as SVGElement).closest("svg");
           let scaleX = 1, scaleY = 1;
           if (svgEl) {
@@ -203,14 +201,36 @@ export function SegmentItemsBadges({
             scaleX,
             scaleY,
             dragging: false,
-            // Таймер 500мс — активирует drag-режим
             timer: onMoveItemToSeg ? setTimeout(() => {
               if (touchRef.current && touchRef.current.key === itemKey) {
                 touchRef.current.dragging = true;
                 touchRef.current.timer = null;
-                // Показываем призрак в текущей позиции
                 setDragState({ priceId: item.priceId, x: px, y: py });
                 setTooltip(null);
+
+                // Перехватываем все touch-события на window пока drag активен
+                // Это предотвращает движение холста под пальцем
+                const onWindowMove = (ev: TouchEvent) => {
+                  ev.preventDefault();
+                  ev.stopPropagation();
+                  const tr = touchRef.current;
+                  if (!tr || !tr.dragging) return;
+                  const t = ev.touches[0];
+                  const newDs = {
+                    priceId: item.priceId,
+                    x: tr.startPx + (t.clientX - tr.startX) * tr.scaleX,
+                    y: tr.startPy + (t.clientY - tr.startY) * tr.scaleY,
+                  };
+                  dragStateRef.current = newDs;
+                  setDragState({ ...newDs });
+                };
+                const onWindowEnd = (ev: TouchEvent) => {
+                  ev.stopPropagation();
+                  window.removeEventListener("touchmove", onWindowMove, true);
+                  window.removeEventListener("touchend", onWindowEnd, true);
+                };
+                window.addEventListener("touchmove", onWindowMove, { capture: true, passive: false });
+                window.addEventListener("touchend", onWindowEnd, { capture: true });
               }
             }, 500) : null,
           };
@@ -222,22 +242,15 @@ export function SegmentItemsBadges({
           const touch = e.touches[0];
 
           if (tr.dragging) {
-            // Drag активен — двигаем призрак
+            // Drag активен — блокируем всё, позиция обновляется через window listener
             e.stopPropagation();
-            const newDs = {
-              priceId: item.priceId,
-              x: tr.startPx + (touch.clientX - tr.startX) * tr.scaleX,
-              y: tr.startPy + (touch.clientY - tr.startY) * tr.scaleY,
-            };
-            dragStateRef.current = newDs;
-            setDragState(newDs);
+            e.preventDefault();
           } else {
             // Drag ещё не активирован — если палец сдвинулся > 10px, отменяем таймер
             const dx = Math.abs(touch.clientX - tr.startX);
             const dy = Math.abs(touch.clientY - tr.startY);
             if (dx > 10 || dy > 10) {
               if (tr.timer) { clearTimeout(tr.timer); tr.timer = null; }
-              // Не сбрасываем touchRef — touchEnd нужен для обработки тапа
             }
           }
         };
