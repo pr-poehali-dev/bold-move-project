@@ -21,6 +21,55 @@ GET_PRICES_URL = 'https://functions.poehali.dev/4a60d7e9-3b52-4eaa-b9f9-38653c3e
 OPENROUTER_KEY = os.environ.get('OPENROUTER_API_KEY_2', '')
 SCHEMA = os.environ.get('MAIN_DB_SCHEMA', 'public')
 
+def get_rules_prompt() -> str:
+    """Загружает правила по позициям из БД (when_condition, calc_rule, bundle) — те же что в чат-боте."""
+    try:
+        conn = psycopg2.connect(os.environ['DATABASE_URL'])
+        cur = conn.cursor()
+        cur.execute(f"""
+            SELECT id, category, name, price, unit, calc_rule, bundle, synonyms, when_condition, when_not_condition
+            FROM {SCHEMA}.ai_prices
+            WHERE active = true
+            ORDER BY sort_order, id
+        """)
+        rows = cur.fetchall()
+        id_to_name = {r[0]: r[2] for r in rows}
+        cur.close()
+        conn.close()
+
+        rule_lines = []
+        for row in rows:
+            rid, category, name, price, unit, calc_rule, bundle, synonyms, when_cond, when_not = row
+            has_rule = (calc_rule or when_cond or when_not or (bundle and bundle not in ('[]', '', None)))
+            if not has_rule:
+                continue
+            parts = []
+            if when_cond:
+                parts.append(f"ДОБАВЛЯТЬ ЕСЛИ: {when_cond}")
+            if when_not:
+                parts.append(f"НЕ ДОБАВЛЯТЬ ЕСЛИ: {when_not}")
+            if calc_rule:
+                _map = {'perimeter*0.25': 'qty = периметр ÷ 4', 'perimeter*0.5': 'qty = периметр ÷ 2',
+                        'perimeter': 'qty = периметр', 'area': 'qty = площадь'}
+                parts.append(f"КОЛ-ВО: {_map.get(calc_rule.strip(), calc_rule)}")
+            try:
+                bundle_ids = json.loads(bundle) if bundle else []
+                if bundle_ids:
+                    names = [id_to_name.get(i, f'#{i}') for i in bundle_ids]
+                    parts.append(f"ДОБАВИТЬ ВМЕСТЕ: {', '.join(names)}")
+            except Exception:
+                pass
+            if parts:
+                rule_lines.append(f"▶ {name} [{category}]:\n  " + '\n  '.join(parts))
+
+        if not rule_lines:
+            return ''
+        return '\n\n=== ПРАВИЛА ПО ПОЗИЦИЯМ (обязательно соблюдать) ===\n' + '\n'.join(rule_lines)
+    except Exception as e:
+        print(f"[plan-voice] get_rules_prompt error: {e}")
+        return ''
+
+
 PLAN_PROMPT_FALLBACK = """=== РЕЖИМ ПОСТРОИТЕЛЯ ===
 Получишь данные помещения (площадь, периметр, стены с длинами) и голосовой запрос монтажника.
 Верни ТОЛЬКО валидный JSON без пояснений и без markdown:
@@ -202,13 +251,17 @@ def handler(event: dict, context) -> dict:
     prices_text = build_prices_text(prices) if prices else "(прайс недоступен)"
     semantic_map = build_semantic_map(prices)
 
-    # Промпт полностью из БД — управляется из админки (вкладка "Построитель")
+    # Правила по позициям — те же что в чат-боте (when_condition, bundle, calc_rule)
+    rules_prompt = get_rules_prompt()
+
+    # Промпт построителя из БД — управляется из админки (вкладка "Построитель")
     plan_prompt = get_plan_prompt()
 
     system_prompt = (
         "Ты — помощник монтажника натяжных потолков. "
         "В прайсе после каждой позиции в скобках указаны синонимы — слова, которыми монтажник может называть эту позицию.\n\n"
-        f"=== ПРАЙС-ЛИСТ ==={prices_text}\n\n"
+        f"=== ПРАЙС-ЛИСТ ==={prices_text}"
+        f"{rules_prompt}\n\n"
         f"{plan_prompt}"
     )
 
