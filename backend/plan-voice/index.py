@@ -172,13 +172,36 @@ def apply_bundles_and_rules(items: list) -> list:
     if has_any_profile and stenovoy_name.lower() not in existing:
         stenovoy_rule = name_to_rule.get(stenovoy_name.lower())
         if stenovoy_rule:
-            # Считаем периметр из items — ищем самый длинный профиль как базу
-            profile_lengths = [float(it.get('qty', 0)) for it in items
-                               if any(w in it['name'].lower() for w in ['флекси', 'flexy', 'fly', 'eurokraab', 'парящий', 'теневой'])]
-            total_special = sum(profile_lengths)
-            # Стеновой = берём из items если уже есть qty, иначе будет добавлен с qty=0 (LLM пропустил)
-            print(f"[bundle] adding missing Стеновой алюминиевый, special={total_special}")
-            # Не добавляем qty=0 — LLM должен был указать. Просто логируем.
+            # Считаем суммарную длину спецпрофилей (парящий, теневой)
+            special_kw = ['flexy', 'fly', 'eurokraab', 'парящий', 'теневой', 'классик', 'пк-6']
+            total_special = sum(
+                float(it.get('qty', 0)) for it in items
+                if any(w in it['name'].lower() for w in special_kw)
+                and 'монтаж' not in it['name'].lower()
+            )
+            # Периметр берём из room_context если передан, иначе из суммы всех wall-профилей
+            # Находим периметр через максимальный qty среди всех профилей как ориентир
+            all_profile_qtys = [
+                float(it.get('qty', 0)) for it in items
+                if any(w in it['name'].lower() for w in ['профиль', 'flexy', 'fly', 'eurokraab', 'парящий', 'теневой', 'классик'])
+                and 'монтаж' not in it['name'].lower()
+            ]
+            # Берём периметр как сумму спецпрофилей + стеновой (обычно периметр = сумма всех)
+            # Если есть только спецпрофили — стеновой = периметр - спецпрофили
+            # qty не может быть нулём — берём хотя бы 1
+            stenovoy_qty = max(1.0, round(total_special, 2)) if total_special > 0 else 1.0
+            # Пересчитываем: если есть хоть один нормальный профиль qty — вычитаем спецпрофили
+            # Ищем периметр в items: смотрим монтаж профиля стандарт — его qty = длина стенового
+            montazh_std = next(
+                (it for it in items if 'монтаж профиля стандарт' in it['name'].lower()), None
+            )
+            if montazh_std:
+                stenovoy_qty = float(montazh_std.get('qty', stenovoy_qty))
+            print(f"[bundle] ADDING Стеновой алюминиевый qty={stenovoy_qty}, special={total_special}")
+            to_add.append({'name': stenovoy_rule['name'], 'qty': stenovoy_qty,
+                           'price': stenovoy_rule['price'], 'unit': stenovoy_rule['unit'],
+                           'category': stenovoy_rule['category']})
+            existing.add(stenovoy_name.lower())
 
     return items + to_add
 
