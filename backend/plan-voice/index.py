@@ -386,7 +386,7 @@ def handler(event: dict, context) -> dict:
             {'role': 'system', 'content': system_prompt},
             {'role': 'user', 'content': user_message},
         ],
-        'max_tokens': 8000,
+        'max_tokens': 16000,
         'temperature': 0,
     }).encode('utf-8')
 
