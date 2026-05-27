@@ -3,7 +3,7 @@ import Icon from "@/components/ui/icon";
 import { PARSE_SITE_URL, AUTH_URL } from "./wlTypes";
 import { Section } from "./WLHelpers";
 import { getWLToken } from "./WLManagerContext";
-import type { FilledField, MissingField, ParseReport, Phase } from "./WLSiteParserTypes";
+import type { MissingField, ParseReport, Phase } from "./WLSiteParserTypes";
 import {
   CollapsedBanner,
   ParsedPhase,
@@ -273,6 +273,44 @@ export function WLSiteParser({ onCreated }: Props) {
     finally { setSearching(null); }
   };
 
+  // Поиск всех пропущенных полей по очереди
+  const searchAllFields = async () => {
+    if (!report || !url.trim() || !lastCompanyId) return;
+    for (const field of [...report.missing]) {
+      setSearching(field.field);
+      setNotFound(null);
+      try {
+        const d = await callParse({ url: url.trim(), company_id: lastCompanyId, only_field: field.field });
+        if (!d.error && d.report) {
+          const nowFilled = d.report.filled.find((f: { field: string }) => f.field === field.field);
+          if (nowFilled) {
+            setReport(prev => prev ? ({
+              filled: [...prev.filled, nowFilled],
+              missing: prev.missing.filter(m => m.field !== field.field),
+            }) : prev);
+          }
+        }
+      } catch { /* ignore */ }
+    }
+    setSearching(null);
+  };
+
+  // Редактирование заполненного поля
+  const handleEdit = async (field: string, value: string) => {
+    if (!report) return;
+    setReport(prev => prev ? ({
+      ...prev,
+      filled: prev.filled.map(f => f.field === field ? { ...f, value } : f),
+    }) : prev);
+    if (!lastCompanyId) return;
+    const masterToken = getWLToken();
+    await fetch(`${AUTH_URL}?action=admin-update-demo`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Authorization": masterToken || "" },
+      body: JSON.stringify({ company_id: lastCompanyId, [field]: value }),
+    }).catch(() => {});
+  };
+
   const reset = () => {
     clearTimers();
     setPhase("idle");
@@ -345,6 +383,8 @@ export function WLSiteParser({ onCreated }: Props) {
           notFound={notFound}
           creating={creating}
           onSearchField={searchFieldBeforeCreate}
+          onSearchAll={lastCompanyId ? searchAllFields : undefined}
+          onEdit={lastCompanyId ? handleEdit : undefined}
           onCreateCompany={createCompany}
           onReset={reset}
         />
@@ -361,6 +401,8 @@ export function WLSiteParser({ onCreated }: Props) {
           notFound={notFound}
           url={url}
           onSearchField={searchField}
+          onSearchAll={lastCompanyId ? searchAllFields : undefined}
+          onEdit={handleEdit}
           onCollapse={() => setPhase("collapsed")}
         />
       )}
@@ -373,6 +415,8 @@ export function WLSiteParser({ onCreated }: Props) {
           url={url}
           lastCompanyId={lastCompanyId}
           onSearchField={searchField}
+          onSearchAll={lastCompanyId ? searchAllFields : undefined}
+          onEdit={handleEdit}
         />
       )}
 

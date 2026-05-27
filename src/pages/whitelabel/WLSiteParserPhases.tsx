@@ -10,18 +10,21 @@ interface ParsedPhaseProps {
   notFound: string | null;
   creating: boolean;
   onSearchField: (f: MissingField) => void;
+  onSearchAll?: () => void;
+  onEdit?: (field: string, value: string) => void;
   onCreateCompany: () => void;
   onReset: () => void;
 }
 
 export function ParsedPhase({
-  report, searching, notFound, creating, onSearchField, onCreateCompany, onReset,
+  report, searching, notFound, creating, onSearchField, onSearchAll, onEdit, onCreateCompany, onReset,
 }: ParsedPhaseProps) {
   return (
     <div className="space-y-3 mt-1">
       <FilledList
         filled={report.filled}
         total={report.filled.length + report.missing.length}
+        onEdit={onEdit}
       />
 
       {report.missing.length > 0 && (
@@ -33,6 +36,7 @@ export function ParsedPhase({
             disabled={creating}
             label={`Не найдено (${report.missing.length})`}
             onSearch={onSearchField}
+            onSearchAll={onSearchAll}
           />
           <div className="text-[9px] text-white/25 -mt-1">Нажми чтобы поискать в интернете</div>
         </>
@@ -73,12 +77,14 @@ interface AnimatingPhaseProps {
   notFound: string | null;
   url: string;
   onSearchField: (f: MissingField) => void;
+  onSearchAll?: () => void;
+  onEdit?: (field: string, value: string) => void;
   onCollapse: () => void;
 }
 
 export function AnimatingPhase({
   report, phase, visibleCount, lastCompanyId, lastCompanyName,
-  searching, notFound, url, onSearchField, onCollapse,
+  searching, notFound, url, onSearchField, onSearchAll, onEdit, onCollapse,
 }: AnimatingPhaseProps) {
   return (
     <div className="space-y-3 mt-1">
@@ -87,6 +93,7 @@ export function AnimatingPhase({
         total={report.filled.length}
         animated
         visibleCount={visibleCount}
+        onEdit={onEdit}
       />
 
       {visibleCount >= report.filled.length && report.missing.length > 0 && (
@@ -96,6 +103,7 @@ export function AnimatingPhase({
           notFound={notFound}
           disabled={!url.trim() || !lastCompanyId}
           onSearch={onSearchField}
+          onSearchAll={onSearchAll}
         />
       )}
 
@@ -141,22 +149,34 @@ interface IdleWithReportPhaseProps {
   url: string;
   lastCompanyId: number | null;
   onSearchField: (f: MissingField) => void;
+  onSearchAll?: () => void;
+  onEdit?: (field: string, value: string) => void;
 }
 
 export function IdleWithReportPhase({
-  report, searching, notFound, url, lastCompanyId, onSearchField,
+  report, searching, notFound, url, lastCompanyId, onSearchField, onSearchAll, onEdit,
 }: IdleWithReportPhaseProps) {
-  if (report.missing.length === 0) return null;
+  if (report.missing.length === 0 && report.filled.length === 0) return null;
   return (
     <div className="space-y-3 mt-1">
-      <MissingPills
-        missing={report.missing}
-        searching={searching}
-        notFound={notFound}
-        disabled={!url.trim() || !lastCompanyId}
-        label={`Не найдено — нажми чтобы поискать (${report.missing.length})`}
-        onSearch={onSearchField}
-      />
+      {report.filled.length > 0 && (
+        <FilledList
+          filled={report.filled}
+          total={report.filled.length + report.missing.length}
+          onEdit={onEdit}
+        />
+      )}
+      {report.missing.length > 0 && (
+        <MissingPills
+          missing={report.missing}
+          searching={searching}
+          notFound={notFound}
+          disabled={!url.trim() || !lastCompanyId}
+          label={`Не найдено — нажми чтобы поискать (${report.missing.length})`}
+          onSearch={onSearchField}
+          onSearchAll={onSearchAll}
+        />
+      )}
     </div>
   );
 }
