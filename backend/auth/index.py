@@ -1925,7 +1925,7 @@ def handler(event: dict, context) -> dict:
         if not is_wl_master:
             cur.execute(f"""
                 SELECT m.id FROM {SCHEMA}.wl_managers m
-                JOIN {SCHEMA}.user_sessions s ON s.user_id = m.id
+                JOIN {SCHEMA}.wl_manager_sessions s ON s.manager_id = m.id
                 WHERE s.token=%s AND s.expires_at > NOW() AND m.approved = TRUE
             """, (token,))
             if not cur.fetchone():
@@ -1953,8 +1953,8 @@ def handler(event: dict, context) -> dict:
 
         cur.execute(f"""
             SELECT m.id, m.wl_role, m.approved, m.email FROM {SCHEMA}.wl_managers m
-            JOIN {SCHEMA}.user_sessions s ON s.user_id = m.id
-            WHERE s.token = %s AND s.expires_at > NOW() AND s.session_type = 'wl_manager'
+            JOIN {SCHEMA}.wl_manager_sessions s ON s.manager_id = m.id
+            WHERE s.token = %s AND s.expires_at > NOW()
         """, (token,))
         wl_row = cur.fetchone()
 
