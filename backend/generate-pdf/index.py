@@ -235,7 +235,8 @@ def build_pdf(data, logo_bytes=None, brand=None):
         c.rect(0, 0, w, 14*mm, fill=1, stroke=0)
         c.setFont('PTSans', 6.5)
         c.setFillColor(TEXT_MUTED)
-        footer_parts = [p for p in [brand_name, brand_addr, brand_phone, brand_website] if p]
+        _footer_website = brand_website if (brand_website and 'xn--' not in brand_website) else None
+        footer_parts = [p for p in [brand_name, brand_addr, brand_phone, _footer_website] if p]
         c.drawCentredString(w/2, 5.5*mm, '  ·  '.join(footer_parts))
 
     table_top = [0]
@@ -313,9 +314,9 @@ def build_pdf(data, logo_bytes=None, brand=None):
         except Exception:
             pill_fill = WHITE
     else:
-        # auto — белая подложка с лёгкой рамкой
-        pill_fill = WHITE
-        pill_stroke = HexColor('#e9ecef')
+        # auto — прозрачная подложка, без рамки
+        pill_fill = None
+        pill_stroke = None
 
     def draw_pill(px, py, pw, ph):
         """Рисует подложку логотипа с текущими настройками цвета."""
@@ -355,8 +356,9 @@ def build_pdf(data, logo_bytes=None, brand=None):
             scale = min(max_w / iw, max_h / ih_)
             lw_ = iw * scale
             lh  = ih_ * scale
+            # выравнивание: по правому краю блока, вертикально по центру
             c.drawImage(img,
-                logo_pill_x + (logo_pill_w - lw_) / 2,
+                logo_pill_x + logo_pill_w - lw_ - 2*mm,
                 logo_pill_y + (logo_pill_h - lh) / 2,
                 width=lw_, height=lh, mask='auto')
         except Exception:
@@ -367,7 +369,9 @@ def build_pdf(data, logo_bytes=None, brand=None):
         draw_pill(logo_pill_x, logo_pill_y, logo_pill_w, logo_pill_h)
 
     # Контакты под плашкой — название компании, телефон, сайт (адрес/реквизиты — в подвале страницы)
-    contacts = [p for p in [brand_name, brand_phone, brand_website] if p]
+    # Кириллический домен после преобразования в punycode выглядит как xn-- — скрываем
+    _show_website = brand_website and 'xn--' not in brand_website
+    contacts = [p for p in [brand_name, brand_phone, brand_website if _show_website else None] if p]
     cy = logo_pill_y - 5.5*mm
     for ct in contacts:
         c.setFont('PTSans', 7.5)
