@@ -782,40 +782,103 @@ def handler(event: dict, context) -> dict:
         row2 = cur2.fetchone(); cur2.close(); conn2.close()
         company = (row2[0] if row2 else None) or domain
 
-        queries = {
-            "support_email":      f'{domain} email почта официальный контакты сайт',
-            "support_phone":      f'{domain} телефон номер позвонить контакты',
-            "telegram":           f'{company} {domain} telegram t.me официальный канал',
-            "pdf_footer_address": f'{company} {domain} адрес офис город улица официальный',
-            "working_hours":      f'{domain} часы работы режим график работы',
-            "brand_logo_url":     f'{domain} логотип logo официальный сайт',
-        }
-        query = queries.get(only_field, f'{domain} {company} {only_field}')
-        api_key = os.environ.get("TAVILY_API_KEY", "")
-        brand = {}
-        try:
-            data = tavily_post("https://api.tavily.com/search", {
-                "query": query, "search_depth": "advanced",
-                "max_results": 8, "include_raw_content": True,
-            }, api_key, timeout=20)
-            snippets = " ".join(
-                (r.get("raw_content") or r.get("content") or "")
-                for r in data.get("results", [])
-            )
-            val = extract_with_regex(snippets, only_field) if snippets else None
-            if val:
-                brand[only_field] = val
-                save_brand_to_db(company_id, brand)
-        except Exception as e:
-            print(f"[parse-site] only_field search error: {e}")
-
         label_map = {
-            "support_email": "Email", "telegram": "Telegram",
-            "pdf_footer_address": "Адрес", "brand_color": "Цвет бренда",
+            "support_email":      "Email",
+            "support_phone":      "Телефон",
+            "telegram_url":       "Telegram",
+            "telegram":           "Telegram",
+            "pdf_footer_address": "Адрес",
+            "working_hours":      "Часы работы",
+            "brand_color":        "Цвет бренда",
+            "brand_logo_url":     "Логотип",
+            "bot_avatar_url":     "Фото бота",
         }
+
+        brand = {}
+
+        # ── Логотип: парсим HTML сайта напрямую + загружаем в S3 ────────────
+        if only_field == "brand_logo_url":
+            logo_src, favicon_src = find_logo_url(site_url)
+            if logo_src:
+                result = fetch_image_bytes(logo_src)
+                if result:
+                    img_bytes, ext = result
+                    if len(img_bytes) > 500:
+                        try:
+                            brand["brand_logo_url"] = upload_image_to_s3(img_bytes, ext, "logo")
+                        except Exception as e:
+                            print(f"[parse-site] logo upload failed: {e}")
+            # Если логотип не нашли — пробуем фавикон как запасной вариант
+            if not brand.get("brand_logo_url") and favicon_src:
+                result2 = fetch_image_bytes(favicon_src)
+                if result2:
+                    img_bytes2, ext2 = result2
+                    if len(img_bytes2) > 100:
+                        try:
+                            brand["brand_logo_url"] = upload_image_to_s3(img_bytes2, ext2, "logo")
+                        except Exception as e:
+                            print(f"[parse-site] favicon-as-logo upload failed: {e}")
+
+        # ── Аватар бота: сначала ищем логотип, иначе фавикон ────────────────
+        elif only_field == "bot_avatar_url":
+            logo_src, favicon_src = find_logo_url(site_url)
+            img_src = logo_src or favicon_src
+            if img_src:
+                result = fetch_image_bytes(img_src)
+                if result:
+                    img_bytes, ext = result
+                    if len(img_bytes) > 100:
+                        try:
+                            brand["bot_avatar_url"] = upload_image_to_s3(img_bytes, ext, "avatar")
+                        except Exception as e:
+                            print(f"[parse-site] avatar upload failed: {e}")
+
+        # ── Цвет бренда: напрямую парсим CSS сайта ──────────────────────────
+        elif only_field == "brand_color":
+            css_color = fetch_brand_color(site_url)
+            if css_color:
+                brand["brand_color"] = css_color
+                print(f"[parse-site] only_field brand_color from CSS: {css_color}")
+
+        # ── Остальные поля: Tavily Search + regex ────────────────────────────
+        else:
+            # Нормализуем: telegram_url → telegram для поиска
+            search_field = "telegram" if only_field == "telegram_url" else only_field
+            queries = {
+                "support_email":      f'{domain} email почта официальный контакты сайт',
+                "support_phone":      f'{domain} телефон номер позвонить контакты',
+                "telegram":           f'{company} {domain} telegram t.me официальный канал',
+                "pdf_footer_address": f'{company} {domain} адрес офис город улица официальный',
+                "working_hours":      f'{domain} часы работы режим график работы',
+            }
+            query = queries.get(search_field, f'{domain} {company} {search_field}')
+            api_key = os.environ.get("TAVILY_API_KEY", "")
+            try:
+                data = tavily_post("https://api.tavily.com/search", {
+                    "query": query, "search_depth": "advanced",
+                    "max_results": 8, "include_raw_content": True,
+                }, api_key, timeout=20)
+                snippets = " ".join(
+                    (r.get("raw_content") or r.get("content") or "")
+                    for r in data.get("results", [])
+                )
+                val = extract_with_regex(snippets, search_field) if snippets else None
+                if val:
+                    # Сохраняем под правильным ключом (telegram_url → telegram в БД)
+                    db_field = "telegram" if only_field == "telegram_url" else only_field
+                    brand[db_field] = val
+            except Exception as e:
+                print(f"[parse-site] only_field search error: {e}")
+
+        # Сохраняем в БД если нашли
+        if brand:
+            save_brand_to_db(company_id, brand)
+
+        # Нормализуем ключ для отчёта фронтенду (всегда возвращаем only_field)
+        found_val = brand.get(only_field) or brand.get("telegram") if only_field == "telegram_url" else brand.get(only_field)
         report = {
-            "filled":  [{"field": only_field, "label": label_map.get(only_field, only_field), "value": brand.get(only_field, "")}] if brand.get(only_field) else [],
-            "missing": [] if brand.get(only_field) else [{"field": only_field, "label": label_map.get(only_field, only_field)}],
+            "filled":  [{"field": only_field, "label": label_map.get(only_field, only_field), "value": found_val}] if found_val else [],
+            "missing": [] if found_val else [{"field": only_field, "label": label_map.get(only_field, only_field)}],
         }
         return ok({"brand": brand, "report": report, "company_id": company_id})
 

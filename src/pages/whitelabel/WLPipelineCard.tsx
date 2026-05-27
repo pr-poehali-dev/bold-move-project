@@ -9,6 +9,8 @@ const DEMO_DAYS = 7;
 
 // Маппинг ключа пилюли → поле бэкенда (parse-site / admin-update-demo)
 const FIELD_MAP: Record<string, { field: string; brandKey: keyof DemoPipelineCompany }> = {
+  logo:    { field: "brand_logo_url",    brandKey: "brand_logo_url" },
+  avatar:  { field: "bot_avatar_url",    brandKey: "bot_avatar_url" },
   tg:      { field: "telegram_url",      brandKey: "telegram_url" },
   hours:   { field: "working_hours",     brandKey: "working_hours" },
   address: { field: "pdf_footer_address",brandKey: "pdf_footer_address" },
@@ -16,6 +18,9 @@ const FIELD_MAP: Record<string, { field: string; brandKey: keyof DemoPipelineCom
   email:   { field: "support_email",     brandKey: "support_email" },
   color:   { field: "brand_color",       brandKey: "brand_color" },
 };
+
+// localStorage-ключ для "не найдено" состояния пилюли
+const notFoundStorageKey = (demoId: number, key: string) => `wl_nf_${demoId}_${key}`;
 
 interface Props {
   c:        DemoPipelineCompany;
@@ -31,14 +36,24 @@ interface Props {
 
 export function WLPipelineCard({ c, isOpen, onToggle, onSelect, onMove, onBrand, onLpr, onHistory, onUpdate }: Props) {
   const [searchingKey, setSearchingKey] = useState<string | null>(null);
-  const [notFoundKey, setNotFoundKey]   = useState<string | null>(null);
+
+  // Читаем "не найдено" из localStorage — сохраняется между перезагрузками
+  const isNotFound = (key: string) => {
+    try { return !!localStorage.getItem(notFoundStorageKey(c.demo_id, key)); } catch { return false; }
+  };
+  const setNotFound = (key: string) => {
+    try { localStorage.setItem(notFoundStorageKey(c.demo_id, key), "1"); } catch { /* ignore */ }
+  };
+  const clearNotFound = (key: string) => {
+    try { localStorage.removeItem(notFoundStorageKey(c.demo_id, key)); } catch { /* ignore */ }
+  };
 
   const searchField = async (key: string, e: React.MouseEvent) => {
     e.stopPropagation();
     const map = FIELD_MAP[key];
     if (!map || searchingKey) return;
     setSearchingKey(key);
-    setNotFoundKey(null);
+    clearNotFound(key);
     try {
       const token = getWLToken();
       const r = await fetch(PARSE_SITE_URL, {
@@ -52,18 +67,17 @@ export function WLPipelineCard({ c, isOpen, onToggle, onSelect, onMove, onBrand,
       });
       const d = await r.json();
       if (!d.error && d.report) {
-        const filled = d.report.filled?.find((f: { field: string; value: string }) => f.field === map.field);
-        if (filled) {
+        const filled = d.report.filled?.[0];
+        if (filled?.value) {
+          clearNotFound(key);
           onUpdate(c.demo_id, { [map.brandKey]: filled.value } as Partial<DemoPipelineCompany>);
         } else {
-          setNotFoundKey(key);
-          setTimeout(() => setNotFoundKey(null), 3000);
+          setNotFound(key);
         }
       } else {
-        setNotFoundKey(key);
-        setTimeout(() => setNotFoundKey(null), 3000);
+        setNotFound(key);
       }
-    } catch { setNotFoundKey(key); setTimeout(() => setNotFoundKey(null), 3000); }
+    } catch { setNotFound(key); }
     finally { setSearchingKey(null); }
   };
   const color  = c.brand_color || "#8b5cf6";
@@ -155,24 +169,24 @@ export function WLPipelineCard({ c, isOpen, onToggle, onSelect, onMove, onBrand,
             </div>
             <div className="flex flex-wrap gap-1">
               {missing.map(m => {
-                const isSearching = searchingKey === m.key;
-                const isNotFound  = notFoundKey === m.key;
-                const canSearch   = !!FIELD_MAP[m.key];
+                const isSearching  = searchingKey === m.key;
+                const nf           = isNotFound(m.key);
+                const canSearch    = !!FIELD_MAP[m.key];
                 return (
                   <button key={m.key}
                     onClick={e => canSearch ? searchField(m.key, e) : (e.stopPropagation(), onBrand(c.company_id))}
                     disabled={!!searchingKey}
                     className="text-[9px] font-bold px-1.5 py-0.5 rounded-full transition hover:opacity-80 flex items-center gap-1 disabled:opacity-60"
-                    style={isNotFound
-                      ? { background: "rgba(239,68,68,0.20)", color: "#f87171", border: "1px solid rgba(239,68,68,0.5)" }
+                    style={nf
+                      ? { background: "rgba(100,100,100,0.20)", color: "#888", border: "1px solid rgba(150,150,150,0.3)" }
                       : { background: "rgba(239,68,68,0.15)", color: "#ef4444", border: "1px solid rgba(239,68,68,0.3)" }}>
                     {isSearching
                       ? <div className="w-2 h-2 border border-red-400/40 border-t-red-400 rounded-full animate-spin" />
-                      : isNotFound
+                      : nf
                         ? <Icon name="X" size={8} />
                         : canSearch ? <Icon name="Search" size={8} /> : null
                     }
-                    {isNotFound ? `${m.label} — нет` : m.label}
+                    {nf ? `${m.label} — нет` : m.label}
                   </button>
                 );
               })}
