@@ -10,37 +10,38 @@ export function IframeAdmin({ token, tab }: { token: string | null; tab?: string
   useEffect(() => {
     if (!token) return;
     readyRef.current = false;
+    setReady(false);
+    let tokenSent = false;
 
     const send = () => {
       const cw = iframeRef.current?.contentWindow;
-      console.log("[WL parent] send() cw=", !!cw, "ready=", readyRef.current);
-      if (readyRef.current || !cw) return;
+      if (!cw) return;
       cw.postMessage({ type: "set-token", token }, "*");
-      console.log("[WL parent] postMessage sent token=", token?.slice(0, 8));
+      console.log("[WL] postMessage sent, token=", token.slice(0, 8));
+      if (!tokenSent) {
+        tokenSent = true;
+        // Показываем iframe через 800ms после первой отправки
+        setTimeout(() => { readyRef.current = true; setReady(true); }, 800);
+      }
     };
 
-    // Слушаем подтверждение от iframe
     const handler = (e: MessageEvent) => {
-      if (e.data === "iframe-ready") {
-        send();
-      }
-      // Когда iframe получил токен и снова слет "iframe-ready" после apply — считаем готовым
-      // Но проще: помечаем ready через небольшой таймаут после первой отправки
+      if (e.data === "iframe-ready") send();
     };
     window.addEventListener("message", handler);
 
-    // Активно шлём токен каждые 200ms пока iframe не примет
+    // Активно шлём токен каждые 300ms — iframe мог загрузиться раньше нашего listener
     const interval = setInterval(() => {
       if (readyRef.current) { clearInterval(interval); return; }
       send();
-    }, 200);
+    }, 300);
 
-    // Через 3 секунды в любом случае показываем iframe
+    // Fallback: через 4 секунды показываем в любом случае
     const fallback = setTimeout(() => {
       readyRef.current = true;
       setReady(true);
       clearInterval(interval);
-    }, 3000);
+    }, 4000);
 
     return () => {
       window.removeEventListener("message", handler);
@@ -48,14 +49,6 @@ export function IframeAdmin({ token, tab }: { token: string | null; tab?: string
       clearTimeout(fallback);
     };
   }, [token]);  
-
-  // Когда iframe принял токен — он перестаёт пинговать и loading в нём снимается.
-  // Мы показываем iframe через 600ms после первой успешной отправки.
-  useEffect(() => {
-    if (!token) return;
-    const t = setTimeout(() => { readyRef.current = true; setReady(true); }, 600);
-    return () => clearTimeout(t);
-  }, [token]);
 
   return (
     <div className="flex-1 relative">
