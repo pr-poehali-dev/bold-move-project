@@ -96,6 +96,14 @@ def apply_bundles_and_rules(items: list) -> list:
     existing = {it['name'].lower() for it in items}
     to_add = []
 
+    # Считаем суммарную длину всех парящих профилей — для правильного расчёта катушек ленты
+    floating_kw = ['flexy', 'fly', 'парящий пк', 'пк-6']
+    total_floating_len = sum(
+        float(it.get('qty', 0) or 0)
+        for it in items
+        if any(w in it['name'].lower() for w in floating_kw)
+    )
+
     for item in list(items):
         rule = name_to_rule.get(item['name'].lower())
         if not rule:
@@ -107,7 +115,10 @@ def apply_bundles_and_rules(items: list) -> list:
         if not bundle_ids:
             continue
 
-        trigger_qty = float(item.get('qty', 1))
+        try:
+            trigger_qty = float(item.get('qty', 1) or 1)
+        except (TypeError, ValueError):
+            trigger_qty = 1.0
 
         # Разбиваем bundle на блоки питания (выбор по мощности) и обычные
         power_items = []
@@ -130,12 +141,14 @@ def apply_bundles_and_rules(items: list) -> list:
             calc = br['calc_rule'].lower()
             import math as _m
             if 'кратно' in calc:
-                # "кратно 5м" — катушки ленты
+                # "кратно 5м" — катушки ленты: берём суммарную длину всех парящих
                 import re as _re
                 m = _re.search(r'кратно\s+(\d+)', calc)
                 step = int(m.group(1)) if m else 5
-                qty = max(1, _m.ceil(trigger_qty / step))
+                base_len = total_floating_len if total_floating_len > 0 else trigger_qty
+                qty = max(1, _m.ceil(base_len / step))
                 tape_qty = qty * step
+                print(f"[bundle] tape: total_floating={total_floating_len}м step={step}м → {qty} катушек")
             else:
                 qty = trigger_qty
             to_add.append({'name': br['name'], 'qty': qty,
