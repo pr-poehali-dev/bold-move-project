@@ -176,15 +176,17 @@ function detectOrientation(url: string): Promise<"horizontal" | "vertical"> {
 }
 
 // ── ImageUploader ─────────────────────────────────────────────────────────────
-export function ImageUploader({ label, hint, value, onChange, token, isDark, onOrientationDetected }: {
+export function ImageUploader({ label, hint, value, onChange, token, isDark, onOrientationDetected, fallbackValue }: {
   label: string; hint: string; value: string; onChange: (v: string) => void;
   token: string | null; isDark: boolean;
   onOrientationDetected?: (o: "horizontal" | "vertical") => void;
+  fallbackValue?: string;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
   const [err,  setErr]  = useState("");
   const { muted, border, bg } = fieldStyles(isDark);
+  const previewSrc = value || fallbackValue || "";
 
   const onPick = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -210,11 +212,15 @@ export function ImageUploader({ label, hint, value, onChange, token, isDark, onO
     <div>
       <div className="text-[10px] font-bold uppercase tracking-wider mb-1.5" style={{ color: muted }}>{label}</div>
       <div className="flex items-center gap-3">
-        <div className="w-16 h-16 rounded-xl flex items-center justify-center flex-shrink-0 overflow-hidden"
-          style={{ background: bg, border: `1px dashed ${border}` }}>
-          {value
-            ? <img src={value} alt="" className="w-full h-full object-contain" />
+        <div className="w-16 h-16 rounded-xl flex items-center justify-center flex-shrink-0 overflow-hidden relative"
+          style={{ background: bg, border: `1px dashed ${value ? border : fallbackValue ? "#a78bfa55" : border}` }}>
+          {previewSrc
+            ? <img src={previewSrc} alt="" className="w-full h-full object-contain" style={{ opacity: value ? 1 : 0.5 }} />
             : <Icon name="Image" size={20} style={{ color: muted }} />}
+          {!value && fallbackValue && (
+            <div className="absolute bottom-0 left-0 right-0 text-[7px] text-center py-0.5 font-bold"
+              style={{ background: "rgba(167,139,250,0.85)", color: "#fff" }}>аватар</div>
+          )}
         </div>
         <div className="flex-1 min-w-0">
           <input ref={inputRef} type="file" accept="image/*" hidden onChange={onPick} />

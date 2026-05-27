@@ -84,7 +84,8 @@ export function SectionVisual({ brand, set, token, website, runAi, aiAttempts, a
         hint="PNG с прозрачным фоном, до 1 МБ"
         value={brand.brand_logo_url || ""} onChange={v => set("brand_logo_url", v)}
         token={token} isDark={isDark}
-        onOrientationDetected={o => set("brand_logo_orientation", o)} />
+        onOrientationDetected={o => set("brand_logo_orientation", o)}
+        fallbackValue={brand.bot_avatar_url || ""} />
 
       <ChoiceField label="Подложка логотипа в PDF"
         value={brand.pdf_logo_bg || "auto"}
