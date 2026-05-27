@@ -12,11 +12,11 @@ export function IframeAdmin({ token, tab }: { token: string | null; tab?: string
     readyRef.current = false;
 
     const send = () => {
-      if (readyRef.current || !iframeRef.current?.contentWindow) return;
-      iframeRef.current.contentWindow.postMessage(
-        { type: "set-token", token },
-        window.location.origin
-      );
+      const cw = iframeRef.current?.contentWindow;
+      console.log("[WL parent] send() cw=", !!cw, "ready=", readyRef.current);
+      if (readyRef.current || !cw) return;
+      cw.postMessage({ type: "set-token", token }, "*");
+      console.log("[WL parent] postMessage sent token=", token?.slice(0, 8));
     };
 
     // Слушаем подтверждение от iframe

@@ -393,8 +393,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     let tokenApplied = false;
 
     const handler = async (e: MessageEvent) => {
+      console.log("[iframe] received message:", e.data?.type, "origin=", e.origin, "own=", window.location.origin, "tokenApplied=", tokenApplied);
       if (e.origin !== window.location.origin) return;
-      console.log("[iframe] received message:", e.data?.type, "tokenApplied=", tokenApplied);
       if (e.data?.type === "set-token" && e.data?.token && !tokenApplied) {
         tokenApplied = true;
         const tok = e.data.token as string;
