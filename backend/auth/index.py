@@ -1,7 +1,7 @@
 import json, os, hashlib, secrets, psycopg2, base64  # v2
 import urllib.request as _ureq
 import boto3
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 
 SCHEMA = os.environ.get("DB_SCHEMA", "t_p45929761_bold_move_project")
 
@@ -2199,7 +2199,7 @@ def handler(event: dict, context) -> dict:
         """, (date_str, date_str))
         rows = cur.fetchall()
         busy_hours = []
-        from datetime import datetime, timezone, timedelta
+
         MSK = timezone(timedelta(hours=3))
         target_date = datetime.strptime(date_str, "%Y-%m-%d").date()
         for (scheduled_at,) in rows:
@@ -2280,7 +2280,7 @@ def handler(event: dict, context) -> dict:
             return err("demo_id и scheduled_at обязательны")
 
         # Проверка: нет показа в тот же час (Python-логика, без date_trunc)
-        from datetime import datetime, timezone, timedelta
+
         MSK = timezone(timedelta(hours=3))
         new_dt = datetime.fromisoformat(scheduled_at.replace("Z", "+00:00"))
         new_msk = new_dt.astimezone(MSK)
@@ -2328,7 +2328,7 @@ def handler(event: dict, context) -> dict:
         pres_row = cur.fetchone()
 
         # Следующий шаг: связаться через 4 часа после показа
-        from datetime import datetime, timezone, timedelta
+
         if pres_row:
             call_at = pres_row[0] + timedelta(hours=4)
             call_date = call_at.date().isoformat()
@@ -2363,7 +2363,7 @@ def handler(event: dict, context) -> dict:
             return err("presentation_id и scheduled_at обязательны")
 
         # Проверка: нет другого показа в тот же час (Python-логика, без date_trunc)
-        from datetime import datetime, timezone, timedelta
+
         MSK = timezone(timedelta(hours=3))
         new_dt2 = datetime.fromisoformat(scheduled_at.replace("Z", "+00:00"))
         new_msk2 = new_dt2.astimezone(MSK)
