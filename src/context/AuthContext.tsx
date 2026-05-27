@@ -386,45 +386,37 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
   }, []);
 
-  // Принимаем токен от родительского окна (для iframe-режима /whitelabel)
+  // В iframe-режиме читаем токен из localStorage (родитель пишет его перед загрузкой iframe)
   useEffect(() => {
     if (window.parent === window) return; // не в iframe — пропускаем
 
-    let tokenApplied = false;
+    const WL_TOKEN_KEY = "wl_iframe_token";
 
-    const handler = async (e: MessageEvent) => {
-      const isIframe = window.parent !== window;
-      console.log("[AuthCtx isIframe=" + isIframe + "] received:", JSON.stringify(e.data)?.slice(0, 80), "origin=", e.origin);
-      if (e.origin !== window.location.origin) return;
-      if (e.data?.type === "set-token" && e.data?.token && !tokenApplied) {
-        tokenApplied = true;
-        const tok = e.data.token as string;
-        console.log("[iframe] applying token:", tok.slice(0, 8) + "...");
-        try {
-          const r = await fetch(`${AUTH_URL}?action=me`, { headers: { "X-Authorization": `Bearer ${tok}` } });
-          const d = await r.json();
-          console.log("[iframe] /me response:", d.user?.email || d.error);
-          if (d.user) { setUser(d.user); setToken(tok); setCrmToken(tok); }
-        } catch (err) { console.log("[iframe] /me error:", err); }
-        window.parent.postMessage("iframe-ready", window.location.origin);
+    const applyToken = async (tok: string) => {
+      console.log("[iframe] applying token from localStorage:", tok.slice(0, 8) + "...");
+      try {
+        const r = await fetch(`${AUTH_URL}?action=me`, { headers: { "X-Authorization": `Bearer ${tok}` } });
+        const d = await r.json();
+        console.log("[iframe] /me response:", d.user?.email || d.error);
+        if (d.user) { setUser(d.user); setToken(tok); setCrmToken(tok); setLoading(false); }
+      } catch (err) { console.log("[iframe] /me error:", err); }
+    };
+
+    // Читаем сразу при монтировании
+    const tok = localStorage.getItem(WL_TOKEN_KEY);
+    if (tok) {
+      applyToken(tok);
+    }
+
+    // Слушаем storage-событие на случай если родитель запишет токен после загрузки
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === WL_TOKEN_KEY && e.newValue) {
+        applyToken(e.newValue);
       }
     };
-    window.addEventListener("message", handler);
-
-    // Сигналим родителю что iframe готов принять токен — повторяем каждые 200ms пока не получим токен
-    const ping = () => {
-      if (!tokenApplied) {
-        window.parent.postMessage("iframe-ready", window.location.origin);
-      }
-    };
-    ping();
-    const interval = setInterval(() => { if (!tokenApplied) ping(); else clearInterval(interval); }, 300);
-
-    return () => {
-      window.removeEventListener("message", handler);
-      clearInterval(interval);
-    };
-  }, []);
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
+  }, []);  
 
   const persist = (tok: string, u: AuthUser) => {
     localStorage.setItem(TOKEN_KEY, tok);
