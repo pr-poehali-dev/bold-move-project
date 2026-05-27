@@ -443,7 +443,7 @@ export default function useVoiceCatalog({ state, onItems, onTranscript }: Props)
       try {
         const transcript = await transcribeBlob(blob);
         onTranscript?.(transcript);
-        setStatus(`"${transcript}" — запрашиваю бота...`);
+        setStatus("");
         const { items, transcript: fullTranscript, semanticMap } = await sendToAI(transcript);
         // Всегда вызываем onItems — даже если items.length === 0,
         // чтобы MobileBottomBar мог обновить статусы в попапе (убрать спиннеры)
