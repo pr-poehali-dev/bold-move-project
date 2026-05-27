@@ -366,6 +366,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (window.parent !== window) { setLoading(false); return; }
     const saved = localStorage.getItem(TOKEN_KEY);
     if (!saved) { setLoading(false); return; }
     fetch(`${AUTH_URL}?action=me`, { headers: { "X-Authorization": `Bearer ${saved}` } })
