@@ -2058,7 +2058,7 @@ def handler(event: dict, context) -> dict:
             "manager_name":         r[25] or "",
             "bot_avatar_url":       r[26] or "",
             "support_email":        r[27] or "",
-            "telegram":             r[28] or "",
+            "telegram_url":         r[28] or "",
             "working_hours":        r[29] or "",
             "pdf_footer_address":   r[30] or "",
         } for r in rows]})
