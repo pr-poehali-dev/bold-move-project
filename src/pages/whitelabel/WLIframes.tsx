@@ -4,24 +4,26 @@ import { Spin } from "./WLHelpers";
 export function IframeAdmin({ token, tab }: { token: string | null; tab?: string }) {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [ready, setReady] = useState(false);
+  const tokenRef = useRef<string | null>(token);
   const src = `/company?iframe=1${tab ? `&tab=${tab}` : ""}`;
 
-  const sendToken = () => {
-    if (!token || !iframeRef.current?.contentWindow) return;
-    iframeRef.current.contentWindow.postMessage({ type: "set-token", token }, window.location.origin);
-  };
+  // Держим актуальный токен в ref чтобы handler всегда видел свежее значение
+  useEffect(() => { tokenRef.current = token; }, [token]);
 
+  // Listener вешаем один раз при монтировании — не зависит от наличия токена
   useEffect(() => {
-    if (!token) return;
+    const send = () => {
+      const tok = tokenRef.current;
+      if (!tok || !iframeRef.current?.contentWindow) return;
+      iframeRef.current.contentWindow.postMessage({ type: "set-token", token: tok }, window.location.origin);
+      setReady(true);
+    };
     const handler = (e: MessageEvent) => {
-      if (e.data === "iframe-ready") {
-        sendToken();
-        setReady(true);
-      }
+      if (e.data === "iframe-ready") send();
     };
     window.addEventListener("message", handler);
     return () => window.removeEventListener("message", handler);
-  }, [token]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <div className="flex-1 relative">
@@ -37,7 +39,6 @@ export function IframeAdmin({ token, tab }: { token: string | null; tab?: string
         className="w-full h-full border-0"
         title="Панель управления компании"
         style={{ opacity: ready ? 1 : 0, transition: "opacity 0.3s" }}
-        onLoad={sendToken}
       />
     </div>
   );

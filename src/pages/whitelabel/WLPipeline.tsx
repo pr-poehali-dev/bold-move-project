@@ -73,11 +73,13 @@ export function WLPipeline({ refreshTrigger, onOpenPanel, onRunApiTests }: Props
   };
 
   const handleBrand = async (companyId: number) => {
-    const tok = await fetch(`${AUTH_URL}?action=admin-login-as`, {
+    const resp = await fetch(`${AUTH_URL}?action=admin-login-as`, {
       method: "POST",
       headers: { "Content-Type": "application/json", "X-Authorization": masterToken() },
       body: JSON.stringify({ user_id: companyId }),
-    }).then(r => r.json()).then(d => d.token || null);
+    }).then(r => r.json());
+    console.log("[WL] admin-login-as companyId=", companyId, "resp=", resp, "token=", resp.token || null);
+    const tok = resp.token || null;
     if (tok) onOpenPanel({ type: "agent", companyId }, tok);
   };
 
