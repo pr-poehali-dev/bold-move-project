@@ -394,17 +394,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const handler = async (e: MessageEvent) => {
       if (e.origin !== window.location.origin) return;
+      console.log("[iframe] received message:", e.data?.type, "tokenApplied=", tokenApplied);
       if (e.data?.type === "set-token" && e.data?.token && !tokenApplied) {
         tokenApplied = true;
         const tok = e.data.token as string;
-        // Не пишем в localStorage — он общий для всего домена и перезапишет мастер-токен родителя.
-        // Держим токен только в памяти React-состояния.
+        console.log("[iframe] applying token:", tok.slice(0, 8) + "...");
         try {
           const r = await fetch(`${AUTH_URL}?action=me`, { headers: { "X-Authorization": `Bearer ${tok}` } });
           const d = await r.json();
+          console.log("[iframe] /me response:", d.user?.email || d.error);
           if (d.user) { setUser(d.user); setToken(tok); setCrmToken(tok); }
-        } catch { /* ignore */ }
-        // Сообщаем родителю что токен применён
+        } catch (err) { console.log("[iframe] /me error:", err); }
         window.parent.postMessage("iframe-ready", window.location.origin);
       }
     };
