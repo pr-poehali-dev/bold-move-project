@@ -248,8 +248,8 @@ export default function BrandPreview({ brand, isDark, companyName: companyNamePr
           <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100"
             style={{ borderColor: `${accent}22` }}>
             <div className="flex items-center gap-2">
-              {brand.brand_logo_url
-                ? <img src={brand.brand_logo_url} alt="" className="h-6 object-contain" />
+              {brand.brand_logo_url || brand.bot_avatar_url
+                ? <img src={brand.brand_logo_url || brand.bot_avatar_url} alt="" className="h-6 object-contain rounded" />
                 : <div className="w-6 h-6 rounded" style={{ background: `${accent}22` }} />}
               <span className="text-[11px] font-black" style={{ color: pdfText }}>{companyName}</span>
             </div>
@@ -261,7 +261,7 @@ export default function BrandPreview({ brand, isDark, companyName: companyNamePr
           {/* Тело */}
           <div className="px-4 py-2.5">
             <div className="text-[8px] font-bold uppercase tracking-wider mb-1.5"
-              style={{ color: `${pdfText}55` }}>Позиции</div>
+              style={{ color: "#374151" }}>Позиции</div>
             {[
               { name: "Натяжной потолок белый матовый", qty: "24 м²", price: "12 480 ₽" },
               { name: "Демонтаж старого покрытия",      qty: "24 м²", price: "2 400 ₽"  },
@@ -278,7 +278,7 @@ export default function BrandPreview({ brand, isDark, companyName: companyNamePr
             <div className="flex justify-between items-center mt-2 pt-1.5"
               style={{ borderTop: `1.5px solid ${accent}44` }}>
               <span className="text-[8px] font-bold uppercase tracking-wider"
-                style={{ color: `${pdfText}55` }}>Итого</span>
+                style={{ color: "#374151" }}>Итого</span>
               <span className="text-[13px] font-black" style={{ color: accent }}>20 480 ₽</span>
             </div>
           </div>
@@ -286,7 +286,7 @@ export default function BrandPreview({ brand, isDark, companyName: companyNamePr
           <div className="px-4 py-2 border-t"
             style={{ background: `${accent}0d`, borderColor: `${accent}22` }}>
             <div className="text-[8px] text-center leading-tight"
-              style={{ color: `${pdfText}77` }}>
+              style={{ color: "#374151" }}>
               {brand.pdf_footer_address || "Здесь появится адрес и реквизиты вашей компании"}
             </div>
           </div>
