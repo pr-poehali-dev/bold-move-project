@@ -106,23 +106,24 @@ const SILENT_CATEGORIES = new Set([
 
 // Маппинг товара от бота → SegmentPriceItem через прайс
 function matchItem(voiceItem: VoiceCatalogItem, prices: PriceEntry[]): SegmentPriceItem | null {
-  const name = voiceItem.name.toLowerCase().trim();
+  const name = voiceItem.name.toLowerCase().trim().replace(/\s+/g, ' ');
 
-  // 1. Точное совпадение
-  let found = prices.find(p => p.name.toLowerCase() === name);
+  // 1. Точное совпадение (нормализуем пробелы в прайсе тоже)
+  let found = prices.find(p => p.name.toLowerCase().replace(/\s+/g, ' ') === name);
 
   // 2. Частичное — name начинается с имени из прайса или наоборот
   if (!found) {
-    found = prices.find(p =>
-      name.includes(p.name.toLowerCase()) || p.name.toLowerCase().includes(name)
-    );
+    found = prices.find(p => {
+      const pn = p.name.toLowerCase().replace(/\s+/g, ' ');
+      return name.includes(pn) || pn.includes(name);
+    });
   }
 
   // 3. По ключевым словам — минимум 2 слова совпадают
   if (!found) {
     const words = name.split(/\s+/).filter(w => w.length > 2);
     found = prices.find(p => {
-      const pWords = p.name.toLowerCase().split(/\s+/);
+      const pWords = p.name.toLowerCase().replace(/\s+/g, ' ').split(/\s+/);
       const matches = words.filter(w => pWords.some(pw => pw.includes(w) || w.includes(pw)));
       return matches.length >= 2;
     });
