@@ -121,8 +121,8 @@ export function WLPipelineCard({ c, isOpen, onToggle, onSelect, onMove, onBrand,
         <div className="w-8 h-8 rounded-lg flex-shrink-0 flex items-center justify-center text-xs font-black overflow-hidden cursor-pointer hover:opacity-80 transition"
           style={{ background: color + "25", color, border: `1px solid ${color}40` }}
           onClick={() => onSelect(c)}>
-          {c.brand_logo_url
-            ? <img src={c.brand_logo_url} className="w-full h-full object-contain" alt="" />
+          {(c.brand_logo_url || c.bot_avatar_url)
+            ? <img src={c.brand_logo_url || c.bot_avatar_url} className="w-full h-full object-contain" alt="" />
             : c.company_name[0]?.toUpperCase()
           }
         </div>
