@@ -1,6 +1,6 @@
 import { useState } from "react";
 import Icon from "@/components/ui/icon";
-import { DEMO_STATUSES, PARSE_SITE_URL } from "./wlTypes";
+import { DEMO_STATUSES, PARSE_SITE_URL, decodeDomain } from "./wlTypes";
 import type { DemoPipelineCompany, DemoStatus } from "./wlTypes";
 import { WLPipelineActionButtons } from "./WLPipelineActionButtons";
 import { getWLToken } from "./WLManagerContext";
@@ -81,7 +81,7 @@ export function WLPipelineCard({ c, isOpen, onToggle, onSelect, onMove, onBrand,
     finally { setSearchingKey(null); }
   };
   const color  = c.brand_color || "#8b5cf6";
-  const domain = c.site_url.replace(/https?:\/\//, "").split("/")[0];
+  const domain = decodeDomain(c.site_url);
   const st     = DEMO_STATUSES.find(s => s.id === c.status) || DEMO_STATUSES[0];
 
   // Вычисляем данные для Демо и Смет (нужны и в строке и в раскрытой панели)

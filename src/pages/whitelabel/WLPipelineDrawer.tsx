@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import Icon from "@/components/ui/icon";
-import { AUTH_URL, PARSE_SITE_URL, DEMO_STATUSES } from "./wlTypes";
+import { AUTH_URL, PARSE_SITE_URL, DEMO_STATUSES, decodeDomain } from "./wlTypes";
 import type { DemoPipelineCompany, DemoStatus, PanelView } from "./wlTypes";
 import { getWLToken, useWLManager } from "./WLManagerContext";
 import { WLAssignManager } from "./WLAssignManager";
@@ -256,7 +256,7 @@ export function WLPipelineDrawer({ company, onClose, onUpdate, onDelete, onOpenP
   };
 
   const color   = company.brand_color || "#8b5cf6";
-  const domain  = company.site_url.replace(/https?:\/\//, "").split("/")[0];
+  const domain  = decodeDomain(company.site_url);
   const statusInfo = DEMO_STATUSES.find(s => s.id === form.status) || DEMO_STATUSES[0];
 
   const btn = "flex items-center justify-center gap-1 px-2 py-1.5 rounded-lg text-[10px] font-bold transition hover:opacity-80";

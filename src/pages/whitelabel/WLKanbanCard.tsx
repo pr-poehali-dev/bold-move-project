@@ -1,5 +1,6 @@
 import Icon from "@/components/ui/icon";
 import type { DemoPipelineCompany } from "./wlTypes";
+import { decodeDomain } from "./wlTypes";
 
 export function fmt(dateStr: string): string {
   const d = new Date(dateStr);
@@ -15,7 +16,7 @@ export function KanbanCard({ c, onSelect, onDragStart, onLpr, dateRange, colWidt
   colWidth: number;
 }) {
   const color  = c.brand_color || "#8b5cf6";
-  const domain = c.site_url.replace(/https?:\/\//, "").split("/")[0];
+  const domain = decodeDomain(c.site_url);
   const now    = new Date();
 
   let dateColor = "#fbbf24";

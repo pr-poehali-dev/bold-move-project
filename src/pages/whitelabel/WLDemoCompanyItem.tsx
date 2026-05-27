@@ -1,5 +1,6 @@
 import Icon from "@/components/ui/icon";
 import { WLDemoActions } from "./WLDemoActions";
+import { decodeDomain } from "./wlTypes";
 
 export interface DemoCompany {
   id: number;
@@ -37,7 +38,7 @@ export function WLDemoCompanyItem({
 }: Props) {
   const color  = c.brand_color || "#8b5cf6";
   const name   = c.company_name || c.site_url;
-  const domain = c.site_url.replace(/https?:\/\//, "").split("/")[0];
+  const domain = decodeDomain(c.site_url);
 
   return (
     <div className="rounded-2xl overflow-hidden transition"

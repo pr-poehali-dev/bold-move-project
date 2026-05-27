@@ -6,6 +6,15 @@ export const AI_URL         = (func2url as Record<string, string>)["ai-chat"]
 export const PDF_URL        = (func2url as Record<string, string>)["generate-pdf"];
 export const PARSE_SITE_URL = (func2url as Record<string, string>)["parse-site"];
 
+export function decodeDomain(siteUrl: string): string {
+  try {
+    const host = siteUrl.replace(/https?:\/\//, "").split("/")[0];
+    return new URL("https://" + host).hostname;
+  } catch {
+    return siteUrl.replace(/https?:\/\//, "").split("/")[0];
+  }
+}
+
 export const DEMO_ID       = 14;
 export const DEMO_EMAIL    = "whitelabel-test@demo.local";
 export const DEMO_PASSWORD = "demo123";
