@@ -33,7 +33,7 @@ export function WLPipelineFilters({
   return (
     <>
       {/* Поиск — сворачиваемый */}
-      <div className="rounded-xl overflow-hidden"
+      <div className="rounded-xl overflow-hidden my-[5px]"
         style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)" }}>
         <button className="w-full flex items-center gap-2 px-3 py-2 text-left transition hover:bg-white/[0.02]"
           onClick={() => setSearchOpen(v => !v)}>
