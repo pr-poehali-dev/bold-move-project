@@ -254,7 +254,7 @@ export default function BrandPreview({ brand, isDark, companyName: companyNamePr
               <span className="text-[11px] font-black" style={{ color: pdfText }}>{companyName}</span>
             </div>
             <div className="text-right">
-              <div className="text-[8px]" style={{ color: `${pdfText}66` }}>Смета №</div>
+              <div className="text-[8px]" style={{ color: "#374151" }}>Смета №</div>
               <div className="text-[10px] font-bold" style={{ color: accent }}>001</div>
             </div>
           </div>
@@ -271,7 +271,7 @@ export default function BrandPreview({ brand, isDark, companyName: companyNamePr
               <div key={i} className="flex items-center justify-between py-1"
                 style={{ borderBottom: `1px solid ${pdfText}0d` }}>
                 <span className="text-[9px] flex-1 truncate pr-2" style={{ color: pdfText }}>{r.name}</span>
-                <span className="text-[8px] w-10 text-right" style={{ color: `${pdfText}55` }}>{r.qty}</span>
+                <span className="text-[8px] w-10 text-right" style={{ color: "#374151" }}>{r.qty}</span>
                 <span className="text-[9px] font-bold w-16 text-right" style={{ color: pdfText }}>{r.price}</span>
               </div>
             ))}
