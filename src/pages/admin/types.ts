@@ -6,6 +6,7 @@ export interface FaqItem {
   title: string;
   content: string;
   used: boolean;
+  images?: string[];
 }
 
 export interface QuickQuestion {

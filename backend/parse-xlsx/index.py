@@ -6,6 +6,9 @@ import hashlib
 import requests
 import openpyxl
 import psycopg2
+import boto3
+import uuid
+import base64
 from io import BytesIO
 
 XLSX_URL = 'https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/c04d82f2-0303-48f7-b069-9c96c191ffb8.xlsx'
@@ -245,12 +248,12 @@ def handler(event: dict, context) -> dict:
         conn = get_conn(); cur = conn.cursor()
         if wl_id:
             _ensure_wl_initialized(conn, cur, wl_id, 'faq')
-            cur.execute(f"SELECT id, title, content, used, created_at FROM {SCHEMA}.wl_faq_items WHERE wl_manager_id=%s ORDER BY id", (wl_id,))
+            cur.execute(f"SELECT id, title, content, used, created_at, COALESCE(images, '[]'::jsonb) FROM {SCHEMA}.wl_faq_items WHERE wl_manager_id=%s ORDER BY id", (wl_id,))
         else:
-            cur.execute(f"SELECT id, title, content, used, created_at FROM {SCHEMA}.faq_items ORDER BY id")
+            cur.execute(f"SELECT id, title, content, used, created_at, COALESCE(images, '[]'::jsonb) FROM {SCHEMA}.faq_items ORDER BY id")
         rows = cur.fetchall()
         cur.close(); conn.close()
-        return resp(200, {'items': [{'id': row[0], 'title': row[1], 'content': row[2], 'used': row[3], 'created_at': str(row[4])} for row in rows]})
+        return resp(200, {'items': [{'id': row[0], 'title': row[1], 'content': row[2], 'used': row[3], 'created_at': str(row[4]), 'images': row[5] if isinstance(row[5], list) else json.loads(row[5]) if row[5] else []} for row in rows]})
 
     # --- POST ?r=faq
     if r == 'faq' and method == 'POST':
@@ -259,14 +262,15 @@ def handler(event: dict, context) -> dict:
         body = json.loads(body_str)
         title = body.get('title', '').strip()
         content = body.get('content', '').strip()
+        images = json.dumps(body.get('images', []))
         if not title or not content:
             return resp(400, {'error': 'title and content required'})
         conn = get_conn(); cur = conn.cursor()
         if wl_id:
             _ensure_wl_initialized(conn, cur, wl_id, 'faq')
-            cur.execute(f"INSERT INTO {SCHEMA}.wl_faq_items (wl_manager_id, title, content, used) VALUES (%s,%s,%s,true) RETURNING id", (wl_id, title, content))
+            cur.execute(f"INSERT INTO {SCHEMA}.wl_faq_items (wl_manager_id, title, content, used, images) VALUES (%s,%s,%s,true,%s) RETURNING id", (wl_id, title, content, images))
         else:
-            cur.execute(f"INSERT INTO {SCHEMA}.faq_items (title, content, used) VALUES (%s, %s, true) RETURNING id", (title, content))
+            cur.execute(f"INSERT INTO {SCHEMA}.faq_items (title, content, used, images) VALUES (%s, %s, true, %s) RETURNING id", (title, content, images))
         new_id = cur.fetchone()[0]
         conn.commit(); cur.close(); conn.close()
         return resp(200, {'id': new_id, 'ok': True})
@@ -277,16 +281,17 @@ def handler(event: dict, context) -> dict:
             return resp(401, {'error': 'Unauthorized'})
         faq_id = int(qs.get('id', '0'))
         body = json.loads(body_str)
+        images = json.dumps(body.get('images', []))
         conn = get_conn(); cur = conn.cursor()
         if wl_id:
             cur.execute(
-                f"UPDATE {SCHEMA}.wl_faq_items SET title=%s, content=%s, used=%s WHERE id=%s AND wl_manager_id=%s",
-                (body.get('title',''), body.get('content',''), body.get('used', True), faq_id, wl_id)
+                f"UPDATE {SCHEMA}.wl_faq_items SET title=%s, content=%s, used=%s, images=%s WHERE id=%s AND wl_manager_id=%s",
+                (body.get('title',''), body.get('content',''), body.get('used', True), images, faq_id, wl_id)
             )
         else:
             cur.execute(
-                f"UPDATE {SCHEMA}.faq_items SET title=%s, content=%s, used=%s WHERE id=%s",
-                (body.get('title',''), body.get('content',''), body.get('used', True), faq_id)
+                f"UPDATE {SCHEMA}.faq_items SET title=%s, content=%s, used=%s, images=%s WHERE id=%s",
+                (body.get('title',''), body.get('content',''), body.get('used', True), images, faq_id)
             )
         conn.commit(); cur.close(); conn.close()
         return resp(200, {'ok': True})
@@ -303,6 +308,26 @@ def handler(event: dict, context) -> dict:
             cur.execute(f"DELETE FROM {SCHEMA}.faq_items WHERE id = %s", (faq_id,))
         conn.commit(); cur.close(); conn.close()
         return resp(200, {'ok': True})
+
+    # --- POST ?r=faq-upload  — загрузка картинки в S3, возвращает CDN url
+    if r == 'faq-upload' and method == 'POST':
+        if not check_auth(hdrs):
+            return resp(401, {'error': 'Unauthorized'})
+        body = json.loads(body_str)
+        data_b64 = body.get('data', '')
+        content_type = body.get('content_type', 'image/jpeg')
+        ext = content_type.split('/')[-1].replace('jpeg', 'jpg')
+        img_bytes = base64.b64decode(data_b64)
+        s3 = boto3.client(
+            's3',
+            endpoint_url='https://bucket.poehali.dev',
+            aws_access_key_id=os.environ['AWS_ACCESS_KEY_ID'],
+            aws_secret_access_key=os.environ['AWS_SECRET_ACCESS_KEY'],
+        )
+        file_key = f'faq-images/{uuid.uuid4().hex}.{ext}'
+        s3.put_object(Bucket='files', Key=file_key, Body=img_bytes, ContentType=content_type)
+        cdn_url = f"https://cdn.poehali.dev/projects/{os.environ['AWS_ACCESS_KEY_ID']}/bucket/{file_key}"
+        return resp(200, {'url': cdn_url})
 
     # ══════════════════════════════════════════════════════════════
     # БЫСТРЫЕ ОТВЕТЫ

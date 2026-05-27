@@ -1,4 +1,4 @@
-"""Database helpers: knowledge base, system prompt, FAQ cache, prices, rules. v3."""
+"""Database helpers: knowledge base, system prompt, FAQ cache, prices, rules. v4."""
 
 import os
 import re
@@ -24,7 +24,7 @@ def get_knowledge(query: str) -> str:
         conn = psycopg2.connect(os.environ['DATABASE_URL'])
         cur = conn.cursor()
         cur.execute(
-            f"SELECT title, content FROM {SCHEMA}.faq_items WHERE used = true ORDER BY id"
+            f"SELECT title, content, COALESCE(images, '[]'::jsonb) FROM {SCHEMA}.faq_items WHERE used = true ORDER BY id"
         )
         rows = cur.fetchall()
         cur.close()
@@ -32,8 +32,12 @@ def get_knowledge(query: str) -> str:
         if not rows:
             return ''
         parts = []
-        for title, content in rows:
-            parts.append(f"=== {title} ===\n{content}")
+        for title, content, images_raw in rows:
+            block = f"=== {title} ===\n{content}"
+            imgs = images_raw if isinstance(images_raw, list) else (json.loads(images_raw) if images_raw else [])
+            if imgs:
+                block += "\nФотографии: " + ", ".join(imgs)
+            parts.append(block)
         return '\n\n'.join(parts)
     except Exception as e:
         print(f"[KB] error: {e}")
