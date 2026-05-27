@@ -98,7 +98,7 @@ export function WLPipelineCard({ c, isOpen, onToggle, onSelect, onMove, onBrand,
 
   // Незаполненные поля бренда
   const missing: { key: string; label: string }[] = [];
-  if (!c.brand_logo_url)     missing.push({ key: "logo",    label: "Логотип" });
+  if (!c.brand_logo_url && !c.bot_avatar_url) missing.push({ key: "logo", label: "Логотип" });
   if (!c.bot_avatar_url)     missing.push({ key: "avatar",  label: "Фото бота" });
   if (!c.support_phone)      missing.push({ key: "phone",   label: "Телефон" });
   if (!c.telegram_url)       missing.push({ key: "tg",      label: "Telegram" });
