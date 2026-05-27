@@ -43,7 +43,7 @@ export function WLContent() {
   )[0];
 
   const handleOpenPanel = (p: PanelView, token?: string) => {
-    if (token) setIframeToken(token);
+    setIframeToken(token ?? null);
     setPanel(p);
   };
 

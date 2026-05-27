@@ -57,7 +57,7 @@ export function WLPanelView({ panel, iframeToken, onClose }: Props) {
       ) : panel.type === "site-authed" ? (
         <IframeSiteAuthed url={panel.url} token={panel.token} />
       ) : (
-        <IframeAdmin token={iframeToken} tab={panel.type === "agent" ? "own-agent" : undefined} />
+        <IframeAdmin key={iframeToken ?? "no-token"} token={iframeToken} tab={panel.type === "agent" ? "own-agent" : undefined} />
       )}
     </div>
   );
