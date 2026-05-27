@@ -179,7 +179,9 @@ def handler(event: dict, context) -> dict:
                    u.working_hours, u.pdf_footer_address, u.telegram_url, u.pdf_text_color,
                    u.brand_logo_url_dark, u.brand_logo_orientation, u.pdf_logo_bg,
                    u.bot_avatar_bg, u.kanban_enabled,
-                   u.tg_bot_token, u.tg_notify_chat_id, u.nav_config, u.nav_hidden_ids
+                   u.tg_bot_token, u.tg_notify_chat_id,
+                   u.max_bot_token, u.max_notify_chat_id,
+                   u.nav_config, u.nav_hidden_ids
             FROM {SCHEMA}.user_sessions s
             JOIN {SCHEMA}.users u ON u.id = s.user_id
             WHERE s.token=%s AND s.expires_at > NOW()
@@ -194,7 +196,9 @@ def handler(event: dict, context) -> dict:
          bot_name, bot_greeting, bot_avatar_url, brand_logo_url, brand_color,
          support_phone, support_email, max_url, working_hours, pdf_footer_address, telegram_url, pdf_text_color,
          brand_logo_url_dark, brand_logo_orientation, pdf_logo_bg, bot_avatar_bg, kanban_enabled,
-         tg_bot_token, tg_notify_chat_id, nav_config, nav_hidden_ids) = row
+         tg_bot_token, tg_notify_chat_id,
+         max_bot_token, max_notify_chat_id,
+         nav_config, nav_hidden_ids) = row
 
         # Проверка истечения демо-периода для бизнес-ролей.
         # Если trial_until прошёл и нет активной подписки (subscription_end) —
@@ -238,8 +242,10 @@ def handler(event: dict, context) -> dict:
             "has_own_agent": bool(has_own_agent),
             "agent_purchased_at": str(agent_purchased_at)[:19] if agent_purchased_at else None,
             "kanban_enabled": bool(kanban_enabled),
-            "tg_bot_token":      tg_bot_token or None,
-            "tg_notify_chat_id": tg_notify_chat_id or None,
+            "tg_bot_token":       tg_bot_token or None,
+            "tg_notify_chat_id":  tg_notify_chat_id or None,
+            "max_bot_token":      max_bot_token or None,
+            "max_notify_chat_id": max_notify_chat_id or None,
             "brand": {
                 "bot_name": bot_name, "bot_greeting": bot_greeting,
                 "bot_avatar_url": bot_avatar_url,
@@ -427,7 +433,9 @@ def handler(event: dict, context) -> dict:
             "support_phone", "support_email", "max_url",
             "working_hours", "pdf_footer_address", "telegram_url", "pdf_text_color",
             "brand_logo_url_dark", "brand_logo_orientation", "pdf_logo_bg",
-            "tg_bot_token", "tg_notify_chat_id", "nav_config", "nav_hidden_ids",
+            "tg_bot_token", "tg_notify_chat_id",
+            "max_bot_token", "max_notify_chat_id",
+            "nav_config", "nav_hidden_ids",
         ]
         JSON_FIELDS = {"nav_config", "nav_hidden_ids"}
         sets = []
