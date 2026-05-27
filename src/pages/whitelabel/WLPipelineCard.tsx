@@ -174,8 +174,8 @@ export function WLPipelineCard({ c, isOpen, onToggle, onSelect, onMove, onBrand,
                 const canSearch    = !!FIELD_MAP[m.key];
                 return (
                   <button key={m.key}
-                    onClick={e => canSearch ? searchField(m.key, e) : (e.stopPropagation(), onBrand(c.company_id))}
-                    disabled={!!searchingKey}
+                    onClick={e => nf ? e.stopPropagation() : canSearch ? searchField(m.key, e) : (e.stopPropagation(), onBrand(c.company_id))}
+                    disabled={!!searchingKey || nf}
                     className="text-[9px] font-bold px-1.5 py-0.5 rounded-full transition hover:opacity-80 flex items-center gap-1 disabled:opacity-60"
                     style={nf
                       ? { background: "rgba(100,100,100,0.20)", color: "#888", border: "1px solid rgba(150,150,150,0.3)" }
