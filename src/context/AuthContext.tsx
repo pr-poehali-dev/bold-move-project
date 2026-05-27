@@ -366,7 +366,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (window.parent !== window) { setLoading(false); return; }
+    if (window.parent !== window) {
+      // В iframe — ждём токен через postMessage, не снимаем loading сразу
+      // loading снимется внутри iframe-handler'а после получения токена
+      return;
+    }
     const saved = localStorage.getItem(TOKEN_KEY);
     if (!saved) { setLoading(false); return; }
     fetch(`${AUTH_URL}?action=me`, { headers: { "X-Authorization": `Bearer ${saved}` } })
@@ -404,6 +408,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           const d = await r.json();
           if (d.user) { setUser(d.user); setToken(tok); setCrmToken(tok); }
         } catch { /* ignore */ }
+        setLoading(false);
         // Сообщаем родителю что токен применён
         window.parent.postMessage("iframe-ready", window.location.origin);
       }
