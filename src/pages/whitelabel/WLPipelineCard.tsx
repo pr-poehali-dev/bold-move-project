@@ -1,9 +1,21 @@
+import { useState } from "react";
 import Icon from "@/components/ui/icon";
-import { DEMO_STATUSES } from "./wlTypes";
+import { DEMO_STATUSES, PARSE_SITE_URL } from "./wlTypes";
 import type { DemoPipelineCompany, DemoStatus } from "./wlTypes";
 import { WLPipelineActionButtons } from "./WLPipelineActionButtons";
+import { getWLToken } from "./WLManagerContext";
 
 const DEMO_DAYS = 7;
+
+// Маппинг ключа пилюли → поле бэкенда (parse-site / admin-update-demo)
+const FIELD_MAP: Record<string, { field: string; brandKey: keyof DemoPipelineCompany }> = {
+  tg:      { field: "telegram_url",      brandKey: "telegram_url" },
+  hours:   { field: "working_hours",     brandKey: "working_hours" },
+  address: { field: "pdf_footer_address",brandKey: "pdf_footer_address" },
+  phone:   { field: "support_phone",     brandKey: "support_phone" },
+  email:   { field: "support_email",     brandKey: "support_email" },
+  color:   { field: "brand_color",       brandKey: "brand_color" },
+};
 
 interface Props {
   c:        DemoPipelineCompany;
@@ -18,6 +30,42 @@ interface Props {
 }
 
 export function WLPipelineCard({ c, isOpen, onToggle, onSelect, onMove, onBrand, onLpr, onHistory, onUpdate }: Props) {
+  const [searchingKey, setSearchingKey] = useState<string | null>(null);
+  const [notFoundKey, setNotFoundKey]   = useState<string | null>(null);
+
+  const searchField = async (key: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const map = FIELD_MAP[key];
+    if (!map || searchingKey) return;
+    setSearchingKey(key);
+    setNotFoundKey(null);
+    try {
+      const token = getWLToken();
+      const r = await fetch(PARSE_SITE_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-Authorization": token || "" },
+        body: JSON.stringify({
+          url:        c.site_url,
+          company_id: c.company_id,
+          only_field: map.field,
+        }),
+      });
+      const d = await r.json();
+      if (!d.error && d.report) {
+        const filled = d.report.filled?.find((f: { field: string; value: string }) => f.field === map.field);
+        if (filled) {
+          onUpdate(c.demo_id, { [map.brandKey]: filled.value } as Partial<DemoPipelineCompany>);
+        } else {
+          setNotFoundKey(key);
+          setTimeout(() => setNotFoundKey(null), 3000);
+        }
+      } else {
+        setNotFoundKey(key);
+        setTimeout(() => setNotFoundKey(null), 3000);
+      }
+    } catch { setNotFoundKey(key); setTimeout(() => setNotFoundKey(null), 3000); }
+    finally { setSearchingKey(null); }
+  };
   const color  = c.brand_color || "#8b5cf6";
   const domain = c.site_url.replace(/https?:\/\//, "").split("/")[0];
   const st     = DEMO_STATUSES.find(s => s.id === c.status) || DEMO_STATUSES[0];
@@ -106,14 +154,28 @@ export function WLPipelineCard({ c, isOpen, onToggle, onSelect, onMove, onBrand,
               <span className="text-[8px] text-white/15">({missing.length + (noLpr ? 1 : 0)})</span>
             </div>
             <div className="flex flex-wrap gap-1">
-              {missing.map(m => (
-                <button key={m.key}
-                  onClick={e => { e.stopPropagation(); onBrand(c.company_id); }}
-                  className="text-[9px] font-bold px-1.5 py-0.5 rounded-full transition hover:opacity-80"
-                  style={{ background: "rgba(239,68,68,0.15)", color: "#ef4444", border: "1px solid rgba(239,68,68,0.3)" }}>
-                  {m.label}
-                </button>
-              ))}
+              {missing.map(m => {
+                const isSearching = searchingKey === m.key;
+                const isNotFound  = notFoundKey === m.key;
+                const canSearch   = !!FIELD_MAP[m.key];
+                return (
+                  <button key={m.key}
+                    onClick={e => canSearch ? searchField(m.key, e) : (e.stopPropagation(), onBrand(c.company_id))}
+                    disabled={!!searchingKey}
+                    className="text-[9px] font-bold px-1.5 py-0.5 rounded-full transition hover:opacity-80 flex items-center gap-1 disabled:opacity-60"
+                    style={isNotFound
+                      ? { background: "rgba(239,68,68,0.20)", color: "#f87171", border: "1px solid rgba(239,68,68,0.5)" }
+                      : { background: "rgba(239,68,68,0.15)", color: "#ef4444", border: "1px solid rgba(239,68,68,0.3)" }}>
+                    {isSearching
+                      ? <div className="w-2 h-2 border border-red-400/40 border-t-red-400 rounded-full animate-spin" />
+                      : isNotFound
+                        ? <Icon name="X" size={8} />
+                        : canSearch ? <Icon name="Search" size={8} /> : null
+                    }
+                    {isNotFound ? `${m.label} — нет` : m.label}
+                  </button>
+                );
+              })}
               {noLpr && (
                 <button
                   onClick={e => { e.stopPropagation(); onLpr(c); }}
