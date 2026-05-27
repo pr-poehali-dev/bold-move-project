@@ -11,6 +11,8 @@ import { WLPresentationCalendar }  from "./WLPresentationCalendar";
 import { WLPresentationModal }     from "./WLPresentationModal";
 import { getWLToken, useWLManager } from "./WLManagerContext";
 
+const masterToken = () => getWLToken();
+
 interface Props {
   refreshTrigger:  number;
   onOpenPanel:     (p: PanelView, token?: string) => void;
