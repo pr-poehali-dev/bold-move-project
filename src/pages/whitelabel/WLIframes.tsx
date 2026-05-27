@@ -6,20 +6,22 @@ export function IframeAdmin({ token, tab }: { token: string | null; tab?: string
   const [ready, setReady] = useState(false);
   const src = `/company?iframe=1${tab ? `&tab=${tab}` : ""}`;
 
+  const sendToken = () => {
+    if (!token || !iframeRef.current?.contentWindow) return;
+    iframeRef.current.contentWindow.postMessage({ type: "set-token", token }, window.location.origin);
+  };
+
   useEffect(() => {
-    if (!token || !iframeRef.current) return;
+    if (!token) return;
     const handler = (e: MessageEvent) => {
       if (e.data === "iframe-ready") {
-        iframeRef.current?.contentWindow?.postMessage(
-          { type: "set-token", token },
-          window.location.origin
-        );
+        sendToken();
         setReady(true);
       }
     };
     window.addEventListener("message", handler);
     return () => window.removeEventListener("message", handler);
-  }, [token]);
+  }, [token]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <div className="flex-1 relative">
@@ -29,11 +31,13 @@ export function IframeAdmin({ token, tab }: { token: string | null; tab?: string
         </div>
       )}
       <iframe
+        key={token ?? "no-token"}
         ref={iframeRef}
         src={src}
         className="w-full h-full border-0"
         title="Панель управления компании"
         style={{ opacity: ready ? 1 : 0, transition: "opacity 0.3s" }}
+        onLoad={sendToken}
       />
     </div>
   );
