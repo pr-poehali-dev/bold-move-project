@@ -175,7 +175,7 @@ export function WLPipelineFilters({
       </div>
 
       {/* Фильтр по статусу — скролл на мобиле, stretch на десктопе */}
-      <div className="rounded-xl px-3 py-2.5"
+      <div className="rounded-xl px-3 py-2.5 my-[5px]"
         style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)" }}>
         {/* Мобиле: горизонтальный скролл */}
         <div className="flex sm:hidden gap-1.5 overflow-x-auto pb-0.5 scrollbar-hide -mx-1 px-1">
