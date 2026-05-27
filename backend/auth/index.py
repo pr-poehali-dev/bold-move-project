@@ -26,6 +26,26 @@ def err(msg, code=400):
 def hash_password(password: str) -> str:
     return hashlib.sha256(password.encode()).hexdigest()
 
+MASTER_EMAIL = "19.jeka.94@gmail.com"
+
+def check_is_master(token: str, cur, schema: str) -> bool:
+    """Проверяет, является ли токен мастером — через user_sessions или wl_manager_sessions."""
+    cur.execute(f"""
+        SELECT u.email FROM {schema}.user_sessions s
+        JOIN {schema}.users u ON u.id = s.user_id
+        WHERE s.token=%s AND s.expires_at > NOW()
+    """, (token,))
+    row = cur.fetchone()
+    if row and row[0] == MASTER_EMAIL:
+        return True
+    cur.execute(f"""
+        SELECT m.email FROM {schema}.wl_managers m
+        JOIN {schema}.wl_manager_sessions s ON s.manager_id = m.id
+        WHERE s.token=%s AND s.expires_at > NOW() AND m.approved = TRUE
+          AND (m.email = '{MASTER_EMAIL}' OR m.wl_role = 'master_manager')
+    """, (token,))
+    return bool(cur.fetchone())
+
 def handler(event: dict, context) -> dict:
     """Авторизация: register / login / me / logout / approve-user / pending-users / set-discount"""
     if event.get("httpMethod") == "OPTIONS":
@@ -1028,13 +1048,7 @@ def handler(event: dict, context) -> dict:
         # Только мастер
         if not token:
             return err("Требуется авторизация", 401)
-        cur.execute(f"""
-            SELECT u.email FROM {SCHEMA}.user_sessions s
-            JOIN {SCHEMA}.users u ON u.id = s.user_id
-            WHERE s.token=%s AND s.expires_at > NOW()
-        """, (token,))
-        row = cur.fetchone()
-        if not row or row[0] != "19.jeka.94@gmail.com":
+        if not check_is_master(token, cur, SCHEMA):
             return err("Доступ только для мастера", 403)
 
         user_id = body.get("user_id")
@@ -1060,13 +1074,7 @@ def handler(event: dict, context) -> dict:
     if action == "admin-login-as" and method == "POST":
         if not token:
             return err("Требуется авторизация", 401)
-        cur.execute(f"""
-            SELECT u.email FROM {SCHEMA}.user_sessions s
-            JOIN {SCHEMA}.users u ON u.id = s.user_id
-            WHERE s.token=%s AND s.expires_at > NOW()
-        """, (token,))
-        row = cur.fetchone()
-        if not row or row[0] != "19.jeka.94@gmail.com":
+        if not check_is_master(token, cur, SCHEMA):
             return err("Доступ только для мастера", 403)
 
         target_id = body.get("user_id")
@@ -1087,13 +1095,7 @@ def handler(event: dict, context) -> dict:
     if action == "admin-ensure-balance" and method == "POST":
         if not token:
             return err("Требуется авторизация", 401)
-        cur.execute(f"""
-            SELECT u.email FROM {SCHEMA}.user_sessions s
-            JOIN {SCHEMA}.users u ON u.id = s.user_id
-            WHERE s.token=%s AND s.expires_at > NOW()
-        """, (token,))
-        row = cur.fetchone()
-        if not row or row[0] != "19.jeka.94@gmail.com":
+        if not check_is_master(token, cur, SCHEMA):
             return err("Доступ только для мастера", 403)
 
         target_id = body.get("user_id")
@@ -1541,18 +1543,21 @@ def handler(event: dict, context) -> dict:
     if action == "save-pricing-rules" and method == "POST":
         if not token:
             return err("Требуется авторизация", 401)
-        cur.execute(f"""
-            SELECT u.email, u.role FROM {SCHEMA}.user_sessions s
-            JOIN {SCHEMA}.users u ON u.id = s.user_id
-            WHERE s.token=%s AND s.expires_at > NOW()
-        """, (token,))
-        row = cur.fetchone()
-        if not row:
-            return err("Токен недействителен", 401)
-        uemail, urole = row
-        is_master = (uemail == "19.jeka.94@gmail.com")
-        if not is_master and urole not in ("company", "installer"):
-            return err("Нет прав на изменение правил цен", 403)
+        is_master = check_is_master(token, cur, SCHEMA)
+        if not is_master:
+            cur.execute(f"""
+                SELECT u.role FROM {SCHEMA}.user_sessions s
+                JOIN {SCHEMA}.users u ON u.id = s.user_id
+                WHERE s.token=%s AND s.expires_at > NOW()
+            """, (token,))
+            row = cur.fetchone()
+            if not row:
+                return err("Токен недействителен", 401)
+            urole = row[0]
+            if urole not in ("company", "installer"):
+                return err("Нет прав на изменение правил цен", 403)
+        else:
+            urole = "company"
 
         econom_mult           = float(body.get("econom_mult", 0.85))
         premium_mult          = float(body.get("premium_mult", 1.27))
@@ -1586,13 +1591,7 @@ def handler(event: dict, context) -> dict:
     if action == "admin-wl-companies" and method == "GET":
         if not token:
             return err("Требуется авторизация", 401)
-        cur.execute(f"""
-            SELECT u.email FROM {SCHEMA}.user_sessions s
-            JOIN {SCHEMA}.users u ON u.id = s.user_id
-            WHERE s.token=%s AND s.expires_at > NOW()
-        """, (token,))
-        row = cur.fetchone()
-        if not row or row[0] != "19.jeka.94@gmail.com":
+        if not check_is_master(token, cur, SCHEMA):
             return err("Доступ только для мастера", 403)
         cur.execute(f"""
             SELECT id, email, name, company_name, bot_name, brand_color,
@@ -1619,13 +1618,7 @@ def handler(event: dict, context) -> dict:
     if action == "admin-create-demo-company" and method == "POST":
         if not token:
             return err("Требуется авторизация", 401)
-        cur.execute(f"""
-            SELECT u.email FROM {SCHEMA}.user_sessions s
-            JOIN {SCHEMA}.users u ON u.id = s.user_id
-            WHERE s.token=%s AND s.expires_at > NOW()
-        """, (token,))
-        row = cur.fetchone()
-        if not row or row[0] != "19.jeka.94@gmail.com":
+        if not check_is_master(token, cur, SCHEMA):
             return err("Доступ только для мастера", 403)
 
         site_url     = body.get("site_url", "").strip()
@@ -1750,13 +1743,7 @@ def handler(event: dict, context) -> dict:
     if action == "wl-staff-list" and method == "GET":
         if not token:
             return err("Требуется авторизация", 401)
-        cur.execute(f"""
-            SELECT u.email FROM {SCHEMA}.user_sessions s
-            JOIN {SCHEMA}.users u ON u.id = s.user_id
-            WHERE s.token=%s AND s.expires_at > NOW()
-        """, (token,))
-        row = cur.fetchone()
-        if not row or row[0] != "19.jeka.94@gmail.com":
+        if not check_is_master(token, cur, SCHEMA):
             return err("Доступ только для мастера", 403)
         cur.execute(f"""
             SELECT id, name, email, wl_role, approved, created_at,
@@ -1775,13 +1762,7 @@ def handler(event: dict, context) -> dict:
     if action == "wl-staff-invite" and method == "POST":
         if not token:
             return err("Требуется авторизация", 401)
-        cur.execute(f"""
-            SELECT u.email FROM {SCHEMA}.user_sessions s
-            JOIN {SCHEMA}.users u ON u.id = s.user_id
-            WHERE s.token=%s AND s.expires_at > NOW()
-        """, (token,))
-        row = cur.fetchone()
-        if not row or row[0] != "19.jeka.94@gmail.com":
+        if not check_is_master(token, cur, SCHEMA):
             return err("Доступ только для мастера", 403)
         name     = (body.get("name") or "").strip()
         email    = (body.get("email") or "").strip().lower()
@@ -1806,13 +1787,7 @@ def handler(event: dict, context) -> dict:
     if action == "wl-staff-approve" and method == "POST":
         if not token:
             return err("Требуется авторизация", 401)
-        cur.execute(f"""
-            SELECT u.email FROM {SCHEMA}.user_sessions s
-            JOIN {SCHEMA}.users u ON u.id = s.user_id
-            WHERE s.token=%s AND s.expires_at > NOW()
-        """, (token,))
-        row = cur.fetchone()
-        if not row or row[0] != "19.jeka.94@gmail.com":
+        if not check_is_master(token, cur, SCHEMA):
             return err("Доступ только для мастера", 403)
         mgr_id  = body.get("id")
         approved = body.get("approved")
@@ -1835,13 +1810,7 @@ def handler(event: dict, context) -> dict:
     if action == "wl-staff-delete" and method == "POST":
         if not token:
             return err("Требуется авторизация", 401)
-        cur.execute(f"""
-            SELECT u.email FROM {SCHEMA}.user_sessions s
-            JOIN {SCHEMA}.users u ON u.id = s.user_id
-            WHERE s.token=%s AND s.expires_at > NOW()
-        """, (token,))
-        row = cur.fetchone()
-        if not row or row[0] != "19.jeka.94@gmail.com":
+        if not check_is_master(token, cur, SCHEMA):
             return err("Доступ только для мастера", 403)
         mgr_id = body.get("id")
         if not mgr_id:
@@ -1854,13 +1823,7 @@ def handler(event: dict, context) -> dict:
     if action == "wl-staff-update" and method == "POST":
         if not token:
             return err("Требуется авторизация", 401)
-        cur.execute(f"""
-            SELECT u.email FROM {SCHEMA}.user_sessions s
-            JOIN {SCHEMA}.users u ON u.id = s.user_id
-            WHERE s.token=%s AND s.expires_at > NOW()
-        """, (token,))
-        row = cur.fetchone()
-        if not row or row[0] != "19.jeka.94@gmail.com":
+        if not check_is_master(token, cur, SCHEMA):
             return err("Доступ только для мастера", 403)
         mgr_id = body.get("id")
         if not mgr_id:
@@ -1892,13 +1855,7 @@ def handler(event: dict, context) -> dict:
     if action == "wl-assign-company" and method == "POST":
         if not token:
             return err("Требуется авторизация", 401)
-        cur.execute(f"""
-            SELECT u.email FROM {SCHEMA}.user_sessions s
-            JOIN {SCHEMA}.users u ON u.id = s.user_id
-            WHERE s.token=%s AND s.expires_at > NOW()
-        """, (token,))
-        row = cur.fetchone()
-        if not row or row[0] != "19.jeka.94@gmail.com":
+        if not check_is_master(token, cur, SCHEMA):
             return err("Доступ только для мастера", 403)
         demo_id    = body.get("demo_id")
         manager_id = body.get("manager_id")  # None = снять назначение
@@ -2067,13 +2024,7 @@ def handler(event: dict, context) -> dict:
     if action == "admin-update-demo" and method == "POST":
         if not token:
             return err("Требуется авторизация", 401)
-        cur.execute(f"""
-            SELECT u.email FROM {SCHEMA}.user_sessions s
-            JOIN {SCHEMA}.users u ON u.id = s.user_id
-            WHERE s.token=%s AND s.expires_at > NOW()
-        """, (token,))
-        row = cur.fetchone()
-        if not row or row[0] != "19.jeka.94@gmail.com":
+        if not check_is_master(token, cur, SCHEMA):
             return err("Доступ только для мастера", 403)
 
         demo_id = body.get("demo_id")
@@ -2130,13 +2081,7 @@ def handler(event: dict, context) -> dict:
     if action == "admin-delete-demo-company" and method == "POST":
         if not token:
             return err("Требуется авторизация", 401)
-        cur.execute(f"""
-            SELECT u.email FROM {SCHEMA}.user_sessions s
-            JOIN {SCHEMA}.users u ON u.id = s.user_id
-            WHERE s.token=%s AND s.expires_at > NOW()
-        """, (token,))
-        row = cur.fetchone()
-        if not row or row[0] != "19.jeka.94@gmail.com":
+        if not check_is_master(token, cur, SCHEMA):
             return err("Доступ только для мастера", 403)
 
         demo_id = body.get("demo_id")
@@ -2166,13 +2111,7 @@ def handler(event: dict, context) -> dict:
     if action == "admin-activate-agent" and method == "POST":
         if not token:
             return err("Требуется авторизация", 401)
-        cur.execute(f"""
-            SELECT u.email FROM {SCHEMA}.user_sessions s
-            JOIN {SCHEMA}.users u ON u.id = s.user_id
-            WHERE s.token=%s AND s.expires_at > NOW()
-        """, (token,))
-        row = cur.fetchone()
-        if not row or row[0] != "19.jeka.94@gmail.com":
+        if not check_is_master(token, cur, SCHEMA):
             return err("Доступ только для мастера", 403)
 
         company_id = body.get("company_id")
@@ -2190,13 +2129,7 @@ def handler(event: dict, context) -> dict:
     if action == "admin-upload-receipt" and method == "POST":
         if not token:
             return err("Требуется авторизация", 401)
-        cur.execute(f"""
-            SELECT u.email FROM {SCHEMA}.user_sessions s
-            JOIN {SCHEMA}.users u ON u.id = s.user_id
-            WHERE s.token=%s AND s.expires_at > NOW()
-        """, (token,))
-        row = cur.fetchone()
-        if not row or row[0] != "19.jeka.94@gmail.com":
+        if not check_is_master(token, cur, SCHEMA):
             return err("Доступ только для мастера", 403)
 
         demo_id      = body.get("demo_id")
@@ -2284,13 +2217,7 @@ def handler(event: dict, context) -> dict:
     if action == "demo-presentations" and method == "GET":
         if not token:
             return err("Требуется авторизация", 401)
-        cur.execute(f"""
-            SELECT u.email FROM {SCHEMA}.user_sessions s
-            JOIN {SCHEMA}.users u ON u.id = s.user_id
-            WHERE s.token=%s AND s.expires_at > NOW()
-        """, (token,))
-        row = cur.fetchone()
-        if not row or row[0] != "19.jeka.94@gmail.com":
+        if not check_is_master(token, cur, SCHEMA):
             return err("Доступ только для мастера", 403)
 
         month = params.get("month")
@@ -2341,13 +2268,7 @@ def handler(event: dict, context) -> dict:
     if action == "demo-schedule-presentation" and method == "POST":
         if not token:
             return err("Требуется авторизация", 401)
-        cur.execute(f"""
-            SELECT u.email FROM {SCHEMA}.user_sessions s
-            JOIN {SCHEMA}.users u ON u.id = s.user_id
-            WHERE s.token=%s AND s.expires_at > NOW()
-        """, (token,))
-        row = cur.fetchone()
-        if not row or row[0] != "19.jeka.94@gmail.com":
+        if not check_is_master(token, cur, SCHEMA):
             return err("Доступ только для мастера", 403)
 
         demo_id      = body.get("demo_id")
@@ -2391,13 +2312,7 @@ def handler(event: dict, context) -> dict:
     if action == "demo-mark-presented" and method == "POST":
         if not token:
             return err("Требуется авторизация", 401)
-        cur.execute(f"""
-            SELECT u.email FROM {SCHEMA}.user_sessions s
-            JOIN {SCHEMA}.users u ON u.id = s.user_id
-            WHERE s.token=%s AND s.expires_at > NOW()
-        """, (token,))
-        row = cur.fetchone()
-        if not row or row[0] != "19.jeka.94@gmail.com":
+        if not check_is_master(token, cur, SCHEMA):
             return err("Доступ только для мастера", 403)
 
         demo_id = body.get("demo_id")
@@ -2436,13 +2351,7 @@ def handler(event: dict, context) -> dict:
     if action == "demo-reschedule-presentation" and method == "POST":
         if not token:
             return err("Требуется авторизация", 401)
-        cur.execute(f"""
-            SELECT u.email FROM {SCHEMA}.user_sessions s
-            JOIN {SCHEMA}.users u ON u.id = s.user_id
-            WHERE s.token=%s AND s.expires_at > NOW()
-        """, (token,))
-        row = cur.fetchone()
-        if not row or row[0] != "19.jeka.94@gmail.com":
+        if not check_is_master(token, cur, SCHEMA):
             return err("Доступ только для мастера", 403)
 
         pres_id      = body.get("presentation_id")
