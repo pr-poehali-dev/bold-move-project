@@ -312,6 +312,58 @@ def handler(event: dict, context) -> dict:
         conn.commit(); cur.close(); conn.close()
         return resp(200, {'ok': True})
 
+    # --- POST ?r=faq-migrate-items  — разовая миграция: content → items
+    if r == 'faq-migrate-items' and method == 'POST':
+        if not check_auth(hdrs):
+            return resp(401, {'error': 'Unauthorized'})
+        import re as _re
+
+        def parse_content_to_items(content: str) -> list:
+            """Разбивает большой текст на товары по двойному переносу строки.
+            Для каждого блока ищет название из строк Товар:/Наименование:."""
+            if not content or not content.strip():
+                return []
+            blocks = _re.split(r'\n\s*\n', content.strip())
+            items = []
+            for block in blocks:
+                block = block.strip()
+                if not block:
+                    continue
+                # Ищем название: строки начинающиеся с Товар: или Наименование:
+                name = None
+                for line in block.splitlines():
+                    m = _re.match(r'^(?:Товар|Наименование)\s*:\s*(.+)', line.strip(), _re.IGNORECASE)
+                    if m:
+                        name = m.group(1).strip().rstrip('.')
+                        break
+                # Если не нашли — берём первую строку как название
+                if not name:
+                    first_line = block.splitlines()[0].strip()
+                    name = first_line[:80]
+                items.append({
+                    'id': _re.sub(r'[^a-z0-9]', '', name.lower())[:12] + str(abs(hash(name)) % 10000),
+                    'name': name,
+                    'description': block,
+                    'image_url': '',
+                })
+            return items
+
+        conn = get_conn(); cur = conn.cursor()
+        cur.execute(f"SELECT id, content, items FROM {SCHEMA}.faq_items WHERE items = '[]'::jsonb OR items IS NULL")
+        rows = cur.fetchall()
+        updated = 0
+        for row in rows:
+            faq_id, content, existing_items = row
+            if existing_items and existing_items != [] and len(existing_items) > 0:
+                continue
+            parsed = parse_content_to_items(content or '')
+            if parsed:
+                cur.execute(f"UPDATE {SCHEMA}.faq_items SET items = %s WHERE id = %s",
+                            (json.dumps(parsed, ensure_ascii=False), faq_id))
+                updated += 1
+        conn.commit(); cur.close(); conn.close()
+        return resp(200, {'ok': True, 'updated': updated})
+
     # --- POST ?r=faq-upload  — загрузка картинки в S3, возвращает CDN url
     if r == 'faq-upload' and method == 'POST':
         if not check_auth(hdrs):
