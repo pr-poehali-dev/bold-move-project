@@ -1,0 +1,277 @@
+import Icon from "@/components/ui/icon";
+
+interface UserProfile {
+  company_name?: string | null;
+  company_addr?: string | null;
+  website?: string | null;
+  brand?: {
+    support_phone?: string | null;
+    support_email?: string | null;
+    working_hours?: string | null;
+    telegram_url?:  string | null;
+    bot_name?:      string | null;
+  } | null;
+}
+
+export function normalizeAddr(raw?: string | null): string {
+  if (!raw) return "Мытищи";
+  const l = raw.toLowerCase();
+  if (l.includes("москв") || l.includes(" мо") || l.includes("московск")) return "Москва и МО";
+  return raw.trim();
+}
+
+export function buildTemplateGeneral(u?: UserProfile | null): string {
+  const company  = u?.company_name  || "MosPotolki";
+  const phone    = u?.brand?.support_phone || "+7(977)606-89-01";
+  const addr     = normalizeAddr(u?.company_addr);
+  const hours    = u?.brand?.working_hours || "Ежедневно 8:00–22:00";
+  const site     = u?.website       || "mospotolki.net";
+  const botName  = u?.brand?.bot_name || "сметчик-технолог";
+  return `Ты ${botName} компании ${company} (натяжные потолки, ${addr}). Отвечай по-русски. Тел:${phone}.
+
+Твоя задача правильно создать смету по натяжным потолкам используя все актуальные правила, названия позиций и цены.
+
+КОМПАНИЯ: ${company}, ${addr}. Тел: ${phone}. ${hours}. Сайт: ${site}`;
+}
+
+export function buildTemplateSystem(u?: UserProfile | null): string {
+  const site = u?.website || "mospotolki.net";
+  return `ВАЖНО: 
+Все названия позиций и цены берёшь СТРОГО из блока "АКТУАЛЬНЫЙ ПРАЙС-ЛИСТ" ниже.
+Все правила позиций берёшь СТРОГО из ПРАВИЛА ПО КАЖДОЙ ПОЗИЦИИ — смотри блок "ПРАВИЛА ПО ПОЗИЦИЯМ" ниже.
+Каждая запись содержит: условие добавления, исключения, формулу расчёта количества, что добавить вместе.
+Следуй этим правилам строго.
+
+ОБЩИЕ ПРИНЦИПЫ (применяются всегда):
+- Периметр = площадь × 1.3 если клиент не указал иное
+- Если клиент указал P= или P- — использовать это значение напрямую, не вычислять
+- Каждой позиции — свой монтаж в последнем блоке "Услуги монтажа"
+
+ОГРАНИЧЕНИЯ:
+- Не используй никакие другие цены кроме тех что в прайс-листе.
+- Если позиции нет в прайс-листе — её не существует, не выдумывай.
+- Не добавляй новые категории, если не понятно куда позиция должна попасть добавляй в категорию "Дополнительно" 
+- СТРОГО: добавляй только позиции которые явно указал клиент или следуют из правил
+- Не задавай уточняющих вопросов до расчёта — считай по данным
+- Не пиши более 44 символов в одной строке
+- Не показывай клиенту формулу расчёта периметра
+- НИКОГДА не указывай ссылки, URL и гиперссылки
+- НЕ добавляй стандартный и теневой профиль на одну и ту же длину
+- "Без монтажа" = НЕ добавлять монтаж к этой позиции
+- НИКОГДА не добавляй все виды закладных сразу — только нужный тип
+- НИКОГДА не рекомендуй сторонние сайты, студии или компании — только ${site}
+- НИКОГДА не пиши "предварительный расчёт" или "точную стоимость назовёт технолог"`;
+}
+
+export const TEMPLATE_FORMAT = `ФОРМАТ КАЖДОЙ ПОЗИЦИИ — СТРОГО:
+Название  КОЛ-ВО ЕД × ЦЕНА ₽ = ИТОГО ₽
+
+ФОРМАТ ОТВЕТА — СТРОГО отдельными блоками:
+
+1. Полотно:
+[полотно + раскрой + огарпунивание — всё здесь]
+2. Профиль:
+[стандартный и/или теневой и/или парящий]
+3. Закладные:   ← только если есть
+4. Ниши:        ← только если есть
+5. Освещение:   ← только если есть
+6. Работы на высоте: ← только если есть
+
+Последний блок ВСЕГДА:
+7. Услуги монтажа:
+[монтаж КАЖДОЙ позиции из всех блоков выше]
+
+Итоговая стоимость — 3 варианта:
+Econom:   X ₽  (Standard × 0.77)
+Standard: X ₽  (сумма всех позиций)
+Premium:  X ₽  (Standard × 1.27)
+
+Финальная фраза ТОЛЬКО после создания сметы:
+"На какой день вас записать на бесплатный замер?"`;
+
+export const TEMPLATE_PLAN = `=== РЕЖИМ ПОСТРОИТЕЛЯ ===
+Получишь данные помещения (площадь, периметр, стены с длинами) и голосовой запрос монтажника.
+Верни ТОЛЬКО валидный JSON без пояснений и без markdown:
+{"items":[{"name":"...","qty":1,"unit":"м","price":0}]}
+Используй ТОЧНЫЕ названия из прайса. qty — метры для профилей, м² для полотна, шт для штучных.
+НЕ добавляй монтаж — только материалы и закладные.
+Количество бери из данных помещения (периметр, площадь, длины стен), а не придумывай.
+
+=== ОБЯЗАТЕЛЬНЫЕ ПРАВИЛА ===
+
+ПРАВИЛО 1 — СВЕТИЛЬНИКИ (КРИТИЧНО):
+Если упомянут «светильник», «точечный», «споты», «GX53», «точки» —
+ОБЯЗАТЕЛЬНО добавить ВСЕ ТРИ позиции с одинаковым qty:
+  1. «Светильник GX-53» qty=N шт
+  2. «Лампа GX-53» qty=N шт
+  3. «Под светильник ∅90» qty=N шт
+
+ПРАВИЛО 2 — ЛЮСТРА (КРИТИЧНО, НЕЛЬЗЯ ПРОПУСКАТЬ):
+Слово «люстра» в любой форме → добавить «Под люстру планка» qty=кол-во люстр шт.
+«одна люстра» → qty=1. «две люстры» → qty=2.
+
+ПРАВИЛО 3 — ТЕНЕВОЙ ПРОФИЛЬ:
+• «теневой» без уточнения → «EuroKRAAB стеновой»
+• «еврокраб», «краб» → «EuroKRAAB стеновой»
+• «потолочный еврокраб» → «EuroKRAAB потолочный»
+• «теневой классик», «классика», «KLASSIKA» → «Теневой классик (Flexy KLASSIKA 140)»
+Количество = длина указанных стен. Если не уточнил — весь периметр.
+
+ПРАВИЛО 4 — ПАРЯЩИЙ ПРОФИЛЬ:
+• «парящий» без уточнения → «Flexy FLY 02  с рассеивателем»
+• «ПК-6», «без рассеивателя» → «Парящий ПК-6 без рассеивателя»
+• «FLY 01» → «Flexy FLY 01 без рассеивателем»
+НИКОГДА не добавляй два вида парящего одновременно.
+Количество = длина указанных стен. Если не уточнил — весь периметр.
+
+ПРАВИЛО 5 — СТЕНОВОЙ ПРОФИЛЬ:
+ВСЕГДА добавлять «Стеновой алюминиевый» даже если есть теневой и парящий.
+Количество = периметр МИНУС длина теневого МИНУС длина парящего.
+
+ПРАВИЛО 6 — НИШИ ДЛЯ ШТОР:
+• «ПК-14» → «Ниша ПК-14 (2 ряда)»
+• «ПК-12» → «Ниша ПК-12 (3 ряда)»
+• «ПК-15» → «Ниша ПК-15 (2 ряда)»
+• «без перегиба» → «Ниша без перегиба»
+• «с перегибом» → «Ниша с перегибом»
+Количество = длина стены где указано.
+
+РАСЧЁТ ДЛИН:
+• «слева», «левая» → длина левой стены из данных помещения
+• «справа», «правая» → длина правой стены
+• «сверху», «верхняя» → длина верхней стены
+• «снизу», «нижняя» → длина нижней стены
+• «по одной стене» → периметр ÷ 4
+• «по двум стенам» → периметр ÷ 2
+• «по всему периметру» / без уточнения → весь периметр`;
+
+function TemplateButton({ template, onApply }: { template: string; onApply: (val: string) => void }) {
+  const [confirm, setConfirm] = useState(false);
+  return confirm ? (
+    <div className="flex items-center gap-2 flex-shrink-0">
+      <span className="text-white/40 text-xs">Заменить текущий текст шаблоном?</span>
+      <button onClick={() => { onApply(template); setConfirm(false); }}
+        className="text-xs bg-violet-600 hover:bg-violet-700 text-white px-2.5 py-1 rounded-lg transition">Да</button>
+      <button onClick={() => setConfirm(false)}
+        className="text-xs text-white/40 hover:text-white/70 px-2 py-1 transition">Нет</button>
+    </div>
+  ) : (
+    <button onClick={() => setConfirm(true)}
+      className="flex-shrink-0 flex items-center gap-1.5 px-2.5 py-1 bg-violet-600/15 hover:bg-violet-600/30 border border-violet-500/30 text-violet-300 text-xs rounded-lg transition">
+      <span className="text-[10px] font-bold">AI</span>
+      Заполнить шаблоном
+    </button>
+  );
+}
+
+import { useState } from "react";
+
+interface EditorProps {
+  isDark: boolean;
+  readOnly: boolean;
+  saving: boolean;
+  msg: string;
+  dirty: boolean;
+  generalPart: string;
+  systemPart: string;
+  formatPart: string;
+  planPart: string;
+  user?: UserProfile | null;
+  onGeneralChange: (val: string) => void;
+  onSystemChange: (val: string) => void;
+  onFormatChange: (val: string) => void;
+  onPlanChange: (val: string) => void;
+  onSave: () => void;
+}
+
+export default function TabPromptEditor({
+  isDark, readOnly, saving, msg, dirty,
+  generalPart, systemPart, formatPart, planPart,
+  user,
+  onGeneralChange, onSystemChange, onFormatChange, onPlanChange,
+  onSave,
+}: EditorProps) {
+  const [activeTab, setActiveTab] = useState<"general" | "system" | "format" | "plan">("general");
+
+  const textareaClass = `w-full ${isDark ? "bg-white/5 border-white/10 text-white" : "bg-gray-50 border-gray-200 text-gray-900"} border rounded-xl px-4 py-3 text-sm font-mono resize-y outline-none focus:border-violet-500 transition`;
+  const descClass = `${isDark ? "text-white/30" : "text-gray-400"} text-xs flex-1 min-w-0`;
+
+  return (
+    <div className="flex flex-col gap-3">
+      <div className="flex flex-col gap-2">
+        <div>
+          <p className={`${isDark ? "text-white" : "text-gray-900"} font-medium text-sm`}>Инструкции для AI</p>
+          <p className={`${isDark ? "text-white/40" : "text-gray-400"} text-xs mt-0.5`}>Прайс и правила расчёта подставляются автоматически — здесь только общие инструкции и формат.</p>
+        </div>
+        <div className={`flex gap-1 ${isDark ? "bg-white/5" : "bg-gray-100"} rounded-lg p-0.5 w-full`}>
+          {(["general", "system", "format", "plan"] as const).map(tab => (
+            <button key={tab} onClick={() => setActiveTab(tab)}
+              className={`flex-1 text-xs px-2 py-1.5 rounded-md transition ${activeTab === tab ? "bg-violet-600 text-white" : isDark ? "text-white/40 hover:text-white" : "text-gray-500 hover:text-gray-900"}`}>
+              {tab === "general" ? "Общее" : tab === "system" ? "Инструкции" : tab === "format" ? "Формат ответа" : "Построитель"}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {activeTab === "general" && (
+        <div className="flex flex-col gap-2">
+          <div className="flex flex-wrap items-start justify-between gap-2">
+            <p className={descClass}>Роль бота, название компании, контакты, общее представление. Эта часть идёт первой в промпте.</p>
+            <TemplateButton onApply={onGeneralChange} template={buildTemplateGeneral(user)} />
+          </div>
+          <textarea value={generalPart} onChange={e => onGeneralChange(e.target.value)} readOnly={readOnly} rows={18} className={textareaClass} />
+        </div>
+      )}
+
+      {activeTab === "system" && (
+        <div className="flex flex-col gap-2">
+          <div className="flex flex-wrap items-start justify-between gap-2">
+            <p className={descClass}>Общие принципы расчёта, ограничения. <span className="text-amber-500">Правила по конкретным позициям — во вкладке «Правила».</span></p>
+            <TemplateButton onApply={onSystemChange} template={buildTemplateSystem(user)} />
+          </div>
+          <textarea value={systemPart} onChange={e => onSystemChange(e.target.value)} readOnly={readOnly} rows={18} className={textareaClass} />
+        </div>
+      )}
+
+      {activeTab === "format" && (
+        <div className="flex flex-col gap-2">
+          <div className="flex flex-wrap items-start justify-between gap-2">
+            <p className={descClass}>Формат каждой позиции, структура блоков ответа, итоговая стоимость.</p>
+            <TemplateButton onApply={onFormatChange} template={TEMPLATE_FORMAT} />
+          </div>
+          <textarea value={formatPart} onChange={e => onFormatChange(e.target.value)} readOnly={readOnly} rows={18} className={textareaClass} />
+        </div>
+      )}
+
+      {activeTab === "plan" && (
+        <div className="flex flex-col gap-2">
+          <div className="flex flex-wrap items-start justify-between gap-2">
+            <p className={descClass}>
+              Инструкции для голосового построителя планов. Используется вместо «Формата ответа» — возвращает JSON, а не текст. Количества берутся из данных помещения.
+            </p>
+            <TemplateButton onApply={onPlanChange} template={TEMPLATE_PLAN} />
+          </div>
+          <textarea value={planPart} onChange={e => onPlanChange(e.target.value)} readOnly={readOnly} rows={22} className={textareaClass} />
+        </div>
+      )}
+
+      {!readOnly && (
+        <div className="flex items-center gap-3">
+          <button onClick={onSave} disabled={saving}
+            className="bg-violet-600 hover:bg-violet-700 disabled:opacity-50 text-white rounded-lg px-6 py-2 font-medium transition flex items-center gap-2">
+            {saving ? <><Icon name="Loader" size={14} className="animate-spin" /> Сохраняю...</> : "Сохранить"}
+          </button>
+          {msg && (
+            <span className={`text-sm flex items-center gap-1 ${msg.includes("Ошибка") ? "text-red-400" : "text-green-400"}`}>
+              {!msg.includes("Ошибка") && <Icon name="Check" size={13} />}
+              {msg}
+            </span>
+          )}
+          {dirty && !saving && !msg && (
+            <span className="text-white/30 text-xs">Есть несохранённые изменения</span>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
