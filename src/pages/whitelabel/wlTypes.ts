@@ -6,11 +6,64 @@ export const AI_URL         = (func2url as Record<string, string>)["ai-chat"]
 export const PDF_URL        = (func2url as Record<string, string>)["generate-pdf"];
 export const PARSE_SITE_URL = (func2url as Record<string, string>)["parse-site"];
 
+/** Декодирует punycode-домен (xn--...) в кириллицу/unicode через встроенный punycode-декодер. */
+function punycodeDecodeHost(host: string): string {
+  // Браузерный URL API кодирует IDN → punycode, но не декодирует обратно.
+  // Используем встроенный алгоритм punycode (RFC 3492) вручную для каждого лейбла.
+  return host.split(".").map(label => {
+    if (!label.startsWith("xn--")) return label;
+    try {
+      const code = label.slice(4); // убираем "xn--"
+      const base = 36, tMin = 1, tMax = 26, skew = 38, damp = 700, initialBias = 72, initialN = 128;
+      let n = initialN, i = 0, bias = initialBias;
+      const output: number[] = [];
+
+      // Базовая часть (ASCII до последнего дефиса)
+      const lastDash = code.lastIndexOf("-");
+      const basic = lastDash < 0 ? "" : code.slice(0, lastDash);
+      const rest  = lastDash < 0 ? code : code.slice(lastDash + 1);
+      for (const ch of basic) output.push(ch.charCodeAt(0));
+
+      const digitOf = (c: string) => {
+        const cp = c.charCodeAt(0);
+        if (cp >= 48 && cp <= 57)  return cp - 22;   // '0'-'9' → 26-35
+        if (cp >= 65 && cp <= 90)  return cp - 65;   // 'A'-'Z'
+        if (cp >= 97 && cp <= 122) return cp - 97;   // 'a'-'z'
+        return base;
+      };
+      const adaptBias = (delta: number, numPoints: number, firstTime: boolean) => {
+        delta = firstTime ? Math.floor(delta / damp) : delta >> 1;
+        delta += Math.floor(delta / numPoints);
+        let k = 0;
+        while (delta > Math.floor(((base - tMin) * tMax) / 2)) { delta = Math.floor(delta / (base - tMin)); k += base; }
+        return k + Math.floor(((base - tMin + 1) * delta) / (delta + skew));
+      };
+
+      let idx = 0;
+      while (idx < rest.length) {
+        const oldi = i;
+        let w = 1;
+        for (let k = base; ; k += base) {
+          const digit = digitOf(rest[idx++]);
+          i += digit * w;
+          const t = k <= bias ? tMin : k >= bias + tMax ? tMax : k - bias;
+          if (digit < t) break;
+          w *= base - t;
+        }
+        bias = adaptBias(i - oldi, output.length + 1, oldi === 0);
+        n += Math.floor(i / (output.length + 1));
+        i %= output.length + 1;
+        output.splice(i++, 0, n);
+      }
+      return String.fromCodePoint(...output);
+    } catch { return label; }
+  }).join(".");
+}
+
 export function decodeDomain(siteUrl: string): string {
   try {
     const host = siteUrl.replace(/https?:\/\//, "").split("/")[0];
-    // URL.hostname возвращает punycode для кириллических доменов,
-    // поэтому берём исходный host без лишней перекодировки
+    if (host.includes("xn--")) return punycodeDecodeHost(host);
     return host;
   } catch {
     return siteUrl.replace(/https?:\/\//, "").split("/")[0];

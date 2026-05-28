@@ -577,12 +577,45 @@ def hash_password(password: str) -> str:
     import hashlib
     return hashlib.sha256(password.encode()).hexdigest()
 
+def normalize_site_url(url: str) -> str:
+    """Нормализует URL: IDN (punycode xn--) → кириллица/unicode через encodings.idna."""
+    try:
+        if not url.startswith("http"):
+            url = "https://" + url
+        # Декодируем punycode-метки домена в unicode
+        from urllib.parse import urlparse, urlunparse
+        parsed = urlparse(url)
+        host = parsed.hostname or ""
+        if "xn--" in host:
+            try:
+                import encodings.idna as _idna
+                labels = host.split(".")
+                decoded_labels = []
+                for label in labels:
+                    try:
+                        decoded_labels.append(_idna.ToUnicode(label))
+                    except Exception:
+                        decoded_labels.append(label)
+                unicode_host = ".".join(decoded_labels)
+                # Пересобираем URL с unicode-хостом
+                netloc = unicode_host
+                if parsed.port:
+                    netloc += f":{parsed.port}"
+                url = urlunparse((parsed.scheme, netloc, parsed.path, parsed.params, parsed.query, parsed.fragment))
+            except Exception:
+                pass  # оставляем как есть
+    except Exception:
+        pass
+    return url
+
+
 def create_demo_company(site_url: str, brand: dict, wl_manager_id=None) -> tuple[int, str, int]:
     """
     Создаёт новый аккаунт company с has_own_agent=true и запись в demo_companies.
     Возвращает (company_id, token, demo_id).
     """
     import secrets as _sec
+    site_url = normalize_site_url(site_url)
     slug = re.sub(r"https?://", "", site_url).split("/")[0].replace(".", "-")
     demo_email = f"demo-{slug}-{_sec.token_hex(4)}@demo.local"
     temp_pass  = _sec.token_urlsafe(10)
