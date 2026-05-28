@@ -487,12 +487,12 @@ def handler(event: dict, context) -> dict:
             return resp(400, {'error': 'Укажите название товара'})
 
         tavily_key = os.environ.get('TAVILY_API_KEY', '')
-        openai_key = os.environ.get('OPENAI_API_KEY', '')
-        print('tavily_key present=', bool(tavily_key), 'openai_key present=', bool(openai_key))
+        openrouter_key = os.environ.get('OPENROUTER_API_KEY_2', '')
+        print('tavily_key present=', bool(tavily_key), 'openrouter_key present=', bool(openrouter_key))
         if not tavily_key:
             return resp(500, {'error': 'TAVILY_API_KEY не настроен'})
-        if not openai_key:
-            return resp(500, {'error': 'OPENAI_API_KEY не настроен'})
+        if not openrouter_key:
+            return resp(500, {'error': 'OPENROUTER_API_KEY_2 не настроен'})
 
         try:
             print('entering try block')
@@ -540,10 +540,10 @@ def handler(event: dict, context) -> dict:
             )
 
             ai_resp = requests.post(
-                'https://api.openai.com/v1/chat/completions',
-                headers={'Authorization': f'Bearer {openai_key}', 'Content-Type': 'application/json'},
+                'https://openrouter.ai/api/v1/chat/completions',
+                headers={'Authorization': f'Bearer {openrouter_key}', 'Content-Type': 'application/json'},
                 json={
-                    'model': 'gpt-4o-mini',
+                    'model': 'openai/gpt-4o-mini',
                     'messages': [
                         {'role': 'system', 'content': system_prompt},
                         {'role': 'user', 'content': user_prompt},
@@ -553,7 +553,7 @@ def handler(event: dict, context) -> dict:
                 },
                 timeout=20,
             )
-            print('openai status=', ai_resp.status_code, 'body=', ai_resp.text[:300])
+            print('openrouter status=', ai_resp.status_code, 'body=', ai_resp.text[:300])
             if ai_resp.status_code != 200:
                 return resp(500, {'error': 'Ошибка AI: ' + ai_resp.text[:200]})
 
