@@ -121,13 +121,8 @@ export function SegmentItemsBadges({
             onRemoveItem?.(seg.id, item.priceId);
           } else {
             dblRef.current = { key: itemKey, t: now };
-            const sx = e.clientX, sy = e.clientY;
-            // Одиночный клик мышью — открыть попап
-            setTimeout(() => {
-              if (dblRef.current.key === itemKey) {
-                onEditSegItem?.(seg.id, item.priceId, sx, sy);
-              }
-            }, 420);
+            // Одиночный клик мышью — сразу открываем попап
+            onEditSegItem?.(seg.id, item.priceId, e.clientX, e.clientY);
           }
         };
 
@@ -292,15 +287,9 @@ export function SegmentItemsBadges({
                 dblRef.current = { key: "", t: 0 };
                 onRemoveItem?.(seg.id, item.priceId);
               } else {
-                // Одиночный тап — открыть попап через 350мс (ждём второго тапа)
+                // Одиночный тап — сразу открываем попап
                 dblRef.current = { key: itemKey, t: now };
-                const sx = touch.clientX, sy = touch.clientY;
-                setTimeout(() => {
-                  if (dblRef.current.key === itemKey) {
-                    dblRef.current = { key: "", t: 0 };
-                    onEditSegItem?.(seg.id, item.priceId, sx, sy);
-                  }
-                }, 350);
+                onEditSegItem?.(seg.id, item.priceId, touch.clientX, touch.clientY);
               }
             }
           }
