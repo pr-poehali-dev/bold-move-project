@@ -73,9 +73,9 @@ export default function QuickAccessBar() {
                 onClick={() => handleItem(item)}
                 className="flex-1 flex flex-col items-center justify-center gap-1 py-2 rounded-xl text-[10px] font-medium active:scale-95 transition-transform"
                 style={{
-                  background: isActive ? "rgba(124,58,237,0.25)" : "rgba(255,255,255,0.07)",
-                  border: `1px solid ${isActive ? "rgba(124,58,237,0.5)" : "rgba(255,255,255,0.1)"}`,
-                  color: isActive ? "#a78bfa" : "rgba(255,255,255,0.6)",
+                  background: isActive ? "rgba(251,146,60,0.15)" : "rgba(255,255,255,0.07)",
+                  border: `1px solid ${isActive ? "rgba(251,146,60,0.5)" : "rgba(255,255,255,0.1)"}`,
+                  color: isActive ? "rgba(251,146,60,0.9)" : "rgba(255,255,255,0.6)",
                 }}
               >
                 <Icon name={item.icon} size={14} />
