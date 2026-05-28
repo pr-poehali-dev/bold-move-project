@@ -107,6 +107,11 @@ export default function useCatalogVoiceHandler({ state, allPrices, onAssignMany,
       const botNames = items.map(i => i.name.toLowerCase());
       const KEYWORD_MAP: Record<string, string[]> = {
         "парящ": ["flexy", "fly", "пк-6"],
+        "борящ": ["flexy", "fly", "пк-6"],
+        "палящ": ["flexy", "fly", "пк-6"],
+        "плавающ": ["flexy", "fly", "пк-6"],
+        "летящ": ["flexy", "fly", "пк-6"],
+        "висящ": ["flexy", "fly", "пк-6"],
         "теневой": ["eurokraab", "eurokrab", "классик"],
         "тенев": ["eurokraab", "eurokrab"],
         "стеновой": ["стеновой алюминиевый"],
@@ -114,6 +119,10 @@ export default function useCatalogVoiceHandler({ state, allPrices, onAssignMany,
         "люстр": ["под люстру", "планка"],
         "светильник": ["gx-53", "светильник"],
         "ниша": ["ниша", "пк-14", "пк-12", "пк-15"],
+        "пк-14": ["пк-14", "ниша"],
+        "пк-15": ["пк-15", "ниша"],
+        "пк-12": ["пк-12", "ниша"],
+        "пк-6": ["пк-6", "парящ"],
       };
       return prev.map(p => {
         const label = p.label.toLowerCase();
