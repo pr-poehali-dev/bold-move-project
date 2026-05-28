@@ -273,7 +273,13 @@ export default function PlanCatalogPanel({
     if (guaranteedItems.length !== items.length) {
       console.log("[voice] lighting bundle auto-completed:", guaranteedItems.map(i => i.name));
     }
-    const items_ = guaranteedItems;
+
+    // Если LLM добавил и "Стеновой алюминиевый" и "Потолочный алюминиевый" одновременно —
+    // убираем Потолочный: они из одной категории, стеновой алюминиевый является приоритетным
+    const hasStenovoy = guaranteedItems.some(i => /стеновой алюминиевый/i.test(i.name));
+    const items_ = hasStenovoy
+      ? guaranteedItems.filter(i => !/потолочный алюминиевый/i.test(i.name))
+      : guaranteedItems;
 
     // Команда замены: ставим новый товар на те же стены где стоял старый
     if (isReplaceCommand(transcript)) {
