@@ -23,6 +23,7 @@ export default function FaqProductRow({ product, expanded, onToggle, onChange, o
   const [uploading, setUploading] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [enriching, setEnriching] = useState(false);
+  const [enrichPreview, setEnrichPreview] = useState<string | null>(null);
   const [sliderIdx, setSliderIdx] = useState<number | null>(null);
   const [dragOver, setDragOver] = useState<number | null>(null);
   const dragFrom = useRef<number | null>(null);
@@ -85,11 +86,26 @@ export default function FaqProductRow({ product, expanded, onToggle, onChange, o
   const handleEnrich = async () => {
     if (!local.name) return;
     setEnriching(true);
+    setEnrichPreview(null);
     try {
       const { description } = await enrichProductData(token, local.name, local.description || "", categoryName);
-      update({ description }, true);
+      // Если описания нет — сразу вставляем, иначе — показываем превью с выбором
+      if (!local.description?.trim()) {
+        update({ description }, true);
+      } else {
+        setEnrichPreview(description);
+      }
     } catch (e) { console.error(e); }
     finally { setEnriching(false); }
+  };
+
+  const applyEnrich = (mode: "replace" | "append") => {
+    if (!enrichPreview) return;
+    const newDesc = mode === "replace"
+      ? enrichPreview
+      : (local.description?.trim() ? local.description.trim() + "\n\n" + enrichPreview : enrichPreview);
+    update({ description: newDesc }, true);
+    setEnrichPreview(null);
   };
 
   const handleAiImage = async () => {
@@ -199,6 +215,35 @@ export default function FaqProductRow({ product, expanded, onToggle, onChange, o
                   className="w-full rounded-lg px-3 py-2 text-sm outline-none resize-none transition disabled:opacity-60"
                   style={{ background: isDark ? "rgba(255,255,255,0.05)" : "#f3f4f6", border: `1px solid ${border}`, color: text, overflow: "hidden" }}
                 />
+
+                {/* Превью AI-описания с выбором действия */}
+                {enrichPreview && (
+                  <div className="mt-2 rounded-lg overflow-hidden" style={{ border: "1px solid rgba(139,92,246,0.4)", background: "rgba(139,92,246,0.07)" }}>
+                    <div className="flex items-center justify-between px-3 py-1.5" style={{ borderBottom: "1px solid rgba(139,92,246,0.2)", background: "rgba(139,92,246,0.1)" }}>
+                      <span className="text-[10px] font-bold flex items-center gap-1" style={{ color: "#a78bfa" }}>
+                        <Icon name="Sparkles" size={10} /> AI нашёл новое описание
+                      </span>
+                      <button onClick={() => setEnrichPreview(null)} className="opacity-50 hover:opacity-100 transition" style={{ color: "#a78bfa" }}>
+                        <Icon name="X" size={12} />
+                      </button>
+                    </div>
+                    <p className="px-3 py-2 text-xs leading-relaxed" style={{ color: text }}>{enrichPreview}</p>
+                    <div className="flex gap-2 px-3 pb-2.5">
+                      <button
+                        onClick={() => applyEnrich("replace")}
+                        className="flex-1 py-1.5 rounded-md text-[11px] font-bold transition hover:brightness-110"
+                        style={{ background: "rgba(139,92,246,0.8)", color: "#fff" }}>
+                        Заменить
+                      </button>
+                      <button
+                        onClick={() => applyEnrich("append")}
+                        className="flex-1 py-1.5 rounded-md text-[11px] font-bold transition hover:brightness-110"
+                        style={{ background: isDark ? "rgba(255,255,255,0.08)" : "#e5e7eb", color: text }}>
+                        Добавить в конец
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
 
