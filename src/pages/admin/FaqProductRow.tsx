@@ -37,8 +37,8 @@ export default function FaqProductRow({ product, expanded, onToggle, onChange, o
 
   useEffect(() => {
     if (savingCount.current === 0) {
-      setLocal(product);
       localRef.current = product;
+      setLocal(product);
     }
   }, [product]);
 
@@ -49,11 +49,14 @@ export default function FaqProductRow({ product, expanded, onToggle, onChange, o
       ? [(local as unknown as { image_url: string }).image_url]
       : [];
 
+  const setLocalSync = (val: FaqProduct) => {
+    localRef.current = val;
+    setLocal(val);
+  };
+
   const update = (patch: Partial<FaqProduct>, immediate = false) => {
-    // Всегда читаем актуальное состояние через ref — не устаревший снапшот замыкания
     const updated = { ...localRef.current, ...patch };
-    localRef.current = updated;
-    setLocal(updated);
+    setLocalSync(updated);
     onChange(updated, immediate);
   };
 
@@ -82,18 +85,19 @@ export default function FaqProductRow({ product, expanded, onToggle, onChange, o
   };
 
   const handleEnrich = async () => {
-    if (!local.name) return;
+    const name = localRef.current.name;
+    if (!name) return;
     setEnriching(true);
     setEnrichPreview(null);
     try {
-      const { description } = await enrichProductData(token, local.name, local.description || "", categoryName);
-      // Если описания нет — сразу вставляем, иначе — показываем превью с выбором
-      if (!local.description?.trim()) {
+      const currentDesc = localRef.current.description || "";
+      const { description } = await enrichProductData(token, name, currentDesc, categoryName);
+      if (!currentDesc.trim()) {
         update({ description }, true);
       } else {
         setEnrichPreview(description);
       }
-    } catch (e) { console.error(e); }
+    } catch (e) { console.error("enrich error:", e); }
     finally { setEnriching(false); }
   };
 
