@@ -285,6 +285,7 @@ export function SegmentItemsBadges({
 
         return (
           <g key={itemKey}
+            data-seg-item="1"
             onClick={handleClick}
             onMouseDown={handleMouseDown}
             onTouchStart={handleTouchStart}

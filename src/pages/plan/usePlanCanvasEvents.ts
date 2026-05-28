@@ -352,7 +352,10 @@ export function usePlanCanvasEvents({ state, onChange, onReplace, cs }: Params) 
       const raw = clientToSvg(t.clientX, t.clientY);
 
       // Двойной тап в любом месте полигона — выбрать все стены
-      if (isClosed) {
+      // Не засчитываем тап если он был по товару на стене
+      const tapTarget = e.target as Element;
+      const onSegItem = !!tapTarget.closest("[data-seg-item]");
+      if (isClosed && !onSegItem) {
         const now = Date.now();
         if (now - lastEmptyTapRef.current < 450) {
           lastEmptyTapRef.current = 0;
