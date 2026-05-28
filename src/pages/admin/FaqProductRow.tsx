@@ -131,12 +131,13 @@ export default function FaqProductRow({ product, expanded, onToggle, onChange, o
                 <div className="text-[10px] uppercase tracking-wider mb-1" style={{ color: muted }}>Описание</div>
                 <textarea
                   value={local.description}
-                  onChange={e => update({ description: e.target.value }, false)}
+                  onChange={e => { update({ description: e.target.value }, false); e.target.style.height = "auto"; e.target.style.height = e.target.scrollHeight + "px"; }}
+                  ref={el => { if (el) { el.style.height = "auto"; el.style.height = el.scrollHeight + "px"; } }}
                   disabled={readOnly}
                   placeholder="Цена, особенности, применение..."
-                  rows={4}
-                  className="w-full rounded-lg px-3 py-2 text-sm outline-none resize-y transition disabled:opacity-60"
-                  style={{ background: isDark ? "rgba(255,255,255,0.05)" : "#f3f4f6", border: `1px solid ${border}`, color: text }}
+                  rows={1}
+                  className="w-full rounded-lg px-3 py-2 text-sm outline-none resize-none transition disabled:opacity-60"
+                  style={{ background: isDark ? "rgba(255,255,255,0.05)" : "#f3f4f6", border: `1px solid ${border}`, color: text, overflow: "hidden" }}
                 />
               </div>
             </div>
