@@ -171,9 +171,14 @@ export default function useCatalogVoiceHandler({ state, allPrices, onAssignMany,
       }
 
       if (matched.isWallItem && state.segments.length > 0) {
-        // Если LLM передал поле wall — используем его напрямую как направление
+        // Если LLM передал поле wall — переводим в русский и ищем сегмент
+        const WALL_RU: Record<string, string> = {
+          left: "слева", right: "справа", top: "сверху", bottom: "снизу",
+          upper: "сверху", lower: "снизу", all: "на все стены",
+          лево: "слева", право: "справа", верх: "сверху", низ: "снизу",
+        };
         const wallHint = voiceItem.wall
-          ? findTargetSegIds(voiceItem.wall.toLowerCase(), state)
+          ? findTargetSegIds(WALL_RU[voiceItem.wall.toLowerCase()] ?? voiceItem.wall.toLowerCase(), state)
           : null;
         const itemSegIds = wallHint ?? findSegIdsForItem(matched.name, matched.category, transcript, state);
         console.log("[voice] segIds for", matched.name, voiceItem.wall ? `(wall=${voiceItem.wall})` : "", "->", itemSegIds);
