@@ -280,18 +280,7 @@ export function usePlanCatalog(
         if (isNiche) {
           // Ниши — добавляем вторым, не заменяем существующее
           if (existing.some(it => it.priceId === item.priceId)) return seg;
-          let updatedItems = [...existing, { ...item, quantity: meters }];
-
-          // ОБЯЗАТЕЛЬНОЕ ПРАВИЛО: за нишей всегда должен быть профиль для стены.
-          // Если на этой стене нет ни одного не-нишевого профиля — добавляем превалирующий.
-          const hasWallProfile = existing.some(it => !NICHE_CATEGORIES.has(it.category));
-          if (!hasWallProfile) {
-            const dominant = findDominantWallProfile(newSegments);
-            if (dominant) {
-              updatedItems = [...updatedItems, { ...dominant, quantity: meters }];
-            }
-          }
-          return { ...seg, items: updatedItems };
+          return { ...seg, items: [...existing, { ...item, quantity: meters }] };
         } else {
           // Обычный профиль — ЗАМЕНЯЕМ существующий той же категории на этой стене
           const sameCategory = existing.filter(it => it.category === item.category);
