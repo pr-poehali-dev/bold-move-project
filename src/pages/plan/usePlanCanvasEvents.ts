@@ -365,7 +365,7 @@ export function usePlanCanvasEvents({ state, onChange, onReplace, cs }: Params) 
         if (now - lastEmptyTapRef.current < 450) {
           lastEmptyTapRef.current = 0;
           dragRef.current = null; panRef.current = null;
-          const allSelected = state.selectedSegmentIds?.length === segments.length;
+          const allSelected = selectedSegmentIdsRef.current.length === segments.length;
           if (allSelected) {
             // Все уже выбраны — снимаем выделение
             onChange({ selectedSegmentIds: [], selectedSegmentId: null, selectedPointId: null });

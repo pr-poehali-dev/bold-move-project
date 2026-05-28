@@ -117,20 +117,25 @@ export default function PlanCanvasSvg({
     onChange({ segments: newSegs });
   }, [segments, onChange]);
 
-  // Обёртка onTouchEnd — перехватывает тач в режиме movePending
-  const handleTouchEndWrapped = useCallback((e: React.TouchEvent<SVGSVGElement>) => {
-    if (movePendingRef.current && e.changedTouches.length === 1) {
+  // Нативный перехват touchend для режима перемещения (до обычных обработчиков)
+  React.useEffect(() => {
+    const svg = svgRef.current;
+    if (!svg) return;
+    const handler = (e: TouchEvent) => {
+      if (!movePendingRef.current || e.changedTouches.length !== 1) return;
       const t = e.changedTouches[0];
       const svgPt = clientToSvgMove(t.clientX, t.clientY);
       const hit = findNearestSegment(svgPt.x, svgPt.y, points, segments, Math.max(40, 60 / state.settings.zoom));
       if (hit) {
         e.stopPropagation();
+        e.preventDefault();
         executeMoveToSeg(hit.id);
-        return;
       }
-    }
-    onTouchEnd(e);
-  }, [onTouchEnd, clientToSvgMove, points, segments, state.settings.zoom, executeMoveToSeg]);
+    };
+    // capture:true — срабатывает раньше нативных обработчиков usePlanCanvasEvents
+    svg.addEventListener("touchend", handler, { capture: true });
+    return () => svg.removeEventListener("touchend", handler, true);
+  }, [svgRef, clientToSvgMove, points, segments, state.settings.zoom, executeMoveToSeg]);
 
   // Подсказка "двойной клик — выбрать все стены" — показывается один раз
   const HINT_KEY = "plan_dblclick_hint_shown";
@@ -218,9 +223,7 @@ export default function PlanCanvasSvg({
       onMouseDown={onMouseDown}
       onMouseUp={onMouseUp}
       onMouseLeave={onMouseUp}
-      onTouchStart={onTouchStart}
-      onTouchMove={onTouchMove}
-      onTouchEnd={handleTouchEndWrapped}
+
       onContextMenu={e => e.preventDefault()}
     >
       <defs>
