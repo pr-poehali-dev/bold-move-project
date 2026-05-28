@@ -495,6 +495,7 @@ def handler(event: dict, context) -> dict:
             return resp(500, {'error': 'OPENAI_API_KEY не настроен'})
 
         try:
+            print('entering try block')
             # 1. Ищем информацию о товаре через Tavily
             context_parts = []
             for query in [
@@ -552,10 +553,12 @@ def handler(event: dict, context) -> dict:
                 },
                 timeout=20,
             )
+            print('openai status=', ai_resp.status_code, 'body=', ai_resp.text[:300])
             if ai_resp.status_code != 200:
                 return resp(500, {'error': 'Ошибка AI: ' + ai_resp.text[:200]})
 
             description = ai_resp.json()['choices'][0]['message']['content'].strip()
+            print('success, desc=', description[:100])
             return resp(200, {'description': description, 'web_found': bool(web_context)})
 
         except Exception as e:

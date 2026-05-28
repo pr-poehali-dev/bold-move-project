@@ -87,12 +87,15 @@ export default function FaqProductRow({ product, expanded, onToggle, onChange, o
 
   const handleEnrich = async () => {
     const name = localRef.current.name;
-    if (!name) return;
+    console.log("[enrich] click, name=", name, "enriching=", enriching, "token=", token?.slice(0,8));
+    if (!name) { console.warn("[enrich] no name, abort"); return; }
     setEnriching(true);
     setEnrichPreview(null);
     try {
       const currentDesc = localRef.current.description || "";
+      console.log("[enrich] calling API, desc_len=", currentDesc.length);
       const { description } = await enrichProductData(token, name, currentDesc, categoryName);
+      console.log("[enrich] got description:", description?.slice(0, 80));
       if (!currentDesc.trim()) {
         update({ description }, true);
       } else {
