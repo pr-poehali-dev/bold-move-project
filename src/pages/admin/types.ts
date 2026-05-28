@@ -5,7 +5,7 @@ export interface FaqProduct {
   id: string;        // локальный uuid
   name: string;
   description: string;
-  image_url: string;
+  images: string[];  // до 5 картинок
 }
 
 export interface FaqItem {
