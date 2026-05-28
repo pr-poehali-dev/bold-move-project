@@ -75,6 +75,9 @@ export default function PlanCanvasSvg({
     segId: string; priceId: number; screenX: number; screenY: number;
   } | null>(null);
 
+  // Режим перемещения: ждём тапа по целевой стене
+  const [movePending, setMovePending] = useState<{ fromSegId: string; priceId: number } | null>(null);
+
   // Подсказка "двойной клик — выбрать все стены" — показывается один раз
   const HINT_KEY = "plan_dblclick_hint_shown";
   const [showDblHint, setShowDblHint] = useState(false);
@@ -95,10 +98,17 @@ export default function PlanCanvasSvg({
   const shapePath = buildShapePath(points, segments, isClosed);
   const intersectingSegIds = isClosed ? findSelfIntersections(points, segments) : [];
 
+  // В режиме перемещения подсвечиваем целевые стены (все кроме исходной)
+  const moveTargetSegIds = movePending
+    ? segments.filter(s => s.id !== movePending.fromSegId).map(s => s.id)
+    : null;
+
   const ctx: RenderContext = {
     points, segments, diagonals, dimLines, scale, isClosed, tool,
     showDimLines, showSegmentLabels, showAngleLabels, showDiagonals, showPoints, showPointLabels,
-    selectedPointId, selectedSegmentId, selectedSegmentIds, selectedDiagonalId, selectedArcId, selectedDimLineId,
+    selectedPointId, selectedSegmentId,
+    selectedSegmentIds: moveTargetSegIds ?? selectedSegmentIds,
+    selectedDiagonalId, selectedArcId, selectedDimLineId,
     ghost, dimLineFrom, zoom, phase, intersectingSegIds,
     changedSegmentIds: state.isBuilt ? (state.changedSegmentIds ?? []) : [],
   };
@@ -115,6 +125,34 @@ export default function PlanCanvasSvg({
       }}>
         Двойной клик — выбрать все стены
       </div>
+    )}
+
+    {/* Режим перемещения товара — подсказка + оверлей для отмены */}
+    {movePending && (
+      <>
+        <div style={{
+          position: "absolute", top: 12, left: "50%", transform: "translateX(-50%)",
+          background: "rgba(6,182,212,0.15)", border: "1px solid rgba(6,182,212,0.6)",
+          color: "#67e8f9", fontSize: 13, fontWeight: 600,
+          padding: "8px 16px", borderRadius: 10,
+          zIndex: 60, whiteSpace: "nowrap", pointerEvents: "none",
+          boxShadow: "0 4px 16px rgba(0,0,0,0.4)",
+        }}>
+          Тапните на стену куда переместить
+        </div>
+        {/* Кнопка отмены */}
+        <button
+          onPointerDown={() => setMovePending(null)}
+          style={{
+            position: "absolute", top: 12, right: 12,
+            background: "rgba(17,12,36,0.92)", border: "1px solid rgba(124,58,237,0.4)",
+            color: "#c4b5fd", fontSize: 12, fontWeight: 600,
+            padding: "6px 12px", borderRadius: 8, cursor: "pointer", zIndex: 60,
+          }}
+        >
+          Отмена
+        </button>
+      </>
     )}
     <svg
       ref={svgRef}
@@ -159,7 +197,32 @@ export default function PlanCanvasSvg({
         )}
 
         {/* Отрезки — широкая зона для клика/тача */}
-        {renderSegments(ctx, handlers)}
+        {renderSegments(ctx, movePending ? {
+          ...handlers,
+          onSegmentClick: (e, toSegId) => {
+            e.stopPropagation();
+            const { fromSegId, priceId } = movePending;
+            setMovePending(null);
+            if (toSegId === fromSegId) return;
+            const fromSeg = segments.find(s => s.id === fromSegId);
+            const item = fromSeg?.items?.find(it => it.priceId === priceId);
+            if (!item) return;
+            const toSeg = segments.find(s => s.id === toSegId);
+            const meters = toSeg?.lengthCm ? Math.round(toSeg.lengthCm / 100 * 100) / 100 : item.quantity ?? 1;
+            const newSegs = segments.map(s => {
+              if (s.id === fromSegId) return { ...s, items: (s.items ?? []).filter(it => it.priceId !== priceId) };
+              if (s.id === toSegId) {
+                const existing = s.items ?? [];
+                if (existing.some(it => it.priceId === priceId)) {
+                  return { ...s, items: existing.map(it => it.priceId === priceId ? { ...it, quantity: (it.quantity ?? 1) + meters } : it) };
+                }
+                return { ...s, items: [...existing, { ...item, quantity: meters }] };
+              }
+              return s;
+            });
+            onChange({ segments: newSegs });
+          },
+        } : handlers)}
 
         {/* Размерные линии */}
         {segments.map(seg => renderDimLine(seg, ctx))}
@@ -359,6 +422,9 @@ export default function PlanCanvasSvg({
           }}
           onReplace={(segId, priceId) => {
             onEditSegItem?.(segId, priceId);
+          }}
+          onMove={(segId, priceId) => {
+            setMovePending({ fromSegId: segId, priceId });
           }}
           onQuantityChange={(segId, priceId, quantity) => {
             const newSegs = segments.map(s =>
