@@ -7,8 +7,8 @@ export type MainTab = "agent" | "team" | "own-agent";
 export const AGENT_TABS: { id: AgentSubTab; label: string; icon: string }[] = [
   { id: "prices",      label: "Цены",            icon: "Tag" },
   { id: "rules",       label: "Правила расчёта", icon: "SlidersHorizontal" },
-  { id: "prompt",      label: "Промпт",          icon: "BrainCircuit" },
   { id: "faq",         label: "База знаний",     icon: "Database" },
+  { id: "prompt",      label: "Промпт",          icon: "BrainCircuit" },
   { id: "corrections", label: "Обучение",        icon: "GraduationCap" },
 ];
 
