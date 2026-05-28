@@ -8,6 +8,7 @@ import {
 } from "./PlanCanvasRenderers";
 import { SegmentItemsBadges } from "./PlanCanvasLabelRenderers";
 import type { RenderContext, SegmentHandlers } from "./PlanCanvasRenderers";
+import SegItemPopup from "./SegItemPopup";
 
 interface Props {
   svgRef: React.RefObject<SVGSVGElement>;
@@ -68,6 +69,11 @@ export default function PlanCanvasSvg({
   const [hoverTooltip, setHoverTooltip] = useState<{ x: number; y: number; name: string; qty: number; unit: string } | null>(null);
   // Двойной клик для удаления иконки товара
   const lastBadgeTapRef = useRef<{ key: string; t: number }>({ key: "", t: 0 });
+
+  // Попап редактирования товара на стене
+  const [segPopup, setSegPopup] = useState<{
+    segId: string; priceId: number; screenX: number; screenY: number;
+  } | null>(null);
 
   // Подсказка "двойной клик — выбрать все стены" — показывается один раз
   const HINT_KEY = "plan_dblclick_hint_shown";
@@ -224,7 +230,9 @@ export default function PlanCanvasSvg({
               });
               onChange({ segments: newSegs });
             }}
-            onEditSegItem={onEditSegItem}
+            onEditSegItem={(segId, priceId, screenX, screenY) => {
+              setSegPopup({ segId, priceId, screenX, screenY });
+            }}
           />
         ))}
 
@@ -330,6 +338,37 @@ export default function PlanCanvasSvg({
         )}
       </g>
     </svg>
+
+    {/* Попап редактирования товара на стене */}
+    {segPopup && (() => {
+      const seg = segments.find(s => s.id === segPopup.segId);
+      const item = seg?.items?.find(it => it.priceId === segPopup.priceId);
+      if (!seg || !item) return null;
+      return (
+        <SegItemPopup
+          item={{ ...item, quantity: item.quantity ?? 1 }}
+          segId={segPopup.segId}
+          screenX={segPopup.screenX}
+          screenY={segPopup.screenY}
+          onClose={() => setSegPopup(null)}
+          onRemove={(segId, priceId) => {
+            const newSegs = segments.map(s =>
+              s.id !== segId ? s : { ...s, items: (s.items ?? []).filter(it => it.priceId !== priceId) }
+            );
+            onChange({ segments: newSegs });
+          }}
+          onReplace={(segId, priceId) => {
+            onEditSegItem?.(segId, priceId);
+          }}
+          onQuantityChange={(segId, priceId, quantity) => {
+            const newSegs = segments.map(s =>
+              s.id !== segId ? s : { ...s, items: (s.items ?? []).map(it => it.priceId === priceId ? { ...it, quantity } : it) }
+            );
+            onChange({ segments: newSegs });
+          }}
+        />
+      );
+    })()}
     </>
   );
 }

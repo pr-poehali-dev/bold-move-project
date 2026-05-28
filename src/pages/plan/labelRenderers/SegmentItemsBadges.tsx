@@ -11,7 +11,7 @@ interface SegmentItemsBadgesProps {
   allSegments: Segment[];
   onRemoveItem?: (segId: string, priceId: number) => void;
   onUpdateQuantity?: (segId: string, priceId: number, quantity: number) => void;
-  onEditSegItem?: (segId: string, priceId: number) => void;
+  onEditSegItem?: (segId: string, priceId: number, screenX: number, screenY: number) => void;
   // Drag между стенами
   onMoveItemToSeg?: (fromSegId: string, priceId: number, toSegId: string) => void;
 }
@@ -116,10 +116,11 @@ export function SegmentItemsBadges({
             onRemoveItem?.(seg.id, item.priceId);
           } else {
             dblRef.current = { key: itemKey, t: now };
-            // Одиночный клик — открыть модалку редактирования/замены
+            const sx = e.clientX, sy = e.clientY;
+            // Одиночный клик — открыть попап
             setTimeout(() => {
               if (dblRef.current.key === itemKey) {
-                onEditSegItem?.(seg.id, item.priceId);
+                onEditSegItem?.(seg.id, item.priceId, sx, sy);
               }
             }, 420);
           }
@@ -284,12 +285,13 @@ export function SegmentItemsBadges({
                 dblRef.current = { key: "", t: 0 };
                 onRemoveItem?.(seg.id, item.priceId);
               } else {
-                // Одиночный тап — открыть модалку через 350мс (ждём второго тапа)
+                // Одиночный тап — открыть попап через 350мс (ждём второго тапа)
                 dblRef.current = { key: itemKey, t: now };
+                const sx = touch.clientX, sy = touch.clientY;
                 setTimeout(() => {
                   if (dblRef.current.key === itemKey) {
                     dblRef.current = { key: "", t: 0 };
-                    onEditSegItem?.(seg.id, item.priceId);
+                    onEditSegItem?.(seg.id, item.priceId, sx, sy);
                   }
                 }, 350);
               }
