@@ -469,17 +469,26 @@ def handler(event: dict, context) -> dict:
 
     # --- POST ?r=faq-enrich-product  — сбор данных о товаре из интернета через Tavily + AI
     if r == 'faq-enrich-product' and method == 'POST':
-        if not check_auth(hdrs):
+        print('faq-enrich-product called, method=', method)
+        auth_ok = check_auth(hdrs)
+        print('auth_ok=', auth_ok)
+        if not auth_ok:
             return resp(401, {'error': 'Unauthorized'})
-        body = json.loads(body_str)
+        try:
+            body = json.loads(body_str)
+        except Exception as ex:
+            print('body parse error:', ex, 'body_str=', body_str[:200])
+            return resp(400, {'error': 'bad json'})
         product_name = (body.get('name') or '').strip()
         current_description = (body.get('description') or '').strip()
         category_name = (body.get('category') or '').strip()
+        print('product_name=', product_name, 'desc_len=', len(current_description))
         if not product_name:
             return resp(400, {'error': 'Укажите название товара'})
 
         tavily_key = os.environ.get('TAVILY_API_KEY', '')
         openai_key = os.environ.get('OPENAI_API_KEY', '')
+        print('tavily_key present=', bool(tavily_key), 'openai_key present=', bool(openai_key))
         if not tavily_key:
             return resp(500, {'error': 'TAVILY_API_KEY не настроен'})
         if not openai_key:
