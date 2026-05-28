@@ -149,6 +149,16 @@ export default function PlanPage() {
 
 
 
+  // На мобиле: при выборе угла закрываем правую панель (она мешает drag)
+  const prevSelectedPointId = useRef(state.selectedPointId);
+  useEffect(() => {
+    if (!isMobile) return;
+    if (state.selectedPointId && state.selectedPointId !== prevSelectedPointId.current) {
+      setRightPanelOpen(false);
+    }
+    prevSelectedPointId.current = state.selectedPointId;
+  }, [state.selectedPointId, isMobile]);  
+
   // ── Голосовое рисование ───────────────────────────────────────────────────
   const voiceDraw = useVoiceDraw({ state, onChange: handleChange });
 
