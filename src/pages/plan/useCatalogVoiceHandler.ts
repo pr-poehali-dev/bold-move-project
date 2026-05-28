@@ -74,8 +74,13 @@ export default function useCatalogVoiceHandler({ state, allPrices, onAssignMany,
     if (state.segments.length === 0) return null;
     const segsWithSpecial = new Set<string>();
     for (const { item, segIds } of otherWallItems) {
-      if (SPECIAL_PROFILE_CATS.has(item.category) && segIds) {
-        for (const id of segIds) segsWithSpecial.add(id);
+      if (SPECIAL_PROFILE_CATS.has(item.category)) {
+        if (segIds && segIds[0] !== ALL_SEGS_SENTINEL) {
+          // Конкретные стены — исключаем только их
+          for (const id of segIds) segsWithSpecial.add(id);
+        } else if (!segIds) {
+          // Стена неизвестна — на всякий случай не трогаем логику (стеновой пойдёт на все оставшиеся)
+        }
       }
     }
     for (const seg of state.segments) {
@@ -198,6 +203,10 @@ export default function useCatalogVoiceHandler({ state, allPrices, onAssignMany,
         console.log("[voice] segIds for", matched.name, "->", itemSegIds);
         if (!itemSegIds) {
           unknownWallItems.push(matched);
+          // Спецпрофили с неизвестной стеной всё равно учитываем при расчёте свободных стен
+          if (SPECIAL_PROFILE_CATS.has(matched.category)) {
+            wallItemsWithSegs.push({ item: matched, segIds: null });
+          }
         } else {
           wallItemsWithSegs.push({ item: matched, segIds: itemSegIds });
         }
@@ -207,13 +216,16 @@ export default function useCatalogVoiceHandler({ state, allPrices, onAssignMany,
     });
 
     // Второй проход: стеновой алюминиевый на свободные стены (все спецпрофили уже в wallItemsWithSegs)
+    console.log("[voice] wallItemsWithSegs before stenovoy:", wallItemsWithSegs.map(w => ({ name: w.item.name, cat: w.item.category, segs: w.segIds })));
+    console.log("[voice] stenovoyItems count:", stenovoyItems.length);
     stenovoyItems.forEach(({ voiceItem, matched }) => {
       const freeSegs = findSegsWithoutSpecialProfile(wallItemsWithSegs);
-      console.log("[voice] stenovoy → free segs:", freeSegs);
+      console.log("[voice] stenovoy → free segs:", freeSegs, "all segs:", state.segments.map(s => s.id));
       if (freeSegs && freeSegs.length > 0) {
         wallItemsWithSegs.push({ item: { ...matched, quantity: voiceItem.qty ?? 1 }, segIds: freeSegs });
       }
     });
+    console.log("[voice] final wallItemsWithSegs:", wallItemsWithSegs.map(w => ({ name: w.item.name, segs: w.segIds })));
 
     if (wallItemsWithSegs.length > 0 || floorItems.length > 0) {
       onAssignMany(wallItemsWithSegs, floorItems);
