@@ -27,6 +27,9 @@ export function SegmentItemsBadges({
   const dblRef       = useRef<{ key: string; t: number }>({ key: "", t: 0 });
   // Mouse drag ref
   const dragRef      = useRef<{ priceId: number; startX: number; startY: number; moved: boolean } | null>(null);
+  // Флаг: был touch — игнорируем следующий синтетический click от браузера
+  const wasTouchedRef = useRef(false);
+
   // Touch state: таймер long-press, флаг что drag активирован
   const touchRef = useRef<{
     priceId: number;
@@ -109,15 +112,17 @@ export function SegmentItemsBadges({
 
         const handleClick = (e: React.MouseEvent) => {
           e.stopPropagation();
+          // Игнорируем синтетический click после touch
+          if (wasTouchedRef.current) { wasTouchedRef.current = false; return; }
           const now = Date.now();
           if (dblRef.current.key === itemKey && now - dblRef.current.t < 400) {
-            // Двойной клик — удалить
+            // Двойной клик мышью — удалить
             dblRef.current = { key: "", t: 0 };
             onRemoveItem?.(seg.id, item.priceId);
           } else {
             dblRef.current = { key: itemKey, t: now };
             const sx = e.clientX, sy = e.clientY;
-            // Одиночный клик — открыть попап
+            // Одиночный клик мышью — открыть попап
             setTimeout(() => {
               if (dblRef.current.key === itemKey) {
                 onEditSegItem?.(seg.id, item.priceId, sx, sy);
@@ -180,6 +185,7 @@ export function SegmentItemsBadges({
 
         const handleTouchStart = (e: React.TouchEvent) => {
           e.stopPropagation();
+          wasTouchedRef.current = true; // блокируем синтетический click
           if (touchRef.current?.timer) clearTimeout(touchRef.current.timer);
 
           const touch = e.touches[0];
@@ -260,6 +266,7 @@ export function SegmentItemsBadges({
           const tr = touchRef.current;
           if (!tr || tr.key !== itemKey) return;
           e.stopPropagation();
+          e.preventDefault(); // предотвращаем синтетический click от браузера
 
           // Отменяем таймер long-press
           if (tr.timer) { clearTimeout(tr.timer); tr.timer = null; }
