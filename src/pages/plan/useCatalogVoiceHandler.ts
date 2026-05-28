@@ -171,6 +171,10 @@ export default function useCatalogVoiceHandler({ state, allPrices, onAssignMany,
     const floorItems: SegmentPriceItem[] = [];
     const unknownWallItems: SegmentPriceItem[] = [];
 
+    // Два прохода: сначала все позиции КРОМЕ стенового алюминиевого,
+    // потом стеновой — чтобы знать какие стены уже заняты спецпрофилями
+    const stenovoyItems: { voiceItem: VoiceCatalogItem; matched: SegmentPriceItem }[] = [];
+
     items_.forEach(voiceItem => {
       const matched = matchItem(voiceItem, allPrices);
       if (!matched) { console.log("[voice] no match for:", voiceItem.name); return; }
@@ -185,13 +189,9 @@ export default function useCatalogVoiceHandler({ state, allPrices, onAssignMany,
       }
 
       if (matched.isWallItem && state.segments.length > 0) {
-        // Стеновой алюминиевый — детерминированно на свободные стены, текст не читаем
+        // Стеновой алюминиевый — откладываем на второй проход
         if (/стеновой алюминиевый/i.test(matched.name)) {
-          const freeSegs = findSegsWithoutSpecialProfile(wallItemsWithSegs);
-          console.log("[voice] stenovoy → free segs:", freeSegs);
-          if (freeSegs && freeSegs.length > 0) {
-            wallItemsWithSegs.push({ item: matched, segIds: freeSegs });
-          }
+          stenovoyItems.push({ voiceItem, matched });
           return;
         }
         const itemSegIds = findSegIdsForItem(matched.name, matched.category, transcript, state);
@@ -203,6 +203,15 @@ export default function useCatalogVoiceHandler({ state, allPrices, onAssignMany,
         }
       } else {
         floorItems.push({ ...matched, quantity: voiceItem.qty ?? 1 });
+      }
+    });
+
+    // Второй проход: стеновой алюминиевый на свободные стены (все спецпрофили уже в wallItemsWithSegs)
+    stenovoyItems.forEach(({ voiceItem, matched }) => {
+      const freeSegs = findSegsWithoutSpecialProfile(wallItemsWithSegs);
+      console.log("[voice] stenovoy → free segs:", freeSegs);
+      if (freeSegs && freeSegs.length > 0) {
+        wallItemsWithSegs.push({ item: { ...matched, quantity: voiceItem.qty ?? 1 }, segIds: freeSegs });
       }
     });
 
