@@ -25,8 +25,17 @@ export default function FaqProductRow({ product, expanded, onToggle, onChange, o
   const [dragOver, setDragOver] = useState<number | null>(null);
   const dragFrom = useRef<number | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  // Список URL отклонённых пользователем — не предлагать повторно
+  const rejectedUrls = useRef<Set<string>>(new Set());
+  // Флаг: идёт локальное сохранение — не перезатирать из родителя
+  const isSaving = useRef(false);
 
-  useEffect(() => { setLocal(product); }, [product]);
+  useEffect(() => {
+    // Не перезатираем local пока идёт сохранение (чтобы удалённые картинки не вернулись)
+    if (!isSaving.current) {
+      setLocal(product);
+    }
+  }, [product]);
 
   // Нормализуем: старое поле image_url → images[]
   const images: string[] = local.images?.length
@@ -38,7 +47,14 @@ export default function FaqProductRow({ product, expanded, onToggle, onChange, o
   const update = (patch: Partial<FaqProduct>, immediate = false) => {
     const updated = { ...local, ...patch };
     setLocal(updated);
-    onChange(updated, immediate);
+    if (immediate) {
+      isSaving.current = true;
+      onChange(updated, true);
+      // Снимаем флаг после небольшой задержки (дольше чем круговой trip до БД)
+      setTimeout(() => { isSaving.current = false; }, 2000);
+    } else {
+      onChange(updated, false);
+    }
   };
 
   const handleFileUpload = async (files: FileList | null) => {
@@ -55,6 +71,9 @@ export default function FaqProductRow({ product, expanded, onToggle, onChange, o
   };
 
   const removeImage = (idx: number) => {
+    const removed = images[idx];
+    // Запоминаем удалённый URL чтобы AI не предложил его снова
+    if (removed) rejectedUrls.current.add(removed);
     update({ images: images.filter((_, i) => i !== idx) }, true);
   };
 
@@ -63,8 +82,13 @@ export default function FaqProductRow({ product, expanded, onToggle, onChange, o
     setGenerating(true);
     try {
       const available = 5 - images.length;
-      const urls = await searchProductImages(token, local.name || "натяжной потолок", available);
-      if (urls.length > 0) update({ images: [...images, ...urls] }, true);
+      // Передаём limit с запасом чтобы отфильтровать отклонённые
+      const fetchLimit = Math.min(available + rejectedUrls.current.size + 3, 10);
+      const allUrls = await searchProductImages(token, local.name || "натяжной потолок", fetchLimit);
+      // Фильтруем уже показанные/отклонённые и уже добавленные
+      const existing = new Set(images);
+      const fresh = allUrls.filter(u => !rejectedUrls.current.has(u) && !existing.has(u)).slice(0, available);
+      if (fresh.length > 0) update({ images: [...images, ...fresh] }, true);
     } catch (e) { console.error(e); }
     finally { setGenerating(false); }
   };
