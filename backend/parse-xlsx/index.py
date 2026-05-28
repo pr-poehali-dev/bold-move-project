@@ -394,7 +394,7 @@ def handler(event: dict, context) -> dict:
                     'include_images': True,
                     'include_image_descriptions': True,
                 },
-                timeout=20,
+                timeout=12,
             )
             if tv.status_code != 200:
                 return []
@@ -412,19 +412,16 @@ def handler(event: dict, context) -> dict:
             return result
 
         try:
-            # 1. Пробуем несколько разных формулировок запроса
-            query_variants = [
-                f"натяжной потолок {query} фото интерьер",
-                f"{query} потолок дизайн фото",
-                f"натяжной потолок {query} вид",
-            ]
+            # 1. Один запрос с широким охватом (экономим время)
             candidate_urls = []
-            for variant in query_variants:
-                if len(candidate_urls) >= limit * 2:
-                    break
-                new_urls = tavily_search(variant)
-                # Добавляем только те что ещё не встречались
-                for u in new_urls:
+            search_query = f"натяжной потолок {query} фото интерьер"
+            new_urls = tavily_search(search_query)
+            for u in new_urls:
+                if u not in candidate_urls and u not in exclude_urls:
+                    candidate_urls.append(u)
+            # 2. Если мало результатов — второй запрос
+            if len(candidate_urls) < limit:
+                for u in tavily_search(f"{query} потолок дизайн фото"):
                     if u not in candidate_urls and u not in exclude_urls:
                         candidate_urls.append(u)
 
@@ -441,7 +438,7 @@ def handler(event: dict, context) -> dict:
                 if len(results) >= limit:
                     break
                 try:
-                    dl = requests.get(img_url, headers={'User-Agent': ua}, timeout=8, stream=False)
+                    dl = requests.get(img_url, headers={'User-Agent': ua}, timeout=5, stream=False)
                     if dl.status_code != 200 or len(dl.content) < 2000:
                         continue
                     ct = dl.headers.get('Content-Type', 'image/jpeg').split(';')[0].strip()
