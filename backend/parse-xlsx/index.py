@@ -364,71 +364,84 @@ def handler(event: dict, context) -> dict:
         conn.commit(); cur.close(); conn.close()
         return resp(200, {'ok': True, 'updated': updated})
 
-    # --- POST ?r=faq-search-image  — поиск картинки по запросу через DuckDuckGo, сохранение в S3
+    # --- POST ?r=faq-search-image  — поиск картинок через Tavily (до 5 штук), сохранение в S3
     if r == 'faq-search-image' and method == 'POST':
         if not check_auth(hdrs):
             return resp(401, {'error': 'Unauthorized'})
-        body = json.loads(body_str)
-        query = (body.get('query') or '').strip()
+        body_data = json.loads(body_str)
+        query = (body_data.get('query') or '').strip()
+        limit = min(int(body_data.get('limit', 5)), 5)
         if not query:
             return resp(400, {'error': 'query required'})
 
-        # 1. Ищем картинку через DuckDuckGo iZip
-        search_url = f"https://duckduckgo.com/?q={requests.utils.quote(query)}&iax=images&ia=images&format=json"
-        headers_ddg = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-            'Accept': 'text/html,application/xhtml+xml',
-            'Referer': 'https://duckduckgo.com',
-        }
-        # Получаем vqd-токен
-        try:
-            vqd_resp = requests.get(f"https://duckduckgo.com/?q={requests.utils.quote(query)}&iax=images&ia=images",
-                                    headers=headers_ddg, timeout=10)
-            import re as _re2
-            vqd_match = _re2.search(r'vqd=([\d-]+)', vqd_resp.text)
-            if not vqd_match:
-                return resp(404, {'error': 'Не удалось найти картинку (vqd)'})
-            vqd = vqd_match.group(1)
+        tavily_key = os.environ.get('TAVILY_API_KEY', '')
+        if not tavily_key:
+            return resp(500, {'error': 'TAVILY_API_KEY не настроен'})
 
-            img_resp = requests.get(
-                f"https://duckduckgo.com/i.js?q={requests.utils.quote(query)}&vqd={vqd}&p=1&o=json&l=ru-ru",
-                headers={**headers_ddg, 'Referer': f"https://duckduckgo.com/?q={query}&iax=images&ia=images"},
-                timeout=10
+        try:
+            # 1. Ищем через Tavily с картинками
+            search_query = f"натяжной потолок {query} фото"
+            tv_resp = requests.post(
+                'https://api.tavily.com/search',
+                json={
+                    'api_key': tavily_key,
+                    'query': search_query,
+                    'search_depth': 'basic',
+                    'max_results': 5,
+                    'include_images': True,
+                    'include_image_descriptions': True,
+                },
+                timeout=20,
             )
-            results = img_resp.json().get('results', [])
-            if not results:
+            if tv_resp.status_code != 200:
+                return resp(500, {'error': f'Tavily error {tv_resp.status_code}'})
+
+            data = tv_resp.json()
+            raw_images = data.get('images', [])
+
+            # 2. Собираем URL-ы картинок
+            SPAM = ('passport', 'document', 'avito', 'ozon', 'wildberries',
+                    'instagram', 'facebook', 'vk.com', 'youtube', 'tiktok')
+            candidate_urls = []
+            for img in raw_images:
+                img_url = img.get('url') if isinstance(img, dict) else str(img)
+                if not img_url or not img_url.startswith('http'):
+                    continue
+                if any(s in img_url.lower() for s in SPAM):
+                    continue
+                candidate_urls.append(img_url)
+
+            if not candidate_urls:
                 return resp(404, {'error': 'Картинки не найдены'})
 
-            # Пробуем первые 3 URL пока один не скачается
-            img_url = None
-            img_bytes = None
-            content_type = 'image/jpeg'
-            for item in results[:5]:
-                candidate = item.get('image') or item.get('thumbnail') or ''
-                if not candidate or len(candidate) > 2000:
-                    continue
-                try:
-                    dl = requests.get(candidate, headers={'User-Agent': headers_ddg['User-Agent']}, timeout=8)
-                    if dl.status_code == 200 and len(dl.content) > 1000:
-                        img_bytes = dl.content
-                        content_type = dl.headers.get('Content-Type', 'image/jpeg').split(';')[0].strip()
-                        img_url = candidate
-                        break
-                except Exception:
-                    continue
-
-            if not img_bytes:
-                return resp(404, {'error': 'Не удалось загрузить картинку'})
-
-            # 2. Сохраняем в S3
-            ext = content_type.split('/')[-1].replace('jpeg', 'jpg').replace('svg+xml', 'svg') or 'jpg'
+            # 3. Скачиваем и сохраняем в S3 (параллельно, до limit штук)
             s3 = boto3.client('s3', endpoint_url='https://bucket.poehali.dev',
                               aws_access_key_id=os.environ['AWS_ACCESS_KEY_ID'],
                               aws_secret_access_key=os.environ['AWS_SECRET_ACCESS_KEY'])
-            file_key = f'faq-images/{uuid.uuid4().hex}.{ext}'
-            s3.put_object(Bucket='files', Key=file_key, Body=img_bytes, ContentType=content_type)
-            cdn_url = f"https://cdn.poehali.dev/projects/{os.environ['AWS_ACCESS_KEY_ID']}/bucket/{file_key}"
-            return resp(200, {'url': cdn_url, 'source': img_url})
+            cdn_urls = []
+            ua = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+            for img_url in candidate_urls:
+                if len(cdn_urls) >= limit:
+                    break
+                try:
+                    dl = requests.get(img_url, headers={'User-Agent': ua}, timeout=8, stream=False)
+                    if dl.status_code != 200 or len(dl.content) < 2000:
+                        continue
+                    ct = dl.headers.get('Content-Type', 'image/jpeg').split(';')[0].strip()
+                    if not ct.startswith('image/'):
+                        continue
+                    ext = ct.split('/')[-1].replace('jpeg', 'jpg').replace('png', 'png') or 'jpg'
+                    file_key = f'faq-images/{uuid.uuid4().hex}.{ext}'
+                    s3.put_object(Bucket='files', Key=file_key, Body=dl.content, ContentType=ct)
+                    cdn_url = f"https://cdn.poehali.dev/projects/{os.environ['AWS_ACCESS_KEY_ID']}/bucket/{file_key}"
+                    cdn_urls.append(cdn_url)
+                except Exception:
+                    continue
+
+            if not cdn_urls:
+                return resp(404, {'error': 'Не удалось сохранить ни одну картинку'})
+
+            return resp(200, {'urls': cdn_urls, 'count': len(cdn_urls)})
 
         except Exception as e:
             return resp(500, {'error': str(e)})

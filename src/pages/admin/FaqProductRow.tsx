@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import Icon from "@/components/ui/icon";
 import type { FaqProduct } from "./types";
-import { uploadFaqImage, searchProductImage } from "./faq-utils";
+import { uploadFaqImage, searchProductImages } from "./faq-utils";
 
 interface Props {
   product: FaqProduct;
@@ -59,8 +59,9 @@ export default function FaqProductRow({ product, expanded, onToggle, onChange, o
     if (images.length >= 5) return;
     setGenerating(true);
     try {
-      const url = await searchProductImage(token, local.name || "натяжной потолок");
-      update({ images: [...images, url] });
+      const available = 5 - images.length;
+      const urls = await searchProductImages(token, local.name || "натяжной потолок", available);
+      if (urls.length > 0) update({ images: [...images, ...urls] });
     } catch (e) { console.error(e); }
     finally { setGenerating(false); }
   };

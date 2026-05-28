@@ -23,14 +23,14 @@ export async function uploadFaqImage(token: string, file: File): Promise<string>
   return d.url as string;
 }
 
-export async function searchProductImage(token: string, productName: string): Promise<string> {
-  const query = `${productName} натяжной потолок`;
+export async function searchProductImages(token: string, productName: string, limit = 5): Promise<string[]> {
+  const query = productName;
   const r = await fetch(`${UPLOAD_URL}?r=faq-search-image`, {
     method: "POST",
     headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
-    body: JSON.stringify({ query }),
+    body: JSON.stringify({ query, limit }),
   });
   const d = await r.json();
-  if (!r.ok || d.error) throw new Error(d.error || "Ошибка поиска картинки");
-  return d.url as string;
+  if (!r.ok || d.error) throw new Error(d.error || "Ошибка поиска картинок");
+  return (d.urls as string[]) ?? [];
 }
