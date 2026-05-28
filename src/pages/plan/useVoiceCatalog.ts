@@ -165,7 +165,7 @@ export function findTargetSegIds(transcript: string, state: PlanState): string[]
 
 // Ключевые слова товаров для поиска в тексте транскрипта
 const ITEM_KEYWORDS: { pattern: RegExp; keywords: string[]; excludeKeywords?: string[] }[] = [
-  { pattern: /парящ/,      keywords: ["парящ"] },
+  { pattern: /парящ|flexy|fly\b/i, keywords: ["парящ", "flexy", "fly", "пк-6"] },
   { pattern: /теневой|тенев|klassika|классик/i, keywords: ["теневой", "тенев", "классик"] },
   { pattern: /flexy|флекси|световой|световые/i, keywords: ["flexy", "флекс", "световой"] },
   // "профиль" намеренно убран — слишком общее, встречается в фразах про ниши/теневой
