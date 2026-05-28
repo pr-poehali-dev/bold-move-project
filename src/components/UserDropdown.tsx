@@ -93,14 +93,52 @@ export default function UserDropdown({ onShowProfile }: Props) {
                     </span>
                   </button>
                   {trialAlive && (
-                    <div className="mt-1.5 flex items-center gap-1.5 px-3 py-1.5 rounded-lg"
-                      style={{ background: "rgba(16,185,129,0.08)" }}>
-                      <Icon name="Gift" size={10} style={{ color: "#10b981" }} />
-                      <span className="text-[10px] font-bold" style={{ color: "#10b981" }}>FREE триал</span>
-                      <span className="text-[10px] text-white/40">·</span>
-                      <span className="text-[10px] text-white/55">
-                        {hoursLeft >= 24 ? `${Math.floor(hoursLeft/24)} дн.` : `${hoursLeft} ч.`} осталось
-                      </span>
+                    <div className="mt-2 rounded-xl overflow-hidden relative"
+                      style={{ background: "linear-gradient(135deg, #0d2b1f 0%, #0a1f2e 50%, #1a0d2e 100%)", border: "1px solid rgba(16,185,129,0.25)" }}>
+                      {/* Светящийся акцент сверху */}
+                      <div className="absolute top-0 left-0 right-0 h-px" style={{ background: "linear-gradient(90deg, transparent, #10b981, #6366f1, transparent)" }} />
+                      <div className="px-3 py-2.5 flex items-center gap-2.5">
+                        {/* Иконка с пульсацией */}
+                        <div className="relative flex-shrink-0">
+                          <div className="w-7 h-7 rounded-lg flex items-center justify-center"
+                            style={{ background: "linear-gradient(135deg, #10b981, #6366f1)" }}>
+                            <Icon name="Gift" size={13} style={{ color: "#fff" }} />
+                          </div>
+                          <div className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-emerald-400"
+                            style={{ boxShadow: "0 0 6px #10b981" }} />
+                        </div>
+                        {/* Текст */}
+                        <div className="flex flex-col gap-0.5 min-w-0">
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-[11px] font-black tracking-wide"
+                              style={{ background: "linear-gradient(90deg, #10b981, #6366f1)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>
+                              FREE ТРИАЛ
+                            </span>
+                            <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-md"
+                              style={{ background: "rgba(16,185,129,0.2)", color: "#10b981" }}>
+                              АКТИВЕН
+                            </span>
+                          </div>
+                          <span className="text-[10px]" style={{ color: "rgba(255,255,255,0.45)" }}>
+                            Осталось{" "}
+                            <span className="font-bold" style={{ color: hoursLeft < 48 ? "#f59e0b" : "#10b981" }}>
+                              {hoursLeft >= 24 ? `${Math.floor(hoursLeft/24)} дн.` : `${hoursLeft} ч.`}
+                            </span>
+                          </span>
+                        </div>
+                      </div>
+                      {/* Прогресс-бар */}
+                      <div className="px-3 pb-2.5">
+                        <div className="h-0.5 rounded-full w-full" style={{ background: "rgba(255,255,255,0.07)" }}>
+                          <div className="h-full rounded-full"
+                            style={{
+                              width: `${Math.min(100, Math.max(5, (hoursLeft / (14 * 24)) * 100))}%`,
+                              background: hoursLeft < 48
+                                ? "linear-gradient(90deg, #f59e0b, #ef4444)"
+                                : "linear-gradient(90deg, #10b981, #6366f1)",
+                            }} />
+                        </div>
+                      </div>
                     </div>
                   )}
                 </>
