@@ -24,6 +24,7 @@ export default function FaqProductRow({ product, expanded, onToggle, onChange, o
   const [generating, setGenerating] = useState(false);
   const [enriching, setEnriching] = useState(false);
   const [enrichPreview, setEnrichPreview] = useState<string | null>(null);
+  const enrichPreviewRef = useRef<HTMLDivElement>(null);
   const [sliderIdx, setSliderIdx] = useState<number | null>(null);
   const [dragOver, setDragOver] = useState<number | null>(null);
   const dragFrom = useRef<number | null>(null);
@@ -96,6 +97,7 @@ export default function FaqProductRow({ product, expanded, onToggle, onChange, o
         update({ description }, true);
       } else {
         setEnrichPreview(description);
+        setTimeout(() => enrichPreviewRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" }), 50);
       }
     } catch (e) { console.error("enrich error:", e); }
     finally { setEnriching(false); }
@@ -209,23 +211,12 @@ export default function FaqProductRow({ product, expanded, onToggle, onChange, o
                     </button>
                   )}
                 </div>
-                <textarea
-                  value={local.description}
-                  onChange={e => { update({ description: e.target.value }, false); e.target.style.height = "auto"; e.target.style.height = e.target.scrollHeight + "px"; }}
-                  ref={el => { if (el) { el.style.height = "auto"; el.style.height = el.scrollHeight + "px"; } }}
-                  disabled={readOnly}
-                  placeholder="Цена, особенности, применение..."
-                  rows={1}
-                  className="w-full rounded-lg px-3 py-2 text-sm outline-none resize-none transition disabled:opacity-60"
-                  style={{ background: isDark ? "rgba(255,255,255,0.05)" : "#f3f4f6", border: `1px solid ${border}`, color: text, overflow: "hidden" }}
-                />
-
-                {/* Превью AI-описания с выбором действия */}
+                {/* Превью AI-описания с выбором действия — показывается НАД полем */}
                 {enrichPreview && (
-                  <div className="mt-2 rounded-lg overflow-hidden" style={{ border: "1px solid rgba(139,92,246,0.4)", background: "rgba(139,92,246,0.07)" }}>
-                    <div className="flex items-center justify-between px-3 py-1.5" style={{ borderBottom: "1px solid rgba(139,92,246,0.2)", background: "rgba(139,92,246,0.1)" }}>
+                  <div ref={enrichPreviewRef} className="mb-2 rounded-lg overflow-hidden" style={{ border: "1px solid rgba(139,92,246,0.5)", background: "rgba(139,92,246,0.09)" }}>
+                    <div className="flex items-center justify-between px-3 py-1.5" style={{ borderBottom: "1px solid rgba(139,92,246,0.2)", background: "rgba(139,92,246,0.13)" }}>
                       <span className="text-[10px] font-bold flex items-center gap-1" style={{ color: "#a78bfa" }}>
-                        <Icon name="Sparkles" size={10} /> AI нашёл новое описание
+                        <Icon name="Sparkles" size={10} /> AI нашёл — что сделать?
                       </span>
                       <button onClick={() => setEnrichPreview(null)} className="opacity-50 hover:opacity-100 transition" style={{ color: "#a78bfa" }}>
                         <Icon name="X" size={12} />
@@ -248,6 +239,17 @@ export default function FaqProductRow({ product, expanded, onToggle, onChange, o
                     </div>
                   </div>
                 )}
+
+                <textarea
+                  value={local.description}
+                  onChange={e => { update({ description: e.target.value }, false); e.target.style.height = "auto"; e.target.style.height = e.target.scrollHeight + "px"; }}
+                  ref={el => { if (el) { el.style.height = "auto"; el.style.height = el.scrollHeight + "px"; } }}
+                  disabled={readOnly}
+                  placeholder="Цена, особенности, применение..."
+                  rows={1}
+                  className="w-full rounded-lg px-3 py-2 text-sm outline-none resize-none transition disabled:opacity-60"
+                  style={{ background: isDark ? "rgba(255,255,255,0.05)" : "#f3f4f6", border: `1px solid ${border}`, color: text, overflow: "hidden" }}
+                />
               </div>
             </div>
 
