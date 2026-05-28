@@ -451,6 +451,17 @@ export default function useVoiceCatalog({ state, onItems, onTranscript }: Props)
       setStatus("Распознаю речь...");
       try {
         const transcript = await transcribeBlob(blob);
+
+        // Фильтруем бессмысленные/случайные транскрипты — не отправляем на AI
+        const NOISE_WORDS = /^(так|ну|да|нет|окей|ок|угу|хорошо|понял|понятно|хм|эм|ага|не|нет|стоп|отмена|спасибо|ладно|всё|все|готово|о|а|и|ой|ай|эй|hey|ok|yes|no|stop)$/i;
+        const cleanedTranscript = transcript.trim().replace(/[.,!?]+$/, "");
+        if (cleanedTranscript.split(/\s+/).length <= 2 && NOISE_WORDS.test(cleanedTranscript.trim())) {
+          setStatus("Не распознано — скажите название товара или стены");
+          setTimeout(() => setStatus(""), 3000);
+          setIsProcessing(false);
+          return;
+        }
+
         onTranscript?.(transcript);
         setStatus("");
         const { items, transcript: fullTranscript, semanticMap } = await sendToAI(transcript);
