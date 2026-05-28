@@ -164,11 +164,12 @@ export function findTargetSegIds(transcript: string, state: PlanState): string[]
 }
 
 // Ключевые слова товаров для поиска в тексте транскрипта
-const ITEM_KEYWORDS: { pattern: RegExp; keywords: string[] }[] = [
+const ITEM_KEYWORDS: { pattern: RegExp; keywords: string[]; excludeKeywords?: string[] }[] = [
   { pattern: /парящ/,      keywords: ["парящ"] },
   { pattern: /теневой|тенев|klassika|классик/i, keywords: ["теневой", "тенев", "классик"] },
   { pattern: /flexy|флекси|световой|световые/i, keywords: ["flexy", "флекс", "световой"] },
-  { pattern: /стеновой|стандартный профиль|пвх профиль/i, keywords: ["стеновой", "стандарт", "профиль"] },
+  // "профиль" намеренно убран — слишком общее, встречается в фразах про ниши/теневой
+  { pattern: /стеновой|стандартный профиль|пвх профиль/i, keywords: ["стеновой", "стандарт"], excludeKeywords: ["ниш", "парящ", "теневой", "тенев", "flexy", "fly", "краб"] },
   { pattern: /ниш|карниз/i,  keywords: ["ниш", "карниз"] },
 ];
 
@@ -201,14 +202,16 @@ export function findSegIdsForItem(itemName: string, itemCategory: string, transc
   // Ключевые слова для этого товара
   const entry = ITEM_KEYWORDS.find(e => e.pattern.test(name) || e.pattern.test(cat));
   const itemKeywords: string[] = entry ? entry.keywords : [];
+  const excludeKeywords: string[] = entry?.excludeKeywords ?? [];
 
   // Дополнительно — первые 5 символов каждого значимого слова из названия
   const nameWords = name.split(/\s+/).filter(w => w.length >= 5).map(w => w.slice(0, 5));
   const allKeywords = [...itemKeywords, ...nameWords];
 
-  // Находим фрагмент(ы) где упоминается товар
+  // Находим фрагмент(ы) где упоминается товар, исключая фрагменты с конкурирующими товарами
   const matchedFragments = fragments.filter(frag =>
-    allKeywords.some(kw => frag.includes(kw))
+    allKeywords.some(kw => frag.includes(kw)) &&
+    (excludeKeywords.length === 0 || !excludeKeywords.some(ex => frag.includes(ex)))
   );
 
   if (matchedFragments.length > 0) {
