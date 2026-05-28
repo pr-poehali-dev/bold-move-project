@@ -365,7 +365,14 @@ export function usePlanCanvasEvents({ state, onChange, onReplace, cs }: Params) 
         if (now - lastEmptyTapRef.current < 450) {
           lastEmptyTapRef.current = 0;
           dragRef.current = null; panRef.current = null;
-          onChange({ selectedSegmentIds: segments.map(s => s.id), selectedSegmentId: segments[segments.length - 1]?.id ?? null, selectedPointId: null, selectedDiagonalId: null });
+          const allSelected = state.selectedSegmentIds?.length === segments.length;
+          if (allSelected) {
+            // Все уже выбраны — снимаем выделение
+            onChange({ selectedSegmentIds: [], selectedSegmentId: null, selectedPointId: null });
+          } else {
+            // Выбираем все стены
+            onChange({ selectedSegmentIds: segments.map(s => s.id), selectedSegmentId: segments[segments.length - 1]?.id ?? null, selectedPointId: null, selectedDiagonalId: null });
+          }
           lastTouchEndRef.current = Date.now();
           return;
         }
