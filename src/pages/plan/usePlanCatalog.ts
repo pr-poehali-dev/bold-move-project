@@ -304,18 +304,16 @@ export function usePlanCatalog(
         const meters = seg.lengthCm ? Math.round(seg.lengthCm / 100 * 100) / 100 : 1;
 
         if (isNiche) {
-          // Ниши — добавляем вторым, не заменяем существующее
+          // Ниши — добавляем поверх, один и тот же вид ниши на стену только один раз
           if (existing.some(it => it.priceId === item.priceId)) return seg;
           return { ...seg, items: [...existing, { ...item, quantity: meters }] };
         } else {
           // Обычный профиль — ЗАМЕНЯЕМ существующий той же категории на этой стене
           const sameCategory = existing.filter(it => it.category === item.category);
           if (sameCategory.length > 0) {
-            // Убираем старый, ставим новый
             const filtered = existing.filter(it => it.category !== item.category);
             return { ...seg, items: [...filtered, { ...item, quantity: meters }] };
           }
-          if (existing.some(it => it.priceId === item.priceId)) return seg;
           return { ...seg, items: [...existing, { ...item, quantity: meters }] };
         }
       });

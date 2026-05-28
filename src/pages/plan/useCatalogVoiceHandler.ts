@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import type { PriceEntry } from "./CategoryDrumPanel";
 import type { PlanState, SegmentPriceItem } from "./planTypes";
 import type { VoiceCatalogItem } from "./useVoiceCatalog";
-import { findSegIdsForItem, ALL_SEGS_SENTINEL } from "./useVoiceCatalog";
+import { findSegIdsForItem, findTargetSegIds, ALL_SEGS_SENTINEL } from "./useVoiceCatalog";
 import { splitTranscriptToItems, type VoiceResultItem } from "./VoiceResultPopup";
 import {
   fixShadowProfile,
@@ -171,8 +171,12 @@ export default function useCatalogVoiceHandler({ state, allPrices, onAssignMany,
       }
 
       if (matched.isWallItem && state.segments.length > 0) {
-        const itemSegIds = findSegIdsForItem(matched.name, matched.category, transcript, state);
-        console.log("[voice] segIds for", matched.name, "->", itemSegIds);
+        // Если LLM передал поле wall — используем его напрямую как направление
+        const wallHint = voiceItem.wall
+          ? findTargetSegIds(voiceItem.wall.toLowerCase(), state)
+          : null;
+        const itemSegIds = wallHint ?? findSegIdsForItem(matched.name, matched.category, transcript, state);
+        console.log("[voice] segIds for", matched.name, voiceItem.wall ? `(wall=${voiceItem.wall})` : "", "->", itemSegIds);
         if (!itemSegIds) {
           unknownWallItems.push(matched);
         } else {
