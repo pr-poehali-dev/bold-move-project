@@ -206,7 +206,7 @@ def handler(event: dict, context) -> dict:
         # Данные пользователя при этом НЕ трогаем.
         is_master = (email == "19.jeka.94@gmail.com")
         trial_expired = False
-        if not is_master and role in BUSINESS_ROLES and trial_until and approved:
+        if not is_master and role in BUSINESS_ROLES and trial_until:
             # Получаем subscription_end отдельно (нет в основном SELECT выше)
             cur.execute(
                 f"SELECT subscription_end FROM {SCHEMA}.users WHERE id=%s",
