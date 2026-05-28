@@ -33,7 +33,9 @@ export default function FaqKnowledgeTab({ token, isDark = true, readOnly = false
       method: "PUT",
       body: JSON.stringify({ ...item, items: item.items ?? [], images: item.images ?? [] }),
     }, token, item.id);
-    load();
+    // Обновляем только конкретный элемент — не перезагружаем всё,
+    // чтобы не сбрасывать expandedProductId внутри CategoryCard
+    setItems(prev => prev.map(i => i.id === item.id ? { ...i, ...item } : i));
   };
 
   const removeCategory = async (id: number) => {
