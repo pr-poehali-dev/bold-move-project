@@ -47,7 +47,7 @@ export default function TabFaq({ token, isDark = true, readOnly = false }: Props
   const [sub, setSub] = useState<FaqSub>("knowledge");
 
   const SUB_TABS: { id: FaqSub; label: string; icon: string }[] = [
-    { id: "knowledge", label: "Знания бота",    icon: "Database" },
+    { id: "knowledge", label: "Знания агента",  icon: "Database" },
     { id: "questions", label: "Быстрые ответы", icon: "MessageCircle" },
   ];
 
