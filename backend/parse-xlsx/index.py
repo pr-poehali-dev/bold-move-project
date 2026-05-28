@@ -371,6 +371,8 @@ def handler(event: dict, context) -> dict:
         body_data = json.loads(body_str)
         query = (body_data.get('query') or '').strip()
         limit = min(int(body_data.get('limit', 5)), 5)
+        # URL которые уже есть или были отклонены пользователем — не возвращать
+        exclude_urls = set(body_data.get('exclude_urls') or [])
         if not query:
             return resp(400, {'error': 'query required'})
 
@@ -378,43 +380,58 @@ def handler(event: dict, context) -> dict:
         if not tavily_key:
             return resp(500, {'error': 'TAVILY_API_KEY не настроен'})
 
-        try:
-            # 1. Ищем через Tavily с картинками
-            search_query = f"натяжной потолок {query} фото"
-            tv_resp = requests.post(
+        SPAM = ('passport', 'document', 'avito', 'ozon', 'wildberries',
+                'instagram', 'facebook', 'vk.com', 'youtube', 'tiktok')
+
+        def tavily_search(search_query):
+            tv = requests.post(
                 'https://api.tavily.com/search',
                 json={
                     'api_key': tavily_key,
                     'query': search_query,
                     'search_depth': 'basic',
-                    'max_results': 5,
+                    'max_results': 8,
                     'include_images': True,
                     'include_image_descriptions': True,
                 },
                 timeout=20,
             )
-            if tv_resp.status_code != 200:
-                return resp(500, {'error': f'Tavily error {tv_resp.status_code}'})
-
-            data = tv_resp.json()
-            raw_images = data.get('images', [])
-
-            # 2. Собираем URL-ы картинок
-            SPAM = ('passport', 'document', 'avito', 'ozon', 'wildberries',
-                    'instagram', 'facebook', 'vk.com', 'youtube', 'tiktok')
-            candidate_urls = []
-            for img in raw_images:
+            if tv.status_code != 200:
+                return []
+            raw = tv.json().get('images', [])
+            result = []
+            for img in raw:
                 img_url = img.get('url') if isinstance(img, dict) else str(img)
                 if not img_url or not img_url.startswith('http'):
                     continue
                 if any(s in img_url.lower() for s in SPAM):
                     continue
-                candidate_urls.append(img_url)
+                if img_url in exclude_urls:
+                    continue
+                result.append(img_url)
+            return result
+
+        try:
+            # 1. Пробуем несколько разных формулировок запроса
+            query_variants = [
+                f"натяжной потолок {query} фото интерьер",
+                f"{query} потолок дизайн фото",
+                f"натяжной потолок {query} вид",
+            ]
+            candidate_urls = []
+            for variant in query_variants:
+                if len(candidate_urls) >= limit * 2:
+                    break
+                new_urls = tavily_search(variant)
+                # Добавляем только те что ещё не встречались
+                for u in new_urls:
+                    if u not in candidate_urls and u not in exclude_urls:
+                        candidate_urls.append(u)
 
             if not candidate_urls:
                 return resp(404, {'error': 'Картинки не найдены'})
 
-            # 3. Скачиваем и сохраняем в S3 (параллельно, до limit штук)
+            # 2. Скачиваем и сохраняем в S3
             s3 = boto3.client('s3', endpoint_url='https://bucket.poehali.dev',
                               aws_access_key_id=os.environ['AWS_ACCESS_KEY_ID'],
                               aws_secret_access_key=os.environ['AWS_SECRET_ACCESS_KEY'])

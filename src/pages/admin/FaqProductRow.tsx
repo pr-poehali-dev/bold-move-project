@@ -82,12 +82,9 @@ export default function FaqProductRow({ product, expanded, onToggle, onChange, o
     setGenerating(true);
     try {
       const available = 5 - images.length;
-      // Передаём limit с запасом чтобы отфильтровать отклонённые
-      const fetchLimit = Math.min(available + rejectedUrls.current.size + 3, 10);
-      const allUrls = await searchProductImages(token, local.name || "натяжной потолок", fetchLimit);
-      // Фильтруем уже показанные/отклонённые и уже добавленные
-      const existing = new Set(images);
-      const fresh = allUrls.filter(u => !rejectedUrls.current.has(u) && !existing.has(u)).slice(0, available);
+      // Передаём все известные URL (текущие + отклонённые) — бэкенд исключит их из выдачи
+      const allKnown = [...images, ...Array.from(rejectedUrls.current)];
+      const fresh = await searchProductImages(token, local.name || "натяжной потолок", available, allKnown);
       if (fresh.length > 0) update({ images: [...images, ...fresh] }, true);
     } catch (e) { console.error(e); }
     finally { setGenerating(false); }
