@@ -9,7 +9,9 @@ export const PARSE_SITE_URL = (func2url as Record<string, string>)["parse-site"]
 export function decodeDomain(siteUrl: string): string {
   try {
     const host = siteUrl.replace(/https?:\/\//, "").split("/")[0];
-    return new URL("https://" + host).hostname;
+    // URL.hostname возвращает punycode для кириллических доменов,
+    // поэтому берём исходный host без лишней перекодировки
+    return host;
   } catch {
     return siteUrl.replace(/https?:\/\//, "").split("/")[0];
   }
