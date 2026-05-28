@@ -407,10 +407,12 @@ def handler(event: dict, context) -> dict:
     content = resp_data.get('choices', [{}])[0].get('message', {}).get('content', '')
     usage = resp_data.get('usage', {})
     print(f"[plan-voice] tokens: prompt={usage.get('prompt_tokens')} completion={usage.get('completion_tokens')} total={usage.get('total_tokens')}")
-    print(f"[plan-voice] LLM response: {content[:500]}")
+    print(f"[plan-voice] LLM response: {content[:2000]}")
 
     items = extract_items(content)
     print(f"[plan-voice] extracted {len(items)} items")
+    for it in items:
+        print(f"  {json.dumps(it, ensure_ascii=False)}")
 
     # Детерминированная постобработка — гарантируем bundle-позиции (лента, блок, монтаж)
     items = apply_bundles_and_rules(items, room_context)
