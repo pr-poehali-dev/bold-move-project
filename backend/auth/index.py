@@ -176,7 +176,7 @@ def handler(event: dict, context) -> dict:
                    u.has_own_agent, u.agent_purchased_at,
                    u.bot_name, u.bot_greeting, u.bot_avatar_url, u.brand_logo_url,
                    u.brand_color, u.support_phone, u.support_email, u.max_url,
-                   u.working_hours, u.pdf_footer_address, u.telegram_url, u.pdf_text_color,
+                   u.working_hours, u.pdf_footer_address, COALESCE(u.telegram_url, u.telegram) AS telegram_url, u.pdf_text_color,
                    u.brand_logo_url_dark, u.brand_logo_orientation, u.pdf_logo_bg,
                    u.bot_avatar_bg, u.kanban_enabled,
                    u.tg_bot_token, u.tg_notify_chat_id,

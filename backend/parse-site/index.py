@@ -416,8 +416,25 @@ brand_color — ГЛАВНЫЙ фирменный цвет в HEX. Смотри 
 
     return result
 
+def _strip_markdown(text: str) -> str:
+    """Убирает markdown-разметку из текста чтобы не попадать мусор в поля."""
+    # Убираем ссылки: [текст](url) → текст
+    text = re.sub(r'\[([^\]]+)\]\([^\)]*\)', r'\1', text)
+    # Убираем изображения: ![alt](url) → ''
+    text = re.sub(r'!\[[^\]]*\]\([^\)]*\)', '', text)
+    # Убираем заголовки: ## текст → текст
+    text = re.sub(r'^#{1,6}\s+', '', text, flags=re.MULTILINE)
+    # Убираем bold/italic: **текст** → текст
+    text = re.sub(r'\*{1,3}([^\*]+)\*{1,3}', r'\1', text)
+    text = re.sub(r'_{1,3}([^_]+)_{1,3}', r'\1', text)
+    # Убираем inline code: `код` → код
+    text = re.sub(r'`([^`]+)`', r'\1', text)
+    return text
+
+
 def extract_with_regex(text: str, field: str) -> str | None:
     """Быстрое извлечение через regex — без AI, мгновенно."""
+    text = _strip_markdown(text)
 
     if field == "support_phone":
         # +7 или 8, затем 10 цифр в разных форматах
