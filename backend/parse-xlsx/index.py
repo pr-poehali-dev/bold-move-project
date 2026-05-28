@@ -412,18 +412,20 @@ def handler(event: dict, context) -> dict:
             return result
 
         try:
-            # 1. Один запрос с широким охватом (экономим время)
-            candidate_urls = []
-            search_query = f"натяжной потолок {query} фото интерьер"
-            new_urls = tavily_search(search_query)
-            for u in new_urls:
-                if u not in candidate_urls and u not in exclude_urls:
-                    candidate_urls.append(u)
-            # 2. Если мало результатов — второй запрос
-            if len(candidate_urls) < limit:
-                for u in tavily_search(f"{query} потолок дизайн фото"):
+            # Несколько вариантов запросов — используем всё что найдём
+            def collect(urls_iter):
+                for u in urls_iter:
                     if u not in candidate_urls and u not in exclude_urls:
                         candidate_urls.append(u)
+
+            candidate_urls = []
+            collect(tavily_search(f"натяжной потолок {query} фото"))
+            if len(candidate_urls) < limit * 2:
+                collect(tavily_search(f"{query} потолок фото"))
+            if len(candidate_urls) < limit * 2:
+                collect(tavily_search(f"{query} фото товар"))
+            if len(candidate_urls) < limit * 2:
+                collect(tavily_search(f"{query} ceiling photo"))
 
             if not candidate_urls:
                 return resp(404, {'error': 'Картинки не найдены'})
