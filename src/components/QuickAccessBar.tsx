@@ -53,8 +53,8 @@ export default function QuickAccessBar() {
         className="flex flex-col items-center justify-center py-1.5 cursor-pointer"
         onClick={() => setOpen(v => !v)}
       >
-        <div className="w-8 h-1 rounded-full bg-white/15" />
-        <span className="text-[9px] text-white/20 mt-1">
+        <div className="w-10 h-1.5 rounded-full" style={{ background: "rgba(251,146,60,0.7)" }} />
+        <span className="text-[9px] mt-1 font-medium" style={{ color: "rgba(251,146,60,0.6)" }}>
           {open ? "скрыть" : "меню"}
         </span>
       </div>
