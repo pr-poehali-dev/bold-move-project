@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import Icon from "@/components/ui/icon";
 import { apiFetch } from "./api";
 import type { FaqItem, FaqProduct } from "./types";
@@ -139,8 +139,24 @@ function CategoryCard({ item, expanded, onToggle, onSave, onRemove, token, isDar
     if (expandedProductId === prodId) setExpandedProductId(null);
   };
 
-  const updateProduct = (updated: FaqProduct) => {
-    updateProducts(products.map(p => p.id === updated.id ? updated : p));
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const updateProduct = (updated: FaqProduct, immediate = false) => {
+    const newProducts = products.map(p => p.id === updated.id ? updated : p);
+    const newItem = { ...localItem, items: newProducts };
+    setLocalItem(newItem);
+    setDirty(true);
+    if (immediate) {
+      // Картинки — сохраняем сразу
+      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+      onSave(newItem).then(() => setDirty(false));
+    } else {
+      // Текст — дебаунс 1.5с
+      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+      saveTimerRef.current = setTimeout(() => {
+        onSave(newItem).then(() => setDirty(false));
+      }, 1500);
+    }
   };
 
   const save = async () => {
@@ -215,7 +231,7 @@ function CategoryCard({ item, expanded, onToggle, onSave, onRemove, token, isDar
               product={prod}
               expanded={expandedProductId === prod.id}
               onToggle={() => setExpandedProductId(expandedProductId === prod.id ? null : prod.id)}
-              onChange={updated => { updateProduct(updated); }}
+              onChange={(updated, immediate) => { updateProduct(updated, immediate); }}
               onRemove={() => removeProduct(prod.id)}
               token={token}
               isDark={isDark}
