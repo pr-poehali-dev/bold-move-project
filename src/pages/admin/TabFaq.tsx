@@ -4,8 +4,7 @@ import { apiFetch } from "./api";
 import func2url from "@/../backend/func2url.json";
 import type { FaqItem, FaqProduct, QuickQuestion } from "./types";
 
-const UPLOAD_URL       = (func2url as Record<string, string>)["parse-xlsx"];
-const GENERATE_IMG_URL = (func2url as Record<string, string>)["generate-image"];
+const UPLOAD_URL = (func2url as Record<string, string>)["parse-xlsx"];
 
 function nanoid() {
   return Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
@@ -28,15 +27,15 @@ async function uploadFaqImage(token: string, file: File): Promise<string> {
   return d.url as string;
 }
 
-async function generateProductImage(productName: string): Promise<string> {
-  const prompt = `Профессиональное фото товара: "${productName}". Натяжные потолки, интерьер, белый фон, студийная съёмка, высокое качество.`;
-  const r = await fetch(GENERATE_IMG_URL, {
+async function searchProductImage(token: string, productName: string): Promise<string> {
+  const query = `${productName} натяжной потолок`;
+  const r = await fetch(`${UPLOAD_URL}?r=faq-search-image`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ prompt, size: "1024x1024", quality: "standard" }),
+    headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
+    body: JSON.stringify({ query }),
   });
   const d = await r.json();
-  if (!r.ok || d.error) throw new Error(d.error || "Ошибка генерации");
+  if (!r.ok || d.error) throw new Error(d.error || "Ошибка поиска картинки");
   return d.url as string;
 }
 
@@ -365,7 +364,7 @@ function ProductRow({ product, expanded, onToggle, onChange, onRemove, token, is
     if (images.length >= 5) return;
     setGenerating(true);
     try {
-      const url = await generateProductImage(local.name || "натяжной потолок");
+      const url = await searchProductImage(token, local.name || "натяжной потолок");
       update({ images: [...images, url] });
     } catch (e) { console.error(e); }
     finally { setGenerating(false); }
