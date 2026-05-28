@@ -239,6 +239,7 @@ function CategoryCard({ item, expanded, onToggle, onSave, onRemove, token, isDar
               isDark={isDark}
               readOnly={readOnly}
               border={border} text={text} muted={muted}
+              categoryName={localItem.title || ""}
             />
           ))}
 

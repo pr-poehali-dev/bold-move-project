@@ -39,6 +39,22 @@ export async function searchProductImages(
   return { cdns: (d.urls as string[]) ?? [], sources: (d.sources as string[]) ?? [] };
 }
 
+export async function enrichProductData(
+  token: string,
+  name: string,
+  description: string,
+  category: string,
+): Promise<{ description: string; web_found: boolean }> {
+  const r = await fetch(`${UPLOAD_URL}?r=faq-enrich-product`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
+    body: JSON.stringify({ name, description, category }),
+  });
+  const d = await r.json();
+  if (!r.ok || d.error) throw new Error(d.error || "Ошибка AI-обогащения");
+  return { description: d.description as string, web_found: d.web_found as boolean };
+}
+
 const REJECTED_KEY = (productId: string) => `faq_rejected_${productId}`;
 
 export function getRejectedSources(productId: string): string[] {

@@ -467,6 +467,91 @@ def handler(event: dict, context) -> dict:
         except Exception as e:
             return resp(500, {'error': str(e)})
 
+    # --- POST ?r=faq-enrich-product  — сбор данных о товаре из интернета через Tavily + AI
+    if r == 'faq-enrich-product' and method == 'POST':
+        if not check_auth(hdrs):
+            return resp(401, {'error': 'Unauthorized'})
+        body = json.loads(body_str)
+        product_name = (body.get('name') or '').strip()
+        current_description = (body.get('description') or '').strip()
+        category_name = (body.get('category') or '').strip()
+        if not product_name:
+            return resp(400, {'error': 'Укажите название товара'})
+
+        tavily_key = os.environ.get('TAVILY_API_KEY', '')
+        openai_key = os.environ.get('OPENAI_API_KEY', '')
+        if not tavily_key:
+            return resp(500, {'error': 'TAVILY_API_KEY не настроен'})
+        if not openai_key:
+            return resp(500, {'error': 'OPENAI_API_KEY не настроен'})
+
+        try:
+            # 1. Ищем информацию о товаре через Tavily
+            context_parts = []
+            for query in [
+                f'{product_name} натяжной потолок характеристики цена',
+                f'{product_name} {category_name} описание производитель'.strip(),
+            ]:
+                tv = requests.post(
+                    'https://api.tavily.com/search',
+                    json={
+                        'api_key': tavily_key,
+                        'query': query,
+                        'search_depth': 'basic',
+                        'max_results': 4,
+                        'include_answer': True,
+                    },
+                    timeout=15,
+                )
+                if tv.status_code == 200:
+                    data = tv.json()
+                    if data.get('answer'):
+                        context_parts.append(data['answer'])
+                    for res in (data.get('results') or [])[:3]:
+                        snippet = res.get('content') or res.get('snippet') or ''
+                        if snippet:
+                            context_parts.append(snippet[:600])
+
+            web_context = '\n\n'.join(context_parts[:6]) if context_parts else ''
+
+            # 2. AI генерирует краткое описание на основе найденных данных
+            system_prompt = (
+                'Ты помощник для компании по натяжным потолкам. '
+                'На основе информации из интернета составь краткое описание товара для базы знаний AI-агента. '
+                'Описание должно содержать: цену (если известна), материал, особенности, применение. '
+                'Пиши кратко и по делу, без воды. Формат: несколько коротких предложений. '
+                'Отвечай только на русском языке.'
+            )
+            user_prompt = (
+                f'Товар: {product_name}\n'
+                + (f'Категория: {category_name}\n' if category_name else '')
+                + (f'Текущее описание: {current_description}\n' if current_description else '')
+                + (f'\nИнформация из интернета:\n{web_context}' if web_context else '\nИнформации из интернета не найдено — составь типичное описание для этого товара.')
+            )
+
+            ai_resp = requests.post(
+                'https://api.openai.com/v1/chat/completions',
+                headers={'Authorization': f'Bearer {openai_key}', 'Content-Type': 'application/json'},
+                json={
+                    'model': 'gpt-4o-mini',
+                    'messages': [
+                        {'role': 'system', 'content': system_prompt},
+                        {'role': 'user', 'content': user_prompt},
+                    ],
+                    'max_tokens': 400,
+                    'temperature': 0.4,
+                },
+                timeout=20,
+            )
+            if ai_resp.status_code != 200:
+                return resp(500, {'error': 'Ошибка AI: ' + ai_resp.text[:200]})
+
+            description = ai_resp.json()['choices'][0]['message']['content'].strip()
+            return resp(200, {'description': description, 'web_found': bool(web_context)})
+
+        except Exception as e:
+            return resp(500, {'error': str(e)})
+
     # --- POST ?r=faq-upload  — загрузка картинки в S3, возвращает CDN url
     if r == 'faq-upload' and method == 'POST':
         if not check_auth(hdrs):

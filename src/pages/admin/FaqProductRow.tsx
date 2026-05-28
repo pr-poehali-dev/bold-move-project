@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import Icon from "@/components/ui/icon";
 import type { FaqProduct } from "./types";
-import { uploadFaqImage, searchProductImages, getRejectedSources, addRejectedSource } from "./faq-utils";
+import { uploadFaqImage, searchProductImages, getRejectedSources, addRejectedSource, enrichProductData } from "./faq-utils";
 
 interface Props {
   product: FaqProduct;
@@ -15,12 +15,14 @@ interface Props {
   border: string;
   text: string;
   muted: string;
+  categoryName?: string;
 }
 
-export default function FaqProductRow({ product, expanded, onToggle, onChange, onRemove, token, isDark, readOnly, border, text, muted }: Props) {
+export default function FaqProductRow({ product, expanded, onToggle, onChange, onRemove, token, isDark, readOnly, border, text, muted, categoryName = "" }: Props) {
   const [local, setLocal] = useState<FaqProduct>(product);
   const [uploading, setUploading] = useState(false);
   const [generating, setGenerating] = useState(false);
+  const [enriching, setEnriching] = useState(false);
   const [sliderIdx, setSliderIdx] = useState<number | null>(null);
   const [dragOver, setDragOver] = useState<number | null>(null);
   const dragFrom = useRef<number | null>(null);
@@ -78,6 +80,16 @@ export default function FaqProductRow({ product, expanded, onToggle, onChange, o
       addRejectedSource(local.id, src);
     }
     update({ images: images.filter((_, i) => i !== idx) }, true);
+  };
+
+  const handleEnrich = async () => {
+    if (!local.name) return;
+    setEnriching(true);
+    try {
+      const { description } = await enrichProductData(token, local.name, local.description || "", categoryName);
+      update({ description }, true);
+    } catch (e) { console.error(e); }
+    finally { setEnriching(false); }
   };
 
   const handleAiImage = async () => {
@@ -161,7 +173,22 @@ export default function FaqProductRow({ product, expanded, onToggle, onChange, o
                 />
               </div>
               <div>
-                <div className="text-[10px] uppercase tracking-wider mb-1" style={{ color: muted }}>Описание</div>
+                <div className="text-[10px] uppercase tracking-wider mb-1 flex items-center gap-2" style={{ color: muted }}>
+                  Описание
+                  {!readOnly && (
+                    <button
+                      onClick={handleEnrich}
+                      disabled={enriching || !local.name}
+                      title="AI соберёт данные о товаре из интернета и заполнит описание"
+                      className="flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold transition disabled:opacity-40"
+                      style={{ background: "rgba(139,92,246,0.15)", color: "#a78bfa", border: "1px solid rgba(139,92,246,0.3)", textTransform: "none", letterSpacing: 0 }}>
+                      {enriching
+                        ? <><div className="w-2.5 h-2.5 border border-violet-400 border-t-transparent rounded-full animate-spin" /> Ищу в интернете...</>
+                        : <><Icon name="Globe" size={10} /> AI из интернета</>
+                      }
+                    </button>
+                  )}
+                </div>
                 <textarea
                   value={local.description}
                   onChange={e => { update({ description: e.target.value }, false); e.target.style.height = "auto"; e.target.style.height = e.target.scrollHeight + "px"; }}
