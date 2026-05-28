@@ -178,7 +178,10 @@ export default function useCatalogVoiceHandler({ state, allPrices, onAssignMany,
           лево: "слева", право: "справа", верх: "сверху", низ: "снизу",
         };
         const wallHint = voiceItem.wall
-          ? findTargetSegIds(WALL_RU[voiceItem.wall.toLowerCase()] ?? voiceItem.wall.toLowerCase(), state)
+          ? findTargetSegIds(
+              WALL_RU[voiceItem.wall.toLowerCase()] ?? voiceItem.wall, // буквенные "A-B" передаём как есть
+              state
+            )
           : null;
         const itemSegIds = wallHint ?? findSegIdsForItem(matched.name, matched.category, transcript, state);
         console.log("[voice] segIds for", matched.name, voiceItem.wall ? `(wall=${voiceItem.wall})` : "", "->", itemSegIds);

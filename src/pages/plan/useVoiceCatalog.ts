@@ -59,17 +59,22 @@ export function findTargetSegIds(transcript: string, state: PlanState): string[]
     return [ALL_SEGS_SENTINEL];
   }
 
-  // Буквенные метки A-Z (напр. "стена A-B", "отрезок BC", "сторона AB")
-  const labelMatch = t.match(/(?:стен[ауе]?|отрезк[еуа]?|сторон[еуа]?)\s+([a-zа-яё]{1,2}[-–—]?[a-zа-яё]{0,2})/i)
-    ?? t.match(/([a-zA-Z]{1,2})[-–—]([a-zA-Z]{1,2})/);
+  // Буквенные метки A-Z (напр. "стена A-B", "C-D", "AB")
+  const labelMatch = t.match(/(?:стен[ауе]?|отрезк[еуа]?|сторон[еуа]?)\s+([a-z]{1,2}[-–—]?[a-z]{0,2})/i)
+    ?? t.match(/\b([a-zA-Z]{1,2})[-–—]([a-zA-Z]{1,2})\b/);
   if (labelMatch) {
-    const raw = labelMatch[1]?.replace(/[-–—]/g, "") ?? "";
+    // Берём полную пару букв: "C-D" → "cd", "AB" → "ab"
+    const pair = labelMatch[2]
+      ? (labelMatch[1] + labelMatch[2]).toLowerCase()  // из regex с двумя группами
+      : labelMatch[1].replace(/[-–—]/g, "").toLowerCase(); // из первой группы
     const matched: string[] = [];
     segments.forEach((seg, i) => {
       const fromLetter = String.fromCharCode(65 + i).toLowerCase();
       const toLetter   = String.fromCharCode(65 + ((i + 1) % segments.length)).toLowerCase();
       const segLabel   = `${fromLetter}${toLetter}`;
-      if (segLabel.includes(raw.toLowerCase()) || raw.toLowerCase().includes(fromLetter)) {
+      // Точное совпадение пары или любая из букв совпадает
+      if (segLabel === pair || pair === `${toLetter}${fromLetter}` ||
+          (pair.length === 1 && (segLabel.includes(pair)))) {
         matched.push(seg.id);
       }
     });
