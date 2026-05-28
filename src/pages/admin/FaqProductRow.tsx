@@ -30,12 +30,11 @@ export default function FaqProductRow({ product, expanded, onToggle, onChange, o
   const fileRef = useRef<HTMLInputElement>(null);
   // Source-URL каждой добавленной картинки: cdn → source (для исключения повторов)
   const cdnToSource = useRef<Map<string, string>>(new Map());
-  // Флаг: идёт локальное сохранение — не перезатирать из родителя
-  const isSaving = useRef(false);
+  // Счётчик активных операций сохранения — пока > 0, не перезатираем local из родителя
+  const savingCount = useRef(0);
 
   useEffect(() => {
-    // Не перезатираем local пока идёт сохранение (чтобы удалённые картинки не вернулись)
-    if (!isSaving.current) {
+    if (savingCount.current === 0) {
       setLocal(product);
     }
   }, [product]);
@@ -51,10 +50,7 @@ export default function FaqProductRow({ product, expanded, onToggle, onChange, o
     const updated = { ...local, ...patch };
     setLocal(updated);
     if (immediate) {
-      isSaving.current = true;
       onChange(updated, true);
-      // Снимаем флаг после небольшой задержки (дольше чем круговой trip до БД)
-      setTimeout(() => { isSaving.current = false; }, 2000);
     } else {
       onChange(updated, false);
     }
@@ -63,6 +59,7 @@ export default function FaqProductRow({ product, expanded, onToggle, onChange, o
   const handleFileUpload = async (files: FileList | null) => {
     if (!files || files.length === 0) return;
     if (images.length >= 5) return;
+    savingCount.current += 1;
     setUploading(true);
     try {
       const available = 5 - images.length;
@@ -70,13 +67,12 @@ export default function FaqProductRow({ product, expanded, onToggle, onChange, o
       const urls = await Promise.all(toUpload.map(f => uploadFaqImage(token, f)));
       update({ images: [...images, ...urls] }, true);
     } catch (e) { console.error(e); }
-    finally { setUploading(false); if (fileRef.current) fileRef.current.value = ""; }
+    finally { setUploading(false); if (fileRef.current) fileRef.current.value = ""; savingCount.current = Math.max(0, savingCount.current - 1); }
   };
 
   const removeImage = (idx: number) => {
     const removedCdn = images[idx];
     if (removedCdn) {
-      // Запоминаем source-URL удалённой картинки в localStorage чтобы AI не предложил снова
       const src = cdnToSource.current.get(removedCdn) || removedCdn;
       addRejectedSource(local.id, src);
     }
@@ -110,24 +106,22 @@ export default function FaqProductRow({ product, expanded, onToggle, onChange, o
 
   const handleAiImage = async () => {
     if (images.length >= 5) return;
+    savingCount.current += 1;
     setGenerating(true);
     try {
       const available = 5 - images.length;
-      // Все source-URL которые когда-либо были отклонены (персистентно из localStorage)
       const rejectedSources = getRejectedSources(local.id);
-      // Source-URL текущих картинок (чтобы не дублировать)
       const currentSources = images.map(cdn => cdnToSource.current.get(cdn) || cdn);
       const excludeAll = [...new Set([...rejectedSources, ...currentSources])];
       const { cdns, sources } = await searchProductImages(
         token, local.name || "натяжной потолок", available, excludeAll
       );
       if (cdns.length > 0) {
-        // Запоминаем cdn→source маппинг для будущих удалений
         cdns.forEach((cdn, i) => { if (sources[i]) cdnToSource.current.set(cdn, sources[i]); });
         update({ images: [...images, ...cdns] }, true);
       }
     } catch (e) { console.error(e); }
-    finally { setGenerating(false); }
+    finally { setGenerating(false); savingCount.current = Math.max(0, savingCount.current - 1); }
   };
 
   const firstImage = images[0] || "";
