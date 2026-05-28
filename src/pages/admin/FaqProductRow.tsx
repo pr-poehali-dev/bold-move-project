@@ -22,6 +22,8 @@ export default function FaqProductRow({ product, expanded, onToggle, onChange, o
   const [uploading, setUploading] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [sliderIdx, setSliderIdx] = useState<number | null>(null);
+  const [dragOver, setDragOver] = useState<number | null>(null);
+  const dragFrom = useRef<number | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => { setLocal(product); }, [product]);
@@ -146,13 +148,53 @@ export default function FaqProductRow({ product, expanded, onToggle, onChange, o
                 <span style={{ color: muted, fontWeight: 400, textTransform: "none", letterSpacing: 0 }}>
                   ({images.length}/5)
                 </span>
+                {images.length > 1 && !readOnly && (
+                  <span style={{ color: muted, fontWeight: 400, textTransform: "none", letterSpacing: 0, fontSize: 10 }}>
+                    · перетащи чтобы изменить порядок
+                  </span>
+                )}
               </div>
               <div className="flex flex-wrap gap-2">
                 {images.map((url, i) => (
-                  <div key={i} className="relative w-16 h-16 flex-shrink-0 group rounded-xl overflow-hidden cursor-pointer"
-                    style={{ border: `1px solid ${border}` }}
-                    onClick={() => setSliderIdx(i)}>
-                    <img src={url} alt="" className="w-full h-full object-cover" />
+                  <div
+                    key={url}
+                    draggable={!readOnly && images.length > 1}
+                    onDragStart={() => { dragFrom.current = i; }}
+                    onDragOver={e => { e.preventDefault(); setDragOver(i); }}
+                    onDragLeave={() => setDragOver(null)}
+                    onDrop={e => {
+                      e.preventDefault();
+                      setDragOver(null);
+                      const from = dragFrom.current;
+                      if (from === null || from === i) return;
+                      const reordered = [...images];
+                      const [moved] = reordered.splice(from, 1);
+                      reordered.splice(i, 0, moved);
+                      update({ images: reordered }, true);
+                      dragFrom.current = null;
+                    }}
+                    onDragEnd={() => { setDragOver(null); dragFrom.current = null; }}
+                    className="relative w-16 h-16 flex-shrink-0 group rounded-xl overflow-hidden"
+                    style={{
+                      border: dragOver === i
+                        ? "2px solid #a78bfa"
+                        : i === 0
+                          ? "2px solid rgba(139,92,246,0.6)"
+                          : `1px solid ${border}`,
+                      cursor: images.length > 1 && !readOnly ? "grab" : "pointer",
+                      opacity: dragFrom.current === i ? 0.4 : 1,
+                      transition: "border 0.15s, opacity 0.15s",
+                    }}
+                    onClick={() => setSliderIdx(i)}
+                  >
+                    <img src={url} alt="" className="w-full h-full object-cover pointer-events-none" />
+                    {/* Метка обложки */}
+                    {i === 0 && (
+                      <div className="absolute bottom-0 left-0 right-0 flex items-center justify-center py-0.5"
+                        style={{ background: "rgba(139,92,246,0.75)", fontSize: 8, color: "#fff", fontWeight: 700, letterSpacing: 0.5 }}>
+                        ОБЛОЖКА
+                      </div>
+                    )}
                     {!readOnly && (
                       <button
                         onClick={e => { e.stopPropagation(); removeImage(i); }}
