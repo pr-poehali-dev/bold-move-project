@@ -46,11 +46,20 @@ export default function PlanCanvasOverlay({
 
       {/* Контекстное меню */}
       {ctxMenu && (
+        <>
+          {/* Прозрачная подложка — закрывает меню при тапе мимо */}
+          <div
+            className="fixed inset-0 z-40"
+            onPointerDown={onCloseCtxMenu}
+            onTouchStart={onCloseCtxMenu}
+          />
         <div className="fixed z-50 bg-[#1a1b2e] border border-white/[0.12] rounded-xl shadow-2xl py-1 min-w-[180px]"
           style={{
             left: Math.min(ctxMenu.x, window.innerWidth - 196),
             top:  Math.min(ctxMenu.y, window.innerHeight - 180),
           }}
+          onPointerDown={e => e.stopPropagation()}
+          onTouchStart={e => e.stopPropagation()}
           onClick={onCloseCtxMenu}>
           {ctxMenu.type === "point" && (<>
             <CtxItem icon="Move" label="Переместить" onClick={() => onChange({ tool: "move", selectedPointId: ctxMenu.id })} />
@@ -99,6 +108,7 @@ export default function PlanCanvasOverlay({
             <CtxItem icon="Trash2" label="Удалить" danger onClick={() => onChange({ diagonals: diagonals.filter(d => d.id !== ctxMenu.id) })} />
           </>)}
         </div>
+        </>
       )}
 
       {/* Зум и каталог перенесены в MobileBottomBar */}
