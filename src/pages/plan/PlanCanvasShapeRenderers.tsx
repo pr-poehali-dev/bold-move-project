@@ -85,6 +85,13 @@ export function renderPoints(ctx: RenderContext, handlers: SegmentHandlers) {
           <circle cx={pt.x} cy={pt.y} r={r + 6 / z} fill="none"
             stroke={ghost?.willClose && isFirst ? "#34d399" : "#c4b5fd"} strokeWidth={sw} opacity={0.5} />
         )}
+        {isSel && (
+          <circle cx={pt.x} cy={pt.y} r={r + 14 / z} fill="rgba(196,181,253,0.12)"
+            stroke="#a78bfa" strokeWidth={1.5 / z} strokeDasharray={`${4/z} ${3/z}`}
+            className="pointer-events-none">
+            <animate attributeName="stroke-dashoffset" from="0" to={`${-14/z}`} dur="1s" repeatCount="indefinite" />
+          </circle>
+        )}
         {hasArc && !isSel && (
           <circle cx={pt.x} cy={pt.y} r={r + 3 / z} fill="none" stroke="#10b981" strokeWidth={sw * 0.7} opacity={0.4} />
         )}

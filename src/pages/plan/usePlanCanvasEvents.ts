@@ -40,6 +40,10 @@ export function usePlanCanvasEvents({ state, onChange, onReplace, cs }: Params) 
   const toolRef = useRef(tool);
   useEffect(() => { toolRef.current = tool; }, [tool]);
 
+  // Ref для selectedPointId — чтобы touchStart читал актуальное значение
+  const selectedPointIdRef = useRef(selectedPointId);
+  useEffect(() => { selectedPointIdRef.current = selectedPointId; }, [selectedPointId]);
+
   // Ref для актуального selectedSegmentIds — чтобы избежать stale closure в touch-обработчиках
   const selectedSegmentIdsRef = useRef<string[]>(state.selectedSegmentIds ?? []);
   useEffect(() => { selectedSegmentIdsRef.current = state.selectedSegmentIds ?? []; }, [state.selectedSegmentIds]);
@@ -233,9 +237,16 @@ export function usePlanCanvasEvents({ state, onChange, onReplace, cs }: Params) 
 
       if (toolRef.current === "move") {
         if (hitPt) {
-          dragRef.current = { pointId: hitPt.id };
+          // На мобиле drag только если угол уже выбран (selectedPointId совпадает)
+          const isMobile = window.innerWidth < 768;
+          const alreadySelected = selectedPointIdRef.current === hitPt.id;
+          if (!isMobile || alreadySelected) {
+            dragRef.current = { pointId: hitPt.id };
+            nearbyPtRef.current = null;
+            return;
+          }
+          // Угол не выбран — просто выбираем его, без drag
           nearbyPtRef.current = null;
-          return;
         }
         // Нет прямого попадания в точку — drag не начинаем, только pan
         nearbyPtRef.current = null;
