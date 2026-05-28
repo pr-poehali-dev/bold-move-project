@@ -765,6 +765,9 @@ def handler(event: dict, context) -> dict:
     """, (raw_token,))
     wl_row = cur.fetchone()
 
+    is_company_user = False
+    company_user_id = None
+
     if wl_row:
         if not wl_row[2]:
             cur.close(); conn.close()
@@ -772,17 +775,25 @@ def handler(event: dict, context) -> dict:
         # wl-менеджер авторизован — запоминаем его id для назначения компании
         wl_manager_id = wl_row[0]
     else:
-        # Проверяем обычного мастера
+        # Проверяем обычного пользователя (мастер или company)
         cur.execute(f"""
-            SELECT u.email FROM {SCHEMA}.user_sessions s
+            SELECT u.email, u.role, u.id, u.website FROM {SCHEMA}.user_sessions s
             JOIN {SCHEMA}.users u ON u.id = s.user_id
             WHERE s.token=%s AND s.expires_at > NOW()
         """, (raw_token,))
         row = cur.fetchone()
-        if not row or row[0] != "19.jeka.94@gmail.com":
+        if not row:
             cur.close(); conn.close()
             return err("Доступ запрещён", 403)
-        wl_manager_id = None  # мастер — без привязки к менеджеру
+        user_email, user_role, user_uid, user_website = row
+        is_master = (user_email == "19.jeka.94@gmail.com")
+        is_company_user = (user_role in ("company", "installer"))
+        if not is_master and not is_company_user:
+            cur.close(); conn.close()
+            return err("Доступ запрещён", 403)
+        if is_company_user:
+            company_user_id = user_uid
+        wl_manager_id = None  # мастер/компания — без привязки к менеджеру
 
     body = {}
     if event.get("body"):
@@ -798,6 +809,15 @@ def handler(event: dict, context) -> dict:
     only_field = (body.get("only_field") or "").strip()  # если задано — ищем только одно поле
     parse_only = bool(body.get("parse_only"))  # True — только парсинг, без создания компании
     check_only = bool(body.get("check_only"))  # True — только проверка дубликата, без парсинга
+
+    # Если запрос от company-пользователя — подставляем его id автоматически,
+    # переключаемся в режим parse_only (не создаём новую демо-компанию),
+    # отключаем check_only (дубликат-чек не нужен для редактирования своего бренда)
+    if is_company_user:
+        if company_id is None:
+            company_id = company_user_id
+        parse_only = True
+        check_only = False
 
     if not site_url:
         return err("url обязателен")
@@ -985,6 +1005,12 @@ def handler(event: dict, context) -> dict:
 
     # parse_only=True — возвращаем только результат парсинга, не создаём компанию
     if parse_only:
+        # Для company-пользователя сохраняем найденные данные в их аккаунт
+        if is_company_user and company_id:
+            try:
+                save_brand_to_db(company_id, brand)
+            except Exception as e:
+                print(f"[parse-site] save_brand_to_db for company user failed: {e}")
         report = build_report(brand)
         return ok({"brand": brand, "report": report})
 
