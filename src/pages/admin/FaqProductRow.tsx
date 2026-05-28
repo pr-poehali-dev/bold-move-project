@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import Icon from "@/components/ui/icon";
 import type { FaqProduct } from "./types";
-import { uploadFaqImage, searchProductImages } from "./faq-utils";
+import { uploadFaqImage, searchProductImages, getRejectedSources, addRejectedSource } from "./faq-utils";
 
 interface Props {
   product: FaqProduct;
@@ -25,8 +25,8 @@ export default function FaqProductRow({ product, expanded, onToggle, onChange, o
   const [dragOver, setDragOver] = useState<number | null>(null);
   const dragFrom = useRef<number | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
-  // Список URL отклонённых пользователем — не предлагать повторно
-  const rejectedUrls = useRef<Set<string>>(new Set());
+  // Source-URL каждой добавленной картинки: cdn → source (для исключения повторов)
+  const cdnToSource = useRef<Map<string, string>>(new Map());
   // Флаг: идёт локальное сохранение — не перезатирать из родителя
   const isSaving = useRef(false);
 
@@ -71,9 +71,12 @@ export default function FaqProductRow({ product, expanded, onToggle, onChange, o
   };
 
   const removeImage = (idx: number) => {
-    const removed = images[idx];
-    // Запоминаем удалённый URL чтобы AI не предложил его снова
-    if (removed) rejectedUrls.current.add(removed);
+    const removedCdn = images[idx];
+    if (removedCdn) {
+      // Запоминаем source-URL удалённой картинки в localStorage чтобы AI не предложил снова
+      const src = cdnToSource.current.get(removedCdn) || removedCdn;
+      addRejectedSource(local.id, src);
+    }
     update({ images: images.filter((_, i) => i !== idx) }, true);
   };
 
@@ -82,10 +85,19 @@ export default function FaqProductRow({ product, expanded, onToggle, onChange, o
     setGenerating(true);
     try {
       const available = 5 - images.length;
-      // Передаём все известные URL (текущие + отклонённые) — бэкенд исключит их из выдачи
-      const allKnown = [...images, ...Array.from(rejectedUrls.current)];
-      const fresh = await searchProductImages(token, local.name || "натяжной потолок", available, allKnown);
-      if (fresh.length > 0) update({ images: [...images, ...fresh] }, true);
+      // Все source-URL которые когда-либо были отклонены (персистентно из localStorage)
+      const rejectedSources = getRejectedSources(local.id);
+      // Source-URL текущих картинок (чтобы не дублировать)
+      const currentSources = images.map(cdn => cdnToSource.current.get(cdn) || cdn);
+      const excludeAll = [...new Set([...rejectedSources, ...currentSources])];
+      const { cdns, sources } = await searchProductImages(
+        token, local.name || "натяжной потолок", available, excludeAll
+      );
+      if (cdns.length > 0) {
+        // Запоминаем cdn→source маппинг для будущих удалений
+        cdns.forEach((cdn, i) => { if (sources[i]) cdnToSource.current.set(cdn, sources[i]); });
+        update({ images: [...images, ...cdns] }, true);
+      }
     } catch (e) { console.error(e); }
     finally { setGenerating(false); }
   };

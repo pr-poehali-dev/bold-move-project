@@ -431,14 +431,14 @@ def handler(event: dict, context) -> dict:
             if not candidate_urls:
                 return resp(404, {'error': 'Картинки не найдены'})
 
-            # 2. Скачиваем и сохраняем в S3
+            # 2. Скачиваем и сохраняем в S3, запоминаем source→cdn маппинг
             s3 = boto3.client('s3', endpoint_url='https://bucket.poehali.dev',
                               aws_access_key_id=os.environ['AWS_ACCESS_KEY_ID'],
                               aws_secret_access_key=os.environ['AWS_SECRET_ACCESS_KEY'])
-            cdn_urls = []
+            results = []  # [{cdn, source}]
             ua = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
             for img_url in candidate_urls:
-                if len(cdn_urls) >= limit:
+                if len(results) >= limit:
                     break
                 try:
                     dl = requests.get(img_url, headers={'User-Agent': ua}, timeout=8, stream=False)
@@ -451,14 +451,18 @@ def handler(event: dict, context) -> dict:
                     file_key = f'faq-images/{uuid.uuid4().hex}.{ext}'
                     s3.put_object(Bucket='files', Key=file_key, Body=dl.content, ContentType=ct)
                     cdn_url = f"https://cdn.poehali.dev/projects/{os.environ['AWS_ACCESS_KEY_ID']}/bucket/{file_key}"
-                    cdn_urls.append(cdn_url)
+                    results.append({'cdn': cdn_url, 'source': img_url})
                 except Exception:
                     continue
 
-            if not cdn_urls:
+            if not results:
                 return resp(404, {'error': 'Не удалось сохранить ни одну картинку'})
 
-            return resp(200, {'urls': cdn_urls, 'count': len(cdn_urls)})
+            return resp(200, {
+                'urls': [r['cdn'] for r in results],
+                'sources': [r['source'] for r in results],
+                'count': len(results),
+            })
 
         except Exception as e:
             return resp(500, {'error': str(e)})

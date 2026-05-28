@@ -28,7 +28,7 @@ export async function searchProductImages(
   productName: string,
   limit = 5,
   excludeUrls: string[] = []
-): Promise<string[]> {
+): Promise<{ cdns: string[]; sources: string[] }> {
   const r = await fetch(`${UPLOAD_URL}?r=faq-search-image`, {
     method: "POST",
     headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
@@ -36,5 +36,19 @@ export async function searchProductImages(
   });
   const d = await r.json();
   if (!r.ok || d.error) throw new Error(d.error || "Ошибка поиска картинок");
-  return (d.urls as string[]) ?? [];
+  return { cdns: (d.urls as string[]) ?? [], sources: (d.sources as string[]) ?? [] };
+}
+
+const REJECTED_KEY = (productId: string) => `faq_rejected_${productId}`;
+
+export function getRejectedSources(productId: string): string[] {
+  try { return JSON.parse(localStorage.getItem(REJECTED_KEY(productId)) || "[]"); }
+  catch { return []; }
+}
+
+export function addRejectedSource(productId: string, sourceUrl: string) {
+  const existing = getRejectedSources(productId);
+  if (!existing.includes(sourceUrl)) {
+    localStorage.setItem(REJECTED_KEY(productId), JSON.stringify([...existing, sourceUrl]));
+  }
 }
