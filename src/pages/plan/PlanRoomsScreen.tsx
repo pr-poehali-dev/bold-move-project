@@ -45,6 +45,7 @@ export default function PlanRoomsScreen({ token, project, onBack, onOpenRoom }: 
   const [activeVarByRoom,       setActiveVarByRoom]       = useState<Record<number, number | null>>({});
   const menuRef = useRef<HTMLDivElement>(null);
   const varPickerRef = useRef<HTMLDivElement>(null);
+  const addFormRef = useRef<HTMLDivElement>(null);
 
   // Закрываем меню при клике вне
   useEffect(() => {
@@ -182,7 +183,13 @@ export default function PlanRoomsScreen({ token, project, onBack, onOpenRoom }: 
           <span className="text-[11px] font-bold hidden sm:inline">Скачать</span>
         </button>
         <button
-          onClick={() => { setShowForm(v => !v); setCustomName(""); }}
+          onClick={() => {
+            setShowForm(v => {
+              if (!v) setTimeout(() => addFormRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
+              return !v;
+            });
+            setCustomName("");
+          }}
           className="flex items-center gap-2 px-3 py-2 rounded-xl text-[12px] font-bold transition hover:opacity-90 active:scale-[0.97] flex-shrink-0"
           style={{ background: "linear-gradient(135deg,#7c3aed,#6d28d9)", color: "#fff" }}
         >
@@ -215,7 +222,7 @@ export default function PlanRoomsScreen({ token, project, onBack, onOpenRoom }: 
 
         {/* Форма добавления */}
         {showForm && (
-          <div className="mb-6 rounded-2xl p-5 space-y-4" style={{ background: "#0e0e1c", border: "1px solid rgba(124,58,237,0.3)" }}>
+          <div ref={addFormRef} className="mb-6 rounded-2xl p-5 space-y-4" style={{ background: "#0e0e1c", border: "1px solid rgba(124,58,237,0.3)" }}>
             <div className="flex items-center justify-between">
               <span className="text-white font-bold text-[15px]">Добавить комнату</span>
               <button onClick={() => setShowForm(false)} className="text-white/30 hover:text-white/70 transition">
@@ -472,7 +479,7 @@ export default function PlanRoomsScreen({ token, project, onBack, onOpenRoom }: 
 
             {/* Добавить ещё */}
             <button
-              onClick={() => { setShowForm(true); setCustomName(""); }}
+              onClick={() => { setShowForm(true); setCustomName(""); setTimeout(() => addFormRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 50); }}
               className="rounded-2xl flex flex-col items-center justify-center gap-2 transition hover:brightness-110 active:scale-[0.97]"
               style={{ minHeight: 200, background: "rgba(124,58,237,0.05)", border: "1px dashed rgba(124,58,237,0.25)" }}
             >
