@@ -1074,7 +1074,7 @@ def _extract_items_from_content(content: str) -> list:
                 break
     if end == -1:
         truncated = content[start:]
-        for suffix in [']}', '"]}}', '"}]}', '"]]}', '}}', ']}}'']:
+        for suffix in [']}', '"]}}', '"}]}', '"]]}', '}}', ']}}']:
             try:
                 parsed = json.loads(truncated + suffix)
                 items = parsed.get('items', [])
