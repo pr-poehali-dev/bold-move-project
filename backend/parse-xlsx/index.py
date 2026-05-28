@@ -550,7 +550,9 @@ def handler(event: dict, context) -> dict:
             return resp(200, {'description': description, 'web_found': bool(web_context)})
 
         except Exception as e:
-            return resp(500, {'error': str(e)})
+            import traceback
+            print('faq-enrich-product error:', traceback.format_exc())
+            return resp(500, {'error': str(e) or repr(e)})
 
     # --- POST ?r=faq-upload  — загрузка картинки в S3, возвращает CDN url
     if r == 'faq-upload' and method == 'POST':
