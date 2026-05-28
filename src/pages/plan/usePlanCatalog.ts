@@ -253,13 +253,39 @@ export function usePlanCatalog(
   ) => {
     const s = stateRef.current;
 
-    // Перед добавлением очищаем все стены от категорий которые приходят в этом запросе.
-    // Это гарантирует что повторный голосовой запрос не накапливает дубли —
-    // новые товары заменяют старые полностью, а не добавляются поверх.
-    const incomingCategories = new Set(wallItemsWithSegs.map(w => w.item.category));
+    // Перед добавлением очищаем стены только от тех категорий, которые реально раскладываются
+    // на конкретные стены в этом запросе (segIds != null).
+    // Категории без привязки к стенам (segIds === null) НЕ трогаем — иначе предыдущие
+    // товары слетают при каждом повторном голосовом запросе.
+    const incomingCategories = new Set(
+      wallItemsWithSegs
+        .filter(w => w.segIds !== null && w.segIds.length > 0)
+        .map(w => w.item.category)
+    );
+    // Для каждой категории с привязкой очищаем только те конкретные стены, куда придёт новый товар
+    const categoryToTargetSegs = new Map<string, Set<string> | null>();
+    for (const { item, segIds } of wallItemsWithSegs) {
+      if (!segIds || segIds.length === 0) continue;
+      const isAll = segIds[0] === ALL_SEGS_SENTINEL;
+      if (!categoryToTargetSegs.has(item.category)) {
+        categoryToTargetSegs.set(item.category, isAll ? null : new Set(segIds));
+      } else {
+        const existing = categoryToTargetSegs.get(item.category);
+        if (existing !== null && !isAll) {
+          segIds.forEach(id => existing.add(id));
+        } else {
+          categoryToTargetSegs.set(item.category, null);
+        }
+      }
+    }
     let newSegments = s.segments.map(seg => ({
       ...seg,
-      items: (seg.items ?? []).filter(it => !incomingCategories.has(it.category)),
+      items: (seg.items ?? []).filter(it => {
+        if (!incomingCategories.has(it.category)) return true;
+        const targetSegs = categoryToTargetSegs.get(it.category);
+        if (targetSegs === null) return false; // ALL — чистим везде
+        return !targetSegs.has(seg.id); // чистим только целевые стены
+      }),
     }));
 
     // Также очищаем floorItems от priceId которые приходят заново
