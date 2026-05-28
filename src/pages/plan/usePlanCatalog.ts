@@ -253,7 +253,19 @@ export function usePlanCatalog(
   ) => {
     const s = stateRef.current;
 
-    let newSegments = s.segments;
+    // Перед добавлением очищаем все стены от категорий которые приходят в этом запросе.
+    // Это гарантирует что повторный голосовой запрос не накапливает дубли —
+    // новые товары заменяют старые полностью, а не добавляются поверх.
+    const incomingCategories = new Set(wallItemsWithSegs.map(w => w.item.category));
+    let newSegments = s.segments.map(seg => ({
+      ...seg,
+      items: (seg.items ?? []).filter(it => !incomingCategories.has(it.category)),
+    }));
+
+    // Также очищаем floorItems от priceId которые приходят заново
+    const incomingFloorIds = new Set(floorOrActiveItems.map(it => it.priceId));
+    let newFloorItems = (s.floorItems ?? []).filter(fi => !incomingFloorIds.has(fi.priceId));
+
     for (const { item, segIds } of wallItemsWithSegs) {
       if (!segIds || segIds.length === 0) continue; // null = неизвестно, пропускаем
       const isAllSegs = segIds[0] === ALL_SEGS_SENTINEL;
@@ -295,7 +307,6 @@ export function usePlanCatalog(
     }
 
     // Полотно/штучные — добавляем в state.floorItems (не в activeItems!)
-    let newFloorItems = s.floorItems ?? [];
     for (const item of floorOrActiveItems) {
       if (!newFloorItems.some(fi => fi.priceId === item.priceId)) {
         const fi: FloorItem = {
