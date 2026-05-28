@@ -127,31 +127,31 @@ export default function PlanCanvasSvg({
       </div>
     )}
 
-    {/* Режим перемещения товара — подсказка + оверлей для отмены */}
+    {/* Режим перемещения товара — подсказка + кнопка отмены в одной строке */}
     {movePending && (
       <>
         <div style={{
           position: "absolute", top: 12, left: "50%", transform: "translateX(-50%)",
-          background: "rgba(6,182,212,0.15)", border: "1px solid rgba(6,182,212,0.6)",
-          color: "#67e8f9", fontSize: 13, fontWeight: 600,
-          padding: "8px 16px", borderRadius: 10,
-          zIndex: 60, whiteSpace: "nowrap", pointerEvents: "none",
+          display: "flex", alignItems: "center", gap: 8,
+          background: "rgba(6,182,212,0.12)", border: "1px solid rgba(6,182,212,0.5)",
+          borderRadius: 12, padding: "8px 10px 8px 16px",
+          zIndex: 60, whiteSpace: "nowrap",
           boxShadow: "0 4px 16px rgba(0,0,0,0.4)",
         }}>
-          Тапните на стену куда переместить
+          <span style={{ color: "#67e8f9", fontSize: 13, fontWeight: 600 }}>
+            Выберите стену для перемещения
+          </span>
+          <button
+            onPointerDown={() => setMovePending(null)}
+            style={{
+              background: "rgba(124,58,237,0.3)", border: "1px solid rgba(124,58,237,0.5)",
+              color: "#c4b5fd", fontSize: 12, fontWeight: 600,
+              padding: "4px 10px", borderRadius: 8, cursor: "pointer", flexShrink: 0,
+            }}
+          >
+            Отмена
+          </button>
         </div>
-        {/* Кнопка отмены */}
-        <button
-          onPointerDown={() => setMovePending(null)}
-          style={{
-            position: "absolute", top: 12, right: 12,
-            background: "rgba(17,12,36,0.92)", border: "1px solid rgba(124,58,237,0.4)",
-            color: "#c4b5fd", fontSize: 12, fontWeight: 600,
-            padding: "6px 12px", borderRadius: 8, cursor: "pointer", zIndex: 60,
-          }}
-        >
-          Отмена
-        </button>
       </>
     )}
     <svg
