@@ -210,6 +210,30 @@ export default function PlanCatalogPanel({
       .filter(seg => (seg.items ?? []).some(it => it.category === category))
       .map(seg => seg.id);
 
+  // Стены без спецпрофилей — туда идёт стеновой алюминиевый
+  // Спецпрофили: теневой, парящий, ниши (они занимают всю длину стены)
+  const SPECIAL_PROFILE_CATS = new Set(["Теневой профиль", "Парящий профиль", "Ниши для штор"]);
+  const findSegsWithoutSpecialProfile = (
+    otherWallItems: { item: SegmentPriceItem; segIds: string[] | null }[]
+  ): string[] | null => {
+    if (state.segments.length === 0) return null;
+    // Собираем сегменты куда уже назначены спецпрофили (из других wallItems текущего запроса)
+    const segsWithSpecial = new Set<string>();
+    for (const { item, segIds } of otherWallItems) {
+      if (SPECIAL_PROFILE_CATS.has(item.category) && segIds) {
+        for (const id of segIds) segsWithSpecial.add(id);
+      }
+    }
+    // Также учитываем уже существующие на стенах спецпрофили
+    for (const seg of state.segments) {
+      const hasSpecial = (seg.items ?? []).some(it => SPECIAL_PROFILE_CATS.has(it.category));
+      if (hasSpecial) segsWithSpecial.add(seg.id);
+    }
+    const free = state.segments.map(s => s.id).filter(id => !segsWithSpecial.has(id));
+    if (free.length === 0) return state.segments.map(s => s.id); // все заняты — ставим везде
+    return free;
+  };
+
   // Обработка items от бота
   const handleVoiceItems = (items: VoiceCatalogItem[], transcript: string) => {
     console.log("[voice] transcript:", transcript);
@@ -301,6 +325,15 @@ export default function PlanCatalogPanel({
       }
 
       if (matched.isWallItem && state.segments.length > 0) {
+        // Стеновой алюминиевый — детерминированно на свободные стены, текст не читаем
+        if (/стеновой алюминиевый/i.test(matched.name)) {
+          const freeSegs = findSegsWithoutSpecialProfile(wallItemsWithSegs);
+          console.log("[voice] stenovoy → free segs:", freeSegs);
+          if (freeSegs && freeSegs.length > 0) {
+            wallItemsWithSegs.push({ item: matched, segIds: freeSegs });
+          }
+          return;
+        }
         const itemSegIds = findSegIdsForItem(matched.name, matched.category, transcript, state);
         console.log("[voice] segIds for", matched.name, "->", itemSegIds);
         if (!itemSegIds) {
