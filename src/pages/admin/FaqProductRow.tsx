@@ -30,12 +30,15 @@ export default function FaqProductRow({ product, expanded, onToggle, onChange, o
   const fileRef = useRef<HTMLInputElement>(null);
   // Source-URL каждой добавленной картинки: cdn → source (для исключения повторов)
   const cdnToSource = useRef<Map<string, string>>(new Map());
-  // Счётчик активных операций сохранения — пока > 0, не перезатираем local из родителя
+  // Актуальная копия local для async-функций (чтобы не читать устаревший снапшот)
+  const localRef = useRef<FaqProduct>(product);
+  // Счётчик активных операций — пока > 0, не перезатираем local из родителя
   const savingCount = useRef(0);
 
   useEffect(() => {
     if (savingCount.current === 0) {
       setLocal(product);
+      localRef.current = product;
     }
   }, [product]);
 
@@ -47,25 +50,24 @@ export default function FaqProductRow({ product, expanded, onToggle, onChange, o
       : [];
 
   const update = (patch: Partial<FaqProduct>, immediate = false) => {
-    const updated = { ...local, ...patch };
+    // Всегда читаем актуальное состояние через ref — не устаревший снапшот замыкания
+    const updated = { ...localRef.current, ...patch };
+    localRef.current = updated;
     setLocal(updated);
-    if (immediate) {
-      onChange(updated, true);
-    } else {
-      onChange(updated, false);
-    }
+    onChange(updated, immediate);
   };
 
   const handleFileUpload = async (files: FileList | null) => {
     if (!files || files.length === 0) return;
-    if (images.length >= 5) return;
+    if ((localRef.current.images?.length ?? 0) >= 5) return;
     savingCount.current += 1;
     setUploading(true);
     try {
-      const available = 5 - images.length;
+      const currentImages = localRef.current.images ?? [];
+      const available = 5 - currentImages.length;
       const toUpload = Array.from(files).slice(0, available);
       const urls = await Promise.all(toUpload.map(f => uploadFaqImage(token, f)));
-      update({ images: [...images, ...urls] }, true);
+      update({ images: [...currentImages, ...urls] }, true);
     } catch (e) { console.error(e); }
     finally { setUploading(false); if (fileRef.current) fileRef.current.value = ""; savingCount.current = Math.max(0, savingCount.current - 1); }
   };
@@ -105,20 +107,24 @@ export default function FaqProductRow({ product, expanded, onToggle, onChange, o
   };
 
   const handleAiImage = async () => {
-    if (images.length >= 5) return;
+    if ((localRef.current.images?.length ?? 0) >= 5) return;
     savingCount.current += 1;
     setGenerating(true);
     try {
-      const available = 5 - images.length;
-      const rejectedSources = getRejectedSources(local.id);
-      const currentSources = images.map(cdn => cdnToSource.current.get(cdn) || cdn);
+      // Читаем актуальные images через ref — не устаревший снапшот
+      const currentImages = localRef.current.images ?? [];
+      const available = 5 - currentImages.length;
+      const rejectedSources = getRejectedSources(localRef.current.id);
+      const currentSources = currentImages.map(cdn => cdnToSource.current.get(cdn) || cdn);
       const excludeAll = [...new Set([...rejectedSources, ...currentSources])];
       const { cdns, sources } = await searchProductImages(
-        token, local.name || "натяжной потолок", available, excludeAll
+        token, localRef.current.name || "натяжной потолок", available, excludeAll
       );
       if (cdns.length > 0) {
         cdns.forEach((cdn, i) => { if (sources[i]) cdnToSource.current.set(cdn, sources[i]); });
-        update({ images: [...images, ...cdns] }, true);
+        // Снова читаем актуальные images — могли измениться пока шёл запрос
+        const freshImages = localRef.current.images ?? [];
+        update({ images: [...freshImages, ...cdns] }, true);
       }
     } catch (e) { console.error(e); }
     finally { setGenerating(false); savingCount.current = Math.max(0, savingCount.current - 1); }
