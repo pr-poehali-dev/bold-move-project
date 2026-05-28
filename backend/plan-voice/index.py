@@ -176,38 +176,6 @@ def apply_bundles_and_rules(items: list, room_context: str = '') -> list:
                 existing.add(chosen_power['name'].lower())
                 print(f"[bundle] power: {chosen_power['name']}")
 
-    # Пересчитываем стеновой алюминиевый ВСЕГДА (даже если LLM его добавил с неправильным qty)
-    stenovoy_name = 'Стеновой алюминиевый'
-    stenovoy_rule = name_to_rule.get(stenovoy_name.lower())
-    if stenovoy_rule:
-        # Спецпрофили: теневой + парящий (не ниши, не монтаж)
-        special_kw = ['flexy', 'fly', 'eurokraab', 'парящий', 'теневой', 'классик', 'пк-6']
-        all_prof_items = items + to_add
-        total_special = sum(
-            float(it.get('qty', 0) or 0)
-            for it in all_prof_items
-            if any(w in it['name'].lower() for w in special_kw)
-            and 'монтаж' not in it['name'].lower()
-        )
-        # Периметр: ищем в room_context строку "Периметр: X м"
-        perim_from_context = 0.0
-        import re as _re2
-        m_perim = _re2.search(r'Периметр[:\s]+(\d+(?:[.,]\d+)?)\s*м', room_context)
-        if m_perim:
-            perim_from_context = float(m_perim.group(1).replace(',', '.'))
-        # Правильный qty стенового = периметр - спецпрофили
-        if perim_from_context > 0:
-            stenovoy_qty = max(0.1, round(perim_from_context - total_special, 2))
-        else:
-            stenovoy_qty = max(0.1, round(total_special, 2)) if total_special > 0 else 1.0
-        print(f"[stenovoy] perim={perim_from_context} special={total_special} → qty={stenovoy_qty}")
-        # Убираем старый стеновой из items (с неправильным qty от LLM) и добавляем правильный
-        items = [it for it in items if it['name'].lower() != stenovoy_name.lower()]
-        to_add = [it for it in to_add if it['name'].lower() != stenovoy_name.lower()]
-        to_add.append({'name': stenovoy_rule['name'], 'qty': stenovoy_qty,
-                       'price': stenovoy_rule['price'], 'unit': stenovoy_rule['unit'],
-                       'category': stenovoy_rule.get('category', 'Профиль')})
-
     return items + to_add
 
 

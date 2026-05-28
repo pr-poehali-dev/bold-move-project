@@ -14,9 +14,7 @@
         "room_context": "Площадь: 16 м². Периметр: 16 м. Стен: 4.",
         "transcript": "парящий профиль по всему периметру"
       },
-      "expectedStatus": 200,
-      "expectedBody": {"items": []},
-      "bodyMatcher": "partial"
+      "expectedStatus": 200
     }
   ]
 }

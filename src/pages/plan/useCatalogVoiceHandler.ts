@@ -8,7 +8,6 @@ import {
   fixShadowProfile,
   ensureLightingBundle,
   matchItem,
-  WALL_CATEGORIES,
   SILENT_CATEGORIES,
 } from "./catalogVoiceHelpers";
 
@@ -18,9 +17,6 @@ export interface PendingWallItem {
   otherWallItems: { item: SegmentPriceItem; segIds: string[] | null }[];
   floorItems: SegmentPriceItem[];
 }
-
-// Спецпрофили: теневой, парящий, ниши (они занимают всю длину стены)
-const SPECIAL_PROFILE_CATS = new Set(["Теневой профиль", "Парящий профиль", "Ниши для штор"]);
 
 interface Props {
   state: PlanState;
@@ -66,31 +62,6 @@ export default function useCatalogVoiceHandler({ state, allPrices, onAssignMany,
     state.segments
       .filter(seg => (seg.items ?? []).some(it => it.category === category))
       .map(seg => seg.id);
-
-  // Стены без спецпрофилей — туда идёт стеновой алюминиевый
-  const findSegsWithoutSpecialProfile = (
-    otherWallItems: { item: SegmentPriceItem; segIds: string[] | null }[]
-  ): string[] | null => {
-    if (state.segments.length === 0) return null;
-    const segsWithSpecial = new Set<string>();
-    for (const { item, segIds } of otherWallItems) {
-      if (SPECIAL_PROFILE_CATS.has(item.category)) {
-        if (segIds && segIds[0] !== ALL_SEGS_SENTINEL) {
-          // Конкретные стены — исключаем только их
-          for (const id of segIds) segsWithSpecial.add(id);
-        } else if (!segIds) {
-          // Стена неизвестна — на всякий случай не трогаем логику (стеновой пойдёт на все оставшиеся)
-        }
-      }
-    }
-    for (const seg of state.segments) {
-      const hasSpecial = (seg.items ?? []).some(it => SPECIAL_PROFILE_CATS.has(it.category));
-      if (hasSpecial) segsWithSpecial.add(seg.id);
-    }
-    const free = state.segments.map(s => s.id).filter(id => !segsWithSpecial.has(id));
-    if (free.length === 0) return state.segments.map(s => s.id);
-    return free;
-  };
 
   // Детект команды замены
   const isReplaceCommand = (t: string) =>
@@ -185,10 +156,6 @@ export default function useCatalogVoiceHandler({ state, allPrices, onAssignMany,
     const floorItems: SegmentPriceItem[] = [];
     const unknownWallItems: SegmentPriceItem[] = [];
 
-    // Два прохода: сначала все позиции КРОМЕ стенового алюминиевого,
-    // потом стеновой — чтобы знать какие стены уже заняты спецпрофилями
-    const stenovoyItems: { voiceItem: VoiceCatalogItem; matched: SegmentPriceItem }[] = [];
-
     items_.forEach(voiceItem => {
       const matched = matchItem(voiceItem, allPrices);
       if (!matched) { console.log("[voice] no match for:", voiceItem.name); return; }
@@ -203,38 +170,17 @@ export default function useCatalogVoiceHandler({ state, allPrices, onAssignMany,
       }
 
       if (matched.isWallItem && state.segments.length > 0) {
-        // Стеновой алюминиевый — откладываем на второй проход
-        if (/стеновой алюминиевый/i.test(matched.name)) {
-          stenovoyItems.push({ voiceItem, matched });
-          return;
-        }
         const itemSegIds = findSegIdsForItem(matched.name, matched.category, transcript, state);
         console.log("[voice] segIds for", matched.name, "->", itemSegIds);
         if (!itemSegIds) {
           unknownWallItems.push(matched);
-          // Спецпрофили с неизвестной стеной всё равно учитываем при расчёте свободных стен
-          if (SPECIAL_PROFILE_CATS.has(matched.category)) {
-            wallItemsWithSegs.push({ item: matched, segIds: null });
-          }
         } else {
-          wallItemsWithSegs.push({ item: matched, segIds: itemSegIds });
+          wallItemsWithSegs.push({ item: { ...matched, quantity: voiceItem.qty ?? 1 }, segIds: itemSegIds });
         }
       } else {
         floorItems.push({ ...matched, quantity: voiceItem.qty ?? 1 });
       }
     });
-
-    // Второй проход: стеновой алюминиевый на свободные стены (все спецпрофили уже в wallItemsWithSegs)
-    console.log("[voice] wallItemsWithSegs before stenovoy:", wallItemsWithSegs.map(w => ({ name: w.item.name, cat: w.item.category, segs: w.segIds })));
-    console.log("[voice] stenovoyItems count:", stenovoyItems.length);
-    stenovoyItems.forEach(({ voiceItem, matched }) => {
-      const freeSegs = findSegsWithoutSpecialProfile(wallItemsWithSegs);
-      console.log("[voice] stenovoy → free segs:", freeSegs, "all segs:", state.segments.map(s => s.id));
-      if (freeSegs && freeSegs.length > 0) {
-        wallItemsWithSegs.push({ item: { ...matched, quantity: voiceItem.qty ?? 1 }, segIds: freeSegs });
-      }
-    });
-    console.log("[voice] final wallItemsWithSegs:", wallItemsWithSegs.map(w => ({ name: w.item.name, segs: w.segIds })));
 
     if (wallItemsWithSegs.length > 0 || floorItems.length > 0) {
       onAssignMany(wallItemsWithSegs, floorItems);
