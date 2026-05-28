@@ -69,6 +69,9 @@ export default function PlanCanvas({ state, eventState, onChange, onReplace, onO
         onTouchMove={events.handleTouchMove}
         onTouchEnd={events.handleTouchEnd}
         didMoveRef={cs.didMoveRef}
+        longPressRef={cs.longPressRef}
+        longPressPos={cs.longPressPos}
+        setCtxMenu={cs.setCtxMenu}
         onDimLineClick={events.handleDimLineClick}
         onEditFloorItem={onEditFloorItem}
         onEditSegItem={onEditSegItem}

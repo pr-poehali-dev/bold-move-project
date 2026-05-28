@@ -35,6 +35,9 @@ interface Props {
   editingSegId?: string | null;
   onSetEditingSegId?: (id: string | null) => void;
   didMoveRef?: React.MutableRefObject<boolean>;
+  longPressRef?: React.MutableRefObject<ReturnType<typeof setTimeout> | null>;
+  longPressPos?: React.MutableRefObject<{ clientX: number; clientY: number; type: string; id: string } | null>;
+  setCtxMenu?: (v: null) => void;
 }
 
 export default function PlanCanvasSvg({
@@ -42,7 +45,7 @@ export default function PlanCanvasSvg({
   handlers, onMouseMove, onMouseDown, onMouseUp,
   onCanvasClick, onCanvasDblClick, onTouchStart, onTouchMove, onTouchEnd,
   onDimLineClick, deleteHover, onEditFloorItem, onEditSegItem, editingSegId, onSetEditingSegId,
-  didMoveRef,
+  didMoveRef, longPressRef, longPressPos, setCtxMenu,
 }: Props) {
   const {
     points, segments, diagonals, dimLines,
@@ -119,6 +122,20 @@ export default function PlanCanvasSvg({
     onChange({ segments: newSegs });
   }, [segments, onChange]);
 
+  // Нативный перехват touchstart в режиме movePending — сразу гасим long-press
+  React.useEffect(() => {
+    const svg = svgRef.current;
+    if (!svg) return;
+    const handler = (e: TouchEvent) => {
+      if (!movePendingRef.current) return;
+      // В режиме перемещения товара — блокируем long-press на стене
+      if (longPressRef?.current) { clearTimeout(longPressRef.current); longPressRef.current = null; }
+      if (longPressPos) longPressPos.current = null;
+    };
+    svg.addEventListener("touchstart", handler, { capture: true, passive: true });
+    return () => svg.removeEventListener("touchstart", handler, true);
+  }, [svgRef, longPressRef, longPressPos]);
+
   // Нативный перехват touchend для режима перемещения (до обычных обработчиков)
   React.useEffect(() => {
     const svg = svgRef.current;
@@ -131,6 +148,10 @@ export default function PlanCanvasSvg({
       if (hit) {
         e.stopPropagation();
         e.preventDefault();
+        // Отменяем long-press таймер и закрываем меню если оно успело открыться
+        if (longPressRef?.current) { clearTimeout(longPressRef.current); longPressRef.current = null; }
+        if (longPressPos) longPressPos.current = null;
+        if (setCtxMenu) setCtxMenu(null);
         // Помечаем как "был move" — чтобы handleTouchEnd не открыл контекстное меню
         if (didMoveRef) didMoveRef.current = true;
         executeMoveToSeg(hit.id);
