@@ -351,11 +351,16 @@ export function usePlanCanvasEvents({ state, onChange, onReplace, cs }: Params) 
       const t = e.changedTouches[0];
       const raw = clientToSvg(t.clientX, t.clientY);
 
-      // Двойной тап в любом месте полигона — выбрать все стены
-      // Не засчитываем тап если он был по товару на стене
+      // Двойной тап по ПУСТОЙ области полигона — выбрать все стены
+      // Засчитывается только если оба тапа были не по стене, не по точке, не по товару
       const tapTarget = e.target as Element;
       const onSegItem = !!tapTarget.closest("[data-seg-item]");
-      if (isClosed && !onSegItem) {
+      const SEG_HIT_THR_DBL = Math.max(8, 20 / zoom);
+      const hitSegForDbl = findNearestSegment(raw.x, raw.y, points, segments, SEG_HIT_THR_DBL);
+      const hitPtForDbl = points.find(p => distPx(p, { id: "", x: raw.x, y: raw.y }) < PT_HIT);
+      const isEmptyAreaTap = isClosed && !onSegItem && !hitSegForDbl && !hitPtForDbl;
+
+      if (isEmptyAreaTap) {
         const now = Date.now();
         if (now - lastEmptyTapRef.current < 450) {
           lastEmptyTapRef.current = 0;
@@ -365,6 +370,9 @@ export function usePlanCanvasEvents({ state, onChange, onReplace, cs }: Params) 
           return;
         }
         lastEmptyTapRef.current = now;
+      } else {
+        // Тап по стене/точке/товару — сбрасываем счётчик двойного тапа
+        lastEmptyTapRef.current = 0;
       }
 
       // Ищем ближайшую точку и ближайшую стену одновременно
