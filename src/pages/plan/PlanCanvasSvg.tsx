@@ -34,6 +34,7 @@ interface Props {
   onEditSegItem?: (segId: string, priceId: number) => void;
   editingSegId?: string | null;
   onSetEditingSegId?: (id: string | null) => void;
+  didMoveRef?: React.MutableRefObject<boolean>;
 }
 
 export default function PlanCanvasSvg({
@@ -41,6 +42,7 @@ export default function PlanCanvasSvg({
   handlers, onMouseMove, onMouseDown, onMouseUp,
   onCanvasClick, onCanvasDblClick, onTouchStart, onTouchMove, onTouchEnd,
   onDimLineClick, deleteHover, onEditFloorItem, onEditSegItem, editingSegId, onSetEditingSegId,
+  didMoveRef,
 }: Props) {
   const {
     points, segments, diagonals, dimLines,
@@ -129,6 +131,8 @@ export default function PlanCanvasSvg({
       if (hit) {
         e.stopPropagation();
         e.preventDefault();
+        // Помечаем как "был move" — чтобы handleTouchEnd не открыл контекстное меню
+        if (didMoveRef) didMoveRef.current = true;
         executeMoveToSeg(hit.id);
       }
     };
