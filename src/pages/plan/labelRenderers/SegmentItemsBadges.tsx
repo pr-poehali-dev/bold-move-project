@@ -114,16 +114,8 @@ export function SegmentItemsBadges({
           e.stopPropagation();
           // Игнорируем синтетический click после touch
           if (wasTouchedRef.current) { wasTouchedRef.current = false; return; }
-          const now = Date.now();
-          if (dblRef.current.key === itemKey && now - dblRef.current.t < 400) {
-            // Двойной клик мышью — удалить
-            dblRef.current = { key: "", t: 0 };
-            onRemoveItem?.(seg.id, item.priceId);
-          } else {
-            dblRef.current = { key: itemKey, t: now };
-            // Одиночный клик мышью — сразу открываем попап
-            onEditSegItem?.(seg.id, item.priceId, e.clientX, e.clientY);
-          }
+          // Одиночный клик мышью — открываем попап
+          onEditSegItem?.(seg.id, item.priceId, e.clientX, e.clientY);
         };
 
         // Общая функция поиска ближайшего сегмента и вызова onMoveItemToSeg
@@ -203,12 +195,17 @@ export function SegmentItemsBadges({
             scaleX,
             scaleY,
             dragging: false,
-            timer: onMoveItemToSeg ? setTimeout(() => {
+            timer: setTimeout(() => {
               if (touchRef.current && touchRef.current.key === itemKey) {
+                // Долгое нажатие — показываем tooltip на 3 сек
+                setTooltip({ px, py, name: item.name, qty: item.quantity ?? 1, unit: item.unit });
+                setTimeout(() => setTooltip(null), 3000);
+
+                if (!onMoveItemToSeg) return;
+                // Активируем drag
                 touchRef.current.dragging = true;
                 touchRef.current.timer = null;
                 setDragState({ priceId: item.priceId, x: px, y: py });
-                setTooltip(null);
 
                 // Перехватываем все touch-события на window пока drag активен
                 // Это предотвращает движение холста под пальцем
@@ -234,7 +231,7 @@ export function SegmentItemsBadges({
                 window.addEventListener("touchmove", onWindowMove, { capture: true, passive: false });
                 window.addEventListener("touchend", onWindowEnd, { capture: true });
               }
-            }, 500) : null,
+            }, 500),
           };
         };
 
@@ -279,18 +276,9 @@ export function SegmentItemsBadges({
             const touch = e.changedTouches[0];
             const dx = Math.abs(touch.clientX - tr.startX);
             const dy = Math.abs(touch.clientY - tr.startY);
-            // Если палец почти не двигался — это тап
+            // Если палец почти не двигался — это тап, сразу открываем попап
             if (dx < 12 && dy < 12) {
-              const now = Date.now();
-              if (dblRef.current.key === itemKey && now - dblRef.current.t < 400) {
-                // Двойной тап — удалить
-                dblRef.current = { key: "", t: 0 };
-                onRemoveItem?.(seg.id, item.priceId);
-              } else {
-                // Одиночный тап — сразу открываем попап
-                dblRef.current = { key: itemKey, t: now };
-                onEditSegItem?.(seg.id, item.priceId, touch.clientX, touch.clientY);
-              }
+              onEditSegItem?.(seg.id, item.priceId, touch.clientX, touch.clientY);
             }
           }
         };
@@ -302,7 +290,6 @@ export function SegmentItemsBadges({
             onTouchStart={handleTouchStart}
             onTouchMove={handleTouchMove}
             onTouchEnd={handleTouchEnd}
-            onMouseEnter={() => !dragRef.current && setTooltip({ px, py, name: item.name, qty: item.quantity ?? 1, unit: item.unit })}
             onMouseLeave={() => setTooltip(null)}
             style={{ cursor: onMoveItemToSeg ? "grab" : "pointer" }}
           >
