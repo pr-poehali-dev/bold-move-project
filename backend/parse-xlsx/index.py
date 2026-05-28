@@ -248,12 +248,13 @@ def handler(event: dict, context) -> dict:
         conn = get_conn(); cur = conn.cursor()
         if wl_id:
             _ensure_wl_initialized(conn, cur, wl_id, 'faq')
-            cur.execute(f"SELECT id, title, content, used, created_at, COALESCE(images, '[]'::jsonb) FROM {SCHEMA}.wl_faq_items WHERE wl_manager_id=%s ORDER BY id", (wl_id,))
+            cur.execute(f"SELECT id, title, content, used, created_at, COALESCE(images, '[]'::jsonb), COALESCE(items, '[]'::jsonb) FROM {SCHEMA}.wl_faq_items WHERE wl_manager_id=%s ORDER BY id", (wl_id,))
         else:
-            cur.execute(f"SELECT id, title, content, used, created_at, COALESCE(images, '[]'::jsonb) FROM {SCHEMA}.faq_items ORDER BY id")
+            cur.execute(f"SELECT id, title, content, used, created_at, COALESCE(images, '[]'::jsonb), COALESCE(items, '[]'::jsonb) FROM {SCHEMA}.faq_items ORDER BY id")
         rows = cur.fetchall()
         cur.close(); conn.close()
-        return resp(200, {'items': [{'id': row[0], 'title': row[1], 'content': row[2], 'used': row[3], 'created_at': str(row[4]), 'images': row[5] if isinstance(row[5], list) else json.loads(row[5]) if row[5] else []} for row in rows]})
+        def parse_json(v): return v if isinstance(v, list) else (json.loads(v) if v else [])
+        return resp(200, {'items': [{'id': row[0], 'title': row[1], 'content': row[2], 'used': row[3], 'created_at': str(row[4]), 'images': parse_json(row[5]), 'items': parse_json(row[6])} for row in rows]})
 
     # --- POST ?r=faq
     if r == 'faq' and method == 'POST':
@@ -263,14 +264,15 @@ def handler(event: dict, context) -> dict:
         title = body.get('title', '').strip()
         content = body.get('content', '').strip()
         images = json.dumps(body.get('images', []))
-        if not title or not content:
-            return resp(400, {'error': 'title and content required'})
+        items  = json.dumps(body.get('items', []))
+        if not title:
+            return resp(400, {'error': 'title required'})
         conn = get_conn(); cur = conn.cursor()
         if wl_id:
             _ensure_wl_initialized(conn, cur, wl_id, 'faq')
-            cur.execute(f"INSERT INTO {SCHEMA}.wl_faq_items (wl_manager_id, title, content, used, images) VALUES (%s,%s,%s,true,%s) RETURNING id", (wl_id, title, content, images))
+            cur.execute(f"INSERT INTO {SCHEMA}.wl_faq_items (wl_manager_id, title, content, used, images, items) VALUES (%s,%s,%s,true,%s,%s) RETURNING id", (wl_id, title, content, images, items))
         else:
-            cur.execute(f"INSERT INTO {SCHEMA}.faq_items (title, content, used, images) VALUES (%s, %s, true, %s) RETURNING id", (title, content, images))
+            cur.execute(f"INSERT INTO {SCHEMA}.faq_items (title, content, used, images, items) VALUES (%s, %s, true, %s, %s) RETURNING id", (title, content, images, items))
         new_id = cur.fetchone()[0]
         conn.commit(); cur.close(); conn.close()
         return resp(200, {'id': new_id, 'ok': True})
@@ -282,16 +284,17 @@ def handler(event: dict, context) -> dict:
         faq_id = int(qs.get('id', '0'))
         body = json.loads(body_str)
         images = json.dumps(body.get('images', []))
+        items  = json.dumps(body.get('items', []))
         conn = get_conn(); cur = conn.cursor()
         if wl_id:
             cur.execute(
-                f"UPDATE {SCHEMA}.wl_faq_items SET title=%s, content=%s, used=%s, images=%s WHERE id=%s AND wl_manager_id=%s",
-                (body.get('title',''), body.get('content',''), body.get('used', True), images, faq_id, wl_id)
+                f"UPDATE {SCHEMA}.wl_faq_items SET title=%s, content=%s, used=%s, images=%s, items=%s WHERE id=%s AND wl_manager_id=%s",
+                (body.get('title',''), body.get('content',''), body.get('used', True), images, items, faq_id, wl_id)
             )
         else:
             cur.execute(
-                f"UPDATE {SCHEMA}.faq_items SET title=%s, content=%s, used=%s, images=%s WHERE id=%s",
-                (body.get('title',''), body.get('content',''), body.get('used', True), images, faq_id)
+                f"UPDATE {SCHEMA}.faq_items SET title=%s, content=%s, used=%s, images=%s, items=%s WHERE id=%s",
+                (body.get('title',''), body.get('content',''), body.get('used', True), images, items, faq_id)
             )
         conn.commit(); cur.close(); conn.close()
         return resp(200, {'ok': True})

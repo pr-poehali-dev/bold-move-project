@@ -1,12 +1,20 @@
 export type AdminTab = "prices" | "rules" | "prompt" | "faq" | "corrections" | "crm";
 export type AgentSubTab = "prices" | "rules" | "prompt" | "faq" | "corrections" | "default-rules";
 
+export interface FaqProduct {
+  id: string;        // локальный uuid
+  name: string;
+  description: string;
+  image_url: string;
+}
+
 export interface FaqItem {
   id: number;
   title: string;
   content: string;
   used: boolean;
   images?: string[];
+  items?: FaqProduct[];
 }
 
 export interface QuickQuestion {
