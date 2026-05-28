@@ -40,6 +40,7 @@ export interface PlanCatalogState {
   assignItemToSegs: (item: SegmentPriceItem, segIds: string[]) => void;
   assignItemToAllSegs: (item: SegmentPriceItem) => void;
   removeItemFromAllSegs: (priceId: number) => void;
+  removeItemFromSegs: (priceId: number, segIds: string[]) => void;
   removeActiveItem: (priceId: number) => void;
   isItemOnAllSegs: (priceId: number) => boolean;
   adjustItemQuantity: (priceId: number, delta: number) => void;
@@ -336,6 +337,17 @@ export function usePlanCatalog(
     }
 
     push({ ...s, segments: newSegments, floorItems: newFloorItems });
+  }, [stateRef, push]);
+
+  // Удалить товар с конкретных стен по segIds
+  const removeItemFromSegs = useCallback((priceId: number, segIds: string[]) => {
+    const s = stateRef.current;
+    const targetSet = new Set(segIds);
+    const newSegments = s.segments.map(seg => {
+      if (!targetSet.has(seg.id)) return seg;
+      return { ...seg, items: (seg.items ?? []).filter(it => it.priceId !== priceId) };
+    });
+    push({ ...s, segments: newSegments });
   }, [stateRef, push]);
 
   // Удалить товар только со всех стен (карточку НЕ убираем)
@@ -741,7 +753,7 @@ export function usePlanCatalog(
     hoverSegId, setHoverSegId,
     filterAttached, setFilterAttached,
     attachedCount,
-    findClosestSeg, assignItemToSeg, assignItemToSegs, assignItemToAllSegs, assignManyItems, removeItemFromAllSegs, removeActiveItem, isItemOnAllSegs, adjustItemQuantity, setItemQuantity,
+    findClosestSeg, assignItemToSeg, assignItemToSegs, assignItemToAllSegs, assignManyItems, removeItemFromAllSegs, removeItemFromSegs, removeActiveItem, isItemOnAllSegs, adjustItemQuantity, setItemQuantity,
     pendingFloorItem, setPendingFloorItem, confirmFloorItem,
     editingFloorId, setEditingFloorId, editingFloorItem, confirmEditFloorItem, replaceFloorItem, replaceActiveItemEverywhere,
     editingSegRef, setEditingSegRef, editingSegItem, replaceSegItem,

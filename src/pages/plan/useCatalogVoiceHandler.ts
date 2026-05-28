@@ -22,10 +22,12 @@ interface Props {
   state: PlanState;
   allPrices: PriceEntry[];
   onAssignMany: (wallItems: { item: SegmentPriceItem; segIds: string[] | null }[], floorItems: SegmentPriceItem[]) => void;
+  onRemoveFromSegs: (priceId: number, segIds: string[]) => void;
+  onRemoveFromAllSegs: (priceId: number) => void;
   onRegisterVoiceHandler?: (fn: (items: VoiceCatalogItem[], transcript: string) => void) => void;
 }
 
-export default function useCatalogVoiceHandler({ state, allPrices, onAssignMany, onRegisterVoiceHandler }: Props) {
+export default function useCatalogVoiceHandler({ state, allPrices, onAssignMany, onRemoveFromSegs, onRemoveFromAllSegs, onRegisterVoiceHandler }: Props) {
   const [pendingWall, setPendingWall] = useState<PendingWallItem | null>(null);
   const [pendingSelectedSegs, setPendingSelectedSegs] = useState<string[]>([]);
   const [voicePopupItems, setVoicePopupItems] = useState<VoiceResultItem[]>([]);
@@ -108,8 +110,34 @@ export default function useCatalogVoiceHandler({ state, allPrices, onAssignMany,
       });
     });
 
+    // Обрабатываем action:"remove" — удаление товаров с конкретных стен
+    const removeItems = items.filter(i => i.action === "remove");
+    const addItems    = items.filter(i => i.action !== "remove");
+
+    for (const voiceItem of removeItems) {
+      const matched = matchItem(voiceItem, allPrices);
+      if (!matched) continue;
+      const WALL_RU_R: Record<string, string> = {
+        left: "слева", right: "справа", top: "сверху", bottom: "снизу",
+        upper: "сверху", lower: "снизу", all: "на все стены",
+      };
+      const wallText = voiceItem.wall
+        ? (WALL_RU_R[voiceItem.wall.toLowerCase()] ?? voiceItem.wall)
+        : null;
+      const segIds = wallText ? findTargetSegIds(wallText, state) : null;
+      if (segIds && segIds.length > 0) {
+        onRemoveFromSegs(matched.priceId, segIds);
+      } else {
+        onRemoveFromAllSegs(matched.priceId);
+      }
+      console.log("[voice] remove:", matched.name, "from", segIds ?? "ALL");
+    }
+
+    // Если только удаление — выходим
+    if (addItems.length === 0 && removeItems.length > 0) return;
+
     // Исправляем дефолт теневого профиля, затем гарантируем комплект светильника
-    const guaranteedItems = ensureLightingBundle(fixShadowProfile(items, allPrices), allPrices);
+    const guaranteedItems = ensureLightingBundle(fixShadowProfile(addItems, allPrices), allPrices);
     if (guaranteedItems.length !== items.length) {
       console.log("[voice] lighting bundle auto-completed:", guaranteedItems.map(i => i.name));
     }

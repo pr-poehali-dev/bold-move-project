@@ -269,6 +269,8 @@ export default function PlanPagePanels({
         } : undefined}
         onAssignToAllSegs={catalog.assignItemToAllSegs}
         onAssignMany={catalog.assignManyItems}
+        onRemoveFromSegs={catalog.removeItemFromSegs}
+        onRemoveFromAllSegs={catalog.removeItemFromAllSegs}
         onAddToActive={item => {
           const hidden = ["монтаж", "раскрой", "огарпунивание"];
           if (hidden.some(h => item.category?.toLowerCase().includes(h))) return;

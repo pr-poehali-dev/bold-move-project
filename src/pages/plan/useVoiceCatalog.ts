@@ -25,7 +25,8 @@ export interface VoiceCatalogItem {
   qty: number;
   unit: string;
   price?: number;
-  wall?: string; // подсказка стены от LLM: "left"|"right"|"top"|"bottom"|"all" и т.п.
+  wall?: string;   // подсказка стены от LLM: "left"|"right"|"top"|"bottom"|"A-B" и т.п.
+  action?: string; // "remove" — удалить товар с указанной стены (или со всех если wall не задан)
 }
 
 // Определяем ориентацию сегмента по координатам точек

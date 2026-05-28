@@ -21,6 +21,8 @@ interface Props {
   onAssignToAllSegs: (item: SegmentPriceItem) => void;
   onAddToActive: (item: SegmentPriceItem) => void;
   onAssignMany: (wallItems: { item: SegmentPriceItem; segIds: string[] | null }[], floorItems: SegmentPriceItem[]) => void;
+  onRemoveFromSegs: (priceId: number, segIds: string[]) => void;
+  onRemoveFromAllSegs: (priceId: number) => void;
   pendingItem?: SegmentPriceItem | null;
   onSegmentClickForPending?: (segId: string) => void;
   initialCategory?: string;
@@ -41,6 +43,8 @@ export default function PlanCatalogPanel({
   onAssignToAllSegs,
   onAddToActive,
   onAssignMany,
+  onRemoveFromSegs,
+  onRemoveFromAllSegs,
   onSegmentClickForPending: _onSegmentClickForPending,
   initialCategory,
   onReplaceItem,
@@ -58,7 +62,7 @@ export default function PlanCatalogPanel({
     handleTranscript,
     handlePendingConfirm,
     handlePendingClose,
-  } = useCatalogVoiceHandler({ state, allPrices, onAssignMany, onRegisterVoiceHandler });
+  } = useCatalogVoiceHandler({ state, allPrices, onAssignMany, onRemoveFromSegs, onRemoveFromAllSegs, onRegisterVoiceHandler });
 
   return (
     <div className="relative">
