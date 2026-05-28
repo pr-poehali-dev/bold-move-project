@@ -9,6 +9,7 @@ import {
 import { SegmentItemsBadges } from "./PlanCanvasLabelRenderers";
 import type { RenderContext, SegmentHandlers } from "./PlanCanvasRenderers";
 import SegItemPopup from "./SegItemPopup";
+import { findNearestSegment, ptToSegDist } from "./PlanCanvasUtils";
 
 interface Props {
   svgRef: React.RefObject<SVGSVGElement>;
@@ -77,6 +78,59 @@ export default function PlanCanvasSvg({
 
   // Режим перемещения: ждём тапа по целевой стене
   const [movePending, setMovePending] = useState<{ fromSegId: string; priceId: number } | null>(null);
+  const movePendingRef = useRef(movePending);
+  movePendingRef.current = movePending;
+
+  // Перевод экранных координат в SVG-координаты (нужен для перемещения по тачу)
+  const clientToSvgMove = useCallback((clientX: number, clientY: number) => {
+    const svg = svgRef.current;
+    if (!svg) return { x: clientX, y: clientY };
+    const rect = svg.getBoundingClientRect();
+    const { zoom: z, panX: px, panY: py } = state.settings;
+    const rx = (clientX - rect.left) / z - px;
+    const ry = (clientY - rect.top) / z - py;
+    return { x: rx, y: ry };
+  }, [svgRef, state.settings]);
+
+  // Выполняем перемещение товара на найденный сегмент
+  const executeMoveToSeg = useCallback((toSegId: string) => {
+    const mp = movePendingRef.current;
+    if (!mp || toSegId === mp.fromSegId) { setMovePending(null); return; }
+    const { fromSegId, priceId } = mp;
+    setMovePending(null);
+    const fromSeg = segments.find(s => s.id === fromSegId);
+    const item = fromSeg?.items?.find(it => it.priceId === priceId);
+    if (!item) return;
+    const toSeg = segments.find(s => s.id === toSegId);
+    const meters = toSeg?.lengthCm ? Math.round(toSeg.lengthCm / 100 * 100) / 100 : item.quantity ?? 1;
+    const newSegs = segments.map(s => {
+      if (s.id === fromSegId) return { ...s, items: (s.items ?? []).filter(it => it.priceId !== priceId) };
+      if (s.id === toSegId) {
+        const existing = s.items ?? [];
+        if (existing.some(it => it.priceId === priceId)) {
+          return { ...s, items: existing.map(it => it.priceId === priceId ? { ...it, quantity: (it.quantity ?? 1) + meters } : it) };
+        }
+        return { ...s, items: [...existing, { ...item, quantity: meters }] };
+      }
+      return s;
+    });
+    onChange({ segments: newSegs });
+  }, [segments, onChange]);
+
+  // Обёртка onTouchEnd — перехватывает тач в режиме movePending
+  const handleTouchEndWrapped = useCallback((e: React.TouchEvent<SVGSVGElement>) => {
+    if (movePendingRef.current && e.changedTouches.length === 1) {
+      const t = e.changedTouches[0];
+      const svgPt = clientToSvgMove(t.clientX, t.clientY);
+      const hit = findNearestSegment(svgPt.x, svgPt.y, points, segments, Math.max(40, 60 / state.settings.zoom));
+      if (hit) {
+        e.stopPropagation();
+        executeMoveToSeg(hit.id);
+        return;
+      }
+    }
+    onTouchEnd(e);
+  }, [onTouchEnd, clientToSvgMove, points, segments, state.settings.zoom, executeMoveToSeg]);
 
   // Подсказка "двойной клик — выбрать все стены" — показывается один раз
   const HINT_KEY = "plan_dblclick_hint_shown";
@@ -164,6 +218,9 @@ export default function PlanCanvasSvg({
       onMouseDown={onMouseDown}
       onMouseUp={onMouseUp}
       onMouseLeave={onMouseUp}
+      onTouchStart={onTouchStart}
+      onTouchMove={onTouchMove}
+      onTouchEnd={handleTouchEndWrapped}
       onContextMenu={e => e.preventDefault()}
     >
       <defs>
@@ -201,26 +258,7 @@ export default function PlanCanvasSvg({
           ...handlers,
           onSegmentClick: (e, toSegId) => {
             e.stopPropagation();
-            const { fromSegId, priceId } = movePending;
-            setMovePending(null);
-            if (toSegId === fromSegId) return;
-            const fromSeg = segments.find(s => s.id === fromSegId);
-            const item = fromSeg?.items?.find(it => it.priceId === priceId);
-            if (!item) return;
-            const toSeg = segments.find(s => s.id === toSegId);
-            const meters = toSeg?.lengthCm ? Math.round(toSeg.lengthCm / 100 * 100) / 100 : item.quantity ?? 1;
-            const newSegs = segments.map(s => {
-              if (s.id === fromSegId) return { ...s, items: (s.items ?? []).filter(it => it.priceId !== priceId) };
-              if (s.id === toSegId) {
-                const existing = s.items ?? [];
-                if (existing.some(it => it.priceId === priceId)) {
-                  return { ...s, items: existing.map(it => it.priceId === priceId ? { ...it, quantity: (it.quantity ?? 1) + meters } : it) };
-                }
-                return { ...s, items: [...existing, { ...item, quantity: meters }] };
-              }
-              return s;
-            });
-            onChange({ segments: newSegs });
+            executeMoveToSeg(toSegId);
           },
         } : handlers)}
 
