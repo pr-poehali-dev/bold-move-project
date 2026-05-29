@@ -6,6 +6,7 @@ import PlanProjectForm from "./PlanProjectForm";
 import ProjectCardBadges from "./ProjectCardBadges";
 import ProjectCardBody from "./ProjectCardBody";
 import { ConfirmEditOverlay, ConfirmDeleteOverlay } from "./ProjectCardConfirm";
+import StatusPickerOverlay from "./StatusPickerOverlay";
 
 interface Props {
   project: PlanProject;
@@ -49,6 +50,8 @@ export default function PlanProjectCard({
   const [dragging, setDragging] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [confirmEdit, setConfirmEdit] = useState(false);
+  const [showStatusPicker, setShowStatusPicker] = useState(false);
+  const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // touch tracking
   const sx = useRef(0);
@@ -86,6 +89,14 @@ export default function PlanProjectCard({
       alive.current = true;
       vibed.current = false;
       setDraggingSync.current(false);
+      // Long-press на всю карточку → пикер статуса
+      if (longPressTimer.current) clearTimeout(longPressTimer.current);
+      longPressTimer.current = setTimeout(() => {
+        if (alive.current && axis.current !== "h") {
+          vibe(40);
+          setShowStatusPicker(true);
+        }
+      }, 500);
     };
 
     const onMove = (e: TouchEvent) => {
@@ -96,6 +107,10 @@ export default function PlanProjectCard({
       if (!axis.current) {
         if (Math.abs(dx) < 5 && Math.abs(dy) < 5) return;
         axis.current = Math.abs(dx) >= Math.abs(dy) ? "h" : "v";
+      }
+      // Отменяем long-press если начали двигаться
+      if (axis.current === "h") {
+        if (longPressTimer.current) { clearTimeout(longPressTimer.current); longPressTimer.current = null; }
       }
       if (axis.current === "v") return;
 
@@ -113,6 +128,7 @@ export default function PlanProjectCard({
     };
 
     const onEnd = () => {
+      if (longPressTimer.current) { clearTimeout(longPressTimer.current); longPressTimer.current = null; }
       if (!alive.current) return;
       alive.current = false;
       setDraggingSync.current(false);
@@ -239,6 +255,15 @@ export default function PlanProjectCard({
           isDeleting={isDeleting}
           onConfirm={doDelete}
           onCancel={() => setConfirmDelete(false)}
+        />
+      )}
+
+      {/* ── Быстрая смена статуса (long-press) ── */}
+      {showStatusPicker && onQuickStatus && (
+        <StatusPickerOverlay
+          project={project}
+          onSelect={status => { setShowStatusPicker(false); onQuickStatus(project.id, status); }}
+          onClose={() => setShowStatusPicker(false)}
         />
       )}
     </div>
