@@ -94,21 +94,7 @@ export default function PlanPagePanels({
   const [replaceActiveItem, setReplaceActiveItem] = useState<import("./planTypes").SegmentPriceItem | null>(null);
   const replaceActiveItemRef = useRef<import("./planTypes").SegmentPriceItem | null>(null);
 
-  // Сохраняем segRef пока барабан открыт (для мобильной замены) — ref для синхронности
-  const mobileReplaceSegRefRef = useRef<{ segId: string; priceId: number } | null>(null);
-  const [mobileReplaceSegRef, setMobileReplaceSegRef] = useState<{ segId: string; priceId: number } | null>(null);
 
-  // Мобиле: при клике на товар на стене — открываем барабан на нужной категории
-  useEffect(() => {
-    if (!isMobile || !catalog.editingSegRef) return;
-    const cat = catalog.editingSegItem?.category ?? null;
-    // Сохраняем синхронно в ref И в state
-    mobileReplaceSegRefRef.current = catalog.editingSegRef;
-    setMobileReplaceSegRef(catalog.editingSegRef);
-    catalog.setReplaceCatalogCategory(cat);
-    catalog.setCatalogOpen(true);
-    catalog.setEditingSegRef(null);
-  }, [isMobile, catalog.editingSegRef]); // eslint-disable-line react-hooks/exhaustive-deps
   const [replaceModalItem, setReplaceModalItem] = useState<(import("./planTypes").SegmentPriceItem & { quantity: number }) | null>(null);
   const [replaceFloorId, setReplaceFloorId] = useState<string | null>(null);
 
@@ -258,29 +244,30 @@ export default function PlanPagePanels({
         onClose={() => {
           catalog.setCatalogOpen(false);
           catalog.setReplaceCatalogCategory(null);
-          mobileReplaceSegRefRef.current = null;
-          setMobileReplaceSegRef(null);
+          catalog.setEditingSegRef(null); // сбросит и ref и state
+          replaceActiveItemRef.current = null;
           setReplaceActiveItem(null);
         }}
         onAssignToSegs={catalog.assignItemToSegs}
         onReplaceItem={isMobile ? (item) => {
-          // Читаем ref синхронно — он всегда актуален
-          const segRef = mobileReplaceSegRefRef.current;
+          // Читаем ref — он синхронно актуален в отличие от state
+          const segRef = catalog.editingSegRefRef.current;
           const activeReplace = replaceActiveItemRef.current;
           if (segRef) {
+            // Замена конкретного товара на конкретной стене
             catalog.replaceSegItem(item, segRef);
-            mobileReplaceSegRefRef.current = null;
-            setMobileReplaceSegRef(null);
+            catalog.setEditingSegRef(null);
             catalog.setCatalogOpen(false);
             catalog.setReplaceCatalogCategory(null);
           } else if (activeReplace) {
+            // Замена активного товара из нижней панели
             catalog.replaceActiveItemEverywhere(activeReplace.priceId, item);
             replaceActiveItemRef.current = null;
             setReplaceActiveItem(null);
             catalog.setCatalogOpen(false);
             catalog.setReplaceCatalogCategory(null);
           } else {
-            // Нет активной замены — сигнализируем делать обычное добавление
+            // Нет активной замены — обычное добавление
             return false;
           }
         } : undefined}
@@ -404,11 +391,10 @@ export default function PlanPagePanels({
         onAddToFloor={catalog.setPendingFloorItem}
         onReplaceItem={item => {
           if (isMobile) {
-            // Мобиле: открываем барабан — сохраняем синхронно в ref
+            // Мобиле: режим замены активного товара из нижней панели
             replaceActiveItemRef.current = item;
-            mobileReplaceSegRefRef.current = null;
+            catalog.setEditingSegRef(null); // сбрасываем замену стенового товара
             catalog.setReplaceCatalogCategory(item.category ?? null);
-            setMobileReplaceSegRef(null);
             setReplaceActiveItem(item);
             catalog.setCatalogOpen(true);
           } else {

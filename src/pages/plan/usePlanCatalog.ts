@@ -55,6 +55,15 @@ export interface PlanCatalogState {
   setEditingFloorId: (id: string | null) => void;
   editingFloorItem: (SegmentPriceItem & { quantity: number }) | null;
   confirmEditFloorItem: (quantity: number) => void;
+  editingSegRef: { segId: string; priceId: number } | null;
+  editingSegRefRef: React.MutableRefObject<{ segId: string; priceId: number } | null>;
+  setEditingSegRef: (v: { segId: string; priceId: number } | null) => void;
+  editingSegItem: (SegmentPriceItem & { quantity: number }) | null;
+  replaceSegItem: (newItem: SegmentPriceItem, targetRef?: { segId: string; priceId: number }) => void;
+  replaceCatalogCategory: string | null;
+  setReplaceCatalogCategory: (cat: string | null) => void;
+  replaceFloorItem: (newItem: SegmentPriceItem, quantity: number, targetId?: string) => void;
+  replaceActiveItemEverywhere: (oldPriceId: number, newItem: SegmentPriceItem) => void;
 }
 
 export function usePlanCatalog(
@@ -75,7 +84,12 @@ export function usePlanCatalog(
   const [filterAttached,         setFilterAttached]         = useState(false);
   const [pendingFloorItem,       setPendingFloorItem]       = useState<SegmentPriceItem | null>(null);
   const [editingFloorId,         setEditingFloorId]         = useState<string | null>(null);
-  const [editingSegRef,          setEditingSegRef]          = useState<{ segId: string; priceId: number } | null>(null);
+  const [editingSegRef,          setEditingSegRef_]          = useState<{ segId: string; priceId: number } | null>(null);
+  const editingSegRefRef = useRef<{ segId: string; priceId: number } | null>(null);
+  const setEditingSegRef = (v: { segId: string; priceId: number } | null) => {
+    editingSegRefRef.current = v;
+    setEditingSegRef_(v);
+  };
   const [replaceCatalogCategory, setReplaceCatalogCategory] = useState<string | null>(null);
 
   // Категории, которые НЕ показываются в нижней панели
@@ -480,7 +494,7 @@ export function usePlanCatalog(
 
   // Заменить товар на стене: все сегменты с этим priceId в этом сегменте
   const replaceSegItem = useCallback((newItem: SegmentPriceItem, targetRef?: { segId: string; priceId: number }) => {
-    const ref = targetRef ?? editingSegRef;
+    const ref = targetRef ?? editingSegRefRef.current;
     if (!ref) return;
     const s = stateRef.current;
     push({ ...s, segments: s.segments.map(seg => {
@@ -492,7 +506,7 @@ export function usePlanCatalog(
       )};
     })});
     setEditingSegRef(null);
-  }, [editingSegRef, stateRef, push]);
+  }, [stateRef, push]);
 
   // Заменить активный товар везде (во всех сегментах и floorItems) на новый
   const replaceActiveItemEverywhere = useCallback((oldPriceId: number, newItem: SegmentPriceItem) => {
@@ -756,7 +770,7 @@ export function usePlanCatalog(
     findClosestSeg, assignItemToSeg, assignItemToSegs, assignItemToAllSegs, assignManyItems, removeItemFromAllSegs, removeItemFromSegs, removeActiveItem, isItemOnAllSegs, adjustItemQuantity, setItemQuantity,
     pendingFloorItem, setPendingFloorItem, confirmFloorItem,
     editingFloorId, setEditingFloorId, editingFloorItem, confirmEditFloorItem, replaceFloorItem, replaceActiveItemEverywhere,
-    editingSegRef, setEditingSegRef, editingSegItem, replaceSegItem,
+    editingSegRef, editingSegRefRef, setEditingSegRef, editingSegItem, replaceSegItem,
     replaceCatalogCategory, setReplaceCatalogCategory,
   };
 }

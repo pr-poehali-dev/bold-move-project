@@ -15,6 +15,7 @@ interface Props {
   onSidebarDragStart: (e: React.MouseEvent) => void;
   handleChange: (patch: Partial<PlanState>) => void;
   handleReplace: (patch: Partial<PlanState>) => void;
+  onEditSegItem?: (segId: string, priceId: number) => void;
 }
 
 export default function PlanCanvasArea({
@@ -29,6 +30,7 @@ export default function PlanCanvasArea({
   onSidebarDragStart,
   handleChange,
   handleReplace,
+  onEditSegItem,
 }: Props) {
   return (
     <div className="flex flex-1 overflow-hidden relative min-h-0">
@@ -41,7 +43,7 @@ export default function PlanCanvasArea({
           onReplace={handleReplace}
           onOpenCatalog={() => catalog.setCatalogOpen(true)}
           onEditFloorItem={catalog.setEditingFloorId}
-          onEditSegItem={(segId, priceId) => catalog.setEditingSegRef({ segId, priceId })}
+          onEditSegItem={onEditSegItem ?? ((segId, priceId) => catalog.setEditingSegRef({ segId, priceId }))}
         />
         {roomLoading && (
           <div className="absolute inset-0 flex flex-col items-center justify-center z-50"
