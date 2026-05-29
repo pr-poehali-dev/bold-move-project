@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 import { isPhoneValid } from "@/hooks/use-phone";
 import { useAuth, CLIENT_ROLES } from "@/context/AuthContext";
 import { useBrand } from "@/context/BrandContext";
@@ -22,6 +23,7 @@ export default function EstimateTable({ text, items, onSaveRequest }: {
 }) {
   const { user, token } = useAuth();
   const { brand, isCustom } = useBrand();
+  const navigate = useNavigate();
   const parsed = useMemo(() => parseEstimateBlocks(text), [text]);
   const { blocks } = parsed;
 
@@ -149,7 +151,7 @@ export default function EstimateTable({ text, items, onSaveRequest }: {
         localStorage.removeItem("crm_linked_session");
         setSaved(true);
         setTimeout(() => {
-          window.location.href = `/crm?order=${linked.chat_id}`;
+          navigate(`/crm?order=${linked.chat_id}`);
         }, 800);
         return;
       }
