@@ -124,6 +124,7 @@ export default function CrmOrders({ clients: allClients, loading, onStatusChange
           client_name: client.client_name || `Заявка №${client.id}`,
           phone: client.phone || "",
           address: client.address || "",
+          auth_token: getCrmToken() || undefined,
         }));
         setActionModal(null);
         setActionLoading(false);
@@ -161,6 +162,7 @@ export default function CrmOrders({ clients: allClients, loading, onStatusChange
           client_name: client.client_name || `Заявка №${client.id}`,
           phone: client.phone || "",
           address: client.address || "",
+          auth_token: getCrmToken() || undefined,
         }));
         onReload();
         setActionModal(null);

@@ -120,11 +120,16 @@ export default function EstimateTable({ text, items, onSaveRequest }: {
       // Если пришли из CRM через агента — обновляем существующую заявку
       const linkedRaw = localStorage.getItem("crm_linked_session");
       if (linkedRaw) {
-        const linked = JSON.parse(linkedRaw) as { chat_id: number; session_id: string; client_name: string; phone: string; address: string };
+        const linked = JSON.parse(linkedRaw) as { chat_id: number; session_id: string; client_name: string; phone: string; address: string; auth_token?: string };
+        // Восстанавливаем токен CRM-сессии если он был сохранён (нужен для авторизации при возврате)
+        const activeToken = linked.auth_token || token;
+        if (linked.auth_token) {
+          localStorage.setItem("mp_user_token", linked.auth_token);
+        }
         // Сохраняем смету в backend (без создания новой заявки — просто сохраняем estimate)
         const res = await fetch(`${AUTH_URL}?action=save-estimate`, {
           method: "POST",
-          headers: { "Content-Type": "application/json", "X-Authorization": `Bearer ${token}` },
+          headers: { "Content-Type": "application/json", "X-Authorization": `Bearer ${activeToken}` },
           body: JSON.stringify({ blocks, totals, finalPhrase, linked_chat_id: linked.chat_id }),
         });
         const data = await res.json();
@@ -143,7 +148,7 @@ export default function EstimateTable({ text, items, onSaveRequest }: {
         if (contractSum > 0) {
           await fetch(`${CRM_URL}?r=clients&id=${linked.chat_id}`, {
             method: "PUT",
-            headers: { "Content-Type": "application/json", "X-Authorization": `Bearer ${token}` },
+            headers: { "Content-Type": "application/json", "X-Authorization": `Bearer ${activeToken}` },
             body: JSON.stringify({ contract_sum: contractSum }),
           });
         }
