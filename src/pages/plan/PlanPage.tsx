@@ -354,7 +354,6 @@ export default function PlanPage() {
           const cat = item?.category ?? null;
           catalog.setReplaceCatalogCategory(cat);
           catalog.setCatalogOpen(true);
-          // segRef сохраняем через editingSegRef — replaceSegItem его прочитает
           catalog.setEditingSegRef({ segId, priceId });
         } : undefined}
       />

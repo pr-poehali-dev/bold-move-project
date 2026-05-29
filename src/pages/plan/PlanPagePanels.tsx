@@ -250,24 +250,21 @@ export default function PlanPagePanels({
         }}
         onAssignToSegs={catalog.assignItemToSegs}
         onReplaceItem={isMobile ? (item) => {
-          // Читаем ref — он синхронно актуален в отличие от state
           const segRef = catalog.editingSegRefRef.current;
           const activeReplace = replaceActiveItemRef.current;
+
           if (segRef) {
-            // Замена конкретного товара на конкретной стене
             catalog.replaceSegItem(item, segRef);
             catalog.setEditingSegRef(null);
             catalog.setCatalogOpen(false);
             catalog.setReplaceCatalogCategory(null);
           } else if (activeReplace) {
-            // Замена активного товара из нижней панели
             catalog.replaceActiveItemEverywhere(activeReplace.priceId, item);
             replaceActiveItemRef.current = null;
             setReplaceActiveItem(null);
             catalog.setCatalogOpen(false);
             catalog.setReplaceCatalogCategory(null);
           } else {
-            // Нет активной замены — обычное добавление
             return false;
           }
         } : undefined}
