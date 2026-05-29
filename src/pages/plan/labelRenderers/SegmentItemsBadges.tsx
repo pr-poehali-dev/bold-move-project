@@ -102,7 +102,7 @@ export function SegmentItemsBadges({
   const absNy = Math.abs(ny);
   const BASE_LABEL_OFF = 14; // canvas-единиц от стены до центра поля (из InlineDimLabels)
   const fieldHalfProj = (absNx * 18 + absNy * 10) / z; // половина поля в canvas-единицах
-  const GAP_PX = 0; // зазор в экранных пикселях
+  const GAP_PX = 1; // зазор в экранных пикселях
   const OFF = BASE_LABEL_OFF / z + fieldHalfProj + GAP_PX / z + S / 2;
 
   // Нормаль гарантированно смотрит наружу — двигаемся ПО нормали (наружу от полигона)
