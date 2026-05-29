@@ -101,8 +101,11 @@ export function SegmentItemsBadges({
   const absNx = Math.abs(nx);
   const absNy = Math.abs(ny);
   const BASE_LABEL_OFF = 14; // canvas-единиц от стены до центра поля (из InlineDimLabels)
-  const fieldHalfProj = (absNx * 10 + absNy * 18) / z; // половина поля в canvas-единицах
-  const GAP_PX = 3; // зазор в экранных пикселях
+  // Поле «350»: высота = 20px (half=10), ширина ≈ 42px (half=21).
+  // Для горизонтальной стены (ny≈1) нормаль по Y → проецируем высоту (half=10px).
+  // Для вертикальной стены (nx≈1) нормаль по X → проецируем ширину (half=21px).
+  const fieldHalfProj = (absNx * 21 + absNy * 10) / z;
+  const GAP_PX = 4; // зазор в экранных пикселях
   const OFF = BASE_LABEL_OFF / z + fieldHalfProj + GAP_PX / z + S / 2;
 
   // Нормаль гарантированно смотрит наружу — двигаемся ПО нормали (наружу от полигона)
