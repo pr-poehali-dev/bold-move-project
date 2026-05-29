@@ -113,6 +113,7 @@ export default function PlanPagePanels({
 
   // Когда catalog.editingSegRef устанавливается (кнопка Заменить на стене) — открываем барабан замены
   useEffect(() => {
+    console.log("[effect] editingSegRef=", catalog.editingSegRef);
     if (!catalog.editingSegRef) return;
     const seg = state.segments.find(s => s.id === catalog.editingSegRef!.segId);
     const item = seg?.items?.find(it => it.priceId === catalog.editingSegRef!.priceId);

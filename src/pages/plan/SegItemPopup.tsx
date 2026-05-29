@@ -98,7 +98,7 @@ export default function SegItemPopup({
 
       {/* Заменить */}
       <button style={{ ...rowBtn, color: "#a78bfa" }}
-        onPointerDown={e => { e.stopPropagation(); onReplace(segId, item.priceId); onClose(); }}>
+        onPointerDown={e => { e.stopPropagation(); console.log("[popup] onReplace", segId, item.priceId); onReplace(segId, item.priceId); onClose(); }}>
         <Icon name="RefreshCw" size={13} />
         <span>Заменить позицию</span>
       </button>
