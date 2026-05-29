@@ -21,7 +21,7 @@ export default function EstimateTable({ text, items, onSaveRequest }: {
   items?: LLMItem[];
   onSaveRequest?: () => void;
 }) {
-  const { user, token } = useAuth();
+  const { user, token, loginWithToken } = useAuth();
   const { brand, isCustom } = useBrand();
   const navigate = useNavigate();
   const parsed = useMemo(() => parseEstimateBlocks(text), [text]);
@@ -123,9 +123,6 @@ export default function EstimateTable({ text, items, onSaveRequest }: {
         const linked = JSON.parse(linkedRaw) as { chat_id: number; session_id: string; client_name: string; phone: string; address: string; auth_token?: string };
         // Восстанавливаем токен CRM-сессии если он был сохранён (нужен для авторизации при возврате)
         const activeToken = linked.auth_token || token;
-        if (linked.auth_token) {
-          localStorage.setItem("mp_user_token", linked.auth_token);
-        }
         // Сохраняем смету в backend (без создания новой заявки — просто сохраняем estimate)
         const res = await fetch(`${AUTH_URL}?action=save-estimate`, {
           method: "POST",
@@ -152,12 +149,16 @@ export default function EstimateTable({ text, items, onSaveRequest }: {
             body: JSON.stringify({ contract_sum: contractSum }),
           });
         }
-        // Чистим флаг и переходим в CRM к этой заявке
+        // Чистим флаг, восстанавливаем авторизацию и переходим в CRM
         localStorage.removeItem("crm_linked_session");
         setSaved(true);
+        // Если есть сохранённый токен — авторизуемся через контекст перед переходом
+        if (linked.auth_token) {
+          await loginWithToken(linked.auth_token);
+        }
         setTimeout(() => {
           navigate(`/crm?order=${linked.chat_id}`);
-        }, 800);
+        }, 300);
         return;
       }
 

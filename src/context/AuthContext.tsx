@@ -355,11 +355,13 @@ interface AuthCtx {
   register:   (email: string, password: string, name: string, role: UserRole, phone?: string, companyName?: string, companyAddr?: string) => Promise<{ pending?: boolean; role?: string }>;
   logout:     () => Promise<void>;
   updateUser: (patch: Partial<AuthUser>) => void;
+  loginWithToken: (tok: string) => Promise<boolean>;
 }
 
 const Ctx = createContext<AuthCtx>({
   user: null, token: null, loading: true,
   login: async () => ({}), register: async () => ({}), logout: async () => {}, updateUser: () => {},
+  loginWithToken: async () => false,
 });
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -404,15 +406,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       } catch (err) { console.log("[iframe] /me error:", err); }
     };
 
-    // Читаем сразу при монтировании
-    const tok = localStorage.getItem(WL_TOKEN_KEY);
-    if (tok) {
-      applyToken(tok);
+    // Сначала проверяем собственный токен приложения (mp_user_token).
+    // Он может быть записан при возврате из построителя плана в CRM.
+    const ownToken = localStorage.getItem(TOKEN_KEY);
+    if (ownToken) {
+      applyToken(ownToken);
+    }
+
+    // Затем читаем wl_iframe_token (токен платформы)
+    const wlTok = localStorage.getItem(WL_TOKEN_KEY);
+    if (wlTok && wlTok !== ownToken) {
+      applyToken(wlTok);
     }
 
     // Слушаем storage-событие на случай если родитель запишет токен после загрузки
     const onStorage = (e: StorageEvent) => {
       if (e.key === WL_TOKEN_KEY && e.newValue) {
+        applyToken(e.newValue);
+      }
+      if (e.key === TOKEN_KEY && e.newValue) {
         applyToken(e.newValue);
       }
     };
@@ -457,6 +469,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(prev => prev ? { ...prev, ...patch } : prev);
   };
 
+  // Авторизация по уже известному токену (напр. при возврате из построителя в CRM)
+  const loginWithToken = async (tok: string): Promise<boolean> => {
+    try {
+      const r = await fetch(`${AUTH_URL}?action=me`, { headers: { "X-Authorization": `Bearer ${tok}` } });
+      if (!r.ok) return false;
+      const d = await r.json();
+      if (d.user) { persist(tok, d.user); return true; }
+    } catch { /* ignore */ }
+    return false;
+  };
+
   const logout = async () => {
     if (token) {
       await fetch(`${AUTH_URL}?action=logout`, {
@@ -471,7 +494,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <Ctx.Provider value={{ user, token, loading, login, register, logout, updateUser }}>
+    <Ctx.Provider value={{ user, token, loading, login, register, logout, updateUser, loginWithToken }}>
       {children}
     </Ctx.Provider>
   );
