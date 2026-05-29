@@ -337,6 +337,11 @@ export default function PlanProjectsScreen({ token, onSelectProject, initialProj
               onCrm={handleCrm}
               onCreateLink={handleCreateLink}
               onAttachLink={handleAttachLink}
+              onQuickStatus={async (id, status) => {
+                await updateProject(id, { status });
+                syncWithCrm(id, { status });
+                await loadProjects();
+              }}
             />
           ))}
         </div>
