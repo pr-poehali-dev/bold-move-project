@@ -113,20 +113,25 @@ export default function PlanPagePanels({
 
   // Когда catalog.editingSegRef устанавливается (кнопка Заменить на стене) — открываем барабан замены
   useEffect(() => {
-    console.log("[effect] editingSegRef=", catalog.editingSegRef);
     if (!catalog.editingSegRef) return;
-    const seg = state.segments.find(s => s.id === catalog.editingSegRef!.segId);
-    const item = seg?.items?.find(it => it.priceId === catalog.editingSegRef!.priceId);
-    if (isMobile) {
-      setReplaceTarget({
-        type: "seg",
-        segId: catalog.editingSegRef.segId,
-        priceId: catalog.editingSegRef.priceId,
-        category: item?.category ?? null,
-      });
-    }
-    // На ПК — уже обрабатывается ReplaceItemModal через catalog.editingSegRef напрямую
+    const segId = catalog.editingSegRef.segId;
+    const priceId = catalog.editingSegRef.priceId;
+    const seg = state.segments.find(s => s.id === segId);
+    const item = seg?.items?.find(it => it.priceId === priceId);
     catalog.setEditingSegRef(null);
+    if (isMobile) {
+      // Задержка 120мс — чтобы тач-событие от кнопки "Заменить" не прошло сквозь
+      // барабан и не закрыло его сразу после открытия
+      setTimeout(() => {
+        setReplaceTarget({
+          type: "seg",
+          segId,
+          priceId,
+          category: item?.category ?? null,
+        });
+      }, 120);
+    }
+    // На ПК — обрабатывается ReplaceItemModal через catalog.editingSegRef напрямую
   }, [catalog.editingSegRef]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const [replaceModalItem, setReplaceModalItem] = useState<(import("./planTypes").SegmentPriceItem & { quantity: number }) | null>(null);

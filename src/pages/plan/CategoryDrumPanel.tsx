@@ -30,18 +30,25 @@ export default function CategoryDrumPanel({ open, onClose, prices, onDragItem, i
   const [selectedCategory, setSelectedCategory] = useState("");
   const [selectedItem,     setSelectedItem]     = useState("");
   const [visible,          setVisible]          = useState(false);
+  // Запоминаем initialCategory при открытии — чтобы свайп вправо в режиме замены
+  // не возвращался к категории (барабан замены показывает только одну категорию)
+  const [lockedCategory,   setLockedCategory]   = useState<string | null>(null);
 
   useEffect(() => {
     if (open) {
       setTimeout(() => setVisible(true), 10);
       if (initialCategory) {
         setSelectedCategory(initialCategory);
+        setLockedCategory(initialCategory);
         setMode("items");
+      } else {
+        setLockedCategory(null);
       }
     } else {
       setVisible(false);
+      setLockedCategory(null);
     }
-  }, [open, initialCategory]);
+  }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (!open) setTimeout(() => { setMode("categories"); setSelectedCategory(""); setSelectedItem(""); }, 300);
@@ -98,7 +105,12 @@ export default function CategoryDrumPanel({ open, onClose, prices, onDragItem, i
 
   return (
     <>
-      <div onClick={onClose} style={{ position: "fixed", top: 0, bottom: 0, right: 0, width: 210, zIndex: 40 }} />
+      {/* Оверлей — закрывает барабан по тапу в пустое место */}
+      <div
+        style={{ position: "fixed", top: 0, bottom: 0, left: 0, right: 0, zIndex: 40 }}
+        onClick={onClose}
+        onTouchEnd={e => { e.preventDefault(); onClose(); }}
+      />
       <div style={{
         position: "fixed",
         right: -8,
@@ -121,12 +133,16 @@ export default function CategoryDrumPanel({ open, onClose, prices, onDragItem, i
           <DrumViewToggle onShowList={onShowList} />
         )}
 
-        <div style={{
-          pointerEvents: "all",
-          position: "relative",
-          padding: "12px 0 12px 6px",
-          touchAction: "none",
-        }}>
+        <div
+          style={{
+            pointerEvents: "all",
+            position: "relative",
+            padding: "12px 0 12px 6px",
+            touchAction: "none",
+          }}
+          onClick={e => e.stopPropagation()}
+          onTouchEnd={e => e.stopPropagation()}
+        >
           <DrumBackground />
 
           {mode === "categories" && (
@@ -146,7 +162,15 @@ export default function CategoryDrumPanel({ open, onClose, prices, onDragItem, i
               value={selectedItem || (catItems[0]?.value ?? "")}
               onChange={setSelectedItem}
               onClick={handleItemClick}
-              onSwipeRight={() => { setMode("categories"); setSelectedCategory(""); }}
+              onSwipeRight={() => {
+                if (lockedCategory) {
+                  // В режиме замены — свайп вправо закрывает барабан
+                  onClose();
+                } else {
+                  setMode("categories");
+                  setSelectedCategory("");
+                }
+              }}
             />
           )}
         </div>
