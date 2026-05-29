@@ -90,10 +90,43 @@ export default function PlanPagePanels({
   const onVoiceItemsFromBottom = (items: import("./useVoiceCatalog").VoiceCatalogItem[], transcript: string) => {
     voiceItemsHandlerRef.current?.(items, transcript);
   };
-  // Замена из нижней панели активных карточек
-  const [replaceActiveItem, setReplaceActiveItem] = useState<import("./planTypes").SegmentPriceItem | null>(null);
-  const replaceActiveItemRef = useRef<import("./planTypes").SegmentPriceItem | null>(null);
+  // ── Замена товара (мобиле) ────────────────────────────────────────────────
+  // replaceTarget хранит что именно заменяем:
+  //   { type: "seg", segId, priceId }  — конкретный товар на конкретной стене
+  //   { type: "active", priceId }      — активный товар из нижней панели (везде)
+  const [replaceTarget, setReplaceTarget] = useState<
+    | { type: "seg"; segId: string; priceId: number; category: string | null }
+    | { type: "active"; priceId: number; category: string | null }
+    | null
+  >(null);
 
+  // Обработчик выбора нового товара в барабане замены
+  const handleReplaceSelect = (newItem: import("./planTypes").SegmentPriceItem) => {
+    if (!replaceTarget) return;
+    if (replaceTarget.type === "seg") {
+      catalog.replaceSegItem(newItem, { segId: replaceTarget.segId, priceId: replaceTarget.priceId });
+    } else {
+      catalog.replaceActiveItemEverywhere(replaceTarget.priceId, newItem);
+    }
+    setReplaceTarget(null);
+  };
+
+  // Когда catalog.editingSegRef устанавливается (кнопка Заменить на стене) — открываем барабан замены
+  useEffect(() => {
+    if (!catalog.editingSegRef) return;
+    const seg = state.segments.find(s => s.id === catalog.editingSegRef!.segId);
+    const item = seg?.items?.find(it => it.priceId === catalog.editingSegRef!.priceId);
+    if (isMobile) {
+      setReplaceTarget({
+        type: "seg",
+        segId: catalog.editingSegRef.segId,
+        priceId: catalog.editingSegRef.priceId,
+        category: item?.category ?? null,
+      });
+    }
+    // На ПК — уже обрабатывается ReplaceItemModal через catalog.editingSegRef напрямую
+    catalog.setEditingSegRef(null);
+  }, [catalog.editingSegRef]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const [replaceModalItem, setReplaceModalItem] = useState<(import("./planTypes").SegmentPriceItem & { quantity: number }) | null>(null);
   const [replaceFloorId, setReplaceFloorId] = useState<string | null>(null);
@@ -124,6 +157,12 @@ export default function PlanPagePanels({
             }
         }
         onOpenCatalog={() => {
+          if (replaceTarget) {
+            // Закрываем барабан замены
+            setReplaceTarget(null);
+            catalog.setReplaceCatalogCategory(null);
+            return;
+          }
           const next = !catalog.catalogOpen;
           catalog.setCatalogOpen(next);
           if (next) {
@@ -142,7 +181,7 @@ export default function PlanPagePanels({
         }}
         selectedSegmentId={state.selectedSegmentId}
         sheetOpen={isMobile ? sheetOpen : sidebarOpen}
-        catalogOpen={catalog.catalogOpen}
+        catalogOpen={catalog.catalogOpen || !!replaceTarget}
         rightPanelOpen={rightPanelOpen}
         isMobile={isMobile}
         onOpenMaterials={state.settings.hideMaterialsButton ? undefined : () => {
@@ -233,9 +272,9 @@ export default function PlanPagePanels({
         onNew={handleNew}
       />
 
-      {/* Каталог материалов */}
+      {/* Каталог материалов — обычный режим (только когда НЕ идёт замена) */}
       <PlanCatalogPanel
-        open={catalog.catalogOpen}
+        open={catalog.catalogOpen && !replaceTarget}
         filteredPrices={catalog.filteredPrices}
         allPrices={catalog.prices}
         selectedSegmentId={state.selectedSegmentId}
@@ -244,30 +283,8 @@ export default function PlanPagePanels({
         onClose={() => {
           catalog.setCatalogOpen(false);
           catalog.setReplaceCatalogCategory(null);
-          catalog.setEditingSegRef(null); // сбросит и ref и state
-          replaceActiveItemRef.current = null;
-          setReplaceActiveItem(null);
         }}
         onAssignToSegs={catalog.assignItemToSegs}
-        onReplaceItem={isMobile ? (item) => {
-          const segRef = catalog.editingSegRefRef.current;
-          const activeReplace = replaceActiveItemRef.current;
-
-          if (segRef) {
-            catalog.replaceSegItem(item, segRef);
-            catalog.setEditingSegRef(null);
-            catalog.setCatalogOpen(false);
-            catalog.setReplaceCatalogCategory(null);
-          } else if (activeReplace) {
-            catalog.replaceActiveItemEverywhere(activeReplace.priceId, item);
-            replaceActiveItemRef.current = null;
-            setReplaceActiveItem(null);
-            catalog.setCatalogOpen(false);
-            catalog.setReplaceCatalogCategory(null);
-          } else {
-            return false;
-          }
-        } : undefined}
         onAssignToAllSegs={catalog.assignItemToAllSegs}
         onAssignMany={catalog.assignManyItems}
         onRemoveFromSegs={catalog.removeItemFromSegs}
@@ -280,9 +297,32 @@ export default function PlanPagePanels({
           );
           catalog.setTapActiveId(item.priceId);
         }}
-        initialCategory={catalog.replaceCatalogCategory ?? undefined}
         isMobile={isMobile}
         onRegisterVoiceHandler={fn => { voiceItemsHandlerRef.current = fn; }}
+      />
+
+      {/* Барабан замены — отдельный, только когда идёт замена */}
+      <PlanCatalogPanel
+        open={!!replaceTarget}
+        filteredPrices={catalog.prices.filter(p =>
+          replaceTarget?.category ? p.category === replaceTarget.category : true
+        )}
+        allPrices={catalog.prices}
+        selectedSegmentId={null}
+        state={state}
+        onClose={() => {
+          setReplaceTarget(null);
+          catalog.setReplaceCatalogCategory(null);
+        }}
+        onAssignToSegs={() => {}}
+        onAssignToAllSegs={() => {}}
+        onAssignMany={() => {}}
+        onRemoveFromSegs={() => {}}
+        onRemoveFromAllSegs={() => {}}
+        onAddToActive={() => {}}
+        onReplaceItem={handleReplaceSelect}
+        initialCategory={replaceTarget?.category ?? undefined}
+        isMobile={isMobile}
       />
 
       {/* Модалка добавления на полотно */}
@@ -352,16 +392,16 @@ export default function PlanPagePanels({
       )}
 
       {/* Замена из нижней панели активных карточек (ПК) */}
-      {!isMobile && (
+      {!isMobile && replaceTarget?.type === "active" && (
         <ReplaceItemModal
-          open={!!replaceActiveItem}
-          item={replaceActiveItem ? { ...replaceActiveItem, quantity: 1 } : null}
+          open={true}
+          item={{ priceId: replaceTarget.priceId, name: "", category: replaceTarget.category ?? "", imageUrl: null, categoryImageUrl: null, unit: "", isWallItem: true, quantity: 1 }}
           prices={catalog.prices}
           onReplace={(newItem) => {
-            if (replaceActiveItem) catalog.replaceActiveItemEverywhere(replaceActiveItem.priceId, newItem);
-            setReplaceActiveItem(null);
+            catalog.replaceActiveItemEverywhere(replaceTarget.priceId, newItem);
+            setReplaceTarget(null);
           }}
-          onCancel={() => setReplaceActiveItem(null)}
+          onCancel={() => setReplaceTarget(null)}
         />
       )}
 
@@ -388,15 +428,16 @@ export default function PlanPagePanels({
         onAddToFloor={catalog.setPendingFloorItem}
         onReplaceItem={item => {
           if (isMobile) {
-            // Мобиле: режим замены активного товара из нижней панели
-            replaceActiveItemRef.current = item;
-            catalog.setEditingSegRef(null); // сбрасываем замену стенового товара
+            // Мобиле: открываем барабан замены
+            setReplaceTarget({
+              type: "active",
+              priceId: item.priceId,
+              category: item.category ?? null,
+            });
             catalog.setReplaceCatalogCategory(item.category ?? null);
-            setReplaceActiveItem(item);
-            catalog.setCatalogOpen(true);
           } else {
-            // ПК: открываем модалку
-            setReplaceActiveItem(item);
+            // ПК: открываем модалку через replaceTarget
+            setReplaceTarget({ type: "active", priceId: item.priceId, category: item.category ?? null });
           }
         }}
         hasSegments={state.isClosed && state.segments.length > 0}

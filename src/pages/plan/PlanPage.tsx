@@ -347,15 +347,6 @@ export default function PlanPage() {
         onSidebarDragStart={onSidebarDragStart}
         handleChange={handleChange}
         handleReplace={handleReplace}
-        onEditSegItem={isMobile ? (segId, priceId) => {
-          // На мобиле: открываем барабан замены синхронно, без useEffect
-          const seg = state.segments.find(s => s.id === segId);
-          const item = seg?.items?.find(it => it.priceId === priceId);
-          const cat = item?.category ?? null;
-          catalog.setReplaceCatalogCategory(cat);
-          catalog.setCatalogOpen(true);
-          catalog.setEditingSegRef({ segId, priceId });
-        } : undefined}
       />
 
       <PlanPagePanels
