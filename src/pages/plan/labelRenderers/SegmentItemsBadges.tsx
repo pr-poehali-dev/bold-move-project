@@ -104,7 +104,7 @@ export function SegmentItemsBadges({
   const FIELD_HALF_W = 18; // половина ширины поля «250»
   const FIELD_HALF_H = 10; // половина высоты поля «250»
   const fieldHalfProj = absNx * FIELD_HALF_W + absNy * FIELD_HALF_H;
-  const GAP_PX = 4; // зазор между краем поля и краем иконки
+  const GAP_PX = 1; // зазор между краем поля и краем иконки
   const OFF = (DIM_OFF + fieldHalfProj + GAP_PX) / z + S / 2;
 
   // Нормаль гарантированно смотрит наружу — двигаемся ПО нормали (наружу от полигона)
