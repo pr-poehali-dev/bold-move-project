@@ -19,8 +19,8 @@ export default function EstimatePricePicker({ prices, onSelect, onClose }: Props
   const filtered = q.length < 1
     ? prices
     : prices.filter(p =>
-        p.name.toLowerCase().includes(q.toLowerCase()) ||
-        p.category.toLowerCase().includes(q.toLowerCase())
+        (p.name ?? "").toLowerCase().includes(q.toLowerCase()) ||
+        (p.category ?? "").toLowerCase().includes(q.toLowerCase())
       );
 
   const grouped = filtered.reduce<Record<string, PriceItem[]>>((acc, p) => {
