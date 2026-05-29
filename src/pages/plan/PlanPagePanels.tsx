@@ -195,6 +195,7 @@ export default function PlanPagePanels({
           onUpdateSegment={handleUpdateSegment}
           onUpdateDiagonal={handleUpdateDiagonal}
           focusSegmentId={focusSegmentId}
+          onChange={handleChange}
           onClose={() => { setRightPanelOpen(false); setFocusSegmentId(null); }}
         />
       )}

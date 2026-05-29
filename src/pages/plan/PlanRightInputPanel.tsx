@@ -12,11 +12,12 @@ interface Props {
   state: PlanState;
   onUpdateSegment: (id: string, patch: Partial<Segment>) => void;
   onUpdateDiagonal: (id: string, patch: Partial<DiagonalDef>) => void;
+  onChange?: (patch: Partial<PlanState>) => void;
   onClose: () => void;
   focusSegmentId?: string | null;
 }
 
-export default function PlanRightInputPanel({ state, onUpdateSegment, onUpdateDiagonal, onClose, focusSegmentId }: Props) {
+export default function PlanRightInputPanel({ state, onUpdateSegment, onUpdateDiagonal, onChange, onClose, focusSegmentId }: Props) {
   const { segments, points, diagonals } = state;
   const [tab, setTab] = React.useState<Tab>("sides");
   const [dropOpen, setDropOpen] = useState(false);
@@ -265,7 +266,15 @@ export default function PlanRightInputPanel({ state, onUpdateSegment, onUpdateDi
                   onChange={e => { const next = [...segValues]; next[idx] = e.target.value; setSegValues(next); }}
                   onKeyDown={e => handleSegKey(e, idx)}
                   onBlur={() => commitSeg(idx, segValues[idx])}
-                  onFocus={e => e.target.select()}
+                  onFocus={e => {
+                    e.target.select();
+                    onChange?.({
+                      selectedSegmentId: seg.id,
+                      selectedSegmentIds: [seg.id],
+                      selectedPointId: null,
+                      selectedDiagonalId: null,
+                    });
+                  }}
                   className={`w-full rounded-lg border px-2 py-1.5 text-[12px] font-semibold text-right pr-6 outline-none transition bg-transparent
                     ${voice.isListening && voice.activeIdx === idx
                       ? "border-red-500/50 bg-red-500/5 text-white"
