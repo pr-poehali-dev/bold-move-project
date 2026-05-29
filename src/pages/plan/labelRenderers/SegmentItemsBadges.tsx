@@ -1,6 +1,6 @@
 import React, { useState, useRef } from "react";
 import type { Segment } from "../planTypes";
-import { distPx, midPoint, segmentNormal } from "../planTypes";
+import { distPx, midPoint, segmentNormal, polygonOrientation } from "../planTypes";
 import type { RenderContext } from "../PlanCanvasTypes";
 
 // ── SegmentItemsBadges — товары прикреплённые к стене ────────────────────────
@@ -57,18 +57,16 @@ export function SegmentItemsBadges({
   const tx = (b.x - a.x) / segLen;
   const ty = (b.y - a.y) / segLen;
 
-  // Определяем центр полигона, чтобы гарантировать что нормаль смотрит наружу
-  const polyCenterX = ctx.points.length > 0
-    ? ctx.points.reduce((s, p) => s + p.x, 0) / ctx.points.length : 0;
-  const polyCenterY = ctx.points.length > 0
-    ? ctx.points.reduce((s, p) => s + p.y, 0) / ctx.points.length : 0;
-  // Вектор от центра полигона к середине стены
-  const toCenterX = mid.x - polyCenterX;
-  const toCenterY = mid.y - polyCenterY;
-  // Если нормаль смотрит в ту же сторону что и вектор "наружу" — оставляем, иначе инвертируем
-  const normalDotOutward = rawNx * toCenterX + rawNy * toCenterY;
-  const nx = normalDotOutward >= 0 ? rawNx : -rawNx;
-  const ny = normalDotOutward >= 0 ? rawNy : -rawNy;
+  // Определяем ориентацию полигона (CW/CCW) и корректируем знак нормали.
+  // segmentNormal возвращает левый перпендикуляр (-dy, dx).
+  // Для CCW-полигона (area > 0) он смотрит внутрь → инвертируем.
+  // Для CW-полигона (area < 0 в SVG где Y↓) он смотрит наружу → оставляем.
+  // polygonOrientation: > 0 = CCW (Y вверх), но в SVG Y↓ поэтому знак инвертирован.
+  const polyOri = polygonOrientation(ctx.points); // > 0 = CW в SVG
+  // Если CW (polyOri > 0) — нормаль уже наружу. Если CCW — инвертируем.
+  const normalSign = polyOri > 0 ? 1 : -1;
+  const nx = rawNx * normalSign;
+  const ny = rawNy * normalSign;
 
   // Умный размер иконки: пропорционально длине стены
   const n = items.length;
@@ -143,14 +141,9 @@ export function SegmentItemsBadges({
             const mX = (pa.x + pb.x) / 2;
             const mY = (pa.y + pb.y) / 2;
             const { nx: snx, ny: sny } = segmentNormal(pa, pb);
-            // Корректируем знак нормали чтобы всегда смотрела наружу
-            const toCX = mX - polyCenterX;
-            const toCY = mY - polyCenterY;
-            const dot = snx * toCX + sny * toCY;
-            const fnx = dot >= 0 ? snx : -snx;
-            const fny = dot >= 0 ? sny : -sny;
-            const bx = mX + fnx * OFF;
-            const by = mY + fny * OFF;
+            // Нормаль корректируется по ориентации полигона (та же логика что выше)
+            const bx = mX + snx * normalSign * OFF;
+            const by = mY + sny * normalSign * OFF;
             const d = Math.hypot(finalPx - bx, finalPy - by);
             if (d < bestDist) { bestDist = d; bestSegId = s.id; }
           });

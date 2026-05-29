@@ -435,8 +435,12 @@ export function usePlanCanvasEvents({ state, onChange, onReplace, cs }: Params) 
             onChange({ dimLines: [...dimLines, newDl], selectedDimLineId: newDl.id, selectedPointId: null });
             setDimLineFrom(null);
           }
+        } else if (tool === "draw") {
+          // В режиме рисования тап по точке — не выбираем её, замыкание обрабатывается ниже
         } else {
           onChange({ selectedPointId: hitPt.id, selectedSegmentId: null, selectedSegmentIds: [], selectedDiagonalId: null });
+          dragRef.current = null; panRef.current = null;
+          return;
         }
         dragRef.current = null; panRef.current = null;
         return;
