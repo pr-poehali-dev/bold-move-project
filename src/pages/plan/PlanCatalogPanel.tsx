@@ -26,7 +26,7 @@ interface Props {
   pendingItem?: SegmentPriceItem | null;
   onSegmentClickForPending?: (segId: string) => void;
   initialCategory?: string;
-  onReplaceItem?: (item: SegmentPriceItem) => void;
+  onReplaceItem?: (item: SegmentPriceItem) => void | false;
   isMobile?: boolean;
   onRegisterVoiceHandler?: (fn: (items: VoiceCatalogItem[], transcript: string) => void) => void;
 }
@@ -75,9 +75,10 @@ export default function PlanCatalogPanel({
         onShowList={!isMobile ? () => setShowListMode(true) : undefined}
         onDragItem={item => {
           if (onReplaceItem) {
-            onReplaceItem(item);
-            onClose();
-            return;
+            const handled = onReplaceItem(item);
+            // Если замена реально выполнилась (handled !== false) — выходим
+            if (handled !== false) return;
+            // handled === false — активной замены не было, делаем обычное добавление
           }
           onClose();
           const ids = selectedSegmentIds && selectedSegmentIds.length > 0

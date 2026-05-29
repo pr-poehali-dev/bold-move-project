@@ -92,6 +92,7 @@ export default function PlanPagePanels({
   };
   // Замена из нижней панели активных карточек
   const [replaceActiveItem, setReplaceActiveItem] = useState<import("./planTypes").SegmentPriceItem | null>(null);
+  const replaceActiveItemRef = useRef<import("./planTypes").SegmentPriceItem | null>(null);
 
   // Сохраняем segRef пока барабан открыт (для мобильной замены) — ref для синхронности
   const mobileReplaceSegRefRef = useRef<{ segId: string; priceId: number } | null>(null);
@@ -262,18 +263,26 @@ export default function PlanPagePanels({
           setReplaceActiveItem(null);
         }}
         onAssignToSegs={catalog.assignItemToSegs}
-        onReplaceItem={(mobileReplaceSegRef || mobileReplaceSegRefRef.current || replaceActiveItem) ? (item) => {
-          const segRef = mobileReplaceSegRefRef.current ?? mobileReplaceSegRef;
+        onReplaceItem={isMobile ? (item) => {
+          // Читаем ref синхронно — он всегда актуален
+          const segRef = mobileReplaceSegRefRef.current;
+          const activeReplace = replaceActiveItemRef.current;
           if (segRef) {
             catalog.replaceSegItem(item, segRef);
             mobileReplaceSegRefRef.current = null;
             setMobileReplaceSegRef(null);
-          } else if (replaceActiveItem) {
-            catalog.replaceActiveItemEverywhere(replaceActiveItem.priceId, item);
+            catalog.setCatalogOpen(false);
+            catalog.setReplaceCatalogCategory(null);
+          } else if (activeReplace) {
+            catalog.replaceActiveItemEverywhere(activeReplace.priceId, item);
+            replaceActiveItemRef.current = null;
             setReplaceActiveItem(null);
+            catalog.setCatalogOpen(false);
+            catalog.setReplaceCatalogCategory(null);
+          } else {
+            // Нет активной замены — сигнализируем делать обычное добавление
+            return false;
           }
-          catalog.setCatalogOpen(false);
-          catalog.setReplaceCatalogCategory(null);
         } : undefined}
         onAssignToAllSegs={catalog.assignItemToAllSegs}
         onAssignMany={catalog.assignManyItems}
@@ -395,7 +404,9 @@ export default function PlanPagePanels({
         onAddToFloor={catalog.setPendingFloorItem}
         onReplaceItem={item => {
           if (isMobile) {
-            // Мобиле: открываем барабан
+            // Мобиле: открываем барабан — сохраняем синхронно в ref
+            replaceActiveItemRef.current = item;
+            mobileReplaceSegRefRef.current = null;
             catalog.setReplaceCatalogCategory(item.category ?? null);
             setMobileReplaceSegRef(null);
             setReplaceActiveItem(item);
