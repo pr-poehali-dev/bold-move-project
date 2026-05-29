@@ -310,9 +310,7 @@ export default function PlanPagePanels({
       {/* Барабан замены — отдельный, только когда идёт замена */}
       <PlanCatalogPanel
         open={!!replaceTarget}
-        filteredPrices={catalog.prices.filter(p =>
-          replaceTarget?.category ? p.category === replaceTarget.category : true
-        )}
+        filteredPrices={catalog.filteredPrices}
         allPrices={catalog.prices}
         selectedSegmentId={null}
         state={state}

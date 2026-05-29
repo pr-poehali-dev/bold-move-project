@@ -30,23 +30,16 @@ export default function CategoryDrumPanel({ open, onClose, prices, onDragItem, i
   const [selectedCategory, setSelectedCategory] = useState("");
   const [selectedItem,     setSelectedItem]     = useState("");
   const [visible,          setVisible]          = useState(false);
-  // Запоминаем initialCategory при открытии — чтобы свайп вправо в режиме замены
-  // не возвращался к категории (барабан замены показывает только одну категорию)
-  const [lockedCategory,   setLockedCategory]   = useState<string | null>(null);
 
   useEffect(() => {
     if (open) {
       setTimeout(() => setVisible(true), 10);
       if (initialCategory) {
         setSelectedCategory(initialCategory);
-        setLockedCategory(initialCategory);
         setMode("items");
-      } else {
-        setLockedCategory(null);
       }
     } else {
       setVisible(false);
-      setLockedCategory(null);
     }
   }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -162,15 +155,7 @@ export default function CategoryDrumPanel({ open, onClose, prices, onDragItem, i
               value={selectedItem || (catItems[0]?.value ?? "")}
               onChange={setSelectedItem}
               onClick={handleItemClick}
-              onSwipeRight={() => {
-                if (lockedCategory) {
-                  // В режиме замены — свайп вправо закрывает барабан
-                  onClose();
-                } else {
-                  setMode("categories");
-                  setSelectedCategory("");
-                }
-              }}
+              onSwipeRight={() => { setMode("categories"); setSelectedCategory(""); }}
             />
           )}
         </div>
