@@ -1,8 +1,11 @@
 import { useRef, useState, useEffect } from "react";
 import Icon from "@/components/ui/icon";
 import { PlanProject } from "./usePlanProjects";
-import { STATUSES, STATUS_COLORS, FormData, EMPTY_FORM } from "./PlanProjectsConstants";
+import { STATUS_COLORS, FormData, EMPTY_FORM } from "./PlanProjectsConstants";
 import PlanProjectForm from "./PlanProjectForm";
+import ProjectCardBadges from "./ProjectCardBadges";
+import ProjectCardBody from "./ProjectCardBody";
+import { ConfirmEditOverlay, ConfirmDeleteOverlay } from "./ProjectCardConfirm";
 
 interface Props {
   project: PlanProject;
@@ -46,9 +49,6 @@ export default function PlanProjectCard({
   const [dragging, setDragging] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [confirmEdit, setConfirmEdit] = useState(false);
-  const [showLinkMenu, setShowLinkMenu] = useState(false);
-  const [showStatusPicker, setShowStatusPicker] = useState(false);
-  const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // touch tracking
   const sx = useRef(0);
@@ -156,80 +156,13 @@ export default function PlanProjectCard({
       className="relative rounded-2xl overflow-hidden"
       style={{ background: "#0e0e1c", border: `1px solid ${sc.glow}`, boxShadow: `0 0 12px ${sc.glow.replace("0.3","0.12").replace("0.4","0.12")}` }}
     >
-      {/* Бейдж количества комнат — правый верхний угол */}
-      {!isEditing && (project.rooms_count ?? 0) > 0 && (
-        <span
-          className="absolute flex items-center gap-0.5 px-2 py-1 rounded-bl-xl text-[10px] font-bold z-10"
-          style={{ top: 0, right: 0, background: "rgba(124,58,237,0.22)", color: "#a78bfa", border: "1px solid rgba(124,58,237,0.3)", borderTop: "none", borderRight: "none" }}
-        >
-          <Icon name="Layers" size={9} />
-          {project.rooms_count}шт
-        </span>
-      )}
-
-      {/* Бейдж «привязан к заявке» — правый нижний угол */}
-      {!isEditing && project.crm_chat_id && (
-        <button
-          title={`Открыть заявку CRM #${project.crm_chat_id}`}
-          onClick={e => { e.stopPropagation(); window.open(`/crm?order=${project.crm_chat_id}`, "_blank"); }}
-          className="absolute flex items-center gap-0.5 px-2 py-1 rounded-tl-xl text-[10px] font-bold z-10 transition hover:brightness-125 active:scale-95"
-          style={{ bottom: 0, right: 0, background: "rgba(34,197,94,0.15)", color: "#4ade80", border: "1px solid rgba(34,197,94,0.25)", borderBottom: "none", borderRight: "none" }}
-        >
-          <Icon name="CheckCircle" size={9} />
-          CRM
-        </button>
-      )}
-
-      {/* Бейдж «не привязан к заявке» — правый нижний угол */}
-      {!isEditing && !project.crm_chat_id && (onCreateLink || onAttachLink) && (
-        <button
-          title="Привязать к заявке"
-          onClick={e => { e.stopPropagation(); setShowLinkMenu(v => !v); }}
-          className="absolute flex items-center gap-0.5 px-1.5 py-0.5 rounded-tl-xl text-[9px] font-bold z-10 transition hover:brightness-125 active:scale-95"
-          style={{ bottom: 0, right: 0, background: "rgba(239,68,68,0.15)", color: "#f87171", border: "1px solid rgba(239,68,68,0.25)", borderBottom: "none", borderRight: "none" }}
-        >
-          <Icon name="TriangleAlert" size={9} />
-          CRM
-        </button>
-      )}
-      {/* Мини-меню привязки */}
-      {showLinkMenu && !isEditing && (
-        <div
-          className="absolute z-30 flex flex-col gap-1 p-2 rounded-xl shadow-2xl"
-          style={{ top: 26, left: 0, minWidth: 210, background: "#13131f", border: "1px solid rgba(234,179,8,0.25)" }}
-        >
-          <div className="text-[10px] font-bold uppercase tracking-wide px-1 pb-1" style={{ color: "rgba(250,204,21,0.7)" }}>
-            Привязать к заявке CRM
-          </div>
-          {onCreateLink && (
-            <button
-              onClick={e => { e.stopPropagation(); setShowLinkMenu(false); onCreateLink(project); }}
-              className="flex items-center gap-2 px-3 py-2 rounded-lg text-[12px] font-semibold transition hover:brightness-110 active:scale-[0.98] text-left"
-              style={{ background: "rgba(124,58,237,0.18)", color: "#c4b5fd", border: "1px solid rgba(124,58,237,0.25)" }}
-            >
-              <Icon name="Plus" size={13} />
-              Создать новую заявку
-            </button>
-          )}
-          {onAttachLink && (
-            <button
-              onClick={e => { e.stopPropagation(); setShowLinkMenu(false); onAttachLink(project); }}
-              className="flex items-center gap-2 px-3 py-2 rounded-lg text-[12px] font-semibold transition hover:brightness-110 active:scale-[0.98] text-left"
-              style={{ background: "rgba(234,179,8,0.12)", color: "#fde68a", border: "1px solid rgba(234,179,8,0.2)" }}
-            >
-              <Icon name="Link" size={13} />
-              Привязать существующую
-            </button>
-          )}
-          <button
-            onClick={e => { e.stopPropagation(); setShowLinkMenu(false); }}
-            className="text-[11px] text-center pt-0.5 pb-1 transition"
-            style={{ color: "rgba(255,255,255,0.3)" }}
-          >
-            Отмена
-          </button>
-        </div>
-      )}
+      {/* Бейджи: комнаты, CRM, меню привязки */}
+      <ProjectCardBadges
+        project={project}
+        isEditing={isEditing}
+        onCreateLink={onCreateLink}
+        onAttachLink={onAttachLink}
+      />
 
       {/* ── Форма редактирования (вместо карточки) ── */}
       {isEditing && (
@@ -280,225 +213,33 @@ export default function PlanProjectCard({
           display: isEditing ? "none" : undefined,   // скрываем при редактировании, но не размонтируем
         }}
       >
-        <div className="flex">
-          {/* Статус — long-press открывает быстрый пикер */}
-          {(() => {
-            const label = STATUSES.find(s => s.id === project.status)?.label ?? project.status;
-            const fontSize = label.length > 12 ? 8 : label.length > 8 ? 9 : 10;
-            return (
-              <div className="relative flex-shrink-0 self-stretch">
-                <div
-                  className="flex items-center justify-center w-12 h-full px-1 py-3 overflow-hidden cursor-pointer select-none"
-                  style={{ background: `linear-gradient(to right, ${sc.glow ?? sc.bg}, transparent)` }}
-                  onTouchStart={() => {
-                    if (!onQuickStatus) return;
-                    longPressTimer.current = setTimeout(() => {
-                      vibe(40);
-                      setShowStatusPicker(true);
-                    }, 500);
-                  }}
-                  onTouchEnd={() => { if (longPressTimer.current) { clearTimeout(longPressTimer.current); longPressTimer.current = null; } }}
-                  onTouchMove={() => { if (longPressTimer.current) { clearTimeout(longPressTimer.current); longPressTimer.current = null; } }}
-                  onMouseDown={() => {
-                    if (!onQuickStatus) return;
-                    longPressTimer.current = setTimeout(() => { setShowStatusPicker(true); }, 500);
-                  }}
-                  onMouseUp={() => { if (longPressTimer.current) { clearTimeout(longPressTimer.current); longPressTimer.current = null; } }}
-                  onMouseLeave={() => { if (longPressTimer.current) { clearTimeout(longPressTimer.current); longPressTimer.current = null; } }}
-                >
-                  <span
-                    className="font-bold uppercase"
-                    style={{ color: sc.text, writingMode: "vertical-rl", transform: "rotate(180deg)", fontSize, letterSpacing: "0.08em" }}
-                  >
-                    {label}
-                  </span>
-                </div>
-
-                {/* Пикер статуса */}
-                {showStatusPicker && (
-                  <>
-                    <div className="fixed inset-0 z-40" onClick={() => setShowStatusPicker(false)} />
-                    <div
-                      className="absolute left-12 top-0 z-50 flex flex-col gap-1 p-2 rounded-xl shadow-2xl"
-                      style={{ minWidth: 200, background: "#0e0e1c", border: "1px solid rgba(124,58,237,0.35)", backdropFilter: "blur(16px)" }}
-                    >
-                      <div className="text-[9px] font-bold uppercase tracking-widest px-2 pb-1" style={{ color: "rgba(167,139,250,0.5)" }}>
-                        Изменить статус
-                      </div>
-                      {STATUSES.filter(s => s.id !== "all").map(s => {
-                        const sColor = STATUS_COLORS[s.id] ?? STATUS_COLORS.draft;
-                        const isActive = project.status === s.id;
-                        return (
-                          <button
-                            key={s.id}
-                            onClick={e => {
-                              e.stopPropagation();
-                              setShowStatusPicker(false);
-                              if (!isActive) onQuickStatus?.(project.id, s.id);
-                            }}
-                            className="flex items-center gap-2 px-3 py-2 rounded-lg text-left transition active:scale-[0.97]"
-                            style={{
-                              background: isActive ? sColor.bg : "transparent",
-                              border: `1px solid ${isActive ? sColor.glow : "transparent"}`,
-                              color: isActive ? sColor.text : "rgba(255,255,255,0.65)",
-                              fontSize: 12, fontWeight: isActive ? 700 : 500,
-                            }}
-                          >
-                            <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: sColor.text }} />
-                            {s.label}
-                            {isActive && <span className="ml-auto text-[10px]">✓</span>}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </>
-                )}
-              </div>
-            );
-          })()}
-
-          {/* Правая часть */}
-          <div className="flex-1 min-w-0">
-            <div className="px-4 py-3.5 flex items-center gap-3" style={{ minHeight: 130 }}>
-              <button
-                className="flex items-start gap-3 flex-1 min-w-0 text-left hover:opacity-90 transition active:scale-[0.99]"
-                onClick={() => onSelect(project)}
-              >
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center mb-1.5 min-w-0">
-                    <span className="text-white font-bold text-[14px] leading-snug">{project.name}</span>
-                  </div>
-                  <div className="flex flex-col gap-0.5 min-w-0">
-                    {project.client_name && (
-                      <span className="flex items-start gap-1 text-[12px]" style={{ color: "rgba(255,255,255,0.75)" }}>
-                        <Icon name="User" size={11} className="flex-shrink-0 mt-0.5" />
-                        <span>{project.client_name}</span>
-                      </span>
-                    )}
-                    {project.address && (
-                      <span className="flex items-start gap-1 text-[12px]" style={{ color: "rgba(255,255,255,0.75)" }}>
-                        <Icon name="MapPin" size={11} className="flex-shrink-0 mt-0.5" />
-                        <span>{project.address}</span>
-                      </span>
-                    )}
-                    {project.phone && (
-                      <span className="flex items-start gap-1 text-[12px]" style={{ color: "rgba(255,255,255,0.75)" }}>
-                        <Icon name="Phone" size={11} className="flex-shrink-0 mt-0.5" />
-                        <span>{project.phone}</span>
-                      </span>
-                    )}
-                  </div>
-                </div>
-              </button>
-
-              <div className="flex-shrink-0 flex flex-row gap-1">
-                <button
-                  onClick={() => onExport(project)}
-                  className="flex flex-col items-center justify-center gap-0.5 rounded-xl transition hover:brightness-110 active:scale-95"
-                  style={{ width: 46, height: 46, background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)" }}
-                >
-                  <Icon name="FileDown" size={16} style={{ color: "rgba(255,255,255,0.8)" }} />
-                  <span className="text-[8px] font-bold uppercase tracking-wide" style={{ color: "rgba(255,255,255,0.55)" }}>Смета</span>
-                </button>
-                <button
-                  onClick={() => onMaterials(project)}
-                  className="flex flex-col items-center justify-center gap-0.5 rounded-xl transition hover:brightness-110 active:scale-95"
-                  style={{ width: 46, height: 46, background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)" }}
-                >
-                  <Icon name="ClipboardList" size={16} style={{ color: "rgba(255,255,255,0.8)" }} />
-                  <span className="text-[8px] font-bold uppercase tracking-wide" style={{ color: "rgba(255,255,255,0.55)" }}>Состав</span>
-                </button>
-                {onCrm && (
-                  <button
-                    onClick={() => onCrm(project)}
-                    className="flex flex-col items-center justify-center gap-0.5 rounded-xl transition hover:brightness-110 active:scale-95"
-                    style={{
-                      width: 46, height: 46,
-                      background: "rgba(255,255,255,0.06)",
-                      border: "1px solid rgba(255,255,255,0.1)",
-                    }}
-                  >
-                    <Icon name="LayoutDashboard" size={16} style={{ color: "rgba(255,255,255,0.8)" }} />
-                    <span className="text-[8px] font-bold uppercase tracking-wide" style={{ color: "rgba(255,255,255,0.55)" }}>CRM</span>
-                  </button>
-                )}
-              </div>
-            </div>
-
-            {/* ПК-кнопки — скрыты на touch через CSS media */}
-            <div className="hidden-on-touch flex border-t" style={{ borderColor: "rgba(255,255,255,0.05)" }}>
-              <button
-                onClick={() => onStartEdit(project)}
-                className="flex-1 flex items-center justify-center gap-1.5 py-2.5 text-[12px] font-semibold transition hover:bg-white/[0.04]"
-                style={{ color: "rgba(255,255,255,0.55)" }}
-              >
-                Редактировать
-              </button>
-            </div>
-          </div>
-        </div>
+        <ProjectCardBody
+          project={project}
+          onSelect={onSelect}
+          onStartEdit={onStartEdit}
+          onExport={onExport}
+          onMaterials={onMaterials}
+          onCrm={onCrm}
+          onQuickStatus={onQuickStatus}
+        />
       </div>
 
       {/* ── Подтверждение: Изменить ── */}
       {confirmEdit && (
-        <div
-          className="absolute inset-0 flex items-center justify-center gap-3 z-20 rounded-2xl"
-          style={{ background: "rgba(8,8,18,0.96)", backdropFilter: "blur(4px)" }}
-        >
-          <Icon name="Pencil" size={16} style={{ color: "#a78bfa" }} />
-          <span className="text-white/85 text-[13px] font-semibold">Редактировать проект?</span>
-          <button
-            onClick={doEdit}
-            className="px-4 py-1.5 rounded-xl text-[12px] font-bold transition hover:opacity-90"
-            style={{ background: "linear-gradient(135deg,#6d28d9,#7c3aed)", color: "#fff" }}
-          >
-            Да
-          </button>
-          <button
-            onClick={() => setConfirmEdit(false)}
-            className="px-3 py-1.5 rounded-xl text-[12px] font-semibold transition"
-            style={{ color: "rgba(255,255,255,0.45)", border: "1px solid rgba(255,255,255,0.1)" }}
-          >
-            Отмена
-          </button>
-          <button
-            onClick={() => { setConfirmEdit(false); setConfirmDelete(true); }}
-            className="flex items-center gap-1 px-3 py-1.5 rounded-xl text-[12px] font-semibold transition hover:bg-red-500/10"
-            style={{ color: "rgba(239,68,68,0.7)", border: "1px solid rgba(239,68,68,0.2)" }}
-          >
-            <Icon name="Trash2" size={12} />
-            Удалить
-          </button>
-        </div>
+        <ConfirmEditOverlay
+          onConfirm={doEdit}
+          onCancel={() => setConfirmEdit(false)}
+          onDelete={() => { setConfirmEdit(false); setConfirmDelete(true); }}
+        />
       )}
 
       {/* ── Подтверждение: Удалить ── */}
       {confirmDelete && (
-        <div
-          className="absolute inset-0 flex items-center justify-center gap-3 z-20 rounded-2xl"
-          style={{ background: "rgba(8,8,18,0.96)", backdropFilter: "blur(4px)" }}
-        >
-          <Icon name="AlertTriangle" size={16} style={{ color: "#f87171" }} />
-          <span className="text-white/85 text-[13px] font-semibold">Удалить проект?</span>
-          <button
-            onClick={doDelete}
-            disabled={isDeleting}
-            className="px-4 py-1.5 rounded-xl text-[12px] font-bold transition hover:opacity-90 disabled:opacity-50"
-            style={{ background: "rgba(239,68,68,0.9)", color: "#fff" }}
-          >
-            {isDeleting
-              ? <div className="w-3 h-3 border border-white/40 border-t-white rounded-full animate-spin" />
-              : "Да, удалить"
-            }
-          </button>
-          <button
-            onClick={() => setConfirmDelete(false)}
-            className="px-3 py-1.5 rounded-xl text-[12px] font-semibold transition"
-            style={{ color: "rgba(255,255,255,0.45)", border: "1px solid rgba(255,255,255,0.1)" }}
-          >
-            Отмена
-          </button>
-        </div>
+        <ConfirmDeleteOverlay
+          isDeleting={isDeleting}
+          onConfirm={doDelete}
+          onCancel={() => setConfirmDelete(false)}
+        />
       )}
     </div>
   );
