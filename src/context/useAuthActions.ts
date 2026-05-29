@@ -1,4 +1,5 @@
 // ── Действия авторизации: login, register, logout, updateUser, loginWithToken ─
+import { type Dispatch, type SetStateAction } from "react";
 import func2url from "@/../backend/func2url.json";
 import { setCrmToken } from "@/pages/admin/crm/crmApi";
 import type { AuthUser, UserRole } from "./authTypes";
@@ -7,8 +8,8 @@ import { TOKEN_KEY } from "./useAuthInit";
 const AUTH_URL = (func2url as Record<string, string>)["auth"];
 
 type Setters = {
-  setUser:  (u: AuthUser | null) => void;
-  setToken: (t: string | null) => void;
+  setUser:  Dispatch<SetStateAction<AuthUser | null>>;
+  setToken: Dispatch<SetStateAction<string | null>>;
   token:    string | null;
 };
 

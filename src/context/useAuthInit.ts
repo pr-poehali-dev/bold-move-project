@@ -1,5 +1,5 @@
 // ── Инициализация авторизации: обычный режим + iframe-режим ──────────────────
-import { useEffect } from "react";
+import { useEffect, type Dispatch, type SetStateAction } from "react";
 import func2url from "@/../backend/func2url.json";
 import { setCrmToken } from "@/pages/admin/crm/crmApi";
 import type { AuthUser } from "./authTypes";
@@ -8,9 +8,9 @@ const AUTH_URL  = (func2url as Record<string, string>)["auth"];
 export const TOKEN_KEY = "mp_user_token";
 
 type Setters = {
-  setUser:    (u: AuthUser | null) => void;
-  setToken:   (t: string | null) => void;
-  setLoading: (v: boolean) => void;
+  setUser:    Dispatch<SetStateAction<AuthUser | null>>;
+  setToken:   Dispatch<SetStateAction<string | null>>;
+  setLoading: Dispatch<SetStateAction<boolean>>;
 };
 
 // Обычный режим: читаем mp_user_token при монтировании (не в iframe)
