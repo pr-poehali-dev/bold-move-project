@@ -101,7 +101,7 @@ export function SegmentItemsBadges({
   const absNx = Math.abs(nx);
   const absNy = Math.abs(ny);
   const BASE_LABEL_OFF = 14; // canvas-единиц от стены до центра поля (из InlineDimLabels)
-  const fieldHalfProj = (absNx * 18 + absNy * 10) / z; // половина поля в canvas-единицах
+  const fieldHalfProj = (absNx * 18 + absNy * 18) / z; // половина поля в canvas-единицах (одинаково для всех направлений)
   const GAP_PX = 3; // зазор в экранных пикселях
   const OFF = BASE_LABEL_OFF / z + fieldHalfProj + GAP_PX / z + S / 2;
 
