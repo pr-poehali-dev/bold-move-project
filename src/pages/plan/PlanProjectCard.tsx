@@ -151,7 +151,7 @@ export default function PlanProjectCard({
   return (
     <div
       className="relative rounded-2xl overflow-hidden"
-      style={{ background: "#0e0e1c", border: "1px solid rgba(255,255,255,0.06)" }}
+      style={{ background: "#0e0e1c", border: `1px solid ${sc.glow}`, boxShadow: `0 0 12px ${sc.glow.replace("0.3","0.12").replace("0.4","0.12")}` }}
     >
       {/* Бейдж количества комнат — правый верхний угол */}
       {!isEditing && (project.rooms_count ?? 0) > 0 && (
