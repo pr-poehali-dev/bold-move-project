@@ -54,7 +54,7 @@ export default function ReplaceItemModal({ open, item, prices, onReplace, onCanc
   const filteredItems = useMemo(() => {
     return visiblePrices.filter(p => {
       const matchCat = !selectedCategory || p.category === selectedCategory;
-      const matchSearch = !search || p.name.toLowerCase().includes(search.toLowerCase());
+      const matchSearch = !search || (p.name ?? "").toLowerCase().includes(search.toLowerCase());
       return matchCat && matchSearch;
     });
   }, [visiblePrices, selectedCategory, search]);
