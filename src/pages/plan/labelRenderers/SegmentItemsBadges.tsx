@@ -103,8 +103,8 @@ export function SegmentItemsBadges({
   const absNy = Math.abs(ny);
   // Проекция: сколько лейбл занимает по направлению нормали
   const labelProjPx = absNx * LABEL_HALF_W_PX + absNy * LABEL_HALF_H_PX;
-  // Отступ = половина иконки + проекция лейбла + 4px зазор
-  const OFF = S / 2 + (labelProjPx + 4) / z;
+  // Отступ = половина иконки + проекция лейбла + 8px зазор (чуть больше чем раньше, но не перекрываем лейбл)
+  const OFF = S / 2 + (labelProjPx + 8) / z;
 
   // Нормаль гарантированно смотрит наружу — двигаемся ПО нормали (наружу от полигона)
   const cx = mid.x + nx * OFF;
