@@ -2,6 +2,7 @@ import React, { useState, useRef } from "react";
 import type { Segment } from "../planTypes";
 import { distPx, midPoint, segmentNormal, polygonOrientation } from "../planTypes";
 import type { RenderContext } from "../PlanCanvasTypes";
+import { DIM_OFF } from "../PlanCanvasUtils";
 
 // ── SegmentItemsBadges — товары прикреплённые к стене ────────────────────────
 
@@ -92,19 +93,13 @@ export function SegmentItemsBadges({
 
   const totalW = n * S + (n - 1) * GAP;
 
-  // Умный отступ от стены — зависит от ориентации стены и размера поля ввода длины
-  // Поле ввода длины: ширина ~40px, высота ~20px (экранных)
-  // На горизонтальной стене лейбл сверху/снизу → отступ по Y нужен большой (высота)
-  // На вертикальной стене лейбл слева/справа → отступ по X нужен большой (ширина)
-  // Используем |nx| и |ny| — компоненты нормали — для интерполяции
-  const LABEL_HALF_H_PX = 12; // половина высоты лейбла длины + небольшой зазор
-  const LABEL_HALF_W_PX = 24; // половина ширины лейбла длины + небольшой зазор
-  const absNx = Math.abs(nx);
-  const absNy = Math.abs(ny);
-  // Проекция: сколько лейбл занимает по направлению нормали
-  const labelProjPx = absNx * LABEL_HALF_W_PX + absNy * LABEL_HALF_H_PX;
-  // Отступ = половина иконки + проекция лейбла + 20px зазор
-  const OFF = S / 2 + (labelProjPx + 20) / z;
+  // Отступ от стены:
+  // Поле «250» рисуется на DIM_OFF=28px от стены (в экранных px).
+  // Высота поля ~20px, значит его дальний край = DIM_OFF + 10 = 38px от стены.
+  // Иконка начинается от своего центра, поэтому: OFF = (DIM_OFF + 10 + GAP_PX) / z + S/2
+  // GAP_PX = зазор между краем поля и краем иконки (экранных пикселей)
+  const GAP_PX = 6;
+  const OFF = (DIM_OFF + 10 + GAP_PX) / z + S / 2;
 
   // Нормаль гарантированно смотрит наружу — двигаемся ПО нормали (наружу от полигона)
   const cx = mid.x + nx * OFF;
