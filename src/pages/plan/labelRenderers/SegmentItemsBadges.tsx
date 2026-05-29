@@ -94,12 +94,18 @@ export function SegmentItemsBadges({
   const totalW = n * S + (n - 1) * GAP;
 
   // Отступ от стены:
-  // Поле «250» рисуется на DIM_OFF=28px от стены (в экранных px).
-  // Высота поля ~20px, значит его дальний край = DIM_OFF + 10 = 38px от стены.
-  // Иконка начинается от своего центра, поэтому: OFF = (DIM_OFF + 10 + GAP_PX) / z + S/2
-  // GAP_PX = зазор между краем поля и краем иконки (экранных пикселей)
-  const GAP_PX = 4;
-  const OFF = (DIM_OFF + 10 + GAP_PX) / z + S / 2;
+  // Поле «250» рисуется на DIM_OFF=28px от стены по нормали.
+  // Размер поля: ширина ~36px, высота ~20px (экранных).
+  // Проецируем половину поля по направлению нормали:
+  //   - вертикальная стена (nx≈1, ny≈0): проекция ≈ ширина/2 = 18px
+  //   - горизонтальная стена (nx≈0, ny≈1): проекция ≈ высота/2 = 10px
+  const absNx = Math.abs(nx);
+  const absNy = Math.abs(ny);
+  const FIELD_HALF_W = 18; // половина ширины поля «250»
+  const FIELD_HALF_H = 10; // половина высоты поля «250»
+  const fieldHalfProj = absNx * FIELD_HALF_W + absNy * FIELD_HALF_H;
+  const GAP_PX = 4; // зазор между краем поля и краем иконки
+  const OFF = (DIM_OFF + fieldHalfProj + GAP_PX) / z + S / 2;
 
   // Нормаль гарантированно смотрит наружу — двигаемся ПО нормали (наружу от полигона)
   const cx = mid.x + nx * OFF;
