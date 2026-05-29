@@ -307,8 +307,8 @@ export default function ActiveItemsSlider({
             {/* Строка: счётчик + все стены */}
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
 
-              {/* Счётчик количества (по стенам) */}
-              {onAllSegs && (
+              {/* Счётчик количества — показываем если товар есть хоть на одной стене или полотне */}
+              {total > 0 && (
                 <div data-item-popup="1" style={{ display: "flex", alignItems: "center", gap: 0, background: "rgba(255,255,255,0.05)", borderRadius: 7, overflow: "hidden", border: "1px solid rgba(255,255,255,0.08)" }}>
                   {/* Кнопка − */}
                   <button
@@ -388,30 +388,36 @@ export default function ActiveItemsSlider({
                 </div>
               )}
 
-              {/* Тогл: все стены (только для wall-items) или кнопка "На полотно" */}
-              {hasSegments && isWall && (
+              {/* Кнопки: добавить на все стены / снять со всех стен */}
+              {hasSegments && isWall && !onAllSegs && (
                 <button
                   data-item-popup="1"
-                  onClick={e => {
-                    e.stopPropagation();
-                    if (onAllSegs) onRemoveFromAllSegs(item.priceId);
-                    else onAssignToAllSegs(item);
-                  }}
+                  onClick={e => { e.stopPropagation(); onAssignToAllSegs(item); }}
                   style={{
                     flex: 1, height: 26, borderRadius: 7, cursor: "pointer",
-                    border: `1px solid ${onAllSegs ? "rgba(124,58,237,0.6)" : "rgba(255,255,255,0.12)"}`,
-                    background: onAllSegs ? "rgba(124,58,237,0.18)" : "rgba(255,255,255,0.04)",
-                    color: onAllSegs ? "rgba(196,181,253,1)" : "rgba(255,255,255,0.45)",
+                    border: "1px solid rgba(255,255,255,0.12)",
+                    background: "rgba(255,255,255,0.04)",
+                    color: "rgba(255,255,255,0.55)",
                     fontSize: 10, fontWeight: 600,
                     display: "flex", alignItems: "center", justifyContent: "center", gap: 5,
-                    transition: "all 0.15s", whiteSpace: "nowrap",
+                    whiteSpace: "nowrap",
                   }}
-                >
-                  {onAllSegs
-                    ? <><svg width="10" height="8" viewBox="0 0 10 8" fill="none" style={{flexShrink:0}}><path d="M1 4L3.5 6.5L9 1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>Все стены</>
-                    : <>+ Все стены</>
-                  }
-                </button>
+                >+ Все стены</button>
+              )}
+              {hasSegments && isWall && onAllSegs && (
+                <button
+                  data-item-popup="1"
+                  onClick={e => { e.stopPropagation(); onRemoveFromAllSegs(item.priceId); }}
+                  style={{
+                    flex: 1, height: 26, borderRadius: 7, cursor: "pointer",
+                    border: "1px solid rgba(239,68,68,0.35)",
+                    background: "rgba(239,68,68,0.08)",
+                    color: "rgba(248,113,113,0.85)",
+                    fontSize: 10, fontWeight: 600,
+                    display: "flex", alignItems: "center", justifyContent: "center", gap: 5,
+                    whiteSpace: "nowrap",
+                  }}
+                >− Снять со всех</button>
               )}
 
               {/* Кнопка "На полотно" для ceiling-items */}
