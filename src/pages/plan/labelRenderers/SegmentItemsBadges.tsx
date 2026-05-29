@@ -52,10 +52,23 @@ export function SegmentItemsBadges({
 
   const zoom = ctx.zoom ?? 1;
   const mid = midPoint(a, b);
-  const { nx, ny } = segmentNormal(a, b);
+  const { nx: rawNx, ny: rawNy } = segmentNormal(a, b);
   const segLen = distPx(a, b) || 1;
   const tx = (b.x - a.x) / segLen;
   const ty = (b.y - a.y) / segLen;
+
+  // Определяем центр полигона, чтобы гарантировать что нормаль смотрит наружу
+  const polyCenterX = ctx.points.length > 0
+    ? ctx.points.reduce((s, p) => s + p.x, 0) / ctx.points.length : 0;
+  const polyCenterY = ctx.points.length > 0
+    ? ctx.points.reduce((s, p) => s + p.y, 0) / ctx.points.length : 0;
+  // Вектор от центра полигона к середине стены
+  const toCenterX = mid.x - polyCenterX;
+  const toCenterY = mid.y - polyCenterY;
+  // Если нормаль смотрит в ту же сторону что и вектор "наружу" — оставляем, иначе инвертируем
+  const normalDotOutward = rawNx * toCenterX + rawNy * toCenterY;
+  const nx = normalDotOutward >= 0 ? rawNx : -rawNx;
+  const ny = normalDotOutward >= 0 ? rawNy : -rawNy;
 
   // Умный размер иконки: пропорционально длине стены
   const n = items.length;
@@ -95,8 +108,9 @@ export function SegmentItemsBadges({
   // Отступ = половина иконки + проекция лейбла + 4px зазор
   const OFF = S / 2 + (labelProjPx + 4) / z;
 
-  const cx = mid.x - nx * OFF;
-  const cy = mid.y - ny * OFF;
+  // Нормаль гарантированно смотрит наружу — двигаемся ПО нормали (наружу от полигона)
+  const cx = mid.x + nx * OFF;
+  const cy = mid.y + ny * OFF;
 
   // Иконки центрируются по середине стены
   const startOffset = -totalW / 2 + S / 2;
@@ -129,8 +143,14 @@ export function SegmentItemsBadges({
             const mX = (pa.x + pb.x) / 2;
             const mY = (pa.y + pb.y) / 2;
             const { nx: snx, ny: sny } = segmentNormal(pa, pb);
-            const bx = mX - snx * OFF;
-            const by = mY - sny * OFF;
+            // Корректируем знак нормали чтобы всегда смотрела наружу
+            const toCX = mX - polyCenterX;
+            const toCY = mY - polyCenterY;
+            const dot = snx * toCX + sny * toCY;
+            const fnx = dot >= 0 ? snx : -snx;
+            const fny = dot >= 0 ? sny : -sny;
+            const bx = mX + fnx * OFF;
+            const by = mY + fny * OFF;
             const d = Math.hypot(finalPx - bx, finalPy - by);
             if (d < bestDist) { bestDist = d; bestSegId = s.id; }
           });
