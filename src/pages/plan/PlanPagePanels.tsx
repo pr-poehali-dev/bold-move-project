@@ -93,13 +93,16 @@ export default function PlanPagePanels({
   // Замена из нижней панели активных карточек
   const [replaceActiveItem, setReplaceActiveItem] = useState<import("./planTypes").SegmentPriceItem | null>(null);
 
-  // Сохраняем segRef пока барабан открыт (для мобильной замены)
+  // Сохраняем segRef пока барабан открыт (для мобильной замены) — ref для синхронности
+  const mobileReplaceSegRefRef = useRef<{ segId: string; priceId: number } | null>(null);
   const [mobileReplaceSegRef, setMobileReplaceSegRef] = useState<{ segId: string; priceId: number } | null>(null);
 
   // Мобиле: при клике на товар на стене — открываем барабан на нужной категории
   useEffect(() => {
     if (!isMobile || !catalog.editingSegRef) return;
     const cat = catalog.editingSegItem?.category ?? null;
+    // Сохраняем синхронно в ref И в state
+    mobileReplaceSegRefRef.current = catalog.editingSegRef;
     setMobileReplaceSegRef(catalog.editingSegRef);
     catalog.setReplaceCatalogCategory(cat);
     catalog.setCatalogOpen(true);
@@ -254,12 +257,16 @@ export default function PlanPagePanels({
         onClose={() => {
           catalog.setCatalogOpen(false);
           catalog.setReplaceCatalogCategory(null);
+          mobileReplaceSegRefRef.current = null;
           setMobileReplaceSegRef(null);
+          setReplaceActiveItem(null);
         }}
         onAssignToSegs={catalog.assignItemToSegs}
-        onReplaceItem={(mobileReplaceSegRef || replaceActiveItem) ? (item) => {
-          if (mobileReplaceSegRef) {
-            catalog.replaceSegItem(item, mobileReplaceSegRef);
+        onReplaceItem={(mobileReplaceSegRef || mobileReplaceSegRefRef.current || replaceActiveItem) ? (item) => {
+          const segRef = mobileReplaceSegRefRef.current ?? mobileReplaceSegRef;
+          if (segRef) {
+            catalog.replaceSegItem(item, segRef);
+            mobileReplaceSegRefRef.current = null;
             setMobileReplaceSegRef(null);
           } else if (replaceActiveItem) {
             catalog.replaceActiveItemEverywhere(replaceActiveItem.priceId, item);
