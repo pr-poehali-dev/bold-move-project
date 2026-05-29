@@ -60,8 +60,10 @@ export function useComplexityAnalysis({ chatId, effectiveMax, risk, setDiscount,
 
       const matchedItems = itemNames.map(({ name, qty }) => {
         const match = prices.find(p =>
-          name.toLowerCase().includes(p.name.toLowerCase()) ||
-          p.name.toLowerCase().includes(name.toLowerCase())
+          (p.name ?? "").toLowerCase() !== "" && (
+            name.toLowerCase().includes(p.name.toLowerCase()) ||
+            p.name.toLowerCase().includes(name.toLowerCase())
+          )
         );
         const cfg = match ? (complexityMap[match.id] || { complexity: 5, weight: 5 }) : { complexity: 5, weight: 5 };
         return { name, qty, complexity: cfg.complexity, weight: cfg.weight, unitScore: Math.round(cfg.complexity * cfg.weight / 10 * 10) / 10 };
