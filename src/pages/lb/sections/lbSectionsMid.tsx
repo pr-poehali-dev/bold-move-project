@@ -45,7 +45,7 @@ export function LBStackAbout() {
                 style={{ border: "2px solid rgba(139,92,246,0.4)", boxShadow: "0 0 32px rgba(139,92,246,0.2)" }}
               >
                 <img
-                  src="https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/files/cd4b33c6-bf9c-47e5-b633-fa3b8f456fbf.jpg"
+                  src="https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/dc3581be-1604-4c86-b70f-dbd17ca4d283.jpg"
                   alt="Евгений Красноруцкий"
                   className="w-full h-full object-cover"
                 />
