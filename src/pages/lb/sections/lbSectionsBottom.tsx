@@ -217,7 +217,7 @@ export function LBCta() {
           <a href={TG_LINK} target="_blank" rel="noreferrer"
             className="inline-flex items-center justify-center gap-2 px-8 py-4 rounded-xl font-bold text-base transition-all duration-300 hover:scale-105 hover:shadow-2xl active:scale-95"
             style={{ background: "linear-gradient(135deg, #f97316, #ea580c)", color: "#fff", boxShadow: "0 4px 24px rgba(249,115,22,0.35)" }}>
-            ✈️ Telegram — @JoniKras
+            💬 Написать в Telegram
           </a>
           <a href={MAX_LINK} target="_blank" rel="noreferrer"
             className="inline-flex items-center justify-center gap-2 px-8 py-4 rounded-xl font-bold text-base transition-all duration-300 hover:scale-105 active:scale-95"

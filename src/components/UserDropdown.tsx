@@ -172,6 +172,9 @@ export default function UserDropdown({ onShowProfile }: Props) {
               </>
             )}
 
+            <MenuItem icon="Code2" label="Разработчик"
+              onClick={() => { setOpen(false); window.location.href = "/LB"; }} />
+
             {hasPermission(user, "support_view") && (
               <a href="https://t.me/JoniKras" target="_blank" rel="noreferrer"
                 onClick={() => setOpen(false)}
