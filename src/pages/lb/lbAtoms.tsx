@@ -1,6 +1,21 @@
 // ── Атомарные переиспользуемые компоненты страницы личного бренда ────────────
 import { useState, useEffect, useRef, useCallback } from "react";
 import { PROJECTS, NAV_ITEMS, TG_LINK, MAX_LINK } from "./lbData";
+import func2url from "@/../backend/func2url.json";
+
+const AUTH_URL = (func2url as Record<string, string>)["auth"];
+
+async function createDemoAndRedirect(link: string) {
+  const res = await fetch(`${AUTH_URL}?action=create-demo`, { method: "POST" });
+  if (!res.ok) {
+    const d = await res.json().catch(() => ({}));
+    alert(d.error || "Не удалось создать демо. Попробуйте позже.");
+    return;
+  }
+  const { token } = await res.json();
+  localStorage.setItem("mp_user_token", token);
+  window.location.href = link;
+}
 
 // ── Анимированный печатающийся текст ─────────────────────────────────────────
 export function TypeWriter({ texts, speed = 60 }: { texts: string[]; speed?: number }) {
@@ -206,8 +221,15 @@ export function ProjectCard({ project, index }: { project: typeof PROJECTS[0]; i
   const [activeShot, setActiveShot] = useState(0);
   const [hovered, setHovered] = useState(false);
   const [lightbox, setLightbox] = useState<number | null>(null);
+  const [demoLoading, setDemoLoading] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const [visible, setVisible] = useState(false);
+
+  const handleLiveClick = async () => {
+    setDemoLoading(true);
+    await createDemoAndRedirect(project.link);
+    setDemoLoading(false);
+  };
 
   useEffect(() => {
     const obs = new IntersectionObserver(([e]) => { if (e.isIntersecting) setVisible(true); }, { threshold: 0.15 });
@@ -283,9 +305,14 @@ export function ProjectCard({ project, index }: { project: typeof PROJECTS[0]; i
               <span key={i} className="px-2.5 py-0.5 rounded-full text-xs" style={{ background: "rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.5)", border: "1px solid rgba(255,255,255,0.08)" }}>{t}</span>
             ))}
           </div>
-          <a href={project.link} className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all duration-300 hover:gap-3" style={{ background: `${project.color}20`, color: project.color, border: `1px solid ${project.color}40` }}>
-            Посмотреть живой проект →
-          </a>
+          <button
+            onClick={handleLiveClick}
+            disabled={demoLoading}
+            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all duration-300 hover:gap-3 disabled:opacity-60 disabled:cursor-wait"
+            style={{ background: `${project.color}20`, color: project.color, border: `1px solid ${project.color}40` }}
+          >
+            {demoLoading ? "Открываем..." : "Посмотреть живой проект →"}
+          </button>
         </div>
       </div>
     </>

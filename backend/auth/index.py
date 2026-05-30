@@ -181,7 +181,8 @@ def handler(event: dict, context) -> dict:
                    u.bot_avatar_bg, u.kanban_enabled,
                    u.tg_bot_token, u.tg_notify_chat_id,
                    u.max_bot_token, u.max_notify_chat_id,
-                   u.nav_config, u.nav_hidden_ids
+                   u.nav_config, u.nav_hidden_ids,
+                   u.is_demo, u.demo_expires_at
             FROM {SCHEMA}.user_sessions s
             JOIN {SCHEMA}.users u ON u.id = s.user_id
             WHERE s.token=%s AND s.expires_at > NOW()
@@ -198,7 +199,8 @@ def handler(event: dict, context) -> dict:
          brand_logo_url_dark, brand_logo_orientation, pdf_logo_bg, bot_avatar_bg, kanban_enabled,
          tg_bot_token, tg_notify_chat_id,
          max_bot_token, max_notify_chat_id,
-         nav_config, nav_hidden_ids) = row
+         nav_config, nav_hidden_ids,
+         is_demo, demo_expires_at) = row
 
         # Проверка истечения демо-периода для бизнес-ролей.
         # Если trial_until прошёл и нет активной подписки (subscription_end) —
@@ -228,10 +230,18 @@ def handler(event: dict, context) -> dict:
                 )
                 conn.commit()
 
+        # Демо-пользователь: проверяем не истёк ли срок
+        if is_demo and demo_expires_at:
+            now_utc = datetime.utcnow()
+            if demo_expires_at.replace(tzinfo=None) < now_utc:
+                return err("Демо-сессия истекла", 401)
+
         return ok({"user": {
             "id": uid, "email": email, "name": name, "phone": phone,
             "role": role or "client", "approved": approved, "discount": discount or 0,
             "is_master": is_master,
+            "is_demo": bool(is_demo),
+            "demo_expires_at": str(demo_expires_at)[:19] if demo_expires_at else None,
             "company_name": company_name, "company_inn": company_inn,
             "company_addr": company_addr, "website": website, "telegram": telegram,
             "estimates_balance": estimates_balance or 0,
@@ -1025,6 +1035,74 @@ def handler(event: dict, context) -> dict:
             "final_phrase": r[11] or "",
         } for r in rows]
         return ok({"estimates": estimates})
+
+    # ── Создать демо-пользователя (без регистрации) ───────────────────────────
+    if action == "create-demo" and method == "POST":
+        ip = (event.get("requestContext") or {}).get("identity", {}).get("sourceIp") or \
+             (event.get("headers") or {}).get("X-Forwarded-For", "unknown").split(",")[0].strip()
+
+        # Лимит: не более 3 демо с одного IP за 24 часа
+        cur.execute(f"""
+            SELECT COUNT(*) FROM {SCHEMA}.users
+            WHERE is_demo = TRUE
+              AND created_at > NOW() - INTERVAL '24 hours'
+              AND company_name = %s
+        """, (f"ip:{ip}",))
+        count = cur.fetchone()[0]
+        if count >= 3:
+            return err("Достигнут лимит демо-сессий. Попробуйте завтра.", 429)
+
+        demo_email    = f"demo_{secrets.token_hex(8)}@demo.local"
+        demo_password = secrets.token_hex(16)
+        demo_name     = "Демо-пользователь"
+
+        cur.execute(
+            f"""INSERT INTO {SCHEMA}.users
+                (email, password_hash, name, role, approved, is_demo, demo_expires_at, company_name,
+                 estimates_balance, has_own_agent, trial_until)
+                VALUES (%s,%s,%s,'company',TRUE,TRUE, NOW() + INTERVAL '24 hours', %s, 999, FALSE, NULL)
+                RETURNING id""",
+            (demo_email, hash_password(demo_password), demo_name, f"ip:{ip}")
+        )
+        user_id = cur.fetchone()[0]
+
+        new_token = secrets.token_hex(32)
+        cur.execute(
+            f"INSERT INTO {SCHEMA}.user_sessions (user_id, token, expires_at) VALUES (%s,%s, NOW() + INTERVAL '24 hours')",
+            (user_id, new_token)
+        )
+        conn.commit()
+        return ok({"token": new_token, "user": {
+            "id": user_id, "email": demo_email, "name": demo_name,
+            "role": "company", "approved": True, "discount": 0,
+            "is_demo": True, "is_master": False,
+            "has_own_agent": False,
+            "estimates_balance": 999,
+            "demo_expires_at": None,
+        }})
+
+    # ── Очистка просроченных демо-аккаунтов (вызывается по крону / мастером) ──
+    if action == "cleanup-demo" and method == "POST":
+        # Собираем ID просроченных демо-юзеров
+        cur.execute(f"""
+            SELECT id FROM {SCHEMA}.users
+            WHERE is_demo = TRUE AND demo_expires_at < NOW()
+        """)
+        expired_ids = [r[0] for r in cur.fetchall()]
+        if not expired_ids:
+            return ok({"deleted": 0})
+
+        ids_sql = ",".join(str(i) for i in expired_ids)
+
+        cur.execute(f"DELETE FROM {SCHEMA}.user_sessions WHERE user_id IN ({ids_sql})")
+        cur.execute(f"DELETE FROM {SCHEMA}.saved_estimates WHERE user_id IN ({ids_sql})")
+        cur.execute(f"DELETE FROM {SCHEMA}.balance_transactions WHERE user_id IN ({ids_sql})")
+        cur.execute(f"DELETE FROM {SCHEMA}.live_chats WHERE company_id IN ({ids_sql})")
+        cur.execute(f"DELETE FROM {SCHEMA}.plan_projects WHERE user_id IN ({ids_sql})")
+        cur.execute(f"DELETE FROM {SCHEMA}.kanban_cards WHERE company_id IN ({ids_sql})")
+        cur.execute(f"DELETE FROM {SCHEMA}.users WHERE id IN ({ids_sql})")
+        conn.commit()
+        return ok({"deleted": len(expired_ids)})
 
     # ── Мастер: список всех пользователей ────────────────────────────────────
     if action == "admin-users" and method == "GET":

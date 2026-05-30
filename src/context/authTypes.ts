@@ -314,6 +314,8 @@ export interface AuthUser {
   has_own_agent?: boolean;
   agent_purchased_at?: string | null;
   kanban_enabled?: boolean;
+  is_demo?: boolean;
+  demo_expires_at?: string | null;
   brand?: Brand | null;
   company_name?: string | null;
   company_inn?:  string | null;

@@ -45,7 +45,7 @@ export default function AdminPanel() {
     (user.is_master || ALLOWED_ROLES.includes(user.role));
 
   const canAgent = hasPermission(user, "agent_view");
-  const hasTeam  = user?.role === "company" || !!user?.is_master;
+  const hasTeam  = (user?.role === "company" || !!user?.is_master) && !user?.is_demo;
   const mainTabs = buildMainTabs(false, canAgent, hasTeam);
 
   const agentPerms = {
