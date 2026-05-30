@@ -275,7 +275,7 @@ export function LBMobile() {
 
           <div
             className="flex gap-4 overflow-x-auto pb-4"
-            style={{ scrollSnapType: "x mandatory", scrollbarWidth: "none", msOverflowStyle: "none" }}
+            style={{ scrollSnapType: "x mandatory", scrollbarWidth: "none", msOverflowStyle: "none", paddingTop: 16 }}
           >
             {MOBILE_SCREENS.map((s, i) => (
               <button
@@ -289,13 +289,13 @@ export function LBMobile() {
                   className="relative overflow-hidden transition-all duration-500"
                   style={{
                     width: i === active ? 148 : 110,
-                    height: i === active ? 296 : 220,
+                    height: i === active ? 310 : 220,
                     borderRadius: 24,
                     border: `2px solid ${i === active ? s.color : "rgba(255,255,255,0.1)"}`,
                     boxShadow: i === active
                       ? `0 0 0 4px ${s.color}22, 0 20px 50px rgba(0,0,0,0.7), 0 0 40px ${s.color}33`
                       : "0 4px 20px rgba(0,0,0,0.4)",
-                    transform: i === active ? "translateY(-10px)" : "translateY(0)",
+                    transform: "translateY(0)",
                     background: "#0a0a14",
                   }}
                 >
