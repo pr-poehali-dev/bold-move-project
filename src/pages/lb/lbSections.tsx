@@ -1,19 +1,18 @@
 // ── Все секции страницы личного бренда ───────────────────────────────────────
-import { PHOTO_URL, PROJECTS, STACK, STATS } from "./lbData";
-import { TypeWriter, GridBg, ProjectCard, SkillBar } from "./lbAtoms";
+import { useState, useRef, useEffect } from "react";
+import { PHOTO_URL, PROJECTS, STACK, STATS, REVIEWS, PRICING, TECH_LOGOS } from "./lbData";
+import { TypeWriter, GridBg, ProjectCard, SkillBar, Particles } from "./lbAtoms";
 
 // ── Hero ──────────────────────────────────────────────────────────────────────
 export function LBHero({ heroVisible }: { heroVisible: boolean }) {
   return (
-    <section className="relative min-h-screen flex items-center overflow-hidden">
+    <section id="hero" className="relative min-h-screen flex items-center overflow-hidden">
       <GridBg />
-      <div className="relative z-10 w-full max-w-6xl mx-auto px-6 py-24">
+      <Particles />
+      <div className="relative z-10 w-full max-w-6xl mx-auto px-6 py-32">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
           {/* Text */}
-          <div
-            className="transition-all duration-1000"
-            style={{ opacity: heroVisible ? 1 : 0, transform: heroVisible ? "translateX(0)" : "translateX(-40px)" }}
-          >
+          <div className="transition-all duration-1000" style={{ opacity: heroVisible ? 1 : 0, transform: heroVisible ? "translateX(0)" : "translateX(-40px)" }}>
             <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold mb-6" style={{ background: "rgba(139,92,246,0.15)", border: "1px solid rgba(139,92,246,0.3)", color: "#a78bfa" }}>
               <span className="w-2 h-2 rounded-full animate-pulse" style={{ background: "#8b5cf6" }} />
               Open to work · Удалённо / Офис
@@ -27,42 +26,23 @@ export function LBHero({ heroVisible }: { heroVisible: boolean }) {
             </h1>
 
             <div className="text-xl lg:text-2xl font-semibold mb-6" style={{ color: "rgba(255,255,255,0.7)", minHeight: 60 }}>
-              <TypeWriter texts={[
-                "CPO / AI-разработчик агентов",
-                "Строю продукты с нуля до прода",
-                "Vibe-Coding · AI Creator",
-                "Превращаю идеи в работающий код",
-              ]} />
+              <TypeWriter texts={["CPO / AI-разработчик агентов", "Строю продукты с нуля до прода", "Vibe-Coding · AI Creator", "Превращаю идеи в работающий код"]} />
             </div>
 
             <p className="text-base leading-relaxed mb-8" style={{ color: "rgba(255,255,255,0.5)", maxWidth: 520 }}>
               5+ лет занимаюсь комплексной цифровой трансформацией бизнеса с применением AI.
-              Создаю CRM-системы, голосовых агентов, CAD-инструменты и AI-калькуляторы —
-              от архитектуры до деплоя.
+              Создаю CRM-системы, голосовых агентов, CAD-инструменты и AI-калькуляторы — от архитектуры до деплоя.
             </p>
 
             <div className="flex flex-wrap gap-3">
-              <a
-                href="https://t.me/krasnor"
-                target="_blank"
-                rel="noreferrer"
-                className="inline-flex items-center gap-2 px-7 py-3.5 rounded-xl font-bold text-sm transition-all duration-300 hover:scale-105 hover:shadow-2xl active:scale-95"
-                style={{ background: "linear-gradient(135deg, #f97316, #ea580c)", color: "#fff", boxShadow: "0 4px 20px rgba(249,115,22,0.4)" }}
-              >
+              <a href="https://t.me/krasnor" target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 px-7 py-3.5 rounded-xl font-bold text-sm transition-all duration-300 hover:scale-105 hover:shadow-2xl active:scale-95" style={{ background: "linear-gradient(135deg, #f97316, #ea580c)", color: "#fff", boxShadow: "0 4px 20px rgba(249,115,22,0.4)" }}>
                 💬 Заказать проект
               </a>
-              <a
-                href="https://max.ru/u/9LHodD0cOKSEfyoFFiNHDKKda2DJEQla4TlbxlDSi7pGygeSc3tM9PafS5g"
-                target="_blank"
-                rel="noreferrer"
-                className="inline-flex items-center gap-2 px-7 py-3.5 rounded-xl font-bold text-sm transition-all duration-300 hover:scale-105 active:scale-95"
-                style={{ background: "rgba(139,92,246,0.15)", color: "#a78bfa", border: "1.5px solid rgba(139,92,246,0.4)" }}
-              >
+              <a href="https://max.ru/u/9LHodD0cOKSEfyoFFiNHDKKda2DJEQla4TlbxlDSi7pGygeSc3tM9PafS5g" target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 px-7 py-3.5 rounded-xl font-bold text-sm transition-all duration-300 hover:scale-105 active:scale-95" style={{ background: "rgba(139,92,246,0.15)", color: "#a78bfa", border: "1.5px solid rgba(139,92,246,0.4)" }}>
                 🚀 Пригласить в команду
               </a>
             </div>
 
-            {/* Location + format */}
             <div className="flex flex-wrap gap-4 mt-6">
               {["📍 Пушкино, МО", "💻 Удалённо / Офис МСК", "⚡ Полная занятость"].map((t, i) => (
                 <span key={i} className="text-xs" style={{ color: "rgba(255,255,255,0.35)" }}>{t}</span>
@@ -71,34 +51,20 @@ export function LBHero({ heroVisible }: { heroVisible: boolean }) {
           </div>
 
           {/* Photo */}
-          <div
-            className="flex justify-center lg:justify-end transition-all duration-1000"
-            style={{ opacity: heroVisible ? 1 : 0, transform: heroVisible ? "translateX(0) scale(1)" : "translateX(40px) scale(0.95)", transitionDelay: "200ms" }}
-          >
+          <div className="flex justify-center lg:justify-end transition-all duration-1000" style={{ opacity: heroVisible ? 1 : 0, transform: heroVisible ? "translateX(0) scale(1)" : "translateX(40px) scale(0.95)", transitionDelay: "200ms" }}>
             <div className="relative">
-              {/* Glow rings */}
               <div className="absolute inset-0 rounded-full animate-pulse" style={{ background: "radial-gradient(circle, rgba(139,92,246,0.3) 0%, transparent 70%)", transform: "scale(1.2)" }} />
               <div className="absolute -inset-4 rounded-full" style={{ background: "conic-gradient(from 0deg, #8b5cf6, #f97316, #06b6d4, #8b5cf6)", opacity: 0.3, filter: "blur(20px)" }} />
-              <img
-                src={PHOTO_URL}
-                alt="Красноруцкий Евгений"
-                className="relative rounded-3xl object-cover"
-                style={{ width: 340, height: 420, objectPosition: "center top", border: "2px solid rgba(139,92,246,0.3)" }}
-              />
-              {/* Badge */}
-              <div className="absolute -bottom-4 -right-4 px-4 py-2 rounded-2xl text-xs font-bold" style={{ background: "rgba(10,10,20,0.95)", border: "1px solid rgba(139,92,246,0.4)", color: "#a78bfa", backdropFilter: "blur(10px)" }}>
-                250 000 ₽ / мес
-              </div>
-              <div className="absolute -top-4 -left-4 px-4 py-2 rounded-2xl text-xs font-bold" style={{ background: "rgba(10,10,20,0.95)", border: "1px solid rgba(249,115,22,0.4)", color: "#fb923c", backdropFilter: "blur(10px)" }}>
-                5+ лет опыта
-              </div>
+              <img src={PHOTO_URL} alt="Красноруцкий Евгений" className="relative rounded-3xl object-cover" style={{ width: 340, height: 420, objectPosition: "center top", border: "2px solid rgba(139,92,246,0.3)" }} />
+              <div className="absolute -bottom-4 -right-4 px-4 py-2 rounded-2xl text-xs font-bold" style={{ background: "rgba(10,10,20,0.95)", border: "1px solid rgba(139,92,246,0.4)", color: "#a78bfa", backdropFilter: "blur(10px)" }}>250 000 ₽ / мес</div>
+              <div className="absolute -top-4 -left-4 px-4 py-2 rounded-2xl text-xs font-bold" style={{ background: "rgba(10,10,20,0.95)", border: "1px solid rgba(249,115,22,0.4)", color: "#fb923c", backdropFilter: "blur(10px)" }}>5+ лет опыта</div>
             </div>
           </div>
         </div>
       </div>
 
       {/* Scroll indicator */}
-      <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 animate-bounce">
+      <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 animate-bounce" style={{ zIndex: 10 }}>
         <span className="text-xs" style={{ color: "rgba(255,255,255,0.25)" }}>скролл</span>
         <div className="w-px h-8" style={{ background: "linear-gradient(to bottom, rgba(139,92,246,0.5), transparent)" }} />
       </div>
@@ -126,26 +92,45 @@ export function LBStats() {
   );
 }
 
+// ── Tech Logos marquee ────────────────────────────────────────────────────────
+export function LBTechLogos() {
+  const doubled = [...TECH_LOGOS, ...TECH_LOGOS];
+  return (
+    <div className="py-8 overflow-hidden border-b" style={{ borderColor: "rgba(255,255,255,0.05)" }}>
+      <div
+        className="flex gap-8 items-center"
+        style={{
+          animation: "marquee 20s linear infinite",
+          width: "max-content",
+        }}
+      >
+        {doubled.map((t, i) => (
+          <div key={i} className="flex items-center gap-2 px-4 py-2 rounded-xl whitespace-nowrap" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)" }}>
+            <span className="text-lg">{t.icon}</span>
+            <span className="text-xs font-semibold" style={{ color: "rgba(255,255,255,0.4)" }}>{t.name}</span>
+          </div>
+        ))}
+      </div>
+      <style>{`@keyframes marquee { from { transform: translateX(0) } to { transform: translateX(-50%) } }`}</style>
+    </div>
+  );
+}
+
 // ── Portfolio ─────────────────────────────────────────────────────────────────
 export function LBPortfolio() {
   return (
-    <section className="py-24 max-w-6xl mx-auto px-6">
+    <section id="projects" className="py-24 max-w-6xl mx-auto px-6">
       <div className="mb-16 text-center">
         <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold mb-4" style={{ background: "rgba(249,115,22,0.1)", border: "1px solid rgba(249,115,22,0.25)", color: "#fb923c" }}>
           Реальные продукты в продакшне
         </div>
-        <h2 className="text-4xl lg:text-5xl font-black mb-4" style={{ fontFamily: "Montserrat, sans-serif" }}>
-          Портфолио
-        </h2>
+        <h2 className="text-4xl lg:text-5xl font-black mb-4" style={{ fontFamily: "Montserrat, sans-serif" }}>Портфолио</h2>
         <p className="text-base max-w-xl mx-auto" style={{ color: "rgba(255,255,255,0.45)" }}>
           Не учебные проекты — живые системы, которыми пользуются реальные компании прямо сейчас
         </p>
       </div>
-
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {PROJECTS.map((p, i) => (
-          <ProjectCard key={p.id} project={p} index={i} />
-        ))}
+        {PROJECTS.map((p, i) => <ProjectCard key={p.id} project={p} index={i} />)}
       </div>
     </section>
   );
@@ -154,36 +139,29 @@ export function LBPortfolio() {
 // ── Stack + About ─────────────────────────────────────────────────────────────
 export function LBStackAbout() {
   return (
-    <section className="py-24" style={{ background: "rgba(255,255,255,0.015)" }}>
+    <section id="stack" className="py-24" style={{ background: "rgba(255,255,255,0.015)" }}>
       <div className="max-w-5xl mx-auto px-6">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-start">
           <div>
             <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold mb-4" style={{ background: "rgba(6,182,212,0.1)", border: "1px solid rgba(6,182,212,0.25)", color: "#22d3ee" }}>
               Технический стек
             </div>
-            <h2 className="text-4xl font-black mb-6" style={{ fontFamily: "Montserrat, sans-serif" }}>
-              Что умею
-            </h2>
+            <h2 className="text-4xl font-black mb-6" style={{ fontFamily: "Montserrat, sans-serif" }}>Что умею</h2>
             <p className="mb-8" style={{ color: "rgba(255,255,255,0.45)", lineHeight: 1.7 }}>
               Полный цикл: от постановки задачи до деплоя в продакшн.
               Работаю с AI/LLM-стеком (RAG, MCP, агенты), строю backend на Python,
               фронт на React + TypeScript, интегрирую API и платёжные системы.
             </p>
             <div className="space-y-4">
-              {STACK.map((s, i) => (
-                <SkillBar key={i} name={s.name} level={s.level} color={s.color} delay={i * 80} />
-              ))}
+              {STACK.map((s, i) => <SkillBar key={i} name={s.name} level={s.level} color={s.color} delay={i * 80} />)}
             </div>
           </div>
 
-          {/* About me */}
           <div>
             <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold mb-4" style={{ background: "rgba(139,92,246,0.1)", border: "1px solid rgba(139,92,246,0.25)", color: "#a78bfa" }}>
               О себе
             </div>
-            <h2 className="text-4xl font-black mb-6" style={{ fontFamily: "Montserrat, sans-serif" }}>
-              Кто я
-            </h2>
+            <h2 className="text-4xl font-black mb-6" style={{ fontFamily: "Montserrat, sans-serif" }}>Кто я</h2>
             <div className="space-y-4">
               {[
                 { icon: "⚡", label: "Моя суперсила", text: "Превращаю размытое ТЗ в работающий продукт. Умею одновременно видеть бизнес-задачу и техническое решение." },
@@ -212,7 +190,7 @@ export function LBStackAbout() {
 // ── Experience ────────────────────────────────────────────────────────────────
 export function LBExperience() {
   return (
-    <section className="py-24 max-w-5xl mx-auto px-6">
+    <section id="experience" className="py-24 max-w-5xl mx-auto px-6">
       <div className="mb-12 text-center">
         <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold mb-4" style={{ background: "rgba(16,185,129,0.1)", border: "1px solid rgba(16,185,129,0.25)", color: "#34d399" }}>
           Опыт работы
@@ -221,15 +199,16 @@ export function LBExperience() {
       </div>
 
       <div className="relative">
-        {/* Timeline line */}
         <div className="absolute left-6 top-0 bottom-0 w-px" style={{ background: "linear-gradient(to bottom, #8b5cf6, #f97316, transparent)" }} />
-
         <div className="space-y-6 pl-16">
-          {[
-            { year: "2021–2026", company: "Unistory.app — Технологии для бизнеса", role: "AI-Архитектор бизнес-процессов", items: ["CRM-система с AI-агентами для автоматизации продаж", "Мультиагентные системы для ведения клиентов", "CAD-построитель с автоматическим расчётом смет", "Система голосового управления корпоративными ресурсами", "AI-калькуляторы и сметчики для быстрого расчёта стоимости", "Интеграция платёжных систем (банковские карты, СБП)", "IP-телефония с функциями маршрутизации и записи звонков"] },
-          ].map((exp, i) => (
+          {[{
+            year: "2021–2026",
+            company: "Unistory.app — Технологии для бизнеса",
+            role: "AI-Архитектор бизнес-процессов",
+            items: ["CRM-система с AI-агентами для автоматизации продаж", "Мультиагентные системы для ведения клиентов", "CAD-построитель с автоматическим расчётом смет", "Система голосового управления корпоративными ресурсами", "AI-калькуляторы и сметчики для быстрого расчёта стоимости", "Интеграция платёжных систем (банковские карты, СБП)", "IP-телефония с функциями маршрутизации и записи звонков"],
+          }].map((exp, i) => (
             <div key={i} className="relative">
-              <div className="absolute -left-10 w-3 h-3 rounded-full border-2 mt-1.5" style={{ background: "#8b5cf6", borderColor: "#080810", left: -40 }} />
+              <div className="absolute w-3 h-3 rounded-full border-2 mt-1.5" style={{ background: "#8b5cf6", borderColor: "#080810", left: -40 }} />
               <div className="p-6 rounded-2xl" style={{ background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.06)" }}>
                 <div className="flex flex-wrap gap-3 items-start justify-between mb-1">
                   <h3 className="text-lg font-bold text-white" style={{ fontFamily: "Montserrat, sans-serif" }}>{exp.company}</h3>
@@ -269,7 +248,7 @@ export function LBProcess() {
             { step: "03", icon: "⚙️", title: "Разработка", desc: "Код, тесты, итерации. Регулярные демо — без сюрпризов" },
             { step: "04", icon: "🚀", title: "Деплой", desc: "Запуск в продакшн, обучение команды, поддержка" },
           ].map((s, i) => (
-            <div key={i} className="p-6 rounded-2xl text-center group hover:-translate-y-1 transition-all duration-300" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
+            <div key={i} className="p-6 rounded-2xl text-center hover:-translate-y-1 transition-all duration-300" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
               <div className="text-3xl mb-3">{s.icon}</div>
               <div className="text-xs font-bold mb-2" style={{ color: "rgba(139,92,246,0.6)", fontFamily: "Montserrat, sans-serif" }}>{s.step}</div>
               <h3 className="text-base font-bold text-white mb-2" style={{ fontFamily: "Montserrat, sans-serif" }}>{s.title}</h3>
@@ -282,10 +261,141 @@ export function LBProcess() {
   );
 }
 
+// ── Reviews ───────────────────────────────────────────────────────────────────
+export function LBReviews() {
+  const [current, setCurrent] = useState(0);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const startAuto = () => {
+    intervalRef.current = setInterval(() => setCurrent(c => (c + 1) % REVIEWS.length), 4000);
+  };
+  const stopAuto = () => { if (intervalRef.current) clearInterval(intervalRef.current); };
+
+  useEffect(() => { startAuto(); return stopAuto; }, []);
+
+  return (
+    <section id="reviews" className="py-24 max-w-5xl mx-auto px-6">
+      <div className="mb-12 text-center">
+        <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold mb-4" style={{ background: "rgba(249,115,22,0.1)", border: "1px solid rgba(249,115,22,0.25)", color: "#fb923c" }}>
+          Говорят заказчики
+        </div>
+        <h2 className="text-4xl font-black" style={{ fontFamily: "Montserrat, sans-serif" }}>Отзывы</h2>
+      </div>
+
+      {/* Desktop grid */}
+      <div className="hidden md:grid grid-cols-2 gap-4">
+        {REVIEWS.map((r, i) => (
+          <div key={i} className="p-6 rounded-2xl transition-all duration-300 hover:-translate-y-1" style={{ background: "rgba(255,255,255,0.03)", border: `1px solid ${r.color}30` }}>
+            <div className="text-2xl mb-4" style={{ color: r.color }}>❝</div>
+            <p className="text-sm leading-relaxed mb-5" style={{ color: "rgba(255,255,255,0.7)" }}>{r.text}</p>
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0" style={{ background: `${r.color}25`, border: `1px solid ${r.color}40`, color: r.color }}>
+                {r.avatar}
+              </div>
+              <div>
+                <div className="text-sm font-semibold text-white">{r.author}</div>
+                <div className="text-xs" style={{ color: "rgba(255,255,255,0.4)" }}>{r.role}</div>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Mobile carousel */}
+      <div className="md:hidden" onMouseEnter={stopAuto} onMouseLeave={startAuto}>
+        <div className="p-6 rounded-2xl" style={{ background: "rgba(255,255,255,0.03)", border: `1px solid ${REVIEWS[current].color}30` }}>
+          <div className="text-2xl mb-4" style={{ color: REVIEWS[current].color }}>❝</div>
+          <p className="text-sm leading-relaxed mb-5" style={{ color: "rgba(255,255,255,0.7)" }}>{REVIEWS[current].text}</p>
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0" style={{ background: `${REVIEWS[current].color}25`, border: `1px solid ${REVIEWS[current].color}40`, color: REVIEWS[current].color }}>
+              {REVIEWS[current].avatar}
+            </div>
+            <div>
+              <div className="text-sm font-semibold text-white">{REVIEWS[current].author}</div>
+              <div className="text-xs" style={{ color: "rgba(255,255,255,0.4)" }}>{REVIEWS[current].role}</div>
+            </div>
+          </div>
+        </div>
+        <div className="flex justify-center gap-2 mt-4">
+          {REVIEWS.map((_, i) => (
+            <button key={i} onClick={() => setCurrent(i)} className="rounded-full transition-all duration-300" style={{ width: i === current ? 20 : 6, height: 6, background: i === current ? "#8b5cf6" : "rgba(255,255,255,0.2)" }} />
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+// ── Pricing ───────────────────────────────────────────────────────────────────
+export function LBPricing() {
+  return (
+    <section id="pricing" className="py-24" style={{ background: "rgba(255,255,255,0.015)" }}>
+      <div className="max-w-5xl mx-auto px-6">
+        <div className="mb-12 text-center">
+          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold mb-4" style={{ background: "rgba(16,185,129,0.1)", border: "1px solid rgba(16,185,129,0.25)", color: "#34d399" }}>
+            Прозрачные условия
+          </div>
+          <h2 className="text-4xl font-black mb-3" style={{ fontFamily: "Montserrat, sans-serif" }}>Стоимость и форматы</h2>
+          <p className="text-sm" style={{ color: "rgba(255,255,255,0.4)" }}>Выберите подходящий формат сотрудничества</p>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+          {PRICING.map((plan, i) => (
+            <div
+              key={i}
+              className="relative p-6 rounded-3xl flex flex-col transition-all duration-300 hover:-translate-y-2"
+              style={{
+                background: plan.popular ? `linear-gradient(135deg, ${plan.color}15, ${plan.color}05)` : "rgba(255,255,255,0.025)",
+                border: `1.5px solid ${plan.popular ? plan.color : `${plan.color}30`}`,
+                boxShadow: plan.popular ? `0 0 40px ${plan.glow}` : "none",
+              }}
+            >
+              {plan.popular && (
+                <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-4 py-1 rounded-full text-xs font-bold" style={{ background: plan.color, color: "#0a0a14" }}>
+                  Популярный
+                </div>
+              )}
+
+              <div className="mb-5">
+                <h3 className="text-lg font-bold text-white mb-1" style={{ fontFamily: "Montserrat, sans-serif" }}>{plan.title}</h3>
+                <p className="text-xs mb-4" style={{ color: "rgba(255,255,255,0.45)" }}>{plan.description}</p>
+                <div className="text-3xl font-black mb-1" style={{ color: plan.color, fontFamily: "Montserrat, sans-serif" }}>{plan.price}</div>
+                <div className="text-xs" style={{ color: "rgba(255,255,255,0.35)" }}>⏱ {plan.duration}</div>
+              </div>
+
+              <ul className="space-y-2 flex-1 mb-6">
+                {plan.items.map((item, j) => (
+                  <li key={j} className="flex items-start gap-2 text-sm" style={{ color: "rgba(255,255,255,0.65)" }}>
+                    <span className="mt-0.5 flex-shrink-0 text-xs" style={{ color: plan.color }}>✓</span>
+                    {item}
+                  </li>
+                ))}
+              </ul>
+
+              <a
+                href={plan.href}
+                target="_blank"
+                rel="noreferrer"
+                className="block text-center py-3 rounded-xl text-sm font-bold transition-all duration-300 hover:scale-105 active:scale-95"
+                style={plan.popular
+                  ? { background: plan.color, color: "#0a0a14", boxShadow: `0 4px 20px ${plan.glow}` }
+                  : { background: `${plan.color}15`, color: plan.color, border: `1px solid ${plan.color}40` }
+                }
+              >
+                {plan.cta} →
+              </a>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
 // ── Final CTA ─────────────────────────────────────────────────────────────────
 export function LBCta() {
   return (
-    <section className="py-24 relative overflow-hidden">
+    <section id="cta" className="py-24 relative overflow-hidden">
       <div className="absolute inset-0 pointer-events-none">
         <div className="absolute left-1/4 top-1/2 -translate-y-1/2 w-96 h-96 rounded-full" style={{ background: "radial-gradient(circle, rgba(249,115,22,0.12) 0%, transparent 70%)" }} />
         <div className="absolute right-1/4 top-1/2 -translate-y-1/2 w-96 h-96 rounded-full" style={{ background: "radial-gradient(circle, rgba(139,92,246,0.12) 0%, transparent 70%)" }} />
@@ -293,65 +403,42 @@ export function LBCta() {
 
       <div className="relative max-w-5xl mx-auto px-6">
         <div className="text-center mb-12">
-          <h2 className="text-4xl lg:text-5xl font-black mb-4" style={{ fontFamily: "Montserrat, sans-serif" }}>
-            Выберите свой путь
-          </h2>
+          <h2 className="text-4xl lg:text-5xl font-black mb-4" style={{ fontFamily: "Montserrat, sans-serif" }}>Выберите свой путь</h2>
           <p style={{ color: "rgba(255,255,255,0.4)" }}>Работаю на двух треках одновременно</p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* Заказ */}
-          <div className="p-8 rounded-3xl text-center group" style={{ background: "linear-gradient(135deg, rgba(249,115,22,0.08), rgba(249,115,22,0.03))", border: "1.5px solid rgba(249,115,22,0.25)" }}>
+          <div className="p-8 rounded-3xl text-center" style={{ background: "linear-gradient(135deg, rgba(249,115,22,0.08), rgba(249,115,22,0.03))", border: "1.5px solid rgba(249,115,22,0.25)" }}>
             <div className="text-5xl mb-4">💼</div>
             <h3 className="text-2xl font-black mb-2" style={{ fontFamily: "Montserrat, sans-serif" }}>Нужен продукт?</h3>
             <p className="text-sm mb-6 leading-relaxed" style={{ color: "rgba(255,255,255,0.5)" }}>
               От идеи до живого продукта. AI-агенты, CRM, калькуляторы, автоматизация — под ключ с гарантией результата.
             </p>
-            <a
-              href="https://t.me/krasnor"
-              target="_blank"
-              rel="noreferrer"
-              className="inline-block w-full py-4 rounded-2xl font-bold text-sm transition-all duration-300 hover:scale-105 hover:shadow-2xl active:scale-95"
-              style={{ background: "linear-gradient(135deg, #f97316, #ea580c)", color: "#fff", boxShadow: "0 4px 24px rgba(249,115,22,0.3)" }}
-            >
+            <a href="https://t.me/krasnor" target="_blank" rel="noreferrer" className="inline-block w-full py-4 rounded-2xl font-bold text-sm transition-all duration-300 hover:scale-105 hover:shadow-2xl active:scale-95" style={{ background: "linear-gradient(135deg, #f97316, #ea580c)", color: "#fff", boxShadow: "0 4px 24px rgba(249,115,22,0.3)" }}>
               Заказать разработку → Telegram
             </a>
           </div>
 
-          {/* Найм */}
           <div className="p-8 rounded-3xl text-center" style={{ background: "linear-gradient(135deg, rgba(139,92,246,0.08), rgba(139,92,246,0.03))", border: "1.5px solid rgba(139,92,246,0.25)" }}>
             <div className="text-5xl mb-4">🤝</div>
             <h3 className="text-2xl font-black mb-2" style={{ fontFamily: "Montserrat, sans-serif" }}>Ищете в команду?</h3>
             <p className="text-sm mb-6 leading-relaxed" style={{ color: "rgba(255,255,255,0.5)" }}>
               Готов к офферу от 250 000 ₽. Удалённо или офис в Москве. Принесу AI-экспертизу и закрою боль с автоматизацией.
             </p>
-            <a
-              href="https://max.ru/u/9LHodD0cOKSEfyoFFiNHDKKda2DJEQla4TlbxlDSi7pGygeSc3tM9PafS5g"
-              target="_blank"
-              rel="noreferrer"
-              className="inline-block w-full py-4 rounded-2xl font-bold text-sm transition-all duration-300 hover:scale-105 active:scale-95"
-              style={{ background: "rgba(139,92,246,0.15)", color: "#a78bfa", border: "1.5px solid rgba(139,92,246,0.4)" }}
-            >
+            <a href="https://max.ru/u/9LHodD0cOKSEfyoFFiNHDKKda2DJEQla4TlbxlDSi7pGygeSc3tM9PafS5g" target="_blank" rel="noreferrer" className="inline-block w-full py-4 rounded-2xl font-bold text-sm transition-all duration-300 hover:scale-105 active:scale-95" style={{ background: "rgba(139,92,246,0.15)", color: "#a78bfa", border: "1.5px solid rgba(139,92,246,0.4)" }}>
               Пригласить в команду → Резюме
             </a>
           </div>
         </div>
 
-        {/* Contacts row */}
+        {/* Contacts */}
         <div className="mt-10 flex flex-wrap justify-center gap-4">
           {[
             { label: "Telegram", value: "@krasnor", href: "https://t.me/krasnor", color: "#06b6d4" },
             { label: "Телефон", value: "+7 (977) 606-89-01", href: "tel:+79776068901", color: "#10b981" },
             { label: "Email", value: "19.jeka.94@gmail.com", href: "mailto:19.jeka.94@gmail.com", color: "#f97316" },
           ].map((c, i) => (
-            <a
-              key={i}
-              href={c.href}
-              target="_blank"
-              rel="noreferrer"
-              className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm transition-all hover:scale-105"
-              style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.7)" }}
-            >
+            <a key={i} href={c.href} target="_blank" rel="noreferrer" className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm transition-all hover:scale-105" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.7)" }}>
               <span className="w-2 h-2 rounded-full" style={{ background: c.color }} />
               <span style={{ color: "rgba(255,255,255,0.4)" }}>{c.label}:</span>
               <span>{c.value}</span>
