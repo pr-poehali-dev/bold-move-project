@@ -27,7 +27,6 @@ export const ALL_SCREENSHOTS = [
   { url: "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/9c53f861-98e1-49a0-bfe5-2494dca933d5.png", caption: "Построитель: мультикомнатный" },
   { url: "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/0263eb88-1d0a-4c36-9be1-f0d1db6730ec.png", caption: "Построитель: выгрузка PDF" },
   // White-label панель
-  { url: "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/3df2c7ac-4cdc-4747-958f-0946f4db2fe3.png", caption: "Панель: вход" },
   { url: "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/8ad1558a-3630-4de7-bc86-0867d74be5e7.png", caption: "Панель: настройка агента" },
   { url: "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/f0aa33cd-c1f8-416e-9e9e-82974e4e7e87.png", caption: "Панель: управление прайсами" },
   { url: "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/1ee941f1-5b50-4584-86e4-973dde134db0.png", caption: "Панель: мультикомнатные проекты" },
@@ -99,7 +98,6 @@ export const PROJECTS = [
     glow: "rgba(16,185,129,0.25)",
     link: "/company",
     screenshots: [
-      "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/3df2c7ac-4cdc-4747-958f-0946f4db2fe3.png",
       "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/8ad1558a-3630-4de7-bc86-0867d74be5e7.png",
       "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/f0aa33cd-c1f8-416e-9e9e-82974e4e7e87.png",
       "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/1ee941f1-5b50-4584-86e4-973dde134db0.png",
