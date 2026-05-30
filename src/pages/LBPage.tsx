@@ -1,7 +1,7 @@
 // ── Страница личного бренда — точка сборки ───────────────────────────────────
 import { useState, useEffect } from "react";
 import { NavBar, StickyBar } from "./lb/lbAtoms";
-import { LBHero, LBStats, LBTechLogos, LBPortfolio, LBGallery, LBStackAbout, LBAnalytics, LBExperience, LBProcess, LBReviews, LBPricing, LBCta } from "./lb/lbSections";
+import { LBHero, LBStats, LBTechLogos, LBPortfolio, LBGallery, LBMobile, LBStackAbout, LBAnalytics, LBExperience, LBProcess, LBReviews, LBPricing, LBCta } from "./lb/lbSections";
 
 export default function LBPage() {
   const [heroVisible, setHeroVisible] = useState(false);
@@ -19,6 +19,7 @@ export default function LBPage() {
       <LBStats />
       <LBTechLogos />
       <LBPortfolio />
+      <LBMobile />
       <LBGallery />
       <LBAnalytics />
       <LBStackAbout />

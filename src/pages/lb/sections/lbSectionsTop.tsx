@@ -1,4 +1,4 @@
-// ── Верхние секции: Hero, Stats, TechLogos, Portfolio, Gallery ────────────────
+// ── Верхние секции: Hero, Stats, TechLogos, Portfolio, Gallery, Mobile ────────
 import { useState } from "react";
 import { PHOTO_URL, PROJECTS, STATS, TECH_LOGOS, ALL_SCREENSHOTS, TG_LINK, MAX_LINK } from "../lbData";
 import { TypeWriter, GridBg, ProjectCard, Particles, Lightbox } from "../lbAtoms";
@@ -195,6 +195,133 @@ export function LBGallery() {
         {lightboxIdx !== null && (
           <Lightbox images={allUrls} startIdx={lightboxIdx} onClose={() => setLightboxIdx(null)} />
         )}
+      </div>
+    </section>
+  );
+}
+
+// ── Mobile Development ────────────────────────────────────────────────────────
+const MOBILE_FEATURES = [
+  { icon: "🎨", title: "UI/UX дизайн", desc: "Figma-макеты с нативными паттернами iOS и Android. Анимации, жесты, микровзаимодействия." },
+  { icon: "⚡", title: "React Native", desc: "Один кодовый база — два магазина. Нативная производительность, без компромиссов." },
+  { icon: "🍎", title: "App Store", desc: "Подготовка, ревью и публикация в Apple App Store. TestFlight для бета-тестирования." },
+  { icon: "🤖", title: "Google Play", desc: "Публикация в Google Play с соблюдением всех требований. APK / AAB сборки." },
+  { icon: "🔔", title: "Push & offline", desc: "Push-уведомления, офлайн-режим, синхронизация данных в фоне." },
+  { icon: "🔗", title: "API интеграции", desc: "Подключение к любому бэкенду, платёжным системам, картам, камере и геолокации." },
+];
+
+const MOBILE_SCREENS = [
+  { label: "Онбординг", emoji: "👋", bg: "linear-gradient(145deg,#1a0f00,#2d1a00)", color: "#f97316" },
+  { label: "Дашборд",   emoji: "📊", bg: "linear-gradient(145deg,#0f0a1a,#1a1030)", color: "#8b5cf6" },
+  { label: "Каталог",   emoji: "🛍️", bg: "linear-gradient(145deg,#00101a,#001a28)", color: "#06b6d4" },
+  { label: "Профиль",   emoji: "👤", bg: "linear-gradient(145deg,#001a10,#002818)", color: "#10b981" },
+];
+
+export function LBMobile() {
+  const [active, setActive] = useState(0);
+  return (
+    <section id="mobile" className="py-16 sm:py-24 relative overflow-hidden">
+      <div className="absolute inset-0 pointer-events-none" style={{ background: "radial-gradient(ellipse 80% 50% at 50% 50%, rgba(139,92,246,0.06) 0%, transparent 70%)" }} />
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 relative z-10">
+
+        {/* Заголовок */}
+        <div className="text-center mb-12">
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-semibold mb-4" style={{ background: "rgba(139,92,246,0.12)", border: "1px solid rgba(139,92,246,0.25)", color: "#a78bfa" }}>
+            📱 Мобильная разработка
+          </div>
+          <h2 className="text-3xl sm:text-5xl font-black mb-4" style={{ fontFamily: "Montserrat, sans-serif" }}>
+            Приложения для{" "}
+            <span style={{ background: "linear-gradient(135deg,#a78bfa,#f97316)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>
+              iOS и Android
+            </span>
+          </h2>
+          <p className="text-sm sm:text-base max-w-xl mx-auto" style={{ color: "rgba(255,255,255,0.45)" }}>
+            От Figma-макета до публикации в магазинах. Нативный UX, красивый дизайн, реальные пользователи.
+          </p>
+        </div>
+
+        {/* Телефоны + фичи */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 items-center mb-14">
+
+          {/* Интерактивные телефоны */}
+          <div className="flex justify-center items-end gap-3 sm:gap-5">
+            {MOBILE_SCREENS.map((s, i) => (
+              <button
+                key={i}
+                onClick={() => setActive(i)}
+                className="relative flex-shrink-0 transition-all duration-500"
+                style={{
+                  width: i === active ? 120 : 78,
+                  height: i === active ? 220 : 155,
+                  borderRadius: 22,
+                  background: s.bg,
+                  border: `2px solid ${i === active ? s.color : "rgba(255,255,255,0.07)"}`,
+                  boxShadow: i === active ? `0 0 32px ${s.color}55, 0 20px 48px rgba(0,0,0,0.6)` : "0 4px 16px rgba(0,0,0,0.3)",
+                  transform: i === active ? "translateY(-10px)" : "translateY(0)",
+                  overflow: "hidden",
+                }}
+              >
+                {/* Статус-бар */}
+                <div className="absolute top-0 left-0 right-0 flex justify-between items-center px-2.5 pt-2" style={{ fontSize: 7, color: "rgba(255,255,255,0.35)" }}>
+                  <span>9:41</span><span>●●●</span>
+                </div>
+                {/* Dynamic island */}
+                <div className="absolute top-2 left-1/2 -translate-x-1/2 rounded-full" style={{ width: 26, height: 7, background: "#000" }} />
+                {/* Контент */}
+                <div className="absolute inset-0 flex flex-col items-center justify-center gap-1.5">
+                  <span style={{ fontSize: i === active ? 30 : 20 }}>{s.emoji}</span>
+                  <span className="font-bold" style={{ fontSize: i === active ? 10 : 8, color: s.color }}>{s.label}</span>
+                  {i === active && (
+                    <div className="mt-1 flex flex-col gap-1 w-3/4">
+                      {[80, 55, 70].map((w, j) => (
+                        <div key={j} className="rounded-full" style={{ height: 4, width: `${w}%`, background: `${s.color}44`, margin: "0 auto" }} />
+                      ))}
+                    </div>
+                  )}
+                </div>
+                {/* Home indicator */}
+                <div className="absolute bottom-2 left-1/2 -translate-x-1/2 rounded-full" style={{ width: 28, height: 3, background: "rgba(255,255,255,0.18)" }} />
+              </button>
+            ))}
+          </div>
+
+          {/* Фичи */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {MOBILE_FEATURES.map((f, i) => (
+              <div
+                key={i}
+                className="p-4 rounded-2xl transition-all duration-300 hover:scale-[1.02]"
+                style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)" }}
+              >
+                <div className="text-xl mb-1.5">{f.icon}</div>
+                <div className="text-sm font-bold mb-1">{f.title}</div>
+                <div className="text-xs leading-relaxed" style={{ color: "rgba(255,255,255,0.4)" }}>{f.desc}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Сторы */}
+        <div className="flex flex-col sm:flex-row gap-4 justify-center items-stretch sm:items-center">
+          <div className="flex items-center gap-4 px-6 py-4 rounded-2xl" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.09)" }}>
+            <div className="w-12 h-12 rounded-2xl flex items-center justify-center text-2xl flex-shrink-0" style={{ background: "linear-gradient(135deg,#1c1c1e,#2c2c2e)" }}>🍎</div>
+            <div>
+              <div className="text-xs mb-0.5" style={{ color: "rgba(255,255,255,0.4)" }}>Публикация в</div>
+              <div className="font-black text-base" style={{ fontFamily: "Montserrat, sans-serif" }}>App Store</div>
+              <div className="text-xs" style={{ color: "rgba(255,255,255,0.35)" }}>iOS 16+ · TestFlight · Review</div>
+            </div>
+          </div>
+          <div className="hidden sm:block text-xs px-2" style={{ color: "rgba(255,255,255,0.2)" }}>и</div>
+          <div className="flex items-center gap-4 px-6 py-4 rounded-2xl" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.09)" }}>
+            <div className="w-12 h-12 rounded-2xl flex items-center justify-center text-2xl flex-shrink-0" style={{ background: "linear-gradient(135deg,#0f2010,#1a3520)" }}>🤖</div>
+            <div>
+              <div className="text-xs mb-0.5" style={{ color: "rgba(255,255,255,0.4)" }}>Публикация в</div>
+              <div className="font-black text-base" style={{ fontFamily: "Montserrat, sans-serif" }}>Google Play</div>
+              <div className="text-xs" style={{ color: "rgba(255,255,255,0.35)" }}>Android 10+ · APK/AAB · CI/CD</div>
+            </div>
+          </div>
+        </div>
+
       </div>
     </section>
   );
