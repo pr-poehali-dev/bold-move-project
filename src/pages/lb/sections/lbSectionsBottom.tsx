@@ -18,8 +18,6 @@ export function LBProcess() {
           <h2 className="text-2xl sm:text-4xl font-black mb-2" style={{ fontFamily: "Montserrat, sans-serif" }}>Как строю проекты</h2>
           <p className="text-xs sm:text-sm" style={{ color: "rgba(255,255,255,0.4)" }}>Прозрачный процесс — вы видите результат на каждом этапе</p>
         </div>
-
-        {/* На мобиле — 1 колонка, на sm — 2 */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {steps.map((s, i) => (
             <div key={i} className="p-4 rounded-xl" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)" }}>
@@ -38,8 +36,6 @@ export function LBProcess() {
             </div>
           ))}
         </div>
-
-        {/* Гарантии — компактнее */}
         <div className="mt-4 p-4 rounded-xl" style={{ background: "linear-gradient(135deg, rgba(139,92,246,0.08), rgba(249,115,22,0.05))", border: "1px solid rgba(139,92,246,0.2)" }}>
           <div className="grid grid-cols-3 gap-3 text-center">
             {[
@@ -64,10 +60,39 @@ export function LBProcess() {
 export function LBReviews() {
   const [current, setCurrent] = useState(0);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const touchStartX = useRef<number | null>(null);
 
-  const startAuto = () => { intervalRef.current = setInterval(() => setCurrent(c => (c + 1) % REVIEWS.length), 4500); };
+  const startAuto = () => {
+    if (intervalRef.current) clearInterval(intervalRef.current);
+    intervalRef.current = setInterval(() => setCurrent(c => (c + 1) % REVIEWS.length), 4500);
+  };
   const stopAuto = () => { if (intervalRef.current) clearInterval(intervalRef.current); };
+
   useEffect(() => { startAuto(); return stopAuto; }, []);
+
+  const goTo = (idx: number) => {
+    setCurrent(idx);
+    startAuto(); // сброс таймера при ручном переключении
+  };
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchStartX.current = e.touches[0].clientX;
+    stopAuto();
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (touchStartX.current === null) return;
+    const delta = e.changedTouches[0].clientX - touchStartX.current;
+    if (Math.abs(delta) > 40) {
+      const next = delta < 0
+        ? (current + 1) % REVIEWS.length
+        : (current - 1 + REVIEWS.length) % REVIEWS.length;
+      goTo(next);
+    } else {
+      startAuto();
+    }
+    touchStartX.current = null;
+  };
 
   return (
     <section id="reviews" className="py-14 sm:py-20 max-w-5xl mx-auto px-4 sm:px-6">
@@ -95,24 +120,46 @@ export function LBReviews() {
         ))}
       </div>
 
-      {/* Мобиль — карусель */}
-      <div className="md:hidden" onTouchStart={stopAuto} onTouchEnd={startAuto}>
-        <div className="p-4 rounded-xl" style={{ background: "rgba(255,255,255,0.03)", border: `1px solid ${REVIEWS[current].color}30` }}>
+      {/* Мобиль — свайп-карусель */}
+      <div
+        className="md:hidden select-none"
+        onTouchStart={handleTouchStart}
+        onTouchEnd={handleTouchEnd}
+      >
+        <div
+          className="p-4 rounded-xl transition-all duration-300"
+          style={{ background: "rgba(255,255,255,0.03)", border: `1px solid ${REVIEWS[current].color}30` }}
+        >
           <div className="text-xl mb-3" style={{ color: REVIEWS[current].color }}>❝</div>
           <p className="text-sm leading-relaxed mb-4" style={{ color: "rgba(255,255,255,0.7)" }}>{REVIEWS[current].text}</p>
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0" style={{ background: `${REVIEWS[current].color}25`, border: `1px solid ${REVIEWS[current].color}40`, color: REVIEWS[current].color }}>{REVIEWS[current].avatar}</div>
+            <div className="w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0" style={{ background: `${REVIEWS[current].color}25`, border: `1px solid ${REVIEWS[current].color}40`, color: REVIEWS[current].color }}>{REVIEWS[current].avatar}</div>
             <div>
-              <div className="text-xs font-semibold text-white">{REVIEWS[current].author}</div>
+              <div className="text-sm font-semibold text-white">{REVIEWS[current].author}</div>
               <div className="text-xs" style={{ color: "rgba(255,255,255,0.4)" }}>{REVIEWS[current].role}</div>
             </div>
           </div>
         </div>
-        <div className="flex justify-center gap-2 mt-3">
-          {REVIEWS.map((_, i) => (
-            <button key={i} onClick={() => setCurrent(i)} className="rounded-full transition-all duration-300" style={{ width: i === current ? 18 : 5, height: 5, background: i === current ? "#8b5cf6" : "rgba(255,255,255,0.2)" }} />
-          ))}
+
+        {/* Точки + стрелки */}
+        <div className="flex justify-center items-center gap-3 mt-4">
+          <button
+            onClick={() => goTo((current - 1 + REVIEWS.length) % REVIEWS.length)}
+            className="w-8 h-8 rounded-full flex items-center justify-center text-sm transition-all active:scale-90"
+            style={{ background: "rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.5)" }}
+          >←</button>
+          <div className="flex gap-2 items-center">
+            {REVIEWS.map((_, i) => (
+              <button key={i} onClick={() => goTo(i)} className="rounded-full transition-all duration-300" style={{ width: i === current ? 20 : 6, height: 6, background: i === current ? "#8b5cf6" : "rgba(255,255,255,0.2)" }} />
+            ))}
+          </div>
+          <button
+            onClick={() => goTo((current + 1) % REVIEWS.length)}
+            className="w-8 h-8 rounded-full flex items-center justify-center text-sm transition-all active:scale-90"
+            style={{ background: "rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.5)" }}
+          >→</button>
         </div>
+        <p className="text-center text-xs mt-2" style={{ color: "rgba(255,255,255,0.2)" }}>← свайп →</p>
       </div>
     </section>
   );
@@ -131,21 +178,26 @@ export function LBPricing() {
           <p className="text-xs sm:text-sm" style={{ color: "rgba(255,255,255,0.4)" }}>Выберите подходящий формат сотрудничества</p>
         </div>
 
-        {/* Горизонтальный скролл на мобиле */}
-        <div className="flex gap-4 overflow-x-auto pb-2 md:grid md:grid-cols-3 md:overflow-visible scrollbar-none">
+        {/* На мобиле — вертикальный стек, десктоп — 3 колонки */}
+        <div className="flex flex-col gap-4 md:grid md:grid-cols-3">
           {PRICING.map((plan, i) => (
             <div
               key={i}
-              className="relative flex-shrink-0 w-72 sm:w-80 md:w-auto p-5 rounded-2xl flex flex-col"
+              className="relative p-5 rounded-2xl flex flex-col"
               style={{
                 background: plan.popular ? `linear-gradient(135deg, ${plan.color}15, ${plan.color}05)` : "rgba(255,255,255,0.025)",
                 border: `1.5px solid ${plan.popular ? plan.color : `${plan.color}30`}`,
                 boxShadow: plan.popular ? `0 0 30px ${plan.glow}` : "none",
+                // Отступ сверху для лейбла — только если есть лейбл
+                marginTop: plan.popular ? "16px" : "0",
               }}
             >
+              {/* Лейбл — внутри карточки сверху, не absolute */}
               {plan.popular && (
-                <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full text-xs font-bold" style={{ background: plan.color, color: "#0a0a14" }}>
-                  Популярный
+                <div className="flex justify-center mb-3 -mt-8">
+                  <span className="px-4 py-1 rounded-full text-xs font-bold" style={{ background: plan.color, color: "#0a0a14" }}>
+                    Популярный
+                  </span>
                 </div>
               )}
               <div className="mb-4">
@@ -166,7 +218,7 @@ export function LBPricing() {
                 href={plan.href}
                 target="_blank"
                 rel="noreferrer"
-                className="block text-center py-2.5 rounded-xl text-sm font-bold transition-all duration-300 active:scale-95"
+                className="block text-center py-3 rounded-xl text-sm font-bold transition-all duration-300 active:scale-95"
                 style={plan.popular
                   ? { background: plan.color, color: "#0a0a14", boxShadow: `0 4px 16px ${plan.glow}` }
                   : { background: `${plan.color}15`, color: plan.color, border: `1px solid ${plan.color}40` }
@@ -177,9 +229,6 @@ export function LBPricing() {
             </div>
           ))}
         </div>
-
-        {/* Подсказка скролла — только мобиль */}
-        <p className="text-center text-xs mt-2 md:hidden" style={{ color: "rgba(255,255,255,0.25)" }}>← прокрутите →</p>
       </div>
     </section>
   );
@@ -205,33 +254,32 @@ export function LBCta() {
           Первая консультация — бесплатно.
         </p>
 
-        {/* Кнопки во всю ширину на мобиле */}
-        <div className="flex flex-col sm:flex-row gap-3 justify-center mb-8">
+        {/* Основные кнопки */}
+        <div className="flex flex-col gap-3 mb-4">
           <a href={TG_LINK} target="_blank" rel="noreferrer"
-            className="flex-1 sm:flex-none inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl font-bold text-sm transition-all duration-300 hover:scale-105 active:scale-95"
+            className="flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl font-bold text-sm transition-all duration-300 active:scale-95"
             style={{ background: "linear-gradient(135deg, #f97316, #ea580c)", color: "#fff", boxShadow: "0 4px 20px rgba(249,115,22,0.3)" }}>
             💬 Написать в Telegram
           </a>
           <a href={MAX_LINK} target="_blank" rel="noreferrer"
-            className="flex-1 sm:flex-none inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl font-bold text-sm transition-all duration-300 hover:scale-105 active:scale-95"
+            className="flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl font-bold text-sm transition-all duration-300 active:scale-95"
             style={{ background: "rgba(139,92,246,0.15)", color: "#a78bfa", border: "1.5px solid rgba(139,92,246,0.4)" }}>
             🚀 Написать в MAX
           </a>
         </div>
 
-        <div className="flex flex-col sm:flex-row justify-center gap-2 sm:gap-4">
-          {[
-            { label: "Телефон", value: "+7 (977) 606-89-01", href: "tel:+79776068901", color: "#10b981" },
-            { label: "Email", value: "19.jeka.94@gmail.com", href: "mailto:19.jeka.94@gmail.com", color: "#f97316" },
-          ].map((c, i) => (
-            <a key={i} href={c.href} target="_blank" rel="noreferrer"
-              className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-xs transition-all hover:scale-105"
-              style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.65)" }}>
-              <span className="w-1.5 h-1.5 rounded-full" style={{ background: c.color }} />
-              <span style={{ color: "rgba(255,255,255,0.35)" }}>{c.label}:</span>
-              <span>{c.value}</span>
-            </a>
-          ))}
+        {/* Телефон и email — тоже кнопки */}
+        <div className="flex flex-col sm:flex-row gap-2">
+          <a href="tel:+79776068901"
+            className="flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-semibold text-sm transition-all active:scale-95"
+            style={{ background: "rgba(16,185,129,0.08)", border: "1px solid rgba(16,185,129,0.25)", color: "#34d399" }}>
+            📞 +7 (977) 606-89-01
+          </a>
+          <a href="mailto:19.jeka.94@gmail.com"
+            className="flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-semibold text-sm transition-all active:scale-95"
+            style={{ background: "rgba(249,115,22,0.08)", border: "1px solid rgba(249,115,22,0.25)", color: "#fb923c" }}>
+            ✉️ 19.jeka.94@gmail.com
+          </a>
         </div>
       </div>
     </section>
