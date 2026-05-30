@@ -1,5 +1,5 @@
 // ── Верхние секции: Hero, Stats, TechLogos, Portfolio, Gallery, Mobile ────────
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { PHOTO_URL, PROJECTS, STATS, TECH_LOGOS, ALL_SCREENSHOTS, TG_LINK, MAX_LINK } from "../lbData";
 import { TypeWriter, GridBg, ProjectCard, Particles, Lightbox } from "../lbAtoms";
 
