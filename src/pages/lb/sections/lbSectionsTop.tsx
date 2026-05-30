@@ -104,7 +104,7 @@ export function LBHero({ heroVisible }: { heroVisible: boolean }) {
 // ── Stats ─────────────────────────────────────────────────────────────────────
 export function LBStats() {
   return (
-    <section className="py-10 sm:py-14 border-y" style={{ borderColor: "rgba(255,255,255,0.05)", background: "rgba(255,255,255,0.015)" }}>
+    <section className="py-6 sm:py-10 border-y" style={{ borderColor: "rgba(255,255,255,0.05)", background: "rgba(255,255,255,0.015)" }}>
       <div className="max-w-5xl mx-auto px-4 sm:px-6">
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-8">
           {STATS.map((s, i) => (
@@ -142,8 +142,8 @@ export function LBTechLogos() {
 // ── Portfolio ─────────────────────────────────────────────────────────────────
 export function LBPortfolio() {
   return (
-    <section id="projects" className="py-14 sm:py-20 max-w-6xl mx-auto px-4 sm:px-6">
-      <div className="mb-8 sm:mb-12 text-center">
+    <section id="projects" className="py-8 sm:py-16 max-w-6xl mx-auto px-4 sm:px-6">
+      <div className="mb-6 text-center">
         <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold mb-3" style={{ background: "rgba(249,115,22,0.1)", border: "1px solid rgba(249,115,22,0.25)", color: "#fb923c" }}>
           Реальные продукты в продакшне
         </div>
@@ -165,9 +165,9 @@ export function LBGallery() {
   const allUrls = ALL_SCREENSHOTS.map(s => s.url);
 
   return (
-    <section id="gallery" className="py-14 sm:py-20" style={{ background: "rgba(255,255,255,0.012)" }}>
+    <section id="gallery" className="py-8 sm:py-16" style={{ background: "rgba(255,255,255,0.012)" }}>
       <div className="max-w-6xl mx-auto px-4 sm:px-6">
-        <div className="mb-8 text-center">
+        <div className="mb-5 text-center">
           <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold mb-3" style={{ background: "rgba(6,182,212,0.1)", border: "1px solid rgba(6,182,212,0.25)", color: "#22d3ee" }}>
             Скриншоты всех проектов
           </div>

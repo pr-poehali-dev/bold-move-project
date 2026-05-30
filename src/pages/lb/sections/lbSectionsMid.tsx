@@ -34,11 +34,11 @@ export function LBStackAbout() {
   return (
     <>
       {/* ── Кто я — До / После ─────────────────────────────────────────── */}
-      <section id="about" className="py-14 sm:py-20">
+      <section id="about" className="py-8 sm:py-16">
         <div className="max-w-5xl mx-auto px-4 sm:px-6">
 
           {/* Шапка с аватаром */}
-          <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6 mb-10">
+          <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4 mb-6">
             <div className="flex-shrink-0">
               <div
                 className="w-24 h-24 sm:w-28 sm:h-28 rounded-2xl overflow-hidden"
@@ -63,7 +63,7 @@ export function LBStackAbout() {
           </div>
 
           {/* Цифры */}
-          <div className="grid grid-cols-4 gap-3 mb-10">
+          <div className="grid grid-cols-4 gap-3 mb-6">
             {STATS.map((s, i) => (
               <div key={i} className="text-center p-3 rounded-xl" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)" }}>
                 <div className="text-xl sm:text-3xl font-black mb-0.5" style={{ fontFamily: "Montserrat, sans-serif", background: "linear-gradient(135deg, #a78bfa, #f97316)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>{s.value}</div>
@@ -100,7 +100,7 @@ export function LBStackAbout() {
       </section>
 
       {/* ── Стек ──────────────────────────────────────────────────────────── */}
-      <section id="stack" className="py-14 sm:py-20" style={{ background: "rgba(255,255,255,0.015)" }}>
+      <section id="stack" className="py-8 sm:py-16" style={{ background: "rgba(255,255,255,0.015)" }}>
         <div className="max-w-5xl mx-auto px-4 sm:px-6">
           <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold mb-3" style={{ background: "rgba(6,182,212,0.1)", border: "1px solid rgba(6,182,212,0.25)", color: "#22d3ee" }}>
             Технический стек
@@ -230,11 +230,11 @@ export function LBAnalytics() {
   }, [tab, current.shots.length]);
 
   return (
-    <section className="py-14 sm:py-20" style={{ background: "rgba(255,255,255,0.01)" }}>
+    <section className="py-8 sm:py-16" style={{ background: "rgba(255,255,255,0.01)" }}>
       <div className="max-w-5xl mx-auto px-4 sm:px-6">
 
         {/* Вкладки — горизонтальный скролл на мобиле */}
-        <div className="flex gap-2 mb-8 overflow-x-auto pb-1 scrollbar-none">
+        <div className="flex gap-2 mb-5 overflow-x-auto pb-1 scrollbar-none">
           {ANALYTICS_TABS.map((t, i) => (
             <button
               key={i}
@@ -314,8 +314,8 @@ export function LBAnalytics() {
 // ── Experience ────────────────────────────────────────────────────────────────
 export function LBExperience() {
   return (
-    <section id="experience" className="py-14 sm:py-20 max-w-5xl mx-auto px-4 sm:px-6">
-      <div className="mb-8 text-center">
+    <section id="experience" className="py-8 sm:py-16 max-w-5xl mx-auto px-4 sm:px-6">
+      <div className="mb-5 text-center">
         <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold mb-3" style={{ background: "rgba(16,185,129,0.1)", border: "1px solid rgba(16,185,129,0.25)", color: "#34d399" }}>
           Опыт работы
         </div>

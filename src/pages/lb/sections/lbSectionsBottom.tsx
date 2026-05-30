@@ -12,9 +12,9 @@ export function LBProcess() {
   ];
 
   return (
-    <section className="py-14 sm:py-20" style={{ background: "rgba(255,255,255,0.015)" }}>
+    <section className="py-8 sm:py-16" style={{ background: "rgba(255,255,255,0.015)" }}>
       <div className="max-w-5xl mx-auto px-4 sm:px-6">
-        <div className="mb-8 text-center">
+        <div className="mb-6 text-center">
           <h2 className="text-2xl sm:text-4xl font-black mb-2" style={{ fontFamily: "Montserrat, sans-serif" }}>Как строю проекты</h2>
           <p className="text-xs sm:text-sm" style={{ color: "rgba(255,255,255,0.4)" }}>Прозрачный процесс — вы видите результат на каждом этапе</p>
         </div>
@@ -95,8 +95,8 @@ export function LBReviews() {
   };
 
   return (
-    <section id="reviews" className="py-14 sm:py-20 max-w-5xl mx-auto px-4 sm:px-6">
-      <div className="mb-8 text-center">
+    <section id="reviews" className="py-8 sm:py-16 max-w-5xl mx-auto px-4 sm:px-6">
+      <div className="mb-5 text-center">
         <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold mb-3" style={{ background: "rgba(249,115,22,0.1)", border: "1px solid rgba(249,115,22,0.25)", color: "#fb923c" }}>
           Говорят заказчики
         </div>
@@ -168,9 +168,9 @@ export function LBReviews() {
 // ── Pricing ───────────────────────────────────────────────────────────────────
 export function LBPricing() {
   return (
-    <section id="pricing" className="py-14 sm:py-20" style={{ background: "rgba(255,255,255,0.015)" }}>
+    <section id="pricing" className="py-8 sm:py-16" style={{ background: "rgba(255,255,255,0.015)" }}>
       <div className="max-w-5xl mx-auto px-4 sm:px-6">
-        <div className="mb-8 text-center">
+        <div className="mb-6 text-center">
           <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold mb-3" style={{ background: "rgba(16,185,129,0.1)", border: "1px solid rgba(16,185,129,0.25)", color: "#34d399" }}>
             Прозрачные условия
           </div>
@@ -237,7 +237,7 @@ export function LBPricing() {
 // ── Final CTA ─────────────────────────────────────────────────────────────────
 export function LBCta() {
   return (
-    <section id="cta" className="py-14 sm:py-20 relative overflow-hidden">
+    <section id="cta" className="py-8 sm:py-16 relative overflow-hidden">
       <div className="absolute inset-0 pointer-events-none">
         <div className="absolute left-0 sm:left-1/4 top-1/2 -translate-y-1/2 w-64 sm:w-96 h-64 sm:h-96 rounded-full" style={{ background: "radial-gradient(circle, rgba(249,115,22,0.08) 0%, transparent 70%)" }} />
         <div className="absolute right-0 sm:right-1/4 top-1/2 -translate-y-1/2 w-64 sm:w-96 h-64 sm:h-96 rounded-full" style={{ background: "radial-gradient(circle, rgba(139,92,246,0.08) 0%, transparent 70%)" }} />
