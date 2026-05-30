@@ -59,22 +59,15 @@ export function LBStackAbout() {
             </div>
 
             {/* Текст */}
-            <div className="flex flex-col justify-center gap-1">
-              <span
-                className="self-start px-2.5 py-0.5 rounded-full text-xs font-semibold tracking-wide"
-                style={{ background: "rgba(139,92,246,0.15)", border: "1px solid rgba(139,92,246,0.3)", color: "#c4b5fd" }}
-              >
-                О себе
-              </span>
+            <div className="flex flex-col justify-center gap-1.5">
               <h2
                 className="text-2xl sm:text-3xl font-black leading-tight"
                 style={{ fontFamily: "Montserrat, sans-serif" }}
               >
                 Кто я
               </h2>
-              <p className="text-sm leading-snug" style={{ color: "rgba(255,255,255,0.5)" }}>
-                Fullstack-разработчик + AI-интегратор.<br />
-                Пришёл в код из бизнеса — говорю на языке задач.
+              <p className="text-sm sm:text-base leading-relaxed" style={{ color: "rgba(255,255,255,0.5)" }}>
+                Fullstack-разработчик + AI-интегратор. Пришёл в код из бизнеса — говорю на языке задач.
               </p>
             </div>
           </div>
