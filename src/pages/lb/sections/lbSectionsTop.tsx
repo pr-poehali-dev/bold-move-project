@@ -347,32 +347,32 @@ export function LBMobile() {
         </div>
 
         {/* Фичи */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-10">
+        <div className="grid grid-cols-3 gap-2 mb-6">
           {MOBILE_FEATURES.map((f, i) => (
             <div
               key={i}
-              className="p-4 rounded-2xl transition-all duration-300 hover:scale-[1.02]"
+              className="p-3 rounded-xl flex flex-col gap-1"
               style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)" }}
             >
-              <div className="text-xl mb-1.5">{f.icon}</div>
-              <div className="text-sm font-bold mb-1">{f.title}</div>
-              <div className="text-xs leading-relaxed" style={{ color: "rgba(255,255,255,0.4)" }}>{f.desc}</div>
+              <div className="text-base">{f.icon}</div>
+              <div className="text-xs font-bold leading-tight">{f.title}</div>
+              <div className="hidden sm:block text-xs leading-relaxed" style={{ color: "rgba(255,255,255,0.4)" }}>{f.desc}</div>
             </div>
           ))}
         </div>
 
         {/* Сторы */}
-        <div className="flex flex-col sm:flex-row gap-3 justify-center">
-          <div className="flex items-center gap-4 px-6 py-4 rounded-2xl" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.09)" }}>
-            <div className="w-11 h-11 rounded-xl flex items-center justify-center text-2xl flex-shrink-0" style={{ background: "linear-gradient(135deg,#1c1c1e,#2c2c2e)" }}>🍎</div>
+        <div className="flex gap-3 justify-center">
+          <div className="flex items-center gap-3 px-4 py-3 rounded-xl flex-1 sm:flex-none" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.09)" }}>
+            <div className="w-9 h-9 rounded-xl flex items-center justify-center text-xl flex-shrink-0" style={{ background: "linear-gradient(135deg,#1c1c1e,#2c2c2e)" }}>🍎</div>
             <div>
               <div className="text-xs" style={{ color: "rgba(255,255,255,0.4)" }}>Публикация в</div>
               <div className="font-black text-sm" style={{ fontFamily: "Montserrat, sans-serif" }}>App Store</div>
               <div className="text-xs" style={{ color: "rgba(255,255,255,0.35)" }}>iOS 16+ · TestFlight</div>
             </div>
           </div>
-          <div className="flex items-center gap-4 px-6 py-4 rounded-2xl" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.09)" }}>
-            <div className="w-11 h-11 rounded-xl flex items-center justify-center text-2xl flex-shrink-0" style={{ background: "linear-gradient(135deg,#0f2010,#1a3520)" }}>🤖</div>
+          <div className="flex items-center gap-3 px-4 py-3 rounded-xl flex-1 sm:flex-none" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.09)" }}>
+            <div className="w-9 h-9 rounded-xl flex items-center justify-center text-xl flex-shrink-0" style={{ background: "linear-gradient(135deg,#0f2010,#1a3520)" }}>🤖</div>
             <div>
               <div className="text-xs" style={{ color: "rgba(255,255,255,0.4)" }}>Публикация в</div>
               <div className="font-black text-sm" style={{ fontFamily: "Montserrat, sans-serif" }}>Google Play</div>
