@@ -177,6 +177,44 @@ const ANALYTICS_TABS = [
       { url: "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/81d9f4de-68ac-481f-9ddd-432a4dd308af.png", label: "Агент: готовая смета" },
     ],
   },
+  {
+    id: "crm",
+    label: "🗂️ CRM",
+    color: "#10b981",
+    title: "CRM под бизнес —",
+    titleAccent: "не коробка, а инструмент",
+    desc: "Разрабатываю CRM под конкретные процессы: канбан, воронка заявок, аналитика P&L, календарь событий и матрица прав для команды.",
+    items: [
+      { icon: "📋", text: "Канбан-доска с кастомными статусами и фильтрами" },
+      { icon: "🔀", text: "Воронка заявок — конверсия на каждом этапе" },
+      { icon: "📅", text: "Календарь замеров и монтажей с уведомлениями" },
+      { icon: "👥", text: "Матрица прав: менеджер, РОП, директор" },
+    ],
+    shots: [
+      { url: "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/b515b10a-e8bf-4688-90d3-5ac68107f14e.png", label: "CRM: воронка заявок" },
+      { url: "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/a27669c1-a604-4b08-b399-93e45198ecc5.png", label: "CRM: канбан-доска" },
+      { url: "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/326f400c-4845-4d7c-990b-4d4a918273e2.png", label: "CRM: календарь" },
+    ],
+  },
+  {
+    id: "cad",
+    label: "📐 CAD",
+    color: "#f59e0b",
+    title: "Браузерный CAD —",
+    titleAccent: "чертёж прямо в телефоне",
+    desc: "Веб-редактор для рисования произвольных контуров, автоматического расчёта материалов и экспорта в PDF с чертежом и детализацией.",
+    items: [
+      { icon: "✏️", text: "Рисование произвольных контуров и комнат" },
+      { icon: "📏", text: "Автоматический расчёт материалов и диагоналей" },
+      { icon: "🏠", text: "Мультикомнатные проекты в одном файле" },
+      { icon: "📄", text: "Экспорт в PDF с чертежом и детализацией" },
+    ],
+    shots: [
+      { url: "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/3b311dfe-644d-46a7-9072-ddef2335e583.png", label: "Построитель: чертёж" },
+      { url: "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/9c53f861-98e1-49a0-bfe5-2494dca933d5.png", label: "Построитель: мультикомнатный" },
+      { url: "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/0263eb88-1d0a-4c36-9be1-f0d1db6730ec.png", label: "Построитель: выгрузка PDF" },
+    ],
+  },
 ];
 
 export function LBAnalytics() {
