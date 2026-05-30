@@ -16,7 +16,7 @@ async function createDemoAndRedirect(link: string) {
     if (check.ok) {
       const d = await check.json();
       if (d.user?.is_demo) {
-        window.location.href = link;
+        window.open(link, "_blank", "noopener,noreferrer");
         return;
       }
     }
@@ -32,7 +32,7 @@ async function createDemoAndRedirect(link: string) {
   }
   const { token } = await res.json();
   localStorage.setItem("mp_user_token", token);
-  window.location.href = link;
+  window.open(link, "_blank", "noopener,noreferrer");
 }
 
 // ── Анимированный печатающийся текст ─────────────────────────────────────────
