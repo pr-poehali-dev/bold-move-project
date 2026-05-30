@@ -1,7 +1,7 @@
 // ── Страница личного бренда — точка сборки ───────────────────────────────────
 import { useState, useEffect } from "react";
 import { NavBar, StickyBar } from "./lb/lbAtoms";
-import { LBHero, LBStats, LBTechLogos, LBPortfolio, LBStackAbout, LBExperience, LBProcess, LBReviews, LBPricing, LBCta } from "./lb/lbSections";
+import { LBHero, LBStats, LBTechLogos, LBPortfolio, LBGallery, LBStackAbout, LBAnalytics, LBExperience, LBProcess, LBReviews, LBPricing, LBCta } from "./lb/lbSections";
 
 export default function LBPage() {
   const [heroVisible, setHeroVisible] = useState(false);
@@ -19,6 +19,8 @@ export default function LBPage() {
       <LBStats />
       <LBTechLogos />
       <LBPortfolio />
+      <LBGallery />
+      <LBAnalytics />
       <LBStackAbout />
       <LBExperience />
       <LBProcess />
@@ -26,7 +28,7 @@ export default function LBPage() {
       <LBPricing />
       <LBCta />
       <div className="text-center py-8 text-xs" style={{ color: "rgba(255,255,255,0.2)", borderTop: "1px solid rgba(255,255,255,0.05)" }}>
-        Красноруцкий Евгений · CPO / AI-разработчик · 2026
+        Красноруцкий Евгений · AI-Архитектор бизнес-процессов · 2026
       </div>
     </div>
   );

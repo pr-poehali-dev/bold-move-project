@@ -1,6 +1,6 @@
 // ── Атомарные переиспользуемые компоненты страницы личного бренда ────────────
 import { useState, useEffect, useRef, useCallback } from "react";
-import { PROJECTS, NAV_ITEMS } from "./lbData";
+import { PROJECTS, NAV_ITEMS, TG_LINK, MAX_LINK } from "./lbData";
 
 // ── Анимированный печатающийся текст ─────────────────────────────────────────
 export function TypeWriter({ texts, speed = 60 }: { texts: string[]; speed?: number }) {
@@ -337,11 +337,11 @@ export function StickyBar() {
         pointerEvents: show ? "auto" : "none",
       }}
     >
-      <a href="https://t.me/krasnor" target="_blank" rel="noreferrer" className="px-5 py-2 rounded-xl text-sm font-bold transition-all hover:scale-105 active:scale-95" style={{ background: "#f97316", color: "#0a0a14" }}>
-        Заказать проект
+      <a href={TG_LINK} target="_blank" rel="noreferrer" className="px-5 py-2 rounded-xl text-sm font-bold transition-all hover:scale-105 active:scale-95" style={{ background: "#f97316", color: "#0a0a14" }}>
+        Написать в Telegram
       </a>
-      <a href="https://max.ru/u/9LHodD0cOKSEfyoFFiNHDKKda2DJEQla4TlbxlDSi7pGygeSc3tM9PafS5g" target="_blank" rel="noreferrer" className="px-5 py-2 rounded-xl text-sm font-bold transition-all hover:scale-105 active:scale-95" style={{ background: "rgba(139,92,246,0.15)", color: "#8b5cf6", border: "1px solid rgba(139,92,246,0.4)" }}>
-        Пригласить в команду
+      <a href={MAX_LINK} target="_blank" rel="noreferrer" className="px-5 py-2 rounded-xl text-sm font-bold transition-all hover:scale-105 active:scale-95" style={{ background: "rgba(139,92,246,0.15)", color: "#8b5cf6", border: "1px solid rgba(139,92,246,0.4)" }}>
+        Связаться в MAX
       </a>
     </div>
   );
@@ -401,7 +401,7 @@ export function NavBar() {
             );
           })}
         </div>
-        <a href="https://t.me/krasnor" target="_blank" rel="noreferrer" className="px-4 py-1.5 rounded-lg text-xs font-bold transition-all hover:scale-105" style={{ background: "#f97316", color: "#0a0a14" }}>
+        <a href={TG_LINK} target="_blank" rel="noreferrer" className="px-4 py-1.5 rounded-lg text-xs font-bold transition-all hover:scale-105" style={{ background: "#f97316", color: "#0a0a14" }}>
           Написать
         </a>
       </div>
