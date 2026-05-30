@@ -305,7 +305,7 @@ export function LBMobile() {
                   <img
                     src={s.img}
                     alt={s.label}
-                    className="w-full h-full object-cover object-top"
+                    className="w-full h-full object-cover object-center"
                   />
                   {/* Home indicator */}
                   <div className="absolute bottom-1.5 left-1/2 -translate-x-1/2 rounded-full" style={{ width: 32, height: 3, background: "rgba(255,255,255,0.25)" }} />
