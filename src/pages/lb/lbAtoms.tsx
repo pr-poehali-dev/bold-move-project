@@ -451,8 +451,8 @@ export function NavBar() {
       }}
     >
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-2 sm:py-3 flex items-center justify-between">
-        <span className="text-sm font-black" style={{ fontFamily: "Montserrat, sans-serif", background: "linear-gradient(90deg, #f97316, #8b5cf6)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>
-          EK
+        <span className="text-sm font-black tracking-tight" style={{ fontFamily: "Montserrat, sans-serif", background: "linear-gradient(90deg, #f97316, #8b5cf6)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>
+          Евгений К.
         </span>
         <div className="hidden md:flex items-center gap-1">
           {NAV_ITEMS.map(item => {
