@@ -94,7 +94,6 @@ export function LBHero({ heroVisible }: { heroVisible: boolean }) {
       </div>
 
       <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex flex-col items-center gap-1.5 animate-bounce" style={{ zIndex: 10 }}>
-        <span className="text-xs" style={{ color: "rgba(255,255,255,0.2)" }}>скролл</span>
         <div className="w-px h-6" style={{ background: "linear-gradient(to bottom, rgba(139,92,246,0.5), transparent)" }} />
       </div>
     </section>
