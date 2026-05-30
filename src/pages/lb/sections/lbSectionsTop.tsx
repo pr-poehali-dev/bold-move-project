@@ -129,7 +129,7 @@ export function LBTechLogos() {
       <div className="flex gap-3 items-center" style={{ animation: "marquee 28s linear infinite", width: "max-content" }}>
         {doubled.map((t, i) => (
           <div key={i} className="flex items-center gap-2 px-4 py-2 rounded-full whitespace-nowrap flex-shrink-0" style={{ background: "rgba(139,92,246,0.08)", border: "1px solid rgba(139,92,246,0.2)" }}>
-            <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: "#8b5cf6" }} />
+            <span className="text-base leading-none">{t.icon}</span>
             <span className="text-xs font-bold" style={{ color: "rgba(255,255,255,0.85)", fontFamily: "Montserrat, sans-serif" }}>{t.name}</span>
           </div>
         ))}
