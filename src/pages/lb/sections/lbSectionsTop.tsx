@@ -247,12 +247,12 @@ export function LBMobile() {
   const [active, setActive] = useState(0);
 
   return (
-    <section id="mobile" className="py-16 sm:py-24 relative overflow-hidden">
+    <section id="mobile" className="py-8 sm:py-16 relative overflow-hidden">
       <div className="absolute inset-0 pointer-events-none" style={{ background: "radial-gradient(ellipse 80% 50% at 50% 50%, rgba(139,92,246,0.06) 0%, transparent 70%)" }} />
       <div className="max-w-6xl mx-auto px-4 sm:px-6 relative z-10">
 
         {/* Заголовок */}
-        <div className="text-center mb-10">
+        <div className="text-center mb-6">
           <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-semibold mb-4" style={{ background: "rgba(139,92,246,0.12)", border: "1px solid rgba(139,92,246,0.25)", color: "#a78bfa" }}>
             📱 Мобильная разработка
           </div>
@@ -331,7 +331,7 @@ export function LBMobile() {
         </div>
 
         {/* Точки-индикаторы */}
-        <div className="flex justify-center gap-1.5 mb-12">
+        <div className="flex justify-center gap-1.5 mb-5">
           {MOBILE_SCREENS.map((s, i) => (
             <button
               key={i}
