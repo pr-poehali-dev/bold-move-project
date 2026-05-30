@@ -6,41 +6,43 @@ import { SkillBar, Lightbox } from "../lbAtoms";
 // ── Stack + About ─────────────────────────────────────────────────────────────
 export function LBStackAbout() {
   return (
-    <section id="stack" className="py-24" style={{ background: "rgba(255,255,255,0.015)" }}>
-      <div className="max-w-5xl mx-auto px-6">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-start">
+    <section id="stack" className="py-14 sm:py-20" style={{ background: "rgba(255,255,255,0.015)" }}>
+      <div className="max-w-5xl mx-auto px-4 sm:px-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-16 items-start">
+
+          {/* Stack */}
           <div>
-            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold mb-4" style={{ background: "rgba(6,182,212,0.1)", border: "1px solid rgba(6,182,212,0.25)", color: "#22d3ee" }}>
+            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold mb-3" style={{ background: "rgba(6,182,212,0.1)", border: "1px solid rgba(6,182,212,0.25)", color: "#22d3ee" }}>
               Технический стек
             </div>
-            <h2 className="text-4xl font-black mb-6" style={{ fontFamily: "Montserrat, sans-serif" }}>Что умею</h2>
-            <p className="mb-8" style={{ color: "rgba(255,255,255,0.45)", lineHeight: 1.7 }}>
-              Полный цикл: от постановки задачи до деплоя в продакшн.
-              AI/LLM-стек (RAG, MCP, агенты), backend на Python, фронт на React, интеграции API и платёжные системы.
+            <h2 className="text-2xl sm:text-4xl font-black mb-4" style={{ fontFamily: "Montserrat, sans-serif" }}>Что умею</h2>
+            <p className="text-sm mb-6" style={{ color: "rgba(255,255,255,0.45)", lineHeight: 1.7 }}>
+              Полный цикл: от задачи до деплоя. AI/LLM-стек (RAG, MCP, агенты), Python, React, интеграции API и платёжные системы.
             </p>
-            <div className="space-y-4">
+            <div className="space-y-3">
               {STACK.map((s, i) => <SkillBar key={i} name={s.name} level={s.level} color={s.color} delay={i * 80} />)}
             </div>
           </div>
 
+          {/* About */}
           <div>
-            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold mb-4" style={{ background: "rgba(139,92,246,0.1)", border: "1px solid rgba(139,92,246,0.25)", color: "#a78bfa" }}>
+            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold mb-3 mt-8 lg:mt-0" style={{ background: "rgba(139,92,246,0.1)", border: "1px solid rgba(139,92,246,0.25)", color: "#a78bfa" }}>
               О себе
             </div>
-            <h2 className="text-4xl font-black mb-6" style={{ fontFamily: "Montserrat, sans-serif" }}>Кто я</h2>
-            <div className="space-y-4">
+            <h2 className="text-2xl sm:text-4xl font-black mb-4" style={{ fontFamily: "Montserrat, sans-serif" }}>Кто я</h2>
+            <div className="space-y-3">
               {[
-                { icon: "🏗️", label: "Архитектор процессов", text: "Проектирую бизнес-процессы с нуля и оптимизирую существующие. Внедряю AI там, где это даёт реальный результат в деньгах и скорости." },
-                { icon: "📊", label: "Аналитика данных", text: "Строю системы сбора, обработки и визуализации данных. P&L, воронки, динамика — реальные дашборды с автоматическим обновлением." },
-                { icon: "⚡", label: "Моя суперсила", text: "Превращаю размытое ТЗ в работающий продукт. Вижу одновременно бизнес-задачу и техническое решение." },
+                { icon: "🏗️", label: "Архитектор процессов", text: "Проектирую бизнес-процессы с нуля. Внедряю AI там, где это даёт реальный результат." },
+                { icon: "📊", label: "Аналитика данных", text: "P&L, воронки, динамика — реальные дашборды с автоматическим обновлением." },
+                { icon: "⚡", label: "Моя суперсила", text: "Превращаю размытое ТЗ в продукт. Вижу бизнес-задачу и техническое решение одновременно." },
                 { icon: "🤝", label: "Ищу", text: "Сильную команду или интересный проект. Готов к офферу — удалённо или офис в МСК." },
               ].map((item, i) => (
-                <div key={i} className="p-4 rounded-2xl" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
+                <div key={i} className="p-3 rounded-xl" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
                   <div className="flex gap-3 items-start">
-                    <span className="text-xl flex-shrink-0 mt-0.5">{item.icon}</span>
+                    <span className="text-lg flex-shrink-0">{item.icon}</span>
                     <div>
-                      <div className="text-xs font-semibold mb-1" style={{ color: "rgba(255,255,255,0.35)", textTransform: "uppercase", letterSpacing: "0.05em" }}>{item.label}</div>
-                      <p className="text-sm leading-relaxed" style={{ color: "rgba(255,255,255,0.7)" }}>{item.text}</p>
+                      <div className="text-xs font-semibold mb-0.5" style={{ color: "rgba(255,255,255,0.35)", textTransform: "uppercase", letterSpacing: "0.05em" }}>{item.label}</div>
+                      <p className="text-xs sm:text-sm leading-relaxed" style={{ color: "rgba(255,255,255,0.65)" }}>{item.text}</p>
                     </div>
                   </div>
                 </div>
@@ -61,11 +63,11 @@ const ANALYTICS_TABS = [
     color: "#8b5cf6",
     title: "Данные — это",
     titleAccent: "управленческий актив",
-    desc: "Строю системы, где данные собираются автоматически и превращаются в решения. Не просто красивые графики — реальные инструменты управления бизнесом.",
+    desc: "Строю системы, где данные собираются автоматически и превращаются в решения. Не просто красивые графики — реальные инструменты управления.",
     items: [
-      { icon: "📈", text: "P&L в реальном времени — доходы, затраты, маржа по каждому заказу" },
+      { icon: "📈", text: "P&L в реальном времени — доходы, затраты, маржа" },
       { icon: "🔄", text: "Воронка продаж с конверсией на каждом этапе" },
-      { icon: "📊", text: "Динамика выручки и прибыли по месяцам — графики и тренды" },
+      { icon: "📊", text: "Динамика выручки и прибыли — графики и тренды" },
       { icon: "⚠️", text: "Автоматические алерты при просроченных событиях" },
     ],
     shots: [
@@ -76,16 +78,16 @@ const ANALYTICS_TABS = [
   },
   {
     id: "saas",
-    label: "🚀 SaaS-продукты",
+    label: "🚀 SaaS",
     color: "#f97316",
     title: "Продукт под ключ",
     titleAccent: "работает и зарабатывает",
-    desc: "Разрабатываю полноценные SaaS-платформы с монетизацией через подписку. От архитектуры и лендинга до биллинга, личного кабинета и аналитики.",
+    desc: "Разрабатываю полноценные SaaS-платформы с монетизацией через подписку. От архитектуры до биллинга, личного кабинета и аналитики.",
     items: [
-      { icon: "💳", text: "Биллинг и подписки — Stripe, ЮKassa, СБП, автоматическое списание" },
-      { icon: "👤", text: "Личный кабинет с ролями, тарифами и лимитами на функции" },
-      { icon: "📦", text: "Multi-tenant архитектура — каждый клиент в своём пространстве" },
-      { icon: "📉", text: "Встроенная аналитика — MRR, Churn, LTV, конверсии по тарифам" },
+      { icon: "💳", text: "Биллинг и подписки — Stripe, ЮKassa, СБП, автосписание" },
+      { icon: "👤", text: "Личный кабинет с ролями, тарифами и лимитами" },
+      { icon: "📦", text: "Multi-tenant — каждый клиент в своём пространстве" },
+      { icon: "📉", text: "Встроенная аналитика — MRR, Churn, LTV, конверсии" },
     ],
     shots: [
       { url: "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/3df2c7ac-4cdc-4747-958f-0946f4db2fe3.png", label: "SaaS: панель клиента" },
@@ -95,19 +97,19 @@ const ANALYTICS_TABS = [
   },
   {
     id: "agents",
-    label: "🤖 Боты и Агенты",
+    label: "🤖 Агенты",
     color: "#06b6d4",
     title: "Мультиагентные системы",
     titleAccent: "работают за людей",
-    desc: "Строю голосовых агентов, чат-ботов и мультиагентные системы с RAG, MCP и подключением к внешним API. Агент — это не скрипт, а думающий сотрудник.",
+    desc: "Строю голосовых агентов, чат-ботов и мультиагентные системы с RAG, MCP и подключением к внешним API.",
     items: [
-      { icon: "🎙️", text: "Голосовые агенты — речь в текст, ответ голосом, распознавание интента" },
-      { icon: "🧠", text: "RAG — агент знает ваши прайсы, правила, FAQ и отвечает точно" },
-      { icon: "🔗", text: "Мультиагенты — координатор + специалисты: расчёт, бронь, уведомление" },
-      { icon: "📨", text: "Telegram, MAX, WhatsApp, веб-виджет — в любом канале за пару часов" },
+      { icon: "🎙️", text: "Голосовые агенты — речь в текст, ответ голосом" },
+      { icon: "🧠", text: "RAG — агент знает прайсы, правила, FAQ клиента" },
+      { icon: "🔗", text: "Мультиагенты — координатор + специалисты" },
+      { icon: "📨", text: "Telegram, MAX, WhatsApp, веб-виджет" },
     ],
     shots: [
-      { url: "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/4ecbbf9f-399f-4dfa-9f82-0f510e65acf4.png", label: "Агент: чат-интерфейс" },
+      { url: "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/4ecbbf9f-399f-4dfa-9f82-0f510e65acf4.png", label: "Агент: чат" },
       { url: "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/3416564e-b468-4a79-8b8e-eaade4459b53.png", label: "Агент: голосовой ввод" },
       { url: "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/81d9f4de-68ac-481f-9ddd-432a4dd308af.png", label: "Агент: готовая смета" },
     ],
@@ -120,7 +122,6 @@ export function LBAnalytics() {
   const [lightboxIdx, setLightboxIdx] = useState<number | null>(null);
   const current = ANALYTICS_TABS[tab];
 
-  // Авто-листание скриншотов
   useEffect(() => {
     setActive(0);
     const t = setInterval(() => setActive(a => (a + 1) % current.shots.length), 3000);
@@ -128,21 +129,21 @@ export function LBAnalytics() {
   }, [tab, current.shots.length]);
 
   return (
-    <section className="py-24" style={{ background: "rgba(255,255,255,0.01)" }}>
-      <div className="max-w-5xl mx-auto px-6">
+    <section className="py-14 sm:py-20" style={{ background: "rgba(255,255,255,0.01)" }}>
+      <div className="max-w-5xl mx-auto px-4 sm:px-6">
 
-        {/* Вкладки */}
-        <div className="flex flex-wrap gap-2 justify-center mb-12">
+        {/* Вкладки — горизонтальный скролл на мобиле */}
+        <div className="flex gap-2 mb-8 overflow-x-auto pb-1 scrollbar-none">
           {ANALYTICS_TABS.map((t, i) => (
             <button
               key={i}
               onClick={() => setTab(i)}
-              className="px-4 py-2 rounded-xl text-sm font-semibold transition-all duration-300 hover:scale-105"
+              className="flex-shrink-0 px-3 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all duration-300"
               style={{
                 background: tab === i ? `${t.color}20` : "rgba(255,255,255,0.04)",
                 border: `1.5px solid ${tab === i ? t.color : "rgba(255,255,255,0.08)"}`,
                 color: tab === i ? t.color : "rgba(255,255,255,0.45)",
-                boxShadow: tab === i ? `0 0 20px ${t.color}30` : "none",
+                boxShadow: tab === i ? `0 0 16px ${t.color}25` : "none",
               }}
             >
               {t.label}
@@ -150,12 +151,14 @@ export function LBAnalytics() {
           ))}
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-          {/* Screenshot preview */}
+        {/* На мобиле — стекинг, на десктопе — сетка */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-12 items-center">
+
+          {/* Screenshot */}
           <div className="relative">
             <div
-              className="relative rounded-2xl overflow-hidden cursor-zoom-in transition-all duration-500"
-              style={{ border: `1px solid ${current.color}40`, boxShadow: `0 0 60px ${current.color}20` }}
+              className="relative rounded-xl sm:rounded-2xl overflow-hidden cursor-zoom-in transition-all duration-500"
+              style={{ border: `1px solid ${current.color}40`, boxShadow: `0 0 40px ${current.color}15` }}
               onClick={() => setLightboxIdx(active)}
             >
               {current.shots.map((s, i) => (
@@ -167,51 +170,36 @@ export function LBAnalytics() {
                   style={{ opacity: i === active ? 1 : 0, position: i === 0 ? "relative" : "absolute", top: 0, left: 0 }}
                 />
               ))}
-              <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-2">
+              <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1.5">
                 {current.shots.map((_, i) => (
-                  <button
-                    key={i}
-                    onClick={e => { e.stopPropagation(); setActive(i); }}
-                    className="rounded-full transition-all duration-300"
-                    style={{ width: i === active ? 20 : 6, height: 6, background: i === active ? current.color : "rgba(255,255,255,0.3)" }}
-                  />
+                  <button key={i} onClick={e => { e.stopPropagation(); setActive(i); }} className="rounded-full transition-all duration-300" style={{ width: i === active ? 16 : 5, height: 5, background: i === active ? current.color : "rgba(255,255,255,0.3)" }} />
                 ))}
               </div>
-              <div className="absolute top-3 right-3 px-2 py-1 rounded-lg text-xs" style={{ background: "rgba(0,0,0,0.7)", color: "rgba(255,255,255,0.6)", backdropFilter: "blur(4px)" }}>
-                🔍 Увеличить
-              </div>
+              <div className="absolute top-2 right-2 px-2 py-1 rounded-lg text-xs" style={{ background: "rgba(0,0,0,0.7)", color: "rgba(255,255,255,0.6)", backdropFilter: "blur(4px)" }}>🔍</div>
             </div>
-            <div className="mt-3 text-center text-sm font-medium" style={{ color: "rgba(255,255,255,0.5)" }}>
-              {current.shots[active]?.label}
-            </div>
+            <div className="mt-2 text-center text-xs font-medium" style={{ color: "rgba(255,255,255,0.45)" }}>{current.shots[active]?.label}</div>
             {lightboxIdx !== null && (
               <Lightbox images={current.shots.map(s => s.url)} startIdx={lightboxIdx} onClose={() => setLightboxIdx(null)} />
             )}
           </div>
 
           {/* Text */}
-          <div key={tab} className="transition-all duration-500">
-            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold mb-4" style={{ background: `${current.color}15`, border: `1px solid ${current.color}35`, color: current.color }}>
+          <div key={tab}>
+            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold mb-3" style={{ background: `${current.color}15`, border: `1px solid ${current.color}35`, color: current.color }}>
               {current.label}
             </div>
-            <h2 className="text-3xl lg:text-4xl font-black mb-4" style={{ fontFamily: "Montserrat, sans-serif" }}>
+            <h2 className="text-xl sm:text-3xl lg:text-4xl font-black mb-3" style={{ fontFamily: "Montserrat, sans-serif" }}>
               {current.title}<br />
               <span style={{ background: `linear-gradient(90deg, ${current.color}, #8b5cf6)`, WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>
                 {current.titleAccent}
               </span>
             </h2>
-            <p className="text-sm leading-relaxed mb-6" style={{ color: "rgba(255,255,255,0.55)" }}>
-              {current.desc}
-            </p>
-            <div className="space-y-3">
+            <p className="text-sm leading-relaxed mb-4" style={{ color: "rgba(255,255,255,0.5)" }}>{current.desc}</p>
+            <div className="space-y-2">
               {current.items.map((item, i) => (
-                <div
-                  key={i}
-                  className="flex items-start gap-3 p-3 rounded-xl transition-all duration-300 hover:-translate-x-1"
-                  style={{ background: "rgba(255,255,255,0.03)", border: `1px solid ${current.color}15` }}
-                >
-                  <span className="text-lg flex-shrink-0">{item.icon}</span>
-                  <span className="text-sm" style={{ color: "rgba(255,255,255,0.65)" }}>{item.text}</span>
+                <div key={i} className="flex items-start gap-2.5 p-2.5 rounded-xl" style={{ background: "rgba(255,255,255,0.03)", border: `1px solid ${current.color}15` }}>
+                  <span className="text-base flex-shrink-0">{item.icon}</span>
+                  <span className="text-xs sm:text-sm" style={{ color: "rgba(255,255,255,0.65)" }}>{item.text}</span>
                 </div>
               ))}
             </div>
@@ -225,31 +213,32 @@ export function LBAnalytics() {
 // ── Experience ────────────────────────────────────────────────────────────────
 export function LBExperience() {
   return (
-    <section id="experience" className="py-24 max-w-5xl mx-auto px-6">
-      <div className="mb-12 text-center">
-        <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold mb-4" style={{ background: "rgba(16,185,129,0.1)", border: "1px solid rgba(16,185,129,0.25)", color: "#34d399" }}>
+    <section id="experience" className="py-14 sm:py-20 max-w-5xl mx-auto px-4 sm:px-6">
+      <div className="mb-8 text-center">
+        <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold mb-3" style={{ background: "rgba(16,185,129,0.1)", border: "1px solid rgba(16,185,129,0.25)", color: "#34d399" }}>
           Опыт работы
         </div>
-        <h2 className="text-4xl font-black" style={{ fontFamily: "Montserrat, sans-serif" }}>Что реализовал</h2>
+        <h2 className="text-2xl sm:text-4xl font-black" style={{ fontFamily: "Montserrat, sans-serif" }}>Что реализовал</h2>
       </div>
 
       <div className="relative">
-        <div className="absolute left-6 top-0 bottom-0 w-px" style={{ background: "linear-gradient(to bottom, #8b5cf6, #f97316, transparent)" }} />
-        <div className="space-y-5 pl-16">
+        <div className="absolute left-4 sm:left-6 top-0 bottom-0 w-px" style={{ background: "linear-gradient(to bottom, #8b5cf6, #f97316, transparent)" }} />
+        <div className="space-y-4 pl-10 sm:pl-16">
           {EXPERIENCE.map((exp, i) => (
             <div key={i} className="relative">
-              <div className="absolute w-3 h-3 rounded-full border-2 mt-2" style={{ background: i === 0 ? "#8b5cf6" : "rgba(139,92,246,0.4)", borderColor: "#080810", left: -40 }} />
-              <div className="p-6 rounded-2xl" style={{ background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.06)" }}>
-                <div className="flex flex-wrap gap-3 items-start justify-between mb-1">
+              <div className="absolute w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full border-2 mt-2" style={{ background: i === 0 ? "#8b5cf6" : "rgba(139,92,246,0.4)", borderColor: "#080810", left: -26 }} />
+              <div className="p-4 sm:p-6 rounded-xl sm:rounded-2xl" style={{ background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.06)" }}>
+                <div className="flex flex-wrap gap-2 items-start justify-between mb-1">
                   <div>
-                    <h3 className="text-lg font-bold text-white" style={{ fontFamily: "Montserrat, sans-serif" }}>{exp.companyFull}</h3>
-                    <p className="text-sm mt-0.5" style={{ color: "#f97316" }}>{exp.role}</p>
+                    <h3 className="text-sm sm:text-lg font-bold text-white" style={{ fontFamily: "Montserrat, sans-serif" }}>{exp.companyFull}</h3>
+                    <p className="text-xs sm:text-sm mt-0.5" style={{ color: "#f97316" }}>{exp.role}</p>
                   </div>
-                  <span className="text-xs px-3 py-1 rounded-full flex-shrink-0" style={{ background: "rgba(139,92,246,0.15)", color: "#a78bfa", border: "1px solid rgba(139,92,246,0.3)" }}>{exp.year}</span>
+                  <span className="text-xs px-2.5 py-1 rounded-full flex-shrink-0" style={{ background: "rgba(139,92,246,0.15)", color: "#a78bfa", border: "1px solid rgba(139,92,246,0.3)" }}>{exp.year}</span>
                 </div>
-                <ul className="grid grid-cols-1 md:grid-cols-2 gap-1.5 mt-4">
+                {/* На мобиле — 1 колонка, на десктопе — 2 */}
+                <ul className="grid grid-cols-1 sm:grid-cols-2 gap-1 mt-3">
                   {exp.items.map((item, j) => (
-                    <li key={j} className="flex items-start gap-2 text-sm" style={{ color: "rgba(255,255,255,0.6)" }}>
+                    <li key={j} className="flex items-start gap-2 text-xs sm:text-sm" style={{ color: "rgba(255,255,255,0.55)" }}>
                       <span className="mt-1.5 w-1 h-1 rounded-full flex-shrink-0" style={{ background: "#f97316" }} />
                       {item}
                     </li>

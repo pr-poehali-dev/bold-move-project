@@ -326,22 +326,27 @@ export function StickyBar() {
 
   return (
     <div
-      className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex gap-3 px-4 py-3 rounded-2xl transition-all duration-500"
+      className="fixed bottom-4 sm:bottom-6 left-1/2 -translate-x-1/2 z-50 flex gap-2 sm:gap-3 px-3 sm:px-4 py-2 sm:py-3 rounded-xl sm:rounded-2xl transition-all duration-500"
       style={{
-        background: "rgba(10,10,20,0.95)",
+        background: "rgba(10,10,20,0.96)",
         border: "1px solid rgba(255,255,255,0.1)",
         backdropFilter: "blur(20px)",
-        boxShadow: "0 8px 40px rgba(0,0,0,0.6)",
+        boxShadow: "0 8px 32px rgba(0,0,0,0.6)",
         opacity: show ? 1 : 0,
         transform: `translateX(-50%) translateY(${show ? 0 : 20}px)`,
         pointerEvents: show ? "auto" : "none",
+        maxWidth: "calc(100vw - 24px)",
       }}
     >
-      <a href={TG_LINK} target="_blank" rel="noreferrer" className="px-5 py-2 rounded-xl text-sm font-bold transition-all hover:scale-105 active:scale-95" style={{ background: "#f97316", color: "#0a0a14" }}>
-        Написать в Telegram
+      <a href={TG_LINK} target="_blank" rel="noreferrer"
+        className="px-3 sm:px-5 py-1.5 sm:py-2 rounded-lg sm:rounded-xl text-xs sm:text-sm font-bold transition-all active:scale-95 whitespace-nowrap"
+        style={{ background: "#f97316", color: "#0a0a14" }}>
+        💬 Telegram
       </a>
-      <a href={MAX_LINK} target="_blank" rel="noreferrer" className="px-5 py-2 rounded-xl text-sm font-bold transition-all hover:scale-105 active:scale-95" style={{ background: "rgba(139,92,246,0.15)", color: "#8b5cf6", border: "1px solid rgba(139,92,246,0.4)" }}>
-        Связаться в MAX
+      <a href={MAX_LINK} target="_blank" rel="noreferrer"
+        className="px-3 sm:px-5 py-1.5 sm:py-2 rounded-lg sm:rounded-xl text-xs sm:text-sm font-bold transition-all active:scale-95 whitespace-nowrap"
+        style={{ background: "rgba(139,92,246,0.15)", color: "#8b5cf6", border: "1px solid rgba(139,92,246,0.4)" }}>
+        🚀 MAX
       </a>
     </div>
   );
@@ -381,7 +386,7 @@ export function NavBar() {
         backdropFilter: scrolled ? "blur(20px)" : "none",
       }}
     >
-      <div className="max-w-6xl mx-auto px-6 py-3 flex items-center justify-between">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-2 sm:py-3 flex items-center justify-between">
         <span className="text-sm font-black" style={{ fontFamily: "Montserrat, sans-serif", background: "linear-gradient(90deg, #f97316, #8b5cf6)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>
           EK
         </span>
