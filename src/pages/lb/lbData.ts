@@ -2,7 +2,7 @@
 
 export const PHOTO_URL = "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/dc3581be-1604-4c86-b70f-dbd17ca4d283.jpg";
 
-export const TG_LINK = "https://t.me/JoniKras";
+export const TG_LINK = "https://telegram.me/JoniKras";
 export const MAX_LINK = "https://max.ru/u/f9LHodD0cOKSEfyoFHNHDKKda2DJEQla4TIbxIDSi7pGygeScJtM9PafS5g";
 
 // ── Все скриншоты для общей галереи ──────────────────────────────────────────
