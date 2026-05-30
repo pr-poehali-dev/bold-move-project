@@ -214,18 +214,16 @@ export function LBPricing() {
                   </li>
                 ))}
               </ul>
-              <a
-                href={plan.href}
-                target="_blank"
-                rel="noreferrer"
-                className="block text-center py-3 rounded-xl text-sm font-bold transition-all duration-300 active:scale-95"
+              <button
+                onClick={() => window.open(plan.href, "_blank", "noopener,noreferrer")}
+                className="block w-full text-center py-3 rounded-xl text-sm font-bold transition-all duration-300 active:scale-95 cursor-pointer"
                 style={plan.popular
-                  ? { background: plan.color, color: "#0a0a14", boxShadow: `0 4px 16px ${plan.glow}` }
+                  ? { background: plan.color, color: "#0a0a14", boxShadow: `0 4px 16px ${plan.glow}`, border: "none" }
                   : { background: `${plan.color}15`, color: plan.color, border: `1px solid ${plan.color}40` }
                 }
               >
                 {plan.cta} →
-              </a>
+              </button>
             </div>
           ))}
         </div>
@@ -256,16 +254,16 @@ export function LBCta() {
 
         {/* Основные кнопки */}
         <div className="flex flex-col gap-3 mb-4">
-          <a href={TG_LINK} target="_blank" rel="noreferrer"
-            className="flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl font-bold text-sm transition-all duration-300 active:scale-95"
-            style={{ background: "linear-gradient(135deg, #f97316, #ea580c)", color: "#fff", boxShadow: "0 4px 20px rgba(249,115,22,0.3)" }}>
+          <button onClick={() => window.open(TG_LINK, "_blank", "noopener,noreferrer")}
+            className="flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl font-bold text-sm transition-all duration-300 active:scale-95 cursor-pointer w-full"
+            style={{ background: "linear-gradient(135deg, #f97316, #ea580c)", color: "#fff", boxShadow: "0 4px 20px rgba(249,115,22,0.3)", border: "none" }}>
             💬 Написать в Telegram
-          </a>
-          <a href={MAX_LINK} target="_blank" rel="noreferrer"
-            className="flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl font-bold text-sm transition-all duration-300 active:scale-95"
+          </button>
+          <button onClick={() => window.open(MAX_LINK, "_blank", "noopener,noreferrer")}
+            className="flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl font-bold text-sm transition-all duration-300 active:scale-95 cursor-pointer w-full"
             style={{ background: "rgba(139,92,246,0.15)", color: "#a78bfa", border: "1.5px solid rgba(139,92,246,0.4)" }}>
             🚀 Написать в MAX
-          </a>
+          </button>
         </div>
 
         {/* Телефон и email — тоже кнопки */}

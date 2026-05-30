@@ -54,16 +54,16 @@ export function LBHero({ heroVisible }: { heroVisible: boolean }) {
 
             {/* Кнопки — на мобиле во всю ширину */}
             <div className="flex flex-col sm:flex-row gap-2.5">
-              <a href={TG_LINK} target="_blank" rel="noreferrer"
-                className="flex-1 sm:flex-none inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl font-bold text-sm transition-all duration-300 hover:scale-105 active:scale-95"
-                style={{ background: "linear-gradient(135deg, #f97316, #ea580c)", color: "#fff", boxShadow: "0 4px 20px rgba(249,115,22,0.4)" }}>
+              <button onClick={() => window.open(TG_LINK, "_blank", "noopener,noreferrer")}
+                className="flex-1 sm:flex-none inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl font-bold text-sm transition-all duration-300 hover:scale-105 active:scale-95 cursor-pointer"
+                style={{ background: "linear-gradient(135deg, #f97316, #ea580c)", color: "#fff", boxShadow: "0 4px 20px rgba(249,115,22,0.4)", border: "none" }}>
                 💬 Написать в Telegram
-              </a>
-              <a href={MAX_LINK} target="_blank" rel="noreferrer"
-                className="flex-1 sm:flex-none inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl font-bold text-sm transition-all duration-300 hover:scale-105 active:scale-95"
+              </button>
+              <button onClick={() => window.open(MAX_LINK, "_blank", "noopener,noreferrer")}
+                className="flex-1 sm:flex-none inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl font-bold text-sm transition-all duration-300 hover:scale-105 active:scale-95 cursor-pointer"
                 style={{ background: "rgba(139,92,246,0.15)", color: "#a78bfa", border: "1.5px solid rgba(139,92,246,0.4)" }}>
                 🚀 Связаться в MAX
-              </a>
+              </button>
             </div>
 
             <div className="flex flex-wrap gap-3 mt-4">
