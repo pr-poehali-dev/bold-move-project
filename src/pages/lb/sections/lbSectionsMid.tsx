@@ -38,26 +38,40 @@ export function LBStackAbout() {
         <div className="max-w-5xl mx-auto px-4 sm:px-6">
 
           {/* Шапка с аватаром */}
-          <div className="flex flex-row items-center gap-4 mb-6">
-            <div className="flex-shrink-0">
+          <div className="flex flex-row items-center gap-6 mb-8">
+            {/* Аватар */}
+            <div className="flex-shrink-0 relative">
               <div
-                className="w-14 h-14 sm:w-16 sm:h-16 rounded-xl overflow-hidden"
-                style={{ border: "2px solid rgba(139,92,246,0.4)", boxShadow: "0 0 20px rgba(139,92,246,0.2)" }}
+                className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl overflow-hidden"
+                style={{ border: "2px solid rgba(139,92,246,0.5)", boxShadow: "0 0 0 4px rgba(139,92,246,0.1), 0 8px 32px rgba(139,92,246,0.25)" }}
               >
                 <img
                   src="https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/03e4b87d-9bd6-41f7-be29-6003bf6cfedb.jpg"
                   alt="Евгений Красноруцкий"
-                  className="w-full h-full object-cover"
+                  className="w-full h-full object-cover object-top"
                 />
               </div>
+              {/* Онлайн-точка */}
+              <div className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-2 border-[#0b0b18]" style={{ background: "#22c55e" }} />
             </div>
-            <div>
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold mb-1" style={{ background: "rgba(139,92,246,0.1)", border: "1px solid rgba(139,92,246,0.25)", color: "#a78bfa" }}>
+
+            {/* Текст */}
+            <div className="flex flex-col gap-1.5">
+              <span
+                className="self-start px-3 py-1 rounded-full text-xs font-semibold tracking-wide"
+                style={{ background: "rgba(139,92,246,0.15)", border: "1px solid rgba(139,92,246,0.3)", color: "#c4b5fd" }}
+              >
                 О себе
-              </div>
-              <h2 className="text-xl sm:text-3xl font-black leading-tight" style={{ fontFamily: "Montserrat, sans-serif" }}>Кто я</h2>
-              <p className="text-xs sm:text-sm mt-0.5" style={{ color: "rgba(255,255,255,0.45)" }}>
-                Fullstack-разработчик + AI-интегратор. Пришёл в код из бизнеса — поэтому говорю на языке задач.
+              </span>
+              <h2
+                className="text-2xl sm:text-4xl font-black leading-none"
+                style={{ fontFamily: "Montserrat, sans-serif" }}
+              >
+                Кто я
+              </h2>
+              <p className="text-sm sm:text-base leading-relaxed" style={{ color: "rgba(255,255,255,0.5)", maxWidth: 420 }}>
+                Fullstack-разработчик + AI-интегратор.<br />
+                Пришёл в код из бизнеса — говорю на языке задач.
               </p>
             </div>
           </div>
