@@ -1041,7 +1041,7 @@ def handler(event: dict, context) -> dict:
         ip = (event.get("requestContext") or {}).get("identity", {}).get("sourceIp") or \
              (event.get("headers") or {}).get("X-Forwarded-For", "unknown").split(",")[0].strip()
 
-        # Лимит: не более 3 демо с одного IP за 24 часа
+        # Лимит: не более 20 демо с одного IP за 24 часа
         cur.execute(f"""
             SELECT COUNT(*) FROM {SCHEMA}.users
             WHERE is_demo = TRUE
@@ -1049,7 +1049,7 @@ def handler(event: dict, context) -> dict:
               AND company_name = %s
         """, (f"ip:{ip}",))
         count = cur.fetchone()[0]
-        if count >= 3:
+        if count >= 20:
             return err("Достигнут лимит демо-сессий. Попробуйте завтра.", 429)
 
         demo_email    = f"demo_{secrets.token_hex(8)}@demo.local"
@@ -1060,7 +1060,7 @@ def handler(event: dict, context) -> dict:
             f"""INSERT INTO {SCHEMA}.users
                 (email, password_hash, name, role, approved, is_demo, demo_expires_at, company_name,
                  estimates_balance, has_own_agent, trial_until)
-                VALUES (%s,%s,%s,'company',TRUE,TRUE, NOW() + INTERVAL '24 hours', %s, 999, FALSE, NULL)
+                VALUES (%s,%s,%s,'company',TRUE,TRUE, NOW() + INTERVAL '7 days', %s, 999, FALSE, NULL)
                 RETURNING id""",
             (demo_email, hash_password(demo_password), demo_name, f"ip:{ip}")
         )
@@ -1068,7 +1068,7 @@ def handler(event: dict, context) -> dict:
 
         new_token = secrets.token_hex(32)
         cur.execute(
-            f"INSERT INTO {SCHEMA}.user_sessions (user_id, token, expires_at) VALUES (%s,%s, NOW() + INTERVAL '24 hours')",
+            f"INSERT INTO {SCHEMA}.user_sessions (user_id, token, expires_at) VALUES (%s,%s, NOW() + INTERVAL '7 days')",
             (user_id, new_token)
         )
         conn.commit()

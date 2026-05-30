@@ -6,28 +6,24 @@ import func2url from "@/../backend/func2url.json";
 const AUTH_URL = (func2url as Record<string, string>)["auth"];
 
 async function createDemoAndRedirect(link: string) {
-  // Если уже есть токен — просто переходим, не создаём новый аккаунт
   const existing = localStorage.getItem("mp_user_token");
   if (existing) {
-    // Проверяем что токен ещё живой
     const check = await fetch(`${AUTH_URL}?action=me`, {
       headers: { "X-Authorization": `Bearer ${existing}` },
-    });
-    if (check.ok) {
-      const d = await check.json();
-      if (d.user?.is_demo) {
-        window.open(link, "_blank", "noopener,noreferrer");
-        return;
-      }
+    }).catch(() => null);
+    if (check?.ok) {
+      // Токен живой (демо или обычный) — просто открываем
+      window.open(link, "_blank", "noopener,noreferrer");
+      return;
     }
-    // Токен мёртвый или не демо — удаляем и создаём новый
+    // Токен мёртвый — удаляем
     localStorage.removeItem("mp_user_token");
   }
 
-  const res = await fetch(`${AUTH_URL}?action=create-demo`, { method: "POST" });
-  if (!res.ok) {
-    const d = await res.json().catch(() => ({}));
-    alert(d.error || "Не удалось создать демо. Попробуйте позже.");
+  const res = await fetch(`${AUTH_URL}?action=create-demo`, { method: "POST" }).catch(() => null);
+  if (!res || !res.ok) {
+    // Не удалось создать демо — всё равно открываем ссылку
+    window.open(link, "_blank", "noopener,noreferrer");
     return;
   }
   const { token } = await res.json();
