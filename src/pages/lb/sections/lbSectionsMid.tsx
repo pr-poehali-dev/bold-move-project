@@ -87,28 +87,25 @@ export function LBStackAbout() {
           </div>
 
           {/* До / После */}
+          {/* Заголовки колонок */}
           <div className="grid grid-cols-2 gap-3 sm:gap-4 mb-2">
-            <div className="p-3 sm:p-4 rounded-xl text-center" style={{ background: "rgba(239,68,68,0.06)", border: "1px solid rgba(239,68,68,0.2)" }}>
-              <div className="text-xs font-bold uppercase tracking-widest mb-3" style={{ color: "rgba(239,68,68,0.7)" }}>😤 Как обычно бывает</div>
-              <div className="space-y-2">
-                {BEFORE_AFTER.map((item, i) => (
-                  <div key={i} className="text-xs sm:text-sm text-left px-3 py-2 rounded-lg" style={{ background: "rgba(239,68,68,0.06)", color: "rgba(255,255,255,0.55)", lineHeight: 1.5 }}>
-                    {item.before}
-                  </div>
-                ))}
-              </div>
-            </div>
-            <div className="p-3 sm:p-4 rounded-xl text-center" style={{ background: "rgba(139,92,246,0.06)", border: "1px solid rgba(139,92,246,0.25)", boxShadow: "0 0 24px rgba(139,92,246,0.08)" }}>
-              <div className="text-xs font-bold uppercase tracking-widest mb-3" style={{ color: "#a78bfa" }}>✅ Как у меня</div>
-              <div className="space-y-2">
-                {BEFORE_AFTER.map((item, i) => (
-                  <div key={i} className="text-xs sm:text-sm text-left px-3 py-2 rounded-lg" style={{ background: "rgba(139,92,246,0.08)", color: "rgba(255,255,255,0.8)", lineHeight: 1.5 }}>
-                    {item.after}
-                  </div>
-                ))}
-              </div>
-            </div>
+            <div className="text-center py-2 px-3 rounded-xl text-xs font-bold uppercase tracking-widest" style={{ background: "rgba(239,68,68,0.06)", border: "1px solid rgba(239,68,68,0.2)", color: "rgba(239,68,68,0.8)" }}>😤 Как обычно бывает</div>
+            <div className="text-center py-2 px-3 rounded-xl text-xs font-bold uppercase tracking-widest" style={{ background: "rgba(139,92,246,0.06)", border: "1px solid rgba(139,92,246,0.25)", color: "#a78bfa" }}>✅ Как у меня</div>
           </div>
+          {/* Попарные строки — одинаковая высота */}
+          <div className="flex flex-col gap-2 mb-2">
+            {BEFORE_AFTER.map((item, i) => (
+              <div key={i} className="grid grid-cols-2 gap-3 sm:gap-4">
+                <div className="text-xs sm:text-sm px-3 py-2.5 rounded-lg flex items-center" style={{ background: "rgba(239,68,68,0.06)", border: "1px solid rgba(239,68,68,0.1)", color: "rgba(255,255,255,0.55)", lineHeight: 1.5 }}>
+                  {item.before}
+                </div>
+                <div className="text-xs sm:text-sm px-3 py-2.5 rounded-lg flex items-center" style={{ background: "rgba(139,92,246,0.08)", border: "1px solid rgba(139,92,246,0.15)", color: "rgba(255,255,255,0.85)", lineHeight: 1.5 }}>
+                  {item.after}
+                </div>
+              </div>
+            ))}
+          </div>
+
 
         </div>
       </section>
