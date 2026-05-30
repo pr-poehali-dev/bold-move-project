@@ -31,6 +31,8 @@ export const ALL_SCREENSHOTS = [
   { url: "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/f0aa33cd-c1f8-416e-9e9e-82974e4e7e87.png", caption: "Панель: управление прайсами" },
   { url: "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/1ee941f1-5b50-4584-86e4-973dde134db0.png", caption: "Панель: мультикомнатные проекты" },
   { url: "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/50afc0df-5ddb-48d4-9569-e1f37b898421.png", caption: "Панель: PDF-сметы, Telegram и MAX интеграции" },
+  { url: "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/f0de086d-51dc-47ee-8e37-ae33bae26172.jpg", caption: "Галерея скриншотов проекта" },
+  { url: "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/b355fa9e-7615-40f9-8131-9f6dbb3311ae.jpg", caption: "CRM: мобильная воронка заявок" },
 ];
 
 export const PROJECTS = [
