@@ -243,12 +243,15 @@ export function ProjectCard({ project, index }: { project: typeof PROJECTS[0]; i
               ))}
             </div>
           )}
-          <div className="absolute top-3 left-3 px-3 py-1 rounded-full text-xs font-bold" style={{ background: project.color, color: "#0a0a14" }}>{project.tags[0]}</div>
         </div>
 
         {/* Content */}
-        <div className="p-6">
-          <h3 className="text-xl font-bold text-white mb-1" style={{ fontFamily: "Montserrat, sans-serif" }}>{project.title}</h3>
+        <div className="p-4 sm:p-6">
+          {/* Тег — теперь здесь, не перекрывает скриншот */}
+          <div className="mb-2">
+            <span className="inline-block px-2.5 py-0.5 rounded-full text-xs font-bold" style={{ background: project.color, color: "#0a0a14" }}>{project.tags[0]}</span>
+          </div>
+          <h3 className="text-lg sm:text-xl font-bold text-white mb-1" style={{ fontFamily: "Montserrat, sans-serif" }}>{project.title}</h3>
           <p className="text-sm mb-3" style={{ color: project.color }}>{project.subtitle}</p>
           <p className="text-sm leading-relaxed mb-4" style={{ color: "rgba(255,255,255,0.6)" }}>{project.description}</p>
           <ul className="space-y-1.5 mb-5">
