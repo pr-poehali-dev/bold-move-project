@@ -35,6 +35,7 @@ export const ALL_SCREENSHOTS = [
   { url: "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/b355fa9e-7615-40f9-8131-9f6dbb3311ae.jpg", caption: "CRM: мобильная воронка заявок" },
   { url: "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/15478a1b-e4a1-406c-93b7-05f07653da6a.jpg", caption: "CRM: P&L по заказу" },
   { url: "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/507e3a3f-22eb-41d0-b4a9-91c7063e5099.jpg", caption: "AI-агент: мобильный интерфейс" },
+  { url: "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/9b9146e8-90d5-4a1f-b978-2a4c40af7af9.jpg", caption: "CAD: мобильный построитель" },
 ];
 
 export const PROJECTS = [
