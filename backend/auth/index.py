@@ -1219,6 +1219,91 @@ def handler(event: dict, context) -> dict:
                 priority, 0, user_id
             ))
 
+        # ── Демо-данные: проект построителя (реальная Кухня) ────────────────
+        import json as _json
+        plan_proj_name = "Квартира Захаровых, Королёв"
+        cur.execute(
+            f"""INSERT INTO {SCHEMA}.plan_projects
+                (company_id, name, client_name, address, phone, status, created_at, updated_at)
+                VALUES (%s,%s,%s,%s,%s,'active',%s,%s) RETURNING id""",
+            (user_id, plan_proj_name, "Дмитрий Захаров",
+             "Королёв, ул. Октябрьская, 3, кв. 47", "+7 (925) 345-67-89",
+             now - timedelta(days=3), now - timedelta(days=1))
+        )
+        plan_proj_id = cur.fetchone()[0]
+
+        # Комната 1: Кухня (реальный чертёж из проекта, id=99)
+        kitchen_data = {"arcs":[],"room":{"name":"Главная фигура","concreteDipMm":None,"floorToCeilCm":None,"mansardCeiling":False},"tool":"move","phase":"lengths","points":[{"x":620,"y":580,"id":"pt_demo_k1"},{"x":620,"y":260,"id":"pt_demo_k2"},{"x":940,"y":260,"id":"pt_demo_k3"},{"x":940,"y":500,"id":"pt_demo_k4"},{"x":860,"y":500,"id":"pt_demo_k5"},{"x":860,"y":540,"id":"pt_demo_k6"},{"x":940,"y":540,"id":"pt_demo_k7"},{"x":940,"y":580,"id":"pt_demo_k8"}],"isBuilt":True,"dimLines":[],"isClosed":True,"segments":[{"id":"s_demo_k1","toId":"pt_demo_k2","items":[{"name":"EuroKRAAB стеновой","unit":"пог.м","priceId":12,"category":"Теневой профиль","imageUrl":"https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/price-images/e877217f42e143ffbd1eb33d6bdec341.png","quantity":4,"isWallItem":True}],"fromId":"pt_demo_k1","lengthCm":400,"arcRadius":0,"showLength":True,"showDimLine":True},{"id":"s_demo_k2","toId":"pt_demo_k3","items":[{"name":"Ниша ПК-14 (2 ряда)","unit":"пог.м","priceId":59,"category":"Ниши для штор","imageUrl":"https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/price-images/9d7ec38b035a42bda0b92a32f88e975e.png","quantity":4,"isWallItem":True}],"fromId":"pt_demo_k2","lengthCm":400,"arcRadius":0,"showLength":True,"showDimLine":True},{"id":"s_demo_k3","toId":"pt_demo_k4","items":[{"name":"Flexy FLY 02 с рассеивателем","unit":"пог.м","priceId":17,"category":"Парящий профиль","imageUrl":"https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/price-images/2d3fad41138c4f699df4866f66635046.png","quantity":3,"isWallItem":True}],"fromId":"pt_demo_k3","lengthCm":300,"arcRadius":0,"showLength":True,"showDimLine":True},{"id":"s_demo_k4","toId":"pt_demo_k5","items":[{"name":"Flexy FLY 02 с рассеивателем","unit":"пог.м","priceId":17,"category":"Парящий профиль","quantity":1,"isWallItem":True}],"fromId":"pt_demo_k4","lengthCm":100,"arcRadius":0,"showLength":True,"showDimLine":True},{"id":"s_demo_k5","toId":"pt_demo_k6","items":[{"name":"Flexy FLY 02 с рассеивателем","unit":"пог.м","priceId":17,"category":"Парящий профиль","quantity":0.5,"isWallItem":True}],"fromId":"pt_demo_k5","lengthCm":50,"arcRadius":0,"showLength":True,"showDimLine":True},{"id":"s_demo_k6","toId":"pt_demo_k7","items":[{"name":"Flexy FLY 02 с рассеивателем","unit":"пог.м","priceId":17,"category":"Парящий профиль","quantity":1,"isWallItem":True}],"fromId":"pt_demo_k6","lengthCm":100,"arcRadius":0,"showLength":True,"showDimLine":True},{"id":"s_demo_k7","toId":"pt_demo_k8","items":[{"name":"Flexy FLY 02 с рассеивателем","unit":"пог.м","priceId":17,"category":"Парящий профиль","quantity":0.5,"isWallItem":True}],"fromId":"pt_demo_k7","lengthCm":50,"arcRadius":0,"showLength":True,"showDimLine":True},{"id":"s_demo_k8","toId":"pt_demo_k1","items":[{"name":"Стеновой алюминиевый","unit":"пог.м","priceId":10,"category":"Профиль стандартный","imageUrl":"https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/price-images/11dfc652690a4211b4f8dc7161e0c927.png","quantity":4,"isWallItem":True}],"fromId":"pt_demo_k8","lengthCm":400,"arcRadius":0,"showLength":True,"showDimLine":True}],"settings":{"panX":-621.0,"panY":-415.0,"zoom":3.9,"ortho":True,"gridSize":20,"showGrid":True,"showPoints":True,"showDimLines":False,"snapToPoints":True,"showDiagonals":True,"showAngleLabels":False,"showPointLabels":True,"showSegmentLabels":False},"baseScale":0.8,"diagonals":[{"id":"d_demo_1","toId":"pt_demo_k3","fromId":"pt_demo_k1","visible":True,"lengthCm":565.7,"showLength":True},{"id":"d_demo_2","toId":"pt_demo_k7","fromId":"pt_demo_k1","visible":True,"lengthCm":403.1,"showLength":True}],"ceilItems":[{"id":"ci_demo_1","x":750,"y":400,"name":"Под светильник ∅90","priceId":31,"category":"Закладные","imageUrl":"https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/price-images/11dfc652690a4211b4f8dc7161e0c927.png","quantity":1},{"id":"ci_demo_2","x":820,"y":420,"name":"Под светильник ∅90","priceId":31,"category":"Закладные","imageUrl":"https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/price-images/11dfc652690a4211b4f8dc7161e0c927.png","quantity":1},{"id":"ci_demo_3","x":680,"y":380,"name":"Светильник GX-53","priceId":45,"category":"Освещение","quantity":1},{"id":"ci_demo_4","x":780,"y":350,"name":"Светильник GX-53","priceId":45,"category":"Освещение","quantity":1}]}
+        cur.execute(
+            f"""INSERT INTO {SCHEMA}.room_plans
+                (user_id, name, data, project_id, include_in_estimate, include_drawing, created_at, updated_at)
+                VALUES (%s,'Кухня',%s,%s,TRUE,TRUE,%s,%s) RETURNING id""",
+            (user_id, _json.dumps(kitchen_data, ensure_ascii=False),
+             plan_proj_id, now - timedelta(days=3), now - timedelta(days=1))
+        )
+
+        # Комната 2: Гостиная (прямоугольник 5×4 м с парящим профилем)
+        living_data = {"arcs":[],"room":{"name":"Главная фигура","concreteDipMm":None,"floorToCeilCm":None,"mansardCeiling":False},"tool":"move","phase":"lengths","points":[{"x":200,"y":600,"id":"pt_demo_l1"},{"x":700,"y":600,"id":"pt_demo_l2"},{"x":700,"y":200,"id":"pt_demo_l3"},{"x":200,"y":200,"id":"pt_demo_l4"}],"isBuilt":True,"dimLines":[],"isClosed":True,"segments":[{"id":"s_demo_l1","toId":"pt_demo_l2","items":[{"name":"Стеновой алюминиевый","unit":"пог.м","priceId":10,"category":"Профиль стандартный","quantity":5,"isWallItem":True},{"name":"Теневой классик (Flexy KLASSIKA 140)","unit":"пог.м","priceId":60,"category":"Теневой профиль","quantity":5,"isWallItem":True}],"fromId":"pt_demo_l1","lengthCm":500,"arcRadius":0,"showLength":True,"showDimLine":True},{"id":"s_demo_l2","toId":"pt_demo_l3","items":[{"name":"Стеновой алюминиевый","unit":"пог.м","priceId":10,"category":"Профиль стандартный","quantity":4,"isWallItem":True},{"name":"Ниша ПК-14 (2 ряда)","unit":"пог.м","priceId":59,"category":"Ниши для штор","quantity":4,"isWallItem":True}],"fromId":"pt_demo_l2","lengthCm":400,"arcRadius":0,"showLength":True,"showDimLine":True},{"id":"s_demo_l3","toId":"pt_demo_l4","items":[{"name":"Стеновой алюминиевый","unit":"пог.м","priceId":10,"category":"Профиль стандартный","quantity":5,"isWallItem":True},{"name":"Flexy FLY 02 с рассеивателем","unit":"пог.м","priceId":17,"category":"Парящий профиль","quantity":5,"isWallItem":True}],"fromId":"pt_demo_l3","lengthCm":500,"arcRadius":0,"showLength":True,"showDimLine":True},{"id":"s_demo_l4","toId":"pt_demo_l1","items":[{"name":"Стеновой алюминиевый","unit":"пог.м","priceId":10,"category":"Профиль стандартный","quantity":4,"isWallItem":True}],"fromId":"pt_demo_l4","lengthCm":400,"arcRadius":0,"showLength":True,"showDimLine":True}],"settings":{"panX":-150.0,"panY":-150.0,"zoom":2.5,"ortho":True,"gridSize":20,"showGrid":True,"showPoints":True,"showDimLines":False,"snapToPoints":True,"showDiagonals":True,"showAngleLabels":False,"showPointLabels":True,"showSegmentLabels":False},"baseScale":0.8,"diagonals":[{"id":"d_demo_l1","toId":"pt_demo_l3","fromId":"pt_demo_l1","visible":True,"lengthCm":640.3,"showLength":True},{"id":"d_demo_l2","toId":"pt_demo_l4","fromId":"pt_demo_l2","visible":True,"lengthCm":640.3,"showLength":True}],"ceilItems":[{"id":"ci_demo_l1","x":350,"y":350,"name":"Под люстру ∅200","priceId":33,"category":"Закладные","quantity":1},{"id":"ci_demo_l2","x":280,"y":300,"name":"Под светильник ∅90","priceId":31,"category":"Закладные","quantity":1},{"id":"ci_demo_l3","x":420,"y":300,"name":"Под светильник ∅90","priceId":31,"category":"Закладные","quantity":1},{"id":"ci_demo_l4","x":280,"y":420,"name":"Под светильник ∅90","priceId":31,"category":"Закладные","quantity":1},{"id":"ci_demo_l5","x":420,"y":420,"name":"Под светильник ∅90","priceId":31,"category":"Закладные","quantity":1}]}
+        cur.execute(
+            f"""INSERT INTO {SCHEMA}.room_plans
+                (user_id, name, data, project_id, include_in_estimate, include_drawing, created_at, updated_at)
+                VALUES (%s,'Гостиная',%s,%s,TRUE,TRUE,%s,%s)""",
+            (user_id, _json.dumps(living_data, ensure_ascii=False),
+             plan_proj_id, now - timedelta(days=3), now - timedelta(days=1))
+        )
+
+        # Комната 3: Спальня (3×3.5 м)
+        bedroom_data = {"arcs":[],"room":{"name":"Главная фигура","concreteDipMm":None,"floorToCeilCm":None,"mansardCeiling":False},"tool":"move","phase":"lengths","points":[{"x":300,"y":550,"id":"pt_demo_b1"},{"x":650,"y":550,"id":"pt_demo_b2"},{"x":650,"y":250,"id":"pt_demo_b3"},{"x":300,"y":250,"id":"pt_demo_b4"}],"isBuilt":True,"dimLines":[],"isClosed":True,"segments":[{"id":"s_demo_b1","toId":"pt_demo_b2","items":[{"name":"Стеновой алюминиевый","unit":"пог.м","priceId":10,"category":"Профиль стандартный","quantity":3.5,"isWallItem":True}],"fromId":"pt_demo_b1","lengthCm":350,"arcRadius":0,"showLength":True,"showDimLine":True},{"id":"s_demo_b2","toId":"pt_demo_b3","items":[{"name":"Стеновой алюминиевый","unit":"пог.м","priceId":10,"category":"Профиль стандартный","quantity":3,"isWallItem":True},{"name":"Теневой классик (Flexy KLASSIKA 140)","unit":"пог.м","priceId":60,"category":"Теневой профиль","quantity":3,"isWallItem":True}],"fromId":"pt_demo_b2","lengthCm":300,"arcRadius":0,"showLength":True,"showDimLine":True},{"id":"s_demo_b3","toId":"pt_demo_b4","items":[{"name":"Стеновой алюминиевый","unit":"пог.м","priceId":10,"category":"Профиль стандартный","quantity":3.5,"isWallItem":True}],"fromId":"pt_demo_b3","lengthCm":350,"arcRadius":0,"showLength":True,"showDimLine":True},{"id":"s_demo_b4","toId":"pt_demo_b1","items":[{"name":"Стеновой алюминиевый","unit":"пог.м","priceId":10,"category":"Профиль стандартный","quantity":3,"isWallItem":True}],"fromId":"pt_demo_b4","lengthCm":300,"arcRadius":0,"showLength":True,"showDimLine":True}],"settings":{"panX":-250.0,"panY":-200.0,"zoom":2.8,"ortho":True,"gridSize":20,"showGrid":True,"showPoints":True,"showDimLines":False,"snapToPoints":True,"showDiagonals":True,"showAngleLabels":False,"showPointLabels":True,"showSegmentLabels":False},"baseScale":0.8,"diagonals":[{"id":"d_demo_b1","toId":"pt_demo_b3","fromId":"pt_demo_b1","visible":True,"lengthCm":459.6,"showLength":True},{"id":"d_demo_b2","toId":"pt_demo_b4","fromId":"pt_demo_b2","visible":True,"lengthCm":459.6,"showLength":True}],"ceilItems":[{"id":"ci_demo_b1","x":450,"y":390,"name":"Под люстру ∅200","priceId":33,"category":"Закладные","quantity":1},{"id":"ci_demo_b2","x":380,"y":340,"name":"Под светильник ∅90","priceId":31,"category":"Закладные","quantity":1},{"id":"ci_demo_b3","x":520,"y":340,"name":"Под светильник ∅90","priceId":31,"category":"Закладные","quantity":1}]}
+        cur.execute(
+            f"""INSERT INTO {SCHEMA}.room_plans
+                (user_id, name, data, project_id, include_in_estimate, include_drawing, created_at, updated_at)
+                VALUES (%s,'Спальня',%s,%s,TRUE,TRUE,%s,%s)""",
+            (user_id, _json.dumps(bedroom_data, ensure_ascii=False),
+             plan_proj_id, now - timedelta(days=3), now - timedelta(days=1))
+        )
+
+        # ── Демо-данные: 3 сметы (реальные из проекта) ───────────────────────
+        demo_estimates = [
+            {
+                "title": "Смета — Гостиная + Кухня, 2 комнаты",
+                "blocks": [{"title":"Полотно","numbered":True,"items":[{"name":"MSD Classic матовый","value":"20 м² × 399 ₽ = 7 980 ₽"},{"name":"Раскрой ПВХ","value":"20 м² × 100 ₽ = 2 000 ₽"},{"name":"Огарпунивание ПВХ","value":"20 м² × 100 ₽ = 2 000 ₽"}]},{"title":"Профиль","numbered":True,"items":[{"name":"Стеновой алюминиевый","value":"21 пог.м × 200 ₽ = 4 200 ₽"},{"name":"Парящий Flexy FLY 02","value":"5 пог.м × 1 650 ₽ = 8 250 ₽"}]},{"title":"Закладные","numbered":True,"items":[{"name":"Под светильник ∅90","value":"10 шт × 350 ₽ = 3 500 ₽"},{"name":"Под светильник ∅100-300","value":"2 шт × 450 ₽ = 900 ₽"}]},{"title":"Освещение","numbered":True,"items":[{"name":"Лента QF Premium 5м","value":"1 катушка × 4 000 ₽ = 4 000 ₽"},{"name":"Блок питания 100 Вт","value":"1 шт × 3 500 ₽ = 3 500 ₽"}]},{"title":"Ниши","numbered":True,"items":[{"name":"Ниша ПК-14 (2 ряда)","value":"3 пог.м × 3 600 ₽ = 10 800 ₽"}]},{"title":"Услуги монтажа","numbered":True,"items":[{"name":"Монтаж полотна ПВХ","value":"20 м² × 350 ₽ = 7 000 ₽"},{"name":"Монтаж профиля стандарт","value":"26 пог.м × 200 ₽ = 5 200 ₽"},{"name":"Монтаж парящего профиля","value":"5 пог.м × 350 ₽ = 1 750 ₽"},{"name":"Монтаж закладной","value":"12 шт × 350 ₽ = 4 200 ₽"},{"name":"Монтаж ниши","value":"3 пог.м × 700 ₽ = 2 100 ₽"},{"name":"Монтаж светильников GX-53","value":"10 шт × 200 ₽ = 2 000 ₽"},{"name":"Монтаж разводки ГОСТ","value":"15 шт × 200 ₽ = 3 000 ₽"},{"name":"Монтаж ленты","value":"5 пог.м × 350 ₽ = 1 750 ₽"},{"name":"Монтаж блока питания","value":"1 шт × 500 ₽ = 500 ₽"}]}],
+                "totals": ["Econom:   63 436 ₽","Standard: 74 630 ₽","Premium:  94 780 ₽"],
+                "final_phrase": "На какой день вас записать на бесплатный замер?",
+                "total_econom": 63436, "total_standard": 74630, "total_premium": 94780,
+                "status": "sent", "created_at": now - timedelta(days=5),
+            },
+            {
+                "title": "Смета — 3 комнаты + коридор",
+                "blocks": [{"title":"Полотно","numbered":True,"items":[{"name":"MSD Classic матовый","value":"20 м² × 399 ₽ = 7 980 ₽"},{"name":"Раскрой ПВХ","value":"20 м² × 100 ₽ = 2 000 ₽"},{"name":"Огарпунивание ПВХ","value":"20 м² × 100 ₽ = 2 000 ₽"}]},{"title":"Профиль","numbered":True,"items":[{"name":"Стеновой алюминиевый","value":"17 пог.м × 200 ₽ = 3 400 ₽"},{"name":"Парящий Flexy FLY 02 с рассеивателем","value":"5 пог.м × 1 650 ₽ = 8 250 ₽"}]},{"title":"Закладные","numbered":True,"items":[{"name":"Под светильник ∅90","value":"12 шт × 350 ₽ = 4 200 ₽"},{"name":"Под люстру планка","value":"3 шт × 700 ₽ = 2 100 ₽"}]},{"title":"Освещение","numbered":True,"items":[{"name":"Лента QF Premium 5м","value":"1 катушка × 4 000 ₽ = 4 000 ₽"},{"name":"Блок питания 100 Вт","value":"1 шт × 3 500 ₽ = 3 500 ₽"},{"name":"Светильник GX-53","value":"12 шт × 400 ₽ = 4 800 ₽"},{"name":"Лампа GX-53","value":"12 шт × 150 ₽ = 1 800 ₽"}]},{"title":"Ниши","numbered":True,"items":[{"name":"Ниша ПК-12 (3 ряда)","value":"3 пог.м × 3 600 ₽ = 10 800 ₽"}]},{"title":"Услуги монтажа","numbered":True,"items":[{"name":"Монтаж полотна ПВХ","value":"20 м² × 350 ₽ = 7 000 ₽"},{"name":"Монтаж профиля стандарт","value":"22 пог.м × 200 ₽ = 4 400 ₽"},{"name":"Монтаж ниши","value":"3 пог.м × 700 ₽ = 2 100 ₽"},{"name":"Монтаж парящего профиля","value":"5 пог.м × 350 ₽ = 1 750 ₽"},{"name":"Монтаж закладной","value":"15 шт × 350 ₽ = 5 250 ₽"},{"name":"Монтаж светильников GX-53","value":"12 шт × 200 ₽ = 2 400 ₽"},{"name":"Монтаж разводки ГОСТ","value":"18 шт × 200 ₽ = 3 600 ₽"},{"name":"Монтаж ленты","value":"5 пог.м × 350 ₽ = 1 750 ₽"},{"name":"Монтаж блока питания","value":"1 шт × 500 ₽ = 500 ₽"}]}],
+                "totals": ["Econom:   71 043 ₽","Standard: 83 580 ₽","Premium:  106 147 ₽"],
+                "final_phrase": "На какой день вас записать на бесплатный замер?",
+                "total_econom": 71043, "total_standard": 83580, "total_premium": 106147,
+                "status": "viewed", "created_at": now - timedelta(days=12),
+            },
+            {
+                "title": "Смета — Спальня 12 м², матовый потолок",
+                "blocks": [{"title":"Полотно","numbered":True,"items":[{"name":"MSD Classic матовый","value":"12 м² × 399 ₽ = 4 788 ₽"},{"name":"Раскрой ПВХ","value":"12 м² × 100 ₽ = 1 200 ₽"},{"name":"Огарпунивание ПВХ","value":"12 м² × 100 ₽ = 1 200 ₽"}]},{"title":"Профиль","numbered":True,"items":[{"name":"Стеновой алюминиевый","value":"14 пог.м × 200 ₽ = 2 800 ₽"}]},{"title":"Закладные","numbered":True,"items":[{"name":"Под светильник ∅90","value":"6 шт × 350 ₽ = 2 100 ₽"},{"name":"Под люстру ∅200","value":"1 шт × 700 ₽ = 700 ₽"}]},{"title":"Услуги монтажа","numbered":True,"items":[{"name":"Монтаж полотна ПВХ","value":"12 м² × 350 ₽ = 4 200 ₽"},{"name":"Монтаж профиля стандарт","value":"14 пог.м × 200 ₽ = 2 800 ₽"},{"name":"Монтаж закладной","value":"7 шт × 350 ₽ = 2 450 ₽"}]}],
+                "totals": ["Econom:   18 488 ₽","Standard: 22 238 ₽","Premium:  28 238 ₽"],
+                "final_phrase": "Запишем вас на замер?",
+                "total_econom": 18488, "total_standard": 22238, "total_premium": 28238,
+                "status": "new", "created_at": now - timedelta(days=1),
+            },
+        ]
+
+        for est in demo_estimates:
+            cur.execute(
+                f"""INSERT INTO {SCHEMA}.saved_estimates
+                    (user_id, company_id, title, blocks, totals, final_phrase,
+                     total_econom, total_standard, total_premium, status, created_at, updated_at)
+                    VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)""",
+                (user_id, user_id, est["title"],
+                 _json.dumps(est["blocks"], ensure_ascii=False),
+                 _json.dumps(est["totals"], ensure_ascii=False),
+                 est["final_phrase"],
+                 est["total_econom"], est["total_standard"], est["total_premium"],
+                 est["status"], est["created_at"], est["created_at"])
+            )
+
         conn.commit()
         return ok({"token": new_token, "user": {
             "id": user_id, "email": demo_email, "name": demo_name,
