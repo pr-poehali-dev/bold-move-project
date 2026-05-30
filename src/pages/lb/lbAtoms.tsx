@@ -145,6 +145,7 @@ export function Particles() {
 // ── Лайтбокс ─────────────────────────────────────────────────────────────────
 export function Lightbox({ images, startIdx, onClose }: { images: string[]; startIdx: number; onClose: () => void }) {
   const [current, setCurrent] = useState(startIdx);
+  const touchStartX = useRef<number | null>(null);
 
   const prev = useCallback(() => setCurrent(c => (c - 1 + images.length) % images.length), [images.length]);
   const next = useCallback(() => setCurrent(c => (c + 1) % images.length), [images.length]);
@@ -159,13 +160,28 @@ export function Lightbox({ images, startIdx, onClose }: { images: string[]; star
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose, prev, next]);
 
+  const onTouchStart = (e: React.TouchEvent) => {
+    touchStartX.current = e.touches[0].clientX;
+  };
+  const onTouchEnd = (e: React.TouchEvent) => {
+    if (touchStartX.current === null) return;
+    const dx = e.changedTouches[0].clientX - touchStartX.current;
+    if (Math.abs(dx) > 40) { if (dx < 0) next(); else prev(); }
+    touchStartX.current = null;
+  };
+
   return (
     <div
       className="fixed inset-0 z-[200] flex items-center justify-center"
       style={{ background: "rgba(0,0,0,0.92)", backdropFilter: "blur(10px)" }}
       onClick={onClose}
     >
-      <div className="relative max-w-5xl w-full mx-4" onClick={e => e.stopPropagation()}>
+      <div
+        className="relative max-w-5xl w-full mx-4"
+        onClick={e => e.stopPropagation()}
+        onTouchStart={onTouchStart}
+        onTouchEnd={onTouchEnd}
+      >
         <button onClick={onClose} className="absolute -top-10 right-0 text-white/50 hover:text-white transition-colors text-2xl">✕</button>
         <img src={images[current]} alt="" className="w-full rounded-2xl" style={{ maxHeight: "80vh", objectFit: "contain" }} />
         <div className="text-center mt-3 text-sm" style={{ color: "rgba(255,255,255,0.4)" }}>{current + 1} / {images.length}</div>
