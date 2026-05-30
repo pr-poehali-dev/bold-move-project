@@ -227,9 +227,17 @@ export function OrdersClientCard({ c, onClick, onNextStep, onSwipeBuilder, onSwi
           <div className="flex items-start mb-3">
             <div className="flex-1 min-w-0">
               <div className="flex items-center justify-between gap-2">
-                <span className="text-sm font-bold truncate" style={{ color: t.text }}>
-                  {localStorage.getItem(`order_title_${c.id}`) || `Заявка №${c.id}`}
-                </span>
+                <div className="flex items-center gap-1.5 min-w-0">
+                  {c.tags?.includes("демо") && (
+                    <span className="flex-shrink-0 text-[8px] px-1 py-0.5 rounded font-bold uppercase tracking-wide"
+                      style={{ background: "rgba(139,92,246,0.15)", color: "#a78bfa", border: "1px solid rgba(139,92,246,0.3)" }}>
+                      Демо
+                    </span>
+                  )}
+                  <span className="text-sm font-bold truncate" style={{ color: t.text }}>
+                    {localStorage.getItem(`order_title_${c.id}`) || `Заявка №${c.id}`}
+                  </span>
+                </div>
                 {isInstall
                   ? <InstallProgress client={clientWithSub} />
                   : <span className="flex-shrink-0 text-[10px] px-1.5 py-0.5 rounded-md font-medium"

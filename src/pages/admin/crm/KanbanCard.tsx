@@ -82,9 +82,17 @@ export default function KanbanCard({ client, colColor, onOpen, onNextStep, dragg
         {/* Шапка клиента */}
         {/* Заголовок + статус в одной строке */}
         <div className="flex items-center justify-between gap-2 mb-1.5">
-          <span className="text-xs font-bold truncate" style={{ color: t.text }}>
-            {localStorage.getItem(`order_title_${client.id}`) || `Заявка №${client.id}`}
-          </span>
+          <div className="flex items-center gap-1.5 min-w-0">
+            {client.tags?.includes("демо") && (
+              <span className="flex-shrink-0 text-[8px] px-1 py-0.5 rounded font-bold uppercase tracking-wide"
+                style={{ background: "rgba(139,92,246,0.15)", color: "#a78bfa", border: "1px solid rgba(139,92,246,0.3)" }}>
+                Демо
+              </span>
+            )}
+            <span className="text-xs font-bold truncate" style={{ color: t.text }}>
+              {localStorage.getItem(`order_title_${client.id}`) || `Заявка №${client.id}`}
+            </span>
+          </div>
           {isInstall
             ? <InstallProgress client={client} color={color} />
             : <span className="flex-shrink-0 text-[9px] px-1.5 py-0.5 rounded-md font-medium"
