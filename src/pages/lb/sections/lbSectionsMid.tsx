@@ -24,9 +24,9 @@ const BEFORE_AFTER = [
 ];
 
 const STATS = [
-  { value: "6+", label: "лет опыта" },
-  { value: "40+", label: "проектов" },
-  { value: "30+", label: "клиентов" },
+  { value: "5+", label: "лет опыта" },
+  { value: "30+", label: "проектов" },
+  { value: "8+", label: "клиентов" },
   { value: "48ч", label: "до первого демо" },
 ];
 
