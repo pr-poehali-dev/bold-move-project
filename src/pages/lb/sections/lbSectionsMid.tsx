@@ -4,54 +4,117 @@ import { STACK, EXPERIENCE } from "../lbData";
 import { SkillBar, Lightbox } from "../lbAtoms";
 
 // ── Stack + About ─────────────────────────────────────────────────────────────
+const BEFORE_AFTER = [
+  {
+    before: "Делают «по ТЗ» — задача закрыта, бизнес не вырос",
+    after:  "Погружаюсь в процессы, задаю неудобные вопросы и решаю реальную задачу бизнеса",
+  },
+  {
+    before: "Сдали код — дальше разбирайтесь сами",
+    after:  "Обучаю команду, веду за руку до полного владения продуктом",
+  },
+  {
+    before: "Смета х2–3 в процессе, без предупреждения",
+    after:  "Фиксирую стоимость в ТЗ. Цена не меняется без вашего согласия",
+  },
+  {
+    before: "Широкий консалтинг? — не наш профиль",
+    after:  "Помогаю выстроить процессы, внедрить AI и масштабировать результат после запуска",
+  },
+];
+
+const STATS = [
+  { value: "6+", label: "лет опыта" },
+  { value: "40+", label: "проектов" },
+  { value: "30+", label: "клиентов" },
+  { value: "48ч", label: "до первого демо" },
+];
+
 export function LBStackAbout() {
   return (
-    <section id="stack" className="py-14 sm:py-20" style={{ background: "rgba(255,255,255,0.015)" }}>
-      <div className="max-w-5xl mx-auto px-4 sm:px-6">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-16 items-start">
+    <>
+      {/* ── Кто я — До / После ─────────────────────────────────────────── */}
+      <section id="about" className="py-14 sm:py-20">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6">
 
-          {/* Stack */}
-          <div>
-            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold mb-3" style={{ background: "rgba(6,182,212,0.1)", border: "1px solid rgba(6,182,212,0.25)", color: "#22d3ee" }}>
-              Технический стек
+          {/* Шапка с аватаром */}
+          <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6 mb-10">
+            <div className="flex-shrink-0">
+              <div
+                className="w-24 h-24 sm:w-28 sm:h-28 rounded-2xl overflow-hidden"
+                style={{ border: "2px solid rgba(139,92,246,0.4)", boxShadow: "0 0 32px rgba(139,92,246,0.2)" }}
+              >
+                <img
+                  src="https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/files/cd4b33c6-bf9c-47e5-b633-fa3b8f456fbf.jpg"
+                  alt="Евгений Красноруцкий"
+                  className="w-full h-full object-cover"
+                />
+              </div>
             </div>
-            <h2 className="text-2xl sm:text-4xl font-black mb-4" style={{ fontFamily: "Montserrat, sans-serif" }}>Что умею</h2>
-            <p className="text-sm mb-6" style={{ color: "rgba(255,255,255,0.45)", lineHeight: 1.7 }}>
-              Полный цикл: от задачи до деплоя. AI/LLM-стек (RAG, MCP, агенты), Python, React, интеграции API и платёжные системы.
-            </p>
-            <div className="space-y-3">
-              {STACK.map((s, i) => <SkillBar key={i} name={s.name} level={s.level} color={s.color} delay={i * 80} />)}
+            <div className="text-center sm:text-left">
+              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold mb-2" style={{ background: "rgba(139,92,246,0.1)", border: "1px solid rgba(139,92,246,0.25)", color: "#a78bfa" }}>
+                О себе
+              </div>
+              <h2 className="text-2xl sm:text-4xl font-black mb-1" style={{ fontFamily: "Montserrat, sans-serif" }}>Кто я</h2>
+              <p className="text-sm" style={{ color: "rgba(255,255,255,0.45)" }}>
+                Fullstack-разработчик + AI-интегратор. Пришёл в код из бизнеса —<br className="hidden sm:block" /> поэтому говорю на языке задач, а не технологий.
+              </p>
             </div>
           </div>
 
-          {/* About */}
-          <div>
-            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold mb-3 mt-8 lg:mt-0" style={{ background: "rgba(139,92,246,0.1)", border: "1px solid rgba(139,92,246,0.25)", color: "#a78bfa" }}>
-              О себе
-            </div>
-            <h2 className="text-2xl sm:text-4xl font-black mb-4" style={{ fontFamily: "Montserrat, sans-serif" }}>Кто я</h2>
-            <div className="space-y-3">
-              {[
-                { icon: "🏗️", label: "Архитектор процессов", text: "Проектирую бизнес-процессы с нуля. Внедряю AI там, где это даёт реальный результат." },
-                { icon: "📊", label: "Аналитика данных", text: "P&L, воронки, динамика — реальные дашборды с автоматическим обновлением." },
-                { icon: "⚡", label: "Моя суперсила", text: "Превращаю размытое ТЗ в продукт. Вижу бизнес-задачу и техническое решение одновременно." },
-                { icon: "🤝", label: "Ищу", text: "Сильную команду или интересный проект. Готов к офферу — удалённо или офис в МСК." },
-              ].map((item, i) => (
-                <div key={i} className="p-3 rounded-xl" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
-                  <div className="flex gap-3 items-start">
-                    <span className="text-lg flex-shrink-0">{item.icon}</span>
-                    <div>
-                      <div className="text-xs font-semibold mb-0.5" style={{ color: "rgba(255,255,255,0.35)", textTransform: "uppercase", letterSpacing: "0.05em" }}>{item.label}</div>
-                      <p className="text-xs sm:text-sm leading-relaxed" style={{ color: "rgba(255,255,255,0.65)" }}>{item.text}</p>
-                    </div>
+          {/* Цифры */}
+          <div className="grid grid-cols-4 gap-3 mb-10">
+            {STATS.map((s, i) => (
+              <div key={i} className="text-center p-3 rounded-xl" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)" }}>
+                <div className="text-xl sm:text-3xl font-black mb-0.5" style={{ fontFamily: "Montserrat, sans-serif", background: "linear-gradient(135deg, #a78bfa, #f97316)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>{s.value}</div>
+                <div className="text-xs leading-tight" style={{ color: "rgba(255,255,255,0.4)" }}>{s.label}</div>
+              </div>
+            ))}
+          </div>
+
+          {/* До / После */}
+          <div className="grid grid-cols-2 gap-3 sm:gap-4 mb-2">
+            <div className="p-3 sm:p-4 rounded-xl text-center" style={{ background: "rgba(239,68,68,0.06)", border: "1px solid rgba(239,68,68,0.2)" }}>
+              <div className="text-xs font-bold uppercase tracking-widest mb-3" style={{ color: "rgba(239,68,68,0.7)" }}>😤 Как обычно бывает</div>
+              <div className="space-y-2">
+                {BEFORE_AFTER.map((item, i) => (
+                  <div key={i} className="text-xs sm:text-sm text-left px-3 py-2 rounded-lg" style={{ background: "rgba(239,68,68,0.06)", color: "rgba(255,255,255,0.55)", lineHeight: 1.5 }}>
+                    {item.before}
                   </div>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
+            <div className="p-3 sm:p-4 rounded-xl text-center" style={{ background: "rgba(139,92,246,0.06)", border: "1px solid rgba(139,92,246,0.25)", boxShadow: "0 0 24px rgba(139,92,246,0.08)" }}>
+              <div className="text-xs font-bold uppercase tracking-widest mb-3" style={{ color: "#a78bfa" }}>✅ Как у меня</div>
+              <div className="space-y-2">
+                {BEFORE_AFTER.map((item, i) => (
+                  <div key={i} className="text-xs sm:text-sm text-left px-3 py-2 rounded-lg" style={{ background: "rgba(139,92,246,0.08)", color: "rgba(255,255,255,0.8)", lineHeight: 1.5 }}>
+                    {item.after}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+      {/* ── Стек ──────────────────────────────────────────────────────────── */}
+      <section id="stack" className="py-14 sm:py-20" style={{ background: "rgba(255,255,255,0.015)" }}>
+        <div className="max-w-5xl mx-auto px-4 sm:px-6">
+          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold mb-3" style={{ background: "rgba(6,182,212,0.1)", border: "1px solid rgba(6,182,212,0.25)", color: "#22d3ee" }}>
+            Технический стек
+          </div>
+          <h2 className="text-2xl sm:text-4xl font-black mb-4" style={{ fontFamily: "Montserrat, sans-serif" }}>Что умею</h2>
+          <p className="text-sm mb-6" style={{ color: "rgba(255,255,255,0.45)", lineHeight: 1.7 }}>
+            Полный цикл: от задачи до деплоя. AI/LLM-стек (RAG, MCP, агенты), Python, React, интеграции API и платёжные системы.
+          </p>
+          <div className="space-y-3 max-w-xl">
+            {STACK.map((s, i) => <SkillBar key={i} name={s.name} level={s.level} color={s.color} delay={i * 80} />)}
           </div>
         </div>
-      </div>
-    </section>
+      </section>
+    </>
   );
 }
 
