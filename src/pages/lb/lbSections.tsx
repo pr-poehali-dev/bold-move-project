@@ -26,12 +26,26 @@ export function LBHero({ heroVisible }: { heroVisible: boolean }) {
             </h1>
 
             {/* Акцент: архитектор */}
-            <div className="mb-5 text-sm font-semibold tracking-widest uppercase" style={{ color: "#f97316", letterSpacing: "0.12em" }}>
-              AI-Архитектор бизнес-процессов
+            <div className="mb-4 text-sm font-semibold tracking-widest uppercase" style={{ color: "#f97316", letterSpacing: "0.12em" }}>
+              AI-Архитектор бизнес-решений
             </div>
 
             <div className="text-xl lg:text-2xl font-semibold mb-6" style={{ color: "rgba(255,255,255,0.7)", minHeight: 60 }}>
-              <TypeWriter texts={["CPO / AI-разработчик агентов", "Строю продукты с нуля до прода", "Vibe-Coding · AI Creator", "Превращаю идеи в работающий код"]} />
+              <TypeWriter texts={[
+                "Эксперт по автоматизации процессов",
+                "API · RAG · NLP · ML · DevOps",
+                "Строю продукты с нуля до прода",
+                "CPO / AI Creator / Vibe-Coding",
+              ]} />
+            </div>
+
+            {/* Теги-экспертиза */}
+            <div className="flex flex-wrap gap-2 mb-5">
+              {["API", "RAG", "NLP", "ML", "DevOps", "UI/UX", "LLM", "MCP"].map((tag, i) => (
+                <span key={i} className="px-2.5 py-1 rounded-lg text-xs font-semibold" style={{ background: "rgba(139,92,246,0.12)", border: "1px solid rgba(139,92,246,0.25)", color: "#a78bfa" }}>
+                  {tag}
+                </span>
+              ))}
             </div>
 
             <p className="text-base leading-relaxed mb-8" style={{ color: "rgba(255,255,255,0.5)", maxWidth: 520 }}>

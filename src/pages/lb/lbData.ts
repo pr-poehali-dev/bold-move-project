@@ -31,6 +31,7 @@ export const ALL_SCREENSHOTS = [
   { url: "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/8ad1558a-3630-4de7-bc86-0867d74be5e7.png", caption: "Панель: настройка агента" },
   { url: "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/f0aa33cd-c1f8-416e-9e9e-82974e4e7e87.png", caption: "Панель: управление прайсами" },
   { url: "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/1ee941f1-5b50-4584-86e4-973dde134db0.png", caption: "Панель: мультикомнатные проекты" },
+  { url: "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/50afc0df-5ddb-48d4-9569-e1f37b898421.png", caption: "Панель: PDF-сметы, Telegram и MAX интеграции" },
 ];
 
 export const PROJECTS = [
@@ -102,6 +103,7 @@ export const PROJECTS = [
       "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/8ad1558a-3630-4de7-bc86-0867d74be5e7.png",
       "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/f0aa33cd-c1f8-416e-9e9e-82974e4e7e87.png",
       "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/1ee941f1-5b50-4584-86e4-973dde134db0.png",
+      "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/50afc0df-5ddb-48d4-9569-e1f37b898421.png",
     ],
     features: ["White-label брендинг агента", "Управление прайсами и правилами", "Роли: компания / менеджер / мастер", "Telegram-бот под своим именем", "Аналитика по всей компании"],
   },
