@@ -201,123 +201,182 @@ export function LBGallery() {
 }
 
 // ── Mobile Development ────────────────────────────────────────────────────────
-const MOBILE_FEATURES = [
-  { icon: "🎨", title: "UI/UX дизайн", desc: "Figma-макеты с нативными паттернами iOS и Android. Анимации, жесты, микровзаимодействия." },
-  { icon: "⚡", title: "React Native", desc: "Один кодовый база — два магазина. Нативная производительность, без компромиссов." },
-  { icon: "🍎", title: "App Store", desc: "Подготовка, ревью и публикация в Apple App Store. TestFlight для бета-тестирования." },
-  { icon: "🤖", title: "Google Play", desc: "Публикация в Google Play с соблюдением всех требований. APK / AAB сборки." },
-  { icon: "🔔", title: "Push & offline", desc: "Push-уведомления, офлайн-режим, синхронизация данных в фоне." },
-  { icon: "🔗", title: "API интеграции", desc: "Подключение к любому бэкенду, платёжным системам, картам, камере и геолокации." },
+const MOBILE_SCREENS = [
+  {
+    label: "AI-Агент",
+    sub: "Чат с голосовым вводом",
+    color: "#f97316",
+    img: "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/507e3a3f-22eb-41d0-b4a9-91c7063e5099.jpg",
+  },
+  {
+    label: "CRM — Воронка",
+    sub: "Заявки и финансы",
+    color: "#8b5cf6",
+    img: "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/b355fa9e-7615-40f9-8131-9f6dbb3311ae.jpg",
+  },
+  {
+    label: "P&L по заказу",
+    sub: "Затраты, доходы, маржа",
+    color: "#10b981",
+    img: "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/15478a1b-e4a1-406c-93b7-05f07653da6a.jpg",
+  },
+  {
+    label: "CAD-построитель",
+    sub: "Чертёж и материалы",
+    color: "#06b6d4",
+    img: "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/9b9146e8-90d5-4a1f-b978-2a4c40af7af9.jpg",
+  },
+  {
+    label: "Мультикомнатный",
+    sub: "Несколько комнат, одна смета",
+    color: "#f59e0b",
+    img: "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/8444e268-91e3-402f-9a48-88ffb3459a57.jpg",
+  },
 ];
 
-const MOBILE_SCREENS = [
-  { label: "Онбординг", emoji: "👋", bg: "linear-gradient(145deg,#1a0f00,#2d1a00)", color: "#f97316" },
-  { label: "Дашборд",   emoji: "📊", bg: "linear-gradient(145deg,#0f0a1a,#1a1030)", color: "#8b5cf6" },
-  { label: "Каталог",   emoji: "🛍️", bg: "linear-gradient(145deg,#00101a,#001a28)", color: "#06b6d4" },
-  { label: "Профиль",   emoji: "👤", bg: "linear-gradient(145deg,#001a10,#002818)", color: "#10b981" },
+const MOBILE_FEATURES = [
+  { icon: "🎨", title: "UI/UX дизайн", desc: "Figma-макеты с нативными паттернами iOS и Android. Анимации и микровзаимодействия." },
+  { icon: "⚡", title: "React Native", desc: "Один код — два магазина. Нативная производительность без компромиссов." },
+  { icon: "🍎", title: "App Store", desc: "Подготовка, ревью и публикация. TestFlight для бета-тестирования." },
+  { icon: "🤖", title: "Google Play", desc: "Публикация APK/AAB с соблюдением всех требований Google." },
+  { icon: "🔔", title: "Push & offline", desc: "Уведомления, офлайн-режим, фоновая синхронизация данных." },
+  { icon: "🔗", title: "API интеграции", desc: "Подключение к бэкенду, платёжным системам, картам и камере." },
 ];
 
 export function LBMobile() {
   const [active, setActive] = useState(0);
+
   return (
     <section id="mobile" className="py-16 sm:py-24 relative overflow-hidden">
       <div className="absolute inset-0 pointer-events-none" style={{ background: "radial-gradient(ellipse 80% 50% at 50% 50%, rgba(139,92,246,0.06) 0%, transparent 70%)" }} />
       <div className="max-w-6xl mx-auto px-4 sm:px-6 relative z-10">
 
         {/* Заголовок */}
-        <div className="text-center mb-12">
+        <div className="text-center mb-10">
           <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-semibold mb-4" style={{ background: "rgba(139,92,246,0.12)", border: "1px solid rgba(139,92,246,0.25)", color: "#a78bfa" }}>
             📱 Мобильная разработка
           </div>
-          <h2 className="text-3xl sm:text-5xl font-black mb-4" style={{ fontFamily: "Montserrat, sans-serif" }}>
+          <h2 className="text-3xl sm:text-5xl font-black mb-3" style={{ fontFamily: "Montserrat, sans-serif" }}>
             Приложения для{" "}
             <span style={{ background: "linear-gradient(135deg,#a78bfa,#f97316)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>
               iOS и Android
             </span>
           </h2>
           <p className="text-sm sm:text-base max-w-xl mx-auto" style={{ color: "rgba(255,255,255,0.45)" }}>
-            От Figma-макета до публикации в магазинах. Нативный UX, красивый дизайн, реальные пользователи.
+            От Figma-макета до публикации в магазинах. Реальные экраны из живых проектов.
           </p>
         </div>
 
-        {/* Телефоны + фичи */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 items-center mb-14">
+        {/* Скролл-карусель телефонов */}
+        <div className="relative mb-4">
+          {/* Тени по краям */}
+          <div className="absolute left-0 top-0 bottom-0 w-8 z-10 pointer-events-none" style={{ background: "linear-gradient(to right, #080810, transparent)" }} />
+          <div className="absolute right-0 top-0 bottom-0 w-8 z-10 pointer-events-none" style={{ background: "linear-gradient(to left, #080810, transparent)" }} />
 
-          {/* Интерактивные телефоны */}
-          <div className="flex justify-center items-end gap-3 sm:gap-5">
+          <div
+            className="flex gap-4 overflow-x-auto pb-4"
+            style={{ scrollSnapType: "x mandatory", scrollbarWidth: "none", msOverflowStyle: "none" }}
+          >
             {MOBILE_SCREENS.map((s, i) => (
               <button
                 key={i}
                 onClick={() => setActive(i)}
-                className="relative flex-shrink-0 transition-all duration-500"
-                style={{
-                  width: i === active ? 120 : 78,
-                  height: i === active ? 220 : 155,
-                  borderRadius: 22,
-                  background: s.bg,
-                  border: `2px solid ${i === active ? s.color : "rgba(255,255,255,0.07)"}`,
-                  boxShadow: i === active ? `0 0 32px ${s.color}55, 0 20px 48px rgba(0,0,0,0.6)` : "0 4px 16px rgba(0,0,0,0.3)",
-                  transform: i === active ? "translateY(-10px)" : "translateY(0)",
-                  overflow: "hidden",
-                }}
+                className="flex-shrink-0 flex flex-col items-center gap-3 transition-all duration-300"
+                style={{ scrollSnapAlign: "center" }}
               >
-                {/* Статус-бар */}
-                <div className="absolute top-0 left-0 right-0 flex justify-between items-center px-2.5 pt-2" style={{ fontSize: 7, color: "rgba(255,255,255,0.35)" }}>
-                  <span>9:41</span><span>●●●</span>
-                </div>
-                {/* Dynamic island */}
-                <div className="absolute top-2 left-1/2 -translate-x-1/2 rounded-full" style={{ width: 26, height: 7, background: "#000" }} />
-                {/* Контент */}
-                <div className="absolute inset-0 flex flex-col items-center justify-center gap-1.5">
-                  <span style={{ fontSize: i === active ? 30 : 20 }}>{s.emoji}</span>
-                  <span className="font-bold" style={{ fontSize: i === active ? 10 : 8, color: s.color }}>{s.label}</span>
+                {/* Телефон */}
+                <div
+                  className="relative overflow-hidden transition-all duration-500"
+                  style={{
+                    width: i === active ? 148 : 110,
+                    height: i === active ? 296 : 220,
+                    borderRadius: 24,
+                    border: `2px solid ${i === active ? s.color : "rgba(255,255,255,0.1)"}`,
+                    boxShadow: i === active
+                      ? `0 0 0 4px ${s.color}22, 0 20px 50px rgba(0,0,0,0.7), 0 0 40px ${s.color}33`
+                      : "0 4px 20px rgba(0,0,0,0.4)",
+                    transform: i === active ? "translateY(-10px)" : "translateY(0)",
+                    background: "#0a0a14",
+                  }}
+                >
+                  {/* Dynamic island */}
+                  <div className="absolute top-2 left-1/2 -translate-x-1/2 z-10 rounded-full" style={{ width: 30, height: 8, background: "#000" }} />
+                  {/* Скриншот */}
+                  <img
+                    src={s.img}
+                    alt={s.label}
+                    className="w-full h-full object-cover object-top"
+                  />
+                  {/* Home indicator */}
+                  <div className="absolute bottom-1.5 left-1/2 -translate-x-1/2 rounded-full" style={{ width: 32, height: 3, background: "rgba(255,255,255,0.25)" }} />
+                  {/* Активный glow-border снизу */}
                   {i === active && (
-                    <div className="mt-1 flex flex-col gap-1 w-3/4">
-                      {[80, 55, 70].map((w, j) => (
-                        <div key={j} className="rounded-full" style={{ height: 4, width: `${w}%`, background: `${s.color}44`, margin: "0 auto" }} />
-                      ))}
-                    </div>
+                    <div className="absolute bottom-0 left-0 right-0 h-12" style={{ background: `linear-gradient(to top, ${s.color}22, transparent)` }} />
                   )}
                 </div>
-                {/* Home indicator */}
-                <div className="absolute bottom-2 left-1/2 -translate-x-1/2 rounded-full" style={{ width: 28, height: 3, background: "rgba(255,255,255,0.18)" }} />
-              </button>
-            ))}
-          </div>
 
-          {/* Фичи */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {MOBILE_FEATURES.map((f, i) => (
-              <div
-                key={i}
-                className="p-4 rounded-2xl transition-all duration-300 hover:scale-[1.02]"
-                style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)" }}
-              >
-                <div className="text-xl mb-1.5">{f.icon}</div>
-                <div className="text-sm font-bold mb-1">{f.title}</div>
-                <div className="text-xs leading-relaxed" style={{ color: "rgba(255,255,255,0.4)" }}>{f.desc}</div>
-              </div>
+                {/* Подпись */}
+                <div className="text-center">
+                  <div
+                    className="text-xs font-bold mb-0.5 transition-all duration-300"
+                    style={{ color: i === active ? s.color : "rgba(255,255,255,0.7)" }}
+                  >
+                    {s.label}
+                  </div>
+                  <div className="text-xs" style={{ color: "rgba(255,255,255,0.35)", fontSize: 10 }}>{s.sub}</div>
+                </div>
+              </button>
             ))}
           </div>
         </div>
 
+        {/* Точки-индикаторы */}
+        <div className="flex justify-center gap-1.5 mb-12">
+          {MOBILE_SCREENS.map((s, i) => (
+            <button
+              key={i}
+              onClick={() => setActive(i)}
+              className="rounded-full transition-all duration-300"
+              style={{
+                width: i === active ? 20 : 6,
+                height: 6,
+                background: i === active ? s.color : "rgba(255,255,255,0.2)",
+              }}
+            />
+          ))}
+        </div>
+
+        {/* Фичи */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-10">
+          {MOBILE_FEATURES.map((f, i) => (
+            <div
+              key={i}
+              className="p-4 rounded-2xl transition-all duration-300 hover:scale-[1.02]"
+              style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)" }}
+            >
+              <div className="text-xl mb-1.5">{f.icon}</div>
+              <div className="text-sm font-bold mb-1">{f.title}</div>
+              <div className="text-xs leading-relaxed" style={{ color: "rgba(255,255,255,0.4)" }}>{f.desc}</div>
+            </div>
+          ))}
+        </div>
+
         {/* Сторы */}
-        <div className="flex flex-col sm:flex-row gap-4 justify-center items-stretch sm:items-center">
+        <div className="flex flex-col sm:flex-row gap-3 justify-center">
           <div className="flex items-center gap-4 px-6 py-4 rounded-2xl" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.09)" }}>
-            <div className="w-12 h-12 rounded-2xl flex items-center justify-center text-2xl flex-shrink-0" style={{ background: "linear-gradient(135deg,#1c1c1e,#2c2c2e)" }}>🍎</div>
+            <div className="w-11 h-11 rounded-xl flex items-center justify-center text-2xl flex-shrink-0" style={{ background: "linear-gradient(135deg,#1c1c1e,#2c2c2e)" }}>🍎</div>
             <div>
-              <div className="text-xs mb-0.5" style={{ color: "rgba(255,255,255,0.4)" }}>Публикация в</div>
-              <div className="font-black text-base" style={{ fontFamily: "Montserrat, sans-serif" }}>App Store</div>
-              <div className="text-xs" style={{ color: "rgba(255,255,255,0.35)" }}>iOS 16+ · TestFlight · Review</div>
+              <div className="text-xs" style={{ color: "rgba(255,255,255,0.4)" }}>Публикация в</div>
+              <div className="font-black text-sm" style={{ fontFamily: "Montserrat, sans-serif" }}>App Store</div>
+              <div className="text-xs" style={{ color: "rgba(255,255,255,0.35)" }}>iOS 16+ · TestFlight</div>
             </div>
           </div>
-          <div className="hidden sm:block text-xs px-2" style={{ color: "rgba(255,255,255,0.2)" }}>и</div>
           <div className="flex items-center gap-4 px-6 py-4 rounded-2xl" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.09)" }}>
-            <div className="w-12 h-12 rounded-2xl flex items-center justify-center text-2xl flex-shrink-0" style={{ background: "linear-gradient(135deg,#0f2010,#1a3520)" }}>🤖</div>
+            <div className="w-11 h-11 rounded-xl flex items-center justify-center text-2xl flex-shrink-0" style={{ background: "linear-gradient(135deg,#0f2010,#1a3520)" }}>🤖</div>
             <div>
-              <div className="text-xs mb-0.5" style={{ color: "rgba(255,255,255,0.4)" }}>Публикация в</div>
-              <div className="font-black text-base" style={{ fontFamily: "Montserrat, sans-serif" }}>Google Play</div>
-              <div className="text-xs" style={{ color: "rgba(255,255,255,0.35)" }}>Android 10+ · APK/AAB · CI/CD</div>
+              <div className="text-xs" style={{ color: "rgba(255,255,255,0.4)" }}>Публикация в</div>
+              <div className="font-black text-sm" style={{ fontFamily: "Montserrat, sans-serif" }}>Google Play</div>
+              <div className="text-xs" style={{ color: "rgba(255,255,255,0.35)" }}>Android 10+ · APK/AAB</div>
             </div>
           </div>
         </div>
