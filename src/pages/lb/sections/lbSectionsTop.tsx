@@ -39,10 +39,10 @@ export function LBHero({ heroVisible }: { heroVisible: boolean }) {
               ]} />
             </div>
 
-            {/* Теги-экспертиза — компактнее на мобиле */}
+            {/* Теги-экспертиза */}
             <div className="flex flex-wrap gap-1.5 mb-4">
-              {["API", "RAG", "NLP", "ML", "DevOps", "UI/UX", "LLM", "MCP"].map((tag, i) => (
-                <span key={i} className="px-2 py-0.5 rounded-md text-xs font-semibold" style={{ background: "rgba(139,92,246,0.12)", border: "1px solid rgba(139,92,246,0.25)", color: "#a78bfa" }}>
+              {["API", "RAG", "NLP", "ML", "DevOps", "UI/UX", "LLM", "MCP", "Python", "React", "SaaS", "CRM"].map((tag, i) => (
+                <span key={i} className="px-2.5 py-1 rounded-md text-xs font-semibold" style={{ background: "rgba(139,92,246,0.12)", border: "1px solid rgba(139,92,246,0.25)", color: "#a78bfa" }}>
                   {tag}
                 </span>
               ))}
