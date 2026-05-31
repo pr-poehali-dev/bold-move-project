@@ -2,6 +2,7 @@ import React, { useEffect } from "react";
 import ReactDOM from "react-dom";
 import type { PlanState } from "../planTypes";
 import { distPx, midPoint, segmentNormal } from "../planTypes";
+import { updateSegmentWithRebuild } from "../planSegmentUpdate";
 
 // ── Inline-edit размеров прямо на чертеже ─────────────────────────────────────
 
@@ -66,20 +67,9 @@ export function InlineDimLabels({ state, onChange, editingSegId, onSetEditingSeg
   const commitEdit = (segId: string) => {
     const val = parseFloat(draft);
     if (!isNaN(val) && val > 0) {
-      const newSegments = segments.map(s => s.id === segId ? { ...s, lengthCm: val } : s);
-      let baseScale = state.baseScale ?? null;
-      if (!baseScale) {
-        const seg = segments.find(s => s.id === segId);
-        if (seg) {
-          const a = points.find(p => p.id === seg.fromId);
-          const b = points.find(p => p.id === seg.toId);
-          if (a && b) {
-            const px = distPx(a, b);
-            if (px > 0) baseScale = px / val;
-          }
-        }
-      }
-      onChange({ segments: newSegments, baseScale: baseScale ?? undefined });
+      // Вызываем полный rebuild — пересчитывает точки и масштаб
+      const patch = updateSegmentWithRebuild(state, segId, { lengthCm: val });
+      onChange(patch);
     }
     setEditingId(null);
     setDraft("");
