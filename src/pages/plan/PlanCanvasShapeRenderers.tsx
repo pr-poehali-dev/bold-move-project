@@ -111,7 +111,7 @@ export function renderPoints(ctx: RenderContext, handlers: SegmentHandlers) {
 // ── Рендер отрезков (зоны клика) ─────────────────────────────────────────────
 
 export function renderSegments(ctx: RenderContext, handlers: Pick<SegmentHandlers, "onSegmentClick" | "onSegmentCtxMenu">) {
-  const { points, segments, tool, selectedSegmentIds, intersectingSegIds, changedSegmentIds, zoom } = ctx;
+  const { points, segments, tool, selectedSegmentIds, intersectingSegIds, changedSegmentIds, zoom, isClosed } = ctx;
   const z = zoom ?? 1;
   const selIds = selectedSegmentIds ?? [];
   return segments.map(seg => {
@@ -121,6 +121,8 @@ export function renderSegments(ctx: RenderContext, handlers: Pick<SegmentHandler
     const isSel = selIds.includes(seg.id);
     const isIntersecting = intersectingSegIds?.includes(seg.id);
     const isChanged = changedSegmentIds?.includes(seg.id);
+    // Стена без прикреплённого товара — подсвечиваем жёлтым
+    const isEmpty = isClosed && (!seg.items || seg.items.length === 0);
     // Hit-зона: фиксированные 18px на экране, адаптированные к зуму
     // При высоком зуме (крупный план) — не перекрываем соседние тонкие стены
     const hitW = Math.max(8, 18 / z);
@@ -131,6 +133,11 @@ export function renderSegments(ctx: RenderContext, handlers: Pick<SegmentHandler
           onClick={e => handlers.onSegmentClick(e, seg.id)}
           onContextMenu={e => handlers.onSegmentCtxMenu(e, seg.id)}
         />
+        {isEmpty && !isIntersecting && !isSel && (
+          <line x1={a.x} y1={a.y} x2={b.x} y2={b.y}
+            stroke="#facc15" strokeWidth={2} opacity={0.5}
+            strokeDasharray="6 5" className="pointer-events-none" />
+        )}
         {isChanged && <line x1={a.x} y1={a.y} x2={b.x} y2={b.y} stroke="#facc15" strokeWidth={3} opacity={0.9} className="pointer-events-none seg-recalc-flash" />}
         {isIntersecting && <line x1={a.x} y1={a.y} x2={b.x} y2={b.y} stroke="#f87171" strokeWidth={2.5} opacity={0.8} className="pointer-events-none" />}
         {isSel && <line x1={a.x} y1={a.y} x2={b.x} y2={b.y} stroke="#ef4444" strokeWidth={2.5} strokeDasharray="8 4" className="pointer-events-none" />}
