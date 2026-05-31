@@ -91,19 +91,15 @@ export default function PlanCanvasSvg({
       return inside;
     };
 
-    if (isInside(cx, cy)) return { polyCx: cx, polyCy: cy };
-
-    // 3. Если центроид снаружи (вогнутый полигон) — ищем лучшую внутреннюю точку.
-    // Алгоритм: сэмплируем мелкую сетку, для каждой внутренней точки считаем
-    // минимальное расстояние до ребра (minDist) — ищем максимум (pole of inaccessibility).
-    // Дополнительно взвешиваем на площадь "ближайшей прямоугольной зоны",
-    // чтобы широкая часть Г-образного полигона всегда выигрывала у узкого рукава.
+    // 3. Всегда ищем pole of inaccessibility — точку максимально удалённую от всех рёбер.
+    // Это работает как для выпуклых, так и для вогнутых (Г, П, L) полигонов.
+    // Для прямоугольника даст геометрический центр, для Г-формы — центр широкой части.
     const xs = points.map(p => p.x), ys = points.map(p => p.y);
     const minX = Math.min(...xs), maxX = Math.max(...xs);
     const minY = Math.min(...ys), maxY = Math.max(...ys);
 
     // Вспомогательная: расстояние от точки до отрезка
-    const ptToSegDist = (px: number, py: number, ax: number, ay: number, bx: number, by: number) => {
+    const ptToSegDist2 = (px: number, py: number, ax: number, ay: number, bx: number, by: number) => {
       const dx = bx - ax, dy = by - ay;
       const lenSq = dx * dx + dy * dy;
       if (lenSq < 1e-10) return Math.hypot(px - ax, py - ay);
@@ -111,25 +107,33 @@ export default function PlanCanvasSvg({
       return Math.hypot(px - ax - t * dx, py - ay - t * dy);
     };
 
-    const steps = 20; // мелкая сетка — 19×19 = 361 точка
+    const steps = 24; // 23×23 = 529 точек — достаточно точно и быстро
     let bestX = cx, bestY = cy, bestScore = -1;
+    // Начинаем с математического центроида как кандидата (если он внутри)
+    if (isInside(cx, cy)) {
+      let initScore = Infinity;
+      for (let i = 0; i < n; i++) {
+        const j = (i + 1) % n;
+        const d = ptToSegDist2(cx, cy, points[i].x, points[i].y, points[j].x, points[j].y);
+        if (d < initScore) initScore = d;
+      }
+      bestScore = initScore;
+    }
+
     for (let si = 1; si < steps; si++) {
       for (let sj = 1; sj < steps; sj++) {
         const tx = minX + (maxX - minX) * si / steps;
         const ty = minY + (maxY - minY) * sj / steps;
         if (!isInside(tx, ty)) continue;
 
-        // Минимальное расстояние до любого ребра (pole of inaccessibility)
+        // Минимальное расстояние до любого ребра
         let minEdgeDist = Infinity;
         for (let i = 0; i < n; i++) {
           const j = (i + 1) % n;
-          const d = ptToSegDist(tx, ty, points[i].x, points[i].y, points[j].x, points[j].y);
+          const d = ptToSegDist2(tx, ty, points[i].x, points[i].y, points[j].x, points[j].y);
           if (d < minEdgeDist) minEdgeDist = d;
         }
 
-        // Скор = minEdgeDist (главный критерий — чем дальше от всех стен, тем лучше)
-        // Это естественно выбирает центр наибольшей "вписанной окружности",
-        // т.е. самый просторный участок полигона
         if (minEdgeDist > bestScore) {
           bestScore = minEdgeDist;
           bestX = tx;
