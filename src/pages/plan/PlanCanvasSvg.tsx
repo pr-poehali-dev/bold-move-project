@@ -55,8 +55,71 @@ export default function PlanCanvasSvg({
     tool, phase, floorItems,
   } = state;
 
-  const polyCx = points.length > 0 ? (Math.min(...points.map(p => p.x)) + Math.max(...points.map(p => p.x))) / 2 : 0;
-  const polyCy = points.length > 0 ? (Math.min(...points.map(p => p.y)) + Math.max(...points.map(p => p.y))) / 2 : 0;
+  // Истинный центроид полигона (формула Шоэлейса) — всегда внутри для выпуклых,
+  // для вогнутых (Г, П, L-форм) дополнительно проверяем что точка внутри
+  const { polyCx, polyCy } = useMemo(() => {
+    if (points.length < 3) return { polyCx: 0, polyCy: 0 };
+
+    // 1. Считаем центроид по формуле площади
+    let area = 0, cx = 0, cy = 0;
+    const n = points.length;
+    for (let i = 0; i < n; i++) {
+      const j = (i + 1) % n;
+      const cross = points[i].x * points[j].y - points[j].x * points[i].y;
+      area += cross;
+      cx += (points[i].x + points[j].x) * cross;
+      cy += (points[i].y + points[j].y) * cross;
+    }
+    area /= 2;
+    const absArea = Math.abs(area);
+    if (absArea < 1) return {
+      polyCx: (Math.min(...points.map(p => p.x)) + Math.max(...points.map(p => p.x))) / 2,
+      polyCy: (Math.min(...points.map(p => p.y)) + Math.max(...points.map(p => p.y))) / 2,
+    };
+    cx /= (6 * area);
+    cy /= (6 * area);
+
+    // 2. Проверяем что центроид внутри полигона (ray casting)
+    const isInside = (px: number, py: number) => {
+      let inside = false;
+      for (let i = 0, j = n - 1; i < n; j = i++) {
+        const xi = points[i].x, yi = points[i].y;
+        const xj = points[j].x, yj = points[j].y;
+        if (((yi > py) !== (yj > py)) && px < (xj - xi) * (py - yi) / (yj - yi) + xi)
+          inside = !inside;
+      }
+      return inside;
+    };
+
+    if (isInside(cx, cy)) return { polyCx: cx, polyCy: cy };
+
+    // 3. Если центроид снаружи (вогнутый полигон) — ищем лучшую внутреннюю точку
+    // через сэмплирование сетки и выбор точки с максимальным расстоянием от краёв
+    const xs = points.map(p => p.x), ys = points.map(p => p.y);
+    const minX = Math.min(...xs), maxX = Math.max(...xs);
+    const minY = Math.min(...ys), maxY = Math.max(...ys);
+    const steps = 8;
+    let bestX = cx, bestY = cy, bestDist = -1;
+    for (let si = 1; si < steps; si++) {
+      for (let sj = 1; sj < steps; sj++) {
+        const tx = minX + (maxX - minX) * si / steps;
+        const ty = minY + (maxY - minY) * sj / steps;
+        if (!isInside(tx, ty)) continue;
+        // Минимальное расстояние до любого ребра
+        let minEdgeDist = Infinity;
+        for (let i = 0; i < n; i++) {
+          const j = (i + 1) % n;
+          const ax = points[j].x - points[i].x, ay = points[j].y - points[i].y;
+          const len = Math.sqrt(ax * ax + ay * ay);
+          if (len < 1) continue;
+          const d = Math.abs(ax * (points[i].y - ty) - ay * (points[i].x - tx)) / len;
+          minEdgeDist = Math.min(minEdgeDist, d);
+        }
+        if (minEdgeDist > bestDist) { bestDist = minEdgeDist; bestX = tx; bestY = ty; }
+      }
+    }
+    return { polyCx: bestX, polyCy: bestY };
+  }, [points]);
 
   const polyBBox = useMemo(() => {
     if (points.length < 3) return null;
