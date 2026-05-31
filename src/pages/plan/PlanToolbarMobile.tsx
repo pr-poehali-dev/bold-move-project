@@ -4,28 +4,25 @@ import type { ToolbarProps } from "./PlanToolbarShared";
 import { ALL_TOOLS_MENU, loadPinned } from "./PlanToolbarShared";
 import type { ToolMode } from "./planTypes";
 import PlanVariantPickerMobile from "./PlanVariantPickerMobile";
-import { EXPORT_TYPES } from "./PlanExportMenu";
-import type { ExportConfig, ExportType } from "./PlanExportMenu";
+
 
 export default function MobileToolbar(props: ToolbarProps) {
   const {
     tool,
     canUndo, canRedo,
-    onToolChange, onUndo, onRedo, onOpenLibrary, onReset,
+    onToolChange, onUndo, onRedo, onOpenLibrary, onReset, onExport,
     onBack, onSaveVariant, onOverwriteVariant, variants, variantsLoading,
     activeVariantId, onLoadVariant, onDeleteVariant, onRenameVariant, onSelectVariant,
     onVariantPickerOpenChange,
   } = props;
 
   const [toolsOpen,         setToolsOpen]         = React.useState(false);
-  const [exportOpen,        setExportOpen]         = React.useState(false);
   const [settingsOpen,      setSettingsOpen]       = React.useState(false);
   const [confirmReset,      setConfirmReset]       = React.useState(false);
   const [variantPickerOpen, setVariantPickerOpen]  = React.useState(false);
 
   const openVariantPicker = (v: boolean) => { setVariantPickerOpen(v); onVariantPickerOpenChange?.(v); };
   const [pinned]            = React.useState<ToolMode[]>(loadPinned);
-  const [exportCfg,         setExportCfg]          = React.useState<ExportConfig>({ scope: "project", type: "kp_light" });
 
   const { settings, onSettingChange } = props;
 
@@ -52,9 +49,8 @@ export default function MobileToolbar(props: ToolbarProps) {
     return () => { document.removeEventListener("mousedown", handler); document.removeEventListener("touchstart", handler); };
   }, [settingsOpen]);
 
-  // Закрываем одну панель при открытии другой
-  const openTools  = () => { setToolsOpen(v => !v); setExportOpen(false); setSettingsOpen(false); };
-  const openExport = () => { setExportOpen(v => !v); setToolsOpen(false); setSettingsOpen(false); };
+  // Закрываем другие панели при открытии инструментов
+  const openTools = () => { setToolsOpen(v => !v); setSettingsOpen(false); };
 
   return (
     <>
@@ -109,19 +105,15 @@ export default function MobileToolbar(props: ToolbarProps) {
           <Icon name={toolsOpen ? "ChevronUp" : "ChevronDown"} size={12} className="opacity-60" />
         </button>
 
-        {/* Кнопка "Смета" */}
+        {/* Кнопка "Смета" — открывает модалку выгрузки */}
         {onSaveVariant && (
           <button
-            onClick={openExport}
-            className={`flex items-center gap-1 h-9 px-2.5 rounded-lg shrink-0 transition-all text-[12px] font-semibold ${
-              exportOpen
-                ? "bg-violet-600/30 border border-violet-500/50 text-violet-300"
-                : "bg-white/[0.06] border border-white/[0.08] text-white/70 hover:bg-white/[0.10]"
-            }`}
-            title="Смета"
+            onClick={onExport}
+            className="flex items-center gap-1 h-9 px-2.5 rounded-lg shrink-0 transition-all text-[12px] font-semibold bg-white/[0.06] border border-white/[0.08] text-white/70 hover:bg-white/[0.10]"
+            title="Выгрузить смету"
           >
             <Icon name="FileText" size={15} />
-            <Icon name={exportOpen ? "ChevronUp" : "ChevronDown"} size={12} className="opacity-60" />
+            <Icon name="ChevronDown" size={12} className="opacity-60" />
           </button>
         )}
 
@@ -267,32 +259,7 @@ export default function MobileToolbar(props: ToolbarProps) {
         </div>
       )}
 
-      {/* ── Подпанель сметы — 7 иконок, без скролла ─────────────────────────── */}
-      {exportOpen && (
-        <div
-          className="shrink-0 border-b border-white/[0.06] px-2 py-1.5 flex items-center justify-between"
-          style={{ background: "#121220" }}
-        >
-          {EXPORT_TYPES.map(t => {
-            const active = exportCfg.type === t.id;
-            return (
-              <button
-                key={t.id}
-                onClick={() => setExportCfg(c => ({ ...c, type: t.id as ExportType }))}
-                title={t.label}
-                className="flex-1 mx-0.5 h-9 flex items-center justify-center rounded-lg transition"
-                style={{
-                  background: active ? "rgba(124,58,237,0.35)" : "rgba(255,255,255,0.05)",
-                  border: active ? "1px solid rgba(124,58,237,0.5)" : "1px solid rgba(255,255,255,0.08)",
-                  color: active ? "#c4b5fd" : "rgba(255,255,255,0.45)",
-                }}
-              >
-                <Icon name={t.icon} size={15} fallback="FileText" />
-              </button>
-            );
-          })}
-        </div>
-      )}
+
     </>
   );
 }
