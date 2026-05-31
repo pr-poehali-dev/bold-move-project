@@ -6,9 +6,10 @@ import { useTheme } from "./themeContext";
 interface Props {
   onClose: () => void;
   onCreated: () => void;
+  linkProjectId?: number | null;
 }
 
-export function AddClientModal({ onClose, onCreated }: Props) {
+export function AddClientModal({ onClose, onCreated, linkProjectId }: Props) {
   const t = useTheme();
   const [name,    setName]    = useState("");
   const [phone,   setPhone]   = useState("");
@@ -51,7 +52,7 @@ export function AddClientModal({ onClose, onCreated }: Props) {
     if (!name.trim()) { setError("Введите имя клиента"); return; }
     setSaving(true); setError("");
     try {
-      await crmFetch("clients", {
+      const res = await crmFetch("clients", {
         method: "POST",
         body: JSON.stringify({
           client_name: name.trim(),
@@ -61,7 +62,16 @@ export function AddClientModal({ onClose, onCreated }: Props) {
           status:      "new",
           source:      "manual",
         }),
-      });
+      }) as { id?: number };
+      // Если привязан проект — связываем заявку с проектом
+      if (linkProjectId && res?.id) {
+        try {
+          await crmFetch("plan-crm-attach", {
+            method: "POST",
+            body: JSON.stringify({ project_id: linkProjectId, chat_id: res.id }),
+          });
+        } catch { /* ignore */ }
+      }
       onCreated();
       onClose();
     } catch {
@@ -90,7 +100,14 @@ export function AddClientModal({ onClose, onCreated }: Props) {
               style={{ background: t.accent + "20" }}>
               <Icon name="UserPlus" size={16} style={{ color: t.accentLight }} />
             </div>
-            <span className="font-bold text-base" style={{ color: t.text }}>Новая заявка</span>
+            <div>
+              <span className="font-bold text-base" style={{ color: t.text }}>Новая заявка</span>
+              {linkProjectId && (
+                <div className="text-[10px] font-medium mt-0.5" style={{ color: "#f59e0b" }}>
+                  Привяжется к проекту #{linkProjectId}
+                </div>
+              )}
+            </div>
           </div>
           <button onClick={onClose} className="p-1.5 rounded-lg transition hover:opacity-70"
             style={{ color: t.textMute }}>

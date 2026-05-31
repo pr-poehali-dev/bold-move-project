@@ -141,19 +141,9 @@ export default function PlanProjectsScreen({ token, onSelectProject, initialProj
   };
 
   // ── Создать заявку и привязать ───────────────────────────────────────────────
-  const handleCreateLink = async (p: PlanProject) => {
-    try {
-      const res = await fetch(`${CRM_URL}?r=plan-crm-link&project_id=${p.id}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
-        body: JSON.stringify({}),
-      });
-      const data = await res.json();
-      if (data.crm_chat_id) {
-        await loadProjects();
-        window.open(`/crm?order=${data.crm_chat_id}`, "_blank");
-      }
-    } catch { /* ignore */ }
+  const handleCreateLink = (p: PlanProject) => {
+    // Переходим в CRM и открываем модалку новой заявки с привязкой к проекту
+    window.location.href = `/crm?new_order=1&link_project_id=${p.id}`;
   };
 
   // ── Открыть модал выбора существующей заявки ─────────────────────────────────

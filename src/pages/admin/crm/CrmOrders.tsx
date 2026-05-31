@@ -64,6 +64,21 @@ export default function CrmOrders({ clients: allClients, loading, onStatusChange
     }
   }, [initialOrderId, allClients, initialHandled]);
 
+  // Открыть модалку новой заявки при ?new_order=1 (переход из проектов)
+  const [newOrderLinkProjectId, setNewOrderLinkProjectId] = useState<number | null>(null);
+  useEffect(() => {
+    const sp = new URLSearchParams(window.location.search);
+    if (sp.get("new_order") === "1") {
+      const pid = sp.get("link_project_id");
+      if (pid) setNewOrderLinkProjectId(Number(pid));
+      setShowAddModal(true);
+      const url = new URL(window.location.href);
+      url.searchParams.delete("new_order");
+      url.searchParams.delete("link_project_id");
+      window.history.replaceState({}, "", url.toString());
+    }
+  }, []);
+
   // ── Tabs/columns — single source of truth ────────────────────────────────
   const [tabLabels,  setTabLabels]  = useState<Record<string, string>>(loadSyncedLabels);
   const [tabColors,  setTabColors]  = useState<Record<string, string>>(loadSyncedColors);
@@ -306,8 +321,9 @@ export default function CrmOrders({ clients: allClients, loading, onStatusChange
       {/* Модалка добавления новой заявки */}
       {showAddModal && (
         <AddClientModal
-          onClose={() => setShowAddModal(false)}
-          onCreated={() => { onReload(); setShowAddModal(false); }}
+          onClose={() => { setShowAddModal(false); setNewOrderLinkProjectId(null); }}
+          onCreated={() => { onReload(); setShowAddModal(false); setNewOrderLinkProjectId(null); }}
+          linkProjectId={newOrderLinkProjectId}
         />
       )}
 
