@@ -105,7 +105,7 @@ export function SegmentItemsBadges({
   // Для горизонтальной стены (ny≈1) нормаль по Y → проецируем высоту (half=10px).
   // Для вертикальной стены (nx≈1) нормаль по X → проецируем ширину (half=21px).
   const fieldHalfProj = (absNx * 21 + absNy * 10) / z;
-  const GAP_PX = 4; // зазор в экранных пикселях
+  const GAP_PX = 0; // зазор в экранных пикселях
   const OFF = BASE_LABEL_OFF / z + fieldHalfProj + GAP_PX / z + S / 2;
 
   // Нормаль гарантированно смотрит наружу — двигаемся ПО нормали (наружу от полигона)
