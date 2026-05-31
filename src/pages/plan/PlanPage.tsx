@@ -18,6 +18,8 @@ import { usePlanVariants, type PlanVariant } from "./usePlanVariants";
 import { usePlanVariantHandlers } from "./usePlanVariantHandlers";
 import PlanCanvasArea from "./PlanCanvasArea";
 import PlanPagePanels from "./PlanPagePanels";
+import { PlanExportModal as PdfExportModal } from "./PlanExportMenu";
+import { generateExportPdf } from "./PlanExportGenerator";
 
 type PlanScreen = "projects" | "rooms" | "canvas";
 
@@ -387,6 +389,31 @@ export default function PlanPage() {
         onSaveVariant={(name) => variantHandlers.handleSaveVariantWithState(name, state)}
         onCloseVariantModal={() => setVariantModalOpen(false)}
         mobileVariantPickerOpen={mobileVariantPickerOpen}
+      />
+
+      {/* Модалка выгрузки PDF сметы */}
+      <PdfExportModal
+        open={exportOpen}
+        onClose={() => setExportOpen(false)}
+        showScope={false}
+        onExport={async cfg => {
+          // Строим room из текущей комнаты + актуального state как данных
+          const roomForExport: PlanRoom = activeRoom
+            ? { ...activeRoom, active_variant_data: state }
+            : { id: 0, name: currentPlanName, project_id: 0, data: state, thumbnail: null, created_at: "", updated_at: "", include_in_estimate: true, include_drawing: true, active_variant_data: state };
+          await generateExportPdf({
+            type: cfg.type,
+            scope: cfg.scope,
+            project: {
+              name: activeProject?.name ?? currentPlanName,
+              client_name: activeProject?.client_name ?? null,
+              phone: activeProject?.phone ?? null,
+              address: activeProject?.address ?? null,
+            },
+            rooms: [roomForExport],
+          });
+          setExportOpen(false);
+        }}
       />
 
     </div>
