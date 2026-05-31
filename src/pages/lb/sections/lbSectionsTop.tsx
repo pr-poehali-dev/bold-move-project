@@ -308,166 +308,191 @@ const MOBILE_FEATURES = [
   { icon: "🔗", title: "API интеграции", desc: "Подключение к бэкенду, платёжным системам, картам и камере." },
 ];
 
-// ── PhoneDrum: карусель телефонов с инерцией, бесконечным кольцом, снэпом по центру ──
+// Точная копия механики ArcDrum но горизонтальная.
+// scrollX — единственный источник правды (пиксели).
+// Никакого React-state для dragDelta — только rAF + DOM ref.
 function PhoneDrum({ onOpen }: { onOpen: (idx: number) => void }) {
-  const N = MOBILE_SCREENS.length;
-  // Тройное дублирование для бесконечного кольца
+  const N     = MOBILE_SCREENS.length;
   const items = [...MOBILE_SCREENS, ...MOBILE_SCREENS, ...MOBILE_SCREENS];
+  const SLOT  = 126; // px на один элемент (шаг сетки)
+  const PAD   = SLOT * N; // начальный сдвиг = середина второго блока
 
-  // Размеры телефонов — активный крупнее
-  const PHONE_W_ACTIVE = 148;
-  const PHONE_H_ACTIVE = 310;
-  const PHONE_W_SMALL  = 110;
-  const PHONE_H_SMALL  = 220;
-  const GAP  = 16;
-  const SLOT = PHONE_W_SMALL + GAP; // шаг сетки = маленький телефон
-
-  // Виртуальный offset: начинаем с середины второго блока чтобы было куда крутить в обе стороны
-  const INIT_IDX = N; // индекс первого элемента второго блока
-  const [activeRaw, setActiveRaw] = useState(INIT_IDX); // raw-индекс в items[]
-  const activeReal = ((activeRaw % N) + N) % N;         // реальный 0..N-1
-
+  // Скрытый div-скролл (как в ArcDrum) — scrollLeft = текущая позиция
+  const scrollRef   = useRef<HTMLDivElement>(null);
   const isDragging  = useRef(false);
   const didDrag     = useRef(false);
   const startX      = useRef(0);
   const startY      = useRef(0);
-  const dragOffset  = useRef(0); // текущее смещение во время drag (px)
+  const startScroll = useRef(0);
   const lastX       = useRef(0);
   const lastTime    = useRef(0);
   const velocity    = useRef(0);
   const rafId       = useRef<number | null>(null);
-  const [dragDelta, setDragDelta] = useState(0); // live-смещение во время drag
+  const isSnapping  = useRef(false);
+  const [scrollX, setScrollX] = useState(PAD);
 
-  // Снэп к ближайшему индексу с инерцией
-  const snapTo = useCallback((rawIdx: number) => {
-    // Нормализуем: держимся в диапазоне 1..N*2-1 (второй блок)
+  // Инициализация
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (el) { el.scrollLeft = PAD; setScrollX(PAD); }
+  }, []); // eslint-disable-line
+
+  // Нормализация бесконечного кольца
+  const normalize = useCallback((sl: number): number => {
+    const el = scrollRef.current;
+    if (!el) return sl;
+    if (sl < SLOT)           { const j = sl + N * SLOT; el.scrollLeft = j; return j; }
+    if (sl > SLOT * (N*2-1)) { const j = sl - N * SLOT; el.scrollLeft = j; return j; }
+    return sl;
+  }, [N, SLOT]);
+
+  // Плавный снэп к индексу
+  const snapToIdx = useCallback((rawIdx: number, smooth = true) => {
+    const el = scrollRef.current;
+    if (!el) return;
+    // Нормализуем целевой индекс
     let idx = rawIdx;
-    if (idx < 1)       idx += N;
-    if (idx > N * 2 - 1) idx -= N;
-    setActiveRaw(idx);
-    setDragDelta(0);
-  }, [N]);
-
-  const startInertia = useCallback((v: number, baseRaw: number, baseDelta: number) => {
-    if (rafId.current) cancelAnimationFrame(rafId.current);
-    let vel = v;
-    let delta = baseDelta;
-    const step = () => {
-      vel *= 0.88;
-      delta += vel;
-      // Снэп когда скорость мала
-      if (Math.abs(vel) < 0.8) {
-        const shift = Math.round(delta / SLOT);
-        snapTo(baseRaw + shift);
-        return;
-      }
-      setDragDelta(delta);
-      rafId.current = requestAnimationFrame(step);
+    while (idx < N)     idx += N;
+    while (idx > N*2-1) idx -= N;
+    const target = idx * SLOT;
+    if (!smooth) { el.scrollLeft = target; setScrollX(target); return; }
+    isSnapping.current = true;
+    const start = el.scrollLeft;
+    const diff  = target - start;
+    const dur   = Math.min(400, Math.abs(diff) * 1.4);
+    const ts0   = performance.now();
+    const step  = (now: number) => {
+      const t    = Math.min(1, (now - ts0) / dur);
+      const ease = 1 - Math.pow(1 - t, 3); // cubic ease-out
+      el.scrollLeft = start + diff * ease;
+      const sl = normalize(el.scrollLeft);
+      setScrollX(sl);
+      if (t < 1) rafId.current = requestAnimationFrame(step);
+      else { el.scrollLeft = target; setScrollX(normalize(target)); isSnapping.current = false; }
     };
+    if (rafId.current) cancelAnimationFrame(rafId.current);
     rafId.current = requestAnimationFrame(step);
-  }, [SLOT, snapTo]);
+  }, [N, SLOT, normalize]);
+
+  // Инерция — точная копия ArcDrum.startInertia
+  const startInertia = useCallback(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    let v = velocity.current;
+    const step = () => {
+      if (isSnapping.current) return;
+      v *= 0.92; // затухание — как в ArcDrum
+      el.scrollLeft += v;
+      const sl = normalize(el.scrollLeft);
+      setScrollX(sl);
+      if (Math.abs(v) > 0.5) rafId.current = requestAnimationFrame(step);
+      else snapToIdx(Math.round(el.scrollLeft / SLOT));
+    };
+    if (rafId.current) cancelAnimationFrame(rafId.current);
+    rafId.current = requestAnimationFrame(step);
+  }, [normalize, snapToIdx, SLOT]);
 
   // Touch
   const onTouchStart = useCallback((e: React.TouchEvent) => {
-    if (rafId.current) { cancelAnimationFrame(rafId.current); rafId.current = null; }
-    isDragging.current = true; didDrag.current = false;
+    if (rafId.current) cancelAnimationFrame(rafId.current);
+    isSnapping.current = false; isDragging.current = true; didDrag.current = false;
     startX.current = e.touches[0].clientX; startY.current = e.touches[0].clientY;
-    dragOffset.current = 0;
+    startScroll.current = scrollRef.current?.scrollLeft ?? 0;
     lastX.current = e.touches[0].clientX; lastTime.current = performance.now(); velocity.current = 0;
   }, []);
-
   const onTouchMove = useCallback((e: React.TouchEvent) => {
-    if (!isDragging.current) return;
+    if (!isDragging.current || !scrollRef.current) return;
     const dx = e.touches[0].clientX - startX.current;
     const dy = Math.abs(e.touches[0].clientY - startY.current);
-    if (!didDrag.current && dy > Math.abs(dx) * 1.2) { isDragging.current = false; return; }
+    // Если движение вертикальное — отпускаем
+    if (!didDrag.current && dy > Math.abs(dx) + 5) { isDragging.current = false; return; }
     e.preventDefault(); didDrag.current = true;
     const x = e.touches[0].clientX; const now = performance.now(); const dt = now - lastTime.current;
-    if (dt > 0) velocity.current = (x - lastX.current) / dt * 14;
+    if (dt > 0) velocity.current = (lastX.current - x) / dt * 16;
     lastX.current = x; lastTime.current = now;
-    dragOffset.current = dx;
-    setDragDelta(dx);
-  }, []);
-
+    scrollRef.current.scrollLeft = startScroll.current + (startX.current - x);
+    setScrollX(normalize(scrollRef.current.scrollLeft));
+  }, [normalize]);
   const onTouchEnd = useCallback(() => {
-    if (!isDragging.current) return;
     isDragging.current = false;
-    const v = velocity.current;
-    const base = activeRaw;
-    const delta = dragOffset.current;
-    if (Math.abs(v) < 1 && Math.abs(delta) < SLOT * 0.3) {
-      // Маленький сдвиг — снэп на ближайший
-      snapTo(base + Math.round(-delta / SLOT));
-    } else {
-      startInertia(-v, base, -delta);
-    }
+    startInertia();
     setTimeout(() => { didDrag.current = false; }, 50);
-  }, [activeRaw, SLOT, snapTo, startInertia]);
+  }, [startInertia]);
 
-  // Mouse drag
+  // Mouse
   const onMouseDown = useCallback((e: React.MouseEvent) => {
-    if (rafId.current) { cancelAnimationFrame(rafId.current); rafId.current = null; }
-    isDragging.current = true; didDrag.current = false;
-    startX.current = e.clientX; dragOffset.current = 0;
+    if (rafId.current) cancelAnimationFrame(rafId.current);
+    isSnapping.current = false; isDragging.current = true; didDrag.current = false;
+    startX.current = e.clientX; startScroll.current = scrollRef.current?.scrollLeft ?? 0;
     lastX.current = e.clientX; lastTime.current = performance.now(); velocity.current = 0;
     e.preventDefault();
   }, []);
   const onMouseMove = useCallback((e: MouseEvent) => {
-    if (!isDragging.current) return;
-    const dx = e.clientX - startX.current;
-    if (Math.abs(dx) > 4) didDrag.current = true;
-    const now = performance.now(); const dt = now - lastTime.current;
-    if (dt > 0) velocity.current = (e.clientX - lastX.current) / dt * 14;
-    lastX.current = e.clientX; lastTime.current = now;
-    dragOffset.current = dx;
-    setDragDelta(dx);
-  }, []);
+    if (!isDragging.current || !scrollRef.current) return;
+    if (Math.abs(e.clientX - startX.current) > 3) didDrag.current = true;
+    const x = e.clientX; const now = performance.now(); const dt = now - lastTime.current;
+    if (dt > 0) velocity.current = (lastX.current - x) / dt * 16;
+    lastX.current = x; lastTime.current = now;
+    scrollRef.current.scrollLeft = startScroll.current + (startX.current - x);
+    setScrollX(normalize(scrollRef.current.scrollLeft));
+  }, [normalize]);
   const onMouseUp = useCallback(() => {
     if (!isDragging.current) return;
     isDragging.current = false;
-    const v = velocity.current;
-    const base = activeRaw;
-    const delta = dragOffset.current;
-    if (Math.abs(v) < 1 && Math.abs(delta) < SLOT * 0.3) {
-      snapTo(base + Math.round(-delta / SLOT));
-    } else {
-      startInertia(-v, base, -delta);
-    }
+    startInertia();
     setTimeout(() => { didDrag.current = false; }, 50);
-  }, [activeRaw, SLOT, snapTo, startInertia]);
-
+  }, [startInertia]);
   useEffect(() => {
     window.addEventListener("mousemove", onMouseMove);
     window.addEventListener("mouseup", onMouseUp);
     return () => { window.removeEventListener("mousemove", onMouseMove); window.removeEventListener("mouseup", onMouseUp); };
   }, [onMouseMove, onMouseUp]);
 
+  // Центральный индекс
+  const centerRaw  = Math.round(scrollX / SLOT);
+  const centerReal = ((centerRaw % N) + N) % N;
+  const s_center   = MOBILE_SCREENS[centerReal];
+
+  // Высота контейнера — фиксированная, телефоны выравниваются по дну
+  const H = 360;
+
   return (
     <div
-      style={{ position: "relative", width: "100%", overflow: "hidden", userSelect: "none", paddingTop: 16, cursor: isDragging.current ? "grabbing" : "grab", touchAction: "pan-y" }}
-      onTouchStart={onTouchStart}
-      onTouchMove={onTouchMove}
-      onTouchEnd={onTouchEnd}
+      style={{ position: "relative", width: "100%", userSelect: "none", touchAction: "pan-y", cursor: "grab" }}
+      onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}
       onMouseDown={onMouseDown}
     >
       {/* Тени по краям */}
-      <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: 40, zIndex: 10, pointerEvents: "none", background: "linear-gradient(to right,#080810,transparent)" }} />
-      <div style={{ position: "absolute", right: 0, top: 0, bottom: 0, width: 40, zIndex: 10, pointerEvents: "none", background: "linear-gradient(to left,#080810,transparent)" }} />
+      <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: 56, zIndex: 10, pointerEvents: "none", background: "linear-gradient(to right,#080810 20%,transparent)" }} />
+      <div style={{ position: "absolute", right: 0, top: 0, bottom: 0, width: 56, zIndex: 10, pointerEvents: "none", background: "linear-gradient(to left,#080810 20%,transparent)" }} />
 
-      {/* Ряд телефонов — flex, центрируем через отступ */}
-      <div style={{ display: "flex", justifyContent: "center", alignItems: "flex-end", gap: GAP, paddingBottom: 16 }}>
+      {/* Скрытый механический скролл */}
+      <div ref={scrollRef} style={{ position: "absolute", inset: 0, overflowX: "scroll", scrollbarWidth: "none", opacity: 0, pointerEvents: "none" }}>
+        <div style={{ width: items.length * SLOT + 800, height: 1 }} />
+      </div>
+
+      {/* Визуальный ряд */}
+      <div style={{ height: H, position: "relative", overflow: "hidden" }}>
         {items.map((s, rawIdx) => {
-          // Позиция относительно активного с учётом drag
-          const relPos = rawIdx - activeRaw - dragDelta / SLOT;
-          // Показываем только ±3 слота от центра
-          if (relPos < -3.5 || relPos > 3.5) return null;
-          const isCenter = Math.abs(relPos) < 0.5;
-          const absDist  = Math.abs(relPos);
+          // Смещение в пикселях от центра экрана
+          const pxFromCenter = rawIdx * SLOT - scrollX;
+          // Показываем только ±3 слота
+          if (pxFromCenter < -SLOT * 3.5 || pxFromCenter > SLOT * 3.5) return null;
+
+          const norm    = pxFromCenter / (SLOT * 2.5); // −1..1
+          const absNorm = Math.abs(norm);
+          const isCenter = rawIdx === centerRaw;
           const realIdx  = ((rawIdx % N) + N) % N;
 
-          const phoneW = isCenter ? PHONE_W_ACTIVE : PHONE_W_SMALL;
-          const phoneH = isCenter ? PHONE_H_ACTIVE : PHONE_H_SMALL;
-          const opacity = Math.max(0.25, 1 - absDist * 0.35);
+          // Плавная интерполяция размеров по норме — никаких резких переключений
+          const wSmall = 100, wBig = 148;
+          const hSmall = 210, hBig = 310;
+          const t = Math.max(0, 1 - absNorm * 1.4); // 1 = центр, 0 = край
+          const phoneW = Math.round(wSmall + (wBig - wSmall) * t);
+          const phoneH = Math.round(hSmall + (hBig - hSmall) * t);
+          const opacity = Math.max(0.2, 1 - absNorm * 0.75);
+          // Позиция x — центр экрана + смещение
+          const cx = pxFromCenter; // offset от центра
 
           return (
             <div
@@ -475,57 +500,55 @@ function PhoneDrum({ onOpen }: { onOpen: (idx: number) => void }) {
               onClick={() => {
                 if (didDrag.current) return;
                 if (isCenter) onOpen(realIdx);
-                else snapTo(rawIdx);
+                else snapToIdx(rawIdx);
               }}
               style={{
-                flexShrink: 0,
+                position: "absolute",
+                left: "50%",
+                bottom: 0,
+                transform: `translateX(calc(${cx}px - 50%))`,
+                width: phoneW,
                 display: "flex",
                 flexDirection: "column",
                 alignItems: "center",
-                gap: 10,
+                gap: 8,
                 opacity,
-                transition: isDragging.current ? "none" : "all 0.35s cubic-bezier(0.34,1.56,0.64,1)",
                 cursor: isCenter ? "zoom-in" : "pointer",
+                // Нет transition — движение идёт через rAF, плавно
               }}
             >
-              {/* Телефон-мокап */}
               <div style={{
-                width: phoneW,
-                height: phoneH,
-                borderRadius: 24,
+                width: phoneW, height: phoneH,
+                borderRadius: 22,
                 overflow: "hidden",
                 border: `2px solid ${isCenter ? s.color : "rgba(255,255,255,0.1)"}`,
                 boxShadow: isCenter
-                  ? `0 0 0 4px ${s.color}22, 0 20px 50px rgba(0,0,0,0.7), 0 0 40px ${s.color}33`
-                  : "0 4px 20px rgba(0,0,0,0.4)",
+                  ? `0 0 0 3px ${s.color}22, 0 16px 48px rgba(0,0,0,0.8), 0 0 36px ${s.color}33`
+                  : "0 4px 16px rgba(0,0,0,0.5)",
                 background: "#0a0a14",
                 position: "relative",
-                transition: isDragging.current ? "none" : "width 0.35s cubic-bezier(0.34,1.56,0.64,1), height 0.35s cubic-bezier(0.34,1.56,0.64,1), border-color 0.35s, box-shadow 0.35s",
               }}>
-                {/* Dynamic island */}
-                <div style={{ position: "absolute", top: 8, left: "50%", transform: "translateX(-50%)", width: 30, height: 8, borderRadius: 4, background: "#000", zIndex: 2 }} />
-                <img src={s.img} alt={s.label} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                {/* Home indicator */}
-                <div style={{ position: "absolute", bottom: 6, left: "50%", transform: "translateX(-50%)", width: 32, height: 3, borderRadius: 2, background: "rgba(255,255,255,0.25)" }} />
-                {/* Glow снизу у активного */}
+                <div style={{ position: "absolute", top: 8, left: "50%", transform: "translateX(-50%)", width: 28, height: 8, borderRadius: 4, background: "#000", zIndex: 2 }} />
+                <img src={s.img} alt={s.label} style={{ width: "100%", height: "100%", objectFit: "cover" }} draggable={false} />
+                <div style={{ position: "absolute", bottom: 5, left: "50%", transform: "translateX(-50%)", width: 30, height: 3, borderRadius: 2, background: "rgba(255,255,255,0.25)" }} />
                 {isCenter && <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 48, background: `linear-gradient(to top, ${s.color}22, transparent)` }} />}
               </div>
-
-              {/* Подпись — только у активного */}
-              <div style={{ textAlign: "center", opacity: isCenter ? 1 : 0, transition: "opacity 0.3s" }}>
-                <div style={{ fontSize: 12, fontWeight: 700, color: s.color }}>{s.label}</div>
-                <div style={{ fontSize: 10, color: "rgba(255,255,255,0.4)", marginTop: 2 }}>{s.sub}</div>
+              {/* Подпись под центральным */}
+              <div style={{ textAlign: "center", height: 32, display: "flex", flexDirection: "column", justifyContent: "center" }}>
+                <div style={{ fontSize: 12, fontWeight: 700, color: s.color, opacity: isCenter ? 1 : 0 }}>{s.label}</div>
+                <div style={{ fontSize: 10, color: "rgba(255,255,255,0.4)", marginTop: 2, opacity: isCenter ? 1 : 0 }}>{s.sub}</div>
               </div>
             </div>
           );
         })}
       </div>
 
-      {/* Точки-индикаторы */}
-      <div style={{ display: "flex", justifyContent: "center", gap: 6, paddingBottom: 4 }}>
+      {/* Точки */}
+      <div style={{ display: "flex", justifyContent: "center", gap: 6, paddingBottom: 8, paddingTop: 4 }}>
         {MOBILE_SCREENS.map((s, i) => (
-          <button key={i} onClick={() => snapTo(INIT_IDX + (i - activeReal + N) % N - Math.floor(N / 2))}
-            style={{ width: i === activeReal ? 20 : 6, height: 6, borderRadius: 3, background: i === activeReal ? s.color : "rgba(255,255,255,0.2)", border: "none", cursor: "pointer", transition: "all 0.3s", padding: 0 }} />
+          <button key={i}
+            onClick={() => snapToIdx(N + i)}
+            style={{ width: i === centerReal ? 20 : 6, height: 6, borderRadius: 3, background: i === centerReal ? s_center.color : "rgba(255,255,255,0.2)", border: "none", cursor: "pointer", transition: "all 0.3s", padding: 0 }} />
         ))}
       </div>
     </div>
