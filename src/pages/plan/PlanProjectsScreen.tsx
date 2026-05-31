@@ -9,6 +9,8 @@ import PlanProjectsSearchBar from "./PlanProjectsSearchBar";
 import PlanProjectCard from "./PlanProjectCard";
 import { generateExportPdf } from "./PlanExportGenerator";
 import func2url from "@/../backend/func2url.json";
+import UserDropdown from "@/components/UserDropdown";
+import ProfileModal from "@/components/ProfileModal";
 
 const CRM_URL = (func2url as Record<string, string>)["crm-manager"];
 
@@ -21,6 +23,7 @@ interface Props {
 export default function PlanProjectsScreen({ token, onSelectProject, initialProjectId }: Props) {
   const { projects, loading, loadProjects, createProject, updateProject, deleteProject, syncWithCrm, loadRooms } = usePlanProjects(token);
 
+  const [showProfileModal, setShowProfileModal] = useState(false);
   const [exportOpen,       setExportOpen]       = useState(false);
   const [exportProject,    setExportProject]    = useState<PlanProject | null>(null);
   const [materialsProject, setMaterialsProject] = useState<PlanProject | null>(null);
@@ -214,14 +217,16 @@ export default function PlanProjectsScreen({ token, onSelectProject, initialProj
         <div className="flex items-center gap-2">
           <button
             onClick={() => { setShowCreate(true); setEditingId(null); setForm(EMPTY_FORM); setError(""); }}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition hover:opacity-90 active:scale-[0.97]"
+            className="flex items-center gap-2 px-3 sm:px-4 py-2 rounded-xl text-sm font-bold transition hover:opacity-90 active:scale-[0.97]"
             style={{ background: "linear-gradient(135deg,#7c3aed,#6d28d9)", color: "#fff" }}
           >
             <Icon name="Plus" size={15} />
-            Новый проект
+            <span className="hidden sm:inline">Новый проект</span>
           </button>
+          <UserDropdown onShowProfile={() => setShowProfileModal(true)} />
         </div>
       </div>
+      <ProfileModal open={showProfileModal} onClose={() => setShowProfileModal(false)} />
 
       <PlanExportModal
         open={exportOpen}

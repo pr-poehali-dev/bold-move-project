@@ -1,6 +1,8 @@
 import { useState, useMemo, useEffect } from "react";
 import Icon from "@/components/ui/icon";
 import QuickNavDesktop from "@/components/QuickNavDesktop";
+import UserDropdown from "@/components/UserDropdown";
+import ProfileModal from "@/components/ProfileModal";
 import CrmAnalytics from "./CrmAnalytics";
 import CrmClients from "./CrmClients";
 import CrmOrders from "./CrmOrders";
@@ -54,6 +56,7 @@ export default function CrmPanel({ theme, initialOrderId, initialTab }: { theme:
   const [tab, setTab]               = useState<CrmTab>(initialTab ?? "orders");
   const [clients, setClients]       = useState<Client[]>([]);
   const [loading, setLoading]       = useState(true);
+  const [showProfileModal, setShowProfileModal] = useState(false);
   const [calendarOpenId, setCalendarOpenId] = useState<number | null>(null);
   const [calendarOpenKey, setCalendarOpenKey] = useState(0);
 
@@ -196,7 +199,13 @@ export default function CrmPanel({ theme, initialOrderId, initialTab }: { theme:
             </button>
           )}
 
+          {/* Аватар пользователя */}
+          <div className="flex-shrink-0 ml-1">
+            <UserDropdown onShowProfile={() => setShowProfileModal(true)} />
+          </div>
+
         </div>
+        <ProfileModal open={showProfileModal} onClose={() => setShowProfileModal(false)} />
 
         {/* Быстрая навигация между модулями — только десктоп, под шапкой */}
         <div className="hidden sm:flex items-center px-6 py-2 flex-shrink-0"
