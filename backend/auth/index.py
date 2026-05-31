@@ -1075,63 +1075,6 @@ def handler(event: dict, context) -> dict:
         from demo_seed import seed_demo
         seed_demo(cur, SCHEMA, user_id)
 
-        if False:  # удалённый хвост — placeholder для следующего удаления
-            for (cname, phone, status, address, area, budget, contract_sum,
-             prepayment, extra_payment, mat_cost, meas_cost, inst_cost, mgmt_cost,
-             notes, source, col_idx, priority, tags, sub_status,
-             prep_conf, extra_conf, created_dt, measure_dt, install_dt) in []:
-
-            session_id = f"demo_{secrets.token_hex(8)}"
-            cur.execute(f"""
-                INSERT INTO {SCHEMA}.live_chats
-                (session_id, client_name, phone, status, address, area, budget,
-                 contract_sum, prepayment, extra_payment,
-                 material_cost, measure_cost, install_cost, management_cost,
-                 notes, source, sub_status, tags,
-                 prepayment_confirmed, extra_payment_confirmed,
-                 company_id, created_at, measure_date, install_date, updated_at)
-                VALUES (%s,%s,%s,%s,%s,%s,%s,
-                        %s,%s,%s,
-                        %s,%s,%s,%s,
-                        %s,%s,%s,%s,
-                        %s,%s,
-                        %s,%s,%s,%s,%s)
-                RETURNING id
-            """, (
-                session_id, cname, phone, status, address, area, budget,
-                contract_sum, prepayment, extra_payment,
-                mat_cost, meas_cost, inst_cost, mgmt_cost,
-                notes, source, sub_status, tags,
-                prep_conf, extra_conf,
-                user_id, created_dt, measure_dt, install_dt, created_dt
-            ))
-            client_id = cur.fetchone()[0]
-
-            col_id = col_ids[col_idx]
-            cur.execute(f"""
-                INSERT INTO {SCHEMA}.kanban_cards
-                (column_id, client_id, title, phone, amount, priority, position, company_id)
-                VALUES (%s,%s,%s,%s,%s,%s,%s,%s)
-            """, (
-                col_id, client_id, cname, phone,
-                contract_sum or budget,
-                priority, 0, user_id
-            ))
-
-        # ── Демо-данные: проект построителя (реальная Кухня) ────────────────
-        import json as _json
-        plan_proj_name = "Квартира Захаровых, Королёв"
-        cur.execute(
-            f"""INSERT INTO {SCHEMA}.plan_projects
-                (company_id, name, client_name, address, phone, status, created_at, updated_at)
-                VALUES (%s,%s,%s,%s,%s,'active',%s,%s) RETURNING id""",
-            (user_id, plan_proj_name, "Дмитрий Захаров",
-             "Королёв, ул. Октябрьская, 3, кв. 47", "+7 (925) 345-67-89",
-             now - timedelta(days=3), now - timedelta(days=1))
-        )
-        plan_proj_id = cur.fetchone()[0]
-
-        # Комната 1: Кухня (реальный чертёж из проекта, id=99)
         kitchen_data = {"arcs":[],"room":{"name":"Главная фигура","concreteDipMm":None,"floorToCeilCm":None,"mansardCeiling":False},"tool":"move","phase":"lengths","points":[{"x":620,"y":580,"id":"pt_demo_k1"},{"x":620,"y":260,"id":"pt_demo_k2"},{"x":940,"y":260,"id":"pt_demo_k3"},{"x":940,"y":500,"id":"pt_demo_k4"},{"x":860,"y":500,"id":"pt_demo_k5"},{"x":860,"y":540,"id":"pt_demo_k6"},{"x":940,"y":540,"id":"pt_demo_k7"},{"x":940,"y":580,"id":"pt_demo_k8"}],"isBuilt":True,"dimLines":[],"isClosed":True,"segments":[{"id":"s_demo_k1","toId":"pt_demo_k2","items":[{"name":"EuroKRAAB стеновой","unit":"пог.м","priceId":12,"category":"Теневой профиль","imageUrl":"https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/price-images/e877217f42e143ffbd1eb33d6bdec341.png","quantity":4,"isWallItem":True}],"fromId":"pt_demo_k1","lengthCm":400,"arcRadius":0,"showLength":True,"showDimLine":True},{"id":"s_demo_k2","toId":"pt_demo_k3","items":[{"name":"Ниша ПК-14 (2 ряда)","unit":"пог.м","priceId":59,"category":"Ниши для штор","imageUrl":"https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/price-images/9d7ec38b035a42bda0b92a32f88e975e.png","quantity":4,"isWallItem":True}],"fromId":"pt_demo_k2","lengthCm":400,"arcRadius":0,"showLength":True,"showDimLine":True},{"id":"s_demo_k3","toId":"pt_demo_k4","items":[{"name":"Flexy FLY 02 с рассеивателем","unit":"пог.м","priceId":17,"category":"Парящий профиль","imageUrl":"https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/price-images/2d3fad41138c4f699df4866f66635046.png","quantity":3,"isWallItem":True}],"fromId":"pt_demo_k3","lengthCm":300,"arcRadius":0,"showLength":True,"showDimLine":True},{"id":"s_demo_k4","toId":"pt_demo_k5","items":[{"name":"Flexy FLY 02 с рассеивателем","unit":"пог.м","priceId":17,"category":"Парящий профиль","quantity":1,"isWallItem":True}],"fromId":"pt_demo_k4","lengthCm":100,"arcRadius":0,"showLength":True,"showDimLine":True},{"id":"s_demo_k5","to... [truncated]
         cur.execute(
             f"""INSERT INTO {SCHEMA}.room_plans
@@ -1200,10 +1143,6 @@ def handler(event: dict, context) -> dict:
                  _json.dumps(est["totals"], ensure_ascii=False),
                  est["final_phrase"],
                  est["total_econom"], est["total_standard"], est["total_premium"],
-                 est["status"], est["created_at"], est["created_at"])
-            )
-        # __DEMO_TAIL_END__
-
         conn.commit()
         return ok({"token": new_token, "user": {
             "id": user_id, "email": demo_email, "name": demo_name,
