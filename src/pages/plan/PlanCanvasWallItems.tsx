@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import type { PlanState, Segment } from "./planTypes";
 import type { RenderContext } from "./PlanCanvasRenderers";
 import { SegmentItemsBadges } from "./PlanCanvasLabelRenderers";
@@ -19,6 +19,9 @@ export default function PlanCanvasWallItems({
   const [segPopup, setSegPopup] = useState<{
     segId: string; priceId: number; screenX: number; screenY: number;
   } | null>(null);
+  // Snapshot выделенных стен в момент открытия попапа —
+  // к моменту рендера попапа selectedSegmentIds уже сброшен touch-обработчиком
+  const frozenSelectedIds = useRef<string[]>([]);
 
   return (
     <>
@@ -63,6 +66,8 @@ export default function PlanCanvasWallItems({
             onChange({ segments: newSegs });
           }}
           onEditSegItem={(segId, priceId, screenX, screenY) => {
+            // Сохраняем выделенные стены ДО того как touch-обработчик их сбросит
+            frozenSelectedIds.current = selectedSegmentIds;
             setSegPopup({ segId, priceId, screenX, screenY });
           }}
         />
@@ -97,12 +102,12 @@ export default function PlanCanvasWallItems({
               );
               onChange({ segments: newSegs });
             }}
-            selectedSegmentsCount={selectedSegmentIds.filter(id => id !== segPopup.segId).length}
+            selectedSegmentsCount={frozenSelectedIds.current.filter(id => id !== segPopup.segId).length}
             onAddToSelectedSegs={(segId, priceId) => {
               const fromSeg = segments.find(s => s.id === segId);
               const srcItem = fromSeg?.items?.find(it => it.priceId === priceId);
               if (!srcItem) return;
-              const targetIds = selectedSegmentIds.filter(id => id !== segId);
+              const targetIds = frozenSelectedIds.current.filter(id => id !== segId);
               const newSegs = segments.map(s => {
                 if (!targetIds.includes(s.id)) return s;
                 const meters = s.lengthCm ? Math.round(s.lengthCm / 100 * 100) / 100 : srcItem.quantity ?? 1;
