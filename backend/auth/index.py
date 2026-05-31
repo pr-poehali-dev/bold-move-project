@@ -1,4 +1,4 @@
-import json, os, hashlib, secrets, psycopg2, base64  # v4
+import json, os, hashlib, secrets, psycopg2, base64  # v7-force
 import urllib.request as _ureq
 import boto3
 from datetime import datetime, timezone, timedelta
@@ -1336,27 +1336,6 @@ def handler(event: dict, context) -> dict:
         cur.execute(f"DELETE FROM {SCHEMA}.users WHERE id IN ({ids_sql})")
         conn.commit()
         return ok({"deleted": len(expired_ids)})
-
-    # ── Удалить конкретный демо-аккаунт по user_id (мастер) ──────────────────
-    if action == "purge-demo" and method == "POST":
-        target_id = body.get("user_id")
-        if not target_id:
-            return err("user_id required")
-        cur.execute(f"SELECT id FROM {SCHEMA}.users WHERE id=%s AND is_demo=TRUE", (int(target_id),))
-        if not cur.fetchone():
-            return err("demo user not found")
-        ids_sql = str(int(target_id))
-        cur.execute(f"DELETE FROM {SCHEMA}.plan_variants v USING {SCHEMA}.room_plans r WHERE v.room_id=r.id AND r.user_id IN ({ids_sql})")
-        cur.execute(f"DELETE FROM {SCHEMA}.room_plans WHERE user_id IN ({ids_sql})")
-        cur.execute(f"DELETE FROM {SCHEMA}.kanban_cards WHERE company_id IN ({ids_sql})")
-        cur.execute(f"DELETE FROM {SCHEMA}.kanban_columns WHERE company_id IN ({ids_sql})")
-        cur.execute(f"DELETE FROM {SCHEMA}.saved_estimates WHERE company_id IN ({ids_sql})")
-        cur.execute(f"DELETE FROM {SCHEMA}.live_chats WHERE company_id IN ({ids_sql})")
-        cur.execute(f"DELETE FROM {SCHEMA}.plan_projects WHERE company_id IN ({ids_sql})")
-        cur.execute(f"DELETE FROM {SCHEMA}.user_sessions WHERE user_id IN ({ids_sql})")
-        cur.execute(f"DELETE FROM {SCHEMA}.users WHERE id IN ({ids_sql})")
-        conn.commit()
-        return ok({"purged": int(target_id)})
 
     # ── Мастер: список всех пользователей ────────────────────────────────────
     if action == "admin-users" and method == "GET":
