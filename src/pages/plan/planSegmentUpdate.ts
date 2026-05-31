@@ -36,6 +36,24 @@ export function updateSegmentWithRebuild(
   const allSetAfter = newSegments.every(s => s.lengthCm !== null && s.lengthCm > 0);
   const isEditMode = !!state.isBuilt;
 
+  // Режим редактирования (isBuilt=true): всегда перестраиваем фигуру по новым размерам.
+  // baseScale уже зафиксирован — масштаб не меняем, просто пересчитываем позиции точек.
+  if (isEditMode && allSetAfter && baseScale && isClosed) {
+    const result = rebuildWithRightAngles(points, newSegments, baseScale);
+    if (result) {
+      const finalSegs = result.segments ?? newSegments;
+      const newDiags = buildAutoDiagonals(result.points, diagonals, baseScale);
+      return {
+        points: result.points,
+        segments: finalSegs,
+        diagonals: newDiags,
+        baseScale,
+        isBuilt: true,
+        changedSegmentIds: cleanedChangedIds,
+      };
+    }
+  }
+
   // Режим построения: все стороны заполнены — rebuild
   // Пересчитываем масштаб по наименьшей стороне чтобы все отрезки были хорошо видны
   if (!isEditMode && allSetAfter && isClosed) {
@@ -48,7 +66,6 @@ export function updateSegmentWithRebuild(
       if (!a || !b) continue;
       const px = distPx(a, b);
       if (px <= 0) continue;
-      // Берём отрезок с наименьшей длиной в см
       if (s.lengthCm < minCm) {
         minCm = s.lengthCm;
         bestScale = px / s.lengthCm;
