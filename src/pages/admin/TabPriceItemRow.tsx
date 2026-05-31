@@ -214,39 +214,39 @@ export function PriceItemCard({
         </div>
 
         {/* Строка 2: цены + единица */}
-        <div className="flex items-center gap-3">
-          <div className="flex flex-col gap-0.5 flex-1">
-            <span className={`text-[10px] ${muted2}`}>Продажа ₽</span>
+        <div className="flex items-center gap-2">
+          <div className="flex flex-col gap-0.5 flex-1 min-w-0">
+            <span className={`text-[9px] ${muted2} truncate`}>Продажа</span>
             <div className="font-mono text-green-400 text-sm">
               <EditableCell value={item.price} type="number" onSave={v => onSaveField(item, "price", v)} />
             </div>
           </div>
-          <div className="flex flex-col gap-0.5 flex-1">
-            <span className={`text-[10px] ${muted2}`}>Закупка ₽</span>
+          <div className="flex flex-col gap-0.5 flex-1 min-w-0">
+            <span className={`text-[9px] ${muted2} truncate`}>Закупка</span>
             <div className="font-mono text-blue-400 text-sm">
               <EditableCell value={item.purchase_price ?? ""} type="number" onSave={v => onSaveField(item, "purchase_price", v)} placeholder="—" />
             </div>
           </div>
-          <div className="flex flex-col gap-0.5 flex-1">
-            <span className={`text-[10px] ${muted2}`}>Монтаж ₽</span>
+          <div className="flex flex-col gap-0.5 flex-1 min-w-0">
+            <span className={`text-[9px] ${muted2} truncate`}>Монтаж</span>
             <div className="font-mono text-cyan-400 text-sm">
               <EditableCell value={item.installation_price ?? 100} type="number" onSave={v => onSaveField(item, "installation_price", v)} placeholder="—" />
             </div>
           </div>
-          <div className="flex flex-col gap-0.5 flex-1">
-            <span className={`text-[10px] ${muted2}`}>Замер ₽</span>
+          <div className="flex flex-col gap-0.5 flex-1 min-w-0">
+            <span className={`text-[9px] ${muted2} truncate`}>Замер</span>
             <div className="font-mono text-teal-400 text-sm">
               <EditableCell value={item.measure_price ?? 100} type="number" onSave={v => onSaveField(item, "measure_price", v)} placeholder="—" />
             </div>
           </div>
-          <div className="flex flex-col gap-0.5 flex-1">
-            <span className={`text-[10px] ${muted2}`}>Менеджмент ₽</span>
+          <div className="flex flex-col gap-0.5 flex-1 min-w-0">
+            <span className={`text-[9px] ${muted2} truncate`}>Менедж.</span>
             <div className="font-mono text-fuchsia-400 text-sm">
               <EditableCell value={item.management_price ?? 100} type="number" onSave={v => onSaveField(item, "management_price", v)} placeholder="—" />
             </div>
           </div>
-          <div className="flex flex-col gap-0.5">
-            <span className={`text-[10px] ${muted2}`}>Ед.</span>
+          <div className="flex flex-col gap-0.5 flex-shrink-0">
+            <span className={`text-[9px] ${muted2}`}>Ед.</span>
             <select
               value={item.unit}
               onChange={e => onSaveField(item, "unit", e.target.value)}
