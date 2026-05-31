@@ -135,8 +135,8 @@ export function renderSegments(ctx: RenderContext, handlers: Pick<SegmentHandler
         />
         {isEmpty && !isIntersecting && !isSel && (
           <line x1={a.x} y1={a.y} x2={b.x} y2={b.y}
-            stroke="#facc15" strokeWidth={2} opacity={0.5}
-            strokeDasharray="6 5" className="pointer-events-none" />
+            stroke="#f97316" strokeWidth={3} opacity={0.85}
+            strokeDasharray="8 4" className="pointer-events-none" />
         )}
         {isChanged && <line x1={a.x} y1={a.y} x2={b.x} y2={b.y} stroke="#facc15" strokeWidth={3} opacity={0.9} className="pointer-events-none seg-recalc-flash" />}
         {isIntersecting && <line x1={a.x} y1={a.y} x2={b.x} y2={b.y} stroke="#f87171" strokeWidth={2.5} opacity={0.8} className="pointer-events-none" />}
