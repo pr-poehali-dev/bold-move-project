@@ -2,6 +2,7 @@ import { useEffect, useState, useMemo } from "react";
 import Icon from "@/components/ui/icon";
 import type { PlanProject, PlanRoom } from "./usePlanProjects";
 import func2url from "@/../backend/func2url.json";
+import { sortCategories } from "./categoryOrder";
 
 const CRM_URL = (func2url as Record<string, string>)["crm-manager"];
 
@@ -169,7 +170,7 @@ export default function PlanMaterialsScreen({ project, token, onBack }: Props) {
   }, [viewMode, allLines, byRoom, selectedRoomId]);
 
   const grouped = useMemo(() => groupByCategory(displayLines), [displayLines]);
-  const categories = Object.keys(grouped).sort();
+  const categories = sortCategories(Object.keys(grouped));
 
   const currentRoomId = viewMode === "room" ? selectedRoomId : null;
 

@@ -4,6 +4,7 @@ import type { PlanState } from "./planTypes";
 import type { ExportType, ExportScope } from "./PlanExportMenu";
 import { getSvgDataUrlAsync } from "./planExport";
 import func2url from "@/../backend/func2url.json";
+import { sortCategories } from "./categoryOrder";
 
 const PRICES_URL = (func2url as Record<string, string>)["get-prices"];
 const PARSE_XLSX_URL = (func2url as Record<string, string>)["parse-xlsx"];
@@ -99,7 +100,14 @@ function extractRoomItems(room: PlanRoom, prices: Map<number, PriceFull>): Aggre
     addItem(it.priceId, it.name, it.unit, it.quantity ?? 1);
   }
 
-  return Array.from(agg.values());
+  // Сортируем по категории согласно единому порядку
+  const items = Array.from(agg.values());
+  const catOrder = sortCategories([...new Set(items.map(i => i.category || "Прочее"))]);
+  return items.sort((a, b) => {
+    const ia = catOrder.indexOf(a.category || "Прочее");
+    const ib = catOrder.indexOf(b.category || "Прочее");
+    return ia - ib;
+  });
 }
 
 // ── Превью чертежа комнаты (опционально без подписей стен) ─────────────────
@@ -508,7 +516,8 @@ function buildAnalytics(rooms: PlanRoom[], prices: Map<number, PriceFull>, proje
   const profit = salesTotal - totalCost;
   const margin = salesTotal > 0 ? Math.round((profit / salesTotal) * 100) : 0;
 
-  const categoryRows = Array.from(byCategory.entries()).map(([cat, v]) => {
+  const categoryRows = sortCategories(Array.from(byCategory.keys())).map(cat => {
+    const v = byCategory.get(cat)!;
     const catProfit = v.sales - v.material - v.install - v.measure - v.management;
     return `<tr>
       <td>${cat}</td>
