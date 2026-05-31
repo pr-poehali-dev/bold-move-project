@@ -13,10 +13,13 @@ interface Props {
   onReplace: (segId: string, priceId: number) => void;
   onMove: (segId: string, priceId: number) => void;
   onQuantityChange: (segId: string, priceId: number, quantity: number) => void;
+  onAddToSelectedSegs?: (segId: string, priceId: number) => void;
+  selectedSegmentsCount?: number;
 }
 
 export default function SegItemPopup({
   item, segId, screenX, screenY, onClose, onRemove, onReplace, onMove, onQuantityChange,
+  onAddToSelectedSegs, selectedSegmentsCount = 0,
 }: Props) {
   const ref = useRef<HTMLDivElement>(null);
   const [qty, setQty] = useState(item.quantity);
@@ -102,6 +105,15 @@ export default function SegItemPopup({
         <Icon name="RefreshCw" size={13} />
         <span>Заменить позицию</span>
       </button>
+
+      {/* Добавить на выбранные стены */}
+      {onAddToSelectedSegs && selectedSegmentsCount > 0 && (
+        <button style={{ ...rowBtn, color: "#34d399" }}
+          onPointerDown={e => { e.stopPropagation(); onAddToSelectedSegs(segId, item.priceId); onClose(); }}>
+          <Icon name="CopyPlus" size={13} />
+          <span>На выбранные стены ({selectedSegmentsCount})</span>
+        </button>
+      )}
 
       {/* Удалить */}
       <button style={{ ...rowBtn, color: "#f87171" }}

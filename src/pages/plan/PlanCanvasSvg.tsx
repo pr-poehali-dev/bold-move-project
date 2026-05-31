@@ -330,6 +330,7 @@ export default function PlanCanvasSvg({
               onChange={onChange}
               onEditSegItem={onEditSegItem}
               onStartMove={(fromSegId, priceId) => setMovePending({ fromSegId, priceId })}
+              selectedSegmentIds={state.selectedSegmentIds}
             />
           )}
 

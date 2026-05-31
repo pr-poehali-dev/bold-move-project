@@ -10,10 +10,11 @@ interface Props {
   onChange: (patch: Partial<PlanState>) => void;
   onEditSegItem?: (segId: string, priceId: number) => void;
   onStartMove: (fromSegId: string, priceId: number) => void;
+  selectedSegmentIds?: string[];
 }
 
 export default function PlanCanvasWallItems({
-  segments, ctx, onChange, onEditSegItem, onStartMove,
+  segments, ctx, onChange, onEditSegItem, onStartMove, selectedSegmentIds = [],
 }: Props) {
   const [segPopup, setSegPopup] = useState<{
     segId: string; priceId: number; screenX: number; screenY: number;
@@ -94,6 +95,21 @@ export default function PlanCanvasWallItems({
               const newSegs = segments.map(s =>
                 s.id !== segId ? s : { ...s, items: (s.items ?? []).map(it => it.priceId === priceId ? { ...it, quantity } : it) }
               );
+              onChange({ segments: newSegs });
+            }}
+            selectedSegmentsCount={selectedSegmentIds.filter(id => id !== segPopup.segId).length}
+            onAddToSelectedSegs={(segId, priceId) => {
+              const fromSeg = segments.find(s => s.id === segId);
+              const srcItem = fromSeg?.items?.find(it => it.priceId === priceId);
+              if (!srcItem) return;
+              const targetIds = selectedSegmentIds.filter(id => id !== segId);
+              const newSegs = segments.map(s => {
+                if (!targetIds.includes(s.id)) return s;
+                const meters = s.lengthCm ? Math.round(s.lengthCm / 100 * 100) / 100 : srcItem.quantity ?? 1;
+                const existing = s.items ?? [];
+                if (existing.some(it => it.priceId === priceId)) return s;
+                return { ...s, items: [...existing, { ...srcItem, quantity: meters }] };
+              });
               onChange({ segments: newSegs });
             }}
           />
