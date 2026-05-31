@@ -709,7 +709,8 @@ def handler(event: dict, context) -> dict:
                         ce.start_time, ce.end_time, ce.color, ce.created_at, lc.client_name, lc.phone, lc.address
                         FROM {SCHEMA}.calendar_events ce
                         LEFT JOIN {SCHEMA}.live_chats lc ON ce.client_id=lc.id
-                        {cond} ORDER BY ce.start_time DESC LIMIT 200""", cond_args)
+                        {cond} {'AND' if cond else 'WHERE'} (lc.status IS NULL OR lc.status != 'deleted')
+                        ORDER BY ce.start_time DESC LIMIT 200""", cond_args)
                 else:
                     if month and year:
                         cur.execute(f"""SELECT ce.id, ce.client_id, ce.title, ce.description, ce.event_type,
@@ -719,6 +720,7 @@ def handler(event: dict, context) -> dict:
                             WHERE ce.company_id=%s
                               AND EXTRACT(MONTH FROM ce.start_time)=%s
                               AND EXTRACT(YEAR FROM ce.start_time)=%s
+                              AND (lc.status IS NULL OR lc.status != 'deleted')
                             ORDER BY ce.start_time""", (company_id, int(month), int(year)))
                     else:
                         cur.execute(f"""SELECT ce.id, ce.client_id, ce.title, ce.description, ce.event_type,
@@ -726,6 +728,7 @@ def handler(event: dict, context) -> dict:
                             FROM {SCHEMA}.calendar_events ce
                             LEFT JOIN {SCHEMA}.live_chats lc ON ce.client_id=lc.id
                             WHERE ce.company_id=%s
+                              AND (lc.status IS NULL OR lc.status != 'deleted')
                             ORDER BY ce.start_time DESC LIMIT 100""", (company_id,))
                 cols_desc = [d[0] for d in cur.description]
                 return ok([dict(zip(cols_desc, r)) for r in cur.fetchall()])
