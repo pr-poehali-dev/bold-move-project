@@ -118,21 +118,33 @@ export default function PlanCanvasSvg({
       return d;
     };
 
-    // Шаг 1: грубая сетка 32×32 — находим приблизительный максимум
+    // Скоринг: minDist до рёбер — главный критерий (вписанная окружность).
+    // При равных minDist выбираем точку ближе к математическому центроиду полигона
+    // (центроид тяготеет к более тяжёлой/большой части фигуры).
+    const bboxDiag = Math.hypot(maxX - minX, maxY - minY) || 1;
+    const score = (px: number, py: number) => {
+      const d = minDistToEdges(px, py);
+      // Нормализованная близость к центроиду [0..1], вес 0.01 — лёгкий тай-брейкер
+      const distToCentroid = Math.hypot(px - cx, py - cy) / bboxDiag;
+      return d - distToCentroid * 0.01 * d;
+    };
+
+    // Шаг 1: грубая сетка 32×32
     const steps = 32;
-    let bestX = cx, bestY = cy, bestScore = isInside(cx, cy) ? minDistToEdges(cx, cy) : -1;
+    let bestX = cx, bestY = cy;
+    let bestScore = isInside(cx, cy) ? score(cx, cy) : -1;
 
     for (let si = 1; si < steps; si++) {
       for (let sj = 1; sj < steps; sj++) {
         const tx = minX + (maxX - minX) * si / steps;
         const ty = minY + (maxY - minY) * sj / steps;
         if (!isInside(tx, ty)) continue;
-        const d = minDistToEdges(tx, ty);
-        if (d > bestScore) { bestScore = d; bestX = tx; bestY = ty; }
+        const s = score(tx, ty);
+        if (s > bestScore) { bestScore = s; bestX = tx; bestY = ty; }
       }
     }
 
-    // Шаг 2: уточнение — сужаем область вокруг найденной точки и сканируем мелче (4 итерации)
+    // Шаг 2: уточнение вокруг лучшей точки (4 итерации bisection)
     let refineSz = (maxX - minX) / steps;
     for (let iter = 0; iter < 4; iter++) {
       const rx0 = bestX - refineSz, rx1 = bestX + refineSz;
@@ -143,8 +155,8 @@ export default function PlanCanvasSvg({
           const tx = rx0 + (rx1 - rx0) * si / refineSteps;
           const ty = ry0 + (ry1 - ry0) * sj / refineSteps;
           if (!isInside(tx, ty)) continue;
-          const d = minDistToEdges(tx, ty);
-          if (d > bestScore) { bestScore = d; bestX = tx; bestY = ty; }
+          const s = score(tx, ty);
+          if (s > bestScore) { bestScore = s; bestX = tx; bestY = ty; }
         }
       }
       refineSz /= 2;
