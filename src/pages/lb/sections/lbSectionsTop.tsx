@@ -308,8 +308,311 @@ const MOBILE_FEATURES = [
   { icon: "🔗", title: "API интеграции", desc: "Подключение к бэкенду, платёжным системам, картам и камере." },
 ];
 
+// ── PhoneDrum: горизонтальный барабан телефонов с инерцией и бесконечным кольцом ──
+function PhoneDrum({ onOpen }: { onOpen: (idx: number) => void }) {
+  const N = MOBILE_SCREENS.length;
+  // Дублируем список 3 раза для бесконечного кольца
+  const items = [...MOBILE_SCREENS, ...MOBILE_SCREENS, ...MOBILE_SCREENS];
+  const OFFSET = N; // начальный индекс = второй блок
+
+  const ITEM_W  = 130; // ширина слота
+  const GAP     = 16;
+  const SLOT    = ITEM_W + GAP;
+  const VISIBLE = 5;
+  const TOTAL_W = SLOT * VISIBLE;
+  const HALF    = TOTAL_W / 2;
+
+  const scrollRef    = useRef<HTMLDivElement>(null);
+  const isDragging   = useRef(false);
+  const didDrag      = useRef(false);
+  const startX       = useRef(0);
+  const startY       = useRef(0);
+  const startScroll  = useRef(0);
+  const lastX        = useRef(0);
+  const lastTime     = useRef(0);
+  const velocity     = useRef(0);
+  const rafId        = useRef<number | null>(null);
+  const isSnapping   = useRef(false);
+  const [scrollLeft, setScrollLeft] = useState(OFFSET * SLOT);
+  // Для hover-следования мышью
+  const [hoverIdx, setHoverIdx]  = useState<number | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  // Инициализация — ставим в центр второго блока
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (el) { el.scrollLeft = OFFSET * SLOT; setScrollLeft(OFFSET * SLOT); }
+  }, []);
+
+  // Нормализация: если ушли далеко — прыгаем на эквивалентную позицию в центральном блоке
+  const normalize = useCallback((sl: number) => {
+    const el = scrollRef.current;
+    if (!el) return sl;
+    const min = SLOT * 1;
+    const max = SLOT * (N * 2 - 1);
+    if (sl < min) { const jump = sl + N * SLOT; el.scrollLeft = jump; return jump; }
+    if (sl > max) { const jump = sl - N * SLOT; el.scrollLeft = jump; return jump; }
+    return sl;
+  }, [N, SLOT]);
+
+  const snapToIndex = useCallback((rawIdx: number, smooth = true) => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const target = rawIdx * SLOT;
+    if (!smooth) { el.scrollLeft = target; setScrollLeft(target); return; }
+    isSnapping.current = true;
+    const start = el.scrollLeft;
+    const diff  = target - start;
+    const dur   = Math.min(350, Math.abs(diff) * 0.8);
+    const ts0   = performance.now();
+    const step  = (now: number) => {
+      const t    = Math.min(1, (now - ts0) / dur);
+      const ease = 1 - Math.pow(1 - t, 3);
+      el.scrollLeft = start + diff * ease;
+      const sl = normalize(el.scrollLeft);
+      setScrollLeft(sl);
+      if (t < 1) rafId.current = requestAnimationFrame(step);
+      else { isSnapping.current = false; setScrollLeft(normalize(target)); }
+    };
+    if (rafId.current) cancelAnimationFrame(rafId.current);
+    rafId.current = requestAnimationFrame(step);
+  }, [SLOT, normalize]);
+
+  const startInertia = useCallback(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    let v = velocity.current;
+    const step = () => {
+      if (isSnapping.current) return;
+      v *= 0.91;
+      el.scrollLeft += v;
+      const sl = normalize(el.scrollLeft);
+      setScrollLeft(sl);
+      if (Math.abs(v) > 0.6) rafId.current = requestAnimationFrame(step);
+      else snapToIndex(Math.round(el.scrollLeft / SLOT));
+    };
+    if (rafId.current) cancelAnimationFrame(rafId.current);
+    rafId.current = requestAnimationFrame(step);
+  }, [snapToIndex, normalize, SLOT]);
+
+  // Touch
+  const onTouchStart = useCallback((e: React.TouchEvent) => {
+    if (rafId.current) cancelAnimationFrame(rafId.current);
+    isSnapping.current = false; isDragging.current = true; didDrag.current = false;
+    startX.current = e.touches[0].clientX; startY.current = e.touches[0].clientY;
+    startScroll.current = scrollRef.current?.scrollLeft ?? 0;
+    lastX.current = e.touches[0].clientX; lastTime.current = performance.now(); velocity.current = 0;
+  }, []);
+  const onTouchMove = useCallback((e: React.TouchEvent) => {
+    if (!isDragging.current || !scrollRef.current) return;
+    const dx = e.touches[0].clientX - startX.current;
+    const dy = Math.abs(e.touches[0].clientY - startY.current);
+    if (dy > Math.abs(dx) * 1.5) return; // вертикальный скролл — не перехватываем
+    e.preventDefault(); didDrag.current = true;
+    const x = e.touches[0].clientX; const now = performance.now(); const dt = now - lastTime.current;
+    if (dt > 0) velocity.current = (lastX.current - x) / dt * 14;
+    lastX.current = x; lastTime.current = now;
+    scrollRef.current.scrollLeft = startScroll.current + (startX.current - x);
+    setScrollLeft(normalize(scrollRef.current.scrollLeft));
+  }, [normalize]);
+  const onTouchEnd = useCallback(() => {
+    isDragging.current = false;
+    startInertia();
+    setTimeout(() => { didDrag.current = false; }, 50);
+  }, [startInertia]);
+
+  // Mouse drag
+  const onMouseDown = useCallback((e: React.MouseEvent) => {
+    if (rafId.current) cancelAnimationFrame(rafId.current);
+    isSnapping.current = false; isDragging.current = true; didDrag.current = false;
+    startX.current = e.clientX; startScroll.current = scrollRef.current?.scrollLeft ?? 0;
+    lastX.current = e.clientX; lastTime.current = performance.now(); velocity.current = 0;
+    e.preventDefault();
+  }, []);
+  const onMouseMove = useCallback((e: MouseEvent) => {
+    if (!isDragging.current || !scrollRef.current) return;
+    if (Math.abs(e.clientX - startX.current) > 4) didDrag.current = true;
+    const x = e.clientX; const now = performance.now(); const dt = now - lastTime.current;
+    if (dt > 0) velocity.current = (lastX.current - x) / dt * 14;
+    lastX.current = x; lastTime.current = now;
+    scrollRef.current.scrollLeft = startScroll.current + (startX.current - x);
+    setScrollLeft(normalize(scrollRef.current.scrollLeft));
+  }, [normalize]);
+  const onMouseUp = useCallback(() => {
+    if (!isDragging.current) return;
+    isDragging.current = false;
+    startInertia();
+    setTimeout(() => { didDrag.current = false; }, 50);
+  }, [startInertia]);
+  useEffect(() => {
+    window.addEventListener("mousemove", onMouseMove);
+    window.addEventListener("mouseup", onMouseUp);
+    return () => { window.removeEventListener("mousemove", onMouseMove); window.removeEventListener("mouseup", onMouseUp); };
+  }, [onMouseMove, onMouseUp]);
+
+  // Hover-следование мышью — находим ближайший телефон под курсором
+  const onContainerMouseMove = useCallback((e: React.MouseEvent) => {
+    if (isDragging.current || !containerRef.current) return;
+    const rect = containerRef.current.getBoundingClientRect();
+    const mx = e.clientX - rect.left - HALF + SLOT / 2;
+    const baseIdx = Math.round(scrollLeft / SLOT);
+    const hover = Math.round((mx + baseIdx * SLOT) / SLOT);
+    setHoverIdx(Math.max(0, Math.min(items.length - 1, hover)));
+  }, [scrollLeft, SLOT, HALF, items.length]);
+  const onContainerMouseLeave = useCallback(() => setHoverIdx(null), []);
+
+  // Центральный реальный индекс (в терминах исходного массива)
+  const centerRawIdx = Math.round(scrollLeft / SLOT);
+  const centerIdx    = ((centerRawIdx % N) + N) % N;
+
+  return (
+    <div
+      ref={containerRef}
+      style={{ position: "relative", width: "100%", overflow: "hidden", userSelect: "none", cursor: isDragging.current ? "grabbing" : "grab" }}
+      onMouseMove={onContainerMouseMove}
+      onMouseLeave={onContainerMouseLeave}
+      onTouchStart={onTouchStart}
+      onTouchMove={onTouchMove}
+      onTouchEnd={onTouchEnd}
+      onMouseDown={onMouseDown}
+    >
+      {/* Тени-маски по краям */}
+      <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: 60, zIndex: 10, pointerEvents: "none", background: "linear-gradient(to right,#080810,transparent)" }} />
+      <div style={{ position: "absolute", right: 0, top: 0, bottom: 0, width: 60, zIndex: 10, pointerEvents: "none", background: "linear-gradient(to left,#080810,transparent)" }} />
+
+      {/* Скрытый механический скролл */}
+      <div
+        ref={scrollRef}
+        style={{ position: "absolute", inset: 0, overflowX: "scroll", scrollbarWidth: "none", opacity: 0, pointerEvents: "none" }}
+      >
+        <div style={{ width: items.length * SLOT, height: 1 }} />
+      </div>
+
+      {/* Визуальный ряд телефонов */}
+      <div style={{ height: 420, position: "relative" }}>
+        {items.map((s, rawIdx) => {
+          const realIdx  = ((rawIdx % N) + N) % N;
+          const itemCenter = rawIdx * SLOT + SLOT / 2 - scrollLeft;
+          const offset   = itemCenter - HALF;
+          const norm     = Math.max(-1.2, Math.min(1.2, offset / HALF));
+          const isCenter = rawIdx === centerRawIdx;
+          const isHovered = hoverIdx === rawIdx;
+          const isFocused = isHovered || isCenter;
+
+          // Дуговые параметры — ближе к центру = крупнее
+          const scale    = Math.max(0.6, 1 - norm * norm * 0.38);
+          const opacity  = Math.max(0.15, 1 - norm * norm * 0.75);
+          const translateY = norm * norm * 28; // дуга вниз от центра
+          const phoneW   = isFocused ? 160 : Math.round(ITEM_W * scale);
+          const phoneH   = isFocused ? 336 : Math.round(ITEM_W * 2.1 * scale);
+          const x = HALF + offset - ITEM_W / 2;
+
+          if (x < -ITEM_W || x > TOTAL_W + ITEM_W) return null;
+
+          return (
+            <div
+              key={rawIdx}
+              onClick={() => {
+                if (didDrag.current) return;
+                if (isCenter) onOpen(realIdx);
+                else snapToIndex(rawIdx);
+              }}
+              style={{
+                position: "absolute",
+                left: x,
+                top: "50%",
+                transform: `translateY(calc(-50% + ${translateY}px)) scale(${isFocused ? 1 : scale})`,
+                transformOrigin: "bottom center",
+                opacity: isFocused ? 1 : opacity,
+                transition: isDragging.current ? "none" : "transform 0.25s ease, opacity 0.25s ease, width 0.25s ease, height 0.25s ease",
+                cursor: isCenter ? "zoom-in" : "pointer",
+                zIndex: isFocused ? 10 : Math.round((1 - Math.abs(norm)) * 5),
+              }}
+            >
+              {/* Телефон-мокап */}
+              <div style={{
+                width: phoneW, height: phoneH,
+                borderRadius: 26,
+                overflow: "hidden",
+                border: `2px solid ${isFocused ? s.color : "rgba(255,255,255,0.1)"}`,
+                boxShadow: isFocused
+                  ? `0 0 0 3px ${s.color}30, 0 24px 60px rgba(0,0,0,0.8), 0 0 50px ${s.color}40`
+                  : "0 6px 24px rgba(0,0,0,0.5)",
+                background: "#0a0a14",
+                transition: "width 0.25s ease, height 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease",
+                position: "relative",
+              }}>
+                <div style={{ position: "absolute", top: 10, left: "50%", transform: "translateX(-50%)", width: 36, height: 10, borderRadius: 5, background: "#000", zIndex: 2 }} />
+                <img src={s.img} alt={s.label} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                <div style={{ position: "absolute", bottom: 6, left: "50%", transform: "translateX(-50%)", width: 36, height: 4, borderRadius: 2, background: "rgba(255,255,255,0.3)" }} />
+                {isFocused && <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 60, background: `linear-gradient(to top, ${s.color}33, transparent)` }} />}
+                {isCenter && <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.25)", opacity: 0, transition: "opacity 0.2s" }} className="hover:!opacity-100">
+                  <div style={{ fontSize: 28 }}>🔍</div>
+                </div>}
+              </div>
+
+              {/* Подпись — только у сфокусированного */}
+              <div style={{ textAlign: "center", marginTop: 10, opacity: isFocused ? 1 : 0, transition: "opacity 0.25s" }}>
+                <div style={{ fontSize: 12, fontWeight: 700, color: s.color }}>{s.label}</div>
+                <div style={{ fontSize: 10, color: "rgba(255,255,255,0.4)", marginTop: 2 }}>{s.sub}</div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Индикаторы */}
+      <div style={{ display: "flex", justifyContent: "center", gap: 6, paddingBottom: 8 }}>
+        {MOBILE_SCREENS.map((s, i) => (
+          <button key={i} onClick={() => snapToIndex(OFFSET + i - centerIdx + centerRawIdx)}
+            style={{ width: i === centerIdx ? 20 : 6, height: 6, borderRadius: 3, background: i === centerIdx ? s.color : "rgba(255,255,255,0.2)", border: "none", cursor: "pointer", transition: "all 0.3s", padding: 0 }} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ── Лайтбокс — полноэкранный просмотр ─────────────────────────────────────────
+function PhoneLightbox({ idx, onClose }: { idx: number; onClose: () => void }) {
+  const s = MOBILE_SCREENS[idx];
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [onClose]);
+  return (
+    <div
+      onClick={onClose}
+      style={{ position: "fixed", inset: 0, zIndex: 9999, background: "rgba(0,0,0,0.85)", display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}
+    >
+      <div onClick={e => e.stopPropagation()} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 16 }}>
+        {/* Телефон */}
+        <div style={{
+          width: 280, height: 590, borderRadius: 36, overflow: "hidden",
+          border: `3px solid ${s.color}`,
+          boxShadow: `0 0 0 6px ${s.color}25, 0 40px 80px rgba(0,0,0,0.9), 0 0 80px ${s.color}40`,
+          background: "#0a0a14", position: "relative",
+        }}>
+          <div style={{ position: "absolute", top: 14, left: "50%", transform: "translateX(-50%)", width: 52, height: 14, borderRadius: 7, background: "#000", zIndex: 2 }} />
+          <img src={s.img} alt={s.label} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+          <div style={{ position: "absolute", bottom: 10, left: "50%", transform: "translateX(-50%)", width: 52, height: 5, borderRadius: 3, background: "rgba(255,255,255,0.35)" }} />
+        </div>
+        {/* Описание */}
+        <div style={{ textAlign: "center" }}>
+          <div style={{ fontSize: 18, fontWeight: 800, color: s.color, marginBottom: 4 }}>{s.label}</div>
+          <div style={{ fontSize: 13, color: "rgba(255,255,255,0.55)" }}>{s.sub}</div>
+        </div>
+        {/* Кнопка закрыть */}
+        <button onClick={onClose} style={{ marginTop: 4, padding: "8px 24px", borderRadius: 12, background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.15)", color: "rgba(255,255,255,0.6)", fontSize: 13, cursor: "pointer" }}>
+          Закрыть
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export function LBMobile() {
-  const [active, setActive] = useState(0);
+  const [lightbox, setLightbox] = useState<number | null>(null);
 
   return (
     <section id="mobile" className="py-8 sm:py-16 relative overflow-hidden">
@@ -328,97 +631,19 @@ export function LBMobile() {
             </span>
           </h2>
           <p className="text-sm sm:text-base max-w-xl mx-auto" style={{ color: "rgba(255,255,255,0.45)" }}>
-            От Figma-макета до публикации в магазинах. Реальные экраны из живых проектов.
+            Крути барабан — смотри реальные экраны живых проектов. Кликни на центральный для полного просмотра.
           </p>
         </div>
 
-        {/* Скролл-карусель телефонов */}
-        <div className="relative mb-4">
-          {/* Тени по краям */}
-          <div className="absolute left-0 top-0 bottom-0 w-8 z-10 pointer-events-none" style={{ background: "linear-gradient(to right, #080810, transparent)" }} />
-          <div className="absolute right-0 top-0 bottom-0 w-8 z-10 pointer-events-none" style={{ background: "linear-gradient(to left, #080810, transparent)" }} />
-
-          <div
-            className="flex gap-4 overflow-x-auto pb-4"
-            style={{ scrollSnapType: "x mandatory", scrollbarWidth: "none", msOverflowStyle: "none", paddingTop: 16 }}
-          >
-            {MOBILE_SCREENS.map((s, i) => (
-              <button
-                key={i}
-                onClick={() => setActive(i)}
-                className="flex-shrink-0 flex flex-col items-center gap-3 transition-all duration-300"
-                style={{ scrollSnapAlign: "center" }}
-              >
-                {/* Телефон */}
-                <div
-                  className="relative overflow-hidden transition-all duration-500"
-                  style={{
-                    width: i === active ? 148 : 110,
-                    height: i === active ? 310 : 220,
-                    borderRadius: 24,
-                    border: `2px solid ${i === active ? s.color : "rgba(255,255,255,0.1)"}`,
-                    boxShadow: i === active
-                      ? `0 0 0 4px ${s.color}22, 0 20px 50px rgba(0,0,0,0.7), 0 0 40px ${s.color}33`
-                      : "0 4px 20px rgba(0,0,0,0.4)",
-                    transform: "translateY(0)",
-                    background: "#0a0a14",
-                  }}
-                >
-                  {/* Dynamic island */}
-                  <div className="absolute top-2 left-1/2 -translate-x-1/2 z-10 rounded-full" style={{ width: 30, height: 8, background: "#000" }} />
-                  {/* Скриншот */}
-                  <img
-                    src={s.img}
-                    alt={s.label}
-                    className="w-full h-full object-cover object-center"
-                  />
-                  {/* Home indicator */}
-                  <div className="absolute bottom-1.5 left-1/2 -translate-x-1/2 rounded-full" style={{ width: 32, height: 3, background: "rgba(255,255,255,0.25)" }} />
-                  {/* Активный glow-border снизу */}
-                  {i === active && (
-                    <div className="absolute bottom-0 left-0 right-0 h-12" style={{ background: `linear-gradient(to top, ${s.color}22, transparent)` }} />
-                  )}
-                </div>
-
-                {/* Подпись */}
-                <div className="text-center">
-                  <div
-                    className="text-xs font-bold mb-0.5 transition-all duration-300"
-                    style={{ color: i === active ? s.color : "rgba(255,255,255,0.7)" }}
-                  >
-                    {s.label}
-                  </div>
-                  <div className="text-xs" style={{ color: "rgba(255,255,255,0.35)", fontSize: 10 }}>{s.sub}</div>
-                </div>
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Точки-индикаторы */}
-        <div className="flex justify-center gap-1.5 mb-5">
-          {MOBILE_SCREENS.map((s, i) => (
-            <button
-              key={i}
-              onClick={() => setActive(i)}
-              className="rounded-full transition-all duration-300"
-              style={{
-                width: i === active ? 20 : 6,
-                height: 6,
-                background: i === active ? s.color : "rgba(255,255,255,0.2)",
-              }}
-            />
-          ))}
+        {/* Барабан телефонов */}
+        <div className="mb-6">
+          <PhoneDrum onOpen={i => setLightbox(i)} />
         </div>
 
         {/* Фичи */}
         <div className="grid grid-cols-3 gap-2 mb-6">
           {MOBILE_FEATURES.map((f, i) => (
-            <div
-              key={i}
-              className="p-3 rounded-xl flex flex-col gap-1"
-              style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)" }}
-            >
+            <div key={i} className="p-3 rounded-xl flex flex-col gap-1" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)" }}>
               <div className="text-base">{f.icon}</div>
               <div className="text-xs font-bold leading-tight">{f.title}</div>
               <div className="hidden sm:block text-xs leading-relaxed" style={{ color: "rgba(255,255,255,0.4)" }}>{f.desc}</div>
@@ -447,6 +672,9 @@ export function LBMobile() {
         </div>
 
       </div>
+
+      {/* Лайтбокс */}
+      {lightbox !== null && <PhoneLightbox idx={lightbox} onClose={() => setLightbox(null)} />}
     </section>
   );
 }
