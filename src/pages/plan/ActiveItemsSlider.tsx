@@ -19,6 +19,8 @@ interface ActiveItemsSliderProps {
   onAddToFloor?: (item: SegmentPriceItem) => void;
   onReplaceItem?: (item: SegmentPriceItem) => void;
   hasSegments: boolean;
+  selectedSegmentIds?: string[];
+  onAssignToSelectedSegs?: (item: SegmentPriceItem, segIds: string[]) => void;
 }
 
 export default function ActiveItemsSlider({
@@ -27,6 +29,7 @@ export default function ActiveItemsSlider({
   onTapActiveId, onRemoveActiveItem,
   onAssignToAllSegs, onRemoveFromAllSegs, isItemOnAllSegs,
   onAdjustQuantity, onSetQuantity, onAddToFloor, onReplaceItem, hasSegments,
+  selectedSegmentIds = [], onAssignToSelectedSegs,
 }: ActiveItemsSliderProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [expandedId, setExpandedId] = useState<number | null>(null);
@@ -403,6 +406,28 @@ export default function ActiveItemsSlider({
                     whiteSpace: "nowrap",
                   }}
                 >+ Все стены</button>
+              )}
+
+              {/* Кнопка: добавить на выбранные стены */}
+              {hasSegments && isWall && selectedSegmentIds.length > 0 && onAssignToSelectedSegs && (
+                <button
+                  data-item-popup="1"
+                  onClick={e => {
+                    e.stopPropagation();
+                    onAssignToSelectedSegs(item, selectedSegmentIds);
+                    setExpandedId(null);
+                    setPopupPos(null);
+                  }}
+                  style={{
+                    flex: 1, height: 26, borderRadius: 7, cursor: "pointer",
+                    border: "1px solid rgba(52,211,153,0.4)",
+                    background: "rgba(52,211,153,0.1)",
+                    color: "rgba(52,211,153,0.9)",
+                    fontSize: 10, fontWeight: 600,
+                    display: "flex", alignItems: "center", justifyContent: "center", gap: 5,
+                    whiteSpace: "nowrap",
+                  }}
+                >+ Выбранные ({selectedSegmentIds.length})</button>
               )}
               {hasSegments && isWall && onAllSegs && (
                 <button

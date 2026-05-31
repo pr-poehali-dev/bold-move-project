@@ -430,6 +430,8 @@ export default function PlanPagePanels({
         onAdjustQuantity={catalog.adjustItemQuantity}
         onSetQuantity={catalog.setItemQuantity}
         onAddToFloor={catalog.setPendingFloorItem}
+        selectedSegmentIds={state.selectedSegmentIds}
+        onAssignToSelectedSegs={catalog.assignItemToSegs}
         onReplaceItem={item => {
           if (isMobile) {
             // Мобиле: открываем барабан замены

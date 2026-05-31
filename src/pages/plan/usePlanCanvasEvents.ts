@@ -491,7 +491,12 @@ export function usePlanCanvasEvents({ state, onChange, onReplace, cs }: Params) 
           onChange({ points: newPts, segments: newSegs });
         }
       } else {
-        onChange({ selectedPointId: null, selectedSegmentId: null, selectedSegmentIds: [], selectedDiagonalId: null });
+        // Не сбрасываем выделение если тап был на иконке товара или попапе
+        const tapEl = e.target as Element;
+        const onItem = !!tapEl.closest("[data-seg-item]") || !!tapEl.closest("[data-item-popup]") || !!tapEl.closest("[data-active-item]");
+        if (!onItem) {
+          onChange({ selectedPointId: null, selectedSegmentId: null, selectedSegmentIds: [], selectedDiagonalId: null });
+        }
       }
     }
 

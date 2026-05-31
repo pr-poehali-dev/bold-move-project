@@ -25,6 +25,8 @@ interface Props {
   onAddToFloor?: (item: SegmentPriceItem) => void;
   onReplaceItem?: (item: SegmentPriceItem) => void;
   hasSegments: boolean;
+  selectedSegmentIds?: string[];
+  onAssignToSelectedSegs?: (item: SegmentPriceItem, segIds: string[]) => void;
 }
 
 export default function PlanDragGhosts({
@@ -35,6 +37,7 @@ export default function PlanDragGhosts({
   segments, floorItems, anyPanelOpen,
   onTapActiveId, onRemoveActiveItem,
   onAssignToAllSegs, onRemoveFromAllSegs, isItemOnAllSegs, onAdjustQuantity, onSetQuantity, onAddToFloor, onReplaceItem, hasSegments,
+  selectedSegmentIds, onAssignToSelectedSegs,
 }: Props) {
   return (
     <>
@@ -67,6 +70,8 @@ export default function PlanDragGhosts({
         onAddToFloor={onAddToFloor}
         onReplaceItem={onReplaceItem}
         hasSegments={hasSegments}
+        selectedSegmentIds={selectedSegmentIds}
+        onAssignToSelectedSegs={onAssignToSelectedSegs}
       />
 
       <style>{`
