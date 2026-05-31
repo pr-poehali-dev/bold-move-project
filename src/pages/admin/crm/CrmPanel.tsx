@@ -125,6 +125,7 @@ export default function CrmPanel({ theme, initialOrderId, initialTab }: { theme:
   const t = ctx;
 
   return (
+    <>
     <SubstatusContext.Provider value={substatuses}>
     <ThemeContext.Provider value={ctx}>
       <div className="flex flex-col h-full transition-colors duration-300"
@@ -205,7 +206,6 @@ export default function CrmPanel({ theme, initialOrderId, initialTab }: { theme:
           </div>
 
         </div>
-        <ProfileModal open={showProfileModal} onClose={() => setShowProfileModal(false)} />
 
         {/* Быстрая навигация между модулями — только десктоп, под шапкой */}
         <div className="hidden sm:flex items-center px-6 py-2 flex-shrink-0"
@@ -268,5 +268,7 @@ export default function CrmPanel({ theme, initialOrderId, initialTab }: { theme:
       </div>
     </ThemeContext.Provider>
     </SubstatusContext.Provider>
+    <ProfileModal open={showProfileModal} onClose={() => setShowProfileModal(false)} />
+    </>
   );
 }

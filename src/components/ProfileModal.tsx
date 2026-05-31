@@ -7,7 +7,7 @@ import func2url from "@/../backend/func2url.json";
 
 const AUTH_URL = (func2url as Record<string, string>)["auth"];
 
-interface Props { onClose: () => void; }
+interface Props { onClose: () => void; open?: boolean; }
 
 const ROLE_OPTIONS: { value: UserRole; label: string; icon: string; color: string; desc: string }[] = [
   { value: "client",    label: "Клиент",    icon: "Home",      color: "#f97316", desc: "Хочу натяжные потолки" },
@@ -17,7 +17,7 @@ const ROLE_OPTIONS: { value: UserRole; label: string; icon: string; color: strin
   { value: "company",   label: "Компания",  icon: "Building2", color: "#f59e0b", desc: "Продаю и монтирую потолки" },
 ];
 
-export default function ProfileModal({ onClose }: Props) {
+export default function ProfileModal({ onClose, open = true }: Props) {
   const { user, token, updateUser } = useAuth();
   const [form, setForm] = useState({
     name:         user?.name         || "",
@@ -63,6 +63,8 @@ export default function ProfileModal({ onClose }: Props) {
       setSaving(false);
     }
   };
+
+  if (!open) return null;
 
   return (
     <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center sm:p-4"
