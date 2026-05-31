@@ -87,7 +87,8 @@ export default function CrmPanel({ theme, initialOrderId, initialTab }: { theme:
     setClients(prev => prev.filter(c => c.id !== id));
   };
 
-  useEffect(() => { loadClients(); }, []);
+  // Перезагружаем клиентов когда появляется токен (важно для iframe/WL режима)
+  useEffect(() => { if (token) loadClients(); }, [token]);
 
   const saveKanbanFlag = (enabled: boolean) => {
     if (!token) return;
