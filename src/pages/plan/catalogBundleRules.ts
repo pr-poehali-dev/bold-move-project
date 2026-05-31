@@ -46,13 +46,14 @@ export function applyBundleRules(
   if (!bundleIds.length) return [];
 
   // Разбиваем bundle на блоки питания и обычные позиции
+  // Блок питания: в calc_rule есть слова "до" И "вт" (как в бэкенде)
   const powerItems: PriceEntry[] = [];
   const regularItems: PriceEntry[] = [];
   for (const bid of bundleIds) {
     const br = priceById.get(bid);
     if (!br) continue;
     const calc = (br.calc_rule ?? "").toLowerCase();
-    if (/до\s+\d+\s*вт/.test(calc)) {
+    if (calc.includes("до") && calc.includes("вт")) {
       powerItems.push(br);
     } else {
       regularItems.push(br);
@@ -67,10 +68,15 @@ export function applyBundleRules(
   for (const br of regularItems) {
     if (addedIds.has(br.id)) continue;
     const calc = (br.calc_rule ?? "").toLowerCase();
-    let qty = 1;
-    if (/кратно/.test(calc)) {
-      const m = calc.match(/кратно\s+(\d+)/);
-      const step = m ? parseInt(m[1]) : 5;
+    let qty = triggerQty; // по умолчанию — столько же сколько триггер (как в бэкенде)
+    // Катушки ленты: unit = "катушка" или в calc_rule упоминается "катушка" / "кратно"
+    const isTape = br.unit === "катушка" || /катушк|кратно/i.test(calc);
+    if (isTape) {
+      // Шаг катушки: ищем "(1 катушка = Nм)" или "кратно Nм" или default 5
+      const stepM = calc.match(/катушка\s*=\s*(\d+)/i)?.[1]
+        ?? calc.match(/кратно\s+(\d+)/i)?.[1]
+        ?? "5";
+      const step = parseInt(stepM);
       const baseLen = totalFloatingLen > 0 ? totalFloatingLen : triggerQty;
       const catushki = Math.max(1, Math.ceil(baseLen / step));
       qty = catushki;
@@ -88,17 +94,37 @@ export function applyBundleRules(
     addedIds.add(br.id);
   }
 
-  // Блок питания: выбираем наименьший достаточный по ватт
+  // Блок питания: выбираем наименьший достаточный по длине ленты
+  // В calc_rule вида "до 5м → 100Вт, до 10м → 200Вт..." ищем пары (метры → ватты)
+  // и выбираем блок, мощность которого покрывает tapeQty метров ленты
   if (powerItems.length > 0) {
-    const sorted = [...powerItems].sort((a, b) => {
-      const wa = parseInt((a.calc_rule ?? "").match(/до\s+(\d+)/)?.[1] ?? "9999");
-      const wb = parseInt((b.calc_rule ?? "").match(/до\s+(\d+)/)?.[1] ?? "9999");
-      return wa - wb;
-    });
-    const chosen = sorted.find(r => {
-      const maxW = parseInt((r.calc_rule ?? "").match(/до\s+(\d+)/)?.[1] ?? "0");
-      return tapeQty <= maxW;
-    }) ?? sorted[sorted.length - 1];
+    // Извлекаем из названия блока его мощность в ваттах (напр. "Блок питания 100 Вт" → 100)
+    const getWatts = (r: PriceEntry) => {
+      const m = r.name.match(/(\d+)\s*[вВ][тТ]/);
+      return m ? parseInt(m[1]) : 9999;
+    };
+    // Из calc_rule любого блока вытаскиваем таблицу "до Xм → YВт"
+    // и находим нужную мощность под tapeQty метров ленты
+    const calcText = (powerItems[0].calc_rule ?? "").toLowerCase();
+    // Ищем все пары вида "до Xм" и соответствующую мощность "YВт"
+    const pairRegex = /до\s+(\d+)\s*м[^,]*?(\d+)\s*вт/g;
+    const pairs: { maxM: number; watts: number }[] = [];
+    let pm: RegExpExecArray | null;
+    while ((pm = pairRegex.exec(calcText)) !== null) {
+      pairs.push({ maxM: parseInt(pm[1]), watts: parseInt(pm[2]) });
+    }
+
+    let chosenWatts = 9999;
+    if (pairs.length > 0) {
+      pairs.sort((a, b) => a.maxM - b.maxM);
+      const pair = pairs.find(p => tapeQty <= p.maxM) ?? pairs[pairs.length - 1];
+      chosenWatts = pair.watts;
+    }
+
+    // Находим блок с нужными ваттами (или наибольший если не нашли точного)
+    const sorted = [...powerItems].sort((a, b) => getWatts(a) - getWatts(b));
+    const chosen = sorted.find(r => getWatts(r) >= chosenWatts) ?? sorted[sorted.length - 1];
+
     if (chosen && !addedIds.has(chosen.id)) {
       toAdd.push({
         id: genId("fi"),
