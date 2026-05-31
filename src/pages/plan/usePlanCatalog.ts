@@ -563,8 +563,10 @@ export function usePlanCatalog(
 
     const onEnd = (e: MouseEvent | TouchEvent) => {
       const pt = "changedTouches" in e ? e.changedTouches[0] : e;
-      // Полотно имеет приоритет над стеной при малом пороге
-      if (isInsidePolygon(pt.clientX, pt.clientY)) {
+      // Товар полотна (isWallItem === false) — всегда на полотно, никогда на стену
+      if (dragItem.isWallItem === false) {
+        setPendingFloorItem(dragItem);
+      } else if (isInsidePolygon(pt.clientX, pt.clientY)) {
         const closestId = findClosestSeg(pt.clientX, pt.clientY);
         if (closestId) {
           assignItemToSeg(dragItem, closestId);
@@ -659,7 +661,10 @@ export function usePlanCatalog(
         return;
       }
       const pt = e.changedTouches[0];
-      if (isInsidePolygon(pt.clientX, pt.clientY)) {
+      // Товар полотна (isWallItem === false) — всегда на полотно, никогда на стену
+      if (draggingItem.isWallItem === false) {
+        setPendingFloorItem(draggingItem);
+      } else if (isInsidePolygon(pt.clientX, pt.clientY)) {
         const closestId = findClosestSeg(pt.clientX, pt.clientY, false);
         if (closestId) { assignItemToSeg(draggingItem, closestId); navigator.vibrate?.(30); }
         else setPendingFloorItem(draggingItem);
@@ -715,7 +720,10 @@ export function usePlanCatalog(
         draggingItem = null; isDragging = false; mouseDragging = false;
         return;
       }
-      if (isInsidePolygon(e.clientX, e.clientY)) {
+      // Товар полотна (isWallItem === false) — всегда на полотно, никогда на стену
+      if (draggingItem.isWallItem === false) {
+        setPendingFloorItem(draggingItem);
+      } else if (isInsidePolygon(e.clientX, e.clientY)) {
         const closestId = findClosestSeg(e.clientX, e.clientY, false);
         if (closestId) assignItemToSeg(draggingItem, closestId);
         else setPendingFloorItem(draggingItem);
