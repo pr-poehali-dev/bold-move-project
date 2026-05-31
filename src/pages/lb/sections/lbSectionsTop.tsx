@@ -279,6 +279,24 @@ const MOBILE_SCREENS = [
     color: "#f59e0b",
     img: "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/8444e268-91e3-402f-9a48-88ffb3459a57.jpg",
   },
+  {
+    label: "Аналитика",
+    sub: "Обзор, конверсии, KPI",
+    color: "#a78bfa",
+    img: "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/98f77739-d739-4bf0-8fe1-4c43e055b76f.jpg",
+  },
+  {
+    label: "Финансы P&L",
+    sub: "Доходы, расходы, прибыль",
+    color: "#34d399",
+    img: "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/0882c3c6-0cd9-4d0e-a406-a4e367e7150d.jpg",
+  },
+  {
+    label: "Календарь",
+    sub: "Замеры и монтажи на карте",
+    color: "#fbbf24",
+    img: "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/82f4b066-784b-4cbd-a290-a14082d16b96.jpg",
+  },
 ];
 
 const MOBILE_FEATURES = [
