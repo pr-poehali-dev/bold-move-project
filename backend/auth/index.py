@@ -1072,115 +1072,14 @@ def handler(event: dict, context) -> dict:
             (user_id, new_token)
         )
 
-        # ── Демо-данные: канбан-колонки ──────────────────────────────────────
-        demo_columns = [
-            ("Заявки",    "#8b5cf6", 0),
-            ("В работе",  "#a78bfa", 1),
-            ("Замеры",    "#f59e0b", 2),
-            ("Договор",   "#f97316", 3),
-            ("Монтаж",    "#06b6d4", 4),
-            ("Выполнено", "#10b981", 5),
-        ]
-        col_ids = []
-        for col_title, col_color, col_pos in demo_columns:
-            cur.execute(
-                f"INSERT INTO {SCHEMA}.kanban_columns (title, color, position, company_id) VALUES (%s,%s,%s,%s) RETURNING id",
-                (col_title, col_color, col_pos, user_id)
-            )
-            col_ids.append(cur.fetchone()[0])
+        from demo_seed import seed_demo
+        seed_demo(cur, SCHEMA, user_id)
 
-        # ── Демо-данные: заявки ───────────────────────────────────────────────
-        # (client_name, phone, status, address, area, budget, contract_sum,
-        #  prepayment, extra_payment, material_cost, measure_cost, install_cost, management_cost,
-        #  notes, source, col_index, priority, tags, sub_status,
-        #  prepayment_confirmed, extra_payment_confirmed)
-        from datetime import datetime, timedelta
-        now = datetime.utcnow()
-        demo_clients = [
-            # Колонка 0: Заявки (new)
-            ("Алексей Морозов",   "+7 (903) 112-34-56", "new",
-             "Мытищи, ул. Колонцова, 8, кв. 14",  28.0,  45000, None,
-             None, None, None, None, None, None,
-             "Звонил сам. Хочет матовое полотно, 2 комнаты.", "chat", 0, "high",
-             ["срочно"], None, False, False,
-             now - timedelta(hours=3), None, None),
-            ("Марина Степанова",  "+7 (916) 234-56-78", "new",
-             "Пушкино, Набережная, 22, кв. 5",     18.5,  28000, None,
-             None, None, None, None, None, None,
-             "Интересует сатиновое полотно, есть люстра.", "estimate", 0, "medium",
-             [], None, False, False,
-             now - timedelta(hours=7), None, None),
-            # Колонка 1: В работе (call)
-            ("Дмитрий Захаров",   "+7 (925) 345-67-89", "call",
-             "Королёв, ул. Октябрьская, 3, кв. 47", 35.0, 58000, None,
-             None, None, None, None, None, None,
-             "Договорились созвониться в 18:00. Две комнаты + коридор.", "chat", 1, "high",
-             ["перезвонить"], "Ожидает ответа", False, False,
-             now - timedelta(days=1), None, None),
-            ("Ольга Никитина",    "+7 (977) 456-78-90", "call",
-             "Мытищи, Юбилейная, 14, кв. 33",       22.0,  36000, None,
-             None, None, None, None, None, None,
-             "Нужно уточнить цвет и тип. Фото комнаты на WA.", "manual", 1, "low",
-             [], None, False, False,
-             now - timedelta(days=2), None, None),
-            # Колонка 2: Замеры (measure)
-            ("Сергей Павлов",     "+7 (903) 567-89-01", "measure",
-             "Пушкино, ул. Тургенева, 5, кв. 12",   41.0,  70000, None,
-             None, None, None, None, None, None,
-             "Замер назначен. Хочет глянец на кухне, матовый в спальне.", "chat", 2, "high",
-             ["замер"], None, False, False,
-             now - timedelta(days=3), now + timedelta(days=1), None),
-            ("Татьяна Лебедева",  "+7 (926) 678-90-12", "measured",
-             "Королёв, Циолковского, 18, кв. 9",     19.0,  31000, None,
-             None, None, None, None, None, None,
-             "Замер прошёл. Площадь уточнена, смета отправлена.", "estimate", 2, "medium",
-             [], None, False, False,
-             now - timedelta(days=4), None, None),
-            # Колонка 3: Договор (contract)
-            ("Андрей Козлов",     "+7 (916) 789-01-23", "contract",
-             "Мытищи, Силикатная, 47, кв. 2",        52.0,  89000, 89000,
-             35600, None, 32000, 2500, 28000, 8000,
-             "Договор подписан. Предоплата 35 600 ожидается.", "chat", 3, "high",
-             ["договор", "ожидает предоплату"], None, False, False,
-             now - timedelta(days=6), None, None),
-            ("Наталья Фролова",   "+7 (977) 890-12-34", "prepaid",
-             "Пушкино, ул. Чехова, 9, кв. 88",       33.0,  56000, 56000,
-             22400, 33600, 19000, 1800, 18500, 5200,
-             "Предоплата получена. Ждём дату монтажа.", "estimate", 3, "medium",
-             ["предоплата получена"], "Ждёт дату монтажа", True, False,
-             now - timedelta(days=8), None, None),
-            # Колонка 4: Монтаж (install)
-            ("Игорь Соколов",     "+7 (925) 901-23-45", "install_scheduled",
-             "Королёв, ул. Пионерская, 3, кв. 71",   45.0,  78000, 78000,
-             31200, 46800, 27500, 2200, 24000, 7000,
-             "Монтаж назначен на завтра, бригада готова.", "chat", 4, "high",
-             ["монтаж завтра"], "Бригада подтверждена", True, False,
-             now - timedelta(days=10), now - timedelta(days=8), now + timedelta(days=1)),
-            ("Елена Воронова",    "+7 (903) 012-34-56", "install_done",
-             "Мытищи, ул. Речная, 25, кв. 4",         27.0,  46000, 46000,
-             18400, 27600, 15500, 1500, 14000, 4500,
-             "Монтаж выполнен. Клиент доволен. Ждём доплату.", "manual", 4, "medium",
-             ["монтаж выполнен"], "Ожидает доплаты", True, False,
-             now - timedelta(days=14), now - timedelta(days=12), now - timedelta(days=2)),
-            # Колонка 5: Выполнено (done)
-            ("Виктор Новиков",    "+7 (916) 123-45-67", "done",
-             "Пушкино, Московский пр., 12, кв. 56",  38.0,  64000, 64000,
-             25600, 38400, 22000, 1900, 20000, 5800,
-             "Работа завершена, акт подписан. Клиент оставил отзыв.", "chat", 5, "low",
-             ["выполнено", "отзыв"], None, True, True,
-             now - timedelta(days=20), now - timedelta(days=18), now - timedelta(days=7)),
-            ("Людмила Орлова",    "+7 (926) 234-56-78", "done",
-             "Королёв, ул. Горького, 7, кв. 3",       24.0,  41000, 41000,
-             16400, 24600, 13500, 1400, 13000, 4200,
-             "Сдано. Фото до/после сделаны, клиент рекомендует.", "estimate", 5, "low",
-             ["выполнено"], None, True, True,
-             now - timedelta(days=25), now - timedelta(days=22), now - timedelta(days=10)),
-        ]
-
-        for (cname, phone, status, address, area, budget, contract_sum,
+        if False:  # удалённый хвост — placeholder для следующего удаления
+            for (cname, phone, status, address, area, budget, contract_sum,
              prepayment, extra_payment, mat_cost, meas_cost, inst_cost, mgmt_cost,
              notes, source, col_idx, priority, tags, sub_status,
-             prep_conf, extra_conf, created_dt, measure_dt, install_dt) in demo_clients:
+             prep_conf, extra_conf, created_dt, measure_dt, install_dt) in []:
 
             session_id = f"demo_{secrets.token_hex(8)}"
             cur.execute(f"""
@@ -1303,6 +1202,7 @@ def handler(event: dict, context) -> dict:
                  est["total_econom"], est["total_standard"], est["total_premium"],
                  est["status"], est["created_at"], est["created_at"])
             )
+        # __DEMO_TAIL_END__
 
         conn.commit()
         return ok({"token": new_token, "user": {
