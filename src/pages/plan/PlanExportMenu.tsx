@@ -97,8 +97,8 @@ interface ModalProps {
 }
 
 export function PlanExportModal({ open, onClose, onExport, showScope = true }: ModalProps) {
-  const [scope, setScope] = React.useState<ExportScope>("project");
-  const [type,  setType]  = React.useState<ExportType>("kp_light");
+  const [scope, setScope] = React.useState<ExportScope>("room");
+  const [type,  setType]  = React.useState<ExportType>("kp_detail");
 
   if (!open) return null;
 
