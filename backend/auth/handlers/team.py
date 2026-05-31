@@ -1,0 +1,164 @@
+import json, secrets
+from shared import SCHEMA, MASTER_EMAIL, ok, err, hash_password
+
+
+def handle(action, method, params, body, token, event, conn, cur):
+
+    def get_owner_or_err():
+        if not token:
+            return None, err("Требуется авторизация", 401)
+        cur.execute(f"""
+            SELECT u.id, u.role, u.email FROM {SCHEMA}.user_sessions s
+            JOIN {SCHEMA}.users u ON u.id = s.user_id
+            WHERE s.token=%s AND s.expires_at > NOW()
+        """, (token,))
+        row = cur.fetchone()
+        if not row:
+            return None, err("Токен недействителен", 401)
+        uid, role, email = row
+        is_master = (email == MASTER_EMAIL)
+        if role != "company" and not is_master:
+            return None, err("Доступ только для роли 'Компания'", 403)
+        return (uid, role, is_master), None
+
+    if action == "team-list" and method == "GET":
+        owner, e = get_owner_or_err()
+        if e: return e
+        owner_id, _, _ = owner
+        cur.execute(f"""
+            SELECT id, email, name, phone, role, approved, created_at,
+                   permissions, (temp_password_plain IS NOT NULL) AS has_pending_password
+            FROM {SCHEMA}.users
+            WHERE company_id = %s AND removed_at IS NULL AND id <> %s
+            ORDER BY created_at DESC
+        """, (owner_id, owner_id))
+        rows = cur.fetchall()
+        return ok({"members": [{
+            "id": r[0], "email": r[1], "name": r[2], "phone": r[3],
+            "role": r[4], "approved": r[5], "created_at": str(r[6])[:19],
+            "permissions": r[7], "has_pending_password": r[8],
+        } for r in rows]})
+
+    if action == "team-invite" and method == "POST":
+        owner, e = get_owner_or_err()
+        if e: return e
+        owner_id, _, _ = owner
+
+        invitee_email = (body.get("email") or "").strip().lower()
+        invitee_name  = (body.get("name") or "").strip()
+        invitee_phone = (body.get("phone") or "").strip()
+
+        if not invitee_email:
+            return err("Укажите email сотрудника")
+        if "@" not in invitee_email or "." not in invitee_email:
+            return err("Некорректный email")
+        cur.execute(f"SELECT id FROM {SCHEMA}.users WHERE email=%s", (invitee_email,))
+        if cur.fetchone():
+            return err("Пользователь с таким email уже зарегистрирован")
+
+        temp_password = secrets.token_urlsafe(8)[:10]
+        default_permissions = {
+            "crm_view": False, "agent_view": False, "admin_panel_view": False,
+            "clients_view": False, "clients_edit": False, "orders_edit": False,
+            "kanban_view": False, "kanban_edit": False,
+            "calendar_view": False, "calendar_edit": False,
+            "analytics_view": False, "finance_view": False,
+            "files_view": False, "files_edit": False,
+            "prices_view": False, "prices_edit": False,
+            "rules_view": False, "rules_edit": False,
+            "prompt_view": False, "prompt_edit": False,
+            "faq_view": False, "faq_edit": False,
+            "corrections_view": False, "corrections_edit": False,
+            "field_contacts": False, "field_address": False,
+            "field_dates": False, "field_finance": False,
+            "field_notes": False, "field_files": False, "field_cancel": False,
+        }
+        cur.execute(f"""
+            INSERT INTO {SCHEMA}.users
+              (email, password_hash, name, phone, role, approved, company_id, invited_by,
+               permissions, temp_password_plain)
+            VALUES (%s, %s, %s, %s, 'manager', TRUE, %s, %s, %s::jsonb, %s) RETURNING id
+        """, (
+            invitee_email, hash_password(temp_password),
+            invitee_name or None, invitee_phone or None,
+            owner_id, owner_id,
+            json.dumps(default_permissions), temp_password,
+        ))
+        new_id = cur.fetchone()[0]
+        conn.commit()
+        return ok({"ok": True, "member_id": new_id, "email": invitee_email})
+
+    if action == "team-update-permissions" and method == "POST":
+        owner, e = get_owner_or_err()
+        if e: return e
+        owner_id, _, _ = owner
+        member_id   = body.get("member_id")
+        permissions = body.get("permissions")
+        if not member_id or permissions is None:
+            return err("member_id и permissions обязательны")
+        cur.execute(f"""
+            UPDATE {SCHEMA}.users SET permissions=%s::jsonb
+            WHERE id=%s AND company_id=%s
+        """, (json.dumps(permissions), int(member_id), owner_id))
+        conn.commit()
+        return ok({"ok": True})
+
+    if action == "team-show-password" and method == "POST":
+        owner, e = get_owner_or_err()
+        if e: return e
+        owner_id, _, _ = owner
+        member_id = body.get("member_id")
+        if not member_id:
+            return err("member_id обязателен")
+        cur.execute(f"""
+            SELECT temp_password_plain FROM {SCHEMA}.users
+            WHERE id=%s AND company_id=%s AND removed_at IS NULL
+        """, (int(member_id), owner_id))
+        row = cur.fetchone()
+        if not row:
+            return err("Сотрудник не найден", 404)
+        password = row[0]
+        if password:
+            cur.execute(f"UPDATE {SCHEMA}.users SET temp_password_plain=NULL WHERE id=%s", (int(member_id),))
+            conn.commit()
+        return ok({"password": password})
+
+    if action == "team-remove" and method == "POST":
+        owner, e = get_owner_or_err()
+        if e: return e
+        owner_id, _, _ = owner
+        member_id = body.get("member_id")
+        if not member_id:
+            return err("member_id обязателен")
+        cur.execute(f"""
+            UPDATE {SCHEMA}.users
+            SET removed_at=NOW(), removed_name=name, removed_email=email,
+                email=CONCAT('_removed_', id, '_', email)
+            WHERE id=%s AND company_id=%s AND removed_at IS NULL
+        """, (int(member_id), owner_id))
+        conn.commit()
+        return ok({"ok": True})
+
+    if action == "team-reset-password" and method == "POST":
+        owner, e = get_owner_or_err()
+        if e: return e
+        owner_id, _, _ = owner
+        member_id = body.get("member_id")
+        if not member_id:
+            return err("member_id обязателен")
+        cur.execute(f"""
+            SELECT id FROM {SCHEMA}.users
+            WHERE id=%s AND company_id=%s AND removed_at IS NULL
+        """, (int(member_id), owner_id))
+        if not cur.fetchone():
+            return err("Сотрудник не найден", 404)
+        new_password = secrets.token_urlsafe(8)[:10]
+        cur.execute(f"""
+            UPDATE {SCHEMA}.users
+            SET password_hash=%s, temp_password_plain=%s
+            WHERE id=%s
+        """, (hash_password(new_password), new_password, int(member_id)))
+        conn.commit()
+        return ok({"ok": True, "temp_password": new_password})
+
+    return None
