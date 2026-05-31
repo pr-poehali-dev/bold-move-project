@@ -39,7 +39,7 @@ export default function SegItemPopup({
     };
   }, [onClose]);
 
-  const popW = 200;
+  const popW = 240;
   const vpW = window.innerWidth;
   const vpH = window.innerHeight;
   const approxH = 185;

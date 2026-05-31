@@ -223,7 +223,7 @@ export default function ActiveItemsSlider({
         const unit = item.unit || "";
         const onAllSegs = isItemOnAllSegs(item.priceId);
         const isWall = item.isWallItem !== false;
-        const popupW = 280;
+        const popupW = 320;
         const clampedX = Math.max(popupW / 2 + 8, Math.min(window.innerWidth - popupW / 2 - 8, popupPos.x));
         return (
           <div
@@ -308,7 +308,7 @@ export default function ActiveItemsSlider({
             )}
 
             {/* Строка: счётчик + все стены */}
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
 
               {/* Счётчик количества — показываем если товар есть хоть на одной стене или полотне */}
               {total > 0 && (
