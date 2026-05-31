@@ -3,6 +3,7 @@ import type { PriceEntry } from "./CategoryDrumPanel";
 import type { FloorItem, PlanState, SegmentPriceItem } from "./planTypes";
 import { genId } from "./planTypes";
 import { ALL_SEGS_SENTINEL } from "./useVoiceCatalog";
+import { applyBundleRules, calcTotalFloatingLen } from "./catalogBundleRules";
 import func2url from "@/../backend/func2url.json";
 
 // Категории ниш — не заменяются, а добавляются вторым товаром на стену
@@ -198,11 +199,13 @@ export function usePlanCatalog(
   const assignItemToSeg = useCallback((item: SegmentPriceItem, segId: string) => {
     const s = stateRef.current;
     const isNiche = NICHE_CATEGORIES.has(item.category);
+    let triggerQty = 1;
     const newSegments = s.segments.map(seg => {
       if (seg.id !== segId) return seg;
       const existing = seg.items ?? [];
       if (existing.some(it => it.priceId === item.priceId)) return seg;
       const meters = seg.lengthCm ? Math.round(seg.lengthCm / 100 * 100) / 100 : 1;
+      triggerQty = meters;
       let updatedItems = [...existing, { ...item, quantity: meters }];
 
       // ПРАВИЛО: при добавлении ниши вручную — автоматически добавить превалирующий профиль
@@ -217,8 +220,16 @@ export function usePlanCatalog(
       }
       return { ...seg, items: updatedItems };
     });
-    push({ ...s, segments: newSegments });
-  }, [stateRef, push, findDominantWallProfile]);
+
+    // bundle-позиции (ленты, блоки питания, монтаж и т.д.)
+    const existingIds = new Set<number>();
+    newSegments.forEach(seg => seg.items?.forEach(it => existingIds.add(it.priceId)));
+    (s.floorItems ?? []).forEach(fi => existingIds.add(fi.priceId));
+    const totalFloating = calcTotalFloatingLen(newSegments);
+    const bundleItems = applyBundleRules(existingIds, item, triggerQty, totalFloating, prices);
+
+    push({ ...s, segments: newSegments, floorItems: [...(s.floorItems ?? []), ...bundleItems] });
+  }, [stateRef, push, findDominantWallProfile, prices]);
 
   // Удалить товар со всех стен, с полотна и убрать карточку
   const removeActiveItem = useCallback((priceId: number) => {
@@ -244,10 +255,22 @@ export function usePlanCatalog(
       const meters = seg.lengthCm ? Math.round(seg.lengthCm / 100 * 100) / 100 : 1;
       return { ...seg, items: [...existing, { ...item, quantity: meters }] };
     });
-    push({ ...s, segments: newSegments });
+
+    // bundle-позиции
+    const existingIds = new Set<number>();
+    newSegments.forEach(seg => seg.items?.forEach(it => existingIds.add(it.priceId)));
+    (s.floorItems ?? []).forEach(fi => existingIds.add(fi.priceId));
+    const totalFloating = calcTotalFloatingLen(newSegments);
+    const triggerQty = segIds.reduce((sum, sid) => {
+      const seg = newSegments.find(sg => sg.id === sid);
+      return sum + (seg?.items?.find(it => it.priceId === item.priceId)?.quantity ?? 0);
+    }, 0) || 1;
+    const bundleItems = applyBundleRules(existingIds, item, triggerQty, totalFloating, prices);
+
+    push({ ...s, segments: newSegments, floorItems: [...(s.floorItems ?? []), ...bundleItems] });
     setActiveItems(prev => prev.some(it => it.priceId === item.priceId) ? prev : [...prev, item]);
     setTapActiveId(item.priceId);
-  }, [stateRef, push]);
+  }, [stateRef, push, prices]);
 
   // Добавить товар на все стены (quantity = длина каждой стены)
   const assignItemToAllSegs = useCallback((item: SegmentPriceItem) => {
@@ -258,8 +281,20 @@ export function usePlanCatalog(
       const meters = seg.lengthCm ? Math.round(seg.lengthCm / 100 * 100) / 100 : 1;
       return { ...seg, items: [...existing, { ...item, quantity: meters }] };
     });
-    push({ ...s, segments: newSegments });
-  }, [stateRef, push]);
+
+    // bundle-позиции
+    const existingIds = new Set<number>();
+    newSegments.forEach(seg => seg.items?.forEach(it => existingIds.add(it.priceId)));
+    (s.floorItems ?? []).forEach(fi => existingIds.add(fi.priceId));
+    const totalFloating = calcTotalFloatingLen(newSegments);
+    const triggerQty = newSegments.reduce((sum, seg) => {
+      const it = seg.items?.find(i => i.priceId === item.priceId);
+      return sum + (it?.quantity ?? 0);
+    }, 0) || 1;
+    const bundleItems = applyBundleRules(existingIds, item, triggerQty, totalFloating, prices);
+
+    push({ ...s, segments: newSegments, floorItems: [...(s.floorItems ?? []), ...bundleItems] });
+  }, [stateRef, push, prices]);
 
   // Добавить СРАЗУ НЕСКОЛЬКО товаров за один push (для голосового ввода)
   const assignManyItems = useCallback((
@@ -468,9 +503,22 @@ export function usePlanCatalog(
       unit: item.unit,
       quantity,
     };
-    push({ ...s, floorItems: [...(s.floorItems ?? []), newFloorItem] });
+
+    // Собираем все priceId которые уже есть в плане
+    const existingIds = new Set<number>();
+    s.segments.forEach(seg => seg.items?.forEach(it => existingIds.add(it.priceId)));
+    (s.floorItems ?? []).forEach(fi => existingIds.add(fi.priceId));
+    existingIds.add(item.priceId);
+
+    // Суммарная длина парящих профилей (для расчёта катушек ленты)
+    const totalFloating = calcTotalFloatingLen(s.segments);
+
+    // bundle-позиции (раскрой, огарп, ленты, блоки, монтаж)
+    const bundleItems = applyBundleRules(existingIds, item, quantity, totalFloating, prices);
+
+    push({ ...s, floorItems: [...(s.floorItems ?? []), newFloorItem, ...bundleItems] });
     setPendingFloorItem(null);
-  }, [pendingFloorItem, stateRef, push]);
+  }, [pendingFloorItem, stateRef, push, prices]);
 
   // Подтвердить редактирование существующего floorItem
   const confirmEditFloorItem = useCallback((quantity: number) => {

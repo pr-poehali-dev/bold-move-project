@@ -67,7 +67,7 @@ def handler(event: dict, context) -> dict:
 
     # Глобальный прайс
     cur.execute(f"""
-        SELECT id, name, price, unit, category, synonyms, image_url, category_image_url
+        SELECT id, name, price, unit, category, synonyms, image_url, category_image_url, bundle, calc_rule
         FROM {SCHEMA}.ai_prices
         WHERE active = true
         ORDER BY sort_order, id
@@ -164,6 +164,8 @@ def handler(event: dict, context) -> dict:
             'category_image_url': ov['category_image_url'] if ov.get('category_image_url') is not None else row[7],
             'is_wall_item': cat_settings.get(row[4] or '', {}).get('is_wall_item', True) if isinstance(cat_settings.get(row[4] or ''), dict) else True,
             'show_in_drum': cat_settings.get(row[4] or '', {}).get('show_in_drum', True) if isinstance(cat_settings.get(row[4] or ''), dict) else True,
+            'bundle': row[8] or '',
+            'calc_rule': row[9] or '',
         })
 
     return {

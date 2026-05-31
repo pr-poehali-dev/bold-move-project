@@ -13,6 +13,8 @@ export interface PriceEntry {
   unit: string;
   is_wall_item?: boolean;
   show_in_drum?: boolean;
+  bundle?: string;
+  calc_rule?: string;
 }
 
 interface Props {
