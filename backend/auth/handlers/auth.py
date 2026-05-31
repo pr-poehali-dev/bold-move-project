@@ -141,7 +141,7 @@ def handle(action, method, params, body, token, event, conn, cur):
             if expires < now_utc:
                 return err("Демо-сессия истекла", 401)
 
-        return ok({
+        user_data = {
             "id": uid, "email": email, "name": name, "phone": phone,
             "role": role, "approved": approved, "discount": discount or 0,
             "company_name": company_name, "company_inn": company_inn, "company_addr": company_addr,
@@ -168,7 +168,8 @@ def handle(action, method, params, body, token, event, conn, cur):
             "nav_config": nav_config, "nav_hidden_ids": nav_hidden_ids,
             "kanban_enabled": bool(kanban_enabled),
             "is_demo": bool(is_demo),
-        })
+        }
+        return ok({"user": user_data, **user_data})
 
     # ── Выход ─────────────────────────────────────────────────────────────────
     if action == "logout" and method == "POST":
