@@ -80,19 +80,22 @@ export function OrdersEventsPanel({ allClients, loading, onSelect }: Props) {
     if (loading || pushAsked || overdueCount === 0) return;
     setPushAsked(true);
     if (!("Notification" in window)) return;
+
     const body = `${overdueCount} ${overdueCount === 1 ? "событие требует внимания" : "события требуют внимания"} — замеры или монтажи без обновления статуса`;
+    const title = "⚠️ Просроченные события в CRM";
+
+    // new Notification() запрещён в мобильных браузерах (Android/iOS) —
+    // там уведомления можно показывать ТОЛЬКО через ServiceWorker.
+    // Если SW недоступен — просто пропускаем, не роняем приложение.
     const send = () => {
-      // На мобильных new Notification() запрещён — используем ServiceWorker если доступен
       if ("serviceWorker" in navigator) {
         navigator.serviceWorker.ready
-          .then(reg => reg.showNotification("⚠️ Просроченные события в CRM", { body, icon: "/favicon.ico" }))
-          .catch(() => {
-            try { new Notification("⚠️ Просроченные события в CRM", { body, icon: "/favicon.ico" }); } catch { /* игнорируем на мобильных */ }
-          });
-      } else {
-        try { new Notification("⚠️ Просроченные события в CRM", { body, icon: "/favicon.ico" }); } catch { /* игнорируем на мобильных */ }
+          .then(reg => reg.showNotification(title, { body, icon: "/favicon.ico" }))
+          .catch(() => { /* SW недоступен — молча пропускаем */ });
       }
+      // На мобильных без SW — не показываем, чтобы не крашить приложение
     };
+
     if (Notification.permission === "granted") {
       send();
     } else if (Notification.permission !== "denied") {
