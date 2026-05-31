@@ -531,34 +531,28 @@ def handle(action, method, params, body, token, event, conn, cur):
         conn.commit()
         return ok({"ok": True})
 
-    # ── Создать демо-пользователя ─────────────────────────────────────────────
+    # ── Демо-доступ: выдаём токен единого общего демо-аккаунта ──────────────
     if action == "create-demo" and method == "POST":
-        ip = (event.get("requestContext") or {}).get("identity", {}).get("sourceIp") or \
-             (event.get("headers") or {}).get("X-Forwarded-For", "unknown").split(",")[0].strip()
+        # Ищем общий демо-аккаунт по флагу is_demo_master
         cur.execute(f"""
-            SELECT COUNT(*) FROM {SCHEMA}.users
-            WHERE is_demo = TRUE AND created_at > NOW() - INTERVAL '24 hours' AND company_name = %s
-        """, (f"ip:{ip}",))
-        if cur.fetchone()[0] >= 20:
-            return err("Достигнут лимит демо-сессий. Попробуйте завтра.", 429)
-        demo_email    = f"demo_{secrets.token_hex(8)}@demo.local"
-        demo_password = secrets.token_hex(16)
-        demo_name     = "Демо-пользователь"
-        cur.execute(f"""
-            INSERT INTO {SCHEMA}.users
-                (email, password_hash, name, role, approved, is_demo, demo_expires_at, company_name,
-                 estimates_balance, has_own_agent, trial_until)
-                VALUES (%s,%s,%s,'company',TRUE,TRUE, NOW() + INTERVAL '7 days', %s, 999, FALSE, NULL)
-                RETURNING id
-        """, (demo_email, hash_password(demo_password), demo_name, f"ip:{ip}"))
-        user_id = cur.fetchone()[0]
+            SELECT id, email, name FROM {SCHEMA}.users
+            WHERE is_demo = TRUE AND company_name = 'demo_master'
+            LIMIT 1
+        """)
+        master_row = cur.fetchone()
+        if not master_row:
+            return err("Демо-режим временно недоступен", 503)
+        user_id, demo_email, demo_name = master_row
+
+        # Создаём короткую сессию на 24 часа (read-only показ)
         new_token = secrets.token_hex(32)
-        cur.execute(f"INSERT INTO {SCHEMA}.user_sessions (user_id, token, expires_at) VALUES (%s,%s, NOW() + INTERVAL '7 days')", (user_id, new_token))
-        from demo_seed import seed_demo
-        seed_demo(cur, SCHEMA, user_id)
+        cur.execute(f"""
+            INSERT INTO {SCHEMA}.user_sessions (user_id, token, expires_at)
+            VALUES (%s, %s, NOW() + INTERVAL '24 hours')
+        """, (user_id, new_token))
         conn.commit()
         return ok({"token": new_token, "user": {
-            "id": user_id, "email": demo_email, "name": demo_name,
+            "id": user_id, "email": demo_email, "name": "Демо-пользователь",
             "role": "company", "approved": True, "discount": 0,
             "is_demo": True, "is_master": False,
             "has_own_agent": False, "estimates_balance": 999, "demo_expires_at": None,
