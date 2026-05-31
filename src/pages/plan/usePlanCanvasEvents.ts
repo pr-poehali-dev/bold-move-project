@@ -12,10 +12,11 @@ interface Params {
   onChange: (patch: Partial<PlanState>) => void;
   onReplace: (patch: Partial<PlanState>) => void; // replace без записи в историю (для drag)
   cs: PlanCanvasState;
+  onStartEditSeg?: (segId: string) => void; // двойной тап по стене → открыть ввод длины
 }
 
 /** Хук: все обработчики событий холста (mouse, touch, wheel, keyboard) */
-export function usePlanCanvasEvents({ state, onChange, onReplace, cs }: Params) {
+export function usePlanCanvasEvents({ state, onChange, onReplace, cs, onStartEditSeg }: Params) {
   const {
     svgRef, dragRef, nearbyPtRef, touchStartTimeRef, panRef, pinchRef, isPanning, didMoveRef,
     longPressRef, longPressPos, setVibrated,
@@ -27,6 +28,9 @@ export function usePlanCanvasEvents({ state, onChange, onReplace, cs }: Params) 
 
   // Двойной тап по пустой области полигона → выбрать все стены
   const lastEmptyTapRef = useRef<number>(0);
+
+  // Двойной тап по стене → открыть ввод длины
+  const lastSegTapRef = useRef<{ id: string; time: number } | null>(null);
 
   const {
     points, segments, diagonals, dimLines,
@@ -456,6 +460,17 @@ export function usePlanCanvasEvents({ state, onChange, onReplace, cs }: Params) 
           const newR = (hitSeg.arcRadius + 15) % 90;
           onChange({ segments: segments.map(s => s.id === hitSeg.id ? { ...s, arcRadius: newR } : s) });
         } else {
+          // Двойной тап по той же стене → открыть ввод длины
+          const now = Date.now();
+          const prev = lastSegTapRef.current;
+          if (prev && prev.id === hitSeg.id && now - prev.time < 450 && onStartEditSeg) {
+            lastSegTapRef.current = null;
+            onStartEditSeg(hitSeg.id);
+            dragRef.current = null; panRef.current = null;
+            return;
+          }
+          lastSegTapRef.current = { id: hitSeg.id, time: now };
+
           const prev2 = selectedSegmentIdsRef.current;
           const isSelected2 = prev2.includes(hitSeg.id);
           const next2 = isSelected2 ? prev2.filter(id => id !== hitSeg.id) : [...prev2, hitSeg.id];

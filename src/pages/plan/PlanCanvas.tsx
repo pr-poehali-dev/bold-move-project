@@ -26,7 +26,7 @@ export default function PlanCanvas({ state, eventState, onChange, onReplace, onO
   const [editingSegId, setEditingSegId] = useState<string | null>(null);
 
   // ── Все обработчики событий (используем реальный state, не display) ───────
-  const events = usePlanCanvasEvents({ state: eventState ?? state, onChange, onReplace, cs });
+  const events = usePlanCanvasEvents({ state: eventState ?? state, onChange, onReplace, cs, onStartEditSeg: id => setEditingSegId(id) });
 
   // ── Cursor ────────────────────────────────────────────────────────────────
   const cursor = cs.isPanning.current
