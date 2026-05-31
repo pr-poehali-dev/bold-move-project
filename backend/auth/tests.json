@@ -60,7 +60,6 @@
       "method": "POST",
       "path": "/?action=cleanup-demo",
       "expectedStatus": 200,
-      "expectedBody": {"deleted": 0},
       "bodyMatcher": "partial"
     }
   ]

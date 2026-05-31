@@ -190,6 +190,7 @@ def handler(event: dict, context) -> dict:
                     FROM {SCHEMA}.live_chats lc
                     LEFT JOIN {SCHEMA}.users u ON lc.company_id = u.id
                     WHERE lc.status != 'deleted'
+                      AND COALESCE(u.is_demo, FALSE) = FALSE
                 """
                 params = []
                 if company_id is not None:
