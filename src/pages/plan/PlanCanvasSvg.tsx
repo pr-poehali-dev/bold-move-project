@@ -107,40 +107,49 @@ export default function PlanCanvasSvg({
       return Math.hypot(px - ax - t * dx, py - ay - t * dy);
     };
 
-    const steps = 24; // 23×23 = 529 точек — достаточно точно и быстро
-    let bestX = cx, bestY = cy, bestScore = -1;
-    // Начинаем с математического центроида как кандидата (если он внутри)
-    if (isInside(cx, cy)) {
-      let initScore = Infinity;
+    // Функция: минимальное расстояние от точки до всех рёбер полигона
+    const minDistToEdges = (px: number, py: number) => {
+      let d = Infinity;
       for (let i = 0; i < n; i++) {
         const j = (i + 1) % n;
-        const d = ptToSegDist2(cx, cy, points[i].x, points[i].y, points[j].x, points[j].y);
-        if (d < initScore) initScore = d;
+        const v = ptToSegDist2(px, py, points[i].x, points[i].y, points[j].x, points[j].y);
+        if (v < d) d = v;
       }
-      bestScore = initScore;
-    }
+      return d;
+    };
+
+    // Шаг 1: грубая сетка 32×32 — находим приблизительный максимум
+    const steps = 32;
+    let bestX = cx, bestY = cy, bestScore = isInside(cx, cy) ? minDistToEdges(cx, cy) : -1;
 
     for (let si = 1; si < steps; si++) {
       for (let sj = 1; sj < steps; sj++) {
         const tx = minX + (maxX - minX) * si / steps;
         const ty = minY + (maxY - minY) * sj / steps;
         if (!isInside(tx, ty)) continue;
-
-        // Минимальное расстояние до любого ребра
-        let minEdgeDist = Infinity;
-        for (let i = 0; i < n; i++) {
-          const j = (i + 1) % n;
-          const d = ptToSegDist2(tx, ty, points[i].x, points[i].y, points[j].x, points[j].y);
-          if (d < minEdgeDist) minEdgeDist = d;
-        }
-
-        if (minEdgeDist > bestScore) {
-          bestScore = minEdgeDist;
-          bestX = tx;
-          bestY = ty;
-        }
+        const d = minDistToEdges(tx, ty);
+        if (d > bestScore) { bestScore = d; bestX = tx; bestY = ty; }
       }
     }
+
+    // Шаг 2: уточнение — сужаем область вокруг найденной точки и сканируем мелче (4 итерации)
+    let refineSz = (maxX - minX) / steps;
+    for (let iter = 0; iter < 4; iter++) {
+      const rx0 = bestX - refineSz, rx1 = bestX + refineSz;
+      const ry0 = bestY - refineSz, ry1 = bestY + refineSz;
+      const refineSteps = 16;
+      for (let si = 0; si <= refineSteps; si++) {
+        for (let sj = 0; sj <= refineSteps; sj++) {
+          const tx = rx0 + (rx1 - rx0) * si / refineSteps;
+          const ty = ry0 + (ry1 - ry0) * sj / refineSteps;
+          if (!isInside(tx, ty)) continue;
+          const d = minDistToEdges(tx, ty);
+          if (d > bestScore) { bestScore = d; bestX = tx; bestY = ty; }
+        }
+      }
+      refineSz /= 2;
+    }
+
     return { polyCx: bestX, polyCy: bestY };
   }, [points]);
 
