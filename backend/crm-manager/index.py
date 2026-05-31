@@ -190,9 +190,13 @@ def handler(event: dict, context) -> dict:
                     FROM {SCHEMA}.live_chats lc
                     LEFT JOIN {SCHEMA}.users u ON lc.company_id = u.id
                     WHERE lc.status != 'deleted'
-                      AND COALESCE(u.is_demo, FALSE) = FALSE
                 """
+                # Мастер видит всех — но скрываем демо-аккаунты чтобы не засорять список.
+                # Исключение: если запрос идёт от самого демо-пользователя (company_id задан) —
+                # он должен видеть своих клиентов, поэтому фильтр не применяем.
                 params = []
+                if company_id is None:
+                    sql += " AND COALESCE(u.is_demo, FALSE) = FALSE"
                 if company_id is not None:
                     sql += " AND lc.company_id = %s"
                     params.append(company_id)
