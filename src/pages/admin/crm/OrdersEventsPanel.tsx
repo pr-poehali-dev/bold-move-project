@@ -80,11 +80,18 @@ export function OrdersEventsPanel({ allClients, loading, onSelect }: Props) {
     if (loading || pushAsked || overdueCount === 0) return;
     setPushAsked(true);
     if (!("Notification" in window)) return;
+    const body = `${overdueCount} ${overdueCount === 1 ? "событие требует внимания" : "события требуют внимания"} — замеры или монтажи без обновления статуса`;
     const send = () => {
-      new Notification("⚠️ Просроченные события в CRM", {
-        body: `${overdueCount} ${overdueCount === 1 ? "событие требует внимания" : "события требуют внимания"} — замеры или монтажи без обновления статуса`,
-        icon: "/favicon.ico",
-      });
+      // На мобильных new Notification() запрещён — используем ServiceWorker если доступен
+      if ("serviceWorker" in navigator) {
+        navigator.serviceWorker.ready
+          .then(reg => reg.showNotification("⚠️ Просроченные события в CRM", { body, icon: "/favicon.ico" }))
+          .catch(() => {
+            try { new Notification("⚠️ Просроченные события в CRM", { body, icon: "/favicon.ico" }); } catch { /* игнорируем на мобильных */ }
+          });
+      } else {
+        try { new Notification("⚠️ Просроченные события в CRM", { body, icon: "/favicon.ico" }); } catch { /* игнорируем на мобильных */ }
+      }
     };
     if (Notification.permission === "granted") {
       send();
