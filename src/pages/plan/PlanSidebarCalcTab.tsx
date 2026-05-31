@@ -2,6 +2,7 @@ import React from "react";
 import Icon from "@/components/ui/icon";
 import type { PlanState, SegmentPriceItem } from "./planTypes";
 import { calcScale, polygonArea, polygonPerimeter, segmentLabel } from "./planTypes";
+import { sortCategories } from "./categoryOrder";
 
 // ─── Вкладка "Расчёт" ────────────────────────────────────────────────────────
 export default function CalcTab({
@@ -72,7 +73,7 @@ export default function CalcTab({
     return map;
   }, [wallItems, floorItems]);
 
-  const categories = Array.from(grouped.keys()).sort();
+  const categories = sortCategories(Array.from(grouped.keys()));
 
 
 
