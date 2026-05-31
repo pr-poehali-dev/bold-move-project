@@ -230,13 +230,21 @@ export function OrdersClientCard({ c, onClick, onNextStep, onSwipeBuilder, onSwi
                 <span className="text-sm font-bold truncate" style={{ color: t.text }}>
                   {localStorage.getItem(`order_title_${c.id}`) || `Заявка №${c.id}`}
                 </span>
-                {isInstall
-                  ? <InstallProgress client={clientWithSub} />
-                  : <span className="flex-shrink-0 text-[10px] px-1.5 py-0.5 rounded-md font-medium"
-                      style={{ background: STATUS_COLORS[c.status] + "20", color: STATUS_COLORS[c.status] }}>
-                      {STATUS_LABELS[c.status] || c.status}
+                <div className="flex items-center gap-1 flex-shrink-0">
+                  {c.is_demo && (
+                    <span className="text-[9px] px-1.5 py-0.5 rounded font-bold tracking-wide"
+                      style={{ background: "#f59e0b22", color: "#f59e0b", border: "1px solid #f59e0b44" }}>
+                      ДЕМО
                     </span>
-                }
+                  )}
+                  {isInstall
+                    ? <InstallProgress client={clientWithSub} />
+                    : <span className="text-[10px] px-1.5 py-0.5 rounded-md font-medium"
+                        style={{ background: STATUS_COLORS[c.status] + "20", color: STATUS_COLORS[c.status] }}>
+                        {STATUS_LABELS[c.status] || c.status}
+                      </span>
+                  }
+                </div>
               </div>
               <div className="space-y-1 mt-1.5">
                 {c.client_name && (

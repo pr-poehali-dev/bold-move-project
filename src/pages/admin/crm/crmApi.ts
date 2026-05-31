@@ -171,6 +171,7 @@ export interface Client {
   extra_payment_confirmed_at: string | null;
   extra_payment_fact: number | null;
   project_id?: number | null;
+  is_demo?: boolean;
 }
 
 export function fmt(n: number): string {

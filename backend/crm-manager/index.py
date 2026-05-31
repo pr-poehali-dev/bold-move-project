@@ -176,22 +176,24 @@ def handler(event: dict, context) -> dict:
                 mode = qs.get("mode", "")  # "leads" | "orders" | "" = all
 
                 sql = f"""
-                    SELECT id, session_id, client_name, phone, status, sub_status, client_status,
-                           measure_date, install_date, notes, address, area, budget, source, created_at,
-                           contract_sum, prepayment, extra_payment, extra_agreement_sum,
-                           discount_pct, discount_amount,
-                           prepayment_confirmed, prepayment_confirmed_at, prepayment_fact,
-                           extra_payment_confirmed, extra_payment_confirmed_at, extra_payment_fact,
-                           responsible_phone, map_link, tags,
-                           photo_before_url, photo_after_url, document_url,
-                           material_cost, measure_cost, install_cost, cancel_reason,
-                           updated_at, project_id
-                    FROM {SCHEMA}.live_chats
-                    WHERE status != 'deleted'
+                    SELECT lc.id, lc.session_id, lc.client_name, lc.phone, lc.status, lc.sub_status, lc.client_status,
+                           lc.measure_date, lc.install_date, lc.notes, lc.address, lc.area, lc.budget, lc.source, lc.created_at,
+                           lc.contract_sum, lc.prepayment, lc.extra_payment, lc.extra_agreement_sum,
+                           lc.discount_pct, lc.discount_amount,
+                           lc.prepayment_confirmed, lc.prepayment_confirmed_at, lc.prepayment_fact,
+                           lc.extra_payment_confirmed, lc.extra_payment_confirmed_at, lc.extra_payment_fact,
+                           lc.responsible_phone, lc.map_link, lc.tags,
+                           lc.photo_before_url, lc.photo_after_url, lc.document_url,
+                           lc.material_cost, lc.measure_cost, lc.install_cost, lc.cancel_reason,
+                           lc.updated_at, lc.project_id,
+                           COALESCE(u.is_demo, FALSE) AS is_demo
+                    FROM {SCHEMA}.live_chats lc
+                    LEFT JOIN {SCHEMA}.users u ON lc.company_id = u.id
+                    WHERE lc.status != 'deleted'
                 """
                 params = []
                 if company_id is not None:
-                    sql += " AND company_id = %s"
+                    sql += " AND lc.company_id = %s"
                     params.append(company_id)
                 if mode == "leads":
                     sql += f" AND status = ANY(%s)"
