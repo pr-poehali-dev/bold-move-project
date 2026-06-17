@@ -36,26 +36,26 @@ export function OrdersEventsPanel({ allClients, loading, onSelect }: Props) {
 
   // Замеры — measure_date в диапазоне, статус ещё активен (не выполнен/не отменён)
   const upcomingMeasures = allClients.filter(c => {
-    if (!c.measure_date || !MEASURE_ACTIVE.includes(c.status)) return false;
+    if (!c.measure_date || !MEASURE_ACTIVE.includes(c.status ?? "")) return false;
     const d = new Date(c.measure_date);
     return d >= startDate && d <= endDate;
   }).sort((a, b) => new Date(a.measure_date!).getTime() - new Date(b.measure_date!).getTime());
 
   // Монтажи — install_date в диапазоне, статус ещё активен (не выполнен/не отменён)
   const upcomingInstalls = allClients.filter(c => {
-    if (!c.install_date || !INSTALL_ACTIVE.includes(c.status)) return false;
+    if (!c.install_date || !INSTALL_ACTIVE.includes(c.status ?? "")) return false;
     const d = new Date(c.install_date);
     return d >= startDate && d <= endDate;
   }).sort((a, b) => new Date(a.install_date!).getTime() - new Date(b.install_date!).getTime());
 
   // Просроченные замеры
   const overdueM = allClients.filter(c =>
-    MEASURE_ACTIVE.includes(c.status) && c.measure_date && new Date(c.measure_date) < now
+    MEASURE_ACTIVE.includes(c.status ?? "") && c.measure_date && new Date(c.measure_date) < now
   ).sort((a, b) => new Date(a.measure_date!).getTime() - new Date(b.measure_date!).getTime());
 
   // Просроченные монтажи
   const overdueI = allClients.filter(c =>
-    INSTALL_ACTIVE.includes(c.status) && c.install_date && new Date(c.install_date) < now
+    INSTALL_ACTIVE.includes(c.status ?? "") && c.install_date && new Date(c.install_date) < now
   ).sort((a, b) => new Date(a.install_date!).getTime() - new Date(b.install_date!).getTime());
 
   const overdueCount = overdueM.length + overdueI.length;

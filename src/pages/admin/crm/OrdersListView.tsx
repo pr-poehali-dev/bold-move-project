@@ -56,12 +56,14 @@ export function OrdersListView({
     })),
     ...customTabs.map(tab => ({
       id: tab.id, label: tabLabels[tab.id] || tab.label, icon: (tab as SyncedCol & { icon?: string }).icon || "Layers",
-      color: tabColors[tab.id] || tab.color, statuses: [] as readonly string[], emptyText: "Нет данных",
+      color: tabColors[tab.id] || tab.color,
+      statuses: Array.isArray((tab as { statuses?: string[] }).statuses) ? (tab as { statuses?: string[] }).statuses as readonly string[] : [] as readonly string[],
+      emptyText: (tab as { emptyText?: string }).emptyText || "Нет данных",
     })),
   ] satisfies TabDef[];
 
   const currentTab = allTabDefs.find(tab => tab.id === activeTab) ?? allTabDefs[0];
-  const currentClients = currentTab ? allClients.filter(c => currentTab.statuses.includes(c.status)) : [];
+  const currentClients = currentTab ? allClients.filter(c => currentTab.statuses.includes(c.status ?? "")) : [];
 
   const filterSearch = (list: Client[]) => {
     if (!search) return list;
@@ -143,7 +145,7 @@ export function OrdersListView({
             { label: "Завершённые", statuses: ["done"],      color: "#10b981", icon: "CheckCircle2" },
             { label: "Отказники",   statuses: ["cancelled"], color: "#ef4444", icon: "XCircle" },
           ].map(group => {
-            const items = filterSearch(currentClients.filter(c => group.statuses.includes(c.status)));
+            const items = filterSearch(currentClients.filter(c => group.statuses.includes(c.status ?? "")));
             return (
               <div key={group.label}>
                 <div className="flex items-center gap-2 mb-3">

@@ -68,7 +68,15 @@ export function saveTabHidden(v: Set<string>) {
   localStorage.setItem(LS_TAB_HIDDEN, JSON.stringify([...v]));
 }
 export function loadCustomTabs(): CustomOrdersTab[] {
-  try { return JSON.parse(localStorage.getItem(LS_CUSTOM_TABS) || "[]"); } catch { return []; }
+  try {
+    const raw: CustomOrdersTab[] = JSON.parse(localStorage.getItem(LS_CUSTOM_TABS) || "[]");
+    return raw.map(t => ({
+      ...t,
+      statuses:  Array.isArray(t.statuses)  ? t.statuses  : [],
+      emptyText: t.emptyText ?? "Нет данных",
+      icon:      t.icon      ?? "Layers",
+    }));
+  } catch { return []; }
 }
 export function saveCustomTabs(v: CustomOrdersTab[]) {
   localStorage.setItem(LS_CUSTOM_TABS, JSON.stringify(v));

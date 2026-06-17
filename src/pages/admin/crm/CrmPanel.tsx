@@ -74,10 +74,22 @@ export default function CrmPanel({ theme, initialOrderId, initialTab }: { theme:
     () => canKanban && (user?.kanban_enabled ?? false)
   );
 
+  const normalizeClient = (c: Client): Client => ({
+    ...c,
+    status:      typeof c.status      === "string" && c.status      ? c.status      : "new",
+    client_name: typeof c.client_name === "string"                   ? c.client_name : "",
+    phone:       typeof c.phone       === "string"                   ? c.phone       : "",
+    session_id:  typeof c.session_id  === "string"                   ? c.session_id  : "",
+  });
+
   const loadClients = () => {
     setLoading(true);
     crmFetch("clients").then(d => {
-      setClients((Array.isArray(d) ? d : []).filter((c: Client) => c.status !== "deleted"));
+      setClients(
+        (Array.isArray(d) ? d : [])
+          .map(normalizeClient)
+          .filter((c: Client) => c.status !== "deleted")
+      );
       setLoading(false);
     });
   };

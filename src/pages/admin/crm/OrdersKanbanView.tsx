@@ -50,7 +50,7 @@ export function OrdersKanbanView({ allClients, search, onSearch, onStatusChange,
 
   const clientsForCol = (col: { statuses: readonly string[] }) =>
     allClients.filter(c => {
-      if (!col.statuses.includes(c.status)) return false;
+      if (!col.statuses.includes(c.status ?? "")) return false;
       if (!search) return true;
       const q = search.toLowerCase();
       return (c.client_name || "").toLowerCase().includes(q) || (c.phone || "").includes(q) || String(c.id).includes(q);

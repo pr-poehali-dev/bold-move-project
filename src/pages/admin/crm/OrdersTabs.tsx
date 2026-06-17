@@ -324,10 +324,10 @@ export function OrdersTabs({
   const customTabsMapped: TabDef[] = customTabs.map(tab => ({
     id: tab.id,
     label: tabLabels[tab.id] || tab.label,
-    icon: tab.icon,
+    icon: tab.icon ?? "Layers",
     color: tabColors[tab.id] || tab.color,
-    statuses: tab.statuses,
-    emptyText: tab.emptyText,
+    statuses: Array.isArray(tab.statuses) ? tab.statuses : [],
+    emptyText: tab.emptyText ?? "Нет данных",
   }));
 
   const allTabs = [...defaultTabs, ...customTabsMapped];
