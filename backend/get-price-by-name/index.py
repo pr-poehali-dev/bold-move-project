@@ -57,8 +57,8 @@ def find_in_db(name: str) -> dict | None:
 
 def ask_llm(name: str, prices_context: str) -> int | None:
     """Спрашивает LLM примерную цену для позиции натяжного потолка."""
-    openrouter_key = os.environ.get('OPENROUTER_API_KEY_2', '') or os.environ.get('OPENROUTER_API_KEY', '')
-    if not openrouter_key:
+    polza_key = os.environ.get('POLZA_API_KEY', '')
+    if not polza_key:
         return None
     system = (
         "Ты эксперт по ценам на натяжные потолки в Москве. "
@@ -72,8 +72,8 @@ def ask_llm(name: str, prices_context: str) -> int | None:
     ]
     try:
         resp = requests.post(
-            'https://openrouter.ai/api/v1/chat/completions',
-            headers={'Authorization': f'Bearer {openrouter_key}', 'Content-Type': 'application/json'},
+            'https://api.polza.ai/api/v1/chat/completions',
+            headers={'Authorization': f'Bearer {polza_key}', 'Content-Type': 'application/json'},
             json={'model': 'openai/gpt-4o-mini', 'messages': messages, 'max_tokens': 20, 'temperature': 0},
             timeout=15,
         )

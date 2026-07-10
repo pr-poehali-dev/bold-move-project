@@ -486,12 +486,12 @@ def handler(event: dict, context) -> dict:
             return resp(400, {'error': 'Укажите название товара'})
 
         tavily_key = os.environ.get('TAVILY_API_KEY', '')
-        openrouter_key = os.environ.get('OPENROUTER_API_KEY_2', '')
-        print('tavily_key present=', bool(tavily_key), 'openrouter_key present=', bool(openrouter_key))
+        polza_key = os.environ.get('POLZA_API_KEY', '')
+        print('tavily_key present=', bool(tavily_key), 'polza_key present=', bool(polza_key))
         if not tavily_key:
             return resp(500, {'error': 'TAVILY_API_KEY не настроен'})
-        if not openrouter_key:
-            return resp(500, {'error': 'OPENROUTER_API_KEY_2 не настроен'})
+        if not polza_key:
+            return resp(500, {'error': 'POLZA_API_KEY не настроен'})
 
         try:
             print('entering try block')
@@ -548,8 +548,8 @@ def handler(event: dict, context) -> dict:
             )
 
             ai_resp = requests.post(
-                'https://openrouter.ai/api/v1/chat/completions',
-                headers={'Authorization': f'Bearer {openrouter_key}', 'Content-Type': 'application/json'},
+                'https://api.polza.ai/api/v1/chat/completions',
+                headers={'Authorization': f'Bearer {polza_key}', 'Content-Type': 'application/json'},
                 json={
                     'model': 'openai/gpt-4o-mini',
                     'messages': [
@@ -561,7 +561,7 @@ def handler(event: dict, context) -> dict:
                 },
                 timeout=20,
             )
-            print('openrouter status=', ai_resp.status_code, 'body=', ai_resp.text[:300])
+            print('polza status=', ai_resp.status_code, 'body=', ai_resp.text[:300])
             if ai_resp.status_code != 200:
                 return resp(500, {'error': 'Ошибка AI: ' + ai_resp.text[:200]})
 
@@ -1108,8 +1108,8 @@ def handler(event: dict, context) -> dict:
         if not word:
             return resp(400, {'error': 'word required'})
 
-        openrouter_key = os.environ.get('OPENROUTER_API_KEY_2', '')
-        if not openrouter_key:
+        polza_key = os.environ.get('POLZA_API_KEY', '')
+        if not polza_key:
             return resp(500, {'error': 'No LLM key'})
 
         if word.startswith('GENERATE_DESCRIPTION:'):
@@ -1122,9 +1122,9 @@ def handler(event: dict, context) -> dict:
 Отвечай ТОЛЬКО описанием, без кавычек и пояснений:"""
             try:
                 llm_r = requests.post(
-                    'https://openrouter.ai/api/v1/chat/completions',
+                    'https://api.polza.ai/api/v1/chat/completions',
                     json={'model': 'openai/gpt-4o-mini', 'messages': [{'role': 'user', 'content': desc_prompt}], 'max_tokens': 60, 'temperature': 0.5},
-                    headers={'Authorization': f'Bearer {openrouter_key}', 'Content-Type': 'application/json'},
+                    headers={'Authorization': f'Bearer {polza_key}', 'Content-Type': 'application/json'},
                     timeout=20,
                 )
                 if llm_r.status_code == 200:
@@ -1149,9 +1149,9 @@ def handler(event: dict, context) -> dict:
 Отвечай ТОЛЬКО через запятую, без пояснений:"""
             try:
                 llm_r = requests.post(
-                    'https://openrouter.ai/api/v1/chat/completions',
+                    'https://api.polza.ai/api/v1/chat/completions',
                     json={'model': 'openai/gpt-4o-mini', 'messages': [{'role': 'user', 'content': syn_prompt}], 'max_tokens': 150, 'temperature': 0.7},
-                    headers={'Authorization': f'Bearer {openrouter_key}', 'Content-Type': 'application/json'},
+                    headers={'Authorization': f'Bearer {polza_key}', 'Content-Type': 'application/json'},
                     timeout=20,
                 )
                 if llm_r.status_code == 200:
@@ -1181,9 +1181,9 @@ def handler(event: dict, context) -> dict:
 Ответ (только число):"""
         try:
             llm_resp = requests.post(
-                'https://openrouter.ai/api/v1/chat/completions',
+                'https://api.polza.ai/api/v1/chat/completions',
                 json={'model': 'openai/gpt-4o-mini', 'messages': [{'role': 'user', 'content': prompt}], 'max_tokens': 10, 'temperature': 0},
-                headers={'Authorization': f'Bearer {openrouter_key}', 'Content-Type': 'application/json'},
+                headers={'Authorization': f'Bearer {polza_key}', 'Content-Type': 'application/json'},
                 timeout=15,
             )
             if llm_resp.status_code != 200:

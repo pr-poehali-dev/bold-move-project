@@ -313,24 +313,23 @@ def fetch_page_text(url: str) -> str:
     return re.sub(r"\s{3,}", "\n", combined).strip()[:6000]
 
 def ask_openai(prompt: str) -> str:
-    """Отправляет запрос к OpenRouter (meta-llama/llama-3.1-8b-instruct:free)."""
+    """Отправляет запрос к Polza.ai (openai/gpt-4o-mini)."""
     import urllib.error
-    api_key = os.environ.get("OPENROUTER_API_KEY_2", "")
+    api_key = os.environ.get("POLZA_API_KEY", "")
     if not api_key:
-        raise ValueError("OPENROUTER_API_KEY_2 не настроен")
+        raise ValueError("POLZA_API_KEY не настроен")
     payload = json.dumps({
-        "model": "openrouter/owl-alpha",
+        "model": "openai/gpt-4o-mini",
         "messages": [{"role": "user", "content": prompt}],
         "temperature": 0.1,
         "max_tokens": 800,
     }).encode()
     req = urllib.request.Request(
-        "https://openrouter.ai/api/v1/chat/completions",
+        "https://api.polza.ai/api/v1/chat/completions",
         data=payload,
         headers={
             "Authorization": f"Bearer {api_key}",
             "Content-Type": "application/json",
-            "HTTP-Referer": "https://poehali.dev",
         },
         method="POST",
     )
@@ -339,9 +338,9 @@ def ask_openai(prompt: str) -> str:
             data = json.loads(resp.read())
     except urllib.error.HTTPError as e:
         body = e.read().decode("utf-8", errors="replace")
-        print(f"[parse-site] OpenRouter HTTP {e.code}: {body[:200]}")
+        print(f"[parse-site] Polza HTTP {e.code}: {body[:200]}")
         raise ValueError(f"AI ошибка: {body[:100]}")
-    print(f"[parse-site] OpenRouter OK")
+    print(f"[parse-site] Polza OK")
     return data["choices"][0]["message"]["content"].strip()
 
 def extract_brand_info(site_url: str, page_text: str) -> dict:

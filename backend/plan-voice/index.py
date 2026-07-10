@@ -18,7 +18,7 @@ CORS = {
 }
 
 GET_PRICES_URL = 'https://functions.poehali.dev/4a60d7e9-3b52-4eaa-b9f9-38653c3ef837'
-OPENROUTER_KEY = os.environ.get('OPENROUTER_API_KEY_2', '')
+POLZA_KEY = os.environ.get('POLZA_API_KEY', '')
 SCHEMA = os.environ.get('MAIN_DB_SCHEMA', 'public')
 
 def get_rules_prompt() -> str:
@@ -350,7 +350,7 @@ def handler(event: dict, context) -> dict:
     if not transcript:
         return {'statusCode': 400, 'headers': CORS, 'body': json.dumps({'error': 'transcript required'})}
 
-    if not OPENROUTER_KEY:
+    if not POLZA_KEY:
         return {'statusCode': 500, 'headers': CORS, 'body': json.dumps({'error': 'No API key', 'items': []})}
 
     print(f"[plan-voice] transcript: {transcript}")
@@ -387,12 +387,11 @@ def handler(event: dict, context) -> dict:
     }).encode('utf-8')
 
     req = urllib.request.Request(
-        'https://openrouter.ai/api/v1/chat/completions',
+        'https://api.polza.ai/api/v1/chat/completions',
         data=payload,
         headers={
-            'Authorization': f'Bearer {OPENROUTER_KEY}',
+            'Authorization': f'Bearer {POLZA_KEY}',
             'Content-Type': 'application/json',
-            'HTTP-Referer': 'https://poehali.dev',
         },
         method='POST',
     )
@@ -401,7 +400,7 @@ def handler(event: dict, context) -> dict:
         with urllib.request.urlopen(req, timeout=50) as resp:
             resp_data = json.loads(resp.read().decode('utf-8'))
     except Exception as e:
-        print(f"[plan-voice] openrouter error: {e}")
+        print(f"[plan-voice] polza error: {e}")
         return {'statusCode': 200, 'headers': CORS, 'body': json.dumps({'items': [], 'error': str(e)})}
 
     content = resp_data.get('choices', [{}])[0].get('message', {}).get('content', '')

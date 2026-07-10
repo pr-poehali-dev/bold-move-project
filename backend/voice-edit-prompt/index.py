@@ -48,9 +48,9 @@ def handler(event: dict, context) -> dict:
         f"Верни обновлённый промпт:"
     )
 
-    api_key = os.environ["OPENROUTER_API_KEY_2"]
+    api_key = os.environ["POLZA_API_KEY"]
     res = requests.post(
-        "https://openrouter.ai/api/v1/chat/completions",
+        "https://api.polza.ai/api/v1/chat/completions",
         headers={
             "Authorization": f"Bearer {api_key}",
             "Content-Type": "application/json",
@@ -68,7 +68,7 @@ def handler(event: dict, context) -> dict:
     )
 
     if res.status_code != 200:
-        return {"statusCode": 500, "headers": headers, "body": json.dumps({"error": f"OpenRouter error: {res.text[:200]}"})}
+        return {"statusCode": 500, "headers": headers, "body": json.dumps({"error": f"Polza error: {res.text[:200]}"})}
 
     data = res.json()
     updated_prompt = data["choices"][0]["message"]["content"].strip()

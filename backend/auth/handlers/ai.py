@@ -30,7 +30,7 @@ def handle(action, method, params, body, token, event, conn, cur):
                 f'"reason":"краткое объяснение (1-2 предложения)","items":["риск 1","риск 2"]}}'
             )
 
-        or_key = os.environ.get("OPENROUTER_API_KEY_2", "") or os.environ.get("OPENROUTER_API_KEY", "")
+        or_key = os.environ.get("POLZA_API_KEY", "")
         if not or_key: return err("AI недоступен — нет ключа")
 
         sys_msg = "Отвечай чётко и по делу." if raw_mode else "Отвечай только JSON без markdown."
@@ -39,9 +39,8 @@ def handle(action, method, params, body, token, event, conn, cur):
             "messages": [{"role": "system", "content": sys_msg}, {"role": "user", "content": prompt}],
             "max_tokens": 600 if raw_mode else 400, "temperature": 0,
         }).encode()
-        req = _ureq.Request("https://openrouter.ai/api/v1/chat/completions", data=payload,
-                            headers={"Authorization": f"Bearer {or_key}", "Content-Type": "application/json",
-                                     "HTTP-Referer": "https://mospotolki.ru"}, method="POST")
+        req = _ureq.Request("https://api.polza.ai/api/v1/chat/completions", data=payload,
+                            headers={"Authorization": f"Bearer {or_key}", "Content-Type": "application/json"}, method="POST")
         try:
             with _ureq.urlopen(req, timeout=30) as r:
                 ai_resp = json.loads(r.read().decode())
@@ -57,7 +56,7 @@ def handle(action, method, params, body, token, event, conn, cur):
     if action == "complexity-eval" and method == "POST":
         items = body.get("items", [])
         if not items: return err("items обязателен")
-        or_key = os.environ.get("OPENROUTER_API_KEY_2", "") or os.environ.get("OPENROUTER_API_KEY", "")
+        or_key = os.environ.get("POLZA_API_KEY", "")
         if not or_key: return err("AI недоступен — нет ключа")
 
         names_list = "\n".join(f'{i+1}. {it["name"]}' for i, it in enumerate(items[:15]))
@@ -78,9 +77,8 @@ def handle(action, method, params, body, token, event, conn, cur):
                          {"role": "user", "content": prompt}],
             "max_tokens": 1200, "temperature": 0,
         }).encode()
-        req = _ureq.Request("https://openrouter.ai/api/v1/chat/completions", data=payload,
-                            headers={"Authorization": f"Bearer {or_key}", "Content-Type": "application/json",
-                                     "HTTP-Referer": "https://mospotolki.ru"}, method="POST")
+        req = _ureq.Request("https://api.polza.ai/api/v1/chat/completions", data=payload,
+                            headers={"Authorization": f"Bearer {or_key}", "Content-Type": "application/json"}, method="POST")
         try:
             with _ureq.urlopen(req, timeout=30) as r:
                 ai_resp = json.loads(r.read().decode())

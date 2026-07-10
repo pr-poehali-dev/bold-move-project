@@ -113,13 +113,13 @@ def handler(event: dict, context) -> dict:
     if not prompt:
         return {'statusCode': 400, 'headers': CORS, 'body': json.dumps({'error': 'prompt обязателен'})}
 
-    api_key = os.environ.get('OPENROUTER_API_KEY_2', '') or os.environ.get('OPENAI_API_KEY', '')
+    api_key = os.environ.get('POLZA_API_KEY', '') or os.environ.get('OPENAI_API_KEY', '')
     if not api_key:
         return {'statusCode': 500, 'headers': CORS, 'body': json.dumps({'error': 'AI не настроен'})}
 
-    use_openrouter = bool(os.environ.get('OPENROUTER_API_KEY_2', ''))
-    api_url = 'https://openrouter.ai/api/v1/chat/completions' if use_openrouter else 'https://api.openai.com/v1/chat/completions'
-    model = 'openai/gpt-4o-mini' if use_openrouter else 'gpt-4o-mini'
+    use_polza = bool(os.environ.get('POLZA_API_KEY', ''))
+    api_url = 'https://api.polza.ai/api/v1/chat/completions' if use_polza else 'https://api.openai.com/v1/chat/completions'
+    model = 'openai/gpt-4o-mini' if use_polza else 'gpt-4o-mini'
 
     user_message = (
         f"Размер холста: {canvas_w}×{canvas_h}px\n"
