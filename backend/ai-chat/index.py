@@ -1164,7 +1164,6 @@ def handler(event, context):
     is_plan_mode = '=== ДАННЫЕ ПОМЕЩЕНИЯ' in first_user_text
 
     if is_plan_mode:
-        openrouter_key = os.environ.get('OPENROUTER_API_KEY_2', '') or os.environ.get('OPENROUTER_API_KEY', '')
         prices_block = get_prices_block()
         rules_list   = get_price_rules()
         rules_hint   = build_rules_prompt(rules_list)
@@ -1183,26 +1182,13 @@ def handler(event, context):
             {'role': 'user',   'content': last_user_text},
         ]
         try:
-            import requests as _req
-            headers = {
-                'Authorization': f'Bearer {openrouter_key}',
-                'Content-Type': 'application/json',
-                'HTTP-Referer': 'https://mospotolki.ru',
-            }
-            resp = _req.post(
-                'https://openrouter.ai/api/v1/chat/completions',
-                json={'model': 'openai/gpt-4o-mini', 'messages': plan_msgs, 'max_tokens': 3000, 'temperature': 0},
-                headers=headers,
-                timeout=55,
-            )
-            if resp.status_code == 200:
-                content = resp.json()['choices'][0]['message']['content']
-                items = _extract_items_from_content(content)
-                if items:
-                    print(f"[plan_mode] returned {len(items)} items")
-                    return {'statusCode': 200, 'headers': cors, 'body': json.dumps({'items': items})}
-                else:
-                    print(f"[plan_mode] no items parsed from: {content[:200]}")
+            content = call_llm(plan_msgs)
+            items = _extract_items_from_content(content)
+            if items:
+                print(f"[plan_mode] returned {len(items)} items")
+                return {'statusCode': 200, 'headers': cors, 'body': json.dumps({'items': items})}
+            else:
+                print(f"[plan_mode] no items parsed from: {content[:200]}")
         except Exception as e:
             print(f"[plan_mode] error: {e}")
         return {'statusCode': 200, 'headers': cors, 'body': json.dumps({'items': []})}

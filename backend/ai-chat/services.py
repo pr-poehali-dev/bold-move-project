@@ -5,6 +5,7 @@ import re
 import requests
 
 HF_TOKEN = os.environ.get('HF_TOKEN', '')
+POLZA_KEY = os.environ.get('POLZA_API_KEY', '')
 TAVILY_KEY = os.environ.get('TAVILY_API_KEY', '')
 AWS_KEY = os.environ.get('AWS_ACCESS_KEY_ID', '')
 AWS_SECRET = os.environ.get('AWS_SECRET_ACCESS_KEY', '')
@@ -33,7 +34,7 @@ IMAGE_GEN = re.compile(
     re.IGNORECASE
 )
 
-OR_MODELS = [
+POLZA_MODELS = [
     'openai/gpt-4o-mini',
 ]
 
@@ -194,27 +195,25 @@ def web_search(query: str) -> dict:
 
 
 def call_llm(messages):
-    """Вызывает LLM — сначала OpenRouter бесплатные модели, потом HuggingFace."""
+    """Вызывает LLM — сначала Polza.ai, потом HuggingFace (резерв)."""
     last_error = None
-    openrouter_key = os.environ.get('OPENROUTER_API_KEY_2', '') or os.environ.get('OPENROUTER_API_KEY', '')
 
-    if openrouter_key:
+    if POLZA_KEY:
         headers = {
-            'Authorization': f'Bearer {openrouter_key}',
+            'Authorization': f'Bearer {POLZA_KEY}',
             'Content-Type': 'application/json',
-            'HTTP-Referer': 'https://mospotolki.ru',
         }
-        for model in OR_MODELS:
+        for model in POLZA_MODELS:
             payload = {'model': model, 'messages': messages, 'max_tokens': 4000, 'temperature': 0}
             try:
-                resp = requests.post('https://openrouter.ai/api/v1/chat/completions', json=payload, headers=headers, timeout=55)
+                resp = requests.post('https://api.polza.ai/api/v1/chat/completions', json=payload, headers=headers, timeout=55)
                 if resp.status_code == 200:
                     content = resp.json()['choices'][0]['message']['content']
                     if content:
                         return content
-                last_error = f"OpenRouter {model}: {resp.status_code} {resp.text[:200]}"
+                last_error = f"Polza {model}: {resp.status_code} {resp.text[:200]}"
             except Exception as e:
-                last_error = f"OpenRouter {model}: {str(e)}"
+                last_error = f"Polza {model}: {str(e)}"
 
     headers = {
         'Authorization': f'Bearer {HF_TOKEN}',
