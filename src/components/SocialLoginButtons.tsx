@@ -4,6 +4,7 @@
 import { useState } from "react";
 import GoogleLoginButton from "@/components/extensions/google-auth/GoogleLoginButton";
 import YandexLoginButton from "@/components/extensions/yandex-auth/YandexLoginButton";
+import TelegramLoginButton from "@/components/TelegramLoginButton";
 import func2url from "@/../backend/func2url.json";
 
 const AUTH_URL = (func2url as Record<string, string>)["auth"];
@@ -56,6 +57,7 @@ export default function SocialLoginButtons({ className }: Props) {
         disabled={loadingProvider !== null}
         onClick={() => startSocialLogin("yandex", v => setLoadingProvider(v ? "yandex" : null), setError)}
       />
+      <TelegramLoginButton className="w-full" />
       {error && (
         <div className="rounded-xl px-3.5 py-2.5 text-xs text-red-400 bg-red-500/10 border border-red-500/20">{error}</div>
       )}

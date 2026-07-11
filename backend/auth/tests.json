@@ -34,6 +34,15 @@
       "bodyMatcher": "partial"
     },
     {
+      "name": "Telegram callback invalid hash",
+      "method": "POST",
+      "path": "/?action=telegram-callback",
+      "body": {"id": 1, "first_name": "Test", "auth_date": 1700000000, "hash": "invalid"},
+      "expectedStatus": 400,
+      "expectedBody": {"error": "string"},
+      "bodyMatcher": "partial"
+    },
+    {
       "name": "Packages list",
       "method": "GET",
       "path": "/?action=packages",

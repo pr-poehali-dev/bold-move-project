@@ -1,11 +1,13 @@
-"""Вход через Google / Яндекс / VK — использует ту же систему сессий, что и обычный логин
-(таблица user_sessions), а не отдельный JWT. Поэтому соц-пользователь получает
+"""Вход через Google / Яндекс / VK / Telegram — использует ту же систему сессий, что и обычный
+логин (таблица user_sessions), а не отдельный JWT. Поэтому соц-пользователь получает
 точно такой же токен и попадает в тот же личный кабинет."""
 import base64
 import hashlib
+import hmac
 import json
 import os
 import secrets
+import time
 from urllib.request import Request, urlopen
 from urllib.parse import urlencode
 from urllib.error import HTTPError
@@ -201,10 +203,45 @@ def _vk_user_from_code(code: str, code_verifier: str, device_id: str) -> dict | 
 
 
 # =============================================================================
+# Telegram Login Widget — проверка подписи данных
+# =============================================================================
+
+def _telegram_check_auth(data: dict) -> dict | None:
+    bot_token = os.environ.get("TELEGRAM_BOT_TOKEN", "")
+    if not bot_token:
+        return None
+    received_hash = data.get("hash", "")
+    if not received_hash:
+        return None
+
+    check_fields = {k: v for k, v in data.items() if k != "hash" and v is not None}
+    data_check_string = "\n".join(f"{k}={check_fields[k]}" for k in sorted(check_fields.keys()))
+
+    secret_key = hashlib.sha256(bot_token.encode()).digest()
+    computed_hash = hmac.new(secret_key, data_check_string.encode(), hashlib.sha256).hexdigest()
+
+    if not hmac.compare_digest(computed_hash, received_hash):
+        return None
+
+    auth_date = int(data.get("auth_date", 0))
+    if time.time() - auth_date > 86400:
+        return None
+
+    first_name = data.get("first_name", "")
+    last_name = data.get("last_name", "")
+    return {
+        "provider_id": str(data.get("id", "")),
+        "email": "",
+        "name": f"{first_name} {last_name}".strip(),
+        "avatar_url": data.get("photo_url", ""),
+    }
+
+
+# =============================================================================
 # Общая логика: найти/создать пользователя и выдать такую же сессию, как при обычном логине
 # =============================================================================
 
-PROVIDER_FIELD = {"google": "google_id", "yandex": "yandex_id", "vk": "vk_id"}
+PROVIDER_FIELD = {"google": "google_id", "yandex": "yandex_id", "vk": "vk_id", "telegram": "telegram_id"}
 
 
 def _login_or_create(cur, conn, provider: str, social: dict) -> dict:
@@ -305,5 +342,11 @@ def handle(action, method, params, body, token, event, conn, cur):
         if not social:
             return err("Не удалось получить данные от VK")
         return ok(_login_or_create(cur, conn, "vk", social))
+
+    if action == "telegram-callback" and method == "POST":
+        social = _telegram_check_auth(body)
+        if not social:
+            return err("Не удалось подтвердить данные Telegram")
+        return ok(_login_or_create(cur, conn, "telegram", social))
 
     return None
