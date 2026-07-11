@@ -149,15 +149,18 @@ export default function PlanPagePanels({
         onZoomFit={zoomFit}
         onOpenPanel={isMobile
           ? () => {
-              if (sheetOpen) { setSheetOpen(false); } else {
+              // Кнопка "Чертёж" горит и закрывает панель только для своей вкладки (drawing)
+              if (sheetOpen && state.sidebarTab !== "calc") { setSheetOpen(false); } else {
                 catalog.setCatalogOpen(false);
                 setRightPanelOpen(false);
+                handleChange({ sidebarTab: "drawing" });
                 setSheetSnap("half"); setSheetOpen(true);
               }
             }
           : () => {
-              if (sidebarOpen) { setSidebarOpen(false); } else {
+              if (sidebarOpen && state.sidebarTab !== "calc") { setSidebarOpen(false); } else {
                 catalog.setCatalogOpen(false);
+                handleChange({ sidebarTab: "drawing" });
                 setSidebarOpen(true);
               }
             }
@@ -186,18 +189,25 @@ export default function PlanPagePanels({
           }
         }}
         selectedSegmentId={state.selectedSegmentId}
-        sheetOpen={isMobile ? sheetOpen : sidebarOpen}
+        sheetOpen={
+          isMobile
+            ? sheetOpen && state.sidebarTab !== "calc"
+            : sidebarOpen && state.sidebarTab !== "calc"
+        }
         catalogOpen={catalog.catalogOpen || !!replaceTarget}
         rightPanelOpen={rightPanelOpen}
         isMobile={isMobile}
         onOpenMaterials={state.settings.hideMaterialsButton ? undefined : () => {
+          // Кнопка "Материалы" горит и закрывает панель только для своей вкладки (calc)
           if (isMobile) {
+            if (sheetOpen && state.sidebarTab === "calc") { setSheetOpen(false); return; }
             handleChange({ sidebarTab: "calc" });
             catalog.setCatalogOpen(false);
             setRightPanelOpen(false);
             setSheetSnap("half");
             setSheetOpen(true);
           } else {
+            if (sidebarOpen && state.sidebarTab === "calc") { setSidebarOpen(false); return; }
             handleChange({ sidebarTab: "calc" });
             catalog.setCatalogOpen(false);
             setSidebarOpen(true);
