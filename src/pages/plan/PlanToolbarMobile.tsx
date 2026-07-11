@@ -128,6 +128,7 @@ export default function MobileToolbar(props: ToolbarProps) {
               style={{ right: 8, top: 56 }}
               onClick={e => e.stopPropagation()}
               onTouchStart={e => e.stopPropagation()}
+              onMouseDown={e => e.stopPropagation()}
             >
               {SETTINGS_ITEMS.map(({ key, label, icon }) => (
                 <button key={key}
