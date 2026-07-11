@@ -1,5 +1,7 @@
+import { useState } from "react";
 import Icon from "@/components/ui/icon";
 import { PlanProject } from "./usePlanProjects";
+import PlanRoomsStatsModal from "./PlanRoomsStatsModal";
 
 interface Stats {
   totalRooms: number;
@@ -17,6 +19,8 @@ interface Props {
 
 // ── Шапка экрана комнат: назад, название проекта, статистика, кнопки действий ──
 export default function PlanRoomsHeader({ project, stats, onBack, onExportClick, onAddRoomClick }: Props) {
+  const [statsOpen, setStatsOpen] = useState(false);
+
   return (
     <div className="flex items-center gap-3 px-4 sm:px-8 py-4 border-b" style={{ borderColor: "rgba(255,255,255,0.07)" }}>
       <button
@@ -34,6 +38,21 @@ export default function PlanRoomsHeader({ project, stats, onBack, onExportClick,
           </div>
         )}
       </div>
+
+      {/* Статистика по проекту — мобиле: одна кнопка-иконка, открывает модалку */}
+      {stats.totalRooms > 0 && (
+        <button
+          onClick={() => setStatsOpen(true)}
+          className="flex md:hidden items-center justify-center w-9 h-9 rounded-xl transition hover:brightness-110 active:scale-95 flex-shrink-0"
+          style={{
+            background: stats.roomsWithEmptyWalls > 0 ? "rgba(245,158,11,0.12)" : "rgba(255,255,255,0.05)",
+            border: stats.roomsWithEmptyWalls > 0 ? "1px solid rgba(245,158,11,0.35)" : "1px solid rgba(255,255,255,0.08)",
+          }}
+          title="Статистика проекта"
+        >
+          <Icon name="Info" size={16} style={{ color: stats.roomsWithEmptyWalls > 0 ? "#fbbf24" : "rgba(255,255,255,0.5)" }} />
+        </button>
+      )}
 
       {/* Статистика по проекту — только когда есть комнаты */}
       {stats.totalRooms > 0 && (
@@ -102,6 +121,8 @@ export default function PlanRoomsHeader({ project, stats, onBack, onExportClick,
         <Icon name="Plus" size={13} />
         Комната
       </button>
+
+      {statsOpen && <PlanRoomsStatsModal stats={stats} onClose={() => setStatsOpen(false)} />}
     </div>
   );
 }
