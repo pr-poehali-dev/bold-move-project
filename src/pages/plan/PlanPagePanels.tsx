@@ -261,6 +261,29 @@ export default function PlanPagePanels({
           onShowMaterialsButton={state.settings.hideMaterialsButton ? () => {
             handleSettingChange({ hideMaterialsButton: false });
           } : undefined}
+          // Быстрые функции для позиций в "Материалах" — те же, что на ПК в PlanSidebar,
+          // без них попап действий на мобиле не открывается.
+          onRemoveActiveItem={catalog.removeActiveItem}
+          onAssignToAllSegs={catalog.assignItemToAllSegs}
+          onRemoveFromAllSegs={catalog.removeItemFromAllSegs}
+          isItemOnAllSegs={catalog.isItemOnAllSegs}
+          onAdjustQuantity={catalog.adjustItemQuantity}
+          onSetQuantity={catalog.setItemQuantity}
+          onAddToFloor={catalog.setPendingFloorItem}
+          onReplaceItem={(item) => {
+            // Полотняный товар → редактирование floor-позиции
+            if (item.isWallItem === false) {
+              const fi = (state.floorItems ?? []).find(f => f.priceId === item.priceId);
+              if (fi) catalog.setEditingFloorId(fi.id);
+              return;
+            }
+            // Стеновой → замена в сегменте (берём первый сегмент с этим товаром);
+            // это установит catalog.editingSegRef, который уже отслеживается эффектом
+            // выше и откроет барабан замены на мобиле.
+            const seg = state.segments.find(s => (s.items ?? []).some(it => it.priceId === item.priceId));
+            if (seg) catalog.setEditingSegRef({ segId: seg.id, priceId: item.priceId });
+          }}
+          onHoverItem={catalog.setHoveredPriceId}
         />
       )}
 

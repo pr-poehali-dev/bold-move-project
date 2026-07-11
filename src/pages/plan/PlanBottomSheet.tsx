@@ -1,7 +1,7 @@
 import React, { useRef, useEffect } from "react";
 import Icon from "@/components/ui/icon";
 import PlanSidebar from "./PlanSidebar";
-import type { PlanState } from "./planTypes";
+import type { PlanState, SegmentPriceItem } from "./planTypes";
 
 interface Props {
   state: PlanState;
@@ -13,6 +13,17 @@ interface Props {
   onSectionOpen?: () => void;
   onHideMaterialsButton?: () => void;
   onShowMaterialsButton?: () => void;
+  // Быстрые функции для позиций в "Материалах" — те же, что на ПК в PlanSidebar,
+  // без них попап действий (заменить/снять со всех стен/на полотно) на мобиле не открывается.
+  onRemoveActiveItem?: (priceId: number) => void;
+  onAssignToAllSegs?: (item: SegmentPriceItem) => void;
+  onRemoveFromAllSegs?: (priceId: number) => void;
+  isItemOnAllSegs?: (priceId: number) => boolean;
+  onAdjustQuantity?: (priceId: number, delta: number) => void;
+  onSetQuantity?: (priceId: number, value: number) => void;
+  onAddToFloor?: (item: SegmentPriceItem) => void;
+  onReplaceItem?: (item: SegmentPriceItem) => void;
+  onHoverItem?: (priceId: number | null) => void;
 }
 
 // Высоты шита: peek (подглядывание) / half / full
@@ -22,7 +33,12 @@ const PEEK_H  = 52;   // только ручка видна
 const HALF_H  = 0.5;  // 50% экрана (доля)
 const FULL_H  = 0.92; // 92% экрана
 
-export default function PlanBottomSheet({ state, onChange, open, onClose, onSheetHeightChange, initialSnap = "half", onSectionOpen, onHideMaterialsButton, onShowMaterialsButton }: Props) {
+export default function PlanBottomSheet({
+  state, onChange, open, onClose, onSheetHeightChange, initialSnap = "half", onSectionOpen,
+  onHideMaterialsButton, onShowMaterialsButton,
+  onRemoveActiveItem, onAssignToAllSegs, onRemoveFromAllSegs, isItemOnAllSegs,
+  onAdjustQuantity, onSetQuantity, onAddToFloor, onReplaceItem, onHoverItem,
+}: Props) {
   const sheetRef    = useRef<HTMLDivElement>(null);
   const dragRef     = useRef<{ startY: number; startH: number } | null>(null);
   const [snap, setSnap]   = React.useState<SheetSnap>("half");
@@ -188,7 +204,17 @@ export default function PlanBottomSheet({ state, onChange, open, onClose, onShee
 
         {/* ── Контент сайдбара ── */}
         <div className="flex-1 overflow-hidden">
-          <PlanSidebar state={state} onChange={onChange} noAutoOpen={true} onHideMaterialsButton={onHideMaterialsButton} onShowMaterialsButton={onShowMaterialsButton} onSectionOpen={() => {
+          <PlanSidebar state={state} onChange={onChange} noAutoOpen={true} onHideMaterialsButton={onHideMaterialsButton} onShowMaterialsButton={onShowMaterialsButton}
+            onRemoveActiveItem={onRemoveActiveItem}
+            onAssignToAllSegs={onAssignToAllSegs}
+            onRemoveFromAllSegs={onRemoveFromAllSegs}
+            isItemOnAllSegs={isItemOnAllSegs}
+            onAdjustQuantity={onAdjustQuantity}
+            onSetQuantity={onSetQuantity}
+            onAddToFloor={onAddToFloor}
+            onReplaceItem={onReplaceItem}
+            onHoverItem={onHoverItem}
+            onSectionOpen={() => {
             setSnap("full");
             setHeight(snapToHeight("full"));
             onSectionOpen?.();
