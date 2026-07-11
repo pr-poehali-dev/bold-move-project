@@ -104,6 +104,13 @@ export default function PlanCatalogPanel({
           item={null}
           prices={filteredPrices}
           mode="add"
+          voiceButton={
+            <PlanVoiceCatalogButton
+              state={state}
+              onItems={handleVoiceItems}
+              onTranscript={handleTranscript}
+            />
+          }
           onReplace={(newItem) => {
             setShowListMode(false);
             onClose();
@@ -122,8 +129,8 @@ export default function PlanCatalogPanel({
         />
       )}
 
-      {/* Кнопка микрофона — только когда каталог открыт */}
-      {open && (
+      {/* Кнопка микрофона (плавающая) — на ПК в режиме списка она уже встроена в шапку модалки, чтобы не дублировать */}
+      {open && !(showListMode && !isMobile) && (
         <div className="fixed z-50" style={{ bottom: 96, right: 16 }}>
           <PlanVoiceCatalogButton
             state={state}

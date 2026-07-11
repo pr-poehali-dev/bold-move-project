@@ -11,9 +11,11 @@ interface Props {
   onCancel: () => void;
   /** "replace" (по умолчанию) или "add" — меняет заголовок и колбэк */
   mode?: "replace" | "add";
+  /** Кнопка голосового ввода в шапке — как в барабане */
+  voiceButton?: React.ReactNode;
 }
 
-export default function ReplaceItemModal({ open, item, prices, onReplace, onCancel, mode = "replace" }: Props) {
+export default function ReplaceItemModal({ open, item, prices, onReplace, onCancel, mode = "replace", voiceButton }: Props) {
   const [selectedCategory, setSelectedCategory] = useState<string>("");
   const [search, setSearch] = useState("");
   const [dropdownOpen, setDropdownOpen] = useState(false);
@@ -127,6 +129,11 @@ export default function ReplaceItemModal({ open, item, prices, onReplace, onCanc
                 </div>
               )}
             </div>
+            {voiceButton && (
+              <div style={{ flexShrink: 0, transform: "scale(0.6)", transformOrigin: "center" }}>
+                {voiceButton}
+              </div>
+            )}
             <button
               onClick={onCancel}
               style={{
