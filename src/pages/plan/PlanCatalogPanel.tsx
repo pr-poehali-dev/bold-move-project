@@ -140,7 +140,13 @@ export default function PlanCatalogPanel({
               onAddToActive(newItem);
             }
           }}
-          onCancel={() => setShowListMode(false)}
+          onCancel={() => {
+            // "Отмена" должна закрывать весь каталог, а не только список —
+            // иначе под ним оставался открытым барабан, и кнопка каталога
+            // в нижнем баре выглядела всё ещё "активной".
+            setShowListMode(false);
+            onClose();
+          }}
         />
       )}
 
