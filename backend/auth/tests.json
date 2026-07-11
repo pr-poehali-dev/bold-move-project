@@ -43,6 +43,14 @@
       "bodyMatcher": "partial"
     },
     {
+      "name": "Telegram bot id",
+      "method": "GET",
+      "path": "/?action=telegram-bot-id",
+      "expectedStatus": 200,
+      "expectedBody": {"bot_id": "string"},
+      "bodyMatcher": "partial"
+    },
+    {
       "name": "Packages list",
       "method": "GET",
       "path": "/?action=packages",

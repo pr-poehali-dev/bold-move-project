@@ -1,14 +1,14 @@
-// Кнопка входа через Telegram Login Widget. В отличие от Google/Яндекс работает без
-// редиректа на отдельную страницу — Telegram сам встраивает iframe-кнопку и после
-// подтверждения пользователя вызывает наш JS-колбэк с данными для проверки на backend
-// (action=telegram-callback). Требует, чтобы домен сайта был привязан к боту через
-// @BotFather → /setdomain.
+// Кнопка входа через Telegram — визуально в одном стиле с Google/Яндекс.
+// Вместо стандартного iframe-виджета используется JS API Telegram.Login.auth(),
+// которое открывает всплывающее окно входа по клику на нашу кнопку и возвращает
+// данные пользователя в колбэк. Проверка подлинности — на backend (action=telegram-callback).
+// Требует привязки домена к боту через @BotFather → /setdomain (уже сделано).
 import { useEffect, useRef, useState } from "react";
+import { Button } from "@/components/ui/button";
 import { useAuth } from "@/context/AuthContext";
 import func2url from "@/../backend/func2url.json";
 
 const AUTH_URL = (func2url as Record<string, string>)["auth"];
-const TELEGRAM_BOT_USERNAME = "PotolkiMSbot";
 
 interface TelegramAuthData {
   id: number;
@@ -22,61 +22,108 @@ interface TelegramAuthData {
 
 declare global {
   interface Window {
-    __onTelegramAuth?: (user: TelegramAuthData) => void;
+    Telegram?: {
+      Login: {
+        auth: (
+          options: { bot_id: string; request_access?: boolean | string },
+          callback: (user: TelegramAuthData | false) => void
+        ) => void;
+      };
+    };
   }
+}
+
+function Spinner({ className }: { className?: string }) {
+  return (
+    <svg className={`animate-spin ${className}`} xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+    </svg>
+  );
+}
+
+function TelegramIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 240 240" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="120" cy="120" r="120" fill="#229ED9" />
+      <path
+        fill="#fff"
+        d="M170.6 72.6l-19.8 96.5c-1.5 6.6-5.4 8.3-11 5.1l-30.4-22.4-14.7 14.1c-1.6 1.6-3 3-6.1 3l2.2-31.2 56.8-51.3c2.5-2.2-.5-3.4-3.8-1.2l-70.2 44.2-30.2-9.4c-6.6-2-6.7-6.6 1.4-9.8l118-45.5c5.5-2 10.3 1.3 8.6 9.5z"
+      />
+    </svg>
+  );
 }
 
 interface Props {
   className?: string;
 }
 
-export default function TelegramLoginButton({ className }: Props) {
-  const containerRef = useRef<HTMLDivElement>(null);
+export default function TelegramLoginButton({ className = "" }: Props) {
   const { loginWithToken } = useAuth();
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const botIdRef = useRef<string | null>(null);
+  const scriptLoadedRef = useRef(false);
 
   useEffect(() => {
-    window.__onTelegramAuth = async (user: TelegramAuthData) => {
-      setLoading(true);
-      setError(null);
-      try {
-        const res = await fetch(`${AUTH_URL}?action=telegram-callback`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(user),
-        });
-        const data = await res.json();
-        if (!res.ok || data.error) throw new Error(data.error || "Не удалось войти через Telegram");
-        await loginWithToken(data.token);
-      } catch (err: unknown) {
-        setError(err instanceof Error ? err.message : "Не удалось войти через Telegram");
-      } finally {
-        setLoading(false);
-      }
-    };
+    fetch(`${AUTH_URL}?action=telegram-bot-id`)
+      .then(res => res.json())
+      .then(data => { if (data.bot_id) botIdRef.current = data.bot_id; })
+      .catch(() => {});
 
-    if (containerRef.current && !containerRef.current.hasChildNodes()) {
+    if (!scriptLoadedRef.current && !document.querySelector('script[src*="telegram-widget.js"]')) {
       const script = document.createElement("script");
       script.src = "https://telegram.org/js/telegram-widget.js?22";
       script.async = true;
-      script.setAttribute("data-telegram-login", TELEGRAM_BOT_USERNAME);
-      script.setAttribute("data-size", "large");
-      script.setAttribute("data-radius", "12");
-      script.setAttribute("data-onauth", "__onTelegramAuth(user)");
-      script.setAttribute("data-request-access", "write");
-      containerRef.current.appendChild(script);
+      document.body.appendChild(script);
+      scriptLoadedRef.current = true;
     }
+  }, []);
 
-    return () => {
-      delete window.__onTelegramAuth;
-    };
-  }, [loginWithToken]);
+  const handleClick = () => {
+    setError(null);
+    if (!window.Telegram?.Login || !botIdRef.current) {
+      setError("Telegram ещё загружается, попробуйте через секунду");
+      return;
+    }
+    setLoading(true);
+    window.Telegram.Login.auth(
+      { bot_id: botIdRef.current, request_access: true },
+      async (user) => {
+        if (!user) { setLoading(false); return; }
+        try {
+          const res = await fetch(`${AUTH_URL}?action=telegram-callback`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(user),
+          });
+          const data = await res.json();
+          if (!res.ok || data.error) throw new Error(data.error || "Не удалось войти через Telegram");
+          await loginWithToken(data.token);
+        } catch (err: unknown) {
+          setError(err instanceof Error ? err.message : "Не удалось войти через Telegram");
+        } finally {
+          setLoading(false);
+        }
+      }
+    );
+  };
 
   return (
-    <div className={className}>
-      <div ref={containerRef} className="flex justify-center w-full [&>iframe]:!w-full" />
-      {loading && <p className="text-center text-[11px] text-white/40 mt-1.5">Входим через Telegram…</p>}
+    <div>
+      <Button
+        type="button"
+        onClick={handleClick}
+        disabled={loading}
+        className={`bg-[#229ED9] hover:bg-[#1c8bc0] text-white ${className}`}
+      >
+        {loading ? (
+          <Spinner className="!w-5 !h-5 mr-2 flex-shrink-0" />
+        ) : (
+          <TelegramIcon className="!w-5 !h-5 mr-2 flex-shrink-0" />
+        )}
+        {loading ? "Загрузка..." : "Войти через Telegram"}
+      </Button>
       {error && (
         <div className="rounded-xl px-3.5 py-2.5 text-xs text-red-400 bg-red-500/10 border border-red-500/20 mt-1.5">{error}</div>
       )}

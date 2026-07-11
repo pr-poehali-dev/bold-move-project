@@ -343,6 +343,12 @@ def handle(action, method, params, body, token, event, conn, cur):
             return err("Не удалось получить данные от VK")
         return ok(_login_or_create(cur, conn, "vk", social))
 
+    if action == "telegram-bot-id" and method == "GET":
+        bot_token = os.environ.get("TELEGRAM_BOT_TOKEN", "")
+        if not bot_token or ":" not in bot_token:
+            return err("Telegram авторизация не настроена", 500)
+        return ok({"bot_id": bot_token.split(":")[0]})
+
     if action == "telegram-callback" and method == "POST":
         social = _telegram_check_auth(body)
         if not social:
