@@ -140,7 +140,7 @@ export default function ReplaceItemModal({ open, item, prices, onReplace, onCanc
               )}
             </div>
             {voiceButton && (
-              <div style={{ flexShrink: 0, transform: "scale(0.6)", transformOrigin: "center" }}>
+              <div style={{ flexShrink: 0, position: "relative" }}>
                 {voiceButton}
               </div>
             )}

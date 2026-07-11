@@ -410,6 +410,16 @@ export default function useVoiceCatalog({ state, onItems, onTranscript }: Props)
 
   // ── Старт записи ────────────────────────────────────────────────────────────
   const startRecording = useCallback(async () => {
+    // Если предыдущая запись почему-то не была корректно остановлена — гасим её,
+    // чтобы не занимать микрофон двумя потоками одновременно.
+    if (mediaRecorderRef.current) {
+      try { mediaRecorderRef.current.stop(); } catch { /* уже остановлен */ }
+      mediaRecorderRef.current = null;
+    }
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(t => t.stop());
+      streamRef.current = null;
+    }
     setStatus("");
     let stream: MediaStream;
     try {
@@ -502,7 +512,11 @@ export default function useVoiceCatalog({ state, onItems, onTranscript }: Props)
   }, []);
 
   const toggleRecording = useCallback(() => {
-    if (isRecording) stopRecording();
+    // Проверяем реальное состояние рекордера, а не только React-стейт —
+    // если стейт по какой-то причине рассинхронизировался (например, компонент
+    // ре-рендерился во время записи), клик всё равно должен сработать правильно.
+    const recorderIsActive = mediaRecorderRef.current?.state === "recording";
+    if (isRecording || recorderIsActive) stopRecording();
     else startRecording();
   }, [isRecording, startRecording, stopRecording]);
 

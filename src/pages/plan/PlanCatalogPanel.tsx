@@ -116,6 +116,7 @@ export default function PlanCatalogPanel({
               state={state}
               onItems={handleVoiceItems}
               onTranscript={handleTranscript}
+              compact
             />
           }
           onReplace={(newItem) => {
