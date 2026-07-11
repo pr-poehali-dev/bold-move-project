@@ -288,12 +288,13 @@ export default function PlanCanvasSvg({
     points, segments, diagonals, dimLines, scale, isClosed, tool,
     showDimLines, showSegmentLabels, showAngleLabels, showDiagonals, showPoints, showPointLabels,
     selectedPointId, selectedSegmentId,
-    selectedSegmentIds: moveTargetSegIds ?? selectedSegmentIds,
+    selectedSegmentIds,
     selectedDiagonalId, selectedArcId, selectedDimLineId,
     ghost, dimLineFrom, zoom, phase, intersectingSegIds,
     changedSegmentIds: state.isBuilt ? (state.changedSegmentIds ?? []) : [],
     isDraggingWallItem,
     highlightSegIds,
+    moveTargetSegIds: moveTargetSegIds ?? undefined,
   };
 
   return (

@@ -35,6 +35,9 @@ export interface RenderContext {
   isDraggingWallItem?: boolean;
   /** Стены, где назначен товар — на который навели курсор в нижнем баре/боковой панели */
   highlightSegIds?: string[];
+  /** Идёт выбор целевой стены для переноса/дублирования товара — стены, доступные для выбора
+   *  (товара там ещё нет). Подсвечиваются отдельным цветом, не смешиваясь с обычным выделением. */
+  moveTargetSegIds?: string[];
 }
 
 export interface SegmentHandlers {
