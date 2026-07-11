@@ -617,11 +617,8 @@ export function usePlanCatalog(
         setPendingFloorItem(dragItem);
       } else if (isInsidePolygon(pt.clientX, pt.clientY)) {
         const closestId = findClosestSeg(pt.clientX, pt.clientY);
-        if (closestId) {
-          assignItemToSeg(dragItem, closestId);
-        } else {
-          setPendingFloorItem(dragItem);
-        }
+        // Стеновой товар мимо стены — просто не добавляем (на полотно не падает никогда)
+        if (closestId) assignItemToSeg(dragItem, closestId);
       } else {
         const closestId = findClosestSeg(pt.clientX, pt.clientY, true);
         if (closestId) assignItemToSeg(dragItem, closestId);
@@ -715,8 +712,8 @@ export function usePlanCatalog(
         setPendingFloorItem(draggingItem);
       } else if (isInsidePolygon(pt.clientX, pt.clientY)) {
         const closestId = findClosestSeg(pt.clientX, pt.clientY, false);
+        // Стеновой товар мимо стены — просто не добавляем (на полотно не падает никогда)
         if (closestId) { assignItemToSeg(draggingItem, closestId); navigator.vibrate?.(30); }
-        else setPendingFloorItem(draggingItem);
       } else {
         const closestId = findClosestSeg(pt.clientX, pt.clientY, true);
         if (closestId) { assignItemToSeg(draggingItem, closestId); navigator.vibrate?.(30); }
@@ -774,8 +771,8 @@ export function usePlanCatalog(
         setPendingFloorItem(draggingItem);
       } else if (isInsidePolygon(e.clientX, e.clientY)) {
         const closestId = findClosestSeg(e.clientX, e.clientY, false);
+        // Стеновой товар мимо стены — просто не добавляем (на полотно не падает никогда)
         if (closestId) assignItemToSeg(draggingItem, closestId);
-        else setPendingFloorItem(draggingItem);
       } else {
         const closestId = findClosestSeg(e.clientX, e.clientY, true);
         if (closestId) assignItemToSeg(draggingItem, closestId);
@@ -836,8 +833,8 @@ export function usePlanCatalog(
         setPendingFloorItem(item);
       } else if (isInsidePolygon(pt.clientX, pt.clientY)) {
         const closestId = findClosestSeg(pt.clientX, pt.clientY, false);
+        // Стеновой товар мимо стены — просто не добавляем (на полотно не падает никогда)
         if (closestId) assignItemToSeg(item, closestId);
-        else setPendingFloorItem(item);
       } else {
         const closestId = findClosestSeg(pt.clientX, pt.clientY, true);
         if (closestId) assignItemToSeg(item, closestId);
