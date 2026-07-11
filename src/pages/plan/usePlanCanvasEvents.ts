@@ -149,7 +149,6 @@ export function usePlanCanvasEvents({ state, onChange, onReplace, cs, onStartEdi
         if (mode === "add" && !already) {
           const next = [...prev, segId];
           onChange({ selectedSegmentIds: next, selectedSegmentId: segId });
-          if (settings.autoOpenCatalogOnSelect) onAutoOpenCatalog?.();
         } else if (mode === "remove" && already) {
           const next = prev.filter(id => id !== segId);
           onChange({ selectedSegmentIds: next, selectedSegmentId: next.length > 0 ? next[next.length - 1] : null });
@@ -234,10 +233,19 @@ export function usePlanCanvasEvents({ state, onChange, onReplace, cs, onStartEdi
     dragRef.current = null; panRef.current = null; isPanning.current = false;
     // Линию-след убираем сразу — визуально она не нужна после отпускания кнопки
     setLassoPath(null);
-    // dragSelectRef сбрасываем НЕ сразу — браузер после mouseup ещё пришлёт "click"
-    // по тому же сегменту, и handleSegmentClick должен успеть увидеть что drag-select был активен.
-    if (dragSelectRef.current) setTimeout(() => { dragSelectRef.current = null; }, 0);
-  }, [dragRef, panRef, isPanning, onChange, points, segments, diagonals, setLassoPath]);
+    // Покраска стен завершена (кнопка мыши отпущена) — открываем каталог ОДИН РАЗ,
+    // когда пользователь уже выделил все нужные стены, а не после первой же стены
+    // (иначе каталог перекрывает канвас и мешать продолжать выделение).
+    if (dragSelectRef.current) {
+      const dsr = dragSelectRef.current;
+      if (dsr.mode === "add" && dsr.visited.size > 0 && settings.autoOpenCatalogOnSelect) {
+        onAutoOpenCatalog?.();
+      }
+      // dragSelectRef сбрасываем НЕ сразу — браузер после mouseup ещё пришлёт "click"
+      // по тому же сегменту, и handleSegmentClick должен успеть увидеть что drag-select был активен.
+      setTimeout(() => { dragSelectRef.current = null; }, 0);
+    }
+  }, [dragRef, panRef, isPanning, onChange, points, segments, diagonals, setLassoPath, settings.autoOpenCatalogOnSelect, onAutoOpenCatalog]);
 
   // ════════════════════════════════════════════════════════════════════════
   // TOUCH EVENTS
@@ -782,8 +790,7 @@ export function usePlanCanvasEvents({ state, onChange, onReplace, cs, onStartEdi
       selectedDiagonalId: null,
       selectedArcId: null,
     });
-    if (mode === "add" && settings.autoOpenCatalogOnSelect) onAutoOpenCatalog?.();
-  }, [tool, onChange, clientToSvg, setLassoPath, settings.autoOpenCatalogOnSelect, onAutoOpenCatalog]);
+  }, [tool, onChange, clientToSvg, setLassoPath]);
 
   const handleSegmentCtxMenu = useCallback((e: React.MouseEvent, segId: string) => {
     e.preventDefault(); e.stopPropagation();
