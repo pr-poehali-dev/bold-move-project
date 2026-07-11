@@ -3,6 +3,7 @@ import Icon from "@/components/ui/icon";
 import { crmFetch, uploadFile } from "@/pages/admin/crm/crmApi";
 import func2url from "@/../backend/func2url.json";
 import { SEVERITY, REPORT_TYPE, type Attachment } from "./bugReportTypes";
+import BugReportGuideModal from "./BugReportGuideModal";
 
 const TRANSCRIBE_URL = (func2url as Record<string, string>)["deepgram-transcribe"];
 const WHISPER_URL = (func2url as Record<string, string>)["whisper-transcribe"];
@@ -17,6 +18,7 @@ export default function BugReportForm({ onClose, onCreated, authorName }: {
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [showGuide, setShowGuide] = useState(false);
 
   // Голос
   const [isRecording, setIsRecording] = useState(false);
@@ -153,6 +155,20 @@ export default function BugReportForm({ onClose, onCreated, authorName }: {
           </button>
         </div>
 
+        {/* Приглашение прочитать инструкцию — на видном месте */}
+        <button
+          onClick={() => setShowGuide(true)}
+          className="w-full flex items-center gap-2.5 rounded-xl px-3.5 py-3 mb-4 text-left transition hover:brightness-110"
+          style={{ background: "rgba(249,115,22,0.12)", border: "1px solid rgba(249,115,22,0.4)" }}
+        >
+          <Icon name="GraduationCap" size={18} style={{ color: "#fb923c" }} className="flex-shrink-0" />
+          <div className="flex-1 min-w-0">
+            <div className="text-sm font-bold" style={{ color: "#fb923c" }}>Как правильно составить репорт?</div>
+            <div className="text-[11px] text-white/50">Нажми, чтобы увидеть пример хорошего описания — так проблему исправят быстрее</div>
+          </div>
+          <Icon name="ChevronRight" size={16} style={{ color: "#fb923c" }} className="flex-shrink-0" />
+        </button>
+
         {/* Важность */}
         <label className="text-xs font-semibold text-white/50 mb-2 block">Важность</label>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-4">
@@ -263,6 +279,8 @@ export default function BugReportForm({ onClose, onCreated, authorName }: {
           </button>
         </div>
       </div>
+
+      {showGuide && <BugReportGuideModal onClose={() => setShowGuide(false)} />}
     </div>
   );
 }
