@@ -8,6 +8,9 @@ interface Props {
   dragPos: { x: number; y: number } | null;
   dragCardItem: SegmentPriceItem | null;
   dragCardPos: { x: number; y: number } | null;
+  /** "Клик для размещения" — товар прицеплен к курсору без зажатия мыши, ждёт клика по стене */
+  clickPlaceItem?: SegmentPriceItem | null;
+  clickPlacePos?: { x: number; y: number } | null;
   activeItems: SegmentPriceItem[];
   tapActiveId: number | null;
   hoverSegId: string | null;
@@ -32,6 +35,7 @@ interface Props {
 export default function PlanDragGhosts({
   dragItem, dragPos,
   dragCardItem, dragCardPos,
+  clickPlaceItem, clickPlacePos,
   activeItems, tapActiveId,
   hoverSegId, isMobile,
   segments, floorItems, anyPanelOpen,
@@ -49,6 +53,24 @@ export default function PlanDragGhosts({
       {/* ── Ghost карточки при drag из нижней панели ── */}
       {dragCardItem && dragCardPos && (
         <DragCardGhost dragCardItem={dragCardItem} dragCardPos={dragCardPos} hoverSegId={hoverSegId} />
+      )}
+
+      {/* ── "Клик для размещения" — товар прицеплен к курсору без зажатия мыши ── */}
+      {clickPlaceItem && (
+        <>
+          {clickPlacePos && <DragGhost dragItem={clickPlaceItem} dragPos={clickPlacePos} hoverSegId={hoverSegId} />}
+          <div
+            style={{
+              position: "fixed", left: "50%", bottom: 90, transform: "translateX(-50%)",
+              zIndex: 9999, pointerEvents: "none",
+              background: "rgba(15,16,23,0.92)", border: "1px solid rgba(124,58,237,0.4)",
+              borderRadius: 10, padding: "6px 14px", fontSize: 12, color: "rgba(255,255,255,0.75)",
+              whiteSpace: "nowrap",
+            }}
+          >
+            Кликните по стене, чтобы разместить «{clickPlaceItem.name}» · Esc — отмена
+          </div>
+        </>
       )}
 
       {/* ── Активные карточки внизу + попап ── */}

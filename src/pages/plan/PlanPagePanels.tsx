@@ -317,6 +317,8 @@ export default function PlanPagePanels({
         initialCategory={catalog.replaceCatalogCategory ?? undefined}
         isMobile={isMobile}
         onRegisterVoiceHandler={fn => { voiceItemsHandlerRef.current = fn; }}
+        onStartClickPlace={catalog.startClickPlace}
+        onOpenFloorQuantity={catalog.setPendingFloorItem}
       />
 
       {/* Барабан замены — отдельный, только когда идёт замена */}
@@ -427,6 +429,8 @@ export default function PlanPagePanels({
         dragPos={catalog.dragPos}
         dragCardItem={catalog.dragCardItem}
         dragCardPos={catalog.dragCardPos}
+        clickPlaceItem={catalog.clickPlaceItem}
+        clickPlacePos={catalog.clickPlacePos}
         activeItems={catalog.activeItems}
         tapActiveId={catalog.tapActiveId}
         hoverSegId={catalog.hoverSegId}

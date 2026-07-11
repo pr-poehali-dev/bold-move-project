@@ -142,19 +142,19 @@ export default function PlanRoomsScreen({ token, project, onBack, onOpenRoom }: 
   // ── Статистика по проекту ───────────────────────────────────────────────────
   const stats = useMemo(() => {
     let totalArea = 0;
-    let roomsWithEmptyWalls = 0;
+    let emptyWallsCount = 0; // суммарное число СТЕН без товара по всем комнатам (не число комнат!)
     rooms.forEach(room => {
       const data = (room.data ?? {}) as { isClosed?: boolean; segments?: { items?: unknown[] }[] };
       const meta = getRoomMeta(room.data ?? {});
       totalArea += meta.areaSqm ?? 0;
+      if (!data.isClosed) return;
       const segments = data.segments ?? [];
-      const hasEmpty = !!data.isClosed && segments.length > 0 && segments.some(s => !s.items || s.items.length === 0);
-      if (hasEmpty) roomsWithEmptyWalls++;
+      emptyWallsCount += segments.filter(s => !s.items || s.items.length === 0).length;
     });
     return {
       totalRooms: rooms.length,
       totalArea: Math.round(totalArea * 100) / 100,
-      roomsWithEmptyWalls,
+      roomsWithEmptyWalls: emptyWallsCount,
     };
   }, [rooms]);
 

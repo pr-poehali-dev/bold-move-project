@@ -66,6 +66,11 @@ export interface PlanCatalogState {
   setReplaceCatalogCategory: (cat: string | null) => void;
   replaceFloorItem: (newItem: SegmentPriceItem, quantity: number, targetId?: string) => void;
   replaceActiveItemEverywhere: (oldPriceId: number, newItem: SegmentPriceItem) => void;
+  // "Клик для размещения" — товар выбран из списка, ждёт клика по стене (без зажатия мыши)
+  clickPlaceItem: SegmentPriceItem | null;
+  clickPlacePos: { x: number; y: number } | null;
+  startClickPlace: (item: SegmentPriceItem) => void;
+  cancelClickPlace: () => void;
 }
 
 export function usePlanCatalog(
@@ -93,6 +98,10 @@ export function usePlanCatalog(
     setEditingSegRef_(v);
   };
   const [replaceCatalogCategory, setReplaceCatalogCategory] = useState<string | null>(null);
+  // Товар "прицеплен" к курсору после выбора из списка/барабана — ждём КЛИКА по стене
+  // (в отличие от dragItem — тот требует зажатой кнопки мыши все время)
+  const [clickPlaceItem, setClickPlaceItem] = useState<SegmentPriceItem | null>(null);
+  const [clickPlacePos,  setClickPlacePos]  = useState<{ x: number; y: number } | null>(null);
 
   // Категории, которые НЕ показываются в нижней панели
   const HIDDEN_CATEGORIES = ["монтаж", "раскрой", "огарпунивание"];
@@ -641,6 +650,57 @@ export function usePlanCatalog(
     };
   }, [dragItem, findClosestSeg, assignItemToSeg]);
 
+  // "Клик для размещения": товар выбран из списка/барабана и "прицеплен" к курсору —
+  // НЕ требует зажатой кнопки мыши. Пользователь просто двигает мышь, призрак следует
+  // за курсором (см. DragGhost), и одним КЛИКОМ по стене товар размещается туда.
+  // Задержка перед активацией слушателя клика — чтобы клик, которым выбрали товар
+  // в списке, не долетел до чертежа и не разместил товар мгновенно в случайном месте
+  // (тот же паттерн что в SegItemPopup.tsx и ReplaceItemModal.tsx).
+  useEffect(() => {
+    if (!clickPlaceItem) return;
+
+    const onMove = (e: MouseEvent | TouchEvent) => {
+      const { clientX, clientY } = "touches" in e ? e.touches[0] : e;
+      setClickPlacePos({ x: clientX, y: clientY });
+      setHoverSegId(findClosestSeg(clientX, clientY));
+    };
+
+    const place = (clientX: number, clientY: number) => {
+      const closestId = findClosestSeg(clientX, clientY, true);
+      if (closestId) assignItemToSeg(clickPlaceItem, closestId);
+      setClickPlaceItem(null);
+      setClickPlacePos(null);
+      setHoverSegId(null);
+    };
+
+    const onClick = (e: MouseEvent) => place(e.clientX, e.clientY);
+    const onTouchEnd = (e: TouchEvent) => {
+      const pt = e.changedTouches[0];
+      if (pt) place(pt.clientX, pt.clientY);
+    };
+    // Esc отменяет размещение
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") { setClickPlaceItem(null); setClickPlacePos(null); setHoverSegId(null); }
+    };
+
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("touchmove", onMove, { passive: true });
+    window.addEventListener("keydown", onKeyDown);
+    const t = setTimeout(() => {
+      window.addEventListener("click", onClick);
+      window.addEventListener("touchend", onTouchEnd);
+    }, 150);
+
+    return () => {
+      clearTimeout(t);
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("touchmove", onMove);
+      window.removeEventListener("keydown", onKeyDown);
+      window.removeEventListener("click", onClick);
+      window.removeEventListener("touchend", onTouchEnd);
+    };
+  }, [clickPlaceItem, findClosestSeg, assignItemToSeg]);
+
   // Drag карточки активного товара на стену (touch + mouse)
   useEffect(() => {
     if (activeItems.length === 0) return;
@@ -847,6 +907,17 @@ export function usePlanCatalog(
     window.addEventListener("touchend", end);
   }, [findClosestSeg, isInsidePolygon, assignItemToSeg]);
 
+  // "Клик для размещения" — прицепить товар к курсору, ждать клика по стене
+  const startClickPlace = useCallback((item: SegmentPriceItem) => {
+    setClickPlaceItem(item);
+    setClickPlacePos(null);
+  }, []);
+  const cancelClickPlace = useCallback(() => {
+    setClickPlaceItem(null);
+    setClickPlacePos(null);
+    setHoverSegId(null);
+  }, []);
+
   // Кол-во уникальных товаров на холсте
   const attachedPriceIds = new Set<number>();
   stateRef.current.segments.forEach(seg => seg.items?.forEach(it => attachedPriceIds.add(it.priceId)));
@@ -877,5 +948,6 @@ export function usePlanCatalog(
     editingFloorId, setEditingFloorId, editingFloorItem, confirmEditFloorItem, replaceFloorItem, replaceActiveItemEverywhere,
     editingSegRef, editingSegRefRef, setEditingSegRef, editingSegItem, replaceSegItem,
     replaceCatalogCategory, setReplaceCatalogCategory,
+    clickPlaceItem, clickPlacePos, startClickPlace, cancelClickPlace,
   };
 }

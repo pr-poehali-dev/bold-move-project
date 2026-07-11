@@ -29,6 +29,10 @@ interface Props {
   onReplaceItem?: (item: SegmentPriceItem) => void;
   isMobile?: boolean;
   onRegisterVoiceHandler?: (fn: (items: VoiceCatalogItem[], transcript: string) => void) => void;
+  /** ПК: нет выделенных стен и товар стеновой — прицепить к курсору, ждать клика по стене */
+  onStartClickPlace?: (item: SegmentPriceItem) => void;
+  /** ПК: товар полотна без выделенных стен — сразу открыть модалку количества */
+  onOpenFloorQuantity?: (item: SegmentPriceItem) => void;
 }
 
 export default function PlanCatalogPanel({
@@ -50,6 +54,8 @@ export default function PlanCatalogPanel({
   onReplaceItem,
   isMobile,
   onRegisterVoiceHandler,
+  onStartClickPlace,
+  onOpenFloorQuantity,
 }: Props) {
   const [showListMode, setShowListMode] = useState(!isMobile);
 
@@ -86,17 +92,21 @@ export default function PlanCatalogPanel({
             return;
           }
           onClose();
-          // Товар полотна (isWallItem === false) — никогда не крепим к стенам,
-          // даже если пользователь выделил сегменты. Всегда на полотно.
-          if (item.isWallItem === false) {
-            onAddToActive(item);
-            return;
-          }
           const ids = selectedSegmentIds && selectedSegmentIds.length > 0
             ? selectedSegmentIds
             : selectedSegmentId ? [selectedSegmentId] : [];
+          // Товар полотна (isWallItem === false) — никогда не крепим к стенам,
+          // даже если пользователь выделил сегменты. Всегда на полотно.
+          if (item.isWallItem === false) {
+            if (!isMobile && onOpenFloorQuantity) onOpenFloorQuantity(item);
+            else onAddToActive(item);
+            return;
+          }
           if (ids.length > 0) {
             onAssignToSegs(item, ids);
+          } else if (!isMobile && onStartClickPlace) {
+            // Стены не выделены — прицепляем товар к курсору, ждём клика по стене
+            onStartClickPlace(item);
           } else {
             onAddToActive(item);
           }
@@ -126,17 +136,21 @@ export default function PlanCatalogPanel({
               onReplaceItem(newItem);
               return;
             }
-            // Товар полотна (isWallItem === false) — никогда не крепим к стенам,
-            // даже если пользователь выделил сегменты. Всегда на полотно.
-            if (newItem.isWallItem === false) {
-              onAddToActive(newItem);
-              return;
-            }
             const ids = selectedSegmentIds && selectedSegmentIds.length > 0
               ? selectedSegmentIds
               : selectedSegmentId ? [selectedSegmentId] : [];
+            // Товар полотна (isWallItem === false) — никогда не крепим к стенам,
+            // даже если пользователь выделил сегменты. Всегда на полотно.
+            if (newItem.isWallItem === false) {
+              if (onOpenFloorQuantity) onOpenFloorQuantity(newItem);
+              else onAddToActive(newItem);
+              return;
+            }
             if (ids.length > 0) {
               onAssignToSegs(newItem, ids);
+            } else if (onStartClickPlace) {
+              // Стены не выделены — прицепляем товар к курсору, ждём клика по стене
+              onStartClickPlace(newItem);
             } else {
               onAddToActive(newItem);
             }
