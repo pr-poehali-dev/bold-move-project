@@ -101,7 +101,7 @@ def handle(action, method, params, body, token, event, conn, cur):
                    u.tg_bot_token, u.tg_notify_chat_id,
                    u.max_bot_token, u.max_notify_chat_id,
                    u.nav_config, u.nav_hidden_ids,
-                   u.is_demo, u.demo_expires_at
+                   u.is_demo, u.demo_expires_at, u.role_selected
             FROM {SCHEMA}.user_sessions s
             JOIN {SCHEMA}.users u ON u.id = s.user_id
             WHERE s.token=%s AND s.expires_at > NOW()
@@ -117,7 +117,7 @@ def handle(action, method, params, body, token, event, conn, cur):
          support_phone, support_email, max_url, working_hours, pdf_footer_address, telegram_url, pdf_text_color,
          brand_logo_url_dark, brand_logo_orientation, pdf_logo_bg, bot_avatar_bg, kanban_enabled,
          tg_bot_token, tg_notify_chat_id, max_bot_token, max_notify_chat_id,
-         nav_config, nav_hidden_ids, is_demo, demo_expires_at) = row
+         nav_config, nav_hidden_ids, is_demo, demo_expires_at, role_selected) = row
 
         is_master    = (email == MASTER_EMAIL)
         trial_expired = False
@@ -144,6 +144,7 @@ def handle(action, method, params, body, token, event, conn, cur):
         user_data = {
             "id": uid, "email": email, "name": name, "phone": phone,
             "role": role, "approved": approved, "discount": discount or 0,
+            "role_selected": bool(role_selected),
             "company_name": company_name, "company_inn": company_inn, "company_addr": company_addr,
             "website": website, "telegram": telegram,
             "estimates_balance": estimates_balance or 0,
@@ -216,7 +217,7 @@ def handle(action, method, params, body, token, event, conn, cur):
                 UPDATE {SCHEMA}.users
                 SET name=%s, phone=%s, company_name=%s, company_inn=%s,
                     company_addr=%s, website=%s, telegram=%s,
-                    role=%s, approved=%s, discount=%s, updated_at=NOW()
+                    role=%s, approved=%s, discount=%s, role_selected=TRUE, updated_at=NOW()
                 WHERE id=%s
             """, (name or None, phone or None, company_name or None, company_inn or None,
                   company_addr or None, website or None, telegram or None,
@@ -232,7 +233,7 @@ def handle(action, method, params, body, token, event, conn, cur):
         conn.commit()
         cur.execute(f"""
             SELECT id, email, name, phone, role, approved, discount,
-                   company_name, company_inn, company_addr, website, telegram
+                   company_name, company_inn, company_addr, website, telegram, role_selected
             FROM {SCHEMA}.users WHERE id=%s
         """, (uid,))
         u = cur.fetchone()
@@ -240,7 +241,7 @@ def handle(action, method, params, body, token, event, conn, cur):
             "id": u[0], "email": u[1], "name": u[2], "phone": u[3],
             "role": u[4], "approved": u[5], "discount": u[6] or 0,
             "company_name": u[7], "company_inn": u[8], "company_addr": u[9],
-            "website": u[10], "telegram": u[11],
+            "website": u[10], "telegram": u[11], "role_selected": bool(u[12]),
         }})
 
     # ── Восстановление пароля ─────────────────────────────────────────────────

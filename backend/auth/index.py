@@ -1,6 +1,6 @@
 import json  # v3-cleanup
 from shared import get_conn, ok, err
-from handlers import auth, estimates, team, admin, wl, ai
+from handlers import auth, estimates, team, admin, wl, ai, social
 
 
 def handler(event: dict, context) -> dict:
@@ -35,6 +35,7 @@ def handler(event: dict, context) -> dict:
         or admin.handle(*args)
         or wl.handle(*args)
         or ai.handle(*args)
+        or social.handle(*args)
     )
 
     if result is not None:
