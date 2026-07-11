@@ -325,6 +325,10 @@ export default function PlanCanvasSvg({
               <circle cx={0} cy={0} r={0.8} fill="rgba(255,255,255,0.07)" />
             </pattern>
           )}
+          {/* Размытие для линии-следа "покраски" — эффект мазка кистью */}
+          <filter id="lasso-brush" x="-50%" y="-50%" width="200%" height="200%">
+            <feGaussianBlur stdDeviation={Math.max(1.2, 3 / zoom)} />
+          </filter>
         </defs>
 
         <rect className="canvas-bg" width="100%" height="100%" fill={showGrid ? "url(#plan-grid)" : "transparent"} />
@@ -408,18 +412,32 @@ export default function PlanCanvasSvg({
             </g>
           )}
 
-          {/* Линия-след "покраски" выделения стен — повторяет движение мыши */}
+          {/* Линия-след "покраски" выделения стен — синий размытый мазок кистью, повторяет движение мыши */}
           {lassoPath && lassoPath.length > 1 && (
-            <polyline
-              points={lassoPath.map(p => `${p.x},${p.y}`).join(" ")}
-              fill="none"
-              stroke="#ef4444"
-              strokeWidth={Math.max(1.5, 2.5 / zoom)}
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              opacity={0.85}
-              className="pointer-events-none"
-            />
+            <g className="pointer-events-none">
+              {/* Мягкое размытое свечение под мазком */}
+              <polyline
+                points={lassoPath.map(p => `${p.x},${p.y}`).join(" ")}
+                fill="none"
+                stroke="#3b82f6"
+                strokeWidth={Math.max(5, 9 / zoom)}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                opacity={0.35}
+                filter="url(#lasso-brush)"
+              />
+              {/* Основной мазок — плотнее по центру */}
+              <polyline
+                points={lassoPath.map(p => `${p.x},${p.y}`).join(" ")}
+                fill="none"
+                stroke="#60a5fa"
+                strokeWidth={Math.max(2.5, 4.5 / zoom)}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                opacity={0.65}
+                filter="url(#lasso-brush)"
+              />
+            </g>
           )}
         </g>
       </svg>

@@ -33,9 +33,10 @@ export function usePlanCanvasEvents({ state, onChange, onReplace, cs, onStartEdi
   // Двойной тап по стене → открыть ввод длины
   const lastSegTapRef = useRef<{ id: string; time: number } | null>(null);
 
-  // ПК: "покраска" выделения — зажали кнопку на стене, ведём мышь по соседним стенам
+  // ПК: "покраска" выделения — зажали кнопку в любом месте канваса, ведём мышь по стенам
   // без отпускания — каждая стена под курсором добавляется/убирается тем же режимом.
-  const dragSelectRef = useRef<{ mode: "add" | "remove"; visited: Set<string> } | null>(null);
+  // mode === null пока курсор ещё не коснулся ни одной стены (режим определится по первой встреченной).
+  const dragSelectRef = useRef<{ mode: "add" | "remove" | null; visited: Set<string> } | null>(null);
 
   const {
     points, segments, diagonals, dimLines,
@@ -125,8 +126,10 @@ export function usePlanCanvasEvents({ state, onChange, onReplace, cs, onStartEdi
       onChange({ settings: { ...settings, panX: panRef.current.origPanX + dx, panY: panRef.current.origPanY + dy } });
       return;
     }
-    // ПК: "покраска" выделения стен — кнопка мыши зажата, курсор ведут по соседним стенам.
-    // Рисуем произвольную линию-след за курсором (см. lassoPath) и отмечаем стены под ней.
+    // ПК: "покраска" выделения стен — кнопка мыши зажата (в любом месте канваса),
+    // курсор ведут по стенам. Рисуем произвольную линию-след за курсором (см. lassoPath)
+    // и отмечаем стены под ней. Режим (добавить/убрать) определяется по ПЕРВОЙ стене,
+    // которую задел курсор — если старт был не на стене, mode ещё не выбран (null).
     if (dragSelectRef.current) {
       const svgPt = clientToSvg(e.clientX, e.clientY);
       setLassoPath(prev => (prev ? [...prev, svgPt] : [svgPt]));
@@ -135,9 +138,13 @@ export function usePlanCanvasEvents({ state, onChange, onReplace, cs, onStartEdi
       const segId = el?.getAttribute("data-seg-id");
       if (segId && !dragSelectRef.current.visited.has(segId)) {
         dragSelectRef.current.visited.add(segId);
-        const mode = dragSelectRef.current.mode;
         const prev = selectedSegmentIdsRef.current;
         const already = prev.includes(segId);
+        // Первая встреченная стена — определяем режим по её текущему состоянию
+        if (dragSelectRef.current.mode === null) {
+          dragSelectRef.current.mode = already ? "remove" : "add";
+        }
+        const mode = dragSelectRef.current.mode;
         if (mode === "add" && !already) {
           const next = [...prev, segId];
           onChange({ selectedSegmentIds: next, selectedSegmentId: segId });
@@ -205,8 +212,19 @@ export function usePlanCanvasEvents({ state, onChange, onReplace, cs, onStartEdi
       e.preventDefault();
       panRef.current = { startX: e.clientX, startY: e.clientY, origPanX: panX, origPanY: panY };
       isPanning.current = true;
+      return;
     }
-  }, [panX, panY, panRef, isPanning]);
+    // ПК: зажали левую кнопку в ЛЮБОМ месте канваса (не только на стене — этот случай
+    // уже обрабатывает handleSegmentMouseDown с e.stopPropagation) — запускаем "покраску"
+    // выделения стен. Режим (добавить/убрать) определится по первой стене под курсором
+    // в handleMouseMove. Точки (tool="move") и другие drag-инструменты не задеты —
+    // их обработчики вызывают stopPropagation раньше и сюда не доходят.
+    if (e.button === 0 && !e.altKey && Date.now() - lastTouchEndRef.current >= 350
+      && (tool === "move" || tool === "segment") && !dragSelectRef.current) {
+      dragSelectRef.current = { mode: null, visited: new Set() };
+      setLassoPath([clientToSvg(e.clientX, e.clientY)]);
+    }
+  }, [panX, panY, panRef, isPanning, tool, clientToSvg, setLassoPath]);
 
   const handleMouseUp = useCallback(() => {
     // Если был drag — фиксируем финальное состояние в историю (один шаг undo)
@@ -618,7 +636,9 @@ export function usePlanCanvasEvents({ state, onChange, onReplace, cs, onStartEdi
     // После drag-select (покраска стен зажатой кнопкой) браузер шлёт финальный click,
     // который может попасть на пустой фон (если отпустили не точно над стеной) —
     // такой click НЕ должен сбрасывать только что сделанное выделение стен.
-    if (dragSelectRef.current) return;
+    // Но если это был просто клик без движения (ни одна стена не задета) — пропускаем
+    // защиту, чтобы обычный клик по пустому месту по-прежнему снимал выделение.
+    if (dragSelectRef.current && dragSelectRef.current.visited.size > 0) return;
     setCtxMenu(null);
     const isCanvas = e.target === svgRef.current || (e.target as Element).classList.contains("canvas-bg");
     // Двойной клик работает в любом месте полигона, не только по пустому фону
