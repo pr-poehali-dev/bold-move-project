@@ -1,0 +1,9 @@
+ALTER TABLE users ADD COLUMN IF NOT EXISTS google_id VARCHAR(50);
+ALTER TABLE users ADD COLUMN IF NOT EXISTS yandex_id VARCHAR(50);
+ALTER TABLE users ADD COLUMN IF NOT EXISTS vk_id VARCHAR(50);
+ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar_url TEXT;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS role_selected BOOLEAN NOT NULL DEFAULT TRUE;
+
+CREATE INDEX IF NOT EXISTS idx_users_google_id ON users(google_id);
+CREATE INDEX IF NOT EXISTS idx_users_yandex_id ON users(yandex_id);
+CREATE INDEX IF NOT EXISTS idx_users_vk_id ON users(vk_id);
