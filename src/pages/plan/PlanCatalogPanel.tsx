@@ -104,6 +104,7 @@ export default function PlanCatalogPanel({
           item={null}
           prices={filteredPrices}
           mode="add"
+          initialCategory={initialCategory}
           voiceButton={
             <PlanVoiceCatalogButton
               state={state}

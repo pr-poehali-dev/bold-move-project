@@ -22,6 +22,7 @@ export default function CalcTab({
   onAddToFloor,
   onReplaceItem,
   onDragItemStart,
+  onAddToCategory,
 }: {
   state: PlanState;
   onRemoveItem?: (segId: string, priceId: number) => void;
@@ -39,6 +40,7 @@ export default function CalcTab({
   onAddToFloor?: (item: SegmentPriceItem) => void;
   onReplaceItem?: (item: SegmentPriceItem) => void;
   onDragItemStart?: (item: SegmentPriceItem, clientX: number, clientY: number) => void;
+  onAddToCategory?: (category: string) => void;
 }) {
   // Попап быстрых функций по клику на позицию
   const [popup, setPopup] = React.useState<{ item: SegmentPriceItem; total: number; x: number; bottom: number } | null>(null);
@@ -316,6 +318,17 @@ export default function CalcTab({
                     </div>
                   );
                   })}
+                  {/* Добавить товар в эту категорию — открывает список, как "Заменить" из нижнего бара */}
+                  {onAddToCategory && (
+                    <button
+                      onClick={() => onAddToCategory(cat)}
+                      className="w-full flex items-center justify-center gap-1.5 rounded-xl px-2.5 py-2 text-[11px] font-medium transition"
+                      style={{ background: "rgba(124,58,237,0.08)", border: "1px dashed rgba(139,92,246,0.3)", color: "rgba(167,139,250,0.7)" }}
+                    >
+                      <Icon name="Plus" size={12} />
+                      Добавить в «{cat}»
+                    </button>
+                  )}
                 </div>
               </div>
             );

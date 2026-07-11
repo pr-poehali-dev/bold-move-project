@@ -111,28 +111,28 @@ export default function PlanPagePanels({
     setReplaceTarget(null);
   };
 
-  // Когда catalog.editingSegRef устанавливается (кнопка Заменить на стене) — открываем барабан замены
+  // Когда catalog.editingSegRef устанавливается (кнопка "Заменить" на стене):
+  // на мобиле — открываем барабан замены; на ПК — НЕ трогаем editingSegRef,
+  // его напрямую использует ReplaceItemModal ниже (open={!!catalog.editingSegRef}).
   useEffect(() => {
+    if (!isMobile) return; // на ПК модалка сама следит за editingSegRef
     if (!catalog.editingSegRef) return;
     const segId = catalog.editingSegRef.segId;
     const priceId = catalog.editingSegRef.priceId;
     const seg = state.segments.find(s => s.id === segId);
     const item = seg?.items?.find(it => it.priceId === priceId);
     catalog.setEditingSegRef(null);
-    if (isMobile) {
-      // Задержка 120мс — чтобы тач-событие от кнопки "Заменить" не прошло сквозь
-      // барабан и не закрыло его сразу после открытия
-      setTimeout(() => {
-        setReplaceTarget({
-          type: "seg",
-          segId,
-          priceId,
-          category: item?.category ?? null,
-        });
-      }, 120);
-    }
-    // На ПК — обрабатывается ReplaceItemModal через catalog.editingSegRef напрямую
-  }, [catalog.editingSegRef]); // eslint-disable-line react-hooks/exhaustive-deps
+    // Задержка 120мс — чтобы тач-событие от кнопки "Заменить" не прошло сквозь
+    // барабан и не закрыло его сразу после открытия
+    setTimeout(() => {
+      setReplaceTarget({
+        type: "seg",
+        segId,
+        priceId,
+        category: item?.category ?? null,
+      });
+    }, 120);
+  }, [catalog.editingSegRef, isMobile]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const [replaceModalItem, setReplaceModalItem] = useState<(import("./planTypes").SegmentPriceItem & { quantity: number }) | null>(null);
   const [replaceFloorId, setReplaceFloorId] = useState<string | null>(null);
@@ -302,7 +302,9 @@ export default function PlanPagePanels({
             prev.some(it => it.priceId === item.priceId) ? prev : [...prev, item]
           );
           catalog.setTapActiveId(item.priceId);
+          catalog.setReplaceCatalogCategory(null);
         }}
+        initialCategory={catalog.replaceCatalogCategory ?? undefined}
         isMobile={isMobile}
         onRegisterVoiceHandler={fn => { voiceItemsHandlerRef.current = fn; }}
       />

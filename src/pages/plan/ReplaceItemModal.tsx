@@ -13,9 +13,11 @@ interface Props {
   mode?: "replace" | "add";
   /** Кнопка голосового ввода в шапке — как в барабане */
   voiceButton?: React.ReactNode;
+  /** Категория, отфильтрованная по умолчанию при открытии (mode="add", когда item=null) */
+  initialCategory?: string;
 }
 
-export default function ReplaceItemModal({ open, item, prices, onReplace, onCancel, mode = "replace", voiceButton }: Props) {
+export default function ReplaceItemModal({ open, item, prices, onReplace, onCancel, mode = "replace", voiceButton, initialCategory }: Props) {
   const [selectedCategory, setSelectedCategory] = useState<string>("");
   const [search, setSearch] = useState("");
   const [dropdownOpen, setDropdownOpen] = useState(false);
@@ -23,11 +25,11 @@ export default function ReplaceItemModal({ open, item, prices, onReplace, onCanc
 
   useEffect(() => {
     if (open) {
-      setSelectedCategory(item?.category ?? "");
+      setSelectedCategory(item?.category ?? initialCategory ?? "");
       setSearch("");
       setDropdownOpen(false);
     }
-  }, [open, item?.category]);
+  }, [open, item?.category, initialCategory]);
 
   // Закрываем dropdown при клике вне
   useEffect(() => {

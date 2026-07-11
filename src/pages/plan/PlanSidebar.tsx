@@ -24,9 +24,10 @@ interface Props {
   onAddToFloor?: (item: SegmentPriceItem) => void;
   onReplaceItem?: (item: SegmentPriceItem) => void;
   onDragItemStart?: (item: SegmentPriceItem, clientX: number, clientY: number) => void;
+  onAddToCategory?: (category: string) => void;
 }
 
-export default function PlanSidebar({ state, onChange, onSectionOpen, noAutoOpen, onRemoveItem, onUpdateQuantity, onRemoveFloorItem, onUpdateFloorQuantity, onHideMaterialsButton, onShowMaterialsButton, onRemoveActiveItem, onAssignToAllSegs, onRemoveFromAllSegs, isItemOnAllSegs, onAdjustQuantity, onSetQuantity, onAddToFloor, onReplaceItem, onDragItemStart }: Props) {
+export default function PlanSidebar({ state, onChange, onSectionOpen, noAutoOpen, onRemoveItem, onUpdateQuantity, onRemoveFloorItem, onUpdateFloorQuantity, onHideMaterialsButton, onShowMaterialsButton, onRemoveActiveItem, onAssignToAllSegs, onRemoveFromAllSegs, isItemOnAllSegs, onAdjustQuantity, onSetQuantity, onAddToFloor, onReplaceItem, onDragItemStart, onAddToCategory }: Props) {
   const { sidebarTab } = state;
   const isDrawing = sidebarTab !== "calc";
 
@@ -76,6 +77,7 @@ export default function PlanSidebar({ state, onChange, onSectionOpen, noAutoOpen
           onAddToFloor={onAddToFloor}
           onReplaceItem={onReplaceItem}
           onDragItemStart={onDragItemStart}
+          onAddToCategory={onAddToCategory}
         />}
       </div>
     </div>

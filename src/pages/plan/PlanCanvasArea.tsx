@@ -111,6 +111,10 @@ export default function PlanCanvasArea({
               if (seg) catalog.setEditingSegRef({ segId: seg.id, priceId: item.priceId });
             }}
             onDragItemStart={catalog.startSidebarDrag}
+            onAddToCategory={(category) => {
+              catalog.setReplaceCatalogCategory(category);
+              catalog.setCatalogOpen(true);
+            }}
           />
         </div>
       </>)}
