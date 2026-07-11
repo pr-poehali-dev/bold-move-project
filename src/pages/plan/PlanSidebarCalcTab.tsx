@@ -256,10 +256,9 @@ export default function CalcTab({
                           }
                         </div>
 
-                        {/* Название + единица */}
+                        {/* Название */}
                         <div className="flex-1 min-w-0">
                           <div className="text-white text-[12px] font-semibold leading-snug line-clamp-2">{line.name}</div>
-                          <div className="text-[10px]" style={{ color: "rgba(255,255,255,0.35)" }}>{line.unit}</div>
                         </div>
                       </div>
 
