@@ -15,9 +15,9 @@ export default function DragGhost({ dragItem, dragPos, hoverSegId }: Props) {
       zIndex: 9999, pointerEvents: "none",
       display: "flex", alignItems: "center", gap: 8,
       background: "rgba(15,16,23,0.92)",
-      border: `1px solid ${hoverSegId ? "rgba(124,58,237,0.7)" : "rgba(255,255,255,0.15)"}`,
+      border: `1px solid ${hoverSegId ? "rgba(239,68,68,0.8)" : "rgba(255,255,255,0.15)"}`,
       borderRadius: 12, padding: "6px 10px 6px 6px",
-      boxShadow: hoverSegId ? "0 0 20px rgba(124,58,237,0.4)" : "0 4px 20px rgba(0,0,0,0.5)",
+      boxShadow: hoverSegId ? "0 0 20px rgba(239,68,68,0.5)" : "0 4px 20px rgba(0,0,0,0.5)",
       transition: "border-color 0.15s, box-shadow 0.15s", maxWidth: 180,
     }}>
       <div style={{
@@ -30,7 +30,7 @@ export default function DragGhost({ dragItem, dragPos, hoverSegId }: Props) {
       </div>
       <span style={{
         fontSize: 11, fontWeight: 600,
-        color: hoverSegId ? "rgba(167,139,250,1)" : "rgba(255,255,255,0.8)",
+        color: hoverSegId ? "rgba(252,165,165,1)" : "rgba(255,255,255,0.8)",
         overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
       }}>{dragItem.name}</span>
     </div>

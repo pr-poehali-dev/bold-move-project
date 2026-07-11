@@ -133,10 +133,10 @@ export function renderSegments(ctx: RenderContext, handlers: Pick<SegmentHandler
           onClick={e => handlers.onSegmentClick(e, seg.id)}
           onContextMenu={e => handlers.onSegmentCtxMenu(e, seg.id)}
         />
-        {/* Тащим стеновой товар — подсвечиваем ВСЕ стены слабым фиолетовым свечением, чтобы было видно куда нести */}
+        {/* Тащим стеновой товар — подсвечиваем ВСЕ стены слабым красным свечением, чтобы было видно куда нести */}
         {isDraggingWallItem && !isSel && (
           <line x1={a.x} y1={a.y} x2={b.x} y2={b.y}
-            stroke="#a78bfa" strokeWidth={5} opacity={0.35}
+            stroke="#ef4444" strokeWidth={5} opacity={0.35}
             className="pointer-events-none seg-drag-pulse" />
         )}
         {isEmpty && !isIntersecting && !isSel && (

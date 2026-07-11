@@ -147,10 +147,10 @@ export default function ActiveItemsSlider({
                     position: "relative",
                     display: "flex", alignItems: "center", gap: 10,
                     background: "rgba(12,10,28,0.96)",
-                    border: `1px solid ${hoverSegId && isActive ? "rgba(124,58,237,1)" : isExpanded ? "rgba(124,58,237,0.9)" : isActive ? "rgba(124,58,237,0.8)" : "rgba(124,58,237,0.25)"}`,
+                    border: `1px solid ${hoverSegId && isActive ? "rgba(239,68,68,1)" : isExpanded ? "rgba(124,58,237,0.9)" : isActive ? "rgba(124,58,237,0.8)" : "rgba(124,58,237,0.25)"}`,
                     borderRadius: 16, padding: "12px 12px 12px 12px",
                     boxShadow: hoverSegId && isActive
-                      ? "0 0 32px rgba(124,58,237,0.7), 0 8px 24px rgba(0,0,0,0.6)"
+                      ? "0 0 32px rgba(239,68,68,0.7), 0 8px 24px rgba(0,0,0,0.6)"
                       : isExpanded
                         ? "0 0 28px rgba(124,58,237,0.5), 0 8px 24px rgba(0,0,0,0.6)"
                         : isActive
@@ -185,7 +185,7 @@ export default function ActiveItemsSlider({
                       wordBreak: "break-word",
                       lineHeight: 1.3,
                     }}>{item.name}</div>
-                    <div style={{ fontSize: 10, color: hoverSegId && isActive ? "rgba(167,139,250,0.9)" : "rgba(167,139,250,0.55)", marginTop: 2, whiteSpace: "nowrap" }}>
+                    <div style={{ fontSize: 10, color: hoverSegId && isActive ? "rgba(252,165,165,0.95)" : "rgba(167,139,250,0.55)", marginTop: 2, whiteSpace: "nowrap" }}>
                       {hoverSegId && isActive
                         ? (isWallItem ? "Отпустите на стене" : "Отпустите на полотне")
                         : isExpanded

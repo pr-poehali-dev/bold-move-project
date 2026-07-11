@@ -19,13 +19,13 @@ export default function DragCardGhost({ dragCardItem, dragCardPos, hoverSegId }:
         display: "flex",
         alignItems: "center",
         gap: 8,
-        background: hoverSegId ? "rgba(124,58,237,0.25)" : "rgba(12,10,28,0.88)",
-        border: `1.5px solid ${hoverSegId ? "rgba(124,58,237,0.9)" : "rgba(124,58,237,0.4)"}`,
+        background: hoverSegId ? "rgba(239,68,68,0.25)" : "rgba(12,10,28,0.88)",
+        border: `1.5px solid ${hoverSegId ? "rgba(239,68,68,0.9)" : "rgba(124,58,237,0.4)"}`,
         borderRadius: 14,
         padding: "7px 12px 7px 8px",
         backdropFilter: "blur(16px)",
         boxShadow: hoverSegId
-          ? "0 0 28px rgba(124,58,237,0.6), 0 8px 24px rgba(0,0,0,0.5)"
+          ? "0 0 28px rgba(239,68,68,0.6), 0 8px 24px rgba(0,0,0,0.5)"
           : "0 4px 20px rgba(0,0,0,0.5)",
 
         opacity: hoverSegId ? 0.85 : 1,
@@ -44,7 +44,7 @@ export default function DragCardGhost({ dragCardItem, dragCardPos, hoverSegId }:
       </div>
       <span style={{
         fontSize: 11, fontWeight: 700,
-        color: hoverSegId ? "rgba(196,181,253,1)" : "rgba(255,255,255,0.85)",
+        color: hoverSegId ? "rgba(252,165,165,1)" : "rgba(255,255,255,0.85)",
         overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
         transition: "color 0.15s",
       }}>{dragCardItem.name}</span>
