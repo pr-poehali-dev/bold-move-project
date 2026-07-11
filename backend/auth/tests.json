@@ -25,6 +25,15 @@
       "bodyMatcher": "partial"
     },
     {
+      "name": "Verify email missing code",
+      "method": "POST",
+      "path": "/?action=verify-email",
+      "body": {"email": "test_client@example.com"},
+      "expectedStatus": 400,
+      "expectedBody": {"error": "string"},
+      "bodyMatcher": "partial"
+    },
+    {
       "name": "Packages list",
       "method": "GET",
       "path": "/?action=packages",

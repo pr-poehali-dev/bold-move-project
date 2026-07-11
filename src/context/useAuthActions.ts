@@ -29,6 +29,7 @@ export function makeAuthActions({ setUser, setToken, token }: Setters) {
     });
     const data = await res.json();
     if (!res.ok || data.error) throw new Error(data.error || "Ошибка входа");
+    if (data.email_verification_required) return { emailVerificationRequired: true, email: data.email };
     if (data.pending) return { pending: true, role: data.role };
     persist(data.token, data.user);
     return {};
@@ -42,8 +43,32 @@ export function makeAuthActions({ setUser, setToken, token }: Setters) {
     });
     const data = await res.json();
     if (!res.ok || data.error) throw new Error(data.error || "Ошибка регистрации");
+    if (data.email_verification_required) return { emailVerificationRequired: true, email: data.email };
     if (data.pending) return { pending: true, role: data.role };
     persist(data.token, data.user);
+    return {};
+  };
+
+  const verifyEmail = async (email: string, code: string) => {
+    const res  = await fetch(`${AUTH_URL}?action=verify-email`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, code }),
+    });
+    const data = await res.json();
+    if (!res.ok || data.error) throw new Error(data.error || "Неверный код");
+    persist(data.token, data.user);
+    return {};
+  };
+
+  const resendVerification = async (email: string) => {
+    const res = await fetch(`${AUTH_URL}?action=resend-verification`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email }),
+    });
+    const data = await res.json();
+    if (!res.ok || data.error) throw new Error(data.error || "Не удалось отправить код");
     return {};
   };
 
@@ -75,5 +100,5 @@ export function makeAuthActions({ setUser, setToken, token }: Setters) {
     setCrmToken(null);
   };
 
-  return { login, register, logout, updateUser, loginWithToken };
+  return { login, register, logout, updateUser, loginWithToken, verifyEmail, resendVerification };
 }

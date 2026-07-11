@@ -337,9 +337,11 @@ export interface AuthCtx {
   user: AuthUser | null;
   token: string | null;
   loading: boolean;
-  login:      (email: string, password: string) => Promise<{ pending?: boolean; role?: string }>;
-  register:   (email: string, password: string, name: string, role: UserRole, phone?: string, companyName?: string, companyAddr?: string) => Promise<{ pending?: boolean; role?: string }>;
+  login:      (email: string, password: string) => Promise<{ pending?: boolean; role?: string; emailVerificationRequired?: boolean; email?: string }>;
+  register:   (email: string, password: string, name: string, role: UserRole, phone?: string, companyName?: string, companyAddr?: string) => Promise<{ pending?: boolean; role?: string; emailVerificationRequired?: boolean; email?: string }>;
   logout:     () => Promise<void>;
   updateUser: (patch: Partial<AuthUser>) => void;
   loginWithToken: (tok: string) => Promise<boolean>;
+  verifyEmail: (email: string, code: string) => Promise<Record<string, never>>;
+  resendVerification: (email: string) => Promise<Record<string, never>>;
 }

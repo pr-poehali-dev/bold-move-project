@@ -27,10 +27,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useAuthInitNormal({ setUser, setToken, setLoading });
   useAuthInitIframe({ setUser, setToken, setLoading });
 
-  const { login, register, logout, updateUser, loginWithToken } = makeAuthActions({ setUser, setToken, token });
+  const { login, register, logout, updateUser, loginWithToken, verifyEmail, resendVerification } = makeAuthActions({ setUser, setToken, token });
 
   return (
-    <Ctx.Provider value={{ user, token, loading, login, register, logout, updateUser, loginWithToken }}>
+    <Ctx.Provider value={{ user, token, loading, login, register, logout, updateUser, loginWithToken, verifyEmail, resendVerification }}>
       {children}
     </Ctx.Provider>
   );

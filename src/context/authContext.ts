@@ -6,6 +6,7 @@ export const Ctx = createContext<AuthCtx>({
   user: null, token: null, loading: true,
   login: async () => ({}), register: async () => ({}), logout: async () => {}, updateUser: () => {},
   loginWithToken: async () => false,
+  verifyEmail: async () => ({}), resendVerification: async () => ({}),
 });
 
 export const useAuth = () => useContext(Ctx);

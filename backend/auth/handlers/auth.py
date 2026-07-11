@@ -2,6 +2,7 @@ import json, os, secrets
 import urllib.request
 from datetime import datetime, timezone, timedelta
 from shared import SCHEMA, BUSINESS_ROLES, DISCOUNT_ROLES, DEFAULT_DISCOUNT, TRIAL_ESTIMATES, TRIAL_DAYS, MASTER_EMAIL, ok, err, hash_password
+from email_utils import send_verification_code
 
 
 def handle(action, method, params, body, token, event, conn, cur):
@@ -49,6 +50,24 @@ def handle(action, method, params, body, token, event, conn, cur):
                 f"INSERT INTO {SCHEMA}.balance_transactions (user_id, amount, reason) VALUES (%s, %s, 'trial_signup')",
                 (user_id, TRIAL_ESTIMATES)
             )
+
+        smtp_configured = bool(os.environ.get("SMTP_USER") and os.environ.get("SMTP_PASSWORD"))
+        if smtp_configured:
+            code = f"{secrets.randbelow(1000000):06d}"
+            cur.execute(
+                f"""INSERT INTO {SCHEMA}.email_verification_tokens (user_id, code_hash, expires_at)
+                    VALUES (%s, %s, NOW() + INTERVAL '15 minutes')""",
+                (user_id, hash_password(code))
+            )
+            cur.execute(f"UPDATE {SCHEMA}.users SET email_verified=FALSE WHERE id=%s", (user_id,))
+            conn.commit()
+            sent = send_verification_code(email, code, name)
+            resp = {"email_verification_required": True, "email": email}
+            if not sent:
+                # SMTP настроен, но отправка не удалась — не блокируем регистрацию
+                resp["send_failed"] = True
+            return ok(resp)
+
         new_token = secrets.token_hex(32)
         cur.execute(f"INSERT INTO {SCHEMA}.user_sessions (user_id, token) VALUES (%s,%s)", (user_id, new_token))
         conn.commit()
@@ -58,6 +77,59 @@ def handle(action, method, params, body, token, event, conn, cur):
             "has_own_agent": is_business, "trial_until": None,
         }})
 
+    # ── Подтверждение email ──────────────────────────────────────────────────
+    if action == "verify-email" and method == "POST":
+        email = (body.get("email") or "").strip().lower()
+        code  = (body.get("code") or "").strip()
+        if not email or not code:
+            return err("Укажите email и код")
+
+        cur.execute(f"SELECT id, name, role, approved, discount FROM {SCHEMA}.users WHERE email=%s", (email,))
+        row = cur.fetchone()
+        if not row:
+            return err("Пользователь не найден")
+        user_id, name, role, approved, discount = row
+
+        cur.execute(
+            f"""SELECT id, code_hash FROM {SCHEMA}.email_verification_tokens
+                WHERE user_id=%s AND expires_at > NOW() ORDER BY id DESC LIMIT 1""",
+            (user_id,)
+        )
+        trow = cur.fetchone()
+        if not trow or trow[1] != hash_password(code):
+            return err("Неверный или истёкший код")
+
+        cur.execute(f"UPDATE {SCHEMA}.users SET email_verified=TRUE WHERE id=%s", (user_id,))
+        new_token = secrets.token_hex(32)
+        cur.execute(f"INSERT INTO {SCHEMA}.user_sessions (user_id, token) VALUES (%s,%s)", (user_id, new_token))
+        conn.commit()
+        return ok({"token": new_token, "user": {
+            "id": user_id, "email": email, "name": name,
+            "role": role, "approved": approved, "discount": discount or 0,
+        }})
+
+    # ── Повторная отправка кода подтверждения ────────────────────────────────
+    if action == "resend-verification" and method == "POST":
+        email = (body.get("email") or "").strip().lower()
+        if not email:
+            return err("Укажите email")
+        cur.execute(f"SELECT id, name, email_verified FROM {SCHEMA}.users WHERE email=%s", (email,))
+        row = cur.fetchone()
+        if not row:
+            return ok({"ok": True})
+        user_id, name, email_verified = row
+        if email_verified:
+            return err("Email уже подтверждён")
+        code = f"{secrets.randbelow(1000000):06d}"
+        cur.execute(
+            f"""INSERT INTO {SCHEMA}.email_verification_tokens (user_id, code_hash, expires_at)
+                VALUES (%s, %s, NOW() + INTERVAL '15 minutes')""",
+            (user_id, hash_password(code))
+        )
+        conn.commit()
+        send_verification_code(email, code, name)
+        return ok({"ok": True})
+
     # ── Вход ─────────────────────────────────────────────────────────────────
     if action == "login" and method == "POST":
         email    = (body.get("email") or "").strip().lower()
@@ -65,14 +137,16 @@ def handle(action, method, params, body, token, event, conn, cur):
         if not email or not password:
             return err("Email и пароль обязательны")
         cur.execute(
-            f"SELECT id, name, email, role, approved, discount FROM {SCHEMA}.users WHERE email=%s AND password_hash=%s",
+            f"SELECT id, name, email, role, approved, discount, email_verified FROM {SCHEMA}.users WHERE email=%s AND password_hash=%s",
             (email, hash_password(password))
         )
         row = cur.fetchone()
         if not row:
             return err("Неверный email или пароль")
-        user_id, name, email_db, role, approved, discount = row
+        user_id, name, email_db, role, approved, discount, email_verified = row
         is_master = (email_db == MASTER_EMAIL)
+        if not email_verified and not is_master:
+            return ok({"email_verification_required": True, "email": email_db})
         if not approved and not is_master:
             return ok({"pending": True, "role": role})
         new_token = secrets.token_hex(32)
