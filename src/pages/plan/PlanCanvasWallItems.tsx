@@ -52,16 +52,12 @@ export default function PlanCanvasWallItems({
             const item = fromSeg?.items?.find(it => it.priceId === priceId);
             if (!item) return;
             const toSeg = segments.find(s => s.id === toSegId);
+            // Стена уже содержит этот товар — переносить/дублировать сюда нельзя
+            if ((toSeg?.items ?? []).some(it => it.priceId === priceId)) return;
             const meters = toSeg?.lengthCm ? Math.round(toSeg.lengthCm / 100 * 100) / 100 : item.quantity ?? 1;
             const newSegs = segments.map(s => {
               if (s.id === fromSegId) return { ...s, items: (s.items ?? []).filter(it => it.priceId !== priceId) };
-              if (s.id === toSegId) {
-                const existing = s.items ?? [];
-                if (existing.some(it => it.priceId === priceId)) {
-                  return { ...s, items: existing.map(it => it.priceId === priceId ? { ...it, quantity: (it.quantity ?? 1) + meters } : it) };
-                }
-                return { ...s, items: [...existing, { ...item, quantity: meters }] };
-              }
+              if (s.id === toSegId) return { ...s, items: [...(s.items ?? []), { ...item, quantity: meters }] };
               return s;
             });
             onChange({ segments: newSegs });

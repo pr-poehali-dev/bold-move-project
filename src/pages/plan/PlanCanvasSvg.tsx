@@ -199,21 +199,20 @@ export default function PlanCanvasSvg({
     const mp = movePendingRef.current;
     if (!mp || toSegId === mp.fromSegId) { setMovePending(null); return; }
     const { fromSegId, priceId, mode } = mp;
+    const toSeg = segments.find(s => s.id === toSegId);
+    // Стена уже содержит этот товар — не переносим/дублируем сюда (клик игнорируем,
+    // режим остаётся активным, пользователь может выбрать другую стену)
+    if ((toSeg?.items ?? []).some(it => it.priceId === priceId)) return;
     setMovePending(null);
     const fromSeg = segments.find(s => s.id === fromSegId);
     const item = fromSeg?.items?.find(it => it.priceId === priceId);
     if (!item) return;
-    const toSeg = segments.find(s => s.id === toSegId);
     const meters = toSeg?.lengthCm ? Math.round(toSeg.lengthCm / 100 * 100) / 100 : item.quantity ?? 1;
     const newSegs = segments.map(s => {
       // При дублировании исходная стена не трогается — товар остаётся на месте
       if (mode === "move" && s.id === fromSegId) return { ...s, items: (s.items ?? []).filter(it => it.priceId !== priceId) };
       if (s.id === toSegId) {
-        const existing = s.items ?? [];
-        if (existing.some(it => it.priceId === priceId)) {
-          return { ...s, items: existing.map(it => it.priceId === priceId ? { ...it, quantity: (it.quantity ?? 1) + meters } : it) };
-        }
-        return { ...s, items: [...existing, { ...item, quantity: meters }] };
+        return { ...s, items: [...(s.items ?? []), { ...item, quantity: meters }] };
       }
       return s;
     });
@@ -276,8 +275,13 @@ export default function PlanCanvasSvg({
   const shapePath = buildShapePath(points, segments, isClosed);
   const intersectingSegIds = isClosed ? findSelfIntersections(points, segments) : [];
 
+  // Доступные для переноса/дублирования стены — исключаем исходную и те, где
+  // этот товар уже назначен (нельзя дублировать/переместить туда, где он и так есть).
   const moveTargetSegIds = movePending
-    ? segments.filter(s => s.id !== movePending.fromSegId).map(s => s.id)
+    ? segments
+        .filter(s => s.id !== movePending.fromSegId)
+        .filter(s => !(s.items ?? []).some(it => it.priceId === movePending.priceId))
+        .map(s => s.id)
     : null;
 
   const ctx: RenderContext = {
