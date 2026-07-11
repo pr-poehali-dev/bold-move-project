@@ -132,7 +132,7 @@ export function useMovePendingEffects({
   return { executeMoveToSeg };
 }
 
-export function MovePendingBanner({ onCancel }: { onCancel: () => void }) {
+export function MovePendingBanner({ onCancel, mode = "move" }: { onCancel: () => void; mode?: "move" | "duplicate" }) {
   return (
     <div style={{
       position: "absolute", top: 12, left: "50%", transform: "translateX(-50%)",
@@ -143,7 +143,7 @@ export function MovePendingBanner({ onCancel }: { onCancel: () => void }) {
       boxShadow: "0 4px 16px rgba(0,0,0,0.4)",
     }}>
       <span style={{ color: "#67e8f9", fontSize: 13, fontWeight: 600 }}>
-        Выберите стену для перемещения
+        {mode === "duplicate" ? "Выберите стену для дублирования" : "Выберите стену для перемещения"}
       </span>
       <button
         onPointerDown={onCancel}

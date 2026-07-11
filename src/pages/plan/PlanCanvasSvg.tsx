@@ -182,8 +182,8 @@ export default function PlanCanvasSvg({
     };
   }, [points]);
 
-  // ── Режим перемещения товара между стенами ───────────────────────────────
-  const [movePending, setMovePending] = useState<{ fromSegId: string; priceId: number } | null>(null);
+  // ── Режим перемещения/дублирования товара между стенами ──────────────────
+  const [movePending, setMovePending] = useState<{ fromSegId: string; priceId: number; mode: "move" | "duplicate" } | null>(null);
   const movePendingRef = useRef(movePending);
   movePendingRef.current = movePending;
 
@@ -198,7 +198,7 @@ export default function PlanCanvasSvg({
   const executeMoveToSeg = useCallback((toSegId: string) => {
     const mp = movePendingRef.current;
     if (!mp || toSegId === mp.fromSegId) { setMovePending(null); return; }
-    const { fromSegId, priceId } = mp;
+    const { fromSegId, priceId, mode } = mp;
     setMovePending(null);
     const fromSeg = segments.find(s => s.id === fromSegId);
     const item = fromSeg?.items?.find(it => it.priceId === priceId);
@@ -206,7 +206,8 @@ export default function PlanCanvasSvg({
     const toSeg = segments.find(s => s.id === toSegId);
     const meters = toSeg?.lengthCm ? Math.round(toSeg.lengthCm / 100 * 100) / 100 : item.quantity ?? 1;
     const newSegs = segments.map(s => {
-      if (s.id === fromSegId) return { ...s, items: (s.items ?? []).filter(it => it.priceId !== priceId) };
+      // При дублировании исходная стена не трогается — товар остаётся на месте
+      if (mode === "move" && s.id === fromSegId) return { ...s, items: (s.items ?? []).filter(it => it.priceId !== priceId) };
       if (s.id === toSegId) {
         const existing = s.items ?? [];
         if (existing.some(it => it.priceId === priceId)) {
@@ -306,7 +307,7 @@ export default function PlanCanvasSvg({
       )}
 
       {movePending && (
-        <MovePendingBanner onCancel={() => setMovePending(null)} />
+        <MovePendingBanner onCancel={() => setMovePending(null)} mode={movePending.mode} />
       )}
 
       <svg
@@ -385,7 +386,8 @@ export default function PlanCanvasSvg({
               ctx={ctx}
               onChange={onChange}
               onEditSegItem={onEditSegItem}
-              onStartMove={(fromSegId, priceId) => setMovePending({ fromSegId, priceId })}
+              onStartMove={(fromSegId, priceId) => setMovePending({ fromSegId, priceId, mode: "move" })}
+              onStartDuplicate={(fromSegId, priceId) => setMovePending({ fromSegId, priceId, mode: "duplicate" })}
               selectedSegmentIds={state.selectedSegmentIds}
             />
           )}

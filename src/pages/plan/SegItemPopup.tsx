@@ -12,13 +12,14 @@ interface Props {
   onRemove: (segId: string, priceId: number) => void;
   onReplace: (segId: string, priceId: number) => void;
   onMove: (segId: string, priceId: number) => void;
+  onDuplicate: (segId: string, priceId: number) => void;
   onQuantityChange: (segId: string, priceId: number, quantity: number) => void;
   onAddToSelectedSegs?: (segId: string, priceId: number) => void;
   selectedSegmentsCount?: number;
 }
 
 export default function SegItemPopup({
-  item, segId, screenX, screenY, onClose, onRemove, onReplace, onMove, onQuantityChange,
+  item, segId, screenX, screenY, onClose, onRemove, onReplace, onMove, onDuplicate, onQuantityChange,
   onAddToSelectedSegs, selectedSegmentsCount = 0,
 }: Props) {
   const ref = useRef<HTMLDivElement>(null);
@@ -42,7 +43,7 @@ export default function SegItemPopup({
   const popW = 240;
   const vpW = window.innerWidth;
   const vpH = window.innerHeight;
-  const approxH = 185;
+  const approxH = 220;
   let left = screenX - popW / 2;
   let top = screenY - approxH - 12;
   if (top < 8) top = screenY + 16;
@@ -97,6 +98,13 @@ export default function SegItemPopup({
         onPointerDown={e => { e.stopPropagation(); onMove(segId, item.priceId); onClose(); }}>
         <Icon name="ArrowRightLeft" size={13} />
         <span>Переместить на стену</span>
+      </button>
+
+      {/* Дублировать */}
+      <button style={{ ...rowBtn, color: "#34d399" }}
+        onPointerDown={e => { e.stopPropagation(); onDuplicate(segId, item.priceId); onClose(); }}>
+        <Icon name="CopyPlus" size={13} />
+        <span>Дублировать на стену</span>
       </button>
 
       {/* Заменить */}

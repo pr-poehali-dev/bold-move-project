@@ -10,11 +10,12 @@ interface Props {
   onChange: (patch: Partial<PlanState>) => void;
   onEditSegItem?: (segId: string, priceId: number) => void;
   onStartMove: (fromSegId: string, priceId: number) => void;
+  onStartDuplicate: (fromSegId: string, priceId: number) => void;
   selectedSegmentIds?: string[];
 }
 
 export default function PlanCanvasWallItems({
-  segments, ctx, onChange, onEditSegItem, onStartMove, selectedSegmentIds = [],
+  segments, ctx, onChange, onEditSegItem, onStartMove, onStartDuplicate, selectedSegmentIds = [],
 }: Props) {
   const [segPopup, setSegPopup] = useState<{
     segId: string; priceId: number; screenX: number; screenY: number;
@@ -95,6 +96,9 @@ export default function PlanCanvasWallItems({
             }}
             onMove={(segId, priceId) => {
               onStartMove(segId, priceId);
+            }}
+            onDuplicate={(segId, priceId) => {
+              onStartDuplicate(segId, priceId);
             }}
             onQuantityChange={(segId, priceId, quantity) => {
               const newSegs = segments.map(s =>
