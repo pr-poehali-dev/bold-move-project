@@ -22,6 +22,8 @@ export default function ReplaceItemModal({ open, item, prices, onReplace, onCanc
   const [search, setSearch] = useState("");
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  // Показывать ли подпись категории под названием каждого товара в списке
+  const [showCategoryLabels, setShowCategoryLabels] = useState(true);
 
   // Защита от "мигания": клик, которым модалка была открыта (например, кнопка
   // "Заменить" в другом попапе), может долетать сюда же и мгновенно закрывать
@@ -144,6 +146,29 @@ export default function ReplaceItemModal({ open, item, prices, onReplace, onCanc
                 {voiceButton}
               </div>
             )}
+            <button
+              onClick={() => setShowCategoryLabels(v => !v)}
+              title={showCategoryLabels ? "Скрыть подписи категорий в списке" : "Показать подписи категорий в списке"}
+              style={{
+                width: 26, height: 26, borderRadius: 8, flexShrink: 0,
+                background: "rgba(255,255,255,0.07)", border: "none",
+                color: showCategoryLabels ? "rgba(255,255,255,0.55)" : "rgba(255,255,255,0.25)",
+                cursor: "pointer",
+                display: "flex", alignItems: "center", justifyContent: "center",
+              }}
+            >
+              {showCategoryLabels ? (
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
+                  <path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                  <circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="2"/>
+                </svg>
+              ) : (
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
+                  <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 7 11 7a13.16 13.16 0 0 1-1.67 2.68M6.61 6.61A13.53 13.53 0 0 0 1 11s4 7 11 7a9.26 9.26 0 0 0 5.39-1.61M14.12 14.12a3 3 0 1 1-4.24-4.24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                  <path d="M1 1l22 22" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                </svg>
+              )}
+            </button>
             <button
               onClick={onCancel}
               style={{
@@ -300,9 +325,11 @@ export default function ReplaceItemModal({ open, item, prices, onReplace, onCanc
                   <div style={{ color: "#fff", fontSize: 12, fontWeight: 500, lineHeight: 1.3 }}>
                     {price.name}
                   </div>
-                  <div style={{ color: "rgba(255,255,255,0.3)", fontSize: 10, marginTop: 1 }}>
-                    {price.category}
-                  </div>
+                  {showCategoryLabels && (
+                    <div style={{ color: "rgba(255,255,255,0.3)", fontSize: 10, marginTop: 1 }}>
+                      {price.category}
+                    </div>
+                  )}
                 </div>
                 {isCurrent && (
                   <span style={{ color: "rgba(139,92,246,0.7)", fontSize: 10, flexShrink: 0 }}>текущий</span>
