@@ -349,6 +349,7 @@ export default function PlanPage() {
         onSidebarDragStart={onSidebarDragStart}
         handleChange={handleChange}
         handleReplace={handleReplace}
+        onBeforeAutoOpenCatalog={isMobile ? () => { setSheetOpen(false); setRightPanelOpen(false); } : undefined}
       />
 
       <PlanPagePanels

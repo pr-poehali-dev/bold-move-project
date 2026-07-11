@@ -16,6 +16,10 @@ interface Props {
   handleChange: (patch: Partial<PlanState>) => void;
   handleReplace: (patch: Partial<PlanState>) => void;
   onEditSegItem?: (segId: string, priceId: number) => void;
+  /** Мобиле: закрыть другие нижние/боковые панели, когда каталог открывается автоматически
+      (например после выбора стены) — иначе барабан конфликтует с уже открытой панелью
+      и её кнопку/сам барабан становится невозможно закрыть. */
+  onBeforeAutoOpenCatalog?: () => void;
 }
 
 export default function PlanCanvasArea({
@@ -31,6 +35,7 @@ export default function PlanCanvasArea({
   handleChange,
   handleReplace,
   onEditSegItem,
+  onBeforeAutoOpenCatalog,
 }: Props) {
   // Идёт перетаскивание стенового товара (из барабана или карточки снизу/сбоку) — подсвечиваем все стены
   const draggedItem = catalog.dragItem ?? catalog.dragCardItem;
@@ -50,7 +55,7 @@ export default function PlanCanvasArea({
           eventState={state}
           onChange={handleChange}
           onReplace={handleReplace}
-          onOpenCatalog={() => catalog.setCatalogOpen(true)}
+          onOpenCatalog={() => { onBeforeAutoOpenCatalog?.(); catalog.setCatalogOpen(true); }}
           onEditFloorItem={catalog.setEditingFloorId}
           onEditSegItem={onEditSegItem ?? ((segId, priceId) => catalog.setEditingSegRef({ segId, priceId }))}
           isDraggingWallItem={isDraggingWallItem}

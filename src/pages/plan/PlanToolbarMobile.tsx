@@ -127,6 +127,7 @@ export default function MobileToolbar(props: ToolbarProps) {
               className="fixed z-[9999] bg-[#1c1c2e] border border-white/[0.12] rounded-2xl shadow-2xl p-2 flex flex-col gap-0.5 min-w-[210px]"
               style={{ right: 8, top: 56 }}
               onClick={e => e.stopPropagation()}
+              onTouchStart={e => e.stopPropagation()}
             >
               {SETTINGS_ITEMS.map(({ key, label, icon }) => (
                 <button key={key}
