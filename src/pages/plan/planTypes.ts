@@ -111,6 +111,8 @@ export interface PlanSettings {
   showPoints: boolean;
   showPointLabels: boolean;
   hideMaterialsButton?: boolean;
+  /** Автоматически открывать каталог товаров при выборе стены (клик или "покраска") */
+  autoOpenCatalogOnSelect?: boolean;
 }
 
 // ─── Полное состояние плана ──────────────────────────────────────────────────
@@ -1302,6 +1304,7 @@ export const DEFAULT_SETTINGS: PlanSettings = {
   showDimLines: false,
   showPoints: true,
   showPointLabels: true,
+  autoOpenCatalogOnSelect: false,
 };
 
 export const DEFAULT_ROOM: RoomParams = {
