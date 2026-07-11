@@ -322,11 +322,11 @@ export default function CalcTab({
                   {onAddToCategory && (
                     <button
                       onClick={() => onAddToCategory(cat)}
-                      className="w-full flex items-center justify-center gap-1.5 rounded-xl px-2.5 py-2 text-[11px] font-medium transition"
+                      className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-[10px] font-medium transition"
                       style={{ background: "rgba(124,58,237,0.08)", border: "1px dashed rgba(139,92,246,0.3)", color: "rgba(167,139,250,0.7)" }}
                     >
-                      <Icon name="Plus" size={12} />
-                      Добавить в «{cat}»
+                      <Icon name="Plus" size={10} />
+                      Добавить
                     </button>
                   )}
                 </div>
