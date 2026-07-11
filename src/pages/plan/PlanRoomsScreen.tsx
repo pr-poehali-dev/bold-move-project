@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useMemo } from "react";
 import Icon from "@/components/ui/icon";
 import { PlanProject, PlanRoom, usePlanProjects } from "./usePlanProjects";
 import PlanRoomPreview, { getRoomMeta } from "./PlanRoomPreview";
@@ -139,6 +139,25 @@ export default function PlanRoomsScreen({ token, project, onBack, onOpenRoom }: 
     }
   };
 
+  // ── Статистика по проекту ───────────────────────────────────────────────────
+  const stats = useMemo(() => {
+    let totalArea = 0;
+    let roomsWithEmptyWalls = 0;
+    rooms.forEach(room => {
+      const data = (room.data ?? {}) as { isClosed?: boolean; segments?: { items?: unknown[] }[] };
+      const meta = getRoomMeta(room.data ?? {});
+      totalArea += meta.areaSqm ?? 0;
+      const segments = data.segments ?? [];
+      const hasEmpty = !!data.isClosed && segments.length > 0 && segments.some(s => !s.items || s.items.length === 0);
+      if (hasEmpty) roomsWithEmptyWalls++;
+    });
+    return {
+      totalRooms: rooms.length,
+      totalArea: Math.round(totalArea * 100) / 100,
+      roomsWithEmptyWalls,
+    };
+  }, [rooms]);
+
   return (
     <div className="h-screen flex flex-col overflow-y-auto" style={{ background: "#07070f" }}>
 
@@ -159,6 +178,43 @@ export default function PlanRoomsScreen({ token, project, onBack, onOpenRoom }: 
             </div>
           )}
         </div>
+
+        {/* Статистика по проекту — только когда есть комнаты */}
+        {stats.totalRooms > 0 && (
+          <div className="hidden md:flex items-center gap-2 flex-shrink-0">
+            <div className="flex items-center gap-1.5 px-3 h-9 rounded-xl"
+              style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)" }}
+              title="Всего полотен в проекте">
+              <Icon name="Layers" size={13} style={{ color: "rgba(255,255,255,0.4)" }} />
+              <span className="text-[12px] font-bold text-white/70">{stats.totalRooms}</span>
+              <span className="text-[11px]" style={{ color: "rgba(255,255,255,0.35)" }}>полотен</span>
+            </div>
+            <div className="flex items-center gap-1.5 px-3 h-9 rounded-xl"
+              style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)" }}
+              title="Суммарная площадь всех комнат">
+              <Icon name="Ruler" size={13} style={{ color: "rgba(255,255,255,0.4)" }} />
+              <span className="text-[12px] font-bold text-white/70">{stats.totalArea}</span>
+              <span className="text-[11px]" style={{ color: "rgba(255,255,255,0.35)" }}>м²</span>
+            </div>
+            {stats.roomsWithEmptyWalls > 0 ? (
+              <div className="flex items-center gap-1.5 px-3 h-9 rounded-xl"
+                style={{ background: "rgba(245,158,11,0.12)", border: "1px solid rgba(245,158,11,0.35)" }}
+                title="Комнаты с незаполненными стенами (без товара)">
+                <Icon name="AlertTriangle" size={13} style={{ color: "#fbbf24" }} />
+                <span className="text-[12px] font-bold" style={{ color: "#fbbf24" }}>{stats.roomsWithEmptyWalls}</span>
+                <span className="text-[11px]" style={{ color: "rgba(251,191,36,0.7)" }}>не назначено</span>
+              </div>
+            ) : (
+              <div className="flex items-center gap-1.5 px-3 h-9 rounded-xl"
+                style={{ background: "rgba(16,185,129,0.1)", border: "1px solid rgba(16,185,129,0.3)" }}
+                title="Все стены назначены">
+                <Icon name="CheckCircle2" size={13} style={{ color: "#34d399" }} />
+                <span className="text-[11px] font-semibold" style={{ color: "#34d399" }}>Все стены назначены</span>
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Кнопка CRM */}
         {project.crm_chat_id && (
           <button
