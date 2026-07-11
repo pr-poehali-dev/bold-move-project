@@ -235,7 +235,7 @@ export default function ActiveItemPopup({
             }}
           >+ Выбранные ({selectedSegmentIds.length})</button>
         )}
-        {hasSegments && isWall && onAllSegs && (
+        {hasSegments && isWall && total > 0 && (
           <button
             data-item-popup="1"
             onClick={e => { e.stopPropagation(); onRemoveFromAllSegs(item.priceId); }}
