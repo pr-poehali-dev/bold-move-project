@@ -23,11 +23,19 @@ export default function ReplaceItemModal({ open, item, prices, onReplace, onCanc
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
+  // Защита от "мигания": клик, которым модалка была открыта (например, кнопка
+  // "Заменить" в другом попапе), может долетать сюда же и мгновенно закрывать
+  // модалку через фоновый оверлей. Игнорируем закрытие по фону первые 250мс.
+  const [canCloseByOverlay, setCanCloseByOverlay] = useState(false);
+
   useEffect(() => {
     if (open) {
       setSelectedCategory(item?.category ?? initialCategory ?? "");
       setSearch("");
       setDropdownOpen(false);
+      setCanCloseByOverlay(false);
+      const t = setTimeout(() => setCanCloseByOverlay(true), 250);
+      return () => clearTimeout(t);
     }
   }, [open, item?.category, initialCategory]);
 
@@ -90,10 +98,10 @@ export default function ReplaceItemModal({ open, item, prices, onReplace, onCanc
         pointerEvents: "none",
       }}
     >
-      {/* Клик по фону закрывает */}
+      {/* Клик по фону закрывает (кроме первых мгновений после открытия — см. canCloseByOverlay) */}
       <div
         style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.3)", pointerEvents: "all" }}
-        onClick={onCancel}
+        onClick={() => { if (canCloseByOverlay) onCancel(); }}
       />
       <div
         style={{
