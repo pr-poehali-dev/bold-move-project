@@ -1,11 +1,13 @@
 import { useEffect, useState, useRef, useMemo } from "react";
 import Icon from "@/components/ui/icon";
 import { PlanProject, PlanRoom, usePlanProjects } from "./usePlanProjects";
-import PlanRoomPreview, { getRoomMeta } from "./PlanRoomPreview";
+import { getRoomMeta } from "./PlanRoomPreview";
 import { usePlanVariants, PlanVariant } from "./usePlanVariants";
-import PlanVariantPicker from "./PlanVariantPicker";
 import PlanExportModal from "./PlanExportMenu";
 import { generateExportPdf } from "./PlanExportGenerator";
+import PlanRoomsHeader from "./PlanRoomsHeader";
+import PlanRoomAddForm from "./PlanRoomAddForm";
+import PlanRoomCard from "./PlanRoomCard";
 
 interface Props {
   token?: string | null;
@@ -13,17 +15,6 @@ interface Props {
   onBack: () => void;
   onOpenRoom: (room: PlanRoom) => void;
 }
-
-const QUICK_ROOMS = [
-  { name: "Комната",  icon: "DoorOpen" },
-  { name: "Гостиная", icon: "Tv2" },
-  { name: "Кухня",    icon: "UtensilsCrossed" },
-  { name: "Спальня",  icon: "BedDouble" },
-  { name: "Санузел",  icon: "Bath" },
-  { name: "Коридор",  icon: "ArrowRight" },
-  { name: "Детская",  icon: "Baby" },
-  { name: "Кабинет",  icon: "Briefcase" },
-];
 
 export default function PlanRoomsScreen({ token, project, onBack, onOpenRoom }: Props) {
   const { rooms, loading, loadRooms, createRoom, updateRoom, deleteRoom, duplicateRoom } = usePlanProjects(token);
@@ -158,101 +149,24 @@ export default function PlanRoomsScreen({ token, project, onBack, onOpenRoom }: 
     };
   }, [rooms]);
 
+  const openAddForm = () => {
+    setShowForm(v => {
+      if (!v) setTimeout(() => addFormRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
+      return !v;
+    });
+    setCustomName("");
+  };
+
   return (
     <div className="h-screen flex flex-col overflow-y-auto" style={{ background: "#07070f" }}>
 
-      {/* Шапка */}
-      <div className="flex items-center gap-3 px-4 sm:px-8 py-4 border-b" style={{ borderColor: "rgba(255,255,255,0.07)" }}>
-        <button
-          onClick={onBack}
-          className="w-8 h-8 rounded-xl flex items-center justify-center transition hover:bg-white/10"
-          style={{ color: "rgba(255,255,255,0.5)" }}
-        >
-          <Icon name="ChevronLeft" size={18} />
-        </button>
-        <div className="flex-1 min-w-0">
-          <div className="text-white font-bold text-[15px] truncate">{project.name}</div>
-          {(project.client_name || project.address) && (
-            <div className="text-[11px] truncate" style={{ color: "rgba(255,255,255,0.35)" }}>
-              {[project.client_name, project.address].filter(Boolean).join(" · ")}
-            </div>
-          )}
-        </div>
-
-        {/* Статистика по проекту — только когда есть комнаты */}
-        {stats.totalRooms > 0 && (
-          <div className="hidden md:flex items-center gap-2 flex-shrink-0">
-            <div className="flex items-center gap-1.5 px-3 h-9 rounded-xl"
-              style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)" }}
-              title="Всего полотен в проекте">
-              <Icon name="Layers" size={13} style={{ color: "rgba(255,255,255,0.4)" }} />
-              <span className="text-[12px] font-bold text-white/70">{stats.totalRooms}</span>
-              <span className="text-[11px]" style={{ color: "rgba(255,255,255,0.35)" }}>полотен</span>
-            </div>
-            <div className="flex items-center gap-1.5 px-3 h-9 rounded-xl"
-              style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)" }}
-              title="Суммарная площадь всех комнат">
-              <Icon name="Ruler" size={13} style={{ color: "rgba(255,255,255,0.4)" }} />
-              <span className="text-[12px] font-bold text-white/70">{stats.totalArea}</span>
-              <span className="text-[11px]" style={{ color: "rgba(255,255,255,0.35)" }}>м²</span>
-            </div>
-            {stats.roomsWithEmptyWalls > 0 ? (
-              <div className="flex items-center gap-1.5 px-3 h-9 rounded-xl"
-                style={{ background: "rgba(245,158,11,0.12)", border: "1px solid rgba(245,158,11,0.35)" }}
-                title="Комнаты с незаполненными стенами (без товара)">
-                <Icon name="AlertTriangle" size={13} style={{ color: "#fbbf24" }} />
-                <span className="text-[12px] font-bold" style={{ color: "#fbbf24" }}>{stats.roomsWithEmptyWalls}</span>
-                <span className="text-[11px]" style={{ color: "rgba(251,191,36,0.7)" }}>не назначено</span>
-              </div>
-            ) : (
-              <div className="flex items-center gap-1.5 px-3 h-9 rounded-xl"
-                style={{ background: "rgba(16,185,129,0.1)", border: "1px solid rgba(16,185,129,0.3)" }}
-                title="Все стены назначены">
-                <Icon name="CheckCircle2" size={13} style={{ color: "#34d399" }} />
-                <span className="text-[11px] font-semibold" style={{ color: "#34d399" }}>Все стены назначены</span>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Кнопка CRM */}
-        {project.crm_chat_id && (
-          <button
-            onClick={() => window.open(`/crm?order=${project.crm_chat_id}`, "_blank")}
-            className="flex items-center gap-1.5 px-3 h-9 rounded-xl transition hover:brightness-110 active:scale-95 flex-shrink-0"
-            style={{ background: "rgba(124,58,237,0.18)", border: "1px solid rgba(124,58,237,0.4)", color: "#a78bfa" }}
-            title="Открыть заявку в CRM"
-          >
-            <Icon name="LayoutDashboard" size={14} />
-            {/* CRM — только на десктопе */}
-            <span className="text-[11px] font-bold uppercase tracking-wide hidden sm:inline">CRM</span>
-          </button>
-        )}
-        {/* Кнопка сметы — десктоп: со стилем CRM + подпись "Скачать", мобил: только иконка в стиле CRM */}
-        <button
-          onClick={() => setExportOpen(true)}
-          className="flex items-center gap-1.5 px-3 h-9 rounded-xl transition hover:brightness-110 active:scale-95 flex-shrink-0"
-          style={{ background: "rgba(124,58,237,0.18)", border: "1px solid rgba(124,58,237,0.4)", color: "#a78bfa" }}
-          title="Скачать смету"
-        >
-          <Icon name="FileText" size={14} />
-          <span className="text-[11px] font-bold hidden sm:inline">Скачать</span>
-        </button>
-        <button
-          onClick={() => {
-            setShowForm(v => {
-              if (!v) setTimeout(() => addFormRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
-              return !v;
-            });
-            setCustomName("");
-          }}
-          className="flex items-center gap-2 px-3 py-2 rounded-xl text-[12px] font-bold transition hover:opacity-90 active:scale-[0.97] flex-shrink-0"
-          style={{ background: "linear-gradient(135deg,#7c3aed,#6d28d9)", color: "#fff" }}
-        >
-          <Icon name="Plus" size={13} />
-          Комната
-        </button>
-      </div>
+      <PlanRoomsHeader
+        project={project}
+        stats={stats}
+        onBack={onBack}
+        onExportClick={() => setExportOpen(true)}
+        onAddRoomClick={openAddForm}
+      />
 
       <PlanExportModal
         open={exportOpen}
@@ -278,54 +192,14 @@ export default function PlanRoomsScreen({ token, project, onBack, onOpenRoom }: 
 
         {/* Форма добавления */}
         {showForm && (
-          <div ref={addFormRef} className="mb-6 rounded-2xl p-5 space-y-4" style={{ background: "#0e0e1c", border: "1px solid rgba(124,58,237,0.3)" }}>
-            <div className="flex items-center justify-between">
-              <span className="text-white font-bold text-[15px]">Добавить комнату</span>
-              <button onClick={() => setShowForm(false)} className="text-white/30 hover:text-white/70 transition">
-                <Icon name="X" size={16} />
-              </button>
-            </div>
-
-            <div>
-              <div className="text-[11px] text-white/40 uppercase tracking-wider font-semibold mb-2">Быстрый выбор</div>
-              <div className="grid grid-cols-4 sm:grid-cols-8 gap-2">
-                {QUICK_ROOMS.map(r => (
-                  <button
-                    key={r.name}
-                    onClick={() => handleCreate(r.name)}
-                    disabled={creating}
-                    className="flex flex-col items-center gap-1.5 py-3 rounded-xl transition hover:brightness-110 active:scale-[0.96] disabled:opacity-50"
-                    style={{ background: "rgba(124,58,237,0.1)", border: "1px solid rgba(124,58,237,0.2)" }}
-                  >
-                    <Icon name={r.icon} size={20} style={{ color: "#a78bfa" }} />
-                    <span className="text-[11px] font-semibold text-white/70">{r.name}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div>
-              <div className="text-[11px] text-white/40 uppercase tracking-wider font-semibold mb-2">Своё название</div>
-              <div className="flex gap-2">
-                <input
-                  value={customName}
-                  onChange={e => setCustomName(e.target.value)}
-                  onKeyDown={e => e.key === "Enter" && handleCreate(customName)}
-                  placeholder="Например: Лоджия"
-                  className="flex-1 rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none transition"
-                  style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)" }}
-                />
-                <button
-                  onClick={() => handleCreate(customName)}
-                  disabled={!customName.trim() || creating}
-                  className="px-4 py-2.5 rounded-xl text-sm font-bold transition disabled:opacity-40 hover:opacity-90"
-                  style={{ background: "linear-gradient(135deg,#7c3aed,#6d28d9)", color: "#fff" }}
-                >
-                  {creating ? "..." : "Добавить"}
-                </button>
-              </div>
-            </div>
-          </div>
+          <PlanRoomAddForm
+            formRef={addFormRef}
+            customName={customName}
+            setCustomName={setCustomName}
+            creating={creating}
+            onClose={() => setShowForm(false)}
+            onCreate={handleCreate}
+          />
         )}
 
         {/* Загрузка */}
@@ -358,178 +232,73 @@ export default function PlanRoomsScreen({ token, project, onBack, onOpenRoom }: 
         {rooms.length > 0 && (
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
             {rooms.map(room => {
-              const isDeleting = deletingId === room.id;
               const isEditing  = editingId === room.id;
-              const dateStr    = room.updated_at
-                ? new Date(room.updated_at).toLocaleDateString("ru-RU", { day: "numeric", month: "short" })
-                : "Новая";
-
-              const meta = getRoomMeta(room.data ?? {});
               const isMenuOpen = menuOpenId !== null && menuOpenId === room.id;
+              const varPickerOpen = varPickerRoomId === room.id;
 
               return (
-                <div
+                <PlanRoomCard
                   key={room.id}
-                  className="rounded-2xl flex flex-col overflow-visible"
-                  style={{ background: "#0e0e1c", border: "1px solid rgba(255,255,255,0.07)" }}
-                >
-                  {/* Превью с названием внутри */}
-                  <button onClick={() => {
+                  room={room}
+                  isEditing={isEditing}
+                  editName={editName}
+                  setEditName={setEditName}
+                  savingEdit={savingEdit}
+                  onStartEdit={() => { setEditingId(room.id); setEditName(room.name); setMenuOpenId(null); }}
+                  onCancelEdit={() => setEditingId(null)}
+                  onRename={() => handleRename(room.id)}
+
+                  onOpen={() => {
                     const activeId = activeVarByRoom[room.id];
                     const activeVar = activeId != null ? variantsByRoom[room.id]?.find(v => v.id === activeId) : null;
                     onOpenRoom(activeVar ? { ...room, data: activeVar.data } : room);
                   }}
-                    className="relative group w-full rounded-t-2xl overflow-hidden"
-                    style={{ height: 200 }}>
-                    {/* Живой план — только верхние 164px */}
-                    <div style={{ pointerEvents: "none", width: "100%", height: 164 }}>
-                      <PlanRoomPreview data={room.data ?? {}} width={400} height={164}/>
-                    </div>
-                    {/* Название — нижние 36px с градиентом только внутри этой зоны */}
-                    {!isEditing && (
-                      <div className="flex items-center justify-center"
-                        style={{ height: 36, background: "linear-gradient(to bottom, rgba(10,10,24,0.6) 0%, rgba(10,10,24,1) 100%)" }}>
-                        <span className="font-bold text-[13px] text-white truncate px-3">{room.name}</span>
-                      </div>
-                    )}
-                    {/* Hover */}
-                    <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition"
-                      style={{ background: "rgba(0,0,0,0.35)" }}>
-                      <span className="text-[11px] font-bold text-white px-2.5 py-1 rounded-lg" style={{ background: "rgba(0,0,0,0.6)" }}>Открыть</span>
-                    </div>
-                  </button>
+                  onToggleField={(key, val) => updateRoom(room.id, { [key]: !val }).then(() => loadRooms(project.id))}
 
-                  {/* Переименование (если активно) */}
-                  {isEditing && (
-                    <div className="flex gap-1.5 px-2.5 pt-2">
-                      <input autoFocus value={editName}
-                        onChange={e => setEditName(e.target.value)}
-                        onKeyDown={e => { if (e.key==="Enter") handleRename(room.id); if (e.key==="Escape") setEditingId(null); }}
-                        className="flex-1 min-w-0 rounded-lg px-2 py-1 text-[13px] text-white focus:outline-none"
-                        style={{ background: "rgba(255,255,255,0.08)", border: "1px solid rgba(124,58,237,0.4)" }}
-                      />
-                      <button onClick={() => handleRename(room.id)} disabled={savingEdit}
-                        className="w-7 h-7 rounded-lg flex items-center justify-center disabled:opacity-40"
-                        style={{ background: "rgba(124,58,237,0.3)", color: "#a78bfa" }}>
-                        {savingEdit ? <div className="w-3 h-3 border border-violet-400/40 border-t-violet-400 rounded-full animate-spin"/> : <Icon name="Check" size={12}/>}
-                      </button>
-                      <button onClick={() => setEditingId(null)} className="w-7 h-7 flex items-center justify-center" style={{ color: "rgba(255,255,255,0.3)" }}>
-                        <Icon name="X" size={12}/>
-                      </button>
-                    </div>
-                  )}
+                  isMenuOpen={isMenuOpen}
+                  menuRef={menuRef}
+                  onToggleMenu={() => setMenuOpenId(isMenuOpen ? null : room.id)}
+                  onDuplicate={async () => { setMenuOpenId(null); await duplicateRoom(room); await loadRooms(project.id); }}
+                  onDelete={() => { handleDelete(room.id); setMenuOpenId(null); }}
 
-                  {/* Тогглы */}
-                  <div className="px-2.5 pt-2.5 space-y-1.5">
-                    {[
-                      { key: "include_in_estimate" as const, label: "Включить в смету", val: room.include_in_estimate !== false },
-                      { key: "include_drawing" as const,     label: "Чертёж в смете",   val: room.include_drawing !== false },
-                    ].map(({ key, label, val }) => (
-                      <button key={key} onClick={() => updateRoom(room.id, { [key]: !val }).then(() => loadRooms(project.id))}
-                        className="flex items-center gap-2.5 w-full select-none">
-                        <div className="relative w-8 h-5 rounded-full transition-colors shrink-0"
-                          style={{ background: val ? "#2563eb" : "rgba(255,255,255,0.12)" }}>
-                          <div className="absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-all"
-                            style={{ left: val ? "calc(100% - 18px)" : "2px" }}/>
-                        </div>
-                        <span className="text-[12px]" style={{ color: "rgba(255,255,255,0.75)" }}>{label}</span>
-                      </button>
-                    ))}
-                  </div>
-
-                  {/* Площадь / периметр */}
-                  {(meta.areaSqm !== null || meta.perimM !== null) && (
-                    <div className="px-2.5 pt-1.5 flex flex-wrap gap-x-2 gap-y-0.5">
-                      {meta.areaSqm !== null && <span className="text-[11px] font-semibold" style={{ color: "#818cf8" }}>Площадь {meta.areaSqm} м²</span>}
-                      {meta.areaSqm !== null && meta.perimM !== null && <span style={{ color: "rgba(255,255,255,0.2)", fontSize: 11 }}> </span>}
-                      {meta.perimM !== null && <span className="text-[11px] font-semibold" style={{ color: "#818cf8" }}>Периметр {meta.perimM} м</span>}
-                    </div>
-                  )}
-
-                  {/* Низ: кнопка "Варианты" + меню ⋮ */}
-                  <div className="flex items-center gap-2 px-2.5 pt-2 pb-2.5 min-w-0">
-                    {/* Кнопка Варианты */}
-                    <div className="relative flex-1 min-w-0" ref={varPickerRoomId === room.id ? varPickerRef : undefined}>
-                      <button
-                        onClick={async () => {
-                          if (varPickerRoomId === room.id) { setVarPickerRoomId(null); return; }
-                          const list = await loadVariants(room.id);
-                          const activeId = list.find(v => v.is_active)?.id ?? null;
-                          setVariantsByRoom(prev => ({ ...prev, [room.id]: list }));
-                          setActiveVarByRoom(prev => ({ ...prev, [room.id]: activeId }));
-                          setVarPickerRoomId(room.id);
-                        }}
-                        className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-[12px] font-semibold transition hover:bg-white/[0.06]"
-                        style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.7)" }}>
-                        <span className="truncate">
-                          {activeVarByRoom[room.id] != null
-                            ? (variantsByRoom[room.id]?.find(v => v.id === activeVarByRoom[room.id])?.name ?? "Варианты")
-                            : "Варианты"}
-                        </span>
-                        <Icon name="ChevronDown" size={13} className="shrink-0 ml-1" style={{ color: "rgba(255,255,255,0.4)" }}/>
-                      </button>
-                      {varPickerRoomId === room.id && (
-                        <PlanVariantPicker
-                          variants={variantsByRoom[room.id] ?? variants}
-                          loading={variantsLoading}
-                          activeVariantId={activeVarByRoom[room.id] ?? null}
-                          onSelect={v => {
-                            setActiveVarByRoom(prev => ({ ...prev, [room.id]: v.id }));
-                            setVariantsByRoom(prev => ({
-                              ...prev,
-                              [room.id]: (prev[room.id] ?? []).map(x => ({ ...x, is_active: x.id === v.id })),
-                            }));
-                            updateVariant(v.id, { is_active: true });
-                            setVarPickerRoomId(null);
-                          }}
-                          onLoad={v => { onOpenRoom({ ...room, data: v.data }); setVarPickerRoomId(null); }}
-                          onDelete={async id => {
-                            await deleteVariant(id, room.id);
-                            if (activeVarByRoom[room.id] === id) setActiveVarByRoom(prev => ({ ...prev, [room.id]: null }));
-                            const refreshed = await loadVariants(room.id);
-                            setVariantsByRoom(prev => ({ ...prev, [room.id]: refreshed }));
-                          }}
-                          onRename={(id, name) => {
-                            updateVariant(id, { name });
-                            setVariantsByRoom(prev => ({
-                              ...prev,
-                              [room.id]: (prev[room.id] ?? []).map(v => v.id === id ? { ...v, name } : v),
-                            }));
-                          }}
-                          onClose={() => setVarPickerRoomId(null)}
-                        />
-                      )}
-                    </div>
-
-                    {/* Меню ⋮ */}
-                    <div className="relative shrink-0" ref={isMenuOpen ? menuRef : undefined}>
-                      <button onClick={() => setMenuOpenId(isMenuOpen ? null : room.id)}
-                        className="w-9 h-9 rounded-xl flex items-center justify-center transition hover:bg-white/10"
-                        style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.5)" }}>
-                        <Icon name="MoreHorizontal" size={15}/>
-                      </button>
-                      {isMenuOpen && (
-                        <div className="absolute right-0 bottom-10 z-50 rounded-xl py-1 min-w-[170px]"
-                          style={{ background: "#1a1a2e", border: "1px solid rgba(255,255,255,0.1)", boxShadow: "0 -8px 24px rgba(0,0,0,0.5)" }}>
-                          <div className="px-3 py-1 text-[10px] font-bold uppercase tracking-wider" style={{ color: "rgba(255,255,255,0.3)" }}>Действия с комнатой</div>
-                          <button onClick={() => { setEditingId(room.id); setEditName(room.name); setMenuOpenId(null); }}
-                            className="w-full flex items-center gap-2 px-3 py-1.5 text-[12px] transition hover:bg-white/[0.06]" style={{ color: "rgba(255,255,255,0.8)" }}>
-                            <Icon name="Pencil" size={13}/> Переименовать
-                          </button>
-                          <button onClick={async () => { setMenuOpenId(null); await duplicateRoom(room); await loadRooms(project.id); }}
-                            className="w-full flex items-center gap-2 px-3 py-1.5 text-[12px] transition hover:bg-white/[0.06]" style={{ color: "rgba(255,255,255,0.8)" }}>
-                            <Icon name="Copy" size={13}/> Дублировать
-                          </button>
-                          <div style={{ height: 1, background: "rgba(255,255,255,0.06)", margin: "2px 0" }}/>
-                          <button onClick={() => { handleDelete(room.id); setMenuOpenId(null); }}
-                            className="w-full flex items-center gap-2 px-3 py-1.5 text-[12px] transition hover:bg-red-500/10" style={{ color: "#f87171" }}>
-                            <Icon name="Trash2" size={13}/> Удалить
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
+                  varPickerOpen={varPickerOpen}
+                  varPickerRef={varPickerRef}
+                  onOpenVarPicker={async () => {
+                    if (varPickerRoomId === room.id) { setVarPickerRoomId(null); return; }
+                    const list = await loadVariants(room.id);
+                    const activeId = list.find(v => v.is_active)?.id ?? null;
+                    setVariantsByRoom(prev => ({ ...prev, [room.id]: list }));
+                    setActiveVarByRoom(prev => ({ ...prev, [room.id]: activeId }));
+                    setVarPickerRoomId(room.id);
+                  }}
+                  variantsForRoom={variantsByRoom[room.id] ?? variants}
+                  variantsLoading={variantsLoading}
+                  activeVariantId={activeVarByRoom[room.id] ?? null}
+                  onSelectVariant={v => {
+                    setActiveVarByRoom(prev => ({ ...prev, [room.id]: v.id }));
+                    setVariantsByRoom(prev => ({
+                      ...prev,
+                      [room.id]: (prev[room.id] ?? []).map(x => ({ ...x, is_active: x.id === v.id })),
+                    }));
+                    updateVariant(v.id, { is_active: true });
+                    setVarPickerRoomId(null);
+                  }}
+                  onLoadVariant={v => { onOpenRoom({ ...room, data: v.data }); setVarPickerRoomId(null); }}
+                  onDeleteVariant={async id => {
+                    await deleteVariant(id, room.id);
+                    if (activeVarByRoom[room.id] === id) setActiveVarByRoom(prev => ({ ...prev, [room.id]: null }));
+                    const refreshed = await loadVariants(room.id);
+                    setVariantsByRoom(prev => ({ ...prev, [room.id]: refreshed }));
+                  }}
+                  onRenameVariant={(id, name) => {
+                    updateVariant(id, { name });
+                    setVariantsByRoom(prev => ({
+                      ...prev,
+                      [room.id]: (prev[room.id] ?? []).map(v => v.id === id ? { ...v, name } : v),
+                    }));
+                  }}
+                  onCloseVarPicker={() => setVarPickerRoomId(null)}
+                />
               );
             })}
 
