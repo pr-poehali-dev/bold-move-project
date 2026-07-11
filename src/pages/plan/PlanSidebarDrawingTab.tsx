@@ -8,6 +8,7 @@ import DrawingTabShapeSection from "./DrawingTabShapeSection";
 import DrawingTabSidesSection from "./DrawingTabSidesSection";
 import DrawingTabAnglesSection from "./DrawingTabAnglesSection";
 import DrawingTabDiagonalsSection from "./DrawingTabDiagonalsSection";
+import { QuickVisibilityBar } from "./PlanSidebarShared";
 
 interface Props {
   state: PlanState;
@@ -302,6 +303,11 @@ export default function DrawingTab({ state, onChange, onSectionOpen, noAutoOpen 
 
   return (
     <div>
+      <QuickVisibilityBar items={[
+        { label: "Стороны",   icon: "Ruler",        iconColor: "#60a5fa", visible: settings.showSegmentLabels, onToggle: () => updateSettings({ showSegmentLabels: !settings.showSegmentLabels }) },
+        { label: "Углы",      icon: "Angle",        iconColor: "#fbbf24", visible: settings.showAngleLabels,   onToggle: () => updateSettings({ showAngleLabels: !settings.showAngleLabels }) },
+        { label: "Диагонали", icon: "ArrowUpRight", iconColor: "#f97316", visible: settings.showDiagonals,     onToggle: () => updateSettings({ showDiagonals: !settings.showDiagonals }) },
+      ]} />
       <DrawingTabShapeSection
         state={state}
         onChange={onChange}

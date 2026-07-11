@@ -56,6 +56,30 @@ export function Section({
   );
 }
 
+// ─── Быстрые переключатели видимости (Стороны / Углы / Диагонали) ─────────────
+export function QuickVisibilityBar({ items }: {
+  items: { label: string; icon: string; iconColor: string; visible: boolean; onToggle: () => void }[];
+}) {
+  return (
+    <div className="flex items-center gap-1.5 px-3 py-2 border-b border-white/[0.06]">
+      {items.map(it => (
+        <button
+          key={it.label}
+          onClick={it.onToggle}
+          title={`${it.visible ? "Скрыть" : "Показать"}: ${it.label}`}
+          className={`flex-1 flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-lg text-[11px] font-semibold transition ${
+            it.visible ? "bg-white/[0.06] text-white/70" : "bg-white/[0.02] text-white/25"
+          } hover:bg-white/10`}
+        >
+          <Icon name={it.icon} size={12} style={{ color: it.visible ? it.iconColor : "currentColor" }} />
+          <span className="hidden sm:inline">{it.label}</span>
+          <Icon name={it.visible ? "Eye" : "EyeOff"} size={11} className={it.visible ? "text-white/45" : "text-white/20"} />
+        </button>
+      ))}
+    </div>
+  );
+}
+
 // ─── Строка длины ─────────────────────────────────────────────────────────────
 export function LengthRow({
   label, valueCm, placeholder, visible,
