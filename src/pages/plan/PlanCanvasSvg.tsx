@@ -347,6 +347,7 @@ export default function PlanCanvasSvg({
               e.stopPropagation();
               executeMoveToSeg(toSegId);
             },
+            onSegmentMouseDown: undefined, // при переносе товара между стенами drag-select выделения не нужен
           } : handlers)}
 
           {segments.map(seg => renderDimLine(seg, ctx))}

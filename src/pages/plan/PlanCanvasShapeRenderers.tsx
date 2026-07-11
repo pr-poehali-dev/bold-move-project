@@ -110,7 +110,7 @@ export function renderPoints(ctx: RenderContext, handlers: SegmentHandlers) {
 
 // ── Рендер отрезков (зоны клика) ─────────────────────────────────────────────
 
-export function renderSegments(ctx: RenderContext, handlers: Pick<SegmentHandlers, "onSegmentClick" | "onSegmentCtxMenu">) {
+export function renderSegments(ctx: RenderContext, handlers: Pick<SegmentHandlers, "onSegmentClick" | "onSegmentCtxMenu" | "onSegmentMouseDown">) {
   const { points, segments, tool, selectedSegmentIds, intersectingSegIds, changedSegmentIds, zoom, isClosed, isDraggingWallItem } = ctx;
   const z = zoom ?? 1;
   const selIds = selectedSegmentIds ?? [];
@@ -129,9 +129,11 @@ export function renderSegments(ctx: RenderContext, handlers: Pick<SegmentHandler
     return (
       <g key={seg.id}>
         <line x1={a.x} y1={a.y} x2={b.x} y2={b.y} stroke="transparent" strokeWidth={hitW}
+          data-seg-id={seg.id}
           style={{ cursor: "pointer" }}
           onClick={e => handlers.onSegmentClick(e, seg.id)}
           onContextMenu={e => handlers.onSegmentCtxMenu(e, seg.id)}
+          onMouseDown={e => handlers.onSegmentMouseDown?.(e, seg.id)}
         />
         {/* Тащим стеновой товар — подсвечиваем ВСЕ стены слабым красным свечением, чтобы было видно куда нести */}
         {isDraggingWallItem && !isSel && (

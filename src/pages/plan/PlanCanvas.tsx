@@ -40,13 +40,14 @@ export default function PlanCanvas({ state, eventState, onChange, onReplace, onO
 
   // ── Handlers для рендерера ────────────────────────────────────────────────
   const handlers: SegmentHandlers = {
-    onSegmentClick:   events.handleSegmentClick,
-    onSegmentCtxMenu: events.handleSegmentCtxMenu,
-    onDimLineClick:   events.handleDimLineClick,
-    onDiagonalClick:  events.handleDiagonalClick,
-    onPointClick:     events.handlePointClick,
-    onPointMouseDown: events.handlePointMouseDown,
-    onPointCtxMenu:   events.handlePointCtxMenu,
+    onSegmentClick:     events.handleSegmentClick,
+    onSegmentCtxMenu:   events.handleSegmentCtxMenu,
+    onDimLineClick:     events.handleDimLineClick,
+    onDiagonalClick:    events.handleDiagonalClick,
+    onPointClick:       events.handlePointClick,
+    onPointMouseDown:   events.handlePointMouseDown,
+    onPointCtxMenu:     events.handlePointCtxMenu,
+    onSegmentMouseDown: events.handleSegmentMouseDown,
   };
 
   return (

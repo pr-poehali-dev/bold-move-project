@@ -32,6 +32,10 @@ export function usePlanCanvasEvents({ state, onChange, onReplace, cs, onStartEdi
   // Двойной тап по стене → открыть ввод длины
   const lastSegTapRef = useRef<{ id: string; time: number } | null>(null);
 
+  // ПК: "покраска" выделения — зажали кнопку на стене, ведём мышь по соседним стенам
+  // без отпускания — каждая стена под курсором добавляется/убирается тем же режимом.
+  const dragSelectRef = useRef<{ mode: "add" | "remove"; visited: Set<string> } | null>(null);
+
   const {
     points, segments, diagonals, dimLines,
     isClosed, settings, tool, phase,
@@ -120,6 +124,25 @@ export function usePlanCanvasEvents({ state, onChange, onReplace, cs, onStartEdi
       onChange({ settings: { ...settings, panX: panRef.current.origPanX + dx, panY: panRef.current.origPanY + dy } });
       return;
     }
+    // ПК: "покраска" выделения стен — кнопка мыши зажата, курсор ведут по соседним стенам
+    if (dragSelectRef.current) {
+      const el = document.elementFromPoint(e.clientX, e.clientY) as HTMLElement | null;
+      const segId = el?.getAttribute("data-seg-id");
+      if (segId && !dragSelectRef.current.visited.has(segId)) {
+        dragSelectRef.current.visited.add(segId);
+        const mode = dragSelectRef.current.mode;
+        const prev = selectedSegmentIdsRef.current;
+        const already = prev.includes(segId);
+        if (mode === "add" && !already) {
+          const next = [...prev, segId];
+          onChange({ selectedSegmentIds: next, selectedSegmentId: segId });
+        } else if (mode === "remove" && already) {
+          const next = prev.filter(id => id !== segId);
+          onChange({ selectedSegmentIds: next, selectedSegmentId: next.length > 0 ? next[next.length - 1] : null });
+        }
+      }
+      return;
+    }
     if (tool === "draw" && phase === "draw" && !isClosed) {
       const raw = clientToSvg(e.clientX, e.clientY);
       const { x, y } = applySnap(raw.x, raw.y);
@@ -184,6 +207,9 @@ export function usePlanCanvasEvents({ state, onChange, onReplace, cs, onStartEdi
     // Если был drag — фиксируем финальное состояние в историю (один шаг undo)
     if (dragRef.current) onChange({ points, segments, diagonals });
     dragRef.current = null; panRef.current = null; isPanning.current = false;
+    // dragSelectRef сбрасываем НЕ сразу — браузер после mouseup ещё пришлёт "click"
+    // по тому же сегменту, и handleSegmentClick должен успеть увидеть что drag-select был активен.
+    if (dragSelectRef.current) setTimeout(() => { dragSelectRef.current = null; }, 0);
   }, [dragRef, panRef, isPanning, onChange, points, segments, diagonals]);
 
   // ════════════════════════════════════════════════════════════════════════
@@ -683,6 +709,10 @@ export function usePlanCanvasEvents({ state, onChange, onReplace, cs, onStartEdi
       if (seg) onChange({ segments: segments.map(s => s.id === segId ? { ...s, arcRadius: (seg.arcRadius + 15) % 90 } : s) });
       return;
     }
+    // ПК: mousedown-обработчик (handleSegmentMouseDown) уже применил toggle для этой стены —
+    // браузер после mousedown+mouseup на одном элементе всегда шлёт ещё и click,
+    // повторное применение здесь отменило бы только что сделанный выбор.
+    if (dragSelectRef.current) return;
     const prev = selectedSegmentIdsRef.current;
     const isSelected = prev.includes(segId);
     const next = isSelected ? prev.filter(id => id !== segId) : [...prev, segId];
@@ -694,6 +724,27 @@ export function usePlanCanvasEvents({ state, onChange, onReplace, cs, onStartEdi
       selectedArcId: null,
     });
   }, [tool, segments, state.selectedSegmentIds, onChange, setCtxMenu]);
+
+  // ПК: зажали кнопку мыши на стене — запоминаем режим "покраски" (добавить/убрать)
+  // по текущему состоянию ЭТОЙ стены, и сразу применяем его к ней самой.
+  // Дальше handleMouseMove подхватывает соседние стены под курсором тем же режимом,
+  // пока кнопка не отпущена (см. handleMouseUp).
+  const handleSegmentMouseDown = useCallback((e: React.MouseEvent, segId: string) => {
+    if (e.button !== 0 || e.altKey) return; // только левая кнопка, без Alt (тот — для pan)
+    if (Date.now() - lastTouchEndRef.current < 350) return; // игнорируем синтетический mousedown после тача (мобиле)
+    if (tool === "delete" || tool === "arc") return; // в этих режимах click работает как раньше
+    const prev = selectedSegmentIdsRef.current;
+    const mode: "add" | "remove" = prev.includes(segId) ? "remove" : "add";
+    dragSelectRef.current = { mode, visited: new Set([segId]) };
+    const next = mode === "add" ? [...prev, segId] : prev.filter(id => id !== segId);
+    onChange({
+      selectedSegmentIds: next,
+      selectedSegmentId: next.length > 0 ? next[next.length - 1] : null,
+      selectedPointId: null,
+      selectedDiagonalId: null,
+      selectedArcId: null,
+    });
+  }, [tool, onChange]);
 
   const handleSegmentCtxMenu = useCallback((e: React.MouseEvent, segId: string) => {
     e.preventDefault(); e.stopPropagation();
@@ -763,6 +814,7 @@ export function usePlanCanvasEvents({ state, onChange, onReplace, cs, onStartEdi
     handlePointCtxMenu,
     handlePointMouseDown,
     handleSegmentClick,
+    handleSegmentMouseDown,
     handleSegmentCtxMenu,
     handleDiagonalClick,
     handleDimLineClick,

@@ -43,6 +43,8 @@ export interface SegmentHandlers {
   onPointClick: (e: React.MouseEvent, pointId: string) => void;
   onPointMouseDown: (e: React.MouseEvent, pointId: string) => void;
   onPointCtxMenu: (e: React.MouseEvent, pointId: string) => void;
+  /** ПК: зажали кнопку мыши на стене — начало "покраски" выделения по нескольким стенам */
+  onSegmentMouseDown?: (e: React.MouseEvent, segId: string) => void;
 }
 
 // ── CtxItem ───────────────────────────────────────────────────────────────────
