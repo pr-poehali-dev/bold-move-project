@@ -324,6 +324,8 @@ export interface AuthUser {
   telegram?:          string | null;
   tg_bot_token?:      string | null;
   tg_notify_chat_id?: string | null;
+  /** false — пользователь вошёл через соцсеть впервые и ещё не выбрал роль (показываем модалку выбора роли) */
+  role_selected?: boolean;
 }
 
 // Бизнес-роли: требуют одобрения, получают доступ к CRM

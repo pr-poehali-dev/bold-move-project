@@ -4,6 +4,8 @@ import Icon from "@/components/ui/icon";
 import TermsModal from "@/components/TermsModal";
 import PersonalDataModal from "@/components/PersonalDataModal";
 import DisclaimerModal from "@/components/DisclaimerModal";
+import SocialLoginButtons from "@/components/SocialLoginButtons";
+import { ROLE_OPTIONS } from "@/components/roleOptions";
 import func2url from "@/../backend/func2url.json";
 
 const AUTH_URL = (func2url as Record<string, string>)["auth"];
@@ -14,23 +16,6 @@ interface Props {
   onPending?: (role: string) => void;
   onSuccess?: () => void;
 }
-
-type RoleOption = {
-  value: UserRole;
-  label: string;
-  icon: string;
-  desc: string;
-  color: string;
-  benefit: string;
-};
-
-const ROLE_OPTIONS: RoleOption[] = [
-  { value: "client",    label: "Клиент",    icon: "Home",      desc: "Хочу натяжные потолки",    color: "#f97316", benefit: "Получите смету за 30 секунд и контролируйте каждый этап монтажа" },
-  { value: "designer",  label: "Дизайнер",  icon: "Pencil",    desc: "Работаю с интерьерами",    color: "#a78bfa", benefit: "Партнёрская программа — зарабатывайте на каждом клиенте" },
-  { value: "foreman",   label: "Прораб",    icon: "HardHat",   desc: "Веду строительные проекты", color: "#34d399", benefit: "Партнёрская программа — получайте бонус с каждого объекта" },
-  { value: "installer", label: "Монтажник", icon: "Wrench",    desc: "Монтирую натяжные потолки", color: "#60a5fa", benefit: "Свой бизнес под ключ: CRM, AI-агент и поток заявок — всё готово" },
-  { value: "company",   label: "Компания",  icon: "Building2", desc: "Продаю и монтирую потолки", color: "#f59e0b", benefit: "Масштабируйте команду: CRM, аналитика и AI работают за вас" },
-];
 
 const isValidEmail = (v: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.trim());
 const isValidPhone = (v: string) => v.replace(/\D/g, "").length >= 11;
@@ -405,6 +390,8 @@ export default function AuthModal({ onClose, defaultTab = "login", onPending, on
                   </span>
                 : tab === "login" ? "Войти" : isBusiness ? "Отправить заявку на доступ" : "Зарегистрироваться"}
             </button>
+
+            {tab === "login" && <SocialLoginButtons />}
 
             <p className="text-center text-[11px] text-white/25">
               {tab === "login" ? "Нет аккаунта? " : "Уже есть аккаунт? "}

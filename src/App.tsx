@@ -28,8 +28,17 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import { AuthProvider } from "@/context/AuthContext";
+import { AuthProvider, useAuth } from "@/context/AuthContext";
 import { BrandProvider } from "@/context/BrandContext";
+import RoleSelectModal from "@/components/RoleSelectModal";
+
+// Показывает модалку выбора роли новому соц-пользователю (role_selected === false),
+// поверх любой страницы — модалка не закрывается без выбора.
+function RoleGate() {
+  const { user } = useAuth();
+  if (user && user.role_selected === false) return <RoleSelectModal />;
+  return null;
+}
 
 const Index       = lazy(() => import("./pages/Index"));
 const AdminPanel  = lazy(() => import("./pages/AdminPanel"));
@@ -44,6 +53,8 @@ const PlanSharePage = lazy(() => import("./pages/PlanSharePage"));
 const CrmPage       = lazy(() => import("./pages/CrmPage"));
 const LBPage        = lazy(() => import("./pages/LBPage"));
 const BugReportPage = lazy(() => import("./pages/BugReportPage"));
+const GoogleCallback = lazy(() => import("./pages/auth/GoogleCallback"));
+const YandexCallback = lazy(() => import("./pages/auth/YandexCallback"));
 
 const queryClient = new QueryClient();
 
@@ -53,6 +64,7 @@ const App = () => (
       <TooltipProvider>
         <Toaster />
         <Sonner />
+        <RoleGate />
         <BrowserRouter>
           <BrandProvider>
             <ErrorBoundary>
@@ -70,6 +82,8 @@ const App = () => (
                 <Route path="/crm"       element={<CrmPage />} />
                 <Route path="/bug-report" element={<BugReportPage />} />
                 <Route path="/LB"        element={<LBPage />} />
+                <Route path="/auth/google/callback" element={<GoogleCallback />} />
+                <Route path="/auth/yandex/callback" element={<YandexCallback />} />
                 {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                 <Route path="*" element={<NotFound />} />
               </Routes>
