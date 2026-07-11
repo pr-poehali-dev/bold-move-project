@@ -36,6 +36,7 @@ export default function MobileToolbar(props: ToolbarProps) {
     { key: "showAngleLabels",   label: "Углы",            icon: "Angle"          },
     { key: "showDiagonals",     label: "Диагонали",       icon: "ArrowUpRight"   },
     { key: "showDimLines",      label: "Размерные линии", icon: "ArrowLeftRight" },
+    { key: "autoOpenCatalogOnSelect", label: "Авто-каталог", icon: "PackageOpen" },
   ];
 
   const activeToolDef = ALL_TOOLS_MENU.find(t => t.id === tool);

@@ -28,6 +28,7 @@ export default function PlanToolbar(props: ToolbarProps) {
     settings.showGrid, settings.showPoints,
     settings.showDimLines, settings.showSegmentLabels,
     settings.showAngleLabels, settings.showDiagonals, settings.showPointLabels,
+    settings.autoOpenCatalogOnSelect,
   ].filter(Boolean).length;
 
   return (
@@ -102,6 +103,11 @@ export default function PlanToolbar(props: ToolbarProps) {
           onClick={() => onSettingChange({ showDiagonals: !settings.showDiagonals })} />
         <DropItem active={settings.showPointLabels} label="Метки точек" icon="Tag"
           onClick={() => onSettingChange({ showPointLabels: !settings.showPointLabels })} />
+        <div className="px-2 pt-2 pb-0.5">
+          <p className="text-[10px] text-white/30 uppercase tracking-widest font-bold">Взаимодействие</p>
+        </div>
+        <DropItem active={!!settings.autoOpenCatalogOnSelect} label="Авто-открытие каталога" icon="PackageOpen"
+          onClick={() => onSettingChange({ autoOpenCatalogOnSelect: !settings.autoOpenCatalogOnSelect })} />
       </DropUp>
 
       <Sep />

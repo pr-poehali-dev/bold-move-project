@@ -13,10 +13,11 @@ interface Params {
   onReplace: (patch: Partial<PlanState>) => void; // replace без записи в историю (для drag)
   cs: PlanCanvasState;
   onStartEditSeg?: (segId: string) => void; // двойной тап по стене → открыть ввод длины
+  onAutoOpenCatalog?: () => void; // выбрали стену и включена настройка автооткрытия каталога
 }
 
 /** Хук: все обработчики событий холста (mouse, touch, wheel, keyboard) */
-export function usePlanCanvasEvents({ state, onChange, onReplace, cs, onStartEditSeg }: Params) {
+export function usePlanCanvasEvents({ state, onChange, onReplace, cs, onStartEditSeg, onAutoOpenCatalog }: Params) {
   const {
     svgRef, dragRef, nearbyPtRef, touchStartTimeRef, panRef, pinchRef, isPanning, didMoveRef,
     longPressRef, longPressPos, setVibrated,
@@ -148,6 +149,7 @@ export function usePlanCanvasEvents({ state, onChange, onReplace, cs, onStartEdi
         if (mode === "add" && !already) {
           const next = [...prev, segId];
           onChange({ selectedSegmentIds: next, selectedSegmentId: segId });
+          if (settings.autoOpenCatalogOnSelect) onAutoOpenCatalog?.();
         } else if (mode === "remove" && already) {
           const next = prev.filter(id => id !== segId);
           onChange({ selectedSegmentIds: next, selectedSegmentId: next.length > 0 ? next[next.length - 1] : null });
@@ -205,7 +207,7 @@ export function usePlanCanvasEvents({ state, onChange, onReplace, cs, onStartEdi
       // replace — не добавляет в историю, drag завершится push'ем в handleMouseUp
       onReplace({ points: newPts, segments: newSegs, diagonals: buildAutoDiagonals(newPts, diagonals, state.baseScale ?? null, true) });
     }
-  }, [tool, phase, isClosed, points, segments, dimLineFrom, clientToSvg, applySnap, diagonals, onChange, onReplace, settings, zoom, panRef, dragRef, setGhost, setDeleteHover, setLassoPath]);
+  }, [tool, phase, isClosed, points, segments, dimLineFrom, clientToSvg, applySnap, diagonals, onChange, onReplace, settings, zoom, panRef, dragRef, setGhost, setDeleteHover, setLassoPath, onAutoOpenCatalog]);
 
   const handleMouseDown = useCallback((e: React.MouseEvent<SVGSVGElement>) => {
     if (e.button === 1 || e.button === 2 || (e.button === 0 && e.altKey)) {
@@ -438,6 +440,7 @@ export function usePlanCanvasEvents({ state, onChange, onReplace, cs, onStartEdi
           } else {
             // Выбираем все стены
             onChange({ selectedSegmentIds: segments.map(s => s.id), selectedSegmentId: segments[segments.length - 1]?.id ?? null, selectedPointId: null, selectedDiagonalId: null });
+            if (settings.autoOpenCatalogOnSelect) onAutoOpenCatalog?.();
           }
           lastTouchEndRef.current = Date.now();
           return;
@@ -526,6 +529,7 @@ export function usePlanCanvasEvents({ state, onChange, onReplace, cs, onStartEdi
           const isSelected2 = prev2.includes(hitSeg.id);
           const next2 = isSelected2 ? prev2.filter(id => id !== hitSeg.id) : [...prev2, hitSeg.id];
           onChange({ selectedSegmentIds: next2, selectedSegmentId: next2.length > 0 ? next2[next2.length - 1] : null, selectedPointId: null });
+          if (!isSelected2 && settings.autoOpenCatalogOnSelect) onAutoOpenCatalog?.();
         }
         dragRef.current = null; panRef.current = null;
         return;
@@ -570,7 +574,8 @@ export function usePlanCanvasEvents({ state, onChange, onReplace, cs, onStartEdi
     lastTouchEndRef.current = Date.now();
   }, [tool, phase, isClosed, points, segments, diagonals, dimLines, dimLineFrom,
       clientToSvg, applySnap, onChange, onReplace, clearLongPress,
-      pinchRef, panRef, dragRef, nearbyPtRef, didMoveRef, setDimLineFrom, zoom]);
+      pinchRef, panRef, dragRef, nearbyPtRef, didMoveRef, setDimLineFrom, zoom,
+      settings.autoOpenCatalogOnSelect, onAutoOpenCatalog, onStartEditSeg]);
 
   // ── Wheel zoom ────────────────────────────────────────────────────────────
   // Зумим "от точки под курсором": берём SVG-координату точки под мышью ДО
@@ -754,7 +759,8 @@ export function usePlanCanvasEvents({ state, onChange, onReplace, cs, onStartEdi
       selectedDiagonalId: null,
       selectedArcId: null,
     });
-  }, [tool, segments, state.selectedSegmentIds, onChange, setCtxMenu]);
+    if (!isSelected && settings.autoOpenCatalogOnSelect) onAutoOpenCatalog?.();
+  }, [tool, segments, state.selectedSegmentIds, onChange, setCtxMenu, settings.autoOpenCatalogOnSelect, onAutoOpenCatalog]);
 
   // ПК: зажали кнопку мыши на стене — запоминаем режим "покраски" (добавить/убрать)
   // по текущему состоянию ЭТОЙ стены, и сразу применяем его к ней самой.
@@ -776,7 +782,8 @@ export function usePlanCanvasEvents({ state, onChange, onReplace, cs, onStartEdi
       selectedDiagonalId: null,
       selectedArcId: null,
     });
-  }, [tool, onChange, clientToSvg, setLassoPath]);
+    if (mode === "add" && settings.autoOpenCatalogOnSelect) onAutoOpenCatalog?.();
+  }, [tool, onChange, clientToSvg, setLassoPath, settings.autoOpenCatalogOnSelect, onAutoOpenCatalog]);
 
   const handleSegmentCtxMenu = useCallback((e: React.MouseEvent, segId: string) => {
     e.preventDefault(); e.stopPropagation();
@@ -829,7 +836,8 @@ export function usePlanCanvasEvents({ state, onChange, onReplace, cs, onStartEdi
       selectedPointId: null,
       selectedDiagonalId: null,
     });
-  }, [isClosed, segments, onChange]);
+    if (segments.length > 0 && settings.autoOpenCatalogOnSelect) onAutoOpenCatalog?.();
+  }, [isClosed, segments, onChange, settings.autoOpenCatalogOnSelect, onAutoOpenCatalog]);
 
   return {
     clientToSvg,
