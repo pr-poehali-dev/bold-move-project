@@ -51,7 +51,7 @@ export default function PlanCatalogPanel({
   isMobile,
   onRegisterVoiceHandler,
 }: Props) {
-  const [showListMode, setShowListMode] = useState(false);
+  const [showListMode, setShowListMode] = useState(!isMobile);
 
   const {
     pendingWall,
