@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import CategoryDrumPanel from "./CategoryDrumPanel";
 import type { PriceEntry } from "./CategoryDrumPanel";
 import type { PlanState, SegmentPriceItem } from "./planTypes";
@@ -52,6 +52,12 @@ export default function PlanCatalogPanel({
   onRegisterVoiceHandler,
 }: Props) {
   const [showListMode, setShowListMode] = useState(!isMobile);
+
+  // При каждом открытии каталога на ПК — снова показываем список по умолчанию
+  // (иначе после первого закрытия списка без выбора состояние "барабан" оставалось навсегда)
+  useEffect(() => {
+    if (open && !isMobile) setShowListMode(true);
+  }, [open, isMobile]);
 
   const {
     pendingWall,
