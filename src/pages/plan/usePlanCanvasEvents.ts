@@ -522,12 +522,34 @@ export function usePlanCanvasEvents({ state, onChange, onReplace, cs, onStartEdi
       pinchRef, panRef, dragRef, nearbyPtRef, didMoveRef, setDimLineFrom, zoom]);
 
   // ── Wheel zoom ────────────────────────────────────────────────────────────
+  // Зумим "от точки под курсором": берём SVG-координату точки под мышью ДО
+  // изменения zoom, затем подбираем panX/panY так, чтобы эта же точка снова
+  // оказалась под курсором ПОСЛЕ зума. Без этого чертёж "уезжает" при скролле.
   const handleWheel = useCallback((e: WheelEvent) => {
     e.preventDefault();
     const delta = e.deltaY > 0 ? -0.1 : 0.1;
     const newZoom = Math.max(0.3, Math.min(10, Math.round((zoom + delta) * 10) / 10));
-    onChange({ settings: { ...settings, zoom: newZoom } });
-  }, [zoom, settings, onChange]);
+    if (newZoom === zoom) return;
+
+    const svg = svgRef.current;
+    if (!svg) {
+      onChange({ settings: { ...settings, zoom: newZoom } });
+      return;
+    }
+    const rect = svg.getBoundingClientRect();
+    const mousePixelX = e.clientX - rect.left;
+    const mousePixelY = e.clientY - rect.top;
+
+    // Точка под курсором в координатах чертежа (до зума)
+    const svgX = mousePixelX / zoom - panX;
+    const svgY = mousePixelY / zoom - panY;
+
+    // Подбираем pan так, чтобы та же точка осталась под курсором (после зума)
+    const newPanX = mousePixelX / newZoom - svgX;
+    const newPanY = mousePixelY / newZoom - svgY;
+
+    onChange({ settings: { ...settings, zoom: newZoom, panX: newPanX, panY: newPanY } });
+  }, [zoom, panX, panY, settings, onChange, svgRef]);
 
   // Ref для актуального handleTouchMove (чтобы не пересоздавать listener)
   const touchMoveRef = useRef<(e: TouchEvent) => void>(() => {});
