@@ -245,7 +245,12 @@ export default function CalcTab({
                           onDragItemStart(spItem, e.clientX, e.clientY);
                         }}
                         className="flex items-center gap-2.5 flex-1 min-w-0"
-                        style={{ cursor: onDragItemStart ? "grab" : hasPopupFns ? "pointer" : "default", touchAction: "none" }}
+                        style={{
+                          cursor: onDragItemStart ? "grab" : hasPopupFns ? "pointer" : "default",
+                          touchAction: "none",
+                          userSelect: "none",
+                          WebkitUserSelect: "none",
+                        }}
                       >
                         {/* Картинка */}
                         <div className="w-8 h-8 rounded-lg flex-shrink-0 overflow-hidden flex items-center justify-center"
