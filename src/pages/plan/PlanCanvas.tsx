@@ -80,6 +80,7 @@ export default function PlanCanvas({ state, eventState, onChange, onReplace, onO
         editingSegId={editingSegId}
         onSetEditingSegId={setEditingSegId}
         isDraggingWallItem={isDraggingWallItem}
+        lassoPath={cs.lassoPath}
       />
 
       <PlanCanvasOverlay

@@ -49,6 +49,9 @@ export function usePlanCanvasState(tool: string) {
   // ── Long-press индикатор (координаты экрана) ─────────────────────────────
   const [lpIndicator, setLpIndicator] = React.useState<{ x: number; y: number } | null>(null);
 
+  // ── Линия "покраски" выделения стен (ПК, зажатая кнопка мыши) — SVG-координаты
+  const [lassoPath, setLassoPath] = React.useState<{ x: number; y: number }[] | null>(null);
+
   // Сбрасываем dimLineFrom при смене инструмента
   useEffect(() => {
     if (tool !== "dimline") setDimLineFrom(null);
@@ -89,6 +92,7 @@ export function usePlanCanvasState(tool: string) {
     ctxMenu, setCtxMenu,
     lpIndicator,
     deleteHover, setDeleteHover,
+    lassoPath, setLassoPath,
   };
 }
 

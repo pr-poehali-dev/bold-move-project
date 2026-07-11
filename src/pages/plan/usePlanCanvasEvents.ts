@@ -21,6 +21,7 @@ export function usePlanCanvasEvents({ state, onChange, onReplace, cs, onStartEdi
     svgRef, dragRef, nearbyPtRef, touchStartTimeRef, panRef, pinchRef, isPanning, didMoveRef,
     longPressRef, longPressPos, setVibrated,
     setGhost, dimLineFrom, setDimLineFrom, setCtxMenu, setDeleteHover,
+    setLassoPath,
   } = cs;
 
   // Блокируем mouse-click после touch чтобы избежать двойного вызова
@@ -124,8 +125,12 @@ export function usePlanCanvasEvents({ state, onChange, onReplace, cs, onStartEdi
       onChange({ settings: { ...settings, panX: panRef.current.origPanX + dx, panY: panRef.current.origPanY + dy } });
       return;
     }
-    // ПК: "покраска" выделения стен — кнопка мыши зажата, курсор ведут по соседним стенам
+    // ПК: "покраска" выделения стен — кнопка мыши зажата, курсор ведут по соседним стенам.
+    // Рисуем произвольную линию-след за курсором (см. lassoPath) и отмечаем стены под ней.
     if (dragSelectRef.current) {
+      const svgPt = clientToSvg(e.clientX, e.clientY);
+      setLassoPath(prev => (prev ? [...prev, svgPt] : [svgPt]));
+
       const el = document.elementFromPoint(e.clientX, e.clientY) as HTMLElement | null;
       const segId = el?.getAttribute("data-seg-id");
       if (segId && !dragSelectRef.current.visited.has(segId)) {
@@ -193,7 +198,7 @@ export function usePlanCanvasEvents({ state, onChange, onReplace, cs, onStartEdi
       // replace — не добавляет в историю, drag завершится push'ем в handleMouseUp
       onReplace({ points: newPts, segments: newSegs, diagonals: buildAutoDiagonals(newPts, diagonals, state.baseScale ?? null, true) });
     }
-  }, [tool, phase, isClosed, points, segments, dimLineFrom, clientToSvg, applySnap, diagonals, onChange, onReplace, settings, zoom, panRef, dragRef, setGhost, setDeleteHover]);
+  }, [tool, phase, isClosed, points, segments, dimLineFrom, clientToSvg, applySnap, diagonals, onChange, onReplace, settings, zoom, panRef, dragRef, setGhost, setDeleteHover, setLassoPath]);
 
   const handleMouseDown = useCallback((e: React.MouseEvent<SVGSVGElement>) => {
     if (e.button === 1 || e.button === 2 || (e.button === 0 && e.altKey)) {
@@ -207,10 +212,12 @@ export function usePlanCanvasEvents({ state, onChange, onReplace, cs, onStartEdi
     // Если был drag — фиксируем финальное состояние в историю (один шаг undo)
     if (dragRef.current) onChange({ points, segments, diagonals });
     dragRef.current = null; panRef.current = null; isPanning.current = false;
+    // Линию-след убираем сразу — визуально она не нужна после отпускания кнопки
+    setLassoPath(null);
     // dragSelectRef сбрасываем НЕ сразу — браузер после mouseup ещё пришлёт "click"
     // по тому же сегменту, и handleSegmentClick должен успеть увидеть что drag-select был активен.
     if (dragSelectRef.current) setTimeout(() => { dragSelectRef.current = null; }, 0);
-  }, [dragRef, panRef, isPanning, onChange, points, segments, diagonals]);
+  }, [dragRef, panRef, isPanning, onChange, points, segments, diagonals, setLassoPath]);
 
   // ════════════════════════════════════════════════════════════════════════
   // TOUCH EVENTS
@@ -608,6 +615,10 @@ export function usePlanCanvasEvents({ state, onChange, onReplace, cs, onStartEdi
   const handleCanvasClick = useCallback((e: React.MouseEvent<SVGSVGElement>) => {
     if (isPanning.current) return;
     if (Date.now() - lastTouchEndRef.current < 350) return;
+    // После drag-select (покраска стен зажатой кнопкой) браузер шлёт финальный click,
+    // который может попасть на пустой фон (если отпустили не точно над стеной) —
+    // такой click НЕ должен сбрасывать только что сделанное выделение стен.
+    if (dragSelectRef.current) return;
     setCtxMenu(null);
     const isCanvas = e.target === svgRef.current || (e.target as Element).classList.contains("canvas-bg");
     // Двойной клик работает в любом месте полигона, не только по пустому фону
@@ -736,6 +747,7 @@ export function usePlanCanvasEvents({ state, onChange, onReplace, cs, onStartEdi
     const prev = selectedSegmentIdsRef.current;
     const mode: "add" | "remove" = prev.includes(segId) ? "remove" : "add";
     dragSelectRef.current = { mode, visited: new Set([segId]) };
+    setLassoPath([clientToSvg(e.clientX, e.clientY)]);
     const next = mode === "add" ? [...prev, segId] : prev.filter(id => id !== segId);
     onChange({
       selectedSegmentIds: next,
@@ -744,7 +756,7 @@ export function usePlanCanvasEvents({ state, onChange, onReplace, cs, onStartEdi
       selectedDiagonalId: null,
       selectedArcId: null,
     });
-  }, [tool, onChange]);
+  }, [tool, onChange, clientToSvg, setLassoPath]);
 
   const handleSegmentCtxMenu = useCallback((e: React.MouseEvent, segId: string) => {
     e.preventDefault(); e.stopPropagation();

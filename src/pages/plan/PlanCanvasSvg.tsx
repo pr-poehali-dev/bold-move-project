@@ -40,6 +40,8 @@ interface Props {
   longPressPos?: React.MutableRefObject<{ clientX: number; clientY: number; type: string; id: string } | null>;
   setCtxMenu?: (v: null) => void;
   isDraggingWallItem?: boolean;
+  /** Линия-след "покраски" выделения стен (ПК, зажатая кнопка мыши) — SVG-координаты */
+  lassoPath?: { x: number; y: number }[] | null;
 }
 
 export default function PlanCanvasSvg({
@@ -47,7 +49,7 @@ export default function PlanCanvasSvg({
   handlers, onMouseMove, onMouseDown, onMouseUp,
   onCanvasClick, onCanvasDblClick, onTouchStart, onTouchMove, onTouchEnd,
   onDimLineClick, deleteHover, onEditFloorItem, onEditSegItem, editingSegId, onSetEditingSegId,
-  didMoveRef, longPressRef, longPressPos, setCtxMenu, isDraggingWallItem,
+  didMoveRef, longPressRef, longPressPos, setCtxMenu, isDraggingWallItem, lassoPath,
 }: Props) {
   const {
     points, segments, diagonals, dimLines,
@@ -404,6 +406,20 @@ export default function PlanCanvasSvg({
               <line x1={deleteHover.x + 6} y1={deleteHover.y - 6} x2={deleteHover.x - 6} y2={deleteHover.y + 6}
                 stroke="rgba(239,68,68,0.9)" strokeWidth={2} strokeLinecap="round" />
             </g>
+          )}
+
+          {/* Линия-след "покраски" выделения стен — повторяет движение мыши */}
+          {lassoPath && lassoPath.length > 1 && (
+            <polyline
+              points={lassoPath.map(p => `${p.x},${p.y}`).join(" ")}
+              fill="none"
+              stroke="#ef4444"
+              strokeWidth={Math.max(1.5, 2.5 / zoom)}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              opacity={0.85}
+              className="pointer-events-none"
+            />
           )}
         </g>
       </svg>
