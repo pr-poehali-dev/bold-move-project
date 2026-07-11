@@ -32,6 +32,10 @@ export default function PlanCanvasArea({
   handleReplace,
   onEditSegItem,
 }: Props) {
+  // Идёт перетаскивание стенового товара (из барабана или карточки снизу/сбоку) — подсвечиваем все стены
+  const draggedItem = catalog.dragItem ?? catalog.dragCardItem;
+  const isDraggingWallItem = !!draggedItem && draggedItem.isWallItem !== false;
+
   return (
     <div className="flex flex-1 overflow-hidden relative min-h-0">
 
@@ -44,6 +48,7 @@ export default function PlanCanvasArea({
           onOpenCatalog={() => catalog.setCatalogOpen(true)}
           onEditFloorItem={catalog.setEditingFloorId}
           onEditSegItem={onEditSegItem ?? ((segId, priceId) => catalog.setEditingSegRef({ segId, priceId }))}
+          isDraggingWallItem={isDraggingWallItem}
         />
         {roomLoading && (
           <div className="absolute inset-0 flex flex-col items-center justify-center z-50"

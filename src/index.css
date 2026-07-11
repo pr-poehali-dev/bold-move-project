@@ -47,6 +47,14 @@
   animation: seg-recalc 1.2s ease-in-out;
 }
 
+@keyframes seg-drag-glow {
+  0%, 100% { opacity: 0.25; }
+  50%      { opacity: 0.55; }
+}
+.seg-drag-pulse {
+  animation: seg-drag-glow 1s ease-in-out infinite;
+}
+
 @keyframes pulse {
   from {
     opacity: 0.6;

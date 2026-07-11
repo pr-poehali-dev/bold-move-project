@@ -39,6 +39,7 @@ interface Props {
   longPressRef?: React.MutableRefObject<ReturnType<typeof setTimeout> | null>;
   longPressPos?: React.MutableRefObject<{ clientX: number; clientY: number; type: string; id: string } | null>;
   setCtxMenu?: (v: null) => void;
+  isDraggingWallItem?: boolean;
 }
 
 export default function PlanCanvasSvg({
@@ -46,7 +47,7 @@ export default function PlanCanvasSvg({
   handlers, onMouseMove, onMouseDown, onMouseUp,
   onCanvasClick, onCanvasDblClick, onTouchStart, onTouchMove, onTouchEnd,
   onDimLineClick, deleteHover, onEditFloorItem, onEditSegItem, editingSegId, onSetEditingSegId,
-  didMoveRef, longPressRef, longPressPos, setCtxMenu,
+  didMoveRef, longPressRef, longPressPos, setCtxMenu, isDraggingWallItem,
 }: Props) {
   const {
     points, segments, diagonals, dimLines,
@@ -282,6 +283,7 @@ export default function PlanCanvasSvg({
     selectedDiagonalId, selectedArcId, selectedDimLineId,
     ghost, dimLineFrom, zoom, phase, intersectingSegIds,
     changedSegmentIds: state.isBuilt ? (state.changedSegmentIds ?? []) : [],
+    isDraggingWallItem,
   };
 
   return (

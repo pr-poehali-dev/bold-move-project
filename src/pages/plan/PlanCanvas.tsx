@@ -14,9 +14,10 @@ interface Props {
   onOpenCatalog?: () => void;
   onEditFloorItem?: (id: string) => void;
   onEditSegItem?: (segId: string, priceId: number) => void;
+  isDraggingWallItem?: boolean;
 }
 
-export default function PlanCanvas({ state, eventState, onChange, onReplace, onOpenCatalog, onEditFloorItem, onEditSegItem }: Props) {
+export default function PlanCanvas({ state, eventState, onChange, onReplace, onOpenCatalog, onEditFloorItem, onEditSegItem, isDraggingWallItem }: Props) {
   const { tool } = state;
 
   // ── Локальные стейты и refs ───────────────────────────────────────────────
@@ -77,6 +78,7 @@ export default function PlanCanvas({ state, eventState, onChange, onReplace, onO
         onEditSegItem={onEditSegItem}
         editingSegId={editingSegId}
         onSetEditingSegId={setEditingSegId}
+        isDraggingWallItem={isDraggingWallItem}
       />
 
       <PlanCanvasOverlay

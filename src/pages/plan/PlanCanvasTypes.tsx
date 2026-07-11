@@ -31,6 +31,8 @@ export interface RenderContext {
   zoom: number;
   phase: string;
   activeInputIndex?: number;
+  /** Идёт перетаскивание стенового товара — подсветить все стены слабым свечением */
+  isDraggingWallItem?: boolean;
 }
 
 export interface SegmentHandlers {
