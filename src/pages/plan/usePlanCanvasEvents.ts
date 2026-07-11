@@ -3,7 +3,7 @@ import type { PlanState, Point, Segment, DimLine } from "./planTypes";
 import {
   snapVal, snapToPoint, orthoPoint, buildAutoDiagonals, genId,
 } from "./planTypes";
-import { PT_HIT, SNAP_THR, CLOSE_THR, DIM_OFF, findNearestSegment, findNearestDiagonal, ptToSegDist } from "./PlanCanvasUtils";
+import { PT_HIT, SNAP_THR, CLOSE_THR, DIM_OFF, findNearestSegment, findNearestDiagonal, ptToSegDist, findSegmentsAlongPath } from "./PlanCanvasUtils";
 import { distPx } from "./planTypes";
 import type { PlanCanvasState } from "./usePlanCanvasState";
 
@@ -38,6 +38,10 @@ export function usePlanCanvasEvents({ state, onChange, onReplace, cs, onStartEdi
   // без отпускания — каждая стена под курсором добавляется/убирается тем же режимом.
   // mode === null пока курсор ещё не коснулся ни одной стены (режим определится по первой встреченной).
   const dragSelectRef = useRef<{ mode: "add" | "remove" | null; visited: Set<string> } | null>(null);
+  // Предыдущая SVG-точка курсора во время покраски — нужна чтобы проверять весь ПУТЬ
+  // курсора между кадрами mousemove (геометрическое пересечение), а не только текущую
+  // точку. Без этого при быстром движении мыши тонкие стены "перепрыгиваются" и не отмечаются.
+  const lastPaintPtRef = useRef<{ x: number; y: number } | null>(null);
 
   const {
     points, segments, diagonals, dimLines,
@@ -131,13 +135,21 @@ export function usePlanCanvasEvents({ state, onChange, onReplace, cs, onStartEdi
     // курсор ведут по стенам. Рисуем произвольную линию-след за курсором (см. lassoPath)
     // и отмечаем стены под ней. Режим (добавить/убрать) определяется по ПЕРВОЙ стене,
     // которую задел курсор — если старт был не на стене, mode ещё не выбран (null).
+    // Проверяем ВЕСЬ путь курсора от прошлого кадра до текущего (геометрическое
+    // пересечение), а не только точку под курсором — иначе при быстром движении
+    // мыши тонкие стены "перепрыгиваются" между двумя mousemove и не отмечаются.
     if (dragSelectRef.current) {
       const svgPt = clientToSvg(e.clientX, e.clientY);
       setLassoPath(prev => (prev ? [...prev, svgPt] : [svgPt]));
 
-      const el = document.elementFromPoint(e.clientX, e.clientY) as HTMLElement | null;
-      const segId = el?.getAttribute("data-seg-id");
-      if (segId && !dragSelectRef.current.visited.has(segId)) {
+      const from = lastPaintPtRef.current ?? svgPt;
+      lastPaintPtRef.current = svgPt;
+      const threshold = Math.max(8, 18 / zoom);
+      const hitSegs = findSegmentsAlongPath(from.x, from.y, svgPt.x, svgPt.y, points, segments, threshold);
+
+      for (const hitSeg of hitSegs) {
+        const segId = hitSeg.id;
+        if (dragSelectRef.current.visited.has(segId)) continue;
         dragSelectRef.current.visited.add(segId);
         const prev = selectedSegmentIdsRef.current;
         const already = prev.includes(segId);
@@ -147,10 +159,12 @@ export function usePlanCanvasEvents({ state, onChange, onReplace, cs, onStartEdi
         }
         const mode = dragSelectRef.current.mode;
         if (mode === "add" && !already) {
-          const next = [...prev, segId];
+          const next = [...selectedSegmentIdsRef.current, segId];
+          selectedSegmentIdsRef.current = next;
           onChange({ selectedSegmentIds: next, selectedSegmentId: segId });
         } else if (mode === "remove" && already) {
-          const next = prev.filter(id => id !== segId);
+          const next = selectedSegmentIdsRef.current.filter(id => id !== segId);
+          selectedSegmentIdsRef.current = next;
           onChange({ selectedSegmentIds: next, selectedSegmentId: next.length > 0 ? next[next.length - 1] : null });
         }
       }
@@ -223,7 +237,9 @@ export function usePlanCanvasEvents({ state, onChange, onReplace, cs, onStartEdi
     if (e.button === 0 && !e.altKey && Date.now() - lastTouchEndRef.current >= 350
       && (tool === "move" || tool === "segment") && !dragSelectRef.current) {
       dragSelectRef.current = { mode: null, visited: new Set() };
-      setLassoPath([clientToSvg(e.clientX, e.clientY)]);
+      const startPt = clientToSvg(e.clientX, e.clientY);
+      lastPaintPtRef.current = startPt;
+      setLassoPath([startPt]);
     }
   }, [panX, panY, panRef, isPanning, tool, clientToSvg, setLassoPath]);
 
@@ -245,6 +261,7 @@ export function usePlanCanvasEvents({ state, onChange, onReplace, cs, onStartEdi
       // по тому же сегменту, и handleSegmentClick должен успеть увидеть что drag-select был активен.
       setTimeout(() => { dragSelectRef.current = null; }, 0);
     }
+    lastPaintPtRef.current = null;
   }, [dragRef, panRef, isPanning, onChange, points, segments, diagonals, setLassoPath, settings.autoOpenCatalogOnSelect, onAutoOpenCatalog]);
 
   // ════════════════════════════════════════════════════════════════════════
@@ -781,7 +798,9 @@ export function usePlanCanvasEvents({ state, onChange, onReplace, cs, onStartEdi
     const prev = selectedSegmentIdsRef.current;
     const mode: "add" | "remove" = prev.includes(segId) ? "remove" : "add";
     dragSelectRef.current = { mode, visited: new Set([segId]) };
-    setLassoPath([clientToSvg(e.clientX, e.clientY)]);
+    const startPt = clientToSvg(e.clientX, e.clientY);
+    lastPaintPtRef.current = startPt;
+    setLassoPath([startPt]);
     const next = mode === "add" ? [...prev, segId] : prev.filter(id => id !== segId);
     onChange({
       selectedSegmentIds: next,

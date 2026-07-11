@@ -39,6 +39,49 @@ export function findNearestSegment(
   return best;
 }
 
+/** Минимальное расстояние между двумя отрезками (px→qy = путь курсора, ax→bx = стена).
+ *  Используется чтобы не пропускать тонкие стены при быстром движении мыши —
+ *  проверяем весь путь курсора между кадрами, а не только точку под курсором. */
+export function segSegDist(
+  p1x: number, p1y: number, p2x: number, p2y: number,
+  q1x: number, q1y: number, q2x: number, q2y: number,
+): number {
+  // Если отрезки пересекаются геометрически — расстояние 0
+  const d1 = ((p2y - p1y) * (q2x - q1x) - (p2x - p1x) * (q2y - q1y));
+  if (Math.abs(d1) > 1e-10) {
+    const t = ((q1x - p1x) * (q2y - q1y) - (q1y - p1y) * (q2x - q1x)) / d1;
+    const u = ((q1x - p1x) * (p2y - p1y) - (q1y - p1y) * (p2x - p1x)) / d1;
+    if (t >= 0 && t <= 1 && u >= 0 && u <= 1) return 0;
+  }
+  // Иначе — минимум из расстояний "точка до отрезка" по всем 4 комбинациям
+  return Math.min(
+    ptToSegDist(p1x, p1y, q1x, q1y, q2x, q2y),
+    ptToSegDist(p2x, p2y, q1x, q1y, q2x, q2y),
+    ptToSegDist(q1x, q1y, p1x, p1y, p2x, p2y),
+    ptToSegDist(q2x, q2y, p1x, p1y, p2x, p2y),
+  );
+}
+
+/** Находит ID всех стен, задетых путём курсора от (fromX,fromY) до (toX,toY)
+ *  в пределах threshold px — гарантирует что стена отметится, даже если между
+ *  двумя кадрами mousemove курсор её "перепрыгнул" при быстром движении. */
+export function findSegmentsAlongPath(
+  fromX: number, fromY: number, toX: number, toY: number,
+  points: Point[],
+  segments: Segment[],
+  threshold: number,
+): Segment[] {
+  const hit: Segment[] = [];
+  for (const seg of segments) {
+    const a = points.find(p => p.id === seg.fromId);
+    const b = points.find(p => p.id === seg.toId);
+    if (!a || !b) continue;
+    const d = segSegDist(fromX, fromY, toX, toY, a.x, a.y, b.x, b.y);
+    if (d < threshold) hit.push(seg);
+  }
+  return hit;
+}
+
 export function findNearestDiagonal(
   x: number, y: number,
   points: Point[],
