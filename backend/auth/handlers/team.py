@@ -24,19 +24,29 @@ def handle(action, method, params, body, token, event, conn, cur):
     if action == "team-list" and method == "GET":
         owner, e = get_owner_or_err()
         if e: return e
-        owner_id, _, _ = owner
-        cur.execute(f"""
-            SELECT id, email, name, phone, role, approved, created_at,
-                   permissions, (temp_password_plain IS NOT NULL) AS has_pending_password
-            FROM {SCHEMA}.users
-            WHERE company_id = %s AND removed_at IS NULL AND id <> %s
-            ORDER BY created_at DESC
-        """, (owner_id, owner_id))
+        owner_id, _, is_master = owner
+        if is_master:
+            # Мастер видит сотрудников всех компаний
+            cur.execute(f"""
+                SELECT id, email, name, phone, role, approved, created_at,
+                       permissions, (temp_password_plain IS NOT NULL) AS has_pending_password, company_id
+                FROM {SCHEMA}.users
+                WHERE role = 'manager' AND removed_at IS NULL
+                ORDER BY created_at DESC
+            """)
+        else:
+            cur.execute(f"""
+                SELECT id, email, name, phone, role, approved, created_at,
+                       permissions, (temp_password_plain IS NOT NULL) AS has_pending_password, company_id
+                FROM {SCHEMA}.users
+                WHERE company_id = %s AND removed_at IS NULL AND id <> %s
+                ORDER BY created_at DESC
+            """, (owner_id, owner_id))
         rows = cur.fetchall()
         return ok({"members": [{
             "id": r[0], "email": r[1], "name": r[2], "phone": r[3],
             "role": r[4], "approved": r[5], "created_at": str(r[6])[:19],
-            "permissions": r[7], "has_pending_password": r[8],
+            "permissions": r[7], "has_pending_password": r[8], "company_id": r[9],
         } for r in rows]})
 
     if action == "team-invite" and method == "POST":
@@ -91,29 +101,30 @@ def handle(action, method, params, body, token, event, conn, cur):
     if action == "team-update-permissions" and method == "POST":
         owner, e = get_owner_or_err()
         if e: return e
-        owner_id, _, _ = owner
+        owner_id, _, is_master = owner
         member_id   = body.get("member_id")
         permissions = body.get("permissions")
         if not member_id or permissions is None:
             return err("member_id и permissions обязательны")
-        cur.execute(f"""
-            UPDATE {SCHEMA}.users SET permissions=%s::jsonb
-            WHERE id=%s AND company_id=%s
-        """, (json.dumps(permissions), int(member_id), owner_id))
+        company_clause = "" if is_master else "AND company_id=%s"
+        params_ = (json.dumps(permissions), int(member_id)) if is_master else (json.dumps(permissions), int(member_id), owner_id)
+        cur.execute(f"UPDATE {SCHEMA}.users SET permissions=%s::jsonb WHERE id=%s {company_clause}", params_)
         conn.commit()
         return ok({"ok": True})
 
     if action == "team-show-password" and method == "POST":
         owner, e = get_owner_or_err()
         if e: return e
-        owner_id, _, _ = owner
+        owner_id, _, is_master = owner
         member_id = body.get("member_id")
         if not member_id:
             return err("member_id обязателен")
+        company_clause = "" if is_master else "AND company_id=%s"
+        params_ = (int(member_id),) if is_master else (int(member_id), owner_id)
         cur.execute(f"""
             SELECT temp_password_plain FROM {SCHEMA}.users
-            WHERE id=%s AND company_id=%s AND removed_at IS NULL
-        """, (int(member_id), owner_id))
+            WHERE id=%s {company_clause} AND removed_at IS NULL
+        """, params_)
         row = cur.fetchone()
         if not row:
             return err("Сотрудник не найден", 404)
@@ -126,30 +137,34 @@ def handle(action, method, params, body, token, event, conn, cur):
     if action == "team-remove" and method == "POST":
         owner, e = get_owner_or_err()
         if e: return e
-        owner_id, _, _ = owner
+        owner_id, _, is_master = owner
         member_id = body.get("member_id")
         if not member_id:
             return err("member_id обязателен")
+        company_clause = "" if is_master else "AND company_id=%s"
+        params_ = (int(member_id),) if is_master else (int(member_id), owner_id)
         cur.execute(f"""
             UPDATE {SCHEMA}.users
             SET removed_at=NOW(), removed_name=name, removed_email=email,
                 email=CONCAT('_removed_', id, '_', email)
-            WHERE id=%s AND company_id=%s AND removed_at IS NULL
-        """, (int(member_id), owner_id))
+            WHERE id=%s {company_clause} AND removed_at IS NULL
+        """, params_)
         conn.commit()
         return ok({"ok": True})
 
     if action == "team-reset-password" and method == "POST":
         owner, e = get_owner_or_err()
         if e: return e
-        owner_id, _, _ = owner
+        owner_id, _, is_master = owner
         member_id = body.get("member_id")
         if not member_id:
             return err("member_id обязателен")
+        company_clause = "" if is_master else "AND company_id=%s"
+        params_ = (int(member_id),) if is_master else (int(member_id), owner_id)
         cur.execute(f"""
             SELECT id FROM {SCHEMA}.users
-            WHERE id=%s AND company_id=%s AND removed_at IS NULL
-        """, (int(member_id), owner_id))
+            WHERE id=%s {company_clause} AND removed_at IS NULL
+        """, params_)
         if not cur.fetchone():
             return err("Сотрудник не найден", 404)
         new_password = secrets.token_urlsafe(8)[:10]

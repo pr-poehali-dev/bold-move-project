@@ -433,7 +433,9 @@ def handler(event: dict, context) -> dict:
 
         # ── CLIENT STATUSES ───────────────────────────────────────────────────
         if resource == "client_statuses":
-            cid_filter = company_id if company_id is not None else 2  # мастер видит компанию 2
+            # Мастер раньше был жёстко привязан к company_id=2 (ошибка). Теперь у мастера
+            # своя приватная конфигурация статусов на основе его собственного uid.
+            cid_filter = company_id if company_id is not None else master_uid
 
             if method == "GET":
                 cur.execute(f"""
