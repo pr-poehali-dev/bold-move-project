@@ -33,6 +33,8 @@ export interface RenderContext {
   activeInputIndex?: number;
   /** Идёт перетаскивание стенового товара — подсветить все стены слабым свечением */
   isDraggingWallItem?: boolean;
+  /** Стены, где назначен товар — на который навели курсор в нижнем баре/боковой панели */
+  highlightSegIds?: string[];
 }
 
 export interface SegmentHandlers {

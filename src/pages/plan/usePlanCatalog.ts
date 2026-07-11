@@ -25,6 +25,9 @@ export interface PlanCatalogState {
   setActiveItems: React.Dispatch<React.SetStateAction<SegmentPriceItem[]>>;
   tapActiveId: number | null;
   setTapActiveId: (id: number | null) => void;
+  /** ID товара, на который навели курсор в нижнем баре/боковой панели — подсветить его стены на чертеже */
+  hoveredPriceId: number | null;
+  setHoveredPriceId: (id: number | null) => void;
   dragItem: SegmentPriceItem | null;
   setDragItem: (item: SegmentPriceItem | null) => void;
   dragPos: { x: number; y: number } | null;
@@ -86,6 +89,7 @@ export function usePlanCatalog(
   const dragPosRef = useRef<{ x: number; y: number } | null>(null);
   const [hoverSegId,     setHoverSegId]     = useState<string | null>(null);
   const [tapActiveId,    setTapActiveId]    = useState<number | null>(null);
+  const [hoveredPriceId, setHoveredPriceId] = useState<number | null>(null);
   const [dragCardItem,   setDragCardItem]   = useState<SegmentPriceItem | null>(null);
   const [dragCardPos,    setDragCardPos]    = useState<{ x: number; y: number } | null>(null);
   const [filterAttached,         setFilterAttached]         = useState(false);
@@ -936,6 +940,7 @@ export function usePlanCatalog(
     prices, filteredPrices,
     activeItems, setActiveItems,
     tapActiveId, setTapActiveId,
+    hoveredPriceId, setHoveredPriceId,
     dragItem, setDragItem,
     dragPos, setDragPos,
     dragCardItem, dragCardPos,

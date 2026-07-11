@@ -448,6 +448,7 @@ export default function PlanPagePanels({
         onAddToFloor={catalog.setPendingFloorItem}
         selectedSegmentIds={state.selectedSegmentIds}
         onAssignToSelectedSegs={catalog.assignItemToSegs}
+        onHoverItem={catalog.setHoveredPriceId}
         onReplaceItem={item => {
           if (isMobile) {
             // Мобиле: открываем барабан замены

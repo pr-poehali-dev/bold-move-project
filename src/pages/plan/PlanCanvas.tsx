@@ -15,9 +15,11 @@ interface Props {
   onEditFloorItem?: (id: string) => void;
   onEditSegItem?: (segId: string, priceId: number) => void;
   isDraggingWallItem?: boolean;
+  /** Стены, где назначен товар — на который сейчас навели курсор в списке/баре */
+  highlightSegIds?: string[];
 }
 
-export default function PlanCanvas({ state, eventState, onChange, onReplace, onOpenCatalog, onEditFloorItem, onEditSegItem, isDraggingWallItem }: Props) {
+export default function PlanCanvas({ state, eventState, onChange, onReplace, onOpenCatalog, onEditFloorItem, onEditSegItem, isDraggingWallItem, highlightSegIds }: Props) {
   const { tool } = state;
 
   // ── Локальные стейты и refs ───────────────────────────────────────────────
@@ -81,6 +83,7 @@ export default function PlanCanvas({ state, eventState, onChange, onReplace, onO
         onSetEditingSegId={setEditingSegId}
         isDraggingWallItem={isDraggingWallItem}
         lassoPath={cs.lassoPath}
+        highlightSegIds={highlightSegIds}
       />
 
       <PlanCanvasOverlay

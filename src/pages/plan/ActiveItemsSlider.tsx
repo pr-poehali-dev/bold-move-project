@@ -22,6 +22,8 @@ interface ActiveItemsSliderProps {
   hasSegments: boolean;
   selectedSegmentIds?: string[];
   onAssignToSelectedSegs?: (item: SegmentPriceItem, segIds: string[]) => void;
+  /** Навели/увели курсор с карточки товара — подсветить его стены на чертеже */
+  onHoverItem?: (priceId: number | null) => void;
 }
 
 export default function ActiveItemsSlider({
@@ -30,7 +32,7 @@ export default function ActiveItemsSlider({
   onTapActiveId, onRemoveActiveItem,
   onAssignToAllSegs, onRemoveFromAllSegs, isItemOnAllSegs,
   onAdjustQuantity, onSetQuantity, onAddToFloor, onReplaceItem, hasSegments,
-  selectedSegmentIds = [], onAssignToSelectedSegs,
+  selectedSegmentIds = [], onAssignToSelectedSegs, onHoverItem,
 }: ActiveItemsSliderProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [expandedId, setExpandedId] = useState<number | null>(null);
@@ -166,6 +168,8 @@ export default function ActiveItemsSlider({
                     pointerEvents: "all",
                   }}
                   onClick={e => handleCardClick(item.priceId, e)}
+                  onMouseEnter={() => onHoverItem?.(item.priceId)}
+                  onMouseLeave={() => onHoverItem?.(null)}
                 >
                   {/* Иконка */}
                   <div style={{

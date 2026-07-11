@@ -30,6 +30,8 @@ interface Props {
   hasSegments: boolean;
   selectedSegmentIds?: string[];
   onAssignToSelectedSegs?: (item: SegmentPriceItem, segIds: string[]) => void;
+  /** Навели/увели курсор с карточки товара — подсветить его стены на чертеже */
+  onHoverItem?: (priceId: number | null) => void;
 }
 
 export default function PlanDragGhosts({
@@ -41,7 +43,7 @@ export default function PlanDragGhosts({
   segments, floorItems, anyPanelOpen,
   onTapActiveId, onRemoveActiveItem,
   onAssignToAllSegs, onRemoveFromAllSegs, isItemOnAllSegs, onAdjustQuantity, onSetQuantity, onAddToFloor, onReplaceItem, hasSegments,
-  selectedSegmentIds, onAssignToSelectedSegs,
+  selectedSegmentIds, onAssignToSelectedSegs, onHoverItem,
 }: Props) {
   return (
     <>
@@ -94,6 +96,7 @@ export default function PlanDragGhosts({
         hasSegments={hasSegments}
         selectedSegmentIds={selectedSegmentIds}
         onAssignToSelectedSegs={onAssignToSelectedSegs}
+        onHoverItem={onHoverItem}
       />
 
       <style>{`

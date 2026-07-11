@@ -111,9 +111,10 @@ export function renderPoints(ctx: RenderContext, handlers: SegmentHandlers) {
 // ── Рендер отрезков (зоны клика) ─────────────────────────────────────────────
 
 export function renderSegments(ctx: RenderContext, handlers: Pick<SegmentHandlers, "onSegmentClick" | "onSegmentCtxMenu" | "onSegmentMouseDown">) {
-  const { points, segments, tool, selectedSegmentIds, intersectingSegIds, changedSegmentIds, zoom, isClosed, isDraggingWallItem } = ctx;
+  const { points, segments, tool, selectedSegmentIds, intersectingSegIds, changedSegmentIds, zoom, isClosed, isDraggingWallItem, highlightSegIds } = ctx;
   const z = zoom ?? 1;
   const selIds = selectedSegmentIds ?? [];
+  const highlightIds = highlightSegIds ?? [];
   return segments.map(seg => {
     const a = points.find(p => p.id === seg.fromId);
     const b = points.find(p => p.id === seg.toId);
@@ -123,6 +124,8 @@ export function renderSegments(ctx: RenderContext, handlers: Pick<SegmentHandler
     const isChanged = changedSegmentIds?.includes(seg.id);
     // Стена без прикреплённого товара — подсвечиваем жёлтым
     const isEmpty = isClosed && (!seg.items || seg.items.length === 0);
+    // Навели курсор на товар в списке/баре — подсвечиваем стены где он назначен
+    const isHighlighted = highlightIds.includes(seg.id);
     // Hit-зона: фиксированные 18px на экране, адаптированные к зуму
     // При высоком зуме (крупный план) — не перекрываем соседние тонкие стены
     const hitW = Math.max(8, 18 / z);
@@ -140,6 +143,12 @@ export function renderSegments(ctx: RenderContext, handlers: Pick<SegmentHandler
           <line x1={a.x} y1={a.y} x2={b.x} y2={b.y}
             stroke="#ef4444" strokeWidth={5} opacity={0.35}
             className="pointer-events-none seg-drag-pulse" />
+        )}
+        {/* Навели курсор на товар в нижнем баре/боковой панели — зелёное свечение на стенах где он назначен */}
+        {isHighlighted && (
+          <line x1={a.x} y1={a.y} x2={b.x} y2={b.y}
+            stroke="#34d399" strokeWidth={5} opacity={0.55}
+            className="pointer-events-none" />
         )}
         {isEmpty && !isIntersecting && !isSel && (
           <line x1={a.x} y1={a.y} x2={b.x} y2={b.y}

@@ -42,6 +42,8 @@ interface Props {
   isDraggingWallItem?: boolean;
   /** Линия-след "покраски" выделения стен (ПК, зажатая кнопка мыши) — SVG-координаты */
   lassoPath?: { x: number; y: number }[] | null;
+  /** Стены, где назначен товар — на который сейчас навели курсор в списке/баре */
+  highlightSegIds?: string[];
 }
 
 export default function PlanCanvasSvg({
@@ -49,7 +51,7 @@ export default function PlanCanvasSvg({
   handlers, onMouseMove, onMouseDown, onMouseUp,
   onCanvasClick, onCanvasDblClick, onTouchStart, onTouchMove, onTouchEnd,
   onDimLineClick, deleteHover, onEditFloorItem, onEditSegItem, editingSegId, onSetEditingSegId,
-  didMoveRef, longPressRef, longPressPos, setCtxMenu, isDraggingWallItem, lassoPath,
+  didMoveRef, longPressRef, longPressPos, setCtxMenu, isDraggingWallItem, lassoPath, highlightSegIds,
 }: Props) {
   const {
     points, segments, diagonals, dimLines,
@@ -286,6 +288,7 @@ export default function PlanCanvasSvg({
     ghost, dimLineFrom, zoom, phase, intersectingSegIds,
     changedSegmentIds: state.isBuilt ? (state.changedSegmentIds ?? []) : [],
     isDraggingWallItem,
+    highlightSegIds,
   };
 
   return (

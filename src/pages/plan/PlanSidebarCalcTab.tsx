@@ -23,6 +23,7 @@ export default function CalcTab({
   onReplaceItem,
   onDragItemStart,
   onAddToCategory,
+  onHoverItem,
 }: {
   state: PlanState;
   onRemoveItem?: (segId: string, priceId: number) => void;
@@ -41,6 +42,8 @@ export default function CalcTab({
   onReplaceItem?: (item: SegmentPriceItem) => void;
   onDragItemStart?: (item: SegmentPriceItem, clientX: number, clientY: number) => void;
   onAddToCategory?: (category: string) => void;
+  /** Навели/увели курсор со строки позиции — подсветить её стены на чертеже */
+  onHoverItem?: (priceId: number | null) => void;
 }) {
   // Попап быстрых функций по клику на позицию
   const [popup, setPopup] = React.useState<{ item: SegmentPriceItem; total: number; x: number; bottom: number } | null>(null);
@@ -234,6 +237,8 @@ export default function CalcTab({
                       key={`${line.isFloor ? "f" : "w"}-${line.priceId}`}
                       className="flex items-center gap-2.5 rounded-xl px-2.5 py-2"
                       style={{ background: "#0e0e1c", border: "1px solid rgba(255,255,255,0.06)" }}
+                      onMouseEnter={() => onHoverItem?.(line.priceId)}
+                      onMouseLeave={() => onHoverItem?.(null)}
                     >
                       {/* Кликабельная + перетаскиваемая зона: картинка + название */}
                       <div

@@ -36,6 +36,11 @@ export default function PlanCanvasArea({
   const draggedItem = catalog.dragItem ?? catalog.dragCardItem;
   const isDraggingWallItem = !!draggedItem && draggedItem.isWallItem !== false;
 
+  // Навели курсор на товар в нижнем баре/боковой панели — подсвечиваем стены, где он назначен
+  const highlightSegIds = catalog.hoveredPriceId != null
+    ? state.segments.filter(seg => (seg.items ?? []).some(it => it.priceId === catalog.hoveredPriceId)).map(s => s.id)
+    : undefined;
+
   return (
     <div className="flex flex-1 overflow-hidden relative min-h-0">
 
@@ -49,6 +54,7 @@ export default function PlanCanvasArea({
           onEditFloorItem={catalog.setEditingFloorId}
           onEditSegItem={onEditSegItem ?? ((segId, priceId) => catalog.setEditingSegRef({ segId, priceId }))}
           isDraggingWallItem={isDraggingWallItem}
+          highlightSegIds={highlightSegIds}
         />
         {roomLoading && (
           <div className="absolute inset-0 flex flex-col items-center justify-center z-50"
@@ -115,6 +121,7 @@ export default function PlanCanvasArea({
               catalog.setReplaceCatalogCategory(category);
               catalog.setCatalogOpen(true);
             }}
+            onHoverItem={catalog.setHoveredPriceId}
           />
         </div>
       </>)}
