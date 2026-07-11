@@ -1,4 +1,4 @@
-import type { PlanState } from "./planTypes";
+import type { PlanState, SegmentPriceItem } from "./planTypes";
 import DrawingTab from "./PlanSidebarDrawingTab";
 import CalcTab    from "./PlanSidebarCalcTab";
 
@@ -14,9 +14,19 @@ interface Props {
   onUpdateFloorQuantity?: (id: string, quantity: number) => void;
   onHideMaterialsButton?: () => void;
   onShowMaterialsButton?: () => void;
+  // Быстрые функции для позиций в "Материалах" (как в нижнем баре)
+  onRemoveActiveItem?: (priceId: number) => void;
+  onAssignToAllSegs?: (item: SegmentPriceItem) => void;
+  onRemoveFromAllSegs?: (priceId: number) => void;
+  isItemOnAllSegs?: (priceId: number) => boolean;
+  onAdjustQuantity?: (priceId: number, delta: number) => void;
+  onSetQuantity?: (priceId: number, value: number) => void;
+  onAddToFloor?: (item: SegmentPriceItem) => void;
+  onReplaceItem?: (item: SegmentPriceItem) => void;
+  onDragItemStart?: (item: SegmentPriceItem, clientX: number, clientY: number) => void;
 }
 
-export default function PlanSidebar({ state, onChange, onSectionOpen, noAutoOpen, onOpenCatalog, onRemoveItem, onUpdateQuantity, onRemoveFloorItem, onUpdateFloorQuantity, onHideMaterialsButton, onShowMaterialsButton }: Props) {
+export default function PlanSidebar({ state, onChange, onSectionOpen, noAutoOpen, onRemoveItem, onUpdateQuantity, onRemoveFloorItem, onUpdateFloorQuantity, onHideMaterialsButton, onShowMaterialsButton, onRemoveActiveItem, onAssignToAllSegs, onRemoveFromAllSegs, isItemOnAllSegs, onAdjustQuantity, onSetQuantity, onAddToFloor, onReplaceItem, onDragItemStart }: Props) {
   const { sidebarTab } = state;
   const isDrawing = sidebarTab !== "calc";
 
@@ -49,7 +59,24 @@ export default function PlanSidebar({ state, onChange, onSectionOpen, noAutoOpen
       {/* Контент */}
       <div className="flex-1 overflow-y-auto">
         {isDrawing  && <DrawingTab state={state} onChange={onChange} onSectionOpen={onSectionOpen} noAutoOpen={noAutoOpen} />}
-        {!isDrawing && <CalcTab state={state} onRemoveItem={onRemoveItem} onUpdateQuantity={onUpdateQuantity} onRemoveFloorItem={onRemoveFloorItem} onUpdateFloorQuantity={onUpdateFloorQuantity} onHideMaterialsButton={onHideMaterialsButton} onShowMaterialsButton={onShowMaterialsButton} />}
+        {!isDrawing && <CalcTab
+          state={state}
+          onRemoveItem={onRemoveItem}
+          onUpdateQuantity={onUpdateQuantity}
+          onRemoveFloorItem={onRemoveFloorItem}
+          onUpdateFloorQuantity={onUpdateFloorQuantity}
+          onHideMaterialsButton={onHideMaterialsButton}
+          onShowMaterialsButton={onShowMaterialsButton}
+          onRemoveActiveItem={onRemoveActiveItem}
+          onAssignToAllSegs={onAssignToAllSegs}
+          onRemoveFromAllSegs={onRemoveFromAllSegs}
+          isItemOnAllSegs={isItemOnAllSegs}
+          onAdjustQuantity={onAdjustQuantity}
+          onSetQuantity={onSetQuantity}
+          onAddToFloor={onAddToFloor}
+          onReplaceItem={onReplaceItem}
+          onDragItemStart={onDragItemStart}
+        />}
       </div>
     </div>
   );

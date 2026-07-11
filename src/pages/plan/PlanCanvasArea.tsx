@@ -86,6 +86,26 @@ export default function PlanCanvasArea({
             onUpdateFloorQuantity={(id, quantity) => {
               handleChange({ floorItems: (state.floorItems ?? []).map(fi => fi.id === id ? { ...fi, quantity } : fi) });
             }}
+            // Быстрые функции для позиций (те же, что в нижнем баре)
+            onRemoveActiveItem={catalog.removeActiveItem}
+            onAssignToAllSegs={catalog.assignItemToAllSegs}
+            onRemoveFromAllSegs={catalog.removeItemFromAllSegs}
+            isItemOnAllSegs={catalog.isItemOnAllSegs}
+            onAdjustQuantity={catalog.adjustItemQuantity}
+            onSetQuantity={catalog.setItemQuantity}
+            onAddToFloor={catalog.setPendingFloorItem}
+            onReplaceItem={(item) => {
+              // Полотняный товар → редактирование floor-позиции
+              if (item.isWallItem === false) {
+                const fi = (state.floorItems ?? []).find(f => f.priceId === item.priceId);
+                if (fi) catalog.setEditingFloorId(fi.id);
+                return;
+              }
+              // Стеновой → замена в сегменте (берём первый сегмент с этим товаром)
+              const seg = state.segments.find(s => (s.items ?? []).some(it => it.priceId === item.priceId));
+              if (seg) catalog.setEditingSegRef({ segId: seg.id, priceId: item.priceId });
+            }}
+            onDragItemStart={catalog.startSidebarDrag}
           />
         </div>
       </>)}

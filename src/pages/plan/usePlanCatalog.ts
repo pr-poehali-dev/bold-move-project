@@ -46,6 +46,7 @@ export interface PlanCatalogState {
   isItemOnAllSegs: (priceId: number) => boolean;
   adjustItemQuantity: (priceId: number, delta: number) => void;
   setItemQuantity: (priceId: number, value: number) => void;
+  startSidebarDrag: (item: SegmentPriceItem, startX: number, startY: number) => void;
   assignManyItems: (wallItems: { item: SegmentPriceItem; segIds: string[] | null }[], floorItems: SegmentPriceItem[]) => void;
   // Модалка для добавления на полотно
   pendingFloorItem: SegmentPriceItem | null;
@@ -799,6 +800,56 @@ export function usePlanCatalog(
     };
   }, [activeItems, findClosestSeg, assignItemToSeg, isInsidePolygon]);
 
+  // Перетаскивание позиции из БОКОВОЙ панели «Материалы» на чертёж.
+  // Отдельно от нижнего бара: старт из панели, тянем в любую сторону (порог 6px).
+  const startSidebarDrag = useCallback((item: SegmentPriceItem, startX: number, startY: number) => {
+    let dragging = false;
+    const THRESHOLD = 6;
+
+    const move = (e: MouseEvent | TouchEvent) => {
+      const pt = "touches" in e ? e.touches[0] : e;
+      if (!pt) return;
+      const dx = Math.abs(pt.clientX - startX);
+      const dy = Math.abs(pt.clientY - startY);
+      if (!dragging && (dx > THRESHOLD || dy > THRESHOLD)) dragging = true;
+      if (!dragging) return;
+      if ("touches" in e) e.preventDefault();
+      setDragCardItem(item);
+      setDragCardPos({ x: pt.clientX, y: pt.clientY });
+      setHoverSegId(findClosestSeg(pt.clientX, pt.clientY));
+    };
+
+    const end = (e: MouseEvent | TouchEvent) => {
+      window.removeEventListener("mousemove", move);
+      window.removeEventListener("mouseup", end);
+      window.removeEventListener("touchmove", move);
+      window.removeEventListener("touchend", end);
+      const wasDragging = dragging;
+      dragging = false;
+      setHoverSegId(null);
+      setDragCardItem(null);
+      setDragCardPos(null);
+      if (!wasDragging) return; // не тащили — это был клик (попап откроется сам)
+      const pt = "changedTouches" in e ? e.changedTouches[0] : e;
+      if (!pt) return;
+      if (item.isWallItem === false) {
+        setPendingFloorItem(item);
+      } else if (isInsidePolygon(pt.clientX, pt.clientY)) {
+        const closestId = findClosestSeg(pt.clientX, pt.clientY, false);
+        if (closestId) assignItemToSeg(item, closestId);
+        else setPendingFloorItem(item);
+      } else {
+        const closestId = findClosestSeg(pt.clientX, pt.clientY, true);
+        if (closestId) assignItemToSeg(item, closestId);
+      }
+    };
+
+    window.addEventListener("mousemove", move);
+    window.addEventListener("mouseup", end);
+    window.addEventListener("touchmove", move, { passive: false });
+    window.addEventListener("touchend", end);
+  }, [findClosestSeg, isInsidePolygon, assignItemToSeg]);
+
   // Кол-во уникальных товаров на холсте
   const attachedPriceIds = new Set<number>();
   stateRef.current.segments.forEach(seg => seg.items?.forEach(it => attachedPriceIds.add(it.priceId)));
@@ -824,6 +875,7 @@ export function usePlanCatalog(
     filterAttached, setFilterAttached,
     attachedCount,
     findClosestSeg, assignItemToSeg, assignItemToSegs, assignItemToAllSegs, assignManyItems, removeItemFromAllSegs, removeItemFromSegs, removeActiveItem, isItemOnAllSegs, adjustItemQuantity, setItemQuantity,
+    startSidebarDrag,
     pendingFloorItem, setPendingFloorItem, confirmFloorItem,
     editingFloorId, setEditingFloorId, editingFloorItem, confirmEditFloorItem, replaceFloorItem, replaceActiveItemEverywhere,
     editingSegRef, editingSegRefRef, setEditingSegRef, editingSegItem, replaceSegItem,

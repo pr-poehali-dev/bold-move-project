@@ -3,16 +3,25 @@ import Icon from "@/components/ui/icon";
 import type { PlanState, SegmentPriceItem } from "./planTypes";
 import { calcScale, polygonArea, polygonPerimeter, segmentLabel } from "./planTypes";
 import { sortCategories } from "./categoryOrder";
+import ActiveItemPopup from "./ActiveItemPopup";
 
 // ─── Вкладка "Расчёт" ────────────────────────────────────────────────────────
 export default function CalcTab({
   state,
-  onRemoveItem,
   onUpdateQuantity,
-  onRemoveFloorItem,
   onUpdateFloorQuantity,
   onHideMaterialsButton,
   onShowMaterialsButton,
+  // Колбэки быстрых функций (те же, что в нижнем баре)
+  onRemoveActiveItem,
+  onAssignToAllSegs,
+  onRemoveFromAllSegs,
+  isItemOnAllSegs,
+  onAdjustQuantity,
+  onSetQuantity,
+  onAddToFloor,
+  onReplaceItem,
+  onDragItemStart,
 }: {
   state: PlanState;
   onRemoveItem?: (segId: string, priceId: number) => void;
@@ -21,7 +30,37 @@ export default function CalcTab({
   onUpdateFloorQuantity?: (id: string, quantity: number) => void;
   onHideMaterialsButton?: () => void;
   onShowMaterialsButton?: () => void;
+  onRemoveActiveItem?: (priceId: number) => void;
+  onAssignToAllSegs?: (item: SegmentPriceItem) => void;
+  onRemoveFromAllSegs?: (priceId: number) => void;
+  isItemOnAllSegs?: (priceId: number) => boolean;
+  onAdjustQuantity?: (priceId: number, delta: number) => void;
+  onSetQuantity?: (priceId: number, value: number) => void;
+  onAddToFloor?: (item: SegmentPriceItem) => void;
+  onReplaceItem?: (item: SegmentPriceItem) => void;
+  onDragItemStart?: (item: SegmentPriceItem, clientX: number, clientY: number) => void;
 }) {
+  // Попап быстрых функций по клику на позицию
+  const [popup, setPopup] = React.useState<{ item: SegmentPriceItem; total: number; x: number; bottom: number } | null>(null);
+
+  // Закрываем попап при клике вне
+  React.useEffect(() => {
+    if (!popup) return;
+    const handler = (e: MouseEvent | TouchEvent) => {
+      const target = e.target as HTMLElement;
+      if (!target.closest("[data-item-popup]") && !target.closest("[data-calc-row]")) {
+        setPopup(null);
+      }
+    };
+    window.addEventListener("mousedown", handler);
+    window.addEventListener("touchstart", handler);
+    return () => {
+      window.removeEventListener("mousedown", handler);
+      window.removeEventListener("touchstart", handler);
+    };
+  }, [popup]);
+
+  const hasPopupFns = !!(onRemoveActiveItem || onReplaceItem || onAddToFloor);
   const { points, segments, room, floorItems = [] } = state;
   const scale    = calcScale(points, segments);
   const areaPx   = polygonArea(points);
@@ -168,25 +207,60 @@ export default function CalcTab({
                 </div>
 
                 <div className="space-y-1.5">
-                  {lines.map(line => (
+                  {lines.map(line => {
+                    // Собираем SegmentPriceItem для попапа/перетаскивания
+                    const spItem: SegmentPriceItem = {
+                      priceId: line.priceId,
+                      name: line.name,
+                      category: line.category,
+                      imageUrl: line.imageUrl,
+                      categoryImageUrl: null,
+                      unit: line.unit,
+                      isWallItem: !line.isFloor,
+                    };
+                    const openPopup = (clientX: number, topY: number) => {
+                      if (!hasPopupFns) return;
+                      setPopup({
+                        item: spItem,
+                        total: line.total,
+                        x: clientX,
+                        bottom: window.innerHeight - topY + 8,
+                      });
+                    };
+                    return (
                     <div
                       key={`${line.isFloor ? "f" : "w"}-${line.priceId}`}
                       className="flex items-center gap-2.5 rounded-xl px-2.5 py-2"
                       style={{ background: "#0e0e1c", border: "1px solid rgba(255,255,255,0.06)" }}
                     >
-                      {/* Картинка */}
-                      <div className="w-8 h-8 rounded-lg flex-shrink-0 overflow-hidden flex items-center justify-center"
-                        style={{ background: "rgba(124,58,237,0.1)" }}>
-                        {line.imageUrl
-                          ? <img src={line.imageUrl} alt={line.name} className="w-full h-full object-cover" />
-                          : <Icon name="Package" size={13} style={{ color: "#a78bfa" }} />
-                        }
-                      </div>
+                      {/* Кликабельная + перетаскиваемая зона: картинка + название */}
+                      <div
+                        data-calc-row="1"
+                        onClick={e => {
+                          const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                          openPopup(r.left + 20, r.top);
+                        }}
+                        onPointerDown={e => {
+                          if (!onDragItemStart) return;
+                          onDragItemStart(spItem, e.clientX, e.clientY);
+                        }}
+                        className="flex items-center gap-2.5 flex-1 min-w-0"
+                        style={{ cursor: onDragItemStart ? "grab" : hasPopupFns ? "pointer" : "default", touchAction: "none" }}
+                      >
+                        {/* Картинка */}
+                        <div className="w-8 h-8 rounded-lg flex-shrink-0 overflow-hidden flex items-center justify-center"
+                          style={{ background: "rgba(124,58,237,0.1)" }}>
+                          {line.imageUrl
+                            ? <img src={line.imageUrl} alt={line.name} className="w-full h-full object-cover pointer-events-none" draggable={false} />
+                            : <Icon name="Package" size={13} style={{ color: "#a78bfa" }} />
+                          }
+                        </div>
 
-                      {/* Название + единица */}
-                      <div className="flex-1 min-w-0">
-                        <div className="text-white text-[12px] font-semibold leading-snug line-clamp-2">{line.name}</div>
-                        <div className="text-[10px]" style={{ color: "rgba(255,255,255,0.35)" }}>{line.unit}</div>
+                        {/* Название + единица */}
+                        <div className="flex-1 min-w-0">
+                          <div className="text-white text-[12px] font-semibold leading-snug line-clamp-2">{line.name}</div>
+                          <div className="text-[10px]" style={{ color: "rgba(255,255,255,0.35)" }}>{line.unit}</div>
+                        </div>
                       </div>
 
                       {/* −  кол-во  + */}
@@ -236,12 +310,33 @@ export default function CalcTab({
                         </button>
                       </div>
                     </div>
-                  ))}
+                  );
+                  })}
                 </div>
               </div>
             );
           })}
         </div>
+      )}
+
+      {/* Попап быстрых функций — как в нижнем баре */}
+      {popup && (
+        <ActiveItemPopup
+          item={popup.item}
+          pos={{ x: popup.x, bottom: popup.bottom }}
+          total={popup.total}
+          onAllSegs={isItemOnAllSegs?.(popup.item.priceId) ?? false}
+          hasSegments={state.isClosed && state.segments.length > 0}
+          selectedSegmentIds={state.selectedSegmentIds}
+          onClose={() => setPopup(null)}
+          onRemoveActiveItem={(pid) => onRemoveActiveItem?.(pid)}
+          onAssignToAllSegs={(it) => onAssignToAllSegs?.(it)}
+          onRemoveFromAllSegs={(pid) => onRemoveFromAllSegs?.(pid)}
+          onAdjustQuantity={(pid, d) => onAdjustQuantity?.(pid, d)}
+          onSetQuantity={(pid, v) => onSetQuantity?.(pid, v)}
+          onAddToFloor={onAddToFloor}
+          onReplaceItem={onReplaceItem}
+        />
       )}
 
       {!hasAnyItems && state.isClosed && (
