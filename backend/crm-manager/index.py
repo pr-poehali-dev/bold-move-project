@@ -116,6 +116,74 @@ def handler(event: dict, context) -> dict:
             cdn_url = f"https://cdn.poehali.dev/projects/{os.environ['AWS_ACCESS_KEY_ID']}/bucket/{key}"
             return ok({"url": cdn_url, "key": key})
 
+        # ── BUG REPORTS ──────────────────────────────────────────────────────
+        if resource == "bug_reports":
+            # Статусы, менять которые может только мастер
+            MASTER_ONLY_STATUSES = ["in_progress", "done", "rejected"]
+            VALID_STATUSES = ["new"] + MASTER_ONLY_STATUSES
+            VALID_SEVERITY = ["critical", "important", "normal", "idea"]
+            VALID_TYPES = ["bug", "improvement", "idea"]
+
+            if method == "GET":
+                cur.execute(
+                    f"""SELECT id, title, description, severity, report_type, status,
+                               attachments, author_id, author_name, created_at, updated_at
+                        FROM {SCHEMA}.bug_reports
+                        ORDER BY created_at DESC"""
+                )
+                cols = [d[0] for d in cur.description]
+                rows = [dict(zip(cols, r)) for r in cur.fetchall()]
+                return ok({"reports": rows, "is_master": is_master})
+
+            if method == "POST":
+                title = (body.get("title") or "").strip()[:255]
+                description = (body.get("description") or "").strip()
+                severity = body.get("severity", "normal")
+                report_type = body.get("report_type", "bug")
+                attachments = body.get("attachments", [])
+                if severity not in VALID_SEVERITY:
+                    severity = "normal"
+                if report_type not in VALID_TYPES:
+                    report_type = "bug"
+                if not description and not title:
+                    return err("description required")
+                author_name = (body.get("author_name") or "").strip()[:255]
+                cur.execute(
+                    f"""INSERT INTO {SCHEMA}.bug_reports
+                        (title, description, severity, report_type, status, attachments, author_id, author_name)
+                        VALUES (%s,%s,%s,%s,'new',%s,%s,%s) RETURNING id""",
+                    (title, description, severity, report_type,
+                     json.dumps(attachments, ensure_ascii=False), master_uid or None, author_name)
+                )
+                new_id = cur.fetchone()[0]
+                conn.commit()
+                return ok({"id": new_id})
+
+            if method == "PUT":
+                report_id = body.get("id")
+                new_status = body.get("status", "")
+                if not report_id or new_status not in VALID_STATUSES:
+                    return err("id and valid status required")
+                # Статусы В работе / Выполнен / Не выполнен — только мастер
+                if new_status in MASTER_ONLY_STATUSES and not is_master:
+                    return err("only master can set this status", 403)
+                cur.execute(
+                    f"UPDATE {SCHEMA}.bug_reports SET status=%s, updated_at=NOW() WHERE id=%s",
+                    (new_status, report_id)
+                )
+                conn.commit()
+                return ok({"ok": True})
+
+            if method == "DELETE":
+                report_id = body.get("id") or qs.get("id")
+                if not report_id:
+                    return err("id required")
+                if not is_master:
+                    return err("only master can delete", 403)
+                cur.execute(f"DELETE FROM {SCHEMA}.bug_reports WHERE id=%s", (report_id,))
+                conn.commit()
+                return ok({"ok": True})
+
         # ── CLIENT FILES ─────────────────────────────────────────────────────
         if resource == "client_files":
             client_id = qs.get("client_id") or body.get("client_id")

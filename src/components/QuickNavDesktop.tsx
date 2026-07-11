@@ -5,6 +5,7 @@ const ITEMS = [
   { id: "agent",   label: "Агент",       icon: "Bot",     path: "/"     },
   { id: "crm",     label: "CRM",         icon: "Layers",  path: "/crm"  },
   { id: "plan",    label: "Построитель", icon: "PenTool", path: "/plan" },
+  { id: "bug",     label: "Баг-репорт",  icon: "Bug",     path: "/bug-report" },
 ];
 
 export default function QuickNavDesktop() {

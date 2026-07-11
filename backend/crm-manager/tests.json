@@ -77,6 +77,19 @@
       "expectedStatus": 400,
       "expectedBody": {"error": "token required"},
       "bodyMatcher": "partial"
+    },
+    {
+      "name": "GET bug_reports",
+      "method": "GET",
+      "path": "/?r=bug_reports",
+      "expectedStatus": 200
+    },
+    {
+      "name": "POST bug_report",
+      "method": "POST",
+      "path": "/?r=bug_reports",
+      "body": {"description": "Тестовый баг-репорт", "severity": "normal", "report_type": "bug"},
+      "expectedStatus": 200
     }
   ]
 }
