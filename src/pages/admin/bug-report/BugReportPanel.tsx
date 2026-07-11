@@ -299,19 +299,34 @@ function BugReportForm({ onClose, onCreated, authorName }: {
   const chunksRef = useRef<Blob[]>([]);
   const fileRef = useRef<HTMLInputElement>(null);
 
+  const uploadOne = async (f: File) => {
+    setUploading(true);
+    try {
+      const url = await uploadFile(f);
+      setAttachments(prev => [...prev, { url, name: f.name, type: f.type }]);
+    } finally {
+      setUploading(false);
+    }
+  };
+
   const handleFiles = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
     if (!files.length) return;
-    setUploading(true);
-    try {
-      for (const f of files) {
-        const url = await uploadFile(f);
-        setAttachments(prev => [...prev, { url, name: f.name, type: f.type }]);
-      }
-    } finally {
-      setUploading(false);
-      if (fileRef.current) fileRef.current.value = "";
-    }
+    for (const f of files) await uploadOne(f);
+    if (fileRef.current) fileRef.current.value = "";
+  };
+
+  // Вставка скриншота из буфера обмена (Ctrl+V)
+  const handlePaste = async (e: React.ClipboardEvent) => {
+    const items = Array.from(e.clipboardData?.items || []);
+    const imgItem = items.find(it => it.type.startsWith("image"));
+    if (!imgItem) return;
+    const blob = imgItem.getAsFile();
+    if (!blob) return;
+    e.preventDefault();
+    const ext = (blob.type.split("/")[1] || "png").split("+")[0];
+    const named = new File([blob], `screenshot-${Date.now()}.${ext}`, { type: blob.type });
+    await uploadOne(named);
   };
 
   const transcribeBlob = async (blob: Blob) => {
@@ -399,7 +414,8 @@ function BugReportForm({ onClose, onCreated, authorName }: {
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(0,0,0,0.7)", backdropFilter: "blur(4px)" }} onClick={onClose}>
       <div className="w-full max-w-lg rounded-2xl p-5 max-h-[90vh] overflow-y-auto"
         style={{ background: "#14141c", border: "1px solid rgba(255,255,255,0.1)" }}
-        onClick={e => e.stopPropagation()}>
+        onClick={e => e.stopPropagation()}
+        onPaste={handlePaste}>
 
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-bold text-white flex items-center gap-2">
@@ -479,6 +495,10 @@ function BugReportForm({ onClose, onCreated, authorName }: {
           {uploading ? <Icon name="Loader2" size={16} className="animate-spin" /> : <Icon name="Paperclip" size={16} />}
           {uploading ? "Загрузка…" : "Прикрепить скриншот или файл"}
         </button>
+        <div className="flex items-center justify-center gap-1.5 -mt-1 mb-3 text-[11px] text-white/35">
+          <Icon name="Clipboard" size={12} />
+          или вставьте скриншот из буфера — <kbd className="px-1 rounded bg-white/10 text-white/60">Ctrl</kbd>+<kbd className="px-1 rounded bg-white/10 text-white/60">V</kbd>
+        </div>
 
         {attachments.length > 0 && (
           <div className="flex flex-wrap gap-2 mb-4">
