@@ -86,6 +86,12 @@ export default function PlanCatalogPanel({
             return;
           }
           onClose();
+          // Товар полотна (isWallItem === false) — никогда не крепим к стенам,
+          // даже если пользователь выделил сегменты. Всегда на полотно.
+          if (item.isWallItem === false) {
+            onAddToActive(item);
+            return;
+          }
           const ids = selectedSegmentIds && selectedSegmentIds.length > 0
             ? selectedSegmentIds
             : selectedSegmentId ? [selectedSegmentId] : [];
@@ -115,12 +121,20 @@ export default function PlanCatalogPanel({
           onReplace={(newItem) => {
             setShowListMode(false);
             onClose();
+            if (onReplaceItem) {
+              onReplaceItem(newItem);
+              return;
+            }
+            // Товар полотна (isWallItem === false) — никогда не крепим к стенам,
+            // даже если пользователь выделил сегменты. Всегда на полотно.
+            if (newItem.isWallItem === false) {
+              onAddToActive(newItem);
+              return;
+            }
             const ids = selectedSegmentIds && selectedSegmentIds.length > 0
               ? selectedSegmentIds
               : selectedSegmentId ? [selectedSegmentId] : [];
-            if (onReplaceItem) {
-              onReplaceItem(newItem);
-            } else if (ids.length > 0) {
+            if (ids.length > 0) {
               onAssignToSegs(newItem, ids);
             } else {
               onAddToActive(newItem);
