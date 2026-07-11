@@ -4,7 +4,6 @@ export const SEVERITY = [
   { id: "critical",  label: "Критично", color: "#ef4444", icon: "AlertOctagon" },
   { id: "important", label: "Важно",    color: "#f59e0b", icon: "AlertTriangle" },
   { id: "normal",    label: "Обычное",  color: "#3b82f6", icon: "Info" },
-  { id: "idea",      label: "Идея",     color: "#10b981", icon: "Lightbulb" },
 ];
 
 export const REPORT_TYPE = [

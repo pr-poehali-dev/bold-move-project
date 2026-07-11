@@ -171,10 +171,10 @@ export default function BugReportForm({ onClose, onCreated, authorName }: {
 
         {/* Важность */}
         <label className="text-xs font-semibold text-white/50 mb-2 block">Важность</label>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-4">
+        <div className="grid grid-cols-3 gap-2 mb-4">
           {SEVERITY.map(s => (
             <button key={s.id} onClick={() => setSeverity(s.id)}
-              className="flex items-center gap-1.5 px-2.5 py-2 rounded-xl text-xs font-medium transition"
+              className="flex items-center justify-center gap-1.5 px-2.5 py-2 rounded-xl text-xs font-medium transition"
               style={{
                 background: severity === s.id ? s.color + "22" : "rgba(255,255,255,0.05)",
                 border: `1px solid ${severity === s.id ? s.color + "66" : "rgba(255,255,255,0.08)"}`,
