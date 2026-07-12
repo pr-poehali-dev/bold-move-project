@@ -29,7 +29,8 @@ def handle(action, method, params, body, token, event, conn, cur):
             # Мастер видит сотрудников всех компаний
             cur.execute(f"""
                 SELECT id, email, name, phone, role, approved, created_at,
-                       permissions, (temp_password_plain IS NOT NULL) AS has_pending_password, company_id
+                       permissions, (temp_password_plain IS NOT NULL) AS has_pending_password, company_id,
+                       team_role_id
                 FROM {SCHEMA}.users
                 WHERE role = 'manager' AND removed_at IS NULL
                 ORDER BY created_at DESC
@@ -37,7 +38,8 @@ def handle(action, method, params, body, token, event, conn, cur):
         else:
             cur.execute(f"""
                 SELECT id, email, name, phone, role, approved, created_at,
-                       permissions, (temp_password_plain IS NOT NULL) AS has_pending_password, company_id
+                       permissions, (temp_password_plain IS NOT NULL) AS has_pending_password, company_id,
+                       team_role_id
                 FROM {SCHEMA}.users
                 WHERE company_id = %s AND removed_at IS NULL AND id <> %s
                 ORDER BY created_at DESC
@@ -47,7 +49,85 @@ def handle(action, method, params, body, token, event, conn, cur):
             "id": r[0], "email": r[1], "name": r[2], "phone": r[3],
             "role": r[4], "approved": r[5], "created_at": str(r[6])[:19],
             "permissions": r[7], "has_pending_password": r[8], "company_id": r[9],
+            "team_role_id": r[10],
         } for r in rows]})
+
+    # ── РОЛИ КОМАНДЫ (шаблоны наборов прав) ─────────────────────────────────
+    if action == "team-roles-list" and method == "GET":
+        owner, e = get_owner_or_err()
+        if e: return e
+        owner_id, _, is_master = owner
+        cmp = owner_id if not is_master else owner_id  # мастер тоже видит только свои шаблоны
+        cur.execute(f"""
+            SELECT id, name, permissions, created_at
+            FROM {SCHEMA}.team_roles
+            WHERE company_id=%s AND removed_at IS NULL
+            ORDER BY created_at ASC
+        """, (cmp,))
+        rows = cur.fetchall()
+        return ok({"roles": [{
+            "id": r[0], "name": r[1], "permissions": r[2], "created_at": str(r[3])[:19],
+        } for r in rows]})
+
+    if action == "team-roles-create" and method == "POST":
+        owner, e = get_owner_or_err()
+        if e: return e
+        owner_id, _, _ = owner
+        name = (body.get("name") or "").strip()
+        permissions = body.get("permissions") or {}
+        if not name:
+            return err("Укажите название роли")
+        cur.execute(f"""
+            INSERT INTO {SCHEMA}.team_roles (company_id, name, permissions)
+            VALUES (%s, %s, %s::jsonb) RETURNING id, created_at
+        """, (owner_id, name, json.dumps(permissions)))
+        new_id, created_at = cur.fetchone()
+        conn.commit()
+        return ok({"role": {"id": new_id, "name": name, "permissions": permissions, "created_at": str(created_at)[:19]}})
+
+    if action == "team-roles-update" and method == "POST":
+        owner, e = get_owner_or_err()
+        if e: return e
+        owner_id, _, _ = owner
+        role_id = body.get("role_id")
+        name = (body.get("name") or "").strip()
+        permissions = body.get("permissions")
+        if not role_id:
+            return err("role_id обязателен")
+        cur.execute(f"SELECT id FROM {SCHEMA}.team_roles WHERE id=%s AND company_id=%s AND removed_at IS NULL", (int(role_id), owner_id))
+        if not cur.fetchone():
+            return err("Роль не найдена", 404)
+        sets, vals = [], []
+        if name:
+            sets.append("name=%s"); vals.append(name)
+        if permissions is not None:
+            sets.append("permissions=%s::jsonb"); vals.append(json.dumps(permissions))
+        if not sets:
+            return err("Нечего обновлять")
+        sets.append("updated_at=NOW()")
+        vals.append(int(role_id))
+        cur.execute(f"UPDATE {SCHEMA}.team_roles SET {', '.join(sets)} WHERE id=%s", vals)
+        # Синхронизируем права всем сотрудникам, привязанным к этой роли
+        if permissions is not None:
+            cur.execute(f"UPDATE {SCHEMA}.users SET permissions=%s::jsonb WHERE team_role_id=%s", (json.dumps(permissions), int(role_id)))
+        conn.commit()
+        return ok({"ok": True})
+
+    if action == "team-roles-delete" and method == "POST":
+        owner, e = get_owner_or_err()
+        if e: return e
+        owner_id, _, _ = owner
+        role_id = body.get("role_id")
+        if not role_id:
+            return err("role_id обязателен")
+        cur.execute(f"""
+            UPDATE {SCHEMA}.team_roles SET removed_at=NOW()
+            WHERE id=%s AND company_id=%s AND removed_at IS NULL
+        """, (int(role_id), owner_id))
+        # Отвязываем сотрудников от удалённой роли (их текущие права сохраняются как есть)
+        cur.execute(f"UPDATE {SCHEMA}.users SET team_role_id=NULL WHERE team_role_id=%s", (int(role_id),))
+        conn.commit()
+        return ok({"ok": True})
 
     if action == "team-invite" and method == "POST":
         owner, e = get_owner_or_err()
@@ -84,16 +164,28 @@ def handle(action, method, params, body, token, event, conn, cur):
             "field_dates": False, "field_finance": False,
             "field_notes": False, "field_files": False, "field_cancel": False,
         }
+
+        # Если передана роль (шаблон) — подставляем её права вместо пустых по умолчанию
+        role_id = body.get("role_id")
+        final_permissions = default_permissions
+        if role_id:
+            cur.execute(f"SELECT permissions FROM {SCHEMA}.team_roles WHERE id=%s AND company_id=%s AND removed_at IS NULL", (int(role_id), owner_id))
+            role_row = cur.fetchone()
+            if not role_row:
+                return err("Роль не найдена", 404)
+            final_permissions = role_row[0]
+
         cur.execute(f"""
             INSERT INTO {SCHEMA}.users
               (email, password_hash, name, phone, role, approved, company_id, invited_by,
-               permissions, temp_password_plain)
-            VALUES (%s, %s, %s, %s, 'manager', TRUE, %s, %s, %s::jsonb, %s) RETURNING id
+               permissions, temp_password_plain, team_role_id)
+            VALUES (%s, %s, %s, %s, 'manager', TRUE, %s, %s, %s::jsonb, %s, %s) RETURNING id
         """, (
             invitee_email, hash_password(temp_password),
             invitee_name or None, invitee_phone or None,
             owner_id, owner_id,
-            json.dumps(default_permissions), temp_password,
+            json.dumps(final_permissions), temp_password,
+            int(role_id) if role_id else None,
         ))
         new_id = cur.fetchone()[0]
         conn.commit()
@@ -105,11 +197,20 @@ def handle(action, method, params, body, token, event, conn, cur):
         owner_id, _, is_master = owner
         member_id   = body.get("member_id")
         permissions = body.get("permissions")
+        # role_id: число — привязать к роли и подставить её права; null — оставить как есть (ручные права);
+        # ключ можно не передавать вовсе, тогда team_role_id не трогаем
+        role_id_provided = "role_id" in body
+        role_id = body.get("role_id")
         if not member_id or permissions is None:
             return err("member_id и permissions обязательны")
         company_clause = "" if is_master else "AND company_id=%s"
-        params_ = (json.dumps(permissions), int(member_id)) if is_master else (json.dumps(permissions), int(member_id), owner_id)
-        cur.execute(f"UPDATE {SCHEMA}.users SET permissions=%s::jsonb WHERE id=%s {company_clause}", params_)
+        if role_id_provided:
+            params_ = (json.dumps(permissions), int(role_id) if role_id else None, int(member_id)) if is_master \
+                else (json.dumps(permissions), int(role_id) if role_id else None, int(member_id), owner_id)
+            cur.execute(f"UPDATE {SCHEMA}.users SET permissions=%s::jsonb, team_role_id=%s WHERE id=%s {company_clause}", params_)
+        else:
+            params_ = (json.dumps(permissions), int(member_id)) if is_master else (json.dumps(permissions), int(member_id), owner_id)
+            cur.execute(f"UPDATE {SCHEMA}.users SET permissions=%s::jsonb WHERE id=%s {company_clause}", params_)
         conn.commit()
         return ok({"ok": True})
 

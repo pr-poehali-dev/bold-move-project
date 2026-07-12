@@ -87,6 +87,14 @@
       "path": "/?action=cleanup-demo",
       "expectedStatus": 200,
       "bodyMatcher": "partial"
+    },
+    {
+      "name": "Team roles list unauthorized",
+      "method": "GET",
+      "path": "/?action=team-roles-list",
+      "expectedStatus": 401,
+      "expectedBody": {"error": "string"},
+      "bodyMatcher": "partial"
     }
   ]
 }

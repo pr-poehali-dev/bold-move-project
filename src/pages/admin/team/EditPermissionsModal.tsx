@@ -1,7 +1,7 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Icon from "@/components/ui/icon";
 import { useAuth, type Permissions } from "@/context/AuthContext";
-import { updatePermissions, type TeamMember } from "./teamApi";
+import { updatePermissions, fetchTeamRoles, type TeamMember, type TeamRole } from "./teamApi";
 import PermissionsEditor from "./PermissionsEditor";
 
 interface Props {
@@ -18,11 +18,25 @@ export default function EditPermissionsModal({ isDark, member, onClose, onSaved 
   const [err,   setErr]   = useState("");
   const [saved, setSaved] = useState(false);
 
+  const [roles, setRoles] = useState<TeamRole[]>([]);
+  const [selectedRoleId, setSelectedRoleId] = useState<number | null>(member.team_role_id ?? null);
+
+  useEffect(() => {
+    fetchTeamRoles(token).then(setRoles).catch(() => {});
+  }, [token]);
+
+  const applyRole = (roleId: number | null) => {
+    setSelectedRoleId(roleId);
+    if (roleId === null) return;
+    const role = roles.find(r => r.id === roleId);
+    if (role) setPerms(role.permissions);
+  };
+
   const save = async () => {
     setErr(""); setBusy(true);
     try {
-      await updatePermissions(token, member.id, perms);
-      onSaved({ ...member, permissions: perms });
+      await updatePermissions(token, member.id, perms, selectedRoleId);
+      onSaved({ ...member, permissions: perms, team_role_id: selectedRoleId });
       setSaved(true);
       setTimeout(onClose, 900);
     } catch (e: unknown) {
@@ -61,11 +75,31 @@ export default function EditPermissionsModal({ isDark, member, onClose, onSaved 
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto px-6 py-5">
-          <PermissionsEditor isDark={isDark} permissions={perms} onChange={setPerms} />
+        <div className="flex-1 overflow-y-auto px-6 py-5 space-y-3">
+          {roles.length > 0 && (
+            <div>
+              <label className="block text-[11px] font-bold uppercase tracking-wider mb-1.5" style={{ color: muted }}>
+                Роль (шаблон доступа)
+              </label>
+              <select value={selectedRoleId ?? ""} onChange={e => applyRole(e.target.value ? Number(e.target.value) : null)}
+                className="w-full rounded-xl px-3.5 py-2.5 text-sm focus:outline-none"
+                style={{ background: isDark ? "rgba(255,255,255,0.04)" : "#f3f4f6", border: `1px solid ${border}`, color: text }}>
+                <option value="">Настроено вручную</option>
+                {roles.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
+              </select>
+              {selectedRoleId !== null && (
+                <div className="text-[10.5px] mt-1.5" style={{ color: muted }}>
+                  Права привязаны к роли — при изменении роли в разделе «Роли» они обновятся автоматически здесь тоже.
+                </div>
+              )}
+            </div>
+          )}
+
+          <PermissionsEditor isDark={isDark} permissions={perms}
+            onChange={p => { setPerms(p); setSelectedRoleId(null); }} />
 
           {err && (
-            <div className="mt-3 rounded-xl px-3.5 py-2.5 text-xs"
+            <div className="rounded-xl px-3.5 py-2.5 text-xs"
               style={{ background: "rgba(239,68,68,0.10)", border: "1px solid rgba(239,68,68,0.25)", color: "#fca5a5" }}>
               {err}
             </div>

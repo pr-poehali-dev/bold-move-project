@@ -1,7 +1,7 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Icon from "@/components/ui/icon";
 import { useAuth, type Permissions } from "@/context/AuthContext";
-import { inviteMember, updatePermissions, showMemberPassword, type TeamMember } from "./teamApi";
+import { inviteMember, updatePermissions, showMemberPassword, fetchTeamRoles, type TeamMember, type TeamRole } from "./teamApi";
 import PermissionsEditor from "./PermissionsEditor";
 import PhoneInput from "@/components/ui/PhoneInput";
 import { isEmailValid } from "@/lib/validation";
@@ -53,6 +53,21 @@ export default function InviteMemberModal({ isDark, onClose, onInvited, onUpdate
     field_finance: false, field_notes: true, field_files: true, field_cancel: false,
   });
 
+  // Роли (шаблоны прав) — подставляем набор прав целиком при выборе
+  const [roles,        setRoles]        = useState<TeamRole[]>([]);
+  const [selectedRoleId, setSelectedRoleId] = useState<number | null>(null);
+
+  useEffect(() => {
+    fetchTeamRoles(token).then(setRoles).catch(() => {});
+  }, [token]);
+
+  const applyRole = (roleId: number | null) => {
+    setSelectedRoleId(roleId);
+    if (roleId === null) return;
+    const role = roles.find(r => r.id === roleId);
+    if (role) setPerms(role.permissions);
+  };
+
   // Шаг 3: пароль
   const [tempPwd, setTempPwd] = useState<string | null>(null);
   const [copied,  setCopied]  = useState(false);
@@ -95,8 +110,8 @@ export default function InviteMemberModal({ isDark, onClose, onInvited, onUpdate
     if (!member) return;
     setErr(""); setBusy(true);
     try {
-      await updatePermissions(token, member.id, perms);
-      onUpdated({ ...member, permissions: perms });
+      await updatePermissions(token, member.id, perms, selectedRoleId);
+      onUpdated({ ...member, permissions: perms, team_role_id: selectedRoleId });
       setStep("password");
     } catch (e: unknown) {
       setErr(e instanceof Error ? e.message : "Ошибка");
@@ -174,7 +189,23 @@ export default function InviteMemberModal({ isDark, onClose, onInvited, onUpdate
                 <Icon name="Info" size={12} className="mt-0.5 flex-shrink-0" />
                 <span>Сначала настройте доступ — потом получите пароль для передачи сотруднику.</span>
               </div>
-              <PermissionsEditor isDark={isDark} permissions={perms} onChange={setPerms} />
+
+              {roles.length > 0 && (
+                <div>
+                  <label className="block text-[11px] font-bold uppercase tracking-wider mb-1.5" style={{ color: muted }}>
+                    Роль (шаблон доступа)
+                  </label>
+                  <select value={selectedRoleId ?? ""} onChange={e => applyRole(e.target.value ? Number(e.target.value) : null)}
+                    className="w-full rounded-xl px-3.5 py-2.5 text-sm focus:outline-none"
+                    style={{ background: isDark ? "rgba(255,255,255,0.04)" : "#f3f4f6", border: `1px solid ${border}`, color: text }}>
+                    <option value="">Настроить вручную</option>
+                    {roles.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
+                  </select>
+                </div>
+              )}
+
+              <PermissionsEditor isDark={isDark} permissions={perms}
+                onChange={p => { setPerms(p); setSelectedRoleId(null); }} />
             </>
           )}
 

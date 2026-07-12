@@ -5,12 +5,16 @@ import { fetchTeam, removeMember, type TeamMember } from "./teamApi";
 import InviteMemberModal from "./InviteMemberModal";
 import ResetPasswordModal from "./ResetPasswordModal";
 import EditPermissionsModal from "./EditPermissionsModal";
+import TeamRolesPanel from "./TeamRolesPanel";
 import { ALL_PERM_KEYS } from "./PermissionsEditor";
 
 interface Props { isDark: boolean }
 
+type SubView = "members" | "roles";
+
 export default function TeamPanel({ isDark }: Props) {
   const { token } = useAuth();
+  const [view, setView] = useState<SubView>("members");
   const [members, setMembers] = useState<TeamMember[]>([]);
   const [loading, setLoading] = useState(true);
   const [err,     setErr]     = useState("");
@@ -54,9 +58,45 @@ export default function TeamPanel({ isDark }: Props) {
   const border = isDark ? "rgba(255,255,255,0.07)" : "#e5e7eb";
   const cardBg = isDark ? "rgba(255,255,255,0.025)" : "#ffffff";
 
+  const SubViewSwitch = (
+    <div className="flex gap-1 p-1 rounded-xl mb-5" style={{ background: isDark ? "rgba(255,255,255,0.04)" : "#f3f4f6", width: "fit-content" }}>
+      <button onClick={() => setView("members")}
+        className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-[12px] font-bold transition"
+        style={{
+          background: view === "members" ? (isDark ? "#1e1b4b" : "#ffffff") : "transparent",
+          color: view === "members" ? "#a78bfa" : muted,
+          boxShadow: view === "members" ? "0 1px 4px rgba(0,0,0,0.3)" : "none",
+        }}>
+        <Icon name="Users" size={13} /> Сотрудники
+      </button>
+      <button onClick={() => setView("roles")}
+        className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-[12px] font-bold transition"
+        style={{
+          background: view === "roles" ? (isDark ? "#1e1b4b" : "#ffffff") : "transparent",
+          color: view === "roles" ? "#a78bfa" : muted,
+          boxShadow: view === "roles" ? "0 1px 4px rgba(0,0,0,0.3)" : "none",
+        }}>
+        <Icon name="Tags" size={13} /> Роли
+      </button>
+    </div>
+  );
+
+  if (view === "roles") {
+    return (
+      <div className="flex-1 flex flex-col overflow-hidden">
+        <div className="px-4 sm:px-6 pt-5">
+          <div className="max-w-5xl mx-auto w-full">{SubViewSwitch}</div>
+        </div>
+        <TeamRolesPanel isDark={isDark} />
+      </div>
+    );
+  }
+
   return (
     <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-5" style={{ color: text }}>
       <div className="max-w-5xl mx-auto">
+
+        {SubViewSwitch}
 
         {/* Шапка */}
         <div className="flex items-start justify-between flex-wrap gap-3 mb-5">
