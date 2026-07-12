@@ -105,7 +105,7 @@ export default function PlanRoomPhotos({ projectId, token }: Props) {
     <div className="w-full">
       <input ref={inputRef} type="file" multiple accept="image/*" capture="environment" className="hidden" onChange={handleFiles} />
 
-      <div className="flex items-center gap-2 overflow-x-auto pb-1" style={{ scrollbarWidth: "none" }}>
+      <div className="flex items-center gap-2 overflow-x-auto pt-2 pb-1 px-0.5" style={{ scrollbarWidth: "none" }}>
         {/* Кнопка сделать фото */}
         <button
           onClick={() => inputRef.current?.click()}

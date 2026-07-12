@@ -191,7 +191,9 @@ def handler(event: dict, context) -> dict:
         if resource == "client_files":
             client_id = qs.get("client_id") or body.get("client_id")
             project_id = qs.get("project_id") or body.get("project_id")
-            if not client_id and not project_id:
+            # Проверка обязательна только для GET/POST — DELETE/PUT удаляют/меняют
+            # запись по id файла напрямую, без client_id/project_id.
+            if method in ("GET", "POST") and not client_id and not project_id:
                 return err("client_id or project_id required")
 
             if method == "GET":
