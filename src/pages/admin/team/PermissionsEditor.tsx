@@ -26,6 +26,7 @@ export const PERM_TREE: PermSection[] = [
     rows: [
       { label: "CRM",               icon: "LayoutDashboard", color: "#a78bfa", view: "crm_view",         desc: "Доступ к разделу CRM" },
       { label: "Агент",             icon: "BrainCircuit",    color: "#60a5fa", view: "agent_view",       desc: "Доступ к настройкам агента" },
+      { label: "Построитель",       icon: "PenTool",         color: "#f472b6", view: "plan_view",        desc: "Доступ к конструктору планировок" },
       { label: "Профиль",           icon: "User",            color: "#818cf8", view: "profile_view",     desc: "Просмотр и редактирование профиля" },
       { label: "Тарифы и пакеты",   icon: "Sparkles",        color: "#fbbf24", view: "tariffs_view",     desc: "Раздел тарифов и пакетов" },
       { label: "Панель управления", icon: "Settings2",       color: "#34d399", view: "admin_panel_view", desc: "Административная панель компании" },

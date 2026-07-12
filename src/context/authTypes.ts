@@ -221,6 +221,7 @@ export interface Permissions {
   // ── Уровень 1: Вкладки ───────────────────────────────────────────────────
   crm_view?:         boolean;
   agent_view?:       boolean;
+  plan_view?:        boolean;
   profile_view?:     boolean;
   tariffs_view?:     boolean;
   admin_panel_view?: boolean;
