@@ -14,6 +14,7 @@ export default function PlanToolbar(props: ToolbarProps) {
     onBack, backLabel, roomSaveStatus,
     onSaveVariant, onOverwriteVariant, variants, variantsLoading, activeVariantId,
     onLoadVariant, onDeleteVariant, onRenameVariant, onSelectVariant,
+    photosProjectId, onOpenPhotos,
   } = props;
 
   const [variantPickerOpen, setVariantPickerOpen] = useState(false);
@@ -123,6 +124,16 @@ export default function PlanToolbar(props: ToolbarProps) {
       <div className="flex-1 min-w-2" />
 
       <IconBtn icon="RotateCcw" onClick={onReset} title="Очистить" />
+
+      {/* Кнопка "Фото" — лента фото проекта (и в CRM, если проект привязан) */}
+      {photosProjectId != null && onOpenPhotos && (
+        <button onClick={onOpenPhotos}
+          className="flex items-center gap-1.5 px-3 h-8 rounded-lg text-[11px] font-semibold border transition-all shrink-0 bg-transparent border-white/[0.1] text-white/45 hover:bg-white/[0.07] hover:text-white"
+          title="Фото">
+          <Icon name="Camera" size={13} />
+          <span className="hidden md:inline">Фото</span>
+        </button>
+      )}
 
       <Sep />
 

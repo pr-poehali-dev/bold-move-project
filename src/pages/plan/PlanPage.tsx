@@ -20,6 +20,7 @@ import PlanCanvasArea from "./PlanCanvasArea";
 import PlanPagePanels from "./PlanPagePanels";
 import { PlanExportModal as PdfExportModal } from "./PlanExportMenu";
 import { generateExportPdf } from "./PlanExportGenerator";
+import PlanRoomPhotosModal from "./PlanRoomPhotosModal";
 
 type PlanScreen = "projects" | "rooms" | "canvas";
 
@@ -67,6 +68,7 @@ export default function PlanPage() {
   const [bottomSettingsOpen, setBottomSettingsOpen] = useState(false);
   const [showOnboarding,     setShowOnboarding]     = useState(false);
   const [focusSegmentId,     setFocusSegmentId]     = useState<string | null>(null);
+  const [photosOpen,         setPhotosOpen]         = useState(false);
 
   const stateRef = useRef(state);
   const loadingFromLibraryRef = useRef(false);
@@ -335,6 +337,8 @@ export default function PlanPage() {
         onRenameVariant={variantHandlers.handleRenameVariant}
         onSelectVariant={activeRoom ? (id) => variantsHook.updateVariant(id, { is_active: true }) : undefined}
         onVariantPickerOpenChange={setMobileVariantPickerOpen}
+        photosProjectId={activeProject?.id ?? null}
+        onOpenPhotos={() => setPhotosOpen(true)}
       />
 
       <PlanCanvasArea
@@ -416,6 +420,15 @@ export default function PlanPage() {
           setExportOpen(false);
         }}
       />
+
+      {/* Модалка фото проекта */}
+      {photosOpen && activeProject && (
+        <PlanRoomPhotosModal
+          projectId={activeProject.id}
+          token={token}
+          onClose={() => setPhotosOpen(false)}
+        />
+      )}
 
     </div>
   );
