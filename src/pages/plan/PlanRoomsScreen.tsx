@@ -162,6 +162,7 @@ export default function PlanRoomsScreen({ token, project, onBack, onOpenRoom }: 
 
       <PlanRoomsHeader
         project={project}
+        token={token}
         stats={stats}
         onBack={onBack}
         onExportClick={() => setExportOpen(true)}

@@ -2,6 +2,7 @@ import { useState } from "react";
 import Icon from "@/components/ui/icon";
 import { PlanProject } from "./usePlanProjects";
 import PlanRoomsStatsModal from "./PlanRoomsStatsModal";
+import PlanRoomPhotosModal from "./PlanRoomPhotosModal";
 
 interface Stats {
   totalRooms: number;
@@ -11,6 +12,7 @@ interface Stats {
 
 interface Props {
   project: PlanProject;
+  token?: string | null;
   stats: Stats;
   onBack: () => void;
   onExportClick: () => void;
@@ -18,8 +20,9 @@ interface Props {
 }
 
 // ── Шапка экрана комнат: назад, название проекта, статистика, кнопки действий ──
-export default function PlanRoomsHeader({ project, stats, onBack, onExportClick, onAddRoomClick }: Props) {
+export default function PlanRoomsHeader({ project, token, stats, onBack, onExportClick, onAddRoomClick }: Props) {
   const [statsOpen, setStatsOpen] = useState(false);
+  const [photosOpen, setPhotosOpen] = useState(false);
 
   return (
     <div className="flex items-center gap-3 px-4 sm:px-8 py-4 border-b" style={{ borderColor: "rgba(255,255,255,0.07)" }}>
@@ -90,6 +93,17 @@ export default function PlanRoomsHeader({ project, stats, onBack, onExportClick,
         </div>
       )}
 
+      {/* Фото проекта — десктоп: отдельная кнопка рядом со статистикой (на мобиле фото внутри модалки статистики) */}
+      <button
+        onClick={() => setPhotosOpen(true)}
+        className="hidden md:flex items-center gap-1.5 px-3 h-9 rounded-xl transition hover:brightness-110 active:scale-95 flex-shrink-0"
+        style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.6)" }}
+        title="Фото проекта"
+      >
+        <Icon name="Camera" size={13} />
+        <span className="text-[11px] font-semibold">Фото</span>
+      </button>
+
       {/* Кнопка CRM */}
       {project.crm_chat_id && (
         <button
@@ -122,7 +136,22 @@ export default function PlanRoomsHeader({ project, stats, onBack, onExportClick,
         Комната
       </button>
 
-      {statsOpen && <PlanRoomsStatsModal stats={stats} onClose={() => setStatsOpen(false)} />}
+      {statsOpen && (
+        <PlanRoomsStatsModal
+          stats={stats}
+          projectId={project.id}
+          token={token}
+          onClose={() => setStatsOpen(false)}
+        />
+      )}
+
+      {photosOpen && (
+        <PlanRoomPhotosModal
+          projectId={project.id}
+          token={token}
+          onClose={() => setPhotosOpen(false)}
+        />
+      )}
     </div>
   );
 }

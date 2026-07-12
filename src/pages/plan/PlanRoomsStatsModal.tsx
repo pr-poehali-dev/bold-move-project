@@ -1,4 +1,5 @@
 import Icon from "@/components/ui/icon";
+import PlanRoomPhotos from "./PlanRoomPhotos";
 
 interface Stats {
   totalRooms: number;
@@ -8,11 +9,13 @@ interface Stats {
 
 interface Props {
   stats: Stats;
+  projectId: number;
+  token?: string | null;
   onClose: () => void;
 }
 
 // ── Мобиле: модалка со статистикой проекта (то же самое, что десктоп-плашки в шапке) ──
-export default function PlanRoomsStatsModal({ stats, onClose }: Props) {
+export default function PlanRoomsStatsModal({ stats, projectId, token, onClose }: Props) {
   return (
     <div
       className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center"
@@ -59,6 +62,14 @@ export default function PlanRoomsStatsModal({ stats, onClose }: Props) {
             <span className="text-[12px] font-semibold" style={{ color: "#34d399" }}>Все стены назначены</span>
           </div>
         )}
+
+        {/* Фото проекта — та же лента, что в модалке "Фото проекта" на канвасе */}
+        <div className="pt-1">
+          <div className="text-[11px] font-semibold mb-2" style={{ color: "rgba(255,255,255,0.35)" }}>
+            Фото проекта
+          </div>
+          <PlanRoomPhotos projectId={projectId} token={token} />
+        </div>
       </div>
     </div>
   );
