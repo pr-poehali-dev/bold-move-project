@@ -165,7 +165,7 @@ export default function Index() {
 
   // Сотрудник (роль "manager") без явного права не видит пункт в шапке;
   // владельцу компании, мастеру и гостю — доступно всё
-  const navAllowed = (perm: "plan_view" | "admin_panel_view") =>
+  const navAllowed = (perm: "crm_view" | "plan_view" | "admin_panel_view") =>
     !user || user.role !== "manager" || hasPermission(user, perm);
 
   const handleNewEstimate = () => {
@@ -193,11 +193,13 @@ export default function Index() {
               style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.7)" }}>
               <Icon name="Bot" size={12} /> Агент
             </button>
-            <button onClick={() => navigate("/crm")}
-              className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-medium transition-all hover:bg-white/[0.08]"
-              style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.7)" }}>
-              <Icon name="ClipboardList" size={12} /> CRM
-            </button>
+            {navAllowed("crm_view") && (
+              <button onClick={() => navigate("/crm")}
+                className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-medium transition-all hover:bg-white/[0.08]"
+                style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.7)" }}>
+                <Icon name="ClipboardList" size={12} /> CRM
+              </button>
+            )}
             {navAllowed("plan_view") && (
               <button onClick={() => navigate("/plan")}
                 className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-medium transition-all hover:bg-white/[0.08]"

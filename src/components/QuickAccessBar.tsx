@@ -14,7 +14,7 @@ interface QuickItem {
 
 const ITEMS: QuickItem[] = [
   { id: "agent",   label: "Агент",       icon: "Bot",          path: "/",        perm: null },
-  { id: "crm",     label: "CRM",         icon: "ClipboardList", path: "/crm",     perm: null },
+  { id: "crm",     label: "CRM",         icon: "ClipboardList", path: "/crm",     perm: "crm_view" },
   { id: "plan",    label: "Построитель", icon: "PenTool",      path: "/plan",    perm: "plan_view" },
   { id: "settings", label: "Настройки",  icon: "Settings",     path: "/company", perm: "admin_panel_view" },
 ];

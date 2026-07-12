@@ -4,7 +4,7 @@ import { useAuth, hasPermission } from "@/context/AuthContext";
 
 const ITEMS = [
   { id: "agent",   label: "Агент",       icon: "Bot",     path: "/",     perm: null as const },
-  { id: "crm",     label: "CRM",         icon: "Layers",  path: "/crm",  perm: null as const },
+  { id: "crm",     label: "CRM",         icon: "Layers",  path: "/crm",  perm: "crm_view" as const },
   { id: "plan",    label: "Построитель", icon: "PenTool", path: "/plan", perm: "plan_view" as const },
   { id: "bug",     label: "Баг-репорт",  icon: "Bug",     path: "/bug-report", perm: null as const },
 ];
