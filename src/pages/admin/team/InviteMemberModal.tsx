@@ -3,6 +3,7 @@ import Icon from "@/components/ui/icon";
 import { useAuth, type Permissions } from "@/context/AuthContext";
 import { inviteMember, updatePermissions, showMemberPassword, fetchTeamRoles, type TeamMember, type TeamRole } from "./teamApi";
 import PermissionsEditor from "./PermissionsEditor";
+import RoleSelectDropdown from "./RoleSelectDropdown";
 import PhoneInput from "@/components/ui/PhoneInput";
 import { isEmailValid } from "@/lib/validation";
 import { isPhoneValid } from "@/hooks/use-phone";
@@ -190,19 +191,15 @@ export default function InviteMemberModal({ isDark, onClose, onInvited, onUpdate
                 <span>Сначала настройте доступ — потом получите пароль для передачи сотруднику.</span>
               </div>
 
-              {roles.length > 0 && (
-                <div>
-                  <label className="block text-[11px] font-bold uppercase tracking-wider mb-1.5" style={{ color: muted }}>
-                    Роль (шаблон доступа)
-                  </label>
-                  <select value={selectedRoleId ?? ""} onChange={e => applyRole(e.target.value ? Number(e.target.value) : null)}
-                    className="w-full rounded-xl px-3.5 py-2.5 text-sm focus:outline-none"
-                    style={{ background: isDark ? "rgba(255,255,255,0.04)" : "#f3f4f6", border: `1px solid ${border}`, color: text }}>
-                    <option value="">Настроить вручную</option>
-                    {roles.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
-                  </select>
-                </div>
-              )}
+              <div>
+                <label className="block text-[11px] font-bold uppercase tracking-wider mb-1.5" style={{ color: muted }}>
+                  Роль (шаблон доступа)
+                </label>
+                <RoleSelectDropdown isDark={isDark} roles={roles} selectedRoleId={selectedRoleId}
+                  currentPermissions={perms}
+                  onChange={applyRole}
+                  onRoleCreated={r => setRoles(prev => [...prev, r])} />
+              </div>
 
               <PermissionsEditor isDark={isDark} permissions={perms}
                 onChange={p => { setPerms(p); setSelectedRoleId(null); }} />
