@@ -37,7 +37,7 @@ export const PERM_TREE: PermSection[] = [
     title: "Что видит в CRM",
     rows: [
       { label: "Клиенты",          icon: "Users",        color: "#a78bfa", view: "clients_view",  edit: "clients_edit",  desc: "Список клиентов" },
-      { label: "Статус заявок",    icon: "GitBranch",    color: "#34d399", view: "crm_view",      edit: "orders_edit",   desc: "Смена статусов в воронке" },
+      { label: "Заказы",           icon: "GitBranch",    color: "#34d399", view: "orders_view",   edit: "orders_edit",   desc: "Список заказов и статус заявок" },
       { label: "Канбан",           icon: "LayoutGrid",   color: "#818cf8", view: "kanban_view",   edit: "kanban_edit",   desc: "Доска канбан" },
       { label: "Календарь",        icon: "Calendar",     color: "#f59e0b", view: "calendar_view", edit: "calendar_edit", desc: "График замеров и монтажей" },
       { label: "Аналитика",        icon: "TrendingUp",   color: "#fbbf24", view: "analytics_view",                       desc: "Отчёты и статистика" },

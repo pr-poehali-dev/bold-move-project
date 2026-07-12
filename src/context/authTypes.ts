@@ -230,6 +230,7 @@ export interface Permissions {
   // ── Уровень 2: Блоки внутри CRM ─────────────────────────────────────────
   clients_view?:   boolean;
   clients_edit?:   boolean;
+  orders_view?:    boolean;
   orders_edit?:    boolean;
   kanban_view?:    boolean;
   kanban_edit?:    boolean;
