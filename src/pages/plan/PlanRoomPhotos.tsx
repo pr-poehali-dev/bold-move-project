@@ -47,15 +47,22 @@ export default function PlanRoomPhotos({ projectId, token }: Props) {
   const [uploading, setUploading] = useState(false);
   const [lightboxIdx, setLightboxIdx] = useState<number | null>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
+  // Счётчик запросов — если пока летел старый load() (например, браузер был
+  // в фоне при открытии камеры) успел выполниться более новый load(), старый
+  // ответ, пришедший позже, игнорируется, чтобы не затирать актуальный список
+  // устаревшими данными (баг: "фото появляется и сразу пропадает").
+  const requestIdRef = useRef(0);
 
   const load = useCallback(async () => {
+    const reqId = ++requestIdRef.current;
     setLoading(true);
     try {
       const res = await fetch(`${CRM_URL}?r=client_files&project_id=${projectId}`, { headers: headers(token) });
       const data = await res.json();
+      if (reqId !== requestIdRef.current) return; // пришёл устаревший ответ — игнорируем
       setFiles(Array.isArray(data) ? data : []);
     } finally {
-      setLoading(false);
+      if (reqId === requestIdRef.current) setLoading(false);
     }
   }, [projectId, token]);
 
