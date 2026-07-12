@@ -2,7 +2,7 @@ import { useState, useCallback, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import QuickAccessBar from "@/components/QuickAccessBar";
 import Icon from "@/components/ui/icon";
-import { useAuth } from "@/context/AuthContext";
+import { useAuth, hasPermission } from "@/context/AuthContext";
 import { useBrand } from "@/context/BrandContext";
 import AuthModal from "@/components/AuthModal";
 import UserDropdown from "@/components/UserDropdown";
@@ -163,6 +163,11 @@ export default function Index() {
   const closePanel   = () => setPanel("none");
   const hasPanel     = panel !== "none";
 
+  // Сотрудник (роль "manager") без явного права не видит пункт в шапке;
+  // владельцу компании, мастеру и гостю — доступно всё
+  const navAllowed = (perm: "plan_view" | "admin_panel_view") =>
+    !user || user.role !== "manager" || hasPermission(user, perm);
+
   const handleNewEstimate = () => {
     setMessages([greeting]);
     setInput("");
@@ -193,17 +198,19 @@ export default function Index() {
               style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.7)" }}>
               <Icon name="ClipboardList" size={12} /> CRM
             </button>
-            <button onClick={() => navigate("/plan")}
-              className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-medium transition-all hover:bg-white/[0.08]"
-              style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.7)" }}>
-              <Icon name="Layers" size={12} /> Построитель
-            </button>
+            {navAllowed("plan_view") && (
+              <button onClick={() => navigate("/plan")}
+                className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-medium transition-all hover:bg-white/[0.08]"
+                style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.7)" }}>
+                <Icon name="Layers" size={12} /> Построитель
+              </button>
+            )}
             <button onClick={() => navigate("/bug-report")}
               className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-medium transition-all hover:bg-white/[0.08]"
               style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.7)" }}>
               <Icon name="Bug" size={12} /> Баг-репорт
             </button>
-            {(user?.is_master || ["installer", "company", "manager"].includes(user?.role ?? "")) && (
+            {(user?.is_master || ["installer", "company"].includes(user?.role ?? "") || (user?.role === "manager" && navAllowed("admin_panel_view"))) && (
               <button onClick={() => navigate("/company")}
                 className="flex items-center justify-center px-2 py-1 rounded-lg text-[11px] font-medium transition-all hover:bg-white/[0.08]"
                 style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.7)" }}
