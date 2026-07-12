@@ -10,7 +10,7 @@ interface Props {
 // ── Модалка с лентой фото проекта — открывается по кнопке "Фото" в тулбаре ──
 export default function PlanRoomPhotosModal({ projectId, token, onClose }: Props) {
   return (
-    <div className="fixed inset-0 z-[200] flex items-end sm:items-center justify-center p-0 sm:p-4"
+    <div className="fixed inset-0 z-[10000] flex items-end sm:items-center justify-center p-0 sm:p-4"
       style={{ background: "rgba(0,0,0,0.7)", backdropFilter: "blur(4px)" }}
       onClick={onClose}>
       <div className="w-full sm:max-w-lg rounded-t-2xl sm:rounded-2xl p-5"

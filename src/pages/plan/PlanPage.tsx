@@ -394,6 +394,7 @@ export default function PlanPage() {
         onSaveVariant={(name) => variantHandlers.handleSaveVariantWithState(name, state)}
         onCloseVariantModal={() => setVariantModalOpen(false)}
         mobileVariantPickerOpen={mobileVariantPickerOpen}
+        photosOpen={photosOpen}
       />
 
       {/* Модалка выгрузки PDF сметы */}
