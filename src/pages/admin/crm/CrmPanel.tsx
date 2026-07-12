@@ -21,7 +21,7 @@ type CrmTab = "analytics" | "clients" | "orders" | "calendar" | "kanban";
 
 // Все возможные табы с привязкой к новым правам
 const ALL_TABS: { id: CrmTab; label: string; icon: string; perm?: keyof Permissions }[] = [
-  { id: "orders",    label: "Заказы",    icon: "Layers" },
+  { id: "orders",    label: "Заказы",    icon: "Layers",       perm: "orders_view"   },
   { id: "clients",   label: "Клиенты",   icon: "Users",       perm: "clients_view"  },
   { id: "calendar",  label: "Календарь", icon: "CalendarDays", perm: "calendar_view" },
   { id: "analytics", label: "Аналитика", icon: "BarChart2",    perm: "analytics_view"},
@@ -33,6 +33,7 @@ export default function CrmPanel({ theme, initialOrderId, initialTab }: { theme:
   // Права пользователя — новая система
   const canClientsView  = hasPermission(user, "clients_view");
   const canClientsEdit  = hasPermission(user, "clients_edit");
+  const canOrdersView   = hasPermission(user, "orders_view");
   const canOrdersEdit   = hasPermission(user, "orders_edit");
   const canKanban       = hasPermission(user, "kanban_view");
   const canKanbanEdit   = hasPermission(user, "kanban_edit");
@@ -53,7 +54,10 @@ export default function CrmPanel({ theme, initialOrderId, initialTab }: { theme:
   // Доступные фиксированные табы
   const visibleTabs = ALL_TABS.filter(tb => !tb.perm || hasPermission(user, tb.perm));
 
-  const [tab, setTab]               = useState<CrmTab>(initialTab ?? "orders");
+  // Если запрошенный (в т.ч. через URL) таб недоступен по правам — открываем первый доступный
+  const safeInitialTab: CrmTab | undefined =
+    initialTab && visibleTabs.some(tb => tb.id === initialTab) ? initialTab : undefined;
+  const [tab, setTab] = useState<CrmTab>(safeInitialTab ?? visibleTabs[0]?.id ?? "orders");
   const [clients, setClients]       = useState<Client[]>([]);
   const [loading, setLoading]       = useState(true);
   const [showProfileModal, setShowProfileModal] = useState(false);
@@ -61,6 +65,7 @@ export default function CrmPanel({ theme, initialOrderId, initialTab }: { theme:
   const [calendarOpenKey, setCalendarOpenKey] = useState(0);
 
   const handleCalendarSelectClient = (id: number) => {
+    if (!canOrdersView) return; // нет права на просмотр заказов — карточку открыть нельзя
     setCalendarOpenId(id);
     setCalendarOpenKey(k => k + 1); // форсируем ремонтирование CrmOrders
     setTab("orders");
@@ -123,7 +128,7 @@ export default function CrmPanel({ theme, initialOrderId, initialTab }: { theme:
 
   const disableKanban = () => {
     setKanbanEnabled(false);
-    if (tab === "kanban") setTab("orders");
+    if (tab === "kanban") setTab(canOrdersView ? "orders" : (visibleTabs[0]?.id ?? "orders"));
     saveKanbanFlag(false);
   };
 
@@ -241,7 +246,7 @@ export default function CrmPanel({ theme, initialOrderId, initialTab }: { theme:
               canFieldCancel={canFieldCancel}
             />
           )}
-          {tab === "orders" && (
+          {tab === "orders" && canOrdersView && (
             <>
               {calendarOpenId && (
                 <button onClick={handleBackToCalendar}
