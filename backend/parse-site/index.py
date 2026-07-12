@@ -589,9 +589,9 @@ def search_missing_fields(brand: dict, site_url: str) -> dict:
 
 
 def hash_password(password: str) -> str:
-    """Простой SHA-256 хэш пароля."""
-    import hashlib
-    return hashlib.sha256(password.encode()).hexdigest()
+    """Хеширует пароль современным способом (bcrypt)."""
+    import bcrypt
+    return bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
 
 def normalize_site_url(url: str) -> str:
     """Нормализует URL: IDN (punycode xn--) → кириллица/unicode через encodings.idna."""

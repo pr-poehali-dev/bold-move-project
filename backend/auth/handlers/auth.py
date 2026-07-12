@@ -1,7 +1,7 @@
 import json, os, secrets
 import urllib.request
 from datetime import datetime, timezone, timedelta
-from shared import SCHEMA, BUSINESS_ROLES, DISCOUNT_ROLES, DEFAULT_DISCOUNT, TRIAL_ESTIMATES, TRIAL_DAYS, MASTER_EMAIL, ok, err, hash_password
+from shared import SCHEMA, BUSINESS_ROLES, DISCOUNT_ROLES, DEFAULT_DISCOUNT, TRIAL_ESTIMATES, TRIAL_DAYS, MASTER_EMAIL, ok, err, hash_password, verify_password, needs_rehash, hash_code
 from email_utils import send_verification_code
 
 
@@ -57,7 +57,7 @@ def handle(action, method, params, body, token, event, conn, cur):
             cur.execute(
                 f"""INSERT INTO {SCHEMA}.email_verification_tokens (user_id, code_hash, expires_at)
                     VALUES (%s, %s, NOW() + INTERVAL '15 minutes')""",
-                (user_id, hash_password(code))
+                (user_id, hash_code(code))
             )
             cur.execute(f"UPDATE {SCHEMA}.users SET email_verified=FALSE WHERE id=%s", (user_id,))
             conn.commit()
@@ -96,7 +96,7 @@ def handle(action, method, params, body, token, event, conn, cur):
             (user_id,)
         )
         trow = cur.fetchone()
-        if not trow or trow[1] != hash_password(code):
+        if not trow or trow[1] != hash_code(code):
             return err("Неверный или истёкший код")
 
         cur.execute(f"UPDATE {SCHEMA}.users SET email_verified=TRUE WHERE id=%s", (user_id,))
@@ -124,7 +124,7 @@ def handle(action, method, params, body, token, event, conn, cur):
         cur.execute(
             f"""INSERT INTO {SCHEMA}.email_verification_tokens (user_id, code_hash, expires_at)
                 VALUES (%s, %s, NOW() + INTERVAL '15 minutes')""",
-            (user_id, hash_password(code))
+            (user_id, hash_code(code))
         )
         conn.commit()
         send_verification_code(email, code, name)
@@ -137,13 +137,16 @@ def handle(action, method, params, body, token, event, conn, cur):
         if not email or not password:
             return err("Email и пароль обязательны")
         cur.execute(
-            f"SELECT id, name, email, role, approved, discount, email_verified FROM {SCHEMA}.users WHERE email=%s AND password_hash=%s",
-            (email, hash_password(password))
+            f"SELECT id, name, email, role, approved, discount, email_verified, password_hash FROM {SCHEMA}.users WHERE email=%s",
+            (email,)
         )
         row = cur.fetchone()
-        if not row:
+        if not row or not verify_password(password, row[7]):
             return err("Неверный email или пароль")
-        user_id, name, email_db, role, approved, discount, email_verified = row
+        user_id, name, email_db, role, approved, discount, email_verified, pwd_hash = row
+        if needs_rehash(pwd_hash):
+            cur.execute(f"UPDATE {SCHEMA}.users SET password_hash=%s WHERE id=%s", (hash_password(password), user_id))
+            conn.commit()
         is_master = (email_db == MASTER_EMAIL)
         if not email_verified and not is_master:
             return ok({"email_verification_required": True, "email": email_db})
@@ -367,7 +370,7 @@ def handle(action, method, params, body, token, event, conn, cur):
         if not row:
             return err("Токен недействителен", 401)
         uid, current_hash = row
-        if current_hash != hash_password(old_password):
+        if not verify_password(old_password, current_hash):
             return err("Текущий пароль введён неверно")
         cur.execute(f"UPDATE {SCHEMA}.users SET password_hash=%s, updated_at=NOW() WHERE id=%s",
                     (hash_password(new_password), uid))

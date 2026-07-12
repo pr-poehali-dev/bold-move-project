@@ -2,7 +2,7 @@ import json, re, secrets, base64, os
 import urllib.request as _ureq
 import boto3
 from datetime import datetime, timezone, timedelta
-from shared import SCHEMA, MASTER_EMAIL, ok, err, check_is_master, hash_password
+from shared import SCHEMA, MASTER_EMAIL, ok, err, check_is_master, hash_password, verify_password, needs_rehash
 
 
 def handle(action, method, params, body, token, event, conn, cur):
@@ -17,8 +17,10 @@ def handle(action, method, params, body, token, event, conn, cur):
         row = cur.fetchone()
         if not row: return err("Неверный email или пароль")
         mgr_id, mgr_name, wl_role, approved, pwd_hash = row
-        if pwd_hash != hash_password(password): return err("Неверный email или пароль")
+        if not verify_password(password, pwd_hash): return err("Неверный email или пароль")
         if not approved: return err("Аккаунт ожидает одобрения мастера")
+        if needs_rehash(pwd_hash):
+            cur.execute(f"UPDATE {SCHEMA}.wl_managers SET password_hash=%s WHERE id=%s", (hash_password(password), mgr_id))
         tok = secrets.token_hex(32)
         cur.execute(f"INSERT INTO {SCHEMA}.wl_manager_sessions (manager_id, token, expires_at) VALUES (%s, %s, NOW() + INTERVAL '30 days')", (mgr_id, tok))
         conn.commit()

@@ -1,4 +1,4 @@
-import json, os, hashlib, psycopg2
+import json, os, hashlib, psycopg2, bcrypt
 
 SCHEMA = os.environ.get("DB_SCHEMA", "t_p45929761_bold_move_project")
 
@@ -22,7 +22,36 @@ def err(msg, code=400):
     return {"statusCode": code, "headers": {"Access-Control-Allow-Origin": "*", "Content-Type": "application/json"}, "body": json.dumps({"error": msg})}
 
 def hash_password(password: str) -> str:
+    """Хеширует пароль современным способом (bcrypt) — используется для НОВЫХ паролей."""
+    return bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
+
+def _legacy_sha256(password: str) -> str:
+    """Старый способ хеширования (SHA-256 без соли) — оставлен только для сверки
+    с уже существующими в БД хешами старых паролей (обратная совместимость)."""
     return hashlib.sha256(password.encode()).hexdigest()
+
+def verify_password(password: str, stored_hash: str) -> bool:
+    """Проверяет пароль против хеша из БД. Понимает оба формата:
+    - новый bcrypt-хеш (начинается с $2)
+    - старый SHA-256 хеш (обратная совместимость со старыми аккаунтами)."""
+    if not stored_hash:
+        return False
+    if stored_hash.startswith("$2"):
+        try:
+            return bcrypt.checkpw(password.encode(), stored_hash.encode())
+        except ValueError:
+            return False
+    return stored_hash == _legacy_sha256(password)
+
+def needs_rehash(stored_hash: str) -> bool:
+    """True, если хеш ещё старого формата (SHA-256) и его пора обновить до bcrypt."""
+    return bool(stored_hash) and not stored_hash.startswith("$2")
+
+def hash_code(code: str) -> str:
+    """Детерминированный хеш для короткоживущих кодов подтверждения (не паролей
+    пользователя) — тут нужна возможность точного сравнения по значению, поэтому
+    bcrypt не подходит (у него каждый раз новая соль)."""
+    return _legacy_sha256(code)
 
 def check_is_master(token: str, cur, schema: str) -> bool:
     cur.execute(f"""
