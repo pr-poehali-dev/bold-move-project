@@ -127,26 +127,36 @@ export default function PlanRoomPhotos({ projectId, token }: Props) {
 
         {/* Лента фото */}
         {!loading && files.map((f, i) => (
-          <button key={f.id} onClick={() => setLightboxIdx(i)}
-            className="flex-shrink-0 w-16 h-16 rounded-xl overflow-hidden transition hover:opacity-80"
-            style={{ border: "1px solid rgba(255,255,255,0.1)" }}>
-            <img src={f.url} alt={f.name} className="w-full h-full object-cover" />
-          </button>
+          <div key={f.id} className="relative flex-shrink-0 w-16 h-16">
+            <button onClick={() => setLightboxIdx(i)}
+              className="w-full h-full rounded-xl overflow-hidden transition hover:opacity-80"
+              style={{ border: "1px solid rgba(255,255,255,0.1)" }}>
+              <img src={f.url} alt={f.name} className="w-full h-full object-cover" />
+            </button>
+            <button
+              onClick={e => { e.stopPropagation(); if (window.confirm("Удалить это фото?")) deleteFile(f.id); }}
+              className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-red-500 flex items-center justify-center hover:bg-red-600 transition"
+            >
+              <Icon name="X" size={11} className="text-white" />
+            </button>
+          </div>
         ))}
       </div>
 
-      {/* Полноэкранный слайдер */}
+      {/* Полноэкранный слайдер — z-index выше модалки "Фото проекта" (z-[10000]),
+          иначе он рендерится позади неё и виден размытым сквозь фон. */}
       {lightboxFile && createPortal(
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center"
+        <div className="fixed inset-0 z-[10001] flex items-center justify-center"
           style={{ background: "rgba(0,0,0,0.92)" }}
           onClick={() => setLightboxIdx(null)}>
           <button className="absolute top-4 right-4 p-2 rounded-full hover:bg-white/10" style={{ color: "#fff" }}
             onClick={() => setLightboxIdx(null)}>
             <Icon name="X" size={20} />
           </button>
-          <button className="absolute top-4 left-4 p-2 rounded-full hover:bg-red-500/20" style={{ color: "#f87171" }}
-            onClick={e => { e.stopPropagation(); deleteFile(lightboxFile.id); }}>
-            <Icon name="Trash2" size={18} />
+          <button className="absolute top-4 left-4 flex items-center gap-1.5 px-3 py-2 rounded-full hover:bg-red-500/20 transition" style={{ color: "#f87171", background: "rgba(239,68,68,0.12)" }}
+            onClick={e => { e.stopPropagation(); if (window.confirm("Удалить это фото?")) deleteFile(lightboxFile.id); }}>
+            <Icon name="Trash2" size={16} />
+            <span className="text-xs font-semibold">Удалить</span>
           </button>
           {lightboxIdx != null && lightboxIdx > 0 && (
             <button className="absolute left-4 p-3 rounded-full hover:bg-white/10" style={{ color: "#fff" }}
