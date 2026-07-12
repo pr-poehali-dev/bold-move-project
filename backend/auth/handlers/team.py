@@ -68,7 +68,7 @@ def handle(action, method, params, body, token, event, conn, cur):
 
         temp_password = secrets.token_urlsafe(8)[:10]
         default_permissions = {
-            "crm_view": False, "agent_view": False, "admin_panel_view": False,
+            "crm_view": False, "agent_view": False, "plan_view": False, "admin_panel_view": False,
             "clients_view": False, "clients_edit": False, "orders_edit": False,
             "kanban_view": False, "kanban_edit": False,
             "calendar_view": False, "calendar_edit": False,

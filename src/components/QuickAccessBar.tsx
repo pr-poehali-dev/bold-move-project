@@ -1,26 +1,37 @@
 import { useState, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import Icon from "@/components/ui/icon";
+import { useAuth, hasPermission } from "@/context/AuthContext";
+import type { Permissions } from "@/context/AuthContext";
 
 interface QuickItem {
   id: string;
   label: string;
   icon: string;
   path: string;
+  perm: keyof Permissions | null;
 }
 
 const ITEMS: QuickItem[] = [
-  { id: "agent",   label: "Агент",       icon: "Bot",          path: "/"        },
-  { id: "crm",     label: "CRM",         icon: "ClipboardList", path: "/crm"     },
-  { id: "plan",    label: "Построитель", icon: "PenTool",      path: "/plan"    },
-  { id: "settings", label: "Настройки",  icon: "Settings",     path: "/company" },
+  { id: "agent",   label: "Агент",       icon: "Bot",          path: "/",        perm: null },
+  { id: "crm",     label: "CRM",         icon: "ClipboardList", path: "/crm",     perm: null },
+  { id: "plan",    label: "Построитель", icon: "PenTool",      path: "/plan",    perm: "plan_view" },
+  { id: "settings", label: "Настройки",  icon: "Settings",     path: "/company", perm: "admin_panel_view" },
 ];
 
 export default function QuickAccessBar() {
   const [open, setOpen] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
+  const { user } = useAuth();
   const startYRef = useRef<number | null>(null);
+
+  // Сотрудник без явного права не видит пункт меню; владельцу/мастеру/гостю — доступно всё
+  const visibleItems = ITEMS.filter(item => {
+    if (!item.perm) return true;
+    if (!user || user.role !== "manager") return true;
+    return hasPermission(user, item.perm);
+  });
 
   const handleTouchStart = (e: React.TouchEvent) => {
     startYRef.current = e.touches[0].clientY;
@@ -65,7 +76,7 @@ export default function QuickAccessBar() {
         style={{ maxHeight: open ? "80px" : "0px", opacity: open ? 1 : 0 }}
       >
         <div className="flex items-center gap-2 px-3 pb-3">
-          {ITEMS.map(item => {
+          {visibleItems.map(item => {
             const isActive = item.path !== "#contacts" && currentPath === item.path;
             return (
               <button
