@@ -74,6 +74,23 @@ export const ALL_PERM_KEYS: (keyof Permissions)[] = PERM_TREE.flatMap(s =>
   s.rows.flatMap(r => [r.view, r.edit].filter(Boolean) as (keyof Permissions)[])
 );
 
+// ── Этапы воронки заказов (жёсткий список — совпадает с LEAD_STATUSES/ORDER_STATUSES) ──
+// Кастомные подстатусы, которые владелец добавляет внутри этих этапов, наследуют то же
+// ограничение автоматически — они всегда привязаны к одному из перечисленных ниже статусов.
+export const PIPELINE_STATUSES: { id: string; label: string; color: string }[] = [
+  { id: "new",               label: "Новая заявка",      color: "#3b82f6" },
+  { id: "call",               label: "В работе",          color: "#a78bfa" },
+  { id: "measure",            label: "Замер назначен",    color: "#f59e0b" },
+  { id: "measured",           label: "Замер выполнен",    color: "#8b5cf6" },
+  { id: "contract",           label: "Договор подписан",  color: "#06b6d4" },
+  { id: "prepaid",            label: "Предоплата получена", color: "#0ea5e9" },
+  { id: "install_scheduled",  label: "Монтаж назначен",   color: "#f97316" },
+  { id: "install_done",       label: "Монтаж выполнен",   color: "#fb923c" },
+  { id: "extra_paid",         label: "Доплата получена",  color: "#84cc16" },
+  { id: "done",                label: "Завершён",          color: "#10b981" },
+  { id: "cancelled",          label: "Отменён",           color: "#ef4444" },
+];
+
 // ── Компонент ──────────────────────────────────────────────────────────────
 
 interface Props {
@@ -103,8 +120,9 @@ function Toggle({ checked, color, isDark, onChange, title }: {
   );
 }
 
-// Короткие названия для табов
-const TAB_LABELS = ["Вкладки", "CRM", "Агент", "Карточка"];
+// Короткие названия для табов (последний — особая вкладка "Этапы", не входит в PERM_TREE)
+const TAB_LABELS = ["Вкладки", "CRM", "Агент", "Карточка", "Этапы"];
+const PIPELINE_TAB_INDEX = TAB_LABELS.length - 1;
 
 export default function PermissionsEditor({ isDark, permissions, onChange }: Props) {
   const [activeTab, setActiveTab] = useState(0);
@@ -148,7 +166,25 @@ export default function PermissionsEditor({ isDark, permissions, onChange }: Pro
       return n;
     }, 0);
 
-  const section = PERM_TREE[activeTab];
+  // ── Логика вкладки "Этапы" ────────────────────────────────────────────────
+  // Пустой массив / отсутствие ключа = ограничений нет (доступны все этапы)
+  const allowedStatuses = permissions.allowed_statuses ?? [];
+  const noStatusRestriction = allowedStatuses.length === 0;
+  const isStatusChecked = (id: string) => noStatusRestriction || allowedStatuses.includes(id);
+
+  const toggleStatus = (id: string) => {
+    // Если сейчас "ограничений нет" — стартуем с полного списка и убираем нажатый
+    const base = noStatusRestriction ? PIPELINE_STATUSES.map(s => s.id) : allowedStatuses;
+    const next = base.includes(id) ? base.filter(s => s !== id) : [...base, id];
+    onChange({ ...permissions, allowed_statuses: next });
+  };
+
+  const allStatusesChecked = noStatusRestriction || allowedStatuses.length === PIPELINE_STATUSES.length;
+  const toggleAllStatuses = () => {
+    onChange({ ...permissions, allowed_statuses: allStatusesChecked ? [] : PIPELINE_STATUSES.map(s => s.id) });
+  };
+
+  const section = activeTab === PIPELINE_TAB_INDEX ? null : PERM_TREE[activeTab];
 
   return (
     <div className="flex flex-col gap-3">
@@ -166,19 +202,21 @@ export default function PermissionsEditor({ isDark, permissions, onChange }: Pro
       </div>
 
       {/* Табы-вкладки */}
-      <div className="flex gap-1 p-1 rounded-xl" style={{ background: isDark ? "rgba(255,255,255,0.04)" : "#f3f4f6" }}>
-        {PERM_TREE.map((s, i) => {
+      <div className="flex gap-1 p-1 rounded-xl overflow-x-auto" style={{ background: isDark ? "rgba(255,255,255,0.04)" : "#f3f4f6" }}>
+        {TAB_LABELS.map((label, i) => {
           const active = activeTab === i;
-          const count  = sectionActiveCount(s);
+          const count  = i === PIPELINE_TAB_INDEX
+            ? (noStatusRestriction ? 0 : allowedStatuses.length)
+            : sectionActiveCount(PERM_TREE[i]);
           return (
             <button key={i} onClick={() => setActiveTab(i)}
-              className="flex-1 flex items-center justify-center gap-1 px-2 py-1.5 rounded-lg text-[11px] font-semibold transition relative"
+              className="flex-1 flex items-center justify-center gap-1 px-2 py-1.5 rounded-lg text-[11px] font-semibold transition relative whitespace-nowrap"
               style={{
                 background: active ? (isDark ? "#1e1b4b" : "#ffffff") : "transparent",
                 color: active ? "#a78bfa" : muted,
                 boxShadow: active ? "0 1px 4px rgba(0,0,0,0.3)" : "none",
               }}>
-              {TAB_LABELS[i]}
+              {label}
               {count > 0 && (
                 <span className="text-[9px] font-bold px-1 rounded-full"
                   style={{ background: "#7c3aed40", color: "#a78bfa" }}>
@@ -190,20 +228,65 @@ export default function PermissionsEditor({ isDark, permissions, onChange }: Pro
         })}
       </div>
 
+      {activeTab === PIPELINE_TAB_INDEX ? (
+        <>
+          {/* Заголовок вкладки "Этапы" */}
+          <div className="flex items-center justify-between px-1">
+            <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: muted }}>
+              Этапы воронки
+            </span>
+            <button onClick={toggleAllStatuses}
+              className="text-[10px] font-semibold transition"
+              style={{ color: "#a78bfa" }}>
+              {allStatusesChecked ? "Снять все" : "Выдать все"}
+            </button>
+          </div>
+
+          <div className="rounded-xl px-3 py-2.5 text-[11px]"
+            style={{ background: "rgba(124,58,237,0.08)", border: "1px solid rgba(124,58,237,0.2)", color: isDark ? "#c4b5fd" : "#6d28d9" }}>
+            Сотрудник увидит и сможет вести заказы только на отмеченных этапах. Как только заказ переходит на
+            недоступный этап — он пропадает из списка сотрудника.
+          </div>
+
+          <div className="flex flex-col gap-1">
+            {PIPELINE_STATUSES.map(st => {
+              const checked = isStatusChecked(st.id);
+              return (
+                <div key={st.id}
+                  className="flex items-center gap-2 px-3 py-2 rounded-xl"
+                  style={{
+                    background: checked ? `${st.color}0e` : (isDark ? "rgba(255,255,255,0.025)" : "#f9fafb"),
+                    border: `1px solid ${checked ? `${st.color}30` : border}`,
+                  }}>
+                  <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
+                    style={{ background: `${st.color}18` }}>
+                    <Icon name="GitBranch" size={13} style={{ color: st.color }} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-xs font-semibold truncate" style={{ color: text }}>{st.label}</div>
+                  </div>
+                  <Toggle checked={checked} color={st.color} isDark={isDark} onChange={() => toggleStatus(st.id)} title="Доступен сотруднику" />
+                </div>
+              );
+            })}
+          </div>
+        </>
+      ) : (
+      <>
       {/* Заголовок активной секции + кнопка выдать/снять */}
       <div className="flex items-center justify-between px-1">
         <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: muted }}>
-          {section.title}
+          {section!.title}
         </span>
-        <button onClick={() => toggleSection(section)}
+        <button onClick={() => toggleSection(section!)}
           className="text-[10px] font-semibold transition"
           style={{ color: "#a78bfa" }}>
-          {sectionAllChecked(section) ? "Снять все" : "Выдать все"}
+          {sectionAllChecked(section!) ? "Снять все" : "Выдать все"}
         </button>
       </div>
 
       {/* Шапка колонок 👁 ✏ — только если есть edit */}
-      {section.rows.some(r => r.edit) && (
+      {section!.rows.some(r => r.edit) && (
         <div className="flex items-center gap-2 px-3">
           <div className="flex-1" />
           <span className="text-[9px] font-bold w-8 text-center" style={{ color: muted }}>👁</span>
@@ -213,7 +296,7 @@ export default function PermissionsEditor({ isDark, permissions, onChange }: Pro
 
       {/* Строки активной секции */}
       <div className="flex flex-col gap-1">
-        {section.rows.map(row => {
+        {section!.rows.map(row => {
           const vChecked = row.view ? !!permissions[row.view] : undefined;
           const eChecked = row.edit ? !!permissions[row.edit] : undefined;
           const active   = vChecked || eChecked;
@@ -239,11 +322,13 @@ export default function PermissionsEditor({ isDark, permissions, onChange }: Pro
                 : <div className="w-8" />}
               {row.edit
                 ? <Toggle checked={eChecked!} color={row.color} isDark={isDark} onChange={() => toggle(row.edit!)} title="Редактирование" />
-                : section.rows.some(r => r.edit) ? <div className="w-8" /> : null}
+                : section!.rows.some(r => r.edit) ? <div className="w-8" /> : null}
             </div>
           );
         })}
       </div>
+      </>
+      )}
     </div>
   );
 }

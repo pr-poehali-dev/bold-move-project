@@ -111,7 +111,8 @@ export default function CrmOrders({ clients: allClients, loading, onStatusChange
 
   // ── Shared client actions ─────────────────────────────────────────────────
   const handleNextStep = async (id: number, nextStatus: string) => {
-    await crmFetch("clients", { method: "PUT", body: JSON.stringify({ status: nextStatus }) }, { id: String(id) });
+    const res = await crmFetch("clients", { method: "PUT", body: JSON.stringify({ status: nextStatus }) }, { id: String(id) }) as { error?: string };
+    if (res?.error) { alert(res.error); return; }
     onStatusChange(id, nextStatus);
   };
 

@@ -75,17 +75,19 @@ def handler(event: dict, context) -> dict:
     company_id = None   # None = мастер, видит всё
     is_master  = True
     master_uid = 0      # реальный uid текущего пользователя (для вставок)
+    # Список статусов воронки, разрешённых текущему сотруднику (None = ограничений нет, видно всё)
+    allowed_statuses = None
 
     if raw_token:
         cur.execute(f"""
-            SELECT u.id, u.email, u.role, u.company_id
+            SELECT u.id, u.email, u.role, u.company_id, u.permissions
             FROM {SCHEMA}.user_sessions s
             JOIN {SCHEMA}.users u ON u.id = s.user_id
             WHERE s.token=%s AND s.expires_at > NOW()
         """, (raw_token,))
         sess = cur.fetchone()
         if sess:
-            uid, uemail, urole, ucompany_id = sess
+            uid, uemail, urole, ucompany_id, upermissions = sess
             if uemail == "19.jeka.94@gmail.com":
                 is_master  = True
                 company_id = None   # мастер видит всё
@@ -97,6 +99,12 @@ def handler(event: dict, context) -> dict:
                 # Все остальные роли видят только свои данные (company_id = их uid)
                 if urole == "manager" and ucompany_id:
                     company_id = ucompany_id
+                    # Ограничение по этапам воронки — только для сотрудников (роль manager).
+                    # Пустой список / отсутствие ключа = ограничений нет (видно всё, обратная совместимость)
+                    if upermissions:
+                        st = upermissions.get("allowed_statuses")
+                        if isinstance(st, list) and len(st) > 0:
+                            allowed_statuses = st
                 else:
                     company_id = uid
 
@@ -309,6 +317,10 @@ def handler(event: dict, context) -> dict:
                 if status_filter:
                     sql += " AND status = %s"
                     params.append(status_filter)
+                # Ограничение сотрудника по разрешённым этапам воронки
+                if allowed_statuses is not None:
+                    sql += " AND status = ANY(%s)"
+                    params.append(allowed_statuses)
                 if search:
                     sql += " AND (client_name ILIKE %s OR phone ILIKE %s OR address ILIKE %s)"
                     params.extend([f"%{search}%"] * 3)
@@ -396,6 +408,18 @@ def handler(event: dict, context) -> dict:
                 cid = qs.get("id")
                 if not cid:
                     return err("id required")
+
+                # Ограничение сотрудника по разрешённым этапам воронки:
+                # нельзя трогать заказ, который сейчас на недоступном этапе,
+                # и нельзя переводить заказ на недоступный сотруднику этап
+                if allowed_statuses is not None:
+                    cur.execute(f"SELECT status FROM {SCHEMA}.live_chats WHERE id=%s AND company_id=%s", (int(cid), company_id))
+                    cur_row = cur.fetchone()
+                    if not cur_row or cur_row[0] not in allowed_statuses:
+                        return err("Нет доступа к этому этапу воронки", 403)
+                    new_status = body.get("status")
+                    if new_status and new_status not in allowed_statuses:
+                        return err("Нет доступа для перевода на этот этап", 403)
 
                 sets, vals = [], []
                 for f in ALL_CLIENT_FIELDS:

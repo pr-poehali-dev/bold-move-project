@@ -161,8 +161,14 @@ export default function CrmKanban({ clients, loading, onStatusChange, onClientRe
       return;
     }
     if (client.status === newStatus) return;
+    const prevStatus = client.status;
     onStatusChange(client.id, newStatus);
-    await crmFetch("clients", { method: "PUT", body: JSON.stringify({ status: newStatus }) }, { id: String(client.id) });
+    const res = await crmFetch("clients", { method: "PUT", body: JSON.stringify({ status: newStatus }) }, { id: String(client.id) }) as { error?: string };
+    if (res?.error) {
+      // Сервер отказал (например, нет доступа к этапу) — откатываем визуальное изменение
+      onStatusChange(client.id, prevStatus);
+      alert(res.error);
+    }
   };
 
   const handleNextStep = async (id: number, nextStatus: string) => {
@@ -170,8 +176,14 @@ export default function CrmKanban({ clients, loading, onStatusChange, onClientRe
       setLocalCards(prev => { const next = prev.map(c => c.id === id ? { ...c, status: nextStatus } : c); saveLocalCards(next); return next; });
       return;
     }
+    const prevClient = clients.find(c => c.id === id);
+    const prevStatus = prevClient?.status;
     onStatusChange(id, nextStatus);
-    await crmFetch("clients", { method: "PUT", body: JSON.stringify({ status: nextStatus }) }, { id: String(id) });
+    const res = await crmFetch("clients", { method: "PUT", body: JSON.stringify({ status: nextStatus }) }, { id: String(id) }) as { error?: string };
+    if (res?.error && prevStatus) {
+      onStatusChange(id, prevStatus);
+      alert(res.error);
+    }
   };
 
   if (loading) return (

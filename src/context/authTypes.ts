@@ -262,6 +262,10 @@ export interface Permissions {
   field_files?:     boolean;
   field_cancel?:    boolean;
 
+  // ── Уровень 2: Этапы воронки — какие статусы заказа видит/меняет сотрудник ──
+  // Пустой массив / отсутствие ключа = ограничений нет (видно все этапы)
+  allowed_statuses?: string[];
+
   // ── Устаревшие (для обратной совместимости) ─────────────────────────────
   crm_edit?:   boolean;
   finance?:    boolean;
