@@ -23,8 +23,8 @@ export default function PlanRoomsStatsModal({ stats, projectId, token, onClose }
       onClick={onClose}
     >
       <div
-        className="w-full sm:w-auto sm:min-w-[320px] rounded-t-2xl sm:rounded-2xl p-5 space-y-3"
-        style={{ background: "#15151f", border: "1px solid rgba(255,255,255,0.08)" }}
+        className="w-full sm:w-auto sm:min-w-[320px] rounded-t-2xl sm:rounded-2xl p-5 space-y-3 overflow-y-auto"
+        style={{ background: "#15151f", border: "1px solid rgba(255,255,255,0.08)", maxHeight: "85vh" }}
         onClick={e => e.stopPropagation()}
       >
         <div className="flex items-center justify-between mb-1">
