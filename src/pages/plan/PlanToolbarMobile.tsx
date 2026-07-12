@@ -10,10 +10,10 @@ export default function MobileToolbar(props: ToolbarProps) {
   const {
     tool,
     canUndo, canRedo,
-    onToolChange, onUndo, onRedo, onOpenLibrary, onReset, onExport,
+    onToolChange, onUndo, onRedo, onOpenLibrary, onReset,
     onBack, onSaveVariant, onOverwriteVariant, variants, variantsLoading,
     activeVariantId, onLoadVariant, onDeleteVariant, onRenameVariant, onSelectVariant,
-    onVariantPickerOpenChange,
+    onVariantPickerOpenChange, photosProjectId, onOpenPhotos,
   } = props;
 
   const [toolsOpen,         setToolsOpen]         = React.useState(false);
@@ -106,15 +106,14 @@ export default function MobileToolbar(props: ToolbarProps) {
           <Icon name={toolsOpen ? "ChevronUp" : "ChevronDown"} size={12} className="opacity-60" />
         </button>
 
-        {/* Кнопка "Смета" — открывает модалку выгрузки */}
-        {onSaveVariant && (
+        {/* Кнопка "Фото" — открывает ленту фото проекта (и в CRM, если проект привязан) */}
+        {photosProjectId != null && onOpenPhotos && (
           <button
-            onClick={onExport}
+            onClick={onOpenPhotos}
             className="flex items-center gap-1 h-9 px-2.5 rounded-lg shrink-0 transition-all text-[12px] font-semibold bg-white/[0.06] border border-white/[0.08] text-white/70 hover:bg-white/[0.10]"
-            title="Выгрузить смету"
+            title="Фото"
           >
-            <Icon name="FileText" size={15} />
-            <Icon name="ChevronDown" size={12} className="opacity-60" />
+            <Icon name="Camera" size={15} />
           </button>
         )}
 

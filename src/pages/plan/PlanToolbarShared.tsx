@@ -43,6 +43,9 @@ export interface ToolbarProps {
   onRenameVariant?: (id: number, name: string) => void;
   onSelectVariant?: (id: number) => void;
   onVariantPickerOpenChange?: (open: boolean) => void;
+  /** Мобиле: id проекта плана для фото (кнопка "Фото" в тулбаре) — undefined = проект не открыт */
+  photosProjectId?: number | null;
+  onOpenPhotos?: () => void;
 }
 
 // ── ToolDef ───────────────────────────────────────────────────────────────────

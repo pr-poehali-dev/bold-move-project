@@ -185,16 +185,28 @@ def handler(event: dict, context) -> dict:
                 return ok({"ok": True})
 
         # ── CLIENT FILES ─────────────────────────────────────────────────────
+        # Файлы привязаны к client_id (карточка CRM) и/или project_id (проект плана).
+        # Если у проекта плана есть crm_chat_id — фото сразу сохраняются с обоими
+        # идентификаторами и видны и в плане, и в карточке CRM.
         if resource == "client_files":
             client_id = qs.get("client_id") or body.get("client_id")
-            if not client_id:
-                return err("client_id required")
+            project_id = qs.get("project_id") or body.get("project_id")
+            if not client_id and not project_id:
+                return err("client_id or project_id required")
 
             if method == "GET":
-                cur.execute(
-                    f"SELECT id, url, name, type, created_at FROM {SCHEMA}.client_files WHERE client_id=%s ORDER BY created_at ASC",
-                    (client_id,)
-                )
+                if project_id:
+                    cur.execute(
+                        f"""SELECT id, url, name, type, category, client_id, project_id, created_at
+                            FROM {SCHEMA}.client_files WHERE project_id=%s ORDER BY created_at ASC""",
+                        (int(project_id),)
+                    )
+                else:
+                    cur.execute(
+                        f"""SELECT id, url, name, type, category, client_id, project_id, created_at
+                            FROM {SCHEMA}.client_files WHERE client_id=%s ORDER BY created_at ASC""",
+                        (int(client_id),)
+                    )
                 cols = [d[0] for d in cur.description]
                 rows = [dict(zip(cols, r)) for r in cur.fetchall()]
                 return ok(rows)
@@ -203,15 +215,33 @@ def handler(event: dict, context) -> dict:
                 url = body.get("url", "")
                 name = body.get("name", "файл")
                 ftype = body.get("type", "image")
+                category = (body.get("category") or "Фото до").strip()[:50]
                 if not url:
                     return err("url required")
+
+                final_client_id = int(client_id) if client_id else 0
+                final_project_id = int(project_id) if project_id else None
+
+                # Если фото добавляется из плана (project_id) и client_id не передан явно —
+                # подтягиваем crm_chat_id проекта, чтобы фото сразу попало и в CRM.
+                if final_project_id and not client_id:
+                    cur.execute(
+                        f"SELECT crm_chat_id FROM {SCHEMA}.plan_projects WHERE id=%s",
+                        (final_project_id,)
+                    )
+                    prow = cur.fetchone()
+                    if prow and prow[0]:
+                        final_client_id = prow[0]
+
                 cur.execute(
-                    f"INSERT INTO {SCHEMA}.client_files (client_id, url, name, type) VALUES (%s,%s,%s,%s) RETURNING id",
-                    (client_id, url, name, ftype)
+                    f"""INSERT INTO {SCHEMA}.client_files (client_id, project_id, url, name, type, category)
+                        VALUES (%s,%s,%s,%s,%s,%s) RETURNING id""",
+                    (final_client_id, final_project_id, url, name, ftype, category)
                 )
                 new_id = cur.fetchone()[0]
                 conn.commit()
-                return ok({"id": new_id, "url": url, "name": name, "type": ftype})
+                return ok({"id": new_id, "url": url, "name": name, "type": ftype, "category": category,
+                           "client_id": final_client_id, "project_id": final_project_id})
 
             if method == "PUT":
                 file_id = body.get("id")
@@ -219,8 +249,8 @@ def handler(event: dict, context) -> dict:
                 if not file_id or not name:
                     return err("id and name required")
                 cur.execute(
-                    f"UPDATE {SCHEMA}.client_files SET name=%s WHERE id=%s AND client_id=%s",
-                    (name, file_id, client_id)
+                    f"UPDATE {SCHEMA}.client_files SET name=%s WHERE id=%s",
+                    (name, int(file_id))
                 )
                 conn.commit()
                 return ok({"ok": True})
@@ -230,8 +260,8 @@ def handler(event: dict, context) -> dict:
                 if not file_id:
                     return err("id required")
                 cur.execute(
-                    f"DELETE FROM {SCHEMA}.client_files WHERE id=%s AND client_id=%s",
-                    (file_id, client_id)
+                    f"DELETE FROM {SCHEMA}.client_files WHERE id=%s",
+                    (int(file_id),)
                 )
                 conn.commit()
                 return ok({"ok": True})

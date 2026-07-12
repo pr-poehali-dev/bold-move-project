@@ -1,37 +1,37 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { createPortal } from "react-dom";
 import type React from "react";
 import Icon from "@/components/ui/icon";
 import { useTheme } from "./themeContext";
-import { uploadFile } from "./crmApi";
+import { uploadFile, crmFetch } from "./crmApi";
 import { Section } from "./drawerComponents";
 import { BlockId } from "./drawerTypes";
 
 const isImage = (u: string) => /\.(jpg|jpeg|png|webp|gif|bmp|svg)/i.test(u);
 
-interface FileEntry { url: string; name: string; }
+interface FileEntry { id: number; url: string; name: string; }
 interface FileCategory { label: string; files: FileEntry[]; }
 
-const DEFAULT_CATEGORIES: FileCategory[] = [
-  { label: "Смета",     files: [] },
-  { label: "Договор",   files: [] },
-  { label: "Фото до",   files: [] },
-  { label: "Фото после",files: [] },
-];
+const DEFAULT_LABELS = ["Смета", "Договор", "Фото до", "Фото после"];
 
-const LS_KEY = (id: number) => `crm_files_v2_${id}`;
+// Список меток категорий (не сами файлы — они теперь в базе данных) —
+// хранится локально только чтобы помнить порядок и добавленные пользователем
+// категории, даже если в них ещё нет ни одного файла.
+const LABELS_KEY = (id: number) => `crm_files_labels_${id}`;
 
-function loadCategories(clientId: number): FileCategory[] {
+function loadLabels(clientId: number): string[] {
   try {
-    const stored = localStorage.getItem(LS_KEY(clientId));
+    const stored = localStorage.getItem(LABELS_KEY(clientId));
     if (stored) return JSON.parse(stored);
   } catch { /* */ }
-  return DEFAULT_CATEGORIES.map(c => ({ ...c, files: [] }));
+  return [...DEFAULT_LABELS];
 }
 
-function saveCategories(clientId: number, cats: FileCategory[]) {
-  localStorage.setItem(LS_KEY(clientId), JSON.stringify(cats));
+function saveLabels(clientId: number, labels: string[]) {
+  localStorage.setItem(LABELS_KEY(clientId), JSON.stringify(labels));
 }
+
+interface RemoteFile { id: number; url: string; name: string; type: string; category: string; }
 
 interface Props {
   clientId: number;
@@ -47,7 +47,9 @@ export function DrawerFilesBlock({ clientId, hiddenBlocks, toggleHidden, logActi
   const isHidden = hiddenBlocks.has("files");
   const editMode = editingBlock === "files";
 
-  const [cats, setCats] = useState<FileCategory[]>(() => loadCategories(clientId));
+  const [labels, setLabels] = useState<string[]>(() => loadLabels(clientId));
+  const [remoteFiles, setRemoteFiles] = useState<RemoteFile[]>([]);
+  const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState<number | null>(null); // индекс категории
   const [lightbox, setLightbox] = useState<{ catIdx: number; fileIdx: number } | null>(null);
   const [newRowVal, setNewRowVal] = useState("");
@@ -55,25 +57,44 @@ export function DrawerFilesBlock({ clientId, hiddenBlocks, toggleHidden, logActi
   const [labelVal, setLabelVal] = useState("");
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
-  const update = (next: FileCategory[]) => { setCats(next); saveCategories(clientId, next); };
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const data = await crmFetch("client_files", undefined, { client_id: String(clientId) });
+      setRemoteFiles(Array.isArray(data) ? data as RemoteFile[] : []);
+    } finally {
+      setLoading(false);
+    }
+  }, [clientId]);
+
+  useEffect(() => { load(); }, [load]);
+
+  // Собираем категории из меток + реальных файлов из базы (сгруппированных по category)
+  const cats: FileCategory[] = labels.map(label => ({
+    label,
+    files: remoteFiles.filter(f => f.category === label).map(f => ({ id: f.id, url: f.url, name: f.name })),
+  }));
+
+  const updateLabels = (next: string[]) => { setLabels(next); saveLabels(clientId, next); };
 
   // Добавить категорию
   const addCategory = () => {
     if (!newRowVal.trim()) return;
-    update([...cats, { label: newRowVal.trim(), files: [] }]);
+    updateLabels([...labels, newRowVal.trim()]);
     setNewRowVal("");
   };
 
-  // Удалить категорию
+  // Удалить категорию (файлы в ней остаются в базе, просто перестают отображаться тут;
+  // это как и раньше — категория это лишь группировка)
   const deleteCategory = (i: number) => {
-    if (!window.confirm("Точно удалить?")) return;
-    update(cats.filter((_, j) => j !== i));
+    if (!window.confirm("Точно удалить? Файлы внутри останутся в базе, но пропадут из этого списка.")) return;
+    updateLabels(labels.filter((_, j) => j !== i));
   };
 
   // Переименовать категорию
   const renameCategory = (i: number, label: string) => {
     if (!label.trim()) return;
-    update(cats.map((c, j) => j === i ? { ...c, label: label.trim() } : c));
+    updateLabels(labels.map((l, j) => j === i ? label.trim() : l));
   };
 
   // Загрузить файл в категорию
@@ -81,29 +102,25 @@ export function DrawerFilesBlock({ clientId, hiddenBlocks, toggleHidden, logActi
     const picked = Array.from(e.target.files || []);
     if (!picked.length) return;
     setUploading(catIdx);
-    const uploaded: FileEntry[] = [];
+    const category = labels[catIdx];
     for (const file of picked) {
       const url = await uploadFile(file);
-      uploaded.push({ url, name: file.name });
-      logAction("Paperclip", "#06b6d4", `${cats[catIdx].label}: ${file.name}`);
+      await crmFetch("client_files", {
+        method: "POST",
+        body: JSON.stringify({ client_id: clientId, url, name: file.name, type: file.type, category }),
+      });
+      logAction("Paperclip", "#06b6d4", `${category}: ${file.name}`);
     }
-    setCats(prev => {
-      const next = prev.map((c, j) => j === catIdx ? { ...c, files: [...c.files, ...uploaded] } : c);
-      saveCategories(clientId, next);
-      return next;
-    });
+    await load();
     setUploading(null);
     if (inputRefs.current[catIdx]) inputRefs.current[catIdx]!.value = "";
   };
 
   // Удалить файл из категории
-  const deleteFile = (catIdx: number, fileIdx: number) => {
+  const deleteFile = async (fileId: number) => {
     if (!window.confirm("Точно удалить файл?")) return;
-    const updated = cats.map((c, j) => j === catIdx
-      ? { ...c, files: c.files.filter((_, k) => k !== fileIdx) }
-      : c
-    );
-    update(updated);
+    await crmFetch("client_files", { method: "DELETE", body: JSON.stringify({ id: fileId }) });
+    setRemoteFiles(prev => prev.filter(f => f.id !== fileId));
   };
 
   const [copied, setCopied] = useState<string | null>(null);
@@ -193,7 +210,13 @@ export function DrawerFilesBlock({ clientId, hiddenBlocks, toggleHidden, logActi
         </div>
       )}
 
-      {cats.map((cat, catIdx) => {
+      {loading && (
+        <div className="flex items-center gap-2 py-2 text-xs" style={{ color: t.textMute }}>
+          <Icon name="Loader2" size={12} className="animate-spin" /> Загрузка файлов...
+        </div>
+      )}
+
+      {!loading && cats.map((cat, catIdx) => {
         const catImages = cat.files.filter(f => isImage(f.url));
         const catDocs   = cat.files.filter(f => !isImage(f.url));
 
@@ -264,14 +287,14 @@ export function DrawerFilesBlock({ clientId, hiddenBlocks, toggleHidden, logActi
                 {catImages.length > 0 && (
                   <div className="grid grid-cols-5 gap-1 mb-1.5">
                     {catImages.map((f, fi) => (
-                      <div key={fi} className="relative aspect-square">
+                      <div key={f.id} className="relative aspect-square">
                         <button onClick={() => setLightbox({ catIdx, fileIdx: fi })}
                           className="w-full h-full rounded-lg overflow-hidden hover:opacity-80 transition"
                           style={{ border: `1px solid ${t.border}` }}>
                           <img src={f.url} alt={f.name} className="w-full h-full object-cover" />
                         </button>
                         {editMode && (
-                          <button onClick={() => deleteFile(catIdx, cat.files.indexOf(f))}
+                          <button onClick={() => deleteFile(f.id)}
                             className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-red-500 flex items-center justify-center hover:bg-red-600 transition">
                             <Icon name="X" size={8} className="text-white" />
                           </button>
@@ -282,8 +305,8 @@ export function DrawerFilesBlock({ clientId, hiddenBlocks, toggleHidden, logActi
                 )}
 
                 {/* Документы */}
-                {catDocs.map((f, fi) => (
-                  <div key={fi} className="flex items-center gap-2 py-1 group/doc">
+                {catDocs.map(f => (
+                  <div key={f.id} className="flex items-center gap-2 py-1 group/doc">
                     <Icon name="FileText" size={11} style={{ color: "#06b6d4" }} className="flex-shrink-0" />
                     <span className="text-xs flex-1 truncate cursor-pointer hover:opacity-70"
                       style={{ color: t.textSub }}
@@ -291,7 +314,7 @@ export function DrawerFilesBlock({ clientId, hiddenBlocks, toggleHidden, logActi
                       {f.name}
                     </span>
                     {editMode && (
-                      <button onClick={() => deleteFile(catIdx, cat.files.indexOf(f))}
+                      <button onClick={() => deleteFile(f.id)}
                         className="p-0.5 rounded hover:text-red-400 flex-shrink-0" style={{ color: "#ef4444" }}>
                         <Icon name="X" size={10} />
                       </button>
