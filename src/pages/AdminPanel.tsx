@@ -38,11 +38,17 @@ export default function AdminPanel() {
   const [theme, setTheme] = useState<Theme>("dark");
   const toggleTheme = () => setTheme(t => t === "dark" ? "light" : "dark");
 
+  // Сотрудник (роль "manager") должен иметь явное право "admin_panel_view",
+  // владелец компании и мастер платформы — доступ не ограничивается
+  const managerDenied =
+    !!user && user.role === "manager" && !hasPermission(user, "admin_panel_view");
+
   const hasAccess =
     !!user &&
     !!authToken &&
     user.approved &&
-    (user.is_master || ALLOWED_ROLES.includes(user.role));
+    (user.is_master || ALLOWED_ROLES.includes(user.role)) &&
+    !managerDenied;
 
   const canAgent = hasPermission(user, "agent_view");
   const hasTeam  = (user?.role === "company" || !!user?.is_master) && !user?.is_demo;
@@ -111,6 +117,7 @@ export default function AdminPanel() {
         showLogin={showLogin}
         setShowLogin={setShowLogin}
         logout={logout}
+        permissionDenied={managerDenied}
       />
     );
   }

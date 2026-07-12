@@ -9,6 +9,7 @@ interface Props {
   showLogin: boolean;
   setShowLogin: (v: boolean) => void;
   logout: () => void;
+  permissionDenied?: boolean;
 }
 
 export function AdminPanelLoadingScreen() {
@@ -19,12 +20,35 @@ export function AdminPanelLoadingScreen() {
   );
 }
 
-export function AdminPanelAccessScreen({ user, showLogin, setShowLogin, logout }: Omit<Props, "loading" | "hasAccess">) {
+export function AdminPanelAccessScreen({ user, showLogin, setShowLogin, logout, permissionDenied }: Omit<Props, "loading" | "hasAccess">) {
   const navigate = useNavigate();
   const ALLOWED_ROLES = ["installer", "company", "manager"];
   const isTrialExpired = !!user && !!user.trial_expired;
   const isWrongRole    = !!user && !user.is_master && !ALLOWED_ROLES.includes(user.role ?? "") && !isTrialExpired;
   const isPending      = !!user && !user.approved && !isTrialExpired;
+
+  // ── Экран "Нет права на панель управления" (сотрудник без galочки admin_panel_view) ──
+  if (permissionDenied && !isTrialExpired && !isPending) {
+    return (
+      <div className="min-h-screen bg-[#0b0b11] flex items-center justify-center px-4">
+        <div className="w-full max-w-sm">
+          <div className="rounded-2xl p-6 flex flex-col gap-4 items-center text-center"
+            style={{ background: "#0e0e1c", border: "1px solid rgba(255,255,255,0.08)" }}>
+            <div className="w-14 h-14 rounded-2xl flex items-center justify-center" style={{ background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.2)" }}>
+              <Icon name="ShieldX" size={26} style={{ color: "#f87171" }} />
+            </div>
+            <div className="text-white font-bold text-base">Нет доступа к панели управления</div>
+            <div className="text-white/40 text-sm">Обратитесь к владельцу компании, чтобы открыть доступ</div>
+            <button onClick={logout}
+              className="w-full py-2.5 rounded-xl text-xs font-medium transition"
+              style={{ background: "rgba(255,255,255,0.05)", color: "rgba(255,255,255,0.5)", border: "1px solid rgba(255,255,255,0.07)" }}>
+              Выйти
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   // ── Экран "Демо истекло" ─────────────────────────────────────────────────
   if (isTrialExpired) {
