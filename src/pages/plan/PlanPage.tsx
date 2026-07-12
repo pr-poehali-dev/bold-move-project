@@ -8,7 +8,8 @@ import type { PlanState } from "./planTypes";
 import { INITIAL_STATE, polygonArea, polygonPerimeter } from "./planTypes";
 import { useHistory, useIsMobile } from "./usePlanHistory";
 import { usePlanHandlers } from "./usePlanHandlers";
-import { useAuth } from "@/context/AuthContext";
+import { useAuth, hasPermission } from "@/context/AuthContext";
+import Icon from "@/components/ui/icon";
 import PlanProjectsScreen from "./PlanProjectsScreen";
 import PlanRoomsScreen from "./PlanRoomsScreen";
 import type { PlanProject, PlanRoom } from "./usePlanProjects";
@@ -26,7 +27,7 @@ type PlanScreen = "projects" | "rooms" | "canvas";
 
 export default function PlanPage() {
   const { state, push, replace, undo, redo, reset, canUndo, canRedo } = useHistory(INITIAL_STATE);
-  const { user, token } = useAuth();
+  const { user, token, loading: authLoading } = useAuth();
   const isMobile = useIsMobile();
 
   // ── Флоу проектов ────────────────────────────────────────────────────────────
@@ -202,6 +203,21 @@ export default function PlanPage() {
     }
     return undefined;
   };
+
+  // ── Доступ: сотрудник без права "plan_view" не пускается в раздел ───────────
+  // Гостей (user=null) и владельца/мастера пропускаем — ограничение только для роли "manager"
+  const planAccessDenied = !authLoading && !!user && user.role === "manager" && !hasPermission(user, "plan_view");
+  if (planAccessDenied) {
+    return (
+      <div className="flex flex-col items-center justify-center gap-3 px-6 text-center" style={{ height: "100dvh", background: "#111" }}>
+        <div className="w-14 h-14 rounded-2xl flex items-center justify-center" style={{ background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.2)" }}>
+          <Icon name="ShieldX" size={26} style={{ color: "#f87171" }} />
+        </div>
+        <div className="text-white font-bold text-base">Нет доступа к разделу</div>
+        <div className="text-white/40 text-sm max-w-xs">Обратитесь к владельцу компании, чтобы открыть доступ к Построителю</div>
+      </div>
+    );
+  }
 
   // ── Экраны проектов и комнат ─────────────────────────────────────────────────
   if (screen === "projects") {
