@@ -1,17 +1,12 @@
-import MobileBottomBar from "./MobileBottomBar";
-import PlanBottomSheet from "./PlanBottomSheet";
-import PlanRightInputPanel from "./PlanRightInputPanel";
-import PlanModals from "./PlanModals";
-import PlanCatalogPanel from "./PlanCatalogPanel";
-import PlanDragGhosts from "./PlanDragGhosts";
-import PlanQuantityModal from "./PlanQuantityModal";
-import PlanVariantSaveModal from "./PlanVariantSaveModal";
-import ReplaceItemModal from "./ReplaceItemModal";
 import { useState, useEffect, useRef } from "react";
-import type { PlanState } from "./planTypes";
+import type { PlanState, SegmentPriceItem } from "./planTypes";
 import type { usePlanCatalog } from "./usePlanCatalog";
 import type { usePlanHandlers } from "./usePlanHandlers";
 import useVoiceDraw from "./useVoiceDraw";
+import PlanBottomBarSection, { type ReplaceTarget } from "./PlanBottomBarSection";
+import PlanMobileSidePanels from "./PlanMobileSidePanels";
+import PlanCatalogAndModals from "./PlanCatalogAndModals";
+import PlanReplaceAndGhosts from "./PlanReplaceAndGhosts";
 
 type VoiceDraw = ReturnType<typeof useVoiceDraw>;
 type Catalog   = ReturnType<typeof usePlanCatalog>;
@@ -96,14 +91,10 @@ export default function PlanPagePanels({
   // replaceTarget хранит что именно заменяем:
   //   { type: "seg", segId, priceId }  — конкретный товар на конкретной стене
   //   { type: "active", priceId }      — активный товар из нижней панели (везде)
-  const [replaceTarget, setReplaceTarget] = useState<
-    | { type: "seg"; segId: string; priceId: number; category: string | null }
-    | { type: "active"; priceId: number; category: string | null }
-    | null
-  >(null);
+  const [replaceTarget, setReplaceTarget] = useState<ReplaceTarget>(null);
 
   // Обработчик выбора нового товара в барабане замены
-  const handleReplaceSelect = (newItem: import("./planTypes").SegmentPriceItem) => {
+  const handleReplaceSelect = (newItem: SegmentPriceItem) => {
     if (!replaceTarget) return;
     if (replaceTarget.type === "seg") {
       catalog.replaceSegItem(newItem, { segId: replaceTarget.segId, priceId: replaceTarget.priceId });
@@ -136,367 +127,97 @@ export default function PlanPagePanels({
     }, 120);
   }, [catalog.editingSegRef, isMobile]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const [replaceModalItem, setReplaceModalItem] = useState<(import("./planTypes").SegmentPriceItem & { quantity: number }) | null>(null);
+  const [replaceModalItem, setReplaceModalItem] = useState<(SegmentPriceItem & { quantity: number }) | null>(null);
   const [replaceFloorId, setReplaceFloorId] = useState<string | null>(null);
 
   return (
     <>
       {/* Нижняя панель */}
-      <MobileBottomBar
-        zoom={state.settings.zoom}
-        settings={state.settings}
-        onSettingChange={handleSettingChange}
-        onZoomIn={zoomIn}
-        onZoomOut={zoomOut}
-        onZoomFit={zoomFit}
-        onOpenPanel={isMobile
-          ? () => {
-              // Кнопка "Чертёж" горит и закрывает панель только для своей вкладки (drawing)
-              if (sheetOpen && state.sidebarTab !== "calc") { setSheetOpen(false); } else {
-                catalog.setCatalogOpen(false);
-                setRightPanelOpen(false);
-                handleChange({ sidebarTab: "drawing" });
-                setSheetSnap("half"); setSheetOpen(true);
-              }
-            }
-          : () => {
-              if (sidebarOpen && state.sidebarTab !== "calc") { setSidebarOpen(false); } else {
-                catalog.setCatalogOpen(false);
-                handleChange({ sidebarTab: "drawing" });
-                setSidebarOpen(true);
-              }
-            }
-        }
-        onOpenCatalog={() => {
-          if (replaceTarget) {
-            // Закрываем барабан замены
-            setReplaceTarget(null);
-            catalog.setReplaceCatalogCategory(null);
-            return;
-          }
-          const next = !catalog.catalogOpen;
-          catalog.setCatalogOpen(next);
-          if (next) {
-            setSheetOpen(false);
-            setSidebarOpen(false);
-            setRightPanelOpen(false);
-          }
-        }}
-        onOpenSides={() => {
-          if (rightPanelOpen) { setRightPanelOpen(false); } else {
-            catalog.setCatalogOpen(false);
-            setSheetOpen(false);
-            setFocusSegmentId(state.selectedSegmentId);
-            setRightPanelOpen(true);
-          }
-        }}
-        selectedSegmentId={state.selectedSegmentId}
-        sheetOpen={
-          isMobile
-            ? sheetOpen && state.sidebarTab !== "calc"
-            : sidebarOpen && state.sidebarTab !== "calc"
-        }
-        catalogOpen={catalog.catalogOpen || !!replaceTarget}
-        rightPanelOpen={rightPanelOpen}
+      <PlanBottomBarSection
+        state={state}
         isMobile={isMobile}
-        onOpenMaterials={state.settings.hideMaterialsButton ? undefined : () => {
-          // Кнопка "Материалы" горит и закрывает панель только для своей вкладки (calc)
-          if (isMobile) {
-            if (sheetOpen && state.sidebarTab === "calc") { setSheetOpen(false); return; }
-            handleChange({ sidebarTab: "calc" });
-            catalog.setCatalogOpen(false);
-            setRightPanelOpen(false);
-            setSheetSnap("half");
-            setSheetOpen(true);
-          } else {
-            if (sidebarOpen && state.sidebarTab === "calc") { setSidebarOpen(false); return; }
-            handleChange({ sidebarTab: "calc" });
-            catalog.setCatalogOpen(false);
-            setSidebarOpen(true);
-          }
-        }}
-        materialsOpen={
-          isMobile
-            ? sheetOpen && state.sidebarTab === "calc"
-            : sidebarOpen && state.sidebarTab === "calc"
-        }
-        onToggleVoiceDraw={voiceDraw.hasSpeech ? voiceDraw.toggle : undefined}
-        isVoiceDrawing={voiceDraw.isListening}
-        isVoiceProcessing={voiceDraw.isProcessing}
-        voiceStatus={voiceDraw.status}
-        voiceInterim={voiceDraw.interimText}
-        voiceVolume={voiceDraw.volume}
-        isClosed={state.isClosed}
-        planState={state}
-        onVoiceCatalogItems={onVoiceItemsFromBottom}
-        attachedCount={catalog.attachedCount}
-        filterAttached={catalog.filterAttached}
-        onToggleFilterAttached={() => catalog.setFilterAttached(v => !v)}
-        onSettingsOpenChange={setBottomSettingsOpen}
+        sheetOpen={sheetOpen} setSheetOpen={setSheetOpen}
+        sheetSnap={sheetSnap} setSheetSnap={setSheetSnap}
+        rightPanelOpen={rightPanelOpen} setRightPanelOpen={setRightPanelOpen}
+        sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen}
+        setFocusSegmentId={setFocusSegmentId}
+        handleChange={handleChange}
+        handleSettingChange={handleSettingChange}
+        zoomIn={zoomIn} zoomOut={zoomOut} zoomFit={zoomFit}
+        catalog={catalog}
+        replaceTarget={replaceTarget}
+        setReplaceTarget={setReplaceTarget}
+        voiceDraw={voiceDraw}
+        onVoiceItemsFromBottom={onVoiceItemsFromBottom}
+        setBottomSettingsOpen={setBottomSettingsOpen}
       />
 
-      {/* Мобиле: правая панель быстрого ввода сторон */}
-      {isMobile && rightPanelOpen && (
-        <PlanRightInputPanel
-          state={state}
-          onUpdateSegment={handleUpdateSegment}
-          onUpdateDiagonal={handleUpdateDiagonal}
-          focusSegmentId={focusSegmentId}
-          onChange={handleChange}
-          onClose={() => { setRightPanelOpen(false); setFocusSegmentId(null); }}
-        />
-      )}
+      {/* Мобиле: правая панель ввода сторон + bottom sheet */}
+      <PlanMobileSidePanels
+        state={state}
+        isMobile={isMobile}
+        rightPanelOpen={rightPanelOpen} setRightPanelOpen={setRightPanelOpen}
+        focusSegmentId={focusSegmentId} setFocusSegmentId={setFocusSegmentId}
+        sheetOpen={sheetOpen} setSheetOpen={setSheetOpen} sheetSnap={sheetSnap}
+        setSheetHeight={setSheetHeight}
+        handleChange={handleChange}
+        handleUpdateSegment={handleUpdateSegment}
+        handleUpdateDiagonal={handleUpdateDiagonal}
+        handleSettingChange={handleSettingChange}
+        catalog={catalog}
+      />
 
-      {/* Мобиле: bottom sheet */}
-      {isMobile && (
-        <PlanBottomSheet
-          state={state}
-          onChange={handleChange}
-          open={sheetOpen}
-          initialSnap={sheetSnap}
-          onClose={() => { setSheetOpen(false); setSheetHeight(0); }}
-          onSheetHeightChange={setSheetHeight}
-          onHideMaterialsButton={!state.settings.hideMaterialsButton ? () => {
-            handleSettingChange({ hideMaterialsButton: true });
-            setSheetOpen(false);
-          } : undefined}
-          onShowMaterialsButton={state.settings.hideMaterialsButton ? () => {
-            handleSettingChange({ hideMaterialsButton: false });
-          } : undefined}
-          // Быстрые функции для позиций в "Материалах" — те же, что на ПК в PlanSidebar,
-          // без них попап действий на мобиле не открывается.
-          onRemoveActiveItem={catalog.removeActiveItem}
-          onAssignToAllSegs={catalog.assignItemToAllSegs}
-          onRemoveFromAllSegs={catalog.removeItemFromAllSegs}
-          isItemOnAllSegs={catalog.isItemOnAllSegs}
-          onAdjustQuantity={catalog.adjustItemQuantity}
-          onSetQuantity={catalog.setItemQuantity}
-          onAddToFloor={catalog.setPendingFloorItem}
-          onReplaceItem={(item) => {
-            // Полотняный товар → редактирование floor-позиции
-            if (item.isWallItem === false) {
-              const fi = (state.floorItems ?? []).find(f => f.priceId === item.priceId);
-              if (fi) catalog.setEditingFloorId(fi.id);
-              return;
-            }
-            // Стеновой → замена в сегменте (берём первый сегмент с этим товаром);
-            // это установит catalog.editingSegRef, который уже отслеживается эффектом
-            // выше и откроет барабан замены на мобиле.
-            const seg = state.segments.find(s => (s.items ?? []).some(it => it.priceId === item.priceId));
-            if (seg) catalog.setEditingSegRef({ segId: seg.id, priceId: item.priceId });
-          }}
-          onHoverItem={catalog.setHoveredPriceId}
-        />
-      )}
-
-      {/* Модалки, онбординг */}
-      <PlanModals
+      {/* Модалки общего назначения + оба каталога (обычный режим и барабан замены) */}
+      <PlanCatalogAndModals
         state={state}
         isMobile={isMobile}
         isLoggedIn={isLoggedIn}
         currentPlanName={currentPlanName}
+        exportOpen={exportOpen} setExportOpen={setExportOpen}
+        libraryOpen={libraryOpen} setLibraryOpen={setLibraryOpen}
+        authOpen={authOpen} setAuthOpen={setAuthOpen}
+        showOnboarding={showOnboarding} setShowOnboarding={setShowOnboarding}
+        handleChange={handleChange}
+        handleSave={handleSave}
+        handleSaveAs={handleSaveAs}
+        handleLoad={handleLoad}
+        handleDelete={handleDelete}
+        handleRename={handleRename}
+        handleNew={handleNew}
+        storage={storage}
+        catalog={catalog}
+        getFloorDefault={getFloorDefault}
+        replaceTarget={replaceTarget}
+        setReplaceTarget={setReplaceTarget}
+        handleReplaceSelect={handleReplaceSelect}
+        voiceItemsHandlerRef={voiceItemsHandlerRef}
+        setReplaceModalOpen={setReplaceModalOpen}
+        setReplaceModalItem={setReplaceModalItem}
+        setReplaceFloorId={setReplaceFloorId}
+      />
+
+      {/* Модалки замены (ПК) + ghost-оверлеи/слайдер активных карточек + сохранение варианта */}
+      <PlanReplaceAndGhosts
+        state={state}
+        isMobile={isMobile}
+        catalog={catalog}
+        replaceModalOpen={replaceModalOpen} setReplaceModalOpen={setReplaceModalOpen}
+        replaceModalItem={replaceModalItem} setReplaceModalItem={setReplaceModalItem}
+        replaceFloorId={replaceFloorId} setReplaceFloorId={setReplaceFloorId}
+        replaceTarget={replaceTarget} setReplaceTarget={setReplaceTarget}
+        sheetOpen={sheetOpen}
+        sidebarOpen={sidebarOpen}
+        rightPanelOpen={rightPanelOpen}
         exportOpen={exportOpen}
         libraryOpen={libraryOpen}
         authOpen={authOpen}
-        showOnboarding={showOnboarding}
-        storage={storage}
-        onCloseExport={() => setExportOpen(false)}
-        onCloseLibrary={() => setLibraryOpen(false)}
-        onCloseAuth={() => setAuthOpen(false)}
-        onCloseOnboarding={() => setShowOnboarding(false)}
-        onLoginRequest={() => { setLibraryOpen(false); setAuthOpen(true); }}
-        onLoad={handleLoad}
-        onSave={handleSave}
-        onSaveAs={handleSaveAs}
-        onDelete={handleDelete}
-        onRename={handleRename}
-        onNew={handleNew}
-      />
-
-      {/* Каталог материалов — обычный режим (только когда НЕ идёт замена) */}
-      <PlanCatalogPanel
-        open={catalog.catalogOpen && !replaceTarget}
-        filteredPrices={catalog.filteredPrices}
-        allPrices={catalog.prices}
-        selectedSegmentId={state.selectedSegmentId}
-        selectedSegmentIds={state.selectedSegmentIds}
-        state={state}
-        onClose={() => {
-          catalog.setCatalogOpen(false);
-          catalog.setReplaceCatalogCategory(null);
-        }}
-        onAssignToSegs={catalog.assignItemToSegs}
-        onAssignToAllSegs={catalog.assignItemToAllSegs}
-        onAssignMany={catalog.assignManyItems}
-        onRemoveFromSegs={catalog.removeItemFromSegs}
-        onRemoveFromAllSegs={catalog.removeItemFromAllSegs}
-        onAddToActive={item => {
-          const hidden = ["монтаж", "раскрой", "огарпунивание"];
-          if (hidden.some(h => item.category?.toLowerCase().includes(h))) return;
-          catalog.setActiveItems(prev =>
-            prev.some(it => it.priceId === item.priceId) ? prev : [...prev, item]
-          );
-          catalog.setTapActiveId(item.priceId);
-          catalog.setReplaceCatalogCategory(null);
-        }}
-        initialCategory={catalog.replaceCatalogCategory ?? undefined}
-        isMobile={isMobile}
-        onRegisterVoiceHandler={fn => { voiceItemsHandlerRef.current = fn; }}
-        onStartClickPlace={catalog.startClickPlace}
-        onOpenFloorQuantity={catalog.setPendingFloorItem}
-      />
-
-      {/* Барабан замены — отдельный, только когда идёт замена */}
-      <PlanCatalogPanel
-        open={!!replaceTarget}
-        filteredPrices={catalog.filteredPrices}
-        allPrices={catalog.prices}
-        selectedSegmentId={null}
-        state={state}
-        onClose={() => {
-          setReplaceTarget(null);
-          catalog.setReplaceCatalogCategory(null);
-        }}
-        onAssignToSegs={() => {}}
-        onAssignToAllSegs={() => {}}
-        onAssignMany={() => {}}
-        onRemoveFromSegs={() => {}}
-        onRemoveFromAllSegs={() => {}}
-        onAddToActive={() => {}}
-        onReplaceItem={handleReplaceSelect}
-        initialCategory={replaceTarget?.category ?? undefined}
-        isMobile={isMobile}
-      />
-
-      {/* Модалка добавления на полотно */}
-      <PlanQuantityModal
-        item={catalog.pendingFloorItem}
-        onConfirm={catalog.confirmFloorItem}
-        onCancel={() => catalog.setPendingFloorItem(null)}
-        defaultQuantity={getFloorDefault(catalog.pendingFloorItem?.category)}
-      />
-      {/* Модалка редактирования quantity floorItem */}
-      <PlanQuantityModal
-        item={catalog.editingFloorItem}
-        onConfirm={catalog.confirmEditFloorItem}
-        onCancel={() => catalog.setEditingFloorId(null)}
-        isEditing
-        onDelete={() => {
-          const id = catalog.editingFloorId;
-          catalog.setEditingFloorId(null);
-          if (id) handleChange({ floorItems: (state.floorItems ?? []).filter(fi => fi.id !== id) });
-        }}
-        onReplace={() => {
-          if (isMobile) {
-            const cat = catalog.editingFloorItem?.category ?? null;
-            catalog.setEditingFloorId(null);
-            catalog.setReplaceCatalogCategory(cat);
-            catalog.setCatalogOpen(true);
-          } else {
-            setReplaceModalItem(catalog.editingFloorItem);
-            setReplaceFloorId(catalog.editingFloorId);
-            catalog.setEditingFloorId(null);
-            setReplaceModalOpen(true);
-          }
-        }}
-      />
-
-      {/* Модалка замены товара на полотне (только ПК) */}
-      {!isMobile && (
-        <ReplaceItemModal
-          open={replaceModalOpen}
-          item={replaceModalItem}
-          prices={catalog.prices}
-          onReplace={(newItem, quantity) => {
-            catalog.replaceFloorItem(newItem, quantity, replaceFloorId ?? undefined);
-            setReplaceModalOpen(false);
-            setReplaceModalItem(null);
-            setReplaceFloorId(null);
-          }}
-          onCancel={() => {
-            setReplaceModalOpen(false);
-            setReplaceModalItem(null);
-            setReplaceFloorId(null);
-          }}
-        />
-      )}
-
-      {/* Замена товара на стене: ПК — модалка, мобиле — через useEffect (барабан) */}
-      {!isMobile && (
-        <ReplaceItemModal
-          open={!!catalog.editingSegRef}
-          item={catalog.editingSegItem}
-          prices={catalog.prices}
-          onReplace={(newItem) => {
-            catalog.replaceSegItem(newItem);
-          }}
-          onCancel={() => catalog.setEditingSegRef(null)}
-        />
-      )}
-
-      {/* Замена из нижней панели активных карточек (ПК) */}
-      {!isMobile && replaceTarget?.type === "active" && (
-        <ReplaceItemModal
-          open={true}
-          item={{ priceId: replaceTarget.priceId, name: "", category: replaceTarget.category ?? "", imageUrl: null, categoryImageUrl: null, unit: "", isWallItem: true, quantity: 1 }}
-          prices={catalog.prices}
-          onReplace={(newItem) => {
-            catalog.replaceActiveItemEverywhere(replaceTarget.priceId, newItem);
-            setReplaceTarget(null);
-          }}
-          onCancel={() => setReplaceTarget(null)}
-        />
-      )}
-
-      {/* Ghost-оверлеи и слайдер активных карточек */}
-      <PlanDragGhosts
-        dragItem={catalog.dragItem}
-        dragPos={catalog.dragPos}
-        dragCardItem={catalog.dragCardItem}
-        dragCardPos={catalog.dragCardPos}
-        clickPlaceItem={catalog.clickPlaceItem}
-        clickPlacePos={catalog.clickPlacePos}
-        activeItems={catalog.activeItems}
-        tapActiveId={catalog.tapActiveId}
-        hoverSegId={catalog.hoverSegId}
-        isMobile={isMobile}
-        segments={state.segments}
-        floorItems={state.floorItems ?? []}
-        anyPanelOpen={sheetOpen || sidebarOpen || rightPanelOpen || catalog.catalogOpen || exportOpen || libraryOpen || authOpen || bottomSettingsOpen || mobileVariantPickerOpen || photosOpen}
-        onTapActiveId={catalog.setTapActiveId}
-        onRemoveActiveItem={catalog.removeActiveItem}
-        onAssignToAllSegs={catalog.assignItemToAllSegs}
-        onRemoveFromAllSegs={catalog.removeItemFromAllSegs}
-        isItemOnAllSegs={catalog.isItemOnAllSegs}
-        onAdjustQuantity={catalog.adjustItemQuantity}
-        onSetQuantity={catalog.setItemQuantity}
-        onAddToFloor={catalog.setPendingFloorItem}
-        selectedSegmentIds={state.selectedSegmentIds}
-        onAssignToSelectedSegs={catalog.assignItemToSegs}
-        onHoverItem={catalog.setHoveredPriceId}
-        onReplaceItem={item => {
-          if (isMobile) {
-            // Мобиле: открываем барабан замены
-            setReplaceTarget({
-              type: "active",
-              priceId: item.priceId,
-              category: item.category ?? null,
-            });
-            catalog.setReplaceCatalogCategory(item.category ?? null);
-          } else {
-            // ПК: открываем модалку через replaceTarget
-            setReplaceTarget({ type: "active", priceId: item.priceId, category: item.category ?? null });
-          }
-        }}
-        hasSegments={state.isClosed && state.segments.length > 0}
-      />
-
-      {/* Модалка сохранения варианта */}
-      <PlanVariantSaveModal
-        open={variantModalOpen}
-        saving={variantSaving}
-        onSave={onSaveVariant}
-        onClose={onCloseVariantModal}
+        bottomSettingsOpen={bottomSettingsOpen}
+        mobileVariantPickerOpen={mobileVariantPickerOpen}
+        photosOpen={photosOpen}
+        variantModalOpen={variantModalOpen}
+        variantSaving={variantSaving}
+        onSaveVariant={onSaveVariant}
+        onCloseVariantModal={onCloseVariantModal}
       />
     </>
   );

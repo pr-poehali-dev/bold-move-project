@@ -26,6 +26,7 @@ interface Props {
   authOpen: boolean;
   bottomSettingsOpen: boolean;
   mobileVariantPickerOpen: boolean;
+  photosOpen: boolean;
   // Варианты
   variantModalOpen: boolean;
   variantSaving: boolean;
@@ -40,7 +41,7 @@ export default function PlanReplaceAndGhosts({
   replaceFloorId, setReplaceFloorId,
   replaceTarget, setReplaceTarget,
   sheetOpen, sidebarOpen, rightPanelOpen, exportOpen, libraryOpen, authOpen,
-  bottomSettingsOpen, mobileVariantPickerOpen,
+  bottomSettingsOpen, mobileVariantPickerOpen, photosOpen,
   variantModalOpen, variantSaving, onSaveVariant, onCloseVariantModal,
 }: Props) {
   return (
@@ -106,7 +107,7 @@ export default function PlanReplaceAndGhosts({
         isMobile={isMobile}
         segments={state.segments}
         floorItems={state.floorItems ?? []}
-        anyPanelOpen={sheetOpen || sidebarOpen || rightPanelOpen || catalog.catalogOpen || exportOpen || libraryOpen || authOpen || bottomSettingsOpen || mobileVariantPickerOpen}
+        anyPanelOpen={sheetOpen || sidebarOpen || rightPanelOpen || catalog.catalogOpen || exportOpen || libraryOpen || authOpen || bottomSettingsOpen || mobileVariantPickerOpen || photosOpen}
         onTapActiveId={catalog.setTapActiveId}
         onRemoveActiveItem={catalog.removeActiveItem}
         onAssignToAllSegs={catalog.assignItemToAllSegs}
