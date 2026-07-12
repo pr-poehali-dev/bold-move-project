@@ -54,7 +54,7 @@ export default function RoleSelectDropdown({ isDark, roles, selectedRoleId, curr
         style={{ background: isDark ? "rgba(255,255,255,0.04)" : "#f3f4f6", border: `1px solid ${border}`, color: text }}>
         <span className="flex items-center gap-2 truncate">
           <Icon name={selectedRole ? "Tag" : "Pencil"} size={14} style={{ color: selectedRole ? "#a78bfa" : muted, flexShrink: 0 }} />
-          <span className="truncate">{selectedRole ? selectedRole.name : "Настроено вручную"}</span>
+          <span className="truncate">{selectedRole ? selectedRole.name : "Индивидуальные"}</span>
         </span>
         <Icon name={open ? "ChevronUp" : "ChevronDown"} size={14} style={{ color: muted, flexShrink: 0 }} />
       </button>
@@ -76,7 +76,7 @@ export default function RoleSelectDropdown({ isDark, roles, selectedRoleId, curr
                       color: selectedRoleId === null ? "#a78bfa" : (isDark ? "rgba(255,255,255,0.7)" : "#374151"),
                     }}>
                     <Icon name="Pencil" size={13} style={{ flexShrink: 0 }} />
-                    Настроено вручную
+                    Индивидуальные
                     {selectedRoleId === null && <Icon name="Check" size={12} style={{ marginLeft: "auto" }} />}
                   </button>
 
