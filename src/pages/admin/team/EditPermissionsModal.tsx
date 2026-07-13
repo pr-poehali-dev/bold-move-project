@@ -84,7 +84,11 @@ export default function EditPermissionsModal({ isDark, member, onClose, onSaved 
             <RoleSelectDropdown isDark={isDark} roles={roles} selectedRoleId={selectedRoleId}
               currentPermissions={perms}
               onChange={applyRole}
-              onRoleCreated={r => setRoles(prev => [...prev, r])} />
+              onRoleCreated={r => setRoles(prev => [...prev, r])}
+              onRoleUpdated={r => {
+                setRoles(prev => prev.map(x => x.id === r.id ? r : x));
+                if (selectedRoleId === r.id) setPerms(r.permissions);
+              }} />
             {selectedRoleId !== null && (
               <div className="text-[10.5px] mt-1.5" style={{ color: muted }}>
                 Права привязаны к роли — при изменении роли в разделе «Роли» они обновятся автоматически здесь тоже.

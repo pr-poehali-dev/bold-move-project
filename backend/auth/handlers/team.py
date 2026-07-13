@@ -110,8 +110,10 @@ def handle(action, method, params, body, token, event, conn, cur):
         # Синхронизируем права всем сотрудникам, привязанным к этой роли
         if permissions is not None:
             cur.execute(f"UPDATE {SCHEMA}.users SET permissions=%s::jsonb WHERE team_role_id=%s", (json.dumps(permissions), int(role_id)))
+        cur.execute(f"SELECT id, name, permissions, created_at FROM {SCHEMA}.team_roles WHERE id=%s", (int(role_id),))
+        r = cur.fetchone()
         conn.commit()
-        return ok({"ok": True})
+        return ok({"role": {"id": r[0], "name": r[1], "permissions": r[2], "created_at": str(r[3])[:19]}})
 
     if action == "team-roles-delete" and method == "POST":
         owner, e = get_owner_or_err()

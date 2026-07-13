@@ -198,7 +198,11 @@ export default function InviteMemberModal({ isDark, onClose, onInvited, onUpdate
                 <RoleSelectDropdown isDark={isDark} roles={roles} selectedRoleId={selectedRoleId}
                   currentPermissions={perms}
                   onChange={applyRole}
-                  onRoleCreated={r => setRoles(prev => [...prev, r])} />
+                  onRoleCreated={r => setRoles(prev => [...prev, r])}
+                  onRoleUpdated={r => {
+                    setRoles(prev => prev.map(x => x.id === r.id ? r : x));
+                    if (selectedRoleId === r.id) setPerms(r.permissions);
+                  }} />
               </div>
 
               <PermissionsEditor isDark={isDark} permissions={perms}

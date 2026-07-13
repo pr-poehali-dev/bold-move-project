@@ -92,12 +92,13 @@ export async function updateTeamRole(
   token: string | null,
   roleId: number,
   payload: { name?: string; permissions?: Permissions },
-): Promise<void> {
+): Promise<TeamRole> {
   const res = await fetch(`${AUTH_URL}?action=team-roles-update`, {
     method: "POST", headers: authHeaders(token), body: JSON.stringify({ role_id: roleId, ...payload }),
   });
   const d = await res.json();
   if (!res.ok || d.error) throw new Error(d.error || "Не удалось сохранить роль");
+  return d.role;
 }
 
 export async function deleteTeamRole(token: string | null, roleId: number): Promise<void> {

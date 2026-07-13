@@ -2,6 +2,7 @@ import { useState } from "react";
 import Icon from "@/components/ui/icon";
 import { useAuth, type Permissions } from "@/context/AuthContext";
 import { createTeamRole, type TeamRole } from "./teamApi";
+import EditRoleModal from "./EditRoleModal";
 
 interface Props {
   isDark: boolean;
@@ -10,17 +11,19 @@ interface Props {
   currentPermissions: Permissions;
   onChange: (roleId: number | null) => void;
   onRoleCreated: (role: TeamRole) => void;
+  onRoleUpdated?: (role: TeamRole) => void;
 }
 
 // Кастомный тёмный dropdown для выбора роли (шаблона доступа) с возможностью
 // сразу же создать новую роль на основе текущих настроенных прав.
-export default function RoleSelectDropdown({ isDark, roles, selectedRoleId, currentPermissions, onChange, onRoleCreated }: Props) {
+export default function RoleSelectDropdown({ isDark, roles, selectedRoleId, currentPermissions, onChange, onRoleCreated, onRoleUpdated }: Props) {
   const { token } = useAuth();
   const [open,      setOpen]      = useState(false);
   const [creating,  setCreating]  = useState(false);
   const [newName,   setNewName]   = useState("");
   const [busy,      setBusy]      = useState(false);
   const [err,       setErr]       = useState("");
+  const [editRole,  setEditRole]  = useState<TeamRole | null>(null);
 
   const border = isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.08)";
   const text   = isDark ? "#fff"    : "#0f1623";
@@ -81,18 +84,28 @@ export default function RoleSelectDropdown({ isDark, roles, selectedRoleId, curr
                   </button>
 
                   {roles.map(r => (
-                    <button key={r.id}
-                      onClick={() => { onChange(r.id); close(); }}
-                      className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm font-medium transition text-left"
+                    <div key={r.id}
+                      className="w-full flex items-center gap-1 pr-2"
                       style={{
                         background: selectedRoleId === r.id ? (isDark ? "rgba(139,92,246,0.18)" : "rgba(139,92,246,0.1)") : "transparent",
-                        color: selectedRoleId === r.id ? "#a78bfa" : (isDark ? "rgba(255,255,255,0.7)" : "#374151"),
                         borderTop: `1px solid ${isDark ? "rgba(255,255,255,0.05)" : "#f3f4f6"}`,
                       }}>
-                      <Icon name="Tag" size={13} style={{ flexShrink: 0 }} />
-                      <span className="truncate">{r.name}</span>
-                      {selectedRoleId === r.id && <Icon name="Check" size={12} style={{ marginLeft: "auto", flexShrink: 0 }} />}
-                    </button>
+                      <button
+                        onClick={() => { onChange(r.id); close(); }}
+                        className="flex-1 flex items-center gap-2.5 pl-4 py-2.5 text-sm font-medium transition text-left min-w-0"
+                        style={{ color: selectedRoleId === r.id ? "#a78bfa" : (isDark ? "rgba(255,255,255,0.7)" : "#374151") }}>
+                        <Icon name="Tag" size={13} style={{ flexShrink: 0 }} />
+                        <span className="truncate">{r.name}</span>
+                        {selectedRoleId === r.id && <Icon name="Check" size={12} style={{ marginLeft: "auto", flexShrink: 0 }} />}
+                      </button>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); setEditRole(r); }}
+                        title="Изменить роль"
+                        className="flex items-center justify-center w-7 h-7 rounded-lg transition flex-shrink-0"
+                        style={{ color: muted }}>
+                        <Icon name="Pencil" size={12} />
+                      </button>
+                    </div>
                   ))}
                 </div>
 
@@ -134,6 +147,15 @@ export default function RoleSelectDropdown({ isDark, roles, selectedRoleId, curr
             )}
           </div>
         </>
+      )}
+
+      {editRole && (
+        <EditRoleModal isDark={isDark} role={editRole}
+          onClose={() => setEditRole(null)}
+          onSaved={(r) => {
+            onRoleUpdated?.(r);
+            setEditRole(null);
+          }} />
       )}
     </div>
   );
