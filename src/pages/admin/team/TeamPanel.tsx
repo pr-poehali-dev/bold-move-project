@@ -177,7 +177,8 @@ export default function TeamPanel({ isDark }: Props) {
           onSaved={(m) => setMembers(prev => prev.map(x => x.id === m.id ? { ...x, ...m } : x))} />
       )}
       {resetFor && (
-        <ResetPasswordModal isDark={isDark} member={resetFor} onClose={() => setResetFor(null)} />
+        <ResetPasswordModal isDark={isDark} member={resetFor} onClose={() => setResetFor(null)}
+          onReset={() => setMembers(prev => prev.map(x => x.id === resetFor.id ? { ...x, has_pending_password: false } : x))} />
       )}
       {confirmDel && (
         <ConfirmDeleteModal isDark={isDark} member={confirmDel} busy={delBusy}

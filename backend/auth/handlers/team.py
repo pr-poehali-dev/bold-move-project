@@ -274,9 +274,12 @@ def handle(action, method, params, body, token, event, conn, cur):
         new_password = secrets.token_urlsafe(8)[:10]
         cur.execute(f"""
             UPDATE {SCHEMA}.users
-            SET password_hash=%s, temp_password_plain=%s
+            SET password_hash=%s, temp_password_plain=NULL
             WHERE id=%s
-        """, (hash_password(new_password), new_password, int(member_id)))
+        """, (hash_password(new_password), int(member_id)))
+        # Пароль сразу показывается в ответе — считаем его переданным, плашка "нет пароля" не нужна.
+        # Завершаем ВСЕ активные сессии сотрудника — старый пароль (и его сессии) должны сразу перестать работать.
+        cur.execute(f"UPDATE {SCHEMA}.user_sessions SET expires_at=NOW() WHERE user_id=%s", (int(member_id),))
         conn.commit()
         return ok({"ok": True, "temp_password": new_password})
 

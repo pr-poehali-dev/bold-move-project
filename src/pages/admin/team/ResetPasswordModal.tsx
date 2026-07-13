@@ -7,9 +7,10 @@ interface Props {
   isDark: boolean;
   member: TeamMember;
   onClose: () => void;
+  onReset?: () => void;
 }
 
-export default function ResetPasswordModal({ isDark, member, onClose }: Props) {
+export default function ResetPasswordModal({ isDark, member, onClose, onReset }: Props) {
   const { token } = useAuth();
   const [busy,    setBusy]    = useState(true);
   const [tempPwd, setTempPwd] = useState<string | null>(null);
@@ -21,7 +22,7 @@ export default function ResetPasswordModal({ isDark, member, onClose }: Props) {
     (async () => {
       try {
         const pwd = await resetMemberPassword(token, member.id);
-        if (!cancelled) setTempPwd(pwd);
+        if (!cancelled) { setTempPwd(pwd); onReset?.(); }
       } catch (e: unknown) {
         if (!cancelled) setErr(e instanceof Error ? e.message : "Ошибка");
       } finally {
@@ -29,6 +30,7 @@ export default function ResetPasswordModal({ isDark, member, onClose }: Props) {
       }
     })();
     return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token, member.id]);
 
   const copyAll = async () => {
