@@ -153,7 +153,7 @@ export default function TeamPanel({ isDark }: Props) {
             </button>
           </div>
         ) : (
-          <div className="grid sm:grid-cols-2 gap-3">
+          <div className="flex flex-col gap-2">
             {members.map(m => (
               <MemberCard key={m.id} member={m} isDark={isDark}
                 onEditPermissions={() => setEditFor(m)}
@@ -205,75 +205,60 @@ function MemberCard({ member, isDark, onEditPermissions, onResetPassword, onRemo
   const totalCount  = ALL_PERM_KEYS.length;
 
   const isPwdPending = member.has_pending_password === true;
+  const accessColor = activeCount === 0 ? "#ef4444" : activeCount === totalCount ? "#10b981" : "#a78bfa";
 
   return (
-    <div className="rounded-2xl p-4"
+    <div className="rounded-xl px-3.5 py-2.5 flex items-center gap-3"
       style={{
         background: bg,
-        border: isPwdPending
-          ? "1.5px solid rgba(251,191,36,0.45)"
-          : `1px solid ${border}`,
+        border: isPwdPending ? "1.5px solid rgba(251,191,36,0.4)" : `1px solid ${border}`,
       }}>
-      <div className="flex items-start gap-3 mb-3">
-        <div className="w-10 h-10 rounded-xl flex items-center justify-center text-base font-black flex-shrink-0"
-          style={{ background: "rgba(124,58,237,0.18)", color: "#a78bfa" }}>
-          {initials}
-        </div>
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 flex-wrap">
-            <div className="text-sm font-bold truncate">{member.name || "—"}</div>
-            <span className="px-2 py-0.5 rounded-md text-[9px] font-black uppercase tracking-wider flex-shrink-0"
-              style={{ background: "rgba(124,58,237,0.18)", color: "#a78bfa" }}>
-              Менеджер
+      {/* Аватар */}
+      <div className="w-9 h-9 rounded-lg flex items-center justify-center text-sm font-black flex-shrink-0"
+        style={{ background: "rgba(124,58,237,0.18)", color: "#a78bfa" }}>
+        {initials}
+      </div>
+
+      {/* Имя + контакты */}
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-1.5 flex-wrap">
+          <span className="text-[13px] font-bold truncate">{member.name || member.email}</span>
+          {isPwdPending && (
+            <span title="Пароль не передан — сотрудник пока не может войти"
+              className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold flex-shrink-0"
+              style={{ background: "rgba(251,191,36,0.14)", color: "#fbbf24" }}>
+              <Icon name="AlertTriangle" size={9} />
+              нет пароля
             </span>
-          </div>
-          <div className="text-[11px] truncate" style={{ color: muted }}>{member.email}</div>
-          {member.phone && (
-            <div className="text-[11px] mt-0.5" style={{ color: muted }}>{member.phone}</div>
           )}
         </div>
-      </div>
-
-      {/* Состояние: пароль не передан */}
-      {isPwdPending && (
-        <div className="mb-3 rounded-lg px-2.5 py-2 text-[10.5px] flex items-center gap-2"
-          style={{ background: "rgba(251,191,36,0.10)", border: "1px solid rgba(251,191,36,0.30)", color: "#fbbf24" }}>
-          <Icon name="AlertTriangle" size={11} className="flex-shrink-0" />
-          <span>Пароль не передан — сотрудник пока не может войти</span>
+        <div className="text-[11px] truncate" style={{ color: muted }}>
+          {member.email}{member.phone ? ` · ${member.phone}` : ""}
         </div>
-      )}
-
-      {/* Счётчик прав */}
-      <div className="mb-3 flex items-center justify-between text-[10.5px]" style={{ color: muted }}>
-        <span className="flex items-center gap-1.5">
-          <Icon name="ShieldCheck" size={11} />
-          Доступ
-        </span>
-        <span className="font-bold" style={{ color: activeCount === 0 ? "#ef4444" : isDark ? "#fff" : "#0f1623" }}>
-          {activeCount} / {totalCount} разделов
-        </span>
       </div>
 
-      <div className="flex gap-2 mb-2">
-        <button onClick={onEditPermissions}
-          className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-[11px] font-bold transition"
+      {/* Доступ (бейдж) */}
+      <div title="Открытых разделов" className="flex-shrink-0 px-2 py-1 rounded-lg text-[11px] font-bold text-center"
+        style={{ background: `${accessColor}18`, color: accessColor, minWidth: 52 }}>
+        {activeCount}/{totalCount}
+      </div>
+
+      {/* Действия */}
+      <div className="flex items-center gap-1 flex-shrink-0">
+        <button onClick={onEditPermissions} title="Настроить доступ"
+          className="flex items-center justify-center w-8 h-8 rounded-lg transition"
           style={{ background: "rgba(124,58,237,0.14)", color: "#a78bfa", border: "1px solid rgba(124,58,237,0.32)" }}>
-          <Icon name="ShieldCheck" size={11} />
-          Настроить доступ
+          <Icon name="ShieldCheck" size={14} />
         </button>
-      </div>
-
-      <div className="flex gap-2">
-        <button onClick={onResetPassword}
-          className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-[11px] font-bold transition"
+        <button onClick={onResetPassword} title="Сбросить пароль"
+          className="flex items-center justify-center w-8 h-8 rounded-lg transition"
           style={{ background: "rgba(167,139,250,0.12)", color: "#a78bfa", border: "1px solid rgba(167,139,250,0.28)" }}>
-          <Icon name="KeyRound" size={11} />
-          Сбросить пароль
+          <Icon name="KeyRound" size={14} />
         </button>
-        <button onClick={onRemove}
-          className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-[11px] font-bold transition"
+        <button onClick={onRemove} title="Удалить"
+          className="flex items-center justify-center w-8 h-8 rounded-lg transition"
           style={{ background: "rgba(239,68,68,0.10)", color: "#ef4444", border: "1px solid rgba(239,68,68,0.25)" }}>
-          <Icon name="Trash2" size={11} />
+          <Icon name="Trash2" size={14} />
         </button>
       </div>
     </div>

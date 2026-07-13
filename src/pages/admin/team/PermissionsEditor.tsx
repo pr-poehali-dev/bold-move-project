@@ -4,12 +4,15 @@ import type { Permissions } from "@/context/AuthContext";
 
 // ── Типы ──────────────────────────────────────────────────────────────────
 
+// Ключи прав с булевым значением (исключает allowed_statuses — это string[], не галочка)
+type BoolPermKey = Exclude<keyof Permissions, "allowed_statuses">;
+
 type PermRow = {
   label: string;
   icon: string;
   color: string;
-  view?: keyof Permissions;   // ключ "видимость"
-  edit?: keyof Permissions;   // ключ "редактирование"
+  view?: BoolPermKey;   // ключ "видимость"
+  edit?: BoolPermKey;   // ключ "редактирование"
   desc?: string;
 };
 
@@ -70,8 +73,8 @@ export const PERM_TREE: PermSection[] = [
 ];
 
 // Все ключи для "выдать/снять все"
-export const ALL_PERM_KEYS: (keyof Permissions)[] = PERM_TREE.flatMap(s =>
-  s.rows.flatMap(r => [r.view, r.edit].filter(Boolean) as (keyof Permissions)[])
+export const ALL_PERM_KEYS: BoolPermKey[] = PERM_TREE.flatMap(s =>
+  s.rows.flatMap(r => [r.view, r.edit].filter(Boolean) as BoolPermKey[])
 );
 
 // ── Этапы воронки заказов (жёсткий список — совпадает с LEAD_STATUSES/ORDER_STATUSES) ──

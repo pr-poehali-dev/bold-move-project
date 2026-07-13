@@ -110,7 +110,7 @@ export default function TeamRolesPanel({ isDark }: Props) {
             </button>
           </div>
         ) : (
-          <div className="grid sm:grid-cols-2 gap-3">
+          <div className="flex flex-col gap-2">
             {roles.map(r => (
               <RoleCard key={r.id} role={r} isDark={isDark}
                 onEdit={() => setEditFor(r)}
@@ -143,37 +143,37 @@ function RoleCard({ role, isDark, onEdit, onDelete }: {
   onEdit: () => void;
   onDelete: () => void;
 }) {
-  const muted  = isDark ? "rgba(255,255,255,0.45)" : "#6b7280";
   const border = isDark ? "rgba(255,255,255,0.07)" : "#e5e7eb";
   const bg     = isDark ? "rgba(255,255,255,0.03)" : "#ffffff";
 
   const activeCount = Object.values(role.permissions || {}).filter(Boolean).length;
   const totalCount  = ALL_PERM_KEYS.length;
+  const accessColor = activeCount === 0 ? "#ef4444" : activeCount === totalCount ? "#10b981" : "#a78bfa";
 
   return (
-    <div className="rounded-2xl p-4" style={{ background: bg, border: `1px solid ${border}` }}>
-      <div className="flex items-start gap-3 mb-3">
-        <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
-          style={{ background: "rgba(124,58,237,0.18)" }}>
-          <Icon name="Tag" size={17} style={{ color: "#a78bfa" }} />
-        </div>
-        <div className="flex-1 min-w-0">
-          <div className="text-sm font-bold truncate">{role.name}</div>
-          <div className="text-[11px]" style={{ color: muted }}>{activeCount} / {totalCount} разделов</div>
-        </div>
+    <div className="rounded-xl px-3.5 py-2.5 flex items-center gap-3" style={{ background: bg, border: `1px solid ${border}` }}>
+      <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0"
+        style={{ background: "rgba(124,58,237,0.18)" }}>
+        <Icon name="Tag" size={15} style={{ color: "#a78bfa" }} />
       </div>
 
-      <div className="flex gap-2">
-        <button onClick={onEdit}
-          className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-[11px] font-bold transition"
+      <div className="flex-1 min-w-0 text-[13px] font-bold truncate">{role.name}</div>
+
+      <div title="Открытых разделов" className="flex-shrink-0 px-2 py-1 rounded-lg text-[11px] font-bold text-center"
+        style={{ background: `${accessColor}18`, color: accessColor, minWidth: 52 }}>
+        {activeCount}/{totalCount}
+      </div>
+
+      <div className="flex items-center gap-1 flex-shrink-0">
+        <button onClick={onEdit} title="Изменить роль"
+          className="flex items-center justify-center w-8 h-8 rounded-lg transition"
           style={{ background: "rgba(124,58,237,0.14)", color: "#a78bfa", border: "1px solid rgba(124,58,237,0.32)" }}>
-          <Icon name="Pencil" size={11} />
-          Изменить
+          <Icon name="Pencil" size={14} />
         </button>
-        <button onClick={onDelete}
-          className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-[11px] font-bold transition"
+        <button onClick={onDelete} title="Удалить"
+          className="flex items-center justify-center w-8 h-8 rounded-lg transition"
           style={{ background: "rgba(239,68,68,0.10)", color: "#ef4444", border: "1px solid rgba(239,68,68,0.25)" }}>
-          <Icon name="Trash2" size={11} />
+          <Icon name="Trash2" size={14} />
         </button>
       </div>
     </div>
