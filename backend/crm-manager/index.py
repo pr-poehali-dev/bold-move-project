@@ -77,6 +77,9 @@ def handler(event: dict, context) -> dict:
     master_uid = 0      # реальный uid текущего пользователя (для вставок)
     # Список статусов воронки, разрешённых текущему сотруднику (None = ограничений нет, видно всё)
     allowed_statuses = None
+    # True только если токен реально проверен и найдена активная сессия в БД.
+    # Отсутствие токена НЕ должно трактоваться как доступ мастера (см. resource=="clients" ниже).
+    authenticated = False
 
     if raw_token:
         cur.execute(f"""
@@ -87,6 +90,7 @@ def handler(event: dict, context) -> dict:
         """, (raw_token,))
         sess = cur.fetchone()
         if sess:
+            authenticated = True
             uid, uemail, urole, ucompany_id, upermissions = sess
             if uemail == "19.jeka.94@gmail.com":
                 is_master  = True
@@ -278,6 +282,10 @@ def handler(event: dict, context) -> dict:
 
         # ── CLIENTS ──────────────────────────────────────────────────────────
         if resource == "clients":
+            # Список/карточки клиентов (имена, телефоны) — доступ только по проверенному токену.
+            # Без этого запрос без авторизации трактовался бы как "мастер" и отдавал бы всех клиентов всех компаний.
+            if not authenticated:
+                return err("Требуется авторизация", 401)
             if method == "GET":
                 status_filter = qs.get("status", "")
                 search = qs.get("search", "")
