@@ -13,10 +13,12 @@
       "expectedStatus": 200
     },
     {
-      "name": "GET clients",
+      "name": "GET clients without auth is rejected",
       "method": "GET",
       "path": "/?r=clients",
-      "expectedStatus": 200
+      "expectedStatus": 401,
+      "expectedBody": {"error": "Требуется авторизация"},
+      "bodyMatcher": "partial"
     },
     {
       "name": "GET kanban columns",

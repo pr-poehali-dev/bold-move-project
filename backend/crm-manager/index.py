@@ -417,6 +417,14 @@ def handler(event: dict, context) -> dict:
                 if not cid:
                     return err("id required")
 
+                # Защита от IDOR: не-мастер может менять только клиентов своей компании.
+                # Мастер (company_id is None) видит и правит всё, остальным — строгая проверка владения.
+                if company_id is not None:
+                    cur.execute(f"SELECT company_id FROM {SCHEMA}.live_chats WHERE id=%s", (int(cid),))
+                    owner_row = cur.fetchone()
+                    if not owner_row or owner_row[0] != company_id:
+                        return err("Клиент не найден", 404)
+
                 # Ограничение сотрудника по разрешённым этапам воронки:
                 # нельзя трогать заказ, который сейчас на недоступном этапе,
                 # и нельзя переводить заказ на недоступный сотруднику этап
@@ -489,6 +497,12 @@ def handler(event: dict, context) -> dict:
                 cid = qs.get("id")
                 if not cid:
                     return err("id required")
+                # Защита от IDOR: не-мастер может удалять только клиентов своей компании.
+                if company_id is not None:
+                    cur.execute(f"SELECT company_id FROM {SCHEMA}.live_chats WHERE id=%s", (int(cid),))
+                    owner_row = cur.fetchone()
+                    if not owner_row or owner_row[0] != company_id:
+                        return err("Клиент не найден", 404)
                 cur.execute(f"UPDATE {SCHEMA}.kanban_cards SET client_id=NULL WHERE client_id=%s", (int(cid),))
                 cur.execute(f"UPDATE {SCHEMA}.calendar_events SET client_id=NULL WHERE client_id=%s", (int(cid),))
                 cur.execute(f"UPDATE {SCHEMA}.live_chats SET status='deleted' WHERE id=%s", (int(cid),))
