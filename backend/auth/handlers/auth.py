@@ -178,7 +178,8 @@ def handle(action, method, params, body, token, event, conn, cur):
                    u.tg_bot_token, u.tg_notify_chat_id,
                    u.max_bot_token, u.max_notify_chat_id,
                    u.nav_config, u.nav_hidden_ids,
-                   u.is_demo, u.demo_expires_at, u.role_selected
+                   u.is_demo, u.demo_expires_at, u.role_selected,
+                   (u.password_hash IS NOT NULL AND u.password_hash <> '') AS has_password
             FROM {SCHEMA}.user_sessions s
             JOIN {SCHEMA}.users u ON u.id = s.user_id
             WHERE s.token=%s AND s.expires_at > NOW()
@@ -194,7 +195,7 @@ def handle(action, method, params, body, token, event, conn, cur):
          support_phone, support_email, max_url, working_hours, pdf_footer_address, telegram_url, pdf_text_color,
          brand_logo_url_dark, brand_logo_orientation, pdf_logo_bg, bot_avatar_bg, kanban_enabled,
          tg_bot_token, tg_notify_chat_id, max_bot_token, max_notify_chat_id,
-         nav_config, nav_hidden_ids, is_demo, demo_expires_at, role_selected) = row
+         nav_config, nav_hidden_ids, is_demo, demo_expires_at, role_selected, has_password) = row
 
         is_master    = (email == MASTER_EMAIL)
         trial_expired = False
@@ -246,6 +247,7 @@ def handle(action, method, params, body, token, event, conn, cur):
             "nav_config": nav_config, "nav_hidden_ids": nav_hidden_ids,
             "kanban_enabled": bool(kanban_enabled),
             "is_demo": bool(is_demo),
+            "has_password": bool(has_password),
         }
         return ok({"user": user_data, **user_data})
 
@@ -355,12 +357,10 @@ def handle(action, method, params, body, token, event, conn, cur):
             return err("Требуется авторизация", 401)
         old_password = body.get("old_password") or ""
         new_password = body.get("new_password") or ""
-        if not old_password or not new_password:
-            return err("Укажите текущий и новый пароль")
+        if not new_password:
+            return err("Укажите новый пароль")
         if len(new_password) < 6:
             return err("Новый пароль должен быть не короче 6 символов")
-        if old_password == new_password:
-            return err("Новый пароль совпадает с текущим")
         cur.execute(f"""
             SELECT u.id, u.password_hash FROM {SCHEMA}.user_sessions s
             JOIN {SCHEMA}.users u ON u.id = s.user_id
@@ -370,8 +370,16 @@ def handle(action, method, params, body, token, event, conn, cur):
         if not row:
             return err("Токен недействителен", 401)
         uid, current_hash = row
-        if not verify_password(old_password, current_hash):
-            return err("Текущий пароль введён неверно")
+        # У пользователей, вошедших через Google/Яндекс и т.п., пароля может не быть вообще —
+        # тогда просто задаём первый пароль без проверки "текущего", т.к. его никогда не было.
+        has_password = bool(current_hash)
+        if has_password:
+            if not old_password:
+                return err("Укажите текущий пароль")
+            if old_password == new_password:
+                return err("Новый пароль совпадает с текущим")
+            if not verify_password(old_password, current_hash):
+                return err("Текущий пароль введён неверно")
         cur.execute(f"UPDATE {SCHEMA}.users SET password_hash=%s, updated_at=NOW() WHERE id=%s",
                     (hash_password(new_password), uid))
         cur.execute(f"UPDATE {SCHEMA}.user_sessions SET expires_at=NOW() WHERE user_id=%s AND token<>%s", (uid, token))

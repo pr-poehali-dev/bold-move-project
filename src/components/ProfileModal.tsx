@@ -175,7 +175,7 @@ export default function ProfileModal({ onClose, open = true }: Props) {
 
           {/* Безопасность */}
           <Section title="Безопасность" icon="ShieldCheck">
-            <ChangePasswordBlock />
+            <ChangePasswordBlock hasPassword={user?.has_password !== false} />
           </Section>
 
           {error && (
@@ -273,7 +273,7 @@ function PhoneField({ label, value, onChange }: {
   );
 }
 
-function ChangePasswordBlock() {
+function ChangePasswordBlock({ hasPassword }: { hasPassword: boolean }) {
   const { token } = useAuth();
   const [open,    setOpen]    = useState(false);
   const [oldPwd,  setOldPwd]  = useState("");
@@ -288,7 +288,7 @@ function ChangePasswordBlock() {
 
   const submit = async () => {
     setErr(""); setDone(false);
-    if (!oldPwd || !newPwd || !repPwd) { setErr("Заполните все поля"); return; }
+    if ((hasPassword && !oldPwd) || !newPwd || !repPwd) { setErr("Заполните все поля"); return; }
     if (newPwd.length < 6)              { setErr("Новый пароль минимум 6 символов"); return; }
     if (newPwd !== repPwd)              { setErr("Новые пароли не совпадают"); return; }
 
@@ -297,7 +297,7 @@ function ChangePasswordBlock() {
       const res = await fetch(`${AUTH_URL}?action=change-password`, {
         method: "POST",
         headers: { "Content-Type": "application/json", "X-Authorization": `Bearer ${token}` },
-        body: JSON.stringify({ old_password: oldPwd, new_password: newPwd }),
+        body: JSON.stringify({ old_password: hasPassword ? oldPwd : undefined, new_password: newPwd }),
       });
       const d = await res.json();
       if (!res.ok || d.error) throw new Error(d.error || "Ошибка");
@@ -316,7 +316,7 @@ function ChangePasswordBlock() {
         className="w-full flex items-center justify-between px-4 py-3 transition hover:bg-white/[0.03]">
         <div className="flex items-center gap-2.5">
           <Icon name="KeyRound" size={13} style={{ color: "#a78bfa" }} />
-          <span className="text-xs font-semibold text-white/75">Сменить пароль</span>
+          <span className="text-xs font-semibold text-white/75">{hasPassword ? "Сменить пароль" : "Установить пароль"}</span>
         </div>
         <Icon name="ChevronRight" size={13} style={{ color: "rgba(255,255,255,0.3)" }} />
       </button>
@@ -328,7 +328,7 @@ function ChangePasswordBlock() {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Icon name="KeyRound" size={13} style={{ color: "#a78bfa" }} />
-          <span className="text-xs font-bold text-white">Смена пароля</span>
+          <span className="text-xs font-bold text-white">{hasPassword ? "Смена пароля" : "Установка пароля"}</span>
         </div>
         <button onClick={() => setShow(s => !s)}
           className="text-[10px] text-white/40 hover:text-white/70 flex items-center gap-1 transition">
@@ -337,9 +337,15 @@ function ChangePasswordBlock() {
         </button>
       </div>
 
-      <PwdField label="Текущий пароль" value={oldPwd} onChange={setOldPwd} show={show} />
-      <PwdField label="Новый пароль"   value={newPwd} onChange={setNewPwd} show={show} />
-      <PwdField label="Повторите"      value={repPwd} onChange={setRepPwd} show={show} />
+      {!hasPassword && (
+        <div className="rounded-lg px-3 py-2 text-[11px] text-white/40 bg-white/[0.03] border border-white/[0.06]">
+          Вы вошли через соцсеть, пароль ещё не задан. Придумайте пароль, чтобы также входить по email.
+        </div>
+      )}
+
+      {hasPassword && <PwdField label="Текущий пароль" value={oldPwd} onChange={setOldPwd} show={show} />}
+      <PwdField label="Новый пароль" value={newPwd} onChange={setNewPwd} show={show} />
+      <PwdField label="Повторите"    value={repPwd} onChange={setRepPwd} show={show} />
 
       {err && (
         <div className="rounded-lg px-3 py-2 text-[11px] text-red-300 bg-red-500/10 border border-red-500/20">
@@ -348,7 +354,7 @@ function ChangePasswordBlock() {
       )}
       {done && (
         <div className="rounded-lg px-3 py-2 text-[11px] text-green-300 bg-green-500/10 border border-green-500/20 flex items-center gap-1.5">
-          <Icon name="CheckCircle2" size={12} /> Пароль изменён
+          <Icon name="CheckCircle2" size={12} /> Пароль {hasPassword ? "изменён" : "установлен"}
         </div>
       )}
 
@@ -356,7 +362,7 @@ function ChangePasswordBlock() {
         <button onClick={submit} disabled={busy}
           className="flex-1 py-2 rounded-lg text-[11px] font-bold text-white transition disabled:opacity-50"
           style={{ background: "#a78bfa" }}>
-          {busy ? "Сохранение..." : "Изменить пароль"}
+          {busy ? "Сохранение..." : hasPassword ? "Изменить пароль" : "Установить пароль"}
         </button>
         <button onClick={() => { reset(); setOpen(false); }}
           className="px-3 py-2 rounded-lg text-[11px] text-white/50 transition"
@@ -365,9 +371,11 @@ function ChangePasswordBlock() {
         </button>
       </div>
 
-      <div className="text-[10px] text-white/30 leading-snug pt-1">
-        После смены пароля все остальные устройства будут разлогинены.
-      </div>
+      {hasPassword && (
+        <div className="text-[10px] text-white/30 leading-snug pt-1">
+          После смены пароля все остальные устройства будут разлогинены.
+        </div>
+      )}
     </div>
   );
 }

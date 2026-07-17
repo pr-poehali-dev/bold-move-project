@@ -332,6 +332,8 @@ export interface AuthUser {
   tg_notify_chat_id?: string | null;
   /** false — пользователь вошёл через соцсеть впервые и ещё не выбрал роль (показываем модалку выбора роли) */
   role_selected?: boolean;
+  /** false — у пользователя ещё нет пароля (вход только через Google/Яндекс и т.п.) */
+  has_password?: boolean;
 }
 
 // Бизнес-роли: требуют одобрения, получают доступ к CRM
