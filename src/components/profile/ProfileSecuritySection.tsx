@@ -128,8 +128,8 @@ function LinkMethodsRow({ methods }: { methods: string[] }) {
   );
 }
 
-function PwdField({ label, value, onChange, show }: {
-  label: string; value: string; onChange: (v: string) => void; show: boolean;
+function PwdField({ label, value, onChange, show, autoComplete = "new-password" }: {
+  label: string; value: string; onChange: (v: string) => void; show: boolean; autoComplete?: string;
 }) {
   return (
     <div className="flex items-center px-3 py-2 rounded-lg"
@@ -140,6 +140,12 @@ function PwdField({ label, value, onChange, show }: {
         value={value}
         onChange={e => onChange(e.target.value)}
         placeholder="••••••••"
+        autoComplete={autoComplete}
+        autoCorrect="off"
+        autoCapitalize="off"
+        spellCheck={false}
+        data-lpignore="true"
+        data-1p-ignore="true"
         className="flex-1 text-xs bg-transparent placeholder-white/15 focus:outline-none transition text-right text-white/80"
       />
     </div>
@@ -274,7 +280,7 @@ function ChangePasswordBlock({ hasPassword }: { hasPassword: boolean }) {
               <div className="rounded-lg px-3 py-2 text-[11px] text-green-300 bg-green-500/10 border border-green-500/20 flex items-center gap-1.5">
                 <Icon name="Mail" size={12} /> Код отправлен на {emailMasked}
               </div>
-              <PwdField label="Код с почты" value={resetCode} onChange={setResetCode} show={true} />
+              <PwdField label="Код с почты" value={resetCode} onChange={setResetCode} show={true} autoComplete="one-time-code" />
               <button onClick={sendCode} disabled={sendingCode}
                 className="text-[10px] text-white/40 hover:text-white/60 transition">
                 {sendingCode ? "Отправка..." : "Отправить код ещё раз"}
