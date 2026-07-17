@@ -5,6 +5,7 @@
 // Требует привязки домена к боту через @BotFather → /setdomain (уже сделано).
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
+import Icon from "@/components/ui/icon";
 import { useAuth } from "@/context/AuthContext";
 import func2url from "@/../backend/func2url.json";
 
@@ -61,9 +62,11 @@ interface Props {
   /** Колбэк при успешной привязке (используется вместе с linkToken) */
   onLinked?: () => void;
   label?: string;
+  /** "default" — крупная синяя кнопка входа; "badge" — компактный бейдж в стиле остальных способов входа */
+  variant?: "default" | "badge";
 }
 
-export default function TelegramLoginButton({ className = "", linkToken, onLinked, label }: Props) {
+export default function TelegramLoginButton({ className = "", linkToken, onLinked, label, variant = "default" }: Props) {
   const { loginWithToken } = useAuth();
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -114,6 +117,26 @@ export default function TelegramLoginButton({ className = "", linkToken, onLinke
       }
     );
   };
+
+  if (variant === "badge") {
+    return (
+      <div>
+        <button type="button" onClick={handleClick} disabled={loading}
+          className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-md text-[11px] font-medium transition hover:bg-white/[0.08] disabled:opacity-40"
+          style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.75)" }}>
+          {loading ? (
+            <Spinner className="!w-3 !h-3" />
+          ) : (
+            <Icon name="Send" size={12} style={{ color: "#229ED9" }} />
+          )}
+          {label || "Telegram"}
+        </button>
+        {error && (
+          <div className="mt-2 rounded-lg px-3 py-2 text-[11px] text-red-300 bg-red-500/10 border border-red-500/20">{error}</div>
+        )}
+      </div>
+    );
+  }
 
   return (
     <div>

@@ -369,9 +369,8 @@ function LinkMethodsRow({ methods }: { methods: string[] }) {
           {missing.map(p => {
             if (p.key === "telegram") {
               return (
-                <TelegramLoginButton key="telegram" linkToken={token}
+                <TelegramLoginButton key="telegram" linkToken={token} variant="badge"
                   label="Telegram"
-                  className="!h-7 !px-2.5 !text-[11px] !rounded-md"
                   onLinked={() => { window.location.href = "/?profile=1&linked=telegram"; }} />
               );
             }
