@@ -3,6 +3,8 @@ import { useAuth, type UserRole, BUSINESS_ROLES, CLIENT_ROLES } from "@/context/
 import Icon from "@/components/ui/icon";
 import PhoneInput from "@/components/ui/PhoneInput";
 import { isPhoneValid } from "@/hooks/use-phone";
+import { startSocialLogin } from "@/components/SocialLoginButtons";
+import TelegramLoginButton from "@/components/TelegramLoginButton";
 import func2url from "@/../backend/func2url.json";
 
 const AUTH_URL = (func2url as Record<string, string>)["auth"];
@@ -176,6 +178,7 @@ export default function ProfileModal({ onClose, open = true }: Props) {
           {/* Безопасность */}
           <Section title="Безопасность" icon="ShieldCheck">
             <LoginMethodsRow methods={user?.login_methods || []} />
+            <LinkMethodsRow methods={user?.login_methods || []} />
             <ChangePasswordBlock hasPassword={user?.has_password !== false} />
           </Section>
 
@@ -331,6 +334,57 @@ function LoginMethodsRow({ methods }: { methods: string[] }) {
                   </button>
                 )}
               </span>
+            );
+          })}
+        </div>
+      </div>
+      {err && (
+        <div className="mt-2 rounded-lg px-3 py-2 text-[11px] text-red-300 bg-red-500/10 border border-red-500/20">
+          {err}
+        </div>
+      )}
+    </div>
+  );
+}
+
+const LINKABLE_PROVIDERS: { key: "google" | "yandex" | "telegram"; label: string; color: string; icon: string }[] = [
+  { key: "google",   label: "Google",   color: "#ffffff", icon: "Chrome" },
+  { key: "yandex",   label: "Яндекс",   color: "#FC3F1D", icon: "CircleDot" },
+  { key: "telegram", label: "Telegram", color: "#229ED9", icon: "Send" },
+];
+
+function LinkMethodsRow({ methods }: { methods: string[] }) {
+  const { token } = useAuth();
+  const [loadingProvider, setLoadingProvider] = useState<string | null>(null);
+  const [err, setErr] = useState("");
+
+  const missing = LINKABLE_PROVIDERS.filter(p => !methods.includes(p.key));
+  if (missing.length === 0 || !token) return null;
+
+  return (
+    <div className="px-4 py-3 border-b border-white/[0.04]">
+      <div className="flex items-center justify-between flex-wrap gap-2">
+        <span className="text-xs font-semibold text-white/75">Привязать ещё</span>
+        <div className="flex items-center gap-1.5 flex-wrap justify-end">
+          {missing.map(p => {
+            if (p.key === "telegram") {
+              return (
+                <TelegramLoginButton key="telegram" linkToken={token}
+                  label="Telegram"
+                  className="!h-7 !px-2.5 !text-[11px] !rounded-md"
+                  onLinked={() => { window.location.href = "/?profile=1&linked=telegram"; }} />
+              );
+            }
+            return (
+              <button key={p.key}
+                onClick={() => startSocialLogin(p.key as "google" | "yandex", v => setLoadingProvider(v ? p.key : null), m => setErr(m || ""), token)}
+                disabled={loadingProvider !== null}
+                className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-md text-[11px] font-medium transition hover:bg-white/[0.08] disabled:opacity-40"
+                style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.75)" }}>
+                <Icon name={loadingProvider === p.key ? "Loader2" : p.icon} size={12}
+                  className={loadingProvider === p.key ? "animate-spin" : ""} style={{ color: p.color }} />
+                {p.label}
+              </button>
             );
           })}
         </div>

@@ -56,9 +56,14 @@ function TelegramIcon({ className }: { className?: string }) {
 
 interface Props {
   className?: string;
+  /** Если задан — не логинит новым токеном, а привязывает Telegram к уже вошедшему пользователю */
+  linkToken?: string;
+  /** Колбэк при успешной привязке (используется вместе с linkToken) */
+  onLinked?: () => void;
+  label?: string;
 }
 
-export default function TelegramLoginButton({ className = "" }: Props) {
+export default function TelegramLoginButton({ className = "", linkToken, onLinked, label }: Props) {
   const { loginWithToken } = useAuth();
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -95,10 +100,11 @@ export default function TelegramLoginButton({ className = "" }: Props) {
           const res = await fetch(`${AUTH_URL}?action=telegram-callback`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(user),
+            body: JSON.stringify(linkToken ? { ...user, link_token: linkToken } : user),
           });
           const data = await res.json();
           if (!res.ok || data.error) throw new Error(data.error || "Не удалось войти через Telegram");
+          if (linkToken) { onLinked?.(); return; }
           await loginWithToken(data.token);
         } catch (err: unknown) {
           setError(err instanceof Error ? err.message : "Не удалось войти через Telegram");
@@ -122,7 +128,7 @@ export default function TelegramLoginButton({ className = "" }: Props) {
         ) : (
           <TelegramIcon className="!w-5 !h-5 mr-2 flex-shrink-0" />
         )}
-        {loading ? "Загрузка..." : "Войти через Telegram"}
+        {loading ? "Загрузка..." : (label || "Войти через Telegram")}
       </Button>
       {error && (
         <div className="rounded-xl px-3.5 py-2.5 text-xs text-red-400 bg-red-500/10 border border-red-500/20 mt-1.5">{error}</div>

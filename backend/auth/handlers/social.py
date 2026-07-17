@@ -214,7 +214,7 @@ def _telegram_check_auth(data: dict) -> dict | None:
     if not received_hash:
         return None
 
-    check_fields = {k: v for k, v in data.items() if k != "hash" and v is not None}
+    check_fields = {k: v for k, v in data.items() if k not in ("hash", "link_token") and v is not None}
     data_check_string = "\n".join(f"{k}={check_fields[k]}" for k in sorted(check_fields.keys()))
 
     secret_key = hashlib.sha256(bot_token.encode()).digest()
@@ -297,6 +297,33 @@ def _login_or_create(cur, conn, provider: str, social: dict) -> dict:
     }
 
 
+def _link_provider(cur, conn, provider: str, social: dict, link_token: str):
+    """Привязывает соцсеть к уже авторизованному аккаунту (не создаёт новую сессию)."""
+    cur.execute(f"""
+        SELECT u.id FROM {SCHEMA}.user_sessions s
+        JOIN {SCHEMA}.users u ON u.id = s.user_id
+        WHERE s.token=%s AND s.expires_at > NOW()
+    """, (link_token,))
+    row = cur.fetchone()
+    if not row:
+        return err("Токен недействителен", 401)
+    uid = row[0]
+
+    field = PROVIDER_FIELD[provider]
+    provider_id = social["provider_id"]
+
+    cur.execute(f"SELECT id FROM {SCHEMA}.users WHERE {field}=%s", (provider_id,))
+    existing = cur.fetchone()
+    if existing and existing[0] == uid:
+        return ok({"ok": True, "already_linked": True})
+    if existing:
+        return err(f"Этот аккаунт {provider} уже привязан к другому пользователю")
+
+    cur.execute(f"UPDATE {SCHEMA}.users SET {field}=%s, updated_at=NOW() WHERE id=%s", (provider_id, uid))
+    conn.commit()
+    return ok({"ok": True})
+
+
 # =============================================================================
 # Роутер
 # =============================================================================
@@ -313,6 +340,9 @@ def handle(action, method, params, body, token, event, conn, cur):
         social = _google_user_from_code(code)
         if not social:
             return err("Не удалось получить данные от Google")
+        link_token = body.get("link_token")
+        if link_token:
+            return _link_provider(cur, conn, "google", social, link_token)
         return ok(_login_or_create(cur, conn, "google", social))
 
     if action == "yandex-auth-url" and method == "GET":
@@ -326,6 +356,9 @@ def handle(action, method, params, body, token, event, conn, cur):
         social = _yandex_user_from_code(code)
         if not social:
             return err("Не удалось получить данные от Яндекс")
+        link_token = body.get("link_token")
+        if link_token:
+            return _link_provider(cur, conn, "yandex", social, link_token)
         return ok(_login_or_create(cur, conn, "yandex", social))
 
     if action == "vk-auth-url" and method == "GET":
@@ -341,6 +374,9 @@ def handle(action, method, params, body, token, event, conn, cur):
         social = _vk_user_from_code(code, code_verifier, device_id)
         if not social:
             return err("Не удалось получить данные от VK")
+        link_token = body.get("link_token")
+        if link_token:
+            return _link_provider(cur, conn, "vk", social, link_token)
         return ok(_login_or_create(cur, conn, "vk", social))
 
     if action == "telegram-bot-id" and method == "GET":
@@ -353,6 +389,9 @@ def handle(action, method, params, body, token, event, conn, cur):
         social = _telegram_check_auth(body)
         if not social:
             return err("Не удалось подтвердить данные Telegram")
+        link_token = body.get("link_token")
+        if link_token:
+            return _link_provider(cur, conn, "telegram", social, link_token)
         return ok(_login_or_create(cur, conn, "telegram", social))
 
     if action == "unlink-provider" and method == "POST":

@@ -30,7 +30,7 @@ import EcoSystemModal from "@/components/EcoSystemModal";
 import { updateBrand } from "./admin/own-agent/brandApi";
 
 export default function Index() {
-  const { user, token: authToken } = useAuth();
+  const { user, token: authToken, loginWithToken } = useAuth();
   const { brand, isCustom, patchBrand } = useBrand();
   const [showAuthModal,    setShowAuthModal]    = useState(false);
   const [pendingRole,      setPendingRole]      = useState<string | null>(null);
@@ -55,6 +55,21 @@ export default function Index() {
     prevNavKeyRef.current = navConfigSig;
     patchBrand({ nav_config: user?.brand?.nav_config ?? null, nav_hidden_ids: user?.brand?.nav_hidden_ids ?? null });
   }); // без зависимостей — запускается после каждого рендера, ref отсекает лишние вызовы
+
+  // Возврат из OAuth-привязки соцсети (профиль → привязать → редирект назад с ?profile=1)
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("profile") === "1") {
+      setShowProfileModal(true);
+      params.delete("profile");
+      params.delete("linked");
+      const qs = params.toString();
+      window.history.replaceState({}, "", window.location.pathname + (qs ? `?${qs}` : ""));
+      const savedToken = localStorage.getItem("mp_user_token");
+      if (savedToken) loginWithToken(savedToken); // подтянуть свежий login_methods
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Приветствие: подменяется именем бота из бренда, если он кастомный
   const greeting: Msg = isCustom

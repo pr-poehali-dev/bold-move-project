@@ -10,11 +10,15 @@ import func2url from "@/../backend/func2url.json";
 const AUTH_URL = (func2url as Record<string, string>)["auth"];
 
 export const SOCIAL_STATE_KEY = "social_auth_state";
+// Если задан — callback-страница не логинится новым токеном, а привязывает соцсеть
+// к уже вошедшему пользователю (используется из профиля).
+export const SOCIAL_LINK_TOKEN_KEY = "social_auth_link_token";
 
-async function startSocialLogin(
+export async function startSocialLogin(
   provider: "google" | "yandex",
   setLoading: (v: boolean) => void,
   setError: (msg: string | null) => void,
+  linkToken?: string,
 ) {
   setLoading(true);
   setError(null);
@@ -23,6 +27,8 @@ async function startSocialLogin(
     const data = await res.json();
     if (!res.ok || data.error) throw new Error(data.error || "Не удалось начать вход");
     if (data.state) sessionStorage.setItem(SOCIAL_STATE_KEY, data.state);
+    if (linkToken) sessionStorage.setItem(SOCIAL_LINK_TOKEN_KEY, linkToken);
+    else sessionStorage.removeItem(SOCIAL_LINK_TOKEN_KEY);
     window.location.href = data.auth_url;
   } catch (err: unknown) {
     setLoading(false);
