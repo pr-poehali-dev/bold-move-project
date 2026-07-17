@@ -334,6 +334,8 @@ export interface AuthUser {
   role_selected?: boolean;
   /** false — у пользователя ещё нет пароля (вход только через Google/Яндекс и т.п.) */
   has_password?: boolean;
+  /** способы входа, привязанные к аккаунту: "password" | "google" | "yandex" | "vk" | "telegram" */
+  login_methods?: string[];
 }
 
 // Бизнес-роли: требуют одобрения, получают доступ к CRM

@@ -175,6 +175,7 @@ export default function ProfileModal({ onClose, open = true }: Props) {
 
           {/* Безопасность */}
           <Section title="Безопасность" icon="ShieldCheck">
+            <LoginMethodsRow methods={user?.login_methods || []} />
             <ChangePasswordBlock hasPassword={user?.has_password !== false} />
           </Section>
 
@@ -268,6 +269,37 @@ function PhoneField({ label, value, onChange }: {
         <PhoneInput value={value} onChange={onChange} showValidation
           className="w-full text-sm bg-transparent placeholder-white/15 focus:outline-none transition"
           style={{ color: "rgba(255,255,255,0.85)" }} />
+      </div>
+    </div>
+  );
+}
+
+const LOGIN_METHOD_META: Record<string, { label: string; color: string; icon: string }> = {
+  password: { label: "Пароль",  color: "#a78bfa", icon: "KeyRound" },
+  google:   { label: "Google",  color: "#ffffff", icon: "Chrome" },
+  yandex:   { label: "Яндекс",  color: "#FC3F1D", icon: "CircleDot" },
+  vk:       { label: "VK",      color: "#0077FF", icon: "MessageCircle" },
+  telegram: { label: "Telegram",color: "#229ED9", icon: "Send" },
+};
+
+function LoginMethodsRow({ methods }: { methods: string[] }) {
+  if (methods.length === 0) return null;
+  return (
+    <div className="px-4 py-3 border-b border-white/[0.04] flex items-center justify-between">
+      <span className="text-xs font-semibold text-white/75">Способы входа</span>
+      <div className="flex items-center gap-1.5 flex-wrap justify-end">
+        {methods.map(m => {
+          const meta = LOGIN_METHOD_META[m];
+          if (!meta) return null;
+          return (
+            <span key={m}
+              className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-medium"
+              style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.7)" }}>
+              <Icon name={meta.icon} size={11} style={{ color: meta.color }} />
+              {meta.label}
+            </span>
+          );
+        })}
       </div>
     </div>
   );

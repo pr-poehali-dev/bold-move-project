@@ -179,7 +179,8 @@ def handle(action, method, params, body, token, event, conn, cur):
                    u.max_bot_token, u.max_notify_chat_id,
                    u.nav_config, u.nav_hidden_ids,
                    u.is_demo, u.demo_expires_at, u.role_selected,
-                   (u.password_hash IS NOT NULL AND u.password_hash <> '') AS has_password
+                   (u.password_hash IS NOT NULL AND u.password_hash <> '') AS has_password,
+                   u.google_id, u.yandex_id, u.vk_id, u.telegram_id
             FROM {SCHEMA}.user_sessions s
             JOIN {SCHEMA}.users u ON u.id = s.user_id
             WHERE s.token=%s AND s.expires_at > NOW()
@@ -195,7 +196,15 @@ def handle(action, method, params, body, token, event, conn, cur):
          support_phone, support_email, max_url, working_hours, pdf_footer_address, telegram_url, pdf_text_color,
          brand_logo_url_dark, brand_logo_orientation, pdf_logo_bg, bot_avatar_bg, kanban_enabled,
          tg_bot_token, tg_notify_chat_id, max_bot_token, max_notify_chat_id,
-         nav_config, nav_hidden_ids, is_demo, demo_expires_at, role_selected, has_password) = row
+         nav_config, nav_hidden_ids, is_demo, demo_expires_at, role_selected, has_password,
+         google_id, yandex_id, vk_id, tg_social_id) = row
+
+        login_methods = []
+        if has_password: login_methods.append("password")
+        if google_id:     login_methods.append("google")
+        if yandex_id:     login_methods.append("yandex")
+        if vk_id:         login_methods.append("vk")
+        if tg_social_id:  login_methods.append("telegram")
 
         is_master    = (email == MASTER_EMAIL)
         trial_expired = False
@@ -248,6 +257,7 @@ def handle(action, method, params, body, token, event, conn, cur):
             "kanban_enabled": bool(kanban_enabled),
             "is_demo": bool(is_demo),
             "has_password": bool(has_password),
+            "login_methods": login_methods,
         }
         return ok({"user": user_data, **user_data})
 
