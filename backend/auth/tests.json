@@ -95,6 +95,15 @@
       "expectedStatus": 401,
       "expectedBody": {"error": "string"},
       "bodyMatcher": "partial"
+    },
+    {
+      "name": "Unlink provider unauthorized",
+      "method": "POST",
+      "path": "/?action=unlink-provider",
+      "body": {"provider": "google"},
+      "expectedStatus": 401,
+      "expectedBody": {"error": "string"},
+      "bodyMatcher": "partial"
     }
   ]
 }

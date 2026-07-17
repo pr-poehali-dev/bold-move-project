@@ -355,4 +355,34 @@ def handle(action, method, params, body, token, event, conn, cur):
             return err("Не удалось подтвердить данные Telegram")
         return ok(_login_or_create(cur, conn, "telegram", social))
 
+    if action == "unlink-provider" and method == "POST":
+        if not token:
+            return err("Требуется авторизация", 401)
+        provider = body.get("provider") or ""
+        if provider not in PROVIDER_FIELD:
+            return err("Неизвестный провайдер")
+        field = PROVIDER_FIELD[provider]
+        cur.execute(f"""
+            SELECT u.id, u.password_hash, u.google_id, u.yandex_id, u.vk_id, u.telegram_id
+            FROM {SCHEMA}.user_sessions s
+            JOIN {SCHEMA}.users u ON u.id = s.user_id
+            WHERE s.token=%s AND s.expires_at > NOW()
+        """, (token,))
+        row = cur.fetchone()
+        if not row:
+            return err("Токен недействителен", 401)
+        uid, password_hash, google_id, yandex_id, vk_id, telegram_id = row
+        has_password = bool(password_hash)
+        linked = {"google": google_id, "yandex": yandex_id, "vk": vk_id, "telegram": telegram_id}
+        # Защита: нельзя отвязать способ входа, если после этого не останется ни пароля, ни других соцсетей —
+        # иначе пользователь потеряет доступ к своему аккаунту.
+        other_methods_left = has_password or any(v for k, v in linked.items() if k != provider)
+        if not other_methods_left:
+            return err("Нельзя отвязать последний способ входа — сначала задайте пароль или привяжите другую соцсеть")
+        if not linked.get(provider):
+            return err("Этот способ входа не привязан")
+        cur.execute(f"UPDATE {SCHEMA}.users SET {field}=NULL, updated_at=NOW() WHERE id=%s", (uid,))
+        conn.commit()
+        return ok({"ok": True})
+
     return None

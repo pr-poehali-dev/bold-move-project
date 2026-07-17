@@ -283,24 +283,63 @@ const LOGIN_METHOD_META: Record<string, { label: string; color: string; icon: st
 };
 
 function LoginMethodsRow({ methods }: { methods: string[] }) {
+  const { token, updateUser } = useAuth();
+  const [busy, setBusy] = useState<string | null>(null);
+  const [err,  setErr]  = useState("");
+
   if (methods.length === 0) return null;
+
+  const unlink = async (provider: string) => {
+    if (provider === "password") return; // пароль отвязывается отдельно, не через эту кнопку
+    setErr(""); setBusy(provider);
+    try {
+      const res = await fetch(`${AUTH_URL}?action=unlink-provider`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-Authorization": `Bearer ${token}` },
+        body: JSON.stringify({ provider }),
+      });
+      const d = await res.json();
+      if (!res.ok || d.error) throw new Error(d.error || "Ошибка");
+      updateUser({ login_methods: methods.filter(m => m !== provider) });
+    } catch (e: unknown) {
+      setErr(e instanceof Error ? e.message : "Ошибка");
+    } finally {
+      setBusy(null);
+    }
+  };
+
   return (
-    <div className="px-4 py-3 border-b border-white/[0.04] flex items-center justify-between">
-      <span className="text-xs font-semibold text-white/75">Способы входа</span>
-      <div className="flex items-center gap-1.5 flex-wrap justify-end">
-        {methods.map(m => {
-          const meta = LOGIN_METHOD_META[m];
-          if (!meta) return null;
-          return (
-            <span key={m}
-              className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-medium"
-              style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.7)" }}>
-              <Icon name={meta.icon} size={11} style={{ color: meta.color }} />
-              {meta.label}
-            </span>
-          );
-        })}
+    <div className="px-4 py-3 border-b border-white/[0.04]">
+      <div className="flex items-center justify-between">
+        <span className="text-xs font-semibold text-white/75">Способы входа</span>
+        <div className="flex items-center gap-1.5 flex-wrap justify-end">
+          {methods.map(m => {
+            const meta = LOGIN_METHOD_META[m];
+            if (!meta) return null;
+            const canUnlink = m !== "password";
+            return (
+              <span key={m}
+                className="inline-flex items-center gap-1 pl-2 pr-1 py-1 rounded-md text-[10px] font-medium"
+                style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.7)" }}>
+                <Icon name={meta.icon} size={11} style={{ color: meta.color }} />
+                {meta.label}
+                {canUnlink && (
+                  <button onClick={() => unlink(m)} disabled={busy === m}
+                    className="ml-0.5 w-4 h-4 rounded flex items-center justify-center transition hover:bg-red-500/20 disabled:opacity-40"
+                    title="Отключить">
+                    <Icon name={busy === m ? "Loader2" : "X"} size={10} className={busy === m ? "animate-spin" : ""} style={{ color: "rgba(255,255,255,0.4)" }} />
+                  </button>
+                )}
+              </span>
+            );
+          })}
+        </div>
       </div>
+      {err && (
+        <div className="mt-2 rounded-lg px-3 py-2 text-[11px] text-red-300 bg-red-500/10 border border-red-500/20">
+          {err}
+        </div>
+      )}
     </div>
   );
 }
