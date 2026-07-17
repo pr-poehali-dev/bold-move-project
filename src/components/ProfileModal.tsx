@@ -399,20 +399,48 @@ function LinkMethodsRow({ methods }: { methods: string[] }) {
 
 function ChangePasswordBlock({ hasPassword }: { hasPassword: boolean }) {
   const { token } = useAuth();
-  const [open,    setOpen]    = useState(false);
-  const [oldPwd,  setOldPwd]  = useState("");
-  const [newPwd,  setNewPwd]  = useState("");
-  const [repPwd,  setRepPwd]  = useState("");
-  const [show,    setShow]    = useState(false);
-  const [busy,    setBusy]    = useState(false);
-  const [done,    setDone]    = useState(false);
-  const [err,     setErr]     = useState("");
+  const [open,     setOpen]     = useState(false);
+  const [forgot,   setForgot]   = useState(false); // режим "забыли пароль" — код с почты вместо текущего пароля
+  const [oldPwd,   setOldPwd]   = useState("");
+  const [resetCode, setResetCode] = useState("");
+  const [newPwd,   setNewPwd]   = useState("");
+  const [repPwd,   setRepPwd]   = useState("");
+  const [show,     setShow]     = useState(false);
+  const [busy,     setBusy]     = useState(false);
+  const [done,     setDone]     = useState(false);
+  const [err,      setErr]      = useState("");
+  const [codeSent, setCodeSent] = useState(false);
+  const [emailMasked, setEmailMasked] = useState("");
+  const [sendingCode, setSendingCode] = useState(false);
 
-  const reset = () => { setOldPwd(""); setNewPwd(""); setRepPwd(""); setErr(""); setDone(false); };
+  const reset = () => {
+    setOldPwd(""); setResetCode(""); setNewPwd(""); setRepPwd(""); setErr(""); setDone(false);
+    setForgot(false); setCodeSent(false); setEmailMasked("");
+  };
+
+  const sendCode = async () => {
+    setErr(""); setSendingCode(true);
+    try {
+      const res = await fetch(`${AUTH_URL}?action=request-password-reset-code`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-Authorization": `Bearer ${token}` },
+      });
+      const d = await res.json();
+      if (!res.ok || d.error) throw new Error(d.error || "Не удалось отправить код");
+      setCodeSent(true);
+      setEmailMasked(d.email_masked || "");
+    } catch (e: unknown) {
+      setErr(e instanceof Error ? e.message : "Ошибка");
+    } finally {
+      setSendingCode(false);
+    }
+  };
 
   const submit = async () => {
     setErr(""); setDone(false);
-    if ((hasPassword && !oldPwd) || !newPwd || !repPwd) { setErr("Заполните все поля"); return; }
+    if (hasPassword && forgot && !resetCode)  { setErr("Введите код из письма"); return; }
+    if (hasPassword && !forgot && !oldPwd)    { setErr("Заполните все поля"); return; }
+    if (!newPwd || !repPwd)                    { setErr("Заполните все поля"); return; }
     if (newPwd.length < 6)              { setErr("Новый пароль минимум 6 символов"); return; }
     if (newPwd !== repPwd)              { setErr("Новые пароли не совпадают"); return; }
 
@@ -421,7 +449,11 @@ function ChangePasswordBlock({ hasPassword }: { hasPassword: boolean }) {
       const res = await fetch(`${AUTH_URL}?action=change-password`, {
         method: "POST",
         headers: { "Content-Type": "application/json", "X-Authorization": `Bearer ${token}` },
-        body: JSON.stringify({ old_password: hasPassword ? oldPwd : undefined, new_password: newPwd }),
+        body: JSON.stringify({
+          old_password: hasPassword && !forgot ? oldPwd : undefined,
+          reset_code: hasPassword && forgot ? resetCode : undefined,
+          new_password: newPwd,
+        }),
       });
       const d = await res.json();
       if (!res.ok || d.error) throw new Error(d.error || "Ошибка");
@@ -467,9 +499,52 @@ function ChangePasswordBlock({ hasPassword }: { hasPassword: boolean }) {
         </div>
       )}
 
-      {hasPassword && <PwdField label="Текущий пароль" value={oldPwd} onChange={setOldPwd} show={show} />}
-      <PwdField label="Новый пароль" value={newPwd} onChange={setNewPwd} show={show} />
-      <PwdField label="Повторите"    value={repPwd} onChange={setRepPwd} show={show} />
+      {hasPassword && !forgot && (
+        <>
+          <PwdField label="Текущий пароль" value={oldPwd} onChange={setOldPwd} show={show} />
+          <button onClick={() => { setForgot(true); setErr(""); }}
+            className="text-[10px] text-violet-300/70 hover:text-violet-300 transition">
+            Забыли пароль?
+          </button>
+        </>
+      )}
+
+      {hasPassword && forgot && (
+        <div className="space-y-2">
+          {!codeSent ? (
+            <div className="rounded-lg px-3 py-2.5 text-[11px] text-white/50 bg-white/[0.03] border border-white/[0.06] space-y-2">
+              <p>Пришлём код подтверждения на вашу почту вместо текущего пароля.</p>
+              <button onClick={sendCode} disabled={sendingCode}
+                className="w-full py-1.5 rounded-lg text-[11px] font-bold text-white transition disabled:opacity-50"
+                style={{ background: "#a78bfa" }}>
+                {sendingCode ? "Отправка..." : "Отправить код на почту"}
+              </button>
+            </div>
+          ) : (
+            <>
+              <div className="rounded-lg px-3 py-2 text-[11px] text-green-300 bg-green-500/10 border border-green-500/20 flex items-center gap-1.5">
+                <Icon name="Mail" size={12} /> Код отправлен на {emailMasked}
+              </div>
+              <PwdField label="Код с почты" value={resetCode} onChange={setResetCode} show={true} />
+              <button onClick={sendCode} disabled={sendingCode}
+                className="text-[10px] text-white/40 hover:text-white/60 transition">
+                {sendingCode ? "Отправка..." : "Отправить код ещё раз"}
+              </button>
+            </>
+          )}
+          <button onClick={() => { setForgot(false); setResetCode(""); setCodeSent(false); setErr(""); }}
+            className="block text-[10px] text-white/40 hover:text-white/60 transition">
+            ← Ввести текущий пароль
+          </button>
+        </div>
+      )}
+
+      {(!hasPassword || !forgot || codeSent) && (
+        <>
+          <PwdField label="Новый пароль" value={newPwd} onChange={setNewPwd} show={show} />
+          <PwdField label="Повторите"    value={repPwd} onChange={setRepPwd} show={show} />
+        </>
+      )}
 
       {err && (
         <div className="rounded-lg px-3 py-2 text-[11px] text-red-300 bg-red-500/10 border border-red-500/20">
@@ -482,18 +557,20 @@ function ChangePasswordBlock({ hasPassword }: { hasPassword: boolean }) {
         </div>
       )}
 
-      <div className="flex gap-2 pt-1">
-        <button onClick={submit} disabled={busy}
-          className="flex-1 py-2 rounded-lg text-[11px] font-bold text-white transition disabled:opacity-50"
-          style={{ background: "#a78bfa" }}>
-          {busy ? "Сохранение..." : hasPassword ? "Изменить пароль" : "Установить пароль"}
-        </button>
-        <button onClick={() => { reset(); setOpen(false); }}
-          className="px-3 py-2 rounded-lg text-[11px] text-white/50 transition"
-          style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)" }}>
-          Отмена
-        </button>
-      </div>
+      {(!hasPassword || !forgot || codeSent) && (
+        <div className="flex gap-2 pt-1">
+          <button onClick={submit} disabled={busy}
+            className="flex-1 py-2 rounded-lg text-[11px] font-bold text-white transition disabled:opacity-50"
+            style={{ background: "#a78bfa" }}>
+            {busy ? "Сохранение..." : hasPassword ? "Изменить пароль" : "Установить пароль"}
+          </button>
+          <button onClick={() => { reset(); setOpen(false); }}
+            className="px-3 py-2 rounded-lg text-[11px] text-white/50 transition"
+            style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)" }}>
+            Отмена
+          </button>
+        </div>
+      )}
 
       {hasPassword && (
         <div className="text-[10px] text-white/30 leading-snug pt-1">

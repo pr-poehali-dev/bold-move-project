@@ -361,12 +361,42 @@ def handle(action, method, params, body, token, event, conn, cur):
             except: pass
         return ok({"ok": True, "password": new_password})
 
+    # ── Запрос кода для смены пароля (когда пользователь забыл текущий пароль,
+    # но уже авторизован — подтверждаем личность кодом на email вместо старого пароля) ──
+    if action == "request-password-reset-code" and method == "POST":
+        if not token:
+            return err("Требуется авторизация", 401)
+        cur.execute(f"""
+            SELECT u.id, u.email, u.name FROM {SCHEMA}.user_sessions s
+            JOIN {SCHEMA}.users u ON u.id = s.user_id
+            WHERE s.token=%s AND s.expires_at > NOW()
+        """, (token,))
+        row = cur.fetchone()
+        if not row:
+            return err("Токен недействителен", 401)
+        uid, email, name = row
+        if not email:
+            return err("К аккаунту не привязан email")
+        code = f"{secrets.randbelow(1000000):06d}"
+        cur.execute(
+            f"""INSERT INTO {SCHEMA}.email_verification_tokens (user_id, code_hash, expires_at, purpose)
+                VALUES (%s, %s, NOW() + INTERVAL '15 minutes', 'password')""",
+            (uid, hash_code(code))
+        )
+        conn.commit()
+        sent = send_verification_code(email, code, name, purpose="password")
+        if not sent:
+            return err("Не удалось отправить код на почту, попробуйте позже", 500)
+        masked = email[:2] + "***" + email[email.index("@"):]
+        return ok({"ok": True, "email_masked": masked})
+
     # ── Смена пароля ──────────────────────────────────────────────────────────
     if action == "change-password" and method == "POST":
         if not token:
             return err("Требуется авторизация", 401)
-        old_password = body.get("old_password") or ""
-        new_password = body.get("new_password") or ""
+        old_password  = body.get("old_password") or ""
+        reset_code    = (body.get("reset_code") or "").strip()
+        new_password  = body.get("new_password") or ""
         if not new_password:
             return err("Укажите новый пароль")
         if len(new_password) < 6:
@@ -384,11 +414,22 @@ def handle(action, method, params, body, token, event, conn, cur):
         # тогда просто задаём первый пароль без проверки "текущего", т.к. его никогда не было.
         has_password = bool(current_hash)
         if has_password:
-            if not old_password:
+            if reset_code:
+                # Забыли текущий пароль — подтверждаем код, присланный на email вместо старого пароля
+                cur.execute(
+                    f"""SELECT id, code_hash FROM {SCHEMA}.email_verification_tokens
+                        WHERE user_id=%s AND purpose='password' AND expires_at > NOW() ORDER BY id DESC LIMIT 1""",
+                    (uid,)
+                )
+                trow = cur.fetchone()
+                if not trow or trow[1] != hash_code(reset_code):
+                    return err("Неверный или истёкший код")
+                cur.execute(f"DELETE FROM {SCHEMA}.email_verification_tokens WHERE id=%s", (trow[0],))
+            elif not old_password:
                 return err("Укажите текущий пароль")
-            if old_password == new_password:
+            elif old_password == new_password:
                 return err("Новый пароль совпадает с текущим")
-            if not verify_password(old_password, current_hash):
+            elif not verify_password(old_password, current_hash):
                 return err("Текущий пароль введён неверно")
         cur.execute(f"UPDATE {SCHEMA}.users SET password_hash=%s, updated_at=NOW() WHERE id=%s",
                     (hash_password(new_password), uid))
