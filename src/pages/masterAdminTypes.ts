@@ -54,6 +54,8 @@ export interface AppUser {
   telegram?: string | null;
   source?: "self" | "invited";
   company_id?: number | null;
+  total_bought?: number;
+  members_count?: number;
 }
 
 // Метка источника пользователя для UI

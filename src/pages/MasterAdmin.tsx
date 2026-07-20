@@ -3,7 +3,7 @@ import Icon from "@/components/ui/icon";
 import func2url from "@/../backend/func2url.json";
 import { TOKEN_KEY } from "@/context/useAuthInit";
 import { masterHeaders } from "./masterAuthFetch";
-import type { MasterTab, BusinessUser, ProUser, AppUser, UserEstimate, AdminStats } from "./masterAdminTypes";
+import type { MasterTab, AppUser, UserEstimate, AdminStats } from "./masterAdminTypes";
 import MasterTabUsers         from "./MasterTabUsers";
 import MasterTabDashboard     from "./MasterTabDashboard";
 import MasterTabWhiteLabel    from "./MasterTabWhiteLabel";
@@ -22,17 +22,7 @@ export default function MasterAdmin() {
   const [stats,        setStats]        = useState<AdminStats | null>(null);
   const [statsLoading, setStatsLoading] = useState(false);
 
-  // Business
-  const [bizUsers,   setBizUsers]   = useState<BusinessUser[]>([]);
-  const [bizLoading, setBizLoading] = useState(false);
-
-  // Pro
-  const [proUsers,       setProUsers]       = useState<ProUser[]>([]);
-  const [proLoading,     setProLoading]     = useState(false);
-  const [editDiscount,   setEditDiscount]   = useState<{ id: number; value: string } | null>(null);
-  const [savingDiscount, setSavingDiscount] = useState(false);
-
-  // All users
+  // All users — единый источник для всех ролей
   const [users,         setUsers]         = useState<AppUser[]>([]);
   const [allLoading,    setAllLoading]    = useState(false);
   const [selectedUser,  setSelectedUser]  = useState<AppUser | null>(null);
@@ -69,22 +59,6 @@ export default function MasterAdmin() {
     setStatsLoading(false);
   }, []);
 
-  const loadBiz = useCallback(async () => {
-    setBizLoading(true);
-    const r = await fetch(`${AUTH_URL}?action=business-users&status=all`, { headers: masterHeaders() });
-    const d = await r.json();
-    setBizUsers(d.users || []);
-    setBizLoading(false);
-  }, []);
-
-  const loadPro = useCallback(async () => {
-    setProLoading(true);
-    const r = await fetch(`${AUTH_URL}?action=pro-users`, { headers: masterHeaders() });
-    const d = await r.json();
-    setProUsers(d.users || []);
-    setProLoading(false);
-  }, []);
-
   const loadAll = useCallback(async () => {
     setAllLoading(true);
     const r = await fetch(`${AUTH_URL}?action=admin-users`, { headers: masterHeaders() });
@@ -96,14 +70,14 @@ export default function MasterAdmin() {
   useEffect(() => {
     if (!authed) return;
     loadStats();
-    loadBiz();
-  }, [authed, loadStats, loadBiz]);
+    loadAll();
+  }, [authed, loadStats, loadAll]);
 
   useEffect(() => {
     if (!authed) return;
     if (tab === "dashboard")  loadStats();
-    else if (tab === "users") { loadBiz(); loadPro(); loadAll(); }
-  }, [tab, authed, loadStats, loadBiz, loadPro, loadAll]);
+    else if (tab === "users") loadAll();
+  }, [tab, authed, loadStats, loadAll]);
 
   const approveUser = async (id: number) => {
     setApprovingId(id);
@@ -115,18 +89,6 @@ export default function MasterAdmin() {
     loadAll();
   };
 
-  const saveDiscount = async () => {
-    if (!editDiscount) return;
-    setSavingDiscount(true);
-    await fetch(`${AUTH_URL}?action=set-discount`, {
-      method: "POST", headers: masterHeaders({ "Content-Type": "application/json" }),
-      body: JSON.stringify({ user_id: editDiscount.id, discount: parseInt(editDiscount.value) || 0 }),
-    });
-    setSavingDiscount(false);
-    setEditDiscount(null);
-    loadPro();
-  };
-
   const openUser = async (user: AppUser) => {
     setSelectedUser(user);
     setEstLoading(true);
@@ -136,7 +98,7 @@ export default function MasterAdmin() {
     setEstLoading(false);
   };
 
-  const pendingCount = bizUsers.filter(u => !u.approved && !u.rejected).length;
+  const pendingCount = users.filter(u => ["company", "installer", "designer", "foreman"].includes(u.role) && !u.approved && !u.rejected).length;
 
   // ── Проверка доступа ──
   if (authState === "checking") {
@@ -229,11 +191,6 @@ export default function MasterAdmin() {
 
       {tab === "users" && (
         <MasterTabUsers
-          bizUsers={bizUsers} bizLoading={bizLoading} onReloadBiz={loadBiz}
-          proUsers={proUsers} proLoading={proLoading}
-          editDiscount={editDiscount} savingDiscount={savingDiscount}
-          onEditDiscount={setEditDiscount} onSaveDiscount={saveDiscount}
-          onReloadPro={loadPro}
           allUsers={users} allLoading={allLoading}
           search={search} selectedUser={selectedUser} userEstimates={userEstimates}
           estLoading={estLoading} approvingId={approvingId}

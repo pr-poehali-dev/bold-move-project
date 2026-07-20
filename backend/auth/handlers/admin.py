@@ -116,7 +116,10 @@ def handle(action, method, params, body, token, event, conn, cur):
                    COUNT(e.id) as estimates_count, u.rejected,
                    u.estimates_balance, u.trial_until, u.has_own_agent, u.agent_purchased_at,
                    EXISTS(SELECT 1 FROM {SCHEMA}.demo_companies dc WHERE dc.company_id = u.id) AS invited_by_master,
-                   u.company_id
+                   u.company_id,
+                   COALESCE((SELECT SUM(CASE WHEN bt.amount > 0 THEN bt.amount ELSE 0 END)
+                             FROM {SCHEMA}.balance_transactions bt WHERE bt.user_id = u.id), 0) AS total_bought,
+                   (SELECT COUNT(*) FROM {SCHEMA}.users m WHERE m.company_id = u.id AND m.role = 'manager' AND m.removed_at IS NULL) AS members_count
             FROM {SCHEMA}.users u LEFT JOIN {SCHEMA}.saved_estimates e ON e.user_id = u.id
             WHERE u.removed_at IS NULL GROUP BY u.id ORDER BY u.created_at DESC
         """)
@@ -131,6 +134,8 @@ def handle(action, method, params, body, token, event, conn, cur):
             "agent_purchased_at": str(r[13])[:19] if r[13] else None,
             "source": "invited" if r[14] else "self",
             "company_id": r[15],
+            "total_bought": int(r[16] or 0),
+            "members_count": int(r[17] or 0),
         } for r in rows]})
 
     if action == "admin-toggle-own-agent" and method == "POST":

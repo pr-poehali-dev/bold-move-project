@@ -1,7 +1,7 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import Icon from "@/components/ui/icon";
 import RoleBadge from "./MasterRoleBadge";
-import type { BusinessUser, UserTransaction } from "./masterAdminTypes";
+import type { AppUser, UserTransaction } from "./masterAdminTypes";
 import { fmtDate } from "./masterAdminTypes";
 import MasterTabRemoved from "./MasterTabRemoved";
 import CompanyMembers from "./CompanyMembers";
@@ -88,13 +88,14 @@ const PACKAGES = [
 ];
 
 // ── Карточка пользователя ─────────────────────────────────────────────────
-function BusinessCard({ u, actionId, onApprove, onReject, onDelete, onAddBalance }: {
-  u: BusinessUser;
+function BusinessCard({ u, actionId, onApprove, onReject, onDelete, onAddBalance, onSetDiscount }: {
+  u: AppUser;
   actionId: number | null;
   onApprove: (id: number) => void;
   onReject:  (id: number) => void;
   onDelete:  () => void;
   onAddBalance: (userId: number, amount: number, reason: string) => Promise<void>;
+  onSetDiscount?: (userId: number, discount: number) => Promise<void>;
 }) {
   const [expanded, setExpanded]         = useState(false);
   const [txLoading, setTxLoading]       = useState(false);
@@ -103,13 +104,28 @@ function BusinessCard({ u, actionId, onApprove, onReject, onDelete, onAddBalance
   const [addingPkg,    setAddingPkg]    = useState<string | null>(null);
   const [showMembers,  setShowMembers]  = useState(false);
   const [loginBusy,    setLoginBusy]    = useState(false);
+  const [editDiscount, setEditDiscount] = useState<string | null>(null);
+  const [discountBusy, setDiscountBusy] = useState(false);
+
+  // Бизнес-роли (компании/монтажники) имеют баланс, пробный, агента.
+  // Дизайнеры/прорабы — скидку. Клиенты — только базовую инфу.
+  const isBusiness = u.role === "company" || u.role === "installer";
+  const isPro      = u.role === "designer" || u.role === "foreman";
 
   const isLoading   = actionId === u.id;
   const borderColor = u.rejected ? "#ef444430" : u.approved ? "#10b98130" : "#f59e0b30";
-  const trialLeft   = trialDaysLeft(u.trial_until);
-  const hasTrial    = u.trial_until !== null;
+  const trialLeft   = trialDaysLeft(u.trial_until ?? null);
+  const hasTrial    = !!u.trial_until;
   const trialActive = trialLeft > 0;
   const hasBalance  = u.estimates_balance > 0;
+
+  const handleSaveDiscount = async () => {
+    if (editDiscount === null || !onSetDiscount) return;
+    setDiscountBusy(true);
+    await onSetDiscount(u.id, parseInt(editDiscount) || 0);
+    setDiscountBusy(false);
+    setEditDiscount(null);
+  };
 
   const loadTransactions = async () => {
     if (transactions) { setExpanded(v => !v); return; }
@@ -198,7 +214,7 @@ function BusinessCard({ u, actionId, onApprove, onReject, onDelete, onAddBalance
               disabled={loginBusy}
               className="w-8 h-8 rounded-lg flex items-center justify-center transition disabled:opacity-50"
               style={{ background: "rgba(217,119,6,0.15)", color: "#fbbf24", border: "1px solid rgba(217,119,6,0.3)" }}
-              title="Войти как эта компания">
+              title="Войти как этот пользователь">
               {loginBusy ? <div className="w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin" /> : <Icon name="Eye" size={13} />}
             </button>
             <button onClick={onDelete}
@@ -219,6 +235,35 @@ function BusinessCard({ u, actionId, onApprove, onReject, onDelete, onAddBalance
             <div className="text-[10px] text-white/30 mt-0.5">{daysSince(u.created_at)} дн. назад · ID #{u.id}</div>
           </div>
 
+          {/* Скидка (для дизайнеров/прорабов) */}
+          {isPro && (
+            <div className="rounded-xl px-3 py-2.5" style={{ background: "rgba(255,255,255,0.03)" }}>
+              <div className="text-[9px] uppercase tracking-wider text-white/25 mb-1">Скидка</div>
+              {editDiscount !== null ? (
+                <div className="flex items-center gap-1.5">
+                  <input type="number" min={0} max={100} value={editDiscount}
+                    onChange={e => setEditDiscount(e.target.value)}
+                    className="w-12 rounded px-1.5 py-1 text-xs text-center focus:outline-none"
+                    style={{ background: "rgba(255,255,255,0.07)", border: "1px solid rgba(167,139,250,0.35)", color: "#fff" }} />
+                  <span className="text-xs text-white/30">%</span>
+                  <button onClick={handleSaveDiscount} disabled={discountBusy}
+                    className="px-2 py-1 rounded text-[10px] font-bold text-white disabled:opacity-50" style={{ background: "#a78bfa" }}>
+                    {discountBusy ? "..." : "✓"}
+                  </button>
+                  <button onClick={() => setEditDiscount(null)} className="text-white/30 hover:text-white/60 text-xs">✕</button>
+                </div>
+              ) : (
+                <button onClick={() => setEditDiscount(String(u.discount))}
+                  className="flex items-center gap-1 text-sm font-black" style={{ color: "#a78bfa" }}>
+                  {u.discount > 0 ? `${u.discount}%` : "0%"}
+                  <Icon name="Pencil" size={10} style={{ color: "#a78bfa80" }} />
+                </button>
+              )}
+            </div>
+          )}
+
+          {/* Бизнес-блоки: пробный, агент, баланс — только для компаний/монтажников */}
+          {isBusiness && (<>
           {/* Пробный период */}
           <div className="rounded-xl px-3 py-2.5" style={{ background: "rgba(255,255,255,0.03)" }}>
             <div className="text-[9px] uppercase tracking-wider text-white/25 mb-1">Пробный период</div>
@@ -228,7 +273,7 @@ function BusinessCard({ u, actionId, onApprove, onReject, onDelete, onAddBalance
             </div>
             {hasTrial && (
               <div className="text-[10px] text-white/30 mt-0.5">
-                До {fmtDate(u.trial_until)}
+                До {fmtDate(u.trial_until ?? null)}
               </div>
             )}
           </div>
@@ -266,7 +311,7 @@ function BusinessCard({ u, actionId, onApprove, onReject, onDelete, onAddBalance
           {/* Куплено всего */}
           <div className="rounded-xl px-3 py-2.5" style={{ background: "rgba(255,255,255,0.03)" }}>
             <div className="text-[9px] uppercase tracking-wider text-white/25 mb-1">Куплено всего</div>
-            <div className="text-lg font-black text-white/80">{u.total_bought}</div>
+            <div className="text-lg font-black text-white/80">{u.total_bought ?? 0}</div>
             <div className="text-[10px] text-white/30">смет за всё время</div>
           </div>
 
@@ -281,9 +326,11 @@ function BusinessCard({ u, actionId, onApprove, onReject, onDelete, onAddBalance
               </div>
             </div>
           </div>
+          </>)}
         </div>
 
-        {/* Пополнить баланс смет */}
+        {/* Пополнить баланс смет — только для бизнес-ролей */}
+        {isBusiness && (
         <div className="mt-3">
           {showPackages ? (
             <div className="rounded-xl p-3 space-y-1.5" style={{ background: "rgba(124,58,237,0.05)", border: "1px solid rgba(124,58,237,0.15)" }}>
@@ -317,6 +364,7 @@ function BusinessCard({ u, actionId, onApprove, onReject, onDelete, onAddBalance
             </button>
           )}
         </div>
+        )}
 
         {/* Сотрудники компании */}
         {u.role === "company" && (
@@ -372,18 +420,19 @@ function BusinessCard({ u, actionId, onApprove, onReject, onDelete, onAddBalance
 }
 
 interface Props {
-  users: BusinessUser[];
+  users: AppUser[];
   loading: boolean;
   onReload: () => void;
-  roleFilter?: "company" | "installer";   // если задан — показываем только эту роль
+  roleFilter?: string;                        // если задан — показываем только эту роль
   sourceFilter?: "all" | "self" | "invited";  // источник: сам зашёл / приглашён
+  removedGroup?: "business" | "pro";          // группа для вкладки "Удалённые"
 }
 
-export default function MasterTabBusiness({ users, loading, onReload, roleFilter, sourceFilter = "all" }: Props) {
+export default function MasterTabBusiness({ users, loading, onReload, roleFilter, sourceFilter = "all", removedGroup = "business" }: Props) {
   const [view,       setView]       = useState<BizView>("active");
   const [filter,     setFilter]     = useState<BizFilter>("all");
   const [actionId,   setActionId]   = useState<number | null>(null);
-  const [confirmDel, setConfirmDel] = useState<BusinessUser | null>(null);
+  const [confirmDel, setConfirmDel] = useState<AppUser | null>(null);
   const [deletingId, setDeletingId] = useState<number | null>(null);
 
   const roleScoped = users
@@ -424,7 +473,7 @@ export default function MasterTabBusiness({ users, loading, onReload, roleFilter
     onReload();
   };
 
-  const doDelete = async (u: BusinessUser) => {
+  const doDelete = async (u: AppUser) => {
     setDeletingId(u.id);
     await fetch(`${AUTH_URL}?action=delete-user`, {
       method: "POST", headers: masterHeaders({ "Content-Type": "application/json" }),
@@ -439,6 +488,14 @@ export default function MasterTabBusiness({ users, loading, onReload, roleFilter
     await fetch(`${AUTH_URL}?action=add-balance`, {
       method: "POST", headers: masterHeaders({ "Content-Type": "application/json" }),
       body: JSON.stringify({ user_id: userId, amount, reason }),
+    });
+    onReload();
+  };
+
+  const doSetDiscount = async (userId: number, discount: number) => {
+    await fetch(`${AUTH_URL}?action=set-discount`, {
+      method: "POST", headers: masterHeaders({ "Content-Type": "application/json" }),
+      body: JSON.stringify({ user_id: userId, discount }),
     });
     onReload();
   };
@@ -464,7 +521,7 @@ export default function MasterTabBusiness({ users, loading, onReload, roleFilter
       </div>
 
       {view === "removed" ? (
-        <MasterTabRemoved group="business" />
+        <MasterTabRemoved group={removedGroup} />
       ) : (<>
       {/* Фильтры */}
       <div className="flex items-center gap-4 mb-5">
@@ -489,6 +546,7 @@ export default function MasterTabBusiness({ users, loading, onReload, roleFilter
               onReject={doReject}
               onDelete={() => setConfirmDel(u)}
               onAddBalance={doAddBalance}
+              onSetDiscount={doSetDiscount}
             />
           ))}
         </div>
