@@ -78,7 +78,9 @@ def handle(action, method, params, body, token, event, conn, cur):
             SELECT u.id, u.email, u.name, u.phone, u.role, u.approved, u.rejected, u.discount,
                    u.created_at, u.estimates_balance,
                    u.has_own_agent, u.agent_purchased_at, u.trial_until,
-                   COALESCE(SUM(CASE WHEN bt.amount > 0 THEN bt.amount ELSE 0 END), 0) AS total_bought
+                   COALESCE(SUM(CASE WHEN bt.amount > 0 THEN bt.amount ELSE 0 END), 0) AS total_bought,
+                   EXISTS(SELECT 1 FROM {SCHEMA}.demo_companies dc WHERE dc.company_id = u.id) AS invited_by_master,
+                   (SELECT COUNT(*) FROM {SCHEMA}.users m WHERE m.company_id = u.id AND m.role = 'manager' AND m.removed_at IS NULL) AS members_count
             FROM {SCHEMA}.users u LEFT JOIN {SCHEMA}.balance_transactions bt ON bt.user_id = u.id
             {where} GROUP BY u.id ORDER BY u.created_at DESC
         """)
@@ -91,6 +93,8 @@ def handle(action, method, params, body, token, event, conn, cur):
             "agent_purchased_at": str(r[11])[:19] if r[11] else None,
             "trial_until": str(r[12])[:19] if r[12] else None,
             "total_bought": int(r[13] or 0),
+            "source": "invited" if r[14] else "self",
+            "members_count": int(r[15] or 0),
         } for r in rows]})
 
     if action == "admin-user-transactions" and method == "GET":
@@ -110,7 +114,9 @@ def handle(action, method, params, body, token, event, conn, cur):
         cur.execute(f"""
             SELECT u.id, u.email, u.name, u.phone, u.role, u.approved, u.discount, u.created_at,
                    COUNT(e.id) as estimates_count, u.rejected,
-                   u.estimates_balance, u.trial_until, u.has_own_agent, u.agent_purchased_at
+                   u.estimates_balance, u.trial_until, u.has_own_agent, u.agent_purchased_at,
+                   EXISTS(SELECT 1 FROM {SCHEMA}.demo_companies dc WHERE dc.company_id = u.id) AS invited_by_master,
+                   u.company_id
             FROM {SCHEMA}.users u LEFT JOIN {SCHEMA}.saved_estimates e ON e.user_id = u.id
             WHERE u.removed_at IS NULL GROUP BY u.id ORDER BY u.created_at DESC
         """)
@@ -123,6 +129,8 @@ def handle(action, method, params, body, token, event, conn, cur):
             "trial_until": str(r[11])[:19] if r[11] else None,
             "has_own_agent": bool(r[12]),
             "agent_purchased_at": str(r[13])[:19] if r[13] else None,
+            "source": "invited" if r[14] else "self",
+            "company_id": r[15],
         } for r in rows]})
 
     if action == "admin-toggle-own-agent" and method == "POST":

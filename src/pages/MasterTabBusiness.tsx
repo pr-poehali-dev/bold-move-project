@@ -4,10 +4,30 @@ import RoleBadge from "./MasterRoleBadge";
 import type { BusinessUser, UserTransaction } from "./masterAdminTypes";
 import { fmtDate } from "./masterAdminTypes";
 import MasterTabRemoved from "./MasterTabRemoved";
+import CompanyMembers from "./CompanyMembers";
 import func2url from "@/../backend/func2url.json";
 import { masterHeaders } from "./masterAuthFetch";
 
 const AUTH_URL = (func2url as Record<string, string>)["auth"];
+
+async function loginAsUser(userId: number) {
+  const tok = localStorage.getItem("mp_user_token");
+  const r = await fetch(`${AUTH_URL}?action=admin-login-as`, {
+    method: "POST", headers: masterHeaders({ "Content-Type": "application/json" }),
+    body: JSON.stringify({ user_id: userId }),
+  });
+  const d = await r.json();
+  if (d.token) {
+    if (tok) {
+      localStorage.setItem("mp_master_token", tok);
+      localStorage.setItem("mp_master_name", "Мастер");
+    }
+    localStorage.setItem("mp_user_token", d.token);
+    window.location.href = "/company";
+  } else {
+    alert("Не удалось войти: " + (d.error || "?"));
+  }
+}
 
 type BizView   = "active" | "removed";
 type BizFilter = "all" | "approved" | "pending" | "rejected";
@@ -81,6 +101,8 @@ function BusinessCard({ u, actionId, onApprove, onReject, onDelete, onAddBalance
   const [transactions, setTransactions] = useState<UserTransaction[] | null>(null);
   const [showPackages, setShowPackages] = useState(false);
   const [addingPkg,    setAddingPkg]    = useState<string | null>(null);
+  const [showMembers,  setShowMembers]  = useState(false);
+  const [loginBusy,    setLoginBusy]    = useState(false);
 
   const isLoading   = actionId === u.id;
   const borderColor = u.rejected ? "#ef444430" : u.approved ? "#10b98130" : "#f59e0b30";
@@ -133,6 +155,9 @@ function BusinessCard({ u, actionId, onApprove, onReject, onDelete, onAddBalance
               {u.rejected && <span className="text-[9px] px-1.5 py-0.5 rounded font-bold" style={{ background: "#ef444418", color: "#ef4444" }}>✗ отклонён</span>}
               {!u.approved && !u.rejected && <span className="text-[9px] px-1.5 py-0.5 rounded font-bold" style={{ background: "#f59e0b18", color: "#f59e0b" }}>ожидает</span>}
               {u.has_own_agent && <span className="text-[9px] px-1.5 py-0.5 rounded font-bold" style={{ background: "#a78bfa18", color: "#a78bfa" }}>✦ WL агент</span>}
+              {u.source === "invited"
+                ? <span className="text-[9px] px-1.5 py-0.5 rounded font-bold" style={{ background: "#a78bfa18", color: "#a78bfa" }}>➤ приглашён вами</span>
+                : <span className="text-[9px] px-1.5 py-0.5 rounded font-bold" style={{ background: "#60a5fa18", color: "#60a5fa" }}>➤ сам зашёл</span>}
             </div>
             <div className="text-[11px] text-white/35">{u.email}</div>
             {u.phone && <div className="text-[10px] text-white/25 mt-0.5">{u.phone}</div>}
@@ -169,6 +194,13 @@ function BusinessCard({ u, actionId, onApprove, onReject, onDelete, onAddBalance
                 <Icon name="UserCheck" size={11} /> Одобрить
               </button>
             )}
+            <button onClick={async () => { setLoginBusy(true); await loginAsUser(u.id); setLoginBusy(false); }}
+              disabled={loginBusy}
+              className="w-8 h-8 rounded-lg flex items-center justify-center transition disabled:opacity-50"
+              style={{ background: "rgba(217,119,6,0.15)", color: "#fbbf24", border: "1px solid rgba(217,119,6,0.3)" }}
+              title="Войти как эта компания">
+              {loginBusy ? <div className="w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin" /> : <Icon name="Eye" size={13} />}
+            </button>
             <button onClick={onDelete}
               className="w-8 h-8 rounded-lg flex items-center justify-center transition"
               style={{ background: "#ef444410", color: "#ef4444" }}>
@@ -286,6 +318,26 @@ function BusinessCard({ u, actionId, onApprove, onReject, onDelete, onAddBalance
           )}
         </div>
 
+        {/* Сотрудники компании */}
+        {u.role === "company" && (
+          <div className="mt-3">
+            <button onClick={() => setShowMembers(v => !v)}
+              className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-[11px] font-bold transition"
+              style={{ background: "rgba(255,255,255,0.03)", color: "rgba(255,255,255,0.6)", border: "1px solid rgba(255,255,255,0.07)" }}>
+              <span className="flex items-center gap-1.5">
+                <Icon name="Users" size={12} style={{ color: "#94a3b8" }} />
+                Сотрудники{typeof u.members_count === "number" ? ` (${u.members_count})` : ""}
+              </span>
+              <Icon name={showMembers ? "ChevronUp" : "ChevronDown"} size={13} style={{ color: "rgba(255,255,255,0.3)" }} />
+            </button>
+            {showMembers && (
+              <div className="mt-2 rounded-xl overflow-hidden" style={{ border: "1px solid rgba(255,255,255,0.07)" }}>
+                <CompanyMembers companyId={u.id} />
+              </div>
+            )}
+          </div>
+        )}
+
         {/* История транзакций */}
         {expanded && !txLoading && transactions && (
           <div className="mt-3 rounded-xl overflow-hidden" style={{ border: "1px solid rgba(255,255,255,0.07)" }}>
@@ -323,16 +375,22 @@ interface Props {
   users: BusinessUser[];
   loading: boolean;
   onReload: () => void;
+  roleFilter?: "company" | "installer";   // если задан — показываем только эту роль
+  sourceFilter?: "all" | "self" | "invited";  // источник: сам зашёл / приглашён
 }
 
-export default function MasterTabBusiness({ users, loading, onReload }: Props) {
+export default function MasterTabBusiness({ users, loading, onReload, roleFilter, sourceFilter = "all" }: Props) {
   const [view,       setView]       = useState<BizView>("active");
   const [filter,     setFilter]     = useState<BizFilter>("all");
   const [actionId,   setActionId]   = useState<number | null>(null);
   const [confirmDel, setConfirmDel] = useState<BusinessUser | null>(null);
   const [deletingId, setDeletingId] = useState<number | null>(null);
 
-  const filtered = users.filter(u => {
+  const roleScoped = users
+    .filter(u => !roleFilter || u.role === roleFilter)
+    .filter(u => sourceFilter === "all" || (u.source || "self") === sourceFilter);
+
+  const filtered = roleScoped.filter(u => {
     if (filter === "pending")  return !u.approved && !u.rejected;
     if (filter === "approved") return u.approved && !u.rejected;
     if (filter === "rejected") return u.rejected;
@@ -340,10 +398,10 @@ export default function MasterTabBusiness({ users, loading, onReload }: Props) {
   });
 
   const counts: Record<BizFilter, number> = {
-    all:      users.length,
-    approved: users.filter(u => u.approved && !u.rejected).length,
-    pending:  users.filter(u => !u.approved && !u.rejected).length,
-    rejected: users.filter(u => u.rejected).length,
+    all:      roleScoped.length,
+    approved: roleScoped.filter(u => u.approved && !u.rejected).length,
+    pending:  roleScoped.filter(u => !u.approved && !u.rejected).length,
+    rejected: roleScoped.filter(u => u.rejected).length,
   };
 
   const doApprove = async (id: number) => {

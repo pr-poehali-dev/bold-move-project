@@ -4,8 +4,7 @@ import func2url from "@/../backend/func2url.json";
 import { TOKEN_KEY } from "@/context/useAuthInit";
 import { masterHeaders } from "./masterAuthFetch";
 import type { MasterTab, BusinessUser, ProUser, AppUser, UserEstimate, AdminStats } from "./masterAdminTypes";
-import MasterTabProfessionals from "./MasterTabProfessionals";
-import MasterTabAllUsers      from "./MasterTabAllUsers";
+import MasterTabUsers         from "./MasterTabUsers";
 import MasterTabDashboard     from "./MasterTabDashboard";
 import MasterTabWhiteLabel    from "./MasterTabWhiteLabel";
 import { WLStaff }            from "./whitelabel/WLStaff";
@@ -102,9 +101,8 @@ export default function MasterAdmin() {
 
   useEffect(() => {
     if (!authed) return;
-    if (tab === "dashboard")     loadStats();
-    else if (tab === "professionals") { loadBiz(); loadPro(); }
-    else if (tab === "all")      loadAll();
+    if (tab === "dashboard")  loadStats();
+    else if (tab === "users") { loadBiz(); loadPro(); loadAll(); }
   }, [tab, authed, loadStats, loadBiz, loadPro, loadAll]);
 
   const approveUser = async (id: number) => {
@@ -171,12 +169,10 @@ export default function MasterAdmin() {
   }
 
   const TABS: { id: MasterTab; label: string; icon: string; badge?: number }[] = [
-    { id: "dashboard",     label: "Дашборд",         icon: "LayoutDashboard" },
-    { id: "professionals", label: "Одобрение",        icon: "Users2", badge: pendingCount },
-    { id: "all",           label: "Все пользователи", icon: "Users" },
-    { id: "whitelabel",    label: "White-Label",      icon: "Sparkles" },
-    { id: "wl-staff",      label: "WL Сотрудники",   icon: "UserCheck" },
-    { id: "default-rules", label: "Дефолты по ролям", icon: "ShieldCheck" },
+    { id: "dashboard",  label: "Дашборд",     icon: "LayoutDashboard" },
+    { id: "users",      label: "Пользователи", icon: "Users", badge: pendingCount },
+    { id: "whitelabel", label: "White-Label",  icon: "Sparkles" },
+    { id: "settings",   label: "Настройки",    icon: "Settings" },
   ];
 
   return (
@@ -231,36 +227,31 @@ export default function MasterAdmin() {
         <MasterTabDashboard stats={stats} loading={statsLoading} />
       )}
 
-      {tab === "professionals" && (
-        <MasterTabProfessionals
-          bizUsers={bizUsers}   bizLoading={bizLoading}
-          proUsers={proUsers}   proLoading={proLoading}
+      {tab === "users" && (
+        <MasterTabUsers
+          bizUsers={bizUsers} bizLoading={bizLoading} onReloadBiz={loadBiz}
+          proUsers={proUsers} proLoading={proLoading}
           editDiscount={editDiscount} savingDiscount={savingDiscount}
-          pendingCount={pendingCount}
           onEditDiscount={setEditDiscount} onSaveDiscount={saveDiscount}
-          onReloadBiz={loadBiz} onReloadPro={loadPro}
-        />
-      )}
-
-      {tab === "all" && (
-        <MasterTabAllUsers
-          users={users} loading={allLoading} search={search}
-          selectedUser={selectedUser} userEstimates={userEstimates}
+          onReloadPro={loadPro}
+          allUsers={users} allLoading={allLoading}
+          search={search} selectedUser={selectedUser} userEstimates={userEstimates}
           estLoading={estLoading} approvingId={approvingId}
           onSearch={setSearch} onSelectUser={openUser}
-          onApprove={approveUser} onReload={loadAll}
+          onApprove={approveUser} onReloadAll={loadAll}
         />
       )}
 
-      {tab === "whitelabel" && <MasterTabWhiteLabel />}
-
-      {tab === "wl-staff" && (
-        <div className="max-w-4xl mx-auto px-5 py-8">
-          <WLStaff />
+      {tab === "whitelabel" && (
+        <div className="space-y-8">
+          <MasterTabWhiteLabel />
+          <div className="max-w-4xl mx-auto px-5 pb-8">
+            <WLStaff />
+          </div>
         </div>
       )}
 
-      {tab === "default-rules" && (
+      {tab === "settings" && (
         <div className="max-w-2xl mx-auto px-5 py-8">
           <TabDefaultAutoRules isDark />
         </div>

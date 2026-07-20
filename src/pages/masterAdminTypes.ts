@@ -14,6 +14,8 @@ export interface BusinessUser {
   trial_until: string | null;
   total_bought: number;
   telegram?: string | null;
+  source?: "self" | "invited";   // "self" — сам зарегистрировался, "invited" — создан мастером (WL-демо)
+  members_count?: number;         // сколько сотрудников привязано к компании
 }
 
 export interface UserTransaction {
@@ -50,7 +52,15 @@ export interface AppUser {
   agent_purchased_at?: string | null;
   trial_until?: string | null;
   telegram?: string | null;
+  source?: "self" | "invited";
+  company_id?: number | null;
 }
+
+// Метка источника пользователя для UI
+export const SOURCE_META: Record<"self" | "invited", { label: string; color: string; icon: string }> = {
+  self:    { label: "Сам зашёл",     color: "#60a5fa", icon: "UserPlus" },
+  invited: { label: "Приглашён вами", color: "#a78bfa", icon: "Send" },
+};
 
 export interface UserEstimate {
   id: number;
@@ -81,7 +91,7 @@ export interface AdminStats {
   expiring_soon: ExpiringUser[];
 }
 
-export type MasterTab = "dashboard" | "professionals" | "all" | "whitelabel" | "wl-staff" | "default-rules";
+export type MasterTab = "dashboard" | "users" | "whitelabel" | "settings";
 
 export const ROLE_LABELS: Record<string, { label: string; color: string }> = {
   client:    { label: "Клиент",    color: "#f97316" },
